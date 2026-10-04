@@ -21,8 +21,11 @@ import { archiveErrorKey, madrasahRestoreErrorKey } from "../archive";
  * (MDRS-135: the başmüderris who hid it, or Medaris yönetimi), and until then the
  * courses in the Arşiv cannot be brought back. Once it is done the section says
  * so where the button was, with "Medreseyi geri getir" beside it: what every
- * sentence here promises is on the page. A medrese Medaris yönetimi hid is
- * refused by the API (ARCHIVE_RESTORE_LEVEL), and the toast says why.
+ * sentence here promises is on the page. A medrese that was hidden already
+ * (MADRASAH_ALREADY_HIDDEN) was hidden by someone else, perhaps Medaris
+ * yönetimi, so the section says it is hidden and offers no button the API
+ * could answer with 403 (MDRS-108). Should the API still refuse a restore
+ * (ARCHIVE_RESTORE_LEVEL), the toast says why.
  */
 export function HideMadrasah({
   madrasahId,
@@ -37,7 +40,9 @@ export function HideMadrasah({
   const { notify } = useToaster();
   const [pending, startTransition] = useTransition();
   const [open, setOpen] = useState(false);
-  const [hidden, setHidden] = useState(false);
+  // "mine": hidden by this click, so "Medreseyi geri getir" is offered;
+  // "already": hidden by someone else before it, so it is not.
+  const [hidden, setHidden] = useState<"mine" | "already" | null>(null);
   const [restoring, startRestore] = useTransition();
 
   const hide = () =>
@@ -45,7 +50,7 @@ export function HideMadrasah({
       const result = await hideMedrese(madrasahId);
       if (result.success || result.code === "MADRASAH_ALREADY_HIDDEN") {
         setOpen(false);
-        setHidden(true);
+        setHidden(result.success ? "mine" : "already");
         notify({
           tone: result.success ? "success" : "info",
           title: t("Archive.hide.done"),
@@ -68,7 +73,7 @@ export function HideMadrasah({
     startRestore(async () => {
       const result = await restoreMedrese(madrasahId);
       if (result.success || result.code === "MADRASAH_NOT_HIDDEN") {
-        setHidden(false);
+        setHidden(null);
         notify({
           tone: "success",
           title: t("Archive.hide.restored"),
@@ -97,16 +102,22 @@ export function HideMadrasah({
         {hidden ? (
           <>
             <Alert tone="warning" title={t("Archive.hide.done")}>
-              <p>{t("Archive.hide.doneBody", { name: madrasahName })}</p>
+              <p>
+                {hidden === "mine"
+                  ? t("Archive.hide.doneBody", { name: madrasahName })
+                  : t("Archive.hide.already")}
+              </p>
             </Alert>
-            <Button
-              variant="outline"
-              iconLeft={<Icon name="undo" size="sm" />}
-              loading={restoring}
-              onClick={restore}
-            >
-              {t("Archive.hide.restore")}
-            </Button>
+            {hidden === "mine" ? (
+              <Button
+                variant="outline"
+                iconLeft={<Icon name="undo" size="sm" />}
+                loading={restoring}
+                onClick={restore}
+              >
+                {t("Archive.hide.restore")}
+              </Button>
+            ) : null}
           </>
         ) : (
           <>

@@ -245,7 +245,6 @@ export function archiveRows(
   });
 }
 
-/** The message key of a refused restore or hide, from the code the API answered with. */
 /**
  * The message key of a refused "Medreseyi geri getir": a medrese Medaris
  * yönetimi hid is theirs to bring back (ARCHIVE_RESTORE_LEVEL), which the
@@ -257,6 +256,7 @@ export function madrasahRestoreErrorKey(code: string): string {
     : archiveErrorKey(code);
 }
 
+/** The message key of a refused restore or hide, from the code the API answered with. */
 export function archiveErrorKey(code: string): string {
   switch (code) {
     case "ARCHIVE_FORBIDDEN":
