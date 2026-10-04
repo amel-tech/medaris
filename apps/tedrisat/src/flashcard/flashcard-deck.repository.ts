@@ -166,16 +166,14 @@ export class FlashcardDeckRepository implements IFlashcardDeckRepository {
   }
 
   async create(newDeck: ICreateFlashcardDeck): Promise<IFlashcardDeck> {
-    const { isPublic = false, ...rest } = newDeck;
+    // Always private (MDRS-148): `approve` in `DeckReviewRepository` is the
+    // only writer of a public deck.
     const [createdDeck] = await this.databaseService.db
       .insert(decks)
       .values({
-        ...rest,
-        isPublic,
-        // The two are one fact written twice; see `DeckPublishStatus`.
-        publishStatus: isPublic
-          ? DeckPublishStatus.PUBLISHED
-          : DeckPublishStatus.PRIVATE,
+        ...newDeck,
+        isPublic: false,
+        publishStatus: DeckPublishStatus.PRIVATE,
       })
       .returning();
     return createdDeck;
@@ -210,19 +208,25 @@ export class FlashcardDeckRepository implements IFlashcardDeckRepository {
     // the deck-scoped card routes settle it (MDRS-63), and MDRS-43 replaces
     // that with `@Authz`. Adding an `authorId` predicate here would turn a
     // permission failure into a silent no-op instead of a 403.
-    const publishing =
-      updates.isPublic === undefined
-        ? {}
-        : {
-            publishStatus: updates.isPublic
-              ? DeckPublishStatus.PUBLISHED
-              : DeckPublishStatus.PRIVATE,
-            publishRequestedAt: null,
-            ...CLEARED_DECISION,
-          };
     return this.databaseService.db
       .update(decks)
-      .set({ ...updates, ...publishing })
+      .set(updates)
+      .where(eq(decks.id, id))
+      .returning()
+      .then((result) => result[0] || null);
+  }
+
+  async setPrivate(id: string): Promise<IFlashcardDeck | null> {
+    // Not `updatedAt`, as `setPublishRequest`: the deck was not edited. The
+    // two columns are one fact written twice; see `DeckPublishStatus`.
+    return this.databaseService.db
+      .update(decks)
+      .set({
+        isPublic: false,
+        publishStatus: DeckPublishStatus.PRIVATE,
+        publishRequestedAt: null,
+        ...CLEARED_DECISION,
+      })
       .where(eq(decks.id, id))
       .returning()
       .then((result) => result[0] || null);

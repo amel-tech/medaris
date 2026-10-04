@@ -276,10 +276,11 @@ describe("FlashcardDeckService publish request", () => {
         publishStatus: status,
         publishRequestedAt: at,
       })),
-      update: vi.fn().mockResolvedValue({
+      setPrivate: vi.fn().mockResolvedValue({
         id: "d",
         publishStatus: DeckPublishStatus.PRIVATE,
       }),
+      update: vi.fn(),
     };
     return { repo, service: new FlashcardDeckService(repo as never) };
   };
@@ -322,7 +323,8 @@ describe("FlashcardDeckService publish request", () => {
   it("takes a published deck private through the one write that keeps both columns in step", async () => {
     const { repo, service } = build(deck(DeckPublishStatus.PUBLISHED));
     await service.withdrawPublish("d");
-    expect(repo.update).toHaveBeenCalledWith("d", { isPublic: false });
+    expect(repo.setPrivate).toHaveBeenCalledWith("d");
+    expect(repo.update).not.toHaveBeenCalled();
   });
 
   it("has nothing to withdraw on a private deck, and 404s a missing one", async () => {

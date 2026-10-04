@@ -282,8 +282,7 @@ export class FlashcardDeckService {
       throw new DeckPublishStateError(deckId, deck.publishStatus);
     }
     if (deck.publishStatus === DeckPublishStatus.PUBLISHED) {
-      // `update` keeps `isPublic` and the status in step.
-      const updated = await this.deckRepo.update(deckId, { isPublic: false });
+      const updated = await this.deckRepo.setPrivate(deckId);
       if (updated === null) throw new DeckNotFoundError(deckId);
       return updated;
     }
