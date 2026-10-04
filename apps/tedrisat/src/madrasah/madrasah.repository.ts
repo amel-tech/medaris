@@ -940,7 +940,8 @@ export class MadrasahRepository {
 
   /**
    * What the medrese page shows (MDRS-157): the live, published courses of the
-   * medrese in listed köşks — an unlisted köşk is in no list (MDRS-122) — each
+   * medrese in listed, shown köşks — an unlisted köşk is in no list (MDRS-122)
+   * and a hidden one closes its courses (MDRS-143) — each
    * with its müderrisler, the caller's enrollment and the next session; the
    * köşks those courses are in; and the başmüderris. Four small reads over the
    * course ids rather than one wide join, so a course with many müderrisler or
@@ -966,6 +967,7 @@ export class MadrasahRepository {
           eq(courses.madrasahId, madrasahId),
           eq(courses.status, CourseStatus.PUBLISHED),
           isNull(courses.archivedAt),
+          isNull(kosks.archivedAt),
           eq(kosks.isPrivate, false)
         )
       )
@@ -1254,7 +1256,9 @@ export class MadrasahRepository {
    * The medrese's courses for the nazırs' screens (nazir/04's "Politikaların
    * uygulandığı dersler", nazir/07's table): drafts and published ones, a
    * hidden one not, by title, with the talebe and the müderrisler. The köşk
-   * can be unlisted — this is the nazırs' own view, not the public page's.
+   * can be unlisted — this is the nazırs' own view, not the public page's —
+   * but not hidden: a hidden köşk closes its courses to a medrese, which is not
+   * above it (MDRS-143).
    */
   async findCourseList(
     madrasahId: string,
@@ -1277,6 +1281,7 @@ export class MadrasahRepository {
         and(
           eq(courses.madrasahId, madrasahId),
           isNull(courses.archivedAt),
+          isNull(kosks.archivedAt),
           filter.koskId ? eq(courses.koskId, filter.koskId) : undefined,
           filter.status ? eq(courses.status, filter.status) : undefined,
           filter.courseId ? eq(courses.id, filter.courseId) : undefined

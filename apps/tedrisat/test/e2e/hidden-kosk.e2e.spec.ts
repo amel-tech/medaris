@@ -516,6 +516,107 @@ describe("A hidden köşk closes its courses (MDRS-143, e2e)", () => {
     });
   });
 
+  describe("leaves the medrese's lists and routes, and the köşk's decks", () => {
+    const put = (sub: string, path: string, body: object) =>
+      http().put(path).set("Authorization", auth(sub)).send(body);
+    const titlesOf = (body: { courses: { title: string }[] }) =>
+      body.courses.map((c) => c.title);
+    const muderrisOf = async (id: string) =>
+      (
+        await db().execute(
+          sql`select user_id from course_muderris where course_id = ${id}`
+        )
+      ).rows.map((r) => r.user_id);
+
+    it("the public medrese page lists a hidden köşk's courses to nobody, and lists them again after the restore", async () => {
+      for (const sub of [null, TALEBE_ID, HEAD_ID]) {
+        const page = await get(sub, `/madrasahs/${madrasahId}/overview`).expect(
+          200
+        );
+        expect(titlesOf(page.body)).toEqual(["Emsile ve Bina"]);
+      }
+      await hide(NAZIM_ID).expect(200);
+      for (const sub of [null, TALEBE_ID, HEAD_ID]) {
+        const page = await get(sub, `/madrasahs/${madrasahId}/overview`).expect(
+          200
+        );
+        expect(page.body.courses).toEqual([]);
+        expect(page.body.kosks).toEqual([]);
+      }
+      await restore(NAZIM_ID).expect(200);
+      const page = await get(null, `/madrasahs/${madrasahId}/overview`).expect(
+        200
+      );
+      expect(titlesOf(page.body)).toEqual(["Emsile ve Bina"]);
+    });
+
+    it("the başmüderris's course list, and their dashboard's course count and upcoming sessions", async () => {
+      // Inside the dashboard's seven days.
+      await db()
+        .update(lessons)
+        .set({ scheduledAt: new Date(Date.now() + 2 * 24 * 3600 * 1000) });
+      const list = () => get(HEAD_ID, `/madrasahs/${madrasahId}/courses`);
+      const board = () => get(HEAD_ID, `/madrasahs/${madrasahId}/dashboard`);
+      expect((await list().expect(200)).body).toHaveLength(1);
+      expect((await board().expect(200)).body).toMatchObject({
+        courseCount: 1,
+        upcomingSessions: [
+          expect.objectContaining({ courseId: medreseCourseId }),
+        ],
+      });
+      await hide(NAZIM_ID).expect(200);
+      expect((await list().expect(200)).body).toEqual([]);
+      expect((await board().expect(200)).body).toMatchObject({
+        courseCount: 0,
+        upcomingSessions: [],
+      });
+      await restore(NAZIM_ID).expect(200);
+      expect((await list().expect(200)).body).toHaveLength(1);
+      expect((await board().expect(200)).body.courseCount).toBe(1);
+    });
+
+    it("refuses the başmüderris a hosted course's müderrisler and its hide with 404, and writes nothing", async () => {
+      await hide(NAZIM_ID).expect(200);
+      const before = await muderrisOf(medreseCourseId);
+      const audit = await auditRows();
+      const set = await put(
+        HEAD_ID,
+        `/madrasahs/${madrasahId}/courses/${medreseCourseId}/muderrises`,
+        { muderrisUserIds: [HEAD_ID] }
+      ).expect(404);
+      expect(set.body.code).toBe("COURSE_NOT_FOUND");
+      expect(await muderrisOf(medreseCourseId)).toEqual(before);
+      const hidden = await post(
+        HEAD_ID,
+        `/madrasahs/${madrasahId}/courses/${medreseCourseId}/hide`
+      ).expect(404);
+      expect(hidden.body.code).toBe("COURSE_NOT_FOUND");
+      expect(
+        (
+          await db()
+            .select()
+            .from(courses)
+            .where(eq(courses.id, medreseCourseId))
+        )[0].archivedAt
+      ).toBeNull();
+      expect(await auditRows()).toBe(audit);
+    });
+
+    it("answers GET /kosks/:id/decks 404 to the enrolled talebe, a müderris and a stranger, and opens it to the köşk's nazımı", async () => {
+      const decks = (sub: string) => get(sub, `/kosks/${koskId}/decks`);
+      expect((await decks(TALEBE_ID).expect(200)).body.accessible).toBe(true);
+      await hide(NAZIM_ID).expect(200);
+      for (const sub of [TALEBE_ID, MUDERRIS_ID, STRANGER_ID]) {
+        expect((await decks(sub).expect(404)).body.code).toBe("KOSK_NOT_FOUND");
+      }
+      for (const sub of [NAZIM_ID, ADMIN_ID, MEDARIS_YES_ID]) {
+        await decks(sub).expect(200);
+      }
+      await restore(NAZIM_ID).expect(200);
+      expect((await decks(TALEBE_ID).expect(200)).body.accessible).toBe(true);
+    });
+  });
+
   it("deletes nothing: the same rows stand before the hide, while hidden and after the restore", async () => {
     const before = await counts();
     await hide(NAZIM_ID).expect(200);
