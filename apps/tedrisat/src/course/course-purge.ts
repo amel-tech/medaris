@@ -11,6 +11,7 @@ import {
   lessonRecordings,
   lessons,
 } from "../database/schema/course.schema";
+import { lessonInvitations } from "../database/schema/lesson-invitation.schema";
 import { SCOPE_TYPES } from "../database/schema/role-assignment.schema";
 
 export type Tx = Parameters<
@@ -61,18 +62,18 @@ export async function purgeCourses(
   ).map((w) => w.id);
 
   if (weekIds.length > 0) {
-    // Recordings hang off lessons (MDRS-162); they go first, uncounted.
+    const lessonIds = tx
+      .select({ id: lessons.id })
+      .from(lessons)
+      .where(inArray(lessons.weekId, weekIds));
+    // Recordings (MDRS-162) and the record of e-mailed invitations
+    // (MDRS-121) hang off lessons; they go first, uncounted.
     await tx
       .delete(lessonRecordings)
-      .where(
-        inArray(
-          lessonRecordings.lessonId,
-          tx
-            .select({ id: lessons.id })
-            .from(lessons)
-            .where(inArray(lessons.weekId, weekIds))
-        )
-      );
+      .where(inArray(lessonRecordings.lessonId, lessonIds));
+    await tx
+      .delete(lessonInvitations)
+      .where(inArray(lessonInvitations.lessonId, lessonIds));
     counts.lessons = (
       await tx
         .delete(lessons)

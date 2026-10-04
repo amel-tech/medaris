@@ -5,6 +5,7 @@ import { BanModule } from "../ban/ban.module";
 import { BunnyStreamModule } from "../bunny-stream/bunny-stream.module";
 import { DatabaseService } from "../database/database.service";
 import { KoskModule } from "../kosk/kosk.module";
+import { LessonInvitationModule } from "../lesson-invitation/lesson-invitation.module";
 import { NotificationModule } from "../notification/notification.module";
 import { PlatformPolicyModule } from "../platform-policy/platform-policy.module";
 import { CourseController } from "./course.controller";
@@ -31,6 +32,7 @@ import { RecordingUploadService } from "./recording-upload.service";
     NotificationModule,
     AssignmentModule,
     BunnyStreamModule,
+    LessonInvitationModule,
   ],
   controllers: [
     CourseController,

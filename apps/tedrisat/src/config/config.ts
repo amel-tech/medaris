@@ -5,6 +5,7 @@ import { readBunnyStreamConfig } from "./bunny-stream-env";
 import { resolveDatabaseSsl } from "./database-ssl";
 import { readKeycloakAdminConfig } from "./keycloak-admin-env";
 import { readSecurityEnv } from "./security-env";
+import { readSmtpConfig } from "./smtp-env";
 import { readTedrisWebUrl } from "./tedris-web-url";
 import { assertBulkThrottleEnv } from "./throttle-env";
 
@@ -72,6 +73,9 @@ export default () => {
     // The Bunny Stream library recordings are uploaded to (MDRS-116); null
     // when unset, and the upload routes answer 503.
     bunnyStream: readBunnyStreamConfig(process.env),
+    // The SMTP server lesson invitations go out through (MDRS-121); null when
+    // unset, and nothing is e-mailed.
+    smtp: readSmtpConfig(process.env),
     keycloak: {
       jwksUrl: security.jwksUrl,
       issuer: security.issuer,

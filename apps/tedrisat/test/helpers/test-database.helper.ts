@@ -45,6 +45,7 @@ export const COURSE_TREE_TABLES = [
   "enrollments",
   "course_resources",
   "lesson_recordings",
+  "lesson_invitations",
   "course_muderris",
   "lessons",
   "course_weeks",

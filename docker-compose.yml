@@ -118,6 +118,16 @@ services:
       BUNNY_STREAM_TOKEN_KEY: ${TEDRISAT__BUNNY_STREAM_TOKEN_KEY:-}
       BUNNY_STREAM_EMBED_TTL_SECONDS: ${TEDRISAT__BUNNY_STREAM_EMBED_TTL_SECONDS:-}
 
+      # The SMTP server lesson invitations go out through (MDRS-121). Empty
+      # HOST is allowed: nothing is e-mailed and no sweep runs.
+      SMTP_HOST: ${TEDRISAT__SMTP_HOST:-}
+      SMTP_SECURITY: ${TEDRISAT__SMTP_SECURITY:-}
+      SMTP_PORT: ${TEDRISAT__SMTP_PORT:-}
+      SMTP_FROM: ${TEDRISAT__SMTP_FROM:-}
+      SMTP_FROM_DISPLAY_NAME: ${TEDRISAT__SMTP_FROM_DISPLAY_NAME:-}
+      SMTP_USER: ${TEDRISAT__SMTP_USER:-}
+      SMTP_PASSWORD: ${TEDRISAT__SMTP_PASSWORD:-}
+
       # Both carry the API__ tier the file header promises ("the app-specific
       # spelling first, then the group one"). Without it the
       # API__KEYCLOAK_REDIRECT_URL that .env.example ships reached the container

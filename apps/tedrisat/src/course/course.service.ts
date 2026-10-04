@@ -10,6 +10,7 @@ import { BanService } from "../ban/ban.service";
 import { BunnyStreamClient } from "../bunny-stream/bunny-stream.client";
 import { KoskForbiddenError } from "../kosk/errors/kosk-forbidden.error";
 import { KoskService } from "../kosk/kosk.service";
+import { LessonInvitationService } from "../lesson-invitation/lesson-invitation.service";
 import { PlatformPolicyService } from "../platform-policy/platform-policy.service";
 import { CourseRepository } from "./course.repository";
 import {
@@ -109,7 +110,10 @@ export class CourseService {
     private readonly platformPolicies: PlatformPolicyService,
     private readonly notifier: CourseNotifier,
     private readonly directory: UserDirectoryService,
-    private readonly bunny: BunnyStreamClient
+    private readonly bunny: BunnyStreamClient,
+    // Kicked after every write that can change which sessions a talebe's
+    // calendar should hold (MDRS-121); it does nothing without a sender.
+    private readonly invitations: LessonInvitationService
   ) {}
 
   /**
@@ -523,6 +527,7 @@ export class CourseService {
     if (!updated) {
       throw new CourseNotFoundError(id);
     }
+    this.invitations.kick();
     return updated;
   }
 
@@ -567,6 +572,7 @@ export class CourseService {
       user.sub,
       withCanonicalTimeZone(data)
     );
+    this.invitations.kick();
     return this.present(replaced, user, { audit: false });
   }
 
@@ -600,7 +606,9 @@ export class CourseService {
     weekId: string,
     data: ICreateLesson
   ): Promise<ILessonMutation> {
-    return this.courseRepo.createLesson(courseId, weekId, data);
+    const created = await this.courseRepo.createLesson(courseId, weekId, data);
+    this.invitations.kick();
+    return created;
   }
 
   async updateLesson(
@@ -619,6 +627,7 @@ export class CourseService {
       data
     );
     await this.notifier.sessionRescheduled(before, updated, actorId);
+    this.invitations.kick();
     return updated;
   }
 
@@ -636,6 +645,7 @@ export class CourseService {
       actorId
     );
     await this.notifier.sessionCancelled(cancelled, actorId);
+    this.invitations.kick();
     return cancelled;
   }
 
@@ -674,13 +684,15 @@ export class CourseService {
     const duplicate = duplicateUserId(asRows);
     if (duplicate) throw new MuderrisDuplicateUserError(duplicate);
     await this.assertMuderrisLinks(current, asRows);
-    return this.courseRepo.setMuderris(
+    const saved = await this.courseRepo.setMuderris(
       courseId,
       input.version,
       list,
       imam,
       user.sub
     );
+    this.invitations.kick();
+    return saved;
   }
 
   /** Hides the lesson; nothing attached to it is deleted (MDRS-124). */
@@ -688,7 +700,9 @@ export class CourseService {
     lessonId: string,
     actorId: string | null = null
   ): Promise<ILessonMutation> {
-    return this.courseRepo.archiveLesson(lessonId, actorId);
+    const archived = await this.courseRepo.archiveLesson(lessonId, actorId);
+    this.invitations.kick();
+    return archived;
   }
 
   // ---- weekly pattern → sessions (MDRS-109) ----
@@ -730,6 +744,7 @@ export class CourseService {
         return planned.sessions;
       },
     });
+    this.invitations.kick();
     return { ...result, timeZone };
   }
 
@@ -763,12 +778,14 @@ export class CourseService {
     if (!(await this.courseRepo.archive(id, userId))) {
       throw new CourseNotFoundError(id);
     }
+    this.invitations.kick();
   }
 
   async restore(id: string): Promise<void> {
     if (!(await this.courseRepo.restore(id))) {
       throw new CourseNotFoundError(id);
     }
+    this.invitations.kick();
   }
 
   async delete(id: string, actorId: string): Promise<boolean> {
@@ -810,11 +827,13 @@ export class CourseService {
       (await this.courseRepo.forcesApproval(courseId))
         ? EnrollmentStatus.PENDING
         : EnrollmentStatus.ENROLLED;
-    return this.courseRepo.enroll(userId, courseId, {
+    const enrollment = await this.courseRepo.enroll(userId, courseId, {
       status,
       studentName: student.name ?? null,
       studentEmail: student.email ?? null,
     });
+    this.invitations.kick();
+    return enrollment;
   }
 
   async findPendingEnrollments(
@@ -891,6 +910,7 @@ export class CourseService {
       return this.lostRace(courseId, studentId, EnrollmentStatus.ENROLLED);
     }
     await this.notifier.enrollmentApproved(courseId, studentId, actorId);
+    this.invitations.kick();
     return updated;
   }
 
@@ -963,7 +983,10 @@ export class CourseService {
       status,
       existing.status
     );
-    if (updated) return updated;
+    if (updated) {
+      this.invitations.kick();
+      return updated;
+    }
     return this.lostRace(courseId, studentId, status);
   }
 
@@ -1001,6 +1024,7 @@ export class CourseService {
       actorId,
       reason.trim()
     );
+    this.invitations.kick();
     return true;
   }
 
@@ -1031,6 +1055,7 @@ export class CourseService {
       existing.status
     );
     if (!left) await this.lostRace(courseId, userId);
+    this.invitations.kick();
     return true;
   }
 

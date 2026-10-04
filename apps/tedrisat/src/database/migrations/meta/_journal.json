@@ -323,6 +323,13 @@
       "when": 1791091414792,
       "tag": "0047_bunny_stream_recordings",
       "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1791097956740,
+      "tag": "0048_lesson_invitations",
+      "breakpoints": true
     }
   ]
 }
