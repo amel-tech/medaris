@@ -1,4 +1,5 @@
 import { Injectable } from "@nestjs/common";
+import type { HideLevel } from "../archive/hide-level";
 import type { CoursesAction } from "./dto/hosting-right.dto";
 import {
   type GrantedByRole,
@@ -35,8 +36,9 @@ export class HostingService {
     koskId: string,
     madrasahId: string,
     coursesAction: CoursesAction,
-    actorId: string
+    actorId: string,
+    level: HideLevel
   ): Promise<void> {
-    return this.repo.revoke(koskId, madrasahId, coursesAction, actorId);
+    return this.repo.revoke(koskId, madrasahId, coursesAction, actorId, level);
   }
 }

@@ -58,6 +58,27 @@ export function holdsIn(
 }
 
 /**
+ * Whether the scope is passive (MDRS-136): `role` was held in it once and
+ * nobody holds it now. A scope that never had one is new, not passive. As a
+ * correlated condition for a query: `scopeId` is a column or an expression of
+ * the outer row. The engine reads the same fact for a single resource
+ * (`TedrisatAuthzContext.managerStats`); a list that hands out content has to
+ * read it too.
+ */
+export function isPassiveScope(
+  role: AssignedRole,
+  scopeId: string | Column | SQL
+): SQL {
+  return sql`(exists (select 1 from ${roleAssignments} where ${and(
+    eq(roleAssignments.role, role),
+    eq(roleAssignments.scopeId, scopeId)
+  )}) and not exists (select 1 from ${roleAssignments} where ${holdsIn(
+    role,
+    scopeId
+  )}))`;
+}
+
+/**
  * The ids of the users who hold `role` in the scope, oldest grant first, as a
  * correlated subquery for a select list. `::text` so node-postgres parses the
  * array; it has no parser for uuid[] and would hand back the literal "{…}".
@@ -178,13 +199,22 @@ export async function deleteAssignmentsIn(
  *
  * The imam (MDRS-133) stays who they are while they remain a müderris. A
  * course left without one — the first save, or the imam was removed — gets
- * the account listed first. Choosing the imam deliberately is MDRS-136's.
+ * the first listed account that holds a seat. Choosing the imam deliberately
+ * is MDRS-136's.
+ *
+ * `listedBefore` is for a write whose müderris list rides along with the rest
+ * of the course (the whole-course PUT): an account that was already on the
+ * list keeps the seat it has, and none if it lapsed or was revoked, so saving
+ * the syllabus never seats anyone again (MDRS-135). Only an account the write
+ * links anew is seated. Returns who was seated and who lost a seat, for the
+ * caller's audit row.
  */
 export async function syncMuderrisAssignments(
   tx: Tx,
   courseId: string,
-  actorId: string
-): Promise<void> {
+  actorId: string,
+  options: { listedBefore?: readonly string[] } = {}
+): Promise<{ seated: string[]; revoked: string[] }> {
   const listed = await tx
     .select({
       userId: courseMuderris.userId,
@@ -221,6 +251,7 @@ export async function syncMuderrisAssignments(
     .from(roleAssignments)
     .where(course);
 
+  const revoked: string[] = [];
   for (const row of open) {
     if (!bound.includes(row.userId)) {
       await revokeRole(tx, {
@@ -229,19 +260,30 @@ export async function syncMuderrisAssignments(
         scopeId: courseId,
         revokedBy: actorId,
       });
+      revoked.push(row.userId);
     }
   }
 
-  const imamStays = open.some((r) => r.isImam && bound.includes(r.userId));
-  for (const [i, userId] of bound.entries()) {
+  const before = options.listedBefore
+    ? new Set(options.listedBefore.map((id) => id.toLowerCase()))
+    : null;
+  const seated: string[] = [];
+  for (const userId of bound) {
+    if (open.some((r) => r.userId === userId)) continue;
+    if (before?.has(userId.toLowerCase())) continue;
     await grantRole(tx, {
       userId,
       role: ASSIGNED_ROLES.MUDERRIS,
       scopeId: courseId,
       grantedBy: actorId,
     });
-    if (i === 0 && !imamStays) {
-      await tx
+    seated.push(userId);
+  }
+
+  const imamStays = open.some((r) => r.isImam && bound.includes(r.userId));
+  if (!imamStays) {
+    for (const userId of bound) {
+      const made = await tx
         .update(roleAssignments)
         .set({ isImam: true })
         .where(
@@ -249,9 +291,12 @@ export async function syncMuderrisAssignments(
             eq(roleAssignments.userId, userId),
             holdsIn(ASSIGNED_ROLES.MUDERRIS, courseId)
           )
-        );
+        )
+        .returning({ id: roleAssignments.id });
+      if (made.length > 0) break;
     }
   }
+  return { seated, revoked };
 }
 
 /**

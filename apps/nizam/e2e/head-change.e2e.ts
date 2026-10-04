@@ -20,6 +20,10 @@ const MUDERRIS = account("MUDERRIS");
 const seedable = Boolean(SYSTEM_ADMIN.sub && process.env.E2E_DATABASE_URL);
 let fixture: HeadFixture;
 
+// The screen shows moments in the browser's zone unless the account has one:
+// pinned, the end dates below mean the same instant on any machine (MDRS-254).
+test.use({ timezoneId: "Europe/Istanbul" });
+
 test.beforeEach(async () => {
   if (!seedable) return;
   fixture = await seedHead(SYSTEM_ADMIN.sub as string);
@@ -56,7 +60,7 @@ const openMedreseler = async (page: Page) => {
 
 const daysFromNow = (n: number) => {
   const d = new Date(Date.now() + n * 24 * 3600 * 1000);
-  return d.toISOString().slice(0, 10);
+  return `${d.toISOString().slice(0, 10)}T12:00`;
 };
 
 test("nizam/22 — 'Başmüderrisi değiştir' is on whatever the date (MDRS-215: no version gate)", async ({
@@ -148,12 +152,16 @@ test("nizam/22 — the window names the başmüderris, lists what they handed on
   await expect(submit).toBeEnabled();
 
   // an end date that is not in the future is refused where it is typed
-  await dialog.getByLabel("Görev bitişi (isteğe bağlı)").fill("2020-01-01");
+  await dialog
+    .getByLabel("Görev bitiş tarihi ve saati (isteğe bağlı)")
+    .fill("2020-01-01T12:00");
   await expect(
-    dialog.getByText("Bitiş tarihi bugünden sonra olmalı.")
+    dialog.getByText("Bitiş zamanı şu andan sonra olmalı.")
   ).toBeVisible();
   await expect(submit).toBeDisabled();
-  await dialog.getByLabel("Görev bitişi (isteğe bağlı)").fill("2026-12-31");
+  await dialog
+    .getByLabel("Görev bitiş tarihi ve saati (isteğe bağlı)")
+    .fill("2026-12-31T12:00");
   await expect(submit).toBeEnabled();
 
   // 'Vazgeç' changes nothing
@@ -193,7 +201,9 @@ test("nizam/22 — 'Değiştir' replaces the başmüderris, takes over what was 
   await email.fill(MUDERRIS.email as string);
   await email.press("Enter");
   await expect(dialog.getByTestId("chosen-head")).toBeVisible();
-  await dialog.getByLabel("Görev bitişi (isteğe bağlı)").fill("2026-12-31");
+  await dialog
+    .getByLabel("Görev bitiş tarihi ve saati (isteğe bağlı)")
+    .fill("2026-12-31T12:00");
   await rows.nth(0).getByRole("button", { name: "Devral" }).click();
   await rows.nth(1).getByRole("button", { name: "Düşür" }).click();
   await rows.nth(2).getByRole("button", { name: "Devral" }).click();
@@ -255,7 +265,9 @@ test("nizam/22 — on a passive medrese the window says 'Başmüderris ata' and 
   const email = dialog.getByRole("textbox", { name: /^Başmüderris/ });
   await email.fill(MUDERRIS.email as string);
   await email.press("Enter");
-  await dialog.getByLabel("Görev bitişi (isteğe bağlı)").fill(daysFromNow(60));
+  await dialog
+    .getByLabel("Görev bitiş tarihi ve saati (isteğe bağlı)")
+    .fill(daysFromNow(60));
   await dialog.getByRole("button", { name: "Başmüderris ata" }).click();
   await expect(dialog).toBeHidden();
 

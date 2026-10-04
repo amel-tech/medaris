@@ -66,6 +66,24 @@ export class LessonMutationResponse extends LessonResponse {
   courseVersion!: number;
 }
 
+/** A week hidden through its own endpoint (MDRS-143). */
+export class WeekHideResponse {
+  @ApiProperty({ format: "uuid", description: "The week that was hidden." })
+  id!: string;
+
+  @ApiProperty({
+    description:
+      "The course version this write produced; send it with the next PUT /courses/:id or PATCH /lessons/:id.",
+  })
+  courseVersion!: number;
+
+  @ApiProperty({
+    description:
+      "The live sessions hidden with it; a restore of the week brings back exactly these.",
+  })
+  hiddenSessions!: number;
+}
+
 export class WeekResponse {
   @ApiProperty() id!: string;
   @ApiProperty() courseId!: string;

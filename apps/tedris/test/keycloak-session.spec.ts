@@ -46,7 +46,7 @@ beforeEach(() => {
     throw new Error("unexpected fetch");
   });
   // The refresh logs its failures; the specs below provoke them on purpose.
-  vi.spyOn(console, "log").mockImplementation(() => {});
+  vi.spyOn(console, "error").mockImplementation(() => {});
 });
 
 afterEach(() => {
@@ -212,6 +212,32 @@ describe("tedris's jwt and session callbacks", () => {
     expect(next.error).toBe(REFRESH_ACCESS_TOKEN_ERROR);
     // Still a session: RefreshErrorRedirect sends it back to Keycloak.
     expect((await session(next)).error).toBe(REFRESH_ACCESS_TOKEN_ERROR);
+  });
+
+  it("a failed refresh logs a summary at error level, never a token or the client secret (MDRS-231)", async () => {
+    const log = vi.spyOn(console, "log").mockImplementation(() => {});
+    stubFetch(() =>
+      json(400, {
+        error: "invalid_grant",
+        error_description: "Session not active",
+      })
+    );
+    await jwt(expired());
+
+    expect(log).not.toHaveBeenCalled();
+    expect(vi.mocked(console.error).mock.calls).toEqual([
+      [
+        "Keycloak token refresh failed:",
+        {
+          status: 400,
+          error: "invalid_grant",
+          error_description: "Session not active",
+        },
+      ],
+    ]);
+    const logged = JSON.stringify(vi.mocked(console.error).mock.calls);
+    expect(logged).not.toContain("refresh-a");
+    expect(logged).not.toContain("test-secret");
   });
 
   it("a successful refresh confirms the session and takes the new id_token", async () => {

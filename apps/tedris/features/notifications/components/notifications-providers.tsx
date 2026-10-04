@@ -1,7 +1,7 @@
 "use client";
 
-import { AppProviders } from "@medaris/ui/mds/app-providers";
 import type { ReactNode } from "react";
+import { LocaleAppProviders } from "~/components/locale-app-providers";
 
 /**
  * The kit's providers for the notifications segment (canvas rule 3): the
@@ -10,5 +10,5 @@ import type { ReactNode } from "react";
  * their own.
  */
 export function NotificationsProviders({ children }: { children: ReactNode }) {
-  return <AppProviders>{children}</AppProviders>;
+  return <LocaleAppProviders>{children}</LocaleAppProviders>;
 }

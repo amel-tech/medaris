@@ -1,0 +1,47 @@
+{
+  "not": "Paket adımlarının süresi bitmiş run'lardaki gerçek paket sürelerinin ortalamasından hesaplanır; diğerleri tahmindir.",
+  "adimlar": [
+    {
+      "id": "S1",
+      "ad": "Mac şeridi: 49 nizam-bildirim-hesap (kodla → kontrol → PR)",
+      "makine": "Mac",
+      "paketler": [49],
+      "run": "wf_dd7b4c67-49a"
+    },
+    {
+      "id": "S2",
+      "ad": "Karar: 45 ve 46 yapılsın mı?",
+      "makine": "sen",
+      "dk": 5,
+      "not": "Taha Hoca'nın kapsamına göre 45 gerekmiyor; 46 (toplu celse) 6 dersin celselerini kurmak için işe yarar."
+    },
+    {
+      "id": "S3",
+      "ad": "Mac şeridi: 45, 46",
+      "makine": "Mac",
+      "paketler": [45, 46],
+      "kosul": "S2 evet derse"
+    },
+    {
+      "id": "S4",
+      "ad": "Birleşme: Linux ucu (36) → Mac şeridinin alt dalı; 31/32/35/36 yan dallarını yığına bağla, migration'ları ≥0037'ye yeniden numarala",
+      "makine": "Mac",
+      "dk": 90
+    },
+    {
+      "id": "S5",
+      "ad": "Mac: 50, 51, 52 (birleşmeden sonra en üstte)",
+      "makine": "Mac",
+      "paketler": [50, 51, 52],
+      "not": "Üçü de açılış kapsamı dışında; atlanırsa ~4,5 saat kazanılır."
+    },
+    {
+      "id": "S6",
+      "ad": "Doğrulama kapıları K2–K6 (CodeRabbit, tam gate, migration, authz, rol testi)",
+      "makine": "AI",
+      "dk": 300
+    },
+    { "id": "S7", "ad": "Go / no-go", "makine": "sen", "dk": 15 },
+    { "id": "S8", "ad": "Sıralı merge + main CI", "makine": "AI", "dk": 120 }
+  ]
+}

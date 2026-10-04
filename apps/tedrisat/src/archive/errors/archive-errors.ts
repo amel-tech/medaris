@@ -17,6 +17,23 @@ export class ArchiveForbiddenError extends ForbiddenError {
   }
 }
 
+/**
+ * A restore by a lower level than the one that hid it (MDRS-135; owner,
+ * d-1003-07: "Elbette kademe var"): what a level hid, that level or any above
+ * it brings back, the rule the bans already follow. Says both levels.
+ */
+export class ArchiveRestoreLevelError extends ForbiddenError {
+  static readonly code = "ARCHIVE_RESTORE_LEVEL";
+
+  constructor(hiddenAt: string, yourLevel: string, context?: ErrorContext) {
+    super(
+      ArchiveRestoreLevelError.code,
+      `This was hidden at the ${hiddenAt} level; only that level or above brings it back (you act at the ${yourLevel} level)`,
+      { hiddenAt, yourLevel, ...context }
+    );
+  }
+}
+
 /** No hidden item of that type and id: missing, shown, or a type with no storage yet. */
 export class ArchiveItemNotFoundError extends NotFoundError {
   static readonly code = "ARCHIVE_ITEM_NOT_FOUND";

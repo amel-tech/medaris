@@ -124,9 +124,38 @@ export function wantedScopes(input: {
 }
 
 /**
+ * When each code or group held in a scope ends: the end of the row that runs
+ * longest, since a code held twice (a row given more time beside the one a
+ * higher authority gave) lasts as long as its last row. Null: no end.
+ */
+export function heldEnds(
+  held: ReadonlyArray<
+    Pick<
+      IHeldTreeGrant,
+      "scopeType" | "scopeId" | "permission" | "groupId" | "expiresAt"
+    >
+  >
+): Array<Date | null> {
+  const ends = new Map<string, Date | null>();
+  for (const row of held) {
+    const key = `${row.scopeType}:${row.scopeId}:${row.groupId ?? ""}:${row.permission ?? ""}`;
+    const known = ends.get(key);
+    if (known === undefined) ends.set(key, row.expiresAt);
+    else if (
+      known !== null &&
+      (row.expiresAt === null || row.expiresAt > known)
+    ) {
+      ends.set(key, row.expiresAt);
+    }
+  }
+  return [...ends.values()];
+}
+
+/**
  * What the held rows say in nazir/06's terms, the inverse of `wantedScopes` for
  * what this route writes: the group, the single permissions, the courses they
- * are limited to (null: every course) and the earliest end.
+ * are limited to (null: every course) and the earliest end of a code or group
+ * (`heldEnds`).
  */
 export function describeHeldGrants(held: readonly IHeldTreeGrant[]): {
   groupId: string | null;
@@ -149,6 +178,6 @@ export function describeHeldGrants(held: readonly IHeldTreeGrant[]): {
       ),
     ],
     courseIds: courseIds.length > 0 ? courseIds : null,
-    expiresAt: earliestEnd(held.map((row) => row.expiresAt)),
+    expiresAt: earliestEnd(heldEnds(held)),
   };
 }

@@ -26,6 +26,10 @@ test.afterAll(async () => {
   await base?.remove();
 });
 
+// The screen shows moments in the browser's zone unless the account has one:
+// pinned, the end dates below mean the same instant on any machine (MDRS-254).
+test.use({ timezoneId: "Europe/Istanbul" });
+
 // Giving changes what the next spec reads, so each one has its own nazırs.
 test.beforeEach(async () => {
   if (base) extra = await seedNazirs(base);
@@ -37,6 +41,23 @@ test.afterEach(async () => {
 });
 
 const ready = () => Boolean(base && extra && canSignIn(BASMUDERRIS));
+
+/** What the date-and-time picker shows for an instant in Istanbul: YYYY-MM-DDTHH:mm. */
+const istanbulMinute = (at: Date): string => {
+  const part = (type: string) =>
+    new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Europe/Istanbul",
+      hourCycle: "h23",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    })
+      .formatToParts(at)
+      .find((p) => p.type === type)?.value;
+  return `${part("year")}-${part("month")}-${part("day")}T${part("hour")}:${part("minute")}`;
+};
 
 const BEFORE = "2026-10-02T09:00:00+03:00";
 const AFTER = "2026-10-05T10:00:00+03:00";
@@ -95,7 +116,7 @@ test("nazir/06 — 'İzin ver': a group and one extra permission are saved, and 
   const dialog = editor(page);
   await expect(dialog).toContainText(base?.madrasah.name ?? "");
   await expect(dialog).toContainText(extra?.abdullah.email ?? "");
-  await expect(dialog.getByRole("checkbox")).toHaveCount(30);
+  await expect(dialog.getByRole("checkbox")).toHaveCount(32);
   await expect(dialog).toContainText("Hiç izin seçilmedi");
 
   // the group's permissions come ticked and locked
@@ -153,13 +174,11 @@ test("nazir/06 — 'İzinleri düzenle' opens with what the nazır holds and rep
     dialog.getByRole("combobox", { name: "Hazır izin grubu" })
   ).toContainText(extra?.groups.kayit ?? "");
   await expect(tick(page, "Başvuruyu onayla ya da reddet")).toBeDisabled();
-  await expect(dialog.getByLabel("Bitiş tarihi (isteğe bağlı)")).toHaveValue(
-    new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Istanbul" }).format(
-      extra?.endsAt
-    )
-  );
+  await expect(
+    dialog.getByLabel("Bitiş tarihi ve saati (isteğe bağlı)")
+  ).toHaveValue(istanbulMinute(extra?.endsAt as Date));
 
-  await dialog.getByLabel("Bitiş tarihi (isteğe bağlı)").fill("");
+  await dialog.getByLabel("Bitiş tarihi ve saati (isteğe bağlı)").fill("");
   await dialog.getByRole("button", { name: "Kaydet" }).click();
   await expect(page.getByText("İzinler kaydedildi")).toBeVisible();
 
@@ -171,7 +190,7 @@ test("nazir/06 — 'İzinleri düzenle' opens with what the nazır holds and rep
   expect(held?.[0]?.expiresAt).toBeNull();
 });
 
-test("nazir/06 — the end is a day to come: yesterday is refused on the page, a later day ends at the close of it (criterion 3)", async ({
+test("nazir/06 — the end is a moment to come: one that is not after now is refused on the page, a later one is saved as typed (criterion 3)", async ({
   as,
 }) => {
   test.skip(!ready(), "no medrese başmüderris");
@@ -182,12 +201,16 @@ test("nazir/06 — the end is a day to come: yesterday is refused on the page, a
     .click();
   const dialog = editor(page);
   await tick(page, "Medrese nazırı ata").check();
-  await dialog.getByLabel("Bitiş tarihi (isteğe bağlı)").fill("2026-10-01");
+  await dialog
+    .getByLabel("Bitiş tarihi ve saati (isteğe bağlı)")
+    .fill("2026-10-01T12:00");
   await dialog.getByRole("button", { name: "Kaydet" }).click();
-  await expect(dialog).toContainText("Bitiş tarihi geçmişte olamaz.");
+  await expect(dialog).toContainText("Bitiş zamanı şu andan sonra olmalı.");
   expect(await extra?.heldGrants(extra?.abdullah.id ?? "")).toHaveLength(0);
 
-  await dialog.getByLabel("Bitiş tarihi (isteğe bağlı)").fill("2027-03-15");
+  await dialog
+    .getByLabel("Bitiş tarihi ve saati (isteğe bağlı)")
+    .fill("2027-03-15T23:59");
   await dialog.getByRole("button", { name: "Kaydet" }).click();
   await expect(page.getByText("İzinler kaydedildi")).toBeVisible();
   await expect(rowOf(page, extra?.abdullah.name ?? "")).toContainText(

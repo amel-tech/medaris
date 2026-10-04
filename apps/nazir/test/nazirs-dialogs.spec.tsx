@@ -222,6 +222,7 @@ describe("'Görevden al' (nazir 15)", () => {
       awaiting: false,
       assignmentEnd: null,
       appointedLine: "",
+      appointedById: "u-0",
       end: { label: "Süresiz", iso: null },
       giver: null,
     },
@@ -236,6 +237,7 @@ describe("'Görevden al' (nazir 15)", () => {
       awaiting: true,
       assignmentEnd: null,
       appointedLine: "Atayan: Fatma Zehra Çelebioğlu · 30 Eylül 2026",
+      appointedById: "u-1",
       end: null,
       giver: null,
     },
@@ -277,6 +279,7 @@ describe("'Görevden al' (nazir 15)", () => {
           madrasahName="Süleymaniye Medresesi"
           locale="tr"
           timeZone="Europe/Istanbul"
+          viewer={{ manages: true, id: "u-0" }}
         />
       )
     );
@@ -477,6 +480,7 @@ describe("'İzinleri düzenle' and 'İzin ver' on the table (nazir 06)", () => {
       awaiting: false,
       assignmentEnd: null,
       appointedLine: "Atayan: Mehmet Emin Işıkoğlu · 12 Eylül 2026",
+      appointedById: "u-0",
       end: { label: "Süresiz", iso: null },
       giver: null,
     },
@@ -491,6 +495,7 @@ describe("'İzinleri düzenle' and 'İzin ver' on the table (nazir 06)", () => {
       awaiting: true,
       assignmentEnd: null,
       appointedLine: "Atayan: Fatma Zehra Çelebioğlu · 30 Eylül 2026",
+      appointedById: "u-1",
       end: null,
       giver: null,
     },
@@ -504,6 +509,7 @@ describe("'İzinleri düzenle' and 'İzin ver' on the table (nazir 06)", () => {
           madrasahName="Süleymaniye Medresesi"
           locale="tr"
           timeZone="Europe/Istanbul"
+          viewer={{ manages: true, id: "u-0" }}
         />
       )
     );

@@ -16,7 +16,11 @@ type Answer<T> =
 const state = {
   nazirs: { status: "failed" } as Answer<unknown[]>,
   groups: { status: "ok", data: [] } as Answer<unknown[]>,
-  me: { timeZone: "Europe/Istanbul" } as { timeZone?: string } | null,
+  me: { timeZone: "Europe/Istanbul" } as {
+    id?: string;
+    timeZone?: string;
+  } | null,
+  role: "MEDRESE_BASMUDERRIS",
 };
 
 vi.mock("next/navigation", () => ({
@@ -44,7 +48,7 @@ vi.mock("~/features/shell/reads", () => ({
         kind: "medrese",
         id: "m-1",
         name: "Süleymaniye Medresesi",
-        role: "MEDRESE_BASMUDERRIS",
+        role: state.role,
         isImam: false,
         koskName: null,
       },
@@ -177,6 +181,7 @@ beforeEach(() => {
   state.groups = { status: "ok", data: canvasGroups };
   state.nazirs = { status: "ok", data: roster };
   state.me = { timeZone: "Europe/Istanbul" };
+  state.role = "MEDRESE_BASMUDERRIS";
 });
 
 describe("Medrese nazırları", () => {
@@ -254,6 +259,27 @@ describe("Medrese nazırları", () => {
       expect(button, label).toBeDefined();
       expect(button, label).not.toMatch(/disabled/);
     }
+  });
+
+  it("draws for a nazır let in by 'Medrese nazırı ata' only what the API lets them do: appoint, and dismiss whom they seated (MDRS-108, d-1004-28)", async () => {
+    state.role = "MEDRESE_NAZIR";
+    state.me = { id: "U-1", timeZone: "Europe/Istanbul" };
+    const markup = await render();
+    const text = textOf(markup);
+    expect(text).toContain("Medrese nazırı ata");
+    // Abdullah was seated by Fatma, the viewer; the other two by the başmüderris.
+    expect(markup).toMatch(
+      /aria-label="Görevden al: Abdullah Talha Erzurumluoğlu"/
+    );
+    expect(markup).not.toMatch(/aria-label="Görevden al: Fatma Zehra/);
+    expect(markup).not.toMatch(/aria-label="Görevden al: Ümmügülsüm/);
+    // A medrese nazırı gives nothing: no permission editor, no group buttons.
+    expect(markup).not.toMatch(/aria-label="İzinleri düzenle: /);
+    expect(markup).not.toMatch(/aria-label="İzin ver: /);
+    expect(text).not.toContain("Grup tanımla");
+    expect(markup).not.toMatch(/aria-label="Düzenle: /);
+    // The groups are still listed.
+    expect(text).toContain("Kayıt ve talebe işleri");
   });
 
   it("lists the medrese's groups under the table as cards: name, permissions, and 'N izin · M nazıra verildi' (criterion 5 of nazir 16)", async () => {

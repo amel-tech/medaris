@@ -17,8 +17,9 @@ export class ErrorResponse {
   context?: Record<string, any>;
 
   /**
-   * Only set on the UNKNOWN_ERROR branch, where the body is deliberately
-   * opaque and this id is what ties a support report to the server-side log.
+   * Set on every 5xx: the UNKNOWN_ERROR branch, where the body is deliberately
+   * opaque, and a 5xx APP_ERROR, whose `cause` stays in the log (MDRS-220).
+   * This id is what ties a support report to the server-side log.
    */
   @ApiPropertyOptional({ example: "0f1d2c3b-4a59-4c6d-8e7f-90a1b2c3d4e5" })
   correlationId?: string;

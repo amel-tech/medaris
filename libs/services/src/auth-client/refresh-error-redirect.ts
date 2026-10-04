@@ -1,5 +1,6 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useEffect, useRef } from "react";
 // Deep import, not the `../auth` barrel: that barrel reaches `next/headers`
@@ -17,6 +18,18 @@ export interface RefreshErrorRedirectProps {
    * becomes Keycloak's `ui_locales`.
    */
   locale: string;
+  /**
+   * The pages a signed-out visitor may open (MDRS-216). On one of them a failed
+   * refresh is left alone: the server already reads the session as signed out
+   * and renders the visitor's view, and dragging that visitor to Keycloak's
+   * form is exactly what a public page must not do. Leaving one for a
+   * protected page, by a hard load or a client-side navigation, still ends at
+   * Keycloak.
+   *
+   * Passed in, like `locale`, because each app owns its own list. Omitted, every
+   * page is protected (nizam, nazir).
+   */
+  isPublicPath?: (pathname: string) => boolean;
 }
 
 /**
@@ -38,7 +51,10 @@ export interface RefreshErrorRedirectProps {
  * that returns `null`. Consumers still write `<RefreshErrorRedirect />` in
  * their own `.tsx`.
  */
-export const RefreshErrorRedirect = ({ locale }: RefreshErrorRedirectProps) => {
+export const RefreshErrorRedirect = ({
+  locale,
+  isPublicPath,
+}: RefreshErrorRedirectProps) => {
   const { data: session } = useSession();
 
   // Each app augments next-auth's `Session` with `error` in its own
@@ -54,9 +70,17 @@ export const RefreshErrorRedirect = ({ locale }: RefreshErrorRedirectProps) => {
   const current = useRef(error);
   current.current = error;
   const started = useRef(false);
+  const publicPath = useRef(isPublicPath);
+  publicPath.current = isPublicPath;
+  // A dependency of the effect: providers do not remount on a client-side
+  // navigation, so leaving a public page for a protected one (a `Link`, a
+  // `router.push`) has to re-run the check here rather than rely on the
+  // middleware answering an RSC fetch with a redirect to Keycloak.
+  const pathname = usePathname();
 
   useEffect(() => {
     if (error !== REFRESH_ACCESS_TOKEN_ERROR || started.current) return;
+    if (publicPath.current?.(pathname ?? window.location.pathname)) return;
     started.current = true;
     void enterKeycloak(
       { intent: "signin", callbackUrl: window.location.href, locale },
@@ -69,7 +93,7 @@ export const RefreshErrorRedirect = ({ locale }: RefreshErrorRedirectProps) => {
     ).finally(() => {
       started.current = false;
     });
-  }, [error, locale]);
+  }, [error, locale, pathname]);
 
   return null;
 };

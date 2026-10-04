@@ -15,7 +15,10 @@ import { PermissionEditor } from "./permission-editor";
  * The table of "Medrese nazırları" (nazir 05). The rows arrive worded and
  * dated, so the table has nothing to translate; the kit's `Table` keeps state
  * of its own and the dismissal and permission dialogs are opened from here,
- * which is why this is a client component.
+ * which is why this is a client component. Only what the API lets the viewer
+ * do is drawn (MDRS-108): a nazır let in by "Medrese nazırı ata" gives no
+ * permissions and dismisses only the nazırs they seated (d-1004-28); the
+ * başmüderris does both on every row.
  */
 export function NazirsTable({
   rows,
@@ -23,18 +26,25 @@ export function NazirsTable({
   madrasahName,
   locale,
   timeZone,
+  viewer,
 }: {
   rows: NazirRow[];
   madrasahId: string;
   madrasahName: string;
   locale: string;
   timeZone: string;
+  /** `manages`: the medrese's başmüderris; `id`: the viewer's account */
+  viewer: { manages: boolean; id: string | null };
 }) {
   const t = useTranslations("nazir");
   const router = useRouter();
   const [, startTransition] = useTransition();
   const [dismissing, setDismissing] = useState<NazirRow | null>(null);
   const [editing, setEditing] = useState<NazirRow | null>(null);
+  const mayDismiss = (row: NazirRow) =>
+    viewer.manages ||
+    (viewer.id !== null &&
+      row.appointedById?.toLowerCase() === viewer.id.toLowerCase());
 
   const columns: TableColumn<NazirRow>[] = [
     {
@@ -134,29 +144,35 @@ export function NazirsTable({
       width: "23%",
       render: (row) => (
         <span className="flex flex-wrap items-center justify-end gap-2">
-          <Button
-            variant="outline"
-            size="small"
-            aria-label={t(
-              row.awaiting
-                ? "Nazirs.givePermissionLabel"
-                : "Nazirs.editPermissionsLabel",
-              { name: row.name }
-            )}
-            onClick={() => setEditing(row)}
-          >
-            {t(
-              row.awaiting ? "Nazirs.givePermission" : "Nazirs.editPermissions"
-            )}
-          </Button>
-          <Button
-            variant="ghost"
-            size="small"
-            aria-label={t("Nazirs.dismissLabel", { name: row.name })}
-            onClick={() => setDismissing(row)}
-          >
-            {t("Nazirs.dismiss")}
-          </Button>
+          {viewer.manages ? (
+            <Button
+              variant="outline"
+              size="small"
+              aria-label={t(
+                row.awaiting
+                  ? "Nazirs.givePermissionLabel"
+                  : "Nazirs.editPermissionsLabel",
+                { name: row.name }
+              )}
+              onClick={() => setEditing(row)}
+            >
+              {t(
+                row.awaiting
+                  ? "Nazirs.givePermission"
+                  : "Nazirs.editPermissions"
+              )}
+            </Button>
+          ) : null}
+          {mayDismiss(row) ? (
+            <Button
+              variant="ghost"
+              size="small"
+              aria-label={t("Nazirs.dismissLabel", { name: row.name })}
+              onClick={() => setDismissing(row)}
+            >
+              {t("Nazirs.dismiss")}
+            </Button>
+          ) : null}
         </span>
       ),
     },

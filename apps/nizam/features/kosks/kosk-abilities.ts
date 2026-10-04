@@ -93,9 +93,8 @@ export const taughtElsewhere = (me: Me): TaughtCourseRef[] =>
  * What an empty köşk list says. A köşk manager is never sent to nazir — the
  * list is theirs, and empty only once they manage nothing. `nazir` is for a
  * caller whose roles are medrese ones: a nazır with no köşk of their own.
- * `nazirOf` is empty until role model v2 (which also brings the ders nazırı
- * role, MDRS-134/135), so today this is only ever `none`; the state and its
- * text are prepared for then.
+ * `nazirOf` lists the medreses the caller leads or is nazır of since MDRS-142
+ * (from their live role assignments), so a nazır with no köşk gets `nazir`.
  */
 export type KoskListEmptyState = "none" | "nazir";
 

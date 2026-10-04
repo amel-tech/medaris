@@ -8,7 +8,7 @@ import {
   AuthzWiringAssertion,
   byParam,
   ENTITIES,
-  SCOPES,
+  PERMISSIONS,
 } from "../../src";
 
 /**
@@ -26,7 +26,7 @@ class SomeOtherGuard {
 @UseGuards(SomeOtherGuard, AuthzGuard)
 class GuardedOnClassController {
   @Get(":id")
-  @Authz(SCOPES.VIEW, byParam(ENTITIES.KOSK))
+  @Authz(PERMISSIONS.KOSK_VIEW, byParam(ENTITIES.KOSK))
   read(): void {}
 }
 
@@ -34,7 +34,7 @@ class GuardedOnClassController {
 class GuardedOnHandlerController {
   @Get(":id")
   @UseGuards(SomeOtherGuard, AuthzGuard)
-  @Authz(SCOPES.VIEW, byParam(ENTITIES.KOSK))
+  @Authz(PERMISSIONS.KOSK_VIEW, byParam(ENTITIES.KOSK))
   read(): void {}
 
   // Not behind AuthzGuard — the guard is on `read` only — so no annotation
@@ -47,10 +47,10 @@ class GuardedOnHandlerController {
 @UseGuards(SomeOtherGuard, AuthzGuard)
 class PartiallyAnnotatedController {
   @Get(":id")
-  @Authz(SCOPES.VIEW, byParam(ENTITIES.KOSK))
+  @Authz(PERMISSIONS.KOSK_VIEW, byParam(ENTITIES.KOSK))
   read(): void {}
 
-  // The forgotten line: behind the class-level guard, no scope, no opt-out.
+  // The forgotten line: behind the class-level guard, no permission, no opt-out.
   @Get()
   list(): void {}
 
@@ -62,7 +62,7 @@ class PartiallyAnnotatedController {
 @UseGuards(SomeOtherGuard, AuthzGuard)
 class ExemptController {
   @Get(":id")
-  @Authz(SCOPES.VIEW, byParam(ENTITIES.KOSK))
+  @Authz(PERMISSIONS.KOSK_VIEW, byParam(ENTITIES.KOSK))
   read(): void {}
 
   @Get("health")
@@ -74,7 +74,7 @@ class ExemptController {
 @UseGuards(SomeOtherGuard, AuthzGuard)
 class PublicListController {
   @Get(":id")
-  @Authz(SCOPES.VIEW, byParam(ENTITIES.KOSK))
+  @Authz(PERMISSIONS.KOSK_VIEW, byParam(ENTITIES.KOSK))
   @AuthzPublic()
   read(): void {}
 
@@ -88,7 +88,7 @@ class PublicListController {
 @UseGuards(SomeOtherGuard)
 class UnguardedController {
   @Get(":id")
-  @Authz(SCOPES.EDIT, byParam(ENTITIES.KOSK))
+  @Authz(PERMISSIONS.KOSK_MANAGE, byParam(ENTITIES.KOSK))
   update(): void {}
 
   @Get()

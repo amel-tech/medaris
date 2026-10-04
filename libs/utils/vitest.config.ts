@@ -18,7 +18,12 @@ export default mergeConfig(
       coverage: {
         // Only what has specs so far. meeting-platform.ts and the rest of
         // index.ts are untested; widening this is part of writing their specs.
-        include: ["src/time-zone.ts", "src/callback-url.ts"],
+        include: [
+          "src/time-zone.ts",
+          "src/end-instant.ts",
+          "src/callback-url.ts",
+          "src/youtube-live.js",
+        ],
       },
     },
   })

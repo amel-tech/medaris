@@ -2,18 +2,10 @@
 
 import Link from "next/link";
 import { type FormEvent, useState } from "react";
+import { CONTACT_ADDRESS, contactTopics as topics } from "~/lib/contact";
 
 type Status = "idle" | "sending" | "sent" | "error";
 type Field = "ad" | "eposta" | "konu" | "mesaj";
-
-const topics = [
-  { value: "genel", label: "Genel bir soru" },
-  { value: "hesap", label: "Hesap ve giriş" },
-  { value: "ders", label: "Dersler ve kayıt" },
-  { value: "kvkk", label: "Kişisel veriler (KVKK)" },
-  { value: "ders-vermek", label: "Medaris’te ders vermek" },
-  { value: "diger", label: "Diğer" },
-] as const;
 
 // A domain with a dot: the canvas draws "omerfaruk.demirkaya@example" as the
 // invalid case, which the browser's own type="email" check accepts.
@@ -29,9 +21,10 @@ const errors: Record<Field, string> = {
 /**
  * The İletişim form in every state the canvas draws (Iletisim.dc.html, its
  * "durum" property): filled, a missing field, sending, sent, and an error.
- * It posts to /api/iletisim, which answers 503 until a delivery target for
- * these messages is decided (MDRS-151); the visitor then sees the error state
- * and keeps what they wrote.
+ * It posts to /api/iletisim, which e-mails the message to CONTACT_ADDRESS.
+ * When that fails (no sender configured, a refused send, too many messages)
+ * the visitor sees the error state, keeps what they wrote, and is given the
+ * address to write to directly.
  */
 export function ContactForm() {
   const [status, setStatus] = useState<Status>("idle");
@@ -122,8 +115,9 @@ export function ContactForm() {
           <span className="mds-alert__icon" aria-hidden="true" />
           <div>
             <p className="mds-alert__title">Mesajınız gönderilemedi</p>
-            Sunucuya ulaşılamadı. Yazdıklarınız duruyor; bağlantınızı denetleyip
-            yeniden gönderin.
+            Yazdıklarınız duruyor; biraz sonra yeniden gönderin ya da{" "}
+            <a href={`mailto:${CONTACT_ADDRESS}`}>{CONTACT_ADDRESS}</a> adresine
+            doğrudan yazın.
           </div>
         </div>
       )}

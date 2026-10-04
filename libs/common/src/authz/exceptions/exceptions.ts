@@ -30,13 +30,37 @@ export class AuthzMissingUserError extends UnauthorizedError {
  * reference. This is a server-side configuration problem (typically a
  * route-param name mismatch) and is surfaced as a 500 with a clear
  * `AUTHZ_RESOLVER_ERROR` code so operators don't mistake it for a
- * Keycloak/claim issue.
+ * Keycloak/claim issue. What the resolver threw goes in `cause`, never in
+ * `context` or the message: it can quote the failed SQL (MDRS-220), and the
+ * exception filter logs `cause` server-side only.
  */
 export class AuthzResolverError extends InternalServerError {
-  constructor(message?: string, context?: ErrorContext) {
+  constructor(
+    message?: string,
+    context?: ErrorContext,
+    options?: ErrorOptions
+  ) {
     super(
       "AUTHZ_RESOLVER_ERROR",
       message ?? "The @Authz resolver returned an invalid resource reference",
+      context,
+      options
+    );
+  }
+}
+
+/**
+ * Raised when a caller names themselves into a role or permissions they do not
+ * already hold (MDRS-135): a path that appoints or grants, with the caller as
+ * the person it names.
+ */
+export class SelfGrantRefusedError extends ForbiddenError {
+  static readonly code = "SELF_GRANT_REFUSED";
+
+  constructor(context?: ErrorContext) {
+    super(
+      SelfGrantRefusedError.code,
+      "You cannot give yourself a role or permissions you do not already hold",
       context
     );
   }

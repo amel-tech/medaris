@@ -13,6 +13,7 @@ import { LegalFooter } from "~/components/legal-footer";
 import { ClientProviders } from "~/components/providers/client-providers";
 import { TabView } from "~/components/tab-view";
 import { auth } from "~/lib/auth_options";
+import { htmlLangDir } from "~/lib/i18n/direction";
 import { routing } from "~/lib/i18n/routing";
 
 export const metadata: Metadata = {
@@ -35,9 +36,12 @@ export default async function LocaleLayout({
 
   setRequestLocale(locale);
   const signedIn = Boolean(await auth());
+  // `/ar/*` must render right to left (MDRS-217); the language and the
+  // direction come from the route, never a hardcoded tr.
+  const { lang, dir } = htmlLangDir(locale);
 
   return (
-    <html lang="tr" className="min-h-svh h-full">
+    <html lang={lang} dir={dir} className="min-h-svh h-full">
       {/* Browser extensions (e.g. ColorZilla's `cz-shortcut-listen`) inject
           attributes on <body> before hydration; only this node's attributes
           are exempted, children are still checked. */}

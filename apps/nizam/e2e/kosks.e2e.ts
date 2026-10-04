@@ -25,6 +25,10 @@ const API = process.env.E2E_API_URL ?? "http://localhost:3001";
 const seedable = Boolean(process.env.E2E_DATABASE_URL);
 let fixture: KoskFixture;
 
+// The screen shows moments in the browser's zone unless the account has one:
+// pinned, the end dates below mean the same instant on any machine (MDRS-254).
+test.use({ timezoneId: "Europe/Istanbul" });
+
 test.beforeEach(async () => {
   if (!seedable || !SYSTEM_ADMIN.sub || !KOSK_NAZIM.sub) return;
   fixture = await seedKosks({ nazim: KOSK_NAZIM.sub, chief: SYSTEM_ADMIN.sub });
@@ -74,18 +78,9 @@ const tabCount = async (page: Page, label: string) => {
   return Number(text);
 };
 
-const chooseOption = async (
-  page: Page,
-  scope: ReturnType<Page["locator"]>,
-  name: string | RegExp
-) => {
-  await scope.click();
-  await page.getByRole("option", { name, exact: true }).click();
-};
-
 const dialogOf = (page: Page) => page.getByRole("dialog");
 
-test("nizam/09 — the table lists every köşk with its nazımları, field, courses and status, and the tabs' numbers are the database's (criteria 1, 3, 4)", async ({
+test("nizam/09 — the table lists every köşk with its nazımları, courses and status (no alan, no level), and the tabs' numbers are the database's (criteria 1, 3, 4)", async ({
   page,
 }) => {
   test.skip(!(seedable && SYSTEM_ADMIN.password), "no SYSTEM_ADMIN account");
@@ -98,13 +93,13 @@ test("nizam/09 — the table lists every köşk with its nazımları, field, cou
   ).toHaveCount(4);
   const beyazit = rowOf(page, fixture.beyazit.name);
   await expect(beyazit).toContainText(`@${fixture.beyazit.handle}`);
-  await expect(beyazit).toContainText("Hadis");
+  await expect(beyazit).not.toContainText("Hadis");
   await expect(beyazit).toContainText("Etkin");
-  await expect(beyazit.locator("td").nth(2)).toHaveText("2");
+  await expect(beyazit.locator("td").nth(1)).toHaveText("2");
   await expect(rowOf(page, fixture.fatih.name)).toContainText(
     "Ömer Nasuhi Bilmenoğlu ve Abdullah Nuri Gezginoğlu"
   );
-  await expect(rowOf(page, fixture.fatih.name).locator("td").nth(2)).toHaveText(
+  await expect(rowOf(page, fixture.fatih.name).locator("td").nth(1)).toHaveText(
     "3"
   );
 
@@ -141,25 +136,16 @@ test("nizam/09 — every filter works alone and together, and a reload restores 
   // the row headers: an empty table still has one row, the sentence
   const rows = page.locator("[data-testid=kosks] tbody tr:visible th");
 
-  // Seviye
-  await chooseOption(
-    page,
-    page.getByRole("combobox", { name: "Seviye" }),
-    "Seviye: Başlangıç"
+  // Görünürlük, together with a search it does not match
+  await page.goto(
+    `/tr/kosks?q=${encodeURIComponent(fixture.beyazit.name)}&gorunurluk=listelenmeyen`
   );
-  await expect(page).toHaveURL(/seviye=baslangic/);
-  await expect(rows).toHaveCount(1);
-  await expect(rowOf(page, fixture.beyazit.name)).toHaveCount(1);
-
-  // Görünürlük, together with the level
-  await page.getByRole("button", { name: "Listelenmeyen" }).click();
   await expect(page).toHaveURL(/gorunurluk=listelenmeyen/);
   await expect(rows).toHaveCount(0);
   await expect(page.getByText("Sonuç yok")).toBeVisible();
 
   // a reload keeps the filters
   await page.reload();
-  await expect(page).toHaveURL(/seviye=baslangic/);
   await expect(page).toHaveURL(/gorunurluk=listelenmeyen/);
   await expect(page.getByText("Sonuç yok")).toBeVisible();
 
@@ -168,12 +154,13 @@ test("nizam/09 — every filter works alone and together, and a reload restores 
   await expect(rows).toHaveCount(1);
   await expect(rowOf(page, fixture.uskudar.name)).toHaveCount(1);
 
-  // Alan alone, from the chips
-  await page.goto(`/tr/kosks?q=${fixture.tail}`);
-  await page.getByRole("button", { name: "Fıkıh", exact: true }).click();
-  await expect(page).toHaveURL(/alan=F/);
-  await expect(rows).toHaveCount(1);
-  await expect(rowOf(page, fixture.fatih.name)).toHaveCount(1);
+  // no Seviye select and no Alan chips; an old link's ?seviye= and ?alan= filter nothing
+  await page.goto(`/tr/kosks?q=${fixture.tail}&seviye=baslangic&alan=Fıkıh`);
+  await expect(page.getByRole("combobox", { name: "Seviye" })).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Fıkıh", exact: true })
+  ).toHaveCount(0);
+  await expect(rows).toHaveCount(4);
 
   // the status tab
   await page.goto(`/tr/kosks?q=${fixture.tail}`);
@@ -224,7 +211,7 @@ test("nizam/09 — a köşk nazımı sees only their own köşks, and neither 'K
   await expect(page.getByRole("button", { name: /^Geri al/ })).toHaveCount(0);
 });
 
-test("nizam/10 — 'Köşk aç' stays off until name, field, level and a nazım are right, then opens the köşk with its nazım (criteria 1-5)", async ({
+test("nizam/10 — 'Köşk aç' stays off until the name and a nazım are right, then opens the köşk with its nazım (criteria 1-5)", async ({
   page,
 }) => {
   test.skip(
@@ -244,12 +231,7 @@ test("nizam/10 — 'Köşk aç' stays off until name, field, level and a nazım 
   await dialog.getByRole("textbox", { name: "Ad", exact: true }).fill(name);
   await dialog.getByLabel("Kısa ad").fill(`e2e-davutpasa-${fixture.tail}`);
   await expect(submit).toBeDisabled();
-  await chooseOption(
-    page,
-    dialog.getByRole("combobox").nth(0),
-    "Akaid ve kelâm"
-  );
-  await chooseOption(page, dialog.getByRole("combobox").nth(1), "Başlangıç");
+  await expect(dialog.getByRole("combobox")).toHaveCount(0);
   await dialog
     .getByRole("textbox", { name: "Etiketler" })
     .fill("Akaid, Kelâm ,  Akaid-i Nesefî");
@@ -289,7 +271,6 @@ test("nizam/10 — 'Köşk aç' stays off until name, field, level and a nazım 
   const row = rowOf(page, name);
   await expect(row).toHaveCount(1);
   await expect(row).toContainText("Listelenmeyen");
-  await expect(row).toContainText("Akaid ve kelâm");
   await expect(row).not.toContainText("Siz");
   const made = await fixture.koskByName(name);
   expect(made).not.toBeNull();
@@ -297,7 +278,8 @@ test("nizam/10 — 'Köşk aç' stays off until name, field, level and a nazım 
   // criterion 2: the tags are a trimmed list
   expect(saved?.tags).toEqual(["Akaid", "Kelâm", "Akaid-i Nesefî"]);
   expect(saved?.isPrivate).toBe(true);
-  expect(saved?.level).toBe("BEGINNER");
+  expect(saved?.field).toBeNull();
+  expect(saved?.level).toBeNull();
   const nazims = await fixture.nazims((made as { id: string }).id);
   expect(nazims.map((n) => n.userId)).toEqual([TALEBE.sub]);
   expect(nazims[0]?.grantedBy).toBe(SYSTEM_ADMIN.sub);
@@ -331,8 +313,6 @@ test("nizam/10 — the form says what is missing, and a short name another köş
   await dialog
     .getByRole("textbox", { name: "Kısa ad" })
     .fill(fixture.fatih.handle);
-  await chooseOption(page, dialog.getByRole("combobox").nth(0), "Fıkıh");
-  await chooseOption(page, dialog.getByRole("combobox").nth(1), "Orta");
   const search = dialog.getByRole("textbox", {
     name: "Köşk nazımı",
     exact: true,
@@ -485,10 +465,11 @@ test("nizam/24 — 'Köşkü gizle' asks first, hides the köşk with its course
     (await request.get(`${API}/kosks/${fixture.beyazit.id}`)).status()
   ).toBe(404);
 
-  // the nazım sees it among the hidden ones, with no way to bring it back
+  // the nazım sees it among the hidden ones, and brings back what they hid themselves
+  // (a köşk Medaris yönetimi hid would show who hid it instead of a button, MDRS-143)
   await page.goto(`/tr/kosks?q=${fixture.tail}&durum=gizli`);
   await expect(rowOf(page, fixture.beyazit.name)).toContainText("Gizli");
-  await expect(page.getByRole("button", { name: /^Geri al/ })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /^Geri al/ })).toHaveCount(1);
 });
 
 test("nizam/25 — the nazım list is read-only: who, who gave the post, when, until when, and 'Siz' (criteria 1-3)", async ({
@@ -641,17 +622,19 @@ test("nizam/21 — an end date is kept and shown, and one in the past cannot be 
   await search.press("Enter");
   await expect(dialog.getByTestId("chosen-nazims")).toBeVisible();
 
-  // a past day is refused under the field and 'Ekle' stays off
+  // a past moment is refused under the field and 'Ekle' stays off
   const end = dialog.getByRole("textbox", {
-    name: "Görev bitişi (isteğe bağlı)",
+    name: "Görev bitiş tarihi ve saati (isteğe bağlı)",
   });
-  await end.fill("2020-01-01");
-  await expect(dialog.getByText("Bitiş tarihi geçmişte olamaz.")).toBeVisible();
+  await end.fill("2020-01-01T12:00");
+  await expect(
+    dialog.getByText("Bitiş zamanı şu andan sonra olmalı.")
+  ).toBeVisible();
   await expect(dialog.getByRole("button", { name: "Ekle" })).toBeDisabled();
 
-  const inThirty = new Date(Date.now() + 30 * 24 * 3600 * 1000)
+  const inThirty = `${new Date(Date.now() + 30 * 24 * 3600 * 1000)
     .toISOString()
-    .slice(0, 10);
+    .slice(0, 10)}T12:00`;
   await end.fill(inThirty);
   await dialog.getByRole("button", { name: "Ekle" }).click();
   await expect(page.getByText("Köşk nazımı eklendi")).toBeVisible();

@@ -467,13 +467,57 @@ describe("Köşk administration (e2e)", () => {
       await http().get(`/courses/${live.id}`).expect(404);
     });
 
-    it("brings a hidden köşk back for the başnazım alone", async () => {
+    it("records the level a köşk was hidden at, and clears it when it is brought back", async () => {
+      await post(`/kosks/${beyazit}/hide`, {}, AYSE).expect(200);
+      expect((await kosk(beyazit)).archivedLevel).toBe("kosk");
+      await post(`/kosks/${beyazit}/restore`, {}, AYSE).expect(200);
+      expect((await kosk(beyazit)).archivedLevel).toBeNull();
+      await post(`/kosks/${beyazit}/hide`).expect(200);
+      expect((await kosk(beyazit)).archivedLevel).toBe("platform");
+    });
+
+    it("lets the köşk's nazımı bring back what they hid, and the başnazım anything", async () => {
+      await post(`/kosks/${beyazit}/hide`, {}, AYSE).expect(200);
+      await post(`/kosks/${beyazit}/restore`, {}, OMER).expect(403);
+      expect((await kosk(beyazit)).archivedAt).not.toBeNull();
+      await post(`/kosks/${beyazit}/restore`, {}, AYSE).expect(200);
+      await post(`/kosks/${beyazit}/hide`, {}, AYSE).expect(200);
+      const res = await post(`/kosks/${beyazit}/restore`).expect(200);
+      expect(res.body.status).toBe("ACTIVE");
+      expect(await auditActions()).toEqual([
+        "kosk.hide",
+        "kosk.restore",
+        "kosk.hide",
+        "kosk.restore",
+      ]);
+    });
+
+    it("keeps what the başnazım hid from the köşk's own nazımı, and says which levels are in play", async () => {
+      await post(`/kosks/${beyazit}/hide`).expect(200);
+      const refused = await post(`/kosks/${beyazit}/restore`, {}, AYSE).expect(
+        403
+      );
+      expect(refused.body.code).toBe("ARCHIVE_RESTORE_LEVEL");
+      expect(refused.body.message).toContain("platform");
+      expect(refused.body.message).toContain("kosk");
+      expect((await kosk(beyazit)).archivedAt).not.toBeNull();
+      expect(await auditActions()).toEqual(["kosk.hide"]);
+      await post(`/kosks/${beyazit}/restore`).expect(200);
+      expect((await kosk(beyazit)).archivedAt).toBeNull();
+    });
+
+    it("counts a köşk hidden before levels were recorded as the köşk's own", async () => {
       const [hidden] = await db
         .select()
         .from(kosks)
         .where(eq(kosks.handle, "kalenderhane"));
-      await post(`/kosks/${hidden.id}/restore`, {}, ABDULLAH).expect(403);
-      const res = await post(`/kosks/${hidden.id}/restore`).expect(200);
+      expect(hidden.archivedLevel).toBeNull();
+      await post(`/kosks/${hidden.id}/restore`, {}, OMER).expect(403);
+      const res = await post(
+        `/kosks/${hidden.id}/restore`,
+        {},
+        ABDULLAH
+      ).expect(200);
       expect(res.body.status).toBe("ACTIVE");
       expect((await kosk(hidden.id)).archivedAt).toBeNull();
       expect(await auditActions()).toEqual(["kosk.restore"]);

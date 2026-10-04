@@ -1,0 +1,52 @@
+{
+  "alinti": "Şu an açılışta belli başlı köşkleri ve tek bir medreseyi talebelere sunsak yeterli; tedriste bu hafta 6 farklı ders, 1 medrese ve tahminen 4 köşk olacak, başka bir ihtiyacımız olmayacak.",
+  "kaynak": "Taha Hoca",
+  "adimlar": [
+    {
+      "id": "A1",
+      "ad": "Talebe giriş yapar ya da kayıt olur",
+      "paketler": [25, 3, 9, 10, 21]
+    },
+    {
+      "id": "A2",
+      "ad": "Keşfet'te 4 köşkü görür",
+      "paketler": [29, 19, 30]
+    },
+    {
+      "id": "A3",
+      "ad": "Köşk sayfasını açar",
+      "paketler": [30, 19, 14]
+    },
+    {
+      "id": "A4",
+      "ad": "Tek medresenin sayfasını açar",
+      "paketler": [27, 4, 30]
+    },
+    {
+      "id": "A5",
+      "ad": "6 dersten birinin sayfasını açar, başvurur ya da kaydolur",
+      "paketler": [31, 26, 16, 11]
+    },
+    {
+      "id": "A6",
+      "ad": "Celse sayfasında saati görür, 'Celseye katıl'a basar",
+      "paketler": [28, 6, 7, 32]
+    },
+    {
+      "id": "A7",
+      "ad": "Programım'da derslerini ve takvime eklemeyi görür",
+      "paketler": [33]
+    },
+    {
+      "id": "A8",
+      "ad": "Kayıtlı olmadığı dersin içeriğini göremez",
+      "paketler": [16, 14, 21, 20]
+    },
+    {
+      "id": "K",
+      "ad": "Kurulum: yönetici 4 köşkü, 1 medreseyi, 6 dersi ve celseleri açar",
+      "paketler": [44, 40, 17, 46],
+      "not": "Nazır'daki ders yönetimi (56) Taha Hoca'nın şeridinde"
+    }
+  ]
+}

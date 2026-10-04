@@ -9,15 +9,19 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { MadrasahsView } from "~/features/madrasahs/components/madrasahs-view";
 import {
+  ALL_MADRASAH_ABILITIES,
   canOpen,
   cleanHandle,
   dateWithCase,
   directoryPath,
   groupByPerson,
   handleError,
+  handOnCourseSuffix,
+  handOnPlace,
   hostingLabel,
   isEmailLike,
   type Messages,
+  madrasahAbilities,
   madrasahErrorKey,
   nameError,
   openPayload,
@@ -36,8 +40,14 @@ import {
 vi.mock("~/features/madrasahs/actions", () => ({
   openMadrasah: vi.fn(),
   restoreMadrasah: vi.fn(),
+  deactivateMadrasah: vi.fn(),
+  previewMadrasahDeactivation: vi.fn(),
   setHeadMuderris: vi.fn(),
   lookupUserByEmail: vi.fn(),
+}));
+vi.mock("~/features/kosks/admin-actions", () => ({
+  deactivateKosk: vi.fn(),
+  previewKoskDeactivation: vi.fn(),
 }));
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }),
@@ -249,11 +259,26 @@ describe("the Medrese aç form (nizam 08, criteria 1 to 3)", () => {
     expect(madrasahErrorKey({ code: "MADRASAH_HANDLE_TAKEN" })).toBe(
       "errors.handleTaken"
     );
+    expect(madrasahErrorKey({ code: "ARCHIVE_RESTORE_LEVEL" })).toBe(
+      "errors.restoreLevel"
+    );
     expect(madrasahErrorKey({ code: "AUTHZ_FORBIDDEN" })).toBe(
       "errors.forbidden"
     );
     expect(madrasahErrorKey({ code: "WHATEVER" })).toBe("errors.generic");
     expect(madrasahErrorKey(undefined)).toBe("errors.generic");
+  });
+
+  it("words the head change's refusals: a dropped seat with hand-ons, a grant kept with no seat, taking over one's own", () => {
+    expect(madrasahErrorKey({ code: "DISMISS_SEAT_HANDED_ON" })).toBe(
+      "errors.delegationsCascade"
+    );
+    expect(madrasahErrorKey({ code: "DISMISS_TAKE_OVER_WITHOUT_SEAT" })).toBe(
+      "errors.delegationsSeatless"
+    );
+    expect(madrasahErrorKey({ code: "SELF_GRANT_REFUSED" })).toBe(
+      "errors.selfTakeOver"
+    );
   });
 });
 
@@ -277,6 +302,8 @@ const item = (
   coverHue: 215,
   status: "ACTIVE",
   since: null,
+  hiddenLevel: null,
+  canRestore: false,
   headMuderris: { id: "h1", name: "Mehmet Emin Işıkoğlu" },
   courseCount: 4,
   hostingKosks: [
@@ -313,6 +340,8 @@ const three = [
     name: "Vefa Medresesi",
     status: "HIDDEN",
     since: new Date("2026-09-24T09:00:00Z"),
+    hiddenLevel: "madrasah",
+    canRestore: true,
     headMuderris: { id: "h2", name: "Mustafa Râsim Erdemoğlu" },
     courseCount: 0,
     hostingKosks: [],
@@ -368,15 +397,43 @@ describe("MadrasahsView (nizam 07)", () => {
     expect(html.match(/Geri al: /g)).toHaveLength(1);
   });
 
-  it("offers 'Başmüderrisi değiştir' on an active medrese with a başmüderris, with no date gate (nizam/22, MDRS-215)", () => {
+  it("names who hid a medrese, and offers no 'Geri al', when the viewer's level is below (MDRS-143)", () => {
+    const html = view(
+      directory([
+        item({
+          id: "m9",
+          name: "Vefa Medresesi",
+          status: "HIDDEN",
+          since: new Date("2026-09-24T09:00:00Z"),
+          hiddenLevel: "platform",
+          canRestore: false,
+        }),
+      ])
+    );
+    expect(html).not.toContain("Geri al: Vefa Medresesi");
+    expect(html).toContain(
+      "Bunu Medaris yönetimi gizledi; yalnız o kademe ya da üstü geri alabilir."
+    );
+  });
+
+  it("offers 'Başmüderrisi değiştir' on an active medrese with a başmüderris, shut until the version gate (nizam/22)", () => {
     const html = view(directory(three));
     const label = 'aria-label="Başmüderrisi değiştir: Süleymaniye Medresesi"';
     expect(html).toContain(label);
+    // Static markup has not run the client's clock: the gate is closed.
     expect(
       html.slice(html.indexOf(label) - 300, html.indexOf(label))
-    ).not.toContain("disabled");
+    ).toContain("disabled");
     expect(html).not.toContain("Başmüderrisi değiştir: Zeyrek");
     expect(html).not.toContain("Başmüderrisi değiştir: Vefa");
+  });
+
+  it("offers 'Pasife al' on an active medrese, and on no passive or hidden one (MDRS-227)", () => {
+    const html = view(directory(three));
+    expect(html).toContain('aria-label="Pasife al: Süleymaniye Medresesi"');
+    expect(html.match(/aria-label="Pasife al: /g)).toHaveLength(1);
+    expect(html).not.toContain("Pasife al: Zeyrek");
+    expect(html).not.toContain("Pasife al: Vefa");
   });
 
   it("writes 'Yok' for a medrese with no hosting right (criterion 4)", () => {
@@ -460,6 +517,64 @@ describe("MadrasahsView (nizam 07)", () => {
   it("keeps the search term in the field", () => {
     expect(view(directory(three), "ALL", "zeyrek")).toContain('value="zeyrek"');
   });
+
+  it("draws only the buttons the viewer's permissions open, so none leads to a 403 (MDRS-108)", () => {
+    const html = render(
+      <MadrasahsView
+        directory={directory(three)}
+        status="ALL"
+        q=""
+        can={madrasahAbilities(
+          { systemAdmin: false },
+          new Set(["platform.head_muderris_manage"])
+        )}
+      />
+    );
+    expect(html).toContain("Başmüderris ata: Zeyrek Medresesi");
+    expect(html).toContain("Başmüderrisi değiştir: Süleymaniye Medresesi");
+    expect(html).not.toContain("Medrese aç");
+    expect(html).not.toContain("Geri al: ");
+    expect(html).not.toContain("Pasife al: ");
+    expect(html).not.toContain('href="/tr/arsiv"');
+  });
+});
+
+describe("what Medreseler offers its viewer (MDRS-108)", () => {
+  it("is everything for the başnazım, and when the roles or the permissions could not be read", () => {
+    expect(madrasahAbilities({ systemAdmin: true }, new Set())).toEqual(
+      ALL_MADRASAH_ABILITIES
+    );
+    expect(madrasahAbilities(null, new Set())).toEqual(ALL_MADRASAH_ABILITIES);
+    expect(madrasahAbilities({ systemAdmin: false }, null)).toEqual(
+      ALL_MADRASAH_ABILITIES
+    );
+  });
+
+  it("is one button per platform permission for a Medaris nazımı, and never the başnazım's archive", () => {
+    const of = (...codes: string[]) =>
+      madrasahAbilities({ systemAdmin: false }, new Set(codes));
+    expect(of("platform.madrasah_create")).toEqual({
+      open: true,
+      assign: false,
+      restore: false,
+      passivate: false,
+      archive: false,
+    });
+    expect(of("platform.madrasah_edit")).toEqual({
+      open: false,
+      assign: false,
+      restore: true,
+      passivate: true,
+      archive: false,
+    });
+    expect(of("platform.head_muderris_manage")).toEqual({
+      open: false,
+      assign: true,
+      restore: false,
+      passivate: false,
+      archive: false,
+    });
+  });
 });
 
 describe("the hand-ons of a replaced başmüderris (nizam 22)", () => {
@@ -494,6 +609,21 @@ describe("the hand-ons of a replaced başmüderris (nizam 22)", () => {
     expect(personsReady(people, { fatma: "DROP", ummu: "TAKE_OVER" })).toBe(
       true
     );
+  });
+
+  it("names the course a seat or a grant is held in, and the medrese for its own (review B-head-delegation-no-scope)", () => {
+    const inCourse = {
+      scopeType: "course",
+      courseTitle: "Bina ve İzhar",
+    } as HeadDelegationResponse;
+    const inMedrese = {
+      scopeType: "madrasah",
+      courseTitle: null,
+    } as HeadDelegationResponse;
+    expect(handOnPlace(inCourse, "Süleymaniye")).toBe("Bina ve İzhar");
+    expect(handOnPlace(inMedrese, "Süleymaniye")).toBe("Süleymaniye");
+    expect(handOnCourseSuffix(inCourse)).toBe(" (Bina ve İzhar)");
+    expect(handOnCourseSuffix(inMedrese)).toBe("");
   });
 
   it("sends the person's answer for every one of their items", () => {

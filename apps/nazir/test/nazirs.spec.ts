@@ -477,6 +477,8 @@ describe("a refused appointment or dismissal", () => {
       "Dismiss.changed"
     );
     expect(nazirErrorKey("MADRASAH_NAZIR_NOT_FOUND")).toBe("Dismiss.gone");
+    expect(nazirErrorKey("DISMISS_SEAT_HANDED_ON")).toBe("Dismiss.cascade");
+    expect(nazirErrorKey("SELF_GRANT_REFUSED")).toBe("Problems.selfGrant");
     expect(nazirErrorKey("AUTHZ_FORBIDDEN")).toBe("Problems.actionForbidden");
     expect(nazirErrorKey("")).toBe("Problems.actionGeneric");
   });
@@ -488,6 +490,7 @@ describe("a refused appointment or dismissal", () => {
     expect(nazirErrorKey("PERMISSION_UNKNOWN")).toBe(
       "Problems.permissionUnknown"
     );
+    expect(nazirErrorKey("GRANT_EXCEEDS_GIVER")).toBe("Problems.exceedsGiver");
     expect(nazirErrorKey("NAZIR_COURSE_SCOPE_INVALID")).toBe(
       "Problems.courseScope"
     );
@@ -521,6 +524,7 @@ describe("message keys of the nazır screens", () => {
         "AUTHZ_FORBIDDEN",
         "PERMISSION_NOT_GIVABLE",
         "PERMISSION_UNKNOWN",
+        "GRANT_EXCEEDS_GIVER",
         "NAZIR_COURSE_SCOPE_INVALID",
         "GRANT_EXPIRY_INVALID",
         "PERMISSION_GROUP_NOT_FOUND",

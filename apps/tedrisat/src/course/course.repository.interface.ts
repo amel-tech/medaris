@@ -1,3 +1,5 @@
+import type { HideLevel } from "../archive/hide-level";
+import type { CourseRestoreOutcome } from "../archive/restore-course";
 import type { IPurgeCounts } from "./course-purge";
 import { CourseLevel } from "./domain/course-level.enum";
 import { CourseStatus } from "./domain/course-status.enum";
@@ -285,6 +287,8 @@ export interface ICreateCourse {
   timeZone?: string;
   weeks?: ICreateWeek[];
   muderris?: ICreateMuderris[];
+  /** The imam, one of the accounts in `muderris` (MDRS-136); the first listed when absent. */
+  imamUserId?: string;
   resources?: ICreateResource[];
 }
 
@@ -305,7 +309,10 @@ export interface IUpdateCourse {
   timeZone?: string;
 }
 
-export type IReplaceCourse = Omit<ICreateCourse, "koskId" | "authorId"> & {
+export type IReplaceCourse = Omit<
+  ICreateCourse,
+  "koskId" | "authorId" | "imamUserId"
+> & {
   /**
    * The course `version` the editor loaded. When given, the replace is
    * refused with a conflict if the course has been written since.
@@ -332,6 +339,13 @@ export interface IUpdateLesson {
  *  version the write produced so the client can send it with its next one. */
 export interface ILessonMutation extends ILesson {
   courseVersion: number;
+}
+
+/** What hiding a week produced: the course version, and how many live sessions went with it (MDRS-143). */
+export interface IWeekHide {
+  id: string;
+  courseVersion: number;
+  hiddenSessions: number;
 }
 
 /** One session of a weekly-pattern batch (MDRS-109), already expanded. */
@@ -420,10 +434,23 @@ export interface ICourseRepository {
   replace(
     id: string,
     userId: string,
-    data: IReplaceCourse
+    data: IReplaceCourse,
+    /** The level the saver acts at, recorded on the weeks and sessions the save hides. */
+    level?: HideLevel
   ): Promise<ICourseDetail>;
-  archive(id: string, userId: string): Promise<ICourse | null>;
-  restore(id: string): Promise<ICourse | null>;
+  archive(
+    id: string,
+    userId: string,
+    level: HideLevel
+  ): Promise<"archived" | "already-hidden" | "not-found">;
+  /** The kademe and the hidden parent decided under the row lock (`restoreCourseIn`). */
+  restore(
+    id: string,
+    restorer: HideLevel,
+    actorId: string
+  ): Promise<CourseRestoreOutcome>;
+  /** Whether the course's köşk is hidden, which closes the course (MDRS-143); null for no such course. */
+  findHideState(id: string): Promise<{ koskArchivedAt: Date | null } | null>;
   /** SYSTEM_ADMIN's delete: the course, its children and an audit entry. */
   purge(id: string, actorId: string): Promise<IPurgeCounts | null>;
   /** The course a lesson belongs to, archived or not; null if no such lesson. */
@@ -440,8 +467,15 @@ export interface ICourseRepository {
   ): Promise<ILessonMutation>;
   archiveLesson(
     lessonId: string,
-    actorId?: string | null
+    actorId?: string | null,
+    level?: HideLevel
   ): Promise<ILessonMutation>;
+  archiveWeek(
+    courseId: string,
+    weekId: string,
+    actorId: string,
+    level: HideLevel
+  ): Promise<IWeekHide>;
   /** Marks the session cancelled, keeping its slot (MDRS-176). */
   cancelLesson(
     lessonId: string,
@@ -476,10 +510,29 @@ export interface ICourseRepository {
   /** Whether `userId` is listed in `course_muderris` for `courseId`. */
   isMuderris(courseId: string, userId: string): Promise<boolean>;
   findTaughtBy(userId: string): Promise<ICourseRef[]>;
+  /**
+   * Whether `userId` holds a role in the course's chain right now: in the
+   * course, its köşk, its medrese or on the platform. An enrolled talebe who
+   * does is not off the record when they read the course (review L3).
+   */
+  holdsRoleOnCourse(userId: string, courseId: string): Promise<boolean>;
   /** One `audit_log` row for a content read by a non-participant (MDRS-103). */
   recordContentRead(entry: {
     actorId: string;
     courseId: string;
+    details: Record<string, unknown>;
+  }): Promise<void>;
+  /**
+   * One `audit_log` row for a read of a roster (the talebe list with e-mail
+   * addresses, its numbers, who was taken out, the requests waiting) by someone
+   * who is neither an enrolled talebe nor one of the course's müderrisler
+   * (MDRS-135; owner, d-1003-09). The entity is the course, or the köşk for the
+   * köşk-wide list of requests.
+   */
+  recordRosterRead(entry: {
+    actorId: string;
+    entity: "course" | "kosk";
+    entityId: string;
     details: Record<string, unknown>;
   }): Promise<void>;
   findPendingByKosk(koskId: string): Promise<IPendingEnrollment[]>;
@@ -487,8 +540,6 @@ export interface ICourseRepository {
   getBadgeCounts(courseId: string): Promise<ICourseBadgeCounts>;
   /** The course's müderris rows in display order (MDRS-105). */
   findMuderris(courseId: string): Promise<IMuderris[]>;
-  /** Which of `ids` have signed in at least once (have a `users` row). */
-  findKnownUserIds(ids: readonly string[]): Promise<string[]>;
   /** Every enrollment in the course, for its team's roster (MDRS-105). */
   findEnrollmentsByCourse(courseId: string): Promise<IEnrollment[]>;
   /** Deletes the enrollment and audits the reason, in one transaction. */
