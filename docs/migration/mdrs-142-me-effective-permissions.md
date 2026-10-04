@@ -96,12 +96,13 @@ No route is added or removed: the route inventory snapshot is unchanged
 ## Tests, and that each fails without the change
 
 Added or changed: `test/unit/assignment/me-permissions.spec.ts` (10 tests, pure), the `GET /me` block of
-`test/e2e/user.e2e.spec.ts` (13 tests; the file has 34 in all), and one case in
+`test/e2e/user.e2e.spec.ts` (15 tests; the file has 36 in all), and one case in
 `test/e2e/authz-engine.e2e.spec.ts` ("GET /me says the same per scope", the medrese nazırı's entry is exactly what
 its routes allow, and goes with the role; the file has 54 in all).
 
 The e2e matrix per role: başmüderris, medrese nazırı (alone, and both roles on one medrese), ders nazırı with one group
-grant, köşk nazımı, müderris (imam flag), Medaris nazımı (empty platform entry, then one grant), başnazım with and
+grant, köşk nazımı, a medrese nazırı and a köşk nazımı with a grant on a course below their role (role-less course
+entry, none for a course of another medrese or köşk), müderris (imam flag), Medaris nazımı (empty platform entry, then one grant), başnazım with and
 without role rows, a talebe, a role on a deleted köşk, a role that ended, a grant that expired and a grant that was
 revoked. The Medaris nazımı's grant is `platform.kosk_create`: `user.lookup` is not tagged for the platform on this
 base (the lookup half is deferred), so it would reach nothing.
@@ -119,6 +120,14 @@ restored with `git checkout -- <file>`), counts read off the vitest summaries:
 | implicit-code filter removed | listed codes only | 5 failed of 10 (unit) |
 | live-expiry filter removed from `permissionsPerScope` | expired role/grant not listed (pure) | 1 failed of 10 (unit) |
 | a scope with no name (deleted köşk) given an entry anyway | no entry for a dangling role | 1 failed of 10 (unit) |
+| `...holdings.grants.map(asRef)` dropped from the `findScopeNames` call in `myOverview` | a grant below a role gets its course entry (the course's name is loaded) | 2 failed of the 2 new tests (34 others skipped by the name filter) |
+| `madrasahId: named.course?.madrasahId` replaced by `null` in the `lookup` adapter | the medrese nazırı's role is in the course's chain | 1 failed, 1 passed of the 2 new tests (the medrese nazırı case fails) |
+| `koskId: named.course?.koskId` replaced by `null` in the `lookup` adapter | the köşk nazımı's role is in the course's chain | 1 failed, 1 passed of the 2 new tests (the köşk nazımı case fails) |
+
+The last three rows were added after review: before them, all three mutations stayed green, because the only e2e
+course entries came from a role held on that same course or a medrese-level grant, and the unit spec feeds a
+hand-written `lookup`. The two new e2e tests run on the original code first (green, 36 of 36), then each mutation was
+applied alone and restored.
 
 ## Criteria
 
