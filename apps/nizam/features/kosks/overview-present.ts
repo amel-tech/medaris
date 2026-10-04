@@ -79,14 +79,25 @@ export type RowAction = "edit" | "editMuderris" | "view" | "hide" | "restore";
 
 /**
  * The buttons of a row in the Dersler table (nizam 23). A hidden course has
- * only "Geri al". A medrese's course has no "Düzenle" and no müderris editing —
+ * only "Geri al", and only when the row says the caller may bring it back: a
+ * course a higher level hid has no button, the API would refuse it
+ * (MDRS-143). A medrese's course has no "Düzenle" and no müderris editing —
  * the medrese opens the course and picks its müderrisler — but may be viewed
  * and hidden by the köşk's nazım.
  */
 export function rowActions(row: KoskCourseRowResponse): RowAction[] {
-  if (row.status === "HIDDEN") return ["restore"];
+  if (row.status === "HIDDEN") return row.canRestore ? ["restore"] : [];
   if (row.madrasah) return ["view", "hide"];
   return ["edit", "editMuderris", "hide"];
+}
+
+/** Why a restore failed: the level that hid the course is above the caller's, or anything else. */
+export function restoreFailureKey(errorBody: unknown): "level" | "generic" {
+  const code =
+    errorBody && typeof errorBody === "object" && "code" in errorBody
+      ? (errorBody as { code: unknown }).code
+      : null;
+  return code === "ARCHIVE_RESTORE_LEVEL" ? "level" : "generic";
 }
 
 /** The Talebe cell: the number, or nothing for a course nobody can have joined yet. */
