@@ -64,7 +64,11 @@ signed-in caller exactly as MDRS-166 shipped it.
 
 - Hesap loses one card, "Herkese açık profil", and with it the only link to the
   editor.
-- `/account/public-profile` answers 404.
+- `/account/public-profile` shows the not-found page. The HTTP status is 200, not 404: the segment sits under
+  `apps/tedris/app/[locale]/account/loading.tsx`, so Next has streamed the shell before `notFound()` runs. Found in
+  the browser run of 5 October; it is the same mechanism that makes the base's own "answers 404" Playwright specs
+  fail (`kosks/[koskId]` has a `loading.tsx` too). A real 404 status would need the decision before the loading
+  boundary (a layout or the proxy); not done here.
 - Three API routes answer `404 PUBLIC_PROFILE_UNAVAILABLE` for every signed-in
   caller: `GET /me/public-profile`, `PATCH /me/public-profile`,
   `GET /users/:id/public-profile`. Before, they answered 200 (or 400, 409, 404
@@ -110,7 +114,7 @@ summary, and restoring it. Logs are under the wave scratch directory.
 | The guard refuses false, unset and non-boolean values | `test/unit/user/public-profile-enabled.guard.spec.ts` | Covered by the e2e red above; not separately mutated |
 | Shipped default is false in compose and `.env.example` | `test/unit/public-profile-shipped-default.spec.ts` (2 tests) reads both files | Compose default changed to `true`: failed; `.env.example` set to `true`: failed. In the same state `assert-env-compose-parity.mjs` still passed, which is why the gate does not cover this |
 | Env key reaches the container | `node tools/ci/assert-env-compose-parity.mjs` | Compose line deleted: the gate failed naming `API__PUBLIC_PROFILE_ENABLED` |
-| The page 404s while the constant is false, without reading | `apps/tedris/test/public-profile-hidden.spec.ts`, "answers /account/public-profile with a 404 ..." | Constant set to `true`: failed. Gate line deleted from the page: failed |
+| The page calls `notFound()` while the constant is false, without reading | `apps/tedris/test/public-profile-hidden.spec.ts`, "answers /account/public-profile with a 404 ..." | Constant set to `true`: failed. Gate line deleted from the page: failed |
 | Hesap has no link to `/account/public-profile` | same spec, "leaves the card and its link out of Hesap"; `test/account-profile.spec.ts` (line formerly expecting the link) | Constant `true`: failed. Gate removed from the card: failed |
 | Turning it on is the one constant | same spec, "turning the public profile back on ..." (two cases) | Passing cases for the other direction |
 | Locale parity | `test/account-messages-parity.spec.ts` (unchanged) | Green, keys untouched |
@@ -121,9 +125,19 @@ See the PR description for commands and counts, read off the runs.
 
 ## What was not verified
 
-- The Playwright specs need a running stack with Keycloak and are not run.
-- No browser was used: the 404 page and the missing card are proved by the
-  rendered component and the page function under the test runner, not in Next.
+- The profile Playwright spec is skipped by design while the profile is hidden and asserts nothing about the hidden
+  state, so the Playwright suite passes whether or not the hiding works.
+- Browser and API checks run by hand on 5 October against the real dev Keycloak (realm `amel-tech-dev`), a local
+  Postgres and a production build of tedris, signed in as the talebe test account through the real form: Hesap has
+  no "Herkese açık profil" text, no link and no `public-profile` in its HTML, and the personal card is still there;
+  `/tr/account/public-profile` (also `/en`, `/ar`) shows the not-found page with status 200; with the talebe's real
+  access token `GET` and `PATCH /me/public-profile` and `GET /users/<id>/public-profile` (own, another person's,
+  unknown, malformed id) all answer 404 `PUBLIC_PROFILE_UNAVAILABLE`, nothing is written (`user_profiles` 0 rows
+  before and after, the talebe's `users` row identical, so the user-sync interceptor did not run); the same calls
+  without a token answer 401. The scripts are not in the repository.
+- The whole tedris Playwright suite on this change: 139 passed, 22 failed, 1 skipped. 19 of the failures fail the
+  same way on `origin/main` built and seeded the same way (empty difference between the two failure lists); 3 are
+  flaky and passed on a rerun or on the base. None is about the profile.
 - The route-inventory and authz specs of the MDRS-135 stack: not on this base.
 - Two specs of tedris-web (`auth-entry.spec.ts`, `expired-session.spec.ts`) fail
   on this base without my change (`localStorage` is undefined in the test

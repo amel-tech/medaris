@@ -18,7 +18,9 @@ export async function generateMetadata(): Promise<Metadata> {
 
 /**
  * "Herkese açık profil" (design tedris/35, MDRS-166), under Hesap. Hidden for
- * now (MDRS-141): a 404 before anything is read.
+ * now (MDRS-141): the not-found page before anything is read. The HTTP status
+ * stays 200, as for every not-found under a `loading.tsx` boundary, because
+ * the shell is streamed before `notFound()` runs.
  */
 export default async function Page() {
   if (!PUBLIC_PROFILE_ENABLED) notFound();
