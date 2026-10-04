@@ -218,7 +218,7 @@ export class KoskAdminController {
     )
     tab: DashboardSessionTab
   ): Promise<KoskDashboardResponse> {
-    return this.dashboard.get(id, request.user.sub, tab);
+    return this.dashboard.get(id, request.user, tab);
   }
 
   @ApiOperation({

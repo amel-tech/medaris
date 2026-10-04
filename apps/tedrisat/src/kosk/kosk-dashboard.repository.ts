@@ -1,7 +1,9 @@
 import { Injectable } from "@nestjs/common";
 import { eq, sql } from "drizzle-orm";
 import { DatabaseService } from "../database/database.service";
+import { isPassiveScope } from "../database/role-assignments";
 import { kosks } from "../database/schema/kosk.schema";
+import { ASSIGNED_ROLES } from "../database/schema/role-assignment.schema";
 import { users } from "../database/schema/user.schema";
 import type {
   DashboardSessionTab,
@@ -204,10 +206,16 @@ export class KoskDashboardRepository {
     }));
   }
 
+  /**
+   * The newest waiting applications. `scopePassive` reads the three scopes the
+   * engine's loader reads for a course (its müderris, its köşk's nazım, its
+   * medrese's başmüderris) the way `enrolledCourseIds` does; whether the
+   * viewer may decide stays the engine's answer, added by the service.
+   */
   async latestApplications(
     koskId: string,
     limit: number
-  ): Promise<KoskDashboardApplicationResponse[]> {
+  ): Promise<Omit<KoskDashboardApplicationResponse, "canDecide">[]> {
     const result = await this.db.execute<{
       user_id: string;
       course_id: string;
@@ -215,12 +223,16 @@ export class KoskDashboardRepository {
       student_name: string | null;
       student_email: string | null;
       created_at: Date | string;
+      scope_passive: boolean;
     }>(sql`
       select e.user_id, c.id as course_id, c.title as course_title,
              coalesce(e.student_name,
                       nullif(btrim(concat_ws(' ', u.given_name, u.family_name)), '')) as student_name,
              coalesce(e.student_email, u.email) as student_email,
-             e.created_at at time zone 'UTC' as created_at
+             e.created_at at time zone 'UTC' as created_at,
+             (${isPassiveScope(ASSIGNED_ROLES.MUDERRIS, sql`c.id`)}
+              or ${isPassiveScope(ASSIGNED_ROLES.KOSK_NAZIM, sql`c.kosk_id`)}
+              or ${isPassiveScope(ASSIGNED_ROLES.MEDRESE_BASMUDERRIS, sql`c.madrasah_id`)}) as scope_passive
         from enrollments e
         join courses c on c.id = e.course_id
         left join users u on u.id = e.user_id
@@ -235,6 +247,7 @@ export class KoskDashboardRepository {
       studentName: r.student_name,
       studentEmail: r.student_email,
       requestedAt: asDate(r.created_at),
+      scopePassive: r.scope_passive,
     }));
   }
 
