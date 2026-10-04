@@ -51,17 +51,59 @@ export async function recordStatements<T>(
 }
 
 /**
+ * The statement with everything inside parentheses taken out, so what is left
+ * is its own level: a subquery in the select list (`coalesce((select ... from
+ * "role_assignments"), '{}')`) or a column list must not name the statement.
+ * Quoted identifiers and string literals are copied through whole, because a
+ * parenthesis inside one is not nesting.
+ */
+function outerLevel(text: string): string {
+  let out = "";
+  let depth = 0;
+  for (let at = 0; at < text.length; at++) {
+    const char = text[at];
+    if (char === "'" || char === '"') {
+      let end = at + 1;
+      // A doubled quote is an escaped one, not the end.
+      while (end < text.length) {
+        if (text[end] === char) {
+          if (text[end + 1] === char) {
+            end += 2;
+            continue;
+          }
+          break;
+        }
+        end++;
+      }
+      if (depth === 0) {
+        out += text.slice(at, end + 1);
+      }
+      at = end;
+    } else if (char === "(") {
+      depth++;
+    } else if (char === ")") {
+      depth = Math.max(0, depth - 1);
+    } else if (depth === 0) {
+      out += char;
+    }
+  }
+  return out;
+}
+
+/**
  * A statement in a few words, for a table a person reads: its verb and the
- * first table it names (`select role_assignments`, `begin`). Not a parser;
- * a statement it cannot place is shown as its verb alone.
+ * first table its own level names (`select role_assignments`, `begin`), never
+ * a subquery's. Not a parser; a statement it cannot place is shown as its verb
+ * alone.
  */
 export function describeStatement(text: string): string {
   const verb = /^\s*(?:with\b[\s\S]*?\)\s*)?(\w+)/i
     .exec(text)?.[1]
     ?.toLowerCase();
+  const level = outerLevel(text);
   const table =
-    /\b(?:from|into|update)\s+"([a-z_]+)"/i.exec(text)?.[1] ??
-    /\bjoin\s+"([a-z_]+)"/i.exec(text)?.[1];
+    /\b(?:from|into|update)\s+"([a-z_]+)"/i.exec(level)?.[1] ??
+    /\bjoin\s+"([a-z_]+)"/i.exec(level)?.[1];
   return table ? `${verb ?? "?"} ${table}` : (verb ?? "?");
 }
 
