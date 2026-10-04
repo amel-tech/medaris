@@ -18,6 +18,7 @@ import { DatabaseService } from "../database/database.service";
 import {
   holdsIn,
   isHeld,
+  setCourseImam,
   syncMuderrisAssignments,
 } from "../database/role-assignments";
 import { auditLog } from "../database/schema/audit.schema";
@@ -49,6 +50,7 @@ import {
   ICourseSummary,
   ICreateCourse,
   ICreateLesson,
+  ICreateMuderris,
   ICreateSessionBatch,
   IEnrolledCourse,
   IEnrollment,
@@ -70,6 +72,7 @@ import { ROSTER_READ_ACTION } from "./domain/course-content";
 import { CourseStatus } from "./domain/course-status.enum";
 import { EnrollmentStatus } from "./domain/enrollment-status.enum";
 import { LessonType } from "./domain/lesson-type.enum";
+import type { IShownSyllabus } from "./domain/syllabus-drops";
 import {
   type IDatedWeek,
   localDateOf,
@@ -354,7 +357,7 @@ export class CourseRepository implements ICourseRepository {
   }
 
   async create(course: ICreateCourse): Promise<ICourseDetail> {
-    const { weeks, muderris, resources, ...courseData } = course;
+    const { weeks, muderris, imamUserId, resources, ...courseData } = course;
 
     const courseId = await this.db.transaction(async (tx) => {
       const [createdCourse] = await tx
@@ -375,6 +378,7 @@ export class CourseRepository implements ICourseRepository {
           }))
         );
         await syncMuderrisAssignments(tx, createdCourse.id, course.authorId);
+        if (imamUserId) await setCourseImam(tx, createdCourse.id, imamUserId);
       }
 
       if (resources?.length) {
@@ -437,7 +441,7 @@ export class CourseRepository implements ICourseRepository {
   ): Promise<ICourseDetail> {
     const {
       weeks = [],
-      muderris = [],
+      muderris,
       resources = [],
       version: expectedVersion,
       ...courseData
@@ -451,50 +455,10 @@ export class CourseRepository implements ICourseRepository {
       await this.bumpVersion(tx, id, expectedVersion, courseData);
 
       // ---- müderris: upsert by id, delete the rest ----
-      const existingMuderris = await tx
-        .select({ id: courseMuderris.id })
-        .from(courseMuderris)
-        .where(eq(courseMuderris.courseId, id));
-      // Ids are compared lowercased, the way `muderrisListChanged` compares
-      // them before the check on the müderris list. Postgres returns uuids in
-      // lowercase and `@IsUUID()` accepts uppercase, so an exact match here
-      // would delete and re-insert a row the check called unchanged — with
-      // every field the payload left out, `userId` included, reset.
-      const muderrisKeep = new Set(
-        muderris
-          .map((m) => m.id?.toLowerCase())
-          .filter((x): x is string => Boolean(x))
-      );
-      const muderrisToDelete = existingMuderris
-        .filter((e) => !muderrisKeep.has(e.id))
-        .map((e) => e.id);
-      if (muderrisToDelete.length) {
-        await tx
-          .delete(courseMuderris)
-          .where(inArray(courseMuderris.id, muderrisToDelete));
+      // Left out of the payload, the team is left alone (MDRS-136).
+      if (muderris !== undefined) {
+        await this.replaceMuderris(tx, id, muderris, userId);
       }
-      const existingMuderrisIds = new Set(existingMuderris.map((e) => e.id));
-      for (const [i, m] of muderris.entries()) {
-        const values = {
-          courseId: id,
-          userId: m.userId,
-          name: m.name,
-          title: m.title,
-          bio: m.bio,
-          avatarHue: m.avatarHue,
-          orderIndex: i,
-        };
-        const muderrisId = m.id?.toLowerCase();
-        if (muderrisId && existingMuderrisIds.has(muderrisId)) {
-          await tx
-            .update(courseMuderris)
-            .set(values)
-            .where(eq(courseMuderris.id, muderrisId));
-        } else {
-          await tx.insert(courseMuderris).values(values);
-        }
-      }
-      await syncMuderrisAssignments(tx, id, userId);
 
       // ---- resources: upsert by id, delete the rest ----
       const existingResources = await tx
@@ -760,6 +724,59 @@ export class CourseRepository implements ICourseRepository {
       replacementLessonId: row.replacementLessonId,
       courseVersion,
     };
+  }
+
+  /** The müderris half of a whole-course save, inside its transaction. */
+  private async replaceMuderris(
+    tx: Tx,
+    courseId: string,
+    muderris: ICreateMuderris[],
+    actorId: string
+  ): Promise<void> {
+    const existingMuderris = await tx
+      .select({ id: courseMuderris.id })
+      .from(courseMuderris)
+      .where(eq(courseMuderris.courseId, courseId));
+    // Ids are compared lowercased, the way `muderrisListChanged` compares
+    // them before the check on the müderris list. Postgres returns uuids in
+    // lowercase and `@IsUUID()` accepts uppercase, so an exact match here
+    // would delete and re-insert a row the check called unchanged — with
+    // every field the payload left out, `userId` included, reset.
+    const muderrisKeep = new Set(
+      muderris
+        .map((m) => m.id?.toLowerCase())
+        .filter((x): x is string => Boolean(x))
+    );
+    const muderrisToDelete = existingMuderris
+      .filter((e) => !muderrisKeep.has(e.id))
+      .map((e) => e.id);
+    if (muderrisToDelete.length) {
+      await tx
+        .delete(courseMuderris)
+        .where(inArray(courseMuderris.id, muderrisToDelete));
+    }
+    const existingMuderrisIds = new Set(existingMuderris.map((e) => e.id));
+    for (const [i, m] of muderris.entries()) {
+      const values = {
+        courseId,
+        userId: m.userId,
+        name: m.name,
+        title: m.title,
+        bio: m.bio,
+        avatarHue: m.avatarHue,
+        orderIndex: i,
+      };
+      const muderrisId = m.id?.toLowerCase();
+      if (muderrisId && existingMuderrisIds.has(muderrisId)) {
+        await tx
+          .update(courseMuderris)
+          .set(values)
+          .where(eq(courseMuderris.id, muderrisId));
+      } else {
+        await tx.insert(courseMuderris).values(values);
+      }
+    }
+    await syncMuderrisAssignments(tx, courseId, actorId);
   }
 
   async findLessonCourseId(lessonId: string): Promise<string | null> {
@@ -1608,6 +1625,26 @@ export class CourseRepository implements ICourseRepository {
   }
 
   /** The course's müderris rows in display order (MDRS-105). */
+  async findShownSyllabusIds(courseId: string): Promise<IShownSyllabus> {
+    const weeks = await this.db
+      .select({ id: courseWeeks.id })
+      .from(courseWeeks)
+      .where(
+        and(eq(courseWeeks.courseId, courseId), isNull(courseWeeks.archivedAt))
+      );
+    const sessions = await this.db
+      .select({ id: lessons.id })
+      .from(lessons)
+      .innerJoin(courseWeeks, eq(lessons.weekId, courseWeeks.id))
+      .where(
+        and(eq(courseWeeks.courseId, courseId), isNull(lessons.archivedAt))
+      );
+    return {
+      weekIds: weeks.map((w) => w.id),
+      lessonIds: sessions.map((l) => l.id),
+    };
+  }
+
   async findMuderris(courseId: string): Promise<IMuderris[]> {
     const { imamKeys } = await this.madrasahsAndImamsOf([
       { id: courseId, madrasahId: null },

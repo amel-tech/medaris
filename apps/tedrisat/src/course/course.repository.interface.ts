@@ -4,6 +4,7 @@ import { CourseLevel } from "./domain/course-level.enum";
 import { CourseStatus } from "./domain/course-status.enum";
 import { EnrollmentStatus } from "./domain/enrollment-status.enum";
 import { LessonType } from "./domain/lesson-type.enum";
+import type { IShownSyllabus } from "./domain/syllabus-drops";
 
 /** One step of a live lesson's müzakere akışı (agenda). */
 export interface IAgendaStep {
@@ -286,6 +287,8 @@ export interface ICreateCourse {
   timeZone?: string;
   weeks?: ICreateWeek[];
   muderris?: ICreateMuderris[];
+  /** The imam, one of the accounts in `muderris` (MDRS-136); the first listed when absent. */
+  imamUserId?: string;
   resources?: ICreateResource[];
 }
 
@@ -306,7 +309,10 @@ export interface IUpdateCourse {
   timeZone?: string;
 }
 
-export type IReplaceCourse = Omit<ICreateCourse, "koskId" | "authorId"> & {
+export type IReplaceCourse = Omit<
+  ICreateCourse,
+  "koskId" | "authorId" | "imamUserId"
+> & {
   /**
    * The course `version` the editor loaded. When given, the replace is
    * refused with a conflict if the course has been written since.
@@ -520,6 +526,8 @@ export interface ICourseRepository {
   getBadgeCounts(courseId: string): Promise<ICourseBadgeCounts>;
   /** The course's müderris rows in display order (MDRS-105). */
   findMuderris(courseId: string): Promise<IMuderris[]>;
+  /** The ids of the weeks and sessions the course shows, hidden ones left out. */
+  findShownSyllabusIds(courseId: string): Promise<IShownSyllabus>;
   /** Every enrollment in the course, for its team's roster (MDRS-105). */
   findEnrollmentsByCourse(courseId: string): Promise<IEnrollment[]>;
   /** Deletes the enrollment and audits the reason, in one transaction. */

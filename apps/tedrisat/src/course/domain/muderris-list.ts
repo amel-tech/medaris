@@ -2,6 +2,8 @@ import type {
   ICreateMuderris,
   IMuderris,
 } from "../course.repository.interface";
+import { CourseImamNotListedError } from "../errors/course-imam-not-listed.error";
+import { MuderrisListInvalidError } from "../errors/muderris-list-invalid.error";
 
 /**
  * The fields a whole-course PUT writes to an existing `course_muderris` row.
@@ -86,4 +88,59 @@ export const duplicateUserId = (
     seen.add(id);
   }
   return null;
+};
+
+/**
+ * The accounts a list is bound to, lowercased, each once, in list order. A
+ * row with no account (a name-only legacy row) teaches nobody: the role the
+ * course page's müderris holds comes from the account.
+ */
+export const boundAccountIds = (
+  rows: readonly { userId?: string | null }[]
+): string[] => [
+  ...new Set(
+    rows
+      .map((row) => row.userId?.toLowerCase())
+      .filter((id): id is string => Boolean(id))
+  ),
+];
+
+/**
+ * The accounts the course's team is bound to once `next` is saved. A row that
+ * names a stored row by `id` and leaves `userId` out keeps the stored account,
+ * because `CourseRepository.replace` does not write a field the payload omits.
+ */
+export const boundAccountsAfterSave = (
+  current: readonly IMuderris[],
+  next: readonly ICreateMuderris[]
+): string[] =>
+  boundAccountIds(
+    next.map((row) => ({
+      userId:
+        row.userId ??
+        current.find((m) => m.id.toLowerCase() === row.id?.toLowerCase())
+          ?.userId,
+    }))
+  );
+
+/**
+ * The imam of a course that is being opened (MDRS-136). A course is opened
+ * together with at least one müderris who has an account, and one of them is
+ * its imam: the one named, who must be among them, or else the account listed
+ * first.
+ */
+export const imamOfNewCourse = (
+  rows: readonly ICreateMuderris[],
+  imamUserId?: string
+): string => {
+  const accounts = boundAccountIds(rows);
+  if (accounts.length === 0) {
+    throw new MuderrisListInvalidError(
+      "A course is opened with at least one müderris who has an account"
+    );
+  }
+  const imam = imamUserId?.toLowerCase();
+  if (imam === undefined) return accounts[0];
+  if (!accounts.includes(imam)) throw new CourseImamNotListedError(imam);
+  return imam;
 };

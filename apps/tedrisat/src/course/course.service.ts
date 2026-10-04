@@ -18,6 +18,7 @@ import { UserDirectoryService } from "../assignment/user-directory.service";
 import { BanService } from "../ban/ban.service";
 import { SCOPE_TYPES } from "../database/schema/scope-type.schema";
 import { KoskForbiddenError } from "../kosk/errors/kosk-forbidden.error";
+import { KoskNotFoundError } from "../kosk/errors/kosk-not-found.error";
 import { KoskService } from "../kosk/kosk.service";
 import {
   PlatformPolicyLockedError,
@@ -57,7 +58,10 @@ import {
 import { CourseStatus } from "./domain/course-status.enum";
 import { EnrollmentStatus } from "./domain/enrollment-status.enum";
 import {
+  boundAccountIds,
+  boundAccountsAfterSave,
   duplicateUserId,
+  imamOfNewCourse,
   muderrisListChanged,
   newlyLinkedUserIds,
 } from "./domain/muderris-list";
@@ -68,6 +72,7 @@ import {
   visibleRecordings,
 } from "./domain/recording";
 import { buildSessionView, type ISessionView } from "./domain/session-view";
+import { hiddenBySave } from "./domain/syllabus-drops";
 import { withCanonicalTimeZone } from "./domain/time-zone";
 import {
   expandWeeklyPattern,
@@ -88,6 +93,7 @@ import { MuderrisAssignmentForbiddenError } from "./errors/muderris-assignment-f
 import { MuderrisDuplicateUserError } from "./errors/muderris-duplicate-user.error";
 import { MuderrisListInvalidError } from "./errors/muderris-list-invalid.error";
 import { MuderrisUnknownUserError } from "./errors/muderris-unknown-user.error";
+import { WeekHideForbiddenError } from "./errors/week-hide-forbidden.error";
 import { RecordingRepository } from "./recording.repository";
 
 /** A weekly pattern as the API takes it; `timeZone` defaults to the course's. */
@@ -519,18 +525,30 @@ export class CourseService {
   // a müderris does not hold. The `assertCourseOwner` that narrowed every write
   // to the köşk manager is gone.
 
+  /**
+   * Opens a course of the köşk's own together with its müderrisler (MDRS-136).
+   * Who may is the route's `course.open_standalone` on the köşk, the köşk
+   * nazımı's by default and the başnazım's through the realm bypass; no role
+   * is asked again here, so that the başnazım is not turned away by a check on
+   * who manages the köşk.
+   */
   async create(
     koskId: string,
     author: AuthenticatedUser,
     course: Omit<ICreateCourse, "koskId" | "authorId">
   ): Promise<ICourseDetailView> {
     const authorId = author.sub;
-    await this.koskService.assertManager(koskId, authorId); // köşk managers only
-    await this.assertMuderrisLinks([], course.muderris ?? []);
+    if (!(await this.koskService.exists(koskId))) {
+      throw new KoskNotFoundError(koskId);
+    }
+    const muderris = course.muderris ?? [];
+    const imamUserId = imamOfNewCourse(muderris, course.imamUserId);
+    await this.assertMuderrisLinks([], muderris);
     const created = await this.courseRepo.create({
       ...withCanonicalTimeZone(course),
       koskId,
       authorId,
+      imamUserId,
     });
     return this.present(created, author, { audit: false });
   }
@@ -648,18 +666,33 @@ export class CourseService {
     // from what is stored is a change; an unrelated save of a course must still
     // go through.
     await this.assertMayChangeSettings(id, user, stored, data, false);
-    const next = data.muderris ?? [];
+    // A save that leaves `muderris` out means "the team as it is", not "no
+    // team": it used to empty the course and leave it with nobody (MDRS-136).
+    const next = data.muderris;
     const current = await this.courseRepo.findMuderris(id);
-    if (
-      muderrisListChanged(current, next) &&
-      !(await this.authz.can(user, { entity: ENTITIES.COURSE, id }, [
-        PERMISSIONS.COURSE_OPEN_STANDALONE,
-        PERMISSIONS.MADRASAH_MUDERRIS_MANAGE,
-      ]))
-    ) {
-      throw new MuderrisAssignmentForbiddenError(id);
+    if (next !== undefined) {
+      if (
+        muderrisListChanged(current, next) &&
+        !(await this.authz.can(user, { entity: ENTITIES.COURSE, id }, [
+          PERMISSIONS.COURSE_OPEN_STANDALONE,
+          PERMISSIONS.MADRASAH_MUDERRIS_MANAGE,
+        ]))
+      ) {
+        throw new MuderrisAssignmentForbiddenError(id);
+      }
+      // Owner decision d-1004-13: a course never loses its last müderris by
+      // accident. Making it passive on purpose is MDRS-201's flow.
+      if (
+        boundAccountIds(current).length > 0 &&
+        boundAccountsAfterSave(current, next).length === 0
+      ) {
+        throw new MuderrisListInvalidError(
+          "A course keeps at least one müderris who has an account"
+        );
+      }
+      await this.assertMuderrisLinks(current, next);
     }
-    await this.assertMuderrisLinks(current, next);
+    await this.assertMayHideWithSave(id, user, data.weeks);
     const replaced = await this.courseRepo.replace(
       id,
       user.sub,
@@ -668,6 +701,36 @@ export class CourseService {
       await this.courseLevel(user, id)
     );
     return this.present(replaced, user, { audit: false });
+  }
+
+  /**
+   * A whole-course save hides every week and session its payload leaves out,
+   * and hiding is `week.hide`'s: a saver who holds `course.edit` without it
+   * (a grant of `course.edit` alone) is refused with 403 before anything is
+   * written (MDRS-136, d-1004-14). The müderris and the köşk nazımı hold it by
+   * role default. Kept apart from any check on adding or moving a session
+   * (`session.manage`, PR #203): the two are different permissions and a save
+   * must pass whichever it touches.
+   */
+  private async assertMayHideWithSave(
+    courseId: string,
+    user: AuthenticatedUser,
+    weeks: IReplaceCourse["weeks"]
+  ): Promise<void> {
+    const hidden = hiddenBySave(
+      await this.courseRepo.findShownSyllabusIds(courseId),
+      weeks ?? []
+    );
+    if (hidden.weeks + hidden.sessions === 0) return;
+    if (
+      !(await this.authz.can(
+        user,
+        { entity: ENTITIES.COURSE, id: courseId },
+        PERMISSIONS.WEEK_HIDE
+      ))
+    ) {
+      throw new WeekHideForbiddenError(courseId);
+    }
   }
 
   /**

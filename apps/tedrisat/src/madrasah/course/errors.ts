@@ -60,15 +60,4 @@ export class CourseImamRequiredError extends BadRequestError {
   }
 }
 
-/** The imam is not one of the müderrisler listed. */
-export class CourseImamNotListedError extends BadRequestError {
-  static readonly code = "COURSE_IMAM_NOT_LISTED";
-
-  constructor(userId: string, context?: ErrorContext) {
-    super(
-      CourseImamNotListedError.code,
-      `User ${userId} is named the imam but is not among the müderrisler`,
-      context
-    );
-  }
-}
+export { CourseImamNotListedError } from "../../course/errors/course-imam-not-listed.error";

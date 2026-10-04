@@ -150,15 +150,23 @@ export class CourseController {
   }
 
   @ApiOperation({
-    summary: "Create a new course under a köşk",
+    summary: "Create a new course under a köşk, together with its müderrisler",
+    description:
+      "The köşk's nazımı opens it, and so does the başnazım (MDRS-136). It is opened with at least one müderris who has an account, and one of them is the imam: `imamUserId`, or the account listed first.",
     operationId: "createCourse",
   })
   @ApiCreatedResponse({ type: CourseDetailResponse })
+  @ApiBadRequestResponse({
+    description:
+      "No müderris with an account (MUDERRIS_LIST_INVALID), an imam who is not listed (COURSE_IMAM_NOT_LISTED), or the same account twice (MUDERRIS_DUPLICATE_USER).",
+  })
+  @ApiForbiddenResponse()
   @ApiNotFoundResponse()
   // A course that does not exist yet is authorized against its parent köşk —
-  // `course.open_standalone` is the köşk nazımı's own (and a grant's), so only
-  // they may open a course of the köşk's own under it; a course for a medrese is
-  // opened by the medrese (`madrasah.course_open`).
+  // `course.open_standalone` is the köşk nazımı's own (and a grant's, and the
+  // başnazım's by the realm bypass), so only they may open a course of the
+  // köşk's own under it; a course for a medrese is opened by the medrese
+  // (`madrasah.course_open`). The service asks no role again.
   @Authz(PERMISSIONS.COURSE_OPEN_STANDALONE, byParam(ENTITIES.KOSK, "koskId"))
   @Post("kosks/:koskId/courses")
   @UsePipes(new MedarisValidationPipe({ transform: true }))
@@ -255,7 +263,7 @@ export class CourseController {
   })
   @ApiForbiddenResponse({
     description:
-      "No `course.edit` on the course, or the save changes the müderris list without `course.open_standalone` (or `madrasah.muderris_manage` for a medrese's course) — a müderris may save the course but not change who teaches it (MUDERRIS_ASSIGNMENT_FORBIDDEN).",
+      "No `course.edit` on the course, the save changes the müderris list without `course.open_standalone` (or `madrasah.muderris_manage` for a medrese's course) — a müderris may save the course but not change who teaches it (MUDERRIS_ASSIGNMENT_FORBIDDEN) — or the save hides a week or a session without `week.hide` (WEEK_HIDE_FORBIDDEN).",
   })
   @ApiConflictResponse({
     description:
