@@ -150,7 +150,9 @@ test("nazir/15 — Devral keeps what was given under the başmüderris's name, D
     .getByRole("button", { name: "Görevden al", exact: true })
     .click();
 
-  await expect(page.getByText("Görevden alındı")).toBeVisible();
+  await expect(
+    page.getByText("Görevden alındı").filter({ visible: true })
+  ).toBeVisible();
   await expect(dialog).toBeHidden();
   await expect(
     page.locator("[data-testid=nazirs] tbody tr:visible").filter({
@@ -207,7 +209,9 @@ test("nazir/15 — a nazır who gave no one anything is dismissed without a choi
     .getByRole("button", { name: "Görevden al", exact: true })
     .click();
 
-  await expect(page.getByText("Görevden alındı")).toBeVisible();
+  await expect(
+    page.getByText("Görevden alındı").filter({ visible: true })
+  ).toBeVisible();
   await expect(
     page.locator("[data-testid=nazirs] tbody tr:visible").filter({
       hasText: extra?.ummugulsum.name ?? "",

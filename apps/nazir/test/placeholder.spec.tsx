@@ -71,16 +71,43 @@ describe("the shared placeholder under a medrese", () => {
   });
 });
 
+/** The course's sections that have a page of their own: Celseler and Talebeler (MDRS-247). */
+const DERS_BUILT = ["celseler", "talebeler"];
+
 describe("the shared placeholder under a course", () => {
   const page = async (bolum: string) =>
     (await import("../app/ders/[dersId]/[bolum]/page")).default(props(bolum));
 
-  it("answers every segment of the menu", async () => {
+  it("answers every segment of the menu that has no page yet", async () => {
     for (const segment of sectionSegments("ders")) {
+      if (DERS_BUILT.includes(segment)) continue;
       const text = textOf(await html(await page(segment)));
       expect(text, segment).toContain("Bu sayfa henüz hazır değil.");
     }
-    expect(textOf(await html(await page("celseler")))).toMatch(/^Celseler /);
+    expect(textOf(await html(await page("mufredat")))).toMatch(/^Müfredat /);
+    expect(textOf(await html(await page("kayitlar")))).toMatch(
+      /^Ders kayıtları /
+    );
+  });
+
+  it("leaves the sections that have a page to their own route folder", () => {
+    for (const segment of DERS_BUILT) {
+      expect(sectionSegments("ders"), segment).toContain(segment);
+      expect(
+        existsSync(
+          join(
+            import.meta.dirname,
+            "..",
+            "app",
+            "ders",
+            "[dersId]",
+            segment,
+            "page.tsx"
+          )
+        ),
+        segment
+      ).toBe(true);
+    }
   });
 
   it("answers 404 for a segment of the medrese's menu", async () => {

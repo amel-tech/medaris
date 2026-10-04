@@ -3,32 +3,25 @@
  * /aydinlatma-metni (MDRS-102). Turkish only: it is the notice the law asks
  * for, not product copy, so it does not go through `@medaris/i18n`.
  *
- * Everything the owner still has to supply is in `CONTROLLER` below, and only
- * there: each bracketed placeholder is written once in this file and reused
- * by reference, so replacing it here replaces it on the page.
- * `test/privacy-notice.spec.ts` fails if one appears anywhere else in the
- * repository's source.
+ * The controller is named only by its e-mail address for now (owner, 4
+ * October): the title, postal address, KEP and MERSİS come later, with the
+ * legal entity.
  *
- * The wording is a draft. The final legal text is the owner's (out of scope
- * for MDRS-102); `IS_DRAFT` puts a visible note on the page until it is
- * approved.
+ * The wording is a draft until a lawyer approves it. The draft note shows in
+ * development only (owner, 4 October), never to a visitor.
  */
 
-/** The data controller's details — placeholders until the owner fills them. */
+/** The data controller's contact. */
 export const CONTROLLER = {
-  title: "[Veri sorumlusu unvanı]",
-  address: "[Adres]",
-  email: "[E-posta]",
-  kep: "[KEP adresi]",
-  mersis: "[MERSİS no]",
+  email: "selam@medaris.app",
 } as const;
 
-/** Shows the "draft" note. Set to false once the owner approves the text. */
-export const IS_DRAFT = true;
+/** Shows the "draft" note: in development, never in a production build. */
+export const IS_DRAFT = process.env.NODE_ENV !== "production";
 
 export const TITLE = "Kişisel Verilerin Korunması Hakkında Aydınlatma Metni";
 
-export const LAST_UPDATED = "29 Eylül 2026";
+export const LAST_UPDATED = "4 Ekim 2026";
 
 /**
  * Every column of tedrisat's `users` table (MDRS-104,
@@ -62,15 +55,9 @@ export const SECTIONS: NoticeSection[] = [
     id: "veri-sorumlusu",
     heading: "1. Veri sorumlusu",
     paragraphs: [
-      `6698 sayılı Kişisel Verilerin Korunması Kanunu (“KVKK”) uyarınca kişisel verileriniz, veri sorumlusu sıfatıyla ${CONTROLLER.title} (“Medaris”) tarafından bu metinde açıklanan kapsamda işlenir.`,
+      "6698 sayılı Kişisel Verilerin Korunması Kanunu (“KVKK”) uyarınca kişisel verileriniz, veri sorumlusu sıfatıyla Medaris tarafından bu metinde açıklanan kapsamda işlenir.",
     ],
-    items: [
-      `Unvan: ${CONTROLLER.title}`,
-      `Adres: ${CONTROLLER.address}`,
-      `E-posta: ${CONTROLLER.email}`,
-      `KEP adresi: ${CONTROLLER.kep}`,
-      `MERSİS no: ${CONTROLLER.mersis}`,
-    ],
+    items: [`E-posta: ${CONTROLLER.email}`],
   },
   {
     id: "islenen-veriler",
@@ -79,7 +66,9 @@ export const SECTIONS: NoticeSection[] = [
       "Kimlik: adınız ve soyadınız.",
       "İletişim: e-posta adresiniz.",
       "Hesap ve kullanım verileri: hesap kimliğiniz, e-posta adresinizin doğrulanıp doğrulanmadığı, dil ve saat dilimi tercihiniz, hesabınızın oluşturulma ve platformu en son kullandığınız zaman, oturum açma kayıtları.",
-      "Eğitim kayıtları: katıldığınız köşkler, derslere kaydınız ve katılımınız, oluşturduğunuz ezber kartları.",
+      "Eğitim kayıtları: katıldığınız köşkler, derslere kaydınız ve katılımınız, oluşturduğunuz ezber kartları, celse videolarına aldığınız notlar ve ders kadrosuna sorduğunuz sorular.",
+      "Yazışmalar: iletişim formundan gönderdiğiniz ad, e-posta adresi, konu ve mesaj.",
+      "Teknik kayıtlar: sunucuların tuttuğu istek kayıtları (IP adresi, tarayıcı bilgisi, açılan sayfa ve zamanı).",
     ],
     closing: `Hesap kaydınızda tutulan alanların tamamı: ${Object.values(
       ACCOUNT_RECORD_FIELDS
@@ -92,7 +81,8 @@ export const SECTIONS: NoticeSection[] = [
       "Üyelik hesabınızın oluşturulması ve yönetilmesi.",
       "Eğitim hizmetlerinin sunulması: köşklere ve derslere kayıt, canlı ders takvimi, ders kayıtlarına erişim.",
       "Kimliğinizin doğrulanması ve hesap güvenliğinin sağlanması.",
-      "E-posta adresinizin doğrulanması ve parola sıfırlama gibi hesabınızla ilgili bildirimlerin gönderilmesi.",
+      "E-posta adresinizin doğrulanması, parola sıfırlama ve celse davetleri gibi hesabınızla ve derslerinizle ilgili e-postaların gönderilmesi.",
+      "İletişim formundan gönderdiğiniz mesajlara cevap verilmesi.",
       "Mevzuattan doğan yükümlülüklerin yerine getirilmesi.",
     ],
   },
@@ -103,10 +93,12 @@ export const SECTIONS: NoticeSection[] = [
       "Kişisel verileriniz, yukarıdaki amaçlarla sınırlı olarak şu alıcılara aktarılır:",
     ],
     items: [
-      "Kimlik doğrulama sunucusu: kaydınız ve oturum açmanız Medaris’in kimlik sunucusu üzerinden yürütülür; ad, soyad, e-posta adresi ve parolanız (şifrelenmiş olarak) orada tutulur.",
-      "Barındırma hizmeti: platform ve veritabanı, hizmet aldığımız barındırma sağlayıcısının sunucularında çalışır.",
-      "YouTube (Google): ders kayıtları YouTube’a liste dışı video olarak yüklenmeye başladığında, kayıtlar bu hizmet üzerinden sunulur.",
+      "Barındırma hizmeti: platform ve veritabanı, Türkiye’deki sunucularında barındırıldığımız Hosting Dünyam’da çalışır.",
+      "Kimlik doğrulama sunucusu: kaydınız ve oturum açmanız Medaris’in kendi kimlik sunucusu üzerinden yürütülür; ad, soyad, e-posta adresi ve parolanız (şifrelenmiş olarak) orada tutulur.",
+      "E-posta gönderimi: doğrulama, parola sıfırlama ve celse daveti e-postaları ile iletişim formu mesajları bir e-posta gönderim hizmeti üzerinden iletilir; bu e-postalarda adınız, e-posta adresiniz ve ilgili ders bilgisi yer alır.",
     ],
+    closing:
+      "Yurt dışındaki hizmetler: aşağıdaki hizmetler yurt dışında bulunur ve Medaris’i kullanırken tarayıcınız bunlara doğrudan bağlanır. Sayfaların yazı tipleri Google Fonts’tan (Google LLC, ABD) yüklenir; bu sırada IP adresiniz ve tarayıcı bilgileriniz Google’a ulaşır. Celse sayfasındaki canlı yayın, canlı sohbet ve YouTube ya da Google Drive’daki ders kayıtları açıldığında aynı bilgiler Google’a, Google hesabınızla oturum açıksanız Google çerezleriyle birlikte ulaşır. Bunny Stream’de (BunnyWay d.o.o., Slovenya) barındırılan bir ders kaydını açtığınızda IP adresiniz ve tarayıcı bilgileriniz Bunny’ye ulaşır. Celseye katılmak için açtığınız toplantı platformu (Google Meet, Zoom, Jitsi Meet gibi) kendi şartlarıyla çalışır; Medaris ona sizinle ilgili veri göndermez.",
   },
   {
     id: "yontem-ve-hukuki-sebep",
@@ -137,7 +129,7 @@ export const SECTIONS: NoticeSection[] = [
     id: "basvuru",
     heading: "7. Başvuru",
     paragraphs: [
-      `Haklarınıza ilişkin taleplerinizi, Veri Sorumlusuna Başvuru Usul ve Esasları Hakkında Tebliğ’e uygun olarak yazılı şekilde ${CONTROLLER.address} adresine, güvenli elektronik imzalı olarak ${CONTROLLER.kep} KEP adresine ya da Medaris’e kayıtlı e-posta adresinizden ${CONTROLLER.email} adresine iletebilirsiniz.`,
+      `Haklarınıza ilişkin taleplerinizi, Veri Sorumlusuna Başvuru Usul ve Esasları Hakkında Tebliğ’e uygun olarak Medaris’e kayıtlı e-posta adresinizden ${CONTROLLER.email} adresine iletebilirsiniz.`,
       "Başvurunuz, niteliğine göre en kısa sürede ve en geç otuz gün içinde ücretsiz olarak sonuçlandırılır.",
     ],
   },

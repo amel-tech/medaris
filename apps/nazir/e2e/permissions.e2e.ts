@@ -116,7 +116,8 @@ test("nazir/06 — 'İzin ver': a group and one extra permission are saved, and 
   const dialog = editor(page);
   await expect(dialog).toContainText(base?.madrasah.name ?? "");
   await expect(dialog).toContainText(extra?.abdullah.email ?? "");
-  await expect(dialog.getByRole("checkbox")).toHaveCount(32);
+  // the medrese's 11 and the 22 course permissions (`MADRASAH_COURSE_CATALOG`)
+  await expect(dialog.getByRole("checkbox")).toHaveCount(33);
   await expect(dialog).toContainText("Hiç izin seçilmedi");
 
   // the group's permissions come ticked and locked
@@ -131,7 +132,9 @@ test("nazir/06 — 'İzin ver': a group and one extra permission are saved, and 
   await expect(dialog).toContainText("Gruptan 2 izin ve 1 ek izin");
   await dialog.getByRole("button", { name: "Kaydet" }).click();
 
-  await expect(page.getByText("İzinler kaydedildi")).toBeVisible();
+  await expect(
+    page.getByText("İzinler kaydedildi").filter({ visible: true })
+  ).toBeVisible();
   await expect(dialog).toBeHidden();
   const abdullah = rowOf(page, extra?.abdullah.name ?? "");
   await expect(abdullah).toContainText(extra?.groups.kayit ?? "");
@@ -180,7 +183,9 @@ test("nazir/06 — 'İzinleri düzenle' opens with what the nazır holds and rep
 
   await dialog.getByLabel("Bitiş tarihi ve saati (isteğe bağlı)").fill("");
   await dialog.getByRole("button", { name: "Kaydet" }).click();
-  await expect(page.getByText("İzinler kaydedildi")).toBeVisible();
+  await expect(
+    page.getByText("İzinler kaydedildi").filter({ visible: true })
+  ).toBeVisible();
 
   const ummugulsum = rowOf(page, extra?.ummugulsum.name ?? "");
   await expect(ummugulsum).toContainText(extra?.groups.kayit ?? "");
@@ -212,7 +217,9 @@ test("nazir/06 — the end is a moment to come: one that is not after now is ref
     .getByLabel("Bitiş tarihi ve saati (isteğe bağlı)")
     .fill("2027-03-15T23:59");
   await dialog.getByRole("button", { name: "Kaydet" }).click();
-  await expect(page.getByText("İzinler kaydedildi")).toBeVisible();
+  await expect(
+    page.getByText("İzinler kaydedildi").filter({ visible: true })
+  ).toBeVisible();
   await expect(rowOf(page, extra?.abdullah.name ?? "")).toContainText(
     "15 Mart 2027"
   );
@@ -245,7 +252,9 @@ test("nazir/06 — course permissions can be limited to chosen courses; the row 
 
   await dialog.getByRole("checkbox", { name: base?.first.title ?? "" }).check();
   await dialog.getByRole("button", { name: "Kaydet" }).click();
-  await expect(page.getByText("İzinler kaydedildi")).toBeVisible();
+  await expect(
+    page.getByText("İzinler kaydedildi").filter({ visible: true })
+  ).toBeVisible();
 
   await expect(rowOf(page, extra?.abdullah.name ?? "")).toContainText(
     `Ders izinleri yalnız şu derslerde: ${base?.first.title}`

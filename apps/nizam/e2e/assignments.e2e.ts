@@ -17,6 +17,11 @@ const KOSK_NAZIM = account("KOSK_NAZIM");
 const MEDARIS_NAZIM = account("MEDARIS_NAZIM");
 
 const seedable = Boolean(MUDERRIS.sub && MEDARIS_NAZIM.sub);
+
+// `/tr` sends a köşk nazımı on to the home page of the first köşk they manage
+// (MDRS-182), so "home" for them is that page.
+const KOSK_HOME = /\/tr\/kosks\/[0-9a-f-]{36}\/ana-sayfa$/;
+const HOME = /\/tr(\/kosks\/[0-9a-f-]{36}\/ana-sayfa)?$/;
 let fixture: NizamFixture;
 
 test.beforeAll(async () => {
@@ -56,8 +61,8 @@ test("a müderris who is not a nazım lands on 'Bu işler Nazır'da' with the sa
       name: "Medrese ve ders işleriniz Nazır’da",
     })
   ).toBeVisible();
-  const rows = page.getByTestId("task-row");
-  await expect(rows).toHaveCount(3);
+  const rows = page.getByTestId("task-row").filter({ visible: true });
+  await expect(rows).toHaveCount(3 + fixture.standing);
 
   const published = rows.filter({ hasText: fixture.published.title });
   await expect(published).toContainText(
@@ -91,9 +96,9 @@ test("a köşk nazım is not sent to Nazır", async ({ page }) => {
   try {
     await signIn(page, KOSK_NAZIM);
     await page.goto("/tr");
-    await expect(page).toHaveURL(/\/tr$/);
+    await expect(page).toHaveURL(KOSK_HOME);
     await page.goto("/tr/nazir-yonlendirme");
-    await expect(page).toHaveURL(/\/tr$/);
+    await expect(page).toHaveURL(KOSK_HOME);
   } finally {
     await managed.remove();
   }
@@ -121,7 +126,7 @@ test("a route the account has no page for shows 'Bu bölüm için izniniz yok' i
     // the shell around it is still there
     await expect(page.locator("aside").first()).toBeVisible();
     await page.getByRole("link", { name: "Ana sayfaya dön" }).click();
-    await expect(page).toHaveURL(/\/tr$/);
+    await expect(page).toHaveURL(HOME);
   } finally {
     await managed.remove();
   }
@@ -170,7 +175,7 @@ test("a path no page answers, under the köşk the nazım manages, is 'Sayfa bul
         .getByRole("link", { name: /^Celseler/ })
     ).toHaveCount(0);
     await page.getByRole("link", { name: "Ana sayfaya dön" }).click();
-    await expect(page).toHaveURL(/\/tr$/);
+    await expect(page).toHaveURL(HOME);
   } finally {
     await managed.remove();
   }

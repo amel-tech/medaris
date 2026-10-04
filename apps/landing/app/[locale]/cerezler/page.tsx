@@ -3,7 +3,7 @@
 import { setRequestLocale } from "next-intl/server";
 import { SiteFooter } from "~/components/site-footer";
 import { SiteHeader } from "~/components/site-header";
-import { legal } from "~/content/legal";
+import { cookieGroups } from "~/content/cerezler";
 
 export const metadata = { title: "Çerezler · Medaris" };
 
@@ -25,11 +25,12 @@ export default async function Page({
             <h1 className="mds-h1">Çerezler</h1>
             <p className="mds-body">
               Çerez, bir siteyi açtığınızda tarayıcınıza yerleştirilen küçük bir
-              metin dosyasıdır. Medaris yalnızca siteyi çalıştırmak ve güvenliği
-              sağlamak için gereken çerezleri kullanır.
+              metin dosyasıdır. Medaris, giriş ve güvenlik için gereken
+              çerezleri ve sayfaları sizin için doğru göstermeye yarayan birkaç
+              tercih çerezini kullanır.
             </p>
             <p className="mds-caption">
-              Son güncelleme: <time dateTime="2026-10-01">1 Ekim 2026</time>
+              Son güncelleme: <time dateTime="2026-10-04">4 Ekim 2026</time>
             </p>
           </div>
         </div>
@@ -41,107 +42,79 @@ export default async function Page({
           >
             <span className="mds-alert__icon" aria-hidden="true"></span>
             <div>
-              Analitik ya da reklam çerezi kullanılmaz; bu yüzden Medaris’te
-              çerez onay bildirimi gösterilmez.
+              Analitik, ölçüm ya da reklam çerezi kullanılmaz; ziyaretiniz başka
+              bir siteye ya da reklam ağına bildirilmez.
             </div>
           </div>
 
-          <section
-            className="flex min-inline-0 flex-col gap-3"
-            aria-labelledby="c1"
-          >
-            <h2 className="mds-h3" id="c1">
-              Kullanılan çerezler
-            </h2>
-            <p className="mds-body max-inline-measure">
-              Medaris’in yerleştirdiği çerezlerin hepsi zorunludur.
-            </p>
-            <div className="mds-table-wrap">
-              <table
-                className="mds-table mds-table--stack"
-                role="table"
-                aria-labelledby="cerez-tablo"
-              >
-                <caption
-                  className="mds-table__caption mds-visually-hidden"
-                  id="cerez-tablo"
+          {cookieGroups.map((group) => (
+            <section
+              key={group.id}
+              className="flex min-inline-0 flex-col gap-3"
+              aria-labelledby={`c-${group.id}`}
+            >
+              <h2 className="mds-h3" id={`c-${group.id}`}>
+                {group.title}
+              </h2>
+              <p className="mds-body max-inline-measure">{group.intro}</p>
+              <div className="mds-table-wrap">
+                <table
+                  className="mds-table mds-table--stack"
+                  role="table"
+                  aria-labelledby={`c-${group.id}`}
                 >
-                  Medaris’in kullandığı çerezler
-                </caption>
-                <colgroup>
-                  <col className="[--mds-col-w:14%]" />
-                  <col />
-                  <col className="[--mds-col-w:18%]" />
-                  <col className="[--mds-col-w:20%]" />
-                  <col className="[--mds-col-w:10%]" />
-                </colgroup>
-                <thead role="rowgroup">
-                  <tr role="row">
-                    <th scope="col" role="columnheader">
-                      Çerez
-                    </th>
-                    <th scope="col" role="columnheader">
-                      Ne için kullanılır
-                    </th>
-                    <th scope="col" role="columnheader">
-                      Kim yerleştirir
-                    </th>
-                    <th scope="col" role="columnheader">
-                      Süre
-                    </th>
-                    <th scope="col" role="columnheader">
-                      Tür
-                    </th>
-                  </tr>
-                </thead>
-                <tbody role="rowgroup">
-                  <tr role="row">
-                    <th scope="row" role="rowheader">
-                      Giriş çerezi
-                    </th>
-                    <td role="cell" data-label="Ne için kullanılır">
-                      Giriş yaptığınızı hatırlar; hesabınıza ait sayfaların ve
-                      ders içeriklerinin açılmasını sağlar.
-                    </td>
-                    <td role="cell" data-label="Kim yerleştirir">
-                      Medaris kimlik sunucusu ve uygulamalar
-                    </td>
-                    <td role="cell" data-label="Süre">
-                      {legal.sessionCookieLifetime}
-                    </td>
-                    <td role="cell" data-label="Tür">
-                      Zorunlu
-                    </td>
-                  </tr>
-                  <tr role="row">
-                    <th scope="row" role="rowheader">
-                      Cihaz çerezi
-                    </th>
-                    <td role="cell" data-label="Ne için kullanılır">
-                      Her ziyaretçiye rastgele üretilmiş bir cihaz tanımlayıcısı
-                      verir. Erişimi kaldırılan bir kişinin aynı cihazdan başka
-                      bir hesapla dönmesini önlemek için kullanılır; tarayıcı
-                      parmak izi alınmaz.
-                    </td>
-                    <td role="cell" data-label="Kim yerleştirir">
-                      Medaris
-                    </td>
-                    <td role="cell" data-label="Süre">
-                      {legal.deviceCookieLifetime}
-                    </td>
-                    <td role="cell" data-label="Tür">
-                      Zorunlu
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            <p className="mds-caption">
-              Çerez adları ve süreleri kesinleştiğinde bu tablo
-              güncellenecektir.
-            </p>
-          </section>
-
+                  <colgroup>
+                    <col className="[--mds-col-w:24%]" />
+                    <col />
+                    <col className="[--mds-col-w:16%]" />
+                    <col className="[--mds-col-w:20%]" />
+                  </colgroup>
+                  <thead role="rowgroup">
+                    <tr role="row">
+                      <th scope="col" role="columnheader">
+                        Ad
+                      </th>
+                      <th scope="col" role="columnheader">
+                        Ne için kullanılır
+                      </th>
+                      <th scope="col" role="columnheader">
+                        Kim yerleştirir
+                      </th>
+                      <th scope="col" role="columnheader">
+                        Süre
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody role="rowgroup">
+                    {group.rows.map((row) => (
+                      <tr key={row.names} role="row">
+                        <th scope="row" role="rowheader">
+                          <code className="mds-mono break-words">
+                            {row.names}
+                          </code>
+                        </th>
+                        <td role="cell" data-label="Ne için kullanılır">
+                          {row.purpose}
+                        </td>
+                        <td role="cell" data-label="Kim yerleştirir">
+                          {row.setBy}
+                        </td>
+                        <td role="cell" data-label="Süre">
+                          {row.lifetime}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          ))}
+          <p className="mds-caption max-inline-measure">
+            Güvenli bağlantıda giriş çerezlerinin adı{" "}
+            <code className="mds-mono">__Secure-</code> ya da{" "}
+            <code className="mds-mono">__Host-</code> ile başlar; bu ek,
+            tarayıcının çerezi yalnız şifreli bağlantıda göndermesini sağlar.
+          </p>
           <section className="mds-reading" aria-labelledby="c2">
             <h2 className="mds-h3" id="c2">
               Çerezleri yönetme
@@ -158,10 +131,13 @@ export default async function Page({
               Medaris dışındaki hizmetler
             </h2>
             <p>
-              Celse sayfasına gömülen canlı yayın ve ders kayıtları, yayını ya
-              da kaydı barındıran hizmetin sunucusundan yüklenir. Celseye
+              Celse sayfasındaki canlı yayın YouTube’un çerezsiz oynatıcısıyla
+              (youtube-nocookie.com) açılır; yayının altındaki canlı sohbet ise
+              youtube.com’dan yüklenir ve YouTube’un çerezlerini kullanır.
+              Google Drive’daki ders kayıtları Google’ın oynatıcısıyla,
+              Bunny’deki kayıtlar Bunny’nin oynatıcı sayfasında açılır. Celseye
               katılmak için kullanılan toplantı platformları (örneğin Google
-              Meet, Zoom ya da Jitsi Meet) de Medaris’ten ayrı hizmetlerdir. Bu
+              Meet, Zoom ya da Jitsi Meet) da Medaris’ten ayrı hizmetlerdir. Bu
               hizmetler kendi çerezlerini yerleştirebilir; onlar için ilgili
               hizmetin kendi metinleri geçerlidir.
             </p>
@@ -172,12 +148,11 @@ export default async function Page({
               Daha fazla bilgi
             </h2>
             <p>
-              Cihaz tanımlayıcısının amacı, saklama süresi ve hukuki dayanağı{" "}
+              Kişisel verilerinizin nasıl işlendiği{" "}
               <a href="/aydinlatma-metni">Aydınlatma Metni</a>’nde, erişimin
-              kaldırılması ve cihaz kısıtlaması{" "}
-              <a href="/kullanim-sartlari">Kullanım şartları</a>’nda yazılıdır.
-              Sorularınız için <a href="/iletisim">İletişim</a> sayfasından
-              yazabilirsiniz.
+              kaldırılması <a href="/kullanim-sartlari">Kullanım şartları</a>
+              ’nda yazılıdır. Sorularınız için <a href="/iletisim">İletişim</a>{" "}
+              sayfasından yazabilirsiniz.
             </p>
           </section>
         </div>

@@ -1,4 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
+import { holdMedarisNazim } from "./medaris-nazim";
 import { type ShellFixture, seedShell } from "./shell-seed";
 
 /**
@@ -67,17 +68,19 @@ test("nizam/03 — an account with no role lands on 'Yönetim yetkiniz yok': no 
   await expect(page).toHaveTitle(/Yönetim yetkiniz yok/);
   await expect(heading).toBeFocused();
   await expect(
-    page.getByText(
-      "Nizam, Medaris’i ve köşkleri yönetenlerin uygulamasıdır. Bu hesaba bir yönetim görevi verilmemiş."
-    )
+    page
+      .getByText(
+        "Nizam, Medaris’i ve köşkleri yönetenlerin uygulamasıdır. Bu hesaba bir yönetim görevi verilmemiş."
+      )
+      .filter({ visible: true })
   ).toBeVisible();
   // the sidebar carries the brand and the person only
   await expect(page.locator("aside nav")).toHaveCount(0);
   await expect(page.locator("aside .mds-nav-user")).toContainText("Talebe");
   // the shown address is the session's
-  await expect(page.getByText("Giriş yaptığınız hesap:")).toContainText(
-    TALEBE.email as string
-  );
+  await expect(
+    page.getByText("Giriş yaptığınız hesap:").filter({ visible: true })
+  ).toContainText(TALEBE.email as string);
 
   // 'Tedris'e dön' goes to Tedris's root
   await page.route("http://localhost:4000/**", (route) =>
@@ -109,7 +112,9 @@ test("nizam/36 + medaris/16 — the person row leads to Hesap, whose 'Çıkış 
     page.getByRole("heading", { level: 1, name: "Çıkış yapılsın mı?" })
   ).toBeVisible();
   await expect(
-    page.getByText("Bu tarayıcıda Medaris’ten çıkarsın.")
+    page
+      .getByText("Bu tarayıcıda Medaris’ten çıkarsın.")
+      .filter({ visible: true })
   ).toBeVisible();
 
   await page.getByRole("button", { name: "Vazgeç" }).click();
@@ -138,7 +143,9 @@ test("nizam/31 [seed] — Başvurular lists the köşk's waiting applications, f
   ).toBeVisible();
   const rows = page.locator("tbody tr");
   await expect(rows).toHaveCount(5);
-  const count = page.getByTestId("applications-count");
+  const count = page
+    .getByTestId("applications-count")
+    .filter({ visible: true });
   await expect(count).toHaveText("5 başvuru bekliyor");
   // newest first: the first applicant waited ten minutes
   await expect(rows.first()).toContainText(fixture.applicants[0]?.name ?? "");
@@ -199,10 +206,12 @@ test("nizam/31 [seed] — Onayla enrolls the talebe, Reddet deletes the applicat
     })
     .click();
   await expect(rows).toHaveCount(4);
-  await expect(page.getByText("Başvuru onaylandı")).toBeVisible();
-  await expect(page.getByTestId("applications-count")).toHaveText(
-    "4 başvuru bekliyor"
-  );
+  await expect(
+    page.getByText("Başvuru onaylandı").filter({ visible: true })
+  ).toBeVisible();
+  await expect(
+    page.getByTestId("applications-count").filter({ visible: true })
+  ).toHaveText("4 başvuru bekliyor");
   expect(await fixture.status(approved.id, approved.courseId)).toBe("ENROLLED");
   // the sidebar badge follows without a reload
   await expect(
@@ -215,7 +224,9 @@ test("nizam/31 [seed] — Onayla enrolls the talebe, Reddet deletes the applicat
     })
     .click();
   await expect(rows).toHaveCount(3);
-  await expect(page.getByText("Başvuru reddedildi")).toBeVisible();
+  await expect(
+    page.getByText("Başvuru reddedildi").filter({ visible: true })
+  ).toBeVisible();
   expect(await fixture.status(rejected.id, rejected.courseId)).toBeNull();
 });
 
@@ -254,7 +265,10 @@ test("nizam/57 [seed] — a course's Talebeler opens on Başvurular; Onayla move
   // only this course's applications: the other course's are not here
   const rows = page.locator("tbody tr");
   await expect(rows).toHaveCount(waiting.length);
-  for (const a of waiting) await expect(page.getByText(a.email)).toBeVisible();
+  for (const a of waiting)
+    await expect(
+      page.getByText(a.email).filter({ visible: true })
+    ).toBeVisible();
   const other = fixture.applicants.find((a) => a.courseId !== course?.id);
   await expect(page.getByText(other?.email ?? "x")).toHaveCount(0);
   // the sidebar draws Dersler selected: the köşk-wide Talebeler is not built (MDRS-211)
@@ -372,24 +386,40 @@ test.describe("the phone menus (390 x 844)", () => {
   test("nizam/51 — Medaris nazımı: the same menu without the başnazım's", async ({
     page,
   }) => {
-    test.skip(!MEDARIS_NAZIM.password, "no Medaris nazımı account");
-    await signIn(page, MEDARIS_NAZIM);
-    await page.goto("/tr");
-    await page.getByRole("button", { name: "Menü" }).click();
-    expect(await navTexts(sheet(page).locator("nav"))).toEqual([
-      "GENEL",
-      "Ana sayfa",
-      "Bildirimler",
-      "PLATFORM",
-      "Medreseler",
-      "Köşkler",
-      "TALEPLER",
-      "Köşk başvuruları",
-      "Deste yayın istekleri",
-      "Kalıcı yasak talepleri",
-      "DENETİM",
-      "Yasaklamalar",
+    test.skip(
+      !(MEDARIS_NAZIM.password && MEDARIS_NAZIM.sub),
+      "no Medaris nazımı account"
+    );
+    // The menu is cut to what the nazım's permissions open (nizam/05), and a
+    // Medaris nazımı holds none by default: one permission behind each entry.
+    const nazim = await holdMedarisNazim(MEDARIS_NAZIM.sub as string, [
+      { code: "platform.madrasah_edit" },
+      { code: "platform.kosk_edit" },
+      { code: "platform.kosk_application_decide" },
+      { code: "platform.deck_publish" },
+      { code: "platform.ban_account" },
     ]);
-    await expect(sheet(page)).toContainText("Medaris nazımı");
+    try {
+      await signIn(page, MEDARIS_NAZIM);
+      await page.goto("/tr");
+      await page.getByRole("button", { name: "Menü" }).click();
+      expect(await navTexts(sheet(page).locator("nav"))).toEqual([
+        "GENEL",
+        "Ana sayfa",
+        "Bildirimler",
+        "PLATFORM",
+        "Medreseler",
+        "Köşkler",
+        "TALEPLER",
+        "Köşk başvuruları",
+        "Deste yayın istekleri",
+        "Kalıcı yasak talepleri",
+        "DENETİM",
+        "Yasaklamalar",
+      ]);
+      await expect(sheet(page)).toContainText("Medaris nazımı");
+    } finally {
+      await nazim.release();
+    }
   });
 });

@@ -330,6 +330,20 @@
       "when": 1791058868902,
       "tag": "0048_mdrs_135_archived_level",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1791110000000,
+      "tag": "0051_lesson_notes",
+      "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1791110060000,
+      "tag": "0052_lesson_questions",
+      "breakpoints": true
     }
   ]
 }

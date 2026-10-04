@@ -63,6 +63,8 @@ export const PERMISSIONS = {
   RECORDING_UPLOAD: "recording.upload",
   RECORDING_WATCH_RESTRICTED: "recording.watch_restricted",
   SESSION_VIEW_CONTENT: "session.view_content",
+  /** Read the talebe's questions on the course's sessions and answer them (MDRS-150). */
+  QUESTION_ANSWER: "question.answer",
   BAN_COURSE: "ban.course",
   BAN_LIFT_COURSE: "ban.lift_course",
   DECK_MANAGE_COURSE: "deck.manage_course",
@@ -224,6 +226,7 @@ export const PERMISSION_META: Record<PermissionCode, IPermissionMeta> = {
   [P.RECORDING_UPLOAD]: listed([COURSE], { content: true }),
   [P.RECORDING_WATCH_RESTRICTED]: listed([COURSE], { content: true }),
   [P.SESSION_VIEW_CONTENT]: listed([COURSE], { content: true }),
+  [P.QUESTION_ANSWER]: listed([COURSE], { content: true }),
   [P.BAN_COURSE]: listed([COURSE]),
   [P.BAN_LIFT_COURSE]: listed([COURSE]),
   [P.DECK_MANAGE_COURSE]: listed([COURSE]),

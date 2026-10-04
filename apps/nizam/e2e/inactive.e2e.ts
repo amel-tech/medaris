@@ -175,7 +175,9 @@ test("nizam/14 — a köşk nazımı gets the 'izniniz yok' screen, not the list
   );
   await signIn(page, KOSK_NAZIM);
   await page.goto("/tr/pasif-kapsamlar");
-  await expect(page.getByText("Bu bölüm için izniniz yok")).toBeVisible();
+  await expect(
+    page.getByText("Bu bölüm için izniniz yok").filter({ visible: true })
+  ).toBeVisible();
   await expect(page.getByTestId("inactive")).toHaveCount(0);
 });
 
@@ -189,7 +191,9 @@ test("nizam/14 — a Medaris nazımı without 'Pasif kapsamları yönet' gets th
   await fixture.makeMedarisNazim(MEDARIS_NAZIM.sub as string, false);
   await signIn(page, MEDARIS_NAZIM);
   await page.goto("/tr/pasif-kapsamlar");
-  await expect(page.getByText("Bu bölüm için izniniz yok")).toBeVisible();
+  await expect(
+    page.getByText("Bu bölüm için izniniz yok").filter({ visible: true })
+  ).toBeVisible();
 
   await fixture.remove();
   fixture = await seedInactive();
@@ -369,9 +373,10 @@ test("nizam/14 — 'İçeriği gör' opens the scope and writes one audit row ev
   await rowOf(page, fixture.course.title)
     .getByRole("button", { name: /İçeriği gör/ })
     .click();
+  // the table links to the old /edit route, which sends on to the curriculum
   await expect(page).toHaveURL(
     new RegExp(
-      `/tr/kosks/${fixture.activeKosk.id}/courses/${fixture.course.id}/edit$`
+      `/tr/kosks/${fixture.activeKosk.id}/courses/${fixture.course.id}/curriculum$`
     )
   );
   expect(await fixture.audits("inactive_scope.view", fixture.course.id)).toBe(

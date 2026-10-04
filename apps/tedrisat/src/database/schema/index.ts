@@ -11,6 +11,8 @@ export * from "./flashcard-enums.schema";
 export * from "./flashcard-label.schema";
 export * from "./kosk.schema";
 export * from "./kosk-application.schema";
+export * from "./lesson-note.schema";
+export * from "./lesson-question.schema";
 export * from "./madrasah.schema";
 export * from "./notification.schema";
 export * from "./offsite-course-request.schema";

@@ -7,10 +7,10 @@ import { type ArchiveFixture, seedArchive } from "./archive-seed";
  * spec whose account is not in the environment (E2E_<ROLE>_EMAIL, _PASSWORD,
  * _SUB) is skipped.
  *
- * The platform archive and its permanent delete need the SYSTEM_ADMIN realm
- * role, which the shared realm does not have yet: those specs run only with
- * E2E_SYSTEM_ADMIN_HAS_ROLE=1. The same rules are covered against a real
- * Postgres with a minted SYSTEM_ADMIN token in tedrisat's
+ * The platform archive and its permanent delete need an account that holds the
+ * SYSTEM_ADMIN realm role, which the dev realm's SISTEM_ADMIN account does (the
+ * home page of the other specs depends on it too). The same rules are covered
+ * against a real Postgres with a minted SYSTEM_ADMIN token in tedrisat's
  * `archive.e2e.spec.ts`.
  */
 const account = (role: string) => ({
@@ -20,7 +20,6 @@ const account = (role: string) => ({
 });
 const KOSK_NAZIM = account("KOSK_NAZIM");
 const SYSTEM_ADMIN = account("SYSTEM_ADMIN");
-const systemAdminReady = process.env.E2E_SYSTEM_ADMIN_HAS_ROLE === "1";
 
 const seedable = Boolean(KOSK_NAZIM.sub && KOSK_NAZIM.email);
 let fixture: ArchiveFixture;
@@ -90,7 +89,9 @@ test("nizam/28 — the type filter narrows the list and the count follows", asyn
   await expect(rows(page).first()).toContainText(fixture.course.title);
 
   await page.getByRole("searchbox", { name: "Gizlenenlerde ara" }).fill("zzz");
-  await expect(page.getByText("Bu süzgece uyan gizli öğe yok")).toBeVisible();
+  await expect(
+    page.getByText("Bu süzgece uyan gizli öğe yok").filter({ visible: true })
+  ).toBeVisible();
 });
 
 test("nizam/28 — 'Geri al' brings the course back and takes the row out of the list", async ({
@@ -107,12 +108,16 @@ test("nizam/28 — 'Geri al' brings the course back and takes the row out of the
     .click();
   await expect(rows(page)).toHaveCount(2);
   await expect(count(page)).toHaveText("2 gizli öğe");
-  await expect(page.getByText("Geri alındı")).toBeVisible();
+  await expect(
+    page.getByText("Geri alındı").filter({ visible: true })
+  ).toBeVisible();
   expect(await fixture.isShown("courses", fixture.course.id)).toBe(true);
 
   // it is back where it was: on the köşk's page
   await page.goto(`/tr/kosks/${fixture.koskId}`);
-  await expect(page.getByText(fixture.course.title)).toBeVisible();
+  await expect(
+    page.getByText(fixture.course.title).filter({ visible: true })
+  ).toBeVisible();
 });
 
 test("nizam/28 — a session and a week come back too", async ({ page }) => {
@@ -165,8 +170,8 @@ test("nizam/28 and 29 — a köşk nazım is refused the platform archive and an
 
 test.describe("nizam/29 — the platform archive (needs the SYSTEM_ADMIN realm role)", () => {
   test.skip(
-    !(systemAdminReady && SYSTEM_ADMIN.password && seedable),
-    "SYSTEM_ADMIN realm role is not in the shared Keycloak"
+    !(SYSTEM_ADMIN.password && seedable),
+    "no SYSTEM_ADMIN account in the environment"
   );
 
   test("lists every köşk's hidden items, 10 at a time, and filters by scope", async ({

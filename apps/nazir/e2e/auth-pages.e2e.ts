@@ -33,7 +33,9 @@ test("the error page says what happened, in Turkish and in the unified system", 
     name: "Giriş yapılamadı",
   });
   await expect(heading).toBeVisible();
-  await expect(page.getByText("Bu hesabın giriş izni yok.")).toBeVisible();
+  await expect(
+    page.getByText("Bu hesabın giriş izni yok.").filter({ visible: true })
+  ).toBeVisible();
   await expect(page.getByRole("button", { name: "Tekrar dene" })).toBeVisible();
   await expect(
     page.getByRole("link", { name: "Ana sayfaya dön" })

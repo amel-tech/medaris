@@ -1011,6 +1011,47 @@ describe("effective permissions: who holds a course code by default (MDRS-228)",
     expect(codes.has(P.PLATFORM_AUDIT_READ)).toBe(false);
   });
 
+  it("gives question.answer to the müderris and the köşk nazımı, and to a ders nazırı only through a grant (MDRS-150)", () => {
+    for (const held_ of [
+      role(ASSIGNED_ROLES.MUDERRIS, course()),
+      role(ASSIGNED_ROLES.KOSK_NAZIM, kosk()),
+    ]) {
+      expect(held(courseFacts(), [held_]).has(P.QUESTION_ANSWER)).toBe(true);
+    }
+    expect(held(courseFacts()).has(P.QUESTION_ANSWER)).toBe(false);
+    const nazir = role(ASSIGNED_ROLES.DERS_NAZIR, course());
+    expect(held(courseFacts(), [nazir]).has(P.QUESTION_ANSWER)).toBe(false);
+    expect(
+      held(courseFacts(), [nazir], [grant(course(), [P.QUESTION_ANSWER])]).has(
+        P.QUESTION_ANSWER
+      )
+    ).toBe(true);
+  });
+
+  it("does not open the course's content to someone who holds question.answer alone", () => {
+    const codes = held(
+      courseFacts(),
+      [role(ASSIGNED_ROLES.DERS_NAZIR, course())],
+      [grant(course(), [P.QUESTION_ANSWER])]
+    );
+    expect(codes.has(P.QUESTION_ANSWER)).toBe(true);
+    expect(codes.has(P.COURSE_VIEW_DETAILS)).toBe(false);
+  });
+
+  it("closes question.answer in a passive scope, except to the köşk nazımı of the köşk (MDRS-150)", () => {
+    const passive = courseFacts({ passiveScope: course() });
+    expect(
+      held(passive, [role(ASSIGNED_ROLES.MUDERRIS, course())]).has(
+        P.QUESTION_ANSWER
+      )
+    ).toBe(false);
+    expect(
+      held(passive, [role(ASSIGNED_ROLES.KOSK_NAZIM, kosk())]).has(
+        P.QUESTION_ANSWER
+      )
+    ).toBe(true);
+  });
+
   it("gives permission_group.define to the müderris", () => {
     expect(
       held(courseFacts(), [role(ASSIGNED_ROLES.MUDERRIS, course())]).has(

@@ -1,5 +1,6 @@
 import { AppShell, Sidebar } from "@medaris/ui/mds/app-shell";
 import { Logo } from "@medaris/ui/mds/logo";
+import { ThemeToggle } from "@medaris/ui/mds/theme-toggle";
 import type { ReactNode } from "react";
 import { getMessages } from "~/lib/i18n/messages";
 import { labelNav, type MenuCounts, navFor } from "../nav";
@@ -83,6 +84,7 @@ export async function PortalFrame({
       sidebar={
         <Sidebar
           brand={<Logo app="nazir" wordmark />}
+          tools={<ThemeToggle />}
           scope={picker}
           footer={footer}
           navLabel={shell("navLabel")}
