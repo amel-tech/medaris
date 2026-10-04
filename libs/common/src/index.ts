@@ -78,6 +78,7 @@ export {
   relationCodes,
   roleCodesAt,
   roleCoversScope,
+  rolesConferring,
   SCOPE_TYPES,
   SelfGrantGuard,
   SelfGrantRefusedError,

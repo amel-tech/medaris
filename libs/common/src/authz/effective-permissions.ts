@@ -353,3 +353,30 @@ export function effectivePermissions(
     grantHoldings: holdings,
   };
 }
+
+/**
+ * The roles that confer a permission, not only whether it is held (MDRS-205).
+ *
+ * Each role the caller holds is taken alone, with the grants that sit under it,
+ * and kept when that alone holds one of `wanted` on the resource. A caller who
+ * is a medrese nazırı (no defaults) and also a müderris of one of its courses
+ * holds `ban.course` there through the müderris role, and only that role confers
+ * it: the nazırı does not. A kademe that orders people by the role they hold
+ * (the ban ladder: who may lift whose ban) needs exactly this, so that a role
+ * with no power of its own never raises the standing of one that has.
+ */
+export function rolesConferring(
+  facts: IAuthzFacts,
+  roles: readonly IHeldRole[],
+  grants: readonly IHeldGrantCodes[],
+  wanted: readonly PermissionCode[],
+  now: Date = new Date()
+): AssignedRole[] {
+  const conferring = new Set<AssignedRole>();
+  for (const held of roles) {
+    if (conferring.has(held.role)) continue;
+    const { codes } = effectivePermissions(facts, [held], grants, now);
+    if (wanted.some((code) => codes.has(code))) conferring.add(held.role);
+  }
+  return [...conferring];
+}

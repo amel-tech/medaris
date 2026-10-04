@@ -225,6 +225,36 @@ describe("TedrisatAuthzContext", () => {
     }
   });
 
+  it("reads everything a caller holds in two statements, with no scope filter, for a list of places (MDRS-205)", async () => {
+    const { loader, queries } = build({
+      roles: [
+        ["MUDERRIS", "course", COURSE],
+        ["MEDARIS_NAZIM", "platform", null],
+      ],
+      grants: [["g1", "platform", null, "platform.ban_scoped", null, null]],
+    });
+    const held = await loader.holdings(USER);
+    expect(queries.map((q) => which(q.text)).sort()).toEqual(
+      ["grants", "roles"].sort()
+    );
+    expect(held.roles).toEqual([
+      { role: "MUDERRIS", scope: { type: "course", id: COURSE } },
+      { role: "MEDARIS_NAZIM", scope: { type: "platform", id: null } },
+    ]);
+    expect(held.grants).toEqual([
+      {
+        scope: { type: "platform", id: null },
+        authority: null,
+        codes: ["platform.ban_scoped"],
+      },
+    ]);
+    // Still decided against the database clock, but cut by no scope.
+    for (const query of queries) {
+      expect(query.text).toContain('"revoked_at" is null');
+      expect(query.text).not.toContain('"scope_id" in');
+    }
+  });
+
   it("asks for the caller's roles in terms the partial indexes on user_id serve, with or without a chain", async () => {
     // `role_assignments_held_platform_idx` is `where scope_id is null` and
     // `role_assignments_held_scoped_idx` is `where scope_id is not null`: a

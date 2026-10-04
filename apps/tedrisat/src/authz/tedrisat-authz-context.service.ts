@@ -116,6 +116,23 @@ export class TedrisatAuthzContext implements AuthzContextLoader {
     };
   }
 
+  /**
+   * Everything the caller holds, on no resource in particular: two queries,
+   * for a decision about many places at once (a list of bans, each in its own
+   * course). The caller cuts it down to each place's chain itself, as
+   * `effectivePermissions` does; this is the same two reads `load` makes, with
+   * the scope filter left off.
+   */
+  async holdings(
+    userId: string
+  ): Promise<{ roles: IHeldRole[]; grants: IHeldGrantCodes[] }> {
+    const [roles, grants] = await Promise.all([
+      this.heldRoles(userId, null),
+      this.heldGrants(userId, null),
+    ]);
+    return { roles, grants };
+  }
+
   async findDeck(id: string): Promise<IDeckVisibility | null> {
     const [row] = await this.db
       .select({ isPublic: decks.isPublic, authorId: decks.authorId })
@@ -250,9 +267,10 @@ export class TedrisatAuthzContext implements AuthzContextLoader {
     return hosts.every(passive) ? hosts[0] : null;
   }
 
+  /** `scopeIds` null: every role the caller holds, wherever it is held. */
   private async heldRoles(
     userId: string,
-    scopeIds: string[]
+    scopeIds: string[] | null
   ): Promise<IHeldRole[]> {
     const rows = await this.db
       .select({
@@ -266,17 +284,19 @@ export class TedrisatAuthzContext implements AuthzContextLoader {
         and(
           eq(roleAssignments.userId, userId),
           isHeld(),
-          // The platform's roles as `scope_id is null`, which the CHECK
-          // `role_assignments_scope_id_present` makes the same rows as
-          // `scope_type = 'platform'`: the planner can then serve both arms
-          // from the two partial indexes on `user_id` (a BitmapOr) instead of
-          // reading every row ever assigned.
-          or(
-            isNull(roleAssignments.scopeId),
-            scopeIds.length > 0
-              ? inArray(roleAssignments.scopeId, scopeIds)
-              : undefined
-          )
+          scopeIds === null
+            ? undefined
+            : // The platform's roles as `scope_id is null`, which the CHECK
+              // `role_assignments_scope_id_present` makes the same rows as
+              // `scope_type = 'platform'`: the planner can then serve both arms
+              // from the two partial indexes on `user_id` (a BitmapOr) instead
+              // of reading every row ever assigned.
+              or(
+                isNull(roleAssignments.scopeId),
+                scopeIds.length > 0
+                  ? inArray(roleAssignments.scopeId, scopeIds)
+                  : undefined
+              )
         )
       );
     return rows.map((row) => ({
@@ -286,9 +306,10 @@ export class TedrisatAuthzContext implements AuthzContextLoader {
     }));
   }
 
+  /** `scopeIds` null: every grant the caller holds, wherever it is held. */
   private async heldGrants(
     userId: string,
-    scopeIds: string[]
+    scopeIds: string[] | null
   ): Promise<IHeldGrantCodes[]> {
     const rows = await this.db
       .select({
@@ -317,17 +338,19 @@ export class TedrisatAuthzContext implements AuthzContextLoader {
             isNull(permissionGrants.groupId),
             isNull(permissionGroups.deletedAt)
           ),
-          or(
-            eq(permissionGrants.scopeType, SCOPE_TYPES.PLATFORM),
-            // "Every course": a course grant without an id.
-            and(
-              eq(permissionGrants.scopeType, SCOPE_TYPES.COURSE),
-              isNull(permissionGrants.scopeId)
-            ),
-            scopeIds.length > 0
-              ? inArray(permissionGrants.scopeId, scopeIds)
-              : undefined
-          )
+          scopeIds === null
+            ? undefined
+            : or(
+                eq(permissionGrants.scopeType, SCOPE_TYPES.PLATFORM),
+                // "Every course": a course grant without an id.
+                and(
+                  eq(permissionGrants.scopeType, SCOPE_TYPES.COURSE),
+                  isNull(permissionGrants.scopeId)
+                ),
+                scopeIds.length > 0
+                  ? inArray(permissionGrants.scopeId, scopeIds)
+                  : undefined
+              )
         )
       );
     const byGrant = new Map<
