@@ -2,7 +2,7 @@ import type {
   CreateMadrasahPermissionGroupDto,
   MadrasahPermissionGroupResponse,
 } from "@medaris/services/tedrisat";
-import { fromZonedDatetimeLocal, toZonedDatetimeLocal } from "@medaris/utils";
+import { isoToZonedLocal, resolveEnd } from "@medaris/utils";
 import type { Messages } from "~/lib/i18n/messages";
 import { permissionLabel } from "./nazirs";
 
@@ -67,8 +67,8 @@ export interface EditorDraft {
   /** "Bütün medrese dersleri" (and the ones opened later) */
   everyCourse: boolean;
   courseIds: readonly string[];
-  /** YYYY-MM-DD on the viewer's calendar; "" for no end */
-  expiresOn: string;
+  /** `YYYY-MM-DDTHH:mm` on the viewer's clock; "" for no end */
+  expiresAtLocal: string;
 }
 
 export const heldGroup = (
@@ -76,10 +76,6 @@ export const heldGroup = (
   groups: readonly GroupView[]
 ): GroupView | null =>
   groups.find((group) => group.id === draft.groupId) ?? null;
-
-/** The day an instant falls on, on the viewer's calendar (the value of a date field). */
-const dayOf = (iso: string, timeZone: string): string =>
-  toZonedDatetimeLocal(new Date(iso), timeZone).slice(0, 10);
 
 /** The dialog as it opens: what the API holds, with a group that no longer exists read as none. */
 export function initialDraft(
@@ -95,7 +91,7 @@ export function initialDraft(
     ),
     everyCourse: held.courseIds === null,
     courseIds: held.courseIds ?? [],
-    expiresOn: held.expiresAt ? dayOf(held.expiresAt, timeZone) : "",
+    expiresAtLocal: isoToZonedLocal(held.expiresAt, timeZone),
   };
 }
 
@@ -190,18 +186,13 @@ export function toggleCourse(
 
 export type ExpiryProblem = "past" | "afterAppointment";
 
-/** The last minute of a day on the viewer's clock, the moment "Tarih geçince" means. */
-const endOfDay = (day: string, timeZone: string): Date | null =>
-  fromZonedDatetimeLocal(`${day}T23:59`, timeZone);
-
 /**
- * The instant a chosen end day stands for, or why it cannot be: the end of
- * that day on the viewer's clock, never in the past, and never after the
- * appointment ends (on the appointment's own last day, the permission ends
- * with it). A day left as it was keeps the instant the API holds.
+ * The instant a chosen end stands for, or why it cannot be: after now and not
+ * after the appointment's end, the server's own rule, compared as instants. An
+ * end left as it was keeps the instant the API holds, seconds and all.
  */
 export function expiryOf(
-  draft: Pick<EditorDraft, "expiresOn">,
+  draft: Pick<EditorDraft, "expiresAtLocal">,
   held: Pick<HeldPermissions, "expiresAt">,
   ctx: {
     now: number;
@@ -210,26 +201,20 @@ export function expiryOf(
     assignmentEnd: string | null;
   }
 ): { at: string | null; problem: ExpiryProblem | null } {
-  if (!draft.expiresOn) return { at: null, problem: null };
-  if (
-    held.expiresAt &&
-    draft.expiresOn === dayOf(held.expiresAt, ctx.timeZone)
-  ) {
-    return { at: held.expiresAt, problem: null };
+  const { iso, problem } = resolveEnd({
+    value: draft.expiresAtLocal,
+    held: held.expiresAt,
+    timeZone: ctx.timeZone,
+    now: new Date(ctx.now),
+    assignmentEnd: ctx.assignmentEnd,
+  });
+  if (problem) {
+    return {
+      at: null,
+      problem: problem === "past" ? "past" : "afterAppointment",
+    };
   }
-  const end = endOfDay(draft.expiresOn, ctx.timeZone);
-  if (!end || end.getTime() <= ctx.now) {
-    return { at: null, problem: "past" };
-  }
-  if (ctx.assignmentEnd) {
-    const appointmentEnds = new Date(ctx.assignmentEnd);
-    if (end.getTime() > appointmentEnds.getTime()) {
-      return draft.expiresOn === dayOf(ctx.assignmentEnd, ctx.timeZone)
-        ? { at: appointmentEnds.toISOString(), problem: null }
-        : { at: null, problem: "afterAppointment" };
-    }
-  }
-  return { at: end.toISOString(), problem: null };
+  return { at: iso, problem: null };
 }
 
 export interface EditorProblems {

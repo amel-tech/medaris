@@ -168,7 +168,7 @@ const choose = async (index: number, label: string) => {
   await settle(80);
 };
 const dateField = () =>
-  dialog().querySelector("input[type=date]") as HTMLInputElement;
+  dialog().querySelector("input[type=datetime-local]") as HTMLInputElement;
 
 beforeEach(() => {
   for (const fn of [loadEditor, saveNazirPermissions, onClose, onDone]) {
@@ -216,7 +216,9 @@ describe("'İzinleri düzenle' (nazir 06)", () => {
     expect(dialog().textContent).toContain(
       "Bütün medrese dersleri, sonradan açılacak dersleri de kapsar."
     );
-    expect(dialog().textContent).toContain("Bitiş tarihi (isteğe bağlı)");
+    expect(dialog().textContent).toContain(
+      "Bitiş tarihi ve saati (isteğe bağlı)"
+    );
     expect(dialog().textContent).toContain(
       "Aldığı izni başkasına veremez. Verilen ve geri alınan her izin denetim kaydına yazılır."
     );
@@ -254,7 +256,7 @@ describe("'İzinleri düzenle' (nazir 06)", () => {
     expect(locked("Başvuruyu onayla ya da reddet")).toBe(true);
     expect(checked("Hafta ve celse gizle, geri al")).toBe(true);
     expect(locked("Hafta ve celse gizle, geri al")).toBe(false);
-    expect(dateField().value).toBe("2026-12-31");
+    expect(dateField().value).toBe("2026-12-31T23:59");
   });
 
   it("switches a permission the caller may not give off (criterion 2)", async () => {
@@ -363,17 +365,21 @@ describe("'İzinleri düzenle' (nazir 06)", () => {
     });
   });
 
-  it("refuses an end in the past on the page, and sends the end of a day to come", async () => {
+  it("asks for a date and a time, refuses a moment not after now on the page, and sends the moment typed", async () => {
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date("2026-10-05T10:00:00+03:00"));
     await open();
-    await typeInto(dateField(), "2026-10-01");
+    expect(dateField()).not.toBeNull();
+    expect(dateField().type).toBe("datetime-local");
+    await typeInto(dateField(), "2026-10-05T09:59");
     await click(button("Kaydet"));
     await settle(40);
-    expect(dialog().textContent).toContain("Bitiş tarihi geçmişte olamaz.");
+    expect(dialog().textContent).toContain(
+      "Bitiş zamanı şu andan sonra olmalı."
+    );
     expect(saveNazirPermissions).not.toHaveBeenCalled();
 
-    await typeInto(dateField(), "2026-12-31");
+    await typeInto(dateField(), "2026-12-31T23:59");
     await click(button("Kaydet"));
     await settle(80);
     expect(saveNazirPermissions).toHaveBeenCalledExactlyOnceWith("m-1", "u-3", {
@@ -382,6 +388,54 @@ describe("'İzinleri düzenle' (nazir 06)", () => {
       courseIds: null,
       expiresAt: "2026-12-31T20:59:00.000Z",
     });
+  });
+
+  it("sends an end left as it was back as the instant the API holds, seconds and all", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-05T10:00:00+03:00"));
+    await open(
+      editorData({
+        held: {
+          groupId: null,
+          permissions: ["week.hide"],
+          courseIds: null,
+          expiresAt: "2026-12-31T20:59:59.000Z",
+        },
+      }),
+      { ...abdullah, assignmentEnd: "2026-12-31T20:59:59.000Z" }
+    );
+    expect(dateField().value).toBe("2026-12-31T23:59");
+    await click(button("Kaydet"));
+    await settle(80);
+    expect(saveNazirPermissions).toHaveBeenCalledExactlyOnceWith("m-1", "u-3", {
+      groupId: null,
+      permissions: ["week.hide"],
+      courseIds: null,
+      expiresAt: "2026-12-31T20:59:59.000Z",
+    });
+  });
+
+  it("refuses a moment a minute after the appointment ends, before sending", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-05T10:00:00+03:00"));
+    await open(
+      editorData({
+        held: {
+          groupId: null,
+          permissions: ["week.hide"],
+          courseIds: null,
+          expiresAt: "2026-12-31T20:59:59.000Z",
+        },
+      }),
+      { ...abdullah, assignmentEnd: "2026-12-31T20:59:59.000Z" }
+    );
+    await typeInto(dateField(), "2027-01-01T00:00");
+    await click(button("Kaydet"));
+    await settle(40);
+    expect(dialog().textContent).toContain(
+      "Bitiş zamanı, görevin bitişinden sonra olamaz."
+    );
+    expect(saveNazirPermissions).not.toHaveBeenCalled();
   });
 
   it("keeps the dialog and says why when the API refuses (criterion 2: the server refuses too)", async () => {

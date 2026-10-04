@@ -57,8 +57,8 @@ const SOME_COURSES = "chosen";
  * are single permissions on top. A permission the caller may not give is off.
  * "Hangi derslerde" names courses only where that means something (a group with
  * a medrese permission covers every course, and with no course permission
- * there is nothing to limit). The end is a day: the permission lapses at the
- * end of it on the viewer's clock. The scrim does not close the dialog.
+ * there is nothing to limit). The end is a date and a time on the viewer's
+ * clock: the permission lapses at that moment. The scrim does not close the dialog.
  */
 export function PermissionEditor({
   madrasahId,
@@ -72,7 +72,7 @@ export function PermissionEditor({
   madrasahName: string;
   /** the nazır being edited; null while the dialog is shut */
   nazir: NazirRow | null;
-  /** the viewer's zone: "Bitiş tarihi" is a day on their calendar */
+  /** the viewer's zone: "Bitiş tarihi ve saati" is read on their clock */
   timeZone: string;
   onClose: () => void;
   /** called once the permissions are saved, for the page to read the roster again */
@@ -366,11 +366,14 @@ export function PermissionEditor({
             }
           >
             <Input
-              type="date"
-              name="expiresOn"
-              value={editor.draft.expiresOn}
+              type="datetime-local"
+              name="expiresAt"
+              value={editor.draft.expiresAtLocal}
               onChange={(event) =>
-                setDraft({ ...editor.draft, expiresOn: event.target.value })
+                setDraft({
+                  ...editor.draft,
+                  expiresAtLocal: event.target.value,
+                })
               }
             />
           </Field>
