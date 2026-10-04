@@ -34,7 +34,7 @@ export type RecordingLinkProblem =
   | "not-https"
   /** a YouTube page that names no video (a channel, a playlist, the home page) */
   | "youtube-no-video"
-  /** a Bunny player link without a library id and a video id */
+  /** a Bunny link that is not a player link with a library id and a video id */
   | "bunny-no-video"
   /** a Bunny player link of a library that is not ours, or no library is configured */
   | "bunny-foreign-library";
@@ -50,11 +50,23 @@ const BUNNY_LIBRARY_ID = /^\d+$/;
 const BUNNY_VIDEO_ID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-/** Bunny's player hosts: the current one and the one its older embed codes use. */
+/**
+ * Bunny's player hosts: the current one, the one its older embed codes use,
+ * and the host of its older direct-play links.
+ */
 const BUNNY_PLAYER_HOSTS = new Set([
   "player.mediadelivery.net",
   "iframe.mediadelivery.net",
+  "video.bunnycdn.com",
 ]);
+
+/**
+ * Domains every Bunny host sits on. A link on any of them is Bunny's: one that
+ * is not a player link of our library is refused, never kept as OTHER, so a
+ * foreign library's video (or a CDN link that bypasses the player token)
+ * cannot be stored through a host we did not list.
+ */
+const BUNNY_DOMAINS = ["mediadelivery.net", "bunnycdn.com", "b-cdn.net"];
 
 /** The paths of a Bunny player link that name a video: `/embed/<lib>/<vid>`, `/play/<lib>/<vid>`. */
 const BUNNY_PLAYER_PATHS = new Set(["embed", "play"]);
@@ -84,13 +96,16 @@ function youtubeVideoIdOf(url: URL, host: string): string | null {
  *   `/shorts/<id>` and `/embed/<id>`. A YouTube page that names no video is
  *   refused. No visibility rule is applied: the owner dropped "a YouTube
  *   recording is always PUBLIC" on 3 October.
- * - Bunny (`player.mediadelivery.net` or `iframe.mediadelivery.net`,
- *   `/embed/<libraryId>/<videoId>` or `/play/…`): accepted only when the
- *   library is `ownLibraryId`, and only the video id is kept. A link of any
- *   other library, or any Bunny link while no library is configured
- *   (`ownLibraryId` null), is refused: tedrisat could not sign it, and a
- *   foreign library's token settings are not ours to rely on. Its query
- *   string (a token someone else signed) is dropped.
+ * - Bunny (`player.mediadelivery.net`, `iframe.mediadelivery.net` or
+ *   `video.bunnycdn.com`, `/embed/<libraryId>/<videoId>` or `/play/…`):
+ *   accepted only when the library is `ownLibraryId`, and only the video id
+ *   is kept. A link of any other library, or any Bunny link while no library
+ *   is configured (`ownLibraryId` null), is refused: tedrisat could not sign
+ *   it, and a foreign library's token settings are not ours to rely on. Its
+ *   query
+ *   string (a token someone else signed) is dropped. Any other host on a
+ *   Bunny domain (`*.mediadelivery.net`, `*.bunnycdn.com`, `*.b-cdn.net`) is
+ *   refused rather than read as OTHER. A trailing dot on the host is ignored.
  * - Google Drive or Docs: DRIVE. Anything else https: OTHER.
  */
 export function detectRecordingLink(
@@ -113,7 +128,9 @@ export function detectRecordingLink(
   if (url.username || url.password) {
     throw new RecordingLinkInvalidError("invalid");
   }
-  const host = url.hostname.toLowerCase();
+  // WHATWG URL keeps a trailing dot (`player.mediadelivery.net.`), which
+  // names the same host; drop it so no rule below can be stepped around.
+  const host = url.hostname.toLowerCase().replace(/\.+$/, "");
 
   if (
     host === "youtu.be" ||
@@ -129,7 +146,10 @@ export function detectRecordingLink(
     };
   }
 
-  if (BUNNY_PLAYER_HOSTS.has(host)) {
+  if (BUNNY_DOMAINS.some((domain) => onDomain(host, domain))) {
+    if (!BUNNY_PLAYER_HOSTS.has(host)) {
+      throw new RecordingLinkInvalidError("bunny-no-video");
+    }
     const segments = url.pathname.split("/").filter(Boolean);
     const [kind = "", libraryId = "", videoId = ""] = segments;
     if (

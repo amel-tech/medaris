@@ -38,6 +38,7 @@ describe("detectRecordingLink: YouTube (MDRS-119)", () => {
     ["https://www.youtube.com/embed/dQw4w9WgXcQ"],
     ["https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ"],
     ["  https://youtu.be/dQw4w9WgXcQ  "],
+    ["https://www.youtube.com./watch?v=dQw4w9WgXcQ"],
   ])("reads the video id of %s and stores the watch link", (url) => {
     expect(detectRecordingLink(url, LIBRARY)).toEqual({
       provider: RecordingProvider.YOUTUBE,
@@ -133,6 +134,36 @@ describe("detectRecordingLink: Bunny (MDRS-119)", () => {
     [`https://player.mediadelivery.net/embed/${LIBRARY}/${VIDEO}/extra`],
     ["https://player.mediadelivery.net/"],
   ])("refuses %s, which names no video", (url) => {
+    expect(problemOf(url)).toBe("bunny-no-video");
+  });
+
+  it.each([
+    [`https://player.mediadelivery.net./embed/${LIBRARY}/${VIDEO}`],
+    [`https://iframe.mediadelivery.net./embed/${LIBRARY}/${VIDEO}`],
+    [`https://PLAYER.mediadelivery.net../embed/${LIBRARY}/${VIDEO}`],
+    [`https://video.bunnycdn.com/play/${LIBRARY}/${VIDEO}`],
+  ])("reads %s as a Bunny player link", (url) => {
+    expect(detectRecordingLink(url, LIBRARY)).toEqual({
+      provider: RecordingProvider.BUNNY,
+      bunnyVideoId: VIDEO,
+    });
+  });
+
+  it.each([
+    [`https://player.mediadelivery.net./embed/999999/${VIDEO}`],
+    [`https://iframe.mediadelivery.net./embed/999999/${VIDEO}`],
+    [`https://video.bunnycdn.com./play/999999/${VIDEO}`],
+  ])("refuses %s, another library behind a trailing dot", (url) => {
+    expect(problemOf(url)).toBe("bunny-foreign-library");
+  });
+
+  it.each([
+    [`https://vz-abc123.b-cdn.net/${VIDEO}/playlist.m3u8`],
+    [`https://vz-abc123.b-cdn.net./${VIDEO}/play_720p.mp4`],
+    [`https://video.mediadelivery.net/embed/999999/${VIDEO}`],
+    [`https://mediadelivery.net/embed/${LIBRARY}/${VIDEO}`],
+    [`https://iframe.bunnycdn.com/embed/999999/${VIDEO}`],
+  ])("refuses %s, a Bunny host that is not a player, rather than keep it as OTHER", (url) => {
     expect(problemOf(url)).toBe("bunny-no-video");
   });
 

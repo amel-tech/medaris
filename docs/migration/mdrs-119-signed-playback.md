@@ -34,10 +34,14 @@ Taha's open PR #202 and are not rewritten here.
     Returns the canonical watch link and the video id. A YouTube page naming
     no video is refused. **No visibility rule**: the owner dropped "YouTube is
     PUBLIC only" on 3 October, and main never had it.
-  - Bunny: `player.`/`iframe.mediadelivery.net`, `/embed/<lib>/<vid>` or
-    `/play/<lib>/<vid>`. Accepted only for our own library id; only the video
-    id is returned (never the URL or a foreign token). Any Bunny link while no
-    library is configured is refused.
+  - Bunny: `player.`/`iframe.mediadelivery.net` or `video.bunnycdn.com`,
+    `/embed/<lib>/<vid>` or `/play/<lib>/<vid>`. Accepted only for our own
+    library id; only the video id is returned (never the URL or a foreign
+    token). Any Bunny link while no library is configured is refused. Any
+    other host on a Bunny domain (`*.mediadelivery.net`, `*.bunnycdn.com`,
+    `*.b-cdn.net`) is refused (`bunny-no-video`), never kept as OTHER, and a
+    trailing dot on the host (`player.mediadelivery.net.`) is ignored, so a
+    foreign library's link cannot slip through as a pasted OTHER link.
   - Google Drive/Docs: DRIVE. Any other https link: OTHER, as pasted.
   - Not https, credentials in the URL, empty, or over 500 characters: refused.
 - `BunnyStreamClient.libraryId` exposes the configured library id (or null) so
@@ -59,7 +63,8 @@ Taha's open PR #202 and are not rewritten here.
 
 ## Verified
 
-All gates ran in this worktree as
+All gates ran in this worktree, and again after the second-round fix with
+the same output, as
 `env -u NODE_ENV pnpm nx run-many -t <target> --skip-nx-cache`:
 
 - typecheck: `Successfully ran target typecheck for 17 projects and 2 tasks they depend on`.
@@ -68,15 +73,18 @@ All gates ran in this worktree as
 - build: `Successfully ran target build for 8 projects and 7 tasks they depend on`.
 - test: `Successfully ran target test for 12 projects and 2 tasks they depend on`
   (Docker running; tedrisat's e2e suites against Testcontainers Postgres).
-  A second run with `--output-style=stream` printed tedrisat
-  `Test Files 134 passed (134)`, `Tests 1980 passed (1980)`, and every other
+  After the trailing-dot fix (second round) a run with
+  `--output-style=stream` printed tedrisat
+  `Test Files 134 passed (134)`, `Tests 1993 passed (1993)` (1980 before the
+  13 new detector cases), and every other
   suite green (nazir-web 654, nizam-web 638, tedris-web 631,
   keycloak-theme 519, ui 126, common 92, env 57, utils 48, teskilat 30,
   tokens 29, landing-web 26 tests).
 - Unit, `test/unit/course/recording-link.spec.ts`: every YouTube form, every
   Bunny form, a foreign library (including ids that only share a prefix or
-  suffix with ours), no library configured, look-alike hosts, http, credentials,
-  length limit.
+  suffix with ours), no library configured, look-alike hosts, trailing-dot
+  hosts (own library accepted, foreign library refused), non-player Bunny and
+  CDN hosts refused, http, credentials, length limit.
 - Unit, `test/unit/bunny-stream/`: the token against a vector computed
   independently with `sha256sum`, the configurable lifetime, the env bounds.
 - e2e, `test/e2e/recording-playback.e2e.spec.ts`: an enrolled talebe and the
