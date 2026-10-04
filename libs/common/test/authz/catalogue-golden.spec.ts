@@ -38,6 +38,7 @@ const GOLDEN: ReadonlyArray<readonly [string, string, string]> = [
   ["recording.upload", "course", "grantable|content"],
   ["recording.watch_restricted", "course", "grantable|content"],
   ["session.view_content", "course", "grantable|content"],
+  ["question.answer", "course", "grantable|content"],
   ["ban.course", "course", "grantable"],
   ["ban.lift_course", "course", "grantable"],
   ["deck.manage_course", "course", "grantable"],
@@ -131,6 +132,7 @@ describe("the catalogue, frozen by hand (review T3)", () => {
     for (const code of [
       PERMISSIONS.SESSION_VIEW_CONTENT,
       PERMISSIONS.RECORDING_WATCH_RESTRICTED,
+      PERMISSIONS.QUESTION_ANSWER,
     ]) {
       expect(PERMISSION_META[code].content, code).toBe(true);
     }
@@ -176,6 +178,16 @@ describe("who holds the few codes the owner keeps to one role (review T6)", () =
       if (!code.startsWith("platform.")) continue;
       expect(holders(code), code).toEqual([]);
     }
+  });
+
+  it("question.answer is the müderris's, the köşk nazımı's and the başmüderris's by default, and no ders nazırı's (MDRS-150)", () => {
+    expect(holders(PERMISSIONS.QUESTION_ANSWER)).toEqual(
+      [
+        ASSIGNED_ROLES.KOSK_NAZIM,
+        ASSIGNED_ROLES.MEDRESE_BASMUDERRIS,
+        ASSIGNED_ROLES.MUDERRIS,
+      ].sort()
+    );
   });
 
   it("the roles that give permissions are the three that run a scope, and no other", () => {
