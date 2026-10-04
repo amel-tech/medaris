@@ -17,6 +17,7 @@ import {
   DefaultValuePipe,
   Delete,
   Get,
+  Header,
   HttpCode,
   HttpStatus,
   Param,
@@ -64,6 +65,7 @@ import {
   SetEnrollmentStatusDto,
 } from "./dto/enrollment-actions.dto";
 import { MuderrisListResponse, SetMuderrisDto } from "./dto/muderris-list.dto";
+import { MyCoursePermissionsResponse } from "./dto/my-course-permissions.dto";
 import { ReplaceCourseDto } from "./dto/replace-course.dto";
 import { UpdateCourseDto } from "./dto/update-course.dto";
 import { UpdateProgressDto } from "./dto/update-progress.dto";
@@ -225,6 +227,29 @@ export class CourseController {
   }
 
   @ApiOperation({
+    summary: "What the caller holds in a course",
+    description:
+      "The permission codes the signed-in caller holds in this course (`permissions`, sorted), and whether they may read its talebe (`staffRead`). Asked about themselves only: it answers with the caller's own codes and no one else's. The codes are the ones the routes decide with (`AuthzService.effective`, the computation behind every `@Authz`), so a screen can hide a button the API would refuse; the API still checks every write. A draft the caller may not edit, a hidden course they may not restore, and an unknown course are 404 (COURSE_NOT_FOUND). Nothing is written to `audit_log`.",
+    operationId: "getMyCoursePermissions",
+  })
+  @ApiOkResponse({ type: MyCoursePermissionsResponse })
+  @ApiNotFoundResponse()
+  // `course.view` is held by every signed-in caller, so this asks nothing a
+  // visitor with a token does not hold; `getDetail` is what hides a course the
+  // caller may not see. `byExistingCourse` because the başnazım bypasses the
+  // resolver and a missing course must still be a 404.
+  @Authz(PERMISSIONS.COURSE_VIEW, byExistingCourse)
+  // Per-user answer; no shared cache may keep it.
+  @Header("Cache-Control", "private, no-store")
+  @Get("courses/:id/my-permissions")
+  async myPermissions(
+    @Req() request: AuthorizedRequest,
+    @Param("id", ParseUUIDPipe) id: string
+  ): Promise<MyCoursePermissionsResponse> {
+    return this.courseService.myPermissions(id, request.user);
+  }
+
+  @ApiOperation({
     summary: "Update a course",
     operationId: "updateCourse",
   })
@@ -255,7 +280,7 @@ export class CourseController {
   })
   @ApiForbiddenResponse({
     description:
-      "No `course.edit` on the course, or the save changes the müderris list without `course.open_standalone` (or `madrasah.muderris_manage` for a medrese's course) — a müderris may save the course but not change who teaches it (MUDERRIS_ASSIGNMENT_FORBIDDEN).",
+      "No `course.edit` on the course; the save adds, moves or hides a session without `session.manage`; or it changes the müderris list without `course.open_standalone` (or `madrasah.muderris_manage` for a medrese's course) — a müderris may save the course but not change who teaches it (MUDERRIS_ASSIGNMENT_FORBIDDEN).",
   })
   @ApiConflictResponse({
     description:
@@ -264,7 +289,8 @@ export class CourseController {
   // `course.edit` lets the köşk nazımı and the course's müderrisler save it
   // (MDRS-105). The müderris list inside the payload is `course.open_standalone`
   // — the köşk nazımı's alone, or the medrese's `madrasah.muderris_manage` in a
-  // course held for a medrese — and `CourseService.replace` checks that part.
+  // course held for a medrese — and `CourseService.replace` checks that part,
+  // and `session.manage` when the save adds, moves or hides a session.
   @Authz(PERMISSIONS.COURSE_EDIT, byParam(ENTITIES.COURSE))
   @Put("courses/:id")
   @UsePipes(new MedarisValidationPipe({ transform: true }))

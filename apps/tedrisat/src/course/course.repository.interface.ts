@@ -456,12 +456,17 @@ export interface ICourseRepository {
     actorId?: string | null,
     level?: HideLevel
   ): Promise<ILessonMutation>;
-  /** Marks the session cancelled, keeping its slot (MDRS-176). */
+  /**
+   * Marks the session cancelled, keeping its slot (MDRS-176). With a
+   * `replacementLessonId` the session that makes up for it is linked, after
+   * the rules for a make-up have been checked under the course's lock.
+   */
   cancelLesson(
     lessonId: string,
     expectedVersion: number,
     reason: string | null,
-    actorId: string
+    actorId: string,
+    replacementLessonId?: string | null
   ): Promise<ILessonMutation>;
   /**
    * Replaces the muderris list and picks the imam, in one transaction, and

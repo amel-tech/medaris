@@ -32,6 +32,7 @@ GET /courses/:id/badge-counts -> course.staff_read on byExistingCourse
 GET /courses/:id/enrollments -> course.staff_read on course
 GET /courses/:id/enrollments/removed -> course.staff_read on course
 GET /courses/:id/live-streams -> session.live_link on course
+GET /courses/:id/my-permissions -> course.view on byExistingCourse
 GET /courses/:id/recordings -> course.view on course (public)
 GET /courses/:id/stats -> course.staff_read on byExistingCourse
 GET /courses/enrolled -> exempt

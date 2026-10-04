@@ -54,6 +54,7 @@ import {
   withContent,
   withoutContent,
 } from "./domain/course-content";
+import { SYSTEM_ADMIN_COURSE_CODES } from "./domain/course-permissions";
 import { CourseStatus } from "./domain/course-status.enum";
 import { EnrollmentStatus } from "./domain/enrollment-status.enum";
 import {
@@ -67,6 +68,7 @@ import {
   liveStreamFor,
   visibleRecordings,
 } from "./domain/recording";
+import { changesSessions, sessionChanges } from "./domain/session-changes";
 import { buildSessionView, type ISessionView } from "./domain/session-view";
 import { withCanonicalTimeZone } from "./domain/time-zone";
 import {
@@ -495,6 +497,38 @@ export class CourseService {
   }
 
   /**
+   * The permission codes the caller holds in this course, for the screens that
+   * draw buttons and decide whether a page opens. It is `AuthzService.effective`,
+   * the computation `can` decides every route with, minus the audit rows, so
+   * what is listed here and what a route accepts cannot differ. The başnazım's
+   * realm bypass has no computation behind it and is listed as holding every
+   * course code.
+   *
+   * The course must be visible to the caller first, as for `GET /courses/:id`:
+   * a missing course, a draft the caller may not edit, or a hidden one they may
+   * not restore is not-found, so the answer leaks nothing the page would not.
+   */
+  async myPermissions(
+    courseId: string,
+    user: AuthenticatedUser
+  ): Promise<{ permissions: PermissionCode[]; staffRead: boolean }> {
+    await this.getDetail(courseId, user);
+    const held: Iterable<PermissionCode> = this.authz.isSystemAdmin(user)
+      ? SYSTEM_ADMIN_COURSE_CODES
+      : ((
+          await this.authz.effective(user, {
+            entity: ENTITIES.COURSE,
+            id: courseId,
+          })
+        )?.codes ?? []);
+    const permissions = [...held].sort();
+    return {
+      permissions,
+      staffRead: permissions.includes(PERMISSIONS.COURSE_STAFF_READ),
+    };
+  }
+
+  /**
    * Whether a PUBLIC recording may be shown to someone who cannot read the
    * course's content: not for a closed course (MDRS-176), and not when the
    * köşk's policy says its recordings are never public (nizam/34).
@@ -627,6 +661,35 @@ export class CourseService {
   }
 
   /**
+   * A whole-course save that adds, moves or hides a session needs
+   * `session.manage` as well as `course.edit`: those are what the lesson routes
+   * ask `session.manage` for, and the save must not be a way round them. A
+   * save that leaves every session where it is, whatever else it changes, is
+   * `course.edit` alone. The comparison is against the stored course
+   * (`sessionChanges`); a refused save writes nothing.
+   */
+  private async assertMayChangeSessions(
+    id: string,
+    user: AuthenticatedUser,
+    stored: Pick<ICourseDetail, "weeks">,
+    data: Pick<IReplaceCourse, "weeks">
+  ): Promise<void> {
+    if (!changesSessions(sessionChanges(stored.weeks, data.weeks ?? []))) {
+      return;
+    }
+    const code = PERMISSIONS.SESSION_MANAGE;
+    if (!(await this.authz.can(user, { entity: ENTITIES.COURSE, id }, code))) {
+      throw new AuthzForbiddenError(
+        `This change needs the permission ${code}`,
+        {
+          courseId: id,
+          permission: code,
+        }
+      );
+    }
+  }
+
+  /**
    * The whole-course save. A caller with `course.edit` but not the permission
    * to choose müderrisler — a müderris — may save everything but the müderris
    * list: if the list in
@@ -648,6 +711,7 @@ export class CourseService {
     // from what is stored is a change; an unrelated save of a course must still
     // go through.
     await this.assertMayChangeSettings(id, user, stored, data, false);
+    await this.assertMayChangeSessions(id, user, stored, data);
     const next = data.muderris ?? [];
     const current = await this.courseRepo.findMuderris(id);
     if (
@@ -722,18 +786,23 @@ export class CourseService {
     return updated;
   }
 
-  /** Cancels the session; it keeps its slot in the programme (MDRS-176). */
+  /**
+   * Cancels the session; it keeps its slot in the programme (MDRS-176), and
+   * links the session that makes up for it when one is named.
+   */
   async cancelLesson(
     lessonId: string,
     expectedVersion: number,
     reason: string | null,
-    actorId: string
+    actorId: string,
+    replacementLessonId: string | null = null
   ): Promise<ILessonMutation> {
     const cancelled = await this.courseRepo.cancelLesson(
       lessonId,
       expectedVersion,
       reason,
-      actorId
+      actorId,
+      replacementLessonId?.toLowerCase() ?? null
     );
     await this.notifier.sessionCancelled(cancelled, actorId);
     return cancelled;

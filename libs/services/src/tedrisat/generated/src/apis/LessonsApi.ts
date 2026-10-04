@@ -172,7 +172,7 @@ export class LessonsApi extends runtime.BaseAPI {
     }
 
     /**
-     * The session stays in the programme as \'İptal edildi\' (MDRS-158); its meeting link is no longer shown. The reason is course content. Written to `audit_log` (MDRS-176).
+     * The session stays in the programme as \'İptal edildi\' (MDRS-158); its meeting link is no longer shown. The reason is course content. `replacementLessonId` links the session that makes up for it (telafi), which the session page shows as its replacement. Written to `audit_log` (MDRS-176).
      * Cancel a live session; it keeps its slot, marked cancelled
      */
     async cancelLessonRaw(requestParameters: CancelLessonRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<LessonMutationResponse>> {
@@ -217,7 +217,7 @@ export class LessonsApi extends runtime.BaseAPI {
     }
 
     /**
-     * The session stays in the programme as \'İptal edildi\' (MDRS-158); its meeting link is no longer shown. The reason is course content. Written to `audit_log` (MDRS-176).
+     * The session stays in the programme as \'İptal edildi\' (MDRS-158); its meeting link is no longer shown. The reason is course content. `replacementLessonId` links the session that makes up for it (telafi), which the session page shows as its replacement. Written to `audit_log` (MDRS-176).
      * Cancel a live session; it keeps its slot, marked cancelled
      */
     async cancelLesson(requestParameters: CancelLessonRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<LessonMutationResponse> {

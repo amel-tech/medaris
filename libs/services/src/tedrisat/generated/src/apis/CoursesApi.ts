@@ -23,6 +23,7 @@ import type {
   EnrolledCourseResponse,
   EnrollmentResponse,
   MuderrisListResponse,
+  MyCoursePermissionsResponse,
   PendingEnrollmentResponse,
   RejectEnrollmentDto,
   RemoveEnrollmentDto,
@@ -51,6 +52,8 @@ import {
     EnrollmentResponseToJSON,
     MuderrisListResponseFromJSON,
     MuderrisListResponseToJSON,
+    MyCoursePermissionsResponseFromJSON,
+    MyCoursePermissionsResponseToJSON,
     PendingEnrollmentResponseFromJSON,
     PendingEnrollmentResponseToJSON,
     RejectEnrollmentDtoFromJSON,
@@ -119,6 +122,10 @@ export interface GetCoursesByKoskRequest {
 export interface GetEnrolledCoursesRequest {
     includePending?: boolean;
     includeRevoked?: boolean;
+}
+
+export interface GetMyCoursePermissionsRequest {
+    id: string;
 }
 
 export interface GetPendingEnrollmentsRequest {
@@ -685,6 +692,50 @@ export class CoursesApi extends runtime.BaseAPI {
      */
     async getEnrolledCourses(requestParameters: GetEnrolledCoursesRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<EnrolledCourseResponse>> {
         const response = await this.getEnrolledCoursesRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * The permission codes the signed-in caller holds in this course (`permissions`, sorted), and whether they may read its talebe (`staffRead`). Asked about themselves only: it answers with the caller\'s own codes and no one else\'s. The codes are the ones the routes decide with (`AuthzService.effective`, the computation behind every `@Authz`), so a screen can hide a button the API would refuse; the API still checks every write. A draft the caller may not edit, a hidden course they may not restore, and an unknown course are 404 (COURSE_NOT_FOUND). Nothing is written to `audit_log`.
+     * What the caller holds in a course
+     */
+    async getMyCoursePermissionsRaw(requestParameters: GetMyCoursePermissionsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MyCoursePermissionsResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling getMyCoursePermissions().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/courses/{id}/my-permissions`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => MyCoursePermissionsResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * The permission codes the signed-in caller holds in this course (`permissions`, sorted), and whether they may read its talebe (`staffRead`). Asked about themselves only: it answers with the caller\'s own codes and no one else\'s. The codes are the ones the routes decide with (`AuthzService.effective`, the computation behind every `@Authz`), so a screen can hide a button the API would refuse; the API still checks every write. A draft the caller may not edit, a hidden course they may not restore, and an unknown course are 404 (COURSE_NOT_FOUND). Nothing is written to `audit_log`.
+     * What the caller holds in a course
+     */
+    async getMyCoursePermissions(requestParameters: GetMyCoursePermissionsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MyCoursePermissionsResponse> {
+        const response = await this.getMyCoursePermissionsRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

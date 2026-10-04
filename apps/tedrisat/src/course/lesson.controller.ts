@@ -357,15 +357,19 @@ export class LessonController {
   @ApiOperation({
     summary: "Cancel a live session; it keeps its slot, marked cancelled",
     description:
-      "The session stays in the programme as 'İptal edildi' (MDRS-158); its meeting link is no longer shown. The reason is course content. Written to `audit_log` (MDRS-176).",
+      "The session stays in the programme as 'İptal edildi' (MDRS-158); its meeting link is no longer shown. The reason is course content. `replacementLessonId` links the session that makes up for it (telafi), which the session page shows as its replacement. Written to `audit_log` (MDRS-176).",
     operationId: "cancelLesson",
   })
   @ApiOkResponse({ type: LessonMutationResponse })
+  @ApiBadRequestResponse({
+    description:
+      "Field validation, or a make-up that is the session itself or not a live, standing session of the same course (LESSON_REPLACEMENT_INVALID).",
+  })
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()
   @ApiConflictResponse({
     description:
-      "The course changed since `version` was loaded (COURSE_VERSION_CONFLICT), or the session is cancelled already (LESSON_ALREADY_CANCELLED).",
+      "The course changed since `version` was loaded (COURSE_VERSION_CONFLICT), the session is cancelled already (LESSON_ALREADY_CANCELLED), or the named make-up already makes up for another session (LESSON_REPLACEMENT_TAKEN).",
   })
   @Post("lessons/:id/cancel")
   @HttpCode(HttpStatus.OK)
@@ -380,7 +384,8 @@ export class LessonController {
       id,
       dto.version,
       dto.reason?.trim() || null,
-      request.user.sub
+      request.user.sub,
+      dto.replacementLessonId ?? null
     );
   }
 
