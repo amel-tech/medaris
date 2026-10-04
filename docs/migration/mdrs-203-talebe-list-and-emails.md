@@ -24,6 +24,13 @@ How the catalogue says it: `course.staff_read` is an implicit code. Whoever hold
 roles read the roster with no grant; DERS_NAZIR has no defaults and reads it only through a grant of one of the
 three. The screens say so (`account.defaultsNote.MUDERRIS`: "bu ayrı bir izin değildir").
 
+One closure the default has: `course.staff_read` is content-flagged, so a **passive course** (every MUDERRIS
+assignment of the course revoked: the engine's passive-scope rule) closes the roster to
+its köşk nazımı (pinned in `authz-engine.e2e.spec.ts`, "a passive course stays closed to its köşk nazımı", and
+in the spec of this change) and, by the same engine rule, to every reader but the başnazım's realm bypass; the
+other readers' closure was not exercised here. The köşk-wide pending list
+does not follow that closure, see "The köşk-wide pending list and a passive course" below.
+
 ## What changed
 
 Only `apps/tedrisat/test/e2e/roster-contact.e2e.spec.ts`, new. No file under `apps/*/src` or `libs/*/src`.
@@ -34,20 +41,34 @@ None. `git diff 377d4b6e --stat` shows the spec and this note.
 
 ## Where a talebe's e-mail leaves the API on this base
 
-All of them read `enrollments.student_email`, the snapshot taken at enrolment from the token, so the address can
-be null or stale; it is not `users.email`. The two exceptions are the removed list, which reads the snapshot
-the removal wrote into `audit_log` and falls back to the user row, and the ban lists, which read the user row.
+Where the address comes from differs per surface, so read the "Source" column before assuming a surface
+carries only the enrolment snapshot (`enrollments.student_email`, taken at enrolment from the token, so it can
+be null or stale). "Snapshot" is that column; "user row" is `users.email`.
 
-| Route | Field | Guard | Audit row today |
-| --- | --- | --- | --- |
-| `GET /courses/:id/enrollments` | `studentEmail` | `course.staff_read` on the course | `course.roster_read`, via `enrollments` |
-| `GET /courses/:id/enrollments/removed` | `email` | `course.staff_read` on the course | `course.roster_read`, via `removed` |
-| `GET /kosks/:koskId/enrollments/pending` | `studentEmail` | `course.manage_all` on the köşk (köşk nazımı only; the başnazım is refused) | `course.roster_read` against the köşk, via `pending`, every read |
-| `POST …/enrollments/:userId/approve`, `PATCH …/enrollments/:userId` | `studentEmail` of the row changed | `enrollment.decide` / `enrollment.complete` | none (a write by the team that already holds the work) |
-| `GET /kosks/:id/dashboard` | `studentEmail` of pending applications | `kosk.manage` or `platform.kosk_edit` | none |
-| `GET /madrasahs/:id/dashboard` | `studentEmail` | `madrasah.students_view` | none |
-| `GET /madrasahs/:id/students` | `email`; `q` also matches it | `madrasah.students_view` | none |
-| `GET /bans`, `GET /kosks/:koskId/bans`, `GET /madrasahs/:id/bans` | `email` | no `AuthzGuard` on the first two, decided in `BanAuthority`; the medrese route `madrasah.ban` or `platform.ban_scoped` | none |
+| Route | Field | Source | Guard | Audit row today |
+| --- | --- | --- | --- | --- |
+| `GET /courses/:id/enrollments` | `studentEmail` | snapshot only | `course.staff_read` on the course | `course.roster_read`, via `enrollments` |
+| `GET /courses/:id/enrollments/removed` | `email` | the snapshot the removal wrote into `audit_log`, then the user row | `course.staff_read` on the course | `course.roster_read`, via `removed` |
+| `GET /kosks/:koskId/enrollments/pending` | `studentEmail` | snapshot only | `course.manage_all` on the köşk (köşk nazımı only; the başnazım is refused); **not closed by a passive course** | `course.roster_read` against the köşk, via `pending`, every read |
+| `POST …/enrollments/:userId/approve`, `PATCH …/enrollments/:userId` | `studentEmail` of the row changed | snapshot only | `enrollment.decide` / `enrollment.complete` | none (a write by the team that already holds the work) |
+| `GET /kosks/:id/dashboard` | `studentEmail` of pending applications | snapshot, then the user row (`coalesce(e.student_email, u.email)`) | `kosk.manage` or `platform.kosk_edit` | none |
+| `GET /madrasahs/:id/dashboard` | `studentEmail` | snapshot, then the user row | `madrasah.students_view` | none |
+| `GET /madrasahs/:id/students` | `email`; `q` also matches it (user row first, snapshot as fallback) | the user row, then the snapshot | `madrasah.students_view` | none |
+| `GET /bans`, `GET /kosks/:koskId/bans`, `GET /madrasahs/:id/bans` | `email` | the user row, then the seat snapshot (the seat of the ban's course, then any seat of the user) | no `AuthzGuard` on the first two, decided in `BanAuthority`; the medrese route `madrasah.ban` or `platform.ban_scoped` | none |
+
+### The köşk-wide pending list and a passive course
+
+`GET /kosks/:koskId/enrollments/pending` resolves `course.manage_all` on the köşk (`listed([KOSK])`, no
+`content` flag), so the engine never looks at the course's passive state, and
+`CourseRepository.findPendingByKosk` filters on `koskId`, `archivedAt` and `status` only. A passive course
+therefore closes its roster to the köşk nazımı (403 on `GET /courses/:id/enrollments`) while the same köşk
+nazımı still reads that course's pending names and e-mails from the köşk-wide list (200). Not introduced by
+this change (this branch changes no source), and the reader is the köşk nazımı, who manages the köşk and can
+assign a müderris to reopen the course; the read is audited as `course.roster_read`. It is pinned as it is in
+`roster-contact.e2e.spec.ts` ("closes the roster to the köşk nazımı, but the köşk-wide pending list still lists
+its requests") so that closing it is a visible, deliberate change. Open decision, default: leave as is and
+follow up with either a passive-course filter in `findPendingByKosk` or a content-flagged code for this list;
+the test's second half flips with it.
 
 `course.roster_read` is written by `CourseService.auditRosterRead` for four course routes and by `findPendingEnrollments` for the
 köşk-wide list: five routes in all, three of them in the table (the stats and `badge-counts` routes write it
@@ -62,7 +83,7 @@ Out of scope here: `/users/lookup` and `GET /users?email=` (`user.lookup`, MDRS-
 
 ## What the new spec pins
 
-`apps/tedrisat/test/e2e/roster-contact.e2e.spec.ts`, 20 tests, real Postgres, real guard, minted tokens. It
+`apps/tedrisat/test/e2e/roster-contact.e2e.spec.ts`, 21 tests, real Postgres, real guard, minted tokens. It
 seeds three talebe in two courses (ENROLLED, PENDING, COMPLETED, each with a name and an address) and asserts
 the exact strings, never `toBeDefined`.
 
@@ -75,13 +96,14 @@ the exact strings, never `toBeDefined`.
 | An enrolled talebe and a stranger get 403 on the roster and the removed list; a talebe's course page carries their own seat's address and nobody else's | "refuses an enrolled talebe and a stranger, …" | yes, mutation 6 |
 | The removed list gives the müderris and a ders nazırı holding `enrollment.remove` the removed talebe's address; `week.hide` alone is refused | three "GET …/enrollments/removed" tests | yes, mutations 2 and 7 |
 | The köşk-wide pending list carries addresses for the köşk nazımı and refuses a müderris and a ders nazırı even with enrollment work | two "GET /kosks/:koskId/enrollments/pending" tests | yes, mutation 3 |
+| A passive course closes the roster to the köşk nazımı but not the köşk-wide pending list (today's behaviour, an open decision) | "closes the roster to the köşk nazımı, but the köşk-wide pending list still lists its requests" | yes, mutation 8 |
 | The köşk nazımı, a başmüderris of the course's medrese and the başnazım read the addresses, each on the record; a başmüderris is refused a course outside the medrese | four tests under "the köşk nazımı, the başmüderris and the başnazım" | yes, mutation 1 |
 
 ### Red-then-green
 
 Each mutation was applied to the source on its own, the spec run, and the file restored with
 `git checkout -- <file>` (the tree was clean afterwards). Output files under the wave scratch directory,
-`mdrs-203-mut-<name>.out`. Spec green without any mutation: `Tests  20 passed (20)`.
+`mdrs-203-mut-<name>.out`. Spec green without any mutation: `Tests  21 passed (21)`. Mutations 1 to 7 were run when the spec had 20 tests and are not re-run; their failure counts are of 20.
 
 | # | Mutation | Result |
 | - | - | - |
@@ -92,6 +114,8 @@ Each mutation was applied to the source on its own, the spec run, and the file r
 | 5 | `grantHeld()` accepts a grant that ended up to a day ago | `Tests  1 failed | 19 passed (20)`: the expired-grant refusal |
 | 6 | `rosterWork` is true for any held code (libs/common rebuilt, then rebuilt again after restoring) | `Tests  8 failed | 12 passed (20)`: the no-grant, `week.hide`, `course.edit`, expired, own-course-only, talebe/stranger, removed `week.hide` and başmüderris-outside refusals |
 | 7 | `ENROLLMENT_REMOVE` taken out of `ROSTER_WORK` (libs/common rebuilt) | `Tests  2 failed | 18 passed (20)`: the `enrollment.remove` alone case and the removed-list read |
+
+| 8 | `findPendingByKosk` skips courses with no live MUDERRIS assignment (the passive-course filter the follow-up would add) | `Tests  2 failed | 19 passed (21)`: the passive-course test, and the köşk nazımı pending test (the medrese course of the seed has no müderris assignment, so the filter drops it too) |
 
 The refusal cases for a talebe, a stranger and the başmüderris outside the medrese ride on the same
 engine mutation (7) because a guard mutation specific to them would only restate it.
@@ -114,6 +138,10 @@ These are the dossier's open decisions with the default taken (none is built):
 5. **Should the medrese students list, the two dashboards and the ban lists be audited like the roster?**
    Default: no change here; it is MDRS-141's question (see the table).
 
+6. **Does the köşk-wide pending list close on a passive course?** Default: no change here (the behaviour
+   predates this branch and the reader already manages the köşk); the open follow-up is a passive-course
+   filter in `findPendingByKosk` or a content-flagged code, and it flips the pinned test.
+
 The Linear comment the planner asked for (quote d-1001-28 and d-1003-09 on MDRS-203 and say the revisit is
 open) was not posted: the wave rules forbid writing to Linear. The text for the coordinator is in the PR
 description.
@@ -133,7 +161,8 @@ Size M, and it needs decisions 1 to 4 first. In order:
 3. **API**: decide the permission once per request in the roster, removed, pending and approve/PATCH handlers
    and map `studentEmail` / `email` to null in `CourseService` when it is not held. Also the other routes in
    the table above, or record them as deliberately out, and drop the `q` match on the address for a caller
-   without it (`madrasah-portal.repository.ts`, `ban.repository.ts`), otherwise the search is an oracle for
+   without it (`madrasah-portal.repository.ts`, `ban.repository.ts`), and decide the user row too, since the
+   students list and the ban lists lead with `users.email` rather than the snapshot, otherwise the search is an oracle for
    the hidden address.
 4. **Audit**: keep `course.roster_read`, add whether addresses were returned to `details`; if decision 4 says
    audit the müderris too, take the müderris short-circuit out of `readerIsAudited` for these routes only. The
@@ -152,6 +181,6 @@ Size M, and it needs decisions 1 to 4 first. In order:
 - Anything past the API: the nizam and nazir screens that print the address column were not run (Playwright
   needs a running stack).
 - `GET /madrasahs/:id/students`, the two dashboards and the ban lists were read, not exercised by this spec;
-  the table lists their guards from the source.
+  the table lists their guards and address sources from the source.
 - The expiry refusal is proven with a grant already past its end, read by the loader's `grantHeld()` filter;
   the 2-second live-expiry case is `authz-engine.e2e.spec.ts`'s.
