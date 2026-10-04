@@ -842,6 +842,9 @@
               }
             }
           },
+          "400": {
+            "description": "No nazım named, the same account twice, or an id that is no uuid (MDRS-136)."
+          },
           "403": {
             "description": ""
           }
@@ -851,7 +854,7 @@
             "bearer": []
           }
         ],
-        "summary": "Create a new köşk",
+        "summary": "Create a new köşk together with its nazımları",
         "tags": [
           "kosks"
         ]
@@ -1156,7 +1159,7 @@
     },
     "/kosks/{id}/managers/{userId}": {
       "post": {
-        "description": "Idempotent. Open to the köşk's managers and SYSTEM_ADMIN (MDRS-126).",
+        "description": "Idempotent. Adding a köşk's nazımı is decided by `platform.kosk_nazim_manage` (the başnazım, or a Medaris nazımı holding it) and not by being a nazım of the köşk: a köşk nazımı does not add their peers (MDRS-136, owner decision d-1004-12). The caller does not seat themselves unless they are the başnazım.",
         "operationId": "addKoskManager",
         "parameters": [
           {
@@ -1205,7 +1208,7 @@
         ]
       },
       "delete": {
-        "description": "The last manager cannot be removed (409 KOSK_LAST_MANAGER). A manager may remove themselves while another remains (MDRS-126).",
+        "description": "Decided by `platform.kosk_nazim_manage`, like adding one: a köşk nazımı cannot remove a peer or resign (MDRS-136, owner decision d-1004-12). The last manager cannot be removed unless `successorUserId` names who takes the seat, who is seated first in the same transaction; the başnazım may name themselves (409 KOSK_LAST_MANAGER otherwise).",
         "operationId": "removeKoskManager",
         "parameters": [
           {
@@ -1223,6 +1226,16 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "successorUserId",
+            "required": false,
+            "in": "query",
+            "description": "Who takes the seat when the removed manager is the last one (they are seated before the removal; a known account, never the manager removed).",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -1236,14 +1249,17 @@
               }
             }
           },
+          "400": {
+            "description": "The successor is the manager being removed (KOSK_SUCCESSOR_INVALID)"
+          },
           "403": {
             "description": ""
           },
           "404": {
-            "description": "No such köşk, or the user is not one of its managers"
+            "description": "No such köşk, the user is not one of its managers, or the successor has never signed in (KOSK_MANAGER_UNKNOWN_USER)"
           },
           "409": {
-            "description": "The user is the köşk's last manager (KOSK_LAST_MANAGER)"
+            "description": "The user is the köşk's last manager and no successor was named (KOSK_LAST_MANAGER)"
           }
         },
         "security": [
@@ -2518,6 +2534,7 @@
         ]
       },
       "post": {
+        "description": "The köşk's nazımı opens it, and so does the başnazım (MDRS-136). It is opened with at least one müderris who has an account, and one of them is the imam: `imamUserId`, or the account listed first.",
         "operationId": "createCourse",
         "parameters": [
           {
@@ -2550,6 +2567,12 @@
               }
             }
           },
+          "400": {
+            "description": "No müderris with an account (MUDERRIS_LIST_INVALID), an imam who is not listed (COURSE_IMAM_NOT_LISTED), or the same account twice (MUDERRIS_DUPLICATE_USER)."
+          },
+          "403": {
+            "description": ""
+          },
           "404": {
             "description": ""
           }
@@ -2559,7 +2582,7 @@
             "bearer": []
           }
         ],
-        "summary": "Create a new course under a köşk",
+        "summary": "Create a new course under a köşk, together with its müderrisler",
         "tags": [
           "courses"
         ]
@@ -2733,7 +2756,7 @@
             }
           },
           "403": {
-            "description": "No `course.edit` on the course, or the save changes the müderris list without `course.open_standalone` (or `madrasah.muderris_manage` for a medrese's course) — a müderris may save the course but not change who teaches it (MUDERRIS_ASSIGNMENT_FORBIDDEN)."
+            "description": "No `course.edit` on the course, the save changes the müderris list without `course.open_standalone` (or `madrasah.muderris_manage` for a medrese's course) — a müderris may save the course but not change who teaches it (MUDERRIS_ASSIGNMENT_FORBIDDEN) — or the save hides a week or a session without `week.hide` (WEEK_HIDE_FORBIDDEN)."
           },
           "404": {
             "description": "No such course, or a müderris row links an id that names no account in the app or the realm (MUDERRIS_UNKNOWN_USER)."
@@ -11584,7 +11607,7 @@
           "managerUserIds": {
             "minItems": 1,
             "maxItems": 10,
-            "description": "nizam/10: the köşk's first nazımları, found by e-mail (`GET /users/lookup`). SYSTEM_ADMIN only; when given, they are the köşk's nazımları and the caller is not one. Omitted: the caller becomes the köşk's only nazım, as before.",
+            "description": "nizam/10: the köşk's first nazımları, found by e-mail (`GET /users/lookup`). A köşk is opened together with at least one nazım (MDRS-136); the caller is never one of them, so a Medaris nazımı holding `platform.kosk_create` cannot seat themselves by leaving the list out.",
             "type": "array",
             "items": {
               "type": "string",
@@ -11593,7 +11616,8 @@
           }
         },
         "required": [
-          "name"
+          "name",
+          "managerUserIds"
         ]
       },
       "UpdateKoskDto": {
@@ -13399,10 +13423,17 @@
             }
           },
           "muderris": {
+            "minItems": 1,
+            "description": "A course is opened together with its müderrisler (MDRS-136): at least one, and at least one of them linked to an account (`userId`), because the account is what makes the person the course's müderris.",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/CreateMuderrisDto"
             }
+          },
+          "imamUserId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The imam, one of the accounts in `muderris` (400 COURSE_IMAM_NOT_LISTED otherwise). Absent: the account listed first."
           },
           "resources": {
             "type": "array",
@@ -13412,7 +13443,8 @@
           }
         },
         "required": [
-          "title"
+          "title",
+          "muderris"
         ]
       },
       "CourseDetailMadrasahResponse": {
@@ -14157,16 +14189,17 @@
               "$ref": "#/components/schemas/CreateWeekDto"
             }
           },
-          "muderris": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/CreateMuderrisDto"
-            }
-          },
           "resources": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/CreateResourceDto"
+            }
+          },
+          "muderris": {
+            "description": "Left out: the müderrisler are not touched. Sent: the list replaces the stored one, and a save that would leave the course with no müderris who has an account is refused (400 MUDERRIS_LIST_INVALID).",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CreateMuderrisDto"
             }
           },
           "version": {

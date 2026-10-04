@@ -261,6 +261,7 @@ export interface RejectKoskDeckProposalRequest {
 export interface RemoveKoskManagerRequest {
     id: string;
     userId: string;
+    successorUserId?: string;
 }
 
 export interface RestoreKoskRequest {
@@ -352,7 +353,7 @@ export class KosksApi extends runtime.BaseAPI {
     }
 
     /**
-     * Idempotent. Open to the köşk\'s managers and SYSTEM_ADMIN (MDRS-126).
+     * Idempotent. Adding a köşk\'s nazımı is decided by `platform.kosk_nazim_manage` (the başnazım, or a Medaris nazımı holding it) and not by being a nazım of the köşk: a köşk nazımı does not add their peers (MDRS-136, owner decision d-1004-12). The caller does not seat themselves unless they are the başnazım.
      * Make a user a manager of the köşk
      */
     async addKoskManagerRaw(requestParameters: AddKoskManagerRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<KoskResponse>> {
@@ -395,7 +396,7 @@ export class KosksApi extends runtime.BaseAPI {
     }
 
     /**
-     * Idempotent. Open to the köşk\'s managers and SYSTEM_ADMIN (MDRS-126).
+     * Idempotent. Adding a köşk\'s nazımı is decided by `platform.kosk_nazim_manage` (the başnazım, or a Medaris nazımı holding it) and not by being a nazım of the köşk: a köşk nazımı does not add their peers (MDRS-136, owner decision d-1004-12). The caller does not seat themselves unless they are the başnazım.
      * Make a user a manager of the köşk
      */
     async addKoskManager(requestParameters: AddKoskManagerRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<KoskResponse> {
@@ -512,7 +513,7 @@ export class KosksApi extends runtime.BaseAPI {
     }
 
     /**
-     * Create a new köşk
+     * Create a new köşk together with its nazımları
      */
     async createKoskRaw(requestParameters: CreateKoskRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<KoskResponse>> {
         if (requestParameters['createKoskDto'] == null) {
@@ -548,7 +549,7 @@ export class KosksApi extends runtime.BaseAPI {
     }
 
     /**
-     * Create a new köşk
+     * Create a new köşk together with its nazımları
      */
     async createKosk(requestParameters: CreateKoskRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<KoskResponse> {
         const response = await this.createKoskRaw(requestParameters, initOverrides);
@@ -1771,7 +1772,7 @@ export class KosksApi extends runtime.BaseAPI {
     }
 
     /**
-     * The last manager cannot be removed (409 KOSK_LAST_MANAGER). A manager may remove themselves while another remains (MDRS-126).
+     * Decided by `platform.kosk_nazim_manage`, like adding one: a köşk nazımı cannot remove a peer or resign (MDRS-136, owner decision d-1004-12). The last manager cannot be removed unless `successorUserId` names who takes the seat, who is seated first in the same transaction; the başnazım may name themselves (409 KOSK_LAST_MANAGER otherwise).
      * Remove a manager from the köşk
      */
     async removeKoskManagerRaw(requestParameters: RemoveKoskManagerRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<KoskResponse>> {
@@ -1790,6 +1791,10 @@ export class KosksApi extends runtime.BaseAPI {
         }
 
         const queryParameters: any = {};
+
+        if (requestParameters['successorUserId'] != null) {
+            queryParameters['successorUserId'] = requestParameters['successorUserId'];
+        }
 
         const headerParameters: runtime.HTTPHeaders = {};
 
@@ -1814,7 +1819,7 @@ export class KosksApi extends runtime.BaseAPI {
     }
 
     /**
-     * The last manager cannot be removed (409 KOSK_LAST_MANAGER). A manager may remove themselves while another remains (MDRS-126).
+     * Decided by `platform.kosk_nazim_manage`, like adding one: a köşk nazımı cannot remove a peer or resign (MDRS-136, owner decision d-1004-12). The last manager cannot be removed unless `successorUserId` names who takes the seat, who is seated first in the same transaction; the başnazım may name themselves (409 KOSK_LAST_MANAGER otherwise).
      * Remove a manager from the köşk
      */
     async removeKoskManager(requestParameters: RemoveKoskManagerRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<KoskResponse> {
