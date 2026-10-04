@@ -190,6 +190,22 @@ describe("a refusal that still comes back", () => {
     });
   });
 
+  it("keeps the Reddet dialog and the row open on a refusal, so the reason is not lost", async () => {
+    actions.rejectEnrollment.mockResolvedValue(refused);
+    await mount([application("open")]);
+    await click(rejectOf("open"));
+    const form = document.querySelector("form");
+    if (!form) throw new Error("the dialog did not open");
+    await act(async () => {
+      form.dispatchEvent(
+        new Event("submit", { bubbles: true, cancelable: true })
+      );
+    });
+    expect(document.querySelector("form")).not.toBeNull();
+    expect(approveOf("open")).not.toBeNull();
+    expect(rejectOf("open")).not.toBeNull();
+  });
+
   it("drops the row of an application someone else already decided", async () => {
     actions.approveEnrollment.mockResolvedValue({
       success: false,
