@@ -10,7 +10,8 @@ Every number below sits next to the command that printed it; commands run from `
 
 | File | What |
 | --- | --- |
-| `test/helpers/statement-counter.ts` | `recordStatements(run)` counts the SQL statements sent while `run` is awaited, by spying `pg`'s `Client.prototype.query`. `describeStatement` and `summariseStatements` name them in a few words. |
+| `test/helpers/statement-counter.ts` | `recordStatements(run)` counts the SQL statements sent while `run` is awaited, by spying `pg`'s `Client.prototype.query`. `describeStatement` and `summariseStatements` name them in a few words; a statement is named after the first table at its own level, never a subquery's (the köşk read has the holders of the köşk as subqueries in its select list). |
+| `test/unit/helpers/statement-counter.spec.ts` | 6 tests on the naming, including a select with a subquery in its select list and a string literal holding parentheses. |
 | `test/e2e/authz-query-count.e2e.spec.ts` | Two specs pin that the counter is trustworthy; nine scenarios send 1 first request and 50 more of one route on one dataset, assert each answers 200 and costs the same number of statements every time, and print the table below. |
 
 `Client.prototype.query` is the one method every path ends in: `Pool.query` checks a client out and calls
@@ -49,9 +50,9 @@ every one of the 50 runs after it; the spec fails if two runs differ):
 | GET /kosks/:koskId/courses, köşk nazımı | 12 | 11 | 23.2 | 27.2 |
 | GET /kosks/:koskId/courses, signed-in outsider | 12 | 11 | 22.9 | 25.8 |
 | GET /madrasahs/:id/courses, başmüderris | 12 | 11 | 15.1 | 17.7 |
-| GET /courses/:id, enrolled talebe (two decisions) | 20 | 20 | 31.4 | 38.0 |
-| GET /courses/:id, signed-in outsider (two decisions) | 17 | 17 | 26.7 | 40.5 |
-| GET /courses/:id, köşk nazımı (two decisions) | 18 | 18 | 29.6 | 39.4 |
+| GET /courses/:id, enrolled talebe | 20 | 20 | 31.4 | 38.0 |
+| GET /courses/:id, signed-in outsider | 17 | 17 | 26.7 | 40.5 |
+| GET /courses/:id, köşk nazımı | 18 | 18 | 29.6 | 39.4 |
 | GET /flashcard/decks/:id, the author's private deck | 6 | 5 | 10.4 | 13.2 |
 | GET /flashcard/decks/:id, a public deck, signed-in outsider | 5 | 5 | 11.3 | 15.1 |
 
@@ -64,7 +65,10 @@ once per process; `UserSyncService`), on every row where it shows.
 ### Where the statements go
 
 Read off the SQL text of one run of each scenario (a temporary dump of every statement, not committed; the
-committed spec prints the grouped summary under its table, which is what to compare against later). A
+committed spec prints the grouped summary under its table, which is what to compare against later; for
+the köşk list it prints `select role_assignments x4, select kosks x3, select courses, select madrasahs,
+select permission_grants, select platform_policies`, which is the 3 köşk reads and 4 role reads of the
+table below). A
 decision is the relation lookup of the route's module plus the loader's statements, as the dossier counted
 them; the rest is what the handler reads for its own answer.
 
@@ -106,13 +110,25 @@ loader's inputs), re-run this spec for the "after" and update this table.
    request that never reaches the database, every measured request answers 200 (a refusal costs a
    different number of statements, so it would be another route), and every run of one route costs the same.
    If the owner wants a hard budget (for example "the course page may not exceed 20"), it is one line per
-   scenario.
+   scenario. A review mutated the code under measurement (an extra `platformPolicies()` in the loader, the
+   second `course.view_details` decision of `CourseService.present` replaced by `true`) and the course page
+   scenario stayed green with its cost falling from 20 to 13: so the "before" numbers are a printed table
+   that a person compares, not an assertion. The scenario names therefore claim no number of decisions;
+   that the course page decides twice is read from the SQL, as the table above says.
 2. **The first request is reported apart.** The sync of the user row would otherwise make the first run
    differ from the 50 that follow it.
 3. **Latency is printed, never asserted.** It depends on the machine.
 4. **Dossier D1 to D5 are not decided here.** They concern the cache, which this does not build.
 
 ## Tests, and that they fail
+
+`statement-counter.spec.ts` (unit, 6 tests) pins how a statement is named. Red then green: with the
+first-`from` regex of the first commit of this branch put back, 3 of its 6 fail (`expected
+'select role_assignments' to be 'select kosks'` for a select with a subquery in its list, the same for the
+string-literal case, and `expected 'select role_assignments x3' to be 'select kosks x2, select
+role_assignments'` for the summary); with the fix, 6 pass. Before it, the printed köşk-list summary was
+`select role_assignments x5, select kosks x2`; after it, `x4` and `x3`, and the totals (11 and 12) did not
+move.
 
 `authz-query-count.e2e.spec.ts`, 11 tests: 2 on the counter, 9 scenarios (each 1 + 50 requests). Each was
 run with one change put in and then reverted (the file compared with the copy taken before, identical),
@@ -141,4 +157,4 @@ numbers above are the output of the harness, and the harness is what is tested.
   the dataset has no grants and one role per person. The loader's own bound on that (5 statements however
   many scopes, grants or groups) is pinned by `test/unit/authz/tedrisat-authz-context.spec.ts`, not here.
 - Routes other than these four: the ban, enrollment, audit and write routes are not measured.
-- The whole tedrisat suite was not run (the integrator does); only this spec, 3 times, and the red checks.
+- The whole tedrisat suite was not run (the integrator does); only this spec (3 times before the naming fix, once after, counts identical), the unit spec of the naming, and the red checks.
