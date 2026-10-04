@@ -8,6 +8,11 @@ import { describe, expect, it, vi } from "vitest";
 // getTranslations needs Next's request scope; resolve against the real
 // catalogue instead, in the locale the test asks for.
 const locale = vi.hoisted(() => ({ current: "tr" }));
+// LANDING_URL is read per render (MDRS-248); unset is the production address.
+const env = vi.hoisted(() => ({
+  LANDING_URL: undefined as string | undefined,
+}));
+vi.mock("~/env", () => ({ env }));
 vi.mock("next-intl/server", async () => {
   const { resources } = await import("@medaris/i18n");
   return {
@@ -32,6 +37,17 @@ describe("the footer links to the privacy notice (MDRS-102)", () => {
     expect(html).toContain('target="_blank"');
     expect(html).toContain('rel="noopener noreferrer"');
     expect(html).toContain(">Aydınlatma Metni</a>");
+  });
+
+  it("links to the deployment's own landing when LANDING_URL is set (MDRS-248)", async () => {
+    env.LANDING_URL = "https://landing-dev.medaris.app";
+    try {
+      expect(await render("tr")).toContain(
+        'href="https://landing-dev.medaris.app/aydinlatma-metni"'
+      );
+    } finally {
+      env.LANDING_URL = undefined;
+    }
   });
 
   it.each(["en", "ar"] as const)("is labelled in %s", async (languageTag) => {
