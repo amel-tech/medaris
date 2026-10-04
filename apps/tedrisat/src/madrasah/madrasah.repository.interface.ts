@@ -159,6 +159,10 @@ export interface ICreateMadrasahWithHead extends ICreateMadrasah {
 
 export type RestoreMadrasahResult = "restored" | "not-found" | "not-hidden";
 export type HideMadrasahResult = "hidden" | "not-found" | "already-hidden";
+export type DeactivateMadrasahResult =
+  | "deactivated"
+  | "not-found"
+  | "already-passive";
 /** A medrese as Keşfet lists it (MDRS-159). */
 export interface IMadrasahExplore {
   id: string;

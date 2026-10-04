@@ -17,6 +17,8 @@ import {
   roleAssignments,
 } from "../database/schema/role-assignment.schema";
 import { users } from "../database/schema/user.schema";
+import { auditImpactOf } from "../passivation/passivation-impact";
+import { PassivationImpactRepository } from "../passivation/passivation-impact.repository";
 import type {
   KoskListingFilter,
   KoskStatus,
@@ -125,7 +127,12 @@ export type AddNazimsOutcome =
  */
 @Injectable()
 export class KoskAdminRepository {
-  constructor(private readonly databaseService: DatabaseService) {}
+  // Must stay value imports: `import type` erases them from
+  // `design:paramtypes` and Nest can no longer inject them.
+  constructor(
+    private readonly databaseService: DatabaseService,
+    private readonly impact: PassivationImpactRepository
+  ) {}
 
   private get db() {
     return this.databaseService.db;
@@ -686,11 +693,15 @@ export class KoskAdminRepository {
 
   /**
    * "Köşkü pasife al": the köşk is passive and its held nazımları are taken
-   * off the post, in one transaction with the audit row naming them.
+   * off the post, in one transaction with the audit row naming them and the
+   * impact the person confirmed. The impact is measured again under the row
+   * lock; a `confirmation` that is not for these numbers and this caller
+   * throws `PassivationImpactChangedError` and nothing is written (MDRS-227).
    */
   async deactivate(
     koskId: string,
-    actorId: string
+    actorId: string,
+    confirmation: string
   ): Promise<"deactivated" | "no-kosk" | "already-passive"> {
     return this.db.transaction(async (tx) => {
       const [row] = await tx
@@ -700,6 +711,12 @@ export class KoskAdminRepository {
         .for("no key update");
       if (!row) return "no-kosk";
       if (row.passiveSince !== null) return "already-passive";
+      const impact = await this.impact.confirmed(
+        tx,
+        { type: "KOSK", id: koskId },
+        actorId,
+        confirmation
+      );
       const held = await tx
         .select({ userId: roleAssignments.userId })
         .from(roleAssignments)
@@ -725,7 +742,12 @@ export class KoskAdminRepository {
         action: "kosk.deactivate",
         entity: "kosk",
         entityId: koskId,
-        details: { name: row.name, removedNazimIds: held.map((h) => h.userId) },
+        details: {
+          name: row.name,
+          removedNazimIds: held.map((h) => h.userId),
+          impact: auditImpactOf(impact),
+          confirmation,
+        },
       });
       return "deactivated";
     });
