@@ -1337,11 +1337,13 @@ describe("The permission engine (MDRS-135, e2e)", () => {
       }).expect(200);
     });
 
-    it("a passive course stays closed to its köşk nazımı and its enrolled talebe whatever the case of its id", async () => {
+    it("a passive course stays closed to its enrolled talebe whatever the case of its id, and open to its köşk nazımı", async () => {
       await passivate();
       for (const id of [ownCourse, upper(ownCourse)]) {
-        await get(NAZIM_ID, `/courses/${id}/enrollments`).expect(403);
         await put(TALEBE_ID, `/courses/${id}/progress`, {}).expect(403);
+        // The köşk nazımı is the platform's management in their köşk (owner,
+        // 4 October).
+        await get(NAZIM_ID, `/courses/${id}/enrollments`).expect(200);
       }
     });
   });
@@ -1811,6 +1813,96 @@ describe("The permission engine (MDRS-135, e2e)", () => {
       await get(TALEBE_ID, `/courses/${ownCourse}`)
         .expect(200)
         .expect((res) => expect(res.body.contentLocked).toBe(true));
+    });
+
+    describe("the köşk nazımı and a passive course of their köşk (owner, 4 October)", () => {
+      const leaveWithoutMuderris = (courseId: string) =>
+        db()
+          .update(roleAssignments)
+          .set({ revokedAt: new Date(), revokedBy: NAZIM_ID })
+          .where(
+            and(
+              eq(roleAssignments.scopeId, courseId),
+              eq(roleAssignments.role, ASSIGNED_ROLES.MUDERRIS)
+            )
+          );
+      const auditOf = async (actorId: string) =>
+        (
+          await db()
+            .select()
+            .from(auditLog)
+            .where(eq(auditLog.actorId, actorId))
+        ).map((row) => row.action);
+
+      it("reads a draft left without its müderris on the record, and seats a new one; everyone else stays out", async () => {
+        await db()
+          .update(courses)
+          .set({ status: CourseStatus.DRAFT })
+          .where(eq(courses.id, ownCourse));
+        await leaveWithoutMuderris(ownCourse);
+
+        const read = await get(NAZIM_ID, `/courses/${ownCourse}`).expect(200);
+        expect(read.body.contentLocked).toBe(false);
+        expect(await auditOf(NAZIM_ID)).toEqual(
+          expect.arrayContaining(["course.content_read", "scope.passive_open"])
+        );
+        // The draft is still nobody else's: the talebe and the ders nazırı.
+        await get(TALEBE_ID, `/courses/${ownCourse}`).expect(404);
+        await get(DERS_ID, `/courses/${ownCourse}`).expect(404);
+
+        const [{ version }] = await db()
+          .select({ version: courses.version })
+          .from(courses)
+          .where(eq(courses.id, ownCourse));
+        await put(NAZIM_ID, `/courses/${ownCourse}/muderris`, {
+          version,
+          muderris: [{ userId: NEWCOMER_ID, name: "Yeni müderris" }],
+          imamUserId: NEWCOMER_ID,
+        }).expect(200);
+      });
+
+      it("works a published course of a passive medrese held in their köşk, live links included, while its talebe is closed out", async () => {
+        await db().insert(enrollments).values({
+          userId: TALEBE_ID,
+          courseId: medreseCourse,
+          status: EnrollmentStatus.ENROLLED,
+        });
+        // The medrese's başmüderris is gone: the medrese is passive (MDRS-136).
+        await db()
+          .update(roleAssignments)
+          .set({ revokedAt: new Date(), revokedBy: ADMIN_ID })
+          .where(
+            and(
+              eq(roleAssignments.scopeId, madrasahId),
+              eq(roleAssignments.role, ASSIGNED_ROLES.MEDRESE_BASMUDERRIS)
+            )
+          );
+        const resource = { entity: "course" as const, id: medreseCourse };
+        const nazim = await authz.effective(user(NAZIM_ID), resource);
+        for (const code of [
+          PERMISSIONS.COURSE_EDIT,
+          PERMISSIONS.COURSE_VIEW_UNPUBLISHED,
+          PERMISSIONS.SESSION_LIVE_LINK,
+          PERMISSIONS.COURSE_VIEW_DETAILS,
+        ]) {
+          expect(nazim?.codes.has(code), code).toBe(true);
+        }
+        await get(NAZIM_ID, `/courses/${medreseCourse}/enrollments`).expect(
+          200
+        );
+        await get(TALEBE_ID, `/courses/${medreseCourse}`)
+          .expect(200)
+          .expect((res) => expect(res.body.contentLocked).toBe(true));
+        // The nazır of the medrese, given course work there, is closed out too.
+        await grant(
+          NAZIR_ID,
+          { type: SCOPE_TYPES.MADRASAH, id: madrasahId },
+          { permission: PERMISSIONS.ENROLLMENT_DECIDE }
+        );
+        await get(NAZIR_ID, `/courses/${medreseCourse}/enrollments`).expect(
+          403
+        );
+      });
     });
 
     it("a course that never had a müderris is new, not passive", async () => {

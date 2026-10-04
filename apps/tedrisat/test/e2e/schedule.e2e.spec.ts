@@ -1,7 +1,9 @@
 import { ROLES } from "@medaris/common";
 import { INestApplication } from "@nestjs/common";
 import request from "supertest";
+import { EnrollmentStatus } from "../../src/course/domain/enrollment-status.enum";
 import { DatabaseService } from "../../src/database/database.service";
+import { enrollments } from "../../src/database/schema/course.schema";
 import {
   ASSIGNED_ROLES,
   roleAssignments,
@@ -213,6 +215,41 @@ describe("schedule (e2e)", () => {
         .get("/me/upcoming-lessons")
         .expect(200);
       expect(upcoming.body).toEqual([]);
+    });
+
+    it("keeps a passive course for the köşk's nazımı enrolled in it, as the engine keeps it open to them (owner, 4 October)", async () => {
+      const course = await createCourse("Müderrissiz kalan", {
+        sessions: [{ title: "Eski celse", at: inHours(30) }],
+      });
+      await enroll(course.id);
+      const db = app.get(DatabaseService).db;
+      await db.insert(enrollments).values({
+        userId: TEST_USER_ID,
+        courseId: course.id,
+        status: EnrollmentStatus.ENROLLED,
+      });
+      await db.insert(roleAssignments).values({
+        userId: OTHER_USER_ID,
+        role: ASSIGNED_ROLES.MUDERRIS,
+        scopeType: SCOPE_TYPES.COURSE,
+        scopeId: course.id,
+        grantedBy: TEST_USER_ID,
+        revokedAt: new Date(),
+        revokedBy: TEST_USER_ID,
+      });
+
+      const mine = await request(app.getHttpServer())
+        .get("/sessions")
+        .query(window(-1, 7))
+        .expect(200);
+      expect(
+        mine.body.map((s: { title: string; meetingUrl: string }) => [
+          s.title,
+          s.meetingUrl,
+        ])
+      ).toEqual([["Eski celse", MEETING_URL]]);
+      // The talebe of the same course is still closed out.
+      expect((await list().expect(200)).body).toEqual([]);
     });
 
     it("keeps a cancelled session, marked, with no meeting link", async () => {

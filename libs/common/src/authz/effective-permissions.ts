@@ -1,4 +1,5 @@
 import {
+  ASSIGNED_ROLES,
   type AssignedRole,
   SCOPE_TYPES,
   type ScopeRef,
@@ -55,7 +56,7 @@ export interface IAuthzFacts {
 
 export interface IEffective {
   codes: ReadonlySet<PermissionCode>;
-  /** The passive scope the caller opened as platform management, or null. */
+  /** The passive scope the caller opened as platform management or as its köşk's nazımı, or null. */
   openedPassive: ScopeRef | null;
   /**
    * For each code a live grant carries here, the authorities of those grants:
@@ -197,8 +198,8 @@ const CONTENT_WORK: ReadonlySet<PermissionCode> = new Set([
  *   made by an authority above a policy's level survives that policy;
  * - a policy that is on closes the abilities it names in every scope below;
  * - a passive scope closes every content code, except to platform management
- *   holding `platform.inactive_scopes_manage`, whose open is audited by the
- *   caller of this function.
+ *   holding `platform.inactive_scopes_manage` and to the nazımı of the köşk the
+ *   course is held in, whose open is audited by the caller of this function.
  */
 export function effectivePermissions(
   facts: IAuthzFacts,
@@ -277,15 +278,30 @@ export function effectivePermissions(
   // A passive scope closes its content.
   let openedPassive: ScopeRef | null = null;
   if (facts.passiveScope) {
+    const passive = facts.passiveScope;
     const management = codes.has(PERMISSIONS.PLATFORM_INACTIVE_SCOPES_MANAGE);
-    if (management) {
+    // The köşk nazımı is the platform's management in their own köşk (owner,
+    // 4 October: "köşk nazımı zaten bir tür platform yöneticisi olduğu için
+    // görebilmesi lazım"): a passive course, or a course of a passive medrese,
+    // held in their köşk stays open to them, drafts and live links included.
+    // A köşk with a nazımı is never the passive scope itself.
+    const koskNazim = heldRoles.some(
+      (r) =>
+        r.role === ASSIGNED_ROLES.KOSK_NAZIM &&
+        r.scope.type === SCOPE_TYPES.KOSK &&
+        !sameScope(r.scope, passive)
+    );
+    if (management || koskNazim) {
       // Opening is the whole point of the permission: the Medaris nazımı who
       // holds it reads the content even though no role of theirs reaches it
       // (nizam/14: "yalnız Medaris başnazımı ve izni olan Medaris nazımları
-      // açabilir, her açış denetim kaydına yazılır").
-      openedPassive = facts.passiveScope;
-      codes.add(PERMISSIONS.COURSE_VIEW_DETAILS);
-      codes.add(PERMISSIONS.COURSE_STAFF_READ);
+      // açabilir, her açış denetim kaydına yazılır"). The köşk nazımı's role
+      // already reaches it; their open is on the record all the same.
+      openedPassive = passive;
+      if (management) {
+        codes.add(PERMISSIONS.COURSE_VIEW_DETAILS);
+        codes.add(PERMISSIONS.COURSE_STAFF_READ);
+      }
     } else {
       for (const code of [...codes]) {
         if (PERMISSION_META[code].content) codes.delete(code);

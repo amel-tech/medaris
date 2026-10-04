@@ -472,11 +472,104 @@ describe("effective permissions: passive scopes and relationships", () => {
       relation: RELATIONS.ENROLLED,
       passiveScope: kosk(),
     });
-    const codes = held(facts, [role(ASSIGNED_ROLES.KOSK_NAZIM, kosk())]);
+    const codes = held(facts, [role(ASSIGNED_ROLES.MUDERRIS, course())]);
     expect(codes.has(P.COURSE_VIEW)).toBe(true); // the page is not content
     expect(codes.has(P.COURSE_VIEW_DETAILS)).toBe(false);
     expect(codes.has(P.COURSE_EDIT)).toBe(false);
     expect(codes.has(P.COURSE_STAFF_READ)).toBe(false);
+  });
+
+  describe("the köşk nazımı is the platform's management in their köşk (owner, 4 October)", () => {
+    const content = [
+      P.COURSE_EDIT,
+      P.COURSE_VIEW_UNPUBLISHED,
+      P.SESSION_LIVE_LINK,
+      P.SESSION_VIEW_CONTENT,
+      P.ENROLLMENT_DECIDE,
+      P.COURSE_VIEW_DETAILS,
+      P.COURSE_STAFF_READ,
+    ];
+
+    it("keeps a passive course of their köşk open, drafts and live links included, and the open is flagged for the audit", () => {
+      const result = effectivePermissions(
+        courseFacts({ passiveScope: course() }),
+        [role(ASSIGNED_ROLES.KOSK_NAZIM, kosk())],
+        []
+      );
+      for (const code of content) {
+        expect(result.codes.has(code), code).toBe(true);
+      }
+      // Re-seating the müderris of the köşk's own course is theirs too.
+      expect(result.codes.has(P.COURSE_OPEN_STANDALONE)).toBe(true);
+      expect(result.openedPassive).toEqual(course());
+    });
+
+    it("keeps a course of a passive medrese open in their köşk, and still not the medrese's own work", () => {
+      const result = effectivePermissions(
+        courseFacts({ medrese: true, passiveScope: madrasah() }),
+        [role(ASSIGNED_ROLES.KOSK_NAZIM, kosk())],
+        []
+      );
+      for (const code of content) {
+        expect(result.codes.has(code), code).toBe(true);
+      }
+      expect(result.codes.has(P.COURSE_OPEN_STANDALONE)).toBe(false);
+      expect(result.openedPassive).toEqual(madrasah());
+    });
+
+    it("closes it to everyone else: the enrolled, a ders nazırı with a grant, a başmüderris, the nazımı of another köşk", () => {
+      const facts = courseFacts({
+        medrese: true,
+        relation: RELATIONS.ENROLLED,
+        passiveScope: course(),
+      });
+      for (const [r, scope, grants] of [
+        [
+          ASSIGNED_ROLES.DERS_NAZIR,
+          course(),
+          [grant(course(), [P.COURSE_EDIT])],
+        ],
+        [ASSIGNED_ROLES.MEDRESE_BASMUDERRIS, madrasah(), []],
+        [ASSIGNED_ROLES.KOSK_NAZIM, kosk(OTHER_KOSK), []],
+      ] as const) {
+        const result = effectivePermissions(
+          facts,
+          [role(r, scope)],
+          [...grants]
+        );
+        expect(result.codes.has(P.COURSE_EDIT), r).toBe(false);
+        expect(result.codes.has(P.COURSE_VIEW_DETAILS), r).toBe(false);
+        expect(result.openedPassive, r).toBeNull();
+      }
+    });
+
+    it("does not open a köşk that is passive itself, whatever a stale role row says", () => {
+      const result = effectivePermissions(
+        courseFacts({ passiveScope: kosk() }),
+        [role(ASSIGNED_ROLES.KOSK_NAZIM, kosk())],
+        []
+      );
+      expect(result.codes.has(P.COURSE_EDIT)).toBe(false);
+      expect(result.openedPassive).toBeNull();
+    });
+
+    it("does not open it once the köşk nazımı's own role has run out", () => {
+      const now = new Date("2026-10-04T12:00:00Z");
+      const result = effectivePermissions(
+        courseFacts({ passiveScope: course() }),
+        [
+          role(
+            ASSIGNED_ROLES.KOSK_NAZIM,
+            kosk(),
+            new Date("2026-10-04T11:00:00Z")
+          ),
+        ],
+        [],
+        now
+      );
+      expect(result.codes.has(P.COURSE_VIEW_DETAILS)).toBe(false);
+      expect(result.openedPassive).toBeNull();
+    });
   });
 
   it("platform management holding the permission opens it, and the open is flagged for the audit", () => {

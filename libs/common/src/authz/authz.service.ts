@@ -98,8 +98,9 @@ export class AuthzService {
     const granted = wanted.filter((code) => effective.codes.has(code));
     if (granted.length === 0) return false;
 
-    // A passive scope is closed to everyone but platform management, and
-    // every open of its content is on the record (nizam/14). A page view or
+    // A passive scope is closed to everyone but platform management and the
+    // nazımı of the köşk that holds it, and every open of its content is on
+    // the record (nizam/14). A page view or
     // any other code that is no content opens nothing and writes nothing
     // (review L1: one page view wrote two rows).
     if (
