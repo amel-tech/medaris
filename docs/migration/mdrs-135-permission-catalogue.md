@@ -85,6 +85,31 @@ ones. Hiding, banning and reading stay the köşk nazımı's in both.
   against the database clock (`now()`), so there is no cache that could outlive an end date.
 - A code that is not grantable is ignored even if a row carries it (`permission.grant`,
   `course.hide`), so it cannot be smuggled in by a row written outside the API.
+- **When a seat goes, every row it leaves behind is decided by a person** (owner, d-1004: "a
+  permission cannot outlast its role", and the remover decides each row). The three acts that drop
+  seats (a nazır's dismissal, a head change, a Medaris nazımı's dismissal) list what the person gave,
+  course seats included: a head change now lists every role the head gave in the medrese and its
+  courses, with `scopeType`, `scopeId` and `courseTitle`, as the nazır's list does. One level down,
+  a seat answered Düşür whose holder handed on something still held under it, which no other seat
+  of theirs backs, is refused with 409 `DISMISS_SEAT_HANDED_ON` (naming the holders): that holder is
+  dismissed first, where their own rows are listed, or the seat is taken over. A grant answered
+  Devral beside its holder's dropped seat is refused with 400 `DISMISS_TAKE_OVER_WITHOUT_SEAT`
+  instead of being kept with no seat behind it. Taking over a row given to oneself is a self-grant,
+  refused by `SelfGrantGuard` for everyone but the başnazım (`madrasah.head_muderris.take_over`,
+  `madrasah.nazir.dismiss.take_over`). Tests: `grant-ceiling-cascade.e2e.spec.ts`.
+- **A whole-course save seats nobody again.** `PUT /courses/:id` keeps the seat each already-listed
+  account has, and none if it lapsed or was revoked (`syncMuderrisAssignments(..., { listedBefore })`);
+  only an account the save links anew is seated, the self-grant guard asks about exactly those, and a
+  seat it gives or takes writes `course.muderris_update` (`via: "course.replace"`). Seating a lapsed
+  müderris again is the müderris routes' explicit act. On `PUT /courses/:id/muderris` a medrese
+  course's self-naming is asked in the medrese, as `PUT /madrasahs/:id/courses/:courseId/muderrises`
+  asks it (`ISelfGrantWhat.heldAt`), so the two routes answer the başmüderris alike on a passive course.
+  Tests: `self-grant.e2e.spec.ts`.
+- **Giving a kept row more time never rewrites a higher authority's gift.** In nazir/06 a kept row
+  whose end moves later becomes the giver's when the giver's own holding carries the row's authority;
+  otherwise the row stays as it was given and the extra time is a row of its own, in the giver's
+  name and at the giver's level (`alongside` in the audit row). The dialog reads a code's end as its
+  longest row, so saving it as shown changes nothing.
 - `permission_grants.authority_scope_type` (migration `0047_mdrs_135_grant_authority`) records the
   level the giver acted under: the başnazım and a Medaris nazımı as `platform`, a köşk nazımı as
   `kosk`, a başmüderris as `madrasah`. A row that predates it reads null, which the engine takes to
@@ -160,7 +185,10 @@ medrese, held in köşk K stays visible and workable for K's köşk nazımı: co
 (`course.view_unpublished`) and live links. Their opens write `scope.passive_open` like platform
 management's, and their content reads stay `course.content_read` rows like any non-müderris read.
 Programım and the upcoming card keep such a course for the köşk's nazımı enrolled in it, so the list
-and the engine agree. Everyone else is closed out as before. Tests:
+and the engine agree, and each live link of it they hand out writes the same `scope.passive_open` and
+`course.content_read` the course page writes (`via: "schedule"` or `"schedule.upcoming"`); the köşk
+home page writes a `scope.passive_open` beside its content read too (`via: "kosk-dashboard"`).
+Everyone else is closed out as before. Tests:
 `effective-permissions.spec.ts` › "the köşk nazımı is the platform's management in their köşk";
 `authz-engine.e2e.spec.ts` › "the köşk nazımı and a passive course of their köşk";
 `schedule.e2e.spec.ts` › "keeps a passive course for the köşk's nazımı enrolled in it".
@@ -183,6 +211,11 @@ passive, only how a passive one is read.
   `authz-engine.e2e.spec.ts` › "a köşk nazımı reads a medrese course's content in their köşk, and the
   read is on the record". `GET /kosks/:id/dashboard` writes one per course whose meeting link it hands
   out, unless the caller teaches that course (`via: "kosk-dashboard"`; `kosk-dashboard.e2e.spec.ts`).
+  `POST /courses/:id/archive` and `/restore` answer with the course as a read does, its content to
+  who may read it and on the record (`via: "course.hide"` / `"course.restore"`), and write
+  `course.hide` / `course.restore` with the level; a caller who may hide but not read a draft (a
+  Medaris nazımı holding `platform.course_hide`, a nazır holding `madrasah.course_hide`) gets the
+  course without its content rather than a 404 after the write (`hide-kademe.e2e.spec.ts`).
 - `course.roster_read` (owner, d-1003-09, **"Kayda alınsın"**): a read of a course's roster by anyone who
   is neither an enrolled talebe nor one of the course's müderrisler writes a row, by the same rule as
   the content read (an enrolled talebe who also holds a role in the course's chain stays audited). The
@@ -190,7 +223,8 @@ passive, only how a passive one is read.
   `…/enrollments/removed`, `/stats`, `/badge-counts`, and the köşk-wide
   `GET /kosks/:koskId/enrollments/pending`, which belongs to no one course and so writes a row for
   every read, with the köşk as its entity, and so does the köşk home page's list of the newest
-  applicants (`GET /kosks/:id/dashboard`, `via: "kosk-dashboard"`, naming the courses in `courseIds`).
+  applicants (`GET /kosks/:id/dashboard`, `via: "kosk-dashboard"`, naming the courses in `courseIds`)
+  whenever the page hands them out.
   `details` has `via` (which route), `systemAdmin` and the
   permission it read through (`course.staff_read`, `course.manage_all` for the köşk's list). The row is
   awaited before the data is read (`CourseService.auditRosterRead`, called after the guard and the
@@ -204,8 +238,9 @@ passive, only how a passive one is read.
   they should.
 - The köşk home page (`GET /kosks/:id/dashboard`) opens to `platform.kosk_edit` as well as
   `kosk.manage`. A caller who reads it by `platform.kosk_edit` alone ("Köşkü düzenle, gizle ya da geri
-  al") gets it without the meeting links and the applicants' e-mail addresses, and `contentLocked` says
-  so. A course in a passive scope is left off the page (its sessions, their counts and its applicants)
+  al") gets it without the meeting links and without the applicants (their names and accounts are
+  personal data as much as their e-mail addresses; the count stays), and `contentLocked` says so;
+  nizam leaves the applicants card out for them, since Başvurular refuses them. A course in a passive scope is left off the page (its sessions, their counts and its applicants)
   for everyone but the köşk's nazımları (owner, 4 October) and holders of
   `platform.inactive_scopes_manage`. Test: `kosk-dashboard.e2e.spec.ts`.
 - `scope.passive_open` and `deck.admin_read` are written by `AuthzService` itself through the audit
@@ -368,18 +403,23 @@ codes have an entry in the tr messages, exactly the 57 *listed* ones (counted by
   enrolment and recordings still reads the settings itself (it did, and still does the same thing).
   `policy_closed_course_required` and `policy_no_public_recordings` have no server effect elsewhere
   yet (MDRS-176 and the recording model).
-- **The nazır archive has no "Geri al" for the medrese itself.** The API lets the başmüderris who hid
-  the medrese bring it back (see "Hide and restore by kademe"), and `Archive.hide.text`,
-  `Archive.hide.confirmBody` and `Archive.errors.parentHidden` now say so in tr, en and ar; the page
-  does not read whether the medrese is hidden, so the button is a follow-up. `ARCHIVE_RESTORE_LEVEL`
-  is worded with the existing "a higher level may have hidden it" message.
+- **The nazır archive offers "Medreseyi geri getir" only once it has hidden the medrese** (or been
+  told it is hidden already). The API lets the başmüderris who hid the medrese bring it back (see
+  "Hide and restore by kademe"), and every sentence of `Archive.hide` says so in tr, en and ar; a
+  medrese Medaris yönetimi hid answers `ARCHIVE_RESTORE_LEVEL`, worded as "only Medaris yönetimi
+  can bring it back". The page does not read whether the medrese is hidden when it opens, so a
+  medrese hidden earlier shows "Medreseyi gizle" until that is pressed and answered.
 - **No screen draws `platform.course_hide`'s hide yet.** The permission is in the catalogue and the
   dialogs that give platform permissions, and the API honours it on `POST /courses/:id/archive` and
   `/restore`; nizam has no course list a Medaris nazımı without `platform.kosk_edit` can open, so the
   menu is not widened for it (MDRS-108).
 - **A müderris "only with the permission" (MDRS-143)** has no catalogue code: `course.hide` is köşk-
   scoped and not grantable, and a course-scoped hide code would land in every müderris's role
-  defaults. Not done.
+  defaults. Not done, and a code alone would not do it: none of the four places that write a grant
+  (nazir/06 to a medrese nazırı, nizam/38 to a ders nazırı, nizam/12 to a Medaris nazımı, a group's
+  change) gives anything to a seated müderris, so who gives it, and on which screen, is a decision
+  still to take. A müderris and a ders nazırı do restore, at the course's level, the weeks and
+  sessions hidden there (`SECTION_HIDE_LADDER`).
 - **The passive-scope warning and confirmation** (MDRS-227): see "Passive scopes".
 - **Bans** are not started (MDRS-205, with its second and third questions parked as d-1004-02 and
   d-1004-03): see "Open questions".
@@ -452,7 +492,7 @@ on its own, as above. The suites above ran after the last source change.
 
 | Criterion | Test |
 | --- | --- |
-| Unit: effective permissions for each role default, for a grant, for an expired grant, for a policy that removes a permission | `libs/common/test/authz/effective-permissions.spec.ts`: "role defaults" (9 tests), "grants" (9), "policies" (6), "passive scopes and relationships" (4); `permissions.spec.ts` for the defaults themselves |
+| Unit: effective permissions for each role default, for a grant, for an expired grant, for a policy that removes a permission | `libs/common/test/authz/effective-permissions.spec.ts`: "role defaults" (9 tests), "grants" (9), "policies" (6), "passive scopes and relationships" (9, five of them in its nested "the köşk nazımı is the platform's management in their köşk"); `permissions.spec.ts` for the defaults themselves |
 | Unit: a grant from a higher authority bypasses the policy it outranks, and no other | `effective-permissions.spec.ts` › "a grant from an authority above the policy's level bypasses that policy, and no other" and "knows which authority is above which level" |
 | e2e: a medrese nazırı with no grants is refused everything; after a group grant, allowed exactly the group's permissions, in that medrese only | `authz-engine.e2e.spec.ts` › "is refused everything the medrese holds, with no grants" and "after a group grant is allowed exactly the group's permissions, and in that medrese only" |
 | e2e: a ders nazırı cannot grant anything, whatever they hold | `authz-engine.e2e.spec.ts` › "a ders nazırı cannot grant anything, whatever they hold" (both tests) |
@@ -504,7 +544,8 @@ Outside the owner's decisions of 1 and 3 October there are four, each forced by 
    medrese course the köşk's nazımı hid by `POST /courses/:id/restore`, which had no kademe check at
    all before. The köşk nazımı's own archive (nizam/28) and course table (nizam/23) no longer offer
    "Geri al" for what the platform hid. `POST /courses/:id/archive` on a hidden course and `/restore`
-   on a shown one answer 409 instead of 200 with the course.
+   on a shown one answer 409 instead of 200 with the course. A successful hide or restore answers with
+   the course as a read does, on the record (see "Audit").
 
 ## Hide and restore by kademe
 
@@ -548,8 +589,11 @@ ban rule, on the ban ladder `BAN_TIERS`, in one table (`HIDE_RANK` in `archive/h
   the course back.
 - **Who restores a course from the archive** is decided by the engine on the course, on the ladder every
   course hide records (`COURSE_HIDE_LADDER`): whoever could hide at a level brings back at it, a nazır
-  given `madrasah.course_hide` included. The köşk archive, the medrese archive and the köşk's course
-  roster say so per item (`canRestore`), and nizam draws no "Geri al" for what the platform hid.
+  given `madrasah.course_hide` included. A week or a session also has the course's own rung
+  (`SECTION_HIDE_LADDER`): whoever runs the course (`week.hide`, `session.manage` or `course.edit`)
+  hid it there and brings it back there; a course has no such rung. The köşk archive, the medrese
+  archive and the köşk's course roster say so per item (`canRestore`), and nizam draws no "Geri al"
+  for what the platform hid.
 - **Medaris nazımı:** `platform.course_hide` (grantable, platform-scoped) hides and restores any course at
   the platform level; the başnazım holds it by bypass. For a köşk, a medrese and a hosting right a
   Medaris nazımı holding the platform permission acts at the platform level.
