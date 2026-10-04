@@ -298,13 +298,13 @@ export default async function Home({
               </h2>
               <Points items={medrese.points} />
               <div className="mt-auto flex min-inline-0 flex-col items-start gap-3">
+                <p className="mds-caption">{medrese.note}</p>
                 <Link
                   className="mds-btn mds-btn--large mds-btn--primary"
                   href="/iletisim"
                 >
                   {medrese.contact}
                 </Link>
-                <p className="mds-caption">{medrese.note}</p>
               </div>
             </article>
           </div>
