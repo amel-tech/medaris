@@ -180,6 +180,38 @@ describe("TedrisatAuthzContext", () => {
     ]);
   });
 
+  it("hands the engine each role's and grant's end, so a giver's holding is known to last only until then (review B-grants-R2-2)", async () => {
+    const end = new Date("2026-10-05T10:00:00Z");
+    const { loader } = build({
+      facts: [[KOSK, MADRASAH, false, false, false, false, false]],
+      // [role, scope type, scope id, end]
+      roles: [["MEDRESE_NAZIR", "madrasah", MADRASAH, end]],
+      // [grant id, scope type, scope id, single permission, authority, group item, end]
+      grants: [
+        ["g1", "madrasah", MADRASAH, "course.edit", "platform", null, end],
+      ],
+    });
+    const ctx = await loader.load(USER, {
+      entity: ENTITIES.COURSE,
+      id: COURSE,
+    });
+    expect(ctx.roles).toEqual([
+      {
+        role: "MEDRESE_NAZIR",
+        scope: { type: "madrasah", id: MADRASAH },
+        expiresAt: end,
+      },
+    ]);
+    expect(ctx.grants).toEqual([
+      {
+        scope: { type: "madrasah", id: MADRASAH },
+        authority: "platform",
+        expiresAt: end,
+        codes: ["course.edit"],
+      },
+    ]);
+  });
+
   it("decides expiry and revocation in the statements, against the database clock, not in memory", async () => {
     const { loader, queries } = build({
       facts: [[KOSK, null, false, false, null, null, null]],
@@ -220,6 +252,28 @@ describe("TedrisatAuthzContext", () => {
     for (const query of queries) {
       expect(query.text).toContain('"revoked_at" is null');
       expect(query.text).not.toContain('"scope_id" in');
+    }
+  });
+
+  it("asks for the caller's roles in terms the partial indexes on user_id serve, with or without a chain", async () => {
+    // `role_assignments_held_platform_idx` is `where scope_id is null` and
+    // `role_assignments_held_scoped_idx` is `where scope_id is not null`: a
+    // `scope_type = 'platform'` arm matches neither, and the planner read every
+    // row ever assigned on each decision (measured on Postgres 17 with 50k
+    // rows: a Seq Scan of 872 buffers against a BitmapOr of 5).
+    for (const resource of [
+      { entity: ENTITIES.COURSE, id: COURSE },
+      { entity: ENTITIES.KOSK, id: "new" },
+    ]) {
+      const { loader, queries } = build({
+        facts: [[KOSK, null, false, false, null, null, null]],
+      });
+      await loader.load(USER, resource);
+      const roles = queries.find((q) => which(q.text) === "roles")?.text ?? "";
+      expect(roles, resource.id).toContain(
+        '"role_assignments"."scope_id" is null'
+      );
+      expect(roles, resource.id).not.toContain('"scope_type" =');
     }
   });
 });

@@ -81,6 +81,23 @@ export class MadrasahCourseService {
     return this.listItem(madrasahId, result.courseId);
   }
 
+  /**
+   * The accounts a müderris list would seat on the course: the listed ones
+   * holding no MUDERRIS seat there now (`syncMuderrisAssignments` seats them,
+   * a lapsed one again). Asked only about `userId`, the caller, whom the
+   * self-naming check is about.
+   */
+  async seatsAmong(
+    courseId: string,
+    userIds: readonly string[],
+    userId: string
+  ): Promise<string[]> {
+    const me = userId.toLowerCase();
+    if (!userIds.some((id) => id.toLowerCase() === me)) return [...userIds];
+    if (!(await this.repo.holdsMuderrisSeat(courseId, me))) return [...userIds];
+    return userIds.filter((id) => id.toLowerCase() !== me);
+  }
+
   /** Replaces the course's müderrisler (nazir/17) and answers the course as the list shows it. */
   async setMuderris(
     madrasahId: string,

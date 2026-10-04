@@ -20,6 +20,13 @@ import {
     HeadDelegationKindToJSON,
     HeadDelegationKindToJSONTyped,
 } from './HeadDelegationKind';
+import type { HeadDelegationScopeType } from './HeadDelegationScopeType';
+import {
+    HeadDelegationScopeTypeFromJSON,
+    HeadDelegationScopeTypeFromJSONTyped,
+    HeadDelegationScopeTypeToJSON,
+    HeadDelegationScopeTypeToJSONTyped,
+} from './HeadDelegationScopeType';
 import type { NazimPersonResponse } from './NazimPersonResponse';
 import {
     NazimPersonResponseFromJSON,
@@ -47,7 +54,7 @@ export interface HeadDelegationResponse {
      */
     id: string;
     /**
-     * The role handed on (MEDRESE_NAZIR), for a ROLE
+     * The role handed on, for a ROLE: MEDRESE_NAZIR in the medrese, or a course seat (MUDERRIS, DERS_NAZIR) in one of its courses
      * @type {string}
      * @memberof HeadDelegationResponse
      */
@@ -64,6 +71,24 @@ export interface HeadDelegationResponse {
      * @memberof HeadDelegationResponse
      */
     groupName?: string | null;
+    /**
+     * Where it is held: the medrese, or one of its courses (`courseTitle` names it)
+     * @type {HeadDelegationScopeType}
+     * @memberof HeadDelegationResponse
+     */
+    scopeType: HeadDelegationScopeType;
+    /**
+     * 
+     * @type {string}
+     * @memberof HeadDelegationResponse
+     */
+    scopeId?: string | null;
+    /**
+     * The course's title, for a row held in a course
+     * @type {string}
+     * @memberof HeadDelegationResponse
+     */
+    courseTitle?: string | null;
     /**
      * 
      * @type {NazimPersonResponse}
@@ -92,6 +117,7 @@ export interface HeadDelegationResponse {
 export function instanceOfHeadDelegationResponse(value: object): value is HeadDelegationResponse {
     if (!('kind' in value) || value['kind'] === undefined) return false;
     if (!('id' in value) || value['id'] === undefined) return false;
+    if (!('scopeType' in value) || value['scopeType'] === undefined) return false;
     if (!('to' in value) || value['to'] === undefined) return false;
     if (!('grantedAt' in value) || value['grantedAt'] === undefined) return false;
     return true;
@@ -112,6 +138,9 @@ export function HeadDelegationResponseFromJSONTyped(json: any, ignoreDiscriminat
         'role': json['role'] == null ? undefined : json['role'],
         'permission': json['permission'] == null ? undefined : json['permission'],
         'groupName': json['groupName'] == null ? undefined : json['groupName'],
+        'scopeType': HeadDelegationScopeTypeFromJSON(json['scopeType']),
+        'scopeId': json['scopeId'] == null ? undefined : json['scopeId'],
+        'courseTitle': json['courseTitle'] == null ? undefined : json['courseTitle'],
         'to': NazimPersonResponseFromJSON(json['to']),
         'grantedAt': (new Date(json['grantedAt'])),
         'expiresAt': json['expiresAt'] == null ? undefined : (new Date(json['expiresAt'])),
@@ -134,6 +163,9 @@ export function HeadDelegationResponseToJSONTyped(value?: HeadDelegationResponse
         'role': value['role'],
         'permission': value['permission'],
         'groupName': value['groupName'],
+        'scopeType': HeadDelegationScopeTypeToJSON(value['scopeType']),
+        'scopeId': value['scopeId'],
+        'courseTitle': value['courseTitle'],
         'to': NazimPersonResponseToJSON(value['to']),
         'grantedAt': ((value['grantedAt']).toISOString()),
         'expiresAt': value['expiresAt'] === null ? null : ((value['expiresAt'] as any)?.toISOString()),

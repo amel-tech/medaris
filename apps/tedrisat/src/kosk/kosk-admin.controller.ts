@@ -189,7 +189,7 @@ export class KoskAdminController {
   @ApiOperation({
     summary: "A köşk nazımı's home page (numbers, celse table, applications)",
     description:
-      "nizam/02. The numbers, the sessions of one tab (`sessions`: UPCOMING is the next seven days, PAST and CANCELLED the latest twenty), the newest waiting applications and the müderrisler. For the köşk's nazımları and the başnazım.",
+      "nizam/02. The numbers, the sessions of one tab (`sessions`: UPCOMING is the next seven days, PAST and CANCELLED the latest twenty), the newest waiting applications and the müderrisler. For the köşk's nazımları and the başnazım. A Medaris nazımı holding only `platform.kosk_edit` gets it without the meeting links and without the applications (`contentLocked`: `latestApplications` is empty, `counts.pendingApplications` still says how many wait). A course in a passive scope is left out for everyone but the köşk's nazımları and holders of `platform.inactive_scopes_manage`. The applicants handed out are written to `audit_log` as a roster read on every call that sends them (none for a `contentLocked` caller), and each course whose meeting link is handed out as a content read unless the caller teaches it.",
     operationId: "getKoskDashboard",
   })
   @ApiQuery({
@@ -203,7 +203,8 @@ export class KoskAdminController {
   @ApiNotFoundResponse()
   @Get(":id/dashboard")
   // Authorized like the köşk overview: the köşk's nazımları and, by the platform
-  // permission, a Medaris nazımı; the başnazım passes by the bypass.
+  // permission, a Medaris nazımı; the başnazım passes by the bypass. What each
+  // of them is shown, and what goes on the record, is `KoskDashboardService`'s.
   @Authz(
     [PERMISSIONS.KOSK_MANAGE, PERMISSIONS.PLATFORM_KOSK_EDIT],
     byExistingKosk
@@ -224,7 +225,7 @@ export class KoskAdminController {
   @ApiOperation({
     summary: "Every course of the köşk for the Dersler table",
     description:
-      "nizam/23 and 20. Hidden courses too, newest first, each with its müderrisler (the imam flagged), talebe, waiting applications and bans, plus the counts the tabs show.",
+      "nizam/23 and 20. Hidden courses too, newest first, each with its müderrisler (the imam flagged), talebe, waiting applications and bans, plus the counts the tabs show. A hidden course says whether the caller may bring it back (`canRestore`, by kademe).",
     operationId: "getKoskCourseRoster",
   })
   @ApiOkResponse({ type: KoskCourseRosterResponse })

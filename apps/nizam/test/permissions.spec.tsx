@@ -17,15 +17,12 @@ import {
   type DecisionItem,
   DISMISS_OPENS_AT,
   dayIn,
-  dayInputValue,
   daysLeft,
   decisionItems,
   dismissDecisions,
   dismissOpen,
   dismissReady,
-  endError,
   endLabel,
-  endOfDayIso,
   extrasToSend,
   formatDay,
   givenKey,
@@ -36,6 +33,7 @@ import {
   orderByCatalog,
   permissionErrorKey,
   platformGroupOf,
+  selfMadeItems,
   summaryCounts,
   toggleExtra,
   withoutGroupCodes,
@@ -71,6 +69,7 @@ describe("codes and messages", () => {
       "platform.kosk_create",
       "platform.kosk_nazim_manage",
       "platform.kosk_edit",
+      "platform.course_hide",
       "platform.hosting_grant",
       "platform.madrasah_create",
       "platform.head_muderris_manage",
@@ -145,49 +144,10 @@ describe("the end of a permission (nizam 11 criterion 2)", () => {
   });
 });
 
-describe("the end date field (nizam 12 criterion 3)", () => {
-  const now = new Date("2026-10-02T09:00:00Z");
-
-  it("turns a day into the last second of it in the viewer's zone", () => {
-    expect(endOfDayIso("2026-12-31", IST)).toBe("2026-12-31T20:59:59.000Z");
-    // Summer time is also +03 in Istanbul now, but a zone with a shift moves the instant.
-    expect(endOfDayIso("2026-07-15", "America/New_York")).toBe(
-      "2026-07-16T03:59:59.000Z"
-    );
-    expect(endOfDayIso("2026-01-15", "America/New_York")).toBe(
-      "2026-01-16T04:59:59.000Z"
-    );
-    expect(endOfDayIso("nope", IST)).toBeNull();
-    expect(endOfDayIso("2026-02-31x", IST)).toBeNull();
-  });
-
-  it("round-trips through the date input", () => {
-    expect(dayInputValue("2026-12-31T20:59:59.000Z", IST)).toBe("2026-12-31");
-    expect(dayInputValue(null, IST)).toBe("");
+describe("the calendar day of an instant", () => {
+  it("is read in the viewer's zone", () => {
+    expect(dayIn(new Date("2026-12-31T20:59:59Z"), IST)).toBe("2026-12-31");
     expect(dayIn(new Date("2026-12-31T21:00:00Z"), IST)).toBe("2027-01-01");
-  });
-
-  it("accepts no date, a later one, and the appointment's own last day", () => {
-    const assignmentEnd = "2026-12-31T20:59:59Z";
-    const check = (day: string) =>
-      endError(day, { now, timeZone: IST, assignmentEnd });
-    expect(check("")).toBeNull();
-    expect(check("2026-11-15")).toBeNull();
-    expect(check("2026-12-31")).toBeNull();
-  });
-
-  it("refuses today or the past, and a day after the appointment ends", () => {
-    const assignmentEnd = "2026-12-31T20:59:59Z";
-    const check = (day: string) =>
-      endError(day, { now, timeZone: IST, assignmentEnd });
-    expect(check("2026-10-01")).toBe("past");
-    // Today is not "in the future", though its last second still lies ahead.
-    expect(check("2026-10-02")).toBe("past");
-    expect(check("2026-10-03")).toBeNull();
-    expect(check("2027-01-01")).toBe("afterAssignment");
-    expect(
-      endError("2030-01-01", { now, timeZone: IST, assignmentEnd: null })
-    ).toBeNull();
   });
 });
 
@@ -304,6 +264,33 @@ describe("the dismissal question (nizam 11, _kurallar 14, 15)", () => {
       dismissDecisions(decisionItems(given), all).map((d) => d.kind)
     ).toEqual(["ROLE", "GRANT"]);
   });
+
+  it("asks nothing about a row the person made for themselves: the API revokes it and takes no answer for it", () => {
+    const person = "AAAAAAAA-0000-4000-8000-000000000001";
+    const given = [
+      { kind: "ROLE", id: "r1", to: { id: "u-rabia" } },
+      { kind: "ROLE", id: "r2", to: { id: person.toLowerCase() } },
+      { kind: "GRANT", id: "g1", to: { id: person.toLowerCase() } },
+      { kind: "GROUP", id: "p1", to: null },
+    ] as GivenItemResponse[];
+    expect(decisionItems(given, person).map(givenKey)).toEqual(["ROLE:r1"]);
+    expect(selfMadeItems(given, person).map(givenKey)).toEqual([
+      "ROLE:r2",
+      "GRANT:g1",
+    ]);
+    const answers = { "ROLE:r1": "TAKE_OVER" } as const;
+    expect(dismissReady(decisionItems(given, person), answers)).toBe(true);
+    expect(dismissDecisions(decisionItems(given, person), answers)).toEqual([
+      { kind: "ROLE", id: "r1", action: "TAKE_OVER" },
+    ]);
+    // Without the person, nothing is set apart (the older call still works).
+    expect(decisionItems(given).map(givenKey)).toEqual([
+      "ROLE:r1",
+      "ROLE:r2",
+      "GRANT:g1",
+    ]);
+    expect(selfMadeItems(given, undefined)).toEqual([]);
+  });
 });
 
 describe("the group form (nizam 13 criteria 2, 3, 4)", () => {
@@ -363,6 +350,12 @@ describe("the group form (nizam 13 criteria 2, 3, 4)", () => {
     );
     expect(permissionErrorKey({ code: "WHATEVER" })).toBe("errors.generic");
     expect(permissionErrorKey(undefined)).toBe("errors.generic");
+    expect(permissionErrorKey({ code: "DISMISS_SEAT_HANDED_ON" })).toBe(
+      "errors.dismissCascade"
+    );
+    expect(permissionErrorKey({ code: "DISMISS_TAKE_OVER_WITHOUT_SEAT" })).toBe(
+      "errors.dismissSeatless"
+    );
   });
 });
 

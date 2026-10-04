@@ -9,15 +9,19 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { MadrasahsView } from "~/features/madrasahs/components/madrasahs-view";
 import {
+  ALL_MADRASAH_ABILITIES,
   canOpen,
   cleanHandle,
   dateWithCase,
   directoryPath,
   groupByPerson,
   handleError,
+  handOnCourseSuffix,
+  handOnPlace,
   hostingLabel,
   isEmailLike,
   type Messages,
+  madrasahAbilities,
   madrasahErrorKey,
   nameError,
   openPayload,
@@ -264,6 +268,18 @@ describe("the Medrese aç form (nizam 08, criteria 1 to 3)", () => {
     expect(madrasahErrorKey({ code: "WHATEVER" })).toBe("errors.generic");
     expect(madrasahErrorKey(undefined)).toBe("errors.generic");
   });
+
+  it("words the head change's refusals: a dropped seat with hand-ons, a grant kept with no seat, taking over one's own", () => {
+    expect(madrasahErrorKey({ code: "DISMISS_SEAT_HANDED_ON" })).toBe(
+      "errors.delegationsCascade"
+    );
+    expect(madrasahErrorKey({ code: "DISMISS_TAKE_OVER_WITHOUT_SEAT" })).toBe(
+      "errors.delegationsSeatless"
+    );
+    expect(madrasahErrorKey({ code: "SELF_GRANT_REFUSED" })).toBe(
+      "errors.selfTakeOver"
+    );
+  });
 });
 
 const render = (ui: React.ReactElement) =>
@@ -501,6 +517,60 @@ describe("MadrasahsView (nizam 07)", () => {
   it("keeps the search term in the field", () => {
     expect(view(directory(three), "ALL", "zeyrek")).toContain('value="zeyrek"');
   });
+
+  it("draws only the buttons the viewer's permissions open, so none leads to a 403 (MDRS-108)", () => {
+    const html = render(
+      <MadrasahsView
+        directory={directory(three)}
+        status="ALL"
+        q=""
+        can={madrasahAbilities(
+          { systemAdmin: false },
+          new Set(["platform.head_muderris_manage"])
+        )}
+      />
+    );
+    expect(html).toContain("Başmüderris ata: Zeyrek Medresesi");
+    expect(html).toContain("Başmüderrisi değiştir: Süleymaniye Medresesi");
+    expect(html).not.toContain("Medrese aç");
+    expect(html).not.toContain("Geri al: ");
+    expect(html).not.toContain('href="/tr/arsiv"');
+  });
+});
+
+describe("what Medreseler offers its viewer (MDRS-108)", () => {
+  it("is everything for the başnazım, and when the roles or the permissions could not be read", () => {
+    expect(madrasahAbilities({ systemAdmin: true }, new Set())).toEqual(
+      ALL_MADRASAH_ABILITIES
+    );
+    expect(madrasahAbilities(null, new Set())).toEqual(ALL_MADRASAH_ABILITIES);
+    expect(madrasahAbilities({ systemAdmin: false }, null)).toEqual(
+      ALL_MADRASAH_ABILITIES
+    );
+  });
+
+  it("is one button per platform permission for a Medaris nazımı, and never the başnazım's archive", () => {
+    const of = (...codes: string[]) =>
+      madrasahAbilities({ systemAdmin: false }, new Set(codes));
+    expect(of("platform.madrasah_create")).toEqual({
+      open: true,
+      assign: false,
+      restore: false,
+      archive: false,
+    });
+    expect(of("platform.madrasah_edit")).toEqual({
+      open: false,
+      assign: false,
+      restore: true,
+      archive: false,
+    });
+    expect(of("platform.head_muderris_manage")).toEqual({
+      open: false,
+      assign: true,
+      restore: false,
+      archive: false,
+    });
+  });
 });
 
 describe("the hand-ons of a replaced başmüderris (nizam 22)", () => {
@@ -535,6 +605,21 @@ describe("the hand-ons of a replaced başmüderris (nizam 22)", () => {
     expect(personsReady(people, { fatma: "DROP", ummu: "TAKE_OVER" })).toBe(
       true
     );
+  });
+
+  it("names the course a seat or a grant is held in, and the medrese for its own (review B-head-delegation-no-scope)", () => {
+    const inCourse = {
+      scopeType: "course",
+      courseTitle: "Bina ve İzhar",
+    } as HeadDelegationResponse;
+    const inMedrese = {
+      scopeType: "madrasah",
+      courseTitle: null,
+    } as HeadDelegationResponse;
+    expect(handOnPlace(inCourse, "Süleymaniye")).toBe("Bina ve İzhar");
+    expect(handOnPlace(inMedrese, "Süleymaniye")).toBe("Süleymaniye");
+    expect(handOnCourseSuffix(inCourse)).toBe(" (Bina ve İzhar)");
+    expect(handOnCourseSuffix(inMedrese)).toBe("");
   });
 
   it("sends the person's answer for every one of their items", () => {

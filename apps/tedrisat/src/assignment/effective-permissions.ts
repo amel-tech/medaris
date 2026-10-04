@@ -1,12 +1,13 @@
 import {
-  GRANTABLE_CODES,
-  roleCodesAt,
-  roleCoversScope,
-  type ScopeRef,
+  LISTED_CODES,
+  PERMISSION_META,
+  type PermissionCode,
 } from "@medaris/common";
-import type {
-  AssignedRole,
-  ScopeType,
+import {
+  ASSIGNED_ROLES,
+  type AssignedRole,
+  SCOPE_TYPES,
+  type ScopeType,
 } from "../database/schema/role-assignment.schema";
 
 export interface IScopeRef {
@@ -15,13 +16,16 @@ export interface IScopeRef {
   name: string | null;
 }
 
-export interface IHeldRole extends IScopeRef {
-  role: AssignedRole;
-}
-
-export interface IHeldPermissions extends IScopeRef {
-  /** Catalog codes the grant (or the grant's group) carries. */
-  codes: readonly string[];
+/** One scope a role or a grant of the person names, and what they hold there. */
+export interface IScopeHolding extends IScopeRef {
+  /** The roles held in this very scope; none for a scope only a grant names. */
+  roles: readonly AssignedRole[];
+  /**
+   * What the engine says the person holds here (`AuthzService.effective`):
+   * role defaults with nesting, the grants a role still covers, and the
+   * content a passive scope has closed taken away.
+   */
+  codes: ReadonlySet<string>;
 }
 
 export interface IEffectiveGroup {
@@ -32,92 +36,83 @@ export interface IEffectiveGroup {
   permissions: string[];
 }
 
-const keyOf = (scope: IScopeRef) => `${scope.type}:${scope.id ?? ""}`;
+/** The role a scope's lines are drawn under when more than one is held there: its manager first. */
+const ROLE_ORDER: readonly AssignedRole[] = [
+  ASSIGNED_ROLES.KOSK_NAZIM,
+  ASSIGNED_ROLES.MEDRESE_BASMUDERRIS,
+  ASSIGNED_ROLES.MUDERRIS,
+  ASSIGNED_ROLES.MEDARIS_NAZIM,
+  ASSIGNED_ROLES.MEDRESE_NAZIR,
+  ASSIGNED_ROLES.DERS_NAZIR,
+];
 
 /**
- * What a person may do, sorted by where. A role contributes the defaults
- * tagged for the kind of scope it is held in (`roleCodesAt`, the catalogue's
- * own rule, which the engine's `effectivePermissions` builds on and extends
- * with nesting); a grant contributes its codes in its own scope.
- * Scopes held under the same role are one group, so a müderris of four
- * courses reads as one set of sentences, not four (tedris 43). A grant in a
- * scope where no role is held forms a group with `role: null`.
+ * Whether a code the person holds is one of the lines of a scope of `type`:
+ * a code tagged for that kind of scope, or, at a medrese or a köşk, the course
+ * work held there for every course below it (a başmüderris's runs the
+ * medrese's courses). The köşk nazımı's own course work is the one exception:
+ * `course.manage_all` says it in one sentence, with the role's note under it,
+ * and it is not repeated line by line.
+ */
+export function listedAt(
+  code: PermissionCode,
+  type: ScopeType,
+  roles: readonly AssignedRole[]
+): boolean {
+  const { scopes } = PERMISSION_META[code];
+  if (scopes.includes(type)) return true;
+  if (type !== SCOPE_TYPES.KOSK && type !== SCOPE_TYPES.MADRASAH) return false;
+  if (!scopes.includes(SCOPE_TYPES.COURSE)) return false;
+  return !(
+    type === SCOPE_TYPES.KOSK && roles.includes(ASSIGNED_ROLES.KOSK_NAZIM)
+  );
+}
+
+/**
+ * What a person may do, sorted by where, as the engine decides it: each scope
+ * a role or a grant names lists the catalogue's listed codes the engine gives
+ * the person there (`listedAt` picks the ones that are that scope's lines), so
+ * this screen and a request cannot disagree. A passive scope's closed content,
+ * a grant to "every course", a grant no role covers and a code whose scope tag
+ * does not reach the scope are therefore all exactly what the routes do.
  *
- * Pure on purpose: the same rule is exercised without a database.
+ * Scopes held under the same role with the same lines are one group, so a
+ * müderris of four courses reads as one set of sentences, not four (tedris
+ * 43); a course of theirs that went passive is a group of its own. A scope
+ * where only a grant is held forms a group with `role: null`.
+ *
+ * Pure on purpose: the grouping is exercised without a database.
  */
 export function buildEffectivePermissions(
-  roles: readonly IHeldRole[],
-  allGrants: readonly IHeldPermissions[],
-  /** Where each course sits, so a grant on a course counts under the köşk's or medrese's role. */
-  parentsOfCourse?: Parameters<typeof roleCoversScope>[2]
+  holdings: readonly IScopeHolding[]
 ): IEffectiveGroup[] {
-  // The engine's two rules on grants, so this screen and a request cannot
-  // disagree: a permission never outlasts its role (a grant counts only while
-  // a role held here covers its scope), and only a grantable code is ever
-  // carried by one.
-  const asScope = (s: IScopeRef): ScopeRef => ({ type: s.type, id: s.id });
-  const grants = allGrants
-    .filter((grant) =>
-      roles.some((held) =>
-        roleCoversScope(asScope(held), asScope(grant), parentsOfCourse)
-      )
-    )
-    .map((grant) => ({
-      ...grant,
-      codes: grant.codes.filter((code) => GRANTABLE_CODES.has(code)),
-    }));
-  const grantedByScope = new Map<string, Set<string>>();
-  const scopeOfGrant = new Map<string, IScopeRef>();
-  for (const grant of grants) {
-    const key = keyOf(grant);
-    const set = grantedByScope.get(key) ?? new Set<string>();
-    for (const code of grant.codes) set.add(code);
-    grantedByScope.set(key, set);
-    scopeOfGrant.set(key, {
-      type: grant.type,
-      id: grant.id,
-      name: grant.name,
-    });
-  }
-
   const groups = new Map<string, IEffectiveGroup>();
-  const rolesInScope = new Set<string>();
-  for (const held of roles) {
-    rolesInScope.add(keyOf(held));
-    const key = `${held.role}`;
+  for (const holding of holdings) {
+    const role = ROLE_ORDER.find((r) => holding.roles.includes(r)) ?? null;
+    const permissions = LISTED_CODES.filter(
+      (code) =>
+        holding.codes.has(code) && listedAt(code, holding.type, holding.roles)
+    );
+    if (permissions.length === 0) continue;
+    const key = `${role ?? `grant:${holding.type}`}|${permissions.join(",")}`;
     const group = groups.get(key) ?? {
-      role: held.role,
-      scopeType: held.type,
+      role,
+      scopeType: holding.type,
       scopes: [],
-      permissions: [],
+      permissions,
     };
-    if (!group.scopes.some((s) => keyOf(s) === keyOf(held))) {
-      group.scopes.push({ type: held.type, id: held.id, name: held.name });
+    if (
+      !group.scopes.some((s) => s.type === holding.type && s.id === holding.id)
+    ) {
+      group.scopes.push({
+        type: holding.type,
+        id: holding.id,
+        name: holding.name,
+      });
     }
-    const merged = new Set<string>(group.permissions);
-    for (const code of roleCodesAt(held.role, held.type)) merged.add(code);
-    for (const code of grantedByScope.get(keyOf(held)) ?? []) merged.add(code);
-    group.permissions = [...merged];
     groups.set(key, group);
   }
-
-  for (const [key, codes] of grantedByScope) {
-    if (rolesInScope.has(key)) continue;
-    const scope = scopeOfGrant.get(key);
-    if (!scope) continue;
-    const groupKey = `grant:${scope.type}`;
-    const group = groups.get(groupKey) ?? {
-      role: null,
-      scopeType: scope.type,
-      scopes: [],
-      permissions: [],
-    };
-    group.scopes.push(scope);
-    group.permissions = [...new Set([...group.permissions, ...codes])];
-    groups.set(groupKey, group);
-  }
-
-  return [...groups.values()].filter((group) => group.permissions.length > 0);
+  return [...groups.values()];
 }
 
 /** Every distinct code across the groups, in first-seen order. */

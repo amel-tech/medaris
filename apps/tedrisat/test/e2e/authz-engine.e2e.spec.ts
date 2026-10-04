@@ -1,19 +1,24 @@
 import { AuthzService, PERMISSIONS, ROLES } from "@medaris/common";
 import { INestApplication } from "@nestjs/common";
 import { and, eq, isNull } from "drizzle-orm";
+import { Client, Pool } from "pg";
 import request from "supertest";
 import {
   MADRASAH_CATALOG,
   MADRASAH_COURSE_CATALOG,
 } from "../../src/assignment/permission-catalog";
+import { CourseRepository } from "../../src/course/course.repository";
 import { CourseStatus } from "../../src/course/domain/course-status.enum";
 import { EnrollmentStatus } from "../../src/course/domain/enrollment-status.enum";
+import { LessonType } from "../../src/course/domain/lesson-type.enum";
 import { DatabaseService } from "../../src/database/database.service";
 import { auditLog } from "../../src/database/schema/audit.schema";
 import {
   courseMuderris,
   courses,
+  courseWeeks,
   enrollments,
+  lessons,
 } from "../../src/database/schema/course.schema";
 import { kosks } from "../../src/database/schema/kosk.schema";
 import {
@@ -895,7 +900,9 @@ describe("The permission engine (MDRS-135, e2e)", () => {
           ]
         );
 
-        // A nazır holds it, so a change reaches them and the record names them.
+        // A nazır holds it, so a change must say what becomes of them
+        // (`usersPolicy`), detaches them from the group, and the record names
+        // them.
         await put(MEDARIS_ID, permissionsOf(NAZIR_ID), {
           groupId,
           permissions: [],
@@ -925,6 +932,23 @@ describe("The permission engine (MDRS-135, e2e)", () => {
           previousPermissions: [PERMISSIONS.MADRASAH_STUDENTS_VIEW],
           holderIds: [NAZIR_ID],
         });
+        // "keep": the nazır holds the group's old code as a single permission
+        // and no longer the group, so the code the change added does not
+        // reach them.
+        const kept = await db()
+          .select()
+          .from(permissionGrants)
+          .where(
+            and(
+              eq(permissionGrants.userId, NAZIR_ID),
+              isNull(permissionGrants.revokedAt)
+            )
+          );
+        expect(kept.map((g) => [g.permission, g.groupId])).toEqual([
+          [PERMISSIONS.MADRASAH_STUDENTS_VIEW, null],
+        ]);
+        await get(NAZIR_ID, `/madrasahs/${madrasahId}/students`).expect(200);
+        await patch(NAZIR_ID, `/courses/${medreseCourse}`).expect(403);
         expect((await given()).filter((item) => item.kind === "GROUP")).toEqual(
           [expect.objectContaining({ id: groupId, groupAction: "update" })]
         );
@@ -1356,11 +1380,13 @@ describe("The permission engine (MDRS-135, e2e)", () => {
       }).expect(200);
     });
 
-    it("a passive course stays closed to its köşk nazımı and its enrolled talebe whatever the case of its id", async () => {
+    it("a passive course stays closed to its enrolled talebe whatever the case of its id, and open to its köşk nazımı", async () => {
       await passivate();
       for (const id of [ownCourse, upper(ownCourse)]) {
-        await get(NAZIM_ID, `/courses/${id}/enrollments`).expect(403);
         await put(TALEBE_ID, `/courses/${id}/progress`, {}).expect(403);
+        // The köşk nazımı is the platform's management in their köşk (owner,
+        // 4 October).
+        await get(NAZIM_ID, `/courses/${id}/enrollments`).expect(200);
       }
     });
   });
@@ -1563,6 +1589,42 @@ describe("The permission engine (MDRS-135, e2e)", () => {
           )
         );
 
+    it("asks whether a reader holds a role on the course in a way the role indexes serve (review D1)", async () => {
+      // The content-read audit asks this of every enrolled reader; written as
+      // `scope_type = 'platform' OR scope_id = …` no index can serve it, and
+      // with sequential scans off the plan still has to read the whole table.
+      const spy = vi.spyOn(Pool.prototype, "query");
+      await app.get(CourseRepository).holdsRoleOnCourse(NAZIM_ID, ownCourse);
+      const call = spy.mock.calls.find(
+        ([query]) =>
+          typeof query === "object" &&
+          query !== null &&
+          "text" in query &&
+          String((query as { text: string }).text).includes(
+            'from "role_assignments"'
+          )
+      );
+      spy.mockRestore();
+      const [{ text }, values] = call as unknown as [
+        { text: string },
+        unknown[],
+      ];
+      const pool = (databaseService as unknown as { pool: Pool }).pool;
+      const client = await pool.connect();
+      try {
+        await client.query("begin");
+        await client.query("set local enable_seqscan = off");
+        const plan = await client.query(`explain ${text}`, values);
+        const lines = plan.rows.map(
+          (row: Record<string, string>) => row["QUERY PLAN"]
+        );
+        expect(lines.join("\n")).not.toMatch(/Seq Scan on role_assignments/);
+      } finally {
+        await client.query("rollback");
+        client.release();
+      }
+    });
+
     it("a deleted group stops carrying its permissions", async () => {
       const groupId = await makeGroup("Kadro", [
         PERMISSIONS.MADRASAH_STUDENTS_VIEW,
@@ -1719,6 +1781,38 @@ describe("The permission engine (MDRS-135, e2e)", () => {
       await get(TALEBE_ID, `/courses/${ownCourse}`).expect(404);
     });
 
+    it("a grant of course.view_unpublished opens a hidden course to read, never to write, and not to its müderris ('Taslak ya da gizli dersi gör')", async () => {
+      await db()
+        .update(courses)
+        .set({ archivedAt: new Date(), archivedBy: NAZIM_ID })
+        .where(eq(courses.id, ownCourse));
+      await grant(
+        DERS_ID,
+        atOwnCourse(),
+        { permission: PERMISSIONS.COURSE_EDIT },
+        { grantedBy: NAZIM_ID }
+      );
+      await get(DERS_ID, `/courses/${ownCourse}`).expect(404);
+      await grant(
+        DERS_ID,
+        atOwnCourse(),
+        { permission: PERMISSIONS.COURSE_VIEW_UNPUBLISHED },
+        { grantedBy: NAZIM_ID }
+      );
+      const read = await get(DERS_ID, `/courses/${ownCourse}`).expect(200);
+      expect(read.body.contentLocked).toBe(false);
+      await get(DERS_ID, `/courses/${ownCourse}/recordings`).expect(200);
+      // Seeing is all it opens: the hidden course is still not saved.
+      await patch(DERS_ID, `/courses/${ownCourse}`, {
+        title: "Gizliyken",
+      }).expect(404);
+      // The müderris holds the code by role, and the course the köşk hid stays
+      // out of their sight (MDRS-124); so it does for the talebe.
+      await get(MUDERRIS_ID, `/courses/${ownCourse}`).expect(404);
+      await get(TALEBE_ID, `/courses/${ownCourse}`).expect(404);
+      await get(NAZIM_ID, `/courses/${ownCourse}`).expect(200);
+    });
+
     it("the medrese's 'closed course required' holds on an update, and a grant from the platform widens one person", async () => {
       await db().insert(madrasahSettings).values({
         madrasahId,
@@ -1767,6 +1861,246 @@ describe("The permission engine (MDRS-135, e2e)", () => {
       await patch(HEAD_ID, `/courses/${medreseCourse}`, {
         isClosed: false,
       }).expect(409);
+    });
+  });
+
+  describe("session work is session.manage's on every route, the whole-course save included", () => {
+    const atOwnCourse = () => ({ type: SCOPE_TYPES.COURSE, id: ownCourse });
+    const LINK = "https://meet.google.com/aaa-bbbb-ccc";
+
+    /** One week with one live session, and the whole-course save that keeps them as they are. */
+    const seedSession = async () => {
+      const [week] = await db()
+        .insert(courseWeeks)
+        .values({ courseId: ownCourse, weekNumber: 1, title: "Birinci Bab" })
+        .returning();
+      const [session] = await db()
+        .insert(lessons)
+        .values({
+          weekId: week.id,
+          title: "Canlı celse",
+          type: LessonType.LIVE,
+          scheduledAt: new Date("2026-11-01T18:00:00.000Z"),
+          meetingUrl: LINK,
+        })
+        .returning();
+      const [muderris] = await db()
+        .select()
+        .from(courseMuderris)
+        .where(eq(courseMuderris.courseId, ownCourse));
+      const save = (lesson: Record<string, unknown> = {}) => ({
+        title: "Köşkün kendi dersi",
+        muderris: [{ id: muderris.id, userId: MUDERRIS_ID, name: "Müderris" }],
+        weeks: [
+          {
+            id: week.id,
+            weekNumber: 1,
+            title: "Birinci Bab",
+            lessons: [
+              {
+                id: session.id,
+                title: "Canlı celse",
+                type: LessonType.LIVE,
+                scheduledAt: "2026-11-01T18:00:00.000Z",
+                meetingUrl: LINK,
+                ...lesson,
+              },
+            ],
+          },
+        ],
+      });
+      return { weekId: week.id, save };
+    };
+
+    it("course.edit alone saves the course's text, but adds, re-times or relinks no session", async () => {
+      const { weekId, save } = await seedSession();
+      await grant(
+        DERS_ID,
+        atOwnCourse(),
+        { permission: PERMISSIONS.COURSE_EDIT },
+        { grantedBy: NAZIM_ID }
+      );
+      await put(DERS_ID, `/courses/${ownCourse}`, {
+        ...save(),
+        title: "Yeni ad",
+      }).expect(200);
+      await put(
+        DERS_ID,
+        `/courses/${ownCourse}`,
+        save({ title: "Yeni celse adı", durationMinutes: 45 })
+      ).expect(200);
+
+      for (const change of [
+        { meetingUrl: "https://zoom.us/j/123" },
+        { scheduledAt: "2026-11-08T18:00:00.000Z" },
+        { isPreview: true },
+      ]) {
+        const refused = await put(
+          DERS_ID,
+          `/courses/${ownCourse}`,
+          save(change)
+        ).expect(403);
+        expect(refused.body.code).toBe("AUTHZ_FORBIDDEN");
+      }
+      const [week] = save().weeks;
+      const withLessons = (sessions: object[]) => ({
+        ...save(),
+        weeks: [{ ...week, lessons: sessions }],
+      });
+      // A session added, and one dropped (the save would hide it).
+      await put(
+        DERS_ID,
+        `/courses/${ownCourse}`,
+        withLessons([...week.lessons, { title: "Ek celse", type: "LIVE" }])
+      ).expect(403);
+      await put(DERS_ID, `/courses/${ownCourse}`, withLessons([])).expect(403);
+      await post(DERS_ID, `/courses/${ownCourse}/weeks/${weekId}/lessons`, {
+        title: "Ek celse",
+        type: LessonType.LIVE,
+      }).expect(403);
+      // Nothing of the refused saves was written.
+      const [kept] = await db()
+        .select()
+        .from(lessons)
+        .where(eq(lessons.weekId, weekId));
+      expect(kept.meetingUrl).toBe(LINK);
+
+      await grant(
+        DERS_ID,
+        atOwnCourse(),
+        { permission: PERMISSIONS.SESSION_MANAGE },
+        { grantedBy: NAZIM_ID }
+      );
+      await put(
+        DERS_ID,
+        `/courses/${ownCourse}`,
+        save({ meetingUrl: "https://zoom.us/j/123" })
+      ).expect(200);
+    });
+
+    it("course.edit alone does not take a session out of the programme by making it a video (review D2-7a)", async () => {
+      const { weekId, save } = await seedSession();
+      await grant(
+        DERS_ID,
+        atOwnCourse(),
+        { permission: PERMISSIONS.COURSE_EDIT },
+        { grantedBy: NAZIM_ID }
+      );
+      const refused = await put(
+        DERS_ID,
+        `/courses/${ownCourse}`,
+        save({ type: LessonType.VIDEO })
+      ).expect(403);
+      expect(refused.body.code).toBe("AUTHZ_FORBIDDEN");
+      const [kept] = await db()
+        .select()
+        .from(lessons)
+        .where(eq(lessons.weekId, weekId));
+      expect(kept.type).toBe(LessonType.LIVE);
+    });
+
+    it("tells a course.edit holder whose editor is stale to reload (409), not that the change needs session.manage (review D2-7b)", async () => {
+      const { save } = await seedSession();
+      await grant(
+        DERS_ID,
+        atOwnCourse(),
+        { permission: PERMISSIONS.COURSE_EDIT },
+        { grantedBy: NAZIM_ID }
+      );
+      const [{ version }] = await db()
+        .select({ version: courses.version })
+        .from(courses)
+        .where(eq(courses.id, ownCourse));
+      // The müderris relinks the session after the ders nazırı opened the editor.
+      await db()
+        .update(lessons)
+        .set({ meetingUrl: "https://zoom.us/j/999" })
+        .where(eq(lessons.title, "Canlı celse"));
+      await db()
+        .update(courses)
+        .set({ version: version + 1 })
+        .where(eq(courses.id, ownCourse));
+
+      const stale = await put(DERS_ID, `/courses/${ownCourse}`, {
+        ...save(),
+        title: "Yeni ad",
+        version,
+      }).expect(409);
+      expect(stale.body.code).toBe("COURSE_VERSION_CONFLICT");
+    });
+
+    it("holds a save sent without a version to the course it was checked against, so a session added meanwhile is not hidden (review D2-7-replace-toctou)", async () => {
+      const { weekId, save } = await seedSession();
+      await grant(
+        DERS_ID,
+        atOwnCourse(),
+        { permission: PERMISSIONS.COURSE_EDIT },
+        { grantedBy: NAZIM_ID }
+      );
+      const holder = new Client({
+        host: process.env.DB_HOST,
+        port: Number(process.env.DB_PORT),
+        user: process.env.DB_USERNAME,
+        password: process.env.DB_PASSWORD,
+        database: process.env.DB_NAME,
+      });
+      await holder.connect();
+      try {
+        await holder.query("begin");
+        await holder.query("select id from courses where id = $1 for update", [
+          ownCourse,
+        ]);
+        // The ders nazırı's save is checked and then waits for the row.
+        const pending = put(DERS_ID, `/courses/${ownCourse}`, {
+          ...save(),
+          title: "Yeni ad",
+        }).then((res) => res);
+        const deadline = Date.now() + 10_000;
+        for (;;) {
+          const { rows } = await holder.query(
+            "select count(*)::int as n from pg_stat_activity where datname = current_database() and wait_event_type = 'Lock'"
+          );
+          if (rows[0].n > 0) break;
+          if (Date.now() > deadline) throw new Error("the save never waited");
+          await new Promise((resolve) => setTimeout(resolve, 20));
+        }
+        // Meanwhile a session.manage holder adds a session, as POST
+        // …/lessons does: the row and a new version.
+        await holder.query(
+          "insert into lessons (week_id, title, type) values ($1, 'Eklenen celse', 'LIVE')",
+          [weekId]
+        );
+        await holder.query(
+          "update courses set version = version + 1 where id = $1",
+          [ownCourse]
+        );
+        await holder.query("commit");
+        const res = await pending;
+        expect(res.status).toBe(409);
+        expect(res.body.code).toBe("COURSE_VERSION_CONFLICT");
+      } finally {
+        await holder.end();
+      }
+      const [added] = await db()
+        .select()
+        .from(lessons)
+        .where(eq(lessons.title, "Eklenen celse"));
+      expect(added.archivedAt).toBeNull();
+    });
+
+    it("session.manage alone adds one session, as it adds a batch of them", async () => {
+      const { weekId } = await seedSession();
+      await grant(
+        DERS_ID,
+        atOwnCourse(),
+        { permission: PERMISSIONS.SESSION_MANAGE },
+        { grantedBy: NAZIM_ID }
+      );
+      await post(DERS_ID, `/courses/${ownCourse}/weeks/${weekId}/lessons`, {
+        title: "Ek celse",
+        type: LessonType.LIVE,
+        scheduledAt: "2026-11-15T18:00:00.000Z",
+      }).expect(201);
     });
   });
 
@@ -1829,6 +2163,96 @@ describe("The permission engine (MDRS-135, e2e)", () => {
       await get(TALEBE_ID, `/courses/${ownCourse}`)
         .expect(200)
         .expect((res) => expect(res.body.contentLocked).toBe(true));
+    });
+
+    describe("the köşk nazımı and a passive course of their köşk (owner, 4 October)", () => {
+      const leaveWithoutMuderris = (courseId: string) =>
+        db()
+          .update(roleAssignments)
+          .set({ revokedAt: new Date(), revokedBy: NAZIM_ID })
+          .where(
+            and(
+              eq(roleAssignments.scopeId, courseId),
+              eq(roleAssignments.role, ASSIGNED_ROLES.MUDERRIS)
+            )
+          );
+      const auditOf = async (actorId: string) =>
+        (
+          await db()
+            .select()
+            .from(auditLog)
+            .where(eq(auditLog.actorId, actorId))
+        ).map((row) => row.action);
+
+      it("reads a draft left without its müderris on the record, and seats a new one; everyone else stays out", async () => {
+        await db()
+          .update(courses)
+          .set({ status: CourseStatus.DRAFT })
+          .where(eq(courses.id, ownCourse));
+        await leaveWithoutMuderris(ownCourse);
+
+        const read = await get(NAZIM_ID, `/courses/${ownCourse}`).expect(200);
+        expect(read.body.contentLocked).toBe(false);
+        expect(await auditOf(NAZIM_ID)).toEqual(
+          expect.arrayContaining(["course.content_read", "scope.passive_open"])
+        );
+        // The draft is still nobody else's: the talebe and the ders nazırı.
+        await get(TALEBE_ID, `/courses/${ownCourse}`).expect(404);
+        await get(DERS_ID, `/courses/${ownCourse}`).expect(404);
+
+        const [{ version }] = await db()
+          .select({ version: courses.version })
+          .from(courses)
+          .where(eq(courses.id, ownCourse));
+        await put(NAZIM_ID, `/courses/${ownCourse}/muderris`, {
+          version,
+          muderris: [{ userId: NEWCOMER_ID, name: "Yeni müderris" }],
+          imamUserId: NEWCOMER_ID,
+        }).expect(200);
+      });
+
+      it("works a published course of a passive medrese held in their köşk, live links included, while its talebe is closed out", async () => {
+        await db().insert(enrollments).values({
+          userId: TALEBE_ID,
+          courseId: medreseCourse,
+          status: EnrollmentStatus.ENROLLED,
+        });
+        // The medrese's başmüderris is gone: the medrese is passive (MDRS-136).
+        await db()
+          .update(roleAssignments)
+          .set({ revokedAt: new Date(), revokedBy: ADMIN_ID })
+          .where(
+            and(
+              eq(roleAssignments.scopeId, madrasahId),
+              eq(roleAssignments.role, ASSIGNED_ROLES.MEDRESE_BASMUDERRIS)
+            )
+          );
+        const resource = { entity: "course" as const, id: medreseCourse };
+        const nazim = await authz.effective(user(NAZIM_ID), resource);
+        for (const code of [
+          PERMISSIONS.COURSE_EDIT,
+          PERMISSIONS.COURSE_VIEW_UNPUBLISHED,
+          PERMISSIONS.SESSION_LIVE_LINK,
+          PERMISSIONS.COURSE_VIEW_DETAILS,
+        ]) {
+          expect(nazim?.codes.has(code), code).toBe(true);
+        }
+        await get(NAZIM_ID, `/courses/${medreseCourse}/enrollments`).expect(
+          200
+        );
+        await get(TALEBE_ID, `/courses/${medreseCourse}`)
+          .expect(200)
+          .expect((res) => expect(res.body.contentLocked).toBe(true));
+        // The nazır of the medrese, given course work there, is closed out too.
+        await grant(
+          NAZIR_ID,
+          { type: SCOPE_TYPES.MADRASAH, id: madrasahId },
+          { permission: PERMISSIONS.ENROLLMENT_DECIDE }
+        );
+        await get(NAZIR_ID, `/courses/${medreseCourse}/enrollments`).expect(
+          403
+        );
+      });
     });
 
     it("a course that never had a müderris is new, not passive", async () => {

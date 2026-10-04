@@ -19,8 +19,10 @@ import { PermissionGroups } from "./permission-groups";
  * Medrese nazırları (nazir 05): who holds the nazır role in the medrese, with
  * their groups, single permissions, end and giver, and the band that names a
  * nazır who has not received a permission yet. The medrese's başmüderris opens
- * the page; the API refuses a nazır of the medrese today (the role matrix has
- * no row for MEDRESE_NAZIR), so that answer is a notice, not a table, and the
+ * the page, and so does a nazır given "Medrese nazırı ata", who appoints but
+ * gives nothing and dismisses only the nazırs they seated: the table and the
+ * groups draw only those buttons for them (MDRS-108). The API refuses any
+ * other nazır of the medrese, so that answer is a notice, not a table, and the
  * button that appoints is left out with it. Under the table are the medrese's
  * permission groups (nazir 16); the buttons that edit a nazır's permissions
  * (nazir 06) are in the table.
@@ -39,10 +41,14 @@ export async function NazirsPage({ madrasahId }: { madrasahId: string }) {
     ),
   ]);
   const timeZone = resolveTimeZone(me?.timeZone, DEFAULT_TIME_ZONE);
-  const madrasahName =
-    (portal.status === "ok"
-      ? findScope(portal.scopes, "medrese", madrasahId)?.name
-      : undefined) ?? "";
+  const scope =
+    portal.status === "ok"
+      ? findScope(portal.scopes, "medrese", madrasahId)
+      : undefined;
+  const madrasahName = scope?.name ?? "";
+  // Whoever gives permissions here and dismisses any nazır: the başmüderris
+  // (the API's `madrasahAuthorityOf`; the platform works in nizam).
+  const manages = scope?.role === "MEDRESE_BASMUDERRIS";
 
   const notice =
     nazirs.status === "ok"
@@ -85,11 +91,13 @@ export async function NazirsPage({ madrasahId }: { madrasahId: string }) {
             madrasahName={madrasahName}
             locale={locale}
             timeZone={timeZone}
+            viewer={{ manages, id: me?.id ?? null }}
           />
           {groups.status === "ok" ? (
             <PermissionGroups
               madrasahId={madrasahId}
               madrasahName={madrasahName}
+              manages={manages}
               cards={groups.data.map((group) => ({
                 group,
                 summary: groupSummary(group.permissions, t),
