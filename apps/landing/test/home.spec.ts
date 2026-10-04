@@ -95,6 +95,30 @@ describe("what the home page says (MDRS-245)", () => {
     expect(text).not.toMatch(/not al|soru sor|ders kayıt|icâzet|sertifika/i);
   });
 
+  it("does not put köşks under a medrese: köşks hold courses, medreses open them there", async () => {
+    const text = textOf(renderToStaticMarkup(await renderHome()));
+    expect(text).not.toMatch(
+      /üstekinin içinde|çatı altında|bağlı olmak zorunda/i
+    );
+    expect(text).toContain("barındırma hakkı olan köşklerde açan kurum");
+  });
+
+  it("does not say that course content is closed to a visitor", async () => {
+    const text = textOf(renderToStaticMarkup(await renderHome()));
+    expect(text).not.toMatch(
+      /ders içeriği|içerik[^.]*(kilitli|görünür)|içeriği kayıtlı/i
+    );
+  });
+
+  it("does not promise a meeting link or a live stream on every celse, or name the müderris alone for the stream", async () => {
+    const text = textOf(renderToStaticMarkup(await renderHome()));
+    expect(text).not.toMatch(/kendi toplantı bağlantısı/i);
+    expect(text).not.toMatch(/müderris canlı yayın/i);
+    expect(text).toContain(
+      "celse sürerken yayın ve altında canlı sohbet açılır"
+    );
+  });
+
   it("keeps 'who runs Medaris' out while any of its fields is a placeholder", async () => {
     expect(
       Object.values(karsilama.operator).some(karsilama.isPlaceholder)

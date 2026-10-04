@@ -13,7 +13,7 @@ export const hero = {
   register: "Kayıt ol",
   signIn: "Giriş yap",
   explore: "Önce göz atın",
-  note: "Derslerin tanıtımı ve programı herkese açıktır. Ders içeriği ve toplantı bağlantıları derse kayıtlı talebelere görünür.",
+  note: "Derslerin tanıtımı ve programı herkese açıktır. Toplantı bağlantıları ve canlı yayın derse kayıtlı talebelere görünür.",
 };
 
 /** The first screen's picture of a course page: a labelled example, not a real course. */
@@ -39,28 +39,28 @@ export const sampleCourse = {
       ],
     },
   ],
-  note: "Haftalar ve celse saatleri herkese görünür; içerik ve toplantı bağlantısı kayıtlı talebeler için kilitlidir.",
+  note: "Haftalar ve celse saatleri herkese görünür; toplantı bağlantısı kayıtlı talebeler için kilitlidir.",
 };
 
 export const structure = {
-  title: "Bir dersin yolu: medreseden celseye",
+  title: "Bir dersin yapısı: köşkten celseye",
   intro:
-    "Medaris bir medresenin düzenini izler. Her katman, bir üsttekinin içinde durur.",
+    "Köşkler bir ilmin derslerini bir araya getirir; medreseler derslerini bu köşklerde açar. Her ders haftalara, her hafta celselere bölünür.",
   steps: [
-    {
-      icon: "medrese",
-      title: "Medrese",
-      body: "Köşkleri bir çatı altında toplayan kurum. Her köşk bir medreseye bağlı olmak zorunda değildir.",
-    },
     {
       icon: "kosk",
       title: "Köşk",
-      body: "Bir ilim dalına ayrılmış meclis. Dersler köşklerde açılır.",
+      body: "Bir ilim dalına ayrılmış meclis. O ilmin dersleri köşkte bir araya gelir.",
+    },
+    {
+      icon: "medrese",
+      title: "Medrese",
+      body: "Derslerini, barındırma hakkı olan köşklerde açan kurum.",
     },
     {
       icon: "book",
       title: "Ders",
-      body: "Bir ya da birkaç müderrisin okuttuğu kitap ya da konu. Tanıtımı ve programı herkese açıktır; içeriği kayıtlı talebelere.",
+      body: "Bir ya da birkaç müderrisin okuttuğu kitap ya da konu. Tanıtımı ve programı herkese açıktır; toplantı bağlantıları ve canlı yayın kayıtlı talebelere görünür.",
     },
     {
       icon: "calendar",
@@ -70,14 +70,15 @@ export const structure = {
     {
       icon: "video",
       title: "Celse",
-      body: "Müderrisle tarihi belli canlı buluşma. Bir hafta bir ya da birkaç celse içerebilir; her celsenin kendi toplantı bağlantısı vardır.",
+      body: "Müderrisle tarihi belli canlı buluşma. Bir hafta bir ya da birkaç celse içerebilir; bir celsenin toplantı bağlantısı eklendiğinde celse sayfasında görünür.",
     },
   ] satisfies { icon: IconName; title: string; body: string }[],
 };
 
 export const celse = {
   title: "Celse: haftanın canlı buluşması",
-  intro: "Her celsenin tarihi, saati ve kendi toplantı bağlantısı vardır.",
+  intro:
+    "Her celsenin tarihi ve saati vardır; toplantı bağlantısı eklendiğinde celse sayfasında görünür.",
   cards: [
     {
       icon: "calendar",
@@ -87,7 +88,7 @@ export const celse = {
     {
       icon: "video",
       title: "Celseye katılın",
-      body: "Celse sayfasında “Celseye katıl” düğmesi ve toplantı platformunun adı görünür. Müderris canlı yayın bağlantısı eklediyse yayını celse sayfasından izler, altında YouTube’un canlı sohbetini açabilirsiniz. Sohbette yazmak için tarayıcıda YouTube’a giriş yapmış olmanız gerekir.",
+      body: "Celse sayfasında “Celseye katıl” düğmesi ve toplantı platformunun adı görünür. Ders kadrosu bir YouTube canlı yayın bağlantısı eklediyse, celse sürerken yayın ve altında canlı sohbet açılır. Sohbette yazmak için tarayıcıda YouTube’a giriş yapmış olmanız gerekir.",
     },
     {
       icon: "clock",
@@ -133,12 +134,12 @@ export const gozat = {
     {
       icon: "lock",
       title: "Derse kayıtlı talebelere",
-      body: "Ders içeriği, toplantı bağlantıları ve canlı yayın.",
+      body: "Toplantı bağlantıları ve canlı yayın.",
     },
     {
       icon: "check",
       title: "Onay isteyen derslerde",
-      body: "Bazı dersler kayıt için onay ister. Başvurunuz onaylanana kadar içerik kilitli kalır; karar size bildirimle ulaşır.",
+      body: "Bazı dersler kayıt için onay ister. Başvurunuz onaylanana kadar toplantı bağlantıları ve canlı yayın kilitli kalır; karar size bildirimle ulaşır.",
     },
   ] satisfies { icon: IconName; title: string; body: string }[],
   explore: "Keşfet’e gidin",
