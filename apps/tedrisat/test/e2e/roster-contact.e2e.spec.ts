@@ -439,19 +439,13 @@ describe("Roster contact details for course staff (MDRS-203, e2e)", () => {
           )
         );
 
-    // Open decision (MDRS-203 note, "the köşk-wide pending list and a passive
-    // course"): the roster closes to the köşk nazımı when the course has no
-    // müderris, but `course.manage_all` is köşk-scoped and not content-flagged,
-    // so the köşk-wide pending list still carries the passive course's names and
-    // addresses. This pins what is true today; whoever closes the side door
-    // flips the second half of this test.
-    it("closes the roster to the köşk nazımı, but the köşk-wide pending list still lists its requests", async () => {
+    // The reviewed engine keeps a passive course of their köşk open to the
+    // köşk's nazımı (owner, 4 October), so the roster and the köşk-wide pending
+    // list agree: both are theirs. (Before that review the roster closed and the
+    // pending list stayed open; this test pinned the disagreement.)
+    it("keeps the roster and the köşk-wide pending list open to the köşk nazımı, whose course it still is", async () => {
       await passivate();
-      const closed = await get(
-        MANAGER_ID,
-        `/courses/${courseId}/enrollments`
-      ).expect(403);
-      noEmailIn(closed.body);
+      await readsRosterWithContact(MANAGER_ID);
 
       const res = await get(
         MANAGER_ID,
