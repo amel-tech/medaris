@@ -228,6 +228,7 @@ export * from './ManagedKoskDecksResponse';
 export * from './ManagedKoskRef';
 export * from './MeResponse';
 export * from './MeRolesResponse';
+export * from './MeScopePermissions';
 export * from './MedarisNazimResponse';
 export * from './MuderrisListItemDto';
 export * from './MuderrisListResponse';

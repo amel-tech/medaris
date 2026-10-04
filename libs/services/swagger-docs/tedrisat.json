@@ -20711,7 +20711,7 @@
             "description": "Holds the SYSTEM_ADMIN realm role"
           },
           "nazirOf": {
-            "description": "Medreses the caller is nazır of. Always empty until tedrisat stores medrese nazırs.",
+            "description": "Medreses the caller is başmüderris or nazır of, from their live role assignments.",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/NazirMadrasahRef"
@@ -20735,6 +20735,55 @@
           "nazirOf",
           "manages",
           "teaches"
+        ]
+      },
+      "MeScopePermissions": {
+        "type": "object",
+        "properties": {
+          "scopeType": {
+            "type": "string",
+            "enum": [
+              "platform",
+              "kosk",
+              "madrasah",
+              "course"
+            ]
+          },
+          "scopeId": {
+            "type": "string",
+            "description": "Null for the platform"
+          },
+          "scopeName": {
+            "type": "string",
+            "description": "The köşk's or medrese's name, the course's title"
+          },
+          "roles": {
+            "type": "array",
+            "description": "The caller's roles held in exactly this scope",
+            "items": {
+              "type": "string",
+              "enum": [
+                "MEDARIS_NAZIM",
+                "KOSK_NAZIM",
+                "MEDRESE_BASMUDERRIS",
+                "MEDRESE_NAZIR",
+                "MUDERRIS",
+                "DERS_NAZIR"
+              ]
+            }
+          },
+          "permissions": {
+            "description": "What the caller holds in this scope, sorted, as the permission engine computes it: role defaults and live grants, a grant only while a role covers it. A köşk's or medrese's entry includes the course work held across its courses. Codes every signed-in caller holds (viewing, enrolling) are left out. Policies and passive scopes are not applied: the routes still refuse what they close.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "scopeType",
+          "roles",
+          "permissions"
         ]
       },
       "MeResponse": {
@@ -20775,6 +20824,20 @@
           },
           "roles": {
             "$ref": "#/components/schemas/MeRolesResponse"
+          },
+          "assignments": {
+            "description": "The caller's live role assignments, as GET /me/assignments",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssignmentResponse"
+            }
+          },
+          "permissions": {
+            "description": "One entry for every scope the caller holds a role in, and for every scope below a role they hold a grant in. The realm role (başnazım) holds everything and is not a list of codes: it adds no entry, so a başnazım with no role rows gets none.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MeScopePermissions"
+            }
           }
         },
         "required": [
@@ -20782,7 +20845,9 @@
           "emailVerified",
           "createdAt",
           "lastSeenAt",
-          "roles"
+          "roles",
+          "assignments",
+          "permissions"
         ]
       },
       "UpdateMeDto": {
