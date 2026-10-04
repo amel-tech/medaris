@@ -705,6 +705,21 @@ describe("Opening scopes with their admins (MDRS-136, e2e)", () => {
       expect((await rows()).map((r) => r.userId)).toEqual([AHMED]);
     });
 
+    it("does not take an imam from a save or a patch: that is chosen when the course is opened or by PUT /courses/:id/muderris", async () => {
+      const before = await detail();
+      await put(NAZIM_ID, `/courses/${courseId}`, {
+        title: "Emsile",
+        version: before.version,
+        imamUserId: AHMED,
+      }).expect(400);
+      await http()
+        .patch(`/courses/${courseId}`)
+        .set("Authorization", auth(NAZIM_ID))
+        .send({ imamUserId: AHMED })
+        .expect(400);
+      expect((await detail()).version).toBe(before.version);
+    });
+
     it("refuses an empty team with 400, and writes nothing", async () => {
       const before = await detail();
       const res = await put(NAZIM_ID, `/courses/${courseId}`, {
