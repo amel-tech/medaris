@@ -7845,7 +7845,7 @@
     },
     "/lessons/{id}/questions": {
       "post": {
-        "description": "An enrolled talebe only (ENROLLED or COMPLETED, and not barred). `body` is Markdown, 1 to 4000 characters after trimming; it is stored as typed and never rendered as HTML. Only the author and the people who may answer see it. No notification is sent.",
+        "description": "An enrolled talebe only (ENROLLED or COMPLETED, and not barred), and only while the course's content is open: a passive scope closes it. `body` is Markdown, 1 to 4000 characters after trimming; it is stored as typed and never rendered as HTML. Only the author and the people who may answer see it. No notification is sent.",
         "operationId": "askLessonQuestion",
         "parameters": [
           {
@@ -7901,7 +7901,7 @@
     },
     "/courses/{id}/questions/mine": {
       "get": {
-        "description": "Only the questions the caller asked, newest first, whoever else asked on the course and whatever has become of the caller's enrollment. One page at a time: pass `nextCursor` as `cursor` for the next. What the author's Sorularım tab reads.",
+        "description": "Only the questions the caller asked, newest first, whoever else asked on the course and whatever has become of the caller's enrollment, while the course is open: a course in a passive scope is closed to everyone but platform management and its köşk's nazımı (403 LESSON_QUESTION_FORBIDDEN), and a hidden course or a draft is not found. One page at a time: pass `nextCursor` as `cursor` for the next. What the author's Sorularım tab reads.",
         "operationId": "listMyCourseQuestions",
         "parameters": [
           {
@@ -7944,6 +7944,9 @@
           },
           "400": {
             "description": "A cursor this server did not issue (INVALID_QUESTION_CURSOR)."
+          },
+          "403": {
+            "description": "LESSON_QUESTION_FORBIDDEN"
           },
           "404": {
             "description": "COURSE_NOT_FOUND"
@@ -8136,7 +8139,7 @@
         ]
       },
       "delete": {
-        "description": "At any time, whether or not it is answered; the answer goes with it and there is no history. Needs no enrollment, so a talebe who was removed can still delete what they asked. 404 for a question the caller did not ask, the staff's included, as for one that does not exist.",
+        "description": "At any time, whether or not it is answered; the answer goes with it and there is no history. Needs no enrollment, so a talebe who was removed can still delete what they asked while the course is open; a passive scope closes it (403). 404 for a question the caller did not ask, the staff's included, as for one that does not exist.",
         "operationId": "deleteLessonQuestion",
         "parameters": [
           {
@@ -8151,6 +8154,9 @@
         "responses": {
           "204": {
             "description": ""
+          },
+          "403": {
+            "description": "LESSON_QUESTION_FORBIDDEN"
           },
           "404": {
             "description": "LESSON_QUESTION_NOT_FOUND"
