@@ -37,6 +37,8 @@ import { bearerFor } from "../helpers/test-keycloak.helper";
 const ADMIN_ID = "a1000000-0000-4000-8000-000000000001";
 const NAZIR_ID = "a1000000-0000-4000-8000-000000000002";
 const OTHER_NAZIR_ID = "a1000000-0000-4000-8000-000000000003";
+/** A MEDRESE_NAZIR of the first medrese: a role with no defaults, and no grants here. */
+const GRANTLESS_NAZIR_ID = "a1000000-0000-4000-8000-0000000000f1";
 const MANAGER_ID = "a1000000-0000-4000-8000-000000000004";
 const MUDERRIS_ID = "a1000000-0000-4000-8000-000000000005";
 const OTHER_MUDERRIS_ID = "a1000000-0000-4000-8000-000000000006";
@@ -160,6 +162,12 @@ describe("Badge counts (e2e)", () => {
       role: ASSIGNED_ROLES.MEDRESE_BASMUDERRIS,
       scopeId: otherMadrasahId,
       grantedBy: ADMIN_ID,
+    });
+    await assignRole(db(), {
+      userId: GRANTLESS_NAZIR_ID,
+      role: ASSIGNED_ROLES.MEDRESE_NAZIR,
+      scopeId: madrasahId,
+      grantedBy: NAZIR_ID,
     });
 
     const [kosk] = await db()
@@ -318,6 +326,13 @@ describe("Badge counts (e2e)", () => {
       await get(courseA, ADMIN_ID).expect(200);
     });
 
+    // MDRS-135 §3: a başmüderris holds every course-scoped permission in their
+    // medrese's courses. Before the catalogue a medrese's head had no authority
+    // over a course (PRD §4.1); the medrese's nazırs still have none by role.
+    it("is open to the başmüderris of the medrese the course is held for", async () => {
+      await get(courseA, NAZIR_ID).expect(200);
+    });
+
     it("counts a hidden course for the people who may restore it", async () => {
       const res = await get(hiddenCourse, MANAGER_ID).expect(200);
       expect(res.body.pendingApplications).toBe(1);
@@ -328,7 +343,8 @@ describe("Badge counts (e2e)", () => {
       ["an enrolled talebe", TALEBE_ID],
       ["a talebe whose request is pending", APPLICANT_IDS[0]],
       ["a stranger", STRANGER_ID],
-      ["a nazır of the medrese", NAZIR_ID],
+      ["a nazır of the medrese with no grants", GRANTLESS_NAZIR_ID],
+      ["the başmüderris of another medrese", OTHER_NAZIR_ID],
     ])("refuses %s with 403", async (_who, sub) => {
       await get(courseA, sub).expect(403);
     });

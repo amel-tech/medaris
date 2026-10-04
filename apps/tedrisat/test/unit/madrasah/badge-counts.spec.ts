@@ -1,18 +1,18 @@
 import {
+  ASSIGNED_ROLES,
   AUTHZ_KEY,
   AUTHZ_PUBLIC_KEY,
   type AuthzMeta,
   type AuthzRequest,
   ENTITIES,
-  MATRIX,
-  ROLES,
-  SCOPES,
+  PERMISSIONS,
 } from "@medaris/common";
 import type { ModuleRef } from "@nestjs/core";
 import { MadrasahNotFoundError } from "../../../src/madrasah/errors/madrasah-not-found.error";
 import { MadrasahController } from "../../../src/madrasah/madrasah.controller";
 import { MadrasahRepository } from "../../../src/madrasah/madrasah.repository";
 import { MadrasahService } from "../../../src/madrasah/madrasah.service";
+import { permissionsOf, rolesHolding } from "../../helpers/authz-holders";
 import { recordingDatabase } from "../../helpers/recording-database";
 
 const MADRASAH_ID = "5b0f6c1e-7a3d-4f2b-9c51-2d8e4a6b1f00";
@@ -81,13 +81,12 @@ describe("GET /madrasahs/:id/badge-counts authorization", () => {
     expect(Reflect.getMetadata(AUTHZ_PUBLIC_KEY, handler)).toBeUndefined();
   });
 
-  it("requires a scope only a medrese's nazır holds", () => {
-    expect(meta.scope).toBe(SCOPES.VIEW_MADRASAH_ANALYTICS);
-    const holders = Object.entries(MATRIX[ENTITIES.MADRASAH])
-      .filter(([, scopes]) => scopes?.includes(meta.scope))
-      .map(([role]) => role);
+  it("requires the permission to see the medrese's talebeler, which only its başmüderris holds by default", () => {
+    expect(meta.permission).toBe(PERMISSIONS.MADRASAH_STUDENTS_VIEW);
     // A stranger (PUBLIC) and a caller with no token (ANONYMOUS) get 403.
-    expect(holders).toEqual([ROLES.MADRASAH_NAZIR]);
+    expect(rolesHolding(permissionsOf(meta), ENTITIES.MADRASAH)).toEqual([
+      ASSIGNED_ROLES.MEDRESE_BASMUDERRIS,
+    ]);
   });
 
   describe("its resolver", () => {

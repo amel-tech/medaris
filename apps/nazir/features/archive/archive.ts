@@ -1,6 +1,7 @@
 import type {
+  ArchiveItemResponse,
   MadrasahArchiveCountsResponse,
-  MadrasahArchiveItemResponse,
+  MadrasahArchiveStateResponse,
 } from "@medaris/services/tedrisat";
 import type { IconName } from "@medaris/ui/mds/icon";
 import { dayKey } from "~/lib/dates";
@@ -153,7 +154,7 @@ const roleWords = (role: string | null, t: Messages): string =>
  * "Bunu"; Medaris yönetimi keeps its capital, being a name.
  */
 export function restoreOf(
-  item: Pick<MadrasahArchiveItemResponse, "canRestore" | "archivedBy">,
+  item: { canRestore: boolean; archivedBy: ArchiveItemResponse["archivedBy"] },
   t: Messages,
   locale: string
 ): Restore {
@@ -170,9 +171,25 @@ export function restoreOf(
   };
 }
 
+/**
+ * The hidden medrese's banner (MDRS-143): "Medreseyi geri getir", or the sentence
+ * that says which kademe hid it when the caller's is below. The medrese is no
+ * row of the table, so it is worded from `madrasah` with the same rule as a row.
+ */
+export const medreseRestoreOf = (
+  madrasah: Pick<MadrasahArchiveStateResponse, "canRestore" | "hiddenBy">,
+  t: Messages,
+  locale: string
+): Restore =>
+  restoreOf(
+    { canRestore: madrasah.canRestore, archivedBy: madrasah.hiddenBy },
+    t,
+    locale
+  );
+
 /** The line under an item's title: where it sits. */
 function contextOf(
-  item: MadrasahArchiveItemResponse,
+  item: ArchiveItemResponse,
   t: Messages,
   where: { locale: string; timeZone: string },
   now: Date
@@ -208,7 +225,7 @@ function contextOf(
 }
 
 export function archiveRows(
-  items: readonly MadrasahArchiveItemResponse[],
+  items: readonly ArchiveItemResponse[],
   t: Messages,
   where: { locale: string; timeZone: string; now: Date; viewerId?: string }
 ): ArchiveRow[] {
@@ -245,10 +262,23 @@ export function archiveRows(
   });
 }
 
+/**
+ * The message key of a refused "Medreseyi geri getir": a medrese Medaris
+ * yönetimi hid is theirs to bring back (ARCHIVE_RESTORE_LEVEL), which the
+ * archive's own words, written for the list, do not say.
+ */
+export function madrasahRestoreErrorKey(code: string): string {
+  return code === "ARCHIVE_RESTORE_LEVEL"
+    ? "Archive.hide.restoreLevel"
+    : archiveErrorKey(code);
+}
+
 /** The message key of a refused restore or hide, from the code the API answered with. */
 export function archiveErrorKey(code: string): string {
   switch (code) {
     case "ARCHIVE_FORBIDDEN":
+    // A lower level than the one that hid it (MDRS-135): the same words, "a higher level may have hidden it".
+    case "ARCHIVE_RESTORE_LEVEL":
       return "Archive.errors.forbidden";
     case "ARCHIVE_ITEM_NOT_FOUND":
       return "Archive.errors.gone";
@@ -256,6 +286,8 @@ export function archiveErrorKey(code: string): string {
       return "Archive.errors.parentHidden";
     case "MADRASAH_ALREADY_HIDDEN":
       return "Archive.hide.already";
+    case "MADRASAH_NOT_HIDDEN":
+      return "Archive.hidden.notHidden";
     case "AUTHZ_FORBIDDEN":
       return "Problems.actionForbidden";
     default:

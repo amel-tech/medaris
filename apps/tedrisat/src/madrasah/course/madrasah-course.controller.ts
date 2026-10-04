@@ -1,4 +1,14 @@
-import { AuthGuard, Authz, AuthzGuard, SCOPES } from "@medaris/common";
+import {
+  ASSIGNED_ROLES,
+  AuthGuard,
+  Authz,
+  AuthzGuard,
+  AuthzService,
+  ENTITIES,
+  NotFoundError,
+  PERMISSIONS,
+  SelfGrantGuard,
+} from "@medaris/common";
 import {
   Body,
   Controller,
@@ -24,6 +34,8 @@ import {
   ApiOperation,
   ApiTags,
 } from "@nestjs/swagger";
+import { actingLevel, COURSE_HIDE_LADDER } from "../../archive/hide-level";
+import { SCOPE_TYPES } from "../../database/schema/scope-type.schema";
 import { AuthorizedRequest } from "../../kosk/interfaces/authorized-request.interface";
 import { MadrasahCourseListItemResponse } from "../dto/madrasah-settings.dto";
 import { byExistingMadrasah } from "../madrasah.controller";
@@ -42,15 +54,21 @@ import { MadrasahCourseService } from "./madrasah-course.service";
  * under `/madrasahs/:id/offsite-course-requests`; the list itself is
  * `GET /madrasahs/:id/courses` on
  * `MadrasahController`. The medrese's başmüderris and SYSTEM_ADMIN call these;
- * a nazır of the medrese, a köşk's nazım and a course's müderris are not on
- * the matrix row that holds `MANAGE_MADRASAH`, so they get 403.
+ * a nazır of the medrese holds the permission of each route only if it was
+ * given (`madrasah.course_open`, `madrasah.muderris_manage`,
+ * `madrasah.course_hide`, `madrasah.offsite_course_request`); a köşk's nazım
+ * and a course's müderris hold none of them, so they get 403.
  */
 @ApiTags("madrasahs")
 @ApiBearerAuth()
 @UseGuards(AuthGuard, AuthzGuard)
 @Controller("madrasahs")
 export class MadrasahCourseController {
-  constructor(private readonly courses: MadrasahCourseService) {}
+  constructor(
+    private readonly courses: MadrasahCourseService,
+    private readonly selfGrant: SelfGrantGuard,
+    private readonly authz: AuthzService
+  ) {}
 
   @ApiOperation({
     summary: "The köşks the medrese may open courses in (its başmüderris)",
@@ -62,7 +80,7 @@ export class MadrasahCourseController {
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()
   @Get(":id/hosting-kosks")
-  @Authz(SCOPES.MANAGE_MADRASAH, byExistingMadrasah)
+  @Authz(PERMISSIONS.MADRASAH_COURSE_OPEN, byExistingMadrasah)
   hostingKosks(
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<MadrasahCourseKoskResponse[]> {
@@ -83,12 +101,21 @@ export class MadrasahCourseController {
   @ApiForbiddenResponse({ description: "HOSTING_RIGHT_REQUIRED" })
   @ApiNotFoundResponse({ description: "Also MUDERRIS_UNKNOWN_USER" })
   @Post(":id/courses")
-  @Authz(SCOPES.MANAGE_MADRASAH, byExistingMadrasah)
-  open(
+  @Authz(PERMISSIONS.MADRASAH_COURSE_OPEN, byExistingMadrasah)
+  async open(
     @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string,
     @Body() dto: OpenMadrasahCourseDto
   ): Promise<MadrasahCourseListItemResponse> {
+    // Naming yourself müderris is for someone who already holds every course
+    // permission in the medrese (its başmüderris), not for a grantee.
+    await this.selfGrant.assertNotSelf(
+      request.user,
+      dto.muderrisUserIds,
+      { entity: ENTITIES.MADRASAH, id },
+      { role: ASSIGNED_ROLES.MUDERRIS },
+      "madrasah.course.open"
+    );
     return this.courses.open(id, dto, request.user.sub);
   }
 
@@ -108,20 +135,39 @@ export class MadrasahCourseController {
     description: "MADRASAH_COURSE_NOT_FOUND or MUDERRIS_UNKNOWN_USER",
   })
   @Put(":id/courses/:courseId/muderrises")
-  @Authz(SCOPES.MANAGE_MADRASAH, byExistingMadrasah)
-  setMuderris(
+  @Authz(PERMISSIONS.MADRASAH_MUDERRIS_MANAGE, byExistingMadrasah)
+  async setMuderris(
     @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string,
     @Param("courseId", ParseUUIDPipe) courseId: string,
     @Body() dto: SetMadrasahCourseMuderrisDto
   ): Promise<MadrasahCourseListItemResponse> {
+    // A medrese is not above the köşk that hosts the course: while the köşk
+    // is hidden the course is closed to it, before anything is written.
+    await this.authz.assertOpen(request.user, {
+      entity: ENTITIES.COURSE,
+      id: courseId,
+    });
+    // Only an account the save seats is asked about: a müderris of the course
+    // keeping themselves on its list seats nobody, as on `PUT /courses/:id`.
+    await this.selfGrant.assertNotSelf(
+      request.user,
+      await this.courses.seatsAmong(
+        courseId,
+        dto.muderrisUserIds,
+        request.user.sub
+      ),
+      { entity: ENTITIES.MADRASAH, id },
+      { role: ASSIGNED_ROLES.MUDERRIS },
+      "madrasah.course.muderris"
+    );
     return this.courses.setMuderris(id, courseId, dto, request.user.sub);
   }
 
   @ApiOperation({
     summary: "Hide a course of the medrese (its başmüderris)",
     description:
-      "nazir/18's \"Gizle\". The course leaves the medrese's list, the köşk's page, the talebe's calendar and every search; nothing is deleted, and it is listed in the medrese's archive, where `POST /archive/course/:id/restore` brings it back by kademe. 409 (MADRASAH_COURSE_ALREADY_HIDDEN) when it is hidden. Written to the audit log.",
+      "nazir/18's \"Gizle\". The course leaves the medrese's list, the köşk's page, the talebe's calendar and every search; nothing is deleted, and it is listed in the medrese's archive, where `POST /archive/course/:id/restore` brings it back by kademe. The hide is recorded at the level the caller acts at on the course, on the ladder every course hide reads: the platform for the başnazım and platform management, the köşk for the course's köşk nazımı, the medrese for anyone else. 409 (MADRASAH_COURSE_ALREADY_HIDDEN) when it is hidden. Written to the audit log with that level.",
     operationId: "hideMadrasahCourse",
   })
   @ApiNoContentResponse()
@@ -130,13 +176,35 @@ export class MadrasahCourseController {
   @ApiConflictResponse({ description: "MADRASAH_COURSE_ALREADY_HIDDEN" })
   @Post(":id/courses/:courseId/hide")
   @HttpCode(HttpStatus.NO_CONTENT)
-  @Authz(SCOPES.MANAGE_MADRASAH, byExistingMadrasah)
+  @Authz(PERMISSIONS.MADRASAH_COURSE_HIDE, byExistingMadrasah)
   async hide(
     @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string,
     @Param("courseId", ParseUUIDPipe) courseId: string
   ): Promise<void> {
-    await this.courses.hide(id, courseId, request.user.sub);
+    // A medrese is not above the köşk that hosts the course: while the köşk
+    // is hidden the course is closed to it, before anything is written.
+    await this.authz.assertOpen(request.user, {
+      entity: ENTITIES.COURSE,
+      id: courseId,
+    });
+    // The one ladder every course hide reads (`COURSE_HIDE_LADDER`), so
+    // someone holding more than one rung hides at the highest here too: the
+    // başnazım and platform management as the platform, the course's köşk
+    // nazımı as the köşk, whoever else holds `madrasah.course_hide` as the
+    // medrese.
+    // A course that does not exist is the medrese's 404, not the engine's.
+    const level = await actingLevel(
+      this.authz,
+      request.user,
+      { entity: ENTITIES.COURSE, id: courseId },
+      COURSE_HIDE_LADDER,
+      SCOPE_TYPES.MADRASAH
+    ).catch((error: unknown) => {
+      if (error instanceof NotFoundError) return SCOPE_TYPES.MADRASAH;
+      throw error;
+    });
+    await this.courses.hide(id, courseId, request.user.sub, level);
   }
 
   @ApiOperation({
@@ -150,7 +218,7 @@ export class MadrasahCourseController {
   @ApiForbiddenResponse()
   @ApiNotFoundResponse({ description: "The medrese or the köşk" })
   @Post(":id/offsite-course-requests")
-  @Authz(SCOPES.MANAGE_MADRASAH, byExistingMadrasah)
+  @Authz(PERMISSIONS.MADRASAH_OFFSITE_COURSE_REQUEST, byExistingMadrasah)
   requestOffsite(
     @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string,
@@ -169,7 +237,7 @@ export class MadrasahCourseController {
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()
   @Get(":id/offsite-course-requests")
-  @Authz(SCOPES.MANAGE_MADRASAH, byExistingMadrasah)
+  @Authz(PERMISSIONS.MADRASAH_OFFSITE_COURSE_REQUEST, byExistingMadrasah)
   offsiteRequests(
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<OffsiteCourseRequestResponse[]> {

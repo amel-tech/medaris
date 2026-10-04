@@ -45,6 +45,10 @@ describe("Profile and köşk application (e2e)", () => {
   const server = () => app.getHttpServer();
 
   beforeAll(async () => {
+    // The public profile is hidden by default (MDRS-141); these cases test the
+    // routes themselves, so they run with the switch on. The hidden answer has
+    // its own spec, public-profile-hidden.e2e.spec.ts.
+    process.env.PUBLIC_PROFILE_ENABLED = "true";
     app = await createTestApp();
     databaseService = app.get<DatabaseService>(DatabaseService);
     dbUtils = new TestDatabaseUtils(databaseService);
@@ -67,6 +71,7 @@ describe("Profile and köşk application (e2e)", () => {
       "users"
     );
     await app.close();
+    delete process.env.PUBLIC_PROFILE_ENABLED;
   });
 
   describe("PATCH /me names", () => {

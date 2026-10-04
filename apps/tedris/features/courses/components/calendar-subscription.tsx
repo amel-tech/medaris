@@ -2,7 +2,6 @@
 
 import { Alert } from "@medaris/ui/mds/alert";
 import { AlertDialog } from "@medaris/ui/mds/alert-dialog";
-import { AppProviders } from "@medaris/ui/mds/app-providers";
 import { Button } from "@medaris/ui/mds/button";
 import { Card } from "@medaris/ui/mds/card";
 import { Field } from "@medaris/ui/mds/field";
@@ -11,6 +10,7 @@ import { Input } from "@medaris/ui/mds/input";
 import { useToaster } from "@medaris/ui/mds/toast";
 import { useFormatter, useTranslations } from "next-intl";
 import { type ReactNode, useState, useTransition } from "react";
+import { LocaleAppProviders } from "~/components/locale-app-providers";
 import { regenerateMyCalendarFeed } from "../actions";
 
 type FeedLink = { url: string; webcalUrl: string };
@@ -144,7 +144,7 @@ export const CalendarSubscription = ({
   );
 
   return (
-    <AppProviders>
+    <LocaleAppProviders>
       <div className="grid items-start gap-6 grid-cols-[minmax(0,1fr)_var(--layout-aside)] max-md:grid-cols-1">
         <div className="flex min-inline-0 flex-col gap-6">
           <Card title={t("cardTitle")} headingLevel={2}>
@@ -290,6 +290,6 @@ export const CalendarSubscription = ({
       >
         {t("confirmText")}
       </AlertDialog>
-    </AppProviders>
+    </LocaleAppProviders>
   );
 };

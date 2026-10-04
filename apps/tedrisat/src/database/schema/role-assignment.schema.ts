@@ -12,6 +12,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { kosks } from "./kosk.schema";
 import { madrasahs } from "./madrasah.schema";
+import { SCOPE_TYPES, type ScopeType, scopeType } from "./scope-type.schema";
 
 /**
  * The six scoped roles of role model v2 (MDRS-133, MDRS-134). The Medaris
@@ -29,18 +30,7 @@ export const ASSIGNED_ROLES = {
 } as const;
 export type AssignedRole = (typeof ASSIGNED_ROLES)[keyof typeof ASSIGNED_ROLES];
 
-/**
- * The kinds of scope a role (and, from MDRS-135, a permission grant) is held
- * in. `platform` has no scope id; the other three point at a köşk, a medrese
- * or a course.
- */
-export const SCOPE_TYPES = {
-  PLATFORM: "platform",
-  KOSK: "kosk",
-  MADRASAH: "madrasah",
-  COURSE: "course",
-} as const;
-export type ScopeType = (typeof SCOPE_TYPES)[keyof typeof SCOPE_TYPES];
+export { SCOPE_TYPES, type ScopeType, scopeType };
 
 export const ROLE_SCOPE_TYPES: Record<AssignedRole, ScopeType> = {
   MEDARIS_NAZIM: SCOPE_TYPES.PLATFORM,
@@ -58,13 +48,6 @@ export const assignedRole = pgEnum("assigned_role", [
   ASSIGNED_ROLES.MEDRESE_NAZIR,
   ASSIGNED_ROLES.MUDERRIS,
   ASSIGNED_ROLES.DERS_NAZIR,
-]);
-
-export const scopeType = pgEnum("scope_type", [
-  SCOPE_TYPES.PLATFORM,
-  SCOPE_TYPES.KOSK,
-  SCOPE_TYPES.MADRASAH,
-  SCOPE_TYPES.COURSE,
 ]);
 
 /**
@@ -142,9 +125,10 @@ export const roleAssignments = table(
 /**
  * "This medrese may open courses in this köşk" (MDRS-133, MDRS-134). The only
  * link between a medrese and a köşk; it gives the medrese no power over the
- * köşk. Replaces `kosks.madrasah_id`. MDRS-137 builds the grant and revoke
- * flows. Revoked rows stay as history, so the key is a surrogate id and a
- * pair is held once at a time (the partial unique index).
+ * köşk. Replaces `kosks.madrasah_id`. Given and withdrawn through
+ * `HostingController` (MDRS-170, MDRS-135, MDRS-137). Revoked rows stay as
+ * history, so the key is a surrogate id and a pair is held once at a time
+ * (the partial unique index).
  */
 export const madrasahKoskHosting = table(
   "madrasah_kosk_hosting",
@@ -158,8 +142,9 @@ export const madrasahKoskHosting = table(
       .notNull(),
     grantedBy: uuid("granted_by").notNull(),
     // How the granter was entitled to grant — `SYSTEM_ADMIN` (a realm role,
-    // stored nowhere else) or `KOSK_NAZIM` — so nizam/26's "Veren" column can
-    // name the role without guessing. Null on rows older than MDRS-170.
+    // stored nowhere else), `MEDARIS_NAZIM` (holding `platform.hosting_grant`)
+    // or `KOSK_NAZIM` — so nizam/26's "Veren" column can name the role without
+    // guessing. Null on rows older than MDRS-170.
     grantedByRole: text("granted_by_role"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()

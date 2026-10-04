@@ -1,7 +1,6 @@
 "use client";
 
 import { Alert } from "@medaris/ui/mds/alert";
-import { AppProviders } from "@medaris/ui/mds/app-providers";
 import { Button } from "@medaris/ui/mds/button";
 import { Card } from "@medaris/ui/mds/card";
 import { Field } from "@medaris/ui/mds/field";
@@ -11,6 +10,7 @@ import { Textarea } from "@medaris/ui/mds/textarea";
 import { useToaster } from "@medaris/ui/mds/toast";
 import { useLocale } from "next-intl";
 import { type FormEvent, useState, useTransition } from "react";
+import { LocaleAppProviders } from "~/components/locale-app-providers";
 import { CARD_GAP } from "~/features/account/card-gap";
 import { useAccountTranslations } from "~/lib/i18n/loose";
 import { submitKoskApplication } from "../actions";
@@ -266,8 +266,8 @@ export function KoskApplicationPage({
   privacyNoticeHref: string;
 }) {
   return (
-    <AppProviders>
+    <LocaleAppProviders>
       <Content email={email} privacyNoticeHref={privacyNoticeHref} />
-    </AppProviders>
+    </LocaleAppProviders>
   );
 }

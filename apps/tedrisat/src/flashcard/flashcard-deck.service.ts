@@ -131,7 +131,8 @@ export class FlashcardDeckService {
   async findReadable(
     deckId: string,
     userId: string | null,
-    include?: string[]
+    include?: string[],
+    options: { adminRead?: boolean } = {}
   ): Promise<IFlashcardDeck> {
     const deck = await this.findById(deckId, include);
     // A private deck of somebody else's may still be this caller's to read
@@ -147,7 +148,8 @@ export class FlashcardDeckService {
     this.assertVisibleTo(
       deckId,
       deck && { ...deck, sharedWithViewer: shared },
-      userId
+      userId,
+      options.adminRead === true
     );
     // `assertVisibleTo` has thrown if `deck` is null.
     return forViewer(deck as IFlashcardDeck, userId);
@@ -165,7 +167,8 @@ export class FlashcardDeckService {
       isPublic: boolean;
       sharedWithViewer?: boolean;
     } | null,
-    userId: string | null
+    userId: string | null,
+    adminRead = false
   ): void {
     if (deck === null) {
       throw new DeckNotFoundError(deckId);
@@ -173,7 +176,8 @@ export class FlashcardDeckService {
     if (
       deck.authorId !== userId &&
       !deck.isPublic &&
-      deck.sharedWithViewer !== true
+      deck.sharedWithViewer !== true &&
+      !adminRead
     ) {
       throw new DeckForbiddenError(
         "This deck is private and belongs to another user"
@@ -262,7 +266,8 @@ export class FlashcardDeckService {
     return this.setPublishRequest(
       deckId,
       DeckPublishStatus.PENDING,
-      new Date()
+      new Date(),
+      deck.publishStatus
     );
   }
 
@@ -278,26 +283,36 @@ export class FlashcardDeckService {
       throw new DeckPublishStateError(deckId, deck.publishStatus);
     }
     if (deck.publishStatus === DeckPublishStatus.PUBLISHED) {
-      // `update` keeps `isPublic` and the status in step.
-      const updated = await this.deckRepo.update(deckId, { isPublic: false });
+      const updated = await this.deckRepo.setPrivate(deckId);
       if (updated === null) throw new DeckNotFoundError(deckId);
       return updated;
     }
-    return this.setPublishRequest(deckId, DeckPublishStatus.PRIVATE, null);
+    return this.setPublishRequest(
+      deckId,
+      DeckPublishStatus.PRIVATE,
+      null,
+      deck.publishStatus
+    );
   }
 
   private async setPublishRequest(
     deckId: string,
     status: DeckPublishStatus,
-    requestedAt: Date | null
+    requestedAt: Date | null,
+    from: DeckPublishStatus
   ): Promise<IFlashcardDeck> {
     const deck = await this.deckRepo.setPublishRequest(
       deckId,
       status,
-      requestedAt
+      requestedAt,
+      from
     );
-    if (deck === null) throw new DeckNotFoundError(deckId);
-    return deck;
+    if (deck !== null) return deck;
+    // The row moved since it was read (the başnazım answered, or the owner
+    // acted twice): say what it is now, not what it was.
+    const now = await this.deckRepo.findById(deckId);
+    if (now === null) throw new DeckNotFoundError(deckId);
+    throw new DeckPublishStateError(deckId, now.publishStatus);
   }
 
   async addToUserCollection(
