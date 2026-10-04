@@ -8,6 +8,7 @@ import {
 } from "../course/course-purge";
 import { DatabaseService } from "../database/database.service";
 import { deleteAssignmentsIn } from "../database/role-assignments";
+import { auditLog } from "../database/schema/audit.schema";
 import {
   courses,
   courseWeeks,
@@ -44,9 +45,16 @@ export interface IArchiver {
 }
 
 export type RestoreOutcome =
-  | { status: "restored"; title: string }
+  | {
+      status: "restored";
+      title: string;
+      /** Where it sits, for the audit page's filters: a week's or session's course, a deck's köşk. */
+      where?: { courseId?: string; koskId?: string | null };
+    }
   | { status: "parent-hidden" }
   | { status: "not-found" }
+  /** A week whose restore would bring sessions back, for a caller who does no session work there. */
+  | { status: "forbidden" }
   /** Hidden at a level above the restorer's, as read under the row lock. */
   | { status: "level"; hiddenAt: HideLevel };
 
@@ -214,6 +222,28 @@ export class ArchiveRepository {
     }));
   }
 
+  /**
+   * Whether restoring the hidden week brings sessions back with it: the ones
+   * hidden at the same instant as the week (`restoreWeek`). While the week is
+   * hidden that set cannot change, since a session under a hidden week is
+   * neither listed nor restored on its own.
+   */
+  async weekRestoresSessions(weekId: string): Promise<boolean> {
+    const rows = await this.db
+      .select({ id: lessons.id })
+      .from(lessons)
+      .innerJoin(courseWeeks, eq(courseWeeks.id, lessons.weekId))
+      .where(
+        and(
+          eq(courseWeeks.id, weekId),
+          isNotNull(courseWeeks.archivedAt),
+          eq(lessons.archivedAt, courseWeeks.archivedAt)
+        )
+      )
+      .limit(1);
+    return rows.length > 0;
+  }
+
   /** One hidden item, or null when it is missing, shown, or has no storage. */
   async findOne(
     type: ArchiveItemType,
@@ -326,43 +356,85 @@ export class ArchiveRepository {
    * Brings a hidden item back for a restorer acting at `restorer`. The kademe
    * (MDRS-135) is compared with the level read under the item's row lock, in the
    * same transaction as the write, so a concurrent re-hide at a higher level is
-   * never undone by a lower one.
+   * never undone by a lower one. A restore is on the record as
+   * `<type>.restore`, with the level, in the same transaction, exactly as the
+   * course's and the köşk's own restore routes write theirs.
    */
   async restore(
     type: ArchiveItemType,
     id: string,
-    restorer: HideLevel
+    restorer: HideLevel,
+    actorId: string,
+    /**
+     * For a week whose restore brings sessions back: the level the restorer
+     * does session work at, or null for none (then it is refused). Without it,
+     * `restorer`.
+     */
+    sessionRestorer: HideLevel | null = restorer
   ): Promise<RestoreOutcome> {
     return this.db.transaction(async (tx) => {
-      switch (type) {
-        case "course":
-          return this.restoreCourse(tx, id, restorer);
-        case "week":
-          return this.restoreWeek(tx, id, restorer);
-        case "session":
-          return this.restoreSession(tx, id, restorer);
-        case "kosk":
-          return this.restoreSimple(
-            tx,
-            "kosk",
-            kosks,
-            id,
-            kosks.name,
-            restorer
-          );
-        case "deck":
-          return this.restoreSimple(
-            tx,
-            "deck",
-            decks,
-            id,
-            decks.title,
-            restorer
-          );
-        default:
-          return { status: "not-found" };
+      const outcome = await this.restoreIn(
+        tx,
+        type,
+        id,
+        restorer,
+        sessionRestorer
+      );
+      if (outcome.status === "restored") {
+        await tx.insert(auditLog).values({
+          actorId,
+          action: `${type}.restore`,
+          entity: type,
+          entityId: id,
+          details: {
+            title: outcome.title,
+            level: restorer,
+            ...outcome.where,
+            fromArchive: true,
+          },
+        });
       }
+      return outcome;
     });
+  }
+
+  private restoreIn(
+    tx: Tx,
+    type: ArchiveItemType,
+    id: string,
+    restorer: HideLevel,
+    sessionRestorer: HideLevel | null
+  ): Promise<RestoreOutcome> {
+    switch (type) {
+      case "course":
+        return this.restoreCourse(tx, id, restorer);
+      case "week":
+        return this.restoreWeek(tx, id, restorer, sessionRestorer);
+      case "session":
+        return this.restoreSession(tx, id, restorer);
+      case "kosk":
+        return this.restoreSimple(
+          tx,
+          "kosk",
+          kosks,
+          id,
+          kosks.name,
+          restorer,
+          kosks.id
+        );
+      case "deck":
+        return this.restoreSimple(
+          tx,
+          "deck",
+          decks,
+          id,
+          decks.title,
+          restorer,
+          decks.koskId
+        );
+      default:
+        return Promise.resolve({ status: "not-found" });
+    }
   }
 
   /** The kademe, for a row already locked: null when the restorer may bring it back. */
@@ -383,7 +455,8 @@ export class ArchiveRepository {
     table: typeof kosks | typeof decks,
     id: string,
     titleColumn: typeof kosks.name | typeof decks.title,
-    restorer: HideLevel
+    restorer: HideLevel,
+    koskColumn: typeof kosks.id | typeof decks.koskId
   ): Promise<RestoreOutcome> {
     const locked = await tx.execute<{ archived_level: HideLevel | null }>(
       sql`select archived_level from ${table} where id = ${id} and archived_at is not null for update`
@@ -401,10 +474,11 @@ export class ArchiveRepository {
         updatedAt: new Date(),
       })
       .where(and(eq(table.id, id), isNotNull(table.archivedAt)))
-      .returning({ title: titleColumn });
-    return row
-      ? { status: "restored", title: row.title }
-      : { status: "not-found" };
+      .returning({ title: titleColumn, koskId: koskColumn });
+    if (!row) return { status: "not-found" };
+    return type === "deck"
+      ? { status: "restored", title: row.title, where: { koskId: row.koskId } }
+      : { status: "restored", title: row.title };
   }
 
   /** The same decision as `POST /courses/:id/restore` (`restoreCourseIn`); a shown course is not in the archive. */
@@ -420,7 +494,8 @@ export class ArchiveRepository {
   private async restoreWeek(
     tx: Tx,
     id: string,
-    restorer: HideLevel
+    bareRestorer: HideLevel,
+    sessionRestorer: HideLevel | null
   ): Promise<RestoreOutcome> {
     const [week] = await tx
       .select({
@@ -435,6 +510,17 @@ export class ArchiveRepository {
       .where(and(eq(courseWeeks.id, id), isNotNull(courseWeeks.archivedAt)))
       .for("update", { of: courseWeeks });
     if (!week || week.archivedAt === null) return { status: "not-found" };
+    // Bringing sessions back with the week is session work: the level the
+    // caller does it at, decided on the rows this lock keeps as they are.
+    const [withSession] = await tx
+      .select({ id: lessons.id })
+      .from(lessons)
+      .where(
+        and(eq(lessons.weekId, id), eq(lessons.archivedAt, week.archivedAt))
+      )
+      .limit(1);
+    const restorer = withSession ? sessionRestorer : bareRestorer;
+    if (restorer === null) return { status: "forbidden" };
     const refused = this.refusal("week", week.archivedLevel, restorer);
     if (refused) return refused;
     if (week.courseArchivedAt !== null) return { status: "parent-hidden" };
@@ -462,7 +548,11 @@ export class ArchiveRepository {
       })
       .where(eq(courseWeeks.id, id));
     await this.bumpCourseVersion(tx, week.courseId, now);
-    return { status: "restored", title: week.title };
+    return {
+      status: "restored",
+      title: week.title,
+      where: { courseId: week.courseId },
+    };
   }
 
   private async restoreSession(
@@ -500,7 +590,11 @@ export class ArchiveRepository {
       })
       .where(eq(lessons.id, id));
     await this.bumpCourseVersion(tx, lesson.courseId, now);
-    return { status: "restored", title: lesson.title };
+    return {
+      status: "restored",
+      title: lesson.title,
+      where: { courseId: lesson.courseId },
+    };
   }
 
   /** A syllabus write bumps the course version so an editor holding the old one is refused (MDRS-95). */

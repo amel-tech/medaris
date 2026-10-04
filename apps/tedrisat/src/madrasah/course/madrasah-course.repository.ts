@@ -363,7 +363,7 @@ export class MadrasahCourseRepository {
         action: "course.hide",
         entity: "course",
         entityId: courseId,
-        details: { madrasahId, title: course.title },
+        details: { madrasahId, title: course.title, level },
       });
       return "hidden";
     });

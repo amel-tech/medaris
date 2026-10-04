@@ -91,13 +91,27 @@ export const COURSE_HIDE_LADDER: readonly IHideStep[] = [
 
 /**
  * The weeks and sessions of a course: the course ladder with its lowest rung,
- * the course itself. Whoever runs the course hides them there (`DELETE
- * /lessons/:id` asks `session.manage`, a whole-course save that drops a week
- * asks `course.edit`, and `week.hide` says "Hafta ve celse gizle, geri al"),
- * so the same people bring back at that level what was hidden at it
- * (MDRS-143: the level that hid it, or one above).
+ * the course itself, held by whoever does the session work there
+ * (`week.hide`, "Hafta ve celse gizle, geri al", and `session.manage`, which
+ * `DELETE /lessons/:id` and a whole-course save that drops a session ask).
+ * They bring back at that level what was hidden at it (MDRS-143: the level
+ * that hid it, or one above). `course.edit` alone is no rung here: bringing a
+ * session back is session work, refused to it everywhere else.
  */
 export const SECTION_HIDE_LADDER: readonly IHideStep[] = [
+  ...COURSE_HIDE_LADDER,
+  {
+    level: SCOPE_TYPES.COURSE,
+    codes: [PERMISSIONS.WEEK_HIDE, PERMISSIONS.SESSION_MANAGE],
+  },
+];
+
+/**
+ * A week whose restore brings no session back: a whole-course save that drops
+ * a week with no session in it asks only `course.edit`, so `course.edit` is a
+ * rung for bringing it back too.
+ */
+export const BARE_WEEK_HIDE_LADDER: readonly IHideStep[] = [
   ...COURSE_HIDE_LADDER,
   {
     level: SCOPE_TYPES.COURSE,

@@ -193,7 +193,13 @@ describe("ArchiveService (MDRS-173)", () => {
         entity: ENTITIES.COURSE,
         id: ID,
       });
-      expect(restore).toHaveBeenCalledWith("course", ID, "kosk");
+      expect(restore).toHaveBeenCalledWith(
+        "course",
+        ID,
+        "kosk",
+        NAZIM.sub,
+        "kosk"
+      );
     });
 
     it("decides a week by its course", async () => {
@@ -211,7 +217,13 @@ describe("ArchiveService (MDRS-173)", () => {
         entity: ENTITIES.COURSE,
         id: ID,
       });
-      expect(restore).toHaveBeenCalledWith("week", "w1", "kosk");
+      expect(restore).toHaveBeenCalledWith(
+        "week",
+        "w1",
+        "kosk",
+        NAZIM.sub,
+        "kosk"
+      );
     });
 
     it("restores a session or a week at the course's level for whoever runs the course, and not the course itself (review C-archive-3)", async () => {
@@ -232,7 +244,13 @@ describe("ArchiveService (MDRS-173)", () => {
         false
       ).service;
       await session.restore(NAZIM, "session", "s1");
-      expect(restore).toHaveBeenCalledWith("session", "s1", "course");
+      expect(restore).toHaveBeenCalledWith(
+        "session",
+        "s1",
+        "course",
+        NAZIM.sub,
+        "course"
+      );
 
       const course = serviceWith(
         { findOne: vi.fn().mockResolvedValue(item()), restore },
@@ -244,6 +262,85 @@ describe("ArchiveService (MDRS-173)", () => {
       );
     });
 
+    it("keeps sessions from a caller holding only course.edit, and lets them bring back a week with none in it (review D2-7-archive-restore-sibling)", async () => {
+      const restore = vi
+        .fn()
+        .mockResolvedValue({ status: "restored", title: "Hafta 1" });
+      const editor = [PERMISSIONS.COURSE_EDIT];
+      const session = serviceWith(
+        {
+          findOne: vi
+            .fn()
+            .mockResolvedValue(
+              item({ type: "session", id: "s1", courseId: ID })
+            ),
+          restore,
+        },
+        editor,
+        false
+      ).service;
+      await expect(
+        session.restore(NAZIM, "session", "s1")
+      ).rejects.toBeInstanceOf(ArchiveForbiddenError);
+      expect(restore).not.toHaveBeenCalled();
+
+      // A week: the editor's level for the week alone, none for its sessions;
+      // the repository decides which applies under the row lock.
+      const week = serviceWith(
+        {
+          findOne: vi
+            .fn()
+            .mockResolvedValue(item({ type: "week", id: "w1", courseId: ID })),
+          restore,
+        },
+        editor,
+        false
+      ).service;
+      await week.restore(NAZIM, "week", "w1");
+      expect(restore).toHaveBeenCalledWith(
+        "week",
+        "w1",
+        "course",
+        NAZIM.sub,
+        null
+      );
+
+      const refused = serviceWith(
+        {
+          findOne: vi
+            .fn()
+            .mockResolvedValue(item({ type: "week", id: "w1", courseId: ID })),
+          restore: vi.fn().mockResolvedValue({ status: "forbidden" }),
+        },
+        editor,
+        false
+      ).service;
+      await expect(refused.restore(NAZIM, "week", "w1")).rejects.toBeInstanceOf(
+        ArchiveForbiddenError
+      );
+    });
+
+    it("offers Geri al on a week to a caller holding only course.edit only when it brings no session back", async () => {
+      const listing = (bringsSessions: boolean) =>
+        serviceWith(
+          {
+            list: vi
+              .fn()
+              .mockResolvedValue([
+                item({ type: "week", id: "w1", courseId: ID }),
+              ]),
+            count: vi.fn().mockResolvedValue(1),
+            countByType: vi.fn().mockResolvedValue(new Map()),
+            archivers: vi.fn().mockResolvedValue(new Map()),
+            weekRestoresSessions: vi.fn().mockResolvedValue(bringsSessions),
+          },
+          [PERMISSIONS.COURSE_EDIT],
+          false
+        ).service.listForMadrasah(NAZIM, MADRASAH, { page: 1, limit: 10 });
+      expect((await listing(false)).items[0].canRestore).toBe(true);
+      expect((await listing(true)).items[0].canRestore).toBe(false);
+    });
+
     it("restores at the platform's level for platform management holding platform.course_hide", async () => {
       const restore = vi
         .fn()
@@ -253,7 +350,13 @@ describe("ArchiveService (MDRS-173)", () => {
         [PERMISSIONS.PLATFORM_COURSE_HIDE]
       );
       await service.restore(NAZIM, "course", ID);
-      expect(restore).toHaveBeenCalledWith("course", ID, "platform");
+      expect(restore).toHaveBeenCalledWith(
+        "course",
+        ID,
+        "platform",
+        NAZIM.sub,
+        "platform"
+      );
     });
 
     it("keeps köşks for the başnazım and a deck for its köşk's nazımı", async () => {
@@ -464,7 +567,13 @@ describe("ArchiveService (MDRS-173)", () => {
         id: ID,
       });
 
-      expect(restore).toHaveBeenCalledWith("course", ID, "madrasah");
+      expect(restore).toHaveBeenCalledWith(
+        "course",
+        ID,
+        "madrasah",
+        HEAD.sub,
+        "madrasah"
+      );
 
       // The level is compared under the row lock: the repository says so.
       const refused = serviceWith(
@@ -495,7 +604,13 @@ describe("ArchiveService (MDRS-173)", () => {
       await expect(service.restore(HEAD, "course", ID)).resolves.toMatchObject({
         id: ID,
       });
-      expect(restore).toHaveBeenCalledWith("course", ID, "madrasah");
+      expect(restore).toHaveBeenCalledWith(
+        "course",
+        ID,
+        "madrasah",
+        HEAD.sub,
+        "madrasah"
+      );
     });
 
     it("counts a row hidden before the level was recorded as the lowest level that could have hidden it", async () => {
