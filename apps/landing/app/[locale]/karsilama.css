@@ -1,0 +1,42 @@
+/* The first screen arrives once, on load: each part fades in from a soft blur
+   and a few pixels below its place, over its own duration (they all start
+   together, so the shorter ones settle first). Nothing below the first screen
+   moves, and nothing here is defined for reduced motion. */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes giris-in {
+    from {
+      opacity: 0;
+      filter: blur(var(--space-2));
+      translate: 0 var(--space-2);
+    }
+    to {
+      opacity: 1;
+      filter: blur(0);
+      translate: 0 0;
+    }
+  }
+
+  .giris-in {
+    animation: giris-in 800ms var(--ease-standard) backwards;
+  }
+
+  .giris-in--eyebrow {
+    animation-duration: 600ms;
+  }
+
+  .giris-in--title {
+    animation-duration: 800ms;
+  }
+
+  .giris-in--intro {
+    animation-duration: 900ms;
+  }
+
+  .giris-in--actions {
+    animation-duration: 1000ms;
+  }
+
+  .giris-in--card {
+    animation-duration: 1100ms;
+  }
+}

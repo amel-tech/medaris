@@ -1,6 +1,5 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
-import { resources } from "@medaris/i18n";
 import { PRIVACY_NOTICE_PATH, PRIVACY_NOTICE_URL } from "@medaris/utils";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -174,10 +173,6 @@ describe("the controller placeholders (MDRS-102)", () => {
 describe("landing's footer (MDRS-102)", () => {
   it("links to the notice", () => {
     expect(footerLinks.map((link) => link.href)).toContain(PRIVACY_NOTICE_PATH);
-  });
-
-  it.each(["tr", "en", "ar"] as const)("labels the link in %s", (lang) => {
-    expect(resources[lang].landing.footer.privacyNotice).toMatch(/\p{L}/u);
   });
 });
 

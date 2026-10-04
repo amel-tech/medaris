@@ -4,18 +4,118 @@ import { setRequestLocale } from "next-intl/server";
 import { SiteFooter } from "~/components/site-footer";
 import { SiteHeader } from "~/components/site-header";
 import {
-  dersler,
-  ezberPoints,
-  heroCovers,
+  celse,
+  closing,
+  ezber,
+  gozat,
+  hero,
   isPlaceholder,
-  koskler,
   operator,
-  steps,
+  operatorFields,
+  sampleCourse,
+  structure,
 } from "~/content/karsilama";
 import { exploreHref, registerHref, signInHref } from "~/lib/tedris";
+import "./karsilama.css";
 
-// Karşılama (A1): canvas "Medaris Ekranları", Karsilama.dc.html and its phone
-// copy KarsilamaTelefon.dc.html (the same markup at 390). MDRS-151.
+const cardGrid =
+  "grid gap-4 grid-cols-[repeat(auto-fit,minmax(min(240px,100%),1fr))]";
+
+function SampleCourse() {
+  return (
+    <aside
+      className="mds-card giris-in giris-in--card flex flex-col gap-4"
+      aria-labelledby="ornek-ders-baslik"
+    >
+      <div className="mds-card__header items-center">
+        <span className="mds-eyebrow">{sampleCourse.eyebrow}</span>
+        <span className="mds-badge mds-badge--outline">
+          {sampleCourse.badge}
+        </span>
+      </div>
+      <div className="flex min-inline-0 flex-col gap-1">
+        <h2 className="mds-h4" id="ornek-ders-baslik">
+          {sampleCourse.title}
+        </h2>
+        <p className="mds-caption">{sampleCourse.caption}</p>
+      </div>
+      {sampleCourse.weeks.map((week) => (
+        <div key={week.title} className="flex min-inline-0 flex-col gap-1">
+          <h3 className="mds-eyebrow">{week.title}</h3>
+          <ol className="mds-lesson-list">
+            {week.sessions.map((session) => (
+              <li
+                key={session.title}
+                className="mds-lesson-row mds-lesson-row--live is-locked"
+              >
+                <span
+                  className="mds-lesson-row__medallion"
+                  aria-hidden="true"
+                />
+                <div className="mds-lesson-row__main">
+                  <span className="mds-lesson-row__title">{session.title}</span>
+                  <p className="mds-lesson-row__meta">
+                    <span>
+                      {sampleCourse.lessonType}
+                      <span className="mds-sep" aria-hidden="true">
+                        ·
+                      </span>
+                    </span>
+                    <span>{session.when}</span>
+                  </p>
+                </div>
+                <span
+                  className="mds-lesson-row__lock"
+                  role="img"
+                  aria-label={sampleCourse.lockedLabel}
+                />
+                <span className="mds-lesson-row__duration">
+                  {session.minutes}
+                </span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      ))}
+      <p className="mds-caption">{sampleCourse.note}</p>
+    </aside>
+  );
+}
+
+function SampleCard({ side }: { side: "front" | "back" }) {
+  const { sample } = ezber;
+  const back = side === "back";
+  return (
+    <article
+      className="mds-card flex flex-col gap-4"
+      aria-label={back ? sample.backLabel : sample.frontLabel}
+    >
+      <div className="mds-card__header items-center">
+        <span className="mds-caption">{sample.card}</span>
+        <span className="mds-badge mds-badge--outline">{sample.badge}</span>
+      </div>
+      <p
+        className={`mds-arabic-text text-center${back ? "" : " py-4"}`}
+        lang="ar"
+        dir="rtl"
+      >
+        {sample.arabic}
+      </p>
+      {back ? (
+        <>
+          <hr className="mds-separator" />
+          <p className="mds-reading">{sample.meaning}</p>
+          <p className="mds-source">{sample.source}</p>
+          <p className="mds-caption">
+            {sample.question} {sample.ratings.join(" · ")}
+          </p>
+        </>
+      ) : null}
+      <p className="mds-caption">{sample.deck}</p>
+    </article>
+  );
+}
+
 export default async function Home({
   params,
 }: {
@@ -24,7 +124,7 @@ export default async function Home({
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const operatorReady = !Object.values(operator).some(isPlaceholder);
+  const operatorReady = !operatorFields.some(isPlaceholder);
 
   return (
     <>
@@ -32,80 +132,55 @@ export default async function Home({
       <main className="mx-auto flex inline-full max-inline-content flex-col gap-section pbs-8 pbe-16 px-gutter max-md:pbs-5 max-md:pbe-10">
         <section
           className="grid gap-6 grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)] max-md:grid-cols-1 items-center py-6"
-          aria-labelledby="kahraman-baslik"
+          aria-labelledby="giris-baslik"
         >
           <div className="flex min-inline-0 flex-col gap-5">
-            <p className="mds-eyebrow">Çevrim içi medrese</p>
-            <h1 className="mds-display" id="kahraman-baslik">
-              Medrese ilimlerini müderrisle, haftalık canlı celselerde okuyun.
-            </h1>
-            <p className="mds-reading">
-              Medaris’te dersler köşklerde açılır ve haftalara bölünür. Her
-              hafta müderrisle bir ya da birkaç canlı celse yapılır; okunanlar
-              ezber kartlarıyla tekrar edilir.
+            <p className="mds-eyebrow giris-in giris-in--eyebrow">
+              {hero.eyebrow}
             </p>
-            <div className="flex min-inline-0 flex-wrap items-center gap-3">
+            <h1
+              className="mds-display giris-in giris-in--title"
+              id="giris-baslik"
+            >
+              {hero.title}
+            </h1>
+            <p className="mds-reading giris-in giris-in--intro">{hero.intro}</p>
+            <div className="flex min-inline-0 flex-wrap items-center gap-3 giris-in giris-in--actions">
               <a
                 className="mds-btn mds-btn--large mds-btn--primary"
                 href={registerHref}
               >
-                Kayıt ol
+                {hero.register}
               </a>
               <a
                 className="mds-btn mds-btn--large mds-btn--outline"
                 href={signInHref}
               >
-                Giriş yap
+                {hero.signIn}
+              </a>
+              <a className="mds-btn mds-btn--link" href={exploreHref}>
+                {hero.explore}
               </a>
             </div>
-            <p className="mds-caption">
-              Derslerin tanıtımı ve müfredatı herkese açıktır. Ders içerikleri,
-              toplantı bağlantıları ve ders kayıtları kayıtlı talebelere
-              açıktır; herkese açık olarak işaretlenen ders kayıtlarını herkes
-              izleyebilir.
+            <p className="mds-caption giris-in giris-in--actions">
+              {hero.note}
             </p>
           </div>
-          <div className="grid grid-cols-3 gap-4 items-end">
-            {heroCovers.map((cover) => (
-              <div
-                key={cover.title}
-                className="flex min-inline-0 flex-col gap-2"
-              >
-                <div
-                  className={`mds-cover mds-cover--lg mds-cover--${cover.cloth} ${cover.height}`}
-                  aria-hidden="true"
-                >
-                  <p
-                    className="mds-eyebrow mds-cover__label"
-                    lang="ar"
-                    dir="rtl"
-                  >
-                    {cover.label}
-                  </p>
-                </div>
-                <p className="mds-caption" dir="auto">
-                  {cover.title}
-                </p>
-              </div>
-            ))}
-          </div>
+          <SampleCourse />
         </section>
 
         <section
           className="flex min-inline-0 flex-col gap-5"
-          aria-labelledby="nasil-baslik"
+          aria-labelledby="yapi-baslik"
         >
           <div className="flex min-inline-0 flex-col gap-2">
-            <h2 className="mds-h2" id="nasil-baslik">
-              Nasıl işler
+            <h2 className="mds-h2" id="yapi-baslik">
+              {structure.title}
             </h2>
-            <p className="mds-body max-inline-measure">
-              Medaris bir medresenin düzenini izler: kurum, meclis, kitap, hafta
-              ve buluşma.
-            </p>
+            <p className="mds-body max-inline-measure">{structure.intro}</p>
           </div>
           <ol className="grid gap-4 grid-cols-[repeat(auto-fit,minmax(min(200px,100%),1fr))] list-none m-0 p-0">
-            {steps.map((step, i) => (
+            {structure.steps.map((step, i) => (
               <li key={step.title} className="mds-card flex flex-col gap-3">
                 <div className="flex min-inline-0 flex-wrap items-center gap-2">
                   <Icon name={step.icon} />
@@ -120,123 +195,20 @@ export default async function Home({
 
         <section
           className="flex min-inline-0 flex-col gap-5"
-          aria-labelledby="koskler-baslik"
+          aria-labelledby="celse-baslik"
         >
-          <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2">
-            <h2 className="mds-h2" id="koskler-baslik">
-              Köşkler
+          <div className="flex min-inline-0 flex-col gap-2">
+            <h2 className="mds-h2" id="celse-baslik">
+              {celse.title}
             </h2>
-            <a className="mds-btn mds-btn--link" href={exploreHref}>
-              Bütün köşkler
-            </a>
+            <p className="mds-body max-inline-measure">{celse.intro}</p>
           </div>
-          <div className="grid gap-grid grid-cols-[repeat(auto-fill,minmax(min(280px,100%),1fr))]">
-            {koskler.map((kosk) => (
-              <div
-                key={kosk.name}
-                className="mds-card mds-card--interactive flex flex-col gap-3"
-              >
-                <div className="flex min-inline-0 flex-nowrap items-center gap-3">
-                  <span
-                    className="mds-avatar mds-avatar--entity"
-                    aria-hidden="true"
-                  >
-                    {kosk.initials}
-                  </span>
-                  <h3 className="mds-card__title" dir="auto">
-                    <a className="mds-card__link" href={exploreHref}>
-                      {kosk.name}
-                    </a>
-                  </h3>
-                </div>
-                <div className="flex min-inline-0 flex-wrap items-center gap-3">
-                  <span className="mds-badge mds-badge--secondary">
-                    {kosk.field}
-                  </span>
-                </div>
-                <p className="mds-body-sm grow" dir="auto">
-                  {kosk.body}
-                </p>
-                <p className="mds-caption">
-                  {kosk.level}
-                  <span className="mds-sep" aria-hidden="true">
-                    ·
-                  </span>
-                  {kosk.courses} ders
-                </p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section
-          className="flex min-inline-0 flex-col gap-5"
-          aria-labelledby="dersler-baslik"
-        >
-          <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2">
-            <h2 className="mds-h2" id="dersler-baslik">
-              Öne çıkan dersler
-            </h2>
-            <a className="mds-btn mds-btn--link" href={exploreHref}>
-              Bütün dersler
-            </a>
-          </div>
-          <div className="grid gap-grid grid-cols-[repeat(auto-fill,minmax(min(280px,100%),1fr))]">
-            {dersler.map((ders) => (
-              <div
-                key={ders.title}
-                className="mds-card mds-card--interactive flex flex-col"
-              >
-                <div className="mds-card__media">
-                  <div
-                    className={`mds-cover mds-cover--${ders.cloth} mds-cover--sm`}
-                  >
-                    <p
-                      className="mds-eyebrow mds-cover__label"
-                      lang="ar"
-                      dir="rtl"
-                    >
-                      {ders.label}
-                    </p>
-                  </div>
-                </div>
-                <div className="mds-card__header">
-                  <h3 className="mds-card__title" dir="auto">
-                    <a className="mds-card__link" href={exploreHref}>
-                      {ders.title}
-                    </a>
-                  </h3>
-                </div>
-                <p className="mds-card__body grow" dir="auto">
-                  Müderris{" "}
-                  {ders.medrese ? (
-                    <>
-                      <span className="whitespace-nowrap">
-                        <bdi>{ders.muderris}</bdi>, imam
-                      </span>
-                      <span className="mds-sep" aria-hidden="true">
-                        ·
-                      </span>{" "}
-                      <bdi>{ders.medrese}</bdi>
-                    </>
-                  ) : (
-                    <>
-                      <bdi>{ders.muderris}</bdi>, imam
-                    </>
-                  )}
-                </p>
-                <div className="mds-card__footer">
-                  <span>
-                    <bdi>{ders.kosk}</bdi>
-                    <span className="mds-sep" aria-hidden="true">
-                      ·
-                    </span>
-                  </span>
-                  <span>
-                    Sonraki celse{" "}
-                    <time dateTime={ders.next.iso}>{ders.next.text}</time>
-                  </span>
-                </div>
+          <div className={cardGrid}>
+            {celse.cards.map((card) => (
+              <div key={card.title} className="mds-card flex flex-col gap-3">
+                <Icon name={card.icon} />
+                <h3 className="mds-h4">{card.title}</h3>
+                <p className="mds-body-sm">{card.body}</p>
               </div>
             ))}
           </div>
@@ -248,69 +220,50 @@ export default async function Home({
         >
           <div className="flex min-inline-0 flex-col gap-4">
             <h2 className="mds-h2" id="ezber-baslik">
-              Ezber kartları
+              {ezber.title}
             </h2>
-            <p className="mds-reading">
-              Her haftanın kelimeleri, sîgaları ve metinleri destelerde
-              toplanır. Kartlar, ne kadar zorlandığınıza göre yeniden karşınıza
-              çıkar.
-            </p>
+            <p className="mds-reading">{ezber.text}</p>
             <ul className="flex flex-col list-none m-0 p-0">
-              {ezberPoints.map((point) => (
+              {ezber.points.map((point) => (
                 <li
                   key={point}
-                  className="flex items-center gap-3 py-3 border-be border-neutral-subtle last:border-be-0"
+                  className="flex items-start gap-3 py-3 border-be border-neutral-subtle last:border-be-0"
                 >
-                  <Icon name="check" size="sm" />
+                  <Icon name="check" size="sm" className="mbs-1 shrink-0" />
                   <span className="mds-body">{point}</span>
                 </li>
               ))}
             </ul>
           </div>
           <div className="grid grid-cols-[repeat(auto-fit,minmax(min(200px,100%),1fr))] gap-4 items-start">
-            <article
-              className="mds-card flex flex-col gap-4"
-              aria-label="Ezber kartı, ön yüz"
-            >
-              <div className="mds-card__header items-center">
-                <span className="mds-caption">Kart 1</span>
-                <span className="mds-badge mds-badge--outline">
-                  Herkese açık
-                </span>
+            <SampleCard side="front" />
+            <SampleCard side="back" />
+          </div>
+        </section>
+
+        <section
+          className="flex min-inline-0 flex-col gap-5"
+          aria-labelledby="gozat-baslik"
+        >
+          <div className="flex min-inline-0 flex-col gap-2">
+            <h2 className="mds-h2" id="gozat-baslik">
+              {gozat.title}
+            </h2>
+            <p className="mds-body max-inline-measure">{gozat.intro}</p>
+          </div>
+          <div className={cardGrid}>
+            {gozat.cards.map((card) => (
+              <div key={card.title} className="mds-card flex flex-col gap-3">
+                <Icon name={card.icon} />
+                <h3 className="mds-h4">{card.title}</h3>
+                <p className="mds-body-sm">{card.body}</p>
               </div>
-              <p
-                className="mds-arabic-text text-center py-4"
-                lang="ar"
-                dir="rtl"
-              >
-                إِنَّمَا الْأَعْمَالُ بِالنِّيَّاتِ
-              </p>
-              <p className="mds-caption" dir="auto">
-                Kırk hadis destesi
-              </p>
-            </article>
-            <article
-              className="mds-card flex flex-col gap-4"
-              aria-label="Ezber kartı, arka yüz"
-            >
-              <div className="mds-card__header items-center">
-                <span className="mds-caption">Kart 1</span>
-                <span className="mds-badge mds-badge--outline">
-                  Herkese açık
-                </span>
-              </div>
-              <p className="mds-arabic-text text-center" lang="ar" dir="rtl">
-                إِنَّمَا الْأَعْمَالُ بِالنِّيَّاتِ
-              </p>
-              <hr className="mds-separator" />
-              <p className="mds-reading" dir="auto">
-                Ameller ancak niyetlere göredir.
-              </p>
-              <p className="mds-source">Buhârî, Müslim</p>
-              <p className="mds-caption" dir="auto">
-                Kırk hadis destesi
-              </p>
-            </article>
+            ))}
+          </div>
+          <div className="flex min-inline-0 flex-wrap items-center gap-3">
+            <a className="mds-btn mds-btn--outline" href={exploreHref}>
+              {gozat.explore}
+            </a>
           </div>
         </section>
 
@@ -320,15 +273,15 @@ export default async function Home({
             aria-labelledby="kim-baslik"
           >
             <h2 className="mds-h2" id="kim-baslik">
-              Medaris’i kim yürütüyor
+              {operator.title}
             </h2>
             <div className="grid items-start gap-6 grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)] max-md:grid-cols-1">
               <div className="mds-card flex flex-col gap-3">
-                <p className="mds-eyebrow">Kurum</p>
+                <p className="mds-eyebrow">{operator.institutionLabel}</p>
                 <p className="mds-reading">{operator.institution}</p>
               </div>
               <div className="mds-card flex flex-col gap-3">
-                <p className="mds-eyebrow">Görüş</p>
+                <p className="mds-eyebrow">{operator.testimonialLabel}</p>
                 <p className="mds-reading">{operator.testimonial}</p>
                 <p className="mds-caption">{operator.testimonialBy}</p>
               </div>
@@ -338,26 +291,36 @@ export default async function Home({
 
         <section
           className="mds-card flex flex-wrap items-center justify-between gap-5 p-6"
-          aria-labelledby="son-baslik"
+          aria-labelledby="kapanis-baslik"
         >
           <div className="flex min-inline-0 flex-col gap-2">
-            <h2 className="mds-h2" id="son-baslik">
-              Derslere katılmak için hesap açın
+            <h2 className="mds-h2" id="kapanis-baslik">
+              {closing.title}
             </h2>
-            <p className="mds-body">
-              Hesap açtıktan sonra derslere kaydolabilir, onay isteyen derslere
-              başvurabilirsiniz.
+            <p className="mds-body">{closing.text}</p>
+            <p className="mds-caption">
+              {closing.consentLead}{" "}
+              <Link className="mds-btn mds-btn--link" href="/aydinlatma-metni">
+                {closing.consentLink}
+              </Link>
+              {closing.consentTail}
             </p>
           </div>
           <div className="flex min-inline-0 flex-wrap items-center gap-3">
             <a
-              className="mds-btn mds-btn--large mds-btn--outline"
+              className="mds-btn mds-btn--large mds-btn--primary"
               href={registerHref}
             >
-              Kayıt ol
+              {closing.register}
+            </a>
+            <a
+              className="mds-btn mds-btn--large mds-btn--ghost"
+              href={signInHref}
+            >
+              {closing.signIn}
             </a>
             <Link className="mds-btn mds-btn--link" href="/sss">
-              Sık sorulan sorular
+              {closing.faq}
             </Link>
           </div>
         </section>
