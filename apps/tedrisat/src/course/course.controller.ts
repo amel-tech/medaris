@@ -87,7 +87,7 @@ const UUID_REGEX =
  * existence check stays here (the same reason as `byExistingKosk`). Hidden
  * courses count as existing: restoring one is the point.
  */
-const byExistingCourse: AuthzResolve = async (req, moduleRef) => {
+export const byExistingCourse: AuthzResolve = async (req, moduleRef) => {
   const courseId = typeof req.params.id === "string" ? req.params.id : "";
   if (
     !UUID_REGEX.test(courseId) ||

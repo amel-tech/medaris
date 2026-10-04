@@ -6,7 +6,7 @@ import {
   byParam,
   ENTITIES,
   MedarisValidationPipe,
-  SCOPES,
+  PERMISSIONS,
 } from "@medaris/common";
 import {
   Body,
@@ -41,6 +41,7 @@ import {
   ApiQuery,
   ApiTags,
 } from "@nestjs/swagger";
+import { byExistingCourse } from "../course/course.controller";
 import { AuthorizedRequest } from "../course/interfaces/authorized-request.interface";
 import { byLessonCourse } from "../course/lesson.controller";
 import {
@@ -97,12 +98,16 @@ const LIMIT_QUERY = {
  * A talebe's questions to the course staff (MDRS-150).
  *
  * A question is read by its author and by whoever holds `question.answer` in
- * the course; no other talebe and no other user reads it. The guard asks only
- * `VIEW` of the course, which every signed-in caller holds: it is there to
- * answer a missing course, session or question with 404 before the handler
- * runs. Who may ask is `LessonQuestionService`'s question (an active
- * enrollment), and who may read or answer is the permission catalogue's,
- * asked there by code, because the route matrix has no row for a ders nazırı.
+ * the course; no other talebe and no other user reads it. The staff list asks
+ * `question.answer` of the course in its `@Authz`; every other route asks only
+ * `course.view`, which every signed-in caller holds, to answer a missing
+ * course, session or question with 404 (and a course of a hidden köşk with
+ * that course's 404) before the handler runs. `LessonQuestionService` asks the
+ * rest of the engine, as every read of course content does: a hidden course,
+ * a draft and a passive scope close it, and who may ask is an active talebe
+ * (an enrollment, no ban, the content open). Answering asks `question.answer`
+ * there and not in the `@Authz`, because a refusal must read as "no such
+ * question" (404) and not confirm that the question exists.
  */
 @ApiTags("lessons")
 @ApiBearerAuth()
@@ -116,14 +121,14 @@ export class LessonQuestionController {
   @ApiOperation({
     summary: "Ask the course staff a question on a session",
     description:
-      "An enrolled talebe only (ENROLLED or COMPLETED, and not barred). `body` is Markdown, 1 to 4000 characters after trimming; it is stored as typed and never rendered as HTML. Only the author and the people who may answer see it. No notification is sent.",
+      "An enrolled talebe only (ENROLLED or COMPLETED, and not barred), and only while the course's content is open: a passive scope closes it. `body` is Markdown, 1 to 4000 characters after trimming; it is stored as typed and never rendered as HTML. Only the author and the people who may answer see it. No notification is sent.",
     operationId: "askLessonQuestion",
   })
   @ApiCreatedResponse({ type: LessonQuestionResponse })
   @ApiBadRequestResponse({ description: "Field validation" })
   @ApiForbiddenResponse({ description: "LESSON_QUESTION_FORBIDDEN" })
   @ApiNotFoundResponse({ description: "LESSON_NOT_FOUND" })
-  @Authz(SCOPES.VIEW, byLessonCourse)
+  @Authz(PERMISSIONS.COURSE_VIEW, byLessonCourse)
   @UsePipes(new MedarisValidationPipe({ transform: true }))
   @Post("lessons/:id/questions")
   ask(
@@ -131,13 +136,13 @@ export class LessonQuestionController {
     @Param("id", ParseUUIDPipe) id: string,
     @Body() dto: AskLessonQuestionDto
   ): Promise<LessonQuestionResponse> {
-    return this.service.ask(id, request.user.sub, dto);
+    return this.service.ask(request.user, id, dto);
   }
 
   @ApiOperation({
     summary: "The caller's own questions in a course, with their answers",
     description:
-      "Only the questions the caller asked, newest first, whoever else asked on the course and whatever has become of the caller's enrollment. One page at a time: pass `nextCursor` as `cursor` for the next. What the author's Sorularım tab reads.",
+      "Only the questions the caller asked, newest first, whoever else asked on the course and whatever has become of the caller's enrollment, while the course is open: a course in a passive scope is closed to everyone but platform management and its köşk's nazımı (403 LESSON_QUESTION_FORBIDDEN), and a hidden course or a draft is not found. One page at a time: pass `nextCursor` as `cursor` for the next. What the author's Sorularım tab reads.",
     operationId: "listMyCourseQuestions",
   })
   @ApiQuery(CURSOR_QUERY)
@@ -147,8 +152,9 @@ export class LessonQuestionController {
     description:
       "A cursor this server did not issue (INVALID_QUESTION_CURSOR).",
   })
+  @ApiForbiddenResponse({ description: "LESSON_QUESTION_FORBIDDEN" })
   @ApiNotFoundResponse({ description: "COURSE_NOT_FOUND" })
-  @Authz(SCOPES.VIEW, byParam(ENTITIES.COURSE))
+  @Authz(PERMISSIONS.COURSE_VIEW, byParam(ENTITIES.COURSE))
   // Per-user answer; no shared cache may keep it.
   @Header("Cache-Control", "private, no-store")
   @Get("courses/:id/questions/mine")
@@ -159,7 +165,7 @@ export class LessonQuestionController {
     @Query("limit", new DefaultValuePipe(DEFAULT_PAGE_SIZE), ParseIntPipe)
     limit: number
   ): Promise<PaginatedLessonQuestionResponse> {
-    return this.service.listOwn(id, request.user.sub, {
+    return this.service.listOwn(request.user, id, {
       cursor: cursor || undefined,
       limit,
     });
@@ -180,7 +186,7 @@ export class LessonQuestionController {
   })
   @ApiForbiddenResponse({ description: "AUTHZ_FORBIDDEN" })
   @ApiNotFoundResponse({ description: "COURSE_NOT_FOUND" })
-  @Authz(SCOPES.VIEW, byParam(ENTITIES.COURSE))
+  @Authz(PERMISSIONS.QUESTION_ANSWER, byExistingCourse)
   // Per-user authorization decided this answer; no shared cache may keep it.
   @Header("Cache-Control", "private, no-store")
   @Get("courses/:id/questions")
@@ -191,7 +197,7 @@ export class LessonQuestionController {
     @Query("limit", new DefaultValuePipe(DEFAULT_PAGE_SIZE), ParseIntPipe)
     limit: number
   ): Promise<PaginatedCourseQuestionResponse> {
-    return this.service.listForStaff(id, request.user, {
+    return this.service.listForStaff(request.user, id, {
       cursor: cursor || undefined,
       limit,
     });
@@ -206,7 +212,7 @@ export class LessonQuestionController {
   @ApiOkResponse({ type: CourseQuestionResponse })
   @ApiBadRequestResponse({ description: "Field validation" })
   @ApiNotFoundResponse({ description: "LESSON_QUESTION_NOT_FOUND" })
-  @Authz(SCOPES.VIEW, byQuestionCourse)
+  @Authz(PERMISSIONS.COURSE_VIEW, byQuestionCourse)
   @UsePipes(new MedarisValidationPipe({ transform: true }))
   @Put("questions/:questionId/answer")
   answer(
@@ -214,7 +220,7 @@ export class LessonQuestionController {
     @Param("questionId", ParseUUIDPipe) questionId: string,
     @Body() dto: AnswerLessonQuestionDto
   ): Promise<CourseQuestionResponse> {
-    return this.service.answer(questionId, request.user, dto);
+    return this.service.answer(request.user, questionId, dto);
   }
 
   @ApiOperation({
@@ -228,7 +234,7 @@ export class LessonQuestionController {
   @ApiForbiddenResponse({ description: "LESSON_QUESTION_FORBIDDEN" })
   @ApiNotFoundResponse({ description: "LESSON_QUESTION_NOT_FOUND" })
   @ApiConflictResponse({ description: "LESSON_QUESTION_ANSWERED" })
-  @Authz(SCOPES.VIEW, byQuestionCourse)
+  @Authz(PERMISSIONS.COURSE_VIEW, byQuestionCourse)
   @UsePipes(new MedarisValidationPipe({ transform: true }))
   @Patch("questions/:questionId")
   update(
@@ -236,24 +242,25 @@ export class LessonQuestionController {
     @Param("questionId", ParseUUIDPipe) questionId: string,
     @Body() dto: UpdateLessonQuestionDto
   ): Promise<LessonQuestionResponse> {
-    return this.service.update(questionId, request.user.sub, dto);
+    return this.service.update(request.user, questionId, dto);
   }
 
   @ApiOperation({
     summary: "Delete the caller's own question",
     description:
-      "At any time, whether or not it is answered; the answer goes with it and there is no history. Needs no enrollment, so a talebe who was removed can still delete what they asked. 404 for a question the caller did not ask, the staff's included, as for one that does not exist.",
+      "At any time, whether or not it is answered; the answer goes with it and there is no history. Needs no enrollment, so a talebe who was removed can still delete what they asked while the course is open; a passive scope closes it (403). 404 for a question the caller did not ask, the staff's included, as for one that does not exist.",
     operationId: "deleteLessonQuestion",
   })
   @ApiNoContentResponse()
+  @ApiForbiddenResponse({ description: "LESSON_QUESTION_FORBIDDEN" })
   @ApiNotFoundResponse({ description: "LESSON_QUESTION_NOT_FOUND" })
-  @Authz(SCOPES.VIEW, byQuestionCourse)
+  @Authz(PERMISSIONS.COURSE_VIEW, byQuestionCourse)
   @HttpCode(HttpStatus.NO_CONTENT)
   @Delete("questions/:questionId")
   remove(
     @Req() request: AuthorizedRequest,
     @Param("questionId", ParseUUIDPipe) questionId: string
   ): Promise<void> {
-    return this.service.remove(questionId, request.user.sub);
+    return this.service.remove(request.user, questionId);
   }
 }

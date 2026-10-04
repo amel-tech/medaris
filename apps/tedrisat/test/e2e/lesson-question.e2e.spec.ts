@@ -1,12 +1,13 @@
 import { ROLES } from "@medaris/common";
 import { INestApplication } from "@nestjs/common";
-import { eq, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import request from "supertest";
 import { purgeCourses } from "../../src/course/course-purge";
 import { CourseStatus } from "../../src/course/domain/course-status.enum";
 import { EnrollmentStatus } from "../../src/course/domain/enrollment-status.enum";
 import { LessonType } from "../../src/course/domain/lesson-type.enum";
 import { DatabaseService } from "../../src/database/database.service";
+import { auditLog } from "../../src/database/schema/audit.schema";
 import { bans } from "../../src/database/schema/ban.schema";
 import {
   courses,
@@ -21,7 +22,10 @@ import {
   permissionGroupItems,
   permissionGroups,
 } from "../../src/database/schema/permission.schema";
-import { ASSIGNED_ROLES } from "../../src/database/schema/role-assignment.schema";
+import {
+  ASSIGNED_ROLES,
+  roleAssignments,
+} from "../../src/database/schema/role-assignment.schema";
 import { users } from "../../src/database/schema/user.schema";
 import { LESSON_QUESTION_BODY_MAX } from "../../src/lesson-question/dto/lesson-question.dto";
 import { MAX_PAGE_SIZE } from "../../src/lesson-question/lesson-question.service";
@@ -68,6 +72,7 @@ describe("a talebe's questions to the course staff (MDRS-150, e2e)", () => {
   let databaseService: DatabaseService;
   let dbUtils: TestDatabaseUtils;
 
+  let koskId: string;
   let courseId: string;
   let foreignCourseId: string;
   let lessonId: string;
@@ -186,6 +191,7 @@ describe("a talebe's questions to the course staff (MDRS-150, e2e)", () => {
       .insert(kosks)
       .values({ ownerId: MANAGER_ID, name: "Nûruosmaniye Köşkü" })
       .returning();
+    koskId = kosk.id;
     await assignRole(db(), {
       userId: MANAGER_ID,
       role: ASSIGNED_ROLES.KOSK_NAZIM,
@@ -691,6 +697,193 @@ describe("a talebe's questions to the course staff (MDRS-150, e2e)", () => {
         .where(eq(permissionGrants.userId, NAZIR_ID));
       await answer(question.id, NAZIR_ID, { body: "Yeni" }).expect(404);
       await queue(courseId, NAZIR_ID).expect(403);
+    });
+  });
+
+  describe("a course the engine closes (MDRS-135)", () => {
+    const leaveWithoutMuderris = () =>
+      db()
+        .update(roleAssignments)
+        .set({ revokedAt: new Date(), revokedBy: MANAGER_ID })
+        .where(
+          and(
+            eq(roleAssignments.scopeId, courseId),
+            eq(roleAssignments.role, ASSIGNED_ROLES.MUDERRIS)
+          )
+        );
+
+    /**
+     * Every route a talebe has, and the staff's two as a ders nazırı given
+     * `question.answer` (who is no müderris and cannot restore the course), with
+     * what each answered.
+     */
+    const everyRoute = async (questionId: string) => ({
+      ask: (await ask(lessonId, TALEBE_ID, { body: "yeni" })).status,
+      mine: (await mine(courseId, TALEBE_ID)).status,
+      edit: (await edit(questionId, TALEBE_ID, { body: "yeni" })).status,
+      remove: (await remove(questionId, TALEBE_ID)).status,
+      queue: (await queue(courseId, NAZIR_ID)).status,
+      answer: (await answer(questionId, NAZIR_ID, { body: ANSWER })).status,
+    });
+
+    const unchanged = async (questionId: string) => {
+      const rows = await stored();
+      expect(rows).toHaveLength(1);
+      expect(rows[0]).toMatchObject({
+        id: questionId,
+        body: QUESTION,
+        answer: null,
+      });
+    };
+
+    it("answers a course of a hidden köşk as not found on every route, and writes nothing", async () => {
+      const question = await seed(TALEBE_ID);
+      await db()
+        .update(kosks)
+        .set({ archivedAt: new Date() })
+        .where(eq(kosks.id, koskId));
+
+      expect(await everyRoute(question.id)).toEqual({
+        ask: 404,
+        mine: 404,
+        edit: 404,
+        remove: 404,
+        queue: 404,
+        answer: 404,
+      });
+      await unchanged(question.id);
+    });
+
+    it.each([
+      ["hidden", { archivedAt: new Date() }],
+      ["taken back to a draft", { status: CourseStatus.DRAFT }],
+    ])("answers a course %s as not found on every route, and writes nothing", async (_how, change) => {
+      const question = await seed(TALEBE_ID);
+      await db().update(courses).set(change).where(eq(courses.id, courseId));
+
+      expect(await everyRoute(question.id)).toEqual({
+        ask: 404,
+        mine: 404,
+        edit: 404,
+        remove: 404,
+        queue: 404,
+        answer: 404,
+      });
+      const res = await mine(courseId, TALEBE_ID);
+      expect(res.body.code).toBe("COURSE_NOT_FOUND");
+      await unchanged(question.id);
+    });
+
+    it("closes a passive course to its talebe on every route of theirs, and leaves their question where it is", async () => {
+      const question = await seed(TALEBE_ID);
+      await leaveWithoutMuderris();
+
+      expect(await ask(lessonId, TALEBE_ID, { body: "yeni" })).toMatchObject({
+        status: 403,
+        body: { code: "LESSON_QUESTION_FORBIDDEN" },
+      });
+      expect((await mine(courseId, TALEBE_ID)).status).toBe(403);
+      expect(
+        (await edit(question.id, TALEBE_ID, { body: "yeni" })).status
+      ).toBe(403);
+      expect((await remove(question.id, TALEBE_ID)).status).toBe(403);
+      await unchanged(question.id);
+    });
+
+    it("closes a passive course to a talebe who lost their seat as well, and opens it again with the müderris", async () => {
+      await seed(REVOKED_ID);
+      await leaveWithoutMuderris();
+      await mine(courseId, REVOKED_ID).expect(403);
+
+      await assignRole(db(), {
+        userId: MUDERRIS_ID,
+        role: ASSIGNED_ROLES.MUDERRIS,
+        scopeId: courseId,
+        grantedBy: MANAGER_ID,
+      });
+      expect(
+        (await mine(courseId, REVOKED_ID).expect(200)).body.items
+      ).toHaveLength(1);
+      await ask(lessonId, TALEBE_ID, { body: "yeniden açıldı" }).expect(201);
+    });
+
+    it("closes the staff's list and answer in a passive course, to a ders nazırı given the code as well, and leaves them to the köşk's nazımı, on the record", async () => {
+      const question = await seed(TALEBE_ID);
+      await leaveWithoutMuderris();
+
+      await queue(courseId, NAZIR_ID).expect(403);
+      await answer(question.id, NAZIR_ID, { body: ANSWER }).expect(404);
+      await unchanged(question.id);
+
+      expect(
+        (await queue(courseId, MANAGER_ID).expect(200)).body.items
+      ).toHaveLength(1);
+      await answer(question.id, MANAGER_ID, { body: ANSWER }).expect(200);
+      const opened = await db()
+        .select()
+        .from(auditLog)
+        .where(
+          and(
+            eq(auditLog.actorId, MANAGER_ID),
+            eq(auditLog.action, "scope.passive_open")
+          )
+        );
+      expect(opened.length).toBeGreaterThan(0);
+    });
+
+    it("refuses a talebe barred from the whole köşk, and still lets them read and delete their own", async () => {
+      const mineQuestion = await seed(TALEBE_ID);
+      await db().insert(bans).values({
+        userId: TALEBE_ID,
+        koskId,
+        scope: "KOSK",
+        reason: "Düzeni bozdu.",
+        bannedBy: MANAGER_ID,
+        bannedRole: "KOSK_NAZIM",
+        bannedTier: 2,
+      });
+
+      await ask(lessonId, TALEBE_ID, { body: "x" }).expect(403);
+      await edit(mineQuestion.id, TALEBE_ID, { body: "x" }).expect(403);
+      expect(
+        (await mine(courseId, TALEBE_ID).expect(200)).body.items
+      ).toHaveLength(1);
+      await remove(mineQuestion.id, TALEBE_ID).expect(204);
+    });
+
+    it("refuses a barred talebe even where a role of theirs holds the course's content", async () => {
+      // `course.view_details` is the müderris's by role, so the engine alone
+      // would let a barred müderris who is also enrolled ask.
+      await db().insert(enrollments).values({
+        userId: MUDERRIS_ID,
+        courseId,
+        status: EnrollmentStatus.ENROLLED,
+      });
+      await ask(lessonId, MUDERRIS_ID, { body: "müderrisin sorusu" }).expect(
+        201
+      );
+      await db().insert(bans).values({
+        userId: MUDERRIS_ID,
+        koskId,
+        courseId,
+        scope: "COURSE",
+        reason: "Düzeni bozdu.",
+        bannedBy: MANAGER_ID,
+        bannedRole: "KOSK_NAZIM",
+        bannedTier: 2,
+      });
+
+      await ask(lessonId, MUDERRIS_ID, { body: "x" }).expect(403);
+      expect(await stored()).toHaveLength(1);
+    });
+
+    it("does not open the course's content to a ders nazırı who holds question.answer alone", async () => {
+      await queue(courseId, NAZIR_ID).expect(200);
+      const page = await http()
+        .get(`/courses/${courseId}`)
+        .set("Authorization", as(NAZIR_ID))
+        .expect(200);
+      expect(page.body.contentLocked).toBe(true);
     });
   });
 
