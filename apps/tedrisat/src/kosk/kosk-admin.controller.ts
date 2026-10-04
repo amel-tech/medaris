@@ -175,9 +175,10 @@ export class KoskAdminController {
     byExistingKosk
   )
   overview(
+    @Req() request: AuthenticatedUserRequest,
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<KoskOverviewResponse> {
-    return this.admin.overview(id);
+    return this.admin.overview(request.user, id);
   }
 
   @ApiOperation({

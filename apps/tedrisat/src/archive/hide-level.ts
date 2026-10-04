@@ -32,6 +32,14 @@ export const HIDE_RANK: Record<HideLevel, BanTier> = {
   [SCOPE_TYPES.PLATFORM]: BAN_TIERS.PLATFORM,
 };
 
+/** The levels, lowest first: the order `HIDE_RANK` gives them. */
+export const HIDE_LEVELS: readonly HideLevel[] = [
+  SCOPE_TYPES.COURSE,
+  SCOPE_TYPES.MADRASAH,
+  SCOPE_TYPES.KOSK,
+  SCOPE_TYPES.PLATFORM,
+];
+
 /** A restore by `restorer` is allowed when it is at, or above, the level that hid. */
 export const mayRestoreAt = (restorer: HideLevel, hider: HideLevel): boolean =>
   HIDE_RANK[restorer] >= HIDE_RANK[hider];
@@ -112,4 +120,20 @@ export async function actingLevel(
     steps.find((step) => step.codes.some((code) => held?.has(code)))?.level ??
     fallback
   );
+}
+
+/**
+ * Whether the caller may bring back something hidden at `hiddenAt`: they hold a
+ * rung of the ladder on the resource and act at that level or above. The
+ * question the screens ask to draw "Geri al"; the restore itself asks it again.
+ */
+export async function mayRestoreHidden(
+  authz: AuthzService,
+  user: AuthenticatedUser,
+  resource: ResourceRef,
+  ladder: readonly IHideStep[],
+  hiddenAt: HideLevel
+): Promise<boolean> {
+  const level = await actingLevel(authz, user, resource, ladder, null);
+  return level !== null && mayRestoreAt(level, hiddenAt);
 }

@@ -1,3 +1,4 @@
+import type { HideLevel } from "../archive/hide-level";
 import type { CourseStatus } from "../course/domain/course-status.enum";
 
 export interface IMadrasah {
@@ -117,6 +118,8 @@ export interface IMadrasahDirectoryItem {
   coverHue: number;
   status: MadrasahStatus;
   since: Date | null;
+  /** The level the medrese was hidden at; null while it is shown. A row hidden before it was recorded counts as the medrese's own. */
+  hiddenLevel: HideLevel | null;
   headMuderris: { id: string; name: string | null } | null;
   courseCount: number;
   hostingKosks: { id: string; name: string }[];

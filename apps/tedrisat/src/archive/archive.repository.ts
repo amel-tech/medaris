@@ -34,13 +34,22 @@ import {
   IArchiveScopes,
   STORED_ARCHIVE_ITEM_TYPES,
 } from "./archive-types";
-import type { HideLevel } from "./hide-level";
+import { auditEntityOf, recordHide } from "./hide-audit";
+import { type HideLevel, hiderLevelOf } from "./hide-level";
 
 /** Who hid something, as the screens print it. */
 export interface IArchiver {
   id: string;
   name: string | null;
   role: string | null;
+}
+
+/** A medrese's own hide, as the medrese archive's banner needs it. */
+export interface IMadrasahHide {
+  hidden: boolean;
+  archivedAt: Date | null;
+  archivedBy: string | null;
+  archivedLevel: HideLevel | null;
 }
 
 export type RestoreOutcome =
@@ -124,6 +133,7 @@ export class ArchiveRepository {
     if (filter.madrasahId) {
       parts.push(sql`h.madrasah_id = ${filter.madrasahId}`);
     }
+    if (filter.courseId) parts.push(sql`h.course_id = ${filter.courseId}`);
     if (filter.type) parts.push(sql`h.type = ${filter.type}`);
     if (filter.types) {
       parts.push(
@@ -251,7 +261,12 @@ export class ArchiveRepository {
    * the hider holds — or held, revoked rows count — where the item sits,
    * nearest scope first (`ARCHIVER_ROLE_ORDER`); SYSTEM_ADMIN holds none.
    */
-  async archivers(items: IArchiveItem[]): Promise<Map<string, IArchiver>> {
+  async archivers(
+    items: Pick<
+      IArchiveItem,
+      "type" | "id" | "archivedBy" | "koskId" | "madrasahId" | "courseId"
+    >[]
+  ): Promise<Map<string, IArchiver>> {
     const byId = new Map<string, IArchiver>();
     const ids = [
       ...new Set(
@@ -320,23 +335,57 @@ export class ArchiveRepository {
     return byId;
   }
 
-  async restore(type: ArchiveItemType, id: string): Promise<RestoreOutcome> {
+  /**
+   * Brings `item` back and writes the `<entity>.restore` audit row in the same
+   * transaction. `level` is the level the actor acts at; the kademe was
+   * checked by the caller.
+   */
+  async restore(
+    item: IArchiveItem,
+    actor: { id: string; level: HideLevel }
+  ): Promise<RestoreOutcome> {
     return this.db.transaction(async (tx) => {
-      switch (type) {
-        case "course":
-          return this.restoreCourse(tx, id);
-        case "week":
-          return this.restoreWeek(tx, id);
-        case "session":
-          return this.restoreSession(tx, id);
-        case "kosk":
-          return this.restoreSimple(tx, kosks, id, kosks.name);
-        case "deck":
-          return this.restoreSimple(tx, decks, id, decks.title);
-        default:
-          return { status: "not-found" };
+      const outcome = await this.restoreRows(tx, item.type, item.id);
+      if (outcome.status === "restored") {
+        await recordHide(tx, {
+          actorId: actor.id,
+          verb: "restore",
+          entity: auditEntityOf(item.type),
+          entityId: item.id,
+          title: outcome.title,
+          level: actor.level,
+          hiddenLevel: hiderLevelOf(item),
+          koskId: item.koskId,
+          madrasahId: item.madrasahId,
+          // A course's own id is not "where it sat".
+          ...(item.type === "course" || item.type === "kosk"
+            ? {}
+            : { courseId: item.courseId }),
+        });
       }
+      return outcome;
     });
+  }
+
+  private async restoreRows(
+    tx: Tx,
+    type: ArchiveItemType,
+    id: string
+  ): Promise<RestoreOutcome> {
+    switch (type) {
+      case "course":
+        return this.restoreCourse(tx, id);
+      case "week":
+        return this.restoreWeek(tx, id);
+      case "session":
+        return this.restoreSession(tx, id);
+      case "kosk":
+        return this.restoreSimple(tx, kosks, id, kosks.name);
+      case "deck":
+        return this.restoreSimple(tx, decks, id, decks.title);
+      default:
+        return { status: "not-found" };
+    }
   }
 
   private async restoreSimple(
@@ -677,6 +726,29 @@ export class ArchiveRepository {
     return (
       [row.givenName, row.familyName].filter(Boolean).join(" ").trim() || null
     );
+  }
+
+  /**
+   * Whether a medrese is hidden, and the facts about its hide. The medrese is
+   * not a row of the archive's union (it is listed in nizam/07 and nazir/12's
+   * banner instead), so the medrese archive reads it here.
+   */
+  async madrasahHide(id: string): Promise<IMadrasahHide> {
+    const [row] = await this.db
+      .select({
+        archivedAt: madrasahs.archivedAt,
+        archivedBy: madrasahs.archivedBy,
+        archivedLevel: madrasahs.archivedLevel,
+      })
+      .from(madrasahs)
+      .where(eq(madrasahs.id, id))
+      .limit(1);
+    return {
+      hidden: Boolean(row?.archivedAt),
+      archivedAt: row?.archivedAt ?? null,
+      archivedBy: row?.archivedBy ?? null,
+      archivedLevel: row?.archivedLevel ?? null,
+    };
   }
 
   /** Whether the köşk exists, for the köşk archive's 404. */

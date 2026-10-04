@@ -294,7 +294,9 @@ describe("Madrasahs (e2e)", () => {
         .expect(404);
       // The route's resolver answers first; the repository's own answer is
       // what a delete racing another delete gets.
-      expect(await app.get(MadrasahRepository).delete(missing)).toBe(false);
+      expect(await app.get(MadrasahRepository).delete(missing, ADMIN_ID)).toBe(
+        false
+      );
       // Nor does a grant land in a medrese that is gone: the row is locked
       // and read first, so nothing is written.
       await expect(
