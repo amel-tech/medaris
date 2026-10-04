@@ -590,6 +590,57 @@ describe("Assignments (e2e)", () => {
         expect(head?.permissions).not.toContain("kosk.manage");
       });
 
+      it("leaves the medrese's course work out once every köşk holding its courses is passive, as each of those courses refuses it (review D1-27-33)", async () => {
+        const headCodes = async () =>
+          (await groupsOf(MUDERRIS_ID)).find(
+            (g) => g.role === "MEDRESE_BASMUDERRIS"
+          )?.permissions ?? [];
+        // The köşk's only nazımı leaves: it is passive (MDRS-136).
+        await databaseService.db
+          .update(roleAssignments)
+          .set({ revokedAt: new Date(), revokedBy: ADMIN_ID })
+          .where(
+            and(
+              eq(roleAssignments.scopeId, koskId),
+              eq(roleAssignments.role, ASSIGNED_ROLES.KOSK_NAZIM)
+            )
+          );
+        const closed = await headCodes();
+        expect(closed).toContain("madrasah.course_open");
+        for (const code of [
+          "course.edit",
+          "session.manage",
+          "enrollment.decide",
+        ]) {
+          expect(closed).not.toContain(code);
+        }
+        await patch(`/courses/${publishedId}`, MUDERRIS_ID, {
+          title: "Kapalı",
+        }).expect(403);
+
+        // A course of the medrese in a köşk that is still run: the work is
+        // there to do, so it is listed again.
+        const [other] = await databaseService.db
+          .insert(kosks)
+          .values({ ownerId: OTHER_ID, name: "Zeyrek Köşkü" })
+          .returning();
+        await assignRole(databaseService.db, {
+          userId: OTHER_ID,
+          role: ASSIGNED_ROLES.KOSK_NAZIM,
+          scopeId: other.id,
+          grantedBy: ADMIN_ID,
+        });
+        await databaseService.db.insert(courses).values({
+          koskId: other.id,
+          madrasahId,
+          authorId: OTHER_ID,
+          title: "Zeyrek'te bir ders",
+        });
+        expect(await headCodes()).toEqual(
+          expect.arrayContaining(["course.edit", "session.manage"])
+        );
+      });
+
       it("never lists a code at a scope its catalogue tag does not reach, as the engine never honours it", async () => {
         await assignRole(databaseService.db, {
           userId: TALEBE_ID,

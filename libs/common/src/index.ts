@@ -13,6 +13,7 @@ export type {
   IAuthzAuditEntry,
   IAuthzContext,
   IAuthzFacts,
+  IAuthzLoadOptions,
   IDeckVisibility,
   IEffective,
   IGrantHolding,

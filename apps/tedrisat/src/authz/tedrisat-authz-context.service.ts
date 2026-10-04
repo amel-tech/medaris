@@ -2,6 +2,7 @@ import {
   type AuthzContextLoader,
   ENTITIES,
   type IAuthzContext,
+  type IAuthzLoadOptions,
   type IDeckVisibility,
   type IHeldGrantCodes,
   type IHeldRole,
@@ -53,7 +54,8 @@ interface IResourceFacts {
  * four side by side: the roles the caller holds, their grants with the codes
  * of their groups, who manages each scope on the chain (for passive scopes) and
  * the platform's policies. That is five queries and two round trips however
- * many scopes, grants or groups there are.
+ * many scopes, grants or groups there are; a question across a medrese's
+ * courses adds two, the köşks they are held in and who runs those.
  *
  * Expiry and revocation are decided in those queries against the database
  * clock (`isHeld`, `grantHeld`), so a role or grant that ran out is gone from
@@ -70,7 +72,11 @@ export class TedrisatAuthzContext implements AuthzContextLoader {
     return this.databaseService.db;
   }
 
-  async load(userId: string, rawResource: ResourceRef): Promise<IAuthzContext> {
+  async load(
+    userId: string,
+    rawResource: ResourceRef,
+    options: IAuthzLoadOptions = {}
+  ): Promise<IAuthzContext> {
     // The chain below holds the resource's own id next to the ids the
     // database answers; both are lower case or the resource's own scope drops
     // out of the roles, the grants and the passive-scope check.
@@ -93,7 +99,12 @@ export class TedrisatAuthzContext implements AuthzContextLoader {
         if (scope.id === null) return false;
         const stat = managers.get(scope.id);
         return stat !== undefined && stat.total > 0 && stat.held === 0;
-      }) ?? null;
+      }) ??
+      (options.acrossCourses &&
+      facts !== null &&
+      resource.entity === ENTITIES.MADRASAH
+        ? await this.passiveHostOfEveryCourse(resource.id)
+        : null);
 
     return {
       chain,
@@ -206,6 +217,37 @@ export class TedrisatAuthzContext implements AuthzContextLoader {
       default:
         return null;
     }
+  }
+
+  /**
+   * For a question across a medrese's courses: a köşk that closes every one
+   * of them, or null. The medrese's shown courses are held in köşks the
+   * medrese's own chain does not reach; when every one of those köşks is
+   * passive (it had a nazımı and has none now), every course of the medrese
+   * is closed to content, exactly as the engine decides on each course, so
+   * the first of them is the passive scope of the question. One köşk still
+   * run, or no course at all, closes nothing.
+   */
+  private async passiveHostOfEveryCourse(
+    madrasahId: string
+  ): Promise<ScopeRef | null> {
+    const rows = await this.db
+      .selectDistinct({ koskId: courses.koskId })
+      .from(courses)
+      .where(
+        and(eq(courses.madrasahId, madrasahId), isNull(courses.archivedAt))
+      );
+    const hosts: ScopeRef[] = rows
+      .map((row) => row.koskId)
+      .sort()
+      .map((id) => ({ type: SCOPE_TYPES.KOSK, id }));
+    if (hosts.length === 0) return null;
+    const managers = await this.managerStats(hosts);
+    const passive = (scope: ScopeRef) => {
+      const stat = scope.id ? managers.get(scope.id) : undefined;
+      return stat !== undefined && stat.total > 0 && stat.held === 0;
+    };
+    return hosts.every(passive) ? hosts[0] : null;
   }
 
   private async heldRoles(

@@ -124,6 +124,9 @@ export class AuthzService {
    * "for every course" and the course work of a role held above the courses
    * count. It is what a giver may hand on at a medrese's level, since a
    * medrese-level grant of course work reaches all of its courses (MDRS-135).
+   * The courses' own köşks are not on a medrese's chain, so the loader is told:
+   * when every köşk they are held in is passive, their content is closed here
+   * as it is on each of them.
    */
   async effective(
     user: AuthenticatedUser,
@@ -133,11 +136,17 @@ export class AuthzService {
     const resource = normalized(rawResource);
     const relation = await this.relations.resolve(user.sub, resource);
     if (!relation) return null;
-    const ctx = await this.loader.load(user.sub, resource);
-    const chain =
-      options.acrossCourses && resource.entity !== ENTITIES.COURSE
-        ? [{ type: SCOPE_TYPES.COURSE, id: null }, ...ctx.chain]
-        : ctx.chain;
+    const acrossCourses =
+      options.acrossCourses === true && resource.entity !== ENTITIES.COURSE;
+    // Across the courses, a scope that closes every one of them (the only
+    // köşk a medrese's courses are held in, gone passive) closes their
+    // content here too, as the engine does on each course.
+    const ctx = acrossCourses
+      ? await this.loader.load(user.sub, resource, { acrossCourses })
+      : await this.loader.load(user.sub, resource);
+    const chain = acrossCourses
+      ? [{ type: SCOPE_TYPES.COURSE, id: null }, ...ctx.chain]
+      : ctx.chain;
     return effectivePermissions(
       {
         entity: resource.entity,

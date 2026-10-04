@@ -538,3 +538,33 @@ describe("the decision and its audit rows (review T5, T8, L1)", () => {
     ).rejects.toThrow("db down");
   });
 });
+
+describe("AuthzService.effective across a medrese's courses (review D1-27-33)", () => {
+  const MADRASAH = "33333333-3333-4333-8333-333333333333";
+  const madrasah = { type: SCOPE_TYPES.MADRASAH, id: MADRASAH } as const;
+  const kosk = { type: SCOPE_TYPES.KOSK, id: KOSK } as const;
+
+  it("asks the loader across the courses, and closes their content when the scope it names closes every one of them", async () => {
+    const loader = loaderOf(
+      emptyContext({
+        chain: [madrasah, platform],
+        passiveScope: kosk,
+        roles: [{ role: ASSIGNED_ROLES.MEDRESE_BASMUDERRIS, scope: madrasah }],
+      })
+    );
+    const svc = service(resolverReturning(RELATIONS.PUBLIC), loader);
+    const resource = { entity: ENTITIES.MADRASAH, id: MADRASAH };
+    const across = await svc.effective(user(), resource, {
+      acrossCourses: true,
+    });
+    expect(loader.load).toHaveBeenCalledWith("u", resource, {
+      acrossCourses: true,
+    });
+    expect(across?.codes.has(PERMISSIONS.COURSE_EDIT)).toBe(false);
+    expect(across?.codes.has(PERMISSIONS.MADRASAH_COURSE_OPEN)).toBe(true);
+
+    loader.load.mockClear();
+    await svc.effective(user(), resource);
+    expect(loader.load).toHaveBeenCalledWith("u", resource);
+  });
+});
