@@ -11,17 +11,26 @@ import { auditLog } from "../database/schema/audit.schema";
  * `DatabaseService`, not through `AuditService`, which reaches the feature
  * modules `AuthzService` is built before.
  */
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 @Injectable()
 export class TedrisatAuthzAudit implements AuthzAuditSink {
   constructor(private readonly databaseService: DatabaseService) {}
 
   async record(entry: IAuthzAuditEntry): Promise<void> {
+    // A köşk or a medrese that is being opened has no id yet (`"new"`), and
+    // `entity_id` holds a uuid: the row names the actor instead and keeps what
+    // was meant in `details`. Left as it was, a refused self-seat on those
+    // routes answered 500 where it should have answered 403 (MDRS-136).
+    const named = UUID.test(entry.entityId);
     await this.databaseService.db.insert(auditLog).values({
       actorId: entry.actorId,
       action: entry.action,
       entity: entry.entity,
-      entityId: entry.entityId,
-      details: entry.details ?? {},
+      entityId: named ? entry.entityId : entry.actorId,
+      details: named
+        ? (entry.details ?? {})
+        : { ...entry.details, resourceId: entry.entityId },
     });
   }
 }

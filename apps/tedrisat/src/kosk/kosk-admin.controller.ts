@@ -291,8 +291,9 @@ export class KoskAdminController {
   @ApiConflictResponse({ description: "KOSK_NAZIM_EXISTS" })
   // Exempt: this screen is the Medaris yönetimi's and has no köşk to judge yet
   // when it opens one, so the service asks the engine for
-  // `platform.kosk_nazim_manage` (the başnazım passes); a köşk's own nazımları
-  // add managers by `POST /kosks/:id/managers/:userId`.
+  // `platform.kosk_nazim_manage` (the başnazım passes). `POST|DELETE
+  // /kosks/:id/managers/:userId` ask the same code; a köşk's own nazımları do
+  // not hold it (MDRS-136).
   @AuthzExempt()
   @Post(":id/nazims")
   async addNazims(
