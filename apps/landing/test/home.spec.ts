@@ -16,7 +16,7 @@ const renderHome = async () =>
   (await Home({ params: Promise.resolve({ locale: "tr" }) })) as ReactElement;
 
 // Components that need React's runtime (a hook) and carry no link: left unexpanded.
-const OPAQUE = new Set(["Logo"]);
+const OPAQUE = new Set(["Logo", "ThemeToggle"]);
 
 /** Every element of the page's tree, with the page's own function components expanded. */
 function elements(node: ReactNode): ReactElement<Record<string, unknown>>[] {

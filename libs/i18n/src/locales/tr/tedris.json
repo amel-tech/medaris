@@ -682,6 +682,8 @@
     "menu": "Menü",
     "navLabel": "Ana menü",
     "close": "Kapat",
+    "themeDark": "Koyu temaya geç",
+    "themeLight": "Açık temaya geç",
     "home": "Ana sayfa",
     "discover": "Keşfet",
     "signIn": "Giriş yap",

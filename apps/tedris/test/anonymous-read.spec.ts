@@ -424,7 +424,10 @@ describe("the phone menu of a visitor (design tedris/45)", () => {
 
   it("puts the way in on the bar and names the page", async () => {
     const html = await render("/discover");
-    expect(html).toMatch(/data-actions="true"><a[^>]*aria-label="Giriş yap"/);
+    // the theme toggle comes first, then the way in
+    expect(html).toMatch(
+      /data-actions="true"><button[^>]*aria-label="Koyu temaya geç"[\s\S]*?<\/button><a[^>]*aria-label="Giriş yap"/
+    );
     expect(html).toMatch(/data-title="true">Keşfet</);
   });
 });

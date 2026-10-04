@@ -726,6 +726,8 @@
     "menu": "Menü",
     "nav": "Ana menü",
     "close": "Kapat",
+    "themeDark": "Koyu temaya geç",
+    "themeLight": "Açık temaya geç",
     "switchKosk": "Köşk değiştir:",
     "userLink": "Hesap",
     "bell": "Bildirimler",

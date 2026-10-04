@@ -1,6 +1,7 @@
 import "@medaris/ui/medaris.css";
 import { textFontsHref } from "@medaris/tokens/medaris-fonts";
 import { SystemState } from "@medaris/ui/mds/system-state";
+import { ThemeScript } from "@medaris/ui/mds/theme-script";
 import { htmlLangDir } from "~/lib/i18n/direction";
 
 /**
@@ -20,7 +21,10 @@ const { lang, dir } = htmlLangDir("tr");
  */
 export default function RootNotFound() {
   return (
-    <html lang={lang} dir={dir}>
+    <html lang={lang} dir={dir} data-theme="light" suppressHydrationWarning>
+      <head>
+        <ThemeScript />
+      </head>
       <body>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link

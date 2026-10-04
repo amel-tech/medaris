@@ -682,6 +682,8 @@
     "menu": "Menu",
     "navLabel": "Main menu",
     "close": "Close",
+    "themeDark": "Switch to dark theme",
+    "themeLight": "Switch to light theme",
     "home": "Home",
     "discover": "Discover",
     "signIn": "Sign in",
