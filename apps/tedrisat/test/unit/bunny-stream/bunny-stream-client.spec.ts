@@ -42,11 +42,14 @@ describe("readBunnyStreamConfig (MDRS-116)", () => {
   });
 
   it("never puts the API key in an error", () => {
+    let message = "";
     try {
       readBunnyStreamConfig({ ...ENV, BUNNY_STREAM_LIBRARY_ID: "lib" });
     } catch (error) {
-      expect(String(error)).not.toContain("set-me-api-key");
+      message = String(error);
     }
+    expect(message).toMatch(/numeric/);
+    expect(message).not.toContain("set-me-api-key");
   });
 });
 

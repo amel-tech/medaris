@@ -59,7 +59,11 @@ export type IRecordingView = IRecordingRow;
  * only a recording marked PUBLIC is listed, and none when `publicAllowed` is
  * false: a closed course (MDRS-176) never opens its recordings to everyone.
  * A recording that is still
- * PROCESSING has no link to give, whoever asks.
+ * PROCESSING has no link to give, whoever asks. A FAILED one (a Bunny upload
+ * that was never completed or could not be encoded, MDRS-116) is not listed
+ * at all: there is nothing to play or wait for, and a reader would otherwise
+ * be shown "Hazırlanıyor" for good. The müderris retries it through the
+ * upload route.
  */
 export function visibleRecordings(
   rows: IRecordingRow[],
@@ -69,8 +73,9 @@ export function visibleRecordings(
   return rows
     .filter(
       (r) =>
-        canReadContent ||
-        (publicAllowed && r.visibility === RecordingVisibility.PUBLIC)
+        r.status !== RecordingStatus.FAILED &&
+        (canReadContent ||
+          (publicAllowed && r.visibility === RecordingVisibility.PUBLIC))
     )
     .map((r) => ({
       ...r,

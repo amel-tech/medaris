@@ -67,9 +67,10 @@ export class RecordingUploadService {
    * Creates the video in Bunny, records it as a PROCESSING recording of the
    * session, and signs its upload for 24 hours.
    *
-   * The session's existing recording is checked before Bunny is called, so a
-   * refused start does not leave an empty video in the library; the check is
-   * made again, under the lesson's lock, when the row is written.
+   * The session (missing or archived) and its existing recording are
+   * checked before Bunny is called, so a refused start does not leave an
+   * empty video in the library; both checks are made again, under the
+   * lesson's lock, when the row is written.
    */
   async start(
     lessonId: string,
@@ -78,6 +79,11 @@ export class RecordingUploadService {
     now: Date = new Date()
   ): Promise<IRecordingUpload> {
     await this.assertMayUpload(lessonId, user);
+    // An archived session is a 404 here, not first in Bunny: the transaction
+    // would refuse it anyway, after an empty video had been created.
+    if (!(await this.recordings.findOpenLessonCourseId(lessonId))) {
+      throw new LessonNotFoundError(lessonId);
+    }
     const [existing] = await this.recordings.findByLessonIds([lessonId]);
     if (
       existing &&

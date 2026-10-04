@@ -11,8 +11,12 @@ import { RecordingRepository } from "./recording.repository";
 
 /** How often the poll runs while the library is configured. */
 export const ENCODING_POLL_INTERVAL_MS = 60_000;
-/** Recordings read from Bunny per poll, oldest-updated first. */
-const POLL_BATCH = 50;
+/**
+ * Recordings read from Bunny per poll, least recently updated first. A row
+ * the poll leaves waiting is sent to the back of the queue, so more than
+ * this many waiting uploads delay one another but never starve one.
+ */
+export const ENCODING_POLL_BATCH = 50;
 
 export interface IEncodingPollResult {
   ready: number;
@@ -68,9 +72,13 @@ export class RecordingEncodingPoller
   /**
    * One pass over the uploads still PROCESSING. A poll still running when
    * the next tick comes is not overlapped. One video Bunny does not answer
-   * for is counted in `errors` and retried on the next pass.
+   * for is counted in `errors` and retried on a later pass. A video left
+   * waiting, or not answered for, is moved to the back of the queue.
    */
-  async pollOnce(now: Date = new Date()): Promise<IEncodingPollResult> {
+  async pollOnce(
+    now: Date = new Date(),
+    batch: number = ENCODING_POLL_BATCH
+  ): Promise<IEncodingPollResult> {
     const result: IEncodingPollResult = {
       ready: 0,
       failed: 0,
@@ -80,8 +88,7 @@ export class RecordingEncodingPoller
     if (this.running || !this.bunny.isConfigured()) return result;
     this.running = true;
     try {
-      const pending =
-        await this.recordings.findProcessingBunnyUploads(POLL_BATCH);
+      const pending = await this.recordings.findProcessingBunnyUploads(batch);
       for (const upload of pending) {
         try {
           const video = await this.bunny.getVideo(upload.bunnyVideoId);
@@ -91,6 +98,10 @@ export class RecordingEncodingPoller
               : encodingOutcome(video.status, upload.uploadExpiresAt, now);
           if (outcome === null) {
             result.waiting++;
+            await this.recordings.touchBunnyUpload(
+              upload.id,
+              upload.bunnyVideoId
+            );
             continue;
           }
           const minutes =
@@ -114,6 +125,9 @@ export class RecordingEncodingPoller
           this.logger.warn(
             `Could not read Bunny video ${upload.bunnyVideoId}: ${error instanceof Error ? error.message : String(error)}`
           );
+          await this.recordings
+            .touchBunnyUpload(upload.id, upload.bunnyVideoId)
+            .catch(() => undefined);
         }
       }
       return result;

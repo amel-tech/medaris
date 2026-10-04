@@ -8,7 +8,9 @@
 - **`POST /lessons/:id/recordings/uploads`**: creates the video in Bunny, inserts `provider=BUNNY, status=PROCESSING`, returns `recordingId, endpoint, libraryId, videoId, authorizationExpire, authorizationSignature`. 409 `RECORDING_EXISTS` when the session already has a recording, unless it is a FAILED Bunny upload (that row is reused). Audited as `recording.upload_start`.
 - **`POST /lessons/:id/recordings/uploads/:videoId/signature`**: re-signs the same video with the original expiry (Bunny never extends an upload's lifetime). 409 `RECORDING_UPLOAD_CLOSED` once not PROCESSING or expired.
 - **Authorization**: both routes `@Authz(SCOPES.VIEW, byLessonCourse)` (404 for a missing lesson) plus `recording.upload` through `CourseAccessService`, as `LiveStreamController` does for `session.live_link` — müderris and köşk nazımı by default, ders nazırı by grant. The permission is checked before the 503, so a talebe gets 403 either way.
-- **`RecordingEncodingPoller`**: every 60 s while the library is configured; Finished → READY (sets duration), Error/UploadFailed/404 → FAILED, Created past `upload_expires_at` → FAILED.
+- **`RecordingEncodingPoller`**: every 60 s while the library is configured; Finished → READY (sets duration), Error/UploadFailed/404 → FAILED, Created past `upload_expires_at` → FAILED. It reads 50 rows per pass, least recently updated first, and bumps `updated_at` on every row it leaves waiting or could not read (`touchBunnyUpload`), so passes go round all waiting uploads instead of re-reading the oldest 50.
+- **FAILED recordings are not listed** (`visibleRecordings`): a reader would otherwise see a failed upload as "Hazırlanıyor" for good. The müderris retries it through the upload route, which reuses the FAILED row.
+- **An archived session is refused before Bunny is called** (`findOpenLessonCourseId` in `start`): 404 `LESSON_NOT_FOUND` with no empty video left in the library. Authorization still resolves the course with archived lessons included, so a talebe keeps getting 403.
 - **Read path**: a READY BUNNY recording's `url` is Bunny's iframe player link, with an embed token (6 h) when `TOKEN_KEY` is set; the video id is never returned.
 - **Env**: `TEDRISAT__BUNNY_STREAM_LIBRARY_ID`, `TEDRISAT__BUNNY_STREAM_API_KEY`, `TEDRISAT__BUNNY_STREAM_TOKEN_KEY` in the root `.env.example` (commented placeholders) and `docker-compose.yml`. Unset: boot succeeds, upload routes answer 503, nothing is polled. Only one of id/key set, or a non-numeric id, stops the boot.
 - OpenAPI and `libs/services` regenerated (`pnpm openapi:tedrisat`).
@@ -21,9 +23,16 @@
 
 ## Verified
 
-- Unit: `test/unit/bunny-stream/` — 21 tests (signature vectors computed independently with `sha256sum`, config reader, client with a fake transport).
-- e2e: `test/e2e/recording-upload.e2e.spec.ts` — talebe 403 with no Bunny call, müderris 201 with the expected fields and signature, köşk nazımı 201, 409, 404, 400, 503 without a library, re-sign, expired re-sign, poll to READY with a signed player link, poll to FAILED, retry after FAILED, the CHECK constraint.
-- Gate (env -u NODE_ENV, --skip-nx-cache): typecheck 17 projects green; test 12 projects green, 4750 tests, 0 failures (tedrisat 1900); build 8 projects green; lint 17 green; module-boundaries 17 green. biome ratchet at baseline; env/compose parity, OpenAPI freshness and release config assertions pass.
+Every count below is read off the command output named beside it, from the last run on this branch (after the review round). All commands ran as `env -u NODE_ENV pnpm nx run-many -t <target> --skip-nx-cache` unless stated.
+
+- Unit, `test/unit/bunny-stream/` — 21 tests. Command: `npx vitest run test/unit/bunny-stream` in `apps/tedrisat`; output `bunny-stream-client.spec.ts (9 tests)` and `bunny-signature.spec.ts (12 tests)`. Signature vectors computed independently with `sha256sum`.
+- e2e, `test/e2e/recording-upload.e2e.spec.ts` — 16 tests (same command on that file; output `recording-upload.e2e.spec.ts (16 tests)`): talebe 403 with no Bunny call, müderris 201 with the expected fields and signature, köşk nazımı 201, 409, 404 (missing and archived session, no Bunny call), 400, 503 without a library, re-sign, expired re-sign, poll to READY with a signed player link, poll to FAILED and the talebe no longer listed it, retry after FAILED, the poll going round waiting uploads, the CHECK constraint.
+- typecheck: output `Successfully ran target typecheck for 17 projects`.
+- test: output `Successfully ran target test for 12 projects`; 4753 tests, 0 failures, summed from the twelve `coverage/junit.xml` `<testsuites tests=… failures="0">` headers (tedrisat 1903).
+- build: output `Successfully ran target build for 8 projects`.
+- lint: output `Successfully ran target lint for 17 projects`.
+- module-boundaries: output `Successfully ran target module-boundaries for 17 projects`.
+- `node tools/ci/biome-ratchet.mjs`: output `no severity count exceeded its baseline` (infos 21, baseline 21). `node tools/ci/assert-openapi-spec-fresh.mjs`: output `169 paths, identical to what the exporter writes today`.
 
 ## Not verified
 
@@ -34,6 +43,7 @@
 
 - nazir-web "Bunny'ye yükle" tab with `tus-js-client` (excluded here).
 - Delete orphaned Bunny videos: a FAILED video replaced by a retry, a video created when the row write then fails, and videos of a purged course (`course-purge.ts` deletes only the rows).
-- The poll reads 50 rows per pass, oldest-updated first; with more than 50 waiting uploads some are not reached until others settle.
+- A video Bunny keeps in an encoding state (1–3) is polled forever; there is no cut-off after which it becomes FAILED.
+- A staff view of a FAILED upload (it is hidden from every reader now): the nazir-web upload tab needs it to offer a retry.
 - Webhooks instead of polling, once their authentication is checked.
 - YouTube upload (part B) is MDRS-204.

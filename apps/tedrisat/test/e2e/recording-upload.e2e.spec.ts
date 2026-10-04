@@ -129,7 +129,8 @@ describe("recording uploads to Bunny Stream (MDRS-116, e2e)", () => {
         .from(lessonRecordings)
         .where(eq(lessonRecordings.lessonId, id))
     )[0];
-  const poll = () => app.get(RecordingEncodingPoller).pollOnce();
+  const poll = (batch?: number) =>
+    app.get(RecordingEncodingPoller).pollOnce(new Date(), batch);
 
   beforeAll(async () => {
     app = await createTestApp({
@@ -317,6 +318,17 @@ describe("recording uploads to Bunny Stream (MDRS-116, e2e)", () => {
       expect(bunny.calls).toEqual([]);
     });
 
+    it("answers 404 for an archived session, before Bunny is called", async () => {
+      await db()
+        .update(lessons)
+        .set({ archivedAt: new Date() })
+        .where(eq(lessons.id, lessonId));
+      const res = await start(MUDERRIS_ID).expect(404);
+      expect(res.body.code).toBe("LESSON_NOT_FOUND");
+      expect(bunny.calls).toEqual([]);
+      expect(await recordingOf(lessonId)).toBeUndefined();
+    });
+
     it("answers 503 when the server has no Bunny library, and still 403 to a talebe", async () => {
       const res = await start(MUDERRIS_ID, lessonId, undefined, bare).expect(
         503
@@ -420,6 +432,47 @@ describe("recording uploads to Bunny Stream (MDRS-116, e2e)", () => {
       bunny.videos.clear();
       expect(await poll()).toMatchObject({ failed: 1 });
       expect((await recordingOf(lessonId)).status).toBe(RecordingStatus.FAILED);
+
+      const res = await request(app.getHttpServer())
+        .get(`/courses/${courseId}/recordings`)
+        .set("Authorization", as(TALEBE_ID))
+        .expect(200);
+      expect(
+        res.body.map((r: { lessonId: string }) => r.lessonId)
+      ).not.toContain(lessonId);
+    });
+
+    it("goes round every waiting upload instead of re-reading the oldest", async () => {
+      const { id: otherLessonId } = (
+        await db()
+          .insert(lessons)
+          .values({
+            weekId: (
+              await db()
+                .select({ weekId: lessons.weekId })
+                .from(lessons)
+                .where(eq(lessons.id, lessonId))
+            )[0].weekId,
+            orderIndex: 2,
+            title: "Sonraki celse",
+            type: LessonType.LIVE,
+            durationMinutes: 60,
+            scheduledAt: new Date(Date.now() - 3_600_000),
+          })
+          .returning()
+      )[0];
+      await start(MUDERRIS_ID).expect(201);
+      const newer = (await start(MUDERRIS_ID, otherLessonId).expect(201)).body;
+      bunny.videos.set(newer.videoId, { status: 4, length: 600 });
+
+      expect(await poll(1)).toMatchObject({ waiting: 1, ready: 0 });
+      expect(await poll(1)).toMatchObject({ waiting: 0, ready: 1 });
+      expect((await recordingOf(otherLessonId)).status).toBe(
+        RecordingStatus.READY
+      );
+      expect((await recordingOf(lessonId)).status).toBe(
+        RecordingStatus.PROCESSING
+      );
     });
   });
 

@@ -221,7 +221,11 @@ export class RecordingRepository {
     return row ? toBunnyUpload(row) : null;
   }
 
-  /** Bunny uploads still PROCESSING, oldest first, for the encoding poll. */
+  /**
+   * Bunny uploads still PROCESSING, least recently updated first, for the
+   * encoding poll. The poll bumps every row it reads and leaves waiting
+   * (`touchBunnyUpload`), so successive passes go round all of them.
+   */
   async findProcessingBunnyUploads(limit: number): Promise<IBunnyUploadRow[]> {
     const rows = await this.db
       .select(bunnyUploadColumns)
@@ -235,6 +239,41 @@ export class RecordingRepository {
       .orderBy(asc(lessonRecordings.updatedAt))
       .limit(limit);
     return rows.map(toBunnyUpload);
+  }
+
+  /**
+   * The course of a session that is still in its programme, or null for a
+   * missing or archived one. `start` asks this before Bunny is called, so an
+   * archived session does not leave an empty video in the library on every
+   * request; `startBunnyUpload` checks the same again under the lesson's lock.
+   */
+  async findOpenLessonCourseId(lessonId: string): Promise<string | null> {
+    const [row] = await this.db
+      .select({ courseId: courseWeeks.courseId })
+      .from(lessons)
+      .innerJoin(courseWeeks, eq(lessons.weekId, courseWeeks.id))
+      .where(and(eq(lessons.id, lessonId), isNull(lessons.archivedAt)))
+      .limit(1);
+    return row?.courseId ?? null;
+  }
+
+  /**
+   * Sends a Bunny upload the poll read but could not settle to the back of
+   * the poll's queue by bumping `updated_at`. Without it the oldest uploads
+   * that keep waiting would fill every pass and a newer upload would never
+   * be read. Only a row still PROCESSING with this video is touched.
+   */
+  async touchBunnyUpload(id: string, videoId: string): Promise<void> {
+    await this.db
+      .update(lessonRecordings)
+      .set({ updatedAt: new Date() })
+      .where(
+        and(
+          eq(lessonRecordings.id, id),
+          eq(lessonRecordings.bunnyVideoId, videoId),
+          eq(lessonRecordings.status, RecordingStatus.PROCESSING)
+        )
+      );
   }
 
   /**
