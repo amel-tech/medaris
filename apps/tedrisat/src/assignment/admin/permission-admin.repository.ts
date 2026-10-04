@@ -43,8 +43,10 @@ import {
   MedarisNazimNotFoundError,
   PermissionGroupNameTakenError,
   PermissionGroupNotFoundError,
+  UsersPolicyRequiredError,
 } from "./errors";
 import { checkGrantExpiry, type IHeldGrant, planGrants } from "./grant-plan";
+import { revokeOrphanedGrants } from "./orphaned-grants";
 
 /** The platform grants a Medaris nazımı holds, and the course-wide ones. */
 const nazimScope = or(
@@ -359,12 +361,23 @@ export class PermissionAdminRepository {
       if (inserted.length === 0) {
         throw new MedarisNazimAlreadyAppointedError(input.userId);
       }
+      // A platform seat covers every scope in the engine, so whatever the
+      // person still holds from a seat they lost (a grant no role of theirs
+      // below the platform covers) would come back with it: it goes now.
+      const leftovers = await revokeOrphanedGrants(tx, {
+        userId: input.userId,
+        within: "anywhere",
+        revokedBy: actorId,
+      });
       await tx.insert(auditLog).values({
         actorId,
         action: "medaris_nazim.appoint",
         entity: "user",
         entityId: input.userId,
-        details: { expiresAt: input.expiresAt?.toISOString() ?? null },
+        details: {
+          expiresAt: input.expiresAt?.toISOString() ?? null,
+          revokedLeftovers: leftovers,
+        },
       });
       await this.applyGrants(tx, actorId, input.userId, {
         groupId: input.groupId,
@@ -495,6 +508,26 @@ export class PermissionAdminRepository {
         },
       });
     }
+    // A new end on a kept row is on the record too (owner, d-1004: every
+    // re-time and extension is audited).
+    const retimed = held.filter((row) => plan.retime.includes(row.id));
+    if (retimed.length > 0) {
+      await tx.insert(auditLog).values({
+        actorId,
+        action: "permission.retime",
+        entity: "user",
+        entityId: userId,
+        details: {
+          grants: retimed.map((r) => ({
+            id: r.id,
+            permission: r.permission,
+            groupId: r.groupId,
+            previousExpiresAt: r.expiresAt?.toISOString() ?? null,
+          })),
+          expiresAt: wanted.expiresAt?.toISOString() ?? null,
+        },
+      });
+    }
   }
 
   private async lockNazimRole(tx: Tx, userId: string): Promise<INazimRole> {
@@ -536,14 +569,20 @@ export class PermissionAdminRepository {
       const key = (kind: string, id: string) => `${kind}:${id}`;
       const decided = new Map(decisions.map((d) => [key(d.kind, d.id), d]));
       // What the person made for themselves is not handed to anyone: it is
-      // revoked whatever the answer, so it needs none (an answer to it, which
-      // the listing invites, is accepted and ignored).
+      // revoked whatever the answer, so it needs none. Nizam lists it apart and
+      // asks nothing about it; a DROP for it is harmless, a TAKE_OVER would be
+      // silently reversed and is refused instead.
       const forOthers = given.filter((g) => g.userId !== userId);
       const known = new Set(given.map((g) => key(g.kind, g.id)));
       const complete =
         decided.size === decisions.length &&
         forOthers.every((g) => decided.has(key(g.kind, g.id))) &&
-        [...decided.keys()].every((k) => known.has(k));
+        [...decided.keys()].every((k) => known.has(k)) &&
+        given.every(
+          (g) =>
+            g.userId !== userId ||
+            decided.get(key(g.kind, g.id))?.action !== "TAKE_OVER"
+        );
       if (!complete) throw new DismissDecisionsError();
 
       for (const item of given) {
@@ -571,6 +610,36 @@ export class PermissionAdminRepository {
             )
             .where(eq(permissionGrants.id, item.id));
         }
+      }
+      // A seat dropped here takes with it what its holder was given in its
+      // scope, by anyone, unless another role of theirs below the platform
+      // still covers it (a permission cannot outlast its role); a grant taken
+      // over in this same act stays, as decided.
+      const takenOver = given
+        .filter(
+          (g) =>
+            g.kind === "GRANT" &&
+            g.userId !== userId &&
+            decided.get(key(g.kind, g.id))?.action === "TAKE_OVER"
+        )
+        .map((g) => g.id);
+      const droppedWithSeats: string[] = [];
+      for (const seat of given) {
+        if (
+          seat.kind !== "ROLE" ||
+          (seat.userId !== userId &&
+            decided.get(key(seat.kind, seat.id))?.action !== "DROP")
+        ) {
+          continue;
+        }
+        droppedWithSeats.push(
+          ...(await revokeOrphanedGrants(tx, {
+            userId: seat.userId,
+            within: seat,
+            revokedBy: actorId,
+            keep: takenOver,
+          }))
+        );
       }
 
       await tx
@@ -600,6 +669,7 @@ export class PermissionAdminRepository {
             (g) => decided.get(key(g.kind, g.id))?.action === "DROP"
           ).length,
           selfMade: given.length - forOthers.length,
+          droppedWithSeats,
         },
       });
     });
@@ -801,12 +871,16 @@ export class PermissionAdminRepository {
           oldCodes.length !== input.permissions.length ||
           oldCodes.some((c) => !input.permissions.includes(c));
 
-        // Whoever holds the group row now: a change to its codes reaches each of
-        // them at once unless the actor chose to detach them, so the record
-        // says who they were.
+        // Whoever holds the group row now, counted under the group's lock: a
+        // change to its codes detaches each of them (`usersPolicy`), so the
+        // record says who they were, and a holder who appeared after the
+        // caller counted none still needs the question answered.
         const holders = changed
           ? await this.holdersOfGroup(tx, id)
           : ([] as string[]);
+        if (holders.length > 0 && !input.usersPolicy) {
+          throw new UsersPolicyRequiredError(holders.length);
+        }
         let affected = 0;
         if (changed && input.usersPolicy) {
           affected = await this.detachUsers(
@@ -870,6 +944,11 @@ export class PermissionAdminRepository {
     await this.db.transaction(async (tx) => {
       const group = await this.lockGroup(tx, id);
       const holders = await this.holdersOfGroup(tx, id);
+      // Counted under the lock: a holder who appeared after the caller counted
+      // none still needs the question answered.
+      if (holders.length > 0 && !usersPolicy) {
+        throw new UsersPolicyRequiredError(holders.length);
+      }
       const old = await tx
         .select({ permission: permissionGroupItems.permission })
         .from(permissionGroupItems)

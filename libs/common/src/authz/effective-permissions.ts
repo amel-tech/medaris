@@ -57,6 +57,13 @@ export interface IEffective {
   codes: ReadonlySet<PermissionCode>;
   /** The passive scope the caller opened as platform management, or null. */
   openedPassive: ScopeRef | null;
+  /**
+   * For each code a live grant carries here, the authorities of those grants:
+   * what a policy lets through for this caller, and so the most a giver may
+   * hand the code on with (owner, d-1004-27 "tavan kazanır"). A code held only
+   * by a role or a relationship is absent.
+   */
+  grantAuthorities?: ReadonlyMap<PermissionCode, readonly ScopeType[]>;
 }
 
 /** Ids compare lower-cased: a path may spell a uuid in upper case. */
@@ -286,5 +293,5 @@ export function effectivePermissions(
     }
   }
 
-  return { codes, openedPassive };
+  return { codes, openedPassive, grantAuthorities: grantedBy };
 }

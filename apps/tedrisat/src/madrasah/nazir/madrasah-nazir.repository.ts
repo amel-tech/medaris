@@ -15,12 +15,14 @@ import type { DismissAction } from "../../assignment/admin/dto/permission-admin.
 import {
   DismissDecisionsError,
   GrantExpiryInvalidError,
+  PermissionGroupNotFoundError,
 } from "../../assignment/admin/errors";
 import {
   checkGrantExpiry,
   type IHeldGrant,
   planGrants,
 } from "../../assignment/admin/grant-plan";
+import { revokeOrphanedGrants } from "../../assignment/admin/orphaned-grants";
 import { grantHeld } from "../../assignment/assignment.repository";
 import type { Tx } from "../../course/course-purge";
 import { DatabaseService } from "../../database/database.service";
@@ -28,7 +30,11 @@ import { grantRole, holdsIn, isHeld } from "../../database/role-assignments";
 import { auditLog } from "../../database/schema/audit.schema";
 import { courses } from "../../database/schema/course.schema";
 import { madrasahs } from "../../database/schema/madrasah.schema";
-import { permissionGrants } from "../../database/schema/permission.schema";
+import {
+  permissionGrants,
+  permissionGroupItems,
+  permissionGroups,
+} from "../../database/schema/permission.schema";
 import {
   ASSIGNED_ROLES,
   type AssignedRole,
@@ -37,6 +43,7 @@ import {
   type ScopeType,
 } from "../../database/schema/role-assignment.schema";
 import { MadrasahNotFoundError } from "../errors/madrasah-not-found.error";
+import { NazirNotAppointedByYouError } from "../errors/nazir-not-appointed-by-you.error";
 import { NazirNotFoundError } from "../errors/nazir-not-found.error";
 import { type IGivenItem, planDismissal } from "./dismissal-plan";
 import type { IHeldTreeGrant, IWantedScope } from "./nazir-grant-scopes";
@@ -72,6 +79,15 @@ export interface IGivenRow extends IGivenItem {
   scopeId: string | null;
   createdAt: Date;
   expiresAt: Date | null;
+}
+
+/** A row a save hands on, with the codes it really carries (a group's read under its lock). */
+export interface IHandedOn {
+  scopeType: ScopeType;
+  scopeId: string;
+  permission: string | null;
+  groupId: string | null;
+  codes: readonly string[];
 }
 
 /**
@@ -195,6 +211,15 @@ export class MadrasahNazirRepository {
         )
         .limit(1);
       if (held.length === 0) {
+        // "Appointed with no permissions": what the person was given here
+        // under an earlier seat, and no role of theirs still covers, goes now,
+        // so the new seat does not bring it back (a permission cannot outlast
+        // its role).
+        const leftovers = await revokeOrphanedGrants(tx, {
+          userId,
+          within: { scopeType: SCOPE_TYPES.MADRASAH, scopeId: madrasahId },
+          revokedBy: actorId,
+        });
         await grantRole(tx, {
           userId,
           role: NAZIR_ROLE,
@@ -225,6 +250,7 @@ export class MadrasahNazirRepository {
             scopeType: SCOPE_TYPES.MADRASAH,
             scopeId: madrasahId,
             authority,
+            revokedLeftovers: leftovers,
           },
         });
       }
@@ -275,8 +301,14 @@ export class MadrasahNazirRepository {
    * Scope by scope the rows that stay are left alone, so saving the dialog
    * unchanged touches nothing; the rest are revoked in the actor's name or
    * added. `expiresAt` null means "when the appointment ends". Locks the
-   * medrese first, like `appoint`, and the appointment, so two saves for one
-   * nazır queue.
+   * medrese first, like `appoint`, the appointment, so two saves for one nazır
+   * queue, and the group being given (`FOR SHARE`), so a change to it waits
+   * for this save and the ceiling is asked of the codes it really carries.
+   *
+   * A kept row whose end moves later is handed on again: it becomes the
+   * actor's (its giver and its authority are the actor's), is audited as a
+   * grant and is listed under what the actor gave. One whose end moves earlier
+   * keeps its giver and is audited as a re-time.
    */
   async setPermissions(
     madrasahId: string,
@@ -290,16 +322,16 @@ export class MadrasahNazirRepository {
       /**
        * The giver's ceiling, asked inside the transaction of what is really
        * handed on: the rows about to be inserted and the kept rows that get a
-       * new end. It throws to refuse; nothing has been written by then.
+       * later end, each with the codes it carries. It throws to refuse;
+       * nothing has been written by then.
        */
-      ceiling?: (
-        given: ReadonlyArray<{
-          scopeType: ScopeType;
-          scopeId: string;
-          permission: string | null;
-          groupId: string | null;
-        }>
-      ) => void;
+      ceiling?: (given: ReadonlyArray<IHandedOn>) => void;
+      /**
+       * The authority a handed-on row is stored with: never above the giver's
+       * own holding of its codes (owner, d-1004-27 "tavan kazanır"). Without
+       * it every row gets `authority`.
+       */
+      authorityFor?: (row: IHandedOn) => ScopeType;
     }
   ): Promise<void> {
     await this.db.transaction(async (tx) => {
@@ -335,6 +367,20 @@ export class MadrasahNazirRepository {
         );
       }
       const expiresAt = wanted.expiresAt ?? role.expiresAt;
+      const groupCodes = await this.lockGroups(
+        tx,
+        madrasahId,
+        wanted.scopes.flatMap((scope) => (scope.groupId ? [scope.groupId] : []))
+      );
+      const codesOf = (row: {
+        permission: string | null;
+        groupId: string | null;
+      }): readonly string[] =>
+        row.permission
+          ? [row.permission]
+          : row.groupId
+            ? (groupCodes.get(row.groupId) ?? [])
+            : [];
 
       const held = await tx
         .select({
@@ -344,6 +390,7 @@ export class MadrasahNazirRepository {
           permission: permissionGrants.permission,
           groupId: permissionGrants.groupId,
           expiresAt: permissionGrants.expiresAt,
+          grantedBy: permissionGrants.grantedBy,
         })
         .from(permissionGrants)
         .where(
@@ -376,12 +423,7 @@ export class MadrasahNazirRepository {
 
       const revoke: string[] = [];
       const retime: string[] = [];
-      const insert: Array<{
-        scopeType: ScopeType;
-        scopeId: string;
-        permission: string | null;
-        groupId: string | null;
-      }> = [];
+      const insert: IHandedOn[] = [];
       for (const [key, scope] of scopes) {
         const plan = planGrants(
           held.filter((row) => keyOf(row) === key) as IHeldGrant[],
@@ -390,58 +432,78 @@ export class MadrasahNazirRepository {
         revoke.push(...plan.revoke);
         retime.push(...plan.retime);
         for (const item of plan.insert) {
-          insert.push({
+          const row = {
             scopeType: scope.scopeType,
             scopeId: scope.scopeId,
             permission: "permission" in item ? item.permission : null,
             groupId: "groupId" in item ? item.groupId : null,
-          });
+          };
+          insert.push({ ...row, codes: codesOf(row) });
         }
       }
 
       // A kept row whose end moves later is handed on again, for more time; one
       // whose end moves earlier is not a gift (and anyone may revoke by leaving
       // it out), so only the first counts.
-      const extended = (row: { expiresAt: Date | null }) =>
+      const later = (row: { expiresAt: Date | null }) =>
         expiresAt === null
           ? row.expiresAt !== null
           : row.expiresAt !== null && expiresAt > row.expiresAt;
-      wanted.ceiling?.([
-        ...insert,
-        ...held.flatMap((row) =>
-          retime.includes(row.id) && row.scopeId && extended(row)
-            ? [
-                {
-                  scopeType: row.scopeType,
-                  scopeId: row.scopeId,
-                  permission: row.permission,
-                  groupId: row.groupId,
-                },
-              ]
-            : []
-        ),
-      ]);
+      const retimed = held.filter((row) => retime.includes(row.id));
+      const extended = retimed.filter(later);
+      const shortened = retimed.filter((row) => !later(row));
+      const handedOn = (row: (typeof held)[number]): IHandedOn => ({
+        scopeType: row.scopeType,
+        scopeId: row.scopeId as string,
+        permission: row.permission,
+        groupId: row.groupId,
+        codes: codesOf(row),
+      });
+      wanted.ceiling?.([...insert, ...extended.map(handedOn)]);
+      const authorityOf = (row: IHandedOn) =>
+        wanted.authorityFor?.(row) ?? wanted.authority;
+
       if (revoke.length > 0) {
         await tx
           .update(permissionGrants)
           .set({ revokedAt: sql`now()`, revokedBy: actorId })
           .where(inArray(permissionGrants.id, revoke));
       }
-      if (retime.length > 0) {
+      if (shortened.length > 0) {
         await tx
           .update(permissionGrants)
           .set({ expiresAt })
-          .where(inArray(permissionGrants.id, retime));
+          .where(
+            inArray(
+              permissionGrants.id,
+              shortened.map((row) => row.id)
+            )
+          );
       }
+      // What the actor hands on in this save, for the audit row: the new rows
+      // and the kept ones given more time, which become the actor's.
+      const given: Array<{
+        id: string;
+        permission: string | null;
+        groupId: string | null;
+        scopeType: ScopeType;
+        scopeId: string | null;
+        authority: ScopeType;
+        extendedFrom?: string | null;
+        previouslyGrantedBy?: string;
+      }> = [];
       if (insert.length > 0) {
         const inserted = await tx
           .insert(permissionGrants)
           .values(
             insert.map((row) => ({
               userId: nazirId,
-              ...row,
+              scopeType: row.scopeType,
+              scopeId: row.scopeId,
+              permission: row.permission,
+              groupId: row.groupId,
               grantedBy: actorId,
-              authorityScopeType: wanted.authority,
+              authorityScopeType: authorityOf(row),
               expiresAt,
             }))
           )
@@ -451,7 +513,33 @@ export class MadrasahNazirRepository {
             groupId: permissionGrants.groupId,
             scopeType: permissionGrants.scopeType,
             scopeId: permissionGrants.scopeId,
+            authority: permissionGrants.authorityScopeType,
           });
+        given.push(
+          ...inserted.map((g) => ({
+            ...g,
+            authority: g.authority ?? wanted.authority,
+          }))
+        );
+      }
+      for (const row of extended) {
+        const authority = authorityOf(handedOn(row));
+        await tx
+          .update(permissionGrants)
+          .set({ expiresAt, grantedBy: actorId, authorityScopeType: authority })
+          .where(eq(permissionGrants.id, row.id));
+        given.push({
+          id: row.id,
+          permission: row.permission,
+          groupId: row.groupId,
+          scopeType: row.scopeType,
+          scopeId: row.scopeId,
+          authority,
+          extendedFrom: row.expiresAt?.toISOString() ?? null,
+          previouslyGrantedBy: row.grantedBy,
+        });
+      }
+      if (given.length > 0) {
         await tx.insert(auditLog).values({
           actorId,
           action: "permission.grant",
@@ -460,22 +548,39 @@ export class MadrasahNazirRepository {
           details: {
             madrasahId,
             // The rows themselves, so the başnazım's list of what a Medaris
-            // nazımı handed on and this record name the same grants, and the
-            // level the giver acted at (a Medaris nazımı acts as the platform).
+            // nazımı handed on and this record name the same grants; the level
+            // the giver acted at (a Medaris nazımı acts as the platform) and
+            // the level each row was stored at, which the giver's own holding
+            // caps. A row given more time names its earlier end and giver.
             authority: wanted.authority,
-            grants: inserted.map((g) => ({
-              id: g.id,
-              permission: g.permission,
-              groupId: g.groupId,
-              scopeType: g.scopeType,
-              scopeId: g.scopeId,
+            grants: given,
+            permissions: given.flatMap((g) =>
+              g.permission ? [{ code: g.permission, scopeId: g.scopeId }] : []
+            ),
+            groups: given.flatMap((g) =>
+              g.groupId ? [{ id: g.groupId, scopeId: g.scopeId }] : []
+            ),
+            expiresAt: expiresAt?.toISOString() ?? null,
+          },
+        });
+      }
+      if (shortened.length > 0) {
+        await tx.insert(auditLog).values({
+          actorId,
+          action: "permission.retime",
+          entity: "user",
+          entityId: nazirId,
+          details: {
+            madrasahId,
+            authority: wanted.authority,
+            grants: shortened.map((row) => ({
+              id: row.id,
+              permission: row.permission,
+              groupId: row.groupId,
+              scopeType: row.scopeType,
+              scopeId: row.scopeId,
+              previousExpiresAt: row.expiresAt?.toISOString() ?? null,
             })),
-            permissions: insert.flatMap((i) =>
-              i.permission ? [{ code: i.permission, scopeId: i.scopeId }] : []
-            ),
-            groups: insert.flatMap((i) =>
-              i.groupId ? [{ id: i.groupId, scopeId: i.scopeId }] : []
-            ),
             expiresAt: expiresAt?.toISOString() ?? null,
           },
         });
@@ -499,6 +604,42 @@ export class MadrasahNazirRepository {
         });
       }
     });
+  }
+
+  /**
+   * Locks the medrese's groups a save gives (`FOR SHARE`, so a change to one
+   * or its delete waits until the save commits) and reads their codes under
+   * that lock. A group deleted, or not the medrese's, is not found.
+   */
+  private async lockGroups(
+    tx: Tx,
+    madrasahId: string,
+    ids: string[]
+  ): Promise<Map<string, string[]>> {
+    const wanted = [...new Set(ids)];
+    const codes = new Map<string, string[]>();
+    if (wanted.length === 0) return codes;
+    const live = await tx
+      .select({ id: permissionGroups.id })
+      .from(permissionGroups)
+      .where(
+        and(
+          inArray(permissionGroups.id, wanted),
+          eq(permissionGroups.scopeType, SCOPE_TYPES.MADRASAH),
+          eq(permissionGroups.scopeId, madrasahId),
+          isNull(permissionGroups.deletedAt)
+        )
+      )
+      .for("share");
+    const missing = wanted.find((id) => !live.some((g) => g.id === id));
+    if (missing) throw new PermissionGroupNotFoundError(missing);
+    for (const id of wanted) codes.set(id, []);
+    const items = await tx
+      .select()
+      .from(permissionGroupItems)
+      .where(inArray(permissionGroupItems.groupId, wanted));
+    for (const item of items) codes.get(item.groupId)?.push(item.permission);
+    return codes;
   }
 
   /**
@@ -576,12 +717,20 @@ export class MadrasahNazirRepository {
    * appointment and permissions in the medrese are revoked. Anything short of
    * a decision for exactly the people the nazır gave something to writes
    * nothing.
+   *
+   * A seat dropped here takes with it what its holder was given in that
+   * seat's scope by anyone, as the nazır's own dismissal does (a permission
+   * cannot outlast its role). `appointedBy` limits the dismissal to a nazır
+   * that person seated: a nazır who holds `madrasah.nazir_appoint` dismisses
+   * only the nazırs they appointed (owner, d-1004-28); checked on the locked
+   * seat, so a take-over racing it cannot slip past.
    */
   async dismiss(
     madrasahId: string,
     nazirId: string,
     actorId: string,
-    decisions: ReadonlyArray<{ userId: string; action: DismissAction }>
+    decisions: ReadonlyArray<{ userId: string; action: DismissAction }>,
+    options: { appointedBy?: string } = {}
   ): Promise<void> {
     await this.db.transaction(async (tx) => {
       const [madrasah] = await tx
@@ -591,7 +740,10 @@ export class MadrasahNazirRepository {
         .for("no key update");
       if (!madrasah) throw new MadrasahNotFoundError(madrasahId);
       const [role] = await tx
-        .select({ id: roleAssignments.id })
+        .select({
+          id: roleAssignments.id,
+          grantedBy: roleAssignments.grantedBy,
+        })
         .from(roleAssignments)
         .where(
           and(
@@ -602,6 +754,12 @@ export class MadrasahNazirRepository {
         .for("update")
         .limit(1);
       if (!role) throw new NazirNotFoundError(madrasahId, nazirId);
+      if (
+        options.appointedBy !== undefined &&
+        role.grantedBy !== options.appointedBy
+      ) {
+        throw new NazirNotAppointedByYouError({ madrasahId, userId: nazirId });
+      }
 
       const given = await this.heldGivenBy(madrasahId, nazirId, tx);
       const plan = planDismissal(given, decisions);
@@ -629,6 +787,18 @@ export class MadrasahNazirRepository {
       };
       await write(plan.takeOver, { grantedBy: actorId });
       await write(plan.drop, revoked);
+      const droppedWithSeats: string[] = [];
+      for (const seat of given.filter(
+        (g) => g.kind === "ROLE" && plan.drop.some((d) => d.id === g.id)
+      )) {
+        droppedWithSeats.push(
+          ...(await revokeOrphanedGrants(tx, {
+            userId: seat.userId,
+            within: seat,
+            revokedBy: actorId,
+          }))
+        );
+      }
 
       await tx
         .update(permissionGrants)
@@ -656,6 +826,7 @@ export class MadrasahNazirRepository {
           userId: nazirId,
           tookOver: plan.takeOver.length,
           dropped: plan.drop.length,
+          droppedWithSeats,
         },
       });
     });

@@ -59,7 +59,12 @@ function build(
     /** What the engine says a caller holds: in the medrese (and every course), and in single courses. */
     held?: Record<
       string,
-      { medrese: string[]; courses?: Record<string, string[]> }
+      {
+        medrese: string[];
+        courses?: Record<string, string[]>;
+        /** In the medrese: the authorities of the grants behind each code. */
+        authorities?: Record<string, string[]>;
+      }
     >;
   } = {}
 ) {
@@ -105,6 +110,7 @@ function build(
           }
           return {
             codes: new Set(options?.acrossCourses ? (mine?.medrese ?? []) : []),
+            grantAuthorities: new Map(Object.entries(mine?.authorities ?? {})),
           };
         }
       ),
@@ -325,8 +331,10 @@ describe("giving a nazır their permissions", () => {
         { scopeType: "course", scopeId: C1, groupId: G, permissions: [] },
       ],
       expiresAt: new Date("2099-01-01T00:00:00.000Z"),
-      // The başmüderris is asked, and holds all of it.
+      // The başmüderris is asked, and holds all of it; what they give is
+      // stored no higher than their own holding (d-1004-27).
       ceiling: expect.any(Function),
+      authorityFor: expect.any(Function),
     });
   });
 
@@ -486,6 +494,7 @@ describe('the ceiling of a Medaris nazımı (MDRS-209: "kendi izinleriyle sını
             scopeId: M,
             permission: "madrasah.ban",
             groupId: null,
+            codes: ["madrasah.ban"],
           },
         ])
     );
@@ -540,6 +549,7 @@ describe('the ceiling of a Medaris nazımı (MDRS-209: "kendi izinleriyle sını
           scopeId: C1,
           permission: "course.edit",
           groupId: null,
+          codes: ["course.edit"],
         },
       ])
     ).not.toThrow();
@@ -550,9 +560,54 @@ describe('the ceiling of a Medaris nazımı (MDRS-209: "kendi izinleriyle sını
           scopeId: M,
           permission: "course.edit",
           groupId: null,
+          codes: ["course.edit"],
         },
       ])
     ).toThrow(GrantExceedsGiverError);
+  });
+
+  it("stores a gift no higher than the giver's own holding of its codes (d-1004-27)", async () => {
+    const { service, repo } = build({
+      held: {
+        a4: {
+          medrese: ["course.edit", "course.settings", "madrasah.ban"],
+          // course.settings from the başmüderris, course.edit from the
+          // başnazım, madrasah.ban by no grant at all.
+          authorities: {
+            "course.settings": ["madrasah"],
+            "course.edit": ["platform"],
+          },
+        },
+      },
+    });
+    let authorityFor: ((row: unknown) => string) | undefined;
+    repo.setPermissions.mockImplementation(
+      async (
+        _m: string,
+        _n: string,
+        _a: string,
+        wanted: { authorityFor?: (row: unknown) => string }
+      ) => {
+        authorityFor = wanted.authorityFor;
+      }
+    );
+    await service.setNazirPermissions(MEDARIS, M, NAZIR, {
+      permissions: ["course.edit"],
+    } as never);
+    const row = (codes: string[]) => ({
+      scopeType: "madrasah",
+      scopeId: M,
+      permission: null,
+      groupId: null,
+      codes,
+    });
+    expect(authorityFor?.(row(["course.edit"]))).toBe("platform");
+    expect(authorityFor?.(row(["course.settings"]))).toBe("madrasah");
+    expect(authorityFor?.(row(["madrasah.ban"]))).toBe("madrasah");
+    // A group row is capped by the weakest of its codes.
+    expect(authorityFor?.(row(["course.edit", "course.settings"]))).toBe(
+      "madrasah"
+    );
   });
 
   it("lists as givable only what they hold, so the screens refuse what the write refuses", async () => {

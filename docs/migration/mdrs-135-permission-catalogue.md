@@ -115,10 +115,12 @@ prints nothing). The rollback is `src/database/rollbacks/0047_mdrs_135_grant_aut
   grantee of any kind cannot give, and nobody may name themselves (`SelfGrantGuard`).
 - A köşk nazımı's ceiling for ders nazırları is `course.manage_all` opening `COURSE_CATALOG`; the rule
   (`kosk-grants-rules.ts`) is unchanged and its grants now record `authority = kosk`.
-- Groups are read at decision time with their items, so a change to a group in use reaches every
-  holder at once; the "(a) keep the scope and the permissions per person / (b) change for everyone"
-  question on edit and delete is the one `PermissionAdminRepository` already asked (MDRS-171) and its
-  grant copies now keep `authority_scope_type`.
+- Groups are read at decision time with their items. A change to the codes of a group somebody holds,
+  and its delete, first asks what becomes of the holders (`usersPolicy`: `keep` gives each the old codes
+  as single permissions, `revoke` gives them nothing) and detaches them either way, so the new codes reach
+  only whoever is given the group from then on. That is the question `PermissionAdminRepository` already
+  asked (MDRS-171); its grant copies now keep `authority_scope_type`, and it counts the holders under the
+  group's lock, so one who appeared after the caller counted none is still asked about.
 
 ### Policies (§6)
 

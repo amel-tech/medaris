@@ -8,6 +8,7 @@ import {
   isNotNull,
   isNull,
   min,
+  or,
   type SQL,
   sql,
 } from "drizzle-orm";
@@ -18,6 +19,7 @@ import {
   mayRestoreAt,
 } from "../archive/hide-level";
 import { DismissDecisionsError } from "../assignment/admin/errors";
+import { revokeOrphanedGrants } from "../assignment/admin/orphaned-grants";
 import { grantHeld } from "../assignment/assignment.repository";
 import type { Tx } from "../course/course-purge";
 import { CourseStatus } from "../course/domain/course-status.enum";
@@ -335,8 +337,25 @@ export class MadrasahRepository {
       )
       .where(
         and(
-          eq(permissionGrants.scopeType, SCOPE_TYPES.MADRASAH),
-          eq(permissionGrants.scopeId, madrasahId),
+          // The medrese and its courses: a grant limited to some courses
+          // (nazir/06) is handed on as much as one held in the medrese, and
+          // is decided like it.
+          or(
+            and(
+              eq(permissionGrants.scopeType, SCOPE_TYPES.MADRASAH),
+              eq(permissionGrants.scopeId, madrasahId)
+            ),
+            and(
+              eq(permissionGrants.scopeType, SCOPE_TYPES.COURSE),
+              inArray(
+                permissionGrants.scopeId,
+                db
+                  .select({ id: courses.id })
+                  .from(courses)
+                  .where(eq(courses.madrasahId, madrasahId))
+              )
+            )
+          ),
           inArray(permissionGrants.grantedBy, heads),
           grantHeld()
         )
@@ -408,6 +427,8 @@ export class MadrasahRepository {
 
       let tookOver = 0;
       let dropped = 0;
+      const droppedSeats: string[] = [];
+      const takenOver: string[] = [];
       if (replacing) {
         const given = await this.headDelegations(madrasahId, userId, tx);
         const key = (kind: string, id: string) => `${kind}:${id}`;
@@ -426,6 +447,8 @@ export class MadrasahRepository {
             : { revokedAt: sql`now()`, revokedBy: actorId };
           if (take) tookOver += 1;
           else dropped += 1;
+          if (item.kind === "ROLE" && !take) droppedSeats.push(item.userId);
+          if (item.kind === "GRANT" && take) takenOver.push(item.id);
           if (item.kind === "ROLE") {
             await tx
               .update(roleAssignments)
@@ -440,13 +463,30 @@ export class MadrasahRepository {
         }
       }
 
-      for (const other of previous.filter((id) => id !== userId)) {
+      const outgoing = previous.filter((id) => id !== userId);
+      for (const other of outgoing) {
         await revokeRole(tx, {
           userId: other,
           role: NAZIR_ROLE,
           scopeId: madrasahId,
           revokedBy: actorId,
         });
+      }
+      // A seat that goes takes with it what its holder was given in the
+      // medrese, by anyone, that no other role of theirs there still covers
+      // (a permission cannot outlast its role): the nazır seats answered
+      // Düşür and the outgoing başmüderris's own. A grant taken over just now
+      // stays, as decided.
+      const droppedWithSeats: string[] = [];
+      for (const holder of new Set([...droppedSeats, ...outgoing])) {
+        droppedWithSeats.push(
+          ...(await revokeOrphanedGrants(tx, {
+            userId: holder,
+            within: { scopeType: SCOPE_TYPES.MADRASAH, scopeId: madrasahId },
+            revokedBy: actorId,
+            keep: takenOver,
+          }))
+        );
       }
       await grantRole(tx, {
         userId,
@@ -474,6 +514,7 @@ export class MadrasahRepository {
           endsAt: options.endsAt?.toISOString() ?? null,
           tookOver,
           dropped,
+          droppedWithSeats,
         },
       });
       return true;

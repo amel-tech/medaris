@@ -857,7 +857,9 @@ describe("The permission engine (MDRS-135, e2e)", () => {
           ]
         );
 
-        // A nazır holds it, so a change reaches them and the record names them.
+        // A nazır holds it, so a change must say what becomes of them
+        // (`usersPolicy`), detaches them from the group, and the record names
+        // them.
         await put(MEDARIS_ID, permissionsOf(NAZIR_ID), {
           groupId,
           permissions: [],
@@ -887,6 +889,23 @@ describe("The permission engine (MDRS-135, e2e)", () => {
           previousPermissions: [PERMISSIONS.MADRASAH_STUDENTS_VIEW],
           holderIds: [NAZIR_ID],
         });
+        // "keep": the nazır holds the group's old code as a single permission
+        // and no longer the group, so the code the change added does not
+        // reach them.
+        const kept = await db()
+          .select()
+          .from(permissionGrants)
+          .where(
+            and(
+              eq(permissionGrants.userId, NAZIR_ID),
+              isNull(permissionGrants.revokedAt)
+            )
+          );
+        expect(kept.map((g) => [g.permission, g.groupId])).toEqual([
+          [PERMISSIONS.MADRASAH_STUDENTS_VIEW, null],
+        ]);
+        await get(NAZIR_ID, `/madrasahs/${madrasahId}/students`).expect(200);
+        await patch(NAZIR_ID, `/courses/${medreseCourse}`).expect(403);
         expect((await given()).filter((item) => item.kind === "GROUP")).toEqual(
           [expect.objectContaining({ id: groupId, groupAction: "update" })]
         );

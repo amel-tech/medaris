@@ -41,8 +41,9 @@ function personOf(
  * The medrese's nazırs (nazir/05 and nazir/15): the MEDRESE_NAZIR appointments
  * and what hangs on them in the medrese. Reached through
  * `MadrasahNazirController`, whose `@Authz` permissions decide who may call it —
- * the medrese's başmüderris and SYSTEM_ADMIN, or a nazır given the permission; nothing here re-checks the
- * caller. A nazır holds nothing until someone gives it (nazir/06).
+ * the medrese's başmüderris and SYSTEM_ADMIN, or a nazır given the permission;
+ * the controller narrows a dismissal by such a nazır to the nazırs they
+ * appointed. A nazır holds nothing until someone gives it (nazir/06).
  */
 @Injectable()
 export class MadrasahNazirService {
@@ -133,17 +134,20 @@ export class MadrasahNazirService {
     });
   }
 
+  /** `appointedBy`: only a nazır this person seated may be dismissed (see the repository). */
   async dismiss(
     madrasahId: string,
     nazirId: string,
     actorId: string,
-    decisions: ReadonlyArray<{ userId: string; action: DismissAction }>
+    decisions: ReadonlyArray<{ userId: string; action: DismissAction }>,
+    options: { appointedBy?: string } = {}
   ): Promise<void> {
     await this.repo.dismiss(
       madrasahId,
       nazirId.toLowerCase(),
       actorId,
-      decisions
+      decisions,
+      options
     );
   }
 
