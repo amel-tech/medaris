@@ -1,7 +1,7 @@
 import {
   BUNNY_TUS_ENDPOINT,
+  DEFAULT_EMBED_LINK_LIFETIME_SECONDS,
   DEFAULT_UPLOAD_LIFETIME_SECONDS,
-  EMBED_LINK_LIFETIME_SECONDS,
   embedUrl,
   embedViewToken,
   encodingOutcome,
@@ -76,17 +76,44 @@ describe("embed links (MDRS-116)", () => {
     );
   });
 
-  it("is Bunny's iframe player, with no token when the library has no token key", () => {
+  it("is Bunny's player, with no token when the library has no token key", () => {
     expect(embedUrl(LIBRARY_ID, VIDEO_ID, null, new Date())).toBe(
-      `https://iframe.mediadelivery.net/embed/${LIBRARY_ID}/${VIDEO_ID}`
+      `https://player.mediadelivery.net/embed/${LIBRARY_ID}/${VIDEO_ID}`
     );
   });
 
-  it("carries a token and its expiry when the library has a token key", () => {
-    const now = new Date((EXPIRES - EMBED_LINK_LIFETIME_SECONDS) * 1000);
-    expect(embedUrl(LIBRARY_ID, VIDEO_ID, TOKEN_KEY, now)).toBe(
-      `https://iframe.mediadelivery.net/embed/${LIBRARY_ID}/${VIDEO_ID}?token=e703a6dd7fd58cea6dfb43078445c3021deb828fb3cf5e81765511ccbf0b6a10&expires=${EXPIRES}`
+  it("carries a token and its expiry, 6 hours ahead by default, when the library has a token key", () => {
+    expect(DEFAULT_EMBED_LINK_LIFETIME_SECONDS).toBe(21_600);
+    const now = new Date(
+      (EXPIRES - DEFAULT_EMBED_LINK_LIFETIME_SECONDS) * 1000
     );
+    expect(embedUrl(LIBRARY_ID, VIDEO_ID, TOKEN_KEY, now)).toBe(
+      `https://player.mediadelivery.net/embed/${LIBRARY_ID}/${VIDEO_ID}?token=e703a6dd7fd58cea6dfb43078445c3021deb828fb3cf5e81765511ccbf0b6a10&expires=${EXPIRES}`
+    );
+  });
+
+  it("takes its lifetime from the caller, in whole seconds from now (MDRS-119)", () => {
+    // `now` has a fractional second: the expiry is floored, then the lifetime added.
+    const now = new Date((EXPIRES - 120) * 1000 + 999);
+    expect(embedUrl(LIBRARY_ID, VIDEO_ID, TOKEN_KEY, now, 120)).toBe(
+      `https://player.mediadelivery.net/embed/${LIBRARY_ID}/${VIDEO_ID}?token=e703a6dd7fd58cea6dfb43078445c3021deb828fb3cf5e81765511ccbf0b6a10&expires=${EXPIRES}`
+    );
+  });
+
+  it("binds the token to the video and the expiry (MDRS-119)", () => {
+    // printf '%s' "e2e-token-keyb1190000-0000-4000-8000-0000000000011791107200" | sha256sum
+    expect(
+      embedViewToken(
+        "e2e-token-key",
+        "b1190000-0000-4000-8000-000000000001",
+        1791107200
+      )
+    ).toBe("d2ab87162758cfc5331a57f671f49d315f741385e5468210a7e36126f5af46c0");
+    const base = embedViewToken(TOKEN_KEY, VIDEO_ID, EXPIRES);
+    expect(embedViewToken(TOKEN_KEY, VIDEO_ID, EXPIRES + 1)).not.toBe(base);
+    expect(embedViewToken(TOKEN_KEY, `${VIDEO_ID}0`, EXPIRES)).not.toBe(base);
+    expect(embedViewToken(`${TOKEN_KEY}0`, VIDEO_ID, EXPIRES)).not.toBe(base);
+    expect(base).not.toContain(TOKEN_KEY);
   });
 });
 

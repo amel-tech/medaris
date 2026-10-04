@@ -113,26 +113,46 @@ export class CourseService {
   ) {}
 
   /**
-   * The stored recordings as a caller may be handed them (MDRS-116): a BUNNY
-   * recording's link is its player link, built now — with a fresh token when
-   * the library has a token key — and only once it is READY; the Bunny video
-   * id itself is dropped, so no response carries it.
+   * The stored recordings without their Bunny video ids, and the ids kept
+   * aside by recording id (MDRS-119). Nothing is signed here: a link is built
+   * only for a recording the caller's filter (`visibleRecordings`) kept, by
+   * `signPlayback`, so no player link is minted for a recording the caller
+   * may not see, not even one that is then dropped.
    */
-  private playable(
-    stored: IStoredRecording[],
-    now: Date = new Date()
-  ): Omit<IStoredRecording, "bunnyVideoId">[] {
-    return stored.map(({ bunnyVideoId, ...rec }) =>
-      rec.provider === RecordingProvider.BUNNY
-        ? {
-            ...rec,
-            url:
-              rec.status === RecordingStatus.READY && bunnyVideoId
-                ? this.bunny.embedUrl(bunnyVideoId, now)
-                : null,
-          }
-        : rec
-    );
+  private withoutVideoIds(stored: IStoredRecording[]): {
+    recordings: Omit<IStoredRecording, "bunnyVideoId">[];
+    videoIds: Map<string, string>;
+  } {
+    const videoIds = new Map<string, string>();
+    const recordings = stored.map(({ bunnyVideoId, ...rec }) => {
+      if (bunnyVideoId) videoIds.set(rec.id, bunnyVideoId);
+      return rec;
+    });
+    return { recordings, videoIds };
+  }
+
+  /**
+   * The recordings a caller was let see, each BUNNY one READY given its
+   * signed player link (MDRS-116, MDRS-119): built now, with a fresh token
+   * and expiry when the library has a token key. The Bunny video id itself
+   * never reaches a response.
+   */
+  private signPlayback(
+    visible: IRecordingView[],
+    videoIds: Map<string, string>,
+    now: Date
+  ): IRecordingView[] {
+    return visible.map((rec) => {
+      if (rec.provider !== RecordingProvider.BUNNY) return rec;
+      const videoId = videoIds.get(rec.id);
+      return {
+        ...rec,
+        url:
+          rec.status === RecordingStatus.READY && videoId
+            ? this.bunny.embedUrl(videoId, now)
+            : null,
+      };
+    });
   }
 
   /**
@@ -363,22 +383,26 @@ export class CourseService {
       );
     }
     if (!detail.contentLocked || sample) {
-      const [stored] = this.playable(
-        await this.recordingRepo.findByLessonIds([sessionId]),
-        now
+      const { recordings, videoIds } = this.withoutVideoIds(
+        await this.recordingRepo.findByLessonIds([sessionId])
       );
+      const [stored] = recordings;
       const [shown] = stored
-        ? visibleRecordings(
-            [
-              {
-                ...stored,
-                weekId: view.weekId,
-                weekNumber: view.weekNumber,
-                weekTitle: view.weekTitle,
-              },
-            ],
-            !detail.contentLocked,
-            await this.publicRecordingsAllowed(detail)
+        ? this.signPlayback(
+            visibleRecordings(
+              [
+                {
+                  ...stored,
+                  weekId: view.weekId,
+                  weekNumber: view.weekNumber,
+                  weekTitle: view.weekTitle,
+                },
+              ],
+              !detail.contentLocked,
+              await this.publicRecordingsAllowed(detail)
+            ),
+            videoIds,
+            now
           )
         : [];
       if (shown) {
@@ -406,16 +430,17 @@ export class CourseService {
    */
   async listRecordings(
     courseId: string,
-    user: AuthenticatedUser | null
+    user: AuthenticatedUser | null,
+    now: Date = new Date()
   ): Promise<IRecordingView[]> {
     const detail = await this.viewDetail(courseId, user, { audit: false });
     const placed = detail.weeks.flatMap((week) =>
       week.lessons.map((lesson) => ({ week, lesson }))
     );
-    const stored = this.playable(
+    const { recordings, videoIds } = this.withoutVideoIds(
       await this.recordingRepo.findByLessonIds(placed.map((p) => p.lesson.id))
     );
-    const rows: IRecordingRow[] = stored.flatMap((rec) => {
+    const rows: IRecordingRow[] = recordings.flatMap((rec) => {
       const at = placed.find((p) => p.lesson.id === rec.lessonId);
       return at
         ? [
@@ -428,10 +453,14 @@ export class CourseService {
           ]
         : [];
     });
-    return visibleRecordings(
-      rows,
-      !detail.contentLocked,
-      await this.publicRecordingsAllowed(detail)
+    return this.signPlayback(
+      visibleRecordings(
+        rows,
+        !detail.contentLocked,
+        await this.publicRecordingsAllowed(detail)
+      ),
+      videoIds,
+      now
     );
   }
 

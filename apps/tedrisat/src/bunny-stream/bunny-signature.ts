@@ -9,8 +9,23 @@ export const MIN_UPLOAD_LIFETIME_SECONDS = 3600;
 /** What Bunny's own examples use, and what tedrisat signs for: 24 hours. */
 export const DEFAULT_UPLOAD_LIFETIME_SECONDS = 24 * 3600;
 
-/** How long a player link stays valid once a recording is read. */
-export const EMBED_LINK_LIFETIME_SECONDS = 6 * 3600;
+/** Bunny's player, which a recording's link opens in an iframe (MDRS-119). */
+export const BUNNY_PLAYER_ORIGIN = "https://player.mediadelivery.net";
+
+/**
+ * How long a player link stays valid once a recording is read, unless
+ * `BUNNY_STREAM_EMBED_TTL_SECONDS` says otherwise (MDRS-119): 6 hours.
+ */
+export const DEFAULT_EMBED_LINK_LIFETIME_SECONDS = 6 * 3600;
+
+/**
+ * The bounds `BUNNY_STREAM_EMBED_TTL_SECONDS` must keep to. Below a minute the
+ * player could refuse a link before the page has even framed it; above a week
+ * a link that was passed on keeps playing for too long, since the expiry is
+ * the only thing that bounds such a leak.
+ */
+export const MIN_EMBED_LINK_LIFETIME_SECONDS = 60;
+export const MAX_EMBED_LINK_LIFETIME_SECONDS = 7 * 24 * 3600;
 
 const sha256Hex = (input: string): string =>
   createHash("sha256").update(input, "utf8").digest("hex");
@@ -64,19 +79,22 @@ export function embedViewToken(
 }
 
 /**
- * The player link of a video: Bunny's iframe player, with a token that
- * expires `EMBED_LINK_LIFETIME_SECONDS` after `now` when a token key is set.
+ * The player link of a video (MDRS-119):
+ * `https://player.mediadelivery.net/embed/<libraryId>/<videoId>`, with
+ * `?token=<t>&expires=<unix seconds>` when the library has a token key, the
+ * expiry `lifetimeSeconds` after `now`. Pure, so a spec pins the vector; the
+ * caller decides who is handed one.
  */
 export function embedUrl(
   libraryId: string,
   videoId: string,
   tokenKey: string | null,
-  now: Date
+  now: Date,
+  lifetimeSeconds: number = DEFAULT_EMBED_LINK_LIFETIME_SECONDS
 ): string {
-  const base = `https://iframe.mediadelivery.net/embed/${encodeURIComponent(libraryId)}/${encodeURIComponent(videoId)}`;
+  const base = `${BUNNY_PLAYER_ORIGIN}/embed/${encodeURIComponent(libraryId)}/${encodeURIComponent(videoId)}`;
   if (tokenKey === null) return base;
-  const expires =
-    Math.floor(now.getTime() / 1000) + EMBED_LINK_LIFETIME_SECONDS;
+  const expires = Math.floor(now.getTime() / 1000) + lifetimeSeconds;
   const token = embedViewToken(tokenKey, videoId, expires);
   return `${base}?token=${token}&expires=${expires}`;
 }

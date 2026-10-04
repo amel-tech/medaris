@@ -488,7 +488,7 @@ export class LessonsApi extends runtime.BaseAPI {
     }
 
     /**
-     * Open to callers with no token, like the course page. A caller holding `view_details` sees every recording; everyone else, PENDING and revoked included, only those with `visibility` PUBLIC. A recording whose `status` is PROCESSING is listed with a null `url`. Sorted by week number descending, then by `recordedAt` descending (MDRS-162).
+     * Open to callers with no token, like the course page. A caller holding `view_details` sees every recording; everyone else, PENDING and revoked included, only those with `visibility` PUBLIC. A recording whose `status` is PROCESSING is listed with a null `url`. Sorted by week number descending, then by `recordedAt` descending (MDRS-162). A READY BUNNY recording\'s `url` is a player link signed for this response, built only for a recording the caller may see, and expiring after `BUNNY_STREAM_EMBED_TTL_SECONDS` (6 hours by default); the response is `Cache-Control: private, no-store` (MDRS-119). What this protects: with token authentication on in the Bunny library, only a signed Bunny link plays, and a signed link passed on plays until it expires. A YouTube, Drive or other pasted link plays for anyone who has it; for those the filter decides who is shown the link, not who can open it.
      * The course\'s lesson recordings, newest week first
      */
     async listCourseRecordingsRaw(requestParameters: ListCourseRecordingsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<RecordingResponse>>> {
@@ -523,7 +523,7 @@ export class LessonsApi extends runtime.BaseAPI {
     }
 
     /**
-     * Open to callers with no token, like the course page. A caller holding `view_details` sees every recording; everyone else, PENDING and revoked included, only those with `visibility` PUBLIC. A recording whose `status` is PROCESSING is listed with a null `url`. Sorted by week number descending, then by `recordedAt` descending (MDRS-162).
+     * Open to callers with no token, like the course page. A caller holding `view_details` sees every recording; everyone else, PENDING and revoked included, only those with `visibility` PUBLIC. A recording whose `status` is PROCESSING is listed with a null `url`. Sorted by week number descending, then by `recordedAt` descending (MDRS-162). A READY BUNNY recording\'s `url` is a player link signed for this response, built only for a recording the caller may see, and expiring after `BUNNY_STREAM_EMBED_TTL_SECONDS` (6 hours by default); the response is `Cache-Control: private, no-store` (MDRS-119). What this protects: with token authentication on in the Bunny library, only a signed Bunny link plays, and a signed link passed on plays until it expires. A YouTube, Drive or other pasted link plays for anyone who has it; for those the filter decides who is shown the link, not who can open it.
      * The course\'s lesson recordings, newest week first
      */
     async listCourseRecordings(requestParameters: ListCourseRecordingsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<RecordingResponse>> {

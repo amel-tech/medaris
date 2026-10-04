@@ -134,10 +134,25 @@ export class BunnyStreamClient {
     };
   }
 
-  /** The player link of a video, or null when the library is not configured. */
+  /**
+   * The signed player link of a video, or null when the library is not
+   * configured. Its expiry is the library's `embedLifetimeSeconds` from `now`
+   * (MDRS-119). Hand it only to a caller the recordings filter let through.
+   */
   embedUrl(videoId: string, now: Date = new Date()): string | null {
     if (!this.config) return null;
-    return embedUrl(this.config.libraryId, videoId, this.config.tokenKey, now);
+    return embedUrl(
+      this.config.libraryId,
+      videoId,
+      this.config.tokenKey,
+      now,
+      this.config.embedLifetimeSeconds
+    );
+  }
+
+  /** The library's id, or null when none is configured: a pasted Bunny link must name it (MDRS-119). */
+  get libraryId(): string | null {
+    return this.config?.libraryId ?? null;
   }
 
   /** JSON from Bunny; null for a 404. Any other failure is a 503 to the caller. */
