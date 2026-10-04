@@ -520,24 +520,12 @@ describe("Naming yourself on the remaining paths (MDRS-135 review, e2e)", () => 
     const kosksNamed = (name: string) =>
       db().select().from(kosks).where(eq(kosks.name, name));
 
-    it("a Medaris nazımı leaving managerUserIds out is refused, not seated köşk nazımı, and it is on the record", async () => {
-      const res = await send("post", MEDARIS, "/kosks", {
+    it("a Medaris nazımı leaving managerUserIds out opens nothing: a köşk is opened together with its nazımları (MDRS-136)", async () => {
+      await send("post", MEDARIS, "/kosks", {
         name: "Kendi Köşküm",
-      }).expect(403);
-      expect(res.body.code).toBe("SELF_GRANT_REFUSED");
+      }).expect(400);
       expect(await kosksNamed("Kendi Köşküm")).toHaveLength(0);
-      expect(await refusals()).toMatchObject([
-        {
-          actorId: MEDARIS,
-          entity: "user",
-          entityId: MEDARIS,
-          details: {
-            route: "kosk.create",
-            role: "KOSK_NAZIM",
-            about: { entity: "kosk", id: "new" },
-          },
-        },
-      ]);
+      expect(await refusals()).toEqual([]);
 
       // Naming the nazımları is what the permission is for.
       const opened = await send("post", MEDARIS, "/kosks", {
@@ -583,6 +571,7 @@ describe("Naming yourself on the remaining paths (MDRS-135 review, e2e)", () => 
     it("the başnazım still opens a köşk for himself, and the opening is recorded", async () => {
       const res = await send("post", ADMIN, "/kosks", {
         name: "Başnazımın Köşkü",
+        managerUserIds: [ADMIN],
       }).expect(201);
       expect(res.body.managerIds).toEqual([ADMIN]);
       const rows = await db()

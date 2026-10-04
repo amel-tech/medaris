@@ -14,8 +14,6 @@ const UUID_REGEX =
  * `DatabaseService`, not through `AuditService`, which reaches the feature
  * modules `AuthzService` is built before.
  */
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
 @Injectable()
 export class TedrisatAuthzAudit implements AuthzAuditSink {
   constructor(private readonly databaseService: DatabaseService) {}

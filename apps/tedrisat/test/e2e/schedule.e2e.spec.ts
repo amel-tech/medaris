@@ -218,15 +218,17 @@ describe("schedule (e2e)", () => {
         courseId: course.id,
         status: EnrollmentStatus.ENROLLED,
       });
-      await db.insert(roleAssignments).values({
-        userId: OTHER_USER_ID,
-        role: ASSIGNED_ROLES.MUDERRIS,
-        scopeType: SCOPE_TYPES.COURSE,
-        scopeId: course.id,
-        grantedBy: TEST_USER_ID,
-        revokedAt: new Date(),
-        revokedBy: TEST_USER_ID,
-      });
+      // Its only müderris is revoked: the course is passive. Opening a course
+      // seats its müderris (MDRS-136), so the seat is revoked, not added.
+      await db
+        .update(roleAssignments)
+        .set({ revokedAt: new Date(), revokedBy: TEST_USER_ID })
+        .where(
+          and(
+            eq(roleAssignments.scopeId, course.id),
+            eq(roleAssignments.role, ASSIGNED_ROLES.MUDERRIS)
+          )
+        );
 
       const mine = await request(app.getHttpServer())
         .get("/sessions")
