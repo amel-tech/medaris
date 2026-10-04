@@ -58,6 +58,13 @@ comments, under the `API__` prefix. Note that the error messages still say *"See
 apps/tedrisat/.env.example"* — MDRS-25 consolidated the workspace onto the single
 root file and that path no longer exists.
 
+One optional switch is not a boot condition: `PUBLIC_PROFILE_ENABLED` (MDRS-141).
+Unset or anything but `true`, the talebe's public profile is hidden and
+`GET`/`PATCH /me/public-profile` and `GET /users/:id/public-profile` answer
+`404 PUBLIC_PROFILE_UNAVAILABLE` for every signed-in caller. The container starts
+either way; set it to `true` only when the owner decides the profile is ready,
+and flip the tedris-web constant with it (`docs/migration/mdrs-141-hide-the-public-profile.md`).
+
 ---
 
 ## 1. How a release tag becomes an image tag

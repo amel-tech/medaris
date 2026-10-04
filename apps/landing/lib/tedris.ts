@@ -14,8 +14,8 @@ const TEDRIS_LOCALE = "tr";
 export const signInHref = landingEntryHref("signin", TEDRIS_LOCALE);
 export const registerHref = landingEntryHref("register", TEDRIS_LOCALE);
 
-/** Where the sample köşk and ders cards lead until tedris has public lists (MDRS-122). */
-export const exploreHref = "/tedris/learning";
+/** Keşfet, which tedris opens to a signed-out visitor. Redirected per request by app/tedris. */
+export const exploreHref = "/tedris/discover";
 
 export function redirectToTedris(path: string): Response {
   if (!env.TEDRIS_APP_URL) {

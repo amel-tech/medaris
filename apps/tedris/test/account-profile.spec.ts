@@ -112,7 +112,9 @@ describe("Hesap cards (design tedris/34)", () => {
     );
     expect(hrefs).toContain("/tr/account/calendar");
     expect(hrefs).toContain("/tr/auth/signout");
-    expect(hrefs).toContain("/tr/account/public-profile");
+    // Hidden for now (MDRS-141): the card and its link are gone.
+    expect(hrefs.filter((h) => h?.includes("public-profile"))).toEqual([]);
+    expect(host.textContent).not.toContain("Herkese açık profil");
     expect(host.textContent).toContain("Takvim bağlantını yönet");
     expect(host.textContent).toContain("Çıkış yap");
   });

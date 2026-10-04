@@ -1,4 +1,5 @@
 import { textFontsHref } from "@medaris/tokens/medaris-fonts";
+import { ThemeScript } from "@medaris/ui/mds/theme-script";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { hasLocale } from "next-intl";
@@ -18,8 +19,10 @@ export function generateStaticParams() {
 }
 
 // MDRS-151: the unified design system (design-system/medaris-unified). The
-// root attributes are MDS-LAY-03; the page follows the system's day or night
-// preference, as the canvas does when its theme is "sistem".
+// root attributes are MDS-LAY-03. The page is light until the viewer picks dark
+// with the header's toggle: `data-theme="light"` stops the CSS following the
+// system, and ThemeScript sets "dark" before first paint when it was chosen,
+// hence suppressHydrationWarning on <html>.
 export default async function LocaleLayout({
   children,
   params,
@@ -35,8 +38,15 @@ export default async function LocaleLayout({
   setRequestLocale(locale);
 
   return (
-    <html lang="tr" dir="ltr" data-app="landing">
+    <html
+      lang="tr"
+      dir="ltr"
+      data-app="landing"
+      data-theme="light"
+      suppressHydrationWarning
+    >
       <head>
+        <ThemeScript />
         {/* The faces by <link> with preconnect, as the system's readme asks
             for in production, rather than the @import in tokens/fonts.css. */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />

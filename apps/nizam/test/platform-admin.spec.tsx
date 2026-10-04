@@ -94,18 +94,16 @@ describe("köşk applications (nizam 15)", () => {
     expect(phoneOrNull("+90 532 000 00 00")).toBe("+90 532 000 00 00");
   });
 
-  it("spells a field as the köşk form does and fills the form from the application", () => {
+  it("spells a field code, and fills the form from the application without its field", () => {
     expect(fieldLabel("USUL_AL_FIQH")).toBe("Fıkıh usûlü");
     expect(fieldLabel("SOMETHING_NEW")).toBe("SOMETHING_NEW");
     expect(
       openFormFromApplication({
         name: "Davutpaşa Köşkü",
-        field: "FIQH",
         summary: "Fıkıh dersleri.",
       })
     ).toEqual({
       name: "Davutpaşa Köşkü",
-      field: "Fıkıh",
       description: "Fıkıh dersleri.",
     });
   });

@@ -286,6 +286,22 @@ describe("tedrisat configuration", () => {
       expect(configuration().autoMigrations.enabled).toBe(false);
     });
   });
+
+  describe("public profile switch (MDRS-141)", () => {
+    it("is off unless PUBLIC_PROFILE_ENABLED is exactly 'true'", () => {
+      setCompleteSecurityEnv();
+      delete process.env.PUBLIC_PROFILE_ENABLED;
+      expect(configuration().publicProfile.enabled).toBe(false);
+
+      for (const value of ["1", "TRUE", "yes", ""]) {
+        process.env.PUBLIC_PROFILE_ENABLED = value;
+        expect(configuration().publicProfile.enabled, value).toBe(false);
+      }
+
+      process.env.PUBLIC_PROFILE_ENABLED = "true";
+      expect(configuration().publicProfile.enabled).toBe(true);
+    });
+  });
 });
 
 describe("resolveSwaggerOauthRedirectOrigin", () => {
