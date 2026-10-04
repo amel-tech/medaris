@@ -24,7 +24,10 @@ import {
 describe("the kind of an audit row", () => {
   it.each([
     ["course.content_read", "CONTENT_READ"],
+    ["scope.passive_open", "CONTENT_READ"],
     ["deck.private-read", "PRIVATE_DECK_READ"],
+    ["deck.admin_read", "PRIVATE_DECK_READ"],
+    ["permission.self_grant_refused", "SELF_GRANT_REFUSED"],
     ["kosk_application.contact_read", "PERSONAL_DATA_READ"],
     ["course.roster_read", "PERSONAL_DATA_READ"],
     ["user.lookup", "USER_LOOKUP"],
@@ -64,6 +67,16 @@ describe("the kind of an audit row", () => {
     );
     // `permission.take_over` matches `permission.%` but belongs to TAKEOVER.
     expect(auditTypeOf("permission.take_over")).toBe("TAKEOVER");
+    // …and the SQL filter of GRANT leaves out every action an earlier kind
+    // claims, so the filter and the label agree: a refused self-grant is not
+    // listed as a grant that was made.
+    for (const action of [
+      "permission.take_over",
+      "permission.drop",
+      "permission.self_grant_refused",
+    ]) {
+      expect(auditTypeRule("GRANT").unless, action).toContain(action);
+    }
   });
 
   it("lists every kind once, with OTHER last", () => {

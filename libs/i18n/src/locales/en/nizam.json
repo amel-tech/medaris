@@ -3230,6 +3230,7 @@
       "HIDE": "Hiding and restoring",
       "HOSTING": "Hosting right",
       "TAKEOVER": "Take over or drop",
+      "SELF_GRANT_REFUSED": "Attempt to give oneself a permission or role",
       "APPEAL": "Appeal and its decision",
       "PERMANENT_BAN": "Permanent ban request and decision",
       "PERMANENT_DELETE": "Permanent deletion",

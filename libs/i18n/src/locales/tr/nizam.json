@@ -3230,6 +3230,7 @@
       "HIDE": "Gizleme ve geri alma",
       "HOSTING": "Barındırma hakkı",
       "TAKEOVER": "Devral ya da düşür",
+      "SELF_GRANT_REFUSED": "Kendine izin ya da görev verme girişimi",
       "APPEAL": "İtiraz ve kararı",
       "PERMANENT_BAN": "Kalıcı yasak talebi ve kararı",
       "PERMANENT_DELETE": "Kalıcı silme",
