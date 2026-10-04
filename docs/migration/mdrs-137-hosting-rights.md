@@ -75,21 +75,23 @@ Commands from `apps/tedrisat` through the slot wrapper, from `apps/nizam` direct
 | A Medaris nazımı without it, or with another platform permission, is refused with nothing written | "with no grant ...", "holding only platform.kosk_edit ..." | yes for kosk_edit: with `PLATFORM_KOSK_EDIT` added to the list route's codes it fails (`Tests  1 failed \| 27 passed (28)`); the no-grant case is also in the `@AuthzExempt()` run above |
 | An expired `platform.hosting_grant` is refused | "whose grant has expired is refused like one with no grant" | yes, with a caveat: it fails when `grantHeld()` in `assignment.repository.ts` stops filtering `expires_at` (`1 failed \| 27 passed`); it stays green when only the in-memory `live()` filter in `effective-permissions.ts` is removed, because the SQL filter already drops the row, so it pins the loader, not the second layer |
 | nizam: the Medaris nazımı reaches the page | `apps/nizam/test/kosk-entry.spec.ts` | yes: with `koskEntry` always answering `forbidden` for non-managers, "sends a Medaris nazımı whom the API lets read the rights..." fails (`Tests  1 failed \| 8 passed (9)`) |
+| nizam: the köşk page sends that person there, and reads the rights only when it must | `apps/nizam/test/kosk-page.spec.tsx` (the page rendered with its reads mocked and `redirect`/`forbidden` throwing) | yes, two mutations of `kosks/[id]/page.tsx`: reading the rights for everyone fails 2 tests (`Tests  2 failed \| 4 passed (6)`: this köşk's nazımı and the başnazım); dropping the `hosting` redirect fails the Medaris nazımı one (`Tests  1 failed \| 5 passed (6)`). The old forbidden-for-everyone logic is covered by the second, since the test expects the redirect |
 | nizam: no dead tabs for that person | `hosting.spec.tsx` "leaves out the settings tabs and their links when they would be a 403" | yes: with the view ignoring `settingsTabs`, it fails (`Tests  1 failed \| 20 passed (21)`) |
 
 Runs on the final tree:
 
 - `vitest run test/e2e/hosting.e2e.spec.ts test/e2e/authz-route-inventory.e2e.spec.ts test/e2e/hide-kademe.e2e.spec.ts test/e2e/madrasah-course.e2e.spec.ts`
   in `apps/tedrisat`: `Test Files  4 passed (4)`, `Tests  85 passed (85)`; `hosting.e2e.spec.ts` alone: 28 tests.
-- `vitest run` in `apps/nizam`: `Test Files  39 passed (39)`, `Tests  650 passed (650)`.
+- `vitest run` in `apps/nizam`: `Test Files  40 passed (40)`, `Tests  656 passed (656)`.
 - `tsc -b` in `apps/nizam` and `tsc --noEmit` in `apps/tedrisat`: no output. `biome check` on the touched files:
   clean (two pre-existing `noExplicitAny` warnings in `apps/nizam/middleware.ts`).
 
 ## Not verified
 
-- The redirect in `kosks/[id]/page.tsx` is a server component behind the sign-in and is not rendered by any
-  unit test; only the pure `koskEntry` and the view are. No Playwright spec was added or run (it needs
-  Keycloak and Docker, and an account holding only `platform.hosting_grant`).
+- The page's wiring is unit-tested with its reads mocked (`kosk-page.spec.tsx`), not in a running Next with
+  a real session. No Playwright spec was added or run (it needs Keycloak and Docker, and an account holding
+  only `platform.hosting_grant`), so "a Medaris nazımı can open the screen from the Köşkler list in a
+  browser" is proven up to the mocked reads, not end to end.
 - The Playwright specs of nizam and nazir were not run; real Keycloak was not reachable.
 - The whole tedrisat suite, `typecheck`, `build` and `module-boundaries` through Nx were not run here (the
   integrator's gate); `eslint` ran without the Nx project graph, so the boundary rule was skipped.
