@@ -90,7 +90,7 @@ What the linter does **not** catch (measured, MDRS-13):
 
 ## Commits and pull requests
 
-Conventional commits, English, against the scope enum in `commitlint.config.mjs`. No emoji, no "Generated with" trailers. A commit an AI agent helped write keeps the `Co-Authored-By` trailer its harness provides. Details and the full scope list are in [`CONTRIBUTING.md`](CONTRIBUTING.md).
+Conventional commits, English, against the scope enum in `commitlint.config.mjs`.
 
 Never use `--amend`, `--no-verify`, force push, `git reset --hard`, or `gh pr merge --admin`. Never commit directly to `main`.
 
