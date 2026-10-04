@@ -9,12 +9,14 @@ import {
   SelfGrantGuard,
 } from "@medaris/common";
 import { Injectable } from "@nestjs/common";
-import { ArchiveRestoreLevelError } from "../archive/errors/archive-errors";
+import {
+  ArchiveParentHiddenError,
+  ArchiveRestoreLevelError,
+} from "../archive/errors/archive-errors";
 import {
   actingLevel,
+  COURSE_HIDE_LADDER,
   type HideLevel,
-  hiderLevelOf,
-  mayRestoreAt,
 } from "../archive/hide-level";
 import { UserDirectoryService } from "../assignment/user-directory.service";
 import { BanService } from "../ban/ban.service";
@@ -79,6 +81,10 @@ import {
   placeInWeeks,
   WeeklyPatternInvalid,
 } from "./domain/weekly-pattern";
+import {
+  CourseAlreadyHiddenError,
+  CourseNotHiddenError,
+} from "./errors/course-hide-state.error";
 import { CourseNotFoundError } from "./errors/course-not-found.error";
 import { EnrollmentNotFoundError } from "./errors/enrollment-not-found.error";
 import { EnrollmentStateError } from "./errors/enrollment-state.error";
@@ -193,6 +199,7 @@ export class CourseService {
       !(await this.authz.can(user, { entity: ENTITIES.COURSE, id }, [
         PERMISSIONS.COURSE_HIDE,
         PERMISSIONS.MADRASAH_COURSE_HIDE,
+        PERMISSIONS.PLATFORM_COURSE_HIDE,
       ]))
     ) {
       throw new CourseNotFoundError(id);
@@ -895,15 +902,17 @@ export class CourseService {
   }
 
   // ---- hide / restore / delete (MDRS-124) ----
-  // Authorization is `@Authz` on CourseController: `ARCHIVE` (the köşk
-  // manager) for hide and restore, `DELETE` (SYSTEM_ADMIN only — it is on no
-  // role row) for the real delete. Nothing is re-checked here.
+  // Authorization is `@Authz` on CourseController: `course.hide`,
+  // `madrasah.course_hide` or `platform.course_hide` for hide and restore,
+  // `DELETE` (SYSTEM_ADMIN only — it is on no role row) for the real delete.
+  // Nothing is re-checked here.
 
   /**
-   * The level the caller hides and restores a course at: the köşk's nazımı hides
-   * as the köşk (`course.hide`, theirs by role default), a başmüderris or a
-   * nazır given `madrasah.course_hide` as the medrese, the başnazım as the
-   * platform; whoever merely runs the course acts at the course.
+   * The level the caller hides and restores a course at (`COURSE_HIDE_LADDER`):
+   * platform management holding `platform.course_hide` and the başnazım as the
+   * platform, the köşk's nazımı (`course.hide`) as the köşk, a başmüderris or a
+   * nazır given `madrasah.course_hide` as the medrese; whoever merely runs the
+   * course acts at the course.
    */
   private courseLevel(
     user: AuthenticatedUser,
@@ -913,22 +922,17 @@ export class CourseService {
       this.authz,
       user,
       { entity: ENTITIES.COURSE, id: courseId },
-      [
-        { level: SCOPE_TYPES.KOSK, codes: [PERMISSIONS.COURSE_HIDE] },
-        {
-          level: SCOPE_TYPES.MADRASAH,
-          codes: [PERMISSIONS.MADRASAH_COURSE_HIDE],
-        },
-      ],
+      COURSE_HIDE_LADDER,
       SCOPE_TYPES.COURSE
     );
   }
 
+  /** Hides the course at the caller's level; a hidden one is refused (409), not echoed back. */
   async archive(id: string, user: AuthenticatedUser): Promise<void> {
     const level = await this.courseLevel(user, id);
-    if (!(await this.courseRepo.archive(id, user.sub, level))) {
-      throw new CourseNotFoundError(id);
-    }
+    const outcome = await this.courseRepo.archive(id, user.sub, level);
+    if (outcome === "not-found") throw new CourseNotFoundError(id);
+    if (outcome === "already-hidden") throw new CourseAlreadyHiddenError(id);
   }
 
   /**
@@ -936,24 +940,25 @@ export class CourseService {
    * (MDRS-135, the ban rule): a medrese's başmüderris cannot bring back what the
    * köşk's nazımı hid, and the other way round it can be done. A course hidden
    * before the level was recorded counts as hidden at the lowest level that
-   * could have hidden it. Restoring a shown course changes nothing.
+   * could have hidden it. A course whose köşk or medrese is still hidden comes
+   * back with them (409 ARCHIVE_PARENT_HIDDEN), as on the archive route; a shown
+   * course is refused (409), not echoed back. All of it is decided under the
+   * row lock.
    */
   async restore(id: string, user: AuthenticatedUser): Promise<void> {
-    const state = await this.courseRepo.findHideState(id);
-    if (!state) throw new CourseNotFoundError(id);
-    if (state.archivedAt !== null) {
-      const restorer = await this.courseLevel(user, id);
-      const hiddenAt = hiderLevelOf({
-        type: "course",
-        madrasahId: state.madrasahId,
-        archivedLevel: state.archivedLevel,
-      });
-      if (!mayRestoreAt(restorer, hiddenAt)) {
-        throw new ArchiveRestoreLevelError(hiddenAt, restorer);
-      }
-    }
-    if (!(await this.courseRepo.restore(id))) {
-      throw new CourseNotFoundError(id);
+    const restorer = await this.courseLevel(user, id);
+    const outcome = await this.courseRepo.restore(id, restorer);
+    switch (outcome.status) {
+      case "not-found":
+        throw new CourseNotFoundError(id);
+      case "not-hidden":
+        throw new CourseNotHiddenError(id);
+      case "level":
+        throw new ArchiveRestoreLevelError(outcome.hiddenAt, restorer);
+      case "parent-hidden":
+        throw new ArchiveParentHiddenError("course", id);
+      default:
+        return;
     }
   }
 

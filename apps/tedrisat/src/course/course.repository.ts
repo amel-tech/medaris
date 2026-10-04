@@ -14,6 +14,10 @@ import {
 } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import type { HideLevel } from "../archive/hide-level";
+import {
+  type CourseRestoreOutcome,
+  restoreCourseIn,
+} from "../archive/restore-course";
 import { DatabaseService } from "../database/database.service";
 import {
   holdsIn,
@@ -1245,13 +1249,13 @@ export class CourseRepository implements ICourseRepository {
    * Hides the course (MDRS-124): stamps `archived_at`/`archived_by` and bumps
    * the version, so an editor still holding the old one cannot save over the
    * hide unawares. Hiding a hidden course changes nothing — not the first
-   * stamp, not the version. Null when no such course exists.
+   * stamp, not the version — and says so ("already-hidden").
    */
   async archive(
     id: string,
     userId: string,
     level: HideLevel
-  ): Promise<ICourse | null> {
+  ): Promise<"archived" | "already-hidden" | "not-found"> {
     const now = new Date();
     const [row] = await this.db
       .update(courses)
@@ -1263,37 +1267,20 @@ export class CourseRepository implements ICourseRepository {
         updatedAt: now,
       })
       .where(and(eq(courses.id, id), isNull(courses.archivedAt)))
-      .returning();
-    return row ?? this.findCourseRow(id);
+      .returning({ id: courses.id });
+    if (row) return "archived";
+    return (await this.findCourseRow(id)) ? "already-hidden" : "not-found";
   }
 
-  /** Brings a hidden course back; a no-op on a live one. Null if missing. */
-  async restore(id: string): Promise<ICourse | null> {
-    const [row] = await this.db
-      .update(courses)
-      .set({
-        archivedAt: null,
-        archivedBy: null,
-        archivedLevel: null,
-        version: sql`${courses.version} + 1`,
-        updatedAt: new Date(),
-      })
-      .where(and(eq(courses.id, id), isNotNull(courses.archivedAt)))
-      .returning();
-    return row ?? this.findCourseRow(id);
-  }
-
-  async findHideState(id: string) {
-    const [row] = await this.db
-      .select({
-        archivedAt: courses.archivedAt,
-        archivedLevel: courses.archivedLevel,
-        madrasahId: courses.madrasahId,
-      })
-      .from(courses)
-      .where(eq(courses.id, id))
-      .limit(1);
-    return row ?? null;
+  /**
+   * Brings a hidden course back for a restorer acting at `restorer`, deciding
+   * the kademe and the hidden parent under the row lock (`restoreCourseIn`).
+   */
+  async restore(
+    id: string,
+    restorer: HideLevel
+  ): Promise<CourseRestoreOutcome> {
+    return this.db.transaction((tx) => restoreCourseIn(tx, id, restorer));
   }
 
   private async findCourseRow(id: string): Promise<ICourse | null> {

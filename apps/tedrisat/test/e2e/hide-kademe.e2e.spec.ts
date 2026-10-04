@@ -1,6 +1,7 @@
 import { PERMISSIONS, ROLES } from "@medaris/common";
 import { INestApplication } from "@nestjs/common";
 import { eq } from "drizzle-orm";
+import { Client } from "pg";
 import request from "supertest";
 import { CourseStatus } from "../../src/course/domain/course-status.enum";
 import { LessonType } from "../../src/course/domain/lesson-type.enum";
@@ -46,6 +47,8 @@ const OTHER_HEAD_ID = "c9000000-0000-4000-8000-000000000004";
 const MUDERRIS_ID = "c9000000-0000-4000-8000-000000000005";
 const MEDARIS_ID = "c9000000-0000-4000-8000-000000000006";
 const STRANGER_ID = "c9000000-0000-4000-8000-000000000007";
+const NAZIR_ID = "c9000000-0000-4000-8000-000000000008";
+const PLATFORM_ID = "c9000000-0000-4000-8000-000000000009";
 
 const auth = (sub: string) =>
   bearerFor({
@@ -268,12 +271,15 @@ describe("Hide and restore by kademe (MDRS-135, e2e)", () => {
       );
     });
 
-    it("counts a course hidden before levels were recorded as the lowest level that could have hidden it", async () => {
-      // A medrese's course could be hidden by the medrese: its başmüderris restores it.
+    it("counts a course with no level as the lowest level that could have hidden it", async () => {
+      // 0048 gave every hidden row that names its hider a level from that hider's
+      // role (archived-level-migration.e2e.spec.ts); what is left with none names
+      // nobody. A medrese's course could be hidden by the medrese: its başmüderris
+      // restores it.
       const legacyMedrese = await addCourse("Eski gizleme", {
         madrasahId,
         archivedAt: new Date("2026-09-01T10:00:00Z"),
-        archivedBy: NAZIM_ID,
+        archivedBy: null,
       });
       expect((await course(legacyMedrese)).archivedLevel).toBeNull();
       await restoreCourse(HEAD_ID, legacyMedrese).expect(200);
@@ -281,9 +287,38 @@ describe("Hide and restore by kademe (MDRS-135, e2e)", () => {
       // A köşk's own course only by the köşk: the köşk nazımı restores it.
       const legacyKosk = await addCourse("Eski köşk gizlemesi", {
         archivedAt: new Date("2026-09-01T10:00:00Z"),
-        archivedBy: ADMIN_ID,
+        archivedBy: null,
       });
       await restoreCourse(NAZIM_ID, legacyKosk).expect(200);
+    });
+
+    it("refuses to hide a hidden course or restore a shown one (409), writing nothing and echoing no content", async () => {
+      const shown = await restoreCourse(NAZIM_ID, medreseCourse).expect(409);
+      expect(shown.body.code).toBe("COURSE_NOT_HIDDEN");
+      expect(shown.body.weeks).toBeUndefined();
+
+      await hideCourse(NAZIM_ID, medreseCourse).expect(200);
+      const first = await course(medreseCourse);
+      const again = await hideCourse(ADMIN_ID, medreseCourse).expect(409);
+      expect(again.body.code).toBe("COURSE_ALREADY_HIDDEN");
+      expect(again.body.weeks).toBeUndefined();
+      expect(await course(medreseCourse)).toMatchObject({
+        archivedAt: first.archivedAt,
+        archivedBy: NAZIM_ID,
+        archivedLevel: "kosk",
+        version: first.version,
+      });
+    });
+
+    it("refuses a course whose medrese is still hidden (409 ARCHIVE_PARENT_HIDDEN), as the archive route does", async () => {
+      await post(HEAD_ID, `/madrasahs/${madrasahId}/hide`).expect(200);
+      expect((await course(medreseCourse)).archivedLevel).toBe("madrasah");
+      for (const sub of [HEAD_ID, NAZIM_ID]) {
+        const res = await restoreCourse(sub, medreseCourse).expect(409);
+        expect(res.body.code).toBe("ARCHIVE_PARENT_HIDDEN");
+        await restoreInArchive(sub, "course", medreseCourse).expect(409);
+      }
+      expect((await course(medreseCourse)).archivedAt).not.toBeNull();
     });
 
     it("is refused to a stranger, who writes no level", async () => {
@@ -311,6 +346,174 @@ describe("Hide and restore by kademe (MDRS-135, e2e)", () => {
       await hideCourse(ADMIN_ID, medreseCourse).expect(200);
       await restoreInArchive(NAZIM_ID, "course", medreseCourse).expect(403);
       await restoreInArchive(ADMIN_ID, "course", medreseCourse).expect(200);
+    });
+  });
+
+  describe("platform management's course hide, platform.course_hide (MDRS-143)", () => {
+    const grantPlatformHide = async () => {
+      await db().insert(roleAssignments).values({
+        userId: PLATFORM_ID,
+        role: ASSIGNED_ROLES.MEDARIS_NAZIM,
+        scopeType: SCOPE_TYPES.PLATFORM,
+        scopeId: null,
+        grantedBy: ADMIN_ID,
+      });
+      await db().insert(permissionGrants).values({
+        userId: PLATFORM_ID,
+        scopeType: SCOPE_TYPES.PLATFORM,
+        scopeId: null,
+        permission: PERMISSIONS.PLATFORM_COURSE_HIDE,
+        groupId: null,
+        grantedBy: ADMIN_ID,
+      });
+    };
+    afterEach(async () => {
+      await db()
+        .delete(permissionGrants)
+        .where(eq(permissionGrants.userId, PLATFORM_ID));
+    });
+
+    it("hides at the platform's level: the köşk nazımı is refused and is not offered Geri al; the holder restores", async () => {
+      await hideCourse(PLATFORM_ID, koskCourse).expect(403);
+      await grantPlatformHide();
+      await hideCourse(PLATFORM_ID, koskCourse).expect(200);
+      expect((await course(koskCourse)).archivedLevel).toBe("platform");
+
+      expectLevelRefusal(
+        await restoreCourse(NAZIM_ID, koskCourse),
+        "platform",
+        "kosk"
+      );
+      // MDRS-108: neither of the köşk nazımı's screens offers what would be refused.
+      const roster = await http()
+        .get(`/kosks/${koskId}/course-roster`)
+        .set("Authorization", auth(NAZIM_ID))
+        .expect(200);
+      const row = (
+        roster.body.items as { id: string; canRestore: boolean }[]
+      ).find((r) => r.id === koskCourse);
+      expect(row?.canRestore).toBe(false);
+      const archive = await http()
+        .get(`/kosks/${koskId}/archive`)
+        .set("Authorization", auth(NAZIM_ID))
+        .expect(200);
+      expect(archive.body.items).toEqual([
+        expect.objectContaining({ id: koskCourse, canRestore: false }),
+      ]);
+
+      await restoreCourse(PLATFORM_ID, koskCourse).expect(200);
+      await hideCourse(PLATFORM_ID, koskCourse).expect(200);
+      await restoreInArchive(PLATFORM_ID, "course", koskCourse).expect(200);
+    });
+
+    it("lets the köşk nazımı's screens offer Geri al for what the köşk hid", async () => {
+      await hideCourse(NAZIM_ID, koskCourse).expect(200);
+      const roster = await http()
+        .get(`/kosks/${koskId}/course-roster`)
+        .set("Authorization", auth(NAZIM_ID))
+        .expect(200);
+      const rows = roster.body.items as { id: string; canRestore: boolean }[];
+      expect(rows.find((r) => r.id === koskCourse)?.canRestore).toBe(true);
+      // A shown course has nothing to bring back.
+      expect(rows.find((r) => r.id === medreseCourse)?.canRestore).toBe(false);
+      const archive = await http()
+        .get(`/kosks/${koskId}/archive`)
+        .set("Authorization", auth(NAZIM_ID))
+        .expect(200);
+      expect(archive.body.items).toEqual([
+        expect.objectContaining({ id: koskCourse, canRestore: true }),
+      ]);
+    });
+  });
+
+  describe("a nazır given madrasah.course_hide (MDRS-135 review)", () => {
+    afterEach(async () => {
+      await db()
+        .delete(permissionGrants)
+        .where(eq(permissionGrants.userId, NAZIR_ID));
+    });
+
+    it("restores from the archive at the medrese's level, as they hide", async () => {
+      await assignRole(db(), {
+        userId: NAZIR_ID,
+        role: ASSIGNED_ROLES.MEDRESE_NAZIR,
+        scopeId: madrasahId,
+        grantedBy: HEAD_ID,
+      });
+      await db().insert(permissionGrants).values({
+        userId: NAZIR_ID,
+        scopeType: SCOPE_TYPES.MADRASAH,
+        scopeId: madrasahId,
+        permission: PERMISSIONS.MADRASAH_COURSE_HIDE,
+        groupId: null,
+        grantedBy: HEAD_ID,
+      });
+      await post(
+        NAZIR_ID,
+        `/madrasahs/${madrasahId}/courses/${medreseCourse}/hide`
+      ).expect(204);
+      expect((await course(medreseCourse)).archivedLevel).toBe("madrasah");
+      const listed = await http()
+        .get(`/madrasahs/${madrasahId}/archive`)
+        .set("Authorization", auth(NAZIR_ID))
+        .expect(200);
+      expect(listed.body.items).toEqual([
+        expect.objectContaining({ id: medreseCourse, canRestore: true }),
+      ]);
+      await restoreInArchive(NAZIR_ID, "course", medreseCourse).expect(200);
+      expect((await course(medreseCourse)).archivedAt).toBeNull();
+    });
+  });
+
+  describe("a higher re-hide while a lower restore is under way (MDRS-135 review)", () => {
+    it.each([
+      ["POST /courses/:id/restore", (id: string) => restoreCourse(HEAD_ID, id)],
+      [
+        "POST /archive/course/:id/restore",
+        (id: string) => restoreInArchive(HEAD_ID, "course", id),
+      ],
+    ])("is not undone on %s: the level is read under the row lock", async (_route, send) => {
+      await hideCourse(HEAD_ID, medreseCourse).expect(200);
+      expect((await course(medreseCourse)).archivedLevel).toBe("madrasah");
+      const holder = new Client({
+        host: process.env.DB_HOST,
+        port: Number(process.env.DB_PORT),
+        user: process.env.DB_USERNAME,
+        password: process.env.DB_PASSWORD,
+        database: process.env.DB_NAME,
+      });
+      await holder.connect();
+      try {
+        await holder.query("begin");
+        await holder.query("select id from courses where id = $1 for update", [
+          medreseCourse,
+        ]);
+        // The başmüderris's restore starts and waits for the row.
+        const pending = send(medreseCourse).then((res) => res);
+        const deadline = Date.now() + 10_000;
+        for (;;) {
+          const { rows } = await holder.query(
+            "select count(*)::int as n from pg_stat_activity where datname = current_database() and wait_event_type = 'Lock'"
+          );
+          if (rows[0].n > 0) break;
+          if (Date.now() > deadline)
+            throw new Error("the restore never waited");
+          await new Promise((resolve) => setTimeout(resolve, 20));
+        }
+        // Meanwhile the köşk's nazımı brought it back and hid it again, at the köşk's level.
+        await holder.query(
+          "update courses set archived_at = now(), archived_by = $2, archived_level = 'kosk' where id = $1",
+          [medreseCourse, NAZIM_ID]
+        );
+        await holder.query("commit");
+        expectLevelRefusal(await pending, "kosk", "madrasah");
+      } finally {
+        await holder.end();
+      }
+      expect(await course(medreseCourse)).toMatchObject({
+        archivedBy: NAZIM_ID,
+        archivedLevel: "kosk",
+      });
     });
   });
 
@@ -416,12 +619,12 @@ describe("Hide and restore by kademe (MDRS-135, e2e)", () => {
       expect((await medrese()).archivedAt).not.toBeNull();
     });
 
-    it("counts a medrese hidden before levels were recorded as the medrese's own", async () => {
+    it("counts a medrese with no level (its hider not on record) as the medrese's own", async () => {
       await db()
         .update(madrasahs)
         .set({
           archivedAt: new Date("2026-09-01T10:00:00Z"),
-          archivedBy: ADMIN_ID,
+          archivedBy: null,
         })
         .where(eq(madrasahs.id, madrasahId));
       await restore(HEAD_ID).expect(200);

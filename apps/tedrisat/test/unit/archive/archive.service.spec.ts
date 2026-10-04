@@ -1,4 +1,9 @@
-import type { AuthzService } from "@medaris/common";
+import {
+  type AuthzService,
+  ENTITIES,
+  PERMISSIONS,
+  type PermissionCode,
+} from "@medaris/common";
 import type { ArchiveRepository } from "../../../src/archive/archive.repository";
 import { ArchiveService } from "../../../src/archive/archive.service";
 import type { IArchiveItem } from "../../../src/archive/archive-types";
@@ -10,7 +15,6 @@ import {
 } from "../../../src/archive/errors/archive-errors";
 import type { HideLevel } from "../../../src/archive/hide-level";
 import type { KoskService } from "../../../src/kosk/kosk.service";
-import type { MadrasahService } from "../../../src/madrasah/madrasah.service";
 
 const ADMIN = { sub: "a1", realm_access: { roles: ["SYSTEM_ADMIN"] } };
 const NAZIM = { sub: "a2" };
@@ -18,6 +22,10 @@ const HEAD = { sub: "a3" };
 const MADRASAH = "b0000000-0000-4000-8000-0000000000cc";
 const KOSK = "b0000000-0000-4000-8000-0000000000aa";
 const ID = "b0000000-0000-4000-8000-0000000000bb";
+
+/** What each caller holds on the course, as the engine would answer. */
+const KOSK_NAZIM_CODES: PermissionCode[] = [PERMISSIONS.COURSE_HIDE];
+const HEAD_CODES: PermissionCode[] = [PERMISSIONS.MADRASAH_COURSE_HIDE];
 
 const item = (over: Partial<IArchiveItem> = {}): IArchiveItem => ({
   type: "course",
@@ -40,30 +48,35 @@ const item = (over: Partial<IArchiveItem> = {}): IArchiveItem => ({
   ...over,
 });
 
+/**
+ * `codes` is what the caller holds on any course (the engine's answer);
+ * `manages` whether they are a manager of the köşk (the köşk archive and decks).
+ */
 function serviceWith(
   repo: Partial<Record<keyof ArchiveRepository, unknown>>,
-  manages = true,
-  heads = false
+  codes: readonly PermissionCode[] = KOSK_NAZIM_CODES,
+  manages = codes.includes(PERMISSIONS.COURSE_HIDE)
 ) {
   const koskService = {
     isManager: vi.fn().mockResolvedValue(manages),
   } as unknown as KoskService;
-  const madrasahService = {
-    isNazir: vi.fn().mockResolvedValue(heads),
-  } as unknown as MadrasahService;
+  const effective = vi.fn().mockResolvedValue({
+    codes: new Set(codes),
+    openedPassive: null,
+  });
   const authz = {
     isSystemAdmin: (u: { realm_access?: { roles?: string[] } }) =>
       u.realm_access?.roles?.includes("SYSTEM_ADMIN") ?? false,
+    effective,
   } as unknown as AuthzService;
   return {
     service: new ArchiveService(
       repo as unknown as ArchiveRepository,
       koskService,
-      authz,
-      madrasahService
+      authz
     ),
     koskService,
-    madrasahService,
+    effective,
   };
 }
 
@@ -128,9 +141,32 @@ describe("ArchiveService (MDRS-173)", () => {
       });
     });
 
+    it("says of each item whether its nazımı may bring it back: not what the platform hid (MDRS-108)", async () => {
+      const { service } = serviceWith({
+        koskExists: vi.fn().mockResolvedValue(true),
+        list: vi
+          .fn()
+          .mockResolvedValue([
+            item({ id: "c1", courseId: "c1", archivedLevel: "kosk" }),
+            item({ id: "c2", courseId: "c2", archivedLevel: "platform" }),
+          ]),
+        count: vi.fn().mockResolvedValue(2),
+        archivers: vi.fn().mockResolvedValue(new Map()),
+      });
+      const page = await service.listForKosk(NAZIM, KOSK, {
+        page: 1,
+        limit: 10,
+      });
+      expect(page.items.map((i) => [i.id, i.canRestore])).toEqual([
+        ["c1", true],
+        ["c2", false],
+      ]);
+    });
+
     it("is refused to someone who does not manage the köşk", async () => {
       const { service } = serviceWith(
         { koskExists: vi.fn().mockResolvedValue(true) },
+        [],
         false
       );
       await expect(
@@ -140,11 +176,11 @@ describe("ArchiveService (MDRS-173)", () => {
   });
 
   describe("restore", () => {
-    it("lets a köşk manager restore a course of their köşk", async () => {
+    it("asks the engine on the course and restores at the köşk's level for its nazımı", async () => {
       const restore = vi
         .fn()
         .mockResolvedValue({ status: "restored", title: "Maksûd okumaları" });
-      const { service, koskService } = serviceWith({
+      const { service, effective } = serviceWith({
         findOne: vi.fn().mockResolvedValue(item()),
         restore,
       });
@@ -153,16 +189,62 @@ describe("ArchiveService (MDRS-173)", () => {
         id: ID,
         title: "Maksûd okumaları",
       });
-      expect(koskService.isManager).toHaveBeenCalledWith(KOSK, "a2");
+      expect(effective).toHaveBeenCalledWith(NAZIM, {
+        entity: ENTITIES.COURSE,
+        id: ID,
+      });
+      expect(restore).toHaveBeenCalledWith("course", ID, "kosk");
     });
 
-    it("keeps decks and köşks for the başnazım", async () => {
-      const { service } = serviceWith({
+    it("decides a week by its course", async () => {
+      const restore = vi
+        .fn()
+        .mockResolvedValue({ status: "restored", title: "Hafta 1" });
+      const { service, effective } = serviceWith({
         findOne: vi
           .fn()
-          .mockResolvedValue(item({ type: "deck", koskId: null })),
+          .mockResolvedValue(item({ type: "week", id: "w1", courseId: ID })),
+        restore,
       });
-      await expect(service.restore(NAZIM, "deck", ID)).rejects.toBeInstanceOf(
+      await service.restore(NAZIM, "week", "w1");
+      expect(effective).toHaveBeenCalledWith(NAZIM, {
+        entity: ENTITIES.COURSE,
+        id: ID,
+      });
+      expect(restore).toHaveBeenCalledWith("week", "w1", "kosk");
+    });
+
+    it("restores at the platform's level for platform management holding platform.course_hide", async () => {
+      const restore = vi
+        .fn()
+        .mockResolvedValue({ status: "restored", title: "Maksûd okumaları" });
+      const { service } = serviceWith(
+        { findOne: vi.fn().mockResolvedValue(item()), restore },
+        [PERMISSIONS.PLATFORM_COURSE_HIDE]
+      );
+      await service.restore(NAZIM, "course", ID);
+      expect(restore).toHaveBeenCalledWith("course", ID, "platform");
+    });
+
+    it("keeps köşks for the başnazım and a deck for its köşk's nazımı", async () => {
+      const deck = serviceWith(
+        {
+          findOne: vi
+            .fn()
+            .mockResolvedValue(item({ type: "deck", courseId: null })),
+        },
+        [],
+        false
+      ).service;
+      await expect(deck.restore(NAZIM, "deck", ID)).rejects.toBeInstanceOf(
+        ArchiveForbiddenError
+      );
+      const kosk = serviceWith({
+        findOne: vi
+          .fn()
+          .mockResolvedValue(item({ type: "kosk", courseId: null })),
+      }).service;
+      await expect(kosk.restore(NAZIM, "kosk", ID)).rejects.toBeInstanceOf(
         ArchiveForbiddenError
       );
     });
@@ -283,8 +365,7 @@ describe("ArchiveService (MDRS-173)", () => {
           countByType: vi.fn().mockResolvedValue(new Map()),
           archivers: archivers(),
         },
-        false,
-        true
+        HEAD_CODES
       );
       const page = await service.listForMadrasah(HEAD, MADRASAH, {
         page: 1,
@@ -304,8 +385,7 @@ describe("ArchiveService (MDRS-173)", () => {
           countByType: vi.fn().mockResolvedValue(new Map()),
           archivers: archivers(),
         },
-        false,
-        true
+        HEAD_CODES
       );
       const page = await service.listForMadrasah(HEAD, MADRASAH, {
         page: 1,
@@ -323,7 +403,7 @@ describe("ArchiveService (MDRS-173)", () => {
             countByType: vi.fn().mockResolvedValue(new Map()),
             archivers: archivers(),
           },
-          true
+          KOSK_NAZIM_CODES
         ).service.listForMadrasah(user, MADRASAH, { page: 1, limit: 10 });
       for (const level of ["course", "madrasah", "kosk"] as const) {
         expect((await listing(NAZIM, level)).items[0].canRestore).toBe(true);
@@ -348,26 +428,44 @@ describe("ArchiveService (MDRS-173)", () => {
           findOne: vi.fn().mockResolvedValue(hiddenAt("course")),
           restore,
         },
-        false,
-        true
+        HEAD_CODES
       ).service;
       await expect(allowed.restore(HEAD, "course", ID)).resolves.toMatchObject({
         id: ID,
       });
 
+      expect(restore).toHaveBeenCalledWith("course", ID, "madrasah");
+
+      // The level is compared under the row lock: the repository says so.
       const refused = serviceWith(
         {
           findOne: vi.fn().mockResolvedValue(hiddenAt("kosk")),
-          restore: vi.fn(),
+          restore: vi
+            .fn()
+            .mockResolvedValue({ status: "level", hiddenAt: "kosk" }),
         },
-        false,
-        true
+        HEAD_CODES
       ).service;
       await expect(refused.restore(HEAD, "course", ID)).rejects.toMatchObject({
         constructor: ArchiveRestoreLevelError,
         code: "ARCHIVE_RESTORE_LEVEL",
         context: { hiddenAt: "kosk", yourLevel: "madrasah" },
       });
+    });
+
+    it("lets a nazır given madrasah.course_hide restore at the medrese's level, as they hide", async () => {
+      const restore = vi
+        .fn()
+        .mockResolvedValue({ status: "restored", title: "Maksûd okumaları" });
+      const { service } = serviceWith(
+        { findOne: vi.fn().mockResolvedValue(hiddenAt("madrasah")), restore },
+        [PERMISSIONS.MADRASAH_COURSE_HIDE],
+        false
+      );
+      await expect(service.restore(HEAD, "course", ID)).resolves.toMatchObject({
+        id: ID,
+      });
+      expect(restore).toHaveBeenCalledWith("course", ID, "madrasah");
     });
 
     it("counts a row hidden before the level was recorded as the lowest level that could have hidden it", async () => {
@@ -379,8 +477,7 @@ describe("ArchiveService (MDRS-173)", () => {
             .fn()
             .mockResolvedValue({ status: "restored", title: "Maksûd" }),
         },
-        false,
-        true
+        HEAD_CODES
       ).service;
       await expect(
         legacyMedrese.restore(HEAD, "course", ID)
@@ -388,7 +485,7 @@ describe("ArchiveService (MDRS-173)", () => {
 
       // A köşk's own course: only the köşk could have hidden it; a köşk nazımı restores it.
       const legacyKosk = serviceWith({
-        findOne: vi.fn().mockResolvedValue(item()),
+        findOne: vi.fn().mockResolvedValue(item({ archivedBy: null })),
         restore: vi
           .fn()
           .mockResolvedValue({ status: "restored", title: "Maksûd" }),
@@ -401,7 +498,9 @@ describe("ArchiveService (MDRS-173)", () => {
     it("names the köşk nazımı's level when a platform hide is not theirs to undo", async () => {
       const { service } = serviceWith({
         findOne: vi.fn().mockResolvedValue(item({ archivedLevel: "platform" })),
-        restore: vi.fn(),
+        restore: vi
+          .fn()
+          .mockResolvedValue({ status: "level", hiddenAt: "platform" }),
       });
       await expect(service.restore(NAZIM, "course", ID)).rejects.toMatchObject({
         constructor: ArchiveRestoreLevelError,
@@ -410,17 +509,19 @@ describe("ArchiveService (MDRS-173)", () => {
     });
 
     it("does not let the başmüderris of another medrese, or a stranger, restore", async () => {
-      const { service, madrasahService } = serviceWith(
+      const restore = vi.fn();
+      const { service } = serviceWith(
         {
           findOne: vi.fn().mockResolvedValue(hiddenAt("course")),
+          restore,
         },
-        false,
+        [],
         false
       );
       await expect(service.restore(HEAD, "course", ID)).rejects.toBeInstanceOf(
         ArchiveForbiddenError
       );
-      expect(madrasahService.isNazir).toHaveBeenCalledWith(MADRASAH, "a3");
+      expect(restore).not.toHaveBeenCalled();
     });
   });
 });

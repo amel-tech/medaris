@@ -218,7 +218,7 @@ export class KoskAdminController {
   @ApiOperation({
     summary: "Every course of the köşk for the Dersler table",
     description:
-      "nizam/23 and 20. Hidden courses too, newest first, each with its müderrisler (the imam flagged), talebe, waiting applications and bans, plus the counts the tabs show.",
+      "nizam/23 and 20. Hidden courses too, newest first, each with its müderrisler (the imam flagged), talebe, waiting applications and bans, plus the counts the tabs show. A hidden course says whether the caller may bring it back (`canRestore`, by kademe).",
     operationId: "getKoskCourseRoster",
   })
   @ApiOkResponse({ type: KoskCourseRosterResponse })
@@ -230,9 +230,10 @@ export class KoskAdminController {
     byExistingKosk
   )
   courseRoster(
+    @Req() request: AuthenticatedUserRequest,
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<KoskCourseRosterResponse> {
-    return this.admin.courseRoster(id);
+    return this.admin.courseRoster(request.user, id);
   }
 
   @ApiOperation({

@@ -313,16 +313,21 @@ export class CourseController {
   @ApiOperation({
     summary: "Hide a course (Gizle)",
     description:
-      "The köşk manager's way to take a course down: nothing is deleted, every list leaves it out, and it answers 404 to everyone but the köşk manager and SYSTEM_ADMIN until it is restored (MDRS-124). The level the caller acts at is recorded with the hide (köşk, medrese, or platform for SYSTEM_ADMIN) and decides who may restore it (MDRS-135).",
+      "Nothing is deleted, every list leaves the course out, and it answers 404 to everyone but those who may hide it until it is restored (MDRS-124). Who hides it (MDRS-143): the köşk's nazımı (`course.hide`), the başmüderris or a nazır given `madrasah.course_hide` for a medrese course, and platform management (`platform.course_hide`, the başnazım by bypass). The level the caller acts at is recorded with the hide (köşk, medrese or platform) and decides who may restore it (MDRS-135). A course hidden already answers 409 (COURSE_ALREADY_HIDDEN) and nothing is written.",
     operationId: "archiveCourse",
   })
   @ApiOkResponse({ type: CourseDetailResponse })
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()
+  @ApiConflictResponse({ description: "COURSE_ALREADY_HIDDEN" })
   @Post("courses/:id/archive")
   @HttpCode(HttpStatus.OK)
   @Authz(
-    [PERMISSIONS.COURSE_HIDE, PERMISSIONS.MADRASAH_COURSE_HIDE],
+    [
+      PERMISSIONS.COURSE_HIDE,
+      PERMISSIONS.MADRASAH_COURSE_HIDE,
+      PERMISSIONS.PLATFORM_COURSE_HIDE,
+    ],
     byExistingCourse
   )
   async archive(
@@ -336,16 +341,23 @@ export class CourseController {
   @ApiOperation({
     summary: "Restore a hidden course (Geri al)",
     description:
-      "By kademe (MDRS-135): the level that hid the course, or any level above it (course < medrese < köşk < platform). A lower level answers 403 (ARCHIVE_RESTORE_LEVEL), naming the level that hid it and the caller's. A course hidden before the level was recorded counts as the lowest level that could have hidden it.",
+      "By kademe (MDRS-135): the level that hid the course, or any level above it (course < medrese < köşk < platform). A lower level answers 403 (ARCHIVE_RESTORE_LEVEL), naming the level that hid it and the caller's. A course hidden before the level was recorded counts as the lowest level that could have hidden it. As on the archive route, a course whose köşk or medrese is still hidden answers 409 (ARCHIVE_PARENT_HIDDEN); a course that is not hidden answers 409 (COURSE_NOT_HIDDEN) and nothing is written.",
     operationId: "restoreCourse",
   })
   @ApiOkResponse({ type: CourseDetailResponse })
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()
+  @ApiConflictResponse({
+    description: "ARCHIVE_PARENT_HIDDEN or COURSE_NOT_HIDDEN",
+  })
   @Post("courses/:id/restore")
   @HttpCode(HttpStatus.OK)
   @Authz(
-    [PERMISSIONS.COURSE_HIDE, PERMISSIONS.MADRASAH_COURSE_HIDE],
+    [
+      PERMISSIONS.COURSE_HIDE,
+      PERMISSIONS.MADRASAH_COURSE_HIDE,
+      PERMISSIONS.PLATFORM_COURSE_HIDE,
+    ],
     byExistingCourse
   )
   async restore(

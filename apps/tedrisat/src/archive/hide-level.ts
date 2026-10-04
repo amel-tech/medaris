@@ -1,6 +1,7 @@
 import {
   type AuthenticatedUser,
   type AuthzService,
+  PERMISSIONS,
   type PermissionCode,
   type ResourceRef,
 } from "@medaris/common";
@@ -72,6 +73,21 @@ export interface IHideStep {
   level: HideLevel;
   codes: readonly PermissionCode[];
 }
+
+/**
+ * Who hides and restores a course, and the weeks and sessions in it, at which
+ * level (MDRS-143), asked of the engine on the course: platform management
+ * holding `platform.course_hide` as the platform, the köşk's nazımı
+ * (`course.hide`) as the köşk, the başmüderris or a nazır given
+ * `madrasah.course_hide` as the medrese. The başnazım is the platform by bypass.
+ * Every route that hides or restores a course reads this one ladder, so whoever
+ * could hide at a level can restore at it.
+ */
+export const COURSE_HIDE_LADDER: readonly IHideStep[] = [
+  { level: SCOPE_TYPES.PLATFORM, codes: [PERMISSIONS.PLATFORM_COURSE_HIDE] },
+  { level: SCOPE_TYPES.KOSK, codes: [PERMISSIONS.COURSE_HIDE] },
+  { level: SCOPE_TYPES.MADRASAH, codes: [PERMISSIONS.MADRASAH_COURSE_HIDE] },
+];
 
 /**
  * The level a caller acts at on a resource: the Medaris başnazım (SYSTEM_ADMIN)

@@ -77,6 +77,12 @@ export const PERMISSIONS = {
   PLATFORM_KOSK_CREATE: "platform.kosk_create",
   PLATFORM_KOSK_NAZIM_MANAGE: "platform.kosk_nazim_manage",
   PLATFORM_KOSK_EDIT: "platform.kosk_edit",
+  /**
+   * Hide and restore any course, at the platform's level (MDRS-143): how platform
+   * management, a Medaris nazımı given it, hides a course. The başnazım holds it by
+   * bypass.
+   */
+  PLATFORM_COURSE_HIDE: "platform.course_hide",
   PLATFORM_HOSTING_GRANT: "platform.hosting_grant",
   PLATFORM_MADRASAH_CREATE: "platform.madrasah_create",
   PLATFORM_HEAD_MUDERRIS_MANAGE: "platform.head_muderris_manage",
@@ -231,6 +237,7 @@ export const PERMISSION_META: Record<PermissionCode, IPermissionMeta> = {
   [P.PLATFORM_KOSK_CREATE]: listed([PLATFORM]),
   [P.PLATFORM_KOSK_NAZIM_MANAGE]: listed([PLATFORM]),
   [P.PLATFORM_KOSK_EDIT]: listed([PLATFORM]),
+  [P.PLATFORM_COURSE_HIDE]: listed([PLATFORM]),
   [P.PLATFORM_HOSTING_GRANT]: listed([PLATFORM]),
   [P.PLATFORM_MADRASAH_CREATE]: listed([PLATFORM]),
   [P.PLATFORM_HEAD_MUDERRIS_MANAGE]: listed([PLATFORM]),

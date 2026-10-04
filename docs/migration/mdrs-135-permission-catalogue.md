@@ -239,7 +239,7 @@ The mapping, where a route was not a one-to-one rename:
 | hosting rights | `EDIT` | `kosk.hosting` or `platform.hosting_grant` | |
 | `POST /kosks/:koskId/courses` | `MANAGE_COURSES` | `course.open_standalone` | "Medrese dışı ders aç" |
 | `PUT /courses/:id/muderris` and the müderris list inside a whole-course save | `ASSIGN_MUDERRIS` | `course.open_standalone` or `madrasah.muderris_manage` | one permission opens a course and chooses its müderrisler; in a medrese course it is the medrese's (owner, 1 October) |
-| hide / restore a course | `ARCHIVE` | `course.hide` or `madrasah.course_hide` | who may restore is decided by kademe, see "Hide and restore by kademe" |
+| hide / restore a course | `ARCHIVE` | `course.hide`, `madrasah.course_hide` or `platform.course_hide` | who may restore is decided by kademe, see "Hide and restore by kademe" |
 | `PATCH|PUT /courses/:id`, lesson routes | `EDIT` | `course.edit`, `session.manage` | the lesson routes are session work |
 | enrollment decide / complete / remove | `MANAGE_ENROLLMENTS` | `enrollment.decide`, `enrollment.complete`, `enrollment.remove` | the catalogue already told them apart |
 | roster, stats, badge counts | `MANAGE_ENROLLMENTS` | `course.staff_read` | "ders kadrosu talebenin adını ve e-postasını varsayılan görür; bu ayrı bir izin değildir"; each read is audited (`course.roster_read`), see "Audit" |
@@ -319,11 +319,18 @@ codes with a sentence: 56 of 75
   enrolment and recordings still reads the settings itself (it did, and still does the same thing).
   `policy_closed_course_required` and `policy_no_public_recordings` have no server effect elsewhere
   yet (MDRS-176 and the recording model).
-- **The nazır screens still word a medrese's restore as Medaris-only** (`Archive.hide.text`,
-  `Archive.hide.confirmBody`, `Archive.errors.parentHidden` say so in tr, en and ar), and the medrese
-  page has no "Geri al" button. The API now lets the başmüderris who hid the medrese bring it back (see
-  "Hide and restore by kademe"); the copy and the button are a follow-up. `ARCHIVE_RESTORE_LEVEL` is
-  worded with the existing "a higher level may have hidden it" message.
+- **The nazır archive has no "Geri al" for the medrese itself.** The API lets the başmüderris who hid
+  the medrese bring it back (see "Hide and restore by kademe"), and `Archive.hide.text`,
+  `Archive.hide.confirmBody` and `Archive.errors.parentHidden` now say so in tr, en and ar; the page
+  does not read whether the medrese is hidden, so the button is a follow-up. `ARCHIVE_RESTORE_LEVEL`
+  is worded with the existing "a higher level may have hidden it" message.
+- **No screen draws `platform.course_hide`'s hide yet.** The permission is in the catalogue and the
+  dialogs that give platform permissions, and the API honours it on `POST /courses/:id/archive` and
+  `/restore`; nizam has no course list a Medaris nazımı without `platform.kosk_edit` can open, so the
+  menu is not widened for it (MDRS-108).
+- **A müderris "only with the permission" (MDRS-143)** has no catalogue code: `course.hide` is köşk-
+  scoped and not grantable, and a course-scoped hide code would land in every müderris's role
+  defaults. Not done.
 - **The passive-scope warning and confirmation** (MDRS-227): see "Passive scopes".
 - **Bans** are not started (MDRS-205, with its second and third questions parked as d-1004-02 and
   d-1004-03): see "Open questions".
@@ -446,7 +453,9 @@ Outside the owner's decisions of 1 and 3 October there are four, each forced by 
    hid; the köşk nazımı can no longer bring back what the platform hid (the başnazım hid it, or a
    Medaris nazımı with the platform permission); and the başmüderris can no longer bring back a
    medrese course the köşk's nazımı hid by `POST /courses/:id/restore`, which had no kademe check at
-   all before.
+   all before. The köşk nazımı's own archive (nizam/28) and course table (nizam/23) no longer offer
+   "Geri al" for what the platform hid. `POST /courses/:id/archive` on a hidden course and `/restore`
+   on a shown one answer 409 instead of 200 with the course.
 
 ## Hide and restore by kademe
 
@@ -459,34 +468,49 @@ ban rule, on the ban ladder `BAN_TIERS`, in one table (`HIDE_RANK` in `archive/h
 | course (1) | a müderris / ders nazırı, for weeks and sessions | `DELETE /lessons/:id`, the week and session hides of a course save |
 | medrese (2) | the başmüderris, or a nazır holding `madrasah.course_hide` | `POST /madrasahs/:id/hide` (and its courses), `POST /madrasahs/:id/courses/:courseId/hide`, a medrese's course through `POST /courses/:id/archive` |
 | köşk (3) | the köşk's nazımı | a course, a deck, the köşk itself, the courses a hosting right's withdrawal hides |
-| platform (4) | the başnazım, and a Medaris nazımı holding the platform permission (`platform.kosk_edit`, `platform.madrasah_edit`, `platform.hosting_grant`) | the same, over any köşk or medrese |
+| platform (4) | the başnazım, and a Medaris nazımı holding the platform permission (`platform.course_hide`, `platform.kosk_edit`, `platform.madrasah_edit`, `platform.hosting_grant`) | the same, over any köşk or medrese |
 
 - **The level is recorded** in `archived_level` (`scope_type`, nullable) on courses, course weeks,
   lessons, decks, köşks and medreses, written by every hide and cleared by every restore. **Migration
-  `0048_mdrs_135_archived_level`** (six `ADD COLUMN`s; rollback in `rollbacks/0048_…down.sql`; the
-  journal had gaps, so drizzle-kit's `0046` was renamed by hand and `0046_snapshot.json` restored).
-  A hide records the level its hider acts at; someone holding more than one rung acts at the highest.
+  `0048_mdrs_135_archived_level`** (six `ADD COLUMN`s, then a data-only backfill; rollback in
+  `rollbacks/0048_…down.sql`; the journal had gaps, so drizzle-kit's `0046` was renamed by hand and
+  `0046_snapshot.json` restored). A hide records the level its hider acts at; someone holding more
+  than one rung acts at the highest.
 - **A restore below the level that hid is refused** with 403 `ARCHIVE_RESTORE_LEVEL`, "This was hidden at
   the kosk level; only that level or above brings it back (you act at the madrasah level)", with both
-  levels in the context. It is checked in the service (course, archive route) or inside the locked
-  transaction (köşk, medrese), so a race cannot get round it.
-- **A row with no level** (hidden before this) counts as the lowest level that could have hidden it: a
-  medrese's course or a medrese is the medrese's, a köşk's own course, a deck and a köşk are the
-  köşk's, a week, a session or a recording is the course's. This is a loosening for old rows: one the
-  başnazım hid before the level was recorded can be restored by the köşk's nazımı or the başmüderris.
-- **Routes covered:** `POST /courses/:id/restore` (it had no kademe check; it now has the same as the
-  archive route), `POST /archive/:type/:id/restore`, `POST /kosks/:id/restore` (was the başnazım's
-  alone; now the köşk's nazımı and a Medaris nazımı holding `platform.kosk_edit` by kademe),
-  `POST /madrasahs/:id/restore` (was `platform.madrasah_edit` alone; now `madrasah.hide` too).
-- **Medaris nazımı:** there is no platform code for hiding a course (`course.hide` is the köşk's and not
-  grantable), so for a course the platform level is the başnazım's. For a köşk, a medrese and a hosting
-  right a Medaris nazımı holding the platform permission acts at the platform level.
+  levels in the context. On every route the level is read under the item's row lock, in the same
+  transaction as the write (`restoreCourseIn` for a course on both course routes, the week, session,
+  deck and köşk restores of `ArchiveRepository`, the köşk and medrese repositories), so a re-hide at
+  a higher level that lands meanwhile is not undone (`hide-kademe.e2e.spec.ts` holds the row lock to
+  prove it on both course routes).
+- **Rows hidden before 0048 keep the kademe main enforced:** 0048 fills `archived_level` from
+  `archived_by` and the role that person holds or held (revoked rows count) where the item sits, as
+  main's `hiderTier` read it: a köşk nazımı is the köşk, a başmüderris or a medrese nazırı the medrese,
+  a müderris or a ders nazırı the course, a hider with no role there (the başnazım, a Medaris nazımı)
+  the platform. Only a row that names no hider keeps a null level, which counts as the lowest level
+  that could have hidden it (a medrese's course or a medrese is the medrese's, a köşk's own course, a
+  deck and a köşk are the köşk's, a week, a session or a recording is the course's).
+- **Routes covered:** `POST /courses/:id/restore` (it had no kademe check; it now decides exactly as the
+  archive route, the hidden köşk or medrese included: 409 `ARCHIVE_PARENT_HIDDEN`),
+  `POST /archive/:type/:id/restore`, `POST /kosks/:id/restore` (was the başnazım's alone; now the köşk's
+  nazımı and a Medaris nazımı holding `platform.kosk_edit` by kademe), `POST /madrasahs/:id/restore`
+  (was `platform.madrasah_edit` alone; now `madrasah.hide` too). Restoring a shown course answers 409
+  `COURSE_NOT_HIDDEN` and hiding a hidden one 409 `COURSE_ALREADY_HIDDEN`; neither writes nor echoes
+  the course back.
+- **Who restores a course from the archive** is decided by the engine on the course, on the ladder every
+  course hide records (`COURSE_HIDE_LADDER`): whoever could hide at a level brings back at it, a nazır
+  given `madrasah.course_hide` included. The köşk archive, the medrese archive and the köşk's course
+  roster say so per item (`canRestore`), and nizam draws no "Geri al" for what the platform hid.
+- **Medaris nazımı:** `platform.course_hide` (grantable, platform-scoped) hides and restores any course at
+  the platform level; the başnazım holds it by bypass. For a köşk, a medrese and a hosting right a
+  Medaris nazımı holding the platform permission acts at the platform level.
 - **Tests:** `hide-kademe.e2e.spec.ts` (the köşk nazımı hides a medrese course: the başmüderris is
   refused with both levels named, the köşk nazımı and the başnazım can; the başnazım hides: neither can;
   the same on the archive route; medrese-level hide of a course; a lesson by a müderris and by a nazım;
   a medrese hidden by the başmüderris, by the başnazım and by a Medaris nazımı; the same for a köşk, a
   deck and a hosting right's courses; rows with no level), `hide-level.spec.ts`, the archive service
-  unit spec, and the migration spec `archived-level-migration.e2e.spec.ts` (up, down, up again).
+  unit spec, and the migration spec `archived-level-migration.e2e.spec.ts` (the backfill by hider and
+  role, up, down, up again).
   Each fails with the source change put back (checked: restore always allowed, level never recorded).
 
 **Read this against the coordinator's sentence "başmüderris hides → köşk nazımı cannot restore".** On
