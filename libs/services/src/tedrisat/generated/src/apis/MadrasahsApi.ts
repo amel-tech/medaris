@@ -41,6 +41,8 @@ import type {
   OffsiteCourseRequestResponse,
   OpenMadrasahCourseDto,
   PaginatedMadrasahResponse,
+  PassivateScopeDto,
+  PassivationImpactResponse,
   SetHeadMuderrisDto,
   SetMadrasahCourseMuderrisDto,
   SetMadrasahNazirPermissionsDto,
@@ -101,6 +103,10 @@ import {
     OpenMadrasahCourseDtoToJSON,
     PaginatedMadrasahResponseFromJSON,
     PaginatedMadrasahResponseToJSON,
+    PassivateScopeDtoFromJSON,
+    PassivateScopeDtoToJSON,
+    PassivationImpactResponseFromJSON,
+    PassivationImpactResponseToJSON,
     SetHeadMuderrisDtoFromJSON,
     SetHeadMuderrisDtoToJSON,
     SetMadrasahCourseMuderrisDtoFromJSON,
@@ -127,6 +133,11 @@ export interface CreateMadrasahRequest {
 export interface CreateMadrasahPermissionGroupRequest {
     id: string;
     createMadrasahPermissionGroupDto: CreateMadrasahPermissionGroupDto;
+}
+
+export interface DeactivateMadrasahRequest {
+    id: string;
+    passivateScopeDto: PassivateScopeDto;
 }
 
 export interface DeleteMadrasahRequest {
@@ -166,6 +177,10 @@ export interface GetMadrasahCoursesRequest {
 }
 
 export interface GetMadrasahDashboardRequest {
+    id: string;
+}
+
+export interface GetMadrasahDeactivationPreviewRequest {
     id: string;
 }
 
@@ -443,6 +458,60 @@ export class MadrasahsApi extends runtime.BaseAPI {
      */
     async createMadrasahPermissionGroup(requestParameters: CreateMadrasahPermissionGroupRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MadrasahPermissionGroupResponse> {
         const response = await this.createMadrasahPermissionGroupRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * nizam/07, MDRS-227. The medrese becomes passive and its başmüderris is taken off the post; every course below it closes, in every köşk. Nothing is hidden or deleted, the nazırlar and every grant stay, and appointing a başmüderris opens it again. The body carries the `confirmation` of the preview the person read: the impact is measured again and a token that is not for these numbers and this caller is 409 (PASSIVATION_IMPACT_CHANGED, with the fresh preview in `context.impact`) and writes nothing. 409 (MADRASAH_ALREADY_PASSIVE) when it is passive already. Written to the audit log with the başmüderris removed and the impact confirmed.
+     * Take a medrese out of service (Medaris yönetimi)
+     */
+    async deactivateMadrasahRaw(requestParameters: DeactivateMadrasahRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MadrasahDirectoryItemResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling deactivateMadrasah().'
+            );
+        }
+
+        if (requestParameters['passivateScopeDto'] == null) {
+            throw new runtime.RequiredError(
+                'passivateScopeDto',
+                'Required parameter "passivateScopeDto" was null or undefined when calling deactivateMadrasah().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/madrasahs/{id}/deactivate`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: PassivateScopeDtoToJSON(requestParameters['passivateScopeDto']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => MadrasahDirectoryItemResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * nizam/07, MDRS-227. The medrese becomes passive and its başmüderris is taken off the post; every course below it closes, in every köşk. Nothing is hidden or deleted, the nazırlar and every grant stay, and appointing a başmüderris opens it again. The body carries the `confirmation` of the preview the person read: the impact is measured again and a token that is not for these numbers and this caller is 409 (PASSIVATION_IMPACT_CHANGED, with the fresh preview in `context.impact`) and writes nothing. 409 (MADRASAH_ALREADY_PASSIVE) when it is passive already. Written to the audit log with the başmüderris removed and the impact confirmed.
+     * Take a medrese out of service (Medaris yönetimi)
+     */
+    async deactivateMadrasah(requestParameters: DeactivateMadrasahRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MadrasahDirectoryItemResponse> {
+        const response = await this.deactivateMadrasahRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -832,6 +901,50 @@ export class MadrasahsApi extends runtime.BaseAPI {
      */
     async getMadrasahDashboard(requestParameters: GetMadrasahDashboardRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MadrasahDashboardResponse> {
         const response = await this.getMadrasahDashboardRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * nizam/07, MDRS-227. The courses below the medrese, in every köşk, how many have a müderris in the post now, the talebe enrolled, the live sessions in the next days and the başmüderris who leaves, with the `confirmation` to post to `deactivate`. 200 with `alreadyPassive` when it is passive already. The Medaris başnazımı and a Medaris nazımı holding `platform.madrasah_edit`; the başmüderris does not passivate their own medrese.
+     * What taking a medrese out of service takes along
+     */
+    async getMadrasahDeactivationPreviewRaw(requestParameters: GetMadrasahDeactivationPreviewRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PassivationImpactResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling getMadrasahDeactivationPreview().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/madrasahs/{id}/deactivation-preview`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => PassivationImpactResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * nizam/07, MDRS-227. The courses below the medrese, in every köşk, how many have a müderris in the post now, the talebe enrolled, the live sessions in the next days and the başmüderris who leaves, with the `confirmation` to post to `deactivate`. 200 with `alreadyPassive` when it is passive already. The Medaris başnazımı and a Medaris nazımı holding `platform.madrasah_edit`; the başmüderris does not passivate their own medrese.
+     * What taking a medrese out of service takes along
+     */
+    async getMadrasahDeactivationPreview(requestParameters: GetMadrasahDeactivationPreviewRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PassivationImpactResponse> {
+        const response = await this.getMadrasahDeactivationPreviewRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

@@ -275,10 +275,10 @@
         ]
       }
     },
-    "/kosks/{id}/deactivate": {
-      "post": {
-        "description": "nizam/20. The köşk becomes passive and its nazımları are taken off the post; nothing is hidden or deleted, and adding a nazım makes it active again. 409 (KOSK_ALREADY_PASSIVE) when it is passive already. Written to the audit log, naming the nazımları removed.",
-        "operationId": "deactivateKosk",
+    "/kosks/{id}/deactivation-preview": {
+      "get": {
+        "description": "nizam/20, MDRS-227. The courses below the köşk (the courses of medreses it hosts too), how many have a müderris in the post now, the talebe enrolled, the live sessions in the next days and the nazımları who leave, with the `confirmation` to post to `deactivate`. 200 with `alreadyPassive` when it is passive already. The Medaris başnazımı and a Medaris nazımı holding `platform.kosk_edit`.",
+        "operationId": "getKoskDeactivationPreview",
         "parameters": [
           {
             "name": "id",
@@ -295,7 +295,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/KoskDirectoryItemResponse"
+                  "$ref": "#/components/schemas/PassivationImpactResponse"
                 }
               }
             }
@@ -305,9 +305,6 @@
           },
           "404": {
             "description": ""
-          },
-          "409": {
-            "description": "KOSK_ALREADY_PASSIVE"
           }
         },
         "security": [
@@ -315,7 +312,66 @@
             "bearer": []
           }
         ],
-        "summary": "Take a köşk out of service (Köşkü pasife al, SYSTEM_ADMIN only)",
+        "summary": "What taking a köşk out of service takes along",
+        "tags": [
+          "kosks"
+        ]
+      }
+    },
+    "/kosks/{id}/deactivate": {
+      "post": {
+        "description": "nizam/20. The köşk becomes passive and its nazımları are taken off the post; every course below it closes. Nothing is hidden or deleted, and adding a nazım makes it active again. The body carries the `confirmation` of the preview the person read: the impact is measured again and a token that is not for these numbers and this caller is 409 (PASSIVATION_IMPACT_CHANGED, with the fresh preview in `context.impact`) and writes nothing. 409 (KOSK_ALREADY_PASSIVE) when it is passive already. Written to the audit log with the nazımları removed and the impact confirmed. The Medaris başnazımı and a Medaris nazımı holding `platform.kosk_edit`.",
+        "operationId": "deactivateKosk",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PassivateScopeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KoskDirectoryItemResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "No confirmation"
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": "KOSK_ALREADY_PASSIVE or PASSIVATION_IMPACT_CHANGED"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Take a köşk out of service (Köşkü pasife al, Medaris yönetimi)",
         "tags": [
           "kosks"
         ]
@@ -2213,6 +2269,108 @@
           }
         ],
         "summary": "Hide a medrese (its başmüderris)",
+        "tags": [
+          "madrasahs"
+        ]
+      }
+    },
+    "/madrasahs/{id}/deactivation-preview": {
+      "get": {
+        "description": "nizam/07, MDRS-227. The courses below the medrese, in every köşk, how many have a müderris in the post now, the talebe enrolled, the live sessions in the next days and the başmüderris who leaves, with the `confirmation` to post to `deactivate`. 200 with `alreadyPassive` when it is passive already. The Medaris başnazımı and a Medaris nazımı holding `platform.madrasah_edit`; the başmüderris does not passivate their own medrese.",
+        "operationId": "getMadrasahDeactivationPreview",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PassivationImpactResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "What taking a medrese out of service takes along",
+        "tags": [
+          "madrasahs"
+        ]
+      }
+    },
+    "/madrasahs/{id}/deactivate": {
+      "post": {
+        "description": "nizam/07, MDRS-227. The medrese becomes passive and its başmüderris is taken off the post; every course below it closes, in every köşk. Nothing is hidden or deleted, the nazırlar and every grant stay, and appointing a başmüderris opens it again. The body carries the `confirmation` of the preview the person read: the impact is measured again and a token that is not for these numbers and this caller is 409 (PASSIVATION_IMPACT_CHANGED, with the fresh preview in `context.impact`) and writes nothing. 409 (MADRASAH_ALREADY_PASSIVE) when it is passive already. Written to the audit log with the başmüderris removed and the impact confirmed.",
+        "operationId": "deactivateMadrasah",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PassivateScopeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MadrasahDirectoryItemResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "No confirmation"
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": "MADRASAH_ALREADY_PASSIVE or PASSIVATION_IMPACT_CHANGED"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Take a medrese out of service (Medaris yönetimi)",
         "tags": [
           "madrasahs"
         ]
@@ -11226,6 +11384,241 @@
         "required": [
           "counts",
           "items"
+        ]
+      },
+      "PassivationScopeType": {
+        "type": "string",
+        "enum": [
+          "KOSK",
+          "MADRASAH"
+        ]
+      },
+      "PassivationScopeResponse": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PassivationScopeType"
+              }
+            ]
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "id",
+          "name"
+        ]
+      },
+      "PassivationCourseResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "koskName": {
+            "type": "string",
+            "description": "The köşk the course is in; a medrese's courses may be in several"
+          },
+          "status": {
+            "type": "string",
+            "example": "PUBLISHED",
+            "description": "PUBLISHED or DRAFT; a hidden course is not counted"
+          },
+          "liveMuderris": {
+            "type": "boolean",
+            "description": "Someone holds the müderris role in it now, so it is open today and closes with the scope. A course without one is closed already."
+          },
+          "enrolled": {
+            "type": "number",
+            "description": "Talebe with the course open"
+          },
+          "completed": {
+            "type": "number",
+            "description": "Talebe who finished it; they lose the content too"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "koskName",
+          "status",
+          "liveMuderris",
+          "enrolled",
+          "completed"
+        ]
+      },
+      "PassivationCoursesResponse": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "number"
+          },
+          "published": {
+            "type": "number"
+          },
+          "draft": {
+            "type": "number"
+          },
+          "withLiveMuderris": {
+            "type": "number",
+            "description": "How many of them have a müderris in the post now"
+          },
+          "items": {
+            "description": "The first 50, the most enrolled first",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PassivationCourseResponse"
+            }
+          },
+          "truncated": {
+            "type": "boolean",
+            "description": "True when `items` is shorter than `total`; the confirmation covers every course"
+          }
+        },
+        "required": [
+          "total",
+          "published",
+          "draft",
+          "withLiveMuderris",
+          "items",
+          "truncated"
+        ]
+      },
+      "PassivationStudentsResponse": {
+        "type": "object",
+        "properties": {
+          "enrolled": {
+            "type": "number",
+            "description": "Distinct talebe enrolled in those courses; one in two courses counts once. An upper bound of who loses access today: courses without a müderris are closed already."
+          },
+          "completed": {
+            "type": "number",
+            "description": "Distinct talebe who finished one of them"
+          }
+        },
+        "required": [
+          "enrolled",
+          "completed"
+        ]
+      },
+      "PassivationSessionResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "courseTitle": {
+            "type": "string"
+          },
+          "scheduledAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "courseTitle",
+          "scheduledAt"
+        ]
+      },
+      "PassivationSessionsResponse": {
+        "type": "object",
+        "properties": {
+          "windowDays": {
+            "type": "number",
+            "example": 7,
+            "description": "How many days ahead are counted; the screen never hard-codes it"
+          },
+          "count": {
+            "type": "number",
+            "description": "Live sessions of published courses that are not cancelled and start inside the window"
+          },
+          "next": {
+            "description": "The first five",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PassivationSessionResponse"
+            }
+          }
+        },
+        "required": [
+          "windowDays",
+          "count",
+          "next"
+        ]
+      },
+      "PassivationImpactResponse": {
+        "type": "object",
+        "properties": {
+          "scope": {
+            "$ref": "#/components/schemas/PassivationScopeResponse"
+          },
+          "alreadyPassive": {
+            "type": "boolean",
+            "description": "Already passive: the call answers 409"
+          },
+          "closesContent": {
+            "type": "boolean",
+            "description": "False when the scope never had a manager: the engine treats it as new, so passivating it closes no course."
+          },
+          "staffLeaving": {
+            "type": "number",
+            "description": "How many people hold the manager post now and are taken off it (köşk nazımları, or the başmüderris)"
+          },
+          "courses": {
+            "$ref": "#/components/schemas/PassivationCoursesResponse"
+          },
+          "students": {
+            "$ref": "#/components/schemas/PassivationStudentsResponse"
+          },
+          "sessions": {
+            "$ref": "#/components/schemas/PassivationSessionsResponse"
+          },
+          "confirmation": {
+            "type": "string",
+            "description": "Post it back as `confirmation` to passivate. It is tied to exactly these numbers and to the caller: anything that changed since, or another caller, gets 409 PASSIVATION_IMPACT_CHANGED."
+          }
+        },
+        "required": [
+          "scope",
+          "alreadyPassive",
+          "closesContent",
+          "staffLeaving",
+          "courses",
+          "students",
+          "sessions",
+          "confirmation"
+        ]
+      },
+      "PassivateScopeDto": {
+        "type": "object",
+        "properties": {
+          "confirmation": {
+            "type": "string",
+            "description": "The `confirmation` of the preview the person read",
+            "minLength": 64,
+            "maxLength": 64
+          }
+        },
+        "required": [
+          "confirmation"
         ]
       },
       "KoskNazimGranterRole": {

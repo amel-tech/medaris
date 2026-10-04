@@ -51,6 +51,10 @@ import { CourseStatus } from "../course/domain/course-status.enum";
 import { PublicRequest } from "../course/interfaces/authorized-request.interface";
 import { SCOPE_TYPES } from "../database/schema/scope-type.schema";
 import { AuthorizedRequest } from "../kosk/interfaces/authorized-request.interface";
+import {
+  PassivateScopeDto,
+  PassivationImpactResponse,
+} from "../passivation/dto/passivation.dto";
 import { maskMadrasahForAnonymous } from "./anonymous-mask";
 import { CreateMadrasahDto } from "./dto/create-madrasah.dto";
 import { MadrasahBadgeCountsResponse } from "./dto/madrasah-badge-counts-response.dto";
@@ -507,6 +511,55 @@ export class MadrasahController {
         id,
         request.user.sub,
         await this.hideLevel(request.user, id)
+      )
+    );
+  }
+
+  @ApiOperation({
+    summary: "What taking a medrese out of service takes along",
+    description:
+      "nizam/07, MDRS-227. The courses below the medrese, in every köşk, how many have a müderris in the post now, the talebe enrolled, the live sessions in the next days and the başmüderris who leaves, with the `confirmation` to post to `deactivate`. 200 with `alreadyPassive` when it is passive already. The Medaris başnazımı and a Medaris nazımı holding `platform.madrasah_edit`; the başmüderris does not passivate their own medrese.",
+    operationId: "getMadrasahDeactivationPreview",
+  })
+  @ApiOkResponse({ type: PassivationImpactResponse })
+  @ApiForbiddenResponse()
+  @ApiNotFoundResponse()
+  @Get(":id/deactivation-preview")
+  @Authz(PERMISSIONS.PLATFORM_MADRASAH_EDIT, byExistingMadrasah)
+  async deactivationPreview(
+    @Req() request: AuthorizedRequest,
+    @Param("id", ParseUUIDPipe) id: string
+  ): Promise<PassivationImpactResponse> {
+    return this.madrasahService.previewDeactivation(id, request.user.sub);
+  }
+
+  @ApiOperation({
+    summary: "Take a medrese out of service (Medaris yönetimi)",
+    description:
+      "nizam/07, MDRS-227. The medrese becomes passive and its başmüderris is taken off the post; every course below it closes, in every köşk. Nothing is hidden or deleted, the nazırlar and every grant stay, and appointing a başmüderris opens it again. The body carries the `confirmation` of the preview the person read: the impact is measured again and a token that is not for these numbers and this caller is 409 (PASSIVATION_IMPACT_CHANGED, with the fresh preview in `context.impact`) and writes nothing. 409 (MADRASAH_ALREADY_PASSIVE) when it is passive already. Written to the audit log with the başmüderris removed and the impact confirmed.",
+    operationId: "deactivateMadrasah",
+  })
+  @ApiOkResponse({ type: MadrasahDirectoryItemResponse })
+  @ApiBadRequestResponse({ description: "No confirmation" })
+  @ApiForbiddenResponse()
+  @ApiNotFoundResponse()
+  @ApiConflictResponse({
+    description: "MADRASAH_ALREADY_PASSIVE or PASSIVATION_IMPACT_CHANGED",
+  })
+  @Post(":id/deactivate")
+  @HttpCode(HttpStatus.OK)
+  @Authz(PERMISSIONS.PLATFORM_MADRASAH_EDIT, byExistingMadrasah)
+  async deactivate(
+    @Req() request: AuthorizedRequest,
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body() dto: PassivateScopeDto
+  ): Promise<MadrasahDirectoryItemResponse> {
+    return this.withRestore(
+      request.user,
+      await this.madrasahService.deactivate(
+        id,
+        request.user.sub,
+        dto.confirmation
       )
     );
   }

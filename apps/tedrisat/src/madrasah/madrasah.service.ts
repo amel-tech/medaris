@@ -4,8 +4,12 @@ import { GrantExpiryInvalidError } from "../assignment/admin/errors";
 import { checkGrantExpiry } from "../assignment/admin/grant-plan";
 import { SCOPE_TYPES } from "../database/schema/scope-type.schema";
 import { KeycloakAdminService } from "../keycloak-admin/keycloak-admin.service";
+import type { PassivationImpactResponse } from "../passivation/dto/passivation.dto";
+import { presentImpact } from "../passivation/passivation-impact";
+import { PassivationImpactRepository } from "../passivation/passivation-impact.repository";
 import type { HeadDelegationResponse } from "./dto/set-head-muderris.dto";
 import { MadrasahAlreadyHiddenError } from "./errors/madrasah-already-hidden.error";
+import { MadrasahAlreadyPassiveError } from "./errors/madrasah-already-passive.error";
 import { MadrasahHandleTakenError } from "./errors/madrasah-handle-taken.error";
 import { MadrasahNotFoundError } from "./errors/madrasah-not-found.error";
 import { MadrasahNotHiddenError } from "./errors/madrasah-not-hidden.error";
@@ -59,7 +63,8 @@ export class MadrasahService {
   // `design:paramtypes` and Nest can no longer inject them.
   constructor(
     private readonly madrasahRepo: MadrasahRepository,
-    private readonly keycloak: KeycloakAdminService
+    private readonly keycloak: KeycloakAdminService,
+    private readonly impact: PassivationImpactRepository
   ) {}
 
   async findAll(page: number, limit: number): Promise<IPaginatedMadrasahs> {
@@ -316,6 +321,41 @@ export class MadrasahService {
     if (result === "not-found") throw new MadrasahNotFoundError(madrasahId);
     if (result === "already-hidden") {
       throw new MadrasahAlreadyHiddenError(madrasahId);
+    }
+    return this.directoryItem(madrasahId);
+  }
+
+  /**
+   * What "Medreseyi pasife al" takes along, with the confirmation to post
+   * back (MDRS-227). `@Authz(platform.madrasah_edit)` on the route decided who
+   * may read.
+   */
+  async previewDeactivation(
+    madrasahId: string,
+    actorId: string
+  ): Promise<PassivationImpactResponse> {
+    const impact = await this.impact.measure({
+      type: "MADRASAH",
+      id: madrasahId,
+    });
+    if (!impact) throw new MadrasahNotFoundError(madrasahId);
+    return presentImpact(impact, actorId);
+  }
+
+  /** "Medreseyi pasife al": the başmüderris leaves the post and the courses below close, once the confirmation is the preview's. */
+  async deactivate(
+    madrasahId: string,
+    actorId: string,
+    confirmation: string
+  ): Promise<IMadrasahDirectoryItem> {
+    const result = await this.madrasahRepo.deactivate(
+      madrasahId,
+      actorId,
+      confirmation
+    );
+    if (result === "not-found") throw new MadrasahNotFoundError(madrasahId);
+    if (result === "already-passive") {
+      throw new MadrasahAlreadyPassiveError(madrasahId);
     }
     return this.directoryItem(madrasahId);
   }

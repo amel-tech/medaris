@@ -58,6 +58,7 @@ GET /kosks/:id/archive -> kosk.manage | platform.kosk_edit on byExistingKosk
 GET /kosks/:id/course-requests -> no AuthzGuard
 GET /kosks/:id/course-roster -> kosk.manage | platform.kosk_edit on byExistingKosk
 GET /kosks/:id/dashboard -> kosk.manage | platform.kosk_edit on byExistingKosk
+GET /kosks/:id/deactivation-preview -> platform.kosk_edit on byExistingKosk
 GET /kosks/:id/decks -> kosk.view on byExistingKosk
 GET /kosks/:id/decks/manage -> no AuthzGuard
 GET /kosks/:id/grants -> course_nazir.assign_kosk on byExistingKosk
@@ -78,6 +79,7 @@ GET /madrasahs/:id/badge-counts -> madrasah.students_view on byExistingMadrasah
 GET /madrasahs/:id/bans -> madrasah.ban | platform.ban_scoped on byExistingMadrasah
 GET /madrasahs/:id/courses -> madrasah.course_open | madrasah.course_hide | madrasah.muderris_manage on byExistingMadrasah
 GET /madrasahs/:id/dashboard -> madrasah.students_view on byExistingMadrasah
+GET /madrasahs/:id/deactivation-preview -> platform.madrasah_edit on byExistingMadrasah
 GET /madrasahs/:id/head-muderris/delegations -> platform.head_muderris_manage on byExistingMadrasah
 GET /madrasahs/:id/hosting-kosks -> madrasah.course_open on byExistingMadrasah
 GET /madrasahs/:id/nazirs -> madrasah.nazir_appoint | platform.madrasah_nazir_grant on byExistingMadrasah
@@ -165,7 +167,7 @@ POST /flashcard/decks/:id/publish-request -> deck.manage_private on flashcard-de
 POST /kosk-applications -> no AuthzGuard
 POST /kosks -> platform.kosk_create on kosk
 POST /kosks/:id/course-requests -> no AuthzGuard
-POST /kosks/:id/deactivate -> exempt
+POST /kosks/:id/deactivate -> platform.kosk_edit on byExistingKosk
 POST /kosks/:id/deck-proposals -> no AuthzGuard
 POST /kosks/:id/deck-proposals/:proposalId/reject -> no AuthzGuard
 POST /kosks/:id/decks -> no AuthzGuard
@@ -182,6 +184,7 @@ POST /madrasahs -> platform.madrasah_create on madrasah
 POST /madrasahs/:id/bans -> madrasah.ban | platform.ban_scoped on byExistingMadrasah
 POST /madrasahs/:id/courses -> madrasah.course_open on byExistingMadrasah
 POST /madrasahs/:id/courses/:courseId/hide -> madrasah.course_hide on byExistingMadrasah
+POST /madrasahs/:id/deactivate -> platform.madrasah_edit on byExistingMadrasah
 POST /madrasahs/:id/hide -> madrasah.hide | platform.madrasah_edit on byExistingMadrasah
 POST /madrasahs/:id/nazirs/:userId -> madrasah.nazir_appoint | platform.madrasah_nazir_grant on byExistingMadrasah
 POST /madrasahs/:id/offsite-course-requests -> madrasah.offsite_course_request on byExistingMadrasah

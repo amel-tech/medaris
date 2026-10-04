@@ -65,7 +65,10 @@ import {
   type ScopeType,
 } from "../database/schema/role-assignment.schema";
 import { users } from "../database/schema/user.schema";
+import { auditImpactOf } from "../passivation/passivation-impact";
+import { PassivationImpactRepository } from "../passivation/passivation-impact.repository";
 import {
+  DeactivateMadrasahResult,
   HideMadrasahResult,
   ICreateMadrasah,
   ICreateMadrasahWithHead,
@@ -104,7 +107,12 @@ const TALEBE_STATES = [EnrollmentStatus.ENROLLED, EnrollmentStatus.COMPLETED];
 
 @Injectable()
 export class MadrasahRepository {
-  constructor(private readonly databaseService: DatabaseService) {}
+  // Must stay value imports: `import type` erases them from
+  // `design:paramtypes` and Nest can no longer inject them.
+  constructor(
+    private readonly databaseService: DatabaseService,
+    private readonly impact: PassivationImpactRepository
+  ) {}
 
   private get db() {
     return this.databaseService.db;
@@ -687,6 +695,71 @@ export class MadrasahRepository {
         extra: { courses: hidden.length },
       });
       return "hidden";
+    });
+  }
+
+  /**
+   * "Medreseyi pasife al" (MDRS-227): the medrese is passive and its held
+   * başmüderris is taken off the post, in one transaction with the audit row
+   * naming them and the impact the person confirmed. Locks the medrese first,
+   * like `setHeadMuderris`, and measures the impact again under the lock: a
+   * `confirmation` that is not for these numbers and this caller throws
+   * `PassivationImpactChangedError` and nothing is written. The medrese's
+   * nazırları and every grant stay; a başmüderris appointed later opens it again.
+   */
+  async deactivate(
+    madrasahId: string,
+    actorId: string,
+    confirmation: string
+  ): Promise<DeactivateMadrasahResult> {
+    return this.db.transaction(async (tx) => {
+      const [row] = await tx
+        .select({ name: madrasahs.name, passiveSince: madrasahs.passiveSince })
+        .from(madrasahs)
+        .where(eq(madrasahs.id, madrasahId))
+        .for("no key update");
+      if (!row) return "not-found";
+      if (row.passiveSince !== null) return "already-passive";
+      const impact = await this.impact.confirmed(
+        tx,
+        { type: "MADRASAH", id: madrasahId },
+        actorId,
+        confirmation
+      );
+      const held = await tx
+        .select({ userId: roleAssignments.userId })
+        .from(roleAssignments)
+        .where(holdsIn(NAZIR_ROLE, madrasahId));
+      for (const { userId } of held) {
+        await revokeRole(tx, {
+          userId,
+          role: NAZIR_ROLE,
+          scopeId: madrasahId,
+          revokedBy: actorId,
+        });
+      }
+      const now = new Date();
+      await tx
+        .update(madrasahs)
+        .set({
+          passiveSince: now,
+          passiveReason: "DEACTIVATED_BY_ADMIN",
+          updatedAt: now,
+        })
+        .where(eq(madrasahs.id, madrasahId));
+      await tx.insert(auditLog).values({
+        actorId,
+        action: "madrasah.deactivate",
+        entity: "madrasah",
+        entityId: madrasahId,
+        details: {
+          name: row.name,
+          removedHeadIds: held.map((h) => h.userId),
+          impact: auditImpactOf(impact),
+          confirmation,
+        },
+      });
+      return "deactivated";
     });
   }
 

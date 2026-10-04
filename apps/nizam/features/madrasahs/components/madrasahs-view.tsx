@@ -19,6 +19,7 @@ import { useRouter } from "next/navigation";
 import { useLocale, useTimeZone, useTranslations } from "next-intl";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { hideLevelOf } from "../../archive/hide-level";
+import { PassivateScopeDialog } from "../../passivation/components/passivate-scope-dialog";
 import { dismissOpen } from "../../permissions/present";
 import { restoreMadrasah } from "../actions";
 import {
@@ -56,8 +57,9 @@ const SEARCH_DELAY_MS = 300;
  * so the counts and the rows always come from the same answer. "Geri al"
  * brings a hidden medrese back, to whoever hid it or a level above (the row's
  * `canRestore`); "Başmüderris ata" opens the appointment of a passive one;
- * "Medrese aç" is nizam/08. Each is drawn only for a viewer whose permissions
- * open it (`can`), so none leads to a 403 (MDRS-108).
+ * "Pasife al" shows what taking a medrese out of service takes along and asks
+ * to confirm it (MDRS-227); "Medrese aç" is nizam/08. Each is drawn only for a
+ * viewer whose permissions open it (`can`), so none leads to a 403 (MDRS-108).
  */
 export function MadrasahsView({
   directory,
@@ -75,6 +77,10 @@ export function MadrasahsView({
   const [search, setSearch] = useState(q);
   const [opening, setOpening] = useState(false);
   const [assigning, setAssigning] = useState<AssignTarget | null>(null);
+  const [passivating, setPassivating] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const searched = useRef(q);
   // The "Başmüderrisi değiştir" window opens on 4 Ekim 2026 (the version gate),
@@ -258,23 +264,37 @@ export function MadrasahsView({
           >
             {t("assign")}
           </Button>
-        ) : m.status === "ACTIVE" && m.headMuderris && can.assign ? (
-          <Button
-            variant="outline"
-            size="small"
-            disabled={!gateOpen}
-            aria-label={t("changeLabel", { name: m.name })}
-            onClick={() =>
-              setAssigning({
-                id: m.id,
-                name: m.name,
-                headId: m.headMuderris?.id ?? null,
-                headName: m.headMuderris?.name ?? null,
-              })
-            }
-          >
-            {t("change")}
-          </Button>
+        ) : m.status === "ACTIVE" && (can.assign || can.passivate) ? (
+          <span className="flex flex-wrap justify-end gap-2">
+            {m.headMuderris && can.assign ? (
+              <Button
+                variant="outline"
+                size="small"
+                disabled={!gateOpen}
+                aria-label={t("changeLabel", { name: m.name })}
+                onClick={() =>
+                  setAssigning({
+                    id: m.id,
+                    name: m.name,
+                    headId: m.headMuderris?.id ?? null,
+                    headName: m.headMuderris?.name ?? null,
+                  })
+                }
+              >
+                {t("change")}
+              </Button>
+            ) : null}
+            {can.passivate ? (
+              <Button
+                variant="outline"
+                size="small"
+                aria-label={t("passivateLabel", { name: m.name })}
+                onClick={() => setPassivating({ id: m.id, name: m.name })}
+              >
+                {t("passivate")}
+              </Button>
+            ) : null}
+          </span>
         ) : null,
     },
   ];
@@ -422,6 +442,16 @@ export function MadrasahsView({
         open={opening}
         onOpenChange={setOpening}
         onOpened={refresh}
+      />
+      <PassivateScopeDialog
+        kind="MADRASAH"
+        id={passivating?.id ?? ""}
+        name={passivating?.name ?? ""}
+        open={passivating !== null}
+        onOpenChange={(open) => {
+          if (!open) setPassivating(null);
+        }}
+        onPassivated={refresh}
       />
       <AssignHeadDialog
         open={assigning !== null}

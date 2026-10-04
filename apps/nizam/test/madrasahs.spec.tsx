@@ -40,8 +40,14 @@ import {
 vi.mock("~/features/madrasahs/actions", () => ({
   openMadrasah: vi.fn(),
   restoreMadrasah: vi.fn(),
+  deactivateMadrasah: vi.fn(),
+  previewMadrasahDeactivation: vi.fn(),
   setHeadMuderris: vi.fn(),
   lookupUserByEmail: vi.fn(),
+}));
+vi.mock("~/features/kosks/admin-actions", () => ({
+  deactivateKosk: vi.fn(),
+  previewKoskDeactivation: vi.fn(),
 }));
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }),
@@ -422,6 +428,14 @@ describe("MadrasahsView (nizam 07)", () => {
     expect(html).not.toContain("Başmüderrisi değiştir: Vefa");
   });
 
+  it("offers 'Pasife al' on an active medrese, and on no passive or hidden one (MDRS-227)", () => {
+    const html = view(directory(three));
+    expect(html).toContain('aria-label="Pasife al: Süleymaniye Medresesi"');
+    expect(html.match(/aria-label="Pasife al: /g)).toHaveLength(1);
+    expect(html).not.toContain("Pasife al: Zeyrek");
+    expect(html).not.toContain("Pasife al: Vefa");
+  });
+
   it("writes 'Yok' for a medrese with no hosting right (criterion 4)", () => {
     const html = view(directory([three[1] as MadrasahDirectoryItemResponse]));
     expect(html).toContain(">Yok<");
@@ -520,6 +534,7 @@ describe("MadrasahsView (nizam 07)", () => {
     expect(html).toContain("Başmüderrisi değiştir: Süleymaniye Medresesi");
     expect(html).not.toContain("Medrese aç");
     expect(html).not.toContain("Geri al: ");
+    expect(html).not.toContain("Pasife al: ");
     expect(html).not.toContain('href="/tr/arsiv"');
   });
 });
@@ -542,18 +557,21 @@ describe("what Medreseler offers its viewer (MDRS-108)", () => {
       open: true,
       assign: false,
       restore: false,
+      passivate: false,
       archive: false,
     });
     expect(of("platform.madrasah_edit")).toEqual({
       open: false,
       assign: false,
       restore: true,
+      passivate: true,
       archive: false,
     });
     expect(of("platform.head_muderris_manage")).toEqual({
       open: false,
       assign: true,
       restore: false,
+      passivate: false,
       archive: false,
     });
   });

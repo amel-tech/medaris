@@ -19,6 +19,12 @@ import { GrantExpiryInvalidError } from "../assignment/admin/errors";
 import { checkGrantExpiry } from "../assignment/admin/grant-plan";
 import { SCOPE_TYPES } from "../database/schema/scope-type.schema";
 import { KeycloakAdminService } from "../keycloak-admin/keycloak-admin.service";
+import type {
+  PassivateScopeDto,
+  PassivationImpactResponse,
+} from "../passivation/dto/passivation.dto";
+import { presentImpact } from "../passivation/passivation-impact";
+import { PassivationImpactRepository } from "../passivation/passivation-impact.repository";
 import type { CreateKoskDto } from "./dto/create-kosk.dto";
 import type {
   AddKoskNazimsDto,
@@ -85,7 +91,8 @@ export class KoskAdminService {
     private readonly repo: KoskAdminRepository,
     private readonly koskService: KoskService,
     private readonly authz: AuthzService,
-    private readonly keycloak: KeycloakAdminService
+    private readonly keycloak: KeycloakAdminService,
+    private readonly impact: PassivationImpactRepository
   ) {}
 
   // ---- who is asking -----------------------------------------------------------
@@ -353,16 +360,30 @@ export class KoskAdminService {
     };
   }
 
-  async deactivate(
+  /**
+   * What "Köşkü pasife al" takes along, with the confirmation to post back
+   * (MDRS-227). `@Authz(platform.kosk_edit)` on the route decided who may read.
+   */
+  async previewDeactivation(
     user: AuthenticatedUser,
     koskId: string
+  ): Promise<PassivationImpactResponse> {
+    const impact = await this.impact.measure({ type: "KOSK", id: koskId });
+    if (!impact) throw new KoskNotFoundError(koskId);
+    return presentImpact(impact, user.sub);
+  }
+
+  /** `@Authz(platform.kosk_edit)` on the route decided who may; the confirmation is checked under the row lock. */
+  async deactivate(
+    user: AuthenticatedUser,
+    koskId: string,
+    dto: PassivateScopeDto
   ): Promise<KoskDirectoryItemResponse> {
-    await this.requirePlatform(
-      user,
-      PERMISSIONS.PLATFORM_KOSK_EDIT,
-      "take a köşk out of service"
+    const outcome = await this.repo.deactivate(
+      koskId,
+      user.sub,
+      dto.confirmation
     );
-    const outcome = await this.repo.deactivate(koskId, user.sub);
     if (outcome === "no-kosk") throw new KoskNotFoundError(koskId);
     if (outcome === "already-passive") {
       throw new KoskAlreadyPassiveError(koskId);

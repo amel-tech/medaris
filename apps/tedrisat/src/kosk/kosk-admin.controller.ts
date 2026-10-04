@@ -25,6 +25,7 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import {
+  ApiBadRequestResponse,
   ApiBearerAuth,
   ApiConflictResponse,
   ApiCreatedResponse,
@@ -35,6 +36,10 @@ import {
   ApiQuery,
   ApiTags,
 } from "@nestjs/swagger";
+import {
+  PassivateScopeDto,
+  PassivationImpactResponse,
+} from "../passivation/dto/passivation.dto";
 import { AuthenticatedUserRequest } from "../user/interfaces/authenticated-user-request.interface";
 import {
   AddKoskNazimsDto,
@@ -239,24 +244,45 @@ export class KoskAdminController {
   }
 
   @ApiOperation({
-    summary: "Take a köşk out of service (Köşkü pasife al, SYSTEM_ADMIN only)",
+    summary: "What taking a köşk out of service takes along",
     description:
-      "nizam/20. The köşk becomes passive and its nazımları are taken off the post; nothing is hidden or deleted, and adding a nazım makes it active again. 409 (KOSK_ALREADY_PASSIVE) when it is passive already. Written to the audit log, naming the nazımları removed.",
+      "nizam/20, MDRS-227. The courses below the köşk (the courses of medreses it hosts too), how many have a müderris in the post now, the talebe enrolled, the live sessions in the next days and the nazımları who leave, with the `confirmation` to post to `deactivate`. 200 with `alreadyPassive` when it is passive already. The Medaris başnazımı and a Medaris nazımı holding `platform.kosk_edit`.",
+    operationId: "getKoskDeactivationPreview",
+  })
+  @ApiOkResponse({ type: PassivationImpactResponse })
+  @ApiForbiddenResponse()
+  @ApiNotFoundResponse()
+  @Get(":id/deactivation-preview")
+  @Authz(PERMISSIONS.PLATFORM_KOSK_EDIT, byExistingKosk)
+  deactivationPreview(
+    @Req() request: AuthenticatedUserRequest,
+    @Param("id", ParseUUIDPipe) id: string
+  ): Promise<PassivationImpactResponse> {
+    return this.admin.previewDeactivation(request.user, id);
+  }
+
+  @ApiOperation({
+    summary: "Take a köşk out of service (Köşkü pasife al, Medaris yönetimi)",
+    description:
+      "nizam/20. The köşk becomes passive and its nazımları are taken off the post; every course below it closes. Nothing is hidden or deleted, and adding a nazım makes it active again. The body carries the `confirmation` of the preview the person read: the impact is measured again and a token that is not for these numbers and this caller is 409 (PASSIVATION_IMPACT_CHANGED, with the fresh preview in `context.impact`) and writes nothing. 409 (KOSK_ALREADY_PASSIVE) when it is passive already. Written to the audit log with the nazımları removed and the impact confirmed. The Medaris başnazımı and a Medaris nazımı holding `platform.kosk_edit`.",
     operationId: "deactivateKosk",
   })
   @ApiOkResponse({ type: KoskDirectoryItemResponse })
+  @ApiBadRequestResponse({ description: "No confirmation" })
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()
-  @ApiConflictResponse({ description: "KOSK_ALREADY_PASSIVE" })
-  // Exempt: SYSTEM_ADMIN's, checked by the service, like adding nazımları.
-  @AuthzExempt()
+  @ApiConflictResponse({
+    description: "KOSK_ALREADY_PASSIVE or PASSIVATION_IMPACT_CHANGED",
+  })
   @Post(":id/deactivate")
   @HttpCode(HttpStatus.OK)
+  @Authz(PERMISSIONS.PLATFORM_KOSK_EDIT, byExistingKosk)
   deactivate(
     @Req() request: AuthenticatedUserRequest,
-    @Param("id", ParseUUIDPipe) id: string
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body() dto: PassivateScopeDto
   ): Promise<KoskDirectoryItemResponse> {
-    return this.admin.deactivate(request.user, id);
+    return this.admin.deactivate(request.user, id, dto);
   }
 
   @ApiOperation({

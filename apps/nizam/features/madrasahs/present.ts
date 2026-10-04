@@ -75,6 +75,8 @@ export interface MadrasahAbilities {
   assign: boolean;
   /** "Geri al": `platform.madrasah_edit` brings back whatever a level hid */
   restore: boolean;
+  /** "Pasife al": `platform.madrasah_edit` */
+  passivate: boolean;
   /** "Arşiv": the platform's archive is the başnazım's alone */
   archive: boolean;
 }
@@ -83,6 +85,7 @@ export const ALL_MADRASAH_ABILITIES: MadrasahAbilities = {
   open: true,
   assign: true,
   restore: true,
+  passivate: true,
   archive: true,
 };
 
@@ -102,6 +105,7 @@ export function madrasahAbilities(
     open: held.has("platform.madrasah_create"),
     assign: held.has("platform.head_muderris_manage"),
     restore: held.has("platform.madrasah_edit"),
+    passivate: held.has("platform.madrasah_edit"),
     archive: false,
   };
 }
