@@ -23,9 +23,11 @@ import { PassivateScopeDialog } from "../../passivation/components/passivate-sco
 import { dismissOpen } from "../../permissions/present";
 import { restoreMadrasah } from "../actions";
 import {
+  ALL_MADRASAH_ABILITIES,
   dateWithCase,
   directoryPath,
   hostingLabel,
+  type MadrasahAbilities,
   type Messages,
   madrasahErrorKey,
   STATUS_LOOK,
@@ -41,6 +43,8 @@ interface Props {
   directory: MadrasahDirectoryResponse | null;
   status: MadrasahStatusFilter;
   q: string;
+  /** The buttons the viewer may use (MDRS-108); all of them when omitted. */
+  can?: MadrasahAbilities;
 }
 
 const SEARCH_DELAY_MS = 300;
@@ -52,11 +56,17 @@ const SEARCH_DELAY_MS = 300;
  * source of the filter: a tab or a search navigates, the server reads again,
  * so the counts and the rows always come from the same answer. "Geri al"
  * brings a hidden medrese back, to whoever hid it or a level above (the row's
- * `canRestore`); "Başmüderris ata" opens the appointment of a
- * passive one; "Pasife al" shows what taking a medrese out of service takes
- * along and asks to confirm it (MDRS-227); "Medrese aç" is nizam/08.
+ * `canRestore`); "Başmüderris ata" opens the appointment of a passive one;
+ * "Pasife al" shows what taking a medrese out of service takes along and asks
+ * to confirm it (MDRS-227); "Medrese aç" is nizam/08. Each is drawn only for a
+ * viewer whose permissions open it (`can`), so none leads to a 403 (MDRS-108).
  */
-export function MadrasahsView({ directory, status, q }: Props) {
+export function MadrasahsView({
+  directory,
+  status,
+  q,
+  can = ALL_MADRASAH_ABILITIES,
+}: Props) {
   const tm = useTranslations("nizam.MadrasahsPage");
   const t = tm as unknown as Messages;
   const tl = useTranslations("nizam.HideLevel");
@@ -226,7 +236,7 @@ export function MadrasahsView({ directory, status, q }: Props) {
       width: "18%",
       render: (m) =>
         m.status === "HIDDEN" ? (
-          m.canRestore ? (
+          !can.restore ? null : m.canRestore ? (
             <Button
               variant="outline"
               size="small"
@@ -245,7 +255,7 @@ export function MadrasahsView({ directory, status, q }: Props) {
               })}
             </span>
           )
-        ) : m.status === "PASSIVE" ? (
+        ) : m.status === "PASSIVE" && can.assign ? (
           <Button
             variant="outline"
             size="small"
@@ -254,9 +264,9 @@ export function MadrasahsView({ directory, status, q }: Props) {
           >
             {t("assign")}
           </Button>
-        ) : m.status === "ACTIVE" ? (
+        ) : m.status === "ACTIVE" && (can.assign || can.passivate) ? (
           <span className="flex flex-wrap justify-end gap-2">
-            {m.headMuderris ? (
+            {m.headMuderris && can.assign ? (
               <Button
                 variant="outline"
                 size="small"
@@ -274,14 +284,16 @@ export function MadrasahsView({ directory, status, q }: Props) {
                 {t("change")}
               </Button>
             ) : null}
-            <Button
-              variant="outline"
-              size="small"
-              aria-label={t("passivateLabel", { name: m.name })}
-              onClick={() => setPassivating({ id: m.id, name: m.name })}
-            >
-              {t("passivate")}
-            </Button>
+            {can.passivate ? (
+              <Button
+                variant="outline"
+                size="small"
+                aria-label={t("passivateLabel", { name: m.name })}
+                onClick={() => setPassivating({ id: m.id, name: m.name })}
+              >
+                {t("passivate")}
+              </Button>
+            ) : null}
           </span>
         ) : null,
     },
@@ -308,12 +320,14 @@ export function MadrasahsView({ directory, status, q }: Props) {
           <h1 className="mds-h1">{t("title")}</h1>
           <p>{t("intro")}</p>
         </div>
-        <Button
-          iconLeft={<Icon name="plus" size="sm" />}
-          onClick={() => setOpening(true)}
-        >
-          {t("open")}
-        </Button>
+        {can.open ? (
+          <Button
+            iconLeft={<Icon name="plus" size="sm" />}
+            onClick={() => setOpening(true)}
+          >
+            {t("open")}
+          </Button>
+        ) : null}
       </header>
 
       {passive.length > 0 ? (
@@ -350,9 +364,11 @@ export function MadrasahsView({ directory, status, q }: Props) {
           <h2 id="madrasahs-heading" className="mds-h2">
             {t("heading")}
           </h2>
-          <a className="mds-link" href={`/${locale}/arsiv`}>
-            {t("archive")}
-          </a>
+          {can.archive ? (
+            <a className="mds-link" href={`/${locale}/arsiv`}>
+              {t("archive")}
+            </a>
+          ) : null}
         </div>
 
         <Tabs

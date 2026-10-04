@@ -28,8 +28,24 @@ export interface IDeckVisibility {
   authorId: string;
 }
 
+/** How a decision asks about its resource. */
+export interface IAuthzLoadOptions {
+  /**
+   * What the caller holds across every course below a medrese
+   * (`AuthzService.effective`'s `acrossCourses`): a passive scope that closes
+   * every one of those courses, such as the only köşk they are held in, is
+   * the passive scope of the question too, though it is not on the
+   * medrese's own chain.
+   */
+  acrossCourses?: boolean;
+}
+
 export interface AuthzContextLoader {
-  load(userId: string, resource: ResourceRef): Promise<IAuthzContext>;
+  load(
+    userId: string,
+    resource: ResourceRef,
+    options?: IAuthzLoadOptions
+  ): Promise<IAuthzContext>;
   /** Null when the deck does not exist. */
   findDeck(id: string): Promise<IDeckVisibility | null>;
 }

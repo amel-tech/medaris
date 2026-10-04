@@ -972,7 +972,7 @@ export class KosksApi extends runtime.BaseAPI {
     }
 
     /**
-     * nizam/23 and 20. Hidden courses too, newest first, each with its müderrisler (the imam flagged), talebe, waiting applications and bans, plus the counts the tabs show.
+     * nizam/23 and 20. Hidden courses too, newest first, each with its müderrisler (the imam flagged), talebe, waiting applications and bans, plus the counts the tabs show. A hidden course says whether the caller may bring it back (`canRestore`, by kademe).
      * Every course of the köşk for the Dersler table
      */
     async getKoskCourseRosterRaw(requestParameters: GetKoskCourseRosterRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<KoskCourseRosterResponse>> {
@@ -1007,7 +1007,7 @@ export class KosksApi extends runtime.BaseAPI {
     }
 
     /**
-     * nizam/23 and 20. Hidden courses too, newest first, each with its müderrisler (the imam flagged), talebe, waiting applications and bans, plus the counts the tabs show.
+     * nizam/23 and 20. Hidden courses too, newest first, each with its müderrisler (the imam flagged), talebe, waiting applications and bans, plus the counts the tabs show. A hidden course says whether the caller may bring it back (`canRestore`, by kademe).
      * Every course of the köşk for the Dersler table
      */
     async getKoskCourseRoster(requestParameters: GetKoskCourseRosterRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<KoskCourseRosterResponse> {
@@ -1016,7 +1016,7 @@ export class KosksApi extends runtime.BaseAPI {
     }
 
     /**
-     * nizam/02. The numbers, the sessions of one tab (`sessions`: UPCOMING is the next seven days, PAST and CANCELLED the latest twenty), the newest waiting applications and the müderrisler. For the köşk\'s nazımları and the başnazım.
+     * nizam/02. The numbers, the sessions of one tab (`sessions`: UPCOMING is the next seven days, PAST and CANCELLED the latest twenty), the newest waiting applications and the müderrisler. For the köşk\'s nazımları and the başnazım. A Medaris nazımı holding only `platform.kosk_edit` gets it without the meeting links and without the applications (`contentLocked`: `latestApplications` is empty, `counts.pendingApplications` still says how many wait). A course in a passive scope is left out for everyone but the köşk\'s nazımları and holders of `platform.inactive_scopes_manage`. The applicants handed out are written to `audit_log` as a roster read on every call that sends them (none for a `contentLocked` caller), and each course whose meeting link is handed out as a content read unless the caller teaches it.
      * A köşk nazımı\'s home page (numbers, celse table, applications)
      */
     async getKoskDashboardRaw(requestParameters: GetKoskDashboardRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<KoskDashboardResponse>> {
@@ -1055,7 +1055,7 @@ export class KosksApi extends runtime.BaseAPI {
     }
 
     /**
-     * nizam/02. The numbers, the sessions of one tab (`sessions`: UPCOMING is the next seven days, PAST and CANCELLED the latest twenty), the newest waiting applications and the müderrisler. For the köşk\'s nazımları and the başnazım.
+     * nizam/02. The numbers, the sessions of one tab (`sessions`: UPCOMING is the next seven days, PAST and CANCELLED the latest twenty), the newest waiting applications and the müderrisler. For the köşk\'s nazımları and the başnazım. A Medaris nazımı holding only `platform.kosk_edit` gets it without the meeting links and without the applications (`contentLocked`: `latestApplications` is empty, `counts.pendingApplications` still says how many wait). A course in a passive scope is left out for everyone but the köşk\'s nazımları and holders of `platform.inactive_scopes_manage`. The applicants handed out are written to `audit_log` as a roster read on every call that sends them (none for a `contentLocked` caller), and each course whose meeting link is handed out as a content read unless the caller teaches it.
      * A köşk nazımı\'s home page (numbers, celse table, applications)
      */
     async getKoskDashboard(requestParameters: GetKoskDashboardRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<KoskDashboardResponse> {
@@ -2148,7 +2148,7 @@ export class KosksApi extends runtime.BaseAPI {
     }
 
     /**
-     * nizam/38 \'İzinleri düzenle\'. Replaces the whole set; what stays keeps its giver and date. The post ends when the permissions do. Written to the audit log.
+     * nizam/38 \'İzinleri düzenle\'. Replaces the whole set; what stays keeps its giver and date. The post ends when the permissions do. Written to the audit log. 403 (SELF_GRANT_REFUSED) for the caller\'s own post, SYSTEM_ADMIN excepted.
      * Change a ders nazırı\'s permissions and end
      */
     async updateKoskGrantRaw(requestParameters: UpdateKoskGrantRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<KoskGrantsResponse>> {
@@ -2201,7 +2201,7 @@ export class KosksApi extends runtime.BaseAPI {
     }
 
     /**
-     * nizam/38 \'İzinleri düzenle\'. Replaces the whole set; what stays keeps its giver and date. The post ends when the permissions do. Written to the audit log.
+     * nizam/38 \'İzinleri düzenle\'. Replaces the whole set; what stays keeps its giver and date. The post ends when the permissions do. Written to the audit log. 403 (SELF_GRANT_REFUSED) for the caller\'s own post, SYSTEM_ADMIN excepted.
      * Change a ders nazırı\'s permissions and end
      */
     async updateKoskGrant(requestParameters: UpdateKoskGrantRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<KoskGrantsResponse> {

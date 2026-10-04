@@ -17,9 +17,14 @@ import { archiveErrorKey } from "../archive";
  * Hiding is not destructive (nothing is deleted), so the answer is an
  * AlertDialog whose focus starts on "Vazgeç" and whose action is a primary
  * "Gizle" (_kurallar 11, 13). It says what the design's own sentence leaves out:
- * only Medaris yönetimi brings a hidden medrese back, which is why the courses
- * in the Arşiv cannot be brought back meanwhile. Once it is done the section
- * says so where the button was.
+ * a hidden medrese is brought back by the level that hid it or one above
+ * (MDRS-135: the başmüderris who hid it, or Medaris yönetimi), and until then the
+ * courses in the Arşiv cannot be brought back. Once it is done the page is read
+ * again and shows the hidden medrese's banner with "Medreseyi geri getir"
+ * (`RestoreMadrasah`), which is where what every sentence here promises is
+ * offered; until it lands the section says so where the button was. A medrese
+ * that was hidden already (MADRASAH_ALREADY_HIDDEN) was hidden by someone else,
+ * perhaps Medaris yönetimi, so the section only says it is hidden (MDRS-108).
  */
 export function HideMadrasah({
   madrasahId,
@@ -34,14 +39,15 @@ export function HideMadrasah({
   const { notify } = useToaster();
   const [pending, startTransition] = useTransition();
   const [open, setOpen] = useState(false);
-  const [hidden, setHidden] = useState(false);
+  // "mine": hidden by this click; "already": hidden by someone else before it.
+  const [hidden, setHidden] = useState<"mine" | "already" | null>(null);
 
   const hide = () =>
     startTransition(async () => {
       const result = await hideMedrese(madrasahId);
       if (result.success || result.code === "MADRASAH_ALREADY_HIDDEN") {
         setOpen(false);
-        setHidden(true);
+        setHidden(result.success ? "mine" : "already");
         notify({
           tone: result.success ? "success" : "info",
           title: t("Archive.hide.done"),
@@ -72,7 +78,11 @@ export function HideMadrasah({
       <div className="mds-card flex flex-wrap items-center justify-between gap-4 p-card">
         {hidden ? (
           <Alert tone="warning" title={t("Archive.hide.done")}>
-            <p>{t("Archive.hide.doneBody", { name: madrasahName })}</p>
+            <p>
+              {hidden === "mine"
+                ? t("Archive.hide.doneBody", { name: madrasahName })
+                : t("Archive.hide.already")}
+            </p>
           </Alert>
         ) : (
           <>

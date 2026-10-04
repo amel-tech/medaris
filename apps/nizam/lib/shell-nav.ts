@@ -273,11 +273,12 @@ const koskGroups: NavGroup[] = [
  * every nazım: the home page, the bell and the account are no one's gift.
  */
 const ITEM_PERMISSIONS: Record<string, readonly string[]> = {
+  // Exactly the codes `GET /madrasahs/directory` opens to (MDRS-108): the ones
+  // the page acts on. A nazır grant has no row there, so it shows no item.
   madrasahs: [
     "platform.madrasah_create",
     "platform.head_muderris_manage",
     "platform.madrasah_edit",
-    "platform.madrasah_nazir_grant",
   ],
   kosks: [
     "platform.kosk_create",

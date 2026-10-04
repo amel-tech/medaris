@@ -2,7 +2,6 @@
 
 import type { MyPublicProfileResponse } from "@medaris/services/tedrisat";
 import { Alert } from "@medaris/ui/mds/alert";
-import { AppProviders } from "@medaris/ui/mds/app-providers";
 import { Avatar } from "@medaris/ui/mds/avatar";
 import { Badge } from "@medaris/ui/mds/badge";
 import { Button } from "@medaris/ui/mds/button";
@@ -16,6 +15,7 @@ import { Textarea } from "@medaris/ui/mds/textarea";
 import { useToaster } from "@medaris/ui/mds/toast";
 import { useLocale } from "next-intl";
 import { type FormEvent, useState, useTransition } from "react";
+import { LocaleAppProviders } from "~/components/locale-app-providers";
 import { CARD_GAP } from "~/features/account/card-gap";
 import { useAccountTranslations } from "~/lib/i18n/loose";
 import { saveProfileTexts, saveVisibility } from "../actions";
@@ -350,8 +350,8 @@ function Content({ profile }: PublicProfilePageProps) {
  */
 export function PublicProfilePage(props: PublicProfilePageProps) {
   return (
-    <AppProviders>
+    <LocaleAppProviders>
       <Content {...props} />
-    </AppProviders>
+    </LocaleAppProviders>
   );
 }

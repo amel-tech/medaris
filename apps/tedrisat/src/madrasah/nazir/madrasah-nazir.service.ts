@@ -21,9 +21,26 @@ import type {
   MadrasahNazirResponse,
 } from "./dto/madrasah-nazir.dto";
 import {
+  type INazirGrant,
   type INazirRole,
   MadrasahNazirRepository,
 } from "./madrasah-nazir.repository";
+import { heldEnds } from "./nazir-grant-scopes";
+
+/**
+ * One row per code or group in a scope, the oldest: a code held twice (a row
+ * given more time beside the one a higher authority gave) is one line on the
+ * screen.
+ */
+const oncePerItem = (rows: readonly INazirGrant[]): INazirGrant[] => {
+  const seen = new Set<string>();
+  return rows.filter((row) => {
+    const key = `${row.scopeType}:${row.scopeId}:${row.groupId ?? ""}:${row.permission ?? ""}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+};
 
 function personOf(
   id: string,
@@ -41,8 +58,9 @@ function personOf(
  * The medrese's nazırs (nazir/05 and nazir/15): the MEDRESE_NAZIR appointments
  * and what hangs on them in the medrese. Reached through
  * `MadrasahNazirController`, whose `@Authz` permissions decide who may call it —
- * the medrese's başmüderris and SYSTEM_ADMIN, or a nazır given the permission; nothing here re-checks the
- * caller. A nazır holds nothing until someone gives it (nazir/06).
+ * the medrese's başmüderris and SYSTEM_ADMIN, or a nazır given the permission;
+ * the controller narrows a dismissal by such a nazır to the nazırs they
+ * appointed. A nazır holds nothing until someone gives it (nazir/06).
  */
 @Injectable()
 export class MadrasahNazirService {
@@ -133,17 +151,20 @@ export class MadrasahNazirService {
     });
   }
 
+  /** `appointedBy`: only a nazır this person seated may be dismissed (see the repository). */
   async dismiss(
     madrasahId: string,
     nazirId: string,
     actorId: string,
-    decisions: ReadonlyArray<{ userId: string; action: DismissAction }>
+    decisions: ReadonlyArray<{ userId: string; action: DismissAction }>,
+    options: { appointedBy?: string } = {}
   ): Promise<void> {
     await this.repo.dismiss(
       madrasahId,
       nazirId.toLowerCase(),
       actorId,
-      decisions
+      decisions,
+      options
     );
   }
 
@@ -165,7 +186,8 @@ export class MadrasahNazirService {
       ]),
     ]);
     return roles.map((role) => {
-      const mine = grants.filter((g) => g.userId === role.userId);
+      const all = grants.filter((g) => g.userId === role.userId);
+      const mine = oncePerItem(all);
       const inMedrese = mine.filter(
         (g) => g.scopeType === SCOPE_TYPES.MADRASAH
       );
@@ -181,10 +203,7 @@ export class MadrasahNazirService {
         appointedBy: personOf(role.grantedBy, people),
         appointedAt: role.createdAt,
         assignmentExpiresAt: role.expiresAt,
-        expiresAt: earliestEnd([
-          role.expiresAt,
-          ...mine.map((g) => g.expiresAt),
-        ]),
+        expiresAt: earliestEnd([role.expiresAt, ...heldEnds(all)]),
         groups: heldGroups,
         permissions: inMedrese.flatMap((g) =>
           g.permission ? [{ code: g.permission, grantedAt: g.createdAt }] : []

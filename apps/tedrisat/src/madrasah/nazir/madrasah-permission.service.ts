@@ -2,7 +2,8 @@ import {
   type AuthenticatedUser,
   AuthzService,
   ENTITIES,
-  PERMISSIONS,
+  type IEffective,
+  type IGrantHolding,
   SelfGrantGuard,
 } from "@medaris/common";
 import { Injectable } from "@nestjs/common";
@@ -42,6 +43,7 @@ import type {
   SetMadrasahNazirPermissionsDto,
   UpdateMadrasahPermissionGroupDto,
 } from "./dto/madrasah-permission.dto";
+import { madrasahAuthorityOf } from "./madrasah-authority";
 import { MadrasahNazirRepository } from "./madrasah-nazir.repository";
 import { MadrasahNazirService } from "./madrasah-nazir.service";
 import {
@@ -79,6 +81,30 @@ interface IGiven {
   scopeId: string;
   codes: readonly string[];
 }
+
+/**
+ * What a giver holds somewhere: the codes, and the grants that carry them,
+ * each with its authority and how long it is held.
+ */
+interface IHoldings {
+  codes: ReadonlySet<string>;
+  grants: ReadonlyMap<string, readonly IGrantHolding[]>;
+}
+
+function holdingsFrom(effective: IEffective | null): IHoldings {
+  return {
+    codes: new Set<string>(effective?.codes ?? []),
+    grants: effective?.grantHoldings ?? new Map(),
+  };
+}
+
+/** The kademe, lowest first: course < medrese < köşk < platform (owner, 29 September). */
+const KADEME: Record<ScopeType, number> = {
+  [SCOPE_TYPES.COURSE]: 0,
+  [SCOPE_TYPES.MADRASAH]: 1,
+  [SCOPE_TYPES.KOSK]: 2,
+  [SCOPE_TYPES.PLATFORM]: 3,
+};
 
 function presentGroup(
   group: IGroupRow & { userCount: number }
@@ -123,25 +149,11 @@ export class MadrasahPermissionService {
    * level and is listed to the başnazım under what they handed on. Asked of the
    * engine, so the screens, the guard and this check cannot disagree.
    */
-  private async authorityOf(
+  private authorityOf(
     user: AuthenticatedUser,
     madrasahId: string
   ): Promise<ScopeType | null> {
-    if (this.authz.isSystemAdmin(user)) return SCOPE_TYPES.PLATFORM;
-    const resource = { entity: ENTITIES.MADRASAH, id: madrasahId };
-    if (await this.authz.can(user, resource, PERMISSIONS.PERMISSION_GRANT)) {
-      return SCOPE_TYPES.MADRASAH;
-    }
-    if (
-      await this.authz.can(
-        user,
-        resource,
-        PERMISSIONS.PLATFORM_MADRASAH_NAZIR_GRANT
-      )
-    ) {
-      return SCOPE_TYPES.PLATFORM;
-    }
-    return null;
+    return madrasahAuthorityOf(this.authz, user, madrasahId);
   }
 
   private async mayGive(
@@ -192,16 +204,14 @@ export class MadrasahPermissionService {
   private async holdingsOf(
     user: AuthenticatedUser,
     madrasahId: string
-  ): Promise<ReadonlySet<string> | null> {
+  ): Promise<IHoldings | null> {
     if (this.authz.isSystemAdmin(user)) return null;
-    return new Set<string>(
-      (
-        await this.authz.effective(
-          user,
-          { entity: ENTITIES.MADRASAH, id: madrasahId },
-          { acrossCourses: true }
-        )
-      )?.codes ?? []
+    return holdingsFrom(
+      await this.authz.effective(
+        user,
+        { entity: ENTITIES.MADRASAH, id: madrasahId },
+        { acrossCourses: true }
+      )
     );
   }
 
@@ -210,42 +220,96 @@ export class MadrasahPermissionService {
     madrasahId: string,
     candidates: ReadonlyArray<IGiven>
   ): Promise<((given: readonly IGiven[]) => void) | null> {
+    return (
+      (await this.giverLimits(user, madrasahId, candidates))?.check ?? null
+    );
+  }
+
+  /**
+   * The ceiling (`check`) and the cap on the authority a handed-on row is
+   * stored with (`authorityFor`), from the same reads; null for the başnazım,
+   * who has neither. The cap is the giver's own holding of the row's codes
+   * (owner, d-1004-27 "tavan kazanır"): a code they hold through a grant
+   * passes on with that grant's authority at most, one they hold through a
+   * role or a relationship with the medrese's own level, which no policy above
+   * it lets through. A grant counts only if the giver holds it for as long as
+   * the row is given (`expiresAt`, null for no end): an authority they hold
+   * until tomorrow does not go on a row that runs past it. So a gift never
+   * carries past a policy what does not carry the giver past it, then or
+   * later.
+   */
+  private async giverLimits(
+    user: AuthenticatedUser,
+    madrasahId: string,
+    candidates: ReadonlyArray<IGiven>
+  ): Promise<{
+    check: (given: readonly IGiven[]) => void;
+    authorityFor: (
+      given: IGiven,
+      acting: ScopeType,
+      expiresAt: Date | null
+    ) => ScopeType;
+  } | null> {
     const held = await this.holdingsOf(user, madrasahId);
     if (held === null) return null;
-    const inCourse = new Map<string, ReadonlySet<string>>();
+    const inCourse = new Map<string, IHoldings>();
     for (const scope of candidates) {
       if (
         scope.scopeType !== SCOPE_TYPES.COURSE ||
         inCourse.has(scope.scopeId) ||
-        scope.codes.every((code) => held.has(code))
+        scope.codes.every((code) => held.codes.has(code))
       ) {
         continue;
       }
-      const codes = (
-        await this.authz.effective(user, {
-          entity: ENTITIES.COURSE,
-          id: scope.scopeId,
-        })
-      )?.codes;
-      inCourse.set(scope.scopeId, new Set<string>(codes ?? []));
+      inCourse.set(
+        scope.scopeId,
+        holdingsFrom(
+          await this.authz.effective(user, {
+            entity: ENTITIES.COURSE,
+            id: scope.scopeId,
+          })
+        )
+      );
     }
-    return (given) => {
-      const exceeding = new Set<string>();
-      for (const scope of given) {
-        for (const code of scope.codes) {
-          if (held.has(code)) continue;
-          if (
-            scope.scopeType === SCOPE_TYPES.COURSE &&
-            inCourse.get(scope.scopeId)?.has(code)
-          ) {
-            continue;
+    const holdingsFor = (scope: IGiven) =>
+      scope.scopeType === SCOPE_TYPES.COURSE
+        ? [held, inCourse.get(scope.scopeId)]
+        : [held];
+    return {
+      check: (given) => {
+        const exceeding = new Set<string>();
+        for (const scope of given) {
+          for (const code of scope.codes) {
+            if (!holdingsFor(scope).some((h) => h?.codes.has(code))) {
+              exceeding.add(code);
+            }
           }
-          exceeding.add(code);
         }
-      }
-      if (exceeding.size > 0) {
-        throw new GrantExceedsGiverError([...exceeding].sort(), { madrasahId });
-      }
+        if (exceeding.size > 0) {
+          throw new GrantExceedsGiverError([...exceeding].sort(), {
+            madrasahId,
+          });
+        }
+      },
+      authorityFor: (scope, acting, expiresAt) => {
+        const lasts = (until: Date | null) =>
+          until === null ||
+          (expiresAt !== null && until.getTime() >= expiresAt.getTime());
+        let cap = acting;
+        for (const code of scope.codes) {
+          const mine = holdingsFor(scope).flatMap((h) =>
+            (h?.grants.get(code) ?? [])
+              .filter((grant) => lasts(grant.until))
+              .map((grant) => grant.authority)
+          );
+          const best = mine.reduce<ScopeType>(
+            (a, b) => (KADEME[b] > KADEME[a] ? b : a),
+            SCOPE_TYPES.MADRASAH
+          );
+          if (KADEME[best] < KADEME[cap]) cap = best;
+        }
+        return cap;
+      },
     };
   }
 
@@ -260,11 +324,11 @@ export class MadrasahPermissionService {
     const all = [...MADRASAH_CATALOG, ...MADRASAH_COURSE_CATALOG];
     const held = (await this.mayGive(user, madrasahId))
       ? await this.holdingsOf(user, madrasahId)
-      : new Set<string>();
+      : holdingsFrom(null);
     return {
       madrasah: [...MADRASAH_CATALOG],
       course: [...MADRASAH_COURSE_CATALOG],
-      givable: held === null ? all : all.filter((code) => held.has(code)),
+      givable: held === null ? all : all.filter((code) => held.codes.has(code)),
     };
   }
 
@@ -321,9 +385,11 @@ export class MadrasahPermissionService {
     const changed =
       permissions.length !== group.permissions.length ||
       permissions.some((code) => !group.permissions.includes(code));
-    // Changing a group hands its new codes to everyone who holds it, so what a
-    // change adds is held to the ceiling; what it takes away, and a rename, is
-    // not a gift.
+    // A change to a group somebody holds detaches them first (`usersPolicy`:
+    // they keep the old codes as single permissions, or nothing), so the new
+    // codes reach only whoever is given the group from now on. What a change
+    // adds is still held to the ceiling, since giving the group hands it on;
+    // what it takes away, and a rename, is not a gift.
     const added: IGiven[] = [
       {
         scopeType: SCOPE_TYPES.MADRASAH,
@@ -415,7 +481,7 @@ export class MadrasahPermissionService {
     userId: string,
     dto: SetMadrasahNazirPermissionsDto
   ): Promise<MadrasahNazirResponse> {
-    const { id: actor } = await this.actor(user, madrasahId);
+    const { id: actor, authority } = await this.actor(user, madrasahId);
     const id = userId.toLowerCase();
     await this.mustBeNazir(madrasahId, id);
     // Nobody gives themselves permissions: the person the caller names is
@@ -459,12 +525,13 @@ export class MadrasahPermissionService {
     // Everything the request may hand on, by scope: its single permissions
     // and, where a group sits, the group's codes. The ceiling is checked inside
     // the write, on what it really inserts or re-times (a code the nazır
-    // already holds from someone else and keeps is not a gift).
+    // already holds from someone else and keeps is not a gift), with a group's
+    // codes read under the group's lock there, not the ones read above.
     const codesIn = (scope: (typeof scopes)[number]): string[] => [
       ...scope.permissions,
       ...(scope.groupId && group ? group.permissions : []),
     ];
-    const check = await this.holdingsCheck(
+    const limits = await this.giverLimits(
       user,
       madrasahId,
       scopes.map((scope) => ({
@@ -473,25 +540,15 @@ export class MadrasahPermissionService {
         codes: codesIn(scope),
       }))
     );
-    const authority =
-      (await this.authorityOf(user, madrasahId)) ?? SCOPE_TYPES.MADRASAH;
     await this.repo.setPermissions(madrasahId, id, actor, {
       authority,
       scopes,
       expiresAt: dto.expiresAt ? new Date(dto.expiresAt) : null,
-      ceiling: check
-        ? (given) =>
-            check(
-              given.map((row) => ({
-                scopeType: row.scopeType,
-                scopeId: row.scopeId,
-                codes: row.permission
-                  ? [row.permission]
-                  : row.groupId && group && row.groupId === group.id
-                    ? group.permissions
-                    : [],
-              }))
-            )
+      ceiling: limits ? (given) => limits.check(given) : undefined,
+      // A gift never carries an authority the giver's own holding lacks
+      // (d-1004-27), so the receiver gets past no policy the giver cannot.
+      authorityFor: limits
+        ? (row, expiresAt) => limits.authorityFor(row, authority, expiresAt)
         : undefined,
     });
     const row = await this.nazirs.find(madrasahId, id);

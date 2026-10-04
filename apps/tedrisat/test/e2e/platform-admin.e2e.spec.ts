@@ -656,6 +656,37 @@ describe("Platform admin (e2e)", () => {
         .expect(200);
     });
 
+    it("never refuses the başnazım, on a köşk as on a course: he is super admin (owner, 4 October)", async () => {
+      await http()
+        .patch(`/kosks/${koskA}`)
+        .set("Authorization", auth(NAZIM_A_ID))
+        .send({ alwaysRequireApproval: true, recordingsNeverPublic: true })
+        .expect(200);
+      await policy("ALWAYS_REQUIRE_APPROVAL", true).expect(200);
+      await policy("RECORDINGS_NEVER_PUBLIC", true).expect(200);
+      const kosk = await http()
+        .patch(`/kosks/${koskA}`)
+        .set("Authorization", auth(ADMIN_ID))
+        .send({ alwaysRequireApproval: false, recordingsNeverPublic: false })
+        .expect(200);
+      expect(kosk.body).toMatchObject({
+        alwaysRequireApproval: false,
+        recordingsNeverPublic: false,
+      });
+      await http()
+        .patch(`/courses/${courseId}`)
+        .set("Authorization", auth(ADMIN_ID))
+        .send({ requiresApproval: false })
+        .expect(200);
+      // The köşk's own nazım is still held by the platform's rule.
+      const refused = await http()
+        .patch(`/kosks/${koskA}`)
+        .set("Authorization", auth(NAZIM_A_ID))
+        .send({ alwaysRequireApproval: false })
+        .expect(409);
+      expect(refused.body.code).toBe("PLATFORM_POLICY_LOCKED");
+    });
+
     it("lists the köşks that apply a rule themselves, with who switched it on", async () => {
       await http()
         .patch(`/kosks/${koskA}`)
