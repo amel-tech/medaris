@@ -28,7 +28,8 @@ restored. Down script in `src/database/rollbacks/`.
 - `src/deck-review/` (new module, `DeckReviewModule`). Authorization is in the
   service, like the archive's, not in `@Authz`: the matrix has no entity for it.
   - `GET /nizam/deck-publish-requests?status=PENDING|DECIDED&page=&limit=` — the
-    list with both tab counts. SYSTEM_ADMIN only. The köşk paging shape: `page`
+    list with both tab counts. SYSTEM_ADMIN, or a Medaris nazımı holding
+    `platform.deck_publish` (MDRS-135; see `mdrs-148-deck-publication.md`). The köşk paging shape: `page`
     from 1, `limit` 12 by default and at most 50 (`src/deck-review/paging.ts`).
     The counts are of every request, not of the page.
   - `GET /nizam/deck-publish-requests/:id/cards?all=` — three sample cards, or
@@ -123,7 +124,7 @@ and tedris-web 533 (both re-counted above), 0 failures on the second run (see
 
 - tedrisat `deck-review.e2e.spec.ts` (16 tests, real Postgres, minted tokens):
   lists and counts, pages of both lists with their totals (a page past the end
-  is empty, `limit=many` is 400), 403 for everyone but SYSTEM_ADMIN, audit rows for sample and
+  is empty, `limit=many` is 400), 403 for everyone but SYSTEM_ADMIN and, since MDRS-135, a holder of `platform.deck_publish`, audit rows for sample and
   all cards, 404 for a private deck with no request, approve (public, anonymous
   `GET /flashcard/decks` carries it, owner notified, second answer 409), reject
   (blank reason 400, reason kept, owner notified), a refused deck asks again,
@@ -162,11 +163,11 @@ and tedris-web 533 (both re-counted above), 0 failures on the second run (see
   against a throw-away `postgres:17-alpine` on :5450, migrated from scratch by
   tedrisat itself, which also proves migration 0043 applies on a fresh database.
   It was not applied on top of the shared database.
-- **Who may answer a publish request.** SYSTEM_ADMIN only. The design names the
-  permission "Desteyi herkese yayımla" (`platform.deck_publish`), but no endpoint
-  in tedrisat enforces a platform permission yet (the same is true of every other
-  platform grant); the Medaris nazımı's menu shows the entry and gets the 403
-  screen until grants are enforced.
+- **Who may answer a publish request.** SYSTEM_ADMIN only when this note was written, because no
+  endpoint in tedrisat enforced a platform permission yet. That is out of date: MDRS-135 made
+  `DeckReviewService.assertChief` accept a Medaris nazımı holding `platform.deck_publish`, and MDRS-148
+  tested it (`deck-publication.e2e.spec.ts`). Taking a published deck back (`unpublish`) is the başnazım's
+  alone.
 - The dark theme, the phone width and the Arabic (rtl) rendering of the three
   pages were not looked at. The Arabic strings are mine and were not reviewed by
   a native reader.
