@@ -78,7 +78,7 @@ them; the rest is what the handler reads for its own answer.
 | GET /madrasahs/:id/courses | 6 (medrese exists, its row and settings, roles, grants, managers, policies) | 5 (the medrese exists again, the courses, their müderris, imams, enrollment counts) | 11 |
 | GET /courses/:id, enrolled talebe | 16 = 2 x 8 (course's köşk, enrollment, ban, facts, roles, grants, managers, policies) | 4 (the course, its medrese, imams, "is the viewer a manager") | 20 |
 | GET /courses/:id, outsider | 14 = 2 x 7 (the same without the ban read) | 3 | 17 |
-| GET /courses/:id, köşk nazımı | 14 = 2 x 7 | 4 (the same three, and one `insert audit_log`, the roster-read audit) | 18 |
+| GET /courses/:id, köşk nazımı | 14 = 2 x 7 | 4 (the same three, and one `insert audit_log`, the content-read audit, `course.content_read`) | 18 |
 | GET /flashcard/decks/:id | 4 (deck visibility, roles, grants, policies; no facts or managers for a deck) | 1 (the deck) | 5 |
 
 So 80 percent of a deck's, 55 percent of a list's and 78 to 82 percent of a course page's statements are
