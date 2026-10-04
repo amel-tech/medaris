@@ -6,12 +6,13 @@
 // `grep -n '\[' apps/landing/content/legal.ts` lists what is still open. The
 // controller's own details are written once, in content/aydinlatma-metni.ts
 // (MDRS-102), and reused here by reference.
+import { CONTACT_ADDRESS } from "~/lib/contact";
 import { CONTROLLER } from "./aydinlatma-metni";
 
 export const legal = {
   controllerTitle: CONTROLLER.title,
   address: CONTROLLER.address,
-  supportEmail: "[Destek e-posta adresi]",
+  supportEmail: CONTACT_ADDRESS,
   kepAddress: CONTROLLER.kep,
   mersisNo: CONTROLLER.mersis,
   hostingProvider: "[Barındırma sağlayıcısı ve ülkesi]",
