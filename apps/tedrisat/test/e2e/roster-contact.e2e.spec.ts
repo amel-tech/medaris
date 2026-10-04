@@ -1,6 +1,6 @@
 import { PERMISSIONS, ROLES } from "@medaris/common";
 import { INestApplication } from "@nestjs/common";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import request from "supertest";
 import { ROSTER_READ_ACTION } from "../../src/course/domain/course-content";
 import { CourseStatus } from "../../src/course/domain/course-status.enum";
@@ -17,6 +17,7 @@ import { madrasahs } from "../../src/database/schema/madrasah.schema";
 import { permissionGrants } from "../../src/database/schema/permission.schema";
 import {
   ASSIGNED_ROLES,
+  roleAssignments,
   SCOPE_TYPES,
 } from "../../src/database/schema/role-assignment.schema";
 import { createTestApp } from "../helpers/test-app.helper";
@@ -423,6 +424,48 @@ describe("Roster contact details for course staff (MDRS-203, e2e)", () => {
         const res = await get(sub, path()).expect(403);
         noEmailIn(res.body);
       }
+    });
+  });
+
+  describe("a passive course (every müderris assignment revoked)", () => {
+    const passivate = () =>
+      db()
+        .update(roleAssignments)
+        .set({ revokedAt: new Date(), revokedBy: MANAGER_ID })
+        .where(
+          and(
+            eq(roleAssignments.scopeId, courseId),
+            eq(roleAssignments.role, ASSIGNED_ROLES.MUDERRIS)
+          )
+        );
+
+    // Open decision (MDRS-203 note, "the köşk-wide pending list and a passive
+    // course"): the roster closes to the köşk nazımı when the course has no
+    // müderris, but `course.manage_all` is köşk-scoped and not content-flagged,
+    // so the köşk-wide pending list still carries the passive course's names and
+    // addresses. This pins what is true today; whoever closes the side door
+    // flips the second half of this test.
+    it("closes the roster to the köşk nazımı, but the köşk-wide pending list still lists its requests", async () => {
+      await passivate();
+      const closed = await get(
+        MANAGER_ID,
+        `/courses/${courseId}/enrollments`
+      ).expect(403);
+      noEmailIn(closed.body);
+
+      const res = await get(
+        MANAGER_ID,
+        `/kosks/${koskId}/enrollments/pending`
+      ).expect(200);
+      const rows = res.body as {
+        courseId: string;
+        studentName: string;
+        studentEmail: string;
+      }[];
+      const ofPassive = rows.filter((row) => row.courseId === courseId);
+      expect(
+        ofPassive.map((row) => [row.studentName, row.studentEmail])
+      ).toEqual([SEEDED[PENDING_ID]]);
     });
   });
 
