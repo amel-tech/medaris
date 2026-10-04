@@ -289,6 +289,8 @@ describe("A hidden köşk closes its courses (MDRS-143, e2e)", () => {
   });
 
   it("closes a course opened after the köşk was hidden, as well", async () => {
+    // The müderris must have an account in the app: a first request makes it.
+    await get(MUDERRIS_ID, "/me").expect(200);
     await hide(NAZIM_ID).expect(200);
     const opened = await post(NAZIM_ID, `/kosks/${koskId}/courses`, {
       title: "Sonradan açılan",
@@ -297,6 +299,8 @@ describe("A hidden köşk closes its courses (MDRS-143, e2e)", () => {
       status: "PUBLISHED",
       requiresApproval: false,
       weeks: [],
+      // A course opens with a müderris who has an account (MDRS-136).
+      muderris: [{ userId: MUDERRIS_ID, name: "Müderris" }],
     }).expect(201);
     await get(STRANGER_ID, `/courses/${opened.body.id}`).expect(404);
     await get(NAZIM_ID, `/courses/${opened.body.id}`).expect(200);
