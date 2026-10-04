@@ -396,19 +396,81 @@ export class CourseService {
   }
 
   /**
-   * Whether the person is a talebe of the course right now: an ENROLLED or
-   * COMPLETED enrollment that no ban bars (MDRS-150). What a write made by a
-   * talebe alone (a note, a question) asks besides the engine, because no
-   * catalogue code says "enrolled and not staff": the başnazım passes every
-   * decision and the course team holds `course.view_details` without being
-   * talebe.
+   * The course a session belongs to, for a caller who may see that course
+   * (`getDetail`: a hidden köşk, a hidden course, a draft). A session that is
+   * not there and one in a course the caller may not see are one answer,
+   * LESSON_NOT_FOUND, as on the session's calendar entry (`getScheduledLesson`),
+   * so a hidden course is not told apart from a session that never existed.
+   * For what a talebe writes on a session (MDRS-150): archived sessions count,
+   * like `findLessonCourseId`.
    */
-  async isActiveTalebe(userId: string, courseId: string): Promise<boolean> {
-    const enrollment = await this.courseRepo.findEnrollment(userId, courseId);
+  async findVisibleLessonCourse(
+    lessonId: string,
+    user: AuthenticatedUser
+  ): Promise<string> {
+    const courseId = await this.courseRepo.findLessonCourseId(lessonId);
+    if (!courseId) throw new LessonNotFoundError(lessonId);
+    try {
+      await this.getDetail(courseId, user, { read: true });
+    } catch (error) {
+      if (error instanceof CourseNotFoundError) {
+        throw new LessonNotFoundError(lessonId);
+      }
+      throw error;
+    }
+    return courseId;
+  }
+
+  /**
+   * Whether the person may write on the course as a talebe (a note, a
+   * question; MDRS-150): an ENROLLED or COMPLETED enrollment that no ban bars,
+   * and the course's content open to them. The enrollment is what the engine
+   * cannot say, because no catalogue code means "enrolled and not staff": the
+   * başnazım passes every decision and the course team holds
+   * `course.view_details` without being talebe. The open content is the
+   * engine's: a passive scope closes it to the enrolled talebe too, and a
+   * pending, removed or barred talebe never held it.
+   */
+  async mayWriteAsTalebe(
+    user: AuthenticatedUser,
+    courseId: string
+  ): Promise<boolean> {
+    const enrollment = await this.courseRepo.findEnrollment(user.sub, courseId);
     const active =
       enrollment?.status === EnrollmentStatus.ENROLLED ||
       enrollment?.status === EnrollmentStatus.COMPLETED;
-    return active && !(await this.banService.isBarred(userId, courseId));
+    return (
+      active &&
+      !(await this.banService.isBarred(user.sub, courseId)) &&
+      (await this.contentIsOpen(user, courseId))
+    );
+  }
+
+  /**
+   * Whether the person may still reach what they wrote on the course as a
+   * talebe (MDRS-150): read it and delete it. The content is open to them, or
+   * no scope closes the course. A talebe who was removed or barred holds no
+   * content code for a passive scope to take away, so the scope itself is
+   * asked: an open course lets them reach their own writing, a passive one
+   * closes it like the rest of its content.
+   */
+  async mayReachOwnWriting(
+    user: AuthenticatedUser,
+    courseId: string
+  ): Promise<boolean> {
+    if (await this.contentIsOpen(user, courseId)) return true;
+    return (await this.courseRepo.findPassiveScope(courseId)) === null;
+  }
+
+  private contentIsOpen(
+    user: AuthenticatedUser,
+    courseId: string
+  ): Promise<boolean> {
+    return this.authz.can(
+      user,
+      { entity: ENTITIES.COURSE, id: courseId },
+      PERMISSIONS.COURSE_VIEW_DETAILS
+    );
   }
 
   /**

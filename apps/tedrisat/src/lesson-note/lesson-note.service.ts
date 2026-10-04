@@ -1,14 +1,6 @@
-import {
-  AuthenticatedUser,
-  AuthzService,
-  ENTITIES,
-  PERMISSIONS,
-} from "@medaris/common";
+import { AuthenticatedUser } from "@medaris/common";
 import { Injectable } from "@nestjs/common";
-import { CourseRepository } from "../course/course.repository";
 import { CourseService } from "../course/course.service";
-import { CourseNotFoundError } from "../course/errors/course-not-found.error";
-import { LessonNotFoundError } from "../course/errors/lesson-not-found.error";
 import type {
   CreateLessonNoteDto,
   UpdateLessonNoteDto,
@@ -24,40 +16,31 @@ import {
  * A talebe's private notes on a session's video (MDRS-150).
  *
  * Whose they are is decided by the repository, which never reads a note
- * without its author. Two things are decided here, the engine's and the
- * enrollment's:
+ * without its author. Whether the caller may reach the course at all is the
+ * engine's, through `CourseService`, as for every read of course content: the
+ * course must be one they may see (a hidden köşk, a hidden course and a draft
+ * answer as a session that is not there), and its content must not be closed
+ * to them (a passive scope closes it to the enrolled talebe too).
  *
- * - **Whether the course is open to the caller** is the engine's answer, as
- *   for every read of course content: the course must be one the caller may
- *   see (`CourseService.getDetail`: a hidden köşk, a hidden course, a draft),
- *   and its content must not be closed to them (`course.view_details`: a
- *   passive scope closes it, and a pending, removed or barred talebe never
- *   held it). `AuthzGuard` has already refused a course of a hidden köşk.
- * - **Who may write** is also an active enrollment (ENROLLED or COMPLETED)
- *   that no ban bars, which the engine cannot say: SYSTEM_ADMIN passes it on
- *   every course and the course team holds `course.view_details` without
- *   being talebe.
- *
- * Reading and deleting one's own notes ask only the first, so a talebe who
- * was removed or barred can still read and remove what they wrote while the
- * course is open; a passive scope closes them like the rest of its content.
+ * Writing takes an active talebe on top of that (`mayWriteAsTalebe`). Reading
+ * and deleting one's own notes take only an open course, so a talebe who was
+ * removed or barred can still read and remove what they wrote
+ * (`mayReachOwnWriting`).
  */
 @Injectable()
 export class LessonNoteService {
-  // All four must stay value imports: `import type` erases them from
-  // `design:paramtypes` and Nest can no longer inject them.
+  // Must stay a value import: `import type` erases it from
+  // `design:paramtypes` and Nest can no longer inject it.
   constructor(
     private readonly notes: LessonNoteRepository,
-    private readonly courseRepo: CourseRepository,
-    private readonly courseService: CourseService,
-    private readonly authz: AuthzService
+    private readonly courseService: CourseService
   ) {}
 
   async list(
     user: AuthenticatedUser,
     lessonId: string
   ): Promise<ILessonNote[]> {
-    await this.assertReadable(user, await this.visibleCourse(user, lessonId));
+    await this.assertReachable(user, lessonId);
     return this.notes.findByAuthor(lessonId, user.sub);
   }
 
@@ -66,7 +49,7 @@ export class LessonNoteService {
     lessonId: string,
     dto: CreateLessonNoteDto
   ): Promise<ILessonNote> {
-    await this.assertMayWrite(user, await this.visibleCourse(user, lessonId));
+    await this.assertMayWrite(user, lessonId);
     return this.notes.insert(lessonId, user.sub, {
       body: dto.body,
       offsetSeconds: dto.offsetSeconds ?? null,
@@ -79,7 +62,7 @@ export class LessonNoteService {
     noteId: string,
     dto: UpdateLessonNoteDto
   ): Promise<ILessonNote> {
-    await this.assertMayWrite(user, await this.visibleCourse(user, lessonId));
+    await this.assertMayWrite(user, lessonId);
     const saved = await this.notes.update(noteId, lessonId, user.sub, dto);
     if (!saved) throw new LessonNoteNotFoundError(noteId);
     return saved;
@@ -90,71 +73,35 @@ export class LessonNoteService {
     lessonId: string,
     noteId: string
   ): Promise<void> {
-    await this.assertReadable(user, await this.visibleCourse(user, lessonId));
+    await this.assertReachable(user, lessonId);
     if (!(await this.notes.remove(noteId, lessonId, user.sub))) {
       throw new LessonNoteNotFoundError(noteId);
     }
   }
 
-  /**
-   * The course the session belongs to. A session that is not there and one in
-   * a course the caller may not see are one answer, as on the session's
-   * calendar entry (`CourseService.getScheduledLesson`), so a hidden course is
-   * not told apart from a session that never existed.
-   */
-  private async visibleCourse(
-    user: AuthenticatedUser,
-    lessonId: string
-  ): Promise<string> {
-    const courseId = await this.courseRepo.findLessonCourseId(lessonId);
-    if (!courseId) throw new LessonNotFoundError(lessonId);
-    try {
-      await this.courseService.getDetail(courseId, user, { read: true });
-    } catch (error) {
-      if (error instanceof CourseNotFoundError) {
-        throw new LessonNotFoundError(lessonId);
-      }
-      throw error;
-    }
-    return courseId;
-  }
-
-  /**
-   * Content open to the caller, or else no scope closing it for everyone. A
-   * talebe who lost their seat holds no content code for a passive scope to
-   * take away, so the scope itself is asked: an open course lets them read and
-   * delete what they wrote, a passive one does not.
-   */
-  private async assertReadable(
-    user: AuthenticatedUser,
-    courseId: string
-  ): Promise<void> {
-    if (await this.contentIsOpen(user, courseId)) return;
-    if (await this.courseRepo.findPassiveScope(courseId)) {
-      throw new LessonNoteForbiddenError();
-    }
-  }
-
   private async assertMayWrite(
     user: AuthenticatedUser,
-    courseId: string
+    lessonId: string
   ): Promise<void> {
-    if (
-      !(await this.courseService.isActiveTalebe(user.sub, courseId)) ||
-      !(await this.contentIsOpen(user, courseId))
-    ) {
+    const courseId = await this.courseService.findVisibleLessonCourse(
+      lessonId,
+      user
+    );
+    if (!(await this.courseService.mayWriteAsTalebe(user, courseId))) {
       throw new LessonNoteForbiddenError();
     }
   }
 
-  private contentIsOpen(
+  private async assertReachable(
     user: AuthenticatedUser,
-    courseId: string
-  ): Promise<boolean> {
-    return this.authz.can(
-      user,
-      { entity: ENTITIES.COURSE, id: courseId },
-      PERMISSIONS.COURSE_VIEW_DETAILS
+    lessonId: string
+  ): Promise<void> {
+    const courseId = await this.courseService.findVisibleLessonCourse(
+      lessonId,
+      user
     );
+    if (!(await this.courseService.mayReachOwnWriting(user, courseId))) {
+      throw new LessonNoteForbiddenError();
+    }
   }
 }

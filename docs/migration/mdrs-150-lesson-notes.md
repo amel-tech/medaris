@@ -28,21 +28,27 @@ position of a note on a player that is not YouTube's is a number the talebe type
 The four routes asked the old matrix for `VIEW`. The matrix is gone; each route now asks `course.view` of
 the lesson's course (`@Authz(PERMISSIONS.COURSE_VIEW, byLessonCourse)`), like the session routes beside it.
 The guard answers a missing lesson with 404 and, since the engine's `assertOpen` runs in front of every
-signed-in decision, a course of a hidden köşk with that course's own 404. The rest is
-`LessonNoteService`'s, asked of the engine as every read of course content is:
+signed-in decision, a course of a hidden köşk with that course's own 404. The rest is asked of the engine
+through `CourseService`, as every read of course content is:
 
 | Question | Asked of | Notes |
 | --- | --- | --- |
-| may the caller see the course at all | `CourseService.getDetail(courseId, user, { read: true })`, its `CourseNotFoundError` answered as `LESSON_NOT_FOUND` | a hidden köşk, a hidden course (`archived_at`), a draft; the same rule and the same single answer as the session's calendar entry (`getScheduledLesson`) |
+| may the caller see the course at all | `CourseService.findVisibleLessonCourse`: `getDetail(courseId, user, { read: true })`, its `CourseNotFoundError` answered as `LESSON_NOT_FOUND` | a hidden köşk, a hidden course (`archived_at`), a draft; the same rule and the same single answer as the session's calendar entry (`getScheduledLesson`) |
 | is the course's content open to the caller | `AuthzService.can(user, course, course.view_details)` | a passive scope takes `view_details` away from the enrolled talebe too; a pending, removed or barred talebe never held it; platform management and the köşk's nazımı keep it, and `can` writes their `scope.passive_open` row |
-| is the caller a talebe | `CourseService.isActiveTalebe`: an ENROLLED or COMPLETED enrollment, and `BanService.isBarred` false | to write only. No catalogue code says "enrolled and not staff": the başnazım passes every decision and the course team holds `view_details` without being talebe |
+| is the caller a talebe | an ENROLLED or COMPLETED enrollment and `BanService.isBarred` false | to write only. No catalogue code says "enrolled and not staff": the başnazım passes every decision and the course team holds `view_details` without being talebe |
 
-Writing (create, edit) takes the talebe rule and the open content. Reading and deleting one's own notes
-take the open content, or, for someone who holds no content code (a talebe who was removed or barred), a
-course that no passive scope closes (`CourseRepository.findPassiveScope`, the reviewed `passiveScopesOf`
-for one course). So a removed or barred talebe still reads and deletes what they wrote while the course
-is open, and a passive course is closed to every route, theirs included. The web panel mounts only when
-`!contentLocked`, which is the same `view_details` answer, so the screen and the API agree.
+The last two are `CourseService.mayWriteAsTalebe` (a talebe, and the content open) and
+`CourseService.mayReachOwnWriting` (to read and to delete). They are on `CourseService`, beside the
+enrollment and the ban the course already reads, because the questions to the course staff ask exactly
+the same of a talebe.
+
+Writing (create, edit) takes `mayWriteAsTalebe`. Reading and deleting one's own notes take
+`mayReachOwnWriting`: the content open to the caller or, for someone who holds no content code (a talebe
+who was removed or barred), a course that no passive scope closes (`CourseRepository.findPassiveScope`,
+the reviewed `passiveScopesOf` for one course). So a removed or barred talebe still reads and deletes what
+they wrote while the course is open, and a passive course is closed to every route, theirs included. The
+web panel mounts only when `!contentLocked`, which is the same `view_details` answer, so the screen and the
+API agree.
 
 No new catalogue code: nothing is granted for notes, and the catalogue counts do not move.
 
@@ -84,7 +90,7 @@ the viewer is not a talebe.
    everything else. Default: closed, because the rule everywhere else is that a passive scope closes
    content to everyone but its management, and a note is the course's content on a session.
 2. **A hidden course and a draft close the notes, through `getDetail`,** not through a rule written again
-   here. It loads the course detail on each note call, as the calendar entry does; the session page's
+   here (`findVisibleLessonCourse`). It loads the course detail on each note call, as the calendar entry does; the session page's
    own read is the same query, so a page that opens the panel makes two.
 3. **Staff and the başnazım write no notes unless they are enrolled like anyone.** Unchanged from the PR;
    a catalogue code for it would say nothing the enrollment does not.
@@ -115,14 +121,14 @@ change reverted:
 
 | Criterion | Test | Fails without the change |
 | --- | --- | --- |
-| a hidden course is closed like its page | "answers a hidden course as a session that is not there, and writes nothing" | yes, with `getDetail` removed from `visibleCourse`: 1 failed, 6 passed |
-| a draft is closed like its page | "answers a course taken back to a draft as a session that is not there, and writes nothing" | yes, with `getDetail` removed from `visibleCourse`: 1 failed |
-| a passive course is closed to its talebe on every route and nothing changes | "closes a passive course to its enrolled talebe on every route, and leaves their notes where they are" | yes, with `contentIsOpen` always true: 3 failed (this, the next, and the köşk nazımı's), 4 passed; and with `assertReadable` emptied: 2 failed, 5 passed |
-| a talebe who lost their seat is closed out of a passive course, and the course reopens with its müderris | "closes a passive course to a talebe who lost their seat as well, and opens it again with the müderris" | yes, with `assertReadable` emptied (above) and with `contentIsOpen` always true |
+| a hidden course is closed like its page | "answers a hidden course as a session that is not there, and writes nothing" | yes, with `getDetail` taken out of `findVisibleLessonCourse`: 2 failed (this and the draft test), 6 passed |
+| a draft is closed like its page | "answers a course taken back to a draft as a session that is not there, and writes nothing" | yes, with the same change: the 2 failed above |
+| a passive course is closed to its talebe on every route and nothing changes | "closes a passive course to its enrolled talebe on every route, and leaves their notes where they are" | yes, with `contentIsOpen` always true: 3 failed (this, the next, and the köşk nazımı's), 5 passed; with `mayReachOwnWriting` always true: 2 failed (this and the next), 6 passed; with only the write path's `contentIsOpen` relaxed: 1 failed (this) |
+| a talebe who lost their seat is closed out of a passive course, and the course reopens with its müderris | "closes a passive course to a talebe who lost their seat as well, and opens it again with the müderris" | yes, with `mayReachOwnWriting` always true and with `contentIsOpen` always true (above) |
 | the köşk's nazımı keeps a passive course of their köşk, on the record | "leaves a passive course open to the köşk's nazımı who is enrolled in it, on the record" | yes, with `contentIsOpen` always true (the `scope.passive_open` row is the engine's `can`) |
-| a barred talebe is refused even where a role of theirs holds the content | "refuses a barred talebe even where a role of theirs holds the course's content" | yes, with the ban term removed from `CourseService.isActiveTalebe`: 1 failed, 7 passed |
+| a barred talebe is refused even where a role of theirs holds the content | "refuses a barred talebe even where a role of theirs holds the course's content" | yes, with the ban term removed from `CourseService.mayWriteAsTalebe`: 1 failed, 7 passed |
 | a talebe barred from the whole köşk | "refuses a talebe barred from the whole köşk, and still lets them read and delete their own" | no: the engine alone already answers a barred talebe as a stranger, so this is a pin on the pair, not on one of them |
-| a course of a hidden köşk answers 404 on every route | "answers a course of a hidden köşk as not found on every route, and writes nothing" | yes, with both layers removed (`getDetail` out of `visibleCourse` and `@Authz` replaced by `@AuthzExempt()`): `{ list: 200, create: 201, … }` instead of 404. With `@Authz` removed alone the app does not boot: "4 route handler(s) sit behind AuthzGuard with neither @Authz nor @AuthzExempt()" |
+| a course of a hidden köşk answers 404 on every route | "answers a course of a hidden köşk as not found on every route, and writes nothing" | yes, with both layers removed (`getDetail` out of `findVisibleLessonCourse` and `@Authz` replaced by `@AuthzExempt()`): `{ list: 200, create: 201, … }` instead of 404. With `@Authz` removed alone the app does not boot: "4 route handler(s) sit behind AuthzGuard with neither @Authz nor @AuthzExempt()" |
 | the routes are decided by the catalogue | the route inventory snapshot | yes, against the tree before this commit: the four `/lessons/:id/notes` rows were missing from `authz-route-inventory.txt` ("Snapshot … mismatched") |
 | the migration adds the table, holds a session and a position, and rolls back | `lesson-notes-migration.e2e.spec.ts` | yes, with the CHECK removed from the SQL: "promise resolved … instead of rejecting" |
 
