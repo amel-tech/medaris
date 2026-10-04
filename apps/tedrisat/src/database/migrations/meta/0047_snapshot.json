@@ -1,5 +1,5 @@
 {
-  "id": "0e937117-2043-43ca-a7d9-dfbe59291e3c",
+  "id": "f4636102-11e5-4a85-9cf5-50cb825f2bc3",
   "prevId": "bdb74326-fc5f-402f-b1a5-da84a6d0537c",
   "version": "7",
   "dialect": "postgresql",
@@ -2792,105 +2792,6 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.lesson_notes": {
-      "name": "lesson_notes",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "lesson_id": {
-          "name": "lesson_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "author_id": {
-          "name": "author_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "offset_seconds": {
-          "name": "offset_seconds",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "body": {
-          "name": "body",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "lesson_notes_author_lesson_idx": {
-          "name": "lesson_notes_author_lesson_idx",
-          "columns": [
-            {
-              "expression": "author_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "lesson_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "lesson_notes_lesson_id_lessons_id_fk": {
-          "name": "lesson_notes_lesson_id_lessons_id_fk",
-          "tableFrom": "lesson_notes",
-          "tableTo": "lessons",
-          "columnsFrom": [
-            "lesson_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "lesson_notes_offset_not_negative": {
-          "name": "lesson_notes_offset_not_negative",
-          "value": "\"lesson_notes\".\"offset_seconds\" is null or \"lesson_notes\".\"offset_seconds\" >= 0"
-        }
-      },
-      "isRLSEnabled": false
-    },
     "public.madrasah_settings": {
       "name": "madrasah_settings",
       "schema": "",
@@ -3324,6 +3225,13 @@
           "type": "uuid",
           "primaryKey": false,
           "notNull": true
+        },
+        "authority_scope_type": {
+          "name": "authority_scope_type",
+          "type": "scope_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
         },
         "created_at": {
           "name": "created_at",

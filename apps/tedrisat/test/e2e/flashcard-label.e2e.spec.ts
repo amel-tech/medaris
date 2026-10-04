@@ -548,8 +548,15 @@ describe("FlashcardDeckLabelController (e2e)", () => {
 const seedDeckWithCard = async (app: INestApplication, isPublic: boolean) => {
   const deck = await request(app.getHttpServer())
     .post("/flashcard/decks")
-    .send({ title: isPublic ? "Public Deck" : "Private Deck", isPublic });
+    .send({ title: isPublic ? "Public Deck" : "Private Deck" });
   expect(deck.status).toBe(201);
+  // Only the başnazım publishes (MDRS-148): the row is written as his approval
+  // leaves it.
+  if (isPublic) {
+    await new TestDatabaseUtils(
+      app.get<DatabaseService>(DatabaseService)
+    ).publishDeck(deck.body.id);
+  }
 
   const cards = await request(app.getHttpServer())
     .post(`/flashcard/decks/${deck.body.id}/cards`)

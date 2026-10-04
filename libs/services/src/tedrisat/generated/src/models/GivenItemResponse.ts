@@ -13,13 +13,13 @@
  */
 
 import { mapValues } from '../runtime';
-import type { GivenKind } from './GivenKind';
+import type { GivenItemKind } from './GivenItemKind';
 import {
-    GivenKindFromJSON,
-    GivenKindFromJSONTyped,
-    GivenKindToJSON,
-    GivenKindToJSONTyped,
-} from './GivenKind';
+    GivenItemKindFromJSON,
+    GivenItemKindFromJSONTyped,
+    GivenItemKindToJSON,
+    GivenItemKindToJSONTyped,
+} from './GivenItemKind';
 import type { NazimPersonResponse } from './NazimPersonResponse';
 import {
     NazimPersonResponseFromJSON,
@@ -36,12 +36,12 @@ import {
 export interface GivenItemResponse {
     /**
      * 
-     * @type {GivenKind}
+     * @type {GivenItemKind}
      * @memberof GivenItemResponse
      */
-    kind: GivenKind;
+    kind: GivenItemKind;
     /**
-     * 
+     * The role row, the grant row or, for a GROUP, the permission group
      * @type {string}
      * @memberof GivenItemResponse
      */
@@ -65,11 +65,23 @@ export interface GivenItemResponse {
      */
     groupName: string | null;
     /**
-     * 
+     * Who it went to; null for a GROUP, which goes to no one yet
      * @type {NazimPersonResponse}
      * @memberof GivenItemResponse
      */
-    to: NazimPersonResponse;
+    to: NazimPersonResponse | null;
+    /**
+     * The codes a GROUP carries now; null for a role or a grant
+     * @type {Array<string>}
+     * @memberof GivenItemResponse
+     */
+    groupPermissions: Array<string> | null;
+    /**
+     * For a GROUP: whether the person defined it or last changed it; null otherwise
+     * @type {string}
+     * @memberof GivenItemResponse
+     */
+    groupAction: GivenItemResponseGroupActionEnum | null;
     /**
      * 
      * @type {string}
@@ -85,6 +97,15 @@ export interface GivenItemResponse {
 }
 
 
+/**
+ * @export
+ */
+export const GivenItemResponseGroupActionEnum = {
+    Create: 'create',
+    Update: 'update'
+} as const;
+export type GivenItemResponseGroupActionEnum = typeof GivenItemResponseGroupActionEnum[keyof typeof GivenItemResponseGroupActionEnum];
+
 
 /**
  * Check if a given object implements the GivenItemResponse interface.
@@ -96,6 +117,8 @@ export function instanceOfGivenItemResponse(value: object): value is GivenItemRe
     if (!('permission' in value) || value['permission'] === undefined) return false;
     if (!('groupName' in value) || value['groupName'] === undefined) return false;
     if (!('to' in value) || value['to'] === undefined) return false;
+    if (!('groupPermissions' in value) || value['groupPermissions'] === undefined) return false;
+    if (!('groupAction' in value) || value['groupAction'] === undefined) return false;
     if (!('scopeType' in value) || value['scopeType'] === undefined) return false;
     if (!('scopeName' in value) || value['scopeName'] === undefined) return false;
     return true;
@@ -111,12 +134,14 @@ export function GivenItemResponseFromJSONTyped(json: any, ignoreDiscriminator: b
     }
     return {
         
-        'kind': GivenKindFromJSON(json['kind']),
+        'kind': GivenItemKindFromJSON(json['kind']),
         'id': json['id'],
         'role': json['role'],
         'permission': json['permission'],
         'groupName': json['groupName'],
         'to': NazimPersonResponseFromJSON(json['to']),
+        'groupPermissions': json['groupPermissions'] == null ? null : json['groupPermissions'],
+        'groupAction': json['groupAction'],
         'scopeType': json['scopeType'],
         'scopeName': json['scopeName'],
     };
@@ -133,12 +158,14 @@ export function GivenItemResponseToJSONTyped(value?: GivenItemResponse | null, i
 
     return {
         
-        'kind': GivenKindToJSON(value['kind']),
+        'kind': GivenItemKindToJSON(value['kind']),
         'id': value['id'],
         'role': value['role'],
         'permission': value['permission'],
         'groupName': value['groupName'],
         'to': NazimPersonResponseToJSON(value['to']),
+        'groupPermissions': value['groupPermissions'],
+        'groupAction': value['groupAction'],
         'scopeType': value['scopeType'],
         'scopeName': value['scopeName'],
     };

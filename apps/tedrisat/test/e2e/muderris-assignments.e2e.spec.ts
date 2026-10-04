@@ -1,19 +1,19 @@
-import { ROLES } from "@medaris/common";
 import { INestApplication } from "@nestjs/common";
 import { and, eq } from "drizzle-orm";
 import request from "supertest";
 import { DatabaseService } from "../../src/database/database.service";
+import { courses } from "../../src/database/schema/course.schema";
 import {
   ASSIGNED_ROLES,
   roleAssignments,
 } from "../../src/database/schema/role-assignment.schema";
 import { users } from "../../src/database/schema/user.schema";
+import { openKosk } from "../helpers/open-scopes.helper";
 import { createTestApp, TEST_USER_ID } from "../helpers/test-app.helper";
 import {
   COURSE_TREE_TABLES,
   TestDatabaseUtils,
 } from "../helpers/test-database.helper";
-import { bearerFor } from "../helpers/test-keycloak.helper";
 
 /**
  * MDRS-134: `course_muderris` stays what the course page shows, and the
@@ -94,17 +94,7 @@ describe("MUDERRIS role rows follow the course's müderris list (e2e)", () => {
       .values([TEST_USER_ID, AHMED, HASAN, ZEYD].map((id) => ({ id })));
     // Opening a köşk is SYSTEM_ADMIN only (2026-10-02); signed with
     // TEST_USER_ID's own `sub`, the köşk is still that user's to manage.
-    const kosk = await request(adminApp.getHttpServer())
-      .post("/kosks")
-      .set(
-        "Authorization",
-        bearerFor({
-          sub: TEST_USER_ID,
-          claims: { realm_access: { roles: [ROLES.SYSTEM_ADMIN] } },
-        })
-      )
-      .send({ name: "Süleymaniye Köşkü" })
-      .expect(201);
+    const kosk = await openKosk(adminApp);
     koskId = kosk.body.id;
   });
 
@@ -131,9 +121,16 @@ describe("MUDERRIS role rows follow the course's müderris list (e2e)", () => {
     expect(all.every((r) => r.scopeType === "course")).toBe(true);
   });
 
-  it("grants nothing for a course whose müderris are bound to no account", async () => {
-    const course = await create([muderris(undefined, "Hoca-i misafir")]);
-    expect(await rows(course.id)).toEqual([]);
+  it("refuses to open a course whose müderris are bound to no account, and writes nothing", async () => {
+    await http()
+      .post(`/kosks/${koskId}/courses`)
+      .send(payload([muderris(undefined, "Hoca-i misafir")]))
+      .expect(400)
+      .expect((res) => expect(res.body.code).toBe("MUDERRIS_LIST_INVALID"));
+    expect(await databaseService.db.select().from(courses)).toEqual([]);
+    expect(
+      await databaseService.db.select().from(roleAssignments)
+    ).toHaveLength(1); // the köşk's nazım
   });
 
   it("revokes a dropped account, grants an added one, and keeps the imam", async () => {
@@ -176,7 +173,7 @@ describe("MUDERRIS role rows follow the course's müderris list (e2e)", () => {
 
   // A lapsed imam is no imam: the next save closes the lapsed row and makes
   // the first listed account imam, without tripping the one-imam index.
-  it("replaces an imam whose row lapsed by expires_at", async () => {
+  it("replaces an imam whose row lapsed by expires_at, and does not seat them again", async () => {
     const course = await create([
       muderris(HASAN, "Hasan"),
       muderris(AHMED, "Ahmed"),
@@ -194,10 +191,10 @@ describe("MUDERRIS role rows follow the course's müderris list (e2e)", () => {
       muderris(AHMED, "Ahmed"),
       muderris(HASAN, "Hasan"),
     ]);
-    expect(await held(course.id)).toEqual([
-      { userId: AHMED, isImam: true },
-      { userId: HASAN, isImam: false },
-    ]);
+    // Hasan was on the list already: a whole-course save keeps the seat each
+    // listed account has, and a lapsed one stays lapsed (MDRS-135 review
+    // A-reseat). Seating him again is the müderris routes' explicit act.
+    expect(await held(course.id)).toEqual([{ userId: AHMED, isImam: true }]);
     const lapsed = (await rows(course.id)).filter(
       (r) => r.userId === HASAN && r.revokedAt !== null
     );
@@ -205,10 +202,14 @@ describe("MUDERRIS role rows follow the course's müderris list (e2e)", () => {
     expect(lapsed[0].isImam).toBe(true);
   });
 
-  it("revokes every MUDERRIS row when no account is left on the list", async () => {
+  it("refuses a save that leaves no account on the list, and keeps who teaches", async () => {
     const course = await create([muderris(AHMED, "Ahmed")]);
-    await replace(course.id, [muderris(undefined, "Hoca-i misafir")]);
-    expect(await held(course.id)).toEqual([]);
+    await http()
+      .put(`/courses/${course.id}`)
+      .send(payload([muderris(undefined, "Hoca-i misafir")]))
+      .expect(400)
+      .expect((res) => expect(res.body.code).toBe("MUDERRIS_LIST_INVALID"));
+    expect(await held(course.id)).toEqual([{ userId: AHMED, isImam: true }]);
     expect(await rows(course.id)).toHaveLength(1);
   });
 

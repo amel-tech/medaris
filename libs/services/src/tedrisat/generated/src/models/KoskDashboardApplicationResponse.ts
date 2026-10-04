@@ -44,7 +44,7 @@ export interface KoskDashboardApplicationResponse {
      */
     studentName?: string | null;
     /**
-     * 
+     * The applicant's e-mail address. No application is sent at all when `contentLocked` is true (`latestApplications` is empty)
      * @type {string}
      * @memberof KoskDashboardApplicationResponse
      */
@@ -55,6 +55,18 @@ export interface KoskDashboardApplicationResponse {
      * @memberof KoskDashboardApplicationResponse
      */
     requestedAt: Date;
+    /**
+     * Whether the viewer holds `enrollment.decide` on this course, as the engine decides it: false in a passive scope, or when their role carries no course work. When false the screen offers no Onayla or Reddet; the route refuses all the same
+     * @type {boolean}
+     * @memberof KoskDashboardApplicationResponse
+     */
+    canDecide: boolean;
+    /**
+     * The course, its köşk or its medrese once had a manager and has none now, so its content is closed (MDRS-135). It is the reason a köşk nazımı's `canDecide` is false
+     * @type {boolean}
+     * @memberof KoskDashboardApplicationResponse
+     */
+    scopePassive: boolean;
 }
 
 /**
@@ -65,6 +77,8 @@ export function instanceOfKoskDashboardApplicationResponse(value: object): value
     if (!('courseId' in value) || value['courseId'] === undefined) return false;
     if (!('courseTitle' in value) || value['courseTitle'] === undefined) return false;
     if (!('requestedAt' in value) || value['requestedAt'] === undefined) return false;
+    if (!('canDecide' in value) || value['canDecide'] === undefined) return false;
+    if (!('scopePassive' in value) || value['scopePassive'] === undefined) return false;
     return true;
 }
 
@@ -84,6 +98,8 @@ export function KoskDashboardApplicationResponseFromJSONTyped(json: any, ignoreD
         'studentName': json['studentName'] == null ? undefined : json['studentName'],
         'studentEmail': json['studentEmail'] == null ? undefined : json['studentEmail'],
         'requestedAt': (new Date(json['requestedAt'])),
+        'canDecide': json['canDecide'],
+        'scopePassive': json['scopePassive'],
     };
 }
 
@@ -104,6 +120,8 @@ export function KoskDashboardApplicationResponseToJSONTyped(value?: KoskDashboar
         'studentName': value['studentName'],
         'studentEmail': value['studentEmail'],
         'requestedAt': ((value['requestedAt']).toISOString()),
+        'canDecide': value['canDecide'],
+        'scopePassive': value['scopePassive'],
     };
 }
 

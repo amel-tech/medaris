@@ -9,7 +9,6 @@ import { PlatformPolicyModule } from "../platform-policy/platform-policy.module"
 import { CourseController } from "./course.controller";
 import { CourseRepository } from "./course.repository";
 import { CourseService } from "./course.service";
-import { CourseAccessService } from "./course-access.service";
 import { CourseNotificationRepository } from "./course-notification.repository";
 import { CourseNotifier } from "./course-notifier";
 import { CourseStatsRepository } from "./course-stats.repository";
@@ -31,7 +30,6 @@ import { RecordingRepository } from "./recording.repository";
   providers: [
     CourseService,
     CourseRepository,
-    CourseAccessService,
     LiveStreamService,
     RecordingRepository,
     CourseStatsRepository,

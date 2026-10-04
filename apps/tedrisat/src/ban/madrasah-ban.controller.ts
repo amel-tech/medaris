@@ -1,4 +1,4 @@
-import { AuthGuard, Authz, AuthzGuard, SCOPES } from "@medaris/common";
+import { AuthGuard, Authz, AuthzGuard, PERMISSIONS } from "@medaris/common";
 import {
   Body,
   Controller,
@@ -37,12 +37,14 @@ import {
 
 /**
  * A medrese's bans for its nazırs (MDRS-187, nazir/10 and nazir/11). The
- * medrese's başmüderris and SYSTEM_ADMIN reach these: `MANAGE_MADRASAH` is on
- * the matrix row that the başmüderris resolves to, and a medrese's nazır is
- * not yet mapped to it, so a MEDRESE_NAZIR gets 403 here. Lifting, widening
- * and asking for a permanent ban are `BanController`'s routes by ban id, and
- * `BanService` makes their decision from the roles held. Permission grants
- * (`madrasah.ban`) are not read: `AuthzGuard` does not enforce them.
+ * medrese's başmüderris and SYSTEM_ADMIN reach these, and so does a nazır the
+ * medrese gave `madrasah.ban` (or a Medaris nazımı holding
+ * `platform.ban_scoped`); a MEDRESE_NAZIR with no grant gets 403 here. Lifting,
+ * widening and asking for a permanent ban are `BanController`'s routes by ban
+ * id. Every one of them is decided by `BanService` from the catalogue
+ * (MDRS-205, `ban-codes.ts`): this guard only lets in those who hold a
+ * medrese-level ban permission, and a ban from one course still takes the
+ * course's own `ban.course`.
  */
 @ApiTags("bans")
 @ApiBearerAuth()
@@ -56,7 +58,7 @@ export class MadrasahBanController {
   @ApiOperation({
     summary: "A medrese's bans, open or lifted (Yasaklamalar)",
     description:
-      "Newest first, with the counts the tabs show: the medrese-wide bans and the bans on the medrese's courses, hidden ones included. A köşk's own ban of the whole köşk is the köşk's list and is not here. `scope` narrows to the medrese-wide or the course bans, `courseId` to one course's. Each row says what the caller's kademe lets them do: `viewerMayLift`, `viewerMayEscalate`, `viewerMayRequestPermanent`.",
+      "Newest first, with the counts the tabs show: the medrese-wide bans and the bans on the medrese's courses, hidden ones included. A köşk's own ban of the whole köşk is the köşk's list and is not here. `scope` narrows to the medrese-wide or the course bans, `courseId` to one course's. Each row says what the caller may do, from the catalogue and the kademe: `viewerMayLift`, `viewerMayEscalate`, `viewerMayRequestPermanent`.",
     operationId: "listMadrasahBans",
   })
   @ApiQuery({ name: "status", required: false, enum: BAN_STATUSES })
@@ -66,7 +68,10 @@ export class MadrasahBanController {
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()
   @Get(":id/bans")
-  @Authz(SCOPES.MANAGE_MADRASAH, byExistingMadrasah)
+  @Authz(
+    [PERMISSIONS.MADRASAH_BAN, PERMISSIONS.PLATFORM_BAN_SCOPED],
+    byExistingMadrasah
+  )
   async list(
     @Req() request: AuthenticatedUserRequest,
     @Param("id", ParseUUIDPipe) id: string,
@@ -99,14 +104,17 @@ export class MadrasahBanController {
     summary:
       "Bar a talebe from a course of the medrese, or from all of it (Yasakla)",
     description:
-      "Takes effect at once: the talebe cannot apply, apply again or leave, and loses the course's content, in the one course or in every course of the medrese. The ban is the medrese's kademe: a köşk nazımı or Medaris administration lifts it, a müderris does not. Barring someone already barred in that scope returns the standing ban. 404 for a course that is not the medrese's. The reason is kept for those who see and lift bans and never sent to the talebe.",
+      "Takes effect at once: the talebe cannot apply, apply again or leave, and loses the course's content, in the one course or in every course of the medrese. A medrese-wide ban takes `madrasah.ban` or `platform.ban_scoped`; a ban from one course takes `ban.course` in it or `madrasah.ban`, which reaches the medrese's courses (a Medaris nazımı holding only `platform.ban_scoped` has neither). The ban is the medrese's kademe: a köşk nazımı or Medaris administration lifts it, a müderris does not. Barring someone already barred in that scope returns the standing ban. 404 for a course that is not the medrese's. The reason is kept for those who see and lift bans and never sent to the talebe.",
     operationId: "createMadrasahBan",
   })
   @ApiCreatedResponse({ type: MadrasahBanResponse })
   @ApiForbiddenResponse({ description: "BAN_FORBIDDEN" })
   @ApiNotFoundResponse()
   @Post(":id/bans")
-  @Authz(SCOPES.MANAGE_MADRASAH, byExistingMadrasah)
+  @Authz(
+    [PERMISSIONS.MADRASAH_BAN, PERMISSIONS.PLATFORM_BAN_SCOPED],
+    byExistingMadrasah
+  )
   async create(
     @Req() request: AuthenticatedUserRequest,
     @Param("id", ParseUUIDPipe) id: string,

@@ -48,7 +48,7 @@ export interface MeRolesResponse {
      */
     systemAdmin: boolean;
     /**
-     * Medreses the caller is nazır of. Always empty until tedrisat stores medrese nazırs.
+     * Medreses the caller is başmüderris or nazır of, from their live role assignments.
      * @type {Array<NazirMadrasahRef>}
      * @memberof MeRolesResponse
      */

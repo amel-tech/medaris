@@ -51,11 +51,11 @@ export class HostingGrantedByResponse extends HostingPersonResponse {
   @ApiPropertyOptional({
     type: String,
     nullable: true,
-    enum: ["SYSTEM_ADMIN", "KOSK_NAZIM"],
+    enum: ["SYSTEM_ADMIN", "MEDARIS_NAZIM", "KOSK_NAZIM"],
     description:
       "How the granter was entitled to grant; null on rights older than MDRS-170",
   })
-  role!: "SYSTEM_ADMIN" | "KOSK_NAZIM" | null;
+  role!: "SYSTEM_ADMIN" | "MEDARIS_NAZIM" | "KOSK_NAZIM" | null;
 }
 
 export class HostingRightResponse {

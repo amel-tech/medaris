@@ -7,6 +7,7 @@ import type {
   KoskOverviewResponse,
   KoskResponse,
 } from "@medaris/services/tedrisat";
+import { toast } from "@medaris/ui/components/sonner";
 import { Alert } from "@medaris/ui/mds/alert";
 import { Avatar } from "@medaris/ui/mds/avatar";
 import { Badge } from "@medaris/ui/mds/badge";
@@ -19,6 +20,7 @@ import { Table, type TableColumn } from "@medaris/ui/mds/table";
 import { useRouter } from "next/navigation";
 import { useLocale, useTimeZone, useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
+import { hideLevelOf } from "../../archive/hide-level";
 import { RevokeDialog } from "../../hosting/components/revoke-dialog";
 import {
   grantedOn,
@@ -27,8 +29,11 @@ import {
   openCoursesSummary,
 } from "../../hosting/present";
 import { dateWithCase } from "../../madrasahs/present";
+import { PassivateScopeDialog } from "../../passivation/components/passivate-scope-dialog";
+import { restoreKosk } from "../admin-actions";
 import {
   handleLabel,
+  koskErrorKey,
   type Messages,
   STATUS_LOOK,
   termLabel,
@@ -41,7 +46,6 @@ import {
   type Messages as OverviewMessages,
 } from "../overview-present";
 import { AddNazimDialog } from "./add-nazim-dialog";
-import { DeactivateKoskDialog } from "./deactivate-kosk-dialog";
 import { HideKoskDialog } from "./hide-kosk-dialog";
 import { KoskCourseTable } from "./kosk-course-table";
 
@@ -79,16 +83,36 @@ export function KoskManagePage({
   const th = useTranslations("nizam.HostingPage");
   const td = useTranslations("nizam.KoskDirectory");
   const tl = useTranslations("nizam.Levels");
+  const thl = useTranslations("nizam.HideLevel");
   const locale = useLocale();
   const timeZone = useTimeZone() ?? "Europe/Istanbul";
   const router = useRouter();
   const [, startTransition] = useTransition();
   const [hiding, setHiding] = useState(false);
   const [deactivating, setDeactivating] = useState(false);
+  const [restoring, setRestoring] = useState(false);
   const [adding, setAdding] = useState(false);
   const [revoking, setRevoking] = useState<HostingRightResponse | null>(null);
 
   const refresh = () => startTransition(() => router.refresh());
+  // "Geri al" is for whoever hid the köşk or a level above (MDRS-143): the
+  // API says which, so the button is shown to exactly the people it works for.
+  const restore = async () => {
+    setRestoring(true);
+    const result = await restoreKosk(kosk.id);
+    setRestoring(false);
+    if (!result.success) {
+      toast.error(t("restoreFailed"), {
+        description: t(koskErrorKey(result.errorBody) as never),
+        duration: Number.POSITIVE_INFINITY,
+      });
+      return;
+    }
+    toast.success(t("restored"), {
+      description: t("restoredBody", { name: kosk.name }),
+    });
+    refresh();
+  };
   const base = `/${locale}/kosks/${kosk.id}`;
   const status = overview.status;
   const look = STATUS_LOOK[status];
@@ -472,20 +496,46 @@ export function KoskManagePage({
             <p className="mds-caption">{t("actionsIntro")}</p>
           </div>
           <div className="flex flex-col divide-y divide-[var(--border-neutral-subtle)]">
-            <div className="flex items-start justify-between gap-4 py-3">
-              <div className="flex flex-col gap-1">
-                <h3 className="font-semibold">{t("hideHeading")}</h3>
-                <p className="mds-caption">{t("hideBody")}</p>
+            {status === "HIDDEN" ? (
+              <div className="flex items-start justify-between gap-4 py-3">
+                <div className="flex flex-col gap-1">
+                  <h3 className="font-semibold">{t("restoreHeading")}</h3>
+                  <p className="mds-caption">{t("restoreBody")}</p>
+                </div>
+                {overview.canRestore ? (
+                  <Button
+                    variant="outline"
+                    size="small"
+                    iconLeft={<Icon name="undo" size="sm" />}
+                    loading={restoring}
+                    onClick={() => void restore()}
+                  >
+                    {t("restore")}
+                  </Button>
+                ) : (
+                  <span className="mds-caption">
+                    {thl("locked", {
+                      level: thl(hideLevelOf(overview.hiddenLevel, "kosk")),
+                    })}
+                  </span>
+                )}
               </div>
-              <Button
-                variant="outline"
-                size="small"
-                disabled={!canHide(status)}
-                onClick={() => setHiding(true)}
-              >
-                {t("hide")}
-              </Button>
-            </div>
+            ) : (
+              <div className="flex items-start justify-between gap-4 py-3">
+                <div className="flex flex-col gap-1">
+                  <h3 className="font-semibold">{t("hideHeading")}</h3>
+                  <p className="mds-caption">{t("hideBody")}</p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="small"
+                  disabled={!canHide(status)}
+                  onClick={() => setHiding(true)}
+                >
+                  {t("hide")}
+                </Button>
+              </div>
+            )}
             <div className="flex items-start justify-between gap-4 py-3">
               <div className="flex flex-col gap-1">
                 <h3 className="font-semibold">{t("deactivateHeading")}</h3>
@@ -602,13 +652,13 @@ export function KoskManagePage({
         koskName={kosk.name}
         onHidden={refresh}
       />
-      <DeactivateKoskDialog
+      <PassivateScopeDialog
+        kind="KOSK"
+        id={kosk.id}
+        name={kosk.name}
         open={deactivating}
         onOpenChange={setDeactivating}
-        koskId={kosk.id}
-        koskName={kosk.name}
-        nazimCount={overview.nazimCount}
-        onDeactivated={refresh}
+        onPassivated={refresh}
       />
       <AddNazimDialog
         open={adding}

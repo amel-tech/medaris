@@ -133,16 +133,16 @@ export interface ReplaceCourseDto {
     weeks?: Array<CreateWeekDto>;
     /**
      * 
-     * @type {Array<CreateMuderrisDto>}
-     * @memberof ReplaceCourseDto
-     */
-    muderris?: Array<CreateMuderrisDto>;
-    /**
-     * 
      * @type {Array<CreateResourceDto>}
      * @memberof ReplaceCourseDto
      */
     resources?: Array<CreateResourceDto>;
+    /**
+     * Left out: the müderrisler are not touched. Sent: the list replaces the stored one, and a save that would leave the course with no müderris who has an account is refused (400 MUDERRIS_LIST_INVALID).
+     * @type {Array<CreateMuderrisDto>}
+     * @memberof ReplaceCourseDto
+     */
+    muderris?: Array<CreateMuderrisDto>;
     /**
      * The course `version` this form was loaded with. When sent, the save is refused with 409 COURSE_VERSION_CONFLICT if anyone has written the course since; reload and re-apply instead of overwriting their work.
      * @type {number}
@@ -205,8 +205,8 @@ export function ReplaceCourseDtoFromJSONTyped(json: any, ignoreDiscriminator: bo
         'isClosed': json['isClosed'] == null ? undefined : json['isClosed'],
         'coverLabel': json['coverLabel'] == null ? undefined : json['coverLabel'],
         'weeks': json['weeks'] == null ? undefined : ((json['weeks'] as Array<any>).map(CreateWeekDtoFromJSON)),
-        'muderris': json['muderris'] == null ? undefined : ((json['muderris'] as Array<any>).map(CreateMuderrisDtoFromJSON)),
         'resources': json['resources'] == null ? undefined : ((json['resources'] as Array<any>).map(CreateResourceDtoFromJSON)),
+        'muderris': json['muderris'] == null ? undefined : ((json['muderris'] as Array<any>).map(CreateMuderrisDtoFromJSON)),
         'version': json['version'] == null ? undefined : json['version'],
     };
 }
@@ -237,8 +237,8 @@ export function ReplaceCourseDtoToJSONTyped(value?: ReplaceCourseDto | null, ign
         'isClosed': value['isClosed'],
         'coverLabel': value['coverLabel'],
         'weeks': value['weeks'] == null ? undefined : ((value['weeks'] as Array<any>).map(CreateWeekDtoToJSON)),
-        'muderris': value['muderris'] == null ? undefined : ((value['muderris'] as Array<any>).map(CreateMuderrisDtoToJSON)),
         'resources': value['resources'] == null ? undefined : ((value['resources'] as Array<any>).map(CreateResourceDtoToJSON)),
+        'muderris': value['muderris'] == null ? undefined : ((value['muderris'] as Array<any>).map(CreateMuderrisDtoToJSON)),
         'version': value['version'],
     };
 }

@@ -5,6 +5,7 @@ import type {
   KoskDirectoryItemResponse,
   KoskNazimResponse,
   KoskResponse,
+  PassivationImpactResponse,
 } from "@medaris/services/tedrisat";
 import { revalidatePath } from "next/cache";
 import {
@@ -33,12 +34,23 @@ export const hideKosk = async (
   return result;
 };
 
-/** "Köşkü pasife al" (nizam 20): the köşk is passive and its nazımları are off the post. */
-export const deactivateKosk = async (
+/** What "Köşkü pasife al" takes along (nizam 20, MDRS-227), with the confirmation to post back. */
+export const previewKoskDeactivation = async (
   id: string
+): Promise<AuthenticatedActionResult<PassivationImpactResponse>> =>
+  authenticatedAction((api) => api.kosks.getKoskDeactivationPreview({ id }));
+
+/**
+ * "Köşkü pasife al" (nizam 20): the köşk is passive and its nazımları are off
+ * the post, once `confirmation` is the preview's. A stale one comes back as
+ * 409 with the fresh preview in `errorBody.context.impact`.
+ */
+export const deactivateKosk = async (
+  id: string,
+  confirmation: string
 ): Promise<AuthenticatedActionResult<KoskDirectoryItemResponse>> => {
   const result = await authenticatedAction((api) =>
-    api.kosks.deactivateKosk({ id })
+    api.kosks.deactivateKosk({ id, passivateScopeDto: { confirmation } })
   );
   if (result.success) revalidatePath("/", "layout");
   return result;

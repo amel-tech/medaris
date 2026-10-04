@@ -72,7 +72,7 @@ const LIST_LIMIT = 100;
  * Medrese dışı ders talepleri (MDRS-181, nizam/39). A başmüderris asks a köşk
  * to open a course for their medrese; the köşk's nazımı (or the başnazım)
  * accepts it by opening the course, or refuses it with a reason. Authorization
- * is here, not in `@Authz`: the matrix has no entity for a request.
+ * is here, not in `@Authz`: the engine has no entity for a request.
  */
 @Injectable()
 export class CourseRequestService {

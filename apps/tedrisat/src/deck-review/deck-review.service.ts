@@ -1,5 +1,11 @@
-import { AuthenticatedUser, AuthzService } from "@medaris/common";
+import {
+  AuthenticatedUser,
+  AuthzService,
+  ENTITIES,
+  PERMISSIONS,
+} from "@medaris/common";
 import { Injectable, Logger } from "@nestjs/common";
+import { SCOPE_TYPES } from "../database/schema/scope-type.schema";
 import { DeckPublishStatus } from "../flashcard/domain/deck-publish-status.enum";
 import { KoskNotFoundError } from "../kosk/errors/kosk-not-found.error";
 import { KoskService } from "../kosk/kosk.service";
@@ -12,6 +18,7 @@ import {
   IRequestCounts,
 } from "./deck-review.repository";
 import {
+  DeckNotPublishedError,
   DeckProposalNotFoundError,
   DeckProposalNotPendingError,
   DeckRequestNotFoundError,
@@ -43,10 +50,11 @@ export interface ICreateKoskDeck {
  * requests (nizam/16) and a köşk nazımı's own decks, the müderris proposals
  * and the Gizle action (nizam/30 and 35).
  *
- * Authorization is here, not in `@Authz`: the matrix has no entity for either
- * question. Reviewing publish requests is the Medaris başnazımı's
- * (SYSTEM_ADMIN) alone, since `platform.deck_publish` is not enforced
- * anywhere yet; a köşk's decks are its nazımları's and the başnazım's.
+ * Authorization is here, not in `@Authz`: the engine has no entity for either
+ * question. Reviewing publish requests is the Medaris başnazımı's and that of
+ * a Medaris nazımı holding `platform.deck_publish`; taking a published deck
+ * down again is the başnazım's alone (MDRS-148); a köşk's decks are its
+ * nazımları's and the başnazım's.
  */
 @Injectable()
 export class DeckReviewService {
@@ -68,7 +76,7 @@ export class DeckReviewService {
     status: "PENDING" | "DECIDED",
     paging: IPaging
   ): Promise<{ items: IPublishRequest[]; counts: IRequestCounts }> {
-    this.assertChief(user);
+    await this.assertChief(user);
     const [items, counts] = await Promise.all([
       this.repo.listRequests(status, paging.limit, paging.offset),
       this.repo.countRequests(),
@@ -88,7 +96,7 @@ export class DeckReviewService {
     items: { id: string; front: string; back: string }[];
     total: number;
   }> {
-    this.assertChief(user);
+    await this.assertChief(user);
     const deck = await this.requireRequest(deckId);
     const total = await this.repo.countCards(deckId);
     await this.repo.audit({
@@ -110,8 +118,9 @@ export class DeckReviewService {
   }
 
   async approve(user: AuthenticatedUser, deckId: string): Promise<void> {
-    this.assertChief(user);
+    await this.assertChief(user);
     const deck = await this.requireRequest(deckId);
+    this.assertNotOwnRequest(user, deck.authorId);
     if (!(await this.repo.approve(deckId, user.sub))) {
       throw new DeckRequestNotPendingError(deckId);
     }
@@ -126,14 +135,47 @@ export class DeckReviewService {
     deckId: string,
     reason: string
   ): Promise<void> {
-    this.assertChief(user);
+    await this.assertChief(user);
     const deck = await this.requireRequest(deckId);
+    this.assertNotOwnRequest(user, deck.authorId);
     const trimmed = reason.trim();
     if (!(await this.repo.reject(deckId, user.sub, trimmed))) {
       throw new DeckRequestNotPendingError(deckId);
     }
     await this.tell(deck.authorId, deckId, {
       outcome: "rejected",
+      deckTitle: deck.title,
+      reason: trimmed,
+    });
+  }
+
+  /**
+   * The başnazım takes a published deck back to private (MDRS-148). The reason
+   * is the owner's to read, and the audit row is written with the change.
+   */
+  async unpublish(
+    user: AuthenticatedUser,
+    deckId: string,
+    reason: string
+  ): Promise<void> {
+    if (!this.authz.isSystemAdmin(user)) {
+      throw new DeckReviewForbiddenError(
+        "Only the Medaris başnazımı may unpublish a deck"
+      );
+    }
+    const deck = await this.repo.findDeck(deckId);
+    // A hidden deck is not private: `hide` sets `archived_at` and nothing else,
+    // and the public reads keep serving it, so it can be taken back like any.
+    if (!deck) throw new DeckRequestNotFoundError(deckId);
+    const trimmed = reason.trim();
+    if (
+      deck.publishStatus !== DeckPublishStatus.PUBLISHED ||
+      !(await this.repo.unpublish(deck, user.sub, trimmed))
+    ) {
+      throw new DeckNotPublishedError(deckId);
+    }
+    await this.tell(deck.authorId, deckId, {
+      outcome: "unpublished",
       deckTitle: deck.title,
       reason: trimmed,
     });
@@ -208,7 +250,12 @@ export class DeckReviewService {
       throw new KoskDeckNotFoundError(deckId);
     }
     await this.assertKoskNazim(user, deck.koskId);
-    if (!(await this.repo.hideDeck(deckId, user.sub))) {
+    // The başnazım hides as the platform, the köşk's nazımı as the köşk: the
+    // level a restore is then compared with (MDRS-135).
+    const level = this.authz.isSystemAdmin(user)
+      ? SCOPE_TYPES.PLATFORM
+      : SCOPE_TYPES.KOSK;
+    if (!(await this.repo.hideDeck(deckId, user.sub, level))) {
       throw new KoskDeckNotFoundError(deckId);
     }
   }
@@ -270,12 +317,34 @@ export class DeckReviewService {
 
   // ---- decisions ----
 
-  private assertChief(user: AuthenticatedUser): void {
-    if (!this.authz.isSystemAdmin(user)) {
-      throw new DeckReviewForbiddenError(
-        "Only the Medaris başnazımı may review deck publish requests"
-      );
+  /** The başnazım, or a Medaris nazımı holding `platform.deck_publish` (MDRS-135). */
+  private async assertChief(user: AuthenticatedUser): Promise<void> {
+    if (this.authz.isSystemAdmin(user)) return;
+    if (
+      await this.authz.can(
+        user,
+        { entity: ENTITIES.FLASHCARD_DECK, id: "any" },
+        PERMISSIONS.PLATFORM_DECK_PUBLISH
+      )
+    ) {
+      return;
     }
+    throw new DeckReviewForbiddenError(
+      "Only the Medaris başnazımı and a Medaris nazımı holding platform.deck_publish may review deck publish requests"
+    );
+  }
+
+  /**
+   * A holder of `platform.deck_publish` does not answer a request on his own
+   * deck: the grant delegates the başnazım's power, and publishing through it
+   * needs a second pair of eyes, as a grant may not be given to oneself. The
+   * başnazım is the one who decides alone.
+   */
+  private assertNotOwnRequest(user: AuthenticatedUser, authorId: string): void {
+    if (this.authz.isSystemAdmin(user) || authorId !== user.sub) return;
+    throw new DeckReviewForbiddenError(
+      "A Medaris nazımı may not answer the publish request of his own deck"
+    );
   }
 
   private async assertKoskNazim(

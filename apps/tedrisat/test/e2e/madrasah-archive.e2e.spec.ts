@@ -27,8 +27,9 @@ import { bearerFor } from "../helpers/test-keycloak.helper";
  * it back by kademe — and "Medreseyi gizle", against a real Postgres. Real
  * `AuthGuard` with minted tokens.
  *
- * Hidden things are inserted with the hider the screen prints: the kademe
- * rule reads the role the hider holds where the item sits.
+ * Hidden things are inserted with the hider the screen prints and the level the
+ * hider acted at (`archived_level`): the kademe rule reads that level (MDRS-135),
+ * and a row with none counts as the lowest level that could have hidden it.
  */
 const ADMIN_ID = "c8000000-0000-4000-8000-000000000001";
 const HEAD_ID = "c8000000-0000-4000-8000-000000000002";
@@ -149,14 +150,17 @@ describe("Medrese archive (e2e)", () => {
     byAdmin = await addCourse("Ders: Başnazım gizledi", {
       archivedAt: hours(8),
       archivedBy: ADMIN_ID,
+      archivedLevel: "platform",
     });
     byNazim = await addCourse("Ders: Köşk nazımı gizledi", {
       archivedAt: hours(9),
       archivedBy: NAZIM_ID,
+      archivedLevel: "kosk",
     });
     byHead = await addCourse("Ders: Başmüderris gizledi", {
       archivedAt: hours(10),
       archivedBy: HEAD_ID,
+      archivedLevel: "madrasah",
     });
 
     // A shown course with a week a müderris hid and a session the nazım hid.
@@ -174,6 +178,7 @@ describe("Medrese archive (e2e)", () => {
         title: "Hafta 11: Tasrîf tekrarı",
         archivedAt: hours(11),
         archivedBy: MUDERRIS_ID,
+        archivedLevel: "course",
       })
       .returning({ id: courseWeeks.id });
     const [liveWeek] = await db()
@@ -188,6 +193,7 @@ describe("Medrese archive (e2e)", () => {
         type: LessonType.LIVE,
         archivedAt: hours(12),
         archivedBy: NAZIM_ID,
+        archivedLevel: "kosk",
       })
       .returning({ id: lessons.id });
 
@@ -201,6 +207,7 @@ describe("Medrese archive (e2e)", () => {
       madrasahId: null,
       archivedAt: hours(14),
       archivedBy: NAZIM_ID,
+      archivedLevel: "kosk",
     });
   });
 
@@ -328,22 +335,64 @@ describe("Medrese archive (e2e)", () => {
     });
 
     it("refuses what a higher kademe hid, and leaves it hidden", async () => {
-      for (const [type, id] of [
-        ["course", byNazim],
-        ["course", byAdmin],
-        ["session", sessionByNazim],
+      for (const [type, id, hiddenAt] of [
+        ["course", byNazim, "kosk"],
+        ["course", byAdmin, "platform"],
+        ["session", sessionByNazim, "kosk"],
       ]) {
         const res = await restore(HEAD_ID, type, id).expect(403);
-        expect(res.body.code).toBe("ARCHIVE_FORBIDDEN");
+        // The refusal names the level that hid it and the one the caller acts at.
+        expect(res.body.code).toBe("ARCHIVE_RESTORE_LEVEL");
+        expect(res.body.message).toContain(`${hiddenAt} level`);
+        expect(res.body.message).toContain("madrasah level");
       }
       expect((await courseRow(byNazim)).archivedAt).not.toBeNull();
       expect((await courseRow(byAdmin)).archivedAt).not.toBeNull();
     });
 
-    it("keeps the köşk nazımı's restore as it was, and the başnazım's open", async () => {
+    it("lets the köşk nazımı restore what the medrese's levels or the köşk hid, not what the platform hid, and the başnazım anything", async () => {
       await restore(NAZIM_ID, "course", byNazim).expect(200);
+      // A başmüderris' hide is below the köşk (the ban ladder: course < medrese < köşk < platform).
+      await restore(NAZIM_ID, "course", byHead).expect(200);
+      const refused = await restore(NAZIM_ID, "course", byAdmin).expect(403);
+      expect(refused.body.code).toBe("ARCHIVE_RESTORE_LEVEL");
+      expect((await courseRow(byAdmin)).archivedAt).not.toBeNull();
       await restore(ADMIN_ID, "course", byAdmin).expect(200);
       await restore(ADMIN_ID, "session", sessionByNazim).expect(200);
+    });
+
+    it("counts a row with no level as the lowest level that could have hidden it", async () => {
+      // 0048 gave every hidden row that names its hider a level; one left with none
+      // names nobody. A medrese's course could be hidden by the medrese: its
+      // başmüderris may restore it.
+      const legacy = await addCourse("Ders: Eski gizleme", {
+        archivedAt: hours(7),
+        archivedBy: null,
+      });
+      expect((await courseRow(legacy)).archivedLevel).toBeNull();
+      await restore(HEAD_ID, "course", legacy).expect(200);
+      // A week or a session by whoever runs the course; here the başmüderris is not one of them,
+      // but the lowest level is the course's, so the başmüderris above it restores too.
+      const [legacyWeek] = await db()
+        .insert(courseWeeks)
+        .values({
+          courseId: liveCourse,
+          weekNumber: 12,
+          title: "Hafta 12",
+          archivedAt: hours(7),
+          archivedBy: null,
+        })
+        .returning({ id: courseWeeks.id });
+      await restore(HEAD_ID, "week", legacyWeek.id).expect(200);
+    });
+
+    it("clears the level with the hide, so a later hide records its own", async () => {
+      await restore(HEAD_ID, "course", byHead).expect(200);
+      expect(await courseRow(byHead)).toMatchObject({
+        archivedAt: null,
+        archivedBy: null,
+        archivedLevel: null,
+      });
     });
 
     it("refuses the başmüderris of another medrese, a stranger and a müderris", async () => {
@@ -367,6 +416,7 @@ describe("Medrese archive (e2e)", () => {
         .where(eq(madrasahs.id, madrasahId));
       expect(row.archivedAt).not.toBeNull();
       expect(row.archivedBy).toBe(HEAD_ID);
+      expect(row.archivedLevel).toBe("madrasah");
 
       // Every course the medrese had is hidden now; an earlier hide keeps its own date.
       const mine = await db()
@@ -382,6 +432,10 @@ describe("Medrese archive (e2e)", () => {
       );
       expect(together.map((c) => c.id)).toEqual([liveCourse]);
       expect(together[0].archivedBy).toBe(HEAD_ID);
+      // The course hidden together takes the level the medrese was hidden at; the others keep theirs.
+      expect(together[0].archivedLevel).toBe("madrasah");
+      expect((await courseRow(byNazim)).archivedLevel).toBe("kosk");
+      expect((await courseRow(byAdmin)).archivedLevel).toBe("platform");
 
       // The other medrese and the medresesiz course are not touched.
       expect((await courseRow(unaffiliated)).archivedAt).toEqual(hours(14));
@@ -400,7 +454,7 @@ describe("Medrese archive (e2e)", () => {
       });
     });
 
-    it("closes the medrese's page and lists, and the Medaris administration brings it back with the courses hidden together", async () => {
+    it("closes the medrese's page and lists, and the level that hid it or a higher one brings it back with the courses hidden together", async () => {
       await http().get(`/madrasahs/${madrasahId}/overview`).expect(200);
       await hide(HEAD_ID).expect(200);
       await http().get(`/madrasahs/${madrasahId}/overview`).expect(404);
@@ -414,11 +468,13 @@ describe("Medrese archive (e2e)", () => {
       expect(shown.body.counts.course).toBe(4);
       const conflict = await restore(HEAD_ID, "course", liveCourse).expect(409);
       expect(conflict.body.code).toBe("ARCHIVE_PARENT_HIDDEN");
-      // And the medrese is brought back by Medaris yönetimi alone.
-      await http()
-        .post(`/madrasahs/${madrasahId}/restore`)
-        .set("Authorization", auth(HEAD_ID))
-        .expect(403);
+      // Another medrese's head, a köşk nazımı and a stranger do not bring it back.
+      for (const sub of [OTHER_HEAD_ID, NAZIM_ID, STRANGER_ID]) {
+        await http()
+          .post(`/madrasahs/${madrasahId}/restore`)
+          .set("Authorization", auth(sub))
+          .expect(403);
+      }
 
       const version = (await courseRow(liveCourse)).version;
       await http()
@@ -435,6 +491,68 @@ describe("Medrese archive (e2e)", () => {
         expect((await courseRow(id)).archivedAt).not.toBeNull();
       }
       await http().get(`/madrasahs/${madrasahId}/overview`).expect(200);
+    });
+
+    it("lets the başmüderris bring back the medrese they hid, with the courses hidden together", async () => {
+      await hide(HEAD_ID).expect(200);
+      await http()
+        .post(`/madrasahs/${madrasahId}/restore`)
+        .set("Authorization", auth(HEAD_ID))
+        .expect(200);
+      const [row] = await db()
+        .select()
+        .from(madrasahs)
+        .where(eq(madrasahs.id, madrasahId));
+      expect(row).toMatchObject({
+        archivedAt: null,
+        archivedBy: null,
+        archivedLevel: null,
+      });
+      expect(await courseRow(liveCourse)).toMatchObject({
+        archivedAt: null,
+        archivedLevel: null,
+      });
+      expect((await courseRow(byNazim)).archivedLevel).toBe("kosk");
+    });
+
+    it("keeps what Medaris yönetimi hid from the başmüderris, and says the levels", async () => {
+      await hide(ADMIN_ID).expect(200);
+      const [row] = await db()
+        .select()
+        .from(madrasahs)
+        .where(eq(madrasahs.id, madrasahId));
+      expect(row.archivedLevel).toBe("platform");
+      expect((await courseRow(liveCourse)).archivedLevel).toBe("platform");
+
+      const refused = await http()
+        .post(`/madrasahs/${madrasahId}/restore`)
+        .set("Authorization", auth(HEAD_ID))
+        .expect(403);
+      expect(refused.body.code).toBe("ARCHIVE_RESTORE_LEVEL");
+      expect(refused.body.message).toContain("platform level");
+      expect(refused.body.message).toContain("madrasah level");
+      const [still] = await db()
+        .select()
+        .from(madrasahs)
+        .where(eq(madrasahs.id, madrasahId));
+      expect(still.archivedAt).not.toBeNull();
+
+      await http()
+        .post(`/madrasahs/${madrasahId}/restore`)
+        .set("Authorization", auth(ADMIN_ID))
+        .expect(200);
+      expect((await courseRow(liveCourse)).archivedAt).toBeNull();
+    });
+
+    it("counts a medrese hidden before levels were recorded as the medrese's own", async () => {
+      await db()
+        .update(madrasahs)
+        .set({ archivedAt: hours(15), archivedBy: HEAD_ID })
+        .where(eq(madrasahs.id, madrasahId));
+      await http()
+        .post(`/madrasahs/${madrasahId}/restore`)
+        .set("Authorization", auth(HEAD_ID))
+        .expect(200);
     });
 
     it("answers a medrese that is hidden already with a conflict", async () => {

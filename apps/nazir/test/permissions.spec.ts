@@ -98,7 +98,7 @@ const draft = (over: Partial<EditorDraft> = {}): EditorDraft => ({
   extras: [],
   everyCourse: true,
   courseIds: [],
-  expiresOn: "",
+  expiresAtLocal: "",
   ...over,
 });
 
@@ -161,7 +161,7 @@ describe("a group's permissions in the editor (criterion 1)", () => {
     expect(tick(on, "week.hide", false).extras).toEqual([]);
   });
 
-  it("opens with the single permissions the group does not carry, a missing group as none, and the end as a day", () => {
+  it("opens with the single permissions the group does not carry, a missing group as none, and the end as a date and time", () => {
     const opened = initialDraft(
       {
         groupId: "g-1",
@@ -173,7 +173,11 @@ describe("a group's permissions in the editor (criterion 1)", () => {
       IST
     );
     expect(opened).toEqual(
-      draft({ groupId: "g-1", extras: ["week.hide"], expiresOn: "2026-12-31" })
+      draft({
+        groupId: "g-1",
+        extras: ["week.hide"],
+        expiresAtLocal: "2026-12-31T23:59",
+      })
     );
     const gone = initialDraft(
       { groupId: "g-9", permissions: [], courseIds: ["c-1"], expiresAt: null },
@@ -181,7 +185,7 @@ describe("a group's permissions in the editor (criterion 1)", () => {
       IST
     );
     expect(gone).toEqual(
-      draft({ everyCourse: false, courseIds: ["c-1"], expiresOn: "" })
+      draft({ everyCourse: false, courseIds: ["c-1"], expiresAtLocal: "" })
     );
   });
 
@@ -258,7 +262,7 @@ describe("'Hangi derslerde'", () => {
   });
 });
 
-describe("'Bitiş tarihi' (criterion 3)", () => {
+describe("'Bitiş tarihi ve saati' (criterion 3, MDRS-254)", () => {
   const now = Date.parse("2026-10-05T10:00:00+03:00");
   const ctx = { now, timeZone: IST, assignmentEnd: null };
   const none = { expiresAt: null };
@@ -267,47 +271,97 @@ describe("'Bitiş tarihi' (criterion 3)", () => {
     expect(expiryOf(draft(), none, ctx)).toEqual({ at: null, problem: null });
   });
 
-  it("is the end of that day on the viewer's clock", () => {
-    expect(expiryOf(draft({ expiresOn: "2026-12-31" }), none, ctx)).toEqual({
-      at: "2026-12-31T20:59:00.000Z",
-      problem: null,
-    });
-    // today is not the past: the day has not ended
+  it("is the moment typed, read on the viewer's clock", () => {
     expect(
-      expiryOf(draft({ expiresOn: "2026-10-05" }), none, ctx).problem
-    ).toBeNull();
+      expiryOf(draft({ expiresAtLocal: "2026-12-31T23:59" }), none, ctx)
+    ).toEqual({ at: "2026-12-31T20:59:00.000Z", problem: null });
+    // later today is not the past
+    expect(
+      expiryOf(draft({ expiresAtLocal: "2026-10-05T18:00" }), none, ctx)
+    ).toEqual({ at: "2026-10-05T15:00:00.000Z", problem: null });
   });
 
-  it("cannot be in the past", () => {
-    expect(expiryOf(draft({ expiresOn: "2026-10-04" }), none, ctx)).toEqual({
+  it("cannot be in the past or now, as the server counts", () => {
+    expect(
+      expiryOf(draft({ expiresAtLocal: "2026-10-05T09:59" }), none, ctx)
+    ).toEqual({ at: null, problem: "past" });
+    expect(
+      expiryOf(draft({ expiresAtLocal: "2026-10-05T10:00" }), none, ctx).problem
+    ).toBe("past");
+    expect(
+      expiryOf(draft({ expiresAtLocal: "2026-10-05T10:01" }), none, ctx).problem
+    ).toBeNull();
+    expect(
+      expiryOf(draft({ expiresAtLocal: "nonsense" }), none, ctx).problem
+    ).toBe("past");
+  });
+
+  it("is refused while the field is half typed, as the browser reports it", () => {
+    expect(expiryOf(draft({ expiresUnfinished: true }), none, ctx)).toEqual({
       at: null,
-      problem: "past",
+      problem: "unfinished",
     });
-    expect(expiryOf(draft({ expiresOn: "nonsense" }), none, ctx).problem).toBe(
-      "past"
-    );
+    expect(
+      editorProblems(
+        draft({ expiresUnfinished: true }),
+        null,
+        catalog,
+        none,
+        ctx
+      ).expires
+    ).toBe("unfinished");
+    expect(
+      expiryOf(
+        draft({ expiresAtLocal: "2026-12-31T23:59", expiresUnfinished: true }),
+        none,
+        ctx
+      )
+    ).toEqual({ at: "2026-12-31T20:59:00.000Z", problem: null });
   });
 
-  it("cannot be after the appointment ends, and on its last day ends with it", () => {
-    const withEnd = { ...ctx, assignmentEnd: "2026-12-15T09:00:00.000Z" };
+  it("cannot be after the appointment ends, to the minute", () => {
+    const withEnd = { ...ctx, assignmentEnd: "2026-12-15T09:00:59.000Z" };
+    // 12:00 in Istanbul is 09:00:00Z, the minute the appointment ends in
     expect(
-      expiryOf(draft({ expiresOn: "2026-12-16" }), none, withEnd).problem
-    ).toBe("afterAppointment");
-    expect(expiryOf(draft({ expiresOn: "2026-12-15" }), none, withEnd)).toEqual(
-      {
-        at: "2026-12-15T09:00:00.000Z",
-        problem: null,
-      }
-    );
+      expiryOf(draft({ expiresAtLocal: "2026-12-15T12:00" }), none, withEnd)
+    ).toEqual({ at: "2026-12-15T09:00:00.000Z", problem: null });
     expect(
-      expiryOf(draft({ expiresOn: "2026-11-01" }), none, withEnd).problem
+      expiryOf(draft({ expiresAtLocal: "2026-12-15T12:01" }), none, withEnd)
+    ).toEqual({ at: null, problem: "afterAppointment" });
+    expect(
+      expiryOf(draft({ expiresAtLocal: "2026-11-01T12:00" }), none, withEnd)
+        .problem
     ).toBeNull();
   });
 
-  it("keeps the instant the API holds for a day left as it was", () => {
-    const held = { expiresAt: "2026-10-04T08:00:00.000Z" };
-    expect(expiryOf(draft({ expiresOn: "2026-10-04" }), held, ctx)).toEqual({
-      at: "2026-10-04T08:00:00.000Z",
+  it("keeps the instant the API holds for an end left as it was", () => {
+    const held = { expiresAt: "2026-10-06T08:00:30.000Z" };
+    expect(
+      expiryOf(draft({ expiresAtLocal: "2026-10-06T11:00" }), held, ctx)
+    ).toEqual({ at: "2026-10-06T08:00:30.000Z", problem: null });
+  });
+
+  it.each([
+    ["UTC+1", "Europe/Berlin"],
+    ["UTC+2", "Europe/Athens"],
+    ["UTC+3", "Europe/Istanbul"],
+    ["UTC-8", "America/Los_Angeles"],
+  ])("saves an untouched end that ends the appointment's own Turkish day in %s", (_name, zone) => {
+    // The end MDRS-254 was found with: the last second of a Turkish day.
+    const end = "2026-12-31T20:59:59.000Z";
+    const there = { now, timeZone: zone, assignmentEnd: end };
+    const opened = initialDraft(
+      {
+        groupId: null,
+        permissions: [],
+        courseIds: null,
+        expiresAt: end,
+      },
+      [],
+      zone
+    );
+    expect(expiryOf(opened, { expiresAt: end }, there)).toEqual({
+      at: end,
       problem: null,
     });
   });
@@ -328,7 +382,7 @@ describe("what 'Kaydet' sends", () => {
       extras: ["week.hide", "enrollment.decide", "madrasah.ban", "nonsense"],
       everyCourse: false,
       courseIds: ["c-2"],
-      expiresOn: "2026-12-31",
+      expiresAtLocal: "2026-12-31T23:59",
     });
     expect(editorRequest(d, group(), catalog, none, ctx)).toEqual({
       groupId: "g-1",
@@ -367,7 +421,7 @@ describe("what 'Kaydet' sends", () => {
     ).toBe(false);
     expect(
       editorProblems(
-        draft({ expiresOn: "2026-01-01" }),
+        draft({ expiresAtLocal: "2026-01-01T09:00" }),
         null,
         catalog,
         none,

@@ -183,7 +183,7 @@
     },
     "/kosks/{id}/dashboard": {
       "get": {
-        "description": "nizam/02. The numbers, the sessions of one tab (`sessions`: UPCOMING is the next seven days, PAST and CANCELLED the latest twenty), the newest waiting applications and the müderrisler. For the köşk's nazımları and the başnazım.",
+        "description": "nizam/02. The numbers, the sessions of one tab (`sessions`: UPCOMING is the next seven days, PAST and CANCELLED the latest twenty), the newest waiting applications and the müderrisler. For the köşk's nazımları and the başnazım. A Medaris nazımı holding only `platform.kosk_edit` gets it without the meeting links and without the applications (`contentLocked`: `latestApplications` is empty, `counts.pendingApplications` still says how many wait). A course in a passive scope is left out for everyone but the köşk's nazımları and holders of `platform.inactive_scopes_manage`. The applicants handed out are written to `audit_log` as a roster read on every call that sends them (none for a `contentLocked` caller), and each course whose meeting link is handed out as a content read unless the caller teaches it.",
         "operationId": "getKoskDashboard",
         "parameters": [
           {
@@ -234,7 +234,7 @@
     },
     "/kosks/{id}/course-roster": {
       "get": {
-        "description": "nizam/23 and 20. Hidden courses too, newest first, each with its müderrisler (the imam flagged), talebe, waiting applications and bans, plus the counts the tabs show.",
+        "description": "nizam/23 and 20. Hidden courses too, newest first, each with its müderrisler (the imam flagged), talebe, waiting applications and bans, plus the counts the tabs show. A hidden course says whether the caller may bring it back (`canRestore`, by kademe).",
         "operationId": "getKoskCourseRoster",
         "parameters": [
           {
@@ -275,10 +275,10 @@
         ]
       }
     },
-    "/kosks/{id}/deactivate": {
-      "post": {
-        "description": "nizam/20. The köşk becomes passive and its nazımları are taken off the post; nothing is hidden or deleted, and adding a nazım makes it active again. 409 (KOSK_ALREADY_PASSIVE) when it is passive already. Written to the audit log, naming the nazımları removed.",
-        "operationId": "deactivateKosk",
+    "/kosks/{id}/deactivation-preview": {
+      "get": {
+        "description": "nizam/20, MDRS-227. The courses below the köşk (the courses of medreses it hosts too), how many have a müderris in the post now, the talebe enrolled, the live sessions in the next days and the nazımları who leave, with the `confirmation` to post to `deactivate`. 200 with `alreadyPassive` when it is passive already. The Medaris başnazımı and a Medaris nazımı holding `platform.kosk_edit`.",
+        "operationId": "getKoskDeactivationPreview",
         "parameters": [
           {
             "name": "id",
@@ -295,7 +295,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/KoskDirectoryItemResponse"
+                  "$ref": "#/components/schemas/PassivationImpactResponse"
                 }
               }
             }
@@ -305,9 +305,6 @@
           },
           "404": {
             "description": ""
-          },
-          "409": {
-            "description": "KOSK_ALREADY_PASSIVE"
           }
         },
         "security": [
@@ -315,7 +312,66 @@
             "bearer": []
           }
         ],
-        "summary": "Take a köşk out of service (Köşkü pasife al, SYSTEM_ADMIN only)",
+        "summary": "What taking a köşk out of service takes along",
+        "tags": [
+          "kosks"
+        ]
+      }
+    },
+    "/kosks/{id}/deactivate": {
+      "post": {
+        "description": "nizam/20. The köşk becomes passive and its nazımları are taken off the post; every course below it closes. Nothing is hidden or deleted, and adding a nazım makes it active again. The body carries the `confirmation` of the preview the person read: the impact is measured again and a token that is not for these numbers and this caller is 409 (PASSIVATION_IMPACT_CHANGED, with the fresh preview in `context.impact`) and writes nothing. 409 (KOSK_ALREADY_PASSIVE) when it is passive already. Written to the audit log with the nazımları removed and the impact confirmed. The Medaris başnazımı and a Medaris nazımı holding `platform.kosk_edit`.",
+        "operationId": "deactivateKosk",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PassivateScopeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KoskDirectoryItemResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "No confirmation"
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": "KOSK_ALREADY_PASSIVE or PASSIVATION_IMPACT_CHANGED"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Take a köşk out of service (Köşkü pasife al, Medaris yönetimi)",
         "tags": [
           "kosks"
         ]
@@ -472,7 +528,7 @@
     },
     "/kosks/{id}/restore": {
       "post": {
-        "description": "nizam/09 \"Geri al\". 409 (KOSK_NOT_HIDDEN) when it is not hidden. Written to the audit log.",
+        "description": "nizam/09 \"Geri al\". By the kademe rule the bans follow: the level that hid it or any level above it (the köşk's own nazımı for what they hid, the Medaris administration for anything); 403 ARCHIVE_RESTORE_LEVEL names both levels otherwise. 409 (KOSK_NOT_HIDDEN) when it is not hidden. Written to the audit log.",
         "operationId": "restoreKosk",
         "parameters": [
           {
@@ -510,7 +566,7 @@
             "bearer": []
           }
         ],
-        "summary": "Bring a hidden köşk back (SYSTEM_ADMIN only)",
+        "summary": "Bring a hidden köşk back (by the level that hid it, or above)",
         "tags": [
           "kosks"
         ]
@@ -618,7 +674,7 @@
     },
     "/kosks/{id}/grants/{grantId}": {
       "patch": {
-        "description": "nizam/38 'İzinleri düzenle'. Replaces the whole set; what stays keeps its giver and date. The post ends when the permissions do. Written to the audit log.",
+        "description": "nizam/38 'İzinleri düzenle'. Replaces the whole set; what stays keeps its giver and date. The post ends when the permissions do. Written to the audit log. 403 (SELF_GRANT_REFUSED) for the caller's own post, SYSTEM_ADMIN excepted.",
         "operationId": "updateKoskGrant",
         "parameters": [
           {
@@ -842,6 +898,9 @@
               }
             }
           },
+          "400": {
+            "description": "No nazım named, the same account twice, or an id that is no uuid (MDRS-136)."
+          },
           "403": {
             "description": ""
           }
@@ -851,7 +910,7 @@
             "bearer": []
           }
         ],
-        "summary": "Create a new köşk",
+        "summary": "Create a new köşk together with its nazımları",
         "tags": [
           "kosks"
         ]
@@ -1062,7 +1121,7 @@
     },
     "/kosks/{id}/decks": {
       "get": {
-        "description": "The shared decks the köşk offers its talebe, for a signed-in caller who is a talebe (ENROLLED or COMPLETED), a müderris or a manager of the köşk. For anyone else `accessible` is false and `decks` is empty, so the köşk page can leave the block out; the köşk's existence is never denied to them here, `GET /kosks/:id` answers that.",
+        "description": "The shared decks the köşk offers its talebe, for a signed-in caller who is a talebe (ENROLLED or COMPLETED), a müderris or a manager of the köşk. For anyone else `accessible` is false and `decks` is empty, so the köşk page can leave the block out; the köşk's existence is never denied to them here, `GET /kosks/:id` answers that. A hidden köşk answers 404 to all but its nazımları, Medaris yönetimi holding `platform.kosk_edit` and the başnazım, as `GET /kosks/:id` does.",
         "operationId": "getKoskDecks",
         "parameters": [
           {
@@ -1156,7 +1215,7 @@
     },
     "/kosks/{id}/managers/{userId}": {
       "post": {
-        "description": "Idempotent. Open to the köşk's managers and SYSTEM_ADMIN (MDRS-126).",
+        "description": "Idempotent. Adding a köşk's nazımı is decided by `platform.kosk_nazim_manage` (the başnazım, or a Medaris nazımı holding it) and not by being a nazım of the köşk: a köşk nazımı does not add their peers (MDRS-136, owner decision d-1004-12). The caller does not seat themselves unless they are the başnazım.",
         "operationId": "addKoskManager",
         "parameters": [
           {
@@ -1205,7 +1264,7 @@
         ]
       },
       "delete": {
-        "description": "The last manager cannot be removed (409 KOSK_LAST_MANAGER). A manager may remove themselves while another remains (MDRS-126).",
+        "description": "Decided by `platform.kosk_nazim_manage`, like adding one: a köşk nazımı cannot remove a peer or resign (MDRS-136, owner decision d-1004-12). The last manager cannot be removed unless `successorUserId` names who takes the seat, who is seated first in the same transaction; the başnazım may name themselves (409 KOSK_LAST_MANAGER otherwise).",
         "operationId": "removeKoskManager",
         "parameters": [
           {
@@ -1223,6 +1282,16 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "successorUserId",
+            "required": false,
+            "in": "query",
+            "description": "Who takes the seat when the removed manager is the last one (they are seated before the removal; a known account, never the manager removed).",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -1236,14 +1305,17 @@
               }
             }
           },
+          "400": {
+            "description": "The successor is the manager being removed (KOSK_SUCCESSOR_INVALID)"
+          },
           "403": {
             "description": ""
           },
           "404": {
-            "description": "No such köşk, or the user is not one of its managers"
+            "description": "No such köşk, the user is not one of its managers, or the successor has never signed in (KOSK_MANAGER_UNKNOWN_USER)"
           },
           "409": {
-            "description": "The user is the köşk's last manager (KOSK_LAST_MANAGER)"
+            "description": "The user is the köşk's last manager and no successor was named (KOSK_LAST_MANAGER)"
           }
         },
         "security": [
@@ -1774,7 +1846,7 @@
     },
     "/madrasahs/directory": {
       "get": {
-        "description": "nizam/07: hidden and passive medreses too, each with its başmüderris, course count and hosting köşks, and the per-status counts the tabs show. The open list above leaves hidden medreses out; this one is the başnazım's.",
+        "description": "nizam/07: hidden and passive medreses too, each with its başmüderris, course count and hosting köşks, and the per-status counts the tabs show. The open list above leaves hidden medreses out; this one is the başnazım's and a Medaris nazımı's who holds one of the permissions the page acts on: `platform.madrasah_create` (Medrese aç), `platform.madrasah_edit` (Geri al) or `platform.head_muderris_manage` (Başmüderris ata).",
         "operationId": "getMadrasahDirectory",
         "parameters": [
           {
@@ -1831,7 +1903,7 @@
             "bearer": []
           }
         ],
-        "summary": "Every medrese for the platform's table (SYSTEM_ADMIN only)",
+        "summary": "Every medrese for the platform's table (the Medaris yönetimi)",
         "tags": [
           "madrasahs"
         ]
@@ -1930,7 +2002,7 @@
         ]
       },
       "delete": {
-        "description": "Its nazır list and hosting rights go with it; its courses stay in their köşks with no medrese. Nazırs cannot delete (MDRS-124).",
+        "description": "Its nazır list and hosting rights go with it; its courses stay in their köşks with no medrese. Nazırs cannot delete (MDRS-124). Written to the audit log as `madrasah.delete`, naming the caller (MDRS-143).",
         "operationId": "deleteMadrasah",
         "parameters": [
           {
@@ -2056,7 +2128,7 @@
     },
     "/madrasahs/{id}/head-muderris/delegations": {
       "get": {
-        "description": "nizam/22. The nazır roles and permissions the sitting başmüderris gave to others in this medrese that are still held; `delegations` of the replacing call answers each. Empty when there is no başmüderris or nothing was handed on.",
+        "description": "nizam/22. The nazır roles and permissions the sitting başmüderris gave to others in this medrese and its courses that are still held, whoever holds them; `delegations` of the replacing call answers each. Empty when there is no başmüderris or nothing was handed on.",
         "operationId": "getMadrasahHeadDelegations",
         "parameters": [
           {
@@ -2102,7 +2174,7 @@
     },
     "/madrasahs/{id}/head-muderris": {
       "put": {
-        "description": "Replaces whoever heads it: their grants are revoked, not deleted. A passive medrese is active again. `delegations` answers what the replaced başmüderris handed on (Devral / Düşür), `endsAt` is the new one's Görev bitişi. Written to the audit log.",
+        "description": "Replaces whoever heads it: their grants are revoked, not deleted. A passive medrese is active again. `delegations` answers what the replaced başmüderris handed on (Devral / Düşür), each row, what they gave the incoming başmüderris included; `endsAt` is the new one's Görev bitişi. Written to the audit log.",
         "operationId": "setMadrasahHeadMuderris",
         "parameters": [
           {
@@ -2158,7 +2230,7 @@
     },
     "/madrasahs/{id}/hide": {
       "post": {
-        "description": "nazir/12's \"Medreseyi gizle\". The medrese leaves every list and its page closes, and so do its courses, all at once; nothing is deleted. The köşks that host its courses stay. Only the Medaris administration brings it back (`POST …/restore`). 409 (MADRASAH_ALREADY_HIDDEN) when it is hidden. Written to the audit log.",
+        "description": "nazir/12's \"Medreseyi gizle\". The medrese leaves every list and its page closes, and so do its courses, all at once; nothing is deleted. The köşks that host its courses stay. The level that hid it, or one above, brings it back (`POST …/restore`): the başmüderris what they hid, the Medaris administration anything. 409 (MADRASAH_ALREADY_HIDDEN) when it is hidden. Written to the audit log.",
         "operationId": "hideMadrasah",
         "parameters": [
           {
@@ -2202,9 +2274,111 @@
         ]
       }
     },
+    "/madrasahs/{id}/deactivation-preview": {
+      "get": {
+        "description": "nizam/07, MDRS-227. The courses below the medrese, in every köşk, how many have a müderris in the post now, the talebe enrolled, the live sessions in the next days and the başmüderris who leaves, with the `confirmation` to post to `deactivate`. 200 with `alreadyPassive` when it is passive already. The Medaris başnazımı and a Medaris nazımı holding `platform.madrasah_edit`; the başmüderris does not passivate their own medrese.",
+        "operationId": "getMadrasahDeactivationPreview",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PassivationImpactResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "What taking a medrese out of service takes along",
+        "tags": [
+          "madrasahs"
+        ]
+      }
+    },
+    "/madrasahs/{id}/deactivate": {
+      "post": {
+        "description": "nizam/07, MDRS-227. The medrese becomes passive and its başmüderris is taken off the post; every course below it closes, in every köşk. Nothing is hidden or deleted, the nazırlar and every grant stay, and appointing a başmüderris opens it again. The body carries the `confirmation` of the preview the person read: the impact is measured again and a token that is not for these numbers and this caller is 409 (PASSIVATION_IMPACT_CHANGED, with the fresh preview in `context.impact`) and writes nothing. 409 (MADRASAH_ALREADY_PASSIVE) when it is passive already. Written to the audit log with the başmüderris removed and the impact confirmed.",
+        "operationId": "deactivateMadrasah",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PassivateScopeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MadrasahDirectoryItemResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "No confirmation"
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": "MADRASAH_ALREADY_PASSIVE or PASSIVATION_IMPACT_CHANGED"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Take a medrese out of service (Medaris yönetimi)",
+        "tags": [
+          "madrasahs"
+        ]
+      }
+    },
     "/madrasahs/{id}/restore": {
       "post": {
-        "description": "The courses hidden with it come back too. 409 (MADRASAH_NOT_HIDDEN) when it is not hidden.",
+        "description": "The courses hidden with it come back too. By the kademe rule the bans follow: the level that hid it or any level above it (the medrese's başmüderris for what they hid, the Medaris administration for anything); 403 ARCHIVE_RESTORE_LEVEL names both levels otherwise. 409 (MADRASAH_NOT_HIDDEN) when it is not hidden.",
         "operationId": "restoreMadrasah",
         "parameters": [
           {
@@ -2242,7 +2416,7 @@
             "bearer": []
           }
         ],
-        "summary": "Bring a hidden medrese back (SYSTEM_ADMIN only)",
+        "summary": "Bring a hidden medrese back (by the level that hid it, or above)",
         "tags": [
           "madrasahs"
         ]
@@ -2518,6 +2692,7 @@
         ]
       },
       "post": {
+        "description": "The köşk's nazımı opens it, and so does the başnazım (MDRS-136). It is opened with at least one müderris who has an account, and one of them is the imam: `imamUserId`, or the account listed first.",
         "operationId": "createCourse",
         "parameters": [
           {
@@ -2550,6 +2725,12 @@
               }
             }
           },
+          "400": {
+            "description": "No müderris with an account (MUDERRIS_LIST_INVALID), an imam who is not listed (COURSE_IMAM_NOT_LISTED), or the same account twice (MUDERRIS_DUPLICATE_USER)."
+          },
+          "403": {
+            "description": ""
+          },
           "404": {
             "description": ""
           }
@@ -2559,7 +2740,7 @@
             "bearer": []
           }
         ],
-        "summary": "Create a new course under a köşk",
+        "summary": "Create a new course under a köşk, together with its müderrisler",
         "tags": [
           "courses"
         ]
@@ -2733,7 +2914,7 @@
             }
           },
           "403": {
-            "description": "No `edit` on the course, or the save changes the müderris list without `assign_muderris` — a müderris may save the course but not change who teaches it (MUDERRIS_ASSIGNMENT_FORBIDDEN)."
+            "description": "No `course.edit` on the course, or the save changes the müderris list without `course.open_standalone` (or `madrasah.muderris_manage` for a medrese's course) — a müderris may save the course but not change who teaches it (MUDERRIS_ASSIGNMENT_FORBIDDEN). Adding or dropping a session, or changing a session's time, meeting link, agenda or preview flag, needs `session.manage` as well (AUTHZ_FORBIDDEN). SELF_GRANT_REFUSED: a changed list names the caller, who does not already hold every müderris permission on the course (SYSTEM_ADMIN excepted)."
           },
           "404": {
             "description": "No such course, or a müderris row links an id that names no account in the app or the realm (MUDERRIS_UNKNOWN_USER)."
@@ -2796,7 +2977,7 @@
     },
     "/courses/{id}/muderris": {
       "put": {
-        "description": "Partial update for the 'Müderrisleri düzenle' dialog (MDRS-176): only the müderris list and the imam change, not the syllabus. Needs `assign_muderris`; the change is written to `audit_log`. The list is never empty and the imam is one of its accounts.",
+        "description": "Partial update for the 'Müderrisleri düzenle' dialog (MDRS-176): only the müderris list and the imam change, not the syllabus. Needs `course.open_standalone` (or `madrasah.muderris_manage` for a medrese's course); the change is written to `audit_log`. The list is never empty and the imam is one of its accounts.",
         "operationId": "setCourseMuderris",
         "parameters": [
           {
@@ -2833,7 +3014,7 @@
             "description": "Empty list, an imam outside the list (MUDERRIS_LIST_INVALID), or the same account twice (MUDERRIS_DUPLICATE_USER)."
           },
           "403": {
-            "description": ""
+            "description": "SELF_GRANT_REFUSED: the list names the caller, who does not already hold every müderris permission on the course (SYSTEM_ADMIN excepted). Written to the audit log."
           },
           "404": {
             "description": ""
@@ -2855,7 +3036,7 @@
     },
     "/courses/{id}/archive": {
       "post": {
-        "description": "The köşk manager's way to take a course down: nothing is deleted, every list leaves it out, and it answers 404 to everyone but the köşk manager and SYSTEM_ADMIN until it is restored (MDRS-124).",
+        "description": "Nothing is deleted, every list leaves the course out, and it answers 404 to everyone but those who may hide it until it is restored (MDRS-124). Who hides it (MDRS-143): the köşk's nazımı (`course.hide`), the başmüderris or a nazır given `madrasah.course_hide` for a medrese course, and platform management (`platform.course_hide`, the başnazım by bypass). The level the caller acts at is recorded with the hide (köşk, medrese or platform) and decides who may restore it (MDRS-135). A course hidden already answers 409 (COURSE_ALREADY_HIDDEN) and nothing is written.",
         "operationId": "archiveCourse",
         "parameters": [
           {
@@ -2883,6 +3064,9 @@
           },
           "404": {
             "description": ""
+          },
+          "409": {
+            "description": "COURSE_ALREADY_HIDDEN"
           }
         },
         "security": [
@@ -2894,10 +3078,78 @@
         "tags": [
           "courses"
         ]
+      },
+      "get": {
+        "description": "Newest hidden first: the course's hidden weeks and sessions, for the course team (`week.hide`: the müderrisler, the köşk's nazımları and the başmüderris of a medrese course by default, a ders nazırı once given). A session is listed only while its week is shown. Each item says whether the caller may bring it back (`canRestore`).",
+        "operationId": "listCourseArchive",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "types",
+            "required": false,
+            "in": "query",
+            "description": "Comma-separated, from week, session; default both.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "1 to 50; default 10.",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedCourseArchiveResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not on this course's team."
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "What is hidden in a course (its team)",
+        "tags": [
+          "archive"
+        ]
       }
     },
     "/courses/{id}/restore": {
       "post": {
+        "description": "By kademe (MDRS-135): the level that hid the course, or any level above it (course < medrese < köşk < platform). A lower level answers 403 (ARCHIVE_RESTORE_LEVEL), naming the level that hid it and the caller's. A course hidden before the level was recorded counts as the lowest level that could have hidden it. As on the archive route, a course whose köşk or medrese is still hidden answers 409 (ARCHIVE_PARENT_HIDDEN); a course that is not hidden answers 409 (COURSE_NOT_HIDDEN) and nothing is written.",
         "operationId": "restoreCourse",
         "parameters": [
           {
@@ -2925,6 +3177,9 @@
           },
           "404": {
             "description": ""
+          },
+          "409": {
+            "description": "ARCHIVE_PARENT_HIDDEN or COURSE_NOT_HIDDEN"
           }
         },
         "security": [
@@ -3940,6 +4195,7 @@
         ]
       },
       "delete": {
+        "description": "`week.hide` (Hafta ve celse gizle, geri al) or `session.manage`. The level the caller acts at is recorded with the hide and decides who may bring it back (MDRS-135); written to `audit_log` as `lesson.hide` (MDRS-143).",
         "operationId": "archiveLesson",
         "parameters": [
           {
@@ -4031,6 +4287,57 @@
           }
         ],
         "summary": "Cancel a live session; it keeps its slot, marked cancelled",
+        "tags": [
+          "lessons"
+        ]
+      }
+    },
+    "/courses/{courseId}/weeks/{weekId}/hide": {
+      "post": {
+        "description": "Nothing is deleted: the week and its live sessions leave the course at one instant, at the level the caller acts at (the course team's, the köşk's, the medrese's), and the course `version` is bumped, so an editor that loaded the course before is refused with 409. Brought back by that level or one above, through `POST /archive/week/:id/restore`; the course's Arşiv lists it (`GET /courses/:id/archive`). Written to `audit_log` as `week.hide` (MDRS-143).",
+        "operationId": "hideCourseWeek",
+        "parameters": [
+          {
+            "name": "courseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "weekId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeekHideResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": "No such course, or no such live week in it (WEEK_NOT_FOUND)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Hide a week with its sessions (Gizle)",
         "tags": [
           "lessons"
         ]
@@ -4143,7 +4450,7 @@
     },
     "/courses/{courseId}/bans": {
       "post": {
-        "description": "Takes effect at once: the talebe cannot enroll, apply again or leave, and loses the course's content. A COURSE ban is the course's müderris's and above; a KOSK ban, placed from this course, is the köşk nazımı's and above. Barring someone already barred in that scope returns the standing ban. The reason is kept for those who see and lift bans and never sent to the talebe.",
+        "description": "Takes effect at once: the talebe cannot enroll, apply again or leave, and loses the course's content. A COURSE ban takes `ban.course` in the course (its müderris, its başmüderris and the köşk's nazımı hold it; a ders nazırı only if given it) or, in a medrese's course, `madrasah.ban` of that medrese (its başmüderris holds it; a nazır only if given it); a Medaris nazımı holding only `platform.ban_scoped` has neither, the başnazım does. A KOSK ban, placed from this course, takes `ban.manage_kosk` in the köşk or `platform.ban_scoped`. Barring someone already barred in that scope returns the standing ban. The reason is kept for those who see and lift bans and never sent to the talebe.",
         "operationId": "createBan",
         "parameters": [
           {
@@ -4196,7 +4503,7 @@
     },
     "/kosks/{koskId}/bans": {
       "get": {
-        "description": "Newest first, with the counts the tabs show. The köşk's nazım and above. Each row says whether the caller's kademe reaches the ban's (`viewerMayLift`).",
+        "description": "Newest first, with the counts the tabs show. For `ban.manage_kosk` in the köşk, and for a Medaris nazımı holding `platform.ban_scoped` or `platform.ban_account`. Each row says whether the caller may lift the ban: the permission for its level, and a kademe that reaches the ban's (`viewerMayLift`).",
         "operationId": "listKoskBans",
         "parameters": [
           {
@@ -4251,7 +4558,7 @@
     },
     "/bans": {
       "get": {
-        "description": "Newest first, one page at a time, with platform-wide counts for the tabs. Medaris administration only: the başnazım and the Medaris nazımı. `q` matches the person's name or e-mail; `scope` keeps one scope.",
+        "description": "Newest first, one page at a time, with platform-wide counts for the tabs. Medaris administration only: the başnazım and a Medaris nazımı holding `platform.ban_scoped` or `platform.ban_account`. `q` matches the person's name or e-mail; `scope` keeps one scope.",
         "operationId": "listAllBans",
         "parameters": [
           {
@@ -4332,7 +4639,7 @@
     },
     "/bans/{banId}/extend": {
       "post": {
-        "description": "Opens a KOSK ban for the same person with its own reason and leaves the course ban standing; the audit row says `ban.extend`. The köşk's nazım and above. A person already barred from the köşk gets the standing ban back.",
+        "description": "Opens a KOSK ban for the same person with its own reason and leaves the course ban standing; the audit row says `ban.extend`. Takes `ban.manage_kosk` in the köşk or `platform.ban_scoped`. A person already barred from the köşk gets the standing ban back.",
         "operationId": "extendBan",
         "parameters": [
           {
@@ -4388,7 +4695,7 @@
     },
     "/bans/{banId}/lift": {
       "post": {
-        "description": "Only the kademe that placed the ban, or a higher one: a Medaris nazımı's ban is lifted by Medaris administration alone. The reason and the lifter's name are kept with the ban. A medrese's nazır and başmüderris lift bans in the medrese's courses and over the medrese (MDRS-187).",
+        "description": "The permission to ban at a ban's level also lifts it: `ban.course` (or `ban.lift_course`, or `madrasah.ban` in a medrese's course) for a course ban, `ban.manage_kosk` or `platform.ban_scoped` for a köşk ban, `madrasah.ban` or `platform.ban_scoped` for a medrese ban. And only the kademe that placed the ban, or a higher one: a Medaris nazımı's ban is lifted by Medaris administration alone. A Medaris nazımı holding only `platform.ban_scoped` lifts no course ban. The reason and the lifter's name are kept with the ban.",
         "operationId": "liftBan",
         "parameters": [
           {
@@ -4444,7 +4751,7 @@
     },
     "/bans/{banId}/escalate": {
       "post": {
-        "description": "For an open course ban in a course of a medrese: a second ban beside the first, which stays, barring the talebe from every course of the medrese, present and future. A medrese nazır or above of that medrese; a köşk nazımı or a müderris is not one. The person already barred from the medrese gets that ban back. 409 (BAN_NOT_ESCALATABLE) for any other ban.",
+        "description": "For an open course ban in a course of a medrese: a second ban beside the first, which stays, barring the talebe from every course of the medrese, present and future. Takes `madrasah.ban` in the medrese (its başmüderris holds it; a nazır only if given it) or `platform.ban_scoped`; a köşk nazımı or a müderris holds neither. The person already barred from the medrese gets that ban back. 409 (BAN_NOT_ESCALATABLE) for any other ban.",
         "operationId": "escalateBan",
         "parameters": [
           {
@@ -4503,7 +4810,7 @@
     },
     "/bans/{banId}/permanent-request": {
       "post": {
-        "description": "Records the medrese's request, with its reason, for Medaris administration. Nothing is decided here: the ban stands as it was, and deciding the request is a later phase. A medrese nazır or above, on an open ban in a course of the medrese or over the medrese itself that Medaris administration did not place. One request per ban (409 BAN_PERMANENT_REQUEST_EXISTS).",
+        "description": "Records the medrese's request, with its reason, for Medaris administration. Nothing is decided here: the ban stands as it was, and deciding the request is a later phase. Takes `madrasah.permanent_ban_request` in the medrese (its başmüderris holds it; a nazır only if given it), on an open ban in a course of the medrese or over the medrese itself that Medaris administration did not place. One request per ban (409 BAN_PERMANENT_REQUEST_EXISTS).",
         "operationId": "requestPermanentBan",
         "parameters": [
           {
@@ -4562,7 +4869,7 @@
     },
     "/madrasahs/{id}/bans": {
       "get": {
-        "description": "Newest first, with the counts the tabs show: the medrese-wide bans and the bans on the medrese's courses, hidden ones included. A köşk's own ban of the whole köşk is the köşk's list and is not here. `scope` narrows to the medrese-wide or the course bans, `courseId` to one course's. Each row says what the caller's kademe lets them do: `viewerMayLift`, `viewerMayEscalate`, `viewerMayRequestPermanent`.",
+        "description": "Newest first, with the counts the tabs show: the medrese-wide bans and the bans on the medrese's courses, hidden ones included. A köşk's own ban of the whole köşk is the köşk's list and is not here. `scope` narrows to the medrese-wide or the course bans, `courseId` to one course's. Each row says what the caller may do, from the catalogue and the kademe: `viewerMayLift`, `viewerMayEscalate`, `viewerMayRequestPermanent`.",
         "operationId": "listMadrasahBans",
         "parameters": [
           {
@@ -4636,7 +4943,7 @@
         ]
       },
       "post": {
-        "description": "Takes effect at once: the talebe cannot apply, apply again or leave, and loses the course's content, in the one course or in every course of the medrese. The ban is the medrese's kademe: a köşk nazımı or Medaris administration lifts it, a müderris does not. Barring someone already barred in that scope returns the standing ban. 404 for a course that is not the medrese's. The reason is kept for those who see and lift bans and never sent to the talebe.",
+        "description": "Takes effect at once: the talebe cannot apply, apply again or leave, and loses the course's content, in the one course or in every course of the medrese. A medrese-wide ban takes `madrasah.ban` or `platform.ban_scoped`; a ban from one course takes `ban.course` in it or `madrasah.ban`, which reaches the medrese's courses (a Medaris nazımı holding only `platform.ban_scoped` has neither). The ban is the medrese's kademe: a köşk nazımı or Medaris administration lifts it, a müderris does not. Barring someone already barred in that scope returns the standing ban. 404 for a course that is not the medrese's. The reason is kept for those who see and lift bans and never sent to the talebe.",
         "operationId": "createMadrasahBan",
         "parameters": [
           {
@@ -5211,7 +5518,7 @@
     },
     "/nizam/medaris-nazims/{userId}/given": {
       "get": {
-        "description": "nizam/11's dismissal question: the roles and permissions this person gave to others that are still held.",
+        "description": "nizam/11's dismissal question: the roles and permissions this person gave that are still held, the ones they gave themselves included (`to` is the person), and the groups they defined or changed. Only the rows given to others take an answer; the self-made ones go with the dismissal.",
         "operationId": "getMedarisNazimGiven",
         "parameters": [
           {
@@ -5257,7 +5564,7 @@
     },
     "/nizam/medaris-nazims/{userId}": {
       "delete": {
-        "description": "nizam/11. `decisions` answers every item `…/given` lists: TAKE_OVER leaves the right in place under the başnazım's name, DROP revokes it. The appointment and the platform permissions are revoked. Written to the audit log.",
+        "description": "nizam/11. `decisions` answers every role and grant `…/given` lists as given to someone else: TAKE_OVER leaves the right in place under the başnazım's name, DROP revokes it, and a seat dropped takes with it what its holder was given in its scope. What the person gave themselves is revoked and takes no answer (a TAKE_OVER for it is refused with DISMISS_DECISIONS_INCOMPLETE). The appointment and the platform permissions are revoked. Written to the audit log.",
         "operationId": "dismissMedarisNazim",
         "parameters": [
           {
@@ -7280,7 +7587,7 @@
     },
     "/kosks/{id}/hosting-rights/{madrasahId}": {
       "delete": {
-        "description": "`coursesAction` decides what becomes of the medrese's courses in this köşk: KEEP leaves them as they are, HIDE hides each (they come back from the archive). The medrese can open no new course here. Written to the audit log.",
+        "description": "`coursesAction` decides what becomes of the medrese's courses in this köşk: KEEP leaves them as they are, HIDE hides each (they come back from the archive, by the level the caller acts at: the köşk's nazımı hides at the köşk's level, a Medaris nazımı or SYSTEM_ADMIN at the platform's, so the medrese's own başmüderris cannot bring them back). The medrese can open no new course here. Written to the audit log.",
         "operationId": "revokeKoskHostingRight",
         "parameters": [
           {
@@ -8041,7 +8348,7 @@
         ]
       },
       "delete": {
-        "description": "nazir/15's \"Görevden al\", in one transaction. `decisions` answers every person `…/grants` lists, once and nobody else: TAKE_OVER leaves what the nazır gave them in place under the caller's name, DROP revokes it. The nazır's own appointment and permissions in the medrese are revoked. Written to the audit log.",
+        "description": "nazir/15's \"Görevden al\", in one transaction. `decisions` answers every person `…/grants` lists, once and nobody else: TAKE_OVER leaves what the nazır gave them in place under the caller's name, DROP revokes it, and a seat dropped takes with it what its holder was given in its scope. The nazır's own appointment and permissions in the medrese are revoked. The başmüderris and the platform dismiss any nazır; a nazır holding `madrasah.nazir_appoint` only one they appointed (403 NAZIR_NOT_APPOINTED_BY_YOU otherwise). Written to the audit log.",
         "operationId": "removeMadrasahNazir",
         "parameters": [
           {
@@ -8079,7 +8386,7 @@
             "description": "DISMISS_DECISIONS_INCOMPLETE"
           },
           "403": {
-            "description": ""
+            "description": "Not allowed, or NAZIR_NOT_APPOINTED_BY_YOU"
           },
           "404": {
             "description": ""
@@ -8790,7 +9097,7 @@
     },
     "/madrasahs/{id}/courses/{courseId}/hide": {
       "post": {
-        "description": "nazir/18's \"Gizle\". The course leaves the medrese's list, the köşk's page, the talebe's calendar and every search; nothing is deleted, and it is listed in the medrese's archive, where `POST /archive/course/:id/restore` brings it back by kademe. 409 (MADRASAH_COURSE_ALREADY_HIDDEN) when it is hidden. Written to the audit log.",
+        "description": "nazir/18's \"Gizle\". The course leaves the medrese's list, the köşk's page, the talebe's calendar and every search; nothing is deleted, and it is listed in the medrese's archive, where `POST /archive/course/:id/restore` brings it back by kademe. The hide is recorded at the level the caller acts at on the course, on the ladder every course hide reads: the platform for the başnazım and platform management, the köşk for the course's köşk nazımı, the medrese for anyone else. 409 (MADRASAH_COURSE_ALREADY_HIDDEN) when it is hidden. Written to the audit log with that level.",
         "operationId": "hideMadrasahCourse",
         "parameters": [
           {
@@ -9065,7 +9372,7 @@
     },
     "/kosks/{id}/archive": {
       "get": {
-        "description": "Newest hidden first: the köşk's courses, weeks, sessions and decks, and the same of the medrese courses it hosts. A köşk manager or SYSTEM_ADMIN. There is no delete here; the başnazım deletes from the platform archive.",
+        "description": "Newest hidden first: the köşk's courses, weeks, sessions and decks, and the same of the medrese courses it hosts. A köşk manager (`kosk.manage`), a Medaris nazımı holding `platform.kosk_edit`, or SYSTEM_ADMIN. Each item says whether the caller may bring it back (`canRestore`): false for what was hidden at a level above theirs. There is no delete here; the başnazım deletes from the platform archive.",
         "operationId": "listKoskArchive",
         "parameters": [
           {
@@ -9272,7 +9579,7 @@
     },
     "/archive/{type}/{id}/restore": {
       "post": {
-        "description": "A köşk manager restores courses, weeks and sessions of their köşk; SYSTEM_ADMIN restores anything. A week or session whose parent is still hidden answers 409 (ARCHIVE_PARENT_HIDDEN).",
+        "description": "By kademe, as the bans are lifted (MDRS-135): the level that hid an item, or any level above it, brings it back. The ladder is course < medrese < köşk < platform; a hide records the level its hider acted at, and one recorded by nobody counts as the lowest level that could have hidden it. A course, and the weeks and sessions in one, are restored at the level the caller acts at on the course, exactly as `POST /courses/:id/archive` records it: the köşk's nazımı (`course.hide`), the başmüderris or a nazır given `madrasah.course_hide`, platform management (`platform.course_hide`); a week or a session also at the course's own level, by whoever does its session work (`week.hide` or `session.manage`), and a week that brings no session back also by its editor (`course.edit`), which is where they hide them. A deck is its köşk nazımı's; SYSTEM_ADMIN restores anything. Every restore is written to the audit log as `<type>.restore` with the level. Someone who acts at no level there answers 403 (ARCHIVE_FORBIDDEN); a lower level than the one that hid it answers 403 (ARCHIVE_RESTORE_LEVEL) naming both, compared under the row lock. A course, week or session whose parent is still hidden answers 409 (ARCHIVE_PARENT_HIDDEN); one of a hidden köşk answers 404 to everyone but the people above the köşk.",
         "operationId": "restoreArchiveItem",
         "parameters": [
           {
@@ -9490,7 +9797,7 @@
     },
     "/nizam/deck-publish-requests": {
       "get": {
-        "description": "The members' requests to make a deck public, oldest waiting first, or the answered ones, newest first, a page at a time. Both tab counts (every request, not the page) come with it. The Medaris başnazımı (SYSTEM_ADMIN) only.",
+        "description": "The members' requests to make a deck public, oldest waiting first, or the answered ones, newest first, a page at a time. Both tab counts (every request, not the page) come with it. The Medaris başnazımı, or a Medaris nazımı holding platform.deck_publish.",
         "operationId": "listDeckPublishRequests",
         "parameters": [
           {
@@ -9679,6 +9986,55 @@
           }
         ],
         "summary": "Refuse the request (Reddet)",
+        "tags": [
+          "nizam"
+        ]
+      }
+    },
+    "/nizam/deck-publish-requests/{id}/unpublish": {
+      "post": {
+        "description": "The deck becomes private again and the reason goes to its owner, who may ask again. The reason is required. The Medaris başnazımı (SYSTEM_ADMIN) only; the change is written to the audit log (`deck.unpublish`).",
+        "operationId": "unpublishDeck",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RejectReasonDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": "DECK_NOT_PUBLISHED"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Take a published deck back (Yayından kaldır)",
         "tags": [
           "nizam"
         ]
@@ -10488,6 +10844,16 @@
         ],
         "description": "HIDDEN wins over PASSIVE: someone hid it, which says more than that nobody attends it."
       },
+      "HideLevel": {
+        "type": "string",
+        "enum": [
+          "course",
+          "madrasah",
+          "kosk",
+          "platform"
+        ],
+        "description": "The level that hid it (course, madrasah, kosk, platform); null while it is shown. Only that level or above brings it back."
+      },
       "KoskPersonResponse": {
         "type": "object",
         "properties": {
@@ -10556,6 +10922,19 @@
             "nullable": true,
             "description": "Since when it is hidden or passive; null while active"
           },
+          "hiddenLevel": {
+            "nullable": true,
+            "description": "The level that hid it (course, madrasah, kosk, platform); null while it is shown. Only that level or above brings it back.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HideLevel"
+              }
+            ]
+          },
+          "canRestore": {
+            "type": "boolean",
+            "description": "Whether the caller may bring it back (Geri al): it is hidden, they hold `kosk.manage` or `platform.kosk_edit` on it and act at the level that hid it or above. A köşk nazımı cannot reopen what Medaris yönetimi hid."
+          },
           "nazims": {
             "description": "The köşk nazımları held now, oldest grant first",
             "type": "array",
@@ -10574,6 +10953,7 @@
           "coverHue",
           "isPrivate",
           "status",
+          "canRestore",
           "nazims",
           "courseCount"
         ]
@@ -10706,6 +11086,19 @@
             "nullable": true,
             "description": "Since when it is hidden or passive; null while active"
           },
+          "hiddenLevel": {
+            "nullable": true,
+            "description": "The level that hid it (course, madrasah, kosk, platform); null while it is shown.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HideLevel"
+              }
+            ]
+          },
+          "canRestore": {
+            "type": "boolean",
+            "description": "Whether the caller may bring the köşk back: it is hidden, they hold `kosk.manage` or `platform.kosk_edit` on it and act at the level that hid it or above."
+          },
           "openedAt": {
             "format": "date-time",
             "type": "string",
@@ -10746,6 +11139,7 @@
         },
         "required": [
           "status",
+          "canRestore",
           "openedAt",
           "courses",
           "students",
@@ -10860,7 +11254,7 @@
           "meetingUrl": {
             "type": "string",
             "nullable": true,
-            "description": "Where talebe join. The köşk nazımı is the course team, so it is shown; null: no link yet (Bağlantı eksik)."
+            "description": "Where talebe join. The köşk nazımı is the course team, so it is shown; null: no link yet (Bağlantı eksik). Absent when `contentLocked` is true."
           },
           "isMakeup": {
             "type": "boolean",
@@ -10918,18 +11312,29 @@
           },
           "studentEmail": {
             "type": "string",
-            "nullable": true
+            "nullable": true,
+            "description": "The applicant's e-mail address. No application is sent at all when `contentLocked` is true (`latestApplications` is empty)"
           },
           "requestedAt": {
             "format": "date-time",
             "type": "string"
+          },
+          "canDecide": {
+            "type": "boolean",
+            "description": "Whether the viewer holds `enrollment.decide` on this course, as the engine decides it: false in a passive scope, or when their role carries no course work. When false the screen offers no Onayla or Reddet; the route refuses all the same"
+          },
+          "scopePassive": {
+            "type": "boolean",
+            "description": "The course, its köşk or its medrese once had a manager and has none now, so its content is closed (MDRS-135). It is the reason a köşk nazımı's `canDecide` is false"
           }
         },
         "required": [
           "userId",
           "courseId",
           "courseTitle",
-          "requestedAt"
+          "requestedAt",
+          "canDecide",
+          "scopePassive"
         ]
       },
       "KoskDashboardMuderrisResponse": {
@@ -11006,6 +11411,10 @@
               }
             ]
           },
+          "contentLocked": {
+            "type": "boolean",
+            "description": "True when the meeting links and the applicants were left out (`latestApplications` is empty; `counts.pendingApplications` still says how many wait): the caller reads the page by `platform.kosk_edit` alone, which covers neither course content nor personal data"
+          },
           "sessions": {
             "description": "UPCOMING: the next seven days, soonest first; PAST and CANCELLED: the latest twenty, newest first",
             "type": "array",
@@ -11014,7 +11423,7 @@
             }
           },
           "latestApplications": {
-            "description": "The newest waiting applications, five at most",
+            "description": "The newest waiting applications, five at most; empty when `contentLocked` is true",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/KoskDashboardApplicationResponse"
@@ -11034,6 +11443,7 @@
           "sessionCounts",
           "missingLinkCount",
           "tab",
+          "contentLocked",
           "sessions",
           "latestApplications",
           "muderris"
@@ -11105,6 +11515,19 @@
             "type": "string",
             "nullable": true
           },
+          "hiddenLevel": {
+            "nullable": true,
+            "description": "The level that hid it (course, madrasah, kosk, platform); null while it is shown. A course hidden before levels were recorded counts as the lowest level that could have hidden it: the medrese's for a medrese course, the köşk's for its own.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HideLevel"
+              }
+            ]
+          },
+          "canRestore": {
+            "type": "boolean",
+            "description": "Whether the caller may bring this hidden course back (Geri al): it is hidden and they act at the level that hid it or above; false for a shown course and for one hidden at a level above theirs, which would answer 403 ARCHIVE_RESTORE_LEVEL."
+          },
           "createdAt": {
             "format": "date-time",
             "type": "string"
@@ -11135,6 +11558,8 @@
           "coverHue",
           "weekCount",
           "status",
+          "hiddenLevel",
+          "canRestore",
           "createdAt",
           "muderris",
           "studentCount",
@@ -11159,6 +11584,241 @@
         "required": [
           "counts",
           "items"
+        ]
+      },
+      "PassivationScopeType": {
+        "type": "string",
+        "enum": [
+          "KOSK",
+          "MADRASAH"
+        ]
+      },
+      "PassivationScopeResponse": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PassivationScopeType"
+              }
+            ]
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "id",
+          "name"
+        ]
+      },
+      "PassivationCourseResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "koskName": {
+            "type": "string",
+            "description": "The köşk the course is in; a medrese's courses may be in several"
+          },
+          "status": {
+            "type": "string",
+            "example": "PUBLISHED",
+            "description": "PUBLISHED or DRAFT; a hidden course is not counted"
+          },
+          "liveMuderris": {
+            "type": "boolean",
+            "description": "Someone holds the müderris role in it now, so it is open today and closes with the scope. A course without one is closed already."
+          },
+          "enrolled": {
+            "type": "number",
+            "description": "Talebe with the course open"
+          },
+          "completed": {
+            "type": "number",
+            "description": "Talebe who finished it; they lose the content too"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "koskName",
+          "status",
+          "liveMuderris",
+          "enrolled",
+          "completed"
+        ]
+      },
+      "PassivationCoursesResponse": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "number"
+          },
+          "published": {
+            "type": "number"
+          },
+          "draft": {
+            "type": "number"
+          },
+          "withLiveMuderris": {
+            "type": "number",
+            "description": "How many of them have a müderris in the post now"
+          },
+          "items": {
+            "description": "The first 50, the most enrolled first",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PassivationCourseResponse"
+            }
+          },
+          "truncated": {
+            "type": "boolean",
+            "description": "True when `items` is shorter than `total`; the confirmation covers every course"
+          }
+        },
+        "required": [
+          "total",
+          "published",
+          "draft",
+          "withLiveMuderris",
+          "items",
+          "truncated"
+        ]
+      },
+      "PassivationStudentsResponse": {
+        "type": "object",
+        "properties": {
+          "enrolled": {
+            "type": "number",
+            "description": "Distinct talebe enrolled in those courses; one in two courses counts once. An upper bound of who loses access today: courses without a müderris are closed already."
+          },
+          "completed": {
+            "type": "number",
+            "description": "Distinct talebe who finished one of them"
+          }
+        },
+        "required": [
+          "enrolled",
+          "completed"
+        ]
+      },
+      "PassivationSessionResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "courseTitle": {
+            "type": "string"
+          },
+          "scheduledAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "courseTitle",
+          "scheduledAt"
+        ]
+      },
+      "PassivationSessionsResponse": {
+        "type": "object",
+        "properties": {
+          "windowDays": {
+            "type": "number",
+            "example": 7,
+            "description": "How many days ahead are counted; the screen never hard-codes it"
+          },
+          "count": {
+            "type": "number",
+            "description": "Live sessions of published courses that are not cancelled and start inside the window"
+          },
+          "next": {
+            "description": "The first five",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PassivationSessionResponse"
+            }
+          }
+        },
+        "required": [
+          "windowDays",
+          "count",
+          "next"
+        ]
+      },
+      "PassivationImpactResponse": {
+        "type": "object",
+        "properties": {
+          "scope": {
+            "$ref": "#/components/schemas/PassivationScopeResponse"
+          },
+          "alreadyPassive": {
+            "type": "boolean",
+            "description": "Already passive: the call answers 409"
+          },
+          "closesContent": {
+            "type": "boolean",
+            "description": "False when the scope never had a manager: the engine treats it as new, so passivating it closes no course."
+          },
+          "staffLeaving": {
+            "type": "number",
+            "description": "How many people hold the manager post now and are taken off it (köşk nazımları, or the başmüderris)"
+          },
+          "courses": {
+            "$ref": "#/components/schemas/PassivationCoursesResponse"
+          },
+          "students": {
+            "$ref": "#/components/schemas/PassivationStudentsResponse"
+          },
+          "sessions": {
+            "$ref": "#/components/schemas/PassivationSessionsResponse"
+          },
+          "confirmation": {
+            "type": "string",
+            "description": "Post it back as `confirmation` to passivate. It is tied to exactly these numbers and to the caller: anything that changed since, or another caller, gets 409 PASSIVATION_IMPACT_CHANGED."
+          }
+        },
+        "required": [
+          "scope",
+          "alreadyPassive",
+          "closesContent",
+          "staffLeaving",
+          "courses",
+          "students",
+          "sessions",
+          "confirmation"
+        ]
+      },
+      "PassivateScopeDto": {
+        "type": "object",
+        "properties": {
+          "confirmation": {
+            "type": "string",
+            "description": "The `confirmation` of the preview the person read",
+            "minLength": 64,
+            "maxLength": 64
+          }
+        },
+        "required": [
+          "confirmation"
         ]
       },
       "KoskNazimGranterRole": {
@@ -11734,7 +12394,7 @@
           "managerUserIds": {
             "minItems": 1,
             "maxItems": 10,
-            "description": "nizam/10: the köşk's first nazımları, found by e-mail (`GET /users/lookup`). SYSTEM_ADMIN only; when given, they are the köşk's nazımları and the caller is not one. Omitted: the caller becomes the köşk's only nazım, as before.",
+            "description": "nizam/10: the köşk's first nazımları, found by e-mail (`GET /users/lookup`). A köşk is opened together with at least one nazım (MDRS-136); the caller is never one of them, so a Medaris nazımı holding `platform.kosk_create` cannot seat themselves by leaving the list out.",
             "type": "array",
             "items": {
               "type": "string",
@@ -11743,7 +12403,8 @@
           }
         },
         "required": [
-          "name"
+          "name",
+          "managerUserIds"
         ]
       },
       "UpdateKoskDto": {
@@ -11831,6 +12492,7 @@
           "PERSONAL_DATA_READ",
           "USER_LOOKUP",
           "TAKEOVER",
+          "SELF_GRANT_REFUSED",
           "GRANT",
           "ROLE_CHANGE",
           "POLICY_CHANGE",
@@ -12363,6 +13025,19 @@
             "nullable": true,
             "description": "Since when it is hidden or passive; null while active"
           },
+          "hiddenLevel": {
+            "nullable": true,
+            "description": "The level that hid it (course, madrasah, kosk, platform); null while it is shown. Only that level or above brings it back.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HideLevel"
+              }
+            ]
+          },
+          "canRestore": {
+            "type": "boolean",
+            "description": "Whether the caller may bring it back (Geri al): it is hidden, they hold `madrasah.hide` or `platform.madrasah_edit` on it and act at the level that hid it or above. A başmüderris cannot reopen what Medaris yönetimi hid."
+          },
           "headMuderris": {
             "nullable": true,
             "description": "The oldest held başmüderris; null when there is none",
@@ -12391,6 +13066,7 @@
           "name",
           "coverHue",
           "status",
+          "canRestore",
           "courseCount",
           "hostingKosks"
         ]
@@ -12685,6 +13361,14 @@
           "GRANT"
         ]
       },
+      "HeadDelegationScopeType": {
+        "type": "string",
+        "enum": [
+          "madrasah",
+          "course"
+        ],
+        "description": "Where it is held: the medrese, or one of its courses (`courseTitle` names it)"
+      },
       "NazimPersonResponse": {
         "type": "object",
         "properties": {
@@ -12724,7 +13408,7 @@
           "role": {
             "type": "string",
             "nullable": true,
-            "description": "The role handed on (MEDRESE_NAZIR), for a ROLE"
+            "description": "The role handed on, for a ROLE: MEDRESE_NAZIR in the medrese, or a course seat (MUDERRIS, DERS_NAZIR) in one of its courses"
           },
           "permission": {
             "type": "string",
@@ -12735,6 +13419,24 @@
             "type": "string",
             "nullable": true,
             "description": "The group's name, for a group GRANT"
+          },
+          "scopeType": {
+            "description": "Where it is held: the medrese, or one of its courses (`courseTitle` names it)",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HeadDelegationScopeType"
+              }
+            ]
+          },
+          "scopeId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "courseTitle": {
+            "type": "string",
+            "nullable": true,
+            "description": "The course's title, for a row held in a course"
           },
           "to": {
             "$ref": "#/components/schemas/NazimPersonResponse"
@@ -12752,6 +13454,7 @@
         "required": [
           "kind",
           "id",
+          "scopeType",
           "to",
           "grantedAt"
         ]
@@ -13549,10 +14252,17 @@
             }
           },
           "muderris": {
+            "minItems": 1,
+            "description": "A course is opened together with its müderrisler (MDRS-136): at least one, and at least one of them linked to an account (`userId`), because the account is what makes the person the course's müderris.",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/CreateMuderrisDto"
             }
+          },
+          "imamUserId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The imam, one of the accounts in `muderris` (400 COURSE_IMAM_NOT_LISTED otherwise). Absent: the account listed first."
           },
           "resources": {
             "type": "array",
@@ -13562,7 +14272,8 @@
           }
         },
         "required": [
-          "title"
+          "title",
+          "muderris"
         ]
       },
       "CourseDetailMadrasahResponse": {
@@ -14307,16 +15018,17 @@
               "$ref": "#/components/schemas/CreateWeekDto"
             }
           },
-          "muderris": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/CreateMuderrisDto"
-            }
-          },
           "resources": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/CreateResourceDto"
+            }
+          },
+          "muderris": {
+            "description": "Left out: the müderrisler are not touched. Sent: the list replaces the stored one, and a save that would leave the course with no müderris who has an account is refused (400 MUDERRIS_LIST_INVALID).",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CreateMuderrisDto"
             }
           },
           "version": {
@@ -15579,6 +16291,29 @@
           "version"
         ]
       },
+      "WeekHideResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The week that was hidden."
+          },
+          "courseVersion": {
+            "type": "number",
+            "description": "The course version this write produced; send it with the next PUT /courses/:id or PATCH /lessons/:id."
+          },
+          "hiddenSessions": {
+            "type": "number",
+            "description": "The live sessions hidden with it; a restore of the week brings back exactly these."
+          }
+        },
+        "required": [
+          "id",
+          "courseVersion",
+          "hiddenSessions"
+        ]
+      },
       "LiveStreamResponse": {
         "type": "object",
         "properties": {
@@ -16802,19 +17537,28 @@
           "permissions"
         ]
       },
+      "GivenItemKind": {
+        "type": "string",
+        "enum": [
+          "ROLE",
+          "GRANT",
+          "GROUP"
+        ]
+      },
       "GivenItemResponse": {
         "type": "object",
         "properties": {
           "kind": {
             "allOf": [
               {
-                "$ref": "#/components/schemas/GivenKind"
+                "$ref": "#/components/schemas/GivenItemKind"
               }
             ]
           },
           "id": {
             "type": "string",
-            "format": "uuid"
+            "format": "uuid",
+            "description": "The role row, the grant row or, for a GROUP, the permission group"
           },
           "role": {
             "type": "string",
@@ -16829,7 +17573,31 @@
             "nullable": true
           },
           "to": {
-            "$ref": "#/components/schemas/NazimPersonResponse"
+            "nullable": true,
+            "description": "Who it went to; null for a GROUP, which goes to no one yet",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/NazimPersonResponse"
+              }
+            ]
+          },
+          "groupPermissions": {
+            "nullable": true,
+            "description": "The codes a GROUP carries now; null for a role or a grant",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "groupAction": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "create",
+              "update"
+            ],
+            "description": "For a GROUP: whether the person defined it or last changed it; null otherwise"
           },
           "scopeType": {
             "type": "string"
@@ -16846,6 +17614,8 @@
           "permission",
           "groupName",
           "to",
+          "groupPermissions",
+          "groupAction",
           "scopeType",
           "scopeName"
         ]
@@ -17543,10 +18313,6 @@
             "type": "string",
             "example": "Colours - Vocabulary Deck"
           },
-          "isPublic": {
-            "type": "boolean",
-            "default": false
-          },
           "cardType": {
             "default": "VOCABULARY",
             "description": "What the deck's cards are; fixed once the deck exists.",
@@ -17599,10 +18365,6 @@
           "title": {
             "type": "string",
             "example": "Colours - Vocabulary Deck"
-          },
-          "isPublic": {
-            "type": "boolean",
-            "default": false
           },
           "tags": {
             "maxItems": 20,
@@ -17960,6 +18722,7 @@
             "nullable": true,
             "enum": [
               "SYSTEM_ADMIN",
+              "MEDARIS_NAZIM",
               "KOSK_NAZIM"
             ],
             "description": "How the granter was entitled to grant; null on rights older than MDRS-170"
@@ -19733,6 +20496,18 @@
                 "$ref": "#/components/schemas/ArchiverResponse"
               }
             ]
+          },
+          "hiddenLevel": {
+            "description": "The level the hider acted at (course, madrasah, kosk, platform); a row hidden before it was recorded counts as the lowest level that could have hidden it. Only that level or above brings it back.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HideLevel"
+              }
+            ]
+          },
+          "canRestore": {
+            "type": "boolean",
+            "description": "Whether the caller may bring it back (Geri al): they hold a code that hides it where it sits and act at the hider's level or above. False when a higher level hid it. A hidden parent still answers 409 on restore."
           }
         },
         "required": [
@@ -19751,7 +20526,9 @@
           "sessionCount",
           "studentCount",
           "archivedAt",
-          "archivedBy"
+          "archivedBy",
+          "hiddenLevel",
+          "canRestore"
         ]
       },
       "PaginatedArchiveResponse": {
@@ -19779,6 +20556,62 @@
           "total",
           "page",
           "limit"
+        ]
+      },
+      "CourseArchiveCountsResponse": {
+        "type": "object",
+        "properties": {
+          "all": {
+            "type": "number",
+            "description": "Every hidden week and session of the course."
+          },
+          "week": {
+            "type": "number"
+          },
+          "session": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "all",
+          "week",
+          "session"
+        ]
+      },
+      "PaginatedCourseArchiveResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ArchiveItemResponse"
+            }
+          },
+          "total": {
+            "type": "number",
+            "description": "All hidden items matching, not just this page."
+          },
+          "page": {
+            "type": "number"
+          },
+          "limit": {
+            "type": "number"
+          },
+          "counts": {
+            "description": "The tabs' numbers: everything hidden in the course, whatever `types` says.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CourseArchiveCountsResponse"
+              }
+            ]
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "limit",
+          "counts"
         ]
       },
       "ArchiveScopeRefResponse": {
@@ -19901,82 +20734,28 @@
           "cards"
         ]
       },
-      "MadrasahArchiveItemResponse": {
+      "MadrasahArchiveStateResponse": {
         "type": "object",
         "properties": {
-          "type": {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/ArchiveItemType"
-              }
-            ]
+          "hidden": {
+            "type": "boolean",
+            "description": "Whether the medrese is hidden."
           },
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "title": {
-            "type": "string",
-            "description": "The hidden thing's own title or name."
-          },
-          "koskId": {
-            "type": "string",
-            "format": "uuid",
-            "nullable": true
-          },
-          "koskName": {
-            "type": "string",
-            "nullable": true
-          },
-          "madrasahId": {
-            "type": "string",
-            "format": "uuid",
-            "nullable": true
-          },
-          "madrasahName": {
-            "type": "string",
-            "nullable": true
-          },
-          "courseId": {
-            "type": "string",
-            "format": "uuid",
-            "nullable": true,
-            "description": "The course a week or a session belongs to."
-          },
-          "courseTitle": {
-            "type": "string",
-            "nullable": true
-          },
-          "weekNumber": {
-            "type": "number",
-            "nullable": true,
-            "description": "Of a week, and of the week a session is in."
-          },
-          "scheduledAt": {
+          "hiddenAt": {
             "type": "string",
             "format": "date-time",
             "nullable": true
           },
-          "weekCount": {
-            "type": "number",
+          "hiddenLevel": {
             "nullable": true,
-            "description": "Of a course: its live weeks."
+            "description": "The level that hid it; null while it is shown.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HideLevel"
+              }
+            ]
           },
-          "sessionCount": {
-            "type": "number",
-            "nullable": true,
-            "description": "Of a week: its live sessions."
-          },
-          "studentCount": {
-            "type": "number",
-            "nullable": true,
-            "description": "Of a course: its enrolled talebe."
-          },
-          "archivedAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "archivedBy": {
+          "hiddenBy": {
             "nullable": true,
             "type": "object",
             "allOf": [
@@ -19987,26 +20766,14 @@
           },
           "canRestore": {
             "type": "boolean",
-            "description": "Whether the caller may bring it back (Geri al). False when the hider's kademe is above theirs; the hider's role is in `archivedBy.role`. A hidden parent still answers 409 on restore."
+            "description": "Whether the caller may bring the medrese back (`POST /madrasahs/:id/restore`): it is hidden, they hold `madrasah.hide` or `platform.madrasah_edit` on it and act at the level that hid it or above."
           }
         },
         "required": [
-          "type",
-          "id",
-          "title",
-          "koskId",
-          "koskName",
-          "madrasahId",
-          "madrasahName",
-          "courseId",
-          "courseTitle",
-          "weekNumber",
-          "scheduledAt",
-          "weekCount",
-          "sessionCount",
-          "studentCount",
-          "archivedAt",
-          "archivedBy",
+          "hidden",
+          "hiddenAt",
+          "hiddenLevel",
+          "hiddenBy",
           "canRestore"
         ]
       },
@@ -20045,7 +20812,7 @@
           "items": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/MadrasahArchiveItemResponse"
+              "$ref": "#/components/schemas/ArchiveItemResponse"
             }
           },
           "total": {
@@ -20057,6 +20824,14 @@
           },
           "limit": {
             "type": "number"
+          },
+          "madrasah": {
+            "description": "The medrese itself: the page cannot read a hidden medrese anywhere else it may not open.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MadrasahArchiveStateResponse"
+              }
+            ]
           },
           "counts": {
             "description": "The tabs' numbers: everything hidden in the medrese, whatever `types` says.",
@@ -20072,6 +20847,7 @@
           "total",
           "page",
           "limit",
+          "madrasah",
           "counts"
         ]
       },
@@ -20912,7 +21688,7 @@
             "description": "Holds the SYSTEM_ADMIN realm role"
           },
           "nazirOf": {
-            "description": "Medreses the caller is nazır of. Always empty until tedrisat stores medrese nazırs.",
+            "description": "Medreses the caller is başmüderris or nazır of, from their live role assignments.",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/NazirMadrasahRef"
@@ -20936,6 +21712,55 @@
           "nazirOf",
           "manages",
           "teaches"
+        ]
+      },
+      "MeScopePermissions": {
+        "type": "object",
+        "properties": {
+          "scopeType": {
+            "type": "string",
+            "enum": [
+              "platform",
+              "kosk",
+              "madrasah",
+              "course"
+            ]
+          },
+          "scopeId": {
+            "type": "string",
+            "description": "Null for the platform"
+          },
+          "scopeName": {
+            "type": "string",
+            "description": "The köşk's or medrese's name, the course's title"
+          },
+          "roles": {
+            "type": "array",
+            "description": "The caller's roles held in exactly this scope",
+            "items": {
+              "type": "string",
+              "enum": [
+                "MEDARIS_NAZIM",
+                "KOSK_NAZIM",
+                "MEDRESE_BASMUDERRIS",
+                "MEDRESE_NAZIR",
+                "MUDERRIS",
+                "DERS_NAZIR"
+              ]
+            }
+          },
+          "permissions": {
+            "description": "What the caller holds in this scope, sorted, as the permission engine computes it: role defaults and live grants, a grant only while a role covers it. A köşk's or medrese's entry includes the course work held across its courses. Codes every signed-in caller holds (viewing, enrolling) are left out. Policies and passive scopes are not applied: the routes still refuse what they close.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "scopeType",
+          "roles",
+          "permissions"
         ]
       },
       "MeResponse": {
@@ -20976,6 +21801,20 @@
           },
           "roles": {
             "$ref": "#/components/schemas/MeRolesResponse"
+          },
+          "assignments": {
+            "description": "The caller's live role assignments, as GET /me/assignments",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssignmentResponse"
+            }
+          },
+          "permissions": {
+            "description": "One entry for every scope the caller holds a role in, and for every scope below a role they hold a grant in. The realm role (başnazım) holds everything and is not a list of codes: it adds no entry, so a başnazım with no role rows gets none.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MeScopePermissions"
+            }
           }
         },
         "required": [
@@ -20983,7 +21822,9 @@
           "emailVerified",
           "createdAt",
           "lastSeenAt",
-          "roles"
+          "roles",
+          "assignments",
+          "permissions"
         ]
       },
       "UpdateMeDto": {

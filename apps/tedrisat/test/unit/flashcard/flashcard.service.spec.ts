@@ -34,9 +34,9 @@ describe("FlashcardService", () => {
     delete: vi.fn(),
   };
 
-  // Only `isSystemAdmin` is reached from this service — the realm bypass on
-  // the progress route. Defaults to "not an admin" so every test below runs
-  // the checked path; the one bypass test overrides it.
+  // Only `isSystemAdmin` is reached from this service — the card resolver's
+  // realm bypass. Defaults to "not an admin"; the tests that ask what the
+  // başnazım may do override it.
   const mockAuthzService = { isSystemAdmin: vi.fn().mockReturnValue(false) };
 
   const DECK_ID = "8f14e45f-ceea-467a-9e9a-1c1b9b0d5a11";
@@ -382,17 +382,35 @@ describe("FlashcardService", () => {
       );
     });
 
-    // The realm bypass has to hold here too, or this route would be the one
-    // place in the module where SYSTEM_ADMIN does not.
-    it("skips the check entirely for SYSTEM_ADMIN", async () => {
+    // MDRS-148: the başnazım reads another person's private deck, and that
+    // read exception is not a licence to write study progress on it.
+    it("403s the başnazım on a card in another user's private deck, and writes nothing", async () => {
       mockAuthzService.isSystemAdmin.mockReturnValue(true);
+      mockFlashcardRepository.findVisibilityByIds.mockResolvedValue([
+        { ...ownVisibility, authorId: "11111111-1111-1111-1111-111111111111" },
+      ]);
+
+      await expect(service.replaceManyProgress(USER, progress)).rejects.toThrow(
+        AuthzForbiddenError
+      );
+      expect(
+        mockFlashcardRepository.replaceManyProgress
+      ).not.toHaveBeenCalled();
+    });
+
+    it("still lets the başnazım record progress on a PUBLIC deck", async () => {
+      mockAuthzService.isSystemAdmin.mockReturnValue(true);
+      mockFlashcardRepository.findVisibilityByIds.mockResolvedValue([
+        {
+          ...ownVisibility,
+          authorId: "11111111-1111-1111-1111-111111111111",
+          isPublic: true,
+        },
+      ]);
       mockFlashcardRepository.replaceManyProgress.mockResolvedValue([]);
 
       await service.replaceManyProgress(USER, progress);
 
-      expect(
-        mockFlashcardRepository.findVisibilityByIds
-      ).not.toHaveBeenCalled();
       expect(
         mockFlashcardRepository.replaceManyProgress
       ).toHaveBeenCalledOnce();

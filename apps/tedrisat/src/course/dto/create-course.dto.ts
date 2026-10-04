@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Transform, Type } from "class-transformer";
 import {
+  ArrayMinSize,
   IsArray,
   IsBoolean,
   IsDate,
@@ -341,12 +342,26 @@ export class CreateCourseDto {
   @Type(() => CreateWeekDto)
   weeks?: CreateWeekDto[];
 
-  @ApiPropertyOptional({ type: [CreateMuderrisDto] })
-  @IsOptional()
+  @ApiProperty({
+    type: [CreateMuderrisDto],
+    minItems: 1,
+    description:
+      "A course is opened together with its müderrisler (MDRS-136): at least one, and at least one of them linked to an account (`userId`), because the account is what makes the person the course's müderris.",
+  })
   @IsArray()
+  @ArrayMinSize(1)
   @ValidateNested({ each: true })
   @Type(() => CreateMuderrisDto)
-  muderris?: CreateMuderrisDto[];
+  muderris!: CreateMuderrisDto[];
+
+  @ApiPropertyOptional({
+    format: "uuid",
+    description:
+      "The imam, one of the accounts in `muderris` (400 COURSE_IMAM_NOT_LISTED otherwise). Absent: the account listed first.",
+  })
+  @IsOptional()
+  @IsUUID()
+  imamUserId?: string;
 
   @ApiPropertyOptional({ type: [CreateResourceDto] })
   @IsOptional()

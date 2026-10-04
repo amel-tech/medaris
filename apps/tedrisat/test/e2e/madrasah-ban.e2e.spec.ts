@@ -19,7 +19,11 @@ import {
 } from "../../src/database/schema/course.schema";
 import { kosks } from "../../src/database/schema/kosk.schema";
 import { madrasahs } from "../../src/database/schema/madrasah.schema";
-import { ASSIGNED_ROLES } from "../../src/database/schema/role-assignment.schema";
+import { permissionGrants } from "../../src/database/schema/permission.schema";
+import {
+  ASSIGNED_ROLES,
+  SCOPE_TYPES,
+} from "../../src/database/schema/role-assignment.schema";
 import { users } from "../../src/database/schema/user.schema";
 import { createTestApp } from "../helpers/test-app.helper";
 import {
@@ -35,9 +39,9 @@ import { bearerFor } from "../helpers/test-keycloak.helper";
  * caller do, widening a course ban to the medrese, asking for a permanent ban,
  * and what a medrese-wide ban does to enrolling — against a real Postgres.
  * Real `AuthGuard` with minted tokens. The routes under `/madrasahs/:id` are the
- * başmüderris's (MEDRESE_BASMUDERRIS is the only medrese role the matrix
- * resolves, so a MEDRESE_NAZIR is refused like a stranger); the routes by ban id
- * are decided from the roles held, which a nazır does hold.
+ * başmüderris's, and a nazır's once the medrese gave `madrasah.ban`; the routes
+ * by ban id are decided from the catalogue (MDRS-205), so a nazır acts on a ban
+ * only with the permission for its level.
  */
 const ADMIN_ID = "e7000000-0000-4000-8000-000000000001";
 const HEAD_ID = "e7000000-0000-4000-8000-000000000002";
@@ -128,6 +132,20 @@ describe("Medrese bans (e2e)", () => {
     )[0];
   const audits = (action: string) =>
     db().select().from(auditLog).where(eq(auditLog.action, action));
+  /** Gives the medrese nazır a permission at the medrese, as the başmüderris does from the nazır screens. */
+  const giveNazir = (...permissions: string[]) =>
+    db()
+      .insert(permissionGrants)
+      .values(
+        permissions.map((permission) => ({
+          userId: NAZIR_ID,
+          scopeType: SCOPE_TYPES.MADRASAH,
+          scopeId: madrasahId,
+          permission,
+          groupId: null,
+          grantedBy: HEAD_ID,
+        }))
+      );
 
   beforeAll(async () => {
     app = await createTestApp();
@@ -508,8 +526,11 @@ describe("Medrese bans (e2e)", () => {
       expect(await db().select().from(bans)).toHaveLength(1);
     });
 
-    it("lets a medrese nazır and the başnazım widen it too", async () => {
+    it("lets a medrese nazır holding madrasah.ban, and the başnazım, widen it too; with no grant the nazır cannot", async () => {
       const course = await seedBan();
+      const refused = await escalate(NAZIR_ID, course.id).expect(403);
+      expect(refused.body.code).toBe("BAN_FORBIDDEN");
+      await giveNazir("madrasah.ban");
       const byNazir = await escalate(NAZIR_ID, course.id).expect(201);
       expect(byNazir.body.bannedRole).toBe("MEDRESE_NAZIR");
       const other = await seedBan({ userId: TALEBE_2_ID });
@@ -557,7 +578,7 @@ describe("Medrese bans (e2e)", () => {
   });
 
   describe("POST /bans/:id/lift for the medrese", () => {
-    it("lets the başmüderris and a nazır lift what the medrese or a müderris placed", async () => {
+    it("lets the başmüderris and a nazır holding the permission lift what the medrese or a müderris placed", async () => {
       const mine = await ban(HEAD_ID, { scope: "MADRASAH" }).expect(201);
       const muderrisBan = await seedBan({
         userId: TALEBE_2_ID,
@@ -571,6 +592,11 @@ describe("Medrese bans (e2e)", () => {
         liftReason: "Görüşüldü.",
         liftedBy: { id: HEAD_ID },
       });
+      // With no grant the nazır lifts nothing; madrasah.ban reaches the medrese's own
+      // level and its courses' bans (d-1004-06), at the medrese's tier.
+      const refused = await lift(NAZIR_ID, muderrisBan.id).expect(403);
+      expect(refused.body.code).toBe("BAN_LIFT_FORBIDDEN");
+      await giveNazir("madrasah.ban");
       await lift(NAZIR_ID, muderrisBan.id).expect(200);
       expect(await audits("ban.lift")).toHaveLength(2);
     });
@@ -634,6 +660,8 @@ describe("Medrese bans (e2e)", () => {
     it("asks for a medrese-wide ban too, and only once for a ban", async () => {
       const wide = await ban(HEAD_ID, { scope: "MADRASAH" }).expect(201);
       await permanent(HEAD_ID, wide.body.id).expect(201);
+      await permanent(NAZIR_ID, wide.body.id).expect(403);
+      await giveNazir("madrasah.permanent_ban_request");
       const again = await permanent(NAZIR_ID, wide.body.id).expect(409);
       expect(again.body.code).toBe("BAN_PERMANENT_REQUEST_EXISTS");
       expect(await db().select().from(banPermanentRequests)).toHaveLength(1);
