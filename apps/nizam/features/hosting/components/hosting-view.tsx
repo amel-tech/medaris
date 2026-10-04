@@ -32,6 +32,12 @@ interface Props {
   rights: HostingRightResponse[] | null;
   /** the medreses "Barındırma hakkı ver" can pick from; null when they could not be read */
   madrasahs: MadrasahResponse[] | null;
+  /**
+   * Draw the "Genel" and "Köşk nazımları" tabs and link the breadcrumb to the
+   * settings. False for a Medaris nazımı holding only `platform.hosting_grant`,
+   * for whom both of those pages are a 403 (MDRS-137).
+   */
+  settingsTabs?: boolean;
 }
 
 /**
@@ -43,7 +49,13 @@ interface Props {
  * answer says so. The tab strip links the köşk's other settings pages, which
  * are other packages'.
  */
-export function HostingView({ koskId, koskName, rights, madrasahs }: Props) {
+export function HostingView({
+  koskId,
+  koskName,
+  rights,
+  madrasahs,
+  settingsTabs = true,
+}: Props) {
   const tm = useTranslations("nizam.HostingPage");
   const t = tm as unknown as Messages;
   const locale = useLocale();
@@ -146,7 +158,10 @@ export function HostingView({ koskId, koskName, rights, madrasahs }: Props) {
     >
       <Breadcrumb
         label={t("breadcrumbLabel")}
-        items={[{ label: t("settings"), href: base }, t("title")]}
+        items={[
+          settingsTabs ? { label: t("settings"), href: base } : t("settings"),
+          t("title"),
+        ]}
       />
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex max-w-[44rem] flex-col gap-3">
@@ -161,26 +176,28 @@ export function HostingView({ koskId, koskName, rights, madrasahs }: Props) {
         </Button>
       </header>
 
-      <Tabs
-        mode="links"
-        label={t("tabsLabel")}
-        locale={locale}
-        value="hosting"
-        tabs={[
-          { value: "general", label: t("tabs.general"), href: base },
-          {
-            value: "nazims",
-            label: t("tabs.nazims"),
-            href: `${base}/nazimlar`,
-          },
-          {
-            value: "hosting",
-            label: t("tabs.hosting"),
-            href: `${base}/barindirma`,
-            count: rights ? held.length : undefined,
-          },
-        ]}
-      />
+      {settingsTabs && (
+        <Tabs
+          mode="links"
+          label={t("tabsLabel")}
+          locale={locale}
+          value="hosting"
+          tabs={[
+            { value: "general", label: t("tabs.general"), href: base },
+            {
+              value: "nazims",
+              label: t("tabs.nazims"),
+              href: `${base}/nazimlar`,
+            },
+            {
+              value: "hosting",
+              label: t("tabs.hosting"),
+              href: `${base}/barindirma`,
+              count: rights ? held.length : undefined,
+            },
+          ]}
+        />
+      )}
 
       {rights === null ? (
         <Alert tone="error" title={t("loadFailedTitle")}>
