@@ -10960,13 +10960,23 @@
           "requestedAt": {
             "format": "date-time",
             "type": "string"
+          },
+          "canDecide": {
+            "type": "boolean",
+            "description": "Whether the viewer holds `enrollment.decide` on this course, as the engine decides it: false in a passive scope, or when their role carries no course work. When false the screen offers no Onayla or Reddet; the route refuses all the same"
+          },
+          "scopePassive": {
+            "type": "boolean",
+            "description": "The course, its köşk or its medrese once had a manager and has none now, so its content is closed (MDRS-135). It is the reason a köşk nazımı's `canDecide` is false"
           }
         },
         "required": [
           "userId",
           "courseId",
           "courseTitle",
-          "requestedAt"
+          "requestedAt",
+          "canDecide",
+          "scopePassive"
         ]
       },
       "KoskDashboardMuderrisResponse": {

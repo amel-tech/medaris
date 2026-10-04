@@ -121,6 +121,18 @@ export class KoskDashboardApplicationResponse {
 
   @ApiProperty({ type: Date })
   requestedAt!: Date;
+
+  @ApiProperty({
+    description:
+      "Whether the viewer holds `enrollment.decide` on this course, as the engine decides it: false in a passive scope, or when their role carries no course work. When false the screen offers no Onayla or Reddet; the route refuses all the same",
+  })
+  canDecide!: boolean;
+
+  @ApiProperty({
+    description:
+      "The course, its köşk or its medrese once had a manager and has none now, so its content is closed (MDRS-135). It is the reason a köşk nazımı's `canDecide` is false",
+  })
+  scopePassive!: boolean;
 }
 
 export class KoskDashboardMuderrisResponse {
