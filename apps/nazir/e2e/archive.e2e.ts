@@ -230,7 +230,7 @@ test("nazir/12 — 'Medreseyi gizle' asks first, hides the medrese and its cours
     ).toBeVisible();
     await expect(
       page.getByText(
-        "Hiçbir şey silinmez; medreseyi siz gizlediyseniz siz, Medaris yönetimi ise her durumda geri alabilir."
+        "Hiçbir şey silinmez; medreseyi, onu gizleyen kademe ya da üstü geri getirir: sizin gizlediğinizi siz ya da Medaris yönetimi."
       )
     ).toBeVisible();
 
@@ -270,7 +270,7 @@ test("nazir/12 — 'Medreseyi gizle' asks first, hides the medrese and its cours
     ]);
 
     // the başmüderris still opens the archive, which says the medrese is hidden and offers
-    // "Medreseyi geri al" (the level that hid it); no second "Medreseyi gizle" (MDRS-143)
+    // "Medreseyi geri getir" (the level that hid it); no second "Medreseyi gizle" (MDRS-143)
     await page.reload();
     await expect(page.getByTestId("madrasah-hidden")).toContainText(
       "Medrese gizli"
@@ -285,15 +285,15 @@ test("nazir/12 — 'Medreseyi gizle' asks first, hides the medrese and its cours
       .getByRole("button", { name: /^Geri al/ })
       .click();
     await expect(
-      page.getByText("Önce onu, gizleyen kademe ya da üstü geri almalı.")
+      page.getByText("Medreseyi, onu gizleyen kademe ya da üstü geri getirir.")
     ).toBeVisible();
 
     // the medrese itself comes back, with the courses hidden together
     await page
       .getByTestId("madrasah-hidden")
-      .getByRole("button", { name: /^Geri al: / })
+      .getByRole("button", { name: /^Geri getir: / })
       .click();
-    await expect(page.getByText("Medrese geri alındı")).toBeVisible();
+    await expect(page.getByText("Medrese geri getirildi")).toBeVisible();
     const restored = await client.query(
       "select archived_at from madrasahs where id = $1",
       [own.madrasah.id]

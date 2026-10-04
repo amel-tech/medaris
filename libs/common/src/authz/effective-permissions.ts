@@ -1,4 +1,5 @@
 import {
+  ASSIGNED_ROLES,
   type AssignedRole,
   SCOPE_TYPES,
   type ScopeRef,
@@ -55,8 +56,41 @@ export interface IAuthzFacts {
 
 export interface IEffective {
   codes: ReadonlySet<PermissionCode>;
-  /** The passive scope the caller opened as platform management, or null. */
+  /** The passive scope the caller opened as platform management or as its köşk's nazımı, or null. */
   openedPassive: ScopeRef | null;
+  /**
+   * For each code a live grant carries here, the authorities of those grants:
+   * what a policy lets through for this caller, and so the most a giver may
+   * hand the code on with (owner, d-1004-27 "tavan kazanır"). A code held only
+   * by a role or a relationship is absent.
+   */
+  grantAuthorities?: ReadonlyMap<PermissionCode, readonly ScopeType[]>;
+  /**
+   * The same grants with how long each holding lasts: the grant's own end or
+   * the end of the role that lets it count, whichever comes first (null: no
+   * end). A giver hands a code on with an authority only for as long as they
+   * hold it with that authority (d-1004-27).
+   */
+  grantHoldings?: ReadonlyMap<PermissionCode, readonly IGrantHolding[]>;
+}
+
+/** One live grant of a code: the authority behind it, and until when it is held. */
+export interface IGrantHolding {
+  authority: ScopeType;
+  until: Date | null;
+}
+
+/** The later of some ends; null (no end) when any of them has none. */
+function latestEnd(ends: ReadonlyArray<Date | null | undefined>): Date | null {
+  if (ends.some((end) => end === null || end === undefined)) return null;
+  return new Date(Math.max(...ends.map((end) => (end as Date).getTime())));
+}
+
+/** The earlier of two ends, where null is no end. */
+function earliestEnd(a: Date | null, b: Date | null): Date | null {
+  if (a === null) return b;
+  if (b === null) return a;
+  return a.getTime() <= b.getTime() ? a : b;
 }
 
 /** Ids compare lower-cased: a path may spell a uuid in upper case. */
@@ -190,8 +224,8 @@ const CONTENT_WORK: ReadonlySet<PermissionCode> = new Set([
  *   made by an authority above a policy's level survives that policy;
  * - a policy that is on closes the abilities it names in every scope below;
  * - a passive scope closes every content code, except to platform management
- *   holding `platform.inactive_scopes_manage`, whose open is audited by the
- *   caller of this function.
+ *   holding `platform.inactive_scopes_manage` and to the nazımı of the köşk the
+ *   course is held in, whose open is audited by the caller of this function.
  */
 export function effectivePermissions(
   facts: IAuthzFacts,
@@ -217,10 +251,18 @@ export function effectivePermissions(
 
   // code -> the authorities of the live grants that carry it, for the bypass.
   const grantedBy = new Map<PermissionCode, ScopeType[]>();
+  const holdings = new Map<PermissionCode, IGrantHolding[]>();
   for (const grant of grants) {
     if (chainIndex(facts.chain, grant.scope) < 0) continue;
-    if (!heldRoles.some((r) => roleCoversScope(r.scope, grant.scope))) continue;
+    const covering = heldRoles.filter((r) =>
+      roleCoversScope(r.scope, grant.scope)
+    );
+    if (covering.length === 0) continue;
     const authority = grant.authority ?? grant.scope.type;
+    const until = earliestEnd(
+      grant.expiresAt ?? null,
+      latestEnd(covering.map((r) => r.expiresAt))
+    );
     for (const code of grant.codes) {
       if (!PERMISSION_META[code].grantable) continue;
       if (!reaches(code, grant.scope.type)) continue;
@@ -229,6 +271,9 @@ export function effectivePermissions(
       const list = grantedBy.get(code) ?? [];
       list.push(authority);
       grantedBy.set(code, list);
+      const held = holdings.get(code) ?? [];
+      held.push({ authority, until });
+      holdings.set(code, held);
     }
   }
 
@@ -270,15 +315,30 @@ export function effectivePermissions(
   // A passive scope closes its content.
   let openedPassive: ScopeRef | null = null;
   if (facts.passiveScope) {
+    const passive = facts.passiveScope;
     const management = codes.has(PERMISSIONS.PLATFORM_INACTIVE_SCOPES_MANAGE);
-    if (management) {
+    // The köşk nazımı is the platform's management in their own köşk (owner,
+    // 4 October: "köşk nazımı zaten bir tür platform yöneticisi olduğu için
+    // görebilmesi lazım"): a passive course, or a course of a passive medrese,
+    // held in their köşk stays open to them, drafts and live links included.
+    // A köşk with a nazımı is never the passive scope itself.
+    const koskNazim = heldRoles.some(
+      (r) =>
+        r.role === ASSIGNED_ROLES.KOSK_NAZIM &&
+        r.scope.type === SCOPE_TYPES.KOSK &&
+        !sameScope(r.scope, passive)
+    );
+    if (management || koskNazim) {
       // Opening is the whole point of the permission: the Medaris nazımı who
       // holds it reads the content even though no role of theirs reaches it
       // (nizam/14: "yalnız Medaris başnazımı ve izni olan Medaris nazımları
-      // açabilir, her açış denetim kaydına yazılır").
-      openedPassive = facts.passiveScope;
-      codes.add(PERMISSIONS.COURSE_VIEW_DETAILS);
-      codes.add(PERMISSIONS.COURSE_STAFF_READ);
+      // açabilir, her açış denetim kaydına yazılır"). The köşk nazımı's role
+      // already reaches it; their open is on the record all the same.
+      openedPassive = passive;
+      if (management) {
+        codes.add(PERMISSIONS.COURSE_VIEW_DETAILS);
+        codes.add(PERMISSIONS.COURSE_STAFF_READ);
+      }
     } else {
       for (const code of [...codes]) {
         if (PERMISSION_META[code].content) codes.delete(code);
@@ -286,7 +346,12 @@ export function effectivePermissions(
     }
   }
 
-  return { codes, openedPassive };
+  return {
+    codes,
+    openedPassive,
+    grantAuthorities: grantedBy,
+    grantHoldings: holdings,
+  };
 }
 
 /**

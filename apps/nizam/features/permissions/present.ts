@@ -302,11 +302,37 @@ export const givenKey = (item: Pick<GivenItemResponse, "kind" | "id">) =>
 /** A role or a grant: what a dismissal asks an answer for. */
 export type DecisionItem = GivenItemResponse & { kind: GivenKind };
 
-/** What the person handed on and the başnazım must decide about, in the order listed. */
+/**
+ * What the person handed on to others and the başnazım must decide about, in
+ * the order listed. A row the person made for themselves goes with the
+ * dismissal whatever the answer, so the API takes no answer for it and none is
+ * asked (`selfMadeItems` lists those apart).
+ */
 export const decisionItems = (
-  items: readonly GivenItemResponse[]
+  items: readonly GivenItemResponse[],
+  personId?: string
 ): DecisionItem[] =>
-  items.filter((item): item is DecisionItem => item.kind !== "GROUP");
+  items.filter(
+    (item): item is DecisionItem =>
+      item.kind !== "GROUP" && !madeForThemselves(item, personId)
+  );
+
+/** The roles and grants the person gave themselves: shown as revoked with the dismissal, never asked about. */
+export const selfMadeItems = (
+  items: readonly GivenItemResponse[],
+  personId: string | undefined
+): DecisionItem[] =>
+  items.filter(
+    (item): item is DecisionItem =>
+      item.kind !== "GROUP" && madeForThemselves(item, personId)
+  );
+
+const madeForThemselves = (
+  item: Pick<GivenItemResponse, "to">,
+  personId: string | undefined
+) =>
+  personId !== undefined &&
+  item.to?.id.toLowerCase() === personId.toLowerCase();
 
 /** The permission groups the person defined or changed: shown, never asked about. */
 export const groupItems = (items: readonly GivenItemResponse[]) =>
@@ -413,6 +439,8 @@ const KNOWN: Record<string, string> = {
   MEDARIS_NAZIM_ALREADY_APPOINTED: "errors.alreadyAppointed",
   GRANT_EXPIRY_INVALID: "errors.expiryInvalid",
   DISMISS_DECISIONS_INCOMPLETE: "errors.dismissChanged",
+  DISMISS_SEAT_HANDED_ON: "errors.dismissCascade",
+  DISMISS_TAKE_OVER_WITHOUT_SEAT: "errors.dismissSeatless",
   USERS_POLICY_REQUIRED: "errors.usersPolicy",
   AUTHZ_FORBIDDEN: "errors.forbidden",
 };

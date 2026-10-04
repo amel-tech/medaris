@@ -3,6 +3,9 @@ import { Injectable } from "@nestjs/common";
 import { DatabaseService } from "../database/database.service";
 import { auditLog } from "../database/schema/audit.schema";
 
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 /**
  * Writes the audit rows a decision asks for (MDRS-135 §8): a read of course
  * content by someone who is neither an enrolled talebe nor the course's
@@ -18,19 +21,23 @@ export class TedrisatAuthzAudit implements AuthzAuditSink {
   constructor(private readonly databaseService: DatabaseService) {}
 
   async record(entry: IAuthzAuditEntry): Promise<void> {
-    // A köşk or a medrese that is being opened has no id yet (`"new"`), and
-    // `entity_id` holds a uuid: the row names the actor instead and keeps what
-    // was meant in `details`. Left as it was, a refused self-seat on those
-    // routes answered 500 where it should have answered 403 (MDRS-136).
-    const named = UUID.test(entry.entityId);
+    // `entity_id` is a uuid column. A create route has no row yet and is
+    // decided against the `forNew` sentinel ("new"): its entry is filed under
+    // the person who acted, which the audit page reads as the platform's, and
+    // what it was about stays in the details. Writing the sentinel would fail
+    // the insert and turn a refusal into a 500 with no row.
+    const known = UUID_REGEX.test(entry.entityId);
     await this.databaseService.db.insert(auditLog).values({
       actorId: entry.actorId,
       action: entry.action,
-      entity: entry.entity,
-      entityId: named ? entry.entityId : entry.actorId,
-      details: named
+      entity: known ? entry.entity : "user",
+      entityId: known ? entry.entityId : entry.actorId,
+      details: known
         ? (entry.details ?? {})
-        : { ...entry.details, resourceId: entry.entityId },
+        : {
+            ...entry.details,
+            about: { entity: entry.entity, id: entry.entityId },
+          },
     });
   }
 }

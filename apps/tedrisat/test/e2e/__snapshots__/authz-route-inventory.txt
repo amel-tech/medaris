@@ -89,7 +89,7 @@ GET /madrasahs/:id/permission-groups -> madrasah.nazir_appoint | platform.madras
 GET /madrasahs/:id/permissions -> madrasah.nazir_appoint | platform.madrasah_nazir_grant on byExistingMadrasah
 GET /madrasahs/:id/settings -> madrasah.settings_edit on byExistingMadrasah
 GET /madrasahs/:id/students -> madrasah.students_view on byExistingMadrasah
-GET /madrasahs/directory -> platform.madrasah_create | platform.madrasah_edit on madrasah
+GET /madrasahs/directory -> platform.madrasah_create | platform.madrasah_edit | platform.head_muderris_manage on madrasah
 GET /madrasahs/explore -> madrasah.view on madrasah (public)
 GET /me -> no AuthzGuard
 GET /me/assignments -> no AuthzGuard
@@ -145,12 +145,12 @@ POST /courses/:courseId/bans -> no AuthzGuard
 POST /courses/:courseId/sessions/batch -> session.manage on course
 POST /courses/:courseId/sessions/batch/preview -> session.manage on course
 POST /courses/:courseId/weeks/:weekId/hide -> week.hide on course
-POST /courses/:courseId/weeks/:weekId/lessons -> course.edit on course
-POST /courses/:id/archive -> course.hide | madrasah.course_hide on byExistingCourse
+POST /courses/:courseId/weeks/:weekId/lessons -> session.manage on course
+POST /courses/:id/archive -> course.hide | madrasah.course_hide | platform.course_hide on byExistingCourse
 POST /courses/:id/enroll -> course.enroll on course
 POST /courses/:id/enrollments/:userId/approve -> enrollment.decide on course
 POST /courses/:id/enrollments/:userId/remove -> enrollment.remove on course
-POST /courses/:id/restore -> course.hide | madrasah.course_hide on byExistingCourse
+POST /courses/:id/restore -> course.hide | madrasah.course_hide | platform.course_hide on byExistingCourse
 POST /decks/:id/hide -> no AuthzGuard
 POST /flashcard-deck-label/create -> no AuthzGuard
 POST /flashcard-deck-label/labeling -> no AuthzGuard

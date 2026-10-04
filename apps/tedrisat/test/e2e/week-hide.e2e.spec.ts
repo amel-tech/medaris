@@ -431,7 +431,7 @@ describe("Hiding a week and a session by week.hide (MDRS-143, e2e)", () => {
       expect(rows[0]).toMatchObject({
         actorId: MUDERRIS_ID,
         entityId: weekId,
-        details: { level: "course", hiddenLevel: "course", courseId, koskId },
+        details: { level: "course", courseId, fromArchive: true },
       });
     });
 
@@ -473,16 +473,12 @@ describe("Hiding a week and a session by week.hide (MDRS-143, e2e)", () => {
       expect((await lesson(sessionA)).archivedAt).toBeNull();
     });
 
-    it("lets whoever hid a session with session.manage bring it back, and gives them no week", async () => {
+    it("lets whoever holds session.manage bring back a session they hid and a week whose sessions come back with it, as session work (the reviewed ladder)", async () => {
       await del(NAZIR_SESSION_ID, `/lessons/${sessionA}`).expect(200);
       await restoreInArchive(NAZIR_SESSION_ID, "session", sessionA).expect(200);
       await hideWeek(MUDERRIS_ID).expect(200);
-      const res = await restoreInArchive(
-        NAZIR_SESSION_ID,
-        "week",
-        weekId
-      ).expect(403);
-      expect(res.body.code).toBe("ARCHIVE_FORBIDDEN");
+      await restoreInArchive(NAZIR_SESSION_ID, "week", weekId).expect(200);
+      expect((await week()).archivedAt).toBeNull();
     });
 
     it("answers 404 for a session hidden under a hidden week: the week comes back first", async () => {
@@ -508,13 +504,13 @@ describe("Hiding a week and a session by week.hide (MDRS-143, e2e)", () => {
       expect((await course()).version).toBe(before.version);
     });
 
-    it("writes one lesson.hide audit row with the week, the level and where it sat", async () => {
+    it("writes one session.hide audit row with the week, the level and where it sat", async () => {
       await del(MUDERRIS_ID, `/lessons/${sessionA}`).expect(200);
-      const rows = await audits("lesson.hide");
+      const rows = await audits("session.hide");
       expect(rows).toHaveLength(1);
       expect(rows[0]).toMatchObject({
         actorId: MUDERRIS_ID,
-        entity: "lesson",
+        entity: "session",
         entityId: sessionA,
         details: {
           title: "Birinci celse",
@@ -578,18 +574,23 @@ describe("Hiding a week and a session by week.hide (MDRS-143, e2e)", () => {
       expect(restores.map((r) => r.entityId).sort()).toEqual(
         [courseId, otherCourseId].sort()
       );
-      expect(hides[0]).toMatchObject({
-        actorId: NAZIM_ID,
-        details: { level: "kosk", koskId },
-      });
-      expect(restores[0]).toMatchObject({
-        actorId: NAZIM_ID,
-        details: { level: "kosk", hiddenLevel: "kosk", koskId },
-      });
+      for (const row of [...hides, ...restores]) {
+        expect(row).toMatchObject({
+          actorId: NAZIM_ID,
+          details: { level: "kosk" },
+        });
+      }
+      // The Arşiv's restore says so in its row.
+      expect(
+        restores.find((r) => r.entityId === otherCourseId)?.details
+      ).toMatchObject({ fromArchive: true });
     });
 
-    it("writes no restore row for a course that was not hidden", async () => {
-      await post(NAZIM_ID, `/courses/${courseId}/restore`).expect(200);
+    it("answers 409 COURSE_NOT_HIDDEN and writes no restore row for a course that was not hidden", async () => {
+      const res = await post(NAZIM_ID, `/courses/${courseId}/restore`).expect(
+        409
+      );
+      expect(res.body.code).toBe("COURSE_NOT_HIDDEN");
       expect(await audits("course.restore")).toHaveLength(0);
     });
   });
@@ -644,29 +645,54 @@ describe("Hiding a week and a session by week.hide (MDRS-143, e2e)", () => {
         })),
     });
 
-    it("is refused to a ders nazırı granted only course.edit: 403 COURSE_HIDE_FORBIDDEN, before anything is written", async () => {
+    it("is refused to a ders nazırı granted only course.edit when it drops a session, with 403 naming session.manage, before anything is written (the reviewed rule)", async () => {
       const detail = await saved();
       const body = payload(detail, (w) => w !== secondWeekId);
       const audited = await allAudits();
       const res = await put(NAZIR_EDIT_ID, `/courses/${courseId}`, body).expect(
         403
       );
-      expect(res.body.code).toBe("COURSE_HIDE_FORBIDDEN");
+      expect(res.body.code).toBe("AUTHZ_FORBIDDEN");
       expect((await week(secondWeekId)).archivedAt).toBeNull();
       expect((await lesson(secondWeekSession)).archivedAt).toBeNull();
       expect((await course()).version).toBe(detail.version);
       expect(await allAudits()).toBe(audited);
 
-      // Dropping one session is a hide as well.
+      // Dropping one session from a week that stays is session work as well.
       const dropSession = payload(detail, (_w, l) => l !== sessionA);
       const second = await put(
         NAZIR_EDIT_ID,
         `/courses/${courseId}`,
         dropSession
       ).expect(403);
-      expect(second.body.code).toBe("COURSE_HIDE_FORBIDDEN");
+      expect(second.body.code).toBe("AUTHZ_FORBIDDEN");
       expect((await lesson(sessionA)).archivedAt).toBeNull();
       expect((await course()).version).toBe(detail.version);
+    });
+
+    it("lets that person drop a week with no session in it, which is the course's own text, and bring it back", async () => {
+      const [bare] = await db()
+        .insert(courseWeeks)
+        .values({ courseId, weekNumber: 3, title: "Hafta 3" })
+        .returning({ id: courseWeeks.id });
+      const detail = await saved();
+      await put(
+        NAZIR_EDIT_ID,
+        `/courses/${courseId}`,
+        payload(detail, (w) => w !== bare.id)
+      ).expect(200);
+      expect(await week(bare.id)).toMatchObject({
+        archivedBy: NAZIR_EDIT_ID,
+        archivedLevel: "course",
+      });
+      const rows = await audits("week.hide");
+      expect(rows).toHaveLength(1);
+      expect(rows[0]).toMatchObject({
+        entityId: bare.id,
+        details: { level: "course", sessions: 0, via: "course.replace" },
+      });
+      await restoreInArchive(NAZIR_EDIT_ID, "week", bare.id).expect(200);
+      expect((await week(bare.id)).archivedAt).toBeNull();
     });
 
     it("lets the same person save a course that drops nothing", async () => {
@@ -702,22 +728,23 @@ describe("Hiding a week and a session by week.hide (MDRS-143, e2e)", () => {
         entityId: secondWeekId,
         details: { level: "course", sessions: 1, via: "course.replace" },
       });
-      const lessonRows = await audits("lesson.hide");
-      expect(lessonRows.map((r) => r.entityId)).toEqual([sessionA]);
+      const sessionRows = await audits("session.hide");
+      expect(sessionRows.map((r) => r.entityId)).toEqual([sessionA]);
       // And what they hid they bring back.
       await restoreInArchive(MUDERRIS_ID, "week", secondWeekId).expect(200);
       await restoreInArchive(MUDERRIS_ID, "session", sessionA).expect(200);
     });
 
-    it("lets a ders nazırı granted week.hide and course.edit drop a week", async () => {
-      await grant(NAZIR_WEEK_ID, PERMISSIONS.COURSE_EDIT);
+    it("lets a ders nazırı granted course.edit and session.manage drop a week with its sessions", async () => {
+      await grant(NAZIR_SESSION_ID, PERMISSIONS.COURSE_EDIT);
       const detail = await saved();
       await put(
-        NAZIR_WEEK_ID,
+        NAZIR_SESSION_ID,
         `/courses/${courseId}`,
         payload(detail, (w) => w !== secondWeekId)
       ).expect(200);
       expect((await week(secondWeekId)).archivedAt).not.toBeNull();
+      expect((await lesson(secondWeekSession)).archivedAt).not.toBeNull();
     });
 
     it("refuses a save made with an old version after a week was hidden: 409, and the hide stands", async () => {
@@ -741,15 +768,19 @@ describe("Hiding a week and a session by week.hide (MDRS-143, e2e)", () => {
       await restoreInArchive(MUDERRIS_ID, "session", sessionA).expect(200);
       await hideWeek(MUDERRIS_ID).expect(200);
       await restoreInArchive(MUDERRIS_ID, "week", weekId).expect(200);
-      const actions = (await db().select().from(auditLog))
+      const all = (await db().select().from(auditLog))
         .map((r) => r.action)
         .sort();
+      // The course's two routes answer with the course, which is a content
+      // read like any other (the reviewed MDRS-135 records it); nothing else.
+      expect(all.filter((a) => a === "course.content_read")).toHaveLength(2);
+      const actions = all.filter((a) => a !== "course.content_read");
       expect(actions).toEqual(
         [
           "course.hide",
           "course.restore",
-          "lesson.hide",
-          "lesson.restore",
+          "session.hide",
+          "session.restore",
           "week.hide",
           "week.restore",
         ].sort()
@@ -761,14 +792,14 @@ describe("Hiding a week and a session by week.hide (MDRS-143, e2e)", () => {
             .from(auditLog)
             .where(
               and(
-                eq(auditLog.action, "lesson.restore"),
+                eq(auditLog.action, "session.restore"),
                 eq(auditLog.entityId, sessionA)
               )
             )
         )[0]
       ).toMatchObject({
         actorId: MUDERRIS_ID,
-        details: { level: "course", hiddenLevel: "course", courseId },
+        details: { level: "course", courseId, fromArchive: true },
       });
     });
   });

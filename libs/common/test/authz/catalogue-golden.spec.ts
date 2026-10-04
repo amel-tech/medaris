@@ -48,6 +48,7 @@ const GOLDEN: ReadonlyArray<readonly [string, string, string]> = [
   ["platform.kosk_create", "platform", "grantable"],
   ["platform.kosk_nazim_manage", "platform", "grantable"],
   ["platform.kosk_edit", "platform", "grantable"],
+  ["platform.course_hide", "platform", "grantable"],
   ["platform.hosting_grant", "platform", "grantable"],
   ["platform.madrasah_create", "platform", "grantable"],
   ["platform.head_muderris_manage", "platform", "grantable"],
@@ -139,6 +140,13 @@ describe("the catalogue, frozen by hand (review T3)", () => {
     expect(PERMISSION_META[PERMISSIONS.COURSE_HIDE].grantable).toBe(false);
     expect(PERMISSION_META[PERMISSIONS.PERMISSION_GRANT].grantable).toBe(false);
     expect(PERMISSION_META[PERMISSIONS.MADRASAH_HIDE].grantable).toBe(false);
+  });
+
+  it("gives platform management a course hide of its own that can be granted (MDRS-143)", () => {
+    expect(PERMISSION_META[PERMISSIONS.PLATFORM_COURSE_HIDE]).toMatchObject({
+      scopes: ["platform"],
+      grantable: true,
+    });
   });
 });
 

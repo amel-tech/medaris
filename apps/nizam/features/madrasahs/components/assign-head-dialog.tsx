@@ -21,6 +21,8 @@ import {
 import { getHeadDelegations, setHeadMuderris } from "../actions";
 import {
   groupByPerson,
+  handOnCourseSuffix,
+  handOnPlace,
   madrasahErrorKey,
   type PersonHandOn,
   type PickedUser,
@@ -105,9 +107,9 @@ export function AssignHeadDialog({
     if (changing) void load();
   }, [open, changing, load]);
 
-  const list = Array.isArray(items)
-    ? items.filter((i) => i.to.id !== head?.id)
-    : [];
+  // Every row is asked about, what the incoming başmüderris was given too:
+  // the API refuses a change that leaves one unanswered.
+  const list = Array.isArray(items) ? items : [];
   const same = head !== null && head.id === target?.headId;
   const problem = endError(endDay, { now, timeZone, assignmentEnd: null });
   const people = groupByPerson(list);
@@ -170,15 +172,22 @@ export function AssignHeadDialog({
     }
   };
 
+  const roleName = (role: string): string =>
+    role && tr.has(role as never) ? tr(role as never) : role;
+  const firstOf = (group: PersonHandOn) =>
+    group.items.find((i) => i.kind === "ROLE") ?? group.items[0];
+
   // The line under the person: the role with its scope and dates, the way
   // the table of nizam/22 reads it.
   const heading = (group: PersonHandOn): string => {
-    const item = group.items.find((i) => i.kind === "ROLE") ?? group.items[0];
+    const item = firstOf(group);
     if (!item) return "";
     const role = item.kind === "ROLE" ? (item.role ?? "") : "";
     return [
-      role && tr.has(role as never) ? tr(role as never) : role,
-      target?.name ?? "",
+      roleName(role),
+      item.kind === "ROLE"
+        ? handOnPlace(item, target?.name ?? "")
+        : (target?.name ?? ""),
       item.expiresAt
         ? t("untilDate", { date: formatDay(item.expiresAt, locale, timeZone) })
         : t("noEnd"),
@@ -190,13 +199,23 @@ export function AssignHeadDialog({
 
   // "Ders açma ve kadro ile Yasak ve itiraz grupları; ayrıca 3 izin: …"
   const summary = (group: PersonHandOn): string => {
+    // Every seat after the one the heading names: a müderris named in a
+    // course is as much the başmüderris's gift as a nazır seat.
+    const first = firstOf(group);
+    const seats = group.items
+      .filter((i) => i.kind === "ROLE" && i !== first)
+      .map((i) =>
+        [roleName(i.role ?? ""), handOnPlace(i, target?.name ?? "")]
+          .filter(Boolean)
+          .join(" · ")
+      );
     const groups = group.items
       .filter((i) => i.kind !== "ROLE" && !i.permission)
-      .map((i) => i.groupName ?? "");
+      .map((i) => `${i.groupName ?? ""}${handOnCourseSuffix(i)}`);
     const perms = group.items
       .filter((i) => i.kind !== "ROLE" && i.permission)
-      .map(permissionName);
-    const parts: string[] = [];
+      .map((i) => `${permissionName(i)}${handOnCourseSuffix(i)}`);
+    const parts: string[] = seats.length > 0 ? [seats.join("; ")] : [];
     if (groups.length > 0) {
       parts.push(
         t("groupsSummary", { names: list_(groups), count: groups.length })

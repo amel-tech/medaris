@@ -1,19 +1,22 @@
 import {
+  ASSIGNED_ROLES,
   AuthenticatedUser,
   AuthzForbiddenError,
   AuthzService,
   ENTITIES,
   PERMISSIONS,
   type PermissionCode,
+  SelfGrantGuard,
 } from "@medaris/common";
 import { Injectable } from "@nestjs/common";
-import { ArchiveRestoreLevelError } from "../archive/errors/archive-errors";
-import { COURSE_HIDE_LADDER } from "../archive/hide-codes";
+import {
+  ArchiveParentHiddenError,
+  ArchiveRestoreLevelError,
+} from "../archive/errors/archive-errors";
 import {
   actingLevel,
+  COURSE_HIDE_LADDER,
   type HideLevel,
-  hiderLevelOf,
-  mayRestoreAt,
 } from "../archive/hide-level";
 import { UserDirectoryService } from "../assignment/user-directory.service";
 import { BanService } from "../ban/ban.service";
@@ -74,6 +77,7 @@ import {
   visibleRecordings,
 } from "./domain/recording";
 import { buildSessionView, type ISessionView } from "./domain/session-view";
+import { sessionWorkChanged } from "./domain/session-work";
 import { withCanonicalTimeZone } from "./domain/time-zone";
 import {
   expandWeeklyPattern,
@@ -83,8 +87,12 @@ import {
   placeInWeeks,
   WeeklyPatternInvalid,
 } from "./domain/weekly-pattern";
-import { CourseHideForbiddenError } from "./errors/course-hide-forbidden.error";
+import {
+  CourseAlreadyHiddenError,
+  CourseNotHiddenError,
+} from "./errors/course-hide-state.error";
 import { CourseNotFoundError } from "./errors/course-not-found.error";
+import { CourseVersionConflictError } from "./errors/course-version-conflict.error";
 import { EnrollmentNotFoundError } from "./errors/enrollment-not-found.error";
 import { EnrollmentStateError } from "./errors/enrollment-state.error";
 import { EnrollmentStatusForbiddenError } from "./errors/enrollment-status-forbidden.error";
@@ -124,7 +132,8 @@ export class CourseService {
     private readonly recordingRepo: RecordingRepository,
     private readonly platformPolicies: PlatformPolicyService,
     private readonly notifier: CourseNotifier,
-    private readonly directory: UserDirectoryService
+    private readonly directory: UserDirectoryService,
+    private readonly selfGrant: SelfGrantGuard
   ) {}
 
   /**
@@ -184,7 +193,13 @@ export class CourseService {
 
   async getDetail(
     id: string,
-    user: AuthenticatedUser | null
+    user: AuthenticatedUser | null,
+    /**
+     * A read (the page, a session, the recordings, a calendar entry): a hidden
+     * course also opens to `course.view_unpublished`, "Taslak ya da gizli dersi
+     * gör". A write, the müderris list and an enrolment never take it.
+     */
+    { read = false }: { read?: boolean } = {}
   ): Promise<ICourseDetail> {
     const course = await this.courseRepo.findDetailById(id, user?.sub ?? null);
     if (!course) {
@@ -209,13 +224,26 @@ export class CourseService {
     }
     // A hidden course (MDRS-124) is not-found, exactly like a draft, to all
     // but the people who may restore it: the köşk manager and SYSTEM_ADMIN,
-    // which is what the `ARCHIVE` scope says.
+    // which is what the `ARCHIVE` scope says. A read also opens it to whoever
+    // was given `course.view_unpublished`, as its sentence says ("Taslak ya da
+    // gizli dersi gör"); its müderris holds that code by role and still does
+    // not see the course the köşk hid.
     if (
       course.archivedAt !== null &&
       !(await this.authz.can(user, { entity: ENTITIES.COURSE, id }, [
         PERMISSIONS.COURSE_HIDE,
         PERMISSIONS.MADRASAH_COURSE_HIDE,
-      ]))
+        PERMISSIONS.PLATFORM_COURSE_HIDE,
+      ])) &&
+      !(
+        read &&
+        !isCourseMuderris(course, user.sub) &&
+        (await this.authz.can(
+          user,
+          { entity: ENTITIES.COURSE, id },
+          PERMISSIONS.COURSE_VIEW_UNPUBLISHED
+        ))
+      )
     ) {
       throw new CourseNotFoundError(id);
     }
@@ -253,7 +281,11 @@ export class CourseService {
     user: AuthenticatedUser | null,
     options: { audit: boolean; via?: string } = { audit: true }
   ): Promise<ICourseDetailView> {
-    return this.present(await this.getDetail(id, user), user, options);
+    return this.present(
+      await this.getDetail(id, user, { read: true }),
+      user,
+      options
+    );
   }
 
   /**
@@ -384,7 +416,7 @@ export class CourseService {
 
     let course: ICourseDetail;
     try {
-      course = await this.getDetail(courseId, user);
+      course = await this.getDetail(courseId, user, { read: true });
     } catch (error) {
       if (error instanceof CourseNotFoundError) {
         throw new LessonNotFoundError(lessonId);
@@ -670,10 +702,13 @@ export class CourseService {
    * the payload differs from the stored one in any way the save would write,
    * the save is refused whole with 403 before anything is written.
    *
-   * The comparison reads the list outside the save's transaction. A list
-   * changed by the köşk manager in between is caught by `version` when the
-   * editor sends it (409, MDRS-95); without it the müderris' save would put
-   * the old list back, which is the lost update `version` exists to stop.
+   * Every comparison here (the müderris list, the sessions, the policy
+   * settings) reads the course outside the save's transaction, so the save is
+   * held to the version those reads saw: the editor's own when it sends one
+   * (409, MDRS-95), otherwise the one read here. A change by someone else in
+   * between — a session added, a list changed — is then a 409 under the row
+   * lock instead of being hidden or written back by a caller who was let
+   * through because it was not there yet.
    */
   async replace(
     id: string,
@@ -681,10 +716,19 @@ export class CourseService {
     data: IReplaceCourse
   ): Promise<ICourseDetailView> {
     const stored = await this.getDetail(id, user); // a hidden course is not saved by a müderris
+    // A stale editor is told to reload (409) before anything is compared with
+    // what it sends: its sessions or its müderris list differ from the stored
+    // ones because someone saved in between, not because it asks for work it
+    // may not do. The save's own conditional UPDATE still decides under the
+    // row lock.
+    if (data.version !== undefined && data.version !== stored.version) {
+      throw new CourseVersionConflictError(id, data.version);
+    }
     // The whole-course save carries every field, so only a field that differs
     // from what is stored is a change; an unrelated save of a course must still
     // go through.
     await this.assertMayChangeSettings(id, user, stored, data, false);
+    await this.assertMayChangeSessions(id, user, stored, data);
     // A save that leaves `muderris` out means "the team as it is", not "no
     // team": it used to empty the course and leave it with nobody (MDRS-136).
     const next = data.muderris;
@@ -699,6 +743,15 @@ export class CourseService {
       ) {
         throw new MuderrisAssignmentForbiddenError(id);
       }
+      // The accounts this save seats: the ones it links anew. One already on
+      // the list keeps the seat it has, none if it lapsed or was revoked
+      // (`syncMuderrisAssignments`), so the list unchanged seats nobody.
+      await this.assertNotNamingSelf(
+        user,
+        stored,
+        newlyLinkedUserIds(current, next),
+        "course.replace.muderris"
+      );
       // Owner decision d-1004-13: a course never loses its last müderris by
       // accident. Making it passive on purpose is MDRS-201's flow.
       if (
@@ -711,11 +764,10 @@ export class CourseService {
       }
       await this.assertMuderrisLinks(current, next);
     }
-    await this.assertMayDropFrom(id, user, stored, data);
     const replaced = await this.courseRepo.replace(
       id,
       user.sub,
-      withCanonicalTimeZone(data),
+      withCanonicalTimeZone({ ...data, version: stored.version }),
       // The weeks and sessions the save drops are hidden at the saver's level.
       await this.courseLevel(user, id)
     );
@@ -723,41 +775,29 @@ export class CourseService {
   }
 
   /**
-   * A save that drops a week or a session hides it (the repository archives
-   * what the payload leaves out), so it needs `week.hide`, the permission that
-   * hides them one by one (MDRS-143; owner d-1004-14: the müderris holds it by
-   * default). Refused whole, before anything is written. A save that drops
-   * nothing needs nothing more than `course.edit`.
-   *
-   * Ids are compared exactly, as the repository matches them: an id the
-   * repository would not find is a new week, and the stored one is dropped.
+   * The sessions inside a whole-course save (MDRS-135): adding or dropping a
+   * session, or changing a kept one's time, meeting link, agenda or preview
+   * flag, needs `session.manage`, exactly as the session routes on
+   * LessonController do. A caller holding only `course.edit` keeps the
+   * titles, texts, order and weeks, so a save that leaves every session as
+   * stored still goes through. Refused whole with 403 before anything is
+   * written.
    */
-  private async assertMayDropFrom(
+  private async assertMayChangeSessions(
     id: string,
     user: AuthenticatedUser,
-    stored: ICourseDetail,
-    data: IReplaceCourse
+    stored: Pick<ICourseDetail, "weeks">,
+    data: Pick<IReplaceCourse, "weeks">
   ): Promise<void> {
-    const sent = data.weeks ?? [];
-    const keptWeeks = new Set(sent.map((w) => w.id));
-    const keptLessons = new Set(
-      sent.flatMap((w) => (w.lessons ?? []).map((l) => l.id))
-    );
-    const drops = stored.weeks.some(
-      (week) =>
-        !keptWeeks.has(week.id) ||
-        week.lessons.some((lesson) => !keptLessons.has(lesson.id))
-    );
-    if (
-      drops &&
-      !(await this.authz.can(
-        user,
-        { entity: ENTITIES.COURSE, id },
-        PERMISSIONS.WEEK_HIDE
-      ))
-    ) {
-      throw new CourseHideForbiddenError(id);
+    if (!sessionWorkChanged(stored.weeks, data.weeks ?? [])) return;
+    const resource = { entity: ENTITIES.COURSE, id };
+    if (await this.authz.can(user, resource, PERMISSIONS.SESSION_MANAGE)) {
+      return;
     }
+    throw new AuthzForbiddenError(
+      `This change needs the permission ${PERMISSIONS.SESSION_MANAGE}`,
+      { courseId: id, permission: PERMISSIONS.SESSION_MANAGE }
+    );
   }
 
   /**
@@ -780,8 +820,38 @@ export class CourseService {
     if (unknown) throw new MuderrisUnknownUserError(unknown);
   }
 
+  /**
+   * Naming yourself müderris is for someone who already holds every course
+   * permission here (the köşk nazımı, the medrese's başmüderris), not for a
+   * grantee of `madrasah.muderris_manage`, as on the medrese's own route.
+   *
+   * A medrese course is asked in its medrese, exactly as that route asks
+   * (`PUT /madrasahs/:id/courses/:courseId/muderrises`), so the two answer
+   * alike. On the course itself a passive course would close the content codes
+   * to its başmüderris, though naming a müderris is what ends that state.
+   */
+  private assertNotNamingSelf(
+    user: AuthenticatedUser,
+    course: Pick<ICourseDetail, "id" | "madrasah">,
+    userIds: readonly string[],
+    action: string
+  ): Promise<void> {
+    return this.selfGrant.assertNotSelf(
+      user,
+      userIds,
+      { entity: ENTITIES.COURSE, id: course.id },
+      {
+        role: ASSIGNED_ROLES.MUDERRIS,
+        heldAt: course.madrasah
+          ? { entity: ENTITIES.MADRASAH, id: course.madrasah.id }
+          : undefined,
+      },
+      action
+    );
+  }
+
   // ---- session-level writes (MDRS-95) ----
-  // Authorization for these three is `@Authz(PERMISSIONS.COURSE_EDIT, …)` on
+  // Authorization for these is `@Authz(PERMISSIONS.SESSION_MANAGE, …)` on
   // LessonController, resolved against the lesson's parent course, so no
   // ownership assertion is repeated here.
 
@@ -843,7 +913,7 @@ export class CourseService {
       imamUserId: string;
     }
   ): Promise<{ muderris: IMuderris[]; courseVersion: number }> {
-    await this.getDetail(courseId, user);
+    const course = await this.getDetail(courseId, user);
     const list = input.muderris.map((m) => ({
       ...m,
       userId: m.userId.toLowerCase(),
@@ -859,6 +929,20 @@ export class CourseService {
         "The imam must be one of the listed muderris"
       );
     }
+    // Only an account this save seats is asked about: one listed with no
+    // MUDERRIS seat here (`syncMuderrisAssignments` seats it, a lapsed one
+    // again). Keeping yourself on the list of a course you already teach
+    // seats nobody, as on `PUT /courses/:id`.
+    const me = user.sub.toLowerCase();
+    const keepsOwnSeat =
+      list.some((m) => m.userId === me) &&
+      (await this.courseRepo.isMuderris(courseId, me));
+    await this.assertNotNamingSelf(
+      user,
+      course,
+      list.map((m) => m.userId).filter((id) => !keepsOwnSeat || id !== me),
+      "course.muderris.set"
+    );
     const current = await this.courseRepo.findMuderris(courseId);
     const asRows = list.map((m) => ({ userId: m.userId, name: m.name }));
     const duplicate = duplicateUserId(asRows);
@@ -966,15 +1050,17 @@ export class CourseService {
   }
 
   // ---- hide / restore / delete (MDRS-124) ----
-  // Authorization is `@Authz` on CourseController: `ARCHIVE` (the köşk
-  // manager) for hide and restore, `DELETE` (SYSTEM_ADMIN only — it is on no
-  // role row) for the real delete. Nothing is re-checked here.
+  // Authorization is `@Authz` on CourseController: `course.hide`,
+  // `madrasah.course_hide` or `platform.course_hide` for hide and restore,
+  // `DELETE` (SYSTEM_ADMIN only — it is on no role row) for the real delete.
+  // Nothing is re-checked here.
 
   /**
-   * The level the caller hides and restores a course at: the köşk's nazımı hides
-   * as the köşk (`course.hide`, theirs by role default), a başmüderris or a
-   * nazır given `madrasah.course_hide` as the medrese, the başnazım as the
-   * platform; whoever merely runs the course acts at the course.
+   * The level the caller hides and restores a course at (`COURSE_HIDE_LADDER`):
+   * platform management holding `platform.course_hide` and the başnazım as the
+   * platform, the köşk's nazımı (`course.hide`) as the köşk, a başmüderris or a
+   * nazır given `madrasah.course_hide` as the medrese; whoever merely runs the
+   * course acts at the course.
    */
   private courseLevel(
     user: AuthenticatedUser,
@@ -989,11 +1075,12 @@ export class CourseService {
     );
   }
 
+  /** Hides the course at the caller's level; a hidden one is refused (409), not echoed back. */
   async archive(id: string, user: AuthenticatedUser): Promise<void> {
     const level = await this.courseLevel(user, id);
-    if (!(await this.courseRepo.archive(id, user.sub, level))) {
-      throw new CourseNotFoundError(id);
-    }
+    const outcome = await this.courseRepo.archive(id, user.sub, level);
+    if (outcome === "not-found") throw new CourseNotFoundError(id);
+    if (outcome === "already-hidden") throw new CourseAlreadyHiddenError(id);
   }
 
   /**
@@ -1001,27 +1088,45 @@ export class CourseService {
    * (MDRS-135, the ban rule): a medrese's başmüderris cannot bring back what the
    * köşk's nazımı hid, and the other way round it can be done. A course hidden
    * before the level was recorded counts as hidden at the lowest level that
-   * could have hidden it. Restoring a shown course changes nothing.
+   * could have hidden it. A course whose köşk or medrese is still hidden comes
+   * back with them (409 ARCHIVE_PARENT_HIDDEN), as on the archive route; a shown
+   * course is refused (409), not echoed back. All of it is decided under the
+   * row lock.
    */
   async restore(id: string, user: AuthenticatedUser): Promise<void> {
-    const state = await this.courseRepo.findHideState(id);
-    if (!state) throw new CourseNotFoundError(id);
-    let audit: Parameters<CourseRepository["restore"]>[1];
-    if (state.archivedAt !== null) {
-      const restorer = await this.courseLevel(user, id);
-      const hiddenAt = hiderLevelOf({
-        type: "course",
-        madrasahId: state.madrasahId,
-        archivedLevel: state.archivedLevel,
-      });
-      if (!mayRestoreAt(restorer, hiddenAt)) {
-        throw new ArchiveRestoreLevelError(hiddenAt, restorer);
-      }
-      audit = { actorId: user.sub, level: restorer, hiddenLevel: hiddenAt };
+    const restorer = await this.courseLevel(user, id);
+    const outcome = await this.courseRepo.restore(id, restorer, user.sub);
+    switch (outcome.status) {
+      case "not-found":
+        throw new CourseNotFoundError(id);
+      case "not-hidden":
+        throw new CourseNotHiddenError(id);
+      case "level":
+        throw new ArchiveRestoreLevelError(outcome.hiddenAt, restorer);
+      case "parent-hidden":
+        throw new ArchiveParentHiddenError("course", id);
+      default:
+        return;
     }
-    if (!(await this.courseRepo.restore(id, audit))) {
-      throw new CourseNotFoundError(id);
-    }
+  }
+
+  /**
+   * The course as a hide or a restore leaves it, for the caller who did it.
+   * The read rules of `viewDetail` are not asked again: whoever may hide a
+   * course gets the answer to what they did, a draft included (platform
+   * management holding `platform.course_hide` and a nazır holding
+   * `madrasah.course_hide` may edit neither). The content rule still is: the
+   * content goes to who may read it and is on the record like any read, since
+   * a hide and a restore that hand it out are reads too.
+   */
+  async viewAfterHide(
+    id: string,
+    user: AuthenticatedUser,
+    via: "course.hide" | "course.restore"
+  ): Promise<ICourseDetailView> {
+    const course = await this.courseRepo.findDetailById(id, user.sub);
+    if (!course) throw new CourseNotFoundError(id);
+    return this.present(course, user, { audit: true, via });
   }
 
   async delete(id: string, actorId: string): Promise<boolean> {
