@@ -20,9 +20,12 @@ import {
   loadDeckRequests,
   loadRequestCards,
   rejectDeckRequest,
+  unpublishDeck,
 } from "../actions";
 import {
+  canUnpublish,
   countsAfterLeaving,
+  countsAfterUnpublish,
   deckFailureKey,
   isGone,
   longDateTime,
@@ -43,6 +46,8 @@ interface Props {
   initial: DeckPublishRequestListResponse | null;
   /** the request the home page's "İncele" points at (`?secili=`); the first one when it is not waiting */
   initialSelectedId?: string | null;
+  /** the viewer is the başnazım: only he may take a published deck back */
+  isBasnazim?: boolean;
 }
 
 /**
@@ -50,9 +55,15 @@ interface Props {
  * public, waiting and answered. A waiting request shows three sample cards;
  * every look at them is written to the audit log by tedrisat, which is why the
  * cards are read only once a request is selected. "Yayımla" opens the deck to
- * everyone, "Reddet" asks for a reason the owner will read.
+ * everyone, "Reddet" asks for a reason the owner will read. On a published
+ * deck of "Karara bağlanan" the başnazım alone has "Yayından kaldır", which
+ * asks for a reason as well (MDRS-148).
  */
-export function DeckRequestsView({ initial, initialSelectedId }: Props) {
+export function DeckRequestsView({
+  initial,
+  initialSelectedId,
+  isBasnazim = false,
+}: Props) {
   const t = useTranslations("nizam.DeckRequestsPage");
   const locale = useLocale();
   const timeZone = useTimeZone() ?? "Europe/Istanbul";
@@ -78,6 +89,7 @@ export function DeckRequestsView({ initial, initialSelectedId }: Props) {
   const [showAll, setShowAll] = useState(false);
   const [busy, setBusy] = useState(false);
   const [rejecting, setRejecting] = useState(false);
+  const [unpublishing, setUnpublishing] = useState(false);
 
   const items = lists[tab] ?? [];
   const selected = items.find((r) => r.id === selectedId) ?? null;
@@ -191,8 +203,19 @@ export function DeckRequestsView({ initial, initialSelectedId }: Props) {
     setSelectedId(rest[0]?.id ?? null);
   };
 
+  /** A published deck leaves "Karara bağlanan": it is private again, or was already. */
+  const leaveDecided = (id: string) => {
+    const rest = (lists.DECIDED ?? []).filter((r) => r.id !== id);
+    setLists((current) => ({ ...current, DECIDED: rest }));
+    setCounts(countsAfterUnpublish);
+    setSelectedId(rest[0]?.id ?? null);
+  };
+
   const fail = (body: unknown, id: string) => {
-    if (isGone(body)) settle(id, false);
+    if (isGone(body)) {
+      if (tab === "PENDING") settle(id, false);
+      else leaveDecided(id);
+    }
     toast.error(t("answerFailed"), {
       description: t(deckFailureKey(body) as never),
       duration: Number.POSITIVE_INFINITY,
@@ -225,6 +248,20 @@ export function DeckRequestsView({ initial, initialSelectedId }: Props) {
       description: t("rejectedBody", { title: selected.title }),
     });
     settle(selected.id, true);
+    return true;
+  };
+
+  const unpublish = async (reason: string): Promise<boolean> => {
+    if (!selected) return false;
+    const result = await unpublishDeck(selected.id, reason);
+    if (!result.success) {
+      fail(result.errorBody, selected.id);
+      return isGone(result.errorBody);
+    }
+    toast.success(t("unpublished"), {
+      description: t("unpublishedBody", { title: selected.title }),
+    });
+    leaveDecided(selected.id);
     return true;
   };
 
@@ -401,6 +438,19 @@ export function DeckRequestsView({ initial, initialSelectedId }: Props) {
               </Button>
             </div>
           </>
+        ) : canUnpublish(selected.outcome, isBasnazim) ? (
+          <>
+            <p className="mds-caption max-w-[40rem]">{t("unpublishNote")}</p>
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                data-testid="unpublish"
+                onClick={() => setUnpublishing(true)}
+              >
+                {t("unpublish")}
+              </Button>
+            </div>
+          </>
         ) : selected.outcome === "REJECTED" && selected.rejectReason ? (
           <Alert tone="neutral" title={t("rejectReasonTitle")}>
             <bdi>{selected.rejectReason}</bdi>
@@ -491,6 +541,13 @@ export function DeckRequestsView({ initial, initialSelectedId }: Props) {
         kind="request"
         subject={selected?.title ?? null}
         onSubmit={reject}
+      />
+      <RejectDialog
+        open={unpublishing}
+        onOpenChange={setUnpublishing}
+        kind="unpublish"
+        subject={selected?.title ?? null}
+        onSubmit={unpublish}
       />
     </div>
   );
