@@ -23,6 +23,7 @@ export const AuditType = {
     PersonalDataRead: 'PERSONAL_DATA_READ',
     UserLookup: 'USER_LOOKUP',
     Takeover: 'TAKEOVER',
+    SelfGrantRefused: 'SELF_GRANT_REFUSED',
     Grant: 'GRANT',
     RoleChange: 'ROLE_CHANGE',
     PolicyChange: 'POLICY_CHANGE',

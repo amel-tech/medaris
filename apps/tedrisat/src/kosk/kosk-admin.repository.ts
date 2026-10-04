@@ -75,6 +75,8 @@ export interface IKoskCourseRow {
   madrasah: { id: string; name: string } | null;
   status: "PUBLISHED" | "DRAFT" | "HIDDEN";
   hiddenAt: Date | null;
+  /** The level a hidden course was hidden at (MDRS-135); null when shown or never recorded. */
+  hiddenLevel: HideLevel | null;
   createdAt: Date;
   muderris: { name: string; isImam: boolean }[];
   studentCount: number;
@@ -597,6 +599,7 @@ export class KoskAdminRepository {
       cover_hue: number;
       status: "PUBLISHED" | "DRAFT";
       archived_at: Date | string | null;
+      archived_level: HideLevel | null;
       created_at: Date | string;
       madrasah_id: string | null;
       madrasah_name: string | null;
@@ -605,7 +608,7 @@ export class KoskAdminRepository {
       pending: string;
       banned: string;
     }>(sql`
-      select c.id, c.title, c.cover_hue, c.status, c.archived_at, c.created_at,
+      select c.id, c.title, c.cover_hue, c.status, c.archived_at, c.archived_level, c.created_at,
              m.id as madrasah_id, m.name as madrasah_name,
              (select count(*) from course_weeks w
                where w.course_id = c.id and w.archived_at is null) as week_count,
@@ -649,6 +652,7 @@ export class KoskAdminRepository {
         : null,
       status: r.archived_at ? "HIDDEN" : r.status,
       hiddenAt: r.archived_at ? new Date(r.archived_at) : null,
+      hiddenLevel: r.archived_at ? r.archived_level : null,
       createdAt: new Date(r.created_at),
       muderris: muderris.rows
         .filter((m) => m.course_id === r.id)

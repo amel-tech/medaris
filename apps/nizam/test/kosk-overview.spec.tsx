@@ -18,6 +18,8 @@ import {
   canHide,
   countRows,
   courseBreakdown,
+  courseHideOutcome,
+  errorCodeOf,
   filterCourses,
   firstMissingLink,
   listWords,
@@ -92,6 +94,7 @@ const row = (
   studentCount: 28,
   pendingCount: 2,
   bannedCount: 5,
+  canRestore: true,
   ...over,
 });
 
@@ -156,6 +159,33 @@ describe("a row's buttons (nizam 23)", () => {
 
   it("gives a hidden course only Geri al", () => {
     expect(rowActions(r4)).toEqual(["restore"]);
+  });
+
+  it("gives no Geri al for a course hidden above the viewer's level (MDRS-108)", () => {
+    const locked = { ...r4, canRestore: false } as KoskCourseRowResponse;
+    expect(rowActions(locked)).toEqual([]);
+    expect(
+      rowActions({ ...r4, canRestore: true } as KoskCourseRowResponse)
+    ).toEqual(["restore"]);
+  });
+});
+
+describe("a refused hide or restore of a course", () => {
+  it("reads 'already where it should be' as done, and words the kademe and the hidden parent", () => {
+    expect(courseHideOutcome("COURSE_NOT_HIDDEN")).toBe("done");
+    expect(courseHideOutcome("COURSE_ALREADY_HIDDEN")).toBe("done");
+    expect(courseHideOutcome("ARCHIVE_RESTORE_LEVEL")).toBe("restoreLevel");
+    expect(courseHideOutcome("ARCHIVE_PARENT_HIDDEN")).toBe(
+      "restoreParentHidden"
+    );
+    expect(courseHideOutcome(null)).toBe("failed");
+    expect(errorCodeOf({ code: "ARCHIVE_RESTORE_LEVEL" })).toBe(
+      "ARCHIVE_RESTORE_LEVEL"
+    );
+    expect(errorCodeOf("nope")).toBeNull();
+    const t = messagesOf("KoskCourses");
+    expect(t("restoreLevelBody")).toContain("üst bir kademe");
+    expect(t("restoreParentHiddenBody")).toContain("hâlâ gizli");
   });
 });
 
@@ -497,6 +527,16 @@ describe("Dersler (nizam 23)", () => {
     const html = view();
     expect(html).toContain("Geri al: Merâhu’l-ervâh okumaları");
     expect(html).not.toContain("Gizle: Merâhu’l-ervâh okumaları");
+  });
+
+  it("draws no Geri al for a course the platform hid (MDRS-108)", () => {
+    const html = view({
+      rows: rows.map((r) =>
+        r.id === "c5" ? ({ ...r, canRestore: false } as typeof r) : r
+      ),
+    });
+    expect(html).toContain("Merâhu’l-ervâh okumaları");
+    expect(html).not.toContain("Geri al: Merâhu’l-ervâh okumaları");
   });
 
   it("writes the pending and barred chips, the barred one in the error tone", () => {

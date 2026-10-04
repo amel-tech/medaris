@@ -230,7 +230,7 @@ test("nazir/12 — 'Medreseyi gizle' asks first, hides the medrese and its cours
     ).toBeVisible();
     await expect(
       page.getByText(
-        "Hiçbir şey silinmez; medreseyi yalnız Medaris yönetimi geri getirebilir."
+        "Hiçbir şey silinmez; medreseyi, onu gizleyen kademe ya da üstü geri getirir: sizin gizlediğinizi siz ya da Medaris yönetimi."
       )
     ).toBeVisible();
 
@@ -277,7 +277,7 @@ test("nazir/12 — 'Medreseyi gizle' asks first, hides the medrese and its cours
       .getByRole("button", { name: /^Geri al/ })
       .click();
     await expect(
-      page.getByText("Medreseyi yalnız Medaris yönetimi geri getirebilir.")
+      page.getByText("Medreseyi, onu gizleyen kademe ya da üstü geri getirir.")
     ).toBeVisible();
   } finally {
     await client.end();
