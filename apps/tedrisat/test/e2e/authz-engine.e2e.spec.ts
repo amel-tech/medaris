@@ -1768,6 +1768,107 @@ describe("The permission engine (MDRS-135, e2e)", () => {
         isClosed: false,
       }).expect(409);
     });
+
+    // MDRS-207: the limit the note documents. A save that a policy would
+    // lock goes through for the widened person, and the next enrolment waits.
+    it("a ders nazırı widened past a köşk policy needs course.edit as well, and the widening is inert at enrolment", async () => {
+      await db()
+        .update(kosks)
+        .set({ alwaysRequireApproval: true })
+        .where(eq(kosks.id, koskId));
+      await db()
+        .update(courses)
+        .set({ requiresApproval: true })
+        .where(eq(courses.id, ownCourse));
+      const atOwnCourse = { type: SCOPE_TYPES.COURSE, id: ownCourse };
+      const platformMade = {
+        grantedBy: ADMIN_ID,
+        authorityScopeType: SCOPE_TYPES.PLATFORM,
+      };
+      const stored = async () =>
+        (
+          await db()
+            .select({ requiresApproval: courses.requiresApproval })
+            .from(courses)
+            .where(eq(courses.id, ownCourse))
+        )[0].requiresApproval;
+
+      // course.settings alone does not pass the route guard (course.edit).
+      await grant(
+        DERS_ID,
+        atOwnCourse,
+        { permission: PERMISSIONS.COURSE_SETTINGS },
+        platformMade
+      );
+      const refused = await patch(DERS_ID, `/courses/${ownCourse}`, {
+        requiresApproval: false,
+      }).expect(403);
+      expect(refused.body.code).toBe("AUTHZ_FORBIDDEN");
+      expect(await stored()).toBe(true);
+
+      await grant(
+        DERS_ID,
+        atOwnCourse,
+        { permission: PERMISSIONS.COURSE_EDIT },
+        platformMade
+      );
+      await patch(DERS_ID, `/courses/${ownCourse}`, {
+        requiresApproval: false,
+      }).expect(200);
+      expect(await stored()).toBe(false);
+
+      const enrolled = await post(
+        NEWCOMER_ID,
+        `/courses/${ownCourse}/enroll`
+      ).expect(201);
+      expect(enrolled.body.status).toBe("PENDING");
+    });
+
+    it("the başnazım's save of 'requires approval: false' answers 200 under a köşk and a medrese policy, and the enrolment still waits", async () => {
+      await db()
+        .update(kosks)
+        .set({ alwaysRequireApproval: true })
+        .where(eq(kosks.id, koskId));
+      await db()
+        .update(courses)
+        .set({ requiresApproval: true })
+        .where(eq(courses.id, ownCourse));
+      // The köşk nazımı is refused the same save: the bypass is the başnazım's.
+      const refused = await patch(NAZIM_ID, `/courses/${ownCourse}`, {
+        requiresApproval: false,
+      }).expect(409);
+      expect(refused.body.code).toBe("PLATFORM_POLICY_LOCKED");
+      await patch(ADMIN_ID, `/courses/${ownCourse}`, {
+        requiresApproval: false,
+      }).expect(200);
+      const underKosk = await post(
+        NEWCOMER_ID,
+        `/courses/${ownCourse}/enroll`
+      ).expect(201);
+      expect(underKosk.body.status).toBe("PENDING");
+
+      await db()
+        .update(kosks)
+        .set({ alwaysRequireApproval: false })
+        .where(eq(kosks.id, koskId));
+      await db().insert(madrasahSettings).values({
+        madrasahId,
+        policyAlwaysApproval: true,
+        updatedBy: HEAD_ID,
+      });
+      await db()
+        .update(courses)
+        .set({ requiresApproval: true })
+        .where(eq(courses.id, medreseCourse));
+      await patch(ADMIN_ID, `/courses/${medreseCourse}`, {
+        requiresApproval: false,
+      }).expect(200);
+      const underMedrese = await post(
+        NEWCOMER_ID,
+        `/courses/${medreseCourse}/enroll`
+      ).expect(201);
+      expect(underMedrese.body.status).toBe("PENDING");
+    });
   });
 
   describe("policies and passive scopes against the real database", () => {

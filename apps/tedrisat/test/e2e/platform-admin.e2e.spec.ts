@@ -605,6 +605,31 @@ describe("Platform admin (e2e)", () => {
         .expect(200);
     });
 
+    // MDRS-207: the başnazım's own save is let through by the realm bypass,
+    // under the one policy no grant can widen, and it is inert at enrolment.
+    it("lets the başnazım switch 'requires approval' off under the platform rule, and the enrolment still waits", async () => {
+      await db()
+        .update(courses)
+        .set({ requiresApproval: true })
+        .where(eq(courses.id, courseId));
+      await policy("ALWAYS_REQUIRE_APPROVAL", true).expect(200);
+      await http()
+        .patch(`/courses/${courseId}`)
+        .set("Authorization", auth(ADMIN_ID))
+        .send({ requiresApproval: false })
+        .expect(200);
+      const [stored] = await db()
+        .select({ requiresApproval: courses.requiresApproval })
+        .from(courses)
+        .where(eq(courses.id, courseId));
+      expect(stored.requiresApproval).toBe(false);
+      const waiting = await http()
+        .post(`/courses/${courseId}/enroll`)
+        .set("Authorization", auth(STUDENT_ID))
+        .expect(201);
+      expect(waiting.body.status).toBe("PENDING");
+    });
+
     it("keeps a köşk from switching a platform rule off, and lets it keep its own while the platform's is off", async () => {
       await http()
         .patch(`/kosks/${koskA}`)
