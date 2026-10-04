@@ -3,6 +3,7 @@ import { Injectable } from "@nestjs/common";
 import { BAN_TIERS, type BanRole, mayLift, tierOfRole } from "../ban/ban-tier";
 import { KoskNotFoundError } from "../kosk/errors/kosk-not-found.error";
 import { KoskService } from "../kosk/kosk.service";
+import { LessonInvitationService } from "../lesson-invitation/lesson-invitation.service";
 import { MadrasahService } from "../madrasah/madrasah.service";
 import { ArchiveRepository, IArchiver } from "./archive.repository";
 import {
@@ -98,7 +99,8 @@ export class ArchiveService {
     private readonly repo: ArchiveRepository,
     private readonly koskService: KoskService,
     private readonly authz: AuthzService,
-    private readonly madrasahService: MadrasahService
+    private readonly madrasahService: MadrasahService,
+    private readonly invitations: LessonInvitationService
   ) {}
 
   /** One köşk's archive: its courses, weeks, sessions and decks, never the köşk. */
@@ -242,6 +244,9 @@ export class ArchiveService {
     if (!(await this.repo.purge(type, id, { id: user.sub, name }))) {
       throw new ArchiveItemNotFoundError(type, id);
     }
+    // A purged session's invitation rows stay behind for their CANCELs
+    // (MDRS-121); send any still owed now rather than on the next timer.
+    this.invitations.kick();
   }
 
   private async page(

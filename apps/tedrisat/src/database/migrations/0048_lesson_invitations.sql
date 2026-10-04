@@ -1,5 +1,6 @@
 CREATE TABLE "lesson_invitations" (
 	"lesson_id" uuid NOT NULL,
+	"course_id" uuid NOT NULL,
 	"user_id" uuid NOT NULL,
 	"sequence" integer NOT NULL,
 	"starts_at" timestamp with time zone NOT NULL,
@@ -13,5 +14,4 @@ CREATE TABLE "lesson_invitations" (
 );
 --> statement-breakpoint
 ALTER TABLE "users" ADD COLUMN "lesson_invitation_emails" boolean DEFAULT true NOT NULL;--> statement-breakpoint
-ALTER TABLE "lesson_invitations" ADD CONSTRAINT "lesson_invitations_lesson_id_lessons_id_fk" FOREIGN KEY ("lesson_id") REFERENCES "public"."lessons"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
 CREATE INDEX "lesson_invitations_open_starts_at_idx" ON "lesson_invitations" USING btree ("starts_at") WHERE "lesson_invitations"."cancelled_at" is null;

@@ -35,6 +35,8 @@ export interface IInvitationRound {
   cancelled: number;
   /** Refused for good by the server for this recipient; not retried. */
   rejected: number;
+  /** Put off by the server for this recipient alone; retried next round. */
+  deferred: number;
   /** Claimed by another sweep first. */
   skipped: number;
   /** The server could not take mail; the round stopped and is retried later. */
@@ -43,7 +45,7 @@ export interface IInvitationRound {
   more: boolean;
 }
 
-type Outcome = "sent" | "rejected" | "skipped";
+type Outcome = "sent" | "rejected" | "deferred" | "skipped";
 
 /**
  * E-mails talebe calendar invitations for their sessions (MDRS-121).
@@ -162,6 +164,7 @@ export class LessonInvitationService
       requested: 0,
       cancelled: 0,
       rejected: 0,
+      deferred: 0,
       skipped: 0,
       stalled: false,
       more: false,
@@ -182,12 +185,20 @@ export class LessonInvitationService
       if (outcome === null) return { ...result, stalled: true };
       this.count(result, outcome, "requested");
     }
+    // Rows of deleted sessions whose CANCEL is out, or whose time is past.
+    await this.repo.pruneOrphans();
+    // A put-off message is read again first, so going round now would only
+    // ask the server the same thing: what is left waits for the timer.
     result.more =
-      cancellations.length === INVITATION_BATCH ||
-      requests.length === INVITATION_BATCH;
-    if (result.requested + result.cancelled + result.rejected > 0) {
+      result.deferred === 0 &&
+      (cancellations.length === INVITATION_BATCH ||
+        requests.length === INVITATION_BATCH);
+    if (
+      result.requested + result.cancelled + result.rejected + result.deferred >
+      0
+    ) {
       this.logger.log(
-        `Lesson invitations: ${result.requested} sent, ${result.cancelled} cancelled, ${result.rejected} refused by the server`
+        `Lesson invitations: ${result.requested} sent, ${result.cancelled} cancelled, ${result.rejected} refused by the server, ${result.deferred} put off`
       );
     }
     return result;
@@ -203,9 +214,15 @@ export class LessonInvitationService
   }
 
   /**
-   * Claims, builds and sends one message. Null when the server could not
-   * take it: the claim is undone so a later round sends it again, and the
-   * round stops rather than fail the same way for every message behind it.
+   * Claims, builds and sends one message. What a failed send leaves depends
+   * on whose problem the server said it was (`classifySendFailure`):
+   *
+   * - this one address, for good: the claim stands and it is not retried;
+   * - this one address, for now: the claim is undone and the round goes on,
+   *   so one full mailbox cannot hold back everyone behind it;
+   * - anything else — the connection, the login, the relay, the sender, the
+   *   message: the claim is undone and null stops the round rather than fail
+   *   the same way for every message behind it. A later round retries.
    */
   private async deliver(
     method: CalendarMethod,
@@ -273,15 +290,16 @@ export class LessonInvitationService
       });
       return "sent";
     } catch (error) {
-      if (isRecipientRefused(error)) {
+      const failure = classifySendFailure(error);
+      if (failure === "refused") {
         // The claim stands: this address is refused for good, and sending
         // it again every round would only be refused again.
         this.logger.warn(
-          `The SMTP server refused the ${method} for session ${due.lessonId} to user ${due.userId}; it is not retried`
+          `The SMTP server refused the ${method} for session ${due.lessonId} to user ${due.userId} (${describe(error)}); it is not retried`
         );
         return "rejected";
       }
-      this.logger.error(
+      this.logger[failure === "deferred" ? "warn" : "error"](
         `Could not send the ${method} for session ${due.lessonId} to user ${due.userId}: ${describe(error)}`
       );
       await this.repo
@@ -291,24 +309,52 @@ export class LessonInvitationService
             `Could not undo the claim for session ${due.lessonId}, user ${due.userId}: ${describe(restoreError)}`
           )
         );
-      return null;
+      return failure === "deferred" ? "deferred" : null;
     }
   }
 }
 
 /**
- * A recipient the server refused with a permanent (5xx) reply. Only then: an
- * authentication failure is also a 5xx, but it is the sender's fault and
- * would otherwise mark every invitation as sent.
+ * Whose problem a failed send was, read off the SMTP reply:
+ *
+ * - `refused`: the server refused this recipient for good;
+ * - `deferred`: it put this recipient off for now;
+ * - `failed`: anything else.
+ *
+ * Only a reply to RCPT TO whose enhanced status code (RFC 3463) is about the
+ * address (X.1.x) or the mailbox (X.2.x) is laid on the recipient. nodemailer
+ * reports MAIL FROM and DATA rejections as `EENVELOPE` too, and a relay that
+ * denies everyone (bad credentials, an IP not allow-listed, a daily limit:
+ * X.7.x, X.4.x, X.3.x) answers RCPT TO with a 5xx for every recipient — read
+ * as refusals, each would keep its claim and every message would be lost as
+ * if it had been delivered. A reply without an enhanced code is `failed`, so
+ * the worst a misread costs is a retry, never a lost message.
  */
-const isRecipientRefused = (error: unknown): boolean => {
-  const e = error as { code?: unknown; responseCode?: unknown } | null;
-  return (
-    e?.code === "EENVELOPE" &&
-    typeof e.responseCode === "number" &&
-    e.responseCode >= 500 &&
-    e.responseCode < 600
-  );
+export type SendFailure = "refused" | "deferred" | "failed";
+
+const ENHANCED_STATUS = /^\d{3}[ -]([245])\.(\d{1,3})\.\d{1,3}(?:\s|$)/;
+
+export const classifySendFailure = (error: unknown): SendFailure => {
+  const e = error as {
+    command?: unknown;
+    responseCode?: unknown;
+    response?: unknown;
+  } | null;
+  if (
+    e?.command !== "RCPT TO" ||
+    typeof e.responseCode !== "number" ||
+    typeof e.response !== "string"
+  ) {
+    return "failed";
+  }
+  const status = ENHANCED_STATUS.exec(e.response);
+  if (!status) return "failed";
+  const [, klass, subject] = status;
+  if (subject !== "1" && subject !== "2") return "failed";
+  const reply = Math.floor(e.responseCode / 100);
+  if (reply === 5 && klass === "5") return "refused";
+  if (reply === 4 && klass === "4") return "deferred";
+  return "failed";
 };
 
 /**

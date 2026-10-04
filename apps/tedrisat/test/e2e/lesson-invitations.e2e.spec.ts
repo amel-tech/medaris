@@ -1,3 +1,4 @@
+import { ROLES } from "@medaris/common";
 import { INestApplication } from "@nestjs/common";
 import { and, eq } from "drizzle-orm";
 import type { SendMailOptions } from "nodemailer";
@@ -82,6 +83,8 @@ describe("Lesson invitations by e-mail (MDRS-121, e2e)", () => {
   let sessionAt: Date;
   const sent: SendMailOptions[] = [];
   let failNext: Error | null = null;
+  /** Fails every message it returns an error for, until cleared. */
+  let failWhen: ((options: SendMailOptions) => Error | null) | null = null;
 
   const transport = {
     sendMail: async (options: SendMailOptions) => {
@@ -90,10 +93,20 @@ describe("Lesson invitations by e-mail (MDRS-121, e2e)", () => {
         failNext = null;
         throw error;
       }
+      const error = failWhen?.(options);
+      if (error) throw error;
       sent.push(options);
       return {};
     },
   };
+  /** An SMTP reply as nodemailer reports it (`_formatError`). */
+  const smtpError = (command: string, response: string) =>
+    Object.assign(new Error(`Command failed: ${response}`), {
+      code: "EENVELOPE",
+      command,
+      response,
+      responseCode: Number(response.slice(0, 3)),
+    });
 
   const TABLES = [...COURSE_TREE_TABLES, "audit_log", "notifications", "users"];
   const http = () => request(app.getHttpServer());
@@ -104,8 +117,11 @@ describe("Lesson invitations by e-mail (MDRS-121, e2e)", () => {
       get: (url: string) => http().get(url).set("Authorization", auth),
       post: (url: string) => http().post(url).set("Authorization", auth),
       patch: (url: string) => http().patch(url).set("Authorization", auth),
+      delete: (url: string) => http().delete(url).set("Authorization", auth),
     };
   };
+  const asAdmin = () =>
+    as(MANAGER_ID, { realm_access: { roles: [ROLES.SYSTEM_ADMIN] } });
   /** The talebe's own token, carrying the address the sync keeps in `users`. */
   const asTalebe = () =>
     as(TALEBE_ID, { email: TALEBE_EMAIL, email_verified: true });
@@ -259,6 +275,7 @@ describe("Lesson invitations by e-mail (MDRS-121, e2e)", () => {
     await settle();
     sent.length = 0;
     failNext = null;
+    failWhen = null;
   });
 
   afterAll(async () => {
@@ -489,10 +506,10 @@ describe("Lesson invitations by e-mail (MDRS-121, e2e)", () => {
   });
 
   it("does not retry an address the server refused for good", async () => {
-    failNext = Object.assign(new Error("Recipient command failed"), {
-      code: "EENVELOPE",
-      responseCode: 550,
-    });
+    failNext = smtpError(
+      "RCPT TO",
+      "550 5.1.1 The email account that you tried to reach does not exist"
+    );
     await approve(TALEBE_ID);
     await settle();
     expect(sent).toHaveLength(0);
@@ -500,5 +517,121 @@ describe("Lesson invitations by e-mail (MDRS-121, e2e)", () => {
 
     await sweep();
     expect(sent).toHaveLength(0);
+  });
+
+  it.each([
+    [
+      "a relay that denies every recipient",
+      "RCPT TO",
+      "550 5.7.0 Mail relay denied",
+    ],
+    [
+      "a daily sending limit",
+      "RCPT TO",
+      "550 5.4.5 Daily SMTP relay limit exceeded",
+    ],
+    ["a refused sender", "MAIL FROM", "550 5.7.1 Sender rejected"],
+    ["a refused message", "DATA", "554 5.7.0 Message rejected"],
+    ["a 5xx without an enhanced code", "RCPT TO", "550 No such user"],
+  ])("keeps and retries a message lost to %s, a 5xx that is not about the address", async (_, command, response) => {
+    failWhen = () => smtpError(command, response);
+    await approve(TALEBE_ID);
+    await approve(PENDING_ID);
+    await settle();
+    expect(sent).toHaveLength(0);
+    // Nothing is recorded as sent, and the round stopped at the first.
+    expect(await invitationRow(TALEBE_ID)).toBeNull();
+    expect(await invitationRow(PENDING_ID)).toBeNull();
+
+    failWhen = null;
+    await sweep();
+    expect(sent.map((m) => m.to).sort()).toEqual(
+      [PENDING_EMAIL, TALEBE_EMAIL].sort()
+    );
+  });
+
+  it("does not let one put-off recipient hold back everyone behind it", async () => {
+    failWhen = (options) =>
+      options.to === TALEBE_EMAIL
+        ? smtpError("RCPT TO", "452 4.2.2 The email account is over quota")
+        : null;
+    await approve(TALEBE_ID);
+    await approve(PENDING_ID);
+    await settle();
+    await sweep();
+
+    expect(sent.map((m) => m.to)).toEqual([PENDING_EMAIL]);
+    expect(await invitationRow(TALEBE_ID)).toBeNull();
+
+    failWhen = null;
+    await sweep();
+    expect(sent.map((m) => m.to)).toEqual([PENDING_EMAIL, TALEBE_EMAIL]);
+  });
+
+  describe("deleting what an invitation is for (MDRS-124)", () => {
+    it("cancels the invitations of a deleted course, then forgets them", async () => {
+      await approve(TALEBE_ID);
+      await settle();
+      sent.length = 0;
+
+      await asAdmin().delete(`/courses/${courseId}`).expect(200);
+      await settle();
+
+      expect(sent).toHaveLength(1);
+      const { method, ics } = calendarOf(sent[0]);
+      expect(method).toBe("CANCEL");
+      expect(icsProp(ics, "UID")).toBe(invitationUid(sessionId));
+      expect(icsProp(ics, "SEQUENCE")).toBe("1");
+      // Sent, so the row of a session that is gone is deleted.
+      expect(await invitationRow(TALEBE_ID)).toBeNull();
+
+      sent.length = 0;
+      await sweep();
+      expect(sent).toHaveLength(0);
+    });
+
+    it("still cancels a hidden session whose CANCEL had not gone out when it is deleted from the archive", async () => {
+      await approve(TALEBE_ID);
+      await settle();
+      sent.length = 0;
+
+      // Hidden while the server was down: the CANCEL is still owed.
+      failWhen = () =>
+        Object.assign(new Error("connect ECONNREFUSED"), { code: "ESOCKET" });
+      await db()
+        .update(lessons)
+        .set({ archivedAt: new Date(), archivedBy: MANAGER_ID })
+        .where(eq(lessons.id, sessionId));
+      await sweep();
+      expect(sent).toHaveLength(0);
+      expect((await invitationRow(TALEBE_ID))?.cancelledAt).toBeNull();
+
+      failWhen = null;
+      await asAdmin().delete(`/archive/session/${sessionId}`).expect(204);
+      await settle();
+
+      expect(sent.map((m) => calendarOf(m).method)).toEqual(["CANCEL"]);
+      expect(await invitationRow(TALEBE_ID)).toBeNull();
+    });
+
+    it("forgets, without a message, the invitation of a deleted session whose time has passed", async () => {
+      await approve(TALEBE_ID);
+      await settle();
+      sent.length = 0;
+
+      await db()
+        .update(lessonInvitations)
+        .set({ startsAt: new Date(Date.now() - HOUR) })
+        .where(eq(lessonInvitations.userId, TALEBE_ID));
+      await db()
+        .update(lessons)
+        .set({ scheduledAt: new Date(Date.now() - HOUR) })
+        .where(eq(lessons.id, sessionId));
+      await asAdmin().delete(`/courses/${courseId}`).expect(200);
+      await settle();
+
+      expect(sent).toHaveLength(0);
+      expect(await invitationRow(TALEBE_ID)).toBeNull();
+    });
   });
 });

@@ -791,6 +791,8 @@ export class CourseService {
   async delete(id: string, actorId: string): Promise<boolean> {
     const removed = await this.courseRepo.purge(id, actorId);
     if (!removed) throw new CourseNotFoundError(id);
+    // The invitation rows outlive the sessions: send their CANCELs.
+    this.invitations.kick();
     return true;
   }
 

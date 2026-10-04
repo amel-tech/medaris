@@ -9,6 +9,9 @@ import {
   SCOPE_TYPES,
 } from "../database/schema/role-assignment.schema";
 
+/** Where neither the talebe nor a deleted course still names a zone. */
+const FALLBACK_TIME_ZONE = "Europe/Istanbul";
+
 /** One message the sweep owes one talebe for one session. */
 export interface IInvitationDue {
   lessonId: string;
@@ -157,24 +160,26 @@ export class LessonInvitationRepository {
 
   /**
    * Pairs owed a CANCEL: an invitation that still stands for a time not yet
-   * come, whose session should no longer be in the talebe's calendar. The
-   * CANCEL repeats what the invitation said, which is what is returned. A
-   * talebe who turned invitations off is sent nothing, a cancellation
-   * included. At most `limit`.
+   * come, whose session should no longer be in the talebe's calendar — or no
+   * longer exists: the session, its week, its course or its köşk was deleted
+   * (MDRS-124), which the outer joins read as "should not hold". The CANCEL
+   * repeats what the invitation said, which is what is returned. A talebe who
+   * turned invitations off is sent nothing, a cancellation included. At most
+   * `limit`.
    */
   async findCancellationsDue(limit: number): Promise<IInvitationDue[]> {
     const result = await this.db.execute<Row>(sql`
       select inv.lesson_id, inv.user_id, u.email, u.locale,
-             coalesce(u.time_zone, c.time_zone) as time_zone,
-             c.id as course_id, inv.course_title, inv.lesson_title,
+             coalesce(u.time_zone, c.time_zone, ${FALLBACK_TIME_ZONE}) as time_zone,
+             inv.course_id, inv.course_title, inv.lesson_title,
              inv.starts_at, inv.duration_minutes,
              inv.sequence as last_sequence, false as last_cancelled
         from lesson_invitations inv
-        join lessons l on l.id = inv.lesson_id
-        join course_weeks w on w.id = l.week_id
-        join courses c on c.id = w.course_id
-        join kosks k on k.id = c.kosk_id
         join users u on u.id = inv.user_id
+        left join lessons l on l.id = inv.lesson_id
+        left join course_weeks w on w.id = l.week_id
+        left join courses c on c.id = w.course_id
+        left join kosks k on k.id = c.kosk_id
         left join enrollments e
                on e.course_id = c.id and e.user_id = inv.user_id
        where inv.cancelled_at is null and inv.starts_at > now()
@@ -183,6 +188,19 @@ export class LessonInvitationRepository {
        order by inv.starts_at, inv.lesson_id, inv.user_id
        limit ${limit}`);
     return result.rows.map(toDue);
+  }
+
+  /**
+   * Deletes the invitations whose session no longer exists once nothing is
+   * left to send for them: the CANCEL went out, or the time it named has
+   * passed. Until then the row is what the sweep sends the CANCEL from.
+   */
+  async pruneOrphans(): Promise<number> {
+    const result = await this.db.execute(sql`
+      delete from lesson_invitations inv
+       where (inv.cancelled_at is not null or inv.starts_at <= now())
+         and not exists (select 1 from lessons l where l.id = inv.lesson_id)`);
+    return result.rowCount ?? 0;
   }
 
   async find(
@@ -211,6 +229,7 @@ export class LessonInvitationRepository {
   async claimRequest(due: IInvitationDue): Promise<number | null> {
     const values = {
       lessonId: due.lessonId,
+      courseId: due.courseId,
       userId: due.userId,
       startsAt: due.startsAt,
       durationMinutes: due.durationMinutes,

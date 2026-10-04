@@ -2834,6 +2834,12 @@
           "primaryKey": false,
           "notNull": true
         },
+        "course_id": {
+          "name": "course_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
         "user_id": {
           "name": "user_id",
           "type": "uuid",
@@ -2909,21 +2915,7 @@
           "with": {}
         }
       },
-      "foreignKeys": {
-        "lesson_invitations_lesson_id_lessons_id_fk": {
-          "name": "lesson_invitations_lesson_id_lessons_id_fk",
-          "tableFrom": "lesson_invitations",
-          "tableTo": "lessons",
-          "columnsFrom": [
-            "lesson_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        }
-      },
+      "foreignKeys": {},
       "compositePrimaryKeys": {
         "lesson_invitations_lesson_id_user_id_pk": {
           "name": "lesson_invitations_lesson_id_user_id_pk",

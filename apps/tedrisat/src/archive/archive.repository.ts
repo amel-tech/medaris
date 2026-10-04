@@ -19,7 +19,6 @@ import {
 } from "../database/schema/flashcard.schema";
 import { decks } from "../database/schema/flashcard-deck.schema";
 import { koskFollowers, kosks } from "../database/schema/kosk.schema";
-import { lessonInvitations } from "../database/schema/lesson-invitation.schema";
 import { madrasahs } from "../database/schema/madrasah.schema";
 import {
   roleAssignments,
@@ -576,18 +575,8 @@ export class ArchiveRepository {
           .where(and(eq(courseWeeks.id, id), isNotNull(courseWeeks.archivedAt)))
           .for("update");
         if (!week) return null;
-        // The record of e-mailed invitations (MDRS-121) goes with its sessions.
-        await tx
-          .delete(lessonInvitations)
-          .where(
-            inArray(
-              lessonInvitations.lessonId,
-              tx
-                .select({ id: lessons.id })
-                .from(lessons)
-                .where(eq(lessons.weekId, id))
-            )
-          );
+        // The record of e-mailed invitations (MDRS-121) stays behind: the
+        // invitation sweep sends its CANCEL, then deletes it.
         const removedSessions = (
           await tx
             .delete(lessons)
@@ -609,9 +598,7 @@ export class ArchiveRepository {
           .where(and(eq(lessons.id, id), isNotNull(lessons.archivedAt)))
           .for("update");
         if (!lesson) return null;
-        await tx
-          .delete(lessonInvitations)
-          .where(eq(lessonInvitations.lessonId, id));
+        // The invitation record stays behind for its CANCEL (MDRS-121).
         await tx.delete(lessons).where(eq(lessons.id, id));
         const [week] = await tx
           .select({ courseId: courseWeeks.courseId })

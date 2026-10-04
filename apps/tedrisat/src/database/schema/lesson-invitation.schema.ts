@@ -8,12 +8,10 @@ import {
   timestamp,
   uuid,
 } from "drizzle-orm/pg-core";
-import { lessons } from "./course.schema";
 
 // The last calendar invitation one talebe was e-mailed for one session
-// (MDRS-121). One row per (session, talebe), never deleted while the session
-// exists: the row is what makes the invitation the same calendar event across
-// its whole life.
+// (MDRS-121). One row per (session, talebe): the row is what makes the
+// invitation the same calendar event across its whole life.
 //
 // - `sequence` is the iCalendar SEQUENCE of the last message sent to this
 //   address for this session's UID. Every REQUEST after the first and every
@@ -25,15 +23,20 @@ import { lessons } from "./course.schema";
 // - `cancelled_at` is set when a CANCEL went out. A later REQUEST for the
 //   same session clears it again.
 //
-// RESTRICT like every key under a course (MDRS-124): `course/course-purge.ts`
-// removes these before the lessons. `user_id` is the Keycloak `sub` and, like
-// every other user column, not a foreign key.
+// The row outlives its session on purpose. `lesson_id` and `course_id` are
+// plain columns, not foreign keys, so deleting a session, a week, a course or
+// a köşk (MDRS-124) leaves the row behind; the sweep then finds an invitation
+// whose session is gone, sends its CANCEL, and only after that — or once the
+// time it named has passed — deletes the row (`pruneOrphans`). A key, RESTRICT
+// or CASCADE, would make the delete take the row first and the event would
+// stay in the talebe's calendar. `course_id` is kept for the CANCEL's session
+// page link. `user_id` is the Keycloak `sub` and, like every other user
+// column, not a foreign key.
 export const lessonInvitations = table(
   "lesson_invitations",
   {
-    lessonId: uuid("lesson_id")
-      .references(() => lessons.id, { onDelete: "restrict" })
-      .notNull(),
+    lessonId: uuid("lesson_id").notNull(),
+    courseId: uuid("course_id").notNull(),
     userId: uuid("user_id").notNull(),
     sequence: integer("sequence").notNull(),
     startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),

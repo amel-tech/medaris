@@ -11,6 +11,7 @@ import {
   ArchiveParentHiddenError,
 } from "../../../src/archive/errors/archive-errors";
 import type { KoskService } from "../../../src/kosk/kosk.service";
+import type { LessonInvitationService } from "../../../src/lesson-invitation/lesson-invitation.service";
 import type { MadrasahService } from "../../../src/madrasah/madrasah.service";
 
 const ADMIN = { sub: "a1", realm_access: { roles: ["SYSTEM_ADMIN"] } };
@@ -60,7 +61,8 @@ function serviceWith(
       repo as unknown as ArchiveRepository,
       koskService,
       authz,
-      madrasahService
+      madrasahService,
+      { kick: vi.fn() } as unknown as LessonInvitationService
     ),
     koskService,
     madrasahService,
