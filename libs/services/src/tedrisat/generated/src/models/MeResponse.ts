@@ -70,6 +70,12 @@ export interface MeResponse {
      */
     locale?: string;
     /**
+     * Whether lesson invitations, their updates and cancellations are e-mailed to the caller (MDRS-121)
+     * @type {boolean}
+     * @memberof MeResponse
+     */
+    lessonInvitationEmails: boolean;
+    /**
      * 
      * @type {Date}
      * @memberof MeResponse
@@ -95,6 +101,7 @@ export interface MeResponse {
 export function instanceOfMeResponse(value: object): value is MeResponse {
     if (!('id' in value) || value['id'] === undefined) return false;
     if (!('emailVerified' in value) || value['emailVerified'] === undefined) return false;
+    if (!('lessonInvitationEmails' in value) || value['lessonInvitationEmails'] === undefined) return false;
     if (!('createdAt' in value) || value['createdAt'] === undefined) return false;
     if (!('lastSeenAt' in value) || value['lastSeenAt'] === undefined) return false;
     if (!('roles' in value) || value['roles'] === undefined) return false;
@@ -118,6 +125,7 @@ export function MeResponseFromJSONTyped(json: any, ignoreDiscriminator: boolean)
         'familyName': json['familyName'] == null ? undefined : json['familyName'],
         'timeZone': json['timeZone'] == null ? undefined : json['timeZone'],
         'locale': json['locale'] == null ? undefined : json['locale'],
+        'lessonInvitationEmails': json['lessonInvitationEmails'],
         'createdAt': (new Date(json['createdAt'])),
         'lastSeenAt': (new Date(json['lastSeenAt'])),
         'roles': MeRolesResponseFromJSON(json['roles']),
@@ -142,6 +150,7 @@ export function MeResponseToJSONTyped(value?: MeResponse | null, ignoreDiscrimin
         'familyName': value['familyName'],
         'timeZone': value['timeZone'],
         'locale': value['locale'],
+        'lessonInvitationEmails': value['lessonInvitationEmails'],
         'createdAt': ((value['createdAt']).toISOString()),
         'lastSeenAt': ((value['lastSeenAt']).toISOString()),
         'roles': MeRolesResponseToJSON(value['roles']),

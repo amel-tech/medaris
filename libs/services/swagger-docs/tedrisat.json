@@ -20875,6 +20875,10 @@
             "type": "string",
             "example": "tr"
           },
+          "lessonInvitationEmails": {
+            "type": "boolean",
+            "description": "Whether lesson invitations, their updates and cancellations are e-mailed to the caller (MDRS-121)"
+          },
           "createdAt": {
             "format": "date-time",
             "type": "string"
@@ -20890,6 +20894,7 @@
         "required": [
           "id",
           "emailVerified",
+          "lessonInvitationEmails",
           "createdAt",
           "lastSeenAt",
           "roles"
@@ -20919,6 +20924,10 @@
             "nullable": true,
             "example": "tr",
             "description": "BCP 47 language tag"
+          },
+          "lessonInvitationEmails": {
+            "type": "boolean",
+            "description": "Lesson invitations by e-mail (MDRS-121). False stops every further invitation, update and cancellation."
           }
         }
       },
