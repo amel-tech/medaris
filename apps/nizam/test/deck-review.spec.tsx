@@ -2,6 +2,7 @@ import { resources } from "@medaris/i18n";
 import type {
   DeckProposalResponse,
   DeckPublishRequestListResponse,
+  DeckPublishRequestResponse,
   ManagedKoskDecksResponse,
 } from "@medaris/services/tedrisat";
 import { NextIntlClientProvider } from "next-intl";
@@ -257,7 +258,7 @@ describe("DeckRequestsView (nizam 16)", () => {
       ...list,
       items: [
         {
-          ...list.items[0],
+          ...(list.items[0] as DeckPublishRequestResponse),
           outcome: "PUBLISHED",
           decidedAt: new Date("2026-09-30T10:00:00Z"),
         },
