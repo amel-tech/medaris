@@ -42,7 +42,11 @@ Then open http://localhost:5320. Requirements: Node 20+, `gh` logged in to
   shows a damage effect. 🎬 replays every stage in 5 seconds.
 - **Day board**: the current task, with a dev link and Approve / Problem
   buttons. Below it come the next tasks with estimated start times, 5 at a
-  time, and the completed tasks with times.
+  time, and the completed tasks with times. The "Sıradaki işler" header burns
+  with a dependency-free WebGL2 shader: flames, a glowing burn front, charring,
+  dripping melt, smoke and sparks, growing with the same five stages. It
+  pauses when the tab is hidden or the header is off screen, draws one still
+  frame under reduced motion, and falls back to CSS flames without WebGL2.
 - **Plan**: tasks grouped by project in the order Landing → Tedris → Nizam →
   Nazır (optional), with the launch scope first inside each group.
 - **Launch impact**: once a check outside the launch scope is approved, any
