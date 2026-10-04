@@ -1,54 +1,53 @@
 import { Skeleton } from "@medaris/ui/mds/skeleton";
 import { DEFAULT_TIME_ZONE, resolveTimeZone } from "@medaris/utils";
 import { getLocale } from "next-intl/server";
-import { courseAccess } from "~/features/account/course-standing";
+import {
+  CODES,
+  holds,
+  PAGE_CODES,
+  pageGate,
+  readCoursePermissions,
+} from "~/features/account/course-permissions";
 import { getViewer } from "~/features/account/reads";
 import { PageProblem } from "~/features/shell/components/page-problem";
 import { getMessages } from "~/lib/i18n/messages";
 import { readOnce } from "~/lib/tedrisat-read";
 import { CurriculumEditor } from "./curriculum-editor";
 
-/** The permissions that open Müfredat to a caller who holds no course role. */
-const CURRICULUM_CODES = ["course.edit", "session.manage"];
-
 /**
- * Müfredat of a course: its details, weeks and sessions as one form. The
- * course read is the page's probe: `GET /courses/:id` answers every signed-in
- * caller, and `contentLocked` says the caller does not hold `view_details`
- * (links and agendas are left out). That is not a staff test: the müderris
- * and the enrolled talebe are not locked, a ders nazırı always is. A locked
- * caller therefore opens the page only when their permissions name
- * `course.edit` or `session.manage` in this course (`courseAccess`); otherwise
- * it is the "Bu sayfaya izniniz yok" state, as a 403 is on the other pages.
- * An enrolled talebe is not locked, so the page opens for them and the API
- * refuses their save. Saving is the API's own check (`PUT /courses/:id`), and
- * its refusal is worded from the code. The editor is keyed by the course
- * version, so reading the course again (after a save, or after a conflict)
- * starts a fresh form.
+ * Müfredat of a course: its details, weeks and sessions as one form. The page
+ * opens for a caller who holds `course.edit` or `session.manage` in this
+ * course, read from `GET /courses/:id/my-permissions`; anyone else gets "Bu
+ * sayfaya izniniz yok", and a permissions read that failed is the retry state.
+ * The course read carries the links and agendas to those holders, so the form
+ * is filled with what is stored. What the editor lets the caller change follows
+ * what they hold (`CurriculumEditor`): saving is `course.edit`, and adding,
+ * moving or hiding a session is `session.manage` as well. Saving is the API's
+ * own check (`PUT /courses/:id`), and its refusal is worded from the code. The
+ * editor is keyed by the course version, so reading the course again (after a
+ * save, or after a conflict) starts a fresh form.
  */
 export async function CurriculumPage({ courseId }: { courseId: string }) {
-  const [t, locale, me, course] = await Promise.all([
+  const [t, locale, me, course, permissions] = await Promise.all([
     getMessages("nazir"),
     getLocale(),
     getViewer(),
     readOnce("the course", (api) =>
       api.courses.getCourseById({ id: courseId })
     ),
+    readCoursePermissions(courseId),
   ]);
   const timeZone = resolveTimeZone(me?.timeZone, DEFAULT_TIME_ZONE);
-  const problem =
-    course.status !== "ok"
-      ? course.status
-      : await courseAccess(course.data, courseId, CURRICULUM_CODES);
+  const gate = pageGate([course], permissions, PAGE_CODES.curriculum);
 
-  if (course.status !== "ok" || problem !== "ok") {
+  if (course.status !== "ok" || permissions.status !== "ok" || gate !== "ok") {
     return (
       <>
         <header className="flex max-inline-measure flex-col gap-1">
           <h1 className="mds-h1">{t("Curriculum.title")}</h1>
         </header>
         <PageProblem
-          status={problem === "forbidden" ? "forbidden" : "failed"}
+          status={gate === "forbidden" ? "forbidden" : "failed"}
           failed={{
             title: t("Curriculum.loadFailedTitle"),
             text: t("Curriculum.loadFailed"),
@@ -61,6 +60,10 @@ export async function CurriculumPage({ courseId }: { courseId: string }) {
     <CurriculumEditor
       key={course.data.version}
       course={course.data}
+      can={{
+        edit: holds(permissions.data, CODES.courseEdit),
+        sessions: holds(permissions.data, CODES.sessionManage),
+      }}
       locale={locale}
       timeZone={timeZone}
     />

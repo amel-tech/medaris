@@ -13,7 +13,13 @@ import { useState, useTransition } from "react";
 import { approveApplication, rejectApplication } from "~/features/pano/actions";
 import { applicationGone, decisionErrorKey } from "~/features/pano/pano";
 import type { Messages } from "~/lib/i18n/messages";
-import type { ApplicationRow, Lists, RemovedRow, Tab } from "../enrolments";
+import type {
+  ApplicationRow,
+  Lists,
+  RemovedRow,
+  RosterPermissions,
+  Tab,
+} from "../enrolments";
 import { RemovedTable } from "./removed-table";
 import { RosterTable } from "./roster-table";
 
@@ -27,12 +33,16 @@ type Decision = "approve" | "reject";
  * are the lists' own, so a decision moves the numbers with the rows. An
  * application is decided with the Pano's actions and in its words; the API
  * takes no reason for a rejection, so "Reddet" asks once before it acts.
- * `removed` is null when that list could not be read.
+ * `can` says which of the three decisions the caller holds in this course
+ * (`enrollment.decide`, `enrollment.complete`, `enrollment.remove`); a button
+ * for one they do not hold is not drawn, and the API still decides every
+ * write. `removed` is null when that list could not be read.
  */
 export function EnrolmentsTabs({
   courseId,
   courseName,
   requiresApproval,
+  can,
   lists,
   removed,
 }: {
@@ -40,6 +50,7 @@ export function EnrolmentsTabs({
   courseName: string;
   /** null when the course could not be read */
   requiresApproval: boolean | null;
+  can: RosterPermissions;
   lists: Lists;
   removed: RemovedRow[] | null;
 }) {
@@ -92,7 +103,7 @@ export function EnrolmentsTabs({
     });
   };
 
-  const columns: TableColumn<ApplicationRow>[] = [
+  const applicationColumns: TableColumn<ApplicationRow>[] = [
     {
       key: "student",
       header: t("CourseStudents.columns.student"),
@@ -128,49 +139,52 @@ export function EnrolmentsTabs({
         </time>
       ),
     },
-    {
-      key: "actions",
-      header: (
-        <span className="mds-visually-hidden">
-          {t("CourseStudents.columns.actions")}
-        </span>
-      ),
-      align: "right",
-      width: "20%",
-      render: (row) => {
-        const mine = busy?.id === row.userId ? busy.action : null;
-        return (
-          <span className="flex items-center justify-end gap-2">
-            <Button
-              variant="outline"
-              size="small"
-              iconLeft={<Icon name="check" size="sm" />}
-              loading={mine === "approve"}
-              disabled={mine === "reject"}
-              aria-label={t("Pano.applications.approveLabel", {
-                name: row.name,
-              })}
-              onClick={() => decide(row, "approve")}
-            >
-              {t("Pano.applications.approve")}
-            </Button>
-            <Button
-              variant="ghost"
-              size="small"
-              loading={mine === "reject"}
-              disabled={mine === "approve"}
-              aria-label={t("Pano.applications.rejectLabel", {
-                name: row.name,
-              })}
-              onClick={() => setRejecting(row)}
-            >
-              {t("Pano.applications.reject")}
-            </Button>
-          </span>
-        );
-      },
-    },
   ];
+  const decideColumn: TableColumn<ApplicationRow> = {
+    key: "actions",
+    header: (
+      <span className="mds-visually-hidden">
+        {t("CourseStudents.columns.actions")}
+      </span>
+    ),
+    align: "right",
+    width: "20%",
+    render: (row) => {
+      const mine = busy?.id === row.userId ? busy.action : null;
+      return (
+        <span className="flex items-center justify-end gap-2">
+          <Button
+            variant="outline"
+            size="small"
+            iconLeft={<Icon name="check" size="sm" />}
+            loading={mine === "approve"}
+            disabled={mine === "reject"}
+            aria-label={t("Pano.applications.approveLabel", {
+              name: row.name,
+            })}
+            onClick={() => decide(row, "approve")}
+          >
+            {t("Pano.applications.approve")}
+          </Button>
+          <Button
+            variant="ghost"
+            size="small"
+            loading={mine === "reject"}
+            disabled={mine === "approve"}
+            aria-label={t("Pano.applications.rejectLabel", {
+              name: row.name,
+            })}
+            onClick={() => setRejecting(row)}
+          >
+            {t("Pano.applications.reject")}
+          </Button>
+        </span>
+      );
+    },
+  };
+  const columns = can.decide
+    ? [...applicationColumns, decideColumn]
+    : applicationColumns;
 
   return (
     <>
@@ -226,6 +240,7 @@ export function EnrolmentsTabs({
             variant="enrolled"
             courseId={courseId}
             courseName={courseName}
+            can={can}
             rows={lists.enrolled}
           />
         </TabsPanel>
@@ -234,6 +249,7 @@ export function EnrolmentsTabs({
             variant="completed"
             courseId={courseId}
             courseName={courseName}
+            can={can}
             rows={lists.completed}
           />
         </TabsPanel>

@@ -18,8 +18,14 @@ type Answer<T> =
   | { status: "forbidden" }
   | { status: "failed" };
 
+const holding = (...codes: string[]): Answer<unknown> => ({
+  status: "ok",
+  data: { permissions: ["course.view", ...codes], staffRead: false },
+});
+
 const state = {
   course: { status: "failed" } as Answer<unknown>,
+  permissions: { status: "failed" } as Answer<unknown>,
   viewer: { id: "u-1", timeZone: "Europe/Istanbul" } as unknown,
 };
 const push = vi.fn();
@@ -37,9 +43,16 @@ vi.mock("next-intl/server", () => ({
   getLocale: async () => "tr",
 }));
 vi.mock("~/lib/tedrisat-read", () => ({
-  readOnce: async (_what: string, call: (api: unknown) => Promise<unknown>) => {
-    await call({ courses: { getCourseById: async () => {} } });
-    return state.course;
+  readOnce: async (what: string, call: (api: unknown) => Promise<unknown>) => {
+    await call({
+      courses: {
+        getCourseById: async () => {},
+        getMyCoursePermissions: async () => {},
+      },
+    });
+    return what.includes("holds in the course")
+      ? state.permissions
+      : state.course;
   },
 }));
 vi.mock("~/features/account/reads", () => ({
@@ -114,6 +127,7 @@ beforeEach(() => {
     status: "ok",
     data: { id: "c-1", title: "Bina ve İzhar Şerhi", contentLocked: false },
   };
+  state.permissions = holding("session.manage");
   state.viewer = { id: "u-1", timeZone: "Europe/Istanbul" };
   for (const fn of [push, previewSessions, createSessions]) fn.mockReset();
   previewSessions.mockResolvedValue(
@@ -139,16 +153,41 @@ describe("Celse planla", () => {
     expect(textOf(await markup())).toContain("Saatler Berlin saatiyle.");
   });
 
-  it("is the 'Bu sayfaya izniniz yok' state when the API refuses the course or it comes without its content", async () => {
+  it("is the 'Bu sayfaya izniniz yok' state when the API refuses the course", async () => {
     state.course = { status: "forbidden" };
     expect(textOf(await markup())).toContain("Bu sayfaya izniniz yok");
+  });
+
+  it("is that state for a caller without session.manage, even one who may set the live stream link or edit the course", async () => {
+    for (const held of [
+      [],
+      ["session.live_link"],
+      ["course.edit", "recording.manage", "enrollment.decide"],
+    ]) {
+      state.permissions = holding(...held);
+      const out = textOf(await markup());
+      expect(out).toContain("Bu sayfaya izniniz yok");
+      expect(out).not.toContain("Önizleme");
+    }
+  });
+
+  it("does not take a locked course for a refusal: session.manage opens it", async () => {
     state.course = {
       status: "ok",
       data: { id: "c-1", title: "x", contentLocked: true },
     };
     const out = textOf(await markup());
-    expect(out).toContain("Bu sayfaya izniniz yok");
-    expect(out).not.toContain("Önizleme");
+    expect(out).not.toContain("izniniz yok");
+    expect(out).toContain("0 celse oluştur");
+  });
+
+  it("is the retry state, never the form and never 'no access', when the permissions cannot be read", async () => {
+    state.permissions = { status: "failed" };
+    const out = textOf(await markup());
+    expect(out).toContain("Ders okunamadı");
+    expect(out).toContain("Yeniden dene");
+    expect(out).not.toContain("izniniz yok");
+    expect(out).not.toContain("0 celse oluştur");
   });
 
   it("is the retry state when the course cannot be read", async () => {

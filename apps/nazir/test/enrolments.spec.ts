@@ -180,9 +180,28 @@ describe("the search", () => {
 });
 
 describe("what a row offers", () => {
+  const all = { decide: true, complete: true, remove: true };
+
   it("completes or removes a held seat, and only reopens a completion", () => {
-    expect(rosterActions("enrolled")).toEqual(["complete", "remove"]);
-    expect(rosterActions("completed")).toEqual(["reopen"]);
+    expect(rosterActions("enrolled", all)).toEqual(["complete", "remove"]);
+    expect(rosterActions("completed", all)).toEqual(["reopen"]);
+  });
+
+  it("offers each button only for the permission it needs", () => {
+    expect(rosterActions("enrolled", { ...all, complete: false })).toEqual([
+      "remove",
+    ]);
+    expect(rosterActions("enrolled", { ...all, remove: false })).toEqual([
+      "complete",
+    ]);
+    expect(rosterActions("completed", { ...all, complete: false })).toEqual([]);
+    expect(
+      rosterActions("enrolled", {
+        decide: true,
+        complete: false,
+        remove: false,
+      })
+    ).toEqual([]);
   });
 });
 

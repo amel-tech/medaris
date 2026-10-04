@@ -43,15 +43,23 @@ export async function changeSession(
   return outcomeOf(result);
 }
 
-/** "İptal et" (`POST /lessons/:id/cancel`): the session stays in the programme, marked cancelled. */
+/**
+ * "İptal et" (`POST /lessons/:id/cancel`): the session stays in the programme,
+ * marked cancelled, and names its make-up when it has one. The make-up must
+ * exist already, so it is made first.
+ */
 export async function cancelSession(
   lessonId: string,
-  version: number
+  version: number,
+  replacementLessonId?: string
 ): Promise<ActionOutcome<{ courseVersion: number }>> {
   const result = await authenticatedAction(async (api) => {
     const { courseVersion } = await api.lessons.cancelLesson({
       id: lessonId,
-      cancelLessonDto: { version },
+      cancelLessonDto: {
+        version,
+        ...(replacementLessonId ? { replacementLessonId } : {}),
+      },
     });
     return { courseVersion };
   });
@@ -120,18 +128,26 @@ export async function previewSessions(
 /**
  * "N celse oluştur" (`POST /courses/:id/sessions/batch`): every session of a
  * pattern in one transaction, and the make-up of a cancelled session (a
- * pattern of one). It bumps the course version, so the table reads again.
+ * pattern of one). It bumps the course version, so the table reads again; the
+ * new version and the ids of the sessions made come back for the cancellation
+ * that names the make-up.
  */
 export async function createSessions(
   courseId: string,
   batch: CreateSessionBatchDto
-): Promise<ActionOutcome<{ count: number }>> {
+): Promise<
+  ActionOutcome<{ count: number; courseVersion: number; lessonIds: string[] }>
+> {
   const result = await authenticatedAction(async (api) => {
-    const { lessons } = await api.lessons.createSessionBatch({
+    const { lessons, courseVersion } = await api.lessons.createSessionBatch({
       courseId,
       createSessionBatchDto: batch,
     });
-    return { count: lessons.length };
+    return {
+      count: lessons.length,
+      courseVersion,
+      lessonIds: lessons.map((lesson) => lesson.id),
+    };
   });
   if (!result.success) console.error("Error creating sessions:", result.error);
   return outcomeOf(result);

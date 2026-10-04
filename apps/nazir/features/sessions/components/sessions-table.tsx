@@ -14,7 +14,13 @@ import {
 } from "@medaris/utils";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { type FormEvent, useEffect, useState, useTransition } from "react";
+import {
+  type FormEvent,
+  type MouseEvent,
+  useEffect,
+  useState,
+  useTransition,
+} from "react";
 import type { Messages } from "~/lib/i18n/messages";
 import { changeSession, setLiveStream } from "../actions";
 import {
@@ -45,16 +51,19 @@ const PAST_PREVIEW = 2;
  * over) and the cancellation, so the clock is read here and moves while the
  * page is open. A link is added or replaced inline (https only), a time is
  * moved on the viewer's clock, and "İptal et" keeps the session in the
- * programme marked cancelled and can add its make-up. The live stream link is
- * set the same way, for whoever holds `session.live_link`: `streams` is null
- * when the page could not read the links, which leaves the column and the
- * buttons out. Every write carries the course version the page last saw, and a
- * refusal is worded from the API's code.
+ * programme marked cancelled and can add its make-up, which the cancelled
+ * session then links to. Link, time, cancel and make-up are `session.manage`
+ * (`canManage`). The live stream link is set the same way, for whoever holds
+ * `session.live_link`: `streams` is null when the caller does not hold it or
+ * the page could not read the links, which leaves the column and the buttons
+ * out. A hidden button is not the check: every write carries the course
+ * version the page last saw, and a refusal is worded from the API's code.
  */
 export function SessionsTable({
   courseId,
   version: serverVersion,
   facts,
+  canManage,
   streams: serverStreams,
   locale,
   timeZone,
@@ -62,6 +71,8 @@ export function SessionsTable({
   courseId: string;
   version: number;
   facts: SessionFact[];
+  /** the caller holds `session.manage` in this course */
+  canManage: boolean;
   streams: Record<string, string> | null;
   locale: string;
   timeZone: string;
@@ -190,15 +201,31 @@ export function SessionsTable({
   };
 
   const nameCell = (row: SessionRow) => (
-    <span className="flex min-inline-0 flex-col gap-1">
+    <span
+      className="flex min-inline-0 flex-col gap-1"
+      id={sessionAnchor(row.id)}
+      tabIndex={-1}
+    >
       <span className="font-semibold">
         <bdi>{row.title}</bdi>
       </span>
       <span className="mds-caption">
         {t("Sessions.week", { n: row.weekNumber })}
+        {row.isMakeUp ? ` · ${t("Sessions.makeUp")}` : ""}
       </span>
     </span>
   );
+
+  /** The session a cancelled one is made up by, opened even when it sits in the folded past. */
+  const showSession = (event: MouseEvent, id: string) => {
+    event.preventDefault();
+    if (groups.past.some((row) => row.id === id)) setAllPast(true);
+    requestAnimationFrame(() => {
+      const target = document.getElementById(sessionAnchor(id));
+      target?.scrollIntoView({ block: "center" });
+      target?.focus({ preventScroll: true });
+    });
+  };
 
   const timeCell = (row: SessionRow) => (
     <span>
@@ -253,8 +280,25 @@ export function SessionsTable({
             </span>
           </span>
         );
-      case "cancelled":
-        return <Badge variant="outline">{t("Sessions.state.cancelled")}</Badge>;
+      case "cancelled": {
+        const madeUpBy = row.replacementId
+          ? rows.find((other) => other.id === row.replacementId)
+          : undefined;
+        return (
+          <span className="flex flex-col gap-1">
+            <Badge variant="outline">{t("Sessions.state.cancelled")}</Badge>
+            {madeUpBy ? (
+              <a
+                className="mds-link mds-caption"
+                href={`#${sessionAnchor(madeUpBy.id)}`}
+                onClick={(event) => showSession(event, madeUpBy.id)}
+              >
+                {t("Sessions.madeUpBy", { when: when(madeUpBy) })}
+              </a>
+            ) : null}
+          </span>
+        );
+      }
       case "ended":
         return <span>{t("Sessions.state.ended")}</span>;
       default:
@@ -317,23 +361,25 @@ export function SessionsTable({
       align: "right",
       width: withStream ? "28%" : "31%",
       render: (row) =>
-        row.state === "cancelled" ? (
+        row.state === "cancelled" || (!canManage && streams === null) ? (
           <span className="mds-visually-hidden">{t("Sessions.noActions")}</span>
         ) : (
           <span className="flex flex-wrap items-center justify-end gap-1">
-            <Button
-              variant="outline"
-              size="small"
-              aria-label={t(
-                row.meetingUrl
-                  ? "Sessions.updateLinkLabel"
-                  : "Sessions.addLinkLabel",
-                { when: when(row) }
-              )}
-              onClick={() => startLink(row)}
-            >
-              {t(row.meetingUrl ? "Sessions.updateLink" : "Sessions.addLink")}
-            </Button>
+            {canManage ? (
+              <Button
+                variant="outline"
+                size="small"
+                aria-label={t(
+                  row.meetingUrl
+                    ? "Sessions.updateLinkLabel"
+                    : "Sessions.addLinkLabel",
+                  { when: when(row) }
+                )}
+                onClick={() => startLink(row)}
+              >
+                {t(row.meetingUrl ? "Sessions.updateLink" : "Sessions.addLink")}
+              </Button>
+            ) : null}
             {streams !== null ? (
               <Button
                 variant="outline"
@@ -353,7 +399,7 @@ export function SessionsTable({
                 )}
               </Button>
             ) : null}
-            {row.state === "scheduled" ? (
+            {canManage && row.state === "scheduled" ? (
               <>
                 <Button
                   variant="ghost"
@@ -585,6 +631,9 @@ export function SessionsTable({
     </div>
   );
 }
+
+/** The id a session's row carries, for the link from the session it makes up for. */
+const sessionAnchor = (id: string): string => `celse-${id}`;
 
 /** The host of a link for display; the link itself when it cannot be parsed. */
 function hostOf(url: string): string {

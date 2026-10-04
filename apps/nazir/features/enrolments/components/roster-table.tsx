@@ -19,6 +19,7 @@ import {
   matching,
   ROSTER_PAGE,
   type RosterAction,
+  type RosterPermissions,
   type RosterRow,
   rosterActions,
   seatMoved,
@@ -27,8 +28,10 @@ import { RemoveDialog } from "./remove-dialog";
 
 /**
  * The Kayıtlı and Tamamlayanlar tables: search by name or e-mail, the talebe's
- * own progress, and per row "Tamamladı say" and "Dersten çıkar" (or "Yeniden
- * aç"). The list is the one the page read, so the search and the paging are
+ * own progress, and per row "Tamamladı say" (`enrollment.complete`) and
+ * "Dersten çıkar" (`enrollment.remove`), or "Yeniden aç" (`enrollment.complete`):
+ * a button the caller's `can` does not allow is not drawn, and a table with none
+ * has no actions column. The list is the one the page read, so the search and the paging are
  * the browser's: ten rows at a time, "Daha fazla göster" for the rest. A seat
  * that is no longer as the page showed it (somebody else moved it) is told so
  * and the list is read again.
@@ -37,11 +40,13 @@ export function RosterTable({
   variant,
   courseId,
   courseName,
+  can,
   rows,
 }: {
   variant: "enrolled" | "completed";
   courseId: string;
   courseName: string;
+  can: RosterPermissions;
   rows: RosterRow[];
 }) {
   const t = useTranslations("nazir");
@@ -101,6 +106,7 @@ export function RosterTable({
     else complete(row, action === "complete");
   };
 
+  const actions = rosterActions(variant, can);
   const columns: TableColumn<RosterRow>[] = [
     {
       key: "student",
@@ -153,7 +159,9 @@ export function RosterTable({
         />
       ),
     },
-    {
+  ];
+  if (actions.length > 0) {
+    columns.push({
       key: "actions",
       header: (
         <span className="mds-visually-hidden">
@@ -164,7 +172,7 @@ export function RosterTable({
       width: "30%",
       render: (row) => (
         <span className="flex flex-wrap items-center justify-end gap-2">
-          {rosterActions(variant).map((action, index) => (
+          {actions.map((action, index) => (
             <Button
               key={action}
               variant={index === 0 ? "outline" : "ghost"}
@@ -181,8 +189,8 @@ export function RosterTable({
           ))}
         </span>
       ),
-    },
-  ];
+    });
+  }
 
   return (
     <div className="flex flex-col gap-4" data-testid={`roster-${variant}`}>

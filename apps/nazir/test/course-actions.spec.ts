@@ -123,6 +123,19 @@ describe("İptal et", () => {
     });
   });
 
+  it("names the make-up when there is one, and sends no key when there is none", async () => {
+    const { cancelSession } = await sessions();
+    api.lessons.cancelLesson.mockResolvedValue({ courseVersion: 6 });
+    expect(await cancelSession("l-1", 5, "l-2")).toEqual({
+      success: true,
+      data: { courseVersion: 6 },
+    });
+    expect(api.lessons.cancelLesson).toHaveBeenCalledWith({
+      id: "l-1",
+      cancelLessonDto: { version: 5, replacementLessonId: "l-2" },
+    });
+  });
+
   it("hands back the code of a refusal", async () => {
     const { cancelSession } = await sessions();
     api.lessons.cancelLesson.mockRejectedValue(
@@ -227,7 +240,7 @@ describe("Celse planla", () => {
     expect(api.lessons.createSessionBatch).not.toHaveBeenCalled();
   });
 
-  it("creates the sessions in one call and hands back how many", async () => {
+  it("creates the sessions in one call and hands back how many, with the version and the ids", async () => {
     const { createSessions } = await sessions();
     api.lessons.createSessionBatch.mockResolvedValue({
       courseVersion: 3,
@@ -240,7 +253,7 @@ describe("Celse planla", () => {
     };
     expect(await createSessions("c-1", batch)).toEqual({
       success: true,
-      data: { count: 2 },
+      data: { count: 2, courseVersion: 3, lessonIds: ["a", "b"] },
     });
     expect(api.lessons.createSessionBatch).toHaveBeenCalledOnce();
     expect(api.lessons.createSessionBatch).toHaveBeenCalledWith({

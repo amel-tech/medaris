@@ -1,6 +1,13 @@
 import { Skeleton } from "@medaris/ui/mds/skeleton";
 import { DEFAULT_TIME_ZONE, resolveTimeZone } from "@medaris/utils";
 import { getLocale } from "next-intl/server";
+import {
+  CODES,
+  holds,
+  PAGE_CODES,
+  pageGate,
+  readCoursePermissions,
+} from "~/features/account/course-permissions";
 import { getViewer } from "~/features/account/reads";
 import { PageProblem } from "~/features/shell/components/page-problem";
 import { getPortal } from "~/features/shell/reads";
@@ -13,29 +20,39 @@ import { EnrolmentsTabs } from "./enrolments-tabs";
 /**
  * Talebeler of a course: the applications waiting for a decision first, then
  * the enrolled, the ones who completed the course and the ones the course team
- * took out of it. The enrolments are the page's probe: `GET /courses/:id/
- * enrollments` answers 403 to whoever does not hold the roster, and that is the
- * "Bu sayfaya izniniz yok" state. The removed list and the course are side
+ * took out of it. The page opens for a caller who holds the roster
+ * (`course.staff_read`) or an enrollment permission in this course, from
+ * `GET /courses/:id/my-permissions`; anyone else gets "Bu sayfaya izniniz
+ * yok", a permissions read that failed is the retry state, and the roster is
+ * read for neither. Each button is drawn for its own code (`EnrolmentsTabs`)
+ * and the API still decides every write. A read of the enrolments that fails
+ * or is refused is the page's state. The removed list and the course are side
  * reads: without the list its tab says so, without the course the name comes
  * from the portal's scope.
  */
 export async function EnrolmentsPage({ courseId }: { courseId: string }) {
-  const [t, locale, me, portal, enrolments, removed, course] =
-    await Promise.all([
-      getMessages("nazir"),
-      getLocale(),
-      getViewer(),
-      getPortal(),
-      readOnce("the course's enrolments", (api) =>
-        api.courses.getCourseEnrollments({ id: courseId })
-      ),
-      readOnce("the course's removed talebe", (api) =>
-        api.courses.getRemovedEnrollments({ id: courseId })
-      ),
-      readOnce("the course", (api) =>
-        api.courses.getCourseById({ id: courseId })
-      ),
-    ]);
+  const [t, locale, me, portal, course, permissions] = await Promise.all([
+    getMessages("nazir"),
+    getLocale(),
+    getViewer(),
+    getPortal(),
+    readOnce("the course", (api) =>
+      api.courses.getCourseById({ id: courseId })
+    ),
+    readCoursePermissions(courseId),
+  ]);
+  const gate = pageGate([], permissions, PAGE_CODES.students);
+  const [enrolments, removed] =
+    gate === "ok"
+      ? await Promise.all([
+          readOnce("the course's enrolments", (api) =>
+            api.courses.getCourseEnrollments({ id: courseId })
+          ),
+          readOnce("the course's removed talebe", (api) =>
+            api.courses.getRemovedEnrollments({ id: courseId })
+          ),
+        ])
+      : [null, null];
   const where = {
     locale,
     timeZone: resolveTimeZone(me?.timeZone, DEFAULT_TIME_ZONE),
@@ -47,6 +64,13 @@ export async function EnrolmentsPage({ courseId }: { courseId: string }) {
       : portal.status === "ok"
         ? findScope(portal.scopes, "ders", courseId)?.name
         : undefined) ?? "";
+  const held = permissions.status === "ok" ? permissions.data : null;
+  const problem =
+    gate !== "ok"
+      ? gate
+      : enrolments === null || enrolments.status === "ok"
+        ? null
+        : enrolments.status;
 
   return (
     <>
@@ -58,9 +82,9 @@ export async function EnrolmentsPage({ courseId }: { courseId: string }) {
             : t("CourseStudents.subtitleUnnamed")}
         </p>
       </header>
-      {enrolments.status !== "ok" ? (
+      {problem !== null || enrolments?.status !== "ok" ? (
         <PageProblem
-          status={enrolments.status}
+          status={problem === "forbidden" ? "forbidden" : "failed"}
           failed={{
             title: t("CourseStudents.loadFailedTitle"),
             text: t("CourseStudents.loadFailed"),
@@ -73,9 +97,16 @@ export async function EnrolmentsPage({ courseId }: { courseId: string }) {
           requiresApproval={
             course.status === "ok" ? course.data.requiresApproval : null
           }
+          can={{
+            decide: held !== null && holds(held, CODES.enrollmentDecide),
+            complete: held !== null && holds(held, CODES.enrollmentComplete),
+            remove: held !== null && holds(held, CODES.enrollmentRemove),
+          }}
           lists={listsOf(enrolments.data, t, where)}
           removed={
-            removed.status === "ok" ? removedRows(removed.data, t, where) : null
+            removed?.status === "ok"
+              ? removedRows(removed.data, t, where)
+              : null
           }
         />
       )}

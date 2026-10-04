@@ -21,12 +21,12 @@ import {
 
 /**
  * "Celseyi iptal et": the session stays in the programme, marked cancelled, and
- * talebe see it so. A make-up can be added in the same step: the API has no
- * link between a cancelled session and its make-up, so it is a new session of
- * the same length, made after the cancellation (its date and time start a week
- * later, on the viewer's clock). When the cancellation went through and the
- * make-up did not, the dialog says exactly that, and the session stays
- * cancelled.
+ * talebe see it so. A make-up can be added in the same step: a new session of
+ * the same title and length (its date and time start a week later, on the
+ * viewer's clock) is made first, and the cancellation names it, so the
+ * cancelled session links to it. When the make-up cannot be made nothing is
+ * cancelled and the dialog stays; when it was made and the cancellation then
+ * failed, the dialog says exactly that and the make-up stays in the programme.
  */
 export function CancelDialog({
   row,
@@ -60,49 +60,53 @@ export function CancelDialog({
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (pending) return;
-    const request = makeUp
-      ? makeUpRequest(
-          row,
-          { ...fields, timeZone },
-          t("Sessions.cancelDialog.makeUpSuffix")
-        )
-      : null;
+    const request = makeUp ? makeUpRequest(row, { ...fields, timeZone }) : null;
     if (makeUp && !request) {
       setProblem(t("Sessions.errors.time"));
       return;
     }
     startTransition(async () => {
-      const cancelled = await cancelSession(row.id, version);
+      let cancelAt = version;
+      let replacementId: string | undefined;
+      if (request) {
+        const created = await createSessions(courseId, request);
+        const madeId = created.success ? created.data.lessonIds[0] : undefined;
+        if (!created.success || !madeId) {
+          notify({
+            tone: "error",
+            title: t("Sessions.cancelDialog.makeUpFailed"),
+            description: words(
+              sessionErrorKey(created.success ? "" : created.code)
+            ),
+          });
+          return;
+        }
+        replacementId = madeId;
+        cancelAt = created.data.courseVersion;
+        onVersion(cancelAt);
+      }
+      const cancelled = await cancelSession(row.id, cancelAt, replacementId);
       if (!cancelled.success) {
         notify({
           tone: "error",
-          title: t("Sessions.failed"),
+          title: t(
+            replacementId
+              ? "Sessions.cancelDialog.cancelFailedAfterMakeUp"
+              : "Sessions.failed"
+          ),
           description: words(sessionErrorKey(cancelled.code)),
         });
-        if (courseMoved(cancelled.code)) {
+        if (replacementId || courseMoved(cancelled.code)) {
           onClose();
           onDone();
         }
         return;
       }
       onVersion(cancelled.data.courseVersion);
-      if (request) {
-        const created = await createSessions(courseId, request);
-        if (!created.success) {
-          notify({
-            tone: "error",
-            title: t("Sessions.cancelDialog.makeUpFailed"),
-            description: words(sessionErrorKey(created.code)),
-          });
-          onClose();
-          onDone();
-          return;
-        }
-      }
       notify({
         title: t("Sessions.cancelledToast"),
         description: t(
-          request
+          replacementId
             ? "Sessions.cancelDialog.madeUpBody"
             : "Sessions.cancelledBody",
           { name: row.title }
