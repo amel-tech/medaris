@@ -1,6 +1,13 @@
+import {
+  type AuthenticatedUser,
+  AuthzService,
+  ENTITIES,
+  PERMISSIONS,
+} from "@medaris/common";
 import { Injectable } from "@nestjs/common";
 import type {
   DashboardSessionTab,
+  KoskDashboardApplicationResponse,
   KoskDashboardResponse,
 } from "./dto/kosk-dashboard.dto";
 import { KoskNotFoundError } from "./errors/kosk-not-found.error";
@@ -18,11 +25,14 @@ const APPLICATION_ROWS = 5;
 export class KoskDashboardService {
   // Must stay a value import: `import type` erases it from
   // `design:paramtypes` and Nest can no longer inject it.
-  constructor(private readonly repo: KoskDashboardRepository) {}
+  constructor(
+    private readonly repo: KoskDashboardRepository,
+    private readonly authz: AuthzService
+  ) {}
 
   async get(
     koskId: string,
-    viewerId: string,
+    viewer: AuthenticatedUser,
     tab: DashboardSessionTab
   ): Promise<KoskDashboardResponse> {
     const koskName = await this.repo.koskName(koskId);
@@ -37,7 +47,7 @@ export class KoskDashboardService {
         }),
         this.repo.latestApplications(koskId, APPLICATION_ROWS),
         this.repo.muderris(koskId),
-        this.repo.givenNameOf(viewerId),
+        this.repo.givenNameOf(viewer.sub),
       ]);
     return {
       koskId,
@@ -58,8 +68,40 @@ export class KoskDashboardService {
       firstMissingLink: firstMissing[0] ?? null,
       tab,
       sessions,
-      latestApplications: applications,
+      latestApplications: await this.withDecision(viewer, applications),
       muderris,
     };
+  }
+
+  /**
+   * Each application with the engine's answer for the viewer on its course, so
+   * the screen offers Onayla and Reddet only where the route would not refuse
+   * them. A passive scope closes `enrollment.decide` to everyone but platform
+   * management (the başnazım's bypass included), and a Medaris nazımı with no
+   * course work never held it; asking `AuthzService` keeps that one rule.
+   * `effective` writes no audit row: nothing is opened by looking.
+   */
+  private async withDecision(
+    viewer: AuthenticatedUser,
+    rows: Omit<KoskDashboardApplicationResponse, "canDecide">[]
+  ): Promise<KoskDashboardApplicationResponse[]> {
+    const admin = this.authz.isSystemAdmin(viewer);
+    const decide = new Map<string, boolean>();
+    for (const { courseId } of rows) {
+      if (decide.has(courseId)) continue;
+      const held = admin
+        ? true
+        : ((
+            await this.authz.effective(viewer, {
+              entity: ENTITIES.COURSE,
+              id: courseId,
+            })
+          )?.codes.has(PERMISSIONS.ENROLLMENT_DECIDE) ?? false);
+      decide.set(courseId, held);
+    }
+    return rows.map((row) => ({
+      ...row,
+      canDecide: decide.get(row.courseId) ?? false,
+    }));
   }
 }

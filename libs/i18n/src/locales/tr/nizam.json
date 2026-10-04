@@ -3501,7 +3501,10 @@
       "rejected": "Başvuru reddedildi",
       "rejectedBody": "{name} için {course} başvurusu reddedildi.",
       "actionFailed": "Başvuru yanıtlanamadı",
-      "errorUnknown": "Beklenmeyen bir hata oldu. Biraz sonra yeniden deneyin."
+      "errorUnknown": "Beklenmeyen bir hata oldu. Biraz sonra yeniden deneyin.",
+      "errorForbidden": "Bu başvuruya karar verme yetkiniz yok.",
+      "errorGone": "Bu başvuru artık bekleyenler arasında değil; liste yenilendi.",
+      "passiveScope": "Bu dersin kapsamı pasif: yöneticisi kalmadı. Yönetici atanana dek başvuruya karar verilemez."
     },
     "decks": {
       "title": "Deste yayın istekleri",
