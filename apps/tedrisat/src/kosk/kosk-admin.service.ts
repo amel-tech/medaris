@@ -8,10 +8,11 @@ import {
   ROLES,
 } from "@medaris/common";
 import { Injectable, Logger } from "@nestjs/common";
-import { COURSE_HIDE_LADDER, KOSK_HIDE_LADDER } from "../archive/hide-codes";
 import {
   actingLevel,
+  COURSE_HIDE_LADDER,
   hiderLevelOf,
+  KOSK_HIDE_LADDER,
   mayRestoreHidden,
 } from "../archive/hide-level";
 import { GrantExpiryInvalidError } from "../assignment/admin/errors";
@@ -305,8 +306,10 @@ export class KoskAdminService {
 
   /**
    * The Dersler table. A hidden course says the level that hid it and whether
-   * the caller may bring it back, so the table offers "Geri al" only where the
-   * API would accept it (MDRS-143), the question the Arşiv rows answer too.
+   * the caller may bring it back (`COURSE_HIDE_LADDER`, as `POST
+   * /courses/:id/restore` decides), so the table offers "Geri al" only where the
+   * API would accept it and a köşk nazımı is not shown it for a course the
+   * platform hid (MDRS-108, MDRS-143).
    */
   async courseRoster(
     user: AuthenticatedUser,
@@ -317,14 +320,14 @@ export class KoskAdminService {
     }
     const rows = await this.repo.courseRoster(koskId);
     const items = await Promise.all(
-      rows.map(async ({ archivedLevel, ...row }) => {
+      rows.map(async ({ hiddenLevel: recorded, ...row }) => {
         if (row.status !== "HIDDEN") {
           return { ...row, hiddenLevel: null, canRestore: false };
         }
         const hiddenLevel = hiderLevelOf({
           type: "course",
           madrasahId: row.madrasah?.id ?? null,
-          archivedLevel,
+          archivedLevel: recorded,
         });
         return {
           ...row,

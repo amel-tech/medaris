@@ -153,6 +153,7 @@ src/models/GrantResponse.ts
 src/models/GroupUserResponse.ts
 src/models/HeadDelegationKind.ts
 src/models/HeadDelegationResponse.ts
+src/models/HeadDelegationScopeType.ts
 src/models/HealthCheckDto.ts
 src/models/HideLevel.ts
 src/models/HostingCourseStatus.ts

@@ -37,9 +37,10 @@ export async function hideMedrese(
 }
 
 /**
- * "Medreseyi geri al" (`POST /madrasahs/:id/restore`): by the level that hid
- * it or above (MDRS-143), so a refusal is ARCHIVE_RESTORE_LEVEL and the page
- * words it. The courses hidden with the medrese come back with it.
+ * "Medreseyi geri getir" (`POST /madrasahs/:id/restore`): the medrese and the
+ * courses hidden with it, by the level that hid it or one above. A refusal is
+ * its code (ARCHIVE_RESTORE_LEVEL when Medaris yönetimi hid it,
+ * MADRASAH_NOT_HIDDEN when it is shown already) and the page words it.
  */
 export async function restoreMedrese(
   madrasahId: string
@@ -48,8 +49,7 @@ export async function restoreMedrese(
     await api.madrasahs.restoreMadrasah({ id: madrasahId });
     return null;
   });
-  if (!result.success) {
+  if (!result.success)
     console.error("Error bringing the medrese back:", result.error);
-  }
   return outcomeOf(result);
 }

@@ -36,7 +36,9 @@ import {
   hiddenAtLabel,
   impactLines,
   type Messages,
+  mayRestore,
   PLATFORM_TYPE_FILTERS,
+  restoreErrorKey,
   type ScopeValue,
   scopeQuery,
   sessionWhen,
@@ -179,15 +181,15 @@ export function ArchiveView({ mode, initial, scopes, pageSize }: Props) {
       setItems((current) => current.filter((i) => i.id !== item.id));
       setTotal((n) => Math.max(0, n - 1));
     }
+    if (code === "ARCHIVE_RESTORE_LEVEL") {
+      // Hidden above the viewer's level since the list was read: the row says so now.
+      setItems((current) =>
+        current.map((i) => (i.id === item.id ? { ...i, canRestore: false } : i))
+      );
+    }
+    const key = restoreErrorKey(code);
     toast.error(t("restoreFailed"), {
-      description:
-        code === "ARCHIVE_PARENT_HIDDEN"
-          ? t("restoreParentHidden")
-          : code === "ARCHIVE_ITEM_NOT_FOUND"
-            ? t("restoreGone")
-            : code === "ARCHIVE_RESTORE_LEVEL"
-              ? tl("restoreLevel")
-              : result.error,
+      description: key ? t(key) : result.error,
       duration: Number.POSITIVE_INFINITY,
     });
   };
@@ -338,7 +340,7 @@ export function ArchiveView({ mode, initial, scopes, pageSize }: Props) {
         const context = contextParts(item, t, when);
         return (
           <span className="flex flex-col items-end gap-1">
-            {item.canRestore ? (
+            {mayRestore(item) ? (
               <Button
                 variant="outline"
                 size="small"

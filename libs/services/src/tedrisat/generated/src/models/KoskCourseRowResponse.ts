@@ -13,13 +13,6 @@
  */
 
 import { mapValues } from '../runtime';
-import type { HideLevel } from './HideLevel';
-import {
-    HideLevelFromJSON,
-    HideLevelFromJSONTyped,
-    HideLevelToJSON,
-    HideLevelToJSONTyped,
-} from './HideLevel';
 import type { KoskCourseMuderrisResponse } from './KoskCourseMuderrisResponse';
 import {
     KoskCourseMuderrisResponseFromJSON,
@@ -91,13 +84,7 @@ export interface KoskCourseRowResponse {
      */
     hiddenAt?: Date | null;
     /**
-     * The level that hid it (course, madrasah, kosk, platform); null while it is shown. A course hidden before levels were recorded counts as the lowest level that could have hidden it: the medrese's for a medrese course, the köşk's for its own.
-     * @type {HideLevel}
-     * @memberof KoskCourseRowResponse
-     */
-    hiddenLevel: HideLevel | null;
-    /**
-     * Whether the caller may bring the course back: it is hidden, they hold a code of the course ladder on it and act at the level that hid it or above.
+     * Whether the caller may bring this hidden course back (Geri al): false for a shown course and for one hidden at a level above the caller's (MDRS-135), which would answer 403 ARCHIVE_RESTORE_LEVEL.
      * @type {boolean}
      * @memberof KoskCourseRowResponse
      */
@@ -145,7 +132,6 @@ export function instanceOfKoskCourseRowResponse(value: object): value is KoskCou
     if (!('coverHue' in value) || value['coverHue'] === undefined) return false;
     if (!('weekCount' in value) || value['weekCount'] === undefined) return false;
     if (!('status' in value) || value['status'] === undefined) return false;
-    if (!('hiddenLevel' in value) || value['hiddenLevel'] === undefined) return false;
     if (!('canRestore' in value) || value['canRestore'] === undefined) return false;
     if (!('createdAt' in value) || value['createdAt'] === undefined) return false;
     if (!('muderris' in value) || value['muderris'] === undefined) return false;
@@ -172,7 +158,6 @@ export function KoskCourseRowResponseFromJSONTyped(json: any, ignoreDiscriminato
         'madrasah': json['madrasah'] == null ? undefined : KoskOverviewMadrasahResponseFromJSON(json['madrasah']),
         'status': KoskCourseStatusFromJSON(json['status']),
         'hiddenAt': json['hiddenAt'] == null ? undefined : (new Date(json['hiddenAt'])),
-        'hiddenLevel': HideLevelFromJSON(json['hiddenLevel']),
         'canRestore': json['canRestore'],
         'createdAt': (new Date(json['createdAt'])),
         'muderris': ((json['muderris'] as Array<any>).map(KoskCourseMuderrisResponseFromJSON)),
@@ -200,7 +185,6 @@ export function KoskCourseRowResponseToJSONTyped(value?: KoskCourseRowResponse |
         'madrasah': KoskOverviewMadrasahResponseToJSON(value['madrasah']),
         'status': KoskCourseStatusToJSON(value['status']),
         'hiddenAt': value['hiddenAt'] === null ? null : ((value['hiddenAt'] as any)?.toISOString()),
-        'hiddenLevel': HideLevelToJSON(value['hiddenLevel']),
         'canRestore': value['canRestore'],
         'createdAt': ((value['createdAt']).toISOString()),
         'muderris': ((value['muderris'] as Array<any>).map(KoskCourseMuderrisResponseToJSON)),

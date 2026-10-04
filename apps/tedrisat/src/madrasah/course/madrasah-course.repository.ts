@@ -9,7 +9,6 @@ import {
   type SQL,
   sql,
 } from "drizzle-orm";
-import { recordHide } from "../../archive/hide-audit";
 import type { HideLevel } from "../../archive/hide-level";
 import { DatabaseService } from "../../database/database.service";
 import {
@@ -90,6 +89,23 @@ export class MadrasahCourseRepository {
       .groupBy(courses.koskId);
     const countOf = new Map(counts.map((c) => [c.koskId, c.n]));
     return rows.map((r) => ({ ...r, courseCount: countOf.get(r.id) ?? 0 }));
+  }
+
+  /** Whether `userId` holds a MUDERRIS seat on the course now (MDRS-134). */
+  async holdsMuderrisSeat(courseId: string, userId: string): Promise<boolean> {
+    const rows = await this.db
+      .select({ id: roleAssignments.id })
+      .from(roleAssignments)
+      .where(
+        and(
+          eq(roleAssignments.userId, userId),
+          eq(roleAssignments.role, ASSIGNED_ROLES.MUDERRIS),
+          eq(roleAssignments.scopeId, courseId),
+          isHeld()
+        )
+      )
+      .limit(1);
+    return rows.length > 0;
   }
 
   /**
@@ -323,11 +339,7 @@ export class MadrasahCourseRepository {
   ): Promise<HideMadrasahCourseResult> {
     return this.db.transaction(async (tx) => {
       const [course] = await tx
-        .select({
-          title: courses.title,
-          koskId: courses.koskId,
-          archivedAt: courses.archivedAt,
-        })
+        .select({ title: courses.title, archivedAt: courses.archivedAt })
         .from(courses)
         .where(
           and(eq(courses.id, courseId), eq(courses.madrasahId, madrasahId))
@@ -346,15 +358,12 @@ export class MadrasahCourseRepository {
           updatedAt: now,
         })
         .where(eq(courses.id, courseId));
-      await recordHide(tx, {
+      await tx.insert(auditLog).values({
         actorId,
-        verb: "hide",
+        action: "course.hide",
         entity: "course",
         entityId: courseId,
-        title: course.title,
-        level,
-        koskId: course.koskId,
-        madrasahId,
+        details: { madrasahId, title: course.title, level },
       });
       return "hidden";
     });

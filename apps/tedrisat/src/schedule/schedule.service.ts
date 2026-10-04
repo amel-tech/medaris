@@ -30,7 +30,7 @@ export class ScheduleService {
       window.from,
       window.to
     );
-    return rows.map((row) => toResponse(row, now));
+    return this.handedOut(userId, rows, now, "schedule");
   }
 
   /** The caller's next sessions: the phone menu's "Sıradaki celse" (tedris/44). */
@@ -45,7 +45,40 @@ export class ScheduleService {
       new Date(now.getTime() + UPCOMING_DAYS * DAY_MS),
       Math.min(Math.max(limit, 1), MAX_UPCOMING)
     );
-    return rows.map((row) => toResponse(row, now));
+    return this.handedOut(userId, rows, now, "schedule.upcoming");
+  }
+
+  /**
+   * The responses, after the record of what they open. Only the köşk's nazımı
+   * still finds a passive course in these lists (`enrolledCourseIds`), and a
+   * live link of one is passive content: it goes on the record before it is
+   * returned, as the course's own page records it (owner, 4 October: their
+   * reads stay audited).
+   */
+  private async handedOut(
+    userId: string,
+    rows: IScheduledSession[],
+    now: Date,
+    via: string
+  ): Promise<ScheduleSessionResponse[]> {
+    const responses = rows.map((row) => toResponse(row, now));
+    const linked = new Map<string, string>();
+    for (const response of responses) {
+      if (response.meetingUrl) {
+        linked.set(response.courseId, response.courseTitle);
+      }
+    }
+    const passive = await this.repo.passiveScopesOf([...linked.keys()]);
+    await this.repo.recordPassiveOpens(
+      userId,
+      [...passive].map(([courseId, passiveScope]) => ({
+        courseId,
+        courseTitle: linked.get(courseId) ?? "",
+        passiveScope,
+      })),
+      via
+    );
+    return responses;
   }
 }
 

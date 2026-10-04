@@ -305,7 +305,8 @@ describe("Hide and restore by catalogue code (MDRS-143, e2e)", () => {
         [courseId]: ["kosk", true],
         [otherCourseId]: ["platform", true],
       });
-      // No platform code hides a course: Medaris yönetimi reads, the başnazım restores.
+      // Holding only `platform.kosk_edit`: Medaris yönetimi reads; a course is
+      // brought back by `platform.course_hide`, which this person was not given.
       expect(await rows(MEDARIS_KOSK_ID)).toEqual({
         [courseId]: ["kosk", false],
         [otherCourseId]: ["platform", false],
@@ -329,11 +330,18 @@ describe("Hide and restore by catalogue code (MDRS-143, e2e)", () => {
       ).not.toBeNull();
     });
 
-    it("lets a Medaris nazımı holding platform.kosk_edit bring a hidden köşk back through the Arşiv, once, audited", async () => {
+    it("brings a hidden köşk back on its own route for a Medaris nazımı holding platform.kosk_edit, once, audited; the Arşiv leaves köşks to the başnazım", async () => {
       await post(NAZIM_ID, `/kosks/${koskId}/hide`).expect(200);
-      await post(MEDARIS_KOSK_ID, `/archive/kosk/${koskId}/restore`).expect(
-        200
-      );
+      const refused = await post(
+        MEDARIS_KOSK_ID,
+        `/archive/kosk/${koskId}/restore`
+      ).expect(403);
+      expect(refused.body.code).toBe("ARCHIVE_FORBIDDEN");
+      expect(
+        (await db().select().from(kosks).where(eq(kosks.id, koskId)))[0]
+          .archivedAt
+      ).not.toBeNull();
+      await post(MEDARIS_KOSK_ID, `/kosks/${koskId}/restore`).expect(200);
       expect(
         (await db().select().from(kosks).where(eq(kosks.id, koskId)))[0]
           .archivedAt

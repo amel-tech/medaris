@@ -312,7 +312,10 @@ export class KoskController {
     operationId: "createKosk",
   })
   @ApiCreatedResponse({ type: KoskResponse })
-  @ApiForbiddenResponse()
+  @ApiForbiddenResponse({
+    description:
+      "SELF_GRANT_REFUSED: a caller other than SYSTEM_ADMIN named themselves in `managerUserIds` or left it out. Written to the audit log.",
+  })
   // SYSTEM_ADMIN only (owner decision, 2026-10-02), replacing MDRS-43's
   // self-service exemption of 2026-09-23. `platform.kosk_create` is no
   // relationship's and no role's default, so only the realm bypass and a Medaris
@@ -328,17 +331,17 @@ export class KoskController {
   ): Promise<KoskResponse> {
     const ownerId = request.user.sub;
     // With `managerUserIds` this is nizam/10: the başnazım opens the köşk
-    // for the nazımları they named and is not one of them.
+    // for the nazımları they named and is not one of them. Without it the
+    // caller is the köşk's only nazım, which only the başnazım may make
+    // himself: `platform.kosk_create` opens a köşk, it does not seat its nazım.
     const { managerUserIds, ...fields } = koskDto;
-    if (managerUserIds) {
-      await this.selfGrant.assertNotSelf(
-        request.user,
-        managerUserIds,
-        { entity: ENTITIES.KOSK, id: "new" },
-        { role: ASSIGNED_ROLES.KOSK_NAZIM, always: true },
-        "kosk.create.nazims"
-      );
-    }
+    await this.selfGrant.assertNotSelf(
+      request.user,
+      managerUserIds ?? [ownerId],
+      { entity: ENTITIES.KOSK, id: "new" },
+      { role: ASSIGNED_ROLES.KOSK_NAZIM, always: true },
+      managerUserIds ? "kosk.create.nazims" : "kosk.create"
+    );
     const created = managerUserIds
       ? await this.koskAdmin.createWithNazims(request.user, koskDto)
       : await this.koskService.create({ ownerId, ...fields });
@@ -364,7 +367,9 @@ export class KoskController {
     @Param("id", ParseUUIDPipe) id: string,
     @Body() koskDto: UpdateKoskDto
   ): Promise<KoskResponse> {
-    await this.koskService.update(id, koskDto, request.user.sub);
+    await this.koskService.update(id, koskDto, request.user.sub, {
+      systemAdmin: this.authz.isSystemAdmin(request.user),
+    });
     return this.koskService.findById(id, request.user.sub);
   }
 
