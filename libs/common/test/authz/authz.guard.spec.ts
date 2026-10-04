@@ -349,6 +349,53 @@ describe("AuthzGuard", () => {
     });
   });
 
+  describe("a closed resource (resolver.closure)", () => {
+    class Closed extends NotFoundException {}
+    const meta: AuthzMeta = {
+      permission: PERMISSIONS.COURSE_VIEW,
+      resolve: () => ({ entity: ENTITIES.COURSE, id: "c-1" }),
+    };
+    const closedResolver = (): RoleResolver => ({
+      resolve: vi.fn().mockResolvedValue(RELATIONS.PUBLIC),
+      closure: vi.fn().mockResolvedValue({
+        openTo: [PERMISSIONS.COURSE_HIDE],
+        notFound: new Closed("closed"),
+      }),
+    });
+
+    it("answers the closure's 404 to a signed-in caller who does not hold the codes, before it decides", async () => {
+      const loader = contextWith();
+      const guard = new AuthzGuard(
+        reflectorReturning(meta),
+        new AuthzService(closedResolver(), loader),
+        moduleRefStub
+      );
+      const { ctx } = buildContext({ user: { sub: "u-1" } });
+      await expect(guard.canActivate(ctx)).rejects.toBeInstanceOf(Closed);
+    });
+
+    it("lets the caller who holds a code through to the decision", async () => {
+      const guard = new AuthzGuard(
+        reflectorReturning(meta),
+        new AuthzService(
+          closedResolver(),
+          contextWith({
+            chain: [{ type: SCOPE_TYPES.KOSK, id: "k-1" }, platform],
+            roles: [
+              {
+                role: ASSIGNED_ROLES.KOSK_NAZIM,
+                scope: { type: SCOPE_TYPES.KOSK, id: "k-1" },
+              },
+            ],
+          })
+        ),
+        moduleRefStub
+      );
+      const { ctx } = buildContext({ user: { sub: "u-1" } });
+      await expect(guard.canActivate(ctx)).resolves.toBe(true);
+    });
+  });
+
   it("writes metadata under AUTHZ_KEY (smoke test)", () => {
     expect(AUTHZ_KEY).toBe("authz");
   });

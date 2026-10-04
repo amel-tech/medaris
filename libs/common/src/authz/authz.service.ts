@@ -98,8 +98,9 @@ export class AuthzService {
     const granted = wanted.filter((code) => effective.codes.has(code));
     if (granted.length === 0) return false;
 
-    // A passive scope is closed to everyone but platform management, and
-    // every open of its content is on the record (nizam/14). A page view or
+    // A passive scope is closed to everyone but platform management and the
+    // nazımı of the köşk that holds it, and every open of its content is on
+    // the record (nizam/14). A page view or
     // any other code that is no content opens nothing and writes nothing
     // (review L1: one page view wrote two rows).
     if (
@@ -115,6 +116,25 @@ export class AuthzService {
   }
 
   /**
+   * Refuses a resource the resolver says is closed (`RoleResolver.closure`) to
+   * a caller who holds none of the codes that keep it open, with the closure's
+   * own 404, and does nothing for an open resource. `AuthzGuard` runs it in
+   * front of every signed-in decision; services that decide outside a route
+   * (an archive restore, a read with no guard) call it themselves. A null
+   * caller holds nothing.
+   */
+  async assertOpen(
+    user: AuthenticatedUser | null,
+    rawResource: ResourceRef
+  ): Promise<void> {
+    const resource = normalized(rawResource);
+    const closure = await this.relations.closure?.(resource);
+    if (!closure) return;
+    if (user && (await this.can(user, resource, closure.openTo))) return;
+    throw closure.notFound;
+  }
+
+  /**
    * What the caller holds on a resource, for the screens and the tests: the
    * same computation `can` runs, without its audit rows.
    *
@@ -123,6 +143,9 @@ export class AuthzService {
    * "for every course" and the course work of a role held above the courses
    * count. It is what a giver may hand on at a medrese's level, since a
    * medrese-level grant of course work reaches all of its courses (MDRS-135).
+   * The courses' own köşks are not on a medrese's chain, so the loader is told:
+   * when every köşk they are held in is passive, their content is closed here
+   * as it is on each of them.
    */
   async effective(
     user: AuthenticatedUser,
@@ -132,11 +155,17 @@ export class AuthzService {
     const resource = normalized(rawResource);
     const relation = await this.relations.resolve(user.sub, resource);
     if (!relation) return null;
-    const ctx = await this.loader.load(user.sub, resource);
-    const chain =
-      options.acrossCourses && resource.entity !== ENTITIES.COURSE
-        ? [{ type: SCOPE_TYPES.COURSE, id: null }, ...ctx.chain]
-        : ctx.chain;
+    const acrossCourses =
+      options.acrossCourses === true && resource.entity !== ENTITIES.COURSE;
+    // Across the courses, a scope that closes every one of them (the only
+    // köşk a medrese's courses are held in, gone passive) closes their
+    // content here too, as the engine does on each course.
+    const ctx = acrossCourses
+      ? await this.loader.load(user.sub, resource, { acrossCourses })
+      : await this.loader.load(user.sub, resource);
+    const chain = acrossCourses
+      ? [{ type: SCOPE_TYPES.COURSE, id: null }, ...ctx.chain]
+      : ctx.chain;
     return effectivePermissions(
       {
         entity: resource.entity,

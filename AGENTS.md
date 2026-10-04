@@ -1,0 +1,82 @@
+# AGENTS.md
+
+Instructions for AI agents working in this repository. Read [`README.md`](README.md) first for the layout and commands; this file covers what is easy to get wrong.
+
+## What this repo is
+
+A single pnpm workspace orchestrated by Nx: the NestJS APIs (`apps/tedrisat`, `apps/teskilat`), the web apps, and the `@medaris/*` libraries under `libs/`. It was formed by merging `madrasah-backend` and `madrasah-frontend` with history preserved. Any instruction that describes the old separate repositories is stale.
+
+## Before you touch anything
+
+- **`pnpm install` in every fresh clone and every new git worktree.** The husky dispatcher lives in git-ignored `.husky/_`; without it `commitlint` and `lint-staged` silently do not run and a bad commit lands clean.
+- **`libs/common` must be built before the Nest apps start**, otherwise they fail at boot with `TS2307`.
+- Use Nx **project names**, not directory names: `apps/tedris` is `tedris-web`, `apps/nizam` is `nizam-web`, `apps/nazir` is `nazir-web`, `apps/landing` is `landing-web`.
+
+## The gate
+
+```bash
+pnpm nx run-many -t typecheck --skip-nx-cache
+pnpm nx run-many -t test --skip-nx-cache
+pnpm nx run-many -t build --skip-nx-cache
+pnpm nx run-many -t lint --skip-nx-cache
+pnpm nx run-many -t module-boundaries --skip-nx-cache
+```
+
+Expected: every project green on typecheck, lint and module-boundaries; every build target green; every suite green. Counts are deliberately not written here; read them off the command output.
+
+Prerequisites that look optional and are not:
+
+- **`-t test` needs a running Docker daemon, plus `curl` and `jq` on the host.** The tedrisat e2e suites (`apps/tedrisat/test/e2e/*.e2e.spec.ts`, matched by its `vitest.config.ts`) start a Testcontainers Postgres, and `keycloak-audience.e2e.spec.ts` also starts a Keycloak container and runs `tools/keycloak/setup-realm.sh`, which exits 1 when `curl` or `jq` is missing: a missing tool, not a regression. `test:e2e` re-runs the same suites under a separate config; it is not extra coverage.
+- **`-t build` needs the root `.env` for the Next.js apps.** They validate the environment at build time, so a fresh worktree fails with `Invalid environment variables` until `cp .env.example .env` has been run. That is a missing file, not a regression.
+- **The tedrisat suite may not reach the network (MDRS-89).** `apps/tedrisat/test/setup-no-network.ts` replaces `globalThis.fetch` in every worker and refuses any host that is not loopback, and it records the refusal, so a caller that swallows the error still fails the test in `afterEach`. That second half is load-bearing: `KeycloakPublicKeyProvider.onModuleInit` catches its own failure and logs, which is how every `createTestApp` once called the live realm for months without anything going red. Containers on loopback are fine. It covers `fetch` only: `node:http`/`node:https`, `undici.request` and child processes (`setup-realm.sh` shells out to `curl`) are not seen.
+
+**`-t test` is the only gate that catches a broken NestJS container.** `typecheck` and `build` stay green while dependency injection is already broken at runtime; this has happened, see below. Never skip it.
+
+## Traps that have already cost time
+
+- **`useImportType` breaks NestJS DI.** Rewriting a constructor parameter type to `import type` erases it from `design:paramtypes`, and Nest can no longer resolve the dependency. Most tests went red this way while typecheck and build stayed green. `biome.json` disables the rule for the packages that use `emitDecoratorMetadata` (`apps/tedrisat`, `apps/teskilat`, `libs/common`). Do not re-enable it there.
+- **`biome.json` must stay comment-free.** A comment anywhere in that file, including *above* the `overrides` array, makes Biome silently drop the override's `includes`, which re-enables `useImportType` on the Nest packages. Measured, not theorised. Put explanatory notes in `docs/migration/` instead.
+- **Do not partially stage a file the formatter will reflow.** `git add -p` plus `biome check --write` re-applies the hidden hunks at a stale offset and can produce a syntax error while lint-staged still exits 0. Stage whole files.
+- **`NODE_ENV=development` in a web app's `.env` breaks `next build`.** React resolves its development bundle against a production SSR runtime and the build dies prerendering `/_global-error` with `Cannot read properties of null (reading 'useContext')`. Measured on the web apps. The root `.env.example` therefore scopes `NODE_ENV` to `API__`; never broadcast it.
+- **There is one `.env`, at the root (MDRS-25).** `apps/<app>/.env` no longer exists and must not be recreated: Next reads a project-directory `.env` on its own, so a stray file silently shadows keys for that one app. The prefix translation lives in `libs/env` (`@medaris/env`), imported by each `next.config.js` and by `apps/<api>/src/load-env.ts`.
+- **`@medaris/env` must stay buildless and platform-neutral.** `next.config.js` is evaluated before any TypeScript in the repo has been compiled, so the implementation is `src/root-env.cjs` with no `build` target and the Next apps reach it through `createRequire`. Giving it a `dist/`-only entry point, or any `platform:*` tag, locks out some of its consumers. **Not finding `pnpm-workspace.yaml` throws**; that is stated once, in `findRepoRoot`, and no call site may re-add a silent skip. The Nest runner images therefore copy `pnpm-workspace.yaml` and `libs/env`; see `docs/migration/mdrs-66-env-package.md`.
+- **A new workspace package means editing every `apps/*/Dockerfile`.** Their `deps` (and `prod-deps`) stages enumerate every registered package's `package.json` because `pnpm install --frozen-lockfile` needs all of them present. Adding a package without adding the `COPY` line breaks the image builds while every local gate stays green.
+- **`nx.json` `namedInputs` values must all be arrays.** A `"//"` comment inside that object makes Nx reject the whole file with `Given napi value is not an array on NxJson.namedInputs`. Notes go at the top level.
+- **`load-env` must stay the first import in a Nest `main.ts`.** `./otel` and `ConfigModule` both read the environment as they are evaluated, and ES import order is evaluation order.
+- **Biome exits 0 on warnings.** `biome check` returns success with warn-severity findings present, so `-t lint` alone cannot catch a growing warning count. `tools/ci/` holds a ratchet that fails closed; do not weaken it.
+
+## Boundaries
+
+ESLint exists **only** to run `@nx/enforce-module-boundaries`. All formatting and linting belongs to Biome; do not add style rules to `eslint.config.mjs`.
+
+Boundaries **are enforced**. Every project carries `tags` in its `project.json`, and `eslint.config.mjs` holds the real `depConstraints` (ADR-001 §D5); read those, not a copy here. Two axes are enforced (`scope`, `platform`); `type:*` is documentary and carries no constraint. The `allow` list holds only the workspace-root Vitest base configs, which the per-project configs can only reach by relative path, and each entry carries its removal condition inline. Adding another without one is a regression.
+
+Rules that are easy to get wrong when editing this:
+
+- **`scope:shared` libs must stay platform-neutral.** They carry no `platform:*` tag on purpose, so both web and node code may import them. Adding one silently locks half the repo out.
+- **Platform isolation uses `notDependOnLibsWithTags`, never a positive list.** `onlyDependOnLibsWithTags` fails on any dependency on an *untagged* project, which would break every `scope:shared` edge.
+- **Every new app and lib needs tags in the same PR that creates it.** `depConstraints` cannot express "a tag is mandatory": an untagged project matches no constraint and is therefore unconstrained. An app that only gets `scope:app` falls back to the permissive generic rule and loses its platform narrowing.
+- **`type:*` is documentary.** Do not write a constraint against it without amending ADR-001.
+
+What the linter does **not** catch (measured, MDRS-13):
+
+- `@medaris/<app>` package-specifier imports between apps. Apps declare no `main`/`exports`, so Nx's target-project locator resolves the specifier to nothing and the rule never runs. Such an import cannot compile either, so it is a documentation gap rather than a live hole. The *relative* form (`../../tedris/lib/...`) **is** caught.
+- CSS `@import` edges (`ui → tokens`). ESLint never sees them; the declared dependency plus pnpm's strict `node_modules` is the enforcement there.
+
+## Commits and pull requests
+
+Conventional commits, English, against the scope enum in `commitlint.config.mjs`.
+
+Do not bypass the hooks (`--no-verify`): fix the message or the formatting instead. Do not rewrite commits that other people, or a stacked pull request, already build on.
+
+## Never modify
+
+- `docs/PRD.md` and `docs/ecosystem-boundaries.md`: authoritative product and governance documents.
+
+## Releases
+
+`release-please-config.json` and `.release-please-manifest.json` at the root are the only release configuration. Each component's name is the same in `commitlint.config.mjs`'s app scopes, the Nx project names, and the `<component>-v<version>` tag prefixes the deploy workflows guard on (ADR-001 §D3/§D10). `node tools/ci/assert-release-config.mjs` enforces that chain; when it fails, fix the file it names rather than the assertion. **The manifest is the version of record**: release-please bumps from it, so an edit there re-releases or skips a version. Do not hand-edit versions in an app's `package.json`.
+
+## Writing documentation
+
+Verify every number against command output before writing it down. A migration record in this repo once claimed test and file counts and "nothing is lost", and all of it was wrong and needed a follow-up pull request to correct. If you could not verify something, write that it was not verified rather than omitting it.

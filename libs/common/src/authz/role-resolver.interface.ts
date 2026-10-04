@@ -1,5 +1,17 @@
+import type { PermissionCode } from "./permissions";
 import type { AnonymousRelation, Relation } from "./relations";
 import type { ResourceRef } from "./scopes";
+
+/**
+ * A resource that is closed to everyone but the people above it: what keeps it
+ * open, and the module's own 404 for the rest.
+ */
+export interface ResourceClosure {
+  /** Holding any of these on the resource keeps it open (the başnazım always does). */
+  openTo: readonly PermissionCode[];
+  /** What a caller who may not open it is told: the same 404 as a missing resource. */
+  notFound: Error;
+}
 
 /**
  * Contract for the live relationship layer.
@@ -28,6 +40,20 @@ export interface RoleResolver {
     userId: string,
     resource: ResourceRef
   ): Promise<Relation | null> | Relation | null;
+
+  /**
+   * Whether `resource` is closed (a course of a hidden köşk, MDRS-143), asked of
+   * every signed-in caller by `AuthzGuard` in front of the permission decision,
+   * so one rule closes every route on the resource, the ones added later too.
+   * `null` when it is open. Read from the resource's own state, never from a
+   * cascade, so what a hide closes a restore reopens with no column to keep in
+   * step.
+   *
+   * Optional: a resolver with nothing to close answers nothing.
+   */
+  closure?(
+    resource: ResourceRef
+  ): Promise<ResourceClosure | null> | ResourceClosure | null;
 
   /**
    * Whether a caller with NO token may act on `resource` (MDRS-45). Consulted

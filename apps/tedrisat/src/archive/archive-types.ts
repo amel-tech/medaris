@@ -38,6 +38,12 @@ export const MADRASAH_ARCHIVE_ITEM_TYPES: readonly ArchiveItemType[] = [
   "recording",
 ];
 
+/** The types one course's own archive lists: the weeks and sessions of it (MDRS-143). */
+export const COURSE_ARCHIVE_ITEM_TYPES: readonly ArchiveItemType[] = [
+  "week",
+  "session",
+];
+
 /** The types with a table behind them. */
 export const STORED_ARCHIVE_ITEM_TYPES: readonly ArchiveItemType[] = [
   "kosk",
@@ -86,6 +92,8 @@ export interface IArchiveFilter {
   koskId?: string;
   /** Only what is hidden in courses of this medrese. */
   madrasahId?: string;
+  /** Only the weeks and sessions hidden in this one course. */
+  courseId?: string;
   type?: ArchiveItemType;
   /** A fragment of the title, matched case-insensitively. */
   q?: string;

@@ -287,6 +287,7 @@ const kosk: KoskDashboardResponse = {
   },
   sessionCounts: { upcoming: 4, past: 13, cancelled: 1 },
   missingLinkCount: 1,
+  contentLocked: false,
   tab: "UPCOMING",
   sessions: [
     {
@@ -350,6 +351,8 @@ const kosk: KoskDashboardResponse = {
       courseTitle: "Bina ve İzhar Şerhi",
       studentName: "Rümeysa Nur Karaca",
       requestedAt: new Date("2026-10-03T07:02:00Z"),
+      canDecide: true,
+      scopePassive: false,
     },
   ],
   muderris: [
@@ -453,6 +456,19 @@ describe("a köşk nazımı's home page (nizam 02)", () => {
     expect(fine).not.toContain("toplantı bağlantısı eksik");
     expect(fine).toContain("Önümüzdeki yedi günde 4 celse var.");
     expect(fine).toContain("/tr/kosks/k1/courses/new");
+  });
+
+  it("leaves out the applications card when the page is read without the köşk's management (contentLocked)", () => {
+    const locked = render(
+      <KoskHome
+        data={{ ...kosk, contentLocked: true, latestApplications: [] }}
+        nowIso={NOW}
+      />
+    );
+    expect(locked).not.toContain('id="home-applications"');
+    expect(locked).not.toContain('href="/tr/kosks/k1/basvurular"');
+    expect(locked).not.toContain("Bekleyen başvuru yok.");
+    expect(html).toContain('id="home-applications"');
   });
 
   it("says so when the week has no celse", () => {

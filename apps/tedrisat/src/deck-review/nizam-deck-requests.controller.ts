@@ -53,7 +53,7 @@ export class NizamDeckRequestsController {
   @ApiOperation({
     summary: "Deck publish requests (Bekleyen / Karara bağlanan)",
     description:
-      "The members' requests to make a deck public, oldest waiting first, or the answered ones, newest first, a page at a time. Both tab counts (every request, not the page) come with it. The Medaris başnazımı (SYSTEM_ADMIN) only.",
+      "The members' requests to make a deck public, oldest waiting first, or the answered ones, newest first, a page at a time. Both tab counts (every request, not the page) come with it. The Medaris başnazımı, or a Medaris nazımı holding platform.deck_publish.",
     operationId: "listDeckPublishRequests",
   })
   @ApiQuery({
@@ -152,5 +152,25 @@ export class NizamDeckRequestsController {
     @Body() dto: RejectReasonDto
   ): Promise<void> {
     return this.review.reject(request.user, id, dto.reason);
+  }
+
+  @ApiOperation({
+    summary: "Take a published deck back (Yayından kaldır)",
+    description:
+      "The deck becomes private again and the reason goes to its owner, who may ask again. The reason is required. The Medaris başnazımı (SYSTEM_ADMIN) only; the change is written to the audit log (`deck.unpublish`).",
+    operationId: "unpublishDeck",
+  })
+  @ApiNoContentResponse()
+  @ApiForbiddenResponse()
+  @ApiNotFoundResponse()
+  @ApiConflictResponse({ description: "DECK_NOT_PUBLISHED" })
+  @Post(":id/unpublish")
+  @HttpCode(HttpStatus.NO_CONTENT)
+  unpublish(
+    @Req() request: AuthenticatedUserRequest,
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body() dto: RejectReasonDto
+  ): Promise<void> {
+    return this.review.unpublish(request.user, id, dto.reason);
   }
 }

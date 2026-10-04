@@ -47,14 +47,17 @@ describe("Flashcard decks — anonymous access (e2e)", () => {
     const publicDeck = await request(app.getHttpServer())
       .post("/flashcard/decks")
       .set("Authorization", owner())
-      .send({ title: "Owner's Public Deck", isPublic: true });
+      .send({ title: "Owner's Public Deck" });
     expect(publicDeck.status).toBe(201);
     publicDeckId = publicDeck.body.id;
+    // Only the başnazım publishes (MDRS-148), so the row is written as his
+    // approval leaves it.
+    await dbUtils.publishDeck(publicDeckId);
 
     const privateDeck = await request(app.getHttpServer())
       .post("/flashcard/decks")
       .set("Authorization", owner())
-      .send({ title: "Owner's Private Deck", isPublic: false });
+      .send({ title: "Owner's Private Deck" });
     expect(privateDeck.status).toBe(201);
     privateDeckId = privateDeck.body.id;
   });
@@ -122,7 +125,7 @@ describe("Flashcard decks — anonymous access (e2e)", () => {
     it("PUT", async () => {
       const response = await request(app.getHttpServer())
         .put(`/flashcard/decks/${publicDeckId}`)
-        .send({ title: "Hijacked", isPublic: true });
+        .send({ title: "Hijacked" });
       expect(response.status).toBe(401);
     });
 
@@ -143,7 +146,7 @@ describe("Flashcard decks — anonymous access (e2e)", () => {
     it("POST a deck", async () => {
       const response = await request(app.getHttpServer())
         .post("/flashcard/decks")
-        .send({ title: "Anonymous deck", isPublic: true });
+        .send({ title: "Anonymous deck" });
       expect(response.status).toBe(401);
     });
 

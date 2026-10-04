@@ -27,6 +27,7 @@ import {
   loadArchiveImpact,
   restoreArchiveItem,
 } from "../actions";
+import { hideLevelOf } from "../hide-level";
 import {
   actionName,
   archiverLine,
@@ -35,7 +36,9 @@ import {
   hiddenAtLabel,
   impactLines,
   type Messages,
+  mayRestore,
   PLATFORM_TYPE_FILTERS,
+  restoreErrorKey,
   type ScopeValue,
   scopeQuery,
   sessionWhen,
@@ -81,6 +84,7 @@ const errorCode = (body: unknown): string | null =>
 export function ArchiveView({ mode, initial, scopes, pageSize }: Props) {
   const tm = useTranslations("nizam.ArchivePage");
   const t = tm as unknown as Messages;
+  const tl = useTranslations("nizam.HideLevel");
   const locale = useLocale();
   const timeZone = useTimeZone() ?? "Europe/Istanbul";
   const platform = mode.kind === "platform";
@@ -177,13 +181,15 @@ export function ArchiveView({ mode, initial, scopes, pageSize }: Props) {
       setItems((current) => current.filter((i) => i.id !== item.id));
       setTotal((n) => Math.max(0, n - 1));
     }
+    if (code === "ARCHIVE_RESTORE_LEVEL") {
+      // Hidden above the viewer's level since the list was read: the row says so now.
+      setItems((current) =>
+        current.map((i) => (i.id === item.id ? { ...i, canRestore: false } : i))
+      );
+    }
+    const key = restoreErrorKey(code);
     toast.error(t("restoreFailed"), {
-      description:
-        code === "ARCHIVE_PARENT_HIDDEN"
-          ? t("restoreParentHidden")
-          : code === "ARCHIVE_ITEM_NOT_FOUND"
-            ? t("restoreGone")
-            : result.error,
+      description: key ? t(key) : result.error,
       duration: Number.POSITIVE_INFINITY,
     });
   };
@@ -334,16 +340,25 @@ export function ArchiveView({ mode, initial, scopes, pageSize }: Props) {
         const context = contextParts(item, t, when);
         return (
           <span className="flex flex-col items-end gap-1">
-            <Button
-              variant="outline"
-              size="small"
-              iconLeft={<Icon name="undo" size="sm" />}
-              loading={busyId === item.id}
-              aria-label={actionName("restoreLabel", item, t, context)}
-              onClick={() => void restore(item)}
-            >
-              {t("restore")}
-            </Button>
+            {mayRestore(item) ? (
+              <Button
+                variant="outline"
+                size="small"
+                iconLeft={<Icon name="undo" size="sm" />}
+                loading={busyId === item.id}
+                aria-label={actionName("restoreLabel", item, t, context)}
+                onClick={() => void restore(item)}
+              >
+                {t("restore")}
+              </Button>
+            ) : (
+              // Whoever hid it, or a level above, brings it back (MDRS-143).
+              <span className="mds-caption">
+                {tl("locked", {
+                  level: tl(hideLevelOf(item.hiddenLevel, "kosk")),
+                })}
+              </span>
+            )}
             {platform ? (
               <Button
                 variant="link"

@@ -5,6 +5,7 @@ import {
   PRIVATE_READ_ACTION,
 } from "../../../src/deck-review/deck-review.service";
 import {
+  DeckNotPublishedError,
   DeckProposalNotFoundError,
   DeckRequestNotFoundError,
   DeckRequestNotPendingError,
@@ -33,15 +34,15 @@ const deck = (over: Record<string, unknown> = {}) => ({
 
 function serviceWith(
   repo: Record<string, unknown>,
-  { manages = true, exists = true } = {}
+  { manages = true, exists = true, holdsDeckPublish = false } = {}
 ) {
   const koskService = {
     isManager: vi.fn().mockResolvedValue(manages),
     exists: vi.fn().mockResolvedValue(exists),
   } as unknown as KoskService;
   const authz = {
-    // Nobody here holds `platform.deck_publish` by a grant: the başnazım alone.
-    can: async () => false,
+    // Whether the caller holds `platform.deck_publish` by a grant.
+    can: async () => holdsDeckPublish,
     isSystemAdmin: (u: { realm_access?: { roles?: string[] } }) =>
       u.realm_access?.roles?.includes("SYSTEM_ADMIN") ?? false,
   } as unknown as AuthzService;
@@ -60,7 +61,7 @@ function serviceWith(
 
 describe("DeckReviewService (MDRS-180)", () => {
   describe("publish requests", () => {
-    it("are the başnazım's alone", async () => {
+    it("are refused to a nazım without platform.deck_publish", async () => {
       const { service } = serviceWith({});
       await expect(
         service.listRequests(NAZIM, "PENDING", FIRST_PAGE)
@@ -71,6 +72,27 @@ describe("DeckReviewService (MDRS-180)", () => {
       await expect(service.readCards(NAZIM, DECK, false)).rejects.toThrow(
         DeckReviewForbiddenError
       );
+    });
+
+    it("are open to a nazım holding platform.deck_publish: list, cards, approve, reject", async () => {
+      const repo = {
+        listRequests: vi.fn().mockResolvedValue([]),
+        countRequests: vi.fn().mockResolvedValue({ pending: 0, decided: 0 }),
+        findDeck: vi.fn().mockResolvedValue(deck()),
+        countCards: vi.fn().mockResolvedValue(0),
+        audit: vi.fn(),
+        cards: vi.fn().mockResolvedValue([]),
+        approve: vi.fn().mockResolvedValue(true),
+        reject: vi.fn().mockResolvedValue(true),
+      };
+      const { service } = serviceWith(repo, { holdsDeckPublish: true });
+      await service.listRequests(NAZIM, "PENDING", FIRST_PAGE);
+      await service.readCards(NAZIM, DECK, false);
+      await service.approve(NAZIM, DECK);
+      await service.reject(NAZIM, DECK, "Kaynak yok.");
+      // The read is on the record under his own id.
+      expect(repo.audit.mock.calls[0][0]).toMatchObject({ actorId: "a2" });
+      expect(repo.approve).toHaveBeenCalledWith(DECK, "a2");
     });
 
     it("are read a page at a time, with the counts of every request", async () => {
@@ -169,6 +191,96 @@ describe("DeckReviewService (MDRS-180)", () => {
       });
       notify.mockRejectedValue(new Error("down"));
       await expect(service.approve(ADMIN, DECK)).resolves.toBeUndefined();
+    });
+  });
+
+  describe("unpublishing (MDRS-148)", () => {
+    const published = () =>
+      deck({ publishStatus: DeckPublishStatus.PUBLISHED });
+
+    it("is the başnazım's alone, even for a nazım holding platform.deck_publish", async () => {
+      const unpublish = vi.fn();
+      const { service, notify } = serviceWith(
+        { findDeck: vi.fn().mockResolvedValue(published()), unpublish },
+        { holdsDeckPublish: true }
+      );
+      await expect(service.unpublish(NAZIM, DECK, "Sebep.")).rejects.toThrow(
+        DeckReviewForbiddenError
+      );
+      expect(unpublish).not.toHaveBeenCalled();
+      expect(notify).not.toHaveBeenCalled();
+    });
+
+    it("hands the deck, the başnazım and the trimmed reason to the repository, then tells the owner", async () => {
+      const unpublish = vi.fn().mockResolvedValue(true);
+      const { service, notify } = serviceWith({
+        findDeck: vi.fn().mockResolvedValue(published()),
+        unpublish,
+      });
+      await service.unpublish(ADMIN, DECK, "  Kaynak yok. ");
+      expect(unpublish).toHaveBeenCalledWith(
+        expect.objectContaining({ id: DECK, authorId: "owner" }),
+        "a1",
+        "Kaynak yok."
+      );
+      expect(notify.mock.calls[0][0]).toMatchObject({
+        userId: "owner",
+        type: "DECK_PUBLISH_RESULT",
+        targetId: DECK,
+        params: {
+          outcome: "unpublished",
+          deckTitle: "Mehmûz fiiller",
+          reason: "Kaynak yok.",
+        },
+      });
+    });
+
+    it("answers 404 for a missing deck", async () => {
+      const { service } = serviceWith({
+        findDeck: vi.fn().mockResolvedValue(null),
+      });
+      await expect(service.unpublish(ADMIN, DECK, "Sebep.")).rejects.toThrow(
+        DeckRequestNotFoundError
+      );
+    });
+
+    it("takes a hidden published deck back as well: hiding does not make it private", async () => {
+      const unpublish = vi.fn().mockResolvedValue(true);
+      const { service } = serviceWith({
+        findDeck: vi
+          .fn()
+          .mockResolvedValue({ ...published(), archivedAt: new Date() }),
+        unpublish,
+      });
+      await service.unpublish(ADMIN, DECK, "Sebep.");
+      expect(unpublish).toHaveBeenCalledOnce();
+    });
+
+    it("answers 409 for a deck that is not published, and for one taken back meanwhile, and tells nobody", async () => {
+      for (const status of [
+        DeckPublishStatus.PRIVATE,
+        DeckPublishStatus.PENDING,
+        DeckPublishStatus.REJECTED,
+      ]) {
+        const unpublish = vi.fn();
+        const { service, notify } = serviceWith({
+          findDeck: vi.fn().mockResolvedValue(deck({ publishStatus: status })),
+          unpublish,
+        });
+        await expect(service.unpublish(ADMIN, DECK, "Sebep.")).rejects.toThrow(
+          DeckNotPublishedError
+        );
+        expect(unpublish).not.toHaveBeenCalled();
+        expect(notify).not.toHaveBeenCalled();
+      }
+      const { service, notify } = serviceWith({
+        findDeck: vi.fn().mockResolvedValue(published()),
+        unpublish: vi.fn().mockResolvedValue(false),
+      });
+      await expect(service.unpublish(ADMIN, DECK, "Sebep.")).rejects.toThrow(
+        DeckNotPublishedError
+      );
+      expect(notify).not.toHaveBeenCalled();
     });
   });
 

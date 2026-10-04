@@ -1,7 +1,14 @@
+import type { ScopeRef } from "@medaris/common";
 import { Injectable } from "@nestjs/common";
-import { eq, sql } from "drizzle-orm";
+import { and, eq, inArray, type SQL, sql } from "drizzle-orm";
+import type { IAuditEntry } from "../audit/audit.repository";
 import { DatabaseService } from "../database/database.service";
+import { passiveScopesOf } from "../database/passive-courses";
+import { isPassiveScope } from "../database/role-assignments";
+import { auditLog } from "../database/schema/audit.schema";
+import { courseMuderris } from "../database/schema/course.schema";
 import { kosks } from "../database/schema/kosk.schema";
+import { ASSIGNED_ROLES } from "../database/schema/role-assignment.schema";
 import { users } from "../database/schema/user.schema";
 import type {
   DashboardSessionTab,
@@ -25,7 +32,30 @@ export interface IKoskDashboardNumbers {
   missingLink: number;
 }
 
+/** What the caller may not be shown of a passive scope's courses (MDRS-136). */
+export interface IPassiveFilter {
+  /**
+   * Leave out the courses in a passive scope: the course whose müderris, köşk
+   * nazımı or başmüderris has gone. Their sessions and links and their
+   * applicants are content, which a passive scope closes to everyone but the
+   * köşk's own nazımları and the platform's management.
+   */
+  closePassive?: boolean;
+}
+
 const asDate = (value: Date | string): Date => new Date(value);
+
+/** Over `c` (course): the course sits in a passive scope (MDRS-136). */
+const passiveCourse = sql`(${isPassiveScope(
+  ASSIGNED_ROLES.MUDERRIS,
+  sql`c.id`
+)} or ${isPassiveScope(ASSIGNED_ROLES.KOSK_NAZIM, sql`c.kosk_id`)} or ${isPassiveScope(
+  ASSIGNED_ROLES.MEDRESE_BASMUDERRIS,
+  sql`c.madrasah_id`
+)})`;
+
+const openOnly = ({ closePassive }: IPassiveFilter): SQL =>
+  closePassive ? sql`and not ${passiveCourse}` : sql``;
 
 /**
  * The reads under a köşk nazımı's home page (MDRS-182, nizam/02): the numbers,
@@ -67,7 +97,11 @@ export class KoskDashboardRepository {
     and w.archived_at is null and l.archived_at is null
     and l.type = 'LIVE' and l.scheduled_at is not null`;
 
-  async numbers(koskId: string): Promise<IKoskDashboardNumbers> {
+  async numbers(
+    koskId: string,
+    passive: IPassiveFilter = {}
+  ): Promise<IKoskDashboardNumbers> {
+    const open = openOnly(passive);
     const result = await this.db.execute<Record<string, string>>(sql`
       select
         (select count(*) from courses c
@@ -79,28 +113,28 @@ export class KoskDashboardRepository {
         (select count(*) from enrollments e
            join courses c on c.id = e.course_id
           where c.kosk_id = ${koskId} and c.archived_at is null
-            and e.status = 'PENDING') as pending,
+            and e.status = 'PENDING' ${open}) as pending,
         (select count(*) from lessons l
            join course_weeks w on w.id = l.week_id
            join courses c on c.id = w.course_id
-          where c.kosk_id = ${koskId} and ${this.programme}
+          where c.kosk_id = ${koskId} and ${this.programme} ${open}
             and l.cancelled_at is null
             and l.scheduled_at >= now()
             and l.scheduled_at < now() + make_interval(days => ${UPCOMING_DAYS})) as upcoming,
         (select count(*) from lessons l
            join course_weeks w on w.id = l.week_id
            join courses c on c.id = w.course_id
-          where c.kosk_id = ${koskId} and ${this.programme}
+          where c.kosk_id = ${koskId} and ${this.programme} ${open}
             and l.cancelled_at is null and l.scheduled_at < now()) as past,
         (select count(*) from lessons l
            join course_weeks w on w.id = l.week_id
            join courses c on c.id = w.course_id
-          where c.kosk_id = ${koskId} and ${this.programme}
+          where c.kosk_id = ${koskId} and ${this.programme} ${open}
             and l.cancelled_at is not null) as cancelled,
         (select count(*) from lessons l
            join course_weeks w on w.id = l.week_id
            join courses c on c.id = w.course_id
-          where c.kosk_id = ${koskId} and ${this.programme}
+          where c.kosk_id = ${koskId} and ${this.programme} ${open}
             and l.cancelled_at is null
             and l.scheduled_at >= now()
             and l.scheduled_at < now() + make_interval(days => ${UPCOMING_DAYS})
@@ -121,7 +155,7 @@ export class KoskDashboardRepository {
   async sessions(
     koskId: string,
     tab: DashboardSessionTab,
-    opts: { onlyMissingLink?: boolean; limit?: number } = {}
+    opts: { onlyMissingLink?: boolean; limit?: number } & IPassiveFilter = {}
   ): Promise<KoskDashboardSessionResponse[]> {
     const where =
       tab === "UPCOMING"
@@ -163,7 +197,8 @@ export class KoskDashboardRepository {
         join course_weeks w on w.id = l.week_id
         join courses c on c.id = w.course_id
         left join madrasahs m on m.id = c.madrasah_id
-       where c.kosk_id = ${koskId} and ${this.programme} and ${where}
+       where c.kosk_id = ${koskId} and ${this.programme} ${openOnly(opts)}
+         and ${where}
        order by ${order}
        limit ${limit}`);
     if (result.rows.length === 0) return [];
@@ -204,10 +239,17 @@ export class KoskDashboardRepository {
     }));
   }
 
+  /**
+   * The newest waiting applications. `scopePassive` reads the three scopes the
+   * engine's loader reads for a course (its müderris, its köşk's nazım, its
+   * medrese's başmüderris) the way `enrolledCourseIds` does; whether the
+   * viewer may decide stays the engine's answer, added by the service.
+   */
   async latestApplications(
     koskId: string,
-    limit: number
-  ): Promise<KoskDashboardApplicationResponse[]> {
+    limit: number,
+    passive: IPassiveFilter = {}
+  ): Promise<Omit<KoskDashboardApplicationResponse, "canDecide">[]> {
     const result = await this.db.execute<{
       user_id: string;
       course_id: string;
@@ -215,17 +257,21 @@ export class KoskDashboardRepository {
       student_name: string | null;
       student_email: string | null;
       created_at: Date | string;
+      scope_passive: boolean;
     }>(sql`
       select e.user_id, c.id as course_id, c.title as course_title,
              coalesce(e.student_name,
                       nullif(btrim(concat_ws(' ', u.given_name, u.family_name)), '')) as student_name,
              coalesce(e.student_email, u.email) as student_email,
-             e.created_at at time zone 'UTC' as created_at
+             e.created_at at time zone 'UTC' as created_at,
+             (${isPassiveScope(ASSIGNED_ROLES.MUDERRIS, sql`c.id`)}
+              or ${isPassiveScope(ASSIGNED_ROLES.KOSK_NAZIM, sql`c.kosk_id`)}
+              or ${isPassiveScope(ASSIGNED_ROLES.MEDRESE_BASMUDERRIS, sql`c.madrasah_id`)}) as scope_passive
         from enrollments e
         join courses c on c.id = e.course_id
         left join users u on u.id = e.user_id
        where c.kosk_id = ${koskId} and c.archived_at is null
-         and e.status = 'PENDING'
+         and e.status = 'PENDING' ${openOnly(passive)}
        order by e.created_at desc, e.user_id
        limit ${limit}`);
     return result.rows.map((r) => ({
@@ -235,7 +281,44 @@ export class KoskDashboardRepository {
       studentName: r.student_name,
       studentEmail: r.student_email,
       requestedAt: asDate(r.created_at),
+      scopePassive: r.scope_passive,
     }));
+  }
+
+  /** Which of `courseIds` list `userId` among their müderrisler (MDRS-105). */
+  async taughtBy(userId: string, courseIds: string[]): Promise<Set<string>> {
+    if (courseIds.length === 0) return new Set();
+    const rows = await this.db
+      .selectDistinct({ courseId: courseMuderris.courseId })
+      .from(courseMuderris)
+      .where(
+        and(
+          eq(courseMuderris.userId, userId),
+          inArray(courseMuderris.courseId, courseIds)
+        )
+      );
+    return new Set(rows.map((row) => row.courseId));
+  }
+
+  /** The passive scope each of these courses sits in, if any (MDRS-136). */
+  passiveScopesOf(
+    courseIds: readonly string[]
+  ): Promise<Map<string, ScopeRef>> {
+    return passiveScopesOf(this.db, courseIds);
+  }
+
+  /** The page's reads that go on the record, in one statement. */
+  async record(entries: IAuditEntry[]): Promise<void> {
+    if (entries.length === 0) return;
+    await this.db.insert(auditLog).values(
+      entries.map((entry) => ({
+        actorId: entry.actorId,
+        action: entry.action,
+        entity: entry.entity,
+        entityId: entry.entityId,
+        details: entry.details ?? {},
+      }))
+    );
   }
 
   async muderris(koskId: string): Promise<KoskDashboardMuderrisResponse[]> {

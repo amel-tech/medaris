@@ -368,6 +368,36 @@ describe("Inactive scopes (e2e)", () => {
       ).expect(403);
     });
 
+    it("a Medaris nazımı with the permission gives a passive scope someone else, never themselves (review B1/M4)", async () => {
+      for (const [type, id] of [
+        ["KOSK", koskRemoved],
+        ["MADRASAH", madrasahExpired],
+        ["COURSE", courseRemoved],
+      ] as const) {
+        const res = await post(
+          `/nizam/inactive-scopes/${type}/${id}/assign`,
+          { userId: MEDARIS_ALLOWED },
+          MEDARIS_ALLOWED
+        ).expect(403);
+        expect(res.body.code).toBe("SELF_GRANT_REFUSED");
+        expect(
+          (await rolesIn(id)).filter((r) => r.userId === MEDARIS_ALLOWED)
+        ).toEqual([]);
+      }
+      const refused = await audit("permission.self_grant_refused");
+      expect(refused.map((r) => r.actorId)).toEqual(
+        Array(3).fill(MEDARIS_ALLOWED)
+      );
+      expect(refused.map((r) => r.entityId).sort()).toEqual(
+        [koskRemoved, madrasahExpired, courseRemoved].sort()
+      );
+      await post(
+        `/nizam/inactive-scopes/KOSK/${koskRemoved}/assign`,
+        { userId: NEW_PERSON },
+        MEDARIS_ALLOWED
+      ).expect(204);
+    });
+
     it("a nazımı whose appointment ended does not pass even with the grant left over", async () => {
       await db
         .update(roleAssignments)
