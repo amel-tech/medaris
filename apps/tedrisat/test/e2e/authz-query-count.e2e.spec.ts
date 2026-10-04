@@ -257,17 +257,17 @@ describe("What an authorization decision costs per request (MDRS-46, measurement
       path: () => `/madrasahs/${madrasahId}/courses`,
     },
     {
-      name: "GET /courses/:id, enrolled talebe (two decisions)",
+      name: "GET /courses/:id, enrolled talebe",
       caller: TALEBE_ID,
       path: () => `/courses/${enrolledCourseId}`,
     },
     {
-      name: "GET /courses/:id, signed-in outsider (two decisions)",
+      name: "GET /courses/:id, signed-in outsider",
       caller: OUTSIDER_ID,
       path: () => `/courses/${enrolledCourseId}`,
     },
     {
-      name: "GET /courses/:id, köşk nazımı (two decisions)",
+      name: "GET /courses/:id, köşk nazımı",
       caller: NAZIM_ID,
       path: () => `/courses/${enrolledCourseId}`,
     },
