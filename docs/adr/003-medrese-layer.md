@@ -5,12 +5,18 @@
 **Authors:** Argedik
 **Issue:** [MDRS-106](https://linear.app/amel-tech/issue/MDRS-106) (parent [MDRS-94](https://linear.app/amel-tech/issue/MDRS-94))
 
+> **Naming (4 October 2026).** The owner renamed the three delegated roles: the
+> medrese's role is now **medrese vekili** (formerly medrese nazırı), alongside
+> **Medaris vekili** and **ders vekili**. The app name **nazir** stays. Code
+> identifiers (`MADRASAH_NAZIR`, `madrasah_nazirs`), stored role strings and
+> routes keep their current spelling until the rename sweep, MDRS-144.
+
 ## Context
 
 `docs/PRD.md` §4.1 draws a three-level hierarchy: a **medrese** is an optional
 top layer (an institution), a **köşk** belongs to at most one medrese or stands
-alone, and every course belongs to exactly one köşk. A **medrese nazırı**
-governs a medrese — affiliates köşks, invites and removes nazırs — and has no
+alone, and every course belongs to exactly one köşk. A **medrese vekili**
+governs a medrese — affiliates köşks, invites and removes vekiller — and has no
 direct authority over individual courses (PRD §3 persona table, §4.1 bullets).
 
 Before this ADR only köşks existed in code. PRD M2-6 and OQ-10 asked for the
@@ -40,19 +46,19 @@ draws it.
 - `madrasahs` (`id`, unique `handle`, `name`, `description`, `cover_hue`,
   `created_by`, timestamps).
 - `madrasah_nazirs` (`madrasah_id`, `user_id`, `created_at`; primary key is
-  the pair). A medrese may have several nazırs.
+  the pair). A medrese may have several vekiller.
 - `kosks.madrasah_id`: nullable foreign key, `ON DELETE SET NULL`. A köşk
   belongs to at most one medrese; deleting a medrese makes its köşks
   standalone rather than deleting them.
-- Courses do not reference the medrese. A nazır reaches a course only through
-  its köşk, and gets no course scopes from being a nazır.
+- Courses do not reference the medrese. A vekil reaches a course only through
+  its köşk, and gets no course scopes from being a vekil.
 
 ### D2 — The code lives in tedrisat
 
 Schema, endpoints (`/madrasahs…`) and resolver branches are added to
 **tedrisat**, beside `kosks` and the resolver that needs both. Putting them in
 teskilat would first require giving teskilat a database, authentication and a
-way to answer "is this caller a nazır of this köşk's medrese" across a service
+way to answer "is this caller a vekil of this köşk's medrese" across a service
 boundary on every köşk request. Moving the layer to teskilat later is a
 separate decision, with its own ADR.
 
@@ -60,12 +66,12 @@ separate decision, with its own ADR.
 
 - Creating a medrese is `CREATE_MADRASAH`, which no matrix row grants: only
   `SYSTEM_ADMIN`, through the realm-role bypass.
-- Deleting a medrese is `DELETE`, which is removed from the nazır row: only
-  `SYSTEM_ADMIN` (the owner's decision of 26 September, MDRS-124). A nazır will
+- Deleting a medrese is `DELETE`, which is removed from the vekil row: only
+  `SYSTEM_ADMIN` (the owner's decision of 26 September, MDRS-124). A vekil will
   hide their medrese instead once MDRS-124 lands hiding.
-- `TedrisatRoleResolver` returns `MADRASAH_NAZIR` for a medrese whose nazır
+- `TedrisatRoleResolver` returns `MADRASAH_NAZIR` for a medrese whose vekil
   list contains the caller, and for a köşk whose medrese does. On a köşk the
-  manager role wins when a caller holds both, because the nazır's köşk scopes
+  manager role wins when a caller holds both, because the vekil's köşk scopes
   are a strict subset of the manager's.
 
 ## Alternatives Considered
@@ -85,14 +91,14 @@ separate decision, with its own ADR.
 ### Positive
 
 - The two UNREACHABLE `MADRASAH_NAZIR` rows become reachable; everything a
-  nazır may do is decided by the matrix, not by ad-hoc checks.
+  vekil may do is decided by the matrix, not by ad-hoc checks.
 - Existing köşks are untouched: the new column is null for all of them.
 
 ### Negative
 
 - The medrese layer sits in the service the PRD did not intend for it. A later
   move to teskilat means a data migration across databases.
-- Affiliation needs no consent from the köşk's manager: a nazır can bind any
+- Affiliation needs no consent from the köşk's manager: a vekil can bind any
   standalone köşk and thereby gain `EDIT` and `MANAGE_COURSES` on it. A köşk
   that already belongs to another medrese is refused (409), and the köşk's
   manager can leave at any time (`DELETE /kosks/:id/madrasah`). Whether a consent
