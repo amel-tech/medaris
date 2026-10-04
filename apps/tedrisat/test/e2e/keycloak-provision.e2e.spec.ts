@@ -411,6 +411,8 @@ describe("Keycloak configuration package (e2e)", () => {
       rememberMe: true,
       ssoSessionIdleTimeout: 18000,
       ssoSessionMaxLifespan: 36000,
+      ssoSessionIdleTimeoutRememberMe: 1209600,
+      ssoSessionMaxLifespanRememberMe: 2592000,
     });
     // The owner's link lifetimes (MDRS-97, 3 October): verification 24 h,
     // password reset 30 min.
