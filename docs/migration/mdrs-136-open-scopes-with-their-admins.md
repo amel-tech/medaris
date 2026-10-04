@@ -48,19 +48,12 @@ the command that printed it; commands run from `apps/tedrisat` unless a `cd` say
    the NULL (an earlier version of the guard counted it as the stored account, so such a save passed the guard,
    unbound the last müderris and left the course passive with 200). `ReplaceCourseDto` is now `OmitType(CreateCourseDto, ["muderris", "imamUserId"])`
    plus an optional `muderris`; `UpdateCourseDto` also omits `imamUserId`.
-6. **A whole-course save that hides a week or a session needs `week.hide`** (403 `COURSE_HIDE_FORBIDDEN`, checked
-   against the stored syllabus before any write; the check is MDRS-143's `assertMayDropFrom`, kept when this
-   branch merged it over its own duplicate). The save already hid every week and session its payload
-   leaves out; the müderris and the köşk nazımı hold the code by role default, so only someone holding
-   `course.edit` without it (a grant) is refused. See "Decided by default" for the status of this rule.
-7. **A refused self-seat on the opening routes answered 500, not 403** (found by the new spec). `SelfGrantGuard`
-   audits the refusal with the resource id `"new"` (a köşk or medrese that does not exist yet), `audit_log.
-   entity_id` is a `uuid`, and the insert failed. `TedrisatAuthzAudit` now writes the actor's id as `entity_id`
-   for an id that is not a uuid and keeps the placeholder in `details.resourceId`. It hit `POST /madrasahs` when a
-   Medaris nazımı named themselves its başmüderris, and `POST /kosks` when one named themselves in
-   `managerUserIds`.
-8. The stale doc comment of `MadrasahCourseService` ("nothing re-checks the caller… grants are not read") is
-   replaced: since #177 the route's `@Authz` reads grants.
+6. **A whole-course save that drops a week or a session is asked what the reviewed MDRS-135 asks**:
+   `session.manage` for a dropped session (a week that still has sessions included), `course.edit` alone for
+   a week with no session in it; 403 `AUTHZ_FORBIDDEN` before any write. This PR first carried a `week.hide`
+   check of its own (MDRS-143's `assertMayDropFrom`, owner answer d-1004-14); the reviewed rule replaced it
+   when the reviewed #177 was merged forward, so there is one rule and one place that asks it
+   (`CourseService.assertMayChangeSessions`). The müderris and the köşk nazımı hold `session.manage`.
 
 New helper `test/helpers/open-scopes.helper.ts` (`openKosk`, `seedAccounts`, `FIXTURE_MUDERRIS_ID`,
 `FIXTURE_TEAM`): the specs that opened a köşk through `POST /kosks` and relied on the caller becoming its nazım,
@@ -74,7 +67,7 @@ or opened courses with no müderris, go through it.
 | `POST /kosks/:koskId/courses` | `muderris` optional; the başnazım got 403 `KOSK_FORBIDDEN` from the service | `muderris` required with at least one account (400 `MUDERRIS_LIST_INVALID`), `imamUserId` optional; the başnazım opens in any köşk |
 | `POST /kosks/:koskId/courses` | a holder of `course.open_standalone` who was not the köşk's nazımı got 403 from the service, whoever was named | such a holder (a grantee) may open a course for others; naming themselves as müderris or imam is 403 `SELF_GRANT_REFUSED`; the başnazım and the köşk's nazımı may list themselves |
 | `PUT /courses/:id` | `muderris` omitted emptied the team; `[]` emptied it; a payload with no account left the course with no müderris | omitted keeps the team; `[]`, no account left, or the last account sent as `userId: null`: 400 `MUDERRIS_LIST_INVALID`, nothing written |
-| `PUT /courses/:id` | dropping a week or a session needed only `course.edit` | also `week.hide` (403 `COURSE_HIDE_FORBIDDEN`); müderris and köşk nazımı hold it by default |
+| `PUT /courses/:id` | dropping a week or a session needed only `course.edit` | a dropped session needs `session.manage` as well (403 `AUTHZ_FORBIDDEN`); an empty week still needs `course.edit` alone (the reviewed MDRS-135 rule) |
 | `PATCH /courses/:id`, `PUT /courses/:id` | no `imamUserId` | the field is not accepted (400) |
 | `POST /kosks/:id/managers/:userId` | `kosk.manage` or `platform.kosk_nazim_manage`: a köşk nazımı added peers | `platform.kosk_nazim_manage` only: a köşk nazımı gets 403 |
 | `DELETE /kosks/:id/managers/:userId` | same guard; a nazım removed a peer or resigned while another remained | same new guard; 403 for a köşk nazımı; the last nazım needs `?successorUserId=` (else 409) |
@@ -102,14 +95,11 @@ The route inventory snapshot changes in two lines, read off `git diff`:
 2. **Imam default.** Without `imamUserId` the first listed account is the imam (the dossier's default; the
    medrese route instead demands the imam when there are several müderrisler). Stored by `setCourseImam`, so
    the partial unique index keeps exactly one.
-3. **Whole-course save and `week.hide` (d-1004-14, still open as d-1004-26).** Default: the müderris holds
-   `week.hide` by default and a save that drops a week or a session needs it. The check is
-   `CourseService.assertMayDropFrom` (MDRS-143), after the müderris checks and before the write, and is
-   separate from any `session.manage` check. PR #203 (another agent, not merged, not depended on) adds a
-   `session.manage` requirement for a save that adds, moves or hides a session: the two checks must be
-   reconciled when #203 lands (a save that hides a session would then need both).
-4. **A save without `weeks`** still hides every week (the repository defaults `weeks = []`); it now needs
-   `week.hide` like any other hiding. Left as it was; the issue concerns the team.
+3. **Whole-course save and `week.hide` (d-1004-14).** Settled by the reviewed MDRS-135, not by this PR: a save
+   that drops a session needs `session.manage` and one that drops only an empty week needs `course.edit`
+   alone (see item 6 above). `week.hide` still decides the week and session hide routes and their restore.
+4. **A save without `weeks`** still drops every week (the repository defaults `weeks = []`); it needs
+   `session.manage` when the stored course has sessions. Left as it was; the issue concerns the team.
 5. **Failure code of a save that would empty the team**: 400 `MUDERRIS_LIST_INVALID`, the code
    `PUT /courses/:id/muderris` already answers for an invalid list. The explicit "make it passive" choice and a
    409 `COURSE_LAST_MUDERRIS` are the dossier's PR B (MDRS-201 / API wave).
@@ -147,22 +137,19 @@ $ …/e2e-slot.sh ./node_modules/.bin/vitest run test/e2e/<file>.e2e.spec.ts    
 ```
 
 Red-then-green, each by putting the pre-change source (`git show 7533d432:<file>`) or one mutation back and
-running `scope-opening.e2e.spec.ts` (46 tests when the first three ran; 53 now), then restoring from `HEAD`. The review-fix rows at the end of the table were written test first: the new tests ran against the unfixed source, failed, and the fix made them pass:
+running `scope-opening.e2e.spec.ts` (46 tests when the first three ran; 53 now), then restoring from `HEAD`. Counts in this table were read before the reviewed MDRS-135 was merged forward (the file then had 46 to 53 tests); the rows about `assertMayDropFrom` are gone with that check, and the whole-course-save drop rules are now pinned by the "dropping a week or a session by a whole-course save" block (6 tests, passing on the merged tree; the file has 53 tests and passes). The review-fix rows at the end of the table were written test first: the new tests ran against the unfixed source, failed, and the fix made them pass:
 
 | Put back | Result | Tests that went red |
 | --- | --- | --- |
 | all of `src/kosk` (create branch, manager guards, last-manager rule) | `Tests  6 failed \| 40 passed (46)` | "refuses no list at all with 400" (a Medaris nazımı became the nazım), "is not for a köşk nazımı" (peers and resigning), the three successor tests (seat first, başnazım takes the seat, Medaris naming themselves), "refuses a successor who has never signed in or who is the nazım removed" |
 | `TedrisatAuthzAudit` as it was | `Tests  2 failed \| 44 passed (46)` | the two self-naming refusals on `POST /kosks` and `POST /madrasahs` (500 instead of 403) |
-| all of `src/course` (service, repository, DTOs, domain) | `Tests  12 failed \| 34 passed (46)` | the başnazım opening a course, the imam named, an imam not listed, no / no-key / no-account müderris, the three whole-course-save tests, the three `week.hide` tests |
-| only the `assertMayDropFrom` call (re-run after merging MDRS-143, `-t week.hide`) | `Tests  3 failed \| 3 passed \| 47 skipped (53)` | the three `week.hide` refusals |
+| all of `src/course` (service, repository, DTOs, domain) | `Tests  12 failed \| 34 passed (46)` | the başnazım opening a course, the imam named, an imam not listed, no / no-key / no-account müderris, the three whole-course-save tests |
 | only the omitted-`muderris` guard in `CourseRepository.replace` (`muderris = []` default back) | `Tests  1 failed \| 7 passed \| 38 skipped (46)` (`-t "whole-course save"`) | "leaves the team as it is when the payload leaves the müderris out" |
 | only the "no account left" refusal in `CourseService.replace` | `Tests  2 failed \| 6 passed \| 38 skipped (46)` | "refuses an empty team", "refuses a team left with no account…" |
 | `UpdateCourseDto` as it was (`imamUserId` accepted) | `Tests  1 failed \| 46 skipped (47)` (`-t "does not take an imam"`) | "does not take an imam from a save or a patch" (PATCH answered 200) |
 | route guards of `POST /kosks` (`platform.kosk_create` → `kosk.manage`) and `POST /madrasahs/:id/courses` (`madrasah.course_open` → `madrasah.course_hide`) | `Tests  6 failed \| 40 passed (46)` | the Medaris-with-grant opening, its self refusal, the omitted / empty list, "a nazır … opened by one holding madrasah.course_open", "refused … in a köşk that gave the medrese no right" |
 | review fix 1: `boundAccountsAfterSave` as it was (`row.userId ??`) | e2e `Tests  4 failed \| 49 passed (53)` on the whole file (two of the four were my own miscount of the archived weeks after the fixture grew a third week, fixed in the test); unit `Tests  1 failed \| 25 passed (26)` on `muderris-list.spec.ts` | "refuses a stored row saved with userId null…" (expected 400, got 200), unit "drops the account of a row named by id that carries userId null…" |
 | review fix 2: no `selfGrant.assertNotSelf` in `CourseController.create` | same e2e run | "is opened by a grantee of course.open_standalone for someone else, but not for themselves" (expected 403, got 201) |
-| review fix 3, re-run after the merge: the `!keptWeeks.has(week.id)` term of `assertMayDropFrom` replaced by `false` (mutation, `-t week.hide`) | `Tests  1 failed \| 5 passed \| 47 skipped (53)` | "refuses a saver without week.hide who drops only an empty week" |
-| review fix 3, re-run after the merge: the lesson term of `assertMayDropFrom` replaced by `false` (mutation, `-t week.hide`) | `Tests  1 failed \| 5 passed \| 47 skipped (53)` | "refuses a saver without week.hide who drops only a session of a week they keep" |
 
 Honest limits of that table. These are red without the change, per criterion:
 
