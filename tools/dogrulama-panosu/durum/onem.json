@@ -1,0 +1,277 @@
+{
+  "3": {
+    "taban": 80,
+    "kapsam": "acilis",
+    "gerekce": "Girişte kullanıcı kaydı ve /me; her talebe girişi buradan geçer"
+  },
+  "4": {
+    "taban": 80,
+    "kapsam": "acilis",
+    "gerekce": "Medrese katmanı ve köşk bağlantısı; açılıştaki tek medrese bunun üstünde"
+  },
+  "5": {
+    "taban": 55,
+    "kapsam": "kurulum",
+    "gerekce": "Ders gizleme; silme yalnız SYSTEM_ADMIN"
+  },
+  "6": {
+    "taban": 75,
+    "kapsam": "acilis",
+    "gerekce": "Ders süresi ve talebenin saat dilimi; celse saatleri yanlışsa derse kaçırılır"
+  },
+  "7": {
+    "taban": 75,
+    "kapsam": "acilis",
+    "gerekce": "Toplantı bağlantısı doğrulama; 'Celseye katıl' bunu kullanır"
+  },
+  "8": {
+    "taban": 30,
+    "kapsam": "altyapi",
+    "gerekce": "/health ortam bilgisi"
+  },
+  "9": {
+    "taban": 80,
+    "kapsam": "acilis",
+    "gerekce": "Keycloak yapılandırması, tema ve realm; giriş ekranı"
+  },
+  "10": {
+    "taban": 80,
+    "kapsam": "acilis",
+    "gerekce": "Kayıt, takvim beslemesi ve köşk yöneticileri API'si"
+  },
+  "11": {
+    "taban": 85,
+    "kapsam": "acilis",
+    "gerekce": "Tedris tarafı dalga 2: talebe ekranları"
+  },
+  "12": {
+    "taban": 50,
+    "kapsam": "altyapi",
+    "gerekce": "Nizam, landing ve ortak kütüphaneler"
+  },
+  "13": {
+    "taban": 60,
+    "kapsam": "altyapi",
+    "gerekce": "Dalga 2 takipleri ve bağımlılık güvenlik tabanları"
+  },
+  "14": {
+    "taban": 90,
+    "kapsam": "acilis",
+    "gerekce": "Deste, kart, köşk ve ders yetki açıkları kapatıldı; açılışın en riskli değişikliği"
+  },
+  "15": {
+    "taban": 60,
+    "kapsam": "altyapi",
+    "gerekce": "Anonim kullanıcının herkese açık desteleri okuması"
+  },
+  "16": {
+    "taban": 85,
+    "kapsam": "acilis",
+    "gerekce": "Kayıtsız kullanıcıdan ders içeriğini gizleme"
+  },
+  "17": {
+    "taban": 70,
+    "kapsam": "kurulum",
+    "gerekce": "Ders ekibi ve müderris hesapları; 6 dersin müderrisleri"
+  },
+  "18": {
+    "taban": 55,
+    "kapsam": "kurulum",
+    "gerekce": "Yönettiğin köşkleri listeleme"
+  },
+  "19": {
+    "taban": 85,
+    "kapsam": "acilis",
+    "gerekce": "Köşk, medrese ve ders sayfalarını misafire açma"
+  },
+  "20": {
+    "taban": 70,
+    "kapsam": "acilis",
+    "gerekce": "MDRS-43 takipleri ve render zaman aşımı"
+  },
+  "21": {
+    "taban": 85,
+    "kapsam": "acilis",
+    "gerekce": "Rol modeli v2; kimin neyi gördüğünü belirler"
+  },
+  "22": {
+    "taban": 60,
+    "kapsam": "acilis",
+    "gerekce": "Landing; talebenin ilk gördüğü sayfa"
+  },
+  "23": {
+    "taban": 45,
+    "kapsam": "altyapi",
+    "gerekce": "UI kit form bileşenleri"
+  },
+  "24": {
+    "taban": 50,
+    "kapsam": "altyapi",
+    "gerekce": "UI kit katman ve kabuk"
+  },
+  "25": {
+    "taban": 90,
+    "kapsam": "acilis",
+    "gerekce": "Giriş sayfaları; talebe giremezse hiçbir şey çalışmaz"
+  },
+  "26": {
+    "taban": 75,
+    "kapsam": "acilis",
+    "gerekce": "Çıkış onayı, başvuru penceresi, taslak önizleme, 404"
+  },
+  "27": {
+    "taban": 90,
+    "kapsam": "acilis",
+    "gerekce": "Medrese sayfası; açılıştaki tek medrese"
+  },
+  "28": {
+    "taban": 90,
+    "kapsam": "acilis",
+    "gerekce": "Celse sayfası; derse katılım buradan"
+  },
+  "29": {
+    "taban": 85,
+    "kapsam": "acilis",
+    "gerekce": "Keşfet; talebe 4 köşkü burada bulur"
+  },
+  "30": {
+    "taban": 80,
+    "kapsam": "acilis",
+    "gerekce": "Misafirin köşk ve medrese sayfaları"
+  },
+  "31": {
+    "taban": 95,
+    "kapsam": "acilis",
+    "gerekce": "Ders sayfası, kayıt ve ayrılma; 6 dersin kapısı"
+  },
+  "32": {
+    "taban": 75,
+    "kapsam": "acilis",
+    "gerekce": "Celse durumları ve ders kayıtları"
+  },
+  "33": {
+    "taban": 75,
+    "kapsam": "acilis",
+    "gerekce": "Programım ve takvime ekle"
+  },
+  "34": {
+    "taban": 40,
+    "kapsam": "disi",
+    "gerekce": "Desteler; açılış kapsamında yok"
+  },
+  "35": {
+    "taban": 35,
+    "kapsam": "disi",
+    "gerekce": "Deste çalışma; açılış kapsamında yok"
+  },
+  "36": {
+    "taban": 55,
+    "kapsam": "acilis",
+    "gerekce": "Hesap ve profil, köşk başvurusu"
+  },
+  "37": {
+    "taban": 55,
+    "kapsam": "acilis",
+    "gerekce": "Bildirimler"
+  },
+  "38": {
+    "taban": 45,
+    "kapsam": "kurulum",
+    "gerekce": "Nizam kabuğu ve rol menüleri"
+  },
+  "39": {
+    "taban": 60,
+    "kapsam": "kurulum",
+    "gerekce": "Atama temeli ve Nazır erişimi"
+  },
+  "40": {
+    "taban": 65,
+    "kapsam": "kurulum",
+    "gerekce": "Nizam'da medrese oluşturma ve başmüderris; 1 medreseyi kurmak için"
+  },
+  "41": {
+    "taban": 40,
+    "kapsam": "disi",
+    "gerekce": "İzin grupları yönetimi"
+  },
+  "42": {
+    "taban": 40,
+    "kapsam": "disi",
+    "gerekce": "Kapsam izinleri"
+  },
+  "43": {
+    "taban": 35,
+    "kapsam": "disi",
+    "gerekce": "Arşiv"
+  },
+  "44": {
+    "taban": 65,
+    "kapsam": "kurulum",
+    "gerekce": "Nizam köşk yönetimi; 4 köşkü kurmak için"
+  },
+  "45": {
+    "taban": 45,
+    "kapsam": "disi",
+    "gerekce": "Köşk görünüm ayarları"
+  },
+  "46": {
+    "taban": 70,
+    "kapsam": "kurulum",
+    "gerekce": "Toplu celse oluşturma; 6 dersin celseleri"
+  },
+  "47": {
+    "taban": 30,
+    "kapsam": "disi",
+    "gerekce": "Yasak temeli"
+  },
+  "48": {
+    "taban": 25,
+    "kapsam": "disi",
+    "gerekce": "Yasak yönetimi"
+  },
+  "49": {
+    "taban": 25,
+    "kapsam": "disi",
+    "gerekce": "Nizam bildirim ve hesap"
+  },
+  "50": {
+    "taban": 20,
+    "kapsam": "disi",
+    "gerekce": "Nizam deste"
+  },
+  "51": {
+    "taban": 45,
+    "kapsam": "disi",
+    "gerekce": "Başvuru ve politika"
+  },
+  "52": {
+    "taban": 30,
+    "kapsam": "disi",
+    "gerekce": "Panolar"
+  },
+  "53": {
+    "taban": 40,
+    "kapsam": "taha",
+    "gerekce": "Nazır kabuğu (Taha Hoca'nın şeridi)"
+  },
+  "54": {
+    "taban": 40,
+    "kapsam": "taha",
+    "gerekce": "Nazırlar (Taha Hoca'nın şeridi)"
+  },
+  "55": {
+    "taban": 30,
+    "kapsam": "taha",
+    "gerekce": "İzinler ve arşiv (Taha Hoca'nın şeridi)"
+  },
+  "56": {
+    "taban": 60,
+    "kapsam": "taha",
+    "gerekce": "Nazır'da dersler (Taha Hoca'nın şeridi)"
+  },
+  "57": {
+    "taban": 40,
+    "kapsam": "taha",
+    "gerekce": "Talebe, yasak, pano (Taha Hoca'nın şeridi)"
+  }
+}

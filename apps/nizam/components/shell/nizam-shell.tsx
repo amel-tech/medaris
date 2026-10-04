@@ -113,6 +113,8 @@ export async function NizamShell({
         unread: (count) => t("bellUnread", { count }),
       }),
       kosk: t("roles.kosk"),
+      themeDark: t("themeDark"),
+      themeLight: t("themeLight"),
     },
   };
 

@@ -82,7 +82,6 @@ export function KoskManagePage({
   const tn = useTranslations("nizam.KoskNazims");
   const th = useTranslations("nizam.HostingPage");
   const td = useTranslations("nizam.KoskDirectory");
-  const tl = useTranslations("nizam.Levels");
   const thl = useTranslations("nizam.HideLevel");
   const locale = useLocale();
   const timeZone = useTimeZone() ?? "Europe/Istanbul";
@@ -289,13 +288,6 @@ export function KoskManagePage({
       ),
     },
     {
-      key: "fieldLevel",
-      label: t("info.fieldLevel"),
-      value: [kosk.field, kosk.level ? tl(kosk.level as never) : null]
-        .filter(Boolean)
-        .join(" · "),
-    },
-    {
       key: "description",
       label: t("info.description"),
       value: kosk.description ?? "—",
@@ -364,17 +356,7 @@ export function KoskManagePage({
           <h1 className="mds-h1">
             <bdi>{kosk.name}</bdi>
           </h1>
-          <p>
-            {[
-              kosk.field,
-              kosk.level
-                ? t("levelValue", { level: tl(kosk.level as never) })
-                : null,
-              handle,
-            ]
-              .filter(Boolean)
-              .join(" · ")}
-          </p>
+          <p>{handle}</p>
         </div>
         <div className="flex flex-wrap gap-3">
           <Button variant="outline" href={`${base}/dersler`}>

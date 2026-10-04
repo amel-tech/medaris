@@ -12,3 +12,15 @@
 export const PRIVACY_NOTICE_PATH = "/aydinlatma-metni";
 
 export const PRIVACY_NOTICE_URL = `https://medaris.app${PRIVACY_NOTICE_PATH}`;
+
+/**
+ * The notice on the landing site of the environment the app runs in (MDRS-248).
+ * tedris-web and nizam-web read `LANDING_URL` per request; a dev deployment sets
+ * it to its own landing, so the footer no longer sends dev testers to the
+ * production site, which may not carry the page yet. Unset or empty, the
+ * production address above.
+ */
+export const privacyNoticeUrl = (landingUrl?: string): string =>
+  landingUrl
+    ? new URL(PRIVACY_NOTICE_PATH, landingUrl).href
+    : PRIVACY_NOTICE_URL;

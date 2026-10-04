@@ -101,22 +101,27 @@ the viewer is not a talebe.
 The PR's own tests run unmodified on the port, and new ones pin what the engine adds.
 
 ```
-$ cd apps/tedrisat && /home/taha/medaris-wt/.bin/e2e-slot.sh ./node_modules/.bin/vitest run test/e2e/lesson-note.e2e.spec.ts test/e2e/lesson-notes-migration.e2e.spec.ts test/e2e/archive.e2e.spec.ts test/e2e/authz-route-inventory.e2e.spec.ts
-   lesson-note.e2e.spec.ts (53 tests), lesson-notes-migration.e2e.spec.ts (1), archive.e2e.spec.ts (32), authz-route-inventory.e2e.spec.ts (1)
- Test Files  4 passed (4)
-      Tests  87 passed (87)
+$ cd apps/tedrisat && /home/taha/medaris-wt/.bin/e2e-slot.sh ./node_modules/.bin/vitest run test/e2e/lesson-note.e2e.spec.ts test/e2e/lesson-notes-migration.e2e.spec.ts test/e2e/archive.e2e.spec.ts test/e2e/authz-route-inventory.e2e.spec.ts test/e2e/recordings.e2e.spec.ts test/e2e/session.e2e.spec.ts test/e2e/lesson-calendar.e2e.spec.ts test/e2e/authz-engine.e2e.spec.ts
+   lesson-note (53 tests), lesson-notes-migration (1), archive (32), authz-route-inventory (1), recordings (11), session (10), lesson-calendar (7), authz-engine (65)
+ Test Files  8 passed (8)
+      Tests  180 passed (180)
+$ cd apps/tedrisat && ... test/e2e/boot-migrations.e2e.spec.ts test/e2e/archived-level-migration.e2e.spec.ts test/e2e/grant-authority-migration.e2e.spec.ts
+ Test Files  3 passed (3)
+      Tests  4 passed (4)
 $ cd apps/tedrisat && ./node_modules/.bin/vitest run test/unit
- Test Files  69 passed (69)
-      Tests  921 passed (921)
-$ cd apps/tedris && ./node_modules/.bin/vitest run        # 12 fail, the same 12 on the base: test/auth-entry.spec.ts (5), test/expired-session.spec.ts (7), `localStorage.clear` undefined under Node v26.10.0
- Test Files  2 failed | 70 passed (72)
-      Tests  12 failed | 682 passed (694)
+ Test Files  71 passed (71)
+      Tests  928 passed (928)
+$ cd apps/nizam && ./node_modules/.bin/vitest run        # Test Files 46 passed (46), Tests 757 passed (757)
+$ cd apps/nazir && ./node_modules/.bin/vitest run        # Test Files 38 passed (38), Tests 711 passed (711)
+$ cd libs/common && ./node_modules/.bin/vitest run       # Tests 172 passed (172)
+$ NODE_OPTIONS=--no-experimental-webstorage, in apps/tedris and libs/ui
+   apps/tedris   Test Files 75 passed (75), Tests 707 passed (707)
+   libs/ui       Test Files 12 passed (12), Tests 151 passed (151)
 ```
 
-`apps/nizam` has one failure that is not this PR's: `kosk-overview.spec.tsx` › "warns about the first missing
-link" fails on the real clock after 19:00 on 4 October (the component reads the clock and the fixture is dated
-around a pinned `NOW`), and `origin/main` pins the clock in that spec (`Tests 1 failed | 752 passed (753)`
-here). The other suites of the level: `libs/common` 172 passed, `apps/nazir` 708 passed, `libs/ui` 126 passed.
+Under Node v26.10.0 without that flag `window.localStorage.clear` is undefined and 12 tedris specs
+(`auth-entry.spec.ts` 5, `expired-session.spec.ts` 7) and 25 of `libs/ui`'s `theme.spec.tsx` fail; none is this
+PR's, and the flag turns all 37 green.
 
 ### Red then green
 
@@ -148,5 +153,4 @@ again here.
   spec of a course locked mid-session).
 - YouTube's IFrame API against the real player (position reading, seeking).
 - The whole tedrisat e2e suite: the integrator's.
-- The 12 failing tedris specs are not caused by this PR: they fail identically on the base
-  (`taha/mdrs-207-document-the-enrolment-limit`).
+- The whole-repo gate: browser builds (`next build`) and the other apps' e2e.

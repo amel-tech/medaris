@@ -8,6 +8,7 @@ import { Logo } from "@medaris/ui/mds/logo";
 import { NavItem } from "@medaris/ui/mds/nav-item";
 import { NavSection } from "@medaris/ui/mds/nav-section";
 import { ScopePicker } from "@medaris/ui/mds/scope-picker";
+import { ThemeToggle } from "@medaris/ui/mds/theme-toggle";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useLocale } from "next-intl";
@@ -52,6 +53,8 @@ export interface ShellModel {
     userLink: string;
     bell: string;
     kosk: string;
+    themeDark: string;
+    themeLight: string;
   };
 }
 
@@ -172,6 +175,13 @@ export function ShellFrame({
     </a>
   );
 
+  const themeToggle = (
+    <ThemeToggle
+      darkLabel={model.labels.themeDark}
+      lightLabel={model.labels.themeLight}
+    />
+  );
+
   const brand = (size: "sm" | "md") => (
     <a href={`/${locale}`} className="no-underline">
       <Logo app="nizam" size={size} wordmark />
@@ -184,6 +194,7 @@ export function ShellFrame({
       sidebar={
         <Sidebar
           brand={brand("md")}
+          tools={themeToggle}
           scope={scope}
           footer={account}
           navLabel={model.labels.nav}
@@ -201,15 +212,18 @@ export function ShellFrame({
           navLabel={model.labels.nav}
           closeLabel={model.labels.close}
           actions={
-            model.variant === "none" ? undefined : (
-              <a
-                className="mds-btn mds-icon-btn mds-btn--large mds-btn--ghost"
-                href={`/${locale}/bildirimler`}
-                aria-label={model.labels.bell}
-              >
-                <Icon name="bell" />
-              </a>
-            )
+            <>
+              {themeToggle}
+              {model.variant === "none" ? null : (
+                <a
+                  className="mds-btn mds-icon-btn mds-btn--large mds-btn--ghost"
+                  href={`/${locale}/bildirimler`}
+                  aria-label={model.labels.bell}
+                >
+                  <Icon name="bell" />
+                </a>
+              )}
+            </>
           }
         >
           {nav}

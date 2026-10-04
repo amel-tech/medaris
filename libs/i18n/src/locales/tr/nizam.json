@@ -202,12 +202,6 @@
     "LIVE": "Canlı halka",
     "QUIZ": "Sınav"
   },
-  "Levels": {
-    "ALL": "Tüm seviyeler",
-    "BEGINNER": "Başlangıç",
-    "INTERMEDIATE": "Orta",
-    "ADVANCED": "İleri"
-  },
   "NavMain": {
     "content": "İçerik"
   },
@@ -544,10 +538,6 @@
     "handlePlaceholder": "@suleymaniye",
     "description": "Açıklama",
     "descriptionPlaceholder": "Köşkün sunduğu dersler ve odak alanları.",
-    "field": "İlim alanı",
-    "fieldPlaceholder": "Örn. Tefsir & Hadis",
-    "level": "Seviye",
-    "levelUnset": "Belirtilmemiş",
     "tags": "Etiketler",
     "tagsPlaceholder": "Etiket yazıp Enter'a basın",
     "tagsHelp": "En fazla {max} etiket, her biri en fazla {length} karakter.",
@@ -726,6 +716,8 @@
     "menu": "Menü",
     "nav": "Ana menü",
     "close": "Kapat",
+    "themeDark": "Koyu temaya geç",
+    "themeLight": "Açık temaya geç",
     "switchKosk": "Köşk değiştir:",
     "userLink": "Hesap",
     "bell": "Bildirimler",
@@ -1470,18 +1462,7 @@
     },
     "searchLabel": "Köşk ya da köşk nazımı ara",
     "searchPlaceholder": "Köşk ya da köşk nazımı ara",
-    "levelLabel": "Seviye",
-    "levelAll": "Seviye: tümü",
-    "levelValue": "Seviye: {level}",
-    "levels": {
-      "ALL": "Bütün seviyeler",
-      "BEGINNER": "Başlangıç",
-      "INTERMEDIATE": "Orta",
-      "ADVANCED": "İleri"
-    },
-    "fieldLegend": "Alan",
     "listingLegend": "Görünürlük",
-    "allChip": "Tümü",
     "listing": {
       "ALL": "Tümü",
       "LISTED": "Listelenen",
@@ -1490,7 +1471,6 @@
     "columns": {
       "kosk": "Köşk",
       "nazims": "Köşk nazımları",
-      "field": "Alan",
       "courses": "Ders",
       "status": "Durum",
       "actions": "İşlemler"
@@ -1537,18 +1517,6 @@
     "nameHelp": "Talebeler ve ziyaretçiler bu adı görür.",
     "handleLabel": "Kısa ad",
     "handleHelp": "Köşk adresinde kullanılır; küçük harf, rakam ve tire içerebilir.",
-    "fieldLabel": "Alan",
-    "fieldHelp": "Keşfet’teki alan süzgecinde bu adla görünür.",
-    "fieldPlaceholder": "Seçin",
-    "levelLabel": "Seviye",
-    "levelHelp": "Keşfet’teki seviye süzgecinde kullanılır.",
-    "levelPlaceholder": "Seçin",
-    "levels": {
-      "ALL": "Bütün seviyeler",
-      "BEGINNER": "Başlangıç",
-      "INTERMEDIATE": "Orta",
-      "ADVANCED": "İleri"
-    },
     "tagsLabel": "Etiketler",
     "tagsHelp": "Virgülle ayırın.",
     "descriptionLabel": "Açıklama",
@@ -1573,8 +1541,6 @@
       "nameRequired": "Bir ad yazın.",
       "nameShort": "Ad en az 2 karakter olmalı.",
       "handleInvalid": "Kısa ad küçük harf, rakam ve tire içermeli; en az 2 karakter olmalı.",
-      "fieldRequired": "Bir alan seçin.",
-      "levelRequired": "Bir seviye seçin.",
       "tagsFull": "En çok 10 etiket yazılabilir.",
       "tagTooLong": "Bir etiket en çok 40 karakter olabilir.",
       "handleTaken": "@{handle} kısa adını başka bir köşk kullanıyor.",
@@ -1615,18 +1581,6 @@
     "nameHelp": "Talebeler ve ziyaretçiler bu adı görür.",
     "handleLabel": "Kısa ad",
     "handleHelp": "Salt okunur. Köşk bağlantısında kullanılır; Medaris yönetimi değiştirir.",
-    "fieldLabel": "Alan",
-    "fieldHelp": "Keşfet’teki alan süzgecinde bu adla görünür.",
-    "fieldPlaceholder": "Seçin",
-    "levelLabel": "Seviye",
-    "levelHelp": "Keşfet’teki seviye süzgecinde kullanılır.",
-    "levelPlaceholder": "Seçin",
-    "levels": {
-      "ALL": "Bütün seviyeler",
-      "BEGINNER": "Başlangıç",
-      "INTERMEDIATE": "Orta",
-      "ADVANCED": "İleri"
-    },
     "tagsLabel": "Etiketler",
     "tagsHelp": "Virgülle ayırın.",
     "coverLegend": "Kapak",
@@ -1659,8 +1613,6 @@
     "errors": {
       "nameRequired": "Bir ad yazın.",
       "nameShort": "Ad en az 2 karakter olmalı.",
-      "fieldRequired": "Bir alan seçin.",
-      "levelRequired": "Bir seviye seçin.",
       "tagsFull": "En çok 10 etiket yazılabilir.",
       "tagTooLong": "Bir etiket en çok 40 karakter olabilir.",
       "generic": "Bir şeyler ters gitti. Biraz sonra yeniden deneyin.",
@@ -2230,7 +2182,6 @@
     "title": "Köşk",
     "breadcrumbLabel": "Sayfa yolu",
     "kosks": "Köşkler",
-    "levelValue": "{level} seviyesi",
     "nazimView": "Köşk nazımının gördüğü sayfa",
     "publicPage": "Köşk sayfasını gör",
     "newTab": "(yeni sekmede açılır)",
@@ -2256,7 +2207,6 @@
     "info": {
       "name": "Ad",
       "handle": "Kısa ad",
-      "fieldLevel": "Alan ve seviye",
       "description": "Açıklama",
       "status": "Durum",
       "visibility": "Görünürlük",
@@ -2309,7 +2259,6 @@
   },
   "KoskCourses": {
     "title": "Dersler",
-    "levelValue": "{level} seviyesi",
     "listed": "Listelerde görünür",
     "unlisted": "Listelerde görünmez",
     "publicPage": "Köşk sayfasını gör",
