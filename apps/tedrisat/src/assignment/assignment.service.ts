@@ -1,6 +1,8 @@
-import { AuthzService } from "@medaris/common";
+import { AuthzService, type ScopeRef } from "@medaris/common";
 import { Injectable } from "@nestjs/common";
+import { TedrisatAuthzContext } from "../authz/tedrisat-authz-context.service";
 import { SCOPE_TYPES } from "../database/schema/role-assignment.schema";
+import { MeScopePermissions } from "../user/dto/me-response.dto";
 import { TokenClaims } from "../user/interfaces/token-claims.interface";
 import { identityFromClaims } from "../user/user-identity";
 import {
@@ -21,6 +23,7 @@ import {
   buildEffectivePermissions,
   flattenPermissions,
 } from "./effective-permissions";
+import { permissionsPerScope } from "./me-permissions";
 import { isPermissionCode } from "./permission-catalog";
 
 export function displayNameOf(person: IPersonName | undefined): string | null {
@@ -38,7 +41,8 @@ const scopeKey = (type: string, id: string | null) => `${type}:${id ?? ""}`;
 export class AssignmentService {
   constructor(
     private readonly repo: AssignmentRepository,
-    private readonly authz: AuthzService
+    private readonly authz: AuthzService,
+    private readonly context: TedrisatAuthzContext
   ) {}
 
   /** A token whose `sub` is not a UUID holds nothing, and would be a 22P02. */
@@ -56,25 +60,52 @@ export class AssignmentService {
       ),
       this.repo.findPeople(held.map((r) => r.grantedBy)),
     ]);
-    const rows = held.filter((r) => scopeExists(r, names));
+    return { assignments: describeAssignments(userId, held, names, people) };
+  }
 
-    const assignments: AssignmentResponse[] = rows.map((row) => {
-      const named = names.get(scopeKey(row.scopeType, row.scopeId));
-      return {
-        id: row.id,
-        role: row.role,
-        scopeType: row.scopeType,
-        scopeId: row.scopeId,
-        scopeName: named?.name ?? null,
-        isImam: row.isImam,
-        grantedAt: row.grantedAt,
-        expiresAt: row.expiresAt,
-        grantedBy: personRef(row.grantedBy, people),
-        grantedBySelf: row.grantedBy === userId,
-        ...(named?.course ? { course: named.course } : {}),
-      };
-    });
-    return { assignments };
+  /**
+   * What `GET /me` adds to the profile (MDRS-142): the live role assignments
+   * and, scope by scope, what the caller holds there. One pass over what they
+   * hold, never `authz.effective()` per scope (five statements each, on the
+   * page every sign-in loads): the role rows, the two reads of the engine's
+   * loader, the scopes' names and the people who granted, whatever the number
+   * of scopes.
+   */
+  async myOverview(claims: TokenClaims): Promise<{
+    assignments: AssignmentResponse[];
+    permissions: MeScopePermissions[];
+  }> {
+    const userId = this.userIdOf(claims);
+    if (!userId) return { assignments: [], permissions: [] };
+    const [held, holdings] = await Promise.all([
+      this.repo.findHeldAssignments(userId),
+      this.context.holdings(userId),
+    ]);
+    const asRef = (scope: ScopeRef) => ({ type: scope.type, id: scope.id });
+    const [names, people] = await Promise.all([
+      this.repo.findScopeNames([
+        ...held.map((r) => ({ type: r.scopeType, id: r.scopeId })),
+        ...holdings.grants.map((g) => asRef(g.scope)),
+      ]),
+      this.repo.findPeople(held.map((r) => r.grantedBy)),
+    ]);
+    const permissions = permissionsPerScope(
+      holdings.roles,
+      holdings.grants,
+      (scope) => {
+        const named = names.get(scopeKey(scope.type, scope.id));
+        if (!named) return null;
+        return {
+          name: named.name,
+          koskId: named.course?.koskId,
+          madrasahId: named.course?.madrasahId,
+        };
+      }
+    );
+    return {
+      assignments: describeAssignments(userId, held, names, people),
+      permissions,
+    };
   }
 
   async myRoles(claims: TokenClaims): Promise<MyRolesResponse> {
@@ -200,6 +231,32 @@ function scopeExists(
     row.scopeType === SCOPE_TYPES.PLATFORM ||
     names.has(scopeKey(row.scopeType, row.scopeId))
   );
+}
+
+function describeAssignments(
+  userId: string,
+  held: Awaited<ReturnType<AssignmentRepository["findHeldAssignments"]>>,
+  names: Awaited<ReturnType<AssignmentRepository["findScopeNames"]>>,
+  people: Map<string, IPersonName>
+): AssignmentResponse[] {
+  return held
+    .filter((row) => scopeExists(row, names))
+    .map((row) => {
+      const named = names.get(scopeKey(row.scopeType, row.scopeId));
+      return {
+        id: row.id,
+        role: row.role,
+        scopeType: row.scopeType,
+        scopeId: row.scopeId,
+        scopeName: named?.name ?? null,
+        isImam: row.isImam,
+        grantedAt: row.grantedAt,
+        expiresAt: row.expiresAt,
+        grantedBy: personRef(row.grantedBy, people),
+        grantedBySelf: row.grantedBy === userId,
+        ...(named?.course ? { course: named.course } : {}),
+      };
+    });
 }
 
 function personRef(id: string, people: Map<string, IPersonName>): PersonRef {
