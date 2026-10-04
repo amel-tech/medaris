@@ -827,7 +827,9 @@ describe("Opening scopes with their admins (MDRS-136, e2e)", () => {
 
     const weekRows = () =>
       db().select().from(courseWeeks).where(eq(courseWeeks.courseId, courseId));
-    const save = (sub: string, keep: number) =>
+    // Keeps the first `keep` weeks; `withLessons` false keeps each of them
+    // with no lessons, which hides the sessions and no week.
+    const save = (sub: string, keep: number, withLessons = true) =>
       put(sub, `/courses/${courseId}`, {
         title: "Emsile",
         version,
@@ -835,7 +837,7 @@ describe("Opening scopes with their admins (MDRS-136, e2e)", () => {
           id: w.id,
           weekNumber: i + 1,
           title: `Hafta ${i + 1}`,
-          lessons: w.lessons.map((l) => ({
+          lessons: (withLessons ? w.lessons : []).map((l) => ({
             id: l.id,
             title: "Açılış",
             type: "VIDEO",
@@ -858,6 +860,7 @@ describe("Opening scopes with their admins (MDRS-136, e2e)", () => {
             title: "İkinci Bab",
             lessons: [{ title: "Şerh", type: "VIDEO" }],
           },
+          { weekNumber: 3, title: "Üçüncü Bab", lessons: [] },
         ],
       }).expect(201);
       courseId = res.body.id;
@@ -886,8 +889,28 @@ describe("Opening scopes with their admins (MDRS-136, e2e)", () => {
       expect(after.version).toBe(version);
     });
 
+    it("refuses a saver without week.hide who drops only a session of a week they keep", async () => {
+      const res = await save(EDITOR_ID, 3, false).expect(403);
+      expect(res.body.code).toBe("WEEK_HIDE_FORBIDDEN");
+      expect((await weekRows()).filter((w) => w.archivedAt)).toHaveLength(0);
+      const after = (await get(NAZIM_ID, `/courses/${courseId}`).expect(200))
+        .body;
+      expect(after.version).toBe(version);
+      expect(after.weeks[0].lessons).toHaveLength(1);
+    });
+
+    it("refuses a saver without week.hide who drops only an empty week", async () => {
+      const res = await save(EDITOR_ID, 2).expect(403);
+      expect(res.body.code).toBe("WEEK_HIDE_FORBIDDEN");
+      expect((await weekRows()).filter((w) => w.archivedAt)).toHaveLength(0);
+      const after = (await get(NAZIM_ID, `/courses/${courseId}`).expect(200))
+        .body;
+      expect(after.version).toBe(version);
+      expect(after.weeks).toHaveLength(3);
+    });
+
     it("lets the same saver save everything they keep", async () => {
-      await save(EDITOR_ID, 2).expect(200);
+      await save(EDITOR_ID, 3).expect(200);
     });
 
     it("lets the same saver hide once week.hide is granted too", async () => {
@@ -897,12 +920,12 @@ describe("Opening scopes with their admins (MDRS-136, e2e)", () => {
         PERMISSIONS.WEEK_HIDE
       );
       await save(EDITOR_ID, 1).expect(200);
-      expect((await weekRows()).filter((w) => w.archivedAt)).toHaveLength(1);
+      expect((await weekRows()).filter((w) => w.archivedAt)).toHaveLength(2);
     });
 
     it("lets the köşk's nazımı hide, who holds it by role default", async () => {
       await save(NAZIM_ID, 1).expect(200);
-      expect((await weekRows()).filter((w) => w.archivedAt)).toHaveLength(1);
+      expect((await weekRows()).filter((w) => w.archivedAt)).toHaveLength(2);
     });
   });
 
