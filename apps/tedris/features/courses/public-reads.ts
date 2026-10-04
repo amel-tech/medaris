@@ -1,6 +1,5 @@
 import {
   type CourseDetailResponse,
-  type CourseQuestionResponse,
   createServerTedrisatAPIs,
   type KoskDecksResponse,
   type KoskResponse,
@@ -100,21 +99,6 @@ export const getRecordings = (
   orNull(async () =>
     (await viewerApi()).lessons.listCourseRecordings({ id: courseId })
   );
-
-/**
- * The course's questions for the people who answer them (MDRS-150), or null
- * for everyone else: the API answers 403 to a caller without `question.answer`
- * in the course, a failed read looks the same, and either way the page leaves
- * the staff tab out.
- */
-export const getCourseQuestions = async (
-  courseId: string
-): Promise<CourseQuestionResponse[] | null> => {
-  if (!(await isSignedIn())) return null;
-  return orNull(async () =>
-    (await viewerApi()).lessons.listCourseQuestions({ id: courseId })
-  );
-};
 
 /** Whether the visitor has a usable token — what tedrisat will see. */
 export const isSignedIn = async (): Promise<boolean> =>

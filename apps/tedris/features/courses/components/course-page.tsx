@@ -2,7 +2,6 @@
 
 import type {
   CourseDetailResponse,
-  CourseQuestionResponse,
   RecordingResponse,
 } from "@medaris/services/tedrisat";
 import { Alert } from "@medaris/ui/mds/alert";
@@ -27,12 +26,11 @@ import {
 } from "../course-view";
 import { canWriteNotes } from "../lesson-note-model";
 import { firstSessionAt, formatFirstSession, isPreview } from "../preview";
-import { sessionChoices, waitingCount } from "../question-model";
+import { sessionChoices } from "../question-model";
 import { CourseAside } from "./course-aside";
 import { CourseProgramme, SAMPLE_ANCHOR } from "./course-programme";
 import { CourseQuestions } from "./course-questions";
 import { RecordingsTab } from "./recordings-tab";
-import { StaffQuestions } from "./staff-questions";
 
 const joinNames = (names: string[], locale: string) =>
   new Intl.ListFormat(locale, { type: "conjunction" }).formatToParts(names);
@@ -52,7 +50,6 @@ export const CoursePage = ({
   signInHref = `/auth/signin?callbackUrl=${encodeURIComponent(`/courses/${course.id}`)}`,
   registerHref = "/auth/register",
   recordings = [],
-  staffQuestions = null,
   initialTab,
   now: nowProp,
 }: {
@@ -78,11 +75,6 @@ export const CoursePage = ({
    * failed: the tab then offers a retry instead of the empty state.
    */
   recordings?: RecordingResponse[] | null;
-  /**
-   * The course's questions, for a caller who holds `question.answer` in it
-   * (MDRS-150); null for everyone else, and the "Sorular" tab is left out.
-   */
-  staffQuestions?: CourseQuestionResponse[] | null;
   /** The tab the page opens on: `?tab=kayitlar` from a session page. */
   initialTab?: string;
   /** The instant the page is drawn at, for tests. */
@@ -110,7 +102,6 @@ export const CoursePage = ({
   // A question is asked by an enrolled talebe (MDRS-150); the tab is theirs.
   const asksQuestions =
     !course.contentLocked && canWriteNotes(course.enrollment?.status);
-  const waiting = staffQuestions ? waitingCount(staffQuestions) : 0;
 
   const tabs = [
     { value: "mufredat", label: t("tabCurriculum") },
@@ -124,15 +115,6 @@ export const CoursePage = ({
     ...(seat ? [{ value: "deste", label: t("tabDeck") }] : []),
     ...(asksQuestions
       ? [{ value: "sorularim", label: t("tabMyQuestions") }]
-      : []),
-    ...(staffQuestions
-      ? [
-          {
-            value: "sorular",
-            label: t("tabQuestions"),
-            ...(waiting > 0 ? { count: waiting } : {}),
-          },
-        ]
       : []),
     { value: "muderrisler", label: t("tabTeachers") },
   ];
@@ -346,11 +328,6 @@ export const CoursePage = ({
                   timeZone={zone}
                   canAsk
                 />
-              </TabsPanel>
-            ) : null}
-            {staffQuestions ? (
-              <TabsPanel value="sorular" className="pbs-4">
-                <StaffQuestions initial={staffQuestions} timeZone={zone} />
               </TabsPanel>
             ) : null}
             <TabsPanel

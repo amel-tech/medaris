@@ -1,10 +1,11 @@
 import type { CourseDetailResponse } from "@medaris/services/tedrisat";
 import { describe, expect, it } from "vitest";
 import {
+  appendQuestions,
+  canEditQuestion,
   QUESTION_BODY_MAX,
   questionWhen,
   sessionChoices,
-  waitingCount,
 } from "~/features/courses/question-model";
 
 const course = {
@@ -32,15 +33,16 @@ describe("the question limits and lists (MDRS-150)", () => {
     ]);
   });
 
-  it("counts only the questions without an answer", () => {
-    expect(waitingCount([])).toBe(0);
+  it("lets the author edit a question only while it has no answer", () => {
+    expect(canEditQuestion({ answer: null })).toBe(true);
+    expect(canEditQuestion({ answer: { body: "x" } })).toBe(false);
+  });
+
+  it("appends a page without repeating a question already shown", () => {
     expect(
-      waitingCount([
-        { answer: null },
-        { answer: { body: "x" } },
-        { answer: null },
-      ])
-    ).toBe(2);
+      appendQuestions([{ id: "a" }, { id: "b" }], [{ id: "b" }, { id: "c" }])
+    ).toEqual([{ id: "a" }, { id: "b" }, { id: "c" }]);
+    expect(appendQuestions([], [{ id: "a" }])).toEqual([{ id: "a" }]);
   });
 
   it("writes a time in the course's zone, not the reader's", () => {

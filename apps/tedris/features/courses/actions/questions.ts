@@ -1,8 +1,8 @@
 "use server";
 
 import type {
-  CourseQuestionResponse,
   LessonQuestionResponse,
+  PaginatedLessonQuestionResponse,
 } from "@medaris/services/tedrisat";
 import {
   type AuthenticatedActionResult,
@@ -11,16 +11,18 @@ import {
 
 /**
  * A talebe's questions to the course staff (MDRS-150). The API returns a
- * question to its author and to whoever holds `question.answer` in the course,
- * so these four are the whole surface: no action reads another talebe's
- * question. Nothing is revalidated: both views keep their own list.
+ * question to its author alone here, so these four are the whole surface of
+ * tedris: the staff read and answer the questions in the nazir app. Nothing
+ * is revalidated: the tab keeps its own list.
  */
 
+/** One page of the caller's own questions; `cursor` is the previous page's `nextCursor`. */
 export const listMyCourseQuestions = async (
-  courseId: string
-): Promise<AuthenticatedActionResult<LessonQuestionResponse[]>> =>
+  courseId: string,
+  cursor?: string
+): Promise<AuthenticatedActionResult<PaginatedLessonQuestionResponse>> =>
   authenticatedAction((api) =>
-    api.lessons.listMyCourseQuestions({ id: courseId })
+    api.lessons.listMyCourseQuestions({ id: courseId, cursor })
   );
 
 export const askLessonQuestion = async (
@@ -34,13 +36,22 @@ export const askLessonQuestion = async (
     })
   );
 
-export const answerLessonQuestion = async (
+/** The API refuses an answered question with 409. */
+export const updateLessonQuestion = async (
   questionId: string,
   body: string
-): Promise<AuthenticatedActionResult<CourseQuestionResponse>> =>
+): Promise<AuthenticatedActionResult<LessonQuestionResponse>> =>
   authenticatedAction((api) =>
-    api.lessons.answerLessonQuestion({
+    api.lessons.updateLessonQuestion({
       questionId,
-      answerLessonQuestionDto: { body },
+      updateLessonQuestionDto: { body },
     })
+  );
+
+/** Removes the question and its answer. */
+export const deleteLessonQuestion = async (
+  questionId: string
+): Promise<AuthenticatedActionResult<void>> =>
+  authenticatedAction((api) =>
+    api.lessons.deleteLessonQuestion({ questionId })
   );

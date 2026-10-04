@@ -1,7 +1,7 @@
 import type { CourseDetailResponse } from "@medaris/services/tedrisat";
 
 /**
- * What the questions views derive from the course and from a question
+ * What the questions tab derives from the course and from a question
  * (MDRS-150). Pure: a spec pins every rule.
  */
 
@@ -29,10 +29,26 @@ export const sessionChoices = (
       }))
   );
 
-/** How many questions still wait for an answer. */
-export const waitingCount = (
-  questions: ReadonlyArray<{ answer: unknown }>
-): number => questions.filter((q) => q.answer === null).length;
+/**
+ * Whether the author may still rewrite a question: an answer belongs to the
+ * question as it was asked, so the API refuses an edit once one exists.
+ * Deleting is allowed at any time.
+ */
+export const canEditQuestion = (question: { answer: unknown }): boolean =>
+  question.answer === null;
+
+/**
+ * A page of the author's questions appended to what is shown, a question
+ * already shown (one asked since, which the next page's cursor does not
+ * reach) kept once.
+ */
+export const appendQuestions = <T extends { id: string }>(
+  shown: readonly T[],
+  page: readonly T[]
+): T[] => {
+  const seen = new Set(shown.map((q) => q.id));
+  return [...shown, ...page.filter((q) => !seen.has(q.id))];
+};
 
 /** When a question was asked or answered: "4 Eki 2026 21:00", in the course's zone. */
 export const questionWhen = (
