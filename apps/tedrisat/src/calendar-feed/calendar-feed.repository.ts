@@ -11,6 +11,7 @@ import {
   courseWeeks,
   lessons,
 } from "../database/schema/course.schema";
+import { kosks } from "../database/schema/kosk.schema";
 import {
   ASSIGNED_ROLES,
   roleAssignments,
@@ -147,14 +148,19 @@ export class CalendarFeedRepository {
       .from(lessons)
       .innerJoin(courseWeeks, eq(courseWeeks.id, lessons.weekId))
       .innerJoin(courses, eq(courses.id, courseWeeks.courseId))
+      .innerJoin(kosks, eq(kosks.id, courses.koskId))
       .where(
         and(
           isNull(courses.archivedAt),
           gte(lessons.scheduledAt, from),
           lte(lessons.scheduledAt, to),
           or(
+            // A köşk's nazımı keeps their köşk's sessions while it is hidden:
+            // they are the people above it and still run it (MDRS-143).
             inArray(courses.koskId, manages),
             and(
+              // Everyone else's courses of a hidden köşk are closed with it.
+              isNull(kosks.archivedAt),
               eq(courses.status, CourseStatus.PUBLISHED),
               or(inArray(courses.id, enrolledIn), inArray(courses.id, teaches))
             )

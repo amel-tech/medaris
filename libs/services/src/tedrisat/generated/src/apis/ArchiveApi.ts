@@ -19,6 +19,7 @@ import type {
   ArchiveRestoreResponse,
   ArchiveScopesResponse,
   PaginatedArchiveResponse,
+  PaginatedCourseArchiveResponse,
   PaginatedMadrasahArchiveResponse,
 } from '../models/index';
 import {
@@ -30,6 +31,8 @@ import {
     ArchiveScopesResponseToJSON,
     PaginatedArchiveResponseFromJSON,
     PaginatedArchiveResponseToJSON,
+    PaginatedCourseArchiveResponseFromJSON,
+    PaginatedCourseArchiveResponseToJSON,
     PaginatedMadrasahArchiveResponseFromJSON,
     PaginatedMadrasahArchiveResponseToJSON,
 } from '../models/index';
@@ -49,6 +52,13 @@ export interface ListArchiveRequest {
     madrasahId?: string;
     type?: ListArchiveTypeEnum;
     q?: string;
+    limit?: number;
+    page?: number;
+}
+
+export interface ListCourseArchiveRequest {
+    id: string;
+    types?: string;
     limit?: number;
     page?: number;
 }
@@ -278,7 +288,63 @@ export class ArchiveApi extends runtime.BaseAPI {
     }
 
     /**
-     * Newest hidden first: the köşk\'s courses, weeks, sessions and decks, and the same of the medrese courses it hosts. A köşk manager or SYSTEM_ADMIN. There is no delete here; the başnazım deletes from the platform archive.
+     * Newest hidden first: the course\'s hidden weeks and sessions, for the course team (`week.hide`: the müderrisler, the köşk\'s nazımları and the başmüderris of a medrese course by default, a ders nazırı once given). A session is listed only while its week is shown. Each item says whether the caller may bring it back (`canRestore`).
+     * What is hidden in a course (its team)
+     */
+    async listCourseArchiveRaw(requestParameters: ListCourseArchiveRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PaginatedCourseArchiveResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling listCourseArchive().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['types'] != null) {
+            queryParameters['types'] = requestParameters['types'];
+        }
+
+        if (requestParameters['limit'] != null) {
+            queryParameters['limit'] = requestParameters['limit'];
+        }
+
+        if (requestParameters['page'] != null) {
+            queryParameters['page'] = requestParameters['page'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/courses/{id}/archive`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => PaginatedCourseArchiveResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Newest hidden first: the course\'s hidden weeks and sessions, for the course team (`week.hide`: the müderrisler, the köşk\'s nazımları and the başmüderris of a medrese course by default, a ders nazırı once given). A session is listed only while its week is shown. Each item says whether the caller may bring it back (`canRestore`).
+     * What is hidden in a course (its team)
+     */
+    async listCourseArchive(requestParameters: ListCourseArchiveRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PaginatedCourseArchiveResponse> {
+        const response = await this.listCourseArchiveRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Newest hidden first: the köşk\'s courses, weeks, sessions and decks, and the same of the medrese courses it hosts. A köşk manager (`kosk.manage`), a Medaris nazımı holding `platform.kosk_edit`, or SYSTEM_ADMIN. Each item says whether the caller may bring it back (`canRestore`). There is no delete here; the başnazım deletes from the platform archive.
      * What is hidden in a köşk
      */
     async listKoskArchiveRaw(requestParameters: ListKoskArchiveRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PaginatedArchiveResponse>> {
@@ -329,7 +395,7 @@ export class ArchiveApi extends runtime.BaseAPI {
     }
 
     /**
-     * Newest hidden first: the köşk\'s courses, weeks, sessions and decks, and the same of the medrese courses it hosts. A köşk manager or SYSTEM_ADMIN. There is no delete here; the başnazım deletes from the platform archive.
+     * Newest hidden first: the köşk\'s courses, weeks, sessions and decks, and the same of the medrese courses it hosts. A köşk manager (`kosk.manage`), a Medaris nazımı holding `platform.kosk_edit`, or SYSTEM_ADMIN. Each item says whether the caller may bring it back (`canRestore`). There is no delete here; the başnazım deletes from the platform archive.
      * What is hidden in a köşk
      */
     async listKoskArchive(requestParameters: ListKoskArchiveRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PaginatedArchiveResponse> {
@@ -394,7 +460,7 @@ export class ArchiveApi extends runtime.BaseAPI {
     }
 
     /**
-     * By kademe, as the bans are lifted (MDRS-135): the level that hid an item, or any level above it, brings it back. The ladder is course < medrese < köşk < platform; a hide records the level its hider acted at, and one recorded by nobody counts as the lowest level that could have hidden it. A köşk manager restores courses, weeks, sessions and decks of their köşk, a medrese\'s başmüderris what sits in their medrese, SYSTEM_ADMIN anything; a lower level than the one that hid it answers 403 (ARCHIVE_RESTORE_LEVEL) naming both. A week or session whose parent is still hidden answers 409 (ARCHIVE_PARENT_HIDDEN).
+     * By kademe, as the bans are lifted (MDRS-135): the level that hid an item, or any level above it, brings it back. The ladder is course < medrese < köşk < platform; a hide records the level its hider acted at, and one recorded by nobody counts as the lowest level that could have hidden it. Who acts at which level is the catalogue\'s: whoever holds a code that hides the item where it sits (`week.hide` for a week, `course.hide` and `madrasah.course_hide` for a course, `kosk.manage` or `platform.kosk_edit` for a köşk) acts at the level of the highest one they hold, and SYSTEM_ADMIN at the platform. Someone who holds none answers 403 (ARCHIVE_FORBIDDEN); a lower level than the one that hid it answers 403 (ARCHIVE_RESTORE_LEVEL) naming both. Written to the audit log (`<entity>.restore`). A week or session whose parent is still hidden answers 409 (ARCHIVE_PARENT_HIDDEN).
      * Bring a hidden item back (Geri al)
      */
     async restoreArchiveItemRaw(requestParameters: RestoreArchiveItemRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ArchiveRestoreResponse>> {
@@ -437,7 +503,7 @@ export class ArchiveApi extends runtime.BaseAPI {
     }
 
     /**
-     * By kademe, as the bans are lifted (MDRS-135): the level that hid an item, or any level above it, brings it back. The ladder is course < medrese < köşk < platform; a hide records the level its hider acted at, and one recorded by nobody counts as the lowest level that could have hidden it. A köşk manager restores courses, weeks, sessions and decks of their köşk, a medrese\'s başmüderris what sits in their medrese, SYSTEM_ADMIN anything; a lower level than the one that hid it answers 403 (ARCHIVE_RESTORE_LEVEL) naming both. A week or session whose parent is still hidden answers 409 (ARCHIVE_PARENT_HIDDEN).
+     * By kademe, as the bans are lifted (MDRS-135): the level that hid an item, or any level above it, brings it back. The ladder is course < medrese < köşk < platform; a hide records the level its hider acted at, and one recorded by nobody counts as the lowest level that could have hidden it. Who acts at which level is the catalogue\'s: whoever holds a code that hides the item where it sits (`week.hide` for a week, `course.hide` and `madrasah.course_hide` for a course, `kosk.manage` or `platform.kosk_edit` for a köşk) acts at the level of the highest one they hold, and SYSTEM_ADMIN at the platform. Someone who holds none answers 403 (ARCHIVE_FORBIDDEN); a lower level than the one that hid it answers 403 (ARCHIVE_RESTORE_LEVEL) naming both. Written to the audit log (`<entity>.restore`). A week or session whose parent is still hidden answers 409 (ARCHIVE_PARENT_HIDDEN).
      * Bring a hidden item back (Geri al)
      */
     async restoreArchiveItem(requestParameters: RestoreArchiveItemRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ArchiveRestoreResponse> {

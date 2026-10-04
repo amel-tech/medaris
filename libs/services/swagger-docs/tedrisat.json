@@ -1065,7 +1065,7 @@
     },
     "/kosks/{id}/decks": {
       "get": {
-        "description": "The shared decks the köşk offers its talebe, for a signed-in caller who is a talebe (ENROLLED or COMPLETED), a müderris or a manager of the köşk. For anyone else `accessible` is false and `decks` is empty, so the köşk page can leave the block out; the köşk's existence is never denied to them here, `GET /kosks/:id` answers that.",
+        "description": "The shared decks the köşk offers its talebe, for a signed-in caller who is a talebe (ENROLLED or COMPLETED), a müderris or a manager of the köşk. For anyone else `accessible` is false and `decks` is empty, so the köşk page can leave the block out; the köşk's existence is never denied to them here, `GET /kosks/:id` answers that. A hidden köşk answers 404 to all but its nazımları, Medaris yönetimi holding `platform.kosk_edit` and the başnazım, as `GET /kosks/:id` does.",
         "operationId": "getKoskDecks",
         "parameters": [
           {
@@ -1946,7 +1946,7 @@
         ]
       },
       "delete": {
-        "description": "Its nazır list and hosting rights go with it; its courses stay in their köşks with no medrese. Nazırs cannot delete (MDRS-124).",
+        "description": "Its nazır list and hosting rights go with it; its courses stay in their köşks with no medrese. Nazırs cannot delete (MDRS-124). Written to the audit log as `madrasah.delete`, naming the caller (MDRS-143).",
         "operationId": "deleteMadrasah",
         "parameters": [
           {
@@ -2174,7 +2174,7 @@
     },
     "/madrasahs/{id}/hide": {
       "post": {
-        "description": "nazir/12's \"Medreseyi gizle\". The medrese leaves every list and its page closes, and so do its courses, all at once; nothing is deleted. The köşks that host its courses stay. Only the Medaris administration brings it back (`POST …/restore`). 409 (MADRASAH_ALREADY_HIDDEN) when it is hidden. Written to the audit log.",
+        "description": "nazir/12's \"Medreseyi gizle\". The medrese leaves every list and its page closes, and so do its courses, all at once; nothing is deleted. The köşks that host its courses stay. The level that hid it, or any above, brings it back (`POST …/restore`): the başmüderris what they hid, Medaris yönetimi anything. 409 (MADRASAH_ALREADY_HIDDEN) when it is hidden. Written to the audit log.",
         "operationId": "hideMadrasah",
         "parameters": [
           {
@@ -2916,6 +2916,73 @@
         "summary": "Hide a course (Gizle)",
         "tags": [
           "courses"
+        ]
+      },
+      "get": {
+        "description": "Newest hidden first: the course's hidden weeks and sessions, for the course team (`week.hide`: the müderrisler, the köşk's nazımları and the başmüderris of a medrese course by default, a ders nazırı once given). A session is listed only while its week is shown. Each item says whether the caller may bring it back (`canRestore`).",
+        "operationId": "listCourseArchive",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "types",
+            "required": false,
+            "in": "query",
+            "description": "Comma-separated, from week, session; default both.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "1 to 50; default 10.",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedCourseArchiveResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not on this course's team."
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "What is hidden in a course (its team)",
+        "tags": [
+          "archive"
         ]
       }
     },
@@ -3964,6 +4031,7 @@
         ]
       },
       "delete": {
+        "description": "`week.hide` (Hafta ve celse gizle, geri al) or `session.manage`. The level the caller acts at is recorded with the hide and decides who may bring it back (MDRS-135); written to `audit_log` as `lesson.hide` (MDRS-143).",
         "operationId": "archiveLesson",
         "parameters": [
           {
@@ -4055,6 +4123,57 @@
           }
         ],
         "summary": "Cancel a live session; it keeps its slot, marked cancelled",
+        "tags": [
+          "lessons"
+        ]
+      }
+    },
+    "/courses/{courseId}/weeks/{weekId}/hide": {
+      "post": {
+        "description": "Nothing is deleted: the week and its live sessions leave the course at one instant, at the level the caller acts at (the course team's, the köşk's, the medrese's), and the course `version` is bumped, so an editor that loaded the course before is refused with 409. Brought back by that level or one above, through `POST /archive/week/:id/restore`; the course's Arşiv lists it (`GET /courses/:id/archive`). Written to `audit_log` as `week.hide` (MDRS-143).",
+        "operationId": "hideCourseWeek",
+        "parameters": [
+          {
+            "name": "courseId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "weekId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeekHideResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": "No such course, or no such live week in it (WEEK_NOT_FOUND)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Hide a week with its sessions (Gizle)",
         "tags": [
           "lessons"
         ]
@@ -8889,7 +9008,7 @@
     },
     "/kosks/{id}/archive": {
       "get": {
-        "description": "Newest hidden first: the köşk's courses, weeks, sessions and decks, and the same of the medrese courses it hosts. A köşk manager or SYSTEM_ADMIN. There is no delete here; the başnazım deletes from the platform archive.",
+        "description": "Newest hidden first: the köşk's courses, weeks, sessions and decks, and the same of the medrese courses it hosts. A köşk manager (`kosk.manage`), a Medaris nazımı holding `platform.kosk_edit`, or SYSTEM_ADMIN. Each item says whether the caller may bring it back (`canRestore`). There is no delete here; the başnazım deletes from the platform archive.",
         "operationId": "listKoskArchive",
         "parameters": [
           {
@@ -9096,7 +9215,7 @@
     },
     "/archive/{type}/{id}/restore": {
       "post": {
-        "description": "By kademe, as the bans are lifted (MDRS-135): the level that hid an item, or any level above it, brings it back. The ladder is course < medrese < köşk < platform; a hide records the level its hider acted at, and one recorded by nobody counts as the lowest level that could have hidden it. A köşk manager restores courses, weeks, sessions and decks of their köşk, a medrese's başmüderris what sits in their medrese, SYSTEM_ADMIN anything; a lower level than the one that hid it answers 403 (ARCHIVE_RESTORE_LEVEL) naming both. A week or session whose parent is still hidden answers 409 (ARCHIVE_PARENT_HIDDEN).",
+        "description": "By kademe, as the bans are lifted (MDRS-135): the level that hid an item, or any level above it, brings it back. The ladder is course < medrese < köşk < platform; a hide records the level its hider acted at, and one recorded by nobody counts as the lowest level that could have hidden it. Who acts at which level is the catalogue's: whoever holds a code that hides the item where it sits (`week.hide` for a week, `course.hide` and `madrasah.course_hide` for a course, `kosk.manage` or `platform.kosk_edit` for a köşk) acts at the level of the highest one they hold, and SYSTEM_ADMIN at the platform. Someone who holds none answers 403 (ARCHIVE_FORBIDDEN); a lower level than the one that hid it answers 403 (ARCHIVE_RESTORE_LEVEL) naming both. Written to the audit log (`<entity>.restore`). A week or session whose parent is still hidden answers 409 (ARCHIVE_PARENT_HIDDEN).",
         "operationId": "restoreArchiveItem",
         "parameters": [
           {
@@ -10361,6 +10480,16 @@
         ],
         "description": "HIDDEN wins over PASSIVE: someone hid it, which says more than that nobody attends it."
       },
+      "HideLevel": {
+        "type": "string",
+        "enum": [
+          "course",
+          "madrasah",
+          "kosk",
+          "platform"
+        ],
+        "description": "The level that hid it (course, madrasah, kosk, platform); null while it is shown. Only that level or above brings it back."
+      },
       "KoskPersonResponse": {
         "type": "object",
         "properties": {
@@ -10429,6 +10558,19 @@
             "nullable": true,
             "description": "Since when it is hidden or passive; null while active"
           },
+          "hiddenLevel": {
+            "nullable": true,
+            "description": "The level that hid it (course, madrasah, kosk, platform); null while it is shown. Only that level or above brings it back.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HideLevel"
+              }
+            ]
+          },
+          "canRestore": {
+            "type": "boolean",
+            "description": "Whether the caller may bring it back (Geri al): it is hidden, they hold `kosk.manage` or `platform.kosk_edit` on it and act at the level that hid it or above. A köşk nazımı cannot reopen what Medaris yönetimi hid."
+          },
           "nazims": {
             "description": "The köşk nazımları held now, oldest grant first",
             "type": "array",
@@ -10447,6 +10589,7 @@
           "coverHue",
           "isPrivate",
           "status",
+          "canRestore",
           "nazims",
           "courseCount"
         ]
@@ -10579,6 +10722,19 @@
             "nullable": true,
             "description": "Since when it is hidden or passive; null while active"
           },
+          "hiddenLevel": {
+            "nullable": true,
+            "description": "The level that hid it (course, madrasah, kosk, platform); null while it is shown.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HideLevel"
+              }
+            ]
+          },
+          "canRestore": {
+            "type": "boolean",
+            "description": "Whether the caller may bring the köşk back: it is hidden, they hold `kosk.manage` or `platform.kosk_edit` on it and act at the level that hid it or above."
+          },
           "openedAt": {
             "format": "date-time",
             "type": "string",
@@ -10619,6 +10775,7 @@
         },
         "required": [
           "status",
+          "canRestore",
           "openedAt",
           "courses",
           "students",
@@ -10978,6 +11135,19 @@
             "type": "string",
             "nullable": true
           },
+          "hiddenLevel": {
+            "nullable": true,
+            "description": "The level that hid it (course, madrasah, kosk, platform); null while it is shown. A course hidden before levels were recorded counts as the lowest level that could have hidden it: the medrese's for a medrese course, the köşk's for its own.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HideLevel"
+              }
+            ]
+          },
+          "canRestore": {
+            "type": "boolean",
+            "description": "Whether the caller may bring the course back: it is hidden, they hold a code of the course ladder on it and act at the level that hid it or above."
+          },
           "createdAt": {
             "format": "date-time",
             "type": "string"
@@ -11008,6 +11178,8 @@
           "coverHue",
           "weekCount",
           "status",
+          "hiddenLevel",
+          "canRestore",
           "createdAt",
           "muderris",
           "studentCount",
@@ -12237,6 +12409,19 @@
             "nullable": true,
             "description": "Since when it is hidden or passive; null while active"
           },
+          "hiddenLevel": {
+            "nullable": true,
+            "description": "The level that hid it (course, madrasah, kosk, platform); null while it is shown. Only that level or above brings it back.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HideLevel"
+              }
+            ]
+          },
+          "canRestore": {
+            "type": "boolean",
+            "description": "Whether the caller may bring it back (Geri al): it is hidden, they hold `madrasah.hide` or `platform.madrasah_edit` on it and act at the level that hid it or above. A başmüderris cannot reopen what Medaris yönetimi hid."
+          },
           "headMuderris": {
             "nullable": true,
             "description": "The oldest held başmüderris; null when there is none",
@@ -12265,6 +12450,7 @@
           "name",
           "coverHue",
           "status",
+          "canRestore",
           "courseCount",
           "hostingKosks"
         ]
@@ -15460,6 +15646,29 @@
         },
         "required": [
           "version"
+        ]
+      },
+      "WeekHideResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The week that was hidden."
+          },
+          "courseVersion": {
+            "type": "number",
+            "description": "The course version this write produced; send it with the next PUT /courses/:id or PATCH /lessons/:id."
+          },
+          "hiddenSessions": {
+            "type": "number",
+            "description": "The live sessions hidden with it; a restore of the week brings back exactly these."
+          }
+        },
+        "required": [
+          "id",
+          "courseVersion",
+          "hiddenSessions"
         ]
       },
       "LiveStreamResponse": {
@@ -19565,6 +19774,18 @@
                 "$ref": "#/components/schemas/ArchiverResponse"
               }
             ]
+          },
+          "hiddenLevel": {
+            "description": "The level the hider acted at (course, madrasah, kosk, platform); a row hidden before it was recorded counts as the lowest level that could have hidden it. Only that level or above brings it back.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HideLevel"
+              }
+            ]
+          },
+          "canRestore": {
+            "type": "boolean",
+            "description": "Whether the caller may bring it back (Geri al): they hold a code that hides it where it sits and act at the hider's level or above. False when a higher level hid it. A hidden parent still answers 409 on restore."
           }
         },
         "required": [
@@ -19583,7 +19804,9 @@
           "sessionCount",
           "studentCount",
           "archivedAt",
-          "archivedBy"
+          "archivedBy",
+          "hiddenLevel",
+          "canRestore"
         ]
       },
       "PaginatedArchiveResponse": {
@@ -19611,6 +19834,62 @@
           "total",
           "page",
           "limit"
+        ]
+      },
+      "CourseArchiveCountsResponse": {
+        "type": "object",
+        "properties": {
+          "all": {
+            "type": "number",
+            "description": "Every hidden week and session of the course."
+          },
+          "week": {
+            "type": "number"
+          },
+          "session": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "all",
+          "week",
+          "session"
+        ]
+      },
+      "PaginatedCourseArchiveResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ArchiveItemResponse"
+            }
+          },
+          "total": {
+            "type": "number",
+            "description": "All hidden items matching, not just this page."
+          },
+          "page": {
+            "type": "number"
+          },
+          "limit": {
+            "type": "number"
+          },
+          "counts": {
+            "description": "The tabs' numbers: everything hidden in the course, whatever `types` says.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CourseArchiveCountsResponse"
+              }
+            ]
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "limit",
+          "counts"
         ]
       },
       "ArchiveScopeRefResponse": {
@@ -19733,82 +20012,28 @@
           "cards"
         ]
       },
-      "MadrasahArchiveItemResponse": {
+      "MadrasahArchiveStateResponse": {
         "type": "object",
         "properties": {
-          "type": {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/ArchiveItemType"
-              }
-            ]
+          "hidden": {
+            "type": "boolean",
+            "description": "Whether the medrese is hidden."
           },
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "title": {
-            "type": "string",
-            "description": "The hidden thing's own title or name."
-          },
-          "koskId": {
-            "type": "string",
-            "format": "uuid",
-            "nullable": true
-          },
-          "koskName": {
-            "type": "string",
-            "nullable": true
-          },
-          "madrasahId": {
-            "type": "string",
-            "format": "uuid",
-            "nullable": true
-          },
-          "madrasahName": {
-            "type": "string",
-            "nullable": true
-          },
-          "courseId": {
-            "type": "string",
-            "format": "uuid",
-            "nullable": true,
-            "description": "The course a week or a session belongs to."
-          },
-          "courseTitle": {
-            "type": "string",
-            "nullable": true
-          },
-          "weekNumber": {
-            "type": "number",
-            "nullable": true,
-            "description": "Of a week, and of the week a session is in."
-          },
-          "scheduledAt": {
+          "hiddenAt": {
             "type": "string",
             "format": "date-time",
             "nullable": true
           },
-          "weekCount": {
-            "type": "number",
+          "hiddenLevel": {
             "nullable": true,
-            "description": "Of a course: its live weeks."
+            "description": "The level that hid it; null while it is shown.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HideLevel"
+              }
+            ]
           },
-          "sessionCount": {
-            "type": "number",
-            "nullable": true,
-            "description": "Of a week: its live sessions."
-          },
-          "studentCount": {
-            "type": "number",
-            "nullable": true,
-            "description": "Of a course: its enrolled talebe."
-          },
-          "archivedAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "archivedBy": {
+          "hiddenBy": {
             "nullable": true,
             "type": "object",
             "allOf": [
@@ -19819,26 +20044,14 @@
           },
           "canRestore": {
             "type": "boolean",
-            "description": "Whether the caller may bring it back (Geri al). False when the hider's kademe is above theirs; the hider's role is in `archivedBy.role`. A hidden parent still answers 409 on restore."
+            "description": "Whether the caller may bring the medrese back (`POST /madrasahs/:id/restore`): it is hidden, they hold `madrasah.hide` or `platform.madrasah_edit` on it and act at the level that hid it or above."
           }
         },
         "required": [
-          "type",
-          "id",
-          "title",
-          "koskId",
-          "koskName",
-          "madrasahId",
-          "madrasahName",
-          "courseId",
-          "courseTitle",
-          "weekNumber",
-          "scheduledAt",
-          "weekCount",
-          "sessionCount",
-          "studentCount",
-          "archivedAt",
-          "archivedBy",
+          "hidden",
+          "hiddenAt",
+          "hiddenLevel",
+          "hiddenBy",
           "canRestore"
         ]
       },
@@ -19877,7 +20090,7 @@
           "items": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/MadrasahArchiveItemResponse"
+              "$ref": "#/components/schemas/ArchiveItemResponse"
             }
           },
           "total": {
@@ -19889,6 +20102,14 @@
           },
           "limit": {
             "type": "number"
+          },
+          "madrasah": {
+            "description": "The medrese itself: the page cannot read a hidden medrese anywhere else it may not open.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MadrasahArchiveStateResponse"
+              }
+            ]
           },
           "counts": {
             "description": "The tabs' numbers: everything hidden in the medrese, whatever `types` says.",
@@ -19904,6 +20125,7 @@
           "total",
           "page",
           "limit",
+          "madrasah",
           "counts"
         ]
       },

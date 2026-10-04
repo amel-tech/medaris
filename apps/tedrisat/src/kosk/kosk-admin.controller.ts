@@ -175,9 +175,10 @@ export class KoskAdminController {
     byExistingKosk
   )
   overview(
+    @Req() request: AuthenticatedUserRequest,
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<KoskOverviewResponse> {
-    return this.admin.overview(id);
+    return this.admin.overview(request.user, id);
   }
 
   @ApiOperation({
@@ -230,9 +231,10 @@ export class KoskAdminController {
     byExistingKosk
   )
   courseRoster(
+    @Req() request: AuthenticatedUserRequest,
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<KoskCourseRosterResponse> {
-    return this.admin.courseRoster(id);
+    return this.admin.courseRoster(request.user, id);
   }
 
   @ApiOperation({

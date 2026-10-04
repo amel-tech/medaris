@@ -485,10 +485,11 @@ test("nizam/24 — 'Köşkü gizle' asks first, hides the köşk with its course
     (await request.get(`${API}/kosks/${fixture.beyazit.id}`)).status()
   ).toBe(404);
 
-  // the nazım sees it among the hidden ones, with no way to bring it back
+  // the nazım sees it among the hidden ones, and brings back what they hid themselves
+  // (a köşk Medaris yönetimi hid would show who hid it instead of a button, MDRS-143)
   await page.goto(`/tr/kosks?q=${fixture.tail}&durum=gizli`);
   await expect(rowOf(page, fixture.beyazit.name)).toContainText("Gizli");
-  await expect(page.getByRole("button", { name: /^Geri al/ })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /^Geri al/ })).toHaveCount(1);
 });
 
 test("nizam/25 — the nazım list is read-only: who, who gave the post, when, until when, and 'Siz' (criteria 1-3)", async ({

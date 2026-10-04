@@ -55,6 +55,8 @@ const base = {
     name: "Abdülhamit Karaosmanoğlu",
     role: "KOSK_NAZIM",
   },
+  hiddenLevel: "kosk",
+  canRestore: true,
 };
 
 const item = (over: Partial<ArchiveItemResponse>): ArchiveItemResponse =>
@@ -330,6 +332,35 @@ describe("ArchiveView — the köşk archive (nizam 28)", () => {
 
   it("counts the hidden items, not the rows on the page", () => {
     expect(html).toContain("10 gizli öğe");
+  });
+
+  it("names who hid a row, and gives it no 'Geri al', when the reader's level is below (MDRS-143)", () => {
+    const locked = render(
+      <ArchiveView
+        mode={{ kind: "kosk", koskId: "k1", koskName: "Nûruosmaniye Köşkü" }}
+        initial={{
+          items: [
+            item({
+              id: "p",
+              type: "course",
+              title: "Medaris'in gizlediği ders",
+              hiddenLevel: "platform",
+              canRestore: false,
+            }),
+            item({ id: "q", type: "course", title: "Benim gizlediğim ders" }),
+          ],
+          total: 2,
+          page: 1,
+          limit: 50,
+        }}
+        pageSize={50}
+      />
+    );
+    expect(locked).not.toContain("Geri al: Medaris'in gizlediği ders");
+    expect(locked).toContain(
+      "Bunu Medaris yönetimi gizledi; yalnız o kademe ya da üstü geri alabilir."
+    );
+    expect(locked).toContain("Geri al: Benim gizlediğim ders");
   });
 
   it("has no permanent delete (criterion 4)", () => {

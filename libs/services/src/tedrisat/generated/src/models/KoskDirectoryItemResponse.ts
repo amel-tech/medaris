@@ -13,6 +13,13 @@
  */
 
 import { mapValues } from '../runtime';
+import type { HideLevel } from './HideLevel';
+import {
+    HideLevelFromJSON,
+    HideLevelFromJSONTyped,
+    HideLevelToJSON,
+    HideLevelToJSONTyped,
+} from './HideLevel';
 import type { KoskPersonResponse } from './KoskPersonResponse';
 import {
     KoskPersonResponseFromJSON,
@@ -89,6 +96,18 @@ export interface KoskDirectoryItemResponse {
      */
     since?: Date | null;
     /**
+     * The level that hid it (course, madrasah, kosk, platform); null while it is shown. Only that level or above brings it back.
+     * @type {HideLevel}
+     * @memberof KoskDirectoryItemResponse
+     */
+    hiddenLevel?: HideLevel | null;
+    /**
+     * Whether the caller may bring it back (Geri al): it is hidden, they hold `kosk.manage` or `platform.kosk_edit` on it and act at the level that hid it or above. A köşk nazımı cannot reopen what Medaris yönetimi hid.
+     * @type {boolean}
+     * @memberof KoskDirectoryItemResponse
+     */
+    canRestore: boolean;
+    /**
      * The köşk nazımları held now, oldest grant first
      * @type {Array<KoskPersonResponse>}
      * @memberof KoskDirectoryItemResponse
@@ -113,6 +132,7 @@ export function instanceOfKoskDirectoryItemResponse(value: object): value is Kos
     if (!('coverHue' in value) || value['coverHue'] === undefined) return false;
     if (!('isPrivate' in value) || value['isPrivate'] === undefined) return false;
     if (!('status' in value) || value['status'] === undefined) return false;
+    if (!('canRestore' in value) || value['canRestore'] === undefined) return false;
     if (!('nazims' in value) || value['nazims'] === undefined) return false;
     if (!('courseCount' in value) || value['courseCount'] === undefined) return false;
     return true;
@@ -137,6 +157,8 @@ export function KoskDirectoryItemResponseFromJSONTyped(json: any, ignoreDiscrimi
         'isPrivate': json['isPrivate'],
         'status': KoskStatusFromJSON(json['status']),
         'since': json['since'] == null ? undefined : (new Date(json['since'])),
+        'hiddenLevel': json['hiddenLevel'] == null ? undefined : HideLevelFromJSON(json['hiddenLevel']),
+        'canRestore': json['canRestore'],
         'nazims': ((json['nazims'] as Array<any>).map(KoskPersonResponseFromJSON)),
         'courseCount': json['courseCount'],
     };
@@ -162,6 +184,8 @@ export function KoskDirectoryItemResponseToJSONTyped(value?: KoskDirectoryItemRe
         'isPrivate': value['isPrivate'],
         'status': KoskStatusToJSON(value['status']),
         'since': value['since'] === null ? null : ((value['since'] as any)?.toISOString()),
+        'hiddenLevel': HideLevelToJSON(value['hiddenLevel']),
+        'canRestore': value['canRestore'],
         'nazims': ((value['nazims'] as Array<any>).map(KoskPersonResponseToJSON)),
         'courseCount': value['courseCount'],
     };

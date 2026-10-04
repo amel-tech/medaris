@@ -1,10 +1,11 @@
-import type { IArchiveEntry, IArchivePage } from "./archive.service";
+import type { IRestorableEntry, IRestorablePage } from "./archive.service";
 import type {
   ArchiveItemResponse,
   PaginatedArchiveResponse,
 } from "./dto/archive-response.dto";
+import { hiderLevelOf } from "./hide-level";
 
-export const presentItem = (i: IArchiveEntry): ArchiveItemResponse => ({
+export const presentItem = (i: IRestorableEntry): ArchiveItemResponse => ({
   type: i.type,
   id: i.id,
   title: i.title,
@@ -21,9 +22,13 @@ export const presentItem = (i: IArchiveEntry): ArchiveItemResponse => ({
   studentCount: i.studentCount,
   archivedAt: i.archivedAt,
   archivedBy: i.archiver,
+  hiddenLevel: hiderLevelOf(i),
+  canRestore: i.canRestore,
 });
 
-export const presentPage = (page: IArchivePage): PaginatedArchiveResponse => ({
+export const presentPage = (
+  page: IRestorablePage
+): PaginatedArchiveResponse => ({
   items: page.items.map(presentItem),
   total: page.total,
   page: page.page,

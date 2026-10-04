@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { ArchiveRestoreLevelError } from "../archive/errors/archive-errors";
+import { recordHide } from "../archive/hide-audit";
 import {
   type HideLevel,
   hiderLevelOf,
@@ -51,6 +52,8 @@ export interface IKoskDirectoryRow {
   isPrivate: boolean;
   status: KoskStatus;
   since: Date | null;
+  /** The level the köşk was hidden at; null while it is shown. A row hidden before it was recorded counts as the köşk's own. */
+  hiddenLevel: HideLevel | null;
   nazimIds: string[];
   courseCount: number;
 }
@@ -58,6 +61,8 @@ export interface IKoskDirectoryRow {
 export interface IKoskOverviewRow {
   status: KoskStatus;
   since: Date | null;
+  /** The level the köşk was hidden at; null while it is shown. */
+  hiddenLevel: HideLevel | null;
   openedAt: Date;
   ownerId: string;
   courses: { all: number; published: number; draft: number; hidden: number };
@@ -75,6 +80,8 @@ export interface IKoskCourseRow {
   madrasah: { id: string; name: string } | null;
   status: "PUBLISHED" | "DRAFT" | "HIDDEN";
   hiddenAt: Date | null;
+  /** The level the course was hidden at, as recorded; null while shown or hidden before levels were recorded. */
+  archivedLevel: HideLevel | null;
   createdAt: Date;
   muderris: { name: string; isImam: boolean }[];
   studentCount: number;
@@ -190,12 +197,15 @@ export class KoskAdminRepository {
       is_private: boolean;
       status: KoskStatus;
       since: Date | string | null;
+      hidden_level: HideLevel | null;
       nazim_ids: string[];
       course_count: string;
     }>(sql`
       select k.id, k.handle, k.name, k.cover_hue, k.field, k.level, k.is_private,
              ${this.statusSql()} as status,
              coalesce(k.archived_at, k.passive_since) as since,
+             case when k.archived_at is not null
+                  then coalesce(k.archived_level::text, 'kosk') end as hidden_level,
              coalesce((select json_agg(ra.user_id::text order by ra.created_at, ra.user_id)
                          from role_assignments ra where ${this.heldNazimSql()}),
                       '[]'::json) as nazim_ids,
@@ -221,6 +231,7 @@ export class KoskAdminRepository {
         status: r.status,
         // A raw `execute` skips drizzle's column mappers: timestamps arrive as text.
         since: r.since ? new Date(r.since) : null,
+        hiddenLevel: r.hidden_level,
         nazimIds: r.nazim_ids,
         courseCount: Number(r.course_count),
       })),
@@ -452,12 +463,15 @@ export class KoskAdminRepository {
           updatedAt: new Date(),
         })
         .where(eq(kosks.id, koskId));
-      await tx.insert(auditLog).values({
+      await recordHide(tx, {
         actorId,
-        action: "kosk.hide",
+        verb: "hide",
         entity: "kosk",
         entityId: koskId,
-        details: { name: row.name },
+        title: row.name,
+        level,
+        koskId,
+        extra: { name: row.name },
       });
       return "hidden";
     });
@@ -500,12 +514,16 @@ export class KoskAdminRepository {
           updatedAt: new Date(),
         })
         .where(eq(kosks.id, koskId));
-      await tx.insert(auditLog).values({
+      await recordHide(tx, {
         actorId,
-        action: "kosk.restore",
+        verb: "restore",
         entity: "kosk",
         entityId: koskId,
-        details: {
+        title: row.name,
+        level,
+        hiddenLevel: hiddenAt,
+        koskId,
+        extra: {
           name: row.name,
           hiddenSince: row.archivedAt.toISOString(),
         },
@@ -522,11 +540,14 @@ export class KoskAdminRepository {
       await this.db.execute<{
         status: KoskStatus;
         since: Date | string | null;
+        hidden_level: HideLevel | null;
         created_at: Date | string;
         owner_id: string;
       }>(sql`
         select ${this.statusSql()} as status,
                coalesce(k.archived_at, k.passive_since) as since,
+               case when k.archived_at is not null
+                    then coalesce(k.archived_level::text, 'kosk') end as hidden_level,
                k.created_at, k.owner_id
           from kosks k where k.id = ${koskId}`)
     ).rows;
@@ -570,6 +591,7 @@ export class KoskAdminRepository {
     return {
       status: head.status,
       since: head.since ? new Date(head.since) : null,
+      hiddenLevel: head.hidden_level,
       openedAt: new Date(head.created_at),
       ownerId: head.owner_id,
       courses: {
@@ -597,6 +619,7 @@ export class KoskAdminRepository {
       cover_hue: number;
       status: "PUBLISHED" | "DRAFT";
       archived_at: Date | string | null;
+      archived_level: HideLevel | null;
       created_at: Date | string;
       madrasah_id: string | null;
       madrasah_name: string | null;
@@ -605,7 +628,8 @@ export class KoskAdminRepository {
       pending: string;
       banned: string;
     }>(sql`
-      select c.id, c.title, c.cover_hue, c.status, c.archived_at, c.created_at,
+      select c.id, c.title, c.cover_hue, c.status, c.archived_at, c.archived_level,
+             c.created_at,
              m.id as madrasah_id, m.name as madrasah_name,
              (select count(*) from course_weeks w
                where w.course_id = c.id and w.archived_at is null) as week_count,
@@ -649,6 +673,7 @@ export class KoskAdminRepository {
         : null,
       status: r.archived_at ? "HIDDEN" : r.status,
       hiddenAt: r.archived_at ? new Date(r.archived_at) : null,
+      archivedLevel: r.archived_level,
       createdAt: new Date(r.created_at),
       muderris: muderris.rows
         .filter((m) => m.course_id === r.id)

@@ -48,8 +48,9 @@ the command that printed it; commands run from `apps/tedrisat` unless a `cd` say
    the NULL (an earlier version of the guard counted it as the stored account, so such a save passed the guard,
    unbound the last müderris and left the course passive with 200). `ReplaceCourseDto` is now `OmitType(CreateCourseDto, ["muderris", "imamUserId"])`
    plus an optional `muderris`; `UpdateCourseDto` also omits `imamUserId`.
-6. **A whole-course save that hides a week or a session needs `week.hide`** (403 `WEEK_HIDE_FORBIDDEN`, checked
-   against the stored syllabus before any write). The save already hid every week and session its payload
+6. **A whole-course save that hides a week or a session needs `week.hide`** (403 `COURSE_HIDE_FORBIDDEN`, checked
+   against the stored syllabus before any write; the check is MDRS-143's `assertMayDropFrom`, kept when this
+   branch merged it over its own duplicate). The save already hid every week and session its payload
    leaves out; the müderris and the köşk nazımı hold the code by role default, so only someone holding
    `course.edit` without it (a grant) is refused. See "Decided by default" for the status of this rule.
 7. **A refused self-seat on the opening routes answered 500, not 403** (found by the new spec). `SelfGrantGuard`
@@ -73,7 +74,7 @@ or opened courses with no müderris, go through it.
 | `POST /kosks/:koskId/courses` | `muderris` optional; the başnazım got 403 `KOSK_FORBIDDEN` from the service | `muderris` required with at least one account (400 `MUDERRIS_LIST_INVALID`), `imamUserId` optional; the başnazım opens in any köşk |
 | `POST /kosks/:koskId/courses` | a holder of `course.open_standalone` who was not the köşk's nazımı got 403 from the service, whoever was named | such a holder (a grantee) may open a course for others; naming themselves as müderris or imam is 403 `SELF_GRANT_REFUSED`; the başnazım and the köşk's nazımı may list themselves |
 | `PUT /courses/:id` | `muderris` omitted emptied the team; `[]` emptied it; a payload with no account left the course with no müderris | omitted keeps the team; `[]`, no account left, or the last account sent as `userId: null`: 400 `MUDERRIS_LIST_INVALID`, nothing written |
-| `PUT /courses/:id` | dropping a week or a session needed only `course.edit` | also `week.hide` (403 `WEEK_HIDE_FORBIDDEN`); müderris and köşk nazımı hold it by default |
+| `PUT /courses/:id` | dropping a week or a session needed only `course.edit` | also `week.hide` (403 `COURSE_HIDE_FORBIDDEN`); müderris and köşk nazımı hold it by default |
 | `PATCH /courses/:id`, `PUT /courses/:id` | no `imamUserId` | the field is not accepted (400) |
 | `POST /kosks/:id/managers/:userId` | `kosk.manage` or `platform.kosk_nazim_manage`: a köşk nazımı added peers | `platform.kosk_nazim_manage` only: a köşk nazımı gets 403 |
 | `DELETE /kosks/:id/managers/:userId` | same guard; a nazım removed a peer or resigned while another remained | same new guard; 403 for a köşk nazımı; the last nazım needs `?successorUserId=` (else 409) |
@@ -103,7 +104,7 @@ The route inventory snapshot changes in two lines, read off `git diff`:
    the partial unique index keeps exactly one.
 3. **Whole-course save and `week.hide` (d-1004-14, still open as d-1004-26).** Default: the müderris holds
    `week.hide` by default and a save that drops a week or a session needs it. The check is
-   `CourseService.assertMayHideWithSave`, in `replace`, after the müderris checks and before the write, and is
+   `CourseService.assertMayDropFrom` (MDRS-143), after the müderris checks and before the write, and is
    separate from any `session.manage` check. PR #203 (another agent, not merged, not depended on) adds a
    `session.manage` requirement for a save that adds, moves or hides a session: the two checks must be
    reconciled when #203 lands (a save that hides a session would then need both).
@@ -124,7 +125,7 @@ The route inventory snapshot changes in two lines, read off `git diff`:
 
 ## Tests, and what each is red without
 
-New: `test/e2e/scope-opening.e2e.spec.ts` (53 tests), `test/unit/course/syllabus-drops.spec.ts` and three new
+New: `test/e2e/scope-opening.e2e.spec.ts` (53 tests), and three new
 describes in `test/unit/course/muderris-list.spec.ts`. Rewritten (the old tests encoded the old rules):
 `kosk-managers.e2e.spec.ts` (the creator test, peers adding and removing, resigning, the last-two race),
 `course.e2e.spec.ts` ("replaces a course": the team is kept), `muderris-assignments.e2e.spec.ts` (name-only

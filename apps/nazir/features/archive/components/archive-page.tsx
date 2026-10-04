@@ -12,20 +12,24 @@ import {
   ARCHIVE_TABS,
   archiveHref,
   archiveRows,
+  medreseRestoreOf,
   pageWindow,
   tabOf,
 } from "../archive";
 import { ArchiveList } from "./archive-list";
 import { HideMadrasah } from "./hide-madrasah";
+import { RestoreMadrasah } from "./restore-madrasah";
 
 /**
  * Arşiv (nazir 12): what is hidden in the medrese (its courses, and the weeks
  * and sessions in them) by tab, newest first, with "Geri al" and, under it,
- * "Medreseyi gizle". The medrese's başmüderris opens the page; the API refuses
- * a nazır of the medrese today (the role matrix has no row for MEDRESE_NAZIR),
- * so that answer is a notice, and "Medreseyi gizle" is left out with the list.
- * Which tab and which page are in the address (`?tur=`, `?sayfa=`), so a page
- * can be linked to and the tabs are links.
+ * "Medreseyi gizle". Whoever may hide in the medrese opens the page (its
+ * başmüderris, a nazır given `madrasah.course_hide`, Medaris yönetimi); the API
+ * refuses anyone else, and that answer is a notice with the list and
+ * "Medreseyi gizle" left out. A medrese that is hidden says so in a banner above
+ * the list, with "Medreseyi geri al" for whoever hid it or a level above, and
+ * offers no "Medreseyi gizle" (MDRS-143). Which tab and which page are in the
+ * address (`?tur=`, `?sayfa=`), so a page can be linked to and the tabs are links.
  */
 export async function ArchivePage({
   madrasahId,
@@ -57,6 +61,11 @@ export async function ArchivePage({
       ? findScope(portal.scopes, "medrese", madrasahId)?.name
       : undefined) ?? "";
 
+  const medreseRestore =
+    archive.status === "ok"
+      ? medreseRestoreOf(archive.data.madrasah, t, locale)
+      : null;
+
   return (
     <>
       <header className="flex max-inline-measure flex-col gap-1">
@@ -73,6 +82,15 @@ export async function ArchivePage({
         />
       ) : (
         <>
+          {archive.data.madrasah.hidden ? (
+            <RestoreMadrasah
+              madrasahId={madrasahId}
+              madrasahName={madrasahName}
+              lockedNote={
+                medreseRestore?.kind === "note" ? medreseRestore.text : null
+              }
+            />
+          ) : null}
           <ArchiveList
             active={tab.id}
             tabs={ARCHIVE_TABS.map((candidate) => ({
@@ -90,7 +108,9 @@ export async function ArchivePage({
             empty={t(`Archive.empty.${tab.id}`)}
             pager={pagerOf(madrasahId, tab, archive.data, t)}
           />
-          <HideMadrasah madrasahId={madrasahId} madrasahName={madrasahName} />
+          {archive.data.madrasah.hidden ? null : (
+            <HideMadrasah madrasahId={madrasahId} madrasahName={madrasahName} />
+          )}
         </>
       )}
     </>

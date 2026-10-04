@@ -226,6 +226,28 @@ export class KoskController {
     );
   }
 
+  /**
+   * A hidden köşk (MDRS-174) opens for its nazımları, Medaris yönetimi holding
+   * `platform.kosk_edit` and the başnazım only (MDRS-143); for everyone else it
+   * is one that does not exist.
+   */
+  private async assertMayOpenHidden(
+    request: PublicRequest,
+    id: string
+  ): Promise<void> {
+    if (
+      !(
+        request.user &&
+        (await this.authz.can(request.user, { entity: ENTITIES.KOSK, id }, [
+          PERMISSIONS.KOSK_MANAGE,
+          PERMISSIONS.PLATFORM_KOSK_EDIT,
+        ]))
+      )
+    ) {
+      throw new KoskNotFoundError(id);
+    }
+  }
+
   @ApiOperation({
     summary: "Get a köşk by ID",
     description:
@@ -243,25 +265,14 @@ export class KoskController {
   ): Promise<KoskResponse> {
     const userId = request.user?.sub ?? null;
     const kosk = await this.koskService.findById(id, userId);
-    // A hidden köşk (MDRS-174) opens for its nazımları and the başnazım
-    // only; for everyone else it is one that does not exist.
-    if (
-      kosk.archivedAt !== null &&
-      !(
-        request.user &&
-        (this.authz.isSystemAdmin(request.user) ||
-          kosk.managerIds.includes(request.user.sub.toLowerCase()))
-      )
-    ) {
-      throw new KoskNotFoundError(id);
-    }
+    if (kosk.archivedAt !== null) await this.assertMayOpenHidden(request, id);
     return userId === null ? maskKoskForAnonymous(kosk) : kosk;
   }
 
   @ApiOperation({
     summary: "Get the köşk's decks (MDRS-159)",
     description:
-      "The shared decks the köşk offers its talebe, for a signed-in caller who is a talebe (ENROLLED or COMPLETED), a müderris or a manager of the köşk. For anyone else `accessible` is false and `decks` is empty, so the köşk page can leave the block out; the köşk's existence is never denied to them here, `GET /kosks/:id` answers that.",
+      "The shared decks the köşk offers its talebe, for a signed-in caller who is a talebe (ENROLLED or COMPLETED), a müderris or a manager of the köşk. For anyone else `accessible` is false and `decks` is empty, so the köşk page can leave the block out; the köşk's existence is never denied to them here, `GET /kosks/:id` answers that. A hidden köşk answers 404 to all but its nazımları, Medaris yönetimi holding `platform.kosk_edit` and the başnazım, as `GET /kosks/:id` does.",
     operationId: "getKoskDecks",
   })
   @ApiOkResponse({ type: KoskDecksResponse })
@@ -272,6 +283,9 @@ export class KoskController {
     @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<KoskDecksResponse> {
+    if ((await this.koskService.findVisibility(id))?.hidden) {
+      await this.assertMayOpenHidden(request, id);
+    }
     return this.koskService.findDecks(id, request.user.sub);
   }
 

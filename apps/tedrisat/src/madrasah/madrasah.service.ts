@@ -78,26 +78,36 @@ export class MadrasahService {
 
   /**
    * What `GET /madrasahs/:id` serves, to callers with no token too: a hidden
-   * medrese is not-found, closed like its listing and its page (MDRS-170).
-   * `findById` stays open to it for the writes that return the medrese they
-   * changed.
+   * medrese is not-found, closed like its listing and its page (MDRS-170),
+   * except to the people above it, which `mayOpenHidden` decides (it is asked
+   * only for a hidden one). `findById` stays open to it for the writes that
+   * return the medrese they changed.
    */
-  async findOpenById(id: string): Promise<IMadrasahWithNazirs> {
+  async findOpenById(
+    id: string,
+    mayOpenHidden: () => Promise<boolean> = async () => false
+  ): Promise<IMadrasahWithNazirs> {
     const madrasah = await this.findById(id);
-    if (madrasah.archivedAt) throw new MadrasahNotFoundError(id);
+    if (madrasah.archivedAt && !(await mayOpenHidden())) {
+      throw new MadrasahNotFoundError(id);
+    }
     return madrasah;
   }
 
-  /** The medrese page's data (MDRS-157); not-found for an unknown medrese. */
+  /**
+   * The medrese page's data (MDRS-157); not-found for an unknown medrese, and
+   * for a hidden one unless `mayOpenHidden` lets the caller in (MDRS-143: the
+   * medrese's başmüderris and Medaris yönetimi).
+   */
   async findOverview(
     id: string,
-    userId: string | null
+    userId: string | null,
+    mayOpenHidden: () => Promise<boolean> = async () => false
   ): Promise<IMadrasahOverview> {
-    // A hidden medrese's page is closed like its listing (MDRS-170).
-    if (
-      !(await this.madrasahRepo.exists(id)) ||
-      (await this.madrasahRepo.isHidden(id))
-    ) {
+    if (!(await this.madrasahRepo.exists(id))) {
+      throw new MadrasahNotFoundError(id);
+    }
+    if ((await this.madrasahRepo.isHidden(id)) && !(await mayOpenHidden())) {
       throw new MadrasahNotFoundError(id);
     }
     return this.madrasahRepo.findOverview(id, userId);
@@ -362,8 +372,8 @@ export class MadrasahService {
     return this.madrasahRepo.findCourseList(id, filter);
   }
 
-  async delete(id: string): Promise<boolean> {
-    if (!(await this.madrasahRepo.delete(id))) {
+  async delete(id: string, actorId: string): Promise<boolean> {
+    if (!(await this.madrasahRepo.delete(id, actorId))) {
       throw new MadrasahNotFoundError(id);
     }
     return true;

@@ -1043,7 +1043,7 @@ export class KosksApi extends runtime.BaseAPI {
     }
 
     /**
-     * The shared decks the köşk offers its talebe, for a signed-in caller who is a talebe (ENROLLED or COMPLETED), a müderris or a manager of the köşk. For anyone else `accessible` is false and `decks` is empty, so the köşk page can leave the block out; the köşk\'s existence is never denied to them here, `GET /kosks/:id` answers that.
+     * The shared decks the köşk offers its talebe, for a signed-in caller who is a talebe (ENROLLED or COMPLETED), a müderris or a manager of the köşk. For anyone else `accessible` is false and `decks` is empty, so the köşk page can leave the block out; the köşk\'s existence is never denied to them here, `GET /kosks/:id` answers that. A hidden köşk answers 404 to all but its nazımları, Medaris yönetimi holding `platform.kosk_edit` and the başnazım, as `GET /kosks/:id` does.
      * Get the köşk\'s decks (MDRS-159)
      */
     async getKoskDecksRaw(requestParameters: GetKoskDecksRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<KoskDecksResponse>> {
@@ -1078,7 +1078,7 @@ export class KosksApi extends runtime.BaseAPI {
     }
 
     /**
-     * The shared decks the köşk offers its talebe, for a signed-in caller who is a talebe (ENROLLED or COMPLETED), a müderris or a manager of the köşk. For anyone else `accessible` is false and `decks` is empty, so the köşk page can leave the block out; the köşk\'s existence is never denied to them here, `GET /kosks/:id` answers that.
+     * The shared decks the köşk offers its talebe, for a signed-in caller who is a talebe (ENROLLED or COMPLETED), a müderris or a manager of the köşk. For anyone else `accessible` is false and `decks` is empty, so the köşk page can leave the block out; the köşk\'s existence is never denied to them here, `GET /kosks/:id` answers that. A hidden köşk answers 404 to all but its nazımları, Medaris yönetimi holding `platform.kosk_edit` and the başnazım, as `GET /kosks/:id` does.
      * Get the köşk\'s decks (MDRS-159)
      */
     async getKoskDecks(requestParameters: GetKoskDecksRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<KoskDecksResponse> {

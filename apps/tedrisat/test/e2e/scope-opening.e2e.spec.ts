@@ -882,7 +882,7 @@ describe("Opening scopes with their admins (MDRS-136, e2e)", () => {
 
     it("refuses a saver holding course.edit without week.hide, with 403 and nothing written", async () => {
       const res = await save(EDITOR_ID, 1).expect(403);
-      expect(res.body.code).toBe("WEEK_HIDE_FORBIDDEN");
+      expect(res.body.code).toBe("COURSE_HIDE_FORBIDDEN");
       expect((await weekRows()).filter((w) => w.archivedAt)).toHaveLength(0);
       const after = (await get(NAZIM_ID, `/courses/${courseId}`).expect(200))
         .body;
@@ -891,7 +891,7 @@ describe("Opening scopes with their admins (MDRS-136, e2e)", () => {
 
     it("refuses a saver without week.hide who drops only a session of a week they keep", async () => {
       const res = await save(EDITOR_ID, 3, false).expect(403);
-      expect(res.body.code).toBe("WEEK_HIDE_FORBIDDEN");
+      expect(res.body.code).toBe("COURSE_HIDE_FORBIDDEN");
       expect((await weekRows()).filter((w) => w.archivedAt)).toHaveLength(0);
       const after = (await get(NAZIM_ID, `/courses/${courseId}`).expect(200))
         .body;
@@ -901,7 +901,7 @@ describe("Opening scopes with their admins (MDRS-136, e2e)", () => {
 
     it("refuses a saver without week.hide who drops only an empty week", async () => {
       const res = await save(EDITOR_ID, 2).expect(403);
-      expect(res.body.code).toBe("WEEK_HIDE_FORBIDDEN");
+      expect(res.body.code).toBe("COURSE_HIDE_FORBIDDEN");
       expect((await weekRows()).filter((w) => w.archivedAt)).toHaveLength(0);
       const after = (await get(NAZIM_ID, `/courses/${courseId}`).expect(200))
         .body;

@@ -22,11 +22,13 @@ const api = {
     updateMadrasahPermissionGroup: vi.fn(),
     deleteMadrasahPermissionGroup: vi.fn(),
     hideMadrasah: vi.fn(),
+    restoreMadrasah: vi.fn(),
     openMadrasahCourse: vi.fn(),
     setMadrasahCourseMuderris: vi.fn(),
     hideMadrasahCourse: vi.fn(),
   },
   archive: { restoreArchiveItem: vi.fn() },
+  lessons: { hideCourseWeek: vi.fn(), archiveLesson: vi.fn() },
   users: { lookupUser: vi.fn() },
 };
 let token: string | undefined;
@@ -464,6 +466,66 @@ describe("the archive actions (nazir 12)", () => {
     expect(await hideMedrese("m-1")).toEqual({
       success: false,
       code: "MADRASAH_ALREADY_HIDDEN",
+    });
+  });
+});
+
+describe("bringing a medrese back (MDRS-143)", () => {
+  const actions = () => import("~/features/archive/actions");
+
+  it("restores the medrese by its id, and hands back the code of a refusal", async () => {
+    const { restoreMedrese } = await actions();
+    api.madrasahs.restoreMadrasah.mockResolvedValue({ status: "ACTIVE" });
+    expect(await restoreMedrese("m-1")).toEqual({ success: true, data: null });
+    expect(api.madrasahs.restoreMadrasah).toHaveBeenCalledWith({ id: "m-1" });
+    api.madrasahs.restoreMadrasah.mockRejectedValue(
+      refusal(403, { code: "ARCHIVE_RESTORE_LEVEL", message: "x" })
+    );
+    expect(await restoreMedrese("m-1")).toEqual({
+      success: false,
+      code: "ARCHIVE_RESTORE_LEVEL",
+    });
+  });
+});
+
+describe("the curriculum actions (MDRS-143)", () => {
+  const actions = () => import("~/features/curriculum-hide/actions");
+
+  it("hides a week of a course, and hands back how many sessions went with it", async () => {
+    const { hideWeek } = await actions();
+    api.lessons.hideCourseWeek.mockResolvedValue({
+      id: "w-1",
+      courseVersion: 4,
+      hiddenSessions: 2,
+    });
+    expect(await hideWeek("c-1", "w-1")).toEqual({
+      success: true,
+      data: { hiddenSessions: 2 },
+    });
+    expect(api.lessons.hideCourseWeek).toHaveBeenCalledWith({
+      courseId: "c-1",
+      weekId: "w-1",
+    });
+    api.lessons.hideCourseWeek.mockRejectedValue(
+      refusal(403, { code: "AUTHZ_FORBIDDEN", message: "x" })
+    );
+    expect(await hideWeek("c-1", "w-1")).toEqual({
+      success: false,
+      code: "AUTHZ_FORBIDDEN",
+    });
+  });
+
+  it("hides a session by its id, and hands back the code of a refusal", async () => {
+    const { hideSession } = await actions();
+    api.lessons.archiveLesson.mockResolvedValue({ id: "s-1" });
+    expect(await hideSession("s-1")).toEqual({ success: true, data: null });
+    expect(api.lessons.archiveLesson).toHaveBeenCalledWith({ id: "s-1" });
+    api.lessons.archiveLesson.mockRejectedValue(
+      refusal(404, { code: "LESSON_NOT_FOUND", message: "x" })
+    );
+    expect(await hideSession("s-1")).toEqual({
+      success: false,
+      code: "LESSON_NOT_FOUND",
     });
   });
 });

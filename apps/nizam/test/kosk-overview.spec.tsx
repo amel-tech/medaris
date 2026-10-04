@@ -25,6 +25,7 @@ import {
   meetingSlots,
   platformOf,
   registrationChips,
+  restoreFailureKey,
   rowActions,
   sessionCount,
   sessionStatus,
@@ -87,6 +88,8 @@ const row = (
   madrasah: null,
   status: "PUBLISHED",
   hiddenAt: null,
+  hiddenLevel: null,
+  canRestore: false,
   createdAt: new Date("2026-09-01T09:00:00Z"),
   muderris: [{ name: "Abdülhamit Karaosmanoğlu", isImam: true }],
   studentCount: 28,
@@ -109,6 +112,8 @@ const rows: KoskCourseRowResponse[] = [
     title: "Merâhu’l-ervâh okumaları",
     status: "HIDDEN",
     hiddenAt: new Date("2026-09-20T09:00:00Z"),
+    hiddenLevel: "kosk",
+    canRestore: true,
     studentCount: 14,
   }),
 ];
@@ -154,8 +159,22 @@ describe("a row's buttons (nizam 23)", () => {
     expect(rowActions(r2)).toEqual(["view", "hide"]);
   });
 
-  it("gives a hidden course only Geri al", () => {
+  it("gives a hidden course only Geri al, when its row says the caller may restore it", () => {
     expect(rowActions(r4)).toEqual(["restore"]);
+  });
+
+  it("gives a hidden course no button at all when a higher level hid it (MDRS-143)", () => {
+    expect(
+      rowActions({ ...r4, hiddenLevel: "platform", canRestore: false })
+    ).toEqual([]);
+  });
+});
+
+describe("a refused restore (nizam 23)", () => {
+  it("names the level when the API refused for it, and keeps the generic body for anything else", () => {
+    expect(restoreFailureKey({ code: "ARCHIVE_RESTORE_LEVEL" })).toBe("level");
+    expect(restoreFailureKey({ code: "COURSE_NOT_FOUND" })).toBe("generic");
+    expect(restoreFailureKey(undefined)).toBe("generic");
   });
 });
 
@@ -376,6 +395,8 @@ const kosk = {
 const overview: KoskOverviewResponse = {
   status: "ACTIVE",
   since: null,
+  hiddenLevel: null,
+  canRestore: false,
   openedAt: new Date("2026-08-25T09:00:00Z"),
   openedBy: { id: "u1", name: "Yusuf Ziya Ertuğrul", email: null },
   courses: { all: 5, published: 3, draft: 1, hidden: 1 },
@@ -460,6 +481,50 @@ describe("Köşk — Medaris yönetimi görünümü (nizam 20)", () => {
   });
 });
 
+describe("Köşk — Geri al on the management page (MDRS-143)", () => {
+  const hidden = (
+    over: Partial<KoskOverviewResponse>
+  ): KoskOverviewResponse => ({
+    ...overview,
+    status: "HIDDEN",
+    since: new Date("2026-09-24T09:00:00Z"),
+    ...over,
+  });
+  const view = (o: KoskOverviewResponse) =>
+    render(
+      <KoskManagePage
+        kosk={kosk}
+        overview={o}
+        nazims={[]}
+        rights={[]}
+        rows={[]}
+        viewerId="u1"
+        koskPublicHref={null}
+      />
+    );
+
+  it("offers 'Köşkü geri al' in place of the hide to whoever may bring it back", () => {
+    const html = view(hidden({ hiddenLevel: "kosk", canRestore: true }));
+    expect(html).toContain("Köşkü geri al");
+    expect(html).not.toContain(">Köşkü gizle<");
+    expect(html).not.toContain("Bunu köşk nazımı gizledi");
+  });
+
+  it("names who hid it, and offers no button, to a reader whose level is below", () => {
+    const html = view(hidden({ hiddenLevel: "platform", canRestore: false }));
+    expect(html).not.toContain("Köşkü geri al");
+    expect(html).toContain(
+      "Bunu Medaris yönetimi gizledi; yalnız o kademe ya da üstü geri alabilir."
+    );
+  });
+
+  it("offers the hide, and no restore, while the köşk is shown", () => {
+    const html = view(overview);
+    expect(html).toContain("Köşkü gizle");
+    expect(html).not.toContain("Köşkü geri al");
+  });
+});
+
 describe("Dersler (nizam 23)", () => {
   const view = (over: Partial<Parameters<typeof KoskCoursesView>[0]> = {}) =>
     render(
@@ -497,6 +562,25 @@ describe("Dersler (nizam 23)", () => {
     const html = view();
     expect(html).toContain("Geri al: Merâhu’l-ervâh okumaları");
     expect(html).not.toContain("Gizle: Merâhu’l-ervâh okumaları");
+  });
+
+  it("offers no Geri al on a course a higher level hid, and says who hid it instead", () => {
+    const html = view({
+      rows: [
+        row({
+          id: "c9",
+          title: "Kâfiye şerhi",
+          status: "HIDDEN",
+          hiddenAt: new Date("2026-09-20T09:00:00Z"),
+          hiddenLevel: "platform",
+          canRestore: false,
+        }),
+      ],
+    });
+    expect(html).not.toContain("Geri al: Kâfiye şerhi");
+    expect(html).toContain(
+      "Bunu Medaris yönetimi gizledi; yalnız o kademe ya da üstü geri alabilir."
+    );
   });
 
   it("writes the pending and barred chips, the barred one in the error tone", () => {

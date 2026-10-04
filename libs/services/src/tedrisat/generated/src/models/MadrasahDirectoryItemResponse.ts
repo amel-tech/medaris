@@ -13,6 +13,13 @@
  */
 
 import { mapValues } from '../runtime';
+import type { HideLevel } from './HideLevel';
+import {
+    HideLevelFromJSON,
+    HideLevelFromJSONTyped,
+    HideLevelToJSON,
+    HideLevelToJSONTyped,
+} from './HideLevel';
 import type { MadrasahStatus } from './MadrasahStatus';
 import {
     MadrasahStatusFromJSON,
@@ -78,6 +85,18 @@ export interface MadrasahDirectoryItemResponse {
      */
     since?: Date | null;
     /**
+     * The level that hid it (course, madrasah, kosk, platform); null while it is shown. Only that level or above brings it back.
+     * @type {HideLevel}
+     * @memberof MadrasahDirectoryItemResponse
+     */
+    hiddenLevel?: HideLevel | null;
+    /**
+     * Whether the caller may bring it back (Geri al): it is hidden, they hold `madrasah.hide` or `platform.madrasah_edit` on it and act at the level that hid it or above. A başmüderris cannot reopen what Medaris yönetimi hid.
+     * @type {boolean}
+     * @memberof MadrasahDirectoryItemResponse
+     */
+    canRestore: boolean;
+    /**
      * The oldest held başmüderris; null when there is none
      * @type {MadrasahPersonResponse}
      * @memberof MadrasahDirectoryItemResponse
@@ -108,6 +127,7 @@ export function instanceOfMadrasahDirectoryItemResponse(value: object): value is
     if (!('name' in value) || value['name'] === undefined) return false;
     if (!('coverHue' in value) || value['coverHue'] === undefined) return false;
     if (!('status' in value) || value['status'] === undefined) return false;
+    if (!('canRestore' in value) || value['canRestore'] === undefined) return false;
     if (!('courseCount' in value) || value['courseCount'] === undefined) return false;
     if (!('hostingKosks' in value) || value['hostingKosks'] === undefined) return false;
     return true;
@@ -129,6 +149,8 @@ export function MadrasahDirectoryItemResponseFromJSONTyped(json: any, ignoreDisc
         'coverHue': json['coverHue'],
         'status': MadrasahStatusFromJSON(json['status']),
         'since': json['since'] == null ? undefined : (new Date(json['since'])),
+        'hiddenLevel': json['hiddenLevel'] == null ? undefined : HideLevelFromJSON(json['hiddenLevel']),
+        'canRestore': json['canRestore'],
         'headMuderris': json['headMuderris'] == null ? undefined : MadrasahPersonResponseFromJSON(json['headMuderris']),
         'courseCount': json['courseCount'],
         'hostingKosks': ((json['hostingKosks'] as Array<any>).map(MadrasahHostingKoskResponseFromJSON)),
@@ -152,6 +174,8 @@ export function MadrasahDirectoryItemResponseToJSONTyped(value?: MadrasahDirecto
         'coverHue': value['coverHue'],
         'status': MadrasahStatusToJSON(value['status']),
         'since': value['since'] === null ? null : ((value['since'] as any)?.toISOString()),
+        'hiddenLevel': HideLevelToJSON(value['hiddenLevel']),
+        'canRestore': value['canRestore'],
         'headMuderris': MadrasahPersonResponseToJSON(value['headMuderris']),
         'courseCount': value['courseCount'],
         'hostingKosks': ((value['hostingKosks'] as Array<any>).map(MadrasahHostingKoskResponseToJSON)),

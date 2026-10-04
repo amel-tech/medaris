@@ -12,6 +12,7 @@ import {
   sql,
 } from "drizzle-orm";
 import { ArchiveRestoreLevelError } from "../archive/errors/archive-errors";
+import { recordHide } from "../archive/hide-audit";
 import {
   type HideLevel,
   hiderLevelOf,
@@ -19,7 +20,7 @@ import {
 } from "../archive/hide-level";
 import { DismissDecisionsError } from "../assignment/admin/errors";
 import { grantHeld } from "../assignment/assignment.repository";
-import type { Tx } from "../course/course-purge";
+import { recordDeletion, type Tx } from "../course/course-purge";
 import { CourseStatus } from "../course/domain/course-status.enum";
 import { EnrollmentStatus } from "../course/domain/enrollment-status.enum";
 import { DatabaseService } from "../database/database.service";
@@ -178,16 +179,40 @@ export class MadrasahRepository {
   /**
    * SYSTEM_ADMIN's delete. The medrese's role rows go explicitly — `scope_id`
    * is no foreign key — in the same transaction; its hosting rights cascade,
-   * and its courses stay in their köşks with no medrese (`SET NULL`).
+   * and its courses stay in their köşks with no medrese (`SET NULL`). Like
+   * every real delete it leaves a `madrasah.delete` row in `audit_log` naming
+   * who did it (MDRS-143); `false` when there is no such medrese.
    */
-  async delete(id: string): Promise<boolean> {
+  async delete(id: string, actorId: string): Promise<boolean> {
     return this.db.transaction(async (tx) => {
-      const deleted = await tx
-        .delete(madrasahs)
+      const [medrese] = await tx
+        .select({ name: madrasahs.name, handle: madrasahs.handle })
+        .from(madrasahs)
         .where(eq(madrasahs.id, id))
-        .returning({ id: madrasahs.id });
-      if (deleted.length === 0) return false;
-      await deleteAssignmentsIn(tx, SCOPE_TYPES.MADRASAH, [id]);
+        .for("update");
+      if (!medrese) return false;
+      const courseCount = (
+        await tx
+          .select({ id: courses.id })
+          .from(courses)
+          .where(eq(courses.madrasahId, id))
+      ).length;
+      await tx.delete(madrasahs).where(eq(madrasahs.id, id));
+      const nazirIds = await deleteAssignmentsIn(tx, SCOPE_TYPES.MADRASAH, [
+        id,
+      ]);
+      await recordDeletion(tx, {
+        actorId,
+        entity: "madrasah",
+        entityId: id,
+        details: {
+          name: medrese.name,
+          handle: medrese.handle,
+          nazirIds,
+          // The courses are not deleted: they stay in their köşks, with no medrese.
+          coursesKept: courseCount,
+        },
+      });
       return true;
     });
   }
@@ -494,12 +519,13 @@ export class MadrasahRepository {
   ): Promise<HideMadrasahResult> {
     return this.db.transaction(async (tx) => {
       const [row] = await tx
-        .select({ archivedAt: madrasahs.archivedAt })
+        .select({ name: madrasahs.name, archivedAt: madrasahs.archivedAt })
         .from(madrasahs)
         .where(eq(madrasahs.id, madrasahId))
         .for("no key update");
       if (!row) return "not-found";
       if (row.archivedAt !== null) return "already-hidden";
+      const { name } = row;
       const now = new Date();
       await tx
         .update(madrasahs)
@@ -524,12 +550,15 @@ export class MadrasahRepository {
           and(eq(courses.madrasahId, madrasahId), isNull(courses.archivedAt))
         )
         .returning({ id: courses.id });
-      await tx.insert(auditLog).values({
+      await recordHide(tx, {
         actorId,
-        action: "madrasah.hide",
+        verb: "hide",
         entity: "madrasah",
         entityId: madrasahId,
-        details: { courses: hidden.length },
+        title: name,
+        level,
+        madrasahId,
+        extra: { courses: hidden.length },
       });
       return "hidden";
     });
@@ -547,6 +576,7 @@ export class MadrasahRepository {
     return this.db.transaction(async (tx) => {
       const [row] = await tx
         .select({
+          name: madrasahs.name,
           archivedAt: madrasahs.archivedAt,
           archivedLevel: madrasahs.archivedLevel,
         })
@@ -592,12 +622,16 @@ export class MadrasahRepository {
           )
         )
         .returning({ id: courses.id });
-      await tx.insert(auditLog).values({
+      await recordHide(tx, {
         actorId,
-        action: "madrasah.restore",
+        verb: "restore",
         entity: "madrasah",
         entityId: madrasahId,
-        details: {
+        title: row.name,
+        level,
+        hiddenLevel: hiddenAt,
+        madrasahId,
+        extra: {
           hiddenSince: row.archivedAt.toISOString(),
           courses: shown.length,
         },
@@ -677,6 +711,7 @@ export class MadrasahRepository {
       cover_hue: number;
       status: MadrasahStatus;
       since: Date | string | null;
+      hidden_level: HideLevel | null;
       head_id: string | null;
       head_name: string | null;
       course_count: string;
@@ -685,6 +720,8 @@ export class MadrasahRepository {
       select m.id, m.handle, m.name, m.cover_hue,
              ${this.statusSql()} as status,
              coalesce(m.archived_at, m.passive_since) as since,
+             case when m.archived_at is not null
+                  then coalesce(m.archived_level::text, 'madrasah') end as hidden_level,
              h.user_id as head_id,
              nullif(trim(concat_ws(' ', u.given_name, u.family_name)), '') as head_name,
              (select count(*) from courses c
@@ -714,6 +751,7 @@ export class MadrasahRepository {
       status: r.status,
       // A raw `execute` skips drizzle's column mappers: timestamps arrive as text.
       since: r.since ? new Date(r.since) : null,
+      hiddenLevel: r.hidden_level,
       headMuderris: r.head_id ? { id: r.head_id, name: r.head_name } : null,
       courseCount: Number(r.course_count),
       hostingKosks: r.hosting,
@@ -902,7 +940,8 @@ export class MadrasahRepository {
 
   /**
    * What the medrese page shows (MDRS-157): the live, published courses of the
-   * medrese in listed köşks — an unlisted köşk is in no list (MDRS-122) — each
+   * medrese in listed, shown köşks — an unlisted köşk is in no list (MDRS-122)
+   * and a hidden one closes its courses (MDRS-143) — each
    * with its müderrisler, the caller's enrollment and the next session; the
    * köşks those courses are in; and the başmüderris. Four small reads over the
    * course ids rather than one wide join, so a course with many müderrisler or
@@ -928,6 +967,7 @@ export class MadrasahRepository {
           eq(courses.madrasahId, madrasahId),
           eq(courses.status, CourseStatus.PUBLISHED),
           isNull(courses.archivedAt),
+          isNull(kosks.archivedAt),
           eq(kosks.isPrivate, false)
         )
       )
@@ -1216,7 +1256,9 @@ export class MadrasahRepository {
    * The medrese's courses for the nazırs' screens (nazir/04's "Politikaların
    * uygulandığı dersler", nazir/07's table): drafts and published ones, a
    * hidden one not, by title, with the talebe and the müderrisler. The köşk
-   * can be unlisted — this is the nazırs' own view, not the public page's.
+   * can be unlisted — this is the nazırs' own view, not the public page's —
+   * but not hidden: a hidden köşk closes its courses to a medrese, which is not
+   * above it (MDRS-143).
    */
   async findCourseList(
     madrasahId: string,
@@ -1239,6 +1281,7 @@ export class MadrasahRepository {
         and(
           eq(courses.madrasahId, madrasahId),
           isNull(courses.archivedAt),
+          isNull(kosks.archivedAt),
           filter.koskId ? eq(courses.koskId, filter.koskId) : undefined,
           filter.status ? eq(courses.status, filter.status) : undefined,
           filter.courseId ? eq(courses.id, filter.courseId) : undefined

@@ -282,7 +282,7 @@ export class CourseController {
   })
   @ApiForbiddenResponse({
     description:
-      "No `course.edit` on the course, the save changes the müderris list without `course.open_standalone` (or `madrasah.muderris_manage` for a medrese's course) — a müderris may save the course but not change who teaches it (MUDERRIS_ASSIGNMENT_FORBIDDEN) — or the save hides a week or a session without `week.hide` (WEEK_HIDE_FORBIDDEN).",
+      "No `course.edit` on the course, the save changes the müderris list without `course.open_standalone` (or `madrasah.muderris_manage` for a medrese's course) — a müderris may save the course but not change who teaches it (MUDERRIS_ASSIGNMENT_FORBIDDEN) — or the save hides a week or a session without `week.hide` (COURSE_HIDE_FORBIDDEN).",
   })
   @ApiConflictResponse({
     description:

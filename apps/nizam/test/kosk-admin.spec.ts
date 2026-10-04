@@ -385,6 +385,10 @@ describe("refusals", () => {
       "errors.endPast"
     );
     expect(koskErrorKey({ code: "AUTHZ_FORBIDDEN" })).toBe("errors.forbidden");
+    // A restore by a lower level than the one that hid it (MDRS-143).
+    expect(koskErrorKey({ code: "ARCHIVE_RESTORE_LEVEL" })).toBe(
+      "errors.restoreLevel"
+    );
     expect(koskErrorKey({ code: "SOMETHING" })).toBe("errors.generic");
     expect(koskErrorKey(undefined)).toBe("errors.generic");
   });
@@ -407,6 +411,9 @@ describe("the catalogue", () => {
 
   it.each([
     "KoskDirectory",
+    "HideLevel",
+    "KoskManage",
+    "MadrasahsPage",
     "OpenKoskDialog",
     "KoskNazimPicker",
     "KoskSettings",

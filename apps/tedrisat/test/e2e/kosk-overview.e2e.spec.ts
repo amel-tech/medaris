@@ -333,6 +333,59 @@ describe("Köşk overview, course roster and stats (e2e)", () => {
       expect(row(draft).studentCount).toBe(0);
     });
 
+    describe("who hid a course and who may bring it back", () => {
+      const row = async (id: string, sub: string) =>
+        (
+          await get(`/kosks/${koskId}/course-roster`, sub).expect(200)
+        ).body.items.find((i: { id: string }) => i.id === id);
+
+      it("names the level a hidden row was hidden at, and says nothing for a shown one", async () => {
+        // Hidden before levels were recorded: the köşk's own course counts as köşk level.
+        expect(await row(hidden, NAZIM)).toMatchObject({
+          hiddenLevel: "kosk",
+          canRestore: true,
+        });
+        for (const id of [own, hosted, draft]) {
+          expect(await row(id, NAZIM)).toMatchObject({
+            hiddenLevel: null,
+            canRestore: false,
+          });
+        }
+      });
+
+      it("counts a medrese's course hidden by the medrese as medrese level, which the köşk's nazımı is above", async () => {
+        await db
+          .update(courses)
+          .set({
+            archivedAt: new Date(),
+            archivedBy: NAZIM,
+            archivedLevel: "madrasah",
+          })
+          .where(eq(courses.id, hosted));
+        expect(await row(hosted, NAZIM)).toMatchObject({
+          hiddenLevel: "madrasah",
+          canRestore: true,
+        });
+      });
+
+      it("says the nazımı cannot restore what the başnazım hid, which the API refuses too", async () => {
+        await post(`/courses/${own}/archive`).expect(200);
+        expect(await row(own, NAZIM)).toMatchObject({
+          hiddenLevel: "platform",
+          canRestore: false,
+        });
+        expect(await row(own, ADMIN)).toMatchObject({
+          hiddenLevel: "platform",
+          canRestore: true,
+        });
+        const refused = await post(`/courses/${own}/restore`, NAZIM).expect(
+          403
+        );
+        expect(refused.body.code).toBe("ARCHIVE_RESTORE_LEVEL");
+        await post(`/courses/${own}/restore`).expect(200);
+      });
+    });
+
     it("does not count a lifted ban", async () => {
       await db
         .update(bans)

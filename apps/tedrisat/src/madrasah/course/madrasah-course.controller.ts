@@ -140,6 +140,12 @@ export class MadrasahCourseController {
     @Param("courseId", ParseUUIDPipe) courseId: string,
     @Body() dto: SetMadrasahCourseMuderrisDto
   ): Promise<MadrasahCourseListItemResponse> {
+    // A medrese is not above the köşk that hosts the course: while the köşk
+    // is hidden the course is closed to it, before anything is written.
+    await this.authz.assertOpen(request.user, {
+      entity: ENTITIES.COURSE,
+      id: courseId,
+    });
     await this.selfGrant.assertNotSelf(
       request.user,
       dto.muderrisUserIds,
@@ -168,6 +174,10 @@ export class MadrasahCourseController {
     @Param("id", ParseUUIDPipe) id: string,
     @Param("courseId", ParseUUIDPipe) courseId: string
   ): Promise<void> {
+    await this.authz.assertOpen(request.user, {
+      entity: ENTITIES.COURSE,
+      id: courseId,
+    });
     // The başnazım hides as the platform, everyone else who holds
     // `madrasah.course_hide` as the medrese: a köşk nazımı hides a medrese's
     // course through `POST /courses/:id/archive`, at the köşk's level.

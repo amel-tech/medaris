@@ -9,6 +9,7 @@ import {
   type SQL,
   sql,
 } from "drizzle-orm";
+import { recordHide } from "../../archive/hide-audit";
 import type { HideLevel } from "../../archive/hide-level";
 import { DatabaseService } from "../../database/database.service";
 import {
@@ -322,7 +323,11 @@ export class MadrasahCourseRepository {
   ): Promise<HideMadrasahCourseResult> {
     return this.db.transaction(async (tx) => {
       const [course] = await tx
-        .select({ title: courses.title, archivedAt: courses.archivedAt })
+        .select({
+          title: courses.title,
+          koskId: courses.koskId,
+          archivedAt: courses.archivedAt,
+        })
         .from(courses)
         .where(
           and(eq(courses.id, courseId), eq(courses.madrasahId, madrasahId))
@@ -341,12 +346,15 @@ export class MadrasahCourseRepository {
           updatedAt: now,
         })
         .where(eq(courses.id, courseId));
-      await tx.insert(auditLog).values({
+      await recordHide(tx, {
         actorId,
-        action: "course.hide",
+        verb: "hide",
         entity: "course",
         entityId: courseId,
-        details: { madrasahId, title: course.title },
+        title: course.title,
+        level,
+        koskId: course.koskId,
+        madrasahId,
       });
       return "hidden";
     });

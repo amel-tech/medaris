@@ -11,6 +11,7 @@ import { Tabs, TabsPanel } from "@medaris/ui/mds/tabs";
 import { useRouter } from "next/navigation";
 import { useLocale, useTimeZone, useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
+import { hideLevelOf } from "../../archive/hide-level";
 import { MuderrisDialog } from "../../courses/components/muderris-dialog";
 import { dateWithCase } from "../../madrasahs/present";
 import { toneOfHue } from "../admin-present";
@@ -23,6 +24,7 @@ import {
   filterCourses,
   type Messages,
   registrationChips,
+  restoreFailureKey,
   rowActions,
   studentsCell,
   tabCount,
@@ -57,6 +59,7 @@ export function KoskCourseTable({
   caption,
 }: Props) {
   const tm = useTranslations("nizam.KoskCourses");
+  const tl = useTranslations("nizam.HideLevel");
   const t = tm as unknown as Messages;
   const locale = useLocale();
   const timeZone = useTimeZone() ?? "Europe/Istanbul";
@@ -76,7 +79,10 @@ export function KoskCourseTable({
     setBusyId(null);
     if (!result.success) {
       toast.error(t("restoreFailed"), {
-        description: t("restoreFailedBody"),
+        description:
+          restoreFailureKey(result.errorBody) === "level"
+            ? tl("restoreLevel")
+            : t("restoreFailedBody"),
         duration: Number.POSITIVE_INFINITY,
       });
       return;
@@ -229,6 +235,17 @@ export function KoskCourseTable({
             width: "28%",
             render: (row: KoskCourseRowResponse) => {
               const href = viewHref?.(row.id) ?? null;
+              // Whoever hid it, or a level above, brings it back: say who,
+              // rather than offer a button the API would refuse (MDRS-143).
+              if (row.status === "HIDDEN" && !row.canRestore) {
+                return (
+                  <span className="mds-caption">
+                    {tl("locked", {
+                      level: tl(hideLevelOf(row.hiddenLevel, "kosk")),
+                    })}
+                  </span>
+                );
+              }
               return (
                 <span className="flex flex-nowrap items-center justify-end gap-1 whitespace-nowrap">
                   {rowActions(row).map((action) => {

@@ -4,7 +4,6 @@ import { CourseLevel } from "./domain/course-level.enum";
 import { CourseStatus } from "./domain/course-status.enum";
 import { EnrollmentStatus } from "./domain/enrollment-status.enum";
 import { LessonType } from "./domain/lesson-type.enum";
-import type { IShownSyllabus } from "./domain/syllabus-drops";
 
 /** One step of a live lesson's müzakere akışı (agenda). */
 export interface IAgendaStep {
@@ -341,6 +340,13 @@ export interface ILessonMutation extends ILesson {
   courseVersion: number;
 }
 
+/** What hiding a week produced: the course version, and how many live sessions went with it (MDRS-143). */
+export interface IWeekHide {
+  id: string;
+  courseVersion: number;
+  hiddenSessions: number;
+}
+
 /** One session of a weekly-pattern batch (MDRS-109), already expanded. */
 export interface IBatchSession {
   scheduledAt: Date;
@@ -436,7 +442,10 @@ export interface ICourseRepository {
     userId: string,
     level: HideLevel
   ): Promise<ICourse | null>;
-  restore(id: string): Promise<ICourse | null>;
+  restore(
+    id: string,
+    audit?: { actorId: string; level: HideLevel; hiddenLevel: HideLevel }
+  ): Promise<ICourse | null>;
   /** What a restore needs to know of a course: whether it is hidden, at which level, and its medrese. */
   findHideState(id: string): Promise<{
     archivedAt: Date | null;
@@ -462,6 +471,12 @@ export interface ICourseRepository {
     actorId?: string | null,
     level?: HideLevel
   ): Promise<ILessonMutation>;
+  archiveWeek(
+    courseId: string,
+    weekId: string,
+    actorId: string,
+    level: HideLevel
+  ): Promise<IWeekHide>;
   /** Marks the session cancelled, keeping its slot (MDRS-176). */
   cancelLesson(
     lessonId: string,
@@ -526,8 +541,6 @@ export interface ICourseRepository {
   getBadgeCounts(courseId: string): Promise<ICourseBadgeCounts>;
   /** The course's müderris rows in display order (MDRS-105). */
   findMuderris(courseId: string): Promise<IMuderris[]>;
-  /** The ids of the weeks and sessions the course shows, hidden ones left out. */
-  findShownSyllabusIds(courseId: string): Promise<IShownSyllabus>;
   /** Every enrollment in the course, for its team's roster (MDRS-105). */
   findEnrollmentsByCourse(courseId: string): Promise<IEnrollment[]>;
   /** Deletes the enrollment and audits the reason, in one transaction. */
