@@ -797,8 +797,10 @@ export class CourseService {
     actorId: string,
     replacementLessonId: string | null = null
   ): Promise<ILessonMutation> {
+    // `ParseUUIDPipe` accepts upper case; the self-reference check compares
+    // the two ids as text, so both are lower-cased.
     const cancelled = await this.courseRepo.cancelLesson(
-      lessonId,
+      lessonId.toLowerCase(),
       expectedVersion,
       reason,
       actorId,
