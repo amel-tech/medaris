@@ -13,7 +13,7 @@ DELETE /kosks/:id -> kosk.delete on byExistingKosk
 DELETE /kosks/:id/follow -> exempt
 DELETE /kosks/:id/grants/:grantId -> course_nazir.assign_kosk on byExistingKosk
 DELETE /kosks/:id/hosting-rights/:madrasahId -> kosk.hosting | platform.hosting_grant on byExistingKosk
-DELETE /kosks/:id/managers/:userId -> kosk.manage | platform.kosk_nazim_manage on byExistingKosk
+DELETE /kosks/:id/managers/:userId -> platform.kosk_nazim_manage on byExistingKosk
 DELETE /lessons/:id -> session.manage on byLessonCourse
 DELETE /madrasahs/:id -> madrasah.delete on byExistingMadrasah
 DELETE /madrasahs/:id/nazirs/:userId -> madrasah.nazir_appoint | platform.madrasah_nazir_grant on byExistingMadrasah
@@ -171,7 +171,7 @@ POST /kosks/:id/follow -> kosk.view on kosk
 POST /kosks/:id/grants -> course_nazir.assign_kosk on byExistingKosk
 POST /kosks/:id/hide -> kosk.manage | platform.kosk_edit on byExistingKosk
 POST /kosks/:id/hosting-rights -> kosk.hosting | platform.hosting_grant on byExistingKosk
-POST /kosks/:id/managers/:userId -> kosk.manage | platform.kosk_nazim_manage on byExistingKosk
+POST /kosks/:id/managers/:userId -> platform.kosk_nazim_manage on byExistingKosk
 POST /kosks/:id/nazims -> exempt
 POST /kosks/:id/restore -> exempt
 POST /kosks/:koskId/courses -> course.open_standalone on kosk
