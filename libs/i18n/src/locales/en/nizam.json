@@ -716,6 +716,8 @@
     "menu": "Menu",
     "nav": "Main menu",
     "close": "Close",
+    "themeDark": "Switch to dark theme",
+    "themeLight": "Switch to light theme",
     "switchKosk": "Switch kiosk:",
     "userLink": "Account",
     "bell": "Notifications",

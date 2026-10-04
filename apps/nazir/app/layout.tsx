@@ -1,4 +1,5 @@
 import { textFontsHref } from "@medaris/tokens/medaris-fonts";
+import { ThemeScript } from "@medaris/ui/mds/theme-script";
 import type { Metadata } from "next";
 import { NextIntlClientProvider } from "next-intl";
 import type { ReactNode } from "react";
@@ -13,15 +14,24 @@ export const metadata: Metadata = {
 // MDRS-183: the unified design system (design-system/medaris-unified). The
 // root attributes are MDS-LAY-03: Nazır is Turkish only at launch, so `lang`
 // and `dir` are fixed. Management pages put `data-density="compact"` on their
-// own `<main>`; the shell does it, not this layout.
+// own `<main>`; the shell does it, not this layout. The page is light until the
+// viewer picks dark with the shell's toggle (`data-theme="light"`, ThemeScript,
+// suppressHydrationWarning).
 export default function RootLayout({
   children,
 }: Readonly<{
   children: ReactNode;
 }>) {
   return (
-    <html lang="tr" dir="ltr" data-app="nazir">
+    <html
+      lang="tr"
+      dir="ltr"
+      data-app="nazir"
+      data-theme="light"
+      suppressHydrationWarning
+    >
       <head>
+        <ThemeScript />
         {/* The faces by <link> with preconnect, as the system's readme asks
             for in production, rather than the @import in tokens/fonts.css. */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />

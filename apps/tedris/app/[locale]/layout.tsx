@@ -1,6 +1,6 @@
+import { ThemeScript } from "@medaris/ui/mds/theme-script";
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-
 import "@medaris/ui/globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -41,7 +41,19 @@ export default async function LocaleLayout({
   const { lang, dir } = htmlLangDir(locale);
 
   return (
-    <html lang={lang} dir={dir} className="min-h-svh h-full">
+    // Light until the viewer picks dark with the top bar's toggle: the explicit
+    // data-theme stops the CSS following the system, and ThemeScript sets
+    // "dark" before first paint when it was chosen.
+    <html
+      lang={lang}
+      dir={dir}
+      data-theme="light"
+      className="min-h-svh h-full"
+      suppressHydrationWarning
+    >
+      <head>
+        <ThemeScript />
+      </head>
       {/* Browser extensions (e.g. ColorZilla's `cz-shortcut-listen`) inject
           attributes on <body> before hydration; only this node's attributes
           are exempted, children are still checked. */}

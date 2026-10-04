@@ -5,6 +5,7 @@ import { Avatar } from "@medaris/ui/mds/avatar";
 import { Icon } from "@medaris/ui/mds/icon";
 import { Logo } from "@medaris/ui/mds/logo";
 import { NavItem } from "@medaris/ui/mds/nav-item";
+import { ThemeToggle } from "@medaris/ui/mds/theme-toggle";
 import { useLocale, useTranslations } from "next-intl";
 import { usePathname } from "~/lib/i18n/navigation";
 
@@ -77,13 +78,19 @@ export function MemberPhoneMenu({
       navLabel={t("navLabel")}
       closeLabel={t("close")}
       actions={
-        <a
-          className="mds-btn mds-icon-btn mds-btn--large mds-btn--ghost"
-          href={`/${locale}/notifications`}
-          aria-label={t("notifications")}
-        >
-          <Icon name="bell" />
-        </a>
+        <>
+          <ThemeToggle
+            darkLabel={t("themeDark")}
+            lightLabel={t("themeLight")}
+          />
+          <a
+            className="mds-btn mds-icon-btn mds-btn--large mds-btn--ghost"
+            href={`/${locale}/notifications`}
+            aria-label={t("notifications")}
+          >
+            <Icon name="bell" />
+          </a>
+        </>
       }
       footer={
         <a
