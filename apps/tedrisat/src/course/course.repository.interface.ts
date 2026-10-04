@@ -287,6 +287,8 @@ export interface ICreateCourse {
   timeZone?: string;
   weeks?: ICreateWeek[];
   muderris?: ICreateMuderris[];
+  /** The imam, one of the accounts in `muderris` (MDRS-136); the first listed when absent. */
+  imamUserId?: string;
   resources?: ICreateResource[];
 }
 
@@ -307,7 +309,10 @@ export interface IUpdateCourse {
   timeZone?: string;
 }
 
-export type IReplaceCourse = Omit<ICreateCourse, "koskId" | "authorId"> & {
+export type IReplaceCourse = Omit<
+  ICreateCourse,
+  "koskId" | "authorId" | "imamUserId"
+> & {
   /**
    * The course `version` the editor loaded. When given, the replace is
    * refused with a conflict if the course has been written since.

@@ -23,6 +23,7 @@ import { DatabaseService } from "../database/database.service";
 import {
   holdsIn,
   isHeld,
+  setCourseImam,
   syncMuderrisAssignments,
 } from "../database/role-assignments";
 import { auditLog } from "../database/schema/audit.schema";
@@ -54,6 +55,7 @@ import {
   ICourseSummary,
   ICreateCourse,
   ICreateLesson,
+  ICreateMuderris,
   ICreateSessionBatch,
   IEnrolledCourse,
   IEnrollment,
@@ -364,7 +366,7 @@ export class CourseRepository implements ICourseRepository {
   }
 
   async create(course: ICreateCourse): Promise<ICourseDetail> {
-    const { weeks, muderris, resources, ...courseData } = course;
+    const { weeks, muderris, imamUserId, resources, ...courseData } = course;
 
     const courseId = await this.db.transaction(async (tx) => {
       const [createdCourse] = await tx
@@ -385,6 +387,7 @@ export class CourseRepository implements ICourseRepository {
           }))
         );
         await syncMuderrisAssignments(tx, createdCourse.id, course.authorId);
+        if (imamUserId) await setCourseImam(tx, createdCourse.id, imamUserId);
       }
 
       if (resources?.length) {
@@ -447,7 +450,7 @@ export class CourseRepository implements ICourseRepository {
   ): Promise<ICourseDetail> {
     const {
       weeks = [],
-      muderris = [],
+      muderris,
       resources = [],
       version: expectedVersion,
       ...courseData
@@ -461,71 +464,9 @@ export class CourseRepository implements ICourseRepository {
       await this.bumpVersion(tx, id, expectedVersion, courseData);
 
       // ---- müderris: upsert by id, delete the rest ----
-      const existingMuderris = await tx
-        .select({ id: courseMuderris.id, userId: courseMuderris.userId })
-        .from(courseMuderris)
-        .where(eq(courseMuderris.courseId, id));
-      // Ids are compared lowercased, the way `muderrisListChanged` compares
-      // them before the check on the müderris list. Postgres returns uuids in
-      // lowercase and `@IsUUID()` accepts uppercase, so an exact match here
-      // would delete and re-insert a row the check called unchanged — with
-      // every field the payload left out, `userId` included, reset.
-      const muderrisKeep = new Set(
-        muderris
-          .map((m) => m.id?.toLowerCase())
-          .filter((x): x is string => Boolean(x))
-      );
-      const muderrisToDelete = existingMuderris
-        .filter((e) => !muderrisKeep.has(e.id))
-        .map((e) => e.id);
-      if (muderrisToDelete.length) {
-        await tx
-          .delete(courseMuderris)
-          .where(inArray(courseMuderris.id, muderrisToDelete));
-      }
-      const existingMuderrisIds = new Set(existingMuderris.map((e) => e.id));
-      for (const [i, m] of muderris.entries()) {
-        const values = {
-          courseId: id,
-          userId: m.userId,
-          name: m.name,
-          title: m.title,
-          bio: m.bio,
-          avatarHue: m.avatarHue,
-          orderIndex: i,
-        };
-        const muderrisId = m.id?.toLowerCase();
-        if (muderrisId && existingMuderrisIds.has(muderrisId)) {
-          await tx
-            .update(courseMuderris)
-            .set(values)
-            .where(eq(courseMuderris.id, muderrisId));
-        } else {
-          await tx.insert(courseMuderris).values(values);
-        }
-      }
-      // Whoever was listed already keeps the seat they have, none if it
-      // lapsed or was revoked: saving the syllabus seats nobody again, in the
-      // saver's name and with no end (MDRS-135). A seat this save gives or
-      // takes is on the record.
-      const listedBefore = existingMuderris.flatMap((e) =>
-        e.userId ? [e.userId] : []
-      );
-      const seats = await syncMuderrisAssignments(tx, id, userId, {
-        listedBefore,
-      });
-      if (seats.seated.length > 0 || seats.revoked.length > 0) {
-        await tx.insert(auditLog).values({
-          actorId: userId,
-          action: "course.muderris_update",
-          entity: "course",
-          entityId: id,
-          details: {
-            via: "course.replace",
-            seated: seats.seated,
-            revoked: seats.revoked,
-          },
-        });
+      // Left out of the payload, the team is left alone (MDRS-136).
+      if (muderris !== undefined) {
+        await this.replaceMuderris(tx, id, muderris, userId);
       }
 
       // ---- resources: upsert by id, delete the rest ----
@@ -836,6 +777,81 @@ export class CourseRepository implements ICourseRepository {
       replacementLessonId: row.replacementLessonId,
       courseVersion,
     };
+  }
+
+  /** The müderris half of a whole-course save, inside its transaction. */
+  private async replaceMuderris(
+    tx: Tx,
+    courseId: string,
+    muderris: ICreateMuderris[],
+    actorId: string
+  ): Promise<void> {
+    const existingMuderris = await tx
+      .select({ id: courseMuderris.id, userId: courseMuderris.userId })
+      .from(courseMuderris)
+      .where(eq(courseMuderris.courseId, courseId));
+    // Ids are compared lowercased, the way `muderrisListChanged` compares
+    // them before the check on the müderris list. Postgres returns uuids in
+    // lowercase and `@IsUUID()` accepts uppercase, so an exact match here
+    // would delete and re-insert a row the check called unchanged — with
+    // every field the payload left out, `userId` included, reset.
+    const muderrisKeep = new Set(
+      muderris
+        .map((m) => m.id?.toLowerCase())
+        .filter((x): x is string => Boolean(x))
+    );
+    const muderrisToDelete = existingMuderris
+      .filter((e) => !muderrisKeep.has(e.id))
+      .map((e) => e.id);
+    if (muderrisToDelete.length) {
+      await tx
+        .delete(courseMuderris)
+        .where(inArray(courseMuderris.id, muderrisToDelete));
+    }
+    const existingMuderrisIds = new Set(existingMuderris.map((e) => e.id));
+    for (const [i, m] of muderris.entries()) {
+      const values = {
+        courseId,
+        userId: m.userId,
+        name: m.name,
+        title: m.title,
+        bio: m.bio,
+        avatarHue: m.avatarHue,
+        orderIndex: i,
+      };
+      const muderrisId = m.id?.toLowerCase();
+      if (muderrisId && existingMuderrisIds.has(muderrisId)) {
+        await tx
+          .update(courseMuderris)
+          .set(values)
+          .where(eq(courseMuderris.id, muderrisId));
+      } else {
+        await tx.insert(courseMuderris).values(values);
+      }
+    }
+    // Whoever was listed already keeps the seat they have, none if it lapsed
+    // or was revoked: saving the syllabus seats nobody again, in the saver's
+    // name and with no end (MDRS-135). A seat this save gives or takes is on
+    // the record.
+    const listedBefore = existingMuderris.flatMap((e) =>
+      e.userId ? [e.userId] : []
+    );
+    const seats = await syncMuderrisAssignments(tx, courseId, actorId, {
+      listedBefore,
+    });
+    if (seats.seated.length > 0 || seats.revoked.length > 0) {
+      await tx.insert(auditLog).values({
+        actorId,
+        action: "course.muderris_update",
+        entity: "course",
+        entityId: courseId,
+        details: {
+          via: "course.replace",
+          seated: seats.seated,
+          revoked: seats.revoked,
+        },
+      });
+    }
   }
 
   async findLessonCourseId(lessonId: string): Promise<string | null> {

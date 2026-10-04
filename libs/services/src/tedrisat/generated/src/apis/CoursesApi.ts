@@ -279,7 +279,8 @@ export class CoursesApi extends runtime.BaseAPI {
     }
 
     /**
-     * Create a new course under a köşk
+     * The köşk\'s nazımı opens it, and so does the başnazım (MDRS-136). It is opened with at least one müderris who has an account, and one of them is the imam: `imamUserId`, or the account listed first.
+     * Create a new course under a köşk, together with its müderrisler
      */
     async createCourseRaw(requestParameters: CreateCourseRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CourseDetailResponse>> {
         if (requestParameters['koskId'] == null) {
@@ -323,7 +324,8 @@ export class CoursesApi extends runtime.BaseAPI {
     }
 
     /**
-     * Create a new course under a köşk
+     * The köşk\'s nazımı opens it, and so does the başnazım (MDRS-136). It is opened with at least one müderris who has an account, and one of them is the imam: `imamUserId`, or the account listed first.
+     * Create a new course under a köşk, together with its müderrisler
      */
     async createCourse(requestParameters: CreateCourseRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CourseDetailResponse> {
         const response = await this.createCourseRaw(requestParameters, initOverrides);

@@ -1,7 +1,7 @@
 import { INestApplication } from "@nestjs/common";
 import request from "supertest";
 import { DatabaseService } from "../../src/database/database.service";
-import { asSystemAdmin } from "../helpers/system-admin.helper";
+import { FIXTURE_TEAM, openKosk } from "../helpers/open-scopes.helper";
 import {
   createTestApp,
   OTHER_USER_ID,
@@ -35,6 +35,7 @@ const coursePayload = (status: "PUBLISHED" | "DRAFT") => ({
   level: "INTERMEDIATE",
   durationWeeks: 4,
   status,
+  muderris: FIXTURE_TEAM,
   weeks: [
     {
       weekNumber: 1,
@@ -78,11 +79,7 @@ describe("GET /lessons/:id/calendar.ics (e2e)", () => {
 
   beforeEach(async () => {
     await dbUtils.cleanTables(...COURSE_TREE_TABLES);
-    const kosk = await request(adminApp.getHttpServer())
-      .post("/kosks")
-      .set("Authorization", asSystemAdmin(TEST_USER_ID))
-      .send({ name: "Süleymaniye Köşkü" })
-      .expect(201);
+    const kosk = await openKosk(adminApp);
     koskId = kosk.body.id;
   });
 

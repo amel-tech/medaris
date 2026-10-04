@@ -6,7 +6,7 @@ import { DatabaseService } from "../../src/database/database.service";
 import { BAN_SCOPES, bans } from "../../src/database/schema/ban.schema";
 import { courses } from "../../src/database/schema/course.schema";
 import { madrasahs } from "../../src/database/schema/madrasah.schema";
-import { asSystemAdmin } from "../helpers/system-admin.helper";
+import { FIXTURE_TEAM, openKosk } from "../helpers/open-scopes.helper";
 import {
   createTestApp,
   OTHER_USER_ID,
@@ -53,6 +53,7 @@ const coursePayload = (
   durationWeeks: 4,
   status: options.status ?? "PUBLISHED",
   requiresApproval: options.requiresApproval ?? false,
+  muderris: FIXTURE_TEAM,
   weeks: [
     {
       weekNumber: 1,
@@ -113,11 +114,7 @@ describe("calendar feed (e2e)", () => {
       "bans",
       "madrasahs"
     );
-    const kosk = await request(adminApp.getHttpServer())
-      .post("/kosks")
-      .set("Authorization", asSystemAdmin(TEST_USER_ID))
-      .send({ name: "Süleymaniye Köşkü" })
-      .expect(201);
+    const kosk = await openKosk(adminApp);
     koskId = kosk.body.id;
   });
 

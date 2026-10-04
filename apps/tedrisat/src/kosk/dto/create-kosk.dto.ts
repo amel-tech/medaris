@@ -133,19 +133,18 @@ export class CreateKoskDto {
   @KoskPolicyRules()
   recordingsNeverPublic?: boolean;
 
-  @ApiPropertyOptional({
+  @ApiProperty({
     type: [String],
     format: "uuid",
     minItems: 1,
     maxItems: KOSK_MANAGERS_MAX,
     description:
-      "nizam/10: the köşk's first nazımları, found by e-mail (`GET /users/lookup`); when given, they are the köşk's nazımları. Omitted: the caller becomes the köşk's only nazım. Only SYSTEM_ADMIN may be one of them: anyone else naming themselves, or leaving the list out, is refused with 403 SELF_GRANT_REFUSED.",
+      "nizam/10: the köşk's first nazımları, found by e-mail (`GET /users/lookup`). A köşk is opened together with at least one nazım (MDRS-136); the caller is never one of them, so a Medaris nazımı holding `platform.kosk_create` cannot seat themselves by leaving the list out.",
   })
-  @IsOptional()
   @IsArray()
   @ArrayMinSize(1)
   @ArrayMaxSize(KOSK_MANAGERS_MAX)
   @ArrayUnique()
   @IsUUID("all", { each: true })
-  managerUserIds?: string[];
+  managerUserIds!: string[];
 }

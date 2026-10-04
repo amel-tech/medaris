@@ -1,4 +1,5 @@
 import {
+  ASSIGNED_ROLES,
   AuthGuard,
   Authz,
   AuthzExempt,
@@ -10,6 +11,7 @@ import {
   ENTITIES,
   MedarisValidationPipe,
   PERMISSIONS,
+  SelfGrantGuard,
 } from "@medaris/common";
 import {
   Body,
@@ -105,7 +107,8 @@ const byExistingCourse: AuthzResolve = async (req, moduleRef) => {
 export class CourseController {
   constructor(
     private readonly courseService: CourseService,
-    private readonly statsRepo: CourseStatsRepository
+    private readonly statsRepo: CourseStatsRepository,
+    private readonly selfGrant: SelfGrantGuard
   ) {}
 
   @ApiOperation({
@@ -150,15 +153,23 @@ export class CourseController {
   }
 
   @ApiOperation({
-    summary: "Create a new course under a köşk",
+    summary: "Create a new course under a köşk, together with its müderrisler",
+    description:
+      "The köşk's nazımı opens it, and so does the başnazım (MDRS-136). It is opened with at least one müderris who has an account, and one of them is the imam: `imamUserId`, or the account listed first.",
     operationId: "createCourse",
   })
   @ApiCreatedResponse({ type: CourseDetailResponse })
+  @ApiBadRequestResponse({
+    description:
+      "No müderris with an account (MUDERRIS_LIST_INVALID), an imam who is not listed (COURSE_IMAM_NOT_LISTED), or the same account twice (MUDERRIS_DUPLICATE_USER).",
+  })
+  @ApiForbiddenResponse()
   @ApiNotFoundResponse()
   // A course that does not exist yet is authorized against its parent köşk —
-  // `course.open_standalone` is the köşk nazımı's own (and a grant's), so only
-  // they may open a course of the köşk's own under it; a course for a medrese is
-  // opened by the medrese (`madrasah.course_open`).
+  // `course.open_standalone` is the köşk nazımı's own (and a grant's, and the
+  // başnazım's by the realm bypass), so only they may open a course of the
+  // köşk's own under it; a course for a medrese is opened by the medrese
+  // (`madrasah.course_open`). The service asks no role again.
   @Authz(PERMISSIONS.COURSE_OPEN_STANDALONE, byParam(ENTITIES.KOSK, "koskId"))
   @Post("kosks/:koskId/courses")
   @UsePipes(new MedarisValidationPipe({ transform: true }))
@@ -167,6 +178,22 @@ export class CourseController {
     @Param("koskId", ParseUUIDPipe) koskId: string,
     @Body() courseDto: CreateCourseDto
   ): Promise<CourseDetailResponse> {
+    // A grantee of `course.open_standalone` opens courses for others, not for
+    // themselves: naming oneself müderris is for someone who already holds
+    // every course permission in the köşk (its nazımı), as in a medrese's
+    // course (`MadrasahCourseController.open`).
+    await this.selfGrant.assertNotSelf(
+      request.user,
+      [
+        ...(courseDto.muderris ?? []).flatMap((m) =>
+          m.userId ? [m.userId] : []
+        ),
+        ...(courseDto.imamUserId ? [courseDto.imamUserId] : []),
+      ],
+      { entity: ENTITIES.KOSK, id: koskId },
+      { role: ASSIGNED_ROLES.MUDERRIS },
+      "course.open"
+    );
     return this.courseService.create(koskId, request.user, courseDto);
   }
 

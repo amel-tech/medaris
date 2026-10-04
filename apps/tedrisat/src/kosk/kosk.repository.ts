@@ -50,7 +50,6 @@ import {
 import { users } from "../database/schema/user.schema";
 import {
   AddManagerOutcome,
-  ICreateKosk,
   IFollowedKoskCourse,
   IKosk,
   IKoskDecks,
@@ -59,7 +58,6 @@ import {
   IKoskRepository,
   IKoskVisibility,
   IKoskWithStats,
-  IManagerActor,
   IUpdateKosk,
   RemoveManagerOutcome,
 } from "./kosk.repository.interface";
@@ -512,34 +510,6 @@ export class KoskRepository implements IKoskRepository {
   }
 
   /**
-   * The köşk, its first manager and the record of both land together or not at
-   * all; the record is the one `KoskAdminRepository.createWithNazims` writes.
-   */
-  async create(kosk: ICreateKosk): Promise<IKosk> {
-    return this.db.transaction(async (tx) => {
-      const [created] = await tx.insert(kosks).values(kosk).returning();
-      await grantRole(tx, {
-        userId: kosk.ownerId,
-        role: ASSIGNED_ROLES.KOSK_NAZIM,
-        scopeId: created.id,
-        grantedBy: kosk.ownerId,
-      });
-      await tx.insert(auditLog).values({
-        actorId: kosk.ownerId,
-        action: "kosk.create",
-        entity: "kosk",
-        entityId: created.id,
-        details: {
-          name: created.name,
-          handle: created.handle,
-          nazimIds: [kosk.ownerId.toLowerCase()],
-        },
-      });
-      return created;
-    });
-  }
-
-  /**
    * Locks the köşk row and returns its managers, or null for no köşk. Every
    * change to a köşk's managers runs after this in its own transaction, so
    * they queue on the köşk one by one and each sees the others' result.
@@ -562,94 +532,121 @@ export class KoskRepository implements IKoskRepository {
   }
 
   /**
-   * Adds `userId` as a manager. The actor's right is checked again under the
-   * lock — the guard checked it before a concurrent removal could take it
-   * away — unless `actor.bypass` (SYSTEM_ADMIN). Only a user with a `users`
-   * row (someone who has signed in, MDRS-104) can be added, so a mistyped id
-   * cannot become the manager that lets the last real one leave.
-   * Idempotent for an existing manager.
+   * Seats `target` as a manager inside the caller's lock: a known account
+   * (someone with a `users` row, MDRS-104, so a mistyped id cannot become the
+   * manager that lets the last real one leave), one `kosk.nazim.add` row as
+   * `POST /kosks/:id/nazims` writes, nothing for someone who is one already.
+   * Answers `unknown-user` when the account has never signed in.
+   */
+  private async seatManager(
+    tx: Tx,
+    koskId: string,
+    target: string,
+    managers: readonly string[],
+    actorId: string
+  ): Promise<"seated" | "unknown-user"> {
+    if (managers.includes(target)) return "seated";
+    const [known] = await tx
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.id, target))
+      .limit(1);
+    if (!known) return "unknown-user";
+    await grantRole(tx, {
+      userId: target,
+      role: ASSIGNED_ROLES.KOSK_NAZIM,
+      scopeId: koskId,
+      grantedBy: actorId,
+    });
+    await tx.insert(auditLog).values({
+      actorId,
+      action: "kosk.nazim.add",
+      entity: "kosk",
+      entityId: koskId,
+      details: {
+        userId: target,
+        role: ASSIGNED_ROLES.KOSK_NAZIM,
+        authority: SCOPE_TYPES.PLATFORM,
+      },
+    });
+    return "seated";
+  }
+
+  /**
+   * Adds `userId` as a manager. Who may is the route's decision
+   * (`platform.kosk_nazim_manage`, MDRS-136); nothing here asks whether the
+   * actor is a manager of the köşk. Idempotent for an existing manager.
    */
   async addManager(
     koskId: string,
     userId: string,
-    actor: IManagerActor
+    actorId: string
   ): Promise<AddManagerOutcome> {
     const target = userId.toLowerCase();
     return this.db.transaction(async (tx) => {
       const managers = await this.lockManagers(tx, koskId);
       if (managers === null) return "no-kosk";
-      if (!actor.bypass && !managers.includes(actor.id.toLowerCase())) {
-        return "forbidden";
-      }
-      if (managers.includes(target)) return "added";
-      const [known] = await tx
-        .select({ id: users.id })
-        .from(users)
-        .where(eq(users.id, target))
-        .limit(1);
-      if (!known) return "unknown-user";
-      await grantRole(tx, {
-        userId: target,
-        role: ASSIGNED_ROLES.KOSK_NAZIM,
-        scopeId: koskId,
-        grantedBy: actor.id,
-      });
-      // The same row `POST /kosks/:id/nazims` writes: this route is open to a
-      // Medaris nazımı holding `platform.kosk_nazim_manage` as well, and every
-      // seat they give is on the record (review M7, owner decision MDRS-209).
-      await tx.insert(auditLog).values({
-        actorId: actor.id,
-        action: "kosk.nazim.add",
-        entity: "kosk",
-        entityId: koskId,
-        details: {
-          userId: target,
-          role: ASSIGNED_ROLES.KOSK_NAZIM,
-          authority: actor.bypass ? "platform" : "kosk",
-        },
-      });
-      return "added";
+      const seated = await this.seatManager(
+        tx,
+        koskId,
+        target,
+        managers,
+        actorId
+      );
+      return seated === "seated" ? "added" : seated;
     });
   }
 
   /**
-   * Removes a manager unless they are the last one. The row is revoked in the
-   * actor's name, not deleted (MDRS-134), so who took the role away stays on
-   * record. Under the köşk lock (see
-   * `lockManagers`), so two removals racing for the last two managers run one
-   * after the other: the second sees a single manager left and is refused,
-   * instead of both deleting and leaving the köşk with none. The actor's right
-   * is re-checked there too, as in `addManager`.
+   * Removes a manager. The row is revoked in the actor's name, not deleted
+   * (MDRS-134), so who took the role away stays on record. The last manager
+   * leaves only with a successor, who is seated first in the same transaction
+   * (owner decision d-1004-13: a köşk is never left with nobody by accident).
+   * Under the köşk lock (see `lockManagers`), so two removals racing for the
+   * last two managers run one after the other: the second sees a single
+   * manager left and is refused, instead of both deleting and leaving the
+   * köşk with none.
    */
   async removeManager(
     koskId: string,
     userId: string,
-    actor: IManagerActor
+    actorId: string,
+    successorUserId?: string
   ): Promise<RemoveManagerOutcome> {
     const target = userId.toLowerCase();
+    const successor = successorUserId?.toLowerCase();
     return this.db.transaction(async (tx) => {
       const managers = await this.lockManagers(tx, koskId);
       if (managers === null) return "no-kosk";
-      if (!actor.bypass && !managers.includes(actor.id.toLowerCase())) {
-        return "forbidden";
-      }
       if (!managers.includes(target)) return "not-manager";
-      if (managers.length === 1) return "last";
+      if (successor === target) return "successor-is-removed";
+      if (successor === undefined && managers.length === 1) return "last";
+      if (successor !== undefined) {
+        const seated = await this.seatManager(
+          tx,
+          koskId,
+          successor,
+          managers,
+          actorId
+        );
+        if (seated === "unknown-user") return seated;
+      }
       await revokeRole(tx, {
         userId: target,
         role: ASSIGNED_ROLES.KOSK_NAZIM,
         scopeId: koskId,
-        revokedBy: actor.id,
+        revokedBy: actorId,
       });
       await tx.insert(auditLog).values({
-        actorId: actor.id,
+        actorId,
         action: "kosk.nazim.remove",
         entity: "kosk",
         entityId: koskId,
         details: {
           userId: target,
           role: ASSIGNED_ROLES.KOSK_NAZIM,
-          authority: actor.bypass ? "platform" : "kosk",
+          authority: SCOPE_TYPES.PLATFORM,
+          ...(successor ? { successorUserId: successor } : {}),
         },
       });
       return "removed";

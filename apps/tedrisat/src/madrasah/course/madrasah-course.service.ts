@@ -30,12 +30,11 @@ export interface OpenMadrasahCourseInput {
 
 /**
  * The medrese's own courses (nazir/07, 08, 17, 18) and its requests for a
- * course outside it (nazir/09). Reached through
- * `MadrasahCourseController`, whose `@Authz` scope decides who may call it —
- * the medrese's başmüderris and SYSTEM_ADMIN; nothing here re-checks the
- * caller. The permissions the catalogue names for these actions
- * (`madrasah.course_open`, `madrasah.muderris_manage`, `madrasah.course_hide`)
- * are not read: grants are not enforced by `AuthzGuard`.
+ * course outside it (nazir/09). Reached through `MadrasahCourseController`,
+ * whose `@Authz` decides who may call each route and nothing here re-checks
+ * the caller: the başmüderris and the medrese's nazırları holding
+ * `madrasah.course_open`, `madrasah.muderris_manage`, `madrasah.course_hide`
+ * or `madrasah.offsite_course_request` by grant (MDRS-135), and SYSTEM_ADMIN.
  */
 @Injectable()
 export class MadrasahCourseService {

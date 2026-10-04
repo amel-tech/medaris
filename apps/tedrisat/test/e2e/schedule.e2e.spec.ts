@@ -1,6 +1,5 @@
-import { ROLES } from "@medaris/common";
 import { INestApplication } from "@nestjs/common";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import request from "supertest";
 import { EnrollmentStatus } from "../../src/course/domain/enrollment-status.enum";
 import { DatabaseService } from "../../src/database/database.service";
@@ -9,8 +8,8 @@ import { enrollments } from "../../src/database/schema/course.schema";
 import {
   ASSIGNED_ROLES,
   roleAssignments,
-  SCOPE_TYPES,
 } from "../../src/database/schema/role-assignment.schema";
+import { FIXTURE_TEAM, openKosk } from "../helpers/open-scopes.helper";
 import {
   createTestApp,
   OTHER_USER_ID,
@@ -20,7 +19,6 @@ import {
   COURSE_TREE_TABLES,
   TestDatabaseUtils,
 } from "../helpers/test-database.helper";
-import { bearerFor } from "../helpers/test-keycloak.helper";
 
 /**
  * MDRS-163: `GET /sessions?from&to` (Programım) and `GET /me/upcoming-lessons`
@@ -51,6 +49,7 @@ const payload = (
   durationWeeks: 4,
   status: options.status ?? "PUBLISHED",
   requiresApproval: options.requiresApproval ?? false,
+  muderris: FIXTURE_TEAM,
   weeks: [
     {
       weekNumber: 5,
@@ -84,19 +83,7 @@ describe("schedule (e2e)", () => {
     await dbUtils.cleanTables(...COURSE_TREE_TABLES);
     // Opening a köşk is SYSTEM_ADMIN only (2026-10-02); signed with
     // TEST_USER_ID's own `sub`, the köşk is still that user's to manage.
-    koskId = (
-      await request(adminApp.getHttpServer())
-        .post("/kosks")
-        .set(
-          "Authorization",
-          bearerFor({
-            sub: TEST_USER_ID,
-            claims: { realm_access: { roles: [ROLES.SYSTEM_ADMIN] } },
-          })
-        )
-        .send({ name: "Nûruosmaniye Köşkü" })
-        .expect(201)
-    ).body.id;
+    koskId = (await openKosk(adminApp, { name: "Nûruosmaniye Köşkü" })).body.id;
   });
 
   afterAll(async () => {
@@ -203,15 +190,16 @@ describe("schedule (e2e)", () => {
       expect((await list().expect(200)).body).toHaveLength(1);
 
       // Its only müderris is gone: the course is passive (MDRS-136).
-      await app.get(DatabaseService).db.insert(roleAssignments).values({
-        userId: TEST_USER_ID,
-        role: ASSIGNED_ROLES.MUDERRIS,
-        scopeType: SCOPE_TYPES.COURSE,
-        scopeId: course.id,
-        grantedBy: TEST_USER_ID,
-        revokedAt: new Date(),
-        revokedBy: TEST_USER_ID,
-      });
+      await app
+        .get(DatabaseService)
+        .db.update(roleAssignments)
+        .set({ revokedAt: new Date(), revokedBy: TEST_USER_ID })
+        .where(
+          and(
+            eq(roleAssignments.scopeId, course.id),
+            eq(roleAssignments.role, ASSIGNED_ROLES.MUDERRIS)
+          )
+        );
       expect((await list().expect(200)).body).toEqual([]);
       const upcoming = await request(talebe.getHttpServer())
         .get("/me/upcoming-lessons")
@@ -230,15 +218,17 @@ describe("schedule (e2e)", () => {
         courseId: course.id,
         status: EnrollmentStatus.ENROLLED,
       });
-      await db.insert(roleAssignments).values({
-        userId: OTHER_USER_ID,
-        role: ASSIGNED_ROLES.MUDERRIS,
-        scopeType: SCOPE_TYPES.COURSE,
-        scopeId: course.id,
-        grantedBy: TEST_USER_ID,
-        revokedAt: new Date(),
-        revokedBy: TEST_USER_ID,
-      });
+      // Its only müderris is revoked: the course is passive. Opening a course
+      // seats its müderris (MDRS-136), so the seat is revoked, not added.
+      await db
+        .update(roleAssignments)
+        .set({ revokedAt: new Date(), revokedBy: TEST_USER_ID })
+        .where(
+          and(
+            eq(roleAssignments.scopeId, course.id),
+            eq(roleAssignments.role, ASSIGNED_ROLES.MUDERRIS)
+          )
+        );
 
       const mine = await request(app.getHttpServer())
         .get("/sessions")

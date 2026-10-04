@@ -498,7 +498,7 @@ export class KoskAdminService {
       "open a köşk with nazımları"
     );
     const { managerUserIds, ...kosk } = dto;
-    const nazimIds = (managerUserIds ?? []).map((id) => id.toLowerCase());
+    const nazimIds = managerUserIds.map((id) => id.toLowerCase());
     await this.koskService.assertHandleFree(kosk.handle);
     await this.assertKnownAccounts(nazimIds);
     return this.repo.createWithNazims({ ownerId: user.sub, ...kosk }, nazimIds);
