@@ -17,7 +17,11 @@ const shell = translatorFor("nazir.Shell");
 const sections = (kind: "medrese" | "ders") =>
   labelNav(
     navFor(
-      { kind, id: kind === "medrese" ? "m-1" : "c-1" },
+      {
+        kind,
+        id: kind === "medrese" ? "m-1" : "c-1",
+        role: kind === "medrese" ? "MEDRESE_BASMUDERRIS" : "MUDERRIS",
+      },
       {
         panoHref: "/medrese/m-1",
         counts: {

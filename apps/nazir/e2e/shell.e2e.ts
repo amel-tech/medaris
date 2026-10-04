@@ -9,8 +9,9 @@ import { type NazirFixture, seedPortal } from "./seed";
  *
  * MEDRESE_BASMUDERRIS holds the medrese and, through the seed, both courses as
  * müderris, so the picker has three scopes. MEDRESE_NAZIR and DERS_NAZIR are
- * only asked what the open owner decision allows: the shell loads and a count
- * the role matrix refuses leaves its badge out without an error.
+ * only asked what the open owner decision allows: the shell loads, a count
+ * the role matrix refuses leaves its badge out without an error, and a medrese
+ * nazırı's menu leaves out the medrese's pages the matrix refuses (MDRS-223).
  */
 const BASMUDERRIS = account("MEDRESE_BASMUDERRIS");
 const MEDRESE_NAZIR = account("MEDRESE_NAZIR");
@@ -291,7 +292,7 @@ test("the bell on the phone bar is a link named with the unread count and shows 
   await expect(bell).not.toContainText(/\d/);
 });
 
-test("a medrese nazırı gets the shell and no error where the role matrix refuses a count (open owner decision)", async ({
+test("a medrese nazırı gets the shell with only the pages the role matrix lets them open (MDRS-223)", async ({
   as,
 }) => {
   test.skip(
@@ -301,11 +302,12 @@ test("a medrese nazırı gets the shell and no error where the role matrix refus
   const page = await as("MEDRESE_NAZIR");
   await page.setViewportSize(desktop);
   await page.goto(`/medrese/${fixture?.madrasah.id}`);
-  expect(await itemNames(page)).toEqual(MEDRESE_ITEMS);
+  // Every page under the medrese reads a route the matrix opens to its
+  // başmüderris alone, so none of them is offered (`abilities.ts`).
+  expect(await itemNames(page)).toEqual(["Bildirimler"]);
   await expect(
     page.locator("aside").getByRole("link", { name: /^Dersler/ })
-  ).not.toContainText(/\d/);
-  await expect(alerts(page)).toHaveCount(0);
+  ).toHaveCount(0);
 });
 
 test("a ders nazırı gets the course's shell and no error where the role matrix refuses a count (open owner decision)", async ({

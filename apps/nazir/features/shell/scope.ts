@@ -1,4 +1,5 @@
 import type { AssignmentResponse } from "@medaris/services/tedrisat";
+import { headsMedrese } from "./abilities";
 
 /**
  * The scopes of the Nazır portal (MDRS-183): a medrese the person runs, and the
@@ -178,12 +179,13 @@ export function landingPath(
 
 /**
  * The Pano is the medrese's dashboard. A course's menu opens the Pano of the
- * first medrese the person runs; someone with no medrese has nothing to open
- * there and Pano falls back to the course's own overview.
+ * first medrese the person heads; a medrese nazırı cannot read its dashboard
+ * (MDRS-223, see `abilities.ts`), so someone who heads no medrese has nothing
+ * to open there and Pano falls back to the course's own overview.
  */
 export function panoHref(scopes: readonly Scope[], current: Scope): string {
   if (current.kind === "medrese") return scopeHref(current);
-  const medrese = scopes.find((s) => s.kind === "medrese");
+  const medrese = scopes.find(headsMedrese);
   return scopeHref(medrese ?? current);
 }
 

@@ -206,6 +206,22 @@ describe("addresses", () => {
     const only = buildScopes([bina]);
     expect(panoHref(only, only[0] as never)).toBe("/ders/c-bina");
   });
+
+  it("opens no Pano in a medrese the person is only a nazır of (MDRS-223)", () => {
+    const nazir = buildScopes([medrese({ role: "MEDRESE_NAZIR" }), bina]);
+    expect(panoHref(nazir, nazir[1] as never)).toBe("/ders/c-bina");
+    const both = buildScopes([
+      medrese({
+        id: "a-n",
+        role: "MEDRESE_NAZIR",
+        scopeId: "m-0",
+        scopeName: "Ayasofya Medresesi",
+      }),
+      medrese(),
+      bina,
+    ]);
+    expect(panoHref(both, both[2] as never)).toBe("/medrese/m-1");
+  });
 });
 
 describe("displayName", () => {

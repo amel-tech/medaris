@@ -10,8 +10,12 @@ import {
   sectionSegments,
 } from "~/features/shell/nav";
 
-const medrese = { kind: "medrese" as const, id: "m-1" };
-const ders = { kind: "ders" as const, id: "c-1" };
+const medrese = {
+  kind: "medrese" as const,
+  id: "m-1",
+  role: "MEDRESE_BASMUDERRIS",
+};
+const ders = { kind: "ders" as const, id: "c-1", role: "MUDERRIS" };
 
 const view = (sections: ReturnType<typeof navFor>) =>
   sections.map((section) => [
@@ -131,6 +135,62 @@ describe("the menu of a course (nazir 22)", () => {
   it("is a different menu from the medrese's whichever way the scope changes", () => {
     const m = navFor(medrese, { panoHref: "/medrese/m-1", counts: {} });
     expect(view(m)).not.toEqual(view(sections));
+  });
+});
+
+describe("a menu down to what its holder may open (MDRS-223)", () => {
+  const ids = (sections: ReturnType<typeof navFor>) =>
+    sections.flatMap((section) => section.items.map((item) => item.id));
+
+  it("gives the medrese's başmüderris every page of the medrese", () => {
+    expect(
+      ids(navFor(medrese, { panoHref: "/medrese/m-1", counts: {} }))
+    ).toEqual([
+      "pano",
+      "notifications",
+      "courses",
+      "students",
+      "nazirs",
+      "bans",
+      "appeals",
+      "archive",
+      "rules",
+      "settings",
+    ]);
+  });
+
+  it("leaves a medrese nazırı only Bildirimler, with the emptied sections and their headings gone", () => {
+    const sections = navFor(
+      { ...medrese, role: "MEDRESE_NAZIR" },
+      { panoHref: "/medrese/m-1", counts: { coursesWithApplications: 2 } }
+    );
+    expect(view(sections)).toEqual([
+      ["general", [["notifications", "/bildirimler"]]],
+    ]);
+  });
+
+  it("gives a role the medrese does not know nothing of it either", () => {
+    expect(
+      ids(
+        navFor(
+          { ...medrese, role: "KOSK_NAZIM" },
+          { panoHref: "/medrese/m-1", counts: {} }
+        )
+      )
+    ).toEqual(["notifications"]);
+  });
+
+  it("leaves a course's menu whole for a müderris and a ders nazırı alike", () => {
+    const whole = ids(navFor(ders, { panoHref: "/ders/c-1", counts: {} }));
+    expect(whole).toHaveLength(12);
+    expect(
+      ids(
+        navFor(
+          { ...ders, role: "DERS_NAZIR" },
+          { panoHref: "/ders/c-1", counts: {} }
+        )
+      )
+    ).toEqual(whole);
   });
 });
 
@@ -282,7 +342,11 @@ describe("message keys of the menu", () => {
       const catalogue = resources[locale].nazir;
       for (const kind of ["medrese", "ders"] as const) {
         for (const section of navFor(
-          { kind, id: "x" },
+          {
+            kind,
+            id: "x",
+            role: kind === "medrese" ? "MEDRESE_BASMUDERRIS" : "MUDERRIS",
+          },
           {
             panoHref: "/x",
             // every number present, so every label key is produced

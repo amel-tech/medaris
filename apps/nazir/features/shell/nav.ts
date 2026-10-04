@@ -1,4 +1,5 @@
 import type { IconName } from "@medaris/ui/mds/icon";
+import { mayOpenScopePages } from "./abilities";
 import { type Scope, type ScopeKind, scopeHref } from "./scope";
 
 /**
@@ -146,46 +147,66 @@ export interface NavSectionView {
 }
 
 /**
- * The menu of one scope with its numbers. A number that is missing, or zero,
- * leaves the item without one: a failed count is no badge, never an error.
+ * Whether the menu offers an entry to the scope's holder (MDRS-223): a page
+ * outside the scope (Bildirimler) to everyone, a page of the scope only when
+ * `mayOpenScopePages` says the API lets them read it. A medrese's Pano is its
+ * own dashboard, so it goes with the medrese's pages; a course's Pano is a
+ * medrese the caller heads, or the course itself (`panoHref`).
+ */
+const offered = (
+  entry: NavEntry,
+  scope: Pick<Scope, "kind" | "role">
+): boolean => entry.to.type === "global" || mayOpenScopePages(scope);
+
+/**
+ * The menu of one scope with its numbers, down to the entries its holder may
+ * open; a section left with none is dropped with its heading. A number that
+ * is missing, or zero, leaves the item without one: a failed count is no
+ * badge, never an error.
  */
 export function navFor(
-  scope: Pick<Scope, "kind" | "id">,
+  scope: Pick<Scope, "kind" | "id" | "role">,
   { panoHref, counts }: { panoHref: string; counts: MenuCounts }
 ): NavSectionView[] {
   const home = scopeHref(scope);
-  return NAV[scope.kind].map((section) => ({
-    id: section.id,
-    labelKey: `sections.${section.id}`,
-    items: section.entries.map((entry): NavItemView => {
-      const href =
-        entry.to.type === "pano"
-          ? panoHref
-          : entry.to.type === "global"
-            ? entry.to.path
-            : entry.to.segment === null
-              ? home
-              : `${home}/${entry.to.segment}`;
-      const count = entry.count ? counts[entry.count] : undefined;
-      return {
-        id: entry.id,
-        href,
-        icon: entry.icon,
-        labelKey:
-          section.id === "general"
-            ? `general.${entry.id}`
-            : `${scope.kind}.${entry.id}`,
-        count: count && count > 0 ? count : undefined,
-        countLabelKey:
-          entry.count && count && count > 0
-            ? COUNT_LABEL_KEY[entry.count]
-            : undefined,
-        exact:
-          entry.to.type === "pano" ||
-          (entry.to.type === "scope" && entry.to.segment === null),
-      };
-    }),
-  }));
+  return NAV[scope.kind]
+    .map((section) => ({
+      ...section,
+      entries: section.entries.filter((entry) => offered(entry, scope)),
+    }))
+    .filter((section) => section.entries.length > 0)
+    .map((section) => ({
+      id: section.id,
+      labelKey: `sections.${section.id}`,
+      items: section.entries.map((entry): NavItemView => {
+        const href =
+          entry.to.type === "pano"
+            ? panoHref
+            : entry.to.type === "global"
+              ? entry.to.path
+              : entry.to.segment === null
+                ? home
+                : `${home}/${entry.to.segment}`;
+        const count = entry.count ? counts[entry.count] : undefined;
+        return {
+          id: entry.id,
+          href,
+          icon: entry.icon,
+          labelKey:
+            section.id === "general"
+              ? `general.${entry.id}`
+              : `${scope.kind}.${entry.id}`,
+          count: count && count > 0 ? count : undefined,
+          countLabelKey:
+            entry.count && count && count > 0
+              ? COUNT_LABEL_KEY[entry.count]
+              : undefined,
+          exact:
+            entry.to.type === "pano" ||
+            (entry.to.type === "scope" && entry.to.segment === null),
+        };
+      }),
+    }));
 }
 
 /** What `activeItemId` reads of an item. */

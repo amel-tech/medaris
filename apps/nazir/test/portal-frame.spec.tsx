@@ -162,6 +162,36 @@ describe("the shell of a medrese (nazir 21)", () => {
   });
 });
 
+describe("the shell of a medrese for its nazır (MDRS-223)", () => {
+  it("leaves out every page the API refuses a medrese nazırı, in the sidebar and in the phone bar's sheet", async () => {
+    pathname = "/medrese/m-1";
+    const { markup } = await renderFrame({
+      assignments: [medrese({ role: "MEDRESE_NAZIR" })],
+      current: 0,
+      roles: ["MEDRESE_NAZIR"],
+      counts: { unread: 1, coursesWithApplications: 2 },
+    });
+    const labels = [
+      ...sidebarOf(markup).matchAll(
+        /class="mds-nav-(?:section|item)"[^>]*>(?:<svg[\s\S]*?<\/svg>)?([^<]+)/g
+      ),
+    ].map((m) => m[1]?.trim());
+    expect(labels).toEqual(["Genel", "Bildirimler"]);
+    for (const hidden of [
+      "/medrese/m-1/dersler",
+      "/medrese/m-1/talebeler",
+      "/medrese/m-1/nazirlar",
+      "/medrese/m-1/yasaklamalar",
+      "/medrese/m-1/itirazlar",
+      "/medrese/m-1/arsiv",
+      "/medrese/m-1/kabul-kurallari",
+      "/medrese/m-1/ayarlar",
+    ]) {
+      expect(markup, hidden).not.toContain(`href="${hidden}"`);
+    }
+  });
+});
+
 describe("the shell of a course (nazir 22)", () => {
   const frame = () =>
     renderFrame({
