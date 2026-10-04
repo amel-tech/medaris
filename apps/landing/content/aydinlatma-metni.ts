@@ -28,7 +28,7 @@ export const IS_DRAFT = true;
 
 export const TITLE = "Kişisel Verilerin Korunması Hakkında Aydınlatma Metni";
 
-export const LAST_UPDATED = "29 Eylül 2026";
+export const LAST_UPDATED = "4 Ekim 2026";
 
 /**
  * Every column of tedrisat's `users` table (MDRS-104,
@@ -44,6 +44,7 @@ export const ACCOUNT_RECORD_FIELDS: Record<string, string> = {
   family_name: "soyad",
   time_zone: "saat dilimi tercihi",
   locale: "dil tercihi",
+  lesson_invitation_emails: "ders davetlerinin e-postayla gönderilmesi tercihi",
   created_at: "hesabın oluşturulma zamanı",
   last_seen_at: "platformu en son kullandığınız zaman",
 };
@@ -93,6 +94,7 @@ export const SECTIONS: NoticeSection[] = [
       "Eğitim hizmetlerinin sunulması: köşklere ve derslere kayıt, canlı ders takvimi, ders kayıtlarına erişim.",
       "Kimliğinizin doğrulanması ve hesap güvenliğinin sağlanması.",
       "E-posta adresinizin doğrulanması ve parola sıfırlama gibi hesabınızla ilgili bildirimlerin gönderilmesi.",
+      "Kayıtlı olduğunuz derslerin celseleri için takvim davetlerinin, güncellemelerinin ve iptallerinin e-postayla gönderilmesi; bu davetleri Hesap sayfanızdan kapatabilirsiniz.",
       "Mevzuattan doğan yükümlülüklerin yerine getirilmesi.",
     ],
   },
@@ -106,6 +108,7 @@ export const SECTIONS: NoticeSection[] = [
       "Kimlik doğrulama sunucusu: kaydınız ve oturum açmanız Medaris’in kimlik sunucusu üzerinden yürütülür; ad, soyad, e-posta adresi ve parolanız (şifrelenmiş olarak) orada tutulur.",
       "Barındırma hizmeti: platform ve veritabanı, hizmet aldığımız barındırma sağlayıcısının sunucularında çalışır.",
       "YouTube (Google): ders kayıtları YouTube’a liste dışı video olarak yüklenmeye başladığında, kayıtlar bu hizmet üzerinden sunulur.",
+      "E-posta gönderim hizmeti (Google Gmail): celse davetleri, e-posta adresinize celsenin adı ve zamanıyla birlikte bu hizmet üzerinden gönderilir.",
     ],
   },
   {
