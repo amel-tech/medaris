@@ -138,7 +138,11 @@ themselves and still force approval, or hide the public recording, whatever a co
 `PATCH` and `PUT /courses/:id` now ask the engine (see "The review of 3 October", H3): a switch-off
 of "requires approval" needs `setting.approval_off`, opening a closed course needs
 `setting.course_open`, and a policy that closes either answers 409 `PLATFORM_POLICY_LOCKED` as before.
-`PlatformPolicyService.assertCourseMayChange` is gone; `assertKoskMayChange` stays.
+`PlatformPolicyService.assertCourseMayChange` is gone; `assertKoskMayChange` stays. The başnazım
+(SYSTEM_ADMIN) is never refused by a policy, on a course (the realm bypass) or on a köşk
+(`KoskService.update` skips `assertKoskMayChange` for him): owner, 4 October, "başnazım zaten
+superadmin olduğundan ne isterse yapar". Test: `platform-admin.e2e.spec.ts` › "never refuses the
+başnazım".
 
 ### Passive scopes (§7)
 
@@ -147,6 +151,17 @@ has none now is passive. Every `content` code is closed there, even to the enrol
 (`course.view`) stays. A Medaris nazımı holding `platform.inactive_scopes_manage` opens it, and every
 open writes a `scope.passive_open` row; so does the başnazım's. A scope that never had a manager is
 new, not passive.
+
+**The köşk nazımı opens it too, in their own köşk** (owner, 4 October: "köşk nazımı zaten bir tür
+platform yöneticisi olduğu için görebilmesi lazım"). A passive course, or a course of a passive
+medrese, held in köşk K stays visible and workable for K's köşk nazımı: content, drafts
+(`course.view_unpublished`) and live links. Their opens write `scope.passive_open` like platform
+management's, and their content reads stay `course.content_read` rows like any non-müderris read.
+Programım and the upcoming card keep such a course for the köşk's nazımı enrolled in it, so the list
+and the engine agree. Everyone else is closed out as before. Tests:
+`effective-permissions.spec.ts` › "the köşk nazımı is the platform's management in their köşk";
+`authz-engine.e2e.spec.ts` › "the köşk nazımı and a passive course of their köşk";
+`schedule.e2e.spec.ts` › "keeps a passive course for the köşk's nazımı enrolled in it".
 
 **Closing the descendants is confirmed, the warning is not built.** The owner (d-1003-08) confirmed
 that putting a scope to passive closes what hangs below it, which the engine already does (a scope "on
@@ -183,7 +198,10 @@ passive, only how a passive one is read.
   its başmüderris) and the medrese's badge counts are not course roster reads and write no row; say if
   they should.
 - `scope.passive_open` and `deck.admin_read` are written by `AuthzService` itself through the audit
-  sink (`TedrisatAuthzAudit`, straight to `audit_log`).
+  sink (`TedrisatAuthzAudit`, straight to `audit_log`). On the audit page `scope.passive_open` is an
+  "İçerik okuma" (`CONTENT_READ`) and `deck.admin_read` an "Özel deste okuma" (`PRIVATE_DECK_READ`);
+  `permission.self_grant_refused` is its own kind, `SELF_GRANT_REFUSED`, ahead of `GRANT`, because
+  nothing was given (`audit-types.ts`, `audit.spec.ts`).
 - The başnazım's bypass on someone else's private deck is read-only: `can` answers false for every
   deck permission but `deck.view` (MDRS-148), and writes a `deck.admin_read` row.
 
@@ -203,6 +221,14 @@ $ cd apps/tedrisat && ./node_modules/.bin/vitest run test/unit/authz/tedrisat-au
 
 The first test (`answers a course in five statements`) asserts exactly 5 recorded statements for a
 course, however many grants and groups the caller has; the second asserts 3 for a sentinel id.
+
+The roles statement reaches the platform's roles as `scope_id is null` (the same rows as
+`scope_type = 'platform'` under the `role_assignments_scope_id_present` CHECK), so Postgres serves it
+from the two partial indexes on `user_id` instead of reading every row ever assigned. Measured on
+Postgres 17 with 50,000 rows (38,400 of them revoked) by `EXPLAIN (ANALYZE, BUFFERS)`: the `scope_type` form
+was a Seq Scan of 872 buffers; the `scope_id is null` form is a BitmapOr of
+`role_assignments_held_platform_idx` and `role_assignments_held_scoped_idx`, 5 buffers, and 3 with no
+chain. No migration.
 
 ### The 105 handlers (§7)
 
@@ -262,10 +288,15 @@ also enrolled in a sibling course keeps both.
 
 ### Where the screens read it (§E)
 
-`buildEffectivePermissions` (the account screen) and the engine share `roleCodesAt` (what a role holds
-in a scope of its own type), `roleCoversScope` and `GRANTABLE_CODES`. The screen drops a grant no role
-covers and a code that cannot be handed on, as the engine does; a course grant under a medrese nazırı's
-role is found through the course's köşk and medrese ids. `authz-engine.e2e.spec.ts` › "is told by the
+The account screen (`GET /me/effective-permissions`, `/me/permissions`) asks the engine itself:
+`AssignmentService.myEffectivePermissions` calls `AuthzService.effective` for every scope a held role
+or grant names (a köşk or a medrese across its courses, the platform with "every course" under it),
+and `buildEffectivePermissions` lists the catalogue's listed codes the engine gives there. A passive
+scope's closed content, a grant to "every course", a grant no role covers and a code whose scope tag
+does not reach the scope are therefore exactly what the routes do. Course work held at a medrese is
+listed under it (the başmüderris's runs the medrese's courses); the köşk nazımı's is summed up by
+`course.manage_all` and its note. Tests: `assignments.e2e.spec.ts` › "exactly what the engine
+decides"; the unit spec `test/unit/assignment/effective-permissions.spec.ts`. `authz-engine.e2e.spec.ts` › "is told by the
 account screen exactly what the routes allow" asserts that the list `GET /me/permissions` prints for a
 nazır with a group is exactly the group's two codes, that those two routes open and a third stays
 shut, and that revoking the role empties the list and closes the routes together.
@@ -531,7 +562,7 @@ fails without it (each was checked by putting the old code back):
 | B1, M4: a Medaris nazımı with one platform permission appoints themselves a nazır and gives themselves every permission | `SelfGrantGuard` refuses a caller naming themselves for everyone but SYSTEM_ADMIN and writes `permission.self_grant_refused` to the audit log. The nazır, köşk-nazım (including `POST /kosks` without `managerUserIds`, which would seat the caller), head-müderris, köşk-grant (create and edit), passive-scope and köşk-manager paths refuse always; naming yourself müderris of a course, on the medrese's route or the course's own (`PUT /courses/:id/muderris`, the list in `PUT /courses/:id`), passes only for someone who already holds every müderris default there (a köşk nazımı, a başmüderris). A refusal on a create route has no row to name, so `TedrisatAuthzAudit` files it under the caller with the entity in `details.about` | `self-grant.e2e.spec.ts`; `authz-engine.e2e.spec.ts` › "naming yourself into more than you hold"; `inactive-scope.e2e.spec.ts` › "never themselves"; `self-grant.guard.spec.ts`; `tedrisat-authz-audit.spec.ts` |
 | H1: an upper-case uuid in the path dropped the resource's own scope from roles, grants and the passive check | ids lower-cased once at the boundary (`AuthzService`, the loader) and compared lower-cased in `effectivePermissions` | `authz-engine.e2e.spec.ts` › "an id spelled in upper case"; `effective-permissions.spec.ts` › "ids compare lower-cased" |
 | H4: what a dismissed Medaris nazımı made for themselves survived | `heldGivenBy` lists those rows and `dismiss` revokes them whatever the answer; an answer owed only for what went to others | `permission-admin.e2e.spec.ts` › "made for themselves" |
-| H3: `course.publish`, `course.settings`, `course.view_unpublished` and the `setting.*` abilities were computed and never asked | `PATCH`/`PUT /courses/:id` ask the engine; a draft shows to a holder of `course.view_unpublished` | `authz-engine.e2e.spec.ts` › "the abilities the engine knows are asked on a course save" |
+| H3: `course.publish`, `course.settings`, `course.view_unpublished` and the `setting.*` abilities were computed and never asked | `PATCH`/`PUT /courses/:id` ask the engine; a draft shows to a holder of `course.view_unpublished`, and so does a hidden course for reading ("Taslak ya da gizli dersi gör"), never for a write and not to its müderris, who holds the code by role (MDRS-124) | `authz-engine.e2e.spec.ts` › "the abilities the engine knows are asked on a course save" |
 | M1: any course code opened the roster and the content | the roster comes with enrollment work (`enrollment.decide/remove/complete`), the details with the work on the course itself; the roles' defaults still carry both | `effective-permissions.spec.ts` › "what implies reading the roster and the content"; `authz-engine.e2e.spec.ts` › "M1" |
 | M3: `madrasah.settings_edit` hid the whole medrese | `madrasah.hide`, an unlisted role default of the başmüderris | "M3" |
 | M5: Programım, the upcoming card and the calendar feed gave the live link of a passive course | `enrolledCourseIds(..., { excludePassive: true })` in the schedule and the feed | `schedule.e2e.spec.ts` › "passive course" |
