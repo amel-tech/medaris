@@ -65,6 +65,8 @@
     "restoreFailed": "Could not restore",
     "restoreParentHidden": "What it belongs to is still hidden; restore that first.",
     "restoreGone": "This item is no longer in the archive.",
+    "restoreLevel": "You cannot bring this back: a higher level hid it, and only that level or one above can bring it back.",
+    "restoreLocked": "Medaris administration hid this; only that level can bring it back.",
     "deleted": "Deleted permanently",
     "deletedBody": "{title} and its records were deleted.",
     "deleteFailed": "Could not delete",
@@ -1114,6 +1116,11 @@
         "title": "Edit, hide or restore a köşk",
         "short": "Edit a köşk",
         "help": "A hidden köşk is restored from the Archive."
+      },
+      "platform_course_hide": {
+        "title": "Hide or restore any course",
+        "short": "Hide a course",
+        "help": "A course hidden at the Medaris administration's level is restored only at that level."
       },
       "platform_hosting_grant": {
         "title": "Give or withdraw a hosting right",
@@ -2329,6 +2336,8 @@
     "restoredBody": "{name} is back in the lists.",
     "restoreFailed": "The course could not be restored",
     "restoreFailedBody": "Something went wrong. Try again in a moment.",
+    "restoreLevelBody": "A higher level hid this course; only that level or one above can bring it back.",
+    "restoreParentHiddenBody": "The course's medrese or köşk is still hidden; the course comes back with it.",
     "emptyAll": "No courses yet.",
     "emptyTab": "No courses in this status.",
     "hiddenInArchive": "Hidden courses are listed in the Archive too.",

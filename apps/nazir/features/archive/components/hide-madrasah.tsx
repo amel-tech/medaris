@@ -17,9 +17,10 @@ import { archiveErrorKey } from "../archive";
  * Hiding is not destructive (nothing is deleted), so the answer is an
  * AlertDialog whose focus starts on "Vazgeç" and whose action is a primary
  * "Gizle" (_kurallar 11, 13). It says what the design's own sentence leaves out:
- * only Medaris yönetimi brings a hidden medrese back, which is why the courses
- * in the Arşiv cannot be brought back meanwhile. Once it is done the section
- * says so where the button was.
+ * a hidden medrese is brought back by the level that hid it or one above
+ * (MDRS-135: the başmüderris who hid it, or Medaris yönetimi), and until then the
+ * courses in the Arşiv cannot be brought back. Once it is done the section says
+ * so where the button was. This page has no "Geri al" for the medrese itself yet.
  */
 export function HideMadrasah({
   madrasahId,

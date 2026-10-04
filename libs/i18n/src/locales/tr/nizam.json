@@ -65,6 +65,8 @@
     "restoreFailed": "Geri alınamadı",
     "restoreParentHidden": "Bağlı olduğu öğe hâlâ gizli; önce onu geri alın.",
     "restoreGone": "Bu öğe artık arşivde değil.",
+    "restoreLevel": "Bunu geri alamazsınız: daha üst bir kademe gizledi; yalnız o kademe ya da üstü geri alabilir.",
+    "restoreLocked": "Bunu Medaris yönetimi gizledi; yalnız o kademe geri alabilir.",
     "deleted": "Kalıcı olarak silindi",
     "deletedBody": "{title} ve bağlı kayıtları silindi.",
     "deleteFailed": "Silinemedi",
@@ -1114,6 +1116,11 @@
         "title": "Köşkü düzenle, gizle ya da geri al",
         "short": "Köşkü düzenle",
         "help": "Gizlenen köşk Arşiv’den geri alınır."
+      },
+      "platform_course_hide": {
+        "title": "Herhangi bir dersi gizle ya da geri al",
+        "short": "Ders gizle",
+        "help": "Medaris yönetimi düzeyinde gizlenen dersi yalnız bu düzey geri alır."
       },
       "platform_hosting_grant": {
         "title": "Barındırma hakkı ver ya da geri al",
@@ -2329,6 +2336,8 @@
     "restoredBody": "{name} yeniden listelerde.",
     "restoreFailed": "Ders geri alınamadı",
     "restoreFailedBody": "Bir şeyler ters gitti. Biraz sonra yeniden deneyin.",
+    "restoreLevelBody": "Bu dersi daha üst bir kademe gizledi; yalnız o kademe ya da üstü geri alabilir.",
+    "restoreParentHiddenBody": "Dersin medresesi ya da köşkü hâlâ gizli; ders onlarla birlikte geri gelir.",
     "emptyAll": "Henüz ders yok.",
     "emptyTab": "Bu durumda ders yok.",
     "hiddenInArchive": "Gizli dersler Arşiv’de de listelenir.",

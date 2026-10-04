@@ -521,7 +521,7 @@
     "errors": {
       "forbidden": "You may not bring this back; a higher level may have hidden it. The list was refreshed.",
       "gone": "This item is no longer in the archive. The list was refreshed.",
-      "parentHidden": "The medrese or köşk this belongs to is still hidden, so it could not be brought back. Only Medaris administration can bring a medrese back."
+      "parentHidden": "The medrese or köşk this belongs to is still hidden, so it could not be brought back. A medrese is brought back by the level that hid it, or one above."
     },
     "empty": {
       "all": "Nothing is hidden in this medrese.",
@@ -541,9 +541,9 @@
     "loadFailed": "The archive cannot be read right now. Try again in a few seconds.",
     "hide": {
       "title": "Hide the medrese",
-      "text": "{name} and its courses disappear from every list and from search; the medrese and course pages close to everyone except you and Medaris administration. The köşks that host its courses are not hidden. Nothing is deleted; only Medaris administration can bring the medrese back.",
+      "text": "{name} and its courses disappear from every list and from search; the medrese and course pages close to everyone except you and Medaris administration. The köşks that host its courses are not hidden. Nothing is deleted; the medrese is brought back by the level that hid it, or one above: what you hid, by you or Medaris administration.",
       "button": "Hide the medrese",
-      "confirmBody": "{name} and its visible courses will be hidden from everyone; only you and Medaris administration will be able to open its pages. Nothing is deleted, but only Medaris administration can bring the medrese back; until then you cannot bring the courses back from the Archive.",
+      "confirmBody": "{name} and its visible courses will be hidden from everyone; only you and Medaris administration will be able to open its pages. Nothing is deleted; you or Medaris administration can bring the medrese back. Until then you cannot bring the courses back from the Archive.",
       "confirm": "Hide",
       "cancel": "Cancel",
       "done": "Medrese hidden",

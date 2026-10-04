@@ -521,7 +521,7 @@
     "errors": {
       "forbidden": "Bunu geri alma yetkiniz yok; öğeyi daha üst bir kademe gizlemiş olabilir. Liste yenilendi.",
       "gone": "Bu öğe artık arşivde değil. Liste yenilendi.",
-      "parentHidden": "Bu öğenin bağlı olduğu medrese ya da köşk hâlâ gizli, bu yüzden geri alınamadı. Medreseyi yalnız Medaris yönetimi geri getirebilir."
+      "parentHidden": "Bu öğenin bağlı olduğu medrese ya da köşk hâlâ gizli, bu yüzden geri alınamadı. Medreseyi, onu gizleyen kademe ya da üstü geri getirir."
     },
     "empty": {
       "all": "Bu medresede gizlenmiş bir öğe yok.",
@@ -541,9 +541,9 @@
     "loadFailed": "Arşiv şu an okunamadı. Birkaç saniye sonra yeniden deneyin.",
     "hide": {
       "title": "Medreseyi gizle",
-      "text": "{name} ve dersleri bütün listelerden ve aramadan kalkar; medrese ve ders sayfaları siz ve Medaris yönetimi dışında herkese kapanır. Dersleri barındıran köşkler gizlenmez. Hiçbir şey silinmez; medreseyi yalnız Medaris yönetimi geri getirebilir.",
+      "text": "{name} ve dersleri bütün listelerden ve aramadan kalkar; medrese ve ders sayfaları siz ve Medaris yönetimi dışında herkese kapanır. Dersleri barındıran köşkler gizlenmez. Hiçbir şey silinmez; medreseyi, onu gizleyen kademe ya da üstü geri getirir: sizin gizlediğinizi siz ya da Medaris yönetimi.",
       "button": "Medreseyi gizle",
-      "confirmBody": "{name} ve görünen dersleri herkesten gizlenecek; sayfalarını yalnız siz ve Medaris yönetimi açabilecek. Hiçbir şey silinmez, ama medreseyi yalnız Medaris yönetimi geri getirebilir; o zamana dek Arşiv’deki dersleri geri alamazsınız.",
+      "confirmBody": "{name} ve görünen dersleri herkesten gizlenecek; sayfalarını yalnız siz ve Medaris yönetimi açabilecek. Hiçbir şey silinmez; medreseyi siz ya da Medaris yönetimi geri getirebilir. O zamana dek Arşiv’deki dersleri geri alamazsınız.",
       "confirm": "Gizle",
       "cancel": "Vazgeç",
       "done": "Medrese gizlendi",

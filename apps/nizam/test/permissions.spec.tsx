@@ -72,6 +72,7 @@ describe("codes and messages", () => {
       "platform.kosk_create",
       "platform.kosk_nazim_manage",
       "platform.kosk_edit",
+      "platform.course_hide",
       "platform.hosting_grant",
       "platform.madrasah_create",
       "platform.head_muderris_manage",

@@ -306,9 +306,11 @@ describe("Arşiv", () => {
     expect(out).toContain(
       "Süleymaniye Medresesi ve dersleri bütün listelerden ve aramadan kalkar"
     );
+    // The kademe rule (MDRS-135): what the başmüderris hid, they bring back too.
     expect(out).toContain(
-      "Hiçbir şey silinmez; medreseyi yalnız Medaris yönetimi geri getirebilir."
+      "Hiçbir şey silinmez; medreseyi, onu gizleyen kademe ya da üstü geri getirir: sizin gizlediğinizi siz ya da Medaris yönetimi."
     );
+    expect(out).not.toContain("yalnız Medaris yönetimi geri getirebilir");
   });
 
   it("says in one sentence what is missing on a tab with nothing hidden", async () => {
@@ -432,7 +434,7 @@ describe("'Geri al'", () => {
     await click(restoreFor("Merâhu’l-ervâh okumaları"));
     await settle(60);
     expect(toast("error")).toContain(
-      "Medreseyi yalnız Medaris yönetimi geri getirebilir."
+      "Medreseyi, onu gizleyen kademe ya da üstü geri getirir."
     );
     expect(refresh).not.toHaveBeenCalled();
   });
@@ -447,13 +449,13 @@ describe("'Medreseyi gizle'", () => {
   const question = () =>
     document.querySelector("[role=alertdialog]") as HTMLElement | null;
 
-  it("asks first, with the focus on 'Vazgeç', and says only Medaris yönetimi brings the medrese back", async () => {
+  it("asks first, with the focus on 'Vazgeç', and says the başmüderris or Medaris yönetimi brings the medrese back", async () => {
     await open();
     const ask = question() as HTMLElement;
     expect(ask.textContent).toContain("Süleymaniye Medresesi");
     expect(ask.textContent).toContain("Hiçbir şey silinmez");
     expect(ask.textContent).toContain(
-      "medreseyi yalnız Medaris yönetimi geri getirebilir"
+      "medreseyi siz ya da Medaris yönetimi geri getirebilir"
     );
     expect(document.activeElement).toBe(button(ask, "Vazgeç"));
     expect(hideMedrese).not.toHaveBeenCalled();
