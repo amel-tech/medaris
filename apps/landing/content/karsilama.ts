@@ -45,10 +45,22 @@ export const talebe = {
   eyebrow: "Talebeler için",
   title: "Bir kitabı baştan sona, müderrisinden okuyun.",
   points: [
-    "Ders sayfasında tanıtımı ve haftalık programı görün; derse kaydolun ya da onay isteyen derse başvurun.",
-    "Celse vakti geldiğinde celse sayfasındaki “Celseye katıl” düğmesiyle derse girin.",
-    "Celseleriniz Google Takvim’e, Apple Takvim’e ya da Outlook’a düşsün; Programım sayfası hepsini gün gün sıralar.",
-    "Okuduğunuz kelime ve hadisleri ezber kartlarıyla tekrar edin.",
+    {
+      lead: "Önce bakın, sonra karar verin.",
+      text: "Dersin tanıtımı ve haftalık programı herkese açık; hesap açmadan inceleyebilirsiniz.",
+    },
+    {
+      lead: "Vakti gelince celsedesiniz.",
+      text: "Celse sayfasındaki “Celseye katıl” düğmesi sizi doğrudan derse götürür.",
+    },
+    {
+      lead: "Hiçbir celseyi kaçırmayın.",
+      text: "Celseler Google Takvim’e, Apple Takvim’e ya da Outlook’a düşer; Programım hepsini gün gün sıralar.",
+    },
+    {
+      lead: "Unutmadan ilerleyin.",
+      text: "Okuduğunuz kelime ve hadisleri ezber kartlarıyla tekrar edersiniz.",
+    },
   ],
   register: "Kaydolun",
   explore: "Dersleri keşfedin",
@@ -56,13 +68,28 @@ export const talebe = {
 
 export const medrese = {
   eyebrow: "Medreseler için",
-  title: "Medresenizin derslerini çevrim içi açın.",
+  title: "Halkanızı medresenizin duvarlarının ötesine taşıyın.",
   points: [
-    "Derslerinizi barındırma hakkı olan köşklerde açın; müderrislerini siz seçin.",
-    "Önümüzdeki yedi günün celselerini ve onayınızı bekleyen başvuruları panoda bir arada görün.",
-    "Talebelerinizi tek listede izleyin: kim hangi derse devam ediyor, hangisini tamamladı.",
-    "Kuralı bir kez koyun: “Kayıt her zaman onaylı” ya da “Kapalı ders zorunlu”, medresenin bütün derslerine uygulanır.",
-    "Medrese nazırları atayın; gerektiğinde bir talebeyi medreseden yasaklayın.",
+    {
+      lead: "Talebe her yerden gelsin.",
+      text: "Derslerinizi çevrim içi açın, müderrislerini siz seçin; şehir dışındaki talebe de halkanıza katılsın.",
+    },
+    {
+      lead: "Haftanız bir bakışta.",
+      text: "Yaklaşan celseler ve onayınızı bekleyen başvurular aynı panoda.",
+    },
+    {
+      lead: "Talebenizi tanıyın.",
+      text: "Kimin hangi derse devam ettiğini, hangisini tamamladığını tek listede görün.",
+    },
+    {
+      lead: "Usulünüz korunsun.",
+      text: "Kayıtları onaya bağlayın, derslerinizi kapalı tutun; koyduğunuz kural bütün derslerinize birden uygulanır.",
+    },
+    {
+      lead: "Yükü paylaşın.",
+      text: "Medrese nazırları atayın, işi onlarla bölüşün.",
+    },
   ],
   contact: "Bize yazın",
   note: "Medreseleri Medaris yönetimi açar. İletişim formundan yazın, size dönelim.",

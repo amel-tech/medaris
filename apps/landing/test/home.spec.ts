@@ -100,7 +100,6 @@ describe("what the home page says (MDRS-245)", () => {
     expect(text).not.toMatch(
       /üstekinin içinde|çatı altında|bağlı olmak zorunda/i
     );
-    expect(text).toContain("barındırma hakkı olan köşklerde açın");
   });
 
   it("does not say that course content is closed to a visitor", async () => {

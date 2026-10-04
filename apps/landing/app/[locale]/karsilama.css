@@ -176,6 +176,11 @@
   border-block-end: 0;
 }
 
+.karsilama-points__lead {
+  font-weight: var(--weight-semibold);
+  color: var(--text-neutral-default);
+}
+
 .karsilama-points__mark {
   flex: none;
   margin-block-start: var(--space-1);

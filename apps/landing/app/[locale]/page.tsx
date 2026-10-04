@@ -161,15 +161,27 @@ function SampleCard({ side }: { side: "front" | "back" }) {
   );
 }
 
-function Points({ items }: { items: readonly string[] }) {
+type Point = string | { lead: string; text: string };
+
+function Points({ items }: { items: readonly Point[] }) {
   return (
     <ul className="karsilama-points">
-      {items.map((item) => (
-        <li key={item}>
-          <Icon name="check" size="sm" className="karsilama-points__mark" />
-          <span>{item}</span>
-        </li>
-      ))}
+      {items.map((item) =>
+        typeof item === "string" ? (
+          <li key={item}>
+            <Icon name="check" size="sm" className="karsilama-points__mark" />
+            <span>{item}</span>
+          </li>
+        ) : (
+          <li key={item.lead}>
+            <Icon name="check" size="sm" className="karsilama-points__mark" />
+            <span>
+              <strong className="karsilama-points__lead">{item.lead}</strong>{" "}
+              {item.text}
+            </span>
+          </li>
+        )
+      )}
     </ul>
   );
 }
