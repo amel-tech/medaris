@@ -20,6 +20,10 @@ const ready = Boolean(talebe.email && talebe.password && talebe.sub);
 
 let fx: DeckFixture;
 
+// The deck page tells when a request was sent in the viewer's zone, which on an
+// unpinned browser is the machine's: pinned, 21:10 is the same instant anywhere.
+test.use({ timezoneId: "Europe/Istanbul" });
+
 test.beforeAll(async () => {
   if (ready) fx = await seedDecks(talebe.sub as string);
 });
@@ -301,35 +305,53 @@ test.describe("Deste oluştur (tedris/27)", () => {
     await expect(
       page.getByRole("heading", { level: 1, name: "Deste oluştur" })
     ).toBeVisible();
-    await expect(page.getByText("* zorunlu alan")).toBeVisible();
-    await expect(page.getByText("Deste özel başlar")).toBeVisible();
+    await expect(
+      page.getByText("* zorunlu alan").filter({ visible: true })
+    ).toBeVisible();
+    await expect(
+      page.getByText("Deste özel başlar").filter({ visible: true })
+    ).toBeVisible();
     // The design draws no visibility choice.
     await expect(page.getByText("Herkese açık", { exact: true })).toHaveCount(
       0
     );
 
     await page.getByRole("button", { name: "Oluştur" }).click();
-    await expect(page.getByText("Bir deste adı yaz.")).toBeVisible();
-    await expect(page.getByText("Bir kart türü seç.")).toBeVisible();
+    await expect(
+      page.getByText("Bir deste adı yaz.").filter({ visible: true })
+    ).toBeVisible();
+    await expect(
+      page.getByText("Bir kart türü seç.").filter({ visible: true })
+    ).toBeVisible();
     await expect(page).toHaveURL(/\/tr\/decks\/create$/);
 
     await page.getByRole("textbox", { name: /Deste adı/ }).fill("abc");
     await page.getByRole("button", { name: "Oluştur" }).click();
     await expect(
-      page.getByText("Deste adı en az 5 karakter olmalı.")
+      page
+        .getByText("Deste adı en az 5 karakter olmalı.")
+        .filter({ visible: true })
     ).toBeVisible();
   });
 
   test("the card type changes the preview", async ({ page }) => {
     await page.goto("/tr/decks/create");
-    await expect(page.getByText("Kelime kartı böyle görünür")).toBeVisible();
-    await page.getByRole("radio", { name: /Hadis/ }).click();
-    await expect(page.getByText("Hadis kartı böyle görünür")).toBeVisible();
     await expect(
-      page.getByText("Ameller ancak niyetlere göredir. Buhârî, Müslim")
+      page.getByText("Kelime kartı böyle görünür").filter({ visible: true })
+    ).toBeVisible();
+    await page.getByRole("radio", { name: /Hadis/ }).click();
+    await expect(
+      page.getByText("Hadis kartı böyle görünür").filter({ visible: true })
+    ).toBeVisible();
+    await expect(
+      page
+        .getByText("Ameller ancak niyetlere göredir. Buhârî, Müslim")
+        .filter({ visible: true })
     ).toBeVisible();
     await page.getByRole("radio", { name: /Kelime/ }).click();
-    await expect(page.getByText("Kelime kartı böyle görünür")).toBeVisible();
+    await expect(
+      page.getByText("Kelime kartı böyle görünür").filter({ visible: true })
+    ).toBeVisible();
   });
 
   test("creates a private deck with a type and trimmed tags, and opens its page", async ({
@@ -411,9 +433,7 @@ test.describe("Deste ayrıntısı, sahibi (tedris/28)", () => {
     await expect(main.getByText("Bugün 7 kart tekrar bekliyor.")).toBeVisible();
     await expect(main.getByText(/^Kart \d$/)).toHaveCount(6);
     await expect(
-      main.getByText(
-        "Yayın isteğini 29 Eylül 2026 Salı 21:10 tarihinde gönderdin."
-      )
+      main.getByText("Yayın isteğini 29 Eylül 2026 Salı 21:10’da gönderdin.")
     ).toBeVisible();
     await expect(main.getByRole("link", { name: "Çalış" })).toHaveAttribute(
       "href",
@@ -499,7 +519,9 @@ test.describe("Deste ayrıntısı, sahibi (tedris/28)", () => {
     await page.goto(`/tr/decks/${id}`);
     await page.getByRole("button", { name: "İsteği geri çek" }).click();
     await expect(
-      page.getByText("Bu deste özel; yalnız sen görürsün.", { exact: false })
+      page
+        .getByText("Bu deste özel; yalnız sen görürsün.", { exact: false })
+        .filter({ visible: true })
     ).toBeVisible();
     await expect(page.getByText("Özel").first()).toBeVisible();
     expect(
@@ -574,7 +596,9 @@ test.describe("Deste kartları (tedris/29)", () => {
       [id, talebe.sub, `Kart deneyi ${fx.tag}`]
     );
     await page.goto(`/tr/decks/${id}/cards`);
-    await expect(page.getByText("Bu destede henüz kart yok.")).toBeVisible();
+    await expect(
+      page.getByText("Bu destede henüz kart yok.").filter({ visible: true })
+    ).toBeVisible();
 
     // Add: an empty form says so; a filled one adds a row and the tab's count.
     await page.getByRole("button", { name: "Kart ekle" }).first().click();
@@ -641,9 +665,11 @@ test.describe("Deste kartları (tedris/29)", () => {
       "rtl"
     );
     await expect(
-      page.getByText(
-        "Durum sütunu senin çalışma ilerlemeni gösterir. Kartları yalnız sen ekler, düzenler ve silersin."
-      )
+      page
+        .getByText(
+          "Durum sütunu senin çalışma ilerlemeni gösterir. Kartları yalnız sen ekler, düzenler ve silersin."
+        )
+        .filter({ visible: true })
     ).toBeVisible();
   });
 
@@ -746,12 +772,12 @@ test.describe("Deste, okuyan kişinin görünümü (tedris/31)", () => {
     await expect(rows).toHaveCount(7);
     await expect(rows.nth(1).getByText("Buhârî, Müslim")).toBeVisible();
     await expect(
-      page.getByText("8 kartın 6 tanesi gösteriliyor")
+      page.getByText("8 karttan 6’sı gösteriliyor").filter({ visible: true })
     ).toBeVisible();
     await page.getByRole("button", { name: "Daha fazla göster" }).click();
     await expect(rows).toHaveCount(9);
     await expect(
-      page.getByText("8 kartın 8 tanesi gösteriliyor")
+      page.getByText("8 karttan 8’i gösteriliyor").filter({ visible: true })
     ).toBeVisible();
     await expect(
       page.getByRole("button", { name: "Daha fazla göster" })
@@ -781,7 +807,9 @@ test.describe("Deste, okuyan kişinin görünümü (tedris/31)", () => {
     ).toHaveCount(0);
     await dialog.getByRole("radio", { name: fx.titles.hadithOwn }).click();
     await dialog.getByRole("button", { name: "Kopyala" }).click();
-    await expect(page.getByText("Kart destene kopyalandı")).toBeVisible();
+    await expect(
+      page.getByText("Kart destene kopyalandı").filter({ visible: true })
+    ).toBeVisible();
 
     const copied = await query<{
       content_front: string;

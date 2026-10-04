@@ -224,7 +224,9 @@ test.describe("köşk page (tedris/10)", () => {
   }) => {
     // streamed: the status line is already sent, so the page says it
     await page.goto(koskPage(randomUUID()));
-    await expect(page.getByText("Sayfa bulunamadı")).toBeVisible();
+    await expect(
+      page.getByText("Sayfa bulunamadı").filter({ visible: true })
+    ).toBeVisible();
   });
 });
 

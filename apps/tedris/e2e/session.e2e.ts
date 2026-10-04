@@ -197,7 +197,9 @@ test.describe("an enrolled talebe", () => {
     ]) {
       const response = await page.goto(sessionPath(lessonId));
       expect(response?.status()).toBe(404);
-      await expect(page.getByText("Sayfa bulunamadı")).toBeVisible();
+      await expect(
+        page.getByText("Sayfa bulunamadı").filter({ visible: true })
+      ).toBeVisible();
     }
   });
 

@@ -362,7 +362,9 @@ test.describe("the köşk page", () => {
       "/tr/kosks/a0000000-0000-4000-8000-0000000000ff"
     );
     expect(response?.status()).toBe(404);
-    await expect(page.getByText("Sayfa bulunamadı")).toBeVisible();
+    await expect(
+      page.getByText("Sayfa bulunamadı").filter({ visible: true })
+    ).toBeVisible();
   });
 });
 
@@ -460,9 +462,11 @@ test.describe("Derslerim", () => {
         .first()
     ).toBeVisible();
     await expect(
-      page.getByText(
-        "Ders kadrosu 26 Eylül 2026 tarihinde tamamladığını onayladı."
-      )
+      page
+        .getByText(
+          "Ders kadrosu 26 Eylül 2026 tarihinde tamamladığını onayladı."
+        )
+        .filter({ visible: true })
     ).toBeVisible();
     await expect(
       section(page, "Tamamladığın dersler").getByText("Tamamlandı")
@@ -482,7 +486,7 @@ test.describe("Derslerim", () => {
     );
     await page.goto("/tr/my-courses");
     await page.getByRole("link", { name: "Takvim aboneliği" }).click();
-    await expect(page).toHaveURL(/\/learning\/calendar$/);
+    await expect(page).toHaveURL(/\/account\/calendar$/);
   });
 
   test("withdrawing a request takes it off the list at once, and it stays off", async ({

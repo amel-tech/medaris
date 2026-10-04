@@ -86,7 +86,7 @@ test.describe("Ana sayfa (tedris/01)", () => {
       .filter({ visible: true });
     await expect(card.getByText("İlerlemen")).toBeVisible();
     await expect(card.getByText("%40")).toBeVisible();
-    await expect(card.getByText("Sıradaki celse")).toBeVisible();
+    await expect(card.getByText("Sonraki celse")).toBeVisible();
   });
 
   test("'Bugün çalışılacak desteler' lists the decks with cards waiting, then the one that grew", async ({
@@ -180,8 +180,12 @@ test.describe("Çalışma (tedris/30)", () => {
   }) => {
     await page.goto(`/tr/decks/study/${fx.ids.own}`);
     await page.getByRole("button", { name: "Arka yüzü göster" }).click();
-    await expect(page.getByText("Arka yüz", { exact: true })).toBeVisible();
-    await expect(page.getByText("Ne kadar zordu?")).toBeVisible();
+    await expect(
+      page.getByText("Arka yüz", { exact: true }).filter({ visible: true })
+    ).toBeVisible();
+    await expect(
+      page.getByText("Ne kadar zordu?").filter({ visible: true })
+    ).toBeVisible();
     for (const name of ["Zor", "Orta", "Kolay"]) {
       await expect(page.getByRole("button", { name })).toBeVisible();
     }
@@ -189,8 +193,16 @@ test.describe("Çalışma (tedris/30)", () => {
 
   test("the space bar turns the card over", async ({ page }) => {
     await page.goto(`/tr/decks/study/${fx.ids.own}`);
-    await page.keyboard.press("Space");
-    await expect(page.getByText("Ne kadar zordu?")).toBeVisible();
+    // The key is read once the page has hydrated; a press before that does nothing,
+    // so press until the card is over (each press turns it once, so none is wasted).
+    await expect(async () => {
+      await page.keyboard.press("Space");
+      await expect(
+        page.getByText("Ne kadar zordu?").filter({ visible: true })
+      ).toBeVisible({
+        timeout: 1_000,
+      });
+    }).toPass();
   });
 
   test("rating a card writes its progress once, schedules it, and moves on; the round ends with a summary", async ({
@@ -283,9 +295,9 @@ test.describe("Deste, girişsiz ziyaretçi (tedris/32)", () => {
     ).toHaveCount(0);
     await expect(main.getByRole("button", { name: /kopyala/i })).toHaveCount(0);
 
-    await expect(main).toContainText("8 kartın 6 tanesi gösteriliyor");
+    await expect(main).toContainText("8 karttan 6’sı gösteriliyor");
     await main.getByRole("button", { name: "Daha fazla göster" }).click();
-    await expect(main).toContainText("8 kartın 8 tanesi gösteriliyor");
+    await expect(main).toContainText("8 karttan 8’i gösteriliyor");
     await context.close();
   });
 
