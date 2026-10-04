@@ -3,8 +3,10 @@ import { authErrorMessageKey } from "@medaris/services/auth-client";
 import { createTranslator } from "next-intl";
 import { describe, expect, it } from "vitest";
 import { banErrorKey } from "~/features/bans/bans";
+import { enrolmentErrorKey } from "~/features/enrolments/enrolments";
 import { offsiteErrorKey } from "~/features/offsite/offsite";
 import { decisionErrorKey } from "~/features/pano/pano";
+import { sessionErrorKey } from "~/features/sessions/sessions";
 
 const locales = ["tr", "en", "ar"] as const;
 
@@ -40,6 +42,25 @@ describe("the nazir message catalogue", () => {
     }
   });
 
+  it("never tells a removed talebe they may apply again, as tedrisat answers 409 to it", () => {
+    // MDRS-247: the copy came from nizam unchanged and promised a way back
+    // that does not exist; only the course team's approval reinstates a seat.
+    const mayApply: Record<(typeof locales)[number], RegExp> = {
+      tr: /yeniden başvurabilir/,
+      en: /may apply again/,
+      ar: /(?<!لا )يستطيع الطالب (?:المُخرَج أن يتقدّم|التقدّم) من جديد/,
+    };
+    for (const locale of locales) {
+      const students = resources[locale].nazir.CourseStudents as {
+        removedNote: string;
+        remove: { info: string };
+      };
+      for (const text of [students.removedNote, students.remove.info]) {
+        expect(text, locale).not.toMatch(mayApply[locale]);
+      }
+    }
+  });
+
   it("has a message for every NextAuth error the sign-in pages can show", () => {
     // `authErrorMessageKey` builds the key at run time, so nothing else pins it.
     const codes = [
@@ -62,7 +83,7 @@ describe("the nazir message catalogue", () => {
     }
   });
 
-  it("has a message for every key the Yasaklamalar, Talebeler, Pano and Medrese dışı ders talebi screens build at run time", () => {
+  it("has a message for every key the Yasaklamalar, Talebeler, Pano, Medrese dışı ders talebi and course scope screens build at run time", () => {
     // Refusal codes, roles, scopes, states and the three reason dialogs build their keys from data.
     const refusals = [
       ...[
@@ -83,6 +104,51 @@ describe("the nazir message catalogue", () => {
         offsiteErrorKey
       ),
       ...["ENROLLMENT_NOT_FOUND", "AUTHZ_FORBIDDEN", ""].map(decisionErrorKey),
+      ...[
+        "AUTHZ_FORBIDDEN",
+        "COURSE_VERSION_CONFLICT",
+        "LESSON_ALREADY_CANCELLED",
+        "INVALID_SESSION_PATTERN",
+        "LESSON_NOT_LIVE",
+        "LESSON_CANCELLED",
+        "LIVE_STREAM_URL_INVALID",
+        "SOMETHING_NEW",
+      ].map(sessionErrorKey),
+      ...[
+        "AUTHZ_FORBIDDEN",
+        "ENROLLMENT_NOT_FOUND",
+        "ENROLLMENT_STATE_CONFLICT",
+        "SOMETHING_NEW",
+      ].map(enrolmentErrorKey),
+    ];
+    // The Celseler and Talebeler of a course build these from a state, a tab or an action.
+    const course = [
+      ...["live", "cancelled", "ended", "scheduled"].map(
+        (state) => `Sessions.state.${state}`
+      ),
+      ...["empty", "channel", "notYoutube", "notHttps", "noVideo"].map(
+        (problem) => `Sessions.stream.problems.${problem}`
+      ),
+      ...[
+        "weekdays",
+        "startTime",
+        "duration",
+        "startDate",
+        "endDate",
+        "endBeforeStart",
+        "count",
+        "title",
+        "link",
+      ].map((problem) => `SessionPlan.errors.${problem}`),
+      ...["applications", "enrolled", "completed", "removed"].flatMap((tab) => [
+        `CourseStudents.tabs.${tab}`,
+        `CourseStudents.captions.${tab}`,
+        `CourseStudents.empty.${tab}`,
+      ]),
+      ...["complete", "reopen", "remove"].flatMap((action) => [
+        `CourseStudents.roster.${action}`,
+        `CourseStudents.roster.${action}Label`,
+      ]),
     ];
     const reasons = ["lift", "escalate", "permanent"].flatMap((kind) =>
       [
@@ -97,6 +163,7 @@ describe("the nazir message catalogue", () => {
     );
     const keys = [
       ...refusals,
+      ...course,
       ...reasons,
       ...[
         "MEDARIS_NAZIM",
@@ -160,6 +227,14 @@ describe("the nazir message catalogue", () => {
       number: 2,
       min: 2,
       max: 200,
+      when: "5 Eki Pzt 21:00",
+      zone: "İstanbul",
+      range: "2–4",
+      n: 3,
+      minutes: 60,
+      week: 2,
+      link: "var",
+      shown: 10,
     };
     const sections = [
       "Students",
@@ -168,6 +243,9 @@ describe("the nazir message catalogue", () => {
       "Reasons",
       "Offsite",
       "Pano",
+      "Sessions",
+      "SessionPlan",
+      "CourseStudents",
     ] as const;
     for (const locale of locales) {
       const errors: string[] = [];
