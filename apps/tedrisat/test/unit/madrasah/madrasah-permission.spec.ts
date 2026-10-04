@@ -62,8 +62,14 @@ function build(
       {
         medrese: string[];
         courses?: Record<string, string[]>;
-        /** In the medrese: the authorities of the grants behind each code. */
-        authorities?: Record<string, string[]>;
+        /**
+         * In the medrese: the grants behind each code, by authority, held with
+         * no end unless an end is given.
+         */
+        authorities?: Record<
+          string,
+          Array<string | { authority: string; until: Date | null }>
+        >;
       }
     >;
   } = {}
@@ -110,7 +116,16 @@ function build(
           }
           return {
             codes: new Set(options?.acrossCourses ? (mine?.medrese ?? []) : []),
-            grantAuthorities: new Map(Object.entries(mine?.authorities ?? {})),
+            grantHoldings: new Map(
+              Object.entries(mine?.authorities ?? {}).map(([code, list]) => [
+                code,
+                list.map((held) =>
+                  typeof held === "string"
+                    ? { authority: held, until: null }
+                    : held
+                ),
+              ])
+            ),
           };
         }
       ),
@@ -580,13 +595,17 @@ describe('the ceiling of a Medaris nazımı (MDRS-209: "kendi izinleriyle sını
         },
       },
     });
-    let authorityFor: ((row: unknown) => string) | undefined;
+    let authorityFor:
+      | ((row: unknown, expiresAt: Date | null) => string)
+      | undefined;
     repo.setPermissions.mockImplementation(
       async (
         _m: string,
         _n: string,
         _a: string,
-        wanted: { authorityFor?: (row: unknown) => string }
+        wanted: {
+          authorityFor?: (row: unknown, expiresAt: Date | null) => string;
+        }
       ) => {
         authorityFor = wanted.authorityFor;
       }
@@ -601,13 +620,60 @@ describe('the ceiling of a Medaris nazımı (MDRS-209: "kendi izinleriyle sını
       groupId: null,
       codes,
     });
-    expect(authorityFor?.(row(["course.edit"]))).toBe("platform");
-    expect(authorityFor?.(row(["course.settings"]))).toBe("madrasah");
-    expect(authorityFor?.(row(["madrasah.ban"]))).toBe("madrasah");
+    expect(authorityFor?.(row(["course.edit"]), null)).toBe("platform");
+    expect(authorityFor?.(row(["course.settings"]), null)).toBe("madrasah");
+    expect(authorityFor?.(row(["madrasah.ban"]), null)).toBe("madrasah");
     // A group row is capped by the weakest of its codes.
-    expect(authorityFor?.(row(["course.edit", "course.settings"]))).toBe(
+    expect(authorityFor?.(row(["course.edit", "course.settings"]), null)).toBe(
       "madrasah"
     );
+  });
+
+  it("stores the platform's authority only on a row that ends while the giver still holds it (review B-grants-R2-2)", async () => {
+    const inHours = (n: number) => new Date(Date.now() + n * 3600_000);
+    const { service, repo } = build({
+      held: {
+        a4: {
+          medrese: ["course.edit"],
+          // course.edit from the başmüderris for good, and from the başnazım
+          // with the platform's authority for one hour.
+          authorities: {
+            "course.edit": [
+              "madrasah",
+              { authority: "platform", until: inHours(1) },
+            ],
+          },
+        },
+      },
+    });
+    let authorityFor:
+      | ((row: unknown, expiresAt: Date | null) => string)
+      | undefined;
+    repo.setPermissions.mockImplementation(
+      async (
+        _m: string,
+        _n: string,
+        _a: string,
+        wanted: {
+          authorityFor?: (row: unknown, expiresAt: Date | null) => string;
+        }
+      ) => {
+        authorityFor = wanted.authorityFor;
+      }
+    );
+    await service.setNazirPermissions(MEDARIS, M, NAZIR, {
+      permissions: ["course.edit"],
+    } as never);
+    const row = {
+      scopeType: "madrasah",
+      scopeId: M,
+      permission: "course.edit",
+      groupId: null,
+      codes: ["course.edit"],
+    };
+    expect(authorityFor?.(row, null)).toBe("madrasah");
+    expect(authorityFor?.(row, inHours(2))).toBe("madrasah");
+    expect(authorityFor?.(row, inHours(0.5))).toBe("platform");
   });
 
   it("lists as givable only what they hold, so the screens refuse what the write refuses", async () => {

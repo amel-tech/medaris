@@ -15,6 +15,7 @@ export type {
   IAuthzFacts,
   IDeckVisibility,
   IEffective,
+  IGrantHolding,
   IHeldGrantCodes,
   IHeldRole,
   IPermissionMeta,

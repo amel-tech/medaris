@@ -312,6 +312,58 @@ describe("Grant ceilings and seat cascades (MDRS-135 review, e2e)", () => {
         isClosed: false,
       }).expect(200);
     });
+
+    it("what the başnazım gave them for a time passes on with the platform's authority only on a row that ends by then (review B-grants-R2-2)", async () => {
+      await closeTheCourse();
+      await medarisNazim(MEDARIS);
+      await post(HEAD, `${nazirs()}/${MEDARIS}`).expect(201);
+      await put(HEAD, permissionsOf(MEDARIS), {
+        permissions: twoCodes,
+      }).expect(200);
+      const inAnHour = new Date(Date.now() + 3600_000);
+      for (const permission of twoCodes) {
+        await grant(
+          MEDARIS,
+          ADMIN,
+          { permission },
+          { authorityScopeType: SCOPE_TYPES.PLATFORM, expiresAt: inAnHour }
+        );
+      }
+      // The premise: for the hour, the giver opens the closed course.
+      await patch(MEDARIS, `/courses/${courseId}`, {
+        isClosed: false,
+      }).expect(200);
+      await db()
+        .update(courses)
+        .set({ isClosed: true })
+        .where(eq(courses.id, courseId));
+
+      // A row with no end would outlast the giver's platform authority.
+      await seat(NAZIR_A, HEAD);
+      await put(MEDARIS, permissionsOf(NAZIR_A), {
+        permissions: twoCodes,
+      }).expect(200);
+      for (const row of await liveGrants(NAZIR_A)) {
+        expect(row.authorityScopeType).toBe(SCOPE_TYPES.MADRASAH);
+      }
+      const refused = await patch(NAZIR_A, `/courses/${courseId}`, {
+        isClosed: false,
+      }).expect(409);
+      expect(refused.body.code).toBe("PLATFORM_POLICY_LOCKED");
+
+      // A row that ends within the hour carries it.
+      await seat(NAZIR_B, HEAD);
+      await put(MEDARIS, permissionsOf(NAZIR_B), {
+        permissions: twoCodes,
+        expiresAt: new Date(Date.now() + 1800_000).toISOString(),
+      }).expect(200);
+      for (const row of await liveGrants(NAZIR_B)) {
+        expect(row.authorityScopeType).toBe(SCOPE_TYPES.PLATFORM);
+      }
+      await patch(NAZIR_B, `/courses/${courseId}`, {
+        isClosed: false,
+      }).expect(200);
+    });
   });
 
   describe("a permission does not outlast its seat (decision 8)", () => {

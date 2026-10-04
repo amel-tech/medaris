@@ -3,6 +3,7 @@ import {
   AuthzService,
   ENTITIES,
   type IEffective,
+  type IGrantHolding,
   SelfGrantGuard,
 } from "@medaris/common";
 import { Injectable } from "@nestjs/common";
@@ -81,16 +82,19 @@ interface IGiven {
   codes: readonly string[];
 }
 
-/** What a giver holds somewhere: the codes, and the authorities of the grants that carry them. */
+/**
+ * What a giver holds somewhere: the codes, and the grants that carry them,
+ * each with its authority and how long it is held.
+ */
 interface IHoldings {
   codes: ReadonlySet<string>;
-  authorities: ReadonlyMap<string, readonly ScopeType[]>;
+  grants: ReadonlyMap<string, readonly IGrantHolding[]>;
 }
 
 function holdingsFrom(effective: IEffective | null): IHoldings {
   return {
     codes: new Set<string>(effective?.codes ?? []),
-    authorities: effective?.grantAuthorities ?? new Map(),
+    grants: effective?.grantHoldings ?? new Map(),
   };
 }
 
@@ -228,8 +232,11 @@ export class MadrasahPermissionService {
    * (owner, d-1004-27 "tavan kazanır"): a code they hold through a grant
    * passes on with that grant's authority at most, one they hold through a
    * role or a relationship with the medrese's own level, which no policy above
-   * it lets through. So a gift never carries past a policy what does not carry
-   * the giver past it.
+   * it lets through. A grant counts only if the giver holds it for as long as
+   * the row is given (`expiresAt`, null for no end): an authority they hold
+   * until tomorrow does not go on a row that runs past it. So a gift never
+   * carries past a policy what does not carry the giver past it, then or
+   * later.
    */
   private async giverLimits(
     user: AuthenticatedUser,
@@ -237,7 +244,11 @@ export class MadrasahPermissionService {
     candidates: ReadonlyArray<IGiven>
   ): Promise<{
     check: (given: readonly IGiven[]) => void;
-    authorityFor: (given: IGiven, acting: ScopeType) => ScopeType;
+    authorityFor: (
+      given: IGiven,
+      acting: ScopeType,
+      expiresAt: Date | null
+    ) => ScopeType;
   } | null> {
     const held = await this.holdingsOf(user, madrasahId);
     if (held === null) return null;
@@ -280,11 +291,16 @@ export class MadrasahPermissionService {
           });
         }
       },
-      authorityFor: (scope, acting) => {
+      authorityFor: (scope, acting, expiresAt) => {
+        const lasts = (until: Date | null) =>
+          until === null ||
+          (expiresAt !== null && until.getTime() >= expiresAt.getTime());
         let cap = acting;
         for (const code of scope.codes) {
-          const mine = holdingsFor(scope).flatMap(
-            (h) => h?.authorities.get(code) ?? []
+          const mine = holdingsFor(scope).flatMap((h) =>
+            (h?.grants.get(code) ?? [])
+              .filter((grant) => lasts(grant.until))
+              .map((grant) => grant.authority)
           );
           const best = mine.reduce<ScopeType>(
             (a, b) => (KADEME[b] > KADEME[a] ? b : a),
@@ -532,7 +548,7 @@ export class MadrasahPermissionService {
       // A gift never carries an authority the giver's own holding lacks
       // (d-1004-27), so the receiver gets past no policy the giver cannot.
       authorityFor: limits
-        ? (row) => limits.authorityFor(row, authority)
+        ? (row, expiresAt) => limits.authorityFor(row, authority, expiresAt)
         : undefined,
     });
     const row = await this.nazirs.find(madrasahId, id);

@@ -377,11 +377,12 @@ export class MadrasahNazirRepository {
        */
       ceiling?: (given: ReadonlyArray<IHandedOn>) => void;
       /**
-       * The authority a handed-on row is stored with: never above the giver's
-       * own holding of its codes (owner, d-1004-27 "tavan kazanır"). Without
-       * it every row gets `authority`.
+       * The authority a handed-on row is stored with, given the end it is
+       * stored with: never above the giver's own holding of its codes for that
+       * long (owner, d-1004-27 "tavan kazanır"). Without it every row gets
+       * `authority`.
        */
-      authorityFor?: (row: IHandedOn) => ScopeType;
+      authorityFor?: (row: IHandedOn, expiresAt: Date | null) => ScopeType;
     }
   ): Promise<void> {
     await this.db.transaction(async (tx) => {
@@ -532,7 +533,7 @@ export class MadrasahNazirRepository {
       });
       wanted.ceiling?.([...insert, ...extended.map(handedOn)]);
       const authorityOf = (row: IHandedOn) =>
-        wanted.authorityFor?.(row) ?? wanted.authority;
+        wanted.authorityFor?.(row, expiresAt) ?? wanted.authority;
 
       if (revoke.length > 0) {
         await tx

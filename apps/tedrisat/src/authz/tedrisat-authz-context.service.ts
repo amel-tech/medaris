@@ -217,6 +217,7 @@ export class TedrisatAuthzContext implements AuthzContextLoader {
         role: roleAssignments.role,
         scopeType: roleAssignments.scopeType,
         scopeId: roleAssignments.scopeId,
+        expiresAt: roleAssignments.expiresAt,
       })
       .from(roleAssignments)
       .where(
@@ -239,6 +240,7 @@ export class TedrisatAuthzContext implements AuthzContextLoader {
     return rows.map((row) => ({
       role: row.role,
       scope: { type: row.scopeType, id: row.scopeId },
+      expiresAt: row.expiresAt,
     }));
   }
 
@@ -254,6 +256,7 @@ export class TedrisatAuthzContext implements AuthzContextLoader {
         permission: permissionGrants.permission,
         authority: permissionGrants.authorityScopeType,
         item: permissionGroupItems.permission,
+        expiresAt: permissionGrants.expiresAt,
       })
       .from(permissionGrants)
       .leftJoin(
@@ -290,6 +293,7 @@ export class TedrisatAuthzContext implements AuthzContextLoader {
       {
         scope: ScopeRef;
         authority: IHeldGrantCodes["authority"];
+        expiresAt: Date | null;
         codes: Set<PermissionCode>;
       }
     >();
@@ -297,6 +301,7 @@ export class TedrisatAuthzContext implements AuthzContextLoader {
       const grant = byGrant.get(row.id) ?? {
         scope: { type: row.scopeType, id: row.scopeId },
         authority: row.authority,
+        expiresAt: row.expiresAt,
         codes: new Set<PermissionCode>(),
       };
       for (const code of [row.permission, row.item]) {
@@ -307,6 +312,7 @@ export class TedrisatAuthzContext implements AuthzContextLoader {
     return [...byGrant.values()].map((grant) => ({
       scope: grant.scope,
       authority: grant.authority,
+      expiresAt: grant.expiresAt,
       codes: [...grant.codes],
     }));
   }

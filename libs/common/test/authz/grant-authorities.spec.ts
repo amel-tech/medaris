@@ -68,6 +68,62 @@ describe("effective permissions: the authorities behind each granted code", () =
     expect(result.grantAuthorities?.has(PERMISSIONS.COURSE_EDIT)).toBe(false);
   });
 
+  it("says until when each grant is held: its own end, or the end of the role that lets it count, whichever is first (review B-grants-R2-2)", () => {
+    const now = new Date("2026-10-04T12:00:00Z");
+    const at = (hours: number) => new Date(now.getTime() + hours * 3600_000);
+    const result = effectivePermissions(
+      facts,
+      [
+        {
+          role: ASSIGNED_ROLES.MEDRESE_NAZIR,
+          scope: madrasah,
+          expiresAt: at(5),
+        },
+      ],
+      [
+        {
+          scope: madrasah,
+          codes: [PERMISSIONS.COURSE_SETTINGS],
+          authority: SCOPE_TYPES.MADRASAH,
+        },
+        {
+          scope: madrasah,
+          codes: [PERMISSIONS.COURSE_SETTINGS],
+          authority: SCOPE_TYPES.PLATFORM,
+          expiresAt: at(1),
+        },
+      ],
+      now
+    );
+    expect(result.grantHoldings?.get(PERMISSIONS.COURSE_SETTINGS)).toEqual([
+      { authority: SCOPE_TYPES.MADRASAH, until: at(5) },
+      { authority: SCOPE_TYPES.PLATFORM, until: at(1) },
+    ]);
+
+    const forGood = effectivePermissions(
+      facts,
+      [
+        {
+          role: ASSIGNED_ROLES.MEDRESE_NAZIR,
+          scope: madrasah,
+          expiresAt: at(5),
+        },
+        { role: ASSIGNED_ROLES.MEDRESE_NAZIR, scope: madrasah },
+      ],
+      [
+        {
+          scope: madrasah,
+          codes: [PERMISSIONS.COURSE_SETTINGS],
+          authority: SCOPE_TYPES.PLATFORM,
+        },
+      ],
+      now
+    );
+    expect(forGood.grantHoldings?.get(PERMISSIONS.COURSE_SETTINGS)).toEqual([
+      { authority: SCOPE_TYPES.PLATFORM, until: null },
+    ]);
+  });
+
   it("leaves out a grant no held role covers", () => {
     const result = effectivePermissions(
       facts,

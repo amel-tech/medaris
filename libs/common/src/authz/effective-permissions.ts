@@ -65,6 +65,32 @@ export interface IEffective {
    * by a role or a relationship is absent.
    */
   grantAuthorities?: ReadonlyMap<PermissionCode, readonly ScopeType[]>;
+  /**
+   * The same grants with how long each holding lasts: the grant's own end or
+   * the end of the role that lets it count, whichever comes first (null: no
+   * end). A giver hands a code on with an authority only for as long as they
+   * hold it with that authority (d-1004-27).
+   */
+  grantHoldings?: ReadonlyMap<PermissionCode, readonly IGrantHolding[]>;
+}
+
+/** One live grant of a code: the authority behind it, and until when it is held. */
+export interface IGrantHolding {
+  authority: ScopeType;
+  until: Date | null;
+}
+
+/** The later of some ends; null (no end) when any of them has none. */
+function latestEnd(ends: ReadonlyArray<Date | null | undefined>): Date | null {
+  if (ends.some((end) => end === null || end === undefined)) return null;
+  return new Date(Math.max(...ends.map((end) => (end as Date).getTime())));
+}
+
+/** The earlier of two ends, where null is no end. */
+function earliestEnd(a: Date | null, b: Date | null): Date | null {
+  if (a === null) return b;
+  if (b === null) return a;
+  return a.getTime() <= b.getTime() ? a : b;
 }
 
 /** Ids compare lower-cased: a path may spell a uuid in upper case. */
@@ -225,10 +251,18 @@ export function effectivePermissions(
 
   // code -> the authorities of the live grants that carry it, for the bypass.
   const grantedBy = new Map<PermissionCode, ScopeType[]>();
+  const holdings = new Map<PermissionCode, IGrantHolding[]>();
   for (const grant of grants) {
     if (chainIndex(facts.chain, grant.scope) < 0) continue;
-    if (!heldRoles.some((r) => roleCoversScope(r.scope, grant.scope))) continue;
+    const covering = heldRoles.filter((r) =>
+      roleCoversScope(r.scope, grant.scope)
+    );
+    if (covering.length === 0) continue;
     const authority = grant.authority ?? grant.scope.type;
+    const until = earliestEnd(
+      grant.expiresAt ?? null,
+      latestEnd(covering.map((r) => r.expiresAt))
+    );
     for (const code of grant.codes) {
       if (!PERMISSION_META[code].grantable) continue;
       if (!reaches(code, grant.scope.type)) continue;
@@ -237,6 +271,9 @@ export function effectivePermissions(
       const list = grantedBy.get(code) ?? [];
       list.push(authority);
       grantedBy.set(code, list);
+      const held = holdings.get(code) ?? [];
+      held.push({ authority, until });
+      holdings.set(code, held);
     }
   }
 
@@ -309,5 +346,10 @@ export function effectivePermissions(
     }
   }
 
-  return { codes, openedPassive, grantAuthorities: grantedBy };
+  return {
+    codes,
+    openedPassive,
+    grantAuthorities: grantedBy,
+    grantHoldings: holdings,
+  };
 }

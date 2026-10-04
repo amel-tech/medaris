@@ -180,6 +180,38 @@ describe("TedrisatAuthzContext", () => {
     ]);
   });
 
+  it("hands the engine each role's and grant's end, so a giver's holding is known to last only until then (review B-grants-R2-2)", async () => {
+    const end = new Date("2026-10-05T10:00:00Z");
+    const { loader } = build({
+      facts: [[KOSK, MADRASAH, false, false, false, false, false]],
+      // [role, scope type, scope id, end]
+      roles: [["MEDRESE_NAZIR", "madrasah", MADRASAH, end]],
+      // [grant id, scope type, scope id, single permission, authority, group item, end]
+      grants: [
+        ["g1", "madrasah", MADRASAH, "course.edit", "platform", null, end],
+      ],
+    });
+    const ctx = await loader.load(USER, {
+      entity: ENTITIES.COURSE,
+      id: COURSE,
+    });
+    expect(ctx.roles).toEqual([
+      {
+        role: "MEDRESE_NAZIR",
+        scope: { type: "madrasah", id: MADRASAH },
+        expiresAt: end,
+      },
+    ]);
+    expect(ctx.grants).toEqual([
+      {
+        scope: { type: "madrasah", id: MADRASAH },
+        authority: "platform",
+        expiresAt: end,
+        codes: ["course.edit"],
+      },
+    ]);
+  });
+
   it("decides expiry and revocation in the statements, against the database clock, not in memory", async () => {
     const { loader, queries } = build({
       facts: [[KOSK, null, false, false, null, null, null]],
