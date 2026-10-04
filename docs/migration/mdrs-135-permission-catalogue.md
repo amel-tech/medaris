@@ -89,7 +89,10 @@ ones. Hiding, banning and reading stay the köşk nazımı's in both.
   permission cannot outlast its role", and the remover decides each row). The three acts that drop
   seats (a nazır's dismissal, a head change, a Medaris nazımı's dismissal) list what the person gave,
   course seats included: a head change now lists every role the head gave in the medrese and its
-  courses, with `scopeType`, `scopeId` and `courseTitle`, as the nazır's list does. One level down,
+  courses, with `scopeType`, `scopeId` and `courseTitle`, as the nazır's list does, and what the
+  outgoing head gave the incoming one too (nizam/22 asks about those rows like any other; they were
+  left out and kept by default). The new başmüderris is seated before anything cascades, so a nazır
+  seat of theirs answered Düşür takes nothing their new seat covers. One level down,
   a seat answered Düşür whose holder handed on something still held under it, which no other seat
   of theirs backs, is refused with 409 `DISMISS_SEAT_HANDED_ON` (naming the holders): that holder is
   dismissed first, where their own rows are listed, or the seat is taken over. A grant answered
@@ -101,7 +104,12 @@ ones. Hiding, banning and reading stay the köşk nazımı's in both.
   account has, and none if it lapsed or was revoked (`syncMuderrisAssignments(..., { listedBefore })`);
   only an account the save links anew is seated, the self-grant guard asks about exactly those, and a
   seat it gives or takes writes `course.muderris_update` (`via: "course.replace"`). Seating a lapsed
-  müderris again is the müderris routes' explicit act. On `PUT /courses/:id/muderris` a medrese
+  müderris again is the müderris routes' explicit act, so those two routes ask the guard about every
+  listed account with no held MUDERRIS seat: a nazır already teaching the course keeps themselves on
+  its list on either route, and one whose seat lapsed is refused. The whole-course save is held to the
+  `version` its comparisons read, the editor's own or the one the server read, so a session or a list
+  changed in between is a 409 under the row lock, not hidden or written back. On
+  `PUT /courses/:id/muderris` a medrese
   course's self-naming is asked in the medrese, as `PUT /madrasahs/:id/courses/:courseId/muderrises`
   asks it (`ISelfGrantWhat.heldAt`), so the two routes answer the başmüderris alike on a passive course.
   Tests: `self-grant.e2e.spec.ts`.
@@ -114,6 +122,13 @@ ones. Hiding, banning and reading stay the köşk nazımı's in both.
   level the giver acted under: the başnazım and a Medaris nazımı as `platform`, a köşk nazımı as
   `kosk`, a başmüderris as `madrasah`. A row that predates it reads null, which the engine takes to
   mean "made at its own scope".
+- **A gift carries an authority only for as long as the giver holds it** (d-1004-27). The engine
+  reports each live grant of a code with its authority and until when it is held (`grantHoldings`:
+  the grant's end or the end of the role that lets it count, whichever is first). In nazir/06 a row
+  is stored with an authority only if the giver holds a grant with it for at least as long as the
+  row runs; otherwise it falls back to the medrese's level. **Not done:** the code ceiling is still
+  asked at the moment of giving only, so a code the giver holds until tomorrow can be given with no
+  end; capping that by time is a question about every seat with a Görev bitişi and is left open.
 
 ```
 $ cat apps/tedrisat/src/database/migrations/0047_mdrs_135_grant_authority.sql
@@ -342,7 +357,10 @@ or grant names (a köşk or a medrese across its courses, the platform with "eve
 and `buildEffectivePermissions` lists the catalogue's listed codes the engine gives there. A passive
 scope's closed content, a grant to "every course", a grant no role covers and a code whose scope tag
 does not reach the scope are therefore exactly what the routes do. Course work held at a medrese is
-listed under it (the başmüderris's runs the medrese's courses); the köşk nazımı's is summed up by
+listed under it (the başmüderris's runs the medrese's courses), and closed there when every köşk the
+medrese's shown courses are held in is passive: the medrese's chain does not reach those köşks, so the
+loader is told the question is across courses and names one of them the passive scope (the giver's
+ceiling in nazir/06 reads the same answer). One köşk still run keeps it listed. The köşk nazımı's is summed up by
 `course.manage_all` and its note. Tests: `assignments.e2e.spec.ts` › "exactly what the engine
 decides"; the unit spec `test/unit/assignment/effective-permissions.spec.ts`. `authz-engine.e2e.spec.ts` › "is told by the
 account screen exactly what the routes allow" asserts that the list `GET /me/permissions` prints for a
@@ -555,7 +573,7 @@ ban rule, on the ban ladder `BAN_TIERS`, in one table (`HIDE_RANK` in `archive/h
 
 | Level | Who acts at it | Hides |
 | --- | --- | --- |
-| course (1) | a müderris / ders nazırı, for weeks and sessions | `DELETE /lessons/:id`, the week and session hides of a course save |
+| course (1) | a müderris / ders nazırı, for weeks and sessions (`week.hide` or `session.manage`; `course.edit` only for a week that brings no session back) | `DELETE /lessons/:id`, the week and session hides of a course save |
 | medrese (2) | the başmüderris, or a nazır holding `madrasah.course_hide` | `POST /madrasahs/:id/hide` (and its courses), `POST /madrasahs/:id/courses/:courseId/hide`, a medrese's course through `POST /courses/:id/archive` |
 | köşk (3) | the köşk's nazımı | a course, a deck, the köşk itself, the courses a hosting right's withdrawal hides |
 | platform (4) | the başnazım, and a Medaris nazımı holding the platform permission (`platform.course_hide`, `platform.kosk_edit`, `platform.madrasah_edit`, `platform.hosting_grant`) | the same, over any köşk or medrese |
@@ -589,9 +607,14 @@ ban rule, on the ban ladder `BAN_TIERS`, in one table (`HIDE_RANK` in `archive/h
   the course back.
 - **Who restores a course from the archive** is decided by the engine on the course, on the ladder every
   course hide records (`COURSE_HIDE_LADDER`): whoever could hide at a level brings back at it, a nazır
-  given `madrasah.course_hide` included. A week or a session also has the course's own rung
-  (`SECTION_HIDE_LADDER`): whoever runs the course (`week.hide`, `session.manage` or `course.edit`)
-  hid it there and brings it back there; a course has no such rung. The köşk archive, the medrese
+  given `madrasah.course_hide` included; `POST /madrasahs/:id/courses/:courseId/hide` reads the same
+  ladder, so a köşk nazımı who also holds `madrasah.course_hide` hides there at the köşk's level too.
+  A week or a session also has the course's own rung (`SECTION_HIDE_LADDER`): whoever does its
+  session work (`week.hide` or `session.manage`) hid it there and brings it back there. `course.edit`
+  is a rung only for a week whose restore brings no session back (`BARE_WEEK_HIDE_LADDER`), since
+  bringing a session back is session work; which applies is decided under the week's row lock. A
+  course has no such rung. A restore through the archive writes `<type>.restore` with the level, as
+  the course's and the köşk's own routes do. The köşk archive, the medrese
   archive and the köşk's course roster say so per item (`canRestore`), and nizam draws no "Geri al"
   for what the platform hid.
 - **Medaris nazımı:** `platform.course_hide` (grantable, platform-scoped) hides and restores any course at
