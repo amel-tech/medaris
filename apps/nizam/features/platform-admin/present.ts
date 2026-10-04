@@ -93,6 +93,7 @@ export const AUDIT_TYPE_OPTIONS: readonly AuditType[] = [
   "HIDE",
   "HOSTING",
   "TAKEOVER",
+  "SELF_GRANT_REFUSED",
   "APPEAL",
   "PERMANENT_BAN",
   "PERMANENT_DELETE",

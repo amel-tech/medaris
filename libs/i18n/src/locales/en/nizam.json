@@ -65,6 +65,7 @@
     "restoreFailed": "Could not restore",
     "restoreParentHidden": "What it belongs to is still hidden; restore that first.",
     "restoreGone": "This item is no longer in the archive.",
+    "restoreLevel": "You cannot bring this back: a higher level hid it, and only that level or one above can bring it back.",
     "deleted": "Deleted permanently",
     "deletedBody": "{title} and its records were deleted.",
     "deleteFailed": "Could not delete",
@@ -308,7 +309,6 @@
     "description": "Description",
     "descriptionPlaceholder": "Enter deck description...",
     "flashcardDecks": "Flashcard Decks",
-    "makePublic": "Make this deck public",
     "manageDecks": "Manage your flashcard decks and study materials.",
     "newDeck": "New Deck",
     "title": "Title",
@@ -896,7 +896,7 @@
     "passiveTitleMany": "{count} medreses are passive",
     "passiveBodyOne": "The head müderris's term ended on {date}. The medrese's page is closed to visitors and its content to enrolled talebe too; it reopens when you appoint a head müderris.",
     "passiveBodyMany": "{names}. A passive medrese's page is closed to visitors and its content to enrolled talebe too; it reopens when you appoint a head müderris.",
-    "footnote": "A hidden medrese, with its courses, leaves every list talebe and visitors see. It is restored from the Archive or deleted for good.",
+    "footnote": "A hidden medrese, with its courses, leaves every list talebe and visitors see. The level that hid it, or one above, restores it from this table.",
     "emptyAll": "There are no medreses yet.",
     "emptySearch": "No medrese matches the search.",
     "emptyStatus": "No medrese has this status.",
@@ -909,12 +909,18 @@
       "handleTaken": "This short name is used by another medrese.",
       "notFound": "This medrese no longer exists.",
       "notHidden": "This medrese is not hidden.",
+      "restoreLevel": "A higher level hid this; only that level or one above can bring it back.",
       "forbidden": "You may not do this.",
       "delegationsChanged": "What the head müderris handed on has changed; read the list again and repeat the choices.",
+      "delegationsCascade": "Someone whose post you are dropping gave roles or permissions to others, which would stay without anyone deciding on them. Dismiss that person first, or take their post over.",
+      "delegationsSeatless": "You cannot take over a permission of someone whose post you are dropping: a permission does not outlast its post. Drop that permission too, or take the post over.",
+      "selfTakeOver": "You cannot take over a role or a permission that was given to you; that would be giving it to yourself. Drop it.",
       "expiryInvalid": "The end date is in the past."
     },
     "change": "Change head müderris",
-    "changeLabel": "Change head müderris: {name}"
+    "changeLabel": "Change head müderris: {name}",
+    "passivate": "Take out of service",
+    "passivateLabel": "Take out of service: {name}"
   },
   "HeadPicker": {
     "label": "Head müderris",
@@ -967,9 +973,10 @@
     "newHeadLabel": "New head müderris",
     "chosenNoteChange": "They become the new head müderris; the former one's post ends.",
     "sameHead": "This person is the head müderris of this medrese already.",
-    "endLabel": "End of the post (optional)",
+    "endLabel": "End of the post, date and time (optional)",
     "endHelp": "Left empty, the post lasts until you change it. If it runs out and nobody takes over, the medrese shows under Inactive scopes.",
-    "endPast": "The end date must be after today.",
+    "endPast": "The end must be after the current time.",
+    "endUnfinished": "Complete the end date and time.",
     "submitChange": "Change",
     "answersNeeded": "The head müderris cannot be changed until every row has a choice.",
     "changed": "Head müderris changed",
@@ -1020,6 +1027,7 @@
     "unknownPerson": "Name unknown",
     "roles": {
       "SYSTEM_ADMIN": "Medaris chief nazım",
+      "MEDARIS_NAZIM": "Medaris nazımı",
       "KOSK_NAZIM": "Köşk nazım"
     },
     "published": "{count} live",
@@ -1103,6 +1111,11 @@
         "title": "Edit, hide or restore a köşk",
         "short": "Edit a köşk",
         "help": "A hidden köşk is restored from the Archive."
+      },
+      "platform_course_hide": {
+        "title": "Hide or restore any course",
+        "short": "Hide a course",
+        "help": "A course hidden at the Medaris administration's level is restored only at that level."
       },
       "platform_hosting_grant": {
         "title": "Give or withdraw a hosting right",
@@ -1191,6 +1204,7 @@
       "ban_course": "course bans",
       "ban_lift_course": "lifting bans",
       "deck_manage_course": "course deck",
+      "deck_propose_kosk": "köşk deck proposal",
       "course_nazir_assign": "appointing course nazırs"
     },
     "course": {
@@ -1211,6 +1225,7 @@
       "ban_course": "Ban a talebe from the course (includes seeing the course's ban list)",
       "ban_lift_course": "Lift a course ban, with a reason",
       "deck_manage_course": "Create and edit the course's deck",
+      "deck_propose_kosk": "Propose a köşk deck",
       "course_nazir_assign": "Appoint a course nazır; grant a permission or a group, within your own permissions"
     }
   },
@@ -1256,6 +1271,8 @@
       "alreadyAppointed": "This person is already a Medaris nazim.",
       "expiryInvalid": "The end date is in the past or after the end of the appointment.",
       "dismissChanged": "What this person handed on has changed; read the list again and make the choices again.",
+      "dismissCascade": "Someone whose post you are dropping gave roles or permissions to others, which would stay without anyone deciding on them. Dismiss that person first, or take their post over.",
+      "dismissSeatless": "You cannot take over a permission of someone whose post you are dropping: a permission does not outlast its post. Drop that permission too, or take the post over.",
       "usersPolicy": "Choose what becomes of the permissions of the people who hold the group.",
       "forbidden": "You are not allowed to do this."
     }
@@ -1290,11 +1307,12 @@
     "permissionsHeading": "Permissions",
     "fromGroup": "Comes from the group.",
     "grantedAt": "Given at: {moment}.",
-    "endLabel": "End date (optional)",
-    "endHelpAssignment": "Because your appointment ends on {date}, the permission ends on that day at the latest.",
+    "endLabel": "End date and time (optional)",
+    "endHelpAssignment": "Because your appointment ends on {moment}, the permission ends at that moment at the latest.",
     "endHelpNone": "Left empty, it has no end.",
-    "endPast": "The end date must be after today.",
-    "endAfterAssignment": "The end date cannot be after the end of the appointment ({date}).",
+    "endPast": "The end must be after the current time.",
+    "endUnfinished": "Complete the end date and time.",
+    "endAfterAssignment": "The end cannot be after the end of the appointment ({moment}).",
     "auditNote": "They cannot give on a permission they were given. Every permission given and taken back is written to the audit log.",
     "summaryGroup": "{fromGroup} permissions from the group and {extra} extra",
     "summaryPlain": "{extra, plural, one {# permission} other {# permissions}}",
@@ -1310,6 +1328,7 @@
     "intro": "{name} will be dismissed from the Medaris nazim role and the platform permissions will be taken away.",
     "question": "{count, plural, one {This person gave one permission or role to others.} other {This person gave # permissions or roles to others.}} Choose what happens to each.",
     "answersNote": "Take over: the permission stays and you become the giver. Drop: the permission is taken back.",
+    "selfMadeQuestion": "{count, plural, one {This person gave one permission or role to themselves.} other {This person gave # permissions or roles to themselves.}} It is taken back with the dismissal; there is nothing to choose.",
     "takeOver": "Take over",
     "drop": "Drop",
     "answerLegend": "{what}, {person}",
@@ -1325,7 +1344,15 @@
     "dismissedBody": "{name} is no longer a Medaris nazim.",
     "loadFailedTitle": "The list could not be read",
     "loadFailed": "What this person gave cannot be read right now. Try again in a moment.",
-    "retry": "Try again"
+    "retry": "Try again",
+    "groupsQuestion": "This person defined or changed {count} permission group(s). The groups stay as they are; what each holder has does not change.",
+    "groupLine": "{action}",
+    "groupLineScoped": "{action} · {scope}",
+    "groupAction": {
+      "create": "Defined",
+      "update": "Changed"
+    },
+    "groupsNote": "The group's codes, before and after, are in the audit log."
   },
   "UsersPolicyDialog": {
     "titleUsers": "{count, plural, one {# person uses this group} other {# people use this group}}",
@@ -1462,7 +1489,7 @@
     "caption": "Köşks",
     "emptyAll": "There is no köşk yet.",
     "emptyFilter": "No results",
-    "footnote": "The course count includes draft, hidden and passive courses. An unlisted köşk does not appear in Discover or in search; only signed-in people open it by its link, and enrollment in its courses is always approved. A hidden köşk leaves every list that students and visitors see, together with its courses; it is restored from the Archive or deleted for good.",
+    "footnote": "The course count includes draft, hidden and passive courses. An unlisted köşk does not appear in Discover or in search; only signed-in people open it by its link, and enrollment in its courses is always approved. A hidden köşk leaves every list that students and visitors see, together with its courses; the level that hid it, or one above, restores it, and deleting for good is in the Archive.",
     "loadFailedTitle": "The köşks could not be loaded",
     "loadFailed": "The köşks cannot be read right now. Try again in a moment.",
     "retry": "Try again",
@@ -1474,6 +1501,7 @@
       "generic": "Something went wrong. Try again in a moment.",
       "notHidden": "This köşk is not hidden.",
       "notFound": "This köşk no longer exists.",
+      "restoreLevel": "A higher level hid this; only that level or one above can bring it back.",
       "forbidden": "You are not allowed to do this."
     }
   },
@@ -1576,7 +1604,7 @@
     "savedBody": "The changes to {name} are saved.",
     "failed": "The settings could not be saved",
     "dangerHeading": "Hide the köşk",
-    "dangerBody": "The köşk and all its courses leave the lists; students, müderrisler, medreses and visitors cannot open the köşk's page or its courses. Nothing is deleted; the Medaris administration can restore it from the Archive.",
+    "dangerBody": "The köşk and all its courses leave the lists; students, müderrisler, medreses and visitors cannot open the köşk's page or its courses. Nothing is deleted; if you hid the köşk, you can restore it, and the Medaris administration can in every case.",
     "hide": "Hide the köşk",
     "errors": {
       "nameRequired": "Write a name.",
@@ -1591,7 +1619,7 @@
   "HideKoskDialog": {
     "title": "Hide the köşk",
     "body": "{name} will be hidden from students, müderrisler, medreses and visitors; the köşk and all its courses leave every list.",
-    "way": "Nothing is deleted; the Medaris administration can restore it from the Archive.",
+    "way": "Nothing is deleted. If you hid the köşk, you can restore it; the Medaris administration can in every case.",
     "confirm": "Hide",
     "cancel": "Cancel",
     "close": "Close",
@@ -1604,6 +1632,13 @@
       "notFound": "This köşk no longer exists.",
       "forbidden": "You are not allowed to do this."
     }
+  },
+  "HideLevel": {
+    "course": "the course team",
+    "madrasah": "the medrese administration",
+    "kosk": "the köşk nazım",
+    "platform": "the Medaris administration",
+    "locked": "Hidden by {level}; only that level or one above can bring it back."
   },
   "KoskNazims": {
     "title": "Köşk nazımları",
@@ -1654,7 +1689,7 @@
     "title": "Add a köşk nazımı",
     "intro": "A köşk nazımı runs the köşk and its courses. Whoever you add becomes {koskGenitive} köşk nazımı right away.",
     "requiredNote": "required field",
-    "endLabel": "End of the post (optional)",
+    "endLabel": "End of the post, date and time (optional)",
     "endHelp": "If you leave it empty the post lasts until you remove them. When it ends and there is no other köşk nazımı, the köşk becomes passive.",
     "footnote": "What a köşk nazımı can do is listed under “A köşk nazımı in this köşk”. Every addition is written to the audit log.",
     "cancel": "Cancel",
@@ -1664,7 +1699,8 @@
     "savedBody": "{names} now run {kosk}.",
     "failed": "The köşk nazımı could not be added",
     "errors": {
-      "endPast": "The end date cannot be in the past.",
+      "endPast": "The end must be after the current time.",
+      "endUnfinished": "Complete the end date and time.",
       "nazimExists": "The person chosen is already a nazım of this köşk.",
       "unknownAccount": "This account was not found in Medaris.",
       "generic": "Something went wrong. Try again in a moment.",
@@ -1729,9 +1765,10 @@
     "courseHelp": "Only courses outside a medrese are listed.",
     "coursePlaceholder": "Choose a course",
     "permissionsHeading": "Permissions",
-    "endLabel": "End date (optional)",
-    "endHelp": "The post and the permissions end on the same day. Left empty, there is no end.",
-    "endPast": "The end date must be after today.",
+    "endLabel": "End date and time (optional)",
+    "endHelp": "The post and the permissions end at the same moment. Left empty, there is no end.",
+    "endPast": "The end must be after the current time.",
+    "endUnfinished": "Complete the end date and time.",
     "auditNote": "A permission you give cannot go beyond your own. Every permission given or taken back is written to the audit log.",
     "summary": "{count, plural, one {# permission ticked} other {# permissions ticked}}",
     "failed": "The permissions could not be saved",
@@ -1855,9 +1892,10 @@
       "MADRASAH": "Appoint a head müderris",
       "COURSE": "Appoint a müderris"
     },
-    "endLabel": "End of the post (optional)",
+    "endLabel": "End of the post, date and time (optional)",
     "endHelp": "Left empty, the post lasts until you change it.",
-    "endPast": "The end date must be after today.",
+    "endPast": "The end must be after the current time.",
+    "endUnfinished": "Complete the end date and time.",
     "cancel": "Cancel",
     "close": "Close",
     "auditNote": "The appointment is written to the audit log.",
@@ -2053,6 +2091,7 @@
       "ban_course": "Ban a talebe from the course (includes seeing the course's ban list)",
       "ban_lift_course": "Lift a course ban, with a reason",
       "deck_manage_course": "Create and edit the course's deck",
+      "deck_propose_kosk": "Propose a köşk deck",
       "course_nazir_assign": "Appoint a course nazır; grant a permission or a group, within your own permissions",
       "permission_group_define": "Define a permission group"
     },
@@ -2142,7 +2181,7 @@
     "publicPage": "View köşk page",
     "newTab": "(opens in a new tab)",
     "notice": "This is the Medaris administration view. The köşk nazım does the course work; here the köşk's nazıms, medreses and status are managed.",
-    "hiddenNote": "This köşk is hidden ({since}). It is in no list; it can be restored from the Archive.",
+    "hiddenNote": "This köşk is hidden ({since}). It is in no list; the level that hid it, or one above, can restore it.",
     "passiveNote": "This köşk is passive ({since}). It has no köşk nazım; adding one makes it active again.",
     "summaryLabel": "Köşk summary",
     "published": "{count} published",
@@ -2178,8 +2217,14 @@
     "actionsHeading": "Administration actions",
     "actionsIntro": "These actions affect the köşk as the Medaris administration; each one is written to the audit log.",
     "hideHeading": "Hide from lists",
-    "hideBody": "The köşk and its courses leave every list talebe and visitors see. It is restored from the Archive.",
+    "hideBody": "The köşk and its courses leave every list talebe and visitors see. The level that hid it, or one above, restores it.",
     "hide": "Hide köşk",
+    "restoreHeading": "Restore",
+    "restoreBody": "The köşk returns to the lists with its courses; talebe and visitors can open it again.",
+    "restore": "Restore the köşk",
+    "restored": "Köşk restored",
+    "restoredBody": "{name} is in the lists again.",
+    "restoreFailed": "Could not restore the köşk",
     "deactivateHeading": "Take out of service",
     "deactivateBody": "The köşk nazım is taken off the post and the köşk is left without one. Nobody but the Medaris administration can see what a passive köşk holds, talebe included.",
     "deactivate": "Take köşk out of service",
@@ -2198,7 +2243,14 @@
     "hiddenInArchive": "Hidden courses are listed in the Archive too.",
     "loadFailedTitle": "This section could not be loaded",
     "loadFailed": "This section cannot be read right now. Try again in a moment.",
-    "retry": "Try again"
+    "retry": "Try again",
+    "errors": {
+      "generic": "Something went wrong. Try again in a moment.",
+      "restoreLevel": "A higher level hid this; only that level or one above can bring it back.",
+      "notHidden": "This köşk is not hidden.",
+      "notFound": "This köşk no longer exists.",
+      "forbidden": "You are not allowed to do this."
+    }
   },
   "KoskCourses": {
     "title": "Courses",
@@ -2263,6 +2315,8 @@
     "restoredBody": "{name} is back in the lists.",
     "restoreFailed": "The course could not be restored",
     "restoreFailedBody": "Something went wrong. Try again in a moment.",
+    "restoreLevelBody": "A higher level hid this course; only that level or one above can bring it back.",
+    "restoreParentHiddenBody": "The course's medrese or köşk is still hidden; the course comes back with it.",
     "emptyAll": "No courses yet.",
     "emptyTab": "No courses in this status.",
     "hiddenInArchive": "Hidden courses are listed in the Archive too.",
@@ -2282,28 +2336,46 @@
     "failed": "The course could not be hidden",
     "failedBody": "Something went wrong. Try again in a moment."
   },
-  "DeactivateKoskDialog": {
-    "title": "Take the köşk out of service",
-    "bodyNazims": "{name} will be taken out of service; {count, plural, one {# köşk nazım is} other {# köşk nazıms are}} taken off the post and the köşk is left without one. Nobody but the Medaris administration can see what a passive köşk holds, talebe included.",
-    "bodyNoNazim": "{name} will be taken out of service. Nobody but the Medaris administration can see what a passive köşk holds, talebe included.",
-    "way": "Adding a köşk nazım makes the köşk active again. Nothing is deleted.",
-    "confirm": "Take out of service",
+  "PassivateScopeDialog": {
+    "titleKosk": "Take the köşk out of service",
+    "titleMadrasah": "Take the medrese out of service",
+    "loading": "Working out what taking it out of service takes along…",
+    "loadFailed": "The impact could not be worked out. Try again in a moment.",
+    "retry": "Try again",
+    "warningTitle": "Taking it out of service takes along",
+    "staffKosk": "{count, plural, one {# köşk nazım is} other {# köşk nazıms are}} taken off the post",
+    "staffMadrasah": "The head müderris is taken off the post",
+    "noStaffKosk": "No köşk nazım holds the post",
+    "noStaffMadrasah": "No head müderris holds the post",
+    "courses": "{count, plural, one {# course closes} other {# courses close}} ({published} published, {draft} draft)",
+    "coursesLive": "{count, plural, one {# course has} other {# courses have}} a müderris in the post",
+    "coursesNone": "No course below it closes",
+    "students": "{count, plural, one {# enrolled talebe loses} other {# enrolled talebe lose}} access to the content",
+    "studentsCompleted": "{count, plural, one {# talebe finished a course and loses} other {# talebe finished a course and lose}} access too",
+    "studentsNote": "The content of courses without a müderris is closed already; the number is at most this many talebe.",
+    "sessions": "{count, plural, one {# live session} other {# live sessions}} in the next {days} days drop out of the calendars",
+    "sessionsNone": "No live session in the next {days} days",
+    "sessionItem": "{title} ({course}), {when}",
+    "courseItem": "{title} ({kosk}): {enrolled, plural, one {# talebe} other {# talebe}}",
+    "moreCourses": "and {count, plural, one {# more course} other {# more courses}}",
+    "neverAttended": "This scope never had a manager; taking it out of service does not close its content.",
+    "wayKosk": "Adding a köşk nazım opens the köşk again. Nothing is deleted.",
+    "wayMadrasah": "Appointing a head müderris opens the medrese again. Nothing is deleted.",
+    "confirm": "Take out of service anyway",
     "cancel": "Cancel",
     "close": "Close",
-    "done": "Köşk taken out of service",
-    "doneBody": "{name} is passive now.",
-    "failed": "The köşk could not be taken out of service",
+    "changed": "The impact changed while you were looking; the numbers are refreshed. Read the new numbers and confirm again.",
+    "doneKosk": "Köşk taken out of service",
+    "doneKoskBody": "{name} is passive now.",
+    "doneMadrasah": "Medrese taken out of service",
+    "doneMadrasahBody": "{name} is passive now.",
+    "failed": "It could not be taken out of service",
     "errors": {
       "generic": "Something went wrong. Try again in a moment.",
-      "alreadyPassive": "This köşk is passive already.",
-      "alreadyHidden": "This köşk is hidden.",
-      "notHidden": "This köşk is not hidden.",
-      "notFound": "This köşk no longer exists.",
+      "alreadyPassive": "This scope is passive already.",
+      "changed": "The impact changed; read the numbers again.",
       "forbidden": "You are not allowed to do this.",
-      "handleTaken": "This short name is taken.",
-      "nazimExists": "This person is a köşk nazım already.",
-      "unknownAccount": "This account was not found.",
-      "endPast": "The end date cannot be in the past."
+      "notFound": "This scope no longer exists."
     }
   },
   "CourseOverview": {
@@ -2890,6 +2962,10 @@
     "publishedBody": "{title} is now public; its owner was told.",
     "rejected": "Request refused",
     "rejectedBody": "{title} stays private; the reason was passed on to its owner.",
+    "unpublish": "Unpublish",
+    "unpublished": "Deck unpublished",
+    "unpublishedBody": "{title} is private again; the reason was passed on to its owner.",
+    "unpublishNote": "An unpublished deck leaves the public list and stays private to its owner; the reason is sent to the owner. The owner may ask for publication again.",
     "answerFailed": "The answer could not be saved",
     "errors": {
       "generic": "The action could not be completed. Try again in a moment.",
@@ -2898,7 +2974,8 @@
       "proposalAnswered": "This proposal was answered a moment ago.",
       "proposalGone": "This proposal no longer exists.",
       "deckGone": "This deck no longer exists or is hidden already.",
-      "forbidden": "You may not do this."
+      "forbidden": "You may not do this.",
+      "notPublished": "This deck is no longer published."
     }
   },
   "DeckReject": {
@@ -2927,6 +3004,13 @@
       "title": "Refuse the request",
       "body": "The request closes. The medrese's head müderris sees the reason.",
       "help": "The head müderris will read this reason."
+    },
+    "unpublish": {
+      "title": "Unpublish the deck",
+      "body": "The deck leaves the public list and stays private to its owner. The reason is sent to the owner as a notification.",
+      "help": "The owner will read this reason.",
+      "submit": "Unpublish",
+      "reasonLabel": "Reason"
     }
   },
   "KoskDecksPage": {
@@ -3155,6 +3239,7 @@
       "HIDE": "Hiding and restoring",
       "HOSTING": "Hosting right",
       "TAKEOVER": "Take over or drop",
+      "SELF_GRANT_REFUSED": "Attempt to give oneself a permission or role",
       "APPEAL": "Appeal and its decision",
       "PERMANENT_BAN": "Permanent ban request and decision",
       "PERMANENT_DELETE": "Permanent deletion",
@@ -3382,7 +3467,10 @@
       "rejected": "Application rejected",
       "rejectedBody": "{name}'s application to {course} was rejected.",
       "actionFailed": "The application could not be answered",
-      "errorUnknown": "Something unexpected went wrong. Try again in a moment."
+      "errorUnknown": "Something unexpected went wrong. Try again in a moment.",
+      "errorForbidden": "You may not decide this application.",
+      "errorGone": "This application is no longer pending; the list was refreshed.",
+      "passiveScope": "This course's scope is passive: it has no manager left. The application cannot be decided until one is appointed."
     },
     "decks": {
       "title": "Deck publish requests",

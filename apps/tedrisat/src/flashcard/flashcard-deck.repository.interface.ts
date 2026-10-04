@@ -21,8 +21,6 @@ export interface IFlashcardDeck {
 export interface ICreateFlashcardDeck {
   authorId: string;
   title: string;
-  /** Absent means private; the new web form never sends it (MDRS-164). */
-  isPublic?: boolean;
   cardType?: FlashcardType;
   tags?: string[];
   description?: string;
@@ -30,7 +28,6 @@ export interface ICreateFlashcardDeck {
 
 export interface IUpdateFlashcardDeck {
   title?: string;
-  isPublic?: boolean;
   tags?: string[];
   description?: string;
 }
@@ -110,11 +107,21 @@ export interface IFlashcardDeckRepository {
   ): Promise<IFlashcardDeckUserCollectionItem>;
 
   // UPDATE
-  /** PENDING with a time, or PRIVATE with none; `isPublic` is untouched. */
+  /**
+   * Back to private whatever the status was: the owner takes a published deck
+   * back. The only writer of `is_public = false` besides the başnazım's
+   * unpublish, as `approve` is the only writer of `true`.
+   */
+  setPrivate(id: string): Promise<IFlashcardDeck | null>;
+  /**
+   * PENDING with a time, or PRIVATE with none; `isPublic` is untouched. Only
+   * a deck whose status is `from`, the one the caller read, moves; null when there is none such.
+   */
   setPublishRequest(
     id: string,
     publishStatus: DeckPublishStatus,
-    requestedAt: Date | null
+    requestedAt: Date | null,
+    from: DeckPublishStatus
   ): Promise<IFlashcardDeck | null>;
   update(
     id: string,

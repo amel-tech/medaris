@@ -10,17 +10,15 @@ import { Dialog, DialogClose } from "@medaris/ui/mds/dialog";
 import { Field } from "@medaris/ui/mds/field";
 import { Input } from "@medaris/ui/mds/input";
 import { Skeleton } from "@medaris/ui/mds/skeleton";
+import { isUnfinishedEnd, resolveEnd } from "@medaris/utils";
 import { useLocale, useTimeZone, useTranslations } from "next-intl";
 import { type FormEvent, useCallback, useEffect, useState } from "react";
-import {
-  type DismissAnswer,
-  endError,
-  endOfDayIso,
-  formatDay,
-} from "../../permissions/present";
+import { type DismissAnswer, formatDay } from "../../permissions/present";
 import { getHeadDelegations, setHeadMuderris } from "../actions";
 import {
   groupByPerson,
+  handOnCourseSuffix,
+  handOnPlace,
   madrasahErrorKey,
   type PersonHandOn,
   type PickedUser,
@@ -74,7 +72,8 @@ export function AssignHeadDialog({
 
   const changing = Boolean(target?.headId);
   const [head, setHead] = useState<PickedUser | null>(null);
-  const [endDay, setEndDay] = useState("");
+  const [end, setEnd] = useState("");
+  const [unfinished, setUnfinished] = useState(false);
   const [items, setItems] = useState<
     HeadDelegationResponse[] | "failed" | null
   >(null);
@@ -97,7 +96,8 @@ export function AssignHeadDialog({
   useEffect(() => {
     if (!open) return;
     setHead(null);
-    setEndDay("");
+    setEnd("");
+    setUnfinished(false);
     setAnswers({});
     setSaving(false);
     setNow(new Date());
@@ -105,11 +105,18 @@ export function AssignHeadDialog({
     if (changing) void load();
   }, [open, changing, load]);
 
-  const list = Array.isArray(items)
-    ? items.filter((i) => i.to.id !== head?.id)
-    : [];
+  // Every row is asked about, what the incoming başmüderris was given too:
+  // the API refuses a change that leaves one unanswered.
+  const list = Array.isArray(items) ? items : [];
   const same = head !== null && head.id === target?.headId;
-  const problem = endError(endDay, { now, timeZone, assignmentEnd: null });
+  const { iso: endIso, problem } = resolveEnd({
+    value: end,
+    held: null,
+    timeZone,
+    now,
+    assignmentEnd: null,
+    unfinished,
+  });
   const people = groupByPerson(list);
   const answered =
     !changing || (Array.isArray(items) && personsReady(people, answers));
@@ -117,9 +124,13 @@ export function AssignHeadDialog({
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    // A half-typed picker reads "" and may never have been left, so it is read again here.
+    if (isUnfinishedEnd(event.currentTarget.elements.namedItem("end"))) {
+      setUnfinished(true);
+      return;
+    }
     if (!target || !head || !ready) return;
     setSaving(true);
-    const endIso = endDay ? endOfDayIso(endDay, timeZone) : null;
     const result = await setHeadMuderris(target.id, head.id, {
       ...(endIso ? { endsAt: new Date(endIso) } : {}),
       ...(changing ? { delegations: personDecisions(people, answers) } : {}),
@@ -170,15 +181,22 @@ export function AssignHeadDialog({
     }
   };
 
+  const roleName = (role: string): string =>
+    role && tr.has(role as never) ? tr(role as never) : role;
+  const firstOf = (group: PersonHandOn) =>
+    group.items.find((i) => i.kind === "ROLE") ?? group.items[0];
+
   // The line under the person: the role with its scope and dates, the way
   // the table of nizam/22 reads it.
   const heading = (group: PersonHandOn): string => {
-    const item = group.items.find((i) => i.kind === "ROLE") ?? group.items[0];
+    const item = firstOf(group);
     if (!item) return "";
     const role = item.kind === "ROLE" ? (item.role ?? "") : "";
     return [
-      role && tr.has(role as never) ? tr(role as never) : role,
-      target?.name ?? "",
+      roleName(role),
+      item.kind === "ROLE"
+        ? handOnPlace(item, target?.name ?? "")
+        : (target?.name ?? ""),
       item.expiresAt
         ? t("untilDate", { date: formatDay(item.expiresAt, locale, timeZone) })
         : t("noEnd"),
@@ -190,13 +208,23 @@ export function AssignHeadDialog({
 
   // "Ders açma ve kadro ile Yasak ve itiraz grupları; ayrıca 3 izin: …"
   const summary = (group: PersonHandOn): string => {
+    // Every seat after the one the heading names: a müderris named in a
+    // course is as much the başmüderris's gift as a nazır seat.
+    const first = firstOf(group);
+    const seats = group.items
+      .filter((i) => i.kind === "ROLE" && i !== first)
+      .map((i) =>
+        [roleName(i.role ?? ""), handOnPlace(i, target?.name ?? "")]
+          .filter(Boolean)
+          .join(" · ")
+      );
     const groups = group.items
       .filter((i) => i.kind !== "ROLE" && !i.permission)
-      .map((i) => i.groupName ?? "");
+      .map((i) => `${i.groupName ?? ""}${handOnCourseSuffix(i)}`);
     const perms = group.items
       .filter((i) => i.kind !== "ROLE" && i.permission)
-      .map(permissionName);
-    const parts: string[] = [];
+      .map((i) => `${permissionName(i)}${handOnCourseSuffix(i)}`);
+    const parts: string[] = seats.length > 0 ? [seats.join("; ")] : [];
     if (groups.length > 0) {
       parts.push(
         t("groupsSummary", { names: list_(groups), count: groups.length })
@@ -254,14 +282,22 @@ export function AssignHeadDialog({
       <Field
         label={t("endLabel")}
         help={t("endHelp")}
-        error={problem ? t("endPast") : undefined}
+        error={
+          problem
+            ? t(problem === "unfinished" ? "endUnfinished" : "endPast")
+            : undefined
+        }
       >
         <Input
-          type="date"
-          name="endDay"
-          value={endDay}
+          type="datetime-local"
+          name="end"
+          value={end}
           disabled={saving}
-          onChange={(event) => setEndDay(event.target.value)}
+          onChange={(event) => {
+            setEnd(event.target.value);
+            setUnfinished(isUnfinishedEnd(event.target));
+          }}
+          onBlur={(event) => setUnfinished(isUnfinishedEnd(event.target))}
         />
       </Field>
 

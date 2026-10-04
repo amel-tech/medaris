@@ -20,6 +20,7 @@ import { Tabs, TabsPanel } from "@medaris/ui/mds/tabs";
 import { useRouter } from "next/navigation";
 import { useLocale, useTimeZone, useTranslations } from "next-intl";
 import { useEffect, useRef, useState, useTransition } from "react";
+import { hideLevelOf } from "../../archive/hide-level";
 import { dateWithCase } from "../../madrasahs/present";
 import { restoreKosk } from "../admin-actions";
 import {
@@ -45,7 +46,7 @@ interface Props {
   filters: DirectoryFilters;
   /** the signed-in person, for the "Siz" under a row they manage */
   viewerId: string | null;
-  /** the başnazım opens köşks and brings hidden ones back; a köşk nazımı only reads */
+  /** the başnazım opens köşks and reads the platform Arşiv; "Geri al" is each row's `canRestore` */
   chief: boolean;
   /** the home page's "Köşk aç" lands here with the form already open (the başnazım's) */
   initialOpen?: boolean;
@@ -59,8 +60,10 @@ const SEARCH_DELAY_MS = 300;
  * pager (a köşk's alan and level are not shown or filtered, MDRS-252). The URL is the one source of the
  * filters: a tab, a chip or a search navigates, the server reads again, so
  * the counts and the rows always come from the same answer. "Geri al" brings
- * a hidden köşk back; "Köşk aç" is nizam/10. A köşk nazımı sees only their
- * own köşks and neither button.
+ * a hidden köşk back, to whoever hid it or a level above (the row's
+ * `canRestore`: a köşk nazımı reopens what they hid, not what Medaris yönetimi
+ * did); "Köşk aç" is nizam/10 and the başnazım's. A köşk nazımı sees only
+ * their own köşks.
  */
 export function KosksDirectory({
   directory,
@@ -71,6 +74,7 @@ export function KosksDirectory({
 }: Props) {
   const tm = useTranslations("nizam.KoskDirectory");
   const t = tm as unknown as Messages;
+  const tl = useTranslations("nizam.HideLevel");
   const locale = useLocale();
   const timeZone = useTimeZone() ?? "Europe/Istanbul";
   const router = useRouter();
@@ -249,7 +253,7 @@ export function KosksDirectory({
       align: "right",
       width: "14%",
       render: (k) =>
-        chief && k.status === "HIDDEN" ? (
+        k.status !== "HIDDEN" ? null : k.canRestore ? (
           <Button
             variant="outline"
             size="small"
@@ -260,7 +264,15 @@ export function KosksDirectory({
           >
             {t("restore")}
           </Button>
-        ) : null,
+        ) : (
+          // Whoever hid it, or a level above, brings it back: say who, rather
+          // than offer a button the API would refuse (MDRS-143).
+          <span className="mds-caption">
+            {tl("locked", {
+              level: tl(hideLevelOf(k.hiddenLevel, "kosk")),
+            })}
+          </span>
+        ),
     },
   ];
 

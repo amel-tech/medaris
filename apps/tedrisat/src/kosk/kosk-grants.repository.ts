@@ -13,6 +13,7 @@ import {
   ASSIGNED_ROLES,
   roleAssignments,
   SCOPE_TYPES,
+  type ScopeType,
 } from "../database/schema/role-assignment.schema";
 import { users } from "../database/schema/user.schema";
 import {
@@ -177,6 +178,27 @@ export class KoskGrantsRepository {
     return result;
   }
 
+  /**
+   * Who holds the post, if it is a held post in one of this köşk's courses. A
+   * post never changes hands, so the answer stands for the write that follows.
+   */
+  async postHolder(koskId: string, postId: string): Promise<string | null> {
+    const [row] = await this.db
+      .select({ userId: roleAssignments.userId })
+      .from(roleAssignments)
+      .innerJoin(courses, eq(courses.id, roleAssignments.scopeId))
+      .where(
+        and(
+          eq(roleAssignments.id, postId),
+          eq(roleAssignments.role, NAZIR),
+          eq(courses.koskId, koskId),
+          isHeld()
+        )
+      )
+      .limit(1);
+    return row?.userId ?? null;
+  }
+
   /** The held post, if it is in one of this köşk's courses. */
   private async lockPost(
     tx: Tx,
@@ -246,6 +268,8 @@ export class KoskGrantsRepository {
       courseId: string;
       permissions: string[];
       endsAt: Date | null;
+      /** The level the giver acts under: the köşk, or the platform for the başnazım. */
+      authority: ScopeType;
     }
   ): Promise<void> {
     await this.db.transaction(async (tx) => {
@@ -309,6 +333,7 @@ export class KoskGrantsRepository {
           permission,
           groupId: null,
           grantedBy: actorId,
+          authorityScopeType: input.authority,
           expiresAt: input.endsAt,
         }))
       );
@@ -336,7 +361,11 @@ export class KoskGrantsRepository {
     actorId: string,
     koskId: string,
     postId: string,
-    wanted: { permissions: string[]; endsAt: Date | null }
+    wanted: {
+      permissions: string[];
+      endsAt: Date | null;
+      authority: ScopeType;
+    }
   ): Promise<void> {
     await this.db.transaction(async (tx) => {
       const post = await this.lockPost(tx, koskId, postId);
@@ -370,6 +399,7 @@ export class KoskGrantsRepository {
                     permission: item.permission,
                     groupId: null,
                     grantedBy: actorId,
+                    authorityScopeType: wanted.authority,
                     expiresAt: wanted.endsAt,
                   },
                 ]

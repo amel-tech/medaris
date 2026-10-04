@@ -25,6 +25,7 @@ import {
   approveEnrollment,
   rejectEnrollment,
 } from "~/features/kosks/actions/courses";
+import { decisionErrorKey } from "../../applications/present";
 import { toneOfHue } from "../../kosks/admin-present";
 import { loadKoskSessions } from "../actions";
 import {
@@ -120,12 +121,19 @@ export function KoskHome({ data, nowIso }: Props) {
     router.refresh();
   };
 
-  const failure = (error: string) =>
+  // tedrisat decides who may; its refusal is worded here, in the Başvurular
+  // page's sentences, never with the server's English message. A refused
+  // answer leaves the row; one someone else gave first is dropped, as there.
+  const failure = (a: KoskDashboardApplicationResponse, errorBody: unknown) => {
+    const key = decisionErrorKey(errorBody);
     toaster.notify({
       tone: "error",
       title: t("applications.actionFailed"),
-      description: error,
+      description: t(`applications.${key}`),
     });
+    if (key === "errorGone") settled(a);
+    return key;
+  };
 
   const approve = async (a: KoskDashboardApplicationResponse) => {
     setBusy(keyOf(a));
@@ -137,7 +145,7 @@ export function KoskHome({ data, nowIso }: Props) {
     }
     setBusy(null);
     if (!result?.success) {
-      failure(result?.error ?? t("applications.errorUnknown"));
+      failure(a, result?.errorBody);
       return;
     }
     toaster.notify({
@@ -166,8 +174,8 @@ export function KoskHome({ data, nowIso }: Props) {
       result = null;
     }
     if (!result?.success) {
-      failure(result?.error ?? t("applications.errorUnknown"));
-      return false;
+      // a row that is gone has nothing left to reject: the dialog closes with it
+      return failure(a, result?.errorBody) === "errorGone";
     }
     toaster.notify({
       title: t("applications.rejected"),
@@ -330,6 +338,16 @@ export function KoskHome({ data, nowIso }: Props) {
       align: "right",
       width: "36%",
       render: (a) => {
+        // The engine closed it for this viewer: the reason stands where the buttons would.
+        if (!a.canDecide) {
+          return (
+            <span className="mds-caption">
+              {a.scopePassive
+                ? t("applications.passiveScope")
+                : t("applications.errorForbidden")}
+            </span>
+          );
+        }
         const name = a.studentName ?? t("unknownPerson");
         const disabled = busy === keyOf(a);
         return (
@@ -461,20 +479,25 @@ export function KoskHome({ data, nowIso }: Props) {
       </HomeSection>
 
       <div className="grid items-start gap-section lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
-        <HomeSection
-          id="home-applications"
-          title={t("applications.titleKosk")}
-          link={{ href: `${base}/basvurular`, label: t("seeAll") }}
-        >
-          <Table
-            columns={applicationColumns}
-            rows={applications}
-            rowKey={keyOf}
-            caption={t("applications.caption")}
-            empty={t("applications.emptyKosk")}
-            responsive="stack"
-          />
-        </HomeSection>
+        {/* A Medaris nazımı who reads the page by platform.kosk_edit alone is
+            given no applicants (contentLocked), and Başvurular and its
+            Onayla/Reddet are refused to them (MDRS-108): no card. */}
+        {data.contentLocked ? null : (
+          <HomeSection
+            id="home-applications"
+            title={t("applications.titleKosk")}
+            link={{ href: `${base}/basvurular`, label: t("seeAll") }}
+          >
+            <Table
+              columns={applicationColumns}
+              rows={applications}
+              rowKey={keyOf}
+              caption={t("applications.caption")}
+              empty={t("applications.emptyKosk")}
+              responsive="stack"
+            />
+          </HomeSection>
+        )}
 
         <HomeSection id="home-muderris" title={t("muderris.title")}>
           {data.muderris.length === 0 ? (

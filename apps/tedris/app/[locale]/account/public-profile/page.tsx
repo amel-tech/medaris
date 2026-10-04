@@ -1,8 +1,10 @@
 import { Breadcrumb } from "@medaris/ui/mds/breadcrumb";
 import { SystemState } from "@medaris/ui/mds/system-state";
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 import { getLocale } from "next-intl/server";
 import { getMyPublicProfile } from "~/features/account/reads";
+import { PUBLIC_PROFILE_ENABLED } from "~/features/public-profile/availability";
 import { PublicProfilePage } from "~/features/public-profile/components/public-profile-page";
 import { getAccountTranslations } from "~/lib/i18n/loose";
 
@@ -14,8 +16,14 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: `${t("title")} | Tedris` };
 }
 
-/** "Herkese açık profil" (design tedris/35, MDRS-166), under Hesap. */
+/**
+ * "Herkese açık profil" (design tedris/35, MDRS-166), under Hesap. Hidden for
+ * now (MDRS-141): the not-found page before anything is read. The HTTP status
+ * stays 200, as for every not-found under a `loading.tsx` boundary, because
+ * the shell is streamed before `notFound()` runs.
+ */
 export default async function Page() {
+  if (!PUBLIC_PROFILE_ENABLED) notFound();
   const t = await getAccountTranslations("PublicProfile");
   const locale = await getLocale();
   const profile = await getMyPublicProfile();

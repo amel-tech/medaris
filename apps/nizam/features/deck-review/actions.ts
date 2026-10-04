@@ -77,6 +77,19 @@ export const rejectDeckRequest = async (
   return result;
 };
 
+/** "Yayından kaldır", with the reason the owner will read. */
+export const unpublishDeck = async (
+  id: string,
+  reason: string
+): Promise<AuthenticatedActionResult<null>> => {
+  const result = await authenticatedAction(async (api) => {
+    await api.nizam.unpublishDeck({ id, rejectReasonDto: { reason } });
+    return null;
+  });
+  if (result.success) revalidatePath("/", "layout");
+  return result;
+};
+
 /** A müderris proposal's "Reddet". */
 export const rejectDeckProposal = async (
   koskId: string,

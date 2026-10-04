@@ -37,7 +37,7 @@ describe("Flashcard deck export (e2e)", () => {
 
     const deck = await request(app.getHttpServer())
       .post("/flashcard/decks")
-      .send({ title: "Export deck", isPublic: false });
+      .send({ title: "Export deck" });
     expect(deck.status).toBe(201);
     deckId = deck.body.id;
   });

@@ -5,7 +5,7 @@ import {
   byParam,
   ENTITIES,
   MedarisValidationPipe,
-  SCOPES,
+  PERMISSIONS,
 } from "@medaris/common";
 import {
   Body,
@@ -37,12 +37,11 @@ import { LiveStreamService } from "./live-stream.service";
 /**
  * A session's live stream link, for the course staff (MDRS-228, nizam 56).
  *
- * The guard asks only `VIEW` of the course, which every signed-in caller
- * holds: it is there to answer a missing course or lesson with 404 before the
- * handler runs. The decision is `session.live_link`, asked by
- * `LiveStreamService` through the permission catalogue, because the route
- * matrix cannot express a permission given to a ders nazırı (see the
- * service). Anyone without it gets 403.
+ * Both routes ask `session.live_link` of the course in their `@Authz`: the
+ * müderris and the köşk nazımı hold it by default, a ders nazırı when given
+ * it, and the engine reads the same catalogue codes with scope nesting.
+ * Anyone without it gets 403, so the link never reaches a caller who may not
+ * set it.
  */
 @ApiTags("lessons")
 @ApiBearerAuth()
@@ -62,15 +61,12 @@ export class LiveStreamController {
   @ApiOkResponse({ type: [LiveStreamResponse] })
   @ApiForbiddenResponse({ description: "AUTHZ_FORBIDDEN" })
   @ApiNotFoundResponse({ description: "COURSE_NOT_FOUND" })
-  @Authz(SCOPES.VIEW, byParam(ENTITIES.COURSE))
+  @Authz(PERMISSIONS.SESSION_LIVE_LINK, byParam(ENTITIES.COURSE))
   // Per-user authorization decided this answer; no shared cache may keep it.
   @Header("Cache-Control", "private, no-store")
   @Get("courses/:id/live-streams")
-  list(
-    @Req() request: AuthorizedRequest,
-    @Param("id", ParseUUIDPipe) id: string
-  ): Promise<LiveStreamResponse[]> {
-    return this.service.list(id, request.user);
+  list(@Param("id", ParseUUIDPipe) id: string): Promise<LiveStreamResponse[]> {
+    return this.service.list(id);
   }
 
   @ApiOperation({
@@ -90,7 +86,7 @@ export class LiveStreamController {
     description:
       "The session is not a live one (LESSON_NOT_LIVE) or is cancelled (LESSON_CANCELLED).",
   })
-  @Authz(SCOPES.VIEW, byLessonCourse)
+  @Authz(PERMISSIONS.SESSION_LIVE_LINK, byLessonCourse)
   @UsePipes(new MedarisValidationPipe({ transform: true }))
   @Put("lessons/:id/live-stream")
   set(

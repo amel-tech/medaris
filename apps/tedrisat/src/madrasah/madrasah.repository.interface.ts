@@ -1,4 +1,6 @@
+import type { HideLevel } from "../archive/hide-level";
 import type { CourseStatus } from "../course/domain/course-status.enum";
+import type { ScopeType } from "../database/schema/scope-type.schema";
 
 export interface IMadrasah {
   id: string;
@@ -80,6 +82,11 @@ export interface IHeadDelegation {
   role: string | null;
   permission: string | null;
   groupName: string | null;
+  /** Where it is held: the medrese, or one of its courses. */
+  scopeType: ScopeType;
+  scopeId: string | null;
+  /** The course's title, for a row held in a course. */
+  courseTitle: string | null;
   grantedAt: Date;
   expiresAt: Date | null;
 }
@@ -117,6 +124,8 @@ export interface IMadrasahDirectoryItem {
   coverHue: number;
   status: MadrasahStatus;
   since: Date | null;
+  /** The level the medrese was hidden at; null while it is shown. A row hidden before it was recorded counts as the medrese's own. */
+  hiddenLevel: HideLevel | null;
   headMuderris: { id: string; name: string | null } | null;
   courseCount: number;
   hostingKosks: { id: string; name: string }[];
@@ -156,6 +165,10 @@ export interface ICreateMadrasahWithHead extends ICreateMadrasah {
 
 export type RestoreMadrasahResult = "restored" | "not-found" | "not-hidden";
 export type HideMadrasahResult = "hidden" | "not-found" | "already-hidden";
+export type DeactivateMadrasahResult =
+  | "deactivated"
+  | "not-found"
+  | "already-passive";
 /** A medrese as Keşfet lists it (MDRS-159). */
 export interface IMadrasahExplore {
   id: string;

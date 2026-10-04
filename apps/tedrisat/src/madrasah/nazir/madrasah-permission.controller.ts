@@ -1,4 +1,4 @@
-import { AuthGuard, Authz, AuthzGuard, SCOPES } from "@medaris/common";
+import { AuthGuard, Authz, AuthzGuard, PERMISSIONS } from "@medaris/common";
 import {
   Body,
   Controller,
@@ -43,9 +43,11 @@ import { MadrasahPermissionService } from "./madrasah-permission.service";
 /**
  * What a medrese's nazırs are given (MDRS-185; nazir/06 and nazir/16): the
  * permission dictionary, the medrese's permission groups and one nazır's
- * permissions. `MANAGE_MADRASAH` is the scope of the medrese's başmüderris and
- * SYSTEM_ADMIN, the same people who see the roster; giving is checked again in
- * the service. A grant is a record: `AuthzGuard` does not read it.
+ * permissions. `madrasah.nazir_appoint` (or the Medaris nazımı's
+ * `platform.madrasah_nazir_grant`) is the medrese's başmüderris's and
+ * SYSTEM_ADMIN's, the same people who see the roster; giving is checked again
+ * in the service. A grant is read like any other permission: it is what a
+ * nazır holds in the medrese, and nothing beyond it.
  */
 @ApiTags("madrasahs")
 @ApiBearerAuth()
@@ -64,7 +66,13 @@ export class MadrasahPermissionController {
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()
   @Get(":id/permissions")
-  @Authz(SCOPES.MANAGE_MADRASAH, byExistingMadrasah)
+  @Authz(
+    [
+      PERMISSIONS.MADRASAH_NAZIR_APPOINT,
+      PERMISSIONS.PLATFORM_MADRASAH_NAZIR_GRANT,
+    ],
+    byExistingMadrasah
+  )
   catalog(
     @Req() request: AuthenticatedUserRequest,
     @Param("id", ParseUUIDPipe) id: string
@@ -82,7 +90,13 @@ export class MadrasahPermissionController {
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()
   @Get(":id/permission-groups")
-  @Authz(SCOPES.MANAGE_MADRASAH, byExistingMadrasah)
+  @Authz(
+    [
+      PERMISSIONS.MADRASAH_NAZIR_APPOINT,
+      PERMISSIONS.PLATFORM_MADRASAH_NAZIR_GRANT,
+    ],
+    byExistingMadrasah
+  )
   groups(
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<MadrasahPermissionGroupResponse[]> {
@@ -101,7 +115,13 @@ export class MadrasahPermissionController {
   @ApiNotFoundResponse()
   @ApiConflictResponse({ description: "PERMISSION_GROUP_NAME_TAKEN" })
   @Post(":id/permission-groups")
-  @Authz(SCOPES.MANAGE_MADRASAH, byExistingMadrasah)
+  @Authz(
+    [
+      PERMISSIONS.MADRASAH_NAZIR_APPOINT,
+      PERMISSIONS.PLATFORM_MADRASAH_NAZIR_GRANT,
+    ],
+    byExistingMadrasah
+  )
   createGroup(
     @Req() request: AuthenticatedUserRequest,
     @Param("id", ParseUUIDPipe) id: string,
@@ -122,7 +142,13 @@ export class MadrasahPermissionController {
   @ApiNotFoundResponse()
   @ApiConflictResponse({ description: "PERMISSION_GROUP_NAME_TAKEN" })
   @Patch(":id/permission-groups/:groupId")
-  @Authz(SCOPES.MANAGE_MADRASAH, byExistingMadrasah)
+  @Authz(
+    [
+      PERMISSIONS.MADRASAH_NAZIR_APPOINT,
+      PERMISSIONS.PLATFORM_MADRASAH_NAZIR_GRANT,
+    ],
+    byExistingMadrasah
+  )
   updateGroup(
     @Req() request: AuthenticatedUserRequest,
     @Param("id", ParseUUIDPipe) id: string,
@@ -144,7 +170,13 @@ export class MadrasahPermissionController {
   @ApiNotFoundResponse()
   @Delete(":id/permission-groups/:groupId")
   @HttpCode(HttpStatus.NO_CONTENT)
-  @Authz(SCOPES.MANAGE_MADRASAH, byExistingMadrasah)
+  @Authz(
+    [
+      PERMISSIONS.MADRASAH_NAZIR_APPOINT,
+      PERMISSIONS.PLATFORM_MADRASAH_NAZIR_GRANT,
+    ],
+    byExistingMadrasah
+  )
   async deleteGroup(
     @Req() request: AuthenticatedUserRequest,
     @Param("id", ParseUUIDPipe) id: string,
@@ -170,7 +202,13 @@ export class MadrasahPermissionController {
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()
   @Get(":id/nazirs/:userId/permissions")
-  @Authz(SCOPES.MANAGE_MADRASAH, byExistingMadrasah)
+  @Authz(
+    [
+      PERMISSIONS.MADRASAH_NAZIR_APPOINT,
+      PERMISSIONS.PLATFORM_MADRASAH_NAZIR_GRANT,
+    ],
+    byExistingMadrasah
+  )
   nazirPermissions(
     @Param("id", ParseUUIDPipe) id: string,
     @Param("userId", ParseUUIDPipe) userId: string
@@ -192,7 +230,13 @@ export class MadrasahPermissionController {
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()
   @Put(":id/nazirs/:userId/permissions")
-  @Authz(SCOPES.MANAGE_MADRASAH, byExistingMadrasah)
+  @Authz(
+    [
+      PERMISSIONS.MADRASAH_NAZIR_APPOINT,
+      PERMISSIONS.PLATFORM_MADRASAH_NAZIR_GRANT,
+    ],
+    byExistingMadrasah
+  )
   setNazirPermissions(
     @Req() request: AuthenticatedUserRequest,
     @Param("id", ParseUUIDPipe) id: string,

@@ -138,6 +138,8 @@ export interface NazirRow {
   assignmentEnd: string | null;
   /** "Atayan: … · 30 Eylül 2026", for a nazır who holds nothing yet */
   appointedLine: string;
+  /** who seated them: a nazır who appoints dismisses only their own (d-1004-28) */
+  appointedById: string | null;
   /** null where the cell is a dash */
   end: { label: string; iso: string | null } | null;
   giver: { name: string; at: Dated } | null;
@@ -182,6 +184,7 @@ export function nazirRows(
         name: personName(n.appointedBy, t("Nazirs.unknownPerson")),
         date: day.format(new Date(n.appointedAt)),
       }),
+      appointedById: n.appointedBy?.id ?? null,
       end: awaiting
         ? null
         : n.expiresAt
@@ -368,6 +371,10 @@ export function nazirErrorKey(code: string): string {
   switch (code) {
     case "DISMISS_DECISIONS_INCOMPLETE":
       return "Dismiss.changed";
+    case "DISMISS_SEAT_HANDED_ON":
+      return "Dismiss.cascade";
+    case "SELF_GRANT_REFUSED":
+      return "Problems.selfGrant";
     case "MADRASAH_NAZIR_NOT_FOUND":
       return "Dismiss.gone";
     case "AUTHZ_FORBIDDEN":
@@ -375,6 +382,8 @@ export function nazirErrorKey(code: string): string {
       return "Problems.actionForbidden";
     case "PERMISSION_UNKNOWN":
       return "Problems.permissionUnknown";
+    case "GRANT_EXCEEDS_GIVER":
+      return "Problems.exceedsGiver";
     case "NAZIR_COURSE_SCOPE_INVALID":
       return "Problems.courseScope";
     case "GRANT_EXPIRY_INVALID":

@@ -14,7 +14,6 @@ import {
 } from "@medaris/ui/components/dialog";
 import { Input } from "@medaris/ui/components/input";
 import { Label } from "@medaris/ui/components/label";
-import { Switch } from "@medaris/ui/components/switch";
 import { Textarea } from "@medaris/ui/components/textarea";
 import { toastHelper } from "@medaris/ui/lib/toast-helper";
 import { useTranslations } from "next-intl";
@@ -29,7 +28,6 @@ export function DecksTableHeader() {
   const [formData, setFormData] = useState<CreateFlashcardDeckDto>({
     title: "",
     description: "",
-    isPublic: false,
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -54,7 +52,6 @@ export function DecksTableHeader() {
       setFormData({
         title: "",
         description: "",
-        isPublic: false,
       });
     } else {
       toastHelper.error({
@@ -67,7 +64,7 @@ export function DecksTableHeader() {
 
   const handleInputChange = (
     field: keyof CreateFlashcardDeckDto,
-    value: string | boolean
+    value: string
   ) => {
     setFormData((prev) => ({
       ...prev,
@@ -127,18 +124,6 @@ export function DecksTableHeader() {
                   rows={3}
                   disabled={isLoading}
                 />
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="isPublic"
-                  checked={formData.isPublic}
-                  onCheckedChange={(checked: boolean) =>
-                    handleInputChange("isPublic", checked)
-                  }
-                  disabled={isLoading}
-                />
-                <Label htmlFor="isPublic">{t("TableHeader.makePublic")}</Label>
               </div>
             </div>
 

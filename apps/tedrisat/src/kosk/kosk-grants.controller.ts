@@ -1,4 +1,11 @@
-import { AuthGuard, Authz, AuthzGuard, SCOPES } from "@medaris/common";
+import {
+  AuthGuard,
+  Authz,
+  AuthzGuard,
+  ENTITIES,
+  PERMISSIONS,
+  SelfGrantGuard,
+} from "@medaris/common";
 import {
   Body,
   Controller,
@@ -36,7 +43,7 @@ import { KoskGrantsService } from "./kosk-grants.service";
 
 /**
  * The köşk's İzinler page (MDRS-172, nizam/38): ders nazırları of its
- * medrese-free courses and the course permissions they hold. `@Authz(EDIT)`
+ * medrese-free courses and the course permissions they hold. `@Authz(course_nazir.assign_kosk)`
  * lets a nazım of the köşk and the başnazım in; the service limits what they
  * may give to what they hold themselves.
  */
@@ -45,7 +52,10 @@ import { KoskGrantsService } from "./kosk-grants.service";
 @UseGuards(AuthGuard, AuthzGuard)
 @Controller("kosks")
 export class KoskGrantsController {
-  constructor(private readonly service: KoskGrantsService) {}
+  constructor(
+    private readonly service: KoskGrantsService,
+    private readonly selfGrant: SelfGrantGuard
+  ) {}
 
   @ApiOperation({
     summary: "The köşk's ders nazırları and what they may do",
@@ -57,7 +67,7 @@ export class KoskGrantsController {
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()
   @Get(":id/grants")
-  @Authz(SCOPES.EDIT, byExistingKosk)
+  @Authz(PERMISSIONS.COURSE_NAZIR_ASSIGN_KOSK, byExistingKosk)
   list(
     @Req() request: AuthenticatedUserRequest,
     @Param("id", ParseUUIDPipe) id: string
@@ -77,19 +87,28 @@ export class KoskGrantsController {
   @ApiNotFoundResponse()
   @ApiConflictResponse({ description: "COURSE_NAZIR_EXISTS" })
   @Post(":id/grants")
-  @Authz(SCOPES.EDIT, byExistingKosk)
-  create(
+  @Authz(PERMISSIONS.COURSE_NAZIR_ASSIGN_KOSK, byExistingKosk)
+  async create(
     @Req() request: AuthenticatedUserRequest,
     @Param("id", ParseUUIDPipe) id: string,
     @Body() dto: CreateKoskGrantDto
   ): Promise<KoskGrantsResponse> {
+    // A köşk nazımı already holds every course permission in the köşk; a post
+    // they seat themselves in would only outlive their own dismissal.
+    await this.selfGrant.assertNotSelf(
+      request.user,
+      [dto.userId],
+      { entity: ENTITIES.KOSK, id },
+      { always: true },
+      "kosk.grants.create"
+    );
     return this.service.create(request.user, id, dto);
   }
 
   @ApiOperation({
     summary: "Change a ders nazırı's permissions and end",
     description:
-      "nizam/38 'İzinleri düzenle'. Replaces the whole set; what stays keeps its giver and date. The post ends when the permissions do. Written to the audit log.",
+      "nizam/38 'İzinleri düzenle'. Replaces the whole set; what stays keeps its giver and date. The post ends when the permissions do. Written to the audit log. 403 (SELF_GRANT_REFUSED) for the caller's own post, SYSTEM_ADMIN excepted.",
     operationId: "updateKoskGrant",
   })
   @ApiOkResponse({ type: KoskGrantsResponse })
@@ -97,13 +116,26 @@ export class KoskGrantsController {
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()
   @Patch(":id/grants/:grantId")
-  @Authz(SCOPES.EDIT, byExistingKosk)
-  update(
+  @Authz(PERMISSIONS.COURSE_NAZIR_ASSIGN_KOSK, byExistingKosk)
+  async update(
     @Req() request: AuthenticatedUserRequest,
     @Param("id", ParseUUIDPipe) id: string,
     @Param("grantId", ParseUUIDPipe) grantId: string,
     @Body() dto: UpdateKoskGrantDto
   ): Promise<KoskGrantsResponse> {
+    // Rewriting one's own post is seating oneself again: its codes and its end
+    // would outlive the köşk seat, as a post made for oneself would. An
+    // unknown post is the service's 404.
+    const holder = await this.service.holderOf(id, grantId);
+    if (holder) {
+      await this.selfGrant.assertNotSelf(
+        request.user,
+        [holder],
+        { entity: ENTITIES.KOSK, id },
+        { always: true },
+        "kosk.grants.update"
+      );
+    }
     return this.service.update(request.user, id, grantId, dto);
   }
 
@@ -118,7 +150,7 @@ export class KoskGrantsController {
   @ApiNotFoundResponse()
   @Delete(":id/grants/:grantId")
   @HttpCode(HttpStatus.NO_CONTENT)
-  @Authz(SCOPES.EDIT, byExistingKosk)
+  @Authz(PERMISSIONS.COURSE_NAZIR_ASSIGN_KOSK, byExistingKosk)
   async revoke(
     @Req() request: AuthenticatedUserRequest,
     @Param("id", ParseUUIDPipe) id: string,

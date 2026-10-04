@@ -182,6 +182,10 @@ describe("the audit log (nizam 17)", () => {
       range: undefined,
     });
     expect(parseAuditFilters({ type: ["EXPORT", "BAN"] }).type).toBe("EXPORT");
+    // A refused self-grant is its own kind on the audit page (MDRS-135).
+    expect(parseAuditFilters({ type: "SELF_GRANT_REFUSED" }).type).toBe(
+      "SELF_GRANT_REFUSED"
+    );
   });
 
   it("writes filters back in a stable order without empty keys", () => {

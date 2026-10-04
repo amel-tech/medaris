@@ -11,7 +11,7 @@ import {
 } from "../../src/database/schema/course.schema";
 import { kosks } from "../../src/database/schema/kosk.schema";
 import { ASSIGNED_ROLES } from "../../src/database/schema/role-assignment.schema";
-import { asSystemAdmin } from "../helpers/system-admin.helper";
+import { FIXTURE_TEAM, openKosk } from "../helpers/open-scopes.helper";
 import {
   createTestApp,
   OTHER_USER_ID,
@@ -75,11 +75,7 @@ describe("POST /courses/:courseId/sessions/batch (MDRS-109)", () => {
 
   beforeEach(async () => {
     await dbUtils.cleanTables(...COURSE_TREE_TABLES);
-    const kosk = await request(adminApp.getHttpServer())
-      .post("/kosks")
-      .set("Authorization", asSystemAdmin(TEST_USER_ID))
-      .send({ name: "Süleymaniye Köşkü" })
-      .expect(201);
+    const kosk = await openKosk(adminApp);
     koskId = kosk.body.id;
   });
 
@@ -98,7 +94,7 @@ describe("POST /courses/:courseId/sessions/batch (MDRS-109)", () => {
           title: "Bina ve İzhar Şerhi",
           status: "PUBLISHED",
           timeZone,
-          muderris: [{ name: "Müderris Ahmed Hilmi" }],
+          muderris: FIXTURE_TEAM,
           weeks: [
             {
               weekNumber: 1,

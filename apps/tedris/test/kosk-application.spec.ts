@@ -82,7 +82,12 @@ const mount = async (email = "omer@example.com") => {
   const { KoskApplicationPage } = await import(
     "~/features/kosk-application/components/kosk-application-page"
   );
-  return render(createElement(KoskApplicationPage, { email }));
+  return render(
+    createElement(KoskApplicationPage, {
+      email,
+      privacyNoticeHref: "https://landing-dev.medaris.app/aydinlatma-metni",
+    })
+  );
 };
 
 describe("Köşk açma başvurusu (design tedris/37)", () => {
@@ -112,11 +117,13 @@ describe("Köşk açma başvurusu (design tedris/37)", () => {
     expect(mocks.submit).not.toHaveBeenCalled();
   });
 
-  it("links the Aydınlatma Metni to the privacy notice", async () => {
+  it("links the Aydınlatma Metni to the notice the page resolved for this deployment (MDRS-248)", async () => {
     const host = await mount();
     const link = [...host.querySelectorAll("a")].find((a) =>
       a.textContent?.includes("Aydınlatma Metni")
     );
-    expect(link?.getAttribute("href")).toMatch(/^https:\/\/medaris\.app\//);
+    expect(link?.getAttribute("href")).toBe(
+      "https://landing-dev.medaris.app/aydinlatma-metni"
+    );
   });
 });

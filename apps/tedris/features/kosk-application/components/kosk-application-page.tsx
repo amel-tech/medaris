@@ -8,7 +8,6 @@ import { Input } from "@medaris/ui/mds/input";
 import { Select } from "@medaris/ui/mds/select";
 import { Textarea } from "@medaris/ui/mds/textarea";
 import { useToaster } from "@medaris/ui/mds/toast";
-import { PRIVACY_NOTICE_URL } from "@medaris/utils";
 import { useLocale } from "next-intl";
 import { type FormEvent, useState, useTransition } from "react";
 import { LocaleAppProviders } from "~/components/locale-app-providers";
@@ -23,7 +22,13 @@ import {
   validateApplication,
 } from "../model";
 
-function Content({ email }: { email: string }) {
+function Content({
+  email,
+  privacyNoticeHref,
+}: {
+  email: string;
+  privacyNoticeHref: string;
+}) {
   const t = useAccountTranslations("KoskApplication");
   const locale = useLocale();
   const toaster = useToaster();
@@ -209,7 +214,7 @@ function Content({ email }: { email: string }) {
               {t("noticeBefore")}
               <a
                 className="underline"
-                href={PRIVACY_NOTICE_URL}
+                href={privacyNoticeHref}
                 target="_blank"
                 rel="noopener noreferrer"
               >
@@ -253,10 +258,16 @@ function Content({ email }: { email: string }) {
  * sonra" aside. The e-mail starts as the account's address and can be changed.
  * Nothing is saved until "Başvuruyu gönder"; "Vazgeç" only goes back.
  */
-export function KoskApplicationPage({ email }: { email: string }) {
+export function KoskApplicationPage({
+  email,
+  privacyNoticeHref,
+}: {
+  email: string;
+  privacyNoticeHref: string;
+}) {
   return (
     <LocaleAppProviders>
-      <Content email={email} />
+      <Content email={email} privacyNoticeHref={privacyNoticeHref} />
     </LocaleAppProviders>
   );
 }
