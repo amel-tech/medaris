@@ -71,12 +71,12 @@ describe("standingCarries — course permissions by role default", () => {
 });
 
 describe("question.answer in the catalogue (MDRS-150)", () => {
-  it("is a course permission: the müderris holds it and may hand it to a ders nazırı", () => {
+  it("is a course permission: the müderris holds it and may hand it to a ders vekili", () => {
     expect(ROLE_DEFAULT_PERMISSIONS.MUDERRIS).toContain("question.answer");
     expect(COURSE_CODES.has("question.answer")).toBe(true);
   });
 
-  it("is held by no ders nazırı by default", () => {
+  it("is held by no ders vekili by default", () => {
     expect(ROLE_DEFAULT_PERMISSIONS.DERS_NAZIR).not.toContain(
       "question.answer"
     );

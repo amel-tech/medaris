@@ -44,7 +44,7 @@ const own = ({ author: _author, ...question }: ILessonQuestion) =>
  * Who asks is an active talebe of the session's course
  * (`ActiveTalebeService`). Who reads and who answers is one permission,
  * `question.answer`, asked by code (`CourseAccessService`): the müderris holds
- * it in their own course, a ders nazırı holds it when it is given on the
+ * it in their own course, a ders vekili holds it when it is given on the
  * İzinler page, and the catalogue's other holders (the köşk nazımı through
  * `course.manage_all`, the başnazım) hold it as they hold every course code.
  * The author reads their own questions whatever has become of their

@@ -87,7 +87,7 @@
     "forbidden": "Not yazmak için derse kayıtlı olman gerekir."
   },
   "CourseQuestions": {
-    "private": "Sorularını ve cevaplarını yalnızca sen, dersin müderrisi ve ders nazırı görür; diğer talebeler görmez.",
+    "private": "Sorularını ve cevaplarını yalnızca sen, dersin müderrisi ve ders vekili görür; diğer talebeler görmez.",
     "loading": "Soruların yükleniyor…",
     "loadFailed": "Soruların yüklenemedi.",
     "retry": "Yeniden dene",
