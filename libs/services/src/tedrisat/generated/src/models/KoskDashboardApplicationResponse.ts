@@ -44,7 +44,7 @@ export interface KoskDashboardApplicationResponse {
      */
     studentName?: string | null;
     /**
-     * Absent when `contentLocked` is true
+     * The applicant's e-mail address. No application is sent at all when `contentLocked` is true (`latestApplications` is empty)
      * @type {string}
      * @memberof KoskDashboardApplicationResponse
      */

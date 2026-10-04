@@ -183,7 +183,7 @@
     },
     "/kosks/{id}/dashboard": {
       "get": {
-        "description": "nizam/02. The numbers, the sessions of one tab (`sessions`: UPCOMING is the next seven days, PAST and CANCELLED the latest twenty), the newest waiting applications and the müderrisler. For the köşk's nazımları and the başnazım. A Medaris nazımı holding only `platform.kosk_edit` gets it without the meeting links and the applicants' e-mail addresses (`contentLocked`). A course in a passive scope is left out for everyone but the köşk's nazımları and holders of `platform.inactive_scopes_manage`. The applicants are written to `audit_log` as a roster read on every call, and each course whose meeting link is handed out as a content read unless the caller teaches it.",
+        "description": "nizam/02. The numbers, the sessions of one tab (`sessions`: UPCOMING is the next seven days, PAST and CANCELLED the latest twenty), the newest waiting applications and the müderrisler. For the köşk's nazımları and the başnazım. A Medaris nazımı holding only `platform.kosk_edit` gets it without the meeting links and without the applications (`contentLocked`: `latestApplications` is empty, `counts.pendingApplications` still says how many wait). A course in a passive scope is left out for everyone but the köşk's nazımları and holders of `platform.inactive_scopes_manage`. The applicants handed out are written to `audit_log` as a roster read on every call that sends them (none for a `contentLocked` caller), and each course whose meeting link is handed out as a content read unless the caller teaches it.",
         "operationId": "getKoskDashboard",
         "parameters": [
           {
@@ -2056,7 +2056,7 @@
     },
     "/madrasahs/{id}/head-muderris/delegations": {
       "get": {
-        "description": "nizam/22. The nazır roles and permissions the sitting başmüderris gave to others in this medrese that are still held; `delegations` of the replacing call answers each. Empty when there is no başmüderris or nothing was handed on.",
+        "description": "nizam/22. The nazır roles and permissions the sitting başmüderris gave to others in this medrese and its courses that are still held, whoever holds them; `delegations` of the replacing call answers each. Empty when there is no başmüderris or nothing was handed on.",
         "operationId": "getMadrasahHeadDelegations",
         "parameters": [
           {
@@ -2102,7 +2102,7 @@
     },
     "/madrasahs/{id}/head-muderris": {
       "put": {
-        "description": "Replaces whoever heads it: their grants are revoked, not deleted. A passive medrese is active again. `delegations` answers what the replaced başmüderris handed on (Devral / Düşür), `endsAt` is the new one's Görev bitişi. Written to the audit log.",
+        "description": "Replaces whoever heads it: their grants are revoked, not deleted. A passive medrese is active again. `delegations` answers what the replaced başmüderris handed on (Devral / Düşür), each row, what they gave the incoming başmüderris included; `endsAt` is the new one's Görev bitişi. Written to the audit log.",
         "operationId": "setMadrasahHeadMuderris",
         "parameters": [
           {
@@ -8597,7 +8597,7 @@
     },
     "/madrasahs/{id}/courses/{courseId}/hide": {
       "post": {
-        "description": "nazir/18's \"Gizle\". The course leaves the medrese's list, the köşk's page, the talebe's calendar and every search; nothing is deleted, and it is listed in the medrese's archive, where `POST /archive/course/:id/restore` brings it back by kademe. 409 (MADRASAH_COURSE_ALREADY_HIDDEN) when it is hidden. Written to the audit log.",
+        "description": "nazir/18's \"Gizle\". The course leaves the medrese's list, the köşk's page, the talebe's calendar and every search; nothing is deleted, and it is listed in the medrese's archive, where `POST /archive/course/:id/restore` brings it back by kademe. The hide is recorded at the level the caller acts at on the course, on the ladder every course hide reads: the platform for the başnazım and platform management, the köşk for the course's köşk nazımı, the medrese for anyone else. 409 (MADRASAH_COURSE_ALREADY_HIDDEN) when it is hidden. Written to the audit log with that level.",
         "operationId": "hideMadrasahCourse",
         "parameters": [
           {
@@ -9079,7 +9079,7 @@
     },
     "/archive/{type}/{id}/restore": {
       "post": {
-        "description": "By kademe, as the bans are lifted (MDRS-135): the level that hid an item, or any level above it, brings it back. The ladder is course < medrese < köşk < platform; a hide records the level its hider acted at, and one recorded by nobody counts as the lowest level that could have hidden it. A course, and the weeks and sessions in one, are restored at the level the caller acts at on the course, exactly as `POST /courses/:id/archive` records it: the köşk's nazımı (`course.hide`), the başmüderris or a nazır given `madrasah.course_hide`, platform management (`platform.course_hide`); a week or a session also at the course's own level, by whoever runs the course (`week.hide`, `session.manage` or `course.edit`), which is where they hide it. A deck is its köşk nazımı's; SYSTEM_ADMIN restores anything. A lower level than the one that hid it answers 403 (ARCHIVE_RESTORE_LEVEL) naming both, compared under the row lock. A course, week or session whose parent is still hidden answers 409 (ARCHIVE_PARENT_HIDDEN).",
+        "description": "By kademe, as the bans are lifted (MDRS-135): the level that hid an item, or any level above it, brings it back. The ladder is course < medrese < köşk < platform; a hide records the level its hider acted at, and one recorded by nobody counts as the lowest level that could have hidden it. A course, and the weeks and sessions in one, are restored at the level the caller acts at on the course, exactly as `POST /courses/:id/archive` records it: the köşk's nazımı (`course.hide`), the başmüderris or a nazır given `madrasah.course_hide`, platform management (`platform.course_hide`); a week or a session also at the course's own level, by whoever does its session work (`week.hide` or `session.manage`), and a week that brings no session back also by its editor (`course.edit`), which is where they hide them. A deck is its köşk nazımı's; SYSTEM_ADMIN restores anything. Every restore is written to the audit log as `<type>.restore` with the level. A lower level than the one that hid it answers 403 (ARCHIVE_RESTORE_LEVEL) naming both, compared under the row lock. A course, week or session whose parent is still hidden answers 409 (ARCHIVE_PARENT_HIDDEN).",
         "operationId": "restoreArchiveItem",
         "parameters": [
           {
@@ -10726,7 +10726,7 @@
           "studentEmail": {
             "type": "string",
             "nullable": true,
-            "description": "Absent when `contentLocked` is true"
+            "description": "The applicant's e-mail address. No application is sent at all when `contentLocked` is true (`latestApplications` is empty)"
           },
           "requestedAt": {
             "format": "date-time",

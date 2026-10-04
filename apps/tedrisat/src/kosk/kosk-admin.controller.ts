@@ -183,7 +183,7 @@ export class KoskAdminController {
   @ApiOperation({
     summary: "A köşk nazımı's home page (numbers, celse table, applications)",
     description:
-      "nizam/02. The numbers, the sessions of one tab (`sessions`: UPCOMING is the next seven days, PAST and CANCELLED the latest twenty), the newest waiting applications and the müderrisler. For the köşk's nazımları and the başnazım. A Medaris nazımı holding only `platform.kosk_edit` gets it without the meeting links and the applicants' e-mail addresses (`contentLocked`). A course in a passive scope is left out for everyone but the köşk's nazımları and holders of `platform.inactive_scopes_manage`. The applicants are written to `audit_log` as a roster read on every call, and each course whose meeting link is handed out as a content read unless the caller teaches it.",
+      "nizam/02. The numbers, the sessions of one tab (`sessions`: UPCOMING is the next seven days, PAST and CANCELLED the latest twenty), the newest waiting applications and the müderrisler. For the köşk's nazımları and the başnazım. A Medaris nazımı holding only `platform.kosk_edit` gets it without the meeting links and without the applications (`contentLocked`: `latestApplications` is empty, `counts.pendingApplications` still says how many wait). A course in a passive scope is left out for everyone but the köşk's nazımları and holders of `platform.inactive_scopes_manage`. The applicants handed out are written to `audit_log` as a roster read on every call that sends them (none for a `contentLocked` caller), and each course whose meeting link is handed out as a content read unless the caller teaches it.",
     operationId: "getKoskDashboard",
   })
   @ApiQuery({

@@ -888,7 +888,7 @@ export class MadrasahsApi extends runtime.BaseAPI {
     }
 
     /**
-     * nizam/22. The nazır roles and permissions the sitting başmüderris gave to others in this medrese that are still held; `delegations` of the replacing call answers each. Empty when there is no başmüderris or nothing was handed on.
+     * nizam/22. The nazır roles and permissions the sitting başmüderris gave to others in this medrese and its courses that are still held, whoever holds them; `delegations` of the replacing call answers each. Empty when there is no başmüderris or nothing was handed on.
      * What the başmüderris handed on (SYSTEM_ADMIN only)
      */
     async getMadrasahHeadDelegationsRaw(requestParameters: GetMadrasahHeadDelegationsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<HeadDelegationResponse>>> {
@@ -923,7 +923,7 @@ export class MadrasahsApi extends runtime.BaseAPI {
     }
 
     /**
-     * nizam/22. The nazır roles and permissions the sitting başmüderris gave to others in this medrese that are still held; `delegations` of the replacing call answers each. Empty when there is no başmüderris or nothing was handed on.
+     * nizam/22. The nazır roles and permissions the sitting başmüderris gave to others in this medrese and its courses that are still held, whoever holds them; `delegations` of the replacing call answers each. Empty when there is no başmüderris or nothing was handed on.
      * What the başmüderris handed on (SYSTEM_ADMIN only)
      */
     async getMadrasahHeadDelegations(requestParameters: GetMadrasahHeadDelegationsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<HeadDelegationResponse>> {
@@ -1452,7 +1452,7 @@ export class MadrasahsApi extends runtime.BaseAPI {
     }
 
     /**
-     * nazir/18\'s \"Gizle\". The course leaves the medrese\'s list, the köşk\'s page, the talebe\'s calendar and every search; nothing is deleted, and it is listed in the medrese\'s archive, where `POST /archive/course/:id/restore` brings it back by kademe. 409 (MADRASAH_COURSE_ALREADY_HIDDEN) when it is hidden. Written to the audit log.
+     * nazir/18\'s \"Gizle\". The course leaves the medrese\'s list, the köşk\'s page, the talebe\'s calendar and every search; nothing is deleted, and it is listed in the medrese\'s archive, where `POST /archive/course/:id/restore` brings it back by kademe. The hide is recorded at the level the caller acts at on the course, on the ladder every course hide reads: the platform for the başnazım and platform management, the köşk for the course\'s köşk nazımı, the medrese for anyone else. 409 (MADRASAH_COURSE_ALREADY_HIDDEN) when it is hidden. Written to the audit log with that level.
      * Hide a course of the medrese (its başmüderris)
      */
     async hideMadrasahCourseRaw(requestParameters: HideMadrasahCourseRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
@@ -1495,7 +1495,7 @@ export class MadrasahsApi extends runtime.BaseAPI {
     }
 
     /**
-     * nazir/18\'s \"Gizle\". The course leaves the medrese\'s list, the köşk\'s page, the talebe\'s calendar and every search; nothing is deleted, and it is listed in the medrese\'s archive, where `POST /archive/course/:id/restore` brings it back by kademe. 409 (MADRASAH_COURSE_ALREADY_HIDDEN) when it is hidden. Written to the audit log.
+     * nazir/18\'s \"Gizle\". The course leaves the medrese\'s list, the köşk\'s page, the talebe\'s calendar and every search; nothing is deleted, and it is listed in the medrese\'s archive, where `POST /archive/course/:id/restore` brings it back by kademe. The hide is recorded at the level the caller acts at on the course, on the ladder every course hide reads: the platform for the başnazım and platform management, the köşk for the course\'s köşk nazımı, the medrese for anyone else. 409 (MADRASAH_COURSE_ALREADY_HIDDEN) when it is hidden. Written to the audit log with that level.
      * Hide a course of the medrese (its başmüderris)
      */
     async hideMadrasahCourse(requestParameters: HideMadrasahCourseRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
@@ -1778,7 +1778,7 @@ export class MadrasahsApi extends runtime.BaseAPI {
     }
 
     /**
-     * Replaces whoever heads it: their grants are revoked, not deleted. A passive medrese is active again. `delegations` answers what the replaced başmüderris handed on (Devral / Düşür), `endsAt` is the new one\'s Görev bitişi. Written to the audit log.
+     * Replaces whoever heads it: their grants are revoked, not deleted. A passive medrese is active again. `delegations` answers what the replaced başmüderris handed on (Devral / Düşür), each row, what they gave the incoming başmüderris included; `endsAt` is the new one\'s Görev bitişi. Written to the audit log.
      * Make a user the medrese\'s başmüderris (SYSTEM_ADMIN only)
      */
     async setMadrasahHeadMuderrisRaw(requestParameters: SetMadrasahHeadMuderrisRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MadrasahDirectoryItemResponse>> {
@@ -1823,7 +1823,7 @@ export class MadrasahsApi extends runtime.BaseAPI {
     }
 
     /**
-     * Replaces whoever heads it: their grants are revoked, not deleted. A passive medrese is active again. `delegations` answers what the replaced başmüderris handed on (Devral / Düşür), `endsAt` is the new one\'s Görev bitişi. Written to the audit log.
+     * Replaces whoever heads it: their grants are revoked, not deleted. A passive medrese is active again. `delegations` answers what the replaced başmüderris handed on (Devral / Düşür), each row, what they gave the incoming başmüderris included; `endsAt` is the new one\'s Görev bitişi. Written to the audit log.
      * Make a user the medrese\'s başmüderris (SYSTEM_ADMIN only)
      */
     async setMadrasahHeadMuderris(requestParameters: SetMadrasahHeadMuderrisRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MadrasahDirectoryItemResponse> {

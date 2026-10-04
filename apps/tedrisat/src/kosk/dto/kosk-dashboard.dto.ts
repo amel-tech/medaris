@@ -114,7 +114,8 @@ export class KoskDashboardApplicationResponse {
   @ApiPropertyOptional({
     type: String,
     nullable: true,
-    description: "Absent when `contentLocked` is true",
+    description:
+      "The applicant's e-mail address. No application is sent at all when `contentLocked` is true (`latestApplications` is empty)",
   })
   studentEmail?: string | null;
 
