@@ -353,7 +353,9 @@ export class KoskController {
     @Param("id", ParseUUIDPipe) id: string,
     @Body() koskDto: UpdateKoskDto
   ): Promise<KoskResponse> {
-    await this.koskService.update(id, koskDto, request.user.sub);
+    await this.koskService.update(id, koskDto, request.user.sub, {
+      systemAdmin: this.authz.isSystemAdmin(request.user),
+    });
     return this.koskService.findById(id, request.user.sub);
   }
 
