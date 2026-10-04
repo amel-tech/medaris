@@ -1219,7 +1219,7 @@
     "unnamed": "Unnamed student",
     "loadFailedTitle": "The students could not be read",
     "loadFailed": "The students could not be read right now. Try again in a few seconds.",
-    "removedNote": "Students the course team removed from the course, with their reasons. A removed student may apply again.",
+    "removedNote": "Students the course team removed from the course, with their reasons. A removed student cannot apply again; the seat comes back only if the course team approves it.",
     "removedUnavailable": "The students removed from the course could not be read right now. Reload the page and try again.",
     "errors": {
       "gone": "This student’s enrolment is no longer as shown; the list was reloaded."
@@ -1248,7 +1248,7 @@
     "remove": {
       "title": "Remove from course",
       "body": "{name} will be removed from {course}. They lose access to the sessions, meeting links and recordings, and the course's sessions leave their calendar.",
-      "info": "The student may apply again. If you also need to stop them applying again, ban the student.",
+      "info": "The student cannot apply to this course again; the seat comes back only if the course team approves it.",
       "required": "required field",
       "reasonLabel": "Reason for removal",
       "reasonHelp": "The reason is shown to the course team in the Removed tab.",

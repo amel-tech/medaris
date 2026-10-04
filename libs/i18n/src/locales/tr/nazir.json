@@ -1219,7 +1219,7 @@
     "unnamed": "Adsız talebe",
     "loadFailedTitle": "Talebeler okunamadı",
     "loadFailed": "Talebeler şu an okunamadı. Birkaç saniye sonra yeniden deneyin.",
-    "removedNote": "Ders kadrosunun dersten çıkardığı talebeler, gerekçeleriyle. Çıkarılan talebe yeniden başvurabilir.",
+    "removedNote": "Ders kadrosunun dersten çıkardığı talebeler, gerekçeleriyle. Çıkarılan talebe yeniden başvuramaz; yeri ancak ders kadrosu onaylarsa geri gelir.",
     "removedUnavailable": "Dersten çıkarılan talebeler şu an okunamadı. Sayfayı yenileyip yeniden deneyin.",
     "errors": {
       "gone": "Bu talebenin kaydı artık böyle değil; liste yenilendi."
@@ -1248,7 +1248,7 @@
     "remove": {
       "title": "Dersten çıkar",
       "body": "{name} adlı talebe {course} dersinden çıkarılacak. Celselere, toplantı bağlantılarına ve ders kayıtlarına erişimi kalkar; dersin celseleri takviminden de düşer.",
-      "info": "Talebe yeniden başvurabilir. Yeniden başvurmasını da engellemek gerekiyorsa talebeyi yasaklayın.",
+      "info": "Talebe bu derse yeniden başvuramaz; yeri ancak ders kadrosu onaylarsa geri gelir.",
       "required": "zorunlu alan",
       "reasonLabel": "Çıkarma gerekçesi",
       "reasonHelp": "Gerekçe, Erişimi kaldırılanlar sekmesinde ders kadrosuna görünür.",
