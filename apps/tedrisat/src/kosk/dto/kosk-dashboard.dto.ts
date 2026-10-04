@@ -78,9 +78,9 @@ export class KoskDashboardSessionResponse {
     type: String,
     nullable: true,
     description:
-      "Where talebe join. The köşk nazımı is the course team, so it is shown; null: no link yet (Bağlantı eksik).",
+      "Where talebe join. The köşk nazımı is the course team, so it is shown; null: no link yet (Bağlantı eksik). Absent when `contentLocked` is true.",
   })
-  meetingUrl!: string | null;
+  meetingUrl?: string | null;
 
   @ApiProperty({ description: "It makes up for a cancelled session (telafi)" })
   isMakeup!: boolean;
@@ -111,8 +111,12 @@ export class KoskDashboardApplicationResponse {
   @ApiPropertyOptional({ type: String, nullable: true })
   studentName!: string | null;
 
-  @ApiPropertyOptional({ type: String, nullable: true })
-  studentEmail!: string | null;
+  @ApiPropertyOptional({
+    type: String,
+    nullable: true,
+    description: "Absent when `contentLocked` is true",
+  })
+  studentEmail?: string | null;
 
   @ApiProperty({ type: Date })
   requestedAt!: Date;
@@ -179,6 +183,12 @@ export class KoskDashboardResponse {
     description: "Which tab `sessions` is the list of",
   })
   tab!: DashboardSessionTab;
+
+  @ApiProperty({
+    description:
+      "True when the meeting links and the applicants' e-mail addresses were left out: the caller reads the page by `platform.kosk_edit` alone, which covers neither course content nor personal data",
+  })
+  contentLocked!: boolean;
 
   @ApiProperty({
     type: KoskDashboardSessionResponse,
