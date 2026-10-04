@@ -522,6 +522,111 @@ describe("Users (e2e)", () => {
       ).toEqual(["platform.kosk_create"]);
     });
 
+    it("gives a medrese nazırı a role-less entry for a course of their medrese that a grant is held on, and none for a course of another medrese", async () => {
+      const [mine, other] = await db()
+        .insert(madrasahs)
+        .values([
+          { handle: "fatih", name: "Fâtih Medresesi", createdBy: ADMIN_ID },
+          { handle: "enderun", name: "Enderun Medresesi", createdBy: ADMIN_ID },
+        ])
+        .returning();
+      const [inMine, inOther] = await db()
+        .insert(courses)
+        .values([
+          {
+            koskId,
+            madrasahId: mine.id,
+            authorId: MANAGER_ID,
+            title: "Nahiv",
+          },
+          {
+            koskId,
+            madrasahId: other.id,
+            authorId: MANAGER_ID,
+            title: "Sarf",
+          },
+        ])
+        .returning();
+      await assignRole(db(), {
+        userId: DERS_NAZIR_ID,
+        role: ASSIGNED_ROLES.MEDRESE_NAZIR,
+        scopeId: mine.id,
+        grantedBy: ADMIN_ID,
+      });
+      await db()
+        .insert(permissionGrants)
+        .values(
+          [inMine, inOther].map((course) => ({
+            userId: DERS_NAZIR_ID,
+            scopeType: SCOPE_TYPES.COURSE,
+            scopeId: course.id,
+            permission: "user.lookup",
+            groupId: null,
+            grantedBy: ADMIN_ID,
+          }))
+        );
+      const res = await me(DERS_NAZIR_ID).expect(200);
+      // The course's name and its medrese come from the database: the
+      // nazır's role is in the course's chain only through that medrese.
+      expect(res.body.permissions).toEqual([
+        expect.objectContaining({ scopeType: "madrasah", scopeId: mine.id }),
+        {
+          scopeType: "course",
+          scopeId: inMine.id,
+          scopeName: "Nahiv",
+          roles: [],
+          permissions: ["user.lookup"],
+        },
+      ]);
+    });
+
+    it("gives a köşk nazımı a role-less entry for a course of their köşk that a grant is held on, and none for a course of another köşk", async () => {
+      const [elsewhere] = await db()
+        .insert(kosks)
+        .values({ ownerId: ADMIN_ID, name: "Fâtih Köşkü" })
+        .returning();
+      const [foreign] = await db()
+        .insert(courses)
+        .values({
+          koskId: elsewhere.id,
+          authorId: ADMIN_ID,
+          title: "Mantık",
+        })
+        .returning();
+      await assignRole(db(), {
+        userId: HEAD_ID,
+        role: ASSIGNED_ROLES.KOSK_NAZIM,
+        scopeId: koskId,
+        grantedBy: ADMIN_ID,
+      });
+      await db()
+        .insert(permissionGrants)
+        .values(
+          [courseId, foreign.id].map((scopeId) => ({
+            userId: HEAD_ID,
+            scopeType: SCOPE_TYPES.COURSE,
+            scopeId,
+            permission: "user.lookup",
+            groupId: null,
+            grantedBy: ADMIN_ID,
+          }))
+        );
+      const res = await me(HEAD_ID).expect(200);
+      const courseEntries = res.body.permissions.filter(
+        (e: { scopeType: string }) => e.scopeType === "course"
+      );
+      // The köşk's role carries the course work down into the course, the
+      // grant adds the code the role does not give.
+      expect(courseEntries).toEqual([
+        expect.objectContaining({
+          scopeId: courseId,
+          scopeName: "Usûl-i Fıkıh",
+          roles: [],
+          permissions: expect.arrayContaining(["course.edit", "user.lookup"]),
+        }),
+      ]);
+    });
+
     it("reads what a caller holds in a fixed number of statements, however many scopes they hold it in", async () => {
       // Every pool of the app, whichever module opened it.
       const original = Pool.prototype.query;
