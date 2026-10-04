@@ -282,6 +282,13 @@ export class ArchiveService {
     id: string
   ): Promise<{ type: ArchiveItemType; id: string; title: string }> {
     const item = await this.requireItem(type, id);
+    // A course, week or session of a hidden köşk is closed to all but the
+    // people above the köşk, so restoring it is a 404 to the rest, as the
+    // course's own routes answer (MDRS-143).
+    const target = hideTargetOf(item);
+    if (target?.resource.entity === ENTITIES.COURSE) {
+      await this.authz.assertOpen(user, target.resource);
+    }
     const level = await this.assertMayRestore(user, item);
     const outcome = await this.repo.restore(item, { id: user.sub, level });
     if (outcome.status === "not-found") {

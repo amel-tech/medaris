@@ -63,7 +63,10 @@ const item = (over: Partial<IArchiveItem> = {}): IArchiveItem => ({
   ...over,
 });
 
-function serviceWith(repo: Partial<Record<keyof ArchiveRepository, unknown>>) {
+function serviceWith(
+  repo: Partial<Record<keyof ArchiveRepository, unknown>>,
+  assertOpen: () => Promise<void> = async () => undefined
+) {
   const effective = vi.fn(async (user: AuthenticatedUser) => {
     const codes = HOLDS[user.sub];
     return codes ? { codes: new Set(codes), openedPassive: null } : null;
@@ -72,10 +75,12 @@ function serviceWith(repo: Partial<Record<keyof ArchiveRepository, unknown>>) {
     isSystemAdmin: (u: { realm_access?: { roles?: string[] } }) =>
       u.realm_access?.roles?.includes("SYSTEM_ADMIN") ?? false,
     effective,
+    assertOpen: vi.fn(assertOpen),
   } as unknown as AuthzService;
   return {
     service: new ArchiveService(repo as unknown as ArchiveRepository, authz),
     effective,
+    assertOpen: authz.assertOpen as ReturnType<typeof vi.fn>,
   };
 }
 
@@ -258,6 +263,39 @@ describe("ArchiveService (MDRS-173)", () => {
         id: ID,
       });
       expect(restore).toHaveBeenCalledWith(found, { id: "a2", level: "kosk" });
+    });
+
+    it.each([
+      "course",
+      "week",
+      "session",
+    ] as const)("asks whether the course is open before it restores a %s, and writes nothing when it is closed", async (type) => {
+      const closed = new Error("closed");
+      const restore = restored();
+      const { service, assertOpen } = serviceWith(
+        {
+          findOne: vi.fn().mockResolvedValue(item({ type })),
+          restore,
+        },
+        async () => {
+          throw closed;
+        }
+      );
+      await expect(service.restore(NAZIM, type, ID)).rejects.toBe(closed);
+      expect(assertOpen).toHaveBeenCalledWith(NAZIM, {
+        entity: "course",
+        id: ID,
+      });
+      expect(restore).not.toHaveBeenCalled();
+    });
+
+    it("does not ask it of a deck, whose resource is the köşk", async () => {
+      const { service, assertOpen } = serviceWith({
+        findOne: vi.fn().mockResolvedValue(item({ type: "deck" })),
+        restore: restored(),
+      });
+      await service.restore(NAZIM, "deck", ID);
+      expect(assertOpen).not.toHaveBeenCalled();
     });
 
     it.each([

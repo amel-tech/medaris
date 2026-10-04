@@ -63,6 +63,7 @@ describe("A hidden köşk closes its courses (MDRS-143, e2e)", () => {
   let courseId: string;
   let medreseCourseId: string;
   let sessionId: string;
+  let weekId: string;
 
   const http = () => request(app.getHttpServer());
   const db = () => databaseService.db;
@@ -87,6 +88,11 @@ describe("A hidden köşk closes its courses (MDRS-143, e2e)", () => {
       enrollments: await count("enrollments"),
     };
   };
+
+  const auditRows = async () =>
+    Number(
+      (await db().execute(sql`select count(*) as n from audit_log`)).rows[0].n
+    );
 
   /** The first fetch of the feed by its public path, as a calendar app does. */
   const feedOf = async (sub: string) => {
@@ -188,9 +194,13 @@ describe("A hidden köşk closes its courses (MDRS-143, e2e)", () => {
           meetingUrl: "https://meet.google.com/abc-defg-hij",
         })
         .returning({ id: lessons.id });
-      return { courseId: course.id, sessionId: session.id };
+      return {
+        courseId: course.id,
+        sessionId: session.id,
+        weekId: week.id,
+      };
     };
-    ({ courseId, sessionId } = await addCourse("Bina ve İzhar Şerhi"));
+    ({ courseId, sessionId, weekId } = await addCourse("Bina ve İzhar Şerhi"));
     ({ courseId: medreseCourseId } = await addCourse(
       "Emsile ve Bina",
       madrasahId
@@ -378,6 +388,132 @@ describe("A hidden köşk closes its courses (MDRS-143, e2e)", () => {
     // A medrese is not above the köşk that hosts it (nizam/24).
     await expectClosed(HEAD_ID);
     await expectClosed(HEAD_MUDERRIS_ID);
+  });
+
+  describe("closes the routes the course team and the medrese use, not only the page", () => {
+    const patch = (sub: string, path: string, body: object = {}) =>
+      http().patch(path).set("Authorization", auth(sub)).send(body);
+    const lessonOf = async (id: string) =>
+      (await db().select().from(lessons).where(eq(lessons.id, id)))[0];
+    const weekOf = async () =>
+      (
+        await db().select().from(courseWeeks).where(eq(courseWeeks.id, weekId))
+      )[0];
+    const courseRow = async (id: string) =>
+      (await db().select().from(courses).where(eq(courses.id, id)))[0];
+    /** Every route of the course team, as the person it is called as. */
+    const routes = (sub: string) => ({
+      archive: () => get(sub, `/courses/${courseId}/archive`),
+      roster: () => get(sub, `/courses/${courseId}/enrollments`),
+      liveStreams: () => get(sub, `/courses/${courseId}/live-streams`),
+      weekHide: () => post(sub, `/courses/${courseId}/weeks/${weekId}/hide`),
+      addSession: () =>
+        post(sub, `/courses/${courseId}/weeks/${weekId}/lessons`, {
+          title: "Yeni ders",
+          type: LessonType.LIVE,
+          durationMinutes: 30,
+          scheduledAt: new Date(Date.now() + 14 * 24 * 3600 * 1000),
+          meetingUrl: "https://meet.google.com/abc-defg-hij",
+        }),
+      editSession: () =>
+        patch(sub, `/lessons/${sessionId}`, { title: "Değişti" }),
+      cancelSession: () => post(sub, `/lessons/${sessionId}/cancel`),
+      dropSession: () =>
+        http().delete(`/lessons/${sessionId}`).set("Authorization", auth(sub)),
+    });
+
+    it("answers a müderris of the course 404 on every one of them, and writes nothing", async () => {
+      await hide(NAZIM_ID).expect(200);
+      const version = (await courseRow(courseId)).version;
+      const audit = await auditRows();
+      const r = routes(MUDERRIS_ID);
+      for (const call of Object.values(r)) {
+        expect((await call().expect(404)).body.code).toBe("COURSE_NOT_FOUND");
+      }
+      expect((await weekOf()).archivedAt).toBeNull();
+      expect((await lessonOf(sessionId)).archivedAt).toBeNull();
+      expect((await lessonOf(sessionId)).title).toBe("Açılış");
+      expect((await courseRow(courseId)).version).toBe(version);
+      expect(await auditRows()).toBe(audit);
+    });
+
+    it("answers a talebe and a stranger 404 on the roster and the live streams", async () => {
+      await hide(NAZIM_ID).expect(200);
+      for (const sub of [TALEBE_ID, STRANGER_ID]) {
+        await routes(sub).roster().expect(404);
+        await routes(sub).liveStreams().expect(404);
+      }
+    });
+
+    it("keeps them open to the köşk's nazımı and the başnazım, and does not hide from Medaris yönetimi holding platform.kosk_edit what its codes decide", async () => {
+      await hide(NAZIM_ID).expect(200);
+      for (const sub of [NAZIM_ID, ADMIN_ID]) {
+        await routes(sub).archive().expect(200);
+        await routes(sub).roster().expect(200);
+        await routes(sub).liveStreams().expect(200);
+      }
+      // The code lets them past the closure; what the route asks of them
+      // after that is the catalogue's answer, a 403, never the closure's 404.
+      for (const call of Object.values(routes(MEDARIS_YES_ID))) {
+        expect((await call()).status).not.toBe(404);
+      }
+      await routes(NAZIM_ID).weekHide().expect(200);
+      expect((await weekOf()).archivedAt).not.toBeNull();
+    });
+
+    it("refuses to restore a week or a session of a hidden köşk's course to its müderris, and leaves it hidden", async () => {
+      await post(
+        MUDERRIS_ID,
+        `/courses/${courseId}/weeks/${weekId}/hide`
+      ).expect(200);
+      await hide(NAZIM_ID).expect(200);
+      const audit = await auditRows();
+      const res = await post(
+        MUDERRIS_ID,
+        `/archive/week/${weekId}/restore`
+      ).expect(404);
+      expect(res.body.code).toBe("COURSE_NOT_FOUND");
+      expect((await weekOf()).archivedAt).not.toBeNull();
+      expect(await auditRows()).toBe(audit);
+      await restore(NAZIM_ID).expect(200);
+      await post(MUDERRIS_ID, `/archive/week/${weekId}/restore`).expect(200);
+      expect((await weekOf()).archivedAt).toBeNull();
+    });
+
+    it("lets the köşk's nazımı restore the week while the köşk is hidden", async () => {
+      await post(
+        MUDERRIS_ID,
+        `/courses/${courseId}/weeks/${weekId}/hide`
+      ).expect(200);
+      await hide(NAZIM_ID).expect(200);
+      await post(NAZIM_ID, `/archive/week/${weekId}/restore`).expect(200);
+      expect((await weekOf()).archivedAt).toBeNull();
+    });
+
+    it("answers the başmüderris 404 before it writes, on the archive and the restore of a hosted course", async () => {
+      await hide(NAZIM_ID).expect(200);
+      const audit = await auditRows();
+      const hidden = await post(
+        HEAD_ID,
+        `/courses/${medreseCourseId}/archive`
+      ).expect(404);
+      expect(hidden.body.code).toBe("COURSE_NOT_FOUND");
+      expect((await courseRow(medreseCourseId)).archivedAt).toBeNull();
+      expect(await auditRows()).toBe(audit);
+
+      // Hidden before the köşk was: the restore is refused the same way.
+      await restore(NAZIM_ID).expect(200);
+      await post(HEAD_ID, `/courses/${medreseCourseId}/archive`).expect(200);
+      await hide(NAZIM_ID).expect(200);
+      const before = await auditRows();
+      const res = await post(
+        HEAD_ID,
+        `/courses/${medreseCourseId}/restore`
+      ).expect(404);
+      expect(res.body.code).toBe("COURSE_NOT_FOUND");
+      expect((await courseRow(medreseCourseId)).archivedAt).not.toBeNull();
+      expect(await auditRows()).toBe(before);
+    });
   });
 
   it("deletes nothing: the same rows stand before the hide, while hidden and after the restore", async () => {

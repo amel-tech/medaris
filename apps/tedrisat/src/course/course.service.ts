@@ -187,18 +187,11 @@ export class CourseService {
     if (!course) {
       throw new CourseNotFoundError(id);
     }
-    // A course is shown only while its köşk is (MDRS-143): a hidden köşk
-    // closes its courses, to the talebe enrolled in them too, and only the
-    // people above the courses (the köşk's nazımları, Medaris yönetimi holding
-    // `platform.kosk_edit`, the başnazım) still open them. Read from the köşk's
-    // own state, not from a cascade: a course opened after the hide is closed
-    // as well, and restoring the köşk reopens exactly what it closed.
-    if (
-      (await this.courseRepo.findHideState(id))?.koskArchivedAt &&
-      !(user && (await this.mayOpenHiddenKoskCourse(user, id)))
-    ) {
-      throw new CourseNotFoundError(id);
-    }
+    // A course of a hidden köşk is closed to all but the people above it
+    // (MDRS-143). `AuthzGuard` asks the same of every signed-in route; this
+    // is for the reads and writes that reach `getDetail` without a guard on
+    // the course, and for a caller with no token.
+    await this.authz.assertOpen(user, { entity: ENTITIES.COURSE, id });
     // A caller with no token (MDRS-122) holds neither `ARCHIVE` nor `EDIT`,
     // so a hidden course and a draft are both not-found to them, as below.
     // `resolveAnonymous` has already said so in front of the handler, and
@@ -238,17 +231,6 @@ export class CourseService {
       throw new CourseNotFoundError(id);
     }
     return course;
-  }
-
-  /** The people above a hidden köşk's courses: its nazımları and Medaris yönetimi. A medrese is not above a köşk. */
-  private mayOpenHiddenKoskCourse(
-    user: AuthenticatedUser,
-    courseId: string
-  ): Promise<boolean> {
-    return this.authz.can(user, { entity: ENTITIES.COURSE, id: courseId }, [
-      PERMISSIONS.COURSE_HIDE,
-      PERMISSIONS.PLATFORM_KOSK_EDIT,
-    ]);
   }
 
   /**
