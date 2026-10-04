@@ -464,6 +464,32 @@ describe("Opening scopes with their admins (MDRS-136, e2e)", () => {
       expect(await counts()).toEqual(before);
     });
 
+    it("is opened by a grantee of course.open_standalone for someone else, but not for themselves", async () => {
+      await medarisNazim();
+      await grant(
+        MEDARIS_ID,
+        { type: SCOPE_TYPES.KOSK, id: koskId },
+        PERMISSIONS.COURSE_OPEN_STANDALONE
+      );
+      await create(MEDARIS_ID, { muderris: team(AHMED) }).expect(201);
+      const before = await counts();
+      const res = await create(MEDARIS_ID, {
+        muderris: team(MEDARIS_ID),
+      }).expect(403);
+      expect(res.body.code).toBe("SELF_GRANT_REFUSED");
+      expect(await counts()).toEqual(before);
+      expect(await auditRows("permission.self_grant_refused")).toHaveLength(1);
+      await create(MEDARIS_ID, {
+        muderris: team(AHMED),
+        imamUserId: AHMED,
+      }).expect(201);
+    });
+
+    it("lets the köşk's nazımı and the başnazım list themselves among the müderrisler", async () => {
+      await create(NAZIM_ID, { muderris: team(NAZIM_ID, AHMED) }).expect(201);
+      await create(ADMIN_ID, { muderris: team(ADMIN_ID) }).expect(201);
+    });
+
     it("answers 404 for a köşk that does not exist", async () => {
       await create(
         ADMIN_ID,

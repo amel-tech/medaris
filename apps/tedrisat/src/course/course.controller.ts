@@ -1,4 +1,5 @@
 import {
+  ASSIGNED_ROLES,
   AuthGuard,
   Authz,
   AuthzExempt,
@@ -10,6 +11,7 @@ import {
   ENTITIES,
   MedarisValidationPipe,
   PERMISSIONS,
+  SelfGrantGuard,
 } from "@medaris/common";
 import {
   Body,
@@ -105,7 +107,8 @@ const byExistingCourse: AuthzResolve = async (req, moduleRef) => {
 export class CourseController {
   constructor(
     private readonly courseService: CourseService,
-    private readonly statsRepo: CourseStatsRepository
+    private readonly statsRepo: CourseStatsRepository,
+    private readonly selfGrant: SelfGrantGuard
   ) {}
 
   @ApiOperation({
@@ -175,6 +178,22 @@ export class CourseController {
     @Param("koskId", ParseUUIDPipe) koskId: string,
     @Body() courseDto: CreateCourseDto
   ): Promise<CourseDetailResponse> {
+    // A grantee of `course.open_standalone` opens courses for others, not for
+    // themselves: naming oneself müderris is for someone who already holds
+    // every course permission in the köşk (its nazımı), as in a medrese's
+    // course (`MadrasahCourseController.open`).
+    await this.selfGrant.assertNotSelf(
+      request.user,
+      [
+        ...(courseDto.muderris ?? []).flatMap((m) =>
+          m.userId ? [m.userId] : []
+        ),
+        ...(courseDto.imamUserId ? [courseDto.imamUserId] : []),
+      ],
+      { entity: ENTITIES.KOSK, id: koskId },
+      { role: ASSIGNED_ROLES.MUDERRIS },
+      "course.open"
+    );
     return this.courseService.create(koskId, request.user, courseDto);
   }
 
