@@ -173,7 +173,13 @@ export class CourseService {
 
   async getDetail(
     id: string,
-    user: AuthenticatedUser | null
+    user: AuthenticatedUser | null,
+    /**
+     * A read (the page, a session, the recordings, a calendar entry): a hidden
+     * course also opens to `course.view_unpublished`, "Taslak ya da gizli dersi
+     * gör". A write, the müderris list and an enrolment never take it.
+     */
+    { read = false }: { read?: boolean } = {}
   ): Promise<ICourseDetail> {
     const course = await this.courseRepo.findDetailById(id, user?.sub ?? null);
     if (!course) {
@@ -193,14 +199,26 @@ export class CourseService {
     }
     // A hidden course (MDRS-124) is not-found, exactly like a draft, to all
     // but the people who may restore it: the köşk manager and SYSTEM_ADMIN,
-    // which is what the `ARCHIVE` scope says.
+    // which is what the `ARCHIVE` scope says. A read also opens it to whoever
+    // was given `course.view_unpublished`, as its sentence says ("Taslak ya da
+    // gizli dersi gör"); its müderris holds that code by role and still does
+    // not see the course the köşk hid.
     if (
       course.archivedAt !== null &&
       !(await this.authz.can(user, { entity: ENTITIES.COURSE, id }, [
         PERMISSIONS.COURSE_HIDE,
         PERMISSIONS.MADRASAH_COURSE_HIDE,
         PERMISSIONS.PLATFORM_COURSE_HIDE,
-      ]))
+      ])) &&
+      !(
+        read &&
+        !isCourseMuderris(course, user.sub) &&
+        (await this.authz.can(
+          user,
+          { entity: ENTITIES.COURSE, id },
+          PERMISSIONS.COURSE_VIEW_UNPUBLISHED
+        ))
+      )
     ) {
       throw new CourseNotFoundError(id);
     }
@@ -238,7 +256,11 @@ export class CourseService {
     user: AuthenticatedUser | null,
     options: { audit: boolean; via?: string } = { audit: true }
   ): Promise<ICourseDetailView> {
-    return this.present(await this.getDetail(id, user), user, options);
+    return this.present(
+      await this.getDetail(id, user, { read: true }),
+      user,
+      options
+    );
   }
 
   /**
@@ -369,7 +391,7 @@ export class CourseService {
 
     let course: ICourseDetail;
     try {
-      course = await this.getDetail(courseId, user);
+      course = await this.getDetail(courseId, user, { read: true });
     } catch (error) {
       if (error instanceof CourseNotFoundError) {
         throw new LessonNotFoundError(lessonId);

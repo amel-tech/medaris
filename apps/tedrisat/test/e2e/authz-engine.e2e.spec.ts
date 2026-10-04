@@ -1703,6 +1703,38 @@ describe("The permission engine (MDRS-135, e2e)", () => {
       await get(TALEBE_ID, `/courses/${ownCourse}`).expect(404);
     });
 
+    it("a grant of course.view_unpublished opens a hidden course to read, never to write, and not to its müderris ('Taslak ya da gizli dersi gör')", async () => {
+      await db()
+        .update(courses)
+        .set({ archivedAt: new Date(), archivedBy: NAZIM_ID })
+        .where(eq(courses.id, ownCourse));
+      await grant(
+        DERS_ID,
+        atOwnCourse(),
+        { permission: PERMISSIONS.COURSE_EDIT },
+        { grantedBy: NAZIM_ID }
+      );
+      await get(DERS_ID, `/courses/${ownCourse}`).expect(404);
+      await grant(
+        DERS_ID,
+        atOwnCourse(),
+        { permission: PERMISSIONS.COURSE_VIEW_UNPUBLISHED },
+        { grantedBy: NAZIM_ID }
+      );
+      const read = await get(DERS_ID, `/courses/${ownCourse}`).expect(200);
+      expect(read.body.contentLocked).toBe(false);
+      await get(DERS_ID, `/courses/${ownCourse}/recordings`).expect(200);
+      // Seeing is all it opens: the hidden course is still not saved.
+      await patch(DERS_ID, `/courses/${ownCourse}`, {
+        title: "Gizliyken",
+      }).expect(404);
+      // The müderris holds the code by role, and the course the köşk hid stays
+      // out of their sight (MDRS-124); so it does for the talebe.
+      await get(MUDERRIS_ID, `/courses/${ownCourse}`).expect(404);
+      await get(TALEBE_ID, `/courses/${ownCourse}`).expect(404);
+      await get(NAZIM_ID, `/courses/${ownCourse}`).expect(200);
+    });
+
     it("the medrese's 'closed course required' holds on an update, and a grant from the platform widens one person", async () => {
       await db().insert(madrasahSettings).values({
         madrasahId,
