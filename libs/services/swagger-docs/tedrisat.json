@@ -9291,7 +9291,7 @@
     },
     "/nizam/deck-publish-requests": {
       "get": {
-        "description": "The members' requests to make a deck public, oldest waiting first, or the answered ones, newest first, a page at a time. Both tab counts (every request, not the page) come with it. The Medaris başnazımı (SYSTEM_ADMIN) only.",
+        "description": "The members' requests to make a deck public, oldest waiting first, or the answered ones, newest first, a page at a time. Both tab counts (every request, not the page) come with it. The Medaris başnazımı, or a Medaris nazımı holding platform.deck_publish.",
         "operationId": "listDeckPublishRequests",
         "parameters": [
           {
@@ -9480,6 +9480,55 @@
           }
         ],
         "summary": "Refuse the request (Reddet)",
+        "tags": [
+          "nizam"
+        ]
+      }
+    },
+    "/nizam/deck-publish-requests/{id}/unpublish": {
+      "post": {
+        "description": "The deck becomes private again and the reason goes to its owner, who may ask again. The reason is required. The Medaris başnazımı (SYSTEM_ADMIN) only; the change is written to the audit log (`deck.unpublish`).",
+        "operationId": "unpublishDeck",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RejectReasonDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": "DECK_NOT_PUBLISHED"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Take a published deck back (Yayından kaldır)",
         "tags": [
           "nizam"
         ]
@@ -17379,10 +17428,6 @@
             "type": "string",
             "example": "Colours - Vocabulary Deck"
           },
-          "isPublic": {
-            "type": "boolean",
-            "default": false
-          },
           "cardType": {
             "default": "VOCABULARY",
             "description": "What the deck's cards are; fixed once the deck exists.",
@@ -17435,10 +17480,6 @@
           "title": {
             "type": "string",
             "example": "Colours - Vocabulary Deck"
-          },
-          "isPublic": {
-            "type": "boolean",
-            "default": false
           },
           "tags": {
             "maxItems": 20,

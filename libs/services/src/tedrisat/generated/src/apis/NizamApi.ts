@@ -210,6 +210,11 @@ export interface SetPlatformPolicyRequest {
     setPlatformPolicyDto: SetPlatformPolicyDto;
 }
 
+export interface UnpublishDeckRequest {
+    id: string;
+    rejectReasonDto: RejectReasonDto;
+}
+
 export interface UpdatePermissionGroupRequest {
     id: string;
     updatePermissionGroupDto: UpdatePermissionGroupDto;
@@ -1047,7 +1052,7 @@ export class NizamApi extends runtime.BaseAPI {
     }
 
     /**
-     * The members\' requests to make a deck public, oldest waiting first, or the answered ones, newest first, a page at a time. Both tab counts (every request, not the page) come with it. The Medaris başnazımı (SYSTEM_ADMIN) only.
+     * The members\' requests to make a deck public, oldest waiting first, or the answered ones, newest first, a page at a time. Both tab counts (every request, not the page) come with it. The Medaris başnazımı, or a Medaris nazımı holding platform.deck_publish.
      * Deck publish requests (Bekleyen / Karara bağlanan)
      */
     async listDeckPublishRequestsRaw(requestParameters: ListDeckPublishRequestsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DeckPublishRequestListResponse>> {
@@ -1086,7 +1091,7 @@ export class NizamApi extends runtime.BaseAPI {
     }
 
     /**
-     * The members\' requests to make a deck public, oldest waiting first, or the answered ones, newest first, a page at a time. Both tab counts (every request, not the page) come with it. The Medaris başnazımı (SYSTEM_ADMIN) only.
+     * The members\' requests to make a deck public, oldest waiting first, or the answered ones, newest first, a page at a time. Both tab counts (every request, not the page) come with it. The Medaris başnazımı, or a Medaris nazımı holding platform.deck_publish.
      * Deck publish requests (Bekleyen / Karara bağlanan)
      */
     async listDeckPublishRequests(requestParameters: ListDeckPublishRequestsRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DeckPublishRequestListResponse> {
@@ -1464,6 +1469,59 @@ export class NizamApi extends runtime.BaseAPI {
     async setPlatformPolicy(requestParameters: SetPlatformPolicyRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PlatformPolicyListResponse> {
         const response = await this.setPlatformPolicyRaw(requestParameters, initOverrides);
         return await response.value();
+    }
+
+    /**
+     * The deck becomes private again and the reason goes to its owner, who may ask again. The reason is required. The Medaris başnazımı (SYSTEM_ADMIN) only; the change is written to the audit log (`deck.unpublish`).
+     * Take a published deck back (Yayından kaldır)
+     */
+    async unpublishDeckRaw(requestParameters: UnpublishDeckRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling unpublishDeck().'
+            );
+        }
+
+        if (requestParameters['rejectReasonDto'] == null) {
+            throw new runtime.RequiredError(
+                'rejectReasonDto',
+                'Required parameter "rejectReasonDto" was null or undefined when calling unpublishDeck().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/nizam/deck-publish-requests/{id}/unpublish`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: RejectReasonDtoToJSON(requestParameters['rejectReasonDto']),
+        }, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * The deck becomes private again and the reason goes to its owner, who may ask again. The reason is required. The Medaris başnazımı (SYSTEM_ADMIN) only; the change is written to the audit log (`deck.unpublish`).
+     * Take a published deck back (Yayından kaldır)
+     */
+    async unpublishDeck(requestParameters: UnpublishDeckRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.unpublishDeckRaw(requestParameters, initOverrides);
     }
 
     /**
