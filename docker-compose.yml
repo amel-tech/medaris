@@ -282,6 +282,7 @@ services:
       TEDRISAT_API_BASE_URL: http://tedrisat:3001
       NIZAM_URL: ${TEDRIS__NIZAM_URL:-}
       NAZIR_URL: ${TEDRIS__NAZIR_URL:-}
+      LANDING_URL: ${TEDRIS__LANDING_URL:-${WEB__LANDING_URL:-}}
     depends_on:
       - tedrisat
 
@@ -304,6 +305,7 @@ services:
       TEDRISAT_API_BASE_URL: http://tedrisat:3001
       NAZIR_URL: ${NIZAM__NAZIR_URL:-}
       TEDRIS_URL: ${NIZAM__TEDRIS_URL:-}
+      LANDING_URL: ${NIZAM__LANDING_URL:-${WEB__LANDING_URL:-}}
     depends_on:
       - tedrisat
 
