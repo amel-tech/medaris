@@ -23,8 +23,10 @@ vi.mock("next/font/google", () => {
 
 const LANDING = join(__dirname, "..");
 const REPO = join(LANDING, "..", "..");
-const CONTENT_FILE = join(LANDING, "content", "aydinlatma-metni.ts");
 
+// The controller's former placeholders (MDRS-102). The owner removed the
+// title, address, KEP and MERSİS for now (4 October); none may come back as
+// a bracketed placeholder.
 const PLACEHOLDERS = [
   "[Veri sorumlusu unvanı]",
   "[Adres]",
@@ -143,23 +145,17 @@ describe("the privacy notice page (MDRS-102)", () => {
   });
 });
 
-describe("the controller placeholders (MDRS-102)", () => {
-  it("are all in CONTROLLER, and all on the page", () => {
-    expect(Object.values(CONTROLLER).sort()).toEqual([...PLACEHOLDERS].sort());
-    for (const placeholder of PLACEHOLDERS) {
-      expect(text).toContain(placeholder);
-    }
+describe("the controller (MDRS-102)", () => {
+  it("is named by its e-mail address, selam@medaris.app, on the page", () => {
+    expect(CONTROLLER).toEqual({ email: "selam@medaris.app" });
+    expect(text).toContain("E-posta: selam@medaris.app");
+    expect(text).toContain("adresinizden selam@medaris.app adresine");
   });
 
-  it("are each written exactly once, in the content file, and nowhere else", () => {
-    const content = readFileSync(CONTENT_FILE, "utf8");
-    for (const placeholder of PLACEHOLDERS) {
-      expect(content.split(placeholder).length - 1, placeholder).toBe(1);
-    }
-
+  it("leaves no bracketed placeholder on the page or in the workspace's source", () => {
+    expect(text).not.toMatch(/\[[^\]]+\]/);
     const elsewhere = ["apps", "libs", "config"]
       .flatMap((dir) => sourceFiles(join(REPO, dir)))
-      .filter((file) => file !== CONTENT_FILE)
       .filter((file) => !file.endsWith("privacy-notice.spec.ts"))
       .filter((file) => {
         const source = readFileSync(file, "utf8");
@@ -167,6 +163,20 @@ describe("the controller placeholders (MDRS-102)", () => {
       })
       .map((file) => relative(REPO, file));
     expect(elsewhere).toEqual([]);
+  });
+});
+
+describe("the draft note (owner, 4 October)", () => {
+  it("shows in development and never in a production build", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.resetModules();
+    const { IS_DRAFT } = await import("../content/aydinlatma-metni");
+    expect(IS_DRAFT).toBe(false);
+    vi.stubEnv("NODE_ENV", "development");
+    vi.resetModules();
+    const dev = await import("../content/aydinlatma-metni");
+    expect(dev.IS_DRAFT).toBe(true);
+    vi.unstubAllEnvs();
   });
 });
 
