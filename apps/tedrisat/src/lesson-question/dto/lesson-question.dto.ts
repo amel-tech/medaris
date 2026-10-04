@@ -40,6 +40,20 @@ export class AnswerLessonQuestionDto {
   body!: string;
 }
 
+/** `PATCH /questions/:questionId` (MDRS-150): the same limits as asking. */
+export class UpdateLessonQuestionDto {
+  @ApiProperty({
+    minLength: 1,
+    maxLength: LESSON_QUESTION_BODY_MAX,
+    description: BODY_DESCRIPTION,
+  })
+  @Transform(trimmed)
+  @IsString()
+  @MinLength(1)
+  @MaxLength(LESSON_QUESTION_BODY_MAX)
+  body!: string;
+}
+
 /** A person named on a question: who asked it, who answered it. */
 export class QuestionPersonResponse {
   @ApiProperty({ format: "uuid" })
@@ -97,4 +111,33 @@ export class LessonQuestionResponse {
 export class CourseQuestionResponse extends LessonQuestionResponse {
   @ApiProperty({ type: QuestionPersonResponse })
   author!: QuestionPersonResponse;
+}
+
+const NEXT_CURSOR_DESCRIPTION =
+  "Pass as `cursor` for the next page; null on the last page. Opaque.";
+
+/** One page of the author's own questions, newest first. */
+export class PaginatedLessonQuestionResponse {
+  @ApiProperty({ type: LessonQuestionResponse, isArray: true })
+  items!: LessonQuestionResponse[];
+
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    description: NEXT_CURSOR_DESCRIPTION,
+  })
+  nextCursor!: string | null;
+}
+
+/** One page of a course's questions for the staff, those waiting first. */
+export class PaginatedCourseQuestionResponse {
+  @ApiProperty({ type: CourseQuestionResponse, isArray: true })
+  items!: CourseQuestionResponse[];
+
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    description: NEXT_CURSOR_DESCRIPTION,
+  })
+  nextCursor!: string | null;
 }

@@ -11,12 +11,19 @@ import {
 import {
   Body,
   Controller,
+  DefaultValuePipe,
+  Delete,
   Get,
   Header,
+  HttpCode,
+  HttpStatus,
   Param,
+  ParseIntPipe,
   ParseUUIDPipe,
+  Patch,
   Post,
   Put,
+  Query,
   Req,
   UseGuards,
   UsePipes,
@@ -24,11 +31,14 @@ import {
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
+  ApiConflictResponse,
   ApiCreatedResponse,
   ApiForbiddenResponse,
+  ApiNoContentResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
+  ApiQuery,
   ApiTags,
 } from "@nestjs/swagger";
 import { AuthorizedRequest } from "../course/interfaces/authorized-request.interface";
@@ -38,10 +48,17 @@ import {
   AskLessonQuestionDto,
   CourseQuestionResponse,
   LessonQuestionResponse,
+  PaginatedCourseQuestionResponse,
+  PaginatedLessonQuestionResponse,
+  UpdateLessonQuestionDto,
 } from "./dto/lesson-question.dto";
 import { LessonQuestionNotFoundError } from "./errors/lesson-question-not-found.error";
 import { LessonQuestionRepository } from "./lesson-question.repository";
-import { LessonQuestionService } from "./lesson-question.service";
+import {
+  DEFAULT_PAGE_SIZE,
+  LessonQuestionService,
+  MAX_PAGE_SIZE,
+} from "./lesson-question.service";
 
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -61,6 +78,20 @@ const byQuestionCourse: AuthzResolve = async (req, moduleRef) => {
   if (!courseId) throw new LessonQuestionNotFoundError(questionId);
   return { entity: ENTITIES.COURSE, id: courseId };
 };
+
+const CURSOR_QUERY = {
+  name: "cursor",
+  required: false,
+  type: String,
+  description: "`nextCursor` of the previous page; left out for the first.",
+} as const;
+
+const LIMIT_QUERY = {
+  name: "limit",
+  required: false,
+  type: Number,
+  description: `1 to ${MAX_PAGE_SIZE}, larger values are lowered to it; default ${DEFAULT_PAGE_SIZE}.`,
+} as const;
 
 /**
  * A talebe's questions to the course staff (MDRS-150).
@@ -106,10 +137,16 @@ export class LessonQuestionController {
   @ApiOperation({
     summary: "The caller's own questions in a course, with their answers",
     description:
-      "Only the questions the caller asked, newest first, whoever else asked on the course and whatever has become of the caller's enrollment. What the author's Sorularım tab reads.",
+      "Only the questions the caller asked, newest first, whoever else asked on the course and whatever has become of the caller's enrollment. One page at a time: pass `nextCursor` as `cursor` for the next. What the author's Sorularım tab reads.",
     operationId: "listMyCourseQuestions",
   })
-  @ApiOkResponse({ type: [LessonQuestionResponse] })
+  @ApiQuery(CURSOR_QUERY)
+  @ApiQuery(LIMIT_QUERY)
+  @ApiOkResponse({ type: PaginatedLessonQuestionResponse })
+  @ApiBadRequestResponse({
+    description:
+      "A cursor this server did not issue (INVALID_QUESTION_CURSOR).",
+  })
   @ApiNotFoundResponse({ description: "COURSE_NOT_FOUND" })
   @Authz(SCOPES.VIEW, byParam(ENTITIES.COURSE))
   // Per-user answer; no shared cache may keep it.
@@ -117,18 +154,30 @@ export class LessonQuestionController {
   @Get("courses/:id/questions/mine")
   listOwn(
     @Req() request: AuthorizedRequest,
-    @Param("id", ParseUUIDPipe) id: string
-  ): Promise<LessonQuestionResponse[]> {
-    return this.service.listOwn(id, request.user.sub);
+    @Param("id", ParseUUIDPipe) id: string,
+    @Query("cursor") cursor: string | undefined,
+    @Query("limit", new DefaultValuePipe(DEFAULT_PAGE_SIZE), ParseIntPipe)
+    limit: number
+  ): Promise<PaginatedLessonQuestionResponse> {
+    return this.service.listOwn(id, request.user.sub, {
+      cursor: cursor || undefined,
+      limit,
+    });
   }
 
   @ApiOperation({
     summary: "The course's questions, for the people who answer them",
     description:
-      "Every question asked in the course, those still waiting first and oldest first, with who asked. `question.answer`: the müderris by default, a ders nazırı when given it, and the catalogue's other holders (the köşk nazımı through `course.manage_all`, the başnazım). 403 for anyone else, a talebe included.",
+      "Every question asked in the course, those still waiting first and oldest first, with who asked, one page at a time: pass `nextCursor` as `cursor` for the next. `question.answer`: the müderris by default, a ders nazırı when given it, and the catalogue's other holders (the köşk nazımı through `course.manage_all`, the başnazım). 403 for anyone else, a talebe included.",
     operationId: "listCourseQuestions",
   })
-  @ApiOkResponse({ type: [CourseQuestionResponse] })
+  @ApiQuery(CURSOR_QUERY)
+  @ApiQuery(LIMIT_QUERY)
+  @ApiOkResponse({ type: PaginatedCourseQuestionResponse })
+  @ApiBadRequestResponse({
+    description:
+      "A cursor this server did not issue (INVALID_QUESTION_CURSOR).",
+  })
   @ApiForbiddenResponse({ description: "AUTHZ_FORBIDDEN" })
   @ApiNotFoundResponse({ description: "COURSE_NOT_FOUND" })
   @Authz(SCOPES.VIEW, byParam(ENTITIES.COURSE))
@@ -137,9 +186,15 @@ export class LessonQuestionController {
   @Get("courses/:id/questions")
   list(
     @Req() request: AuthorizedRequest,
-    @Param("id", ParseUUIDPipe) id: string
-  ): Promise<CourseQuestionResponse[]> {
-    return this.service.listForStaff(id, request.user);
+    @Param("id", ParseUUIDPipe) id: string,
+    @Query("cursor") cursor: string | undefined,
+    @Query("limit", new DefaultValuePipe(DEFAULT_PAGE_SIZE), ParseIntPipe)
+    limit: number
+  ): Promise<PaginatedCourseQuestionResponse> {
+    return this.service.listForStaff(id, request.user, {
+      cursor: cursor || undefined,
+      limit,
+    });
   }
 
   @ApiOperation({
@@ -160,5 +215,45 @@ export class LessonQuestionController {
     @Body() dto: AnswerLessonQuestionDto
   ): Promise<CourseQuestionResponse> {
     return this.service.answer(questionId, request.user, dto);
+  }
+
+  @ApiOperation({
+    summary: "Edit the caller's own question",
+    description:
+      "While nobody has answered it: the answer belongs to the question as it was asked, so an answered question is 409. The same rule as asking otherwise: an enrolled talebe only, and `body` is Markdown, 1 to 4000 characters after trimming. 404 for a question the caller did not ask, the staff's included, as for one that does not exist.",
+    operationId: "updateLessonQuestion",
+  })
+  @ApiOkResponse({ type: LessonQuestionResponse })
+  @ApiBadRequestResponse({ description: "Field validation" })
+  @ApiForbiddenResponse({ description: "LESSON_QUESTION_FORBIDDEN" })
+  @ApiNotFoundResponse({ description: "LESSON_QUESTION_NOT_FOUND" })
+  @ApiConflictResponse({ description: "LESSON_QUESTION_ANSWERED" })
+  @Authz(SCOPES.VIEW, byQuestionCourse)
+  @UsePipes(new MedarisValidationPipe({ transform: true }))
+  @Patch("questions/:questionId")
+  update(
+    @Req() request: AuthorizedRequest,
+    @Param("questionId", ParseUUIDPipe) questionId: string,
+    @Body() dto: UpdateLessonQuestionDto
+  ): Promise<LessonQuestionResponse> {
+    return this.service.update(questionId, request.user.sub, dto);
+  }
+
+  @ApiOperation({
+    summary: "Delete the caller's own question",
+    description:
+      "At any time, whether or not it is answered; the answer goes with it and there is no history. Needs no enrollment, so a talebe who was removed can still delete what they asked. 404 for a question the caller did not ask, the staff's included, as for one that does not exist.",
+    operationId: "deleteLessonQuestion",
+  })
+  @ApiNoContentResponse()
+  @ApiNotFoundResponse({ description: "LESSON_QUESTION_NOT_FOUND" })
+  @Authz(SCOPES.VIEW, byQuestionCourse)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Delete("questions/:questionId")
+  remove(
+    @Req() request: AuthorizedRequest,
+    @Param("questionId", ParseUUIDPipe) questionId: string
+  ): Promise<void> {
+    return this.service.remove(questionId, request.user.sub);
   }
 }

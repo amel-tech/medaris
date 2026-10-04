@@ -1,6 +1,6 @@
 import { ROLES } from "@medaris/common";
 import { INestApplication } from "@nestjs/common";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import request from "supertest";
 import { purgeCourses } from "../../src/course/course-purge";
 import { CourseStatus } from "../../src/course/domain/course-status.enum";
@@ -24,6 +24,7 @@ import {
 import { ASSIGNED_ROLES } from "../../src/database/schema/role-assignment.schema";
 import { users } from "../../src/database/schema/user.schema";
 import { LESSON_QUESTION_BODY_MAX } from "../../src/lesson-question/dto/lesson-question.dto";
+import { MAX_PAGE_SIZE } from "../../src/lesson-question/lesson-question.service";
 import { createTestApp } from "../helpers/test-app.helper";
 import {
   assignRole,
@@ -88,22 +89,32 @@ describe("a talebe's questions to the course staff (MDRS-150, e2e)", () => {
       .post(`/lessons/${onLesson}/questions`)
       .set("Authorization", as(sub))
       .send(body as object);
-  const mine = (inCourse: string, sub: string) =>
+  const mine = (inCourse: string, sub: string, query = "") =>
     http()
-      .get(`/courses/${inCourse}/questions/mine`)
+      .get(`/courses/${inCourse}/questions/mine${query}`)
       .set("Authorization", as(sub));
-  const queue = (inCourse: string, sub: string) =>
-    http().get(`/courses/${inCourse}/questions`).set("Authorization", as(sub));
+  const queue = (inCourse: string, sub: string, query = "") =>
+    http()
+      .get(`/courses/${inCourse}/questions${query}`)
+      .set("Authorization", as(sub));
   const answer = (questionId: string, sub: string, body: unknown) =>
     http()
       .put(`/questions/${questionId}/answer`)
       .set("Authorization", as(sub))
       .send(body as object);
 
+  const edit = (questionId: string, sub: string, body: unknown) =>
+    http()
+      .patch(`/questions/${questionId}`)
+      .set("Authorization", as(sub))
+      .send(body as object);
+  const remove = (questionId: string, sub: string) =>
+    http().delete(`/questions/${questionId}`).set("Authorization", as(sub));
+
   /** A question written straight into the table. */
   const seed = async (
     authorId: string,
-    values: { body?: string; lessonId?: string } = {}
+    values: { body?: string; lessonId?: string; createdAt?: Date } = {}
   ) => {
     const [row] = await db()
       .insert(lessonQuestions)
@@ -111,10 +122,25 @@ describe("a talebe's questions to the course staff (MDRS-150, e2e)", () => {
         lessonId: values.lessonId ?? lessonId,
         authorId,
         body: values.body ?? QUESTION,
+        ...(values.createdAt ? { createdAt: values.createdAt } : {}),
       })
       .returning();
     return row;
   };
+
+  /** Marks a stored question as answered, as the answer route would. */
+  const markAnswered = (questionId: string) =>
+    db()
+      .update(lessonQuestions)
+      .set({
+        answer: ANSWER,
+        answeredBy: MUDERRIS_ID,
+        answeredAt: new Date(),
+      })
+      .where(eq(lessonQuestions.id, questionId));
+
+  const bodies = (res: { body: { items: Array<{ body: string }> } }) =>
+    res.body.items.map((q) => q.body);
 
   const stored = () => db().select().from(lessonQuestions);
 
@@ -360,7 +386,7 @@ describe("a talebe's questions to the course staff (MDRS-150, e2e)", () => {
       expect(res.body).not.toHaveProperty("authorId");
 
       const own = await mine(courseId, sub).expect(200);
-      expect(own.body).toEqual([res.body]);
+      expect(own.body).toEqual({ items: [res.body], nextCursor: null });
       expect(own.headers["cache-control"]).toBe("private, no-store");
       expect(await stored()).toHaveLength(1);
     });
@@ -428,18 +454,21 @@ describe("a talebe's questions to the course staff (MDRS-150, e2e)", () => {
       HOLDERS
     )("shows the course's questions to %s", async (_who, sub) => {
       const res = await queue(courseId, sub).expect(200);
-      expect(res.body).toEqual([
-        {
-          id: expect.any(String),
-          lessonId,
-          lessonTitle: "Birinci celse",
-          weekNumber: 2,
-          body: QUESTION,
-          createdAt: expect.any(String),
-          author: { id: TALEBE_ID, name: null },
-          answer: null,
-        },
-      ]);
+      expect(res.body).toEqual({
+        items: [
+          {
+            id: expect.any(String),
+            lessonId,
+            lessonTitle: "Birinci celse",
+            weekNumber: 2,
+            body: QUESTION,
+            createdAt: expect.any(String),
+            author: { id: TALEBE_ID, name: null },
+            answer: null,
+          },
+        ],
+        nextCursor: null,
+      });
       expect(res.headers["cache-control"]).toBe("private, no-store");
     });
 
@@ -466,7 +495,7 @@ describe("a talebe's questions to the course staff (MDRS-150, e2e)", () => {
       await seed(OTHER_TALEBE_ID, { body: "İkinci soru" });
       const res = await queue(courseId, MUDERRIS_ID).expect(200);
       const byAuthor = Object.fromEntries(
-        res.body.map((q: { author: { id: string; name: string } }) => [
+        res.body.items.map((q: { author: { id: string; name: string } }) => [
           q.author.id,
           q.author.name,
         ])
@@ -483,12 +512,14 @@ describe("a talebe's questions to the course staff (MDRS-150, e2e)", () => {
         body: "Nahiv sorusu",
       });
       const res = await queue(courseId, MUDERRIS_ID).expect(200);
-      expect(res.body.map((q: { body: string }) => q.body)).toEqual([QUESTION]);
+      expect(res.body.items.map((q: { body: string }) => q.body)).toEqual([
+        QUESTION,
+      ]);
       // The müderris of the other course reads that one, and only that one.
       const foreign = await queue(foreignCourseId, FOREIGN_MUDERRIS_ID).expect(
         200
       );
-      expect(foreign.body.map((q: { body: string }) => q.body)).toEqual([
+      expect(foreign.body.items.map((q: { body: string }) => q.body)).toEqual([
         "Nahiv sorusu",
       ]);
       await queue(courseId, FOREIGN_MUDERRIS_ID).expect(403);
@@ -507,7 +538,7 @@ describe("a talebe's questions to the course staff (MDRS-150, e2e)", () => {
       await seed(TALEBE_ID, { body: "Beklemede bir" });
       await seed(OTHER_TALEBE_ID, { body: "Beklemede iki" });
       const res = await queue(courseId, MUDERRIS_ID).expect(200);
-      expect(res.body.map((q: { body: string }) => q.body)).toEqual([
+      expect(res.body.items.map((q: { body: string }) => q.body)).toEqual([
         "Beklemede bir",
         "Beklemede iki",
         QUESTION,
@@ -528,17 +559,17 @@ describe("a talebe's questions to the course staff (MDRS-150, e2e)", () => {
         STRANGER_ID,
       ]) {
         const res = await mine(courseId, sub).expect(200);
-        expect(res.body).toEqual([]);
+        expect(res.body).toEqual({ items: [], nextCursor: null });
       }
       const own = await mine(courseId, TALEBE_ID).expect(200);
-      expect(own.body).toHaveLength(1);
+      expect(own.body.items).toHaveLength(1);
     });
 
     it("lists only the caller's questions when two talebe have asked", async () => {
       await seed(TALEBE_ID, { body: "Benim sorum" });
       await seed(OTHER_TALEBE_ID, { body: "Onun sorusu" });
       const res = await mine(courseId, TALEBE_ID).expect(200);
-      expect(res.body.map((q: { body: string }) => q.body)).toEqual([
+      expect(res.body.items.map((q: { body: string }) => q.body)).toEqual([
         "Benim sorum",
       ]);
     });
@@ -669,13 +700,13 @@ describe("a talebe's questions to the course staff (MDRS-150, e2e)", () => {
       await db()
         .insert(users)
         .values({ id: MUDERRIS_ID, givenName: "Mehmed", familyName: "Efendi" });
-      expect((await mine(courseId, TALEBE_ID).expect(200)).body[0].answer).toBe(
-        null
-      );
+      expect(
+        (await mine(courseId, TALEBE_ID).expect(200)).body.items[0].answer
+      ).toBe(null);
 
       await answer(question.id, MUDERRIS_ID, { body: ANSWER }).expect(200);
       const res = await mine(courseId, TALEBE_ID).expect(200);
-      expect(res.body).toEqual([
+      expect(res.body.items).toEqual([
         {
           id: question.id,
           lessonId,
@@ -696,7 +727,7 @@ describe("a talebe's questions to the course staff (MDRS-150, e2e)", () => {
       await seed(TALEBE_ID, { body: "Eski soru" });
       await seed(TALEBE_ID, { body: "Yeni soru", lessonId: otherLessonId });
       const res = await mine(courseId, TALEBE_ID).expect(200);
-      expect(res.body.map((q: { body: string }) => q.body)).toEqual([
+      expect(res.body.items.map((q: { body: string }) => q.body)).toEqual([
         "Yeni soru",
         "Eski soru",
       ]);
@@ -708,7 +739,414 @@ describe("a talebe's questions to the course staff (MDRS-150, e2e)", () => {
     ])("is still read by a talebe %s", async (_who, sub) => {
       await seed(sub);
       const res = await mine(courseId, sub).expect(200);
-      expect(res.body).toHaveLength(1);
+      expect(res.body.items).toHaveLength(1);
+    });
+  });
+
+  describe("editing one's own question", () => {
+    it("rewrites the text of an unanswered question, trimmed", async () => {
+      const question = await seed(TALEBE_ID);
+      const res = await edit(question.id, TALEBE_ID, {
+        body: "  Düzeltilmiş soru\n",
+      }).expect(200);
+      expect(res.body).toEqual({
+        id: question.id,
+        lessonId,
+        lessonTitle: "Birinci celse",
+        weekNumber: 2,
+        body: "Düzeltilmiş soru",
+        createdAt: expect.any(String),
+        answer: null,
+      });
+      expect(res.body).not.toHaveProperty("author");
+      const [row] = await stored();
+      expect(row.body).toBe("Düzeltilmiş soru");
+      expect(row.createdAt).toEqual(question.createdAt);
+    });
+
+    it("takes exactly the longest text and refuses a longer one", async () => {
+      const question = await seed(TALEBE_ID);
+      await edit(question.id, TALEBE_ID, {
+        body: "a".repeat(LESSON_QUESTION_BODY_MAX),
+      }).expect(200);
+      await edit(question.id, TALEBE_ID, {
+        body: "a".repeat(LESSON_QUESTION_BODY_MAX + 1),
+      }).expect(400);
+    });
+
+    it.each([
+      ["no text", {}],
+      ["blank text", { body: "  \n " }],
+      ["text that is not a string", { body: 7 }],
+      ["a key the route does not know", { body: QUESTION, answer: "Evet." }],
+      ["another author", { body: QUESTION, authorId: ADMIN_ID }],
+    ])("refuses %s with 400", async (_what, body) => {
+      const question = await seed(TALEBE_ID);
+      await edit(question.id, TALEBE_ID, body).expect(400);
+      const [row] = await stored();
+      expect(row.body).toBe(QUESTION);
+      expect(row.answer).toBeNull();
+    });
+
+    it.each([
+      ...HOLDERS,
+      ...OTHERS.filter(([, sub]) => sub !== TALEBE_ID),
+    ])("answers 404 to %s, who did not ask it, and changes nothing", async (_who, sub) => {
+      const question = await seed(TALEBE_ID);
+      const res = await edit(question.id, sub, {
+        body: "Başkasının yazısı",
+      }).expect(404);
+      expect(res.body.code).toBe("LESSON_QUESTION_NOT_FOUND");
+      expect(JSON.stringify(res.body)).not.toContain(QUESTION);
+      const [row] = await stored();
+      expect(row.body).toBe(QUESTION);
+    });
+
+    it("answers a question that does not exist, or a malformed id, with 404", async () => {
+      for (const sub of [TALEBE_ID, MUDERRIS_ID, ADMIN_ID]) {
+        const res = await edit(ABSENT_ID, sub, { body: QUESTION }).expect(404);
+        expect(res.body.code).toBe("LESSON_QUESTION_NOT_FOUND");
+      }
+      await edit("not-a-uuid", TALEBE_ID, { body: QUESTION }).expect(404);
+    });
+
+    it("refuses an answered question with 409 and keeps both texts", async () => {
+      const question = await seed(TALEBE_ID);
+      await answer(question.id, MUDERRIS_ID, { body: ANSWER }).expect(200);
+      const res = await edit(question.id, TALEBE_ID, {
+        body: "Başka bir soru",
+      }).expect(409);
+      expect(res.body.code).toBe("LESSON_QUESTION_ANSWERED");
+      const [row] = await stored();
+      expect(row).toMatchObject({ body: QUESTION, answer: ANSWER });
+    });
+
+    it("lets the author edit the same question more than once", async () => {
+      const question = await seed(TALEBE_ID);
+      await edit(question.id, TALEBE_ID, { body: "Bir" }).expect(200);
+      await edit(question.id, TALEBE_ID, { body: "İki" }).expect(200);
+      expect((await stored())[0].body).toBe("İki");
+    });
+
+    it.each([
+      ["whose access was withdrawn", REVOKED_ID],
+      ["who is barred from the course", BARRED_ID],
+    ])("refuses a talebe %s with 403, as when asking", async (_who, sub) => {
+      const question = await seed(sub);
+      const res = await edit(question.id, sub, { body: "Yeni" }).expect(403);
+      expect(res.body.code).toBe("LESSON_QUESTION_FORBIDDEN");
+      expect((await stored())[0].body).toBe(QUESTION);
+    });
+  });
+
+  describe("deleting one's own question", () => {
+    it("removes an unanswered question", async () => {
+      const question = await seed(TALEBE_ID);
+      await remove(question.id, TALEBE_ID).expect(204);
+      expect(await stored()).toHaveLength(0);
+      expect((await mine(courseId, TALEBE_ID).expect(200)).body.items).toEqual(
+        []
+      );
+    });
+
+    it("removes an answered question and its answer with it", async () => {
+      const question = await seed(TALEBE_ID);
+      const kept = await seed(TALEBE_ID, { body: "Kalan soru" });
+      await answer(question.id, MUDERRIS_ID, { body: ANSWER }).expect(200);
+      await remove(question.id, TALEBE_ID).expect(204);
+      const rows = await stored();
+      expect(rows.map((r) => r.id)).toEqual([kept.id]);
+      expect(JSON.stringify(rows)).not.toContain(ANSWER);
+      expect(
+        JSON.stringify((await queue(courseId, MUDERRIS_ID).expect(200)).body)
+      ).not.toContain(ANSWER);
+    });
+
+    it.each([
+      ["whose access was withdrawn", REVOKED_ID],
+      ["who is barred from the course", BARRED_ID],
+    ])("lets a talebe %s delete theirs", async (_who, sub) => {
+      const question = await seed(sub);
+      await remove(question.id, sub).expect(204);
+      expect(await stored()).toHaveLength(0);
+    });
+
+    it.each([
+      ...HOLDERS,
+      ...OTHERS.filter(([, sub]) => sub !== TALEBE_ID),
+    ])("answers 404 to %s, who did not ask it, and keeps the question", async (_who, sub) => {
+      const question = await seed(TALEBE_ID);
+      const res = await remove(question.id, sub).expect(404);
+      expect(res.body.code).toBe("LESSON_QUESTION_NOT_FOUND");
+      expect(await stored()).toHaveLength(1);
+    });
+
+    it("answers 404 to a second delete, to an absent id and to a malformed one", async () => {
+      const question = await seed(TALEBE_ID);
+      await remove(question.id, TALEBE_ID).expect(204);
+      await remove(question.id, TALEBE_ID).expect(404);
+      await remove(ABSENT_ID, TALEBE_ID).expect(404);
+      await remove("not-a-uuid", TALEBE_ID).expect(404);
+    });
+  });
+
+  describe("paging the lists", () => {
+    const at = (n: number) => new Date(Date.UTC(2026, 9, 1, 8, 0, n));
+
+    describe("the author's own list", () => {
+      it("answers 20 at a time by default, newest first, and ends with a null cursor", async () => {
+        for (let i = 0; i < 25; i++) {
+          await seed(TALEBE_ID, { body: `Soru ${i}`, createdAt: at(i) });
+        }
+        const first = await mine(courseId, TALEBE_ID).expect(200);
+        expect(first.body.items).toHaveLength(20);
+        expect(bodies(first)[0]).toBe("Soru 24");
+        expect(first.body.nextCursor).toEqual(expect.any(String));
+
+        const second = await mine(
+          courseId,
+          TALEBE_ID,
+          `?cursor=${first.body.nextCursor}`
+        ).expect(200);
+        expect(bodies(second)).toEqual([
+          "Soru 4",
+          "Soru 3",
+          "Soru 2",
+          "Soru 1",
+          "Soru 0",
+        ]);
+        expect(second.body.nextCursor).toBeNull();
+      });
+
+      it("has no cursor when the list fills the page exactly", async () => {
+        await seed(TALEBE_ID, { body: "Bir", createdAt: at(1) });
+        await seed(TALEBE_ID, { body: "İki", createdAt: at(2) });
+        const res = await mine(courseId, TALEBE_ID, "?limit=2").expect(200);
+        expect(bodies(res)).toEqual(["İki", "Bir"]);
+        expect(res.body.nextCursor).toBeNull();
+      });
+
+      it("answers an empty list with an empty page", async () => {
+        const res = await mine(courseId, TALEBE_ID, "?limit=2").expect(200);
+        expect(res.body).toEqual({ items: [], nextCursor: null });
+      });
+
+      it("walks questions that share a timestamp without a gap or a repeat", async () => {
+        const same = at(5);
+        for (let i = 0; i < 5; i++) {
+          await seed(TALEBE_ID, { body: `Aynı anda ${i}`, createdAt: same });
+        }
+        await seed(TALEBE_ID, { body: "Daha eski", createdAt: at(1) });
+        await seed(TALEBE_ID, { body: "Daha yeni", createdAt: at(9) });
+
+        const walked: string[] = [];
+        let cursor: string | null = null;
+        for (let pages = 0; pages < 10; pages++) {
+          const res = await mine(
+            courseId,
+            TALEBE_ID,
+            `?limit=2${cursor ? `&cursor=${cursor}` : ""}`
+          ).expect(200);
+          walked.push(...res.body.items.map((q: { id: string }) => q.id));
+          cursor = res.body.nextCursor;
+          if (!cursor) break;
+        }
+        const all = await mine(courseId, TALEBE_ID, "?limit=50").expect(200);
+        const expected = all.body.items.map((q: { id: string }) => q.id);
+        expect(walked).toEqual(expected);
+        expect(new Set(walked).size).toBe(7);
+        // Newest first; the tie is broken by the id, descending.
+        const tied = all.body.items
+          .filter((q: { body: string }) => q.body.startsWith("Aynı"))
+          .map((q: { id: string }) => q.id);
+        expect(tied).toEqual([...tied].sort().reverse());
+        expect(all.body.items[0].body).toBe("Daha yeni");
+        expect(all.body.items[6].body).toBe("Daha eski");
+      });
+
+      it("keeps the microseconds the database stores", async () => {
+        await db()
+          .insert(lessonQuestions)
+          .values([
+            {
+              lessonId,
+              authorId: TALEBE_ID,
+              body: "Bir",
+              createdAt:
+                sql`'2026-10-01 08:00:00.123456+00'::timestamptz` as never,
+            },
+            {
+              lessonId,
+              authorId: TALEBE_ID,
+              body: "İki",
+              createdAt:
+                sql`'2026-10-01 08:00:00.123789+00'::timestamptz` as never,
+            },
+          ]);
+        const first = await mine(courseId, TALEBE_ID, "?limit=1").expect(200);
+        expect(bodies(first)).toEqual(["İki"]);
+        const second = await mine(
+          courseId,
+          TALEBE_ID,
+          `?limit=1&cursor=${first.body.nextCursor}`
+        ).expect(200);
+        expect(bodies(second)).toEqual(["Bir"]);
+        expect(second.body.nextCursor).toBeNull();
+      });
+
+      it("lowers a limit above the maximum to it, and raises one below 1", async () => {
+        for (let i = 0; i < MAX_PAGE_SIZE + 2; i++) {
+          await seed(TALEBE_ID, { body: `Soru ${i}`, createdAt: at(i) });
+        }
+        const big = await mine(courseId, TALEBE_ID, "?limit=1000").expect(200);
+        expect(big.body.items).toHaveLength(MAX_PAGE_SIZE);
+        expect(big.body.nextCursor).toEqual(expect.any(String));
+        const zero = await mine(courseId, TALEBE_ID, "?limit=0").expect(200);
+        expect(zero.body.items).toHaveLength(1);
+      });
+
+      it("refuses a limit that is not a number with 400", async () => {
+        await mine(courseId, TALEBE_ID, "?limit=many").expect(400);
+      });
+
+      it.each([
+        ["not base64", "%%%"],
+        ["not the shape", Buffer.from("hello").toString("base64url")],
+        [
+          "an unknown flag",
+          Buffer.from(`2|2026-10-01 08:00:00+00|${ABSENT_ID}`).toString(
+            "base64url"
+          ),
+        ],
+        [
+          "a malformed id",
+          Buffer.from("0|2026-10-01 08:00:00+00|nope").toString("base64url"),
+        ],
+        [
+          "a malformed time",
+          Buffer.from(`0|yesterday|${ABSENT_ID}`).toString("base64url"),
+        ],
+      ])("refuses a cursor that is %s with INVALID_QUESTION_CURSOR", async (_what, cursor) => {
+        const own = await mine(courseId, TALEBE_ID, `?cursor=${cursor}`);
+        const staff = await queue(courseId, MUDERRIS_ID, `?cursor=${cursor}`);
+        for (const res of [own, staff]) {
+          expect(res.status).toBe(400);
+          expect(res.body.code).toBe("INVALID_QUESTION_CURSOR");
+        }
+      });
+
+      it("pages only the caller's own questions, whoever else asked", async () => {
+        await seed(TALEBE_ID, { body: "Benim bir", createdAt: at(1) });
+        await seed(OTHER_TALEBE_ID, { body: "Onun", createdAt: at(2) });
+        await seed(TALEBE_ID, { body: "Benim iki", createdAt: at(3) });
+        const first = await mine(courseId, TALEBE_ID, "?limit=1").expect(200);
+        expect(bodies(first)).toEqual(["Benim iki"]);
+        const second = await mine(
+          courseId,
+          TALEBE_ID,
+          `?limit=1&cursor=${first.body.nextCursor}`
+        ).expect(200);
+        expect(bodies(second)).toEqual(["Benim bir"]);
+        expect(second.body.nextCursor).toBeNull();
+      });
+    });
+
+    describe("the staff list", () => {
+      it("answers 20 at a time by default and ends with a null cursor", async () => {
+        for (let i = 0; i < 21; i++) {
+          await seed(TALEBE_ID, { body: `Soru ${i}`, createdAt: at(i) });
+        }
+        const first = await queue(courseId, MUDERRIS_ID).expect(200);
+        expect(first.body.items).toHaveLength(20);
+        expect(bodies(first)[0]).toBe("Soru 0");
+        const second = await queue(
+          courseId,
+          MUDERRIS_ID,
+          `?cursor=${first.body.nextCursor}`
+        ).expect(200);
+        expect(bodies(second)).toEqual(["Soru 20"]);
+        expect(second.body.nextCursor).toBeNull();
+      });
+
+      it("keeps the waiting questions first across page boundaries", async () => {
+        const old = await seed(TALEBE_ID, {
+          body: "Eski cevaplı",
+          createdAt: at(1),
+        });
+        await markAnswered(old.id);
+        await seed(TALEBE_ID, { body: "Bekleyen bir", createdAt: at(2) });
+        await seed(OTHER_TALEBE_ID, { body: "Bekleyen iki", createdAt: at(3) });
+        const newer = await seed(TALEBE_ID, {
+          body: "Yeni cevaplı",
+          createdAt: at(4),
+        });
+        await markAnswered(newer.id);
+        await seed(TALEBE_ID, { body: "Bekleyen üç", createdAt: at(5) });
+
+        const walked: string[] = [];
+        let cursor: string | null = null;
+        for (let pages = 0; pages < 10; pages++) {
+          const res = await queue(
+            courseId,
+            MUDERRIS_ID,
+            `?limit=2${cursor ? `&cursor=${cursor}` : ""}`
+          ).expect(200);
+          walked.push(...bodies(res));
+          cursor = res.body.nextCursor;
+          if (!cursor) break;
+        }
+        expect(walked).toEqual([
+          "Bekleyen bir",
+          "Bekleyen iki",
+          "Bekleyen üç",
+          "Eski cevaplı",
+          "Yeni cevaplı",
+        ]);
+      });
+
+      it("walks questions that share a timestamp without a gap or a repeat", async () => {
+        const same = at(5);
+        for (let i = 0; i < 5; i++) {
+          await seed(i % 2 ? TALEBE_ID : OTHER_TALEBE_ID, {
+            body: `Aynı anda ${i}`,
+            createdAt: same,
+          });
+        }
+        const walked: string[] = [];
+        let cursor: string | null = null;
+        for (let pages = 0; pages < 10; pages++) {
+          const res = await queue(
+            courseId,
+            MUDERRIS_ID,
+            `?limit=2${cursor ? `&cursor=${cursor}` : ""}`
+          ).expect(200);
+          walked.push(...res.body.items.map((q: { id: string }) => q.id));
+          cursor = res.body.nextCursor;
+          if (!cursor) break;
+        }
+        const all = await queue(courseId, MUDERRIS_ID, "?limit=50").expect(200);
+        expect(walked).toEqual(all.body.items.map((q: { id: string }) => q.id));
+        expect(new Set(walked).size).toBe(5);
+        // Oldest first; the tie is broken by the id, ascending.
+        expect(walked).toEqual([...walked].sort());
+      });
+
+      it("lowers a limit above the maximum to it", async () => {
+        for (let i = 0; i < MAX_PAGE_SIZE + 1; i++) {
+          await seed(TALEBE_ID, { body: `Soru ${i}`, createdAt: at(i) });
+        }
+        const res = await queue(courseId, MUDERRIS_ID, "?limit=1000").expect(
+          200
+        );
+        expect(res.body.items).toHaveLength(MAX_PAGE_SIZE);
+        expect(res.body.nextCursor).toEqual(expect.any(String));
+      });
+
+      it("refuses a caller who may not answer, with or without a cursor", async () => {
+        await seed(TALEBE_ID);
+        await queue(courseId, TALEBE_ID, "?limit=1").expect(403);
+        await queue(courseId, STRANGER_ID, "?limit=1").expect(403);
+      });
     });
   });
 

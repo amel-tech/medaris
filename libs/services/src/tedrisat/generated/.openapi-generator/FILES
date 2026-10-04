@@ -277,7 +277,9 @@ src/models/NotificationResponse.ts
 src/models/OffsiteCourseRequestResponse.ts
 src/models/OpenMadrasahCourseDto.ts
 src/models/PaginatedArchiveResponse.ts
+src/models/PaginatedCourseQuestionResponse.ts
 src/models/PaginatedKoskResponse.ts
+src/models/PaginatedLessonQuestionResponse.ts
 src/models/PaginatedMadrasahArchiveResponse.ts
 src/models/PaginatedMadrasahResponse.ts
 src/models/PaginatedNotificationResponse.ts
@@ -345,6 +347,7 @@ src/models/UpdateKoskDto.ts
 src/models/UpdateKoskGrantDto.ts
 src/models/UpdateLessonDto.ts
 src/models/UpdateLessonNoteDto.ts
+src/models/UpdateLessonQuestionDto.ts
 src/models/UpdateMadrasahDto.ts
 src/models/UpdateMadrasahPermissionGroupDto.ts
 src/models/UpdateMadrasahSettingsDto.ts

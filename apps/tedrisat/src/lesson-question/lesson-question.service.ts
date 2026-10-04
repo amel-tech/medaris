@@ -9,13 +9,30 @@ import type {
   AnswerLessonQuestionDto,
   AskLessonQuestionDto,
   LessonQuestionResponse,
+  UpdateLessonQuestionDto,
 } from "./dto/lesson-question.dto";
+import { LessonQuestionAnsweredError } from "./errors/lesson-question-answered.error";
 import { LessonQuestionForbiddenError } from "./errors/lesson-question-forbidden.error";
 import { LessonQuestionNotFoundError } from "./errors/lesson-question-not-found.error";
 import {
   type ILessonQuestion,
   LessonQuestionRepository,
 } from "./lesson-question.repository";
+import {
+  decodeQuestionCursor,
+  encodeQuestionCursor,
+} from "./lesson-question-cursor";
+
+export const DEFAULT_PAGE_SIZE = 20;
+export const MAX_PAGE_SIZE = 50;
+
+/** A page of questions with the cursor of the next one, null on the last. */
+export interface IPage<T> {
+  items: T[];
+  nextCursor: string | null;
+}
+
+const clamp = (limit: number) => Math.min(Math.max(limit, 1), MAX_PAGE_SIZE);
 
 /** A question as its author reads it: without the author's own name. */
 const own = ({ author: _author, ...question }: ILessonQuestion) =>
@@ -61,18 +78,72 @@ export class LessonQuestionService {
 
   async listOwn(
     courseId: string,
-    userId: string
-  ): Promise<LessonQuestionResponse[]> {
-    return (await this.questions.findByAuthor(courseId, userId)).map(own);
+    userId: string,
+    options: { cursor?: string; limit: number }
+  ): Promise<IPage<LessonQuestionResponse>> {
+    const { items, next } = await this.questions.findByAuthor(
+      courseId,
+      userId,
+      options.cursor ? decodeQuestionCursor(options.cursor) : null,
+      clamp(options.limit)
+    );
+    return {
+      items: items.map(own),
+      nextCursor: next ? encodeQuestionCursor(next) : null,
+    };
   }
 
   /** The course's questions, for whoever may answer them; 403 for anyone else. */
   async listForStaff(
     courseId: string,
-    user: AuthenticatedUser
-  ): Promise<ILessonQuestion[]> {
+    user: AuthenticatedUser,
+    options: { cursor?: string; limit: number }
+  ): Promise<IPage<ILessonQuestion>> {
     await this.access.assert(user, courseId, PERMISSIONS.QUESTION_ANSWER);
-    return this.questions.findByCourse(courseId);
+    const { items, next } = await this.questions.findByCourse(
+      courseId,
+      options.cursor ? decodeQuestionCursor(options.cursor) : null,
+      clamp(options.limit)
+    );
+    return { items, nextCursor: next ? encodeQuestionCursor(next) : null };
+  }
+
+  /**
+   * Rewrites the author's own question while it is unanswered. 404 for a
+   * question somebody else asked, the staff's included, as for one that is not
+   * there. The author must still be enrolled, as when asking; an answered
+   * question is 409, because the answer belongs to the question as asked.
+   */
+  async update(
+    questionId: string,
+    userId: string,
+    dto: UpdateLessonQuestionDto
+  ): Promise<LessonQuestionResponse> {
+    const owner = await this.questions.findOwnership(questionId);
+    if (!owner || owner.authorId !== userId) {
+      throw new LessonQuestionNotFoundError(questionId);
+    }
+    if (!(await this.talebe.isActive(userId, owner.courseId))) {
+      throw new LessonQuestionForbiddenError();
+    }
+    if (!(await this.questions.updateBody(questionId, userId, dto.body))) {
+      // Answered, or gone, since the check above.
+      const now = await this.questions.findOwnership(questionId);
+      throw now?.authorId === userId
+        ? new LessonQuestionAnsweredError(questionId)
+        : new LessonQuestionNotFoundError(questionId);
+    }
+    return own((await this.questions.findOne(questionId)) as ILessonQuestion);
+  }
+
+  /**
+   * Deletes the author's own question, its answer with it, at any time and
+   * whatever has become of their enrollment. 404 for anyone else's.
+   */
+  async remove(questionId: string, userId: string): Promise<void> {
+    if (!(await this.questions.remove(questionId, userId))) {
+      throw new LessonQuestionNotFoundError(questionId);
+    }
   }
 
   /**

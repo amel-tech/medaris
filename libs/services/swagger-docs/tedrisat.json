@@ -7588,13 +7588,31 @@
     },
     "/courses/{id}/questions/mine": {
       "get": {
-        "description": "Only the questions the caller asked, newest first, whoever else asked on the course and whatever has become of the caller's enrollment. What the author's Sorularım tab reads.",
+        "description": "Only the questions the caller asked, newest first, whoever else asked on the course and whatever has become of the caller's enrollment. One page at a time: pass `nextCursor` as `cursor` for the next. What the author's Sorularım tab reads.",
         "operationId": "listMyCourseQuestions",
         "parameters": [
           {
             "name": "id",
             "required": true,
             "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "1 to 50, larger values are lowered to it; default 20.",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "`nextCursor` of the previous page; left out for the first.",
             "schema": {
               "type": "string"
             }
@@ -7606,13 +7624,13 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/LessonQuestionResponse"
-                  }
+                  "$ref": "#/components/schemas/PaginatedLessonQuestionResponse"
                 }
               }
             }
+          },
+          "400": {
+            "description": "A cursor this server did not issue (INVALID_QUESTION_CURSOR)."
           },
           "404": {
             "description": "COURSE_NOT_FOUND"
@@ -7631,13 +7649,31 @@
     },
     "/courses/{id}/questions": {
       "get": {
-        "description": "Every question asked in the course, those still waiting first and oldest first, with who asked. `question.answer`: the müderris by default, a ders nazırı when given it, and the catalogue's other holders (the köşk nazımı through `course.manage_all`, the başnazım). 403 for anyone else, a talebe included.",
+        "description": "Every question asked in the course, those still waiting first and oldest first, with who asked, one page at a time: pass `nextCursor` as `cursor` for the next. `question.answer`: the müderris by default, a ders nazırı when given it, and the catalogue's other holders (the köşk nazımı through `course.manage_all`, the başnazım). 403 for anyone else, a talebe included.",
         "operationId": "listCourseQuestions",
         "parameters": [
           {
             "name": "id",
             "required": true,
             "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "1 to 50, larger values are lowered to it; default 20.",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "`nextCursor` of the previous page; left out for the first.",
             "schema": {
               "type": "string"
             }
@@ -7649,13 +7685,13 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/CourseQuestionResponse"
-                  }
+                  "$ref": "#/components/schemas/PaginatedCourseQuestionResponse"
                 }
               }
             }
+          },
+          "400": {
+            "description": "A cursor this server did not issue (INVALID_QUESTION_CURSOR)."
           },
           "403": {
             "description": "AUTHZ_FORBIDDEN"
@@ -7723,6 +7759,96 @@
           }
         ],
         "summary": "Answer a question, or replace the answer",
+        "tags": [
+          "lessons"
+        ]
+      }
+    },
+    "/questions/{questionId}": {
+      "patch": {
+        "description": "While nobody has answered it: the answer belongs to the question as it was asked, so an answered question is 409. The same rule as asking otherwise: an enrolled talebe only, and `body` is Markdown, 1 to 4000 characters after trimming. 404 for a question the caller did not ask, the staff's included, as for one that does not exist.",
+        "operationId": "updateLessonQuestion",
+        "parameters": [
+          {
+            "name": "questionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateLessonQuestionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LessonQuestionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Field validation"
+          },
+          "403": {
+            "description": "LESSON_QUESTION_FORBIDDEN"
+          },
+          "404": {
+            "description": "LESSON_QUESTION_NOT_FOUND"
+          },
+          "409": {
+            "description": "LESSON_QUESTION_ANSWERED"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Edit the caller's own question",
+        "tags": [
+          "lessons"
+        ]
+      },
+      "delete": {
+        "description": "At any time, whether or not it is answered; the answer goes with it and there is no history. Needs no enrollment, so a talebe who was removed can still delete what they asked. 404 for a question the caller did not ask, the staff's included, as for one that does not exist.",
+        "operationId": "deleteLessonQuestion",
+        "parameters": [
+          {
+            "name": "questionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "404": {
+            "description": "LESSON_QUESTION_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Delete the caller's own question",
         "tags": [
           "lessons"
         ]
@@ -18461,6 +18587,26 @@
           "answer"
         ]
       },
+      "PaginatedLessonQuestionResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LessonQuestionResponse"
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true,
+            "description": "Pass as `cursor` for the next page; null on the last page. Opaque."
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor"
+        ]
+      },
       "CourseQuestionResponse": {
         "type": "object",
         "properties": {
@@ -18513,7 +18659,41 @@
           "author"
         ]
       },
+      "PaginatedCourseQuestionResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CourseQuestionResponse"
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true,
+            "description": "Pass as `cursor` for the next page; null on the last page. Opaque."
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor"
+        ]
+      },
       "AnswerLessonQuestionDto": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000,
+            "description": "Markdown source, stored as typed and rendered by the client. Raw HTML is never rendered."
+          }
+        },
+        "required": [
+          "body"
+        ]
+      },
+      "UpdateLessonQuestionDto": {
         "type": "object",
         "properties": {
           "body": {
