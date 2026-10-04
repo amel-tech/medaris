@@ -211,6 +211,14 @@ describe("Deck publication (e2e)", () => {
       cards: 404,
       listed: false,
     });
+    // The last answer goes with the visibility: the approval above must not
+    // outlive the deck's publication.
+    expect(await rowOf(id)).toMatchObject({
+      publishRequestedAt: null,
+      publishDecidedAt: null,
+      publishDecidedBy: null,
+      publishRejectReason: null,
+    });
 
     // `is_public` and `publish_status` are one fact written twice.
     const drifted = await db().execute(
