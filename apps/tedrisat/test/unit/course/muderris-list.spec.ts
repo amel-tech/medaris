@@ -168,6 +168,14 @@ describe("boundAccountsAfterSave", () => {
     ).toEqual([]);
   });
 
+  it("drops the account of a row named by id that carries userId null, which the save writes as NULL", () => {
+    expect(
+      boundAccountsAfterSave(stored, [
+        { id: stored[0].id, userId: null, name: "Musa" },
+      ])
+    ).toEqual([]);
+  });
+
   it("counts an account the payload adds", () => {
     expect(boundAccountsAfterSave([], [{ userId: B, name: "Yeni" }])).toEqual([
       B,

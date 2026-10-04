@@ -737,6 +737,42 @@ describe("Opening scopes with their admins (MDRS-136, e2e)", () => {
       ).toEqual([AHMED]);
     });
 
+    it("refuses a stored row saved with userId null, which would unbind the last account, and writes nothing", async () => {
+      const before = await detail();
+      const res = await put(NAZIM_ID, `/courses/${courseId}`, {
+        title: "Çözülüyor",
+        version: before.version,
+        muderris: [{ id: before.muderris[0].id, userId: null, name: "Ahmed" }],
+      }).expect(400);
+      expect(res.body.code).toBe("MUDERRIS_LIST_INVALID");
+      expect((await detail()).version).toBe(before.version);
+      expect((await rows()).map((r) => r.userId)).toEqual([AHMED]);
+      expect(
+        (await db().select().from(courseMuderris)).map((m) => m.userId)
+      ).toEqual([AHMED]);
+    });
+
+    it("still lets a save unbind one account while another stays bound", async () => {
+      const before = await detail();
+      const withTwo = await put(NAZIM_ID, `/courses/${courseId}`, {
+        title: "Emsile",
+        version: before.version,
+        muderris: [
+          { id: before.muderris[0].id, name: "Ahmed" },
+          { userId: HASAN, name: "Hasan" },
+        ],
+      }).expect(200);
+      await put(NAZIM_ID, `/courses/${courseId}`, {
+        title: "Emsile",
+        version: withTwo.body.version,
+        muderris: [
+          { id: withTwo.body.muderris[0].id, userId: null, name: "Ahmed" },
+          { id: withTwo.body.muderris[1].id, name: "Hasan" },
+        ],
+      }).expect(200);
+      expect((await rows()).map((r) => r.userId)).toEqual([HASAN]);
+    });
+
     it("refuses a team left with no account, but keeps one whose row is named by id and carries no account", async () => {
       const before = await detail();
       const row = before.muderris[0];

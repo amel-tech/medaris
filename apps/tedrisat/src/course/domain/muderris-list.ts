@@ -109,6 +109,8 @@ export const boundAccountIds = (
  * The accounts the course's team is bound to once `next` is saved. A row that
  * names a stored row by `id` and leaves `userId` out keeps the stored account,
  * because `CourseRepository.replace` does not write a field the payload omits.
+ * A `userId: null` is written (Drizzle sets the column to NULL), so it unbinds
+ * the row: only `undefined` falls back to the stored account.
  */
 export const boundAccountsAfterSave = (
   current: readonly IMuderris[],
@@ -117,9 +119,10 @@ export const boundAccountsAfterSave = (
   boundAccountIds(
     next.map((row) => ({
       userId:
-        row.userId ??
-        current.find((m) => m.id.toLowerCase() === row.id?.toLowerCase())
-          ?.userId,
+        row.userId === undefined
+          ? current.find((m) => m.id.toLowerCase() === row.id?.toLowerCase())
+              ?.userId
+          : row.userId,
     }))
   );
 
