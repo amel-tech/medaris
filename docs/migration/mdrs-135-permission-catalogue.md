@@ -299,14 +299,11 @@ codes with a sentence: 56 of 75
 (The review of 3 October closed most of the earlier list; what is still open is here and under
 "Open questions".)
 
-- **The ban tiers** (`ban-tier.ts`, `BanService`) keep their own rule from the roles held; they are not
-  read from `ban.*` / `madrasah.ban` / `platform.ban_*`. `BanController` has `@UseGuards(AuthGuard)`
-  only, no `@Authz`. What follows from that, measured by the review: a Medaris nazımı or a ders nazırı
-  with no grant bans (`MAY_BAN_ROLES`), a medrese nazırı with no `madrasah.ban` lifts, widens and asks
-  for a permanent ban (`MAY_MODERATE_ROLES`, `MADRASAH_WIDE_ROLES`), a Medaris nazımı lists every ban
-  with its reason, and a granted `ban.course`, `ban.lift_course`, `ban.manage_kosk`, `madrasah.ban`,
-  `madrasah.permanent_ban_request` or `platform.ban_*` changes nothing. Pre-existing on main; left
-  untouched on purpose, see "Open questions" for what has to be decided first.
+- **The ban tiers** (`ban-tier.ts`, `BanService`) were left on the roles held by this branch (a Medaris
+  nazımı or a ders nazırı with no grant banned, a medrese nazırı with no `madrasah.ban` lifted, a Medaris
+  nazımı listed every ban, and a granted `ban.*` changed nothing). MDRS-205 moves them onto the
+  catalogue, once the owner had answered the questions below: see
+  `docs/migration/mdrs-205-bans-from-the-catalogue.md`.
 - **`GET /users/lookup`** is open to anyone holding any role (`AssignmentRepository.holdsAnyRole`), not
   to `user.lookup`. A grant-less medrese nazırı, ders nazırı or Medaris nazımı can resolve an e-mail
   to an account. Also left, for the reason under "Open questions".
@@ -549,6 +546,10 @@ appeals, admission rules, YouTube, the ban moves above, week hiding) or to the l
 kept grantable because nazir/06 and nizam/13 print them: removing one would change the 10, 20 and 11, 21
 the screens count.
 
+MDRS-205 then made five of them asked (`ban.manage_kosk`, `ban.course`, `ban.lift_course`,
+`platform.ban_account`, `madrasah.permanent_ban_request`: `BanService` asks them through `ban-codes.ts`),
+so 16 of the 21 are left; the list is not re-printed here.
+
 ## Decided by the owner
 
 **Answers of 3 and 4 October (decision box d-1003-06 … d-1004-01).**
@@ -556,7 +557,8 @@ the screens count.
 - **A başmüderris may ban in their medrese's courses (d-1003-06): "Evet".** The catalogue was right
   (`ban.course` is in their defaults) and the route (MDRS-133) was not. Making the route follow is
   **MDRS-205**, which is separate and not started; its second and third questions are parked as
-  d-1004-02 and d-1004-03. Nothing about bans changes in this branch.
+  d-1004-02 and d-1004-03. Nothing about bans changes in this branch; MDRS-205 builds it, with the
+  owner's answers to those two (`docs/migration/mdrs-205-bans-from-the-catalogue.md`).
 - **Hiding has a kademe (d-1003-07): "Elbette kademe var."** Built: see "Hide and restore by kademe".
 - **Closing the descendants on passive (d-1003-08)**: confirmed; the warning and the confirmation are
   MDRS-227, not built: see "Passive scopes".
@@ -631,12 +633,9 @@ every-course lift dropped, a group change left unchecked).
 
 ## Open questions
 
-1. **Bans through the catalogue** (MDRS-205, not started). The first question, may a başmüderris ban in
-   a course of their medrese, is answered yes (above). Parked as d-1004-02 and d-1004-03: which code
-   lifts a köşk-level, a medrese-level and a platform-level ban (the catalogue has `ban.lift_course` only
-   for the course; `ban.manage_kosk`, `madrasah.ban` and `platform.ban_scoped` each say "ban or lift"),
-   and what a Medaris nazımı holding only `platform.ban_scoped` does about a course ban, and whether
-   `platform.ban_account` (a closed account) needs anything the ban tables have.
+1. **Bans through the catalogue** (MDRS-205). Answered by the owner and built there: a başmüderris may
+   ban in its medrese's courses; the permission to ban at a level also lifts at that level; a Medaris
+   nazımı with only `platform.ban_scoped` may not impose or lift a course ban.
 2. **Who may look people up.** `user.lookup` is tagged for the köşk and the course; a Medaris nazımı
    cannot hold it, yet needs it to appoint a köşk nazımı, and a medrese nazırı given
    `madrasah.nazir_appoint` needs it to appoint a nazır.

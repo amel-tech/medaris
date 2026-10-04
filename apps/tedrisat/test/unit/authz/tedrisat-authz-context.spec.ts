@@ -192,4 +192,34 @@ describe("TedrisatAuthzContext", () => {
       expect(sqlOf(kind), kind).toContain("now()");
     }
   });
+
+  it("reads everything a caller holds in two statements, with no scope filter, for a list of places (MDRS-205)", async () => {
+    const { loader, queries } = build({
+      roles: [
+        ["MUDERRIS", "course", COURSE],
+        ["MEDARIS_NAZIM", "platform", null],
+      ],
+      grants: [["g1", "platform", null, "platform.ban_scoped", null, null]],
+    });
+    const held = await loader.holdings(USER);
+    expect(queries.map((q) => which(q.text)).sort()).toEqual(
+      ["grants", "roles"].sort()
+    );
+    expect(held.roles).toEqual([
+      { role: "MUDERRIS", scope: { type: "course", id: COURSE } },
+      { role: "MEDARIS_NAZIM", scope: { type: "platform", id: null } },
+    ]);
+    expect(held.grants).toEqual([
+      {
+        scope: { type: "platform", id: null },
+        authority: null,
+        codes: ["platform.ban_scoped"],
+      },
+    ]);
+    // Still decided against the database clock, but cut by no scope.
+    for (const query of queries) {
+      expect(query.text).toContain('"revoked_at" is null');
+      expect(query.text).not.toContain('"scope_id" in');
+    }
+  });
 });
