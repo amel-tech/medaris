@@ -1,4 +1,4 @@
-import { ROLES } from "@medaris/common";
+import { PERMISSIONS, ROLES } from "@medaris/common";
 import { INestApplication } from "@nestjs/common";
 import { and, eq } from "drizzle-orm";
 import request from "supertest";
@@ -7,6 +7,7 @@ import { auditLog } from "../../src/database/schema/audit.schema";
 import { courses } from "../../src/database/schema/course.schema";
 import { kosks } from "../../src/database/schema/kosk.schema";
 import { madrasahs } from "../../src/database/schema/madrasah.schema";
+import { permissionGrants } from "../../src/database/schema/permission.schema";
 import {
   ASSIGNED_ROLES,
   madrasahKoskHosting,
@@ -32,6 +33,7 @@ const HEAD_A = "d0000000-0000-4000-8000-000000000002";
 const HEAD_B = "d0000000-0000-4000-8000-000000000003";
 const STRANGER = "d0000000-0000-4000-8000-000000000004";
 const MANAGER = "d0000000-0000-4000-8000-000000000005";
+const MEDARIS = "d0000000-0000-4000-8000-000000000006";
 
 // Every request syncs the caller's profile from the token (MDRS-104); only
 // rows for people who never call stay as seeded.
@@ -77,6 +79,7 @@ describe("Medrese directory (e2e)", () => {
 
   beforeEach(async () => {
     await dbUtils.cleanTables(
+      "permission_grants",
       ...COURSE_TREE_TABLES,
       "madrasahs",
       "users",
@@ -285,6 +288,41 @@ describe("Medrese directory (e2e)", () => {
 
     it("refuses a caller with no token with 401", () =>
       http().get("/madrasahs/directory").expect(401));
+
+    it("opens to a Medaris nazımı by each permission the page acts on, and by no other (MDRS-108)", async () => {
+      await db().insert(roleAssignments).values({
+        userId: MEDARIS,
+        role: ASSIGNED_ROLES.MEDARIS_NAZIM,
+        scopeType: SCOPE_TYPES.PLATFORM,
+        scopeId: null,
+        grantedBy: ADMIN_ID,
+      });
+      const holding = async (permission: string) => {
+        await db().delete(permissionGrants);
+        await db().insert(permissionGrants).values({
+          userId: MEDARIS,
+          scopeType: SCOPE_TYPES.PLATFORM,
+          scopeId: null,
+          permission,
+          grantedBy: ADMIN_ID,
+        });
+        return http()
+          .get("/madrasahs/directory")
+          .set("Authorization", auth(MEDARIS));
+      };
+      for (const permission of [
+        PERMISSIONS.PLATFORM_MADRASAH_CREATE,
+        PERMISSIONS.PLATFORM_MADRASAH_EDIT,
+        // "Başmüderris ata" lives on this page alone.
+        PERMISSIONS.PLATFORM_HEAD_MUDERRIS_MANAGE,
+      ]) {
+        expect((await holding(permission)).status).toBe(200);
+      }
+      // Nothing on the page is a nazır grant: neither the page nor its menu item opens.
+      expect(
+        (await holding(PERMISSIONS.PLATFORM_MADRASAH_NAZIR_GRANT)).status
+      ).toBe(403);
+    });
 
     it("leaves a hidden medrese out of the open list and closes its page", async () => {
       const list = await http().get("/madrasahs").expect(200);

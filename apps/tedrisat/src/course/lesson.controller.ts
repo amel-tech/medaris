@@ -265,7 +265,9 @@ export class LessonController {
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()
   @Post("courses/:courseId/weeks/:weekId/lessons")
-  @Authz(PERMISSIONS.COURSE_EDIT, byParam(ENTITIES.COURSE, "courseId"))
+  // Adding a session is `session.manage` ("Celse ekle"), like the batch and
+  // every other session write here; `course.edit` is the course's text.
+  @Authz(PERMISSIONS.SESSION_MANAGE, byParam(ENTITIES.COURSE, "courseId"))
   @UsePipes(new MedarisValidationPipe({ transform: true }))
   async create(
     @Param("courseId", ParseUUIDPipe) courseId: string,

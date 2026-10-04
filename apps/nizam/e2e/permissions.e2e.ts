@@ -22,6 +22,10 @@ const KOSK_NAZIM = account("KOSK_NAZIM");
 const seedable = Boolean(process.env.E2E_DATABASE_URL);
 let fixture: PermissionsFixture;
 
+// The screen shows moments in the browser's zone unless the account has one:
+// pinned, the end dates below mean the same instant on any machine (MDRS-254).
+test.use({ timezoneId: "Europe/Istanbul" });
+
 test.beforeEach(async () => {
   if (!seedable) return;
   fixture = await seedPermissions();
@@ -82,7 +86,7 @@ const chooseOption = async (
 
 const daysFromNow = (n: number) => {
   const d = new Date(Date.now() + n * 24 * 3600 * 1000);
-  return d.toISOString().slice(0, 10);
+  return `${d.toISOString().slice(0, 10)}T12:00`;
 };
 
 test("nizam/11 — the list shows who is in office, in order, with their groups, single permissions, end and giver (criteria 1, 2, 3)", async ({
@@ -384,29 +388,33 @@ test("nizam/12 — an end date after the appointment's, or not in the future, is
     .getByRole("button", { name: /İzinleri düzenle/ })
     .click();
   const dialog = page.getByRole("dialog", { name: "İzinleri düzenle" });
-  const end = dialog.getByLabel("Bitiş tarihi (isteğe bağlı)");
+  const end = dialog.getByLabel("Bitiş tarihi ve saati (isteğe bağlı)");
   const save = dialog.getByRole("button", { name: "Kaydet" });
 
-  await expect(end).toHaveValue("2026-12-31");
+  await expect(end).toHaveValue("2026-12-31T23:59");
   await expect(dialog).toContainText(
-    "Atamanız 31 Aralık 2026 tarihinde bittiği için izin de en geç o gün biter."
+    "Atamanız 31 Aralık 2026 23:59 tarihinde bittiği için izin de en geç o zaman biter."
   );
 
-  await end.fill("2027-01-01");
+  await end.fill("2027-01-01T00:00");
   await expect(
     dialog.getByText(
-      "Bitiş tarihi atamanın bitişinden (31 Aralık 2026) sonra olamaz."
+      "Bitiş zamanı atamanın bitişinden (31 Aralık 2026 23:59) sonra olamaz."
     )
   ).toBeVisible();
   await expect(save).toBeDisabled();
 
-  await end.fill("2020-01-01");
+  await end.fill("2020-01-01T12:00");
   await expect(
-    dialog.getByText("Bitiş tarihi bugünden sonra olmalı.")
+    dialog.getByText("Bitiş zamanı şu andan sonra olmalı.")
   ).toBeVisible();
   await expect(save).toBeDisabled();
 
-  await end.fill("2026-12-15");
+  // the appointment ends at 23:59:59 and the picker has minutes: its own
+  // minute is not after it, the next one is
+  await end.fill("2026-12-31T23:59");
+  await expect(save).toBeEnabled();
+  await end.fill("2026-12-15T12:00");
   await expect(save).toBeEnabled();
   await save.click();
   await expect(dialog).toBeHidden();
@@ -452,7 +460,9 @@ test("nizam/12 — appointing finds the person by e-mail in the realm, gives a g
 
   await chooseOption(page, dialog, fixture.groups.koskIsleri.name);
   await box(dialog, "Denetim kaydını oku").click();
-  await dialog.getByLabel("Bitiş tarihi (isteğe bağlı)").fill(daysFromNow(60));
+  await dialog
+    .getByLabel("Bitiş tarihi ve saati (isteğe bağlı)")
+    .fill(daysFromNow(60));
   await expect(dialog.locator(".mds-dialog__meta")).toHaveText(
     "Gruptan 4 izin ve 1 ek izin"
   );
@@ -482,9 +492,9 @@ test("nizam/12 — appointing finds the person by e-mail in the realm, gives a g
     fixture.groups.koskIsleri.name
   );
   await expect(box(again, "Denetim kaydını oku")).toBeChecked();
-  await expect(again.getByLabel("Bitiş tarihi (isteğe bağlı)")).toHaveValue(
-    daysFromNow(60)
-  );
+  await expect(
+    again.getByLabel("Bitiş tarihi ve saati (isteğe bağlı)")
+  ).toHaveValue(daysFromNow(60));
   // appointing the same person again is refused by the API; the list holds one row
   await again.getByRole("button", { name: "Vazgeç" }).click();
   await expect(rowOf(page, KOSK_NAZIM.email as string)).toHaveCount(1);

@@ -479,20 +479,25 @@ export function KoskHome({ data, nowIso }: Props) {
       </HomeSection>
 
       <div className="grid items-start gap-section lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
-        <HomeSection
-          id="home-applications"
-          title={t("applications.titleKosk")}
-          link={{ href: `${base}/basvurular`, label: t("seeAll") }}
-        >
-          <Table
-            columns={applicationColumns}
-            rows={applications}
-            rowKey={keyOf}
-            caption={t("applications.caption")}
-            empty={t("applications.emptyKosk")}
-            responsive="stack"
-          />
-        </HomeSection>
+        {/* A Medaris nazımı who reads the page by platform.kosk_edit alone is
+            given no applicants (contentLocked), and Başvurular and its
+            Onayla/Reddet are refused to them (MDRS-108): no card. */}
+        {data.contentLocked ? null : (
+          <HomeSection
+            id="home-applications"
+            title={t("applications.titleKosk")}
+            link={{ href: `${base}/basvurular`, label: t("seeAll") }}
+          >
+            <Table
+              columns={applicationColumns}
+              rows={applications}
+              rowKey={keyOf}
+              caption={t("applications.caption")}
+              empty={t("applications.emptyKosk")}
+              responsive="stack"
+            />
+          </HomeSection>
+        )}
 
         <HomeSection id="home-muderris" title={t("muderris.title")}>
           {data.muderris.length === 0 ? (

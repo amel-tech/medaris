@@ -128,13 +128,15 @@ describe("earliestEnd", () => {
 });
 
 describe("the catalog", () => {
-  it("has the 17 platform codes the screens draw, each once", () => {
+  it("has the 18 platform codes the screens draw, each once", () => {
     const codes = PLATFORM_CATALOG.flatMap((s) => s.permissions);
     expect(PLATFORM_CATALOG.map((s) => s.permissions.length)).toEqual([
-      4, 4, 3, 2, 4,
+      5, 4, 3, 2, 4,
     ]);
     expect(new Set(codes).size).toBe(codes.length);
-    expect(PLATFORM_CODES.size).toBe(17);
+    expect(PLATFORM_CODES.size).toBe(18);
+    // Platform management's course hide (MDRS-143) can be handed to a Medaris nazımı.
+    expect(PLATFORM_CODES.has(PERMISSIONS.PLATFORM_COURSE_HIDE)).toBe(true);
   });
   it("keeps the platform and the course halves apart", () => {
     for (const code of COURSE_CATALOG)

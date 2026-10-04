@@ -376,19 +376,44 @@ describe("Medrese başmüderris change (e2e)", () => {
       expect((await roleById(roleRow)).grantedBy).toBe(HEAD_A);
     });
 
-    it("leaves a hand-on alone when its holder becomes the başmüderris themselves", async () => {
-      // Fatma heads the medrese: what HEAD_A gave her is not asked about
+    it("asks about what the outgoing başmüderris gave the incoming one too, and their new seat covers what others gave them (review B-grants-R2-1)", async () => {
+      // Fatma heads the medrese: what HEAD_A gave her is decided like anyone's.
       const res = await delegations(suleymaniye).expect(200);
       expect(
         res.body.filter((r: { to: { id: string } }) => r.to.id === FATMA)
       ).toHaveLength(2);
-      await put(suleymaniye, {
+      const [fromAdmin] = await db
+        .insert(permissionGrants)
+        .values({
+          userId: FATMA,
+          scopeType: SCOPE_TYPES.MADRASAH,
+          scopeId: suleymaniye,
+          permission: "madrasah.students_view",
+          grantedBy: ADMIN,
+        })
+        .returning();
+      const refused = await put(suleymaniye, {
         userId: FATMA,
         delegations: [{ kind: "GRANT", id: groupGrantRow, action: "DROP" }],
-      }).expect(200);
+      }).expect(400);
+      expect(refused.body.code).toBe("DISMISS_DECISIONS_INCOMPLETE");
       expect((await roleById(roleRow)).revokedAt).toBeNull();
-      expect((await grantById(grantRow)).revokedAt).toBeNull();
+
+      await put(suleymaniye, {
+        userId: FATMA,
+        delegations: answers(() => "DROP"),
+      }).expect(200);
+      expect((await roleById(roleRow)).revokedAt).not.toBeNull();
+      expect((await grantById(grantRow)).revokedAt).not.toBeNull();
       expect((await grantById(groupGrantRow)).revokedAt).not.toBeNull();
+      // Her nazır seat went, her başmüderris seat came first: nothing someone
+      // else gave her in the medrese went with it.
+      expect((await grantById(fromAdmin.id)).revokedAt).toBeNull();
+      expect(
+        (await heads(suleymaniye))
+          .filter((r) => r.revokedAt === null)
+          .map((r) => r.userId)
+      ).toEqual([FATMA]);
     });
   });
 });

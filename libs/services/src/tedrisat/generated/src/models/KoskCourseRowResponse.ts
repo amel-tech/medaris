@@ -97,7 +97,7 @@ export interface KoskCourseRowResponse {
      */
     hiddenLevel: HideLevel | null;
     /**
-     * Whether the caller may bring the course back: it is hidden, they hold a code of the course ladder on it and act at the level that hid it or above.
+     * Whether the caller may bring this hidden course back (Geri al): it is hidden and they act at the level that hid it or above; false for a shown course and for one hidden at a level above theirs, which would answer 403 ARCHIVE_RESTORE_LEVEL.
      * @type {boolean}
      * @memberof KoskCourseRowResponse
      */
