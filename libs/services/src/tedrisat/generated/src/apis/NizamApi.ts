@@ -533,7 +533,7 @@ export class NizamApi extends runtime.BaseAPI {
     }
 
     /**
-     * nizam/11. `decisions` answers every item `…/given` lists: TAKE_OVER leaves the right in place under the başnazım\'s name, DROP revokes it. The appointment and the platform permissions are revoked. Written to the audit log.
+     * nizam/11. `decisions` answers every role and grant `…/given` lists as given to someone else: TAKE_OVER leaves the right in place under the başnazım\'s name, DROP revokes it, and a seat dropped takes with it what its holder was given in its scope. What the person gave themselves is revoked and takes no answer (a TAKE_OVER for it is refused with DISMISS_DECISIONS_INCOMPLETE). The appointment and the platform permissions are revoked. Written to the audit log.
      * Dismiss a Medaris nazımı
      */
     async dismissMedarisNazimRaw(requestParameters: DismissMedarisNazimRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
@@ -578,7 +578,7 @@ export class NizamApi extends runtime.BaseAPI {
     }
 
     /**
-     * nizam/11. `decisions` answers every item `…/given` lists: TAKE_OVER leaves the right in place under the başnazım\'s name, DROP revokes it. The appointment and the platform permissions are revoked. Written to the audit log.
+     * nizam/11. `decisions` answers every role and grant `…/given` lists as given to someone else: TAKE_OVER leaves the right in place under the başnazım\'s name, DROP revokes it, and a seat dropped takes with it what its holder was given in its scope. What the person gave themselves is revoked and takes no answer (a TAKE_OVER for it is refused with DISMISS_DECISIONS_INCOMPLETE). The appointment and the platform permissions are revoked. Written to the audit log.
      * Dismiss a Medaris nazımı
      */
     async dismissMedarisNazim(requestParameters: DismissMedarisNazimRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
@@ -762,7 +762,7 @@ export class NizamApi extends runtime.BaseAPI {
     }
 
     /**
-     * nizam/11\'s dismissal question: the roles and permissions this person gave to others that are still held.
+     * nizam/11\'s dismissal question: the roles and permissions this person gave that are still held, the ones they gave themselves included (`to` is the person), and the groups they defined or changed. Only the rows given to others take an answer; the self-made ones go with the dismissal.
      * What a Medaris nazımı has handed on
      */
     async getMedarisNazimGivenRaw(requestParameters: GetMedarisNazimGivenRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<GivenItemResponse>>> {
@@ -797,7 +797,7 @@ export class NizamApi extends runtime.BaseAPI {
     }
 
     /**
-     * nizam/11\'s dismissal question: the roles and permissions this person gave to others that are still held.
+     * nizam/11\'s dismissal question: the roles and permissions this person gave that are still held, the ones they gave themselves included (`to` is the person), and the groups they defined or changed. Only the rows given to others take an answer; the self-made ones go with the dismissal.
      * What a Medaris nazımı has handed on
      */
     async getMedarisNazimGiven(requestParameters: GetMedarisNazimGivenRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<GivenItemResponse>> {

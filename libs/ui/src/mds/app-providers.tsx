@@ -8,7 +8,10 @@ import { TooltipProvider } from "./tooltip";
 
 export interface AppProvidersProps {
   children: ReactNode;
-  /** a launch is Turkish only: `ltr`; the Arabic interface is a later phase */
+  /**
+   * The page's direction, the same as `<html dir>`: Base UI anchors menus and
+   * runs arrow keys by it (MDRS-242). An app with an Arabic route passes it.
+   */
   direction?: "ltr" | "rtl";
   tooltipDelay?: number;
   /** render the one `Toaster` here; an app that places it elsewhere passes false */
@@ -25,7 +28,7 @@ export interface AppProvidersProps {
  * The app root's providers (canvas rule 3): `className="isolate"` so the overlays
  * stack inside it, `DirectionProvider`, `Tooltip.Provider delay={600}` and
  * `Toast.Provider limit={3}` with the one `Toaster`. Wrap the app once, below
- * `<html lang="tr" dir="ltr" data-app>`.
+ * `<html lang dir data-app>`, and pass the same `dir` as `direction`.
  */
 export function AppProviders({
   children,

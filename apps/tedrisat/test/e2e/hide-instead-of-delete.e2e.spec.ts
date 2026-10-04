@@ -264,7 +264,7 @@ describe("Hide instead of delete (e2e)", () => {
       }
     });
 
-    it("lets SYSTEM_ADMIN see a hidden course; hiding it again changes nothing", async () => {
+    it("lets SYSTEM_ADMIN see a hidden course; hiding it again changes nothing and is refused", async () => {
       const first = await http()
         .post(`/courses/${courseId}/archive`)
         .set("Authorization", auth(MANAGER_ID))
@@ -272,14 +272,15 @@ describe("Hide instead of delete (e2e)", () => {
       const again = await http()
         .post(`/courses/${courseId}/archive`)
         .set("Authorization", auth(ADMIN_ID))
-        .expect(200);
-      expect(again.body.archivedBy).toBe(MANAGER_ID);
-      expect(again.body.archivedAt).toBe(first.body.archivedAt);
-      expect(again.body.version).toBe(first.body.version);
-      await http()
+        .expect(409);
+      expect(again.body.code).toBe("COURSE_ALREADY_HIDDEN");
+      const shown = await http()
         .get(`/courses/${courseId}`)
         .set("Authorization", auth(ADMIN_ID))
         .expect(200);
+      expect(shown.body.archivedBy).toBe(MANAGER_ID);
+      expect(shown.body.archivedAt).toBe(first.body.archivedAt);
+      expect(shown.body.version).toBe(first.body.version);
       const archive = await http()
         .get(`/kosks/${koskId}/courses?archived=true`)
         .set("Authorization", auth(ADMIN_ID))

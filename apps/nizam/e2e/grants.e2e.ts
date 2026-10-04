@@ -142,8 +142,8 @@ test("nizam/38 — 'Ders nazırı ata' finds the person by e-mail, offers only m
   const save = dialog.getByRole("button", { name: "Kaydet" });
   await expect(save).toBeDisabled();
 
-  // only what a köşk nazımı holds is offered: the 18 course permissions
-  await expect(dialog.getByRole("checkbox")).toHaveCount(18);
+  // only what a köşk nazımı holds is offered: the 19 course permissions
+  await expect(dialog.getByRole("checkbox")).toHaveCount(19);
 
   const email = dialog.getByRole("textbox", { name: /^Ders nazırı/ });
   await email.fill("kimse-yok-boyle@example.test");

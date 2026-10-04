@@ -173,7 +173,7 @@ describe("MUDERRIS role rows follow the course's müderris list (e2e)", () => {
 
   // A lapsed imam is no imam: the next save closes the lapsed row and makes
   // the first listed account imam, without tripping the one-imam index.
-  it("replaces an imam whose row lapsed by expires_at", async () => {
+  it("replaces an imam whose row lapsed by expires_at, and does not seat them again", async () => {
     const course = await create([
       muderris(HASAN, "Hasan"),
       muderris(AHMED, "Ahmed"),
@@ -191,10 +191,10 @@ describe("MUDERRIS role rows follow the course's müderris list (e2e)", () => {
       muderris(AHMED, "Ahmed"),
       muderris(HASAN, "Hasan"),
     ]);
-    expect(await held(course.id)).toEqual([
-      { userId: AHMED, isImam: true },
-      { userId: HASAN, isImam: false },
-    ]);
+    // Hasan was on the list already: a whole-course save keeps the seat each
+    // listed account has, and a lapsed one stays lapsed (MDRS-135 review
+    // A-reseat). Seating him again is the müderris routes' explicit act.
+    expect(await held(course.id)).toEqual([{ userId: AHMED, isImam: true }]);
     const lapsed = (await rows(course.id)).filter(
       (r) => r.userId === HASAN && r.revokedAt !== null
     );

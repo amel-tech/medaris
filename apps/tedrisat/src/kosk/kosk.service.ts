@@ -221,11 +221,13 @@ export class KoskService {
   async update(
     id: string,
     updates: IUpdateKosk,
-    actorId?: string
+    actorId?: string,
+    /** The başnazım (SYSTEM_ADMIN): no policy refuses him, here as on a course (owner, 4 October). */
+    { systemAdmin = false }: { systemAdmin?: boolean } = {}
   ): Promise<IKosk> {
     await this.assertHandleFree(updates.handle, id);
     // A platform policy that is on cannot be switched off from below (MDRS-181).
-    await this.platformPolicies.assertKoskMayChange(updates);
+    if (!systemAdmin) await this.platformPolicies.assertKoskMayChange(updates);
     const updated = await this.koskRepo.update(id, updates);
     if (!updated) {
       throw new KoskNotFoundError(id);

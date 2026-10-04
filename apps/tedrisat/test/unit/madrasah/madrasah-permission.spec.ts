@@ -59,7 +59,18 @@ function build(
     /** What the engine says a caller holds: in the medrese (and every course), and in single courses. */
     held?: Record<
       string,
-      { medrese: string[]; courses?: Record<string, string[]> }
+      {
+        medrese: string[];
+        courses?: Record<string, string[]>;
+        /**
+         * In the medrese: the grants behind each code, by authority, held with
+         * no end unless an end is given.
+         */
+        authorities?: Record<
+          string,
+          Array<string | { authority: string; until: Date | null }>
+        >;
+      }
     >;
   } = {}
 ) {
@@ -105,6 +116,16 @@ function build(
           }
           return {
             codes: new Set(options?.acrossCourses ? (mine?.medrese ?? []) : []),
+            grantHoldings: new Map(
+              Object.entries(mine?.authorities ?? {}).map(([code, list]) => [
+                code,
+                list.map((held) =>
+                  typeof held === "string"
+                    ? { authority: held, until: null }
+                    : held
+                ),
+              ])
+            ),
           };
         }
       ),
@@ -325,8 +346,10 @@ describe("giving a nazır their permissions", () => {
         { scopeType: "course", scopeId: C1, groupId: G, permissions: [] },
       ],
       expiresAt: new Date("2099-01-01T00:00:00.000Z"),
-      // The başmüderris is asked, and holds all of it.
+      // The başmüderris is asked, and holds all of it; what they give is
+      // stored no higher than their own holding (d-1004-27).
       ceiling: expect.any(Function),
+      authorityFor: expect.any(Function),
     });
   });
 
@@ -486,6 +509,7 @@ describe('the ceiling of a Medaris nazımı (MDRS-209: "kendi izinleriyle sını
             scopeId: M,
             permission: "madrasah.ban",
             groupId: null,
+            codes: ["madrasah.ban"],
           },
         ])
     );
@@ -540,6 +564,7 @@ describe('the ceiling of a Medaris nazımı (MDRS-209: "kendi izinleriyle sını
           scopeId: C1,
           permission: "course.edit",
           groupId: null,
+          codes: ["course.edit"],
         },
       ])
     ).not.toThrow();
@@ -550,9 +575,105 @@ describe('the ceiling of a Medaris nazımı (MDRS-209: "kendi izinleriyle sını
           scopeId: M,
           permission: "course.edit",
           groupId: null,
+          codes: ["course.edit"],
         },
       ])
     ).toThrow(GrantExceedsGiverError);
+  });
+
+  it("stores a gift no higher than the giver's own holding of its codes (d-1004-27)", async () => {
+    const { service, repo } = build({
+      held: {
+        a4: {
+          medrese: ["course.edit", "course.settings", "madrasah.ban"],
+          // course.settings from the başmüderris, course.edit from the
+          // başnazım, madrasah.ban by no grant at all.
+          authorities: {
+            "course.settings": ["madrasah"],
+            "course.edit": ["platform"],
+          },
+        },
+      },
+    });
+    let authorityFor:
+      | ((row: unknown, expiresAt: Date | null) => string)
+      | undefined;
+    repo.setPermissions.mockImplementation(
+      async (
+        _m: string,
+        _n: string,
+        _a: string,
+        wanted: {
+          authorityFor?: (row: unknown, expiresAt: Date | null) => string;
+        }
+      ) => {
+        authorityFor = wanted.authorityFor;
+      }
+    );
+    await service.setNazirPermissions(MEDARIS, M, NAZIR, {
+      permissions: ["course.edit"],
+    } as never);
+    const row = (codes: string[]) => ({
+      scopeType: "madrasah",
+      scopeId: M,
+      permission: null,
+      groupId: null,
+      codes,
+    });
+    expect(authorityFor?.(row(["course.edit"]), null)).toBe("platform");
+    expect(authorityFor?.(row(["course.settings"]), null)).toBe("madrasah");
+    expect(authorityFor?.(row(["madrasah.ban"]), null)).toBe("madrasah");
+    // A group row is capped by the weakest of its codes.
+    expect(authorityFor?.(row(["course.edit", "course.settings"]), null)).toBe(
+      "madrasah"
+    );
+  });
+
+  it("stores the platform's authority only on a row that ends while the giver still holds it (review B-grants-R2-2)", async () => {
+    const inHours = (n: number) => new Date(Date.now() + n * 3600_000);
+    const { service, repo } = build({
+      held: {
+        a4: {
+          medrese: ["course.edit"],
+          // course.edit from the başmüderris for good, and from the başnazım
+          // with the platform's authority for one hour.
+          authorities: {
+            "course.edit": [
+              "madrasah",
+              { authority: "platform", until: inHours(1) },
+            ],
+          },
+        },
+      },
+    });
+    let authorityFor:
+      | ((row: unknown, expiresAt: Date | null) => string)
+      | undefined;
+    repo.setPermissions.mockImplementation(
+      async (
+        _m: string,
+        _n: string,
+        _a: string,
+        wanted: {
+          authorityFor?: (row: unknown, expiresAt: Date | null) => string;
+        }
+      ) => {
+        authorityFor = wanted.authorityFor;
+      }
+    );
+    await service.setNazirPermissions(MEDARIS, M, NAZIR, {
+      permissions: ["course.edit"],
+    } as never);
+    const row = {
+      scopeType: "madrasah",
+      scopeId: M,
+      permission: "course.edit",
+      groupId: null,
+      codes: ["course.edit"],
+    };
+    expect(authorityFor?.(row, null)).toBe("madrasah");
+    expect(authorityFor?.(row, inHours(2))).toBe("madrasah");
+    expect(authorityFor?.(row, inHours(0.5))).toBe("platform");
   });
 
   it("lists as givable only what they hold, so the screens refuse what the write refuses", async () => {

@@ -5,6 +5,7 @@ import {
   AuthzGuard,
   AuthzService,
   ENTITIES,
+  NotFoundError,
   PERMISSIONS,
   SelfGrantGuard,
 } from "@medaris/common";
@@ -33,6 +34,7 @@ import {
   ApiOperation,
   ApiTags,
 } from "@nestjs/swagger";
+import { actingLevel, COURSE_HIDE_LADDER } from "../../archive/hide-level";
 import { SCOPE_TYPES } from "../../database/schema/scope-type.schema";
 import { AuthorizedRequest } from "../../kosk/interfaces/authorized-request.interface";
 import { MadrasahCourseListItemResponse } from "../dto/madrasah-settings.dto";
@@ -146,9 +148,15 @@ export class MadrasahCourseController {
       entity: ENTITIES.COURSE,
       id: courseId,
     });
+    // Only an account the save seats is asked about: a müderris of the course
+    // keeping themselves on its list seats nobody, as on `PUT /courses/:id`.
     await this.selfGrant.assertNotSelf(
       request.user,
-      dto.muderrisUserIds,
+      await this.courses.seatsAmong(
+        courseId,
+        dto.muderrisUserIds,
+        request.user.sub
+      ),
       { entity: ENTITIES.MADRASAH, id },
       { role: ASSIGNED_ROLES.MUDERRIS },
       "madrasah.course.muderris"
@@ -159,7 +167,7 @@ export class MadrasahCourseController {
   @ApiOperation({
     summary: "Hide a course of the medrese (its başmüderris)",
     description:
-      "nazir/18's \"Gizle\". The course leaves the medrese's list, the köşk's page, the talebe's calendar and every search; nothing is deleted, and it is listed in the medrese's archive, where `POST /archive/course/:id/restore` brings it back by kademe. 409 (MADRASAH_COURSE_ALREADY_HIDDEN) when it is hidden. Written to the audit log.",
+      "nazir/18's \"Gizle\". The course leaves the medrese's list, the köşk's page, the talebe's calendar and every search; nothing is deleted, and it is listed in the medrese's archive, where `POST /archive/course/:id/restore` brings it back by kademe. The hide is recorded at the level the caller acts at on the course, on the ladder every course hide reads: the platform for the başnazım and platform management, the köşk for the course's köşk nazımı, the medrese for anyone else. 409 (MADRASAH_COURSE_ALREADY_HIDDEN) when it is hidden. Written to the audit log with that level.",
     operationId: "hideMadrasahCourse",
   })
   @ApiNoContentResponse()
@@ -174,16 +182,28 @@ export class MadrasahCourseController {
     @Param("id", ParseUUIDPipe) id: string,
     @Param("courseId", ParseUUIDPipe) courseId: string
   ): Promise<void> {
+    // A medrese is not above the köşk that hosts the course: while the köşk
+    // is hidden the course is closed to it, before anything is written.
     await this.authz.assertOpen(request.user, {
       entity: ENTITIES.COURSE,
       id: courseId,
     });
-    // The başnazım hides as the platform, everyone else who holds
-    // `madrasah.course_hide` as the medrese: a köşk nazımı hides a medrese's
-    // course through `POST /courses/:id/archive`, at the köşk's level.
-    const level = this.authz.isSystemAdmin(request.user)
-      ? SCOPE_TYPES.PLATFORM
-      : SCOPE_TYPES.MADRASAH;
+    // The one ladder every course hide reads (`COURSE_HIDE_LADDER`), so
+    // someone holding more than one rung hides at the highest here too: the
+    // başnazım and platform management as the platform, the course's köşk
+    // nazımı as the köşk, whoever else holds `madrasah.course_hide` as the
+    // medrese.
+    // A course that does not exist is the medrese's 404, not the engine's.
+    const level = await actingLevel(
+      this.authz,
+      request.user,
+      { entity: ENTITIES.COURSE, id: courseId },
+      COURSE_HIDE_LADDER,
+      SCOPE_TYPES.MADRASAH
+    ).catch((error: unknown) => {
+      if (error instanceof NotFoundError) return SCOPE_TYPES.MADRASAH;
+      throw error;
+    });
     await this.courses.hide(id, courseId, request.user.sub, level);
   }
 
