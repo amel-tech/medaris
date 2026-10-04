@@ -223,8 +223,13 @@ export class TedrisatAuthzContext implements AuthzContextLoader {
         and(
           eq(roleAssignments.userId, userId),
           isHeld(),
+          // The platform's roles as `scope_id is null`, which the CHECK
+          // `role_assignments_scope_id_present` makes the same rows as
+          // `scope_type = 'platform'`: the planner can then serve both arms
+          // from the two partial indexes on `user_id` (a BitmapOr) instead of
+          // reading every row ever assigned.
           or(
-            eq(roleAssignments.scopeType, SCOPE_TYPES.PLATFORM),
+            isNull(roleAssignments.scopeId),
             scopeIds.length > 0
               ? inArray(roleAssignments.scopeId, scopeIds)
               : undefined

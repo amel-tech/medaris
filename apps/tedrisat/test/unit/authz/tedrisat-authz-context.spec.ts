@@ -192,4 +192,26 @@ describe("TedrisatAuthzContext", () => {
       expect(sqlOf(kind), kind).toContain("now()");
     }
   });
+
+  it("asks for the caller's roles in terms the partial indexes on user_id serve, with or without a chain", async () => {
+    // `role_assignments_held_platform_idx` is `where scope_id is null` and
+    // `role_assignments_held_scoped_idx` is `where scope_id is not null`: a
+    // `scope_type = 'platform'` arm matches neither, and the planner read every
+    // row ever assigned on each decision (measured on Postgres 17 with 50k
+    // rows: a Seq Scan of 872 buffers against a BitmapOr of 5).
+    for (const resource of [
+      { entity: ENTITIES.COURSE, id: COURSE },
+      { entity: ENTITIES.KOSK, id: "new" },
+    ]) {
+      const { loader, queries } = build({
+        facts: [[KOSK, null, false, false, null, null, null]],
+      });
+      await loader.load(USER, resource);
+      const roles = queries.find((q) => which(q.text) === "roles")?.text ?? "";
+      expect(roles, resource.id).toContain(
+        '"role_assignments"."scope_id" is null'
+      );
+      expect(roles, resource.id).not.toContain('"scope_type" =');
+    }
+  });
 });
