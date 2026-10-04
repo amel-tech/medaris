@@ -31,22 +31,18 @@ const withoutLink = ({
   ...session
 }: KoskDashboardSessionResponse): KoskDashboardSessionResponse => session;
 
-const withoutEmail = ({
-  studentEmail: _email,
-  ...application
-}: KoskDashboardApplicationResponse): KoskDashboardApplicationResponse =>
-  application;
-
 /**
  * A köşk nazımı's home page in one read (MDRS-182, nizam/02). The route is
  * authorized as the köşk's overview is (`kosk.manage`, or `platform.kosk_edit` for
  * a Medaris nazımı; the başnazım by the bypass). What the page carries beyond
  * the numbers is decided here (MDRS-135):
  *
- * - the meeting links and the applicants' e-mail addresses are for the köşk's
- *   own management (`kosk.manage`, the başnazım); `platform.kosk_edit` ("Köşkü
- *   düzenle, gizle ya da geri al") covers neither, so its holder gets the page
- *   without them (`contentLocked`);
+ * - the meeting links and the applicants are for the köşk's own management
+ *   (`kosk.manage`, the başnazım); `platform.kosk_edit` ("Köşkü düzenle, gizle
+ *   ya da geri al") covers neither content nor personal data, so its holder
+ *   gets the page without them (`contentLocked`): the numbers stay, the
+ *   applicants' names, accounts and e-mail addresses do not, exactly as
+ *   `GET /kosks/:id/enrollments/pending` refuses them;
  * - a course in a passive scope stays on the page for the köşk's nazımları
  *   (owner, 4 October: "köşk nazımı zaten bir tür platform yöneticisi") and
  *   for the platform's management holding `platform.inactive_scopes_manage`;
@@ -54,8 +50,11 @@ const withoutEmail = ({
  * - the applicants are a roster read and every link handed out is a content
  *   read: both go on the record before the page is returned, so a failed write
  *   fails the read (owner: "Kayıt alınsın"). The köşk-wide list belongs to no
- *   one course and is written on every read, as `GET /kosks/:id/enrollments/
- *   pending` is; a link is not written for a course the caller teaches.
+ *   one course and is written on every read that hands it out, as `GET
+ *   /kosks/:id/enrollments/pending` is; a link is not written as a content
+ *   read for a course the caller teaches. A link of a course in a passive
+ *   scope also writes the `scope.passive_open` the engine writes for the same
+ *   open.
  */
 @Injectable()
 export class KoskDashboardService {
@@ -98,7 +97,7 @@ export class KoskDashboardService {
       ]);
 
     await this.recordReads(user, koskId, {
-      applications,
+      applications: contentLocked ? null : applications,
       linked: contentLocked ? [] : sessions.filter((s) => s.meetingUrl),
       permission: manages
         ? PERMISSIONS.KOSK_MANAGE
@@ -129,23 +128,23 @@ export class KoskDashboardService {
       tab,
       contentLocked,
       sessions: sessions.map(shown),
-      latestApplications: contentLocked
-        ? applications.map(withoutEmail)
-        : applications,
+      latestApplications: contentLocked ? [] : applications,
       muderris,
     };
   }
 
   /**
-   * One row for the applicants (the köşk is its entity, as for the köşk-wide
-   * pending list) and one `course.content_read` per course whose meeting link
-   * the page hands out to someone who does not teach it.
+   * One row for the applicants when the page hands them out (the köşk is its
+   * entity, as for the köşk-wide pending list), one `course.content_read` per
+   * course whose meeting link the page hands out to someone who does not teach
+   * it, and one `scope.passive_open` per such course in a passive scope.
    */
   private async recordReads(
     user: AuthenticatedUser,
     koskId: string,
     read: {
-      applications: KoskDashboardApplicationResponse[];
+      /** Null when the page leaves the applicants out. */
+      applications: KoskDashboardApplicationResponse[] | null;
       linked: KoskDashboardSessionResponse[];
       permission: string;
     }
@@ -153,9 +152,13 @@ export class KoskDashboardService {
     const systemAdmin = this.authz.isSystemAdmin(user);
     const courses = new Map<string, string>();
     for (const s of read.linked) courses.set(s.courseId, s.courseTitle);
-    const taught = await this.repo.taughtBy(user.sub, [...courses.keys()]);
-    const entries: IAuditEntry[] = [
-      {
+    const [taught, passive] = await Promise.all([
+      this.repo.taughtBy(user.sub, [...courses.keys()]),
+      this.repo.passiveScopesOf([...courses.keys()]),
+    ]);
+    const entries: IAuditEntry[] = [];
+    if (read.applications) {
+      entries.push({
         actorId: user.sub,
         action: ROSTER_READ_ACTION,
         entity: ENTITIES.KOSK,
@@ -166,8 +169,21 @@ export class KoskDashboardService {
           systemAdmin,
           permission: read.permission,
         },
-      },
-    ];
+      });
+    }
+    for (const [courseId, passiveScope] of passive) {
+      entries.push({
+        actorId: user.sub,
+        action: "scope.passive_open",
+        entity: ENTITIES.COURSE,
+        entityId: courseId,
+        details: {
+          passiveScope,
+          permission: PERMISSIONS.SESSION_LIVE_LINK,
+          via: VIA,
+        },
+      });
+    }
     for (const [courseId, title] of courses) {
       if (taught.has(courseId)) continue;
       entries.push({

@@ -1,7 +1,9 @@
+import type { ScopeRef } from "@medaris/common";
 import { Injectable } from "@nestjs/common";
 import { and, eq, inArray, type SQL, sql } from "drizzle-orm";
 import type { IAuditEntry } from "../audit/audit.repository";
 import { DatabaseService } from "../database/database.service";
+import { passiveScopesOf } from "../database/passive-courses";
 import { isPassiveScope } from "../database/role-assignments";
 import { auditLog } from "../database/schema/audit.schema";
 import { courseMuderris } from "../database/schema/course.schema";
@@ -285,6 +287,13 @@ export class KoskDashboardRepository {
         )
       );
     return new Set(rows.map((row) => row.courseId));
+  }
+
+  /** The passive scope each of these courses sits in, if any (MDRS-136). */
+  passiveScopesOf(
+    courseIds: readonly string[]
+  ): Promise<Map<string, ScopeRef>> {
+    return passiveScopesOf(this.db, courseIds);
   }
 
   /** The page's reads that go on the record, in one statement. */

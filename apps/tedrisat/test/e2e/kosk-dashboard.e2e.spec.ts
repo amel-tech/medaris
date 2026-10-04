@@ -228,6 +228,21 @@ describe("The köşk home page under MDRS-135 (e2e)", () => {
       [taughtId, passiveId].sort()
     );
     expect(reads.every((r) => r.actorId === NAZIM_ID)).toBe(true);
+    // The passive course's link is a passive open, written as the engine
+    // writes one for GET /courses/:id (review D2-9a); the live course's is not.
+    const opens = await rows("scope.passive_open");
+    expect(opens).toMatchObject([
+      {
+        actorId: NAZIM_ID,
+        entity: "course",
+        entityId: passiveId,
+        details: {
+          passiveScope: { type: "course", id: passiveId },
+          permission: PERMISSIONS.SESSION_LIVE_LINK,
+          via: "kosk-dashboard",
+        },
+      },
+    ]);
   });
 
   it("writes no content read for the link of a course the caller teaches", async () => {
@@ -239,10 +254,10 @@ describe("The köşk home page under MDRS-135 (e2e)", () => {
     expect(reads.map((r) => r.entityId)).toEqual([passiveId]);
   });
 
-  it("gives a Medaris nazımı holding only platform.kosk_edit no link, no e-mail and no passive course", async () => {
+  it("gives a Medaris nazımı holding only platform.kosk_edit no link, no applicant and no passive course", async () => {
     await grantMedaris(PERMISSIONS.PLATFORM_KOSK_EDIT);
     const { body } = (await dashboard(MEDARIS_ID).expect(200)) as {
-      body: Body;
+      body: Body & { counts: { pendingApplications: number } };
     };
     expect(body.contentLocked).toBe(true);
     expect(coursesOf(body)).toEqual([taughtId]);
@@ -250,16 +265,14 @@ describe("The köşk home page under MDRS-135 (e2e)", () => {
     for (const session of body.sessions) {
       expect(session).not.toHaveProperty("meetingUrl");
     }
-    expect(body.latestApplications.map((a) => a.courseId)).toEqual([taughtId]);
-    for (const application of body.latestApplications) {
-      expect(application).not.toHaveProperty("studentEmail");
-    }
-    // The names were read, so the roster read is on the record; no link was handed out.
-    const [roster] = await rows(ROSTER_READ_ACTION);
-    expect(roster.details).toMatchObject({
-      permission: PERMISSIONS.PLATFORM_KOSK_EDIT,
-    });
+    // A name and an account are personal data as much as an e-mail address
+    // (review D2-9b): the number stays, the people do not.
+    expect(body.latestApplications).toEqual([]);
+    expect(body.counts.pendingApplications).toBe(1);
+    // Nothing personal and no link was handed out, so nothing was read.
+    expect(await rows(ROSTER_READ_ACTION)).toEqual([]);
     expect(await rows("course.content_read")).toEqual([]);
+    expect(await rows("scope.passive_open")).toEqual([]);
   });
 
   it("keeps a passive course off the page for a kosk.manage grant, and on it for platform.inactive_scopes_manage", async () => {

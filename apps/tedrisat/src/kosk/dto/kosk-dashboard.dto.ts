@@ -186,7 +186,7 @@ export class KoskDashboardResponse {
 
   @ApiProperty({
     description:
-      "True when the meeting links and the applicants' e-mail addresses were left out: the caller reads the page by `platform.kosk_edit` alone, which covers neither course content nor personal data",
+      "True when the meeting links and the applicants were left out (`latestApplications` is empty; `counts.pendingApplications` still says how many wait): the caller reads the page by `platform.kosk_edit` alone, which covers neither course content nor personal data",
   })
   contentLocked!: boolean;
 
@@ -201,7 +201,8 @@ export class KoskDashboardResponse {
   @ApiProperty({
     type: KoskDashboardApplicationResponse,
     isArray: true,
-    description: "The newest waiting applications, five at most",
+    description:
+      "The newest waiting applications, five at most; empty when `contentLocked` is true",
   })
   latestApplications!: KoskDashboardApplicationResponse[];
 

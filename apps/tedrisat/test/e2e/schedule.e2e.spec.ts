@@ -1,8 +1,10 @@
 import { ROLES } from "@medaris/common";
 import { INestApplication } from "@nestjs/common";
+import { eq } from "drizzle-orm";
 import request from "supertest";
 import { EnrollmentStatus } from "../../src/course/domain/enrollment-status.enum";
 import { DatabaseService } from "../../src/database/database.service";
+import { auditLog } from "../../src/database/schema/audit.schema";
 import { enrollments } from "../../src/database/schema/course.schema";
 import {
   ASSIGNED_ROLES,
@@ -250,6 +252,27 @@ describe("schedule (e2e)", () => {
       ).toEqual([["Eski celse", MEETING_URL]]);
       // The talebe of the same course is still closed out.
       expect((await list().expect(200)).body).toEqual([]);
+
+      // The link of a passive course is passive content: each list that hands
+      // it out writes what GET /courses/:id writes for the same reader
+      // (review D1: their reads stay audited).
+      await request(app.getHttpServer())
+        .get("/me/upcoming-lessons")
+        .expect(200);
+      const audited = await db
+        .select()
+        .from(auditLog)
+        .where(eq(auditLog.entityId, course.id))
+        .orderBy(auditLog.seq);
+      expect(audited.map((r) => [r.actorId, r.action, r.details.via])).toEqual([
+        [TEST_USER_ID, "scope.passive_open", "schedule"],
+        [TEST_USER_ID, "course.content_read", "schedule"],
+        [TEST_USER_ID, "scope.passive_open", "schedule.upcoming"],
+        [TEST_USER_ID, "course.content_read", "schedule.upcoming"],
+      ]);
+      expect(audited[0].details).toMatchObject({
+        passiveScope: { type: "course", id: course.id },
+      });
     });
 
     it("keeps a cancelled session, marked, with no meeting link", async () => {

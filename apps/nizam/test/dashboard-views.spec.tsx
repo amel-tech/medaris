@@ -456,6 +456,19 @@ describe("a köşk nazımı's home page (nizam 02)", () => {
     expect(fine).toContain("/tr/kosks/k1/courses/new");
   });
 
+  it("leaves out the applications card when the page is read without the köşk's management (contentLocked)", () => {
+    const locked = render(
+      <KoskHome
+        data={{ ...kosk, contentLocked: true, latestApplications: [] }}
+        nowIso={NOW}
+      />
+    );
+    expect(locked).not.toContain('id="home-applications"');
+    expect(locked).not.toContain('href="/tr/kosks/k1/basvurular"');
+    expect(locked).not.toContain("Bekleyen başvuru yok.");
+    expect(html).toContain('id="home-applications"');
+  });
+
   it("says so when the week has no celse", () => {
     const quiet = render(
       <KoskHome
