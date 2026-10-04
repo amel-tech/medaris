@@ -100,7 +100,7 @@ describe("what the home page says (MDRS-245)", () => {
     expect(text).not.toMatch(
       /üstekinin içinde|çatı altında|bağlı olmak zorunda/i
     );
-    expect(text).toContain("barındırma hakkı olan köşklerde açan kurum");
+    expect(text).toContain("barındırma hakkı olan köşklerde açın");
   });
 
   it("does not say that course content is closed to a visitor", async () => {
@@ -117,6 +117,21 @@ describe("what the home page says (MDRS-245)", () => {
     expect(text).toContain(
       "celse sürerken yayın ve altında canlı sohbet açılır"
     );
+  });
+
+  it("speaks to both talebe and medreses, and sends a medrese to the contact form", async () => {
+    const html = renderToStaticMarkup(await renderHome());
+    expect(html).toContain('id="talebeler"');
+    expect(html).toContain('id="medreseler"');
+    expect(html).toContain('href="#medreseler"');
+    expect(html).toContain('href="/iletisim"');
+    expect(textOf(html)).toContain("Medreseleri Medaris yönetimi açar.");
+  });
+
+  it("sets the Qur'an only in the Qur'an face, with its end mark bound to the word before it", async () => {
+    const html = renderToStaticMarkup(await renderHome());
+    expect(html).toMatch(/<p class="mds-quran[^"]*" lang="ar" dir="rtl">/);
+    expect(karsilama.folio.ayah).toContain("\u00a0﴿");
   });
 
   it("keeps 'who runs Medaris' out while any of its fields is a placeholder", async () => {

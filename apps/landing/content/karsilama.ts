@@ -1,111 +1,124 @@
-// Content of the Karşılama page. Every sentence here describes something
-// tedris does on main; the PR that last changed this file lists where each
-// one was checked. Notes and questions on lessons (MDRS-150) and lesson
+// Content of the Karşılama page: the marketing page for talebe and for
+// medreses. Every claim about the product describes something tedris or the
+// medrese portal does on main; the PR that last changed this file lists where
+// each one was checked. Notes and questions on lessons (MDRS-150) and lesson
 // recordings are not on main and are not mentioned.
-
-import type { IconName } from "@medaris/ui/mds/icon";
 
 export const hero = {
   eyebrow: "Çevrim içi medrese",
-  title: "Medrese ilimlerini müderrisle, hafta hafta canlı celselerde okuyun.",
+  title: "Kitap, müderris, halka.",
+  titleSoft: "Nerede olursanız olun.",
   intro:
-    "Medaris’te bir ders haftalara bölünür; her hafta bir ya da birkaç canlı celse yapılır. Programı baştan görür, celseye katılır, okuduklarınızı ezber kartlarıyla tekrar edersiniz.",
-  register: "Kayıt ol",
-  signIn: "Giriş yap",
-  explore: "Önce göz atın",
-  note: "Derslerin tanıtımı ve programı herkese açıktır. Toplantı bağlantıları ve canlı yayın derse kayıtlı talebelere görünür.",
+    "Medrese usulü okumanın üç direği bunlardır. Medaris, medreselerin derslerini çevrim içi açtığı, talebelerin de müderrisle haftalık canlı celselerde okuduğu yerdir.",
+  register: "Talebe olarak kaydolun",
+  forMadrasahs: "Medreseniz için",
+  explore: "Dersleri keşfedin",
+  note: "Derslerin tanıtımı ve programı herkese açıktır; hesap açmadan bakabilirsiniz.",
 };
 
-/** The first screen's picture of a course page: a labelled example, not a real course. */
-export const sampleCourse = {
-  eyebrow: "Örnek ders sayfası",
-  badge: "Örnek",
-  title: "Örnek ders",
-  caption: "Gerçek bir ders değildir; bir ders sayfasının düzenini gösterir.",
-  lessonType: "Canlı ders",
-  lockedLabel: "Kilitli",
-  weeks: [
-    {
-      title: "Hafta 1",
-      sessions: [
-        { title: "Celse 1", when: "Cumartesi 21:00", minutes: "60 dk" },
-        { title: "Celse 2", when: "Salı 21:00", minutes: "60 dk" },
-      ],
-    },
-    {
-      title: "Hafta 2",
-      sessions: [
-        { title: "Celse 1", when: "Cumartesi 21:00", minutes: "60 dk" },
-      ],
-    },
+/** The first screen's folio: Tâhâ 114, the prayer for knowledge. */
+export const folio = {
+  label: "Kur’ân-ı Kerîm’den bir âyet",
+  sure: "سُورَةُ طه",
+  // The ayah's end mark is bound to the word before it with a no-break space.
+  ayah: "وَقُل رَّبِّ زِدْنِي عِلْمًا ﴿١١٤﴾",
+  meal: "De ki: Rabbim, ilmimi artır.",
+  source: "Tâhâ sûresi, 114. âyet",
+};
+
+export const promises = [
+  {
+    title: "Canlı okuyun",
+    body: "Müderrisle aynı halkada, haftalık celselerde.",
+  },
+  {
+    title: "Düzenli ilerleyin",
+    body: "Hangi hafta ne okunacağı, celsenin ne zaman yapılacağı baştan bellidir.",
+  },
+  {
+    title: "Okuduğunuzu koruyun",
+    body: "Kelime ve hadisleri ezber kartlarıyla tekrar edersiniz.",
+  },
+];
+
+export const talebe = {
+  eyebrow: "Talebeler için",
+  title: "Bir kitabı baştan sona, müderrisinden okuyun.",
+  points: [
+    "Ders sayfasında tanıtımı ve haftalık programı görün; derse kaydolun ya da onay isteyen derse başvurun.",
+    "Celse vakti geldiğinde celse sayfasındaki “Celseye katıl” düğmesiyle derse girin.",
+    "Celseleriniz Google Takvim’e, Apple Takvim’e ya da Outlook’a düşsün; Programım sayfası hepsini gün gün sıralar.",
+    "Okuduğunuz kelime ve hadisleri ezber kartlarıyla tekrar edin.",
   ],
-  note: "Haftalar ve celse saatleri herkese görünür; toplantı bağlantısı kayıtlı talebeler için kilitlidir.",
+  register: "Kaydolun",
+  explore: "Dersleri keşfedin",
 };
 
-export const structure = {
-  title: "Bir dersin yapısı: köşkten celseye",
-  intro:
-    "Köşkler bir ilmin derslerini bir araya getirir; medreseler derslerini bu köşklerde açar. Her ders haftalara, her hafta celselere bölünür.",
+export const medrese = {
+  eyebrow: "Medreseler için",
+  title: "Medresenizin derslerini çevrim içi açın.",
+  points: [
+    "Derslerinizi barındırma hakkı olan köşklerde açın; müderrislerini siz seçin.",
+    "Önümüzdeki yedi günün celselerini ve onayınızı bekleyen başvuruları panoda bir arada görün.",
+    "Talebelerinizi tek listede izleyin: kim hangi derse devam ediyor, hangisini tamamladı.",
+    "Kuralı bir kez koyun: “Kayıt her zaman onaylı” ya da “Kapalı ders zorunlu”, medresenin bütün derslerine uygulanır.",
+    "Medrese nazırları atayın; gerektiğinde bir talebeyi medreseden yasaklayın.",
+  ],
+  contact: "Bize yazın",
+  note: "Medreseleri Medaris yönetimi açar. İletişim formundan yazın, size dönelim.",
+};
+
+export const howItWorks = {
+  eyebrow: "Bir ders nasıl ilerler",
+  title: "Kaydolun, celseye katılın, tekrar edin.",
   steps: [
     {
-      icon: "kosk",
-      title: "Köşk",
-      body: "Bir ilim dalına ayrılmış meclis. O ilmin dersleri köşkte bir araya gelir.",
+      title: "Kaydolun",
+      body: "Ders sayfasında tanıtımı, haftaları ve celse tarihlerini hesap açmadan görürsünüz. Beğendiğiniz derse kaydolur ya da başvurursunuz.",
     },
     {
-      icon: "medrese",
-      title: "Medrese",
-      body: "Derslerini, barındırma hakkı olan köşklerde açan kurum.",
+      title: "Celseye katılın",
+      body: "Celse sayfasında “Celseye katıl” düğmesi ve toplantı platformunun adı görünür. Ders kadrosu bir YouTube canlı yayın bağlantısı eklediyse, celse sürerken yayın ve altında canlı sohbet açılır.",
     },
     {
-      icon: "book",
-      title: "Ders",
-      body: "Bir ya da birkaç müderrisin okuttuğu kitap ya da konu. Tanıtımı ve programı herkese açıktır; toplantı bağlantıları ve canlı yayın kayıtlı talebelere görünür.",
+      title: "Tekrar edin",
+      body: "Kartın arka yüzünü açar, “Ne kadar zordu?” sorusuna Zor, Orta ya da Kolay diye cevap verirsiniz; kart, cevabınıza göre yeniden önünüze gelir.",
     },
-    {
-      icon: "calendar",
-      title: "Hafta",
-      body: "Ders haftalara bölünür. Her haftanın başlığı ve celseleri programda yazılıdır.",
-    },
-    {
-      icon: "video",
-      title: "Celse",
-      body: "Müderrisle tarihi belli canlı buluşma. Bir hafta bir ya da birkaç celse içerebilir; bir celsenin toplantı bağlantısı eklendiğinde celse sayfasında görünür.",
-    },
-  ] satisfies { icon: IconName; title: string; body: string }[],
+  ],
 };
 
-export const celse = {
-  title: "Celse: haftanın canlı buluşması",
-  intro:
-    "Her celsenin tarihi ve saati vardır; toplantı bağlantısı eklendiğinde celse sayfasında görünür.",
-  cards: [
-    {
-      icon: "calendar",
-      title: "Takvime ekleyin",
-      body: "Celseyi Google Takvim’e ekleyebilir ya da Apple Takvim ve Outlook için .ics dosyası indirebilirsiniz. Tüm derslerinizi tek bir takvim aboneliğiyle de izleyebilirsiniz. Takvime toplantı bağlantısı yazılmaz; kayıt celse sayfasına bağlanır. Programım sayfası celselerinizi gün gün sıralar.",
-    },
-    {
-      icon: "video",
-      title: "Celseye katılın",
-      body: "Celse sayfasında “Celseye katıl” düğmesi ve toplantı platformunun adı görünür. Ders kadrosu bir YouTube canlı yayın bağlantısı eklediyse, celse sürerken yayın ve altında canlı sohbet açılır. Sohbette yazmak için tarayıcıda YouTube’a giriş yapmış olmanız gerekir.",
-    },
-    {
-      icon: "clock",
-      title: "Saat ve değişiklikler",
-      body: "Saatler dersin saat diliminde yazılır; sizinkinden farklıysa kendi saatiniz de gösterilir. Kayıt kararları ve celse değişiklikleri size uygulama içi bildirimle ulaşır.",
-    },
-  ] satisfies { icon: IconName; title: string; body: string }[],
+/** The picture of a course page beside the steps: a labelled example, not a real course. */
+export const sampleCourse = {
+  label: "Örnek ders sayfası",
+  badge: "Örnek",
+  cover: "الصرف",
+  science: "Sarf",
+  title: "Emsile ve Bina",
+  lessonType: "Canlı ders",
+  live: "Şu an canlı",
+  join: "Celseye katıl",
+  lockedLabel: "Kilitli",
+  weeks: [
+    { title: "1. hafta", when: "Cumartesi 21:00", state: "done" },
+    { title: "2. hafta", when: "Cumartesi 21:00", state: "live" },
+    { title: "3. hafta", when: "Cumartesi 21:00", state: "locked" },
+  ] as const,
+  note: "Gerçek bir ders değildir; bir ders sayfasının düzenini gösterir.",
+};
+
+export const halka = {
+  quote: "Medrese, binasından önce bir halkadır.",
+  text: "Bir kitap, onu okutan bir müderris ve dinleyen talebeler. Medaris bu halkayı ekrana taşır; nerede olursanız olun, yeriniz hazırdır.",
 };
 
 export const ezber = {
-  title: "Ezber kartları",
-  text: "Kartlar kelime ve hadis desteleri hâlinde durur. Çalışırken kartın arka yüzünü açar, “Ne kadar zordu?” sorusuna Zor, Orta ya da Kolay diye yanıt verirsiniz; kart, yanıtınıza göre yeniden önünüze gelir.",
+  eyebrow: "Ezber kartları",
+  title: "Okuduğunuz sizde kalsın.",
+  text: "Kartlar kelime ve hadis desteleri hâlinde durur. Her kart, “Ne kadar zordu?” sorusuna verdiğiniz cevaba göre yeniden önünüze gelir.",
   points: [
-    "Desteler bir derse, köşke ya da medreseye bağlı olabilir, herkese de açılabilir; kendi destenizi de oluşturabilirsiniz.",
-    "Başkasının destesindeki bir kartı kendi destenize kopyalayabilirsiniz.",
-    "Kartları Excel ya da CSV dosyasından içe aktarabilirsiniz.",
-    "Herkese açık bir destenin bağlantısı elinizdeyse, hesap açmadan kartları çalışabilirsiniz; ilerleme kaydedilmez.",
+    "Başkasının destesindeki bir kartı kendi destenize kopyalayın.",
+    "Kartları Excel ya da CSV dosyasından içe aktarın.",
+    "Herkese açık bir destenin bağlantısı elinizdeyse, hesap açmadan çalışın; ilerleme kaydedilmez.",
   ],
   sample: {
     deck: "Örnek deste",
@@ -121,34 +134,11 @@ export const ezber = {
   },
 };
 
-export const gozat = {
-  title: "Hesap açmadan önce bakın",
-  intro:
-    "Keşfet’te köşkleri ve medreseleri, ders sayfalarında tanıtımı ve programı hesapsız görebilirsiniz.",
-  cards: [
-    {
-      icon: "eye",
-      title: "Herkese açık",
-      body: "Köşk, medrese ve ders tanıtımları. Haftalar, celse başlıkları ve tarihleri. Bağlantısı elinizdeyse, herkese açık olarak işaretlenmiş bir deste.",
-    },
-    {
-      icon: "lock",
-      title: "Derse kayıtlı talebelere",
-      body: "Toplantı bağlantıları ve canlı yayın.",
-    },
-    {
-      icon: "check",
-      title: "Onay isteyen derslerde",
-      body: "Bazı dersler kayıt için onay ister. Başvurunuz onaylanana kadar toplantı bağlantıları ve canlı yayın kilitli kalır; karar size bildirimle ulaşır.",
-    },
-  ] satisfies { icon: IconName; title: string; body: string }[],
-  explore: "Keşfet’e gidin",
-};
-
 export const closing = {
-  title: "Derslere katılmak için hesap açın",
-  text: "Hesap açtıktan sonra derslere kaydolabilir, onay isteyen derslere başvurabilirsiniz.",
-  register: "Kayıt ol",
+  title: "Halkaya katılın.",
+  text: "Hesabınızı açın, derslere kaydolun. Medreseniz için bize yazın.",
+  register: "Talebe olarak kaydolun",
+  contact: "Medreseniz için bize yazın",
   signIn: "Giriş yap",
   faq: "Sık sorulan sorular",
   consentLead: "Kayıt formunda",

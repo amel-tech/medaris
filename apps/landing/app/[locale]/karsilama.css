@@ -1,3 +1,306 @@
+/* The Karşılama page's own classes. The page is a marketing page, so it sets
+   larger type and wider rhythm than the app screens; every value is a token
+   or a multiple of one. Nothing here is a colour of its own. */
+
+/* ------------------------------------------------------------- type */
+
+.karsilama-display {
+  margin: 0;
+  font-family: var(--font-reading);
+  font-size: clamp(
+    var(--fs-display),
+    calc(var(--fs-h3) + 3.4vw),
+    calc(var(--fs-display) * 2)
+  );
+  font-weight: var(--weight-medium);
+  line-height: 1.04;
+  letter-spacing: calc(var(--tracking-tight) * 2);
+  color: var(--text-neutral-default);
+  text-wrap: balance;
+}
+
+.karsilama-display__soft {
+  display: block;
+  font-style: italic;
+  font-weight: var(--weight-regular);
+  color: var(--text-neutral-muted);
+}
+
+.karsilama-h2 {
+  margin: 0;
+  font-family: var(--font-reading);
+  font-size: clamp(
+    var(--fs-h1),
+    calc(var(--fs-h4) + 1.6vw),
+    calc(var(--fs-display) * 1.2)
+  );
+  font-weight: var(--weight-medium);
+  line-height: 1.12;
+  letter-spacing: var(--tracking-tight);
+  text-wrap: balance;
+}
+
+.karsilama-lead {
+  margin: 0;
+  max-inline-size: 36em;
+  font-family: var(--font-reading);
+  font-size: calc(var(--fs-reading) * 1.1);
+  line-height: 1.6;
+  color: var(--text-neutral-muted);
+  text-wrap: pretty;
+}
+
+.karsilama-quote {
+  margin: 0;
+  font-family: var(--font-reading);
+  font-size: clamp(
+    var(--fs-h1),
+    calc(var(--fs-h3) + 3vw),
+    calc(var(--fs-display) * 1.6)
+  );
+  font-style: italic;
+  font-weight: var(--weight-regular);
+  line-height: 1.12;
+  text-wrap: balance;
+}
+
+.karsilama-muted {
+  color: var(--text-neutral-muted);
+}
+
+/* ------------------------------------------------------------- rhythm */
+
+.karsilama-section {
+  padding-block: clamp(var(--space-12), 6vw, var(--space-20));
+}
+
+.karsilama-section--flush {
+  padding-block-start: 0;
+}
+
+.karsilama-section--rule {
+  border-block-start: var(--border-width-thin) solid
+    var(--border-neutral-subtle);
+}
+
+/* ------------------------------------------------------------- first screen */
+
+.karsilama-hero {
+  padding-block: clamp(var(--space-10), 5vw, var(--space-20))
+    clamp(var(--space-12), 6vw, var(--space-20));
+}
+
+.karsilama-hero__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
+  align-items: center;
+  gap: clamp(var(--space-10), 6vw, var(--space-20));
+}
+
+.karsilama-folio .mds-quran {
+  font-size: calc(var(--fs-quran) * 1.25);
+}
+
+/* ------------------------------------------------------------- promises */
+
+.karsilama-promises {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-10);
+  margin-block: 0;
+  list-style: none;
+}
+
+.karsilama-promises > li {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding-inline-start: var(--space-6);
+  border-inline-start: var(--border-width-thin) solid
+    var(--border-neutral-control);
+}
+
+.karsilama-promises__title {
+  margin: 0;
+  font-family: var(--font-reading);
+  font-size: var(--fs-h1);
+  font-weight: var(--weight-medium);
+  line-height: var(--lh-tight);
+  letter-spacing: var(--tracking-tight);
+}
+
+/* ------------------------------------------------------------- two doors */
+
+.karsilama-doors {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-gap-grid);
+}
+
+.karsilama-door {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  padding: clamp(var(--space-8), 4vw, var(--space-14));
+  border: var(--border-width-thin) solid var(--border-neutral-subtle);
+  border-radius: var(--radius-surface);
+  background: var(--background-neutral-surface);
+  color: var(--text-neutral-default);
+}
+
+/* A night island: the medrese side is written in paper on ink. */
+.karsilama-door--ink {
+  border-color: var(--border-neutral-subtle);
+  background: var(--background-neutral-page);
+}
+
+.karsilama-points {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.karsilama-points > li {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding-block: var(--space-3);
+  border-block-end: var(--border-width-thin) solid var(--border-neutral-subtle);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+}
+
+.karsilama-points > li:last-child {
+  border-block-end: 0;
+}
+
+.karsilama-points__mark {
+  flex: none;
+  margin-block-start: var(--space-1);
+}
+
+/* ------------------------------------------------------------- how it works */
+
+.karsilama-how {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.9fr);
+  align-items: center;
+  gap: clamp(var(--space-10), 6vw, var(--space-20));
+}
+
+.karsilama-steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.karsilama-steps > li {
+  display: grid;
+  grid-template-columns: var(--space-14) minmax(0, 1fr);
+  gap: var(--space-4);
+  align-items: start;
+}
+
+.karsilama-steps__num {
+  font-family: var(--font-reading);
+  font-size: var(--fs-display);
+  font-style: italic;
+  line-height: 1;
+  color: var(--text-neutral-subtle);
+}
+
+.karsilama-mock__cover {
+  border-radius: 0;
+}
+
+.karsilama-mock__join {
+  pointer-events: none;
+}
+
+/* ------------------------------------------------------------- the halka band */
+
+.karsilama-band {
+  background: var(--background-neutral-page);
+  color: var(--text-neutral-default);
+  padding-block: clamp(var(--space-16), 8vw, calc(var(--space-20) * 1.4));
+}
+
+.karsilama-band__inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-6);
+  text-align: center;
+}
+
+/* ------------------------------------------------------------- ezber */
+
+.karsilama-ezber {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: clamp(var(--space-10), 6vw, var(--space-20));
+}
+
+.karsilama-cards {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-5);
+}
+
+.karsilama-card--back {
+  margin-block-start: var(--space-12);
+}
+
+/* ------------------------------------------------------------- closing */
+
+.karsilama-closing {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-6);
+  text-align: center;
+}
+
+/* ------------------------------------------------------------- narrow */
+
+@media (max-width: 1023.98px) {
+  .karsilama-hero__grid,
+  .karsilama-how,
+  .karsilama-ezber {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .karsilama-doors {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 767.98px) {
+  .karsilama-promises {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-6);
+  }
+
+  .karsilama-cards {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .karsilama-card--back {
+    margin-block-start: 0;
+  }
+
+  .karsilama-folio .mds-quran {
+    font-size: var(--fs-quran);
+  }
+}
+
 /* The first screen arrives once, on load: each part fades in from a soft blur
    and a few pixels below its place, over its own duration (they all start
    together, so the shorter ones settle first). Nothing below the first screen
