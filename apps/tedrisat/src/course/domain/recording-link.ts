@@ -102,8 +102,7 @@ function youtubeVideoIdOf(url: URL, host: string): string | null {
  *   is kept. A link of any other library, or any Bunny link while no library
  *   is configured (`ownLibraryId` null), is refused: tedrisat could not sign
  *   it, and a foreign library's token settings are not ours to rely on. Its
- *   query
- *   string (a token someone else signed) is dropped. Any other host on a
+ *   query string (a token someone else signed) is dropped. Any other host on a
  *   Bunny domain (`*.mediadelivery.net`, `*.bunnycdn.com`, `*.b-cdn.net`) is
  *   refused rather than read as OTHER. A trailing dot on the host is ignored.
  * - Google Drive or Docs: DRIVE. Anything else https: OTHER.
