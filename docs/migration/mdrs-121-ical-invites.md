@@ -50,10 +50,17 @@ addresses come from there.
   kept on one line.
 - **State** (migration `0048_lesson_invitations`, rollback in
   `rollbacks/0048_lesson_invitations.down.sql`):
-  - `lesson_invitations` (PK lesson_id + user_id; FK to lessons RESTRICT):
-    the SEQUENCE and what the last message said (start, length, both titles),
-    `cancelled_at` once a CANCEL went out. `course/course-purge.ts` and the
-    archive hard-deletes of a week or a session remove these rows first.
+  - `lesson_invitations` (PK lesson_id + user_id, plus `course_id`; **no
+    foreign key**): the SEQUENCE and what the last message said (start,
+    length, both titles), `cancelled_at` once a CANCEL went out. The row
+    outlives its session on purpose: deleting a session, week, course or
+    köşk (`DELETE /courses/:id`, `DELETE /kosks/:id`, the archive
+    hard-deletes) leaves it, the sweep reads the gone session as "should not
+    hold" and sends the CANCEL, and `pruneOrphans` deletes the row once the
+    CANCEL is out or its time has passed. `course_id` is kept for the
+    CANCEL's session page link (which then answers 404). An earlier draft of
+    this PR had a RESTRICT key and deleted the rows inside the purge, so a
+    deleted course left its events in every calendar.
   - `users.lesson_invitation_emails boolean not null default true`.
 - **The sweep** (`LessonInvitationService` + `LessonInvitationRepository`).
   It reconciles instead of reacting event by event: one SQL rule decides
@@ -75,13 +82,24 @@ addresses come from there.
     break ATTENDEE). **Opting out stops everything**, cancellations included.
   - Write-then-send: the row is claimed with a conditional write on its
     SEQUENCE (two instances never send the same message), then sent. A
-    server that cannot take mail undoes the claim and stops the round (retried
-    next round); a 5xx recipient refusal (`EENVELOPE`) keeps the claim, so a
-    dead address is not retried every five minutes.
+    failed send is read by `classifySendFailure` off nodemailer's `command`,
+    reply code and RFC 3463 enhanced status:
+    - **refused** — RCPT TO, 5xx, `5.1.x` (address) or `5.2.x` (mailbox):
+      the claim stands, so a dead address is not retried every five minutes;
+    - **deferred** — RCPT TO, 4xx, `4.1.x` / `4.2.x`: the claim is undone and
+      the round goes on, so one full mailbox does not hold back everyone
+      behind it; the round does not go round again at once;
+    - **failed** — everything else (connection, AUTH, MAIL FROM, DATA, a
+      relay-wide RCPT denial such as `5.7.x` or `5.4.5`, a reply without an
+      enhanced code): the claim is undone and the round stops, retried on
+      the next round. An earlier draft kept the claim for *any* `EENVELOPE`
+      5xx, which nodemailer also raises for MAIL FROM and DATA, so a relay
+      that refused everything would have marked every message as sent.
   - Triggers: `CourseService` kicks a round after every write that can change
     what is owed — approve, enroll, set status, remove, leave, lesson
     create / update / cancel / hide, session batch, whole-course save, course
-    update / hide / restore, müderris list. A timer runs a round every
+    update / hide / restore / delete, müderris list; `KoskService.delete` and
+    `ArchiveService.delete` kick too. A timer runs a round every
     5 minutes for what no write announces (a post lapsing, a session entering
     the horizon, a ban, medrese-side changes) and for retries. Batches of 100
     per query; a full batch goes round again, at most 20 rounds per kick.
@@ -112,12 +130,13 @@ added and `LAST_UPDATED` moved to 4 Ekim 2026. The notice is still a draft
 
 ## What was verified
 
-All five gates green on this branch, run with `env -u NODE_ENV`:
+All five gates green on this branch after the review round, run with
+`env -u NODE_ENV`:
 
 | Gate | Result |
 | -- | -- |
 | typecheck | 17 projects + 2 dependent tasks, green |
-| test | 12 projects + 2 dependent tasks, green; tedrisat 2038 tests in 139 files, 0 failures (junit) |
+| test | 12 projects + 2 dependent tasks, green; tedrisat 2066 tests in 140 files, 0 failures (junit; 2038 in 139 before the review round) |
 | build | 8 projects + 7 dependent tasks, green |
 | lint | 17 projects, green |
 | module-boundaries | 17 projects, green |
@@ -125,7 +144,7 @@ All five gates green on this branch, run with `env -u NODE_ENV`:
 New specs (SMTP stubbed throughout — the tedrisat suite may not reach the
 network):
 
-- `test/e2e/lesson-invitations.e2e.spec.ts` (13 tests, real routes, real
+- `test/e2e/lesson-invitations.e2e.spec.ts` (22 tests, real routes, real
   Postgres, stub transport through `MAIL_CONFIG` / `MAIL_TRANSPORT`):
   approval invites only the upcoming session within the horizon, only to the
   approved verified talebe, with no meeting link anywhere in the message;
@@ -134,14 +153,22 @@ network):
   hiding the course cancel; a passive course invites nobody new; opting out
   (GET/PATCH `/me`) stops updates and cancellations, and before approval
   stops the invitation; `null` is refused; a failed send is retried next
-  round with the same SEQUENCE; a 5xx refusal and an address list are not
-  retried.
-- Unit: `invitation-ics.spec.ts` (7), `invitation-mail.spec.ts` (6),
+  round with the same SEQUENCE; a `5.1.1` refusal and an address list are not
+  retried. Added in the review round (9 more): a relay-wide `5.7.0`, a
+  `5.4.5` daily limit, a MAIL FROM and a DATA rejection and a 5xx without an
+  enhanced code each record nothing and are sent on the next round; a `4.2.2`
+  over-quota recipient does not hold back the talebe behind it; deleting the
+  course sends the CANCEL and then drops the row; deleting a hidden session
+  from the archive sends the CANCEL still owed; a deleted session whose time
+  has passed is dropped without a message.
+- Unit: `send-failure.spec.ts` (19, the reply classifier),
+  `invitation-ics.spec.ts` (7), `invitation-mail.spec.ts` (6),
   `smtp-env.spec.ts` (13), `mail-service.spec.ts` (6 — including the real
   MIME from nodemailer's stream transport: `multipart/alternative` with a
   `text/calendar; charset=utf-8; method=REQUEST` part).
 - tedris-web `test/account-profile.spec.ts`: 3 new tests for the switch.
-- `drizzle-kit generate` after the migration: "No schema changes".
+- `drizzle-kit generate` after the migration (re-run after 0048 dropped its
+  foreign key and gained `course_id`): "No schema changes".
 - `node tools/ci/assert-openapi-spec-fresh.mjs`: 169 paths, identical.
 
 ## What was not verified
@@ -161,10 +188,26 @@ network):
   to `email_verified` addresses; a realm that does not verify sends nobody
   anything.
 - The tedris-web switch in a browser (only the component spec ran).
+- Which replies the Gmail relay really gives for a dead address, a full
+  mailbox, a relay denial or a daily limit. The classifier follows RFC 3463
+  and Google's published codes; a reply that does not fit is treated as the
+  server's fault and retried, never as a refusal.
+- **Opting out also stops cancellations** — a talebe who turns invitations
+  off keeps in the calendar the events already sent, even if those sessions
+  are later cancelled or moved. The AC only says "opting out stops further
+  invitations"; whether a CANCEL should still go out (or every standing
+  event be withdrawn at opt-out) is the owner's decision and was left as
+  built.
 - CI did not run: GitHub Actions is locked by a billing issue on amel-tech;
   the gates above are local.
 
 ## Follow-ups
+
+- `0048_lesson_invitations` was edited in place in the review round (no
+  foreign key, `course_id` added) because it has not reached `main`. A local
+  database that booted an earlier commit of this branch holds the old table:
+  run the rollback in `rollbacks/0048_lesson_invitations.down.sql`, delete
+  0048's row from `"drizzle"."__drizzle_migrations"`, and boot again.
 
 - Manual check in Gmail and Apple Mail (above) once `TEDRISAT__SMTP_*` is set
   on an environment.
@@ -174,8 +217,9 @@ network):
   before the first deploy.
 - An address change in Keycloak sends later messages to the new address; the
   old mailbox's calendar keeps its event.
-- Ban, medrese-side course writes and role revocations do not kick a round;
-  the 5-minute timer catches them. A kick from those services would make
-  them immediate.
+- Ban, medrese-side course writes, role revocations and the opt-out itself
+  do not kick a round; the 5-minute timer catches them, so a passive-course
+  CANCEL can arrive up to 5 minutes late. A lapsing post can only be caught
+  by the timer. A kick from those services would make the rest immediate.
 - The privacy notice wording (purpose and the Gmail recipient line) needs the
   owner's legal review.
