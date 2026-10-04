@@ -50,7 +50,9 @@ const open = async (page: Page, query = "") => {
 
 const rows = (page: Page) =>
   page.locator("[data-testid=students] tbody tr:visible");
-const pager = (page: Page) => page.getByTestId("pager-range");
+// `visible`: after a navigation Next keeps the page it left hidden, with its own pager
+const pager = (page: Page) =>
+  page.getByTestId("pager-range").filter({ visible: true });
 
 test("nazir/10 — the first of five pages lists the newest ten, the counter says 48, and 'Sonraki' reads 11–20 (criteria 1, 2)", async ({
   as,
@@ -60,7 +62,9 @@ test("nazir/10 — the first of five pages lists the newest ten, the counter say
   await open(page);
 
   // the medrese's pending applications are not talebe
-  await expect(page.getByTestId("counter")).toHaveText("48 talebe");
+  await expect(
+    page.getByTestId("counter").filter({ visible: true })
+  ).toHaveText("48 talebe");
   await expect(pager(page)).toHaveText("Sayfa 1 / 5 · 48 talebeden 1–10");
   await expect(rows(page)).toHaveCount(10);
   await expect(rows(page).first()).toContainText(students?.names[0] ?? "");
@@ -100,7 +104,9 @@ test("nazir/10 — a talebe who finished a course names it with the day, and the
   await expect(finisher).not.toContainText("Yok");
   await expect(rows(page).nth(1)).toContainText("Yok");
   await expect(
-    page.getByText("Talebenin medrese dışındaki dersleri bu listede yer almaz.")
+    page
+      .getByText("Talebenin medrese dışındaki dersleri bu listede yer almaz.")
+      .filter({ visible: true })
   ).toBeVisible();
 });
 
@@ -115,23 +121,33 @@ test("nazir/10 — the state filter and the search narrow the list, from the fir
   await page.getByRole("option", { name: "Tamamladı" }).click();
   await expect(page).toHaveURL(/durum=tamamladi/);
   await expect(page).not.toHaveURL(/sayfa=/);
-  await expect(page.getByTestId("counter")).toHaveText("1 talebe");
+  await expect(
+    page.getByTestId("counter").filter({ visible: true })
+  ).toHaveText("1 talebe");
   await expect(rows(page)).toHaveCount(1);
   await expect(rows(page).first()).toContainText(students?.finisher.name ?? "");
 
   await page.getByRole("combobox", { name: "Durum" }).click();
   await page.getByRole("option", { name: "Bütün durumlar" }).click();
-  await expect(page.getByTestId("counter")).toHaveText("48 talebe");
+  await expect(
+    page.getByTestId("counter").filter({ visible: true })
+  ).toHaveText("48 talebe");
 
   await page.getByRole("searchbox").fill(students?.names[6] ?? "");
   await expect(page).toHaveURL(/ara=/);
-  await expect(page.getByTestId("counter")).toHaveText("1 talebe");
+  await expect(
+    page.getByTestId("counter").filter({ visible: true })
+  ).toHaveText("1 talebe");
   await expect(rows(page).first()).toContainText(students?.names[6] ?? "");
 
   await page.getByRole("searchbox").fill("böyle biri yok");
-  await expect(page.getByText("Bu süzgece uyan talebe yok.")).toBeVisible();
+  await expect(
+    page.getByText("Bu süzgece uyan talebe yok.").filter({ visible: true })
+  ).toBeVisible();
   await page.getByRole("button", { name: "Süzgeçleri temizle" }).click();
-  await expect(page.getByTestId("counter")).toHaveText("48 talebe");
+  await expect(
+    page.getByTestId("counter").filter({ visible: true })
+  ).toHaveText("48 talebe");
 });
 
 test("nazir/10 — 'Yasakla' opens the dialog with the talebe's courses, wants a reason, and bars them from the course chosen (criterion 4)", async ({
@@ -162,7 +178,9 @@ test("nazir/10 — 'Yasakla' opens the dialog with the talebe's courses, wants a
     .fill("  E2E derste reklam yaptı  ");
   await submit.click();
 
-  await expect(page.getByText("Yasak kaydedildi")).toBeVisible();
+  await expect(
+    page.getByText("Yasak kaydedildi").filter({ visible: true })
+  ).toBeVisible();
   await expect(dialog).toBeHidden();
   const bans = (await students?.bansOf(students.finisher.id)) ?? [];
   expect(bans).toHaveLength(1);
@@ -181,6 +199,8 @@ test("nazir/10 — a medrese nazır is refused: a notice and no list", async ({
   test.skip(!(ready() && canSignIn(MEDRESE_NAZIR)), "no medrese nazır account");
   const page = await as("MEDRESE_NAZIR");
   await open(page);
-  await expect(page.getByText("Bu sayfaya izniniz yok")).toBeVisible();
+  await expect(
+    page.getByText("Bu sayfaya izniniz yok").filter({ visible: true })
+  ).toBeVisible();
   await expect(page.getByTestId("students")).toHaveCount(0);
 });

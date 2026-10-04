@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import pg from "pg";
+import { type HeldMedarisNazim, holdMedarisNazim } from "./medaris-nazim";
 
 /**
  * What the Medaris nazımları and İzin grupları specs put in tedrisat's
@@ -89,7 +90,7 @@ export async function seedPermissions(): Promise<PermissionsFixture> {
   };
   const koskName = `E2E Nûruosmaniye Köşkü ${tail}`;
   const extraUsers: string[] = [];
-  const extraNazims: string[] = [];
+  const medarisNazims: HeldMedarisNazim[] = [];
 
   // Appointed 14, 15 and 22 September; the second ends in 14 days.
   const inDays = (n: number) =>
@@ -268,18 +269,15 @@ export async function seedPermissions(): Promise<PermissionsFixture> {
       return { grantedBy: row.granted_by, revoked: row.revoked };
     },
     makeMedarisNazim: async (sub) => {
-      extraNazims.push(sub);
-      await client.query(
-        "insert into role_assignments(user_id, role, scope_type, granted_by) values ($1, 'MEDARIS_NAZIM', 'platform', $1)",
-        [sub]
-      );
+      medarisNazims.push(await holdMedarisNazim(sub));
     },
     forget: async (userId) => {
       extraUsers.push(userId);
     },
     remove: async () => {
       try {
-        const people = [...allUsers(), ...extraNazims];
+        for (const held of medarisNazims.reverse()) await held.release();
+        const people = allUsers();
         await client.query(
           "delete from permission_grants where user_id = any($1) or granted_by = any($1) or group_id = any($2)",
           [

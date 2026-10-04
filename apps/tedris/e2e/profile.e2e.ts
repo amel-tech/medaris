@@ -73,31 +73,37 @@ test("Hesap: names persist, blanks are refused, e-mail and language are read onl
   await expect(
     page.getByRole("heading", { name: "Kişisel bilgiler" })
   ).toBeVisible();
-  await expect(page.locator('input[name="email"]')).toHaveValue(
+  await expect(page.locator('input[name="email"]:visible')).toHaveValue(
     talebe.email as string
   );
-  await expect(page.locator('input[name="email"]')).not.toBeEditable();
-  await expect(page.locator('input[name="language"]')).toHaveValue("Türkçe");
-  await expect(page.locator('input[name="language"]')).not.toBeEditable();
+  await expect(page.locator('input[name="email"]:visible')).not.toBeEditable();
+  await expect(page.locator('input[name="language"]:visible')).toHaveValue(
+    "Türkçe"
+  );
+  await expect(
+    page.locator('input[name="language"]:visible')
+  ).not.toBeEditable();
 
   // Criterion 2: a blank name sends nothing and says so.
-  await page.locator('input[name="givenName"]').fill("");
+  await page.locator('input[name="givenName"]:visible').fill("");
   await page.getByRole("button", { name: "Kaydet" }).click();
-  await expect(page.getByText("Adını yaz.")).toBeVisible();
+  await expect(
+    page.getByText("Adını yaz.").filter({ visible: true })
+  ).toBeVisible();
   expect(
     await rows("select 1 from user_profiles where user_id = $1", [talebe.sub])
   ).toHaveLength(0);
 
   // Criterion 1 and the e2e of the spec: change, save, reload, it stays.
-  await page.locator('input[name="givenName"]').fill(`Zeynep ${tag}`);
-  await page.locator('input[name="familyName"]').fill("Karahanlı");
+  await page.locator('input[name="givenName"]:visible').fill(`Zeynep ${tag}`);
+  await page.locator('input[name="familyName"]:visible').fill("Karahanlı");
   await page.getByRole("button", { name: "Kaydet" }).click();
   await expect(toast(page, "Adın ve soyadın kaydedildi.")).toBeVisible();
   await page.reload();
-  await expect(page.locator('input[name="givenName"]')).toHaveValue(
+  await expect(page.locator('input[name="givenName"]:visible')).toHaveValue(
     `Zeynep ${tag}`
   );
-  await expect(page.locator('input[name="familyName"]')).toHaveValue(
+  await expect(page.locator('input[name="familyName"]:visible')).toHaveValue(
     "Karahanlı"
   );
 });
@@ -157,12 +163,19 @@ test("Herkese açık profil: künye is required, switches persist, and others se
 
   // Criterion 5: an empty künye sends nothing.
   await page.getByRole("button", { name: "Kaydet" }).click();
-  await expect(page.getByText("İlmî künyeni yaz.")).toBeVisible();
+  await expect(
+    page.getByText("İlmî künyeni yaz.").filter({ visible: true })
+  ).toBeVisible();
 
-  await page.locator('input[name="kunye"]').fill(`Künye ${tag}`);
-  await page.getByText("Kadın", { exact: true }).click();
-  await page.locator('input[name="city"]').fill("İstanbul");
-  await page.locator('textarea[name="about"]').fill("Sarf ve nahiv okuyorum.");
+  await page.locator('input[name="kunye"]:visible').fill(`Künye ${tag}`);
+  await page
+    .getByText("Kadın", { exact: true })
+    .filter({ visible: true })
+    .click();
+  await page.locator('input[name="city"]:visible').fill("İstanbul");
+  await page
+    .locator('textarea[name="about"]:visible')
+    .fill("Sarf ve nahiv okuyorum.");
   await page.getByRole("button", { name: "Kaydet" }).click();
   await expect(toast(page, "Herkese açık profilin kaydedildi.")).toBeVisible();
 
@@ -234,13 +247,17 @@ test("Köşk açma başvurusu: validation, 'Vazgeç' writes nothing, a sent form
   await expect(page).toHaveURL(/\/kosk-applications\/new/);
 
   // Criterion 1: the e-mail comes filled and editable; empty required fields block the send.
-  await expect(page.locator('input[name="email"]')).toHaveValue(
+  await expect(page.locator('input[name="email"]:visible')).toHaveValue(
     talebe.email as string
   );
-  await expect(page.locator('input[name="email"]')).toBeEditable();
+  await expect(page.locator('input[name="email"]:visible')).toBeEditable();
   await page.getByRole("button", { name: "Başvuruyu gönder" }).click();
-  await expect(page.getByText("Köşk adını yaz.")).toBeVisible();
-  await expect(page.getByText("Bir alan seç.")).toBeVisible();
+  await expect(
+    page.getByText("Köşk adını yaz.").filter({ visible: true })
+  ).toBeVisible();
+  await expect(
+    page.getByText("Bir alan seç.").filter({ visible: true })
+  ).toBeVisible();
   expect(
     await rows("select 1 from kosk_applications where applicant_id = $1", [
       talebe.sub,
@@ -263,7 +280,7 @@ test("Köşk açma başvurusu: validation, 'Vazgeç' writes nothing, a sent form
 
   // Criteria 3 and 4: a form with no phone is stored as PENDING and the person is told.
   await page.getByRole("link", { name: "Köşk açma başvurusu" }).click();
-  await page.locator('input[name="name"]').fill(`Davutpaşa ${tag}`);
+  await page.locator('input[name="name"]:visible').fill(`Davutpaşa ${tag}`);
   await page.locator("#application-field").click();
   await page.getByRole("option", { name: "Akaid ve kelâm" }).click();
   await page
@@ -273,7 +290,9 @@ test("Köşk açma başvurusu: validation, 'Vazgeç' writes nothing, a sent form
     .locator('textarea[name="reason"]')
     .fill("Davutpaşa'da yüz yüze yürüyen bir akaid halkamız var.");
   await page.getByRole("button", { name: "Başvuruyu gönder" }).click();
-  await expect(page.getByTestId("application-sent")).toBeVisible();
+  await expect(
+    page.getByTestId("application-sent").filter({ visible: true })
+  ).toBeVisible();
 
   const stored = await rows(
     "select name, field, phone, status from kosk_applications where applicant_id = $1",

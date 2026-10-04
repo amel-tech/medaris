@@ -101,7 +101,9 @@ test("nizam/48 — the Kapsam chips narrow the list: Köşk keeps none of the co
   const group = page.getByRole("group", { name: "Kapsam" });
   await expect(rowOf(page, fixture.byMuderris.name)).toHaveCount(1);
   await group.getByRole("button", { name: "Köşk", exact: true }).click();
-  await expect(page.getByText("Bu süzgece uyan yasak yok")).toBeVisible();
+  await expect(
+    page.getByText("Bu süzgece uyan yasak yok").filter({ visible: true })
+  ).toBeVisible();
   await group.getByRole("button", { name: "Ders", exact: true }).click();
   await expect(rowOf(page, fixture.byMuderris.name)).toHaveCount(1);
   await group.getByRole("button", { name: "Tümü" }).click();
@@ -156,10 +158,14 @@ test("nizam/48 — 'Yasağı genişlet' needs a reason, then opens a köşk ban 
   await submit.click();
   await expect(dialog).toBeHidden();
 
-  // the person now has a course row and a köşk row, and no more widening
+  // the person now has a course row and a köşk row, and no more widening (in their
+  // rows: once the list is read again it may also show other people's bans, whose
+  // own "Yasağı genişlet" is none of this person's)
   await expect(rowOf(page, fixture.byMuderris.name)).toHaveCount(2);
   await expect(
-    page.getByRole("button", { name: /^Yasağı genişlet: / })
+    rowOf(page, fixture.byMuderris.name).getByRole("button", {
+      name: /^Yasağı genişlet: /,
+    })
   ).toHaveCount(0);
   const [wide, course] = (await fixture.koskBans()).filter(
     (b) => b.userId === fixture.byMuderris.id
@@ -211,7 +217,17 @@ test("nizam/48 — a köşk row has no 'Yasağı genişlet' (criterion 5: the wi
 test("nizam/48 — a Medaris nazımı lifts a ban with a reason (criterion 3, as in nizam/42)", async ({
   page,
 }) => {
-  test.skip(!seedable || !MEDARIS_NAZIM.password, "no Medaris nazımı account");
+  test.skip(
+    !seedable || !MEDARIS_NAZIM.password || !MEDARIS_NAZIM.sub,
+    "no Medaris nazımı account"
+  );
+  // A Medaris nazımı holds nothing by default: the list is `platform.ban_scoped`'s
+  // (or `platform.ban_account`'s), and lifting a course ban takes a course permission
+  // that `platform.ban_scoped` does not carry, given here in every course.
+  await fixture.makeMedarisNazim(MEDARIS_NAZIM.sub as string, [
+    { code: "platform.ban_scoped" },
+    { code: "ban.lift_course", scope: "course" },
+  ]);
   await signIn(page, MEDARIS_NAZIM);
   await page.goto("/tr/yasaklamalar");
   await search(page, fixture.byPlatform.name);

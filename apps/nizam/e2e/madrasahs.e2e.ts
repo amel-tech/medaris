@@ -64,6 +64,9 @@ test("nizam/07 — the tabs' numbers are the database's totals, and each medrese
   page,
 }) => {
   test.skip(!(seedable && SYSTEM_ADMIN.password), "no SYSTEM_ADMIN account");
+  // the button is shut before 4 Ekim 2026 on the viewer's clock, which the real
+  // clock of a run has passed: pin it so the spec says what it means
+  await page.clock.setFixedTime(new Date("2026-10-02T09:00:00+03:00"));
   await signIn(page, SYSTEM_ADMIN);
   await openMedreseler(page);
 
@@ -142,6 +145,9 @@ test("nizam/07 — 'Geri al' brings a hidden medrese back as Etkin (criterion 3)
   page,
 }) => {
   test.skip(!(seedable && SYSTEM_ADMIN.password), "no SYSTEM_ADMIN account");
+  // the button is shut before 4 Ekim 2026 on the viewer's clock, which the real
+  // clock of a run has passed: pin it so the spec says what it means
+  await page.clock.setFixedTime(new Date("2026-10-02T09:00:00+03:00"));
   await signIn(page, SYSTEM_ADMIN);
   await openMedreseler(page);
 
@@ -149,7 +155,9 @@ test("nizam/07 — 'Geri al' brings a hidden medrese back as Etkin (criterion 3)
   await row
     .getByRole("button", { name: `Geri al: ${fixture.hidden.name}` })
     .click();
-  await expect(page.getByText("Geri alındı")).toBeVisible();
+  await expect(
+    page.getByText("Geri alındı").filter({ visible: true })
+  ).toBeVisible();
   await expect(row).toContainText("Etkin");
   await expect(row).not.toContainText("Gizli");
   // it is an active medrese with a başmüderris now: nizam/22's shut button and "Pasife al"
@@ -189,7 +197,9 @@ test("nizam/07 — 'Pasife al' shows what it takes along, asks to confirm and th
     dialog.getByRole("button", { name: "Yine de pasife al" })
   ).toBeEnabled();
   await dialog.getByRole("button", { name: "Yine de pasife al" }).click();
-  await expect(page.getByText("Medrese pasife alındı")).toBeVisible();
+  await expect(
+    page.getByText("Medrese pasife alındı").filter({ visible: true })
+  ).toBeVisible();
   await expect(row).toContainText("Pasif");
   expect(await fixture.audits("madrasah.deactivate")).toBe(1);
 });
@@ -316,7 +326,9 @@ test("nizam/08 — opening a medrese lists it, writes each search to the audit l
   await fill(dialog, handle);
   await dialog.getByRole("button", { name: "Medrese aç", exact: true }).click();
   await expect(dialog).toBeHidden();
-  await expect(page.getByText("Medrese açıldı")).toBeVisible();
+  await expect(
+    page.getByText("Medrese açıldı").filter({ visible: true })
+  ).toBeVisible();
   await expect(rowOf(page, name)).toBeVisible();
   await expect(rowOf(page, name)).toContainText(`@${handle}`);
 
@@ -421,7 +433,9 @@ test("nizam/26 — 'Barındırma hakkı ver' adds the medrese to the list (crite
   await submit.click();
 
   await expect(dialog).toBeHidden();
-  await expect(page.getByText("Barındırma hakkı verildi")).toBeVisible();
+  await expect(
+    page.getByText("Barındırma hakkı verildi").filter({ visible: true })
+  ).toBeVisible();
   const row = hostingRow(page, fixture.spare.name);
   await expect(row).toBeVisible();
   await expect(row).toContainText("Köşk nazımı");
@@ -472,7 +486,9 @@ test("nizam/27 — no answer is chosen for the nazım: the button is off until o
   await submit.click();
 
   await expect(dialog).toBeHidden();
-  await expect(page.getByText("Barındırma hakkı geri alındı")).toBeVisible();
+  await expect(
+    page.getByText("Barındırma hakkı geri alındı").filter({ visible: true })
+  ).toBeVisible();
   await expect(hostingRow(page, fixture.active.name)).toHaveCount(0);
   expect(await fixture.hostingHeld(fixture.active.id)).toBe(false);
   expect(await fixture.courseHidden(fixture.courses.published.id)).toBe(false);

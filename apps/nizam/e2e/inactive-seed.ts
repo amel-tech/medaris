@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import pg from "pg";
+import { type HeldMedarisNazim, holdMedarisNazim } from "./medaris-nazim";
 
 /**
  * What the Pasif kapsamlar specs put in tedrisat's database (MDRS-172,
@@ -79,7 +80,7 @@ export async function seedInactive(): Promise<InactiveFixture> {
     lastMuderris: { name: "Halil İbrahim Sarıkaya" },
     remover: { name: "Ayşe Nur Kılıçarslan" },
   };
-  const medarisSubs: string[] = [];
+  const medarisNazims: HeldMedarisNazim[] = [];
   const email = (id: string) => `${id.slice(0, 8)}.${tail}@example.test`;
 
   try {
@@ -203,17 +204,12 @@ export async function seedInactive(): Promise<InactiveFixture> {
     activeMadrasah: { id: ids.activeMadrasah, name: names.activeMadrasah },
     neverManaged: { id: ids.neverManaged, name: names.neverManaged },
     makeMedarisNazim: async (sub, withPermission) => {
-      medarisSubs.push(sub);
-      await client.query(
-        "insert into role_assignments(user_id, role, scope_type, granted_by) values ($1, 'MEDARIS_NAZIM', 'platform', $1)",
-        [sub]
+      medarisNazims.push(
+        await holdMedarisNazim(
+          sub,
+          withPermission ? [{ code: "platform.inactive_scopes_manage" }] : []
+        )
       );
-      if (withPermission) {
-        await client.query(
-          "insert into permission_grants(user_id, scope_type, permission, granted_by) values ($1, 'platform', 'platform.inactive_scopes_manage', $1)",
-          [sub]
-        );
-      }
     },
     held: async (scopeId, role) =>
       (
@@ -262,14 +258,11 @@ export async function seedInactive(): Promise<InactiveFixture> {
       ),
     remove: async () => {
       try {
+        for (const held of medarisNazims.reverse()) await held.release();
         await client.query("begin");
         await client.query(
-          "delete from permission_grants where user_id = any($1)",
-          [medarisSubs]
-        );
-        await client.query(
-          "delete from role_assignments where scope_id = any($1) or (role = 'MEDARIS_NAZIM' and user_id = any($2))",
-          [scopeIds, medarisSubs]
+          "delete from role_assignments where scope_id = any($1)",
+          [scopeIds]
         );
         await client.query("delete from course_muderris where course_id = $1", [
           ids.course,

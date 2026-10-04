@@ -44,26 +44,29 @@ async function signIn(
 test.describe("medaris/16: the sign-out confirmation", () => {
   test.skip(!ready, "no Keycloak accounts in the environment");
 
-  test("the user menu leads to it, 'Vazgeç' keeps the session, 'Çıkış yap' ends it", async ({
+  test("Hesap leads to it, 'Vazgeç' keeps the session, 'Çıkış yap' ends it", async ({
     page,
   }) => {
     await signIn(page, TALEBE);
     await page.goto("/tr/home");
 
-    // Criterion 4: the menu's "Çıkış yap" goes to the page, it does not sign out.
-    await page.locator("header").getByText("Talebe").first().click();
-    await page.getByRole("menuitem", { name: "Çıkış yap" }).click();
+    // Criterion 4: "Çıkış yap" goes to the page, it does not sign out. It lives in
+    // Hesap (the header has "Hesabım" and no menu of its own since #179).
+    await page.goto("/tr/account");
+    await page.getByRole("link", { name: "Çıkış yap" }).click();
     await page.waitForURL(/\/tr\/auth\/signout$/);
     await expect(
       page.getByRole("heading", { level: 1, name: "Çıkış yapılsın mı?" })
     ).toBeVisible();
     await expect(
-      page.getByText("Bu tarayıcıda Medaris’ten çıkarsın.")
+      page
+        .getByText("Bu tarayıcıda Medaris’ten çıkarsın.")
+        .filter({ visible: true })
     ).toBeVisible();
 
-    // Criterion 3: 'Vazgeç' goes back and the session is still open.
+    // Criterion 3: 'Vazgeç' goes back, to Hesap here, and the session is still open.
     await page.getByRole("button", { name: "Vazgeç" }).click();
-    await page.waitForURL(/\/tr\/home$/);
+    await page.waitForURL(/\/tr\/account$/);
     await page.goto("/tr/account");
     await expect(page).toHaveURL(/\/tr\/account$/);
 
@@ -88,7 +91,7 @@ test.describe("tedris/07: the application window", () => {
   }) => {
     await signIn(page, TALEBE);
     await page.goto(`/tr/courses/${fixture.approval.id}`);
-    await page.getByRole("button", { name: "Kayıt iste" }).click();
+    await page.getByRole("button", { name: "Kayıt başvurusu yap" }).click();
 
     const dialog = page.getByRole("dialog", { name: "Başvurun alındı" });
     await expect(dialog).toBeVisible();
@@ -111,7 +114,9 @@ test.describe("tedris/07: the application window", () => {
 
     await page.keyboard.press("Escape");
     await expect(dialog).toBeHidden();
-    await expect(page.getByText("Onay bekliyor")).toBeVisible();
+    await expect(
+      page.getByText("Onay bekliyor").filter({ visible: true })
+    ).toBeVisible();
   });
 
   test("'Tamam' closes it and hands focus to 'Başvuruyu geri çek'", async ({
@@ -119,7 +124,7 @@ test.describe("tedris/07: the application window", () => {
   }) => {
     await signIn(page, TALEBE);
     await page.goto(`/tr/courses/${fixture.approval.id}`);
-    await page.getByRole("button", { name: "Kayıt iste" }).click();
+    await page.getByRole("button", { name: "Kayıt başvurusu yap" }).click();
     const dialog = page.getByRole("dialog", { name: "Başvurun alındı" });
     await dialog.getByRole("button", { name: "Tamam" }).click();
     await expect(dialog).toBeHidden();
@@ -135,7 +140,7 @@ test.describe("tedris/07: the application window", () => {
     await page.route(`**/tr/courses/${fixture.approval.id}`, (route) =>
       route.request().method() === "POST" ? route.abort() : route.continue()
     );
-    await page.getByRole("button", { name: "Kayıt iste" }).click();
+    await page.getByRole("button", { name: "Kayıt başvurusu yap" }).click();
     await expect(page.getByRole("dialog")).toHaveCount(0);
   });
 });
@@ -151,12 +156,14 @@ test.describe("tedris/14: the draft preview", () => {
 
     await expect(page.getByText("Önizleme").first()).toBeVisible();
     await expect(
-      page.getByText(
-        "Ders henüz yayında değil; bu önizlemeyi yalnızca yöneticiler görür."
-      )
+      page
+        .getByText(
+          "Ders henüz yayında değil; bu önizlemeyi yalnızca yöneticiler görür."
+        )
+        .filter({ visible: true })
     ).toBeVisible();
     await expect(
-      page.locator(".mds-badge", { hasText: "Taslak" })
+      page.locator(".mds-badge:visible", { hasText: "Taslak" })
     ).toBeVisible();
     await expect(
       page.getByRole("heading", { name: "Ders yayımlandığında" })
@@ -164,7 +171,9 @@ test.describe("tedris/14: the draft preview", () => {
     // Criterion 2: no application button, whatever its label.
     await expect(page.getByRole("button", { name: /Kayıt/ })).toHaveCount(0);
     // Criterion 3: the earliest session, not the later one.
-    await expect(page.getByText("12 Ekim Pazartesi 21:00")).toBeVisible();
+    await expect(
+      page.getByText("12 Ekim Pazartesi 21:00").filter({ visible: true })
+    ).toBeVisible();
     // Criterion 5: "Düzenlemeye dön" goes to Nazır.
     const back = page.getByRole("link", { name: /Düzenlemeye dön/ });
     await expect(back).toHaveAttribute("href", NAZIR_URL);
@@ -176,7 +185,9 @@ test.describe("tedris/14: the draft preview", () => {
     await signIn(page, TALEBE);
     const response = await page.goto(`/tr/courses/${fixture.draft.id}`);
     expect(response?.status()).toBe(404);
-    await expect(page.getByText("Sayfa bulunamadı")).toBeVisible();
+    await expect(
+      page.getByText("Sayfa bulunamadı").filter({ visible: true })
+    ).toBeVisible();
   });
 });
 
@@ -193,9 +204,11 @@ test.describe("tedris/38: not found", () => {
       page.getByRole("heading", { name: "Sayfa bulunamadı" })
     ).toBeVisible();
     await expect(
-      page.getByText(
-        "Aradığın sayfa yok ya da artık burada değil. Adresi kontrol et ya da ana sayfadan devam et."
-      )
+      page
+        .getByText(
+          "Aradığın sayfa yok ya da artık burada değil. Adresi kontrol et ya da ana sayfadan devam et."
+        )
+        .filter({ visible: true })
     ).toBeVisible();
     await page.getByRole("link", { name: "Ana sayfaya dön" }).click();
     await expect(page).toHaveURL(/\/tr\/home$/);
@@ -207,7 +220,9 @@ test.describe("tedris/38: not found", () => {
       "/tr/courses/00000000-0000-4000-8000-00000000dead"
     );
     expect(response?.status()).toBe(404);
-    await expect(page.getByText("Sayfa bulunamadı")).toBeVisible();
+    await expect(
+      page.getByText("Sayfa bulunamadı").filter({ visible: true })
+    ).toBeVisible();
   });
 });
 
@@ -224,9 +239,11 @@ test.describe("tedris/39: forbidden", () => {
         page.getByRole("heading", { name: "Bu sayfayı göremezsin" })
       ).toBeVisible();
       await expect(
-        page.getByText(
-          `${fixture.deck.title} herkese açık bir deste; kartlarını yalnız sahibi düzenler.`
-        )
+        page
+          .getByText(
+            `${fixture.deck.title} herkese açık bir deste; kartlarını yalnız sahibi düzenler.`
+          )
+          .filter({ visible: true })
       ).toBeVisible();
       await page.getByRole("link", { name: "Desteye dön" }).click();
       await expect(page).toHaveURL(new RegExp(`/tr/decks/${fixture.deck.id}$`));
@@ -255,9 +272,11 @@ test.describe("tedris/40: something went wrong", () => {
         page.getByRole("heading", { name: "Bir şeyler ters gitti" })
       ).toBeVisible();
       await expect(
-        page.getByText(
-          "Sunucuya ulaşılamadı. İnternet bağlantını denetleyip yeniden dene."
-        )
+        page
+          .getByText(
+            "Sunucuya ulaşılamadı. İnternet bağlantını denetleyip yeniden dene."
+          )
+          .filter({ visible: true })
       ).toBeVisible();
       // Criterion 3: nothing of the error.
       // (Next's dev overlay, which only a dev server draws, is outside this region.)

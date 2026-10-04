@@ -157,7 +157,8 @@ test.describe("tedris/06 and 08: applying, and waiting", () => {
 
     await expect(main.getByText("Onay bekliyor").first()).toBeVisible();
     await expect(
-      main.getByText(/Başvurun bugün \d\d:\d\d ders kadrosuna iletildi/)
+      // "bugün 23:33’te": the time takes the Turkish locative (design tedris/08)
+      main.getByText(/Başvurun bugün \d\d:\d\d’\p{L}+ ders kadrosuna iletildi/u)
     ).toBeVisible();
     await expect(
       main.getByRole("button", { name: "Kayıt başvurusu yap" })

@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import pg from "pg";
+import { type HeldMedarisNazim, holdMedarisNazim } from "./medaris-nazim";
 
 /**
  * What the home-page specs put in tedrisat's database (MDRS-182, nizam/01, 02
@@ -203,7 +204,7 @@ export async function seedDashboard(subs: {
   const one = async (sql: string, params: unknown[] = []) =>
     Number((await client.query(sql, params)).rows[0]?.n ?? 0);
 
-  const medarisNazims = new Set<string>();
+  const medarisNazims: HeldMedarisNazim[] = [];
 
   return {
     tail,
@@ -217,25 +218,13 @@ export async function seedDashboard(subs: {
     passiveMadrasah,
     ban,
     makeMedarisNazim: async (sub, codes) => {
-      medarisNazims.add(sub);
-      await client.query(
-        "delete from permission_grants where user_id = $1 and scope_type = 'platform'",
-        [sub]
+      medarisNazims.push(
+        await holdMedarisNazim(
+          sub,
+          codes.map((code) => ({ code })),
+          subs.chief
+        )
       );
-      await client.query(
-        "delete from role_assignments where user_id = $1 and role = 'MEDARIS_NAZIM'",
-        [sub]
-      );
-      await client.query(
-        "insert into role_assignments(user_id, role, scope_type, scope_id, granted_by) values ($1, 'MEDARIS_NAZIM', 'platform', null, $2)",
-        [sub, subs.chief]
-      );
-      for (const code of codes) {
-        await client.query(
-          "insert into permission_grants(user_id, scope_type, scope_id, permission, granted_by) values ($1, 'platform', null, $2, $3)",
-          [sub, code, subs.chief]
-        );
-      }
     },
     revokePermission: async (sub, code) => {
       await client.query(
@@ -301,6 +290,8 @@ export async function seedDashboard(subs: {
       ).rows,
     remove: async () => {
       try {
+        // the standing Medaris nazımı first: what it was given names no fixture row
+        for (const held of medarisNazims.reverse()) await held.release();
         await client.query("begin");
         await client.query("delete from bans where kosk_id = $1", [koskId]);
         await client.query(
@@ -325,14 +316,6 @@ export async function seedDashboard(subs: {
         await client.query(
           "delete from role_assignments where scope_id = any($1)",
           [[koskId, madrasahId, courseId]]
-        );
-        await client.query(
-          "delete from permission_grants where user_id = any($1) and scope_type = 'platform'",
-          [[...medarisNazims]]
-        );
-        await client.query(
-          "delete from role_assignments where user_id = any($1) and role = 'MEDARIS_NAZIM'",
-          [[...medarisNazims]]
         );
         await client.query("delete from courses where id = $1", [courseId]);
         await client.query("delete from madrasahs where id = $1", [madrasahId]);
