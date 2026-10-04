@@ -112,12 +112,14 @@ export const formatInvitationTime = (
   date: Date,
   locale: CalendarLocale,
   timeZone: string
-): string =>
-  new Intl.DateTimeFormat(INTL_LOCALE[locale], {
+): string => {
+  const when = new Intl.DateTimeFormat(INTL_LOCALE[locale], {
     dateStyle: "full",
     timeStyle: "short",
     timeZone,
-  }).format(date) + ` (${zoneLabel(date, locale, timeZone)})`;
+  }).format(date);
+  return `${when} (${zoneLabel(date, locale, timeZone)})`;
+};
 
 const zoneLabel = (
   date: Date,
