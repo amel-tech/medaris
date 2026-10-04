@@ -235,27 +235,29 @@ describe("Medrese nazırları", () => {
     expect(rows[2]).toMatch(/Eylül 2026 — — İzin ver Görevden al/);
   });
 
-  it("draws 'Görevden al' on every row, off until the gate has been read on the viewer's clock", async () => {
+  it("draws 'Görevden al' on every row, on from the start (MDRS-215: no version gate)", async () => {
     const markup = await render();
     for (const name of roster.map((n) => n.user.name)) {
-      expect(markup).toMatch(
-        new RegExp(
-          `<button[^>]*disabled[^>]*aria-label="Görevden al: ${name}"[^>]*>Görevden al</button>`
-        )
-      );
+      const button = markup.match(
+        new RegExp(`<button[^>]*aria-label="Görevden al: ${name}"[^>]*>`)
+      )?.[0];
+      expect(button, name).toBeDefined();
+      expect(button, name).not.toMatch(/disabled/);
     }
   });
 
-  it("offers 'İzinleri düzenle' on a nazır who holds something and 'İzin ver' on one who holds nothing, off until the gate (criterion 2)", async () => {
+  it("offers 'İzinleri düzenle' on a nazır who holds something and 'İzin ver' on one who holds nothing, on from the start (criterion 2, MDRS-215)", async () => {
     const markup = await render();
     for (const label of [
       "İzinleri düzenle: Fatma Zehra Çelebioğlu",
       "İzinleri düzenle: Ümmügülsüm Nur Hacıosmanoğlu",
       "İzin ver: Abdullah Talha Erzurumluoğlu",
     ]) {
-      expect(markup, label).toMatch(
-        new RegExp(`<button[^>]*disabled[^>]*aria-label="${label}"`)
-      );
+      const button = markup.match(
+        new RegExp(`<button[^>]*aria-label="${label}"[^>]*>`)
+      )?.[0];
+      expect(button, label).toBeDefined();
+      expect(button, label).not.toMatch(/disabled/);
     }
   });
 

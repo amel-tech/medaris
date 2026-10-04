@@ -15,12 +15,10 @@ import {
   catalogFor,
   codeKey,
   type DecisionItem,
-  DISMISS_OPENS_AT,
   dayIn,
   daysLeft,
   decisionItems,
   dismissDecisions,
-  dismissOpen,
   dismissReady,
   endLabel,
   extrasToSend,
@@ -161,16 +159,6 @@ describe("single permissions in the list", () => {
       "x",
     ]);
     expect(orderByCatalog(["b", "a"], null)).toEqual(["b", "a"]);
-  });
-});
-
-describe("the dismissal gate (4 Ekim 2026)", () => {
-  it("opens at midnight in Istanbul, not before", () => {
-    expect(DISMISS_OPENS_AT).toBe(Date.parse("2026-10-03T21:00:00Z"));
-    expect(dismissOpen(Date.parse("2026-10-02T12:00:00Z"))).toBe(false);
-    expect(dismissOpen(Date.parse("2026-10-03T20:59:59Z"))).toBe(false);
-    expect(dismissOpen(Date.parse("2026-10-03T21:00:00Z"))).toBe(true);
-    expect(dismissOpen(Date.parse("2026-12-01T00:00:00Z"))).toBe(true);
   });
 });
 
@@ -534,14 +522,13 @@ describe("NazimsView (nizam 11)", () => {
     expect(html).toContain("Görevden al: Seyyid Ahmet Kocabeyoğlu");
   });
 
-  it("keeps 'Görevden al' off until the gate has opened", () => {
-    // Before mounting the gate is shut, so the markup a server sends has it disabled.
+  it("offers 'Görevden al' enabled (MDRS-215: the 4 Ekim gate is gone)", () => {
     const html = view();
     const button = html.match(
       /<button[^>]*aria-label="Görevden al: Hasan Basri Gündoğdu"[^>]*>/
     )?.[0];
     expect(button).toBeDefined();
-    expect(button).toMatch(/disabled/);
+    expect(button).not.toMatch(/disabled/);
     const edit = html.match(
       /<button[^>]*aria-label="İzinleri düzenle: Hasan Basri Gündoğdu"[^>]*>/
     )?.[0];
