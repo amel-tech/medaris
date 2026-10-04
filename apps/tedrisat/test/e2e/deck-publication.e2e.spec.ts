@@ -374,6 +374,59 @@ describe("Deck publication (e2e)", () => {
     });
   });
 
+  describe("a holder answering his own request", () => {
+    const ownPending = (authorId: string) =>
+      seedDeck({
+        authorId,
+        publishStatus: DeckPublishStatus.PENDING,
+        publishRequestedAt: new Date(),
+      });
+
+    it("refuses a grant holder who owns the deck: approve and reject, and nothing is written", async () => {
+      await makeMedarisNazim(HOLDER_ID, {});
+      const id = await ownPending(HOLDER_ID);
+      const before = await rowOf(id);
+
+      const approve = await http()
+        .post(`/nizam/deck-publish-requests/${id}/approve`)
+        .set("Authorization", auth(HOLDER_ID))
+        .expect(403);
+      expect(codeOf(approve)).toBe("DECK_REVIEW_FORBIDDEN");
+      const reject = await http()
+        .post(`/nizam/deck-publish-requests/${id}/reject`)
+        .set("Authorization", auth(HOLDER_ID))
+        .send({ reason: "Kaynak yok." })
+        .expect(403);
+      expect(codeOf(reject)).toBe("DECK_REVIEW_FORBIDDEN");
+
+      expect(await rowOf(id)).toEqual(before);
+      expect(await db().select().from(notifications)).toHaveLength(0);
+      expect(await splitRows()).toHaveLength(0);
+    });
+
+    it("still lets the same holder answer a request on somebody else's deck", async () => {
+      await makeMedarisNazim(HOLDER_ID, {});
+      const id = await ownPending(OWNER_ID);
+      await http()
+        .post(`/nizam/deck-publish-requests/${id}/approve`)
+        .set("Authorization", auth(HOLDER_ID))
+        .expect(204);
+      expect((await rowOf(id)).publishStatus).toBe(DeckPublishStatus.PUBLISHED);
+    });
+
+    it("leaves the başnazım free to answer his own deck", async () => {
+      const id = await ownPending(ADMIN_ID);
+      await http()
+        .post(`/nizam/deck-publish-requests/${id}/approve`)
+        .set("Authorization", auth(ADMIN_ID))
+        .expect(204);
+      expect(await rowOf(id)).toMatchObject({
+        isPublic: true,
+        publishDecidedBy: ADMIN_ID,
+      });
+    });
+  });
+
   describe("unpublishing", () => {
     const unpublish = (id: string, sub: string, body?: object) =>
       http()

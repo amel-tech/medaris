@@ -120,6 +120,7 @@ export class DeckReviewService {
   async approve(user: AuthenticatedUser, deckId: string): Promise<void> {
     await this.assertChief(user);
     const deck = await this.requireRequest(deckId);
+    this.assertNotOwnRequest(user, deck.authorId);
     if (!(await this.repo.approve(deckId, user.sub))) {
       throw new DeckRequestNotPendingError(deckId);
     }
@@ -136,6 +137,7 @@ export class DeckReviewService {
   ): Promise<void> {
     await this.assertChief(user);
     const deck = await this.requireRequest(deckId);
+    this.assertNotOwnRequest(user, deck.authorId);
     const trimmed = reason.trim();
     if (!(await this.repo.reject(deckId, user.sub, trimmed))) {
       throw new DeckRequestNotPendingError(deckId);
@@ -329,6 +331,19 @@ export class DeckReviewService {
     }
     throw new DeckReviewForbiddenError(
       "Only the Medaris başnazımı and a Medaris nazımı holding platform.deck_publish may review deck publish requests"
+    );
+  }
+
+  /**
+   * A holder of `platform.deck_publish` does not answer a request on his own
+   * deck: the grant delegates the başnazım's power, and publishing through it
+   * needs a second pair of eyes, as a grant may not be given to oneself. The
+   * başnazım is the one who decides alone.
+   */
+  private assertNotOwnRequest(user: AuthenticatedUser, authorId: string): void {
+    if (this.authz.isSystemAdmin(user) || authorId !== user.sub) return;
+    throw new DeckReviewForbiddenError(
+      "A Medaris nazımı may not answer the publish request of his own deck"
     );
   }
 
