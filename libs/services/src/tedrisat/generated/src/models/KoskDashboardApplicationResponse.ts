@@ -44,7 +44,7 @@ export interface KoskDashboardApplicationResponse {
      */
     studentName?: string | null;
     /**
-     * 
+     * Absent when `contentLocked` is true
      * @type {string}
      * @memberof KoskDashboardApplicationResponse
      */

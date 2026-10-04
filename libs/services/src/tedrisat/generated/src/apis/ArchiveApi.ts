@@ -278,7 +278,7 @@ export class ArchiveApi extends runtime.BaseAPI {
     }
 
     /**
-     * Newest hidden first: the köşk\'s courses, weeks, sessions and decks, and the same of the medrese courses it hosts. A köşk manager or SYSTEM_ADMIN. There is no delete here; the başnazım deletes from the platform archive.
+     * Newest hidden first: the köşk\'s courses, weeks, sessions and decks, and the same of the medrese courses it hosts. A köşk manager or SYSTEM_ADMIN. Each item says whether the caller may bring it back (`canRestore`): false for what was hidden at a level above theirs. There is no delete here; the başnazım deletes from the platform archive.
      * What is hidden in a köşk
      */
     async listKoskArchiveRaw(requestParameters: ListKoskArchiveRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PaginatedArchiveResponse>> {
@@ -329,7 +329,7 @@ export class ArchiveApi extends runtime.BaseAPI {
     }
 
     /**
-     * Newest hidden first: the köşk\'s courses, weeks, sessions and decks, and the same of the medrese courses it hosts. A köşk manager or SYSTEM_ADMIN. There is no delete here; the başnazım deletes from the platform archive.
+     * Newest hidden first: the köşk\'s courses, weeks, sessions and decks, and the same of the medrese courses it hosts. A köşk manager or SYSTEM_ADMIN. Each item says whether the caller may bring it back (`canRestore`): false for what was hidden at a level above theirs. There is no delete here; the başnazım deletes from the platform archive.
      * What is hidden in a köşk
      */
     async listKoskArchive(requestParameters: ListKoskArchiveRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PaginatedArchiveResponse> {
@@ -394,7 +394,7 @@ export class ArchiveApi extends runtime.BaseAPI {
     }
 
     /**
-     * By kademe, as the bans are lifted (MDRS-135): the level that hid an item, or any level above it, brings it back. The ladder is course < medrese < köşk < platform; a hide records the level its hider acted at, and one recorded by nobody counts as the lowest level that could have hidden it. A köşk manager restores courses, weeks, sessions and decks of their köşk, a medrese\'s başmüderris what sits in their medrese, SYSTEM_ADMIN anything; a lower level than the one that hid it answers 403 (ARCHIVE_RESTORE_LEVEL) naming both. A week or session whose parent is still hidden answers 409 (ARCHIVE_PARENT_HIDDEN).
+     * By kademe, as the bans are lifted (MDRS-135): the level that hid an item, or any level above it, brings it back. The ladder is course < medrese < köşk < platform; a hide records the level its hider acted at, and one recorded by nobody counts as the lowest level that could have hidden it. A course, and the weeks and sessions in one, are restored at the level the caller acts at on the course, exactly as `POST /courses/:id/archive` records it: the köşk\'s nazımı (`course.hide`), the başmüderris or a nazır given `madrasah.course_hide`, platform management (`platform.course_hide`). A deck is its köşk nazımı\'s; SYSTEM_ADMIN restores anything. A lower level than the one that hid it answers 403 (ARCHIVE_RESTORE_LEVEL) naming both, compared under the row lock. A course, week or session whose parent is still hidden answers 409 (ARCHIVE_PARENT_HIDDEN).
      * Bring a hidden item back (Geri al)
      */
     async restoreArchiveItemRaw(requestParameters: RestoreArchiveItemRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ArchiveRestoreResponse>> {
@@ -437,7 +437,7 @@ export class ArchiveApi extends runtime.BaseAPI {
     }
 
     /**
-     * By kademe, as the bans are lifted (MDRS-135): the level that hid an item, or any level above it, brings it back. The ladder is course < medrese < köşk < platform; a hide records the level its hider acted at, and one recorded by nobody counts as the lowest level that could have hidden it. A köşk manager restores courses, weeks, sessions and decks of their köşk, a medrese\'s başmüderris what sits in their medrese, SYSTEM_ADMIN anything; a lower level than the one that hid it answers 403 (ARCHIVE_RESTORE_LEVEL) naming both. A week or session whose parent is still hidden answers 409 (ARCHIVE_PARENT_HIDDEN).
+     * By kademe, as the bans are lifted (MDRS-135): the level that hid an item, or any level above it, brings it back. The ladder is course < medrese < köşk < platform; a hide records the level its hider acted at, and one recorded by nobody counts as the lowest level that could have hidden it. A course, and the weeks and sessions in one, are restored at the level the caller acts at on the course, exactly as `POST /courses/:id/archive` records it: the köşk\'s nazımı (`course.hide`), the başmüderris or a nazır given `madrasah.course_hide`, platform management (`platform.course_hide`). A deck is its köşk nazımı\'s; SYSTEM_ADMIN restores anything. A lower level than the one that hid it answers 403 (ARCHIVE_RESTORE_LEVEL) naming both, compared under the row lock. A course, week or session whose parent is still hidden answers 409 (ARCHIVE_PARENT_HIDDEN).
      * Bring a hidden item back (Geri al)
      */
     async restoreArchiveItem(requestParameters: RestoreArchiveItemRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ArchiveRestoreResponse> {

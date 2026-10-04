@@ -131,7 +131,7 @@ export interface MadrasahArchiveItemResponse {
      */
     archivedBy: ArchiverResponse | null;
     /**
-     * Whether the caller may bring it back (Geri al). False when the hider's kademe is above theirs; the hider's role is in `archivedBy.role`. A hidden parent still answers 409 on restore.
+     * Whether the caller may bring it back (Geri al): false when it was hidden at a level above the one the caller acts at (MDRS-135), so no button leads to a 403 ARCHIVE_RESTORE_LEVEL. A hidden parent still answers 409 on restore.
      * @type {boolean}
      * @memberof MadrasahArchiveItemResponse
      */

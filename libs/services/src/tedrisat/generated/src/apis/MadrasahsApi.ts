@@ -836,8 +836,8 @@ export class MadrasahsApi extends runtime.BaseAPI {
     }
 
     /**
-     * nizam/07: hidden and passive medreses too, each with its başmüderris, course count and hosting köşks, and the per-status counts the tabs show. The open list above leaves hidden medreses out; this one is the başnazım\'s.
-     * Every medrese for the platform\'s table (SYSTEM_ADMIN only)
+     * nizam/07: hidden and passive medreses too, each with its başmüderris, course count and hosting köşks, and the per-status counts the tabs show. The open list above leaves hidden medreses out; this one is the başnazım\'s and a Medaris nazımı\'s who holds one of the permissions the page acts on: `platform.madrasah_create` (Medrese aç), `platform.madrasah_edit` (Geri al) or `platform.head_muderris_manage` (Başmüderris ata).
+     * Every medrese for the platform\'s table (the Medaris yönetimi)
      */
     async getMadrasahDirectoryRaw(requestParameters: GetMadrasahDirectoryRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MadrasahDirectoryResponse>> {
         const queryParameters: any = {};
@@ -879,8 +879,8 @@ export class MadrasahsApi extends runtime.BaseAPI {
     }
 
     /**
-     * nizam/07: hidden and passive medreses too, each with its başmüderris, course count and hosting köşks, and the per-status counts the tabs show. The open list above leaves hidden medreses out; this one is the başnazım\'s.
-     * Every medrese for the platform\'s table (SYSTEM_ADMIN only)
+     * nizam/07: hidden and passive medreses too, each with its başmüderris, course count and hosting köşks, and the per-status counts the tabs show. The open list above leaves hidden medreses out; this one is the başnazım\'s and a Medaris nazımı\'s who holds one of the permissions the page acts on: `platform.madrasah_create` (Medrese aç), `platform.madrasah_edit` (Geri al) or `platform.head_muderris_manage` (Başmüderris ata).
+     * Every medrese for the platform\'s table (the Medaris yönetimi)
      */
     async getMadrasahDirectory(requestParameters: GetMadrasahDirectoryRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MadrasahDirectoryResponse> {
         const response = await this.getMadrasahDirectoryRaw(requestParameters, initOverrides);
@@ -1557,7 +1557,7 @@ export class MadrasahsApi extends runtime.BaseAPI {
     }
 
     /**
-     * nazir/15\'s \"Görevden al\", in one transaction. `decisions` answers every person `…/grants` lists, once and nobody else: TAKE_OVER leaves what the nazır gave them in place under the caller\'s name, DROP revokes it. The nazır\'s own appointment and permissions in the medrese are revoked. Written to the audit log.
+     * nazir/15\'s \"Görevden al\", in one transaction. `decisions` answers every person `…/grants` lists, once and nobody else: TAKE_OVER leaves what the nazır gave them in place under the caller\'s name, DROP revokes it, and a seat dropped takes with it what its holder was given in its scope. The nazır\'s own appointment and permissions in the medrese are revoked. The başmüderris and the platform dismiss any nazır; a nazır holding `madrasah.nazir_appoint` only one they appointed (403 NAZIR_NOT_APPOINTED_BY_YOU otherwise). Written to the audit log.
      * Dismiss a nazır of the medrese (its başmüderris)
      */
     async removeMadrasahNazirRaw(requestParameters: RemoveMadrasahNazirRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
@@ -1610,7 +1610,7 @@ export class MadrasahsApi extends runtime.BaseAPI {
     }
 
     /**
-     * nazir/15\'s \"Görevden al\", in one transaction. `decisions` answers every person `…/grants` lists, once and nobody else: TAKE_OVER leaves what the nazır gave them in place under the caller\'s name, DROP revokes it. The nazır\'s own appointment and permissions in the medrese are revoked. Written to the audit log.
+     * nazir/15\'s \"Görevden al\", in one transaction. `decisions` answers every person `…/grants` lists, once and nobody else: TAKE_OVER leaves what the nazır gave them in place under the caller\'s name, DROP revokes it, and a seat dropped takes with it what its holder was given in its scope. The nazır\'s own appointment and permissions in the medrese are revoked. The başmüderris and the platform dismiss any nazır; a nazır holding `madrasah.nazir_appoint` only one they appointed (403 NAZIR_NOT_APPOINTED_BY_YOU otherwise). Written to the audit log.
      * Dismiss a nazır of the medrese (its başmüderris)
      */
     async removeMadrasahNazir(requestParameters: RemoveMadrasahNazirRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {

@@ -111,6 +111,12 @@ export interface KoskDashboardResponse {
      */
     tab: DashboardSessionTab;
     /**
+     * True when the meeting links and the applicants' e-mail addresses were left out: the caller reads the page by `platform.kosk_edit` alone, which covers neither course content nor personal data
+     * @type {boolean}
+     * @memberof KoskDashboardResponse
+     */
+    contentLocked: boolean;
+    /**
      * UPCOMING: the next seven days, soonest first; PAST and CANCELLED: the latest twenty, newest first
      * @type {Array<KoskDashboardSessionResponse>}
      * @memberof KoskDashboardResponse
@@ -142,6 +148,7 @@ export function instanceOfKoskDashboardResponse(value: object): value is KoskDas
     if (!('sessionCounts' in value) || value['sessionCounts'] === undefined) return false;
     if (!('missingLinkCount' in value) || value['missingLinkCount'] === undefined) return false;
     if (!('tab' in value) || value['tab'] === undefined) return false;
+    if (!('contentLocked' in value) || value['contentLocked'] === undefined) return false;
     if (!('sessions' in value) || value['sessions'] === undefined) return false;
     if (!('latestApplications' in value) || value['latestApplications'] === undefined) return false;
     if (!('muderris' in value) || value['muderris'] === undefined) return false;
@@ -166,6 +173,7 @@ export function KoskDashboardResponseFromJSONTyped(json: any, ignoreDiscriminato
         'missingLinkCount': json['missingLinkCount'],
         'firstMissingLink': json['firstMissingLink'] == null ? undefined : KoskDashboardSessionResponseFromJSON(json['firstMissingLink']),
         'tab': DashboardSessionTabFromJSON(json['tab']),
+        'contentLocked': json['contentLocked'],
         'sessions': ((json['sessions'] as Array<any>).map(KoskDashboardSessionResponseFromJSON)),
         'latestApplications': ((json['latestApplications'] as Array<any>).map(KoskDashboardApplicationResponseFromJSON)),
         'muderris': ((json['muderris'] as Array<any>).map(KoskDashboardMuderrisResponseFromJSON)),
@@ -191,6 +199,7 @@ export function KoskDashboardResponseToJSONTyped(value?: KoskDashboardResponse |
         'missingLinkCount': value['missingLinkCount'],
         'firstMissingLink': KoskDashboardSessionResponseToJSON(value['firstMissingLink']),
         'tab': DashboardSessionTabToJSON(value['tab']),
+        'contentLocked': value['contentLocked'],
         'sessions': ((value['sessions'] as Array<any>).map(KoskDashboardSessionResponseToJSON)),
         'latestApplications': ((value['latestApplications'] as Array<any>).map(KoskDashboardApplicationResponseToJSON)),
         'muderris': ((value['muderris'] as Array<any>).map(KoskDashboardMuderrisResponseToJSON)),
