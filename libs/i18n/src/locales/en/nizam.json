@@ -202,12 +202,6 @@
     "LIVE": "Canlı halka",
     "QUIZ": "Sınav"
   },
-  "Levels": {
-    "ALL": "All levels",
-    "BEGINNER": "Beginner",
-    "INTERMEDIATE": "Intermediate",
-    "ADVANCED": "Advanced"
-  },
   "NavMain": {
     "content": "Content"
   },
@@ -544,10 +538,6 @@
     "handlePlaceholder": "@suleymaniye",
     "description": "Description",
     "descriptionPlaceholder": "The courses the köşk offers and what it focuses on.",
-    "field": "Field of study",
-    "fieldPlaceholder": "e.g. Tafsir & Hadith",
-    "level": "Level",
-    "levelUnset": "Not set",
     "tags": "Tags",
     "tagsPlaceholder": "Type a tag and press Enter",
     "tagsHelp": "Up to {max} tags, each at most {length} characters.",
@@ -1468,18 +1458,7 @@
     },
     "searchLabel": "Search a köşk or a köşk nazımı",
     "searchPlaceholder": "Search a köşk or a köşk nazımı",
-    "levelLabel": "Level",
-    "levelAll": "Level: all",
-    "levelValue": "Level: {level}",
-    "levels": {
-      "ALL": "All levels",
-      "BEGINNER": "Beginner",
-      "INTERMEDIATE": "Intermediate",
-      "ADVANCED": "Advanced"
-    },
-    "fieldLegend": "Field",
     "listingLegend": "Visibility",
-    "allChip": "All",
     "listing": {
       "ALL": "All",
       "LISTED": "Listed",
@@ -1488,7 +1467,6 @@
     "columns": {
       "kosk": "Köşk",
       "nazims": "Köşk nazımları",
-      "field": "Field",
       "courses": "Courses",
       "status": "Status",
       "actions": "Actions"
@@ -1535,18 +1513,6 @@
     "nameHelp": "Students and visitors see this name.",
     "handleLabel": "Short name",
     "handleHelp": "Used in the köşk's address; lower-case letters, digits and hyphens.",
-    "fieldLabel": "Field",
-    "fieldHelp": "Shown under this name in Discover's field filter.",
-    "fieldPlaceholder": "Choose",
-    "levelLabel": "Level",
-    "levelHelp": "Used in Discover's level filter.",
-    "levelPlaceholder": "Choose",
-    "levels": {
-      "ALL": "All levels",
-      "BEGINNER": "Beginner",
-      "INTERMEDIATE": "Intermediate",
-      "ADVANCED": "Advanced"
-    },
     "tagsLabel": "Tags",
     "tagsHelp": "Separate with commas.",
     "descriptionLabel": "Description",
@@ -1571,8 +1537,6 @@
       "nameRequired": "Write a name.",
       "nameShort": "The name needs at least 2 characters.",
       "handleInvalid": "The short name takes lower-case letters, digits and hyphens, at least 2 characters.",
-      "fieldRequired": "Choose a field.",
-      "levelRequired": "Choose a level.",
       "tagsFull": "At most 10 tags can be written.",
       "tagTooLong": "A tag can have at most 40 characters.",
       "handleTaken": "Another köşk already uses the short name @{handle}.",
@@ -1613,18 +1577,6 @@
     "nameHelp": "Students and visitors see this name.",
     "handleLabel": "Short name",
     "handleHelp": "Read-only. Used in the köşk's link; the Medaris administration changes it.",
-    "fieldLabel": "Field",
-    "fieldHelp": "Shown under this name in Discover's field filter.",
-    "fieldPlaceholder": "Choose",
-    "levelLabel": "Level",
-    "levelHelp": "Used in Discover's level filter.",
-    "levelPlaceholder": "Choose",
-    "levels": {
-      "ALL": "All levels",
-      "BEGINNER": "Beginner",
-      "INTERMEDIATE": "Intermediate",
-      "ADVANCED": "Advanced"
-    },
     "tagsLabel": "Tags",
     "tagsHelp": "Separate with commas.",
     "coverLegend": "Cover",
@@ -1657,8 +1609,6 @@
     "errors": {
       "nameRequired": "Write a name.",
       "nameShort": "The name needs at least 2 characters.",
-      "fieldRequired": "Choose a field.",
-      "levelRequired": "Choose a level.",
       "tagsFull": "At most 10 tags can be written.",
       "tagTooLong": "A tag can have at most 40 characters.",
       "generic": "Something went wrong. Try again in a moment.",
@@ -2227,7 +2177,6 @@
     "title": "Köşk",
     "breadcrumbLabel": "Breadcrumb",
     "kosks": "Köşks",
-    "levelValue": "{level} level",
     "nazimView": "The page the köşk nazım sees",
     "publicPage": "View köşk page",
     "newTab": "(opens in a new tab)",
@@ -2253,7 +2202,6 @@
     "info": {
       "name": "Name",
       "handle": "Short name",
-      "fieldLevel": "Field and level",
       "description": "Description",
       "status": "Status",
       "visibility": "Visibility",
@@ -2306,7 +2254,6 @@
   },
   "KoskCourses": {
     "title": "Courses",
-    "levelValue": "{level} level",
     "listed": "Shown in lists",
     "unlisted": "Not shown in lists",
     "publicPage": "View köşk page",

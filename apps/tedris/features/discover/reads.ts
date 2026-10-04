@@ -18,7 +18,6 @@ export interface DiscoverData {
   madrasahs: MadrasahExploreResponse[];
   /** Every medrese, for the select, whatever the filters say. */
   allMadrasahs: MadrasahExploreResponse[];
-  fields: string[];
 }
 
 /**
@@ -41,19 +40,14 @@ export const getDiscoverData = async (
     accessToken,
     env.TEDRISAT_API_BASE_URL
   );
-  const filters = {
-    level: query.level ?? undefined,
-    field: query.field ?? undefined,
-    q: query.q || undefined,
-  };
-  const [page, fields, filtered, all] = await Promise.all([
+  const filters = { q: query.q || undefined };
+  const [page, filtered, all] = await Promise.all([
     kosks.getAllKosks({
       page: query.page,
       limit: PAGE_SIZE,
       madrasahId: query.madrasahId ?? undefined,
       ...filters,
     }),
-    kosks.getKoskFields(),
     madrasahs.exploreMadrasahs({
       madrasahId: query.madrasahId ?? undefined,
       ...filters,
@@ -65,7 +59,6 @@ export const getDiscoverData = async (
     koskTotal: page.total,
     madrasahs: filtered,
     allMadrasahs: all,
-    fields,
   };
   return accessToken ? data : forVisitor(data);
 };

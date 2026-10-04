@@ -202,12 +202,6 @@
     "LIVE": "Canlı halka",
     "QUIZ": "Sınav"
   },
-  "Levels": {
-    "ALL": "جميع المستويات",
-    "BEGINNER": "مبتدئ",
-    "INTERMEDIATE": "متوسط",
-    "ADVANCED": "متقدم"
-  },
   "NavMain": {
     "content": "محتوى"
   },
@@ -544,10 +538,6 @@
     "handlePlaceholder": "@suleymaniye",
     "description": "الوصف",
     "descriptionPlaceholder": "الدروس التي يقدمها الكشك ومجالات تركيزه.",
-    "field": "مجال العلم",
-    "fieldPlaceholder": "مثال: التفسير والحديث",
-    "level": "المستوى",
-    "levelUnset": "غير محدد",
     "tags": "الوسوم",
     "tagsPlaceholder": "اكتب وسمًا واضغط Enter",
     "tagsHelp": "حتى {max} وسوم، لا يزيد كل منها عن {length} حرفًا.",
@@ -1468,18 +1458,7 @@
     },
     "searchLabel": "ابحثوا عن كشك أو ناظر كشك",
     "searchPlaceholder": "ابحثوا عن كشك أو ناظر كشك",
-    "levelLabel": "المستوى",
-    "levelAll": "المستوى: الكل",
-    "levelValue": "المستوى: {level}",
-    "levels": {
-      "ALL": "كل المستويات",
-      "BEGINNER": "مبتدئ",
-      "INTERMEDIATE": "متوسط",
-      "ADVANCED": "متقدّم"
-    },
-    "fieldLegend": "المجال",
     "listingLegend": "الظهور",
-    "allChip": "الكل",
     "listing": {
       "ALL": "الكل",
       "LISTED": "مُدرج",
@@ -1488,7 +1467,6 @@
     "columns": {
       "kosk": "الكشك",
       "nazims": "نظّار الكشك",
-      "field": "المجال",
       "courses": "الدروس",
       "status": "الحالة",
       "actions": "الإجراءات"
@@ -1535,18 +1513,6 @@
     "nameHelp": "يرى الطلبة والزوّار هذا الاسم.",
     "handleLabel": "الاسم المختصر",
     "handleHelp": "يُستعمل في عنوان الكشك؛ حروف صغيرة وأرقام وشرطات.",
-    "fieldLabel": "المجال",
-    "fieldHelp": "يظهر بهذا الاسم في مرشّح المجال في «اكتشف».",
-    "fieldPlaceholder": "اختاروا",
-    "levelLabel": "المستوى",
-    "levelHelp": "يُستعمل في مرشّح المستوى في «اكتشف».",
-    "levelPlaceholder": "اختاروا",
-    "levels": {
-      "ALL": "كل المستويات",
-      "BEGINNER": "مبتدئ",
-      "INTERMEDIATE": "متوسط",
-      "ADVANCED": "متقدّم"
-    },
     "tagsLabel": "الوسوم",
     "tagsHelp": "افصلوا بفواصل.",
     "descriptionLabel": "الوصف",
@@ -1571,8 +1537,6 @@
       "nameRequired": "اكتبوا اسمًا.",
       "nameShort": "يجب ألا يقل الاسم عن حرفين.",
       "handleInvalid": "يتكوّن الاسم المختصر من حروف صغيرة وأرقام وشرطات، وبحدّ أدنى حرفان.",
-      "fieldRequired": "اختاروا مجالًا.",
-      "levelRequired": "اختاروا مستوى.",
       "tagsFull": "يمكن كتابة 10 وسوم على الأكثر.",
       "tagTooLong": "يمكن أن يبلغ الوسم 40 حرفًا على الأكثر.",
       "handleTaken": "كشك آخر يستعمل الاسم المختصر @{handle}.",
@@ -1613,18 +1577,6 @@
     "nameHelp": "يرى الطلبة والزوّار هذا الاسم.",
     "handleLabel": "الاسم المختصر",
     "handleHelp": "للقراءة فقط. يُستعمل في رابط الكشك؛ وتغيّره إدارة مدارس.",
-    "fieldLabel": "المجال",
-    "fieldHelp": "يظهر بهذا الاسم في مرشّح المجال في «اكتشف».",
-    "fieldPlaceholder": "اختاروا",
-    "levelLabel": "المستوى",
-    "levelHelp": "يُستعمل في مرشّح المستوى في «اكتشف».",
-    "levelPlaceholder": "اختاروا",
-    "levels": {
-      "ALL": "كل المستويات",
-      "BEGINNER": "مبتدئ",
-      "INTERMEDIATE": "متوسط",
-      "ADVANCED": "متقدّم"
-    },
     "tagsLabel": "الوسوم",
     "tagsHelp": "افصلوا بفواصل.",
     "coverLegend": "الغلاف",
@@ -1657,8 +1609,6 @@
     "errors": {
       "nameRequired": "اكتبوا اسمًا.",
       "nameShort": "يجب ألا يقل الاسم عن حرفين.",
-      "fieldRequired": "اختاروا مجالًا.",
-      "levelRequired": "اختاروا مستوى.",
       "tagsFull": "يمكن كتابة 10 وسوم على الأكثر.",
       "tagTooLong": "يمكن أن يبلغ الوسم 40 حرفًا على الأكثر.",
       "generic": "حدث خطأ ما. حاولوا بعد قليل.",
@@ -2227,7 +2177,6 @@
     "title": "الكُشك",
     "breadcrumbLabel": "مسار الصفحة",
     "kosks": "الكُشكات",
-    "levelValue": "المستوى: {level}",
     "nazimView": "الصفحة التي يراها ناظم الكُشك",
     "publicPage": "عرض صفحة الكُشك",
     "newTab": "(تُفتح في علامة تبويب جديدة)",
@@ -2253,7 +2202,6 @@
     "info": {
       "name": "الاسم",
       "handle": "الاسم المختصر",
-      "fieldLevel": "المجال والمستوى",
       "description": "الوصف",
       "status": "الحالة",
       "visibility": "الظهور",
@@ -2306,7 +2254,6 @@
   },
   "KoskCourses": {
     "title": "الدروس",
-    "levelValue": "المستوى: {level}",
     "listed": "يظهر في القوائم",
     "unlisted": "لا يظهر في القوائم",
     "publicPage": "عرض صفحة الكُشك",

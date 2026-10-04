@@ -108,16 +108,21 @@ describe("KosksDirectory (nizam 09)", () => {
     expect(html).toContain("Beyazıt Köşkü");
     expect(html).toContain("@beyazit");
     expect(html).toContain("Ayşe Nur Kılıçarslan");
-    expect(html).toContain("Hadis");
   });
 
-  it("offers the Alan chips the köşks carry and the Görünürlük chips", () => {
+  it("offers the Görünürlük chips, and no Alan chips, level select or Alan column (MDRS-252)", () => {
     const html = view(directory([row()]));
-    for (const field of ["Belâgat", "Fıkıh", "Hadis"]) {
-      expect(html).toContain(field);
-    }
-    for (const label of ["Listelenen", "Listelenmeyen", "Seviye: tümü"]) {
+    for (const label of ["Listelenen", "Listelenmeyen"]) {
       expect(html).toContain(label);
+    }
+    for (const gone of [
+      "Belâgat",
+      "Fıkıh",
+      "Hadis",
+      "Seviye: tümü",
+      ">Alan<",
+    ]) {
+      expect(html).not.toContain(gone);
     }
   });
 
@@ -299,9 +304,11 @@ describe("KoskSettings (nizam 24)", () => {
     expect(on.match(/aria-checked="true"/g)?.length).toBe(3);
   });
 
-  it("offers an older köşk's own field and keeps 'Kaydet' off until something changes", () => {
+  it("has no Alan or Seviye input, and keeps 'Kaydet' off until something changes (MDRS-252)", () => {
     const html = view({ field: "Tefsir & Hadis" });
-    expect(html).toContain("Tefsir &amp; Hadis");
+    expect(html).not.toContain("Tefsir &amp; Hadis");
+    expect(html).not.toContain('name="field"');
+    expect(html).not.toContain('name="level"');
     expect(html).toMatch(
       /<button[^>]*disabled[^>]*>[^<]*(<[^>]*>)*[^<]*Kaydet/
     );

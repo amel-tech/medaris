@@ -248,20 +248,16 @@ describe("a course as a row (nazir 07, criteria 3 and 4)", () => {
 });
 
 describe("the köşks beside the list and in the choice", () => {
-  it("say the field and how many courses the medrese has there", () => {
-    expect(hostLine({ field: "Arapça dil ilimleri", courseCount: 2 }, t)).toBe(
-      "Arapça dil ilimleri · 2 medrese dersi"
+  it("say how many courses the medrese has there, and not the köşk's field (MDRS-252)", () => {
+    expect(hostLine({ courseCount: 2 }, t)).toBe("2 medrese dersi");
+    expect(hostLine({ courseCount: 0 }, t)).toBe("0 medrese dersi");
+    expect(koskChoiceLine({ courseCount: 1 }, t)).toBe(
+      "medresenin burada 1 dersi var"
     );
-    expect(hostLine({ field: null, courseCount: 0 }, t)).toBe(
-      "0 medrese dersi"
+    expect(koskChoiceLine({ courseCount: 0 }, t)).toBe(
+      "medresenin burada henüz dersi yok"
     );
-    expect(
-      koskChoiceLine({ field: "Arapça dil ilimleri", courseCount: 1 }, t)
-    ).toBe("Arapça dil ilimleri · medresenin burada 1 dersi var");
-    expect(koskChoiceLine({ field: "Fıkıh", courseCount: 0 }, t)).toBe(
-      "Fıkıh · medresenin burada henüz dersi yok"
-    );
-    expect(koskChoiceLine({ field: null, courseCount: 3 }, t)).toBe(
+    expect(koskChoiceLine({ courseCount: 3 }, t)).toBe(
       "medresenin burada 3 dersi var"
     );
   });

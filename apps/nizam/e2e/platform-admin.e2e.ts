@@ -397,8 +397,7 @@ test("nizam/15 — Köşkü aç opens the köşk form with the application's val
   // The applicant is the köşk's first nazım, as the form's picker shows.
   await expect(dialog).toContainText(fixture.applicant.name);
 
-  await dialog.getByRole("combobox", { name: "Seviye" }).click();
-  await page.getByRole("option", { name: "Bütün seviyeler" }).click();
+  await expect(dialog.getByRole("combobox")).toHaveCount(0);
   await dialog.getByRole("button", { name: "Köşk aç" }).click();
   await expect(page.getByText("Başvuru kabul edildi")).toBeVisible();
 
