@@ -102,7 +102,7 @@ const LIMIT_QUERY = {
  * answer a missing course, session or question with 404 before the handler
  * runs. Who may ask is `LessonQuestionService`'s question (an active
  * enrollment), and who may read or answer is the permission catalogue's,
- * asked there by code, because the route matrix has no row for a ders vekili.
+ * asked there by code, because the route matrix has no row for a ders nazırı.
  */
 @ApiTags("lessons")
 @ApiBearerAuth()
@@ -168,7 +168,7 @@ export class LessonQuestionController {
   @ApiOperation({
     summary: "The course's questions, for the people who answer them",
     description:
-      "Every question asked in the course, those still waiting first and oldest first, with who asked, one page at a time: pass `nextCursor` as `cursor` for the next. `question.answer`: the müderris by default, a ders vekili when given it, and the catalogue's other holders (the köşk nazımı through `course.manage_all`, the başnazım). 403 for anyone else, a talebe included.",
+      "Every question asked in the course, those still waiting first and oldest first, with who asked, one page at a time: pass `nextCursor` as `cursor` for the next. `question.answer`: the müderris by default, a ders nazırı when given it, and the catalogue's other holders (the köşk nazımı through `course.manage_all`, the başnazım). 403 for anyone else, a talebe included.",
     operationId: "listCourseQuestions",
   })
   @ApiQuery(CURSOR_QUERY)

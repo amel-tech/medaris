@@ -87,7 +87,7 @@
     "forbidden": "You need to be enrolled in the course to write notes."
   },
   "CourseQuestions": {
-    "private": "Only you, the course's müderris and its ders vekili see your questions and their answers; other talebe do not.",
+    "private": "Only you, the course's müderris and its ders nazırı see your questions and their answers; other talebe do not.",
     "loading": "Loading your questions…",
     "loadFailed": "Your questions could not be loaded.",
     "retry": "Try again",

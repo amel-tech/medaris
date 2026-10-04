@@ -13,7 +13,7 @@ import { QuestionsList } from "./questions-list";
 /**
  * Sorular of a course (MDRS-150): what the talebe asked on its sessions,
  * those still waiting first, with the people who may answer them: the
- * müderris, and a ders vekili the müderris gave "Talebelerin sorularını gör
+ * müderris, and a ders nazırı the müderris gave "Talebelerin sorularını gör
  * ve yanıtla". The API is the check: it lists the questions to whoever holds
  * `question.answer` in the course and refuses everyone else, so a 403 is a
  * notice and nothing of the list is drawn. The first page is read here; the

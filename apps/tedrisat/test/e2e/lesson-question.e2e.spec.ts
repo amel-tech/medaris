@@ -37,7 +37,7 @@ import { bearerFor } from "../helpers/test-keycloak.helper";
  * MDRS-150 — a talebe's questions to the course staff. Covers who may ask (an
  * active enrollment no ban bars, and nobody else); who reads a question (its
  * author, and whoever holds `question.answer` in the course: the müderris,
- * a ders vekili given it directly or through a group, and the catalogue's
+ * a ders nazırı given it directly or through a group, and the catalogue's
  * other holders); who answers it; and that the author reads the answer.
  */
 
@@ -156,8 +156,8 @@ describe("a talebe's questions to the course staff (MDRS-150, e2e)", () => {
   /** Everyone who holds `question.answer` in the course, one way or another. */
   const HOLDERS: Array<[string, string]> = [
     ["the müderris", MUDERRIS_ID],
-    ["a ders vekili given it", NAZIR_ID],
-    ["a ders vekili given it through a group", GROUP_NAZIR_ID],
+    ["a ders nazırı given it", NAZIR_ID],
+    ["a ders nazırı given it through a group", GROUP_NAZIR_ID],
     ["the köşk nazımı, through course.manage_all", MANAGER_ID],
     ["the başnazım", ADMIN_ID],
   ];
@@ -166,10 +166,10 @@ describe("a talebe's questions to the course staff (MDRS-150, e2e)", () => {
   const OTHERS: Array<[string, string]> = [
     ["the author, a talebe", TALEBE_ID],
     ["another talebe of the course", OTHER_TALEBE_ID],
-    ["a ders vekili with no grant", PLAIN_NAZIR_ID],
-    ["a ders vekili given another permission", OTHER_PERMISSION_NAZIR_ID],
-    ["a ders vekili whose grant ran out", EXPIRED_NAZIR_ID],
-    ["a ders vekili of another course", FOREIGN_NAZIR_ID],
+    ["a ders nazırı with no grant", PLAIN_NAZIR_ID],
+    ["a ders nazırı given another permission", OTHER_PERMISSION_NAZIR_ID],
+    ["a ders nazırı whose grant ran out", EXPIRED_NAZIR_ID],
+    ["a ders nazırı of another course", FOREIGN_NAZIR_ID],
     ["the müderris of another course", FOREIGN_MUDERRIS_ID],
     ["somebody with no part in the course", STRANGER_ID],
   ];
@@ -287,7 +287,7 @@ describe("a talebe's questions to the course staff (MDRS-150, e2e)", () => {
       bannedTier: 1,
     });
 
-    // Ders vekilleri (MDRS-172): the post, and what each was given with it.
+    // Ders nazırları (MDRS-172): the post, and what each was given with it.
     for (const id of [
       NAZIR_ID,
       GROUP_NAZIR_ID,
@@ -398,7 +398,7 @@ describe("a talebe's questions to the course staff (MDRS-150, e2e)", () => {
       ["somebody not enrolled", STRANGER_ID],
       ["the müderris", MUDERRIS_ID],
       ["the köşk nazımı", MANAGER_ID],
-      ["a ders vekili holding question.answer", NAZIR_ID],
+      ["a ders nazırı holding question.answer", NAZIR_ID],
       ["the başnazım", ADMIN_ID],
     ])("refuses %s with 403 LESSON_QUESTION_FORBIDDEN", async (_who, sub) => {
       const res = await ask(lessonId, sub, { body: QUESTION }).expect(403);
@@ -682,7 +682,7 @@ describe("a talebe's questions to the course staff (MDRS-150, e2e)", () => {
       expect(row.answer).toBeNull();
     });
 
-    it("stops a ders vekili when the grant is taken back", async () => {
+    it("stops a ders nazırı when the grant is taken back", async () => {
       const question = await seed(TALEBE_ID);
       await answer(question.id, NAZIR_ID, { body: ANSWER }).expect(200);
       await db()
