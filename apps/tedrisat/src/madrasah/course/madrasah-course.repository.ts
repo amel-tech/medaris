@@ -91,6 +91,23 @@ export class MadrasahCourseRepository {
     return rows.map((r) => ({ ...r, courseCount: countOf.get(r.id) ?? 0 }));
   }
 
+  /** Whether `userId` holds a MUDERRIS seat on the course now (MDRS-134). */
+  async holdsMuderrisSeat(courseId: string, userId: string): Promise<boolean> {
+    const rows = await this.db
+      .select({ id: roleAssignments.id })
+      .from(roleAssignments)
+      .where(
+        and(
+          eq(roleAssignments.userId, userId),
+          eq(roleAssignments.role, ASSIGNED_ROLES.MUDERRIS),
+          eq(roleAssignments.scopeId, courseId),
+          isHeld()
+        )
+      )
+      .limit(1);
+    return rows.length > 0;
+  }
+
   /**
    * The accounts the course lists as müderris, lowercased, or null when it is
    * not a course of the medrese that is still shown.

@@ -878,10 +878,18 @@ export class CourseService {
         "The imam must be one of the listed muderris"
       );
     }
+    // Only an account this save seats is asked about: one listed with no
+    // MUDERRIS seat here (`syncMuderrisAssignments` seats it, a lapsed one
+    // again). Keeping yourself on the list of a course you already teach
+    // seats nobody, as on `PUT /courses/:id`.
+    const me = user.sub.toLowerCase();
+    const keepsOwnSeat =
+      list.some((m) => m.userId === me) &&
+      (await this.courseRepo.isMuderris(courseId, me));
     await this.assertNotNamingSelf(
       user,
       course,
-      list.map((m) => m.userId),
+      list.map((m) => m.userId).filter((id) => !keepsOwnSeat || id !== me),
       "course.muderris.set"
     );
     const current = await this.courseRepo.findMuderris(courseId);

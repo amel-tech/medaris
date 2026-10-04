@@ -259,6 +259,64 @@ describe("Naming yourself on the remaining paths (MDRS-135 review, e2e)", () => 
       await send("put", NAZIR, path, { muderrisUserIds: [OTHER] }).expect(200);
     });
 
+    it("lets a nazır the başmüderris seated keep themselves on the list on both müderris routes, and refuses a lapsed seat (review A-selfgrant)", async () => {
+      await send("put", HEAD, `/courses/${medreseCourse}/muderris`, {
+        version: await versionOf(medreseCourse),
+        muderris: [{ userId: NAZIR, name: "Nazır" }],
+        imamUserId: NAZIR,
+      }).expect(200);
+      const medresePath = `/madrasahs/${madrasahId}/courses/${medreseCourse}/muderrises`;
+
+      await send("put", NAZIR, `/courses/${medreseCourse}/muderris`, {
+        version: await versionOf(medreseCourse),
+        muderris: [
+          { userId: NAZIR, name: "Nazır" },
+          { userId: OTHER, name: "Müderris" },
+        ],
+        imamUserId: NAZIR,
+      }).expect(200);
+      await send("put", NAZIR, medresePath, {
+        muderrisUserIds: [NAZIR],
+      }).expect(200);
+      expect(await refusals()).toHaveLength(0);
+      expect(await heldRoles(NAZIR, medreseCourse)).toHaveLength(1);
+
+      // A seat that ran out is seated again by these routes: that is naming
+      // oneself, and both refuse it.
+      await db()
+        .update(roleAssignments)
+        .set({ expiresAt: new Date(Date.now() - 60_000) })
+        .where(
+          and(
+            eq(roleAssignments.userId, NAZIR),
+            eq(roleAssignments.scopeId, medreseCourse)
+          )
+        );
+      const viaCourse = await send(
+        "put",
+        NAZIR,
+        `/courses/${medreseCourse}/muderris`,
+        {
+          version: await versionOf(medreseCourse),
+          muderris: [
+            { userId: NAZIR, name: "Nazır" },
+            { userId: OTHER, name: "Müderris" },
+          ],
+          imamUserId: OTHER,
+        }
+      ).expect(403);
+      expect(viaCourse.body.code).toBe("SELF_GRANT_REFUSED");
+      const viaMedrese = await send("put", NAZIR, medresePath, {
+        muderrisUserIds: [NAZIR, OTHER],
+        imamUserId: OTHER,
+      }).expect(403);
+      expect(viaMedrese.body.code).toBe("SELF_GRANT_REFUSED");
+      expect((await refusals()).map((r) => r.details)).toMatchObject([
+        { route: "course.muderris.set" },
+        { route: "madrasah.course.muderris" },
+      ]);
+    });
+
     it("leaves the köşk nazımı and the başmüderris free to teach their own courses", async () => {
       await send("put", NAZIM, `/courses/${ownCourse}/muderris`, {
         version: await versionOf(ownCourse),

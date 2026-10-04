@@ -140,9 +140,15 @@ export class MadrasahCourseController {
     @Param("courseId", ParseUUIDPipe) courseId: string,
     @Body() dto: SetMadrasahCourseMuderrisDto
   ): Promise<MadrasahCourseListItemResponse> {
+    // Only an account the save seats is asked about: a müderris of the course
+    // keeping themselves on its list seats nobody, as on `PUT /courses/:id`.
     await this.selfGrant.assertNotSelf(
       request.user,
-      dto.muderrisUserIds,
+      await this.courses.seatsAmong(
+        courseId,
+        dto.muderrisUserIds,
+        request.user.sub
+      ),
       { entity: ENTITIES.MADRASAH, id },
       { role: ASSIGNED_ROLES.MUDERRIS },
       "madrasah.course.muderris"
