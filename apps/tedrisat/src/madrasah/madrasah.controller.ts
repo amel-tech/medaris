@@ -363,7 +363,7 @@ export class MadrasahController {
   @ApiOperation({
     summary: "What the başmüderris handed on (SYSTEM_ADMIN only)",
     description:
-      "nizam/22. The nazır roles and permissions the sitting başmüderris gave to others in this medrese that are still held; `delegations` of the replacing call answers each. Empty when there is no başmüderris or nothing was handed on.",
+      "nizam/22. The nazır roles and permissions the sitting başmüderris gave to others in this medrese and its courses that are still held, whoever holds them; `delegations` of the replacing call answers each. Empty when there is no başmüderris or nothing was handed on.",
     operationId: "getMadrasahHeadDelegations",
   })
   @ApiOkResponse({ type: HeadDelegationResponse, isArray: true })
@@ -380,7 +380,7 @@ export class MadrasahController {
   @ApiOperation({
     summary: "Make a user the medrese's başmüderris (SYSTEM_ADMIN only)",
     description:
-      "Replaces whoever heads it: their grants are revoked, not deleted. A passive medrese is active again. `delegations` answers what the replaced başmüderris handed on (Devral / Düşür), `endsAt` is the new one's Görev bitişi. Written to the audit log.",
+      "Replaces whoever heads it: their grants are revoked, not deleted. A passive medrese is active again. `delegations` answers what the replaced başmüderris handed on (Devral / Düşür), each row, what they gave the incoming başmüderris included; `endsAt` is the new one's Görev bitişi. Written to the audit log.",
     operationId: "setMadrasahHeadMuderris",
   })
   @ApiOkResponse({ type: MadrasahDirectoryItemResponse })

@@ -107,9 +107,9 @@ export function AssignHeadDialog({
     if (changing) void load();
   }, [open, changing, load]);
 
-  const list = Array.isArray(items)
-    ? items.filter((i) => i.to.id !== head?.id)
-    : [];
+  // Every row is asked about, what the incoming başmüderris was given too:
+  // the API refuses a change that leaves one unanswered.
+  const list = Array.isArray(items) ? items : [];
   const same = head !== null && head.id === target?.headId;
   const problem = endError(endDay, { now, timeZone, assignmentEnd: null });
   const people = groupByPerson(list);

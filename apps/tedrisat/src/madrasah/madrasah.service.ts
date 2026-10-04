@@ -248,19 +248,14 @@ export class MadrasahService {
 
   /**
    * What the sitting başmüderris handed on (nizam/22's "şu kişilere rol ve
-   * izin vermişti"), named. `exceptUserId` is the person about to take over.
+   * izin vermişti"), named: to anyone, the one about to take over included,
+   * since a head change decides every row.
    */
-  async headDelegations(
-    madrasahId: string,
-    exceptUserId?: string
-  ): Promise<HeadDelegationResponse[]> {
+  async headDelegations(madrasahId: string): Promise<HeadDelegationResponse[]> {
     if (!(await this.madrasahRepo.exists(madrasahId))) {
       throw new MadrasahNotFoundError(madrasahId);
     }
-    const rows = await this.madrasahRepo.headDelegations(
-      madrasahId,
-      exceptUserId
-    );
+    const rows = await this.madrasahRepo.headDelegations(madrasahId);
     const ids = [...new Set(rows.map((r) => r.userId))];
     const people = await this.madrasahRepo.people(ids);
     const missing = ids.filter((id) => !people.has(id));

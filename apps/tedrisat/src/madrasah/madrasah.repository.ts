@@ -320,9 +320,14 @@ export class MadrasahRepository {
     return [...new Set([...roles, ...grants].map((row) => row.userId))];
   }
 
+  /**
+   * Every role and permission the sitting başmüderris gave in the medrese and
+   * its courses that is still held, whoever holds it: the incoming başmüderris
+   * too, whose rows from the outgoing one are decided like anyone's (owner,
+   * d-1004: the remover decides each row, no default choice).
+   */
   async headDelegations(
     madrasahId: string,
-    exceptUserId?: string,
     db: Tx | DatabaseService["db"] = this.db
   ): Promise<IHeadDelegation[]> {
     const heads = (
@@ -434,7 +439,7 @@ export class MadrasahRepository {
         expiresAt: g.expiresAt,
       })),
     ];
-    return rows.filter((r) => r.userId !== exceptUserId);
+    return rows;
   }
 
   /**
@@ -485,7 +490,7 @@ export class MadrasahRepository {
       }> = [];
       const takenOver: string[] = [];
       if (replacing) {
-        const given = await this.headDelegations(madrasahId, userId, tx);
+        const given = await this.headDelegations(madrasahId, tx);
         const key = (kind: string, id: string) => `${kind}:${id}`;
         const decisions = options.decisions ?? [];
         const decided = new Map(decisions.map((d) => [key(d.kind, d.id), d]));
@@ -533,6 +538,16 @@ export class MadrasahRepository {
           revokedBy: actorId,
         });
       }
+      // The new başmüderris is seated before anything cascades: a nazır seat
+      // of theirs answered Düşür leaves behind nothing their new seat covers,
+      // and what they handed on under it stays backed.
+      await grantRole(tx, {
+        userId,
+        role: NAZIR_ROLE,
+        scopeId: madrasahId,
+        grantedBy: actorId,
+        expiresAt: options.endsAt ?? null,
+      });
       // A seat that goes takes with it what its holder was given in its
       // scope, by anyone, that no other role of theirs there still covers (a
       // permission cannot outlast its role): the seats answered Düşür, in
@@ -565,13 +580,6 @@ export class MadrasahRepository {
       // handed on something still held under it, which no seat of theirs
       // backs any more, would leave rows nobody was asked about.
       await assertNothingLeftUnder(tx, droppedSeats);
-      await grantRole(tx, {
-        userId,
-        role: NAZIR_ROLE,
-        scopeId: madrasahId,
-        grantedBy: actorId,
-        expiresAt: options.endsAt ?? null,
-      });
       await tx
         .update(madrasahs)
         .set({
