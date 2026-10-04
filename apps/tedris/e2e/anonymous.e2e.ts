@@ -324,6 +324,20 @@ test.describe("what the API gives a caller with no token", () => {
   });
 });
 
+test.describe("where a visitor starts (MDRS-256)", () => {
+  for (const path of ["/", "/tr", "/tr/home"]) {
+    test(`${path} ends on Keşfet, and the bar has no Ana sayfa`, async ({
+      page,
+    }) => {
+      await page.goto(path);
+      await expect(page).toHaveURL(/\/tr\/discover$/);
+      await expect(
+        page.getByRole("link", { name: "Ana sayfa" }).filter({ visible: true })
+      ).toHaveCount(0);
+    });
+  }
+});
+
 test.describe("phone menu (tedris/45)", () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
@@ -333,13 +347,13 @@ test.describe("phone menu (tedris/45)", () => {
     return page.getByRole("dialog", { name: "Ana menü" });
   };
 
-  test("opens a sheet of Ana sayfa and Keşfet, with Giriş yap and Kayıt ol at the foot", async ({
+  test("opens a sheet of Keşfet alone, with Giriş yap and Kayıt ol at the foot", async ({
     page,
   }) => {
     const sheet = await open(page);
     await expect(sheet).toBeVisible();
     const nav = sheet.getByRole("navigation", { name: "Ana menü" });
-    await expect(nav.getByRole("link", { name: "Ana sayfa" })).toBeVisible();
+    await expect(nav.getByRole("link", { name: "Ana sayfa" })).toHaveCount(0);
     await expect(nav.getByRole("link", { name: "Keşfet" })).toHaveAttribute(
       "aria-current",
       "page"

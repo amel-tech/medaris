@@ -395,11 +395,16 @@ describe("the phone menu of a visitor (design tedris/45)", () => {
   };
   const nav = (html: string) => /<nav>(.*?)<\/nav>/.exec(html)?.[1] as string;
 
-  it("holds Ana sayfa and Keşfet, and none of a signed-in talebe's pages", async () => {
+  it("holds Keşfet alone: no Ana sayfa, and none of a signed-in talebe's pages", async () => {
     const menu = nav(await render("/discover"));
-    expect(menu).toContain(">Ana sayfa<");
     expect(menu).toContain(">Keşfet<");
-    for (const absent of ["Derslerim", "Programım", "Desteler", "Çıkış yap"]) {
+    for (const absent of [
+      "Ana sayfa",
+      "Derslerim",
+      "Programım",
+      "Desteler",
+      "Çıkış yap",
+    ]) {
       expect(menu).not.toContain(absent);
     }
   });
@@ -407,9 +412,7 @@ describe("the phone menu of a visitor (design tedris/45)", () => {
   it("marks the page the visitor is on", async () => {
     const discover = nav(await render("/kosks/k1"));
     expect(discover).toMatch(/href="\/tr\/discover" aria-current="page"/);
-    expect(discover).not.toMatch(/href="\/tr\/home" aria-current/);
-    const home = nav(await render("/home"));
-    expect(home).toMatch(/href="\/tr\/home" aria-current="page"/);
+    expect(discover).not.toContain("/tr/home");
   });
 
   it("ends in Giriş yap, back to this page, and Kayıt ol", async () => {
