@@ -13,6 +13,13 @@
  */
 
 import { mapValues } from '../runtime';
+import type { HideLevel } from './HideLevel';
+import {
+    HideLevelFromJSON,
+    HideLevelFromJSONTyped,
+    HideLevelToJSON,
+    HideLevelToJSONTyped,
+} from './HideLevel';
 import type { KoskOverviewMadrasahResponse } from './KoskOverviewMadrasahResponse';
 import {
     KoskOverviewMadrasahResponseFromJSON,
@@ -60,6 +67,18 @@ export interface KoskOverviewResponse {
      * @memberof KoskOverviewResponse
      */
     since?: Date | null;
+    /**
+     * The level that hid it (course, madrasah, kosk, platform); null while it is shown.
+     * @type {HideLevel}
+     * @memberof KoskOverviewResponse
+     */
+    hiddenLevel?: HideLevel | null;
+    /**
+     * Whether the caller may bring the köşk back: it is hidden, they hold `kosk.manage` or `platform.kosk_edit` on it and act at the level that hid it or above.
+     * @type {boolean}
+     * @memberof KoskOverviewResponse
+     */
+    canRestore: boolean;
     /**
      * When the köşk was opened
      * @type {Date}
@@ -111,6 +130,7 @@ export interface KoskOverviewResponse {
  */
 export function instanceOfKoskOverviewResponse(value: object): value is KoskOverviewResponse {
     if (!('status' in value) || value['status'] === undefined) return false;
+    if (!('canRestore' in value) || value['canRestore'] === undefined) return false;
     if (!('openedAt' in value) || value['openedAt'] === undefined) return false;
     if (!('courses' in value) || value['courses'] === undefined) return false;
     if (!('students' in value) || value['students'] === undefined) return false;
@@ -132,6 +152,8 @@ export function KoskOverviewResponseFromJSONTyped(json: any, ignoreDiscriminator
         
         'status': KoskStatusFromJSON(json['status']),
         'since': json['since'] == null ? undefined : (new Date(json['since'])),
+        'hiddenLevel': json['hiddenLevel'] == null ? undefined : HideLevelFromJSON(json['hiddenLevel']),
+        'canRestore': json['canRestore'],
         'openedAt': (new Date(json['openedAt'])),
         'openedBy': json['openedBy'] == null ? undefined : KoskPersonResponseFromJSON(json['openedBy']),
         'courses': KoskCourseCountsResponseFromJSON(json['courses']),
@@ -155,6 +177,8 @@ export function KoskOverviewResponseToJSONTyped(value?: KoskOverviewResponse | n
         
         'status': KoskStatusToJSON(value['status']),
         'since': value['since'] === null ? null : ((value['since'] as any)?.toISOString()),
+        'hiddenLevel': HideLevelToJSON(value['hiddenLevel']),
+        'canRestore': value['canRestore'],
         'openedAt': ((value['openedAt']).toISOString()),
         'openedBy': KoskPersonResponseToJSON(value['openedBy']),
         'courses': KoskCourseCountsResponseToJSON(value['courses']),
