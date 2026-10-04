@@ -12,14 +12,12 @@ import { Dialog, DialogClose } from "@medaris/ui/mds/dialog";
 import { Field } from "@medaris/ui/mds/field";
 import { Input } from "@medaris/ui/mds/input";
 import { Select } from "@medaris/ui/mds/select";
+import { isoToZonedLocal, resolveEnd } from "@medaris/utils";
 import { useLocale, useTimeZone, useTranslations } from "next-intl";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import type { PickedUser } from "../../madrasahs/present";
 import { appointNazim, setNazimGrants } from "../actions";
 import {
-  dayInputValue,
-  endError,
-  endOfDayIso,
   extrasToSend,
   formatDay,
   formatMoment,
@@ -49,7 +47,8 @@ interface Props {
 
 /**
  * "İzinleri düzenle" and "Medaris nazımı ata" (nizam 12): a ready group, the
- * permissions one by one and an optional end date, in a Dialog with a Form.
+ * permissions one by one and an optional end (a date and a time), in a Dialog
+ * with a Form.
  * Choosing a group ticks and locks what it carries; "Grup yok" unlocks. The
  * summary line counts the group's permissions and the ones ticked besides.
  * An end after the appointment's own end is refused where it is typed. The
@@ -73,7 +72,7 @@ export function PermissionsDialog({
   const [picked, setPicked] = useState<PickedUser | null>(null);
   const [groupId, setGroupId] = useState<string>(NO_GROUP);
   const [extras, setExtras] = useState<string[]>([]);
-  const [endDay, setEndDay] = useState("");
+  const [end, setEnd] = useState("");
   const [saving, setSaving] = useState(false);
   const [now, setNow] = useState(() => new Date());
 
@@ -86,7 +85,7 @@ export function PermissionsDialog({
       current && usable.some((g) => g.id === current.id) ? current.id : NO_GROUP
     );
     setExtras(nazim ? nazim.permissions.map((p) => p.code) : []);
-    setEndDay(nazim ? dayInputValue(nazim.expiresAt, timeZone) : "");
+    setEnd(isoToZonedLocal(nazim?.expiresAt, timeZone));
     setNow(new Date());
     setSaving(false);
   }, [open, nazim, usable, timeZone]);
@@ -101,7 +100,13 @@ export function PermissionsDialog({
   const counts = summaryCounts(groupCodes, extras);
 
   const assignmentEnd = nazim?.assignmentExpiresAt ?? null;
-  const problem = endError(endDay, { now, timeZone, assignmentEnd });
+  const { iso: endIso, problem } = resolveEnd({
+    value: end,
+    held: nazim?.expiresAt ?? null,
+    timeZone,
+    now,
+    assignmentEnd,
+  });
   const grantedAt = useMemo(
     () =>
       Object.fromEntries(
@@ -128,7 +133,6 @@ export function PermissionsDialog({
     event.preventDefault();
     if (!canSave) return;
     setSaving(true);
-    const endIso = endDay ? endOfDayIso(endDay, timeZone) : null;
     const body = {
       groupId: group ? group.id : null,
       permissions: extrasToSend(catalog.platform, extras, groupCodes),
@@ -268,7 +272,7 @@ export function PermissionsDialog({
         help={
           assignmentEnd
             ? t("endHelpAssignment", {
-                date: formatDay(assignmentEnd, locale, timeZone),
+                moment: formatMoment(assignmentEnd, locale, timeZone),
               })
             : t("endHelpNone")
         }
@@ -277,17 +281,17 @@ export function PermissionsDialog({
             ? t("endPast")
             : problem === "afterAssignment" && assignmentEnd
               ? t("endAfterAssignment", {
-                  date: formatDay(assignmentEnd, locale, timeZone),
+                  moment: formatMoment(assignmentEnd, locale, timeZone),
                 })
               : undefined
         }
       >
         <Input
-          type="date"
-          name="endDay"
-          value={endDay}
+          type="datetime-local"
+          name="end"
+          value={end}
           disabled={saving}
-          onChange={(event) => setEndDay(event.target.value)}
+          onChange={(event) => setEnd(event.target.value)}
         />
       </Field>
       <p className="mds-caption">{t("auditNote")}</p>

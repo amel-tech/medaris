@@ -6,11 +6,11 @@ import { Button } from "@medaris/ui/mds/button";
 import { Dialog, DialogClose } from "@medaris/ui/mds/dialog";
 import { Field } from "@medaris/ui/mds/field";
 import { Input } from "@medaris/ui/mds/input";
+import { resolveEnd } from "@medaris/utils";
 import { useTimeZone, useTranslations } from "next-intl";
 import { type FormEvent, useEffect, useState } from "react";
 import { HeadPicker } from "../../madrasahs/components/head-picker";
 import type { PickedUser } from "../../madrasahs/present";
-import { endError, endOfDayIso } from "../../permissions/present";
 import { assignScope } from "../actions";
 import { inactiveErrorKey, type Messages } from "../present";
 
@@ -41,26 +41,31 @@ export function AssignScopeDialog({
   const tp = useTranslations("nizam.InactivePage");
   const timeZone = useTimeZone() ?? "Europe/Istanbul";
   const [person, setPerson] = useState<PickedUser | null>(null);
-  const [endDay, setEndDay] = useState("");
+  const [end, setEnd] = useState("");
   const [saving, setSaving] = useState(false);
   const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
     if (!open) return;
     setPerson(null);
-    setEndDay("");
+    setEnd("");
     setNow(new Date());
     setSaving(false);
   }, [open]);
 
   const type = target?.type ?? "KOSK";
-  const problem = endError(endDay, { now, timeZone, assignmentEnd: null });
+  const { iso: endIso, problem } = resolveEnd({
+    value: end,
+    held: null,
+    timeZone,
+    now,
+    assignmentEnd: null,
+  });
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!target || !person || problem) return;
     setSaving(true);
-    const endIso = endDay ? endOfDayIso(endDay, timeZone) : null;
     const result = await assignScope(
       target.type,
       target.id,
@@ -127,11 +132,11 @@ export function AssignScopeDialog({
         error={problem ? t("endPast") : undefined}
       >
         <Input
-          type="date"
-          name="endDay"
-          value={endDay}
+          type="datetime-local"
+          name="end"
+          value={end}
           disabled={saving}
-          onChange={(event) => setEndDay(event.target.value)}
+          onChange={(event) => setEnd(event.target.value)}
         />
       </Field>
     </Dialog>

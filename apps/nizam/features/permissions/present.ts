@@ -10,10 +10,10 @@ import type {
 /**
  * Pure helpers behind Medaris nazımları, İzin ver and İzin grupları (nizam 11,
  * 12 and 13, MDRS-171): what the "Bitiş" column says, how the permissions of a
- * person are summed up, the dialog's checked and locked boxes, the date the
- * "Bitiş tarihi" field turns into, the rules of the dismissal and of the group
- * form. No React and no I/O, so the sentences and rules the designs show can be
- * pinned by plain specs.
+ * person are summed up, the dialog's checked and locked boxes, the rules of the
+ * dismissal and of the group form. No React and no I/O, so the sentences and
+ * rules the designs show can be pinned by plain specs. The end of a role or a
+ * permission is an instant, read and compared by `@medaris/utils` (MDRS-254).
  */
 export type Messages = (
   key: string,
@@ -105,83 +105,6 @@ export function endLabel(
     date: formatDay(date, opts.locale, opts.timeZone),
     warnDays: left <= WARN_DAYS ? Math.max(left, 0) : null,
   };
-}
-
-/** The offset of a zone from UTC at an instant, in milliseconds. */
-function zoneOffset(instant: number, timeZone: string): number {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone,
-    hourCycle: "h23",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  }).formatToParts(new Date(instant));
-  const get = (type: string) =>
-    Number(parts.find((p) => p.type === type)?.value ?? 0);
-  const asUtc = Date.UTC(
-    get("year"),
-    get("month") - 1,
-    get("day"),
-    get("hour"),
-    get("minute"),
-    get("second")
-  );
-  return asUtc - Math.floor(instant / 1000) * 1000;
-}
-
-/**
- * The last second of a calendar day in a zone, as an ISO instant: what an end
- * date typed as `YYYY-MM-DD` means ("until the end of that day"). `null` for
- * anything that is not a date.
- */
-export function endOfDayIso(day: string, timeZone: string): string | null {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(day);
-  if (!match) return null;
-  const [, y = 0, m = 1, d = 1] = match.map(Number);
-  const wall = Date.UTC(y, m - 1, d, 23, 59, 59);
-  let instant = wall - zoneOffset(wall, timeZone);
-  // Across a change of offset the first guess can be an hour out.
-  instant = wall - zoneOffset(instant, timeZone);
-  const result = new Date(instant);
-  return Number.isNaN(result.getTime()) ? null : result.toISOString();
-}
-
-export type EndError = "past" | "afterAssignment";
-
-/**
- * The first thing wrong with the end date typed: not after today, or after
- * the appointment's own end (nizam/12 criterion 3). Empty is fine: the
- * permissions end with the appointment.
- */
-export function endError(
-  day: string,
-  opts: { now: Date; timeZone: string; assignmentEnd: Date | string | null }
-): EndError | null {
-  if (day.trim() === "") return null;
-  const iso = endOfDayIso(day, opts.timeZone);
-  if (!iso) return "past";
-  const instant = new Date(iso);
-  // "Gelecekte": today is not, even though its last second still lies ahead.
-  if (day <= dayIn(opts.now, opts.timeZone)) return "past";
-  if (
-    opts.assignmentEnd !== null &&
-    dayIn(instant, opts.timeZone) >
-      dayIn(new Date(opts.assignmentEnd), opts.timeZone)
-  ) {
-    return "afterAssignment";
-  }
-  return null;
-}
-
-/** The value the date input holds for an end the API gave. */
-export function dayInputValue(
-  end: Date | string | null,
-  timeZone: string
-): string {
-  return end === null ? "" : dayIn(new Date(end), timeZone);
 }
 
 // ---- the dismissal gate ----------------------------------------------------

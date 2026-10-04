@@ -5,17 +5,12 @@ import { Button } from "@medaris/ui/mds/button";
 import { Dialog, DialogClose } from "@medaris/ui/mds/dialog";
 import { Field } from "@medaris/ui/mds/field";
 import { Input } from "@medaris/ui/mds/input";
+import { resolveEnd } from "@medaris/utils";
 import { useLocale, useTimeZone, useTranslations } from "next-intl";
-import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { type FormEvent, useEffect, useRef, useState } from "react";
 import type { PickedUser } from "../../madrasahs/present";
 import { addKoskNazims } from "../admin-actions";
-import {
-  endsAtOf,
-  isoDay,
-  isPastDay,
-  koskCase,
-  koskErrorKey,
-} from "../admin-present";
+import { koskCase, koskErrorKey } from "../admin-present";
 import { NazimPicker } from "./nazim-picker";
 
 interface Props {
@@ -30,7 +25,8 @@ interface Props {
 /**
  * "Köşk nazımı ekle" (nizam 21): a Dialog with a Form — the accounts found by
  * e-mail (one or more) and an optional end of the post. "Ekle" is off until
- * somebody is chosen, and a date in the past is refused under its field. The
+ * somebody is chosen, and an end that is not after now is refused under its
+ * field. The
  * scrim does not close it; the picker has the focus. Someone who already is a
  * nazım of the köşk is the server's refusal and is said in a toast.
  */
@@ -46,23 +42,28 @@ export function AddNazimDialog({
   const locale = useLocale();
   const timeZone = useTimeZone() ?? "Europe/Istanbul";
   const [people, setPeople] = useState<PickedUser[]>([]);
-  const [day, setDay] = useState("");
+  const [end, setEnd] = useState("");
   const [saving, setSaving] = useState(false);
   const [sent, setSent] = useState(false);
   const emailRef = useRef<HTMLElement | null>(null);
-  const today = useMemo(() => isoDay(new Date(), timeZone), [timeZone]);
 
   // A new addition starts from a clean form.
   useEffect(() => {
     if (open) {
       setPeople([]);
-      setDay("");
+      setEnd("");
       setSent(false);
     }
   }, [open]);
 
-  const past = isPastDay(day, new Date(), timeZone);
-  const ready = people.length > 0 && !past;
+  const { iso: endIso, problem } = resolveEnd({
+    value: end,
+    held: null,
+    timeZone,
+    now: new Date(),
+    assignmentEnd: null,
+  });
+  const ready = people.length > 0 && problem === null;
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -74,7 +75,7 @@ export function AddNazimDialog({
     const result = await addKoskNazims(
       koskId,
       people.map((p) => p.id),
-      endsAtOf(day, timeZone)
+      endIso ?? undefined
     );
     setSaving(false);
     if (!result.success) {
@@ -131,15 +132,14 @@ export function AddNazimDialog({
         <Field
           label={t("endLabel")}
           help={t("endHelp")}
-          error={past ? t("errors.endPast") : undefined}
+          error={problem ? t("errors.endPast") : undefined}
         >
           <Input
-            type="date"
+            type="datetime-local"
             name="endsAt"
-            min={today}
-            value={day}
+            value={end}
             disabled={saving}
-            onChange={(e) => setDay(e.target.value)}
+            onChange={(e) => setEnd(e.target.value)}
           />
         </Field>
       </div>

@@ -17,15 +17,12 @@ import {
   type DecisionItem,
   DISMISS_OPENS_AT,
   dayIn,
-  dayInputValue,
   daysLeft,
   decisionItems,
   dismissDecisions,
   dismissOpen,
   dismissReady,
-  endError,
   endLabel,
-  endOfDayIso,
   extrasToSend,
   formatDay,
   givenKey,
@@ -145,49 +142,10 @@ describe("the end of a permission (nizam 11 criterion 2)", () => {
   });
 });
 
-describe("the end date field (nizam 12 criterion 3)", () => {
-  const now = new Date("2026-10-02T09:00:00Z");
-
-  it("turns a day into the last second of it in the viewer's zone", () => {
-    expect(endOfDayIso("2026-12-31", IST)).toBe("2026-12-31T20:59:59.000Z");
-    // Summer time is also +03 in Istanbul now, but a zone with a shift moves the instant.
-    expect(endOfDayIso("2026-07-15", "America/New_York")).toBe(
-      "2026-07-16T03:59:59.000Z"
-    );
-    expect(endOfDayIso("2026-01-15", "America/New_York")).toBe(
-      "2026-01-16T04:59:59.000Z"
-    );
-    expect(endOfDayIso("nope", IST)).toBeNull();
-    expect(endOfDayIso("2026-02-31x", IST)).toBeNull();
-  });
-
-  it("round-trips through the date input", () => {
-    expect(dayInputValue("2026-12-31T20:59:59.000Z", IST)).toBe("2026-12-31");
-    expect(dayInputValue(null, IST)).toBe("");
+describe("the calendar day of an instant", () => {
+  it("is read in the viewer's zone", () => {
+    expect(dayIn(new Date("2026-12-31T20:59:59Z"), IST)).toBe("2026-12-31");
     expect(dayIn(new Date("2026-12-31T21:00:00Z"), IST)).toBe("2027-01-01");
-  });
-
-  it("accepts no date, a later one, and the appointment's own last day", () => {
-    const assignmentEnd = "2026-12-31T20:59:59Z";
-    const check = (day: string) =>
-      endError(day, { now, timeZone: IST, assignmentEnd });
-    expect(check("")).toBeNull();
-    expect(check("2026-11-15")).toBeNull();
-    expect(check("2026-12-31")).toBeNull();
-  });
-
-  it("refuses today or the past, and a day after the appointment ends", () => {
-    const assignmentEnd = "2026-12-31T20:59:59Z";
-    const check = (day: string) =>
-      endError(day, { now, timeZone: IST, assignmentEnd });
-    expect(check("2026-10-01")).toBe("past");
-    // Today is not "in the future", though its last second still lies ahead.
-    expect(check("2026-10-02")).toBe("past");
-    expect(check("2026-10-03")).toBeNull();
-    expect(check("2027-01-01")).toBe("afterAssignment");
-    expect(
-      endError("2030-01-01", { now, timeZone: IST, assignmentEnd: null })
-    ).toBeNull();
   });
 });
 

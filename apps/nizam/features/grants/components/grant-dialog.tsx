@@ -11,18 +11,13 @@ import { Dialog, DialogClose } from "@medaris/ui/mds/dialog";
 import { Field } from "@medaris/ui/mds/field";
 import { Input } from "@medaris/ui/mds/input";
 import { Select } from "@medaris/ui/mds/select";
+import { isoToZonedLocal, resolveEnd } from "@medaris/utils";
 import { useLocale, useTimeZone, useTranslations } from "next-intl";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { HeadPicker } from "../../madrasahs/components/head-picker";
 import type { PickedUser } from "../../madrasahs/present";
 import { PermissionBoxes } from "../../permissions/components/permission-boxes";
-import {
-  dayInputValue,
-  endError,
-  endOfDayIso,
-  formatDay,
-  toggleExtra,
-} from "../../permissions/present";
+import { formatDay, toggleExtra } from "../../permissions/present";
 import { createGrant, updateGrant } from "../actions";
 import { canSaveGrant, grantErrorKey, type Messages } from "../present";
 
@@ -42,10 +37,10 @@ interface Props {
 
 /**
  * "Ders nazırı ata" and "İzinleri düzenle" (nizam 38): the person (found by
- * e-mail), the course, the course permissions and an optional end, in a Dialog
- * with a Form. Only what the caller holds themselves is offered; the server
- * checks it again. The post and its permissions end on the same day. The scrim
- * does not close it, so a stray click does not lose the boxes.
+ * e-mail), the course, the course permissions and an optional end (a date and
+ * a time), in a Dialog with a Form. Only what the caller holds themselves is
+ * offered; the server checks it again. The post and its permissions end at the same moment. The
+ * scrim does not close it, so a stray click does not lose the boxes.
  */
 export function GrantDialog({
   open,
@@ -65,7 +60,7 @@ export function GrantDialog({
   const [picked, setPicked] = useState<PickedUser | null>(null);
   const [courseId, setCourseId] = useState<string | null>(null);
   const [codes, setCodes] = useState<string[]>([]);
-  const [endDay, setEndDay] = useState("");
+  const [end, setEnd] = useState("");
   const [saving, setSaving] = useState(false);
   const [now, setNow] = useState(() => new Date());
 
@@ -75,7 +70,7 @@ export function GrantDialog({
     setPicked(null);
     setCourseId(grant ? grant.course.id : null);
     setCodes(grant ? [...grant.permissions] : []);
-    setEndDay(grant ? dayInputValue(grant.endsAt ?? null, timeZone) : "");
+    setEnd(isoToZonedLocal(grant?.endsAt, timeZone));
     setNow(new Date());
     setSaving(false);
   }, [open, grant, timeZone]);
@@ -85,7 +80,13 @@ export function GrantDialog({
     [grantable]
   );
   const ticked = useMemo(() => new Set(codes), [codes]);
-  const problem = endError(endDay, { now, timeZone, assignmentEnd: null });
+  const { iso: endIso, problem } = resolveEnd({
+    value: end,
+    held: grant?.endsAt ?? null,
+    timeZone,
+    now,
+    assignmentEnd: null,
+  });
   const canSave = canSaveGrant({
     editing: grant !== null,
     personChosen: picked !== null,
@@ -98,7 +99,6 @@ export function GrantDialog({
     event.preventDefault();
     if (!canSave) return;
     setSaving(true);
-    const endIso = endDay ? endOfDayIso(endDay, timeZone) : null;
     const endsAt = endIso ? new Date(endIso) : null;
     const permissions = grantable.filter((c) => ticked.has(c));
     const result = grant
@@ -211,11 +211,11 @@ export function GrantDialog({
         error={problem ? t("endPast") : undefined}
       >
         <Input
-          type="date"
-          name="endDay"
-          value={endDay}
+          type="datetime-local"
+          name="end"
+          value={end}
           disabled={saving}
-          onChange={(event) => setEndDay(event.target.value)}
+          onChange={(event) => setEnd(event.target.value)}
         />
       </Field>
       <p className="mds-caption">{t("auditNote")}</p>

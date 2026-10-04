@@ -10,14 +10,10 @@ import { Dialog, DialogClose } from "@medaris/ui/mds/dialog";
 import { Field } from "@medaris/ui/mds/field";
 import { Input } from "@medaris/ui/mds/input";
 import { Skeleton } from "@medaris/ui/mds/skeleton";
+import { resolveEnd } from "@medaris/utils";
 import { useLocale, useTimeZone, useTranslations } from "next-intl";
 import { type FormEvent, useCallback, useEffect, useState } from "react";
-import {
-  type DismissAnswer,
-  endError,
-  endOfDayIso,
-  formatDay,
-} from "../../permissions/present";
+import { type DismissAnswer, formatDay } from "../../permissions/present";
 import { getHeadDelegations, setHeadMuderris } from "../actions";
 import {
   groupByPerson,
@@ -74,7 +70,7 @@ export function AssignHeadDialog({
 
   const changing = Boolean(target?.headId);
   const [head, setHead] = useState<PickedUser | null>(null);
-  const [endDay, setEndDay] = useState("");
+  const [end, setEnd] = useState("");
   const [items, setItems] = useState<
     HeadDelegationResponse[] | "failed" | null
   >(null);
@@ -97,7 +93,7 @@ export function AssignHeadDialog({
   useEffect(() => {
     if (!open) return;
     setHead(null);
-    setEndDay("");
+    setEnd("");
     setAnswers({});
     setSaving(false);
     setNow(new Date());
@@ -109,7 +105,13 @@ export function AssignHeadDialog({
     ? items.filter((i) => i.to.id !== head?.id)
     : [];
   const same = head !== null && head.id === target?.headId;
-  const problem = endError(endDay, { now, timeZone, assignmentEnd: null });
+  const { iso: endIso, problem } = resolveEnd({
+    value: end,
+    held: null,
+    timeZone,
+    now,
+    assignmentEnd: null,
+  });
   const people = groupByPerson(list);
   const answered =
     !changing || (Array.isArray(items) && personsReady(people, answers));
@@ -119,7 +121,6 @@ export function AssignHeadDialog({
     event.preventDefault();
     if (!target || !head || !ready) return;
     setSaving(true);
-    const endIso = endDay ? endOfDayIso(endDay, timeZone) : null;
     const result = await setHeadMuderris(target.id, head.id, {
       ...(endIso ? { endsAt: new Date(endIso) } : {}),
       ...(changing ? { delegations: personDecisions(people, answers) } : {}),
@@ -257,11 +258,11 @@ export function AssignHeadDialog({
         error={problem ? t("endPast") : undefined}
       >
         <Input
-          type="date"
-          name="endDay"
-          value={endDay}
+          type="datetime-local"
+          name="end"
+          value={end}
           disabled={saving}
-          onChange={(event) => setEndDay(event.target.value)}
+          onChange={(event) => setEnd(event.target.value)}
         />
       </Field>
 
