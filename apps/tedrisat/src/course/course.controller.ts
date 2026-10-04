@@ -255,7 +255,7 @@ export class CourseController {
   })
   @ApiForbiddenResponse({
     description:
-      "No `course.edit` on the course, or the save changes the müderris list without `course.open_standalone` (or `madrasah.muderris_manage` for a medrese's course) — a müderris may save the course but not change who teaches it (MUDERRIS_ASSIGNMENT_FORBIDDEN). SELF_GRANT_REFUSED: a changed list names the caller, who does not already hold every müderris permission on the course (SYSTEM_ADMIN excepted).",
+      "No `course.edit` on the course, or the save changes the müderris list without `course.open_standalone` (or `madrasah.muderris_manage` for a medrese's course) — a müderris may save the course but not change who teaches it (MUDERRIS_ASSIGNMENT_FORBIDDEN). Adding or dropping a session, or changing a session's time, meeting link, agenda or preview flag, needs `session.manage` as well (AUTHZ_FORBIDDEN). SELF_GRANT_REFUSED: a changed list names the caller, who does not already hold every müderris permission on the course (SYSTEM_ADMIN excepted).",
   })
   @ApiConflictResponse({
     description:
@@ -265,6 +265,7 @@ export class CourseController {
   // (MDRS-105). The müderris list inside the payload is `course.open_standalone`
   // — the köşk nazımı's alone, or the medrese's `madrasah.muderris_manage` in a
   // course held for a medrese — and `CourseService.replace` checks that part.
+  // It checks the sessions inside the payload against `session.manage` too.
   @Authz(PERMISSIONS.COURSE_EDIT, byParam(ENTITIES.COURSE))
   @Put("courses/:id")
   @UsePipes(new MedarisValidationPipe({ transform: true }))

@@ -8,12 +8,15 @@ import {
 } from "../../src/assignment/permission-catalog";
 import { CourseStatus } from "../../src/course/domain/course-status.enum";
 import { EnrollmentStatus } from "../../src/course/domain/enrollment-status.enum";
+import { LessonType } from "../../src/course/domain/lesson-type.enum";
 import { DatabaseService } from "../../src/database/database.service";
 import { auditLog } from "../../src/database/schema/audit.schema";
 import {
   courseMuderris,
   courses,
+  courseWeeks,
   enrollments,
+  lessons,
 } from "../../src/database/schema/course.schema";
 import { kosks } from "../../src/database/schema/kosk.schema";
 import {
@@ -1783,6 +1786,136 @@ describe("The permission engine (MDRS-135, e2e)", () => {
       await patch(HEAD_ID, `/courses/${medreseCourse}`, {
         isClosed: false,
       }).expect(409);
+    });
+  });
+
+  describe("session work is session.manage's on every route, the whole-course save included", () => {
+    const atOwnCourse = () => ({ type: SCOPE_TYPES.COURSE, id: ownCourse });
+    const LINK = "https://meet.google.com/aaa-bbbb-ccc";
+
+    /** One week with one live session, and the whole-course save that keeps them as they are. */
+    const seedSession = async () => {
+      const [week] = await db()
+        .insert(courseWeeks)
+        .values({ courseId: ownCourse, weekNumber: 1, title: "Birinci Bab" })
+        .returning();
+      const [session] = await db()
+        .insert(lessons)
+        .values({
+          weekId: week.id,
+          title: "Canlı celse",
+          type: LessonType.LIVE,
+          scheduledAt: new Date("2026-11-01T18:00:00.000Z"),
+          meetingUrl: LINK,
+        })
+        .returning();
+      const [muderris] = await db()
+        .select()
+        .from(courseMuderris)
+        .where(eq(courseMuderris.courseId, ownCourse));
+      const save = (lesson: Record<string, unknown> = {}) => ({
+        title: "Köşkün kendi dersi",
+        muderris: [{ id: muderris.id, userId: MUDERRIS_ID, name: "Müderris" }],
+        weeks: [
+          {
+            id: week.id,
+            weekNumber: 1,
+            title: "Birinci Bab",
+            lessons: [
+              {
+                id: session.id,
+                title: "Canlı celse",
+                type: LessonType.LIVE,
+                scheduledAt: "2026-11-01T18:00:00.000Z",
+                meetingUrl: LINK,
+                ...lesson,
+              },
+            ],
+          },
+        ],
+      });
+      return { weekId: week.id, save };
+    };
+
+    it("course.edit alone saves the course's text, but adds, re-times or relinks no session", async () => {
+      const { weekId, save } = await seedSession();
+      await grant(
+        DERS_ID,
+        atOwnCourse(),
+        { permission: PERMISSIONS.COURSE_EDIT },
+        { grantedBy: NAZIM_ID }
+      );
+      await put(DERS_ID, `/courses/${ownCourse}`, {
+        ...save(),
+        title: "Yeni ad",
+      }).expect(200);
+      await put(
+        DERS_ID,
+        `/courses/${ownCourse}`,
+        save({ title: "Yeni celse adı", durationMinutes: 45 })
+      ).expect(200);
+
+      for (const change of [
+        { meetingUrl: "https://zoom.us/j/123" },
+        { scheduledAt: "2026-11-08T18:00:00.000Z" },
+        { isPreview: true },
+      ]) {
+        const refused = await put(
+          DERS_ID,
+          `/courses/${ownCourse}`,
+          save(change)
+        ).expect(403);
+        expect(refused.body.code).toBe("AUTHZ_FORBIDDEN");
+      }
+      const [week] = save().weeks;
+      const withLessons = (sessions: object[]) => ({
+        ...save(),
+        weeks: [{ ...week, lessons: sessions }],
+      });
+      // A session added, and one dropped (the save would hide it).
+      await put(
+        DERS_ID,
+        `/courses/${ownCourse}`,
+        withLessons([...week.lessons, { title: "Ek celse", type: "LIVE" }])
+      ).expect(403);
+      await put(DERS_ID, `/courses/${ownCourse}`, withLessons([])).expect(403);
+      await post(DERS_ID, `/courses/${ownCourse}/weeks/${weekId}/lessons`, {
+        title: "Ek celse",
+        type: LessonType.LIVE,
+      }).expect(403);
+      // Nothing of the refused saves was written.
+      const [kept] = await db()
+        .select()
+        .from(lessons)
+        .where(eq(lessons.weekId, weekId));
+      expect(kept.meetingUrl).toBe(LINK);
+
+      await grant(
+        DERS_ID,
+        atOwnCourse(),
+        { permission: PERMISSIONS.SESSION_MANAGE },
+        { grantedBy: NAZIM_ID }
+      );
+      await put(
+        DERS_ID,
+        `/courses/${ownCourse}`,
+        save({ meetingUrl: "https://zoom.us/j/123" })
+      ).expect(200);
+    });
+
+    it("session.manage alone adds one session, as it adds a batch of them", async () => {
+      const { weekId } = await seedSession();
+      await grant(
+        DERS_ID,
+        atOwnCourse(),
+        { permission: PERMISSIONS.SESSION_MANAGE },
+        { grantedBy: NAZIM_ID }
+      );
+      await post(DERS_ID, `/courses/${ownCourse}/weeks/${weekId}/lessons`, {
+        title: "Ek celse",
+        type: LessonType.LIVE,
+        scheduledAt: "2026-11-15T18:00:00.000Z",
+      }).expect(201);
     });
   });
 

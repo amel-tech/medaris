@@ -72,6 +72,7 @@ import {
   visibleRecordings,
 } from "./domain/recording";
 import { buildSessionView, type ISessionView } from "./domain/session-view";
+import { sessionWorkChanged } from "./domain/session-work";
 import { withCanonicalTimeZone } from "./domain/time-zone";
 import {
   expandWeeklyPattern,
@@ -680,6 +681,7 @@ export class CourseService {
     // from what is stored is a change; an unrelated save of a course must still
     // go through.
     await this.assertMayChangeSettings(id, user, stored, data, false);
+    await this.assertMayChangeSessions(id, user, stored, data);
     const next = data.muderris ?? [];
     const current = await this.courseRepo.findMuderris(id);
     if (muderrisListChanged(current, next)) {
@@ -707,6 +709,32 @@ export class CourseService {
       await this.courseLevel(user, id)
     );
     return this.present(replaced, user, { audit: false });
+  }
+
+  /**
+   * The sessions inside a whole-course save (MDRS-135): adding or dropping a
+   * session, or changing a kept one's time, meeting link, agenda or preview
+   * flag, needs `session.manage`, exactly as the session routes on
+   * LessonController do. A caller holding only `course.edit` keeps the
+   * titles, texts, order and weeks, so a save that leaves every session as
+   * stored still goes through. Refused whole with 403 before anything is
+   * written.
+   */
+  private async assertMayChangeSessions(
+    id: string,
+    user: AuthenticatedUser,
+    stored: Pick<ICourseDetail, "weeks">,
+    data: Pick<IReplaceCourse, "weeks">
+  ): Promise<void> {
+    if (!sessionWorkChanged(stored.weeks, data.weeks ?? [])) return;
+    const resource = { entity: ENTITIES.COURSE, id };
+    if (await this.authz.can(user, resource, PERMISSIONS.SESSION_MANAGE)) {
+      return;
+    }
+    throw new AuthzForbiddenError(
+      `This change needs the permission ${PERMISSIONS.SESSION_MANAGE}`,
+      { courseId: id, permission: PERMISSIONS.SESSION_MANAGE }
+    );
   }
 
   /**
@@ -750,7 +778,7 @@ export class CourseService {
   }
 
   // ---- session-level writes (MDRS-95) ----
-  // Authorization for these three is `@Authz(PERMISSIONS.COURSE_EDIT, …)` on
+  // Authorization for these is `@Authz(PERMISSIONS.SESSION_MANAGE, …)` on
   // LessonController, resolved against the lesson's parent course, so no
   // ownership assertion is repeated here.
 
