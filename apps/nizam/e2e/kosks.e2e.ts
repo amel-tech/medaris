@@ -25,6 +25,10 @@ const API = process.env.E2E_API_URL ?? "http://localhost:3001";
 const seedable = Boolean(process.env.E2E_DATABASE_URL);
 let fixture: KoskFixture;
 
+// The screen shows moments in the browser's zone unless the account has one:
+// pinned, the end dates below mean the same instant on any machine (MDRS-254).
+test.use({ timezoneId: "Europe/Istanbul" });
+
 test.beforeEach(async () => {
   if (!seedable || !SYSTEM_ADMIN.sub || !KOSK_NAZIM.sub) return;
   fixture = await seedKosks({ nazim: KOSK_NAZIM.sub, chief: SYSTEM_ADMIN.sub });
@@ -642,17 +646,19 @@ test("nizam/21 — an end date is kept and shown, and one in the past cannot be 
   await search.press("Enter");
   await expect(dialog.getByTestId("chosen-nazims")).toBeVisible();
 
-  // a past day is refused under the field and 'Ekle' stays off
+  // a past moment is refused under the field and 'Ekle' stays off
   const end = dialog.getByRole("textbox", {
-    name: "Görev bitişi (isteğe bağlı)",
+    name: "Görev bitiş tarihi ve saati (isteğe bağlı)",
   });
-  await end.fill("2020-01-01");
-  await expect(dialog.getByText("Bitiş tarihi geçmişte olamaz.")).toBeVisible();
+  await end.fill("2020-01-01T12:00");
+  await expect(
+    dialog.getByText("Bitiş zamanı şu andan sonra olmalı.")
+  ).toBeVisible();
   await expect(dialog.getByRole("button", { name: "Ekle" })).toBeDisabled();
 
-  const inThirty = new Date(Date.now() + 30 * 24 * 3600 * 1000)
+  const inThirty = `${new Date(Date.now() + 30 * 24 * 3600 * 1000)
     .toISOString()
-    .slice(0, 10);
+    .slice(0, 10)}T12:00`;
   await end.fill(inThirty);
   await dialog.getByRole("button", { name: "Ekle" }).click();
   await expect(page.getByText("Köşk nazımı eklendi")).toBeVisible();

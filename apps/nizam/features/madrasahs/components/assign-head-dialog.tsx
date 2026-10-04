@@ -10,14 +10,10 @@ import { Dialog, DialogClose } from "@medaris/ui/mds/dialog";
 import { Field } from "@medaris/ui/mds/field";
 import { Input } from "@medaris/ui/mds/input";
 import { Skeleton } from "@medaris/ui/mds/skeleton";
+import { isUnfinishedEnd, resolveEnd } from "@medaris/utils";
 import { useLocale, useTimeZone, useTranslations } from "next-intl";
 import { type FormEvent, useCallback, useEffect, useState } from "react";
-import {
-  type DismissAnswer,
-  endError,
-  endOfDayIso,
-  formatDay,
-} from "../../permissions/present";
+import { type DismissAnswer, formatDay } from "../../permissions/present";
 import { getHeadDelegations, setHeadMuderris } from "../actions";
 import {
   groupByPerson,
@@ -76,7 +72,8 @@ export function AssignHeadDialog({
 
   const changing = Boolean(target?.headId);
   const [head, setHead] = useState<PickedUser | null>(null);
-  const [endDay, setEndDay] = useState("");
+  const [end, setEnd] = useState("");
+  const [unfinished, setUnfinished] = useState(false);
   const [items, setItems] = useState<
     HeadDelegationResponse[] | "failed" | null
   >(null);
@@ -99,7 +96,8 @@ export function AssignHeadDialog({
   useEffect(() => {
     if (!open) return;
     setHead(null);
-    setEndDay("");
+    setEnd("");
+    setUnfinished(false);
     setAnswers({});
     setSaving(false);
     setNow(new Date());
@@ -111,7 +109,14 @@ export function AssignHeadDialog({
   // the API refuses a change that leaves one unanswered.
   const list = Array.isArray(items) ? items : [];
   const same = head !== null && head.id === target?.headId;
-  const problem = endError(endDay, { now, timeZone, assignmentEnd: null });
+  const { iso: endIso, problem } = resolveEnd({
+    value: end,
+    held: null,
+    timeZone,
+    now,
+    assignmentEnd: null,
+    unfinished,
+  });
   const people = groupByPerson(list);
   const answered =
     !changing || (Array.isArray(items) && personsReady(people, answers));
@@ -119,9 +124,13 @@ export function AssignHeadDialog({
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    // A half-typed picker reads "" and may never have been left, so it is read again here.
+    if (isUnfinishedEnd(event.currentTarget.elements.namedItem("end"))) {
+      setUnfinished(true);
+      return;
+    }
     if (!target || !head || !ready) return;
     setSaving(true);
-    const endIso = endDay ? endOfDayIso(endDay, timeZone) : null;
     const result = await setHeadMuderris(target.id, head.id, {
       ...(endIso ? { endsAt: new Date(endIso) } : {}),
       ...(changing ? { delegations: personDecisions(people, answers) } : {}),
@@ -273,14 +282,22 @@ export function AssignHeadDialog({
       <Field
         label={t("endLabel")}
         help={t("endHelp")}
-        error={problem ? t("endPast") : undefined}
+        error={
+          problem
+            ? t(problem === "unfinished" ? "endUnfinished" : "endPast")
+            : undefined
+        }
       >
         <Input
-          type="date"
-          name="endDay"
-          value={endDay}
+          type="datetime-local"
+          name="end"
+          value={end}
           disabled={saving}
-          onChange={(event) => setEndDay(event.target.value)}
+          onChange={(event) => {
+            setEnd(event.target.value);
+            setUnfinished(isUnfinishedEnd(event.target));
+          }}
+          onBlur={(event) => setUnfinished(isUnfinishedEnd(event.target))}
         />
       </Field>
 

@@ -395,11 +395,12 @@
     "courses": "Courses",
     "noCourses": "This medrese has no courses yet.",
     "coursesProblem": "Choose at least one course.",
-    "expires": "End date (optional)",
-    "expiresHelp": "Leave empty for no end date. The permission lapses by itself when the date passes.",
+    "expires": "End date and time (optional)",
+    "expiresHelp": "Leave empty for no end. The permission lapses by itself at that moment.",
     "expiresProblems": {
-      "past": "The end date cannot be in the past.",
-      "afterAppointment": "The end date cannot be after the end of the appointment."
+      "past": "The end must be after the current time.",
+      "afterAppointment": "The end cannot be after the end of the appointment.",
+      "unfinished": "Complete the end date and time."
     },
     "note": "They cannot pass on a permission they receive. Every permission given and taken back is written to the audit log.",
     "summary": {

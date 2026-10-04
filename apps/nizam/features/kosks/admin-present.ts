@@ -476,58 +476,6 @@ export function termLabel(
   }).format(new Date(endsAt));
 }
 
-/** `YYYY-MM-DD` of a date in a zone, for the date input's `min`. */
-export function isoDay(date: Date, timeZone: string): string {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(date);
-  return parts;
-}
-
-/** A chosen day is in the past when it is before today in the viewer's zone. */
-export const isPastDay = (day: string, now: Date, timeZone: string): boolean =>
-  day !== "" && day < isoDay(now, timeZone);
-
-/** The end of the chosen day in the viewer's zone, as the instant the API takes; "" is no end. */
-export function endsAtOf(day: string, timeZone: string): string | undefined {
-  if (!day) return undefined;
-  const [y = 0, m = 1, d = 1] = day.split("-").map(Number);
-  const wallEnd = Date.UTC(y, m - 1, d, 23, 59, 59);
-  return new Date(
-    wallEnd - zoneOffsetMs(new Date(wallEnd), timeZone)
-  ).toISOString();
-}
-
-/** How far a zone's wall clock is ahead of UTC at an instant, in milliseconds. */
-function zoneOffsetMs(at: Date, timeZone: string): number {
-  const parts: Record<string, number> = Object.fromEntries(
-    new Intl.DateTimeFormat("en-US", {
-      timeZone,
-      hourCycle: "h23",
-      year: "numeric",
-      month: "numeric",
-      day: "numeric",
-      hour: "numeric",
-      minute: "numeric",
-      second: "numeric",
-    })
-      .formatToParts(at)
-      .map((part) => [part.type, Number(part.value)])
-  );
-  const wall = Date.UTC(
-    parts.year ?? 0,
-    (parts.month ?? 1) - 1,
-    parts.day ?? 1,
-    parts.hour ?? 0,
-    parts.minute ?? 0,
-    parts.second ?? 0
-  );
-  return wall - Math.floor(at.getTime() / 1000) * 1000;
-}
-
 /**
  * "Nûruosmaniye Köşkü’nün" (genitive) or "Nûruosmaniye Köşkü’nü" (accusative):
  * a Turkish köşk name takes its ending by how it ends, so "{kosk} köşkünün"
