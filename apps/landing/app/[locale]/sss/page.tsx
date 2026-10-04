@@ -2,6 +2,7 @@ import { setRequestLocale } from "next-intl/server";
 import { FaqItem } from "~/components/faq-item";
 import { SiteFooter } from "~/components/site-footer";
 import { SiteHeader } from "~/components/site-header";
+import { isPlaceholder } from "~/content/karsilama";
 import { legal } from "~/content/legal";
 
 export const metadata = { title: "Sık sorulan sorular · Medaris" };
@@ -14,6 +15,10 @@ export default async function Page({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
+
+  // A bracketed placeholder never reaches a visitor: the fee question waits
+  // for the owner's answer.
+  const feeKnown = !isPlaceholder(legal.feeInformation);
 
   return (
     <>
@@ -53,9 +58,9 @@ export default async function Page({
                 </FaqItem>
                 <FaqItem id="s2" number={2} question="Köşk ve medrese nedir?">
                   <p className="mds-body">
-                    Köşk, bir ilim dalına ayrılmış meclistir: Nûruosmaniye
-                    Köşkü’nde Arapça dil ilimleri, Fatih Köşkü’nde fıkıh okunur.
-                    Dersler köşklerde açılır.
+                    Köşk, bir ilim dalına ayrılmış meclistir: Hadis Köşkü,
+                    Tefsir Köşkü, Kelâm Köşkü ya da Gramer Köşkü gibi. Dersler
+                    köşklerde açılır.
                   </p>
                   <p className="mds-body">
                     Medrese, bir başmüderrisin yönettiği kurumdur ve kendi
@@ -170,15 +175,20 @@ export default async function Page({
                 Hesap
               </h2>
               <div className="mds-weeks">
-                <FaqItem id="s9" number={9} question="Medaris ücretli mi?">
-                  <p className="mds-body">{legal.feeInformation}</p>
-                </FaqItem>
+                {feeKnown && (
+                  <FaqItem id="s9" number={9} question="Medaris ücretli mi?">
+                    <p className="mds-body">{legal.feeInformation}</p>
+                  </FaqItem>
+                )}
                 <FaqItem
                   id="s10"
-                  number={10}
+                  number={feeKnown ? 10 : 9}
                   question="Hesabımı nasıl silerim?"
                 >
-                  <p className="mds-body">{legal.accountDeletionPath}</p>
+                  <p className="mds-body">
+                    Hesabınızı şimdilik kendiniz silemezsiniz. Silinmesini{" "}
+                    {legal.accountDeletionPath} isteyebilirsiniz.
+                  </p>
                   <p className="mds-body">
                     Kişisel verilerinizle ilgili haklarınız{" "}
                     <a href="/aydinlatma-metni">Aydınlatma Metni</a>’nde
@@ -194,9 +204,7 @@ export default async function Page({
               <div className="mds-card__header">
                 <h2 className="mds-card__title">Sorunuz burada yok mu?</h2>
               </div>
-              <p className="mds-body-sm">
-                İletişim formundan yazın; e-posta adresinize cevap verilir.
-              </p>
+              <p className="mds-body-sm">İletişim sayfasından bize ulaşın.</p>
               <a
                 className="mds-btn mds-btn--regular mds-btn--outline self-start"
                 href="/iletisim"

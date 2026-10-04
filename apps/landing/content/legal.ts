@@ -19,7 +19,10 @@ export const legal = {
   deviceCookieLifetime: "[Çerezin geçerlilik süresi]",
   sessionCookieLifetime: "[Giriş çerezinin geçerlilik süresi]",
   retentionPeriod: "[Saklama süresi]",
-  accountDeletionPath: "[Hesap silme yolu]",
+  // There is no self-service deletion (no tedrisat route, no Keycloak
+  // account-console action), so the way is a request to the controller.
+  accountDeletionPath:
+    "Aydınlatma Metni’nin 7. bölümünde yazan yollardan biriyle veri sorumlusuna yazarak",
   termsEffectiveDate: "[Yürürlük tarihi]",
   feeInformation: "[Ücret bilgisi]",
 } as const;

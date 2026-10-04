@@ -92,7 +92,7 @@ export const medrese = {
     },
   ],
   contact: "Bize yazın",
-  note: "Medreseleri Medaris yönetimi açar. İletişim formundan yazın, size dönelim.",
+  note: "Medreseleri Medaris yönetimi açar; başvurunuzu iletişim sayfasından iletin.",
 };
 
 export const howItWorks = {

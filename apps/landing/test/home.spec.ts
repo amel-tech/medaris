@@ -124,7 +124,8 @@ describe("what the home page says (MDRS-245)", () => {
     expect(html).toContain('id="medreseler"');
     expect(html).toContain('href="#medreseler"');
     expect(html).toContain('href="/iletisim"');
-    expect(textOf(html)).toContain("Medreseleri Medaris yönetimi açar.");
+    expect(textOf(html)).toContain("Medreseleri Medaris yönetimi açar");
+    expect(textOf(html)).not.toMatch(/size dönelim|cevap verilir/);
   });
 
   it("sets the Qur'an only in the Qur'an face, with its end mark bound to the word before it", async () => {
