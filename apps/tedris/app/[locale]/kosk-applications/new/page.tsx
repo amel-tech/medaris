@@ -1,6 +1,8 @@
 import { Breadcrumb } from "@medaris/ui/mds/breadcrumb";
+import { privacyNoticeUrl } from "@medaris/utils";
 import type { Metadata } from "next";
 import { getLocale } from "next-intl/server";
+import { env } from "~/env";
 import { getMyProfile } from "~/features/account/reads";
 import { KoskApplicationPage } from "~/features/kosk-application/components/kosk-application-page";
 import { getAccountTranslations } from "~/lib/i18n/loose";
@@ -35,7 +37,10 @@ export default async function Page() {
           <p className="mds-body">{t("subtitle")}</p>
         </header>
       </div>
-      <KoskApplicationPage email={profile?.email ?? ""} />
+      <KoskApplicationPage
+        email={profile?.email ?? ""}
+        privacyNoticeHref={privacyNoticeUrl(env.LANDING_URL)}
+      />
     </main>
   );
 }

@@ -40,9 +40,11 @@ export default async function Page({
               </div>
               <dl className="grid gap-y-3 gap-x-6 items-baseline grid-cols-[max-content_minmax(0,1fr)]">
                 <dt className="mds-label">E-posta</dt>
-                <dd className="mds-body">{legal.supportEmail}</dd>
-                <dt className="mds-label">Adres</dt>
-                <dd className="mds-body">{legal.address}</dd>
+                <dd className="mds-body">
+                  <a href={`mailto:${legal.supportEmail}`}>
+                    {legal.supportEmail}
+                  </a>
+                </dd>
               </dl>
               <p className="mds-body-sm">
                 Kişisel verilerinize ilişkin hak başvurularının nasıl yapılacağı{" "}

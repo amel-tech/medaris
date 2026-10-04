@@ -10563,6 +10563,9 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "The public profile is hidden for everyone for now (PUBLIC_PROFILE_UNAVAILABLE)."
           }
         },
         "security": [
@@ -10599,6 +10602,9 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "The public profile is hidden for everyone for now (PUBLIC_PROFILE_UNAVAILABLE)."
           },
           "409": {
             "description": "The künye is taken (KUNYE_TAKEN)."
@@ -10640,7 +10646,7 @@
             }
           },
           "404": {
-            "description": "The person has not chosen a künye yet."
+            "description": "The public profile is hidden for everyone for now (PUBLIC_PROFILE_UNAVAILABLE). Otherwise: the person has not chosen a künye yet (PUBLIC_PROFILE_NOT_FOUND)."
           }
         },
         "security": [

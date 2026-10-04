@@ -7,7 +7,7 @@ import type {
 } from "@medaris/services/tedrisat";
 import { NextIntlClientProvider } from "next-intl";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CourseOverview } from "~/features/kosks/components/course-overview";
 import { KoskCoursesView } from "~/features/kosks/components/kosk-courses-view";
 import { KoskManagePage } from "~/features/kosks/components/kosk-manage-page";
@@ -664,6 +664,16 @@ describe("Dersler (nizam 23)", () => {
 });
 
 describe("Genel bakış (nizam 53)", () => {
+  // The component reads the clock and its fixtures are dated around NOW: on the
+  // real clock the cancelled session stops being "upcoming" at 19:00 on 4 October.
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(NOW);
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   const stats = {
     enrolledCount: 28,
     pendingCount: 2,

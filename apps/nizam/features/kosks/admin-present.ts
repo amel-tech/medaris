@@ -1,7 +1,6 @@
 import type {
   CreateKoskDto,
   KoskDirectoryItemResponse,
-  KoskLevel,
   KoskListingFilter,
   KoskResponse,
   KoskStatus,
@@ -52,16 +51,6 @@ const STATUS_TO_PARAM: Partial<Record<KoskStatusFilter, string>> = {
   PASSIVE: "pasif",
   HIDDEN: "gizli",
 };
-const LEVEL_PARAM: Record<string, KoskLevel> = {
-  baslangic: "BEGINNER",
-  orta: "INTERMEDIATE",
-  ileri: "ADVANCED",
-};
-const LEVEL_TO_PARAM: Partial<Record<KoskLevel, string>> = {
-  BEGINNER: "baslangic",
-  INTERMEDIATE: "orta",
-  ADVANCED: "ileri",
-};
 const LISTING_PARAM: Record<string, KoskListingFilter> = {
   listelenen: "LISTED",
   listelenmeyen: "UNLISTED",
@@ -71,18 +60,10 @@ const LISTING_TO_PARAM: Partial<Record<KoskListingFilter, string>> = {
   UNLISTED: "listelenmeyen",
 };
 
-/** The levels the "Seviye" filter lists; "Bütün seviyeler" is a level a köşk may have, not a filter. */
-export const LEVEL_FILTERS: KoskLevel[] = [
-  "BEGINNER",
-  "INTERMEDIATE",
-  "ADVANCED",
-];
 export const LISTING_CHIPS: KoskListingFilter[] = ["ALL", "LISTED", "UNLISTED"];
 
 export interface DirectoryFilters {
   status: KoskStatusFilter;
-  level?: KoskLevel;
-  field?: string;
   listing: KoskListingFilter;
   q: string;
   page: number;
@@ -91,15 +72,13 @@ export interface DirectoryFilters {
 type Param = string | string[] | undefined;
 const first = (value: Param) => (Array.isArray(value) ? value[0] : value);
 
-/** The filters a `?durum=&seviye=&alan=&gorunurluk=&q=&sayfa=` stands for; anything unknown is unset. */
+/** The filters a `?durum=&gorunurluk=&q=&sayfa=` stands for; anything unknown is unset. */
 export function filtersFromParams(
   params: Record<string, Param>
 ): DirectoryFilters {
   const page = Number.parseInt(first(params.sayfa) ?? "", 10);
   return {
     status: STATUS_PARAM[first(params.durum)?.toLowerCase() ?? ""] ?? "ALL",
-    level: LEVEL_PARAM[first(params.seviye)?.toLowerCase() ?? ""],
-    field: first(params.alan)?.trim().slice(0, 100) || undefined,
     listing:
       LISTING_PARAM[first(params.gorunurluk)?.toLowerCase() ?? ""] ?? "ALL",
     q: (first(params.q) ?? "").trim().slice(0, 100),
@@ -112,9 +91,6 @@ export function directoryPath(filters: DirectoryFilters): string {
   const params = new URLSearchParams();
   const durum = STATUS_TO_PARAM[filters.status];
   if (durum) params.set("durum", durum);
-  const seviye = filters.level ? LEVEL_TO_PARAM[filters.level] : undefined;
-  if (seviye) params.set("seviye", seviye);
-  if (filters.field) params.set("alan", filters.field);
   const gorunurluk = LISTING_TO_PARAM[filters.listing];
   if (gorunurluk) params.set("gorunurluk", gorunurluk);
   const q = filters.q.trim();
@@ -134,8 +110,6 @@ export const withFilter = (
 export function directoryQuery(filters: DirectoryFilters) {
   return {
     status: filters.status,
-    level: filters.level,
-    field: filters.field,
     listing: filters.listing,
     q: filters.q || undefined,
     page: filters.page,
@@ -207,38 +181,6 @@ export const COVER_TONES: CoverTone[] = [
 /** The hue table and the nearest-tone rule live with the cover itself, shared with tedris. */
 export { TONE_HUE, toneOfHue };
 
-// ---- the fixed lists -------------------------------------------------------------
-
-/** nizam/10 and nizam/24: the fields a köşk can be in. The API takes free text; the screens offer these. */
-export const KOSK_FIELDS = [
-  "Arapça dil ilimleri",
-  "Belâgat",
-  "Fıkıh",
-  "Fıkıh usûlü",
-  "Hadis",
-  "Kur'an ilimleri",
-  "Tefsir",
-  "Akaid ve kelâm",
-  "Siyer",
-  "Mantık",
-  "Diğer",
-];
-
-/** The levels a form offers, "Bütün seviyeler" first. */
-export const FORM_LEVELS: KoskLevel[] = [
-  "ALL",
-  "BEGINNER",
-  "INTERMEDIATE",
-  "ADVANCED",
-];
-
-/** The field options, with the köşk's own value kept when it is not in the list (an older köşk). */
-export function fieldOptions(current?: string | null): string[] {
-  return current && !KOSK_FIELDS.includes(current)
-    ? [current, ...KOSK_FIELDS]
-    : KOSK_FIELDS;
-}
-
 // ---- tags -------------------------------------------------------------------------
 
 /**
@@ -274,16 +216,12 @@ export type KoskFieldError =
   | "nameRequired"
   | "nameShort"
   | "handleInvalid"
-  | "fieldRequired"
-  | "levelRequired"
   | "tagsFull"
   | "tagTooLong";
 
 export interface OpenKoskForm {
   name: string;
   handle: string;
-  field: string;
-  level: KoskLevel | "";
   tags: string;
   description: string;
   tone: CoverTone;
@@ -295,8 +233,6 @@ export interface OpenKoskForm {
 export const emptyOpenForm = (): OpenKoskForm => ({
   name: "",
   handle: "",
-  field: "",
-  level: "",
   tags: "",
   description: "",
   tone: "laciverd",
@@ -320,24 +256,19 @@ export function handleError(handle: string): KoskFieldError | null {
 /** The first thing wrong with a form, per field; the button stays off while any is. */
 export function openErrors(
   form: OpenKoskForm
-): Partial<
-  Record<"name" | "handle" | "field" | "level" | "tags", KoskFieldError>
-> {
-  const errors: Partial<
-    Record<"name" | "handle" | "field" | "level" | "tags", KoskFieldError>
-  > = {};
+): Partial<Record<"name" | "handle" | "tags", KoskFieldError>> {
+  const errors: Partial<Record<"name" | "handle" | "tags", KoskFieldError>> =
+    {};
   const name = nameError(form.name);
   if (name) errors.name = name;
   const handle = handleError(form.handle);
   if (handle) errors.handle = handle;
-  if (form.field === "") errors.field = "fieldRequired";
-  if (form.level === "") errors.level = "levelRequired";
   const tags = tagsProblem(parseTags(form.tags));
   if (tags) errors.tags = tags;
   return errors;
 }
 
-/** "Köşk aç" is off until the name, field, level and at least one nazım are right. */
+/** "Köşk aç" is off until the name and at least one nazım are right. */
 export const canOpen = (form: OpenKoskForm): boolean =>
   Object.keys(openErrors(form)).length === 0 && form.nazimIds.length > 0;
 
@@ -348,8 +279,6 @@ export function openPayload(form: OpenKoskForm): CreateKoskDto {
   return {
     name: form.name.trim(),
     ...(handle ? { handle } : {}),
-    field: form.field,
-    level: form.level as KoskLevel,
     tags: parseTags(form.tags),
     ...(description ? { description } : {}),
     coverHue: TONE_HUE[form.tone],
@@ -369,8 +298,6 @@ export function addNazim<T extends { id: string }>(list: T[], person: T): T[] {
 
 export interface SettingsForm {
   name: string;
-  field: string;
-  level: KoskLevel | "";
   tags: string;
   tone: CoverTone;
   description: string;
@@ -379,15 +306,11 @@ export interface SettingsForm {
   recordingsNeverPublic: boolean;
 }
 
-const LEVELS: string[] = ["ALL", "BEGINNER", "INTERMEDIATE", "ADVANCED"];
-
-/** The form as the köşk is now. A level or field the API holds that the lists do not offer stays as it is. */
+/** The form as the köşk is now. The köşk's field and level are not on it: they are neither shown nor changed (MDRS-252). */
 export function settingsFromKosk(
   kosk: Pick<
     KoskResponse,
     | "name"
-    | "field"
-    | "level"
     | "tags"
     | "coverHue"
     | "description"
@@ -398,8 +321,6 @@ export function settingsFromKosk(
 ): SettingsForm {
   return {
     name: kosk.name,
-    field: kosk.field ?? "",
-    level: LEVELS.includes(kosk.level ?? "") ? (kosk.level as KoskLevel) : "",
     tags: kosk.tags.join(", "),
     tone: toneOfHue(kosk.coverHue),
     description: kosk.description ?? "",
@@ -412,14 +333,10 @@ export function settingsFromKosk(
 /** The first thing wrong with each field of the settings form; "Kaydet" sends nothing while any is. */
 export function settingsErrors(
   form: SettingsForm
-): Partial<Record<"name" | "field" | "level" | "tags", KoskFieldError>> {
-  const errors: Partial<
-    Record<"name" | "field" | "level" | "tags", KoskFieldError>
-  > = {};
+): Partial<Record<"name" | "tags", KoskFieldError>> {
+  const errors: Partial<Record<"name" | "tags", KoskFieldError>> = {};
   const name = nameError(form.name);
   if (name) errors.name = name;
-  if (form.field === "") errors.field = "fieldRequired";
-  if (form.level === "") errors.level = "levelRequired";
   const tags = tagsProblem(parseTags(form.tags));
   if (tags) errors.tags = tags;
   return errors;
@@ -438,8 +355,6 @@ export function settingsPayload(
   const before = settingsFromKosk(kosk);
   const dto: UpdateKoskDto = {};
   if (form.name.trim() !== before.name) dto.name = form.name.trim();
-  if (form.field !== before.field) dto.field = form.field;
-  if (form.level !== before.level && form.level !== "") dto.level = form.level;
   if (form.tags !== before.tags) dto.tags = parseTags(form.tags);
   if (form.tone !== before.tone) dto.coverHue = TONE_HUE[form.tone];
   if (form.description.trim() !== before.description.trim()) {

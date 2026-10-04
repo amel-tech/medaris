@@ -20,7 +20,6 @@ import { FollowButton } from "~/features/discover/components/follow-button";
 import { joinRun } from "../join-run";
 import { enrollmentBadge } from "../madrasah-enrollment";
 import { formatNextSession } from "../next-session";
-import { koskLevelLabel } from "./labels";
 
 type Translate = Awaited<ReturnType<typeof getTranslations>>;
 
@@ -125,7 +124,6 @@ export const KoskPage = async ({
   const t = await getTranslations("tedris");
   const locale = await getLocale();
   const timeZone = await getTimeZone();
-  const level = koskLevelLabel(kosk.level, t as never, "KoskPage");
 
   return (
     <main className="font-ui mx-auto flex inline-full max-inline-content flex-col gap-section pbs-8 pbe-16 px-gutter max-md:pbs-5 max-md:pbe-10">
@@ -145,18 +143,7 @@ export const KoskPage = async ({
                 {kosk.name}
               </h1>
               <p className="mds-body-sm flex flex-wrap items-center gap-x-3 gap-y-1">
-                {kosk.field ? (
-                  <Badge variant="secondary">{kosk.field}</Badge>
-                ) : null}
                 <span>
-                  {level ? (
-                    <>
-                      {level}
-                      <span className="mds-sep" aria-hidden="true">
-                        ·
-                      </span>
-                    </>
-                  ) : null}
                   {t("KoskPage.coursesCount", { count: kosk.courseCount })}
                 </span>
                 {kosk.isPrivate ? (
