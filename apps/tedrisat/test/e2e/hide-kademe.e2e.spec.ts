@@ -6,6 +6,7 @@ import request from "supertest";
 import { CourseStatus } from "../../src/course/domain/course-status.enum";
 import { LessonType } from "../../src/course/domain/lesson-type.enum";
 import { DatabaseService } from "../../src/database/database.service";
+import { auditLog } from "../../src/database/schema/audit.schema";
 import {
   courses,
   courseWeeks,
@@ -406,6 +407,19 @@ describe("Hide and restore by kademe (MDRS-135, e2e)", () => {
       await restoreInArchive(PLATFORM_ID, "course", koskCourse).expect(200);
     });
 
+    it("answers the hide and the restore of a draft it may not read with the course, its content left out, instead of a 404 after the write (review C-archive-1)", async () => {
+      await grantPlatformHide();
+      const draft = await addCourse("Taslak ders", {
+        status: CourseStatus.DRAFT,
+      });
+      const hidden = await hideCourse(PLATFORM_ID, draft).expect(200);
+      expect(hidden.body).toMatchObject({ id: draft, contentLocked: true });
+      expect((await course(draft)).archivedLevel).toBe("platform");
+      const restored = await restoreCourse(PLATFORM_ID, draft).expect(200);
+      expect(restored.body).toMatchObject({ id: draft, contentLocked: true });
+      expect((await course(draft)).archivedAt).toBeNull();
+    });
+
     it("lets the köşk nazımı's screens offer Geri al for what the köşk hid", async () => {
       await hideCourse(NAZIM_ID, koskCourse).expect(200);
       const roster = await http()
@@ -422,6 +436,40 @@ describe("Hide and restore by kademe (MDRS-135, e2e)", () => {
         .expect(200);
       expect(archive.body.items).toEqual([
         expect.objectContaining({ id: koskCourse, canRestore: true }),
+      ]);
+    });
+  });
+
+  describe("a hide and a restore are on the record, the content they hand out too (review C-archive-4)", () => {
+    it("writes course.hide, course.restore and a content read for each answer that carries the content", async () => {
+      const actions = async () =>
+        (
+          await db()
+            .select()
+            .from(auditLog)
+            .where(eq(auditLog.entityId, koskCourse))
+            .orderBy(auditLog.seq)
+        ).map((r) => [r.actorId, r.action, r.details]);
+      const hidden = await hideCourse(NAZIM_ID, koskCourse).expect(200);
+      expect(hidden.body.contentLocked).toBe(false);
+      await restoreCourse(NAZIM_ID, koskCourse).expect(200);
+      expect(await actions()).toEqual([
+        [NAZIM_ID, "course.hide", expect.objectContaining({ level: "kosk" })],
+        [
+          NAZIM_ID,
+          "course.content_read",
+          expect.objectContaining({ via: "course.hide" }),
+        ],
+        [
+          NAZIM_ID,
+          "course.restore",
+          expect.objectContaining({ level: "kosk" }),
+        ],
+        [
+          NAZIM_ID,
+          "course.content_read",
+          expect.objectContaining({ via: "course.restore" }),
+        ],
       ]);
     });
   });

@@ -4,11 +4,12 @@ import type {
   ILesson,
   IWeek,
 } from "../course.repository.interface";
+import { LessonType } from "./lesson-type.enum";
 
 /** The lesson fields that are session work, not curriculum (MDRS-135). */
 type SessionFields = Pick<
   ILesson,
-  "scheduledAt" | "meetingUrl" | "agenda" | "isPreview"
+  "type" | "scheduledAt" | "meetingUrl" | "agenda" | "isPreview"
 >;
 
 /**
@@ -16,6 +17,7 @@ type SessionFields = Pick<
  * lets null through as well as a missing key, and the replace writes it.
  */
 interface SentLesson {
+  type?: LessonType | null;
   scheduledAt?: Date | null;
   meetingUrl?: string | null;
   agenda?: IAgendaStep[] | null;
@@ -40,6 +42,19 @@ const agendaKey = (steps: readonly IAgendaStep[] | null | undefined): string =>
  * replace sets to false when it is missing.
  */
 function sessionFieldsDiffer(stored: SessionFields, sent: SentLesson): boolean {
+  // A live session is what the programme, the talebe's calendar and the köşk's
+  // home page list (`type = 'LIVE'`): turning one into a video or a quiz takes
+  // it out of all of them, which is cancelling it, and turning a lesson into
+  // one puts a session in. Between two kinds that are not live it is
+  // curriculum.
+  if (
+    sent.type !== undefined &&
+    sent.type !== null &&
+    sent.type !== stored.type &&
+    (sent.type === LessonType.LIVE || stored.type === LessonType.LIVE)
+  ) {
+    return true;
+  }
   if (
     sent.scheduledAt !== undefined &&
     !sameInstant(stored.scheduledAt, sent.scheduledAt ?? null)
@@ -63,8 +78,9 @@ function sessionFieldsDiffer(stored: SessionFields, sent: SentLesson): boolean {
 
 /**
  * Whether a whole-course save (`PUT /courses/:id`) does session work: it adds
- * a session, drops one (the replace hides it), or changes a kept session's
- * time, meeting link, agenda or preview flag. That is `session.manage`'s
+ * a session, drops one (the replace hides it), changes a kept session's time,
+ * meeting link, agenda or preview flag, or makes a lesson live or no longer
+ * live. That is `session.manage`'s
  * ("Celse ekle, tarihini değiştir, iptal et; toplantı bağlantısını gir"), not
  * `course.edit`'s, which keeps the titles, texts, order and weeks.
  *

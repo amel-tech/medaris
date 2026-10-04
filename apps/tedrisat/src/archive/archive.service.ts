@@ -25,6 +25,7 @@ import {
   type HideLevel,
   hiderLevelOf,
   mayRestoreAt,
+  SECTION_HIDE_LADDER,
 } from "./hide-level";
 
 export interface IArchiveEntry extends IArchiveItem {
@@ -304,7 +305,9 @@ export class ArchiveService {
    * every course hide is recorded on (`COURSE_HIDE_LADDER`), so whoever could
    * hide at a level brings back at it: the köşk's nazımı, the başmüderris or a
    * nazır given `madrasah.course_hide`, platform management holding
-   * `platform.course_hide`. A deck is its köşk nazımı's, as its hide is. A köşk
+   * `platform.course_hide`; a week or a session also at the course itself, by
+   * whoever runs it (`SECTION_HIDE_LADDER`). A deck is its köşk nazımı's, as
+   * its hide is. A köşk
    * and a medrese are restored on their own routes; here only the başnazım
    * restores them.
    */
@@ -316,12 +319,15 @@ export class ArchiveService {
     if (this.authz.isSystemAdmin(user)) return SCOPE_TYPES.PLATFORM;
     if (COURSE_SCOPED.includes(item.type) && item.courseId !== null) {
       const courseId = item.courseId;
-      return once(`course:${courseId}`, () =>
+      // A week or a session also has the course's own rung: whoever runs the
+      // course hid it there, and brings it back there.
+      const section = item.type !== "course";
+      return once(`${section ? "section" : "course"}:${courseId}`, () =>
         actingLevel(
           this.authz,
           user,
           { entity: ENTITIES.COURSE, id: courseId },
-          COURSE_HIDE_LADDER,
+          section ? SECTION_HIDE_LADDER : COURSE_HIDE_LADDER,
           null
         )
       );

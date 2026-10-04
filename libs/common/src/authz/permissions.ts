@@ -154,7 +154,8 @@ export interface IPermissionMeta {
   grantable: boolean;
   /**
    * Content of a scope: what a passive scope closes to everyone but the
-   * platform's own management (MDRS-136). Page-level reads are not content.
+   * platform's own management and the nazımı of the köşk the course is held
+   * in (MDRS-136; owner, 4 October). Page-level reads are not content.
    */
   content: boolean;
   /**

@@ -1,11 +1,13 @@
 import { AuthzService, PERMISSIONS, ROLES } from "@medaris/common";
 import { INestApplication } from "@nestjs/common";
 import { and, eq, isNull } from "drizzle-orm";
+import { Pool } from "pg";
 import request from "supertest";
 import {
   MADRASAH_CATALOG,
   MADRASAH_COURSE_CATALOG,
 } from "../../src/assignment/permission-catalog";
+import { CourseRepository } from "../../src/course/course.repository";
 import { CourseStatus } from "../../src/course/domain/course-status.enum";
 import { EnrollmentStatus } from "../../src/course/domain/enrollment-status.enum";
 import { LessonType } from "../../src/course/domain/lesson-type.enum";
@@ -1550,6 +1552,42 @@ describe("The permission engine (MDRS-135, e2e)", () => {
           )
         );
 
+    it("asks whether a reader holds a role on the course in a way the role indexes serve (review D1)", async () => {
+      // The content-read audit asks this of every enrolled reader; written as
+      // `scope_type = 'platform' OR scope_id = …` no index can serve it, and
+      // with sequential scans off the plan still has to read the whole table.
+      const spy = vi.spyOn(Pool.prototype, "query");
+      await app.get(CourseRepository).holdsRoleOnCourse(NAZIM_ID, ownCourse);
+      const call = spy.mock.calls.find(
+        ([query]) =>
+          typeof query === "object" &&
+          query !== null &&
+          "text" in query &&
+          String((query as { text: string }).text).includes(
+            'from "role_assignments"'
+          )
+      );
+      spy.mockRestore();
+      const [{ text }, values] = call as unknown as [
+        { text: string },
+        unknown[],
+      ];
+      const pool = (databaseService as unknown as { pool: Pool }).pool;
+      const client = await pool.connect();
+      try {
+        await client.query("begin");
+        await client.query("set local enable_seqscan = off");
+        const plan = await client.query(`explain ${text}`, values);
+        const lines = plan.rows.map(
+          (row: Record<string, string>) => row["QUERY PLAN"]
+        );
+        expect(lines.join("\n")).not.toMatch(/Seq Scan on role_assignments/);
+      } finally {
+        await client.query("rollback");
+        client.release();
+      }
+    });
+
     it("a deleted group stops carrying its permissions", async () => {
       const groupId = await makeGroup("Kadro", [
         PERMISSIONS.MADRASAH_STUDENTS_VIEW,
@@ -1901,6 +1939,57 @@ describe("The permission engine (MDRS-135, e2e)", () => {
         `/courses/${ownCourse}`,
         save({ meetingUrl: "https://zoom.us/j/123" })
       ).expect(200);
+    });
+
+    it("course.edit alone does not take a session out of the programme by making it a video (review D2-7a)", async () => {
+      const { weekId, save } = await seedSession();
+      await grant(
+        DERS_ID,
+        atOwnCourse(),
+        { permission: PERMISSIONS.COURSE_EDIT },
+        { grantedBy: NAZIM_ID }
+      );
+      const refused = await put(
+        DERS_ID,
+        `/courses/${ownCourse}`,
+        save({ type: LessonType.VIDEO })
+      ).expect(403);
+      expect(refused.body.code).toBe("AUTHZ_FORBIDDEN");
+      const [kept] = await db()
+        .select()
+        .from(lessons)
+        .where(eq(lessons.weekId, weekId));
+      expect(kept.type).toBe(LessonType.LIVE);
+    });
+
+    it("tells a course.edit holder whose editor is stale to reload (409), not that the change needs session.manage (review D2-7b)", async () => {
+      const { save } = await seedSession();
+      await grant(
+        DERS_ID,
+        atOwnCourse(),
+        { permission: PERMISSIONS.COURSE_EDIT },
+        { grantedBy: NAZIM_ID }
+      );
+      const [{ version }] = await db()
+        .select({ version: courses.version })
+        .from(courses)
+        .where(eq(courses.id, ownCourse));
+      // The müderris relinks the session after the ders nazırı opened the editor.
+      await db()
+        .update(lessons)
+        .set({ meetingUrl: "https://zoom.us/j/999" })
+        .where(eq(lessons.title, "Canlı celse"));
+      await db()
+        .update(courses)
+        .set({ version: version + 1 })
+        .where(eq(courses.id, ownCourse));
+
+      const stale = await put(DERS_ID, `/courses/${ownCourse}`, {
+        ...save(),
+        title: "Yeni ad",
+        version,
+      }).expect(409);
+      expect(stale.body.code).toBe("COURSE_VERSION_CONFLICT");
     });
 
     it("session.manage alone adds one session, as it adds a batch of them", async () => {

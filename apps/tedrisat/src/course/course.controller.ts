@@ -336,7 +336,7 @@ export class CourseController {
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<CourseDetailResponse> {
     await this.courseService.archive(id, request.user);
-    return this.courseService.viewDetail(id, request.user, { audit: false });
+    return this.courseService.viewAfterHide(id, request.user, "course.hide");
   }
 
   @ApiOperation({
@@ -366,7 +366,7 @@ export class CourseController {
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<CourseDetailResponse> {
     await this.courseService.restore(id, request.user);
-    return this.courseService.viewDetail(id, request.user, { audit: false });
+    return this.courseService.viewAfterHide(id, request.user, "course.restore");
   }
 
   @ApiOperation({

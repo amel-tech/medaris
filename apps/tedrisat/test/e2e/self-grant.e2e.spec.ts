@@ -5,7 +5,10 @@ import request from "supertest";
 import { CourseStatus } from "../../src/course/domain/course-status.enum";
 import { DatabaseService } from "../../src/database/database.service";
 import { auditLog } from "../../src/database/schema/audit.schema";
-import { courses } from "../../src/database/schema/course.schema";
+import {
+  courseMuderris,
+  courses,
+} from "../../src/database/schema/course.schema";
 import { kosks } from "../../src/database/schema/kosk.schema";
 import { madrasahs } from "../../src/database/schema/madrasah.schema";
 import { permissionGrants } from "../../src/database/schema/permission.schema";
@@ -291,6 +294,161 @@ describe("Naming yourself on the remaining paths (MDRS-135 review, e2e)", () => 
       }).expect(200);
       expect(await heldRoles(NAZIM, ownCourse)).toHaveLength(1);
       expect(await refusals()).toHaveLength(0);
+    });
+  });
+
+  describe("a whole-course save seats nobody again (review A-reseat)", () => {
+    const hourAgo = () => new Date(Date.now() - 3600_000);
+    /** Lists these accounts on the course, as `course_muderris` rows, and returns the payload rows. */
+    const list = async (courseId: string, userIds: string[]) => {
+      const rows = await db()
+        .insert(courseMuderris)
+        .values(
+          userIds.map((userId, i) => ({
+            courseId,
+            userId,
+            name: `Müderris ${i + 1}`,
+            orderIndex: i,
+          }))
+        )
+        .returning();
+      return rows.map((r) => ({ id: r.id, userId: r.userId, name: r.name }));
+    };
+    const muderrisRows = (userId: string, courseId: string) =>
+      db()
+        .select()
+        .from(roleAssignments)
+        .where(
+          and(
+            eq(roleAssignments.userId, userId),
+            eq(roleAssignments.scopeId, courseId),
+            eq(roleAssignments.role, ASSIGNED_ROLES.MUDERRIS),
+            isNull(roleAssignments.revokedAt)
+          )
+        );
+    const seatUpdates = () =>
+      db()
+        .select()
+        .from(auditLog)
+        .where(eq(auditLog.action, "course.muderris_update"));
+
+    it("does not put a saver whose seat lapsed back in it by saving the list unchanged", async () => {
+      await grant(NAZIR, madrasahId, PERMISSIONS.COURSE_EDIT);
+      await assignRole(db(), {
+        userId: MEDARIS,
+        role: ASSIGNED_ROLES.MUDERRIS,
+        scopeId: medreseCourse,
+        grantedBy: HEAD,
+      });
+      await db().insert(roleAssignments).values({
+        userId: NAZIR,
+        role: ASSIGNED_ROLES.MUDERRIS,
+        scopeType: SCOPE_TYPES.COURSE,
+        scopeId: medreseCourse,
+        grantedBy: HEAD,
+        expiresAt: hourAgo(),
+      });
+      const muderris = await list(medreseCourse, [MEDARIS, NAZIR]);
+
+      await send("put", NAZIR, `/courses/${medreseCourse}`, {
+        title: "Bina ve İzhar",
+        status: CourseStatus.PUBLISHED,
+        muderris,
+      }).expect(200);
+
+      expect(await muderrisRows(NAZIR, medreseCourse)).toEqual([]);
+      expect(await muderrisRows(MEDARIS, medreseCourse)).toHaveLength(1);
+      expect(await seatUpdates()).toEqual([]);
+    });
+
+    it("leaves a departed müderris departed when the köşk nazımı edits the passive course, so it stays passive", async () => {
+      await db().insert(roleAssignments).values({
+        userId: OTHER,
+        role: ASSIGNED_ROLES.MUDERRIS,
+        scopeType: SCOPE_TYPES.COURSE,
+        scopeId: ownCourse,
+        grantedBy: NAZIM,
+        expiresAt: hourAgo(),
+      });
+      const muderris = await list(ownCourse, [OTHER]);
+
+      await send("put", NAZIM, `/courses/${ownCourse}`, {
+        title: "Köşkün kendi dersi (yeni)",
+        status: CourseStatus.PUBLISHED,
+        muderris,
+      }).expect(200);
+
+      expect(await muderrisRows(OTHER, ownCourse)).toEqual([]);
+      expect(await seatUpdates()).toEqual([]);
+      // Still passive: the köşk nazımı's next read opens it on the record.
+      await http()
+        .get(`/courses/${ownCourse}`)
+        .set("Authorization", auth(NAZIM))
+        .expect(200);
+      const opens = await db()
+        .select()
+        .from(auditLog)
+        .where(eq(auditLog.action, "scope.passive_open"));
+      expect(opens.length).toBeGreaterThan(0);
+    });
+
+    it("seats an account the save links anew, in the saver's name and on the record", async () => {
+      await assignRole(db(), {
+        userId: OTHER,
+        role: ASSIGNED_ROLES.MUDERRIS,
+        scopeId: ownCourse,
+        grantedBy: NAZIM,
+      });
+      const muderris = await list(ownCourse, [OTHER]);
+
+      await send("put", NAZIM, `/courses/${ownCourse}`, {
+        title: "Köşkün kendi dersi",
+        status: CourseStatus.PUBLISHED,
+        muderris: [...muderris, { userId: CO_NAZIM, name: "Eş nazım" }],
+      }).expect(200);
+
+      expect(await muderrisRows(CO_NAZIM, ownCourse)).toMatchObject([
+        { grantedBy: NAZIM, expiresAt: null },
+      ]);
+      expect(await seatUpdates()).toMatchObject([
+        {
+          actorId: NAZIM,
+          entity: "course",
+          entityId: ownCourse,
+          details: { via: "course.replace", seated: [CO_NAZIM], revoked: [] },
+        },
+      ]);
+    });
+  });
+
+  describe("the başmüderris naming himself müderris of a passive course of his medrese (review A-basmuderris-passive-route-mismatch)", () => {
+    beforeEach(async () => {
+      // Its only müderris was revoked: the course is passive (MDRS-136).
+      await db().insert(roleAssignments).values({
+        userId: OTHER,
+        role: ASSIGNED_ROLES.MUDERRIS,
+        scopeType: SCOPE_TYPES.COURSE,
+        scopeId: medreseCourse,
+        grantedBy: HEAD,
+        revokedAt: new Date(),
+        revokedBy: HEAD,
+      });
+    });
+
+    it("is answered alike on the course's route and on the medrese's", async () => {
+      await send("put", HEAD, `/courses/${medreseCourse}/muderris`, {
+        version: await versionOf(medreseCourse),
+        muderris: [{ userId: HEAD, name: "Başmüderris" }],
+        imamUserId: HEAD,
+      }).expect(200);
+      expect(await heldRoles(HEAD, medreseCourse)).toHaveLength(1);
+      await send(
+        "put",
+        HEAD,
+        `/madrasahs/${madrasahId}/courses/${medreseCourse}/muderrises`,
+        { muderrisUserIds: [HEAD] }
+      ).expect(200);
+      expect(await refusals()).toEqual([]);
     });
   });
 

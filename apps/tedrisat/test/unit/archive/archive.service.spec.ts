@@ -214,6 +214,36 @@ describe("ArchiveService (MDRS-173)", () => {
       expect(restore).toHaveBeenCalledWith("week", "w1", "kosk");
     });
 
+    it("restores a session or a week at the course's level for whoever runs the course, and not the course itself (review C-archive-3)", async () => {
+      const restore = vi
+        .fn()
+        .mockResolvedValue({ status: "restored", title: "Celse" });
+      const muderris = [PERMISSIONS.SESSION_MANAGE, PERMISSIONS.COURSE_EDIT];
+      const session = serviceWith(
+        {
+          findOne: vi
+            .fn()
+            .mockResolvedValue(
+              item({ type: "session", id: "s1", courseId: ID })
+            ),
+          restore,
+        },
+        muderris,
+        false
+      ).service;
+      await session.restore(NAZIM, "session", "s1");
+      expect(restore).toHaveBeenCalledWith("session", "s1", "course");
+
+      const course = serviceWith(
+        { findOne: vi.fn().mockResolvedValue(item()), restore },
+        muderris,
+        false
+      ).service;
+      await expect(course.restore(NAZIM, "course", ID)).rejects.toBeInstanceOf(
+        ArchiveForbiddenError
+      );
+    });
+
     it("restores at the platform's level for platform management holding platform.course_hide", async () => {
       const restore = vi
         .fn()

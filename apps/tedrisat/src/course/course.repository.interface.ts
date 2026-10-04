@@ -432,7 +432,11 @@ export interface ICourseRepository {
     level: HideLevel
   ): Promise<"archived" | "already-hidden" | "not-found">;
   /** The kademe and the hidden parent decided under the row lock (`restoreCourseIn`). */
-  restore(id: string, restorer: HideLevel): Promise<CourseRestoreOutcome>;
+  restore(
+    id: string,
+    restorer: HideLevel,
+    actorId: string
+  ): Promise<CourseRestoreOutcome>;
   /** SYSTEM_ADMIN's delete: the course, its children and an audit entry. */
   purge(id: string, actorId: string): Promise<IPurgeCounts | null>;
   /** The course a lesson belongs to, archived or not; null if no such lesson. */

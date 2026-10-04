@@ -89,7 +89,7 @@ describe("sessionWorkChanged (MDRS-135: course.edit or session.manage in a whole
     expect(sessionWorkChanged(stored, asSent())).toBe(false);
   });
 
-  it("leaves curriculum to course.edit: titles, length, source, type, order and the week", () => {
+  it("leaves curriculum to course.edit: titles, length, source, a type that is not live, order and the week", () => {
     const sent = asSent();
     sent[0].title = "Yeni başlık";
     sent[0].lessons = [
@@ -98,8 +98,9 @@ describe("sessionWorkChanged (MDRS-135: course.edit or session.manage in a whole
         title: "Yeni video adı",
         kaynak: "s. 10",
         durationMinutes: 45,
+        type: LessonType.QUIZ,
       },
-      { ...sent[0].lessons[0], title: "Yeni ad", type: LessonType.QUIZ },
+      { ...sent[0].lessons[0], title: "Yeni ad" },
     ];
     expect(sessionWorkChanged(stored, sent)).toBe(false);
     // Moved to another week, which the save creates.
@@ -126,6 +127,23 @@ describe("sessionWorkChanged (MDRS-135: course.edit or session.manage in a whole
     const twice = asSent();
     twice[0].lessons.push({ ...twice[0].lessons[0] });
     expect(sessionWorkChanged(stored, twice)).toBe(true);
+  });
+
+  it("is true for a live session made a video or a quiz, and for a lesson made live", () => {
+    // The programme lists `type = 'LIVE'` only: taking a session out of it is
+    // cancelling it, which is session.manage's (review D2-7a).
+    expect(
+      sessionWorkChanged(stored, withLive({ type: LessonType.VIDEO }))
+    ).toBe(true);
+    expect(
+      sessionWorkChanged(stored, withLive({ type: LessonType.QUIZ }))
+    ).toBe(true);
+    const madeLive = asSent();
+    madeLive[0].lessons[1] = {
+      ...madeLive[0].lessons[1],
+      type: LessonType.LIVE,
+    };
+    expect(sessionWorkChanged(stored, madeLive)).toBe(true);
   });
 
   it("is true for a session the save leaves out, which the replace hides", () => {

@@ -87,6 +87,7 @@ import {
   CourseNotHiddenError,
 } from "./errors/course-hide-state.error";
 import { CourseNotFoundError } from "./errors/course-not-found.error";
+import { CourseVersionConflictError } from "./errors/course-version-conflict.error";
 import { EnrollmentNotFoundError } from "./errors/enrollment-not-found.error";
 import { EnrollmentStateError } from "./errors/enrollment-state.error";
 import { EnrollmentStatusForbiddenError } from "./errors/enrollment-status-forbidden.error";
@@ -677,6 +678,14 @@ export class CourseService {
     data: IReplaceCourse
   ): Promise<ICourseDetailView> {
     const stored = await this.getDetail(id, user); // a hidden course is not saved by a müderris
+    // A stale editor is told to reload (409) before anything is compared with
+    // what it sends: its sessions or its müderris list differ from the stored
+    // ones because someone saved in between, not because it asks for work it
+    // may not do. The save's own conditional UPDATE still decides under the
+    // row lock.
+    if (data.version !== undefined && data.version !== stored.version) {
+      throw new CourseVersionConflictError(id, data.version);
+    }
     // The whole-course save carries every field, so only a field that differs
     // from what is stored is a change; an unrelated save of a course must still
     // go through.
@@ -693,10 +702,13 @@ export class CourseService {
       ) {
         throw new MuderrisAssignmentForbiddenError(id);
       }
+      // The accounts this save seats: the ones it links anew. One already on
+      // the list keeps the seat it has, none if it lapsed or was revoked
+      // (`syncMuderrisAssignments`), so the list unchanged seats nobody.
       await this.assertNotNamingSelf(
         user,
-        id,
-        next.flatMap((m) => (m.userId ? [m.userId] : [])),
+        stored,
+        newlyLinkedUserIds(current, next),
         "course.replace.muderris"
       );
     }
@@ -761,18 +773,28 @@ export class CourseService {
    * Naming yourself müderris is for someone who already holds every course
    * permission here (the köşk nazımı, the medrese's başmüderris), not for a
    * grantee of `madrasah.muderris_manage`, as on the medrese's own route.
+   *
+   * A medrese course is asked in its medrese, exactly as that route asks
+   * (`PUT /madrasahs/:id/courses/:courseId/muderrises`), so the two answer
+   * alike. On the course itself a passive course would close the content codes
+   * to its başmüderris, though naming a müderris is what ends that state.
    */
   private assertNotNamingSelf(
     user: AuthenticatedUser,
-    courseId: string,
+    course: Pick<ICourseDetail, "id" | "madrasah">,
     userIds: readonly string[],
     action: string
   ): Promise<void> {
     return this.selfGrant.assertNotSelf(
       user,
       userIds,
-      { entity: ENTITIES.COURSE, id: courseId },
-      { role: ASSIGNED_ROLES.MUDERRIS },
+      { entity: ENTITIES.COURSE, id: course.id },
+      {
+        role: ASSIGNED_ROLES.MUDERRIS,
+        heldAt: course.madrasah
+          ? { entity: ENTITIES.MADRASAH, id: course.madrasah.id }
+          : undefined,
+      },
       action
     );
   }
@@ -840,7 +862,7 @@ export class CourseService {
       imamUserId: string;
     }
   ): Promise<{ muderris: IMuderris[]; courseVersion: number }> {
-    await this.getDetail(courseId, user);
+    const course = await this.getDetail(courseId, user);
     const list = input.muderris.map((m) => ({
       ...m,
       userId: m.userId.toLowerCase(),
@@ -858,7 +880,7 @@ export class CourseService {
     }
     await this.assertNotNamingSelf(
       user,
-      courseId,
+      course,
       list.map((m) => m.userId),
       "course.muderris.set"
     );
@@ -997,7 +1019,7 @@ export class CourseService {
    */
   async restore(id: string, user: AuthenticatedUser): Promise<void> {
     const restorer = await this.courseLevel(user, id);
-    const outcome = await this.courseRepo.restore(id, restorer);
+    const outcome = await this.courseRepo.restore(id, restorer, user.sub);
     switch (outcome.status) {
       case "not-found":
         throw new CourseNotFoundError(id);
@@ -1010,6 +1032,25 @@ export class CourseService {
       default:
         return;
     }
+  }
+
+  /**
+   * The course as a hide or a restore leaves it, for the caller who did it.
+   * The read rules of `viewDetail` are not asked again: whoever may hide a
+   * course gets the answer to what they did, a draft included (platform
+   * management holding `platform.course_hide` and a nazır holding
+   * `madrasah.course_hide` may edit neither). The content rule still is: the
+   * content goes to who may read it and is on the record like any read, since
+   * a hide and a restore that hand it out are reads too.
+   */
+  async viewAfterHide(
+    id: string,
+    user: AuthenticatedUser,
+    via: "course.hide" | "course.restore"
+  ): Promise<ICourseDetailView> {
+    const course = await this.courseRepo.findDetailById(id, user.sub);
+    if (!course) throw new CourseNotFoundError(id);
+    return this.present(course, user, { audit: true, via });
   }
 
   async delete(id: string, actorId: string): Promise<boolean> {
