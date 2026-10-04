@@ -203,11 +203,13 @@ describe("Köşk home applications in a passive scope (e2e)", () => {
     }
   });
 
-  it("marks the application of a medrese course passive once its head's post has ended", async () => {
+  it("marks the application of a medrese course passive once its head's post has ended, and keeps it decidable for the köşk's nazımı", async () => {
     await endHead();
     const res = await dashboard(KOSK_NAZIM).expect(200);
+    // The engine keeps a passive course of their köşk open to the köşk's
+    // nazımı (owner, 4 October), so the screen still offers the decision.
     expect(rowOf(res.body, medreseCourse)).toMatchObject({
-      canDecide: false,
+      canDecide: true,
       scopePassive: true,
     });
     // the köşk's own course is not in that medrese
@@ -217,7 +219,7 @@ describe("Köşk home applications in a passive scope (e2e)", () => {
     });
   });
 
-  it("marks the application of a course whose müderris left passive too", async () => {
+  it("marks the application of a course whose müderris left passive too, and keeps it decidable for the köşk's nazımı", async () => {
     await db()
       .update(roleAssignments)
       .set({ revokedAt: new Date(Date.now() - DAY), revokedBy: ADMIN })
@@ -229,14 +231,13 @@ describe("Köşk home applications in a passive scope (e2e)", () => {
       );
     const res = await dashboard(KOSK_NAZIM).expect(200);
     expect(rowOf(res.body, orphanCourse)).toMatchObject({
-      canDecide: false,
+      canDecide: true,
       scopePassive: true,
     });
   });
 
-  it("marks every application of a köşk whose nazımı left passive, for the başnazım and a Medaris nazımı", async () => {
+  it("marks every application of a köşk whose nazımı left passive for the başnazım, and shows a Medaris nazımı with no course work none", async () => {
     await endKoskNazim();
-    // the başnazım may still decide; the Medaris nazımı has no course work
     const asAdmin = await dashboard(ADMIN).expect(200);
     const asMedarisNazim = await dashboard(MEDARIS_NAZIM).expect(200);
     for (const id of [ownCourse, medreseCourse, orphanCourse]) {
@@ -244,11 +245,11 @@ describe("Köşk home applications in a passive scope (e2e)", () => {
         canDecide: true,
         scopePassive: true,
       });
-      expect(rowOf(asMedarisNazim.body, id)).toMatchObject({
-        canDecide: false,
-        scopePassive: true,
-      });
     }
+    // A passive scope's applicants are content: the page leaves them out for
+    // someone with no course work there, so no button is drawn at all.
+    expect(asMedarisNazim.body.contentLocked).toBe(true);
+    expect(asMedarisNazim.body.latestApplications).toEqual([]);
   });
 
   it("offers the decision again once the medrese has an active head", async () => {
@@ -275,24 +276,44 @@ describe("Köşk home applications in a passive scope (e2e)", () => {
     });
   });
 
-  it("says a Medaris nazımı who holds no course work cannot decide, and that it is not the passive scope", async () => {
+  it("leaves the applicants out for a Medaris nazımı who holds no course work", async () => {
     const res = await dashboard(MEDARIS_NAZIM).expect(200);
+    expect(res.body.contentLocked).toBe(true);
+    expect(res.body.latestApplications).toEqual([]);
+  });
+
+  it("says a holder of kosk.manage alone cannot decide: the page shows them the rows and no buttons", async () => {
+    // The page opens to whoever holds `kosk.manage`; deciding is
+    // `enrollment.decide`, which that grant does not carry.
+    await db().insert(permissionGrants).values({
+      userId: MEDARIS_NAZIM,
+      scopeType: SCOPE_TYPES.KOSK,
+      scopeId: kosk,
+      permission: "kosk.manage",
+      grantedBy: ADMIN,
+    });
+    const res = await dashboard(MEDARIS_NAZIM).expect(200);
+    expect(res.body.contentLocked).toBe(false);
     expect(rowOf(res.body, ownCourse)).toMatchObject({
       canDecide: false,
       scopePassive: false,
     });
   });
 
-  it("still refuses the decision on the route, and writes nothing", async () => {
-    await endHead();
-    const res = await approve(medreseCourse, KOSK_NAZIM).expect(403);
+  it("still refuses the decision on the route to a role with no course work, and writes nothing", async () => {
+    const res = await approve(ownCourse, MEDARIS_NAZIM).expect(403);
     expect(res.body.code).toBe("AUTHZ_FORBIDDEN");
-    expect(await statusOf(medreseCourse)).toBe(EnrollmentStatus.PENDING);
-    // and the köşk's own course is still decided by the same person
-    await approve(ownCourse, KOSK_NAZIM).expect(201);
+    expect(await statusOf(ownCourse)).toBe(EnrollmentStatus.PENDING);
+    // and the köşk's nazımı decides a passive medrese course of their köşk
+    await endHead();
+    await approve(medreseCourse, KOSK_NAZIM).expect(201);
   });
 
-  it("still refuses Reddet on the route wherever the screen hides it, and writes nothing", async () => {
+  it("still refuses Reddet on the route to a role with no course work, and writes nothing", async () => {
+    const res = await reject(ownCourse, MEDARIS_NAZIM).expect(403);
+    expect(res.body.code).toBe("AUTHZ_FORBIDDEN");
+    expect(await statusOf(ownCourse)).toBe(EnrollmentStatus.PENDING);
+    // while the köşk's nazımı refuses what is passive in their köşk too
     await endHead();
     await db()
       .update(roleAssignments)
@@ -303,17 +324,8 @@ describe("Köşk home applications in a passive scope (e2e)", () => {
           eq(roleAssignments.role, ASSIGNED_ROLES.MUDERRIS)
         )
       );
-    const refusals: [string, string][] = [
-      [medreseCourse, KOSK_NAZIM], // passive medrese
-      [orphanCourse, KOSK_NAZIM], // passive course
-      [ownCourse, MEDARIS_NAZIM], // a role with no course work
-    ];
-    for (const [course, sub] of refusals) {
-      const res = await reject(course, sub).expect(403);
-      expect(res.body.code).toBe("AUTHZ_FORBIDDEN");
-      expect(await statusOf(course)).toBe(EnrollmentStatus.PENDING);
+    for (const course of [medreseCourse, orphanCourse, ownCourse]) {
+      await reject(course, KOSK_NAZIM).expect(200);
     }
-    // and the same person still refuses a talebe of the köşk's own course
-    await reject(ownCourse, KOSK_NAZIM).expect(200);
   });
 });
