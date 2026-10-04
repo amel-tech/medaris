@@ -483,6 +483,22 @@ describe("a talebe's private notes (MDRS-150, e2e)", () => {
       expect(await stored()).toHaveLength(1);
     });
 
+    it("answers a course taken back to a draft as a session that is not there, and writes nothing", async () => {
+      const note = await seed(TALEBE_ID, { body: "kalır" });
+      await db()
+        .update(courses)
+        .set({ status: CourseStatus.DRAFT })
+        .where(eq(courses.id, courseId));
+
+      expect(await everyRoute(note.id)).toEqual({
+        list: 404,
+        create: 404,
+        edit: 404,
+        remove: 404,
+      });
+      expect(await stored()).toHaveLength(1);
+    });
+
     it("closes a passive course to its enrolled talebe on every route, and leaves their notes where they are", async () => {
       const note = await seed(TALEBE_ID, { body: "kalır" });
       await leaveWithoutMuderris();
