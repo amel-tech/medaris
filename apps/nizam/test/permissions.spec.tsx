@@ -36,6 +36,7 @@ import {
   orderByCatalog,
   permissionErrorKey,
   platformGroupOf,
+  selfMadeItems,
   summaryCounts,
   toggleExtra,
   withoutGroupCodes,
@@ -303,6 +304,33 @@ describe("the dismissal question (nizam 11, _kurallar 14, 15)", () => {
     expect(
       dismissDecisions(decisionItems(given), all).map((d) => d.kind)
     ).toEqual(["ROLE", "GRANT"]);
+  });
+
+  it("asks nothing about a row the person made for themselves: the API revokes it and takes no answer for it", () => {
+    const person = "AAAAAAAA-0000-4000-8000-000000000001";
+    const given = [
+      { kind: "ROLE", id: "r1", to: { id: "u-rabia" } },
+      { kind: "ROLE", id: "r2", to: { id: person.toLowerCase() } },
+      { kind: "GRANT", id: "g1", to: { id: person.toLowerCase() } },
+      { kind: "GROUP", id: "p1", to: null },
+    ] as GivenItemResponse[];
+    expect(decisionItems(given, person).map(givenKey)).toEqual(["ROLE:r1"]);
+    expect(selfMadeItems(given, person).map(givenKey)).toEqual([
+      "ROLE:r2",
+      "GRANT:g1",
+    ]);
+    const answers = { "ROLE:r1": "TAKE_OVER" } as const;
+    expect(dismissReady(decisionItems(given, person), answers)).toBe(true);
+    expect(dismissDecisions(decisionItems(given, person), answers)).toEqual([
+      { kind: "ROLE", id: "r1", action: "TAKE_OVER" },
+    ]);
+    // Without the person, nothing is set apart (the older call still works).
+    expect(decisionItems(given).map(givenKey)).toEqual([
+      "ROLE:r1",
+      "ROLE:r2",
+      "GRANT:g1",
+    ]);
+    expect(selfMadeItems(given, undefined)).toEqual([]);
   });
 });
 

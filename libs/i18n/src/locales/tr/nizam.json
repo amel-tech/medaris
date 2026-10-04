@@ -1323,6 +1323,7 @@
     "intro": "{name} Medaris nazımı görevinden alınacak; platform izinleri kalkacak.",
     "question": "Bu kişi başkalarına {count} izin ya da rol vermiş. Her biri için bir seçim yapın.",
     "answersNote": "Devral: izin yerinde kalır, veren siz olursunuz. Düşür: izin geri alınır.",
+    "selfMadeQuestion": "Bu kişi kendine {count} izin ya da rol vermiş. Bunlar görevden almayla birlikte geri alınır; seçilecek bir şey yok.",
     "takeOver": "Devral",
     "drop": "Düşür",
     "answerLegend": "{what}, {person}",

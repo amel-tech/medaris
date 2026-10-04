@@ -1323,6 +1323,7 @@
     "intro": "{name} will be dismissed from the Medaris nazim role and the platform permissions will be taken away.",
     "question": "{count, plural, one {This person gave one permission or role to others.} other {This person gave # permissions or roles to others.}} Choose what happens to each.",
     "answersNote": "Take over: the permission stays and you become the giver. Drop: the permission is taken back.",
+    "selfMadeQuestion": "{count, plural, one {This person gave one permission or role to themselves.} other {This person gave # permissions or roles to themselves.}} It is taken back with the dismissal; there is nothing to choose.",
     "takeOver": "Take over",
     "drop": "Drop",
     "answerLegend": "{what}, {person}",
