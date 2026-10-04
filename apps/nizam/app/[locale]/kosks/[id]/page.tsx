@@ -7,6 +7,7 @@ import { getKoskById, getMe } from "~/features/kosks/actions";
 import { getKoskNazims } from "~/features/kosks/admin-reads";
 import { KoskManagePage } from "~/features/kosks/components/kosk-manage-page";
 import { LoadFailed } from "~/features/kosks/components/load-failed";
+import { koskEntry, needsHostingRead } from "~/features/kosks/kosk-entry";
 import {
   getKoskCourseRoster,
   getKoskOverview,
@@ -24,9 +25,11 @@ export async function generateMetadata(): Promise<Metadata> {
  * A köşk (design nizam/20 for the Medaris yönetimi; nizam/23 for its nazımı).
  * The başnazım gets the management view — numbers, details, the hide and
  * take-out-of-service actions, nazımları, hosting rights and the courses. A
- * köşk nazımı gets the Dersler page, where the course work is. Anyone else, or
- * a köşk that is not there, gets the "Bu bölüm için izniniz yok" screen
- * (nizam/06): the 403 and the 404 look the same on purpose.
+ * köşk nazımı gets the Dersler page, where the course work is. A Medaris
+ * nazımı whom tedrisat lets read the köşk's hosting rights goes to Barındırma
+ * hakları (MDRS-137). Anyone else, or a köşk that is not there, gets the "Bu
+ * bölüm için izniniz yok" screen (nizam/06): the 403 and the 404 look the same
+ * on purpose.
  */
 export default async function Page({
   params,
@@ -37,12 +40,16 @@ export default async function Page({
   setRequestLocale(locale);
   const me = await getMe();
 
-  if (me && !me.roles.systemAdmin) {
-    if (me.roles.manages.some((k) => k.id === id)) {
-      redirect(`/${locale}/kosks/${id}/dersler`);
-    }
-    forbidden();
+  const entry = koskEntry(
+    me,
+    id,
+    needsHostingRead(me, id) ? await getHostingRights(id) : null
+  );
+  if (entry.to === "dersler") redirect(`/${locale}/kosks/${id}/dersler`);
+  if (entry.to === "hosting") {
+    redirect(`/${locale}/kosks/${id}/ayarlar/barindirma`);
   }
+  if (entry.to === "forbidden") forbidden();
 
   const [kosk, overview, nazims, rights, roster] = await Promise.all([
     getKoskById(id),
