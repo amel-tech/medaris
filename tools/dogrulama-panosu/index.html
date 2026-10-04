@@ -166,6 +166,7 @@ tr.akordiyon td:hover { background: var(--brand-bg); }
 .tamam-rozet { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #b2f2bb, #2f9e44 70%); color: #fff; font-size: 13px; }
 @media (prefers-reduced-motion: no-preference) {
   .simdi-kart { animation: suzul 8s ease-in-out infinite; }
+  .simdi-kart:hover, .simdi-kart:focus-within { animation: none; }
   @keyframes suzul { 0%, 100% { transform: perspective(1000px) rotateX(1.2deg) rotateY(-1.2deg); } 50% { transform: perspective(1000px) rotateX(-1.2deg) rotateY(1.2deg) translateY(-2px); } }
   .para { animation: don 7s linear infinite; }
   @keyframes don { to { transform: rotateY(360deg); } }
