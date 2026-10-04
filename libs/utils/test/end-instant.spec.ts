@@ -1,6 +1,7 @@
 import {
   endProblem,
   isoToZonedLocal,
+  isUnfinishedEnd,
   resolveEnd,
   zonedLocalToIso,
 } from "../src/end-instant";
@@ -255,5 +256,51 @@ describe("resolveEnd, the failing case of MDRS-254", () => {
         assignmentEnd: APPOINTMENT_END,
       })
     ).toEqual({ iso: "2026-12-30T07:00:00.000Z", problem: null });
+  });
+});
+
+// A datetime-local field reports "" until every segment is filled; the browser
+// then says so in `validity.badInput`. A half-typed end is not "no end".
+describe("an end left half typed", () => {
+  const base = {
+    now: NOW,
+    assignmentEnd: APPOINTMENT_END,
+    held: null,
+    timeZone: "Europe/Istanbul",
+  };
+
+  it("is refused as unfinished instead of read as no end", () => {
+    expect(resolveEnd({ ...base, value: "", unfinished: true })).toEqual({
+      iso: null,
+      problem: "unfinished",
+    });
+  });
+
+  it("is no end when the field is empty and nothing is half typed", () => {
+    expect(resolveEnd({ ...base, value: "" })).toEqual({
+      iso: null,
+      problem: null,
+    });
+    expect(resolveEnd({ ...base, value: "", unfinished: false })).toEqual({
+      iso: null,
+      problem: null,
+    });
+  });
+
+  it("does not hide a value that is complete", () => {
+    expect(
+      resolveEnd({ ...base, value: "2026-12-01T09:30", unfinished: true })
+    ).toEqual({ iso: "2026-12-01T06:30:00.000Z", problem: null });
+  });
+
+  it.each([
+    [{ value: "", validity: { badInput: true } }, true],
+    [{ value: "", validity: { badInput: false } }, false],
+    [{ value: "2026-12-01T09:30", validity: { badInput: false } }, false],
+    [{ value: "2026-12-01T09:30", validity: { badInput: true } }, false],
+    [null, false],
+    [{ value: "" }, false],
+  ] as const)("isUnfinishedEnd(%j) is %s", (field, expected) => {
+    expect(isUnfinishedEnd(field)).toBe(expected);
   });
 });

@@ -85,7 +85,23 @@ export function isoToZonedLocal(
     : toZonedDatetimeLocal(date, timeZone);
 }
 
-export type EndProblem = "past" | "afterAssignment";
+/** "unfinished": the picker is half typed, which the browser reports as "". */
+export type EndProblem = "past" | "afterAssignment" | "unfinished";
+
+/**
+ * Whether an end field is half typed. A `datetime-local` input keeps the value
+ * "" until every segment is filled and says so in `validity.badInput`, so "" on
+ * its own cannot tell a person who cleared the end from one who typed a date and
+ * not yet the time. The field is read as it is (an input, or what a form's
+ * `elements.namedItem` returns); anything without a validity is not unfinished.
+ */
+export function isUnfinishedEnd(field: unknown): boolean {
+  const input = field as {
+    value?: unknown;
+    validity?: { badInput?: unknown };
+  } | null;
+  return input?.value === "" && input.validity?.badInput === true;
+}
 
 /**
  * What is wrong with an end, by the server's own rule: "past" when it is not
@@ -113,7 +129,10 @@ export function endProblem(opts: {
  * What a form does with its end field: the instant to send and what is wrong
  * with it.
  *
- * "" is no end of its own (`iso` null, fine). A value equal to the prefill of
+ * "" is no end of its own (`iso` null, fine), unless the field is half typed
+ * (`unfinished`, from `isUnfinishedEnd`): that is not an end the person chose to
+ * leave out, and saving it would grant longer than the date they started to type
+ * implies, so it is refused. A value equal to the prefill of
  * the stored end (`held`) is that end untouched, so the stored instant goes
  * back as it is: the field has minute precision and an end such as
  * 23:59:59 must not drift. Anything else is read in `timeZone`. A value that
@@ -125,8 +144,11 @@ export function resolveEnd(opts: {
   timeZone: string;
   now: Date;
   assignmentEnd: Date | string | null;
+  unfinished?: boolean;
 }): { iso: string | null; problem: EndProblem | null } {
-  if (opts.value.trim() === "") return { iso: null, problem: null };
+  if (opts.value.trim() === "") {
+    return { iso: null, problem: opts.unfinished ? "unfinished" : null };
+  }
   const untouched =
     opts.held !== null &&
     opts.value === isoToZonedLocal(opts.held, opts.timeZone);
