@@ -351,6 +351,44 @@ describe("The permission engine (MDRS-135, e2e)", () => {
       await get(NAZIR_ID, `/madrasahs/${madrasahId}/students`).expect(403);
     });
 
+    it("GET /me says the same per scope (MDRS-142): the medrese's entry is exactly what its routes allow, and goes with the role", async () => {
+      const groupId = await makeGroup("Kadro", [
+        PERMISSIONS.MADRASAH_STUDENTS_VIEW,
+        PERMISSIONS.MADRASAH_SETTINGS_EDIT,
+      ]);
+      await grant(
+        NAZIR_ID,
+        { type: SCOPE_TYPES.MADRASAH, id: madrasahId },
+        { groupId }
+      );
+      const me = await get(NAZIR_ID, "/me").expect(200);
+      expect(me.body.permissions).toEqual([
+        {
+          scopeType: "madrasah",
+          scopeId: madrasahId,
+          scopeName: expect.any(String),
+          roles: [ASSIGNED_ROLES.MEDRESE_NAZIR],
+          permissions: [
+            PERMISSIONS.MADRASAH_SETTINGS_EDIT,
+            PERMISSIONS.MADRASAH_STUDENTS_VIEW,
+          ].sort(),
+        },
+      ]);
+      await get(NAZIR_ID, `/madrasahs/${madrasahId}/students`).expect(200);
+      await get(NAZIR_ID, `/madrasahs/${madrasahId}/settings`).expect(200);
+      await get(NAZIR_ID, `/madrasahs/${madrasahId}/nazirs`).expect(403);
+      // The role ends: the grant under it counts for nothing, on the route and in /me.
+      await db()
+        .update(roleAssignments)
+        .set({ revokedAt: new Date(), revokedBy: HEAD_ID })
+        .where(eq(roleAssignments.userId, NAZIR_ID));
+      expect((await get(NAZIR_ID, "/me").expect(200)).body).toMatchObject({
+        permissions: [],
+        assignments: [],
+      });
+      await get(NAZIR_ID, `/madrasahs/${madrasahId}/students`).expect(403);
+    });
+
     it("holds a group's later change at once, because the group is read at decision time", async () => {
       const groupId = await makeGroup("Kadro", [
         PERMISSIONS.MADRASAH_STUDENTS_VIEW,

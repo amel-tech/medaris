@@ -250,6 +250,7 @@ src/models/ManagedKoskDecksResponse.ts
 src/models/ManagedKoskRef.ts
 src/models/MeResponse.ts
 src/models/MeRolesResponse.ts
+src/models/MeScopePermissions.ts
 src/models/MedarisNazimResponse.ts
 src/models/MuderrisListItemDto.ts
 src/models/MuderrisListResponse.ts
