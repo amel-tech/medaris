@@ -259,8 +259,8 @@ export class FlashcardDeckController {
   @ApiCreatedResponse({ type: FlashcardDeckResponse })
   // No resource yet, so the question is "may this caller create a deck at
   // all" — `CREATE_PRIVATE_DECK` sits on the FLASHCARD_DECK PUBLIC row, so
-  // every authenticated caller may. `isPublic` on the body stays legal here
-  // and only here: visibility is the author's decision at creation time.
+  // every authenticated caller may. The deck is born private, and a body that
+  // names `isPublic` is refused (MDRS-148).
   @Authz(PERMISSIONS.DECK_CREATE_PRIVATE, forNew(ENTITIES.FLASHCARD_DECK))
   @Post()
   async create(
@@ -300,6 +300,11 @@ export class FlashcardDeckController {
     // half of the fix is in `findAllByUser`'s predicate: this door was only
     // ever half the hole, because the sibling GET /collections route read the
     // `decksUsers` join with no visibility filter of its own.
+    //
+    // The başnazım's read exception (MDRS-148) lets the guard pass `deck.view`
+    // on somebody else's private deck, and collecting it would write a row;
+    // the rule is asked again here without the exception.
+    await this.deckService.assertReadable(deckId, userId);
     return this.deckService.addToUserCollection(userId, deckId);
   }
 

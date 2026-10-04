@@ -17,7 +17,9 @@ export const AUDIT_TYPE_RULES = {
   // A passive scope opened by platform management or its köşk's nazımı is a
   // read of content the scope had closed.
   CONTENT_READ: { like: ["course.content_read", "scope.passive_open"] },
-  // The deck under review and the başnazım's read of a talebe's own (MDRS-148).
+  // Two acts, one kind: the nizam preview of a requested deck writes
+  // `deck.private-read`, the başnazım's read through the deck routes writes
+  // `deck.admin_read` (MDRS-148).
   PRIVATE_DECK_READ: { like: ["deck.private-read", "deck.admin_read"] },
   PERSONAL_DATA_READ: {
     like: ["kosk_application.contact_read", "course.roster_read"],
@@ -48,7 +50,7 @@ export const AUDIT_TYPE_RULES = {
   POLICY_CHANGE: { like: ["platform_policy.%", "kosk.policy_change"] },
   BAN: { like: ["ban.%"] },
   HIDE: {
-    like: ["%.hide", "%.restore"],
+    like: ["%.hide", "%.restore", "deck.unpublish"],
   },
   HOSTING: { like: ["hosting_right.%"] },
   APPEAL: { like: ["appeal.%"] },

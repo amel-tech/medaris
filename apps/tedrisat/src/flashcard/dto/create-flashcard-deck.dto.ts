@@ -2,7 +2,6 @@ import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import {
   ArrayMaxSize,
   IsArray,
-  IsBoolean,
   IsEnum,
   IsOptional,
   IsString,
@@ -18,14 +17,10 @@ export class CreateFlashcardDeckDto {
   @MaxLength(100)
   title!: string;
 
-  // Optional since MDRS-164: a deck is born private, and going public is a
-  // request a reviewer answers (`POST /flashcard/decks/:id/publish-request`).
-  // The flag is still accepted so that callers written before that keep
-  // working; the tedris form no longer sends it.
-  @ApiPropertyOptional({ default: false })
-  @IsOptional()
-  @IsBoolean()
-  isPublic?: boolean;
+  // No `isPublic` (MDRS-148): a deck is born private, and going public is a
+  // request only the başnazım answers (`POST /flashcard/decks/:id/publish-request`).
+  // The validation pipe forbids unknown properties, so a body that still
+  // carries the flag, true or false, is a 400 on POST, PUT and PATCH alike.
 
   @ApiPropertyOptional({
     enum: FlashcardType,

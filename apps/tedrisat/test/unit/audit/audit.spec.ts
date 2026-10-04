@@ -27,6 +27,7 @@ describe("the kind of an audit row", () => {
     ["scope.passive_open", "CONTENT_READ"],
     ["deck.private-read", "PRIVATE_DECK_READ"],
     ["deck.admin_read", "PRIVATE_DECK_READ"],
+    ["deck.unpublish", "HIDE"],
     ["permission.self_grant_refused", "SELF_GRANT_REFUSED"],
     ["kosk_application.contact_read", "PERSONAL_DATA_READ"],
     ["course.roster_read", "PERSONAL_DATA_READ"],

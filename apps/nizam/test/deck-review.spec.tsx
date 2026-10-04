@@ -2,6 +2,7 @@ import { resources } from "@medaris/i18n";
 import type {
   DeckProposalResponse,
   DeckPublishRequestListResponse,
+  DeckPublishRequestResponse,
   ManagedKoskDecksResponse,
 } from "@medaris/services/tedrisat";
 import { NextIntlClientProvider } from "next-intl";
@@ -12,7 +13,9 @@ import { KoskDeckForm } from "~/features/deck-review/components/kosk-deck-form";
 import { KoskDecksView } from "~/features/deck-review/components/kosk-decks-view";
 import { RejectDialog } from "~/features/deck-review/components/reject-dialog";
 import {
+  canUnpublish,
   countsAfterLeaving,
+  countsAfterUnpublish,
   deckErrorKey,
   deckFailureKey,
   deckPayload,
@@ -38,6 +41,7 @@ vi.mock("~/features/deck-review/actions", () => ({
   rejectDeckProposal: vi.fn(),
   openKoskDeck: vi.fn(),
   hideKoskDeck: vi.fn(),
+  unpublishDeck: vi.fn(),
 }));
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }),
@@ -128,6 +132,15 @@ describe("answers and dates", () => {
     expect(isGone({ code: "DECK_REVIEW_FORBIDDEN" })).toBe(false);
   });
 
+  // MDRS-148: a deck taken back (or never published) answers 409, and the row
+  // that was offered for unpublishing is stale.
+  it("knows DECK_NOT_PUBLISHED: its own sentence, and the row is gone", () => {
+    expect(deckErrorKey({ code: "DECK_NOT_PUBLISHED" })).toBe(
+      "errors.notPublished"
+    );
+    expect(isGone({ code: "DECK_NOT_PUBLISHED" })).toBe(true);
+  });
+
   it("writes a day and minute in the viewer's zone", () => {
     expect(shortDateTime("2026-09-29T18:10:00Z", OPTS)).toBe("29 Eyl 21:10");
     expect(shortDate("2026-09-29T18:10:00Z", OPTS)).toBe("29 Eyl");
@@ -164,6 +177,26 @@ describe("paging and the tab counts", () => {
     expect(countsAfterLeaving({ pending: 0, decided: 7 }, false)).toEqual({
       pending: 0,
       decided: 7,
+    });
+  });
+});
+
+describe("taking a published deck back (MDRS-148)", () => {
+  it("is for the başnazım on a published deck, and nobody and nothing else", () => {
+    expect(canUnpublish("PUBLISHED", true)).toBe(true);
+    expect(canUnpublish("PUBLISHED", false)).toBe(false);
+    expect(canUnpublish("PENDING", true)).toBe(false);
+    expect(canUnpublish("REJECTED", true)).toBe(false);
+  });
+
+  it("takes the deck out of the answered count and never below zero", () => {
+    expect(countsAfterUnpublish({ pending: 2, decided: 7 })).toEqual({
+      pending: 2,
+      decided: 6,
+    });
+    expect(countsAfterUnpublish({ pending: 0, decided: 0 })).toEqual({
+      pending: 0,
+      decided: 0,
     });
   });
 });
@@ -216,6 +249,39 @@ describe("DeckRequestsView (nizam 16)", () => {
     expect(html).toContain("kartlarını görmeniz denetim kaydına yazılır");
     expect(html).toContain("Yayımla");
     expect(html).toContain("Reddet");
+  });
+
+  // The answered tab is read after the first render, so the markup is drawn
+  // with an answered row selected: the detail is the same one.
+  describe("Yayından kaldır", () => {
+    const published: DeckPublishRequestListResponse = {
+      ...list,
+      items: [
+        {
+          ...(list.items[0] as DeckPublishRequestResponse),
+          outcome: "PUBLISHED",
+          decidedAt: new Date("2026-09-30T10:00:00Z"),
+        },
+      ],
+    };
+
+    it("is on a published deck for the başnazım, with what it does", () => {
+      const html = render(<DeckRequestsView initial={published} isBasnazim />);
+      expect(html).toContain('data-testid="unpublish"');
+      expect(html).toContain("Yayından kaldır");
+      expect(html).toContain("gerekçe sahibine bildirilir");
+    });
+
+    it("is not offered to a Medaris nazımı holding the permission", () => {
+      const html = render(<DeckRequestsView initial={published} />);
+      expect(html).toContain("Yayımlandı");
+      expect(html).not.toContain('data-testid="unpublish"');
+    });
+
+    it("is not offered on a waiting request", () => {
+      const html = render(<DeckRequestsView initial={list} isBasnazim />);
+      expect(html).not.toContain('data-testid="unpublish"');
+    });
   });
 
   it("offers Daha fazla göster only while the tab holds more requests than are shown", () => {

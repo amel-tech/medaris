@@ -316,7 +316,6 @@
     "description": "Description",
     "descriptionPlaceholder": "Enter deck description...",
     "flashcardDecks": "Flashcard Decks",
-    "makePublic": "Make this deck public",
     "manageDecks": "Manage your flashcard decks and study materials.",
     "newDeck": "New Deck",
     "title": "Title",
@@ -2970,6 +2969,10 @@
     "publishedBody": "{title} is now public; its owner was told.",
     "rejected": "Request refused",
     "rejectedBody": "{title} stays private; the reason was passed on to its owner.",
+    "unpublish": "Unpublish",
+    "unpublished": "Deck unpublished",
+    "unpublishedBody": "{title} is private again; the reason was passed on to its owner.",
+    "unpublishNote": "An unpublished deck leaves the public list and stays private to its owner; the reason is sent to the owner. The owner may ask for publication again.",
     "answerFailed": "The answer could not be saved",
     "errors": {
       "generic": "The action could not be completed. Try again in a moment.",
@@ -2978,7 +2981,8 @@
       "proposalAnswered": "This proposal was answered a moment ago.",
       "proposalGone": "This proposal no longer exists.",
       "deckGone": "This deck no longer exists or is hidden already.",
-      "forbidden": "You may not do this."
+      "forbidden": "You may not do this.",
+      "notPublished": "This deck is no longer published."
     }
   },
   "DeckReject": {
@@ -3007,6 +3011,13 @@
       "title": "Refuse the request",
       "body": "The request closes. The medrese's head müderris sees the reason.",
       "help": "The head müderris will read this reason."
+    },
+    "unpublish": {
+      "title": "Unpublish the deck",
+      "body": "The deck leaves the public list and stays private to its owner. The reason is sent to the owner as a notification.",
+      "help": "The owner will read this reason.",
+      "submit": "Unpublish",
+      "reasonLabel": "Reason"
     }
   },
   "KoskDecksPage": {

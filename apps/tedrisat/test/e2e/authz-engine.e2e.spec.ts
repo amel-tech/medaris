@@ -1478,7 +1478,6 @@ describe("The permission engine (MDRS-135, e2e)", () => {
     it("L2: the başnazım reads another person's private deck, header included, on the record; writes stay refused", async () => {
       const deck = await post(TALEBE_ID, "/flashcard/decks", {
         title: "Özel deste",
-        isPublic: false,
       }).expect(201);
       await get(ADMIN_ID, `/flashcard/decks/${deck.body.id}`).expect(200);
       const rows = await auditRows("deck.admin_read");

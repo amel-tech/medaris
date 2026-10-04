@@ -18,6 +18,7 @@ import {
   IRequestCounts,
 } from "./deck-review.repository";
 import {
+  DeckNotPublishedError,
   DeckProposalNotFoundError,
   DeckProposalNotPendingError,
   DeckRequestNotFoundError,
@@ -50,9 +51,10 @@ export interface ICreateKoskDeck {
  * and the Gizle action (nizam/30 and 35).
  *
  * Authorization is here, not in `@Authz`: the engine has no entity for either
- * question. Reviewing publish requests is the Medaris başnazımı's
- * (SYSTEM_ADMIN) alone, since `platform.deck_publish` is not enforced
- * anywhere yet; a köşk's decks are its nazımları's and the başnazım's.
+ * question. Reviewing publish requests is the Medaris başnazımı's and that of
+ * a Medaris nazımı holding `platform.deck_publish`; taking a published deck
+ * down again is the başnazım's alone (MDRS-148); a köşk's decks are its
+ * nazımları's and the başnazım's.
  */
 @Injectable()
 export class DeckReviewService {
@@ -118,6 +120,7 @@ export class DeckReviewService {
   async approve(user: AuthenticatedUser, deckId: string): Promise<void> {
     await this.assertChief(user);
     const deck = await this.requireRequest(deckId);
+    this.assertNotOwnRequest(user, deck.authorId);
     if (!(await this.repo.approve(deckId, user.sub))) {
       throw new DeckRequestNotPendingError(deckId);
     }
@@ -134,12 +137,45 @@ export class DeckReviewService {
   ): Promise<void> {
     await this.assertChief(user);
     const deck = await this.requireRequest(deckId);
+    this.assertNotOwnRequest(user, deck.authorId);
     const trimmed = reason.trim();
     if (!(await this.repo.reject(deckId, user.sub, trimmed))) {
       throw new DeckRequestNotPendingError(deckId);
     }
     await this.tell(deck.authorId, deckId, {
       outcome: "rejected",
+      deckTitle: deck.title,
+      reason: trimmed,
+    });
+  }
+
+  /**
+   * The başnazım takes a published deck back to private (MDRS-148). The reason
+   * is the owner's to read, and the audit row is written with the change.
+   */
+  async unpublish(
+    user: AuthenticatedUser,
+    deckId: string,
+    reason: string
+  ): Promise<void> {
+    if (!this.authz.isSystemAdmin(user)) {
+      throw new DeckReviewForbiddenError(
+        "Only the Medaris başnazımı may unpublish a deck"
+      );
+    }
+    const deck = await this.repo.findDeck(deckId);
+    // A hidden deck is not private: `hide` sets `archived_at` and nothing else,
+    // and the public reads keep serving it, so it can be taken back like any.
+    if (!deck) throw new DeckRequestNotFoundError(deckId);
+    const trimmed = reason.trim();
+    if (
+      deck.publishStatus !== DeckPublishStatus.PUBLISHED ||
+      !(await this.repo.unpublish(deck, user.sub, trimmed))
+    ) {
+      throw new DeckNotPublishedError(deckId);
+    }
+    await this.tell(deck.authorId, deckId, {
+      outcome: "unpublished",
       deckTitle: deck.title,
       reason: trimmed,
     });
@@ -295,6 +331,19 @@ export class DeckReviewService {
     }
     throw new DeckReviewForbiddenError(
       "Only the Medaris başnazımı and a Medaris nazımı holding platform.deck_publish may review deck publish requests"
+    );
+  }
+
+  /**
+   * A holder of `platform.deck_publish` does not answer a request on his own
+   * deck: the grant delegates the başnazım's power, and publishing through it
+   * needs a second pair of eyes, as a grant may not be given to oneself. The
+   * başnazım is the one who decides alone.
+   */
+  private assertNotOwnRequest(user: AuthenticatedUser, authorId: string): void {
+    if (this.authz.isSystemAdmin(user) || authorId !== user.sub) return;
+    throw new DeckReviewForbiddenError(
+      "A Medaris nazımı may not answer the publish request of his own deck"
     );
   }
 

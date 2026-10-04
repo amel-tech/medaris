@@ -316,7 +316,6 @@
     "description": "Açıklama",
     "descriptionPlaceholder": "Deste açıklaması girin...",
     "flashcardDecks": "Bilgi Kartı Desteleri",
-    "makePublic": "Bu sunumu herkese açık yap",
     "manageDecks": "Bilgi kartı destelerinizi ve çalışma materyallerinizi yönetin.",
     "newDeck": "Yeni Güverte",
     "title": "Başlık",
@@ -2970,6 +2969,10 @@
     "publishedBody": "{title} artık herkese açık; sahibine haber verildi.",
     "rejected": "İstek reddedildi",
     "rejectedBody": "{title} özel kaldı; gerekçe sahibine iletildi.",
+    "unpublish": "Yayından kaldır",
+    "unpublished": "Deste yayından kaldırıldı",
+    "unpublishedBody": "{title} özel oldu; gerekçe sahibine iletildi.",
+    "unpublishNote": "Yayından kaldırılan deste herkese açık listeden çıkar ve sahibine özel olarak kalır; gerekçe sahibine bildirilir. Sahibi isterse yeniden yayın isteyebilir.",
     "answerFailed": "Karar kaydedilemedi",
     "errors": {
       "generic": "İşlem tamamlanamadı. Biraz sonra yeniden deneyin.",
@@ -2978,7 +2981,8 @@
       "proposalAnswered": "Bu öneri az önce karara bağlanmış.",
       "proposalGone": "Bu öneri artık yok.",
       "deckGone": "Bu deste artık yok ya da zaten gizli.",
-      "forbidden": "Bu işlem için izniniz yok."
+      "forbidden": "Bu işlem için izniniz yok.",
+      "notPublished": "Bu deste artık yayında değil."
     }
   },
   "DeckReject": {
@@ -3007,6 +3011,13 @@
       "title": "Talebi reddet",
       "body": "Talep kapanır. Gerekçeyi medresenin başmüderrisi görür.",
       "help": "Başmüderris bu gerekçeyi okuyacak."
+    },
+    "unpublish": {
+      "title": "Desteyi yayından kaldır",
+      "body": "Deste herkese açık listeden çıkar ve sahibine özel olarak kalır. Gerekçe, deste sahibine bildirimle iletilir.",
+      "help": "Sahibi bu gerekçeyi okuyacak.",
+      "submit": "Yayından kaldır",
+      "reasonLabel": "Gerekçe"
     }
   },
   "KoskDecksPage": {
