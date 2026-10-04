@@ -420,6 +420,7 @@ describe("the catalogue", () => {
     "HideKoskDialog",
     "KoskNazims",
     "AddNazimDialog",
+    "PassivateScopeDialog",
   ])("%s has the same keys, all filled, in tr, en and ar", (ns) => {
     const tree = (locale: "tr" | "en" | "ar") =>
       (resources[locale].nizam as unknown as Tree)[ns];

@@ -44,6 +44,8 @@ import type {
   KoskStatusFilter,
   ManagedKoskDecksResponse,
   PaginatedKoskResponse,
+  PassivateScopeDto,
+  PassivationImpactResponse,
   RejectReasonDto,
   UpdateKoskDto,
   UpdateKoskGrantDto,
@@ -107,6 +109,10 @@ import {
     ManagedKoskDecksResponseToJSON,
     PaginatedKoskResponseFromJSON,
     PaginatedKoskResponseToJSON,
+    PassivateScopeDtoFromJSON,
+    PassivateScopeDtoToJSON,
+    PassivationImpactResponseFromJSON,
+    PassivationImpactResponseToJSON,
     RejectReasonDtoFromJSON,
     RejectReasonDtoToJSON,
     UpdateKoskDtoFromJSON,
@@ -151,6 +157,7 @@ export interface CreateKoskGrantRequest {
 
 export interface DeactivateKoskRequest {
     id: string;
+    passivateScopeDto: PassivateScopeDto;
 }
 
 export interface DeleteKoskRequest {
@@ -186,6 +193,10 @@ export interface GetKoskCourseRosterRequest {
 export interface GetKoskDashboardRequest {
     id: string;
     sessions?: DashboardSessionTab;
+}
+
+export interface GetKoskDeactivationPreviewRequest {
+    id: string;
 }
 
 export interface GetKoskDecksRequest {
@@ -665,8 +676,8 @@ export class KosksApi extends runtime.BaseAPI {
     }
 
     /**
-     * nizam/20. The köşk becomes passive and its nazımları are taken off the post; nothing is hidden or deleted, and adding a nazım makes it active again. 409 (KOSK_ALREADY_PASSIVE) when it is passive already. Written to the audit log, naming the nazımları removed.
-     * Take a köşk out of service (Köşkü pasife al, SYSTEM_ADMIN only)
+     * nizam/20. The köşk becomes passive and its nazımları are taken off the post; every course below it closes. Nothing is hidden or deleted, and adding a nazım makes it active again. The body carries the `confirmation` of the preview the person read: the impact is measured again and a token that is not for these numbers and this caller is 409 (PASSIVATION_IMPACT_CHANGED, with the fresh preview in `context.impact`) and writes nothing. 409 (KOSK_ALREADY_PASSIVE) when it is passive already. Written to the audit log with the nazımları removed and the impact confirmed. The Medaris başnazımı and a Medaris nazımı holding `platform.kosk_edit`.
+     * Take a köşk out of service (Köşkü pasife al, Medaris yönetimi)
      */
     async deactivateKoskRaw(requestParameters: DeactivateKoskRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<KoskDirectoryItemResponse>> {
         if (requestParameters['id'] == null) {
@@ -676,9 +687,18 @@ export class KosksApi extends runtime.BaseAPI {
             );
         }
 
+        if (requestParameters['passivateScopeDto'] == null) {
+            throw new runtime.RequiredError(
+                'passivateScopeDto',
+                'Required parameter "passivateScopeDto" was null or undefined when calling deactivateKosk().'
+            );
+        }
+
         const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
 
         if (this.configuration && this.configuration.accessToken) {
             // oauth required
@@ -694,14 +714,15 @@ export class KosksApi extends runtime.BaseAPI {
             method: 'POST',
             headers: headerParameters,
             query: queryParameters,
+            body: PassivateScopeDtoToJSON(requestParameters['passivateScopeDto']),
         }, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => KoskDirectoryItemResponseFromJSON(jsonValue));
     }
 
     /**
-     * nizam/20. The köşk becomes passive and its nazımları are taken off the post; nothing is hidden or deleted, and adding a nazım makes it active again. 409 (KOSK_ALREADY_PASSIVE) when it is passive already. Written to the audit log, naming the nazımları removed.
-     * Take a köşk out of service (Köşkü pasife al, SYSTEM_ADMIN only)
+     * nizam/20. The köşk becomes passive and its nazımları are taken off the post; every course below it closes. Nothing is hidden or deleted, and adding a nazım makes it active again. The body carries the `confirmation` of the preview the person read: the impact is measured again and a token that is not for these numbers and this caller is 409 (PASSIVATION_IMPACT_CHANGED, with the fresh preview in `context.impact`) and writes nothing. 409 (KOSK_ALREADY_PASSIVE) when it is passive already. Written to the audit log with the nazımları removed and the impact confirmed. The Medaris başnazımı and a Medaris nazımı holding `platform.kosk_edit`.
+     * Take a köşk out of service (Köşkü pasife al, Medaris yönetimi)
      */
     async deactivateKosk(requestParameters: DeactivateKoskRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<KoskDirectoryItemResponse> {
         const response = await this.deactivateKoskRaw(requestParameters, initOverrides);
@@ -1039,6 +1060,50 @@ export class KosksApi extends runtime.BaseAPI {
      */
     async getKoskDashboard(requestParameters: GetKoskDashboardRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<KoskDashboardResponse> {
         const response = await this.getKoskDashboardRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * nizam/20, MDRS-227. The courses below the köşk (the courses of medreses it hosts too), how many have a müderris in the post now, the talebe enrolled, the live sessions in the next days and the nazımları who leave, with the `confirmation` to post to `deactivate`. 200 with `alreadyPassive` when it is passive already. The Medaris başnazımı and a Medaris nazımı holding `platform.kosk_edit`.
+     * What taking a köşk out of service takes along
+     */
+    async getKoskDeactivationPreviewRaw(requestParameters: GetKoskDeactivationPreviewRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PassivationImpactResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling getKoskDeactivationPreview().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/kosks/{id}/deactivation-preview`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => PassivationImpactResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * nizam/20, MDRS-227. The courses below the köşk (the courses of medreses it hosts too), how many have a müderris in the post now, the talebe enrolled, the live sessions in the next days and the nazımları who leave, with the `confirmation` to post to `deactivate`. 200 with `alreadyPassive` when it is passive already. The Medaris başnazımı and a Medaris nazımı holding `platform.kosk_edit`.
+     * What taking a köşk out of service takes along
+     */
+    async getKoskDeactivationPreview(requestParameters: GetKoskDeactivationPreviewRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PassivationImpactResponse> {
+        const response = await this.getKoskDeactivationPreviewRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

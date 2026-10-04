@@ -280,6 +280,15 @@ src/models/PaginatedKoskResponse.ts
 src/models/PaginatedMadrasahArchiveResponse.ts
 src/models/PaginatedMadrasahResponse.ts
 src/models/PaginatedNotificationResponse.ts
+src/models/PassivateScopeDto.ts
+src/models/PassivationCourseResponse.ts
+src/models/PassivationCoursesResponse.ts
+src/models/PassivationImpactResponse.ts
+src/models/PassivationScopeResponse.ts
+src/models/PassivationScopeType.ts
+src/models/PassivationSessionResponse.ts
+src/models/PassivationSessionsResponse.ts
+src/models/PassivationStudentsResponse.ts
 src/models/PassiveMadrasahResponse.ts
 src/models/PendingEnrollmentResponse.ts
 src/models/PermissionCatalogResponse.ts

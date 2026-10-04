@@ -29,6 +29,7 @@ import {
   openCoursesSummary,
 } from "../../hosting/present";
 import { dateWithCase } from "../../madrasahs/present";
+import { PassivateScopeDialog } from "../../passivation/components/passivate-scope-dialog";
 import { restoreKosk } from "../admin-actions";
 import {
   handleLabel,
@@ -45,7 +46,6 @@ import {
   type Messages as OverviewMessages,
 } from "../overview-present";
 import { AddNazimDialog } from "./add-nazim-dialog";
-import { DeactivateKoskDialog } from "./deactivate-kosk-dialog";
 import { HideKoskDialog } from "./hide-kosk-dialog";
 import { KoskCourseTable } from "./kosk-course-table";
 
@@ -652,13 +652,13 @@ export function KoskManagePage({
         koskName={kosk.name}
         onHidden={refresh}
       />
-      <DeactivateKoskDialog
+      <PassivateScopeDialog
+        kind="KOSK"
+        id={kosk.id}
+        name={kosk.name}
         open={deactivating}
         onOpenChange={setDeactivating}
-        koskId={kosk.id}
-        koskName={kosk.name}
-        nazimCount={overview.nazimCount}
-        onDeactivated={refresh}
+        onPassivated={refresh}
       />
       <AddNazimDialog
         open={adding}

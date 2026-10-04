@@ -36,8 +36,14 @@ import {
 vi.mock("~/features/madrasahs/actions", () => ({
   openMadrasah: vi.fn(),
   restoreMadrasah: vi.fn(),
+  deactivateMadrasah: vi.fn(),
+  previewMadrasahDeactivation: vi.fn(),
   setHeadMuderris: vi.fn(),
   lookupUserByEmail: vi.fn(),
+}));
+vi.mock("~/features/kosks/admin-actions", () => ({
+  deactivateKosk: vi.fn(),
+  previewKoskDeactivation: vi.fn(),
 }));
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }),
@@ -404,6 +410,14 @@ describe("MadrasahsView (nizam 07)", () => {
     ).toContain("disabled");
     expect(html).not.toContain("Başmüderrisi değiştir: Zeyrek");
     expect(html).not.toContain("Başmüderrisi değiştir: Vefa");
+  });
+
+  it("offers 'Pasife al' on an active medrese, and on no passive or hidden one (MDRS-227)", () => {
+    const html = view(directory(three));
+    expect(html).toContain('aria-label="Pasife al: Süleymaniye Medresesi"');
+    expect(html.match(/aria-label="Pasife al: /g)).toHaveLength(1);
+    expect(html).not.toContain("Pasife al: Zeyrek");
+    expect(html).not.toContain("Pasife al: Vefa");
   });
 
   it("writes 'Yok' for a medrese with no hosting right (criterion 4)", () => {

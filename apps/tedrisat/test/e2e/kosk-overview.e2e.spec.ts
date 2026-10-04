@@ -73,8 +73,8 @@ describe("Köşk overview, course roster and stats (e2e)", () => {
   const http = () => request(app.getHttpServer());
   const get = (path: string, sub = ADMIN) =>
     http().get(path).set("Authorization", auth(sub));
-  const post = (path: string, sub = ADMIN) =>
-    http().post(path).set("Authorization", auth(sub)).send({});
+  const post = (path: string, sub = ADMIN, body: object = {}) =>
+    http().post(path).set("Authorization", auth(sub)).send(body);
 
   beforeAll(async () => {
     app = await createTestApp();
@@ -402,8 +402,19 @@ describe("Köşk overview, course roster and stats (e2e)", () => {
   });
 
   describe("POST /kosks/:id/deactivate (nizam/20)", () => {
+    // MDRS-227: the call carries the confirmation of the preview; the rest of
+    // the contract (stale token, who may, what is audited) is in
+    // scope-passivation.e2e.spec.ts.
+    const confirm = async (sub = ADMIN) =>
+      (await get(`/kosks/${koskId}/deactivation-preview`, sub).expect(200)).body
+        .confirmation as string;
+    const deactivate = async (status: number) =>
+      post(`/kosks/${koskId}/deactivate`, ADMIN, {
+        confirmation: await confirm(),
+      }).expect(status);
+
     it("makes the köşk passive, takes its nazımları off the post and writes the audit row", async () => {
-      const res = await post(`/kosks/${koskId}/deactivate`).expect(200);
+      const res = await deactivate(200);
       expect(res.body.status).toBe("PASSIVE");
       expect(res.body.nazims).toEqual([]);
       const held = (
@@ -425,20 +436,24 @@ describe("Köşk overview, course roster and stats (e2e)", () => {
     });
 
     it("answers 409 when the köşk is passive already", async () => {
-      await post(`/kosks/${koskId}/deactivate`).expect(200);
-      const res = await post(`/kosks/${koskId}/deactivate`).expect(409);
+      await deactivate(200);
+      const res = await deactivate(409);
       expect(JSON.stringify(res.body)).toContain("KOSK_ALREADY_PASSIVE");
     });
 
-    it("is the başnazım's alone", async () => {
-      await post(`/kosks/${koskId}/deactivate`, NAZIM).expect(403);
+    it("is not the köşk nazımı's to do", async () => {
+      await post(`/kosks/${koskId}/deactivate`, NAZIM, {
+        confirmation: "0".repeat(64),
+      }).expect(403);
       const [row] = await db.select().from(kosks).where(eq(kosks.id, koskId));
       expect(row.passiveSince).toBeNull();
     });
 
     it("answers 404 for a köşk that is not there", async () => {
       await post(
-        "/kosks/e0000000-0000-4000-8000-0000000000ff/deactivate"
+        "/kosks/e0000000-0000-4000-8000-0000000000ff/deactivate",
+        ADMIN,
+        { confirmation: "0".repeat(64) }
       ).expect(404);
     });
   });

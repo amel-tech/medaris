@@ -39,9 +39,14 @@ import {
 vi.mock("~/features/kosks/admin-actions", () => ({
   addKoskNazims: vi.fn(),
   deactivateKosk: vi.fn(),
+  previewKoskDeactivation: vi.fn(),
   hideKosk: vi.fn(),
   restoreKosk: vi.fn(),
   openKosk: vi.fn(),
+}));
+vi.mock("~/features/madrasahs/actions", () => ({
+  deactivateMadrasah: vi.fn(),
+  previewMadrasahDeactivation: vi.fn(),
 }));
 vi.mock("~/features/kosks/course-actions", () => ({
   hideCourse: vi.fn(),
@@ -434,6 +439,17 @@ describe("Köşk — Medaris yönetimi görünümü (nizam 20)", () => {
     expect(html).toContain("Köşkü gizle");
     expect(html).toContain("Köşkü pasife al");
     expect(html).toContain("Köşk nazımı ekle");
+  });
+
+  it("asks what passivating takes along before it passivates: one shared dialog, the old köşk-only one is gone (MDRS-227)", () => {
+    expect(
+      (resources.tr.nizam as unknown as Record<string, unknown>)
+        .DeactivateKoskDialog
+    ).toBeUndefined();
+    expect(
+      (resources.tr.nizam as unknown as Record<string, unknown>)
+        .PassivateScopeDialog
+    ).toBeDefined();
   });
 
   it("has no permanent delete here, only the way to the Arşiv (criterion 5)", () => {
