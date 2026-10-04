@@ -63,6 +63,17 @@ describe("Köşk home applications in a passive scope (e2e)", () => {
     http()
       .post(`/courses/${course}/enrollments/${APPLICANT}/approve`)
       .set("Authorization", auth(sub));
+  const reject = (course: string, sub: string) =>
+    http()
+      .delete(`/courses/${course}/enrollments/${APPLICANT}`)
+      .set("Authorization", auth(sub));
+  const statusOf = async (course: string) => {
+    const [row] = await db()
+      .select({ status: enrollments.status })
+      .from(enrollments)
+      .where(eq(enrollments.courseId, course));
+    return row?.status;
+  };
   const rowOf = (
     body: { latestApplications: { courseId: string }[] },
     id: string
@@ -75,6 +86,16 @@ describe("Köşk home applications in a passive scope (e2e)", () => {
         and(
           eq(roleAssignments.userId, HEAD),
           eq(roleAssignments.role, ASSIGNED_ROLES.MEDRESE_BASMUDERRIS)
+        )
+      );
+  const endKoskNazim = () =>
+    db()
+      .update(roleAssignments)
+      .set({ revokedAt: new Date(Date.now() - DAY), revokedBy: ADMIN })
+      .where(
+        and(
+          eq(roleAssignments.userId, KOSK_NAZIM),
+          eq(roleAssignments.role, ASSIGNED_ROLES.KOSK_NAZIM)
         )
       );
   const TABLES = [
@@ -213,6 +234,23 @@ describe("Köşk home applications in a passive scope (e2e)", () => {
     });
   });
 
+  it("marks every application of a köşk whose nazımı left passive, for the başnazım and a Medaris nazımı", async () => {
+    await endKoskNazim();
+    // the başnazım may still decide; the Medaris nazımı has no course work
+    const asAdmin = await dashboard(ADMIN).expect(200);
+    const asMedarisNazim = await dashboard(MEDARIS_NAZIM).expect(200);
+    for (const id of [ownCourse, medreseCourse, orphanCourse]) {
+      expect(rowOf(asAdmin.body, id)).toMatchObject({
+        canDecide: true,
+        scopePassive: true,
+      });
+      expect(rowOf(asMedarisNazim.body, id)).toMatchObject({
+        canDecide: false,
+        scopePassive: true,
+      });
+    }
+  });
+
   it("offers the decision again once the medrese has an active head", async () => {
     await endHead();
     await assignRole(db(), {
@@ -249,12 +287,33 @@ describe("Köşk home applications in a passive scope (e2e)", () => {
     await endHead();
     const res = await approve(medreseCourse, KOSK_NAZIM).expect(403);
     expect(res.body.code).toBe("AUTHZ_FORBIDDEN");
-    const [row] = await db()
-      .select({ status: enrollments.status })
-      .from(enrollments)
-      .where(eq(enrollments.courseId, medreseCourse));
-    expect(row.status).toBe(EnrollmentStatus.PENDING);
+    expect(await statusOf(medreseCourse)).toBe(EnrollmentStatus.PENDING);
     // and the köşk's own course is still decided by the same person
     await approve(ownCourse, KOSK_NAZIM).expect(201);
+  });
+
+  it("still refuses Reddet on the route wherever the screen hides it, and writes nothing", async () => {
+    await endHead();
+    await db()
+      .update(roleAssignments)
+      .set({ revokedAt: new Date(Date.now() - DAY), revokedBy: ADMIN })
+      .where(
+        and(
+          eq(roleAssignments.scopeId, orphanCourse),
+          eq(roleAssignments.role, ASSIGNED_ROLES.MUDERRIS)
+        )
+      );
+    const refusals: [string, string][] = [
+      [medreseCourse, KOSK_NAZIM], // passive medrese
+      [orphanCourse, KOSK_NAZIM], // passive course
+      [ownCourse, MEDARIS_NAZIM], // a role with no course work
+    ];
+    for (const [course, sub] of refusals) {
+      const res = await reject(course, sub).expect(403);
+      expect(res.body.code).toBe("AUTHZ_FORBIDDEN");
+      expect(await statusOf(course)).toBe(EnrollmentStatus.PENDING);
+    }
+    // and the same person still refuses a talebe of the köşk's own course
+    await reject(ownCourse, KOSK_NAZIM).expect(200);
   });
 });
