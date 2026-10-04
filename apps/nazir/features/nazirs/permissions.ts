@@ -69,6 +69,8 @@ export interface EditorDraft {
   courseIds: readonly string[];
   /** `YYYY-MM-DDTHH:mm` on the viewer's clock; "" for no end */
   expiresAtLocal: string;
+  /** the field is half typed: the browser keeps "" until the time is filled too */
+  expiresUnfinished?: boolean;
 }
 
 export const heldGroup = (
@@ -184,7 +186,7 @@ export function toggleCourse(
   return { ...draft, courseIds: on ? [...rest, courseId] : rest };
 }
 
-export type ExpiryProblem = "past" | "afterAppointment";
+export type ExpiryProblem = "past" | "afterAppointment" | "unfinished";
 
 /**
  * The instant a chosen end stands for, or why it cannot be: after now and not
@@ -192,7 +194,7 @@ export type ExpiryProblem = "past" | "afterAppointment";
  * end left as it was keeps the instant the API holds, seconds and all.
  */
 export function expiryOf(
-  draft: Pick<EditorDraft, "expiresAtLocal">,
+  draft: Pick<EditorDraft, "expiresAtLocal" | "expiresUnfinished">,
   held: Pick<HeldPermissions, "expiresAt">,
   ctx: {
     now: number;
@@ -207,11 +209,12 @@ export function expiryOf(
     timeZone: ctx.timeZone,
     now: new Date(ctx.now),
     assignmentEnd: ctx.assignmentEnd,
+    unfinished: draft.expiresUnfinished,
   });
   if (problem) {
     return {
       at: null,
-      problem: problem === "past" ? "past" : "afterAppointment",
+      problem: problem === "afterAssignment" ? "afterAppointment" : problem,
     };
   }
   return { at: iso, problem: null };

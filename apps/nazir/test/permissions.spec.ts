@@ -296,6 +296,29 @@ describe("'Bitiş tarihi ve saati' (criterion 3, MDRS-254)", () => {
     ).toBe("past");
   });
 
+  it("is refused while the field is half typed, as the browser reports it", () => {
+    expect(expiryOf(draft({ expiresUnfinished: true }), none, ctx)).toEqual({
+      at: null,
+      problem: "unfinished",
+    });
+    expect(
+      editorProblems(
+        draft({ expiresUnfinished: true }),
+        null,
+        catalog,
+        none,
+        ctx
+      ).expires
+    ).toBe("unfinished");
+    expect(
+      expiryOf(
+        draft({ expiresAtLocal: "2026-12-31T23:59", expiresUnfinished: true }),
+        none,
+        ctx
+      )
+    ).toEqual({ at: "2026-12-31T20:59:00.000Z", problem: null });
+  });
+
   it("cannot be after the appointment ends, to the minute", () => {
     const withEnd = { ...ctx, assignmentEnd: "2026-12-15T09:00:59.000Z" };
     // 12:00 in Istanbul is 09:00:00Z, the minute the appointment ends in

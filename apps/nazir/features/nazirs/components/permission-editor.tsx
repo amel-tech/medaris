@@ -10,6 +10,7 @@ import { Input } from "@medaris/ui/mds/input";
 import { Select } from "@medaris/ui/mds/select";
 import { Skeleton } from "@medaris/ui/mds/skeleton";
 import { useToaster } from "@medaris/ui/mds/toast";
+import { isUnfinishedEnd } from "@medaris/utils";
 import { useTranslations } from "next-intl";
 import {
   type FormEvent,
@@ -144,20 +145,19 @@ export function PermissionEditor({
     event.preventDefault();
     if (!editor || !catalog || !nazir || pending) return;
     setAttempted(true);
+    // A half-typed picker reads "" and may never have been left, so it is read again here.
+    const sent = isUnfinishedEnd(
+      event.currentTarget.elements.namedItem("expiresAt")
+    )
+      ? { ...editor.draft, expiresUnfinished: true }
+      : editor.draft;
     if (
-      hasProblem(
-        editorProblems(editor.draft, group, catalog, editor.data.held, ctx)
-      )
+      hasProblem(editorProblems(sent, group, catalog, editor.data.held, ctx))
     ) {
+      if (sent !== editor.draft) setDraft(sent);
       return;
     }
-    const request = editorRequest(
-      editor.draft,
-      group,
-      catalog,
-      editor.data.held,
-      ctx
-    );
+    const request = editorRequest(sent, group, catalog, editor.data.held, ctx);
     startTransition(async () => {
       const result = await saveNazirPermissions(madrasahId, nazir.id, request);
       if (result.success) {
@@ -373,6 +373,13 @@ export function PermissionEditor({
                 setDraft({
                   ...editor.draft,
                   expiresAtLocal: event.target.value,
+                  expiresUnfinished: isUnfinishedEnd(event.target),
+                })
+              }
+              onBlur={(event) =>
+                setDraft({
+                  ...editor.draft,
+                  expiresUnfinished: isUnfinishedEnd(event.target),
                 })
               }
             />

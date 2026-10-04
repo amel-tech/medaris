@@ -2,6 +2,7 @@
 import { resources } from "@medaris/i18n";
 import { Toaster, ToastProvider } from "@medaris/ui/mds/toast";
 import { NextIntlClientProvider } from "next-intl";
+import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PermissionEditor } from "~/features/nazirs/components/permission-editor";
 import type { NazirRow } from "~/features/nazirs/nazirs";
@@ -436,6 +437,78 @@ describe("'İzinleri düzenle' (nazir 06)", () => {
       "Bitiş zamanı, görevin bitişinden sonra olamaz."
     );
     expect(saveNazirPermissions).not.toHaveBeenCalled();
+  });
+
+  describe("an end left half typed", () => {
+    // A datetime-local field keeps "" until every segment is filled and says so
+    // in validity.badInput; happy-dom has no widget, so the flag is set by hand.
+    const halfTyped = (on: boolean) =>
+      Object.defineProperty(dateField(), "validity", {
+        configurable: true,
+        get: () => ({ badInput: on }),
+      });
+    const leave = () =>
+      act(async () => {
+        dateField().dispatchEvent(
+          new FocusEvent("focusout", { bubbles: true })
+        );
+      });
+    const SENTENCE = "Bitiş tarihini ve saatini tamamlayın.";
+
+    it("is refused on saving, even when the field was never left", async () => {
+      await open();
+      halfTyped(true);
+      await click(button("Kaydet"));
+      await settle(40);
+      expect(dialog().textContent).toContain(SENTENCE);
+      expect(saveNazirPermissions).not.toHaveBeenCalled();
+    });
+
+    it("is refused on saving after the field was left", async () => {
+      await open();
+      halfTyped(true);
+      await leave();
+      await click(button("Kaydet"));
+      await settle(40);
+      expect(dialog().textContent).toContain(SENTENCE);
+      expect(saveNazirPermissions).not.toHaveBeenCalled();
+    });
+
+    it("is allowed again once the time is typed, and sends the moment", async () => {
+      vi.useFakeTimers({ toFake: ["Date"] });
+      vi.setSystemTime(new Date("2026-10-05T10:00:00+03:00"));
+      await open();
+      halfTyped(true);
+      await leave();
+      halfTyped(false);
+      await typeInto(dateField(), "2026-12-31T23:59");
+      await click(button("Kaydet"));
+      await settle(80);
+      expect(dialog()?.textContent ?? "").not.toContain(SENTENCE);
+      expect(saveNazirPermissions).toHaveBeenCalledExactlyOnceWith(
+        "m-1",
+        "u-3",
+        {
+          groupId: null,
+          permissions: [],
+          courseIds: null,
+          expiresAt: "2026-12-31T20:59:00.000Z",
+        }
+      );
+    });
+
+    it("does not stand in the way of an end that is empty on purpose", async () => {
+      await open();
+      halfTyped(false);
+      await leave();
+      await click(button("Kaydet"));
+      await settle(80);
+      expect(saveNazirPermissions).toHaveBeenCalledExactlyOnceWith(
+        "m-1",
+        "u-3",
+        { groupId: null, permissions: [], courseIds: null, expiresAt: null }
+      );
+    });
   });
 
   it("keeps the dialog and says why when the API refuses (criterion 2: the server refuses too)", async () => {

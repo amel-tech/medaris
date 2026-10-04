@@ -397,7 +397,8 @@
     "expiresHelp": "Boş bırakırsanız süresiz. Bu an gelince izin kendiliğinden düşer.",
     "expiresProblems": {
       "past": "Bitiş zamanı şu andan sonra olmalı.",
-      "afterAppointment": "Bitiş zamanı, görevin bitişinden sonra olamaz."
+      "afterAppointment": "Bitiş zamanı, görevin bitişinden sonra olamaz.",
+      "unfinished": "Bitiş tarihini ve saatini tamamlayın."
     },
     "note": "Aldığı izni başkasına veremez. Verilen ve geri alınan her izin denetim kaydına yazılır.",
     "summary": {
