@@ -59,6 +59,17 @@ export const embedUrlOf = (
   return null;
 };
 
+/**
+ * The embed address with YouTube's IFrame Player API switched on
+ * (`enablejsapi=1`), which the notes panel needs to read the position
+ * (MDRS-150). Only the YouTube embed gets it; any other address comes back as
+ * it was.
+ */
+export const playerApiUrlOf = (embedUrl: string | null): string | null =>
+  embedUrl?.startsWith("https://www.youtube-nocookie.com/embed/")
+    ? `${embedUrl}?enablejsapi=1`
+    : embedUrl;
+
 /** Whether the live stream link can be framed: the same hosts as a YouTube recording. */
 export const liveEmbedUrlOf = (url: string | null | undefined) =>
   embedUrlOf("YOUTUBE", url);

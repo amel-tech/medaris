@@ -39,7 +39,8 @@ import { RecordingRepository } from "./recording.repository";
   ],
   // For AuthzBindingsModule's role resolver (MDRS-41): findKoskId,
   // isMuderris and findEnrollment have no CourseService counterpart, so the
-  // repository is what is exported here.
-  exports: [CourseRepository],
+  // repository is what is exported here. The service is the lesson notes'
+  // (MDRS-150): whether the caller may see the course at all is `getDetail`'s.
+  exports: [CourseRepository, CourseService],
 })
 export class CourseModule {}

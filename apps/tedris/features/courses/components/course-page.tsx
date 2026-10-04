@@ -24,6 +24,7 @@ import {
   holdsSeat,
   sessionWhen,
 } from "../course-view";
+import { canWriteNotes } from "../lesson-note-model";
 import { firstSessionAt, formatFirstSession, isPreview } from "../preview";
 import { CourseAside } from "./course-aside";
 import { CourseProgramme, SAMPLE_ANCHOR } from "./course-programme";
@@ -296,7 +297,14 @@ export const CoursePage = ({
               <CourseProgramme course={course} state={state} now={now} />
             </TabsPanel>
             <TabsPanel value="kayitlar" className="pbs-4">
-              <RecordingsTab recordings={recordings} timeZone={zone} />
+              <RecordingsTab
+                recordings={recordings}
+                timeZone={zone}
+                notes={
+                  !course.contentLocked &&
+                  canWriteNotes(course.enrollment?.status)
+                }
+              />
             </TabsPanel>
             {seat ? (
               <TabsPanel value="deste" className="pbs-4">

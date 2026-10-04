@@ -17,6 +17,7 @@ export const MediaPlayer = ({
   openLabel,
   children,
   heading = 2,
+  frameId,
 }: {
   id: string;
   title: string;
@@ -29,6 +30,8 @@ export const MediaPlayer = ({
   /** The line under the title. */
   children?: ReactNode;
   heading?: 2 | 3;
+  /** The frame's `id`, for a client piece that attaches the player API to it (MDRS-150). */
+  frameId?: string;
 }) => {
   const Heading = `h${heading}` as "h2";
   return (
@@ -36,6 +39,7 @@ export const MediaPlayer = ({
       <div className="mds-card__media">
         {embedUrl ? (
           <iframe
+            id={frameId}
             className="block inline-full border-0 aspect-video"
             src={embedUrl}
             title={title}

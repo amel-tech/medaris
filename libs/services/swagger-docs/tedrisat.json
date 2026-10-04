@@ -7637,6 +7637,212 @@
         ]
       }
     },
+    "/lessons/{id}/notes": {
+      "get": {
+        "description": "Only the caller's notes, whoever else wrote one on the session. By `offsetSeconds` ascending, notes without a position last, then oldest first. Never lists anyone else's notes, a SYSTEM_ADMIN's request included. A talebe who was removed or barred still reads their own while the course is open; a course in a passive scope is closed to everyone but platform management and its köşk's nazımı (403 LESSON_NOTE_FORBIDDEN), and a hidden course is as not found as a session that is not there (MDRS-150).",
+        "operationId": "listLessonNotes",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LessonNoteResponse"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "LESSON_NOTE_FORBIDDEN"
+          },
+          "404": {
+            "description": "LESSON_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The caller's own notes on a session",
+        "tags": [
+          "lessons"
+        ]
+      },
+      "post": {
+        "description": "An enrolled talebe only (ENROLLED or COMPLETED, and not barred), and only while the course's content is open: a passive scope closes it. `offsetSeconds` is the player position from the start of the video and may be left out. `body` is Markdown, 1 to 4000 characters after trimming; it is stored as typed and never rendered as HTML.",
+        "operationId": "createLessonNote",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateLessonNoteDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LessonNoteResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Field validation"
+          },
+          "403": {
+            "description": "LESSON_NOTE_FORBIDDEN"
+          },
+          "404": {
+            "description": "LESSON_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Write a note on a session's video",
+        "tags": [
+          "lessons"
+        ]
+      }
+    },
+    "/lessons/{id}/notes/{noteId}": {
+      "patch": {
+        "description": "A key left out stays as it is; `offsetSeconds: null` clears the position. The same rule as writing one: an enrolled talebe only. 404 for a note the caller did not write, as for one that does not exist.",
+        "operationId": "updateLessonNote",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "noteId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateLessonNoteDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LessonNoteResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Field validation"
+          },
+          "403": {
+            "description": "LESSON_NOTE_FORBIDDEN"
+          },
+          "404": {
+            "description": "LESSON_NOT_FOUND, LESSON_NOTE_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Edit the caller's own note",
+        "tags": [
+          "lessons"
+        ]
+      },
+      "delete": {
+        "description": "The note is removed for good; there is no history. A talebe who was removed or barred may still delete their own while the course is open, as they may read them; a passive scope closes it. 404 for a note the caller did not write, as for one that does not exist.",
+        "operationId": "deleteLessonNote",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "noteId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "403": {
+            "description": "LESSON_NOTE_FORBIDDEN"
+          },
+          "404": {
+            "description": "LESSON_NOT_FOUND, LESSON_NOTE_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Delete the caller's own note",
+        "tags": [
+          "lessons"
+        ]
+      }
+    },
     "/calendar/{file}": {
       "get": {
         "description": "Every session of every course the feed's owner is enrolled in, teaches or manages, from 30 days back to 180 days ahead. Removed and cancelled sessions carry `STATUS:CANCELLED`; UIDs and SEQUENCE are those of `GET /lessons/:id/calendar.ics` (MDRS-117). No meeting links.",
@@ -18650,6 +18856,85 @@
           "KEEP",
           "HIDE"
         ]
+      },
+      "LessonNoteResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "lessonId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "offsetSeconds": {
+            "type": "number",
+            "nullable": true,
+            "description": "Player position in whole seconds from the start of the video; null when unknown. The same value points at the same moment on the live stream and in its recording."
+          },
+          "body": {
+            "type": "string",
+            "description": "Markdown source, stored as typed and rendered by the client. Raw HTML is never rendered."
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "lessonId",
+          "offsetSeconds",
+          "body",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "CreateLessonNoteDto": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000,
+            "description": "Markdown source, stored as typed and rendered by the client. Raw HTML is never rendered.",
+            "example": "Fâil merfû'dur — **ref'** alameti damme."
+          },
+          "offsetSeconds": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 0,
+            "maximum": 359999,
+            "example": 754,
+            "description": "Player position in whole seconds from the start of the video; null when unknown. The same value points at the same moment on the live stream and in its recording."
+          }
+        },
+        "required": [
+          "body"
+        ]
+      },
+      "UpdateLessonNoteDto": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000,
+            "description": "Markdown source, stored as typed and rendered by the client. Raw HTML is never rendered."
+          },
+          "offsetSeconds": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 0,
+            "maximum": 359999,
+            "description": "Player position in whole seconds from the start of the video; null when unknown. The same value points at the same moment on the live stream and in its recording."
+          }
+        }
       },
       "CalendarFeedStatusResponse": {
         "type": "object",

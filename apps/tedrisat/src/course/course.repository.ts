@@ -1,3 +1,4 @@
+import type { ScopeRef } from "@medaris/common";
 import { Injectable } from "@nestjs/common";
 import {
   and,
@@ -20,6 +21,7 @@ import {
   restoreCourseIn,
 } from "../archive/restore-course";
 import { DatabaseService } from "../database/database.service";
+import { passiveScopesOf } from "../database/passive-courses";
 import {
   holdsIn,
   isHeld,
@@ -1473,6 +1475,10 @@ export class CourseRepository implements ICourseRepository {
       .where(eq(courses.id, id))
       .limit(1);
     return row ?? null;
+  }
+
+  async findPassiveScope(id: string): Promise<ScopeRef | null> {
+    return (await passiveScopesOf(this.db, [id])).get(id) ?? null;
   }
 
   private async findCourseRow(id: string): Promise<ICourse | null> {
