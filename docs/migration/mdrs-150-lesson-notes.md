@@ -113,6 +113,11 @@ $ cd apps/tedris && ./node_modules/.bin/vitest run        # 12 fail, the same 12
       Tests  12 failed | 682 passed (694)
 ```
 
+`apps/nizam` has one failure that is not this PR's: `kosk-overview.spec.tsx` › "warns about the first missing
+link" fails on the real clock after 19:00 on 4 October (the component reads the clock and the fixture is dated
+around a pinned `NOW`), and `origin/main` pins the clock in that spec (`Tests 1 failed | 752 passed (753)`
+here). The other suites of the level: `libs/common` 172 passed, `apps/nazir` 708 passed, `libs/ui` 126 passed.
+
 ### Red then green
 
 The eight new tests are in the `a course the engine closes (MDRS-135)` block of `lesson-note.e2e.spec.ts`
