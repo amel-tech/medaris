@@ -116,22 +116,26 @@ Nothing else changes for the tedris and nazir screens.
 $ cd apps/tedrisat && /home/taha/medaris-wt/.bin/e2e-slot.sh ./node_modules/.bin/vitest run test/e2e/lesson-question.e2e.spec.ts
  Test Files  1 passed (1)
       Tests  136 passed (136)       # 127 are the PR's own, unmodified; 9 are new
+$ cd apps/tedrisat && ... lesson-note, lesson-notes-migration, lesson-questions-migration, archive, authz-route-inventory, madrasah-permission, recordings, session, boot-migrations (with the question spec above)
+ Test Files  10 passed (10)
+      Tests  272 passed (272)
 $ cd apps/tedrisat && ./node_modules/.bin/vitest run test/unit
- Test Files  70 passed (70)
-      Tests  929 passed (929)
+ Test Files  72 passed (72)
+      Tests  936 passed (936)
 $ cd libs/common && ./node_modules/.bin/vitest run
  Test Files  12 passed (12)
       Tests  176 passed (176)       # four new: the holders of question.answer and its passive closure
-$ cd apps/nazir && ./node_modules/.bin/vitest run    # 38 files, 728 tests passed
-$ cd apps/nizam && ./node_modules/.bin/vitest run    # 1 fails, see below: Tests 1 failed | 752 passed (753)
-$ cd apps/tedris && ./node_modules/.bin/vitest run   # 12 fail, the same 12 as on the base: Tests 12 failed | 707 passed (719)
-$ cd libs/ui && ./node_modules/.bin/vitest run       # Tests 138 passed (138)
+$ cd apps/nazir && ./node_modules/.bin/vitest run    # Test Files 45 passed (45), Tests 880 passed (880)
+$ cd apps/nizam && ./node_modules/.bin/vitest run    # Test Files 46 passed (46), Tests 757 passed (757)
+$ NODE_OPTIONS=--no-experimental-webstorage, in apps/tedris and libs/ui
+   apps/tedris   Test Files 77 passed (77), Tests 732 passed (732)
+   libs/ui       Test Files 13 passed (13), Tests 163 passed (163)
 ```
 
-`apps/nizam` `kosk-overview.spec.tsx` › "warns about the first missing link" fails on the real clock after
-19:00 on 4 October (its fixture is dated around a pinned `NOW` the component does not read); `origin/main`
-pins the clock in that spec, so it is not this PR's. The 12 tedris failures are `auth-entry.spec.ts` (5) and
-`expired-session.spec.ts` (7), `localStorage.clear` undefined under Node v26.10.0, identical on the base.
+Under Node v26.10.0 without that flag `window.localStorage.clear` is undefined and 12 tedris specs
+(`auth-entry.spec.ts` 5, `expired-session.spec.ts` 7) and 25 of `libs/ui`'s `theme.spec.tsx` fail; none is this
+PR's, and the flag turns all 37 green. The branch has `origin/main` (up to #201) merged in; the generated client
+and the route inventory were checked against a fresh regeneration there (no diff).
 
 ### Red then green
 
