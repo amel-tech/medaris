@@ -134,7 +134,14 @@ const NIZAM_KOSK_BUTTONS: Button[] = [
       ),
       route(LessonController, "createBatch", ENTITIES.COURSE, P.SESSION_MANAGE),
       route(LessonController, "update", ENTITIES.COURSE, P.SESSION_MANAGE),
-      route(LessonController, "archive", ENTITIES.COURSE, P.SESSION_MANAGE),
+      // Hiding a session is `week.hide` or `session.manage` (MDRS-143).
+      route(
+        LessonController,
+        "archive",
+        ENTITIES.COURSE,
+        P.WEEK_HIDE,
+        P.SESSION_MANAGE
+      ),
     ],
     shownTo: [ASSIGNED_ROLES.KOSK_NAZIM, ASSIGNED_ROLES.MUDERRIS],
   },

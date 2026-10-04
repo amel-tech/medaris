@@ -8,6 +8,7 @@ import {
 } from "@medaris/common";
 import { Injectable } from "@nestjs/common";
 import { ArchiveRestoreLevelError } from "../archive/errors/archive-errors";
+import { COURSE_HIDE_LADDER } from "../archive/hide-codes";
 import {
   actingLevel,
   type HideLevel,
@@ -18,6 +19,7 @@ import { UserDirectoryService } from "../assignment/user-directory.service";
 import { BanService } from "../ban/ban.service";
 import { SCOPE_TYPES } from "../database/schema/scope-type.schema";
 import { KoskForbiddenError } from "../kosk/errors/kosk-forbidden.error";
+import { KoskNotFoundError } from "../kosk/errors/kosk-not-found.error";
 import { KoskService } from "../kosk/kosk.service";
 import {
   PlatformPolicyLockedError,
@@ -45,6 +47,7 @@ import {
   ISessionBatchResult,
   IUpdateCourse,
   IUpdateLesson,
+  IWeekHide,
 } from "./course.repository.interface";
 import { CourseNotifier } from "./course-notifier";
 import {
@@ -77,6 +80,7 @@ import {
   placeInWeeks,
   WeeklyPatternInvalid,
 } from "./domain/weekly-pattern";
+import { CourseHideForbiddenError } from "./errors/course-hide-forbidden.error";
 import { CourseNotFoundError } from "./errors/course-not-found.error";
 import { EnrollmentNotFoundError } from "./errors/enrollment-not-found.error";
 import { EnrollmentStateError } from "./errors/enrollment-state.error";
@@ -135,10 +139,23 @@ export class CourseService {
   ): Promise<ICourseSummary[]> {
     if (user === null) {
       if (archived) throw new KoskForbiddenError();
-      await this.koskService.findById(koskId, null); // throws if köşk is missing
+      const kosk = await this.koskService.findById(koskId, null); // throws if köşk is missing
+      // Hidden, the köşk is one that does not exist to someone with no token.
+      if (kosk.archivedAt !== null) throw new KoskNotFoundError(koskId);
       return this.courseRepo.findSummariesByKosk(koskId, null, false);
     }
-    await this.koskService.findById(koskId, user.sub); // throws if köşk is missing
+    const kosk = await this.koskService.findById(koskId, user.sub); // throws if köşk is missing
+    // A hidden köşk closes its courses in every list (MDRS-143): not-found to
+    // everyone but the people above it.
+    if (
+      kosk.archivedAt !== null &&
+      !(await this.authz.can(user, { entity: ENTITIES.KOSK, id: koskId }, [
+        PERMISSIONS.KOSK_MANAGE,
+        PERMISSIONS.PLATFORM_KOSK_EDIT,
+      ]))
+    ) {
+      throw new KoskNotFoundError(koskId);
+    }
     const isManager = await this.koskService.isManager(koskId, user.sub);
     if (archived) {
       if (!isManager && !this.authz.isSystemAdmin(user)) {
@@ -168,6 +185,18 @@ export class CourseService {
   ): Promise<ICourseDetail> {
     const course = await this.courseRepo.findDetailById(id, user?.sub ?? null);
     if (!course) {
+      throw new CourseNotFoundError(id);
+    }
+    // A course is shown only while its köşk is (MDRS-143): a hidden köşk
+    // closes its courses, to the talebe enrolled in them too, and only the
+    // people above the courses (the köşk's nazımları, Medaris yönetimi holding
+    // `platform.kosk_edit`, the başnazım) still open them. Read from the köşk's
+    // own state, not from a cascade: a course opened after the hide is closed
+    // as well, and restoring the köşk reopens exactly what it closed.
+    if (
+      (await this.courseRepo.findHideState(id))?.koskArchivedAt &&
+      !(user && (await this.mayOpenHiddenKoskCourse(user, id)))
+    ) {
       throw new CourseNotFoundError(id);
     }
     // A caller with no token (MDRS-122) holds neither `ARCHIVE` nor `EDIT`,
@@ -209,6 +238,17 @@ export class CourseService {
       throw new CourseNotFoundError(id);
     }
     return course;
+  }
+
+  /** The people above a hidden köşk's courses: its nazımları and Medaris yönetimi. A medrese is not above a köşk. */
+  private mayOpenHiddenKoskCourse(
+    user: AuthenticatedUser,
+    courseId: string
+  ): Promise<boolean> {
+    return this.authz.can(user, { entity: ENTITIES.COURSE, id: courseId }, [
+      PERMISSIONS.COURSE_HIDE,
+      PERMISSIONS.PLATFORM_KOSK_EDIT,
+    ]);
   }
 
   /**
@@ -659,6 +699,7 @@ export class CourseService {
     ) {
       throw new MuderrisAssignmentForbiddenError(id);
     }
+    await this.assertMayDropFrom(id, user, stored, data);
     await this.assertMuderrisLinks(current, next);
     const replaced = await this.courseRepo.replace(
       id,
@@ -668,6 +709,44 @@ export class CourseService {
       await this.courseLevel(user, id)
     );
     return this.present(replaced, user, { audit: false });
+  }
+
+  /**
+   * A save that drops a week or a session hides it (the repository archives
+   * what the payload leaves out), so it needs `week.hide`, the permission that
+   * hides them one by one (MDRS-143; owner d-1004-14: the müderris holds it by
+   * default). Refused whole, before anything is written. A save that drops
+   * nothing needs nothing more than `course.edit`.
+   *
+   * Ids are compared exactly, as the repository matches them: an id the
+   * repository would not find is a new week, and the stored one is dropped.
+   */
+  private async assertMayDropFrom(
+    id: string,
+    user: AuthenticatedUser,
+    stored: ICourseDetail,
+    data: IReplaceCourse
+  ): Promise<void> {
+    const sent = data.weeks ?? [];
+    const keptWeeks = new Set(sent.map((w) => w.id));
+    const keptLessons = new Set(
+      sent.flatMap((w) => (w.lessons ?? []).map((l) => l.id))
+    );
+    const drops = stored.weeks.some(
+      (week) =>
+        !keptWeeks.has(week.id) ||
+        week.lessons.some((lesson) => !keptLessons.has(lesson.id))
+    );
+    if (
+      drops &&
+      !(await this.authz.can(
+        user,
+        { entity: ENTITIES.COURSE, id },
+        PERMISSIONS.WEEK_HIDE
+      ))
+    ) {
+      throw new CourseHideForbiddenError(id);
+    }
   }
 
   /**
@@ -795,6 +874,23 @@ export class CourseService {
     return this.courseRepo.archiveLesson(lessonId, user.sub, level);
   }
 
+  /**
+   * Hides a week with its live sessions, at the level the caller acts at
+   * (MDRS-143). Authorization is `week.hide` on the route.
+   */
+  async archiveWeek(
+    courseId: string,
+    weekId: string,
+    user: AuthenticatedUser
+  ): Promise<IWeekHide> {
+    return this.courseRepo.archiveWeek(
+      courseId,
+      weekId,
+      user.sub,
+      await this.courseLevel(user, courseId)
+    );
+  }
+
   // ---- weekly pattern → sessions (MDRS-109) ----
   // Authorized by `@Authz(SESSION_MANAGE, …)` on LessonController, like the
   // three writes above.
@@ -877,13 +973,7 @@ export class CourseService {
       this.authz,
       user,
       { entity: ENTITIES.COURSE, id: courseId },
-      [
-        { level: SCOPE_TYPES.KOSK, codes: [PERMISSIONS.COURSE_HIDE] },
-        {
-          level: SCOPE_TYPES.MADRASAH,
-          codes: [PERMISSIONS.MADRASAH_COURSE_HIDE],
-        },
-      ],
+      COURSE_HIDE_LADDER,
       SCOPE_TYPES.COURSE
     );
   }
@@ -905,6 +995,7 @@ export class CourseService {
   async restore(id: string, user: AuthenticatedUser): Promise<void> {
     const state = await this.courseRepo.findHideState(id);
     if (!state) throw new CourseNotFoundError(id);
+    let audit: Parameters<CourseRepository["restore"]>[1];
     if (state.archivedAt !== null) {
       const restorer = await this.courseLevel(user, id);
       const hiddenAt = hiderLevelOf({
@@ -915,8 +1006,9 @@ export class CourseService {
       if (!mayRestoreAt(restorer, hiddenAt)) {
         throw new ArchiveRestoreLevelError(hiddenAt, restorer);
       }
+      audit = { actorId: user.sub, level: restorer, hiddenLevel: hiddenAt };
     }
-    if (!(await this.courseRepo.restore(id))) {
+    if (!(await this.courseRepo.restore(id, audit))) {
       throw new CourseNotFoundError(id);
     }
   }

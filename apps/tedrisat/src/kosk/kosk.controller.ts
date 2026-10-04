@@ -261,14 +261,17 @@ export class KoskController {
   ): Promise<KoskResponse> {
     const userId = request.user?.sub ?? null;
     const kosk = await this.koskService.findById(id, userId);
-    // A hidden köşk (MDRS-174) opens for its nazımları and the başnazım
-    // only; for everyone else it is one that does not exist.
+    // A hidden köşk (MDRS-174) opens for its nazımları, Medaris yönetimi
+    // holding `platform.kosk_edit` and the başnazım only (MDRS-143); for
+    // everyone else it is one that does not exist.
     if (
       kosk.archivedAt !== null &&
       !(
         request.user &&
-        (this.authz.isSystemAdmin(request.user) ||
-          kosk.managerIds.includes(request.user.sub.toLowerCase()))
+        (await this.authz.can(request.user, { entity: ENTITIES.KOSK, id }, [
+          PERMISSIONS.KOSK_MANAGE,
+          PERMISSIONS.PLATFORM_KOSK_EDIT,
+        ]))
       )
     ) {
       throw new KoskNotFoundError(id);

@@ -13,6 +13,7 @@ import {
   sql,
 } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
+import { courseParents, recordHide } from "../archive/hide-audit";
 import type { HideLevel } from "../archive/hide-level";
 import { DatabaseService } from "../database/database.service";
 import {
@@ -64,6 +65,7 @@ import {
   ISessionBatchWeek,
   IUpdateCourse,
   IUpdateLesson,
+  IWeekHide,
 } from "./course.repository.interface";
 import { IPurgeCounts, purgeCourses, recordDeletion, Tx } from "./course-purge";
 import { ROSTER_READ_ACTION } from "./domain/course-content";
@@ -298,7 +300,7 @@ export class CourseRepository implements ICourseRepository {
       with: {
         course: {
           with: {
-            kosk: { columns: { name: true } },
+            kosk: { columns: { name: true, archivedAt: true } },
             weeks: {
               where: (w, { isNull }) => isNull(w.archivedAt),
               with: {
@@ -317,9 +319,13 @@ export class CourseRepository implements ICourseRepository {
       orderBy: (e, { asc }) => [asc(e.createdAt)],
     });
 
-    // A hidden course drops out of its talebe's list too (MDRS-124); the
-    // enrollment row stays, so restoring the course brings it back.
-    const live = rows.filter((row) => row.course.archivedAt === null);
+    // A hidden course drops out of its talebe's list too (MDRS-124), and so
+    // does every course of a hidden köşk (MDRS-143); the enrollment row stays,
+    // so restoring the course or the köşk brings it back.
+    const live = rows.filter(
+      (row) =>
+        row.course.archivedAt === null && row.course.kosk.archivedAt === null
+    );
     const { madrasahName, imamKeys } = await this.madrasahsAndImamsOf(
       live.map((row) => row.course)
     );
@@ -544,7 +550,7 @@ export class CourseRepository implements ICourseRepository {
       //     fires either.
       const now = new Date();
       const existingWeeks = await tx
-        .select({ id: courseWeeks.id })
+        .select({ id: courseWeeks.id, title: courseWeeks.title })
         .from(courseWeeks)
         .where(
           and(eq(courseWeeks.courseId, id), isNull(courseWeeks.archivedAt))
@@ -552,7 +558,11 @@ export class CourseRepository implements ICourseRepository {
       const existingWeekIds = new Set(existingWeeks.map((w) => w.id));
 
       const existingLessons = await tx
-        .select({ id: lessons.id })
+        .select({
+          id: lessons.id,
+          title: lessons.title,
+          weekId: lessons.weekId,
+        })
         .from(lessons)
         .innerJoin(courseWeeks, eq(lessons.weekId, courseWeeks.id))
         .where(and(eq(courseWeeks.courseId, id), isNull(lessons.archivedAt)));
@@ -645,6 +655,46 @@ export class CourseRepository implements ICourseRepository {
             updatedAt: now,
           })
           .where(inArray(courseWeeks.id, weeksToArchive));
+      }
+
+      // One audit row per week dropped, counting the sessions that went with
+      // it, and one per session dropped from a week that stays (MDRS-143).
+      if (unclaimedLessonIds.size || weeksToArchive.length) {
+        const where = await courseParents(tx, id);
+        const dropped = existingLessons.filter((l) =>
+          unclaimedLessonIds.has(l.id)
+        );
+        const weekTitles = new Map(existingWeeks.map((w) => [w.id, w.title]));
+        const hidden = {
+          actorId: userId,
+          verb: "hide",
+          level: level ?? SCOPE_TYPES.COURSE,
+          courseId: id,
+          ...where,
+        } as const;
+        for (const weekId of weeksToArchive) {
+          await recordHide(tx, {
+            ...hidden,
+            entity: "week",
+            entityId: weekId,
+            title: weekTitles.get(weekId) ?? "",
+            extra: {
+              sessions: dropped.filter((l) => l.weekId === weekId).length,
+              via: "course.replace",
+            },
+          });
+        }
+        for (const lesson of dropped) {
+          if (weeksToArchive.includes(lesson.weekId)) continue;
+          await recordHide(tx, {
+            ...hidden,
+            entity: "lesson",
+            entityId: lesson.id,
+            title: lesson.title,
+            weekId: lesson.weekId,
+            extra: { via: "course.replace" },
+          });
+        }
       }
     });
 
@@ -987,7 +1037,75 @@ export class CourseRepository implements ICourseRepository {
         .returning();
       // Archived by a concurrent request between the read and the lock.
       if (!row) throw new LessonNotFoundError(lessonId);
+      if (actorId !== null) {
+        await recordHide(tx, {
+          actorId,
+          verb: "hide",
+          entity: "lesson",
+          entityId: lessonId,
+          title: row.title,
+          level: level ?? SCOPE_TYPES.COURSE,
+          courseId,
+          weekId: row.weekId,
+          ...(await courseParents(tx, courseId)),
+        });
+      }
       return this.toLessonMutation(row, courseVersion);
+    });
+  }
+
+  /**
+   * Hides a week with its live sessions (MDRS-143), all at one instant: a
+   * restore of the week brings back exactly the sessions hidden with it, never
+   * one hidden on its own earlier. Takes the course row's lock first, like
+   * every syllabus write, so an editor holding the old `version` is refused
+   * (409) rather than saving the week back.
+   */
+  async archiveWeek(
+    courseId: string,
+    weekId: string,
+    actorId: string,
+    level: HideLevel
+  ): Promise<IWeekHide> {
+    return this.db.transaction(async (tx) => {
+      const courseVersion = await this.bumpVersion(tx, courseId, undefined);
+      const [week] = await tx
+        .select({ title: courseWeeks.title })
+        .from(courseWeeks)
+        .where(
+          and(
+            eq(courseWeeks.id, weekId),
+            eq(courseWeeks.courseId, courseId),
+            isNull(courseWeeks.archivedAt)
+          )
+        )
+        .limit(1);
+      if (!week) throw new WeekNotFoundError(weekId, courseId);
+      const now = new Date();
+      const stamp = {
+        archivedAt: now,
+        archivedBy: actorId,
+        archivedLevel: level,
+        updatedAt: now,
+      };
+      const sessions = await tx
+        .update(lessons)
+        .set(stamp)
+        .where(and(eq(lessons.weekId, weekId), isNull(lessons.archivedAt)))
+        .returning({ id: lessons.id });
+      await tx.update(courseWeeks).set(stamp).where(eq(courseWeeks.id, weekId));
+      await recordHide(tx, {
+        actorId,
+        verb: "hide",
+        entity: "week",
+        entityId: weekId,
+        title: week.title,
+        level,
+        courseId,
+        ...(await courseParents(tx, courseId)),
+        extra: { sessions: sessions.length },
+      });
+      return { id: weekId, courseVersion, hiddenSessions: sessions.length };
     });
   }
 
@@ -1253,34 +1371,70 @@ export class CourseRepository implements ICourseRepository {
     level: HideLevel
   ): Promise<ICourse | null> {
     const now = new Date();
-    const [row] = await this.db
-      .update(courses)
-      .set({
-        archivedAt: now,
-        archivedBy: userId,
-        archivedLevel: level,
-        version: sql`${courses.version} + 1`,
-        updatedAt: now,
-      })
-      .where(and(eq(courses.id, id), isNull(courses.archivedAt)))
-      .returning();
-    return row ?? this.findCourseRow(id);
+    const hidden = await this.db.transaction(async (tx) => {
+      const [row] = await tx
+        .update(courses)
+        .set({
+          archivedAt: now,
+          archivedBy: userId,
+          archivedLevel: level,
+          version: sql`${courses.version} + 1`,
+          updatedAt: now,
+        })
+        .where(and(eq(courses.id, id), isNull(courses.archivedAt)))
+        .returning();
+      if (row) {
+        await recordHide(tx, {
+          actorId: userId,
+          verb: "hide",
+          entity: "course",
+          entityId: id,
+          title: row.title,
+          level,
+          koskId: row.koskId,
+          madrasahId: row.madrasahId,
+        });
+      }
+      return row;
+    });
+    return hidden ?? this.findCourseRow(id);
   }
 
-  /** Brings a hidden course back; a no-op on a live one. Null if missing. */
-  async restore(id: string): Promise<ICourse | null> {
-    const [row] = await this.db
-      .update(courses)
-      .set({
-        archivedAt: null,
-        archivedBy: null,
-        archivedLevel: null,
-        version: sql`${courses.version} + 1`,
-        updatedAt: new Date(),
-      })
-      .where(and(eq(courses.id, id), isNotNull(courses.archivedAt)))
-      .returning();
-    return row ?? this.findCourseRow(id);
+  /**
+   * Brings a hidden course back; a no-op on a live one. Null if missing. With
+   * `audit`, the restore it did is written to `audit_log` in the same
+   * transaction (nothing is written when the course was not hidden).
+   */
+  async restore(
+    id: string,
+    audit?: { actorId: string; level: HideLevel; hiddenLevel: HideLevel }
+  ): Promise<ICourse | null> {
+    const restored = await this.db.transaction(async (tx) => {
+      const [row] = await tx
+        .update(courses)
+        .set({
+          archivedAt: null,
+          archivedBy: null,
+          archivedLevel: null,
+          version: sql`${courses.version} + 1`,
+          updatedAt: new Date(),
+        })
+        .where(and(eq(courses.id, id), isNotNull(courses.archivedAt)))
+        .returning();
+      if (row && audit) {
+        await recordHide(tx, {
+          ...audit,
+          verb: "restore",
+          entity: "course",
+          entityId: id,
+          title: row.title,
+          koskId: row.koskId,
+          madrasahId: row.madrasahId,
+        });
+      }
+      return row;
+    });
+    return restored ?? this.findCourseRow(id);
   }
 
   async findHideState(id: string) {
@@ -1289,8 +1443,10 @@ export class CourseRepository implements ICourseRepository {
         archivedAt: courses.archivedAt,
         archivedLevel: courses.archivedLevel,
         madrasahId: courses.madrasahId,
+        koskArchivedAt: kosks.archivedAt,
       })
       .from(courses)
+      .innerJoin(kosks, eq(kosks.id, courses.koskId))
       .where(eq(courses.id, id))
       .limit(1);
     return row ?? null;
@@ -1524,9 +1680,15 @@ export class CourseRepository implements ICourseRepository {
         })
         .from(roleAssignments)
         .innerJoin(courses, holdsIn(ASSIGNED_ROLES.MUDERRIS, courses.id))
-        // A hidden course is not in anyone's `GET /me` either (MDRS-124).
+        .innerJoin(kosks, eq(kosks.id, courses.koskId))
+        // A hidden course is not in anyone's `GET /me` either (MDRS-124), nor
+        // is a course of a hidden köşk (MDRS-143).
         .where(
-          and(eq(roleAssignments.userId, userId), isNull(courses.archivedAt))
+          and(
+            eq(roleAssignments.userId, userId),
+            isNull(courses.archivedAt),
+            isNull(kosks.archivedAt)
+          )
         )
         .orderBy(courses.title, courses.id)
     );
