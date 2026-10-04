@@ -97,6 +97,17 @@ describe("Deck publication (e2e)", () => {
   const rowsOf = (action: string) =>
     db().select().from(auditLog).where(eq(auditLog.action, action));
 
+  const codeOf = (res: request.Response) =>
+    res.body.code ?? res.body.error?.code;
+
+  /** Rows where the two columns of one fact disagree; none may ever exist. */
+  const splitRows = async () =>
+    (
+      await db().execute(
+        sql`select id from decks where is_public <> (publish_status::text = 'PUBLISHED')`
+      )
+    ).rows;
+
   /** The Medaris nazımı role row, and optionally the deck-publish grant. */
   const makeMedarisNazim = async (
     userId: string,
@@ -205,6 +216,7 @@ describe("Deck publication (e2e)", () => {
       sql`select count(*)::int as n from decks where is_public <> (publish_status = 'PUBLISHED')`
     );
     expect(drifted.rows[0].n).toBe(0);
+    expect(await splitRows()).toHaveLength(0);
   });
 
   describe("an owner cannot publish by himself", () => {
@@ -359,9 +371,6 @@ describe("Deck publication (e2e)", () => {
         .post(`/nizam/deck-publish-requests/${id}/unpublish`)
         .set("Authorization", auth(sub))
         .send(body ?? { reason: "Kaynak gösterilmemiş." });
-    const codeOf = (res: request.Response) =>
-      res.body.code ?? res.body.error?.code;
-
     it("takes the deck back to private, tells the owner the reason, and leaves one audit row", async () => {
       const id = await publishedDeck();
 
@@ -455,17 +464,23 @@ describe("Deck publication (e2e)", () => {
       expect(await rowsOf("deck.unpublish")).toHaveLength(0);
     });
 
-    it("answers 404 for a hidden deck and for one that is not there", async () => {
+    it("takes a hidden deck back too, as hiding does not make a deck private, and answers 404 for one that is not there", async () => {
       const hidden = await seedDeck({
         isPublic: true,
         publishStatus: DeckPublishStatus.PUBLISHED,
         archivedAt: new Date(),
       });
-      await unpublish(hidden, ADMIN_ID).expect(404);
+      expect((await http().get(`/flashcard/decks/${hidden}`)).status).toBe(200);
+      await unpublish(hidden, ADMIN_ID).expect(204);
+      expect(await rowOf(hidden)).toMatchObject({
+        isPublic: false,
+        publishStatus: DeckPublishStatus.PRIVATE,
+      });
+      expect((await http().get(`/flashcard/decks/${hidden}`)).status).toBe(404);
+      expect(await rowsOf("deck.unpublish")).toHaveLength(1);
       await unpublish("f2000000-0000-4000-8000-0000000000ff", ADMIN_ID).expect(
         404
       );
-      expect((await rowOf(hidden)).isPublic).toBe(true);
     });
 
     it("is the başnazım's alone: the owner, a stranger and a nazım holding platform.deck_publish get 403", async () => {
@@ -486,4 +501,5 @@ describe("Deck publication (e2e)", () => {
       expect(await db().select().from(notifications)).toHaveLength(0);
     });
   });
+
 });

@@ -162,9 +162,9 @@ export class DeckReviewService {
       );
     }
     const deck = await this.repo.findDeck(deckId);
-    if (!deck || deck.archivedAt !== null) {
-      throw new DeckRequestNotFoundError(deckId);
-    }
+    // A hidden deck is not private: `hide` sets `archived_at` and nothing else,
+    // and the public reads keep serving it, so it can be taken back like any.
+    if (!deck) throw new DeckRequestNotFoundError(deckId);
     const trimmed = reason.trim();
     if (
       deck.publishStatus !== DeckPublishStatus.PUBLISHED ||

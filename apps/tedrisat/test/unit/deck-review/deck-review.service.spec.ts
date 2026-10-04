@@ -235,15 +235,25 @@ describe("DeckReviewService (MDRS-180)", () => {
       });
     });
 
-    it("answers 404 for a missing or hidden deck", async () => {
-      for (const found of [null, deck({ archivedAt: new Date() })]) {
-        const { service } = serviceWith({
-          findDeck: vi.fn().mockResolvedValue(found),
-        });
-        await expect(service.unpublish(ADMIN, DECK, "Sebep.")).rejects.toThrow(
-          DeckRequestNotFoundError
-        );
-      }
+    it("answers 404 for a missing deck", async () => {
+      const { service } = serviceWith({
+        findDeck: vi.fn().mockResolvedValue(null),
+      });
+      await expect(service.unpublish(ADMIN, DECK, "Sebep.")).rejects.toThrow(
+        DeckRequestNotFoundError
+      );
+    });
+
+    it("takes a hidden published deck back as well: hiding does not make it private", async () => {
+      const unpublish = vi.fn().mockResolvedValue(true);
+      const { service } = serviceWith({
+        findDeck: vi
+          .fn()
+          .mockResolvedValue({ ...published(), archivedAt: new Date() }),
+        unpublish,
+      });
+      await service.unpublish(ADMIN, DECK, "Sebep.");
+      expect(unpublish).toHaveBeenCalledOnce();
     });
 
     it("answers 409 for a deck that is not published, and for one taken back meanwhile, and tells nobody", async () => {
