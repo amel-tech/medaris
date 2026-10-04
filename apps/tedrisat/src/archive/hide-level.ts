@@ -1,6 +1,7 @@
 import {
   type AuthenticatedUser,
   type AuthzService,
+  PERMISSIONS,
   type PermissionCode,
   type ResourceRef,
 } from "@medaris/common";
@@ -72,6 +73,55 @@ export interface IHideStep {
   level: HideLevel;
   codes: readonly PermissionCode[];
 }
+
+/**
+ * Who hides and restores a course, and the weeks and sessions in it, at which
+ * level (MDRS-143), asked of the engine on the course: platform management
+ * holding `platform.course_hide` as the platform, the köşk's nazımı
+ * (`course.hide`) as the köşk, the başmüderris or a nazır given
+ * `madrasah.course_hide` as the medrese. The başnazım is the platform by bypass.
+ * Every route that hides or restores a course reads this one ladder, so whoever
+ * could hide at a level can restore at it.
+ */
+export const COURSE_HIDE_LADDER: readonly IHideStep[] = [
+  { level: SCOPE_TYPES.PLATFORM, codes: [PERMISSIONS.PLATFORM_COURSE_HIDE] },
+  { level: SCOPE_TYPES.KOSK, codes: [PERMISSIONS.COURSE_HIDE] },
+  { level: SCOPE_TYPES.MADRASAH, codes: [PERMISSIONS.MADRASAH_COURSE_HIDE] },
+];
+
+/**
+ * The weeks and sessions of a course: the course ladder with its lowest rung,
+ * the course itself, held by whoever does the session work there
+ * (`week.hide`, "Hafta ve celse gizle, geri al", and `session.manage`, which
+ * `DELETE /lessons/:id` and a whole-course save that drops a session ask).
+ * They bring back at that level what was hidden at it (MDRS-143: the level
+ * that hid it, or one above). `course.edit` alone is no rung here: bringing a
+ * session back is session work, refused to it everywhere else.
+ */
+export const SECTION_HIDE_LADDER: readonly IHideStep[] = [
+  ...COURSE_HIDE_LADDER,
+  {
+    level: SCOPE_TYPES.COURSE,
+    codes: [PERMISSIONS.WEEK_HIDE, PERMISSIONS.SESSION_MANAGE],
+  },
+];
+
+/**
+ * A week whose restore brings no session back: a whole-course save that drops
+ * a week with no session in it asks only `course.edit`, so `course.edit` is a
+ * rung for bringing it back too.
+ */
+export const BARE_WEEK_HIDE_LADDER: readonly IHideStep[] = [
+  ...COURSE_HIDE_LADDER,
+  {
+    level: SCOPE_TYPES.COURSE,
+    codes: [
+      PERMISSIONS.WEEK_HIDE,
+      PERMISSIONS.SESSION_MANAGE,
+      PERMISSIONS.COURSE_EDIT,
+    ],
+  },
+];
 
 /**
  * The level a caller acts at on a resource: the Medaris başnazım (SYSTEM_ADMIN)

@@ -97,7 +97,7 @@ test("nazir/06 — 'İzin ver': a group and one extra permission are saved, and 
   const dialog = editor(page);
   await expect(dialog).toContainText(base?.madrasah.name ?? "");
   await expect(dialog).toContainText(extra?.abdullah.email ?? "");
-  await expect(dialog.getByRole("checkbox")).toHaveCount(30);
+  await expect(dialog.getByRole("checkbox")).toHaveCount(32);
   await expect(dialog).toContainText("Hiç izin seçilmedi");
 
   // the group's permissions come ticked and locked

@@ -2,6 +2,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import type { HideLevel } from "../archive/hide-level";
 import { GrantExpiryInvalidError } from "../assignment/admin/errors";
 import { checkGrantExpiry } from "../assignment/admin/grant-plan";
+import { SCOPE_TYPES } from "../database/schema/scope-type.schema";
 import { KeycloakAdminService } from "../keycloak-admin/keycloak-admin.service";
 import type { HeadDelegationResponse } from "./dto/set-head-muderris.dto";
 import { MadrasahAlreadyHiddenError } from "./errors/madrasah-already-hidden.error";
@@ -229,20 +230,32 @@ export class MadrasahService {
   }
 
   /**
-   * What the sitting başmüderris handed on (nizam/22's "şu kişilere rol ve
-   * izin vermişti"), named. `exceptUserId` is the person about to take over.
+   * Who received the rows a head change answers TAKE_OVER, read by the rows'
+   * ids (a row's recipient never changes), for the self-grant guard: taking
+   * over a row given to oneself makes it a row one gave oneself.
    */
-  async headDelegations(
-    madrasahId: string,
-    exceptUserId?: string
-  ): Promise<HeadDelegationResponse[]> {
+  takeOverRecipients(
+    decisions: ReadonlyArray<{
+      kind: "ROLE" | "GRANT";
+      id: string;
+      action: "TAKE_OVER" | "DROP";
+    }>
+  ): Promise<string[]> {
+    return this.madrasahRepo.recipientsOf(
+      decisions.filter((d) => d.action === "TAKE_OVER")
+    );
+  }
+
+  /**
+   * What the sitting başmüderris handed on (nizam/22's "şu kişilere rol ve
+   * izin vermişti"), named: to anyone, the one about to take over included,
+   * since a head change decides every row.
+   */
+  async headDelegations(madrasahId: string): Promise<HeadDelegationResponse[]> {
     if (!(await this.madrasahRepo.exists(madrasahId))) {
       throw new MadrasahNotFoundError(madrasahId);
     }
-    const rows = await this.madrasahRepo.headDelegations(
-      madrasahId,
-      exceptUserId
-    );
+    const rows = await this.madrasahRepo.headDelegations(madrasahId);
     const ids = [...new Set(rows.map((r) => r.userId))];
     const people = await this.madrasahRepo.people(ids);
     const missing = ids.filter((id) => !people.has(id));
@@ -270,6 +283,12 @@ export class MadrasahService {
         role: r.role,
         permission: r.permission,
         groupName: r.groupName,
+        scopeType:
+          r.scopeType === SCOPE_TYPES.COURSE
+            ? SCOPE_TYPES.COURSE
+            : SCOPE_TYPES.MADRASAH,
+        scopeId: r.scopeId,
+        courseTitle: r.courseTitle,
         to: { id: r.userId, name: name || null, email: person?.email ?? null },
         grantedAt: r.grantedAt,
         expiresAt: r.expiresAt,

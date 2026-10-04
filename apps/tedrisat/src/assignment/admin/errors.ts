@@ -121,3 +121,40 @@ export class DismissDecisionsError extends BadRequestError {
     );
   }
 }
+
+/**
+ * A seat the act drops belongs to someone who handed on roles or permissions
+ * of their own that are still held under it, and that no other seat of theirs
+ * backs (owner, d-1004: whoever loses a role, the remover decides each row
+ * they gave). Those rows are not asked about in this act, so the seat is not
+ * dropped here: dismiss its holder first, where every row they gave is
+ * listed, or take the seat over.
+ */
+export class DismissSeatHandedOnError extends ConflictError {
+  static readonly code = "DISMISS_SEAT_HANDED_ON";
+
+  constructor(userIds: readonly string[], context?: ErrorContext) {
+    super(
+      DismissSeatHandedOnError.code,
+      `Dismiss ${userIds.join(", ")} first: what they handed on is still held under the seat`,
+      { userIds: [...userIds], ...context }
+    );
+  }
+}
+
+/**
+ * A grant answered TAKE_OVER whose holder loses, in the same act, the seat it
+ * hangs on: it would be a permission with no role behind it (owner, 3
+ * October). Answer the grant DROP, or keep the seat.
+ */
+export class DismissTakeOverWithoutSeatError extends BadRequestError {
+  static readonly code = "DISMISS_TAKE_OVER_WITHOUT_SEAT";
+
+  constructor(grantIds: readonly string[], context?: ErrorContext) {
+    super(
+      DismissTakeOverWithoutSeatError.code,
+      "A grant taken over cannot outlast the seat dropped beside it",
+      { grantIds: [...grantIds], ...context }
+    );
+  }
+}

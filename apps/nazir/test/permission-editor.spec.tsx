@@ -111,6 +111,7 @@ const abdullah: NazirRow = {
   awaiting: true,
   assignmentEnd: null,
   appointedLine: "Atayan: Fatma Zehra Çelebioğlu · 30 Eylül 2026",
+  appointedById: "u-1",
   end: null,
   giver: null,
 };

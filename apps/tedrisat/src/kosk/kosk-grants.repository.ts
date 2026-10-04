@@ -178,6 +178,27 @@ export class KoskGrantsRepository {
     return result;
   }
 
+  /**
+   * Who holds the post, if it is a held post in one of this köşk's courses. A
+   * post never changes hands, so the answer stands for the write that follows.
+   */
+  async postHolder(koskId: string, postId: string): Promise<string | null> {
+    const [row] = await this.db
+      .select({ userId: roleAssignments.userId })
+      .from(roleAssignments)
+      .innerJoin(courses, eq(courses.id, roleAssignments.scopeId))
+      .where(
+        and(
+          eq(roleAssignments.id, postId),
+          eq(roleAssignments.role, NAZIR),
+          eq(courses.koskId, koskId),
+          isHeld()
+        )
+      )
+      .limit(1);
+    return row?.userId ?? null;
+  }
+
   /** The held post, if it is in one of this köşk's courses. */
   private async lockPost(
     tx: Tx,

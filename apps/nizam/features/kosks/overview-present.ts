@@ -79,15 +79,48 @@ export type RowAction = "edit" | "editMuderris" | "view" | "hide" | "restore";
 
 /**
  * The buttons of a row in the Dersler table (nizam 23). A hidden course has
- * only "Geri al". A medrese's course has no "Düzenle" and no müderris editing —
- * the medrese opens the course and picks its müderrisler — but may be viewed
- * and hidden by the köşk's nazım.
+ * only "Geri al", and not even that when the API says the viewer may not bring
+ * it back (`canRestore: false`: hidden at a level above theirs, MDRS-135), so no
+ * button leads to a 403 (MDRS-108). A medrese's course has no "Düzenle" and no
+ * müderris editing — the medrese opens the course and picks its müderrisler —
+ * but may be viewed and hidden by the köşk's nazım.
  */
 export function rowActions(row: KoskCourseRowResponse): RowAction[] {
-  if (row.status === "HIDDEN") return ["restore"];
+  if (row.status === "HIDDEN") {
+    return (row as { canRestore?: boolean }).canRestore === false
+      ? []
+      : ["restore"];
+  }
   if (row.madrasah) return ["view", "hide"];
   return ["edit", "editMuderris", "hide"];
 }
+
+/**
+ * What a refused "Geri al" or "Gizle" on a course means for the table, by the
+ * code the API answered with: "done" when the course is already where the
+ * click wanted it (another hand got there first), or the toast's sentence.
+ */
+export function courseHideOutcome(
+  code: string | null
+): "done" | "restoreLevel" | "restoreParentHidden" | "failed" {
+  switch (code) {
+    case "COURSE_NOT_HIDDEN":
+    case "COURSE_ALREADY_HIDDEN":
+      return "done";
+    case "ARCHIVE_RESTORE_LEVEL":
+      return "restoreLevel";
+    case "ARCHIVE_PARENT_HIDDEN":
+      return "restoreParentHidden";
+    default:
+      return "failed";
+  }
+}
+
+/** The code of an API refusal, from the body an action returned. */
+export const errorCodeOf = (body: unknown): string | null =>
+  body && typeof body === "object" && "code" in body
+    ? String((body as { code: unknown }).code)
+    : null;
 
 /** The Talebe cell: the number, or nothing for a course nobody can have joined yet. */
 export function studentsCell(row: KoskCourseRowResponse): number | null {
