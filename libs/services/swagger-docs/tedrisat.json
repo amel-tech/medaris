@@ -7639,7 +7639,7 @@
     },
     "/lessons/{id}/notes": {
       "get": {
-        "description": "Only the caller's notes, whoever else wrote one on the session. By `offsetSeconds` ascending, notes without a position last, then oldest first. Never lists anyone else's notes, a SYSTEM_ADMIN's request included (MDRS-150).",
+        "description": "Only the caller's notes, whoever else wrote one on the session. By `offsetSeconds` ascending, notes without a position last, then oldest first. Never lists anyone else's notes, a SYSTEM_ADMIN's request included. A talebe who was removed or barred still reads their own while the course is open; a course in a passive scope is closed to everyone but platform management and its köşk's nazımı (403 LESSON_NOTE_FORBIDDEN), and a hidden course is as not found as a session that is not there (MDRS-150).",
         "operationId": "listLessonNotes",
         "parameters": [
           {
@@ -7665,6 +7665,9 @@
               }
             }
           },
+          "403": {
+            "description": "LESSON_NOTE_FORBIDDEN"
+          },
           "404": {
             "description": "LESSON_NOT_FOUND"
           }
@@ -7680,7 +7683,7 @@
         ]
       },
       "post": {
-        "description": "An enrolled talebe only (ENROLLED or COMPLETED, and not barred). `offsetSeconds` is the player position from the start of the video and may be left out. `body` is Markdown, 1 to 4000 characters after trimming; it is stored as typed and never rendered as HTML.",
+        "description": "An enrolled talebe only (ENROLLED or COMPLETED, and not barred), and only while the course's content is open: a passive scope closes it. `offsetSeconds` is the player position from the start of the video and may be left out. `body` is Markdown, 1 to 4000 characters after trimming; it is stored as typed and never rendered as HTML.",
         "operationId": "createLessonNote",
         "parameters": [
           {
@@ -7798,7 +7801,7 @@
         ]
       },
       "delete": {
-        "description": "The note is removed for good; there is no history. 404 for a note the caller did not write, as for one that does not exist.",
+        "description": "The note is removed for good; there is no history. A talebe who was removed or barred may still delete their own while the course is open, as they may read them; a passive scope closes it. 404 for a note the caller did not write, as for one that does not exist.",
         "operationId": "deleteLessonNote",
         "parameters": [
           {
@@ -7821,6 +7824,9 @@
         "responses": {
           "204": {
             "description": ""
+          },
+          "403": {
+            "description": "LESSON_NOTE_FORBIDDEN"
           },
           "404": {
             "description": "LESSON_NOT_FOUND, LESSON_NOTE_NOT_FOUND"
