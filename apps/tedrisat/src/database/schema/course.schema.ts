@@ -1,7 +1,8 @@
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import {
   type AnyPgColumn,
   boolean,
+  check,
   index,
   integer,
   jsonb,
@@ -298,6 +299,14 @@ export const enrollmentsRelations = relations(enrollments, ({ one }) => ({
 // is PROCESSING, the "Hazırlanıyor" row of tedris/24. Reading it follows the
 // course's content rule unless `visibility` is PUBLIC. RESTRICT like every
 // foreign key here; `course/course-purge.ts` removes these before the lessons.
+//
+// A BUNNY recording (MDRS-116) is a video in the Medaris Bunny Stream library:
+// it carries `bunny_video_id` and never a `url`, and `upload_expires_at` is the
+// end of its upload lifetime — the `AuthorizationExpire` its TUS signature was
+// issued for, which re-signing never extends. Every other provider is a pasted
+// link: no video id, and a `url` once it is READY or FAILED. The provider is
+// compared as text because the migration adds 'BUNNY' to the enum and uses it
+// in one transaction, which Postgres refuses for the enum literal itself.
 export const lessonRecordings = table(
   "lesson_recordings",
   {
@@ -314,8 +323,17 @@ export const lessonRecordings = table(
       .default(RecordingVisibility.ENROLLED)
       .notNull(),
     status: recordingStatus().default(RecordingStatus.PROCESSING).notNull(),
+    bunnyVideoId: text("bunny_video_id"),
+    uploadExpiresAt: timestamp("upload_expires_at", { withTimezone: true }),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
-  (t) => [uniqueIndex("lesson_recordings_lesson_id_idx").on(t.lessonId)]
+  (t) => [
+    uniqueIndex("lesson_recordings_lesson_id_idx").on(t.lessonId),
+    uniqueIndex("lesson_recordings_bunny_video_id_uq").on(t.bunnyVideoId),
+    check(
+      "lesson_recordings_provider_columns",
+      sql`case when ${t.provider}::text = 'BUNNY' then ${t.bunnyVideoId} is not null and ${t.uploadExpiresAt} is not null and ${t.url} is null else ${t.bunnyVideoId} is null and ${t.uploadExpiresAt} is null and (${t.url} is not null or ${t.status}::text = 'PROCESSING') end`
+    ),
+  ]
 );

@@ -293,6 +293,7 @@ src/models/ReadAllNotificationsResponse.ts
 src/models/RecordingProvider.ts
 src/models/RecordingResponse.ts
 src/models/RecordingStatus.ts
+src/models/RecordingUploadResponse.ts
 src/models/RecordingVisibility.ts
 src/models/RejectEnrollmentDto.ts
 src/models/RejectReasonDto.ts
@@ -327,6 +328,7 @@ src/models/SetMadrasahNazirPermissionsDto.ts
 src/models/SetMuderrisDto.ts
 src/models/SetNazimGrantsDto.ts
 src/models/SetPlatformPolicyDto.ts
+src/models/StartRecordingUploadDto.ts
 src/models/SummaryMuderrisResponse.ts
 src/models/TaughtCourseRef.ts
 src/models/TeamSettableEnrollmentStatus.ts

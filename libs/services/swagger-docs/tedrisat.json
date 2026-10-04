@@ -4141,6 +4141,125 @@
         ]
       }
     },
+    "/lessons/{id}/recordings/uploads": {
+      "post": {
+        "description": "`recording.upload` (the müderris and the köşk nazımı by default, a ders nazırı when given it). Creates the video in the Medaris Bunny Stream library, records it as the session's recording with `provider` BUNNY and `status` PROCESSING, and returns what the browser needs for a TUS upload straight to Bunny; the file never passes through this API. The signature expires 24 hours later. A session that already has a recording is refused with 409, unless that recording is a Bunny upload that FAILED, which this one replaces. Written to `audit_log` as `recording.upload_start`. The recording becomes READY or FAILED when the encoding poll sees Bunny finish.",
+        "operationId": "startRecordingUpload",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartRecordingUploadDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordingUploadResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Field validation."
+          },
+          "403": {
+            "description": "AUTHZ_FORBIDDEN"
+          },
+          "404": {
+            "description": "LESSON_NOT_FOUND"
+          },
+          "409": {
+            "description": "RECORDING_EXISTS"
+          },
+          "503": {
+            "description": "BUNNY_STREAM_NOT_CONFIGURED (the library is not set on this server) or BUNNY_STREAM_UNAVAILABLE (Bunny did not answer)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Start uploading a session's recording to Bunny Stream",
+        "tags": [
+          "lessons"
+        ]
+      }
+    },
+    "/lessons/{id}/recordings/uploads/{videoId}/signature": {
+      "post": {
+        "description": "`recording.upload`, as for starting one. Returns the same video's TUS values so an interrupted upload continues where it stopped. The expiry is the upload's original one: signing again never extends it. 409 once the upload is no longer PROCESSING or its lifetime has passed (RECORDING_UPLOAD_CLOSED, with `reason`).",
+        "operationId": "resignRecordingUpload",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "videoId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordingUploadResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "AUTHZ_FORBIDDEN"
+          },
+          "404": {
+            "description": "LESSON_NOT_FOUND or RECORDING_UPLOAD_NOT_FOUND"
+          },
+          "409": {
+            "description": "RECORDING_UPLOAD_CLOSED"
+          },
+          "503": {
+            "description": "BUNNY_STREAM_NOT_CONFIGURED"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Sign a session's Bunny upload again, to resume it",
+        "tags": [
+          "lessons"
+        ]
+      }
+    },
     "/courses/{courseId}/bans": {
       "post": {
         "description": "Takes effect at once: the talebe cannot enroll, apply again or leave, and loses the course's content. A COURSE ban is the course's müderris's and above; a KOSK ban, placed from this course, is the köşk nazımı's and above. Barring someone already barred in that scope returns the standing ban. The reason is kept for those who see and lift bans and never sent to the talebe.",
@@ -14568,7 +14687,8 @@
         "enum": [
           "YOUTUBE",
           "DRIVE",
-          "OTHER"
+          "OTHER",
+          "BUNNY"
         ]
       },
       "RecordingVisibility": {
@@ -14582,7 +14702,8 @@
         "type": "string",
         "enum": [
           "PROCESSING",
-          "READY"
+          "READY",
+          "FAILED"
         ]
       },
       "SessionRecordingResponse": {
@@ -14834,7 +14955,7 @@
           "url": {
             "type": "string",
             "nullable": true,
-            "description": "Null while the recording is PROCESSING."
+            "description": "Null unless the recording is READY. For a BUNNY recording (MDRS-116) it is the Bunny player link, built when it is read, with a token that expires after a few hours when the library uses token authentication."
           },
           "visibility": {
             "allOf": [
@@ -15411,6 +15532,72 @@
         },
         "required": [
           "liveStreamUrl"
+        ]
+      },
+      "StartRecordingUploadDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "example": "Emsile: 3. celse kaydı",
+            "maxLength": 200,
+            "description": "The recording's title, shown on the course page and given to Bunny as the video's title."
+          },
+          "visibility": {
+            "default": "ENROLLED",
+            "description": "ENROLLED (the default) shows it only to those who may read the course's content; PUBLIC to everyone, unless the course is closed or a policy keeps recordings from the public.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RecordingVisibility"
+              }
+            ]
+          },
+          "recordedAt": {
+            "format": "date-time",
+            "type": "string",
+            "example": "2026-10-03T18:00:00.000Z"
+          }
+        },
+        "required": [
+          "title"
+        ]
+      },
+      "RecordingUploadResponse": {
+        "type": "object",
+        "properties": {
+          "recordingId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The recording row this upload fills."
+          },
+          "endpoint": {
+            "type": "string",
+            "example": "https://video.bunnycdn.com/tusupload"
+          },
+          "libraryId": {
+            "type": "string",
+            "example": "123456"
+          },
+          "videoId": {
+            "type": "string",
+            "description": "Bunny's id of the video, the same on every re-sign."
+          },
+          "authorizationExpire": {
+            "type": "number",
+            "description": "Unix seconds. The end of the upload's lifetime: 24 hours after it was started, and never moved by a re-sign."
+          },
+          "authorizationSignature": {
+            "type": "string",
+            "description": "SHA256_HEX(library_id + api_key + expiration + video_id)."
+          }
+        },
+        "required": [
+          "recordingId",
+          "endpoint",
+          "libraryId",
+          "videoId",
+          "authorizationExpire",
+          "authorizationSignature"
         ]
       },
       "CreateBanDto": {

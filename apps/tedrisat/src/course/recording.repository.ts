@@ -8,14 +8,40 @@ import {
   lessons,
 } from "../database/schema/course.schema";
 import { LessonType } from "./domain/lesson-type.enum";
-import type {
+import {
   RecordingProvider,
   RecordingStatus,
-  RecordingVisibility,
+  type RecordingVisibility,
 } from "./domain/recording";
 import { LessonCancelledError } from "./errors/lesson-cancelled.error";
 import { LessonNotFoundError } from "./errors/lesson-not-found.error";
 import { LessonNotLiveError } from "./errors/lesson-not-live.error";
+import { RecordingExistsError } from "./errors/recording-exists.error";
+
+const bunnyUploadColumns = {
+  id: lessonRecordings.id,
+  lessonId: lessonRecordings.lessonId,
+  status: lessonRecordings.status,
+  bunnyVideoId: lessonRecordings.bunnyVideoId,
+  uploadExpiresAt: lessonRecordings.uploadExpiresAt,
+};
+
+/** The CHECK constraint makes both columns non-null on a BUNNY row. */
+function toBunnyUpload(row: {
+  id: string;
+  lessonId: string;
+  status: RecordingStatus;
+  bunnyVideoId: string | null;
+  uploadExpiresAt: Date | null;
+}): IBunnyUploadRow {
+  return {
+    id: row.id,
+    lessonId: row.lessonId,
+    status: row.status,
+    bunnyVideoId: row.bunnyVideoId ?? "",
+    uploadExpiresAt: row.uploadExpiresAt ?? new Date(0),
+  };
+}
 
 /** One session's live stream link, as the course staff read and write it (MDRS-228). */
 export interface ILiveStreamLink {
@@ -34,6 +60,28 @@ export interface IStoredRecording {
   recordedAt: Date | null;
   visibility: RecordingVisibility;
   status: RecordingStatus;
+  /** Set on a BUNNY recording only (MDRS-116); never handed to a caller as is. */
+  bunnyVideoId: string | null;
+}
+
+/** A session's Bunny upload, as the re-sign route and the encoding poll read it (MDRS-116). */
+export interface IBunnyUploadRow {
+  id: string;
+  lessonId: string;
+  status: RecordingStatus;
+  bunnyVideoId: string;
+  uploadExpiresAt: Date;
+}
+
+/** What `startBunnyUpload` writes. */
+export interface INewBunnyUpload {
+  lessonId: string;
+  title: string;
+  visibility: RecordingVisibility;
+  recordedAt: Date | null;
+  bunnyVideoId: string;
+  uploadExpiresAt: Date;
+  actorId: string;
 }
 
 /**
@@ -64,9 +112,159 @@ export class RecordingRepository {
         recordedAt: lessonRecordings.recordedAt,
         visibility: lessonRecordings.visibility,
         status: lessonRecordings.status,
+        bunnyVideoId: lessonRecordings.bunnyVideoId,
       })
       .from(lessonRecordings)
       .where(inArray(lessonRecordings.lessonId, lessonIds));
+  }
+
+  /**
+   * Records a new Bunny upload of the session (MDRS-116): provider BUNNY,
+   * status PROCESSING, the video id Bunny gave and the end of the upload's
+   * lifetime, and writes `recording.upload_start` to `audit_log` in the same
+   * transaction.
+   *
+   * The lesson row is locked first, so two uploads started at once for one
+   * session are serialised and the second sees the first. A session that
+   * already has a recording is refused (`RecordingExistsError`) unless that
+   * recording is a Bunny upload that FAILED: that row is reused for the new
+   * video, so a failed upload can be retried without anyone deleting it.
+   */
+  async startBunnyUpload(
+    upload: INewBunnyUpload
+  ): Promise<{ recordingId: string; courseId: string }> {
+    return this.db.transaction(async (tx) => {
+      const [lesson] = await tx
+        .select({ courseId: courseWeeks.courseId })
+        .from(lessons)
+        .innerJoin(courseWeeks, eq(lessons.weekId, courseWeeks.id))
+        .where(and(eq(lessons.id, upload.lessonId), isNull(lessons.archivedAt)))
+        .limit(1)
+        .for("update", { of: lessons });
+      if (!lesson) throw new LessonNotFoundError(upload.lessonId);
+
+      const [existing] = await tx
+        .select({
+          id: lessonRecordings.id,
+          provider: lessonRecordings.provider,
+          status: lessonRecordings.status,
+          bunnyVideoId: lessonRecordings.bunnyVideoId,
+        })
+        .from(lessonRecordings)
+        .where(eq(lessonRecordings.lessonId, upload.lessonId))
+        .limit(1);
+      const replaceable =
+        existing?.provider === RecordingProvider.BUNNY &&
+        existing.status === RecordingStatus.FAILED;
+      if (existing && !replaceable) {
+        throw new RecordingExistsError(upload.lessonId);
+      }
+
+      const values = {
+        title: upload.title,
+        provider: RecordingProvider.BUNNY,
+        url: null,
+        durationMinutes: null,
+        recordedAt: upload.recordedAt,
+        visibility: upload.visibility,
+        status: RecordingStatus.PROCESSING,
+        bunnyVideoId: upload.bunnyVideoId,
+        uploadExpiresAt: upload.uploadExpiresAt,
+      };
+      let recordingId: string;
+      if (existing) {
+        await tx
+          .update(lessonRecordings)
+          .set({ ...values, updatedAt: new Date() })
+          .where(eq(lessonRecordings.id, existing.id));
+        recordingId = existing.id;
+      } else {
+        const [row] = await tx
+          .insert(lessonRecordings)
+          .values({ lessonId: upload.lessonId, ...values })
+          .returning({ id: lessonRecordings.id });
+        recordingId = row.id;
+      }
+
+      await tx.insert(auditLog).values({
+        actorId: upload.actorId,
+        action: "recording.upload_start",
+        entity: "lesson",
+        entityId: upload.lessonId,
+        details: {
+          courseId: lesson.courseId,
+          recordingId,
+          bunnyVideoId: upload.bunnyVideoId,
+          visibility: upload.visibility,
+          replacedVideoId: existing?.bunnyVideoId ?? null,
+        },
+      });
+      return { recordingId, courseId: lesson.courseId };
+    });
+  }
+
+  /** The session's Bunny upload of `videoId`, or null. */
+  async findBunnyUpload(
+    lessonId: string,
+    videoId: string
+  ): Promise<IBunnyUploadRow | null> {
+    const [row] = await this.db
+      .select(bunnyUploadColumns)
+      .from(lessonRecordings)
+      .where(
+        and(
+          eq(lessonRecordings.lessonId, lessonId),
+          eq(lessonRecordings.bunnyVideoId, videoId)
+        )
+      )
+      .limit(1);
+    return row ? toBunnyUpload(row) : null;
+  }
+
+  /** Bunny uploads still PROCESSING, oldest first, for the encoding poll. */
+  async findProcessingBunnyUploads(limit: number): Promise<IBunnyUploadRow[]> {
+    const rows = await this.db
+      .select(bunnyUploadColumns)
+      .from(lessonRecordings)
+      .where(
+        and(
+          eq(lessonRecordings.provider, RecordingProvider.BUNNY),
+          eq(lessonRecordings.status, RecordingStatus.PROCESSING)
+        )
+      )
+      .orderBy(asc(lessonRecordings.updatedAt))
+      .limit(limit);
+    return rows.map(toBunnyUpload);
+  }
+
+  /**
+   * Moves a Bunny upload out of PROCESSING. Only a row still PROCESSING
+   * with this video is touched, so a poll racing a retry of a failed upload
+   * cannot settle the new video with the old one's outcome. True when a row
+   * changed.
+   */
+  async settleBunnyUpload(
+    id: string,
+    videoId: string,
+    status: RecordingStatus.READY | RecordingStatus.FAILED,
+    durationMinutes: number | null
+  ): Promise<boolean> {
+    const changed = await this.db
+      .update(lessonRecordings)
+      .set({
+        status,
+        ...(durationMinutes !== null ? { durationMinutes } : {}),
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(lessonRecordings.id, id),
+          eq(lessonRecordings.bunnyVideoId, videoId),
+          eq(lessonRecordings.status, RecordingStatus.PROCESSING)
+        )
+      )
+      .returning({ id: lessonRecordings.id });
+    return changed.length > 0;
   }
 
   async findLiveStreamUrl(lessonId: string): Promise<string | null> {

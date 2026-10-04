@@ -7,6 +7,7 @@ import {
 import { Injectable } from "@nestjs/common";
 import { UserDirectoryService } from "../assignment/user-directory.service";
 import { BanService } from "../ban/ban.service";
+import { BunnyStreamClient } from "../bunny-stream/bunny-stream.client";
 import { KoskForbiddenError } from "../kosk/errors/kosk-forbidden.error";
 import { KoskService } from "../kosk/kosk.service";
 import { PlatformPolicyService } from "../platform-policy/platform-policy.service";
@@ -50,6 +51,8 @@ import {
   type IRecordingRow,
   type IRecordingView,
   liveStreamFor,
+  RecordingProvider,
+  RecordingStatus,
   visibleRecordings,
 } from "./domain/recording";
 import { buildSessionView, type ISessionView } from "./domain/session-view";
@@ -73,7 +76,10 @@ import { MuderrisAssignmentForbiddenError } from "./errors/muderris-assignment-f
 import { MuderrisDuplicateUserError } from "./errors/muderris-duplicate-user.error";
 import { MuderrisListInvalidError } from "./errors/muderris-list-invalid.error";
 import { MuderrisUnknownUserError } from "./errors/muderris-unknown-user.error";
-import { RecordingRepository } from "./recording.repository";
+import {
+  type IStoredRecording,
+  RecordingRepository,
+} from "./recording.repository";
 
 /** A weekly pattern as the API takes it; `timeZone` defaults to the course's. */
 export type SessionPatternInput = Omit<
@@ -102,8 +108,32 @@ export class CourseService {
     private readonly recordingRepo: RecordingRepository,
     private readonly platformPolicies: PlatformPolicyService,
     private readonly notifier: CourseNotifier,
-    private readonly directory: UserDirectoryService
+    private readonly directory: UserDirectoryService,
+    private readonly bunny: BunnyStreamClient
   ) {}
+
+  /**
+   * The stored recordings as a caller may be handed them (MDRS-116): a BUNNY
+   * recording's link is its player link, built now — with a fresh token when
+   * the library has a token key — and only once it is READY; the Bunny video
+   * id itself is dropped, so no response carries it.
+   */
+  private playable(
+    stored: IStoredRecording[],
+    now: Date = new Date()
+  ): Omit<IStoredRecording, "bunnyVideoId">[] {
+    return stored.map(({ bunnyVideoId, ...rec }) =>
+      rec.provider === RecordingProvider.BUNNY
+        ? {
+            ...rec,
+            url:
+              rec.status === RecordingStatus.READY && bunnyVideoId
+                ? this.bunny.embedUrl(bunnyVideoId, now)
+                : null,
+          }
+        : rec
+    );
+  }
 
   /**
    * The köşk's courses. With `archived`, its hidden ones instead — the
@@ -333,7 +363,10 @@ export class CourseService {
       );
     }
     if (!detail.contentLocked || sample) {
-      const [stored] = await this.recordingRepo.findByLessonIds([sessionId]);
+      const [stored] = this.playable(
+        await this.recordingRepo.findByLessonIds([sessionId]),
+        now
+      );
       const [shown] = stored
         ? visibleRecordings(
             [
@@ -379,8 +412,8 @@ export class CourseService {
     const placed = detail.weeks.flatMap((week) =>
       week.lessons.map((lesson) => ({ week, lesson }))
     );
-    const stored = await this.recordingRepo.findByLessonIds(
-      placed.map((p) => p.lesson.id)
+    const stored = this.playable(
+      await this.recordingRepo.findByLessonIds(placed.map((p) => p.lesson.id))
     );
     const rows: IRecordingRow[] = stored.flatMap((rec) => {
       const at = placed.find((p) => p.lesson.id === rec.lessonId);

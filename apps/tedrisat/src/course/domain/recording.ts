@@ -1,10 +1,17 @@
 import { SessionStatus } from "./session-status.enum";
 
-/** Where a lesson recording lives (MDRS-162). Only a link is stored: no API call is made to either host. */
+/**
+ * Where a lesson recording lives. YOUTUBE, DRIVE and OTHER are links the
+ * staff paste (MDRS-162): no API call is made to those hosts. BUNNY is a video
+ * uploaded to the Medaris Bunny Stream library through tedrisat (MDRS-116):
+ * the row carries the library's video id, never a URL, and the player link is
+ * built when the recording is read.
+ */
 export enum RecordingProvider {
   YOUTUBE = "YOUTUBE",
   DRIVE = "DRIVE",
   OTHER = "OTHER",
+  BUNNY = "BUNNY",
 }
 
 /** Who may see a recording: everyone with the link, or only the course's own people. */
@@ -13,10 +20,16 @@ export enum RecordingVisibility {
   ENROLLED = "ENROLLED",
 }
 
-/** PROCESSING is a recording the müderris announced but has not published a link for yet. */
+/**
+ * PROCESSING is a recording the müderris announced but has not published a
+ * link for yet, or a Bunny upload that is still uploading or encoding.
+ * FAILED is a Bunny upload that Bunny could not encode, or that was never
+ * completed within its upload lifetime (MDRS-116).
+ */
 export enum RecordingStatus {
   PROCESSING = "PROCESSING",
   READY = "READY",
+  FAILED = "FAILED",
 }
 
 /** A recording as the repository reads it, joined to its lesson's place in the programme. */
