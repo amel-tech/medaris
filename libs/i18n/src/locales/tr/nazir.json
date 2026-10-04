@@ -210,7 +210,8 @@
     "expiryInvalid": "Bitiş tarihi geçmişte ya da görevin bitişinden sonra olamaz.",
     "groupGone": "Bu grup artık yok. Gruplar yenilendi; yeniden seçin.",
     "groupNameTaken": "Bu adla başka bir grup var. Başka bir ad seçin.",
-    "exceedsGiver": "Bu izinlerin bir kısmı sizde yok; yalnız kendi izinlerinizi verebilirsiniz. Verebileceğiniz izinleri başnazıma sorun."
+    "exceedsGiver": "Bu izinlerin bir kısmı sizde yok; yalnız kendi izinlerinizi verebilirsiniz. Verebileceğiniz izinleri başnazıma sorun.",
+    "selfGrant": "Kendinize rol ya da izin veremezsiniz; size verilmiş bir rolü ya da izni devralmak da buna girer."
   },
   "Settings": {
     "title": "Medrese ayarları",
@@ -369,6 +370,7 @@
     "dismissedBody": "{name} artık bu medresenin nazırı değil.",
     "failedTitle": "Görevden alınamadı",
     "changed": "Bu kişinin verdikleri siz bakarken değişti. Liste yenilendi; seçimlerinizi yeniden yapın.",
+    "cascade": "Düşürdüğünüz görevlerden birinin sahibi başkalarına rol ya da izin vermiş; onlar sorulmadan kalırdı. Önce o kişiyi görevden alıp verdiklerine karar verin ya da görevini devralın.",
     "gone": "Bu kişi artık bu medresenin nazırı değil.",
     "loadFailedTitle": "Liste okunamadı",
     "loadFailed": "Bu kişinin verdikleri şu an okunamıyor. Biraz sonra yeniden deneyin."
@@ -393,11 +395,12 @@
     "courses": "Dersler",
     "noCourses": "Bu medresenin henüz dersi yok.",
     "coursesProblem": "En az bir ders seçin.",
-    "expires": "Bitiş tarihi (isteğe bağlı)",
-    "expiresHelp": "Boş bırakırsanız süresiz. Tarih geçince izin kendiliğinden düşer.",
+    "expires": "Bitiş tarihi ve saati (isteğe bağlı)",
+    "expiresHelp": "Boş bırakırsanız süresiz. Bu an gelince izin kendiliğinden düşer.",
     "expiresProblems": {
-      "past": "Bitiş tarihi geçmişte olamaz.",
-      "afterAppointment": "Bitiş tarihi, görevin bitişinden sonra olamaz."
+      "past": "Bitiş zamanı şu andan sonra olmalı.",
+      "afterAppointment": "Bitiş zamanı, görevin bitişinden sonra olamaz.",
+      "unfinished": "Bitiş tarihini ve saatini tamamlayın."
     },
     "note": "Aldığı izni başkasına veremez. Verilen ve geri alınan her izin denetim kaydına yazılır.",
     "summary": {
@@ -521,7 +524,7 @@
     "errors": {
       "forbidden": "Bunu geri alma yetkiniz yok; öğeyi daha üst bir kademe gizlemiş olabilir. Liste yenilendi.",
       "gone": "Bu öğe artık arşivde değil. Liste yenilendi.",
-      "parentHidden": "Bu öğenin bağlı olduğu medrese ya da köşk hâlâ gizli, bu yüzden geri alınamadı. Önce onu, gizleyen kademe ya da üstü geri almalı."
+      "parentHidden": "Bu öğenin bağlı olduğu medrese ya da köşk hâlâ gizli, bu yüzden geri alınamadı. Medreseyi, onu gizleyen kademe ya da üstü geri getirir."
     },
     "empty": {
       "all": "Bu medresede gizlenmiş bir öğe yok.",
@@ -541,24 +544,25 @@
     "loadFailed": "Arşiv şu an okunamadı. Birkaç saniye sonra yeniden deneyin.",
     "hide": {
       "title": "Medreseyi gizle",
-      "text": "{name} ve dersleri bütün listelerden ve aramadan kalkar; medrese ve ders sayfaları siz ve Medaris yönetimi dışında herkese kapanır. Dersleri barındıran köşkler gizlenmez. Hiçbir şey silinmez; medreseyi siz gizlediyseniz siz, Medaris yönetimi ise her durumda geri alabilir.",
+      "text": "{name} ve dersleri bütün listelerden ve aramadan kalkar; medrese ve ders sayfaları siz ve Medaris yönetimi dışında herkese kapanır. Dersleri barındıran köşkler gizlenmez. Hiçbir şey silinmez; medreseyi, onu gizleyen kademe ya da üstü geri getirir: sizin gizlediğinizi siz ya da Medaris yönetimi.",
       "button": "Medreseyi gizle",
-      "confirmBody": "{name} ve görünen dersleri herkesten gizlenecek; sayfalarını yalnız siz ve Medaris yönetimi açabilecek. Hiçbir şey silinmez; medreseyi siz geri alabilirsiniz, Medaris yönetimi de her durumda. Medrese gizliyken Arşiv’deki dersleri geri alamazsınız.",
+      "confirmBody": "{name} ve görünen dersleri herkesten gizlenecek; sayfalarını yalnız siz ve Medaris yönetimi açabilecek. Hiçbir şey silinmez; medreseyi siz ya da Medaris yönetimi geri getirebilir. O zamana dek Arşiv’deki dersleri geri alamazsınız.",
       "confirm": "Gizle",
       "cancel": "Vazgeç",
       "done": "Medrese gizlendi",
-      "doneBody": "{name} ve dersleri artık siz ve Medaris yönetimi dışında kimseye görünmüyor. Bu sayfadan geri alabilirsiniz.",
-      "already": "Bu medrese zaten gizli.",
-      "failedTitle": "Medrese gizlenemedi"
+      "doneBody": "{name} ve dersleri artık siz ve Medaris yönetimi dışında kimseye görünmüyor. Medreseyi siz ya da Medaris yönetimi geri getirebilir.",
+      "already": "Bu medrese zaten gizli. Onu gizleyen kademe ya da üstü geri getirebilir.",
+      "failedTitle": "Medrese gizlenemedi",
+      "restoreLevel": "Bu medreseyi Medaris yönetimi gizledi; yalnız Medaris yönetimi geri getirebilir."
     },
     "hidden": {
       "title": "Medrese gizli",
-      "body": "{name} ve dersleri bütün listelerden ve aramadan kalktı; sayfalarını yalnız siz ve Medaris yönetimi açabilir. Geri alınca dersleri de birlikte döner.",
-      "restore": "Medreseyi geri al",
-      "restoreLabel": "Geri al: {name}",
-      "restored": "Medrese geri alındı",
-      "restoredBody": "{name} ve dersleri yeniden listelerde.",
-      "failedTitle": "Medrese geri alınamadı",
+      "body": "{name} ve dersleri bütün listelerden ve aramadan kalktı; sayfalarını yalnız siz ve Medaris yönetimi açabilir. Geri getirilince dersleri de birlikte döner.",
+      "restore": "Medreseyi geri getir",
+      "restoreLabel": "Geri getir: {name}",
+      "restored": "Medrese geri getirildi",
+      "restoredBody": "{name} ve onunla gizlenen dersleri yeniden görünür.",
+      "failedTitle": "Medrese geri getirilemedi",
       "notHidden": "Bu medrese zaten gizli değil. Sayfa yenilendi."
     }
   },

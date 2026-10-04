@@ -22,6 +22,12 @@ export interface ISelfGrantWhat {
    * themselves as a köşk's nazımı), so the answer does not hang on the sums.
    */
   always?: boolean;
+  /**
+   * Where the caller's own holdings are read, when not at the resource named:
+   * a medrese course's müderris is asked in the medrese, as the medrese's own
+   * route asks, so the two routes cannot answer differently.
+   */
+  heldAt?: ResourceRef;
 }
 
 /**
@@ -67,7 +73,8 @@ export class SelfGrantGuard {
       ...(what.role ? ROLE_DEFAULT_PERMISSIONS[what.role] : []),
     ]);
     if (!what.always) {
-      const held = (await this.authz.effective(user, resource))?.codes;
+      const held = (await this.authz.effective(user, what.heldAt ?? resource))
+        ?.codes;
       if (held && [...wanted].every((code) => held.has(code))) return;
     }
     await this.audit?.record({

@@ -1,6 +1,6 @@
 import { ROLES } from "@medaris/common";
 import { INestApplication } from "@nestjs/common";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import request from "supertest";
 import { DatabaseService } from "../../src/database/database.service";
 import { auditLog } from "../../src/database/schema/audit.schema";
@@ -469,6 +469,205 @@ describe("Assignments (e2e)", () => {
           permissions: ["enrollment.decide"],
         }),
       ]);
+    });
+
+    describe("exactly what the engine decides (MDRS-135)", () => {
+      type Group = {
+        role: string | null;
+        scopeType: string;
+        scopes: { type: string; id: string | null; name: string | null }[];
+        permissions: string[];
+      };
+      const groupsOf = async (sub: string) =>
+        (await get("/me/effective-permissions", sub).expect(200)).body
+          .groups as Group[];
+      const patch = (path: string, sub: string, body: object) =>
+        request(app.getHttpServer())
+          .patch(path)
+          .set("Authorization", auth(sub))
+          .send(body);
+
+      it("leaves out the content a passive scope has closed, as the routes refuse it", async () => {
+        await assignRole(databaseService.db, {
+          userId: TALEBE_ID,
+          role: ASSIGNED_ROLES.DERS_NAZIR,
+          scopeId: publishedId,
+          grantedBy: MUDERRIS_ID,
+        });
+        await databaseService.db.insert(permissionGrants).values(
+          ["enrollment.decide", "ban.course"].map((permission) => ({
+            userId: TALEBE_ID,
+            scopeType: "course" as const,
+            scopeId: publishedId,
+            permission,
+            grantedBy: MUDERRIS_ID,
+          }))
+        );
+        expect((await groupsOf(TALEBE_ID))[0].permissions).toEqual([
+          "enrollment.decide",
+          "ban.course",
+        ]);
+        await get(`/courses/${publishedId}/enrollments`, TALEBE_ID).expect(200);
+
+        // The course's only müderris leaves: it is passive (MDRS-136).
+        await databaseService.db
+          .update(roleAssignments)
+          .set({ revokedAt: new Date(), revokedBy: ADMIN_ID })
+          .where(
+            and(
+              eq(roleAssignments.scopeId, publishedId),
+              eq(roleAssignments.role, ASSIGNED_ROLES.MUDERRIS)
+            )
+          );
+        expect(await groupsOf(TALEBE_ID)).toEqual([
+          expect.objectContaining({
+            role: "DERS_NAZIR",
+            permissions: ["ban.course"],
+          }),
+        ]);
+        await get(`/courses/${publishedId}/enrollments`, TALEBE_ID).expect(403);
+      });
+
+      it("lists a grant to 'every course', which the engine honours under a Medaris nazımı", async () => {
+        await databaseService.db.insert(roleAssignments).values({
+          userId: OTHER_ID,
+          role: ASSIGNED_ROLES.MEDARIS_NAZIM,
+          scopeType: "platform",
+          scopeId: null,
+          grantedBy: ADMIN_ID,
+        });
+        await databaseService.db.insert(permissionGrants).values([
+          {
+            userId: OTHER_ID,
+            scopeType: "platform",
+            scopeId: null,
+            permission: "platform.audit_read",
+            grantedBy: ADMIN_ID,
+            authorityScopeType: "platform",
+          },
+          {
+            userId: OTHER_ID,
+            scopeType: "course",
+            scopeId: null,
+            permission: "course.edit",
+            grantedBy: ADMIN_ID,
+            authorityScopeType: "platform",
+          },
+        ]);
+        expect(await groupsOf(OTHER_ID)).toEqual([
+          {
+            role: "MEDARIS_NAZIM",
+            scopeType: "platform",
+            scopes: [{ type: "platform", id: null, name: null }],
+            permissions: ["platform.audit_read"],
+          },
+          {
+            role: null,
+            scopeType: "course",
+            scopes: [{ type: "course", id: null, name: null }],
+            permissions: ["course.edit"],
+          },
+        ]);
+        await patch(`/courses/${draftId}`, OTHER_ID, {
+          title: "Her derste",
+        }).expect(200);
+      });
+
+      it("lists the başmüderris's course work under the medrese, as the engine gives it in its courses", async () => {
+        const head = (await groupsOf(MUDERRIS_ID)).find(
+          (g) => g.role === "MEDRESE_BASMUDERRIS"
+        );
+        expect(head?.scopes.map((s) => s.id)).toEqual([madrasahId]);
+        expect(head?.permissions).toEqual(
+          expect.arrayContaining([
+            "madrasah.course_open",
+            "course.edit",
+            "session.manage",
+            "enrollment.decide",
+          ])
+        );
+        expect(head?.permissions).not.toContain("course.manage_all");
+        expect(head?.permissions).not.toContain("kosk.manage");
+      });
+
+      it("leaves the medrese's course work out once every köşk holding its courses is passive, as each of those courses refuses it (review D1-27-33)", async () => {
+        const headCodes = async () =>
+          (await groupsOf(MUDERRIS_ID)).find(
+            (g) => g.role === "MEDRESE_BASMUDERRIS"
+          )?.permissions ?? [];
+        // The köşk's only nazımı leaves: it is passive (MDRS-136).
+        await databaseService.db
+          .update(roleAssignments)
+          .set({ revokedAt: new Date(), revokedBy: ADMIN_ID })
+          .where(
+            and(
+              eq(roleAssignments.scopeId, koskId),
+              eq(roleAssignments.role, ASSIGNED_ROLES.KOSK_NAZIM)
+            )
+          );
+        const closed = await headCodes();
+        expect(closed).toContain("madrasah.course_open");
+        for (const code of [
+          "course.edit",
+          "session.manage",
+          "enrollment.decide",
+        ]) {
+          expect(closed).not.toContain(code);
+        }
+        await patch(`/courses/${publishedId}`, MUDERRIS_ID, {
+          title: "Kapalı",
+        }).expect(403);
+
+        // A course of the medrese in a köşk that is still run: the work is
+        // there to do, so it is listed again.
+        const [other] = await databaseService.db
+          .insert(kosks)
+          .values({ ownerId: OTHER_ID, name: "Zeyrek Köşkü" })
+          .returning();
+        await assignRole(databaseService.db, {
+          userId: OTHER_ID,
+          role: ASSIGNED_ROLES.KOSK_NAZIM,
+          scopeId: other.id,
+          grantedBy: ADMIN_ID,
+        });
+        await databaseService.db.insert(courses).values({
+          koskId: other.id,
+          madrasahId,
+          authorId: OTHER_ID,
+          title: "Zeyrek'te bir ders",
+        });
+        expect(await headCodes()).toEqual(
+          expect.arrayContaining(["course.edit", "session.manage"])
+        );
+      });
+
+      it("never lists a code at a scope its catalogue tag does not reach, as the engine never honours it", async () => {
+        await assignRole(databaseService.db, {
+          userId: TALEBE_ID,
+          role: ASSIGNED_ROLES.DERS_NAZIR,
+          scopeId: publishedId,
+          grantedBy: MUDERRIS_ID,
+        });
+        // Written outside the API: a course grant of a köşk permission.
+        await databaseService.db.insert(permissionGrants).values(
+          ["kosk.manage", "session.manage"].map((permission) => ({
+            userId: TALEBE_ID,
+            scopeType: "course" as const,
+            scopeId: publishedId,
+            permission,
+            grantedBy: MUDERRIS_ID,
+          }))
+        );
+        expect(await groupsOf(TALEBE_ID)).toEqual([
+          expect.objectContaining({
+            role: "DERS_NAZIR",
+            permissions: ["session.manage"],
+          }),
+        ]);
+        await patch(`/kosks/${koskId}`, TALEBE_ID, {
+          name: "Ele geçti",
+        }).expect(403);
+      });
     });
 
     it("GET /me/permissions is the flat union", async () => {

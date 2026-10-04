@@ -9,11 +9,11 @@ import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import type { Messages } from "~/lib/i18n/messages";
 import { restoreMedrese } from "../actions";
-import { archiveErrorKey } from "../archive";
+import { madrasahRestoreErrorKey } from "../archive";
 
 /**
  * The banner of a hidden medrese (nazir 12, MDRS-143): the page says the medrese
- * is hidden, and offers "Medreseyi geri al" to whoever hid it or a level above.
+ * is hidden, and offers "Medreseyi geri getir" to whoever hid it or a level above.
  * For anyone else the sentence that names the kademe that hid it stands in the
  * button's place (`lockedNote`, worded by the page from the same rule as a row).
  * Restoring brings the courses hidden with the medrese back too; the page is
@@ -53,7 +53,7 @@ export function RestoreMadrasah({
         notify({
           tone: "error",
           title: t("Archive.hidden.failedTitle"),
-          description: words(archiveErrorKey(result.code)),
+          description: words(madrasahRestoreErrorKey(result.code)),
         });
         // The page may be stale (someone else restored it, or a higher level hid it again).
         router.refresh();

@@ -12,26 +12,27 @@ import {
   SCOPE_TYPES,
   type ScopeRef,
 } from "@medaris/common";
-import type { ArchiveItemType } from "../../../src/archive/archive-types";
 import {
   COURSE_ARCHIVE_READ_CODES,
-  COURSE_HIDE_LADDER,
-  DECK_HIDE_LADDER,
-  hideTargetOf,
   KOSK_ARCHIVE_READ_CODES,
-  KOSK_HIDE_LADDER,
   MADRASAH_ARCHIVE_READ_CODES,
-  MADRASAH_HIDE_LADDER,
-  SESSION_HIDE_LADDER,
-  WEEK_HIDE_LADDER,
 } from "../../../src/archive/hide-codes";
-import { actingLevel, type HideLevel } from "../../../src/archive/hide-level";
+import {
+  actingLevel,
+  BARE_WEEK_HIDE_LADDER,
+  COURSE_HIDE_LADDER,
+  type HideLevel,
+  type IHideStep,
+  KOSK_HIDE_LADDER,
+  MADRASAH_HIDE_LADDER,
+  SECTION_HIDE_LADDER,
+} from "../../../src/archive/hide-level";
 
 /**
  * MDRS-143, "hiding and restoring are catalogue permissions": who acts at
  * which level on each kind of item, asked of the real engine (the pure
- * `effectivePermissions`) with the holdings a role has, so the table cannot
- * drift from the catalogue's role defaults.
+ * `effectivePermissions`) with the holdings a role has, so the ladders of
+ * `hide-level.ts` cannot drift from the catalogue's role defaults.
  */
 const P = PERMISSIONS;
 const R = ASSIGNED_ROLES;
@@ -92,34 +93,56 @@ function authzFor(
   } as unknown as AuthzService;
 }
 
-const item = (type: ArchiveItemType, id = COURSE) => ({
-  type,
-  id,
-  koskId: KOSK,
-  courseId: type === "kosk" || type === "deck" ? null : COURSE,
-});
-
-const levelOf = async (
-  type: ArchiveItemType,
-  authz: AuthzService
-): Promise<HideLevel | null> => {
-  const target = hideTargetOf(item(type, type === "kosk" ? KOSK : COURSE));
-  if (!target) return null;
-  return actingLevel(authz, { sub: "u" }, target.resource, target.ladder, null);
+/** The kinds of item the ladders decide, with where the engine is asked and which ladder reads it. */
+type Kind = "course" | "week" | "weekWithSessions" | "session" | "kosk";
+const ASKED: Record<
+  Kind,
+  { resource: { entity: string; id: string }; ladder: readonly IHideStep[] }
+> = {
+  course: {
+    resource: { entity: ENTITIES.COURSE, id: COURSE },
+    ladder: COURSE_HIDE_LADDER,
+  },
+  // A week that brings no session back, and one that does (the repository
+  // decides which under the row lock).
+  week: {
+    resource: { entity: ENTITIES.COURSE, id: COURSE },
+    ladder: BARE_WEEK_HIDE_LADDER,
+  },
+  weekWithSessions: {
+    resource: { entity: ENTITIES.COURSE, id: COURSE },
+    ladder: SECTION_HIDE_LADDER,
+  },
+  session: {
+    resource: { entity: ENTITIES.COURSE, id: COURSE },
+    ladder: SECTION_HIDE_LADDER,
+  },
+  kosk: {
+    resource: { entity: ENTITIES.KOSK, id: KOSK },
+    ladder: KOSK_HIDE_LADDER,
+  },
 };
+
+const levelOf = (kind: Kind, authz: AuthzService): Promise<HideLevel | null> =>
+  actingLevel(
+    authz,
+    { sub: "u" },
+    ASKED[kind].resource as never,
+    ASKED[kind].ladder,
+    null
+  );
 
 describe("hiding and restoring by catalogue code (MDRS-143)", () => {
   describe("the table", () => {
     it("pins who acts at which level, per kind of item", () => {
-      const rows = (ladder: typeof COURSE_HIDE_LADDER) =>
+      const rows = (ladder: readonly IHideStep[]) =>
         ladder.map((step) => [step.level, [...step.codes]]);
       expect({
         kosk: rows(KOSK_HIDE_LADDER),
         madrasah: rows(MADRASAH_HIDE_LADDER),
         course: rows(COURSE_HIDE_LADDER),
-        week: rows(WEEK_HIDE_LADDER),
-        session: rows(SESSION_HIDE_LADDER),
-        deck: rows(DECK_HIDE_LADDER),
+        section: rows(SECTION_HIDE_LADDER),
+        bareWeek: rows(BARE_WEEK_HIDE_LADDER),
       }).toEqual({
         kosk: [
           ["platform", [P.PLATFORM_KOSK_EDIT]],
@@ -130,20 +153,22 @@ describe("hiding and restoring by catalogue code (MDRS-143)", () => {
           ["madrasah", [P.MADRASAH_HIDE]],
         ],
         course: [
+          ["platform", [P.PLATFORM_COURSE_HIDE]],
           ["kosk", [P.COURSE_HIDE]],
           ["madrasah", [P.MADRASAH_COURSE_HIDE]],
         ],
-        week: [
-          ["course", [P.WEEK_HIDE]],
+        section: [
+          ["platform", [P.PLATFORM_COURSE_HIDE]],
           ["kosk", [P.COURSE_HIDE]],
           ["madrasah", [P.MADRASAH_COURSE_HIDE]],
-        ],
-        session: [
           ["course", [P.WEEK_HIDE, P.SESSION_MANAGE]],
+        ],
+        bareWeek: [
+          ["platform", [P.PLATFORM_COURSE_HIDE]],
           ["kosk", [P.COURSE_HIDE]],
           ["madrasah", [P.MADRASAH_COURSE_HIDE]],
+          ["course", [P.WEEK_HIDE, P.SESSION_MANAGE, P.COURSE_EDIT]],
         ],
-        deck: [["kosk", [P.KOSK_MANAGE]]],
       });
     });
 
@@ -163,80 +188,50 @@ describe("hiding and restoring by catalogue code (MDRS-143)", () => {
         course: [P.WEEK_HIDE],
       });
     });
-
-    it("asks a course's codes on the course, a week's and a session's on their course, a köşk's on the köşk", () => {
-      expect(hideTargetOf(item("course"))?.resource).toEqual({
-        entity: ENTITIES.COURSE,
-        id: COURSE,
-      });
-      expect(hideTargetOf(item("week", "w1"))?.resource).toEqual({
-        entity: ENTITIES.COURSE,
-        id: COURSE,
-      });
-      expect(hideTargetOf(item("session", "s1"))?.resource).toEqual({
-        entity: ENTITIES.COURSE,
-        id: COURSE,
-      });
-      expect(hideTargetOf(item("kosk", KOSK))?.resource).toEqual({
-        entity: ENTITIES.KOSK,
-        id: KOSK,
-      });
-      expect(hideTargetOf(item("deck", "d1"))?.resource).toEqual({
-        entity: ENTITIES.KOSK,
-        id: KOSK,
-      });
-    });
-
-    it("has no target for a type with no storage or a week with no course", () => {
-      expect(hideTargetOf(item("recording"))).toBeNull();
-      expect(hideTargetOf(item("madrasah"))).toBeNull();
-      expect(
-        hideTargetOf({ type: "week", id: "w", koskId: KOSK, courseId: null })
-      ).toBeNull();
-    });
   });
 
   describe("the level a role acts at, from the catalogue's own defaults", () => {
+    const PLAIN = ["course", "week", "weekWithSessions", "session"] as const;
+
     it("a müderris acts at the course for weeks and sessions and at no level for a course", async () => {
       const authz = authzFor(R.MUDERRIS);
-      expect(await levelOf("week", authz)).toBe("course");
-      expect(await levelOf("session", authz)).toBe("course");
+      for (const kind of ["week", "weekWithSessions", "session"] as const) {
+        expect(await levelOf(kind, authz)).toBe("course");
+      }
       // `course.hide` is köşk-scoped and no role of the course holds it: this
       // is why "a müderris hides a course only with the permission" has no
       // permission to name (d-1004-14 leaves it to the owner).
       expect(await levelOf("course", authz)).toBeNull();
     });
 
-    it("a köşk nazımı acts at the köşk for a course, its weeks, its sessions, its köşk and its decks", async () => {
+    it("a köşk nazımı acts at the köşk for a course, its weeks, its sessions and its köşk", async () => {
       const authz = authzFor(R.KOSK_NAZIM);
-      for (const type of ["course", "week", "session"] as const) {
-        expect(await levelOf(type, authz)).toBe("kosk");
+      for (const kind of [...PLAIN, "kosk"] as const) {
+        expect(await levelOf(kind, authz)).toBe("kosk");
       }
-      expect(await levelOf("kosk", authz)).toBe("kosk");
-      expect(await levelOf("deck", authz)).toBe("kosk");
     });
 
     it("a başmüderris acts at the medrese for a medrese's course and at no level for a köşk's own", async () => {
       const inMedrese = authzFor(R.MEDRESE_BASMUDERRIS, {
         madrasahCourse: true,
       });
-      for (const type of ["course", "week", "session"] as const) {
-        expect(await levelOf(type, inMedrese)).toBe("madrasah");
+      for (const kind of PLAIN) {
+        expect(await levelOf(kind, inMedrese)).toBe("madrasah");
       }
       // The medrese is not on the chain of a course the köşk keeps for itself.
       const outside = authzFor(R.MEDRESE_BASMUDERRIS);
-      for (const type of ["course", "week", "session"] as const) {
-        expect(await levelOf(type, outside)).toBeNull();
+      for (const kind of PLAIN) {
+        expect(await levelOf(kind, outside)).toBeNull();
       }
       // And a başmüderris hides no köşk: `kosk.manage` is the köşk's.
       expect(await levelOf("kosk", inMedrese)).toBeNull();
     });
 
-    it("a ders nazırı and a medrese nazırı hold nothing until granted", async () => {
+    it("a ders nazırı, a medrese nazırı and a Medaris nazımı hold nothing until granted", async () => {
       for (const role of [R.DERS_NAZIR, R.MEDRESE_NAZIR, R.MEDARIS_NAZIM]) {
         const authz = authzFor(role);
-        for (const type of ["course", "week", "session", "kosk"] as const) {
-          expect(await levelOf(type, authz)).toBeNull();
+        for (const kind of [...PLAIN, "kosk"] as const) {
+          expect(await levelOf(kind, authz)).toBeNull();
         }
       }
     });
@@ -245,25 +240,29 @@ describe("hiding and restoring by catalogue code (MDRS-143)", () => {
       const authz = authzFor(R.DERS_NAZIR, {
         grants: [grant([P.WEEK_HIDE], courseScope)],
       });
-      expect(await levelOf("week", authz)).toBe("course");
-      expect(await levelOf("session", authz)).toBe("course");
+      for (const kind of ["week", "weekWithSessions", "session"] as const) {
+        expect(await levelOf(kind, authz)).toBe("course");
+      }
       expect(await levelOf("course", authz)).toBeNull();
     });
 
-    it("a ders nazırı granted only course.edit holds no rung", async () => {
+    it("a ders nazırı granted only course.edit brings back a week with no session in it, and nothing else (the reviewed rule)", async () => {
       const authz = authzFor(R.DERS_NAZIR, {
         grants: [grant([P.COURSE_EDIT], courseScope)],
       });
-      expect(await levelOf("week", authz)).toBeNull();
+      expect(await levelOf("week", authz)).toBe("course");
+      expect(await levelOf("weekWithSessions", authz)).toBeNull();
       expect(await levelOf("session", authz)).toBeNull();
+      expect(await levelOf("course", authz)).toBeNull();
     });
 
-    it("session.manage alone brings a session back but not a week", async () => {
+    it("session.manage alone brings a session back, and a week whose sessions come back with it", async () => {
       const authz = authzFor(R.DERS_NAZIR, {
         grants: [grant([P.SESSION_MANAGE], courseScope)],
       });
       expect(await levelOf("session", authz)).toBe("course");
-      expect(await levelOf("week", authz)).toBeNull();
+      expect(await levelOf("weekWithSessions", authz)).toBe("course");
+      expect(await levelOf("course", authz)).toBeNull();
     });
 
     it("a medrese nazırı granted madrasah.course_hide acts at the medrese for a medrese's course", async () => {
@@ -271,8 +270,8 @@ describe("hiding and restoring by catalogue code (MDRS-143)", () => {
         madrasahCourse: true,
         grants: [grant([P.MADRASAH_COURSE_HIDE], madrasahScope)],
       });
-      for (const type of ["course", "week", "session"] as const) {
-        expect(await levelOf(type, authz)).toBe("madrasah");
+      for (const kind of PLAIN) {
+        expect(await levelOf(kind, authz)).toBe("madrasah");
       }
     });
 
@@ -281,10 +280,20 @@ describe("hiding and restoring by catalogue code (MDRS-143)", () => {
         grants: [grant([P.PLATFORM_KOSK_EDIT])],
       });
       expect(await levelOf("kosk", authz)).toBe("platform");
-      // No platform code hides a course, a week or a session (d-1004-03 logic).
-      for (const type of ["course", "week", "session"] as const) {
-        expect(await levelOf(type, authz)).toBeNull();
+      // The platform code that hides a course is `platform.course_hide`.
+      for (const kind of PLAIN) {
+        expect(await levelOf(kind, authz)).toBeNull();
       }
+    });
+
+    it("a Medaris nazımı granted platform.course_hide acts at the platform for a course, its weeks and its sessions", async () => {
+      const authz = authzFor(R.MEDARIS_NAZIM, {
+        grants: [grant([P.PLATFORM_COURSE_HIDE])],
+      });
+      for (const kind of PLAIN) {
+        expect(await levelOf(kind, authz)).toBe("platform");
+      }
+      expect(await levelOf("kosk", authz)).toBeNull();
     });
 
     it("a Medaris nazımı granted platform.madrasah_edit acts at the platform for a medrese", async () => {
@@ -306,14 +315,8 @@ describe("hiding and restoring by catalogue code (MDRS-143)", () => {
         isSystemAdmin: () => true,
         effective: async () => null,
       } as unknown as AuthzService;
-      for (const type of [
-        "course",
-        "week",
-        "session",
-        "kosk",
-        "deck",
-      ] as const) {
-        expect(await levelOf(type, admin)).toBe("platform");
+      for (const kind of [...PLAIN, "kosk"] as const) {
+        expect(await levelOf(kind, admin)).toBe("platform");
       }
     });
   });

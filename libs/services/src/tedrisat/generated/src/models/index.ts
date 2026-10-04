@@ -132,6 +132,7 @@ export * from './GrantResponse';
 export * from './GroupUserResponse';
 export * from './HeadDelegationKind';
 export * from './HeadDelegationResponse';
+export * from './HeadDelegationScopeType';
 export * from './HealthCheckDto';
 export * from './HideLevel';
 export * from './HostingCourseStatus';

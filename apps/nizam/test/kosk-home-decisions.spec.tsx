@@ -67,6 +67,7 @@ const home = (
     sessionCounts: { upcoming: 0, past: 0, cancelled: 0 },
     missingLinkCount: 0,
     tab: "UPCOMING",
+    contentLocked: false,
     sessions: [],
     latestApplications,
     muderris: [],

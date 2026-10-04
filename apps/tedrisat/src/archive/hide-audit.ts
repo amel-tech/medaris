@@ -2,7 +2,6 @@ import { eq } from "drizzle-orm";
 import type { Tx } from "../course/course-purge";
 import { auditLog } from "../database/schema/audit.schema";
 import { courses } from "../database/schema/course.schema";
-import type { ArchiveItemType } from "./archive-types";
 import type { HideLevel } from "./hide-level";
 
 /**
@@ -10,23 +9,21 @@ import type { HideLevel } from "./hide-level";
  * the audit page and what reads it later (the appeal and ban screens) need no
  * per-kind parsing. The row is written in the same transaction as the change.
  *
- * `action` is `<entity>.hide` or `<entity>.restore`, which the audit page's
- * "Gizleme" filter already lists (`AUDIT_TYPE_RULES.HIDE`). `details` always
- * carries the thing's `title` and the `level` the actor acted at; a restore adds
+ * `action` is `<entity>.hide` or `<entity>.restore` (a session is `session`,
+ * as the Arşiv's restore of one writes it), which the audit page's "Gizleme"
+ * filter already lists (`AUDIT_TYPE_RULES.HIDE`). `details` always carries the
+ * thing's `title` and the `level` the actor acted at; a restore adds
  * `hiddenLevel`, the level that hid it. `koskId`, `madrasahId`, `courseId` and
- * `weekId` say where it sat, whichever of them apply.
+ * `weekId` say where it sat, whichever of them apply. The course's own routes
+ * and the Arşiv's restore write the same `action`, `title` and `level` in their
+ * repositories.
  */
 export type HideAuditEntity =
   | "kosk"
   | "madrasah"
   | "course"
   | "week"
-  | "lesson"
-  | "deck";
-
-/** A session is `lesson` in the audit log, as `lesson.cancel` already is. */
-export const auditEntityOf = (type: ArchiveItemType): HideAuditEntity =>
-  type === "session" ? "lesson" : (type as HideAuditEntity);
+  | "session";
 
 export interface IHideAuditEntry {
   actorId: string;

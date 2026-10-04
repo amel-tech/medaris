@@ -20,6 +20,10 @@ const TALEBE = account("TALEBE");
 const seedable = Boolean(KOSK_NAZIM.sub && process.env.E2E_DATABASE_URL);
 let fixture: GrantsFixture;
 
+// The screen shows moments in the browser's zone unless the account has one:
+// pinned, the end dates below mean the same instant on any machine (MDRS-254).
+test.use({ timezoneId: "Europe/Istanbul" });
+
 test.beforeEach(async () => {
   if (!seedable) return;
   fixture = await seedGrants({ nazim: KOSK_NAZIM.sub as string });
@@ -66,7 +70,7 @@ const ENROLLMENT = "Başvuruyu onayla ya da reddet";
 
 const daysFromNow = (n: number) => {
   const d = new Date(Date.now() + n * 24 * 3600 * 1000);
-  return d.toISOString().slice(0, 10);
+  return `${d.toISOString().slice(0, 10)}T12:00`;
 };
 
 test("nizam/38 — the list shows each ders nazırı with course, permission summary, end and giver, and names the medrese courses (criterion 1)", async ({
@@ -138,8 +142,8 @@ test("nizam/38 — 'Ders nazırı ata' finds the person by e-mail, offers only m
   const save = dialog.getByRole("button", { name: "Kaydet" });
   await expect(save).toBeDisabled();
 
-  // only what a köşk nazımı holds is offered: the 18 course permissions
-  await expect(dialog.getByRole("checkbox")).toHaveCount(18);
+  // only what a köşk nazımı holds is offered: the 19 course permissions
+  await expect(dialog.getByRole("checkbox")).toHaveCount(19);
 
   const email = dialog.getByRole("textbox", { name: /^Ders nazırı/ });
   await email.fill("kimse-yok-boyle@example.test");
@@ -169,7 +173,7 @@ test("nizam/38 — 'Ders nazırı ata' finds the person by e-mail, offers only m
   await expect(save).toBeEnabled();
 
   const end = daysFromNow(45);
-  await dialog.getByLabel("Bitiş tarihi (isteğe bağlı)").fill(end);
+  await dialog.getByLabel("Bitiş tarihi ve saati (isteğe bağlı)").fill(end);
   await save.click();
   await expect(dialog).toBeHidden();
 
@@ -184,7 +188,7 @@ test("nizam/38 — 'Ders nazırı ata' finds the person by e-mail, offers only m
   );
   expect(held.post?.grantedBy).toBe(KOSK_NAZIM.sub);
   expect(held.permissions).toEqual(["enrollment.decide", "session.manage"]);
-  // the post and each permission end at the same instant, the end of the day typed
+  // the post and each permission end at the same instant, the moment typed
   const endIso = held.post?.expiresAt?.toISOString();
   expect(endIso?.slice(0, 10)).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   for (const e of held.grantExpiries) {
@@ -212,14 +216,16 @@ test("nizam/38 — 'İzinleri düzenle' starts from what the person holds and ch
   for (const title of [SESSION_MANAGE, LIVE_LINK, WEEK_HIDE]) {
     await expect(box(dialog, title)).toBeChecked();
   }
-  await expect(dialog.getByLabel("Bitiş tarihi (isteğe bağlı)")).toHaveValue(
-    "2026-12-31"
-  );
+  await expect(
+    dialog.getByLabel("Bitiş tarihi ve saati (isteğe bağlı)")
+  ).toHaveValue("2026-12-31T23:59");
   await expect(dialog.locator(".mds-dialog__meta")).toHaveText("3 izin seçili");
 
   await box(dialog, LIVE_LINK).click();
   await box(dialog, RECORDING).click();
-  await dialog.getByLabel("Bitiş tarihi (isteğe bağlı)").fill("2026-11-15");
+  await dialog
+    .getByLabel("Bitiş tarihi ve saati (isteğe bağlı)")
+    .fill("2026-11-15T12:00");
   await dialog.getByRole("button", { name: "Kaydet" }).click();
   await expect(dialog).toBeHidden();
 
@@ -261,15 +267,15 @@ test("nizam/38 — a stray click on the scrim does not lose the boxes, and an en
   await page.mouse.click(5, 5);
   await expect(dialog).toBeVisible();
 
-  const end = dialog.getByLabel("Bitiş tarihi (isteğe bağlı)");
-  await end.fill("2020-01-01");
+  const end = dialog.getByLabel("Bitiş tarihi ve saati (isteğe bağlı)");
+  await end.fill("2020-01-01T12:00");
   await expect(
-    dialog.getByText("Bitiş tarihi bugünden sonra olmalı.")
+    dialog.getByText("Bitiş zamanı şu andan sonra olmalı.")
   ).toBeVisible();
   await expect(dialog.getByRole("button", { name: "Kaydet" })).toBeDisabled();
 
   // no permission, no save
-  await end.fill("2026-12-31");
+  await end.fill("2026-12-31T12:00");
   for (const title of [SESSION_MANAGE, LIVE_LINK, WEEK_HIDE]) {
     await box(dialog, title).click();
   }
