@@ -210,7 +210,8 @@
     "expiryInvalid": "Bitiş tarihi geçmişte ya da görevin bitişinden sonra olamaz.",
     "groupGone": "Bu grup artık yok. Gruplar yenilendi; yeniden seçin.",
     "groupNameTaken": "Bu adla başka bir grup var. Başka bir ad seçin.",
-    "exceedsGiver": "Bu izinlerin bir kısmı sizde yok; yalnız kendi izinlerinizi verebilirsiniz. Verebileceğiniz izinleri başnazıma sorun."
+    "exceedsGiver": "Bu izinlerin bir kısmı sizde yok; yalnız kendi izinlerinizi verebilirsiniz. Verebileceğiniz izinleri başnazıma sorun.",
+    "selfGrant": "Kendinize rol ya da izin veremezsiniz; size verilmiş bir rolü ya da izni devralmak da buna girer."
   },
   "Settings": {
     "title": "Medrese ayarları",
@@ -369,6 +370,7 @@
     "dismissedBody": "{name} artık bu medresenin nazırı değil.",
     "failedTitle": "Görevden alınamadı",
     "changed": "Bu kişinin verdikleri siz bakarken değişti. Liste yenilendi; seçimlerinizi yeniden yapın.",
+    "cascade": "Düşürdüğünüz görevlerden birinin sahibi başkalarına rol ya da izin vermiş; onlar sorulmadan kalırdı. Önce o kişiyi görevden alıp verdiklerine karar verin ya da görevini devralın.",
     "gone": "Bu kişi artık bu medresenin nazırı değil.",
     "loadFailedTitle": "Liste okunamadı",
     "loadFailed": "Bu kişinin verdikleri şu an okunamıyor. Biraz sonra yeniden deneyin."
@@ -547,9 +549,14 @@
       "confirm": "Gizle",
       "cancel": "Vazgeç",
       "done": "Medrese gizlendi",
-      "doneBody": "{name} ve dersleri artık siz ve Medaris yönetimi dışında kimseye görünmüyor. Geri getirmek için Medaris yönetimiyle görüşün.",
-      "already": "Bu medrese zaten gizli. Geri getirmek için Medaris yönetimiyle görüşün.",
-      "failedTitle": "Medrese gizlenemedi"
+      "doneBody": "{name} ve dersleri artık siz ve Medaris yönetimi dışında kimseye görünmüyor. Medreseyi siz ya da Medaris yönetimi geri getirebilir.",
+      "already": "Bu medrese zaten gizli. Onu gizleyen kademe ya da üstü geri getirebilir.",
+      "failedTitle": "Medrese gizlenemedi",
+      "restore": "Medreseyi geri getir",
+      "restored": "Medrese geri getirildi",
+      "restoredBody": "{name} ve onunla gizlenen dersleri yeniden görünür.",
+      "restoreFailedTitle": "Medrese geri getirilemedi",
+      "restoreLevel": "Bu medreseyi Medaris yönetimi gizledi; yalnız Medaris yönetimi geri getirebilir."
     }
   },
   "Courses": {

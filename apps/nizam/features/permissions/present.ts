@@ -439,6 +439,8 @@ const KNOWN: Record<string, string> = {
   MEDARIS_NAZIM_ALREADY_APPOINTED: "errors.alreadyAppointed",
   GRANT_EXPIRY_INVALID: "errors.expiryInvalid",
   DISMISS_DECISIONS_INCOMPLETE: "errors.dismissChanged",
+  DISMISS_SEAT_HANDED_ON: "errors.dismissCascade",
+  DISMISS_TAKE_OVER_WITHOUT_SEAT: "errors.dismissSeatless",
   USERS_POLICY_REQUIRED: "errors.usersPolicy",
   AUTHZ_FORBIDDEN: "errors.forbidden",
 };

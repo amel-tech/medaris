@@ -280,6 +280,9 @@ const KNOWN: Record<string, string> = {
   MADRASAH_NOT_FOUND: "errors.notFound",
   MADRASAH_NOT_HIDDEN: "errors.notHidden",
   DISMISS_DECISIONS_INCOMPLETE: "errors.delegationsChanged",
+  DISMISS_SEAT_HANDED_ON: "errors.delegationsCascade",
+  DISMISS_TAKE_OVER_WITHOUT_SEAT: "errors.delegationsSeatless",
+  SELF_GRANT_REFUSED: "errors.selfTakeOver",
   GRANT_EXPIRY_INVALID: "errors.expiryInvalid",
   AUTHZ_FORBIDDEN: "errors.forbidden",
 };
@@ -348,6 +351,29 @@ export function groupByPerson(
     else groups.set(item.to.id, { person: item.to, items: [item] });
   }
   return [...groups.values()];
+}
+
+/**
+ * Where a hand-on is held, as nizam/22 names it: the course it is limited to,
+ * or the medrese itself. Two grants of one code for two courses must not read
+ * alike, nor a müderris seat like a nazır seat of the medrese.
+ */
+export function handOnPlace(
+  item: Pick<HeadDelegationResponse, "scopeType" | "courseTitle">,
+  madrasahName: string
+): string {
+  return item.scopeType === "course" && item.courseTitle
+    ? item.courseTitle
+    : madrasahName;
+}
+
+/** " (Course)" after a group or a permission held in one course; nothing for the medrese's own. */
+export function handOnCourseSuffix(
+  item: Pick<HeadDelegationResponse, "scopeType" | "courseTitle">
+): string {
+  return item.scopeType === "course" && item.courseTitle
+    ? ` (${item.courseTitle})`
+    : "";
 }
 
 /** Every item of a person gets that person's answer. */

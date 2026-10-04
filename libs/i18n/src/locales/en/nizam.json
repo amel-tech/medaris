@@ -923,6 +923,9 @@
       "notHidden": "This medrese is not hidden.",
       "forbidden": "You may not do this.",
       "delegationsChanged": "What the head müderris handed on has changed; read the list again and repeat the choices.",
+      "delegationsCascade": "Someone whose post you are dropping gave roles or permissions to others, which would stay without anyone deciding on them. Dismiss that person first, or take their post over.",
+      "delegationsSeatless": "You cannot take over a permission of someone whose post you are dropping: a permission does not outlast its post. Drop that permission too, or take the post over.",
+      "selfTakeOver": "You cannot take over a role or a permission that was given to you; that would be giving it to yourself. Drop it.",
       "expiryInvalid": "The end date is in the past."
     },
     "change": "Change head müderris",
@@ -1276,6 +1279,8 @@
       "alreadyAppointed": "This person is already a Medaris nazim.",
       "expiryInvalid": "The end date is in the past or after the end of the appointment.",
       "dismissChanged": "What this person handed on has changed; read the list again and make the choices again.",
+      "dismissCascade": "Someone whose post you are dropping gave roles or permissions to others, which would stay without anyone deciding on them. Dismiss that person first, or take their post over.",
+      "dismissSeatless": "You cannot take over a permission of someone whose post you are dropping: a permission does not outlast its post. Drop that permission too, or take the post over.",
       "usersPolicy": "Choose what becomes of the permissions of the people who hold the group.",
       "forbidden": "You are not allowed to do this."
     }

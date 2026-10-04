@@ -423,7 +423,7 @@ describe("Grant ceilings and seat cascades (MDRS-135 review, e2e)", () => {
       expect(appoint.details).toMatchObject({ revokedLeftovers: [inKosk.id] });
     });
 
-    it("replacing the başmüderris: a nazır seat answered Düşür takes its holder's other grants in the medrese along, a grant taken over stays", async () => {
+    it("replacing the başmüderris: a nazır seat answered Düşür takes its holder's other grants in the medrese along, and a grant taken over beside it is refused, not kept seatless", async () => {
       await seat(NAZIR_A, HEAD);
       const fromAdmin = await grant(NAZIR_A, ADMIN, {
         permission: PERMISSIONS.MADRASAH_STUDENTS_VIEW,
@@ -432,20 +432,56 @@ describe("Grant ceilings and seat cascades (MDRS-135 review, e2e)", () => {
         permission: PERMISSIONS.MADRASAH_BAN,
       });
       const seatRow = await seatOf(NAZIR_A);
+      const path = `/madrasahs/${madrasahId}/head-muderris`;
 
-      await put(ADMIN, `/madrasahs/${madrasahId}/head-muderris`, {
+      // Kept with its seat gone it would be a permission with no role behind
+      // it, which a later seat brings back to life (review B-seatless).
+      const refused = await put(ADMIN, path, {
         userId: HEAD2,
         delegations: [
           { kind: "ROLE", id: seatRow.id, action: "DROP" },
           { kind: "GRANT", id: fromHead.id, action: "TAKE_OVER" },
         ],
+      }).expect(400);
+      expect(refused.body.code).toBe("DISMISS_TAKE_OVER_WITHOUT_SEAT");
+      expect(await seatOf(NAZIR_A)).toBeDefined();
+      expect((await liveGrants(NAZIR_A)).map((r) => r.id).sort()).toEqual(
+        [fromAdmin.id, fromHead.id].sort()
+      );
+
+      await put(ADMIN, path, {
+        userId: HEAD2,
+        delegations: [
+          { kind: "ROLE", id: seatRow.id, action: "DROP" },
+          { kind: "GRANT", id: fromHead.id, action: "DROP" },
+        ],
       }).expect(200);
 
-      expect((await liveGrants(NAZIR_A)).map((r) => r.id)).toEqual([
-        fromHead.id,
-      ]);
+      expect(await liveGrants(NAZIR_A)).toEqual([]);
       const [set] = await audits("madrasah.head_muderris.set", ADMIN);
       expect(set.details).toMatchObject({ droppedWithSeats: [fromAdmin.id] });
+    });
+
+    it("dismissing a Medaris nazımı: a grant taken over beside its holder's dropped seat is refused, not kept seatless", async () => {
+      await medarisNazim(MEDARIS);
+      await post(MEDARIS, `${nazirs()}/${NAZIR_A}`).expect(201);
+      await grant(NAZIR_A, MEDARIS, {
+        permission: PERMISSIONS.MADRASAH_STUDENTS_VIEW,
+      });
+      const given = (
+        await get(ADMIN, `/nizam/medaris-nazims/${MEDARIS}/given`).expect(200)
+      ).body as Array<{ kind: string; id: string }>;
+      const seatItem = given.find((g) => g.kind === "ROLE");
+      const grantItem = given.find((g) => g.kind === "GRANT");
+
+      const refused = await del(ADMIN, `/nizam/medaris-nazims/${MEDARIS}`, {
+        decisions: [
+          { kind: "ROLE", id: seatItem?.id, action: "DROP" },
+          { kind: "GRANT", id: grantItem?.id, action: "TAKE_OVER" },
+        ],
+      }).expect(400);
+      expect(refused.body.code).toBe("DISMISS_TAKE_OVER_WITHOUT_SEAT");
+      expect(await seatOf(NAZIR_A)).toBeDefined();
     });
 
     it("dismissing a Medaris nazımı: a seat they gave, answered Düşür, takes its holder's other grants along", async () => {
@@ -465,6 +501,226 @@ describe("Grant ceilings and seat cascades (MDRS-135 review, e2e)", () => {
 
       expect(await liveGrants(NAZIR_A)).toEqual([]);
       await get(NAZIR_A, students()).expect(403);
+    });
+  });
+
+  describe("a seat dropped one level down is not left with gifts nobody decided (decision 8, review B-cascade)", () => {
+    const chain = async () => {
+      await seat(NAZIR_A, HEAD);
+      await grant(NAZIR_A, HEAD, {
+        permission: PERMISSIONS.MADRASAH_NAZIR_APPOINT,
+      });
+      await post(NAZIR_A, `${nazirs()}/${NAZIR_B}`).expect(201);
+      await grant(NAZIR_B, HEAD, {
+        permission: PERMISSIONS.MADRASAH_NAZIR_APPOINT,
+      });
+      await post(NAZIR_B, `${nazirs()}/${NAZIR_C}`).expect(201);
+      expect((await seatOf(NAZIR_C)).grantedBy).toBe(NAZIR_B);
+    };
+
+    it("refuses to drop NAZIR_B's seat while the seat NAZIR_B gave NAZIR_C would stay unasked, and goes through once NAZIR_B is dismissed first", async () => {
+      await chain();
+      const refused = await del(HEAD, `${nazirs()}/${NAZIR_A}`, {
+        decisions: [{ userId: NAZIR_B, action: "DROP" }],
+      }).expect(409);
+      expect(refused.body.code).toBe("DISMISS_SEAT_HANDED_ON");
+      expect(refused.body.context.userIds).toEqual([NAZIR_B]);
+      expect(await seatOf(NAZIR_A)).toBeDefined();
+      expect(await seatOf(NAZIR_B)).toBeDefined();
+      expect(await audits("madrasah_nazir.dismiss")).toEqual([]);
+
+      // NAZIR_B's own dismissal asks about NAZIR_C, then NAZIR_A's can drop B.
+      await del(HEAD, `${nazirs()}/${NAZIR_B}`, {
+        decisions: [{ userId: NAZIR_C, action: "TAKE_OVER" }],
+      }).expect(204);
+      expect((await seatOf(NAZIR_C)).grantedBy).toBe(HEAD);
+      await del(HEAD, `${nazirs()}/${NAZIR_A}`, { decisions: [] }).expect(204);
+    });
+
+    it("lets the seat be taken over instead, which keeps its holder's gifts backed", async () => {
+      await chain();
+      await del(HEAD, `${nazirs()}/${NAZIR_A}`, {
+        decisions: [{ userId: NAZIR_B, action: "TAKE_OVER" }],
+      }).expect(204);
+      expect((await seatOf(NAZIR_B)).grantedBy).toBe(HEAD);
+      expect((await seatOf(NAZIR_C)).grantedBy).toBe(NAZIR_B);
+    });
+
+    it("refuses the same on a head change and on a Medaris nazımı's dismissal", async () => {
+      // The head gave NAZIR_A a seat and the right to appoint; NAZIR_A seated NAZIR_B.
+      await seat(NAZIR_A, HEAD);
+      await grant(NAZIR_A, HEAD, {
+        permission: PERMISSIONS.MADRASAH_NAZIR_APPOINT,
+      });
+      await post(NAZIR_A, `${nazirs()}/${NAZIR_B}`).expect(201);
+      const listed = (
+        await get(
+          ADMIN,
+          `/madrasahs/${madrasahId}/head-muderris/delegations`
+        ).expect(200)
+      ).body as Array<{ kind: string; id: string }>;
+      const head = await put(ADMIN, `/madrasahs/${madrasahId}/head-muderris`, {
+        userId: HEAD2,
+        delegations: listed.map((d) => ({
+          kind: d.kind,
+          id: d.id,
+          action: "DROP",
+        })),
+      }).expect(409);
+      expect(head.body.code).toBe("DISMISS_SEAT_HANDED_ON");
+
+      await medarisNazim(MEDARIS);
+      await post(MEDARIS, `${nazirs()}/${PERSON}`).expect(201);
+      await grant(PERSON, MEDARIS, {
+        permission: PERMISSIONS.MADRASAH_NAZIR_APPOINT,
+      });
+      await post(PERSON, `${nazirs()}/${NAZIR_C}`).expect(201);
+      const given = (
+        await get(ADMIN, `/nizam/medaris-nazims/${MEDARIS}/given`).expect(200)
+      ).body as Array<{ kind: string; id: string }>;
+      const nazim = await del(ADMIN, `/nizam/medaris-nazims/${MEDARIS}`, {
+        decisions: given.map((g) => ({
+          kind: g.kind,
+          id: g.id,
+          action: "DROP",
+        })),
+      }).expect(409);
+      expect(nazim.body.code).toBe("DISMISS_SEAT_HANDED_ON");
+    });
+  });
+
+  describe("taking over a row given to oneself is a self-grant (decision 9, review B-self-takeover)", () => {
+    it("refuses a Medaris nazımı's take-over of their own nazır seat on a head change, on the record, and lets them drop it", async () => {
+      await medarisNazim(MEDARIS);
+      await db().insert(permissionGrants).values({
+        userId: MEDARIS,
+        scopeType: SCOPE_TYPES.PLATFORM,
+        scopeId: null,
+        permission: PERMISSIONS.PLATFORM_HEAD_MUDERRIS_MANAGE,
+        grantedBy: ADMIN,
+        authorityScopeType: SCOPE_TYPES.PLATFORM,
+      });
+      await seat(MEDARIS, HEAD);
+      const own = await seatOf(MEDARIS);
+      const path = `/madrasahs/${madrasahId}/head-muderris`;
+
+      const refused = await put(MEDARIS, path, {
+        userId: HEAD2,
+        delegations: [{ kind: "ROLE", id: own.id, action: "TAKE_OVER" }],
+      }).expect(403);
+      expect(refused.body.code).toBe("SELF_GRANT_REFUSED");
+      expect((await seatOf(MEDARIS)).grantedBy).toBe(HEAD);
+      expect(
+        await audits("permission.self_grant_refused", MEDARIS)
+      ).toMatchObject([
+        {
+          entity: "madrasah",
+          entityId: madrasahId,
+          details: { route: "madrasah.head_muderris.take_over" },
+        },
+      ]);
+
+      await put(MEDARIS, path, {
+        userId: HEAD2,
+        delegations: [{ kind: "ROLE", id: own.id, action: "DROP" }],
+      }).expect(200);
+      expect(await seatOf(MEDARIS)).toBeUndefined();
+    });
+
+    it("refuses a başmüderris's take-over of what a dismissed nazır gave them", async () => {
+      await seat(NAZIR_A, HEAD);
+      await grant(NAZIR_A, HEAD, {
+        permission: PERMISSIONS.MADRASAH_MUDERRIS_MANAGE,
+      });
+      // NAZIR_A named the başmüderris müderris of the course.
+      await assignRole(db(), {
+        userId: HEAD,
+        role: ASSIGNED_ROLES.MUDERRIS,
+        scopeId: courseId,
+        grantedBy: NAZIR_A,
+      });
+      const refused = await del(HEAD, `${nazirs()}/${NAZIR_A}`, {
+        decisions: [{ userId: HEAD, action: "TAKE_OVER" }],
+      }).expect(403);
+      expect(refused.body.code).toBe("SELF_GRANT_REFUSED");
+      expect(await audits("permission.self_grant_refused", HEAD)).toHaveLength(
+        1
+      );
+      expect(await seatOf(NAZIR_A)).toBeDefined();
+    });
+  });
+
+  describe("replacing the başmüderris lists the course seats they gave, with where each is held (review B-head-roles-unlisted, B-head-delegation-no-scope)", () => {
+    it("lists a müderris seat the head gave in a course of the medrese, names the course, and drops it when answered so", async () => {
+      await assignRole(db(), {
+        userId: PERSON,
+        role: ASSIGNED_ROLES.MUDERRIS,
+        scopeId: courseId,
+        grantedBy: HEAD,
+      });
+      await seat(NAZIR_A, HEAD);
+      await put(HEAD, permissionsOf(NAZIR_A), {
+        permissions: [PERMISSIONS.COURSE_EDIT],
+        courseIds: [courseId],
+      }).expect(200);
+      const listed = (
+        await get(
+          ADMIN,
+          `/madrasahs/${madrasahId}/head-muderris/delegations`
+        ).expect(200)
+      ).body as Array<{
+        kind: string;
+        id: string;
+        role: string | null;
+        permission: string | null;
+        scopeType: string;
+        scopeId: string | null;
+        courseTitle: string | null;
+        to: { id: string };
+      }>;
+      expect(
+        listed
+          .map((d) => [
+            d.to.id,
+            d.kind,
+            d.role ?? d.permission,
+            d.scopeType,
+            d.courseTitle,
+          ])
+          .sort()
+      ).toEqual(
+        [
+          [PERSON, "ROLE", "MUDERRIS", "course", "Bina ve İzhar"],
+          [NAZIR_A, "ROLE", "MEDRESE_NAZIR", "madrasah", null],
+          [
+            NAZIR_A,
+            "GRANT",
+            PERMISSIONS.COURSE_EDIT,
+            "course",
+            "Bina ve İzhar",
+          ],
+        ].sort()
+      );
+
+      await put(ADMIN, `/madrasahs/${madrasahId}/head-muderris`, {
+        userId: HEAD2,
+        delegations: listed.map((d) => ({
+          kind: d.kind,
+          id: d.id,
+          action: d.to.id === PERSON ? "DROP" : "TAKE_OVER",
+        })),
+      }).expect(200);
+      const seats = await db()
+        .select()
+        .from(roleAssignments)
+        .where(
+          and(
+            eq(roleAssignments.userId, PERSON),
+            eq(roleAssignments.scopeId, courseId),
+            isNull(roleAssignments.revokedAt)
+          )
+        );
+      expect(seats).toEqual([]);
     });
   });
 
@@ -599,6 +855,101 @@ describe("Grant ceilings and seat cascades (MDRS-135 review, e2e)", () => {
           expect.objectContaining({ id: original.id, previousExpiresAt: null }),
         ],
       });
+    });
+  });
+
+  describe("a kept row given more time by a lower authority stays as the higher one gave it (review B-extension-recaps-row)", () => {
+    it("adds the başmüderris's extra time as a row of its own and leaves the başnazım's bypass in place; saving again changes nothing", async () => {
+      await db().insert(madrasahSettings).values({
+        madrasahId,
+        policyClosedCourseRequired: true,
+        updatedBy: HEAD,
+      });
+      await db()
+        .update(courses)
+        .set({ isClosed: true })
+        .where(eq(courses.id, courseId));
+      await seat(NAZIR_A, HEAD);
+      const tenDays = daysFromNow(10);
+      const twoCodes = [PERMISSIONS.COURSE_EDIT, PERMISSIONS.COURSE_SETTINGS];
+      await put(ADMIN, permissionsOf(NAZIR_A), {
+        permissions: twoCodes,
+        expiresAt: tenDays.toISOString(),
+      }).expect(200);
+      const fromAdmin = await liveGrants(NAZIR_A);
+      for (const row of fromAdmin) {
+        expect(row.authorityScopeType).toBe(SCOPE_TYPES.PLATFORM);
+      }
+      await patch(NAZIR_A, `/courses/${courseId}`, { isClosed: false }).expect(
+        200
+      );
+      await db()
+        .update(courses)
+        .set({ isClosed: true })
+        .where(eq(courses.id, courseId));
+
+      const save = () =>
+        put(HEAD, permissionsOf(NAZIR_A), {
+          permissions: [...twoCodes, PERMISSIONS.MADRASAH_STUDENTS_VIEW],
+        }).expect(200);
+      await save();
+
+      const rows = await liveGrants(NAZIR_A);
+      // The başnazım's rows are as he gave them.
+      for (const original of fromAdmin) {
+        expect(rows.find((r) => r.id === original.id)).toMatchObject({
+          grantedBy: ADMIN,
+          authorityScopeType: SCOPE_TYPES.PLATFORM,
+          expiresAt: tenDays,
+        });
+      }
+      // The extra time is the başmüderris's own, at the medrese's level.
+      const extra = rows.filter(
+        (r) =>
+          r.grantedBy === HEAD &&
+          r.permission !== PERMISSIONS.MADRASAH_STUDENTS_VIEW
+      );
+      expect(extra.map((r) => r.permission).sort()).toEqual(
+        [...twoCodes].sort()
+      );
+      for (const row of extra) {
+        expect(row).toMatchObject({
+          authorityScopeType: SCOPE_TYPES.MADRASAH,
+          expiresAt: null,
+        });
+      }
+      // So for the time the başnazım gave, his bypass still opens the course.
+      await patch(NAZIR_A, `/courses/${courseId}`, { isClosed: false }).expect(
+        200
+      );
+      const [grantAudit] = await audits("permission.grant", HEAD);
+      expect(
+        (grantAudit.details as { grants: Array<Record<string, unknown>> })
+          .grants
+      ).toEqual(
+        expect.arrayContaining(
+          fromAdmin.map((original) =>
+            expect.objectContaining({
+              alongside: original.id,
+              previouslyGrantedBy: ADMIN,
+              extendedFrom: tenDays.toISOString(),
+            })
+          )
+        )
+      );
+
+      // The dialog shows the code's end as its longest row, so saving it as
+      // shown touches nothing.
+      const shown = (await get(HEAD, permissionsOf(NAZIR_A)).expect(200))
+        .body as { expiresAt: string | null };
+      expect(shown.expiresAt).toBeNull();
+      const before = await liveGrants(NAZIR_A);
+      await save();
+      expect((await liveGrants(NAZIR_A)).map((r) => r.id).sort()).toEqual(
+        before.map((r) => r.id).sort()
+      );
+      expect(await audits("permission.grant", HEAD)).toHaveLength(1);
+      expect(await audits("permission.retime", HEAD)).toHaveLength(0);
     });
   });
 

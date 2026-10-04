@@ -2158,7 +2158,7 @@
     },
     "/madrasahs/{id}/hide": {
       "post": {
-        "description": "nazir/12's \"Medreseyi gizle\". The medrese leaves every list and its page closes, and so do its courses, all at once; nothing is deleted. The köşks that host its courses stay. Only the Medaris administration brings it back (`POST …/restore`). 409 (MADRASAH_ALREADY_HIDDEN) when it is hidden. Written to the audit log.",
+        "description": "nazir/12's \"Medreseyi gizle\". The medrese leaves every list and its page closes, and so do its courses, all at once; nothing is deleted. The köşks that host its courses stay. The level that hid it, or one above, brings it back (`POST …/restore`): the başmüderris what they hid, the Medaris administration anything. 409 (MADRASAH_ALREADY_HIDDEN) when it is hidden. Written to the audit log.",
         "operationId": "hideMadrasah",
         "parameters": [
           {
@@ -9079,7 +9079,7 @@
     },
     "/archive/{type}/{id}/restore": {
       "post": {
-        "description": "By kademe, as the bans are lifted (MDRS-135): the level that hid an item, or any level above it, brings it back. The ladder is course < medrese < köşk < platform; a hide records the level its hider acted at, and one recorded by nobody counts as the lowest level that could have hidden it. A course, and the weeks and sessions in one, are restored at the level the caller acts at on the course, exactly as `POST /courses/:id/archive` records it: the köşk's nazımı (`course.hide`), the başmüderris or a nazır given `madrasah.course_hide`, platform management (`platform.course_hide`). A deck is its köşk nazımı's; SYSTEM_ADMIN restores anything. A lower level than the one that hid it answers 403 (ARCHIVE_RESTORE_LEVEL) naming both, compared under the row lock. A course, week or session whose parent is still hidden answers 409 (ARCHIVE_PARENT_HIDDEN).",
+        "description": "By kademe, as the bans are lifted (MDRS-135): the level that hid an item, or any level above it, brings it back. The ladder is course < medrese < köşk < platform; a hide records the level its hider acted at, and one recorded by nobody counts as the lowest level that could have hidden it. A course, and the weeks and sessions in one, are restored at the level the caller acts at on the course, exactly as `POST /courses/:id/archive` records it: the köşk's nazımı (`course.hide`), the başmüderris or a nazır given `madrasah.course_hide`, platform management (`platform.course_hide`); a week or a session also at the course's own level, by whoever runs the course (`week.hide`, `session.manage` or `course.edit`), which is where they hide it. A deck is its köşk nazımı's; SYSTEM_ADMIN restores anything. A lower level than the one that hid it answers 403 (ARCHIVE_RESTORE_LEVEL) naming both, compared under the row lock. A course, week or session whose parent is still hidden answers 409 (ARCHIVE_PARENT_HIDDEN).",
         "operationId": "restoreArchiveItem",
         "parameters": [
           {
@@ -10816,7 +10816,7 @@
           },
           "contentLocked": {
             "type": "boolean",
-            "description": "True when the meeting links and the applicants' e-mail addresses were left out: the caller reads the page by `platform.kosk_edit` alone, which covers neither course content nor personal data"
+            "description": "True when the meeting links and the applicants were left out (`latestApplications` is empty; `counts.pendingApplications` still says how many wait): the caller reads the page by `platform.kosk_edit` alone, which covers neither course content nor personal data"
           },
           "sessions": {
             "description": "UPCOMING: the next seven days, soonest first; PAST and CANCELLED: the latest twenty, newest first",
@@ -10826,7 +10826,7 @@
             }
           },
           "latestApplications": {
-            "description": "The newest waiting applications, five at most",
+            "description": "The newest waiting applications, five at most; empty when `contentLocked` is true",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/KoskDashboardApplicationResponse"
@@ -12504,6 +12504,14 @@
           "GRANT"
         ]
       },
+      "HeadDelegationScopeType": {
+        "type": "string",
+        "enum": [
+          "madrasah",
+          "course"
+        ],
+        "description": "Where it is held: the medrese, or one of its courses (`courseTitle` names it)"
+      },
       "NazimPersonResponse": {
         "type": "object",
         "properties": {
@@ -12543,7 +12551,7 @@
           "role": {
             "type": "string",
             "nullable": true,
-            "description": "The role handed on (MEDRESE_NAZIR), for a ROLE"
+            "description": "The role handed on, for a ROLE: MEDRESE_NAZIR in the medrese, or a course seat (MUDERRIS, DERS_NAZIR) in one of its courses"
           },
           "permission": {
             "type": "string",
@@ -12554,6 +12562,24 @@
             "type": "string",
             "nullable": true,
             "description": "The group's name, for a group GRANT"
+          },
+          "scopeType": {
+            "description": "Where it is held: the medrese, or one of its courses (`courseTitle` names it)",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HeadDelegationScopeType"
+              }
+            ]
+          },
+          "scopeId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "courseTitle": {
+            "type": "string",
+            "nullable": true,
+            "description": "The course's title, for a row held in a course"
           },
           "to": {
             "$ref": "#/components/schemas/NazimPersonResponse"
@@ -12571,6 +12597,7 @@
         "required": [
           "kind",
           "id",
+          "scopeType",
           "to",
           "grantedAt"
         ]

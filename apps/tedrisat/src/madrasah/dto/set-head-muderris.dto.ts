@@ -54,7 +54,8 @@ export class HeadDelegationResponse {
   @ApiPropertyOptional({
     type: String,
     nullable: true,
-    description: "The role handed on (MEDRESE_NAZIR), for a ROLE",
+    description:
+      "The role handed on, for a ROLE: MEDRESE_NAZIR in the medrese, or a course seat (MUDERRIS, DERS_NAZIR) in one of its courses",
   })
   role!: string | null;
 
@@ -71,6 +72,24 @@ export class HeadDelegationResponse {
     description: "The group's name, for a group GRANT",
   })
   groupName!: string | null;
+
+  @ApiProperty({
+    enum: ["madrasah", "course"],
+    enumName: "HeadDelegationScopeType",
+    description:
+      "Where it is held: the medrese, or one of its courses (`courseTitle` names it)",
+  })
+  scopeType!: "madrasah" | "course";
+
+  @ApiPropertyOptional({ type: String, format: "uuid", nullable: true })
+  scopeId!: string | null;
+
+  @ApiPropertyOptional({
+    type: String,
+    nullable: true,
+    description: "The course's title, for a row held in a course",
+  })
+  courseTitle!: string | null;
 
   @ApiProperty({ type: () => NazimPersonResponse })
   to!: NazimPersonResponse;

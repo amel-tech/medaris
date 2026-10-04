@@ -210,7 +210,8 @@
     "expiryInvalid": "The end date cannot be in the past or after the end of the appointment.",
     "groupGone": "This group no longer exists. The groups were refreshed; choose again.",
     "groupNameTaken": "Another group has this name. Choose a different name.",
-    "exceedsGiver": "You do not hold some of these permissions; you can only give what you hold yourself. Ask the Medaris administration for the ones you need."
+    "exceedsGiver": "You do not hold some of these permissions; you can only give what you hold yourself. Ask the Medaris administration for the ones you need.",
+    "selfGrant": "You cannot give yourself a role or a permission; taking over one that was given to you counts as that."
   },
   "Settings": {
     "title": "Medrese settings",
@@ -369,6 +370,7 @@
     "dismissedBody": "{name} is no longer a nazır of this medrese.",
     "failedTitle": "The nazır could not be dismissed",
     "changed": "What this person gave changed while you were looking. The list was refreshed; make your choices again.",
+    "cascade": "Someone whose post you are dropping gave roles or permissions to others, which would stay without anyone deciding on them. Dismiss that person first and decide on what they gave, or take their post over.",
     "gone": "This person is no longer a nazır of this medrese.",
     "loadFailedTitle": "The list could not be read",
     "loadFailed": "What this person gave cannot be read right now. Try again in a moment."
@@ -547,9 +549,14 @@
       "confirm": "Hide",
       "cancel": "Cancel",
       "done": "Medrese hidden",
-      "doneBody": "{name} and its courses are now visible to nobody except you and Medaris administration. Ask Medaris administration to bring it back.",
-      "already": "This medrese is already hidden. Ask Medaris administration to bring it back.",
-      "failedTitle": "The medrese could not be hidden"
+      "doneBody": "{name} and its courses are now visible to nobody except you and Medaris administration. You or Medaris administration can bring the medrese back.",
+      "already": "This medrese is already hidden. The level that hid it, or one above it, can bring it back.",
+      "failedTitle": "The medrese could not be hidden",
+      "restore": "Bring the medrese back",
+      "restored": "Medrese brought back",
+      "restoredBody": "{name} and the courses hidden with it are visible again.",
+      "restoreFailedTitle": "The medrese could not be brought back",
+      "restoreLevel": "Medaris administration hid this medrese; only Medaris administration can bring it back."
     }
   },
   "Courses": {

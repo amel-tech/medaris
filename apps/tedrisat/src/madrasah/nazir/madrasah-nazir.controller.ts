@@ -178,6 +178,17 @@ export class MadrasahNazirController {
     // seated (owner, d-1004-28 "kendi atadıklarını").
     const manages =
       (await madrasahAuthorityOf(this.authz, request.user, id)) !== null;
+    // Taking over what the nazır gave oneself makes it a row one gave oneself
+    // (owner, d-1004: no self-grant on any path).
+    await this.selfGrant.assertNotSelf(
+      request.user,
+      dto.decisions.flatMap((d) =>
+        d.action === "TAKE_OVER" ? [d.userId] : []
+      ),
+      { entity: ENTITIES.MADRASAH, id },
+      { always: true },
+      "madrasah.nazir.dismiss.take_over"
+    );
     await this.nazirs.dismiss(id, userId, request.user.sub, dto.decisions, {
       appointedBy: manages ? undefined : request.user.sub,
     });

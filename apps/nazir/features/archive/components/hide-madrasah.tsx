@@ -9,8 +9,8 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import type { Messages } from "~/lib/i18n/messages";
-import { hideMedrese } from "../actions";
-import { archiveErrorKey } from "../archive";
+import { hideMedrese, restoreMedrese } from "../actions";
+import { archiveErrorKey, madrasahRestoreErrorKey } from "../archive";
 
 /**
  * "Medreseyi gizle" (nazir 12): the section under the list and its question.
@@ -20,7 +20,9 @@ import { archiveErrorKey } from "../archive";
  * a hidden medrese is brought back by the level that hid it or one above
  * (MDRS-135: the başmüderris who hid it, or Medaris yönetimi), and until then the
  * courses in the Arşiv cannot be brought back. Once it is done the section says
- * so where the button was. This page has no "Geri al" for the medrese itself yet.
+ * so where the button was, with "Medreseyi geri getir" beside it: what every
+ * sentence here promises is on the page. A medrese Medaris yönetimi hid is
+ * refused by the API (ARCHIVE_RESTORE_LEVEL), and the toast says why.
  */
 export function HideMadrasah({
   madrasahId,
@@ -36,6 +38,7 @@ export function HideMadrasah({
   const [pending, startTransition] = useTransition();
   const [open, setOpen] = useState(false);
   const [hidden, setHidden] = useState(false);
+  const [restoring, startRestore] = useTransition();
 
   const hide = () =>
     startTransition(async () => {
@@ -61,6 +64,26 @@ export function HideMadrasah({
       });
     });
 
+  const restore = () =>
+    startRestore(async () => {
+      const result = await restoreMedrese(madrasahId);
+      if (result.success || result.code === "MADRASAH_NOT_HIDDEN") {
+        setHidden(false);
+        notify({
+          tone: "success",
+          title: t("Archive.hide.restored"),
+          description: t("Archive.hide.restoredBody", { name: madrasahName }),
+        });
+        router.refresh();
+        return;
+      }
+      notify({
+        tone: "error",
+        title: t("Archive.hide.restoreFailedTitle"),
+        description: words(madrasahRestoreErrorKey(result.code)),
+      });
+    });
+
   return (
     <section
       aria-labelledby="hide-heading"
@@ -72,9 +95,19 @@ export function HideMadrasah({
       </h2>
       <div className="mds-card flex flex-wrap items-center justify-between gap-4 p-card">
         {hidden ? (
-          <Alert tone="warning" title={t("Archive.hide.done")}>
-            <p>{t("Archive.hide.doneBody", { name: madrasahName })}</p>
-          </Alert>
+          <>
+            <Alert tone="warning" title={t("Archive.hide.done")}>
+              <p>{t("Archive.hide.doneBody", { name: madrasahName })}</p>
+            </Alert>
+            <Button
+              variant="outline"
+              iconLeft={<Icon name="undo" size="sm" />}
+              loading={restoring}
+              onClick={restore}
+            >
+              {t("Archive.hide.restore")}
+            </Button>
+          </>
         ) : (
           <>
             <p className="max-inline-measure">

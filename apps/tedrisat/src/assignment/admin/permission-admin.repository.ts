@@ -38,6 +38,7 @@ import type {
 } from "./dto/permission-admin.dto";
 import {
   DismissDecisionsError,
+  DismissTakeOverWithoutSeatError,
   GrantExpiryInvalidError,
   MedarisNazimAlreadyAppointedError,
   MedarisNazimNotFoundError,
@@ -46,7 +47,10 @@ import {
   UsersPolicyRequiredError,
 } from "./errors";
 import { checkGrantExpiry, type IHeldGrant, planGrants } from "./grant-plan";
-import { revokeOrphanedGrants } from "./orphaned-grants";
+import {
+  assertNothingLeftUnder,
+  revokeOrphanedGrants,
+} from "./orphaned-grants";
 
 /** The platform grants a Medaris nazımı holds, and the course-wide ones. */
 const nazimScope = or(
@@ -613,8 +617,9 @@ export class PermissionAdminRepository {
       }
       // A seat dropped here takes with it what its holder was given in its
       // scope, by anyone, unless another role of theirs below the platform
-      // still covers it (a permission cannot outlast its role); a grant taken
-      // over in this same act stays, as decided.
+      // still covers it (a permission cannot outlast its role). A grant
+      // answered TAKE_OVER that would go with its holder's seat is refused
+      // rather than kept with no seat behind it.
       const takenOver = given
         .filter(
           (g) =>
@@ -624,22 +629,24 @@ export class PermissionAdminRepository {
         )
         .map((g) => g.id);
       const droppedWithSeats: string[] = [];
-      for (const seat of given) {
-        if (
-          seat.kind !== "ROLE" ||
-          (seat.userId !== userId &&
-            decided.get(key(seat.kind, seat.id))?.action !== "DROP")
-        ) {
-          continue;
-        }
+      const droppedSeats = given.filter(
+        (seat) =>
+          seat.kind === "ROLE" &&
+          (seat.userId === userId ||
+            decided.get(key(seat.kind, seat.id))?.action === "DROP")
+      );
+      for (const seat of droppedSeats) {
         droppedWithSeats.push(
           ...(await revokeOrphanedGrants(tx, {
             userId: seat.userId,
             within: seat,
             revokedBy: actorId,
-            keep: takenOver,
           }))
         );
+      }
+      const seatless = takenOver.filter((id) => droppedWithSeats.includes(id));
+      if (seatless.length > 0) {
+        throw new DismissTakeOverWithoutSeatError(seatless);
       }
 
       await tx
@@ -656,6 +663,14 @@ export class PermissionAdminRepository {
         .update(roleAssignments)
         .set({ revokedAt: sql`now()`, revokedBy: actorId })
         .where(eq(roleAssignments.id, role.id));
+      // One level down (owner, d-1004): a seat dropped here whose holder
+      // handed on something still held under it, which no seat of theirs
+      // backs any more, would leave rows nobody was asked about. The person's
+      // own seats are theirs: what they gave is the list decided above.
+      await assertNothingLeftUnder(
+        tx,
+        droppedSeats.filter((seat) => seat.userId !== userId)
+      );
       await tx.insert(auditLog).values({
         actorId,
         action: "medaris_nazim.dismiss",

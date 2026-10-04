@@ -392,6 +392,12 @@ describe("the group form (nizam 13 criteria 2, 3, 4)", () => {
     );
     expect(permissionErrorKey({ code: "WHATEVER" })).toBe("errors.generic");
     expect(permissionErrorKey(undefined)).toBe("errors.generic");
+    expect(permissionErrorKey({ code: "DISMISS_SEAT_HANDED_ON" })).toBe(
+      "errors.dismissCascade"
+    );
+    expect(permissionErrorKey({ code: "DISMISS_TAKE_OVER_WITHOUT_SEAT" })).toBe(
+      "errors.dismissSeatless"
+    );
   });
 });
 

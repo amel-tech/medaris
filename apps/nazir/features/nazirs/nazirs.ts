@@ -371,6 +371,10 @@ export function nazirErrorKey(code: string): string {
   switch (code) {
     case "DISMISS_DECISIONS_INCOMPLETE":
       return "Dismiss.changed";
+    case "DISMISS_SEAT_HANDED_ON":
+      return "Dismiss.cascade";
+    case "SELF_GRANT_REFUSED":
+      return "Problems.selfGrant";
     case "MADRASAH_NAZIR_NOT_FOUND":
       return "Dismiss.gone";
     case "AUTHZ_FORBIDDEN":

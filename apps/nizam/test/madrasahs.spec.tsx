@@ -16,6 +16,8 @@ import {
   directoryPath,
   groupByPerson,
   handleError,
+  handOnCourseSuffix,
+  handOnPlace,
   hostingLabel,
   isEmailLike,
   type Messages,
@@ -256,6 +258,18 @@ describe("the Medrese aç form (nizam 08, criteria 1 to 3)", () => {
     );
     expect(madrasahErrorKey({ code: "WHATEVER" })).toBe("errors.generic");
     expect(madrasahErrorKey(undefined)).toBe("errors.generic");
+  });
+
+  it("words the head change's refusals: a dropped seat with hand-ons, a grant kept with no seat, taking over one's own", () => {
+    expect(madrasahErrorKey({ code: "DISMISS_SEAT_HANDED_ON" })).toBe(
+      "errors.delegationsCascade"
+    );
+    expect(madrasahErrorKey({ code: "DISMISS_TAKE_OVER_WITHOUT_SEAT" })).toBe(
+      "errors.delegationsSeatless"
+    );
+    expect(madrasahErrorKey({ code: "SELF_GRANT_REFUSED" })).toBe(
+      "errors.selfTakeOver"
+    );
   });
 });
 
@@ -551,6 +565,21 @@ describe("the hand-ons of a replaced başmüderris (nizam 22)", () => {
     expect(personsReady(people, { fatma: "DROP", ummu: "TAKE_OVER" })).toBe(
       true
     );
+  });
+
+  it("names the course a seat or a grant is held in, and the medrese for its own (review B-head-delegation-no-scope)", () => {
+    const inCourse = {
+      scopeType: "course",
+      courseTitle: "Bina ve İzhar",
+    } as HeadDelegationResponse;
+    const inMedrese = {
+      scopeType: "madrasah",
+      courseTitle: null,
+    } as HeadDelegationResponse;
+    expect(handOnPlace(inCourse, "Süleymaniye")).toBe("Bina ve İzhar");
+    expect(handOnPlace(inMedrese, "Süleymaniye")).toBe("Süleymaniye");
+    expect(handOnCourseSuffix(inCourse)).toBe(" (Bina ve İzhar)");
+    expect(handOnCourseSuffix(inMedrese)).toBe("");
   });
 
   it("sends the person's answer for every one of their items", () => {

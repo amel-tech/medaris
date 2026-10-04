@@ -1,3 +1,4 @@
+import { authorityAbove } from "@medaris/common";
 import { Injectable } from "@nestjs/common";
 import {
   and,
@@ -22,7 +23,10 @@ import {
   type IHeldGrant,
   planGrants,
 } from "../../assignment/admin/grant-plan";
-import { revokeOrphanedGrants } from "../../assignment/admin/orphaned-grants";
+import {
+  assertNothingLeftUnder,
+  revokeOrphanedGrants,
+} from "../../assignment/admin/orphaned-grants";
 import { grantHeld } from "../../assignment/assignment.repository";
 import type { Tx } from "../../course/course-purge";
 import { DatabaseService } from "../../database/database.service";
@@ -107,6 +111,47 @@ function inMedreseTree(
       and(eq(type, SCOPE_TYPES.MADRASAH), eq(id, madrasahId)),
       and(eq(type, SCOPE_TYPES.COURSE), inArray(id, medreseCourses))
     ) as SQL;
+}
+
+/**
+ * The rows of one scope, by code or group: for each, the one that runs longest
+ * (no end beats any end; on a tie, the oldest) leads, and the others ride
+ * along with it. A code can be held twice when a kept row was given more time
+ * by someone whose holding sits below the row's authority (`setPermissions`).
+ */
+export function longestRunning<
+  T extends {
+    id: string;
+    permission: string | null;
+    groupId: string | null;
+    expiresAt: Date | null;
+  },
+>(rows: readonly T[]): { leads: T[]; ridersOf: Map<string, T[]> } {
+  const itemOf = (row: T) =>
+    row.groupId ? `group:${row.groupId}` : `code:${row.permission}`;
+  const runsLonger = (a: T, b: T) =>
+    a.expiresAt === null
+      ? b.expiresAt !== null
+      : b.expiresAt !== null && a.expiresAt > b.expiresAt;
+  const lead = new Map<string, T>();
+  const riding = new Map<string, T[]>();
+  for (const row of rows) {
+    const item = itemOf(row);
+    const current = lead.get(item);
+    if (!current) {
+      lead.set(item, row);
+      riding.set(item, []);
+    } else if (runsLonger(row, current)) {
+      riding.get(item)?.push(current);
+      lead.set(item, row);
+    } else {
+      riding.get(item)?.push(row);
+    }
+  }
+  const leads = rows.filter((row) => lead.get(itemOf(row)) === row);
+  const ridersOf = new Map<string, T[]>();
+  for (const [item, row] of lead) ridersOf.set(row.id, riding.get(item) ?? []);
+  return { leads, ridersOf };
 }
 
 /** Reads and writes behind nazir/05, 06 and 15: the medrese's MEDRESE_NAZIR roles and what hangs on them. */
@@ -307,8 +352,13 @@ export class MadrasahNazirRepository {
    *
    * A kept row whose end moves later is handed on again: it becomes the
    * actor's (its giver and its authority are the actor's), is audited as a
-   * grant and is listed under what the actor gave. One whose end moves earlier
-   * keeps its giver and is audited as a re-time.
+   * grant and is listed under what the actor gave. When the actor's own
+   * holding of it sits below the authority the row was given with, the row is
+   * left as it was given and the extra time is a row of its own, in the
+   * actor's name: rewriting it would strip, for the time already given, what a
+   * higher authority gave (d-1004-27). A scope's rows are planned by the one
+   * that runs longest for each code or group; the others ride along with it.
+   * One whose end moves earlier keeps its giver and is audited as a re-time.
    */
   async setPermissions(
     madrasahId: string,
@@ -391,6 +441,7 @@ export class MadrasahNazirRepository {
           groupId: permissionGrants.groupId,
           expiresAt: permissionGrants.expiresAt,
           grantedBy: permissionGrants.grantedBy,
+          authority: permissionGrants.authorityScopeType,
         })
         .from(permissionGrants)
         .where(
@@ -424,12 +475,22 @@ export class MadrasahNazirRepository {
       const revoke: string[] = [];
       const retime: string[] = [];
       const insert: IHandedOn[] = [];
+      // The rows that ride along with the longest-running one of their code
+      // or group in their scope, by that row's id.
+      const riders = new Map<string, typeof held>();
       for (const [key, scope] of scopes) {
-        const plan = planGrants(
-          held.filter((row) => keyOf(row) === key) as IHeldGrant[],
-          { groupId: scope.groupId, permissions: scope.permissions, expiresAt }
+        const { leads, ridersOf } = longestRunning(
+          held.filter((row) => keyOf(row) === key)
         );
-        revoke.push(...plan.revoke);
+        for (const [id, rows] of ridersOf) riders.set(id, rows);
+        const plan = planGrants(leads as IHeldGrant[], {
+          groupId: scope.groupId,
+          permissions: scope.permissions,
+          expiresAt,
+        });
+        for (const id of plan.revoke) {
+          revoke.push(id, ...(ridersOf.get(id) ?? []).map((row) => row.id));
+        }
         retime.push(...plan.retime);
         for (const item of plan.insert) {
           const row = {
@@ -451,7 +512,17 @@ export class MadrasahNazirRepository {
           : row.expiresAt !== null && expiresAt > row.expiresAt;
       const retimed = held.filter((row) => retime.includes(row.id));
       const extended = retimed.filter(later);
-      const shortened = retimed.filter((row) => !later(row));
+      // A shorter end shortens the rows riding along too, where they run past it.
+      const shortened = retimed
+        .filter((row) => !later(row))
+        .flatMap((row) => [
+          row,
+          ...(riders.get(row.id) ?? []).filter(
+            (rider) =>
+              expiresAt !== null &&
+              (rider.expiresAt === null || rider.expiresAt > expiresAt)
+          ),
+        ]);
       const handedOn = (row: (typeof held)[number]): IHandedOn => ({
         scopeType: row.scopeType,
         scopeId: row.scopeId as string,
@@ -491,6 +562,8 @@ export class MadrasahNazirRepository {
         authority: ScopeType;
         extendedFrom?: string | null;
         previouslyGrantedBy?: string;
+        /** The row given more time, when the extra time is a row of its own. */
+        alongside?: string;
       }> = [];
       if (insert.length > 0) {
         const inserted = await tx
@@ -524,12 +597,37 @@ export class MadrasahNazirRepository {
       }
       for (const row of extended) {
         const authority = authorityOf(handedOn(row));
-        await tx
-          .update(permissionGrants)
-          .set({ expiresAt, grantedBy: actorId, authorityScopeType: authority })
-          .where(eq(permissionGrants.id, row.id));
+        const stored = row.authority ?? row.scopeType;
+        let id = row.id;
+        if (stored === authority || authorityAbove(authority, stored)) {
+          await tx
+            .update(permissionGrants)
+            .set({
+              expiresAt,
+              grantedBy: actorId,
+              authorityScopeType: authority,
+            })
+            .where(eq(permissionGrants.id, row.id));
+        } else {
+          // The actor cannot carry what the row was given with: it stays as
+          // it was given, and the extra time is the actor's own row.
+          const [fresh] = await tx
+            .insert(permissionGrants)
+            .values({
+              userId: nazirId,
+              scopeType: row.scopeType,
+              scopeId: row.scopeId,
+              permission: row.permission,
+              groupId: row.groupId,
+              grantedBy: actorId,
+              authorityScopeType: authority,
+              expiresAt,
+            })
+            .returning({ id: permissionGrants.id });
+          id = fresh.id;
+        }
         given.push({
-          id: row.id,
+          id,
           permission: row.permission,
           groupId: row.groupId,
           scopeType: row.scopeType,
@@ -537,6 +635,7 @@ export class MadrasahNazirRepository {
           authority,
           extendedFrom: row.expiresAt?.toISOString() ?? null,
           previouslyGrantedBy: row.grantedBy,
+          ...(id === row.id ? {} : { alongside: row.id }),
         });
       }
       if (given.length > 0) {
@@ -817,6 +916,16 @@ export class MadrasahNazirRepository {
         .update(roleAssignments)
         .set(revoked)
         .where(eq(roleAssignments.id, role.id));
+      // One level down (owner, d-1004): a seat dropped here whose holder
+      // handed on something still held under it, which no seat of theirs
+      // backs any more, would leave rows nobody was asked about. The act is
+      // refused; that holder is dismissed first, where those rows are listed.
+      await assertNothingLeftUnder(
+        tx,
+        given.filter(
+          (g) => g.kind === "ROLE" && plan.drop.some((d) => d.id === g.id)
+        )
+      );
       await tx.insert(auditLog).values({
         actorId,
         action: "madrasah_nazir.dismiss",

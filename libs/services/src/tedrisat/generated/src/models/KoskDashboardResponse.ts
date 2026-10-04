@@ -111,7 +111,7 @@ export interface KoskDashboardResponse {
      */
     tab: DashboardSessionTab;
     /**
-     * True when the meeting links and the applicants' e-mail addresses were left out: the caller reads the page by `platform.kosk_edit` alone, which covers neither course content nor personal data
+     * True when the meeting links and the applicants were left out (`latestApplications` is empty; `counts.pendingApplications` still says how many wait): the caller reads the page by `platform.kosk_edit` alone, which covers neither course content nor personal data
      * @type {boolean}
      * @memberof KoskDashboardResponse
      */
@@ -123,7 +123,7 @@ export interface KoskDashboardResponse {
      */
     sessions: Array<KoskDashboardSessionResponse>;
     /**
-     * The newest waiting applications, five at most
+     * The newest waiting applications, five at most; empty when `contentLocked` is true
      * @type {Array<KoskDashboardApplicationResponse>}
      * @memberof KoskDashboardResponse
      */
