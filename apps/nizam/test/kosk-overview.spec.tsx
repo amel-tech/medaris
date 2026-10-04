@@ -94,6 +94,7 @@ const row = (
   studentCount: 28,
   pendingCount: 2,
   bannedCount: 5,
+  canRestore: true,
   ...over,
 });
 

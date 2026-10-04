@@ -269,6 +269,29 @@ describe("Naming yourself on the remaining paths (MDRS-135 review, e2e)", () => 
       }).expect(200);
       expect(await refusals()).toHaveLength(0);
     });
+
+    it("leaves the köşk nazımı free to teach a passive course of their köşk", async () => {
+      // A müderris who left makes the course passive (MDRS-136); its content
+      // stays open to the köşk's nazımı (owner, 4 October), so naming
+      // themselves into it is naming themselves into what they hold.
+      await assignRole(db(), {
+        userId: OTHER,
+        role: ASSIGNED_ROLES.MUDERRIS,
+        scopeId: ownCourse,
+        grantedBy: NAZIM,
+      });
+      await db()
+        .update(roleAssignments)
+        .set({ revokedAt: new Date(), revokedBy: NAZIM })
+        .where(eq(roleAssignments.scopeId, ownCourse));
+      await send("put", NAZIM, `/courses/${ownCourse}/muderris`, {
+        version: await versionOf(ownCourse),
+        muderris: [{ userId: NAZIM, name: "Nazım" }],
+        imamUserId: NAZIM,
+      }).expect(200);
+      expect(await heldRoles(NAZIM, ownCourse)).toHaveLength(1);
+      expect(await refusals()).toHaveLength(0);
+    });
   });
 
   describe("opening a köşk or a medrese", () => {

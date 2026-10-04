@@ -287,6 +287,7 @@ const kosk: KoskDashboardResponse = {
   },
   sessionCounts: { upcoming: 4, past: 13, cancelled: 1 },
   missingLinkCount: 1,
+  contentLocked: false,
   tab: "UPCOMING",
   sessions: [
     {

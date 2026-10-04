@@ -138,6 +138,8 @@ export interface NazirRow {
   assignmentEnd: string | null;
   /** "Atayan: … · 30 Eylül 2026", for a nazır who holds nothing yet */
   appointedLine: string;
+  /** who seated them: a nazır who appoints dismisses only their own (d-1004-28) */
+  appointedById: string | null;
   /** null where the cell is a dash */
   end: { label: string; iso: string | null } | null;
   giver: { name: string; at: Dated } | null;
@@ -182,6 +184,7 @@ export function nazirRows(
         name: personName(n.appointedBy, t("Nazirs.unknownPerson")),
         date: day.format(new Date(n.appointedAt)),
       }),
+      appointedById: n.appointedBy?.id ?? null,
       end: awaiting
         ? null
         : n.expiresAt

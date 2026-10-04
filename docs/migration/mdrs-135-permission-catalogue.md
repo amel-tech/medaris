@@ -22,18 +22,18 @@ printed it; the commands run from the repository root unless a `cd` says otherwi
 
 ```
 $ node -e 'const c=require("./libs/common/dist"); …'      # after `tsc -b libs/common`
-codes 75 listed 56 grantable 56 implicit 14 derived 3 unlisted 2
-tagged platform 17
+codes 77 listed 57 grantable 57 implicit 14 derived 3 unlisted 3
+tagged platform 18
 tagged kosk 10
-tagged madrasah 12
+tagged madrasah 13
 tagged course 22
 default MEDARIS_NAZIM 0
 default KOSK_NAZIM 30
-default MEDRESE_BASMUDERRIS 33
+default MEDRESE_BASMUDERRIS 34
 default MEDRESE_NAZIR 0
 default MUDERRIS 22
 default DERS_NAZIR 0
-unlisted: course.hide, permission.grant
+unlisted: course.hide, permission.grant, madrasah.hide
 notInMadrasahCourse: course.open_standalone
 ```
 
@@ -43,17 +43,19 @@ $ git show cd36d706:apps/tedrisat/src/assignment/permission-catalog.ts | grep -c
 ```
 
 So the catalogue is the 54 codes MDRS-169 and MDRS-171 gave the screens, plus the owner's 1 October
-entries and the codes the routes needed: 75 in all.
+entries, the codes the routes needed, `madrasah.hide` (review fix M3) and `platform.course_hide`
+(MDRS-143): 77 in all.
 
-- **Listed** (56): what the screens draw and a role or a grant carries; all 56 are grantable.
+- **Listed** (57): what the screens draw and a role or a grant carries; all 57 are grantable.
 - **Implicit** (14) are held by a relationship (`course.view`, `course.view_details`, `course.enroll`,
   `course.staff_read`, `kosk.view`, `madrasah.view`, five `deck.*`, three real deletes). No screen
   lists them, no grant carries them, and a role default never adds one.
 - **Derived** (3) are an ability inside `course.settings` that a policy can close on its own:
   `setting.approval_off`, `setting.recordings_public`, `setting.course_open`.
-- **Unlisted** (2), role defaults no screen draws and no grant carries: `permission.grant` (the
-  permission to give permissions: held by the roles that may give them, never handed on) and
-  `course.hide` (the köşk nazımı's hiding of a course: the canvases have no sentence for it).
+- **Unlisted** (3), role defaults no screen draws and no grant carries: `permission.grant` (the
+  permission to give permissions: held by the roles that may give them, never handed on),
+  `course.hide` (the köşk nazımı's hiding of a course: the canvases have no sentence for it) and
+  `madrasah.hide` (the başmüderris's hiding of the medrese, review fix M3).
 
 The three real deletes (`course.delete`, `kosk.delete`, `madrasah.delete`) are held by no role, no
 grant and no relationship: only the başnazım's realm bypass reaches them (MDRS-124).
@@ -63,7 +65,7 @@ grant and no relationship: only the başnazım's realm bypass reaches them (MDRS
 Defaults are computed from the scope tags, so a new code lands in the right default by being tagged:
 
 - `KOSK_NAZIM`: every köşk- and course-scoped code, in the köşk and the courses held there (30).
-- `MEDRESE_BASMUDERRIS`: every medrese- and course-scoped code, in the medrese and its courses (33).
+- `MEDRESE_BASMUDERRIS`: every medrese- and course-scoped code, in the medrese and its courses (34).
   Main's table gave it `[]`; the spec says "every medrese + course permission".
 - `MUDERRIS`: every course-scoped code, in its course (22).
 - `MEDARIS_NAZIM`, `MEDRESE_NAZIR`, `DERS_NAZIR`: nothing; they hold only grants.
@@ -255,7 +257,9 @@ All 105 are migrated, none is left on a scope, and `SCOPES`, `MATRIX` and `auth-
 Main then moved (`b451266c`) and brought one more handler on the old API: `GET /kosks/:id/dashboard`
 (MDRS-182, #176) came with `@Authz(SCOPES.EDIT, byExistingKosk)`. It asks what the köşk overview asks,
 `kosk.manage | platform.kosk_edit` (3d4e20e0), so the count is now 106 and `SCOPES` and `MATRIX` are
-still at 0. `GET /nizam/dashboard` has no `AuthzGuard` on purpose (the catalogue has no platform
+still at 0. The next merge brought `GET /courses/:id/live-streams` and `PUT /lessons/:id/live-stream`,
+both on `session.live_link`: 108 (`grep -rnE '^\s*@Authz\(' apps/tedrisat/src --include='*.ts' | wc -l`
+at the review fixes' head). `GET /nizam/dashboard` has no `AuthzGuard` on purpose (the catalogue has no platform
 entity and no code for "open the Medaris home page"; the service asks for the role and cuts the page to
 the platform permissions held), and the route inventory lists both. Nothing else in main's nine
 commits (notifications, migration boot, the tedris and the sign-out work) asks who may do what.
@@ -323,8 +327,13 @@ sentences for catalogue codes in tr messages: 58 | found in the design export (v
 codes with a sentence: 56 of 75
 ```
 
-- 56 codes have a sentence: exactly the 56 *listed* ones. The 19 without are the 14 implicit, the 3
-  derived and the 2 unlisted: no screen draws them.
+That run predates `madrasah.hide` and `platform.course_hide`. At the review fixes' head, 57 of the 77
+codes have an entry in the tr messages, exactly the 57 *listed* ones (counted by walking
+`libs/i18n/src/locales/tr/*.json` for each code's key); the design-export check was not re-run, and
+`platform.course_hide` → "Herhangi bir dersi gizle ya da geri al" has no line in the canvases.
+
+- 57 codes have a sentence: exactly the 57 *listed* ones. The 20 without are the 14 implicit, the 3
+  derived and the 3 unlisted: no screen draws them.
 - `madrasah.offsite_course_request` → "Medrese dışı ders talebi gönder" is the button label named in nazir/07,
   verbatim.
 - `deck.propose_kosk` → "Köşk destesi öner" has no line in the canvases: nizam/25 says "Köşk destesi
@@ -474,7 +483,7 @@ None was weakened; each stated a rule of the old matrix and now states the same 
 
 Outside the owner's decisions of 1 and 3 October there are four, each forced by the issue text:
 
-1. **A başmüderris now holds defaults** (33 codes: every medrese- and course-scoped one). Main's table
+1. **A başmüderris now holds defaults** (34 codes: every medrese- and course-scoped one). Main's table
    gave `[]` and the account screen showed them nothing; the issue says "every medrese + course
    permission". Visible effects: the account screen lists them, and a başmüderris may now call the
    course routes of their own medrese's courses (before, PRD §4.1 gave a medrese no authority over a
@@ -591,7 +600,7 @@ The route inventory is a snapshot of every HTTP handler with the codes it asks f
 
 ```
 $ wc -l apps/tedrisat/test/e2e/__snapshots__/authz-route-inventory.txt
-207 apps/tedrisat/test/e2e/__snapshots__/authz-route-inventory.txt
+211 apps/tedrisat/test/e2e/__snapshots__/authz-route-inventory.txt
 ```
 
 A widened `@Authz` now shows up as a line of that file in a diff.
@@ -600,15 +609,18 @@ A widened `@Authz` now shows up as a line of that file in a diff.
 
 ```
 $ node -e "…"   # for each grantable code: grep -rEl "PERMISSIONS\.<KEY>" apps/tedrisat/src, excluding permission-catalog.ts
-21 grantable codes no handler or service asks for (of 56 grantable):
-ban.manage_kosk, deck.manage_kosk, user.lookup, session.live_link, week.hide, recording.manage,
-recording.upload, recording.watch_restricted, session.view_content, ban.course, ban.lift_course,
-deck.manage_course, deck.propose_kosk, course_nazir.assign, permission_group.define,
-platform.appeal_decide, platform.ban_account, platform.youtube_manage, madrasah.admission_rules,
-madrasah.appeal_open, madrasah.permanent_ban_request
+18 grantable codes no handler or service asks for (of 57 grantable):
+ban.manage_kosk, deck.manage_kosk, user.lookup, week.hide, recording.manage, recording.upload,
+recording.watch_restricted, session.view_content, ban.course, ban.lift_course, deck.manage_course,
+deck.propose_kosk, course_nazir.assign, permission_group.define, platform.youtube_manage,
+madrasah.admission_rules, madrasah.appeal_open, madrasah.permanent_ban_request
 ```
 
-Granting one of them does nothing yet, except that five of them (`session.live_link`, `recording.manage`,
+(At the review fixes' head. `session.live_link` left the list with the live-stream routes;
+`platform.appeal_decide` and `platform.ban_account` are read by the nizam home page's sections,
+`dashboard-sections.ts`, and by nothing that acts.)
+
+Granting one of them does nothing yet, except that four of them (`recording.manage`,
 `recording.upload`, `recording.watch_restricted`, `session.view_content`) imply reading the course's
 details inside the engine. They belong to features that are not built (recordings,
 appeals, admission rules, YouTube, the ban moves above, week hiding) or to the lookup above. They are
