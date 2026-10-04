@@ -1,11 +1,11 @@
 import { defineRouting } from "next-intl/routing";
 
-export const locales = ["en", "tr", "ar"] as const;
+export const locales = ["tr", "en", "ar"] as const;
 export type MadrasahLocale = (typeof locales)[number];
 
 export const routing = defineRouting({
   locales,
-  defaultLocale: "en",
+  defaultLocale: "tr",
   pathnames: {
     "/": "/",
     "/home": "/home",
