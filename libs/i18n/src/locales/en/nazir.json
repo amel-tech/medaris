@@ -158,9 +158,11 @@
       "ban_course": "Ban a talebe from the course (includes seeing the course's ban list)",
       "ban_lift_course": "Lift a course ban, with a reason",
       "deck_manage_course": "Create and edit the course's deck",
+      "deck_propose_kosk": "Propose a köşk deck",
       "course_nazir_assign": "Appoint a course nazır; grant a permission or a group, within your own permissions",
       "permission_group_define": "Define a permission group",
       "madrasah_course_open": "Open a medrese course",
+      "madrasah_offsite_course_request": "Send a request for a course outside the medrese",
       "madrasah_muderris_manage": "Add or remove a müderris; change the imam",
       "madrasah_students_view": "See the medrese's talebe",
       "madrasah_ban": "Ban at medrese level; widen a course ban to the medrese",
@@ -207,7 +209,9 @@
     "courseScope": "The courses you chose do not fit these permissions. Check the courses and try again.",
     "expiryInvalid": "The end date cannot be in the past or after the end of the appointment.",
     "groupGone": "This group no longer exists. The groups were refreshed; choose again.",
-    "groupNameTaken": "Another group has this name. Choose a different name."
+    "groupNameTaken": "Another group has this name. Choose a different name.",
+    "exceedsGiver": "You do not hold some of these permissions; you can only give what you hold yourself. Ask the Medaris administration for the ones you need.",
+    "selfGrant": "You cannot give yourself a role or a permission; taking over one that was given to you counts as that."
   },
   "Settings": {
     "title": "Medrese settings",
@@ -366,6 +370,7 @@
     "dismissedBody": "{name} is no longer a nazır of this medrese.",
     "failedTitle": "The nazır could not be dismissed",
     "changed": "What this person gave changed while you were looking. The list was refreshed; make your choices again.",
+    "cascade": "Someone whose post you are dropping gave roles or permissions to others, which would stay without anyone deciding on them. Dismiss that person first and decide on what they gave, or take their post over.",
     "gone": "This person is no longer a nazır of this medrese.",
     "loadFailedTitle": "The list could not be read",
     "loadFailed": "What this person gave cannot be read right now. Try again in a moment."
@@ -518,7 +523,7 @@
     "errors": {
       "forbidden": "You may not bring this back; a higher level may have hidden it. The list was refreshed.",
       "gone": "This item is no longer in the archive. The list was refreshed.",
-      "parentHidden": "The medrese or köşk this belongs to is still hidden, so it could not be brought back. Only Medaris administration can bring a medrese back."
+      "parentHidden": "The medrese or köşk this belongs to is still hidden, so it could not be brought back. A medrese is brought back by the level that hid it, or one above."
     },
     "empty": {
       "all": "Nothing is hidden in this medrese.",
@@ -538,15 +543,20 @@
     "loadFailed": "The archive cannot be read right now. Try again in a few seconds.",
     "hide": {
       "title": "Hide the medrese",
-      "text": "{name} and its courses disappear from every list and from search; the medrese and course pages close to everyone except you and Medaris administration. The köşks that host its courses are not hidden. Nothing is deleted; only Medaris administration can bring the medrese back.",
+      "text": "{name} and its courses disappear from every list and from search; the medrese and course pages close to everyone except you and Medaris administration. The köşks that host its courses are not hidden. Nothing is deleted; the medrese is brought back by the level that hid it, or one above: what you hid, by you or Medaris administration.",
       "button": "Hide the medrese",
-      "confirmBody": "{name} and its visible courses will be hidden from everyone; only you and Medaris administration will be able to open its pages. Nothing is deleted, but only Medaris administration can bring the medrese back; until then you cannot bring the courses back from the Archive.",
+      "confirmBody": "{name} and its visible courses will be hidden from everyone; only you and Medaris administration will be able to open its pages. Nothing is deleted; you or Medaris administration can bring the medrese back. Until then you cannot bring the courses back from the Archive.",
       "confirm": "Hide",
       "cancel": "Cancel",
       "done": "Medrese hidden",
-      "doneBody": "{name} and its courses are now visible to nobody except you and Medaris administration. Ask Medaris administration to bring it back.",
-      "already": "This medrese is already hidden. Ask Medaris administration to bring it back.",
-      "failedTitle": "The medrese could not be hidden"
+      "doneBody": "{name} and its courses are now visible to nobody except you and Medaris administration. You or Medaris administration can bring the medrese back.",
+      "already": "This medrese is already hidden. The level that hid it, or one above it, can bring it back.",
+      "failedTitle": "The medrese could not be hidden",
+      "restore": "Bring the medrese back",
+      "restored": "Medrese brought back",
+      "restoredBody": "{name} and the courses hidden with it are visible again.",
+      "restoreFailedTitle": "The medrese could not be brought back",
+      "restoreLevel": "Medaris administration hid this medrese; only Medaris administration can bring it back."
     }
   },
   "Courses": {

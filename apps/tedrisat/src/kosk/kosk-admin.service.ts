@@ -2,11 +2,22 @@ import {
   AuthenticatedUser,
   AuthzForbiddenError,
   AuthzService,
+  ENTITIES,
+  PERMISSIONS,
+  type PermissionCode,
   ROLES,
 } from "@medaris/common";
 import { Injectable, Logger } from "@nestjs/common";
+import {
+  actingLevel,
+  COURSE_HIDE_LADDER,
+  hiderLevelOf,
+  type IHideStep,
+  mayRestoreAt,
+} from "../archive/hide-level";
 import { GrantExpiryInvalidError } from "../assignment/admin/errors";
 import { checkGrantExpiry } from "../assignment/admin/grant-plan";
+import { SCOPE_TYPES } from "../database/schema/scope-type.schema";
 import { KeycloakAdminService } from "../keycloak-admin/keycloak-admin.service";
 import type { CreateKoskDto } from "./dto/create-kosk.dto";
 import type {
@@ -64,6 +75,12 @@ const nameOf = (row: IPersonRow | undefined): string | null => {
  * alone, like the medrese screens before them; a köşk's nazımları read their
  * own table and nazım list and may hide their köşk.
  */
+/** How a köşk is hidden and restored: the platform's `platform.kosk_edit`, or the köşk's own `kosk.manage`. */
+const KOSK_HIDE_LADDER: readonly IHideStep[] = [
+  { level: SCOPE_TYPES.PLATFORM, codes: [PERMISSIONS.PLATFORM_KOSK_EDIT] },
+  { level: SCOPE_TYPES.KOSK, codes: [PERMISSIONS.KOSK_MANAGE] },
+];
+
 @Injectable()
 export class KoskAdminService {
   private readonly logger = new Logger(KoskAdminService.name);
@@ -79,10 +96,26 @@ export class KoskAdminService {
 
   // ---- who is asking -----------------------------------------------------------
 
-  private requireChiefNazim(user: AuthenticatedUser, what: string): void {
-    if (!this.authz.isSystemAdmin(user)) {
-      throw new AuthzForbiddenError(`Only the Medaris başnazımı may ${what}`);
+  /**
+   * The Medaris management gate (MDRS-135): the başnazım passes, and so does a
+   * Medaris nazımı who was given the platform permission for it — asked of the
+   * engine, so a grant, its group and its end are read the way every other
+   * route reads them.
+   */
+  private async requirePlatform(
+    user: AuthenticatedUser,
+    code: PermissionCode,
+    what: string
+  ): Promise<void> {
+    if (this.authz.isSystemAdmin(user)) return;
+    if (
+      await this.authz.can(user, { entity: ENTITIES.KOSK, id: "any" }, code)
+    ) {
+      return;
     }
+    throw new AuthzForbiddenError(
+      `Only the Medaris başnazımı and a Medaris nazımı holding ${code} may ${what}`
+    );
   }
 
   // ---- names ---------------------------------------------------------------------
@@ -146,9 +179,23 @@ export class KoskAdminService {
     };
   }
 
-  /** The başnazım sees every köşk; a köşk nazımı their own; anyone else is refused. */
+  /**
+   * The başnazım sees every köşk, and so does a Medaris nazımı holding any of
+   * the platform's köşk permissions; a köşk nazımı sees their own; anyone else
+   * is refused.
+   */
   private async scopeOf(user: AuthenticatedUser): Promise<string | undefined> {
     if (this.authz.isSystemAdmin(user)) return undefined;
+    if (
+      await this.authz.can(user, { entity: ENTITIES.KOSK, id: "any" }, [
+        PERMISSIONS.PLATFORM_KOSK_CREATE,
+        PERMISSIONS.PLATFORM_KOSK_EDIT,
+        PERMISSIONS.PLATFORM_KOSK_NAZIM_MANAGE,
+        PERMISSIONS.PLATFORM_HOSTING_GRANT,
+      ])
+    ) {
+      return undefined;
+    }
     if (await this.koskService.managesAny(user.sub)) return user.sub;
     throw new AuthzForbiddenError(
       "The köşk table is for the Medaris başnazımı and köşk nazımları"
@@ -174,12 +221,19 @@ export class KoskAdminService {
 
   // ---- nizam/24 and 09: hiding and bringing back ---------------------------------------
 
-  /** `@Authz(EDIT)` on the route decided who may; this writes. */
+  /** `@Authz([kosk.manage, platform.kosk_edit])` on the route decided who may; this writes. */
   async hide(
     koskId: string,
-    actorId: string
+    user: AuthenticatedUser
   ): Promise<KoskDirectoryItemResponse> {
-    const outcome = await this.repo.hide(koskId, actorId);
+    const level = await actingLevel(
+      this.authz,
+      user,
+      { entity: ENTITIES.KOSK, id: koskId },
+      KOSK_HIDE_LADDER,
+      SCOPE_TYPES.KOSK
+    );
+    const outcome = await this.repo.hide(koskId, user.sub, level);
     if (outcome === "no-kosk") throw new KoskNotFoundError(koskId);
     if (outcome === "already-hidden") throw new KoskAlreadyHiddenError(koskId);
     return this.presentOne(koskId);
@@ -189,8 +243,22 @@ export class KoskAdminService {
     user: AuthenticatedUser,
     koskId: string
   ): Promise<KoskDirectoryItemResponse> {
-    this.requireChiefNazim(user, "bring a hidden köşk back");
-    const outcome = await this.repo.restore(koskId, user.sub);
+    // The başnazım and a Medaris nazımı holding `platform.kosk_edit` act as the
+    // platform, the köşk's own nazımı as the köşk; the repository then refuses
+    // a restore by a lower level than the one that hid it.
+    const level = await actingLevel(
+      this.authz,
+      user,
+      { entity: ENTITIES.KOSK, id: koskId },
+      KOSK_HIDE_LADDER,
+      null
+    );
+    if (level === null) {
+      throw new AuthzForbiddenError(
+        `Only the köşk's nazımı, the Medaris başnazımı and a Medaris nazımı holding ${PERMISSIONS.PLATFORM_KOSK_EDIT} may bring a hidden köşk back`
+      );
+    }
+    const outcome = await this.repo.restore(koskId, user.sub, level);
     if (outcome === "no-kosk") throw new KoskNotFoundError(koskId);
     if (outcome === "not-hidden") throw new KoskNotHiddenError(koskId);
     return this.presentOne(koskId);
@@ -198,7 +266,7 @@ export class KoskAdminService {
 
   // ---- nizam/20 and 23: the köşk page, its courses, taking it out of service ----
 
-  /** `@Authz(EDIT)` on the route decided who may read. */
+  /** `@Authz([kosk.manage, platform.kosk_edit])` on the route decided who may read. */
   async overview(koskId: string): Promise<KoskOverviewResponse> {
     const row = await this.repo.overview(koskId);
     if (!row) throw new KoskNotFoundError(koskId);
@@ -207,11 +275,41 @@ export class KoskAdminService {
     return { ...rest, openedBy: this.person(ownerId, people) };
   }
 
-  async courseRoster(koskId: string): Promise<KoskCourseRosterResponse> {
+  /**
+   * Each hidden course says whether the caller may bring it back: the level they
+   * act at on it (`COURSE_HIDE_LADDER`, as `POST /courses/:id/restore` decides)
+   * is at or above the level it was hidden at (MDRS-135). So a köşk nazımı is
+   * not shown "Geri al" for a course the platform hid (MDRS-108).
+   */
+  async courseRoster(
+    user: AuthenticatedUser,
+    koskId: string
+  ): Promise<KoskCourseRosterResponse> {
     if (!(await this.repo.koskName(koskId))) {
       throw new KoskNotFoundError(koskId);
     }
-    const items = await this.repo.courseRoster(koskId);
+    const rows = await this.repo.courseRoster(koskId);
+    const items = await Promise.all(
+      rows.map(async ({ hiddenLevel, ...row }) => ({
+        ...row,
+        canRestore:
+          row.status === "HIDDEN" &&
+          mayRestoreAt(
+            await actingLevel(
+              this.authz,
+              user,
+              { entity: ENTITIES.COURSE, id: row.id },
+              COURSE_HIDE_LADDER,
+              SCOPE_TYPES.COURSE
+            ),
+            hiderLevelOf({
+              type: "course",
+              madrasahId: row.madrasah?.id ?? null,
+              archivedLevel: hiddenLevel,
+            })
+          ),
+      }))
+    );
     return {
       items,
       counts: {
@@ -227,7 +325,11 @@ export class KoskAdminService {
     user: AuthenticatedUser,
     koskId: string
   ): Promise<KoskDirectoryItemResponse> {
-    this.requireChiefNazim(user, "take a köşk out of service");
+    await this.requirePlatform(
+      user,
+      PERMISSIONS.PLATFORM_KOSK_EDIT,
+      "take a köşk out of service"
+    );
     const outcome = await this.repo.deactivate(koskId, user.sub);
     if (outcome === "no-kosk") throw new KoskNotFoundError(koskId);
     if (outcome === "already-passive") {
@@ -324,7 +426,11 @@ export class KoskAdminService {
     koskId: string,
     dto: AddKoskNazimsDto
   ): Promise<KoskNazimResponse[]> {
-    this.requireChiefNazim(user, "add köşk nazımları");
+    await this.requirePlatform(
+      user,
+      PERMISSIONS.PLATFORM_KOSK_NAZIM_MANAGE,
+      "add köşk nazımları"
+    );
     const endsAt = dto.endsAt ? new Date(dto.endsAt) : null;
     if (checkGrantExpiry(endsAt, null, new Date()) === "past") {
       throw new GrantExpiryInvalidError("The end date is in the past");
@@ -354,7 +460,11 @@ export class KoskAdminService {
     user: AuthenticatedUser,
     dto: CreateKoskDto
   ): Promise<IKosk> {
-    this.requireChiefNazim(user, "open a köşk with nazımları");
+    await this.requirePlatform(
+      user,
+      PERMISSIONS.PLATFORM_KOSK_CREATE,
+      "open a köşk with nazımları"
+    );
     const { managerUserIds, ...kosk } = dto;
     const nazimIds = (managerUserIds ?? []).map((id) => id.toLowerCase());
     await this.koskService.assertHandleFree(kosk.handle);

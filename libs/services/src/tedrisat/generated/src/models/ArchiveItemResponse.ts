@@ -130,6 +130,12 @@ export interface ArchiveItemResponse {
      * @memberof ArchiveItemResponse
      */
     archivedBy: ArchiverResponse | null;
+    /**
+     * Whether the caller may bring it back (Geri al): false when it was hidden at a level above the one the caller acts at (MDRS-135), so no button leads to a 403 ARCHIVE_RESTORE_LEVEL. A hidden parent still answers 409 on restore.
+     * @type {boolean}
+     * @memberof ArchiveItemResponse
+     */
+    canRestore: boolean;
 }
 
 
@@ -154,6 +160,7 @@ export function instanceOfArchiveItemResponse(value: object): value is ArchiveIt
     if (!('studentCount' in value) || value['studentCount'] === undefined) return false;
     if (!('archivedAt' in value) || value['archivedAt'] === undefined) return false;
     if (!('archivedBy' in value) || value['archivedBy'] === undefined) return false;
+    if (!('canRestore' in value) || value['canRestore'] === undefined) return false;
     return true;
 }
 
@@ -183,6 +190,7 @@ export function ArchiveItemResponseFromJSONTyped(json: any, ignoreDiscriminator:
         'studentCount': json['studentCount'],
         'archivedAt': (new Date(json['archivedAt'])),
         'archivedBy': ArchiverResponseFromJSON(json['archivedBy']),
+        'canRestore': json['canRestore'],
     };
 }
 
@@ -213,6 +221,7 @@ export function ArchiveItemResponseToJSONTyped(value?: ArchiveItemResponse | nul
         'studentCount': value['studentCount'],
         'archivedAt': ((value['archivedAt']).toISOString()),
         'archivedBy': ArchiverResponseToJSON(value['archivedBy']),
+        'canRestore': value['canRestore'],
     };
 }
 

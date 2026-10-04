@@ -1,4 +1,4 @@
-import { AuthGuard, Authz, AuthzGuard, SCOPES } from "@medaris/common";
+import { AuthGuard, Authz, AuthzGuard, PERMISSIONS } from "@medaris/common";
 import {
   BadRequestException,
   Controller,
@@ -54,8 +54,9 @@ class ArchiveTypesPipe
 }
 
 /**
- * A medrese's archive (MDRS-185, nazir/12). `MANAGE_MADRASAH` is the scope of
- * the medrese's başmüderris and SYSTEM_ADMIN; bringing an item back is
+ * A medrese's archive (MDRS-185, nazir/12). `madrasah.course_hide` (or
+ * `madrasah.settings_edit`) is the medrese's başmüderris's and SYSTEM_ADMIN's,
+ * and a nazır's once given; bringing an item back is
  * `POST /archive/:type/:id/restore`, which decides by kademe.
  */
 @ApiTags("archive")
@@ -89,7 +90,10 @@ export class MadrasahArchiveController {
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()
   @Get(":id/archive")
-  @Authz(SCOPES.MANAGE_MADRASAH, byExistingMadrasah)
+  @Authz(
+    [PERMISSIONS.MADRASAH_COURSE_HIDE, PERMISSIONS.MADRASAH_SETTINGS_EDIT],
+    byExistingMadrasah
+  )
   async list(
     @Req() request: AuthenticatedUserRequest,
     @Param("id", ParseUUIDPipe) id: string,
@@ -108,10 +112,7 @@ export class MadrasahArchiveController {
       limit: Math.min(Math.max(limit, 1), MAX_ARCHIVE_PAGE_SIZE),
     });
     return {
-      items: result.items.map((entry) => ({
-        ...presentItem(entry),
-        canRestore: entry.canRestore,
-      })),
+      items: result.items.map(presentItem),
       total: result.total,
       page: result.page,
       limit: result.limit,

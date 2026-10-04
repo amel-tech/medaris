@@ -8,7 +8,7 @@ import {
   byParam,
   ENTITIES,
   MedarisValidationPipe,
-  SCOPES,
+  PERMISSIONS,
 } from "@medaris/common";
 import {
   Body,
@@ -160,10 +160,11 @@ export class LessonController {
       "TEDRIS_WEB_URL is not configured on this server (CALENDAR_NOT_CONFIGURED).",
   })
   @Get("lessons/:id/calendar.ics")
-  // No `@Authz` scope on purpose: the rule is the session page's, which is
-  // `getDetail`'s, and `getScheduledLesson` applies it. `GET /courses/:id`
-  // carries `@Authz(VIEW)` since MDRS-103, but VIEW is on the COURSE PUBLIC
-  // row, so it adds nothing `getDetail` does not already decide. The file
+  // No `@Authz` permission on purpose: the rule is the session page's, which
+  // is `getDetail`'s, and `getScheduledLesson` applies it. `GET /courses/:id`
+  // carries `@Authz(course.view)` since MDRS-103, but any signed-in caller
+  // holds `course.view`, so it adds nothing `getDetail` does not already
+  // decide. The file
   // carries no content field (see below), so there is nothing to filter.
   @AuthzExempt()
   // Per-user authorization decided this answer; no shared cache may keep it.
@@ -214,7 +215,7 @@ export class LessonController {
     description:
       "No such course or session, the session is not a live one, or the course is a draft, hidden or in an unlisted köşk to this caller (LESSON_NOT_FOUND, COURSE_NOT_FOUND).",
   })
-  @Authz(SCOPES.VIEW, bySessionCourse)
+  @Authz(PERMISSIONS.COURSE_VIEW, bySessionCourse)
   @AuthzPublic()
   // Per-user authorization decided this answer; no shared cache may keep it.
   @Header("Cache-Control", "private, no-store")
@@ -242,7 +243,7 @@ export class LessonController {
     description:
       "No such course, or it is a draft, hidden or in an unlisted köşk to this caller (COURSE_NOT_FOUND).",
   })
-  @Authz(SCOPES.VIEW, byParam(ENTITIES.COURSE))
+  @Authz(PERMISSIONS.COURSE_VIEW, byParam(ENTITIES.COURSE))
   @AuthzPublic()
   @Header("Cache-Control", "private, no-store")
   @Get("courses/:id/recordings")
@@ -261,7 +262,9 @@ export class LessonController {
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()
   @Post("courses/:courseId/weeks/:weekId/lessons")
-  @Authz(SCOPES.EDIT, byParam(ENTITIES.COURSE, "courseId"))
+  // Adding a session is `session.manage` ("Celse ekle"), like the batch and
+  // every other session write here; `course.edit` is the course's text.
+  @Authz(PERMISSIONS.SESSION_MANAGE, byParam(ENTITIES.COURSE, "courseId"))
   @UsePipes(new MedarisValidationPipe({ transform: true }))
   async create(
     @Param("courseId", ParseUUIDPipe) courseId: string,
@@ -288,7 +291,7 @@ export class LessonController {
   @ApiNotFoundResponse()
   @Post("courses/:courseId/sessions/batch/preview")
   @HttpCode(HttpStatus.OK)
-  @Authz(SCOPES.EDIT, byParam(ENTITIES.COURSE, "courseId"))
+  @Authz(PERMISSIONS.SESSION_MANAGE, byParam(ENTITIES.COURSE, "courseId"))
   @UsePipes(new MedarisValidationPipe({ transform: true }))
   async previewBatch(
     @Param("courseId", ParseUUIDPipe) courseId: string,
@@ -316,7 +319,7 @@ export class LessonController {
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()
   @Post("courses/:courseId/sessions/batch")
-  @Authz(SCOPES.EDIT, byParam(ENTITIES.COURSE, "courseId"))
+  @Authz(PERMISSIONS.SESSION_MANAGE, byParam(ENTITIES.COURSE, "courseId"))
   @UsePipes(new MedarisValidationPipe({ transform: true }))
   async createBatch(
     @Param("courseId", ParseUUIDPipe) courseId: string,
@@ -337,7 +340,7 @@ export class LessonController {
       "The course changed since `version` was loaded (COURSE_VERSION_CONFLICT).",
   })
   @Patch("lessons/:id")
-  @Authz(SCOPES.EDIT, byLessonCourse)
+  @Authz(PERMISSIONS.SESSION_MANAGE, byLessonCourse)
   @UsePipes(new MedarisValidationPipe({ transform: true }))
   async update(
     @Req() request: AuthorizedRequest,
@@ -368,7 +371,7 @@ export class LessonController {
   })
   @Post("lessons/:id/cancel")
   @HttpCode(HttpStatus.OK)
-  @Authz(SCOPES.EDIT, byLessonCourse)
+  @Authz(PERMISSIONS.SESSION_MANAGE, byLessonCourse)
   @UsePipes(new MedarisValidationPipe({ transform: true }))
   async cancel(
     @Req() request: AuthorizedRequest,
@@ -391,11 +394,11 @@ export class LessonController {
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()
   @Delete("lessons/:id")
-  @Authz(SCOPES.EDIT, byLessonCourse)
+  @Authz(PERMISSIONS.SESSION_MANAGE, byLessonCourse)
   async archive(
     @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<LessonMutationResponse> {
-    return this.courseService.archiveLesson(id, request.user.sub);
+    return this.courseService.archiveLesson(id, request.user);
   }
 }

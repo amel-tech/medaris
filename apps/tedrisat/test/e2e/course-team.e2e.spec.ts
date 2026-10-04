@@ -468,9 +468,12 @@ describe("Course team (MDRS-105, e2e)", () => {
           name: "Yusuf Efendi",
         }),
       ]);
+      // The row was on the list before the save, so the save seats nobody
+      // on it: a whole-course save is no way to seat a listed account that
+      // holds no seat (MDRS-135 review A-reseat).
       await as(NEW_MUDERRIS_ID)
         .get(`/courses/${courseId}/enrollments`)
-        .expect(200);
+        .expect(403);
     });
 
     it("refuses to link an account that has never signed in", async () => {

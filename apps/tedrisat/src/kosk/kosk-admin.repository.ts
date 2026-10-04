@@ -1,5 +1,11 @@
 import { Injectable } from "@nestjs/common";
 import { and, eq, inArray, sql } from "drizzle-orm";
+import { ArchiveRestoreLevelError } from "../archive/errors/archive-errors";
+import {
+  type HideLevel,
+  hiderLevelOf,
+  mayRestoreAt,
+} from "../archive/hide-level";
 import { Tx } from "../course/course-purge";
 import { DatabaseService } from "../database/database.service";
 import { grantRole, holdsIn, revokeRole } from "../database/role-assignments";
@@ -69,6 +75,8 @@ export interface IKoskCourseRow {
   madrasah: { id: string; name: string } | null;
   status: "PUBLISHED" | "DRAFT" | "HIDDEN";
   hiddenAt: Date | null;
+  /** The level a hidden course was hidden at (MDRS-135); null when shown or never recorded. */
+  hiddenLevel: HideLevel | null;
   createdAt: Date;
   muderris: { name: string; isImam: boolean }[];
   studentCount: number;
@@ -424,7 +432,11 @@ export class KoskAdminRepository {
   }
 
   /** Hides the köşk: it keeps its row and its courses, and leaves every list. */
-  async hide(koskId: string, actorId: string): Promise<HideOutcome> {
+  async hide(
+    koskId: string,
+    actorId: string,
+    level: HideLevel
+  ): Promise<HideOutcome> {
     return this.db.transaction(async (tx) => {
       const [row] = await tx
         .select({ name: kosks.name, archivedAt: kosks.archivedAt })
@@ -438,6 +450,7 @@ export class KoskAdminRepository {
         .set({
           archivedAt: new Date(),
           archivedBy: actorId,
+          archivedLevel: level,
           updatedAt: new Date(),
         })
         .where(eq(kosks.id, koskId));
@@ -453,18 +466,41 @@ export class KoskAdminRepository {
   }
 
   /** Brings a hidden köşk back (nizam/09 "Geri al"). */
-  async restore(koskId: string, actorId: string): Promise<RestoreOutcome> {
+  async restore(
+    koskId: string,
+    actorId: string,
+    level: HideLevel
+  ): Promise<RestoreOutcome> {
     return this.db.transaction(async (tx) => {
       const [row] = await tx
-        .select({ name: kosks.name, archivedAt: kosks.archivedAt })
+        .select({
+          name: kosks.name,
+          archivedAt: kosks.archivedAt,
+          archivedLevel: kosks.archivedLevel,
+        })
         .from(kosks)
         .where(eq(kosks.id, koskId))
         .for("no key update");
       if (!row) return "no-kosk";
       if (row.archivedAt === null) return "not-hidden";
+      // By the level that hid it or one above (MDRS-135, the ban rule); a köşk
+      // hidden before the level was recorded counts as hidden by the köşk.
+      const hiddenAt = hiderLevelOf({
+        type: "kosk",
+        madrasahId: null,
+        archivedLevel: row.archivedLevel,
+      });
+      if (!mayRestoreAt(level, hiddenAt)) {
+        throw new ArchiveRestoreLevelError(hiddenAt, level);
+      }
       await tx
         .update(kosks)
-        .set({ archivedAt: null, archivedBy: null, updatedAt: new Date() })
+        .set({
+          archivedAt: null,
+          archivedBy: null,
+          archivedLevel: null,
+          updatedAt: new Date(),
+        })
         .where(eq(kosks.id, koskId));
       await tx.insert(auditLog).values({
         actorId,
@@ -563,6 +599,7 @@ export class KoskAdminRepository {
       cover_hue: number;
       status: "PUBLISHED" | "DRAFT";
       archived_at: Date | string | null;
+      archived_level: HideLevel | null;
       created_at: Date | string;
       madrasah_id: string | null;
       madrasah_name: string | null;
@@ -571,7 +608,7 @@ export class KoskAdminRepository {
       pending: string;
       banned: string;
     }>(sql`
-      select c.id, c.title, c.cover_hue, c.status, c.archived_at, c.created_at,
+      select c.id, c.title, c.cover_hue, c.status, c.archived_at, c.archived_level, c.created_at,
              m.id as madrasah_id, m.name as madrasah_name,
              (select count(*) from course_weeks w
                where w.course_id = c.id and w.archived_at is null) as week_count,
@@ -615,6 +652,7 @@ export class KoskAdminRepository {
         : null,
       status: r.archived_at ? "HIDDEN" : r.status,
       hiddenAt: r.archived_at ? new Date(r.archived_at) : null,
+      hiddenLevel: r.archived_at ? r.archived_level : null,
       createdAt: new Date(r.created_at),
       muderris: muderris.rows
         .filter((m) => m.course_id === r.id)

@@ -1,10 +1,12 @@
-import type { IArchiveEntry, IArchivePage } from "./archive.service";
+import type { IArchivePage, IRestorableArchiveEntry } from "./archive.service";
 import type {
   ArchiveItemResponse,
   PaginatedArchiveResponse,
 } from "./dto/archive-response.dto";
 
-export const presentItem = (i: IArchiveEntry): ArchiveItemResponse => ({
+export const presentItem = (
+  i: IRestorableArchiveEntry
+): ArchiveItemResponse => ({
   type: i.type,
   id: i.id,
   title: i.title,
@@ -21,9 +23,12 @@ export const presentItem = (i: IArchiveEntry): ArchiveItemResponse => ({
   studentCount: i.studentCount,
   archivedAt: i.archivedAt,
   archivedBy: i.archiver,
+  canRestore: i.canRestore,
 });
 
-export const presentPage = (page: IArchivePage): PaginatedArchiveResponse => ({
+export const presentPage = (
+  page: IArchivePage<IRestorableArchiveEntry>
+): PaginatedArchiveResponse => ({
   items: page.items.map(presentItem),
   total: page.total,
   page: page.page,

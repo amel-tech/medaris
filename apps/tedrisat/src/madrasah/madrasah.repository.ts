@@ -8,10 +8,25 @@ import {
   isNotNull,
   isNull,
   min,
+  or,
   type SQL,
   sql,
 } from "drizzle-orm";
-import { DismissDecisionsError } from "../assignment/admin/errors";
+import type { AnyPgColumn } from "drizzle-orm/pg-core";
+import { ArchiveRestoreLevelError } from "../archive/errors/archive-errors";
+import {
+  type HideLevel,
+  hiderLevelOf,
+  mayRestoreAt,
+} from "../archive/hide-level";
+import {
+  DismissDecisionsError,
+  DismissTakeOverWithoutSeatError,
+} from "../assignment/admin/errors";
+import {
+  assertNothingLeftUnder,
+  revokeOrphanedGrants,
+} from "../assignment/admin/orphaned-grants";
 import { grantHeld } from "../assignment/assignment.repository";
 import type { Tx } from "../course/course-purge";
 import { CourseStatus } from "../course/domain/course-status.enum";
@@ -46,6 +61,7 @@ import {
   ASSIGNED_ROLES,
   roleAssignments,
   SCOPE_TYPES,
+  type ScopeType,
 } from "../database/schema/role-assignment.schema";
 import { users } from "../database/schema/user.schema";
 import {
@@ -281,9 +297,37 @@ export class MadrasahRepository {
     return result;
   }
 
+  /** The recipients of these role and grant rows, whatever their state. */
+  async recipientsOf(
+    items: ReadonlyArray<{ kind: "ROLE" | "GRANT"; id: string }>
+  ): Promise<string[]> {
+    const ids = (kind: "ROLE" | "GRANT") =>
+      items.filter((i) => i.kind === kind).map((i) => i.id);
+    const [roles, grants] = await Promise.all([
+      ids("ROLE").length > 0
+        ? this.db
+            .select({ userId: roleAssignments.userId })
+            .from(roleAssignments)
+            .where(inArray(roleAssignments.id, ids("ROLE")))
+        : [],
+      ids("GRANT").length > 0
+        ? this.db
+            .select({ userId: permissionGrants.userId })
+            .from(permissionGrants)
+            .where(inArray(permissionGrants.id, ids("GRANT")))
+        : [],
+    ]);
+    return [...new Set([...roles, ...grants].map((row) => row.userId))];
+  }
+
+  /**
+   * Every role and permission the sitting başmüderris gave in the medrese and
+   * its courses that is still held, whoever holds it: the incoming başmüderris
+   * too, whose rows from the outgoing one are decided like anyone's (owner,
+   * d-1004: the remover decides each row, no default choice).
+   */
   async headDelegations(
     madrasahId: string,
-    exceptUserId?: string,
     db: Tx | DatabaseService["db"] = this.db
   ): Promise<IHeadDelegation[]> {
     const heads = (
@@ -293,21 +337,43 @@ export class MadrasahRepository {
         .where(holdsIn(NAZIR_ROLE, madrasahId))
     ).map((h) => h.userId);
     if (heads.length === 0) return [];
+    // The medrese and its courses: a seat or a grant in one of its courses
+    // (a müderris named, nazir/06 limited to some courses) is handed on as
+    // much as one held in the medrese, and is decided like it (owner, d-1004:
+    // every role and permission the person gave). Where each sits goes with
+    // it, so two grants of one code for two courses are told apart.
+    const medreseCourses = db
+      .select({ id: courses.id })
+      .from(courses)
+      .where(eq(courses.madrasahId, madrasahId));
+    const inMedrese = (type: AnyPgColumn, id: AnyPgColumn) =>
+      or(
+        and(eq(type, SCOPE_TYPES.MADRASAH), eq(id, madrasahId)),
+        and(eq(type, SCOPE_TYPES.COURSE), inArray(id, medreseCourses))
+      );
     const roles = await db
       .select({
         id: roleAssignments.id,
         userId: roleAssignments.userId,
         role: roleAssignments.role,
+        scopeType: roleAssignments.scopeType,
+        scopeId: roleAssignments.scopeId,
+        courseTitle: courses.title,
         grantedAt: roleAssignments.createdAt,
         expiresAt: roleAssignments.expiresAt,
       })
       .from(roleAssignments)
+      .leftJoin(
+        courses,
+        and(
+          eq(roleAssignments.scopeType, SCOPE_TYPES.COURSE),
+          eq(courses.id, roleAssignments.scopeId)
+        )
+      )
       .where(
         and(
-          eq(roleAssignments.scopeType, SCOPE_TYPES.MADRASAH),
-          eq(roleAssignments.scopeId, madrasahId),
+          inMedrese(roleAssignments.scopeType, roleAssignments.scopeId),
           inArray(roleAssignments.grantedBy, heads),
-          eq(roleAssignments.role, ASSIGNED_ROLES.MEDRESE_NAZIR),
           isHeld()
         )
       )
@@ -319,6 +385,9 @@ export class MadrasahRepository {
         permission: permissionGrants.permission,
         groupId: permissionGrants.groupId,
         groupName: permissionGroups.name,
+        scopeType: permissionGrants.scopeType,
+        scopeId: permissionGrants.scopeId,
+        courseTitle: courses.title,
         grantedAt: permissionGrants.createdAt,
         expiresAt: permissionGrants.expiresAt,
       })
@@ -327,10 +396,16 @@ export class MadrasahRepository {
         permissionGroups,
         eq(permissionGroups.id, permissionGrants.groupId)
       )
+      .leftJoin(
+        courses,
+        and(
+          eq(permissionGrants.scopeType, SCOPE_TYPES.COURSE),
+          eq(courses.id, permissionGrants.scopeId)
+        )
+      )
       .where(
         and(
-          eq(permissionGrants.scopeType, SCOPE_TYPES.MADRASAH),
-          eq(permissionGrants.scopeId, madrasahId),
+          inMedrese(permissionGrants.scopeType, permissionGrants.scopeId),
           inArray(permissionGrants.grantedBy, heads),
           grantHeld()
         )
@@ -344,6 +419,9 @@ export class MadrasahRepository {
         role: r.role as string,
         permission: null,
         groupName: null,
+        scopeType: r.scopeType,
+        scopeId: r.scopeId,
+        courseTitle: r.courseTitle,
         grantedAt: r.grantedAt,
         expiresAt: r.expiresAt,
       })),
@@ -354,11 +432,14 @@ export class MadrasahRepository {
         role: null,
         permission: g.permission,
         groupName: g.groupName,
+        scopeType: g.scopeType,
+        scopeId: g.scopeId,
+        courseTitle: g.courseTitle,
         grantedAt: g.grantedAt,
         expiresAt: g.expiresAt,
       })),
     ];
-    return rows.filter((r) => r.userId !== exceptUserId);
+    return rows;
   }
 
   /**
@@ -402,8 +483,14 @@ export class MadrasahRepository {
 
       let tookOver = 0;
       let dropped = 0;
+      const droppedSeats: Array<{
+        userId: string;
+        scopeType: ScopeType;
+        scopeId: string | null;
+      }> = [];
+      const takenOver: string[] = [];
       if (replacing) {
-        const given = await this.headDelegations(madrasahId, userId, tx);
+        const given = await this.headDelegations(madrasahId, tx);
         const key = (kind: string, id: string) => `${kind}:${id}`;
         const decisions = options.decisions ?? [];
         const decided = new Map(decisions.map((d) => [key(d.kind, d.id), d]));
@@ -420,6 +507,14 @@ export class MadrasahRepository {
             : { revokedAt: sql`now()`, revokedBy: actorId };
           if (take) tookOver += 1;
           else dropped += 1;
+          if (item.kind === "ROLE" && !take) {
+            droppedSeats.push({
+              userId: item.userId,
+              scopeType: item.scopeType,
+              scopeId: item.scopeId,
+            });
+          }
+          if (item.kind === "GRANT" && take) takenOver.push(item.id);
           if (item.kind === "ROLE") {
             await tx
               .update(roleAssignments)
@@ -434,7 +529,8 @@ export class MadrasahRepository {
         }
       }
 
-      for (const other of previous.filter((id) => id !== userId)) {
+      const outgoing = previous.filter((id) => id !== userId);
+      for (const other of outgoing) {
         await revokeRole(tx, {
           userId: other,
           role: NAZIR_ROLE,
@@ -442,6 +538,9 @@ export class MadrasahRepository {
           revokedBy: actorId,
         });
       }
+      // The new başmüderris is seated before anything cascades: a nazır seat
+      // of theirs answered Düşür leaves behind nothing their new seat covers,
+      // and what they handed on under it stays backed.
       await grantRole(tx, {
         userId,
         role: NAZIR_ROLE,
@@ -449,6 +548,38 @@ export class MadrasahRepository {
         grantedBy: actorId,
         expiresAt: options.endsAt ?? null,
       });
+      // A seat that goes takes with it what its holder was given in its
+      // scope, by anyone, that no other role of theirs there still covers (a
+      // permission cannot outlast its role): the seats answered Düşür, in
+      // their own scope, and the outgoing başmüderris's own, in the medrese.
+      // A grant answered Devral that would go with them is refused rather
+      // than kept with no seat behind it.
+      const droppedWithSeats: string[] = [];
+      const seats = [
+        ...droppedSeats,
+        ...outgoing.map((holder) => ({
+          userId: holder,
+          scopeType: SCOPE_TYPES.MADRASAH as ScopeType,
+          scopeId: madrasahId as string | null,
+        })),
+      ];
+      for (const seat of seats) {
+        droppedWithSeats.push(
+          ...(await revokeOrphanedGrants(tx, {
+            userId: seat.userId,
+            within: seat,
+            revokedBy: actorId,
+          }))
+        );
+      }
+      const seatless = takenOver.filter((id) => droppedWithSeats.includes(id));
+      if (seatless.length > 0) {
+        throw new DismissTakeOverWithoutSeatError(seatless);
+      }
+      // One level down (owner, d-1004): a seat answered Düşür whose holder
+      // handed on something still held under it, which no seat of theirs
+      // backs any more, would leave rows nobody was asked about.
+      await assertNothingLeftUnder(tx, droppedSeats);
       await tx
         .update(madrasahs)
         .set({
@@ -468,6 +599,7 @@ export class MadrasahRepository {
           endsAt: options.endsAt?.toISOString() ?? null,
           tookOver,
           dropped,
+          droppedWithSeats,
         },
       });
       return true;
@@ -478,9 +610,14 @@ export class MadrasahRepository {
    * Hides the medrese (nazir/12 "Medreseyi gizle") together with its courses,
    * in one transaction with an audit row. The courses that were shown get the
    * medrese's own instant, which is how `restore` finds them again: one hidden
-   * on its own earlier stays hidden. Nothing is deleted.
+   * on its own earlier stays hidden. Nothing is deleted. `level` is the level
+   * the hider acted at (MDRS-135); the courses carry it too.
    */
-  async hide(madrasahId: string, actorId: string): Promise<HideMadrasahResult> {
+  async hide(
+    madrasahId: string,
+    actorId: string,
+    level: HideLevel
+  ): Promise<HideMadrasahResult> {
     return this.db.transaction(async (tx) => {
       const [row] = await tx
         .select({ archivedAt: madrasahs.archivedAt })
@@ -492,13 +629,20 @@ export class MadrasahRepository {
       const now = new Date();
       await tx
         .update(madrasahs)
-        .set({ archivedAt: now, archivedBy: actorId, updatedAt: now })
+        .set({
+          archivedAt: now,
+          archivedBy: actorId,
+          archivedLevel: level,
+          updatedAt: now,
+        })
         .where(eq(madrasahs.id, madrasahId));
+      // The courses go with it, and are brought back by the same level.
       const hidden = await tx
         .update(courses)
         .set({
           archivedAt: now,
           archivedBy: actorId,
+          archivedLevel: level,
           version: sql`${courses.version} + 1`,
           updatedAt: now,
         })
@@ -523,26 +667,47 @@ export class MadrasahRepository {
    */
   async restore(
     madrasahId: string,
-    actorId: string
+    actorId: string,
+    level: HideLevel
   ): Promise<RestoreMadrasahResult> {
     return this.db.transaction(async (tx) => {
       const [row] = await tx
-        .select({ archivedAt: madrasahs.archivedAt })
+        .select({
+          archivedAt: madrasahs.archivedAt,
+          archivedLevel: madrasahs.archivedLevel,
+        })
         .from(madrasahs)
         .where(eq(madrasahs.id, madrasahId))
         .for("no key update");
       if (!row) return "not-found";
       if (row.archivedAt === null) return "not-hidden";
+      // By the level that hid it or one above (MDRS-135, the ban rule); a
+      // medrese hidden before the level was recorded counts as hidden by the
+      // medrese itself.
+      const hiddenAt = hiderLevelOf({
+        type: "madrasah",
+        madrasahId,
+        archivedLevel: row.archivedLevel,
+      });
+      if (!mayRestoreAt(level, hiddenAt)) {
+        throw new ArchiveRestoreLevelError(hiddenAt, level);
+      }
       const now = new Date();
       await tx
         .update(madrasahs)
-        .set({ archivedAt: null, archivedBy: null, updatedAt: now })
+        .set({
+          archivedAt: null,
+          archivedBy: null,
+          archivedLevel: null,
+          updatedAt: now,
+        })
         .where(eq(madrasahs.id, madrasahId));
       const shown = await tx
         .update(courses)
         .set({
           archivedAt: null,
           archivedBy: null,
+          archivedLevel: null,
           version: sql`${courses.version} + 1`,
           updatedAt: now,
         })

@@ -45,6 +45,7 @@ export interface HostingGrantedByResponse {
  */
 export const HostingGrantedByResponseRoleEnum = {
     SystemAdmin: 'SYSTEM_ADMIN',
+    MedarisNazim: 'MEDARIS_NAZIM',
     KoskNazim: 'KOSK_NAZIM'
 } as const;
 export type HostingGrantedByResponseRoleEnum = typeof HostingGrantedByResponseRoleEnum[keyof typeof HostingGrantedByResponseRoleEnum];

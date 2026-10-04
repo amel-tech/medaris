@@ -1,4 +1,5 @@
 import {
+  ASSIGNED_ROLES,
   AuthGuard,
   Authz,
   AuthzExempt,
@@ -10,7 +11,8 @@ import {
   byParam,
   ENTITIES,
   forNew,
-  SCOPES,
+  PERMISSIONS,
+  SelfGrantGuard,
 } from "@medaris/common";
 import {
   Body,
@@ -71,7 +73,7 @@ const UUID_REGEX =
 /**
  * Authorizes a `/kosks/:id` route against that köşk, answering a missing or
  * malformed id as not-found first. Guards run before pipes, so a malformed id
- * would otherwise reach the matrix as the PUBLIC sentinel and be a 403. The
+ * would otherwise reach the engine as the PUBLIC sentinel and be a 403. The
  * role resolver answers a missing köşk with 404 on its own since MDRS-43, but
  * SYSTEM_ADMIN bypasses the resolver, so the existence check stays here for
  * the routes whose handlers assume the köşk is there.
@@ -95,14 +97,26 @@ export class KoskController {
   constructor(
     private readonly koskService: KoskService,
     private readonly authz: AuthzService,
-    private readonly koskAdmin: KoskAdminService
+    private readonly koskAdmin: KoskAdminService,
+    private readonly selfGrant: SelfGrantGuard
   ) {}
 
-  /** Who is changing the managers, for the check under the köşk lock. */
-  private managerActor(request: AuthorizedRequest) {
+  /**
+   * Who is changing the managers, for the check under the köşk lock. The
+   * başnazım and a Medaris nazımı holding "Köşk nazımlarını yönet" are not
+   * managers of the köşk and pass it by right (review M7: the guard let the
+   * second in and the repository then refused them).
+   */
+  private async managerActor(request: AuthorizedRequest, koskId: string) {
     return {
       id: request.user.sub,
-      bypass: this.authz.isSystemAdmin(request.user),
+      bypass:
+        this.authz.isSystemAdmin(request.user) ||
+        (await this.authz.can(
+          request.user,
+          { entity: ENTITIES.KOSK, id: koskId },
+          PERMISSIONS.PLATFORM_KOSK_NAZIM_MANAGE
+        )),
     };
   }
 
@@ -238,7 +252,7 @@ export class KoskController {
   })
   @ApiOkResponse({ type: KoskResponse })
   @ApiNotFoundResponse()
-  @Authz(SCOPES.VIEW, byParam(ENTITIES.KOSK))
+  @Authz(PERMISSIONS.KOSK_VIEW, byParam(ENTITIES.KOSK))
   @AuthzPublic()
   @Get(":id")
   async findById(
@@ -270,7 +284,7 @@ export class KoskController {
   })
   @ApiOkResponse({ type: KoskDecksResponse })
   @ApiNotFoundResponse()
-  @Authz(SCOPES.VIEW, byExistingKosk)
+  @Authz(PERMISSIONS.KOSK_VIEW, byExistingKosk)
   @Get(":id/decks")
   async findDecks(
     @Req() request: AuthorizedRequest,
@@ -284,14 +298,18 @@ export class KoskController {
     operationId: "createKosk",
   })
   @ApiCreatedResponse({ type: KoskResponse })
-  @ApiForbiddenResponse()
+  @ApiForbiddenResponse({
+    description:
+      "SELF_GRANT_REFUSED: a caller other than SYSTEM_ADMIN named themselves in `managerUserIds` or left it out. Written to the audit log.",
+  })
   // SYSTEM_ADMIN only (owner decision, 2026-10-02), replacing MDRS-43's
-  // self-service exemption of 2026-09-23. `CREATE_KOSK` is on NO kosk row of
-  // the matrix, so only the realm bypass passes. Self-service made any caller
+  // self-service exemption of 2026-09-23. `platform.kosk_create` is no
+  // relationship's and no role's default, so only the realm bypass and a Medaris
+  // nazımı who was given it pass. Self-service made any caller
   // a köşk manager on demand, and `GET /users?email=` (MDRS-104) trusts
   // "manages a köşk" as its gate, so an open create let anybody grant
   // themselves that lookup.
-  @Authz(SCOPES.CREATE_KOSK, forNew(ENTITIES.KOSK))
+  @Authz(PERMISSIONS.PLATFORM_KOSK_CREATE, forNew(ENTITIES.KOSK))
   @Post()
   async create(
     @Req() request: AuthenticatedUserRequest,
@@ -299,8 +317,17 @@ export class KoskController {
   ): Promise<KoskResponse> {
     const ownerId = request.user.sub;
     // With `managerUserIds` this is nizam/10: the başnazım opens the köşk
-    // for the nazımları they named and is not one of them.
+    // for the nazımları they named and is not one of them. Without it the
+    // caller is the köşk's only nazım, which only the başnazım may make
+    // himself: `platform.kosk_create` opens a köşk, it does not seat its nazım.
     const { managerUserIds, ...fields } = koskDto;
+    await this.selfGrant.assertNotSelf(
+      request.user,
+      managerUserIds ?? [ownerId],
+      { entity: ENTITIES.KOSK, id: "new" },
+      { role: ASSIGNED_ROLES.KOSK_NAZIM, always: true },
+      managerUserIds ? "kosk.create.nazims" : "kosk.create"
+    );
     const created = managerUserIds
       ? await this.koskAdmin.createWithNazims(request.user, koskDto)
       : await this.koskService.create({ ownerId, ...fields });
@@ -317,13 +344,18 @@ export class KoskController {
   @Patch(":id")
   // `byExistingKosk`, not `byParam`: a malformed or unknown id is a 404 on
   // the routes MDRS-106/124/126 moved to `@Authz`.
-  @Authz(SCOPES.EDIT, byExistingKosk)
+  @Authz(
+    [PERMISSIONS.KOSK_MANAGE, PERMISSIONS.PLATFORM_KOSK_EDIT],
+    byExistingKosk
+  )
   async update(
     @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string,
     @Body() koskDto: UpdateKoskDto
   ): Promise<KoskResponse> {
-    await this.koskService.update(id, koskDto, request.user.sub);
+    await this.koskService.update(id, koskDto, request.user.sub, {
+      systemAdmin: this.authz.isSystemAdmin(request.user),
+    });
     return this.koskService.findById(id, request.user.sub);
   }
 
@@ -337,7 +369,7 @@ export class KoskController {
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()
   @Delete(":id")
-  @Authz(SCOPES.DELETE, byExistingKosk)
+  @Authz(PERMISSIONS.KOSK_DELETE, byExistingKosk)
   async delete(
     @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string
@@ -358,13 +390,28 @@ export class KoskController {
       "No such köşk, or the user has never signed in (KOSK_MANAGER_UNKNOWN_USER)",
   })
   @Post(":id/managers/:userId")
-  @Authz(SCOPES.MANAGE_KOSK_MANAGERS, byExistingKosk)
+  @Authz(
+    [PERMISSIONS.KOSK_MANAGE, PERMISSIONS.PLATFORM_KOSK_NAZIM_MANAGE],
+    byExistingKosk
+  )
   async addManager(
     @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string,
     @Param("userId", ParseUUIDPipe) userId: string
   ): Promise<KoskResponse> {
-    await this.koskService.addManager(id, userId, this.managerActor(request));
+    // A Medaris nazımı does not make themselves a köşk's nazımı by this route.
+    await this.selfGrant.assertNotSelf(
+      request.user,
+      [userId],
+      { entity: ENTITIES.KOSK, id },
+      { role: ASSIGNED_ROLES.KOSK_NAZIM },
+      "kosk.managers.add"
+    );
+    await this.koskService.addManager(
+      id,
+      userId,
+      await this.managerActor(request, id)
+    );
     return this.koskService.findById(id, request.user.sub);
   }
 
@@ -383,7 +430,10 @@ export class KoskController {
     description: "The user is the köşk's last manager (KOSK_LAST_MANAGER)",
   })
   @Delete(":id/managers/:userId")
-  @Authz(SCOPES.MANAGE_KOSK_MANAGERS, byExistingKosk)
+  @Authz(
+    [PERMISSIONS.KOSK_MANAGE, PERMISSIONS.PLATFORM_KOSK_NAZIM_MANAGE],
+    byExistingKosk
+  )
   async removeManager(
     @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string,
@@ -392,7 +442,7 @@ export class KoskController {
     await this.koskService.removeManager(
       id,
       userId,
-      this.managerActor(request)
+      await this.managerActor(request, id)
     );
     return this.koskService.findById(id, request.user.sub);
   }
@@ -404,7 +454,7 @@ export class KoskController {
   @ApiCreatedResponse({ type: Boolean })
   @ApiNotFoundResponse()
   // Following is a read affordance: you may subscribe to a köşk you may see.
-  @Authz(SCOPES.VIEW, byParam(ENTITIES.KOSK))
+  @Authz(PERMISSIONS.KOSK_VIEW, byParam(ENTITIES.KOSK))
   @Post(":id/follow")
   async follow(
     @Req() request: AuthorizedRequest,

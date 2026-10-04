@@ -144,6 +144,7 @@ src/models/FlashcardResponse.ts
 src/models/FlashcardStudyRoundResponse.ts
 src/models/FlashcardType.ts
 src/models/FollowedKoskCourseResponse.ts
+src/models/GivenItemKind.ts
 src/models/GivenItemResponse.ts
 src/models/GivenKind.ts
 src/models/GrantHostingRightDto.ts
@@ -151,6 +152,7 @@ src/models/GrantResponse.ts
 src/models/GroupUserResponse.ts
 src/models/HeadDelegationKind.ts
 src/models/HeadDelegationResponse.ts
+src/models/HeadDelegationScopeType.ts
 src/models/HealthCheckDto.ts
 src/models/HostingCourseStatus.ts
 src/models/HostingCoursesAction.ts

@@ -245,10 +245,23 @@ export function archiveRows(
   });
 }
 
+/**
+ * The message key of a refused "Medreseyi geri getir": a medrese Medaris
+ * yönetimi hid is theirs to bring back (ARCHIVE_RESTORE_LEVEL), which the
+ * archive's own words, written for the list, do not say.
+ */
+export function madrasahRestoreErrorKey(code: string): string {
+  return code === "ARCHIVE_RESTORE_LEVEL"
+    ? "Archive.hide.restoreLevel"
+    : archiveErrorKey(code);
+}
+
 /** The message key of a refused restore or hide, from the code the API answered with. */
 export function archiveErrorKey(code: string): string {
   switch (code) {
     case "ARCHIVE_FORBIDDEN":
+    // A lower level than the one that hid it (MDRS-135): the same words, "a higher level may have hidden it".
+    case "ARCHIVE_RESTORE_LEVEL":
       return "Archive.errors.forbidden";
     case "ARCHIVE_ITEM_NOT_FOUND":
       return "Archive.errors.gone";

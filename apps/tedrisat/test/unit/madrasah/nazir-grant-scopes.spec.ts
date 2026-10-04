@@ -3,6 +3,7 @@ import {
   isPermissionCode,
   MADRASAH_CATALOG,
   MADRASAH_COURSE_CATALOG,
+  PERMISSIONS,
   ROLE_DEFAULT_PERMISSIONS,
 } from "../../../src/assignment/permission-catalog";
 import {
@@ -26,10 +27,20 @@ const mixedGroup = { id: G, permissions: ["madrasah.ban", "course.edit"] };
 const courseGroup = { id: G, permissions: ["course.edit", "session.manage"] };
 
 describe("the medrese's permission dictionary", () => {
-  it("has the ten medrese permissions and the twenty course permissions the dialogs print", () => {
-    expect(MADRASAH_CATALOG).toHaveLength(10);
-    expect(MADRASAH_COURSE_CATALOG).toHaveLength(20);
-    expect(MADRASAH_COURSE_CATALOG).toEqual(ROLE_DEFAULT_PERMISSIONS.MUDERRIS);
+  // nazir/06 prints ten medrese permissions and the twenty a müderris holds by
+  // default; the owner's 1 October list adds "request a non-medrese course in a
+  // köşk" (medrese) and "propose a köşk deck" (course).
+  it("has the eleven medrese permissions and the twenty-one course permissions the dialogs print", () => {
+    expect(MADRASAH_CATALOG).toHaveLength(11);
+    expect(MADRASAH_COURSE_CATALOG).toHaveLength(21);
+  });
+
+  it("offers a nazır every course permission a müderris holds, but the one to give permissions", () => {
+    expect([...MADRASAH_COURSE_CATALOG].sort()).toEqual(
+      ROLE_DEFAULT_PERMISSIONS.MUDERRIS.filter(
+        (code) => code !== PERMISSIONS.PERMISSION_GRANT
+      ).sort()
+    );
   });
 
   it("keeps every code a catalog code and the two sections apart", () => {

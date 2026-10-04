@@ -65,6 +65,8 @@
     "restoreFailed": "Geri alınamadı",
     "restoreParentHidden": "Bağlı olduğu öğe hâlâ gizli; önce onu geri alın.",
     "restoreGone": "Bu öğe artık arşivde değil.",
+    "restoreLevel": "Bunu geri alamazsınız: daha üst bir kademe gizledi; yalnız o kademe ya da üstü geri alabilir.",
+    "restoreLocked": "Bunu Medaris yönetimi gizledi; yalnız o kademe geri alabilir.",
     "deleted": "Kalıcı olarak silindi",
     "deletedBody": "{title} ve bağlı kayıtları silindi.",
     "deleteFailed": "Silinemedi",
@@ -921,6 +923,9 @@
       "notHidden": "Bu medrese zaten gizli değil.",
       "forbidden": "Bunu yapma izniniz yok.",
       "delegationsChanged": "Başmüderrisin verdikleri değişmiş; listeyi yeniden okuyup seçimleri tekrar yapın.",
+      "delegationsCascade": "Düşürdüğünüz görevlerden birinin sahibi başkalarına rol ya da izin vermiş; onlar sorulmadan kalırdı. Önce o kişiyi görevden alın ya da görevini devralın.",
+      "delegationsSeatless": "Görevi düşürülen birinin iznini devralamazsınız: izin görevinden uzun yaşamaz. O izni de düşürün ya da görevi devralın.",
+      "selfTakeOver": "Size verilmiş bir rolü ya da izni devralamazsınız; kendinize rol ya da izin vermek olur. Onu düşürün.",
       "expiryInvalid": "Bitiş tarihi geçmişte."
     },
     "change": "Başmüderrisi değiştir",
@@ -1030,6 +1035,7 @@
     "unknownPerson": "Adı bilinmiyor",
     "roles": {
       "SYSTEM_ADMIN": "Medaris başnazımı",
+      "MEDARIS_NAZIM": "Medaris nazımı",
       "KOSK_NAZIM": "Köşk nazımı"
     },
     "published": "{count} yayında",
@@ -1113,6 +1119,11 @@
         "title": "Köşkü düzenle, gizle ya da geri al",
         "short": "Köşkü düzenle",
         "help": "Gizlenen köşk Arşiv’den geri alınır."
+      },
+      "platform_course_hide": {
+        "title": "Herhangi bir dersi gizle ya da geri al",
+        "short": "Ders gizle",
+        "help": "Medaris yönetimi düzeyinde gizlenen dersi yalnız bu düzey geri alır."
       },
       "platform_hosting_grant": {
         "title": "Barındırma hakkı ver ya da geri al",
@@ -1201,6 +1212,7 @@
       "ban_course": "ders yasağı",
       "ban_lift_course": "yasağı kaldırma",
       "deck_manage_course": "ders destesi",
+      "deck_propose_kosk": "köşk destesi önerisi",
       "course_nazir_assign": "ders nazırı atama"
     },
     "course": {
@@ -1221,6 +1233,7 @@
       "ban_course": "Talebeyi dersten yasakla (dersin yasak listesini görmeyi kapsar)",
       "ban_lift_course": "Ders yasağını gerekçeyle kaldır",
       "deck_manage_course": "Ders destesini aç ve düzenle",
+      "deck_propose_kosk": "Köşk destesi öner",
       "course_nazir_assign": "Ders nazırı ata; izin ya da grup ver, kendi izinlerini aşmadan"
     }
   },
@@ -1266,6 +1279,8 @@
       "alreadyAppointed": "Bu kişi zaten Medaris nazımı.",
       "expiryInvalid": "Bitiş tarihi geçmişte ya da atamanın bitişinden sonra.",
       "dismissChanged": "Bu kişinin verdikleri değişmiş; listeyi yeniden okuyup seçimleri tekrar yapın.",
+      "dismissCascade": "Düşürdüğünüz görevlerden birinin sahibi başkalarına rol ya da izin vermiş; onlar sorulmadan kalırdı. Önce o kişiyi görevden alın ya da görevini devralın.",
+      "dismissSeatless": "Görevi düşürülen birinin iznini devralamazsınız: izin görevinden uzun yaşamaz. O izni de düşürün ya da görevi devralın.",
       "usersPolicy": "Grubu kullananların izinleri için bir seçim yapın.",
       "forbidden": "Bunu yapma izniniz yok."
     }
@@ -1320,6 +1335,7 @@
     "intro": "{name} Medaris nazımı görevinden alınacak; platform izinleri kalkacak.",
     "question": "Bu kişi başkalarına {count} izin ya da rol vermiş. Her biri için bir seçim yapın.",
     "answersNote": "Devral: izin yerinde kalır, veren siz olursunuz. Düşür: izin geri alınır.",
+    "selfMadeQuestion": "Bu kişi kendine {count} izin ya da rol vermiş. Bunlar görevden almayla birlikte geri alınır; seçilecek bir şey yok.",
     "takeOver": "Devral",
     "drop": "Düşür",
     "answerLegend": "{what}, {person}",
@@ -1335,7 +1351,15 @@
     "dismissedBody": "{name} artık Medaris nazımı değil.",
     "loadFailedTitle": "Liste okunamadı",
     "loadFailed": "Bu kişinin verdikleri şu an okunamıyor. Biraz sonra yeniden deneyin.",
-    "retry": "Yeniden dene"
+    "retry": "Yeniden dene",
+    "groupsQuestion": "Bu kişi {count} izin grubu tanımlamış ya da değiştirmiş. Gruplar yerinde kalır; kimin neyi tuttuğu değişmez.",
+    "groupLine": "{action}",
+    "groupLineScoped": "{action} · {scope}",
+    "groupAction": {
+      "create": "Tanımladı",
+      "update": "Değiştirdi"
+    },
+    "groupsNote": "Grubun içeriği denetim kaydında, önceki ve sonraki haliyle durur."
   },
   "UsersPolicyDialog": {
     "titleUsers": "Bu grubu {count} kişi kullanıyor",
@@ -2103,6 +2127,7 @@
       "ban_course": "Talebeyi dersten yasakla (dersin yasak listesini görmeyi kapsar)",
       "ban_lift_course": "Ders yasağını gerekçeyle kaldır",
       "deck_manage_course": "Ders destesini aç ve düzenle",
+      "deck_propose_kosk": "Köşk destesi öner",
       "course_nazir_assign": "Ders nazırı ata; izin ya da grup ver, kendi izinlerini aşmadan",
       "permission_group_define": "İzin grubu tanımla"
     },
@@ -2316,6 +2341,8 @@
     "restoredBody": "{name} yeniden listelerde.",
     "restoreFailed": "Ders geri alınamadı",
     "restoreFailedBody": "Bir şeyler ters gitti. Biraz sonra yeniden deneyin.",
+    "restoreLevelBody": "Bu dersi daha üst bir kademe gizledi; yalnız o kademe ya da üstü geri alabilir.",
+    "restoreParentHiddenBody": "Dersin medresesi ya da köşkü hâlâ gizli; ders onlarla birlikte geri gelir.",
     "emptyAll": "Henüz ders yok.",
     "emptyTab": "Bu durumda ders yok.",
     "hiddenInArchive": "Gizli dersler Arşiv’de de listelenir.",
@@ -3208,6 +3235,7 @@
       "HIDE": "Gizleme ve geri alma",
       "HOSTING": "Barındırma hakkı",
       "TAKEOVER": "Devral ya da düşür",
+      "SELF_GRANT_REFUSED": "Kendine izin ya da görev verme girişimi",
       "APPEAL": "İtiraz ve kararı",
       "PERMANENT_BAN": "Kalıcı yasak talebi ve kararı",
       "PERMANENT_DELETE": "Kalıcı silme",

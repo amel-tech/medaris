@@ -1,7 +1,16 @@
 import { ROLES } from "@medaris/common";
 import { INestApplication } from "@nestjs/common";
+import { eq } from "drizzle-orm";
 import request from "supertest";
+import { EnrollmentStatus } from "../../src/course/domain/enrollment-status.enum";
 import { DatabaseService } from "../../src/database/database.service";
+import { auditLog } from "../../src/database/schema/audit.schema";
+import { enrollments } from "../../src/database/schema/course.schema";
+import {
+  ASSIGNED_ROLES,
+  roleAssignments,
+  SCOPE_TYPES,
+} from "../../src/database/schema/role-assignment.schema";
 import {
   createTestApp,
   OTHER_USER_ID,
@@ -184,6 +193,86 @@ describe("schedule (e2e)", () => {
         (s: { title: string }) => s.title
       );
       expect(approved.sort()).toEqual(["Bekleyen", "Benim"]);
+    });
+
+    it("leaves out the sessions of a passive course, whose live link is closed even to its talebe (review M5)", async () => {
+      const course = await createCourse("Müderrissiz kalan", {
+        sessions: [{ title: "Eski celse", at: inHours(30) }],
+      });
+      await enroll(course.id);
+      expect((await list().expect(200)).body).toHaveLength(1);
+
+      // Its only müderris is gone: the course is passive (MDRS-136).
+      await app.get(DatabaseService).db.insert(roleAssignments).values({
+        userId: TEST_USER_ID,
+        role: ASSIGNED_ROLES.MUDERRIS,
+        scopeType: SCOPE_TYPES.COURSE,
+        scopeId: course.id,
+        grantedBy: TEST_USER_ID,
+        revokedAt: new Date(),
+        revokedBy: TEST_USER_ID,
+      });
+      expect((await list().expect(200)).body).toEqual([]);
+      const upcoming = await request(talebe.getHttpServer())
+        .get("/me/upcoming-lessons")
+        .expect(200);
+      expect(upcoming.body).toEqual([]);
+    });
+
+    it("keeps a passive course for the köşk's nazımı enrolled in it, as the engine keeps it open to them (owner, 4 October)", async () => {
+      const course = await createCourse("Müderrissiz kalan", {
+        sessions: [{ title: "Eski celse", at: inHours(30) }],
+      });
+      await enroll(course.id);
+      const db = app.get(DatabaseService).db;
+      await db.insert(enrollments).values({
+        userId: TEST_USER_ID,
+        courseId: course.id,
+        status: EnrollmentStatus.ENROLLED,
+      });
+      await db.insert(roleAssignments).values({
+        userId: OTHER_USER_ID,
+        role: ASSIGNED_ROLES.MUDERRIS,
+        scopeType: SCOPE_TYPES.COURSE,
+        scopeId: course.id,
+        grantedBy: TEST_USER_ID,
+        revokedAt: new Date(),
+        revokedBy: TEST_USER_ID,
+      });
+
+      const mine = await request(app.getHttpServer())
+        .get("/sessions")
+        .query(window(-1, 7))
+        .expect(200);
+      expect(
+        mine.body.map((s: { title: string; meetingUrl: string }) => [
+          s.title,
+          s.meetingUrl,
+        ])
+      ).toEqual([["Eski celse", MEETING_URL]]);
+      // The talebe of the same course is still closed out.
+      expect((await list().expect(200)).body).toEqual([]);
+
+      // The link of a passive course is passive content: each list that hands
+      // it out writes what GET /courses/:id writes for the same reader
+      // (review D1: their reads stay audited).
+      await request(app.getHttpServer())
+        .get("/me/upcoming-lessons")
+        .expect(200);
+      const audited = await db
+        .select()
+        .from(auditLog)
+        .where(eq(auditLog.entityId, course.id))
+        .orderBy(auditLog.seq);
+      expect(audited.map((r) => [r.actorId, r.action, r.details.via])).toEqual([
+        [TEST_USER_ID, "scope.passive_open", "schedule"],
+        [TEST_USER_ID, "course.content_read", "schedule"],
+        [TEST_USER_ID, "scope.passive_open", "schedule.upcoming"],
+        [TEST_USER_ID, "course.content_read", "schedule.upcoming"],
+      ]);
+      expect(audited[0].details).toMatchObject({
+        passiveScope: { type: "course", id: course.id },
+      });
     });
 
     it("keeps a cancelled session, marked, with no meeting link", async () => {

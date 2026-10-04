@@ -14,16 +14,31 @@ interface AuditTypeRule {
 }
 
 export const AUDIT_TYPE_RULES = {
-  CONTENT_READ: { like: ["course.content_read"] },
-  PRIVATE_DECK_READ: { like: ["deck.private-read"] },
-  PERSONAL_DATA_READ: { like: ["kosk_application.contact_read"] },
+  // A passive scope opened by platform management or its köşk's nazımı is a
+  // read of content the scope had closed.
+  CONTENT_READ: { like: ["course.content_read", "scope.passive_open"] },
+  // The deck under review and the başnazım's read of a talebe's own (MDRS-148).
+  PRIVATE_DECK_READ: { like: ["deck.private-read", "deck.admin_read"] },
+  PERSONAL_DATA_READ: {
+    like: ["kosk_application.contact_read", "course.roster_read"],
+  },
   USER_LOOKUP: { like: ["user.lookup"] },
   TAKEOVER: { like: ["permission.take_over", "permission.drop"] },
-  GRANT: { like: ["permission.%", "permission_group.%"] },
+  // A caller who named themselves and was refused: nothing was given.
+  SELF_GRANT_REFUSED: { like: ["permission.self_grant_refused"] },
+  GRANT: {
+    like: ["permission.%", "permission_group.%"],
+    unless: [
+      "permission.take_over",
+      "permission.drop",
+      "permission.self_grant_refused",
+    ],
+  },
   ROLE_CHANGE: {
     like: [
       "medaris_nazim.%",
       "kosk.nazim.%",
+      "madrasah_nazir.%",
       "madrasah.head_muderris.%",
       "course.muderris_update",
       "course_nazir.%",

@@ -1,9 +1,8 @@
-import { AuthenticatedUser, AuthzService } from "@medaris/common";
+import { AuthenticatedUser, AuthzService, ENTITIES } from "@medaris/common";
 import { Injectable } from "@nestjs/common";
-import { BAN_TIERS, type BanRole, mayLift, tierOfRole } from "../ban/ban-tier";
+import { SCOPE_TYPES } from "../database/schema/scope-type.schema";
 import { KoskNotFoundError } from "../kosk/errors/kosk-not-found.error";
 import { KoskService } from "../kosk/kosk.service";
-import { MadrasahService } from "../madrasah/madrasah.service";
 import { ArchiveRepository, IArchiver } from "./archive.repository";
 import {
   ArchiveItemType,
@@ -18,77 +17,63 @@ import {
   ArchiveForbiddenError,
   ArchiveItemNotFoundError,
   ArchiveParentHiddenError,
+  ArchiveRestoreLevelError,
 } from "./errors/archive-errors";
+import {
+  actingLevel,
+  BARE_WEEK_HIDE_LADDER,
+  COURSE_HIDE_LADDER,
+  type HideLevel,
+  hiderLevelOf,
+  mayRestoreAt,
+  SECTION_HIDE_LADDER,
+} from "./hide-level";
 
 export interface IArchiveEntry extends IArchiveItem {
   archiver: IArchiver | null;
 }
 
-export interface IArchivePage {
-  items: IArchiveEntry[];
+/** An entry with whether the caller may bring it back (Geri al). */
+export interface IRestorableArchiveEntry extends IArchiveEntry {
+  canRestore: boolean;
+}
+
+export interface IArchivePage<T extends IArchiveEntry = IArchiveEntry> {
+  items: T[];
   total: number;
   page: number;
   limit: number;
 }
 
-/** What a köşk manager may bring back: the contents of their own köşk. */
-const KOSK_SCOPED: readonly ArchiveItemType[] = [
-  "course",
-  "week",
-  "session",
-  "deck",
-];
+/** What is restored by the level acting on its course: a course, and the weeks and sessions in one. */
+const COURSE_SCOPED: readonly ArchiveItemType[] = ["course", "week", "session"];
 
-/** What a medrese's başmüderris may bring back: the contents of their own medrese, by kademe. */
-const MADRASAH_SCOPED: readonly ArchiveItemType[] = [
-  "course",
-  "week",
-  "session",
-];
+export type IMadrasahArchiveEntry = IRestorableArchiveEntry;
 
-export interface IMadrasahArchiveEntry extends IArchiveEntry {
-  canRestore: boolean;
-}
-
-export interface IMadrasahArchivePage extends IArchivePage {
-  items: IMadrasahArchiveEntry[];
+export interface IMadrasahArchivePage
+  extends IArchivePage<IMadrasahArchiveEntry> {
   /** Everything hidden in the medrese, per type, whatever the page was asked for. */
   counts: Record<"all" | "course" | "week" | "session" | "recording", number>;
 }
 
 /**
- * The kademe of whoever hid an item, as `tierOfRole` ranks roles. A hider who
- * holds no role where the item sits is the Medaris administration (the
- * SYSTEM_ADMIN realm role leaves no row), the highest; an item hidden before
- * hiders were recorded names nobody, the lowest, so anyone allowed to restore
- * it may.
+ * The level the caller restores at, for an item, or null for no level at all.
+ * A restore is by the level that hid the item or any above it (`mayRestoreAt`),
+ * so the same row of the ladder that was recorded when it was hidden decides.
  */
-export function hiderTier(
-  item: Pick<IArchiveItem, "archivedBy">,
-  archiver: Pick<IArchiver, "role"> | null
-): number {
-  if (item.archivedBy === null) return BAN_TIERS.COURSE;
-  return archiver?.role
-    ? tierOfRole(archiver.role as BanRole)
-    : BAN_TIERS.PLATFORM;
-}
+type RestoreRoute = HideLevel | null;
 
-/**
- * How the caller reaches the restore of an item: "open" for the başnazım and
- * the item's köşk nazımı, who restore whatever sits there; "head" for the
- * item's medrese başmüderris, whose restore the kademe rule limits; null for
- * everyone else.
- */
-type RestoreRoute = "open" | "head" | null;
+/** One answer per key for a page of items: the engine is asked once per course or köşk. */
+type Memo = <V>(key: string, ask: () => Promise<V>) => Promise<V>;
 
 /**
  * The archive (MDRS-173): what nazımlar hid, listed, restored and, for the
  * Medaris başnazımı alone, deleted for real.
  *
- * Authorization is here, not in `@Authz`: the matrix has no archive entity,
- * and the question is the same everywhere — SYSTEM_ADMIN (the başnazım), or
- * for what sits in a köşk, a manager of that köşk. Anything else is
- * `ArchiveForbiddenError`.
+ * Listing is here, not in `@Authz`: the engine has no archive entity. A köşk's
+ * archive is its managers' and SYSTEM_ADMIN's, the platform's the başnazım's.
+ * A restore asks the engine on the item's course (`restoreRoute`). Anything
+ * else is `ArchiveForbiddenError`.
  */
 @Injectable()
 export class ArchiveService {
@@ -97,26 +82,30 @@ export class ArchiveService {
   constructor(
     private readonly repo: ArchiveRepository,
     private readonly koskService: KoskService,
-    private readonly authz: AuthzService,
-    private readonly madrasahService: MadrasahService
+    private readonly authz: AuthzService
   ) {}
 
-  /** One köşk's archive: its courses, weeks, sessions and decks, never the köşk. */
+  /**
+   * One köşk's archive: its courses, weeks, sessions and decks, never the köşk.
+   * Each item says whether the caller may bring it back: a köşk nazımı cannot
+   * bring back what the platform hid (MDRS-108: no button leads to a 403).
+   */
   async listForKosk(
     user: AuthenticatedUser,
     koskId: string,
     query: { type?: ArchiveItemType; q?: string; page: number; limit: number }
-  ): Promise<IArchivePage> {
+  ): Promise<IArchivePage<IRestorableArchiveEntry>> {
     if (!(await this.repo.koskExists(koskId))) {
       throw new KoskNotFoundError(koskId);
     }
     await this.assertKoskManager(user, koskId);
-    return this.page(
+    const page = await this.page(
       { koskId, type: query.type, q: query.q },
       KOSK_ARCHIVE_ITEM_TYPES,
       query.page,
       query.limit
     );
+    return { ...page, items: await this.withCanRestore(user, page.items) };
   }
 
   /**
@@ -142,20 +131,7 @@ export class ArchiveService {
         : this.page(filter, types, query.page, query.limit),
       this.repo.countByType({ ...filter, types: MADRASAH_ARCHIVE_ITEM_TYPES }),
     ]);
-    const memo = new Map<string, Promise<boolean>>();
-    const once = (key: string, ask: () => Promise<boolean>) => {
-      const known = memo.get(key);
-      if (known) return known;
-      const answer = ask();
-      memo.set(key, answer);
-      return answer;
-    };
-    const items = await Promise.all(
-      page.items.map(async (entry) => ({
-        ...entry,
-        canRestore: await this.canRestore(user, entry, entry.archiver, once),
-      }))
-    );
+    const items = await this.withCanRestore(user, page.items);
     const count = (type: ArchiveItemType) => counted.get(type) ?? 0;
     return {
       ...page,
@@ -170,7 +146,7 @@ export class ArchiveService {
     };
   }
 
-  /** The whole platform's archive. The başnazım's alone. */
+  /** The whole platform's archive. The başnazım's alone, who brings back anything. */
   async listForPlatform(
     user: AuthenticatedUser,
     query: {
@@ -181,9 +157,9 @@ export class ArchiveService {
       page: number;
       limit: number;
     }
-  ): Promise<IArchivePage> {
+  ): Promise<IArchivePage<IRestorableArchiveEntry>> {
     this.assertChiefNazim(user);
-    return this.page(
+    const page = await this.page(
       {
         koskId: query.koskId,
         madrasahId: query.madrasahId,
@@ -194,6 +170,7 @@ export class ArchiveService {
       query.page,
       query.limit
     );
+    return { ...page, items: await this.withCanRestore(user, page.items) };
   }
 
   async scopes(user: AuthenticatedUser): Promise<IArchiveScopes> {
@@ -201,21 +178,48 @@ export class ArchiveService {
     return this.repo.scopes();
   }
 
+  /**
+   * Who may bring an item back: the başnazım, and for what sits in a köşk or a
+   * medrese whoever acts there at some level (`restoreRoute`), then only by the
+   * kademe rule: the level that hid it or one above (`ArchiveRestoreLevelError`
+   * names both levels otherwise). The level is compared under the row lock, in
+   * the repository's transaction.
+   */
   async restore(
     user: AuthenticatedUser,
     type: ArchiveItemType,
     id: string
   ): Promise<{ type: ArchiveItemType; id: string; title: string }> {
     const item = await this.requireItem(type, id);
-    await this.assertMayRestore(user, item);
-    const outcome = await this.repo.restore(type, id);
-    if (outcome.status === "not-found") {
-      throw new ArchiveItemNotFoundError(type, id);
+    const ask: Memo = (_key, answer) => answer();
+    // A week is asked on both of its ladders: whether its restore brings
+    // sessions back is decided under the row lock, and the repository takes
+    // the level that applies.
+    const route = await this.restoreRoute(user, item, ask, "bare");
+    if (route === null) throw new ArchiveForbiddenError();
+    const sessionRoute =
+      item.type === "week"
+        ? await this.restoreRoute(user, item, ask, "section")
+        : route;
+    const outcome = await this.repo.restore(
+      type,
+      id,
+      route,
+      user.sub,
+      sessionRoute
+    );
+    switch (outcome.status) {
+      case "not-found":
+        throw new ArchiveItemNotFoundError(type, id);
+      case "forbidden":
+        throw new ArchiveForbiddenError();
+      case "level":
+        throw new ArchiveRestoreLevelError(outcome.hiddenAt, route);
+      case "parent-hidden":
+        throw new ArchiveParentHiddenError(type, id);
+      default:
+        return { type, id, title: outcome.title };
     }
-    if (outcome.status === "parent-hidden") {
-      throw new ArchiveParentHiddenError(type, id);
-    }
-    return { type, id, title: outcome.title };
   }
 
   /** What a real delete would take with it, for the confirmation. */
@@ -277,67 +281,99 @@ export class ArchiveService {
   }
 
   /**
-   * The başnazım restores anything, a köşk nazımı what sits in their köşk, and
-   * a medrese's başmüderris what sits in their medrese unless a higher kademe
-   * hid it (nazir/12, "yalnız o kademe ya da üstü geri alabilir"). The kademe
-   * rule is the medrese side's only: the köşk path was open before it and is
-   * left as it was.
+   * Whether the caller may bring the item back now: they act at some level
+   * there and it was hidden at that level or below. An item hidden before the
+   * level was recorded counts as hidden at the lowest level that could have
+   * hidden it.
    */
-  private async assertMayRestore(
-    user: AuthenticatedUser,
-    item: IArchiveItem
-  ): Promise<void> {
-    const route = await this.restoreRoute(user, item, (_key, ask) => ask());
-    if (route === null) throw new ArchiveForbiddenError();
-    if (route === "head") {
-      const archiver =
-        (await this.repo.archivers([item])).get(`${item.type}:${item.id}`) ??
-        null;
-      if (!mayLift(BAN_TIERS.MADRASAH, hiderTier(item, archiver))) {
-        throw new ArchiveForbiddenError(
-          "A higher kademe hid this; only that kademe or above brings it back"
-        );
-      }
-    }
-  }
-
   private async canRestore(
     user: AuthenticatedUser,
     item: IArchiveItem,
-    archiver: IArchiver | null,
-    once: (key: string, ask: () => Promise<boolean>) => Promise<boolean>
+    once: Memo
   ): Promise<boolean> {
     const route = await this.restoreRoute(user, item, once);
-    return (
-      route === "open" ||
-      (route === "head" &&
-        mayLift(BAN_TIERS.MADRASAH, hiderTier(item, archiver)))
+    return route !== null && mayRestoreAt(route, hiderLevelOf(item));
+  }
+
+  /** Each page item with whether the caller may bring it back, one engine question per course or köşk. */
+  private async withCanRestore<T extends IArchiveEntry>(
+    user: AuthenticatedUser,
+    entries: readonly T[]
+  ): Promise<(T & { canRestore: boolean })[]> {
+    const memo = new Map<string, Promise<unknown>>();
+    const once: Memo = <V>(key: string, ask: () => Promise<V>) => {
+      const known = memo.get(key) as Promise<V> | undefined;
+      if (known) return known;
+      const answer = ask();
+      memo.set(key, answer);
+      return answer;
+    };
+    return Promise.all(
+      entries.map(async (entry) => ({
+        ...entry,
+        canRestore: await this.canRestore(user, entry, once),
+      }))
     );
   }
 
+  /**
+   * The level the caller restores an item at. A course and the weeks and
+   * sessions in it are decided by the engine on the course, on the same ladder
+   * every course hide is recorded on (`COURSE_HIDE_LADDER`), so whoever could
+   * hide at a level brings back at it: the köşk's nazımı, the başmüderris or a
+   * nazır given `madrasah.course_hide`, platform management holding
+   * `platform.course_hide`; a week or a session also at the course itself, by
+   * whoever does its session work (`SECTION_HIDE_LADDER`), and a week that
+   * brings no session back by its editor too (`BARE_WEEK_HIDE_LADDER`). A deck
+   * is its köşk nazımı's, as its hide is. A köşk and a medrese are restored on
+   * their own routes; here only the başnazım restores them.
+   */
   private async restoreRoute(
     user: AuthenticatedUser,
     item: IArchiveItem,
-    once: (key: string, ask: () => Promise<boolean>) => Promise<boolean>
+    once: Memo,
+    /** For a week: the ladder to ask, instead of the one its restore needs now. */
+    weekLadder?: "bare" | "section"
   ): Promise<RestoreRoute> {
-    if (this.authz.isSystemAdmin(user)) return "open";
+    if (this.authz.isSystemAdmin(user)) return SCOPE_TYPES.PLATFORM;
+    if (COURSE_SCOPED.includes(item.type) && item.courseId !== null) {
+      const courseId = item.courseId;
+      // A week or a session also has the course's own rung: whoever runs the
+      // course hid it there, and brings it back there. Bringing a session
+      // back, alone or with its week, is session work; a week that brings
+      // none back is the course's own text, as dropping it was.
+      const name =
+        item.type === "course"
+          ? "course"
+          : item.type === "session"
+            ? "section"
+            : (weekLadder ??
+              ((await this.repo.weekRestoresSessions(item.id))
+                ? "section"
+                : "bare"));
+      const ladder = {
+        course: COURSE_HIDE_LADDER,
+        section: SECTION_HIDE_LADDER,
+        bare: BARE_WEEK_HIDE_LADDER,
+      }[name];
+      return once(`${name}:${courseId}`, () =>
+        actingLevel(
+          this.authz,
+          user,
+          { entity: ENTITIES.COURSE, id: courseId },
+          ladder,
+          null
+        )
+      );
+    }
     if (
-      KOSK_SCOPED.includes(item.type) &&
+      item.type === "deck" &&
       item.koskId !== null &&
       (await once(`kosk:${item.koskId}`, () =>
         this.koskService.isManager(item.koskId as string, user.sub)
       ))
     ) {
-      return "open";
-    }
-    if (
-      MADRASAH_SCOPED.includes(item.type) &&
-      item.madrasahId !== null &&
-      (await once(`madrasah:${item.madrasahId}`, () =>
-        this.madrasahService.isNazir(item.madrasahId as string, user.sub)
-      ))
-    ) {
-      return "head";
+      return SCOPE_TYPES.KOSK;
     }
     return null;
   }

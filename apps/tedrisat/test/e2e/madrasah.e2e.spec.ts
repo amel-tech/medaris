@@ -298,7 +298,9 @@ describe("Madrasahs (e2e)", () => {
       // Nor does a grant land in a medrese that is gone: the row is locked
       // and read first, so nothing is written.
       await expect(
-        app.get(MadrasahNazirService).appoint(missing, STRANGER_ID, ADMIN_ID)
+        app
+          .get(MadrasahNazirService)
+          .appoint(missing, STRANGER_ID, ADMIN_ID, "platform")
       ).rejects.toBeInstanceOf(MadrasahNotFoundError);
       const orphans = await databaseService.db
         .select()

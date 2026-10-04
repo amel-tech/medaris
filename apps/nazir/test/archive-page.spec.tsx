@@ -19,10 +19,13 @@ type Answer<T> =
 const state = {
   archive: { status: "failed" } as Answer<unknown>,
   asked: [] as unknown[],
+  /** The viewer's role in the medrese, as the portal reads it. */
+  role: "MEDRESE_BASMUDERRIS",
 };
 const refresh = vi.fn();
 const restoreItem = vi.fn();
 const hideMedrese = vi.fn();
+const restoreMedrese = vi.fn();
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh }),
@@ -57,7 +60,7 @@ vi.mock("~/features/shell/reads", () => ({
         kind: "medrese",
         id: "m-1",
         name: "Süleymaniye Medresesi",
-        role: "MEDRESE_BASMUDERRIS",
+        role: state.role,
         isImam: false,
         koskName: null,
       },
@@ -67,6 +70,7 @@ vi.mock("~/features/shell/reads", () => ({
 vi.mock("~/features/archive/actions", () => ({
   restoreItem: (type: string, id: string) => restoreItem(type, id),
   hideMedrese: (id: string) => hideMedrese(id),
+  restoreMedrese: (id: string) => restoreMedrese(id),
 }));
 
 const self = { id: "u-1", name: "Mehmet Emin Işıkoğlu" };
@@ -215,7 +219,10 @@ beforeEach(() => {
   vi.setSystemTime(new Date("2026-10-02T12:00:00+03:00"));
   state.archive = { status: "ok", data: listing() };
   state.asked = [];
-  for (const fn of [refresh, restoreItem, hideMedrese]) fn.mockReset();
+  state.role = "MEDRESE_BASMUDERRIS";
+  for (const fn of [refresh, restoreItem, hideMedrese, restoreMedrese]) {
+    fn.mockReset();
+  }
 });
 afterEach(async () => {
   await cleanup();
@@ -306,9 +313,19 @@ describe("Arşiv", () => {
     expect(out).toContain(
       "Süleymaniye Medresesi ve dersleri bütün listelerden ve aramadan kalkar"
     );
+    // The kademe rule (MDRS-135): what the başmüderris hid, they bring back too.
     expect(out).toContain(
-      "Hiçbir şey silinmez; medreseyi yalnız Medaris yönetimi geri getirebilir."
+      "Hiçbir şey silinmez; medreseyi, onu gizleyen kademe ya da üstü geri getirir: sizin gizlediğinizi siz ya da Medaris yönetimi."
     );
+    expect(out).not.toContain("yalnız Medaris yönetimi geri getirebilir");
+  });
+
+  it("leaves 'Medreseyi gizle' out for a nazır, whom the API refuses it (review C-archive-r2-3)", async () => {
+    state.role = "MEDRESE_NAZIR";
+    const out = await markup();
+    expect(out).toContain('data-testid="archive"');
+    expect(out).not.toContain('data-testid="hide-madrasah"');
+    expect(textOf(out)).not.toContain("Medreseyi gizle");
   });
 
   it("says in one sentence what is missing on a tab with nothing hidden", async () => {
@@ -432,7 +449,7 @@ describe("'Geri al'", () => {
     await click(restoreFor("Merâhu’l-ervâh okumaları"));
     await settle(60);
     expect(toast("error")).toContain(
-      "Medreseyi yalnız Medaris yönetimi geri getirebilir."
+      "Medreseyi, onu gizleyen kademe ya da üstü geri getirir."
     );
     expect(refresh).not.toHaveBeenCalled();
   });
@@ -447,13 +464,13 @@ describe("'Medreseyi gizle'", () => {
   const question = () =>
     document.querySelector("[role=alertdialog]") as HTMLElement | null;
 
-  it("asks first, with the focus on 'Vazgeç', and says only Medaris yönetimi brings the medrese back", async () => {
+  it("asks first, with the focus on 'Vazgeç', and says the başmüderris or Medaris yönetimi brings the medrese back", async () => {
     await open();
     const ask = question() as HTMLElement;
     expect(ask.textContent).toContain("Süleymaniye Medresesi");
     expect(ask.textContent).toContain("Hiçbir şey silinmez");
     expect(ask.textContent).toContain(
-      "medreseyi yalnız Medaris yönetimi geri getirebilir"
+      "medreseyi siz ya da Medaris yönetimi geri getirebilir"
     );
     expect(document.activeElement).toBe(button(ask, "Vazgeç"));
     expect(hideMedrese).not.toHaveBeenCalled();
@@ -471,10 +488,63 @@ describe("'Medreseyi gizle'", () => {
       "[data-testid=hide-madrasah]"
     ) as HTMLElement;
     expect(section.textContent).toContain(
-      "Geri getirmek için Medaris yönetimiyle görüşün."
+      "Medreseyi siz ya da Medaris yönetimi geri getirebilir."
     );
     expect(button(section, "Medreseyi gizle")).toBeUndefined();
+    expect(button(section, "Medreseyi geri getir")).toBeDefined();
     expect(refresh).toHaveBeenCalledOnce();
+  });
+
+  it("brings the medrese back with 'Medreseyi geri getir', as the copy says it can (review C-archive-2)", async () => {
+    hideMedrese.mockResolvedValue({ success: true, data: null });
+    restoreMedrese.mockResolvedValue({ success: true, data: null });
+    await open();
+    await click(button(question() as HTMLElement, "Gizle"));
+    await settle(80);
+    await click(button(document.body, "Medreseyi geri getir"));
+    await settle(80);
+    expect(restoreMedrese).toHaveBeenCalledExactlyOnceWith("m-1");
+    expect(
+      [...document.querySelectorAll(".mds-toast--success")]
+        .map((node) => node.textContent)
+        .join(" ")
+    ).toContain("Medrese geri getirildi");
+    expect(button(document.body, "Medreseyi gizle")).toBeDefined();
+  });
+
+  it("says Medaris yönetimi brings back a medrese they hid, when the API refuses the başmüderris", async () => {
+    hideMedrese.mockResolvedValue({ success: true, data: null });
+    restoreMedrese.mockResolvedValue({
+      success: false,
+      code: "ARCHIVE_RESTORE_LEVEL",
+    });
+    await open();
+    await click(button(question() as HTMLElement, "Gizle"));
+    await settle(80);
+    await click(button(document.body, "Medreseyi geri getir"));
+    await settle(80);
+    expect(toast("error")).toContain("Medrese geri getirilemedi");
+    expect(toast("error")).toContain(
+      "yalnız Medaris yönetimi geri getirebilir"
+    );
+    expect(button(document.body, "Medreseyi geri getir")).toBeDefined();
+  });
+
+  it("offers no 'Medreseyi geri getir' for a medrese someone else hid already, which could end in a 403 (review C-archive-r2-3)", async () => {
+    hideMedrese.mockResolvedValue({
+      success: false,
+      code: "MADRASAH_ALREADY_HIDDEN",
+    });
+    await open();
+    await click(button(question() as HTMLElement, "Gizle"));
+    await settle(80);
+    const section = document.querySelector(
+      "[data-testid=hide-madrasah]"
+    ) as HTMLElement;
+    expect(section.textContent).toContain("Bu medrese zaten gizli.");
+    expect(button(section, "Medreseyi geri getir")).toBeUndefined();
+    expect(button(section, "Medreseyi gizle")).toBeUndefined();
+    expect(restoreMedrese).not.toHaveBeenCalled();
   });
 
   it("takes a medrese that is hidden already as done, and says so", async () => {

@@ -303,6 +303,9 @@ describe("a refused restore or hide", () => {
     expect(archiveErrorKey("ARCHIVE_FORBIDDEN")).toBe(
       "Archive.errors.forbidden"
     );
+    expect(archiveErrorKey("ARCHIVE_RESTORE_LEVEL")).toBe(
+      "Archive.errors.forbidden"
+    );
     expect(archiveErrorKey("ARCHIVE_ITEM_NOT_FOUND")).toBe(
       "Archive.errors.gone"
     );
@@ -339,6 +342,7 @@ describe("message keys of the archive", () => {
         ),
         ...[
           "ARCHIVE_FORBIDDEN",
+          "ARCHIVE_RESTORE_LEVEL",
           "ARCHIVE_ITEM_NOT_FOUND",
           "ARCHIVE_PARENT_HIDDEN",
           "MADRASAH_ALREADY_HIDDEN",
