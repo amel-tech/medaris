@@ -89,6 +89,7 @@ src/models/CreateMadrasahPermissionGroupDto.ts
 src/models/CreateMuderrisDto.ts
 src/models/CreateOffsiteCourseRequestDto.ts
 src/models/CreatePermissionGroupDto.ts
+src/models/CreateRecordingDto.ts
 src/models/CreateResourceDto.ts
 src/models/CreateSessionBatchDto.ts
 src/models/CreateWeekDto.ts
@@ -344,6 +345,7 @@ src/models/UpdatePermissionGroupDto.ts
 src/models/UpdateProfileVisibilityDto.ts
 src/models/UpdateProgressDto.ts
 src/models/UpdatePublicProfileDto.ts
+src/models/UpdateRecordingDto.ts
 src/models/UserSummaryResponse.ts
 src/models/UsersPolicy.ts
 src/models/WeekResponse.ts

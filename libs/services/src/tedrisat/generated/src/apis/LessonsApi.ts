@@ -16,6 +16,7 @@
 import * as runtime from '../runtime';
 import type {
   CancelLessonDto,
+  CreateRecordingDto,
   CreateSessionBatchDto,
   CreateWeekLessonDto,
   LessonMutationResponse,
@@ -26,11 +27,14 @@ import type {
   SessionResponse,
   SetLiveStreamDto,
   UpdateLessonDto,
+  UpdateRecordingDto,
   WeeklyPatternDto,
 } from '../models/index';
 import {
     CancelLessonDtoFromJSON,
     CancelLessonDtoToJSON,
+    CreateRecordingDtoFromJSON,
+    CreateRecordingDtoToJSON,
     CreateSessionBatchDtoFromJSON,
     CreateSessionBatchDtoToJSON,
     CreateWeekLessonDtoFromJSON,
@@ -51,6 +55,8 @@ import {
     SetLiveStreamDtoToJSON,
     UpdateLessonDtoFromJSON,
     UpdateLessonDtoToJSON,
+    UpdateRecordingDtoFromJSON,
+    UpdateRecordingDtoToJSON,
     WeeklyPatternDtoFromJSON,
     WeeklyPatternDtoToJSON,
 } from '../models/index';
@@ -68,6 +74,11 @@ export interface CreateLessonRequest {
     courseId: string;
     weekId: string;
     createWeekLessonDto: CreateWeekLessonDto;
+}
+
+export interface CreateLessonRecordingRequest {
+    id: string;
+    createRecordingDto: CreateRecordingDto;
 }
 
 export interface CreateSessionBatchRequest {
@@ -106,6 +117,11 @@ export interface SetLessonLiveStreamRequest {
 export interface UpdateLessonRequest {
     id: string;
     updateLessonDto: UpdateLessonDto;
+}
+
+export interface UpdateRecordingRequest {
+    id: string;
+    updateRecordingDto: UpdateRecordingDto;
 }
 
 /**
@@ -266,6 +282,60 @@ export class LessonsApi extends runtime.BaseAPI {
      */
     async createLesson(requestParameters: CreateLessonRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<LessonMutationResponse> {
         const response = await this.createLessonRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * `recording.manage` (the müderris and the köşk nazımı by default, a ders nazırı when given it). The recording is READY at once; its provider is read off the link\'s host and nothing is uploaded or called. A session holds one recording (409 RECORDING_EXISTS: change that one). A YouTube link must be PUBLIC (400 RECORDING_YOUTUBE_PUBLIC_ONLY). Written to `audit_log` as `recording.add`. Does not change the course version.
+     * Add a session\'s recording by pasting its link
+     */
+    async createLessonRecordingRaw(requestParameters: CreateLessonRecordingRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<RecordingResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling createLessonRecording().'
+            );
+        }
+
+        if (requestParameters['createRecordingDto'] == null) {
+            throw new runtime.RequiredError(
+                'createRecordingDto',
+                'Required parameter "createRecordingDto" was null or undefined when calling createLessonRecording().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/lessons/{id}/recordings`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: CreateRecordingDtoToJSON(requestParameters['createRecordingDto']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => RecordingResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * `recording.manage` (the müderris and the köşk nazımı by default, a ders nazırı when given it). The recording is READY at once; its provider is read off the link\'s host and nothing is uploaded or called. A session holds one recording (409 RECORDING_EXISTS: change that one). A YouTube link must be PUBLIC (400 RECORDING_YOUTUBE_PUBLIC_ONLY). Written to `audit_log` as `recording.add`. Does not change the course version.
+     * Add a session\'s recording by pasting its link
+     */
+    async createLessonRecording(requestParameters: CreateLessonRecordingRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<RecordingResponse> {
+        const response = await this.createLessonRecordingRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -672,6 +742,60 @@ export class LessonsApi extends runtime.BaseAPI {
      */
     async updateLesson(requestParameters: UpdateLessonRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<LessonMutationResponse> {
         const response = await this.updateLessonRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * `recording.manage`. Only the keys sent change. A new link is READY and its provider is read again; a YouTube recording must stay PUBLIC. Written to `audit_log` as `recording.update`. Does not change the course version.
+     * Rename a recording, replace its link, or change who may watch it
+     */
+    async updateRecordingRaw(requestParameters: UpdateRecordingRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<RecordingResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling updateRecording().'
+            );
+        }
+
+        if (requestParameters['updateRecordingDto'] == null) {
+            throw new runtime.RequiredError(
+                'updateRecordingDto',
+                'Required parameter "updateRecordingDto" was null or undefined when calling updateRecording().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/recordings/{id}`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'PATCH',
+            headers: headerParameters,
+            query: queryParameters,
+            body: UpdateRecordingDtoToJSON(requestParameters['updateRecordingDto']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => RecordingResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * `recording.manage`. Only the keys sent change. A new link is READY and its provider is read again; a YouTube recording must stay PUBLIC. Written to `audit_log` as `recording.update`. Does not change the course version.
+     * Rename a recording, replace its link, or change who may watch it
+     */
+    async updateRecording(requestParameters: UpdateRecordingRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<RecordingResponse> {
+        const response = await this.updateRecordingRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

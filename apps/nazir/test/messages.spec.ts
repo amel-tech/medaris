@@ -3,9 +3,11 @@ import { authErrorMessageKey } from "@medaris/services/auth-client";
 import { createTranslator } from "next-intl";
 import { describe, expect, it } from "vitest";
 import { banErrorKey } from "~/features/bans/bans";
+import { curriculumErrorKey } from "~/features/curriculum/curriculum";
 import { enrolmentErrorKey } from "~/features/enrolments/enrolments";
 import { offsiteErrorKey } from "~/features/offsite/offsite";
 import { decisionErrorKey } from "~/features/pano/pano";
+import { recordingErrorKey } from "~/features/recordings/recordings";
 import { sessionErrorKey } from "~/features/sessions/sessions";
 
 const locales = ["tr", "en", "ar"] as const;
@@ -154,6 +156,27 @@ describe("the nazir message catalogue", () => {
         "MUDERRIS",
         "DERS_NAZIR",
       ].map((role) => `Roles.${role}`),
+      // Müfredat and Ders kayıtları build these from a tone, a state and a refusal's code.
+      ...["AUTHZ_FORBIDDEN", "COURSE_VERSION_CONFLICT", "SOMETHING_NEW"].map(
+        curriculumErrorKey
+      ),
+      ...["laciverd", "bordo", "zumrut", "murekkep"].map(
+        (tone) => `Curriculum.tones.${tone}`
+      ),
+      ...[
+        "AUTHZ_FORBIDDEN",
+        "RECORDING_EXISTS",
+        "LESSON_CANCELLED",
+        "LESSON_NOT_FOUND",
+        "RECORDING_NOT_FOUND",
+        "RECORDING_YOUTUBE_PUBLIC_ONLY",
+        "VALIDATION_ERROR",
+        "SOMETHING_NEW",
+      ].map(recordingErrorKey),
+      ...["processing", "ready"].map((state) => `Recordings.state.${state}`),
+      ...["public", "enrolled"].map(
+        (visibility) => `Recordings.visibility.${visibility}`
+      ),
       ...["COURSE", "MADRASAH"].map((scope) => `Bans.scope.${scope}`),
       ...["ACTIVE", "LIFTED"].flatMap((status) => [
         `Bans.tabs.${status}`,
@@ -185,7 +208,7 @@ describe("the nazir message catalogue", () => {
     }
   });
 
-  it("formats every message of the Talebeler, Yasaklamalar, Pano and Medrese dışı ders talebi screens in every language", () => {
+  it("formats every message of the Talebeler, Yasaklamalar, Pano, Medrese dışı ders talebi and course scope screens in every language", () => {
     // Plural syntax and placeholders are only read when a message is formatted: a typo in `en` or `ar` would show on screen.
     const values = {
       name: "Sümeyye Nur",
@@ -216,6 +239,10 @@ describe("the nazir message catalogue", () => {
       week: 2,
       link: "var",
       shown: 10,
+      weeks: 2,
+      session: "Hafta 2",
+      recorded: 3,
+      missing: 1,
     };
     const sections = [
       "Students",
@@ -227,6 +254,8 @@ describe("the nazir message catalogue", () => {
       "Sessions",
       "SessionPlan",
       "CourseStudents",
+      "Curriculum",
+      "Recordings",
     ] as const;
     for (const locale of locales) {
       const errors: string[] = [];

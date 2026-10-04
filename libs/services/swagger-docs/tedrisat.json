@@ -4141,6 +4141,121 @@
         ]
       }
     },
+    "/lessons/{id}/recordings": {
+      "post": {
+        "description": "`recording.manage` (the müderris and the köşk nazımı by default, a ders nazırı when given it). The recording is READY at once; its provider is read off the link's host and nothing is uploaded or called. A session holds one recording (409 RECORDING_EXISTS: change that one). A YouTube link must be PUBLIC (400 RECORDING_YOUTUBE_PUBLIC_ONLY). Written to `audit_log` as `recording.add`. Does not change the course version.",
+        "operationId": "createLessonRecording",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRecordingDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordingResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Field validation, or a YouTube link that is not PUBLIC (RECORDING_YOUTUBE_PUBLIC_ONLY)."
+          },
+          "403": {
+            "description": "AUTHZ_FORBIDDEN"
+          },
+          "404": {
+            "description": "LESSON_NOT_FOUND"
+          },
+          "409": {
+            "description": "The session already has a recording (RECORDING_EXISTS) or is cancelled (LESSON_CANCELLED)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Add a session's recording by pasting its link",
+        "tags": [
+          "lessons"
+        ]
+      }
+    },
+    "/recordings/{id}": {
+      "patch": {
+        "description": "`recording.manage`. Only the keys sent change. A new link is READY and its provider is read again; a YouTube recording must stay PUBLIC. Written to `audit_log` as `recording.update`. Does not change the course version.",
+        "operationId": "updateRecording",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRecordingDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordingResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Field validation, or a change that leaves a YouTube recording ENROLLED (RECORDING_YOUTUBE_PUBLIC_ONLY)."
+          },
+          "403": {
+            "description": "AUTHZ_FORBIDDEN"
+          },
+          "404": {
+            "description": "RECORDING_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Rename a recording, replace its link, or change who may watch it",
+        "tags": [
+          "lessons"
+        ]
+      }
+    },
     "/courses/{courseId}/bans": {
       "post": {
         "description": "Takes effect at once: the talebe cannot enroll, apply again or leave, and loses the course's content. A COURSE ban is the course's müderris's and above; a KOSK ban, placed from this course, is the köşk nazımı's and above. Barring someone already barred in that scope returns the standing ban. The reason is kept for those who see and lift bans and never sent to the talebe.",
@@ -15412,6 +15527,56 @@
         "required": [
           "liveStreamUrl"
         ]
+      },
+      "CreateRecordingDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "example": "Hafta 3: Birinci celse",
+            "maxLength": 200
+          },
+          "url": {
+            "type": "string",
+            "example": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+            "maxLength": 500,
+            "description": "An https link to the recording. The provider (YOUTUBE, DRIVE, OTHER) is read off its host; no call is made to it."
+          },
+          "visibility": {
+            "default": "ENROLLED",
+            "description": "A YouTube link must be PUBLIC (RECORDING_YOUTUBE_PUBLIC_ONLY).",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RecordingVisibility"
+              }
+            ]
+          }
+        },
+        "required": [
+          "title",
+          "url"
+        ]
+      },
+      "UpdateRecordingDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "url": {
+            "type": "string",
+            "maxLength": 500,
+            "description": "A new https link; the provider is read again and the recording is READY."
+          },
+          "visibility": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RecordingVisibility"
+              }
+            ]
+          }
+        }
       },
       "CreateBanDto": {
         "type": "object",

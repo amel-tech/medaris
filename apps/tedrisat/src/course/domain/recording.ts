@@ -1,3 +1,4 @@
+import { RecordingYoutubePublicOnlyError } from "../errors/recording-youtube-public-only.error";
 import { SessionStatus } from "./session-status.enum";
 
 /** Where a lesson recording lives (MDRS-162). Only a link is stored: no API call is made to either host. */
@@ -80,4 +81,74 @@ export function liveStreamFor(
   canReadContent: boolean
 ): string | null {
   return canReadContent && status === SessionStatus.LIVE ? url : null;
+}
+
+const hostOf = (url: string): string => {
+  try {
+    return new URL(url).hostname.toLowerCase();
+  } catch {
+    return "";
+  }
+};
+
+const onDomain = (host: string, domain: string): boolean =>
+  host === domain || host.endsWith(`.${domain}`);
+
+/**
+ * Where a pasted link lives, read off its host: nothing is asked of either
+ * service. Anything that is not YouTube or Google Drive (a Zoom or Meet
+ * recording page, another host) is OTHER.
+ */
+export function providerOfUrl(url: string): RecordingProvider {
+  const host = hostOf(url);
+  if (
+    onDomain(host, "youtube.com") ||
+    onDomain(host, "youtube-nocookie.com") ||
+    host === "youtu.be"
+  ) {
+    return RecordingProvider.YOUTUBE;
+  }
+  if (onDomain(host, "drive.google.com") || onDomain(host, "docs.google.com")) {
+    return RecordingProvider.DRIVE;
+  }
+  return RecordingProvider.OTHER;
+}
+
+/** What a recording holds that its writers can change. */
+export interface IRecordingFields {
+  title: string;
+  url: string;
+  visibility: RecordingVisibility;
+}
+
+/** A write to a recording: only the keys that are present change. */
+export type IRecordingPatch = Partial<IRecordingFields>;
+
+/**
+ * The recording a patch leaves behind. A link that is changed is read again
+ * for its provider. YouTube takes public recordings only: an enrolled-only
+ * one belongs on a host that can keep it private, so a link or a visibility
+ * that would leave a YouTube recording ENROLLED is refused. A write that
+ * touches neither is not checked, so a title can still be fixed on an older
+ * row.
+ */
+export function applyRecordingPatch(
+  current: IRecordingFields & { provider: RecordingProvider },
+  patch: IRecordingPatch
+): IRecordingFields & { provider: RecordingProvider } {
+  const next = {
+    title: patch.title ?? current.title,
+    url: patch.url ?? current.url,
+    visibility: patch.visibility ?? current.visibility,
+    provider:
+      patch.url === undefined ? current.provider : providerOfUrl(patch.url),
+  };
+  if (
+    (patch.url !== undefined || patch.visibility !== undefined) &&
+    next.provider === RecordingProvider.YOUTUBE &&
+    next.visibility !== RecordingVisibility.PUBLIC
+  ) {
+    throw new RecordingYoutubePublicOnlyError();
+  }
+  return next;
 }

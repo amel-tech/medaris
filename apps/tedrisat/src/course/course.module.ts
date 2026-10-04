@@ -16,7 +16,9 @@ import { CourseStatsRepository } from "./course-stats.repository";
 import { LessonController } from "./lesson.controller";
 import { LiveStreamController } from "./live-stream.controller";
 import { LiveStreamService } from "./live-stream.service";
+import { RecordingController } from "./recording.controller";
 import { RecordingRepository } from "./recording.repository";
+import { RecordingService } from "./recording.service";
 
 @Module({
   imports: [
@@ -27,13 +29,19 @@ import { RecordingRepository } from "./recording.repository";
     NotificationModule,
     AssignmentModule,
   ],
-  controllers: [CourseController, LessonController, LiveStreamController],
+  controllers: [
+    CourseController,
+    LessonController,
+    LiveStreamController,
+    RecordingController,
+  ],
   providers: [
     CourseService,
     CourseRepository,
     CourseAccessService,
     LiveStreamService,
     RecordingRepository,
+    RecordingService,
     CourseStatsRepository,
     CourseNotifier,
     CourseNotificationRepository,

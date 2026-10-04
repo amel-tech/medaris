@@ -8,14 +8,19 @@ import {
   lessons,
 } from "../database/schema/course.schema";
 import { LessonType } from "./domain/lesson-type.enum";
-import type {
-  RecordingProvider,
+import {
+  applyRecordingPatch,
+  type IRecordingPatch,
+  type IRecordingRow,
+  type RecordingProvider,
   RecordingStatus,
-  RecordingVisibility,
+  type RecordingVisibility,
 } from "./domain/recording";
 import { LessonCancelledError } from "./errors/lesson-cancelled.error";
 import { LessonNotFoundError } from "./errors/lesson-not-found.error";
 import { LessonNotLiveError } from "./errors/lesson-not-live.error";
+import { RecordingExistsError } from "./errors/recording-exists.error";
+import { RecordingNotFoundError } from "./errors/recording-not-found.error";
 
 /** One session's live stream link, as the course staff read and write it (MDRS-228). */
 export interface ILiveStreamLink {
@@ -37,8 +42,9 @@ export interface IStoredRecording {
 }
 
 /**
- * Reads of the lesson recordings and the live stream link (MDRS-162), and the
- * stream link's one write (MDRS-228). Kept
+ * Reads of the lesson recordings and the live stream link (MDRS-162), the
+ * stream link's one write (MDRS-228), and the writes of a pasted recording
+ * link (MDRS-247). Kept
  * apart from `CourseRepository`: the course detail is built from the lesson
  * rows and these two never ride on it, so a caller who may not read content
  * cannot be handed one by a filter that forgot a key.
@@ -150,6 +156,174 @@ export class RecordingRepository {
         },
       });
       return { lessonId, courseId: current.courseId, liveStreamUrl: url };
+    });
+  }
+
+  /** The course a recording belongs to, archived lessons included; null when there is none. */
+  async findRecordingCourseId(recordingId: string): Promise<string | null> {
+    const [row] = await this.db
+      .select({ courseId: courseWeeks.courseId })
+      .from(lessonRecordings)
+      .innerJoin(lessons, eq(lessonRecordings.lessonId, lessons.id))
+      .innerJoin(courseWeeks, eq(lessons.weekId, courseWeeks.id))
+      .where(eq(lessonRecordings.id, recordingId))
+      .limit(1);
+    return row?.courseId ?? null;
+  }
+
+  /**
+   * Adds the recording of a session: a pasted link, READY at once. The lesson
+   * row is locked first, so two writers cannot both find it without one. A
+   * session that is archived is not there, a cancelled one has nothing to
+   * record, and one that has a recording keeps it (`RecordingExistsError`).
+   * Written to `audit_log` in the same transaction. The course version is
+   * not bumped: recordings are no part of the course document.
+   */
+  async create(input: {
+    lessonId: string;
+    title: string;
+    url: string;
+    provider: RecordingProvider;
+    visibility: RecordingVisibility;
+    actorId: string;
+  }): Promise<IRecordingRow> {
+    return this.db.transaction(async (tx) => {
+      const [at] = await tx
+        .select({
+          courseId: courseWeeks.courseId,
+          weekId: courseWeeks.id,
+          weekNumber: courseWeeks.weekNumber,
+          weekTitle: courseWeeks.title,
+          scheduledAt: lessons.scheduledAt,
+          durationMinutes: lessons.durationMinutes,
+          cancelledAt: lessons.cancelledAt,
+        })
+        .from(lessons)
+        .innerJoin(courseWeeks, eq(lessons.weekId, courseWeeks.id))
+        .where(and(eq(lessons.id, input.lessonId), isNull(lessons.archivedAt)))
+        .limit(1)
+        .for("update", { of: lessons });
+      if (!at) throw new LessonNotFoundError(input.lessonId);
+      if (at.cancelledAt !== null) {
+        throw new LessonCancelledError(input.lessonId);
+      }
+      const [existing] = await tx
+        .select({ id: lessonRecordings.id })
+        .from(lessonRecordings)
+        .where(eq(lessonRecordings.lessonId, input.lessonId))
+        .limit(1);
+      if (existing) throw new RecordingExistsError(input.lessonId, existing.id);
+
+      const [row] = await tx
+        .insert(lessonRecordings)
+        .values({
+          lessonId: input.lessonId,
+          title: input.title,
+          provider: input.provider,
+          url: input.url,
+          visibility: input.visibility,
+          status: RecordingStatus.READY,
+          recordedAt: at.scheduledAt ?? new Date(),
+          durationMinutes: at.durationMinutes,
+        })
+        .returning();
+      await tx.insert(auditLog).values({
+        actorId: input.actorId,
+        action: "recording.add",
+        entity: "lesson_recording",
+        entityId: row.id,
+        details: {
+          courseId: at.courseId,
+          lessonId: input.lessonId,
+          provider: input.provider,
+          visibility: input.visibility,
+          url: input.url,
+        },
+      });
+      return {
+        ...row,
+        weekId: at.weekId,
+        weekNumber: at.weekNumber,
+        weekTitle: at.weekTitle,
+      };
+    });
+  }
+
+  /**
+   * Changes a recording's title, link or visibility and audits it. The row is
+   * locked, and `applyRecordingPatch` decides what the patch leaves behind
+   * (the provider follows the link; YouTube stays PUBLIC). A recording whose
+   * lesson is archived is not there.
+   */
+  async update(
+    recordingId: string,
+    patch: IRecordingPatch,
+    actorId: string
+  ): Promise<IRecordingRow> {
+    return this.db.transaction(async (tx) => {
+      const [at] = await tx
+        .select({
+          recording: lessonRecordings,
+          courseId: courseWeeks.courseId,
+          weekId: courseWeeks.id,
+          weekNumber: courseWeeks.weekNumber,
+          weekTitle: courseWeeks.title,
+        })
+        .from(lessonRecordings)
+        .innerJoin(lessons, eq(lessonRecordings.lessonId, lessons.id))
+        .innerJoin(courseWeeks, eq(lessons.weekId, courseWeeks.id))
+        .where(
+          and(eq(lessonRecordings.id, recordingId), isNull(lessons.archivedAt))
+        )
+        .limit(1)
+        .for("update", { of: lessonRecordings });
+      if (!at) throw new RecordingNotFoundError(recordingId);
+      const before = at.recording;
+      const next = applyRecordingPatch(
+        {
+          title: before.title,
+          url: before.url ?? "",
+          visibility: before.visibility,
+          provider: before.provider,
+        },
+        patch
+      );
+      const [row] = await tx
+        .update(lessonRecordings)
+        .set({
+          title: next.title,
+          url: next.url,
+          visibility: next.visibility,
+          provider: next.provider,
+          // A link that is replaced is a link that plays.
+          status:
+            patch.url === undefined ? before.status : RecordingStatus.READY,
+          updatedAt: new Date(),
+        })
+        .where(eq(lessonRecordings.id, recordingId))
+        .returning();
+      await tx.insert(auditLog).values({
+        actorId,
+        action: "recording.update",
+        entity: "lesson_recording",
+        entityId: recordingId,
+        details: {
+          courseId: at.courseId,
+          lessonId: before.lessonId,
+          previous: {
+            title: before.title,
+            url: before.url,
+            visibility: before.visibility,
+          },
+          next: { title: row.title, url: row.url, visibility: row.visibility },
+        },
+      });
+      return {
+        ...row,
+        weekId: at.weekId,
+        weekNumber: at.weekNumber,
+        weekTitle: at.weekTitle,
+      };
     });
   }
 }
