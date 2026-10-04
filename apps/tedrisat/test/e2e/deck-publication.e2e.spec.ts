@@ -509,23 +509,21 @@ describe("Deck publication (e2e)", () => {
      * between the two. The stale read is staged by making `findById` answer
      * what the deck was, while the row already holds what the başnazım made it.
      */
-    const staleRead = async (id: string, was: DeckPublishStatus) => {
+    const staleRead = (was: DeckPublishStatus) => {
       const repo = app.get(FlashcardDeckRepository);
       const real = repo.findById.bind(repo);
-      const spy = vi
-        .spyOn(repo, "findById")
-        .mockImplementationOnce(async (...args) => ({
-          ...(await real(...args))!,
-          publishStatus: was,
-        }));
-      return spy;
+      vi.spyOn(repo, "findById").mockImplementationOnce(async (...args) => {
+        const found = await real(...args);
+        if (found === null) throw new Error("the staged deck is not there");
+        return { ...found, publishStatus: was };
+      });
     };
 
     afterEach(() => vi.restoreAllMocks());
 
     it("does not take a request back that the başnazım has approved meanwhile", async () => {
       const id = await publishedDeck();
-      await staleRead(id, DeckPublishStatus.PENDING);
+      staleRead(DeckPublishStatus.PENDING);
       const res = await http()
         .delete(`/flashcard/decks/${id}/publish-request`)
         .set("Authorization", auth(OWNER_ID))
@@ -545,7 +543,7 @@ describe("Deck publication (e2e)", () => {
         publishDecidedBy: ADMIN_ID,
         publishDecidedAt: new Date(),
       });
-      await staleRead(id, DeckPublishStatus.PENDING);
+      staleRead(DeckPublishStatus.PENDING);
       await http()
         .delete(`/flashcard/decks/${id}/publish-request`)
         .set("Authorization", auth(OWNER_ID))
@@ -558,7 +556,7 @@ describe("Deck publication (e2e)", () => {
 
     it("does not ask for a deck that is published meanwhile", async () => {
       const id = await publishedDeck();
-      await staleRead(id, DeckPublishStatus.PRIVATE);
+      staleRead(DeckPublishStatus.PRIVATE);
       await http()
         .post(`/flashcard/decks/${id}/publish-request`)
         .set("Authorization", auth(OWNER_ID))
