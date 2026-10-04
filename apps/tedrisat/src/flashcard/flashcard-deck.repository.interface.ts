@@ -113,11 +113,15 @@ export interface IFlashcardDeckRepository {
    * unpublish, as `approve` is the only writer of `true`.
    */
   setPrivate(id: string): Promise<IFlashcardDeck | null>;
-  /** PENDING with a time, or PRIVATE with none; `isPublic` is untouched. */
+  /**
+   * PENDING with a time, or PRIVATE with none; `isPublic` is untouched. Only
+   * a deck whose status is `from`, the one the caller read, moves; null when there is none such.
+   */
   setPublishRequest(
     id: string,
     publishStatus: DeckPublishStatus,
-    requestedAt: Date | null
+    requestedAt: Date | null,
+    from: DeckPublishStatus
   ): Promise<IFlashcardDeck | null>;
   update(
     id: string,

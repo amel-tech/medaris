@@ -15,6 +15,7 @@ import {
 import { SCOPE_TYPES } from "../../src/database/schema/scope-type.schema";
 import { DeckPublishStatus } from "../../src/flashcard/domain/deck-publish-status.enum";
 import { FlashcardType } from "../../src/flashcard/domain/flashcard-type.enum";
+import { FlashcardDeckRepository } from "../../src/flashcard/flashcard-deck.repository";
 import { createTestApp } from "../helpers/test-app.helper";
 import { TestDatabaseUtils } from "../helpers/test-database.helper";
 import { bearerFor } from "../helpers/test-keycloak.helper";
@@ -502,4 +503,71 @@ describe("Deck publication (e2e)", () => {
     });
   });
 
+  describe("the owner's write against a stale read (MDRS-148)", () => {
+    /**
+     * The service reads the status, then writes: the başnazım's answer can land
+     * between the two. The stale read is staged by making `findById` answer
+     * what the deck was, while the row already holds what the başnazım made it.
+     */
+    const staleRead = async (id: string, was: DeckPublishStatus) => {
+      const repo = app.get(FlashcardDeckRepository);
+      const real = repo.findById.bind(repo);
+      const spy = vi
+        .spyOn(repo, "findById")
+        .mockImplementationOnce(async (...args) => ({
+          ...(await real(...args))!,
+          publishStatus: was,
+        }));
+      return spy;
+    };
+
+    afterEach(() => vi.restoreAllMocks());
+
+    it("does not take a request back that the başnazım has approved meanwhile", async () => {
+      const id = await publishedDeck();
+      await staleRead(id, DeckPublishStatus.PENDING);
+      const res = await http()
+        .delete(`/flashcard/decks/${id}/publish-request`)
+        .set("Authorization", auth(OWNER_ID))
+        .expect(409);
+      expect(codeOf(res)).toBe("DECK_PUBLISH_STATE_CONFLICT");
+      expect(await rowOf(id)).toMatchObject({
+        isPublic: true,
+        publishStatus: DeckPublishStatus.PUBLISHED,
+      });
+      expect(await splitRows()).toHaveLength(0);
+    });
+
+    it("does not take a request back that the başnazım has refused meanwhile", async () => {
+      const id = await seedDeck({
+        publishStatus: DeckPublishStatus.REJECTED,
+        publishRejectReason: "Eksik.",
+        publishDecidedBy: ADMIN_ID,
+        publishDecidedAt: new Date(),
+      });
+      await staleRead(id, DeckPublishStatus.PENDING);
+      await http()
+        .delete(`/flashcard/decks/${id}/publish-request`)
+        .set("Authorization", auth(OWNER_ID))
+        .expect(409);
+      expect(await rowOf(id)).toMatchObject({
+        publishStatus: DeckPublishStatus.REJECTED,
+        publishRejectReason: "Eksik.",
+      });
+    });
+
+    it("does not ask for a deck that is published meanwhile", async () => {
+      const id = await publishedDeck();
+      await staleRead(id, DeckPublishStatus.PRIVATE);
+      await http()
+        .post(`/flashcard/decks/${id}/publish-request`)
+        .set("Authorization", auth(OWNER_ID))
+        .expect(409);
+      expect(await rowOf(id)).toMatchObject({
+        isPublic: true,
+        publishStatus: DeckPublishStatus.PUBLISHED,
+      });
+      expect(await splitRows()).toHaveLength(0);
+    });
+  });
 });

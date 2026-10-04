@@ -266,7 +266,8 @@ export class FlashcardDeckService {
     return this.setPublishRequest(
       deckId,
       DeckPublishStatus.PENDING,
-      new Date()
+      new Date(),
+      deck.publishStatus
     );
   }
 
@@ -286,21 +287,32 @@ export class FlashcardDeckService {
       if (updated === null) throw new DeckNotFoundError(deckId);
       return updated;
     }
-    return this.setPublishRequest(deckId, DeckPublishStatus.PRIVATE, null);
+    return this.setPublishRequest(
+      deckId,
+      DeckPublishStatus.PRIVATE,
+      null,
+      deck.publishStatus
+    );
   }
 
   private async setPublishRequest(
     deckId: string,
     status: DeckPublishStatus,
-    requestedAt: Date | null
+    requestedAt: Date | null,
+    from: DeckPublishStatus
   ): Promise<IFlashcardDeck> {
     const deck = await this.deckRepo.setPublishRequest(
       deckId,
       status,
-      requestedAt
+      requestedAt,
+      from
     );
-    if (deck === null) throw new DeckNotFoundError(deckId);
-    return deck;
+    if (deck !== null) return deck;
+    // The row moved since it was read (the başnazım answered, or the owner
+    // acted twice): say what it is now, not what it was.
+    const now = await this.deckRepo.findById(deckId);
+    if (now === null) throw new DeckNotFoundError(deckId);
+    throw new DeckPublishStateError(deckId, now.publishStatus);
   }
 
   async addToUserCollection(

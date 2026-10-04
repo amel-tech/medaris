@@ -235,9 +235,14 @@ export class FlashcardDeckRepository implements IFlashcardDeckRepository {
   async setPublishRequest(
     id: string,
     publishStatus: DeckPublishStatus,
-    requestedAt: Date | null
+    requestedAt: Date | null,
+    from: DeckPublishStatus
   ): Promise<IFlashcardDeck | null> {
-    // Not `updatedAt`: asking for a review does not edit the deck.
+    // Not `updatedAt`: asking for a review does not edit the deck. Guarded on
+    // the status the caller read, in the same statement: the başnazım's
+    // approve can land between the caller's read and this write, and an
+    // unguarded write would then leave `is_public = true` under a status that
+    // is not PUBLISHED, which nobody could take down.
     return this.databaseService.db
       .update(decks)
       .set({
@@ -245,7 +250,7 @@ export class FlashcardDeckRepository implements IFlashcardDeckRepository {
         publishRequestedAt: requestedAt,
         ...CLEARED_DECISION,
       })
-      .where(eq(decks.id, id))
+      .where(and(eq(decks.id, id), eq(decks.publishStatus, from)))
       .returning()
       .then((result) => result[0] || null);
   }

@@ -291,7 +291,8 @@ describe("FlashcardDeckService publish request", () => {
     expect(repo.setPublishRequest).toHaveBeenCalledWith(
       "d",
       DeckPublishStatus.PENDING,
-      expect.any(Date)
+      expect.any(Date),
+      DeckPublishStatus.PRIVATE
     );
     expect(result.publishStatus).toBe(DeckPublishStatus.PENDING);
   });
@@ -315,9 +316,32 @@ describe("FlashcardDeckService publish request", () => {
     expect(repo.setPublishRequest).toHaveBeenCalledWith(
       "d",
       DeckPublishStatus.PRIVATE,
-      null
+      null,
+      DeckPublishStatus.PENDING
     );
     expect(repo.update).not.toHaveBeenCalled();
+  });
+
+  it("answers 409 with the status the deck has now when the guarded write finds it moved", async () => {
+    const { repo, service } = build(deck(DeckPublishStatus.PENDING));
+    repo.setPublishRequest.mockResolvedValueOnce(null);
+    repo.findById
+      .mockResolvedValueOnce(deck(DeckPublishStatus.PENDING))
+      .mockResolvedValueOnce(deck(DeckPublishStatus.PUBLISHED));
+    await expect(service.withdrawPublish("d")).rejects.toMatchObject({
+      context: { status: DeckPublishStatus.PUBLISHED },
+    });
+  });
+
+  it("answers 404 when the guarded write finds the deck gone", async () => {
+    const { repo, service } = build(deck(DeckPublishStatus.PRIVATE));
+    repo.setPublishRequest.mockResolvedValueOnce(null);
+    repo.findById
+      .mockResolvedValueOnce(deck(DeckPublishStatus.PRIVATE))
+      .mockResolvedValueOnce(null);
+    await expect(service.requestPublish("d")).rejects.toThrow(
+      DeckNotFoundError
+    );
   });
 
   it("takes a published deck private through the one write that keeps both columns in step", async () => {
