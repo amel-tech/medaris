@@ -26,6 +26,10 @@ const API = process.env.E2E_TEDRISAT_URL ?? "http://localhost:3001";
 const tag = randomUUID().slice(0, 6);
 
 const ready = Boolean(talebe.email && talebe.password && talebe.sub);
+// The public profile is hidden (MDRS-141): the page 404s and the API answers
+// 404 PUBLIC_PROFILE_UNAVAILABLE. Set this when the constant in
+// features/public-profile/availability.ts and API__PUBLIC_PROFILE_ENABLED are on.
+const publicProfileShown = process.env.E2E_PUBLIC_PROFILE_ENABLED === "true";
 
 test.beforeAll(async () => {
   if (!ready) return;
@@ -144,6 +148,10 @@ test("Herkese açık profil: künye is required, switches persist, and others se
   page,
 }) => {
   test.skip(!ready, "no Keycloak talebe in the environment");
+  test.skip(
+    !publicProfileShown,
+    "the public profile is hidden (MDRS-141); set E2E_PUBLIC_PROFILE_ENABLED=true once it is switched on"
+  );
   await signIn(page, talebe);
   await page.goto("/tr/account/public-profile");
 
