@@ -73,6 +73,7 @@ OpenAPI spec), the nizam page comment, the unit test title "are the başnazım's
 | the başnazım, `PUT /flashcard/cards/progress` with an unknown card id | skipped the check (FK error) | 404 `CARD_NOT_FOUND`, as for everyone |
 | the başnazım, same route, a private deck that is not his and not shared with him (a köşk deck of a köşk he is not in) | allowed | 403 |
 | the owner's "Yayın iste" / "Özel yap" on a request, racing the başnazım's answer | the later write won, possibly leaving `is_public` and the status disagreeing | 409 `DECK_PUBLISH_STATE_CONFLICT`, the row is as the başnazım left it |
+| a Medaris nazımı holding `platform.deck_publish`, `POST /nizam/deck-publish-requests/:id/approve` or `/reject` on a deck he owns | 204, he published (or refused) his own deck | 403 `DECK_REVIEW_FORBIDDEN`, nothing written; his requests on other people's decks, and the başnazım's own decks, are unchanged |
 | a published deck | could only be taken back by its owner | the başnazım may too (`unpublish`); the owner gets a notification with the reason |
 | the audit page | `deck.admin_read` listed under "Diğer" | listed under the private-deck-read kind; `deck.unpublish` under the hide kind |
 | the OpenAPI description of `GET /nizam/deck-publish-requests` | "SYSTEM_ADMIN only" | "the başnazım, or a Medaris nazımı holding platform.deck_publish" (what the code has done since MDRS-135) |
@@ -104,6 +105,7 @@ Also: SYSTEM_ADMIN still writes to **someone else's public deck**
 | D3 the two side doors (collect, progress) | refused | allow them as "his own state" |
 | D4 public decks that exist when this lands | nothing is deleted; the count query below | a data migration deleting `is_public AND publish_decided_by IS NULL` |
 | D5 `authorId` on the wire for every reader | left (tedris needs it for `isOwner`) | blank it for non-authors, as `forViewer` does for `tags` |
+| D6 a holder answering his own deck | refused (403 `DECK_REVIEW_FORBIDDEN`, the code of every other refusal here, so no new error code and no new key); the başnazım may still answer his own deck | allow it, the audit row already shows decider = author; the grant is the başnazım's delegated power and the başnazım has no second reader either. Taken because a grant may not be given to oneself either (`SelfGrantGuard`) |
 | audit kind of `deck.unpublish` | `HIDE` (no new label key) | a kind of its own (label in `nizam.json`, `AUDIT_TYPE_OPTIONS`) |
 
 D4's query, read-only, for the owner or ops to run on dev and on production before this ships:
@@ -146,6 +148,8 @@ Red means: the one source change named was put back, the named spec run, the fil
 | AC2 the owner makes a published deck private, anonymous reads answer 404 at once | same test; `flashcard-deck-summary.e2e.spec.ts` "lets the author turn a published deck private again ..." | `setPrivate` without `isPublic: false`: both fail (2 failed of 44) |
 | 5 / D2 the owner cannot publish by himself | `deck-publication.e2e.spec.ts` "answers 400 to a body sending isPublic true/false on POST, PUT and PATCH, and the deck does not move" (2), `flashcard-deck-summary.e2e.spec.ts` "refuses a body that sends isPublic" (2), `flashcard-bulk.e2e.spec.ts` "keeps every owner scope on the owner's own PUBLIC deck" (the PATCH 400) | `isPublic` put back on the DTO: 5 failed of 78 |
 | AC3 a Medaris nazımı without the permission cannot publish (403) | `deck-publication.e2e.spec.ts` "refuses a Medaris nazımı without the permission: list, cards, approve, reject"; "counts a revoked grant and an expired one for nothing"; "counts a grant without the Medaris nazımı role for nothing"; "does not let the owner answer his own request" | these pin the refusal, which was already the code; no change makes them fail except opening `assertChief` (not run) |
+| review fix (D6): a grant holder who owns the deck does not answer his own request | `deck-publication.e2e.spec.ts` "a holder answering his own request": "refuses a grant holder who owns the deck: approve and reject, and nothing is written" (403 `DECK_REVIEW_FORBIDDEN` twice, row identical, no notification, no split row), "still lets the same holder answer a request on somebody else's deck", "leaves the başnazım free to answer his own deck" | the test written first, on the code before the change: 1 failed of 23 (`expected 403 "Forbidden", got 204 "No Content"`); green after. The two companion tests passed before and after, they pin what must not change |
+| review fix: the owner's "Özel yap" on a published deck wipes the request time and the last answer | the chain test in `deck-publication.e2e.spec.ts` now reads the row after the owner's DELETE: `publishRequestedAt`, `publishDecidedAt`, `publishDecidedBy`, `publishRejectReason` all null (the approval before it had set the decider) | `publishRequestedAt: null` and `...CLEARED_DECISION` taken out of `setPrivate`: 1 failed of 23 (the chain test, `AssertionError: expected { …(20) } to match object { publishRequestedAt: null, …(3) }`); restored, green. The code was already right; the test is new |
 | AC3 ... and with it they can | "lets the holder list, read the cards on the record, and approve", "lets the holder refuse a request, with a reason"; unit "are open to a nazım holding platform.deck_publish" | `assertChief` without the grant branch: 2 failed of 17 (e2e), 1 failed of 21 (unit) |
 | AC4 the başnazım reads another user's private deck and its cards, each read writes a row | `deck-admin-read.e2e.spec.ts` "GET /flashcard/decks/:id", "GET /flashcard/cards?deckId=", "GET /flashcard/cards/:id", "GET /flashcard/decks/:id/due" each answers 200 and writes exactly one `deck.admin_read` row (actor, deck id, owner in details); "writes one more row for every further read"; "leaves the owner's own reads off the record" | `adminCan` without its `record` call (libs/common, dist rebuilt): 6 failed of 26 |
 | AC4 every write by the başnazım is refused | `deck-admin-read.e2e.spec.ts`, 13 routes (PUT, PATCH, DELETE deck; POST, DELETE publish-request; POST cards, bulk, bulk/import; GET bulk/export; PUT, PATCH, DELETE card; PUT progress), each 403 with no audit row, deck and cards unchanged, no collection and no progress row | `adminCan` without the `DECK_VIEW` check: 12 failed of 26 (the 12 routes decided by `adminCan`); progress shortcut put back: 1 failed (e2e), 1 failed (unit `flashcard.service.spec.ts`) |
@@ -177,7 +181,7 @@ $ cd apps/tedrisat && e2e-slot.sh ./node_modules/.bin/vitest run test/e2e/deck-p
     test/e2e/authz-route-inventory.e2e.spec.ts test/e2e/platform-admin.e2e.spec.ts \
     test/e2e/dto-validation.e2e.spec.ts test/e2e/nizam-dashboard.e2e.spec.ts
  Test Files  16 passed (16)
-      Tests  363 passed (363)
+      Tests  366 passed (366)
 $ cd apps/nizam && ./node_modules/.bin/vitest run
  Test Files  38 passed (38)
       Tests  645 passed (645)
@@ -192,7 +196,7 @@ $ git grep -n "isPublic" apps/nizam/features apps/nizam/app apps/tedris/features
 (no match: no sender of the field in the web apps; tedris reads `deck.isPublic` from the response only)
 ```
 
-The two new specs are 20 (`deck-publication`) and 26 (`deck-admin-read`) tests. The Playwright specs
+The two new specs are 23 (`deck-publication`) and 26 (`deck-admin-read`) tests. The Playwright specs
 (`apps/nizam/e2e`) were not run: they need the whole local stack.
 
 ## What was not verified
