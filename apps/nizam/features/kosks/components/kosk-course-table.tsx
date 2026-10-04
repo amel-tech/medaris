@@ -20,6 +20,8 @@ import {
   COURSE_TABS,
   type CourseTab,
   countRows,
+  courseHideOutcome,
+  errorCodeOf,
   filterCourses,
   type Messages,
   registrationChips,
@@ -74,11 +76,18 @@ export function KoskCourseTable({
     setBusyId(row.id);
     const result = await restoreCourse(row.id);
     setBusyId(null);
-    if (!result.success) {
+    const outcome = result.success
+      ? "done"
+      : courseHideOutcome(errorCodeOf(result.errorBody));
+    if (outcome !== "done") {
       toast.error(t("restoreFailed"), {
-        description: t("restoreFailedBody"),
+        description: t(
+          outcome === "failed" ? "restoreFailedBody" : `${outcome}Body`
+        ),
         duration: Number.POSITIVE_INFINITY,
       });
+      // A higher level hid it since the table was read: the row loses its button.
+      if (outcome === "restoreLevel") refresh();
       return;
     }
     toast.success(t("restored"), {

@@ -67,7 +67,7 @@ export class ArchiveController {
   @ApiOperation({
     summary: "What is hidden in a köşk",
     description:
-      "Newest hidden first: the köşk's courses, weeks, sessions and decks, and the same of the medrese courses it hosts. A köşk manager or SYSTEM_ADMIN. There is no delete here; the başnazım deletes from the platform archive.",
+      "Newest hidden first: the köşk's courses, weeks, sessions and decks, and the same of the medrese courses it hosts. A köşk manager or SYSTEM_ADMIN. Each item says whether the caller may bring it back (`canRestore`): false for what was hidden at a level above theirs. There is no delete here; the başnazım deletes from the platform archive.",
     operationId: "listKoskArchive",
   })
   @ApiQuery({ name: "type", required: false, enum: ARCHIVE_ITEM_TYPES })
@@ -171,7 +171,7 @@ export class ArchiveController {
   @ApiOperation({
     summary: "Bring a hidden item back (Geri al)",
     description:
-      "By kademe, as the bans are lifted (MDRS-135): the level that hid an item, or any level above it, brings it back. The ladder is course < medrese < köşk < platform; a hide records the level its hider acted at, and one recorded by nobody counts as the lowest level that could have hidden it. A köşk manager restores courses, weeks, sessions and decks of their köşk, a medrese's başmüderris what sits in their medrese, SYSTEM_ADMIN anything; a lower level than the one that hid it answers 403 (ARCHIVE_RESTORE_LEVEL) naming both. A week or session whose parent is still hidden answers 409 (ARCHIVE_PARENT_HIDDEN).",
+      "By kademe, as the bans are lifted (MDRS-135): the level that hid an item, or any level above it, brings it back. The ladder is course < medrese < köşk < platform; a hide records the level its hider acted at, and one recorded by nobody counts as the lowest level that could have hidden it. A course, and the weeks and sessions in one, are restored at the level the caller acts at on the course, exactly as `POST /courses/:id/archive` records it: the köşk's nazımı (`course.hide`), the başmüderris or a nazır given `madrasah.course_hide`, platform management (`platform.course_hide`); a week or a session also at the course's own level, by whoever does its session work (`week.hide` or `session.manage`), and a week that brings no session back also by its editor (`course.edit`), which is where they hide them. A deck is its köşk nazımı's; SYSTEM_ADMIN restores anything. Every restore is written to the audit log as `<type>.restore` with the level. A lower level than the one that hid it answers 403 (ARCHIVE_RESTORE_LEVEL) naming both, compared under the row lock. A course, week or session whose parent is still hidden answers 409 (ARCHIVE_PARENT_HIDDEN).",
     operationId: "restoreArchiveItem",
   })
   @ApiOkResponse({ type: ArchiveRestoreResponse })

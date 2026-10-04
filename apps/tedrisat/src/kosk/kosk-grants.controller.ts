@@ -108,7 +108,7 @@ export class KoskGrantsController {
   @ApiOperation({
     summary: "Change a ders nazırı's permissions and end",
     description:
-      "nizam/38 'İzinleri düzenle'. Replaces the whole set; what stays keeps its giver and date. The post ends when the permissions do. Written to the audit log.",
+      "nizam/38 'İzinleri düzenle'. Replaces the whole set; what stays keeps its giver and date. The post ends when the permissions do. Written to the audit log. 403 (SELF_GRANT_REFUSED) for the caller's own post, SYSTEM_ADMIN excepted.",
     operationId: "updateKoskGrant",
   })
   @ApiOkResponse({ type: KoskGrantsResponse })
@@ -117,12 +117,25 @@ export class KoskGrantsController {
   @ApiNotFoundResponse()
   @Patch(":id/grants/:grantId")
   @Authz(PERMISSIONS.COURSE_NAZIR_ASSIGN_KOSK, byExistingKosk)
-  update(
+  async update(
     @Req() request: AuthenticatedUserRequest,
     @Param("id", ParseUUIDPipe) id: string,
     @Param("grantId", ParseUUIDPipe) grantId: string,
     @Body() dto: UpdateKoskGrantDto
   ): Promise<KoskGrantsResponse> {
+    // Rewriting one's own post is seating oneself again: its codes and its end
+    // would outlive the köşk seat, as a post made for oneself would. An
+    // unknown post is the service's 404.
+    const holder = await this.service.holderOf(id, grantId);
+    if (holder) {
+      await this.selfGrant.assertNotSelf(
+        request.user,
+        [holder],
+        { entity: ENTITIES.KOSK, id },
+        { always: true },
+        "kosk.grants.update"
+      );
+    }
     return this.service.update(request.user, id, grantId, dto);
   }
 

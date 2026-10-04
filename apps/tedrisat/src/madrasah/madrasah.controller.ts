@@ -218,9 +218,9 @@ export class MadrasahController {
   }
 
   @ApiOperation({
-    summary: "Every medrese for the platform's table (SYSTEM_ADMIN only)",
+    summary: "Every medrese for the platform's table (the Medaris yönetimi)",
     description:
-      "nizam/07: hidden and passive medreses too, each with its başmüderris, course count and hosting köşks, and the per-status counts the tabs show. The open list above leaves hidden medreses out; this one is the başnazım's.",
+      "nizam/07: hidden and passive medreses too, each with its başmüderris, course count and hosting köşks, and the per-status counts the tabs show. The open list above leaves hidden medreses out; this one is the başnazım's and a Medaris nazımı's who holds one of the permissions the page acts on: `platform.madrasah_create` (Medrese aç), `platform.madrasah_edit` (Geri al) or `platform.head_muderris_manage` (Başmüderris ata).",
     operationId: "getMadrasahDirectory",
   })
   @ApiQuery({
@@ -240,8 +240,15 @@ export class MadrasahController {
   @ApiOkResponse({ type: MadrasahDirectoryResponse })
   @ApiForbiddenResponse()
   @Get("directory")
+  // Every permission the page acts on opens it, and nizam's menu shows it for
+  // the same three (MDRS-108): "Başmüderris ata" has no other screen.
+  // `platform.madrasah_nazir_grant` acts on no row of it, so it opens nothing.
   @Authz(
-    [PERMISSIONS.PLATFORM_MADRASAH_CREATE, PERMISSIONS.PLATFORM_MADRASAH_EDIT],
+    [
+      PERMISSIONS.PLATFORM_MADRASAH_CREATE,
+      PERMISSIONS.PLATFORM_MADRASAH_EDIT,
+      PERMISSIONS.PLATFORM_HEAD_MUDERRIS_MANAGE,
+    ],
     anyMadrasah
   )
   async directory(
@@ -356,7 +363,7 @@ export class MadrasahController {
   @ApiOperation({
     summary: "What the başmüderris handed on (SYSTEM_ADMIN only)",
     description:
-      "nizam/22. The nazır roles and permissions the sitting başmüderris gave to others in this medrese that are still held; `delegations` of the replacing call answers each. Empty when there is no başmüderris or nothing was handed on.",
+      "nizam/22. The nazır roles and permissions the sitting başmüderris gave to others in this medrese and its courses that are still held, whoever holds them; `delegations` of the replacing call answers each. Empty when there is no başmüderris or nothing was handed on.",
     operationId: "getMadrasahHeadDelegations",
   })
   @ApiOkResponse({ type: HeadDelegationResponse, isArray: true })
@@ -373,7 +380,7 @@ export class MadrasahController {
   @ApiOperation({
     summary: "Make a user the medrese's başmüderris (SYSTEM_ADMIN only)",
     description:
-      "Replaces whoever heads it: their grants are revoked, not deleted. A passive medrese is active again. `delegations` answers what the replaced başmüderris handed on (Devral / Düşür), `endsAt` is the new one's Görev bitişi. Written to the audit log.",
+      "Replaces whoever heads it: their grants are revoked, not deleted. A passive medrese is active again. `delegations` answers what the replaced başmüderris handed on (Devral / Düşür), each row, what they gave the incoming başmüderris included; `endsAt` is the new one's Görev bitişi. Written to the audit log.",
     operationId: "setMadrasahHeadMuderris",
   })
   @ApiOkResponse({ type: MadrasahDirectoryItemResponse })
@@ -397,6 +404,15 @@ export class MadrasahController {
       { role: ASSIGNED_ROLES.MEDRESE_BASMUDERRIS, always: true },
       "madrasah.head_muderris.set"
     );
+    // Taking over a row given to oneself makes it a row one gave oneself, with
+    // no one to answer for it (owner, d-1004: no self-grant on any path).
+    await this.selfGrant.assertNotSelf(
+      request.user,
+      await this.madrasahService.takeOverRecipients(dto.delegations ?? []),
+      { entity: ENTITIES.MADRASAH, id },
+      { always: true },
+      "madrasah.head_muderris.take_over"
+    );
     return this.madrasahService.setHeadMuderris(
       id,
       dto.userId.toLowerCase(),
@@ -411,7 +427,7 @@ export class MadrasahController {
   @ApiOperation({
     summary: "Hide a medrese (its başmüderris)",
     description:
-      'nazir/12\'s "Medreseyi gizle". The medrese leaves every list and its page closes, and so do its courses, all at once; nothing is deleted. The köşks that host its courses stay. Only the Medaris administration brings it back (`POST …/restore`). 409 (MADRASAH_ALREADY_HIDDEN) when it is hidden. Written to the audit log.',
+      'nazir/12\'s "Medreseyi gizle". The medrese leaves every list and its page closes, and so do its courses, all at once; nothing is deleted. The köşks that host its courses stay. The level that hid it, or one above, brings it back (`POST …/restore`): the başmüderris what they hid, the Medaris administration anything. 409 (MADRASAH_ALREADY_HIDDEN) when it is hidden. Written to the audit log.',
     operationId: "hideMadrasah",
   })
   @ApiOkResponse({ type: MadrasahDirectoryItemResponse })

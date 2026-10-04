@@ -1,4 +1,5 @@
 import type { CourseStatus } from "../course/domain/course-status.enum";
+import type { ScopeType } from "../database/schema/scope-type.schema";
 
 export interface IMadrasah {
   id: string;
@@ -80,6 +81,11 @@ export interface IHeadDelegation {
   role: string | null;
   permission: string | null;
   groupName: string | null;
+  /** Where it is held: the medrese, or one of its courses. */
+  scopeType: ScopeType;
+  scopeId: string | null;
+  /** The course's title, for a row held in a course. */
+  courseTitle: string | null;
   grantedAt: Date;
   expiresAt: Date | null;
 }

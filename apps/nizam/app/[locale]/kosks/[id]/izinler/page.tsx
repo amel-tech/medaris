@@ -35,7 +35,12 @@ export default async function Page({
 
   return (
     <div className="mx-auto max-w-[72rem] px-gutter py-8">
-      <GrantsView koskId={id} data={grants} viewerId={me?.id ?? null} />
+      <GrantsView
+        koskId={id}
+        data={grants}
+        viewerId={me?.id ?? null}
+        viewerIsChief={me?.roles.systemAdmin === true}
+      />
     </div>
   );
 }

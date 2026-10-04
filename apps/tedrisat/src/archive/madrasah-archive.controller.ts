@@ -112,10 +112,7 @@ export class MadrasahArchiveController {
       limit: Math.min(Math.max(limit, 1), MAX_ARCHIVE_PAGE_SIZE),
     });
     return {
-      items: result.items.map((entry) => ({
-        ...presentItem(entry),
-        canRestore: entry.canRestore,
-      })),
+      items: result.items.map(presentItem),
       total: result.total,
       page: result.page,
       limit: result.limit,
