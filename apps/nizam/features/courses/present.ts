@@ -9,6 +9,7 @@ import {
   meetingUrlProblem,
   normalizeMeetingUrl,
   parseYoutubeLiveUrl,
+  resourceUrlProblem,
   toZonedDatetimeLocal,
   type YoutubeLiveProblem,
 } from "@medaris/utils";
@@ -558,6 +559,39 @@ export function lessonInstant(
   return fromZonedDatetimeLocal(`${draft.date}T${draft.time}`, timeZone);
 }
 
+/**
+ * A row of "Bağlı kaynaklar" (MDRS-279). Resources are links only for now: a
+ * name, an optional short line ("PDF · 88 sayfa") and the address it opens.
+ */
+export interface ResourceDraft {
+  id?: string;
+  name: string;
+  /** '' = none */
+  meta: string;
+  url: string;
+  /** kept as stored; a row added here is a "link" */
+  type: string | null;
+}
+
+export function resourceDraftsOf(
+  course: Pick<CourseDetailResponse, "resources">
+): ResourceDraft[] {
+  return course.resources.map((r) => ({
+    id: r.id,
+    name: r.name,
+    meta: r.meta ?? "",
+    url: r.url ?? "",
+    type: r.type ?? null,
+  }));
+}
+
+export const emptyResource = (): ResourceDraft => ({
+  name: "",
+  meta: "",
+  url: "",
+  type: "link",
+});
+
 export type CurriculumProblem =
   | "title"
   | "weekTitle"
@@ -565,22 +599,27 @@ export type CurriculumProblem =
   | "lessonDate"
   | "lessonTime"
   | "lessonDuration"
-  | "link";
+  | "link"
+  | "resourceName"
+  | "resourceUrl";
 
 export interface CurriculumError {
   kind: CurriculumProblem;
   weekIndex?: number;
   lessonIndex?: number;
+  resourceIndex?: number;
 }
 
 /**
  * Everything that stops "Kaydet" (nizam/54): the course name, each week's
  * title, and for every live session its title, date, time, length and https
- * link. A cancelled session is information and is not checked.
+ * link. A cancelled session is information and is not checked. Every
+ * resource needs a name and an http(s) address, as tedrisat does (MDRS-279).
  */
 export function curriculumErrors(
   title: string,
-  weeks: WeekDraft[]
+  weeks: WeekDraft[],
+  resources: ResourceDraft[] = []
 ): CurriculumError[] {
   const errors: CurriculumError[] = [];
   if (title.trim().length < 2) errors.push({ kind: "title" });
@@ -600,6 +639,12 @@ export function curriculumErrors(
         if (linkProblem(l.meetingUrl)) errors.push({ kind: "link", ...at });
       }
     });
+  });
+  resources.forEach((r, resourceIndex) => {
+    if (!r.name.trim()) errors.push({ kind: "resourceName", resourceIndex });
+    if (resourceUrlProblem(r.url)) {
+      errors.push({ kind: "resourceUrl", resourceIndex });
+    }
   });
   return errors;
 }
@@ -626,11 +671,16 @@ export function copyWeek(week: WeekDraft, nextNumber: number): WeekDraft {
   };
 }
 
+interface CurriculumForm {
+  title: string;
+  description: string;
+  tone: string;
+  weeks: WeekDraft[];
+  resources: ResourceDraft[];
+}
+
 /** True when the current drafts differ from the saved ones (the "Kaydedilmemiş değişiklikler var" strip). */
-export function curriculumDirty(
-  a: { title: string; description: string; tone: string; weeks: WeekDraft[] },
-  b: { title: string; description: string; tone: string; weeks: WeekDraft[] }
-): boolean {
+export function curriculumDirty(a: CurriculumForm, b: CurriculumForm): boolean {
   return JSON.stringify(a) !== JSON.stringify(b);
 }
 

@@ -30,6 +30,7 @@ import { sessionChoices } from "../question-model";
 import { CourseAside } from "./course-aside";
 import { CourseProgramme, SAMPLE_ANCHOR } from "./course-programme";
 import { CourseQuestions } from "./course-questions";
+import { CourseResources } from "./course-resources";
 import { RecordingsTab } from "./recordings-tab";
 
 const joinNames = (names: string[], locale: string) =>
@@ -98,6 +99,19 @@ export const CoursePage = ({
   const showSample = !seat && !preview && sample;
 
   const firstSession = preview ? firstSessionAt(course) : null;
+
+  // MDRS-279: the course's links, under the card on the right.
+  const resourceList = (
+    <CourseResources
+      resources={course.resources}
+      locked={course.contentLocked}
+      labels={{
+        title: t("resourcesTitle"),
+        newTab: t("resourcesNewTab"),
+        locked: t("resourcesLocked"),
+      }}
+    />
+  );
 
   // A question is asked by an enrolled talebe (MDRS-150); the tab is theirs.
   const asksQuestions =
@@ -246,7 +260,7 @@ export const CoursePage = ({
           </div>
         </div>
         {preview ? (
-          <aside className="sticky inset-bs-[calc(var(--layout-topbar)+var(--space-6))] md:col-start-2 md:row-start-1 md:row-span-2 max-md:static">
+          <aside className="sticky inset-bs-[calc(var(--layout-topbar)+var(--space-6))] flex flex-col gap-4 md:col-start-2 md:row-start-1 md:row-span-2 max-md:static">
             <Card
               title={t("previewCardTitle")}
               headingLevel={2}
@@ -275,9 +289,10 @@ export const CoursePage = ({
                 </Button>
               )}
             </Card>
+            {resourceList}
           </aside>
         ) : (
-          <div className="sticky inset-bs-[calc(var(--layout-topbar)+var(--space-6))] md:col-start-2 md:row-start-1 md:row-span-2 max-md:static">
+          <div className="sticky inset-bs-[calc(var(--layout-topbar)+var(--space-6))] flex flex-col gap-4 md:col-start-2 md:row-start-1 md:row-span-2 max-md:static">
             <CourseAside
               course={course}
               state={state}
@@ -286,6 +301,7 @@ export const CoursePage = ({
               signInHref={signInHref}
               registerHref={registerHref}
             />
+            {resourceList}
           </div>
         )}
         <div className="flex min-inline-0 flex-col gap-section md:col-start-1 md:row-start-2">

@@ -26,6 +26,7 @@ import {
   sessionJoinLabels,
 } from "../session-join-labels";
 import { splitArabic, zoneLabel } from "../session-model";
+import { CourseResources } from "./course-resources";
 import { LessonNotes } from "./lesson-notes";
 import { LiveChat } from "./live-chat";
 import { MediaPlayer } from "./media-player";
@@ -455,6 +456,15 @@ export const SessionPage = async ({
               </ul>
             </Card>
           ) : null}
+          <CourseResources
+            resources={course.resources}
+            locked={course.contentLocked}
+            labels={{
+              title: t("SessionPage.resourcesTitle"),
+              newTab: t("SessionPage.newTab"),
+              locked: t("SessionPage.resourcesLocked"),
+            }}
+          />
           <SessionProgramme course={course} now={now} />
         </aside>
       </div>

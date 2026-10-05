@@ -36,10 +36,13 @@ import {
   curriculumErrors,
   type LessonDraft,
   linkProblem,
+  type ResourceDraft,
+  resourceDraftsOf,
   type WeekDraft,
   weekDraftsOf,
   weekFacts,
 } from "../present";
+import { ResourcesEditor } from "./resources-editor";
 
 interface Props {
   kosk: { id: string; name: string };
@@ -84,6 +87,7 @@ export function CurriculumEditor({ kosk, course }: Props) {
       description: saved.description ?? "",
       tone: toneOfHue(saved.coverHue) as (typeof COVER_TONES)[number],
       weeks: weekDraftsOf(saved),
+      resources: resourceDraftsOf(saved),
     }),
     [saved]
   );
@@ -91,12 +95,15 @@ export function CurriculumEditor({ kosk, course }: Props) {
   const [description, setDescription] = useState(initial.description);
   const [tone, setTone] = useState(initial.tone);
   const [weeks, setWeeks] = useState<WeekDraft[]>(initial.weeks);
+  const [resources, setResources] = useState<ResourceDraft[]>(
+    initial.resources
+  );
   const [sent, setSent] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const current = { title, description, tone, weeks };
+  const current = { title, description, tone, weeks, resources };
   const dirty = curriculumDirty(current, initial);
-  const errors = curriculumErrors(title, weeks);
+  const errors = curriculumErrors(title, weeks, resources);
   const has = (kind: CurriculumProblem, wi?: number, li?: number) =>
     errors.some(
       (e: CurriculumError) =>
@@ -104,6 +111,8 @@ export function CurriculumEditor({ kosk, course }: Props) {
     );
   const shown = (kind: CurriculumProblem, wi?: number, li?: number) =>
     sent && has(kind, wi, li);
+  const shownResource = (kind: CurriculumProblem, ri: number) =>
+    sent && errors.some((e) => e.kind === kind && e.resourceIndex === ri);
 
   const base = `/${locale}/kosks/${kosk.id}`;
   const courseBase = `${base}/courses/${saved.id}`;
@@ -118,6 +127,7 @@ export function CurriculumEditor({ kosk, course }: Props) {
     setDescription(initial.description);
     setTone(initial.tone);
     setWeeks(initial.weeks);
+    setResources(initial.resources);
     setSent(false);
   };
 
@@ -149,7 +159,7 @@ export function CurriculumEditor({ kosk, course }: Props) {
     const result = await saveCurriculum(
       kosk.id,
       saved.id,
-      curriculumPayload(saved, { title, description, tone, weeks })
+      curriculumPayload(saved, { title, description, tone, weeks, resources })
     );
     setSaving(false);
     if (!result.success) {
@@ -163,6 +173,7 @@ export function CurriculumEditor({ kosk, course }: Props) {
     }
     setSaved(result.data);
     setWeeks(weekDraftsOf(result.data));
+    setResources(resourceDraftsOf(result.data));
     setTitle(result.data.title);
     setDescription(result.data.description ?? "");
     setSent(false);
@@ -288,6 +299,12 @@ export function CurriculumEditor({ kosk, course }: Props) {
           />
         </Field>
       </section>
+
+      <ResourcesEditor
+        resources={resources}
+        onChange={setResources}
+        shown={shownResource}
+      />
 
       <section className="flex flex-col gap-4" aria-labelledby="c-weeks">
         <div className="flex flex-wrap items-end justify-between gap-3">

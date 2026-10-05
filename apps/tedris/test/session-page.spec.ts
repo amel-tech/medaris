@@ -228,6 +228,39 @@ describe("session page, upcoming (design tedris/15)", () => {
     );
   });
 
+  it("lists the course's resources in the aside, linked in a new tab (MDRS-279)", async () => {
+    const { SessionPage } = await import(
+      "~/features/courses/components/session-page"
+    );
+    const withLinks = {
+      ...course,
+      contentLocked: false,
+      resources: [
+        {
+          id: "r1",
+          name: "Bina",
+          meta: "PDF · 124 sayfa",
+          type: "pdf",
+          url: "https://files.medaris.org/bina.pdf",
+        },
+      ],
+    } as unknown as CourseDetailResponse;
+    const html = renderToStaticMarkup(
+      await SessionPage({
+        course: withLinks,
+        session: session(),
+        koskName: null,
+        now: NOW,
+      })
+    );
+    expect(html).toContain(">Dersin kaynakları<");
+    expect(html).toContain(
+      '<a class="mds-link" href="https://files.medaris.org/bina.pdf" target="_blank" rel="noopener noreferrer">'
+    );
+    // none on a course without any (the fixture's)
+    expect(await render(session())).not.toContain("Dersin kaynakları");
+  });
+
   it("draws no kaynak line when the API sent none or a blank one", async () => {
     expect(await render(session())).not.toContain(
       'data-testid="session-kaynak"'

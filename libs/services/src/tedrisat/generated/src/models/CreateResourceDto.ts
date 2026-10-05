@@ -32,7 +32,7 @@ export interface CreateResourceDto {
      */
     name: string;
     /**
-     * 
+     * null clears it on replace; a missing key keeps it.
      * @type {string}
      * @memberof CreateResourceDto
      */
@@ -44,7 +44,7 @@ export interface CreateResourceDto {
      */
     type?: string;
     /**
-     * 
+     * Where the resource opens: an absolute http:// or https:// URL (MDRS-279). null clears it on replace; a missing key keeps it.
      * @type {string}
      * @memberof CreateResourceDto
      */

@@ -5,19 +5,26 @@ import type {
 } from "@medaris/services/tedrisat";
 import { normalizeMeetingUrl } from "@medaris/utils";
 import { TONE_HUE } from "~/features/kosks/admin-present";
-import { type LessonDraft, lessonInstant, type WeekDraft } from "./present";
+import {
+  type LessonDraft,
+  lessonInstant,
+  type ResourceDraft,
+  type WeekDraft,
+} from "./present";
 
 /**
  * The whole-course body of "Kaydet" on the curriculum (nizam 54): what the form
- * holds, plus everything it does not edit and a PUT would otherwise drop —
- * the müderris rows (unchanged, so a müderris may save) and the resources.
- * A week or a session left out of `weeks` is hidden by the PUT, never deleted.
+ * holds, plus what it does not edit and a PUT would otherwise drop — the
+ * müderris rows (unchanged, so a müderris may save). A week or a session left
+ * out of `weeks` is hidden by the PUT, never deleted. A resource left out of
+ * `resources` is removed: a link has nothing hanging off it (MDRS-279).
  */
 export interface CurriculumEdit {
   title: string;
   description: string;
   tone: keyof typeof TONE_HUE;
   weeks: WeekDraft[];
+  resources: ResourceDraft[];
 }
 
 const lessonBody = (draft: LessonDraft, timeZone: string): CreateLessonDto => {
@@ -64,12 +71,14 @@ export function curriculumPayload(
       bio: m.bio ?? undefined,
       avatarHue: m.avatarHue,
     })),
-    resources: course.resources.map((r) => ({
-      id: r.id,
-      name: r.name,
-      meta: r.meta ?? undefined,
+    // In list order (tedrisat stores the order as sent); an emptied line is
+    // null, which clears it, like a session's link.
+    resources: edit.resources.map((r) => ({
+      ...(r.id ? { id: r.id } : {}),
+      name: r.name.trim(),
+      meta: (r.meta.trim() || null) as unknown as string,
       type: r.type ?? undefined,
-      url: r.url ?? undefined,
+      url: r.url.trim(),
     })),
   };
 }

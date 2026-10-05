@@ -634,3 +634,103 @@ describe("what each permission lets the form do", () => {
     expect(saveCurriculum).not.toHaveBeenCalled();
   });
 });
+
+describe("Bağlı kaynaklar (MDRS-279)", () => {
+  const linked = () =>
+    course({
+      resources: [
+        {
+          id: "r-1",
+          name: "Bina",
+          meta: "PDF · 124 sayfa",
+          type: "pdf",
+          url: "https://files.medaris.org/bina.pdf",
+        },
+      ],
+    });
+  const resourcesSent = () =>
+    (saveCurriculum.mock.calls[0]?.[1] as { resources: unknown[] }).resources;
+  const section = () =>
+    document.querySelector('[data-testid="resources"]') as HTMLElement;
+
+  it("lists the stored rows to edit, and says so when there is none", async () => {
+    state.course = { status: "ok", data: linked() };
+    await mount();
+    expect(field("resource-0-name").value).toBe("Bina");
+    expect(field("resource-0-meta").value).toBe("PDF · 124 sayfa");
+    expect(field("resource-0-url").value).toBe(
+      "https://files.medaris.org/bina.pdf"
+    );
+    expect(field("resource-0-name").maxLength).toBe(200);
+    expect(field("resource-0-meta").maxLength).toBe(120);
+    expect(field("resource-0-url").maxLength).toBe(500);
+    await cleanup();
+    state.course = { status: "ok", data: course() };
+    await mount();
+    expect(section().textContent).toContain(
+      "Bu derse henüz kaynak bağlanmadı."
+    );
+  });
+
+  it("adds a link, sends it after the stored one, and is dirty until saved", async () => {
+    state.course = { status: "ok", data: linked() };
+    await mount();
+    await click(buttonIn(section(), "Kaynak ekle"));
+    expect(save().disabled).toBe(false);
+    await typeInto(field("resource-1-name"), "Tatbikat defteri");
+    await typeInto(field("resource-1-url"), "https://files.medaris.org/t.pdf");
+    await submit();
+    expect(resourcesSent()).toEqual([
+      {
+        id: "r-1",
+        name: "Bina",
+        meta: "PDF · 124 sayfa",
+        type: "pdf",
+        url: "https://files.medaris.org/bina.pdf",
+      },
+      {
+        name: "Tatbikat defteri",
+        meta: null,
+        type: "link",
+        url: "https://files.medaris.org/t.pdf",
+      },
+    ]);
+  });
+
+  it("does not send a row without a name or an http(s) address, and says which", async () => {
+    await mount();
+    await click(buttonIn(section(), "Kaynak ekle"));
+    await typeInto(field("resource-0-url"), "javascript:alert(1)");
+    await submit();
+    expect(saveCurriculum).not.toHaveBeenCalled();
+    const text = section().textContent ?? "";
+    expect(text).toContain("Kaynağın adını yazın.");
+    expect(text).toContain(
+      "Bağlantı, http:// ya da https:// ile başlayan tam bir adres olmalı."
+    );
+  });
+
+  it("removes a row, and Vazgeç puts it back", async () => {
+    state.course = { status: "ok", data: linked() };
+    await mount();
+    await click(buttonIn(section(), "Kaynağı çıkar"));
+    expect(field("resource-0-name")).toBeNull();
+    expect(save().disabled).toBe(false);
+    await click(cancel());
+    expect(field("resource-0-name").value).toBe("Bina");
+    expect(save().disabled).toBe(true);
+    await click(buttonIn(section(), "Kaynağı çıkar"));
+    await submit();
+    expect(resourcesSent()).toEqual([]);
+  });
+
+  it("is read-only without course.edit: the rows are shown, nothing can be added or removed", async () => {
+    state.course = { status: "ok", data: linked() };
+    state.permissions = holding("session.manage");
+    await mount();
+    expect(field("resource-0-name").disabled).toBe(true);
+    expect(field("resource-0-url").disabled).toBe(true);
+    expect(buttonIn(section(), "Kaynak ekle")).toBeUndefined();
+    expect(buttonIn(section(), "Kaynağı çıkar")).toBeUndefined();
+  });
+});

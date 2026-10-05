@@ -140,19 +140,25 @@ const render = async (
     approvalRequired?: boolean;
     recordings?: RecordingResponse[];
     initialTab?: string;
+    /** the course's resources, as the API sent them to this caller */
+    resources?: Record<string, unknown>[];
   } = {}
 ) => {
   const { CoursePage } = await import(
     "~/features/courses/components/course-page"
   );
   const seat = status === "ENROLLED" || status === "COMPLETED";
+  const { resources: links, ...rest } = props;
   return renderToStaticMarkup(
     createElement(CoursePage, {
-      course: course(status, !seat),
+      course: {
+        ...course(status, !seat),
+        ...(links ? { resources: links } : {}),
+      } as CourseDetailResponse,
       koskName: "Nûruosmaniye Köşkü",
       signedIn: true,
       now: NOW,
-      ...props,
+      ...rest,
     })
   );
 };
@@ -338,6 +344,47 @@ describe("tedris/24: the recordings tab (MDRS-162)", () => {
   it("opens on the curriculum for an unknown tab", async () => {
     const html = await render("ENROLLED", { initialTab: "yok" });
     expect(html).toMatch(/aria-selected="true"[^>]*>[^<]*Müfredat/);
+  });
+});
+
+describe("the course's resources (MDRS-279)", () => {
+  const PDF = "https://files.medaris.org/bina.pdf";
+
+  it("lists them beside the course for an enrolled talebe, each opening in a new tab", async () => {
+    const html = await render("ENROLLED", {
+      resources: [
+        {
+          id: "r1",
+          name: "Bina",
+          meta: "PDF · 124 sayfa",
+          type: "pdf",
+          url: PDF,
+        },
+      ],
+    });
+    expect(html).toContain(tr.resourcesTitle);
+    expect(html).toContain(
+      `<a class="mds-link" href="${PDF}" target="_blank" rel="noopener noreferrer">`
+    );
+    expect(html).toContain("PDF · 124 sayfa");
+    expect(html).not.toContain(tr.resourcesLocked);
+  });
+
+  it("names them without a link for a visitor, whom the API sends no address", async () => {
+    const html = await render(null, {
+      signedIn: false,
+      resources: [
+        { id: "r1", name: "Bina", meta: "PDF · 124 sayfa", type: "pdf" },
+      ],
+    });
+    expect(html).toContain(tr.resourcesTitle);
+    expect(html).toContain(">Bina<");
+    expect(html).not.toContain('target="_blank"');
+    expect(html).toContain(tr.resourcesLocked);
+  });
+
+  it("draws nothing for a course without any", async () => {
+    expect(await render("ENROLLED")).not.toContain(tr.resourcesTitle);
   });
 });
 

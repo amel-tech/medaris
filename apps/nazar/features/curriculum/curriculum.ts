@@ -4,7 +4,7 @@ import type {
   ReplaceCourseDto,
 } from "@medaris/services/tedrisat";
 import { type CoverTone, TONE_HUE } from "@medaris/ui/mds/cover-pattern";
-import { normalizeMeetingUrl } from "@medaris/utils";
+import { normalizeMeetingUrl, resourceUrlProblem } from "@medaris/utils";
 import {
   addDays,
   fieldsOf,
@@ -58,12 +58,27 @@ export interface WeekDraft {
   lessons: LessonDraft[];
 }
 
+/**
+ * A row of "Bağlı kaynaklar" (MDRS-279). Resources are links only for now: a
+ * name, an optional short line ("PDF · 88 sayfa") and the address it opens.
+ */
+export interface ResourceDraft {
+  id?: string;
+  name: string;
+  /** '' = none */
+  meta: string;
+  url: string;
+  /** kept as stored; a row added here is a "link" */
+  type: string | null;
+}
+
 /** The whole form: what "Kaydet" sends and what "Vazgeç" puts back. */
 export interface CurriculumForm {
   title: string;
   description: string;
   tone: CoverTone;
   weeks: WeekDraft[];
+  resources: ResourceDraft[];
 }
 
 type CourseLesson = CourseDetailResponse["weeks"][number]["lessons"][number];
@@ -122,6 +137,24 @@ export function weekDraftsOf(
     ),
   }));
 }
+
+export const resourceDraftsOf = (
+  course: Pick<CourseDetailResponse, "resources">
+): ResourceDraft[] =>
+  course.resources.map((resource) => ({
+    id: resource.id,
+    name: resource.name,
+    meta: resource.meta ?? "",
+    url: resource.url ?? "",
+    type: resource.type ?? null,
+  }));
+
+export const emptyResource = (): ResourceDraft => ({
+  name: "",
+  meta: "",
+  url: "",
+  type: "link",
+});
 
 export const emptyLesson = (date = ""): LessonDraft => ({
   title: "",
@@ -203,22 +236,27 @@ export type CurriculumProblem =
   | "lessonDate"
   | "lessonTime"
   | "lessonDuration"
-  | "link";
+  | "link"
+  | "resourceName"
+  | "resourceUrl";
 
 export interface CurriculumError {
   kind: CurriculumProblem;
   weekIndex?: number;
   lessonIndex?: number;
+  resourceIndex?: number;
 }
 
 /**
  * The course name, each week's title, and for every live session its title,
  * date, time, length and https link. A cancelled session is information and
- * is not checked.
+ * is not checked. Every resource needs a name and an http(s) address, as
+ * tedrisat does (MDRS-279).
  */
 export function curriculumErrors(
   title: string,
-  weeks: readonly WeekDraft[]
+  weeks: readonly WeekDraft[],
+  resources: readonly ResourceDraft[] = []
 ): CurriculumError[] {
   const errors: CurriculumError[] = [];
   if (title.trim().length < 2) errors.push({ kind: "title" });
@@ -237,6 +275,14 @@ export function curriculumErrors(
       }
       if (linkProblem(lesson.meetingUrl)) errors.push({ kind: "link", ...at });
     });
+  });
+  resources.forEach((resource, resourceIndex) => {
+    if (!resource.name.trim()) {
+      errors.push({ kind: "resourceName", resourceIndex });
+    }
+    if (resourceUrlProblem(resource.url)) {
+      errors.push({ kind: "resourceUrl", resourceIndex });
+    }
   });
   return errors;
 }
@@ -281,9 +327,10 @@ const lessonBody = (draft: LessonDraft, timeZone: string): CreateLessonDto => {
 
 /**
  * The whole-course body of "Kaydet" (`PUT /courses/:id`): what the form holds,
- * plus everything it does not edit and a PUT would otherwise drop, the
- * müderris rows (unchanged, so a müderris may save) and the resources. A week
- * or a session left out of `weeks` is hidden by the PUT, never deleted.
+ * plus what it does not edit and a PUT would otherwise drop, the müderris rows
+ * (unchanged, so a müderris may save). A week or a session left out of
+ * `weeks` is hidden by the PUT, never deleted; a resource left out of
+ * `resources` is removed, as a link has nothing hanging off it (MDRS-279).
  * `version` is the course version the page was read at.
  */
 export function curriculumPayload(
@@ -311,12 +358,14 @@ export function curriculumPayload(
       bio: m.bio ?? undefined,
       avatarHue: m.avatarHue,
     })),
-    resources: course.resources.map((r) => ({
-      id: r.id,
-      name: r.name,
-      meta: r.meta ?? undefined,
-      type: r.type ?? undefined,
-      url: r.url ?? undefined,
+    // In list order (tedrisat stores the order as sent); an emptied line is
+    // null, which clears it, like a session's link.
+    resources: form.resources.map((resource) => ({
+      ...(resource.id ? { id: resource.id } : {}),
+      name: resource.name.trim(),
+      meta: (resource.meta.trim() || null) as unknown as string,
+      type: resource.type ?? undefined,
+      url: resource.url.trim(),
     })),
   };
 }

@@ -1453,6 +1453,17 @@
     "copyWeek": "Copy the week",
     "hideWeek": "Hide the week",
     "noWeeks": "This course has no weeks yet. Start with “Add a week”.",
+    "resourcesTitle": "Linked resources",
+    "resourcesIntro": "Links to the books, PDFs and pages of the course. Everyone sees their names; talebe enrolled in the course open the links.",
+    "resourcesEmpty": "No resource is linked to this course yet.",
+    "resourceHeading": "Resource {n}",
+    "resourceNameLabel": "Resource name",
+    "resourceMetaLabel": "Short note",
+    "resourceMetaHelp": "Optional. E.g. PDF · 88 pages",
+    "resourceUrlLabel": "Link",
+    "resourceUrlHelp": "A full address starting with http:// or https://.",
+    "removeResource": "Remove the resource",
+    "addResource": "Add a resource",
     "failed": "The syllabus could not be saved",
     "saved": "Syllabus saved",
     "savedBody": "The syllabus of {name} was saved.",
@@ -1469,7 +1480,9 @@
       "lessonDate": "Enter the session date.",
       "lessonTime": "Enter the session time.",
       "lessonDuration": "The length must be between 1 and 1440 minutes.",
-      "link": "The meeting link must start with https://. Copy the link again from the platform."
+      "link": "The meeting link must start with https://. Copy the link again from the platform.",
+      "resourceName": "Write the resource name.",
+      "resourceUrl": "The link must be a full address starting with http:// or https://."
     }
   },
   "Recordings": {

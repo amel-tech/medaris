@@ -8,7 +8,9 @@ import {
   copyWeek,
   courseErrorKey,
   coursePattern,
+  curriculumDirty,
   curriculumErrors,
+  emptyResource,
   groupSessions,
   isoWeekdayOf,
   type LessonDraft,
@@ -19,7 +21,9 @@ import {
   planErrors,
   planPattern,
   planSummary,
+  type ResourceDraft,
   removeMember,
+  resourceDraftsOf,
   type ScheduleForm,
   sampleOf,
   sampleOptions,
@@ -546,7 +550,7 @@ describe("the curriculum (nizam 54)", () => {
     expect(w?.lessons[2]?.makeup).toBe(true);
   });
 
-  it("builds the whole-course PUT with the version, the team and the resources", () => {
+  it("builds the whole-course PUT with the version and the team", () => {
     const weeks = weekDraftsOf(detail);
     (weeks[0] as WeekDraft).lessons[0] = {
       ...(weeks[0] as WeekDraft).lessons[0],
@@ -559,6 +563,7 @@ describe("the curriculum (nizam 54)", () => {
       description: "Sarf",
       tone: "bordo",
       weeks,
+      resources: resourceDraftsOf(detail),
     });
     expect(body.version).toBe(7);
     expect(body.coverHue).toBe(20);
@@ -572,7 +577,6 @@ describe("the curriculum (nizam 54)", () => {
         avatarHue: 120,
       },
     ]);
-    expect(body.resources?.[0]).toMatchObject({ id: "r1", name: "Kitap" });
     const lessons = body.weeks?.[0]?.lessons ?? [];
     expect(lessons[0]).toMatchObject({
       id: "l1",
@@ -610,6 +614,7 @@ describe("the curriculum (nizam 54)", () => {
         description: "Sarf",
         tone: "bordo",
         weeks,
+        resources: [],
       }).weeks?.[0]?.lessons?.[0]?.kaynak;
     };
     expect(sent("Bina · s. 4-9")).toBe("Bina · s. 4-9");
@@ -617,6 +622,138 @@ describe("the curriculum (nizam 54)", () => {
     // tedrisat leaves a missing key alone; only null clears the column.
     expect(sent("")).toBeNull();
     expect(sent("   ")).toBeNull();
+  });
+});
+
+describe("Bağlı kaynaklar, as links (MDRS-279)", () => {
+  const course = {
+    id: "c1",
+    version: 4,
+    timeZone: "Europe/Istanbul",
+    title: "Emsile ve Bina",
+    description: null,
+    coverHue: 20,
+    muderris: [],
+    weeks: [],
+    resources: [
+      {
+        id: "r1",
+        name: "Bina",
+        meta: "PDF · 124 sayfa",
+        type: "pdf",
+        url: "https://files.medaris.org/bina.pdf",
+      },
+      { id: "r2", name: "Emsile", meta: null, type: null, url: null },
+    ],
+  } as unknown as CourseDetailResponse;
+  const row = (over: Partial<ResourceDraft> = {}): ResourceDraft => ({
+    ...emptyResource(),
+    name: "Tatbikat",
+    url: "https://files.medaris.org/tatbikat.pdf",
+    ...over,
+  });
+  const edit = (resources: ResourceDraft[]) => ({
+    title: "Emsile ve Bina",
+    description: "",
+    tone: "bordo" as const,
+    weeks: [],
+    resources,
+  });
+
+  it("reads the stored rows as drafts, keeping their id and type; a new row is a link", () => {
+    expect(resourceDraftsOf(course)).toEqual([
+      {
+        id: "r1",
+        name: "Bina",
+        meta: "PDF · 124 sayfa",
+        url: "https://files.medaris.org/bina.pdf",
+        type: "pdf",
+      },
+      { id: "r2", name: "Emsile", meta: "", url: "", type: null },
+    ]);
+    expect(emptyResource()).toEqual({
+      name: "",
+      meta: "",
+      url: "",
+      type: "link",
+    });
+  });
+
+  it("stops Kaydet for a row without a name or an absolute http(s) address", () => {
+    expect(
+      curriculumErrors(
+        "Emsile",
+        [],
+        [row(), row({ url: "http://emsile.test" })]
+      )
+    ).toEqual([]);
+    expect(
+      curriculumErrors(
+        "Emsile",
+        [],
+        [
+          row({ name: " " }),
+          row({ url: "" }),
+          row({ url: "javascript:alert(1)" }),
+          row({ url: "emsile.test/kitap" }),
+        ]
+      )
+    ).toEqual([
+      { kind: "resourceName", resourceIndex: 0 },
+      { kind: "resourceUrl", resourceIndex: 1 },
+      { kind: "resourceUrl", resourceIndex: 2 },
+      { kind: "resourceUrl", resourceIndex: 3 },
+    ]);
+  });
+
+  it("is dirty when a row is added, changed or removed", () => {
+    const saved = edit(resourceDraftsOf(course));
+    expect(curriculumDirty(edit(resourceDraftsOf(course)), saved)).toBe(false);
+    expect(
+      curriculumDirty(edit([...resourceDraftsOf(course), row()]), saved)
+    ).toBe(true);
+    expect(
+      curriculumDirty(edit(resourceDraftsOf(course).slice(1)), saved)
+    ).toBe(true);
+  });
+
+  it("sends the rows in list order, existing ones with their id, trimmed, an emptied line as null", () => {
+    const [bina, emsile] = resourceDraftsOf(course) as [
+      ResourceDraft,
+      ResourceDraft,
+    ];
+    const body = curriculumPayload(
+      course,
+      edit([
+        { ...emsile, url: " https://emsile.test/ " },
+        row({ name: " Tatbikat ", meta: " Doküman " }),
+        { ...bina, meta: "" },
+      ])
+    );
+    expect(body.resources).toEqual([
+      {
+        id: "r2",
+        name: "Emsile",
+        meta: null,
+        type: undefined,
+        url: "https://emsile.test/",
+      },
+      {
+        name: "Tatbikat",
+        meta: "Doküman",
+        type: "link",
+        url: "https://files.medaris.org/tatbikat.pdf",
+      },
+      {
+        id: "r1",
+        name: "Bina",
+        meta: null,
+        type: "pdf",
+        url: "https://files.medaris.org/bina.pdf",
+      },
+    ]);
+    // A row taken out of the form is not sent, so tedrisat removes it.
+    expect(curriculumPayload(course, edit([])).resources).toEqual([]);
   });
 });
 

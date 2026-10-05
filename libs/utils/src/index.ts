@@ -2,6 +2,7 @@ export * from "./callback-url";
 export * from "./end-instant";
 export * from "./meeting-platform";
 export * from "./privacy-notice";
+export * from "./resource-url";
 export * from "./time-zone";
 export * from "./youtube-live";
 
