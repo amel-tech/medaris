@@ -2,11 +2,12 @@ import { account, canSignIn, expect, test } from "./accounts";
 import { type NazirFixture, seedPortal } from "./seed";
 
 /**
- * Celseler and Talebeler of a course against the running app and API with real
- * Keycloak sign-ins (MDRS-247). Read-only on purpose: the seed's counts are
- * what the other specs assert, so nothing here decides an application or
- * cancels a session. The decisions are covered by the page specs, with the
- * API's answers stubbed.
+ * Celseler, Talebeler, Müfredat and Ders kayıtları of a course against the
+ * running app and API with real Keycloak sign-ins (MDRS-247). Read-only on
+ * purpose: the seed's counts are what the other specs assert, so nothing here
+ * decides an application, cancels a session, saves the course or adds a
+ * recording. The writes are covered by the page specs, with the API's answers
+ * stubbed.
  *
  * MEDRESE_BASMUDERRIS holds both seeded courses as müderris. The first course
  * has two sessions ahead, only one with a meeting link, and two waiting
@@ -95,5 +96,42 @@ test("Talebeler counts the waiting applications and lists them under Başvurular
   await expect(page.getByRole("button", { name: /^Onayla: / })).toHaveCount(2);
   await expect(
     page.locator("aside").getByRole("link", { name: /^Talebeler/ })
+  ).toHaveAttribute("aria-current", "page");
+});
+
+test("Müfredat opens the course's form, with nothing to save until something changes", async ({
+  as,
+}) => {
+  test.skip(!seeded(), "no medrese başmüderris");
+  const page = await as("MEDRESE_BASMUDERRIS");
+  await page.setViewportSize(desktop);
+
+  await page.goto(`/ders/${fixture?.first.id}/mufredat`);
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Müfredat" })
+  ).toBeVisible();
+  await expect(page.getByText("Bu sayfa henüz hazır değil.")).toHaveCount(0);
+  await expect(page.getByLabel(/^Ders adı/)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Kaydet" })).toBeDisabled();
+  await expect(
+    page.locator("aside").getByRole("link", { name: /^Müfredat/ })
+  ).toHaveAttribute("aria-current", "page");
+});
+
+test("Ders kayıtları lists the course's sessions by week and says nothing is uploaded here", async ({
+  as,
+}) => {
+  test.skip(!seeded(), "no medrese başmüderris");
+  const page = await as("MEDRESE_BASMUDERRIS");
+  await page.setViewportSize(desktop);
+
+  await page.goto(`/ders/${fixture?.first.id}/kayitlar`);
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Ders kayıtları" })
+  ).toBeVisible();
+  await expect(page.getByText("Bu sayfa henüz hazır değil.")).toHaveCount(0);
+  await expect(page.getByText(/Burada yükleme yoktur/)).toBeVisible();
+  await expect(
+    page.locator("aside").getByRole("link", { name: /^Ders kayıtları/ })
   ).toHaveAttribute("aria-current", "page");
 });

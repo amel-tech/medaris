@@ -152,8 +152,8 @@ describe("the rows", () => {
   });
 
   it("word a refused hide from the API's code", () => {
-    expect(hideErrorKey("WEEK_NOT_FOUND")).toBe("Curriculum.gone");
-    expect(hideErrorKey("LESSON_NOT_FOUND")).toBe("Curriculum.gone");
+    expect(hideErrorKey("WEEK_NOT_FOUND")).toBe("CurriculumHide.gone");
+    expect(hideErrorKey("LESSON_NOT_FOUND")).toBe("CurriculumHide.gone");
     expect(hideErrorKey("AUTHZ_FORBIDDEN")).toBe("Problems.actionForbidden");
     expect(hideErrorKey("")).toBe("Problems.actionGeneric");
   });

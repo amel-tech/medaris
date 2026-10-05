@@ -1,3 +1,3 @@
-import { CurriculumLoading } from "~/features/curriculum-hide/components/curriculum-page";
+import { CurriculumLoading } from "~/features/curriculum/components/curriculum-page";
 
 export default CurriculumLoading;

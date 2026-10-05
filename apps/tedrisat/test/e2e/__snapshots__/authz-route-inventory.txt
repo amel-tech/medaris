@@ -143,6 +143,7 @@ PATCH /madrasahs/:id/settings -> madrasah.settings_edit on byExistingMadrasah
 PATCH /me -> no AuthzGuard
 PATCH /me/public-profile -> no AuthzGuard
 PATCH /questions/:questionId -> course.view on byQuestionCourse
+PATCH /recordings/:id -> recording.manage on byRecordingCourse
 POST /archive/:type/:id/restore -> exempt
 POST /bans/:banId/escalate -> no AuthzGuard
 POST /bans/:banId/extend -> no AuthzGuard
@@ -189,6 +190,7 @@ POST /kosks/:koskId/courses -> course.open_standalone on kosk
 POST /lessons/:id/cancel -> session.manage on byLessonCourse
 POST /lessons/:id/notes -> course.view on byLessonCourse
 POST /lessons/:id/questions -> course.view on byLessonCourse
+POST /lessons/:id/recordings -> recording.manage on byLessonCourse
 POST /lessons/:id/recordings/uploads -> recording.upload on byLessonCourse
 POST /lessons/:id/recordings/uploads/:videoId/signature -> recording.upload on byLessonCourse
 POST /madrasahs -> platform.madrasah_create on madrasah

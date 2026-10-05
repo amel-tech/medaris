@@ -4448,6 +4448,121 @@
         ]
       }
     },
+    "/lessons/{id}/recordings": {
+      "post": {
+        "description": "`recording.manage` (the müderris and the köşk nazımı by default, a ders nazırı when given it). The recording is READY at once; the link is read by its host and nothing is uploaded or called. A YouTube link is taken whatever the visibility. A player link of the Medaris Bunny library is stored as its video and played through a signed link, like an upload. A session holds one recording (409 RECORDING_EXISTS: change that one), except that a Bunny upload that FAILED is replaced. Written to `audit_log` as `recording.add`. Does not change the course version.",
+        "operationId": "createLessonRecording",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRecordingDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordingResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Field validation (VALIDATION_ERROR), or a link that cannot be stored (RECORDING_LINK_INVALID, `context.reason`: `invalid`, `not-https`, `youtube-no-video`, `bunny-no-video`, `bunny-foreign-library` (another library's link, or any Bunny link while none is configured), `bunny-video-used` (the video is another session's recording))."
+          },
+          "403": {
+            "description": "AUTHZ_FORBIDDEN"
+          },
+          "404": {
+            "description": "LESSON_NOT_FOUND"
+          },
+          "409": {
+            "description": "The session already has a recording (RECORDING_EXISTS) or is cancelled (LESSON_CANCELLED)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Add a session's recording by pasting its link",
+        "tags": [
+          "lessons"
+        ]
+      }
+    },
+    "/recordings/{id}": {
+      "patch": {
+        "description": "`recording.manage`. Only the keys sent change. A new link is read as on `POST /lessons/:id/recordings` and is READY; a Bunny video replaced by another link is no longer stored, and a link replaced by a Bunny video is no longer stored either. Written to `audit_log` as `recording.update`. Does not change the course version.",
+        "operationId": "updateRecording",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRecordingDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordingResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Field validation (VALIDATION_ERROR), or a link that cannot be stored (RECORDING_LINK_INVALID, `context.reason`: `invalid`, `not-https`, `youtube-no-video`, `bunny-no-video`, `bunny-foreign-library` (another library's link, or any Bunny link while none is configured), `bunny-video-used` (the video is another session's recording))."
+          },
+          "403": {
+            "description": "AUTHZ_FORBIDDEN"
+          },
+          "404": {
+            "description": "RECORDING_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Rename a recording, replace its link, or change who may watch it",
+        "tags": [
+          "lessons"
+        ]
+      }
+    },
     "/lessons/{id}/recordings/uploads": {
       "post": {
         "description": "`recording.upload` (the müderris and the köşk nazımı by default, a ders nazırı when given it). Creates the video in the Medaris Bunny Stream library, records it as the session's recording with `provider` BUNNY and `status` PROCESSING, and returns what the browser needs for a TUS upload straight to Bunny; the file never passes through this API. The signature expires 24 hours later. A session that already has a recording is refused with 409, unless that recording is a Bunny upload that FAILED, which this one replaces. Written to `audit_log` as `recording.upload_start`. The recording becomes READY or FAILED when the encoding poll sees Bunny finish.",
@@ -16811,6 +16926,55 @@
         "required": [
           "liveStreamUrl"
         ]
+      },
+      "CreateRecordingDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "example": "Hafta 3: Birinci celse",
+            "maxLength": 200
+          },
+          "url": {
+            "type": "string",
+            "example": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+            "maxLength": 500,
+            "description": "An https link to the recording, read by its host with no call made to it (MDRS-119): a YouTube video link is YOUTUBE and is stored as its watch link; a player link of the Medaris Bunny library (`player.mediadelivery.net` or `iframe.mediadelivery.net`, `/embed/<libraryId>/<videoId>`) is BUNNY and only the video id is stored, its player link signed on every read; a Google Drive or Docs link is DRIVE and any other https link OTHER, both as pasted. A link that cannot be stored is 400 RECORDING_LINK_INVALID with a `reason`."
+          },
+          "visibility": {
+            "default": "ENROLLED",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RecordingVisibility"
+              }
+            ]
+          }
+        },
+        "required": [
+          "title",
+          "url"
+        ]
+      },
+      "UpdateRecordingDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "url": {
+            "type": "string",
+            "maxLength": 500,
+            "description": "A new https link, read as on `POST /lessons/:id/recordings`; the recording is READY. Moving between a Bunny video and any other link rewrites where the recording lives."
+          },
+          "visibility": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RecordingVisibility"
+              }
+            ]
+          }
+        }
       },
       "StartRecordingUploadDto": {
         "type": "object",

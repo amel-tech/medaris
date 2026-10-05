@@ -2,8 +2,8 @@ import { ResponseError } from "@medaris/services/tedrisat";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
- * What the course scope's server actions do with the API's answers (Celseler
- * and Talebeler): each is one call of tedrisat's endpoints, hands the browser
+ * What the course scope's server actions do with the API's answers (Celseler,
+ * Talebeler, Müfredat and Ders kayıtları): each is one call of tedrisat's endpoints, hands the browser
  * the little it needs or only the API's code, and writes nothing without a
  * session. The API client and the session are stubs.
  */
@@ -14,10 +14,13 @@ const api = {
     setLessonLiveStream: vi.fn(),
     previewSessionBatch: vi.fn(),
     createSessionBatch: vi.fn(),
+    createLessonRecording: vi.fn(),
+    updateRecording: vi.fn(),
   },
   courses: {
     setEnrollmentStatus: vi.fn(),
     removeEnrollment: vi.fn(),
+    replaceCourse: vi.fn(),
   },
 };
 let token: string | undefined;
@@ -49,6 +52,8 @@ afterEach(() => errors.mockRestore());
 
 const sessions = () => import("~/features/sessions/actions");
 const enrolments = () => import("~/features/enrolments/actions");
+const curriculum = () => import("~/features/curriculum/actions");
+const recordings = () => import("~/features/recordings/actions");
 
 describe("Bağlantıyı güncelle and Tarihi değiştir", () => {
   it("send the link alone, with the course version, and hand back the version the course is now at", async () => {
@@ -369,5 +374,160 @@ describe("Dersten çıkar", () => {
     });
     expect(api.courses.removeEnrollment).not.toHaveBeenCalled();
     expect(api.courses.setEnrollmentStatus).not.toHaveBeenCalled();
+  });
+});
+
+describe("Kaydet on Müfredat", () => {
+  const body = { version: 7, title: "Bina", weeks: [] };
+
+  it("sends the whole course to the one endpoint and hands back only the version it is now at", async () => {
+    const { saveCurriculum } = await curriculum();
+    api.courses.replaceCourse.mockResolvedValue({
+      id: "c-1",
+      version: 8,
+      title: "Bina",
+      muderris: [{ name: "Ahmed", userId: "u-9" }],
+    });
+    expect(await saveCurriculum("c-1", body)).toEqual({
+      success: true,
+      data: { courseVersion: 8 },
+    });
+    expect(api.courses.replaceCourse).toHaveBeenCalledWith({
+      id: "c-1",
+      replaceCourseDto: body,
+    });
+  });
+
+  it("hands back the code of a stale save (409), never the message", async () => {
+    const { saveCurriculum } = await curriculum();
+    api.courses.replaceCourse.mockRejectedValue(
+      refusal(409, {
+        code: "COURSE_VERSION_CONFLICT",
+        message: "version 6 != 7",
+      })
+    );
+    expect(await saveCurriculum("c-1", body)).toEqual({
+      success: false,
+      code: "COURSE_VERSION_CONFLICT",
+    });
+    expect(errors).toHaveBeenCalledOnce();
+  });
+
+  it("hands back the code of a refusal by permission", async () => {
+    const { saveCurriculum } = await curriculum();
+    api.courses.replaceCourse.mockRejectedValue(
+      refusal(403, { code: "AUTHZ_FORBIDDEN", message: "needs course.edit" })
+    );
+    expect(await saveCurriculum("c-1", body)).toEqual({
+      success: false,
+      code: "AUTHZ_FORBIDDEN",
+    });
+  });
+
+  it("writes nothing without a session", async () => {
+    token = undefined;
+    const { saveCurriculum } = await curriculum();
+    expect(await saveCurriculum("c-1", body)).toEqual({
+      success: false,
+      code: "",
+    });
+    expect(api.courses.replaceCourse).not.toHaveBeenCalled();
+  });
+});
+
+describe("Kayıt ekle and Düzenle on Ders kayıtları", () => {
+  const body = {
+    title: "Hafta 1 kaydı",
+    url: "https://us02web.zoom.us/rec/share/abc",
+    visibility: "ENROLLED" as const,
+  };
+
+  it("adds the recording of one session and hands back its id", async () => {
+    const { addRecording } = await recordings();
+    api.lessons.createLessonRecording.mockResolvedValue({
+      id: "r-1",
+      lessonId: "l-1",
+      title: body.title,
+      url: body.url,
+    });
+    expect(await addRecording("l-1", body)).toEqual({
+      success: true,
+      data: { id: "r-1" },
+    });
+    expect(api.lessons.createLessonRecording).toHaveBeenCalledWith({
+      id: "l-1",
+      createRecordingDto: body,
+    });
+  });
+
+  it("changes a recording by sending only the keys it is given", async () => {
+    const { changeRecording } = await recordings();
+    api.lessons.updateRecording.mockResolvedValue({ id: "r-1" });
+    expect(await changeRecording("r-1", { title: "Yeni" })).toEqual({
+      success: true,
+      data: { id: "r-1" },
+    });
+    expect(api.lessons.updateRecording).toHaveBeenCalledWith({
+      id: "r-1",
+      updateRecordingDto: { title: "Yeni" },
+    });
+  });
+
+  it("hand back the code of a refusal, never its message", async () => {
+    const { addRecording, changeRecording } = await recordings();
+    api.lessons.createLessonRecording.mockRejectedValue(
+      refusal(409, {
+        code: "RECORDING_EXISTS",
+        message: "Lesson l-1 has one",
+        context: { lessonId: "l-1", recordingId: "r-0" },
+      })
+    );
+    expect(await addRecording("l-1", body)).toStrictEqual({
+      success: false,
+      code: "RECORDING_EXISTS",
+    });
+    api.lessons.updateRecording.mockRejectedValue(
+      refusal(400, {
+        code: "RECORDING_LINK_INVALID",
+        message: "The Bunny video is already the recording of another session",
+        context: { reason: "bunny-video-used" },
+      })
+    );
+    // the reason is a code the page words; the message stays on the server
+    expect(
+      await changeRecording("r-1", {
+        url: "https://player.mediadelivery.net/embed/1/x",
+      })
+    ).toEqual({
+      success: false,
+      code: "RECORDING_LINK_INVALID",
+      reason: "bunny-video-used",
+    });
+    api.lessons.updateRecording.mockRejectedValue(
+      refusal(403, {
+        code: "AUTHZ_FORBIDDEN",
+        message: "needs recording.manage",
+      })
+    );
+    expect(await changeRecording("r-1", { title: "x" })).toEqual({
+      success: false,
+      code: "AUTHZ_FORBIDDEN",
+    });
+    expect(errors).toHaveBeenCalledTimes(3);
+  });
+
+  it("write nothing without a session", async () => {
+    token = undefined;
+    const { addRecording, changeRecording } = await recordings();
+    expect(await addRecording("l-1", body)).toEqual({
+      success: false,
+      code: "",
+    });
+    expect(await changeRecording("r-1", { title: "x" })).toEqual({
+      success: false,
+      code: "",
+    });
+    expect(api.lessons.createLessonRecording).not.toHaveBeenCalled();
+    expect(api.lessons.updateRecording).not.toHaveBeenCalled();
   });
 });

@@ -48,8 +48,8 @@ export function CurriculumList({
           : await hideSession(target.id);
       if (result.success) {
         notify({
-          title: t(`Curriculum.${target.kind}.done`),
-          description: t(`Curriculum.${target.kind}.doneBody`, {
+          title: t(`CurriculumHide.${target.kind}.done`),
+          description: t(`CurriculumHide.${target.kind}.doneBody`, {
             title: target.title,
           }),
         });
@@ -57,7 +57,7 @@ export function CurriculumList({
       } else {
         notify({
           tone: result.code.endsWith("_NOT_FOUND") ? "info" : "error",
-          title: t(`Curriculum.${target.kind}.failedTitle`),
+          title: t(`CurriculumHide.${target.kind}.failedTitle`),
           description: words(hideErrorKey(result.code)),
         });
         if (result.code.endsWith("_NOT_FOUND")) router.refresh();
@@ -67,7 +67,7 @@ export function CurriculumList({
   };
 
   if (weeks.length === 0) {
-    return <EmptyState>{t("Curriculum.empty")}</EmptyState>;
+    return <EmptyState>{t("CurriculumHide.empty")}</EmptyState>;
   }
 
   return (
@@ -79,13 +79,13 @@ export function CurriculumList({
               <div className="flex flex-col">
                 <h2 className="mds-h3">
                   <bdi>
-                    {t("Curriculum.weekLabel", { number: week.number })}
+                    {t("CurriculumHide.weekLabel", { number: week.number })}
                     {": "}
                     {week.title}
                   </bdi>
                 </h2>
                 <span className="mds-caption">
-                  {t("Curriculum.sessionCount", {
+                  {t("CurriculumHide.sessionCount", {
                     count: week.sessions.length,
                   })}
                 </span>
@@ -94,7 +94,7 @@ export function CurriculumList({
                 variant="outline"
                 size="small"
                 iconLeft={<Icon name="eyeOff" size="sm" />}
-                aria-label={t("Curriculum.hideWeekLabel", {
+                aria-label={t("CurriculumHide.hideWeekLabel", {
                   title: week.title,
                 })}
                 onClick={() =>
@@ -106,11 +106,11 @@ export function CurriculumList({
                   })
                 }
               >
-                {t("Curriculum.hideWeek")}
+                {t("CurriculumHide.hideWeek")}
               </Button>
             </div>
             {week.sessions.length === 0 ? (
-              <p className="mds-caption">{t("Curriculum.noSessions")}</p>
+              <p className="mds-caption">{t("CurriculumHide.noSessions")}</p>
             ) : (
               <ul className="flex flex-col divide-y divide-[var(--border-neutral-subtle)]">
                 {week.sessions.map((session) => (
@@ -128,7 +128,7 @@ export function CurriculumList({
                       variant="outline"
                       size="small"
                       iconLeft={<Icon name="eyeOff" size="sm" />}
-                      aria-label={t("Curriculum.hideSessionLabel", {
+                      aria-label={t("CurriculumHide.hideSessionLabel", {
                         title: session.title,
                       })}
                       onClick={() =>
@@ -139,7 +139,7 @@ export function CurriculumList({
                         })
                       }
                     >
-                      {t("Curriculum.hideSession")}
+                      {t("CurriculumHide.hideSession")}
                     </Button>
                   </li>
                 ))}
@@ -154,9 +154,9 @@ export function CurriculumList({
           if (!pending && !next) setTarget(null);
         }}
         eyebrow={target?.title ?? ""}
-        title={target ? t(`Curriculum.${target.kind}.title`) : ""}
-        confirmLabel={t("Curriculum.confirm")}
-        cancelLabel={t("Curriculum.cancel")}
+        title={target ? t(`CurriculumHide.${target.kind}.title`) : ""}
+        confirmLabel={t("CurriculumHide.confirm")}
+        cancelLabel={t("CurriculumHide.cancel")}
         closeLabel={t("Shell.close")}
         confirmLoading={pending}
         onConfirm={confirm}
@@ -164,11 +164,11 @@ export function CurriculumList({
         {target ? (
           <p>
             {target.kind === "week"
-              ? t("Curriculum.week.body", {
+              ? t("CurriculumHide.week.body", {
                   title: target.title,
                   count: target.sessions,
                 })
-              : t("Curriculum.session.body", { title: target.title })}
+              : t("CurriculumHide.session.body", { title: target.title })}
           </p>
         ) : null}
       </AlertDialog>
