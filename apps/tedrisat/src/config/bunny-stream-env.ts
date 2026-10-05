@@ -1,3 +1,9 @@
+import {
+  DEFAULT_EMBED_LINK_LIFETIME_SECONDS,
+  MAX_EMBED_LINK_LIFETIME_SECONDS,
+  MIN_EMBED_LINK_LIFETIME_SECONDS,
+} from "../bunny-stream/bunny-signature";
+
 /** The Medaris Bunny Stream library tedrisat uploads recordings to (MDRS-116). */
 export interface IBunnyStreamConfig {
   /** The video library's numeric id, as Bunny's dashboard shows it. */
@@ -6,6 +12,8 @@ export interface IBunnyStreamConfig {
   apiKey: string;
   /** The library's embed token authentication key, or null when token authentication is off. */
   tokenKey: string | null;
+  /** How many seconds a signed player link plays after it is handed out (MDRS-119). */
+  embedLifetimeSeconds: number;
 }
 
 /**
@@ -18,6 +26,11 @@ export interface IBunnyStreamConfig {
  * typo, so that stops the boot, as does a library id that is not a number.
  * The token key is optional on its own: without it the player link carries
  * no token, which plays only while the library's token authentication is off.
+ *
+ * `BUNNY_STREAM_EMBED_TTL_SECONDS` (MDRS-119) is how long a signed player link
+ * plays: 6 hours when unset, and a whole number of seconds from a minute to a
+ * week otherwise. Anything else stops the boot rather than silently signing
+ * links that expire at once or almost never.
  */
 export function readBunnyStreamConfig(
   env: NodeJS.ProcessEnv
@@ -37,5 +50,26 @@ export function readBunnyStreamConfig(
       `BUNNY_STREAM_LIBRARY_ID must be the library's numeric id, got "${libraryId}".`
     );
   }
-  return { libraryId, apiKey, tokenKey };
+  return {
+    libraryId,
+    apiKey,
+    tokenKey,
+    embedLifetimeSeconds: readEmbedLifetime(env.BUNNY_STREAM_EMBED_TTL_SECONDS),
+  };
+}
+
+function readEmbedLifetime(raw: string | undefined): number {
+  const value = raw?.trim();
+  if (!value) return DEFAULT_EMBED_LINK_LIFETIME_SECONDS;
+  const seconds = /^\d+$/.test(value) ? Number(value) : Number.NaN;
+  if (
+    !Number.isSafeInteger(seconds) ||
+    seconds < MIN_EMBED_LINK_LIFETIME_SECONDS ||
+    seconds > MAX_EMBED_LINK_LIFETIME_SECONDS
+  ) {
+    throw new Error(
+      `BUNNY_STREAM_EMBED_TTL_SECONDS must be a whole number of seconds from ${MIN_EMBED_LINK_LIFETIME_SECONDS} to ${MAX_EMBED_LINK_LIFETIME_SECONDS}, got "${value}".`
+    );
+  }
+  return seconds;
 }

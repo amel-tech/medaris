@@ -55,6 +55,7 @@ const LIBRARY: IBunnyStreamConfig = {
   libraryId: "424242",
   apiKey: "e2e-library-api-key",
   tokenKey: "e2e-token-key",
+  embedLifetimeSeconds: 6 * 3600,
 };
 
 /** A stand-in for Bunny's Stream API: Create Video and Get Video, in memory. */
@@ -395,7 +396,7 @@ describe("recording uploads to Bunny Stream (MDRS-116, e2e)", () => {
       });
       expect(bunnyRow.url).toMatch(
         new RegExp(
-          `^https://iframe\\.mediadelivery\\.net/embed/${LIBRARY.libraryId}/${videoId}\\?token=[0-9a-f]{64}&expires=\\d+$`
+          `^https://player\\.mediadelivery\\.net/embed/${LIBRARY.libraryId}/${videoId}\\?token=[0-9a-f]{64}&expires=\\d+$`
         )
       );
       expect(JSON.stringify(res.body)).not.toContain("bunnyVideoId");

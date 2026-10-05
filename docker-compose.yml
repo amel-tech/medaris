@@ -119,6 +119,7 @@ services:
       BUNNY_STREAM_LIBRARY_ID: ${TEDRISAT__BUNNY_STREAM_LIBRARY_ID:-}
       BUNNY_STREAM_API_KEY: ${TEDRISAT__BUNNY_STREAM_API_KEY:-}
       BUNNY_STREAM_TOKEN_KEY: ${TEDRISAT__BUNNY_STREAM_TOKEN_KEY:-}
+      BUNNY_STREAM_EMBED_TTL_SECONDS: ${TEDRISAT__BUNNY_STREAM_EMBED_TTL_SECONDS:-}
 
       # Both carry the API__ tier the file header promises ("the app-specific
       # spelling first, then the group one"). Without it the

@@ -26,6 +26,7 @@ describe("readBunnyStreamConfig (MDRS-116)", () => {
       libraryId: "12345",
       apiKey: "set-me-api-key",
       tokenKey: null,
+      embedLifetimeSeconds: 21_600,
     });
     expect(
       readBunnyStreamConfig({ ...ENV, BUNNY_STREAM_TOKEN_KEY: "tk" })?.tokenKey
@@ -53,8 +54,55 @@ describe("readBunnyStreamConfig (MDRS-116)", () => {
   });
 });
 
+describe("BUNNY_STREAM_EMBED_TTL_SECONDS (MDRS-119)", () => {
+  const ttl = (value: string) =>
+    readBunnyStreamConfig({ ...ENV, BUNNY_STREAM_EMBED_TTL_SECONDS: value })
+      ?.embedLifetimeSeconds;
+
+  it("defaults to 6 hours, and an empty value is unset", () => {
+    expect(ttl("")).toBe(21_600);
+    expect(ttl("  ")).toBe(21_600);
+  });
+
+  it("takes a whole number of seconds from a minute to a week", () => {
+    expect(ttl("60")).toBe(60);
+    expect(ttl(" 7200 ")).toBe(7200);
+    expect(ttl("604800")).toBe(604_800);
+  });
+
+  it("stops the boot on anything else", () => {
+    for (const bad of ["59", "604801", "0", "-60", "3600.5", "6h", "1e4"]) {
+      expect(() => ttl(bad)).toThrow(/BUNNY_STREAM_EMBED_TTL_SECONDS/);
+    }
+  });
+});
+
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status });
+
+describe("BunnyStreamClient.embedUrl (MDRS-119)", () => {
+  it("signs with the library's token key and its configured lifetime", () => {
+    const config = readBunnyStreamConfig({
+      ...ENV,
+      BUNNY_STREAM_TOKEN_KEY: "set-me-token-key",
+      BUNNY_STREAM_EMBED_TTL_SECONDS: "120",
+    });
+    const client = new BunnyStreamClient(config, vi.fn() as never);
+    const now = new Date("2026-10-04T10:00:00.900Z");
+    const url = new URL(
+      client.embedUrl("a1b2c3d4-0000-4000-8000-00000000abcd", now) ?? ""
+    );
+    expect(url.origin).toBe("https://player.mediadelivery.net");
+    expect(url.pathname).toBe(
+      "/embed/12345/a1b2c3d4-0000-4000-8000-00000000abcd"
+    );
+    expect(Number(url.searchParams.get("expires"))).toBe(
+      Math.floor(now.getTime() / 1000) + 120
+    );
+    expect(url.searchParams.get("token")).toMatch(/^[0-9a-f]{64}$/);
+    expect(client.libraryId).toBe("12345");
+  });
+});
 
 describe("BunnyStreamClient (MDRS-116)", () => {
   it("answers 503 for everything but the player link when not configured", async () => {
@@ -68,6 +116,7 @@ describe("BunnyStreamClient (MDRS-116)", () => {
       BunnyStreamNotConfiguredError
     );
     expect(client.embedUrl("v")).toBeNull();
+    expect(client.libraryId).toBeNull();
     expect(fetchImpl).not.toHaveBeenCalled();
   });
 

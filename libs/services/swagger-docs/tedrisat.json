@@ -3927,7 +3927,7 @@
     },
     "/courses/{id}/recordings": {
       "get": {
-        "description": "Open to callers with no token, like the course page. A caller holding `view_details` sees every recording; everyone else, PENDING and revoked included, only those with `visibility` PUBLIC. A recording whose `status` is PROCESSING is listed with a null `url`. Sorted by week number descending, then by `recordedAt` descending (MDRS-162).",
+        "description": "Open to callers with no token, like the course page. A caller holding `view_details` sees every recording; everyone else, PENDING and revoked included, only those with `visibility` PUBLIC. A recording whose `status` is PROCESSING is listed with a null `url`. Sorted by week number descending, then by `recordedAt` descending (MDRS-162). A READY BUNNY recording's `url` is a player link signed for this response, built only for a recording the caller may see, and expiring after `BUNNY_STREAM_EMBED_TTL_SECONDS` (6 hours by default); the response is `Cache-Control: private, no-store` (MDRS-119). What this protects: with embed token authentication on in the Bunny library, only a signed link opens the player page, and a signed link passed on opens it until it expires; the stream behind the page (playlist, segments, MP4) is protected only by the library's separate CDN token authentication, so a viewer who saved the video address can play it after the link has expired unless that is on. A YouTube, Drive or other pasted link plays for anyone who has it; for those the filter decides who is shown the link, not who can open it.",
         "operationId": "listCourseRecordings",
         "parameters": [
           {
@@ -15987,7 +15987,8 @@
           },
           "url": {
             "type": "string",
-            "nullable": true
+            "nullable": true,
+            "description": "As `RecordingResponse.url`: a BUNNY recording's link is a player link signed for this response, with its own `expires`."
           },
           "visibility": {
             "allOf": [
@@ -16209,7 +16210,7 @@
           "url": {
             "type": "string",
             "nullable": true,
-            "description": "Null unless the recording is READY. For a BUNNY recording (MDRS-116) it is the Bunny player link, built when it is read, with a token that expires after a few hours when the library uses token authentication."
+            "description": "Null unless the recording is READY. For a BUNNY recording it is Bunny's player link, `https://player.mediadelivery.net/embed/<libraryId>/<videoId>?token=<token>&expires=<unix seconds>`, signed for this response only and only for a caller allowed to see the recording (MDRS-116, MDRS-119); its player page opens until `expires` (6 hours by default, `BUNNY_STREAM_EMBED_TTL_SECONDS`), even if passed on; whether the stream behind it stops too depends on the library's CDN token authentication (docs/migration/mdrs-119-signed-playback.md). Any other provider's link is returned as stored: anyone holding it can open it, so for those our authorization decides who is shown the link, not who can play it."
           },
           "visibility": {
             "allOf": [
