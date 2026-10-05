@@ -3,6 +3,7 @@ import { authErrorMessageKey } from "@medaris/services/auth-client";
 import { createTranslator } from "next-intl";
 import { describe, expect, it } from "vitest";
 import { banErrorKey } from "~/features/bans/bans";
+import { courseSettingsErrorKey } from "~/features/course-settings/course-settings";
 import { curriculumErrorKey } from "~/features/curriculum/curriculum";
 import { enrolmentErrorKey } from "~/features/enrolments/enrolments";
 import { offsiteErrorKey } from "~/features/offsite/offsite";
@@ -243,6 +244,14 @@ describe("the nazar message catalogue", () => {
       ...["required", "short", "long"].map(
         (p) => `OpenCourse.nameProblems.${p}`
       ),
+      // Ders ayarları words a refused save from its code.
+      ...[
+        "AUTHZ_FORBIDDEN",
+        "PLATFORM_POLICY_LOCKED",
+        "COURSE_VERSION_CONFLICT",
+        "VALIDATION_ERROR",
+        "SOMETHING_NEW",
+      ].map(courseSettingsErrorKey),
     ];
     for (const locale of locales) {
       for (const key of keys) {
@@ -309,6 +318,7 @@ describe("the nazar message catalogue", () => {
       "Curriculum",
       "CurriculumHide",
       "Recordings",
+      "CourseSettings",
     ] as const;
     for (const locale of locales) {
       const errors: string[] = [];
