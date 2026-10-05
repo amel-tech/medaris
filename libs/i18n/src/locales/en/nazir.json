@@ -1510,7 +1510,6 @@
       "detected": ", read from the link",
       "publicLabel": "Public",
       "publicHelp": "While it is off, only talebe enrolled in the course and the course team watch it.",
-      "youtubePublic": "YouTube is for public recordings only. Upload a recording only enrolled talebe may watch somewhere else and paste its link.",
       "closed": "In a closed course, recordings are not opened to everyone.",
       "submitAdd": "Add recording",
       "submitEdit": "Save",
@@ -1530,7 +1529,14 @@
       "exists": "This session already has a recording; edit it. The page is reloading.",
       "cancelled": "A cancelled session takes no recording.",
       "gone": "This session or recording is no longer there. The page is reloading.",
-      "youtubePublicOnly": "YouTube is for public recordings only.",
+      "linkInvalid": {
+        "invalid": "The link could not be read. Copy the recording's link again.",
+        "notHttps": "The link must start with https://. Copy it again.",
+        "youtubeNoVideo": "The YouTube link names no video: copy the link of the video, not of a channel or a playlist.",
+        "bunnyNoVideo": "The Bunny link names no video: copy the video's player link (player.mediadelivery.net).",
+        "bunnyForeignLibrary": "This Bunny video is not in the Medaris video library. Only a video in the Medaris library can be added.",
+        "bunnyVideoUsed": "This Bunny video is already the recording of another session. A video can be the recording of one session only."
+      },
       "invalid": "Check the title and the https link and try again."
     }
   }

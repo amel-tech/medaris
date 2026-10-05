@@ -10,12 +10,14 @@ import { useToaster } from "@medaris/ui/mds/toast";
 import { useTranslations } from "next-intl";
 import { type FormEvent, useState, useTransition } from "react";
 import type { Messages } from "~/lib/i18n/messages";
+import { sendableLink } from "../../sessions/sessions";
 import { addRecording, changeRecording } from "../actions";
 import {
   chipOf,
   createBody,
   formErrors,
   formOf,
+  hostOf,
   newForm,
   patchBody,
   providerOfLink,
@@ -28,13 +30,13 @@ import {
 
 /**
  * "Kayıt ekle" and "Düzenle": a pasted link with a title and who may watch it.
- * The provider chip appears as the link is typed. "Herkese açık" starts off;
- * YouTube is for public recordings only, so a YouTube link with the switch off
- * is stopped here with one line (the API refuses it too), a YouTube recording
- * that is public keeps the switch on, and a closed course opens nothing to
- * everyone. Editing sends only what changed. A refusal is worded from the
- * API's code; when it means the page is out of date, the dialog closes and the
- * page is read again.
+ * The provider chip appears as the link is typed; a Bunny link, which has no
+ * chip of its own, shows its host. "Herkese açık" starts off and any link may
+ * be either (a YouTube link too, since 3 October); a closed course opens
+ * nothing to everyone. Editing sends only what changed. A refusal is worded
+ * from the API's code and, for a link tedrisat cannot store, its reason; when
+ * it means the page is out of date, the dialog closes and the page is read
+ * again.
  */
 export function RecordingDialog({
   slot,
@@ -64,8 +66,7 @@ export function RecordingDialog({
   const chip = chipOf(provider);
   const lock = switchLocked(form, closed);
   const showError = (problem: keyof typeof errors) =>
-    // YouTube with the switch off is known the moment the link is typed.
-    problem === "youtubePublic" || sent ? errors[problem] === true : false;
+    sent && errors[problem] === true;
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -93,7 +94,9 @@ export function RecordingDialog({
         notify({
           tone: "error",
           title: t("Recordings.failed"),
-          description: words(recordingErrorKey(result.code)),
+          description: words(
+            recordingErrorKey(result.code, result.reason ?? null)
+          ),
         });
         if (recordingsMoved(result.code)) {
           onClose();
@@ -171,6 +174,14 @@ export function RecordingDialog({
                 detected
                 detectedLabel={t("Recordings.form.detected")}
               />
+            ) : provider === "BUNNY" ? (
+              <PlatformChip
+                platform="bunny"
+                kind="recording"
+                host={hostOf(sendableLink(form.url) ?? "")}
+                detected
+                detectedLabel={t("Recordings.form.detected")}
+              />
             ) : null}
           </span>
         }
@@ -181,9 +192,7 @@ export function RecordingDialog({
             ? t("Recordings.form.errors.linkEmpty")
             : showError("link")
               ? t("Recordings.form.errors.link")
-              : showError("youtubePublic")
-                ? t("Recordings.form.youtubePublic")
-                : undefined
+              : undefined
         }
       >
         <Input
@@ -200,11 +209,9 @@ export function RecordingDialog({
       <Switch
         label={t("Recordings.form.publicLabel")}
         description={
-          lock.reason === "youtube"
-            ? t("Recordings.form.youtubePublic")
-            : lock.reason === "closed"
-              ? t("Recordings.form.closed")
-              : t("Recordings.form.publicHelp")
+          lock.reason === "closed"
+            ? t("Recordings.form.closed")
+            : t("Recordings.form.publicHelp")
         }
         checked={form.isPublic}
         disabled={pending || lock.locked}
