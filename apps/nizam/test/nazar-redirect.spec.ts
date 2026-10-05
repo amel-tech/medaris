@@ -69,7 +69,7 @@ describe("landingFor (nizam 04)", () => {
         systemAdmin: false,
         assignments: [{ role: "MUDERRIS" }, { role: "MEDRESE_BASMUDERRIS" }],
       })
-    ).toBe("nazir");
+    ).toBe("nazar");
   });
 
   it("a köşk nazım who also teaches stays in Nizam", () => {
@@ -110,17 +110,17 @@ describe("taskRows", () => {
   });
 });
 
-describe("NazirRedirectPage", () => {
+describe("NazarRedirectPage", () => {
   const render = async (props: Record<string, unknown>) => {
-    const { NazirRedirectPage } = await import(
-      "~/features/assignments/components/nazir-redirect-page"
+    const { NazarRedirectPage } = await import(
+      "~/features/assignments/components/nazar-redirect-page"
     );
     return renderToStaticMarkup(
-      await NazirRedirectPage({
+      await NazarRedirectPage({
         rows: [],
-        nazirUrl: "http://nazir.test",
+        nazarUrl: "http://nazar.test",
         failed: false,
-        retryHref: "/en/nazir-yonlendirme",
+        retryHref: "/en/nazar-yonlendirme",
         ...props,
       } as never)
     );
@@ -150,7 +150,7 @@ describe("NazirRedirectPage", () => {
     expect(html).toContain("Dersin imamı");
     expect(html).toContain("Taslak");
     expect(html).not.toContain("0 talebe");
-    expect(html).toContain('href="http://nazir.test"');
+    expect(html).toContain('href="http://nazar.test"');
     expect(html).toContain("Nazır’a git");
     expect((html.match(/data-testid="task-row"/g) ?? []).length).toBe(3);
   });
@@ -158,12 +158,12 @@ describe("NazirRedirectPage", () => {
   it("offers a retry when the roles could not be read, and no empty claim", async () => {
     const html = await render({ rows: null, failed: true });
     expect(html).toContain("Görevleriniz yüklenemedi");
-    expect(html).toContain('href="/en/nazir-yonlendirme"');
+    expect(html).toContain('href="/en/nazar-yonlendirme"');
     expect(html).not.toContain("henüz");
   });
 
   it("leaves the button out without a Nazır address", async () => {
-    const html = await render({ nazirUrl: null });
+    const html = await render({ nazarUrl: null });
     expect(html).not.toContain("Nazır’a git");
   });
 });

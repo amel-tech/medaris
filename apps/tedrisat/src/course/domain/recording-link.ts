@@ -27,7 +27,7 @@ export type DetectedRecordingLink =
     };
 
 /**
- * Why a pasted link was refused; the error's `reason`, so nazir can word it.
+ * Why a pasted link was refused; the error's `reason`, so nazar can word it.
  * All but the last are `detectRecordingLink`'s; the last is the write's, which
  * alone can see the other recordings.
  */

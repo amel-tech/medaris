@@ -40,7 +40,7 @@ vi.mock("~/features/courses/actions/questions", () => ({
 
 /**
  * Which tabs of the course page carry questions (MDRS-150): "Sorularım" for
- * an enrolled talebe and none for anyone else. The staff answer in the nazir
+ * an enrolled talebe and none for anyone else. The staff answer in the nazar
  * app, so the course page has no tab for them.
  */
 

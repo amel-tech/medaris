@@ -188,8 +188,8 @@
     "courseCount": "{count} ders",
     "emptyTitle": "Henüz yönettiğiniz bir köşk yok",
     "emptyDescription": "Yeni bir köşk açarak başlayabilirsiniz.",
-    "nazirTitle": "Bu işler nazir'de",
-    "nazirDescription": "Medrese yönetimi nazir uygulamasında yapılır. Burada yalnız yönettiğiniz köşkler listelenir.",
+    "nazarTitle": "Bu işler nazir'de",
+    "nazarDescription": "Medrese yönetimi nazir uygulamasında yapılır. Burada yalnız yönettiğiniz köşkler listelenir.",
     "taughtTitle": "Verdiğiniz dersler",
     "taughtDescription": "Müderrisi olduğunuz, ama yönetmediğiniz köşklerdeki dersler.",
     "previous": "Önceki",
@@ -556,14 +556,14 @@
     "created": "Köşk oluşturuldu.",
     "updated": "Köşk güncellendi."
   },
-  "NazirRedirectPage": {
+  "NazarRedirectPage": {
     "title": "Medrese ve ders işleriniz Nazır’da",
     "intro": "Nizam, Medaris’i ve köşkleri yönetenlerin uygulamasıdır. Medrese ve ders görevlerinizi Nazır’dan yürütürsünüz.",
     "tasks": "Görevleriniz",
     "students": "{count} talebe",
     "imam": "Dersin imamı",
     "draft": "Taslak",
-    "goToNazir": "Nazır’a git",
+    "goToNazar": "Nazır’a git",
     "roles": {
       "MEDRESE_BASMUDERRIS": "Medrese başmüderrisi",
       "MEDRESE_NAZIR": "Medrese nazırı",
@@ -2159,7 +2159,7 @@
     "emailHelp": "Salt okunur. Hesabınıza kayıtlı adres; buradan değiştirilemez.",
     "teachingTitle": "Müderrislik",
     "teachingText": "Müderris olduğunuz derslerin celselerini, talebelerini ve ders kayıtlarını Nazır’da yönetirsiniz.",
-    "openNazir": "Nazır’da aç",
+    "openNazar": "Nazır’da aç",
     "signOutText": "Bu tarayıcıda Medaris’ten çıkarsınız. Görevleriniz ve tercihleriniz hesabınızda kalır.",
     "signOut": "Çıkış yap",
     "retry": "Yeniden dene",

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { env } from "~/env";
-import { NazirRedirectPage } from "~/features/assignments/components/nazir-redirect-page";
+import { NazarRedirectPage } from "~/features/assignments/components/nazar-redirect-page";
 import { landingFor, taskRows } from "~/features/assignments/landing";
 import { getMyAssignments } from "~/features/assignments/reads";
 
@@ -10,7 +10,7 @@ import { getMyAssignments } from "~/features/assignments/reads";
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const t = await getTranslations("nizam.NazirRedirectPage");
+  const t = await getTranslations("nizam.NazarRedirectPage");
   return { title: t("title") };
 }
 
@@ -28,14 +28,14 @@ export default async function Page({
   setRequestLocale(locale);
   const me = await getMyAssignments();
 
-  if (me && landingFor(me) !== "nazir") redirect(`/${locale}`);
+  if (me && landingFor(me) !== "nazar") redirect(`/${locale}`);
 
   return (
-    <NazirRedirectPage
+    <NazarRedirectPage
       rows={me ? taskRows(me.assignments) : null}
       failed={me === null}
-      nazirUrl={env.NAZAR_URL || null}
-      retryHref={`/${locale}/nazir-yonlendirme`}
+      nazarUrl={env.NAZAR_URL || null}
+      retryHref={`/${locale}/nazar-yonlendirme`}
     />
   );
 }

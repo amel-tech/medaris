@@ -53,7 +53,7 @@ test("a müderris who is not a nazım lands on 'Bu işler Nazır'da' with the sa
   test.skip(!(seedable && MUDERRIS.password), "no müderris account");
   await signIn(page, MUDERRIS);
   await page.goto("/tr");
-  await page.waitForURL(/\/tr\/nazir-yonlendirme$/);
+  await page.waitForURL(/\/tr\/nazar-yonlendirme$/);
 
   await expect(
     page.getByRole("heading", {
@@ -80,7 +80,7 @@ test("a müderris who is not a nazım lands on 'Bu işler Nazır'da' with the sa
 test("'Nazır'a git' goes to the Nazır address", async ({ page }) => {
   test.skip(!(seedable && MUDERRIS.password), "no müderris account");
   await signIn(page, MUDERRIS);
-  await page.goto("/tr/nazir-yonlendirme");
+  await page.goto("/tr/nazar-yonlendirme");
   const go = page.getByRole("link", { name: "Nazır’a git" });
   await expect(go).toHaveAttribute("href", /localhost:4002/);
 });
@@ -97,7 +97,7 @@ test("a köşk nazım is not sent to Nazır", async ({ page }) => {
     await signIn(page, KOSK_NAZIM);
     await page.goto("/tr");
     await expect(page).toHaveURL(KOSK_HOME);
-    await page.goto("/tr/nazir-yonlendirme");
+    await page.goto("/tr/nazar-yonlendirme");
     await expect(page).toHaveURL(KOSK_HOME);
   } finally {
     await managed.remove();

@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
  * system. The shell around them is still the shadcn one, so the system's
  * stylesheet and faces load with the segment until the shell moves.
  */
-export default function NazirRedirectLayout({
+export default function NazarRedirectLayout({
   children,
 }: {
   children: ReactNode;

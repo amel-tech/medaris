@@ -6,7 +6,7 @@ const NIZAM_ROLES: ReadonlySet<string> = new Set([
   "KOSK_NAZIM",
 ]);
 
-export type Landing = "nizam" | "nazir" | "none";
+export type Landing = "nizam" | "nazar" | "none";
 
 /**
  * Where a signed-in person belongs when they open Nizam (nizam 04):
@@ -20,7 +20,7 @@ export function landingFor(me: {
 }): Landing {
   if (me.systemAdmin) return "nizam";
   if (me.assignments.some((a) => NIZAM_ROLES.has(a.role))) return "nizam";
-  return me.assignments.length > 0 ? "nazir" : "none";
+  return me.assignments.length > 0 ? "nazar" : "none";
 }
 
 export interface TaskRow {

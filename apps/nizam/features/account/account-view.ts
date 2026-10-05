@@ -64,8 +64,8 @@ export const scopeMeta = (
   );
 
 /** The page a role's work is done in: köşk nazımı and above here, the rest in Nazır. */
-export const roleApp = (role: string): "nizam" | "nazir" =>
-  role === "MEDARIS_NAZIM" || role === "KOSK_NAZIM" ? "nizam" : "nazir";
+export const roleApp = (role: string): "nizam" | "nazar" =>
+  role === "MEDARIS_NAZIM" || role === "KOSK_NAZIM" ? "nizam" : "nazar";
 
 export type ExpiryNote =
   | { kind: "none" }

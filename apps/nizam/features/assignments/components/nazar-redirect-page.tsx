@@ -19,20 +19,20 @@ type Messages = (
  * medrese's and the course's, none of which Nizam serves. The list is read
  * only; the one way on is the button to Nazır.
  */
-export async function NazirRedirectPage({
+export async function NazarRedirectPage({
   rows,
-  nazirUrl,
+  nazarUrl,
   failed,
   retryHref,
 }: {
   /** null when the roles could not be read */
   rows: TaskRow[] | null;
-  nazirUrl: string | null;
+  nazarUrl: string | null;
   failed: boolean;
   retryHref: string;
 }) {
   const t = (await getTranslations(
-    "nizam.NazirRedirectPage"
+    "nizam.NazarRedirectPage"
   )) as unknown as Messages;
 
   return (
@@ -111,13 +111,13 @@ export async function NazirRedirectPage({
         </section>
       )}
 
-      {nazirUrl ? (
+      {nazarUrl ? (
         <Button
-          href={nazirUrl}
+          href={nazarUrl}
           variant="primary"
           iconRight={<Icon name="arrowRight" size="sm" />}
         >
-          {t("goToNazir")}
+          {t("goToNazar")}
         </Button>
       ) : null}
     </div>

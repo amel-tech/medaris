@@ -64,7 +64,7 @@ const dig = (node: unknown, path: string) =>
     .reduce<unknown>((n, part) => (n as Record<string, unknown>)?.[part], node);
 
 vi.mock("~/env", () => ({
-  env: { NAZAR_URL: "http://nazir.test/" },
+  env: { NAZAR_URL: "http://nazar.test/" },
 }));
 vi.mock("next-intl/server", () => {
   const t = (key: string, values?: Record<string, unknown>) => {
@@ -151,7 +151,7 @@ describe("roles and their order", () => {
   it("sends köşk roles to Nizam and the rest to Nazır", () => {
     expect(roleApp("KOSK_NAZIM")).toBe("nizam");
     expect(roleApp("MEDARIS_NAZIM")).toBe("nizam");
-    expect(roleApp("MUDERRIS")).toBe("nazir");
+    expect(roleApp("MUDERRIS")).toBe("nazar");
   });
 });
 
@@ -388,7 +388,7 @@ describe("the page (nizam/47)", () => {
     );
     expect(html).toContain("Müderrislik");
     expect(html).toMatch(
-      /<a[^>]*href="http:\/\/nazir\.test"[^>]*>[\s\S]*Nazır’da aç/
+      /<a[^>]*href="http:\/\/nazar\.test"[^>]*>[\s\S]*Nazır’da aç/
     );
   });
 

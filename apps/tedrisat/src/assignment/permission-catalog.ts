@@ -9,7 +9,7 @@ import {
  * The permission catalogue lives in `@medaris/common` (MDRS-135): the codes,
  * the scope types each applies to, what is grantable, and what each role holds
  * without a grant. This file keeps what only the screens need: how the codes
- * are sectioned and ordered where nizam and nazir print them.
+ * are sectioned and ordered where nizam and nazar print them.
  *
  * The codes are the contract with the clients: the sentence shown for a code
  * lives in the web app's messages (`account.permissions.<code>`), never here,

@@ -77,7 +77,7 @@ const course = (status: "DRAFT" | "PUBLISHED") =>
     contentLocked: true,
   }) as unknown as CourseDetailResponse;
 
-const render = async (status: "DRAFT" | "PUBLISHED", nazirUrl?: string) => {
+const render = async (status: "DRAFT" | "PUBLISHED", nazarUrl?: string) => {
   const { CoursePage } = await import(
     "~/features/courses/components/course-page"
   );
@@ -85,7 +85,7 @@ const render = async (status: "DRAFT" | "PUBLISHED", nazirUrl?: string) => {
     createElement(CoursePage, {
       course: course(status),
       signedIn: true,
-      nazirUrl: nazirUrl ?? null,
+      nazarUrl: nazarUrl ?? null,
     })
   );
 };
@@ -94,7 +94,7 @@ describe("tedris/14: a draft is shown as a preview", () => {
   const tr = resources.tr.tedris.CoursePage;
 
   it("has the banner, the badge, the preview card and the earliest session", async () => {
-    const html = await render("DRAFT", "http://nazir.test");
+    const html = await render("DRAFT", "http://nazar.test");
     expect(html).toContain(tr.previewBannerText);
     expect(html).toContain(`>${tr.draftBadge}<`);
     expect(html).toContain(tr.previewCardTitle);
@@ -104,22 +104,22 @@ describe("tedris/14: a draft is shown as a preview", () => {
   });
 
   it("offers no way to apply, whatever the course's own settings say", async () => {
-    const html = await render("DRAFT", "http://nazir.test");
+    const html = await render("DRAFT", "http://nazar.test");
     for (const label of [tr.enroll, tr.requestEnroll, tr.signInToApply]) {
       expect(html).not.toContain(`>${label}<`);
     }
   });
 
   it("'Düzenlemeye dön' goes to Nazır, and is left out when there is no Nazır", async () => {
-    const withNazir = await render("DRAFT", "http://nazir.test");
-    expect(withNazir).toContain('href="http://nazir.test"');
-    expect(withNazir).toContain(`>${tr.backToEditing}<`);
+    const withNazar = await render("DRAFT", "http://nazar.test");
+    expect(withNazar).toContain('href="http://nazar.test"');
+    expect(withNazar).toContain(`>${tr.backToEditing}<`);
     const without = await render("DRAFT");
     expect(without).not.toContain(`>${tr.backToEditing}<`);
   });
 
   it("a published course shows none of it", async () => {
-    const html = await render("PUBLISHED", "http://nazir.test");
+    const html = await render("PUBLISHED", "http://nazar.test");
     expect(html).not.toContain(tr.previewBannerText);
     expect(html).not.toContain(tr.previewCardTitle);
     expect(html).toContain(`>${tr.enroll}</button>`);

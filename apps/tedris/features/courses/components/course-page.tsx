@@ -46,7 +46,7 @@ export const CoursePage = ({
   koskName,
   approvalRequired = course.requiresApproval,
   signedIn = true,
-  nazirUrl = null,
+  nazarUrl = null,
   signInHref = `/auth/signin?callbackUrl=${encodeURIComponent(`/courses/${course.id}`)}`,
   registerHref = "/auth/register",
   recordings = [],
@@ -66,7 +66,7 @@ export const CoursePage = ({
    * Where "Düzenlemeye dön" goes (design tedris/14), the Nazır app's address;
    * null leaves the button out. Read from the server's environment.
    */
-  nazirUrl?: string | null;
+  nazarUrl?: string | null;
   signInHref?: string;
   registerHref?: string;
   /**
@@ -263,9 +263,9 @@ export const CoursePage = ({
                   </p>
                 </div>
               )}
-              {nazirUrl && (
+              {nazarUrl && (
                 <Button
-                  href={nazirUrl}
+                  href={nazarUrl}
                   variant="secondary"
                   fullWidth
                   className="mbs-4"

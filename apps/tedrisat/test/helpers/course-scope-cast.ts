@@ -21,7 +21,7 @@ import { assignRole } from "./test-database.helper";
 import { bearerFor } from "./test-keycloak.helper";
 
 /**
- * The people of the nazir course scope (MDRS-247), for the specs that pin who
+ * The people of the nazar course scope (MDRS-247), for the specs that pin who
  * may do what in one course: the course's müderris, ders nazırları holding one
  * code each (in course A, or in course B beside it), a lapsed grant, a group,
  * and the people who hold nothing. Every id is fixed so a spec can name them.

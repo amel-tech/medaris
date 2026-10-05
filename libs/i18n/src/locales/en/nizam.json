@@ -188,8 +188,8 @@
     "courseCount": "{count, plural, one {# course} other {# courses}}",
     "emptyTitle": "You do not manage a köşk yet",
     "emptyDescription": "Open a new köşk to get started.",
-    "nazirTitle": "This work is in nazir",
-    "nazirDescription": "Medrese management happens in the nazir app. Only the köşks you manage are listed here.",
+    "nazarTitle": "This work is in nazir",
+    "nazarDescription": "Medrese management happens in the nazir app. Only the köşks you manage are listed here.",
     "taughtTitle": "Courses you teach",
     "taughtDescription": "Courses you are a müderris of, in köşks you do not manage.",
     "previous": "Previous",
@@ -556,14 +556,14 @@
     "created": "Köşk created.",
     "updated": "Köşk updated."
   },
-  "NazirRedirectPage": {
+  "NazarRedirectPage": {
     "title": "Your medrese and course work is in Nazır",
     "intro": "Nizam is the app for those who run Medaris and the köşks. You carry out your medrese and course roles in Nazır.",
     "tasks": "Your roles",
     "students": "{count, plural, one {# talebe} other {# talebe}}",
     "imam": "Course imam",
     "draft": "Draft",
-    "goToNazir": "Go to Nazır",
+    "goToNazar": "Go to Nazır",
     "roles": {
       "MEDRESE_BASMUDERRIS": "Medrese head müderris",
       "MEDRESE_NAZIR": "Medrese nazır",
@@ -2159,7 +2159,7 @@
     "emailHelp": "Read only. The address registered to your account; it cannot be changed here.",
     "teachingTitle": "Teaching",
     "teachingText": "You manage the sessions, talebes and recordings of the courses you teach in Nazır.",
-    "openNazir": "Open in Nazır",
+    "openNazar": "Open in Nazır",
     "signOutText": "This signs you out of Medaris in this browser. Your roles and preferences stay on your account.",
     "signOut": "Sign out",
     "retry": "Try again",

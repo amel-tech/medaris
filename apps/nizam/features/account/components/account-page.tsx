@@ -114,7 +114,7 @@ export async function AccountPage({
     [data.me.givenName, data.me.familyName].filter(Boolean).join(" ").trim() ||
     sessionName;
   const teaches = data.assignments.some((a) => a.role === "MUDERRIS");
-  const nazirUrl = env.NAZAR_URL ? env.NAZAR_URL.replace(/\/+$/, "") : null;
+  const nazarUrl = env.NAZAR_URL ? env.NAZAR_URL.replace(/\/+$/, "") : null;
 
   const names: Record<string, string> = {};
   for (const id of FEATURED_TIME_ZONES) names[id] = t(`zones.${id}`);
@@ -242,16 +242,16 @@ export async function AccountPage({
             <section className="mds-card flex flex-col gap-3 p-card">
               <h2 className="mds-h3">{t("teachingTitle")}</h2>
               <p className="mds-body-sm">{t("teachingText")}</p>
-              {nazirUrl ? (
+              {nazarUrl ? (
                 <div>
                   <Button
-                    href={nazirUrl}
+                    href={nazarUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     variant="secondary"
                     iconLeft={<Icon name="externalLink" />}
                   >
-                    {t("openNazir")}
+                    {t("openNazar")}
                   </Button>
                 </div>
               ) : null}

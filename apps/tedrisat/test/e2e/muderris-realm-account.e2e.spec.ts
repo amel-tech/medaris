@@ -18,7 +18,7 @@ import {
 /**
  * MDRS-218: nizam's "Ders aç" (`POST /kosks/:id/courses`) and the müderris
  * list (`PUT /courses/:id/muderris`) accept a teacher who has a realm account
- * but has never signed in, as nazir's "Dersi aç" and every other role
+ * but has never signed in, as nazar's "Dersi aç" and every other role
  * assignment already did. An id neither the app nor the realm knows is still
  * refused, and a directory that does not answer is a 503, not "unknown".
  */

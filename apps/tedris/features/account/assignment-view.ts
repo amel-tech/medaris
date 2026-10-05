@@ -1,13 +1,13 @@
 import type { AssignmentResponse } from "@medaris/services/tedrisat";
 
-export type AssignmentApp = "nizam" | "nazir";
+export type AssignmentApp = "nizam" | "nazar";
 
 /**
  * Where a role is carried out (tedris 43): köşk nazımı in Nizam, everything
  * the medrese and the course own in Nazır. The account page only points there.
  */
 export const roleApp = (role: string): AssignmentApp =>
-  role === "MEDARIS_NAZIM" || role === "KOSK_NAZIM" ? "nizam" : "nazir";
+  role === "MEDARIS_NAZIM" || role === "KOSK_NAZIM" ? "nizam" : "nazar";
 
 export type ScopeBadge = "published" | "draft" | "hidden";
 
@@ -30,10 +30,10 @@ const trimSlash = (url: string) => url.replace(/\/+$/, "");
  */
 export const openUrl = (
   assignment: Pick<AssignmentResponse, "role" | "scopeType" | "scopeId">,
-  urls: { nizam?: string; nazir?: string }
+  urls: { nizam?: string; nazar?: string }
 ): string | null => {
   const app = roleApp(assignment.role);
-  const base = app === "nizam" ? urls.nizam : urls.nazir;
+  const base = app === "nizam" ? urls.nizam : urls.nazar;
   if (!base) return null;
   const root = trimSlash(base);
   if (assignment.scopeId && assignment.scopeType === "kosk") {
