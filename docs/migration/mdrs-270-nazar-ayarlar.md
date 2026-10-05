@@ -38,7 +38,7 @@ path says otherwise.
   `settingCourseOpen`; `PAGE_CODES.settings = [course.edit, course.settings, course.publish,
   session.manage]`.
 - `libs/i18n/src/locales/{tr,en,ar}/nazar.json`: one block `CourseSettings` after `CourseStudents`.
-- `e2e/course-settings.e2e.ts`: the browser scenarios, written for the browser phase, not run here.
+- `e2e/course-settings.e2e.ts`: the browser scenarios, run against a real stack (below).
 
 No API change: the page uses `GET /courses/:id`, `GET /courses/:id/my-permissions`, `PATCH /courses/:id`
 and `PATCH /lessons/:id`, all on `main`. The API branch pinned the derived `setting.*` codes in
@@ -251,17 +251,32 @@ resolved that way (`DERS_BUILT` in the menu's order, `nazirlar` before `ayarlar`
 the table merged on their own, and the `CourseNazirs` and `CourseSettings` blocks each stay in one piece,
 at the same place in `tr`, `en` and `ar`.
 
+## In a browser (5 October)
+
+`e2e/course-settings.e2e.ts` ran on the integrated branch against tedrisat, nazar (`next build` +
+`next start`, port 4012, sessions minted from the direct grant) and tedris on 4000, real sign-ins on the
+dev realm: **12 passed (12)**, twice. The müderris changes each of Kapalı ders, Kayıt onayı, Örnek ders and
+Saat dilimi, and each is read back after a reload and in the database, then put back; moving the sample
+leaves it on one session only; a save on a page read before another tab saved meets 409
+`COURSE_VERSION_CONFLICT`, is worded, the page is read again and the next save goes through; "Taslağa
+çek" and "Yayımla" keep a change not saved yet, and each status is read back after a reload. A visitor in
+tedris (`E2E_TEDRIS_URL`, the address "Tanıtım sayfasını gör" links to) sees the course's public
+recording, does not once Kapalı ders is saved, and does again once it is opened. A ders nazırı with
+`session.manage` alone changes the sample and nothing else; with `course.edit` and `course.settings` the
+two boxes and the zone, and no publishing; with `course.settings` and `course.publish` nothing, with
+both notes. A save whose codes were taken back after the page opened is worded as a refusal ("Bunu yapma
+izniniz yok.") and writes nothing. The başnazım opens the page by its address with every control open.
+
+Red, each against a build with one source change put back: `courseSettingsPatch` sending the stored
+`isClosed` failed "every setting … read back" (`toBeChecked`) and the tedris scenario (the recording still
+listed); the sample open without `session.manage` (`controlsOf`) failed both narrow-holder scenarios
+(`toBeDisabled`, received enabled); the route file rendering the placeholder failed the first scenario
+("Bu sayfa henüz hazır değil." count 1).
+
 ## Not verified
 
-- `e2e/course-settings.e2e.ts` is written, not run (no Playwright, no stack, no dev realm here). Its
-  başnazım scenario needs the shell admission of the Ders nazırları branch, so it is for the integrated
-  branch; the optional policy scenario of the design (switching a medrese policy on and off) is not
-  written.
-- The page in a browser: the selects' accessible names (`getByRole("combobox", { name: "Örnek ders" })`)
-  and the toasts are read from the kit's code and the happy-dom specs, not from a real browser.
-- That the başnazım reaches the page in a running app: the other branch's shell change is merged in
-  `taha/mdrs-270-nazar-course-nazirs-settings` (its `access.spec.tsx` stubs the reads), and tedrisat's
-  `course-my-permissions.e2e.spec.ts` lists every course code for him; no browser has opened it.
+- The optional policy scenario of the design (switching a medrese policy on and off) is not written.
+- nazar's own Keycloak form: every session was minted from the direct grant (no `nazar-dev` secret).
 
 ## Risks that stay
 

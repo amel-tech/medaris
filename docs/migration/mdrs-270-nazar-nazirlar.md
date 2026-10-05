@@ -151,7 +151,7 @@ New: `test/course-nazirs.spec.ts` (21), `test/course-nazirs-page.spec.tsx` (14),
 `courseNazirErrorKey`, `CourseNazirs.dialog.endProblems.*`, `Roles.SYSTEM_ADMIN`; `CourseNazirs` among the
 formatted sections; `date` among the values), `test/course-permissions.spec.ts` (`PAGE_CODES.nazirs`),
 `test/placeholder.spec.tsx` (`nazirlar` among the built sections). Browser: `e2e/course-nazirs.e2e.ts`
-(written, not run).
+with `e2e/course-admin-seed.ts`, run against a real stack (below).
 
 ### Red, then green
 
@@ -202,7 +202,7 @@ Each test was seen red before its fix (the source change stashed, or the clock m
 | no sentence for 409 `COURSE_NAZIR_BARRED`; `COURSE_NAZIR_HOLDS_SEAT` left out the Medaris post | `course-nazirs.spec.ts` "is worded from its code" | 1 failed each time, before each sentence |
 | three dialog tests compared the fixture's 2026-12-31 end with the real clock | the "'İzinleri düzenle'" describe holds the clock at 2026-10-05 | with a setup file moving the clock (outside the worktree's files): at 2027-01-01T09:00Z and 2028-03-01T09:00Z 3 failed, 23 passed (26); after, 26 passed (26) at both, and the nine MDRS-270 nazar spec files 151 passed (151) at both |
 | nothing in nizam led the başnazım to these pages | nizam `kosk-overview.spec.tsx` "offers the başnazım the course's Ders nazırları in nazar, in a new tab (MDRS-270)", "is the course's Ders nazırları in nazar, for the başnazım alone", "is nothing while nazar's address is not set" | 3 failed, 49 passed (52) without the component and helper |
-| the browser spec expected Müfredat to refuse a `session.manage` holder | `e2e/course-nazirs.e2e.ts` (written, not run) | — |
+| the browser spec expected Müfredat to refuse a `session.manage` holder | `e2e/course-nazirs.e2e.ts` | — (run since, below) |
 
 ## Verified
 
@@ -217,12 +217,47 @@ Each test was seen red before its fix (the source change stashed, or the clock m
 - `./node_modules/.bin/biome check` on every touched file: no errors. `node tools/ci/biome-ratchet.mjs`
   (root): errors 0, warnings 70, infos 21, as on the base.
 
+## In a browser (5 October)
+
+`e2e/course-nazirs.e2e.ts` ran on this branch against tedrisat (`nest build`, migrations at boot, its own
+Postgres), nazar on `next build` + `next start` and real sign-ins on the dev realm. nazar ran on port 4012
+with the session minted from the direct grant (`accounts.ts`): there is no `nazar-dev` secret for its
+form. **15 passed (15)**, twice. It needs `MEDRESE_BASMUDERRIS`, `TALEBE`, `DERS_NAZIR` and
+`SISTEM_ADMIN` (`MUDERRIS` and `MEDARIS_NAZIM` for two refusals) and skips without them.
+
+What the scenarios show beyond the stubbed specs: the menu opens the page; an appointment with two codes
+and an end stores the post and both grants at that instant (also for an account whose zone is not the
+browser's: a probe with the müderris in New York stored 18:00 as 23:00Z); the appointee opens Celseler,
+Müfredat, Ders kayıtları and Ders ayarları and is refused Talebeler, Sorular and Ders nazırları; a change
+that leaves the end sends the stored instant back unchanged, and `NO_END` reaches the API as `null`; the
+API's 409 `COURSE_NAZIR_EXISTS`, 404 `COURSE_NAZIR_NOT_FOUND`, 409 `COURSE_NAZIR_HOLDS_SEAT`, 409
+`DISMISS_SEAT_HANDED_ON` and 403 `GRANT_EXCEEDS_GIVER` are each met from the page (a dialog opened before
+the list or the course changed) and worded, and the list is read again where it moved; oneself, a holder
+and an unknown address are refused in the dialog and by the API (403, 409, 404); a ders nazırı without
+`course_nazir.assign` gets "izniniz yok" and 403, with it he appoints with no box, ends only his
+appointee, and his own row has no button (the API's 403 `SELF_GRANT_REFUSED` and
+`PERMISSION_NOT_GIVABLE` checked too); in a passive course (the medrese's başmüderris gone) the content
+boxes are off; the başnazım opens the course by its address, every box open, himself refused. TALEBE
+holds no other nazar scope: `/` sends him to `/erisim-yok` after the dismissal. nizam's "Nazar’da aç"
+is checked in nizam/53 (`kosk-view.e2e.ts`, 15 passed (15)).
+
+Red: each scenario was run against a build with one source change put back, and failed.
+
+| Put back | Scenario | Failing assertion |
+| --- | --- | --- |
+| the dialog's `pickProblem` returns nothing | holder; oneself; the başnazım | `Expected substring: "Kendinizi ders nazırı yapamazsınız."` |
+| the dialog ignores `listMoved` | appointed elsewhere | the dialog still open: `toHaveCount(0)`, received 1 |
+| the dismissal does not read the list again on `DISMISS_SEAT_HANDED_ON` | the appointer | "Görevden al" not found (the dialog stays) |
+| both route files render the placeholder | the menu | "Bu sayfa henüz hazır değil." count 1 |
+| nizam's `nazarCourseHref` returns null | nizam/53 "Nazar’da aç" | element(s) not found |
+
+The whole nazar suite on the same stack: 136 passed, 3 failed, 1 did not run (140). `account.e2e.ts:189`
+(sign-out) needs nazar's own client secret; `course-scope.e2e.ts:121` looks for "Burada yükleme yoktur",
+which MDRS-114 (#246, on main) replaced with the upload note for a müderris who may upload, the same on
+main; the third was this file's own strict-mode match on Next's hidden streamed copy, fixed in the spec.
+
 ## Not verified
 
-- `e2e/course-nazirs.e2e.ts` was not run (no stack, no dev realm here); it is for the browser phase. It
-  needs `MEDRESE_BASMUDERRIS`, `TALEBE`, `DERS_NAZIR` and `SISTEM_ADMIN` accounts and skips without them.
-- The page against the real API: every read and write here is a stub; the routes' behaviour is the API
-  branch's e2e. The `NO_END` stand-in is checked against the generated serializer, not a running server.
-- The başnazım's admission in a running app: the access spec stubs `getPortal`, `GET /me` and the course read.
-- That the dev realm's TALEBE account holds no other nazar scope (the browser spec's last step on `/`
-  assumes it).
+- nazar's real Keycloak form and sign-out: the loader has no `nazar-dev` secret, so every nazar session
+  was minted from the direct grant on port 4012.
+- A person who has a realm account but no row in the app's `users`: every test account has one.
