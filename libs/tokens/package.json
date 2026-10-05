@@ -15,6 +15,7 @@
     "./css": "./theme/index.css",
     "./medaris.css": "./medaris.css",
     "./tailwind.css": "./tailwind.css",
+    "./tailwind-roles.css": "./tailwind-roles.css",
     "./medaris-fonts": {
       "types": "./medaris-fonts.d.ts",
       "import": "./medaris-fonts.js"
@@ -26,6 +27,8 @@
     "theme/*.css",
     "medaris.css",
     "tailwind.css",
+    "tailwind-scales.css",
+    "tailwind-roles.css",
     "medaris-fonts.js",
     "medaris-fonts.d.ts",
     "build/*"

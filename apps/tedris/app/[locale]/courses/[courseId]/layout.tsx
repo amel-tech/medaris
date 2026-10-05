@@ -1,4 +1,3 @@
-import "@medaris/ui/medaris.css";
 import { textFontsHref } from "@medaris/tokens/medaris-fonts";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
@@ -9,8 +8,9 @@ import { loadCourse } from "~/features/courses/load-course";
 /**
  * The course page keeps its shadcn body until its own design lands, but it now
  * hosts parts of the unified system: the application window (tedris/07) and the
- * preview banner and card (tedris/14). The system's stylesheet and faces load
- * with the segment, as the medrese and session pages do.
+ * preview banner and card (tedris/14). The system's faces load with the
+ * segment, as the medrese and session pages do; its stylesheet is part of the
+ * app's one stylesheet, app/tedris.css (MDRS-281).
  */
 export default async function CourseLayout({
   children,

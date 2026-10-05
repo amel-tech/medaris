@@ -1,0 +1,30 @@
+/* The design system's scales for Tailwind (MDRS-151; split out in MDRS-281).
+   Each `initial` turns one of Tailwind's own scales off: no bg-red-500,
+   rounded-lg, shadow-md or lg: (MDS-TOK-01). --spacing: initial removes the
+   multiplier, so only the system's steps exist (MDS-TOK-05); --spacing-0 keeps
+   p-0, inset-0 and min-inline-0. One breakpoint, written out because var()
+   does not work in a media query (MDS-LAY-04): max-md: is below 768, md: is
+   768 and up.
+
+   An app built on the system alone takes this with the roles
+   (./tailwind.css). An app that still renders the shadcn kit beside the
+   system builds its utilities once with the kit's theme and adds only the
+   roles (./tailwind-roles.css): turning the kit's scales off there would
+   take the kit's colours, sizes and breakpoints away from its own
+   components. */
+@theme inline reference {
+  --color-*: initial;
+  --spacing: initial;
+  --spacing-0: 0px;
+  --radius-*: initial;
+  --font-*: initial;
+  --font-weight-*: initial;
+  --text-*: initial;
+  --leading-*: initial;
+  --tracking-*: initial;
+  --shadow-*: initial;
+  --ease-*: initial;
+  --container-*: initial;
+  --breakpoint-*: initial;
+  --breakpoint-md: 768px;
+}
