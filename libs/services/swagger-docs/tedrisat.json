@@ -11579,7 +11579,7 @@
   "info": {
     "title": "Tedrisat Service API",
     "description": "Education management service for Madrasah platform",
-    "version": "0.2.1",
+    "version": "0.2.0",
     "contact": {}
   },
   "tags": [
