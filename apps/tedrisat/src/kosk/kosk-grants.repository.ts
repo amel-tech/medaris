@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { planGrants } from "../assignment/admin/grant-plan";
+import { assertNothingLeftUnder } from "../assignment/admin/orphaned-grants";
 import { grantHeld } from "../assignment/assignment.repository";
 import type { Tx } from "../course/course-purge";
 import { DatabaseService } from "../database/database.service";
@@ -433,7 +434,12 @@ export class KoskGrantsRepository {
     });
   }
 
-  /** "Görevden al": the post and every permission held in the course end together. */
+  /**
+   * "Görevden al": the post and every permission held in the course end
+   * together. Refused, with nothing written, while someone the holder
+   * appointed from the course (MDRS-270) still holds their post, as on the
+   * course's own route.
+   */
   async revoke(actorId: string, koskId: string, postId: string): Promise<void> {
     await this.db.transaction(async (tx) => {
       const post = await this.lockPost(tx, koskId, postId);
@@ -452,6 +458,13 @@ export class KoskGrantsRepository {
         .update(roleAssignments)
         .set({ revokedAt: sql`now()`, revokedBy: actorId })
         .where(eq(roleAssignments.id, post.id));
+      await assertNothingLeftUnder(tx, [
+        {
+          userId: post.userId,
+          scopeType: SCOPE_TYPES.COURSE,
+          scopeId: post.courseId,
+        },
+      ]);
       await tx.insert(auditLog).values({
         actorId,
         action: "course_nazir.revoke",

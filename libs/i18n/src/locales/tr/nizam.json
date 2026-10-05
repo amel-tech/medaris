@@ -1750,7 +1750,8 @@
       "notFound": "Bu ders nazırı artık yok.",
       "expiryInvalid": "Bitiş tarihi geçmişte.",
       "unknownAccount": "Bu hesap bulunamadı.",
-      "forbidden": "Bunu yapma izniniz yok."
+      "forbidden": "Bunu yapma izniniz yok.",
+      "handedOn": "Bu ders nazırının atadığı kişiler hâlâ görevde; önce onları görevden alın."
     }
   },
   "KoskGrantDialog": {

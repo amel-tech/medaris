@@ -1750,7 +1750,8 @@
       "notFound": "This ders nazır no longer exists.",
       "expiryInvalid": "The end date is in the past.",
       "unknownAccount": "This account was not found.",
-      "forbidden": "You may not do this."
+      "forbidden": "You may not do this.",
+      "handedOn": "People this ders nazır appointed still hold their posts; dismiss them first."
     }
   },
   "KoskGrantDialog": {
