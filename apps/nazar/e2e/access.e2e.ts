@@ -43,8 +43,12 @@ test("a talebe with no medrese and no course opens '/' and sees nazir/02, with t
       )
       .filter({ visible: true })
   ).toBeVisible();
+  // `visible`: right after the redirect Next can still hold the page's hidden copy
   await expect(
-    page.locator("main").getByText(`Giriş yaptığınız hesap: ${TALEBE.email}`)
+    page
+      .locator("main")
+      .getByText(`Giriş yaptığınız hesap: ${TALEBE.email}`)
+      .filter({ visible: true })
   ).toBeVisible();
 
   // The sidebar is the brand and the person: no menu, no picker, and the
