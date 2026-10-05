@@ -226,7 +226,11 @@ function parseEnv(text) {
       }
       value = body;
     } else {
-      value = rest.replace(/\s+#.*$/, "").trim();
+      // The comment starts at the first whitespace-preceded `#`. A plain
+      // search, not `/\s+#.*$/`: that backtracks quadratically on a long
+      // run of blanks in an .env line.
+      const comment = rest.search(/\s#/);
+      value = (comment === -1 ? rest : rest.slice(0, comment)).trim();
       // `KEY= # note` is `# note` to compose (nothing precedes the `#`, so
       // there is no whitespace-preceded comment to strip). Parity is kept, but
       // a value that is really a comment is another plausible-looking wrong

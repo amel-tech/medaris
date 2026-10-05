@@ -367,7 +367,8 @@ function topla(makine) {
         try {
           res({ makine, ...JSON.parse(stdout) });
         } catch (e) {
-          res({ makine, hata: String(e), runs: [], sureler: [] });
+          console.error("[topla]", makine, e);
+          res({ makine, hata: "çıktı JSON değil", runs: [], sureler: [] });
         }
       }
     );
@@ -1156,7 +1157,8 @@ createServer(async (req, res) => {
     }
     send(res, 404, { error: "yok" });
   } catch (e) {
-    send(res, 500, { error: String(e) });
+    console.error("[istek]", e);
+    send(res, 500, { error: "sunucu hatası" });
   }
 }).listen(PORT, "127.0.0.1", () =>
   console.log(`[dogrulama] http://localhost:${PORT} — repo: ${REPO}`)

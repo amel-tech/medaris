@@ -96,9 +96,20 @@ const render = async (
   );
 };
 
+// Strip tags until none is left: one pass over "<<b>script>" leaves "<script>".
+const stripTags = (html: string) => {
+  let text = html;
+  let before: string;
+  do {
+    before = text;
+    text = text.replace(/<[^>]+>/g, "");
+  } while (text !== before);
+  return text;
+};
+
 const tabs = (html: string) =>
   [...html.matchAll(/role="tab"[^>]*>(.*?)<\/button>/g)].map((m) =>
-    m[1].replace(/<[^>]+>/g, "")
+    stripTags(m[1])
   );
 
 describe("the question tabs of the course page", () => {
