@@ -34,8 +34,7 @@
       "other": "أخرى…"
     },
     "language": "اللغة",
-    "languageHelp": "للقراءة فقط. ميداريس بالتركية فقط حاليًا.",
-    "languageValue": "Türkçe",
+    "languageHelp": "لغة الواجهة. يُحفظ اختيارك في هذا المتصفح فقط.",
     "calendarTitle": "التقويم",
     "calendarName": "الاشتراك في التقويم",
     "calendarText": "أضف حلقات جميع دروسك إلى تقويم Google أو Apple برابط تقويمك الشخصي.",

@@ -3,8 +3,10 @@ import { Button } from "@medaris/ui/mds/button";
 import { Field } from "@medaris/ui/mds/field";
 import { Icon } from "@medaris/ui/mds/icon";
 import { Input } from "@medaris/ui/mds/input";
+import { LocaleSelect } from "@medaris/ui/mds/locale-switcher";
 import { getLocale, getTimeZone } from "next-intl/server";
 import { env } from "~/env";
+import { locales } from "~/lib/i18n/routing";
 import { getAccountMessages } from "../account-messages";
 import {
   courseBadge,
@@ -204,7 +206,11 @@ export async function AccountPage({
               }}
             />
             <Field label={t("language")} help={t("languageHelp")}>
-              <Input value={t("languageValue")} readOnly />
+              <LocaleSelect
+                locale={locale}
+                locales={locales}
+                label={t("language")}
+              />
             </Field>
           </section>
         </div>

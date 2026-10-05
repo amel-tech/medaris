@@ -3,11 +3,13 @@
 import { Avatar } from "@medaris/ui/mds/avatar";
 import { Button } from "@medaris/ui/mds/button";
 import { Icon } from "@medaris/ui/mds/icon";
+import { LocaleMenu } from "@medaris/ui/mds/locale-switcher";
 import { Logo } from "@medaris/ui/mds/logo";
 import { NavItem } from "@medaris/ui/mds/nav-item";
 import { ThemeToggle } from "@medaris/ui/mds/theme-toggle";
 import { useLocale, useTranslations } from "next-intl";
 import { usePathname } from "~/lib/i18n/navigation";
+import { locales } from "~/lib/i18n/routing";
 import { inviteHrefs } from "~/lib/invite-hrefs";
 import { type Section, sectionOf } from "./member-phone-menu";
 
@@ -73,6 +75,11 @@ export function DesktopBar({
         ) : null}
       </nav>
       <div className="ms-auto flex items-center gap-2">
+        <LocaleMenu
+          locale={locale}
+          locales={locales}
+          label={t("languageMenu")}
+        />
         <ThemeToggle darkLabel={t("themeDark")} lightLabel={t("themeLight")} />
         {signedIn ? (
           <>
