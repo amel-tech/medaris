@@ -1,7 +1,11 @@
 import { Skeleton } from "@medaris/ui/mds/skeleton";
 import { DEFAULT_TIME_ZONE, resolveTimeZone } from "@medaris/utils";
 import { getLocale } from "next-intl/server";
-import { courseAccess } from "~/features/account/course-standing";
+import {
+  PAGE_CODES,
+  pageGate,
+  readCoursePermissions,
+} from "~/features/account/course-permissions";
 import { getViewer } from "~/features/account/reads";
 import { PageProblem } from "~/features/shell/components/page-problem";
 import { getMessages } from "~/lib/i18n/messages";
@@ -12,44 +16,36 @@ import { RecordingsTable } from "./recordings-table";
 /**
  * Ders kayıtları: the course's sessions by week with the recording each one
  * holds, and where staff add one by pasting its link (nothing is uploaded).
- * The course read is the page's probe: `GET /courses/:id` answers every
- * signed-in caller, and `contentLocked` says the caller does not hold
- * `view_details`. That is not a staff test: the müderris and the enrolled
- * talebe are not locked, a ders nazırı always is. A locked caller therefore
- * opens the page only when their permissions name `recording.manage` in this
- * course (`courseAccess`); otherwise it is the "Bu sayfaya izniniz yok" state,
- * as a 403 is on the other pages. An enrolled talebe is not locked, so the
- * page opens for them and the API refuses their write. The recordings are read
- * with the same caller: a caller without `view_details` is listed only the
- * PUBLIC ones, and a PROCESSING one has no link yet. Adding and changing are
- * the API's own check (`recording.manage`), and its refusal is worded from the
- * code.
+ * The page opens for a caller who holds `recording.manage` in this course,
+ * read from `GET /courses/:id/my-permissions`; anyone else gets "Bu sayfaya
+ * izniniz yok", and a permissions read that failed is the retry state. That
+ * one code is also what "Kayıt ekle" and "Düzenle" ask of the API, so the
+ * table draws both for everyone it is shown to. The recordings are read with
+ * the same caller, who holds `recording.manage` and is listed every recording
+ * of the course, whatever its visibility; a PROCESSING one has no link yet.
+ * The API still decides every write, and its refusal is worded from the code.
  */
 export async function RecordingsPage({ courseId }: { courseId: string }) {
-  const [t, locale, me, course, recordings] = await Promise.all([
+  const [t, locale, me, course, permissions, recordings] = await Promise.all([
     getMessages("nazir"),
     getLocale(),
     getViewer(),
     readOnce("the course", (api) =>
       api.courses.getCourseById({ id: courseId })
     ),
+    readCoursePermissions(courseId),
     readOnce("the course's recordings", (api) =>
       api.lessons.listCourseRecordings({ id: courseId })
     ),
   ]);
   const timeZone = resolveTimeZone(me?.timeZone, DEFAULT_TIME_ZONE);
-  const access =
-    course.status === "ok"
-      ? await courseAccess(course.data, courseId, ["recording.manage"])
-      : null;
+  const gate = pageGate([course], permissions, PAGE_CODES.recordings);
   const problem =
-    course.status !== "ok"
-      ? course.status
-      : access !== "ok"
-        ? access
-        : recordings.status !== "ok"
-          ? recordings.status
-          : null;
+    gate !== "ok"
+      ? gate
+      : recordings.status !== "ok"
+        ? recordings.status
+        : null;
 
   return (
     <>

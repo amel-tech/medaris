@@ -173,13 +173,37 @@ export const byName = <T extends { name: string }>(
 
 export type RosterAction = "complete" | "reopen" | "remove";
 
+/** Which of the course's three decisions on a seat the caller holds. */
+export interface RosterPermissions {
+  /** `enrollment.decide`: Onayla and Reddet */
+  decide: boolean;
+  /** `enrollment.complete`: Tamamladı say and Yeniden aç */
+  complete: boolean;
+  /** `enrollment.remove`: Dersten çıkar */
+  remove: boolean;
+}
+
+/** The decision each button of a row needs. */
+const ACTION_NEEDS: Record<RosterAction, keyof RosterPermissions> = {
+  complete: "complete",
+  reopen: "complete",
+  remove: "remove",
+};
+
 /**
- * The buttons of a talebe's row, in display order: a held seat is completed or
- * taken out; a completion is reopened. COMPLETED is set by the course team and
- * never by the talebe, so it is only ever offered here.
+ * The buttons of a talebe's row, in display order, for what the caller holds:
+ * a held seat is completed or taken out; a completion is reopened. COMPLETED
+ * is set by the course team and never by the talebe, so it is only ever
+ * offered here.
  */
-export const rosterActions = (tab: "enrolled" | "completed"): RosterAction[] =>
-  tab === "enrolled" ? ["complete", "remove"] : ["reopen"];
+export const rosterActions = (
+  tab: "enrolled" | "completed",
+  can: RosterPermissions
+): RosterAction[] =>
+  (tab === "enrolled"
+    ? (["complete", "remove"] as const)
+    : (["reopen"] as const)
+  ).filter((action) => can[ACTION_NEEDS[action]]);
 
 // ---- what the API refuses -------------------------------------------------------------
 

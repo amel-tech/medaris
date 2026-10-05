@@ -7,6 +7,13 @@ import {
   timeZoneCity,
 } from "@medaris/utils";
 import { getLocale } from "next-intl/server";
+import {
+  CODES,
+  holds,
+  PAGE_CODES,
+  pageGate,
+  readCoursePermissions,
+} from "~/features/account/course-permissions";
 import { getViewer } from "~/features/account/reads";
 import { PageProblem } from "~/features/shell/components/page-problem";
 import { getMessages } from "~/lib/i18n/messages";
@@ -16,34 +23,35 @@ import { SessionsTable } from "./sessions-table";
 
 /**
  * Celseler: every session of the course by date, "Yaklaşan" and
- * "Geçmiş", with the times on the viewer's clock. The course read is the page's
- * probe: `GET /courses/:id` answers every signed-in caller, but strips the
- * programme's content (links, agendas) from anyone who is not course staff, and
- * says so with `contentLocked`; that is the "Bu sayfaya izniniz yok" state
- * here, as a 403 is on the other pages. The live stream links are a side read:
- * tedrisat answers 403 to whoever does not hold `session.live_link`, and then
- * the "Canlı yayın" column and buttons are left out. The writes carry the
- * course version of this read.
+ * "Geçmiş", with the times on the viewer's clock. The page opens for a caller
+ * who holds `session.manage` or `session.live_link` in this course, read from
+ * `GET /courses/:id/my-permissions`; anyone else gets "Bu sayfaya izniniz
+ * yok", and a permissions read that failed is the retry state. Each control is
+ * drawn for the code it needs (`SessionsTable`), and the API still decides
+ * every write. The live stream links are read only for a holder of
+ * `session.live_link`; when that read fails the "Canlı yayın" column and
+ * buttons are left out. The writes carry the course version of this read.
  */
 export async function SessionsPage({ courseId }: { courseId: string }) {
-  const [t, locale, me, course, streams] = await Promise.all([
+  const [t, locale, me, course, permissions] = await Promise.all([
     getMessages("nazir"),
     getLocale(),
     getViewer(),
     readOnce("the course", (api) =>
       api.courses.getCourseById({ id: courseId })
     ),
-    readOnce("the course's live stream links", (api) =>
-      api.lessons.listCourseLiveStreams({ id: courseId })
-    ),
+    readCoursePermissions(courseId),
   ]);
   const timeZone = resolveTimeZone(me?.timeZone, DEFAULT_TIME_ZONE);
-  const problem =
-    course.status !== "ok"
-      ? course.status
-      : course.data.contentLocked
-        ? "forbidden"
-        : null;
+  const gate = pageGate([course], permissions, PAGE_CODES.sessions);
+  const held = permissions.status === "ok" ? permissions.data : null;
+  const canManage = held !== null && holds(held, CODES.sessionManage);
+  const streams =
+    gate === "ok" && held !== null && holds(held, CODES.sessionLiveLink)
+      ? await readOnce("the course's live stream links", (api) =>
+          api.lessons.listCourseLiveStreams({ id: courseId })
+        )
+      : null;
 
   return (
     <>
@@ -62,7 +70,7 @@ export async function SessionsPage({ courseId }: { courseId: string }) {
             </p>
           ) : null}
         </div>
-        {course.status === "ok" && problem === null ? (
+        {gate === "ok" && canManage ? (
           <Button
             href={planHref(courseId)}
             iconLeft={<Icon name="plus" size="sm" />}
@@ -71,9 +79,9 @@ export async function SessionsPage({ courseId }: { courseId: string }) {
           </Button>
         ) : null}
       </header>
-      {course.status !== "ok" || problem !== null ? (
+      {course.status !== "ok" || gate !== "ok" ? (
         <PageProblem
-          status={problem === "forbidden" ? "forbidden" : "failed"}
+          status={gate === "forbidden" ? "forbidden" : "failed"}
           failed={{
             title: t("Sessions.loadFailedTitle"),
             text: t("Sessions.loadFailed"),
@@ -84,7 +92,8 @@ export async function SessionsPage({ courseId }: { courseId: string }) {
           courseId={courseId}
           version={course.data.version}
           facts={sessionFacts(course.data)}
-          streams={streams.status === "ok" ? streamsOf(streams.data) : null}
+          canManage={canManage}
+          streams={streams?.status === "ok" ? streamsOf(streams.data) : null}
           locale={locale}
           timeZone={timeZone}
         />

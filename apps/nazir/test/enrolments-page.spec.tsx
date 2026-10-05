@@ -23,8 +23,21 @@ const state = {
   removed: { status: "failed" } as Answer<unknown[]>,
   course: { status: "failed" } as Answer<unknown>,
   portal: { status: "failed" } as unknown,
+  permissions: { status: "failed" } as Answer<unknown>,
   asked: [] as string[],
 };
+
+/** What the caller holds in the course, as `GET /courses/:id/my-permissions` answers. */
+const holding = (...codes: string[]): Answer<unknown> => ({
+  status: "ok",
+  data: { permissions: ["course.view", ...codes], staffRead: false },
+});
+const ALL = [
+  "course.staff_read",
+  "enrollment.decide",
+  "enrollment.complete",
+  "enrollment.remove",
+];
 const refresh = vi.fn();
 const approveApplication = vi.fn();
 const rejectApplication = vi.fn();
@@ -52,8 +65,10 @@ vi.mock("~/lib/tedrisat-read", () => ({
           state.asked.push(`removed ${JSON.stringify(request)}`);
         },
         getCourseById: async () => {},
+        getMyCoursePermissions: async () => {},
       },
     });
+    if (what.includes("holds in the course")) return state.permissions;
     return what.includes("enrolments")
       ? state.enrolments
       : what.includes("removed")
@@ -182,6 +197,7 @@ beforeEach(() => {
       },
     ],
   };
+  state.permissions = holding(...ALL);
   state.asked = [];
   for (const fn of [
     refresh,
@@ -274,6 +290,46 @@ describe("Talebeler of a course", () => {
     expect(out).toContain("Bu sayfaya izniniz yok");
     expect(out).not.toContain("Başvurular");
     expect(out).not.toContain("talebe.1@example.com");
+  });
+
+  it("is that state for a caller who holds neither the roster nor an enrollment permission, and reads no roster for them", async () => {
+    for (const held of [
+      [],
+      ["session.manage", "course.edit", "recording.manage"],
+    ]) {
+      state.permissions = holding(...held);
+      state.asked = [];
+      const out = textOf(await markup());
+      expect(out).toContain("Bu sayfaya izniniz yok");
+      expect(out).not.toContain("Başvurular");
+      expect(state.asked).toEqual([]);
+    }
+  });
+
+  it("opens for any one of the roster and enrollment codes", async () => {
+    for (const code of ALL) {
+      state.permissions = holding(code);
+      const out = textOf(await markup());
+      expect(out, code).toContain("Başvurular");
+      expect(out, code).not.toContain("izniniz yok");
+    }
+  });
+
+  it("is that state when the permissions read is refused", async () => {
+    state.permissions = { status: "forbidden" };
+    const out = textOf(await markup());
+    expect(out).toContain("Bu sayfaya izniniz yok");
+    expect(state.asked).toEqual([]);
+  });
+
+  it("is the retry state, never the roster and never 'no access', when the permissions cannot be read", async () => {
+    state.permissions = { status: "failed" };
+    const out = textOf(await markup());
+    expect(out).toContain("Talebeler okunamadı");
+    expect(out).toContain("Yeniden dene");
+    expect(out).not.toContain("izniniz yok");
+    expect(out).not.toContain("Başvurular");
+    expect(state.asked).toEqual([]);
   });
 
   it("is the retry state, not 'no access', when the roster cannot be read", async () => {
@@ -619,5 +675,102 @@ describe("Erişimi kaldırılanlar", () => {
     await click(tab("Erişimi kaldırılanlar"));
     await settle(40);
     expect(panelText("Erişimi kaldırılanlar")).toContain("şu an okunamadı");
+  });
+});
+
+describe("what each permission shows", () => {
+  /** The buttons that decide a seat; the column headers sort and are not among them. */
+  const actionButtons = (root: ParentNode) =>
+    [...root.querySelectorAll("button")]
+      .map((b) => b.textContent?.trim() ?? "")
+      .filter((text) =>
+        [
+          "Onayla",
+          "Reddet",
+          "Tamamladı say",
+          "Dersten çıkar",
+          "Yeniden aç",
+        ].includes(text)
+      );
+
+  /** The roster tables are panels of tabs, so one is mounted only once its tab is open. */
+  const roster = async (variant: "enrolled" | "completed") => {
+    await click(tab(variant === "enrolled" ? "Kayıtlı" : "Tamamlayanlar"));
+    await settle(40);
+    return document.querySelector(
+      `[data-testid="roster-${variant}"]`
+    ) as HTMLElement;
+  };
+
+  it("gives a holder of enrollment.decide alone Onayla and Reddet, and no Dersten çıkar or Tamamladı say", async () => {
+    state.permissions = holding("enrollment.decide");
+    await mount();
+    expect(byLabel("Onayla: Talebe 1")).not.toBeNull();
+    expect(byLabel("Reddet: Talebe 1")).not.toBeNull();
+    const enrolled = await roster("enrolled");
+    // the talebe are still listed, since the page opened
+    expect(enrolled.textContent).toContain("Talebe 3");
+    expect(enrolled.textContent).not.toContain("Dersten çıkar");
+    expect(enrolled.textContent).not.toContain("Tamamladı say");
+    expect(actionButtons(enrolled)).toEqual([]);
+    expect((await roster("completed")).textContent).not.toContain("Yeniden aç");
+  });
+
+  it("gives a holder of enrollment.remove alone Dersten çıkar", async () => {
+    state.permissions = holding("enrollment.remove");
+    await mount();
+    expect(byLabel("Onayla: Talebe 1")).toBeNull();
+    expect(byLabel("Reddet: Talebe 1")).toBeNull();
+    const enrolled = await roster("enrolled");
+    expect(enrolled.textContent).toContain("Dersten çıkar");
+    expect(enrolled.textContent).not.toContain("Tamamladı say");
+    expect((await roster("completed")).textContent).not.toContain("Yeniden aç");
+  });
+
+  it("gives a holder of enrollment.complete alone Tamamladı say and Yeniden aç", async () => {
+    state.permissions = holding("enrollment.complete");
+    await mount();
+    expect(byLabel("Onayla: Talebe 1")).toBeNull();
+    const enrolled = await roster("enrolled");
+    expect(enrolled.textContent).toContain("Tamamladı say");
+    expect(enrolled.textContent).not.toContain("Dersten çıkar");
+    expect((await roster("completed")).textContent).toContain("Yeniden aç");
+  });
+
+  it("gives a holder of the roster alone the lists and no button at all", async () => {
+    state.permissions = holding("course.staff_read");
+    await mount();
+    expect(byLabel("Onayla: Talebe 1")).toBeNull();
+    expect(tab("Başvurular").textContent).toContain("2");
+    for (const variant of ["enrolled", "completed"] as const) {
+      const table = await roster(variant);
+      expect(table.textContent).toContain("Talebe");
+      expect(actionButtons(table)).toEqual([]);
+    }
+    expect(actionButtons(document.body)).toEqual([]);
+  });
+
+  it("gives a holder of everything, as the müderris sees it, every button", async () => {
+    await mount();
+    expect(byLabel("Onayla: Talebe 1")).not.toBeNull();
+    expect(byLabel("Reddet: Talebe 1")).not.toBeNull();
+    const enrolled = await roster("enrolled");
+    expect(enrolled.textContent).toContain("Tamamladı say");
+    expect(enrolled.textContent).toContain("Dersten çıkar");
+    expect((await roster("completed")).textContent).toContain("Yeniden aç");
+  });
+
+  it("still words a refusal from the API for a button that was drawn", async () => {
+    approveApplication.mockResolvedValue({
+      success: false,
+      code: "AUTHZ_FORBIDDEN",
+    });
+    state.permissions = holding("enrollment.decide");
+    await mount();
+    await click(byLabel("Onayla: Talebe 1"));
+    await settle(60);
+    expect(toast("error")).toContain("Bunu yapma izniniz yok.");
+    expect(byLabel("Onayla: Talebe 1")).not.toBeNull();
+    expect(refresh).not.toHaveBeenCalled();
   });
 });

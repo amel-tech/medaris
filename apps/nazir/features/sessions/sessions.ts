@@ -103,6 +103,8 @@ export interface SessionFact {
   meetingUrl: string | null;
   /** ISO time; null while the session stands */
   cancelledAt: string | null;
+  /** the session that makes up for this one once it is cancelled */
+  replacementId: string | null;
 }
 
 /** Every live session of the course as a flat fact, by date. A lesson of another kind, or without a time, is no session. */
@@ -122,6 +124,9 @@ export function sessionFacts(
         meetingUrl: lesson.meetingUrl ?? null,
         cancelledAt: lesson.cancelledAt
           ? new Date(lesson.cancelledAt).toISOString()
+          : null,
+        replacementId: lesson.cancelledAt
+          ? (lesson.replacementLessonId ?? null)
           : null,
       });
     }
@@ -145,12 +150,17 @@ export interface SessionRow extends SessionFact {
   state: SessionState;
   /** minutes the session has been running, while it is live */
   minutesLive: number | null;
+  /** this session is the make-up a cancelled one of the list names */
+  isMakeUp: boolean;
 }
 
 export function sessionRows(
   facts: readonly SessionFact[],
   now: Date
 ): SessionRow[] {
+  const makeUps = new Set(
+    facts.flatMap((fact) => (fact.replacementId ? [fact.replacementId] : []))
+  );
   return facts.map((fact) => {
     const start = new Date(fact.startsAt);
     const end = new Date(start.getTime() + fact.durationMinutes * 60_000);
@@ -170,6 +180,7 @@ export function sessionRows(
         state === "live"
           ? Math.floor((now.getTime() - start.getTime()) / 60_000)
           : null,
+      isMakeUp: makeUps.has(fact.id),
     };
   });
 }
@@ -393,11 +404,15 @@ export function planRequest(
   };
 }
 
-/** The make-up of a cancelled session: one session of the same length on a date and a time of the viewer's clock. */
+/**
+ * The make-up of a cancelled session: one session of the same title and
+ * length on a date and a time of the viewer's clock. It is made first and
+ * named by the cancellation (`replacementLessonId`), so nothing in its title
+ * says it is a make-up.
+ */
 export function makeUpRequest(
   cancelled: Pick<SessionRow, "title" | "durationMinutes">,
-  at: { date: string; time: string; timeZone: string },
-  suffix: string
+  at: { date: string; time: string; timeZone: string }
 ): CreateSessionBatchDto | null {
   if (!instantOf(at.date, at.time, at.timeZone)) return null;
   return {
@@ -406,7 +421,7 @@ export function makeUpRequest(
     timeZone: at.timeZone,
     startDate: at.date,
     count: 1,
-    title: `${cancelled.title} ${suffix}`.trim(),
+    title: cancelled.title.trim(),
     durationMinutes: cancelled.durationMinutes,
   };
 }
@@ -431,6 +446,10 @@ export function sessionErrorKey(code: string): string {
       return "Sessions.errors.versionConflict";
     case "LESSON_ALREADY_CANCELLED":
       return "Sessions.errors.alreadyCancelled";
+    case "LESSON_REPLACEMENT_INVALID":
+      return "Sessions.errors.replacementInvalid";
+    case "LESSON_REPLACEMENT_TAKEN":
+      return "Sessions.errors.replacementTaken";
     case "INVALID_SESSION_PATTERN":
       return "Sessions.errors.invalidPattern";
     case "LESSON_NOT_LIVE":

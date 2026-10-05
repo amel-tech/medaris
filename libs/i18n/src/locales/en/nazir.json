@@ -1168,6 +1168,8 @@
       "ended": "Over",
       "scheduled": "Planned"
     },
+    "makeUp": "Make-up session",
+    "madeUpBy": "Made up by: {when}",
     "livePassed": "running for {minutes} minutes",
     "noActions": "No actions",
     "updateLink": "Update link",
@@ -1200,14 +1202,16 @@
     "cancelledBody": "{name} was cancelled.",
     "cancelDialog": {
       "makeUp": "Add a make-up session",
-      "makeUpHelp": "A new session of the same length is created; it is not linked to the cancelled one and shows in the programme on its own.",
-      "makeUpSuffix": "(make-up)",
-      "makeUpFailed": "The session was cancelled, but the make-up could not be added",
-      "madeUpBody": "{name} was cancelled and a make-up session was added."
+      "makeUpHelp": "A new session of the same title and length is created first, and the cancelled one is then linked to it; the cancelled session shows a link to its make-up.",
+      "makeUpFailed": "The make-up could not be added; the session was not cancelled",
+      "cancelFailedAfterMakeUp": "The make-up was added, but the session could not be cancelled",
+      "madeUpBody": "{name} was cancelled; a make-up session was added and linked to it."
     },
     "errors": {
       "versionConflict": "Someone saved the course since you opened this page. The page was reloaded; try again.",
       "alreadyCancelled": "This session is already cancelled.",
+      "replacementInvalid": "The session chosen as the make-up is not a standing, uncancelled live session of this course.",
+      "replacementTaken": "This session is already linked as another session's make-up.",
       "invalidPattern": "This repeat does not produce any valid session; check the dates and days.",
       "link": "The meeting link must start with https://. Copy the link again from the platform.",
       "time": "Enter the date and the time."
@@ -1390,6 +1394,8 @@
     "title": "Syllabus",
     "intro": "Details, weeks and sessions of {name}.",
     "dirty": "There are unsaved changes",
+    "readOnly": "Changing this course's details and weeks needs the permission to edit the course; this page is read-only.",
+    "sessionsNote": "Adding, moving, rescheduling or hiding a session needs the permission to manage sessions; those buttons and the date and time fields are off.",
     "cancel": "Cancel",
     "save": "Save",
     "saving": "Saving…",

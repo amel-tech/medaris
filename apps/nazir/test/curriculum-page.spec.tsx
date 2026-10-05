@@ -21,9 +21,8 @@ type Answer<T> =
 const state = {
   course: { status: "failed" } as Answer<unknown>,
   viewer: { id: "u-1", timeZone: "Europe/Istanbul" } as unknown,
-  permissions: [] as unknown,
+  permissions: { status: "failed" } as Answer<unknown>,
 };
-const getEffectivePermissions = vi.fn();
 const refresh = vi.fn();
 const saveCurriculum = vi.fn();
 
@@ -38,14 +37,20 @@ vi.mock("next-intl/server", () => ({
   getLocale: async () => "tr",
 }));
 vi.mock("~/lib/tedrisat-read", () => ({
-  readOnce: async (_what: string, call: (api: unknown) => Promise<unknown>) => {
-    await call({ courses: { getCourseById: async () => {} } });
-    return state.course;
+  readOnce: async (what: string, call: (api: unknown) => Promise<unknown>) => {
+    await call({
+      courses: {
+        getCourseById: async () => {},
+        getMyCoursePermissions: async () => {},
+      },
+    });
+    return what.includes("holds in the course")
+      ? state.permissions
+      : state.course;
   },
 }));
 vi.mock("~/features/account/reads", () => ({
   getViewer: async () => state.viewer,
-  getEffectivePermissions: () => getEffectivePermissions(),
 }));
 vi.mock("~/features/curriculum/actions", () => ({
   saveCurriculum: (...args: unknown[]) => saveCurriculum(...args),
@@ -117,12 +122,10 @@ const course = (over: Record<string, unknown> = {}) => ({
   ...over,
 });
 
-/** The permissions as a ders nazırı's read: a course-scope group, one grant. */
-const grantIn = (courseId: string, permissions: string[]) => ({
-  role: "DERS_NAZIR",
-  scopeType: "course",
-  scopes: [{ type: "course", id: courseId, name: "Bina ve İzhar Şerhi" }],
-  permissions,
+/** What the caller holds in the course, as `GET /courses/:id/my-permissions` answers. */
+const holding = (...codes: string[]): Answer<unknown> => ({
+  status: "ok",
+  data: { permissions: ["course.view", ...codes], staffRead: false },
 });
 
 const wrap = (node: React.ReactNode) => (
@@ -184,9 +187,7 @@ beforeEach(() => {
   vi.setSystemTime(new Date("2026-10-02T12:00:00+03:00"));
   state.course = { status: "ok", data: course() };
   state.viewer = { id: "u-1", timeZone: "Europe/Istanbul" };
-  state.permissions = [];
-  getEffectivePermissions.mockReset();
-  getEffectivePermissions.mockImplementation(async () => state.permissions);
+  state.permissions = holding("course.edit", "session.manage");
   refresh.mockReset();
   saveCurriculum.mockReset();
   saveCurriculum.mockResolvedValue({
@@ -255,66 +256,73 @@ describe("Müfredat", () => {
     expect(out).not.toContain("Ders bilgileri");
   });
 
-  it("is that state too when the course comes without its content and no permission names it", async () => {
-    state.course = { status: "ok", data: course({ contentLocked: true }) };
-    const out = textOf(await markup());
-    expect(out).toContain("Bu sayfaya izniniz yok");
-    expect(out).not.toContain("Kaydet");
+  it("is that state for a caller who holds neither course.edit nor session.manage, whatever else they hold", async () => {
+    for (const held of [
+      [],
+      ["course.view_details", "recording.manage", "session.live_link"],
+      ["enrollment.decide", "enrollment.remove"],
+    ]) {
+      state.permissions = holding(...held);
+      const out = textOf(await markup());
+      expect(out).toContain("Bu sayfaya izniniz yok");
+      expect(out).not.toContain("Ders bilgileri");
+      expect(out).not.toContain("Kaydet");
+    }
   });
 
-  it("opens for a ders nazırı, who always reads the course locked, when course.edit or session.manage is given in this course", async () => {
+  it("is that state when the permissions read is refused", async () => {
+    state.permissions = { status: "forbidden" };
+    expect(textOf(await markup())).toContain("Bu sayfaya izniniz yok");
+  });
+
+  it("opens for a ders nazırı who holds course.edit or session.manage, and does not take a locked course for a refusal", async () => {
     for (const code of ["course.edit", "session.manage"]) {
       state.course = { status: "ok", data: course({ contentLocked: true }) };
-      state.permissions = [grantIn("c-1", [code])];
+      state.permissions = holding(code);
       const out = textOf(await markup());
       expect(out, code).not.toContain("izniniz yok");
       expect(out, code).toContain("Ders bilgileri");
-      expect(out, code).toContain("Kaydet");
     }
   });
 
-  it("opens for a grant of every course, a grant without an id", async () => {
-    state.course = { status: "ok", data: course({ contentLocked: true }) };
-    state.permissions = [
-      {
-        scopeType: "course",
-        scopes: [{ type: "course" }],
-        permissions: ["course.edit"],
-      },
-    ];
-    expect(textOf(await markup())).toContain("Ders bilgileri");
-  });
-
-  it("stays closed to a locked caller whose permissions are for another course, another code, or another scope", async () => {
-    state.course = { status: "ok", data: course({ contentLocked: true }) };
-    for (const groups of [
-      [grantIn("c-2", ["course.edit"])],
-      [grantIn("c-1", ["recording.manage"])],
-      [
-        {
-          role: "KOSK_NAZIM",
-          scopeType: "kosk",
-          scopes: [{ type: "kosk", id: "c-1" }],
-          permissions: ["course.edit"],
-        },
-      ],
-    ]) {
-      state.permissions = groups;
-      expect(textOf(await markup())).toContain("Bu sayfaya izniniz yok");
-    }
-  });
-
-  it("is the retry state, not 'no access', when a locked caller's permissions cannot be read", async () => {
-    state.course = { status: "ok", data: course({ contentLocked: true }) };
-    state.permissions = null;
+  it("is the retry state, not 'no access', when the permissions cannot be read", async () => {
+    state.permissions = { status: "failed" };
     const out = textOf(await markup());
     expect(out).toContain("Müfredat okunamadı");
+    expect(out).toContain("Yeniden dene");
     expect(out).not.toContain("izniniz yok");
+    expect(out).not.toContain("Ders bilgileri");
   });
 
-  it("opens for a caller who is not locked (the müderris, an enrolled talebe) without reading their permissions", async () => {
-    expect(textOf(await markup())).toContain("Ders bilgileri");
-    expect(getEffectivePermissions).not.toHaveBeenCalled();
+  it("fills the form with the links and agendas the read carries, so a save does not send them empty", async () => {
+    state.course = {
+      status: "ok",
+      data: course({
+        weeks: [
+          {
+            id: "w2",
+            weekNumber: 2,
+            title: "İkinci hafta",
+            lessons: [
+              lesson("l-2", "Hafta 2", "2026-10-05T21:00:00+03:00", {
+                meetingUrl: "https://zoom.us/j/123456",
+                agenda: [{ time: "21:00", title: "Giriş" }],
+              }),
+            ],
+          },
+        ],
+      }),
+    };
+    state.permissions = holding("course.edit", "session.manage");
+    await mount();
+    expect(field("lesson-0-0-url").value).toBe("https://zoom.us/j/123456");
+    await typeInto(field("title"), "Yeni ad");
+    await submit();
+    expect(sentBody().weeks[0]?.lessons[0]).toMatchObject({
+      id: "l-2",
+      meetingUrl: "https://zoom.us/j/123456",
+      agenda: [{ time: "21:00", title: "Giriş" }],
+    });
   });
 
   it("is the retry state, not 'no access', when the course cannot be read", async () => {
@@ -496,5 +504,113 @@ describe("Kaydet", () => {
 
     await click(buttonIn(alert, "Güncel dersi yükle"));
     expect(refresh).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("what each permission lets the form do", () => {
+  it("gives a holder of both everything: save, add, copy and hide, and the date and time", async () => {
+    state.permissions = holding("course.edit", "session.manage");
+    await mount();
+    expect(save()).toBeDefined();
+    expect(buttonIn(form(), "Hafta ekle")).toBeDefined();
+    expect(buttonIn(form(), "Celse ekle")).toBeDefined();
+    expect(buttonIn(form(), "Haftayı kopyala")).toBeDefined();
+    expect(buttonIn(form(), "Haftayı gizle")).toBeDefined();
+    expect(form().textContent).toContain("Haftalık celse üret");
+    expect(field("lesson-1-0-date").disabled).toBe(false);
+    expect(field("lesson-1-0-time").disabled).toBe(false);
+  });
+
+  it("offers the page that hides by its own routes only to a holder of week.hide (MDRS-143)", async () => {
+    state.permissions = holding("course.edit", "session.manage");
+    await mount();
+    expect(form().querySelector('a[href$="/mufredat/gizle"]')).toBeNull();
+  });
+
+  it("offers the page that hides by its own routes to a holder of week.hide, even one who cannot save the course", async () => {
+    state.permissions = holding("week.hide");
+    await mount();
+    const link = form().querySelector('a[href$="/mufredat/gizle"]');
+    expect(link?.textContent).toContain("Hafta ve celse gizle");
+    expect(save()).toBeUndefined();
+  });
+
+  it("lets a holder of course.edit alone change what the course and its sessions say, and not add, move or hide a session", async () => {
+    state.permissions = holding("course.edit");
+    await mount();
+    expect(form().textContent).toContain(
+      "Celse eklemek, taşımak, saatini değiştirmek ya da gizlemek için celse yönetimi izni gerekir"
+    );
+    expect(buttonIn(form(), "Celse ekle")).toBeUndefined();
+    expect(buttonIn(form(), "Haftayı kopyala")).toBeUndefined();
+    expect(buttonIn(form(), "Haftayı gizle")).toBeUndefined();
+    expect(buttonIn(form(), "Gizle")).toBeUndefined();
+    expect(form().textContent).not.toContain("Haftalık celse üret");
+    expect(field("lesson-1-0-date").disabled).toBe(true);
+    expect(field("lesson-1-0-time").disabled).toBe(true);
+    // what a session says, its link, its length and the course are still theirs
+    expect(field("title").disabled).toBe(false);
+    expect(field("lesson-1-0-title").disabled).toBe(false);
+    expect(field("lesson-1-0-url").disabled).toBe(false);
+    expect(buttonIn(form(), "Hafta ekle")).toBeDefined();
+
+    await typeInto(field("lesson-1-1-url"), "https://meet.google.com/abc-defg");
+    await submit();
+    const sent = sentBody();
+    expect(sent.weeks.map((w) => w.id)).toEqual(["w1", "w2"]);
+    expect(sent.weeks[1]?.lessons.map((l) => l.id)).toEqual([
+      "l-2",
+      "l-3",
+      "l-4",
+    ]);
+    // the times went back as they were stored
+    expect(sent.weeks[1]?.lessons[0]?.scheduledAt).toEqual(
+      new Date("2026-10-05T21:00:00+03:00")
+    );
+  });
+
+  it("lets a course.edit holder hide a week that holds no session", async () => {
+    state.course = {
+      status: "ok",
+      data: course({
+        weeks: [
+          {
+            id: "w9",
+            weekNumber: 1,
+            title: "Boş hafta",
+            summary: undefined,
+            lessons: [],
+          },
+        ],
+      }),
+    };
+    state.permissions = holding("course.edit");
+    await mount();
+    expect(buttonIn(form(), "Haftayı gizle")).toBeDefined();
+  });
+
+  it("is read-only for a holder of session.manage alone: no Kaydet, no Vazgeç, every field off", async () => {
+    state.permissions = holding("session.manage");
+    await mount();
+    expect(save()).toBeUndefined();
+    expect(cancel()).toBeUndefined();
+    expect(form().textContent).toContain(
+      "Bu dersin bilgilerini ve haftalarını değiştirmek için ders düzenleme izni gerekir"
+    );
+    for (const name of [
+      "title",
+      "week-1-title",
+      "lesson-1-0-title",
+      "lesson-1-0-date",
+      "lesson-1-0-url",
+    ]) {
+      expect(field(name).disabled, name).toBe(true);
+    }
+    expect(buttonIn(form(), "Hafta ekle")).toBeUndefined();
+    expect(buttonIn(form(), "Celse ekle")).toBeUndefined();
+    expect(buttonIn(form(), "Haftayı gizle")).toBeUndefined();
+    // planning is session.manage, so the link to it stays
+    expect(form().textContent).toContain("Haftalık celse üret");
+    expect(saveCurriculum).not.toHaveBeenCalled();
   });
 });

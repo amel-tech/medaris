@@ -1168,6 +1168,8 @@
       "ended": "Sona erdi",
       "scheduled": "Planlandı"
     },
+    "makeUp": "Telafi celsesi",
+    "madeUpBy": "Telafisi: {when}",
     "livePassed": "{minutes} dakikadır sürüyor",
     "noActions": "İşlem yok",
     "updateLink": "Bağlantıyı güncelle",
@@ -1200,14 +1202,16 @@
     "cancelledBody": "{name} iptal edildi.",
     "cancelDialog": {
       "makeUp": "Telafi celsesi ekle",
-      "makeUpHelp": "Aynı uzunlukta yeni bir celse açılır; iptal edilen celseye bağlanmaz, programda kendi başına görünür.",
-      "makeUpSuffix": "(telafi)",
-      "makeUpFailed": "Celse iptal edildi, telafi celsesi eklenemedi",
-      "madeUpBody": "{name} iptal edildi; telafi celsesi eklendi."
+      "makeUpHelp": "Aynı başlık ve uzunlukta yeni bir celse önce açılır, sonra iptal edilen celse ona bağlanır; iptal edilen celse telafisine bağlantı gösterir.",
+      "makeUpFailed": "Telafi celsesi eklenemedi; celse iptal edilmedi",
+      "cancelFailedAfterMakeUp": "Telafi celsesi eklendi, ama celse iptal edilemedi",
+      "madeUpBody": "{name} iptal edildi; telafi celsesi eklendi ve ona bağlandı."
     },
     "errors": {
       "versionConflict": "Ders, bu sayfayı açtığınızdan beri başkası tarafından kaydedildi. Sayfa yenilendi; yeniden deneyin.",
       "alreadyCancelled": "Bu celse zaten iptal edilmiş.",
+      "replacementInvalid": "Telafi olarak seçilen celse bu dersin yaşayan, iptal edilmemiş bir canlı celsesi değil.",
+      "replacementTaken": "Bu celse başka bir celsenin telafisi olarak zaten bağlı.",
       "invalidPattern": "Bu tekrar düzeni geçerli bir celse üretmiyor; tarihleri ve günleri gözden geçirin.",
       "link": "Toplantı bağlantısı https:// ile başlamalı. Bağlantıyı platformdan yeniden kopyalayın.",
       "time": "Tarihi ve saati girin."
@@ -1390,6 +1394,8 @@
     "title": "Müfredat",
     "intro": "{name} dersinin bilgileri, haftaları ve celseleri.",
     "dirty": "Kaydedilmemiş değişiklikler var",
+    "readOnly": "Bu dersin bilgilerini ve haftalarını değiştirmek için ders düzenleme izni gerekir; bu sayfa yalnız okunur.",
+    "sessionsNote": "Celse eklemek, taşımak, saatini değiştirmek ya da gizlemek için celse yönetimi izni gerekir; bu düğmeler ve tarih ile saat alanları kapalı.",
     "cancel": "Vazgeç",
     "save": "Kaydet",
     "saving": "Kaydediliyor…",

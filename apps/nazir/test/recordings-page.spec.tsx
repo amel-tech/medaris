@@ -22,9 +22,8 @@ const state = {
   course: { status: "failed" } as Answer<unknown>,
   recordings: { status: "failed" } as Answer<unknown>,
   viewer: { id: "u-1", timeZone: "Europe/Istanbul" } as unknown,
-  permissions: [] as unknown,
+  permissions: { status: "failed" } as Answer<unknown>,
 };
-const getEffectivePermissions = vi.fn();
 const refresh = vi.fn();
 const addRecording = vi.fn();
 const changeRecording = vi.fn();
@@ -42,15 +41,18 @@ vi.mock("next-intl/server", () => ({
 vi.mock("~/lib/tedrisat-read", () => ({
   readOnce: async (what: string, call: (api: unknown) => Promise<unknown>) => {
     await call({
-      courses: { getCourseById: async () => {} },
+      courses: {
+        getCourseById: async () => {},
+        getMyCoursePermissions: async () => {},
+      },
       lessons: { listCourseRecordings: async () => {} },
     });
+    if (what.includes("holds in the course")) return state.permissions;
     return what.includes("recordings") ? state.recordings : state.course;
   },
 }));
 vi.mock("~/features/account/reads", () => ({
   getViewer: async () => state.viewer,
-  getEffectivePermissions: () => getEffectivePermissions(),
 }));
 vi.mock("~/features/recordings/actions", () => ({
   addRecording: (...args: unknown[]) => addRecording(...args),
@@ -130,12 +132,10 @@ const recordings = () => [
   recording("l-6", { status: "PROCESSING", url: undefined }),
 ];
 
-/** The permissions as a ders nazırı's read: a course-scope group, one grant. */
-const grantIn = (courseId: string, permissions: string[]) => ({
-  role: "DERS_NAZIR",
-  scopeType: "course",
-  scopes: [{ type: "course", id: courseId, name: "Bina ve İzhar Şerhi" }],
-  permissions,
+/** What the caller holds in the course, as `GET /courses/:id/my-permissions` answers. */
+const holding = (...codes: string[]): Answer<unknown> => ({
+  status: "ok",
+  data: { permissions: ["course.view", ...codes], staffRead: false },
 });
 
 const wrap = (node: React.ReactNode) => (
@@ -195,9 +195,7 @@ beforeEach(() => {
   state.course = { status: "ok", data: course() };
   state.recordings = { status: "ok", data: recordings() };
   state.viewer = { id: "u-1", timeZone: "Europe/Istanbul" };
-  state.permissions = [];
-  getEffectivePermissions.mockReset();
-  getEffectivePermissions.mockImplementation(async () => state.permissions);
+  state.permissions = holding("recording.manage");
   for (const fn of [refresh, addRecording, changeRecording]) fn.mockReset();
   addRecording.mockResolvedValue({ success: true, data: { id: "r-new" } });
   changeRecording.mockResolvedValue({ success: true, data: { id: "r-l-1" } });
@@ -315,65 +313,48 @@ describe("Ders kayıtları", () => {
     expect(out).not.toContain("Kayıt ekle");
   });
 
-  it("is that state too when the course comes without its content and no permission names it", async () => {
-    state.course = { status: "ok", data: course({ contentLocked: true }) };
-    const out = textOf(await markup());
-    expect(out).toContain("Bu sayfaya izniniz yok");
-    expect(out).not.toContain("Hafta 1");
-    expect(out).not.toContain("Burada yükleme yoktur");
+  it("is that state for a caller who does not hold recording.manage, whatever else they hold, even on a course read in full", async () => {
+    for (const held of [
+      [],
+      ["course.view_details", "course.edit", "session.manage"],
+      ["session.live_link", "enrollment.decide"],
+    ]) {
+      state.permissions = holding(...held);
+      const out = textOf(await markup());
+      expect(out).toContain("Bu sayfaya izniniz yok");
+      expect(out).not.toContain("Hafta 1");
+      expect(out).not.toContain("Burada yükleme yoktur");
+      expect(out).not.toContain("Kayıt ekle");
+    }
   });
 
-  it("opens for a ders nazırı, who always reads the course locked, when recording.manage is given in this course", async () => {
+  it("is that state when the permissions read is refused", async () => {
+    state.permissions = { status: "forbidden" };
+    expect(textOf(await markup())).toContain("Bu sayfaya izniniz yok");
+  });
+
+  it("opens for a ders nazırı who holds recording.manage, and does not take a locked course for a refusal", async () => {
     state.course = { status: "ok", data: course({ contentLocked: true }) };
-    state.permissions = [grantIn("c-1", ["recording.manage"])];
+    state.permissions = holding("recording.manage");
     const out = textOf(await markup());
     expect(out).not.toContain("izniniz yok");
     expect(out).toContain("Burada yükleme yoktur");
     expect(out).toContain("Kayıt ekle");
   });
 
-  it("opens for a grant of every course, a grant without an id", async () => {
-    state.course = { status: "ok", data: course({ contentLocked: true }) };
-    state.permissions = [
-      {
-        scopeType: "course",
-        scopes: [{ type: "course" }],
-        permissions: ["recording.manage"],
-      },
-    ];
-    expect(textOf(await markup())).toContain("Kayıt ekle");
+  it("lists an ENROLLED recording to the holder, with its title and who may watch, and offers its edit", async () => {
+    const out = await markup();
+    expect(textOf(rowOf(out, "Kayıt l-1"))).toContain("Kayıtlı talebe");
+    expect(out).toContain('aria-label="Kaydı düzenle: Hafta 1"');
   });
 
-  it("stays closed to a locked caller whose permissions are for another course, another code, or another scope", async () => {
-    state.course = { status: "ok", data: course({ contentLocked: true }) };
-    for (const groups of [
-      [grantIn("c-2", ["recording.manage"])],
-      [grantIn("c-1", ["course.edit", "session.manage"])],
-      [
-        {
-          role: "KOSK_NAZIM",
-          scopeType: "kosk",
-          scopes: [{ type: "kosk", id: "c-1" }],
-          permissions: ["recording.manage"],
-        },
-      ],
-    ]) {
-      state.permissions = groups;
-      expect(textOf(await markup())).toContain("Bu sayfaya izniniz yok");
-    }
-  });
-
-  it("is the retry state, not 'no access', when a locked caller's permissions cannot be read", async () => {
-    state.course = { status: "ok", data: course({ contentLocked: true }) };
-    state.permissions = null;
+  it("is the retry state, not 'no access', when the permissions cannot be read", async () => {
+    state.permissions = { status: "failed" };
     const out = textOf(await markup());
     expect(out).toContain("Ders kayıtları okunamadı");
+    expect(out).toContain("Yeniden dene");
     expect(out).not.toContain("izniniz yok");
-  });
-
-  it("opens for a caller who is not locked (the müderris, an enrolled talebe) without reading their permissions", async () => {
-    expect(textOf(await markup())).toContain("Kayıt ekle");
-    expect(getEffectivePermissions).not.toHaveBeenCalled();
+    expect(out).not.toContain("Kayıt ekle");
   });
 
   it("is the retry state, not 'no access', when the course or the recordings cannot be read", async () => {

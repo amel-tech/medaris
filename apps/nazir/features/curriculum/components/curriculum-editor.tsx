@@ -63,13 +63,30 @@ const TONES = ["laciverd", "bordo", "zumrut", "murekkep"] as const;
  * that is read again starts a fresh form. While the page reads the saved
  * course again after a save the form is locked, as a second save would send
  * the new weeks without the ids the first one gave them.
+ *
+ * What the form offers follows what the caller holds in the course (`can`).
+ * Saving the course is `course.edit`: without it the form is read-only and has
+ * no "Kaydet". A save that adds, moves or hides a session is `session.manage`
+ * as well, so without it the buttons that add, copy or hide a session or a week
+ * and the date and time of a stored session are off; the title, the agenda,
+ * the link and the other fields are still `course.edit` alone. The API decides
+ * the save either way.
  */
 export function CurriculumEditor({
   course,
+  can,
   locale,
   timeZone,
 }: {
   course: CourseDetailResponse;
+  can: {
+    /** `course.edit`: the form can be saved */
+    edit: boolean;
+    /** `session.manage`: sessions can be added, moved and hidden */
+    sessions: boolean;
+    /** `week.hide`: the page that hides a week or a session by its own routes */
+    hide: boolean;
+  };
   locale: string;
   /** the zone the dates and times of the sessions are written in */
   timeZone: string;
@@ -105,7 +122,8 @@ export function CurriculumEditor({
         error.weekIndex === wi &&
         error.lessonIndex === li
     );
-  const locked = saving || refreshing;
+  const locked = saving || refreshing || !can.edit;
+  const sessionsLocked = locked || !can.sessions;
 
   const sessionCount = weeks.reduce(
     (n, week) =>
@@ -191,30 +209,42 @@ export function CurriculumEditor({
             {t("Curriculum.intro", { name: course.title })}
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          {dirty ? (
-            <output className="mds-caption" data-testid="dirty">
-              {t("Curriculum.dirty")}
-            </output>
-          ) : null}
-          <Button
-            variant="ghost"
-            type="button"
-            disabled={!dirty || locked}
-            onClick={reset}
-          >
-            {t("Curriculum.cancel")}
-          </Button>
-          <Button
-            type="submit"
-            loading={saving}
-            loadingLabel={t("Curriculum.saving")}
-            disabled={!dirty || refreshing || conflict}
-          >
-            {t("Curriculum.save")}
-          </Button>
-        </div>
+        {can.edit ? (
+          <div className="flex items-center gap-3">
+            {dirty ? (
+              <output className="mds-caption" data-testid="dirty">
+                {t("Curriculum.dirty")}
+              </output>
+            ) : null}
+            <Button
+              variant="ghost"
+              type="button"
+              disabled={!dirty || locked}
+              onClick={reset}
+            >
+              {t("Curriculum.cancel")}
+            </Button>
+            <Button
+              type="submit"
+              loading={saving}
+              loadingLabel={t("Curriculum.saving")}
+              disabled={!dirty || refreshing || conflict}
+            >
+              {t("Curriculum.save")}
+            </Button>
+          </div>
+        ) : null}
       </header>
+
+      {!can.edit ? (
+        <Alert tone="info">
+          <p>{t("Curriculum.readOnly")}</p>
+        </Alert>
+      ) : !can.sessions ? (
+        <Alert tone="info">
+          <p>{t("Curriculum.sessionsNote")}</p>
+        </Alert>
+      ) : null}
 
       {conflict ? (
         <Alert tone="warning" title={t("Curriculum.conflictTitle")}>
@@ -311,35 +341,44 @@ export function CurriculumEditor({
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Button
-              variant="secondary"
-              href={planHref(course.id)}
-              iconLeft={<Icon name="repeat" size="sm" />}
-            >
-              {t("Curriculum.generate")}
-            </Button>
-            <Button variant="ghost" href={`/ders/${course.id}/mufredat/gizle`}>
-              {t("Curriculum.hidePage")}
-            </Button>
-            <Button
-              variant="outline"
-              type="button"
-              disabled={locked}
-              iconLeft={<Icon name="plus" size="sm" />}
-              onClick={() =>
-                setWeeks((all) => [
-                  ...all,
-                  {
-                    weekNumber: nextWeekNumber(all),
-                    title: "",
-                    summary: "",
-                    lessons: [],
-                  },
-                ])
-              }
-            >
-              {t("Curriculum.addWeek")}
-            </Button>
+            {can.sessions ? (
+              <Button
+                variant="secondary"
+                href={planHref(course.id)}
+                iconLeft={<Icon name="repeat" size="sm" />}
+              >
+                {t("Curriculum.generate")}
+              </Button>
+            ) : null}
+            {can.hide ? (
+              <Button
+                variant="ghost"
+                href={`/ders/${course.id}/mufredat/gizle`}
+              >
+                {t("Curriculum.hidePage")}
+              </Button>
+            ) : null}
+            {can.edit ? (
+              <Button
+                variant="outline"
+                type="button"
+                disabled={locked}
+                iconLeft={<Icon name="plus" size="sm" />}
+                onClick={() =>
+                  setWeeks((all) => [
+                    ...all,
+                    {
+                      weekNumber: nextWeekNumber(all),
+                      title: "",
+                      summary: "",
+                      lessons: [],
+                    },
+                  ])
+                }
+              >
+                {t("Curriculum.addWeek")}
+              </Button>
+            ) : null}
           </div>
         </div>
         {dirty && sessionCount > 0 ? (
@@ -463,7 +502,8 @@ export function CurriculumEditor({
                               {t("Curriculum.scheduled")}
                             </Badge>
                           )}
-                          {lesson.cancelledAt ? null : (
+                          {lesson.cancelledAt ||
+                          !(can.edit && can.sessions) ? null : (
                             <Button
                               variant="ghost"
                               size="small"
@@ -545,7 +585,7 @@ export function CurriculumEditor({
                                 type="date"
                                 name={`lesson-${wi}-${li}-date`}
                                 value={lesson.date}
-                                disabled={locked}
+                                disabled={sessionsLocked}
                                 onChange={(event) =>
                                   patchLesson(wi, li, {
                                     date: event.target.value,
@@ -566,7 +606,7 @@ export function CurriculumEditor({
                                 type="time"
                                 name={`lesson-${wi}-${li}-time`}
                                 value={lesson.time}
-                                disabled={locked}
+                                disabled={sessionsLocked}
                                 onChange={(event) =>
                                   patchLesson(wi, li, {
                                     time: event.target.value,
@@ -646,56 +686,62 @@ export function CurriculumEditor({
                 })}
                 <li className="flex flex-wrap items-center justify-between gap-2">
                   <span className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="small"
-                      type="button"
-                      disabled={locked}
-                      iconLeft={<Icon name="plus" size="sm" />}
-                      onClick={() =>
-                        patchWeek(wi, {
-                          lessons: [
-                            ...week.lessons,
-                            emptyLesson(
-                              week.lessons.at(-1)?.date ??
-                                week.lessons.find((lesson) => lesson.date)
-                                  ?.date ??
-                                ""
-                            ),
-                          ],
-                        })
-                      }
-                    >
-                      {t("Curriculum.addLesson")}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="small"
-                      type="button"
-                      disabled={locked}
-                      iconLeft={<Icon name="copy" size="sm" />}
-                      onClick={() =>
-                        setWeeks((all) => [
-                          ...all,
-                          copyWeek(week, nextWeekNumber(all)),
-                        ])
-                      }
-                    >
-                      {t("Curriculum.copyWeek")}
-                    </Button>
+                    {can.sessions && can.edit ? (
+                      <>
+                        <Button
+                          variant="outline"
+                          size="small"
+                          type="button"
+                          disabled={locked}
+                          iconLeft={<Icon name="plus" size="sm" />}
+                          onClick={() =>
+                            patchWeek(wi, {
+                              lessons: [
+                                ...week.lessons,
+                                emptyLesson(
+                                  week.lessons.at(-1)?.date ??
+                                    week.lessons.find((lesson) => lesson.date)
+                                      ?.date ??
+                                    ""
+                                ),
+                              ],
+                            })
+                          }
+                        >
+                          {t("Curriculum.addLesson")}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="small"
+                          type="button"
+                          disabled={locked}
+                          iconLeft={<Icon name="copy" size="sm" />}
+                          onClick={() =>
+                            setWeeks((all) => [
+                              ...all,
+                              copyWeek(week, nextWeekNumber(all)),
+                            ])
+                          }
+                        >
+                          {t("Curriculum.copyWeek")}
+                        </Button>
+                      </>
+                    ) : null}
                   </span>
-                  <Button
-                    variant="ghost"
-                    size="small"
-                    type="button"
-                    disabled={locked}
-                    iconLeft={<Icon name="eye" size="sm" />}
-                    onClick={() =>
-                      setWeeks((all) => all.filter((_, i) => i !== wi))
-                    }
-                  >
-                    {t("Curriculum.hideWeek")}
-                  </Button>
+                  {can.edit && (can.sessions || week.lessons.length === 0) ? (
+                    <Button
+                      variant="ghost"
+                      size="small"
+                      type="button"
+                      disabled={locked}
+                      iconLeft={<Icon name="eye" size="sm" />}
+                      onClick={() =>
+                        setWeeks((all) => all.filter((_, i) => i !== wi))
+                      }
+                    >
+                      {t("Curriculum.hideWeek")}
+                    </Button>
+                  ) : null}
                 </li>
               </WeekAccordion>
             );

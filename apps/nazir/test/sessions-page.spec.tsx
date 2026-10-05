@@ -17,10 +17,31 @@ type Answer<T> =
   | { status: "forbidden" }
   | { status: "failed" };
 
+/** What the müderris holds in the course: every code of the course scope. */
+const EVERYTHING = [
+  "course.view",
+  "course.view_details",
+  "course.staff_read",
+  "course.edit",
+  "session.manage",
+  "session.live_link",
+  "enrollment.decide",
+  "enrollment.complete",
+  "enrollment.remove",
+  "recording.manage",
+];
+const holding = (...codes: string[]): Answer<unknown> => ({
+  status: "ok",
+  data: { permissions: ["course.view", ...codes], staffRead: false },
+});
+
 const state = {
   course: { status: "failed" } as Answer<unknown>,
   streams: { status: "failed" } as Answer<unknown>,
+  permissions: { status: "failed" } as Answer<unknown>,
   viewer: { id: "u-1", timeZone: "Europe/Istanbul" } as unknown,
+  /** what each read asked for, in order */
+  reads: [] as string[],
 };
 const refresh = vi.fn();
 const changeSession = vi.fn();
@@ -40,11 +61,17 @@ vi.mock("next-intl/server", () => ({
 }));
 vi.mock("~/lib/tedrisat-read", () => ({
   readOnce: async (what: string, call: (api: unknown) => Promise<unknown>) => {
+    state.reads.push(what);
     await call({
-      courses: { getCourseById: async () => {} },
+      courses: {
+        getCourseById: async () => {},
+        getMyCoursePermissions: async () => {},
+      },
       lessons: { listCourseLiveStreams: async () => {} },
     });
-    return what.includes("live stream") ? state.streams : state.course;
+    if (what.includes("live stream")) return state.streams;
+    if (what.includes("holds in the course")) return state.permissions;
+    return state.course;
   },
 }));
 vi.mock("~/features/account/reads", () => ({
@@ -166,6 +193,8 @@ beforeEach(() => {
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date("2026-10-02T12:00:00+03:00"));
   state.course = { status: "ok", data: course() };
+  state.permissions = holding(...EVERYTHING);
+  state.reads = [];
   state.streams = {
     status: "ok",
     data: [
@@ -304,12 +333,38 @@ describe("Celseler", () => {
     expect(out).not.toContain("Yaklaşan celseler");
   });
 
-  it("is that state too when the course comes without its content, which is how the API says the caller is not course staff", async () => {
-    state.course = { status: "ok", data: course({ contentLocked: true }) };
+  it("is that state when the caller holds no code of the page, whatever else they hold", async () => {
+    state.permissions = holding("course.view_details", "recording.manage");
     const out = textOf(await markup());
     expect(out).toContain("Bu sayfaya izniniz yok");
     expect(out).not.toContain("Celse planla");
     expect(out).not.toContain("Yaklaşan celseler");
+    expect(state.reads).not.toContain("the course's live stream links");
+  });
+
+  it("does not take a locked course for a refusal: the caller's own permissions decide", async () => {
+    state.course = { status: "ok", data: course({ contentLocked: true }) };
+    state.permissions = holding("session.manage");
+    const out = textOf(await markup());
+    expect(out).toContain("Yaklaşan celseler");
+    expect(out).not.toContain("izniniz yok");
+  });
+
+  it("is that state when the permissions read is refused", async () => {
+    state.permissions = { status: "forbidden" };
+    const out = textOf(await markup());
+    expect(out).toContain("Bu sayfaya izniniz yok");
+    expect(out).not.toContain("Yaklaşan celseler");
+  });
+
+  it("is the retry state, and no page, when the permissions cannot be read", async () => {
+    state.permissions = { status: "failed" };
+    const out = textOf(await markup());
+    expect(out).toContain("Celseler okunamadı");
+    expect(out).toContain("Yeniden dene");
+    expect(out).not.toContain("izniniz yok");
+    expect(out).not.toContain("Yaklaşan celseler");
+    expect(out).not.toContain("Celse planla");
   });
 
   it("is the retry state, not 'no access', when the course cannot be read", async () => {
@@ -327,6 +382,91 @@ describe("Celseler", () => {
     const out = await html(<SessionsLoading />);
     expect(out).toContain('aria-busy="true"');
     expect(textOf(out)).toBe("Yükleniyor");
+  });
+});
+
+describe("what each permission shows", () => {
+  it("gives a holder of session.manage alone the planner, the link, the time and the cancellation, and no live stream", async () => {
+    state.permissions = holding("session.manage");
+    const out = await markup();
+    expect(out).toContain('href="/ders/c-1/celseler/planla"');
+    expect(out).toContain(
+      `aria-label="${L2} celsesinin bağlantısını güncelle"`
+    );
+    expect(out).toContain(`aria-label="${L3} celsesini iptal et"`);
+    expect(out).toContain(`aria-label="${L3} celsesinin tarihini değiştir"`);
+    expect(textOf(out)).not.toContain("Canlı yayın");
+    // the links are not even asked for
+    expect(state.reads).not.toContain("the course's live stream links");
+  });
+
+  it("gives a holder of session.live_link alone the live stream control and nothing else", async () => {
+    state.permissions = holding("session.live_link");
+    const out = await markup();
+    expect(state.reads).toContain("the course's live stream links");
+    expect(textOf(out)).toContain("Canlı yayın");
+    expect(out).toContain(
+      `aria-label="${L3} celsesine canlı yayın bağlantısı ekle"`
+    );
+    expect(out).toContain(
+      `aria-label="${L2} celsesinin canlı yayın bağlantısını güncelle"`
+    );
+    expect(out).not.toContain("planla");
+    expect(out).not.toContain("Celse planla");
+    expect(out).not.toContain("celsesini iptal et");
+    expect(out).not.toContain("tarihini değiştir");
+    expect(out).not.toContain("celsesine bağlantı ekle");
+    expect(out).not.toContain("celsesinin bağlantısını güncelle");
+  });
+
+  it("leaves a live_link holder with no controls, and says so per row, when the links cannot be read", async () => {
+    state.permissions = holding("session.live_link");
+    state.streams = { status: "failed" };
+    const out = await markup();
+    expect(textOf(out)).toContain("Yaklaşan celseler");
+    expect(out).not.toContain("<button");
+    expect(textOf(out)).toContain("İşlem yok");
+  });
+
+  it("gives a holder of both everything, as the müderris sees it", async () => {
+    const out = await markup();
+    expect(out).toContain('href="/ders/c-1/celseler/planla"');
+    expect(out).toContain(`aria-label="${L3} celsesini iptal et"`);
+    expect(out).toContain(
+      `aria-label="${L3} celsesine canlı yayın bağlantısı ekle"`
+    );
+  });
+
+  it("links a cancelled session to the make-up it names, and marks the make-up", async () => {
+    state.course = {
+      status: "ok",
+      data: course({
+        weeks: course().weeks.map((week) => ({
+          ...week,
+          lessons: week.lessons.map((l) =>
+            l.id === "l-4" ? { ...l, replacementLessonId: "l-3" } : l
+          ),
+        })),
+      }),
+    };
+    const out = await markup();
+    const cancelled = out
+      .split("<tr")
+      .map((row) => row)
+      .find((row) => textOf(row).includes("Hafta 4"));
+    expect(textOf(cancelled ?? "")).toContain("Telafisi: 12 Eki Pzt 21:00");
+    expect(cancelled).toContain('href="#celse-l-3"');
+    expect(out).toContain('id="celse-l-3"');
+    const madeUp = out
+      .split("<tr")
+      .find((row) => row.includes('id="celse-l-3"'));
+    expect(textOf(madeUp ?? "")).toContain("Telafi celsesi");
+  });
+
+  it("shows no link on a cancelled session without a make-up", async () => {
+    const out = await markup();
+    expect(out).not.toContain("Telafisi:");
+    expect(out).not.toContain("Telafi celsesi");
   });
 });
 
@@ -392,7 +532,7 @@ describe("the link of a session", () => {
     await settle(60);
     await click(buttonIn(dialog(), "Celseyi iptal et"));
     await settle(80);
-    expect(cancelSession).toHaveBeenCalledExactlyOnceWith("l-3", 8);
+    expect(cancelSession).toHaveBeenCalledExactlyOnceWith("l-3", 8, undefined);
   });
 
   it("is told apart from an authorization refusal: the sentence says the caller may not, and nothing is read again", async () => {
@@ -490,7 +630,7 @@ describe("İptal et", () => {
     await click(buttonIn(dialog(), "Celseyi iptal et"));
     await settle(80);
 
-    expect(cancelSession).toHaveBeenCalledExactlyOnceWith("l-3", 7);
+    expect(cancelSession).toHaveBeenCalledExactlyOnceWith("l-3", 7, undefined);
     expect(createSessions).not.toHaveBeenCalled();
     expect(toast("success")).toContain("Celse iptal edildi");
     expect(toast("success")).toContain("Hafta 3 iptal edildi.");
@@ -509,12 +649,15 @@ describe("İptal et", () => {
     expect(field("makeUpTime").value).toBe("21:00");
   });
 
-  it("cancels, then adds the make-up as a session of the same length and says both", async () => {
+  it("adds the make-up first, then cancels the session naming it, at the version the make-up left", async () => {
+    createSessions.mockResolvedValue({
+      success: true,
+      data: { count: 1, courseVersion: 8, lessonIds: ["l-new"] },
+    });
     cancelSession.mockResolvedValue({
       success: true,
-      data: { courseVersion: 8 },
+      data: { courseVersion: 9 },
     });
-    createSessions.mockResolvedValue({ success: true, data: { count: 1 } });
     await open();
     await toggleMakeUp();
     await settle(40);
@@ -523,23 +666,37 @@ describe("İptal et", () => {
     await click(buttonIn(dialog(), "Celseyi iptal et"));
     await settle(100);
 
-    expect(cancelSession).toHaveBeenCalledExactlyOnceWith("l-3", 7);
     expect(createSessions).toHaveBeenCalledExactlyOnceWith("c-1", {
       weekdays: [3],
       startTime: "20:30",
       timeZone: "Europe/Istanbul",
       startDate: "2026-10-14",
       count: 1,
-      title: "Hafta 3 (telafi)",
+      title: "Hafta 3",
       durationMinutes: 60,
     });
+    expect(cancelSession).toHaveBeenCalledExactlyOnceWith("l-3", 8, "l-new");
+    expect(createSessions.mock.invocationCallOrder[0]).toBeLessThan(
+      cancelSession.mock.invocationCallOrder[0] ?? 0
+    );
     expect(toast("success")).toContain(
-      "Hafta 3 iptal edildi; telafi celsesi eklendi."
+      "Hafta 3 iptal edildi; telafi celsesi eklendi ve ona bağlandı."
     );
     expect(refresh).toHaveBeenCalledOnce();
   });
 
-  it("asks for the make-up's date before it cancels anything", async () => {
+  it("names no make-up when none was asked for", async () => {
+    cancelSession.mockResolvedValue({
+      success: true,
+      data: { courseVersion: 8 },
+    });
+    await open();
+    await click(buttonIn(dialog(), "Celseyi iptal et"));
+    await settle(80);
+    expect(cancelSession).toHaveBeenCalledExactlyOnceWith("l-3", 7, undefined);
+  });
+
+  it("asks for the make-up's date before it does anything", async () => {
     await open();
     await toggleMakeUp();
     await settle(40);
@@ -547,14 +704,11 @@ describe("İptal et", () => {
     await click(buttonIn(dialog(), "Celseyi iptal et"));
     await settle(60);
     expect(dialog().textContent).toContain("Tarihi ve saati girin.");
+    expect(createSessions).not.toHaveBeenCalled();
     expect(cancelSession).not.toHaveBeenCalled();
   });
 
-  it("says the session is cancelled but the make-up is not, when only the second call fails", async () => {
-    cancelSession.mockResolvedValue({
-      success: true,
-      data: { courseVersion: 8 },
-    });
+  it("cancels nothing and keeps the dialog when the make-up cannot be made", async () => {
     createSessions.mockResolvedValue({
       success: false,
       code: "INVALID_SESSION_PATTERN",
@@ -565,23 +719,47 @@ describe("İptal et", () => {
     await click(buttonIn(dialog(), "Celseyi iptal et"));
     await settle(100);
 
+    expect(cancelSession).not.toHaveBeenCalled();
     expect(toast("error")).toContain(
-      "Celse iptal edildi, telafi celsesi eklenemedi"
+      "Telafi celsesi eklenemedi; celse iptal edilmedi"
     );
     expect(toast("error")).toContain("geçerli bir celse üretmiyor");
-    // the cancellation stands, so the list is read again
+    expect(dialog()).not.toBeNull();
+    expect(refresh).not.toHaveBeenCalled();
+  });
+
+  it("says the make-up stands but the session is not cancelled, when only the cancellation fails", async () => {
+    createSessions.mockResolvedValue({
+      success: true,
+      data: { count: 1, courseVersion: 8, lessonIds: ["l-new"] },
+    });
+    cancelSession.mockResolvedValue({
+      success: false,
+      code: "LESSON_REPLACEMENT_TAKEN",
+    });
+    await open();
+    await toggleMakeUp();
+    await settle(40);
+    await click(buttonIn(dialog(), "Celseyi iptal et"));
+    await settle(100);
+
+    expect(toast("error")).toContain(
+      "Telafi celsesi eklendi, ama celse iptal edilemedi"
+    );
+    expect(toast("error")).toContain(
+      "Bu celse başka bir celsenin telafisi olarak zaten bağlı."
+    );
+    // the make-up was written, so the list is read again
     expect(refresh).toHaveBeenCalledOnce();
     expect(dialog()).toBeNull();
   });
 
-  it("adds no make-up for a cancellation that was refused", async () => {
+  it("makes no make-up for a session that cannot be cancelled either", async () => {
     cancelSession.mockResolvedValue({
       success: false,
       code: "LESSON_ALREADY_CANCELLED",
     });
     await open();
-    await toggleMakeUp();
-    await settle(40);
     await click(buttonIn(dialog(), "Celseyi iptal et"));
     await settle(80);
     expect(createSessions).not.toHaveBeenCalled();

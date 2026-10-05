@@ -39,6 +39,7 @@ const fact = (over: Partial<SessionFact> = {}): SessionFact => ({
   durationMinutes: 60,
   meetingUrl: null,
   cancelledAt: null,
+  replacementId: null,
   ...over,
 });
 
@@ -100,7 +101,34 @@ describe("the sessions of a course", () => {
       durationMinutes: 90,
       meetingUrl: "https://zoom.us/j/123",
       cancelledAt: "2026-10-03T08:00:00.000Z",
+      replacementId: null,
     });
+  });
+
+  it("carry the make-up a cancelled session names, and none for a session that stands", () => {
+    const named = sessionFacts({
+      weeks: [
+        {
+          weekNumber: 1,
+          lessons: [
+            lesson({
+              id: "l-1",
+              cancelledAt: new Date("2026-10-03T08:00:00Z"),
+              replacementLessonId: "l-2",
+            }),
+            lesson({
+              id: "l-2",
+              scheduledAt: new Date("2026-10-12T18:00:00Z"),
+              replacementLessonId: "l-9",
+            }),
+          ],
+        },
+      ],
+    } as never);
+    expect(named.map((f) => [f.id, f.replacementId])).toEqual([
+      ["l-1", "l-2"],
+      ["l-2", null],
+    ]);
   });
 
   it("take a lesson without a length for an hour and one without a link for none", () => {
@@ -137,6 +165,26 @@ describe("a session against the clock", () => {
     const start = Date.parse("2026-10-05T18:00:00Z");
     expect(state({}, new Date(start + 12 * 60_000)).minutesLive).toBe(12);
     expect(state({}, new Date(start - 60_000)).minutesLive).toBeNull();
+  });
+
+  it("is the make-up of the cancelled session that names it, and no other", () => {
+    const rows = sessionRows(
+      [
+        fact({
+          id: "l-1",
+          cancelledAt: "2026-10-03T08:00:00.000Z",
+          replacementId: "l-2",
+        }),
+        fact({ id: "l-2", startsAt: "2026-10-12T18:00:00.000Z" }),
+        fact({ id: "l-3", startsAt: "2026-10-19T18:00:00.000Z" }),
+      ],
+      NOW
+    );
+    expect(rows.map((row) => [row.id, row.isMakeUp])).toEqual([
+      ["l-1", false],
+      ["l-2", true],
+      ["l-3", false],
+    ]);
   });
 
   it("is cancelled whatever the clock says", () => {
@@ -401,31 +449,31 @@ describe("the make-up of a cancelled session", () => {
     ).toEqual({ date: "2026-10-12", time: "22:30" });
   });
 
-  it("is one session of the same length, with the cancelled one's title and a mark", () => {
+  it("is one session of the same title and length, with no mark in its title", () => {
     expect(
-      makeUpRequest(
-        cancelled,
-        { date: "2026-10-14", time: "20:30", timeZone: "Europe/Istanbul" },
-        "(telafi)"
-      )
+      makeUpRequest(cancelled, {
+        date: "2026-10-14",
+        time: "20:30",
+        timeZone: "Europe/Istanbul",
+      })
     ).toEqual({
       weekdays: [3],
       startTime: "20:30",
       timeZone: "Europe/Istanbul",
       startDate: "2026-10-14",
       count: 1,
-      title: "Hafta 1 (telafi)",
+      title: "Hafta 1",
       durationMinutes: 90,
     });
   });
 
   it("is nothing while the date or the time is missing", () => {
     expect(
-      makeUpRequest(
-        cancelled,
-        { date: "", time: "20:30", timeZone: "Europe/Istanbul" },
-        "(telafi)"
-      )
+      makeUpRequest(cancelled, {
+        date: "",
+        time: "20:30",
+        timeZone: "Europe/Istanbul",
+      })
     ).toBeNull();
   });
 });
@@ -441,6 +489,12 @@ describe("what the API refuses", () => {
     );
     expect(sessionErrorKey("INVALID_SESSION_PATTERN")).toBe(
       "Sessions.errors.invalidPattern"
+    );
+    expect(sessionErrorKey("LESSON_REPLACEMENT_INVALID")).toBe(
+      "Sessions.errors.replacementInvalid"
+    );
+    expect(sessionErrorKey("LESSON_REPLACEMENT_TAKEN")).toBe(
+      "Sessions.errors.replacementTaken"
     );
     expect(sessionErrorKey("LESSON_NOT_LIVE")).toBe(
       "Sessions.stream.errors.notLive"
