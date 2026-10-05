@@ -1,5 +1,5 @@
 import { account, canSignIn, expect, test } from "./accounts";
-import { type NazirFixture, seedPortal } from "./seed";
+import { type NazarFixture, seedPortal } from "./seed";
 
 /**
  * Celseler, Talebeler, Müfredat and Ders kayıtları of a course against the
@@ -17,7 +17,7 @@ const BASMUDERRIS = account("MEDRESE_BASMUDERRIS");
 const MEDRESE_NAZIR = account("MEDRESE_NAZIR");
 const DERS_NAZIR = account("DERS_NAZIR");
 
-let fixture: NazirFixture | undefined;
+let fixture: NazarFixture | undefined;
 
 test.beforeAll(async () => {
   if (!BASMUDERRIS.sub) return;

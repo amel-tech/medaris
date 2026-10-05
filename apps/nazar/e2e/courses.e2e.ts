@@ -1,7 +1,7 @@
 import type { Page } from "@playwright/test";
 import { account, canSignIn, expect, test } from "./accounts";
 import { type CoursesFixture, seedCourses } from "./courses-seed";
-import { type NazirFixture, seedPortal } from "./seed";
+import { type NazarFixture, seedPortal } from "./seed";
 
 /**
  * Designs nazir/07 (Dersler), 17 (Müderrisleri değiştir) and 18 (Dersi gizle)
@@ -16,7 +16,7 @@ const BASMUDERRIS = account("MEDRESE_BASMUDERRIS");
 const MEDRESE_NAZIR = account("MEDRESE_NAZIR");
 const TALEBE = account("TALEBE");
 
-let base: NazirFixture | undefined;
+let base: NazarFixture | undefined;
 let courses: CoursesFixture | undefined;
 
 test.beforeAll(async () => {

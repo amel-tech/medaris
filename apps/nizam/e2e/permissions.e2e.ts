@@ -159,25 +159,19 @@ test("nizam/11 — a Medaris nazımı gets the 'izniniz yok' screen on both page
   }
 });
 
-test("nizam/11 — before 4 Ekim 'Görevden al' is off on every row, and nothing is said about why", async ({
+test("nizam/11 — 'Görevden al' is on on every row whatever the date (MDRS-215: no version gate)", async ({
   page,
 }) => {
   test.skip(!(seedable && SYSTEM_ADMIN.password), "no SYSTEM_ADMIN account");
-  // the real clock of the run is 2 Ekim 2026; pin it so the spec says what it means
+  // a date before the old gate (4 Ekim 2026), to show it no longer applies
   await page.clock.setFixedTime(new Date("2026-10-02T09:00:00+03:00"));
   await signIn(page, SYSTEM_ADMIN);
   await openNazims(page);
   for (const person of [fixture.hasan, fixture.rabia, fixture.seyyid]) {
     await expect(
       page.getByRole("button", { name: `Görevden al: ${person.name}` })
-    ).toBeDisabled();
-    // nothing in their row says why; other rows may carry a real "4 Ekim" of their
-    // own (the standing Medaris nazımı of the shared test seed was given its role then)
-    await expect(
-      rowOf(page, person.name).getByText(/4 Ekim|sürüm/i)
-    ).toHaveCount(0);
+    ).toBeEnabled();
   }
-  await expect(page.getByText(/sürüm/i)).toHaveCount(0);
 });
 
 test("nizam/11 — after the gate 'Görevden al' asks what to do with what the person handed on, and removes them (criterion 5)", async ({

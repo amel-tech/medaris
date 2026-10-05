@@ -1,5 +1,5 @@
 import { account, canSignIn, expect, signIn, test } from "./accounts";
-import { type NazirFixture, seedPortal } from "./seed";
+import { type NazarFixture, seedPortal } from "./seed";
 
 /**
  * Design nazir/20 (Hesap ve ayarlar) against the running app and API with real
@@ -8,7 +8,7 @@ import { type NazirFixture, seedPortal } from "./seed";
  */
 const BASMUDERRIS = account("MEDRESE_BASMUDERRIS");
 
-let fixture: NazirFixture | undefined;
+let fixture: NazarFixture | undefined;
 
 test.beforeAll(async () => {
   if (!BASMUDERRIS.sub) return;

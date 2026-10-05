@@ -1,5 +1,5 @@
 import { account, canSignIn, expect, test } from "./accounts";
-import { type NazirFixture, seedPortal } from "./seed";
+import { type NazarFixture, seedPortal } from "./seed";
 
 /**
  * Design nazir/02 (Bu portala erişiminiz yok) and the gate in front of it,
@@ -14,7 +14,7 @@ import { type NazirFixture, seedPortal } from "./seed";
 const TALEBE = account("TALEBE");
 const BASMUDERRIS = account("MEDRESE_BASMUDERRIS");
 
-let fixture: NazirFixture | undefined;
+let fixture: NazarFixture | undefined;
 
 test.beforeAll(async () => {
   if (!BASMUDERRIS.sub) return;
@@ -43,8 +43,12 @@ test("a talebe with no medrese and no course opens '/' and sees nazir/02, with t
       )
       .filter({ visible: true })
   ).toBeVisible();
+  // `visible`: right after the redirect Next can still hold the page's hidden copy
   await expect(
-    page.locator("main").getByText(`Giriş yaptığınız hesap: ${TALEBE.email}`)
+    page
+      .locator("main")
+      .getByText(`Giriş yaptığınız hesap: ${TALEBE.email}`)
+      .filter({ visible: true })
   ).toBeVisible();
 
   // The sidebar is the brand and the person: no menu, no picker, and the
