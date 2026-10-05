@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { Suspense } from "react";
 import { isSignedIn } from "~/features/courses/public-reads";
@@ -11,7 +12,7 @@ import { HomeSessions } from "~/features/schedule/components/home-sessions";
 import { getMyUpcomingLessons } from "~/features/schedule/reads";
 import { auth } from "~/lib/auth_options";
 
-// Open to a visitor and different for a signed-in caller.
+// Asked by a visitor it redirects to Keşfet (MDRS-256), so it reads the sign-in.
 export const dynamic = "force-dynamic";
 
 /**
@@ -19,14 +20,16 @@ export const dynamic = "force-dynamic";
  * sections that each read for themselves, so one that fails or is slow does not
  * hold back the rest (MDRS-165).
  */
-export default async function Home() {
+export default async function Home({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  // Everything on Ana sayfa is personal: a visitor has nothing to see here, and
+  // the pitch for them is the landing site's, so they start from Keşfet.
   if (!(await isSignedIn())) {
-    const t = await getTranslations("tedris");
-    return (
-      <main className="mx-auto w-full max-w-[80rem] py-2 grow-1">
-        {t("TabView.home")}
-      </main>
-    );
+    const { locale } = await params;
+    redirect(`/${locale}/discover`);
   }
   const [session, sessions, learn] = await Promise.all([
     auth(),
