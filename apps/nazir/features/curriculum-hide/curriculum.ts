@@ -52,7 +52,7 @@ export function hideErrorKey(code: string): string {
   switch (code) {
     case "WEEK_NOT_FOUND":
     case "LESSON_NOT_FOUND":
-      return "Curriculum.gone";
+      return "CurriculumHide.gone";
     case "AUTHZ_FORBIDDEN":
       return "Problems.actionForbidden";
     default:

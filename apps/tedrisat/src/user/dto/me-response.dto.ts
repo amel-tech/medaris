@@ -100,6 +100,12 @@ export class MeResponse {
   @ApiPropertyOptional({ type: String, example: "tr" })
   locale!: string | null;
 
+  @ApiProperty({
+    description:
+      "Whether lesson invitations, their updates and cancellations are e-mailed to the caller (MDRS-121)",
+  })
+  lessonInvitationEmails!: boolean;
+
   @ApiProperty()
   createdAt!: Date;
 

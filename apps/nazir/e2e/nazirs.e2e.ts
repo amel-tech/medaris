@@ -169,7 +169,9 @@ test("nazir/05 — 'Medrese nazırı ata' finds the account by its exact e-mail 
     await expect(dialog.getByTestId("chosen-nazir")).toBeVisible();
     await dialog.getByRole("button", { name: "Ata" }).click();
 
-    await expect(page.getByText("Nazır atandı")).toBeVisible();
+    await expect(
+      page.getByText("Nazır atandı").filter({ visible: true })
+    ).toBeVisible();
     await expect(dialog).toBeHidden();
     // the roster has the new row and a second 'İzin yok'; the band counts both
     await expect(page.getByText("İzin yok", { exact: true })).toHaveCount(2);
@@ -219,7 +221,9 @@ test("nazir/05 — a medrese nazır is refused: a notice, no table and no way to
   await extra?.seat(MEDRESE_NAZIR.sub ?? "");
   const page = await as("MEDRESE_NAZIR");
   await open(page);
-  await expect(page.getByText("Bu sayfaya izniniz yok")).toBeVisible();
+  await expect(
+    page.getByText("Bu sayfaya izniniz yok").filter({ visible: true })
+  ).toBeVisible();
   await expect(page.getByTestId("nazirs")).toHaveCount(0);
   await expect(
     page.getByRole("button", { name: "Medrese nazırı ata" })

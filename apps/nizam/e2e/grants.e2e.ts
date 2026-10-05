@@ -92,10 +92,12 @@ test("nizam/38 — the list shows each ders nazırı with course, permission sum
   await expect(row).toContainText("Görev ve izinler aynı gün biter.");
   await expect(row).toContainText("(siz)");
   await expect(row).toContainText("14 Eylül 2026");
-  await expect(page.getByTestId("grant-count")).toHaveText("1 kişi");
+  await expect(
+    page.getByTestId("grant-count").filter({ visible: true })
+  ).toHaveText("1 kişi");
 
   // the medrese's course is not a post to make: it is named in the note
-  const note = page.getByTestId("madrasah-note");
+  const note = page.getByTestId("madrasah-note").filter({ visible: true });
   await expect(note).toContainText(fixture.courses.medrese.title);
   await expect(note).toContainText("medrese kadrosu verir");
 
@@ -115,7 +117,9 @@ test("nizam/38 — a Medaris nazımı gets the 'izniniz yok' screen, not the lis
   await fixture.makeMedarisNazim(MEDARIS_NAZIM.sub as string);
   await signIn(page, MEDARIS_NAZIM);
   await page.goto(`/tr/kosks/${fixture.kosk.id}/izinler`);
-  await expect(page.getByText("Bu bölüm için izniniz yok")).toBeVisible();
+  await expect(
+    page.getByText("Bu bölüm için izniniz yok").filter({ visible: true })
+  ).toBeVisible();
   await expect(page.getByTestId("grants")).toHaveCount(0);
 });
 
@@ -123,7 +127,9 @@ test("nizam/38 — a köşk that is not there looks the same", async ({ page }) 
   test.skip(!(seedable && KOSK_NAZIM.password), "no KOSK_NAZIM account");
   await signIn(page, KOSK_NAZIM);
   await page.goto("/tr/kosks/00000000-0000-4000-8000-0000000000ff/izinler");
-  await expect(page.getByText("Bu bölüm için izniniz yok")).toBeVisible();
+  await expect(
+    page.getByText("Bu bölüm için izniniz yok").filter({ visible: true })
+  ).toBeVisible();
 });
 
 test("nizam/38 — 'Ders nazırı ata' finds the person by e-mail, offers only medrese-free courses and the course permissions, and the post ends on the day typed (criteria 1, 5)", async ({
@@ -142,8 +148,9 @@ test("nizam/38 — 'Ders nazırı ata' finds the person by e-mail, offers only m
   const save = dialog.getByRole("button", { name: "Kaydet" });
   await expect(save).toBeDisabled();
 
-  // only what a köşk nazımı holds is offered: the 19 course permissions
-  await expect(dialog.getByRole("checkbox")).toHaveCount(19);
+  // only what a köşk nazımı holds is offered: the 20 course permissions
+  // (`COURSE_CATALOG`, which question.answer joined with MDRS-150)
+  await expect(dialog.getByRole("checkbox")).toHaveCount(20);
 
   const email = dialog.getByRole("textbox", { name: /^Ders nazırı/ });
   await email.fill("kimse-yok-boyle@example.test");
@@ -284,11 +291,11 @@ test("nizam/38 — a stray click on the scrim does not lose the boxes, and an en
   await expect(dialog).toBeHidden();
 });
 
-test("nizam/38 — before 4 Ekim 'Görevden al' is off, and nothing is said about why", async ({
+test("nizam/38 — 'Görevden al' is on whatever the date (MDRS-215: no version gate)", async ({
   page,
 }) => {
   test.skip(!(seedable && KOSK_NAZIM.password), "no KOSK_NAZIM account");
-  // the real clock of the run is 2 Ekim 2026; pin it so the spec says what it means
+  // a date before the old gate (4 Ekim 2026), to show it no longer applies
   await page.clock.setFixedTime(new Date("2026-10-02T09:00:00+03:00"));
   await signIn(page, KOSK_NAZIM);
   await openGrants(page);
@@ -296,8 +303,7 @@ test("nizam/38 — before 4 Ekim 'Görevden al' is off, and nothing is said abou
     page.getByRole("button", {
       name: `Görevden al: ${fixture.existing.name}`,
     })
-  ).toBeDisabled();
-  await expect(page.getByText(/4 Ekim|sürüm/i)).toHaveCount(0);
+  ).toBeEnabled();
 });
 
 test("nizam/38 — after the gate 'Görevden al' ends the post and every permission at once, and 'Vazgeç' changes nothing (criterion 4)", async ({
@@ -332,7 +338,9 @@ test("nizam/38 — after the gate 'Görevden al' ends the post and every permiss
   await expect(dialog).toBeHidden();
 
   await expect(rowOf(page, fixture.existing.name)).toHaveCount(0);
-  await expect(page.getByText("Henüz ders nazırı yok.")).toBeVisible();
+  await expect(
+    page.getByText("Henüz ders nazırı yok.").filter({ visible: true })
+  ).toBeVisible();
   const held = await fixture.held(
     fixture.existing.id,
     fixture.courses.emsile.id

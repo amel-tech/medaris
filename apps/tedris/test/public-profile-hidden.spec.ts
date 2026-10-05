@@ -71,6 +71,7 @@ const hesap = async () => {
       familyName: "Karahanlı",
       email: "zeynep.karahanli@example.com",
       timeZone: "Europe/Istanbul",
+      lessonInvitationEmails: true,
     })
   );
 };

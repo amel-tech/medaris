@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { AuditService } from "../audit/audit.service";
+import { LessonInvitationService } from "../lesson-invitation/lesson-invitation.service";
 import { PlatformPolicyService } from "../platform-policy/platform-policy.service";
 import { KoskForbiddenError } from "./errors/kosk-forbidden.error";
 import { KoskHandleTakenError } from "./errors/kosk-handle-taken.error";
@@ -28,7 +29,8 @@ export class KoskService {
   constructor(
     private readonly koskRepo: KoskRepository,
     private readonly platformPolicies: PlatformPolicyService,
-    private readonly audit: AuditService
+    private readonly audit: AuditService,
+    private readonly invitations: LessonInvitationService
   ) {}
 
   /**
@@ -262,6 +264,8 @@ export class KoskService {
   async delete(id: string, actorId: string): Promise<boolean> {
     const removed = await this.koskRepo.purge(id, actorId);
     if (!removed) throw new KoskNotFoundError(id);
+    // The invitation rows outlive the sessions: send their CANCELs (MDRS-121).
+    this.invitations.kick();
     return true;
   }
 

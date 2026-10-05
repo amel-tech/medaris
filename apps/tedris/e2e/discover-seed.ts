@@ -91,14 +91,7 @@ export async function seedDiscover(): Promise<DiscoverFixture> {
     for (const [key, k] of Object.entries(kosks)) {
       await client.query(
         "insert into kosks(id, owner_id, name, field, level, description) values ($1, $2, $3, $4, $5, $6)",
-        [
-          k.id,
-          admin,
-          k.name,
-          k.field,
-          level[key],
-          `${k.field} dersleri için bir köşk.`,
-        ]
+        [k.id, admin, k.name, k.field, level[key], `Deneme köşkü ${tag}.`]
       );
     }
     const medrese = madrasahs.suleymaniye;

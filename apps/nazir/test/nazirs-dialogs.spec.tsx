@@ -299,24 +299,9 @@ describe("'Görevden al' (nazir 15)", () => {
   };
   const submit = () => buttonIn(dialog(), "Görevden al");
 
-  /** After 4 Ekim 2026, the clock only the gate reads. */
-  const afterGate = () => {
-    vi.useFakeTimers({ toFake: ["Date"] });
-    vi.setSystemTime(new Date("2026-10-05T10:00:00+03:00"));
-  };
-
-  it("is off on every row before 4 Ekim 2026 and says nothing about why", async () => {
+  it("is on for every row, whatever the date (MDRS-215: no version gate)", async () => {
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date("2026-10-02T09:00:00+03:00"));
-    await mount();
-    for (const row of rows) {
-      expect(dismissButton(row.name).disabled, row.name).toBe(true);
-    }
-    expect(document.body.textContent).not.toMatch(/4 Ekim|sürüm/i);
-  });
-
-  it("is on from 4 Ekim 2026, read on the viewer's clock without a reload", async () => {
-    afterGate();
     await mount();
     for (const row of rows) {
       expect(dismissButton(row.name).disabled, row.name).toBe(false);
@@ -324,7 +309,6 @@ describe("'Görevden al' (nazir 15)", () => {
   });
 
   it("asks what became of what the nazır gave, one row per person, with nothing chosen for the başmüderris (criterion 1)", async () => {
-    afterGate();
     getNazirGrants.mockResolvedValue({ success: true, data: given });
     await mount();
     await open();
@@ -363,7 +347,6 @@ describe("'Görevden al' (nazir 15)", () => {
   });
 
   it("starts with the focus on 'Vazgeç'", async () => {
-    afterGate();
     getNazirGrants.mockResolvedValue({ success: true, data: given });
     await mount();
     await open();
@@ -371,7 +354,6 @@ describe("'Görevden al' (nazir 15)", () => {
   });
 
   it("turns 'Görevden al' on only when every row has an answer, and sends one decision per person (criteria 1, 3, 4)", async () => {
-    afterGate();
     getNazirGrants.mockResolvedValue({ success: true, data: given });
     dismissNazir.mockResolvedValue({ success: true, data: null });
     await mount();
@@ -402,7 +384,6 @@ describe("'Görevden al' (nazir 15)", () => {
   });
 
   it("skips the choice when the nazır gave no one anything, and sends an empty list", async () => {
-    afterGate();
     getNazirGrants.mockResolvedValue({ success: true, data: [] });
     dismissNazir.mockResolvedValue({ success: true, data: null });
     await mount();
@@ -422,7 +403,6 @@ describe("'Görevden al' (nazir 15)", () => {
   });
 
   it("reads the list again and clears the answers when the API says it moved (criterion 4)", async () => {
-    afterGate();
     getNazirGrants.mockResolvedValue({ success: true, data: given });
     dismissNazir.mockResolvedValue({
       success: false,
@@ -445,7 +425,6 @@ describe("'Görevden al' (nazir 15)", () => {
   });
 
   it("closes and reads the roster again when the nazır is no longer one", async () => {
-    afterGate();
     getNazirGrants.mockResolvedValue({ success: true, data: [] });
     dismissNazir.mockResolvedValue({
       success: false,
@@ -463,7 +442,6 @@ describe("'Görevden al' (nazir 15)", () => {
   });
 
   it("says the list could not be read, offers to try again, and does not let the nazır be dismissed blind", async () => {
-    afterGate();
     getNazirGrants.mockResolvedValueOnce({ success: false, code: "" });
     await mount();
     await open();
@@ -479,7 +457,6 @@ describe("'Görevden al' (nazir 15)", () => {
   });
 
   it("closes with Vazgeç and writes nothing", async () => {
-    afterGate();
     getNazirGrants.mockResolvedValue({ success: true, data: given });
     await mount();
     await open();
@@ -551,17 +528,13 @@ describe("'İzinleri düzenle' and 'İzin ver' on the table (nazir 06)", () => {
     );
   });
 
-  it("is off before 4 Ekim 2026, with the same gate as 'Görevden al', and opens the editor after it", async () => {
+  it("is on whatever the date (MDRS-215: no version gate) and opens the editor", async () => {
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date("2026-10-02T09:00:00+03:00"));
     await mount();
     expect(edit("İzinleri düzenle: Fatma Zehra Çelebioğlu").disabled).toBe(
-      true
+      false
     );
-    expect(edit("İzin ver: Abdullah Talha Erzurumluoğlu").disabled).toBe(true);
-    await cleanup();
-
-    vi.setSystemTime(new Date("2026-10-05T10:00:00+03:00"));
     loadEditor.mockReturnValue(new Promise(() => {}));
     await mount();
     const button = edit("İzin ver: Abdullah Talha Erzurumluoğlu");

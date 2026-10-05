@@ -64,9 +64,11 @@ test("nazir/05 — the cards show each group's name, permissions and '2 izin · 
   const page = await as("MEDRESE_BASMUDERRIS");
   await open(page);
   await expect(
-    page.getByText(
-      "Gruplar yalnız bu medresede ve medrese derslerinde geçerlidir."
-    )
+    page
+      .getByText(
+        "Gruplar yalnız bu medresede ve medrese derslerinde geçerlidir."
+      )
+      .filter({ visible: true })
   ).toBeVisible();
 
   const dersAcma = card(page, extra?.groups.dersAcma ?? "");
@@ -94,7 +96,9 @@ test("nazir/16 — 'Grup tanımla': a name and two permissions are saved and the
   const dialog = dialogOf(page, "İzin grubu tanımla");
   await expect(dialog).toContainText(base?.madrasah.name ?? "");
   await expect(dialog).toContainText("Medrese kapsamı · 0 izin seçili");
-  await expect(dialog.getByRole("checkbox")).toHaveCount(32);
+  // the medrese's 11, the course permissions a medrese's nazır may be given for
+  // its courses (22, `MADRASAH_COURSE_CATALOG`; question.answer joined with MDRS-150)
+  await expect(dialog.getByRole("checkbox")).toHaveCount(33);
 
   // nothing yet: refused on the page, nothing written
   await dialog.getByRole("button", { name: "Grubu kaydet" }).click();
@@ -111,7 +115,9 @@ test("nazir/16 — 'Grup tanımla': a name and two permissions are saved and the
   await expect(dialog).toContainText("Medrese kapsamı · 2 izin seçili");
   await dialog.getByRole("button", { name: "Grubu kaydet" }).click();
 
-  await expect(page.getByText("Grup kaydedildi")).toBeVisible();
+  await expect(
+    page.getByText("Grup kaydedildi").filter({ visible: true })
+  ).toBeVisible();
   await expect(dialog).toBeHidden();
   await expect(card(page, name)).toContainText("2 izin · 0 nazıra verildi");
   const group = await extra?.groupRow(name);
@@ -181,7 +187,9 @@ test("nazir/16 — a rename of a used group is saved without a question", async 
   await dialog.getByRole("button", { name: "Grubu kaydet" }).click();
 
   await expect(question(page)).toHaveCount(0);
-  await expect(page.getByText("Grup kaydedildi")).toBeVisible();
+  await expect(
+    page.getByText("Grup kaydedildi").filter({ visible: true })
+  ).toBeVisible();
   await expect(card(page, renamed)).toContainText("2 izin · 1 nazıra verildi");
 });
 
@@ -210,7 +218,9 @@ test("nazir/16 — changing a used group's permissions asks about the people who
 
   await ask.getByRole("radio", { name: /İzinleri korusunlar/ }).check();
   await ask.getByRole("button", { name: "Grubu kaydet" }).click();
-  await expect(page.getByText("Grup kaydedildi")).toBeVisible();
+  await expect(
+    page.getByText("Grup kaydedildi").filter({ visible: true })
+  ).toBeVisible();
 
   // the group has the new permission; Ümmügülsüm keeps the old ones, one by one
   const group = await extra?.groupRow(extra?.groups.kayit ?? "");
@@ -246,7 +256,9 @@ test("nazir/16 — deleting a used group asks first; 'İzinleri kaybetsinler' ta
   await ask.getByRole("radio", { name: /İzinleri kaybetsinler/ }).check();
   await ask.getByRole("button", { name: "Grubu sil" }).click();
 
-  await expect(page.getByText("Grup silindi")).toBeVisible();
+  await expect(
+    page.getByText("Grup silindi").filter({ visible: true })
+  ).toBeVisible();
   await expect(card(page, extra?.groups.kayit ?? "")).toHaveCount(0);
   expect((await extra?.groupRow(extra?.groups.kayit ?? ""))?.deleted).toBe(
     true

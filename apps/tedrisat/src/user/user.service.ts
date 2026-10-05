@@ -63,6 +63,9 @@ export class UserService {
     const settings: IUserSettings = {};
     if (dto.timeZone !== undefined) settings.timeZone = dto.timeZone;
     if (dto.locale !== undefined) settings.locale = dto.locale;
+    if (dto.lessonInvitationEmails !== undefined) {
+      settings.lessonInvitationEmails = dto.lessonInvitationEmails;
+    }
     // The names are the person's own words, kept apart from the token's so the
     // next sync cannot undo them (MDRS-166).
     const names =
@@ -168,6 +171,7 @@ function toProfile(
     familyName: profile?.familyName ?? user.familyName,
     timeZone: user.timeZone,
     locale: user.locale,
+    lessonInvitationEmails: user.lessonInvitationEmails,
     createdAt: user.createdAt,
     lastSeenAt: user.lastSeenAt,
   };

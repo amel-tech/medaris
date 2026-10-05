@@ -81,6 +81,7 @@
       "curriculum": "Syllabus",
       "sessions": "Sessions",
       "students": "Talebe",
+      "questions": "Questions",
       "recordings": "Recordings",
       "deck": "Course deck",
       "bans": "Bans",
@@ -155,6 +156,7 @@
       "recording_upload": "Upload a recording",
       "recording_watch_restricted": "Watch recordings open to enrolled talebe only",
       "session_view_content": "See the content and meeting links of a session",
+      "question_answer": "See the course's questions and answer them",
       "ban_course": "Ban a talebe from the course (includes seeing the course's ban list)",
       "ban_lift_course": "Lift a course ban, with a reason",
       "deck_manage_course": "Create and edit the course's deck",
@@ -580,6 +582,37 @@
       "sessions": "No session is hidden in this course."
     }
   },
+  "CurriculumHide": {
+    "title": "Curriculum",
+    "intro": "Here you hide weeks and sessions; none is deleted, and the Archive brings them back. Editing the curriculum is not this page’s job.",
+    "weekLabel": "Week {number}",
+    "sessionCount": "{count, plural, one {# session} other {# sessions}}",
+    "noSessions": "This week has no sessions.",
+    "empty": "This course has no weeks yet.",
+    "hideWeek": "Hide the week",
+    "hideWeekLabel": "Hide the week: {title}",
+    "hideSession": "Hide the session",
+    "hideSessionLabel": "Hide the session: {title}",
+    "week": {
+      "title": "Hide the week",
+      "body": "{title} and its {count, plural, one {# session} other {# sessions}} leave the course; talebe do not see them. Nothing is deleted; the level that hid it, or one above, restores it from the Archive.",
+      "done": "Week hidden",
+      "doneBody": "{title} and its sessions have left the course. You can restore them from the Archive.",
+      "failedTitle": "Could not hide the week"
+    },
+    "session": {
+      "title": "Hide the session",
+      "body": "{title} leaves the course; talebe do not see it. Nothing is deleted; the level that hid it, or one above, restores it from the Archive.",
+      "done": "Session hidden",
+      "doneBody": "{title} has left the course. You can restore it from the Archive.",
+      "failedTitle": "Could not hide the session"
+    },
+    "confirm": "Hide",
+    "cancel": "Cancel",
+    "gone": "This week or session no longer exists. The page was refreshed.",
+    "loadFailedTitle": "Could not read the curriculum",
+    "loadFailed": "The curriculum could not be read just now. Try again in a few seconds."
+  },
   "Curriculum": {
     "title": "Curriculum",
     "intro": "Here you hide weeks and sessions; none is deleted, and the Archive brings them back. Editing the curriculum is not this page’s job.",
@@ -826,6 +859,37 @@
     "clearFilters": "Clear the filters",
     "loadFailedTitle": "The talebe could not be read",
     "loadFailed": "The talebe could not be read right now. Try again in a few seconds."
+  },
+  "Questions": {
+    "title": "Questions",
+    "subtitle": "What the talebe asked on the sessions of {name}; those waiting for an answer come first.",
+    "subtitleUnnamed": "What the talebe asked on the sessions of the course; those waiting for an answer come first.",
+    "empty": "No question has been asked in this course yet.",
+    "sessionLine": "Week {week} · {title}",
+    "questionLabel": "Question asked by {name}",
+    "unknownAuthor": "A talebe with no name on record",
+    "answered": "Answered",
+    "waiting": "Waiting",
+    "answer": "Answer",
+    "answerBy": "Answer from {name}",
+    "answerLabel": "Your answer",
+    "bodyHelp": "You can write Markdown. At most {max} characters.",
+    "answerAction": "Answer",
+    "answering": "Sending",
+    "change": "Change the answer",
+    "save": "Save",
+    "cancel": "Cancel",
+    "bodyRequired": "The answer cannot be empty.",
+    "loadMore": "Show more",
+    "loadingMore": "Loading",
+    "loadMoreFailed": "More questions could not be loaded. Try again.",
+    "loadFailedTitle": "The questions could not be read",
+    "loadFailed": "The questions could not be read right now. Try again in a few seconds.",
+    "errors": {
+      "gone": "This question no longer exists, or you may not answer it. Refresh the page.",
+      "invalid": "The answer cannot be empty or too long.",
+      "failed": "The answer could not be saved. Try again in a moment."
+    }
   },
   "Bans": {
     "title": "Bans",
@@ -1347,6 +1411,7 @@
     "zoneIstanbul": "Istanbul time",
     "zoneOther": "{zone} time",
     "generate": "Generate weekly sessions",
+    "hidePage": "Hide weeks and sessions",
     "addWeek": "Add a week",
     "generateNote": "You have unsaved changes; save before generating sessions, or the changes on this page are lost.",
     "untitledWeek": "Untitled week",

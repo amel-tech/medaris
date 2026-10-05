@@ -82,7 +82,9 @@ test("nizam/36 — the active permissions come from the roles, grouped, with the
     .locator("#main")
     .getByTestId("permission-group")
     .filter({ hasText: fixture?.koskName });
-  await expect(group).toContainText("köşk nazımı");
+  // one scope reads "<köşk> · köşk nazımı"; the standing köşk of the shared test
+  // seed makes it two, and then the group is headed "Köşk nazımı" and lists both
+  await expect(group).toContainText(/köşk nazımı/i);
   await expect(group).toContainText("Köşkü düzenle, gizle ya da geri al");
   await expect(group).toContainText("E-postayla kullanıcı bul");
   await expect(group).toContainText("Her arama denetim kaydına yazılır.");
@@ -101,7 +103,9 @@ test("nizam/36 — the time zone is saved the moment it is chosen and is still t
   try {
     await zone(page).click();
     await page.getByRole("option", { name: "Berlin" }).click();
-    await expect(page.getByText("Saat diliminiz kaydedildi.")).toBeVisible();
+    await expect(
+      page.getByText("Saat diliminiz kaydedildi.").filter({ visible: true })
+    ).toBeVisible();
     await page.reload();
     await expect(zone(page)).toContainText("Berlin");
   } finally {
@@ -127,7 +131,9 @@ test("nizam/36 — 'Diğer…' opens the full list, and a zone from it is saved 
     await expect(all).toBeVisible();
     await all.click();
     await page.getByRole("option", { name: "Asia/Tokyo", exact: true }).click();
-    await expect(page.getByText("Saat diliminiz kaydedildi.")).toBeVisible();
+    await expect(
+      page.getByText("Saat diliminiz kaydedildi.").filter({ visible: true })
+    ).toBeVisible();
     await page.reload();
     // a saved zone outside the short list opens the full one
     await expect(
@@ -152,11 +158,12 @@ test("nizam/36 — the e-mail is read only and the language is fixed to Turkish 
   await expect(email).toHaveValue(KOSK_NAZIM.email as string);
   await expect(email).toHaveAttribute("readonly", "");
   await expect(page.locator("#main").getByText("Salt okunur.")).toBeVisible();
-  await expect(page.getByLabel("Dil", { exact: true })).toHaveValue("Türkçe");
-  await expect(page.getByLabel("Dil", { exact: true })).toHaveAttribute(
-    "readonly",
-    ""
-  );
+  await expect(
+    page.getByLabel("Dil", { exact: true }).filter({ visible: true })
+  ).toHaveValue("Türkçe");
+  await expect(
+    page.getByLabel("Dil", { exact: true }).filter({ visible: true })
+  ).toHaveAttribute("readonly", "");
   await expect(
     page.locator("#main").getByText("Medaris şimdilik yalnız Türkçe görünür.")
   ).toBeVisible();

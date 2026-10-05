@@ -73,7 +73,9 @@ test("nazir/07 — lists the medrese's courses with their köşk, müderrisler, 
   await expect(
     page.getByText(courses?.hidden.title ?? "", { exact: false })
   ).toHaveCount(0);
-  await expect(page.getByTestId("counter")).toHaveText("4 ders · 2 köşkte");
+  await expect(
+    page.getByTestId("counter").filter({ visible: true })
+  ).toHaveText("4 ders · 2 köşkte");
 
   const first = rowOf(page, base?.first.title ?? "");
   await expect(first).toContainText(courses?.kosk.name ?? "");
@@ -114,7 +116,9 @@ test("nazir/07 — the köşk and the state filters work together, and the count
   await expect(page).toHaveURL(new RegExp(`kosk=${courses?.fatih.id}`));
   await expect(rows(page)).toHaveCount(1);
   await expect(rows(page).first()).toContainText(courses?.other.title ?? "");
-  await expect(page.getByTestId("counter")).toHaveText("1 ders · 1 köşkte");
+  await expect(
+    page.getByTestId("counter").filter({ visible: true })
+  ).toHaveText("1 ders · 1 köşkte");
   // the köşk filter still offers every köşk that hosts the medrese
   await page.getByRole("combobox", { name: "Köşk" }).click();
   await expect(page.getByRole("option")).toHaveCount(3);
@@ -123,8 +127,12 @@ test("nazir/07 — the köşk and the state filters work together, and the count
   await page.getByRole("combobox", { name: "Durum" }).click();
   await page.getByRole("option", { name: "Durum: Taslak" }).click();
   await expect(page).toHaveURL(/durum=taslak/);
-  await expect(page.getByText("Bu süzgece uyan ders yok.")).toBeVisible();
-  await expect(page.getByTestId("counter")).toHaveText("Gösterilecek ders yok");
+  await expect(
+    page.getByText("Bu süzgece uyan ders yok.").filter({ visible: true })
+  ).toBeVisible();
+  await expect(
+    page.getByTestId("counter").filter({ visible: true })
+  ).toHaveText("Gösterilecek ders yok");
 
   await page.getByRole("link", { name: "Süzgeçleri temizle" }).click();
   await expect(rows(page)).toHaveCount(4);
@@ -133,7 +141,9 @@ test("nazir/07 — the köşk and the state filters work together, and the count
   await page.getByRole("option", { name: "Durum: Taslak" }).click();
   await expect(rows(page)).toHaveCount(1);
   await expect(rows(page).first()).toContainText(courses?.draft.title ?? "");
-  await expect(page.getByTestId("counter")).toHaveText("1 ders · 1 köşkte");
+  await expect(
+    page.getByTestId("counter").filter({ visible: true })
+  ).toHaveText("1 ders · 1 köşkte");
 });
 
 test("nazir/07 — beside the list: the köşks that host the medrese, with their courses, and the two buttons", async ({
@@ -186,7 +196,9 @@ test("nazir/17 — the dialog shows the list and keeps Kaydet off until it chang
     .click();
   await expect(dialog).toContainText("1 müderris");
   await dialog.getByRole("button", { name: "Kaydet" }).click();
-  await expect(page.getByText("Müderrisler kaydedildi")).toBeVisible();
+  await expect(
+    page.getByText("Müderrisler kaydedildi").filter({ visible: true })
+  ).toBeVisible();
 
   await expect(dialog).toHaveCount(0);
   const first = rowOf(page, base?.first.title ?? "");
@@ -254,7 +266,9 @@ test("nazir/17 — a müderris added by e-mail takes the course's müderris role
   await expect(dialog).toContainText("3 müderris");
   await expect(dialog).toContainText(TALEBE.email ?? "");
   await dialog.getByRole("button", { name: "Kaydet" }).click();
-  await expect(page.getByText("Müderrisler kaydedildi")).toBeVisible();
+  await expect(
+    page.getByText("Müderrisler kaydedildi").filter({ visible: true })
+  ).toBeVisible();
 
   const held = await courses?.muderrisOf(base?.first.id ?? "");
   expect(held?.map((m) => m.userId)).toContain(TALEBE.sub);
@@ -279,7 +293,9 @@ test("nazir/17 — when the imam leaves and one müderris remains, that one is t
   await expect(dialog).toContainText("1 müderris");
   await expect(dialog.getByRole("button", { name: "Kaydet" })).toBeEnabled();
   await dialog.getByRole("button", { name: "Kaydet" }).click();
-  await expect(page.getByText("Müderrisler kaydedildi")).toBeVisible();
+  await expect(
+    page.getByText("Müderrisler kaydedildi").filter({ visible: true })
+  ).toBeVisible();
 
   const held = await courses?.muderrisOf(base?.first.id ?? "");
   expect(held).toEqual([{ userId: courses?.second.id, isImam: true }]);
@@ -326,10 +342,14 @@ test("nazir/18 — 'Gizle' takes the course off the list and into the Arşiv, de
   await expect(ask).not.toContainText("erişemez");
   await ask.getByRole("button", { name: "Gizle" }).click();
 
-  await expect(page.getByText("Ders gizlendi")).toBeVisible();
+  await expect(
+    page.getByText("Ders gizlendi").filter({ visible: true })
+  ).toBeVisible();
   await expect(rowOf(page, courses?.other.title ?? "")).toHaveCount(0);
   await expect(rows(page)).toHaveCount(3);
-  await expect(page.getByTestId("counter")).toHaveText("3 ders · 1 köşkte");
+  await expect(
+    page.getByTestId("counter").filter({ visible: true })
+  ).toHaveText("3 ders · 1 köşkte");
   const stored = await courses?.courseRow(courses?.other.id ?? "");
   expect(stored?.archivedAt).not.toBeNull();
   expect(await courses?.audits("course.hide", courses?.other.id ?? "")).toBe(1);
@@ -340,7 +360,9 @@ test("nazir/18 — 'Gizle' takes the course off the list and into the Arşiv, de
     .filter({ hasText: courses?.other.title ?? "" });
   await expect(archived).toContainText("Ders");
   await archived.getByRole("button", { name: /^Geri al/ }).click();
-  await expect(page.getByText("Geri alındı")).toBeVisible();
+  await expect(
+    page.getByText("Geri alındı").filter({ visible: true })
+  ).toBeVisible();
 
   await open(page);
   await expect(rowOf(page, courses?.other.title ?? "")).toHaveCount(1);
@@ -355,13 +377,17 @@ test("nazir/07, 08 — a medrese nazır is refused: a notice, no list and no way
   test.skip(!(ready() && canSignIn(MEDRESE_NAZIR)), "no medrese nazır account");
   const page = await as("MEDRESE_NAZIR");
   await open(page);
-  await expect(page.getByText("Bu sayfaya izniniz yok")).toBeVisible();
+  await expect(
+    page.getByText("Bu sayfaya izniniz yok").filter({ visible: true })
+  ).toBeVisible();
   await expect(page.getByTestId("courses")).toHaveCount(0);
   await expect(
     page.getByRole("link", { name: "Medrese dersi aç" })
   ).toHaveCount(0);
 
   await page.goto(`/medrese/${base?.madrasah.id}/dersler/yeni`);
-  await expect(page.getByText("Bu sayfaya izniniz yok")).toBeVisible();
+  await expect(
+    page.getByText("Bu sayfaya izniniz yok").filter({ visible: true })
+  ).toBeVisible();
   await expect(page.getByTestId("open-course-form")).toHaveCount(0);
 });

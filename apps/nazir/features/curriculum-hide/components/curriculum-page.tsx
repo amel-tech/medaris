@@ -30,17 +30,17 @@ export async function CurriculumPage({ courseId }: { courseId: string }) {
   return (
     <>
       <header className="flex max-inline-measure flex-col gap-1">
-        <h1 className="mds-h1">{t("Curriculum.title")}</h1>
+        <h1 className="mds-h1">{t("CurriculumHide.title")}</h1>
         <p className="mds-body-sm text-neutral-muted">
-          {t("Curriculum.intro")}
+          {t("CurriculumHide.intro")}
         </p>
       </header>
       {course.status !== "ok" ? (
         <PageProblem
           status={course.status}
           failed={{
-            title: t("Curriculum.loadFailedTitle"),
-            text: t("Curriculum.loadFailed"),
+            title: t("CurriculumHide.loadFailedTitle"),
+            text: t("CurriculumHide.loadFailed"),
           }}
         />
       ) : (

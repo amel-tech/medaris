@@ -54,7 +54,9 @@ const signIn = async (page: Page) => {
 
 /** The day group a session sits in, found by the session's title. */
 const group = (page: Page, title: string) =>
-  page.locator("section.mds-card", { has: page.getByText(title) });
+  page
+    .locator("section.mds-card", { has: page.getByText(title) })
+    .filter({ visible: true });
 
 /** Text that is on screen: Next keeps the page it navigated away from, hidden, in the DOM. */
 const shown = (page: Page, text: string) =>
@@ -300,17 +302,29 @@ test.describe("Takvim aboneliği (tedris/23)", () => {
       page.getByRole("heading", { level: 1, name: "Takvim aboneliği" })
     ).toBeVisible();
     await expect(
-      page.getByText("Henüz bir takvim bağlantın yok.")
+      page
+        .getByText("Henüz bir takvim bağlantın yok.")
+        .filter({ visible: true })
     ).toBeVisible();
-    await expect(page.getByText("Takvimine nasıl eklenir")).toBeVisible();
-    await expect(page.getByText("Bu takvimde neler var")).toBeVisible();
-    await expect(page.getByText("Bağlantın sana özel")).toBeVisible();
     await expect(
-      page.getByText("Google değişiklikleri geç gösterebilir")
+      page.getByText("Takvimine nasıl eklenir").filter({ visible: true })
+    ).toBeVisible();
+    await expect(
+      page.getByText("Bu takvimde neler var").filter({ visible: true })
+    ).toBeVisible();
+    await expect(
+      page.getByText("Bağlantın sana özel").filter({ visible: true })
+    ).toBeVisible();
+    await expect(
+      page
+        .getByText("Google değişiklikleri geç gösterebilir")
+        .filter({ visible: true })
     ).toBeVisible();
 
     await page.getByRole("button", { name: "Bağlantı oluştur" }).click();
-    await expect(page.getByText("Bağlantını şimdi kopyala")).toBeVisible();
+    await expect(
+      page.getByText("Bağlantını şimdi kopyala").filter({ visible: true })
+    ).toBeVisible();
     const google = page.locator("#calendar-google");
     const apple = page.locator("#calendar-apple");
     const url = await google.inputValue();
@@ -321,7 +335,9 @@ test.describe("Takvim aboneliği (tedris/23)", () => {
     await expect(
       page.getByRole("link", { name: "Apple Takvim’de aç" })
     ).toHaveAttribute("href", /^webcal:\/\//);
-    await expect(page.getByText(/Oluşturuldu:/)).toBeVisible();
+    await expect(
+      page.getByText(/Oluşturuldu:/).filter({ visible: true })
+    ).toBeVisible();
 
     // The feed, through tedris-web's own route, as a calendar app would read it.
     const feed = await request.get(feedPath(url));
@@ -357,7 +373,9 @@ test.describe("Takvim aboneliği (tedris/23)", () => {
       .getByRole("alertdialog")
       .getByRole("button", { name: "Yenile" })
       .click();
-    await expect(page.getByText("Bağlantını şimdi kopyala")).toBeVisible();
+    await expect(
+      page.getByText("Bağlantını şimdi kopyala").filter({ visible: true })
+    ).toBeVisible();
     const renewed = await page.locator("#calendar-google").inputValue();
     expect(renewed).not.toBe(url);
     expect((await request.get(feedPath(url))).status()).toBe(404);
@@ -379,7 +397,9 @@ test.describe("Takvim aboneliği (tedris/23)", () => {
     expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
       google
     );
-    await expect(page.getByText("Bağlantı kopyalandı")).toBeVisible();
+    await expect(
+      page.getByText("Bağlantı kopyalandı").filter({ visible: true })
+    ).toBeVisible();
     await page
       .getByRole("button", { name: "Apple Takvim bağlantısını kopyala" })
       .click();
@@ -456,8 +476,9 @@ test.describe("the signed-in phone menu (tedris/44)", () => {
     await expect(
       main.getByRole("heading", { name: /Selâmün aleyküm/ })
     ).toBeVisible();
-    await expect(main.getByText(/Sıradaki celsen:/)).toBeVisible();
-    const card = main.locator(".mds-card", { hasText: "Sıradaki celse" });
+    await expect(main.getByText(/Sıradaki celsen /)).toBeVisible();
+    // a region of its own since #179, no longer a card
+    const card = main.getByRole("region", { name: "Sıradaki celse" });
     await expect(card).toBeVisible();
     await expect(
       card.getByRole("link", { name: "Celse sayfası" })

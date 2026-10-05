@@ -82,7 +82,9 @@ test("an unknown or malformed medrese id answers 404 with the not-found state an
   for (const id of ["a0000000-0000-4000-8000-0000000000ff", "abc"]) {
     const response = await page.goto(page_(id));
     expect(response?.status()).toBe(404);
-    await expect(page.getByText("Sayfa bulunamadı")).toBeVisible();
+    await expect(
+      page.getByText("Sayfa bulunamadı").filter({ visible: true })
+    ).toBeVisible();
   }
   expect(errors).toEqual([]);
 });

@@ -58,8 +58,9 @@ test.beforeEach(async () => {
     nazim: KOSK_NAZIM.sub as string,
     muderris: MUDERRIS.sub as string,
   });
-  // 3 unread (two today, one yesterday), 3 read, one of them of a type this
-  // build does not word (it must stay out of the Yasaklar chip)
+  // 3 unread (two today, one yesterday), 3 read; the sixth row is a talebe's
+  // (Tedris's) type: nizam asks for the types it words only, so that row is
+  // neither drawn nor counted, by 'Tümü', the tab counts, the bell or the badge
   seed = await seedNotifications(KOSK_NAZIM.sub as string, [
     {
       type: "COURSE_BAN_PLACED",
@@ -120,7 +121,8 @@ test("nizam/37 — the list groups the köşk nazımı's notifications by day, n
   await expect(page.getByRole("heading", { name: "Bugün" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Dün" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Daha önce" })).toBeVisible();
-  await expect(rows(page)).toHaveCount(6);
+  // the five ban rows: the seeded talebe-side notification is not nizam's
+  await expect(rows(page)).toHaveCount(5);
 
   const first = rows(page).first();
   await expect(first).toContainText("Yeni ders yasağı");
@@ -143,7 +145,7 @@ test("nizam/37 — 'Okunmamış' lists only the unread, and the tab counts agree
   await signIn(page, KOSK_NAZIM);
   await page.goto("/tr/bildirimler");
 
-  await expect(page.getByRole("tab", { name: /^Tümü/ })).toContainText("6");
+  await expect(page.getByRole("tab", { name: /^Tümü/ })).toContainText("5");
   await expect(page.getByRole("tab", { name: /^Okunmamış/ })).toContainText(
     "3"
   );
@@ -207,7 +209,9 @@ test("nizam/37 — 'Tümünü okundu say' reads everything: no 'Yeni', zero unre
   await expect(bell(page)).toHaveAttribute("aria-label", "Bildirimler");
   await expect(rows(page).getByText("Yeni", { exact: true })).toHaveCount(0);
   await page.getByRole("tab", { name: /^Okunmamış/ }).click();
-  await expect(page.getByText("Okunmamış bildirim yok")).toBeVisible();
+  await expect(
+    page.getByText("Okunmamış bildirim yok").filter({ visible: true })
+  ).toBeVisible();
   expect((await seed?.rows())?.every((r) => !r.unread)).toBe(true);
 });
 
@@ -218,8 +222,9 @@ test("nizam/37 — the 'Yasaklar' chip keeps the ban rows and leaves out other k
   await signIn(page, KOSK_NAZIM);
   await page.goto("/tr/bildirimler");
 
-  await expect(rows(page)).toHaveCount(6);
+  await expect(rows(page)).toHaveCount(5);
   await page.getByRole("button", { name: "Yasaklar", exact: true }).click();
+  // every type nizam words is a ban type, so the chip keeps all five
   await expect(rows(page)).toHaveCount(5);
   for (const row of await rows(page).all()) {
     await expect(row).toHaveAttribute("data-type", /BAN_PLACED$/);
@@ -230,7 +235,7 @@ test("nizam/37 — the 'Yasaklar' chip keeps the ban rows and leaves out other k
   await page.getByRole("button", { name: "Tümü", exact: true }).click();
   await expect(rows(page)).toHaveCount(3);
   await page.getByRole("tab", { name: /^Tümü/ }).click();
-  await expect(rows(page)).toHaveCount(6);
+  await expect(rows(page)).toHaveCount(5);
 });
 
 test("nizam/37 — a signed-out visitor is sent to sign in", async ({ page }) => {
@@ -260,7 +265,9 @@ test("nizam/46 — a ban placed by the köşk nazımı reaches the Medaris nazı
     const dialog = page.getByRole("dialog", { name: "Talebeyi yasakla" });
     await dialog.getByRole("textbox").fill("Celsede başka talebelere hakaret.");
     await dialog.getByRole("button", { name: "Yasakla", exact: true }).click();
-    await expect(page.getByText("Yasak kaydedildi")).toBeVisible();
+    await expect(
+      page.getByText("Yasak kaydedildi").filter({ visible: true })
+    ).toBeVisible();
 
     const other = await browser.newContext();
     const medarisPage = await other.newPage();
@@ -279,9 +286,9 @@ test("nizam/46 — a ban placed by the köşk nazımı reaches the Medaris nazı
     await expect(row).toContainText("Yeni");
     await other.close();
 
-    // the one who placed it is not told of their own act: still the seeded six
+    // the one who placed it is not told of their own act: still the seeded five
     await page.goto("/tr/bildirimler");
-    await expect(rows(page)).toHaveCount(6);
+    await expect(rows(page)).toHaveCount(5);
   } finally {
     await medaris.remove();
   }

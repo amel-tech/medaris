@@ -107,13 +107,6 @@ export function endLabel(
   };
 }
 
-// ---- the dismissal gate ----------------------------------------------------
-
-/** "Görevden al" opens on 4 Ekim 2026, 00:00 in Istanbul (the version gate); the screen never says why. */
-export const DISMISS_OPENS_AT = Date.parse("2026-10-04T00:00:00+03:00");
-
-export const dismissOpen = (now: number): boolean => now >= DISMISS_OPENS_AT;
-
 // ---- what a person holds ---------------------------------------------------
 
 /** A group as a chip and a word: "Ders denetimi" and "her ders". */

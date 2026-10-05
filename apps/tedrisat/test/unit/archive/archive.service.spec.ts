@@ -16,6 +16,7 @@ import {
 import type { HideLevel } from "../../../src/archive/hide-level";
 import { KoskNotFoundError } from "../../../src/kosk/errors/kosk-not-found.error";
 import type { KoskService } from "../../../src/kosk/kosk.service";
+import type { LessonInvitationService } from "../../../src/lesson-invitation/lesson-invitation.service";
 
 const ADMIN = { sub: "a1", realm_access: { roles: ["SYSTEM_ADMIN"] } };
 const NAZIM = { sub: "a2" };
@@ -88,7 +89,8 @@ function serviceWith(
     service: new ArchiveService(
       repo as unknown as ArchiveRepository,
       koskService,
-      authz
+      authz,
+      { kick: vi.fn() } as unknown as LessonInvitationService
     ),
     koskService,
     effective,

@@ -1,5 +1,10 @@
 import { randomUUID } from "node:crypto";
 import pg from "pg";
+import {
+  type HeldMedarisNazim,
+  holdMedarisNazim,
+  type MedarisGrant,
+} from "./medaris-nazim";
 
 /**
  * What the ban specs put in tedrisat's database (MDRS-177), under random ids,
@@ -42,6 +47,8 @@ export interface BanFixture {
   addBans: (count: number) => Promise<void>;
   /** the audit actions written for the köşk's bans, oldest first */
   auditActions: () => Promise<string[]>;
+  /** a Medaris nazımı holding exactly these permissions, until `remove` */
+  makeMedarisNazim: (sub: string, grants: MedarisGrant[]) => Promise<void>;
   remove: () => Promise<void>;
 }
 
@@ -145,6 +152,7 @@ export async function seedBans(subs: {
     throw error;
   }
   const people = [talebe.id, byMuderris.id, byPlatform.id];
+  const medarisNazims: HeldMedarisNazim[] = [];
   return {
     koskId,
     koskName,
@@ -216,8 +224,12 @@ export async function seedBans(subs: {
       );
       return rows.map((r) => r.action);
     },
+    makeMedarisNazim: async (sub, grants) => {
+      medarisNazims.push(await holdMedarisNazim(sub, grants));
+    },
     remove: async () => {
       try {
+        for (const held of medarisNazims.reverse()) await held.release();
         await client.query("begin");
         await client.query("delete from bans where kosk_id = $1", [koskId]);
         await client.query(

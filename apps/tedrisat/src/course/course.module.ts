@@ -2,8 +2,10 @@ import { AuthGuardModule } from "@medaris/common";
 import { Module } from "@nestjs/common";
 import { AssignmentModule } from "../assignment/assignment.module";
 import { BanModule } from "../ban/ban.module";
+import { BunnyStreamModule } from "../bunny-stream/bunny-stream.module";
 import { DatabaseService } from "../database/database.service";
 import { KoskModule } from "../kosk/kosk.module";
+import { LessonInvitationModule } from "../lesson-invitation/lesson-invitation.module";
 import { NotificationModule } from "../notification/notification.module";
 import { PlatformPolicyModule } from "../platform-policy/platform-policy.module";
 import { CourseController } from "./course.controller";
@@ -18,6 +20,9 @@ import { LiveStreamService } from "./live-stream.service";
 import { RecordingController } from "./recording.controller";
 import { RecordingRepository } from "./recording.repository";
 import { RecordingService } from "./recording.service";
+import { RecordingEncodingPoller } from "./recording-encoding.poller";
+import { RecordingUploadController } from "./recording-upload.controller";
+import { RecordingUploadService } from "./recording-upload.service";
 
 @Module({
   imports: [
@@ -27,12 +32,15 @@ import { RecordingService } from "./recording.service";
     PlatformPolicyModule,
     NotificationModule,
     AssignmentModule,
+    BunnyStreamModule,
+    LessonInvitationModule,
   ],
   controllers: [
     CourseController,
     LessonController,
     LiveStreamController,
     RecordingController,
+    RecordingUploadController,
   ],
   providers: [
     CourseService,
@@ -40,6 +48,8 @@ import { RecordingService } from "./recording.service";
     LiveStreamService,
     RecordingRepository,
     RecordingService,
+    RecordingUploadService,
+    RecordingEncodingPoller,
     CourseStatsRepository,
     CourseNotifier,
     CourseNotificationRepository,
@@ -47,7 +57,8 @@ import { RecordingService } from "./recording.service";
   ],
   // For AuthzBindingsModule's role resolver (MDRS-41): findKoskId,
   // isMuderris and findEnrollment have no CourseService counterpart, so the
-  // repository is what is exported here.
-  exports: [CourseRepository],
+  // repository is what is exported here. The service is the lesson notes'
+  // (MDRS-150): whether the caller may see the course at all is `getDetail`'s.
+  exports: [CourseRepository, CourseService],
 })
 export class CourseModule {}

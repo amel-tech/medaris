@@ -16,6 +16,12 @@ export interface AssignmentFixture {
   draft: { id: string; title: string };
   hidden: { id: string; title: string };
   enrolledCount: number;
+  /**
+   * The köşk and course seats each account already holds outside this fixture
+   * (the shared test seed gives them some): each is one more row on their
+   * account page.
+   */
+  standing: { muderris: number; koskNazim: number };
   remove: () => Promise<void>;
 }
 
@@ -132,6 +138,21 @@ export async function seedAssignments(
     throw error;
   }
 
+  const held = async (user: string) =>
+    (
+      await client.query(
+        `select count(*)::int as n from role_assignments
+          where user_id = $1 and revoked_at is null
+            and (expires_at is null or expires_at > now())
+            and scope_id <> all($2)`,
+        [user, [koskId, madrasahId, published.id, draft.id, hidden.id]]
+      )
+    ).rows[0].n as number;
+  const standing = {
+    muderris: await held(subs.muderris),
+    koskNazim: await held(subs.koskNazim),
+  };
+
   return {
     koskId,
     koskName,
@@ -140,6 +161,7 @@ export async function seedAssignments(
     draft,
     hidden,
     enrolledCount: students.length,
+    standing,
     remove: async () => {
       const courseIds = [published.id, draft.id, hidden.id];
       try {

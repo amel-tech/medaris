@@ -3927,7 +3927,7 @@
     },
     "/courses/{id}/recordings": {
       "get": {
-        "description": "Open to callers with no token, like the course page. A caller holding `view_details` sees every recording; everyone else, PENDING and revoked included, only those with `visibility` PUBLIC. A recording whose `status` is PROCESSING is listed with a null `url`. Sorted by week number descending, then by `recordedAt` descending (MDRS-162).",
+        "description": "Open to callers with no token, like the course page. A caller holding `view_details` sees every recording; everyone else, PENDING and revoked included, only those with `visibility` PUBLIC. A recording whose `status` is PROCESSING is listed with a null `url`. Sorted by week number descending, then by `recordedAt` descending (MDRS-162). A READY BUNNY recording's `url` is a player link signed for this response, built only for a recording the caller may see, and expiring after `BUNNY_STREAM_EMBED_TTL_SECONDS` (6 hours by default); the response is `Cache-Control: private, no-store` (MDRS-119). What this protects: with embed token authentication on in the Bunny library, only a signed link opens the player page, and a signed link passed on opens it until it expires; the stream behind the page (playlist, segments, MP4) is protected only by the library's separate CDN token authentication, so a viewer who saved the video address can play it after the link has expired unless that is on. A YouTube, Drive or other pasted link plays for anyone who has it; for those the filter decides who is shown the link, not who can open it.",
         "operationId": "listCourseRecordings",
         "parameters": [
           {
@@ -4558,6 +4558,125 @@
           }
         ],
         "summary": "Rename a recording, replace its link, or change who may watch it",
+        "tags": [
+          "lessons"
+        ]
+      }
+    },
+    "/lessons/{id}/recordings/uploads": {
+      "post": {
+        "description": "`recording.upload` (the müderris and the köşk nazımı by default, a ders nazırı when given it). Creates the video in the Medaris Bunny Stream library, records it as the session's recording with `provider` BUNNY and `status` PROCESSING, and returns what the browser needs for a TUS upload straight to Bunny; the file never passes through this API. The signature expires 24 hours later. A session that already has a recording is refused with 409, unless that recording is a Bunny upload that FAILED, which this one replaces. Written to `audit_log` as `recording.upload_start`. The recording becomes READY or FAILED when the encoding poll sees Bunny finish.",
+        "operationId": "startRecordingUpload",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartRecordingUploadDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordingUploadResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Field validation."
+          },
+          "403": {
+            "description": "AUTHZ_FORBIDDEN"
+          },
+          "404": {
+            "description": "LESSON_NOT_FOUND"
+          },
+          "409": {
+            "description": "RECORDING_EXISTS"
+          },
+          "503": {
+            "description": "BUNNY_STREAM_NOT_CONFIGURED (the library is not set on this server) or BUNNY_STREAM_UNAVAILABLE (Bunny did not answer)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Start uploading a session's recording to Bunny Stream",
+        "tags": [
+          "lessons"
+        ]
+      }
+    },
+    "/lessons/{id}/recordings/uploads/{videoId}/signature": {
+      "post": {
+        "description": "`recording.upload`, as for starting one. Returns the same video's TUS values so an interrupted upload continues where it stopped. The expiry is the upload's original one: signing again never extends it. 409 once the upload is no longer PROCESSING or its lifetime has passed (RECORDING_UPLOAD_CLOSED, with `reason`).",
+        "operationId": "resignRecordingUpload",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "videoId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordingUploadResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "AUTHZ_FORBIDDEN"
+          },
+          "404": {
+            "description": "LESSON_NOT_FOUND or RECORDING_UPLOAD_NOT_FOUND"
+          },
+          "409": {
+            "description": "RECORDING_UPLOAD_CLOSED"
+          },
+          "503": {
+            "description": "BUNNY_STREAM_NOT_CONFIGURED"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Sign a session's Bunny upload again, to resume it",
         "tags": [
           "lessons"
         ]
@@ -7749,6 +7868,542 @@
         "summary": "Withdraw a medrese's hosting right",
         "tags": [
           "kosks"
+        ]
+      }
+    },
+    "/lessons/{id}/notes": {
+      "get": {
+        "description": "Only the caller's notes, whoever else wrote one on the session. By `offsetSeconds` ascending, notes without a position last, then oldest first. Never lists anyone else's notes, a SYSTEM_ADMIN's request included. A talebe who was removed or barred still reads their own while the course is open; a course in a passive scope is closed to everyone but platform management and its köşk's nazımı (403 LESSON_NOTE_FORBIDDEN), and a hidden course is as not found as a session that is not there (MDRS-150).",
+        "operationId": "listLessonNotes",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LessonNoteResponse"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "LESSON_NOTE_FORBIDDEN"
+          },
+          "404": {
+            "description": "LESSON_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The caller's own notes on a session",
+        "tags": [
+          "lessons"
+        ]
+      },
+      "post": {
+        "description": "An enrolled talebe only (ENROLLED or COMPLETED, and not barred), and only while the course's content is open: a passive scope closes it. `offsetSeconds` is the player position from the start of the video and may be left out. `body` is Markdown, 1 to 4000 characters after trimming; it is stored as typed and never rendered as HTML.",
+        "operationId": "createLessonNote",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateLessonNoteDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LessonNoteResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Field validation"
+          },
+          "403": {
+            "description": "LESSON_NOTE_FORBIDDEN"
+          },
+          "404": {
+            "description": "LESSON_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Write a note on a session's video",
+        "tags": [
+          "lessons"
+        ]
+      }
+    },
+    "/lessons/{id}/notes/{noteId}": {
+      "patch": {
+        "description": "A key left out stays as it is; `offsetSeconds: null` clears the position. The same rule as writing one: an enrolled talebe only. 404 for a note the caller did not write, as for one that does not exist.",
+        "operationId": "updateLessonNote",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "noteId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateLessonNoteDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LessonNoteResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Field validation"
+          },
+          "403": {
+            "description": "LESSON_NOTE_FORBIDDEN"
+          },
+          "404": {
+            "description": "LESSON_NOT_FOUND, LESSON_NOTE_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Edit the caller's own note",
+        "tags": [
+          "lessons"
+        ]
+      },
+      "delete": {
+        "description": "The note is removed for good; there is no history. A talebe who was removed or barred may still delete their own while the course is open, as they may read them; a passive scope closes it. 404 for a note the caller did not write, as for one that does not exist.",
+        "operationId": "deleteLessonNote",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "noteId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "403": {
+            "description": "LESSON_NOTE_FORBIDDEN"
+          },
+          "404": {
+            "description": "LESSON_NOT_FOUND, LESSON_NOTE_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Delete the caller's own note",
+        "tags": [
+          "lessons"
+        ]
+      }
+    },
+    "/lessons/{id}/questions": {
+      "post": {
+        "description": "An enrolled talebe only (ENROLLED or COMPLETED, and not barred), and only while the course's content is open: a passive scope closes it. `body` is Markdown, 1 to 4000 characters after trimming; it is stored as typed and never rendered as HTML. Only the author and the people who may answer see it. No notification is sent.",
+        "operationId": "askLessonQuestion",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AskLessonQuestionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LessonQuestionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Field validation"
+          },
+          "403": {
+            "description": "LESSON_QUESTION_FORBIDDEN"
+          },
+          "404": {
+            "description": "LESSON_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Ask the course staff a question on a session",
+        "tags": [
+          "lessons"
+        ]
+      }
+    },
+    "/courses/{id}/questions/mine": {
+      "get": {
+        "description": "Only the questions the caller asked, newest first, whoever else asked on the course and whatever has become of the caller's enrollment, while the course is open: a course in a passive scope is closed to everyone but platform management and its köşk's nazımı (403 LESSON_QUESTION_FORBIDDEN), and a hidden course or a draft is not found. One page at a time: pass `nextCursor` as `cursor` for the next. What the author's Sorularım tab reads.",
+        "operationId": "listMyCourseQuestions",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "1 to 50, larger values are lowered to it; default 20.",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "`nextCursor` of the previous page; left out for the first.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedLessonQuestionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A cursor this server did not issue (INVALID_QUESTION_CURSOR)."
+          },
+          "403": {
+            "description": "LESSON_QUESTION_FORBIDDEN"
+          },
+          "404": {
+            "description": "COURSE_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The caller's own questions in a course, with their answers",
+        "tags": [
+          "lessons"
+        ]
+      }
+    },
+    "/courses/{id}/questions": {
+      "get": {
+        "description": "Every question asked in the course, those still waiting first and oldest first, with who asked, one page at a time: pass `nextCursor` as `cursor` for the next. `question.answer`: the müderris by default, a ders nazırı when given it, and the catalogue's other holders (the köşk nazımı through `course.manage_all`, the başnazım). 403 for anyone else, a talebe included.",
+        "operationId": "listCourseQuestions",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "1 to 50, larger values are lowered to it; default 20.",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "`nextCursor` of the previous page; left out for the first.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedCourseQuestionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A cursor this server did not issue (INVALID_QUESTION_CURSOR)."
+          },
+          "403": {
+            "description": "AUTHZ_FORBIDDEN"
+          },
+          "404": {
+            "description": "COURSE_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The course's questions, for the people who answer them",
+        "tags": [
+          "lessons"
+        ]
+      }
+    },
+    "/questions/{questionId}/answer": {
+      "put": {
+        "description": "`question.answer`. Answering again replaces the earlier answer; there is no history. `body` is Markdown, 1 to 4000 characters after trimming. 404 for a question that does not exist and for one in a course where the caller may not answer, so its existence is not confirmed to them. No notification is sent.",
+        "operationId": "answerLessonQuestion",
+        "parameters": [
+          {
+            "name": "questionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnswerLessonQuestionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CourseQuestionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Field validation"
+          },
+          "404": {
+            "description": "LESSON_QUESTION_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Answer a question, or replace the answer",
+        "tags": [
+          "lessons"
+        ]
+      }
+    },
+    "/questions/{questionId}": {
+      "patch": {
+        "description": "While nobody has answered it: the answer belongs to the question as it was asked, so an answered question is 409. The same rule as asking otherwise: an enrolled talebe only, and `body` is Markdown, 1 to 4000 characters after trimming. 404 for a question the caller did not ask, the staff's included, as for one that does not exist.",
+        "operationId": "updateLessonQuestion",
+        "parameters": [
+          {
+            "name": "questionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateLessonQuestionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LessonQuestionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Field validation"
+          },
+          "403": {
+            "description": "LESSON_QUESTION_FORBIDDEN"
+          },
+          "404": {
+            "description": "LESSON_QUESTION_NOT_FOUND"
+          },
+          "409": {
+            "description": "LESSON_QUESTION_ANSWERED"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Edit the caller's own question",
+        "tags": [
+          "lessons"
+        ]
+      },
+      "delete": {
+        "description": "At any time, whether or not it is answered; the answer goes with it and there is no history. Needs no enrollment, so a talebe who was removed can still delete what they asked while the course is open; a passive scope closes it (403). 404 for a question the caller did not ask, the staff's included, as for one that does not exist.",
+        "operationId": "deleteLessonQuestion",
+        "parameters": [
+          {
+            "name": "questionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "403": {
+            "description": "LESSON_QUESTION_FORBIDDEN"
+          },
+          "404": {
+            "description": "LESSON_QUESTION_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Delete the caller's own question",
+        "tags": [
+          "lessons"
         ]
       }
     },
@@ -15401,7 +16056,8 @@
         "enum": [
           "YOUTUBE",
           "DRIVE",
-          "OTHER"
+          "OTHER",
+          "BUNNY"
         ]
       },
       "RecordingVisibility": {
@@ -15415,7 +16071,8 @@
         "type": "string",
         "enum": [
           "PROCESSING",
-          "READY"
+          "READY",
+          "FAILED"
         ]
       },
       "SessionRecordingResponse": {
@@ -15445,7 +16102,8 @@
           },
           "url": {
             "type": "string",
-            "nullable": true
+            "nullable": true,
+            "description": "As `RecordingResponse.url`: a BUNNY recording's link is a player link signed for this response, with its own `expires`."
           },
           "visibility": {
             "allOf": [
@@ -15667,7 +16325,7 @@
           "url": {
             "type": "string",
             "nullable": true,
-            "description": "Null while the recording is PROCESSING."
+            "description": "Null unless the recording is READY. For a BUNNY recording it is Bunny's player link, `https://player.mediadelivery.net/embed/<libraryId>/<videoId>?token=<token>&expires=<unix seconds>`, signed for this response only and only for a caller allowed to see the recording (MDRS-116, MDRS-119); its player page opens until `expires` (6 hours by default, `BUNNY_STREAM_EMBED_TTL_SECONDS`), even if passed on; whether the stream behind it stops too depends on the library's CDN token authentication (docs/migration/mdrs-119-signed-playback.md). Any other provider's link is returned as stored: anyone holding it can open it, so for those our authorization decides who is shown the link, not who can play it."
           },
           "visibility": {
             "allOf": [
@@ -16318,6 +16976,72 @@
             ]
           }
         }
+      },
+      "StartRecordingUploadDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "example": "Emsile: 3. celse kaydı",
+            "maxLength": 200,
+            "description": "The recording's title, shown on the course page and given to Bunny as the video's title."
+          },
+          "visibility": {
+            "default": "ENROLLED",
+            "description": "ENROLLED (the default) shows it only to those who may read the course's content; PUBLIC to everyone, unless the course is closed or a policy keeps recordings from the public.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RecordingVisibility"
+              }
+            ]
+          },
+          "recordedAt": {
+            "format": "date-time",
+            "type": "string",
+            "example": "2026-10-03T18:00:00.000Z"
+          }
+        },
+        "required": [
+          "title"
+        ]
+      },
+      "RecordingUploadResponse": {
+        "type": "object",
+        "properties": {
+          "recordingId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The recording row this upload fills."
+          },
+          "endpoint": {
+            "type": "string",
+            "example": "https://video.bunnycdn.com/tusupload"
+          },
+          "libraryId": {
+            "type": "string",
+            "example": "123456"
+          },
+          "videoId": {
+            "type": "string",
+            "description": "Bunny's id of the video, the same on every re-sign."
+          },
+          "authorizationExpire": {
+            "type": "number",
+            "description": "Unix seconds. The end of the upload's lifetime: 24 hours after it was started, and never moved by a re-sign."
+          },
+          "authorizationSignature": {
+            "type": "string",
+            "description": "SHA256_HEX(library_id + api_key + expiration + video_id)."
+          }
+        },
+        "required": [
+          "recordingId",
+          "endpoint",
+          "libraryId",
+          "videoId",
+          "authorizationExpire",
+          "authorizationSignature"
+        ]
       },
       "CreateBanDto": {
         "type": "object",
@@ -18814,6 +19538,307 @@
         "enum": [
           "KEEP",
           "HIDE"
+        ]
+      },
+      "LessonNoteResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "lessonId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "offsetSeconds": {
+            "type": "number",
+            "nullable": true,
+            "description": "Player position in whole seconds from the start of the video; null when unknown. The same value points at the same moment on the live stream and in its recording."
+          },
+          "body": {
+            "type": "string",
+            "description": "Markdown source, stored as typed and rendered by the client. Raw HTML is never rendered."
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "lessonId",
+          "offsetSeconds",
+          "body",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "CreateLessonNoteDto": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000,
+            "description": "Markdown source, stored as typed and rendered by the client. Raw HTML is never rendered.",
+            "example": "Fâil merfû'dur — **ref'** alameti damme."
+          },
+          "offsetSeconds": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 0,
+            "maximum": 359999,
+            "example": 754,
+            "description": "Player position in whole seconds from the start of the video; null when unknown. The same value points at the same moment on the live stream and in its recording."
+          }
+        },
+        "required": [
+          "body"
+        ]
+      },
+      "UpdateLessonNoteDto": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000,
+            "description": "Markdown source, stored as typed and rendered by the client. Raw HTML is never rendered."
+          },
+          "offsetSeconds": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 0,
+            "maximum": 359999,
+            "description": "Player position in whole seconds from the start of the video; null when unknown. The same value points at the same moment on the live stream and in its recording."
+          }
+        }
+      },
+      "AskLessonQuestionDto": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000,
+            "description": "Markdown source, stored as typed and rendered by the client. Raw HTML is never rendered.",
+            "example": "Hocam, ikinci bâbdaki istisnâ mef'ûl-ü bih midir?"
+          }
+        },
+        "required": [
+          "body"
+        ]
+      },
+      "QuestionPersonResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true,
+            "description": "Null when the account carries neither a name nor an e-mail."
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
+      "QuestionAnswerResponse": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "string",
+            "description": "Markdown source, stored as typed and rendered by the client. Raw HTML is never rendered."
+          },
+          "answeredAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "answeredBy": {
+            "$ref": "#/components/schemas/QuestionPersonResponse"
+          }
+        },
+        "required": [
+          "body",
+          "answeredAt",
+          "answeredBy"
+        ]
+      },
+      "LessonQuestionResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "lessonId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "lessonTitle": {
+            "type": "string",
+            "description": "Title of the session the question is on."
+          },
+          "weekNumber": {
+            "type": "number",
+            "description": "Number of the week the session is in."
+          },
+          "body": {
+            "type": "string",
+            "description": "Markdown source, stored as typed and rendered by the client. Raw HTML is never rendered."
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "answer": {
+            "nullable": true,
+            "description": "Null while nobody has answered.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/QuestionAnswerResponse"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "lessonId",
+          "lessonTitle",
+          "weekNumber",
+          "body",
+          "createdAt",
+          "answer"
+        ]
+      },
+      "PaginatedLessonQuestionResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LessonQuestionResponse"
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true,
+            "description": "Pass as `cursor` for the next page; null on the last page. Opaque."
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor"
+        ]
+      },
+      "CourseQuestionResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "lessonId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "lessonTitle": {
+            "type": "string",
+            "description": "Title of the session the question is on."
+          },
+          "weekNumber": {
+            "type": "number",
+            "description": "Number of the week the session is in."
+          },
+          "body": {
+            "type": "string",
+            "description": "Markdown source, stored as typed and rendered by the client. Raw HTML is never rendered."
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "answer": {
+            "nullable": true,
+            "description": "Null while nobody has answered.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/QuestionAnswerResponse"
+              }
+            ]
+          },
+          "author": {
+            "$ref": "#/components/schemas/QuestionPersonResponse"
+          }
+        },
+        "required": [
+          "id",
+          "lessonId",
+          "lessonTitle",
+          "weekNumber",
+          "body",
+          "createdAt",
+          "answer",
+          "author"
+        ]
+      },
+      "PaginatedCourseQuestionResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CourseQuestionResponse"
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true,
+            "description": "Pass as `cursor` for the next page; null on the last page. Opaque."
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor"
+        ]
+      },
+      "AnswerLessonQuestionDto": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000,
+            "description": "Markdown source, stored as typed and rendered by the client. Raw HTML is never rendered."
+          }
+        },
+        "required": [
+          "body"
+        ]
+      },
+      "UpdateLessonQuestionDto": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000,
+            "description": "Markdown source, stored as typed and rendered by the client. Raw HTML is never rendered."
+          }
+        },
+        "required": [
+          "body"
         ]
       },
       "CalendarFeedStatusResponse": {
@@ -21683,6 +22708,10 @@
             "type": "string",
             "example": "tr"
           },
+          "lessonInvitationEmails": {
+            "type": "boolean",
+            "description": "Whether lesson invitations, their updates and cancellations are e-mailed to the caller (MDRS-121)"
+          },
           "createdAt": {
             "format": "date-time",
             "type": "string"
@@ -21712,6 +22741,7 @@
         "required": [
           "id",
           "emailVerified",
+          "lessonInvitationEmails",
           "createdAt",
           "lastSeenAt",
           "roles",
@@ -21743,6 +22773,10 @@
             "nullable": true,
             "example": "tr",
             "description": "BCP 47 language tag"
+          },
+          "lessonInvitationEmails": {
+            "type": "boolean",
+            "description": "Lesson invitations by e-mail (MDRS-121). False stops every further invitation, update and cancellation."
           }
         }
       },

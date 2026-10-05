@@ -318,6 +318,9 @@ export function CurriculumEditor({
             >
               {t("Curriculum.generate")}
             </Button>
+            <Button variant="ghost" href={`/ders/${course.id}/mufredat/gizle`}>
+              {t("Curriculum.hidePage")}
+            </Button>
             <Button
               variant="outline"
               type="button"

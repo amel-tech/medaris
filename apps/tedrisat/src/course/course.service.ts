@@ -20,10 +20,12 @@ import {
 } from "../archive/hide-level";
 import { UserDirectoryService } from "../assignment/user-directory.service";
 import { BanService } from "../ban/ban.service";
+import { BunnyStreamClient } from "../bunny-stream/bunny-stream.client";
 import { SCOPE_TYPES } from "../database/schema/scope-type.schema";
 import { KoskForbiddenError } from "../kosk/errors/kosk-forbidden.error";
 import { KoskNotFoundError } from "../kosk/errors/kosk-not-found.error";
 import { KoskService } from "../kosk/kosk.service";
+import { LessonInvitationService } from "../lesson-invitation/lesson-invitation.service";
 import {
   PlatformPolicyLockedError,
   PlatformPolicyService,
@@ -74,6 +76,8 @@ import {
   type IRecordingRow,
   type IRecordingView,
   liveStreamFor,
+  RecordingProvider,
+  RecordingStatus,
   visibleRecordings,
 } from "./domain/recording";
 import { buildSessionView, type ISessionView } from "./domain/session-view";
@@ -103,7 +107,10 @@ import { MuderrisAssignmentForbiddenError } from "./errors/muderris-assignment-f
 import { MuderrisDuplicateUserError } from "./errors/muderris-duplicate-user.error";
 import { MuderrisListInvalidError } from "./errors/muderris-list-invalid.error";
 import { MuderrisUnknownUserError } from "./errors/muderris-unknown-user.error";
-import { RecordingRepository } from "./recording.repository";
+import {
+  type IStoredRecording,
+  RecordingRepository,
+} from "./recording.repository";
 
 /** A weekly pattern as the API takes it; `timeZone` defaults to the course's. */
 export type SessionPatternInput = Omit<
@@ -133,8 +140,55 @@ export class CourseService {
     private readonly platformPolicies: PlatformPolicyService,
     private readonly notifier: CourseNotifier,
     private readonly directory: UserDirectoryService,
-    private readonly selfGrant: SelfGrantGuard
+    private readonly selfGrant: SelfGrantGuard,
+    private readonly bunny: BunnyStreamClient,
+    // Kicked after every write that can change which sessions a talebe's
+    // calendar should hold (MDRS-121); it does nothing without a sender.
+    private readonly invitations: LessonInvitationService
   ) {}
+
+  /**
+   * The stored recordings without their Bunny video ids, and the ids kept
+   * aside by recording id (MDRS-119). Nothing is signed here: a link is built
+   * only for a recording the caller's filter (`visibleRecordings`) kept, by
+   * `signPlayback`, so no player link is minted for a recording the caller
+   * may not see, not even one that is then dropped.
+   */
+  private withoutVideoIds(stored: IStoredRecording[]): {
+    recordings: Omit<IStoredRecording, "bunnyVideoId">[];
+    videoIds: Map<string, string>;
+  } {
+    const videoIds = new Map<string, string>();
+    const recordings = stored.map(({ bunnyVideoId, ...rec }) => {
+      if (bunnyVideoId) videoIds.set(rec.id, bunnyVideoId);
+      return rec;
+    });
+    return { recordings, videoIds };
+  }
+
+  /**
+   * The recordings a caller was let see, each BUNNY one READY given its
+   * signed player link (MDRS-116, MDRS-119): built now, with a fresh token
+   * and expiry when the library has a token key. The Bunny video id itself
+   * never reaches a response.
+   */
+  private signPlayback(
+    visible: IRecordingView[],
+    videoIds: Map<string, string>,
+    now: Date
+  ): IRecordingView[] {
+    return visible.map((rec) => {
+      if (rec.provider !== RecordingProvider.BUNNY) return rec;
+      const videoId = videoIds.get(rec.id);
+      return {
+        ...rec,
+        url:
+          rec.status === RecordingStatus.READY && videoId
+            ? this.bunny.embedUrl(videoId, now)
+            : null,
+      };
+    });
+  }
 
   /**
    * The köşk's courses. With `archived`, its hidden ones instead — the
@@ -396,6 +450,84 @@ export class CourseService {
   }
 
   /**
+   * The course a session belongs to, for a caller who may see that course
+   * (`getDetail`: a hidden köşk, a hidden course, a draft). A session that is
+   * not there and one in a course the caller may not see are one answer,
+   * LESSON_NOT_FOUND, as on the session's calendar entry (`getScheduledLesson`),
+   * so a hidden course is not told apart from a session that never existed.
+   * For what a talebe writes on a session (MDRS-150): archived sessions count,
+   * like `findLessonCourseId`.
+   */
+  async findVisibleLessonCourse(
+    lessonId: string,
+    user: AuthenticatedUser
+  ): Promise<string> {
+    const courseId = await this.courseRepo.findLessonCourseId(lessonId);
+    if (!courseId) throw new LessonNotFoundError(lessonId);
+    try {
+      await this.getDetail(courseId, user, { read: true });
+    } catch (error) {
+      if (error instanceof CourseNotFoundError) {
+        throw new LessonNotFoundError(lessonId);
+      }
+      throw error;
+    }
+    return courseId;
+  }
+
+  /**
+   * Whether the person may write on the course as a talebe (a note, a
+   * question; MDRS-150): an ENROLLED or COMPLETED enrollment that no ban bars,
+   * and the course's content open to them. The enrollment is what the engine
+   * cannot say, because no catalogue code means "enrolled and not staff": the
+   * başnazım passes every decision and the course team holds
+   * `course.view_details` without being talebe. The open content is the
+   * engine's: a passive scope closes it to the enrolled talebe too, and a
+   * pending, removed or barred talebe never held it.
+   */
+  async mayWriteAsTalebe(
+    user: AuthenticatedUser,
+    courseId: string
+  ): Promise<boolean> {
+    const enrollment = await this.courseRepo.findEnrollment(user.sub, courseId);
+    const active =
+      enrollment?.status === EnrollmentStatus.ENROLLED ||
+      enrollment?.status === EnrollmentStatus.COMPLETED;
+    return (
+      active &&
+      !(await this.banService.isBarred(user.sub, courseId)) &&
+      (await this.contentIsOpen(user, courseId))
+    );
+  }
+
+  /**
+   * Whether the person may still reach what they wrote on the course as a
+   * talebe (MDRS-150): read it and delete it. The content is open to them, or
+   * no scope closes the course. A talebe who was removed or barred holds no
+   * content code for a passive scope to take away, so the scope itself is
+   * asked: an open course lets them reach their own writing, a passive one
+   * closes it like the rest of its content.
+   */
+  async mayReachOwnWriting(
+    user: AuthenticatedUser,
+    courseId: string
+  ): Promise<boolean> {
+    if (await this.contentIsOpen(user, courseId)) return true;
+    return (await this.courseRepo.findPassiveScope(courseId)) === null;
+  }
+
+  private contentIsOpen(
+    user: AuthenticatedUser,
+    courseId: string
+  ): Promise<boolean> {
+    return this.authz.can(
+      user,
+      { entity: ENTITIES.COURSE, id: courseId },
+      PERMISSIONS.COURSE_VIEW_DETAILS
+    );
+  }
+
+  /**
    * A scheduled session and its course, for a calendar entry (MDRS-117).
    *
    * Authorized exactly like the session page, which is rendered from
@@ -476,19 +608,26 @@ export class CourseService {
       );
     }
     if (!detail.contentLocked || sample) {
-      const [stored] = await this.recordingRepo.findByLessonIds([sessionId]);
+      const { recordings, videoIds } = this.withoutVideoIds(
+        await this.recordingRepo.findByLessonIds([sessionId])
+      );
+      const [stored] = recordings;
       const [shown] = stored
-        ? visibleRecordings(
-            [
-              {
-                ...stored,
-                weekId: view.weekId,
-                weekNumber: view.weekNumber,
-                weekTitle: view.weekTitle,
-              },
-            ],
-            !detail.contentLocked,
-            await this.publicRecordingsAllowed(detail)
+        ? this.signPlayback(
+            visibleRecordings(
+              [
+                {
+                  ...stored,
+                  weekId: view.weekId,
+                  weekNumber: view.weekNumber,
+                  weekTitle: view.weekTitle,
+                },
+              ],
+              !detail.contentLocked,
+              await this.publicRecordingsAllowed(detail)
+            ),
+            videoIds,
+            now
           )
         : [];
       if (shown) {
@@ -516,7 +655,8 @@ export class CourseService {
    */
   async listRecordings(
     courseId: string,
-    user: AuthenticatedUser | null
+    user: AuthenticatedUser | null,
+    now: Date = new Date()
   ): Promise<IRecordingView[]> {
     // The recording links are course content: a reader who is neither a
     // müderris nor an enrolled talebe goes on the record like a page read
@@ -528,10 +668,10 @@ export class CourseService {
     const placed = detail.weeks.flatMap((week) =>
       week.lessons.map((lesson) => ({ week, lesson }))
     );
-    const stored = await this.recordingRepo.findByLessonIds(
-      placed.map((p) => p.lesson.id)
+    const { recordings, videoIds } = this.withoutVideoIds(
+      await this.recordingRepo.findByLessonIds(placed.map((p) => p.lesson.id))
     );
-    const rows: IRecordingRow[] = stored.flatMap((rec) => {
+    const rows: IRecordingRow[] = recordings.flatMap((rec) => {
       const at = placed.find((p) => p.lesson.id === rec.lessonId);
       return at
         ? [
@@ -544,10 +684,14 @@ export class CourseService {
           ]
         : [];
     });
-    return visibleRecordings(
-      rows,
-      !detail.contentLocked,
-      await this.publicRecordingsAllowed(detail)
+    return this.signPlayback(
+      visibleRecordings(
+        rows,
+        !detail.contentLocked,
+        await this.publicRecordingsAllowed(detail)
+      ),
+      videoIds,
+      now
     );
   }
 
@@ -627,6 +771,7 @@ export class CourseService {
     if (!updated) {
       throw new CourseNotFoundError(id);
     }
+    this.invitations.kick();
     return updated;
   }
 
@@ -771,6 +916,7 @@ export class CourseService {
       // The weeks and sessions the save drops are hidden at the saver's level.
       await this.courseLevel(user, id)
     );
+    this.invitations.kick();
     return this.present(replaced, user, { audit: false });
   }
 
@@ -860,7 +1006,9 @@ export class CourseService {
     weekId: string,
     data: ICreateLesson
   ): Promise<ILessonMutation> {
-    return this.courseRepo.createLesson(courseId, weekId, data);
+    const created = await this.courseRepo.createLesson(courseId, weekId, data);
+    this.invitations.kick();
+    return created;
   }
 
   async updateLesson(
@@ -879,6 +1027,7 @@ export class CourseService {
       data
     );
     await this.notifier.sessionRescheduled(before, updated, actorId);
+    this.invitations.kick();
     return updated;
   }
 
@@ -896,6 +1045,7 @@ export class CourseService {
       actorId
     );
     await this.notifier.sessionCancelled(cancelled, actorId);
+    this.invitations.kick();
     return cancelled;
   }
 
@@ -948,13 +1098,15 @@ export class CourseService {
     const duplicate = duplicateUserId(asRows);
     if (duplicate) throw new MuderrisDuplicateUserError(duplicate);
     await this.assertMuderrisLinks(current, asRows);
-    return this.courseRepo.setMuderris(
+    const saved = await this.courseRepo.setMuderris(
       courseId,
       input.version,
       list,
       imam,
       user.sub
     );
+    this.invitations.kick();
+    return saved;
   }
 
   /** Hides the lesson; nothing attached to it is deleted (MDRS-124). */
@@ -966,7 +1118,13 @@ export class CourseService {
     const level = courseId
       ? await this.courseLevel(user, courseId)
       : SCOPE_TYPES.COURSE;
-    return this.courseRepo.archiveLesson(lessonId, user.sub, level);
+    const archived = await this.courseRepo.archiveLesson(
+      lessonId,
+      user.sub,
+      level
+    );
+    this.invitations.kick();
+    return archived;
   }
 
   /**
@@ -978,12 +1136,14 @@ export class CourseService {
     weekId: string,
     user: AuthenticatedUser
   ): Promise<IWeekHide> {
-    return this.courseRepo.archiveWeek(
+    const archived = await this.courseRepo.archiveWeek(
       courseId,
       weekId,
       user.sub,
       await this.courseLevel(user, courseId)
     );
+    this.invitations.kick();
+    return archived;
   }
 
   // ---- weekly pattern → sessions (MDRS-109) ----
@@ -1025,6 +1185,7 @@ export class CourseService {
         return planned.sessions;
       },
     });
+    this.invitations.kick();
     return { ...result, timeZone };
   }
 
@@ -1081,6 +1242,7 @@ export class CourseService {
     const outcome = await this.courseRepo.archive(id, user.sub, level);
     if (outcome === "not-found") throw new CourseNotFoundError(id);
     if (outcome === "already-hidden") throw new CourseAlreadyHiddenError(id);
+    this.invitations.kick();
   }
 
   /**
@@ -1106,7 +1268,7 @@ export class CourseService {
       case "parent-hidden":
         throw new ArchiveParentHiddenError("course", id);
       default:
-        return;
+        this.invitations.kick();
     }
   }
 
@@ -1132,6 +1294,8 @@ export class CourseService {
   async delete(id: string, actorId: string): Promise<boolean> {
     const removed = await this.courseRepo.purge(id, actorId);
     if (!removed) throw new CourseNotFoundError(id);
+    // The invitation rows outlive the sessions: send their CANCELs.
+    this.invitations.kick();
     return true;
   }
 
@@ -1168,11 +1332,13 @@ export class CourseService {
       (await this.courseRepo.forcesApproval(courseId))
         ? EnrollmentStatus.PENDING
         : EnrollmentStatus.ENROLLED;
-    return this.courseRepo.enroll(userId, courseId, {
+    const enrollment = await this.courseRepo.enroll(userId, courseId, {
       status,
       studentName: student.name ?? null,
       studentEmail: student.email ?? null,
     });
+    this.invitations.kick();
+    return enrollment;
   }
 
   async findPendingEnrollments(
@@ -1261,6 +1427,7 @@ export class CourseService {
       return this.lostRace(courseId, studentId, EnrollmentStatus.ENROLLED);
     }
     await this.notifier.enrollmentApproved(courseId, studentId, actorId);
+    this.invitations.kick();
     return updated;
   }
 
@@ -1333,7 +1500,10 @@ export class CourseService {
       status,
       existing.status
     );
-    if (updated) return updated;
+    if (updated) {
+      this.invitations.kick();
+      return updated;
+    }
     return this.lostRace(courseId, studentId, status);
   }
 
@@ -1371,6 +1541,7 @@ export class CourseService {
       actorId,
       reason.trim()
     );
+    this.invitations.kick();
     return true;
   }
 
@@ -1401,6 +1572,7 @@ export class CourseService {
       existing.status
     );
     if (!left) await this.lostRace(courseId, userId);
+    this.invitations.kick();
     return true;
   }
 

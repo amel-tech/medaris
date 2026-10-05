@@ -59,6 +59,7 @@ const COURSE = [
   "recording.upload",
   "recording.watch_restricted",
   "session.view_content",
+  "question.answer",
   "ban.course",
   "ban.lift_course",
   "deck.manage_course",
@@ -201,14 +202,15 @@ describe("'İzinleri düzenle' (nazir 06)", () => {
     expect(button("Kaydet").disabled).toBe(true);
   });
 
-  it("lists the ten medrese permissions and the twenty course permissions, with the canvas's words", async () => {
+  it("lists the ten medrese permissions and every course permission, with the canvas's words", async () => {
     await open();
-    expect(dialog().querySelectorAll("[role=checkbox]")).toHaveLength(30);
+    expect(dialog().querySelectorAll("[role=checkbox]")).toHaveLength(31);
     for (const sentence of [
       "Medrese dersi aç",
       "Müderris ekle ya da çıkar; imamı değiştir",
       "Medrese nazırı ata",
       "Dersi düzenle: başlık, tanıtım, müfredat, saat dilimi",
+      "Talebelerin sorularını gör ve yanıtla",
     ]) {
       expect(box(sentence), sentence).toBeDefined();
     }
@@ -558,7 +560,7 @@ describe("'İzinleri düzenle' (nazir 06)", () => {
     await click(button("Yeniden dene"));
     await settle(80);
     expect(dialog().textContent).not.toContain("İzinler okunamadı");
-    expect(dialog().querySelectorAll("[role=checkbox]")).toHaveLength(30);
+    expect(dialog().querySelectorAll("[role=checkbox]")).toHaveLength(31);
     expect(button("Kaydet").disabled).toBe(false);
   });
 

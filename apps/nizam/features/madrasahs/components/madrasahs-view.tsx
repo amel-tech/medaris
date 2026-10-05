@@ -20,7 +20,6 @@ import { useLocale, useTimeZone, useTranslations } from "next-intl";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { hideLevelOf } from "../../archive/hide-level";
 import { PassivateScopeDialog } from "../../passivation/components/passivate-scope-dialog";
-import { dismissOpen } from "../../permissions/present";
 import { restoreMadrasah } from "../actions";
 import {
   ALL_MADRASAH_ABILITIES,
@@ -83,10 +82,6 @@ export function MadrasahsView({
   } | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const searched = useRef(q);
-  // The "Başmüderrisi değiştir" window opens on 4 Ekim 2026 (the version gate),
-  // decided on the viewer's clock after mounting; the screen never says why.
-  const [gateOpen, setGateOpen] = useState(false);
-  useEffect(() => setGateOpen(dismissOpen(Date.now())), []);
 
   // The search follows the URL when it is changed from outside (back button).
   useEffect(() => {
@@ -270,7 +265,6 @@ export function MadrasahsView({
               <Button
                 variant="outline"
                 size="small"
-                disabled={!gateOpen}
                 aria-label={t("changeLabel", { name: m.name })}
                 onClick={() =>
                   setAssigning({

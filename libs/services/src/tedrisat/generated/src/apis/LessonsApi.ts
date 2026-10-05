@@ -15,24 +15,45 @@
 
 import * as runtime from '../runtime';
 import type {
+  AnswerLessonQuestionDto,
+  AskLessonQuestionDto,
   CancelLessonDto,
+  CourseQuestionResponse,
+  CreateLessonNoteDto,
   CreateRecordingDto,
   CreateSessionBatchDto,
   CreateWeekLessonDto,
   LessonMutationResponse,
+  LessonNoteResponse,
+  LessonQuestionResponse,
   LiveStreamResponse,
+  PaginatedCourseQuestionResponse,
+  PaginatedLessonQuestionResponse,
   RecordingResponse,
+  RecordingUploadResponse,
   SessionBatchPreviewResponse,
   SessionBatchResponse,
   SessionResponse,
   SetLiveStreamDto,
+  StartRecordingUploadDto,
   UpdateLessonDto,
+  UpdateLessonNoteDto,
+  UpdateLessonQuestionDto,
   UpdateRecordingDto,
+  WeekHideResponse,
   WeeklyPatternDto,
 } from '../models/index';
 import {
+    AnswerLessonQuestionDtoFromJSON,
+    AnswerLessonQuestionDtoToJSON,
+    AskLessonQuestionDtoFromJSON,
+    AskLessonQuestionDtoToJSON,
     CancelLessonDtoFromJSON,
     CancelLessonDtoToJSON,
+    CourseQuestionResponseFromJSON,
+    CourseQuestionResponseToJSON,
+    CreateLessonNoteDtoFromJSON,
+    CreateLessonNoteDtoToJSON,
     CreateRecordingDtoFromJSON,
     CreateRecordingDtoToJSON,
     CreateSessionBatchDtoFromJSON,
@@ -41,10 +62,20 @@ import {
     CreateWeekLessonDtoToJSON,
     LessonMutationResponseFromJSON,
     LessonMutationResponseToJSON,
+    LessonNoteResponseFromJSON,
+    LessonNoteResponseToJSON,
+    LessonQuestionResponseFromJSON,
+    LessonQuestionResponseToJSON,
     LiveStreamResponseFromJSON,
     LiveStreamResponseToJSON,
+    PaginatedCourseQuestionResponseFromJSON,
+    PaginatedCourseQuestionResponseToJSON,
+    PaginatedLessonQuestionResponseFromJSON,
+    PaginatedLessonQuestionResponseToJSON,
     RecordingResponseFromJSON,
     RecordingResponseToJSON,
+    RecordingUploadResponseFromJSON,
+    RecordingUploadResponseToJSON,
     SessionBatchPreviewResponseFromJSON,
     SessionBatchPreviewResponseToJSON,
     SessionBatchResponseFromJSON,
@@ -53,16 +84,34 @@ import {
     SessionResponseToJSON,
     SetLiveStreamDtoFromJSON,
     SetLiveStreamDtoToJSON,
+    StartRecordingUploadDtoFromJSON,
+    StartRecordingUploadDtoToJSON,
     UpdateLessonDtoFromJSON,
     UpdateLessonDtoToJSON,
+    UpdateLessonNoteDtoFromJSON,
+    UpdateLessonNoteDtoToJSON,
+    UpdateLessonQuestionDtoFromJSON,
+    UpdateLessonQuestionDtoToJSON,
     UpdateRecordingDtoFromJSON,
     UpdateRecordingDtoToJSON,
+    WeekHideResponseFromJSON,
+    WeekHideResponseToJSON,
     WeeklyPatternDtoFromJSON,
     WeeklyPatternDtoToJSON,
 } from '../models/index';
 
+export interface AnswerLessonQuestionRequest {
+    questionId: string;
+    answerLessonQuestionDto: AnswerLessonQuestionDto;
+}
+
 export interface ArchiveLessonRequest {
     id: string;
+}
+
+export interface AskLessonQuestionRequest {
+    id: string;
+    askLessonQuestionDto: AskLessonQuestionDto;
 }
 
 export interface CancelLessonRequest {
@@ -76,6 +125,11 @@ export interface CreateLessonRequest {
     createWeekLessonDto: CreateWeekLessonDto;
 }
 
+export interface CreateLessonNoteRequest {
+    id: string;
+    createLessonNoteDto: CreateLessonNoteDto;
+}
+
 export interface CreateLessonRecordingRequest {
     id: string;
     createRecordingDto: CreateRecordingDto;
@@ -84,6 +138,15 @@ export interface CreateLessonRecordingRequest {
 export interface CreateSessionBatchRequest {
     courseId: string;
     createSessionBatchDto: CreateSessionBatchDto;
+}
+
+export interface DeleteLessonNoteRequest {
+    id: string;
+    noteId: string;
+}
+
+export interface DeleteLessonQuestionRequest {
+    questionId: string;
 }
 
 export interface GetLessonCalendarRequest {
@@ -96,12 +159,33 @@ export interface GetSessionRequest {
     sessionId: string;
 }
 
+export interface HideCourseWeekRequest {
+    courseId: string;
+    weekId: string;
+}
+
 export interface ListCourseLiveStreamsRequest {
     id: string;
 }
 
+export interface ListCourseQuestionsRequest {
+    id: string;
+    limit?: number;
+    cursor?: string;
+}
+
 export interface ListCourseRecordingsRequest {
     id: string;
+}
+
+export interface ListLessonNotesRequest {
+    id: string;
+}
+
+export interface ListMyCourseQuestionsRequest {
+    id: string;
+    limit?: number;
+    cursor?: string;
 }
 
 export interface PreviewSessionBatchRequest {
@@ -109,14 +193,35 @@ export interface PreviewSessionBatchRequest {
     weeklyPatternDto: WeeklyPatternDto;
 }
 
+export interface ResignRecordingUploadRequest {
+    id: string;
+    videoId: string;
+}
+
 export interface SetLessonLiveStreamRequest {
     id: string;
     setLiveStreamDto: SetLiveStreamDto;
 }
 
+export interface StartRecordingUploadRequest {
+    id: string;
+    startRecordingUploadDto: StartRecordingUploadDto;
+}
+
 export interface UpdateLessonRequest {
     id: string;
     updateLessonDto: UpdateLessonDto;
+}
+
+export interface UpdateLessonNoteRequest {
+    id: string;
+    noteId: string;
+    updateLessonNoteDto: UpdateLessonNoteDto;
+}
+
+export interface UpdateLessonQuestionRequest {
+    questionId: string;
+    updateLessonQuestionDto: UpdateLessonQuestionDto;
 }
 
 export interface UpdateRecordingRequest {
@@ -130,6 +235,61 @@ export interface UpdateRecordingRequest {
 export class LessonsApi extends runtime.BaseAPI {
 
     /**
+     * `question.answer`. Answering again replaces the earlier answer; there is no history. `body` is Markdown, 1 to 4000 characters after trimming. 404 for a question that does not exist and for one in a course where the caller may not answer, so its existence is not confirmed to them. No notification is sent.
+     * Answer a question, or replace the answer
+     */
+    async answerLessonQuestionRaw(requestParameters: AnswerLessonQuestionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CourseQuestionResponse>> {
+        if (requestParameters['questionId'] == null) {
+            throw new runtime.RequiredError(
+                'questionId',
+                'Required parameter "questionId" was null or undefined when calling answerLessonQuestion().'
+            );
+        }
+
+        if (requestParameters['answerLessonQuestionDto'] == null) {
+            throw new runtime.RequiredError(
+                'answerLessonQuestionDto',
+                'Required parameter "answerLessonQuestionDto" was null or undefined when calling answerLessonQuestion().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/questions/{questionId}/answer`;
+        urlPath = urlPath.replace(`{${"questionId"}}`, encodeURIComponent(String(requestParameters['questionId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: AnswerLessonQuestionDtoToJSON(requestParameters['answerLessonQuestionDto']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => CourseQuestionResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * `question.answer`. Answering again replaces the earlier answer; there is no history. `body` is Markdown, 1 to 4000 characters after trimming. 404 for a question that does not exist and for one in a course where the caller may not answer, so its existence is not confirmed to them. No notification is sent.
+     * Answer a question, or replace the answer
+     */
+    async answerLessonQuestion(requestParameters: AnswerLessonQuestionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CourseQuestionResponse> {
+        const response = await this.answerLessonQuestionRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * `week.hide` (Hafta ve celse gizle, geri al) or `session.manage`. The level the caller acts at is recorded with the hide and decides who may bring it back (MDRS-135); written to `audit_log` as `lesson.hide` (MDRS-143).
      * Remove a lesson from the course; it is archived, never deleted
      */
     async archiveLessonRaw(requestParameters: ArchiveLessonRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<LessonMutationResponse>> {
@@ -164,10 +324,65 @@ export class LessonsApi extends runtime.BaseAPI {
     }
 
     /**
+     * `week.hide` (Hafta ve celse gizle, geri al) or `session.manage`. The level the caller acts at is recorded with the hide and decides who may bring it back (MDRS-135); written to `audit_log` as `lesson.hide` (MDRS-143).
      * Remove a lesson from the course; it is archived, never deleted
      */
     async archiveLesson(requestParameters: ArchiveLessonRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<LessonMutationResponse> {
         const response = await this.archiveLessonRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * An enrolled talebe only (ENROLLED or COMPLETED, and not barred), and only while the course\'s content is open: a passive scope closes it. `body` is Markdown, 1 to 4000 characters after trimming; it is stored as typed and never rendered as HTML. Only the author and the people who may answer see it. No notification is sent.
+     * Ask the course staff a question on a session
+     */
+    async askLessonQuestionRaw(requestParameters: AskLessonQuestionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<LessonQuestionResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling askLessonQuestion().'
+            );
+        }
+
+        if (requestParameters['askLessonQuestionDto'] == null) {
+            throw new runtime.RequiredError(
+                'askLessonQuestionDto',
+                'Required parameter "askLessonQuestionDto" was null or undefined when calling askLessonQuestion().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/lessons/{id}/questions`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: AskLessonQuestionDtoToJSON(requestParameters['askLessonQuestionDto']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => LessonQuestionResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * An enrolled talebe only (ENROLLED or COMPLETED, and not barred), and only while the course\'s content is open: a passive scope closes it. `body` is Markdown, 1 to 4000 characters after trimming; it is stored as typed and never rendered as HTML. Only the author and the people who may answer see it. No notification is sent.
+     * Ask the course staff a question on a session
+     */
+    async askLessonQuestion(requestParameters: AskLessonQuestionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<LessonQuestionResponse> {
+        const response = await this.askLessonQuestionRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -286,6 +501,60 @@ export class LessonsApi extends runtime.BaseAPI {
     }
 
     /**
+     * An enrolled talebe only (ENROLLED or COMPLETED, and not barred), and only while the course\'s content is open: a passive scope closes it. `offsetSeconds` is the player position from the start of the video and may be left out. `body` is Markdown, 1 to 4000 characters after trimming; it is stored as typed and never rendered as HTML.
+     * Write a note on a session\'s video
+     */
+    async createLessonNoteRaw(requestParameters: CreateLessonNoteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<LessonNoteResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling createLessonNote().'
+            );
+        }
+
+        if (requestParameters['createLessonNoteDto'] == null) {
+            throw new runtime.RequiredError(
+                'createLessonNoteDto',
+                'Required parameter "createLessonNoteDto" was null or undefined when calling createLessonNote().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/lessons/{id}/notes`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: CreateLessonNoteDtoToJSON(requestParameters['createLessonNoteDto']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => LessonNoteResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * An enrolled talebe only (ENROLLED or COMPLETED, and not barred), and only while the course\'s content is open: a passive scope closes it. `offsetSeconds` is the player position from the start of the video and may be left out. `body` is Markdown, 1 to 4000 characters after trimming; it is stored as typed and never rendered as HTML.
+     * Write a note on a session\'s video
+     */
+    async createLessonNote(requestParameters: CreateLessonNoteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<LessonNoteResponse> {
+        const response = await this.createLessonNoteRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * `recording.manage` (the müderris and the köşk nazımı by default, a ders nazırı when given it). The recording is READY at once; its provider is read off the link\'s host and nothing is uploaded or called. A session holds one recording (409 RECORDING_EXISTS: change that one). A YouTube link must be PUBLIC (400 RECORDING_YOUTUBE_PUBLIC_ONLY). Written to `audit_log` as `recording.add`. Does not change the course version.
      * Add a session\'s recording by pasting its link
      */
@@ -394,6 +663,100 @@ export class LessonsApi extends runtime.BaseAPI {
     }
 
     /**
+     * The note is removed for good; there is no history. A talebe who was removed or barred may still delete their own while the course is open, as they may read them; a passive scope closes it. 404 for a note the caller did not write, as for one that does not exist.
+     * Delete the caller\'s own note
+     */
+    async deleteLessonNoteRaw(requestParameters: DeleteLessonNoteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling deleteLessonNote().'
+            );
+        }
+
+        if (requestParameters['noteId'] == null) {
+            throw new runtime.RequiredError(
+                'noteId',
+                'Required parameter "noteId" was null or undefined when calling deleteLessonNote().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/lessons/{id}/notes/{noteId}`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace(`{${"noteId"}}`, encodeURIComponent(String(requestParameters['noteId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * The note is removed for good; there is no history. A talebe who was removed or barred may still delete their own while the course is open, as they may read them; a passive scope closes it. 404 for a note the caller did not write, as for one that does not exist.
+     * Delete the caller\'s own note
+     */
+    async deleteLessonNote(requestParameters: DeleteLessonNoteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.deleteLessonNoteRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * At any time, whether or not it is answered; the answer goes with it and there is no history. Needs no enrollment, so a talebe who was removed can still delete what they asked while the course is open; a passive scope closes it (403). 404 for a question the caller did not ask, the staff\'s included, as for one that does not exist.
+     * Delete the caller\'s own question
+     */
+    async deleteLessonQuestionRaw(requestParameters: DeleteLessonQuestionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        if (requestParameters['questionId'] == null) {
+            throw new runtime.RequiredError(
+                'questionId',
+                'Required parameter "questionId" was null or undefined when calling deleteLessonQuestion().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/questions/{questionId}`;
+        urlPath = urlPath.replace(`{${"questionId"}}`, encodeURIComponent(String(requestParameters['questionId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * At any time, whether or not it is answered; the answer goes with it and there is no history. Needs no enrollment, so a talebe who was removed can still delete what they asked while the course is open; a passive scope closes it (403). 404 for a question the caller did not ask, the staff\'s included, as for one that does not exist.
+     * Delete the caller\'s own question
+     */
+    async deleteLessonQuestion(requestParameters: DeleteLessonQuestionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.deleteLessonQuestionRaw(requestParameters, initOverrides);
+    }
+
+    /**
      * Authorized like the session page (`GET /courses/:id`). The event links to the Medaris session page, never to the meeting link. `UID` is derived from the lesson id and `SEQUENCE` is the course version, so a re-import after the session moved updates the event instead of duplicating it (MDRS-117).
      * One session as an iCalendar (.ics) file, for Apple Calendar, Google Calendar and Outlook
      */
@@ -498,6 +861,58 @@ export class LessonsApi extends runtime.BaseAPI {
     }
 
     /**
+     * Nothing is deleted: the week and its live sessions leave the course at one instant, at the level the caller acts at (the course team\'s, the köşk\'s, the medrese\'s), and the course `version` is bumped, so an editor that loaded the course before is refused with 409. Brought back by that level or one above, through `POST /archive/week/:id/restore`; the course\'s Arşiv lists it (`GET /courses/:id/archive`). Written to `audit_log` as `week.hide` (MDRS-143).
+     * Hide a week with its sessions (Gizle)
+     */
+    async hideCourseWeekRaw(requestParameters: HideCourseWeekRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<WeekHideResponse>> {
+        if (requestParameters['courseId'] == null) {
+            throw new runtime.RequiredError(
+                'courseId',
+                'Required parameter "courseId" was null or undefined when calling hideCourseWeek().'
+            );
+        }
+
+        if (requestParameters['weekId'] == null) {
+            throw new runtime.RequiredError(
+                'weekId',
+                'Required parameter "weekId" was null or undefined when calling hideCourseWeek().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/courses/{courseId}/weeks/{weekId}/hide`;
+        urlPath = urlPath.replace(`{${"courseId"}}`, encodeURIComponent(String(requestParameters['courseId'])));
+        urlPath = urlPath.replace(`{${"weekId"}}`, encodeURIComponent(String(requestParameters['weekId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => WeekHideResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Nothing is deleted: the week and its live sessions leave the course at one instant, at the level the caller acts at (the course team\'s, the köşk\'s, the medrese\'s), and the course `version` is bumped, so an editor that loaded the course before is refused with 409. Brought back by that level or one above, through `POST /archive/week/:id/restore`; the course\'s Arşiv lists it (`GET /courses/:id/archive`). Written to `audit_log` as `week.hide` (MDRS-143).
+     * Hide a week with its sessions (Gizle)
+     */
+    async hideCourseWeek(requestParameters: HideCourseWeekRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<WeekHideResponse> {
+        const response = await this.hideCourseWeekRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Every session of the course that has a live stream link, in programme order: what nizam\'s Celseler page shows the staff. `session.live_link` (the müderris and the köşk nazımı by default, a ders nazırı when given it); 403 for anyone else, so the link never reaches a caller who may not set it. The talebe reads the link from `GET /courses/:courseId/sessions/:sessionId`, and only while the session is live (MDRS-162).
      * The course\'s live stream links, for its staff
      */
@@ -542,7 +957,59 @@ export class LessonsApi extends runtime.BaseAPI {
     }
 
     /**
-     * Open to callers with no token, like the course page. A caller holding `view_details` sees every recording; everyone else, PENDING and revoked included, only those with `visibility` PUBLIC. A recording whose `status` is PROCESSING is listed with a null `url`. Sorted by week number descending, then by `recordedAt` descending (MDRS-162).
+     * Every question asked in the course, those still waiting first and oldest first, with who asked, one page at a time: pass `nextCursor` as `cursor` for the next. `question.answer`: the müderris by default, a ders nazırı when given it, and the catalogue\'s other holders (the köşk nazımı through `course.manage_all`, the başnazım). 403 for anyone else, a talebe included.
+     * The course\'s questions, for the people who answer them
+     */
+    async listCourseQuestionsRaw(requestParameters: ListCourseQuestionsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PaginatedCourseQuestionResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling listCourseQuestions().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['limit'] != null) {
+            queryParameters['limit'] = requestParameters['limit'];
+        }
+
+        if (requestParameters['cursor'] != null) {
+            queryParameters['cursor'] = requestParameters['cursor'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/courses/{id}/questions`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => PaginatedCourseQuestionResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Every question asked in the course, those still waiting first and oldest first, with who asked, one page at a time: pass `nextCursor` as `cursor` for the next. `question.answer`: the müderris by default, a ders nazırı when given it, and the catalogue\'s other holders (the köşk nazımı through `course.manage_all`, the başnazım). 403 for anyone else, a talebe included.
+     * The course\'s questions, for the people who answer them
+     */
+    async listCourseQuestions(requestParameters: ListCourseQuestionsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PaginatedCourseQuestionResponse> {
+        const response = await this.listCourseQuestionsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Open to callers with no token, like the course page. A caller holding `view_details` sees every recording; everyone else, PENDING and revoked included, only those with `visibility` PUBLIC. A recording whose `status` is PROCESSING is listed with a null `url`. Sorted by week number descending, then by `recordedAt` descending (MDRS-162). A READY BUNNY recording\'s `url` is a player link signed for this response, built only for a recording the caller may see, and expiring after `BUNNY_STREAM_EMBED_TTL_SECONDS` (6 hours by default); the response is `Cache-Control: private, no-store` (MDRS-119). What this protects: with embed token authentication on in the Bunny library, only a signed link opens the player page, and a signed link passed on opens it until it expires; the stream behind the page (playlist, segments, MP4) is protected only by the library\'s separate CDN token authentication, so a viewer who saved the video address can play it after the link has expired unless that is on. A YouTube, Drive or other pasted link plays for anyone who has it; for those the filter decides who is shown the link, not who can open it.
      * The course\'s lesson recordings, newest week first
      */
     async listCourseRecordingsRaw(requestParameters: ListCourseRecordingsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<RecordingResponse>>> {
@@ -577,11 +1044,107 @@ export class LessonsApi extends runtime.BaseAPI {
     }
 
     /**
-     * Open to callers with no token, like the course page. A caller holding `view_details` sees every recording; everyone else, PENDING and revoked included, only those with `visibility` PUBLIC. A recording whose `status` is PROCESSING is listed with a null `url`. Sorted by week number descending, then by `recordedAt` descending (MDRS-162).
+     * Open to callers with no token, like the course page. A caller holding `view_details` sees every recording; everyone else, PENDING and revoked included, only those with `visibility` PUBLIC. A recording whose `status` is PROCESSING is listed with a null `url`. Sorted by week number descending, then by `recordedAt` descending (MDRS-162). A READY BUNNY recording\'s `url` is a player link signed for this response, built only for a recording the caller may see, and expiring after `BUNNY_STREAM_EMBED_TTL_SECONDS` (6 hours by default); the response is `Cache-Control: private, no-store` (MDRS-119). What this protects: with embed token authentication on in the Bunny library, only a signed link opens the player page, and a signed link passed on opens it until it expires; the stream behind the page (playlist, segments, MP4) is protected only by the library\'s separate CDN token authentication, so a viewer who saved the video address can play it after the link has expired unless that is on. A YouTube, Drive or other pasted link plays for anyone who has it; for those the filter decides who is shown the link, not who can open it.
      * The course\'s lesson recordings, newest week first
      */
     async listCourseRecordings(requestParameters: ListCourseRecordingsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<RecordingResponse>> {
         const response = await this.listCourseRecordingsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Only the caller\'s notes, whoever else wrote one on the session. By `offsetSeconds` ascending, notes without a position last, then oldest first. Never lists anyone else\'s notes, a SYSTEM_ADMIN\'s request included. A talebe who was removed or barred still reads their own while the course is open; a course in a passive scope is closed to everyone but platform management and its köşk\'s nazımı (403 LESSON_NOTE_FORBIDDEN), and a hidden course is as not found as a session that is not there (MDRS-150).
+     * The caller\'s own notes on a session
+     */
+    async listLessonNotesRaw(requestParameters: ListLessonNotesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<LessonNoteResponse>>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling listLessonNotes().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/lessons/{id}/notes`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(LessonNoteResponseFromJSON));
+    }
+
+    /**
+     * Only the caller\'s notes, whoever else wrote one on the session. By `offsetSeconds` ascending, notes without a position last, then oldest first. Never lists anyone else\'s notes, a SYSTEM_ADMIN\'s request included. A talebe who was removed or barred still reads their own while the course is open; a course in a passive scope is closed to everyone but platform management and its köşk\'s nazımı (403 LESSON_NOTE_FORBIDDEN), and a hidden course is as not found as a session that is not there (MDRS-150).
+     * The caller\'s own notes on a session
+     */
+    async listLessonNotes(requestParameters: ListLessonNotesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<LessonNoteResponse>> {
+        const response = await this.listLessonNotesRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Only the questions the caller asked, newest first, whoever else asked on the course and whatever has become of the caller\'s enrollment, while the course is open: a course in a passive scope is closed to everyone but platform management and its köşk\'s nazımı (403 LESSON_QUESTION_FORBIDDEN), and a hidden course or a draft is not found. One page at a time: pass `nextCursor` as `cursor` for the next. What the author\'s Sorularım tab reads.
+     * The caller\'s own questions in a course, with their answers
+     */
+    async listMyCourseQuestionsRaw(requestParameters: ListMyCourseQuestionsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PaginatedLessonQuestionResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling listMyCourseQuestions().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['limit'] != null) {
+            queryParameters['limit'] = requestParameters['limit'];
+        }
+
+        if (requestParameters['cursor'] != null) {
+            queryParameters['cursor'] = requestParameters['cursor'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/courses/{id}/questions/mine`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => PaginatedLessonQuestionResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Only the questions the caller asked, newest first, whoever else asked on the course and whatever has become of the caller\'s enrollment, while the course is open: a course in a passive scope is closed to everyone but platform management and its köşk\'s nazımı (403 LESSON_QUESTION_FORBIDDEN), and a hidden course or a draft is not found. One page at a time: pass `nextCursor` as `cursor` for the next. What the author\'s Sorularım tab reads.
+     * The caller\'s own questions in a course, with their answers
+     */
+    async listMyCourseQuestions(requestParameters: ListMyCourseQuestionsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PaginatedLessonQuestionResponse> {
+        const response = await this.listMyCourseQuestionsRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -640,6 +1203,58 @@ export class LessonsApi extends runtime.BaseAPI {
     }
 
     /**
+     * `recording.upload`, as for starting one. Returns the same video\'s TUS values so an interrupted upload continues where it stopped. The expiry is the upload\'s original one: signing again never extends it. 409 once the upload is no longer PROCESSING or its lifetime has passed (RECORDING_UPLOAD_CLOSED, with `reason`).
+     * Sign a session\'s Bunny upload again, to resume it
+     */
+    async resignRecordingUploadRaw(requestParameters: ResignRecordingUploadRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<RecordingUploadResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling resignRecordingUpload().'
+            );
+        }
+
+        if (requestParameters['videoId'] == null) {
+            throw new runtime.RequiredError(
+                'videoId',
+                'Required parameter "videoId" was null or undefined when calling resignRecordingUpload().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/lessons/{id}/recordings/uploads/{videoId}/signature`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace(`{${"videoId"}}`, encodeURIComponent(String(requestParameters['videoId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => RecordingUploadResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * `recording.upload`, as for starting one. Returns the same video\'s TUS values so an interrupted upload continues where it stopped. The expiry is the upload\'s original one: signing again never extends it. 409 once the upload is no longer PROCESSING or its lifetime has passed (RECORDING_UPLOAD_CLOSED, with `reason`).
+     * Sign a session\'s Bunny upload again, to resume it
+     */
+    async resignRecordingUpload(requestParameters: ResignRecordingUploadRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<RecordingUploadResponse> {
+        const response = await this.resignRecordingUploadRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * `session.live_link` (the müderris and the köşk nazımı by default, a ders nazırı when given it). A YouTube video link in any of its usual forms, the YouTube Studio link included, is stored as `https://www.youtube.com/live/<id>`; `null` clears it. Only a LIVE session takes one, and not once it is cancelled. Does not change the course version. Written to `audit_log` as `lesson.live_stream_set` or `lesson.live_stream_clear`.
      * Set, change or clear a session\'s live stream link
      */
@@ -694,6 +1309,60 @@ export class LessonsApi extends runtime.BaseAPI {
     }
 
     /**
+     * `recording.upload` (the müderris and the köşk nazımı by default, a ders nazırı when given it). Creates the video in the Medaris Bunny Stream library, records it as the session\'s recording with `provider` BUNNY and `status` PROCESSING, and returns what the browser needs for a TUS upload straight to Bunny; the file never passes through this API. The signature expires 24 hours later. A session that already has a recording is refused with 409, unless that recording is a Bunny upload that FAILED, which this one replaces. Written to `audit_log` as `recording.upload_start`. The recording becomes READY or FAILED when the encoding poll sees Bunny finish.
+     * Start uploading a session\'s recording to Bunny Stream
+     */
+    async startRecordingUploadRaw(requestParameters: StartRecordingUploadRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<RecordingUploadResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling startRecordingUpload().'
+            );
+        }
+
+        if (requestParameters['startRecordingUploadDto'] == null) {
+            throw new runtime.RequiredError(
+                'startRecordingUploadDto',
+                'Required parameter "startRecordingUploadDto" was null or undefined when calling startRecordingUpload().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/lessons/{id}/recordings/uploads`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: StartRecordingUploadDtoToJSON(requestParameters['startRecordingUploadDto']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => RecordingUploadResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * `recording.upload` (the müderris and the köşk nazımı by default, a ders nazırı when given it). Creates the video in the Medaris Bunny Stream library, records it as the session\'s recording with `provider` BUNNY and `status` PROCESSING, and returns what the browser needs for a TUS upload straight to Bunny; the file never passes through this API. The signature expires 24 hours later. A session that already has a recording is refused with 409, unless that recording is a Bunny upload that FAILED, which this one replaces. Written to `audit_log` as `recording.upload_start`. The recording becomes READY or FAILED when the encoding poll sees Bunny finish.
+     * Start uploading a session\'s recording to Bunny Stream
+     */
+    async startRecordingUpload(requestParameters: StartRecordingUploadRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<RecordingUploadResponse> {
+        const response = await this.startRecordingUploadRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Update a lesson; a new weekId moves it and keeps its id
      */
     async updateLessonRaw(requestParameters: UpdateLessonRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<LessonMutationResponse>> {
@@ -742,6 +1411,122 @@ export class LessonsApi extends runtime.BaseAPI {
      */
     async updateLesson(requestParameters: UpdateLessonRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<LessonMutationResponse> {
         const response = await this.updateLessonRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * A key left out stays as it is; `offsetSeconds: null` clears the position. The same rule as writing one: an enrolled talebe only. 404 for a note the caller did not write, as for one that does not exist.
+     * Edit the caller\'s own note
+     */
+    async updateLessonNoteRaw(requestParameters: UpdateLessonNoteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<LessonNoteResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling updateLessonNote().'
+            );
+        }
+
+        if (requestParameters['noteId'] == null) {
+            throw new runtime.RequiredError(
+                'noteId',
+                'Required parameter "noteId" was null or undefined when calling updateLessonNote().'
+            );
+        }
+
+        if (requestParameters['updateLessonNoteDto'] == null) {
+            throw new runtime.RequiredError(
+                'updateLessonNoteDto',
+                'Required parameter "updateLessonNoteDto" was null or undefined when calling updateLessonNote().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/lessons/{id}/notes/{noteId}`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace(`{${"noteId"}}`, encodeURIComponent(String(requestParameters['noteId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'PATCH',
+            headers: headerParameters,
+            query: queryParameters,
+            body: UpdateLessonNoteDtoToJSON(requestParameters['updateLessonNoteDto']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => LessonNoteResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * A key left out stays as it is; `offsetSeconds: null` clears the position. The same rule as writing one: an enrolled talebe only. 404 for a note the caller did not write, as for one that does not exist.
+     * Edit the caller\'s own note
+     */
+    async updateLessonNote(requestParameters: UpdateLessonNoteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<LessonNoteResponse> {
+        const response = await this.updateLessonNoteRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * While nobody has answered it: the answer belongs to the question as it was asked, so an answered question is 409. The same rule as asking otherwise: an enrolled talebe only, and `body` is Markdown, 1 to 4000 characters after trimming. 404 for a question the caller did not ask, the staff\'s included, as for one that does not exist.
+     * Edit the caller\'s own question
+     */
+    async updateLessonQuestionRaw(requestParameters: UpdateLessonQuestionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<LessonQuestionResponse>> {
+        if (requestParameters['questionId'] == null) {
+            throw new runtime.RequiredError(
+                'questionId',
+                'Required parameter "questionId" was null or undefined when calling updateLessonQuestion().'
+            );
+        }
+
+        if (requestParameters['updateLessonQuestionDto'] == null) {
+            throw new runtime.RequiredError(
+                'updateLessonQuestionDto',
+                'Required parameter "updateLessonQuestionDto" was null or undefined when calling updateLessonQuestion().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/questions/{questionId}`;
+        urlPath = urlPath.replace(`{${"questionId"}}`, encodeURIComponent(String(requestParameters['questionId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'PATCH',
+            headers: headerParameters,
+            query: queryParameters,
+            body: UpdateLessonQuestionDtoToJSON(requestParameters['updateLessonQuestionDto']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => LessonQuestionResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * While nobody has answered it: the answer belongs to the question as it was asked, so an answered question is 409. The same rule as asking otherwise: an enrolled talebe only, and `body` is Markdown, 1 to 4000 characters after trimming. 404 for a question the caller did not ask, the staff\'s included, as for one that does not exist.
+     * Edit the caller\'s own question
+     */
+    async updateLessonQuestion(requestParameters: UpdateLessonQuestionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<LessonQuestionResponse> {
+        const response = await this.updateLessonQuestionRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

@@ -214,6 +214,15 @@ describe("tedris's jwt and session callbacks", () => {
     expect((await session(next)).error).toBe(REFRESH_ACCESS_TOKEN_ERROR);
   });
 
+  it("a refresh token past its own deadline marks the token without calling Keycloak or logging an error", async () => {
+    const next = await jwt(
+      expired({ refreshTokenExpireIn: Date.now() - 1000 })
+    );
+    expect(next.error).toBe(REFRESH_ACCESS_TOKEN_ERROR);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(console.error).not.toHaveBeenCalled();
+  });
+
   it("a failed refresh logs a summary at error level, never a token or the client secret (MDRS-231)", async () => {
     const log = vi.spyOn(console, "log").mockImplementation(() => {});
     stubFetch(() =>
