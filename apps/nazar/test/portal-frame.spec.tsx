@@ -57,6 +57,12 @@ const renderFrame = async (props: {
 const sidebarOf = (markup: string) =>
   /<aside[\s\S]*?<\/aside>/.exec(markup)?.[0] ?? "";
 
+/** The opening tags of the anchors to `href`, whatever order their attributes come in (`next/link` writes href last). */
+const anchorsTo = (markup: string, href: string) =>
+  [...markup.matchAll(/<a\b[^>]*>/g)]
+    .map((m) => m[0])
+    .filter((tag) => tag.includes(`href="${href}"`));
+
 beforeEach(() => {
   pathname = "/medrese/m-1";
 });
@@ -123,8 +129,8 @@ describe("the shell of a medrese (nazir 21)", () => {
     const { markup } = await frame();
     const current = [...sidebarOf(markup).matchAll(/aria-current="page"/g)];
     expect(current).toHaveLength(1);
-    expect(sidebarOf(markup)).toMatch(
-      /href="\/medrese\/m-1\/dersler" aria-current="page"/
+    expect(anchorsTo(sidebarOf(markup), "/medrese/m-1/dersler")[0]).toContain(
+      'aria-current="page"'
     );
   });
 
@@ -146,9 +152,11 @@ describe("the shell of a medrese (nazir 21)", () => {
     expect(bar).toContain(
       '<p class="mds-appbar__title" dir="auto">Dersler</p>'
     );
-    expect(bar).toMatch(
-      /<a href="\/bildirimler"[^>]*aria-label="Bildirimler, 3 okunmamış"/
-    );
+    expect(
+      anchorsTo(bar, "/bildirimler").some((tag) =>
+        tag.includes('aria-label="Bildirimler, 3 okunmamış"')
+      )
+    ).toBe(true);
     expect(textOf(bar)).not.toMatch(/\b3\b/);
   });
 
@@ -157,9 +165,11 @@ describe("the shell of a medrese (nazir 21)", () => {
       assignments: [medrese(), bina],
       current: 0,
     });
-    expect(markup).toMatch(
-      /<a href="\/bildirimler"[^>]*aria-label="Bildirimler"/
-    );
+    expect(
+      anchorsTo(markup, "/bildirimler").some((tag) =>
+        tag.includes('aria-label="Bildirimler"')
+      )
+    ).toBe(true);
   });
 
   it("titles the phone bar with the account page's name outside the menu", async () => {
@@ -212,7 +222,9 @@ describe("the shell of a course (nazir 22)", () => {
     expect(aside).toMatch(
       /Talebeler<span class="mds-nav-item__count">2<span class="mds-visually-hidden"> bekleyen başvuru/
     );
-    expect(aside).toMatch(/href="\/ders\/c-bina" aria-current="page"/);
+    expect(anchorsTo(aside, "/ders/c-bina")[0]).toContain(
+      'aria-current="page"'
+    );
   });
 
   it("opens the medrese's Pano from Pano", async () => {

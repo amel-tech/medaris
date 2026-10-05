@@ -3,6 +3,7 @@
 import { Avatar } from "@medaris/ui/mds/avatar";
 import { Icon } from "@medaris/ui/mds/icon";
 import { joinRun } from "@medaris/ui/mds/locale";
+import Link from "next/link";
 import type { Person } from "../scope";
 
 /**
@@ -41,9 +42,9 @@ export function UserRow({
     </>
   );
   return href ? (
-    <a className="mds-nav-user" href={href}>
+    <Link className="mds-nav-user" href={href}>
       {body}
-    </a>
+    </Link>
   ) : (
     <div className="mds-nav-user hover:bg-transparent">{body}</div>
   );

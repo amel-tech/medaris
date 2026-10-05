@@ -6,6 +6,7 @@ import { Logo } from "@medaris/ui/mds/logo";
 import { NavItem } from "@medaris/ui/mds/nav-item";
 import { NavSection } from "@medaris/ui/mds/nav-section";
 import { ThemeToggle } from "@medaris/ui/mds/theme-toggle";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Fragment, type ReactNode } from "react";
 import { activeItemId, type MenuSection, pageTitle } from "../nav";
@@ -13,7 +14,10 @@ import { activeItemId, type MenuSection, pageTitle } from "../nav";
 /**
  * The menu items of one scope, marked by the address the viewer is on. A
  * client component for that one reason: a layout does not re-render on a
- * navigation, so only `usePathname` knows the current page.
+ * navigation, so only `usePathname` knows the current page. The items go
+ * through `next/link`: as plain anchors every click was a full document load,
+ * which streamed the root loading page (the whole shell in skeletons, sidebar
+ * included) before the layout read the roles again (MDRS-258).
  */
 export function PortalNav({ sections }: { sections: MenuSection[] }) {
   const active = activeItemId(sections, usePathname());
@@ -26,6 +30,7 @@ export function PortalNav({ sections }: { sections: MenuSection[] }) {
             <NavItem
               key={item.id}
               href={item.href}
+              linkComponent={Link}
               icon={<Icon name={item.icon} size="sm" />}
               count={item.count}
               countLabel={item.countLabel}
@@ -81,13 +86,13 @@ export function PortalAppBar({
         <>
           <ThemeToggle />
           {bellLabel ? (
-            <a
+            <Link
               href="/bildirimler"
               className="mds-btn mds-icon-btn mds-btn--large mds-btn--ghost"
               aria-label={bellLabel}
             >
               <Icon name="bell" />
-            </a>
+            </Link>
           ) : null}
         </>
       }
