@@ -14,6 +14,7 @@ import {
   recordingsHref,
   recordingsMoved,
   recordingWeeks,
+  refusalReasonOf,
   type SessionSlot,
   slotCounts,
   slotState,
@@ -52,6 +53,8 @@ const recording = (
 });
 
 const course = (weeks: unknown[]) => ({ weeks }) as never;
+
+const VIDEO = "b2470000-0000-4000-8000-000000000001";
 
 describe("the address", () => {
   it("is the course's kayitlar, encoded", () => {
@@ -201,10 +204,12 @@ describe("what a session offers", () => {
 });
 
 describe("providers", () => {
-  it("name YouTube and Google Drive and keep the host of everything else", () => {
+  it("name YouTube and Google Drive and keep the host of everything else, Bunny too", () => {
     expect(chipOf("YOUTUBE")).toBe("youtube");
     expect(chipOf("DRIVE")).toBe("google-drive");
     expect(chipOf("OTHER")).toBeNull();
+    // the design kit has no Bunny chip: Medaris's own host plays in the page
+    expect(chipOf("BUNNY")).toBeNull();
     expect(hostOf("https://us02web.zoom.us/rec/share/abc")).toBe(
       "us02web.zoom.us"
     );
@@ -220,6 +225,15 @@ describe("providers", () => {
     ["https://us02web.zoom.us/rec/share/abc", "OTHER"],
     ["https://youtube.com.example.org/x", "OTHER"],
     ["http://www.youtube.com/watch?v=abc", "OTHER"],
+    [`https://player.mediadelivery.net/embed/424242/${VIDEO}`, "BUNNY"],
+    [`https://iframe.mediadelivery.net/embed/424242/${VIDEO}`, "BUNNY"],
+    [`player.mediadelivery.net/play/424242/${VIDEO}`, "BUNNY"],
+    [`https://PLAYER.mediadelivery.net/embed/424242/${VIDEO}`, "BUNNY"],
+    [`https://video.bunnycdn.com/play/424242/${VIDEO}`, "BUNNY"],
+    // tedrisat refuses a Bunny host that is not a player; it is still Bunny's
+    [`https://vz-abc.b-cdn.net/${VIDEO}/playlist.m3u8`, "BUNNY"],
+    [`https://player.mediadelivery.net.example.org/embed/1/${VIDEO}`, "OTHER"],
+    ["https://notmediadelivery.net/embed/1/x", "OTHER"],
     ["", "OTHER"],
   ])("read %s as %s, as tedrisat does", (link, provider) => {
     expect(providerOfLink(link)).toBe(provider);
@@ -287,28 +301,31 @@ describe("the form", () => {
     expect(formErrors({ ...filled, url: "zoom.us/rec/1" })).toEqual({});
   });
 
-  it("stops a YouTube link while the switch is off, and takes it with the switch on", () => {
+  it("takes a YouTube link with the switch off or on (the owner's 3 October decision)", () => {
     const youtube = { ...filled, url: "https://youtu.be/abc" };
-    expect(formErrors(youtube)).toEqual({ youtubePublic: true });
+    expect(formErrors(youtube)).toEqual({});
     expect(formErrors({ ...youtube, isPublic: true })).toEqual({});
   });
 
-  it("locks the switch on for a public YouTube recording and off for a closed course", () => {
-    const youtube = { url: "https://youtu.be/abc", isPublic: true };
-    expect(switchLocked(youtube, false)).toEqual({
+  it("locks the switch off for a closed course only", () => {
+    expect(switchLocked({ isPublic: false }, true)).toEqual({
       locked: true,
-      reason: "youtube",
+      reason: "closed",
     });
-    expect(
-      switchLocked({ url: "https://zoom.us/1", isPublic: false }, true)
-    ).toEqual({ locked: true, reason: "closed" });
-    expect(
-      switchLocked({ url: "https://zoom.us/1", isPublic: false }, false)
-    ).toEqual({ locked: false, reason: null });
+    expect(switchLocked({ isPublic: false }, false)).toEqual({
+      locked: false,
+      reason: null,
+    });
+    // a public recording, on YouTube or anywhere, can be closed again
+    expect(switchLocked({ isPublic: true }, false)).toEqual({
+      locked: false,
+      reason: null,
+    });
     // a recording that is already public can still be closed in a closed course
-    expect(
-      switchLocked({ url: "https://zoom.us/1", isPublic: true }, true)
-    ).toEqual({ locked: false, reason: null });
+    expect(switchLocked({ isPublic: true }, true)).toEqual({
+      locked: false,
+      reason: null,
+    });
   });
 });
 
@@ -341,9 +358,16 @@ describe("what a write sends", () => {
   it("sends nothing while the form has a problem", () => {
     expect(createBody({ ...filled, title: "" })).toBeNull();
     expect(createBody({ ...filled, url: "http://zoom.us/1" })).toBeNull();
+  });
+
+  it("adds a YouTube link closed to everyone but the course", () => {
     expect(
       createBody({ ...filled, url: "https://youtu.be/abc", isPublic: false })
-    ).toBeNull();
+    ).toEqual({
+      title: "Kayıt",
+      url: "https://youtu.be/abc",
+      visibility: "ENROLLED",
+    });
   });
 
   it("edits only what changed", () => {
@@ -396,12 +420,48 @@ describe("what the API refuses", () => {
     ["LESSON_CANCELLED", "Recordings.errors.cancelled"],
     ["LESSON_NOT_FOUND", "Recordings.errors.gone"],
     ["RECORDING_NOT_FOUND", "Recordings.errors.gone"],
-    ["RECORDING_YOUTUBE_PUBLIC_ONLY", "Recordings.errors.youtubePublicOnly"],
     ["VALIDATION_ERROR", "Recordings.errors.invalid"],
+    ["RECORDING_YOUTUBE_PUBLIC_ONLY", "Problems.actionGeneric"],
     ["SOMETHING_NEW", "Problems.actionGeneric"],
     ["", "Problems.actionGeneric"],
   ])("words %s with %s", (code, key) => {
     expect(recordingErrorKey(code)).toBe(key);
+  });
+
+  it.each([
+    ["invalid", "invalid"],
+    ["not-https", "notHttps"],
+    ["youtube-no-video", "youtubeNoVideo"],
+    ["bunny-no-video", "bunnyNoVideo"],
+    ["bunny-foreign-library", "bunnyForeignLibrary"],
+    ["bunny-video-used", "bunnyVideoUsed"],
+    // a reason this page does not know yet, or none, is a link it cannot read
+    ["something-new", "invalid"],
+    ["toString", "invalid"],
+    [null, "invalid"],
+  ])("words a link tedrisat cannot store for %s with linkInvalid.%s", (reason, key) => {
+    expect(recordingErrorKey("RECORDING_LINK_INVALID", reason)).toBe(
+      `Recordings.errors.linkInvalid.${key}`
+    );
+  });
+
+  it("reads the reason a refusal carries, and nothing that is not one", () => {
+    expect(
+      refusalReasonOf({
+        code: "RECORDING_LINK_INVALID",
+        context: { reason: "bunny-video-used" },
+      })
+    ).toBe("bunny-video-used");
+    for (const body of [
+      undefined,
+      null,
+      "RECORDING_LINK_INVALID",
+      { code: "RECORDING_EXISTS", context: { lessonId: "l" } },
+      { code: "RECORDING_LINK_INVALID", context: { reason: 7 } },
+      { code: "RECORDING_LINK_INVALID", context: null },
+    ]) {
+      expect(refusalReasonOf(body)).toBeNull();
+    }
   });
 
   it("reads the page again when the answer means it was out of date", () => {

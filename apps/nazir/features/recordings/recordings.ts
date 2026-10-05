@@ -9,10 +9,11 @@ import { linkProblem, sendableLink } from "../sessions/sessions";
  * Ders kayıtları as rules: a course's sessions with the recording each one
  * holds, what the add and edit form check before anything is sent, what each
  * write sends, and which sentence a refusal gets. Pure on purpose, so the
- * page and the form have nothing to decide. A session holds one recording; it
- * is a pasted link, never an upload. tedrisat reads the provider off the link
- * the same way (`providerOfUrl`), and it is the authority: this only lets the
- * form say so before the write.
+ * page and the form have nothing to decide. A session holds one recording; on
+ * this page it is a pasted link, never an upload. tedrisat reads the link
+ * (`detectRecordingLink`) and is the authority: the host rule here only lets
+ * the form name the provider while the link is typed, and a link tedrisat
+ * refuses comes back as a reason the page words.
  */
 
 export const recordingsHref = (courseId: string): string =>
@@ -147,7 +148,12 @@ export function hostOf(url: string): string {
   }
 }
 
-/** The chip's platform id of a provider, or null for one that has no chip of its own. */
+/**
+ * The chip's platform id of a provider, or null for one that has no chip of
+ * its own. The design kit gives Bunny no chip (`recording-providers.json`:
+ * Medaris's own host, played in the page), so a Bunny recording shows its
+ * host, as any other host does.
+ */
 export const chipOf = (
   provider: Provider
 ): "youtube" | "google-drive" | null =>
@@ -169,7 +175,16 @@ export interface RecordingForm {
 const onDomain = (host: string, domain: string): boolean =>
   host === domain || host.endsWith(`.${domain}`);
 
-/** Where a link lives, read off its host: YouTube and Google Drive have names, everything else is OTHER. */
+/** The domains of every Bunny host, as tedrisat's `detectRecordingLink` lists them. */
+const BUNNY_DOMAINS = ["mediadelivery.net", "bunnycdn.com", "b-cdn.net"];
+
+/**
+ * Where a link lives, read off its host as tedrisat reads it: YouTube, Google
+ * Drive and Bunny have names, everything else is OTHER. Any host on a Bunny
+ * domain is Bunny's: tedrisat takes a player link of Medaris's own library
+ * and refuses the rest, which the page then words. Nothing is asked of any
+ * host.
+ */
 export function providerOfLink(value: string): Provider {
   const url = sendableLink(value);
   if (!url) return "OTHER";
@@ -184,10 +199,11 @@ export function providerOfLink(value: string): Provider {
   if (onDomain(host, "drive.google.com") || onDomain(host, "docs.google.com")) {
     return "DRIVE";
   }
+  if (BUNNY_DOMAINS.some((domain) => onDomain(host, domain))) return "BUNNY";
   return "OTHER";
 }
 
-export type FormProblem = "title" | "linkEmpty" | "link" | "youtubePublic";
+export type FormProblem = "title" | "linkEmpty" | "link";
 
 /** The first thing wrong with each field; the submit stays off while any is. */
 export function formErrors(
@@ -197,20 +213,18 @@ export function formErrors(
   if (!form.title.trim()) errors.title = true;
   if (!form.url.trim()) errors.linkEmpty = true;
   else if (linkProblem(form.url) !== null) errors.link = true;
-  else if (providerOfLink(form.url) === "YOUTUBE" && !form.isPublic) {
-    errors.youtubePublic = true;
-  }
   return errors;
 }
 
-/** The switch cannot move: a YouTube recording stays public, and a closed course opens nothing. */
+/**
+ * The switch cannot move: a closed course opens nothing to everyone. A
+ * recording that is already public can still be closed. Any provider may be
+ * either: the owner dropped "YouTube is public only" on 3 October.
+ */
 export function switchLocked(
-  form: Pick<RecordingForm, "url" | "isPublic">,
+  form: Pick<RecordingForm, "isPublic">,
   closed: boolean
-): { locked: boolean; reason: "youtube" | "closed" | null } {
-  if (form.isPublic && providerOfLink(form.url) === "YOUTUBE") {
-    return { locked: true, reason: "youtube" };
-  }
+): { locked: boolean; reason: "closed" | null } {
   if (closed && !form.isPublic) return { locked: true, reason: "closed" };
   return { locked: false, reason: null };
 }
@@ -269,8 +283,38 @@ export function patchBody(
 
 // ---- what the API refuses -----------------------------------------------------------
 
-/** The message key (from the catalogue's root) of a refused write, from the code the API answered with. */
-export function recordingErrorKey(code: string): string {
+/** tedrisat's reasons for a link it cannot store (`RECORDING_LINK_INVALID`), and their message keys. */
+const LINK_INVALID_KEYS: Record<string, string> = {
+  invalid: "invalid",
+  "not-https": "notHttps",
+  "youtube-no-video": "youtubeNoVideo",
+  "bunny-no-video": "bunnyNoVideo",
+  "bunny-foreign-library": "bunnyForeignLibrary",
+  "bunny-video-used": "bunnyVideoUsed",
+};
+
+/** The `reason` a refusal carries in its context, or null; it is a code, never a sentence. */
+export function refusalReasonOf(errorBody: unknown): string | null {
+  const context =
+    errorBody && typeof errorBody === "object" && "context" in errorBody
+      ? (errorBody as { context: unknown }).context
+      : null;
+  const reason =
+    context && typeof context === "object" && "reason" in context
+      ? (context as { reason: unknown }).reason
+      : null;
+  return typeof reason === "string" ? reason : null;
+}
+
+/**
+ * The message key (from the catalogue's root) of a refused write, from the
+ * code the API answered with and, for a link it cannot store, the reason. A
+ * reason this page does not know yet is worded as a link that cannot be read.
+ */
+export function recordingErrorKey(
+  code: string,
+  reason: string | null = null
+): string {
   switch (code) {
     case "AUTHZ_FORBIDDEN":
       return "Problems.actionForbidden";
@@ -281,8 +325,12 @@ export function recordingErrorKey(code: string): string {
     case "LESSON_NOT_FOUND":
     case "RECORDING_NOT_FOUND":
       return "Recordings.errors.gone";
-    case "RECORDING_YOUTUBE_PUBLIC_ONLY":
-      return "Recordings.errors.youtubePublicOnly";
+    case "RECORDING_LINK_INVALID":
+      return `Recordings.errors.linkInvalid.${
+        reason !== null && Object.hasOwn(LINK_INVALID_KEYS, reason)
+          ? LINK_INVALID_KEYS[reason]
+          : "invalid"
+      }`;
     case "VALIDATION_ERROR":
       return "Recordings.errors.invalid";
     default:

@@ -69,6 +69,9 @@ const lesson = (id: string, title: string, at: string, over = {}) => ({
 });
 
 const ZOOM = "https://us02web.zoom.us/rec/share/abc123";
+const VIDEO = "b2470000-0000-4000-8000-000000000001";
+/** A Bunny player link as tedrisat hands it out: signed for this read. */
+const SIGNED = `https://player.mediadelivery.net/embed/424242/${VIDEO}?token=${"a".repeat(64)}&expires=1791300000`;
 
 /** Two weeks: the first has three recorded sessions, the second one that has begun, one ahead and one cancelled. */
 const course = (over: Record<string, unknown> = {}) => ({
@@ -233,6 +236,29 @@ describe("Ders kayıtları", () => {
     const youtube = rowOf(out, "Kayıt l-5");
     expect(youtube).toContain("mds-platform-chip--youtube");
     expect(textOf(youtube)).toContain("Herkese açık");
+  });
+
+  it("shows a Bunny recording by its host, as the kit has no Bunny chip, and an upload still processing as such", async () => {
+    state.recordings = {
+      status: "ok",
+      data: [
+        recording("l-1", { provider: "BUNNY", url: SIGNED }),
+        recording("l-6", {
+          provider: "BUNNY",
+          status: "PROCESSING",
+          url: undefined,
+        }),
+      ],
+    };
+    const out = await markup();
+    const ready = rowOf(out, "Kayıt l-1");
+    expect(textOf(ready)).toContain("player.mediadelivery.net");
+    expect(textOf(ready)).toContain("Hazır");
+    expect(ready).toContain(`href="${SIGNED.replaceAll("&", "&amp;")}"`);
+    const processing = textOf(rowOf(out, "Kayıt l-6"));
+    expect(processing).toContain("Hazırlanıyor");
+    expect(processing).toContain("Bağlantı yok");
+    expect(rowOf(out, "Kayıt l-6")).not.toContain("href=");
   });
 
   it("opens a link in a new tab, and says there is none while a recording is processing", async () => {
@@ -407,25 +433,56 @@ describe("Kayıt ekle", () => {
     ).not.toBeNull();
   });
 
-  it("stops a YouTube link while the switch is off, with one line, and takes it with the switch on", async () => {
+  it("takes a YouTube link with the switch off, closed to everyone but the course", async () => {
     await open();
     await typeInto(field("url"), "https://youtu.be/abcdefghijk");
-    // known the moment the link is typed, not only at submit
-    expect(dialog().textContent).toContain(
-      "YouTube yalnızca herkese açık kayıtlar içindir."
-    );
+    expect(switchBox().hasAttribute("data-disabled")).toBe(false);
+    expect(dialog().textContent).not.toContain("YouTube yalnızca");
     await submit("Kaydı ekle");
-    expect(addRecording).not.toHaveBeenCalled();
+    expect(addRecording).toHaveBeenCalledWith("l-2", {
+      title: "Hafta 2 kaydı",
+      url: "https://youtu.be/abcdefghijk",
+      visibility: "ENROLLED",
+    });
+  });
 
-    await toggle();
-    // a public YouTube recording keeps the switch on
-    expect(switchBox().getAttribute("aria-checked")).toBe("true");
-    expect(switchBox().hasAttribute("data-disabled")).toBe(true);
-    await submit("Kaydı ekle");
-    expect(addRecording).toHaveBeenCalledWith(
-      "l-2",
-      expect.objectContaining({ visibility: "PUBLIC" })
+  it("shows the host of a Bunny player link as it is typed, Bunny having no chip of its own", async () => {
+    await open();
+    await typeInto(
+      field("url"),
+      `player.mediadelivery.net/embed/424242/${VIDEO}`
     );
+    const chip = dialog().querySelector(".mds-platform-chip--bunny");
+    expect(chip?.textContent).toContain("player.mediadelivery.net");
+    expect(chip?.getAttribute("role")).toBe("status");
+    await typeInto(field("url"), ZOOM);
+    expect(dialog().querySelector(".mds-platform-chip--bunny")).toBeNull();
+  });
+
+  it.each([
+    [
+      "bunny-video-used",
+      "Bu Bunny videosu başka bir celsenin kaydı olarak ekli.",
+    ],
+    [
+      "bunny-foreign-library",
+      "Bu Bunny videosu Medaris’in video kütüphanesinde değil.",
+    ],
+    ["youtube-no-video", "YouTube bağlantısı bir videoyu göstermiyor"],
+    ["something-new", "Bağlantı okunamadı."],
+  ])("words a link tedrisat cannot store (%s) from its reason, and keeps the form", async (reason, sentence) => {
+    addRecording.mockResolvedValue({
+      success: false,
+      code: "RECORDING_LINK_INVALID",
+      reason,
+    });
+    await open();
+    await typeInto(field("url"), `player.mediadelivery.net/embed/1/${VIDEO}`);
+    await submit("Kaydı ekle");
+    expect(toast("error")).toContain("Kayıt kaydedilemedi");
+    expect(toast("error")).toContain(sentence);
+    expect(dialog()).not.toBeNull();
+    expect(refresh).not.toHaveBeenCalled();
   });
 
   it("does not send a form with a problem, and says where", async () => {
@@ -525,13 +582,15 @@ describe("Düzenle", () => {
     expect(dialog()).toBeNull();
   });
 
-  it("keeps a public YouTube recording public", async () => {
+  it("closes a public YouTube recording to everyone but the course", async () => {
     await open("Kaydı düzenle: Hafta 1b");
     expect(switchBox().getAttribute("aria-checked")).toBe("true");
-    expect(switchBox().hasAttribute("data-disabled")).toBe(true);
-    expect(dialog().textContent).toContain(
-      "YouTube yalnızca herkese açık kayıtlar içindir."
-    );
+    expect(switchBox().hasAttribute("data-disabled")).toBe(false);
+    await toggle();
+    await submit("Kaydet");
+    expect(changeRecording).toHaveBeenCalledWith("r-l-5", {
+      visibility: "ENROLLED",
+    });
   });
 
   it("starts a recording that is still processing with an empty link", async () => {

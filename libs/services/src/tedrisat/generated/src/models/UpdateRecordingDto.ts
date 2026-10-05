@@ -34,7 +34,7 @@ export interface UpdateRecordingDto {
      */
     title?: string;
     /**
-     * A new https link; the provider is read again and the recording is READY.
+     * A new https link, read as on `POST /lessons/:id/recordings`; the recording is READY. Moving between a Bunny video and any other link rewrites where the recording lives.
      * @type {string}
      * @memberof UpdateRecordingDto
      */

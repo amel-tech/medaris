@@ -1516,7 +1516,6 @@
       "detected": ", bağlantıdan algılandı",
       "publicLabel": "Herkese açık",
       "publicHelp": "Kapalıyken yalnızca derse kayıtlı talebe ve ders ekibi izler.",
-      "youtubePublic": "YouTube yalnızca herkese açık kayıtlar içindir. Yalnızca kayıtlı talebenin izleyeceği bir kaydı başka bir yere yükleyip bağlantısını yapıştırın.",
       "closed": "Kapalı derste kayıtlar herkese açılmaz.",
       "submitAdd": "Kaydı ekle",
       "submitEdit": "Kaydet",
@@ -1536,7 +1535,14 @@
       "exists": "Bu celsenin zaten bir kaydı var; onu düzenleyin. Sayfa yenileniyor.",
       "cancelled": "İptal edilmiş bir celseye kayıt eklenemez.",
       "gone": "Bu celse ya da kayıt artık yok. Sayfa yenileniyor.",
-      "youtubePublicOnly": "YouTube yalnızca herkese açık kayıtlar içindir.",
+      "linkInvalid": {
+        "invalid": "Bağlantı okunamadı. Kaydın bağlantısını yeniden kopyalayın.",
+        "notHttps": "Bağlantı https:// ile başlamalı. Bağlantıyı yeniden kopyalayın.",
+        "youtubeNoVideo": "YouTube bağlantısı bir videoyu göstermiyor: kanalın ya da oynatma listesinin değil, videonun bağlantısını kopyalayın.",
+        "bunnyNoVideo": "Bunny bağlantısı bir videoyu göstermiyor: videonun oynatıcı bağlantısını (player.mediadelivery.net) kopyalayın.",
+        "bunnyForeignLibrary": "Bu Bunny videosu Medaris’in video kütüphanesinde değil. Yalnızca Medaris kütüphanesindeki bir videonun bağlantısı eklenebilir.",
+        "bunnyVideoUsed": "Bu Bunny videosu başka bir celsenin kaydı olarak ekli. Bir video yalnızca bir celsenin kaydı olabilir."
+      },
       "invalid": "Başlığı ve https bağlantısını denetleyip yeniden deneyin."
     }
   }

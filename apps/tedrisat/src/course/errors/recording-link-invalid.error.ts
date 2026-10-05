@@ -10,11 +10,15 @@ const MESSAGES: Record<RecordingLinkProblem, string> = {
     "The Bunny link names no video: copy the player link of the video",
   "bunny-foreign-library":
     "The Bunny link is not from the Medaris video library",
+  "bunny-video-used":
+    "The Bunny video is already the recording of another session",
 };
 
 /**
  * A pasted recording link that cannot be stored (MDRS-119). `reason` is
- * `detectRecordingLink`'s problem, so a client can word it its own way.
+ * `detectRecordingLink`'s problem, or `bunny-video-used` when the write finds
+ * the Bunny video already held by another session's recording (MDRS-247), so
+ * a client can word it its own way.
  */
 export class RecordingLinkInvalidError extends BadRequestError {
   static readonly code = "RECORDING_LINK_INVALID";
