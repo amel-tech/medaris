@@ -119,6 +119,12 @@ const rowOf = (page: Page, text: string) =>
     .locator("[data-testid=course-nazirs] tbody tr:visible")
     .filter({ hasText: text });
 const dialog = (page: Page, name: string) => page.getByRole("dialog", { name });
+/**
+ * A sentence on screen. While Next streams a page in it keeps a hidden copy
+ * beside the one shown, so a text can briefly match twice: only what is seen counts.
+ */
+const seen = (page: Page, text: string) =>
+  page.getByText(text).filter({ visible: true });
 const shot = (page: Page, name: string) =>
   page.screenshot({ path: test.info().outputPath(`${name}.png`) });
 
@@ -138,8 +144,7 @@ const expectPages = async (
   courseId: string | undefined,
   pages: { open: Record<string, string>; refused: readonly string[] }
 ) => {
-  // Next may still hold a hidden copy of a streamed page: only what is seen counts
-  const refusal = page.getByText(FORBIDDEN).filter({ visible: true });
+  const refusal = seen(page, FORBIDDEN);
   for (const [section, title] of Object.entries(pages.open)) {
     await page.goto(`/ders/${courseId}/${section}`);
     await expect(
@@ -188,9 +193,7 @@ test("the müderris opens Ders nazırları of a course with none yet, under the 
   const page = await as("MEDRESE_BASMUDERRIS");
   await open(page, fixture?.second.id);
   await expect(page.getByText("Bu sayfa henüz hazır değil.")).toHaveCount(0);
-  await expect(
-    page.getByText("Bu derste henüz ders nazırı yok.")
-  ).toBeVisible();
+  await expect(seen(page, "Bu derste henüz ders nazırı yok.")).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Ders nazırı ata" })
   ).toBeVisible();
@@ -512,7 +515,7 @@ test("a ders nazırı without course_nazir.assign is refused the page and sees n
   const page = await as("DERS_NAZIR");
   await page.setViewportSize(desktop);
   await page.goto(`/ders/${fixture?.first.id}/nazirlar`);
-  await expect(page.getByText(FORBIDDEN)).toBeVisible();
+  await expect(seen(page, FORBIDDEN)).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Ders nazırı ata" })
   ).toHaveCount(0);
@@ -559,9 +562,7 @@ test("given course_nazir.assign, a ders nazırı appoints with no permission and
 
     const page = await as("DERS_NAZIR");
     await open(page, course);
-    await expect(
-      page.getByText("Ders nazırı atayabilirsiniz.", { exact: false })
-    ).toBeVisible();
+    await expect(seen(page, "Ders nazırı atayabilirsiniz.")).toBeVisible();
     const own = rowOf(page, DERS_NAZIR.email as string);
     await expect(own).toContainText("(siz)");
     await expect(own.getByRole("button")).toHaveCount(0);
@@ -714,7 +715,8 @@ test("on a passive course the müderris hands on only what he still holds: the b
     });
     await talebe.goto(`/ders/${course}/ayarlar`);
     await expect(
-      talebe.getByText(
+      seen(
+        talebe,
         "Bu ayarları değiştirmek için “Dersi düzenle” izni de gerekir."
       )
     ).toBeVisible();

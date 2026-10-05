@@ -55,6 +55,15 @@ const sample = (page: Page) =>
 const zone = (page: Page) =>
   page.getByRole("combobox", { name: "Saat dilimi" });
 const save = (page: Page) => page.getByRole("button", { name: "Kaydet" });
+/**
+ * A sentence on screen. While Next streams a page in it keeps a hidden copy
+ * beside the one shown, so a text can briefly match twice: only what is seen counts.
+ */
+const seen = (page: Page, text: string) =>
+  page.getByText(text).filter({ visible: true });
+/** The Yayın card on screen (see `seen`). */
+const publishing = (page: Page) =>
+  page.getByTestId("course-publish").filter({ visible: true });
 const choose = async (select: ReturnType<typeof sample>, option: string) => {
   await select.click();
   await select
@@ -206,7 +215,7 @@ test("'Yayımla' and 'Taslağa çek' keep a change that is not saved yet", async
   await approval(page).setChecked(!before?.requires_approval);
   await expect(save(page)).toBeEnabled();
 
-  const card = page.getByTestId("course-publish");
+  const card = publishing(page);
   await card.getByRole("button", { name: "Taslağa çek" }).click();
   await page
     .getByRole("alertdialog")
@@ -236,7 +245,7 @@ test("'Taslağa çek' asks first with the focus on 'Vazgeç', and each status is
   const course = fixture?.second.id as string;
   await open(page, course);
 
-  const card = page.getByTestId("course-publish");
+  const card = publishing(page);
   await expect(card).toContainText("Yayında");
   await card.getByRole("button", { name: "Taslağa çek" }).click();
   const ask = page.getByRole("alertdialog");
@@ -245,16 +254,16 @@ test("'Taslağa çek' asks first with the focus on 'Vazgeç', and each status is
   await ask.getByRole("button", { name: "Taslağa çek" }).click();
   await expect(card).toContainText("Taslak");
   await page.reload();
-  await expect(page.getByTestId("course-publish")).toContainText("Taslak");
+  await expect(publishing(page)).toContainText("Taslak");
   expect((await fixture?.courseOf(course))?.status).toBe("DRAFT");
 
   await page
     .getByTestId("course-publish")
     .getByRole("button", { name: "Yayımla" })
     .click();
-  await expect(page.getByTestId("course-publish")).toContainText("Yayında");
+  await expect(publishing(page)).toContainText("Yayında");
   await page.reload();
-  await expect(page.getByTestId("course-publish")).toContainText("Yayında");
+  await expect(publishing(page)).toContainText("Yayında");
   expect((await fixture?.courseOf(course))?.status).toBe("PUBLISHED");
 });
 
@@ -320,9 +329,8 @@ test("a ders nazırı with session.manage alone may change the sample session, a
     await expect(closed(page)).toBeDisabled();
     await expect(approval(page)).toBeDisabled();
     await expect(zone(page)).toBeDisabled();
-    await expect(
-      page.getByTestId("course-publish").getByRole("button")
-    ).toHaveCount(0);
+    await expect(publishing(page)).toContainText("Yayında");
+    await expect(publishing(page).getByRole("button")).toHaveCount(0);
 
     await choose(sample(page), "Hafta 1 · Celse 2");
     await save(page).click();
@@ -351,10 +359,8 @@ test("a ders nazırı with course.edit and course.settings changes the two boxes
     await expect(approval(page)).toBeEnabled();
     await expect(zone(page)).toBeEnabled();
     await expect(sample(page)).toBeDisabled();
-    await expect(page.getByTestId("course-publish")).toContainText("Yayında");
-    await expect(
-      page.getByTestId("course-publish").getByRole("button")
-    ).toHaveCount(0);
+    await expect(publishing(page)).toContainText("Yayında");
+    await expect(publishing(page).getByRole("button")).toHaveCount(0);
 
     const before = await fixture?.courseOf(course);
     await approval(page).setChecked(!before?.requires_approval);
@@ -384,19 +390,17 @@ test("a ders nazırı with course.settings and course.publish but no course.edit
       await expect(control(page)).toBeDisabled();
     }
     await expect(
-      page.getByText(
+      seen(
+        page,
         "Bu ayarları değiştirmek için “Dersi düzenle” izni de gerekir."
       )
     ).toBeVisible();
     await expect(
-      page.getByText(
-        "Bu ayarları değiştirme izniniz yok; yalnız görebilirsiniz."
-      )
+      seen(page, "Bu ayarları değiştirme izniniz yok; yalnız görebilirsiniz.")
     ).toBeVisible();
     await expect(save(page)).toHaveCount(0);
-    await expect(
-      page.getByTestId("course-publish").getByRole("button")
-    ).toHaveCount(0);
+    await expect(publishing(page)).toContainText("Yayında");
+    await expect(publishing(page).getByRole("button")).toHaveCount(0);
   });
 });
 
@@ -418,9 +422,7 @@ test("a save the API refuses is worded as a refusal, and nothing is written", as
   expect((await fixture?.courseOf(course))?.is_closed).toBe(false);
 
   await page.reload();
-  await expect(
-    page.getByText("Bu sayfaya izniniz yok").filter({ visible: true })
-  ).toBeVisible();
+  await expect(seen(page, "Bu sayfaya izniniz yok")).toBeVisible();
 });
 
 test("a ders nazırı with no permission is told so, and is shown no control", async ({
@@ -430,7 +432,7 @@ test("a ders nazırı with no permission is told so, and is shown no control", a
   const page = await as("DERS_NAZIR");
   await open(page, fixture?.first.id);
 
-  await expect(page.getByText("Bu sayfaya izniniz yok")).toBeVisible();
+  await expect(seen(page, "Bu sayfaya izniniz yok")).toBeVisible();
   await expect(page.getByRole("checkbox")).toHaveCount(0);
   await expect(save(page)).toHaveCount(0);
 });
@@ -444,7 +446,5 @@ test("the başnazım opens the page by its address, with every control open", as
 
   await expect(closed(page)).toBeEnabled();
   await expect(zone(page)).toBeEnabled();
-  await expect(
-    page.getByTestId("course-publish").getByRole("button")
-  ).toHaveCount(1);
+  await expect(publishing(page).getByRole("button")).toHaveCount(1);
 });
