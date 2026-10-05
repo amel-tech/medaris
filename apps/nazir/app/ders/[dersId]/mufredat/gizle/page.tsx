@@ -8,9 +8,9 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 /**
- * Müfredat of a course: the page that hides a week or a session (MDRS-143). It
- * wins over the shared placeholder's `[bolum]` and is absorbed by the editor
- * (MDRS-123), which owns this address from then on.
+ * The page that hides a week or a session by its own routes (MDRS-143,
+ * `week.hide`): it keeps its screen for whoever holds `week.hide` but not the
+ * right to save the whole course, now that the editor owns `/mufredat`.
  */
 export default async function Page({
   params,
