@@ -64,7 +64,9 @@ export async function purgeCourses(
 
   if (weekIds.length > 0) {
     // Recordings (MDRS-162), notes and questions (MDRS-150) hang off lessons;
-    // they go first, uncounted.
+    // they go first, uncounted. `lesson_invitations` (MDRS-121) is left on
+    // purpose: it holds no key to the lesson, and the invitation sweep reads it
+    // to send each talebe the CANCEL for a session that is gone, then deletes it.
     const lessonIds = tx
       .select({ id: lessons.id })
       .from(lessons)

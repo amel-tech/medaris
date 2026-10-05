@@ -1,19 +1,21 @@
 import { ApiPropertyOptional } from "@nestjs/swagger";
 import { Transform } from "class-transformer";
 import {
+  IsBoolean,
   IsLocale,
   IsNotEmpty,
   IsOptional,
   IsString,
   IsTimeZone,
   MaxLength,
+  ValidateIf,
 } from "class-validator";
 
 const trim = ({ value }: { value: unknown }) =>
   typeof value === "string" ? value.trim() : value;
 
 /**
- * What a user owns about themselves (MDRS-104, MDRS-166). `null` clears the
+ * What a user owns about themselves (MDRS-104, MDRS-166, MDRS-121). `null` clears the
  * time zone or the locale; an absent field leaves it as it is. The names cannot
  * be cleared, only replaced: Hesap requires both.
  */
@@ -55,4 +57,13 @@ export class UpdateMeDto {
   @IsLocale()
   @MaxLength(35)
   locale?: string | null;
+
+  @ApiPropertyOptional({
+    description:
+      "Lesson invitations by e-mail (MDRS-121). False stops every further invitation, update and cancellation.",
+  })
+  // Not `@IsOptional()`, which lets null through: the column has no null.
+  @ValidateIf((_, value) => value !== undefined)
+  @IsBoolean()
+  lessonInvitationEmails?: boolean;
 }

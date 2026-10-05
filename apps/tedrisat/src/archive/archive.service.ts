@@ -3,6 +3,7 @@ import { Injectable } from "@nestjs/common";
 import { SCOPE_TYPES } from "../database/schema/scope-type.schema";
 import { KoskNotFoundError } from "../kosk/errors/kosk-not-found.error";
 import { KoskService } from "../kosk/kosk.service";
+import { LessonInvitationService } from "../lesson-invitation/lesson-invitation.service";
 import { ArchiveRepository, IArchiver } from "./archive.repository";
 import {
   ArchiveItemType,
@@ -104,7 +105,8 @@ export class ArchiveService {
   constructor(
     private readonly repo: ArchiveRepository,
     private readonly koskService: KoskService,
-    private readonly authz: AuthzService
+    private readonly authz: AuthzService,
+    private readonly invitations: LessonInvitationService
   ) {}
 
   /**
@@ -366,6 +368,9 @@ export class ArchiveService {
     if (!(await this.repo.purge(type, id, { id: user.sub, name }))) {
       throw new ArchiveItemNotFoundError(type, id);
     }
+    // A purged session's invitation rows stay behind for their CANCELs
+    // (MDRS-121); send any still owed now rather than on the next timer.
+    this.invitations.kick();
   }
 
   private async page(

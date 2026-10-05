@@ -17,6 +17,17 @@ export const updateMyName = async (
   );
 
 /**
+ * The lesson-invitation switch (MDRS-121): saved the moment it changes, like
+ * the time zone. Off stops every further invitation e-mail.
+ */
+export const updateMyInvitationEmails = async (
+  lessonInvitationEmails: boolean
+): Promise<AuthenticatedActionResult<MeResponse>> =>
+  authenticatedAction((api) =>
+    api.me.updateMe({ updateMeDto: { lessonInvitationEmails } })
+  );
+
+/**
  * The time-zone select (MDRS-166): saved the moment it changes. The viewer's
  * zone cookie follows, so Programım and every other date on the page switch
  * zone without a reload (`syncViewerTimeZone` re-renders the route).

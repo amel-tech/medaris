@@ -351,6 +351,13 @@
       "when": 1791120000000,
       "tag": "0053_bunny_stream_recordings",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1791120060000,
+      "tag": "0054_lesson_invitations",
+      "breakpoints": true
     }
   ]
 }

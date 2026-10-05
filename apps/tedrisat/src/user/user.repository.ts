@@ -10,6 +10,7 @@ export type IUser = InferSelectModel<typeof users>;
 export interface IUserSettings {
   timeZone?: string | null;
   locale?: string | null;
+  lessonInvitationEmails?: boolean;
 }
 
 /**
