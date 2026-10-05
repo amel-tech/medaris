@@ -22,7 +22,8 @@ export class RecordingResponse {
   @ApiPropertyOptional({
     type: String,
     nullable: true,
-    description: "Null while the recording is PROCESSING.",
+    description:
+      "Null unless the recording is READY. For a BUNNY recording (MDRS-116) it is the Bunny player link, built when it is read, with a token that expires after a few hours when the library uses token authentication.",
   })
   url!: string | null;
   @ApiProperty({ enum: RecordingVisibility, enumName: "RecordingVisibility" })

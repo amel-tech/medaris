@@ -96,7 +96,7 @@ export interface RecordingResponse {
      */
     provider: RecordingProvider;
     /**
-     * Null while the recording is PROCESSING.
+     * Null unless the recording is READY. For a BUNNY recording (MDRS-116) it is the Bunny player link, built when it is read, with a token that expires after a few hours when the library uses token authentication.
      * @type {string}
      * @memberof RecordingResponse
      */

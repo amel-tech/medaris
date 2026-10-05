@@ -20,7 +20,8 @@
 export const RecordingProvider = {
     Youtube: 'YOUTUBE',
     Drive: 'DRIVE',
-    Other: 'OTHER'
+    Other: 'OTHER',
+    Bunny: 'BUNNY'
 } as const;
 export type RecordingProvider = typeof RecordingProvider[keyof typeof RecordingProvider];
 

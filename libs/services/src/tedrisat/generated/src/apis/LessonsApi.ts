@@ -29,10 +29,12 @@ import type {
   PaginatedCourseQuestionResponse,
   PaginatedLessonQuestionResponse,
   RecordingResponse,
+  RecordingUploadResponse,
   SessionBatchPreviewResponse,
   SessionBatchResponse,
   SessionResponse,
   SetLiveStreamDto,
+  StartRecordingUploadDto,
   UpdateLessonDto,
   UpdateLessonNoteDto,
   UpdateLessonQuestionDto,
@@ -68,6 +70,8 @@ import {
     PaginatedLessonQuestionResponseToJSON,
     RecordingResponseFromJSON,
     RecordingResponseToJSON,
+    RecordingUploadResponseFromJSON,
+    RecordingUploadResponseToJSON,
     SessionBatchPreviewResponseFromJSON,
     SessionBatchPreviewResponseToJSON,
     SessionBatchResponseFromJSON,
@@ -76,6 +80,8 @@ import {
     SessionResponseToJSON,
     SetLiveStreamDtoFromJSON,
     SetLiveStreamDtoToJSON,
+    StartRecordingUploadDtoFromJSON,
+    StartRecordingUploadDtoToJSON,
     UpdateLessonDtoFromJSON,
     UpdateLessonDtoToJSON,
     UpdateLessonNoteDtoFromJSON,
@@ -176,9 +182,19 @@ export interface PreviewSessionBatchRequest {
     weeklyPatternDto: WeeklyPatternDto;
 }
 
+export interface ResignRecordingUploadRequest {
+    id: string;
+    videoId: string;
+}
+
 export interface SetLessonLiveStreamRequest {
     id: string;
     setLiveStreamDto: SetLiveStreamDto;
+}
+
+export interface StartRecordingUploadRequest {
+    id: string;
+    startRecordingUploadDto: StartRecordingUploadDto;
 }
 
 export interface UpdateLessonRequest {
@@ -1117,6 +1133,58 @@ export class LessonsApi extends runtime.BaseAPI {
     }
 
     /**
+     * `recording.upload`, as for starting one. Returns the same video\'s TUS values so an interrupted upload continues where it stopped. The expiry is the upload\'s original one: signing again never extends it. 409 once the upload is no longer PROCESSING or its lifetime has passed (RECORDING_UPLOAD_CLOSED, with `reason`).
+     * Sign a session\'s Bunny upload again, to resume it
+     */
+    async resignRecordingUploadRaw(requestParameters: ResignRecordingUploadRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<RecordingUploadResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling resignRecordingUpload().'
+            );
+        }
+
+        if (requestParameters['videoId'] == null) {
+            throw new runtime.RequiredError(
+                'videoId',
+                'Required parameter "videoId" was null or undefined when calling resignRecordingUpload().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/lessons/{id}/recordings/uploads/{videoId}/signature`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace(`{${"videoId"}}`, encodeURIComponent(String(requestParameters['videoId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => RecordingUploadResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * `recording.upload`, as for starting one. Returns the same video\'s TUS values so an interrupted upload continues where it stopped. The expiry is the upload\'s original one: signing again never extends it. 409 once the upload is no longer PROCESSING or its lifetime has passed (RECORDING_UPLOAD_CLOSED, with `reason`).
+     * Sign a session\'s Bunny upload again, to resume it
+     */
+    async resignRecordingUpload(requestParameters: ResignRecordingUploadRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<RecordingUploadResponse> {
+        const response = await this.resignRecordingUploadRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * `session.live_link` (the müderris and the köşk nazımı by default, a ders nazırı when given it). A YouTube video link in any of its usual forms, the YouTube Studio link included, is stored as `https://www.youtube.com/live/<id>`; `null` clears it. Only a LIVE session takes one, and not once it is cancelled. Does not change the course version. Written to `audit_log` as `lesson.live_stream_set` or `lesson.live_stream_clear`.
      * Set, change or clear a session\'s live stream link
      */
@@ -1167,6 +1235,60 @@ export class LessonsApi extends runtime.BaseAPI {
      */
     async setLessonLiveStream(requestParameters: SetLessonLiveStreamRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<LiveStreamResponse> {
         const response = await this.setLessonLiveStreamRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * `recording.upload` (the müderris and the köşk nazımı by default, a ders nazırı when given it). Creates the video in the Medaris Bunny Stream library, records it as the session\'s recording with `provider` BUNNY and `status` PROCESSING, and returns what the browser needs for a TUS upload straight to Bunny; the file never passes through this API. The signature expires 24 hours later. A session that already has a recording is refused with 409, unless that recording is a Bunny upload that FAILED, which this one replaces. Written to `audit_log` as `recording.upload_start`. The recording becomes READY or FAILED when the encoding poll sees Bunny finish.
+     * Start uploading a session\'s recording to Bunny Stream
+     */
+    async startRecordingUploadRaw(requestParameters: StartRecordingUploadRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<RecordingUploadResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling startRecordingUpload().'
+            );
+        }
+
+        if (requestParameters['startRecordingUploadDto'] == null) {
+            throw new runtime.RequiredError(
+                'startRecordingUploadDto',
+                'Required parameter "startRecordingUploadDto" was null or undefined when calling startRecordingUpload().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/lessons/{id}/recordings/uploads`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: StartRecordingUploadDtoToJSON(requestParameters['startRecordingUploadDto']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => RecordingUploadResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * `recording.upload` (the müderris and the köşk nazımı by default, a ders nazırı when given it). Creates the video in the Medaris Bunny Stream library, records it as the session\'s recording with `provider` BUNNY and `status` PROCESSING, and returns what the browser needs for a TUS upload straight to Bunny; the file never passes through this API. The signature expires 24 hours later. A session that already has a recording is refused with 409, unless that recording is a Bunny upload that FAILED, which this one replaces. Written to `audit_log` as `recording.upload_start`. The recording becomes READY or FAILED when the encoding poll sees Bunny finish.
+     * Start uploading a session\'s recording to Bunny Stream
+     */
+    async startRecordingUpload(requestParameters: StartRecordingUploadRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<RecordingUploadResponse> {
+        const response = await this.startRecordingUploadRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

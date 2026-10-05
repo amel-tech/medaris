@@ -114,6 +114,12 @@ services:
       KEYCLOAK_ADMIN_CLIENT_ID: ${TEDRISAT__KEYCLOAK_ADMIN_CLIENT_ID:-}
       KEYCLOAK_ADMIN_CLIENT_SECRET: ${TEDRISAT__KEYCLOAK_ADMIN_CLIENT_SECRET:-}
 
+      # The Bunny Stream library recordings are uploaded to (MDRS-116). Empty
+      # is allowed: the upload routes answer 503 and nothing is polled.
+      BUNNY_STREAM_LIBRARY_ID: ${TEDRISAT__BUNNY_STREAM_LIBRARY_ID:-}
+      BUNNY_STREAM_API_KEY: ${TEDRISAT__BUNNY_STREAM_API_KEY:-}
+      BUNNY_STREAM_TOKEN_KEY: ${TEDRISAT__BUNNY_STREAM_TOKEN_KEY:-}
+
       # Both carry the API__ tier the file header promises ("the app-specific
       # spelling first, then the group one"). Without it the
       # API__KEYCLOAK_REDIRECT_URL that .env.example ships reached the container
