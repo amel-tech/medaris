@@ -1,13 +1,16 @@
 import type { Metadata } from "next";
 import { forbidden, notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import { env } from "~/env";
 import {
   getCourse,
   getCourseEnrollments,
   getKoskById,
+  getMe,
 } from "~/features/kosks/actions";
 import { CourseOverview } from "~/features/kosks/components/course-overview";
 import { LoadFailed } from "~/features/kosks/components/load-failed";
+import { nazarCourseHref } from "~/features/kosks/overview-present";
 import {
   getCourseStats,
   getKoskCourseRoster,
@@ -35,12 +38,13 @@ export default async function Page({
 }) {
   const { locale, id, courseId } = await params;
   setRequestLocale(locale);
-  const [kosk, course, stats, enrollments, roster] = await Promise.all([
+  const [kosk, course, stats, enrollments, roster, me] = await Promise.all([
     getKoskById(id),
     getCourse(courseId),
     getCourseStats(courseId),
     getCourseEnrollments(courseId),
     getKoskCourseRoster(id),
+    getMe(),
   ]);
 
   if (stats === "forbidden") forbidden();
@@ -75,6 +79,7 @@ export default async function Page({
             ? (roster.items.find((r) => r.id === course.id) ?? null)
             : null
         }
+        nazarHref={nazarCourseHref(me, env.NAZAR_URL, course.id)}
       />
     </div>
   );

@@ -2452,7 +2452,9 @@
     "openEnrollment": "Açık: talebe başvurunca derse girer",
     "loadFailedTitle": "Sayısal bilgiler yüklenemedi",
     "loadFailed": "Dersin sayıları şu an okunamıyor. Biraz sonra yeniden deneyin.",
-    "retry": "Yeniden dene"
+    "retry": "Yeniden dene",
+    "openInNazar": "Nazar’da aç",
+    "openInNazarHint": "(ders nazırları ve ders ayarları, yeni sekmede açılır)"
   },
   "CourseLoad": {
     "title": "Ders bilgisi okunamadı",

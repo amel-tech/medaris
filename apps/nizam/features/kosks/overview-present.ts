@@ -315,3 +315,20 @@ export function platformOf(url: string | null | undefined): string | null {
   ];
   return known.find(([pattern]) => pattern.test(host))?.[1] ?? host;
 }
+
+// ---- nazar -------------------------------------------------------------------
+
+/**
+ * Where "Nazar’da aç" goes (MDRS-270): the course's Ders nazırları in nazar,
+ * whose course pages the başnazım opens by their address; its menu leads on
+ * to Ders ayarları. Nobody else is offered the way, and none is drawn while
+ * nazar's address is not set.
+ */
+export function nazarCourseHref(
+  me: { roles: { systemAdmin: boolean } } | null,
+  nazarUrl: string | undefined,
+  courseId: string
+): string | null {
+  if (!me?.roles.systemAdmin || !nazarUrl) return null;
+  return `${nazarUrl.replace(/\/+$/, "")}/ders/${encodeURIComponent(courseId)}/nazirlar`;
+}

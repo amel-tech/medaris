@@ -25,6 +25,7 @@ import {
   listWords,
   type Messages,
   meetingSlots,
+  nazarCourseHref,
   platformOf,
   registrationChips,
   rowActions,
@@ -756,6 +757,18 @@ describe("Genel bakış (nizam 53)", () => {
     expect(html).toContain("Dersin imamı");
   });
 
+  it("offers the başnazım the course's Ders nazırları in nazar, in a new tab (MDRS-270)", () => {
+    const html = view({ nazarHref: "http://nazar.test/ders/c1/nazirlar" });
+    const link = html.match(
+      /<a[^>]*href="http:\/\/nazar.test\/ders\/c1\/nazirlar"[^>]*>/
+    )?.[0];
+    expect(link).toContain('target="_blank"');
+    expect(link).toContain('rel="noopener noreferrer"');
+    expect(html).toContain("Nazar’da aç");
+    expect(html).toContain("ders nazırları ve ders ayarları");
+    expect(view()).not.toContain("Nazar’da aç");
+  });
+
   it("shows a draft with the draft badge", () => {
     expect(
       view({
@@ -780,6 +793,25 @@ describe("Genel bakış (nizam 53)", () => {
     });
     expect(html).toContain("Bekleyen başvuru yok");
     expect(html).toContain("Yaklaşan celse yok");
+  });
+});
+
+describe("the way to a course's nazar pages (MDRS-270)", () => {
+  const admin = { roles: { systemAdmin: true } };
+
+  it("is the course's Ders nazırları in nazar, for the başnazım alone", () => {
+    expect(nazarCourseHref(admin, "https://nazar.medaris.org/", "c1")).toBe(
+      "https://nazar.medaris.org/ders/c1/nazirlar"
+    );
+    for (const me of [{ roles: { systemAdmin: false } }, null]) {
+      expect(nazarCourseHref(me, "https://nazar.medaris.org", "c1")).toBeNull();
+    }
+  });
+
+  it("is nothing while nazar's address is not set", () => {
+    for (const url of [undefined, ""]) {
+      expect(nazarCourseHref(admin, url, "c1")).toBeNull();
+    }
   });
 });
 
