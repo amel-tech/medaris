@@ -34,3 +34,20 @@ export class CourseNazirHoldsSeatError extends ConflictError {
     );
   }
 }
+
+/**
+ * An open ban bars the person from the course: a course ban, a ban of its
+ * köşk or of its medrese. A post would shield them from the next ban, so a
+ * barred person is never seated, whoever asks (MDRS-270).
+ */
+export class CourseNazirBarredError extends ConflictError {
+  static readonly code = "COURSE_NAZIR_BARRED";
+
+  constructor(userId: string, courseId: string, context?: ErrorContext) {
+    super(
+      CourseNazirBarredError.code,
+      `User ${userId} is barred from course ${courseId}; they cannot be made its ders nazırı`,
+      context
+    );
+  }
+}

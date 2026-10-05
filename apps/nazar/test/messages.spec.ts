@@ -185,6 +185,7 @@ describe("the nazar message catalogue", () => {
         "COURSE_NAZIR_NOT_FOUND",
         "COURSE_NAZIR_UNKNOWN_ACCOUNT",
         "COURSE_NAZIR_HOLDS_SEAT",
+        "COURSE_NAZIR_BARRED",
         "GRANT_COURSE_INVALID",
         "DISMISS_SEAT_HANDED_ON",
         "KEYCLOAK_ADMIN_UNAVAILABLE",

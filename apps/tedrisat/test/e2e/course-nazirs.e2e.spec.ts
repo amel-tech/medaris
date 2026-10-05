@@ -208,6 +208,7 @@ describe("Course nazırs (e2e)", () => {
 
   const clean = () =>
     dbUtils.cleanTables(
+      "bans",
       "permission_grants",
       ...COURSE_TREE_TABLES,
       "madrasahs",
@@ -628,6 +629,50 @@ describe("Course nazırs (e2e)", () => {
       expect(await nazirAudit()).toHaveLength(0);
       // a müderris of another course is no seat over this one
       await appoint(freeCourse, NAZIM, { userId: MED_MUDERRIS }).expect(201);
+    });
+
+    it("refuses an account barred from the course, so an appointer cannot seat again whom the müderris barred (409 COURSE_NAZIR_BARRED)", async () => {
+      await appoint(freeCourse, MUDERRIS, {
+        permissions: ["course_nazir.assign"],
+      }).expect(201);
+      // A post, even one with no permission, keeps its holder from a ban.
+      await appoint(freeCourse, YUSUF, { userId: TALEBE }).expect(201);
+      const ban = { userId: TALEBE, scope: "COURSE", reason: "Düzeni bozdu." };
+      const shielded = await post(
+        `/courses/${freeCourse}/bans`,
+        ban,
+        MUDERRIS
+      ).expect(400);
+      expect(shielded.body.code).toBe("BAN_TARGET_INVALID");
+      // the müderris ends the post first, then bars him
+      await del(one(freeCourse, (await heldPost(TALEBE)).id), MUDERRIS).expect(
+        204
+      );
+      await post(`/courses/${freeCourse}/bans`, ban, MUDERRIS).expect(201);
+
+      const written = (await nazirAudit()).length;
+      for (const sub of [YUSUF, MUDERRIS]) {
+        const res = await appoint(freeCourse, sub, { userId: TALEBE }).expect(
+          409
+        );
+        expect(res.body.code).toBe("COURSE_NAZIR_BARRED");
+      }
+      // a köşk ban placed from another course of the köşk bars him here too
+      await post(
+        `/courses/${otherCourse}/bans`,
+        { userId: ZEYNEP, scope: "KOSK", reason: "Düzeni bozdu." },
+        NAZIM
+      ).expect(201);
+      const res = await appoint(freeCourse, NAZIM, { userId: ZEYNEP }).expect(
+        409
+      );
+      expect(res.body.code).toBe("COURSE_NAZIR_BARRED");
+      for (const userId of [TALEBE, ZEYNEP]) {
+        expect(
+          (await postsOf(userId)).filter((p) => p.revokedAt === null)
+        ).toHaveLength(0);
+      }
+      expect(await nazirAudit()).toHaveLength(written);
     });
 
     it("refuses a hidden course (400 GRANT_COURSE_INVALID)", async () => {

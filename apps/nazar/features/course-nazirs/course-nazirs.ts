@@ -225,6 +225,8 @@ export function courseNazirErrorKey(code: string): string {
       return "CourseNazirs.errors.unknownAccount";
     case "COURSE_NAZIR_HOLDS_SEAT":
       return "CourseNazirs.errors.holdsSeat";
+    case "COURSE_NAZIR_BARRED":
+      return "CourseNazirs.errors.barred";
     case "GRANT_COURSE_INVALID":
       return "CourseNazirs.errors.hidden";
     case "DISMISS_SEAT_HANDED_ON":

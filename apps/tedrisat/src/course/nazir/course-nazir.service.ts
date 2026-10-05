@@ -14,6 +14,7 @@ import type { IPersonName } from "../../assignment/assignment.repository";
 import { COURSE_CATALOG } from "../../assignment/permission-catalog";
 import { UserDirectoryService } from "../../assignment/user-directory.service";
 import { TedrisatAuthzContext } from "../../authz/tedrisat-authz-context.service";
+import { BanService } from "../../ban/ban.service";
 import { SCOPE_TYPES } from "../../database/schema/role-assignment.schema";
 import type { KoskPersonResponse } from "../../kosk/dto/kosk-admin.dto";
 import {
@@ -24,7 +25,10 @@ import { checkRequestedCodes } from "../../kosk/kosk-grants-rules";
 import { PermissionNotGivableError } from "../../madrasah/errors/permission-not-givable.error";
 import { CourseService } from "../course.service";
 import { CourseNazirRepository } from "./course-nazir.repository";
-import { CourseNazirUnknownAccountError } from "./course-nazir-errors";
+import {
+  CourseNazirBarredError,
+  CourseNazirUnknownAccountError,
+} from "./course-nazir-errors";
 import { type CourseStanding, courseStandingOf } from "./course-standing";
 import type {
   CourseNazirsResponse,
@@ -76,7 +80,8 @@ export class CourseNazirService {
     private readonly courses: CourseService,
     private readonly authz: AuthzService,
     private readonly context: TedrisatAuthzContext,
-    private readonly directory: UserDirectoryService
+    private readonly directory: UserDirectoryService,
+    private readonly bans: BanService
   ) {}
 
   /** Where the caller stands here: the başnazım gives as the platform. */
@@ -209,6 +214,11 @@ export class CourseNazirService {
     const userId = dto.userId.toLowerCase();
     const [unknownAccount] = await this.directory.findUnknownAccounts([userId]);
     if (unknownAccount) throw new CourseNazirUnknownAccountError(userId);
+    // The post keeps its holder from a ban (`RUNS_COURSE_ROLES`): one barred
+    // here is not seated, or an appointer could undo the müderris's ban.
+    if (await this.bans.isBarred(userId, courseId)) {
+      throw new CourseNazirBarredError(userId, courseId);
+    }
     await this.repo.assign(user.sub, courseId, {
       userId,
       permissions: codes,

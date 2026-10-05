@@ -314,6 +314,7 @@ describe("a refusal", () => {
           "COURSE_NAZIR_NOT_FOUND",
           "COURSE_NAZIR_UNKNOWN_ACCOUNT",
           "COURSE_NAZIR_HOLDS_SEAT",
+          "COURSE_NAZIR_BARRED",
           "GRANT_COURSE_INVALID",
           "DISMISS_SEAT_HANDED_ON",
           "KEYCLOAK_ADMIN_UNAVAILABLE",
@@ -335,6 +336,7 @@ describe("a refusal", () => {
       COURSE_NAZIR_UNKNOWN_ACCOUNT: "Bu hesap bulunamadı.",
       COURSE_NAZIR_HOLDS_SEAT:
         "Bu kişinin bu derste zaten bir görevi var (müderris, medrese ya da köşk görevi); ders nazırı yapılamaz.",
+      COURSE_NAZIR_BARRED: "Bu kişi bu dersten yasaklı; ders nazırı yapılamaz.",
       GRANT_COURSE_INVALID: "Gizli bir derse ders nazırı atanamaz.",
       DISMISS_SEAT_HANDED_ON:
         "Bu ders nazırının atadığı ders nazırları var; önce onları görevden alın.",

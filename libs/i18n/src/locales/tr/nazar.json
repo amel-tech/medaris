@@ -504,6 +504,7 @@
       "gone": "Bu ders nazırı artık yok; liste yenilendi.",
       "unknownAccount": "Bu hesap bulunamadı.",
       "holdsSeat": "Bu kişinin bu derste zaten bir görevi var (müderris, medrese ya da köşk görevi); ders nazırı yapılamaz.",
+      "barred": "Bu kişi bu dersten yasaklı; ders nazırı yapılamaz.",
       "hidden": "Gizli bir derse ders nazırı atanamaz.",
       "hasAppointees": "Bu ders nazırının atadığı ders nazırları var; önce onları görevden alın.",
       "directory": "Hesap şu an doğrulanamıyor. Biraz sonra yeniden deneyin."

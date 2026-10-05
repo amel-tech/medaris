@@ -504,6 +504,7 @@
       "gone": "This course nazır no longer exists; the list was read again.",
       "unknownAccount": "This account was not found.",
       "holdsSeat": "This person already holds a post over this course (müderris, medrese or köşk); they cannot be made its course nazır.",
+      "barred": "This person is barred from this course and cannot be made its ders nazır.",
       "hidden": "A hidden course takes no new course nazır.",
       "hasAppointees": "This course nazır appointed course nazırs who still hold their posts; dismiss them first.",
       "directory": "The account cannot be checked right now. Try again in a moment."
