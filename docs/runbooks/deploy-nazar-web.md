@@ -8,8 +8,8 @@
 | Workflow | `.github/workflows/nazar-web.yaml` |
 | GHCR image | `ghcr.io/amel-tech/medaris-nazar-web` |
 | Container port | `4002` |
-| Coolify application | `nazar-web` — uuid `rcwww0wkosws0g8ks8oks4c4`, project *Medaris*, environment `development`, server `mdrs1` (`193.111.78.115`), `https://nazar-dev.medaris.app` (the application was `nazir-web` on `https://nazir-dev.medaris.app` until MDRS-250; if it was recreated rather than renamed, its uuid changed: put the new one here and in §3) |
-| Coolify webhook secret | `NAZAR_WEB_COOLIFY_WEBHOOK` (repo secret; MDRS-250 renamed it from `NAZIR_WEB_COOLIFY_WEBHOOK`, set 2026-09-16). Until the new names exist the workflow falls back to the old ones: `NAZIR_WEB_COOLIFY_WEBHOOK` and `NAZIR_WEB_PROD_COOLIFY_WEBHOOK`. |
+| Coolify application | `nazar-web` — uuid `rcwww0wkosws0g8ks8oks4c4`, project *Medaris*, environment `development`, server `mdrs1` (`193.111.78.115`), `https://nazar-dev.medaris.app` (the application was `nazir-web` on `https://nazir-dev.medaris.app` until MDRS-250; it was renamed in place on 2026-10-05, so the uuid is unchanged, and the `nazir-dev` domain was removed) |
+| Coolify webhook secret | `NAZAR_WEB_COOLIFY_WEBHOOK` (repo secret, set 2026-10-05; MDRS-250 replaced `NAZIR_WEB_COOLIFY_WEBHOOK`). The workflow reads only the `NAZAR_WEB_*` names since #243; the old `NAZIR_WEB_*` secrets are unused. |
 | Deploy token | `COOLIFY_DEPLOY_TOKEN` (org secret — present) |
 
 The image name is not hardcoded: the workflow sets
@@ -95,9 +95,14 @@ would have been skipped silently and reported success.
 > The 43 historical tags MDRS-9 preserved were pushed on 2026-09-22
 > (`gh api --paginate repos/amel-tech/medaris/tags --jq '.[].name' | wc -l` →
 > `43`), so release-please finally has a release anchor per component. The
-> repository still has **no releases** (`gh api repos/amel-tech/medaris/releases
-> --jq 'length'` → `0`), so no deploy has yet produced a `<semver>` or `stable`
-> tag; every image in GHCR is from a `latest` / `sha-<short>` run.
+> component's own anchor is the GitHub release `nazar-web-v0.2.0`, created by
+> hand on 2026-10-05 at `dac3ff7f` (the commit `nazir-web-v0.2.0` points at)
+> when MDRS-250 renamed the component. A `release` event runs the workflow file
+> as it is at the tagged commit, which there was still `nazir-web.yaml`; its tag
+> guard skipped it (run `37269771049`), so that anchor built and deployed
+> nothing. The first `medaris-nazar-web` `<semver>` and `stable` tags therefore
+> come from `nazar-web-v0.2.1` (not verified against GHCR's tag list: listing
+> it needs `read:packages`).
 
 ---
 
@@ -108,7 +113,7 @@ Two channels (MDRS-87), told apart by the event that started the run:
 | Channel | Coolify application | Pulls | Started by | Webhook secret |
 |---|---|---|---|---|
 | development | the `development` one in the header | `latest` | any *development* path below | `NAZAR_WEB_COOLIFY_WEBHOOK` |
-| production | its twin in the `production` environment | `stable` | *Release path* below, full releases only | `NAZAR_WEB_PROD_COOLIFY_WEBHOOK` |
+| production | `nazar-web` — uuid `de3njzkkyu419i8ebujm8crl`, environment `production`, `https://nazar.medaris.app` (was `nazir-web` until MDRS-250) | `stable` | *Release path* below, full releases only | `NAZAR_WEB_PROD_COOLIFY_WEBHOOK` |
 
 Release-please is not part of the development channel: its release PRs stay
 open until someone decides to ship, and merging one is the production trigger.
@@ -296,9 +301,12 @@ closed by MDRS-86 and kept here only as history:
    step, land the workflow and Dockerfile changes but hold the deploy trigger —
    otherwise the first run after merge takes this frontend down.
 
-**Still open (MDRS-87).** `NAZAR_WEB_PROD_COOLIFY_WEBHOOK` is not set, and the Coolify
-`production` application it points at does not exist yet. Until both do, a
-release pushes `<semver>` + `latest` + `sha-…` + `stable` to GHCR and then the
-*Deploy to Coolify* step exits 1 naming that secret: GHCR is updated,
-production is untouched, the run is red. It never falls back to the
+**Production (MDRS-87, MDRS-250).** `NAZAR_WEB_PROD_COOLIFY_WEBHOOK` was set on
+2026-10-05 and points at the `production` application in §2. That application
+was configured for the new name before the first `nazar-web` release
+(client `nazar`, `NEXTAUTH_URL=https://nazar.medaris.app`, image
+`medaris-nazar-web:stable`), so it has nothing to pull until that release
+pushes `stable`. If the secret is ever missing, a release still pushes
+`<semver>` + `latest` + `sha-…` + `stable` to GHCR and then the *Deploy to
+Coolify* step exits 1 naming that secret; it never falls back to the
 development webhook.
