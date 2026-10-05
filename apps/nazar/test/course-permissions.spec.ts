@@ -114,6 +114,13 @@ describe("whether a page opens", () => {
       "enrollment.complete",
       "enrollment.remove",
     ]);
+    // Ders ayarları: its controls ask the first three, the sample session the last
+    expect(PAGE_CODES.settings).toEqual([
+      "course.edit",
+      "course.settings",
+      "course.publish",
+      "session.manage",
+    ]);
   });
 
   it("is the retry state when any read failed, and never an answer either way", () => {

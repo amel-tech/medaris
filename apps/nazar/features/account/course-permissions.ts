@@ -21,6 +21,10 @@ export const CODES = {
   enrollmentRemove: "enrollment.remove",
   recordingManage: "recording.manage",
   recordingUpload: "recording.upload",
+  courseSettings: "course.settings",
+  coursePublish: "course.publish",
+  settingApprovalOff: "setting.approval_off",
+  settingCourseOpen: "setting.course_open",
 } as const;
 
 /** The codes that open each page: holding any one of them is enough. */
@@ -36,6 +40,12 @@ export const PAGE_CODES = {
   ],
   curriculum: [CODES.courseEdit, CODES.sessionManage, CODES.weekHide],
   recordings: [CODES.recordingManage, CODES.recordingUpload],
+  settings: [
+    CODES.courseEdit,
+    CODES.courseSettings,
+    CODES.coursePublish,
+    CODES.sessionManage,
+  ],
 } as const satisfies Record<string, readonly string[]>;
 
 export const holds = (held: CoursePermissions, code: string): boolean =>
