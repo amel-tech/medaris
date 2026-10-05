@@ -76,6 +76,16 @@ describe("the rows of Ders nazırları", () => {
     });
   });
 
+  it("says that a ders nazırı given course_nazir.assign appoints only, and gives nothing", () => {
+    const [row] = courseNazirRows(
+      list([post({ permissions: ["course_nazir.assign"] })]),
+      { t, day, viewerId: "u-0" }
+    );
+    expect(row.permissionsLine).toBe(
+      "Ders nazırı ata; atadığı kişiye izin veremez"
+    );
+  });
+
   it("says 'İzin yok' for a post that holds none, and has no sentence line", () => {
     const [row] = courseNazirRows(list([post({ permissions: [] })]), {
       t,

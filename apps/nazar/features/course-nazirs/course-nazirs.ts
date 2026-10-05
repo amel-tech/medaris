@@ -18,6 +18,20 @@ import type { Messages } from "~/lib/i18n/messages";
  * a guess here: the API decides every write again.
  */
 
+/**
+ * The sentence for a code a ders nazırı holds or is given. Given, the
+ * `course_nazir.assign` code appoints only and gives nothing (d-1001-07,
+ * MDRS-133 "No re-delegation"); the account page's sentence is written for
+ * the roles that hold `permission.grant` with it, and would promise more.
+ */
+export const courseNazirPermissionLabel = (
+  code: string,
+  t: Messages
+): string =>
+  code === "course_nazir.assign"
+    ? t("CourseNazirs.assignOnly")
+    : permissionLabel(code, t);
+
 /** What the table and the dialogs need from the page, beside the rows. */
 export interface CourseNazirsContext {
   courseId: string;
@@ -110,7 +124,7 @@ export function courseNazirRows(
           : t("CourseNazirs.noPermissions"),
       permissionsLine:
         held.length > 0
-          ? held.map((code) => permissionLabel(code, t)).join(" · ")
+          ? held.map((code) => courseNazirPermissionLabel(code, t)).join(" · ")
           : null,
       ends: item.endsAt
         ? dated(item.endsAt, day)

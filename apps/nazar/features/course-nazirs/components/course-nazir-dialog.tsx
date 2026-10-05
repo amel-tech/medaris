@@ -21,11 +21,7 @@ import {
 } from "react";
 import { lookupPerson } from "~/features/nazirs/actions";
 import { PermissionSection } from "~/features/nazirs/components/permission-section";
-import {
-  isEmailLike,
-  type PickedPerson,
-  permissionLabel,
-} from "~/features/nazirs/nazirs";
+import { isEmailLike, type PickedPerson } from "~/features/nazirs/nazirs";
 import type { Messages } from "~/lib/i18n/messages";
 import { appointCourseNazir, changeCourseNazir } from "../actions";
 import {
@@ -34,6 +30,7 @@ import {
   type CourseNazirsContext,
   chosenCodes,
   courseNazirErrorKey,
+  courseNazirPermissionLabel,
   listMoved,
   pickProblem,
   unchangedPost,
@@ -359,7 +356,7 @@ export function CourseNazirDialog({
         <PermissionSection
           title={t("CourseNazirs.dialog.permissions")}
           codes={context.catalog}
-          labelOf={(code) => permissionLabel(code, words)}
+          labelOf={(code) => courseNazirPermissionLabel(code, words)}
           ticked={(code) =>
             boxState(code, { grantable: context.grantable, held, chosen })
               .ticked

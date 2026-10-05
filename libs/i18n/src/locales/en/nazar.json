@@ -436,6 +436,7 @@
     },
     "permissionCount": "{count, plural, one {# permission} other {# permissions}}",
     "noPermissions": "No permission",
+    "assignOnly": "Appoint a ders nazır; cannot give the appointee any permission",
     "never": "No end",
     "you": "(you)",
     "unknownPerson": "Name unknown",

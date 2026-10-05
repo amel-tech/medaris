@@ -79,6 +79,7 @@ const SESSION =
 const RECORDING = "Ders kaydı ekle, adlandır, gizle; görünürlüğünü değiştir";
 const EDIT = "Dersi düzenle: başlık, tanıtım, müfredat, saat dilimi";
 const PUBLISH = "Dersi yayımla ya da taslağa çek";
+const ASSIGN = "Ders nazırı ata; atadığı kişiye izin veremez";
 
 /** A müderris on a course where a policy took `course.publish` from him. */
 const context = (
@@ -284,6 +285,13 @@ describe("'Ders nazırı ata'", () => {
     expect(locked(SESSION)).toBe(false);
     await toggle(PUBLISH);
     expect(checked(PUBLISH)).toBe(false);
+  });
+
+  it("says that course_nazir.assign appoints only, as it does when given (MDRS-133: no re-delegation)", async () => {
+    await pick();
+    expect(box(ASSIGN)).toBeTruthy();
+    // the account page's sentence is a giver's, who holds permission.grant too
+    expect(dialog().textContent).not.toContain("izin ya da grup ver");
   });
 
   it("draws no box for one who appoints only, and sends no permission", async () => {

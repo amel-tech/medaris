@@ -436,6 +436,7 @@
     },
     "permissionCount": "{count} izin",
     "noPermissions": "İzin yok",
+    "assignOnly": "Ders nazırı ata; atadığı kişiye izin veremez",
     "never": "Süresiz",
     "you": "(siz)",
     "unknownPerson": "Adı bilinmiyor",

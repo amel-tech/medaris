@@ -436,6 +436,7 @@
     },
     "permissionCount": "{count} إذن",
     "noPermissions": "لا إذن",
+    "assignOnly": "تعيين ناظر درس؛ لا يمنح من يعيّنه أي صلاحية",
     "never": "بلا مدة",
     "you": "(أنتم)",
     "unknownPerson": "الاسم غير معروف",
