@@ -7,6 +7,7 @@ import {
   test as base,
   type Page,
 } from "@playwright/test";
+import { encode, type JWT } from "next-auth/jwt";
 
 /**
  * The Keycloak accounts the specs sign in with, from the environment only:
@@ -31,8 +32,117 @@ export const account = (role: string): Account => ({
 export const canSignIn = (who: Account): boolean =>
   Boolean(who.email && who.password);
 
-/** Opens our sign-in page, which sends the browser to Keycloak, and fills its form. */
+const KEYCLOAK_ISSUER = process.env.E2E_KEYCLOAK_ISSUER;
+const CLIENT_ID = process.env.E2E_KEYCLOAK_CLIENT_ID ?? "tedris-dev";
+const CLIENT_SECRET = process.env.E2E_KEYCLOAK_CLIENT_SECRET;
+const NEXTAUTH_SECRET = process.env.E2E_NEXTAUTH_SECRET;
+
+/**
+ * Whether tokens can be had without the browser form, through the direct
+ * grant of the client tedris's specs use (E2E_KEYCLOAK_ISSUER,
+ * E2E_KEYCLOAK_CLIENT_ID and E2E_KEYCLOAK_CLIENT_SECRET), and a session cookie
+ * minted with the app's NextAuth secret (E2E_NEXTAUTH_SECRET).
+ */
+const canUseDirectGrant = Boolean(
+  KEYCLOAK_ISSUER && CLIENT_SECRET && NEXTAUTH_SECRET
+);
+
+/** The app runs where nazar's Keycloak client takes no callback: the session is minted. */
+const mintsSession = () =>
+  canUseDirectGrant &&
+  new URL(process.env.E2E_BASE_URL ?? "http://localhost:4002").port !== "4002";
+
+/**
+ * A real Keycloak access, id and refresh token for `who` through the direct
+ * grant. This is also how a spec calls tedrisat as that person.
+ */
+export async function directGrant(who: Account) {
+  if (!canUseDirectGrant) {
+    throw new Error(
+      "E2E_KEYCLOAK_ISSUER, E2E_KEYCLOAK_CLIENT_SECRET and E2E_NEXTAUTH_SECRET are needed for the direct grant."
+    );
+  }
+  const res = await fetch(`${KEYCLOAK_ISSUER}/protocol/openid-connect/token`, {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      grant_type: "password",
+      client_id: CLIENT_ID,
+      client_secret: CLIENT_SECRET as string,
+      username: who.email as string,
+      password: who.password as string,
+      scope: "openid email profile",
+    }),
+  });
+  if (!res.ok) throw new Error(`Keycloak direct grant answered ${res.status}`);
+  return (await res.json()) as {
+    access_token: string;
+    refresh_token: string;
+    id_token: string;
+    expires_in: number;
+    refresh_expires_in: number;
+  };
+}
+
+/**
+ * Writes the session cookie NextAuth would have written after a sign-in, from
+ * tokens of the direct grant, as tedris's `sign-in.ts` does for an instance on
+ * a port its client does not list. The reading of the session and every API
+ * call are the real ones. The app cannot refresh these tokens with its own
+ * client, so such a session lasts as long as the access token (five minutes on
+ * the dev realm) and is never kept across tests.
+ */
+async function mintSession(page: Page, who: Account): Promise<void> {
+  const base = new URL(process.env.E2E_BASE_URL ?? "http://localhost:4002");
+  const t = await directGrant(who);
+  const claims = JSON.parse(
+    Buffer.from(t.access_token.split(".")[1], "base64url").toString()
+  ) as { sub: string; name?: string; email?: string };
+  const now = Date.now();
+  const jwt = await encode({
+    secret: NEXTAUTH_SECRET as string,
+    token: {
+      sub: claims.sub,
+      name: claims.name,
+      email: claims.email,
+      accessToken: t.access_token,
+      accessTokenExpired: now + (t.expires_in - 15) * 1000,
+      refreshToken: t.refresh_token,
+      idToken: t.id_token,
+      refreshTokenExpireIn: now + t.refresh_expires_in * 1000,
+      ssoCheckedAt: now,
+      user: { id: claims.sub, name: claims.name, email: claims.email },
+    } as unknown as JWT,
+  });
+  // NextAuth splits a session cookie that would pass the browser's 4 KB limit
+  // into `<name>.0`, `<name>.1`, … and reads them back in order.
+  const CHUNK = 3800;
+  const pieces =
+    jwt.length > CHUNK
+      ? (jwt.match(new RegExp(`.{1,${CHUNK}}`, "g")) ?? [])
+      : [jwt];
+  await page.context().addCookies(
+    pieces.map((value, index) => ({
+      name:
+        pieces.length === 1
+          ? "nazar.session-token"
+          : `nazar.session-token.${index}`,
+      value,
+      domain: base.hostname,
+      path: "/",
+      httpOnly: true,
+      sameSite: "Lax" as const,
+    }))
+  );
+}
+
+/**
+ * Opens our sign-in page, which sends the browser to Keycloak, and fills its
+ * form; on a port nazar's client takes no callback on, mints the session
+ * instead (`mintSession`).
+ */
 export async function signIn(page: Page, who: Account): Promise<void> {
+  if (mintsSession()) return mintSession(page, who);
   await page.goto("/auth/signin");
   await page.locator("#username").fill(who.email as string);
   await page.locator("#password").fill(who.password as string);
@@ -77,7 +187,8 @@ async function stateOf(
   role: string,
   baseURL: string | undefined
 ): Promise<string> {
-  const kept = states.get(role);
+  // a minted session cannot be refreshed by the app: it is made afresh each time
+  const kept = mintsSession() ? undefined : states.get(role);
   if (kept) return kept;
   const context = await browser.newContext({ baseURL });
   try {
