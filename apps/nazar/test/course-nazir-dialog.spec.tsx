@@ -408,6 +408,12 @@ describe("'İzinleri düzenle'", () => {
     );
     await settle(60);
   };
+  // Fatma's post ends on 31 December 2026: an untouched end is checked
+  // against now on save, so the clock is held before it.
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-05T10:00:00+03:00"));
+  });
 
   it("opens with the person, what the post holds and its end on the viewer's clock", async () => {
     await open();
@@ -424,8 +430,6 @@ describe("'İzinleri düzenle'", () => {
   });
 
   it("lets a held code the caller could not give be unticked, and sends the whole set left", async () => {
-    vi.useFakeTimers({ toFake: ["Date"] });
-    vi.setSystemTime(new Date("2026-10-05T10:00:00+03:00"));
     await open();
     expect(locked(PUBLISH)).toBe(false);
     await toggle(PUBLISH);
