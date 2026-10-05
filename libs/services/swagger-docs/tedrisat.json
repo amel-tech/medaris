@@ -4450,7 +4450,7 @@
     },
     "/lessons/{id}/recordings": {
       "post": {
-        "description": "`recording.manage` (the müderris and the köşk nazımı by default, a ders nazırı when given it). The recording is READY at once; its provider is read off the link's host and nothing is uploaded or called. A session holds one recording (409 RECORDING_EXISTS: change that one). A YouTube link must be PUBLIC (400 RECORDING_YOUTUBE_PUBLIC_ONLY). Written to `audit_log` as `recording.add`. Does not change the course version.",
+        "description": "`recording.manage` (the müderris and the köşk nazımı by default, a ders nazırı when given it). The recording is READY at once; the link is read by its host and nothing is uploaded or called. A YouTube link is taken whatever the visibility. A player link of the Medaris Bunny library is stored as its video and played through a signed link, like an upload. A session holds one recording (409 RECORDING_EXISTS: change that one), except that a Bunny upload that FAILED is replaced. Written to `audit_log` as `recording.add`. Does not change the course version.",
         "operationId": "createLessonRecording",
         "parameters": [
           {
@@ -4484,7 +4484,7 @@
             }
           },
           "400": {
-            "description": "Field validation, or a YouTube link that is not PUBLIC (RECORDING_YOUTUBE_PUBLIC_ONLY)."
+            "description": "Field validation (VALIDATION_ERROR), or a link that cannot be stored (RECORDING_LINK_INVALID, `context.reason`: `invalid`, `not-https`, `youtube-no-video`, `bunny-no-video`, `bunny-foreign-library` (another library's link, or any Bunny link while none is configured), `bunny-video-used` (the video is another session's recording))."
           },
           "403": {
             "description": "AUTHZ_FORBIDDEN"
@@ -4509,7 +4509,7 @@
     },
     "/recordings/{id}": {
       "patch": {
-        "description": "`recording.manage`. Only the keys sent change. A new link is READY and its provider is read again; a YouTube recording must stay PUBLIC. Written to `audit_log` as `recording.update`. Does not change the course version.",
+        "description": "`recording.manage`. Only the keys sent change. A new link is read as on `POST /lessons/:id/recordings` and is READY; a Bunny video replaced by another link is no longer stored, and a link replaced by a Bunny video is no longer stored either. Written to `audit_log` as `recording.update`. Does not change the course version.",
         "operationId": "updateRecording",
         "parameters": [
           {
@@ -4543,7 +4543,7 @@
             }
           },
           "400": {
-            "description": "Field validation, or a change that leaves a YouTube recording ENROLLED (RECORDING_YOUTUBE_PUBLIC_ONLY)."
+            "description": "Field validation (VALIDATION_ERROR), or a link that cannot be stored (RECORDING_LINK_INVALID, `context.reason`: `invalid`, `not-https`, `youtube-no-video`, `bunny-no-video`, `bunny-foreign-library` (another library's link, or any Bunny link while none is configured), `bunny-video-used` (the video is another session's recording))."
           },
           "403": {
             "description": "AUTHZ_FORBIDDEN"
@@ -16939,11 +16939,10 @@
             "type": "string",
             "example": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
             "maxLength": 500,
-            "description": "An https link to the recording. The provider (YOUTUBE, DRIVE, OTHER) is read off its host; no call is made to it."
+            "description": "An https link to the recording, read by its host with no call made to it (MDRS-119): a YouTube video link is YOUTUBE and is stored as its watch link; a player link of the Medaris Bunny library (`player.mediadelivery.net` or `iframe.mediadelivery.net`, `/embed/<libraryId>/<videoId>`) is BUNNY and only the video id is stored, its player link signed on every read; a Google Drive or Docs link is DRIVE and any other https link OTHER, both as pasted. A link that cannot be stored is 400 RECORDING_LINK_INVALID with a `reason`."
           },
           "visibility": {
             "default": "ENROLLED",
-            "description": "A YouTube link must be PUBLIC (RECORDING_YOUTUBE_PUBLIC_ONLY).",
             "allOf": [
               {
                 "$ref": "#/components/schemas/RecordingVisibility"
@@ -16966,7 +16965,7 @@
           "url": {
             "type": "string",
             "maxLength": 500,
-            "description": "A new https link; the provider is read again and the recording is READY."
+            "description": "A new https link, read as on `POST /lessons/:id/recordings`; the recording is READY. Moving between a Bunny video and any other link rewrites where the recording lives."
           },
           "visibility": {
             "allOf": [

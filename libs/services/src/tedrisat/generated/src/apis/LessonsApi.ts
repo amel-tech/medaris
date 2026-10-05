@@ -555,7 +555,7 @@ export class LessonsApi extends runtime.BaseAPI {
     }
 
     /**
-     * `recording.manage` (the müderris and the köşk nazımı by default, a ders nazırı when given it). The recording is READY at once; its provider is read off the link\'s host and nothing is uploaded or called. A session holds one recording (409 RECORDING_EXISTS: change that one). A YouTube link must be PUBLIC (400 RECORDING_YOUTUBE_PUBLIC_ONLY). Written to `audit_log` as `recording.add`. Does not change the course version.
+     * `recording.manage` (the müderris and the köşk nazımı by default, a ders nazırı when given it). The recording is READY at once; the link is read by its host and nothing is uploaded or called. A YouTube link is taken whatever the visibility. A player link of the Medaris Bunny library is stored as its video and played through a signed link, like an upload. A session holds one recording (409 RECORDING_EXISTS: change that one), except that a Bunny upload that FAILED is replaced. Written to `audit_log` as `recording.add`. Does not change the course version.
      * Add a session\'s recording by pasting its link
      */
     async createLessonRecordingRaw(requestParameters: CreateLessonRecordingRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<RecordingResponse>> {
@@ -600,7 +600,7 @@ export class LessonsApi extends runtime.BaseAPI {
     }
 
     /**
-     * `recording.manage` (the müderris and the köşk nazımı by default, a ders nazırı when given it). The recording is READY at once; its provider is read off the link\'s host and nothing is uploaded or called. A session holds one recording (409 RECORDING_EXISTS: change that one). A YouTube link must be PUBLIC (400 RECORDING_YOUTUBE_PUBLIC_ONLY). Written to `audit_log` as `recording.add`. Does not change the course version.
+     * `recording.manage` (the müderris and the köşk nazımı by default, a ders nazırı when given it). The recording is READY at once; the link is read by its host and nothing is uploaded or called. A YouTube link is taken whatever the visibility. A player link of the Medaris Bunny library is stored as its video and played through a signed link, like an upload. A session holds one recording (409 RECORDING_EXISTS: change that one), except that a Bunny upload that FAILED is replaced. Written to `audit_log` as `recording.add`. Does not change the course version.
      * Add a session\'s recording by pasting its link
      */
     async createLessonRecording(requestParameters: CreateLessonRecordingRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<RecordingResponse> {
@@ -1531,7 +1531,7 @@ export class LessonsApi extends runtime.BaseAPI {
     }
 
     /**
-     * `recording.manage`. Only the keys sent change. A new link is READY and its provider is read again; a YouTube recording must stay PUBLIC. Written to `audit_log` as `recording.update`. Does not change the course version.
+     * `recording.manage`. Only the keys sent change. A new link is read as on `POST /lessons/:id/recordings` and is READY; a Bunny video replaced by another link is no longer stored, and a link replaced by a Bunny video is no longer stored either. Written to `audit_log` as `recording.update`. Does not change the course version.
      * Rename a recording, replace its link, or change who may watch it
      */
     async updateRecordingRaw(requestParameters: UpdateRecordingRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<RecordingResponse>> {
@@ -1576,7 +1576,7 @@ export class LessonsApi extends runtime.BaseAPI {
     }
 
     /**
-     * `recording.manage`. Only the keys sent change. A new link is READY and its provider is read again; a YouTube recording must stay PUBLIC. Written to `audit_log` as `recording.update`. Does not change the course version.
+     * `recording.manage`. Only the keys sent change. A new link is read as on `POST /lessons/:id/recordings` and is READY; a Bunny video replaced by another link is no longer stored, and a link replaced by a Bunny video is no longer stored either. Written to `audit_log` as `recording.update`. Does not change the course version.
      * Rename a recording, replace its link, or change who may watch it
      */
     async updateRecording(requestParameters: UpdateRecordingRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<RecordingResponse> {
