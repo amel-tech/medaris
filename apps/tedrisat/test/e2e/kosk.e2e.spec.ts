@@ -6,6 +6,7 @@ import {
   ASSIGNED_ROLES,
   roleAssignments,
 } from "../../src/database/schema/role-assignment.schema";
+import { seedAccounts } from "../helpers/open-scopes.helper";
 import { asSystemAdmin } from "../helpers/system-admin.helper";
 import { createTestApp, TEST_USER_ID } from "../helpers/test-app.helper";
 import {
@@ -32,6 +33,7 @@ describe("KoskController (e2e)", () => {
 
   beforeEach(async () => {
     await dbUtils.cleanTables(...COURSE_TREE_TABLES);
+    await seedAccounts(adminApp, [TEST_USER_ID]);
   });
 
   afterAll(async () => {
@@ -40,9 +42,10 @@ describe("KoskController (e2e)", () => {
     await adminApp.close();
   });
 
-  // Opening a köşk is SYSTEM_ADMIN only (2026-10-02). The admin signs with
-  // TEST_USER_ID's own `sub`, so the köşk is TEST_USER_ID's to manage and
-  // every other request below runs as that ordinary manager.
+  // Opening a köşk is the başnazım's (2026-10-02), together with its nazımları
+  // (MDRS-136). The admin signs with TEST_USER_ID's own `sub` and names
+  // TEST_USER_ID, so the köşk is TEST_USER_ID's to manage and every other
+  // request below runs as that ordinary manager.
   const createKosk = (overrides: Record<string, unknown> = {}) =>
     request(adminApp.getHttpServer())
       .post("/kosks")
@@ -50,6 +53,7 @@ describe("KoskController (e2e)", () => {
       .send({
         name: "Süleymaniye Köşkü",
         handle: "@suleymaniye",
+        managerUserIds: [TEST_USER_ID],
         ...overrides,
       });
 

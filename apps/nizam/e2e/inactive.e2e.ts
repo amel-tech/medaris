@@ -25,6 +25,10 @@ const DERS_NAZIR = account("DERS_NAZIR");
 const seedable = Boolean(process.env.E2E_DATABASE_URL);
 let fixture: InactiveFixture;
 
+// The screen shows moments in the browser's zone unless the account has one:
+// pinned, the end dates below mean the same instant on any machine (MDRS-254).
+test.use({ timezoneId: "Europe/Istanbul" });
+
 test.beforeEach(async () => {
   if (!seedable) return;
   fixture = await seedInactive();
@@ -64,7 +68,7 @@ const openInactive = async (page: Page) => {
 
 const daysFromNow = (n: number) => {
   const d = new Date(Date.now() + n * 24 * 3600 * 1000);
-  return d.toISOString().slice(0, 10);
+  return `${d.toISOString().slice(0, 10)}T12:00`;
 };
 
 test("nizam/14 — the list shows the scopes with no manager, why, since when and who the last one was, and leaves out the attended and the new (criterion 1)", async ({
@@ -171,7 +175,9 @@ test("nizam/14 — a köşk nazımı gets the 'izniniz yok' screen, not the list
   );
   await signIn(page, KOSK_NAZIM);
   await page.goto("/tr/pasif-kapsamlar");
-  await expect(page.getByText("Bu bölüm için izniniz yok")).toBeVisible();
+  await expect(
+    page.getByText("Bu bölüm için izniniz yok").filter({ visible: true })
+  ).toBeVisible();
   await expect(page.getByTestId("inactive")).toHaveCount(0);
 });
 
@@ -185,7 +191,9 @@ test("nizam/14 — a Medaris nazımı without 'Pasif kapsamları yönet' gets th
   await fixture.makeMedarisNazim(MEDARIS_NAZIM.sub as string, false);
   await signIn(page, MEDARIS_NAZIM);
   await page.goto("/tr/pasif-kapsamlar");
-  await expect(page.getByText("Bu bölüm için izniniz yok")).toBeVisible();
+  await expect(
+    page.getByText("Bu bölüm için izniniz yok").filter({ visible: true })
+  ).toBeVisible();
 
   await fixture.remove();
   fixture = await seedInactive();
@@ -226,12 +234,16 @@ test("nizam/14 — 'Köşk nazımı ata' gives the köşk its nazım, the row le
   await email.press("Enter");
   await expect(dialog.getByTestId("chosen-head")).toBeVisible();
   await expect(submit).toBeEnabled();
-  await dialog.getByLabel("Görev bitişi (isteğe bağlı)").fill("2020-01-01");
+  await dialog
+    .getByLabel("Görev bitiş tarihi ve saati (isteğe bağlı)")
+    .fill("2020-01-01T12:00");
   await expect(
-    dialog.getByText("Bitiş tarihi bugünden sonra olmalı.")
+    dialog.getByText("Bitiş zamanı şu andan sonra olmalı.")
   ).toBeVisible();
   await expect(submit).toBeDisabled();
-  await dialog.getByLabel("Görev bitişi (isteğe bağlı)").fill(daysFromNow(90));
+  await dialog
+    .getByLabel("Görev bitiş tarihi ve saati (isteğe bağlı)")
+    .fill(daysFromNow(90));
   await submit.click();
   await expect(dialog).toBeHidden();
 
@@ -361,9 +373,10 @@ test("nizam/14 — 'İçeriği gör' opens the scope and writes one audit row ev
   await rowOf(page, fixture.course.title)
     .getByRole("button", { name: /İçeriği gör/ })
     .click();
+  // the table links to the old /edit route, which sends on to the curriculum
   await expect(page).toHaveURL(
     new RegExp(
-      `/tr/kosks/${fixture.activeKosk.id}/courses/${fixture.course.id}/edit$`
+      `/tr/kosks/${fixture.activeKosk.id}/courses/${fixture.course.id}/curriculum$`
     )
   );
   expect(await fixture.audits("inactive_scope.view", fixture.course.id)).toBe(

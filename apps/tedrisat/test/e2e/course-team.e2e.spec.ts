@@ -421,7 +421,12 @@ describe("Course team (MDRS-105, e2e)", () => {
 
     it("takes the role away with the row", async () => {
       const payload = replacePayloadFrom(await loadCourse());
-      payload.muderris = payload.muderris.slice(1);
+      // Someone else takes over: a save never leaves the course with no
+      // account on its team (MDRS-136).
+      payload.muderris = [
+        ...payload.muderris.slice(1),
+        { userId: NEW_MUDERRIS_ID, name: "Yusuf Efendi" },
+      ];
 
       await as(MANAGER_ID)
         .put(`/courses/${courseId}`)
@@ -468,9 +473,12 @@ describe("Course team (MDRS-105, e2e)", () => {
           name: "Yusuf Efendi",
         }),
       ]);
+      // The row was on the list before the save, so the save seats nobody
+      // on it: a whole-course save is no way to seat a listed account that
+      // holds no seat (MDRS-135 review A-reseat).
       await as(NEW_MUDERRIS_ID)
         .get(`/courses/${courseId}/enrollments`)
-        .expect(200);
+        .expect(403);
     });
 
     it("refuses to link an account that has never signed in", async () => {

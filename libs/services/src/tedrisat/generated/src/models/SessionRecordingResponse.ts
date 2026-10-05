@@ -72,7 +72,7 @@ export interface SessionRecordingResponse {
      */
     provider: RecordingProvider;
     /**
-     * 
+     * As `RecordingResponse.url`: a BUNNY recording's link is a player link signed for this response, with its own `expires`.
      * @type {string}
      * @memberof SessionRecordingResponse
      */

@@ -282,6 +282,9 @@ catalogs:
     next-themes:
       specifier: ^0.4.6
       version: 0.4.6
+    nodemailer:
+      specifier: ^10.0.13
+      version: 10.0.13
     nx:
       specifier: 23.2.0
       version: 23.2.0
@@ -550,6 +553,9 @@ importers:
       next-intl:
         specifier: 'catalog:'
         version: 4.13.4(@swc/helpers@0.5.23)(next@16.3.8(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.63.0)(@types/node@22.20.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(react@19.2.8)(typescript@5.9.3)
+      nodemailer:
+        specifier: 'catalog:'
+        version: 10.0.13
       react:
         specifier: 'catalog:'
         version: 19.2.8
@@ -944,6 +950,9 @@ importers:
       drizzle-orm:
         specifier: 'catalog:'
         version: 0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.23.1)(pg@8.23.0)
+      nodemailer:
+        specifier: 'catalog:'
+        version: 10.0.13
       pg:
         specifier: 'catalog:'
         version: 8.23.0
@@ -8448,6 +8457,10 @@ packages:
   node-releases@2.0.51:
     resolution: {integrity: sha512-wRNIrw4DmVLKQlbgOMdkMx27Wrpzes2hh5Jtbi2bjPd+4wJstWIqP5A+lscnqbm0xxmT5Bpg8Lec5ItEBwx6BQ==}
     engines: {node: '>=18'}
+
+  nodemailer@10.0.13:
+    resolution: {integrity: sha512-SzG86OlvcW/NNhUFC6uROMwRTL4n7MswfQqC/T8mhkmnY1YVa23zUEMYi4ijSeXSl9GLz9ZeTJDUatEDuY5FeQ==}
+    engines: {node: '>=20.0.0'}
 
   normalize-path@3.0.0:
     resolution: {integrity: sha512-6eZs5Ls3WtCisHWp9S2GUy8dqkpGi4BVSz3GaqiE6ezub0512ESztXUwUB6C6IKbQkY2Pnb/mD4WYojCRwcwLA==}
@@ -17328,6 +17341,8 @@ snapshots:
       formdata-polyfill: 4.0.10
 
   node-releases@2.0.51: {}
+
+  nodemailer@10.0.13: {}
 
   normalize-path@3.0.0: {}
 

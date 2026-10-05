@@ -12,7 +12,7 @@ import { Table, type TableColumn } from "@medaris/ui/mds/table";
 import { useRouter } from "next/navigation";
 import { useLocale, useTimeZone, useTranslations } from "next-intl";
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { dismissOpen, endLabel, formatDay } from "../../permissions/present";
+import { endLabel, formatDay } from "../../permissions/present";
 import {
   courseCodeKey,
   freeCourses,
@@ -29,17 +29,22 @@ interface Props {
   data: KoskGrantsResponse | null;
   /** the viewer's id, to write "(siz)" after their own name */
   viewerId: string | null;
+  /** the viewer is the başnazım, the one person who may rewrite their own post */
+  viewerIsChief?: boolean;
 }
 
 /**
  * İzinler (nizam 38): the ders nazırları of the köşk's medrese-free courses
  * with their permissions, end and giver. "Ders nazırı ata" and "İzinleri
- * düzenle" open the grant dialog; "Görevden al" the dismissal. The last stays
- * shut until the version gate of 4 Ekim 2026 (decided on the viewer's clock;
- * the screen never says why). A medrese's courses are named in a note: their
- * permissions come from the medrese's staff.
+ * düzenle" open the grant dialog; "Görevden al" the dismissal. A medrese's
+ * courses are named in a note: their permissions come from the medrese's staff.
  */
-export function GrantsView({ koskId, data, viewerId }: Props) {
+export function GrantsView({
+  koskId,
+  data,
+  viewerId,
+  viewerIsChief = false,
+}: Props) {
   const tm = useTranslations("nizam.KoskGrantsPage");
   const t = tm as unknown as Messages;
   const tc = useTranslations("nizam.PermissionCatalog");
@@ -51,13 +56,8 @@ export function GrantsView({ koskId, data, viewerId }: Props) {
   const [editing, setEditing] = useState<KoskGrantResponse | null>(null);
   const [revoking, setRevoking] = useState<KoskGrantResponse | null>(null);
   // Read on the client after mounting, so server and browser agree while hydrating.
-  const [gateOpen, setGateOpen] = useState(false);
   const [now, setNow] = useState<Date | null>(null);
-  useEffect(() => {
-    const at = Date.now();
-    setNow(new Date(at));
-    setGateOpen(dismissOpen(at));
-  }, []);
+  useEffect(() => setNow(new Date()), []);
 
   const refresh = () => startTransition(() => router.refresh());
   const free = useMemo(() => freeCourses(data?.courses ?? []), [data]);
@@ -176,18 +176,23 @@ export function GrantsView({ koskId, data, viewerId }: Props) {
       width: "14%",
       render: (g) => (
         <span className="flex flex-col items-end gap-1">
-          <Button
-            variant="outline"
-            size="small"
-            aria-label={t("editLabel", { name: g.user.name ?? "" })}
-            onClick={() => setEditing(g)}
-          >
-            {t("edit")}
-          </Button>
+          {/* A nazım's own post is not theirs to rewrite: the API refuses it
+              (SELF_GRANT_REFUSED) for everyone but the başnazım (MDRS-108). */}
+          {viewerIsChief ||
+          !viewerId ||
+          g.user.id.toLowerCase() !== viewerId.toLowerCase() ? (
+            <Button
+              variant="outline"
+              size="small"
+              aria-label={t("editLabel", { name: g.user.name ?? "" })}
+              onClick={() => setEditing(g)}
+            >
+              {t("edit")}
+            </Button>
+          ) : null}
           <Button
             variant="ghost"
             size="small"
-            disabled={!gateOpen}
             aria-label={t("revokeLabel", { name: g.user.name ?? "" })}
             onClick={() => setRevoking(g)}
           >

@@ -5,6 +5,7 @@ import { Icon } from "@medaris/ui/mds/icon";
 import { Logo } from "@medaris/ui/mds/logo";
 import { NavItem } from "@medaris/ui/mds/nav-item";
 import { NavSection } from "@medaris/ui/mds/nav-section";
+import { ThemeToggle } from "@medaris/ui/mds/theme-toggle";
 import { usePathname } from "next/navigation";
 import { Fragment, type ReactNode } from "react";
 import { activeItemId, type MenuSection, pageTitle } from "../nav";
@@ -54,8 +55,8 @@ export interface PortalAppBarProps {
 
 /**
  * The bar below 768 and its nav sheet (nazir 21, 22). The title follows the
- * page the way the active item does; the one action is the bell, a link with
- * no visible number (canvas rule 10).
+ * page the way the active item does; the actions are the theme toggle and the
+ * bell, a link with no visible number (canvas rule 10).
  */
 export function PortalAppBar({
   sections,
@@ -77,15 +78,18 @@ export function PortalAppBar({
       navLabel={labels.nav}
       closeLabel={labels.close}
       actions={
-        bellLabel ? (
-          <a
-            href="/bildirimler"
-            className="mds-btn mds-icon-btn mds-btn--large mds-btn--ghost"
-            aria-label={bellLabel}
-          >
-            <Icon name="bell" />
-          </a>
-        ) : undefined
+        <>
+          <ThemeToggle />
+          {bellLabel ? (
+            <a
+              href="/bildirimler"
+              className="mds-btn mds-icon-btn mds-btn--large mds-btn--ghost"
+              aria-label={bellLabel}
+            >
+              <Icon name="bell" />
+            </a>
+          ) : null}
+        </>
       }
     >
       {sections.length > 0 ? <PortalNav sections={sections} /> : null}

@@ -25,11 +25,13 @@ import {
 
 /**
  * MDRS-247 — `PUT /courses/:id` asks `course.edit`, and also `session.manage`
- * when the save adds, moves or hides a session, because those are what the
- * lesson routes ask `session.manage` for. A save that leaves every session
- * where it is stays `course.edit` alone, including the content the editor
- * reads back (links, agendas) and sends again. The comparison itself is unit
- * tested (test/unit/course/session-changes.spec.ts).
+ * when the save adds or drops a session or changes a kept one's time, meeting
+ * link, agenda or preview flag (the reviewed MDRS-135 rule,
+ * `CourseService.assertMayChangeSessions`; the comparison is unit tested in
+ * test/unit/course/session-work.spec.ts). What is curriculum stays
+ * `course.edit` alone: titles, texts, durations, sources, and the order of
+ * weeks and of sessions, including a session put in another week; so does the
+ * content the editor reads back (links, agendas) and sends again unchanged.
  */
 
 const MEETING = "https://zoom.us/j/55501";
@@ -248,14 +250,12 @@ describe("a whole-course save and the sessions in it (MDRS-247, e2e)", () => {
       ).toMatchObject({ title: "İptal" });
     });
 
-    it("lets them change the course, a week's title and what a session says", async () => {
+    it("lets them change the course, a week's title and what a session teaches, not what it runs on", async () => {
       const payload = payloadFrom(await read(CAST.EDIT));
       payload.title = "Emsile ve Bina Şerhi";
       payload.weeks[0].title = "Emsile-i muhtelife";
       Object.assign(lessonIn(payload, firstId), {
         title: "Bir: giriş",
-        agenda: [{ time: "00:00", title: "Hoş geldiniz" }],
-        meetingUrl: "https://zoom.us/j/55502",
         kaynak: "Emsile, 2. bab",
         durationMinutes: 90,
       });
@@ -267,9 +267,18 @@ describe("a whole-course save and the sessions in it (MDRS-247, e2e)", () => {
           .find((l: ILessonBody) => l.id === firstId)
       ).toMatchObject({
         title: "Bir: giriş",
-        meetingUrl: "https://zoom.us/j/55502",
         durationMinutes: 90,
       });
+    });
+
+    it("lets them move a session to another week and put it in another place: that is the curriculum's order, not session work", async () => {
+      const toAnotherWeek = payloadFrom(await read(CAST.EDIT));
+      const [moved] = toAnotherWeek.weeks[0].lessons.splice(1, 1);
+      toAnotherWeek.weeks[1].lessons.push(moved);
+      await save(CAST.EDIT, toAnotherWeek).expect(200);
+      const reordered = payloadFrom(await read(CAST.EDIT));
+      reordered.weeks[0].lessons.reverse();
+      await save(CAST.EDIT, reordered).expect(200);
     });
 
     it("lets a week with no sessions be renamed, and the weeks be put in another order", async () => {
@@ -279,7 +288,7 @@ describe("a whole-course save and the sessions in it (MDRS-247, e2e)", () => {
     });
   });
 
-  describe("a save that adds, moves or hides a session also needs session.manage", () => {
+  describe("a save that adds, drops or reschedules a session also needs session.manage", () => {
     const refusedWithoutWriting = async (sub: CastMember, payload: Payload) => {
       const version = await storedVersion();
       const before = (await liveLessons()).map((l) => `${l.id}@${l.weekId}`);
@@ -311,16 +320,15 @@ describe("a whole-course save and the sessions in it (MDRS-247, e2e)", () => {
         },
       ],
       [
-        "moves a session to another week",
+        "changes a session's meeting link",
         (p) => {
-          const [moved] = p.weeks[0].lessons.splice(1, 1);
-          p.weeks[1].lessons.push(moved);
+          lessonIn(p, secondId).meetingUrl = "https://zoom.us/j/55599";
         },
       ],
       [
-        "puts a session in another place in its week",
+        "changes a session's agenda",
         (p) => {
-          p.weeks[0].lessons.reverse();
+          lessonIn(p, secondId).agenda = [{ time: "00:00", title: "Açılış" }];
         },
       ],
       [
@@ -396,7 +404,7 @@ describe("a whole-course save and the sessions in it (MDRS-247, e2e)", () => {
       }
     });
 
-    it("is refused before a stale version is, so course.edit alone is told 403 and not 409", async () => {
+    it("tells a stale editor to reload (409) before the sessions are compared, and refuses the same change once it has", async () => {
       const payload = payloadFrom(await read(CAST.EDIT));
       payload.weeks[0].lessons.pop();
       await http()
@@ -404,10 +412,17 @@ describe("a whole-course save and the sessions in it (MDRS-247, e2e)", () => {
         .set("Authorization", bearerOf(CAST.MANAGER))
         .send({ subtitle: "Başkası yazdı" })
         .expect(200);
-      // the payload is stale now: one that may change sessions is told so
-      const stale = await save(CAST.EDIT_AND_SESSION, payload).expect(409);
-      expect(stale.body.code).toBe("COURSE_VERSION_CONFLICT");
-      await refusedWithoutWriting(CAST.EDIT, payload);
+      // the payload is stale now: whoever sends it is told so first, as the
+      // reviewed save does (the sessions differ because someone saved in
+      // between, not because the editor asks for work it may not do)
+      for (const sub of [CAST.EDIT, CAST.EDIT_AND_SESSION]) {
+        const stale = await save(sub, payload).expect(409);
+        expect(stale.body.code).toBe("COURSE_VERSION_CONFLICT");
+      }
+      // reloaded, the same change is refused to course.edit alone
+      const fresh = payloadFrom(await read(CAST.EDIT));
+      fresh.weeks[0].lessons.pop();
+      await refusedWithoutWriting(CAST.EDIT, fresh);
     });
 
     it("leaves a save that changes nothing about the sessions to the version check", async () => {

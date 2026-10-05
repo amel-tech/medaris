@@ -8,6 +8,9 @@ export const footerLinks = [
   { href: "/cerezler", label: "Çerezler" },
 ] as const;
 
+/** The public repository; an outside link, so it is not part of `footerLinks`. */
+export const repositoryHref = "https://github.com/amel-tech/medaris";
+
 export type FooterHref = (typeof footerLinks)[number]["href"];
 
 /** The landing pages' footer, as the canvas draws it on every landing screen. */
@@ -26,6 +29,14 @@ export function SiteFooter({ current }: { current?: FooterHref }) {
             {label}
           </Link>
         ))}
+        <a
+          className="mds-btn mds-btn--link"
+          href={repositoryHref}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          GitHub
+        </a>
       </nav>
     </footer>
   );

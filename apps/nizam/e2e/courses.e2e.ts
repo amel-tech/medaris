@@ -92,11 +92,19 @@ test.describe("nizam/32 Ders aç", () => {
     await shot(page, "32-ders-ac");
     await page.getByRole("button", { name: "Dersi aç" }).click();
     await expect(
-      page.getByText("Ders adı en az iki harften oluşmalı.")
+      page
+        .getByText("Ders adı en az iki harften oluşmalı.")
+        .filter({ visible: true })
     ).toBeVisible();
-    await expect(page.getByText("En az bir müderris seçin.")).toBeVisible();
-    await expect(page.getByText("Başlangıç tarihini girin.")).toBeVisible();
-    await expect(page.getByText("En az bir celse günü seçin.")).toBeVisible();
+    await expect(
+      page.getByText("En az bir müderris seçin.").filter({ visible: true })
+    ).toBeVisible();
+    await expect(
+      page.getByText("Başlangıç tarihini girin.").filter({ visible: true })
+    ).toBeVisible();
+    await expect(
+      page.getByText("En az bir celse günü seçin.").filter({ visible: true })
+    ).toBeVisible();
     expect(await fixture.courseByTitle("")).toBeNull();
     await expect(page).toHaveURL(/courses\/new/);
   });
@@ -117,15 +125,22 @@ test.describe("nizam/32 Ders aç", () => {
     const email = page.getByPlaceholder("ad.soyad@example.com");
     await email.fill(MUDERRIS.email as string);
     await email.press("Enter");
-    await expect(page.getByTestId("team-list")).toBeVisible();
-    await expect(page.getByText("Tek müderris dersin imamıdır.")).toBeVisible();
+    await expect(
+      page.getByTestId("team-list").filter({ visible: true })
+    ).toBeVisible();
+    await expect(
+      page.getByText("Tek müderris dersin imamıdır.").filter({ visible: true })
+    ).toBeVisible();
 
-    await page.getByLabel("Başlangıç tarihi").fill(start);
+    await page
+      .getByLabel("Başlangıç tarihi")
+      .filter({ visible: true })
+      .fill(start);
     await page.getByRole("spinbutton", { name: /Süre \(hafta\)/ }).fill("2");
     await page.getByRole("button", { name: "Pzt" }).click();
-    await expect(page.getByTestId("schedule-summary")).toContainText(
-      "2 celse planlanacak"
-    );
+    await expect(
+      page.getByTestId("schedule-summary").filter({ visible: true })
+    ).toContainText("2 celse planlanacak");
     await shot(page, "32-ders-ac-dolu");
 
     await page.getByRole("button", { name: "Dersi aç" }).click();
@@ -158,8 +173,13 @@ test.describe("nizam/32 Ders aç", () => {
     const email = page.getByPlaceholder("ad.soyad@example.com");
     await email.fill(MUDERRIS.email as string);
     await email.press("Enter");
-    await expect(page.getByTestId("team-list")).toBeVisible();
-    await page.getByLabel("Başlangıç tarihi").fill(nextWeekday(2, 10));
+    await expect(
+      page.getByTestId("team-list").filter({ visible: true })
+    ).toBeVisible();
+    await page
+      .getByLabel("Başlangıç tarihi")
+      .filter({ visible: true })
+      .fill(nextWeekday(2, 10));
     await page.getByRole("button", { name: "Sal" }).click();
     await page.getByRole("checkbox", { name: "Kapalı ders" }).click();
     await page.getByRole("radio", { name: "Hemen yayımla" }).check();
@@ -250,7 +270,9 @@ test.describe("nizam/34 Ders ayarları", () => {
     await page.getByRole("checkbox", { name: "Kayıt onayı gereksin" }).click();
     await page.getByRole("checkbox", { name: "Kapalı ders" }).click();
     await page.getByRole("button", { name: "Kaydet" }).click();
-    await expect(page.getByText("Ders ayarları kaydedildi")).toBeVisible();
+    await expect(
+      page.getByText("Ders ayarları kaydedildi").filter({ visible: true })
+    ).toBeVisible();
     const stored = await fixture.courseByTitle(fixture.course.title);
     expect(stored).toMatchObject({ requiresApproval: false, isClosed: true });
   });
@@ -266,12 +288,16 @@ test.describe("nizam/34 Ders ayarları", () => {
       .getByRole("alertdialog")
       .getByRole("button", { name: "Taslağa çek" })
       .click();
-    await expect(page.getByText("Ders taslağa çekildi")).toBeVisible();
+    await expect(
+      page.getByText("Ders taslağa çekildi").filter({ visible: true })
+    ).toBeVisible();
     expect((await fixture.courseByTitle(fixture.course.title))?.status).toBe(
       "DRAFT"
     );
     await page.getByRole("button", { name: "Yayımla" }).click();
-    await expect(page.getByText("Ders yayımlandı")).toBeVisible();
+    await expect(
+      page.getByText("Ders yayımlandı").filter({ visible: true })
+    ).toBeVisible();
     expect((await fixture.courseByTitle(fixture.course.title))?.status).toBe(
       "PUBLISHED"
     );
@@ -305,7 +331,9 @@ test.describe("nizam/34 Ders ayarları", () => {
     await page.getByRole("combobox", { name: "Örnek ders" }).click();
     await page.getByRole("option", { name: /Bağlantılı celse/ }).click();
     await page.getByRole("button", { name: "Kaydet" }).click();
-    await expect(page.getByText("Ders ayarları kaydedildi")).toBeVisible();
+    await expect(
+      page.getByText("Ders ayarları kaydedildi").filter({ visible: true })
+    ).toBeVisible();
     const stored = await fixture.courseByTitle(fixture.course.title);
     expect(stored?.timeZone).toBe("Europe/Berlin");
     const preview = (await fixture.lessonsOf(fixture.course.id)).find(
@@ -330,22 +358,26 @@ test.describe("nizam/54 Müfredat", () => {
     ).toBeHidden();
     await shot(page, "54-mufredat");
 
-    const title = page.locator('input[name="lesson-1-0-title"]');
+    const title = page.locator('input[name="lesson-1-0-title"]:visible');
     await expect(title).toHaveValue("Bağlantılı celse");
     await title.fill("Bağlantılı celse (düzeltildi)");
     await expect(
-      page.getByText("Kaydedilmemiş değişiklikler var")
+      page
+        .getByText("Kaydedilmemiş değişiklikler var")
+        .filter({ visible: true })
     ).toBeVisible();
     await page.getByRole("button", { name: "Vazgeç" }).first().click();
     await expect(title).toHaveValue("Bağlantılı celse");
 
     await title.fill("Bağlantılı celse (düzeltildi)");
     await page.getByRole("button", { name: "Kaydet" }).first().click();
-    await expect(page.getByText("Müfredat kaydedildi")).toBeVisible();
+    await expect(
+      page.getByText("Müfredat kaydedildi").filter({ visible: true })
+    ).toBeVisible();
     await page.reload();
-    await expect(page.locator('input[name="lesson-1-0-title"]')).toHaveValue(
-      "Bağlantılı celse (düzeltildi)"
-    );
+    await expect(
+      page.locator('input[name="lesson-1-0-title"]:visible')
+    ).toHaveValue("Bağlantılı celse (düzeltildi)");
     expect(
       (await fixture.lessonsOf(fixture.course.id)).map((l) => l.title)
     ).toContain("Bağlantılı celse (düzeltildi)");
@@ -357,15 +389,19 @@ test.describe("nizam/54 Müfredat", () => {
     test.skip(!ready(), "no e2e accounts or database");
     await signIn(page, KOSK_NAZIM);
     await page.goto(`${courseBase()}/curriculum`);
-    const url = page.locator('input[name="lesson-1-1-url"]');
+    const url = page.locator('input[name="lesson-1-1-url"]:visible');
     await url.fill("http://zoom.us/j/81234567890");
-    await page.locator('input[name="lesson-1-1-title"]').fill("");
+    await page.locator('input[name="lesson-1-1-title"]:visible').fill("");
     await page.getByRole("button", { name: "Kaydet" }).first().click();
-    await expect(page.getByText("Celse başlığını yazın.")).toBeVisible();
     await expect(
-      page.getByText(
-        "Toplantı bağlantısı https:// ile başlamalı. Bağlantıyı platformdan yeniden kopyalayın."
-      )
+      page.getByText("Celse başlığını yazın.").filter({ visible: true })
+    ).toBeVisible();
+    await expect(
+      page
+        .getByText(
+          "Toplantı bağlantısı https:// ile başlamalı. Bağlantıyı platformdan yeniden kopyalayın."
+        )
+        .filter({ visible: true })
     ).toBeVisible();
     const lessons = await fixture.lessonsOf(fixture.course.id);
     expect(
@@ -382,7 +418,9 @@ test.describe("nizam/54 Müfredat", () => {
     const before = await fixture.lessonsOf(fixture.course.id);
     await page.getByRole("button", { name: "Haftayı kopyala" }).first().click();
     await page.getByRole("button", { name: "Kaydet" }).first().click();
-    await expect(page.getByText("Müfredat kaydedildi")).toBeVisible();
+    await expect(
+      page.getByText("Müfredat kaydedildi").filter({ visible: true })
+    ).toBeVisible();
     const after = await fixture.lessonsOf(fixture.course.id);
     expect(after.length).toBeGreaterThan(before.length);
     const copied = after.filter((l) => l.weekNumber === 6);
@@ -408,7 +446,9 @@ test.describe("nizam/54 Müfredat", () => {
       .getByRole("button", { name: "Gizle" })
       .click();
     await page.getByRole("button", { name: "Kaydet" }).first().click();
-    await expect(page.getByText("Müfredat kaydedildi")).toBeVisible();
+    await expect(
+      page.getByText("Müfredat kaydedildi").filter({ visible: true })
+    ).toBeVisible();
     const lessons = await fixture.lessonsOf(fixture.course.id);
     expect(lessons.find((l) => l.title === "Bağlantısız celse")?.archived).toBe(
       true
@@ -432,9 +472,17 @@ test.describe("nizam/55 Celse planla", () => {
     ).toBeDisabled();
 
     await page.getByRole("button", { name: "Cum" }).click();
-    await page.getByLabel("Başlangıç tarihi").fill(first);
-    await page.getByLabel("Bitiş tarihi").fill(addDaysTo(first, 14));
-    await expect(page.getByTestId("plan-preview")).toContainText("3 celse");
+    await page
+      .getByLabel("Başlangıç tarihi")
+      .filter({ visible: true })
+      .fill(first);
+    await page
+      .getByLabel("Bitiş tarihi")
+      .filter({ visible: true })
+      .fill(addDaysTo(first, 14));
+    await expect(
+      page.getByTestId("plan-preview").filter({ visible: true })
+    ).toContainText("3 celse");
     await shot(page, "55-celse-planla");
 
     const before = await fixture.lessonsOf(fixture.course.id);
@@ -455,12 +503,17 @@ test.describe("nizam/55 Celse planla", () => {
     await signIn(page, KOSK_NAZIM);
     await page.goto(`${courseBase()}/sessions/new`);
     await page.getByRole("button", { name: "Çar" }).click();
-    await page.getByLabel("Başlangıç tarihi").fill(first);
+    await page
+      .getByLabel("Başlangıç tarihi")
+      .filter({ visible: true })
+      .fill(first);
     await page
       .getByRole("radio", { name: "Belirli sayıda celseden sonra" })
       .check();
-    await page.getByLabel("Celse sayısı").fill("2");
-    await expect(page.getByTestId("plan-preview")).toContainText("2 celse");
+    await page.getByLabel("Celse sayısı").filter({ visible: true }).fill("2");
+    await expect(
+      page.getByTestId("plan-preview").filter({ visible: true })
+    ).toContainText("2 celse");
     await page.getByRole("radio", { name: "Yalnız ilk celseye ekle" }).check();
     await page
       .getByLabel("İlk celsenin bağlantısı")
@@ -513,15 +566,21 @@ test.describe("nizam/56 Celseler", () => {
       .locator("tbody tr:visible")
       .filter({ hasText: "Bağlantısız celse" });
     await row.getByRole("button", { name: "Bağlantı ekle" }).click();
-    const input = page.getByLabel("Toplantı bağlantısı");
+    const input = page
+      .getByLabel("Toplantı bağlantısı")
+      .filter({ visible: true });
     await input.fill("http://zoom.us/j/81234567890");
     await page.getByRole("button", { name: "Kaydet" }).click();
     await expect(
-      page.getByText("Toplantı bağlantısı https:// ile başlamalı.")
+      page
+        .getByText("Toplantı bağlantısı https:// ile başlamalı.")
+        .filter({ visible: true })
     ).toBeVisible();
     await input.fill("https://zoom.us/j/82907461385");
     await page.getByRole("button", { name: "Kaydet" }).click();
-    await expect(page.getByText("Bağlantı kaydedildi")).toBeVisible();
+    await expect(
+      page.getByText("Bağlantı kaydedildi").filter({ visible: true })
+    ).toBeVisible();
     await expect(
       page
         .locator("tbody tr:visible")
@@ -551,7 +610,9 @@ test.describe("nizam/56 Celseler", () => {
       .getByRole("button", { name: "Celseyi iptal et" })
       .click();
     await expect(
-      page.getByText("Celse iptal edildi", { exact: true })
+      page
+        .getByText("Celse iptal edildi", { exact: true })
+        .filter({ visible: true })
     ).toBeVisible();
     await expect(row()).toContainText("İptal edildi");
     await expect(row()).toContainText("İşlem yok");
@@ -571,10 +632,12 @@ test.describe("nizam/56 Celseler", () => {
       .filter({ hasText: "Bağlantısız celse" });
     await row.getByRole("button", { name: /tarihini değiştir/ }).click();
     const date = nextWeekday(4, 30);
-    await page.locator('input[name="date"]').fill(date);
-    await page.locator('input[name="time"]').fill("20:30");
+    await page.locator('input[name="date"]:visible').fill(date);
+    await page.locator('input[name="time"]:visible').fill("20:30");
     await page.getByRole("button", { name: "Kaydet" }).click();
-    await expect(page.getByText("Celse zamanı değişti")).toBeVisible();
+    await expect(
+      page.getByText("Celse zamanı değişti").filter({ visible: true })
+    ).toBeVisible();
     const moved = (await fixture.lessonsOf(fixture.course.id)).find(
       (l) => l.title === "Bağlantısız celse"
     );
@@ -589,6 +652,9 @@ test("a caller who is not on the course gets the no-access screen", async ({
   const talebe = account("TALEBE");
   test.skip(!talebe.password, "no TALEBE account");
   await signIn(page, talebe);
+  // let the sign-in land first: a navigation that starts while the home page is
+  // still sending a talebe on to 'Yönetim yetkiniz yok' comes back without a response
+  await page.waitForURL(/\/tr\/yetki-yok$/);
   const res = await page.goto(`${courseBase()}/ayarlar`);
   expect(res?.status()).toBe(403);
 });

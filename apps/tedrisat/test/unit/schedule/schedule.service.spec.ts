@@ -23,10 +23,15 @@ const row = (over: Partial<IScheduledSession> = {}): IScheduledSession => ({
   ...over,
 });
 
-const serviceWith = (rows: IScheduledSession[]) => {
+const serviceWith = (
+  rows: IScheduledSession[],
+  passive: Map<string, { type: string; id: string }> = new Map()
+) => {
   const repo = {
     findEnrolledSessions: vi.fn().mockResolvedValue(rows),
     findUpcoming: vi.fn().mockResolvedValue(rows),
+    passiveScopesOf: vi.fn().mockResolvedValue(passive),
+    recordPassiveOpens: vi.fn().mockResolvedValue(undefined),
   };
   return {
     repo,
@@ -64,6 +69,36 @@ describe("ScheduleService (MDRS-163)", () => {
     ]);
     const list = await service.list("u", "2026-10-03", "2026-10-10", NOW);
     expect(list.map((s) => s.meetingUrl)).toEqual([MEETING, null, null]);
+  });
+
+  it("records each passive course whose link it hands out, once, and nothing for a link it withholds (review D1)", async () => {
+    const passive = new Map([["course-1", { type: "course", id: "course-1" }]]);
+    const { service, repo } = serviceWith(
+      [
+        row({ id: "ahead" }),
+        row({ id: "again", startsAt: new Date("2026-10-03T19:30:00.000Z") }),
+        row({
+          id: "over",
+          courseId: "course-2",
+          startsAt: new Date("2026-10-03T10:00:00.000Z"),
+        }),
+      ],
+      passive
+    );
+    await service.list("u", "2026-10-03", "2026-10-10", NOW);
+    // Only course-1's link went out; course-2's session is over.
+    expect(repo.passiveScopesOf).toHaveBeenCalledWith(["course-1"]);
+    expect(repo.recordPassiveOpens).toHaveBeenCalledWith(
+      "u",
+      [
+        {
+          courseId: "course-1",
+          courseTitle: "Emsile ve Bina",
+          passiveScope: { type: "course", id: "course-1" },
+        },
+      ],
+      "schedule"
+    );
   });
 
   it("refuses a malformed window before asking the repository", async () => {

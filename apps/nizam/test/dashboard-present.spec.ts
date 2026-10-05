@@ -262,6 +262,18 @@ describe("the Medaris nazımı's menu (nizam 05)", () => {
     expect(groups.map((g) => g.id)).toEqual(["general", "requests"]);
   });
 
+  it("shows Medreseler for exactly the codes its page opens to, so it never leads to a 403 (MDRS-108)", () => {
+    for (const code of [
+      "platform.madrasah_create",
+      "platform.madrasah_edit",
+      "platform.head_muderris_manage",
+    ]) {
+      expect(ids([code])).toContain("madrasahs");
+    }
+    // `GET /madrasahs/directory` refuses a nazır grant, and the page has nothing for it.
+    expect(ids(["platform.madrasah_nazir_grant"])).not.toContain("madrasahs");
+  });
+
   it("hides nothing when the permissions could not be read", () => {
     expect(ids(null)).toEqual(
       navGroups("medaris").flatMap((g) => g.items.map((i) => i.id))

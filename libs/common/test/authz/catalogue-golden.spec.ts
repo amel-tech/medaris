@@ -38,6 +38,7 @@ const GOLDEN: ReadonlyArray<readonly [string, string, string]> = [
   ["recording.upload", "course", "grantable|content"],
   ["recording.watch_restricted", "course", "grantable|content"],
   ["session.view_content", "course", "grantable|content"],
+  ["question.answer", "course", "grantable|content"],
   ["ban.course", "course", "grantable"],
   ["ban.lift_course", "course", "grantable"],
   ["deck.manage_course", "course", "grantable"],
@@ -48,6 +49,7 @@ const GOLDEN: ReadonlyArray<readonly [string, string, string]> = [
   ["platform.kosk_create", "platform", "grantable"],
   ["platform.kosk_nazim_manage", "platform", "grantable"],
   ["platform.kosk_edit", "platform", "grantable"],
+  ["platform.course_hide", "platform", "grantable"],
   ["platform.hosting_grant", "platform", "grantable"],
   ["platform.madrasah_create", "platform", "grantable"],
   ["platform.head_muderris_manage", "platform", "grantable"],
@@ -130,6 +132,7 @@ describe("the catalogue, frozen by hand (review T3)", () => {
     for (const code of [
       PERMISSIONS.SESSION_VIEW_CONTENT,
       PERMISSIONS.RECORDING_WATCH_RESTRICTED,
+      PERMISSIONS.QUESTION_ANSWER,
     ]) {
       expect(PERMISSION_META[code].content, code).toBe(true);
     }
@@ -139,6 +142,13 @@ describe("the catalogue, frozen by hand (review T3)", () => {
     expect(PERMISSION_META[PERMISSIONS.COURSE_HIDE].grantable).toBe(false);
     expect(PERMISSION_META[PERMISSIONS.PERMISSION_GRANT].grantable).toBe(false);
     expect(PERMISSION_META[PERMISSIONS.MADRASAH_HIDE].grantable).toBe(false);
+  });
+
+  it("gives platform management a course hide of its own that can be granted (MDRS-143)", () => {
+    expect(PERMISSION_META[PERMISSIONS.PLATFORM_COURSE_HIDE]).toMatchObject({
+      scopes: ["platform"],
+      grantable: true,
+    });
   });
 });
 
@@ -168,6 +178,16 @@ describe("who holds the few codes the owner keeps to one role (review T6)", () =
       if (!code.startsWith("platform.")) continue;
       expect(holders(code), code).toEqual([]);
     }
+  });
+
+  it("question.answer is the müderris's, the köşk nazımı's and the başmüderris's by default, and no ders nazırı's (MDRS-150)", () => {
+    expect(holders(PERMISSIONS.QUESTION_ANSWER)).toEqual(
+      [
+        ASSIGNED_ROLES.KOSK_NAZIM,
+        ASSIGNED_ROLES.MEDRESE_BASMUDERRIS,
+        ASSIGNED_ROLES.MUDERRIS,
+      ].sort()
+    );
   });
 
   it("the roles that give permissions are the three that run a scope, and no other", () => {

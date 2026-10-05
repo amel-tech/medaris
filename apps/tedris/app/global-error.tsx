@@ -4,6 +4,7 @@ import "@medaris/ui/medaris.css";
 import { textFontsHref } from "@medaris/tokens/medaris-fonts";
 import { Button } from "@medaris/ui/mds/button";
 import { SystemState } from "@medaris/ui/mds/system-state";
+import { ThemeScript } from "@medaris/ui/mds/theme-script";
 import { htmlLangDir } from "~/lib/i18n/direction";
 
 /**
@@ -19,11 +20,17 @@ const { lang, dir } = htmlLangDir("tr");
  * Design tedris/40 when the app shell itself threw (the root layout, or
  * `[locale]/layout.tsx`): no top bar, no providers, so no translations either.
  * It replaces the whole document, hence its own `<html>`; the copy is the
- * launch language, Turkish.
+ * launch language, Turkish. It follows the viewer's theme like every page
+ * (light unless they chose dark): the script runs when this is rendered on
+ * the server, the usual way a shell failure arrives; React does not run it
+ * when this is rendered in the browser.
  */
 export default function GlobalError({ reset }: { reset: () => void }) {
   return (
-    <html lang={lang} dir={dir}>
+    <html lang={lang} dir={dir} data-theme="light" suppressHydrationWarning>
+      <head>
+        <ThemeScript />
+      </head>
       <body>
         <link rel="stylesheet" href={textFontsHref} precedence="default" />
         <SystemState

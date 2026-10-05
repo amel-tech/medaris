@@ -218,6 +218,11 @@ export class KoskGrantsService {
     return this.list(user, koskId);
   }
 
+  /** Who holds the ders nazırı post, or null when the köşk has no such post. */
+  holderOf(koskId: string, grantId: string): Promise<string | null> {
+    return this.repo.postHolder(koskId, grantId);
+  }
+
   async revoke(
     user: AuthenticatedUser,
     koskId: string,

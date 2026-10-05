@@ -101,10 +101,9 @@ const KOSKS = [
   {
     id: "k-1",
     name: "Nûruosmaniye Köşkü",
-    field: "Arapça dil ilimleri",
     courseCount: 1,
   },
-  { id: "k-2", name: "Fatih Köşkü", field: "Fıkıh", courseCount: 1 },
+  { id: "k-2", name: "Fatih Köşkü", courseCount: 1 },
 ];
 const session = (over: Record<string, unknown>) => ({
   lessonId: "l-1",
@@ -528,10 +527,9 @@ describe("Pano", () => {
   it("lists the köşks that host the medrese, with a way to ask for a course outside it", async () => {
     const out = await markup();
     const hosts = section(out, "hosts-heading");
-    expect(textOf(hosts)).toContain(
-      "Nûruosmaniye Köşkü Arapça dil ilimleri · 1 medrese dersi"
-    );
-    expect(textOf(hosts)).toContain("Fatih Köşkü Fıkıh · 1 medrese dersi");
+    expect(textOf(hosts)).toContain("Nûruosmaniye Köşkü 1 medrese dersi");
+    expect(textOf(hosts)).toContain("Fatih Köşkü 1 medrese dersi");
+    expect(textOf(hosts)).not.toContain("Arapça dil ilimleri");
     expect(textOf(hosts)).toContain(
       "Medrese dersleri yalnız bu köşklerde açılır."
     );

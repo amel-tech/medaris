@@ -17,6 +17,10 @@ const MUDERRIS = account("MUDERRIS");
 const KOSK_NAZIM = account("KOSK_NAZIM");
 const MEDARIS_NAZIM = account("MEDARIS_NAZIM");
 const TALEBE = account("TALEBE");
+const NAZIR_URL = (
+  process.env.E2E_NAZIR_URL ?? "http://localhost:4002"
+).replace(/\/$/, "");
+const NIZAM_URL = process.env.E2E_NIZAM_URL ?? "http://localhost:4001";
 
 const ready = Boolean(
   MUDERRIS.sub && KOSK_NAZIM.sub && MEDARIS_NAZIM.sub && MUDERRIS.password
@@ -61,7 +65,8 @@ test("a müderris sees every role with scope, badge, grantor, term and Nazır bu
   await expect(
     page.getByRole("heading", { level: 2, name: "Görevlerin ve izinlerin" })
   ).toBeVisible();
-  await expect(tasks(page)).toHaveCount(3);
+  // the three of the fixture, and the seats the shared test seed gave the account
+  await expect(tasks(page)).toHaveCount(3 + fixture.standing.muderris);
 
   const row = (title: string) => tasks(page).filter({ hasText: title }).first();
   await expect(row(fixture.published.title)).toContainText("Yayında");
@@ -79,10 +84,8 @@ test("a müderris sees every role with scope, badge, grantor, term and Nazır bu
     name: /Nazır’da aç/,
   });
   await expect(open).toHaveAttribute("target", "_blank");
-  await expect(open).toHaveAttribute(
-    "href",
-    new RegExp(`/courses/${fixture.published.id}$`)
-  );
+  // a course seat opens the Nazır itself, which finds the course (only a köşk has a deep link)
+  await expect(open).toHaveAttribute("href", NAZIR_URL);
   await expect(open).toHaveAccessibleName(
     `Nazır’da aç: müderris, ${fixture.published.title}`
   );
@@ -106,19 +109,20 @@ test("a köşk nazım opens Nizam in a new tab with the köşk in the address", 
   await signIn(page, KOSK_NAZIM);
   await page.goto("/tr/account");
 
-  await expect(tasks(page)).toHaveCount(1);
-  await expect(tasks(page).first()).toContainText(fixture.koskName);
-  await expect(tasks(page).first()).toContainText("Köşk nazımı");
+  await expect(tasks(page)).toHaveCount(1 + fixture.standing.koskNazim);
+  const own = tasks(page).filter({ hasText: fixture.koskName });
+  await expect(own).toContainText("Köşk nazımı");
   await expect(page.getByTestId("permission-group").first()).toContainText(
     "E-postayla kullanıcı bul"
   );
 
+  // the link is what is tested, not the app behind it: Nizam need not be running
+  await context.route(`${NIZAM_URL}/**`, (route) =>
+    route.fulfill({ status: 200, body: "nizam" })
+  );
   const [popup] = await Promise.all([
     context.waitForEvent("page"),
-    tasks(page)
-      .first()
-      .getByRole("link", { name: /Nizam’da aç/ })
-      .click(),
+    own.getByRole("link", { name: /Nizam’da aç/ }).click(),
   ]);
   expect(decodeURIComponent(popup.url())).toContain(fixture.koskId);
   await popup.close();

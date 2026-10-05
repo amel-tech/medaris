@@ -1,9 +1,12 @@
 import { AuthzService } from "@medaris/common";
 import { Injectable } from "@nestjs/common";
+import { AssignmentService } from "../assignment/assignment.service";
+import { AssignmentResponse } from "../assignment/dto/assignment-response.dto";
 import { CourseRepository } from "../course/course.repository";
 import { DatabaseService } from "../database/database.service";
+import { ASSIGNED_ROLES } from "../database/schema/role-assignment.schema";
 import { KoskService } from "../kosk/kosk.service";
-import { MeResponse } from "./dto/me-response.dto";
+import { MeResponse, NazirMadrasahRef } from "./dto/me-response.dto";
 import { UpdateMeDto } from "./dto/update-me.dto";
 import { UserSummaryResponse } from "./dto/user-summary-response.dto";
 import { UserLookupForbiddenError } from "./errors/user-lookup-forbidden.error";
@@ -23,6 +26,7 @@ export class UserService {
     private readonly koskService: KoskService,
     private readonly courseRepo: CourseRepository,
     private readonly authz: AuthzService,
+    private readonly assignmentService: AssignmentService,
     private readonly databaseService: DatabaseService
   ) {}
 
@@ -34,9 +38,10 @@ export class UserService {
    */
   async getMe(claims: TokenClaims): Promise<MeResponse> {
     const user = await this.loadSelf(claims);
-    const [manages, teaches] = await Promise.all([
+    const [manages, teaches, overview] = await Promise.all([
       this.koskService.findManagedBy(user.id),
       this.courseRepo.findTaughtBy(user.id),
+      this.assignmentService.myOverview(claims),
     ]);
 
     const profile = await this.profiles.findById(user.id);
@@ -44,12 +49,12 @@ export class UserService {
       ...toProfile(user, profile),
       roles: {
         systemAdmin: this.authz.isSystemAdmin(claims),
-        // No medrese→nazır table exists in tedrisat yet; see
-        // docs/migration/mdrs-104-users-table.md.
-        nazirOf: [],
+        nazirOf: nazirOf(overview.assignments),
         manages,
         teaches,
       },
+      assignments: overview.assignments,
+      permissions: overview.permissions,
     };
   }
 
@@ -58,6 +63,9 @@ export class UserService {
     const settings: IUserSettings = {};
     if (dto.timeZone !== undefined) settings.timeZone = dto.timeZone;
     if (dto.locale !== undefined) settings.locale = dto.locale;
+    if (dto.lessonInvitationEmails !== undefined) {
+      settings.lessonInvitationEmails = dto.lessonInvitationEmails;
+    }
     // The names are the person's own words, kept apart from the token's so the
     // next sync cannot undo them (MDRS-166).
     const names =
@@ -135,10 +143,26 @@ export class UserService {
   }
 }
 
+/** The medreses the caller leads or is nazır of, once each, from their live roles. */
+function nazirOf(assignments: AssignmentResponse[]): NazirMadrasahRef[] {
+  const seen = new Map<string, NazirMadrasahRef>();
+  for (const a of assignments) {
+    if (
+      (a.role === ASSIGNED_ROLES.MEDRESE_BASMUDERRIS ||
+        a.role === ASSIGNED_ROLES.MEDRESE_NAZIR) &&
+      a.scopeId &&
+      a.scopeName
+    ) {
+      seen.set(a.scopeId, { id: a.scopeId, name: a.scopeName });
+    }
+  }
+  return [...seen.values()];
+}
+
 function toProfile(
   user: IUser,
   profile: IUserProfile | null
-): Omit<MeResponse, "roles"> {
+): Omit<MeResponse, "roles" | "assignments" | "permissions"> {
   return {
     id: user.id,
     email: user.email,
@@ -147,6 +171,7 @@ function toProfile(
     familyName: profile?.familyName ?? user.familyName,
     timeZone: user.timeZone,
     locale: user.locale,
+    lessonInvitationEmails: user.lessonInvitationEmails,
     createdAt: user.createdAt,
     lastSeenAt: user.lastSeenAt,
   };

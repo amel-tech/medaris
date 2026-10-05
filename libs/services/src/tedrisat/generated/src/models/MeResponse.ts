@@ -13,6 +13,13 @@
  */
 
 import { mapValues } from '../runtime';
+import type { MeScopePermissions } from './MeScopePermissions';
+import {
+    MeScopePermissionsFromJSON,
+    MeScopePermissionsFromJSONTyped,
+    MeScopePermissionsToJSON,
+    MeScopePermissionsToJSONTyped,
+} from './MeScopePermissions';
 import type { MeRolesResponse } from './MeRolesResponse';
 import {
     MeRolesResponseFromJSON,
@@ -20,6 +27,13 @@ import {
     MeRolesResponseToJSON,
     MeRolesResponseToJSONTyped,
 } from './MeRolesResponse';
+import type { AssignmentResponse } from './AssignmentResponse';
+import {
+    AssignmentResponseFromJSON,
+    AssignmentResponseFromJSONTyped,
+    AssignmentResponseToJSON,
+    AssignmentResponseToJSONTyped,
+} from './AssignmentResponse';
 
 /**
  * 
@@ -70,6 +84,12 @@ export interface MeResponse {
      */
     locale?: string;
     /**
+     * Whether lesson invitations, their updates and cancellations are e-mailed to the caller (MDRS-121)
+     * @type {boolean}
+     * @memberof MeResponse
+     */
+    lessonInvitationEmails: boolean;
+    /**
      * 
      * @type {Date}
      * @memberof MeResponse
@@ -87,6 +107,18 @@ export interface MeResponse {
      * @memberof MeResponse
      */
     roles: MeRolesResponse;
+    /**
+     * The caller's live role assignments, as GET /me/assignments
+     * @type {Array<AssignmentResponse>}
+     * @memberof MeResponse
+     */
+    assignments: Array<AssignmentResponse>;
+    /**
+     * One entry for every scope the caller holds a role in, and for every scope below a role they hold a grant in. The realm role (başnazım) holds everything and is not a list of codes: it adds no entry, so a başnazım with no role rows gets none.
+     * @type {Array<MeScopePermissions>}
+     * @memberof MeResponse
+     */
+    permissions: Array<MeScopePermissions>;
 }
 
 /**
@@ -95,9 +127,12 @@ export interface MeResponse {
 export function instanceOfMeResponse(value: object): value is MeResponse {
     if (!('id' in value) || value['id'] === undefined) return false;
     if (!('emailVerified' in value) || value['emailVerified'] === undefined) return false;
+    if (!('lessonInvitationEmails' in value) || value['lessonInvitationEmails'] === undefined) return false;
     if (!('createdAt' in value) || value['createdAt'] === undefined) return false;
     if (!('lastSeenAt' in value) || value['lastSeenAt'] === undefined) return false;
     if (!('roles' in value) || value['roles'] === undefined) return false;
+    if (!('assignments' in value) || value['assignments'] === undefined) return false;
+    if (!('permissions' in value) || value['permissions'] === undefined) return false;
     return true;
 }
 
@@ -118,9 +153,12 @@ export function MeResponseFromJSONTyped(json: any, ignoreDiscriminator: boolean)
         'familyName': json['familyName'] == null ? undefined : json['familyName'],
         'timeZone': json['timeZone'] == null ? undefined : json['timeZone'],
         'locale': json['locale'] == null ? undefined : json['locale'],
+        'lessonInvitationEmails': json['lessonInvitationEmails'],
         'createdAt': (new Date(json['createdAt'])),
         'lastSeenAt': (new Date(json['lastSeenAt'])),
         'roles': MeRolesResponseFromJSON(json['roles']),
+        'assignments': ((json['assignments'] as Array<any>).map(AssignmentResponseFromJSON)),
+        'permissions': ((json['permissions'] as Array<any>).map(MeScopePermissionsFromJSON)),
     };
 }
 
@@ -142,9 +180,12 @@ export function MeResponseToJSONTyped(value?: MeResponse | null, ignoreDiscrimin
         'familyName': value['familyName'],
         'timeZone': value['timeZone'],
         'locale': value['locale'],
+        'lessonInvitationEmails': value['lessonInvitationEmails'],
         'createdAt': ((value['createdAt']).toISOString()),
         'lastSeenAt': ((value['lastSeenAt']).toISOString()),
         'roles': MeRolesResponseToJSON(value['roles']),
+        'assignments': ((value['assignments'] as Array<any>).map(AssignmentResponseToJSON)),
+        'permissions': ((value['permissions'] as Array<any>).map(MeScopePermissionsToJSON)),
     };
 }
 

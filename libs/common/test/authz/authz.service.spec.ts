@@ -456,6 +456,49 @@ describe("the decision and its audit rows (review T5, T8, L1)", () => {
     );
   });
 
+  it("lets the köşk nazımı open a passive course of their köşk, on the record like platform management (owner, 4 October)", async () => {
+    const audit = auditSink();
+    const svc = service(
+      resolverReturning(RELATIONS.PUBLIC),
+      loaderOf(
+        emptyContext({
+          chain: [passive, { type: SCOPE_TYPES.KOSK, id: KOSK }, platform],
+          passiveScope: passive,
+          roles: [
+            {
+              role: ASSIGNED_ROLES.KOSK_NAZIM,
+              scope: { type: SCOPE_TYPES.KOSK, id: KOSK },
+            },
+          ],
+        })
+      ),
+      audit
+    );
+    await expect(
+      svc.can(user("kosk-nazim"), course, PERMISSIONS.COURSE_VIEW)
+    ).resolves.toBe(true);
+    expect(audit.record).not.toHaveBeenCalled();
+    for (const code of [
+      PERMISSIONS.COURSE_VIEW_UNPUBLISHED,
+      PERMISSIONS.SESSION_LIVE_LINK,
+      PERMISSIONS.COURSE_VIEW_DETAILS,
+    ]) {
+      await expect(
+        svc.can(user("kosk-nazim"), course, code),
+        code
+      ).resolves.toBe(true);
+    }
+    expect(audit.record).toHaveBeenCalledTimes(3);
+    expect(audit.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actorId: "kosk-nazim",
+        action: "scope.passive_open",
+        entityId: COURSE,
+        details: expect.objectContaining({ passiveScope: passive }),
+      })
+    );
+  });
+
   it("writes nothing when platform management only views the page of a passive course (L1)", async () => {
     const audit = auditSink();
     const svc = service(
@@ -493,5 +536,93 @@ describe("the decision and its audit rows (review T5, T8, L1)", () => {
         audit
       ).can(admin, course, PERMISSIONS.COURSE_EDIT)
     ).rejects.toThrow("db down");
+  });
+});
+
+describe("AuthzService.assertOpen", () => {
+  class Closed extends Error {}
+  const closure = (): RoleResolver["closure"] =>
+    vi.fn().mockResolvedValue({
+      openTo: [PERMISSIONS.COURSE_HIDE],
+      notFound: new Closed("closed"),
+    });
+  const closedResolver = (
+    relation: Relation | null = RELATIONS.PUBLIC
+  ): RoleResolver => ({
+    resolve: vi.fn().mockResolvedValue(relation),
+    closure: closure(),
+  });
+  const above = emptyContext({
+    chain: [{ type: SCOPE_TYPES.KOSK, id: KOSK }, platform],
+    roles: [
+      {
+        role: ASSIGNED_ROLES.KOSK_NAZIM,
+        scope: { type: SCOPE_TYPES.KOSK, id: KOSK },
+      },
+    ],
+  });
+
+  it("does nothing when the resolver has no closure, or the resource is not closed", async () => {
+    await expect(
+      service(resolverReturning(RELATIONS.PUBLIC)).assertOpen(user(), course)
+    ).resolves.toBeUndefined();
+    const open: RoleResolver = {
+      resolve: vi.fn().mockResolvedValue(RELATIONS.PUBLIC),
+      closure: vi.fn().mockResolvedValue(null),
+    };
+    await expect(
+      service(open).assertOpen(user(), course)
+    ).resolves.toBeUndefined();
+  });
+
+  it("throws the closure's not-found for a caller who holds none of the codes that keep it open", async () => {
+    const svc = service(closedResolver(), loaderOf());
+    await expect(svc.assertOpen(user(), course)).rejects.toBeInstanceOf(Closed);
+    await expect(svc.assertOpen(null, course)).rejects.toBeInstanceOf(Closed);
+  });
+
+  it("lets through the people above (a held code) and the başnazım", async () => {
+    await expect(
+      service(closedResolver(), loaderOf(above)).assertOpen(
+        user("nazim"),
+        course
+      )
+    ).resolves.toBeUndefined();
+    await expect(
+      service(closedResolver(), loaderOf()).assertOpen(
+        user("admin", ["SYSTEM_ADMIN"]),
+        course
+      )
+    ).resolves.toBeUndefined();
+  });
+});
+
+describe("AuthzService.effective across a medrese's courses (review D1-27-33)", () => {
+  const MADRASAH = "33333333-3333-4333-8333-333333333333";
+  const madrasah = { type: SCOPE_TYPES.MADRASAH, id: MADRASAH } as const;
+  const kosk = { type: SCOPE_TYPES.KOSK, id: KOSK } as const;
+
+  it("asks the loader across the courses, and closes their content when the scope it names closes every one of them", async () => {
+    const loader = loaderOf(
+      emptyContext({
+        chain: [madrasah, platform],
+        passiveScope: kosk,
+        roles: [{ role: ASSIGNED_ROLES.MEDRESE_BASMUDERRIS, scope: madrasah }],
+      })
+    );
+    const svc = service(resolverReturning(RELATIONS.PUBLIC), loader);
+    const resource = { entity: ENTITIES.MADRASAH, id: MADRASAH };
+    const across = await svc.effective(user(), resource, {
+      acrossCourses: true,
+    });
+    expect(loader.load).toHaveBeenCalledWith("u", resource, {
+      acrossCourses: true,
+    });
+    expect(across?.codes.has(PERMISSIONS.COURSE_EDIT)).toBe(false);
+    expect(across?.codes.has(PERMISSIONS.MADRASAH_COURSE_OPEN)).toBe(true);
+
+    loader.load.mockClear();
+    await svc.effective(user(), resource);
+    expect(loader.load).toHaveBeenCalledWith("u", resource);
   });
 });

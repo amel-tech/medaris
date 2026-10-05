@@ -48,6 +48,19 @@ describe("DesktopBar", () => {
     expect(link?.textContent).toContain(text("PhoneMenu.account"));
   });
 
+  it("draws Ana sayfa for a signed-in person and not for a visitor, whose wordmark opens Keşfet (MDRS-256)", () => {
+    const member = renderToStaticMarkup(
+      createElement(DesktopBar, { signedIn: true, name: "E2E Nâzım" })
+    );
+    expect(member).toContain('href="/tr/home"');
+    const visitor = renderToStaticMarkup(
+      createElement(DesktopBar, { signedIn: false })
+    );
+    expect(visitor).not.toContain("/tr/home");
+    expect(visitor).not.toContain(`>${text("PhoneMenu.home")}<`);
+    expect(visitor).toContain('href="/tr/discover"');
+  });
+
   it("offers a visitor Giriş yap and Kayıt ol instead", () => {
     const html = renderToStaticMarkup(
       createElement(DesktopBar, { signedIn: false })

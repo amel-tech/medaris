@@ -14,7 +14,7 @@ import { inject } from "vitest";
  *
  * `import type` for `IPublicKeyProvider`: it is an interface, so a value import
  * has nothing to resolve at runtime. Unrelated to the `useImportType` trap in
- * CLAUDE.md, which is about NestJS constructor parameters needing to survive
+ * AGENTS.md, which is about NestJS constructor parameters needing to survive
  * into `design:paramtypes` — nothing here is injected by Nest.
  */
 

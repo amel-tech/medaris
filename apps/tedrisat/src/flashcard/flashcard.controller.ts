@@ -237,9 +237,9 @@ export class FlashcardController {
     @Body(new ParseArrayPipe({ items: CreateFlashcardProgressDto }))
     progressDto: CreateFlashcardProgressDto[]
   ): Promise<FlashcardProgressResponse[]> {
-    // The whole `AuthenticatedUser`, not just `sub`: the check inside needs
-    // `realm_access` for the SYSTEM_ADMIN bypass that `AuthzService.can`
-    // applies on every decorated route, and this route has no decorator.
+    // The SYSTEM_ADMIN bypass that `AuthzService.can` applies on every
+    // decorated route does not hold here: the başnazım's progress on somebody
+    // else's private deck is refused like anyone's (MDRS-148).
     //
     // The MDRS-63 stopgap that stood here — `deckOf` then `assertReadable`,
     // two queries per distinct card — is now one batched query in the service,

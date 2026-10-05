@@ -37,19 +37,23 @@ test("a talebe with no medrese and no course opens '/' and sees nazir/02, with t
     page.getByRole("heading", { level: 1, name: "Bu portala erişiminiz yok" })
   ).toBeVisible();
   await expect(
-    page.getByText(
-      "Nazır, medrese ve ders görevlilerinin portalıdır. Hesabınızda bir medrese ya da ders görevi yok; görev aldığınızda bu portal açılır."
-    )
+    page
+      .getByText(
+        "Nazır, medrese ve ders görevlilerinin portalıdır. Hesabınızda bir medrese ya da ders görevi yok; görev aldığınızda bu portal açılır."
+      )
+      .filter({ visible: true })
   ).toBeVisible();
   await expect(
     page.locator("main").getByText(`Giriş yaptığınız hesap: ${TALEBE.email}`)
   ).toBeVisible();
 
   // The sidebar is the brand and the person: no menu, no picker, and the
-  // person is not a link to the account page.
+  // person is not a link to the account page. The theme toggle is the one
+  // control a sidebar always has (MDRS-245).
   const sidebar = page.locator("aside");
   await expect(sidebar.getByRole("navigation")).toHaveCount(0);
-  await expect(sidebar.getByRole("button")).toHaveCount(0);
+  await expect(sidebar.getByRole("button")).toHaveCount(1);
+  await expect(sidebar.getByRole("button")).toHaveAccessibleName(/temaya geç/);
   await expect(sidebar.getByRole("link")).toHaveCount(0);
   await expect(sidebar).toContainText("Talebe");
 });

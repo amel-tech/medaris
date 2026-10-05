@@ -52,7 +52,10 @@ import {
 } from "./calendar/lesson-calendar";
 import { CourseRepository } from "./course.repository";
 import { CourseService } from "./course.service";
-import { LessonMutationResponse } from "./dto/course-response.dto";
+import {
+  LessonMutationResponse,
+  WeekHideResponse,
+} from "./dto/course-response.dto";
 import { CreateWeekLessonDto } from "./dto/create-lesson.dto";
 import { CancelLessonDto } from "./dto/muderris-list.dto";
 import { RecordingResponse } from "./dto/recording-response.dto";
@@ -235,7 +238,7 @@ export class LessonController {
   @ApiOperation({
     summary: "The course's lesson recordings, newest week first",
     description:
-      "Open to callers with no token, like the course page. A caller holding `view_details` sees every recording; everyone else, PENDING and revoked included, only those with `visibility` PUBLIC. A recording whose `status` is PROCESSING is listed with a null `url`. Sorted by week number descending, then by `recordedAt` descending (MDRS-162).",
+      "Open to callers with no token, like the course page. A caller holding `view_details` sees every recording; everyone else, PENDING and revoked included, only those with `visibility` PUBLIC. A recording whose `status` is PROCESSING is listed with a null `url`. Sorted by week number descending, then by `recordedAt` descending (MDRS-162). A READY BUNNY recording's `url` is a player link signed for this response, built only for a recording the caller may see, and expiring after `BUNNY_STREAM_EMBED_TTL_SECONDS` (6 hours by default); the response is `Cache-Control: private, no-store` (MDRS-119). What this protects: with embed token authentication on in the Bunny library, only a signed link opens the player page, and a signed link passed on opens it until it expires; the stream behind the page (playlist, segments, MP4) is protected only by the library's separate CDN token authentication, so a viewer who saved the video address can play it after the link has expired unless that is on. A YouTube, Drive or other pasted link plays for anyone who has it; for those the filter decides who is shown the link, not who can open it.",
     operationId: "listCourseRecordings",
   })
   @ApiOkResponse({ type: [RecordingResponse] })
@@ -262,7 +265,9 @@ export class LessonController {
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()
   @Post("courses/:courseId/weeks/:weekId/lessons")
-  @Authz(PERMISSIONS.COURSE_EDIT, byParam(ENTITIES.COURSE, "courseId"))
+  // Adding a session is `session.manage` ("Celse ekle"), like the batch and
+  // every other session write here; `course.edit` is the course's text.
+  @Authz(PERMISSIONS.SESSION_MANAGE, byParam(ENTITIES.COURSE, "courseId"))
   @UsePipes(new MedarisValidationPipe({ transform: true }))
   async create(
     @Param("courseId", ParseUUIDPipe) courseId: string,
@@ -391,17 +396,41 @@ export class LessonController {
 
   @ApiOperation({
     summary: "Remove a lesson from the course; it is archived, never deleted",
+    description:
+      "`week.hide` (Hafta ve celse gizle, geri al) or `session.manage`. The level the caller acts at is recorded with the hide and decides who may bring it back (MDRS-135); written to `audit_log` as `lesson.hide` (MDRS-143).",
     operationId: "archiveLesson",
   })
   @ApiOkResponse({ type: LessonMutationResponse })
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()
   @Delete("lessons/:id")
-  @Authz(PERMISSIONS.SESSION_MANAGE, byLessonCourse)
+  @Authz([PERMISSIONS.WEEK_HIDE, PERMISSIONS.SESSION_MANAGE], byLessonCourse)
   async archive(
     @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<LessonMutationResponse> {
     return this.courseService.archiveLesson(id, request.user);
+  }
+
+  @ApiOperation({
+    summary: "Hide a week with its sessions (Gizle)",
+    description:
+      "Nothing is deleted: the week and its live sessions leave the course at one instant, at the level the caller acts at (the course team's, the köşk's, the medrese's), and the course `version` is bumped, so an editor that loaded the course before is refused with 409. Brought back by that level or one above, through `POST /archive/week/:id/restore`; the course's Arşiv lists it (`GET /courses/:id/archive`). Written to `audit_log` as `week.hide` (MDRS-143).",
+    operationId: "hideCourseWeek",
+  })
+  @ApiOkResponse({ type: WeekHideResponse })
+  @ApiForbiddenResponse()
+  @ApiNotFoundResponse({
+    description: "No such course, or no such live week in it (WEEK_NOT_FOUND).",
+  })
+  @Post("courses/:courseId/weeks/:weekId/hide")
+  @HttpCode(HttpStatus.OK)
+  @Authz(PERMISSIONS.WEEK_HIDE, byParam(ENTITIES.COURSE, "courseId"))
+  async hideWeek(
+    @Req() request: AuthorizedRequest,
+    @Param("courseId", ParseUUIDPipe) courseId: string,
+    @Param("weekId", ParseUUIDPipe) weekId: string
+  ): Promise<WeekHideResponse> {
+    return this.courseService.archiveWeek(courseId, weekId, request.user);
   }
 }

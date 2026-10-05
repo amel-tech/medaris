@@ -1,4 +1,6 @@
+import type { ScopeRef } from "@medaris/common";
 import type { HideLevel } from "../archive/hide-level";
+import type { CourseRestoreOutcome } from "../archive/restore-course";
 import type { IPurgeCounts } from "./course-purge";
 import { CourseLevel } from "./domain/course-level.enum";
 import { CourseStatus } from "./domain/course-status.enum";
@@ -286,6 +288,8 @@ export interface ICreateCourse {
   timeZone?: string;
   weeks?: ICreateWeek[];
   muderris?: ICreateMuderris[];
+  /** The imam, one of the accounts in `muderris` (MDRS-136); the first listed when absent. */
+  imamUserId?: string;
   resources?: ICreateResource[];
 }
 
@@ -306,7 +310,10 @@ export interface IUpdateCourse {
   timeZone?: string;
 }
 
-export type IReplaceCourse = Omit<ICreateCourse, "koskId" | "authorId"> & {
+export type IReplaceCourse = Omit<
+  ICreateCourse,
+  "koskId" | "authorId" | "imamUserId"
+> & {
   /**
    * The course `version` the editor loaded. When given, the replace is
    * refused with a conflict if the course has been written since.
@@ -333,6 +340,13 @@ export interface IUpdateLesson {
  *  version the write produced so the client can send it with its next one. */
 export interface ILessonMutation extends ILesson {
   courseVersion: number;
+}
+
+/** What hiding a week produced: the course version, and how many live sessions went with it (MDRS-143). */
+export interface IWeekHide {
+  id: string;
+  courseVersion: number;
+  hiddenSessions: number;
 }
 
 /** One session of a weekly-pattern batch (MDRS-109), already expanded. */
@@ -429,14 +443,17 @@ export interface ICourseRepository {
     id: string,
     userId: string,
     level: HideLevel
-  ): Promise<ICourse | null>;
-  restore(id: string): Promise<ICourse | null>;
-  /** What a restore needs to know of a course: whether it is hidden, at which level, and its medrese. */
-  findHideState(id: string): Promise<{
-    archivedAt: Date | null;
-    archivedLevel: HideLevel | null;
-    madrasahId: string | null;
-  } | null>;
+  ): Promise<"archived" | "already-hidden" | "not-found">;
+  /** The kademe and the hidden parent decided under the row lock (`restoreCourseIn`). */
+  restore(
+    id: string,
+    restorer: HideLevel,
+    actorId: string
+  ): Promise<CourseRestoreOutcome>;
+  /** Whether the course's köşk is hidden, which closes the course (MDRS-143); null for no such course. */
+  findHideState(id: string): Promise<{ koskArchivedAt: Date | null } | null>;
+  /** The first passive scope the course sits in, which closes its content (MDRS-136); null when it is open. */
+  findPassiveScope(id: string): Promise<ScopeRef | null>;
   /** SYSTEM_ADMIN's delete: the course, its children and an audit entry. */
   purge(id: string, actorId: string): Promise<IPurgeCounts | null>;
   /** The course a lesson belongs to, archived or not; null if no such lesson. */
@@ -456,6 +473,12 @@ export interface ICourseRepository {
     actorId?: string | null,
     level?: HideLevel
   ): Promise<ILessonMutation>;
+  archiveWeek(
+    courseId: string,
+    weekId: string,
+    actorId: string,
+    level: HideLevel
+  ): Promise<IWeekHide>;
   /**
    * Marks the session cancelled, keeping its slot (MDRS-176). With a
    * `replacementLessonId` the session that makes up for it is linked, after

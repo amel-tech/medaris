@@ -33,9 +33,12 @@ test("the roles table is the person's real assignments, the medrese first, with 
   ).toBeVisible();
   const table = page.getByRole("table", { name: "Görevleriniz" });
   const rows = table.locator("tbody tr");
-  // the course rows name their medrese too, so the medrese's own row is the first
-  await expect(rows.first()).toContainText("Medrese başmüderrisi");
-  await expect(rows.first()).toContainText("Etkin");
+  // the course rows name their medrese too, so the first row that names it is the
+  // medrese's own (the shared test seed gives the account another medrese, whose
+  // row may come before it)
+  const named = rows.filter({ hasText: fixture?.madrasah.name ?? "" });
+  await expect(named.first()).toContainText("Medrese başmüderrisi");
+  await expect(named.first()).toContainText("Etkin");
   const course = rows.filter({ hasText: fixture?.first.title ?? "" });
   await expect(course).toContainText("Müderris");
   await expect(course).toContainText("Dersin imamı");
@@ -43,12 +46,12 @@ test("the roles table is the person's real assignments, the medrese first, with 
   await expect(course).toContainText("Yayında");
   await expect(course).toContainText("Kendiniz");
   await expect(course).toContainText("Süresiz");
-  // the medrese is the first row
-  await expect(rows.first()).toContainText(fixture?.madrasah.name ?? "");
 
   // the account is not a nazır of either kind
   await expect(
-    page.getByText("Medrese nazırlığınız ya da ders nazırlığınız yok.")
+    page
+      .getByText("Medrese nazırlığınız ya da ders nazırlığınız yok.")
+      .filter({ visible: true })
   ).toBeVisible();
   // and there is no way to "open in the app" from the app itself
   await expect(page.getByRole("link", { name: /Nazır’da aç/ })).toHaveCount(0);
@@ -61,9 +64,13 @@ test("the permission sentences come from the person's courses, grouped under one
   const page = await as("MEDRESE_BASMUDERRIS");
   await page.goto("/hesap");
 
-  const group = page.getByTestId("permission-group").first();
+  // the group headed "Müderris": the medrese başmüderrisi's comes first or not, by
+  // how many medreses the shared test seed gives the account
+  const group = page.getByTestId("permission-group").filter({
+    has: page.getByRole("heading", { level: 3, name: "Müderris", exact: true }),
+  });
   await expect(
-    group.getByRole("heading", { level: 3, name: "Müderris" })
+    group.getByRole("heading", { level: 3, name: "Müderris", exact: true })
   ).toBeVisible();
   await expect(group).toContainText(
     "Müderris olduğunuz derslerin her birinde geçerli"
@@ -79,14 +86,19 @@ test("the e-mail is read-only and the language is Türkçe", async ({ as }) => {
   const page = await as("MEDRESE_BASMUDERRIS");
   await page.goto("/hesap");
 
-  const email = page.getByLabel("E-posta");
+  // `visible`: a page Next keeps hidden after a navigation holds the same fields
+  const email = page.getByLabel("E-posta").filter({ visible: true });
   await expect(email).toHaveValue(BASMUDERRIS.email as string);
   await expect(email).toHaveAttribute("readonly", "");
-  const language = page.getByLabel("Dil", { exact: true });
+  const language = page
+    .getByLabel("Dil", { exact: true })
+    .filter({ visible: true });
   await expect(language).toHaveValue("Türkçe");
   await expect(language).toHaveAttribute("readonly", "");
   await expect(
-    page.getByText("Medaris şimdilik yalnız Türkçe görünür.")
+    page
+      .getByText("Medaris şimdilik yalnız Türkçe görünür.")
+      .filter({ visible: true })
   ).toBeVisible();
 });
 
@@ -102,7 +114,9 @@ test("the time zone saves the moment it is chosen and is still chosen after a re
     await zone.click();
     await page.getByRole("option", { name: "New York" }).click();
     // no save button: a toast says it was kept
-    await expect(page.getByText("Saat diliminiz kaydedildi.")).toBeVisible();
+    await expect(
+      page.getByText("Saat diliminiz kaydedildi.").filter({ visible: true })
+    ).toBeVisible();
     await expect(page.getByRole("button", { name: /Kaydet/ })).toHaveCount(0);
 
     await page.reload();
@@ -129,7 +143,9 @@ test("'Diğer…' opens the full list of zones, and a zone from it is kept too",
     const others = page.getByRole("combobox", { name: "Diğer saat dilimleri" });
     await others.click();
     await page.getByRole("option", { name: "Asia / Tokyo" }).click();
-    await expect(page.getByText("Saat diliminiz kaydedildi.")).toBeVisible();
+    await expect(
+      page.getByText("Saat diliminiz kaydedildi.").filter({ visible: true })
+    ).toBeVisible();
 
     await page.reload();
     await expect(
@@ -182,9 +198,11 @@ test("the sign-out card has the sentence and no confirmation window; the button 
     await signIn(page, BASMUDERRIS);
     await page.goto("/hesap");
     await expect(
-      page.getByText(
-        "Bu tarayıcıda Medaris’ten çıkarsınız. Görevleriniz ve tercihleriniz hesabınızda kalır."
-      )
+      page
+        .getByText(
+          "Bu tarayıcıda Medaris’ten çıkarsınız. Görevleriniz ve tercihleriniz hesabınızda kalır."
+        )
+        .filter({ visible: true })
     ).toBeVisible();
 
     await page.getByRole("button", { name: "Çıkış yap" }).click();

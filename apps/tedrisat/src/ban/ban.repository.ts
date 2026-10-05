@@ -28,7 +28,7 @@ import { kosks } from "../database/schema/kosk.schema";
 import { madrasahs } from "../database/schema/madrasah.schema";
 import { roleAssignments } from "../database/schema/role-assignment.schema";
 import { users } from "../database/schema/user.schema";
-import type { BanRole, IBanScopes, IHeldAssignment } from "./ban-tier";
+import type { BanRole, IBanScopes } from "./ban-tier";
 import type { BanStatus } from "./dto/ban.dto";
 
 export interface IBan {
@@ -64,6 +64,12 @@ export interface IBanEntry extends IBan {
   lifterPerson: IBanPerson | null;
   courseTitle: string | null;
   madrasahName: string | null;
+  /**
+   * The medrese the ban sits in: the one a COURSE ban's course belongs to, or
+   * a MADRASAH ban's own; null for a köşk's course or a KOSK ban. It is where
+   * the permission to lift or widen this ban is asked.
+   */
+  placeMadrasahId: string | null;
   extendedFromCourseTitle: string | null;
   koskName: string | null;
   /** When the medrese asked for the ban to be permanent; null when it has not. */
@@ -521,23 +527,6 @@ export class BanRepository {
       );
   }
 
-  /** Whether the person holds a platform-wide role (Medaris nazımı). */
-  async holdsPlatformRole(userId: string, role: BanRole): Promise<boolean> {
-    const rows = await this.db
-      .select({ id: roleAssignments.id })
-      .from(roleAssignments)
-      .where(
-        and(
-          eq(roleAssignments.userId, userId),
-          eq(roleAssignments.scopeType, "platform"),
-          eq(roleAssignments.role, role as "MEDARIS_NAZIM"),
-          isHeld()
-        )
-      )
-      .limit(1);
-    return rows.length > 0;
-  }
-
   private async entries(
     where: SQL,
     order: SQL,
@@ -565,6 +554,9 @@ export class BanRepository {
         lifterEmail: lifter.email,
         courseTitle: course.title,
         madrasahName: madrasahs.name,
+        placeMadrasahId: sql<
+          string | null
+        >`coalesce(${course.madrasahId}, ${bans.madrasahId})`,
         widenedTitle: widened.title,
         koskName: kosks.name,
         anySeatName: sql<
@@ -634,6 +626,7 @@ export class BanRepository {
         : null,
       courseTitle: r.courseTitle,
       madrasahName: r.madrasahName,
+      placeMadrasahId: r.placeMadrasahId,
       extendedFromCourseTitle: r.widenedTitle,
       koskName: r.koskName,
       permanentRequestedAt: r.permanentRequestedAt,
@@ -735,18 +728,6 @@ export class BanRepository {
       .from(bans)
       .where(and(eq(bans.madrasahId, madrasahId), open()));
     return new Set(rows.map((r) => r.userId));
-  }
-
-  /** Every role the person holds, with its scope, for those that need the answer per row. */
-  async rolesOf(userId: string): Promise<IHeldAssignment[]> {
-    return this.db
-      .select({
-        role: roleAssignments.role,
-        scopeType: roleAssignments.scopeType,
-        scopeId: roleAssignments.scopeId,
-      })
-      .from(roleAssignments)
-      .where(and(eq(roleAssignments.userId, userId), isHeld()));
   }
 
   /**

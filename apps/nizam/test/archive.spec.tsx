@@ -12,6 +12,8 @@ import {
   hiddenAtLabel,
   impactLines,
   type Messages,
+  mayRestore,
+  restoreErrorKey,
   scopeQuery,
   sessionWhen,
   shownLabel,
@@ -55,6 +57,8 @@ const base = {
     name: "Abdülhamit Karaosmanoğlu",
     role: "KOSK_NAZIM",
   },
+  hiddenLevel: "kosk",
+  canRestore: true,
 };
 
 const item = (over: Partial<ArchiveItemResponse>): ArchiveItemResponse =>
@@ -332,6 +336,35 @@ describe("ArchiveView — the köşk archive (nizam 28)", () => {
     expect(html).toContain("10 gizli öğe");
   });
 
+  it("names who hid a row, and gives it no 'Geri al', when the reader's level is below (MDRS-143)", () => {
+    const locked = render(
+      <ArchiveView
+        mode={{ kind: "kosk", koskId: "k1", koskName: "Nûruosmaniye Köşkü" }}
+        initial={{
+          items: [
+            item({
+              id: "p",
+              type: "course",
+              title: "Medaris'in gizlediği ders",
+              hiddenLevel: "platform",
+              canRestore: false,
+            }),
+            item({ id: "q", type: "course", title: "Benim gizlediğim ders" }),
+          ],
+          total: 2,
+          page: 1,
+          limit: 50,
+        }}
+        pageSize={50}
+      />
+    );
+    expect(locked).not.toContain("Geri al: Medaris'in gizlediği ders");
+    expect(locked).toContain(
+      "Bunu Medaris yönetimi gizledi; yalnız o kademe ya da üstü geri alabilir."
+    );
+    expect(locked).toContain("Geri al: Benim gizlediğim ders");
+  });
+
   it("has no permanent delete (criterion 4)", () => {
     expect(html).not.toContain("Kalıcı olarak sil");
   });
@@ -339,6 +372,53 @@ describe("ArchiveView — the köşk archive (nizam 28)", () => {
   it("names the filters", () => {
     expect(html).toContain("Tür: tümü");
     expect(html).not.toContain("Kapsam: tümü");
+  });
+
+  it("draws no 'Geri al' for what the platform hid, and says who may (MDRS-108)", () => {
+    const locked = render(
+      <ArchiveView
+        mode={{ kind: "kosk", koskId: "k1", koskName: "Nûruosmaniye Köşkü" }}
+        initial={{
+          items: [
+            {
+              ...rows[1],
+              hiddenLevel: "platform",
+              canRestore: false,
+            } as ArchiveItemResponse,
+            { ...rows[0], canRestore: true } as ArchiveItemResponse,
+          ],
+          total: 2,
+          page: 1,
+          limit: 50,
+        }}
+        pageSize={50}
+      />
+    );
+    expect(locked).toContain("Maksûd okumaları");
+    expect(locked).not.toContain("Geri al: Maksûd okumaları");
+    expect(locked).toContain(
+      "Bunu Medaris yönetimi gizledi; yalnız o kademe ya da üstü geri alabilir."
+    );
+    expect(locked).toContain("Geri al: Mehmûz fiiller (mükerrer)");
+  });
+});
+
+describe("a refused 'Geri al' (nizam 28)", () => {
+  it("words a refusal by kademe in Turkish, not with the server's English", () => {
+    expect(restoreErrorKey("ARCHIVE_RESTORE_LEVEL")).toBe("restoreLevel");
+    expect(t("restoreLevel")).toContain("üst bir kademe");
+    expect(restoreErrorKey("ARCHIVE_PARENT_HIDDEN")).toBe(
+      "restoreParentHidden"
+    );
+    expect(restoreErrorKey("ARCHIVE_ITEM_NOT_FOUND")).toBe("restoreGone");
+    expect(restoreErrorKey("SOMETHING_ELSE")).toBeNull();
+  });
+
+  it("draws the button unless the API says no", () => {
+    expect(mayRestore(item({}))).toBe(true);
+    expect(
+      mayRestore({ ...item({}), canRestore: false } as ArchiveItemResponse)
+    ).toBe(false);
   });
 });
 

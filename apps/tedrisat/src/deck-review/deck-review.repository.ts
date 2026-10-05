@@ -25,6 +25,8 @@ import { users } from "../database/schema/user.schema";
 import { DeckPublishStatus } from "../flashcard/domain/deck-publish-status.enum";
 import { FlashcardType } from "../flashcard/domain/flashcard-type.enum";
 
+export const UNPUBLISH_ACTION = "deck.unpublish";
+
 export interface IPerson {
   id: string;
   name: string | null;
@@ -278,6 +280,48 @@ export class DeckReviewRepository {
       )
       .returning({ id: decks.id });
     return rows.length > 0;
+  }
+
+  /**
+   * PUBLISHED to PRIVATE by the başnazım, and the `audit_log` row in the same
+   * transaction. The decision columns are wiped, as on every change of
+   * visibility, so the row is the only record of who took the deck down and
+   * why: it is written with the change or the change does not happen. False
+   * when the deck is not published any more.
+   */
+  async unpublish(
+    deck: { id: string; title: string; authorId: string },
+    by: string,
+    reason: string
+  ): Promise<boolean> {
+    return this.db.transaction(async (tx) => {
+      const rows = await tx
+        .update(decks)
+        .set({
+          isPublic: false,
+          publishStatus: DeckPublishStatus.PRIVATE,
+          publishRequestedAt: null,
+          publishDecidedAt: null,
+          publishDecidedBy: null,
+          publishRejectReason: null,
+        })
+        .where(
+          and(
+            eq(decks.id, deck.id),
+            eq(decks.publishStatus, DeckPublishStatus.PUBLISHED)
+          )
+        )
+        .returning({ id: decks.id });
+      if (rows.length === 0) return false;
+      await tx.insert(auditLog).values({
+        actorId: by,
+        action: UNPUBLISH_ACTION,
+        entity: "deck",
+        entityId: deck.id,
+        details: { title: deck.title, owner: deck.authorId, reason },
+      });
+      return true;
+    });
   }
 
   async displayName(userId: string): Promise<string | null> {

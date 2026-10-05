@@ -108,6 +108,22 @@ describe("the phone bar (nazir 21, 22)", () => {
     expect(bell?.textContent).toBe("");
   });
 
+  it("has the theme toggle before the bell, and a bar without a bell keeps it", async () => {
+    pathname = "/medrese/m-1/dersler";
+    await mount("medrese");
+    const actions = document.querySelector(".mds-appbar__actions") as Element;
+    expect(
+      [...actions.children].map((el) => el.getAttribute("aria-label"))
+    ).toEqual(["Koyu temaya geç", "Bildirimler, 3 okunmamış"]);
+    await cleanup();
+    await mount("medrese", null);
+    expect(
+      [
+        ...(document.querySelector(".mds-appbar__actions") as Element).children,
+      ].map((el) => el.getAttribute("aria-label"))
+    ).toEqual(["Koyu temaya geç"]);
+  });
+
   it("draws no bell where there is no notification page to go to", async () => {
     await mount("medrese", null);
     expect(
@@ -181,6 +197,7 @@ describe("the phone bar (nazir 21, 22)", () => {
       "Müfredat",
       "Celseler",
       "Talebeler",
+      "Sorular",
       "Ders kayıtları",
       "Ders destesi",
       "Yasaklamalar",

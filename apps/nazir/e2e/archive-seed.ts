@@ -84,10 +84,13 @@ export async function seedArchive(
       "insert into role_assignments(user_id, role, scope_type, scope_id, granted_by) values ($1, 'KOSK_NAZIM', 'kosk', $2, $3)",
       [koskNazim.id, base.koskId, head]
     );
+    // Each hide records the level its hider acted at (`archived_level`, MDRS-135):
+    // a row without one counts as the lowest level that could have hidden it, which
+    // would let the başmüderris bring back what the köşk nazımı and the başnazım hid.
     // a hidden course of the medrese
     await client.query(
-      `insert into courses(id, kosk_id, madrasah_id, author_id, title, status, archived_at, archived_by)
-        values ($1, $2, $3, $4, $5, 'PUBLISHED', $6, $4)`,
+      `insert into courses(id, kosk_id, madrasah_id, author_id, title, status, archived_at, archived_by, archived_level)
+        values ($1, $2, $3, $4, $5, 'PUBLISHED', $6, $4, 'madrasah')`,
       [course.id, base.koskId, base.madrasah.id, head, course.title, ago(3)]
     );
     // a week that stays visible holds the hidden sessions: a session is listed while its course is shown
@@ -96,10 +99,10 @@ export async function seedArchive(
       [visibleWeek, base.first.id]
     );
     await client.query(
-      `insert into lessons(id, week_id, title, type, scheduled_at, archived_at, archived_by) values
-        ($1, $4, $5, 'LIVE', $8, $9, $10),
-        ($2, $4, $6, 'LIVE', $8, $11, $12),
-        ($3, $4, $7, 'LIVE', $8, $13, $14)`,
+      `insert into lessons(id, week_id, title, type, scheduled_at, archived_at, archived_by, archived_level) values
+        ($1, $4, $5, 'LIVE', $8, $9, $10, 'madrasah'),
+        ($2, $4, $6, 'LIVE', $8, $11, $12, 'kosk'),
+        ($3, $4, $7, 'LIVE', $8, $13, $14, 'platform')`,
       [
         sessions.head.id,
         sessions.kosk.id,
@@ -118,8 +121,8 @@ export async function seedArchive(
       ]
     );
     await client.query(
-      `insert into course_weeks(id, course_id, week_number, title, archived_at, archived_by)
-        values ($1, $2, 9, $3, $4, $5)`,
+      `insert into course_weeks(id, course_id, week_number, title, archived_at, archived_by, archived_level)
+        values ($1, $2, 9, $3, $4, $5, 'madrasah')`,
       [week.id, base.first.id, week.title, ago(5), head]
     );
     await client.query("commit");
@@ -142,8 +145,8 @@ export async function seedArchive(
         const id = randomUUID();
         extraWeeks.push(id);
         await client.query(
-          `insert into course_weeks(id, course_id, week_number, title, archived_at, archived_by)
-            values ($1, $2, $3, $4, $5, $6)`,
+          `insert into course_weeks(id, course_id, week_number, title, archived_at, archived_by, archived_level)
+            values ($1, $2, $3, $4, $5, $6, 'madrasah')`,
           [
             id,
             base.first.id,

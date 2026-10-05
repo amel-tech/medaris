@@ -75,10 +75,10 @@ test("nizam/20 — the başnazım's page fills every section and the numbers are
   await shot(page, "20-kosk-yonetimi");
 
   await expect(
-    page.getByText("Bu, Medaris yönetimi görünümüdür")
+    page.getByText("Bu, Medaris yönetimi görünümüdür").filter({ visible: true })
   ).toBeVisible();
   const counts = await fixture.counts();
-  const summary = page.getByLabel("Köşkün özeti");
+  const summary = page.getByLabel("Köşkün özeti").filter({ visible: true });
   await expect(summary).toContainText(
     `${counts.published} yayında · ${counts.draft} taslak · ${counts.hidden} gizli`
   );
@@ -139,7 +139,9 @@ test("nizam/20 — 'Köşkü gizle' asks first, hides the köşk and writes the 
     .getByRole("alertdialog")
     .getByRole("button", { name: "Gizle" })
     .click();
-  await expect(page.getByText("Köşk gizlendi")).toBeVisible();
+  await expect(
+    page.getByText("Köşk gizlendi").filter({ visible: true })
+  ).toBeVisible();
   await expect.poll(async () => (await fixture.koskRow()).hidden).toBe(true);
   expect(await fixture.audits("kosk.hide")).toBe(1);
 
@@ -161,10 +163,17 @@ test("nizam/20 — 'Köşkü pasife al' takes the nazımları off the post and w
   await shot(page, "20-pasife-al-oncesi");
   await page.getByRole("button", { name: "Köşkü pasife al" }).click();
   const dialog = page.getByRole("dialog");
-  await expect(dialog).toContainText("1 köşk nazımı görevden alınacak");
+  // MDRS-227: the dialog shows what it takes along before it asks. The seed's
+  // two talebe are enrolled in the köşk's courses.
+  await expect(dialog).toContainText("Pasife almak yanında şunları götürür");
+  await expect(dialog).toContainText("1 köşk nazımı görevden alınır");
+  await expect(dialog).toContainText("ders kapanır");
+  await expect(dialog).toContainText("2 kayıtlı talebe içeriğe erişemez");
   await shot(page, "20-pasife-al");
-  await dialog.getByRole("button", { name: "Pasife al" }).click();
-  await expect(page.getByText("Köşk pasife alındı")).toBeVisible();
+  await dialog.getByRole("button", { name: "Yine de pasife al" }).click();
+  await expect(
+    page.getByText("Köşk pasife alındı").filter({ visible: true })
+  ).toBeVisible();
   await expect.poll(async () => (await fixture.koskRow()).passive).toBe(true);
   expect(await fixture.nazims()).toEqual([]);
   expect(await fixture.audits("kosk.deactivate")).toBe(1);
@@ -225,7 +234,7 @@ test("nizam/23 — Dersler lists the courses, the tabs' numbers are the database
   expect(await tabCount(page, "Tümü")).toBe(counts.all);
   await expect(page.locator("tbody tr:visible")).toHaveCount(counts.all);
   // The cards: the waiting application, the hosting right, the nazım.
-  const cards = page.getByLabel("Köşkün özeti");
+  const cards = page.getByLabel("Köşkün özeti").filter({ visible: true });
   await expect(cards.locator(".mds-stat").nth(0)).toContainText("1");
   await expect(cards.locator(".mds-stat").nth(1)).toContainText("1");
   await expect(cards.locator(".mds-stat").nth(2)).toContainText("1");
@@ -251,8 +260,9 @@ test("nizam/23 — a medrese's course has Dersi gör and no Düzenle; an own one
   await page.goto(`/tr/kosks/${fixture.kosk.id}/dersler`);
   const own = courseRow(page, fixture.own.title);
   await expect(own.getByRole("link", { name: /^Düzenle/ })).toBeVisible();
+  // a button that opens the müderris dialog, not a link to a page
   await expect(
-    own.getByRole("link", { name: /^Müderrisleri düzenle/ })
+    own.getByRole("button", { name: /^Müderrisleri düzenle/ })
   ).toBeVisible();
   await expect(own.getByRole("button", { name: /^Gizle/ })).toBeVisible();
   const hosted = courseRow(page, fixture.hosted.title);
@@ -285,7 +295,9 @@ test("nizam/23 — 'Gizle' asks first, the course becomes Gizli, and 'Geri al' b
     .getByRole("alertdialog")
     .getByRole("button", { name: "Gizle" })
     .click();
-  await expect(page.getByText("Ders gizlendi")).toBeVisible();
+  await expect(
+    page.getByText("Ders gizlendi").filter({ visible: true })
+  ).toBeVisible();
   await expect.poll(() => fixture.courseHidden(fixture.own.id)).toBe(true);
   await expect.poll(() => tabCount(page, "Gizli")).toBe(before.hidden + 1);
   await page.getByRole("tab", { name: /^Gizli/ }).click();
@@ -294,7 +306,9 @@ test("nizam/23 — 'Gizle' asks first, the course becomes Gizli, and 'Geri al' b
   await courseRow(page, fixture.own.title)
     .getByRole("button", { name: /^Geri al/ })
     .click();
-  await expect(page.getByText("Ders geri alındı")).toBeVisible();
+  await expect(
+    page.getByText("Ders geri alındı").filter({ visible: true })
+  ).toBeVisible();
   await expect.poll(() => fixture.courseHidden(fixture.own.id)).toBe(false);
   await expect.poll(() => tabCount(page, "Gizli")).toBe(before.hidden);
 });
@@ -322,7 +336,9 @@ test("nizam/53 — the overview draws the course, warns about the missing link a
   await expect(page.getByText("4 celse").first()).toBeVisible();
 
   await expect(
-    page.getByText("celsesinin toplantı bağlantısı eksik")
+    page
+      .getByText("celsesinin toplantı bağlantısı eksik")
+      .filter({ visible: true })
   ).toBeVisible();
   const sessions = page.locator("tbody tr:visible").filter({
     hasText: /celse/,
@@ -342,8 +358,12 @@ test("nizam/53 — the overview draws the course, warns about the missing link a
   expect(rows[2]).toContain("Zoom");
   expect(await sessions.count()).toBeGreaterThan(0);
 
-  await expect(page.getByText("Mehmet Emin Işıkoğlu")).toBeVisible();
-  await expect(page.getByText("Dersin imamı")).toBeVisible();
+  await expect(
+    page.getByText("Mehmet Emin Işıkoğlu").filter({ visible: true })
+  ).toBeVisible();
+  await expect(
+    page.getByText("Dersin imamı").filter({ visible: true })
+  ).toBeVisible();
 });
 
 test("nizam/53 — 'Müfredatı düzenle' and 'Celse planla' go to the course's editor (criterion 5)", async ({
@@ -372,14 +392,18 @@ test("nizam/53 — 'Onayla' takes the application off the list and adds one to K
   const students = page.getByLabel("Dersin sayıları").locator(".mds-stat");
   await expect(students.nth(0)).toContainText("2");
   await expect(students.nth(1)).toContainText("1");
-  await expect(page.getByText(fixture.pendingName)).toBeVisible();
+  await expect(
+    page.getByText(fixture.pendingName).filter({ visible: true })
+  ).toBeVisible();
 
   await page
     .getByRole("button", {
       name: new RegExp(`^Onayla: ${fixture.pendingName}`),
     })
     .click();
-  await expect(page.getByText("Bekleyen başvuru yok")).toBeVisible();
+  await expect(
+    page.getByText("Bekleyen başvuru yok").filter({ visible: true })
+  ).toBeVisible();
   await expect.poll(() => fixture.enrolled(fixture.own.id)).toBe(3);
   await expect(students.nth(0)).toContainText("3");
   await expect(students.nth(1)).toContainText("0");

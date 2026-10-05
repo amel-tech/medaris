@@ -1,3 +1,4 @@
+import type { ScopeRef } from "@medaris/common";
 import { Injectable } from "@nestjs/common";
 import {
   and,
@@ -16,6 +17,8 @@ import { LessonType } from "../course/domain/lesson-type.enum";
 import { DEFAULT_SESSION_MINUTES } from "../course/domain/session-view";
 import { DatabaseService } from "../database/database.service";
 import { enrolledCourseIds } from "../database/enrolled-courses";
+import { passiveScopesOf } from "../database/passive-courses";
+import { auditLog } from "../database/schema/audit.schema";
 import {
   courses,
   courseWeeks,
@@ -81,6 +84,57 @@ export class ScheduleRepository {
       ),
       to,
       limit
+    );
+  }
+
+  /** The passive scope each of these courses sits in, if any (MDRS-136). */
+  passiveScopesOf(
+    courseIds: readonly string[]
+  ): Promise<Map<string, ScopeRef>> {
+    return passiveScopesOf(this.db, courseIds);
+  }
+
+  /**
+   * The opens of a passive course's live link this list made (MDRS-135): a
+   * `scope.passive_open` and a `course.content_read` per course, as
+   * `GET /courses/:id` writes for the same reader, in one statement.
+   */
+  async recordPassiveOpens(
+    userId: string,
+    opens: ReadonlyArray<{
+      courseId: string;
+      courseTitle: string;
+      passiveScope: ScopeRef;
+    }>,
+    via: string
+  ): Promise<void> {
+    if (opens.length === 0) return;
+    await this.db.insert(auditLog).values(
+      opens.flatMap((open) => [
+        {
+          actorId: userId,
+          action: "scope.passive_open",
+          entity: "course",
+          entityId: open.courseId,
+          details: {
+            passiveScope: open.passiveScope,
+            permission: "session.live_link",
+            via,
+          },
+        },
+        {
+          actorId: userId,
+          action: "course.content_read",
+          entity: "course",
+          entityId: open.courseId,
+          details: {
+            title: open.courseTitle,
+            via,
+            systemAdmin: false,
+            permission: "session.live_link",
+          },
+        },
+      ])
     );
   }
 

@@ -14,14 +14,28 @@ interface AuditTypeRule {
 }
 
 export const AUDIT_TYPE_RULES = {
-  CONTENT_READ: { like: ["course.content_read"] },
-  PRIVATE_DECK_READ: { like: ["deck.private-read"] },
+  // A passive scope opened by platform management or its köşk's nazımı is a
+  // read of content the scope had closed.
+  CONTENT_READ: { like: ["course.content_read", "scope.passive_open"] },
+  // Two acts, one kind: the nizam preview of a requested deck writes
+  // `deck.private-read`, the başnazım's read through the deck routes writes
+  // `deck.admin_read` (MDRS-148).
+  PRIVATE_DECK_READ: { like: ["deck.private-read", "deck.admin_read"] },
   PERSONAL_DATA_READ: {
     like: ["kosk_application.contact_read", "course.roster_read"],
   },
   USER_LOOKUP: { like: ["user.lookup"] },
   TAKEOVER: { like: ["permission.take_over", "permission.drop"] },
-  GRANT: { like: ["permission.%", "permission_group.%"] },
+  // A caller who named themselves and was refused: nothing was given.
+  SELF_GRANT_REFUSED: { like: ["permission.self_grant_refused"] },
+  GRANT: {
+    like: ["permission.%", "permission_group.%"],
+    unless: [
+      "permission.take_over",
+      "permission.drop",
+      "permission.self_grant_refused",
+    ],
+  },
   ROLE_CHANGE: {
     like: [
       "medaris_nazim.%",
@@ -36,7 +50,7 @@ export const AUDIT_TYPE_RULES = {
   POLICY_CHANGE: { like: ["platform_policy.%", "kosk.policy_change"] },
   BAN: { like: ["ban.%"] },
   HIDE: {
-    like: ["%.hide", "%.restore"],
+    like: ["%.hide", "%.restore", "deck.unpublish"],
   },
   HOSTING: { like: ["hosting_right.%"] },
   APPEAL: { like: ["appeal.%"] },

@@ -1,4 +1,7 @@
+import { type AuthzService, ENTITIES, PERMISSIONS } from "@medaris/common";
 import {
+  actingLevel,
+  COURSE_HIDE_LADDER,
   HIDE_RANK,
   type HideLevel,
   hiderLevelOf,
@@ -46,5 +49,32 @@ describe("the kademe of a hide (MDRS-135)", () => {
     expect(
       hiderLevelOf({ type: "course", madrasahId: "m", archivedLevel: null })
     ).toBe("madrasah");
+  });
+});
+
+describe("the course ladder (MDRS-143)", () => {
+  const authzHolding = (codes: string[], admin = false) =>
+    ({
+      isSystemAdmin: () => admin,
+      effective: async () => ({ codes: new Set(codes), openedPassive: null }),
+    }) as unknown as AuthzService;
+  const levelOf = (codes: string[], admin = false) =>
+    actingLevel(
+      authzHolding(codes, admin),
+      { sub: "u" },
+      { entity: ENTITIES.COURSE, id: "c" },
+      COURSE_HIDE_LADDER,
+      null
+    );
+
+  it("puts platform management above the köşk, and the köşk above the medrese", async () => {
+    expect(await levelOf([PERMISSIONS.PLATFORM_COURSE_HIDE])).toBe("platform");
+    expect(await levelOf([PERMISSIONS.COURSE_HIDE])).toBe("kosk");
+    expect(await levelOf([PERMISSIONS.MADRASAH_COURSE_HIDE])).toBe("madrasah");
+    expect(
+      await levelOf([PERMISSIONS.MADRASAH_COURSE_HIDE, PERMISSIONS.COURSE_HIDE])
+    ).toBe("kosk");
+    expect(await levelOf([PERMISSIONS.COURSE_EDIT])).toBeNull();
+    expect(await levelOf([], true)).toBe("platform");
   });
 });

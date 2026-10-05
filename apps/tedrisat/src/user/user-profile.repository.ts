@@ -14,6 +14,7 @@ import { EnrollmentStatus } from "../course/domain/enrollment-status.enum";
 import { DatabaseService } from "../database/database.service";
 import { enrolledCourseIds } from "../database/enrolled-courses";
 import { courses } from "../database/schema/course.schema";
+import { kosks } from "../database/schema/kosk.schema";
 import { userProfiles } from "../database/schema/user-profile.schema";
 
 export type IUserProfile = InferSelectModel<typeof userProfiles>;
@@ -77,6 +78,7 @@ export class UserProfileRepository {
     const rows = await this.db
       .select({ title: courses.title })
       .from(courses)
+      .innerJoin(kosks, eq(kosks.id, courses.koskId))
       .where(
         and(
           inArray(
@@ -87,7 +89,9 @@ export class UserProfileRepository {
             ])
           ),
           eq(courses.status, CourseStatus.PUBLISHED),
-          isNull(courses.archivedAt)
+          isNull(courses.archivedAt),
+          // A course of a hidden köşk is closed with it (MDRS-143).
+          isNull(kosks.archivedAt)
         )
       )
       .orderBy(courses.title);

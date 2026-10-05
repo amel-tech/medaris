@@ -293,6 +293,7 @@ catalog:
   '@opentelemetry/auto-instrumentations-node': ^0.80.0 # MDRS-21: same prometheus-exporter advisory, <0.75 vulnerable
   '@opentelemetry/resources': ^2.11.0
   '@opentelemetry/semantic-conventions': ^1.36.0
+  nodemailer: ^10.0.13 # MDRS-121: tedrisat's lesson invitations over SMTP; ships its own types
 
   # ═══ Backend build / test tooling ═══
   # ts-loader, tsconfig-paths and source-map-support were removed at MDRS-21:
