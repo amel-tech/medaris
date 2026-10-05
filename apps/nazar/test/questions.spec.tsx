@@ -114,7 +114,7 @@ const wrap = (node: React.ReactNode) => (
   <NextIntlClientProvider
     locale="tr"
     timeZone="Europe/Istanbul"
-    messages={{ nazir: resources.tr.nazir }}
+    messages={{ nazar: resources.tr.nazar }}
   >
     <ToastProvider>
       {node}
@@ -135,7 +135,7 @@ const mount = async () => {
   await settle(40);
 };
 
-const tr = resources.tr.nazir.Questions;
+const tr = resources.tr.nazar.Questions;
 const cards = () => [...document.querySelectorAll("article")];
 const buttonIn = (root: ParentNode, label: string) =>
   [...root.querySelectorAll("button")].find(
@@ -230,7 +230,7 @@ describe("reading the questions", () => {
   it("answers a person the API refuses with a notice, and draws no question", async () => {
     state.questions = { status: "forbidden" };
     const text = textOf(await markup());
-    expect(text).toContain(resources.tr.nazir.Problems.forbiddenTitle);
+    expect(text).toContain(resources.tr.nazar.Problems.forbiddenTitle);
     expect(text).not.toContain(tr.empty);
   });
 
@@ -238,7 +238,7 @@ describe("reading the questions", () => {
     state.questions = { status: "failed" };
     const text = textOf(await markup());
     expect(text).toContain(tr.loadFailedTitle);
-    expect(text).not.toContain(resources.tr.nazir.Problems.forbiddenTitle);
+    expect(text).not.toContain(resources.tr.nazar.Problems.forbiddenTitle);
   });
 });
 
@@ -412,7 +412,7 @@ describe("the rules", () => {
       answerErrorKey("AUTHZ_FORBIDDEN"),
       answerErrorKey("SOMETHING_NEW"),
     ]) {
-      expect(translatorFor("nazir").has(key), key).toBe(true);
+      expect(translatorFor("nazar").has(key), key).toBe(true);
     }
   });
 });

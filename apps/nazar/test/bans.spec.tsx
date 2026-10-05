@@ -190,7 +190,7 @@ const wrap = (node: React.ReactNode) => (
   <NextIntlClientProvider
     locale="tr"
     timeZone="Europe/Istanbul"
-    messages={{ nazir: resources.tr.nazir }}
+    messages={{ nazar: resources.tr.nazar }}
   >
     <ToastProvider>
       {node}
@@ -297,13 +297,13 @@ describe("what the list asks the API for", () => {
 
   it("lists 'Bütün kapsamlar', 'Medrese düzeyi' and the courses in the filter", () => {
     expect(
-      scopeOptions([BINA], translatorFor("nazir")).map((o) => o.label)
+      scopeOptions([BINA], translatorFor("nazar")).map((o) => o.label)
     ).toEqual(["Bütün kapsamlar", "Medrese düzeyi", "Bina ve İzhar Şerhi"]);
   });
 });
 
 describe("which actions a row offers (criterion 2: kademe → eylem)", () => {
-  const t = translatorFor("nazir");
+  const t = translatorFor("nazar");
   const may = (over: Record<string, unknown>) =>
     actionsOf(
       {
@@ -366,7 +366,7 @@ describe("which actions a row offers (criterion 2: kademe → eylem)", () => {
 });
 
 describe("the rows", () => {
-  const t = translatorFor("nazir");
+  const t = translatorFor("nazar");
   const where = {
     locale: "tr",
     timeZone: "Europe/Istanbul",

@@ -32,7 +32,7 @@ import { EnrolmentsTabs } from "./enrolments-tabs";
  */
 export async function EnrolmentsPage({ courseId }: { courseId: string }) {
   const [t, locale, me, portal, course, permissions] = await Promise.all([
-    getMessages("nazir"),
+    getMessages("nazar"),
     getLocale(),
     getViewer(),
     getPortal(),
@@ -116,7 +116,7 @@ export async function EnrolmentsPage({ courseId }: { courseId: string }) {
 
 /** The page while the enrolments are read: the shell stays, and the table is bars. */
 export async function EnrolmentsLoading() {
-  const t = await getMessages("nazir.Shell");
+  const t = await getMessages("nazar.Shell");
   return (
     <output className="flex flex-col gap-section" aria-busy="true">
       <span className="mds-visually-hidden">{t("loadingLabel")}</span>

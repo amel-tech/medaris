@@ -29,7 +29,7 @@ import { PermissionGroups } from "./permission-groups";
  */
 export async function NazirsPage({ madrasahId }: { madrasahId: string }) {
   const [t, locale, me, portal, nazirs, groups] = await Promise.all([
-    getMessages("nazir"),
+    getMessages("nazar"),
     getLocale(),
     getViewer(),
     getPortal(),
@@ -120,7 +120,7 @@ export async function NazirsPage({ madrasahId }: { madrasahId: string }) {
 
 /** The page while the nazırs are read: the shell stays, and the table is bars (nazir 05 §3). */
 export async function NazirsLoading() {
-  const t = await getMessages("nazir.Shell");
+  const t = await getMessages("nazar.Shell");
   return (
     <output className="flex flex-col gap-section" aria-busy="true">
       <span className="mds-visually-hidden">{t("loadingLabel")}</span>

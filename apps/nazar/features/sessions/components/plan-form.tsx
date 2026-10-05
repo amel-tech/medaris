@@ -64,7 +64,7 @@ export function PlanForm({
   locale: string;
   timeZone: string;
 }) {
-  const t = useTranslations("nazir");
+  const t = useTranslations("nazar");
   const words = t as unknown as Messages;
   const router = useRouter();
   const { notify } = useToaster();

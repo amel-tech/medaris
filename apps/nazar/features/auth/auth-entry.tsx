@@ -26,7 +26,7 @@ export interface AuthEntryProps {
  * The twin of apps/nizam/features/auth/auth-entry.tsx, on the unified kit.
  */
 export function AuthEntry({ callbackUrl, error }: AuthEntryProps) {
-  const t = useTranslations("nazir.Auth");
+  const t = useTranslations("nazar.Auth");
   const locale = useLocale();
   const started = useRef(false);
 

@@ -37,7 +37,7 @@ export function PermissionGroups({
   cards: GroupCard[];
   manages: boolean;
 }) {
-  const t = useTranslations("nazir");
+  const t = useTranslations("nazar");
   const router = useRouter();
   const [, startTransition] = useTransition();
   const [target, setTarget] = useState<GroupTarget | null>(null);

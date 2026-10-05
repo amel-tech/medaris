@@ -20,7 +20,7 @@ import { PlanForm } from "./plan-form";
  */
 export async function PlanPage({ courseId }: { courseId: string }) {
   const [t, locale, me, course, permissions] = await Promise.all([
-    getMessages("nazir"),
+    getMessages("nazar"),
     getLocale(),
     getViewer(),
     readOnce("the course", (api) =>
@@ -58,7 +58,7 @@ export async function PlanPage({ courseId }: { courseId: string }) {
 
 /** The page while the course is read: the shell stays, and the form is bars. */
 export async function PlanLoading() {
-  const t = await getMessages("nazir.Shell");
+  const t = await getMessages("nazar.Shell");
   return (
     <output className="flex flex-col gap-section" aria-busy="true">
       <span className="mds-visually-hidden">{t("loadingLabel")}</span>

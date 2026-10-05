@@ -36,7 +36,7 @@ export function RemoveDialog({
   /** called once the talebe is out, or the seat has moved, for the page to read it again */
   onDone: () => void;
 }) {
-  const t = useTranslations("nazir");
+  const t = useTranslations("nazar");
   const words = t as unknown as Messages;
   const { notify } = useToaster();
   const [pending, startTransition] = useTransition();

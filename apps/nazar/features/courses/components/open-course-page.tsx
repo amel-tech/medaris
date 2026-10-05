@@ -21,7 +21,7 @@ import { OpenCourseForm } from "./open-course-form";
  */
 export async function OpenCoursePage({ madrasahId }: { madrasahId: string }) {
   const [t, portal, hosting, settings] = await Promise.all([
-    getMessages("nazir"),
+    getMessages("nazar"),
     getPortal(),
     readOnce("the medrese's hosting köşks", (api) =>
       api.madrasahs.getMadrasahHostingKosks({ id: madrasahId })
@@ -89,7 +89,7 @@ export async function OpenCoursePage({ madrasahId }: { madrasahId: string }) {
 
 /** The page while the köşks are read: the shell stays, and the form is bars (nazir 08 §3). */
 export async function OpenCourseLoading() {
-  const t = await getMessages("nazir.Shell");
+  const t = await getMessages("nazar.Shell");
   return (
     <output className="flex flex-col gap-section" aria-busy="true">
       <span className="mds-visually-hidden">{t("loadingLabel")}</span>

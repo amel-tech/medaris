@@ -79,7 +79,7 @@ export function PermissionEditor({
   /** called once the permissions are saved, for the page to read the roster again */
   onDone: () => void;
 }) {
-  const t = useTranslations("nazir");
+  const t = useTranslations("nazar");
   const words = t as unknown as Messages;
   const { notify } = useToaster();
   const [pending, startTransition] = useTransition();

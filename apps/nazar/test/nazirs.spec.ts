@@ -20,7 +20,7 @@ import {
 import { dayFormat, dayMonthLocative } from "~/lib/dates";
 import { translatorFor } from "./server-render";
 
-const t = translatorFor("nazir");
+const t = translatorFor("nazar");
 const IST = "Europe/Istanbul";
 const day = dayFormat("tr", IST);
 
@@ -517,7 +517,7 @@ describe("message keys of the nazır screens", () => {
 
   for (const locale of ["tr", "en", "ar"] as const) {
     it(`${locale} has a message for every code the screens word at run time`, () => {
-      const catalogue = resources[locale].nazir;
+      const catalogue = resources[locale].nazar;
       for (const code of [
         "DISMISS_DECISIONS_INCOMPLETE",
         "MADRASAH_NAZIR_NOT_FOUND",

@@ -21,7 +21,7 @@ import { QuestionsList } from "./questions-list";
  */
 export async function QuestionsPage({ courseId }: { courseId: string }) {
   const [t, locale, me, portal, questions] = await Promise.all([
-    getMessages("nazir"),
+    getMessages("nazar"),
     getLocale(),
     getViewer(),
     getPortal(),
@@ -70,7 +70,7 @@ export async function QuestionsPage({ courseId }: { courseId: string }) {
 
 /** The page while the questions are read: the shell stays, and the cards are bars. */
 export async function QuestionsLoading() {
-  const t = await getMessages("nazir.Shell");
+  const t = await getMessages("nazar.Shell");
   return (
     <output className="flex flex-col gap-section" aria-busy="true">
       <span className="mds-visually-hidden">{t("loadingLabel")}</span>

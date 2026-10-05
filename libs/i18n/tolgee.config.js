@@ -16,7 +16,7 @@ export default {
     filesTemplate: ["./src/locales/{languageTag}/{namespace}.json"],
     languages: ["en", "tr", "ar"],
     tagNewKeys: ["from_dev"],
-    namespaces: ["tedris", "nizam", "nazir", "common"],
+    namespaces: ["tedris", "nizam", "nazar", "common"],
   },
 
   pull: {

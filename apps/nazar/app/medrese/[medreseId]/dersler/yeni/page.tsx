@@ -3,7 +3,7 @@ import { OpenCoursePage } from "~/features/courses/components/open-course-page";
 import { getMessages } from "~/lib/i18n/messages";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const t = await getMessages("nazir.OpenCourse");
+  const t = await getMessages("nazar.OpenCourse");
   return { title: t("title") };
 }
 

@@ -46,7 +46,7 @@ function PersonField({
   onPick: (person: PickedPerson) => void;
   inputRef: RefObject<HTMLElement | null>;
 }) {
-  const t = useTranslations("nazir");
+  const t = useTranslations("nazar");
   const [email, setEmail] = useState("");
   const [search, setSearch] = useState<Search>("idle");
   const searched = useRef<string | null>(null);
@@ -146,7 +146,7 @@ export function BanDialog({
   /** called once the ban is saved, for the page to read its list again */
   onDone: () => void;
 }) {
-  const t = useTranslations("nazir");
+  const t = useTranslations("nazar");
   const words = t as unknown as Messages;
   const { notify } = useToaster();
   const [pending, startTransition] = useTransition();
@@ -304,7 +304,7 @@ export function BanButton({
   courses: ReadonlyArray<{ id: string; title: string }>;
   coursesFailed: boolean;
 }) {
-  const t = useTranslations("nazir");
+  const t = useTranslations("nazar");
   const router = useRouter();
   const [open, setOpen] = useState(false);
   return (

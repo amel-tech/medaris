@@ -41,7 +41,7 @@ export function AppointNazir({
   /** the ids of the people who are nazırs already */
   held: readonly string[];
 }) {
-  const t = useTranslations("nazir");
+  const t = useTranslations("nazar");
   const words = t as unknown as Messages;
   const router = useRouter();
   const { notify } = useToaster();

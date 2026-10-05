@@ -54,7 +54,7 @@ export function EnrolmentsTabs({
   lists: Lists;
   removed: RemovedRow[] | null;
 }) {
-  const t = useTranslations("nazir");
+  const t = useTranslations("nazar");
   const words = t as unknown as Messages;
   const router = useRouter();
   const { notify } = useToaster();

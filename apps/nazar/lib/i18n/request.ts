@@ -14,6 +14,6 @@ import { getRequestConfig } from "next-intl/server";
  */
 export default getRequestConfig(async () => ({
   locale: "tr",
-  messages: { common: resources.tr.common, nazir: resources.tr.nazir },
+  messages: { common: resources.tr.common, nazar: resources.tr.nazar },
   timeZone: DEFAULT_TIME_ZONE,
 }));

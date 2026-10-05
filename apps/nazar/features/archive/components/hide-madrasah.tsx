@@ -33,7 +33,7 @@ export function HideMadrasah({
   madrasahId: string;
   madrasahName: string;
 }) {
-  const t = useTranslations("nazir");
+  const t = useTranslations("nazar");
   const words = t as unknown as Messages;
   const router = useRouter();
   const { notify } = useToaster();

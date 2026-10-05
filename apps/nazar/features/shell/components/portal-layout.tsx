@@ -19,7 +19,7 @@ export async function PortalUnavailable({
 }: {
   shell?: boolean;
 }) {
-  const t = await getMessages("nazir.Shell");
+  const t = await getMessages("nazar.Shell");
   return (
     <LoadFailed
       shell={shell}

@@ -5,7 +5,7 @@ import { QuestionsPage } from "~/features/questions/components/questions-page";
 import { getMessages } from "~/lib/i18n/messages";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const t = await getMessages("nazir.Questions");
+  const t = await getMessages("nazar.Questions");
   return { title: t("title") };
 }
 

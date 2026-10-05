@@ -12,8 +12,8 @@ export interface Messages {
   has(key: string): boolean;
 }
 
-/** `namespace` is dotted from the catalogue's root: "nazir", "nazir.Shell". */
-export async function getMessages(namespace = "nazir"): Promise<Messages> {
+/** `namespace` is dotted from the catalogue's root: "nazar", "nazar.Shell". */
+export async function getMessages(namespace = "nazar"): Promise<Messages> {
   // The typed overload only takes the literal namespaces; `namespace` is dotted text.
-  return (await getTranslations(namespace as "nazir")) as unknown as Messages;
+  return (await getTranslations(namespace as "nazar")) as unknown as Messages;
 }

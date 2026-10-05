@@ -40,7 +40,7 @@ vi.mock("next/navigation", () => ({
 vi.mock("next/headers", () => ({
   cookies: async () => ({
     get: (name: string) =>
-      name === "nazir-scope" && state.cookie
+      name === "nazar-scope" && state.cookie
         ? { value: state.cookie }
         : undefined,
   }),

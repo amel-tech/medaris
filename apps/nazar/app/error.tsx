@@ -17,7 +17,7 @@ export default function ErrorPage({
   error: Error & { digest?: string };
   retry: () => void;
 }) {
-  const t = useTranslations("nazir.Shell");
+  const t = useTranslations("nazar.Shell");
 
   useEffect(() => {
     console.error(error);

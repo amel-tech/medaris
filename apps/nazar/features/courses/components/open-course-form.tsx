@@ -59,7 +59,7 @@ export function OpenCourseForm({
   policiesUnknown: boolean;
   settingsHref: string;
 }) {
-  const t = useTranslations("nazir");
+  const t = useTranslations("nazar");
   const words = t as unknown as Messages;
   const router = useRouter();
   const { notify } = useToaster();

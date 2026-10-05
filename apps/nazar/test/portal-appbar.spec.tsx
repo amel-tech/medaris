@@ -12,8 +12,8 @@ vi.mock("next/navigation", () => ({ usePathname: () => pathname }));
 
 afterEach(cleanup);
 
-const nav = translatorFor("nazir.Nav");
-const shell = translatorFor("nazir.Shell");
+const nav = translatorFor("nazar.Nav");
+const shell = translatorFor("nazar.Shell");
 const sections = (kind: "medrese" | "ders") =>
   labelNav(
     navFor(

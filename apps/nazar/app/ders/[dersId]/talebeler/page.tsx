@@ -3,7 +3,7 @@ import { EnrolmentsPage } from "~/features/enrolments/components/enrolments-page
 import { getMessages } from "~/lib/i18n/messages";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const t = await getMessages("nazir.CourseStudents");
+  const t = await getMessages("nazar.CourseStudents");
   return { title: t("title") };
 }
 

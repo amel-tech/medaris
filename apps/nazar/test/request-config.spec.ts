@@ -26,9 +26,9 @@ describe("the next-intl request config", () => {
     }
   });
 
-  it("loads only the common and nazir namespaces", async () => {
+  it("loads only the common and nazar namespaces", async () => {
     const { messages } = await resolve(undefined);
-    expect(Object.keys(messages).sort()).toEqual(["common", "nazir"]);
+    expect(Object.keys(messages).sort()).toEqual(["common", "nazar"]);
   });
 
   it("names a zone without reading a cookie", async () => {

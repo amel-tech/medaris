@@ -12,8 +12,8 @@ import authOptions, { getAccessToken } from "~/lib/auth_options";
 
 /**
  * MDRS-210: a sign-out (or a switch of account) in another Medaris app must
- * end nazir's session too. The check itself is shared and specified in
- * tedris-web's `keycloak-session.spec.ts`; this file holds nazir's wiring to
+ * end nazar's session too. The check itself is shared and specified in
+ * tedris-web's `keycloak-session.spec.ts`; this file holds nazar's wiring to
  * it — the `jwt` and `session` callbacks, NextAuth's session endpoint and
  * `getAccessToken`. `fetch` is stubbed: nothing reaches a real Keycloak.
  */
@@ -78,7 +78,7 @@ const session = (t: JWT) =>
     token: t,
   } as never) as Promise<Session>;
 
-describe("nazir's callbacks and the Keycloak session (MDRS-210)", () => {
+describe("nazar's callbacks and the Keycloak session (MDRS-210)", () => {
   it("valid: a check within the minute is trusted with no call to Keycloak", async () => {
     const t = token(10_000);
     expect(await jwt(t)).toBe(t);
@@ -143,7 +143,7 @@ describe("nazir's callbacks and the Keycloak session (MDRS-210)", () => {
   });
 });
 
-describe("nazir's endpoints after a sign-out elsewhere (MDRS-210)", () => {
+describe("nazar's endpoints after a sign-out elsewhere (MDRS-210)", () => {
   it("GET /api/auth/session answers {} and writes the ended mark into the cookie", async () => {
     stubFetch(() => json(401, {}));
     const headers: Record<string, unknown> = {};

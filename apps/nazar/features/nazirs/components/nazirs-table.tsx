@@ -36,7 +36,7 @@ export function NazirsTable({
   /** `manages`: the medrese's başmüderris; `id`: the viewer's account */
   viewer: { manages: boolean; id: string | null };
 }) {
-  const t = useTranslations("nazir");
+  const t = useTranslations("nazar");
   const router = useRouter();
   const [, startTransition] = useTransition();
   const [dismissing, setDismissing] = useState<NazirRow | null>(null);

@@ -34,7 +34,7 @@ const mount = (snapshot = initial) =>
     <NextIntlClientProvider
       locale="tr"
       timeZone="Europe/Istanbul"
-      messages={{ nazir: resources.tr.nazir }}
+      messages={{ nazar: resources.tr.nazar }}
     >
       <ToastProvider>
         <SettingsForm

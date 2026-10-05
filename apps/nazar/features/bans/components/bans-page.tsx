@@ -31,7 +31,7 @@ export async function BansPage({
   filters: Filters;
 }) {
   const [t, locale, me, portal, bans, courses] = await Promise.all([
-    getMessages("nazir"),
+    getMessages("nazar"),
     getLocale(),
     getViewer(),
     getPortal(),
@@ -106,7 +106,7 @@ export async function BansPage({
 
 /** The page while the bans are read: the shell stays, and the list is bars (nazir 11 §3). */
 export async function BansLoading() {
-  const t = await getMessages("nazir.Shell");
+  const t = await getMessages("nazar.Shell");
   return (
     <output className="flex flex-col gap-section" aria-busy="true">
       <span className="mds-visually-hidden">{t("loadingLabel")}</span>

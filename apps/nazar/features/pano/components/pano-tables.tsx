@@ -28,7 +28,7 @@ import {
  * a scope in the course, and is left out where they do not.
  */
 export function SessionsTable({ rows }: { rows: SessionRow[] }) {
-  const t = useTranslations("nazir");
+  const t = useTranslations("nazar");
 
   const columns: TableColumn<SessionRow>[] = [
     {
@@ -141,7 +141,7 @@ export function ApplicationsPanel({
   /** the courses that hold one */
   courses: number;
 }) {
-  const t = useTranslations("nazir");
+  const t = useTranslations("nazar");
   const words = t as unknown as Messages;
   const router = useRouter();
   const { notify } = useToaster();

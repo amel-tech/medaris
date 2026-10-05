@@ -51,7 +51,7 @@ export function RecordingDialog({
   /** called once something was written, or the page is out of date, for it to be read again */
   onDone: () => void;
 }) {
-  const t = useTranslations("nazir");
+  const t = useTranslations("nazar");
   const words = t as unknown as Messages;
   const { notify } = useToaster();
   const [pending, startTransition] = useTransition();

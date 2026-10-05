@@ -102,7 +102,7 @@ test("'/' opens the scope that was last used and falls back to the first medrese
     expect
       .poll(
         async () =>
-          (await page.context().cookies()).find((c) => c.name === "nazir-scope")
+          (await page.context().cookies()).find((c) => c.name === "nazar-scope")
             ?.value
       )
       .toBe(encodeURIComponent(scope));

@@ -175,7 +175,7 @@ const wrap = (node: React.ReactNode) => (
   <NextIntlClientProvider
     locale="tr"
     timeZone="Europe/Istanbul"
-    messages={{ nazir: resources.tr.nazir }}
+    messages={{ nazar: resources.tr.nazar }}
   >
     <ToastProvider>
       {node}
@@ -230,7 +230,7 @@ afterEach(async () => {
 });
 
 describe("the rules behind the Pano", () => {
-  const t = translatorFor("nazir");
+  const t = translatorFor("nazar");
   const where = { locale: "tr", timeZone: "Europe/Istanbul" };
 
   it("greets by given name and counts the sessions and the applications (criterion 2)", () => {

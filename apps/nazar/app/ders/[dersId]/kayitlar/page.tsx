@@ -3,7 +3,7 @@ import { RecordingsPage } from "~/features/recordings/components/recordings-page
 import { getMessages } from "~/lib/i18n/messages";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const t = await getMessages("nazir.Recordings");
+  const t = await getMessages("nazar.Recordings");
   return { title: t("title") };
 }
 

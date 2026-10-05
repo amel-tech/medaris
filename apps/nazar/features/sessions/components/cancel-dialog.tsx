@@ -49,7 +49,7 @@ export function CancelDialog({
   /** called once something was written, or the course has moved, for the page to read it again */
   onDone: () => void;
 }) {
-  const t = useTranslations("nazir");
+  const t = useTranslations("nazar");
   const words = t as unknown as Messages;
   const { notify } = useToaster();
   const [pending, startTransition] = useTransition();

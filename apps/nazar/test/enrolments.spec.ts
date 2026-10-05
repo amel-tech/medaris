@@ -13,7 +13,7 @@ import { translatorFor } from "./server-render";
 
 /** Talebeler of a course as rules: the lists, the rows, the search and the sentences of a refusal. */
 
-const t = translatorFor("nazir");
+const t = translatorFor("nazar");
 const where = {
   locale: "tr",
   timeZone: "Europe/Istanbul",

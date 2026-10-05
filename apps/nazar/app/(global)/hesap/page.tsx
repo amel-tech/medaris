@@ -5,7 +5,7 @@ import { PortalUnavailable } from "~/features/shell/components/portal-layout";
 import { getPortal } from "~/features/shell/reads";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const t = await getTranslations("nazir.Account");
+  const t = await getTranslations("nazar.Account");
   return { title: t("pageTitle") };
 }
 

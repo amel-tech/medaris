@@ -281,7 +281,7 @@ describe("message keys of the menu", () => {
 
   it("has a label for every item and section, and a word for every number, in every language", () => {
     for (const locale of locales) {
-      const catalogue = resources[locale].nazir;
+      const catalogue = resources[locale].nazar;
       for (const kind of ["medrese", "ders"] as const) {
         for (const section of navFor(
           { kind, id: "x" },

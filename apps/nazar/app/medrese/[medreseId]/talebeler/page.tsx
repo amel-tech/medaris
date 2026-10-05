@@ -4,7 +4,7 @@ import { filtersOf } from "~/features/students/students";
 import { getMessages } from "~/lib/i18n/messages";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const t = await getMessages("nazir.Students");
+  const t = await getMessages("nazar.Students");
   return { title: t("title") };
 }
 

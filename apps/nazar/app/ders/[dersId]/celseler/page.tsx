@@ -3,7 +3,7 @@ import { SessionsPage } from "~/features/sessions/components/sessions-page";
 import { getMessages } from "~/lib/i18n/messages";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const t = await getMessages("nazir.Sessions");
+  const t = await getMessages("nazar.Sessions");
   return { title: t("title") };
 }
 

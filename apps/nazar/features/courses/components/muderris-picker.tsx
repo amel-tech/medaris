@@ -69,7 +69,7 @@ export function MuderrisPicker({
   /** the search field, for a dialog's first focus */
   inputRef?: RefObject<HTMLElement | null>;
 }) {
-  const t = useTranslations("nazir");
+  const t = useTranslations("nazar");
   const legendId = useId();
   const helpId = useId();
   const [email, setEmail] = useState("");

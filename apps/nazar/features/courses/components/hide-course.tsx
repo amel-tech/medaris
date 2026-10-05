@@ -31,7 +31,7 @@ export function HideCourse({
   /** called once the course is hidden, or was already, for the page to read the list again */
   onDone: () => void;
 }) {
-  const t = useTranslations("nazir");
+  const t = useTranslations("nazar");
   const words = t as unknown as Messages;
   const { notify } = useToaster();
   const [pending, startTransition] = useTransition();

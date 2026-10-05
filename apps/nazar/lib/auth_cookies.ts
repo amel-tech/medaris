@@ -13,7 +13,7 @@ const cookiePrefix = useSecureCookies ? "__Secure-" : "";
 
 export const authCookies: AuthOptions["cookies"] = {
   sessionToken: {
-    name: `${cookiePrefix}nazir.session-token`,
+    name: `${cookiePrefix}nazar.session-token`,
     options: {
       httpOnly: true,
       sameSite: "lax",
@@ -22,7 +22,7 @@ export const authCookies: AuthOptions["cookies"] = {
     },
   },
   callbackUrl: {
-    name: `${cookiePrefix}nazir.callback-url`,
+    name: `${cookiePrefix}nazar.callback-url`,
     options: {
       sameSite: "lax",
       path: "/",
@@ -30,7 +30,7 @@ export const authCookies: AuthOptions["cookies"] = {
     },
   },
   csrfToken: {
-    name: `${useSecureCookies ? "__Host-" : ""}nazir.csrf-token`,
+    name: `${useSecureCookies ? "__Host-" : ""}nazar.csrf-token`,
     options: {
       httpOnly: true,
       sameSite: "lax",
@@ -39,7 +39,7 @@ export const authCookies: AuthOptions["cookies"] = {
     },
   },
   pkceCodeVerifier: {
-    name: `${cookiePrefix}nazir.pkce.code_verifier`,
+    name: `${cookiePrefix}nazar.pkce.code_verifier`,
     options: {
       httpOnly: true,
       sameSite: "lax",
@@ -49,7 +49,7 @@ export const authCookies: AuthOptions["cookies"] = {
     },
   },
   state: {
-    name: `${cookiePrefix}nazir.state`,
+    name: `${cookiePrefix}nazar.state`,
     options: {
       httpOnly: true,
       sameSite: "lax",
@@ -59,7 +59,7 @@ export const authCookies: AuthOptions["cookies"] = {
     },
   },
   nonce: {
-    name: `${cookiePrefix}nazir.nonce`,
+    name: `${cookiePrefix}nazar.nonce`,
     options: {
       httpOnly: true,
       sameSite: "lax",

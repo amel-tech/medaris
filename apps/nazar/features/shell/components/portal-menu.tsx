@@ -71,7 +71,7 @@ export function PortalAppBar({
   return (
     <AppBar
       title={pageTitle(sections, pathname, outside, appName)}
-      logo={<Logo app="nazir" size="sm" />}
+      logo={<Logo app="nazar" size="sm" />}
       scope={scope}
       footer={footer}
       menuLabel={labels.menu}

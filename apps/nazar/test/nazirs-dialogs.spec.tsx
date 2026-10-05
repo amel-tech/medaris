@@ -36,7 +36,7 @@ const wrap = (node: React.ReactNode) => (
   <NextIntlClientProvider
     locale="tr"
     timeZone="Europe/Istanbul"
-    messages={{ nazir: resources.tr.nazir }}
+    messages={{ nazar: resources.tr.nazar }}
   >
     <ToastProvider>
       {node}

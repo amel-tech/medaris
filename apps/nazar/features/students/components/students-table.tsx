@@ -54,7 +54,7 @@ export function StudentsTable({
   /** null while nobody is listed */
   pager: StudentsPager | null;
 }) {
-  const t = useTranslations("nazir");
+  const t = useTranslations("nazar");
   const router = useRouter();
   const [loading, startTransition] = useTransition();
   const [query, setQuery] = useState(filters.q);

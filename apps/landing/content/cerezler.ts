@@ -41,7 +41,7 @@ export const cookieGroups: CookieGroup[] = [
       "Giriş yapmak ve hesabınızı güvenle kullanmak için gerekir; bunlar olmadan Medaris çalışmaz.",
     rows: [
       {
-        names: "tedris.session-token, nizam.session-token, nazir.session-token",
+        names: "tedris.session-token, nizam.session-token, nazar.session-token",
         purpose:
           "Giriş yaptığınızı hatırlar. Şifrelenmiştir; tarayıcıdaki betikler okuyamaz.",
         setBy: "Tedris, Nizam ve Nazır",
@@ -103,7 +103,7 @@ export const cookieGroups: CookieGroup[] = [
         lifetime: "1 yıl",
       },
       {
-        names: "nazir-scope",
+        names: "nazar-scope",
         purpose: "En son açtığınız medreseyi ya da dersi hatırlar.",
         setBy: "Nazır",
         lifetime: "1 yıl",

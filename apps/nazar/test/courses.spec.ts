@@ -23,7 +23,7 @@ import {
 import { teamOf, teamReducer } from "~/features/courses/team";
 import { translatorFor } from "./server-render";
 
-const t = translatorFor("nazir");
+const t = translatorFor("nazar");
 const KOSK = "0b3b2c1a-5d4e-4f60-8a7b-9c0d1e2f3a4b";
 
 const muderris = (over: Record<string, unknown> = {}) => ({
@@ -403,7 +403,7 @@ describe("the message keys built at run time", () => {
 
   it("has a sentence for every code the API sends, in every language", () => {
     for (const locale of locales) {
-      const words = translatorFor("nazir", locale);
+      const words = translatorFor("nazar", locale);
       for (const code of codes) {
         expect(words.has(courseErrorKey(code)), `${locale} ${code}`).toBe(true);
       }
@@ -412,7 +412,7 @@ describe("the message keys built at run time", () => {
 
   it("has the two states and the two filters' words in every language", () => {
     for (const locale of locales) {
-      const words = translatorFor("nazir", locale);
+      const words = translatorFor("nazar", locale);
       for (const status of ["PUBLISHED", "DRAFT"]) {
         expect(
           words.has(`Courses.status.${status}`),
@@ -434,9 +434,9 @@ describe("the message keys built at run time", () => {
 
   it("keeps the message that carries the köşk's possessive in Turkish only", () => {
     // the other languages put the possessive in the message itself
-    expect(resources.tr.nazir.HideCourse.rest).toContain("{koskGenitive}");
-    expect(resources.en.nazir.HideCourse.rest).toContain("{kosk}’s");
-    expect(resources.tr.nazir.Courses.subtitle).toContain("{nameGenitive}");
-    expect(resources.en.nazir.Courses.subtitle).toContain("{name}’s");
+    expect(resources.tr.nazar.HideCourse.rest).toContain("{koskGenitive}");
+    expect(resources.en.nazar.HideCourse.rest).toContain("{kosk}’s");
+    expect(resources.tr.nazar.Courses.subtitle).toContain("{nameGenitive}");
+    expect(resources.en.nazar.Courses.subtitle).toContain("{name}’s");
   });
 });

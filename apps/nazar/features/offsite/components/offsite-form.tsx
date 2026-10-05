@@ -38,7 +38,7 @@ export function OffsiteForm({
   kosks: Array<{ id: string; name: string }>;
   listHref: string;
 }) {
-  const t = useTranslations("nazir");
+  const t = useTranslations("nazar");
   const words = t as unknown as Messages;
   const locale = useLocale();
   const router = useRouter();

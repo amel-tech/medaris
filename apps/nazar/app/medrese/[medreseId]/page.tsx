@@ -4,7 +4,7 @@ import { PanoLoading, PanoPage } from "~/features/pano/components/pano-page";
 import { getMessages } from "~/lib/i18n/messages";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const t = await getMessages("nazir.Pano");
+  const t = await getMessages("nazar.Pano");
   return { title: t("title") };
 }
 

@@ -91,7 +91,7 @@ export function CurriculumEditor({
   /** the zone the dates and times of the sessions are written in */
   timeZone: string;
 }) {
-  const t = useTranslations("nazir");
+  const t = useTranslations("nazar");
   const words = t as unknown as Messages;
   const router = useRouter();
   const { notify } = useToaster();

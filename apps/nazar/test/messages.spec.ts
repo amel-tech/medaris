@@ -20,23 +20,23 @@ const leafKeys = (node: unknown, prefix = ""): string[] =>
       )
     : [prefix];
 
-describe("the nazir message catalogue", () => {
+describe("the nazar message catalogue", () => {
   it("has the same keys in every locale", () => {
-    const keys = leafKeys(resources.tr.nazir).sort();
+    const keys = leafKeys(resources.tr.nazar).sort();
     expect(keys.length).toBeGreaterThan(0);
     for (const locale of locales) {
-      expect(leafKeys(resources[locale].nazir).sort()).toEqual(keys);
+      expect(leafKeys(resources[locale].nazar).sort()).toEqual(keys);
     }
   });
 
   it("has no empty message", () => {
     for (const locale of locales) {
-      for (const key of leafKeys(resources[locale].nazir)) {
+      for (const key of leafKeys(resources[locale].nazar)) {
         const value = key
           .split(".")
           .reduce<unknown>(
             (node, part) => (node as Record<string, unknown>)[part],
-            resources[locale].nazir
+            resources[locale].nazar
           );
         expect(value, `${locale}.${key}`).toEqual(expect.any(String));
         expect((value as string).trim(), `${locale}.${key}`).not.toBe("");
@@ -53,7 +53,7 @@ describe("the nazir message catalogue", () => {
       ar: /(?<!لا )يستطيع الطالب (?:المُخرَج أن يتقدّم|التقدّم) من جديد/,
     };
     for (const locale of locales) {
-      const students = resources[locale].nazir.CourseStudents as {
+      const students = resources[locale].nazar.CourseStudents as {
         removedNote: string;
         remove: { info: string };
       };
@@ -77,7 +77,7 @@ describe("the nazir message catalogue", () => {
     ];
     for (const locale of locales) {
       for (const code of codes) {
-        const auth = resources[locale].nazir.Auth as Record<string, string>;
+        const auth = resources[locale].nazar.Auth as Record<string, string>;
         expect(auth[authErrorMessageKey(code)], `${locale} ${code}`).toEqual(
           expect.any(String)
         );
@@ -228,7 +228,7 @@ describe("the nazir message catalogue", () => {
           .reduce<unknown>(
             (node, part) =>
               (node as Record<string, unknown> | undefined)?.[part],
-            resources[locale].nazir
+            resources[locale].nazar
           );
         expect(value, `${locale} ${key}`).toEqual(expect.any(String));
       }
@@ -289,12 +289,12 @@ describe("the nazir message catalogue", () => {
       const errors: string[] = [];
       const t = createTranslator({
         locale,
-        messages: { nazir: resources[locale].nazir },
-        namespace: "nazir",
+        messages: { nazar: resources[locale].nazar },
+        namespace: "nazar",
         onError: (error) => errors.push(`${locale}: ${error.message}`),
       }) as unknown as (key: string, values: object) => string;
       for (const section of sections) {
-        for (const key of leafKeys(resources[locale].nazir[section], section)) {
+        for (const key of leafKeys(resources[locale].nazar[section], section)) {
           expect(t(key, values), `${locale} ${key}`).not.toMatch(/[{}]/);
         }
       }

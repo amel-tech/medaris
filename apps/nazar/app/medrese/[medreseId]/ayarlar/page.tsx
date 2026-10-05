@@ -3,7 +3,7 @@ import { SettingsPage } from "~/features/settings/components/settings-page";
 import { getMessages } from "~/lib/i18n/messages";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const t = await getMessages("nazir.Settings");
+  const t = await getMessages("nazar.Settings");
   return { title: t("title") };
 }
 

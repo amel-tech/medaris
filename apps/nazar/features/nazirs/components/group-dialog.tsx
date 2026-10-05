@@ -83,7 +83,7 @@ export function GroupDialog({
   /** called once the group is saved or deleted, for the page to read the groups again */
   onDone: () => void;
 }) {
-  const t = useTranslations("nazir");
+  const t = useTranslations("nazar");
   const words = t as unknown as Messages;
   const { notify } = useToaster();
   const [pending, startTransition] = useTransition();

@@ -14,7 +14,7 @@ import { keycloakSignOut } from "~/lib/keycloak-logout";
  * visitor out — and signs out of Keycloak too, like the account page does.
  */
 export function SignOutConfirm() {
-  const t = useTranslations("nazir.Auth");
+  const t = useTranslations("nazar.Auth");
   const { data: session } = useSession();
   const [busy, setBusy] = useState(false);
 

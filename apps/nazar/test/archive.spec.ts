@@ -14,7 +14,7 @@ import {
 } from "~/features/archive/archive";
 import { translatorFor } from "./server-render";
 
-const t = translatorFor("nazir");
+const t = translatorFor("nazar");
 const IST = "Europe/Istanbul";
 const where = { locale: "tr", timeZone: IST };
 const now = new Date("2026-10-02T12:00:00+03:00");
@@ -368,7 +368,7 @@ describe("message keys of the archive", () => {
 
   for (const locale of ["tr", "en", "ar"] as const) {
     it(`${locale} has a message for every key the archive builds at run time`, () => {
-      const catalogue = resources[locale].nazir;
+      const catalogue = resources[locale].nazar;
       const keys = [
         ...ARCHIVE_TABS.flatMap((tab) => [
           `Archive.tabs.${tab.id}`,

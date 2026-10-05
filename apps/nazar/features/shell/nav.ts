@@ -129,11 +129,11 @@ export interface NavItemView {
   id: string;
   href: string;
   icon: IconName;
-  /** a key under `nazir.Nav`: `general.pano`, `medrese.courses`, `ders.sessions` */
+  /** a key under `nazar.Nav`: `general.pano`, `medrese.courses`, `ders.sessions` */
   labelKey: string;
   /** only when it is above zero */
   count?: number;
-  /** a key under `nazir.Shell` */
+  /** a key under `nazar.Shell` */
   countLabelKey?: string;
   /** matches its own address only; the scope's own page is a prefix of every page under it */
   exact: boolean;
@@ -141,7 +141,7 @@ export interface NavItemView {
 
 export interface NavSectionView {
   id: NavSectionId;
-  /** a key under `nazir.Nav.sections` */
+  /** a key under `nazar.Nav.sections` */
   labelKey: string;
   items: NavItemView[];
 }
@@ -231,7 +231,7 @@ export interface MenuSection {
   items: MenuItem[];
 }
 
-/** `navFor` with its keys turned into words by two translators (`nazir.Nav` and `nazir.Shell`). */
+/** `navFor` with its keys turned into words by two translators (`nazar.Nav` and `nazar.Shell`). */
 export function labelNav(
   sections: readonly NavSectionView[],
   words: { nav: (key: string) => string; shell: (key: string) => string }

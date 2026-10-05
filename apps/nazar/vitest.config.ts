@@ -1,5 +1,5 @@
 /**
- * nazir-web — Vitest config for the `test` target (MDRS-183).
+ * nazar-web — Vitest config for the `test` target (MDRS-183).
  *
  * Set up like nizam-web's: node environment, so the specs cover what runs on
  * the server or is pure — the NextAuth wiring, the middleware, the message
@@ -31,7 +31,7 @@ export default mergeConfig(
       // which Node's own resolver refuses; inlined, Vite resolves it.
       server: { deps: { inline: ["next-intl"] } },
       env: {
-        KEYCLOAK_CLIENT_ID: "nazir-test",
+        KEYCLOAK_CLIENT_ID: "nazar-test",
         KEYCLOAK_CLIENT_SECRET: "test-secret",
         KEYCLOAK_ISSUER: "http://127.0.0.1:1/realms/test",
         NEXTAUTH_URL: "http://localhost:4002",

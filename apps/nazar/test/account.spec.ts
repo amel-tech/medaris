@@ -81,16 +81,16 @@ const translator = (locale: (typeof locales)[number] = "tr") => {
   const t = (key: string, values?: Record<string, unknown>) =>
     Object.entries(values ?? {}).reduce(
       (acc, [k, v]) => acc.replace(`{${k}}`, String(v)),
-      dig(resources[locale].nazir, key) as string
+      dig(resources[locale].nazar, key) as string
     );
   t.has = (key: string) =>
-    typeof dig(resources[locale].nazir, key) === "string";
+    typeof dig(resources[locale].nazar, key) === "string";
   return t;
 };
 
 describe("account messages (MDRS-183)", () => {
   for (const locale of locales) {
-    const m = resources[locale].nazir as unknown as {
+    const m = resources[locale].nazar as unknown as {
       Roles: Record<string, string>;
       Account: Record<string, Record<string, string>>;
     };
@@ -142,10 +142,10 @@ describe("account messages (MDRS-183)", () => {
 describe("the permission sentences (Turkish)", () => {
   it("say 'siz' where they speak to the person", () => {
     const sentences = Object.values(
-      resources.tr.nazir.Account.permissions as Record<string, string>
+      resources.tr.nazar.Account.permissions as Record<string, string>
     ).concat(
       Object.values(
-        resources.tr.nazir.Account.permissionNotes as Record<string, string>
+        resources.tr.nazar.Account.permissionNotes as Record<string, string>
       )
     );
     for (const sentence of sentences) {

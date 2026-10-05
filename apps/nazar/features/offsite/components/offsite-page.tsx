@@ -36,7 +36,7 @@ const readKosks = (): Promise<Read<Array<{ id: string; name: string }>>> =>
  */
 export async function OffsitePage({ madrasahId }: { madrasahId: string }) {
   const [t, listed, access] = await Promise.all([
-    getMessages("nazir"),
+    getMessages("nazar"),
     readKosks(),
     readOnce("the medrese's offsite requests", (api) =>
       api.madrasahs.getOffsiteCourseRequests({ id: madrasahId })
@@ -86,7 +86,7 @@ export async function OffsitePage({ madrasahId }: { madrasahId: string }) {
 
 /** The page while the köşks are read: the shell stays, and the form is bars (nazir 09 §3). */
 export async function OffsiteLoading() {
-  const t = await getMessages("nazir.Shell");
+  const t = await getMessages("nazar.Shell");
   return (
     <output className="flex flex-col gap-section" aria-busy="true">
       <span className="mds-visually-hidden">{t("loadingLabel")}</span>

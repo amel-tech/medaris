@@ -268,7 +268,7 @@ describe("the link to the medrese's page", () => {
 describe("message keys of the settings screen", () => {
   for (const locale of ["tr", "en", "ar"] as const) {
     it(`${locale} has a label and a help line for every policy and a word for every problem built at run time`, () => {
-      const m = resources[locale].nazir as unknown as {
+      const m = resources[locale].nazar as unknown as {
         Settings: {
           policies: Record<string, { label: string; help: string }>;
           nameProblems: Record<string, string>;

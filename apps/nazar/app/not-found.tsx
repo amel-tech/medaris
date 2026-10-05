@@ -8,7 +8,7 @@ import { getTranslations } from "next-intl/server";
  * (the same rule as nizam's 404).
  */
 export default async function NotFound() {
-  const t = await getTranslations("nazir.NotFound");
+  const t = await getTranslations("nazar.NotFound");
 
   return (
     <SystemState

@@ -36,7 +36,7 @@ export function QuestionsList({
   initialCursor: string | null;
   timeZone: string;
 }) {
-  const t = useTranslations("nazir.Questions");
+  const t = useTranslations("nazar.Questions");
   const [questions, setQuestions] = useState(initial);
   const [cursor, setCursor] = useState(initialCursor);
   const [more, setMore] = useState<"idle" | "loading" | "failed">("idle");
@@ -112,7 +112,7 @@ const QuestionCard = ({
   timeZone: string;
   onAnswered: (question: CourseQuestionResponse) => void;
 }) => {
-  const t = useTranslations("nazir");
+  const t = useTranslations("nazar");
   const words = t as unknown as Messages;
   const locale = useLocale();
   const [editing, setEditing] = useState(question.answer === null);

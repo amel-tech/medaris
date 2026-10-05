@@ -48,7 +48,7 @@ export function CoursesTable({
   koskOptions: FilterOption[];
   statusOptions: FilterOption[];
 }) {
-  const t = useTranslations("nazir");
+  const t = useTranslations("nazar");
   const router = useRouter();
   const [loading, startTransition] = useTransition();
   const [changing, setChanging] = useState<CourseRow | null>(null);

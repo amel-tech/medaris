@@ -4,7 +4,7 @@ import { BansPage } from "~/features/bans/components/bans-page";
 import { getMessages } from "~/lib/i18n/messages";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const t = await getMessages("nazir.Bans");
+  const t = await getMessages("nazar.Bans");
   return { title: t("title") };
 }
 

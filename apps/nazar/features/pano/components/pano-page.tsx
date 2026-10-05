@@ -59,7 +59,7 @@ function Section({
  */
 export async function PanoPage({ madrasahId }: { madrasahId: string }) {
   const [t, locale, me, portal, dashboard] = await Promise.all([
-    getMessages("nazir"),
+    getMessages("nazar"),
     getLocale(),
     getViewer(),
     getPortal(),
@@ -243,7 +243,7 @@ export async function PanoPage({ madrasahId }: { madrasahId: string }) {
 
 /** The page while the dashboard is read: the shell stays, and the cards and tables are bars (nazir 01 §3). */
 export async function PanoLoading() {
-  const t = await getMessages("nazir.Shell");
+  const t = await getMessages("nazar.Shell");
   return (
     <output className="flex flex-col gap-section" aria-busy="true">
       <span className="mds-visually-hidden">{t("loadingLabel")}</span>

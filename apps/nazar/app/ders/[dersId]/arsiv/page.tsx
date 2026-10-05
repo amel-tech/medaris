@@ -4,7 +4,7 @@ import { CourseArchivePage } from "~/features/course-archive/components/course-a
 import { getMessages } from "~/lib/i18n/messages";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const t = await getMessages("nazir.CourseArchive");
+  const t = await getMessages("nazar.CourseArchive");
   return { title: t("title") };
 }
 

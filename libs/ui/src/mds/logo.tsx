@@ -10,13 +10,13 @@ const ARABIC_PATH =
 const appNames = {
   tedris: "Tedris",
   nizam: "Nizam",
-  nazir: "Nazır",
+  nazar: "Nazır",
   giris: "Giriş",
 } as const;
 
 export interface LogoProps extends HTMLAttributes<HTMLSpanElement> {
   /** the app whose name is the default subtitle; the mark is the same in every app */
-  app?: "tedris" | "nizam" | "nazir" | "landing" | "giris";
+  app?: "tedris" | "nizam" | "nazar" | "landing" | "giris";
   /** mark 24 / 32 / 48; sm drops the inner rule; lg with the wordmark adds مدارس under it */
   size?: "sm" | "md" | "lg";
   /** "Medaris" beside the mark, in Literata semibold */

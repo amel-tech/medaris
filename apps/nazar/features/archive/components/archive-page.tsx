@@ -44,7 +44,7 @@ export async function ArchivePage({
 }) {
   const tab = tabOf(tabParam);
   const [t, locale, me, portal, archive] = await Promise.all([
-    getMessages("nazir"),
+    getMessages("nazar"),
     getLocale(),
     getViewer(),
     getPortal(),
@@ -146,7 +146,7 @@ function pagerOf(
 
 /** The page while the archive is read: the shell stays, and the list is bars (nazir 12 §3). */
 export async function ArchiveLoading() {
-  const t = await getMessages("nazir.Shell");
+  const t = await getMessages("nazar.Shell");
   return (
     <output className="flex flex-col gap-section" aria-busy="true">
       <span className="mds-visually-hidden">{t("loadingLabel")}</span>

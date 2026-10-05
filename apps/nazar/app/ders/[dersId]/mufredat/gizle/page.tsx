@@ -3,7 +3,7 @@ import { CurriculumPage } from "~/features/curriculum-hide/components/curriculum
 import { getMessages } from "~/lib/i18n/messages";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const t = await getMessages("nazir.CurriculumHide");
+  const t = await getMessages("nazar.CurriculumHide");
   return { title: t("title") };
 }
 

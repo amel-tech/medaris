@@ -64,7 +64,7 @@ const states = new Map<string, string>();
 /** Made when the first role signs in, removed when the run ends, whichever spec file was last. */
 function stateDirectory(): string {
   if (!directory) {
-    directory = mkdtempSync(join(tmpdir(), "nazir-e2e-"));
+    directory = mkdtempSync(join(tmpdir(), "nazar-e2e-"));
     process.once("exit", () => {
       if (directory) rmSync(directory, { recursive: true, force: true });
     });

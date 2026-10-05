@@ -26,7 +26,7 @@ export default function RootLayout({
     <html
       lang="tr"
       dir="ltr"
-      data-app="nazir"
+      data-app="nazar"
       data-theme="light"
       suppressHydrationWarning
     >

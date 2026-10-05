@@ -54,7 +54,7 @@ function Card({
  */
 export async function SettingsPage({ madrasahId }: { madrasahId: string }) {
   const [t, locale, me, settings, courses] = await Promise.all([
-    getMessages("nazir"),
+    getMessages("nazar"),
     getLocale(),
     getViewer(),
     readOnce("the medrese settings", (api) =>
@@ -192,7 +192,7 @@ export async function SettingsPage({ madrasahId }: { madrasahId: string }) {
 
 /** The page while the settings are read: the shell stays, and the form's fields are bars (nazir 04 §3). */
 export async function SettingsLoading() {
-  const t = await getMessages("nazir.Shell");
+  const t = await getMessages("nazar.Shell");
   return (
     <output className="flex flex-col gap-section" aria-busy="true">
       <span className="mds-visually-hidden">{t("loadingLabel")}</span>

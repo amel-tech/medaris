@@ -127,7 +127,7 @@ const wrap = (node: React.ReactNode) => (
   <NextIntlClientProvider
     locale="tr"
     timeZone="Europe/Istanbul"
-    messages={{ nazir: resources.tr.nazir }}
+    messages={{ nazar: resources.tr.nazar }}
   >
     <ToastProvider>
       {node}
@@ -229,7 +229,7 @@ describe("what the list asks the API for", () => {
 });
 
 describe("the pager's words (criterion 2)", () => {
-  const t = translatorFor("nazir");
+  const t = translatorFor("nazar");
   const pager = (page: number, total = 48) =>
     pagerOf("m-1", BLANK, { total, page, limit: 10 }, t, "tr");
 

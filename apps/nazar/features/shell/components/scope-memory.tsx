@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { type ScopeKind, serializeScopeCookie } from "../scope";
 
 /**
- * Leaves the `nazir-scope` cookie behind on a scoped page, so that `/` opens
+ * Leaves the `nazar-scope` cookie behind on a scoped page, so that `/` opens
  * the same scope next time. It draws nothing. A cookie written from the page
  * rather than by the server because a layout cannot set one while rendering.
  */

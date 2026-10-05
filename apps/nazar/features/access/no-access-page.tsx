@@ -19,7 +19,7 @@ export async function NoAccessPage({
   person: Person;
   roles: string[];
 }) {
-  const t = await getMessages("nazir.NoAccess");
+  const t = await getMessages("nazar.NoAccess");
   const tedris = env.TEDRIS_URL || null;
 
   return (

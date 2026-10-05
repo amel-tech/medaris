@@ -34,7 +34,7 @@ import {
 } from "~/features/nazirs/permissions";
 import { translatorFor } from "./server-render";
 
-const t = translatorFor("nazir");
+const t = translatorFor("nazar");
 const IST = "Europe/Istanbul";
 
 /** The two sections of the dictionary as the API sends them (MDRS-185), in print order. */
@@ -104,7 +104,7 @@ const draft = (over: Partial<EditorDraft> = {}): EditorDraft => ({
 });
 
 describe("the permission sentences", () => {
-  const tr = resources.tr.nazir.Account.permissions as Record<string, string>;
+  const tr = resources.tr.nazar.Account.permissions as Record<string, string>;
   const key = (code: string) => code.replaceAll(".", "_");
 
   it("pins the ten medrese sentences, word for word (nazir 06 and 16)", () => {
@@ -124,7 +124,7 @@ describe("the permission sentences", () => {
 
   for (const locale of ["tr", "en", "ar"] as const) {
     it(`${locale} has a sentence for each of the thirty codes the dialogs list`, () => {
-      const sentences = resources[locale].nazir.Account.permissions as Record<
+      const sentences = resources[locale].nazar.Account.permissions as Record<
         string,
         string
       >;

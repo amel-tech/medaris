@@ -23,7 +23,7 @@ const headOf = (markup: string) =>
  * before first paint when it was chosen. The media query itself is not run
  * here, only the markup that keeps it from applying.
  */
-describe("nazir's <html> (MDRS-245)", () => {
+describe("nazar's <html> (MDRS-245)", () => {
   it("is light by default, with the no-flash script", async () => {
     const { default: RootLayout } = await import("../app/layout");
     const markup = renderToStaticMarkup(<RootLayout>page</RootLayout>);

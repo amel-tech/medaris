@@ -9,10 +9,10 @@ export async function generateMetadata(): Promise<Metadata> {
   // The tab names the verdict only when there is one: an unreadable portal is a retry state.
   const portal = await getPortal();
   if (portal.status === "unavailable") {
-    const shell = await getTranslations("nazir.Shell");
+    const shell = await getTranslations("nazar.Shell");
     return { title: shell("loadFailedTitle") };
   }
-  const t = await getTranslations("nazir.NoAccess");
+  const t = await getTranslations("nazar.NoAccess");
   return { title: t("title") };
 }
 

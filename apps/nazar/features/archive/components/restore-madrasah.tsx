@@ -29,7 +29,7 @@ export function RestoreMadrasah({
   /** set when the caller may not bring it back: why, in a sentence */
   lockedNote: string | null;
 }) {
-  const t = useTranslations("nazir");
+  const t = useTranslations("nazar");
   const words = t as unknown as Messages;
   const router = useRouter();
   const { notify } = useToaster();

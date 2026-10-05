@@ -46,7 +46,7 @@ export function ChangeMuderris({
   /** called once the list is saved, or the course is gone, for the page to read the list again */
   onDone: () => void;
 }) {
-  const t = useTranslations("nazir");
+  const t = useTranslations("nazar");
   const words = t as unknown as Messages;
   const { notify } = useToaster();
   const [pending, startTransition] = useTransition();

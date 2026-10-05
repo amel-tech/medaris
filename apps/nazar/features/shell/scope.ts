@@ -26,7 +26,7 @@ export interface Person {
 }
 
 /** The cookie the scoped pages leave so that `/` can reopen the same scope. */
-export const SCOPE_COOKIE = "nazir-scope";
+export const SCOPE_COOKIE = "nazar-scope";
 
 /** Where a person with no scope is sent (nazir 02). */
 export const NO_ACCESS_PATH = "/erisim-yok";
@@ -127,7 +127,7 @@ export function findScope(
   return scopes.find((s) => s.kind === kind && s.id.toLowerCase() === wanted);
 }
 
-/** The `nazir-scope` cookie's value as a kind and an id, or null for anything else. */
+/** The `nazar-scope` cookie's value as a kind and an id, or null for anything else. */
 export function parseScopeCookie(
   raw: string | null | undefined
 ): { kind: ScopeKind; id: string } | null {

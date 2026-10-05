@@ -68,7 +68,7 @@ export async function CoursesPage({
   filters: Filters;
 }) {
   const [t, locale, me, portal, courses, hosting] = await Promise.all([
-    getMessages("nazir"),
+    getMessages("nazar"),
     getLocale(),
     getViewer(),
     getPortal(),
@@ -197,7 +197,7 @@ export async function CoursesPage({
 
 /** The page while the courses are read: the shell stays, and the table is bars (nazir 07 §3). */
 export async function CoursesLoading() {
-  const t = await getMessages("nazir.Shell");
+  const t = await getMessages("nazar.Shell");
   return (
     <output className="flex flex-col gap-section" aria-busy="true">
       <span className="mds-visually-hidden">{t("loadingLabel")}</span>

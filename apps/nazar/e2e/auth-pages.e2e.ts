@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 /**
  * Nazır's own auth pages and the gate in front of the rest (MDRS-183). None of
- * this signs in, so it needs `nazir-web` running but neither the API nor an
+ * this signs in, so it needs `nazar-web` running but neither the API nor an
  * account.
  */
 test("a signed-out request for a page is sent to our sign-in page", async ({
@@ -26,7 +26,7 @@ test("the error page says what happened, in Turkish and in the unified system", 
 
   const html = page.locator("html");
   await expect(html).toHaveAttribute("lang", "tr");
-  await expect(html).toHaveAttribute("data-app", "nazir");
+  await expect(html).toHaveAttribute("data-app", "nazar");
 
   const heading = page.getByRole("heading", {
     level: 1,

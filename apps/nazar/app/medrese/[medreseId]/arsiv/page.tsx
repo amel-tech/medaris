@@ -4,7 +4,7 @@ import { ArchivePage } from "~/features/archive/components/archive-page";
 import { getMessages } from "~/lib/i18n/messages";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const t = await getMessages("nazir.Archive");
+  const t = await getMessages("nazar.Archive");
   return { title: t("title") };
 }
 

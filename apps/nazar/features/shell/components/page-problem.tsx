@@ -17,8 +17,8 @@ export async function PageProblem({
   failed: { title: string; text: string };
 }) {
   const [problems, shell] = await Promise.all([
-    getMessages("nazir.Problems"),
-    getMessages("nazir.Shell"),
+    getMessages("nazar.Problems"),
+    getMessages("nazar.Shell"),
   ]);
   if (status === "forbidden") {
     return (

@@ -47,7 +47,7 @@ export function SettingsForm({
   /** the viewer's zone, for "Son değişiklik" */
   timeZone: string;
 }) {
-  const t = useTranslations("nazir");
+  const t = useTranslations("nazar");
   const words = t as unknown as Messages;
   const locale = useLocale();
   const router = useRouter();

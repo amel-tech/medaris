@@ -13,7 +13,7 @@ import type { RemovedRow } from "../enrolments";
  * record.
  */
 export function RemovedTable({ rows }: { rows: RemovedRow[] | null }) {
-  const t = useTranslations("nazir");
+  const t = useTranslations("nazar");
 
   if (rows === null) {
     return (

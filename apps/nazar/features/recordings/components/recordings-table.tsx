@@ -39,7 +39,7 @@ export function RecordingsTable({
   locale: string;
   timeZone: string;
 }) {
-  const t = useTranslations("nazir");
+  const t = useTranslations("nazar");
   const router = useRouter();
   const [, startTransition] = useTransition();
   const [now, setNow] = useState(() => new Date());

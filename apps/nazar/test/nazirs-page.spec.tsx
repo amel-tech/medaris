@@ -138,7 +138,7 @@ const render = async () => {
     <NextIntlClientProvider
       locale="tr"
       timeZone="Europe/Istanbul"
-      messages={{ nazir: resources.tr.nazir }}
+      messages={{ nazar: resources.tr.nazar }}
     >
       <ToastProvider>
         <NazirsPage madrasahId="m-1" />

@@ -3,7 +3,7 @@ import { NazirsPage } from "~/features/nazirs/components/nazirs-page";
 import { getMessages } from "~/lib/i18n/messages";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const t = await getMessages("nazir.Nazirs");
+  const t = await getMessages("nazar.Nazirs");
   return { title: t("title") };
 }
 

@@ -1,12 +1,12 @@
 import { defineConfig, devices } from "@playwright/test";
 
 /**
- * nazir-web's browser e2e (MDRS-183), set up like nizam-web's: real browser,
+ * nazar-web's browser e2e (MDRS-183), set up like nizam-web's: real browser,
  * real tedrisat, real Postgres, real Keycloak sign-ins; nothing is mocked and
- * nothing is started. Bring up `tedrisat` and `nazir-web` first
- * (`pnpm nx run tedrisat:dev`, `pnpm nx run nazir-web:dev`) and run
+ * nothing is started. Bring up `tedrisat` and `nazar-web` first
+ * (`pnpm nx run tedrisat:dev`, `pnpm nx run nazar-web:dev`) and run
  *
- *   E2E_DATABASE_URL=postgres://… pnpm nx run nazir-web:test:e2e
+ *   E2E_DATABASE_URL=postgres://… pnpm nx run nazar-web:test:e2e
  *
  * `E2E_BASE_URL` (default http://localhost:4002) points at the web app. The
  * accounts come from E2E_<ROLE>_EMAIL, E2E_<ROLE>_PASSWORD, E2E_<ROLE>_SUB.

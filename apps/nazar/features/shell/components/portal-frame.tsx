@@ -83,7 +83,7 @@ export async function PortalFrame({
       density="compact"
       sidebar={
         <Sidebar
-          brand={<Logo app="nazir" wordmark />}
+          brand={<Logo app="nazar" wordmark />}
           tools={<ThemeToggle />}
           scope={picker}
           footer={footer}

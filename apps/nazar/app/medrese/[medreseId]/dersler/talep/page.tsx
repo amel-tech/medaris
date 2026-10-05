@@ -3,7 +3,7 @@ import { OffsitePage } from "~/features/offsite/components/offsite-page";
 import { getMessages } from "~/lib/i18n/messages";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const t = await getMessages("nazir.Offsite");
+  const t = await getMessages("nazar.Offsite");
   return { title: t("title") };
 }
 

@@ -9,13 +9,13 @@ import { getTranslations } from "next-intl/server";
  * portal; it knows no scope, so it shows none.
  */
 export default async function Loading() {
-  const t = await getTranslations("nazir.Shell");
+  const t = await getTranslations("nazar.Shell");
   return (
     <AppShell
       density="compact"
       sidebar={
         <Sidebar
-          brand={<Logo app="nazir" wordmark />}
+          brand={<Logo app="nazar" wordmark />}
           scope={
             <div className="flex flex-col gap-3">
               <Skeleton height="3.5rem" />

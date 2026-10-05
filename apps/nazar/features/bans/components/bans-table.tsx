@@ -60,7 +60,7 @@ export function BansTable({
   tabs: BanTabView[];
   scopeOptions: ScopeOption[];
 }) {
-  const t = useTranslations("nazir");
+  const t = useTranslations("nazar");
   const locale = useLocale();
   const router = useRouter();
   const [loading, startTransition] = useTransition();
