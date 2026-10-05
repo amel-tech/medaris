@@ -10,6 +10,7 @@ import { bans } from "../../src/database/schema/ban.schema";
 import { courses, enrollments } from "../../src/database/schema/course.schema";
 import { kosks } from "../../src/database/schema/kosk.schema";
 import { notifications } from "../../src/database/schema/notification.schema";
+import { permissionGrants } from "../../src/database/schema/permission.schema";
 import {
   ASSIGNED_ROLES,
   roleAssignments,
@@ -493,7 +494,9 @@ describe("Bans (e2e)", () => {
   describe("Medaris administration (MDRS-178, nizam/48)", () => {
     const MEDARIS_ID = "d0000000-0000-4000-8000-000000000008";
 
-    const medarisNazim = async () => {
+    // A Medaris nazımı holds nothing until a grant says so (MDRS-205): the list is
+    // read with platform.ban_scoped.
+    const medarisNazim = async (...permissions: string[]) => {
       await db().insert(users).values({ id: MEDARIS_ID });
       await db().insert(roleAssignments).values({
         userId: MEDARIS_ID,
@@ -502,10 +505,24 @@ describe("Bans (e2e)", () => {
         scopeId: null,
         grantedBy: ADMIN_ID,
       });
+      if (permissions.length > 0) {
+        await db()
+          .insert(permissionGrants)
+          .values(
+            permissions.map((permission) => ({
+              userId: MEDARIS_ID,
+              scopeType: SCOPE_TYPES.PLATFORM,
+              scopeId: null,
+              permission,
+              groupId: null,
+              grantedBy: ADMIN_ID,
+            }))
+          );
+      }
     };
 
-    it("lists every köşk's bans for the başnazım and the Medaris nazımı, filtered", async () => {
-      await medarisNazim();
+    it("lists every köşk's bans for the başnazım and a Medaris nazımı holding platform.ban_scoped, filtered", async () => {
+      await medarisNazim("platform.ban_scoped");
       const [{ id: farCourse }] = await db()
         .insert(courses)
         .values({
@@ -526,8 +543,22 @@ describe("Bans (e2e)", () => {
       expect(all.body.total).toBe(3);
       expect(all.body.activeCount).toBe(3);
       expect(all.body.items).toHaveLength(3);
+      // The Medaris nazımı lifts the köşk's ban and no course ban, whoever placed it.
       expect(
-        all.body.items.every((i: { viewerMayLift: boolean }) => i.viewerMayLift)
+        all.body.items.map((i: { scope: string; viewerMayLift: boolean }) => [
+          i.scope,
+          i.viewerMayLift,
+        ])
+      ).toEqual(
+        expect.arrayContaining([
+          ["KOSK", true],
+          ["COURSE", false],
+        ])
+      );
+      expect(
+        all.body.items
+          .filter((i: { scope: string }) => i.scope === "COURSE")
+          .every((i: { viewerMayLift: boolean }) => !i.viewerMayLift)
       ).toBe(true);
 
       const kosk = await http()

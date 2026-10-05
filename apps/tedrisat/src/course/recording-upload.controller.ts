@@ -3,7 +3,7 @@ import {
   Authz,
   AuthzGuard,
   MedarisValidationPipe,
-  SCOPES,
+  PERMISSIONS,
 } from "@medaris/common";
 import {
   Body,
@@ -41,11 +41,11 @@ import { RecordingUploadService } from "./recording-upload.service";
 /**
  * Uploading a session's recording to Bunny Stream (MDRS-116, part A).
  *
- * The guard asks only `VIEW` of the lesson's course, which every signed-in
- * caller holds: it answers a missing lesson with 404 before the handler runs.
- * The decision is `recording.upload`, asked by `RecordingUploadService`
- * through the permission catalogue, as `LiveStreamController` does for
- * `session.live_link`. Anyone without it — a talebe included — gets 403.
+ * The decision is `recording.upload` on the lesson's course, asked in the
+ * route's `@Authz` (the müderris and the köşk nazımı hold it by default, a ders
+ * nazırı through a grant): a missing lesson is 404, anyone without it — a
+ * talebe included — gets 403, both before the handler and before the library's
+ * configuration is looked at.
  */
 @ApiTags("lessons")
 @ApiBearerAuth()
@@ -71,7 +71,7 @@ export class RecordingUploadController {
     description:
       "BUNNY_STREAM_NOT_CONFIGURED (the library is not set on this server) or BUNNY_STREAM_UNAVAILABLE (Bunny did not answer).",
   })
-  @Authz(SCOPES.VIEW, byLessonCourse)
+  @Authz(PERMISSIONS.RECORDING_UPLOAD, byLessonCourse)
   @UsePipes(new MedarisValidationPipe({ transform: true }))
   // The signature is for this caller's upload only; no shared cache may keep it.
   @Header("Cache-Control", "private, no-store")
@@ -97,7 +97,7 @@ export class RecordingUploadController {
   })
   @ApiConflictResponse({ description: "RECORDING_UPLOAD_CLOSED" })
   @ApiServiceUnavailableResponse({ description: "BUNNY_STREAM_NOT_CONFIGURED" })
-  @Authz(SCOPES.VIEW, byLessonCourse)
+  @Authz(PERMISSIONS.RECORDING_UPLOAD, byLessonCourse)
   @Header("Cache-Control", "private, no-store")
   @HttpCode(HttpStatus.OK)
   @Post("lessons/:id/recordings/uploads/:videoId/signature")

@@ -36,6 +36,7 @@ const CATALOG = [
   "recording.upload",
   "recording.watch_restricted",
   "session.view_content",
+  "question.answer",
   "ban.course",
   "ban.lift_course",
   "deck.manage_course",

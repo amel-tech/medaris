@@ -57,14 +57,17 @@ export interface SidebarProps extends HTMLAttributes<HTMLElement> {
   scope?: ReactNode;
   /** the signed-in person as `a.mds-nav-user` */
   footer?: ReactNode;
+  /** small controls at the inline-end of the brand's row (the theme toggle) */
+  tools?: ReactNode;
   navLabel?: string;
 }
 
-/** The desktop sidebar: brand, scope, a named `<nav>` (none while it has no items), and the account at the block-end. Hidden below 768. */
+/** The desktop sidebar: brand (and its tools), scope, a named `<nav>` (none while it has no items), and the account at the block-end. Hidden below 768. */
 export function Sidebar({
   brand,
   scope,
   footer,
+  tools,
   navLabel = "Ana menü",
   children,
   className,
@@ -78,7 +81,14 @@ export function Sidebar({
       )}
       {...rest}
     >
-      <div className="pbs-1 pbe-5 px-2">{brand}</div>
+      {tools ? (
+        <div className="flex items-center justify-between gap-2 pbs-1 pbe-5 px-2">
+          {brand}
+          {tools}
+        </div>
+      ) : (
+        <div className="pbs-1 pbe-5 px-2">{brand}</div>
+      )}
       {scope}
       {children ? (
         <nav aria-label={navLabel} className="flex flex-col gap-[2px]">

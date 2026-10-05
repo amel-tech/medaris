@@ -54,6 +54,7 @@ const DERS_ITEMS = [
   "Müfredat",
   "Celseler",
   "Talebeler",
+  "Sorular",
   "Ders kayıtları",
   "Ders destesi",
   "Yasaklamalar",
@@ -99,7 +100,8 @@ test("nazir/03 — the closed picker names the scope, and opening it lists only 
     "Yalnız görev aldığınız medrese ve dersler listelenir."
   );
   const rows = list.getByRole("menuitem");
-  await expect(rows).toHaveCount(3);
+  // the medrese and its two courses, and whatever the shared test seed gives the account
+  await expect(rows).toHaveCount(3 + (fixture?.standing ?? 0));
   await expect(
     rows.filter({ hasText: fixture?.madrasah.name ?? "" })
   ).toHaveAttribute("aria-current", "true");
@@ -201,7 +203,9 @@ test("a menu entry whose screen is not built opens the shared placeholder under 
   await expect(
     page.getByRole("heading", { level: 1, name: "Kabul kuralları" })
   ).toBeVisible();
-  await expect(page.getByText("Bu sayfa henüz hazır değil.")).toBeVisible();
+  await expect(
+    page.getByText("Bu sayfa henüz hazır değil.").filter({ visible: true })
+  ).toBeVisible();
   await expect(
     page.locator("aside").getByRole("link", { name: "Kabul kuralları" })
   ).toHaveAttribute("aria-current", "page");
@@ -216,7 +220,7 @@ test("nazir/21 — on a 390 px screen the menu button opens the sheet in the can
   await page.goto(`/medrese/${fixture?.madrasah.id}`);
 
   // the sidebar is not drawn on the phone
-  await expect(page.locator("aside")).toBeHidden();
+  await expect(page.locator("aside").first()).toBeHidden();
   await page.getByRole("button", { name: "Menü" }).click();
   const sheet = page.getByRole("dialog", { name: "Ana menü" });
   await expect(sheet).toBeVisible();
@@ -253,7 +257,7 @@ test("nazir/21 — on a 390 px screen the menu button opens the sheet in the can
   await expect(sheet).toBeVisible();
   await page.setViewportSize({ width: 1024, height: 768 });
   await expect(sheet).toBeHidden();
-  await expect(page.locator("aside")).toBeVisible();
+  await expect(page.locator("aside:visible")).toBeVisible();
 });
 
 test("nazir/22 — on the phone the course's menu is in the canvas's order, and the picker inside the sheet switches back to the medrese", async ({

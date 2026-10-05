@@ -1,4 +1,4 @@
-import { ROLES } from "@medaris/common";
+import { PERMISSIONS, ROLES } from "@medaris/common";
 import { INestApplication } from "@nestjs/common";
 import { and, eq } from "drizzle-orm";
 import request from "supertest";
@@ -7,10 +7,12 @@ import { auditLog } from "../../src/database/schema/audit.schema";
 import { courses } from "../../src/database/schema/course.schema";
 import { kosks } from "../../src/database/schema/kosk.schema";
 import { madrasahs } from "../../src/database/schema/madrasah.schema";
+import { permissionGrants } from "../../src/database/schema/permission.schema";
 import {
   ASSIGNED_ROLES,
   madrasahKoskHosting,
   roleAssignments,
+  SCOPE_TYPES,
 } from "../../src/database/schema/role-assignment.schema";
 import { users } from "../../src/database/schema/user.schema";
 import { createTestApp } from "../helpers/test-app.helper";
@@ -31,6 +33,7 @@ const HEAD_A = "d0000000-0000-4000-8000-000000000002";
 const HEAD_B = "d0000000-0000-4000-8000-000000000003";
 const STRANGER = "d0000000-0000-4000-8000-000000000004";
 const MANAGER = "d0000000-0000-4000-8000-000000000005";
+const MEDARIS = "d0000000-0000-4000-8000-000000000006";
 
 // Every request syncs the caller's profile from the token (MDRS-104); only
 // rows for people who never call stay as seeded.
@@ -76,6 +79,7 @@ describe("Medrese directory (e2e)", () => {
 
   beforeEach(async () => {
     await dbUtils.cleanTables(
+      "permission_grants",
       ...COURSE_TREE_TABLES,
       "madrasahs",
       "users",
@@ -285,6 +289,41 @@ describe("Medrese directory (e2e)", () => {
     it("refuses a caller with no token with 401", () =>
       http().get("/madrasahs/directory").expect(401));
 
+    it("opens to a Medaris nazımı by each permission the page acts on, and by no other (MDRS-108)", async () => {
+      await db().insert(roleAssignments).values({
+        userId: MEDARIS,
+        role: ASSIGNED_ROLES.MEDARIS_NAZIM,
+        scopeType: SCOPE_TYPES.PLATFORM,
+        scopeId: null,
+        grantedBy: ADMIN_ID,
+      });
+      const holding = async (permission: string) => {
+        await db().delete(permissionGrants);
+        await db().insert(permissionGrants).values({
+          userId: MEDARIS,
+          scopeType: SCOPE_TYPES.PLATFORM,
+          scopeId: null,
+          permission,
+          grantedBy: ADMIN_ID,
+        });
+        return http()
+          .get("/madrasahs/directory")
+          .set("Authorization", auth(MEDARIS));
+      };
+      for (const permission of [
+        PERMISSIONS.PLATFORM_MADRASAH_CREATE,
+        PERMISSIONS.PLATFORM_MADRASAH_EDIT,
+        // "Başmüderris ata" lives on this page alone.
+        PERMISSIONS.PLATFORM_HEAD_MUDERRIS_MANAGE,
+      ]) {
+        expect((await holding(permission)).status).toBe(200);
+      }
+      // Nothing on the page is a nazır grant: neither the page nor its menu item opens.
+      expect(
+        (await holding(PERMISSIONS.PLATFORM_MADRASAH_NAZIR_GRANT)).status
+      ).toBe(403);
+    });
+
     it("leaves a hidden medrese out of the open list and closes its page", async () => {
       const list = await http().get("/madrasahs").expect(200);
       expect(list.body.items.map((i: { handle: string }) => i.handle)).toEqual([
@@ -296,12 +335,12 @@ describe("Medrese directory (e2e)", () => {
       await http().get(`/madrasahs/${active}/overview`).expect(200);
     });
 
-    it("closes a hidden medrese's own read, for a caller with no token and for the başnazım alike", async () => {
+    it("closes a hidden medrese's own read to a caller with no token and keeps it open to the başnazım (MDRS-143)", async () => {
       await http().get(`/madrasahs/${hidden}`).expect(404);
       await http()
         .get(`/madrasahs/${hidden}`)
         .set("Authorization", auth(ADMIN_ID))
-        .expect(404);
+        .expect(200);
       await http().get(`/madrasahs/${active}`).expect(200);
       await http().get(`/madrasahs/${passive}`).expect(200);
     });
@@ -457,10 +496,38 @@ describe("Medrese directory (e2e)", () => {
         .post("/madrasahs/d0000000-0000-4000-8000-0000000000ff/restore")
         .set("Authorization", auth(ADMIN_ID))
         .expect(404);
-      await http()
+      // Someone with no part in the medrese, another medrese's başmüderris and a köşk's
+      // nazımı do not bring it back.
+      for (const sub of [HEAD_A, STRANGER, MANAGER]) {
+        await http()
+          .post(`/madrasahs/${hidden}/restore`)
+          .set("Authorization", auth(sub))
+          .expect(403);
+      }
+    });
+
+    // By kademe (MDRS-135, d-1003-07): the level that hid it, or one above. A medrese hidden
+    // before the level was recorded counts as the medrese's own, so its başmüderris may bring it
+    // back; once the level says the platform hid it, the başmüderris may not.
+    it("lets the başmüderris bring back a medrese hidden before levels were recorded, not one the platform hid", async () => {
+      await db()
+        .update(madrasahs)
+        .set({ archivedLevel: SCOPE_TYPES.PLATFORM })
+        .where(eq(madrasahs.id, hidden));
+      const refused = await http()
         .post(`/madrasahs/${hidden}/restore`)
         .set("Authorization", auth(HEAD_B))
         .expect(403);
+      expect(refused.body.code).toBe("ARCHIVE_RESTORE_LEVEL");
+
+      await db()
+        .update(madrasahs)
+        .set({ archivedLevel: null })
+        .where(eq(madrasahs.id, hidden));
+      await http()
+        .post(`/madrasahs/${hidden}/restore`)
+        .set("Authorization", auth(HEAD_B))
+        .expect(200);
     });
 
     it("restores a medrese that is both hidden and passive as passive", async () => {

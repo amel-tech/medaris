@@ -29,8 +29,8 @@ export default function PrivacyNoticePage() {
         </div>
         {IS_DRAFT && (
           <p role="note" className="mds-card mds-body max-inline-measure">
-            Bu metin taslaktır; veri sorumlusunun bilgileri ve son hukuki
-            değerlendirme eklendiğinde güncellenecektir.
+            Bu metin taslaktır; hukuki değerlendirmeden sonra güncellenecektir.
+            Bu not yalnız geliştirme ortamında görünür.
           </p>
         )}
         <div className="flex max-inline-measure flex-col gap-8">

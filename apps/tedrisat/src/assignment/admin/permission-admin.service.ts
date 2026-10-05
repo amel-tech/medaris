@@ -186,27 +186,54 @@ export class PermissionAdminService {
     const id = userId.toLowerCase();
     const [role] = await this.repo.heldNazimRoles(id);
     if (!role) throw new MedarisNazimNotFoundError(id);
-    const rows = await this.repo.heldGivenBy(id);
+    const [rows, touched] = await Promise.all([
+      this.repo.heldGivenBy(id),
+      this.repo.groupsTouchedBy(id),
+    ]);
     const [names, people, groups] = await Promise.all([
-      this.assignments.findScopeNames(
-        rows.map((r) => ({ type: r.scopeType, id: r.scopeId }))
-      ),
+      this.assignments.findScopeNames([
+        ...rows.map((r) => ({ type: r.scopeType, id: r.scopeId })),
+        ...touched.map((t) => ({
+          type: t.group.scopeType,
+          id: t.group.scopeId,
+        })),
+      ]),
       this.resolvePeople(rows.map((r) => r.userId)),
       this.repo.groupsById(rows.flatMap((r) => (r.groupId ? [r.groupId] : []))),
     ]);
-    return rows.map((r) => ({
+    const scopeName = (type: string, scopeId: string | null) =>
+      type === SCOPE_TYPES.PLATFORM
+        ? null
+        : (names.get(`${type}:${scopeId ?? ""}`)?.name ?? null);
+    const given: GivenItemResponse[] = rows.map((r) => ({
       kind: r.kind,
       id: r.id,
       role: r.role,
       permission: r.permission,
       groupName: r.groupId ? (groups.get(r.groupId)?.name ?? null) : null,
       to: personOf(r.userId, people),
+      groupPermissions: null,
+      groupAction: null,
       scopeType: r.scopeType,
-      scopeName:
-        r.scopeType === SCOPE_TYPES.PLATFORM
-          ? null
-          : (names.get(`${r.scopeType}:${r.scopeId ?? ""}`)?.name ?? null),
+      scopeName: scopeName(r.scopeType, r.scopeId),
     }));
+    // The groups they defined or changed, after the roles and grants: the
+    // başnazım reads these too, and nothing about them is asked on dismissal.
+    for (const { group, action } of touched) {
+      given.push({
+        kind: "GROUP",
+        id: group.id,
+        role: null,
+        permission: null,
+        groupName: group.name,
+        to: null,
+        groupPermissions: group.permissions,
+        groupAction: action,
+        scopeType: group.scopeType,
+        scopeName: scopeName(group.scopeType, group.scopeId),
+      });
+    }
+    return given;
   }
 
   async dismiss(
@@ -318,6 +345,7 @@ export class PermissionAdminService {
       throw new PermissionGroupNameTakenError(name);
     }
     const id = await this.repo.createGroup(actor, {
+      authority: SCOPE_TYPES.PLATFORM,
       name,
       scopeType:
         dto.scope === "PLATFORM" ? SCOPE_TYPES.PLATFORM : SCOPE_TYPES.COURSE,
@@ -346,6 +374,7 @@ export class PermissionAdminService {
       throw new PermissionGroupNameTakenError(name);
     }
     await this.repo.updateGroup(actor, id, {
+      authority: SCOPE_TYPES.PLATFORM,
       name,
       permissions,
       usersPolicy: dto.usersPolicy ?? null,
@@ -363,7 +392,12 @@ export class PermissionAdminService {
     if (group.userCount > 0 && !usersPolicy) {
       throw new UsersPolicyRequiredError(group.userCount);
     }
-    await this.repo.deleteGroup(actor, id, usersPolicy ?? null);
+    await this.repo.deleteGroup(
+      actor,
+      id,
+      usersPolicy ?? null,
+      SCOPE_TYPES.PLATFORM
+    );
   }
 
   async groupUsers(

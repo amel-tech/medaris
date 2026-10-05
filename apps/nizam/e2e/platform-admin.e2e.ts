@@ -321,14 +321,20 @@ test("nizam/15 — the tab counts are the table's, and the detail shows the appl
   );
 
   await item(page, (fixture.applications[1] as { name: string }).name).click();
-  const detail = page.getByTestId("application-detail");
+  const detail = page
+    .getByTestId("application-detail")
+    .filter({ visible: true });
   await expect(detail).toContainText(
     (fixture.applications[1] as { name: string }).name
   );
   await expect(detail).toContainText("Karar bekliyor");
   await expect(detail).toContainText(fixture.applicant.name);
-  await expect(page.getByTestId("applicant-phone")).toHaveText("Verilmedi");
-  await expect(page.getByTestId("same-field")).toBeVisible();
+  await expect(
+    page.getByTestId("applicant-phone").filter({ visible: true })
+  ).toHaveText("Verilmedi");
+  await expect(
+    page.getByTestId("same-field").filter({ visible: true })
+  ).toBeVisible();
 });
 
 test("nizam/15 — seeing the contact details writes an audit row (criterion 5)", async ({
@@ -343,9 +349,9 @@ test("nizam/15 — seeing the contact details writes an audit row (criterion 5)"
   await signIn(page, SYSTEM_ADMIN);
   await page.goto("/tr/talepler/kosk-basvurulari");
   await item(page, first.name).click();
-  await expect(page.getByTestId("applicant-phone")).toHaveText(
-    "+90 532 000 00 00"
-  );
+  await expect(
+    page.getByTestId("applicant-phone").filter({ visible: true })
+  ).toHaveText("+90 532 000 00 00");
   expect(
     await fixture.auditCount("kosk_application.contact_read", first.id)
   ).toBeGreaterThan(before);
@@ -365,7 +371,9 @@ test("nizam/15 — Reddet cannot be sent without a reason, then moves the applic
   await expect(dialog.getByRole("button", { name: "Reddet" })).toBeDisabled();
   await dialog.getByLabel(/Ret gerekçesi/).fill("Aynı alanda köşk var.");
   await dialog.getByRole("button", { name: "Reddet" }).click();
-  await expect(page.getByText("Başvuru reddedildi")).toBeVisible();
+  await expect(
+    page.getByText("Başvuru reddedildi").filter({ visible: true })
+  ).toBeVisible();
   await expect(item(page, target.name)).toHaveCount(0);
 
   expect(await fixture.applicationRow(target.id)).toMatchObject({
@@ -397,10 +405,11 @@ test("nizam/15 — Köşkü aç opens the köşk form with the application's val
   // The applicant is the köşk's first nazım, as the form's picker shows.
   await expect(dialog).toContainText(fixture.applicant.name);
 
-  await dialog.getByRole("combobox", { name: "Seviye" }).click();
-  await page.getByRole("option", { name: "Bütün seviyeler" }).click();
+  await expect(dialog.getByRole("combobox")).toHaveCount(0);
   await dialog.getByRole("button", { name: "Köşk aç" }).click();
-  await expect(page.getByText("Başvuru kabul edildi")).toBeVisible();
+  await expect(
+    page.getByText("Başvuru kabul edildi").filter({ visible: true })
+  ).toBeVisible();
 
   const row = await fixture.applicationRow(target.id);
   expect(row).toMatchObject({ status: "APPROVED" });
@@ -488,12 +497,16 @@ test("nizam/19 — a switch is saved at once and written to the log, and the tab
     page.getByRole("heading", { name: "Politikalar nasıl birleşir" })
   ).toBeVisible();
 
-  const policy = page.getByTestId("policy-ALWAYS_REQUIRE_APPROVAL");
+  const policy = page
+    .getByTestId("policy-ALWAYS_REQUIRE_APPROVAL")
+    .filter({ visible: true });
   const toggle = policy.getByRole("switch");
   const wasOn = (await toggle.getAttribute("aria-checked")) === "true";
   await toggle.click();
   await expect(
-    page.getByText(wasOn ? "Politika kapatıldı" : "Politika açıldı")
+    page
+      .getByText(wasOn ? "Politika kapatıldı" : "Politika açıldı")
+      .filter({ visible: true })
   ).toBeVisible();
   expect(await fixture.policyRow("ALWAYS_REQUIRE_APPROVAL")).toMatchObject({
     enabled: !wasOn,
@@ -539,7 +552,9 @@ test("nizam/39 — Kabul et opens the course form with the request's name (crite
       `/kosks/${fixture.koskId}/courses/new\\?talep=${fixture.request.id}`
     )
   );
-  await expect(page.getByLabel(/^Ders adı/)).toHaveValue(fixture.request.title);
+  await expect(
+    page.getByLabel(/^Ders adı/).filter({ visible: true })
+  ).toHaveValue(fixture.request.title);
 });
 
 test("nizam/39 — Reddet needs a reason and moves the request to Karara bağlanan (criteria 3, 4)", async ({
@@ -554,7 +569,9 @@ test("nizam/39 — Reddet needs a reason and moves the request to Karara bağlan
   await expect(dialog.getByRole("button", { name: "Reddet" })).toBeDisabled();
   await dialog.getByLabel(/Ret gerekçesi/).fill("Kadro dolu.");
   await dialog.getByRole("button", { name: "Reddet" }).click();
-  await expect(page.getByText("Talep reddedildi")).toBeVisible();
+  await expect(
+    page.getByText("Talep reddedildi").filter({ visible: true })
+  ).toBeVisible();
 
   expect(await fixture.requestRow(fixture.request.id)).toMatchObject({
     status: "REJECTED",

@@ -76,14 +76,14 @@ test("nizam/58 — Kayıtlı shows six rows with the total, and 'Daha fazla gös
   await openTab(page, /^Kayıtlı/);
 
   await expect(bodyRows(page)).toHaveCount(6);
-  await expect(page.getByTestId("roster-showing")).toHaveText(
-    "8 talebeden 6 tanesi gösteriliyor"
-  );
+  await expect(
+    page.getByTestId("roster-showing").filter({ visible: true })
+  ).toHaveText("8 talebeden 6 tanesi gösteriliyor");
   await page.getByRole("button", { name: "Daha fazla göster" }).click();
   await expect(bodyRows(page)).toHaveCount(8);
-  await expect(page.getByTestId("roster-showing")).toHaveText(
-    "8 talebeden 8 tanesi gösteriliyor"
-  );
+  await expect(
+    page.getByTestId("roster-showing").filter({ visible: true })
+  ).toHaveText("8 talebeden 8 tanesi gösteriliyor");
   await expect(
     page.getByRole("button", { name: "Daha fazla göster" })
   ).toHaveCount(0);
@@ -104,7 +104,9 @@ test("nizam/58 — the search narrows by name and by e-mail (criterion 2)", asyn
   await expect(bodyRows(page)).toHaveCount(1);
   await expect(bodyRows(page).first()).toContainText("Bilal Yurtsever");
   await search.fill("kimse yok");
-  await expect(page.getByText("Aramaya uyan talebe yok")).toBeVisible();
+  await expect(
+    page.getByText("Aramaya uyan talebe yok").filter({ visible: true })
+  ).toBeVisible();
 });
 
 test("nizam/58 — the progress bar shows the value the talebe entered (criterion 3)", async ({
@@ -124,9 +126,11 @@ test("nizam/58 — the progress bar shows the value the talebe entered (criterio
     );
   }
   await expect(
-    page.getByText(
-      "İlerlemeyi talebe kendisi girer; dersi tamamladığını ders kadrosu onaylar."
-    )
+    page
+      .getByText(
+        "İlerlemeyi talebe kendisi girer; dersi tamamladığını ders kadrosu onaylar."
+      )
+      .filter({ visible: true })
   ).toBeVisible();
 });
 
@@ -165,9 +169,9 @@ test("nizam/58 — 'Dersten çıkar' needs a reason; the talebe leaves Kayıtlı
   await submit.click();
 
   await expect(dialog).toBeHidden();
-  await expect(page.getByTestId("roster-enrolled")).not.toContainText(
-    target.name
-  );
+  await expect(
+    page.getByTestId("roster-enrolled").filter({ visible: true })
+  ).not.toContainText(target.name);
   const tabs = page.getByRole("tablist");
   await expect(tabs.getByRole("tab", { name: /^Kayıtlı/ })).toContainText("7");
   await expect(
@@ -175,13 +179,16 @@ test("nizam/58 — 'Dersten çıkar' needs a reason; the talebe leaves Kayıtlı
   ).toContainText("1");
 
   await tabs.getByRole("tab", { name: /^Erişimi kaldırılanlar/ }).click();
-  const removed = page.getByTestId("roster-removed");
+  const removed = page.getByTestId("roster-removed").filter({ visible: true });
   await expect(removed).toContainText(target.name);
   await expect(removed).toContainText(
     "Dört celsedir haber vermeden katılmıyor."
   );
 
-  expect(await fixture.enrollment(target.id)).toBeNull();
+  // the seat is kept as the record of the removal, not deleted (MDRS-161)
+  expect(await fixture.enrollment(target.id)).toMatchObject({
+    status: "REVOKED",
+  });
   const audit = await fixture.removals();
   expect(audit).toHaveLength(1);
   expect(audit[0]).toMatchObject({
@@ -230,7 +237,9 @@ test("nizam/58 — 'Tamamladı say' moves the talebe to Tamamlayanlar (criterion
     "2"
   );
   await tabs.getByRole("tab", { name: /^Tamamlayanlar/ }).click();
-  await expect(page.getByTestId("roster-completed")).toContainText(target.name);
+  await expect(
+    page.getByTestId("roster-completed").filter({ visible: true })
+  ).toContainText(target.name);
   expect(await fixture.enrollment(target.id)).toMatchObject({
     status: "COMPLETED",
   });

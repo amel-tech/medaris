@@ -1,3 +1,5 @@
+import type { HideLevel } from "./hide-level";
+
 /**
  * What the archive lists (MDRS-173, screens nizam/28 and nizam/29). A hidden
  * thing is never deleted: it keeps its row, carries `archived_at` and
@@ -34,6 +36,12 @@ export const MADRASAH_ARCHIVE_ITEM_TYPES: readonly ArchiveItemType[] = [
   "week",
   "session",
   "recording",
+];
+
+/** The types one course's own archive lists: the weeks and sessions of it (MDRS-143). */
+export const COURSE_ARCHIVE_ITEM_TYPES: readonly ArchiveItemType[] = [
+  "week",
+  "session",
 ];
 
 /** The types with a table behind them. */
@@ -75,6 +83,8 @@ export interface IArchiveItem {
   studentCount: number | null;
   archivedAt: Date;
   archivedBy: string | null;
+  /** The level the hider acted at; null on a row hidden before it was recorded. */
+  archivedLevel: HideLevel | null;
 }
 
 export interface IArchiveFilter {
@@ -82,6 +92,8 @@ export interface IArchiveFilter {
   koskId?: string;
   /** Only what is hidden in courses of this medrese. */
   madrasahId?: string;
+  /** Only the weeks and sessions hidden in this one course. */
+  courseId?: string;
   type?: ArchiveItemType;
   /** A fragment of the title, matched case-insensitively. */
   q?: string;

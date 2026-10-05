@@ -46,6 +46,7 @@ export async function seedHead(chief: string): Promise<HeadFixture> {
     passive: randomUUID(),
     head: randomUUID(),
     fatma: randomUUID(),
+    nuriye: randomUUID(),
     seyyid: randomUUID(),
     role: randomUUID(),
     grant: randomUUID(),
@@ -63,7 +64,7 @@ export async function seedHead(chief: string): Promise<HeadFixture> {
     await client.query(
       `insert into users(id, given_name, family_name, email) values
         ($1, 'Mehmet Emin', 'Işıkoğlu', $4), ($2, 'Fatma Zehra', 'Çelebioğlu', $5),
-        ($3, 'Seyyid Ahmet', 'Kocabeyoğlu', $6)`,
+        ($3, 'Seyyid Ahmet', 'Kocabeyoğlu', $6), ($7, 'Nuriye Selin', 'Özkaya', $8)`,
       [
         ids.head,
         ids.fatma,
@@ -71,6 +72,8 @@ export async function seedHead(chief: string): Promise<HeadFixture> {
         email(ids.head),
         email(ids.fatma),
         email(ids.seyyid),
+        ids.nuriye,
+        email(ids.nuriye),
       ]
     );
     await client.query(
@@ -92,7 +95,8 @@ export async function seedHead(chief: string): Promise<HeadFixture> {
         ($1, 'MEDRESE_BASMUDERRIS', 'madrasah', $2, $3)`,
       [ids.head, ids.active, chief]
     );
-    // What the head handed on: a nazır role (12 Eylül, no end), one permission, one group.
+    // What the head handed on: a nazır role (12 Eylül, no end), one permission, one
+    // group, each to its own person: the window asks once per person (MDRS-172).
     await client.query(
       `insert into role_assignments(id, user_id, role, scope_type, scope_id, granted_by, created_at) values
         ($1, $2, 'MEDRESE_NAZIR', 'madrasah', $3, $4, '2026-09-12T09:00:00Z')`,
@@ -113,7 +117,7 @@ export async function seedHead(chief: string): Promise<HeadFixture> {
       [
         ids.grant,
         ids.groupGrant,
-        ids.fatma,
+        ids.nuriye,
         ids.seyyid,
         ids.active,
         ids.head,
@@ -128,7 +132,7 @@ export async function seedHead(chief: string): Promise<HeadFixture> {
   }
 
   const madrasahIds = [ids.active, ids.passive];
-  const people = [ids.head, ids.fatma, ids.seyyid];
+  const people = [ids.head, ids.fatma, ids.nuriye, ids.seyyid];
 
   return {
     tail,
@@ -137,7 +141,7 @@ export async function seedHead(chief: string): Promise<HeadFixture> {
     head,
     handedOn: {
       role: { id: ids.role, person: "Fatma Zehra Çelebioğlu" },
-      permission: { id: ids.grant, person: "Fatma Zehra Çelebioğlu" },
+      permission: { id: ids.grant, person: "Nuriye Selin Özkaya" },
       group: {
         id: ids.groupGrant,
         person: "Seyyid Ahmet Kocabeyoğlu",

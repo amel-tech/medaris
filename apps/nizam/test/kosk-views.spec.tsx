@@ -52,6 +52,8 @@ const row = (
   isPrivate: false,
   status: "ACTIVE",
   since: null,
+  hiddenLevel: null,
+  canRestore: false,
   nazims: [person("u1", "Ayşe Nur Kılıçarslan")],
   courseCount: 2,
   ...over,
@@ -76,6 +78,8 @@ const hiddenRow = row({
   handle: "kalenderhane",
   status: "HIDDEN",
   since: new Date("2026-09-24T09:00:00Z"),
+  hiddenLevel: "kosk",
+  canRestore: true,
   courseCount: 0,
 });
 
@@ -104,16 +108,21 @@ describe("KosksDirectory (nizam 09)", () => {
     expect(html).toContain("Beyazıt Köşkü");
     expect(html).toContain("@beyazit");
     expect(html).toContain("Ayşe Nur Kılıçarslan");
-    expect(html).toContain("Hadis");
   });
 
-  it("offers the Alan chips the köşks carry and the Görünürlük chips", () => {
+  it("offers the Görünürlük chips, and no Alan chips, level select or Alan column (MDRS-252)", () => {
     const html = view(directory([row()]));
-    for (const field of ["Belâgat", "Fıkıh", "Hadis"]) {
-      expect(html).toContain(field);
-    }
-    for (const label of ["Listelenen", "Listelenmeyen", "Seviye: tümü"]) {
+    for (const label of ["Listelenen", "Listelenmeyen"]) {
       expect(html).toContain(label);
+    }
+    for (const gone of [
+      "Belâgat",
+      "Fıkıh",
+      "Hadis",
+      "Seviye: tümü",
+      ">Alan<",
+    ]) {
+      expect(html).not.toContain(gone);
     }
   });
 
@@ -175,11 +184,31 @@ describe("KosksDirectory (nizam 09)", () => {
     expect(html).toContain("1 / 3");
   });
 
-  it("gives a köşk nazımı neither 'Köşk aç' nor 'Arşiv' nor 'Geri al'", () => {
+  it("gives a köşk nazımı neither 'Köşk aç' nor 'Arşiv'", () => {
     const html = view(directory([hiddenRow]), { chief: false });
     expect(html).not.toContain("Köşk aç");
-    expect(html).not.toContain("Geri al");
     expect(html).not.toContain('href="/tr/arsiv"');
+  });
+
+  it("gives 'Geri al' by the row's canRestore, not by who the viewer is (MDRS-143)", () => {
+    // A köşk nazımı brings back what they hid …
+    const mine = view(directory([hiddenRow]), { chief: false });
+    expect(mine).toContain("Geri al: Kalenderhane Köşkü");
+    // … and is told who hid the köşk when Medaris yönetimi did.
+    const byPlatform = row({
+      ...hiddenRow,
+      hiddenLevel: "platform",
+      canRestore: false,
+    });
+    const locked = view(directory([byPlatform]), { chief: false });
+    expect(locked).not.toContain("Geri al: Kalenderhane Köşkü");
+    expect(locked).toContain(
+      "Bunu Medaris yönetimi gizledi; yalnız o kademe ya da üstü geri alabilir."
+    );
+    // Whoever the viewer is, a row that cannot be restored has no button.
+    expect(view(directory([byPlatform]), { chief: true })).not.toContain(
+      "Geri al: Kalenderhane Köşkü"
+    );
   });
 
   it("shows the error state with 'Yeniden dene' when the read failed", () => {
@@ -275,9 +304,11 @@ describe("KoskSettings (nizam 24)", () => {
     expect(on.match(/aria-checked="true"/g)?.length).toBe(3);
   });
 
-  it("offers an older köşk's own field and keeps 'Kaydet' off until something changes", () => {
+  it("has no Alan or Seviye input, and keeps 'Kaydet' off until something changes (MDRS-252)", () => {
     const html = view({ field: "Tefsir & Hadis" });
-    expect(html).toContain("Tefsir &amp; Hadis");
+    expect(html).not.toContain("Tefsir &amp; Hadis");
+    expect(html).not.toContain('name="field"');
+    expect(html).not.toContain('name="level"');
     expect(html).toMatch(
       /<button[^>]*disabled[^>]*>[^<]*(<[^>]*>)*[^<]*Kaydet/
     );

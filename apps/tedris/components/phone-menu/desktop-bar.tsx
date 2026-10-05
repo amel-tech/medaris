@@ -5,18 +5,19 @@ import { Button } from "@medaris/ui/mds/button";
 import { Icon } from "@medaris/ui/mds/icon";
 import { Logo } from "@medaris/ui/mds/logo";
 import { NavItem } from "@medaris/ui/mds/nav-item";
+import { ThemeToggle } from "@medaris/ui/mds/theme-toggle";
 import { useLocale, useTranslations } from "next-intl";
 import { usePathname } from "~/lib/i18n/navigation";
 import { inviteHrefs } from "~/lib/invite-hrefs";
 import { type Section, sectionOf } from "./member-phone-menu";
-import { isHomePath } from "./phone-menu";
 
 /**
  * The top bar at 768 and up, as every Tedris screen of the canvas draws it:
  * the Medaris wordmark, the five places (Ana sayfa, Keşfet, Derslerim,
  * Programım, Desteler), then the bell and the person's initials as the way to
- * Hesap. A visitor gets Ana sayfa and Keşfet, then Giriş yap and Kayıt ol.
- * Below 768 the phone AppBar takes its place.
+ * Hesap. A visitor gets Keşfet, then Giriş yap and Kayıt ol: Ana sayfa is
+ * personal, so `/home` sends a visitor to Keşfet and the bar does not offer it
+ * (MDRS-256). Below 768 the phone AppBar takes its place.
  *
  * `section` overrides the place worked out from the address, for the pages
  * whose place depends on who is looking (a course page is Derslerim's for its
@@ -39,9 +40,7 @@ export function DesktopBar({
       ? sectionProp
       : signedIn
         ? sectionOf(pathname)
-        : isHomePath(pathname)
-          ? "home"
-          : "discover";
+        : "discover";
   const hrefs = inviteHrefs(locale, pathname === "/" ? "/home" : pathname);
 
   const item = (key: Exclude<Section, null>, href: string, label: string) => (
@@ -56,14 +55,14 @@ export function DesktopBar({
       className="sticky inset-bs-0 z-[2] flex block-topbar items-center gap-6 px-gutter bg-neutral-surface border-be border-neutral-subtle font-ui max-md:hidden"
     >
       <a
-        href={`/${locale}/home`}
+        href={`/${locale}/${signedIn ? "home" : "discover"}`}
         aria-label={t("homeLabel")}
         aria-current={section === "home" ? "page" : undefined}
       >
         <Logo wordmark />
       </a>
       <nav aria-label={t("navLabel")} className="flex items-center gap-1">
-        {item("home", "/home", t("home"))}
+        {signedIn ? item("home", "/home", t("home")) : null}
         {item("discover", "/discover", t("discover"))}
         {signedIn ? (
           <>
@@ -74,6 +73,7 @@ export function DesktopBar({
         ) : null}
       </nav>
       <div className="ms-auto flex items-center gap-2">
+        <ThemeToggle darkLabel={t("themeDark")} lightLabel={t("themeLight")} />
         {signedIn ? (
           <>
             <a

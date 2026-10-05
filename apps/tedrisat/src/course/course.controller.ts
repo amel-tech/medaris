@@ -1,4 +1,5 @@
 import {
+  ASSIGNED_ROLES,
   AuthGuard,
   Authz,
   AuthzExempt,
@@ -9,7 +10,8 @@ import {
   byParam,
   ENTITIES,
   MedarisValidationPipe,
-  SCOPES,
+  PERMISSIONS,
+  SelfGrantGuard,
 } from "@medaris/common";
 import {
   Body,
@@ -79,13 +81,13 @@ const UUID_REGEX =
 /**
  * Authorizes a `/courses/:id` route against that course, answering a missing
  * or malformed id as not-found first. Guards run before pipes, so a malformed
- * id would otherwise reach the matrix as the PUBLIC sentinel and an
+ * id would otherwise reach the engine as the PUBLIC sentinel and an
  * admin-only route would answer 403. The role resolver 404s a missing course
  * on its own since MDRS-43, but SYSTEM_ADMIN bypasses the resolver, so the
  * existence check stays here (the same reason as `byExistingKosk`). Hidden
  * courses count as existing: restoring one is the point.
  */
-const byExistingCourse: AuthzResolve = async (req, moduleRef) => {
+export const byExistingCourse: AuthzResolve = async (req, moduleRef) => {
   const courseId = typeof req.params.id === "string" ? req.params.id : "";
   if (
     !UUID_REGEX.test(courseId) ||
@@ -105,7 +107,8 @@ const byExistingCourse: AuthzResolve = async (req, moduleRef) => {
 export class CourseController {
   constructor(
     private readonly courseService: CourseService,
-    private readonly statsRepo: CourseStatsRepository
+    private readonly statsRepo: CourseStatsRepository,
+    private readonly selfGrant: SelfGrantGuard
   ) {}
 
   @ApiOperation({
@@ -130,7 +133,7 @@ export class CourseController {
   // Anonymous callers are decided against the köşk too (MDRS-122):
   // `resolveAnonymous` 404s an unlisted köşk, so its shelf is not reachable
   // by its id either.
-  @Authz(SCOPES.VIEW, byParam(ENTITIES.KOSK, "koskId"))
+  @Authz(PERMISSIONS.KOSK_VIEW, byParam(ENTITIES.KOSK, "koskId"))
   @AuthzPublic()
   @Get("kosks/:koskId/courses")
   async findByKosk(
@@ -150,15 +153,24 @@ export class CourseController {
   }
 
   @ApiOperation({
-    summary: "Create a new course under a köşk",
+    summary: "Create a new course under a köşk, together with its müderrisler",
+    description:
+      "The köşk's nazımı opens it, and so does the başnazım (MDRS-136). It is opened with at least one müderris who has an account, and one of them is the imam: `imamUserId`, or the account listed first.",
     operationId: "createCourse",
   })
   @ApiCreatedResponse({ type: CourseDetailResponse })
+  @ApiBadRequestResponse({
+    description:
+      "No müderris with an account (MUDERRIS_LIST_INVALID), an imam who is not listed (COURSE_IMAM_NOT_LISTED), or the same account twice (MUDERRIS_DUPLICATE_USER).",
+  })
+  @ApiForbiddenResponse()
   @ApiNotFoundResponse()
   // A course that does not exist yet is authorized against its parent köşk —
-  // `MANAGE_COURSES` sits on the köşk's KOSK_MANAGER row and on no other, so
-  // only the köşk's owner may open a course under it.
-  @Authz(SCOPES.MANAGE_COURSES, byParam(ENTITIES.KOSK, "koskId"))
+  // `course.open_standalone` is the köşk nazımı's own (and a grant's, and the
+  // başnazım's by the realm bypass), so only they may open a course of the
+  // köşk's own under it; a course for a medrese is opened by the medrese
+  // (`madrasah.course_open`). The service asks no role again.
+  @Authz(PERMISSIONS.COURSE_OPEN_STANDALONE, byParam(ENTITIES.KOSK, "koskId"))
   @Post("kosks/:koskId/courses")
   @UsePipes(new MedarisValidationPipe({ transform: true }))
   async create(
@@ -166,6 +178,22 @@ export class CourseController {
     @Param("koskId", ParseUUIDPipe) koskId: string,
     @Body() courseDto: CreateCourseDto
   ): Promise<CourseDetailResponse> {
+    // A grantee of `course.open_standalone` opens courses for others, not for
+    // themselves: naming oneself müderris is for someone who already holds
+    // every course permission in the köşk (its nazımı), as in a medrese's
+    // course (`MadrasahCourseController.open`).
+    await this.selfGrant.assertNotSelf(
+      request.user,
+      [
+        ...(courseDto.muderris ?? []).flatMap((m) =>
+          m.userId ? [m.userId] : []
+        ),
+        ...(courseDto.imamUserId ? [courseDto.imamUserId] : []),
+      ],
+      { entity: ENTITIES.KOSK, id: koskId },
+      { role: ASSIGNED_ROLES.MUDERRIS },
+      "course.open"
+    );
     return this.courseService.create(koskId, request.user, courseDto);
   }
 
@@ -205,15 +233,15 @@ export class CourseController {
   @ApiOkResponse({ type: CourseDetailResponse })
   @ApiNotFoundResponse()
   // The page is public, the lessons are not (the owner's decision of 26
-  // September, recorded on MDRS-43; MDRS-103). `VIEW` is on the COURSE
-  // PUBLIC row since MDRS-103, so this no longer needs an exemption, and the
-  // content is filtered by `VIEW_DETAILS` inside `viewDetail`. DRAFT and
+  // September, recorded on MDRS-43; MDRS-103). `course.view` is what any
+  // signed-in caller holds, so this needs no exemption, and the content is
+  // filtered by `course.view_details` inside `viewDetail`. DRAFT and
   // hidden courses stay not-found to non-managers inside `getDetail`.
   //
   // `@AuthzPublic()` (MDRS-122): a caller with no token is decided by
   // `resolveAnonymous`, and `present` hands them `withoutContent` unchanged —
   // there is no second filter for the anonymous case.
-  @Authz(SCOPES.VIEW, byParam(ENTITIES.COURSE))
+  @Authz(PERMISSIONS.COURSE_VIEW, byParam(ENTITIES.COURSE))
   @AuthzPublic()
   @Get("courses/:id")
   async findById(
@@ -231,7 +259,7 @@ export class CourseController {
   @ApiNotFoundResponse()
   // The köşk manager and the course's müderrisler (MDRS-105): `EDIT` is on
   // both rows, and nothing in the service narrows it any more.
-  @Authz(SCOPES.EDIT, byParam(ENTITIES.COURSE))
+  @Authz(PERMISSIONS.COURSE_EDIT, byParam(ENTITIES.COURSE))
   @Patch("courses/:id")
   async update(
     @Req() request: AuthorizedRequest,
@@ -254,16 +282,18 @@ export class CourseController {
   })
   @ApiForbiddenResponse({
     description:
-      "No `edit` on the course, or the save changes the müderris list without `assign_muderris` — a müderris may save the course but not change who teaches it (MUDERRIS_ASSIGNMENT_FORBIDDEN).",
+      "No `course.edit` on the course, or the save changes the müderris list without `course.open_standalone` (or `madrasah.muderris_manage` for a medrese's course) — a müderris may save the course but not change who teaches it (MUDERRIS_ASSIGNMENT_FORBIDDEN). Adding or dropping a session, or changing a session's time, meeting link, agenda or preview flag, needs `session.manage` as well (AUTHZ_FORBIDDEN). SELF_GRANT_REFUSED: a changed list names the caller, who does not already hold every müderris permission on the course (SYSTEM_ADMIN excepted).",
   })
   @ApiConflictResponse({
     description:
       "The course changed since `version` was loaded (COURSE_VERSION_CONFLICT).",
   })
-  // `EDIT` lets the köşk manager and the course's müderrisler save it
-  // (MDRS-105). The müderris list inside the payload is `ASSIGN_MUDERRIS`,
-  // the köşk manager's alone, and `CourseService.replace` checks that part.
-  @Authz(SCOPES.EDIT, byParam(ENTITIES.COURSE))
+  // `course.edit` lets the köşk nazımı and the course's müderrisler save it
+  // (MDRS-105). The müderris list inside the payload is `course.open_standalone`
+  // — the köşk nazımı's alone, or the medrese's `madrasah.muderris_manage` in a
+  // course held for a medrese — and `CourseService.replace` checks that part.
+  // It checks the sessions inside the payload against `session.manage` too.
+  @Authz(PERMISSIONS.COURSE_EDIT, byParam(ENTITIES.COURSE))
   @Put("courses/:id")
   @UsePipes(new MedarisValidationPipe({ transform: true }))
   async replace(
@@ -277,7 +307,7 @@ export class CourseController {
   @ApiOperation({
     summary: "Replace a course's müderris list and pick its imam",
     description:
-      "Partial update for the 'Müderrisleri düzenle' dialog (MDRS-176): only the müderris list and the imam change, not the syllabus. Needs `assign_muderris`; the change is written to `audit_log`. The list is never empty and the imam is one of its accounts.",
+      "Partial update for the 'Müderrisleri düzenle' dialog (MDRS-176): only the müderris list and the imam change, not the syllabus. Needs `course.open_standalone` (or `madrasah.muderris_manage` for a medrese's course); the change is written to `audit_log`. The list is never empty and the imam is one of its accounts.",
     operationId: "setCourseMuderris",
   })
   @ApiOkResponse({ type: MuderrisListResponse })
@@ -285,13 +315,19 @@ export class CourseController {
     description:
       "Empty list, an imam outside the list (MUDERRIS_LIST_INVALID), or the same account twice (MUDERRIS_DUPLICATE_USER).",
   })
-  @ApiForbiddenResponse()
+  @ApiForbiddenResponse({
+    description:
+      "SELF_GRANT_REFUSED: the list names the caller, who does not already hold every müderris permission on the course (SYSTEM_ADMIN excepted). Written to the audit log.",
+  })
   @ApiNotFoundResponse()
   @ApiConflictResponse({
     description:
       "The course changed since `version` was loaded (COURSE_VERSION_CONFLICT).",
   })
-  @Authz(SCOPES.ASSIGN_MUDERRIS, byParam(ENTITIES.COURSE))
+  @Authz(
+    [PERMISSIONS.COURSE_OPEN_STANDALONE, PERMISSIONS.MADRASAH_MUDERRIS_MANAGE],
+    byParam(ENTITIES.COURSE)
+  )
   @Put("courses/:id/muderris")
   @UsePipes(new MedarisValidationPipe({ transform: true }))
   async setMuderris(
@@ -305,39 +341,59 @@ export class CourseController {
   @ApiOperation({
     summary: "Hide a course (Gizle)",
     description:
-      "The köşk manager's way to take a course down: nothing is deleted, every list leaves it out, and it answers 404 to everyone but the köşk manager and SYSTEM_ADMIN until it is restored (MDRS-124).",
+      "Nothing is deleted, every list leaves the course out, and it answers 404 to everyone but those who may hide it until it is restored (MDRS-124). Who hides it (MDRS-143): the köşk's nazımı (`course.hide`), the başmüderris or a nazır given `madrasah.course_hide` for a medrese course, and platform management (`platform.course_hide`, the başnazım by bypass). The level the caller acts at is recorded with the hide (köşk, medrese or platform) and decides who may restore it (MDRS-135). A course hidden already answers 409 (COURSE_ALREADY_HIDDEN) and nothing is written.",
     operationId: "archiveCourse",
   })
   @ApiOkResponse({ type: CourseDetailResponse })
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()
+  @ApiConflictResponse({ description: "COURSE_ALREADY_HIDDEN" })
   @Post("courses/:id/archive")
   @HttpCode(HttpStatus.OK)
-  @Authz(SCOPES.ARCHIVE, byExistingCourse)
+  @Authz(
+    [
+      PERMISSIONS.COURSE_HIDE,
+      PERMISSIONS.MADRASAH_COURSE_HIDE,
+      PERMISSIONS.PLATFORM_COURSE_HIDE,
+    ],
+    byExistingCourse
+  )
   async archive(
     @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<CourseDetailResponse> {
-    await this.courseService.archive(id, request.user.sub);
-    return this.courseService.viewDetail(id, request.user, { audit: false });
+    await this.courseService.archive(id, request.user);
+    return this.courseService.viewAfterHide(id, request.user, "course.hide");
   }
 
   @ApiOperation({
     summary: "Restore a hidden course (Geri al)",
+    description:
+      "By kademe (MDRS-135): the level that hid the course, or any level above it (course < medrese < köşk < platform). A lower level answers 403 (ARCHIVE_RESTORE_LEVEL), naming the level that hid it and the caller's. A course hidden before the level was recorded counts as the lowest level that could have hidden it. As on the archive route, a course whose köşk or medrese is still hidden answers 409 (ARCHIVE_PARENT_HIDDEN); a course that is not hidden answers 409 (COURSE_NOT_HIDDEN) and nothing is written.",
     operationId: "restoreCourse",
   })
   @ApiOkResponse({ type: CourseDetailResponse })
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()
+  @ApiConflictResponse({
+    description: "ARCHIVE_PARENT_HIDDEN or COURSE_NOT_HIDDEN",
+  })
   @Post("courses/:id/restore")
   @HttpCode(HttpStatus.OK)
-  @Authz(SCOPES.ARCHIVE, byExistingCourse)
+  @Authz(
+    [
+      PERMISSIONS.COURSE_HIDE,
+      PERMISSIONS.MADRASAH_COURSE_HIDE,
+      PERMISSIONS.PLATFORM_COURSE_HIDE,
+    ],
+    byExistingCourse
+  )
   async restore(
     @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<CourseDetailResponse> {
-    await this.courseService.restore(id);
-    return this.courseService.viewDetail(id, request.user, { audit: false });
+    await this.courseService.restore(id, request.user);
+    return this.courseService.viewAfterHide(id, request.user, "course.restore");
   }
 
   @ApiOperation({
@@ -350,7 +406,7 @@ export class CourseController {
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()
   @Delete("courses/:id")
-  @Authz(SCOPES.DELETE, byExistingCourse)
+  @Authz(PERMISSIONS.COURSE_DELETE, byExistingCourse)
   async delete(
     @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string
@@ -364,10 +420,10 @@ export class CourseController {
   })
   @ApiCreatedResponse({ type: EnrollmentResponse })
   @ApiNotFoundResponse()
-  // `ENROLL` is the one scope on the COURSE PUBLIC row: any authenticated
-  // caller may ask to join a course that exists. Whether the request lands as
-  // ENROLLED or PENDING is `requires_approval`'s business, not the matrix's.
-  @Authz(SCOPES.ENROLL, byParam(ENTITIES.COURSE))
+  // `course.enroll` is what any authenticated caller holds: they may ask to
+  // join a course that exists. Whether the request lands as ENROLLED or
+  // PENDING is `requires_approval`'s business, not the engine's.
+  @Authz(PERMISSIONS.COURSE_ENROLL, byParam(ENTITIES.COURSE))
   @Post("courses/:id/enroll")
   async enroll(
     @Req() request: AuthorizedRequest,
@@ -390,17 +446,16 @@ export class CourseController {
   })
   @ApiOkResponse({ type: PendingEnrollmentResponse, isArray: true })
   @ApiNotFoundResponse()
-  // Köşk-scoped, so it authorizes on the köşk: `MANAGE_ENROLLMENTS` lives on
-  // the COURSE row and there is no course in this request. `MANAGE_COURSES` is
-  // the KOSK row's owner-only scope and the closest true statement — the
-  // service still narrows to the köşk's owner.
-  @Authz(SCOPES.MANAGE_COURSES, byParam(ENTITIES.KOSK, "koskId"))
+  // Köşk-scoped, so it authorizes on the köşk: there is no course in this
+  // request. `course.manage_all` is the köşk nazımı's permission for the work
+  // in every course of the köşk — the service still narrows to its nazımları.
+  @Authz(PERMISSIONS.COURSE_MANAGE_ALL, byParam(ENTITIES.KOSK, "koskId"))
   @Get("kosks/:koskId/enrollments/pending")
   async pendingEnrollments(
     @Req() request: AuthorizedRequest,
     @Param("koskId", ParseUUIDPipe) koskId: string
   ): Promise<PendingEnrollmentResponse[]> {
-    return this.courseService.findPendingEnrollments(koskId, request.user.sub);
+    return this.courseService.findPendingEnrollments(koskId, request.user);
   }
 
   @ApiOperation({
@@ -414,11 +469,13 @@ export class CourseController {
   @ApiNotFoundResponse()
   // `byExistingCourse`: SYSTEM_ADMIN bypasses the resolver, so a missing
   // course must answer 404 here and not an empty count.
-  @Authz(SCOPES.MANAGE_ENROLLMENTS, byExistingCourse)
+  @Authz(PERMISSIONS.COURSE_STAFF_READ, byExistingCourse)
   @Get("courses/:id/stats")
   async stats(
+    @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<CourseStatsResponse> {
+    await this.courseService.auditRosterRead(id, request.user, "stats");
     return this.statsRepo.stats(id, new Date());
   }
 
@@ -431,11 +488,13 @@ export class CourseController {
   @ApiOkResponse({ type: RosterEnrollmentResponse, isArray: true })
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()
-  @Authz(SCOPES.MANAGE_ENROLLMENTS, byParam(ENTITIES.COURSE))
+  @Authz(PERMISSIONS.COURSE_STAFF_READ, byParam(ENTITIES.COURSE))
   @Get("courses/:id/enrollments")
   async enrollments(
+    @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<RosterEnrollmentResponse[]> {
+    await this.courseService.auditRosterRead(id, request.user, "enrollments");
     return this.courseService.findEnrollments(id);
   }
 
@@ -448,11 +507,13 @@ export class CourseController {
   @ApiOkResponse({ type: RemovedEnrollmentResponse, isArray: true })
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()
-  @Authz(SCOPES.MANAGE_ENROLLMENTS, byParam(ENTITIES.COURSE))
+  @Authz(PERMISSIONS.COURSE_STAFF_READ, byParam(ENTITIES.COURSE))
   @Get("courses/:id/enrollments/removed")
   async removedEnrollments(
+    @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<RemovedEnrollmentResponse[]> {
+    await this.courseService.auditRosterRead(id, request.user, "removed");
     return this.courseService.findRemovedEnrollments(id);
   }
 
@@ -465,14 +526,16 @@ export class CourseController {
   @ApiOkResponse({ type: CourseBadgeCountsResponse })
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()
-  // `MANAGE_ENROLLMENTS` is the scope of the roster this count summarises, and
-  // the köşk manager and the müderrisler hold it (MDRS-105); nobody below the
-  // course team does.
-  @Authz(SCOPES.MANAGE_ENROLLMENTS, byExistingCourse)
+  // `course.staff_read` is the course team's read of the roster this count
+  // summarises: whoever holds course work in the course has it (MDRS-105),
+  // nobody below the course team does.
+  @Authz(PERMISSIONS.COURSE_STAFF_READ, byExistingCourse)
   @Get("courses/:id/badge-counts")
   async badgeCounts(
+    @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<CourseBadgeCountsResponse> {
+    await this.courseService.auditRosterRead(id, request.user, "badge-counts");
     return this.courseService.getBadgeCounts(id);
   }
 
@@ -493,9 +556,10 @@ export class CourseController {
     description:
       "The enrollment is completed; reopen it instead (ENROLLMENT_STATE_CONFLICT).",
   })
-  // `MANAGE_ENROLLMENTS` is the köşk manager's and the müderris' (MDRS-105);
-  // the köşk-owner check the service used to add on top is gone.
-  @Authz(SCOPES.MANAGE_ENROLLMENTS, byParam(ENTITIES.COURSE))
+  // `enrollment.decide` is the köşk nazımı's and the müderris' by default
+  // (MDRS-105), and a grant's; the köşk-owner check the service used to add on
+  // top is gone.
+  @Authz(PERMISSIONS.ENROLLMENT_DECIDE, byParam(ENTITIES.COURSE))
   @Post("courses/:id/enrollments/:userId/approve")
   async approveEnrollment(
     @Req() request: AuthorizedRequest,
@@ -513,9 +577,9 @@ export class CourseController {
   })
   @ApiOkResponse({ type: Boolean })
   @ApiNotFoundResponse()
-  // Same scope as approve: the matrix does not distinguish granting a seat
-  // from refusing one.
-  @Authz(SCOPES.MANAGE_ENROLLMENTS, byParam(ENTITIES.COURSE))
+  // Same permission as approve: the catalogue does not distinguish granting a
+  // seat from refusing one.
+  @Authz(PERMISSIONS.ENROLLMENT_DECIDE, byParam(ENTITIES.COURSE))
   @ApiBody({ type: RejectEnrollmentDto, required: false })
   @Delete("courses/:id/enrollments/:userId")
   async rejectEnrollment(
@@ -545,7 +609,7 @@ export class CourseController {
     description:
       "The enrollment is still a pending request; approve it first (ENROLLMENT_STATE_CONFLICT).",
   })
-  @Authz(SCOPES.MANAGE_ENROLLMENTS, byParam(ENTITIES.COURSE))
+  @Authz(PERMISSIONS.ENROLLMENT_COMPLETE, byParam(ENTITIES.COURSE))
   @Patch("courses/:id/enrollments/:userId")
   async setEnrollmentStatus(
     @Param("id", ParseUUIDPipe) id: string,
@@ -568,7 +632,7 @@ export class CourseController {
     description:
       "The enrollment is a pending request or a completion (ENROLLMENT_STATE_CONFLICT).",
   })
-  @Authz(SCOPES.MANAGE_ENROLLMENTS, byParam(ENTITIES.COURSE))
+  @Authz(PERMISSIONS.ENROLLMENT_REMOVE, byParam(ENTITIES.COURSE))
   @Post("courses/:id/enrollments/:userId/remove")
   @HttpCode(HttpStatus.OK)
   async removeEnrollment(
@@ -602,7 +666,7 @@ export class CourseController {
   // PENDING and PUBLIC included, so this only says "the course exists and
   // the caller may see it is there"; the service 404s a caller with no
   // enrollment. `ENROLL` would not do: it is on PUBLIC only.
-  @Authz(SCOPES.VIEW, byParam(ENTITIES.COURSE))
+  @Authz(PERMISSIONS.COURSE_VIEW, byParam(ENTITIES.COURSE))
   @Delete("courses/:id/enrollment")
   async leave(
     @Req() request: AuthorizedRequest,
@@ -623,7 +687,7 @@ export class CourseController {
       "No enrollment, or it is no longer pending (ENROLLMENT_NOT_FOUND).",
   })
   // Same scope as `leave`: the caller's own row, selected by `sub`.
-  @Authz(SCOPES.VIEW, byParam(ENTITIES.COURSE))
+  @Authz(PERMISSIONS.COURSE_VIEW, byParam(ENTITIES.COURSE))
   @Delete("courses/:id/enroll")
   async withdraw(
     @Req() request: AuthorizedRequest,
@@ -643,13 +707,14 @@ export class CourseController {
     description:
       "`status` would change the enrollment's status (ENROLLMENT_STATUS_FORBIDDEN).",
   })
-  // The matrix has no "record progress" scope, and the real requirement is
-  // that the caller hold an active enrollment. `VIEW_DETAILS` is exactly that
-  // line — ENROLLED, MUDERRIS and KOSK_MANAGER carry it, PENDING and PUBLIC do
-  // not — so it is the honest way to say it with the scopes that exist.
+  // The catalogue has no "record progress" permission, and the real
+  // requirement is that the caller hold an active enrollment.
+  // `course.view_details` is exactly that line — the enrolled and the course
+  // staff hold it, PENDING and PUBLIC do not — so it is the honest way to say
+  // it with the permissions that exist.
   // `CourseService.updateProgress` remains the precise check: it 404s a
   // missing or still-pending enrollment rather than silently promoting it.
-  @Authz(SCOPES.VIEW_DETAILS, byParam(ENTITIES.COURSE))
+  @Authz(PERMISSIONS.COURSE_VIEW_DETAILS, byParam(ENTITIES.COURSE))
   @Put("courses/:id/progress")
   async updateProgress(
     @Req() request: AuthorizedRequest,

@@ -408,8 +408,17 @@ describe("Keycloak configuration package (e2e)", () => {
       loginTheme: "medaris-keycloak-theme",
       emailTheme: "medaris-keycloak-theme",
       accessTokenLifespan: 300,
-      ssoSessionIdleTimeout: 1800,
+      rememberMe: true,
+      ssoSessionIdleTimeout: 18000,
       ssoSessionMaxLifespan: 36000,
+      ssoSessionIdleTimeoutRememberMe: 1209600,
+      ssoSessionMaxLifespanRememberMe: 2592000,
+    });
+    // The owner's link lifetimes (MDRS-97, 3 October): verification 24 h,
+    // password reset 30 min.
+    expect(realm.attributes).toMatchObject({
+      "actionTokenGeneratedByUserLifespan.verify-email": "86400",
+      "actionTokenGeneratedByUserLifespan.reset-credentials": "1800",
     });
     expect([...realm.supportedLocales].sort()).toEqual(["ar", "en", "tr"]);
     expect(realm.passwordPolicy).toContain("length(10)");

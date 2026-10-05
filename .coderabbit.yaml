@@ -356,7 +356,7 @@ reviews:
         and by apps/<api>/src/load-env.ts. `findRepoRoot` (root-env.cjs:93) THROWS
         when pnpm-workspace.yaml is not found; no call site may re-add a silent
         skip. `NODE_ENV` is scoped to `API__` on purpose: broadcast to a web app it
-        breaks `next build` (CLAUDE.md).
+        breaks `next build` (AGENTS.md).
 
         Hunt for:
         1. CREDENTIAL FALLBACKS. `process.env.X || "<literal>"` on a credential or a
@@ -390,7 +390,7 @@ reviews:
            .env.example (`change-me`, `localhost`, `auth.example.org`) are the
            point of that file and are not secrets.
         5. A SAFETY NET SWITCHED OFF. All of these are invisible to typecheck, build
-           and lint, and each has already cost the team time (CLAUDE.md):
+           and lint, and each has already cost the team time (AGENTS.md):
            - biome.json turns `style/useImportType` OFF (:107) for the overrides whose
              `includes` (:85) are apps/tedrisat, apps/teskilat and libs/common,
              because `import type` on a NestJS constructor parameter breaks DI at
@@ -626,7 +626,7 @@ reviews:
            (buildless, no build target). A React component in libs/utils or a Nest
            decorator in libs/types is low severity.
         7. docs/PRD.md and docs/ecosystem-boundaries.md are marked "Never modify"
-           in CLAUDE.md. A PR editing either without saying why is worth flagging.
+           in AGENTS.md. A PR editing either without saying why is worth flagging.
 
         Do NOT report:
         - `@medaris/ui/components/*`, `/lib/*`, `/custom/*`, `/hooks/*` as deep
@@ -656,9 +656,9 @@ reviews:
           finding, not a fix.
 
     # ── Documentation ───────────────────────────────────────────────────────
-    - path: "{docs/**/*.md,README.md,CONTRIBUTING.md,CLAUDE.md}"
+    - path: "{docs/**/*.md,README.md,CONTRIBUTING.md,AGENTS.md}"
       instructions: |
-        CLAUDE.md's rule for documentation: verify every number against command
+        AGENTS.md's rule for documentation: verify every number against command
         output before writing it down. A migration record here once claimed
         "89/89 tests", "548 files" and "nothing is lost" — all three were wrong.
         - A count, a file total, a test total or a "nothing changed" claim in a
@@ -851,9 +851,9 @@ knowledge_base:
     enabled: true
   code_guidelines:
     enabled: true
-    # Setting the list replaces the defaults, so CLAUDE.md is listed explicitly.
+    # Setting the list replaces the defaults, so AGENTS.md is listed explicitly.
     filePatterns:
-      - "**/CLAUDE.md"
+      - "**/AGENTS.md"
       - "CONTRIBUTING.md"
       - "docs/adr/*.md"
       - "docs/coderabbit.md"

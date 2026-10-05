@@ -25,6 +25,7 @@ import {
 } from "../../course/domain/recording";
 import { kosks } from "./kosk.schema";
 import { madrasahs } from "./madrasah.schema";
+import { scopeType } from "./scope-type.schema";
 
 // Enums
 export const courseLevel = pgEnum("course_level", CourseLevel);
@@ -97,6 +98,11 @@ export const courses = table("courses", {
   // account that hid it — not a foreign key, like every other user column.
   archivedAt: timestamp("archived_at", { withTimezone: true }),
   archivedBy: uuid("archived_by"),
+  // The level the hider acted at (MDRS-135): platform, köşk, medrese or course.
+  // A restore is by that level or above (the ban rule, "elbette kademe var");
+  // null on a row hidden before it was recorded, which counts as the lowest
+  // level that could have hidden it. Null while shown.
+  archivedLevel: scopeType("archived_level"),
   // Passive (MDRS-134): the course lost its last admin and nobody above took
   // it over (MDRS-133, MDRS-136). Separate from `archived_at`, which is
   // hiding (MDRS-124): nobody hid a passive course, it is unattended. Null
@@ -122,6 +128,11 @@ export const courseWeeks = table("course_weeks", {
   archivedAt: timestamp("archived_at", { withTimezone: true }),
   // Who hid it (MDRS-173); null for rows archived before the column existed.
   archivedBy: uuid("archived_by"),
+  // The level the hider acted at (MDRS-135): platform, köşk, medrese or course.
+  // A restore is by that level or above (the ban rule, "elbette kademe var");
+  // null on a row hidden before it was recorded, which counts as the lowest
+  // level that could have hidden it. Null while shown.
+  archivedLevel: scopeType("archived_level"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -176,6 +187,11 @@ export const lessons = table(
     archivedAt: timestamp("archived_at", { withTimezone: true }),
     // Who hid it (MDRS-173); null for rows archived before the column existed.
     archivedBy: uuid("archived_by"),
+    // The level the hider acted at (MDRS-135): platform, köşk, medrese or course.
+    // A restore is by that level or above (the ban rule, "elbette kademe var");
+    // null on a row hidden before it was recorded, which counts as the lowest
+    // level that could have hidden it. Null while shown.
+    archivedLevel: scopeType("archived_level"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },

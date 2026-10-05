@@ -15,7 +15,7 @@ import { EnrollmentStatus } from "./enrollment-status.enum";
  * Public: the course, its weeks, and each lesson's title, type, schedule and
  * length — the programme a visitor needs in order to decide to enroll.
  * Content: a lesson's `meetingUrl`, `agenda`, `kaynak` and `cancelReason`, and a resource's
- * `url`. A caller without `VIEW_DETAILS` gets the programme only, and the
+ * `url`. A caller without `course.view_details` gets the programme only, and the
  * content keys are removed rather than nulled.
  *
  * A meeting link is never public (MDRS-103 "What to build" 3). A sample
@@ -83,13 +83,43 @@ export function isCourseParticipant(
   course: ICourseDetail,
   userId: string
 ): boolean {
+  return isEnrolledTalebe(course, userId) || isCourseMuderris(course, userId);
+}
+
+/**
+ * What `audit_log.action` says of a read of a roster: the talebe list with
+ * e-mail addresses, the numbers behind it, who was taken out, the requests
+ * waiting. Written for everyone but the course's enrolled talebe and müderrisler
+ * (MDRS-135).
+ */
+export const ROSTER_READ_ACTION = "course.roster_read";
+
+/** Which roster a row of `ROSTER_READ_ACTION` is about (its `details.via`). */
+export type RosterRead =
+  | "enrollments"
+  | "removed"
+  | "stats"
+  | "badge-counts"
+  | "pending"
+  | "kosk-dashboard";
+
+/** The caller's own row says ENROLLED or COMPLETED (PENDING is not enrolled). */
+export function isEnrolledTalebe(
+  course: ICourseDetail,
+  userId: string
+): boolean {
   const status = course.enrollment?.status;
-  if (
+  return (
     course.enrollment?.userId === userId &&
     (status === EnrollmentStatus.ENROLLED ||
       status === EnrollmentStatus.COMPLETED)
-  ) {
-    return true;
-  }
+  );
+}
+
+/** One of the course's listed müderrisler. */
+export function isCourseMuderris(
+  course: ICourseDetail,
+  userId: string
+): boolean {
   return course.muderris.some((m) => m.userId === userId);
 }

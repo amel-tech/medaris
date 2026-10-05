@@ -65,10 +65,12 @@ test.describe("an enrolled talebe", () => {
     const main = page.getByRole("main");
     await expect(main.getByText("Şu an canlı").first()).toBeVisible();
     await expect(main.getByText(/dakikadır sürüyor/)).toBeVisible();
-    await expect(page.locator("iframe")).toHaveAttribute(
+    // the stream's frame; the live chat has a frame of its own beside it
+    await expect(page.locator("#live-stream-frame")).toHaveAttribute(
       "src",
       new RegExp(`youtube-nocookie\\.com/embed/${fixture.streamId}`)
     );
+    await expect(page.getByTitle("Canlı sohbet")).toBeVisible();
     const join = main.getByRole("link", { name: /Celseye katıl/ });
     await expect(join).toHaveAttribute("href", fixture.meetingUrl);
     await expect(join).toHaveAttribute("target", "_blank");
@@ -96,7 +98,7 @@ test.describe("an enrolled talebe", () => {
     await expect(
       main.getByRole("heading", { name: s.recordingTitle })
     ).toBeVisible();
-    await expect(page.locator("iframe")).toHaveAttribute(
+    await expect(page.locator("iframe:visible")).toHaveAttribute(
       "src",
       /^https:\/\/(www\.)?youtube-nocookie\.com\/embed\/9bZkp7q19f0/
     );
@@ -131,7 +133,7 @@ test.describe("an enrolled talebe", () => {
         name: `Oynat: ${fixture.sessions.sample.recordingTitle}`,
       })
       .click();
-    await expect(page.locator("iframe")).toHaveAttribute(
+    await expect(page.locator("iframe:visible")).toHaveAttribute(
       "src",
       /^https:\/\/(www\.)?youtube-nocookie\.com\/embed\/dQw4w9WgXcQ/
     );
@@ -164,15 +166,21 @@ test.describe("a caller who may not read the course", () => {
     }
     await page.goto(sessionPath(fixture.sessions.ended.id));
     await expect(
-      page.getByText(/Derse kaydolduğunda görebilirsin/)
+      page
+        .getByText(/Derse kaydolduğunda görebilirsin/)
+        .filter({ visible: true })
     ).toBeVisible();
     await page.getByRole("button", { name: "Kayıt başvurusu yap" }).click();
     const dialog = page.getByRole("dialog");
     await expect(dialog.getByText("Başvurun alındı")).toBeVisible();
     await dialog.getByRole("button", { name: "Tamam" }).click();
+    // the card now says so instead of a button gone grey
     await expect(
-      page.getByRole("button", { name: /Başvurun onay bekliyor/ })
-    ).toBeDisabled();
+      page.getByText("Başvurun onaylanınca bu celseye katılabilirsin.")
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Kayıt başvurusu yap" })
+    ).toHaveCount(0);
   });
 
   test("tedris/24: the tab shows only the public recording, and no private link is in the page", async ({

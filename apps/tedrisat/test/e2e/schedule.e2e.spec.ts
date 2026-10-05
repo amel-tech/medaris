@@ -1,7 +1,15 @@
-import { ROLES } from "@medaris/common";
 import { INestApplication } from "@nestjs/common";
+import { and, eq } from "drizzle-orm";
 import request from "supertest";
+import { EnrollmentStatus } from "../../src/course/domain/enrollment-status.enum";
 import { DatabaseService } from "../../src/database/database.service";
+import { auditLog } from "../../src/database/schema/audit.schema";
+import { enrollments } from "../../src/database/schema/course.schema";
+import {
+  ASSIGNED_ROLES,
+  roleAssignments,
+} from "../../src/database/schema/role-assignment.schema";
+import { FIXTURE_TEAM, openKosk } from "../helpers/open-scopes.helper";
 import {
   createTestApp,
   OTHER_USER_ID,
@@ -11,7 +19,6 @@ import {
   COURSE_TREE_TABLES,
   TestDatabaseUtils,
 } from "../helpers/test-database.helper";
-import { bearerFor } from "../helpers/test-keycloak.helper";
 
 /**
  * MDRS-163: `GET /sessions?from&to` (Programım) and `GET /me/upcoming-lessons`
@@ -42,6 +49,7 @@ const payload = (
   durationWeeks: 4,
   status: options.status ?? "PUBLISHED",
   requiresApproval: options.requiresApproval ?? false,
+  muderris: FIXTURE_TEAM,
   weeks: [
     {
       weekNumber: 5,
@@ -75,19 +83,7 @@ describe("schedule (e2e)", () => {
     await dbUtils.cleanTables(...COURSE_TREE_TABLES);
     // Opening a köşk is SYSTEM_ADMIN only (2026-10-02); signed with
     // TEST_USER_ID's own `sub`, the köşk is still that user's to manage.
-    koskId = (
-      await request(adminApp.getHttpServer())
-        .post("/kosks")
-        .set(
-          "Authorization",
-          bearerFor({
-            sub: TEST_USER_ID,
-            claims: { realm_access: { roles: [ROLES.SYSTEM_ADMIN] } },
-          })
-        )
-        .send({ name: "Nûruosmaniye Köşkü" })
-        .expect(201)
-    ).body.id;
+    koskId = (await openKosk(adminApp, { name: "Nûruosmaniye Köşkü" })).body.id;
   });
 
   afterAll(async () => {
@@ -184,6 +180,89 @@ describe("schedule (e2e)", () => {
         (s: { title: string }) => s.title
       );
       expect(approved.sort()).toEqual(["Bekleyen", "Benim"]);
+    });
+
+    it("leaves out the sessions of a passive course, whose live link is closed even to its talebe (review M5)", async () => {
+      const course = await createCourse("Müderrissiz kalan", {
+        sessions: [{ title: "Eski celse", at: inHours(30) }],
+      });
+      await enroll(course.id);
+      expect((await list().expect(200)).body).toHaveLength(1);
+
+      // Its only müderris is gone: the course is passive (MDRS-136).
+      await app
+        .get(DatabaseService)
+        .db.update(roleAssignments)
+        .set({ revokedAt: new Date(), revokedBy: TEST_USER_ID })
+        .where(
+          and(
+            eq(roleAssignments.scopeId, course.id),
+            eq(roleAssignments.role, ASSIGNED_ROLES.MUDERRIS)
+          )
+        );
+      expect((await list().expect(200)).body).toEqual([]);
+      const upcoming = await request(talebe.getHttpServer())
+        .get("/me/upcoming-lessons")
+        .expect(200);
+      expect(upcoming.body).toEqual([]);
+    });
+
+    it("keeps a passive course for the köşk's nazımı enrolled in it, as the engine keeps it open to them (owner, 4 October)", async () => {
+      const course = await createCourse("Müderrissiz kalan", {
+        sessions: [{ title: "Eski celse", at: inHours(30) }],
+      });
+      await enroll(course.id);
+      const db = app.get(DatabaseService).db;
+      await db.insert(enrollments).values({
+        userId: TEST_USER_ID,
+        courseId: course.id,
+        status: EnrollmentStatus.ENROLLED,
+      });
+      // Its only müderris is revoked: the course is passive. Opening a course
+      // seats its müderris (MDRS-136), so the seat is revoked, not added.
+      await db
+        .update(roleAssignments)
+        .set({ revokedAt: new Date(), revokedBy: TEST_USER_ID })
+        .where(
+          and(
+            eq(roleAssignments.scopeId, course.id),
+            eq(roleAssignments.role, ASSIGNED_ROLES.MUDERRIS)
+          )
+        );
+
+      const mine = await request(app.getHttpServer())
+        .get("/sessions")
+        .query(window(-1, 7))
+        .expect(200);
+      expect(
+        mine.body.map((s: { title: string; meetingUrl: string }) => [
+          s.title,
+          s.meetingUrl,
+        ])
+      ).toEqual([["Eski celse", MEETING_URL]]);
+      // The talebe of the same course is still closed out.
+      expect((await list().expect(200)).body).toEqual([]);
+
+      // The link of a passive course is passive content: each list that hands
+      // it out writes what GET /courses/:id writes for the same reader
+      // (review D1: their reads stay audited).
+      await request(app.getHttpServer())
+        .get("/me/upcoming-lessons")
+        .expect(200);
+      const audited = await db
+        .select()
+        .from(auditLog)
+        .where(eq(auditLog.entityId, course.id))
+        .orderBy(auditLog.seq);
+      expect(audited.map((r) => [r.actorId, r.action, r.details.via])).toEqual([
+        [TEST_USER_ID, "scope.passive_open", "schedule"],
+        [TEST_USER_ID, "course.content_read", "schedule"],
+        [TEST_USER_ID, "scope.passive_open", "schedule.upcoming"],
+        [TEST_USER_ID, "course.content_read", "schedule.upcoming"],
+      ]);
+      expect(audited[0].details).toMatchObject({
+        passiveScope: { type: "course", id: course.id },
+      });
     });
 
     it("keeps a cancelled session, marked, with no meeting link", async () => {

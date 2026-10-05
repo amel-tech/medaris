@@ -10,7 +10,6 @@ import { PlatformPolicyModule } from "../platform-policy/platform-policy.module"
 import { CourseController } from "./course.controller";
 import { CourseRepository } from "./course.repository";
 import { CourseService } from "./course.service";
-import { CourseAccessService } from "./course-access.service";
 import { CourseNotificationRepository } from "./course-notification.repository";
 import { CourseNotifier } from "./course-notifier";
 import { CourseStatsRepository } from "./course-stats.repository";
@@ -41,7 +40,6 @@ import { RecordingUploadService } from "./recording-upload.service";
   providers: [
     CourseService,
     CourseRepository,
-    CourseAccessService,
     LiveStreamService,
     RecordingRepository,
     RecordingUploadService,
@@ -53,7 +51,8 @@ import { RecordingUploadService } from "./recording-upload.service";
   ],
   // For AuthzBindingsModule's role resolver (MDRS-41): findKoskId,
   // isMuderris and findEnrollment have no CourseService counterpart, so the
-  // repository is what is exported here.
-  exports: [CourseRepository],
+  // repository is what is exported here. The service is the lesson notes'
+  // (MDRS-150): whether the caller may see the course at all is `getDetail`'s.
+  exports: [CourseRepository, CourseService],
 })
 export class CourseModule {}

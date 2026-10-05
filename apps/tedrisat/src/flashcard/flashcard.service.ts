@@ -132,9 +132,9 @@ export class FlashcardService {
    *     Any real card id used to answer 200 here, including one inside
    *     somebody else's private deck.
    *
-   * SYSTEM_ADMIN bypasses both, the same way `AuthzService.can` does for the
-   * decorator path — otherwise this route would be the one place in the
-   * module where the realm role does not hold.
+   * SYSTEM_ADMIN is not exempt (MDRS-148): the başnazım reads another
+   * person's private deck through the audited `deck.view` exception, and
+   * recording study progress on it is a write that exception does not cover.
    */
   async replaceManyProgress(
     user: AuthenticatedUser,
@@ -229,8 +229,6 @@ export class FlashcardService {
     user: AuthenticatedUser,
     progress: CreateFlashcardProgressDto[]
   ): Promise<void> {
-    if (this.authz.isSystemAdmin(user)) return;
-
     const cardIds = [...new Set(progress.map((p) => p.flashcardId))];
     const rows = await this.cardRepo.findVisibilityByIds(cardIds, user.sub);
     const byCard = new Map(rows.map((r) => [r.cardId, r]));

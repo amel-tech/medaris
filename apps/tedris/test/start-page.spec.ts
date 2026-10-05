@@ -87,7 +87,7 @@ describe("/start and B1's button (MDRS-101)", () => {
     const { completeWelcome } = await import("~/features/welcome/actions");
 
     expect(await redirectOf(() => completeWelcome("//evil.example"))).toBe(
-      "/en/learning"
+      "/tr/learning"
     );
   });
 });

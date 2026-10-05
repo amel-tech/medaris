@@ -65,7 +65,8 @@ test("nizam/01 — the başnazım's home page: menu, greeting, numbers and cards
   test.skip(!(seedable && haveChief && KOSK_NAZIM.sub), "no accounts");
   await signIn(page, SYSTEM_ADMIN);
   await page.goto("/tr");
-  await expect(page.getByTestId("home-chief")).toBeVisible();
+  // `#main`: while the page streams in, a hidden copy of it sits beside the one on screen
+  await expect(page.locator("#main").getByTestId("home-chief")).toBeVisible();
   await expect(
     page.getByRole("heading", { level: 1, name: "Ana sayfa" })
   ).toBeVisible();
@@ -86,12 +87,12 @@ test("nizam/01 — the başnazım's home page: menu, greeting, numbers and cards
   const counts = await fixture.counts();
   // the greeting's n is the sum of the waiting queues (the appeal and permanent-ban models come later: 0)
   const total = counts.koskApplications + counts.deckRequests;
-  await expect(page.getByTestId("home-greeting")).toContainText(
-    `Karar bekleyen ${total} talep var.`
-  );
-  await expect(page.getByTestId("home-greeting")).toContainText(
-    /Selâmün aleyküm, .+ Bey\./
-  );
+  await expect(
+    page.getByTestId("home-greeting").filter({ visible: true })
+  ).toContainText(`Karar bekleyen ${total} talep var.`);
+  await expect(
+    page.getByTestId("home-greeting").filter({ visible: true })
+  ).toContainText(/Selâmün aleyküm, .+ Bey\./);
 
   expect(await statValue(page, "Köşk")).toBe(counts.kosks);
   expect(await statValue(page, "Medrese")).toBe(counts.madrasahs);
@@ -99,9 +100,9 @@ test("nizam/01 — the başnazım's home page: menu, greeting, numbers and cards
   expect(await statValue(page, "Kayıtlı talebe")).toBe(counts.students);
 
   // the passive medrese is named in the alert and in its card
-  await expect(page.getByTestId("home-passive-alert")).toContainText(
-    fixture.passiveMadrasah.name
-  );
+  await expect(
+    page.getByTestId("home-passive-alert").filter({ visible: true })
+  ).toContainText(fixture.passiveMadrasah.name);
   const passive = page
     .getByTestId("home-passive-scope")
     .filter({ hasText: fixture.passiveMadrasah.name });
@@ -171,9 +172,9 @@ test("nizam/01 — with nothing passive the warning is not drawn, and the card s
   await fixture.healPassive();
   await page.reload();
   await expect(page.getByTestId("home-passive-alert")).toHaveCount(0);
-  await expect(page.getByTestId("home-passive")).toContainText(
-    "Yöneticisiz kapsam yok."
-  );
+  await expect(
+    page.getByTestId("home-passive").filter({ visible: true })
+  ).toContainText("Yöneticisiz kapsam yok.");
 });
 
 test("nizam/02 — the köşk nazımı lands on their köşk's home page with the numbers, the alert and the celse table (criteria 1, 2)", async ({
@@ -185,10 +186,11 @@ test("nizam/02 — the köşk nazımı lands on their köşk's home page with th
   );
   await signIn(page, KOSK_NAZIM);
   await page.goto("/tr");
-  await expect(page).toHaveURL(
-    new RegExp(`/tr/kosks/${fixture.kosk.id}/ana-sayfa$`)
-  );
-  await expect(page.getByTestId("home-kosk")).toBeVisible();
+  // the first köşk they manage; the shared test seed gives the account one of
+  // its own as well, which may come first, so the fixture's köşk is opened by id
+  await expect(page).toHaveURL(/\/tr\/kosks\/[0-9a-f-]{36}\/ana-sayfa$/);
+  await page.goto(`/tr/kosks/${fixture.kosk.id}/ana-sayfa`);
+  await expect(page.locator("#main").getByTestId("home-kosk")).toBeVisible();
   // no PLATFORM section in a köşk nazımı's menu
   await expect(
     sidebar(page).locator(".mds-nav-section", { hasText: "Platform" })
@@ -203,12 +205,14 @@ test("nizam/02 — the köşk nazımı lands on their köşk's home page with th
   expect(await statValue(page, "Bekleyen başvuru")).toBe(counts.pendingIn);
   expect(await statValue(page, "Ders")).toBe(1);
 
-  await expect(page.getByTestId("home-greeting")).toContainText(
+  await expect(
+    page.getByTestId("home-greeting").filter({ visible: true })
+  ).toContainText(
     `Önümüzdeki yedi günde ${counts.upcomingIn} celse var; birinin toplantı bağlantısı eksik.`
   );
-  await expect(page.getByTestId("home-missing-link")).toContainText(
-    fixture.course.title
-  );
+  await expect(
+    page.getByTestId("home-missing-link").filter({ visible: true })
+  ).toContainText(fixture.course.title);
 
   // the celse table: the one with a link is Planlandı on Zoom, the other is flagged
   const rows = page.locator("[data-testid=home-sessions-table] tbody tr");
@@ -321,12 +325,16 @@ test("nizam/02 — a köşk the nazım does not manage is the 'izniniz yok' scre
   );
   await signIn(page, KOSK_NAZIM);
   await page.goto(`/tr/kosks/${fixture.otherKosk.id}/ana-sayfa`);
-  await expect(page.getByText("Bu bölüm için izniniz yok")).toBeVisible();
+  await expect(
+    page.getByText("Bu bölüm için izniniz yok").filter({ visible: true })
+  ).toBeVisible();
   await expect(page.getByTestId("home-kosk")).toHaveCount(0);
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`/tr/kosks/${fixture.kosk.id}/ana-sayfa`);
-  await expect(page.getByTestId("home-kosk")).toBeVisible();
+  await expect(
+    page.getByTestId("home-kosk").filter({ visible: true })
+  ).toBeVisible();
   await expect(page.locator("aside")).toBeHidden();
   // the table is a card list: a row is no table row any more
   const rowDisplay = await page
@@ -359,10 +367,12 @@ test("nizam/05 — a Medaris nazımı sees only the sections their permissions o
   ]);
   await signIn(page, MEDARIS_NAZIM);
   await page.goto("/tr");
-  await expect(page.getByTestId("home-medaris")).toBeVisible();
+  await expect(page.locator("#main").getByTestId("home-medaris")).toBeVisible();
 
   const counts = await fixture.counts();
-  await expect(page.getByTestId("home-greeting")).toContainText(
+  await expect(
+    page.getByTestId("home-greeting").filter({ visible: true })
+  ).toContainText(
     `Karar bekleyen ${counts.koskApplications + counts.deckRequests} talep var.`
   );
 
@@ -388,26 +398,28 @@ test("nizam/05 — a Medaris nazımı sees only the sections their permissions o
   }
 
   // the numbers: no Ders, no Kayıtlı talebe; no Köşk aç without its permission
-  await expect(page.getByTestId("home-counts")).not.toContainText(
-    "Kayıtlı talebe"
-  );
+  await expect(
+    page.getByTestId("home-counts").filter({ visible: true })
+  ).not.toContainText("Kayıtlı talebe");
   await expect(page.locator('a[href$="/kosks?ac=1"]')).toHaveCount(0);
   await expect(page.getByTestId("home-passive")).toHaveCount(0);
 
   // "İzinleriniz": the permission and the giver, no end date given
-  const grants = page.getByTestId("home-grants");
+  const grants = page.getByTestId("home-grants").filter({ visible: true });
   await expect(grants).toContainText("Desteyi herkese yayımla");
   await expect(grants).toContainText("Platformdan yasakla, yasağı kaldır");
   await expect(grants.getByTestId("home-grant").first()).toContainText(
     "süresiz"
   );
-  await expect(page.getByTestId("home-grants-note")).toContainText(
-    "İzinleri Medaris başnazımı"
-  );
+  await expect(
+    page.getByTestId("home-grants-note").filter({ visible: true })
+  ).toContainText("İzinleri Medaris başnazımı");
 
   // a screen that is not theirs
   await page.goto("/tr/izin-gruplari");
-  await expect(page.getByText("Bu bölüm için izniniz yok")).toBeVisible();
+  await expect(
+    page.getByText("Bu bölüm için izniniz yok").filter({ visible: true })
+  ).toBeVisible();
 
   // the başnazım takes the deck permission away: after a reload it is gone
   await fixture.revokePermission(
@@ -419,12 +431,12 @@ test("nizam/05 — a Medaris nazımı sees only the sections their permissions o
     sidebar(page).locator("a", { hasText: "Deste yayın istekleri" })
   ).toHaveCount(0);
   await expect(page.getByTestId("home-decks")).toHaveCount(0);
-  await expect(page.getByTestId("home-grants")).not.toContainText(
-    "Desteyi herkese yayımla"
-  );
-  await expect(page.getByTestId("home-greeting")).toContainText(
-    `Karar bekleyen ${counts.koskApplications} talep var.`
-  );
+  await expect(
+    page.getByTestId("home-grants").filter({ visible: true })
+  ).not.toContainText("Desteyi herkese yayımla");
+  await expect(
+    page.getByTestId("home-greeting").filter({ visible: true })
+  ).toContainText(`Karar bekleyen ${counts.koskApplications} talep var.`);
 });
 
 test("nizam/05 — Köşk aç is never drawn to a nazım, only to the başnazım (criterion 6)", async ({

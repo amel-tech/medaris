@@ -1,0 +1,1 @@
+ALTER TABLE "permission_grants" ADD COLUMN "authority_scope_type" "scope_type";

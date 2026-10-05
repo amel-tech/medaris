@@ -1,17 +1,17 @@
 import {
+  ASSIGNED_ROLES,
   AUTHZ_KEY,
   AUTHZ_PUBLIC_KEY,
   type AuthzMeta,
   type AuthzRequest,
   ENTITIES,
-  MATRIX,
-  ROLES,
-  SCOPES,
+  PERMISSIONS,
 } from "@medaris/common";
 import type { ModuleRef } from "@nestjs/core";
 import { CourseController } from "../../../src/course/course.controller";
 import { CourseRepository } from "../../../src/course/course.repository";
 import { CourseNotFoundError } from "../../../src/course/errors/course-not-found.error";
+import { permissionsOf, rolesHolding } from "../../helpers/authz-holders";
 import { recordingDatabase } from "../../helpers/recording-database";
 
 const COURSE_ID = "7c1d2e3f-4a5b-4c6d-8e7f-9a0b1c2d3e4f";
@@ -86,15 +86,14 @@ describe("GET /courses/:id/badge-counts authorization", () => {
     expect(Reflect.getMetadata(AUTHZ_PUBLIC_KEY, handler)).toBeUndefined();
   });
 
-  it("requires the scope of the course team and nobody below it", () => {
-    expect(meta.scope).toBe(SCOPES.MANAGE_ENROLLMENTS);
-    const holders = Object.entries(MATRIX[ENTITIES.COURSE])
-      .filter(([, scopes]) => scopes?.includes(meta.scope))
-      .map(([role]) => role)
-      .sort();
+  it("requires the course staff's read and nobody below it", () => {
+    expect(meta.permission).toBe(PERMISSIONS.COURSE_STAFF_READ);
     // A talebe (ENROLLED, PENDING), a stranger (PUBLIC) and a caller with no
-    // token (ANONYMOUS) get 403.
-    expect(holders).toEqual([ROLES.KOSK_MANAGER, ROLES.MUDERRIS].sort());
+    // token (ANONYMOUS) get 403. The Medaris nazımı, the medrese nazırı and the
+    // ders nazırı hold nothing here until a grant gives them some course work.
+    expect(rolesHolding(permissionsOf(meta), ENTITIES.COURSE)).toEqual(
+      [ASSIGNED_ROLES.KOSK_NAZIM, ASSIGNED_ROLES.MUDERRIS].sort()
+    );
   });
 
   describe("its resolver", () => {
