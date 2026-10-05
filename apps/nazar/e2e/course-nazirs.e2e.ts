@@ -250,9 +250,9 @@ test("the person appointed opens exactly the pages those two permissions allow (
   await page.setViewportSize(desktop);
   await page.goto(`/ders/${fixture?.second.id}/kayitlar`);
   // the user row's role line, not the menu's "Ders nazırları"
-  await expect(page.locator("aside .mds-nav-user__role")).toHaveText(
-    /^Ders nazırı(,|$)/
-  );
+  await expect(
+    page.locator("aside .mds-nav-user__role").filter({ visible: true })
+  ).toHaveText(/^Ders nazırı(,|$)/);
   // session.manage opens Celseler, Müfredat and Ders ayarları (PAGE_CODES),
   // recording.manage Ders kayıtları; neither opens the other three
   await expectPages(page, fixture?.second.id, {
