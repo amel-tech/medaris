@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.2.1](https://github.com/amel-tech/medaris/compare/nazar-web-v0.2.0...nazar-web-v0.2.1) (2026-10-05)
+
+
+### Features
+
+* **nazar-web, i18n:** MDRS-114 upload a recording to Bunny from Ders kayıtları ([#246](https://github.com/amel-tech/medaris/issues/246)) ([a2aebe3](https://github.com/amel-tech/medaris/commit/a2aebe374878368d9598a10448c00101a5baa351))
+
+
+### Bug Fixes
+
+* **nazar-web:** MDRS-258 navigate the shell by client router so the sidebar stays on screen ([#241](https://github.com/amel-tech/medaris/issues/241)) ([1c6eae6](https://github.com/amel-tech/medaris/commit/1c6eae6f60b3cdc378ab5c50a80051756587d3da))
+
+
+### Continuous Integration
+
+* **nazar-web:** MDRS-250 drop what is left of the nazir name ([#243](https://github.com/amel-tech/medaris/issues/243)) ([a2fd54c](https://github.com/amel-tech/medaris/commit/a2fd54c53127dd74c0f3e8544d5a25d75c96d3dd))
+
 ## [0.2.0](https://github.com/amel-tech/medaris/compare/nazir-web-v0.1.6...nazir-web-v0.2.0) (2026-09-28)
 
 
