@@ -97,6 +97,7 @@ describe("whether a page opens", () => {
       "session.live_link",
     ]);
     expect(PAGE_CODES.plan).toEqual(["session.manage"]);
+    expect(PAGE_CODES.nazirs).toEqual(["course_nazir.assign"]);
     expect(PAGE_CODES.curriculum).toEqual([
       "course.edit",
       "session.manage",
