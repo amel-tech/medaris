@@ -174,8 +174,11 @@ jobs:
       - name: Deploy to Coolify
         env:
           IS_PRODUCTION: ${{ github.event_name == 'release' && github.event.release.prerelease == false }}
-          DEV_WEBHOOK: ${{ secrets.NAZAR_WEB_COOLIFY_WEBHOOK }}
-          PROD_WEBHOOK: ${{ secrets.NAZAR_WEB_PROD_COOLIFY_WEBHOOK }}
+          # MDRS-250: the webhooks were created under the app's old name. The
+          # new names win once they exist; delete the NAZIR_WEB_* secrets and
+          # these two fallbacks together.
+          DEV_WEBHOOK: ${{ secrets.NAZAR_WEB_COOLIFY_WEBHOOK || secrets.NAZIR_WEB_COOLIFY_WEBHOOK }}
+          PROD_WEBHOOK: ${{ secrets.NAZAR_WEB_PROD_COOLIFY_WEBHOOK || secrets.NAZIR_WEB_PROD_COOLIFY_WEBHOOK }}
           COOLIFY_TOKEN: ${{ secrets.COOLIFY_DEPLOY_TOKEN }}
         run: |
           set -euo pipefail
