@@ -351,7 +351,10 @@ export function CurriculumEditor({
               </Button>
             ) : null}
             {can.hide ? (
-              <Button variant="ghost" href={`/ders/${course.id}/mufredat/gizle`}>
+              <Button
+                variant="ghost"
+                href={`/ders/${course.id}/mufredat/gizle`}
+              >
                 {t("Curriculum.hidePage")}
               </Button>
             ) : null}
