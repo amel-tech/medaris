@@ -23,7 +23,7 @@ export class RecordingResponse {
     type: String,
     nullable: true,
     description:
-      "Null unless the recording is READY. For a BUNNY recording it is Bunny's player link, `https://player.mediadelivery.net/embed/<libraryId>/<videoId>?token=<token>&expires=<unix seconds>`, signed for this response only and only for a caller allowed to see the recording (MDRS-116, MDRS-119); it plays until `expires` (6 hours by default, `BUNNY_STREAM_EMBED_TTL_SECONDS`), even if passed on. Any other provider's link is returned as stored: anyone holding it can open it, so for those our authorization decides who is shown the link, not who can play it.",
+      "Null unless the recording is READY. For a BUNNY recording it is Bunny's player link, `https://player.mediadelivery.net/embed/<libraryId>/<videoId>?token=<token>&expires=<unix seconds>`, signed for this response only and only for a caller allowed to see the recording (MDRS-116, MDRS-119); its player page opens until `expires` (6 hours by default, `BUNNY_STREAM_EMBED_TTL_SECONDS`), even if passed on; whether the stream behind it stops too depends on the library's CDN token authentication (docs/migration/mdrs-119-signed-playback.md). Any other provider's link is returned as stored: anyone holding it can open it, so for those our authorization decides who is shown the link, not who can play it.",
   })
   url!: string | null;
   @ApiProperty({ enum: RecordingVisibility, enumName: "RecordingVisibility" })

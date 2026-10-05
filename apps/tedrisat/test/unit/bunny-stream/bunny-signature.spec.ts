@@ -124,6 +124,9 @@ describe("encodingOutcome (MDRS-116)", () => {
 
   it("is READY once Bunny has finished, and FAILED on an error or a failed upload", () => {
     expect(encodingOutcome(4, expires, before)).toBe("READY");
+    // just-in-time encoding: playable once its playlists exist, not while segmenting
+    expect(encodingOutcome(8, expires, before)).toBe("READY");
+    expect(encodingOutcome(7, expires, before)).toBeNull();
     expect(encodingOutcome(5, expires, before)).toBe("FAILED");
     expect(encodingOutcome(6, expires, before)).toBe("FAILED");
   });
@@ -134,7 +137,7 @@ describe("encodingOutcome (MDRS-116)", () => {
   });
 
   it("keeps waiting on an upload that arrived and is still encoding, even past the lifetime", () => {
-    for (const status of [1, 2, 3, 7, 8]) {
+    for (const status of [1, 2, 3, 7]) {
       expect(encodingOutcome(status, expires, after)).toBeNull();
     }
   });

@@ -1,8 +1,8 @@
 # MDRS-119 — Signed Bunny playback and pasted-link detection (tedrisat)
 
-Stacked on MDRS-116 (`release/stack-mdrs-116-bunny-api`, PR #209). The
-recording table, the read endpoints, the `ACCESS_RECORDING` filter
-(`visibleRecordings`) and the Bunny client already exist on that base; this
+Follows MDRS-116 (PR #209, merged, ported to the permission catalogue of
+MDRS-135). The recording table, the read endpoints, the recordings filter
+(`visibleRecordings`) and the Bunny client already exist on main; this
 change covers what MDRS-119 still lacked on the read side, plus the pure link
 detector the write endpoints need. The write endpoints themselves are in
 Taha's open PR #202 and are not rewritten here.
@@ -22,6 +22,8 @@ Taha's open PR #202 and are not rewritten here.
   `https://player.mediadelivery.net/embed/<libraryId>/<videoId>?token=<t>&expires=<unix>`
   with `t = SHA256_HEX(token_key + video_id + expires)`. MDRS-116 used the
   `iframe.mediadelivery.net` host; the issue names `player.mediadelivery.net`.
+- **The encoding poll treats Bunny status 8 (JitPlaylistsCreated) as READY**, as Bunny's schema calls it playable
+  (status 7, JitSegmenting, still waits); the dev library has no just-in-time encoding and goes 2, 3, 4.
 - **Configurable expiry.** `TEDRISAT__BUNNY_STREAM_EMBED_TTL_SECONDS`
   (`BUNNY_STREAM_EMBED_TTL_SECONDS` inside the app): 21600 s (6 h) when unset,
   a whole number from 60 to 604800 otherwise; anything else stops the boot.
@@ -95,16 +97,42 @@ the same output, as
   read signs the same way; `GET /courses/:id` carries no recording data for any
   of six callers; Bunny's API is never called (stubbed transport).
 
+## Measured on a real dev library (5 October)
+
+A throwaway script (not in the repo) created a video in the dev library, uploaded a 3-second webm by TUS, polled it,
+asked for the embed page and the CDN files in several ways, and deleted the video. No library key is in any file
+of the repository. Results:
+
+| Request | Answer |
+| --- | --- |
+| TUS create with the hex `SHA256(library_id + api_key + expire + video_id)` | 201, then HEAD 200 and PATCH 204; a wrong signature is 401 |
+| encoding statuses | 2, 3, 4 within about 10 seconds (no just-in-time encoding on this library) |
+| embed page, unsigned | 403 |
+| embed page, signed and in date | 200 |
+| embed page, `expires` in the past, a wrong token, another video's token | 403 each |
+| playlist, a segment, `play_240p.mp4`, thumbnail, fetched with no `Referer` | 403 |
+| the same with **any** `Referer` value, including `https://evil.example/`, and with no token | 200 |
+
+So the embed token protects the player page, and only the page. The stream behind it is protected by "a Referer
+header must be present", which any client can send. A viewer who has seen a video once has its id (it is in the
+player link) and can keep fetching the playlist, the segments and the MP4 fallback after the link has expired,
+whatever tedrisat decides later. That is what Bunny's separate **CDN Token Authentication** is for (its security page
+says the embed token protects the iframe and that direct URLs, "MP4 fallbacks, HLS playlists and segments,
+thumbnails and previews", need the CDN token layer).
+
+## Owner-side setup the PR cannot do
+
+1. Library, Security: **Embed View Token Authentication** on, its key as `TEDRISAT__BUNNY_STREAM_TOKEN_KEY`.
+2. Library, Security: **CDN Token Authentication** on, and the **MP4 fallback** off.
+3. Re-run the same check after the owner flips them: the direct files must answer 403 without a token, and the embed
+   page must still play in a browser with the signed link (Bunny's own player is expected to sign the files it asks
+   for, not tested). Until then a saved video address plays without tedrisat's say.
+
 ## Not verified
 
-- **On the real Bunny library**: that an unsigned player URL answers 403 and
-  that a signed one stops after `expires` (and whether a video already playing
-  stops). No library or token key is available to this work; it is the
-  issue's manual acceptance criterion and an owner-side step.
-- The default of 6 hours was kept from MDRS-116; it was not tested against
-  Bunny's behaviour on expiry.
-- Remote CI did not run: GitHub Actions is locked by a billing issue on the
-  organisation. The local gates above are the evidence.
+- That Bunny's player still plays with CDN token authentication on (step 3 above), and whether a video already
+  playing stops at `expires`.
+- The default of 6 hours was kept from MDRS-116.
 
 ## Follow-ups
 
@@ -117,6 +145,5 @@ the same output, as
 - **#202 still enforces "a YouTube recording is PUBLIC only"**
   (`RecordingYoutubePublicOnlyError`). That contradicts the owner's
   3 October decision and should be removed there.
-- Owner-side: turn on embed token authentication on the library and set
-  `TEDRISAT__BUNNY_STREAM_TOKEN_KEY`; without it a Bunny link is unsigned and
-  plays for anyone holding it.
+- Owner-side: see "Owner-side setup the PR cannot do" above. Without the embed token key a Bunny link is unsigned
+  and plays for anyone holding it.
