@@ -7,7 +7,10 @@ import { curriculumErrorKey } from "~/features/curriculum/curriculum";
 import { enrolmentErrorKey } from "~/features/enrolments/enrolments";
 import { offsiteErrorKey } from "~/features/offsite/offsite";
 import { decisionErrorKey } from "~/features/pano/pano";
-import { recordingErrorKey } from "~/features/recordings/recordings";
+import {
+  recordingErrorKey,
+  uploadErrorKey,
+} from "~/features/recordings/recordings";
 import { sessionErrorKey } from "~/features/sessions/sessions";
 
 const locales = ["tr", "en", "ar"] as const;
@@ -200,6 +203,26 @@ describe("the nazar message catalogue", () => {
         "bunny-video-used",
         "something-new",
       ].map((reason) => recordingErrorKey("RECORDING_LINK_INVALID", reason)),
+      // Ders kayıtları's upload words a stop from its code, and a file from its problem.
+      ...[
+        "AUTHZ_FORBIDDEN",
+        "RECORDING_EXISTS",
+        "LESSON_NOT_FOUND",
+        "BUNNY_STREAM_NOT_CONFIGURED",
+        "BUNNY_STREAM_UNAVAILABLE",
+        "RECORDING_UPLOAD_CLOSED",
+        "RECORDING_UPLOAD_NOT_FOUND",
+        "VALIDATION_ERROR",
+        "UPLOAD_NOT_FOUND",
+        "UPLOAD_NETWORK",
+        "UPLOAD_REFUSED",
+        "UPLOAD_FAILED",
+        "SOMETHING_NEW",
+      ].map((code) => uploadErrorKey(code)),
+      uploadErrorKey("RECORDING_UPLOAD_CLOSED", "expired"),
+      ...["type", "size", "empty"].map(
+        (problem) => `Recordings.upload.errors.${problem}`
+      ),
       ...["processing", "ready"].map((state) => `Recordings.state.${state}`),
       ...["public", "enrolled"].map(
         (visibility) => `Recordings.visibility.${visibility}`
@@ -270,6 +293,8 @@ describe("the nazar message catalogue", () => {
       session: "Hafta 2",
       recorded: 3,
       missing: 1,
+      size: "1,2 GB",
+      sent: "512 MB",
     };
     const sections = [
       "Students",

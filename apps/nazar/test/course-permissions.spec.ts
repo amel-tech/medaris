@@ -73,6 +73,9 @@ describe("whether a page opens", () => {
     expect(
       pageGate([course], ok(set("recording.manage")), PAGE_CODES.recordings)
     ).toBe("ok");
+    expect(
+      pageGate([course], ok(set("recording.upload")), PAGE_CODES.recordings)
+    ).toBe("ok");
   });
 
   it("is forbidden when the caller holds none of them, however much else", () => {
@@ -99,7 +102,11 @@ describe("whether a page opens", () => {
       "session.manage",
       "week.hide",
     ]);
-    expect(PAGE_CODES.recordings).toEqual(["recording.manage"]);
+    // Ders kayıtları: pasting a link asks the first, uploading to Bunny the second
+    expect(PAGE_CODES.recordings).toEqual([
+      "recording.manage",
+      "recording.upload",
+    ]);
     expect(PAGE_CODES.students).toEqual([
       "course.staff_read",
       "enrollment.decide",

@@ -9,11 +9,13 @@ import { linkProblem, sendableLink } from "../sessions/sessions";
  * Ders kayıtları as rules: a course's sessions with the recording each one
  * holds, what the add and edit form check before anything is sent, what each
  * write sends, and which sentence a refusal gets. Pure on purpose, so the
- * page and the form have nothing to decide. A session holds one recording; on
- * this page it is a pasted link, never an upload. tedrisat reads the link
- * (`detectRecordingLink`) and is the authority: the host rule here only lets
- * the form name the provider while the link is typed, and a link tedrisat
- * refuses comes back as a reason the page words.
+ * page and the form have nothing to decide. A session holds one recording: a
+ * pasted link, or a video uploaded to Bunny Stream from the browser
+ * (`bunny-upload.ts`), which is PROCESSING until tedrisat's encoding poll
+ * sees Bunny finish. tedrisat reads a pasted link (`detectRecordingLink`) and
+ * is the authority: the host rule here only lets the form name the provider
+ * while the link is typed, and a link tedrisat refuses comes back as a reason
+ * the page words.
  */
 
 export const recordingsHref = (courseId: string): string =>
@@ -163,6 +165,20 @@ export const chipOf = (
       ? "google-drive"
       : null;
 
+/**
+ * A Bunny upload not READY yet: its bytes may still be on their way (then the
+ * one who uploads can continue it) or Bunny is encoding it. Only these rows
+ * move on their own, when tedrisat's poll sees Bunny finish; a pasted link
+ * that is PROCESSING waits for someone to edit it.
+ */
+export const bunnyPending = (slot: SessionSlot): boolean =>
+  slot.recording?.provider === "BUNNY" &&
+  slot.recording.status === "PROCESSING";
+
+/** Whether the page has a Bunny upload to wait for, so it is read again until none is left. */
+export const anyBunnyPending = (blocks: readonly WeekBlock[]): boolean =>
+  blocks.some((block) => block.slots.some(bunnyPending));
+
 // ---- the form ---------------------------------------------------------------------
 
 /** What the add and edit form holds. */
@@ -281,6 +297,46 @@ export function patchBody(
   return Object.keys(body).length > 0 ? body : null;
 }
 
+/**
+ * The body of "Yükle": the title, who may watch, and the session's time as
+ * when it was recorded (what tedrisat sets for a pasted link). Null while the
+ * title is empty; the link is not this tab's.
+ */
+export function uploadBody(
+  form: RecordingForm,
+  slot: Pick<SessionSlot, "startsAt">
+): { title: string; visibility: Visibility; recordedAt?: string } | null {
+  if (!form.title.trim()) return null;
+  return {
+    title: form.title.trim(),
+    visibility: form.isPublic ? "PUBLIC" : "ENROLLED",
+    ...(slot.startsAt ? { recordedAt: slot.startsAt } : {}),
+  };
+}
+
+const BYTE_UNITS = ["byte", "kilobyte", "megabyte", "gigabyte"] as const;
+
+/** A file's size in the page's language, in the largest decimal unit under it: "1,2 GB". */
+export function formatBytes(bytes: number, locale: string): string {
+  let value = Math.max(0, bytes);
+  let unit = 0;
+  while (value >= 1000 && unit < BYTE_UNITS.length - 1) {
+    value /= 1000;
+    unit += 1;
+  }
+  const options: Intl.NumberFormatOptions = {
+    style: "unit",
+    unit: BYTE_UNITS[unit],
+    unitDisplay: "short",
+    maximumFractionDigits: unit < 2 ? 0 : 1,
+  };
+  try {
+    return new Intl.NumberFormat(locale, options).format(value);
+  } catch {
+    return new Intl.NumberFormat("tr-TR", options).format(value);
+  }
+}
+
 // ---- what the API refuses -----------------------------------------------------------
 
 /** tedrisat's reasons for a link it cannot store (`RECORDING_LINK_INVALID`), and their message keys. */
@@ -344,3 +400,64 @@ export const recordingsMoved = (code: string): boolean =>
   code === "LESSON_CANCELLED" ||
   code === "LESSON_NOT_FOUND" ||
   code === "RECORDING_NOT_FOUND";
+
+/**
+ * The message key of an upload that stopped: a refusal of tedrisat's upload
+ * routes by its code (and, for one it will not sign again, its reason), or
+ * what happened between the browser and Bunny (`tusFailureCode`).
+ */
+export function uploadErrorKey(
+  code: string,
+  reason: string | null = null
+): string {
+  switch (code) {
+    case "AUTHZ_FORBIDDEN":
+      return "Problems.actionForbidden";
+    case "RECORDING_EXISTS":
+      return "Recordings.errors.exists";
+    case "LESSON_NOT_FOUND":
+      return "Recordings.errors.gone";
+    case "BUNNY_STREAM_NOT_CONFIGURED":
+      return "Recordings.upload.errors.notConfigured";
+    case "BUNNY_STREAM_UNAVAILABLE":
+      return "Recordings.upload.errors.unavailable";
+    case "RECORDING_UPLOAD_CLOSED":
+      return reason === "expired"
+        ? "Recordings.upload.errors.expired"
+        : "Recordings.upload.errors.closed";
+    case "RECORDING_UPLOAD_NOT_FOUND":
+      return "Recordings.upload.errors.closed";
+    case "VALIDATION_ERROR":
+      return "Recordings.upload.errors.invalid";
+    case "UPLOAD_NOT_FOUND":
+      return "Recordings.upload.errors.notFound";
+    case "UPLOAD_NETWORK":
+      return "Recordings.upload.errors.network";
+    case "UPLOAD_REFUSED":
+      return "Recordings.upload.errors.refused";
+    case "UPLOAD_FAILED":
+      return "Recordings.upload.errors.failed";
+    default:
+      return "Problems.actionGeneric";
+  }
+}
+
+/** Whether a stopped upload means the page was out of date, so it is read again behind the dialog. */
+export const uploadMoved = (code: string): boolean =>
+  code === "RECORDING_EXISTS" ||
+  code === "LESSON_NOT_FOUND" ||
+  code === "RECORDING_UPLOAD_CLOSED" ||
+  code === "RECORDING_UPLOAD_NOT_FOUND";
+
+/**
+ * Whether "Devam et" can continue a stopped upload: the video exists and what
+ * stopped it was between the browser and Bunny, not a refusal of tedrisat's.
+ */
+export const uploadContinues = (
+  code: string,
+  videoId: string | null
+): boolean =>
+  videoId !== null &&
+  (code === "UPLOAD_NETWORK" ||
+    code === "UPLOAD_REFUSED" ||
+    code === "UPLOAD_FAILED");
