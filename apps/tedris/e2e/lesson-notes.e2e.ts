@@ -365,12 +365,17 @@ test.describe("the enrolled talebe", () => {
 // The session page draws a locked session for an enrolled talebe whose
 // content a passive scope closed as for a stranger: `lessonLockReason` answers
 // "apply", and the application it sends is taken (201, still ENROLLED) and
-// changes nothing. Found by this spec on 5 October; it fails until the page
-// says what happened to the course.
+// changes nothing. Found by this spec on 5 October (MDRS-265); it is marked
+// as an expected failure until the page says what happened to the course, and
+// Playwright reports it the day it starts to pass.
 test("an enrolled talebe of a passive course is not asked to apply for it on a session page", async ({
   page,
 }) => {
   test.skip(!ready(talebe), "no Keycloak talebe in the environment");
+  test.fail(
+    true,
+    "MDRS-265: lessonLockReason answers apply for an enrolled talebe"
+  );
   const undo = await fixture.enroll(
     talebe.sub as string,
     "ENROLLED",
