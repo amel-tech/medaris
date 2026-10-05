@@ -16,7 +16,9 @@ there unchanged from the medrese repository (which imports it back). `KADEME` is
 `madrasah-permission.service.ts` instead of being copied. Three error classes take an optional message
 (codes and today's messages unchanged): `GrantCourseInvalidError`, `CourseNazirNotFoundError`,
 `PermissionNotGivableError`. The köşk route's `postHolder` and `lockPost` gain
-`isNull(courses.madrasahId)`. No migration, no catalogue change (`libs/common` untouched).
+`isNull(courses.madrasahId)`, and its `revoke` asks `assertNothingLeftUnder` (rule 19). A new
+`CourseNazirBarredError` (409 `COURSE_NAZIR_BARRED`). No migration, no catalogue change (`libs/common`
+untouched).
 
 Every route carries `@Authz(PERMISSIONS.COURSE_NAZIR_ASSIGN, byExistingCourse)`; `:postId` goes through
 `ParseUUIDPipe`. Names as generated in `libs/services` (`CoursesApi`):
@@ -24,7 +26,7 @@ Every route carries `@Authz(PERMISSIONS.COURSE_NAZIR_ASSIGN, byExistingCourse)`;
 | Method and path | operationId | Request | Answer | Refusals |
 | --- | --- | --- | --- | --- |
 | `GET /courses/:id/nazirs` | `getCourseNazirs` | `GetCourseNazirsRequest { id }` | 200 `CourseNazirsResponse` | 403 `AUTHZ_FORBIDDEN`; 404 `COURSE_NOT_FOUND` |
-| `POST /courses/:id/nazirs` | `createCourseNazir` | `CreateCourseNazirRequest { id, createCourseNazirDto }` | 201 `CourseNazirsResponse` | 400 `VALIDATION_ERROR`, `PERMISSION_UNKNOWN`, `GRANT_EXPIRY_INVALID`, `GRANT_COURSE_INVALID`; 403 `AUTHZ_FORBIDDEN`, `SELF_GRANT_REFUSED`, `PERMISSION_NOT_GIVABLE`, `GRANT_EXCEEDS_GIVER`; 404 `COURSE_NOT_FOUND`, `COURSE_NAZIR_UNKNOWN_ACCOUNT`; 409 `COURSE_NAZIR_EXISTS`, `COURSE_NAZIR_HOLDS_SEAT`; 503 `KEYCLOAK_ADMIN_UNAVAILABLE` |
+| `POST /courses/:id/nazirs` | `createCourseNazir` | `CreateCourseNazirRequest { id, createCourseNazirDto }` | 201 `CourseNazirsResponse` | 400 `VALIDATION_ERROR`, `PERMISSION_UNKNOWN`, `GRANT_EXPIRY_INVALID`, `GRANT_COURSE_INVALID`; 403 `AUTHZ_FORBIDDEN`, `SELF_GRANT_REFUSED`, `PERMISSION_NOT_GIVABLE`, `GRANT_EXCEEDS_GIVER`; 404 `COURSE_NOT_FOUND`, `COURSE_NAZIR_UNKNOWN_ACCOUNT`; 409 `COURSE_NAZIR_EXISTS`, `COURSE_NAZIR_HOLDS_SEAT`, `COURSE_NAZIR_BARRED`; 503 `KEYCLOAK_ADMIN_UNAVAILABLE` |
 | `PATCH /courses/:id/nazirs/:postId` | `updateCourseNazir` | `UpdateCourseNazirRequest { id, postId, updateCourseNazirDto }` | 200 `CourseNazirsResponse` | 400 `VALIDATION_ERROR`, `PERMISSION_UNKNOWN`, `GRANT_EXPIRY_INVALID`; 403 `AUTHZ_FORBIDDEN`, `SELF_GRANT_REFUSED`, `PERMISSION_NOT_GIVABLE`, `GRANT_EXCEEDS_GIVER`; 404 `COURSE_NOT_FOUND`, `COURSE_NAZIR_NOT_FOUND` |
 | `DELETE /courses/:id/nazirs/:postId` | `revokeCourseNazir` | `RevokeCourseNazirRequest { id, postId }` | 204 | 403 `AUTHZ_FORBIDDEN`, `PERMISSION_NOT_GIVABLE`, `NAZIR_NOT_APPOINTED_BY_YOU`; 404 `COURSE_NOT_FOUND`, `COURSE_NAZIR_NOT_FOUND`; 409 `DISMISS_SEAT_HANDED_ON` |
 
@@ -80,13 +82,20 @@ Recorded by the owner (decision box, Linear, memory):
     memory "self-grant and self-appointment stay refused for everyone but SYSTEM_ADMIN".
 12. One held post per person per course (409 `COURSE_NAZIR_EXISTS`). MDRS-270 item 1.
 13. Post and permissions end together at one optional `endsAt`; at or before now is 400. d-1001-24,
-    d-1004-31, d-1004-33 parked at its default `bugunku-gibi` (no cap by the giver's own end).
+    d-1004-31, d-1004-33 parked at its default `bugunku-gibi` (no cap by the giver's own end). The date is
+    read strictly: an impossible day ("2027-02-30T10:00:00Z") is 400 `VALIDATION_ERROR`, a string `Date`
+    cannot read (ISO's basic format "20271231") 400 `GRANT_EXPIRY_INVALID`.
 14. The account must exist in the app or the realm (404 `COURSE_NAZIR_UNKNOWN_ACCOUNT`); a directory that
     does not answer is 503, never "unknown". MDRS-270 "a person with an account".
 19. Ending a ders nazırı whose appointees still hold their posts is refused (409 `DISMISS_SEAT_HANDED_ON`,
-    through `assertNothingLeftUnder`), nothing written. d-1001-23, d-1004-13 "Reddet ve listele".
+    through `assertNothingLeftUnder`), nothing written, on the course route and on the köşk route
+    (`DELETE /kosks/:id/grants/:grantId`, nizam/38, which words the code). d-1001-23, d-1004-13 "Reddet
+    ve listele".
 21. Every appoint, change and end writes one audit row in the same transaction (`course_nazir.assign`,
     `.update`, `.revoke`, `details.via = "course"`, with the standing and the authority). MDRS-133/135 §8.
+    The assign row names the lapsed posts it closed (`revokedLapsedPosts`) beside the leftover grants;
+    the update row keeps the post's previous end (`previousEndsAt`), so a post with no permission still
+    shows what its end was.
     A Medaris nazımı's appointment shows in the başnazım's `GET /nizam/medaris-nazims/:id/given` with no
     extra code (it reads `role_assignments.granted_by`).
 
@@ -112,6 +121,11 @@ Recorded by the owner (decision box, Linear, memory):
     non-opener from handing on content codes.
 20. Removing a müderris who appointed ders nazırları is MDRS-201; every post keeps `granted_by` and every
     row its authority for it.
+29. (review) A person an open ban bars from the course (a course ban, its köşk's, its medrese's) is not
+    made its ders nazırı, whoever asks: 409 `COURSE_NAZIR_BARRED`, nothing written. A DERS_NAZIR post is
+    in `RUNS_COURSE_ROLES`, so its holder cannot be barred; without this an appointer could seat again,
+    at once, a talebe the müderris had just ended and barred. Ending the post before the ban stays the
+    way (the ban route's 400 `BAN_TARGET_INVALID` is unchanged); see R5.
 - `UpdateCourseNazirDto.endsAt` is required (a date-time or `null`), so an edit that forgets it cannot
   silently lift an end.
 
@@ -127,6 +141,16 @@ Recorded by the owner (decision box, Linear, memory):
    generated file: release 0.2.1 (#137) bumped `apps/tedrisat/package.json` after the last
    regeneration, and the exporter writes that version. Apart from that line the client changes only in
    `CoursesApi` (four operations), five new models, `models/index.ts`, `FILES` and the README.
+6. `DELETE /kosks/:id/grants/:grantId` answers 409 `DISMISS_SEAT_HANDED_ON` (nothing written) for a ders
+   nazırı whose appointees, made from the course, still hold their posts; before, the dismissal went
+   through and left them with no seat behind them.
+7. `POST /courses/:id/nazirs` answers 409 `COURSE_NAZIR_BARRED` for an account an open ban bars from the
+   course.
+8. `endsAt` on both course routes is read strictly (rule 13): an impossible day is 400 `VALIDATION_ERROR`,
+   ISO's basic format 400 `GRANT_EXPIRY_INVALID`; before, the first was stored rolled over and the second
+   was a 500.
+9. Audit details gain `revokedLapsedPosts` (`course_nazir.assign`) and `previousEndsAt`
+   (`course_nazir.update`).
 
 ## Tests
 
@@ -201,6 +225,43 @@ when only one of the engine's drop and the giver-level filter is removed (U3 rem
 | a medrese's course as well as a köşk's own | "a medrese course (rule 7)" (R3), kosk-grants rule 8 (K1) |
 | settings page draws no button the API refuses | "lists the settings abilities a müderris holds …" (A9a, A9b) |
 
+### Review fixes on the integrated branch
+
+The review of `taha/mdrs-270-nazar-course-nazirs-settings` found the gaps below. Each test was seen red
+first (the scenario reproduced) or, for a rule that held but had no test, red with its line put back by
+`mutate.py` (file restored after the run); every count is from the run's summary line.
+
+| Finding | Test | Red |
+| --- | --- | --- |
+| the köşk route ended a ders nazırı whose appointees held their posts | kosk-grants "refuses to end a ders nazırı whose appointees still hold their posts (409 DISMISS_SEAT_HANDED_ON), as the course route does"; nizam `kosk-grants.spec.tsx` "maps the API's codes …" | before the fix: `expected 409 "Conflict", got 204 "No Content"`; nizam: `expected 'errors.generic' to be 'errors.handedOn'` |
+| an appointer could seat again a talebe the müderris had ended and barred | course-nazirs "refuses an account barred from the course, so an appointer cannot seat again whom the müderris barred (409 COURSE_NAZIR_BARRED)" | before the fix: `expected 409 "Conflict", got 201 "Created"` (the ban route's 400 and the ban itself passed) |
+| `endsAt` "20271231" was a 500, "2027-02-30…" was stored as 2 March | course-nazirs "refuses an end that names no instant (a basic-format date, 30 February), on POST and on PATCH" | before the fix: `expected 400 "Bad Request", got 500 "Internal Server Error"` (`RangeError: Invalid time value`) |
+| the update row lost the post's old end; the assign row did not name a lapsed post it closed | course-nazirs "takes the end away with null …", "does not revive a permission left open …" | before the fix: both `expected { via: 'course', … } to match object …` |
+| DELETE of a role that is no post, PATCH/DELETE of a lapsed post: untested | "cannot end a role that is no ders nazırı post: the müderris's seat stays, with his grants"; "cannot change nor end a post whose end has passed but that was never revoked (404)" | `postIn` without the role filter: 2 of 38 (`expected 404 "Not Found", got 204 "No Content"`); without `isHeld()`: 2 of 38 (`… got 200 "OK"`) |
+| the PATCH ceiling for a code given anew and for time beside a higher row: untested | "holds a code added on a passive course to what the başmüderris holds (403 GRANT_EXCEEDS_GIVER), writing nothing"; "holds the time added beside a başnazım-made row to what the başmüderris holds on a passive course (403), writing nothing" | without `...plan.insert`: 1 of 38; without `...plan.extendAlongside`: 1 of 38 (both `expected 403 "Forbidden", got 200 "OK"`) |
+| a lead moved later in place: giver and level untested | "moves a lead row later in place in the actor's name and at their level" | the two fields left out of the `.set()`: 1 of 38 (`expected { …(12) } to match object { …(4) }`) |
+| `mayEdit` false on a giver's own post: untested at the API | "offers a giver who holds a post no change of their own row, which the self guard would refuse" | `mayEdit: giver` alone: 1 of 38 (`expected { …(2) } to deeply equal { …(2) }`) |
+
+After the fixes: `course-nazirs` 38 passed (38); with `kosk-grants`, `self-grant`, `authz-engine`
+143 passed (143); `madrasah`, `grant-ceiling-cascade`, `madrasah-nazir`, `course-my-permissions` 93 passed
+(93); `authz-route-inventory` 1 passed (1), unchanged; `vitest run test/unit` 81 files, 1098 passed
+(1098); OpenAPI "186 paths, identical" after the regeneration.
+
+Looked at and left, with the reason:
+
+- The köşk route's `planGrants` keeps the first row per code and retimes it in place, so a köşk-route save
+  revokes the row the course route wrote beside a başnazım-made one and lengthens the başnazım's row at
+  its platform authority (R1). Fixing it means moving the köşk route onto `planPostGrants` and the
+  ceiling, a change of nizam/38's behaviour; not done here.
+- Standing is read before the write transaction, so an appointment racing the appointer's own dismissal
+  can land under a dismissed appointer (R8). Closing it needs a lock on the appointer's seats inside
+  `assign`; no test can show it without a forced interleaving.
+- 403 `AUTHZ_FORBIDDEN` before the service's 404 for a draft or hidden course: every `byExistingCourse`
+  route answers so (it needs the id), not a rule of these routes.
+- A başmüderris who is also the nazımı of the hosting köşk hands on content codes on a passive medrese
+  course (R10): the ceiling is what he holds there (rule 5, "tavan kazanır"), and the engine opens a
+  passive course of his köşk to the köşk nazımı.
+
 ## Where the design note and the code differed
 
 - "Keep `longestRunning`'s existing cases passing from its new home": it had no unit cases; the medrese
@@ -223,7 +284,9 @@ when only one of the engine's drop and the giver-level filter is removed (U3 rem
 ## Risks that stay
 
 - R1 Two write paths on one post: the köşk route still edits köşk-course posts with its old in-place
-  retime (it can lengthen a başnazım-made row at the köşk's authority). Pre-existing, not fixed here.
+  retime. It lengthens a başnazım-made row keeping its platform authority (so the row still outlives a
+  köşk policy), and a köşk-route save revokes the row the course route wrote beside it. Pre-existing, not
+  fixed here.
 - R2 No link column between a post and its grants: change and end act on every course grant of the holder
   in the course. Rule 11 makes those exactly the post's for every post this route creates; a seat given
   to the person later is ended with the post, the conservative direction.
@@ -231,7 +294,18 @@ when only one of the engine's drop and the giver-level filter is removed (U3 rem
 - R4 A Medaris nazımı given `course_nazir.assign` for every course reads every course's list (names,
   e-mails, unaudited) and appoints anywhere with no permission; each appointment is listed to the
   başnazım.
-- R5 Any role holder passes `GET /users/lookup` (d-1004-09 "şimdilik dursun"); an appointee with no
-  permission can search e-mails (audited).
+- R5 The DERS_NAZIR post carries role-keyed powers no permission governs, even with no permission: its
+  holder passes `GET /users/lookup` (d-1004-09 "şimdilik dursun"; audited) and cannot be barred from the
+  course (`RUNS_COURSE_ROLES`, a course or köşk ban placed from it is 400 `BAN_TARGET_INVALID`). An
+  appointer can therefore shield an enrolled talebe until a giver ends the post; rule 29 keeps the ban
+  standing once placed.
+- R8 Standing is read before the write: an appointment by a ders nazırı racing their own dismissal can
+  commit after `assertNothingLeftUnder` ran, leaving a post under a dismissed appointer.
+- R9 An appointer learns from 409 `COURSE_NAZIR_HOLDS_SEAT` whether an id holds a seat over the course
+  (a Medaris nazımı included) and from 404 `COURSE_NAZIR_UNKNOWN_ACCOUNT` whether it is an account; the
+  refusals write no audit row.
+- R10 The ceiling counts every seat: a başmüderris who is also the köşk nazımı hands on, in a passive
+  medrese course of his köşk, content codes a başmüderris alone could not (rule 7 keeps the köşk nazımı
+  alone out; it does not trim a giver's ceiling).
 - R7 A Kaydet that lengthens a content code a başmüderris on a passive course no longer holds meets
   `GRANT_EXCEEDS_GIVER` (tested); the screen words it.

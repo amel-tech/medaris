@@ -28,7 +28,8 @@ path says otherwise.
   - `components/course-settings-page.tsx` (server): reads the course and `my-permissions`, gates the page,
     draws the header with "Tanıtım sayfasını gör" (`${TEDRIS_URL}/tr/courses/<id>`, a new tab, only when
     `TEDRIS_URL` is set), the form on the left and the Yayın card on the right (the two-column layout of
-    Medrese ayarları). The form is keyed by the course version.
+    Medrese ayarları). The form is keyed by the stored values it shows (not by the version, since the
+    review): a read that only moved the version, as "Yayımla" does, keeps what is being changed.
   - `components/course-settings-form.tsx` (client): Kapalı ders and Kayıt onayı gereksin as bordered
     checkboxes (they wait for Kaydet), Örnek ders and Saat dilimi as selects, Vazgeç and Kaydet.
   - `components/course-publish-card.tsx` (client): Yayında/Taslak, "Yayımla" at once, "Taslağa çek" after
@@ -80,8 +81,9 @@ no sample rather than two. Then one `PATCH /courses/:id` carries only `isClosed`
 unchanged `requiresApproval: false` under a policy would be 409 `PLATFORM_POLICY_LOCKED`. The PATCH takes no
 version (the last save wins). A refusal is worded from its code in a toast that stays
 (`AUTHZ_FORBIDDEN` "Bunu yapma izniniz yok.", `PLATFORM_POLICY_LOCKED` "Bir politika bu değişikliği
-kilitliyor; ayar değiştirilmedi.", `COURSE_VERSION_CONFLICT` nizam's "Ders, bu sayfayı açtığınızdan beri
-başkası tarafından kaydedildi. …", `VALIDATION_ERROR` "Bu değer kaydedilemez. …", anything else nizam's
+kilitliyor; ayar değiştirilmedi.", `COURSE_VERSION_CONFLICT` "Ders, bu sayfayı açtığınızdan beri
+başkası tarafından kaydedildi; ayarlar yeniden okundu. Yeniden deneyin." (the page is read again, so the
+next Kaydet carries the new version), `VALIDATION_ERROR` "Bu değer kaydedilemez. …", anything else nizam's
 generic sentence). When the second sample write fails after the first one succeeded, the toast says
 "Örnek ders kaydedilemedi; şu an bu dersin örnek dersi yok." A save that wrote part of the change reads the
 page again, so the form shows what is stored.
@@ -103,6 +105,12 @@ page again, so the form shows what is stored.
 - Every save bumps the course version, as any `PATCH /courses/:id` does: a Müfredat form open in another
   tab answers its next save with the existing conflict message and reloads.
 - A course settings change writes no audit row (today's behaviour), and the page claims none.
+- "Yayımla" and "Taslağa çek" keep a change in the form that is not saved yet (the read after them only
+  moves the version). A save refused for a stale version reads the page again instead of leaving Kaydet to
+  send the same version until the browser is reloaded.
+- For the başnazım with no seat, a view of this page writes three audit rows: two `course.content_read`
+  (the layout's course read and the page's) and one `course.roster_read` (the menu's badge counts); see
+  `mdrs-270-nazar-nazirlar.md`.
 
 ## Decided by default, owner may overrule
 
@@ -132,8 +140,9 @@ page again, so the form shows what is stored.
   `course.settings` and `course.publish` opens a control, so a page with nothing open is always one
   whose caller lacks `course.edit`. Both sentences are drawn then.
 - The doc is `mdrs-270-nazar-ayarlar.md`, as the assignment names it.
-- S6 (a "Nazar'da aç" link on nizam's course overview for the başnazım) is not in this branch: the
-  assignment keeps it to `apps/nazar` and `libs/i18n`.
+- S6 (a "Nazar'da aç" link on nizam's course overview for the başnazım) was not in this branch: the
+  assignment kept it to `apps/nazar` and `libs/i18n`. The review added it on the integrated branch
+  (`mdrs-270-nazar-nazirlar.md`), pointing at the course's Ders nazırları, whose menu leads here.
 
 ## Tests
 
@@ -186,6 +195,15 @@ after the run), the specs run, and the tests that went red. Every one of them is
 M20 first stayed green (7 passed (7)): the actions spec checked the sample body only with
 `isPreview: true`. The stale-page case now checks the unmarking body too, and M20 went red; that fix is
 its own commit.
+
+### Review fixes on the integrated branch
+
+| Finding | Test | Red before the fix |
+| --- | --- | --- |
+| "Yayımla" remounted the form (keyed by the version) and dropped an unsaved change | page spec "keeps a change not yet saved when the course is read again with only a new version, as after 'Yayımla'" (renders the page again into the same root; `rerender` joins `test/dom.tsx`) | `expected false to be true` at the tick after the version-8 read (1 failed) |
+| a stale version on the sample write kept Kaydet sending it | form spec "words a stale page from its code when the first write is refused, keeps the form and reads the page again" | 1 failed, at the new sentence (the `refresh` assertion follows it) |
+
+After: `course-settings-page`, `course-settings-form`, `course-settings`, `messages` 53 passed (53).
 
 ### Criterion → test
 

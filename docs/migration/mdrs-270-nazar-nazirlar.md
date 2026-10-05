@@ -19,11 +19,24 @@ holds none. Now, when a `/ders/<id>/…` page names a course outside the caller'
   scope for that page (role label "Medaris başnazımı", the course's own id and title). The frame gets his
   own scopes plus this one, his own roles (or `SYSTEM_ADMIN` when he holds none), and `remember={false}`,
   so `/` is never sent back to it: `/` still answers `/erisim-yok` for a başnazım with no seat.
-- the course read fails or is refused → the shell's retry state ("Görevleriniz okunamadı").
+- the course read fails or is refused, or `GET /me` itself fails → the shell's retry state ("Görevleriniz
+  okunamadı"): a failed read is never a verdict about access.
 - anyone else → `none`, and today's path: 404 for a scope not theirs, `/erisim-yok` with none. No course
   is read for them.
-- a course that does not exist → the portal's 404 (`readOnce`'s `notFound()`), as for anyone.
+- a course that does not exist, or an address that names no course id → the portal's 404, as for anyone
+  (the malformed id is not read: the route would answer 400, which no retry mends).
 - a `/medrese/<id>` page is never opened this way.
+
+The frame of such a course links to "Bildirimler" and, from his name, to `/hesap`. Those pages sit outside
+any scope, where a person with no scope was sent to `/erisim-yok`; for the başnazım
+(`adminOutsideScopes`) they now open in the frame without a scope (brand and person, as on nazir 02),
+and the retry state answers a `GET /me` that failed. Anyone else with no scope is sent on as before.
+
+From nizam: the course overview (nizam/53) offers the başnazım "Nazar’da aç", a link to the course's
+Ders nazırları in nazar, in a new tab (`nazarCourseHref`; drawn only for `roles.systemAdmin` and only
+while `NAZAR_URL` is set). This is design rule 27 (S6), added by the review: the request was "nizam'da
+bulamadım". It points at `/ders/<id>/nazirlar` rather than `/ders/<id>`, whose genel bakış is still the
+placeholder.
 
 **The page** (`app/ders/[dersId]/nazirlar/{page,loading}.tsx`, `features/course-nazirs/`), which wins
 over the placeholder `[bolum]` for `nazirlar`. The menu entry existed (`nav.ts`, untouched).
@@ -74,18 +87,29 @@ reads the list again, which then shows who must go first.
 
 1. `/ders/<id>/nazirlar` is a page, not "Bu sayfa henüz hazır değil.".
 2. The başnazım opens any `/ders/<id>/…` page by its address, with "Medaris başnazımı" on the user row and
-   the course in the picker for that page; before, a 404 (or `/erisim-yok` with no seat at all). Each such
-   page costs one more `GET /courses/:id`, a content read: for the başnazım it writes one more
-   `course.content_read` audit row than the page itself does (he is audited as `systemAdmin: true`).
+   the course in the picker for that page; before, a 404 (or `/erisim-yok` with no seat at all). He is
+   audited as `systemAdmin: true`, and each such page writes, beyond what the page itself writes, one
+   `course.content_read` row (the layout's `GET /courses/:id`) and one `course.roster_read` row (the
+   menu's `GET /courses/:id/badge-counts`, `via: "badge-counts"`). Ders nazırları itself writes none
+   (its list reads no content), so a view of it is those two rows; Ders ayarları reads the course again,
+   so a view of it is three (two `course.content_read`, one `course.roster_read`).
 3. Nobody else gains a scope; `/` behaves as before for everyone, the başnazım included.
+4. `/hesap` and `/bildirimler` open to the başnazım with no seat (they sent him to `/erisim-yok`).
+5. nizam's course overview shows the başnazım "Nazar’da aç" (nobody else, and only with `NAZAR_URL`).
+6. In the dialog and the list, `course_nazir.assign` reads "Ders nazırı ata; atadığı kişiye izin
+   veremez", not the account page's "… izin ya da grup ver, kendi izinlerinizi aşmadan": given, it
+   appoints only (d-1001-07, MDRS-133 "No re-delegation"), and the API refuses any code from such a
+   holder (403 `PERMISSION_NOT_GIVABLE`). The account page and the medrese pages keep their sentence.
+7. 409 `COURSE_NAZIR_BARRED` (an account an open ban bars from the course) is worded "Bu kişi bu
+   dersten yasaklı; ders nazırı yapılamaz."; `COURSE_NAZIR_HOLDS_SEAT` now names the Medaris post too.
 
 ## Decided by default, owner may overrule
 
 1. **Single codes only, no course permission groups** (design rule 16): MDRS-270's text lists list,
    appoint, change and end; d-1004-11's course groups stay with MDRS-123.
-2. **The başnazım enters nazar's course pages by address only** (rule 26; d-1001-06 "medaris başnazımı
-   nazir'e girebilir ama nazir bir partner portalı gibidir"). `/` still sends him to `/erisim-yok`; no
-   list of every course is built for him. A başmüderris who is not the course's müderris, and a köşk
+2. **The başnazım enters nazar's course pages by address** (rule 26; d-1001-06 "medaris başnazımı
+   nazir'e girebilir ama nazir bir partner portalı gibidir"), and nizam's course overview gives him the
+   address (rule 27). `/` still sends him to `/erisim-yok`; no list of every course is built for him. A başmüderris who is not the course's müderris, and a köşk
    nazımı, are not admitted by this change (they appoint through the API; the köşk nazımı works in nizam).
 3. **The forbidden state keeps nazar's existing body** (`Problems.forbidden`, which names the medrese's
    başmüderris), as the MDRS-247 course pages do (rule 28); a course-scope wording is a follow-up.
@@ -112,10 +136,12 @@ reads the list again, which then shows who must go first.
 - The design note asked for ICU plurals in Turkish; nazar has none (decision 7).
 - `test/messages.spec.ts` needs an import line the design did not name (`courseNazirErrorKey`, after the
   `bans` import, where Biome's import order puts it); the settings branch's import goes on the same spot.
-- The browser spec leaves out `/ders/<id>/ayarlar` from the "nothing else" check: on this branch it is still
-  the placeholder. Merged with the settings branch it is Ders ayarları, which opens on `session.manage`,
-  one of the two permissions the spec gives, so it stays out there too. The settings branch's spec checks
-  that page.
+- The browser spec's "nothing else" check, like the design's browser step 3, expected "Bu sayfaya izniniz
+  yok" on Müfredat for a person given `recording.manage` and `session.manage`; `PAGE_CODES.curriculum`
+  holds `session.manage`, so Müfredat opens for them, and in serial mode every later scenario would have
+  been skipped. The review moved it to Talebeler and Ders nazırları, which neither code opens (Celseler,
+  Müfredat and Ders ayarları open on `session.manage`); the role is read off the user row, and the unknown
+  course must show the 404 heading.
 
 ## Tests
 
@@ -165,10 +191,25 @@ tests that failed. Run by a script that replaces one exact snippet, runs the nam
 | every refusal key exists | a key not in the catalogue | `messages.spec.ts`: has a message for every key … build at run time |
 | the route renders the page | `page.tsx` without a default export | page: names the tab 'Ders nazırları' and renders the page for its course |
 
+### Review fixes on the integrated branch
+
+Each test was seen red before its fix (the source change stashed, or the clock moved), then green.
+
+| Finding | Test | Red |
+| --- | --- | --- |
+| `/hesap` and `/bildirimler`, linked from the admitted frame, sent the başnazım with no seat to `/erisim-yok`; a failed `GET /me` counted as "not the başnazım"; a malformed course id met the route's 400 and showed the retry state | `access.spec.tsx` "opens /hesap and /bildirimler to the başnazım who holds no seat …", "is the retry state there, not the no-access page, when /me could not be read", "is the retry state, never a verdict, when /me could not be read", "is the portal's 404 for an address that names no course id, as for anyone", "tells the pages outside any scope whether /me calls the caller the başnazım" | 5 failed, 27 passed (32) with `admin-scope.ts` and `portal-layout.tsx` as before |
+| the course_nazir.assign box promised "izin ya da grup ver" | `course-nazirs.spec.ts` "says that a ders nazırı given course_nazir.assign appoints only, and gives nothing"; dialog "says that course_nazir.assign appoints only, as it does when given …" | 2 failed, 47 passed (49) |
+| no sentence for 409 `COURSE_NAZIR_BARRED`; `COURSE_NAZIR_HOLDS_SEAT` left out the Medaris post | `course-nazirs.spec.ts` "is worded from its code" | 1 failed each time, before each sentence |
+| three dialog tests compared the fixture's 2026-12-31 end with the real clock | the "'İzinleri düzenle'" describe holds the clock at 2026-10-05 | with a setup file moving the clock (outside the worktree's files): at 2027-01-01T09:00Z and 2028-03-01T09:00Z 3 failed, 23 passed (26); after, 26 passed (26) at both, and the nine MDRS-270 nazar spec files 151 passed (151) at both |
+| nothing in nizam led the başnazım to these pages | nizam `kosk-overview.spec.tsx` "offers the başnazım the course's Ders nazırları in nazar, in a new tab (MDRS-270)", "is the course's Ders nazırları in nazar, for the başnazım alone", "is nothing while nazar's address is not set" | 3 failed, 49 passed (52) without the component and helper |
+| the browser spec expected Müfredat to refuse a `session.manage` holder | `e2e/course-nazirs.e2e.ts` (written, not run) | — |
+
 ## Verified
 
 - `./node_modules/.bin/vitest run` (whole nazar suite): **Test Files 57 passed (57), Tests 1226 passed
-  (1226)**; on the base `1da339fe`: 53 files, 1147 tests.
+  (1226)**; on the base `1da339fe`: 53 files, 1147 tests. On the integrated branch after the review fixes
+  (both pages): **Test Files 61 passed (61), Tests 1287 passed (1287)**; nizam 46 files, 759 passed (759)
+  (one earlier run of the same tree showed 1 failed, 758 passed; the two runs after it were all green).
 - `./node_modules/.bin/tsc --noEmit`: 0 errors (it covers `test/` and `e2e/` in nazar: checked with
   `--listFiles`). The speccheck config of port-common: 1 line, the known `vitest.config.ts` TS2307.
 - `libs/i18n`: `tsc -b` exit 0; the lib has no test files. Key parity and formatting are
