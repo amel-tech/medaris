@@ -53,7 +53,8 @@
     "play": "Oynat",
     "playLabel": "Oynat: {title}",
     "open": "Ders kaydını aç",
-    "openLabel": ": {title} (yeni sekmede açılır)"
+    "openLabel": ": {title} (yeni sekmede açılır)",
+    "bunnyFrameTitle": "Ders kaydı oynatıcısı: {title}"
   },
   "LessonNotes": {
     "title": "Notlarım",

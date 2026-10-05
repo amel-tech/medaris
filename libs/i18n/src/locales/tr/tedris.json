@@ -528,6 +528,7 @@
     "recordingPlaceholder": "Ders kaydı burada oynar",
     "recordingOpen": "Ders kaydını aç",
     "recordingKind": "Ders kaydı",
+    "bunnyFrameTitle": "Ders kaydı oynatıcısı: {title}",
     "liveStreamTitle": "Canlı yayın",
     "liveStreamPlaceholder": "Canlı yayın burada oynar",
     "liveStreamOpen": "Yayını aç",
