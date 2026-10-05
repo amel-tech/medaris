@@ -166,8 +166,13 @@ test("the person appointed holds exactly what was given, and nothing else (crite
     page.getByRole("heading", { level: 1, name: "Ders kayıtları" })
   ).toBeVisible();
   await expect(page.getByText("Bu sayfaya izniniz yok")).toHaveCount(0);
-  await expect(page.locator("aside")).toContainText("Ders nazırı");
-  for (const section of ["mufredat", "nazirlar"]) {
+  // the user row's role line, not the menu's "Ders nazırları"
+  await expect(page.locator("aside .mds-nav-user__role")).toHaveText(
+    /^Ders nazırı(,|$)/
+  );
+  // session.manage opens Celseler, Müfredat and Ders ayarları too
+  // (PAGE_CODES); neither code opens these two
+  for (const section of ["talebeler", "nazirlar"]) {
     await page.goto(`/ders/${fixture?.second.id}/${section}`);
     await expect(
       page.getByText("Bu sayfaya izniniz yok"),
@@ -258,7 +263,11 @@ test("the başnazım opens any course's Ders nazırları by its address", async 
       row.getByRole("button", { name: /^Görevden al: / })
     ).toBeVisible();
   }
+  // a course that is not there is the portal's 404, not the retry state
   await page.goto(`/ders/${randomUUID()}/nazirlar`);
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Sayfa bulunamadı" })
+  ).toBeVisible();
   await expect(
     page.getByRole("heading", { level: 1, name: "Ders nazırları" })
   ).toHaveCount(0);
