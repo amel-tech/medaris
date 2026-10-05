@@ -63,7 +63,7 @@
     "previewCardText": "Talebeler burada “Kayıt başvurusu yap” düğmesini ve ilk celsenin zamanını görür. Önizlemede başvuru yapılmaz.",
     "firstSession": "İlk celse",
     "backToEditing": "Düzenlemeye dön",
-    "backToEditingLabel": "Düzenlemeye dön: {title}, Nazır’da Müfredat",
+    "backToEditingLabel": "Düzenlemeye dön: {title}, Nazar’da Müfredat",
     "receivedClose": "Kapat",
     "registerCard": "Derse kayıt",
     "courseSpan": "{weeks} hafta · {span}",
@@ -528,6 +528,7 @@
     "recordingPlaceholder": "Ders kaydı burada oynar",
     "recordingOpen": "Ders kaydını aç",
     "recordingKind": "Ders kaydı",
+    "bunnyFrameTitle": "Ders kaydı oynatıcısı: {title}",
     "liveStreamTitle": "Canlı yayın",
     "liveStreamPlaceholder": "Canlı yayın burada oynar",
     "liveStreamOpen": "Yayını aç",
@@ -546,7 +547,7 @@
     "pageSubtitleRoles": "Görevlerin, adın, saat dilimin ve takvim tercihlerin.",
     "title": "Görevlerin ve izinlerin",
     "intro": "Her görev bir kapsamda geçerlidir. Görevi ve süresini, onu atayan kişi değiştirir.",
-    "whereIntro": "Köşk ve ders işlerini Tedris’te değil, görevinin uygulamasında yaparsın: köşk nazımı Nizam’da, müderris Nazır’da.",
+    "whereIntro": "Köşk ve ders işlerini Tedris’te değil, görevinin uygulamasında yaparsın: köşk nazımı Nizam’da, müderris Nazar’da.",
     "tasks": "Görevlerin",
     "imam": "İmam",
     "self": "Kendin",
@@ -561,7 +562,7 @@
     },
     "open": {
       "nizam": "Nizam’da aç",
-      "nazir": "Nazır’da aç"
+      "nazar": "Nazar’da aç"
     },
     "courseBadge": {
       "published": "Yayında",

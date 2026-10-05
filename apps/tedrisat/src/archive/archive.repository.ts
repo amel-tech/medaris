@@ -751,6 +751,8 @@ export class ArchiveRepository {
           .where(and(eq(courseWeeks.id, id), isNotNull(courseWeeks.archivedAt)))
           .for("update");
         if (!week) return null;
+        // The record of e-mailed invitations (MDRS-121) stays behind: the
+        // invitation sweep sends its CANCEL, then deletes it.
         const weekLessonIds = tx
           .select({ id: lessons.id })
           .from(lessons)
@@ -782,6 +784,7 @@ export class ArchiveRepository {
           .where(and(eq(lessons.id, id), isNotNull(lessons.archivedAt)))
           .for("update");
         if (!lesson) return null;
+        // The invitation record stays behind for its CANCEL (MDRS-121).
         await tx.delete(lessonNotes).where(eq(lessonNotes.lessonId, id));
         await tx
           .delete(lessonQuestions)

@@ -43,6 +43,7 @@ export default async function Page() {
           familyName={profile.familyName ?? ""}
           email={profile.email ?? ""}
           timeZone={profile.timeZone ?? null}
+          lessonInvitationEmails={profile.lessonInvitationEmails ?? true}
         />
       ) : (
         <SystemState shell headingLevel={2} title={tp("profileFailedTitle")}>

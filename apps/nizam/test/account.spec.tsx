@@ -64,7 +64,7 @@ const dig = (node: unknown, path: string) =>
     .reduce<unknown>((n, part) => (n as Record<string, unknown>)?.[part], node);
 
 vi.mock("~/env", () => ({
-  env: { NAZIR_URL: "http://nazir.test/" },
+  env: { NAZAR_URL: "http://nazar.test/" },
 }));
 vi.mock("next-intl/server", () => {
   const t = (key: string, values?: Record<string, unknown>) => {
@@ -148,10 +148,10 @@ describe("roles and their order", () => {
     );
   });
 
-  it("sends köşk roles to Nizam and the rest to Nazır", () => {
+  it("sends köşk roles to Nizam and the rest to Nazar", () => {
     expect(roleApp("KOSK_NAZIM")).toBe("nizam");
     expect(roleApp("MEDARIS_NAZIM")).toBe("nizam");
-    expect(roleApp("MUDERRIS")).toBe("nazir");
+    expect(roleApp("MUDERRIS")).toBe("nazar");
   });
 });
 
@@ -369,11 +369,11 @@ describe("the page (nizam/47)", () => {
     expect(html).not.toContain("köşk nazımlığından gelen izni");
   });
 
-  it("offers 'Nazır’da aç' only to a müderris, from the configured address", async () => {
+  it("offers 'Nazar’da aç' only to a müderris, from the configured address", async () => {
     const without = await render(
       data({ assignments: [assignment({})] as never })
     );
-    expect(without).not.toContain("Nazır’da aç");
+    expect(without).not.toContain("Nazar’da aç");
     const html = await render(
       data({
         assignments: [
@@ -388,7 +388,7 @@ describe("the page (nizam/47)", () => {
     );
     expect(html).toContain("Müderrislik");
     expect(html).toMatch(
-      /<a[^>]*href="http:\/\/nazir\.test"[^>]*>[\s\S]*Nazır’da aç/
+      /<a[^>]*href="http:\/\/nazar\.test"[^>]*>[\s\S]*Nazar’da aç/
     );
   });
 

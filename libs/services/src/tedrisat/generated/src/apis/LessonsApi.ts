@@ -20,6 +20,7 @@ import type {
   CancelLessonDto,
   CourseQuestionResponse,
   CreateLessonNoteDto,
+  CreateRecordingDto,
   CreateSessionBatchDto,
   CreateWeekLessonDto,
   LessonMutationResponse,
@@ -29,13 +30,16 @@ import type {
   PaginatedCourseQuestionResponse,
   PaginatedLessonQuestionResponse,
   RecordingResponse,
+  RecordingUploadResponse,
   SessionBatchPreviewResponse,
   SessionBatchResponse,
   SessionResponse,
   SetLiveStreamDto,
+  StartRecordingUploadDto,
   UpdateLessonDto,
   UpdateLessonNoteDto,
   UpdateLessonQuestionDto,
+  UpdateRecordingDto,
   WeekHideResponse,
   WeeklyPatternDto,
 } from '../models/index';
@@ -50,6 +54,8 @@ import {
     CourseQuestionResponseToJSON,
     CreateLessonNoteDtoFromJSON,
     CreateLessonNoteDtoToJSON,
+    CreateRecordingDtoFromJSON,
+    CreateRecordingDtoToJSON,
     CreateSessionBatchDtoFromJSON,
     CreateSessionBatchDtoToJSON,
     CreateWeekLessonDtoFromJSON,
@@ -68,6 +74,8 @@ import {
     PaginatedLessonQuestionResponseToJSON,
     RecordingResponseFromJSON,
     RecordingResponseToJSON,
+    RecordingUploadResponseFromJSON,
+    RecordingUploadResponseToJSON,
     SessionBatchPreviewResponseFromJSON,
     SessionBatchPreviewResponseToJSON,
     SessionBatchResponseFromJSON,
@@ -76,12 +84,16 @@ import {
     SessionResponseToJSON,
     SetLiveStreamDtoFromJSON,
     SetLiveStreamDtoToJSON,
+    StartRecordingUploadDtoFromJSON,
+    StartRecordingUploadDtoToJSON,
     UpdateLessonDtoFromJSON,
     UpdateLessonDtoToJSON,
     UpdateLessonNoteDtoFromJSON,
     UpdateLessonNoteDtoToJSON,
     UpdateLessonQuestionDtoFromJSON,
     UpdateLessonQuestionDtoToJSON,
+    UpdateRecordingDtoFromJSON,
+    UpdateRecordingDtoToJSON,
     WeekHideResponseFromJSON,
     WeekHideResponseToJSON,
     WeeklyPatternDtoFromJSON,
@@ -116,6 +128,11 @@ export interface CreateLessonRequest {
 export interface CreateLessonNoteRequest {
     id: string;
     createLessonNoteDto: CreateLessonNoteDto;
+}
+
+export interface CreateLessonRecordingRequest {
+    id: string;
+    createRecordingDto: CreateRecordingDto;
 }
 
 export interface CreateSessionBatchRequest {
@@ -176,9 +193,19 @@ export interface PreviewSessionBatchRequest {
     weeklyPatternDto: WeeklyPatternDto;
 }
 
+export interface ResignRecordingUploadRequest {
+    id: string;
+    videoId: string;
+}
+
 export interface SetLessonLiveStreamRequest {
     id: string;
     setLiveStreamDto: SetLiveStreamDto;
+}
+
+export interface StartRecordingUploadRequest {
+    id: string;
+    startRecordingUploadDto: StartRecordingUploadDto;
 }
 
 export interface UpdateLessonRequest {
@@ -195,6 +222,11 @@ export interface UpdateLessonNoteRequest {
 export interface UpdateLessonQuestionRequest {
     questionId: string;
     updateLessonQuestionDto: UpdateLessonQuestionDto;
+}
+
+export interface UpdateRecordingRequest {
+    id: string;
+    updateRecordingDto: UpdateRecordingDto;
 }
 
 /**
@@ -355,7 +387,7 @@ export class LessonsApi extends runtime.BaseAPI {
     }
 
     /**
-     * The session stays in the programme as \'İptal edildi\' (MDRS-158); its meeting link is no longer shown. The reason is course content. Written to `audit_log` (MDRS-176).
+     * The session stays in the programme as \'İptal edildi\' (MDRS-158); its meeting link is no longer shown. The reason is course content. `replacementLessonId` links the session that makes up for it (telafi), which the session page shows as its replacement. Written to `audit_log` (MDRS-176).
      * Cancel a live session; it keeps its slot, marked cancelled
      */
     async cancelLessonRaw(requestParameters: CancelLessonRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<LessonMutationResponse>> {
@@ -400,7 +432,7 @@ export class LessonsApi extends runtime.BaseAPI {
     }
 
     /**
-     * The session stays in the programme as \'İptal edildi\' (MDRS-158); its meeting link is no longer shown. The reason is course content. Written to `audit_log` (MDRS-176).
+     * The session stays in the programme as \'İptal edildi\' (MDRS-158); its meeting link is no longer shown. The reason is course content. `replacementLessonId` links the session that makes up for it (telafi), which the session page shows as its replacement. Written to `audit_log` (MDRS-176).
      * Cancel a live session; it keeps its slot, marked cancelled
      */
     async cancelLesson(requestParameters: CancelLessonRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<LessonMutationResponse> {
@@ -519,6 +551,60 @@ export class LessonsApi extends runtime.BaseAPI {
      */
     async createLessonNote(requestParameters: CreateLessonNoteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<LessonNoteResponse> {
         const response = await this.createLessonNoteRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * `recording.manage` (the müderris and the köşk nazımı by default, a ders nazırı when given it). The recording is READY at once; the link is read by its host and nothing is uploaded or called. A YouTube link is taken whatever the visibility. A player link of the Medaris Bunny library is stored as its video and played through a signed link, like an upload. A session holds one recording (409 RECORDING_EXISTS: change that one), except that a Bunny upload that FAILED is replaced. Written to `audit_log` as `recording.add`. Does not change the course version.
+     * Add a session\'s recording by pasting its link
+     */
+    async createLessonRecordingRaw(requestParameters: CreateLessonRecordingRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<RecordingResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling createLessonRecording().'
+            );
+        }
+
+        if (requestParameters['createRecordingDto'] == null) {
+            throw new runtime.RequiredError(
+                'createRecordingDto',
+                'Required parameter "createRecordingDto" was null or undefined when calling createLessonRecording().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/lessons/{id}/recordings`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: CreateRecordingDtoToJSON(requestParameters['createRecordingDto']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => RecordingResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * `recording.manage` (the müderris and the köşk nazımı by default, a ders nazırı when given it). The recording is READY at once; the link is read by its host and nothing is uploaded or called. A YouTube link is taken whatever the visibility. A player link of the Medaris Bunny library is stored as its video and played through a signed link, like an upload. A session holds one recording (409 RECORDING_EXISTS: change that one), except that a Bunny upload that FAILED is replaced. Written to `audit_log` as `recording.add`. Does not change the course version.
+     * Add a session\'s recording by pasting its link
+     */
+    async createLessonRecording(requestParameters: CreateLessonRecordingRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<RecordingResponse> {
+        const response = await this.createLessonRecordingRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -923,7 +1009,7 @@ export class LessonsApi extends runtime.BaseAPI {
     }
 
     /**
-     * Open to callers with no token, like the course page. A caller holding `view_details` sees every recording; everyone else, PENDING and revoked included, only those with `visibility` PUBLIC. A recording whose `status` is PROCESSING is listed with a null `url`. Sorted by week number descending, then by `recordedAt` descending (MDRS-162).
+     * Open to callers with no token, like the course page. A caller holding `view_details` sees every recording; everyone else, PENDING and revoked included, only those with `visibility` PUBLIC. A recording whose `status` is PROCESSING is listed with a null `url`. Sorted by week number descending, then by `recordedAt` descending (MDRS-162). A READY BUNNY recording\'s `url` is a player link signed for this response, built only for a recording the caller may see, and expiring after `BUNNY_STREAM_EMBED_TTL_SECONDS` (6 hours by default); the response is `Cache-Control: private, no-store` (MDRS-119). What this protects: with embed token authentication on in the Bunny library, only a signed link opens the player page, and a signed link passed on opens it until it expires; the stream behind the page (playlist, segments, MP4) is protected only by the library\'s separate CDN token authentication, so a viewer who saved the video address can play it after the link has expired unless that is on. A YouTube, Drive or other pasted link plays for anyone who has it; for those the filter decides who is shown the link, not who can open it.
      * The course\'s lesson recordings, newest week first
      */
     async listCourseRecordingsRaw(requestParameters: ListCourseRecordingsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<RecordingResponse>>> {
@@ -958,7 +1044,7 @@ export class LessonsApi extends runtime.BaseAPI {
     }
 
     /**
-     * Open to callers with no token, like the course page. A caller holding `view_details` sees every recording; everyone else, PENDING and revoked included, only those with `visibility` PUBLIC. A recording whose `status` is PROCESSING is listed with a null `url`. Sorted by week number descending, then by `recordedAt` descending (MDRS-162).
+     * Open to callers with no token, like the course page. A caller holding `view_details` sees every recording; everyone else, PENDING and revoked included, only those with `visibility` PUBLIC. A recording whose `status` is PROCESSING is listed with a null `url`. Sorted by week number descending, then by `recordedAt` descending (MDRS-162). A READY BUNNY recording\'s `url` is a player link signed for this response, built only for a recording the caller may see, and expiring after `BUNNY_STREAM_EMBED_TTL_SECONDS` (6 hours by default); the response is `Cache-Control: private, no-store` (MDRS-119). What this protects: with embed token authentication on in the Bunny library, only a signed link opens the player page, and a signed link passed on opens it until it expires; the stream behind the page (playlist, segments, MP4) is protected only by the library\'s separate CDN token authentication, so a viewer who saved the video address can play it after the link has expired unless that is on. A YouTube, Drive or other pasted link plays for anyone who has it; for those the filter decides who is shown the link, not who can open it.
      * The course\'s lesson recordings, newest week first
      */
     async listCourseRecordings(requestParameters: ListCourseRecordingsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<RecordingResponse>> {
@@ -1117,6 +1203,58 @@ export class LessonsApi extends runtime.BaseAPI {
     }
 
     /**
+     * `recording.upload`, as for starting one. Returns the same video\'s TUS values so an interrupted upload continues where it stopped. The expiry is the upload\'s original one: signing again never extends it. 409 once the upload is no longer PROCESSING or its lifetime has passed (RECORDING_UPLOAD_CLOSED, with `reason`).
+     * Sign a session\'s Bunny upload again, to resume it
+     */
+    async resignRecordingUploadRaw(requestParameters: ResignRecordingUploadRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<RecordingUploadResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling resignRecordingUpload().'
+            );
+        }
+
+        if (requestParameters['videoId'] == null) {
+            throw new runtime.RequiredError(
+                'videoId',
+                'Required parameter "videoId" was null or undefined when calling resignRecordingUpload().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/lessons/{id}/recordings/uploads/{videoId}/signature`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace(`{${"videoId"}}`, encodeURIComponent(String(requestParameters['videoId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => RecordingUploadResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * `recording.upload`, as for starting one. Returns the same video\'s TUS values so an interrupted upload continues where it stopped. The expiry is the upload\'s original one: signing again never extends it. 409 once the upload is no longer PROCESSING or its lifetime has passed (RECORDING_UPLOAD_CLOSED, with `reason`).
+     * Sign a session\'s Bunny upload again, to resume it
+     */
+    async resignRecordingUpload(requestParameters: ResignRecordingUploadRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<RecordingUploadResponse> {
+        const response = await this.resignRecordingUploadRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * `session.live_link` (the müderris and the köşk nazımı by default, a ders nazırı when given it). A YouTube video link in any of its usual forms, the YouTube Studio link included, is stored as `https://www.youtube.com/live/<id>`; `null` clears it. Only a LIVE session takes one, and not once it is cancelled. Does not change the course version. Written to `audit_log` as `lesson.live_stream_set` or `lesson.live_stream_clear`.
      * Set, change or clear a session\'s live stream link
      */
@@ -1167,6 +1305,60 @@ export class LessonsApi extends runtime.BaseAPI {
      */
     async setLessonLiveStream(requestParameters: SetLessonLiveStreamRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<LiveStreamResponse> {
         const response = await this.setLessonLiveStreamRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * `recording.upload` (the müderris and the köşk nazımı by default, a ders nazırı when given it). Creates the video in the Medaris Bunny Stream library, records it as the session\'s recording with `provider` BUNNY and `status` PROCESSING, and returns what the browser needs for a TUS upload straight to Bunny; the file never passes through this API. The signature expires 24 hours later. A session that already has a recording is refused with 409, unless that recording is a Bunny upload that FAILED, which this one replaces. Written to `audit_log` as `recording.upload_start`. The recording becomes READY or FAILED when the encoding poll sees Bunny finish.
+     * Start uploading a session\'s recording to Bunny Stream
+     */
+    async startRecordingUploadRaw(requestParameters: StartRecordingUploadRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<RecordingUploadResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling startRecordingUpload().'
+            );
+        }
+
+        if (requestParameters['startRecordingUploadDto'] == null) {
+            throw new runtime.RequiredError(
+                'startRecordingUploadDto',
+                'Required parameter "startRecordingUploadDto" was null or undefined when calling startRecordingUpload().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/lessons/{id}/recordings/uploads`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: StartRecordingUploadDtoToJSON(requestParameters['startRecordingUploadDto']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => RecordingUploadResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * `recording.upload` (the müderris and the köşk nazımı by default, a ders nazırı when given it). Creates the video in the Medaris Bunny Stream library, records it as the session\'s recording with `provider` BUNNY and `status` PROCESSING, and returns what the browser needs for a TUS upload straight to Bunny; the file never passes through this API. The signature expires 24 hours later. A session that already has a recording is refused with 409, unless that recording is a Bunny upload that FAILED, which this one replaces. Written to `audit_log` as `recording.upload_start`. The recording becomes READY or FAILED when the encoding poll sees Bunny finish.
+     * Start uploading a session\'s recording to Bunny Stream
+     */
+    async startRecordingUpload(requestParameters: StartRecordingUploadRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<RecordingUploadResponse> {
+        const response = await this.startRecordingUploadRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -1335,6 +1527,60 @@ export class LessonsApi extends runtime.BaseAPI {
      */
     async updateLessonQuestion(requestParameters: UpdateLessonQuestionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<LessonQuestionResponse> {
         const response = await this.updateLessonQuestionRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * `recording.manage`. Only the keys sent change. A new link is read as on `POST /lessons/:id/recordings` and is READY; a Bunny video replaced by another link is no longer stored, and a link replaced by a Bunny video is no longer stored either. Written to `audit_log` as `recording.update`. Does not change the course version.
+     * Rename a recording, replace its link, or change who may watch it
+     */
+    async updateRecordingRaw(requestParameters: UpdateRecordingRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<RecordingResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling updateRecording().'
+            );
+        }
+
+        if (requestParameters['updateRecordingDto'] == null) {
+            throw new runtime.RequiredError(
+                'updateRecordingDto',
+                'Required parameter "updateRecordingDto" was null or undefined when calling updateRecording().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/recordings/{id}`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'PATCH',
+            headers: headerParameters,
+            query: queryParameters,
+            body: UpdateRecordingDtoToJSON(requestParameters['updateRecordingDto']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => RecordingResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * `recording.manage`. Only the keys sent change. A new link is read as on `POST /lessons/:id/recordings` and is READY; a Bunny video replaced by another link is no longer stored, and a link replaced by a Bunny video is no longer stored either. Written to `audit_log` as `recording.update`. Does not change the course version.
+     * Rename a recording, replace its link, or change who may watch it
+     */
+    async updateRecording(requestParameters: UpdateRecordingRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<RecordingResponse> {
+        const response = await this.updateRecordingRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

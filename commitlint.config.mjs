@@ -19,7 +19,7 @@
  * release-please component and pnpm-workspace entry (ADR-001 §D10).
  *
  * Note that the four Next apps are scoped by *package/release-component* name
- * (`tedris-web`, `nizam-web`, `nazir-web`, `landing-web`), not by directory
+ * (`tedris-web`, `nizam-web`, `nazar-web`, `landing-web`), not by directory
  * name (`apps/tedris`, ...). ADR-001 §D6 sets app package names to
  * `@medaris/<release-component>` while MDRS-10 kept the directories bare; the
  * scope follows the component so that the enum and the release-please
@@ -34,7 +34,7 @@ const SCOPES = [
   "teskilat",
   "tedris-web",
   "nizam-web",
-  "nazir-web",
+  "nazar-web",
   "landing-web",
   "keycloak-theme",
   // ── Libs (10) — @medaris/<dirname> ───────────────────────────────────────

@@ -6,6 +6,7 @@ import { Field } from "@medaris/ui/mds/field";
 import { Icon } from "@medaris/ui/mds/icon";
 import { Input } from "@medaris/ui/mds/input";
 import { Select } from "@medaris/ui/mds/select";
+import { Switch } from "@medaris/ui/mds/switch";
 import { useToaster } from "@medaris/ui/mds/toast";
 import { useLocale } from "next-intl";
 import { type FormEvent, useState, useTransition } from "react";
@@ -13,7 +14,11 @@ import { LocaleAppProviders } from "~/components/locale-app-providers";
 import { PUBLIC_PROFILE_ENABLED } from "~/features/public-profile/availability";
 import { useAccountTranslations } from "~/lib/i18n/loose";
 import { CARD_GAP } from "../card-gap";
-import { updateMyName, updateMyTimeZone } from "../profile-actions";
+import {
+  updateMyInvitationEmails,
+  updateMyName,
+  updateMyTimeZone,
+} from "../profile-actions";
 import {
   allTimeZones,
   type NameErrors,
@@ -28,6 +33,8 @@ export interface AccountSettingsProps {
   familyName: string;
   email: string;
   timeZone: string | null;
+  /** Lesson invitations by e-mail (MDRS-121); on unless turned off. */
+  lessonInvitationEmails: boolean;
 }
 
 function PersonalCard({
@@ -201,22 +208,66 @@ function TimeLanguageCard({
   );
 }
 
-function CalendarCard() {
+/**
+ * The calendar card: the feed (MDRS-120) and, below it, the switch for
+ * lesson invitations by e-mail (MDRS-121). No design draws the switch; it
+ * follows the switches of the public-profile page, saved the moment it
+ * changes and put back if the save fails.
+ */
+function CalendarCard({
+  lessonInvitationEmails,
+}: Pick<AccountSettingsProps, "lessonInvitationEmails">) {
   const t = useAccountTranslations("AccountProfile");
   const locale = useLocale();
+  const toaster = useToaster();
+  const [invitations, setInvitations] = useState(lessonInvitationEmails);
+  const [saving, setSaving] = useState(false);
+
+  const toggle = (on: boolean) => {
+    const before = invitations;
+    setInvitations(on);
+    setSaving(true);
+    void updateMyInvitationEmails(on)
+      .then((res) => {
+        if (res.success === true) {
+          toaster.notify({
+            tone: "success",
+            title: t(on ? "invitationsOn" : "invitationsOff"),
+          });
+          return;
+        }
+        setInvitations(before);
+        toaster.notify({
+          tone: "error",
+          title: t("invitationsFailed"),
+          description: t("errorHint"),
+        });
+      })
+      .finally(() => setSaving(false));
+  };
+
   return (
     <Card title={t("calendarTitle")} headingLevel={2} className={CARD_GAP}>
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="flex min-inline-0 flex-1 items-start gap-3">
-          <Icon name="calendar" className="mbs-1 text-neutral-muted" />
-          <div className="flex flex-col gap-1">
-            <p className="mds-body-sm font-medium">{t("calendarName")}</p>
-            <p className="mds-caption">{t("calendarText")}</p>
+      <div className="flex flex-col gap-5">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="flex min-inline-0 flex-1 items-start gap-3">
+            <Icon name="calendar" className="mbs-1 text-neutral-muted" />
+            <div className="flex flex-col gap-1">
+              <p className="mds-body-sm font-medium">{t("calendarName")}</p>
+              <p className="mds-caption">{t("calendarText")}</p>
+            </div>
           </div>
+          <Button variant="outline" href={`/${locale}/account/calendar`}>
+            {t("calendarManage")}
+          </Button>
         </div>
-        <Button variant="outline" href={`/${locale}/account/calendar`}>
-          {t("calendarManage")}
-        </Button>
+        <Switch
+          label={t("invitationsLabel")}
+          description={t("invitationsHelp")}
+          checked={invitations}
+          disabled={saving}
+          onCheckedChange={toggle}
+        />
       </div>
     </Card>
   );
@@ -271,7 +322,7 @@ export function AccountSettings(props: AccountSettingsProps) {
         <div className="flex min-inline-0 flex-col gap-section">
           <PersonalCard {...props} />
           <TimeLanguageCard timeZone={props.timeZone} />
-          <CalendarCard />
+          <CalendarCard lessonInvitationEmails={props.lessonInvitationEmails} />
           {PUBLIC_PROFILE_ENABLED && <PublicProfileCard />}
         </div>
         <SignOutCard />

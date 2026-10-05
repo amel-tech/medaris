@@ -30,7 +30,7 @@ The package organizes translations into the following namespaces:
 - **`common`** - Shared translations across all applications
 - **`tedris`** - Tedris application specific translations
 - **`nizam`** - Nizam application specific translations
-- **`nazir`** - Nazir application specific translations
+- **`nazar`** - Nazar application specific translations
 
 ## Installation
 
@@ -163,7 +163,7 @@ npm run sync
 The `tolgee.config.js` defines:
 
 - **Languages**: `en`, `tr`, `ar`
-- **Namespaces**: `common`, `tedris`, `nizam`, `nazir`
+- **Namespaces**: `common`, `tedris`, `nizam`, `nazar`
 - **File Structure**: `{languageTag}/{namespace}.{extension}`
 - **Format**: `JSON_TOLGEE`
 
@@ -220,7 +220,7 @@ libs/i18n/
 │       │   ├── common.json       # Common English translations
 │       │   ├── tedris.json       # Tedris app English translations
 │       │   ├── nizam.json        # Nizam app English translations
-│       │   └── nazir.json        # Nazir app English translations
+│       │   └── nazar.json        # Nazar app English translations
 │       ├── tr/                   # Turkish translations (same structure)
 │       └── ar/                   # Arabic translations (same structure)
 ├── dist/                         # Built output

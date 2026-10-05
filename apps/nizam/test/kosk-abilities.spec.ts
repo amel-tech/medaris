@@ -116,7 +116,7 @@ describe("taughtElsewhere", () => {
 });
 
 describe("koskListEmptyState", () => {
-  it("never sends a köşk manager to nazir", () => {
+  it("never sends a köşk manager to nazar", () => {
     expect(
       koskListEmptyState(
         me({
@@ -127,8 +127,8 @@ describe("koskListEmptyState", () => {
     ).toBe("none");
   });
 
-  it("points a nazır with no köşk of their own at nazir", () => {
-    expect(koskListEmptyState(ROLES.MADRASAH_NAZIR)).toBe("nazir");
+  it("points a nazır with no köşk of their own at nazar", () => {
+    expect(koskListEmptyState(ROLES.MADRASAH_NAZIR)).toBe("nazar");
   });
 
   it("is the plain empty state for everyone else", () => {

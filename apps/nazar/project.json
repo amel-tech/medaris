@@ -1,0 +1,46 @@
+{
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "name": "nazar-web",
+  "tags": ["scope:app", "platform:web", "type:app"],
+  "targets": {
+    "lint": {},
+    "build": {
+      "dependsOn": ["^build", "^typecheck"],
+      "inputs": [
+        "production",
+        "^production",
+        {
+          "env": "API_MOCKING"
+        },
+        {
+          "env": "KEYCLOAK_CLIENT_ID"
+        },
+        {
+          "env": "KEYCLOAK_CLIENT_SECRET"
+        },
+        {
+          "env": "KEYCLOAK_ISSUER"
+        },
+        {
+          "env": "NEXTAUTH_SECRET"
+        },
+        {
+          "env": "NEXTAUTH_URL"
+        },
+        {
+          "env": "OTEL_EXPORTER_OTLP_ENDPOINT"
+        },
+        {
+          "env": "OTEL_SERVICE_NAME"
+        },
+        {
+          "env": "TEDRISAT_API_BASE_URL"
+        },
+        {
+          "env": "TEDRIS_URL"
+        }
+      ],
+      "outputs": ["{projectRoot}/.next", "!{projectRoot}/.next/cache"]
+    }
+  }
+}

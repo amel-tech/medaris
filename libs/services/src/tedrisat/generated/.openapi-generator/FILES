@@ -94,6 +94,7 @@ src/models/CreateMadrasahPermissionGroupDto.ts
 src/models/CreateMuderrisDto.ts
 src/models/CreateOffsiteCourseRequestDto.ts
 src/models/CreatePermissionGroupDto.ts
+src/models/CreateRecordingDto.ts
 src/models/CreateResourceDto.ts
 src/models/CreateSessionBatchDto.ts
 src/models/CreateWeekDto.ts
@@ -264,6 +265,7 @@ src/models/MuderrisListItemDto.ts
 src/models/MuderrisListResponse.ts
 src/models/MuderrisResponse.ts
 src/models/MyAssignmentsResponse.ts
+src/models/MyCoursePermissionsResponse.ts
 src/models/MyEffectivePermissionsResponse.ts
 src/models/MyEnrollmentResponse.ts
 src/models/MyGrantsResponse.ts
@@ -318,6 +320,7 @@ src/models/ReadAllNotificationsResponse.ts
 src/models/RecordingProvider.ts
 src/models/RecordingResponse.ts
 src/models/RecordingStatus.ts
+src/models/RecordingUploadResponse.ts
 src/models/RecordingVisibility.ts
 src/models/RejectEnrollmentDto.ts
 src/models/RejectReasonDto.ts
@@ -352,6 +355,7 @@ src/models/SetMadrasahNazirPermissionsDto.ts
 src/models/SetMuderrisDto.ts
 src/models/SetNazimGrantsDto.ts
 src/models/SetPlatformPolicyDto.ts
+src/models/StartRecordingUploadDto.ts
 src/models/SummaryMuderrisResponse.ts
 src/models/TaughtCourseRef.ts
 src/models/TeamSettableEnrollmentStatus.ts
@@ -371,6 +375,7 @@ src/models/UpdatePermissionGroupDto.ts
 src/models/UpdateProfileVisibilityDto.ts
 src/models/UpdateProgressDto.ts
 src/models/UpdatePublicProfileDto.ts
+src/models/UpdateRecordingDto.ts
 src/models/UserSummaryResponse.ts
 src/models/UsersPolicy.ts
 src/models/WeekHideResponse.ts

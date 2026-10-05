@@ -69,6 +69,20 @@ describe("visibleRecordings (MDRS-162)", () => {
     expect(visibleRecordings(rows, true, false)).toHaveLength(2);
   });
 
+  it("lists no FAILED recording, to anyone (MDRS-116)", () => {
+    const rows = [
+      row("a"),
+      row("b", {
+        provider: RecordingProvider.BUNNY,
+        url: null,
+        status: RecordingStatus.FAILED,
+        visibility: RecordingVisibility.PUBLIC,
+      }),
+    ];
+    expect(visibleRecordings(rows, true).map((r) => r.id)).toEqual(["a"]);
+    expect(visibleRecordings(rows, false)).toEqual([]);
+  });
+
   it("gives a PROCESSING recording no link, even if one is stored", () => {
     const [only] = visibleRecordings(
       [row("a", { status: RecordingStatus.PROCESSING })],

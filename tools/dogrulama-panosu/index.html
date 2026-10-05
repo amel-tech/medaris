@@ -426,7 +426,7 @@ dialog#gecmis .kapat { float: right; }
   </section>
 
   <section>
-    <h2>🗓 Plan <small>— proje sırasıyla: Landing → Tedris → Nizam → Nazır; grup içinde önce açılış</small></h2>
+    <h2>🗓 Plan <small>— proje sırasıyla: Landing → Tedris → Nizam → Nazar; grup içinde önce açılış</small></h2>
     <div class="tablo-kap"><table id="plan"></table></div>
   </section>
 
@@ -586,7 +586,7 @@ function cizIc() {
       }).join("");
       return `<tr><td><b>${k + 1}</b></td><td><b>${esc(g.ad)}</b>${g.not ? `<div class="muted" style="font-size:12px">${esc(g.not)}</div>` : ""}${liste ? `<details data-k="plan-${g.id}"><summary>${g.sayi} kontrolü sırayla gör</summary>${liste}</details>` : ""}</td><td class="n">${g.sayi}</td><td class="n">${g.acilisSayi}</td><td class="n">${g.dk ? `~${sure(g.dk)}` : "—"}</td><td class="sure">${g.baslangic ? `${saat(g.baslangic)} – ${saat(g.bitis)}` : "—"}</td><td>${durum}</td></tr>`;
     }).join("") +
-    `<tr><td></td><td><b>Toplam (Nazır hariç zorunlu)</b></td><td class="n"><b>${P.gruplar.filter((g) => !g.istege).reduce((x, g) => x + g.sayi, 0)}</b></td><td class="n"><b>${AC.sayi}</b></td><td class="n"><b>~${sure(TT.kalanDk)}</b></td><td class="sure"><b>${TT.tumBitis ? `bitiş ${saat(TT.tumBitis)}` : "—"}</b></td><td></td></tr>`;
+    `<tr><td></td><td><b>Toplam (Nazar hariç zorunlu)</b></td><td class="n"><b>${P.gruplar.filter((g) => !g.istege).reduce((x, g) => x + g.sayi, 0)}</b></td><td class="n"><b>${AC.sayi}</b></td><td class="n"><b>~${sure(TT.kalanDk)}</b></td><td class="sure"><b>${TT.tumBitis ? `bitiş ${saat(TT.tumBitis)}` : "—"}</b></td><td></td></tr>`;
 
   // Açılış kapsamı
   if (acilis) {

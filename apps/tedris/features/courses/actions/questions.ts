@@ -12,7 +12,7 @@ import {
 /**
  * A talebe's questions to the course staff (MDRS-150). The API returns a
  * question to its author alone here, so these four are the whole surface of
- * tedris: the staff read and answer the questions in the nazir app. Nothing
+ * tedris: the staff read and answer the questions in the nazar app. Nothing
  * is revalidated: the tab keeps its own list.
  */
 

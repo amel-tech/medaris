@@ -28,7 +28,7 @@ describe("Çerezler", () => {
       "KEYCLOAK_IDENTITY",
       "medaris-tz",
       "tedris.welcomed",
-      "nazir-scope",
+      "nazar-scope",
       "medaris-theme",
     ]) {
       expect(page).toContain(name);

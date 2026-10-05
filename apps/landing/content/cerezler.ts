@@ -41,23 +41,23 @@ export const cookieGroups: CookieGroup[] = [
       "Giriş yapmak ve hesabınızı güvenle kullanmak için gerekir; bunlar olmadan Medaris çalışmaz.",
     rows: [
       {
-        names: "tedris.session-token, nizam.session-token, nazir.session-token",
+        names: "tedris.session-token, nizam.session-token, nazar.session-token",
         purpose:
           "Giriş yaptığınızı hatırlar. Şifrelenmiştir; tarayıcıdaki betikler okuyamaz.",
-        setBy: "Tedris, Nizam ve Nazır",
+        setBy: "Tedris, Nizam ve Nazar",
         lifetime: `30 gün; içindeki ${sessionEnds}`,
       },
       {
         names: "csrf-token, callback-url",
         purpose:
           "Giriş ve çıkışı sahte isteklere karşı korur; girişten sonra döneceğiniz sayfayı tutar.",
-        setBy: "Tedris, Nizam ve Nazır",
+        setBy: "Tedris, Nizam ve Nazar",
         lifetime: "Tarayıcıyı kapatana kadar",
       },
       {
         names: "pkce.code_verifier, state",
         purpose: "Kimlik sunucusuna gidip gelen giriş adımını güvenceye alır.",
-        setBy: "Tedris, Nizam ve Nazır",
+        setBy: "Tedris, Nizam ve Nazar",
         lifetime: "15 dakika",
       },
       {
@@ -103,9 +103,9 @@ export const cookieGroups: CookieGroup[] = [
         lifetime: "1 yıl",
       },
       {
-        names: "nazir-scope",
+        names: "nazar-scope",
         purpose: "En son açtığınız medreseyi ya da dersi hatırlar.",
-        setBy: "Nazır",
+        setBy: "Nazar",
         lifetime: "1 yıl",
       },
       {
@@ -145,14 +145,14 @@ export const cookieGroups: CookieGroup[] = [
         names: "medaris.auth.sign-in",
         purpose:
           "Aynı anda birden fazla sekmede giriş yapılmaya çalışılmasını önler.",
-        setBy: "Tedris, Nizam ve Nazır",
+        setBy: "Tedris, Nizam ve Nazar",
         lifetime: "Siz silene kadar; 30 saniye sonra geçersiz sayılır",
       },
       {
         names: "medaris.auth.tab, medaris.auth.auto-retry, medaris-tz-synced",
         purpose:
           "Sekmenin girişi ve saat dilimini bir kez göndermesi için kısa süreli işaretler.",
-        setBy: "Tedris, Nizam ve Nazır",
+        setBy: "Tedris, Nizam ve Nazar",
         lifetime: "Sekmeyi kapatana kadar",
       },
     ],

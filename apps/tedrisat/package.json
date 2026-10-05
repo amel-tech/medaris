@@ -1,6 +1,6 @@
 {
   "name": "@medaris/tedrisat",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "",
   "author": "",
   "private": true,
@@ -47,6 +47,7 @@
     "class-transformer": "catalog:",
     "class-validator": "catalog:",
     "drizzle-orm": "catalog:",
+    "nodemailer": "catalog:",
     "pg": "catalog:",
     "zod": "catalog:"
   },

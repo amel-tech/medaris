@@ -160,8 +160,8 @@ const ROOT_ONLY_KEYS = {
     "compose's own `ports:` mapping for the tedris service (MDRS-55, `web` profile); the container listens on 4000 regardless. Also the default host port in that service's NEXTAUTH_URL, which is why it shows up inside an environment: block.",
   NIZAM_WEB_PORT:
     "compose's own `ports:` mapping for the nizam service (MDRS-55); the container listens on 4001 regardless. Also the default host port in that service's NEXTAUTH_URL.",
-  NAZIR_WEB_PORT:
-    "compose's own `ports:` mapping for the nazir service (MDRS-55); the container listens on 4002 regardless. Also the default host port in that service's NEXTAUTH_URL.",
+  NAZAR_WEB_PORT:
+    "compose's own `ports:` mapping for the nazar service (MDRS-55); the container listens on 4002 regardless. Also the default host port in that service's NEXTAUTH_URL.",
   LANDING_WEB_PORT:
     "compose's own `ports:` mapping for the landing service (MDRS-55); the container listens on 4003 regardless.",
 };

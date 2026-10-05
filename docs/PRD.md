@@ -126,7 +126,7 @@ Rules (from the authorization plan, confirmed against schema):
 | **Tedrisat** | Instruction/education | Backend service #1 (implemented) |
 | **Teşkilat** | Organization | Backend service #2 (stub today) |
 | **Muhasebe** | Accounting | Planned backend service #3 (finance/donations) |
-| **Tedris / Nizam / Nazir** web | Learner / management / admin portals | tedris+nizam live; nazir stub |
+| **Tedris / Nizam / Nazar** web | Learner / management / admin portals | tedris+nizam live; nazar stub |
 
 ---
 
@@ -185,7 +185,7 @@ Requirement IDs are stable for Linear traceability. **Status**: ✅ built · �
 | M1-1 | Username/password login via Keycloak (OIDC); registration with custom theme | ✅ | — |
 | M1-2 | Resource-scoped RBAC per the long-term matrix: roles SYSTEM_ADMIN, MADRASAH_NAZIR, KOSK_MANAGER, MUDERRIS, TALEBE(ENROLLED/PENDING), DECK_OWNER, GUEST; ~50 scopes; **closed-by-default** (anything unlisted is denied) | 🔶 PR #80 | **P1** |
 | M1-3 | Roles resolved from DB at request time (not baked into JWT), per the JWT-bloat/sync risk analysis; SYSTEM_ADMIN is the only Keycloak realm role | 🔶 PR #80 | P1 |
-| M1-4 | Per-app Keycloak clients (`tedris-web`, `nizam-web`, `nazir-web`, `tedrisat-api`) with audience checks | 🔶 scripts in PR #80 | P1 |
+| M1-4 | Per-app Keycloak clients (`tedris-web`, `nizam-web`, `nazar-web`, `tedrisat-api`) with audience checks | 🔶 scripts in PR #80 | P1 |
 | M1-5 | Fast multi-account switching on a shared device (family/medrese computers) | 📄 | P2 |
 | M1-6 | User profile (display name, avatar, bio, preferences) owned by `teskilat`, keyed by Keycloak `sub` | ⬜ | P2 |
 | M1-7 | Session security: refresh rotation (exists), forced re-auth on refresh failure (exists), rate limiting on auth-adjacent endpoints | 🔶 | P1 |
@@ -375,7 +375,7 @@ Adopted design (authz matrix v1.0 + Keycloak teknik analiz + PR #80 implementati
 | **Security** | OWASP-aligned; helmet/CORS (exists); **add rate limiting** (P1); authz audit logging (P1); secrets in a vault — remove live credentials from Linear docs (P1); dependency scanning (re-enable audit-ci in PR CI, CodeQL stays); periodic security review per `docs/SECURITY_AUDIT.md` |
 | **Privacy & compliance** | KVKK (TR) + GDPR posture before any public user data collection (waitlist counts, P1); **minors policy** — talebe may include minors: age handling, parental consent, data minimization (P3 gate before beta); private-deck/haşiye privacy guarantees stated in ToS |
 | **Values-aligned dependencies** | Every significant new dependency/service passes the *Açık Kaynak Yazılım Değerlendirme Formu* (fonksiyonellik 15%, **Müslüman hassasiyetlerine uygunluk 50%**, topluluk 5%, güvenilirlik 10%, lisans 10%, kullanılabilirlik 3%, dokümantasyon 5%, bilinirlik 2%) — applies especially to video, payments, AI providers |
-| **i18n & RTL** | UI languages en/tr/ar (scaffolded); **RTL + `dir` + locale-aware `lang` in tedris/nizam/nazir** (gap today, P1); Arabic content typography already bundled (Scheherazade New, Uthmanic); content language per course |
+| **i18n & RTL** | UI languages en/tr/ar (scaffolded); **RTL + `dir` + locale-aware `lang` in tedris/nizam/nazar** (gap today, P1); Arabic content typography already bundled (Scheherazade New, Uthmanic); content language per course |
 | **Accessibility** | WCAG 2.1 AA progressively post-MVP (per Deneyimsel doc): screen-reader labels, keyboard nav, high-contrast; transcripts/subtitles for A/V arrive with the AI track (P5) but manual captions accepted earlier |
 | **Design language** | Medrese aesthetic: calligraphy motifs, sade palette (reference: #1E40AF / #10B981 / #F5F5DC on white), implemented through `@madrasah/tokens`; dark mode wired app-wide (P1); mobile-first responsive (375/768/1024 breakpoints) |
 | **Performance** | API p95 < 300 ms (reads) / 600 ms (writes) at beta load; LCP < 2.5 s on mid-range mobile; lazy-loaded dashboard widgets; SRS queue computation O(due), not O(all cards) |
@@ -423,7 +423,7 @@ Treat M18 as **greenfield in another team's roadmap** (their Phase 3 "Research P
 graph LR
     subgraph Frontends
       T[tedris :4000<br/>talebe] --- N[nizam :4001<br/>köşk+medrese mgmt]
-      N --- NZ[nazir :4002<br/>system admin]
+      N --- NZ[nazar :4002<br/>system admin]
       NZ --- L[landing :4003<br/>public+waitlist]
     end
     subgraph Backend
@@ -509,7 +509,7 @@ Köşk/course/enrollment/flashcard loop live in dev; Keycloak auth; tedris+nizam
 | # | Workstream | Key items |
 |---|---|---|
 | 3.1 | **Teşkilat service build-out** (M2) | Resolve hierarchy ambiguity (M2-6) → madrasah entity, köşk affiliation, nazır invite/remove, medrese decks/tags/analytics; `teskilat.json` OpenAPI → generated FE client |
-| 3.2 | **Nazir app v1 + nizam medrese views** | System-admin console (users, köşks, moderation, global decks); medrese management UX in nizam |
+| 3.2 | **Nazar app v1 + nizam medrese views** | System-admin console (users, köşks, moderation, global decks); medrese management UX in nizam |
 | 3.3 | **Müzakere** (M7) | Async course discussions with moderation; scheduled live müzakere with participation tracking |
 | 3.4 | **İmtihan** (M10) | Question bank; QUIZ lesson runtime; timed exams; manual + auto grading; optional placement flow |
 | 3.5 | **Gamification v1** (M15) | Points, rozetler, ezber streaks; achievement certificates |

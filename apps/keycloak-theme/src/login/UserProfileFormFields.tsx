@@ -566,15 +566,17 @@ function InputTagSelects(props: InputFieldByTypeProps) {
                     const isChecked = !!checked;
 
                     if (valueOrValues instanceof Array) {
-                      const newValues = [...valueOrValues];
+                      // Keycloakify starts a checkbox group at [""], an empty
+                      // placeholder. Leave it out of the list: with it kept,
+                      // the server's field error outlives the tick (the first
+                      // entry still equals the server's default) and the list
+                      // is one longer than the `multivalued` max of 1 that
+                      // Keycloak sends for a single-valued box (MDRS-257).
+                      const held = valueOrValues.filter(
+                        (value) => value !== "" && value !== option
+                      );
 
-                      if (isChecked) {
-                        newValues.push(option);
-                      } else {
-                        newValues.splice(newValues.indexOf(option), 1);
-                      }
-
-                      return newValues;
+                      return isChecked ? [...held, option] : held;
                     }
 
                     return isChecked ? option : "";

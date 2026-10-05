@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.1](https://github.com/amel-tech/medaris/compare/landing-web-v2.1.0...landing-web-v2.1.1) (2026-10-05)
+
+
+### Bug Fixes
+
+* **tedris-web, landing-web, ui:** MDRS-248 launch-flow test fixes ([#234](https://github.com/amel-tech/medaris/issues/234)) ([90a99bd](https://github.com/amel-tech/medaris/commit/90a99bd80bf7f5f8ce7fa0db8126709366840338))
+
 ## [2.1.0](https://github.com/amel-tech/medaris/compare/landing-web-v2.0.0...landing-web-v2.1.0) (2026-10-04)
 
 

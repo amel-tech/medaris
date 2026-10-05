@@ -2975,6 +2975,46 @@
         ]
       }
     },
+    "/courses/{id}/my-permissions": {
+      "get": {
+        "description": "The permission codes the signed-in caller holds in this course (`permissions`, sorted), and whether they may read its talebe (`staffRead`). Asked about themselves only: it answers with the caller's own codes and no one else's. The codes are the ones the routes decide with (`AuthzService.effective`, the computation behind every `@Authz`), so a screen can hide a button the API would refuse; the API still checks every write. A draft the caller may not edit, a hidden course they may not restore, and an unknown course are 404 (COURSE_NOT_FOUND). Nothing is written to `audit_log`.",
+        "operationId": "getMyCoursePermissions",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyCoursePermissionsResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "What the caller holds in a course",
+        "tags": [
+          "courses"
+        ]
+      }
+    },
     "/courses/{id}/muderris": {
       "put": {
         "description": "Partial update for the 'Müderrisleri düzenle' dialog (MDRS-176): only the müderris list and the imam change, not the syllabus. Needs `course.open_standalone` (or `madrasah.muderris_manage` for a medrese's course); the change is written to `audit_log`. The list is never empty and the imam is one of its accounts.",
@@ -3927,7 +3967,7 @@
     },
     "/courses/{id}/recordings": {
       "get": {
-        "description": "Open to callers with no token, like the course page. A caller holding `view_details` sees every recording; everyone else, PENDING and revoked included, only those with `visibility` PUBLIC. A recording whose `status` is PROCESSING is listed with a null `url`. Sorted by week number descending, then by `recordedAt` descending (MDRS-162).",
+        "description": "Open to callers with no token, like the course page. A caller holding `view_details` sees every recording; everyone else, PENDING and revoked included, only those with `visibility` PUBLIC. A recording whose `status` is PROCESSING is listed with a null `url`. Sorted by week number descending, then by `recordedAt` descending (MDRS-162). A READY BUNNY recording's `url` is a player link signed for this response, built only for a recording the caller may see, and expiring after `BUNNY_STREAM_EMBED_TTL_SECONDS` (6 hours by default); the response is `Cache-Control: private, no-store` (MDRS-119). What this protects: with embed token authentication on in the Bunny library, only a signed link opens the player page, and a signed link passed on opens it until it expires; the stream behind the page (playlist, segments, MP4) is protected only by the library's separate CDN token authentication, so a viewer who saved the video address can play it after the link has expired unless that is on. A YouTube, Drive or other pasted link plays for anyone who has it; for those the filter decides who is shown the link, not who can open it.",
         "operationId": "listCourseRecordings",
         "parameters": [
           {
@@ -4238,7 +4278,7 @@
     },
     "/lessons/{id}/cancel": {
       "post": {
-        "description": "The session stays in the programme as 'İptal edildi' (MDRS-158); its meeting link is no longer shown. The reason is course content. Written to `audit_log` (MDRS-176).",
+        "description": "The session stays in the programme as 'İptal edildi' (MDRS-158); its meeting link is no longer shown. The reason is course content. `replacementLessonId` links the session that makes up for it (telafi), which the session page shows as its replacement. Written to `audit_log` (MDRS-176).",
         "operationId": "cancelLesson",
         "parameters": [
           {
@@ -4271,6 +4311,9 @@
               }
             }
           },
+          "400": {
+            "description": "Field validation, or a make-up that is the session itself or not a live, standing session of the same course (LESSON_REPLACEMENT_INVALID)."
+          },
           "403": {
             "description": ""
           },
@@ -4278,7 +4321,7 @@
             "description": ""
           },
           "409": {
-            "description": "The course changed since `version` was loaded (COURSE_VERSION_CONFLICT), or the session is cancelled already (LESSON_ALREADY_CANCELLED)."
+            "description": "The course changed since `version` was loaded (COURSE_VERSION_CONFLICT), the session is cancelled already (LESSON_ALREADY_CANCELLED), or the named make-up already makes up for another session (LESSON_REPLACEMENT_TAKEN)."
           }
         },
         "security": [
@@ -4443,6 +4486,240 @@
           }
         ],
         "summary": "Set, change or clear a session's live stream link",
+        "tags": [
+          "lessons"
+        ]
+      }
+    },
+    "/lessons/{id}/recordings": {
+      "post": {
+        "description": "`recording.manage` (the müderris and the köşk nazımı by default, a ders nazırı when given it). The recording is READY at once; the link is read by its host and nothing is uploaded or called. A YouTube link is taken whatever the visibility. A player link of the Medaris Bunny library is stored as its video and played through a signed link, like an upload. A session holds one recording (409 RECORDING_EXISTS: change that one), except that a Bunny upload that FAILED is replaced. Written to `audit_log` as `recording.add`. Does not change the course version.",
+        "operationId": "createLessonRecording",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRecordingDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordingResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Field validation (VALIDATION_ERROR), or a link that cannot be stored (RECORDING_LINK_INVALID, `context.reason`: `invalid`, `not-https`, `youtube-no-video`, `bunny-no-video`, `bunny-foreign-library` (another library's link, or any Bunny link while none is configured), `bunny-video-used` (the video is another session's recording))."
+          },
+          "403": {
+            "description": "AUTHZ_FORBIDDEN"
+          },
+          "404": {
+            "description": "LESSON_NOT_FOUND"
+          },
+          "409": {
+            "description": "The session already has a recording (RECORDING_EXISTS) or is cancelled (LESSON_CANCELLED)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Add a session's recording by pasting its link",
+        "tags": [
+          "lessons"
+        ]
+      }
+    },
+    "/recordings/{id}": {
+      "patch": {
+        "description": "`recording.manage`. Only the keys sent change. A new link is read as on `POST /lessons/:id/recordings` and is READY; a Bunny video replaced by another link is no longer stored, and a link replaced by a Bunny video is no longer stored either. Written to `audit_log` as `recording.update`. Does not change the course version.",
+        "operationId": "updateRecording",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRecordingDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordingResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Field validation (VALIDATION_ERROR), or a link that cannot be stored (RECORDING_LINK_INVALID, `context.reason`: `invalid`, `not-https`, `youtube-no-video`, `bunny-no-video`, `bunny-foreign-library` (another library's link, or any Bunny link while none is configured), `bunny-video-used` (the video is another session's recording))."
+          },
+          "403": {
+            "description": "AUTHZ_FORBIDDEN"
+          },
+          "404": {
+            "description": "RECORDING_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Rename a recording, replace its link, or change who may watch it",
+        "tags": [
+          "lessons"
+        ]
+      }
+    },
+    "/lessons/{id}/recordings/uploads": {
+      "post": {
+        "description": "`recording.upload` (the müderris and the köşk nazımı by default, a ders nazırı when given it). Creates the video in the Medaris Bunny Stream library, records it as the session's recording with `provider` BUNNY and `status` PROCESSING, and returns what the browser needs for a TUS upload straight to Bunny; the file never passes through this API. The signature expires 24 hours later. A session that already has a recording is refused with 409, unless that recording is a Bunny upload that FAILED, which this one replaces. Written to `audit_log` as `recording.upload_start`. The recording becomes READY or FAILED when the encoding poll sees Bunny finish.",
+        "operationId": "startRecordingUpload",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartRecordingUploadDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordingUploadResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Field validation."
+          },
+          "403": {
+            "description": "AUTHZ_FORBIDDEN"
+          },
+          "404": {
+            "description": "LESSON_NOT_FOUND"
+          },
+          "409": {
+            "description": "RECORDING_EXISTS"
+          },
+          "503": {
+            "description": "BUNNY_STREAM_NOT_CONFIGURED (the library is not set on this server) or BUNNY_STREAM_UNAVAILABLE (Bunny did not answer)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Start uploading a session's recording to Bunny Stream",
+        "tags": [
+          "lessons"
+        ]
+      }
+    },
+    "/lessons/{id}/recordings/uploads/{videoId}/signature": {
+      "post": {
+        "description": "`recording.upload`, as for starting one. Returns the same video's TUS values so an interrupted upload continues where it stopped. The expiry is the upload's original one: signing again never extends it. 409 once the upload is no longer PROCESSING or its lifetime has passed (RECORDING_UPLOAD_CLOSED, with `reason`).",
+        "operationId": "resignRecordingUpload",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "videoId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordingUploadResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "AUTHZ_FORBIDDEN"
+          },
+          "404": {
+            "description": "LESSON_NOT_FOUND or RECORDING_UPLOAD_NOT_FOUND"
+          },
+          "409": {
+            "description": "RECORDING_UPLOAD_CLOSED"
+          },
+          "503": {
+            "description": "BUNNY_STREAM_NOT_CONFIGURED"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Sign a session's Bunny upload again, to resume it",
         "tags": [
           "lessons"
         ]
@@ -15206,6 +15483,30 @@
           "enrollment"
         ]
       },
+      "MyCoursePermissionsResponse": {
+        "type": "object",
+        "properties": {
+          "permissions": {
+            "example": [
+              "course.enroll",
+              "course.view"
+            ],
+            "description": "Every permission code the caller holds in this course, sorted: the relationship (enrolled, pending, or any signed-in caller), the roles and grants they hold in the course and in the köşk and medrese above it, cut by the policies and a passive scope. It is the decision the routes make, so a code listed here is a code the course's routes will accept, and one that is not listed is refused.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "staffRead": {
+            "type": "boolean",
+            "description": "Whether the caller may read the course's talebe, which is what opens the staff pages (`course.staff_read` is in `permissions`)."
+          }
+        },
+        "required": [
+          "permissions",
+          "staffRead"
+        ]
+      },
       "UpdateCourseDto": {
         "type": "object",
         "properties": {
@@ -15822,7 +16123,8 @@
         "enum": [
           "YOUTUBE",
           "DRIVE",
-          "OTHER"
+          "OTHER",
+          "BUNNY"
         ]
       },
       "RecordingVisibility": {
@@ -15836,7 +16138,8 @@
         "type": "string",
         "enum": [
           "PROCESSING",
-          "READY"
+          "READY",
+          "FAILED"
         ]
       },
       "SessionRecordingResponse": {
@@ -15866,7 +16169,8 @@
           },
           "url": {
             "type": "string",
-            "nullable": true
+            "nullable": true,
+            "description": "As `RecordingResponse.url`: a BUNNY recording's link is a player link signed for this response, with its own `expires`."
           },
           "visibility": {
             "allOf": [
@@ -16088,7 +16392,7 @@
           "url": {
             "type": "string",
             "nullable": true,
-            "description": "Null while the recording is PROCESSING."
+            "description": "Null unless the recording is READY. For a BUNNY recording it is Bunny's player link, `https://player.mediadelivery.net/embed/<libraryId>/<videoId>?token=<token>&expires=<unix seconds>`, signed for this response only and only for a caller allowed to see the recording (MDRS-116, MDRS-119); its player page opens until `expires` (6 hours by default, `BUNNY_STREAM_EMBED_TTL_SECONDS`), even if passed on; whether the stream behind it stops too depends on the library's CDN token authentication (docs/migration/mdrs-119-signed-playback.md). Any other provider's link is returned as stored: anyone holding it can open it, so for those our authorization decides who is shown the link, not who can play it."
           },
           "visibility": {
             "allOf": [
@@ -16627,6 +16931,11 @@
           "reason": {
             "type": "string",
             "example": "Müderris hasta"
+          },
+          "replacementLessonId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The session that makes up for this one (telafi). It must be a live session of the same course that is not cancelled, is not this session and is not already another session's make-up. Left out, the session is cancelled with no make-up."
           }
         },
         "required": [
@@ -16688,6 +16997,121 @@
         },
         "required": [
           "liveStreamUrl"
+        ]
+      },
+      "CreateRecordingDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "example": "Hafta 3: Birinci celse",
+            "maxLength": 200
+          },
+          "url": {
+            "type": "string",
+            "example": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+            "maxLength": 500,
+            "description": "An https link to the recording, read by its host with no call made to it (MDRS-119): a YouTube video link is YOUTUBE and is stored as its watch link; a player link of the Medaris Bunny library (`player.mediadelivery.net` or `iframe.mediadelivery.net`, `/embed/<libraryId>/<videoId>`) is BUNNY and only the video id is stored, its player link signed on every read; a Google Drive or Docs link is DRIVE and any other https link OTHER, both as pasted. A link that cannot be stored is 400 RECORDING_LINK_INVALID with a `reason`."
+          },
+          "visibility": {
+            "default": "ENROLLED",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RecordingVisibility"
+              }
+            ]
+          }
+        },
+        "required": [
+          "title",
+          "url"
+        ]
+      },
+      "UpdateRecordingDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "url": {
+            "type": "string",
+            "maxLength": 500,
+            "description": "A new https link, read as on `POST /lessons/:id/recordings`; the recording is READY. Moving between a Bunny video and any other link rewrites where the recording lives."
+          },
+          "visibility": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RecordingVisibility"
+              }
+            ]
+          }
+        }
+      },
+      "StartRecordingUploadDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "example": "Emsile: 3. celse kaydı",
+            "maxLength": 200,
+            "description": "The recording's title, shown on the course page and given to Bunny as the video's title."
+          },
+          "visibility": {
+            "default": "ENROLLED",
+            "description": "ENROLLED (the default) shows it only to those who may read the course's content; PUBLIC to everyone, unless the course is closed or a policy keeps recordings from the public.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RecordingVisibility"
+              }
+            ]
+          },
+          "recordedAt": {
+            "format": "date-time",
+            "type": "string",
+            "example": "2026-10-03T18:00:00.000Z"
+          }
+        },
+        "required": [
+          "title"
+        ]
+      },
+      "RecordingUploadResponse": {
+        "type": "object",
+        "properties": {
+          "recordingId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The recording row this upload fills."
+          },
+          "endpoint": {
+            "type": "string",
+            "example": "https://video.bunnycdn.com/tusupload"
+          },
+          "libraryId": {
+            "type": "string",
+            "example": "123456"
+          },
+          "videoId": {
+            "type": "string",
+            "description": "Bunny's id of the video, the same on every re-sign."
+          },
+          "authorizationExpire": {
+            "type": "number",
+            "description": "Unix seconds. The end of the upload's lifetime: 24 hours after it was started, and never moved by a re-sign."
+          },
+          "authorizationSignature": {
+            "type": "string",
+            "description": "SHA256_HEX(library_id + api_key + expiration + video_id)."
+          }
+        },
+        "required": [
+          "recordingId",
+          "endpoint",
+          "libraryId",
+          "videoId",
+          "authorizationExpire",
+          "authorizationSignature"
         ]
       },
       "CreateBanDto": {
@@ -22355,6 +22779,10 @@
             "type": "string",
             "example": "tr"
           },
+          "lessonInvitationEmails": {
+            "type": "boolean",
+            "description": "Whether lesson invitations, their updates and cancellations are e-mailed to the caller (MDRS-121)"
+          },
           "createdAt": {
             "format": "date-time",
             "type": "string"
@@ -22384,6 +22812,7 @@
         "required": [
           "id",
           "emailVerified",
+          "lessonInvitationEmails",
           "createdAt",
           "lastSeenAt",
           "roles",
@@ -22415,6 +22844,10 @@
             "nullable": true,
             "example": "tr",
             "description": "BCP 47 language tag"
+          },
+          "lessonInvitationEmails": {
+            "type": "boolean",
+            "description": "Lesson invitations by e-mail (MDRS-121). False stops every further invitation, update and cancellation."
           }
         }
       },

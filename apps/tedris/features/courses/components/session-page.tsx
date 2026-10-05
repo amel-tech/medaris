@@ -163,7 +163,8 @@ export const SessionPage = async ({
 
   // MDRS-162: the recording of a finished celse and the stream of a live one
   // are content the API sends only to who may read it, so a body without them
-  // draws neither.
+  // draws neither. A Bunny recording's address is the player link the API
+  // signed for this viewer in this response (MDRS-114).
   const recording = session.recording ?? null;
   const recordingEmbed = recording
     ? embedUrlOf(recording.provider, recording.url)
@@ -279,6 +280,11 @@ export const SessionPage = async ({
               title={recording.title}
               embedUrl={recordingFrame.embedUrl}
               frameId={recordingFrame.frameId}
+              frameTitle={
+                recording.provider === "BUNNY"
+                  ? t("SessionPage.bunnyFrameTitle", { title: recording.title })
+                  : undefined
+              }
               placeholder={t("SessionPage.recordingPlaceholder")}
               openHref={recordingEmbed ? null : recording.url}
               openLabel={t("SessionPage.recordingOpen")}

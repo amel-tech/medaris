@@ -58,7 +58,7 @@ const LOCKED_COMPONENTS = {
   "apps/teskilat": "teskilat",
   "apps/tedris": "tedris-web",
   "apps/nizam": "nizam-web",
-  "apps/nazir": "nazir-web",
+  "apps/nazar": "nazar-web",
   "apps/landing": "landing-web",
   "apps/keycloak-theme": "keycloak-theme",
 };

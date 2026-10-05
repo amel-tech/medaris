@@ -18,7 +18,7 @@ export interface AppShellProps extends HTMLAttributes<HTMLDivElement> {
   density?: "compact";
 }
 
-/** Nizam and nazir: a sidebar column and the `<main>`. Yönetim apps set `data-density="compact"` on the main. */
+/** Nizam and nazar: a sidebar column and the `<main>`. Yönetim apps set `data-density="compact"` on the main. */
 export function AppShell({
   sidebar,
   appBar,

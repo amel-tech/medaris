@@ -3,9 +3,27 @@ import type { RecordingResponse } from "@medaris/services/tedrisat";
 /**
  * What the recordings tab and the session page derive from a recording
  * (MDRS-162). Pure: a spec pins every rule.
+ *
+ * tedris sends no Content Security Policy today. One added later must allow
+ * the players these pages frame in `frame-src` (MDRS-114):
+ * `https://player.mediadelivery.net` (Bunny) and
+ * `https://www.youtube-nocookie.com` (YouTube), plus
+ * `https://drive.google.com` (a Drive recording on the session page) and
+ * `https://www.youtube.com` (the live chat, MDRS-229).
  */
 
 const ID = /^[\w-]{6,32}$/;
+
+/** Bunny's player, the only host a Bunny recording is framed from (MDRS-114). */
+const BUNNY_PLAYER_ORIGIN = "https://player.mediadelivery.net";
+
+/** `/embed/<library id>/<video id>`: a numeric library, the GUID Bunny gave the video. */
+const BUNNY_EMBED_PATH =
+  /^\/embed\/\d+\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** tedrisat's signature and nothing else: a SHA-256 hex token and a Unix expiry. */
+const BUNNY_SIGNED_QUERY =
+  /^\?(?:token=[0-9a-f]{64}&expires=\d+|expires=\d+&token=[0-9a-f]{64})$/;
 
 const parse = (url: string): URL | null => {
   try {
@@ -31,16 +49,41 @@ const youtubeIdOf = (parsed: URL): string | null => {
 };
 
 /**
+ * The signed player link tedrisat returned for this viewer (MDRS-119),
+ * exactly as it came, or null when it is anything but
+ * `https://player.mediadelivery.net/embed/<library id>/<video id>?token=<t>&expires=<unix seconds>`:
+ * another host or port, credentials, a fragment, a query key besides the two,
+ * an unsigned link, or a string the URL parser would write differently (so the
+ * string checked is the string framed). It is never rebuilt from parts: the
+ * token in it is this viewer's.
+ */
+export const bunnyPlayerUrlOf = (
+  url: string | null | undefined
+): string | null => {
+  const parsed = url ? parse(url) : null;
+  if (!url || !parsed || parsed.href !== url) return null;
+  return parsed.origin === BUNNY_PLAYER_ORIGIN &&
+    !parsed.username &&
+    !parsed.password &&
+    !url.includes("#") &&
+    BUNNY_EMBED_PATH.test(parsed.pathname) &&
+    BUNNY_SIGNED_QUERY.test(parsed.search)
+    ? url
+    : null;
+};
+
+/**
  * The address a recording or a live stream is embedded from, or null when the
- * link cannot be embedded safely. Only the two hosts the page frames are ever
- * returned (`youtube-nocookie.com`, `drive.google.com`), built from the video
- * id alone: nothing of the stored link, its query string included, reaches the
- * `src` of the frame.
+ * link cannot be embedded safely. A YouTube or Drive address is built from the
+ * video id alone (`youtube-nocookie.com`, `drive.google.com`): nothing of the
+ * stored link, its query string included, reaches the `src` of the frame. A
+ * Bunny address is the signed link itself, once `bunnyPlayerUrlOf` accepts it.
  */
 export const embedUrlOf = (
   provider: string,
   url: string | null | undefined
 ): string | null => {
+  if (provider === "BUNNY") return bunnyPlayerUrlOf(url);
   const parsed = url ? parse(url) : null;
   if (!parsed) return null;
   const host = parsed.hostname.replace(/^(www|m)\./, "");
@@ -77,16 +120,17 @@ export const liveEmbedUrlOf = (url: string | null | undefined) =>
 export type RecordingAction = "play" | "open" | "none";
 
 /**
- * What a list row offers (tedris/24): a YouTube recording plays in the page's
- * player, any other ready one opens at its host in a new tab, one that is
- * still being prepared offers nothing.
+ * What a list row offers (tedris/24): a YouTube or Bunny recording (MDRS-114)
+ * plays in the page's player, any other ready one opens at its host in a new
+ * tab, as does one whose link cannot be framed; one that is still being
+ * prepared offers nothing.
  */
 export const recordingAction = (
   recording: Pick<RecordingResponse, "provider" | "status" | "url">
 ): RecordingAction => {
   if (recording.status !== "READY" || !recording.url) return "none";
   return embedUrlOf(recording.provider, recording.url) &&
-    recording.provider === "YOUTUBE"
+    (recording.provider === "YOUTUBE" || recording.provider === "BUNNY")
     ? "play"
     : "open";
 };

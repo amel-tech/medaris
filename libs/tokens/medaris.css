@@ -533,7 +533,7 @@ html[data-density="compact"], [data-density="compact"] {
 /* Medaris — layout measures and breakpoints.
    var() cannot be used inside @media: write the breakpoint in px there (767.98px for "below tablet"). */
 :root {
-  --layout-sidebar: 256px;        /* Nizam and Nazır sidebar */
+  --layout-sidebar: 256px;        /* Nizam and Nazar sidebar */
   --layout-pane: 300px;           /* master-list pane */
   --layout-aside: 344px;          /* Tedris course aside: the join card, the ezber deck */
   --layout-content-max: 1200px;   /* Tedris reading pages; Nizam runs full width beside the sidebar */

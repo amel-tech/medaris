@@ -238,7 +238,7 @@ export class LessonController {
   @ApiOperation({
     summary: "The course's lesson recordings, newest week first",
     description:
-      "Open to callers with no token, like the course page. A caller holding `view_details` sees every recording; everyone else, PENDING and revoked included, only those with `visibility` PUBLIC. A recording whose `status` is PROCESSING is listed with a null `url`. Sorted by week number descending, then by `recordedAt` descending (MDRS-162).",
+      "Open to callers with no token, like the course page. A caller holding `view_details` sees every recording; everyone else, PENDING and revoked included, only those with `visibility` PUBLIC. A recording whose `status` is PROCESSING is listed with a null `url`. Sorted by week number descending, then by `recordedAt` descending (MDRS-162). A READY BUNNY recording's `url` is a player link signed for this response, built only for a recording the caller may see, and expiring after `BUNNY_STREAM_EMBED_TTL_SECONDS` (6 hours by default); the response is `Cache-Control: private, no-store` (MDRS-119). What this protects: with embed token authentication on in the Bunny library, only a signed link opens the player page, and a signed link passed on opens it until it expires; the stream behind the page (playlist, segments, MP4) is protected only by the library's separate CDN token authentication, so a viewer who saved the video address can play it after the link has expired unless that is on. A YouTube, Drive or other pasted link plays for anyone who has it; for those the filter decides who is shown the link, not who can open it.",
     operationId: "listCourseRecordings",
   })
   @ApiOkResponse({ type: [RecordingResponse] })
@@ -362,15 +362,19 @@ export class LessonController {
   @ApiOperation({
     summary: "Cancel a live session; it keeps its slot, marked cancelled",
     description:
-      "The session stays in the programme as 'İptal edildi' (MDRS-158); its meeting link is no longer shown. The reason is course content. Written to `audit_log` (MDRS-176).",
+      "The session stays in the programme as 'İptal edildi' (MDRS-158); its meeting link is no longer shown. The reason is course content. `replacementLessonId` links the session that makes up for it (telafi), which the session page shows as its replacement. Written to `audit_log` (MDRS-176).",
     operationId: "cancelLesson",
   })
   @ApiOkResponse({ type: LessonMutationResponse })
+  @ApiBadRequestResponse({
+    description:
+      "Field validation, or a make-up that is the session itself or not a live, standing session of the same course (LESSON_REPLACEMENT_INVALID).",
+  })
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()
   @ApiConflictResponse({
     description:
-      "The course changed since `version` was loaded (COURSE_VERSION_CONFLICT), or the session is cancelled already (LESSON_ALREADY_CANCELLED).",
+      "The course changed since `version` was loaded (COURSE_VERSION_CONFLICT), the session is cancelled already (LESSON_ALREADY_CANCELLED), or the named make-up already makes up for another session (LESSON_REPLACEMENT_TAKEN).",
   })
   @Post("lessons/:id/cancel")
   @HttpCode(HttpStatus.OK)
@@ -385,7 +389,8 @@ export class LessonController {
       id,
       dto.version,
       dto.reason?.trim() || null,
-      request.user.sub
+      request.user.sub,
+      dto.replacementLessonId ?? null
     );
   }
 

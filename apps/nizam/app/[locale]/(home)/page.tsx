@@ -42,7 +42,7 @@ export default async function Page({
     // Someone whose roles are all the medrese's and the course's has no work in
     // Nizam (design nizam/04); someone with no role at all has none either
     // (design nizam/03). A failed read keeps the page they asked for.
-    if (landing === "nazir") redirect(`/${locale}/nazir-yonlendirme`);
+    if (landing === "nazar") redirect(`/${locale}/nazar-yonlendirme`);
     if (landing === "none") redirect(`/${locale}/yetki-yok`);
   }
 

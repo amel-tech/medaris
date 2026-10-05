@@ -37,6 +37,7 @@ export const ACCOUNT_RECORD_FIELDS: Record<string, string> = {
   family_name: "soyad",
   time_zone: "saat dilimi tercihi",
   locale: "dil tercihi",
+  lesson_invitation_emails: "ders davetlerinin e-postayla gönderilmesi tercihi",
   created_at: "hesabın oluşturulma zamanı",
   last_seen_at: "platformu en son kullandığınız zaman",
 };
@@ -81,7 +82,7 @@ export const SECTIONS: NoticeSection[] = [
       "Üyelik hesabınızın oluşturulması ve yönetilmesi.",
       "Eğitim hizmetlerinin sunulması: köşklere ve derslere kayıt, canlı ders takvimi, ders kayıtlarına erişim.",
       "Kimliğinizin doğrulanması ve hesap güvenliğinin sağlanması.",
-      "E-posta adresinizin doğrulanması, parola sıfırlama ve celse davetleri gibi hesabınızla ve derslerinizle ilgili e-postaların gönderilmesi.",
+      "E-posta adresinizin doğrulanması, parola sıfırlama ve celse davetleri gibi hesabınızla ve derslerinizle ilgili e-postaların gönderilmesi; celse davetlerini Hesap sayfanızdan kapatabilirsiniz.",
       "İletişim formundan gönderdiğiniz mesajlara cevap verilmesi.",
       "Mevzuattan doğan yükümlülüklerin yerine getirilmesi.",
     ],

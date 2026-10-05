@@ -68,7 +68,7 @@ vi.mock("~/features/account/reads", () => ({
   getAccountRoles: async () => currentRoles,
 }));
 vi.mock("~/env", () => ({
-  env: { NIZAM_URL: "http://nizam.test", NAZIR_URL: "http://nazir.test/" },
+  env: { NIZAM_URL: "http://nizam.test", NAZAR_URL: "http://nazar.test/" },
 }));
 vi.mock("next-intl/server", () => {
   const t = (key: string, values?: Record<string, unknown>) => {
@@ -109,11 +109,11 @@ describe("account messages (MDRS-169)", () => {
 });
 
 describe("assignment view helpers", () => {
-  it("sends köşk roles to Nizam and the rest to Nazır", () => {
+  it("sends köşk roles to Nizam and the rest to Nazar", () => {
     expect(roleApp("KOSK_NAZIM")).toBe("nizam");
     expect(roleApp("MEDARIS_NAZIM")).toBe("nizam");
-    expect(roleApp("MUDERRIS")).toBe("nazir");
-    expect(roleApp("MEDRESE_BASMUDERRIS")).toBe("nazir");
+    expect(roleApp("MUDERRIS")).toBe("nazar");
+    expect(roleApp("MEDRESE_BASMUDERRIS")).toBe("nazar");
   });
 
   it("badges a course: hidden beats published and draft", () => {
@@ -126,19 +126,19 @@ describe("assignment view helpers", () => {
   });
 
   it("opens a köşk in Nizam with the köşk id, and leaves the link out without an address", () => {
-    const urls = { nizam: "http://nizam.test/", nazir: "http://nazir.test" };
+    const urls = { nizam: "http://nizam.test/", nazar: "http://nazar.test" };
     expect(
       openUrl({ role: "KOSK_NAZIM", scopeType: "kosk", scopeId: "k-1" }, urls)
     ).toBe("http://nizam.test/kosks/k-1");
     expect(
       openUrl({ role: "MUDERRIS", scopeType: "course", scopeId: "c-1" }, urls)
-    ).toBe("http://nazir.test");
+    ).toBe("http://nazar.test");
     expect(
       openUrl(
         { role: "MEDRESE_NAZIR", scopeType: "madrasah", scopeId: "m" },
         urls
       )
-    ).toBe("http://nazir.test");
+    ).toBe("http://nazar.test");
     expect(
       openUrl({ role: "KOSK_NAZIM", scopeType: "kosk", scopeId: "k" }, {})
     ).toBeNull();
@@ -263,10 +263,10 @@ describe("RolesSection", () => {
     expect(html).toContain("Gizli");
     expect(html).toContain("İmam");
     expect(html).toContain('href="http://nizam.test/kosks/k-1"');
-    expect(html).toContain('href="http://nazir.test"');
+    expect(html).toContain('href="http://nazar.test"');
     expect(html).toContain('target="_blank"');
     expect(html).toContain("Nizam’da aç: köşk nazımı, Nûruosmaniye Köşkü");
-    expect(html).toContain("Nazır’da aç: müderris, Emsile ve Bina");
+    expect(html).toContain("Nazar’da aç: müderris, Emsile ve Bina");
 
     expect(html).toContain("Nûruosmaniye Köşkü · köşk nazımı");
     expect(html).not.toContain("mds-badge--success");

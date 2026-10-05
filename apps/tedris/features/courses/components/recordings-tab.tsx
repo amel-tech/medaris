@@ -25,16 +25,19 @@ const LessonNotes = lazy(() =>
 const PROVIDER_NAMES: Record<string, string | undefined> = {
   YOUTUBE: "YouTube",
   DRIVE: "Google Drive",
+  BUNNY: "Bunny Stream",
 };
 
 /**
  * The "Ders kayıtları" tab of the course page (design tedris/24, MDRS-162):
  * a player over the course's recordings grouped by week, newest first. The
  * list is the API's — it already leaves out what this caller may not see — so
- * the tab only chooses what each row offers: a YouTube recording plays in the
- * frame above, anything else opens at its host, one still being prepared
- * offers nothing. For an enrolled talebe (`notes`) the player has their private
- * notes panel beside it (MDRS-150).
+ * the tab only chooses what each row offers: a YouTube or Bunny recording
+ * (MDRS-114) plays in the frame above, anything else opens at its host, one
+ * still being prepared offers nothing. A Bunny recording's address is the
+ * player link the API signed for this viewer in this response. For an
+ * enrolled talebe (`notes`) the player has their private notes panel beside
+ * it (MDRS-150).
  */
 export const RecordingsTab = ({
   recordings,
@@ -121,6 +124,11 @@ const RecordingsList = ({
             }
             placeholder={t("playerPlaceholder")}
             frameId={notes ? frameId : undefined}
+            frameTitle={
+              selected.provider === "BUNNY"
+                ? t("bunnyFrameTitle", { title: selected.title })
+                : undefined
+            }
           >
             {facts(selected, true)}
           </MediaPlayer>

@@ -16,7 +16,7 @@ overwrites it, and `verify` reports it until then.
 
 Environments are the directories under `clients/`: `local` (a Keycloak on your
 machine, clients on `localhost:4000–4002`) and `prod` (`auth.medaris.app`,
-clients on `tedris|nizam|nazir.medaris.app`). Both provision the realm named by
+clients on `tedris|nizam|nazar.medaris.app`). Both provision the realm named by
 `KC_REALM`, `medaris` by default.
 
 The shared development realm `amel-tech-dev` is **not** managed from here; it
@@ -82,11 +82,11 @@ The tedrisat API of that environment needs, for this realm:
 KEYCLOAK_ISSUER=https://auth.medaris.app/realms/medaris
 KEYCLOAK_JWKS_URL=https://auth.medaris.app/realms/medaris/protocol/openid-connect/certs
 KEYCLOAK_AUDIENCE=tedrisat-api
-KEYCLOAK_ALLOWED_CLIENTS=tedris,nizam,nazir
+KEYCLOAK_ALLOWED_CLIENTS=tedris,nizam,nazar
 ```
 
 and each web app `KEYCLOAK_ISSUER` as above and `KEYCLOAK_CLIENT_ID` = its
-client (`tedris`, `nizam`, `nazir`).
+client (`tedris`, `nizam`, `nazar`).
 
 Guards, the same as `tools/keycloak/setup-realm.sh`: a `KC_URL` that is not
 `http://localhost` needs `ALLOW_REMOTE=1` and explicit admin credentials; a

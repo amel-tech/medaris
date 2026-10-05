@@ -2,8 +2,10 @@ import { AuthGuardModule } from "@medaris/common";
 import { Module } from "@nestjs/common";
 import { AssignmentModule } from "../assignment/assignment.module";
 import { BanModule } from "../ban/ban.module";
+import { BunnyStreamModule } from "../bunny-stream/bunny-stream.module";
 import { DatabaseService } from "../database/database.service";
 import { KoskModule } from "../kosk/kosk.module";
+import { LessonInvitationModule } from "../lesson-invitation/lesson-invitation.module";
 import { NotificationModule } from "../notification/notification.module";
 import { PlatformPolicyModule } from "../platform-policy/platform-policy.module";
 import { CourseController } from "./course.controller";
@@ -15,7 +17,12 @@ import { CourseStatsRepository } from "./course-stats.repository";
 import { LessonController } from "./lesson.controller";
 import { LiveStreamController } from "./live-stream.controller";
 import { LiveStreamService } from "./live-stream.service";
+import { RecordingController } from "./recording.controller";
 import { RecordingRepository } from "./recording.repository";
+import { RecordingService } from "./recording.service";
+import { RecordingEncodingPoller } from "./recording-encoding.poller";
+import { RecordingUploadController } from "./recording-upload.controller";
+import { RecordingUploadService } from "./recording-upload.service";
 
 @Module({
   imports: [
@@ -25,13 +32,24 @@ import { RecordingRepository } from "./recording.repository";
     PlatformPolicyModule,
     NotificationModule,
     AssignmentModule,
+    BunnyStreamModule,
+    LessonInvitationModule,
   ],
-  controllers: [CourseController, LessonController, LiveStreamController],
+  controllers: [
+    CourseController,
+    LessonController,
+    LiveStreamController,
+    RecordingController,
+    RecordingUploadController,
+  ],
   providers: [
     CourseService,
     CourseRepository,
     LiveStreamService,
     RecordingRepository,
+    RecordingService,
+    RecordingUploadService,
+    RecordingEncodingPoller,
     CourseStatsRepository,
     CourseNotifier,
     CourseNotificationRepository,

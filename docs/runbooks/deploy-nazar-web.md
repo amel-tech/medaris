@@ -1,0 +1,304 @@
+# Runbook — deploy Nazar Web
+
+| | |
+|---|---|
+| Nx project | `nazar-web` |
+| Source | `apps/nazar/` |
+| Dockerfile | `apps/nazar/Dockerfile` (build context is the repo root) |
+| Workflow | `.github/workflows/nazar-web.yaml` |
+| GHCR image | `ghcr.io/amel-tech/medaris-nazar-web` |
+| Container port | `4002` |
+| Coolify application | `nazar-web` — uuid `rcwww0wkosws0g8ks8oks4c4`, project *Medaris*, environment `development`, server `mdrs1` (`193.111.78.115`), `https://nazar-dev.medaris.app` (the application was `nazir-web` on `https://nazir-dev.medaris.app` until MDRS-250; if it was recreated rather than renamed, its uuid changed: put the new one here and in §3) |
+| Coolify webhook secret | `NAZAR_WEB_COOLIFY_WEBHOOK` (repo secret; MDRS-250 renamed it from `NAZIR_WEB_COOLIFY_WEBHOOK`, set 2026-09-16). Until the new names exist the workflow falls back to the old ones: `NAZIR_WEB_COOLIFY_WEBHOOK` and `NAZIR_WEB_PROD_COOLIFY_WEBHOOK`. |
+| Deploy token | `COOLIFY_DEPLOY_TOKEN` (org secret — present) |
+
+The image name is not hardcoded: the workflow sets
+`IMAGE_NAME: ${{ github.repository }}-nazar-web` and `REGISTRY: ghcr.io`, and
+`github.repository` is `amel-tech/medaris`, so the full reference is
+`ghcr.io/amel-tech/medaris-nazar-web`.
+
+---
+
+## 0. Build inputs
+
+None. The image is environment-agnostic (MDRS-86): the app declares no
+`NEXT_PUBLIC_*` key, so nothing from `.env.example` — which the build stage
+copies only to satisfy `env.ts`'s build-time validation — reaches the browser
+bundle. Every value the running app uses is read on the server at request time
+from the Coolify application's environment, exactly like the two APIs, and the
+same image serves `development` and `production`.
+
+The one build-time remnant is in tedris only: `images.remotePatterns` in its
+`next.config.js` is derived from `WEB__KEYCLOAK_ISSUER` in `.env.example` at
+`next build`, i.e. the host of the one shared Keycloak. A different Keycloak
+host would need a rebuild; a different realm does not.
+
+---
+
+## 1. How a release tag becomes an image tag
+
+`docker/metadata-action` is configured with four tag rules:
+
+```yaml
+type=match,pattern=nazar-web-v(.+),group=1
+type=raw,value=latest,enable=${{ github.event_name == 'release' || github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}
+type=sha
+type=raw,value=stable,enable=${{ github.event_name == 'release' && github.event.release.prerelease == false }}
+```
+
+| Trigger | Tags produced |
+|---|---|
+| Full release published, tag `nazar-web-v1.4.0` | `1.4.0`, `latest`, `sha-<short>`, `stable` |
+| Full release published, tag `nazar-web-something-without-v` | `latest`, `sha-<short>`, `stable` — **no version tag** |
+| Pre-release created, tag `nazar-web-v<semver>-rc.1` | `<semver>-rc.1`, `latest`, `sha-<short>` — **no `stable`**, so production is untouched and the deploy goes to development |
+| `workflow_dispatch` / `workflow_call` on `main` | `latest`, `sha-<short>` |
+| `workflow_dispatch` / `workflow_call` on any other branch | `sha-<short>` only |
+
+`type=match` strips the `nazar-web-v` prefix and keeps capture group 1, so the
+release tag `nazar-web-v1.4.0` produces the image tag **`1.4.0`** — the
+prefix is not part of the image tag.
+
+`latest` deliberately does **not** use metadata-action's `{{is_default_branch}}`
+helper. That helper strips `refs/heads/` off the ref and compares what is left
+to the default branch; on a `release` the ref is `refs/tags/<tag>`, so the strip
+is a no-op and the compare can never match, and its event fallback covers only
+create/discussion/issues/schedule — never `release`. Left that way, a release
+pushed the version tag and `sha-…` but left `:latest` pointing at the **previous**
+image, so a Coolify service configured to pull `:latest` (Path B in §3.2) would
+re-pull the old build while the workflow run went green. The explicit expression
+above moves `latest` on every release as well as on the default branch.
+
+`type=sha` was added by MDRS-16 and is what guarantees the list is never empty.
+Before it, a dispatch from a non-default branch matched neither rule,
+metadata-action emitted no tags at all, and the push step failed.
+
+The job's own `if:` gate is separate from — and slightly wider than — the tag
+pattern:
+
+```yaml
+if: ${{ github.event_name != 'release' || startsWith(github.event.release.tag_name, 'nazar-web-') }}
+```
+
+Read it as: *on a release, the tag must be ours; on anything else, run.* So a
+release tagged `nazar-web-something-without-v` **runs the job but produces no
+version tag** — only `latest` and `sha-…`. Always tag releases as `nazar-web-v<semver>`.
+
+MDRS-16 rewrote this gate. The old form enumerated allowed events
+(`== 'workflow_dispatch' || == 'workflow_call' || startsWith(…)`), which is a
+trap: inside a reusable workflow the `github` context is the **caller's**, so
+`github.event_name` is never `'workflow_call'`. It only worked while the
+dispatcher was `workflow_dispatch`-only; since MDRS-86 `cd-development.yaml`
+calls this workflow on every push to `main`, so under the old gate
+`github.event_name` would be `'push'`, no clause would match, and every deploy
+would have been skipped silently and reported success.
+
+> The 43 historical tags MDRS-9 preserved were pushed on 2026-09-22
+> (`gh api --paginate repos/amel-tech/medaris/tags --jq '.[].name' | wc -l` →
+> `43`), so release-please finally has a release anchor per component. The
+> repository still has **no releases** (`gh api repos/amel-tech/medaris/releases
+> --jq 'length'` → `0`), so no deploy has yet produced a `<semver>` or `stable`
+> tag; every image in GHCR is from a `latest` / `sha-<short>` run.
+
+---
+
+## 2. Normal deploy
+
+Two channels (MDRS-87), told apart by the event that started the run:
+
+| Channel | Coolify application | Pulls | Started by | Webhook secret |
+|---|---|---|---|---|
+| development | the `development` one in the header | `latest` | any *development* path below | `NAZAR_WEB_COOLIFY_WEBHOOK` |
+| production | its twin in the `production` environment | `stable` | *Release path* below, full releases only | `NAZAR_WEB_PROD_COOLIFY_WEBHOOK` |
+
+Release-please is not part of the development channel: its release PRs stay
+open until someone decides to ship, and merging one is the production trigger.
+
+* **Release path (production)** — merge the release-please PR for `nazar-web` (or
+  create a GitHub release tagged `nazar-web-v<semver>` by hand). The workflow
+  builds, pushes `<semver>` + `latest` + `sha-…` + `stable`, and calls the
+  **production** webhook. A **pre-release** does none of that: `stable` is
+  guarded on `github.event.release.prerelease == false`, so an `-rc` build
+  goes to development like any other `main` build. `latest` moving on a full
+  release is harmless: the release commit
+  is the head of `main`, so development receives the build it would anyway.
+* **Automatic path (development)** — every push to `main` runs **CD
+  (development)** (`.github/workflows/cd-development.yaml`), which calls this
+  workflow when `nx affected` lists this app — including for a change to a lib
+  it depends on. Nothing to click; the run appears under the dispatcher's name.
+* **Manual path (development)** — Actions → **Nazar Web** → *Run workflow* on `main`.
+* **Fan-out path, by hand (development)** — Actions → **CD (development)** → *Run workflow*
+  with `dry_run: false` (default `true` only reports). Same dispatcher, same
+  affected computation; useful to redeploy after a Coolify-side change with
+  no commit.
+
+Each run writes the digest and the exact tag list to its job summary
+("Record pushed image"). **That summary is the rollback record** — copy the
+digest before you need it.
+
+---
+
+## 3. Rollback
+
+### 3.1 Find the version you want to go back to
+
+```bash
+# Every tag ever pushed for this image, newest first.
+gh api -H "Accept: application/vnd.github+json" \
+  "/orgs/amel-tech/packages/container/medaris-nazar-web/versions" \
+  --jq '.[] | {id, tags: .metadata.container.tags, created: .created_at}'
+```
+
+This needs a token with `read:packages`. Without one, read the digest off the
+job summary of the run you want to return to
+(Actions → **Nazar Web** → the run → "Record pushed image").
+
+You can always address an old build by its immutable digest:
+`ghcr.io/amel-tech/medaris-nazar-web@sha256:<digest>`.
+
+### 3.2 Re-point the deployment
+
+Read from Coolify through its API on 2026-09-15 (MDRS-86), not assumed: the
+`nazar-web` application has build pack `dockerimage`, so Coolify never builds
+from git and the GHCR image is exactly what runs.
+
+Configuration and the running container are two different facts, so both are
+recorded here:
+
+| | Value |
+|---|---|
+| Coolify configuration (what the next deploy pulls) | `ghcr.io/amel-tech/medaris-nazar-web:latest` (MDRS-250; it was `ghcr.io/amel-tech/medaris-nazir-web:latest`, set 2026-09-20); health check still off — Next answers `/` with a locale redirect (307/308) and Coolify's check expects 200, so a dedicated health route is needed before it can be enabled |
+| Running container | `latest` as pushed by the first `main` run (`sha-5d52210`) — deployed 2026-09-20 through the API, `GET https://nazir-dev.medaris.app/` → 200 after redirects, and the served page and its chunks carry no `localhost` value |
+| Rollback value | the previous `sha-<short>` tag of `medaris-nazar-web`; across the MDRS-250 rename, a digest of the old `ghcr.io/amel-tech/medaris-nazir-web` (same env names inside the container, so it runs on the renamed application); before MDRS-86, `ghcr.io/amel-tech/madrasah-frontend-nazir-web:nazir-dev` (last built 2026-06-18) |
+
+
+`latest` is deliberate: it is the tag every workflow run on the default branch
+and every release already moves, so `development` follows `main` without a
+tag of its own, and a future `production` environment pins `<semver>` instead.
+Path B below is therefore the live path; Path A is what a pinned environment
+would use.
+
+
+**Path A — the service pulls a pinned tag or digest.**
+Edit the image reference in the Coolify service configuration to the previous
+tag/digest and redeploy from the Coolify UI.
+The two fields are **Docker Image** and **Docker Image Tag** on the application's
+*General* tab; through the API they are `docker_registry_image_name` and
+`docker_registry_image_tag` on `PATCH /api/v1/applications/rcwww0wkosws0g8ks8oks4c4`.
+
+**Path B — the application pulls a moving tag (`latest` for development, `stable` for production).**
+The commands below say `latest`; for production substitute `stable` and the
+production webhook secret.
+Move `latest` back to the old digest, then fire the same webhook the workflow
+uses. No rebuild, so the bytes are provably the ones that worked:
+
+```bash
+echo "$GHCR_PAT" | docker login ghcr.io -u <your-github-username> --password-stdin
+
+# Re-point :latest at a known-good digest (no rebuild, no re-push of layers).
+docker buildx imagetools create \
+  --tag ghcr.io/amel-tech/medaris-nazar-web:latest \
+  ghcr.io/amel-tech/medaris-nazar-web@sha256:<good-digest>
+
+# Confirm the move landed.
+docker buildx imagetools inspect ghcr.io/amel-tech/medaris-nazar-web:latest
+
+# Tell Coolify to pull it. Same request the workflow makes.
+curl --fail-with-body --silent --show-error \
+     --request GET "$COOLIFY_WEBHOOK" \
+     --header "Authorization: Bearer $COOLIFY_DEPLOY_TOKEN"
+```
+
+`$COOLIFY_WEBHOOK` is the value of the `NAZAR_WEB_COOLIFY_WEBHOOK` repo secret.
+Its value is Coolify's deploy endpoint for this application,
+`https://coolify.medaris.net/api/v1/deploy?uuid=rcwww0wkosws0g8ks8oks4c4&force=false` — a
+*deploy*, not a restart, so for a `dockerimage` application it re-resolves the
+tag before starting the container. **TODO(verify against Coolify):** confirm on
+the first MDRS-86 deploy that the digest Coolify runs afterwards is the one the
+workflow pushed; until then treat "re-pull" as documented, not measured.
+
+### 3.3 What NOT to do
+
+Do not re-run the old workflow run to roll back. A re-run checks out the same
+commit but rebuilds from scratch: base images, `pnpm install` and the app build
+all re-resolve, so you get *a* build of that commit, not *the* build that was
+running. Re-point the tag or the digest instead.
+
+---
+
+## 4. Verify
+
+```bash
+docker run --rm -p 4002:4002 ghcr.io/amel-tech/medaris-nazar-web:<tag>
+curl -s -o /dev/null -w '%{http_code}\n' http://localhost:4002/
+```
+
+Expect the container log to show `▲ Next.js` and `✓ Ready in …`, and the request
+to return **`200` or `307`** — these apps route through next-intl, which
+redirects `/` to `/<locale>`, so a 307 is healthy, not a fault. (Measured on a
+locally built `apps/landing` image: `Ready in 186ms`, then `HTTP 307`.)
+
+A Next.js app also needs its runtime env; a bare `docker run` without the app's
+`.env` can render an error page on a perfectly good image, so treat an
+unexpected status as "check env first", not "bad image".
+
+Then confirm the deployed service, not just the image:
+
+* Coolify shows the service healthy and the container restarted within the last
+  few minutes. The service answers at `https://nazar-dev.medaris.app`; its logs are on
+  the application's *Logs* tab in Coolify, and in `docker logs` on `mdrs1`.
+* The running container reports the digest you intended:
+
+```bash
+docker buildx imagetools inspect ghcr.io/amel-tech/medaris-nazar-web:latest \
+  --format '{{.Manifest.Digest}}'
+```
+
+---
+
+## 5. Known blockers
+
+The first three items this section carried (webhook secret unset, image build
+unverified in CI, `NEXT_PUBLIC_*` placeholders baked into the bundle) are
+closed by MDRS-86 and kept here only as history:
+
+1. **Webhook secret** — `NAZIR_WEB_COOLIFY_WEBHOOK` was set on 2026-09-16; the
+   deploy step's guard no longer fires.
+2. **Image build in CI** — run `35536080527` (`.github/workflows/nazir-web.yaml`
+   on `main` at `5d52210`, 2026-09-20) built, pushed `latest` + `sha-5d52210`
+   and called the webhook, all green. Before MDRS-86 this image could not build
+   in CI at all (`TS6305`, see the migration record).
+3. **`NEXT_PUBLIC_*` placeholders** — MDRS-16 measured a server chunk in the
+   built image carrying `NEXT_PUBLIC_TEDRISAT_API_BASE_URL:"http://localhost:3001"` and the other `localhost` values from
+   `.env.example`. MDRS-86 removed every `NEXT_PUBLIC_*` key from the app
+   instead of passing real values as build args, so there is nothing left to
+   inline (§0). Verified at the source (`git grep NEXT_PUBLIC -- '*.ts' '*.tsx'`
+   on `main` matches only comments) and on the served page and its referenced
+   JS on 2026-09-20; the server chunks of the deployed image were not
+   re-inspected.
+
+4. **Order of operations: create the repo secrets BEFORE merging.** The runner
+   stage does `rm -f ./apps/nazar/.env`, which is the right call — the
+   placeholders are literals such as `NEXTAUTH_SECRET=NEXT_AUTH_SECRET` and
+   `KEYCLOAK_CLIENT_SECRET=KEYCLOAK_CLIENT_SECRET`, and a predictable
+   session-signing key that silently satisfies validation is worse than a crash.
+   But `apps/nazar/env.ts` marks `KEYCLOAK_CLIENT_ID`, `KEYCLOAK_CLIENT_SECRET`,
+   `KEYCLOAK_ISSUER`, `NEXTAUTH_URL` and `NEXTAUTH_SECRET` as required, so with
+   the `.env` gone and nothing supplied by Coolify, the environment validation
+   fails. Measured, not assumed: `docker run` on the built image with no env
+   leaves the container in state **`running`** — it does *not* exit — while
+   `instrumentation.js` throws and **every page returns HTTP 500**. That is the
+   quieter and more dangerous half of the failure: a container that stays `Up`
+   satisfies a naive container-status healthcheck, so Coolify can report the
+   service green while it serves nothing. (With the full env supplied the same
+   image returns HTTP 200, so the image itself is sound.) Sequence it: populate
+   the GitHub repo secrets **and** the Coolify service environment from the
+   Coolify values first, then merge and deploy. If that cannot happen in one
+   step, land the workflow and Dockerfile changes but hold the deploy trigger —
+   otherwise the first run after merge takes this frontend down.
+
+**Still open (MDRS-87).** `NAZAR_WEB_PROD_COOLIFY_WEBHOOK` is not set, and the Coolify
+`production` application it points at does not exist yet. Until both do, a
+release pushes `<semver>` + `latest` + `sha-…` + `stable` to GHCR and then the
+*Deploy to Coolify* step exits 1 naming that secret: GHCR is updated,
+production is untouched, the run is red. It never falls back to the
+development webhook.

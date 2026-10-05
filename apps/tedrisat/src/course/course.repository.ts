@@ -89,6 +89,8 @@ import { CourseNotFoundError } from "./errors/course-not-found.error";
 import { CourseVersionConflictError } from "./errors/course-version-conflict.error";
 import { LessonAlreadyCancelledError } from "./errors/lesson-already-cancelled.error";
 import { LessonNotFoundError } from "./errors/lesson-not-found.error";
+import { LessonReplacementInvalidError } from "./errors/lesson-replacement-invalid.error";
+import { LessonReplacementTakenError } from "./errors/lesson-replacement-taken.error";
 import { WeekNotFoundError } from "./errors/week-not-found.error";
 
 /**
@@ -898,7 +900,8 @@ export class CourseRepository implements ICourseRepository {
     lessonId: string,
     expectedVersion: number,
     reason: string | null,
-    actorId: string
+    actorId: string,
+    replacementLessonId: string | null = null
   ): Promise<ILessonMutation> {
     return this.db.transaction(async (tx) => {
       const courseId = await this.findLiveLessonCourseId(tx, lessonId);
@@ -907,12 +910,24 @@ export class CourseRepository implements ICourseRepository {
         courseId,
         expectedVersion
       );
+      if (replacementLessonId !== null) {
+        // A session that is cancelled already is answered as that, whatever
+        // make-up the request names.
+        const [held] = await tx
+          .select({ cancelledAt: lessons.cancelledAt })
+          .from(lessons)
+          .where(eq(lessons.id, lessonId))
+          .limit(1);
+        if (held?.cancelledAt) throw new LessonAlreadyCancelledError(lessonId);
+        await this.assertMayMakeUp(tx, courseId, lessonId, replacementLessonId);
+      }
       const now = new Date();
       const [row] = await tx
         .update(lessons)
         .set({
           cancelledAt: now,
           cancelReason: reason,
+          replacementLessonId,
           updatedAt: now,
         })
         .where(and(eq(lessons.id, lessonId), isNull(lessons.cancelledAt)))
@@ -923,10 +938,65 @@ export class CourseRepository implements ICourseRepository {
         action: "lesson.cancel",
         entity: "lesson",
         entityId: lessonId,
-        details: { courseId, reason },
+        details: { courseId, reason, replacementLessonId },
       });
       return this.toLessonMutation(row, courseVersion);
     });
+  }
+
+  /**
+   * Whether `replacementLessonId` may make up for the session being cancelled:
+   * a live session of the same course, not that session itself, still
+   * standing, and not already the make-up of another one. It runs under the
+   * course row's lock, so two cancellations cannot claim the same make-up.
+   */
+  private async assertMayMakeUp(
+    tx: Tx,
+    courseId: string,
+    lessonId: string,
+    replacementLessonId: string
+  ): Promise<void> {
+    if (replacementLessonId === lessonId) {
+      throw new LessonReplacementInvalidError(
+        lessonId,
+        replacementLessonId,
+        "A session cannot make up for itself"
+      );
+    }
+    const [candidate] = await tx
+      .select({ type: lessons.type, cancelledAt: lessons.cancelledAt })
+      .from(lessons)
+      .innerJoin(courseWeeks, eq(lessons.weekId, courseWeeks.id))
+      .where(
+        and(
+          eq(lessons.id, replacementLessonId),
+          eq(courseWeeks.courseId, courseId),
+          isNull(lessons.archivedAt)
+        )
+      )
+      .limit(1);
+    if (!candidate || candidate.type !== LessonType.LIVE) {
+      throw new LessonReplacementInvalidError(
+        lessonId,
+        replacementLessonId,
+        "The make-up must be a live session of the same course"
+      );
+    }
+    if (candidate.cancelledAt) {
+      throw new LessonReplacementInvalidError(
+        lessonId,
+        replacementLessonId,
+        "A cancelled session cannot be a make-up"
+      );
+    }
+    const [taken] = await tx
+      .select({ id: lessons.id })
+      .from(lessons)
+      .where(eq(lessons.replacementLessonId, replacementLessonId))
+      .limit(1);
+    if (taken) {
+      throw new LessonReplacementTakenError(replacementLessonId, taken.id);
+    }
   }
 
   async setMuderris(
