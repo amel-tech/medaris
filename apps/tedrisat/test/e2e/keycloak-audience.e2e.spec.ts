@@ -358,7 +358,7 @@ describe("Keycloak realm ↔ audience check (e2e)", () => {
       "nizam-dev does not exist on this realm and was not created"
     );
     expect(result.stderr).toContain(
-      "nazir-dev does not exist on this realm and was not created"
+      "nazar-dev does not exist on this realm and was not created"
     );
   });
 

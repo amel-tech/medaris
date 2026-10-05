@@ -16,7 +16,7 @@
 #   realm         amel-tech-dev (REALM)
 #   API client    tedrisat-api — confidential, every login flow disabled. It
 #                 exists only to be named in `aud`; nothing logs in through it.
-#   web clients   tedris-dev, nizam-dev, nazir-dev (WEB_CLIENTS) — confidential
+#   web clients   tedris-dev, nizam-dev, nazar-dev (WEB_CLIENTS) — confidential
 #                 (NextAuth holds the secret server-side), standard flow only,
 #                 PKCE S256 required, each with an audience mapper that puts
 #                 `tedrisat-api` into the access token's `aud`.
@@ -53,7 +53,7 @@
 #   API_CLIENT_ID       default tedrisat-api
 #   WEB_CLIENTS         default "tedris-dev=http://localhost:4000
 #                                nizam-dev=http://localhost:4001
-#                                nazir-dev=http://localhost:4002"
+#                                nazar-dev=http://localhost:4002"
 #                       (localhost only; a remote run needs it set to create
 #                       a missing client)
 #   ALLOW_REMOTE=1      required to run against a non-localhost KC_URL
@@ -97,7 +97,7 @@ KC_URL="${KC_URL%/}"
 REALM="${REALM:-amel-tech-dev}"
 API_CLIENT_ID="${API_CLIENT_ID:-tedrisat-api}"
 WEB_CLIENTS_EXPLICIT="${WEB_CLIENTS:+1}"
-WEB_CLIENTS="${WEB_CLIENTS:-tedris-dev=http://localhost:4000 nizam-dev=http://localhost:4001 nazir-dev=http://localhost:4002}"
+WEB_CLIENTS="${WEB_CLIENTS:-tedris-dev=http://localhost:4000 nizam-dev=http://localhost:4001 nazar-dev=http://localhost:4002}"
 
 WITH_TEST_USERS=0
 PRINT_SECRETS=0

@@ -1,0 +1,26 @@
+{
+  "clientId": "nazar",
+  "name": "nazar",
+  "standardFlowEnabled": true,
+  "baseUrl": "https://nazar.medaris.app",
+  "redirectUris": ["https://nazar.medaris.app/api/auth/callback/keycloak"],
+  "webOrigins": ["https://nazar.medaris.app"],
+  "attributes": {
+    "pkce.code.challenge.method": "S256",
+    "post.logout.redirect.uris": "https://nazar.medaris.app##https://nazar.medaris.app/"
+  },
+  "protocolMappers": [
+    {
+      "name": "audience-tedrisat-api",
+      "protocol": "openid-connect",
+      "protocolMapper": "oidc-audience-mapper",
+      "consentRequired": false,
+      "config": {
+        "included.client.audience": "tedrisat-api",
+        "access.token.claim": "true",
+        "id.token.claim": "false",
+        "introspection.token.claim": "true"
+      }
+    }
+  ]
+}

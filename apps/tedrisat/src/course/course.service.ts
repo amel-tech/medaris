@@ -984,7 +984,7 @@ export class CourseService {
    * person MUDERRIS on the course. Each account at most once, and every
    * account this save links anew must be a real one, in the users table or in
    * the realm (MDRS-218: a teacher who has not signed in yet can be named, as
-   * in nazir's "Dersi aç"), so that a mistyped id cannot hand the role to
+   * in nazar's "Dersi aç"), so that a mistyped id cannot hand the role to
    * whoever signs in under it later.
    */
   private async assertMuderrisLinks(

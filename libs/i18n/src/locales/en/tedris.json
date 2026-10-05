@@ -63,7 +63,7 @@
     "previewCardText": "Students will see the “Request enrollment” button and the time of the first session here. You cannot apply in a preview.",
     "firstSession": "First session",
     "backToEditing": "Back to editing",
-    "backToEditingLabel": "Back to editing: {title}, Curriculum in Nazır",
+    "backToEditingLabel": "Back to editing: {title}, Curriculum in Nazar",
     "receivedClose": "Close",
     "registerCard": "Enroll in the course",
     "courseSpan": "{weeks} weeks · {span}",
@@ -547,7 +547,7 @@
     "pageSubtitleRoles": "Your roles, name, time zone and calendar preferences.",
     "title": "Your roles and permissions",
     "intro": "Every role applies in one scope. The person who assigned a role changes it and its term.",
-    "whereIntro": "You do köşk and course work not in Tedris but in your role’s own app: a köşk nazım in Nizam, a müderris in Nazır.",
+    "whereIntro": "You do köşk and course work not in Tedris but in your role’s own app: a köşk nazım in Nizam, a müderris in Nazar.",
     "tasks": "Your roles",
     "imam": "Imam",
     "self": "Yourself",
@@ -562,7 +562,7 @@
     },
     "open": {
       "nizam": "Open in Nizam",
-      "nazir": "Open in Nazır"
+      "nazar": "Open in Nazar"
     },
     "courseBadge": {
       "published": "Published",

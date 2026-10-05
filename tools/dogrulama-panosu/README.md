@@ -50,7 +50,7 @@ Then open http://localhost:5320. Requirements: Node 20+, `gh` logged in to
   pauses when the tab is hidden or the header is off screen, draws one still
   frame under reduced motion, and falls back to CSS flames without WebGL2.
 - **Plan**: tasks grouped by project in the order Landing → Tedris → Nizam →
-  Nazır (optional), with the launch scope first inside each group.
+  Nazar (optional), with the launch scope first inside each group.
 - **Launch impact**: once a check outside the launch scope is approved, any
   shared screens or files with launch-scope packages raise a follow-up check.
   The card gives the affected share of the 9 launch steps and the reason.

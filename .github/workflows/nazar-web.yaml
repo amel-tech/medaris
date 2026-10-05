@@ -1,0 +1,197 @@
+name: Nazar Web
+
+# Builds apps/nazar/Dockerfile and pushes to GHCR, then fires the Coolify
+# webhook that makes the running service pull the new image.
+#
+# `context: .` + `file: ./apps/nazar/Dockerfile` is correct and deliberately
+# unchanged (MDRS-16): the image needs the whole workspace — pnpm-workspace.yaml,
+# pnpm-lock.yaml and all 17 member manifests — not just the app directory.
+#
+# Rollback: docs/runbooks/deploy-nazar-web.md
+
+on:
+  workflow_dispatch:
+  workflow_call:
+  release:
+    types:
+      - created
+
+# Add top-level permissions
+permissions:
+  contents: read
+  packages: write
+
+# Serialize deploys of this app. Deliberately NOT ref-scoped — the race this
+# prevents is two runs pushing `:latest` and hitting the same Coolify webhook,
+# which happens across refs, not within one. `cancel-in-progress: false`:
+# cancelling between the push and the webhook leaves a new image in GHCR that
+# nothing was ever told to deploy.
+concurrency:
+  group: deploy-nazar-web
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}-nazar-web
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    # Gate inverted (MDRS-16). The old form was
+    #   github.event_name == 'workflow_dispatch' || == 'workflow_call' || startsWith(...)
+    # which is a trap for `workflow_call`: inside a reusable workflow the
+    # `github` context belongs to the CALLER, so `github.event_name` is never
+    # 'workflow_call' — it is whatever triggered the caller. It happens to work
+    # today only because the dispatcher was workflow_dispatch-only; since MDRS-86
+    # cd-development.yaml calls this on every push to main, and this gate is why
+    # that works. The
+    # moment that dispatcher gains a `push:` trigger, event_name becomes 'push',
+    # no clause matches, and every deploy is silently skipped with a green
+    # checkmark. Stating the one real restriction instead — "on a release, the
+    # tag must be ours" — is behaviour-identical for the three current triggers
+    # and safe for any future one.
+    if: ${{ github.event_name != 'release' || startsWith(github.event.release.tag_name, 'nazar-web-') }}
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Third-party actions pinned to a commit SHA; first-party actions/* left on
+      # tags. That is ci.yaml's stated policy (ci.yaml:100-106), written there
+      # after CodeQL's `actions` analysis flagged the floating refs in exactly
+      # these seven deploy workflows. Every SHA below was resolved with
+      # `gh api repos/<owner>/<repo>/git/ref/tags/<tag>`.
+      # MDRS-86: the two cache lines on the build step below need a builder that
+      # can export to the GitHub Actions cache. The runner's default `docker`
+      # driver cannot — the first real run of this workflow (run 35003840022,
+      # 2026-09-15) died before building anything with "Cache export is not
+      # supported for the docker driver". setup-buildx-action creates a
+      # docker-container builder, which can. Pinned like every other
+      # third-party action here; the SHA is v4.4.0, resolved with
+      # `gh api repos/docker/setup-buildx-action/git/ref/tags/v4.4.0`.
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@594f3bf4285d9ea8dc53c9a0c9c4092420091003 # v4.4.0
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5.10.0
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          # `type=sha` is the fix for a real hole: `type=match` only fires on a
+          # release tag and `enable={{is_default_branch}}` only on main, so a
+          # workflow_dispatch (or a workflow_call from cd-development.yaml) on
+          # any other branch produced ZERO tags — metadata-action emitted an
+          # empty `tags` output and build-push-action failed on the push with
+          # nothing useful to say. `type=sha` is enabled for every event, so
+          # there is always at least one immutable, traceable tag.
+          #
+          # `latest` is NOT left on `{{is_default_branch}}` (MDRS-16 review).
+          # That helper (metadata-action src/meta.ts:444-465 at the pinned SHA)
+          # does `context.ref.replace(/^refs\/heads\//)` and compares the result
+          # to the default branch. On a `release` the ref is `refs/tags/<tag>`,
+          # so the replace is a no-op, the compare can never match, and the
+          # eventName fallback covers only create/discussion/issues/schedule —
+          # never `release`. A release therefore pushed `<semver>` + `sha-…` and
+          # left `:latest` on the OLD image: a Coolify service pulling `:latest`
+          # re-pulls the previous build and the run goes green having deployed
+          # nothing. The explicit expression below fires `latest` for every
+          # release as well as for the default branch.
+          #
+          # `stable` (MDRS-87) moves ONLY on a full release and is what the
+          # Coolify `production` application pulls; `latest` is what
+          # `development` pulls. Two moving tags, one per channel, and the
+          # immutable `<semver>` / `sha-…` pair for rollback. There is
+          # deliberately no `dev` tag: `latest` already plays that role.
+          #
+          # `prerelease == false` is the whole guard. The trigger is
+          # `release: created`, which fires for a pre-release too (only drafts
+          # are excluded), so without it a hand-cut `…-rc.1` would move
+          # `stable` and redeploy production with a release candidate. A
+          # pre-release still builds and still moves `latest`, so it reaches
+          # `development` — which is where an rc belongs.
+          tags: |
+            type=match,pattern=nazar-web-v(.+),group=1
+            type=raw,value=latest,enable=${{ github.event_name == 'release' || github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}
+            type=sha
+            type=raw,value=stable,enable=${{ github.event_name == 'release' && github.event.release.prerelease == false }}
+
+      - name: Build and push Docker image
+        id: build
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        with:
+          context: .
+          file: ./apps/nazar/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=nazar-web
+          cache-to: type=gha,mode=max,scope=nazar-web
+
+      # What the rollback runbook needs, recorded on the run itself: the exact
+      # tags that were pushed and the immutable digest they all point at.
+      - name: Record pushed image
+        run: |
+          set -euo pipefail
+          {
+            echo "### Nazar Web image pushed"
+            echo
+            echo "**Digest:** \`${{ steps.build.outputs.digest }}\`"
+            echo
+            echo "**Tags:**"
+            echo '```'
+            echo "${{ steps.meta.outputs.tags }}"
+            echo '```'
+            echo
+            echo "Rollback: docs/runbooks/deploy-nazar-web.md"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # The old form was `curl --request GET '<url>' --header '…'` with no
+      # failure handling, so a 401 / 404 / Coolify 5xx left the job green while
+      # nothing redeployed — a silent no-op deploy is precisely the failure this
+      # issue exists to close. Secrets are passed through `env` rather than
+      # spliced into the script body.
+      #
+      # MDRS-87: the webhook is chosen by event. A full release — not a
+      # pre-release, see `prerelease == false` above — deploys to the Coolify
+      # `production` application through NAZAR_WEB_PROD_COOLIFY_WEBHOOK;
+      # everything else deploys to `development` through
+      # NAZAR_WEB_COOLIFY_WEBHOOK: a pre-release, a
+      # workflow_dispatch, and the workflow_call cd-development.yaml makes on
+      # every push to `main`. The secret each branch needs is checked on its
+      # own, so a release with no production webhook fails here naming that
+      # secret — it must never fall back to the development one.
+      - name: Deploy to Coolify
+        env:
+          IS_PRODUCTION: ${{ github.event_name == 'release' && github.event.release.prerelease == false }}
+          DEV_WEBHOOK: ${{ secrets.NAZAR_WEB_COOLIFY_WEBHOOK }}
+          PROD_WEBHOOK: ${{ secrets.NAZAR_WEB_PROD_COOLIFY_WEBHOOK }}
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_DEPLOY_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ "${IS_PRODUCTION}" = "true" ]; then
+            COOLIFY_WEBHOOK="${PROD_WEBHOOK}"; CHANNEL="production"; SECRET_NAME="NAZAR_WEB_PROD_COOLIFY_WEBHOOK"
+          else
+            COOLIFY_WEBHOOK="${DEV_WEBHOOK}"; CHANNEL="development"; SECRET_NAME="NAZAR_WEB_COOLIFY_WEBHOOK"
+          fi
+          if [ -z "${COOLIFY_WEBHOOK}" ]; then
+            echo "::error::${SECRET_NAME} is not set — the image was pushed to GHCR but nothing was redeployed to ${CHANNEL}."
+            exit 1
+          fi
+          echo "Deploying to the ${CHANNEL} application."
+          curl --fail-with-body --silent --show-error \
+               --retry 3 --retry-connrefused --max-time 60 \
+               --request GET "${COOLIFY_WEBHOOK}" \
+               --header "Authorization: Bearer ${COOLIFY_TOKEN}"
+          echo
+          echo "Coolify deploy webhook accepted."

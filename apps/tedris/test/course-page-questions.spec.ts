@@ -40,7 +40,7 @@ vi.mock("~/features/courses/actions/questions", () => ({
 
 /**
  * Which tabs of the course page carry questions (MDRS-150): "Sorularım" for
- * an enrolled talebe and none for anyone else. The staff answer in the nazir
+ * an enrolled talebe and none for anyone else. The staff answer in the nazar
  * app, so the course page has no tab for them.
  */
 
@@ -96,9 +96,20 @@ const render = async (
   );
 };
 
+// Strip tags until none is left: one pass over "<<b>script>" leaves "<script>".
+const stripTags = (html: string) => {
+  let text = html;
+  let before: string;
+  do {
+    before = text;
+    text = text.replace(/<[^>]+>/g, "");
+  } while (text !== before);
+  return text;
+};
+
 const tabs = (html: string) =>
   [...html.matchAll(/role="tab"[^>]*>(.*?)<\/button>/g)].map((m) =>
-    m[1].replace(/<[^>]+>/g, "")
+    stripTags(m[1])
   );
 
 describe("the question tabs of the course page", () => {

@@ -218,7 +218,7 @@ describe("detectRecordingLink: other links (MDRS-119)", () => {
     expect(problemOf(url)).toBe(problem);
   });
 
-  it("names the reason in the error, for nazir to word", () => {
+  it("names the reason in the error, for nazar to word", () => {
     try {
       detectRecordingLink(
         `https://player.mediadelivery.net/embed/1/${VIDEO}`,

@@ -367,7 +367,8 @@ function topla(makine) {
         try {
           res({ makine, ...JSON.parse(stdout) });
         } catch (e) {
-          res({ makine, hata: String(e), runs: [], sureler: [] });
+          console.error("[topla]", makine, e);
+          res({ makine, hata: "çıktı JSON değil", runs: [], sureler: [] });
         }
       }
     );
@@ -536,7 +537,7 @@ const LINKLER = {
       ad: "Nizam (yönetim)",
       url: "https://nizam-dev.medaris.app/tr",
     },
-    { id: "nazir", ad: "Nazır", url: "https://nazir-dev.medaris.app" },
+    { id: "nazar", ad: "Nazar", url: "https://nazar-dev.medaris.app" },
     {
       id: "keycloak",
       ad: "Keycloak — hesap / giriş (amel-tech-dev)",
@@ -583,8 +584,8 @@ const PROJELER = [
   { id: "tedris", ad: "Tedris" },
   { id: "nizam", ad: "Nizam" },
   {
-    id: "nazir",
-    ad: "Nazır",
+    id: "nazar",
+    ad: "Nazar",
     istege: true,
     not: "isteğe bağlı — bakılmayabilir",
   },
@@ -638,13 +639,13 @@ const EKRAN_PROJE = {
   landing: "landing",
   tedris: "tedris",
   nizam: "nizam",
-  nazir: "nazir",
+  nazir: "nazar",
 };
 const DOSYA_PROJE = [
   [/^apps\/(landing|keycloak-theme)\//, "landing"],
   [/^apps\/tedris\//, "tedris"],
   [/^apps\/nizam\//, "nizam"],
-  [/^apps\/nazir\//, "nazir"],
+  [/^apps\/nazar\//, "nazar"],
 ];
 function projeBul(i, dmap) {
   const say = {};
@@ -1156,7 +1157,8 @@ createServer(async (req, res) => {
     }
     send(res, 404, { error: "yok" });
   } catch (e) {
-    send(res, 500, { error: String(e) });
+    console.error("[istek]", e);
+    send(res, 500, { error: "sunucu hatası" });
   }
 }).listen(PORT, "127.0.0.1", () =>
   console.log(`[dogrulama] http://localhost:${PORT} — repo: ${REPO}`)

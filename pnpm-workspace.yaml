@@ -18,7 +18,7 @@ packages:
   - 'apps/teskilat'
   - 'apps/tedris'
   - 'apps/nizam'
-  - 'apps/nazir'
+  - 'apps/nazar'
   - 'apps/landing'
   - 'apps/keycloak-theme'
   - 'libs/common'
