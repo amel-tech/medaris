@@ -53,7 +53,8 @@
     "play": "تشغيل",
     "playLabel": "تشغيل: {title}",
     "open": "فتح التسجيل",
-    "openLabel": ": {title} (يُفتح في تبويب جديد)"
+    "openLabel": ": {title} (يُفتح في تبويب جديد)",
+    "bunnyFrameTitle": "مشغّل التسجيل: {title}"
   },
   "LessonNotes": {
     "title": "ملاحظاتي",

@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { and, asc, eq, inArray, isNotNull, isNull } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull, isNull, ne } from "drizzle-orm";
 import { DatabaseService } from "../database/database.service";
 import { auditLog } from "../database/schema/audit.schema";
 import {
@@ -7,19 +7,23 @@ import {
   lessonRecordings,
   lessons,
 } from "../database/schema/course.schema";
+import type { Tx } from "./course-purge";
 import { LessonType } from "./domain/lesson-type.enum";
 import {
-  applyRecordingPatch,
-  type IRecordingPatch,
   type IRecordingRow,
   RecordingProvider,
   RecordingStatus,
   type RecordingVisibility,
 } from "./domain/recording";
+import {
+  type DetectedRecordingLink,
+  linkColumns,
+} from "./domain/recording-link";
 import { LessonCancelledError } from "./errors/lesson-cancelled.error";
 import { LessonNotFoundError } from "./errors/lesson-not-found.error";
 import { LessonNotLiveError } from "./errors/lesson-not-live.error";
 import { RecordingExistsError } from "./errors/recording-exists.error";
+import { RecordingLinkInvalidError } from "./errors/recording-link-invalid.error";
 import { RecordingNotFoundError } from "./errors/recording-not-found.error";
 
 const bunnyUploadColumns = {
@@ -86,6 +90,79 @@ export interface INewBunnyUpload {
   bunnyVideoId: string;
   uploadExpiresAt: Date;
   actorId: string;
+}
+
+/** What `create` writes: a pasted link, already read by `detectRecordingLink`. */
+export interface INewPastedRecording {
+  lessonId: string;
+  title: string;
+  link: DetectedRecordingLink;
+  visibility: RecordingVisibility;
+  actorId: string;
+}
+
+/** A write to a recording: only the keys that are present change. */
+export interface IRecordingPatch {
+  title?: string;
+  link?: DetectedRecordingLink;
+  visibility?: RecordingVisibility;
+}
+
+/**
+ * A recording as a write leaves it, with its Bunny video id kept aside: the
+ * service signs the player link from it and never hands the id itself out.
+ */
+export interface IWrittenRecording {
+  recording: IRecordingRow;
+  bunnyVideoId: string | null;
+}
+
+function written(
+  row: typeof lessonRecordings.$inferSelect,
+  at: { weekId: string; weekNumber: number; weekTitle: string }
+): IWrittenRecording {
+  return {
+    recording: {
+      id: row.id,
+      lessonId: row.lessonId,
+      weekId: at.weekId,
+      weekNumber: at.weekNumber,
+      weekTitle: at.weekTitle,
+      title: row.title,
+      recordedAt: row.recordedAt,
+      durationMinutes: row.durationMinutes,
+      provider: row.provider,
+      url: row.url,
+      visibility: row.visibility,
+      status: row.status,
+    },
+    bunnyVideoId: row.bunnyVideoId,
+  };
+}
+
+/**
+ * Refuses a Bunny video that another recording already holds, before the
+ * unique index on `bunny_video_id` would answer the write with a 500. The
+ * row being written (`ownId`) is left out, so a recording may be given its
+ * own video again.
+ */
+async function assertVideoFree(
+  tx: Tx,
+  link: DetectedRecordingLink,
+  ownId: string | null
+): Promise<void> {
+  if (link.provider !== RecordingProvider.BUNNY) return;
+  const [holder] = await tx
+    .select({ id: lessonRecordings.id })
+    .from(lessonRecordings)
+    .where(
+      and(
+        eq(lessonRecordings.bunnyVideoId, link.bunnyVideoId),
+        ownId ? ne(lessonRecordings.id, ownId) : undefined
+      )
+    )
+    .limit(1);
+  if (holder) throw new RecordingLinkInvalidError("bunny-video-used");
 }
 
 /**
@@ -411,18 +488,14 @@ export class RecordingRepository {
    * Adds the recording of a session: a pasted link, READY at once. The lesson
    * row is locked first, so two writers cannot both find it without one. A
    * session that is archived is not there, a cancelled one has nothing to
-   * record, and one that has a recording keeps it (`RecordingExistsError`).
-   * Written to `audit_log` in the same transaction. The course version is
-   * not bumped: recordings are no part of the course document.
+   * record, and one that has a recording keeps it (`RecordingExistsError`)
+   * unless that recording is a Bunny upload that FAILED: that row is reused
+   * for the link, as `startBunnyUpload` reuses it for a new upload. A Bunny
+   * video another session holds is refused (`bunny-video-used`). Written to
+   * `audit_log` in the same transaction. The course version is not bumped:
+   * recordings are no part of the course document.
    */
-  async create(input: {
-    lessonId: string;
-    title: string;
-    url: string;
-    provider: RecordingProvider;
-    visibility: RecordingVisibility;
-    actorId: string;
-  }): Promise<IRecordingRow> {
+  async create(input: INewPastedRecording): Promise<IWrittenRecording> {
     return this.db.transaction(async (tx) => {
       const [at] = await tx
         .select({
@@ -444,25 +517,42 @@ export class RecordingRepository {
         throw new LessonCancelledError(input.lessonId);
       }
       const [existing] = await tx
-        .select({ id: lessonRecordings.id })
+        .select({
+          id: lessonRecordings.id,
+          provider: lessonRecordings.provider,
+          status: lessonRecordings.status,
+          bunnyVideoId: lessonRecordings.bunnyVideoId,
+        })
         .from(lessonRecordings)
         .where(eq(lessonRecordings.lessonId, input.lessonId))
         .limit(1);
-      if (existing) throw new RecordingExistsError(input.lessonId, existing.id);
+      const replaceable =
+        existing?.provider === RecordingProvider.BUNNY &&
+        existing.status === RecordingStatus.FAILED;
+      if (existing && !replaceable) {
+        throw new RecordingExistsError(input.lessonId, existing.id);
+      }
+      await assertVideoFree(tx, input.link, existing?.id ?? null);
 
-      const [row] = await tx
-        .insert(lessonRecordings)
-        .values({
-          lessonId: input.lessonId,
-          title: input.title,
-          provider: input.provider,
-          url: input.url,
-          visibility: input.visibility,
-          status: RecordingStatus.READY,
-          recordedAt: at.scheduledAt ?? new Date(),
-          durationMinutes: at.durationMinutes,
-        })
-        .returning();
+      const now = new Date();
+      const values = {
+        title: input.title,
+        ...linkColumns(input.link, now),
+        visibility: input.visibility,
+        status: RecordingStatus.READY,
+        recordedAt: at.scheduledAt ?? now,
+        durationMinutes: at.durationMinutes,
+      };
+      const [row] = existing
+        ? await tx
+            .update(lessonRecordings)
+            .set({ ...values, updatedAt: now })
+            .where(eq(lessonRecordings.id, existing.id))
+            .returning()
+        : await tx
+            .insert(lessonRecordings)
+            .values({ lessonId: input.lessonId, ...values })
+            .returning();
       await tx.insert(auditLog).values({
         actorId: input.actorId,
         action: "recording.add",
@@ -471,31 +561,30 @@ export class RecordingRepository {
         details: {
           courseId: at.courseId,
           lessonId: input.lessonId,
-          provider: input.provider,
-          visibility: input.visibility,
-          url: input.url,
+          provider: row.provider,
+          visibility: row.visibility,
+          url: row.url,
+          bunnyVideoId: row.bunnyVideoId,
+          replacedVideoId: existing?.bunnyVideoId ?? null,
         },
       });
-      return {
-        ...row,
-        weekId: at.weekId,
-        weekNumber: at.weekNumber,
-        weekTitle: at.weekTitle,
-      };
+      return written(row, at);
     });
   }
 
   /**
    * Changes a recording's title, link or visibility and audits it. The row is
-   * locked, and `applyRecordingPatch` decides what the patch leaves behind
-   * (the provider follows the link; YouTube stays PUBLIC). A recording whose
-   * lesson is archived is not there.
+   * locked; a key that is absent is left as it is. A new link is written with
+   * every column `linkColumns` sets, so a Bunny video swapped for a pasted
+   * link loses its video id and upload lifetime and the other way round, and
+   * the recording is READY. A Bunny video another recording holds is refused
+   * (`bunny-video-used`). A recording whose lesson is archived is not there.
    */
   async update(
     recordingId: string,
     patch: IRecordingPatch,
     actorId: string
-  ): Promise<IRecordingRow> {
+  ): Promise<IWrittenRecording> {
     return this.db.transaction(async (tx) => {
       const [at] = await tx
         .select({
@@ -515,29 +604,31 @@ export class RecordingRepository {
         .for("update", { of: lessonRecordings });
       if (!at) throw new RecordingNotFoundError(recordingId);
       const before = at.recording;
-      const next = applyRecordingPatch(
-        {
-          title: before.title,
-          url: before.url ?? "",
-          visibility: before.visibility,
-          provider: before.provider,
-        },
-        patch
-      );
+      if (patch.link) await assertVideoFree(tx, patch.link, recordingId);
+
+      const now = new Date();
       const [row] = await tx
         .update(lessonRecordings)
         .set({
-          title: next.title,
-          url: next.url,
-          visibility: next.visibility,
-          provider: next.provider,
+          ...(patch.title !== undefined ? { title: patch.title } : {}),
+          ...(patch.visibility !== undefined
+            ? { visibility: patch.visibility }
+            : {}),
           // A link that is replaced is a link that plays.
-          status:
-            patch.url === undefined ? before.status : RecordingStatus.READY,
-          updatedAt: new Date(),
+          ...(patch.link
+            ? { ...linkColumns(patch.link, now), status: RecordingStatus.READY }
+            : {}),
+          updatedAt: now,
         })
         .where(eq(lessonRecordings.id, recordingId))
         .returning();
+      const audited = (r: typeof before) => ({
+        title: r.title,
+        provider: r.provider,
+        url: r.url,
+        bunnyVideoId: r.bunnyVideoId,
+        visibility: r.visibility,
+      });
       await tx.insert(auditLog).values({
         actorId,
         action: "recording.update",
@@ -546,20 +637,11 @@ export class RecordingRepository {
         details: {
           courseId: at.courseId,
           lessonId: before.lessonId,
-          previous: {
-            title: before.title,
-            url: before.url,
-            visibility: before.visibility,
-          },
-          next: { title: row.title, url: row.url, visibility: row.visibility },
+          previous: audited(before),
+          next: audited(row),
         },
       });
-      return {
-        ...row,
-        weekId: at.weekId,
-        weekNumber: at.weekNumber,
-        weekTitle: at.weekTitle,
-      };
+      return written(row, at);
     });
   }
 }

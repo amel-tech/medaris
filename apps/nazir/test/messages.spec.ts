@@ -188,10 +188,18 @@ describe("the nazir message catalogue", () => {
         "LESSON_CANCELLED",
         "LESSON_NOT_FOUND",
         "RECORDING_NOT_FOUND",
-        "RECORDING_YOUTUBE_PUBLIC_ONLY",
         "VALIDATION_ERROR",
         "SOMETHING_NEW",
-      ].map(recordingErrorKey),
+      ].map((code) => recordingErrorKey(code)),
+      ...[
+        "invalid",
+        "not-https",
+        "youtube-no-video",
+        "bunny-no-video",
+        "bunny-foreign-library",
+        "bunny-video-used",
+        "something-new",
+      ].map((reason) => recordingErrorKey("RECORDING_LINK_INVALID", reason)),
       ...["processing", "ready"].map((state) => `Recordings.state.${state}`),
       ...["public", "enrolled"].map(
         (visibility) => `Recordings.visibility.${visibility}`

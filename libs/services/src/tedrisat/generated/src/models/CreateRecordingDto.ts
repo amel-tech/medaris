@@ -34,13 +34,13 @@ export interface CreateRecordingDto {
      */
     title: string;
     /**
-     * An https link to the recording. The provider (YOUTUBE, DRIVE, OTHER) is read off its host; no call is made to it.
+     * An https link to the recording, read by its host with no call made to it (MDRS-119): a YouTube video link is YOUTUBE and is stored as its watch link; a player link of the Medaris Bunny library (`player.mediadelivery.net` or `iframe.mediadelivery.net`, `/embed/<libraryId>/<videoId>`) is BUNNY and only the video id is stored, its player link signed on every read; a Google Drive or Docs link is DRIVE and any other https link OTHER, both as pasted. A link that cannot be stored is 400 RECORDING_LINK_INVALID with a `reason`.
      * @type {string}
      * @memberof CreateRecordingDto
      */
     url: string;
     /**
-     * A YouTube link must be PUBLIC (RECORDING_YOUTUBE_PUBLIC_ONLY).
+     * 
      * @type {RecordingVisibility}
      * @memberof CreateRecordingDto
      */

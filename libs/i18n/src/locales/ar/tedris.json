@@ -528,6 +528,7 @@
     "recordingPlaceholder": "يُعرض التسجيل هنا",
     "recordingOpen": "فتح التسجيل",
     "recordingKind": "تسجيل",
+    "bunnyFrameTitle": "مشغّل التسجيل: {title}",
     "liveStreamTitle": "البث المباشر",
     "liveStreamPlaceholder": "يُعرض البث المباشر هنا",
     "liveStreamOpen": "فتح البث",

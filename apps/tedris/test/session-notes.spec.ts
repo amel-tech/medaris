@@ -150,6 +150,19 @@ describe("the notes panel on the session page", () => {
     expect(html).not.toContain("enablejsapi");
   });
 
+  it("asks for a typed time on a Bunny recording, framed on its signed link as it came (MDRS-114)", async () => {
+    const signed =
+      "https://player.mediadelivery.net/embed/424242/3f1c2b4a-5d6e-4f70-8a9b-0c1d2e3f4a5b?token=9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08&expires=1790000000";
+    const html = await render(
+      course({ status: "ENROLLED" }),
+      ENDED({ provider: "BUNNY", url: signed })
+    );
+    expect(html).toContain('data-notes="s1"');
+    expect(html).toContain('data-notes-frame="manual"');
+    expect(html).toContain(`src="${signed.replaceAll("&", "&amp;")}"`);
+    expect(html).not.toContain("enablejsapi");
+  });
+
   it("asks for a typed time on a recording that only opens at its host", async () => {
     const html = await render(
       course({ status: "ENROLLED" }),

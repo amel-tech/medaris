@@ -476,21 +476,32 @@ describe("Kayıt ekle and Düzenle on Ders kayıtları", () => {
   it("hand back the code of a refusal, never its message", async () => {
     const { addRecording, changeRecording } = await recordings();
     api.lessons.createLessonRecording.mockRejectedValue(
-      refusal(409, { code: "RECORDING_EXISTS", message: "Lesson l-1 has one" })
+      refusal(409, {
+        code: "RECORDING_EXISTS",
+        message: "Lesson l-1 has one",
+        context: { lessonId: "l-1", recordingId: "r-0" },
+      })
     );
-    expect(await addRecording("l-1", body)).toEqual({
+    expect(await addRecording("l-1", body)).toStrictEqual({
       success: false,
       code: "RECORDING_EXISTS",
     });
     api.lessons.updateRecording.mockRejectedValue(
       refusal(400, {
-        code: "RECORDING_YOUTUBE_PUBLIC_ONLY",
-        message: "A YouTube recording must be PUBLIC",
+        code: "RECORDING_LINK_INVALID",
+        message: "The Bunny video is already the recording of another session",
+        context: { reason: "bunny-video-used" },
       })
     );
-    expect(await changeRecording("r-1", { visibility: "ENROLLED" })).toEqual({
+    // the reason is a code the page words; the message stays on the server
+    expect(
+      await changeRecording("r-1", {
+        url: "https://player.mediadelivery.net/embed/1/x",
+      })
+    ).toEqual({
       success: false,
-      code: "RECORDING_YOUTUBE_PUBLIC_ONLY",
+      code: "RECORDING_LINK_INVALID",
+      reason: "bunny-video-used",
     });
     api.lessons.updateRecording.mockRejectedValue(
       refusal(403, {

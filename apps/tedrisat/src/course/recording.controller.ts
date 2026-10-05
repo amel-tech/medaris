@@ -79,13 +79,13 @@ export class RecordingController {
   @ApiOperation({
     summary: "Add a session's recording by pasting its link",
     description:
-      "`recording.manage` (the müderris and the köşk nazımı by default, a ders nazırı when given it). The recording is READY at once; its provider is read off the link's host and nothing is uploaded or called. A session holds one recording (409 RECORDING_EXISTS: change that one). A YouTube link must be PUBLIC (400 RECORDING_YOUTUBE_PUBLIC_ONLY). Written to `audit_log` as `recording.add`. Does not change the course version.",
+      "`recording.manage` (the müderris and the köşk nazımı by default, a ders nazırı when given it). The recording is READY at once; the link is read by its host and nothing is uploaded or called. A YouTube link is taken whatever the visibility. A player link of the Medaris Bunny library is stored as its video and played through a signed link, like an upload. A session holds one recording (409 RECORDING_EXISTS: change that one), except that a Bunny upload that FAILED is replaced. Written to `audit_log` as `recording.add`. Does not change the course version.",
     operationId: "createLessonRecording",
   })
   @ApiCreatedResponse({ type: RecordingResponse })
   @ApiBadRequestResponse({
     description:
-      "Field validation, or a YouTube link that is not PUBLIC (RECORDING_YOUTUBE_PUBLIC_ONLY).",
+      "Field validation (VALIDATION_ERROR), or a link that cannot be stored (RECORDING_LINK_INVALID, `context.reason`: `invalid`, `not-https`, `youtube-no-video`, `bunny-no-video`, `bunny-foreign-library` (another library's link, or any Bunny link while none is configured), `bunny-video-used` (the video is another session's recording)).",
   })
   @ApiForbiddenResponse({ description: "AUTHZ_FORBIDDEN" })
   @ApiNotFoundResponse({ description: "LESSON_NOT_FOUND" })
@@ -107,13 +107,13 @@ export class RecordingController {
   @ApiOperation({
     summary: "Rename a recording, replace its link, or change who may watch it",
     description:
-      "`recording.manage`. Only the keys sent change. A new link is READY and its provider is read again; a YouTube recording must stay PUBLIC. Written to `audit_log` as `recording.update`. Does not change the course version.",
+      "`recording.manage`. Only the keys sent change. A new link is read as on `POST /lessons/:id/recordings` and is READY; a Bunny video replaced by another link is no longer stored, and a link replaced by a Bunny video is no longer stored either. Written to `audit_log` as `recording.update`. Does not change the course version.",
     operationId: "updateRecording",
   })
   @ApiOkResponse({ type: RecordingResponse })
   @ApiBadRequestResponse({
     description:
-      "Field validation, or a change that leaves a YouTube recording ENROLLED (RECORDING_YOUTUBE_PUBLIC_ONLY).",
+      "Field validation (VALIDATION_ERROR), or a link that cannot be stored (RECORDING_LINK_INVALID, `context.reason`: `invalid`, `not-https`, `youtube-no-video`, `bunny-no-video`, `bunny-foreign-library` (another library's link, or any Bunny link while none is configured), `bunny-video-used` (the video is another session's recording)).",
   })
   @ApiForbiddenResponse({ description: "AUTHZ_FORBIDDEN" })
   @ApiNotFoundResponse({ description: "RECORDING_NOT_FOUND" })

@@ -37,7 +37,7 @@ export class CreateRecordingDto {
     example: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
     maxLength: 500,
     description:
-      "An https link to the recording. The provider (YOUTUBE, DRIVE, OTHER) is read off its host; no call is made to it.",
+      "An https link to the recording, read by its host with no call made to it (MDRS-119): a YouTube video link is YOUTUBE and is stored as its watch link; a player link of the Medaris Bunny library (`player.mediadelivery.net` or `iframe.mediadelivery.net`, `/embed/<libraryId>/<videoId>`) is BUNNY and only the video id is stored, its player link signed on every read; a Google Drive or Docs link is DRIVE and any other https link OTHER, both as pasted. A link that cannot be stored is 400 RECORDING_LINK_INVALID with a `reason`.",
   })
   @Transform(trimmed)
   @IsUrl(HTTPS_ONLY, HTTPS_MESSAGE)
@@ -48,8 +48,6 @@ export class CreateRecordingDto {
     enum: RecordingVisibility,
     enumName: "RecordingVisibility",
     default: RecordingVisibility.ENROLLED,
-    description:
-      "A YouTube link must be PUBLIC (RECORDING_YOUTUBE_PUBLIC_ONLY).",
   })
   @IsOptional()
   @IsEnum(RecordingVisibility)
@@ -69,7 +67,7 @@ export class UpdateRecordingDto {
   @ApiPropertyOptional({
     maxLength: 500,
     description:
-      "A new https link; the provider is read again and the recording is READY.",
+      "A new https link, read as on `POST /lessons/:id/recordings`; the recording is READY. Moving between a Bunny video and any other link rewrites where the recording lives.",
   })
   @OmittedButNotNull()
   @Transform(trimmed)
