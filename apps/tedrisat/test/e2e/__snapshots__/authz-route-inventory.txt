@@ -1,4 +1,4 @@
-DELETE /archive/:type/:id -> no AuthzGuard
+DELETE /archive/:type/:id -> exempt
 DELETE /courses/:id -> course.delete on byExistingCourse
 DELETE /courses/:id/enroll -> course.view on course
 DELETE /courses/:id/enrollment -> course.view on course
@@ -13,26 +13,31 @@ DELETE /kosks/:id -> kosk.delete on byExistingKosk
 DELETE /kosks/:id/follow -> exempt
 DELETE /kosks/:id/grants/:grantId -> course_nazir.assign_kosk on byExistingKosk
 DELETE /kosks/:id/hosting-rights/:madrasahId -> kosk.hosting | platform.hosting_grant on byExistingKosk
-DELETE /kosks/:id/managers/:userId -> kosk.manage | platform.kosk_nazim_manage on byExistingKosk
-DELETE /lessons/:id -> session.manage on byLessonCourse
+DELETE /kosks/:id/managers/:userId -> platform.kosk_nazim_manage on byExistingKosk
+DELETE /lessons/:id -> week.hide | session.manage on byLessonCourse
+DELETE /lessons/:id/notes/:noteId -> course.view on byLessonCourse
 DELETE /madrasahs/:id -> madrasah.delete on byExistingMadrasah
 DELETE /madrasahs/:id/nazirs/:userId -> madrasah.nazir_appoint | platform.madrasah_nazir_grant on byExistingMadrasah
 DELETE /madrasahs/:id/permission-groups/:groupId -> madrasah.nazir_appoint | platform.madrasah_nazir_grant on byExistingMadrasah
 DELETE /nizam/medaris-nazims/:userId -> no AuthzGuard
 DELETE /nizam/permission-groups/:id -> no AuthzGuard
+DELETE /questions/:questionId -> course.view on byQuestionCourse
 GET / -> public
-GET /archive -> no AuthzGuard
-GET /archive/:type/:id/impact -> no AuthzGuard
-GET /archive/scopes -> no AuthzGuard
+GET /archive -> exempt
+GET /archive/:type/:id/impact -> exempt
+GET /archive/scopes -> exempt
 GET /bans -> no AuthzGuard
 GET /calendar/:file -> no AuthzGuard
 GET /courses/:courseId/sessions/:sessionId -> course.view on bySessionCourse (public)
 GET /courses/:id -> course.view on course (public)
+GET /courses/:id/archive -> week.hide on course
 GET /courses/:id/badge-counts -> course.staff_read on byExistingCourse
 GET /courses/:id/enrollments -> course.staff_read on course
 GET /courses/:id/enrollments/removed -> course.staff_read on course
 GET /courses/:id/live-streams -> session.live_link on course
 GET /courses/:id/my-permissions -> course.view on byExistingCourse
+GET /courses/:id/questions -> question.answer on byExistingCourse
+GET /courses/:id/questions/mine -> course.view on course
 GET /courses/:id/recordings -> course.view on course (public)
 GET /courses/:id/stats -> course.staff_read on byExistingCourse
 GET /courses/enrolled -> exempt
@@ -54,10 +59,11 @@ GET /flashcard/decks/summary -> exempt
 GET /health -> public
 GET /kosks -> public
 GET /kosks/:id -> kosk.view on kosk (public)
-GET /kosks/:id/archive -> no AuthzGuard
+GET /kosks/:id/archive -> kosk.manage | platform.kosk_edit on byExistingKosk
 GET /kosks/:id/course-requests -> no AuthzGuard
 GET /kosks/:id/course-roster -> kosk.manage | platform.kosk_edit on byExistingKosk
 GET /kosks/:id/dashboard -> kosk.manage | platform.kosk_edit on byExistingKosk
+GET /kosks/:id/deactivation-preview -> platform.kosk_edit on byExistingKosk
 GET /kosks/:id/decks -> kosk.view on byExistingKosk
 GET /kosks/:id/decks/manage -> no AuthzGuard
 GET /kosks/:id/grants -> course_nazir.assign_kosk on byExistingKosk
@@ -71,13 +77,15 @@ GET /kosks/directory -> exempt
 GET /kosks/fields -> public
 GET /kosks/followed/courses -> exempt
 GET /lessons/:id/calendar.ics -> exempt
+GET /lessons/:id/notes -> course.view on byLessonCourse
 GET /madrasahs -> madrasah.view on madrasah (public)
 GET /madrasahs/:id -> madrasah.view on byExistingMadrasah (public)
-GET /madrasahs/:id/archive -> madrasah.course_hide | madrasah.settings_edit on byExistingMadrasah
+GET /madrasahs/:id/archive -> madrasah.course_hide | madrasah.hide | platform.madrasah_edit | madrasah.settings_edit on byExistingMadrasah
 GET /madrasahs/:id/badge-counts -> madrasah.students_view on byExistingMadrasah
 GET /madrasahs/:id/bans -> madrasah.ban | platform.ban_scoped on byExistingMadrasah
 GET /madrasahs/:id/courses -> madrasah.course_open | madrasah.course_hide | madrasah.muderris_manage on byExistingMadrasah
 GET /madrasahs/:id/dashboard -> madrasah.students_view on byExistingMadrasah
+GET /madrasahs/:id/deactivation-preview -> platform.madrasah_edit on byExistingMadrasah
 GET /madrasahs/:id/head-muderris/delegations -> platform.head_muderris_manage on byExistingMadrasah
 GET /madrasahs/:id/hosting-kosks -> madrasah.course_open on byExistingMadrasah
 GET /madrasahs/:id/nazirs -> madrasah.nazir_appoint | platform.madrasah_nazir_grant on byExistingMadrasah
@@ -89,7 +97,7 @@ GET /madrasahs/:id/permission-groups -> madrasah.nazir_appoint | platform.madras
 GET /madrasahs/:id/permissions -> madrasah.nazir_appoint | platform.madrasah_nazir_grant on byExistingMadrasah
 GET /madrasahs/:id/settings -> madrasah.settings_edit on byExistingMadrasah
 GET /madrasahs/:id/students -> madrasah.students_view on byExistingMadrasah
-GET /madrasahs/directory -> platform.madrasah_create | platform.madrasah_edit on madrasah
+GET /madrasahs/directory -> platform.madrasah_create | platform.madrasah_edit | platform.head_muderris_manage on madrasah
 GET /madrasahs/explore -> madrasah.view on madrasah (public)
 GET /me -> no AuthzGuard
 GET /me/assignments -> no AuthzGuard
@@ -129,13 +137,15 @@ PATCH /flashcard/decks/:id -> deck.manage_private on flashcard-deck
 PATCH /kosks/:id -> kosk.manage | platform.kosk_edit on byExistingKosk
 PATCH /kosks/:id/grants/:grantId -> course_nazir.assign_kosk on byExistingKosk
 PATCH /lessons/:id -> session.manage on byLessonCourse
+PATCH /lessons/:id/notes/:noteId -> course.view on byLessonCourse
 PATCH /madrasahs/:id -> madrasah.settings_edit | platform.madrasah_edit on byExistingMadrasah
 PATCH /madrasahs/:id/permission-groups/:groupId -> madrasah.nazir_appoint | platform.madrasah_nazir_grant on byExistingMadrasah
 PATCH /madrasahs/:id/settings -> madrasah.settings_edit on byExistingMadrasah
 PATCH /me -> no AuthzGuard
 PATCH /me/public-profile -> no AuthzGuard
+PATCH /questions/:questionId -> course.view on byQuestionCourse
 PATCH /recordings/:id -> recording.manage on byRecordingCourse
-POST /archive/:type/:id/restore -> no AuthzGuard
+POST /archive/:type/:id/restore -> exempt
 POST /bans/:banId/escalate -> no AuthzGuard
 POST /bans/:banId/extend -> no AuthzGuard
 POST /bans/:banId/lift -> no AuthzGuard
@@ -145,12 +155,13 @@ POST /course-requests/:id/reject -> no AuthzGuard
 POST /courses/:courseId/bans -> no AuthzGuard
 POST /courses/:courseId/sessions/batch -> session.manage on course
 POST /courses/:courseId/sessions/batch/preview -> session.manage on course
-POST /courses/:courseId/weeks/:weekId/lessons -> course.edit on course
-POST /courses/:id/archive -> course.hide | madrasah.course_hide on byExistingCourse
+POST /courses/:courseId/weeks/:weekId/hide -> week.hide on course
+POST /courses/:courseId/weeks/:weekId/lessons -> session.manage on course
+POST /courses/:id/archive -> course.hide | madrasah.course_hide | platform.course_hide on byExistingCourse
 POST /courses/:id/enroll -> course.enroll on course
 POST /courses/:id/enrollments/:userId/approve -> enrollment.decide on course
 POST /courses/:id/enrollments/:userId/remove -> enrollment.remove on course
-POST /courses/:id/restore -> course.hide | madrasah.course_hide on byExistingCourse
+POST /courses/:id/restore -> course.hide | madrasah.course_hide | platform.course_hide on byExistingCourse
 POST /decks/:id/hide -> no AuthzGuard
 POST /flashcard-deck-label/create -> no AuthzGuard
 POST /flashcard-deck-label/labeling -> no AuthzGuard
@@ -165,7 +176,7 @@ POST /flashcard/decks/:id/publish-request -> deck.manage_private on flashcard-de
 POST /kosk-applications -> no AuthzGuard
 POST /kosks -> platform.kosk_create on kosk
 POST /kosks/:id/course-requests -> no AuthzGuard
-POST /kosks/:id/deactivate -> exempt
+POST /kosks/:id/deactivate -> platform.kosk_edit on byExistingKosk
 POST /kosks/:id/deck-proposals -> no AuthzGuard
 POST /kosks/:id/deck-proposals/:proposalId/reject -> no AuthzGuard
 POST /kosks/:id/decks -> no AuthzGuard
@@ -173,16 +184,21 @@ POST /kosks/:id/follow -> kosk.view on kosk
 POST /kosks/:id/grants -> course_nazir.assign_kosk on byExistingKosk
 POST /kosks/:id/hide -> kosk.manage | platform.kosk_edit on byExistingKosk
 POST /kosks/:id/hosting-rights -> kosk.hosting | platform.hosting_grant on byExistingKosk
-POST /kosks/:id/managers/:userId -> kosk.manage | platform.kosk_nazim_manage on byExistingKosk
+POST /kosks/:id/managers/:userId -> platform.kosk_nazim_manage on byExistingKosk
 POST /kosks/:id/nazims -> exempt
 POST /kosks/:id/restore -> exempt
 POST /kosks/:koskId/courses -> course.open_standalone on kosk
 POST /lessons/:id/cancel -> session.manage on byLessonCourse
+POST /lessons/:id/notes -> course.view on byLessonCourse
+POST /lessons/:id/questions -> course.view on byLessonCourse
 POST /lessons/:id/recordings -> recording.manage on byLessonCourse
+POST /lessons/:id/recordings/uploads -> recording.upload on byLessonCourse
+POST /lessons/:id/recordings/uploads/:videoId/signature -> recording.upload on byLessonCourse
 POST /madrasahs -> platform.madrasah_create on madrasah
 POST /madrasahs/:id/bans -> madrasah.ban | platform.ban_scoped on byExistingMadrasah
 POST /madrasahs/:id/courses -> madrasah.course_open on byExistingMadrasah
 POST /madrasahs/:id/courses/:courseId/hide -> madrasah.course_hide on byExistingMadrasah
+POST /madrasahs/:id/deactivate -> platform.madrasah_edit on byExistingMadrasah
 POST /madrasahs/:id/hide -> madrasah.hide | platform.madrasah_edit on byExistingMadrasah
 POST /madrasahs/:id/nazirs/:userId -> madrasah.nazir_appoint | platform.madrasah_nazir_grant on byExistingMadrasah
 POST /madrasahs/:id/offsite-course-requests -> madrasah.offsite_course_request on byExistingMadrasah
@@ -191,6 +207,7 @@ POST /madrasahs/:id/restore -> madrasah.hide | platform.madrasah_edit on byExist
 POST /me/calendar-feed -> no AuthzGuard
 POST /nizam/deck-publish-requests/:id/approve -> no AuthzGuard
 POST /nizam/deck-publish-requests/:id/reject -> no AuthzGuard
+POST /nizam/deck-publish-requests/:id/unpublish -> no AuthzGuard
 POST /nizam/inactive-scopes/:type/:id/assign -> no AuthzGuard
 POST /nizam/inactive-scopes/:type/:id/view -> no AuthzGuard
 POST /nizam/kosk-applications/:id/approve -> no AuthzGuard
@@ -212,3 +229,4 @@ PUT /madrasahs/:id/nazirs/:userId/permissions -> madrasah.nazir_appoint | platfo
 PUT /nizam/medaris-nazims/:userId/grants -> no AuthzGuard
 PUT /nizam/permission-groups/:id -> no AuthzGuard
 PUT /nizam/platform-policies/:key -> no AuthzGuard
+PUT /questions/:questionId/answer -> course.view on byQuestionCourse

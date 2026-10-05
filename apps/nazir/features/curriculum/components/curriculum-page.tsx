@@ -63,6 +63,7 @@ export async function CurriculumPage({ courseId }: { courseId: string }) {
       can={{
         edit: holds(permissions.data, CODES.courseEdit),
         sessions: holds(permissions.data, CODES.sessionManage),
+        hide: holds(permissions.data, CODES.weekHide),
       }}
       locale={locale}
       timeZone={timeZone}

@@ -18,6 +18,9 @@ export const env = createEnv({
     // (MDRS-169). Unset or empty: the buttons are left out.
     NIZAM_URL: z.union([z.string().url(), z.literal("")]).optional(),
     NAZIR_URL: z.union([z.string().url(), z.literal("")]).optional(),
+    // landing-web's origin, for the privacy-notice link (MDRS-248). Unset or
+    // empty: the production site.
+    LANDING_URL: z.union([z.string().url(), z.literal("")]).optional(),
   },
   // MDRS-86: no `client` block on purpose. A NEXT_PUBLIC_ value is inlined
   // into the browser bundle at `next build`, which would make the image
@@ -37,5 +40,6 @@ export const env = createEnv({
     TEDRISAT_API_BASE_URL: process.env.TEDRISAT_API_BASE_URL,
     NIZAM_URL: process.env.NIZAM_URL,
     NAZIR_URL: process.env.NAZIR_URL,
+    LANDING_URL: process.env.LANDING_URL,
   },
 });

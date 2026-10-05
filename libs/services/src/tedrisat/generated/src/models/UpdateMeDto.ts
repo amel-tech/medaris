@@ -43,6 +43,12 @@ export interface UpdateMeDto {
      * @memberof UpdateMeDto
      */
     locale?: string | null;
+    /**
+     * Lesson invitations by e-mail (MDRS-121). False stops every further invitation, update and cancellation.
+     * @type {boolean}
+     * @memberof UpdateMeDto
+     */
+    lessonInvitationEmails?: boolean;
 }
 
 /**
@@ -66,6 +72,7 @@ export function UpdateMeDtoFromJSONTyped(json: any, ignoreDiscriminator: boolean
         'familyName': json['familyName'] == null ? undefined : json['familyName'],
         'timeZone': json['timeZone'] == null ? undefined : json['timeZone'],
         'locale': json['locale'] == null ? undefined : json['locale'],
+        'lessonInvitationEmails': json['lessonInvitationEmails'] == null ? undefined : json['lessonInvitationEmails'],
     };
 }
 
@@ -84,6 +91,7 @@ export function UpdateMeDtoToJSONTyped(value?: UpdateMeDto | null, ignoreDiscrim
         'familyName': value['familyName'],
         'timeZone': value['timeZone'],
         'locale': value['locale'],
+        'lessonInvitationEmails': value['lessonInvitationEmails'],
     };
 }
 

@@ -7,7 +7,7 @@ import type {
 } from "@medaris/services/tedrisat";
 import { NextIntlClientProvider } from "next-intl";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CourseOverview } from "~/features/kosks/components/course-overview";
 import { KoskCoursesView } from "~/features/kosks/components/kosk-courses-view";
 import { KoskManagePage } from "~/features/kosks/components/kosk-manage-page";
@@ -18,6 +18,8 @@ import {
   canHide,
   countRows,
   courseBreakdown,
+  courseHideOutcome,
+  errorCodeOf,
   filterCourses,
   firstMissingLink,
   listWords,
@@ -38,9 +40,14 @@ import {
 vi.mock("~/features/kosks/admin-actions", () => ({
   addKoskNazims: vi.fn(),
   deactivateKosk: vi.fn(),
+  previewKoskDeactivation: vi.fn(),
   hideKosk: vi.fn(),
   restoreKosk: vi.fn(),
   openKosk: vi.fn(),
+}));
+vi.mock("~/features/madrasahs/actions", () => ({
+  deactivateMadrasah: vi.fn(),
+  previewMadrasahDeactivation: vi.fn(),
 }));
 vi.mock("~/features/kosks/course-actions", () => ({
   hideCourse: vi.fn(),
@@ -87,11 +94,13 @@ const row = (
   madrasah: null,
   status: "PUBLISHED",
   hiddenAt: null,
+  hiddenLevel: null,
   createdAt: new Date("2026-09-01T09:00:00Z"),
   muderris: [{ name: "Abdülhamit Karaosmanoğlu", isImam: true }],
   studentCount: 28,
   pendingCount: 2,
   bannedCount: 5,
+  canRestore: true,
   ...over,
 });
 
@@ -109,6 +118,8 @@ const rows: KoskCourseRowResponse[] = [
     title: "Merâhu’l-ervâh okumaları",
     status: "HIDDEN",
     hiddenAt: new Date("2026-09-20T09:00:00Z"),
+    hiddenLevel: "kosk",
+    canRestore: true,
     studentCount: 14,
   }),
 ];
@@ -154,8 +165,41 @@ describe("a row's buttons (nizam 23)", () => {
     expect(rowActions(r2)).toEqual(["view", "hide"]);
   });
 
-  it("gives a hidden course only Geri al", () => {
+  it("gives a hidden course only Geri al, when its row says the caller may restore it", () => {
     expect(rowActions(r4)).toEqual(["restore"]);
+  });
+
+  it("gives no Geri al for a course hidden above the viewer's level (MDRS-108)", () => {
+    const locked = { ...r4, canRestore: false } as KoskCourseRowResponse;
+    expect(rowActions(locked)).toEqual([]);
+    expect(
+      rowActions({ ...r4, canRestore: true } as KoskCourseRowResponse)
+    ).toEqual(["restore"]);
+  });
+
+  it("gives a hidden course no button at all when the platform hid it (MDRS-143)", () => {
+    expect(
+      rowActions({ ...r4, hiddenLevel: "platform", canRestore: false })
+    ).toEqual([]);
+  });
+});
+
+describe("a refused hide or restore of a course", () => {
+  it("reads 'already where it should be' as done, and words the kademe and the hidden parent", () => {
+    expect(courseHideOutcome("COURSE_NOT_HIDDEN")).toBe("done");
+    expect(courseHideOutcome("COURSE_ALREADY_HIDDEN")).toBe("done");
+    expect(courseHideOutcome("ARCHIVE_RESTORE_LEVEL")).toBe("restoreLevel");
+    expect(courseHideOutcome("ARCHIVE_PARENT_HIDDEN")).toBe(
+      "restoreParentHidden"
+    );
+    expect(courseHideOutcome(null)).toBe("failed");
+    expect(errorCodeOf({ code: "ARCHIVE_RESTORE_LEVEL" })).toBe(
+      "ARCHIVE_RESTORE_LEVEL"
+    );
+    expect(errorCodeOf("nope")).toBeNull();
+    const t = messagesOf("KoskCourses");
+    expect(t("restoreLevelBody")).toContain("üst bir kademe");
+    expect(t("restoreParentHiddenBody")).toContain("hâlâ gizli");
   });
 });
 
@@ -376,6 +420,8 @@ const kosk = {
 const overview: KoskOverviewResponse = {
   status: "ACTIVE",
   since: null,
+  hiddenLevel: null,
+  canRestore: false,
   openedAt: new Date("2026-08-25T09:00:00Z"),
   openedBy: { id: "u1", name: "Yusuf Ziya Ertuğrul", email: null },
   courses: { all: 5, published: 3, draft: 1, hidden: 1 },
@@ -413,6 +459,17 @@ describe("Köşk — Medaris yönetimi görünümü (nizam 20)", () => {
     expect(html).toContain("Köşkü gizle");
     expect(html).toContain("Köşkü pasife al");
     expect(html).toContain("Köşk nazımı ekle");
+  });
+
+  it("asks what passivating takes along before it passivates: one shared dialog, the old köşk-only one is gone (MDRS-227)", () => {
+    expect(
+      (resources.tr.nizam as unknown as Record<string, unknown>)
+        .DeactivateKoskDialog
+    ).toBeUndefined();
+    expect(
+      (resources.tr.nizam as unknown as Record<string, unknown>)
+        .PassivateScopeDialog
+    ).toBeDefined();
   });
 
   it("has no permanent delete here, only the way to the Arşiv (criterion 5)", () => {
@@ -460,6 +517,50 @@ describe("Köşk — Medaris yönetimi görünümü (nizam 20)", () => {
   });
 });
 
+describe("Köşk — Geri al on the management page (MDRS-143)", () => {
+  const hidden = (
+    over: Partial<KoskOverviewResponse>
+  ): KoskOverviewResponse => ({
+    ...overview,
+    status: "HIDDEN",
+    since: new Date("2026-09-24T09:00:00Z"),
+    ...over,
+  });
+  const view = (o: KoskOverviewResponse) =>
+    render(
+      <KoskManagePage
+        kosk={kosk}
+        overview={o}
+        nazims={[]}
+        rights={[]}
+        rows={[]}
+        viewerId="u1"
+        koskPublicHref={null}
+      />
+    );
+
+  it("offers 'Köşkü geri al' in place of the hide to whoever may bring it back", () => {
+    const html = view(hidden({ hiddenLevel: "kosk", canRestore: true }));
+    expect(html).toContain("Köşkü geri al");
+    expect(html).not.toContain(">Köşkü gizle<");
+    expect(html).not.toContain("Bunu köşk nazımı gizledi");
+  });
+
+  it("names who hid it, and offers no button, to a reader whose level is below", () => {
+    const html = view(hidden({ hiddenLevel: "platform", canRestore: false }));
+    expect(html).not.toContain("Köşkü geri al");
+    expect(html).toContain(
+      "Bunu Medaris yönetimi gizledi; yalnız o kademe ya da üstü geri alabilir."
+    );
+  });
+
+  it("offers the hide, and no restore, while the köşk is shown", () => {
+    const html = view(overview);
+    expect(html).toContain("Köşkü gizle");
+    expect(html).not.toContain("Köşkü geri al");
+  });
+});
+
 describe("Dersler (nizam 23)", () => {
   const view = (over: Partial<Parameters<typeof KoskCoursesView>[0]> = {}) =>
     render(
@@ -499,6 +600,35 @@ describe("Dersler (nizam 23)", () => {
     expect(html).not.toContain("Gizle: Merâhu’l-ervâh okumaları");
   });
 
+  it("draws no Geri al for a course the platform hid (MDRS-108)", () => {
+    const html = view({
+      rows: rows.map((r) =>
+        r.id === "c5" ? ({ ...r, canRestore: false } as typeof r) : r
+      ),
+    });
+    expect(html).toContain("Merâhu’l-ervâh okumaları");
+    expect(html).not.toContain("Geri al: Merâhu’l-ervâh okumaları");
+  });
+
+  it("offers no Geri al on a course a higher level hid, and says who hid it instead", () => {
+    const html = view({
+      rows: [
+        row({
+          id: "c9",
+          title: "Kâfiye şerhi",
+          status: "HIDDEN",
+          hiddenAt: new Date("2026-09-20T09:00:00Z"),
+          hiddenLevel: "platform",
+          canRestore: false,
+        }),
+      ],
+    });
+    expect(html).not.toContain("Geri al: Kâfiye şerhi");
+    expect(html).toContain(
+      "Bunu Medaris yönetimi gizledi; yalnız o kademe ya da üstü geri alabilir."
+    );
+  });
+
   it("writes the pending and barred chips, the barred one in the error tone", () => {
     const html = view();
     expect(html).toContain("2 onay bekliyor");
@@ -534,6 +664,16 @@ describe("Dersler (nizam 23)", () => {
 });
 
 describe("Genel bakış (nizam 53)", () => {
+  // The component reads the clock and its fixtures are dated around NOW: on the
+  // real clock the cancelled session stops being "upcoming" at 19:00 on 4 October.
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(NOW);
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   const stats = {
     enrolledCount: 28,
     pendingCount: 2,

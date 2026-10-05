@@ -140,7 +140,6 @@ const discoverData = (over: Record<string, unknown> = {}) => ({
   koskTotal: 1,
   madrasahs: [madrasah()],
   allMadrasahs: [madrasah()],
-  fields: ["Arapça dil ilimleri"],
   ...over,
 });
 
@@ -203,13 +202,13 @@ describe("Keşfet for a visitor (design tedris/09)", () => {
     );
     const html = renderToStaticMarkup(
       await DiscoverPage({
-        query: parseDiscoverQuery({ level: "BEGINNER" }),
+        query: parseDiscoverQuery({ q: "sarf" }),
         data: discoverData() as never,
         signedIn: false,
       })
     );
     expect(html).toContain(
-      `callbackUrl=${encodeURIComponent("/discover?level=BEGINNER")}`
+      `callbackUrl=${encodeURIComponent("/discover?q=sarf")}`
     );
   });
 
@@ -396,11 +395,16 @@ describe("the phone menu of a visitor (design tedris/45)", () => {
   };
   const nav = (html: string) => /<nav>(.*?)<\/nav>/.exec(html)?.[1] as string;
 
-  it("holds Ana sayfa and Keşfet, and none of a signed-in talebe's pages", async () => {
+  it("holds Keşfet alone: no Ana sayfa, and none of a signed-in talebe's pages", async () => {
     const menu = nav(await render("/discover"));
-    expect(menu).toContain(">Ana sayfa<");
     expect(menu).toContain(">Keşfet<");
-    for (const absent of ["Derslerim", "Programım", "Desteler", "Çıkış yap"]) {
+    for (const absent of [
+      "Ana sayfa",
+      "Derslerim",
+      "Programım",
+      "Desteler",
+      "Çıkış yap",
+    ]) {
       expect(menu).not.toContain(absent);
     }
   });
@@ -408,9 +412,7 @@ describe("the phone menu of a visitor (design tedris/45)", () => {
   it("marks the page the visitor is on", async () => {
     const discover = nav(await render("/kosks/k1"));
     expect(discover).toMatch(/href="\/tr\/discover" aria-current="page"/);
-    expect(discover).not.toMatch(/href="\/tr\/home" aria-current/);
-    const home = nav(await render("/home"));
-    expect(home).toMatch(/href="\/tr\/home" aria-current="page"/);
+    expect(discover).not.toContain("/tr/home");
   });
 
   it("ends in Giriş yap, back to this page, and Kayıt ol", async () => {
@@ -424,7 +426,10 @@ describe("the phone menu of a visitor (design tedris/45)", () => {
 
   it("puts the way in on the bar and names the page", async () => {
     const html = await render("/discover");
-    expect(html).toMatch(/data-actions="true"><a[^>]*aria-label="Giriş yap"/);
+    // the theme toggle comes first, then the way in
+    expect(html).toMatch(
+      /data-actions="true"><button[^>]*aria-label="Koyu temaya geç"[\s\S]*?<\/button><a[^>]*aria-label="Giriş yap"/
+    );
     expect(html).toMatch(/data-title="true">Keşfet</);
   });
 });

@@ -20,6 +20,7 @@ export default mergeConfig(
         // index.ts are untested; widening this is part of writing their specs.
         include: [
           "src/time-zone.ts",
+          "src/end-instant.ts",
           "src/callback-url.ts",
           "src/youtube-live.js",
         ],

@@ -283,6 +283,21 @@ describe("a cancelled session's make-up (MDRS-247, e2e)", () => {
       await refused(cancelId, "LESSON_REPLACEMENT_INVALID");
     });
 
+    it("is the cancelled session itself, whatever the case the path spells its id in", async () => {
+      const before = await version();
+      const res = await cancel(
+        CAST.SESSION,
+        cancelId.toUpperCase(),
+        { reason: "Müderris hasta", replacementLessonId: cancelId },
+        400
+      );
+      expect(res.body.code).toBe("LESSON_REPLACEMENT_INVALID");
+      const row = await lessonRow(cancelId);
+      expect(row.cancelledAt).toBeNull();
+      expect(row.replacementLessonId).toBeNull();
+      expect(await version()).toBe(before);
+    });
+
     it("is a session of another course", async () => {
       await refused(otherCourseLessonId, "LESSON_REPLACEMENT_INVALID");
     });

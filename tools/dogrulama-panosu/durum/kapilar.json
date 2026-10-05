@@ -1,0 +1,58 @@
+[
+  {
+    "id": "K1",
+    "ad": "Yeni PR üretimine kesim saati",
+    "sahip": "sen",
+    "durum": "bekliyor",
+    "kanit": "Karar bekleniyor: zincir hâlâ PR açıyor (#147, #148, #151…). Kesim olmadan doğrulama hareketli hedefi kovalar."
+  },
+  {
+    "id": "K2",
+    "ad": "CodeRabbit tüm açık yığın PR'larında",
+    "sahip": "AI",
+    "durum": "olcum",
+    "kanit": "Panodaki paketlerden canlı sayılır."
+  },
+  {
+    "id": "K3",
+    "ad": "İki uçta tam gate (--skip-nx-cache)",
+    "sahip": "AI",
+    "durum": "bekliyor",
+    "kanit": "CI yalnız nx affected koşuyor; birleşik yığın hiç tam gate'ten geçmedi."
+  },
+  {
+    "id": "K4",
+    "ad": "Migration yükseltme testi (main şeması → uç)",
+    "sahip": "AI",
+    "durum": "bekliyor",
+    "kanit": "stack-28 tur1: eski numaralı migration'ı almış yerel DB'de 'Migrations failed' görüldü. Temiz DB'de değil, yükseltmede risk."
+  },
+  {
+    "id": "K5",
+    "ad": "Authz derin inceleme (#122–#129, #138, #142)",
+    "sahip": "AI",
+    "durum": "bekliyor",
+    "kanit": "En yüksek riskli değişiklikler; CI yetki mantığını doğrulamaz."
+  },
+  {
+    "id": "K6",
+    "ad": "Rol bazlı uçtan uca duman testi (uç dalda)",
+    "sahip": "AI",
+    "durum": "bekliyor",
+    "kanit": "Paket turları kendi dalında ölçüldü; birleşik uçta ölçüm yok."
+  },
+  {
+    "id": "K7",
+    "ad": "Go / no-go kararı (3 Ekim akşam)",
+    "sahip": "sen",
+    "durum": "bekliyor",
+    "kanit": "Panodaki tüm paketler yeşil + onaylı, K2–K6 geçti."
+  },
+  {
+    "id": "K8",
+    "ad": "Sıralı merge + her adımda main CI (4 Ekim)",
+    "sahip": "AI",
+    "durum": "bekliyor",
+    "kanit": "#111'den yukarı; release-please PR'ları (#137, #139, #89) en sona."
+  }
+]

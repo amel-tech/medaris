@@ -12,6 +12,7 @@ export type CoursePermissions = ReadonlySet<string>;
 export const CODES = {
   courseEdit: "course.edit",
   sessionManage: "session.manage",
+  weekHide: "week.hide",
   sessionLiveLink: "session.live_link",
   staffRead: "course.staff_read",
   enrollmentDecide: "enrollment.decide",
@@ -30,7 +31,7 @@ export const PAGE_CODES = {
     CODES.enrollmentComplete,
     CODES.enrollmentRemove,
   ],
-  curriculum: [CODES.courseEdit, CODES.sessionManage],
+  curriculum: [CODES.courseEdit, CODES.sessionManage, CODES.weekHide],
   recordings: [CODES.recordingManage],
 } as const satisfies Record<string, readonly string[]>;
 

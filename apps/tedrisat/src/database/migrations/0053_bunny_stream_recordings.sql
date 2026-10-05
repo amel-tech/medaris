@@ -1,0 +1,6 @@
+ALTER TYPE "public"."recording_provider" ADD VALUE 'BUNNY';--> statement-breakpoint
+ALTER TYPE "public"."recording_status" ADD VALUE 'FAILED';--> statement-breakpoint
+ALTER TABLE "lesson_recordings" ADD COLUMN "bunny_video_id" text;--> statement-breakpoint
+ALTER TABLE "lesson_recordings" ADD COLUMN "upload_expires_at" timestamp with time zone;--> statement-breakpoint
+CREATE UNIQUE INDEX "lesson_recordings_bunny_video_id_uq" ON "lesson_recordings" USING btree ("bunny_video_id");--> statement-breakpoint
+ALTER TABLE "lesson_recordings" ADD CONSTRAINT "lesson_recordings_provider_columns" CHECK (case when "lesson_recordings"."provider"::text = 'BUNNY' then "lesson_recordings"."bunny_video_id" is not null and "lesson_recordings"."upload_expires_at" is not null and "lesson_recordings"."url" is null else "lesson_recordings"."bunny_video_id" is null and "lesson_recordings"."upload_expires_at" is null and ("lesson_recordings"."url" is not null or "lesson_recordings"."status"::text = 'PROCESSING') end);

@@ -1,4 +1,5 @@
 import {
+  ASSIGNED_ROLES,
   AuthGuard,
   Authz,
   AuthzExempt,
@@ -10,6 +11,7 @@ import {
   ENTITIES,
   MedarisValidationPipe,
   PERMISSIONS,
+  SelfGrantGuard,
 } from "@medaris/common";
 import {
   Body,
@@ -87,7 +89,7 @@ const UUID_REGEX =
  * existence check stays here (the same reason as `byExistingKosk`). Hidden
  * courses count as existing: restoring one is the point.
  */
-const byExistingCourse: AuthzResolve = async (req, moduleRef) => {
+export const byExistingCourse: AuthzResolve = async (req, moduleRef) => {
   const courseId = typeof req.params.id === "string" ? req.params.id : "";
   if (
     !UUID_REGEX.test(courseId) ||
@@ -107,7 +109,8 @@ const byExistingCourse: AuthzResolve = async (req, moduleRef) => {
 export class CourseController {
   constructor(
     private readonly courseService: CourseService,
-    private readonly statsRepo: CourseStatsRepository
+    private readonly statsRepo: CourseStatsRepository,
+    private readonly selfGrant: SelfGrantGuard
   ) {}
 
   @ApiOperation({
@@ -152,15 +155,23 @@ export class CourseController {
   }
 
   @ApiOperation({
-    summary: "Create a new course under a köşk",
+    summary: "Create a new course under a köşk, together with its müderrisler",
+    description:
+      "The köşk's nazımı opens it, and so does the başnazım (MDRS-136). It is opened with at least one müderris who has an account, and one of them is the imam: `imamUserId`, or the account listed first.",
     operationId: "createCourse",
   })
   @ApiCreatedResponse({ type: CourseDetailResponse })
+  @ApiBadRequestResponse({
+    description:
+      "No müderris with an account (MUDERRIS_LIST_INVALID), an imam who is not listed (COURSE_IMAM_NOT_LISTED), or the same account twice (MUDERRIS_DUPLICATE_USER).",
+  })
+  @ApiForbiddenResponse()
   @ApiNotFoundResponse()
   // A course that does not exist yet is authorized against its parent köşk —
-  // `course.open_standalone` is the köşk nazımı's own (and a grant's), so only
-  // they may open a course of the köşk's own under it; a course for a medrese is
-  // opened by the medrese (`madrasah.course_open`).
+  // `course.open_standalone` is the köşk nazımı's own (and a grant's, and the
+  // başnazım's by the realm bypass), so only they may open a course of the
+  // köşk's own under it; a course for a medrese is opened by the medrese
+  // (`madrasah.course_open`). The service asks no role again.
   @Authz(PERMISSIONS.COURSE_OPEN_STANDALONE, byParam(ENTITIES.KOSK, "koskId"))
   @Post("kosks/:koskId/courses")
   @UsePipes(new MedarisValidationPipe({ transform: true }))
@@ -169,6 +180,22 @@ export class CourseController {
     @Param("koskId", ParseUUIDPipe) koskId: string,
     @Body() courseDto: CreateCourseDto
   ): Promise<CourseDetailResponse> {
+    // A grantee of `course.open_standalone` opens courses for others, not for
+    // themselves: naming oneself müderris is for someone who already holds
+    // every course permission in the köşk (its nazımı), as in a medrese's
+    // course (`MadrasahCourseController.open`).
+    await this.selfGrant.assertNotSelf(
+      request.user,
+      [
+        ...(courseDto.muderris ?? []).flatMap((m) =>
+          m.userId ? [m.userId] : []
+        ),
+        ...(courseDto.imamUserId ? [courseDto.imamUserId] : []),
+      ],
+      { entity: ENTITIES.KOSK, id: koskId },
+      { role: ASSIGNED_ROLES.MUDERRIS },
+      "course.open"
+    );
     return this.courseService.create(koskId, request.user, courseDto);
   }
 
@@ -280,7 +307,7 @@ export class CourseController {
   })
   @ApiForbiddenResponse({
     description:
-      "No `course.edit` on the course; the save adds, moves or hides a session without `session.manage`; or it changes the müderris list without `course.open_standalone` (or `madrasah.muderris_manage` for a medrese's course) — a müderris may save the course but not change who teaches it (MUDERRIS_ASSIGNMENT_FORBIDDEN).",
+      "No `course.edit` on the course, or the save changes the müderris list without `course.open_standalone` (or `madrasah.muderris_manage` for a medrese's course) — a müderris may save the course but not change who teaches it (MUDERRIS_ASSIGNMENT_FORBIDDEN). Adding or dropping a session, or changing a session's time, meeting link, agenda or preview flag, needs `session.manage` as well (AUTHZ_FORBIDDEN). SELF_GRANT_REFUSED: a changed list names the caller, who does not already hold every müderris permission on the course (SYSTEM_ADMIN excepted).",
   })
   @ApiConflictResponse({
     description:
@@ -289,8 +316,8 @@ export class CourseController {
   // `course.edit` lets the köşk nazımı and the course's müderrisler save it
   // (MDRS-105). The müderris list inside the payload is `course.open_standalone`
   // — the köşk nazımı's alone, or the medrese's `madrasah.muderris_manage` in a
-  // course held for a medrese — and `CourseService.replace` checks that part,
-  // and `session.manage` when the save adds, moves or hides a session.
+  // course held for a medrese — and `CourseService.replace` checks that part.
+  // It checks the sessions inside the payload against `session.manage` too.
   @Authz(PERMISSIONS.COURSE_EDIT, byParam(ENTITIES.COURSE))
   @Put("courses/:id")
   @UsePipes(new MedarisValidationPipe({ transform: true }))
@@ -305,7 +332,7 @@ export class CourseController {
   @ApiOperation({
     summary: "Replace a course's müderris list and pick its imam",
     description:
-      "Partial update for the 'Müderrisleri düzenle' dialog (MDRS-176): only the müderris list and the imam change, not the syllabus. Needs `assign_muderris`; the change is written to `audit_log`. The list is never empty and the imam is one of its accounts.",
+      "Partial update for the 'Müderrisleri düzenle' dialog (MDRS-176): only the müderris list and the imam change, not the syllabus. Needs `course.open_standalone` (or `madrasah.muderris_manage` for a medrese's course); the change is written to `audit_log`. The list is never empty and the imam is one of its accounts.",
     operationId: "setCourseMuderris",
   })
   @ApiOkResponse({ type: MuderrisListResponse })
@@ -313,7 +340,10 @@ export class CourseController {
     description:
       "Empty list, an imam outside the list (MUDERRIS_LIST_INVALID), or the same account twice (MUDERRIS_DUPLICATE_USER).",
   })
-  @ApiForbiddenResponse()
+  @ApiForbiddenResponse({
+    description:
+      "SELF_GRANT_REFUSED: the list names the caller, who does not already hold every müderris permission on the course (SYSTEM_ADMIN excepted). Written to the audit log.",
+  })
   @ApiNotFoundResponse()
   @ApiConflictResponse({
     description:
@@ -336,16 +366,21 @@ export class CourseController {
   @ApiOperation({
     summary: "Hide a course (Gizle)",
     description:
-      "The köşk manager's way to take a course down: nothing is deleted, every list leaves it out, and it answers 404 to everyone but the köşk manager and SYSTEM_ADMIN until it is restored (MDRS-124). The level the caller acts at is recorded with the hide (köşk, medrese, or platform for SYSTEM_ADMIN) and decides who may restore it (MDRS-135).",
+      "Nothing is deleted, every list leaves the course out, and it answers 404 to everyone but those who may hide it until it is restored (MDRS-124). Who hides it (MDRS-143): the köşk's nazımı (`course.hide`), the başmüderris or a nazır given `madrasah.course_hide` for a medrese course, and platform management (`platform.course_hide`, the başnazım by bypass). The level the caller acts at is recorded with the hide (köşk, medrese or platform) and decides who may restore it (MDRS-135). A course hidden already answers 409 (COURSE_ALREADY_HIDDEN) and nothing is written.",
     operationId: "archiveCourse",
   })
   @ApiOkResponse({ type: CourseDetailResponse })
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()
+  @ApiConflictResponse({ description: "COURSE_ALREADY_HIDDEN" })
   @Post("courses/:id/archive")
   @HttpCode(HttpStatus.OK)
   @Authz(
-    [PERMISSIONS.COURSE_HIDE, PERMISSIONS.MADRASAH_COURSE_HIDE],
+    [
+      PERMISSIONS.COURSE_HIDE,
+      PERMISSIONS.MADRASAH_COURSE_HIDE,
+      PERMISSIONS.PLATFORM_COURSE_HIDE,
+    ],
     byExistingCourse
   )
   async archive(
@@ -353,22 +388,29 @@ export class CourseController {
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<CourseDetailResponse> {
     await this.courseService.archive(id, request.user);
-    return this.courseService.viewDetail(id, request.user, { audit: false });
+    return this.courseService.viewAfterHide(id, request.user, "course.hide");
   }
 
   @ApiOperation({
     summary: "Restore a hidden course (Geri al)",
     description:
-      "By kademe (MDRS-135): the level that hid the course, or any level above it (course < medrese < köşk < platform). A lower level answers 403 (ARCHIVE_RESTORE_LEVEL), naming the level that hid it and the caller's. A course hidden before the level was recorded counts as the lowest level that could have hidden it.",
+      "By kademe (MDRS-135): the level that hid the course, or any level above it (course < medrese < köşk < platform). A lower level answers 403 (ARCHIVE_RESTORE_LEVEL), naming the level that hid it and the caller's. A course hidden before the level was recorded counts as the lowest level that could have hidden it. As on the archive route, a course whose köşk or medrese is still hidden answers 409 (ARCHIVE_PARENT_HIDDEN); a course that is not hidden answers 409 (COURSE_NOT_HIDDEN) and nothing is written.",
     operationId: "restoreCourse",
   })
   @ApiOkResponse({ type: CourseDetailResponse })
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()
+  @ApiConflictResponse({
+    description: "ARCHIVE_PARENT_HIDDEN or COURSE_NOT_HIDDEN",
+  })
   @Post("courses/:id/restore")
   @HttpCode(HttpStatus.OK)
   @Authz(
-    [PERMISSIONS.COURSE_HIDE, PERMISSIONS.MADRASAH_COURSE_HIDE],
+    [
+      PERMISSIONS.COURSE_HIDE,
+      PERMISSIONS.MADRASAH_COURSE_HIDE,
+      PERMISSIONS.PLATFORM_COURSE_HIDE,
+    ],
     byExistingCourse
   )
   async restore(
@@ -376,7 +418,7 @@ export class CourseController {
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<CourseDetailResponse> {
     await this.courseService.restore(id, request.user);
-    return this.courseService.viewDetail(id, request.user, { audit: false });
+    return this.courseService.viewAfterHide(id, request.user, "course.restore");
   }
 
   @ApiOperation({

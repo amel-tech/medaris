@@ -17,6 +17,11 @@ export default defineConfig({
   testMatch: "**/*.e2e.ts",
   fullyParallel: false,
   workers: 1,
+  // A spec signs in first, through the real Keycloak form, and the machine that
+  // runs it is often busy with something else: 30 s (the default) is too short for
+  // a sign-in and what follows it, and a timeout is no verdict on the change.
+  timeout: 60_000,
+  expect: { timeout: 10_000 },
   reporter: [["list"]],
   use: {
     baseURL: process.env.E2E_BASE_URL ?? "http://localhost:4000",

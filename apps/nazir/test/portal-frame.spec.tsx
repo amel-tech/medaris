@@ -111,6 +111,13 @@ describe("the shell of a medrese (nazir 21)", () => {
     expect(aside).not.toContain("Celseler");
   });
 
+  it("puts the theme toggle in the sidebar's brand row and in the phone bar", async () => {
+    const { markup } = await frame();
+    const toggle = /aria-label="Koyu temaya geç"/g;
+    expect(sidebarOf(markup).match(toggle)).toHaveLength(1);
+    expect(markup.match(toggle)).toHaveLength(2);
+  });
+
   it("marks the page the viewer is on, once", async () => {
     pathname = "/medrese/m-1/dersler";
     const { markup } = await frame();
@@ -189,6 +196,7 @@ describe("the shell of a course (nazir 22)", () => {
       "Müfredat",
       "Celseler",
       "Talebeler",
+      "Sorular",
       "Ders kayıtları",
       "Ders destesi",
       "Yasaklamalar",

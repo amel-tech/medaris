@@ -94,7 +94,11 @@ describe("whether a page opens", () => {
       "session.live_link",
     ]);
     expect(PAGE_CODES.plan).toEqual(["session.manage"]);
-    expect(PAGE_CODES.curriculum).toEqual(["course.edit", "session.manage"]);
+    expect(PAGE_CODES.curriculum).toEqual([
+      "course.edit",
+      "session.manage",
+      "week.hide",
+    ]);
     expect(PAGE_CODES.recordings).toEqual(["recording.manage"]);
     expect(PAGE_CODES.students).toEqual([
       "course.staff_read",

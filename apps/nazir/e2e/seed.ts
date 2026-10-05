@@ -25,6 +25,12 @@ export interface NazirFixture {
     firstApplications: number;
     firstMissingLinks: number;
   };
+  /**
+   * The medrese and course seats the başmüderris account holds outside this
+   * fixture (the shared test seed gives it a medrese): each is one more scope in
+   * the picker.
+   */
+  standing: number;
   remove: () => Promise<void>;
 }
 
@@ -128,12 +134,23 @@ export async function seedPortal(roles: NazirRoles): Promise<NazirFixture> {
     await client.end();
     throw error;
   }
+  const {
+    rows: [held],
+  } = await client.query(
+    `select count(*)::int as n from role_assignments
+      where user_id = $1 and revoked_at is null
+        and (expires_at is null or expires_at > now())
+        and role in ('MEDRESE_BASMUDERRIS', 'MEDRESE_NAZIR', 'MUDERRIS', 'DERS_NAZIR')
+        and scope_id <> all($2)`,
+    [roles.basmuderris, [madrasah.id, first.id, second.id]]
+  );
 
   return {
     madrasah,
     koskId,
     first,
     second,
+    standing: held.n,
     expected: {
       coursesWithApplications: 2,
       firstApplications: 2,

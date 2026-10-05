@@ -20,7 +20,7 @@ const account = (role: string) => ({
 const KOSK_NAZIM = account("KOSK_NAZIM");
 const MUDERRIS = account("MUDERRIS");
 const SYSTEM_ADMIN = account("SYSTEM_ADMIN");
-const STUDENT = account("STUDENT");
+const TALEBE = account("TALEBE");
 const API = process.env.E2E_API_BASE_URL ?? "http://localhost:3001";
 
 const seedable = Boolean(KOSK_NAZIM.sub && MUDERRIS.sub);
@@ -74,12 +74,16 @@ test("nizam/16 — the tab counts are the table's, and a request shows its owner
   ).toHaveText(String(counts.decided));
 
   await requestItem(page, fixture.request.title).click();
-  const detail = page.getByTestId("deck-request-detail");
+  const detail = page
+    .getByTestId("deck-request-detail")
+    .filter({ visible: true });
   await expect(detail).toContainText(fixture.request.title);
   await expect(detail).toContainText(fixture.ownerName);
   await expect(detail).toContainText("5 ezber kartı");
   await expect(detail).toContainText("Karar bekliyor");
-  await expect(page.getByTestId("card-sample")).toContainText("ön 1");
+  await expect(
+    page.getByTestId("card-sample").filter({ visible: true })
+  ).toContainText("ön 1");
   await expect(page.getByTestId("card-sample").locator("article")).toHaveCount(
     3
   );
@@ -92,17 +96,19 @@ test("nizam/16 — looking at the sample and at every card writes an audit row e
   await signIn(page, SYSTEM_ADMIN);
   await page.goto("/tr/talepler/deste-yayin-istekleri");
   await requestItem(page, fixture.request.title).click();
-  await expect(page.getByTestId("card-sample")).toBeVisible();
+  await expect(
+    page.getByTestId("card-sample").filter({ visible: true })
+  ).toBeVisible();
   const afterSample = await fixture.auditReads();
   expect(afterSample).toBeGreaterThanOrEqual(1);
 
-  await page.getByTestId("all-cards").click();
+  await page.getByTestId("all-cards").filter({ visible: true }).click();
   await expect(page.getByTestId("card-sample").locator("article")).toHaveCount(
     5
   );
-  await expect(page.getByTestId("cards-total")).toContainText(
-    "Bütün kartlar: 5 ezber kartı"
-  );
+  await expect(
+    page.getByTestId("cards-total").filter({ visible: true })
+  ).toContainText("Bütün kartlar: 5 ezber kartı");
   expect(await fixture.auditReads()).toBeGreaterThan(afterSample);
 });
 
@@ -120,7 +126,9 @@ test("nizam/16 — Yayımla makes the deck public: the open list carries it and 
   await page.goto("/tr/talepler/deste-yayin-istekleri");
   await requestItem(page, fixture.request.title).click();
   await page.getByRole("button", { name: "Yayımla" }).click();
-  await expect(page.getByText("Deste yayımlandı")).toBeVisible();
+  await expect(
+    page.getByText("Deste yayımlandı").filter({ visible: true })
+  ).toBeVisible();
   await expect(requestItem(page, fixture.request.title)).toHaveCount(0);
 
   expect(await fixture.deckRow(fixture.request.id)).toMatchObject({
@@ -152,7 +160,9 @@ test("nizam/16 — Reddet cannot be sent without a reason, then keeps the deck p
   await expect(submit).toBeEnabled();
   await submit.click();
 
-  await expect(page.getByText("İstek reddedildi")).toBeVisible();
+  await expect(
+    page.getByText("İstek reddedildi").filter({ visible: true })
+  ).toBeVisible();
   expect(await fixture.deckRow(fixture.request.id)).toMatchObject({
     is_public: false,
     publish_status: "REJECTED",
@@ -165,9 +175,9 @@ test("nizam/16 — Reddet cannot be sent without a reason, then keeps the deck p
     .filter({ hasText: fixture.refused.title });
   await expect(refused).toContainText("Reddedildi");
   await refused.click();
-  await expect(page.getByTestId("deck-request-detail")).toContainText(
-    fixture.refused.reason
-  );
+  await expect(
+    page.getByTestId("deck-request-detail").filter({ visible: true })
+  ).toContainText(fixture.refused.reason);
 });
 
 test("nizam/16 — a köşk nazımı is shown the 'Bu bölüm için izniniz yok' screen", async ({
@@ -191,12 +201,14 @@ test("nizam/30 — the köşk's decks come with the count of proposals waiting (
   await expect(
     page.getByRole("heading", { level: 1, name: "Köşk desteleri" })
   ).toBeVisible();
-  await expect(page.getByTestId("proposals-count")).toHaveText(
-    "2 öneri kararınızı bekliyor"
-  );
+  await expect(
+    page.getByTestId("proposals-count").filter({ visible: true })
+  ).toHaveText("2 öneri kararınızı bekliyor");
   await expect(page.getByTestId("proposal")).toHaveCount(2);
   await expect(page.getByTestId("proposal").first()).toContainText("Öneren");
-  await expect(page.getByTestId("decks-count")).toHaveText("1 deste");
+  await expect(
+    page.getByTestId("decks-count").filter({ visible: true })
+  ).toHaveText("1 deste");
   await expect(
     page.locator("tbody tr").filter({ hasText: fixture.deck.title })
   ).toContainText("Kartları düzenle");
@@ -216,27 +228,29 @@ test("nizam/30 and 35 — Kabul et opens the form filled in, Desteyi aç lists t
   await expect(
     page.getByRole("heading", { level: 1, name: "Köşk destesi aç" })
   ).toBeVisible();
-  await expect(page.getByTestId("proposal-banner")).toContainText(
-    proposal.title
-  );
-  await expect(page.getByLabel(/^Deste adı/)).toHaveValue(proposal.title);
-  await expect(page.getByLabel("Açıklama")).toHaveValue(
-    "Tek bir köşk destesi iki derse yeter."
-  );
+  await expect(
+    page.getByTestId("proposal-banner").filter({ visible: true })
+  ).toContainText(proposal.title);
+  await expect(
+    page.getByLabel(/^Deste adı/).filter({ visible: true })
+  ).toHaveValue(proposal.title);
+  await expect(
+    page.getByLabel("Açıklama").filter({ visible: true })
+  ).toHaveValue("Tek bir köşk destesi iki derse yeter.");
 
   await page.getByRole("radio", { name: /Hadis/ }).check();
-  await expect(page.getByTestId("card-preview")).toContainText(
-    "Ameller niyetlere göredir."
-  );
+  await expect(
+    page.getByTestId("card-preview").filter({ visible: true })
+  ).toContainText("Ameller niyetlere göredir.");
   await page.getByRole("button", { name: "Desteyi aç" }).click();
 
   await page.waitForURL(`**/kosks/${fixture.koskId}/desteler`);
   await expect(
     page.locator("tbody tr").filter({ hasText: proposal.title })
   ).toHaveCount(1);
-  await expect(page.getByTestId("proposals-count")).toHaveText(
-    "1 öneri kararınızı bekliyor"
-  );
+  await expect(
+    page.getByTestId("proposals-count").filter({ visible: true })
+  ).toHaveText("1 öneri kararınızı bekliyor");
   expect(await fixture.proposalRow(proposal.id)).toMatchObject({
     status: "ACCEPTED",
   });
@@ -257,11 +271,16 @@ test("nizam/35 — an empty name is refused before anything is sent; a deck from
   await expect(page.getByTestId("proposal-banner")).toHaveCount(0);
   const before = (await fixture.koskDecks()).length;
   await page.getByRole("button", { name: "Desteyi aç" }).click();
-  await expect(page.getByText("Bir deste adı yazın.")).toBeVisible();
+  await expect(
+    page.getByText("Bir deste adı yazın.").filter({ visible: true })
+  ).toBeVisible();
   expect((await fixture.koskDecks()).length).toBe(before);
 
   const name = `E2E sıfırdan deste ${Date.now()}`;
-  await page.getByLabel(/^Deste adı/).fill(name);
+  await page
+    .getByLabel(/^Deste adı/)
+    .filter({ visible: true })
+    .fill(name);
   await page.getByRole("radio", { name: /Hadis/ }).check();
   await page.getByRole("button", { name: "Desteyi aç" }).click();
   await page.waitForURL(`**/kosks/${fixture.koskId}/desteler`);
@@ -286,7 +305,9 @@ test("nizam/30 — Reddet needs a reason and closes the proposal; Gizle moves th
   await expect(submit).toBeDisabled();
   await dialog.getByRole("textbox").fill("Bu konu zaten bir destede var.");
   await submit.click();
-  await expect(page.getByText("Öneri reddedildi")).toBeVisible();
+  await expect(
+    page.getByText("Öneri reddedildi").filter({ visible: true })
+  ).toBeVisible();
   await expect(page.getByTestId("proposal")).toHaveCount(1);
   expect(await fixture.proposalRow(proposal.id)).toMatchObject({
     status: "REJECTED",
@@ -300,7 +321,9 @@ test("nizam/30 — Reddet needs a reason and closes the proposal; Gizle moves th
     .getByRole("alertdialog")
     .getByRole("button", { name: "Gizle" })
     .click();
-  await expect(page.getByText("Deste gizlendi")).toBeVisible();
+  await expect(
+    page.getByText("Deste gizlendi").filter({ visible: true })
+  ).toBeVisible();
   await expect(
     page.locator("tbody tr").filter({ hasText: fixture.deck.title })
   ).toHaveCount(0);
@@ -317,8 +340,11 @@ test("nizam/30 — Reddet needs a reason and closes the proposal; Gizle moves th
 test("nizam/30 and 35 — a person who is no nazım gets the 'Bu bölüm için izniniz yok' screen (criteria 6)", async ({
   page,
 }) => {
-  test.skip(!seedable || !STUDENT.password, "no outsider account");
-  await signIn(page, STUDENT);
+  test.skip(!seedable || !TALEBE.password, "no outsider account");
+  await signIn(page, TALEBE);
+  // let the sign-in land first: a page opened while the home page is still sending
+  // a talebe on to 'Yönetim yetkiniz yok' is replaced by that redirect
+  await page.waitForURL(/\/tr\/yetki-yok$/);
   await page.goto(`/tr/kosks/${fixture.koskId}/desteler`);
   await expect(
     page.getByRole("heading", { name: "Bu bölüm için izniniz yok" })

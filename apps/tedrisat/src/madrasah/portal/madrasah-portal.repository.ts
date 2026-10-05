@@ -191,13 +191,18 @@ export class MadrasahPortalRepository {
     return row?.n ?? 0;
   }
 
-  /** The medrese's courses that are not hidden, drafts included. */
+  /** The medrese's courses that are not hidden, drafts included, in köşks that are not hidden either. */
   async countCourses(madrasahId: string): Promise<number> {
     const [row] = await this.db
       .select({ n: count() })
       .from(courses)
+      .innerJoin(kosks, eq(kosks.id, courses.koskId))
       .where(
-        and(eq(courses.madrasahId, madrasahId), isNull(courses.archivedAt))
+        and(
+          eq(courses.madrasahId, madrasahId),
+          isNull(courses.archivedAt),
+          isNull(kosks.archivedAt)
+        )
       );
     return row?.n ?? 0;
   }
@@ -205,7 +210,8 @@ export class MadrasahPortalRepository {
   /**
    * The live sessions of the medrese's published courses between now and
    * `days` days ahead, soonest first. A cancelled or hidden session, a hidden
-   * week and a hidden or draft course are not here; the database clock decides
+   * week, a hidden or draft course and any course of a hidden köşk are not
+   * here (a medrese is not above the köşk, MDRS-143); the database clock decides
    * what "now" is, as for the badge counts.
    */
   async findUpcomingSessions(
@@ -233,6 +239,7 @@ export class MadrasahPortalRepository {
           eq(courses.madrasahId, madrasahId),
           eq(courses.status, CourseStatus.PUBLISHED),
           isNull(courses.archivedAt),
+          isNull(kosks.archivedAt),
           isNull(courseWeeks.archivedAt),
           isNull(lessons.archivedAt),
           isNull(lessons.cancelledAt),

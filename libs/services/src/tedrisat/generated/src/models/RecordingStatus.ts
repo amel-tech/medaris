@@ -19,7 +19,8 @@
  */
 export const RecordingStatus = {
     Processing: 'PROCESSING',
-    Ready: 'READY'
+    Ready: 'READY',
+    Failed: 'FAILED'
 } as const;
 export type RecordingStatus = typeof RecordingStatus[keyof typeof RecordingStatus];
 

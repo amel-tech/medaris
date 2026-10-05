@@ -283,6 +283,24 @@ describe("what a caller holds in a course (MDRS-247, e2e)", () => {
       expect(res.body.permissions).not.toContain("platform.audit_read");
     });
 
+    it("lists the köşk and medrese codes the başnazım passes on a course's routes", async () => {
+      // hide and restore ask course.hide / madrasah.course_hide, and the
+      // müderris list asks course.open_standalone / madrasah.muderris_manage;
+      // the realm bypass passes all four, and the köşk nazım is listed the köşk ones
+      const admin = await codesOf(CAST.ADMIN);
+      expect(admin).toEqual(
+        expect.arrayContaining([
+          "course.hide",
+          "madrasah.course_hide",
+          "course.open_standalone",
+          "madrasah.muderris_manage",
+        ])
+      );
+      expect(await codesOf(CAST.MANAGER)).toEqual(
+        expect.arrayContaining(["course.hide", "course.open_standalone"])
+      );
+    });
+
     it("agrees with the route it describes: recording.manage is listed exactly for those a recording write accepts", async () => {
       const callers: CastMember[] = [
         CAST.RECORDING,

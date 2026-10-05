@@ -1,4 +1,4 @@
-import { ROLES } from "@medaris/common";
+import { PERMISSIONS, ROLES } from "@medaris/common";
 import { INestApplication } from "@nestjs/common";
 import { and, eq } from "drizzle-orm";
 import request from "supertest";
@@ -13,9 +13,12 @@ import {
 } from "../../src/database/schema/course.schema";
 import { kosks } from "../../src/database/schema/kosk.schema";
 import { madrasahs } from "../../src/database/schema/madrasah.schema";
+import { permissionGrants } from "../../src/database/schema/permission.schema";
 import {
   ASSIGNED_ROLES,
   madrasahKoskHosting,
+  roleAssignments,
+  SCOPE_TYPES,
 } from "../../src/database/schema/role-assignment.schema";
 import { users } from "../../src/database/schema/user.schema";
 import { createTestApp } from "../helpers/test-app.helper";
@@ -40,6 +43,9 @@ const TALEBE_1 = "e0000000-0000-4000-8000-000000000006";
 const TALEBE_2 = "e0000000-0000-4000-8000-000000000007";
 const TALEBE_3 = "e0000000-0000-4000-8000-000000000008";
 const STRANGER = "e0000000-0000-4000-8000-000000000009";
+const MEDARIS_BARE = "e0000000-0000-4000-8000-00000000000a";
+const MEDARIS_KOSK_EDIT = "e0000000-0000-4000-8000-00000000000b";
+const MEDARIS_HOSTING = "e0000000-0000-4000-8000-00000000000c";
 
 const auth = (sub: string) =>
   bearerFor({
@@ -77,6 +83,37 @@ describe("Hosting rights (e2e)", () => {
         )
       );
 
+  /** A Medaris nazımı holds nothing without a grant; `codes` are what the başnazım gave. */
+  const medarisNazim = async (userId: string, codes: string[]) => {
+    await db().insert(roleAssignments).values({
+      userId,
+      role: ASSIGNED_ROLES.MEDARIS_NAZIM,
+      scopeType: SCOPE_TYPES.PLATFORM,
+      scopeId: null,
+      grantedBy: ADMIN_ID,
+    });
+    if (codes.length === 0) return;
+    await db()
+      .insert(permissionGrants)
+      .values(
+        codes.map((permission) => ({
+          userId,
+          scopeType: SCOPE_TYPES.PLATFORM,
+          scopeId: null,
+          permission,
+          groupId: null,
+          grantedBy: ADMIN_ID,
+        }))
+      );
+  };
+  const audits = (action: string) =>
+    db().select().from(auditLog).where(eq(auditLog.action, action));
+  const openBody = {
+    title: "Yeni ders",
+    muderrisUserIds: [IMAM],
+    imamUserId: IMAM,
+  };
+
   beforeAll(async () => {
     app = await createTestApp();
     databaseService = app.get<DatabaseService>(DatabaseService);
@@ -86,6 +123,7 @@ describe("Hosting rights (e2e)", () => {
   beforeEach(async () => {
     await dbUtils.cleanTables(
       ...COURSE_TREE_TABLES,
+      "permission_grants",
       "madrasahs",
       "users",
       "audit_log"
@@ -157,6 +195,9 @@ describe("Hosting rights (e2e)", () => {
       givenName: "Yusuf Ziya",
       familyName: "Ertuğrul",
     });
+    await medarisNazim(MEDARIS_BARE, []);
+    await medarisNazim(MEDARIS_KOSK_EDIT, [PERMISSIONS.PLATFORM_KOSK_EDIT]);
+    await medarisNazim(MEDARIS_HOSTING, [PERMISSIONS.PLATFORM_HOSTING_GRANT]);
 
     const [live, draft, elsewhere] = await db()
       .insert(courses)
@@ -222,6 +263,7 @@ describe("Hosting rights (e2e)", () => {
   afterAll(async () => {
     await dbUtils.cleanTables(
       ...COURSE_TREE_TABLES,
+      "permission_grants",
       "madrasahs",
       "users",
       "audit_log"
@@ -306,6 +348,7 @@ describe("Hosting rights (e2e)", () => {
       ["another köşk's nazımı", OTHER_NAZIM],
       ["the medrese's başmüderris", HEAD],
       ["a stranger", STRANGER],
+      ["a Medaris nazımı with no grant", MEDARIS_BARE],
     ])("refuses %s with 403", (_who, sub) =>
       http().get(path()).set("Authorization", auth(sub)).expect(403));
 
@@ -405,7 +448,13 @@ describe("Hosting rights (e2e)", () => {
         .set("Authorization", auth(HEAD))
         .send({ madrasahId: fatih })
         .expect(403);
+      await http()
+        .post(path())
+        .set("Authorization", auth(STRANGER))
+        .send({ madrasahId: fatih })
+        .expect(403);
       expect(await held(fatih)).toHaveLength(0);
+      expect(await audits("hosting_right.grant")).toHaveLength(0);
     });
   });
 
@@ -482,12 +531,168 @@ describe("Hosting rights (e2e)", () => {
       expect((await course(elsewhereCourse)).archivedAt).toBeNull();
     });
 
-    it("refuses another köşk's nazımı with 403", async () => {
+    it.each([
+      ["another köşk's nazımı", OTHER_NAZIM],
+      ["the medrese's başmüderris", HEAD],
+      ["a stranger", STRANGER],
+    ])("refuses %s with 403 and withdraws nothing", async (_who, sub) => {
       await http()
-        .delete(`${path()}/${suleymaniye}?coursesAction=KEEP`)
-        .set("Authorization", auth(OTHER_NAZIM))
+        .delete(`${path()}/${suleymaniye}?coursesAction=HIDE`)
+        .set("Authorization", auth(sub))
         .expect(403);
       expect((await held(suleymaniye))[0].revokedAt).toBeNull();
+      expect((await course(liveCourse)).archivedAt).toBeNull();
+      expect(await audits("hosting_right.revoke")).toHaveLength(0);
+    });
+
+    describe("what the withdrawal means for the medrese's way to open courses", () => {
+      const openAs = (sub: string, over: Record<string, unknown> = {}) =>
+        http()
+          .post(`/madrasahs/${suleymaniye}/courses`)
+          .set("Authorization", auth(sub))
+          .send({ koskId, ...openBody, ...over });
+      const hostingKosks = async () =>
+        (
+          await http()
+            .get(`/madrasahs/${suleymaniye}/hosting-kosks`)
+            .set("Authorization", auth(HEAD))
+            .expect(200)
+        ).body.map((k: { id: string }) => k.id);
+      const courseCount = async () =>
+        (await db().select().from(courses)).length;
+
+      it("after KEEP the medrese's courses stay and it can open no new course in that köşk", async () => {
+        const live = await course(liveCourse);
+        const draft = await course(draftCourse);
+        expect(await hostingKosks()).toContain(koskId);
+        await http()
+          .delete(`${path()}/${suleymaniye}?coursesAction=KEEP`)
+          .set("Authorization", auth(NAZIM))
+          .expect(204);
+        expect(await course(liveCourse)).toMatchObject({
+          archivedAt: null,
+          status: live.status,
+          version: live.version,
+        });
+        expect(await course(draftCourse)).toMatchObject({
+          archivedAt: null,
+          status: draft.status,
+        });
+
+        const before = await courseCount();
+        const refused = await openAs(HEAD).expect(403);
+        expect(refused.body.code).toBe("HOSTING_RIGHT_REQUIRED");
+        expect(await courseCount()).toBe(before);
+        expect(await hostingKosks()).not.toContain(koskId);
+      });
+
+      it("after HIDE the same refusal holds and the hidden courses are the only change", async () => {
+        await http()
+          .delete(`${path()}/${suleymaniye}?coursesAction=HIDE`)
+          .set("Authorization", auth(NAZIM))
+          .expect(204);
+        expect((await course(liveCourse)).archivedAt).not.toBeNull();
+        expect((await course(draftCourse)).archivedAt).not.toBeNull();
+        expect((await course(elsewhereCourse)).archivedAt).toBeNull();
+
+        const before = await courseCount();
+        const refused = await openAs(HEAD).expect(403);
+        expect(refused.body.code).toBe("HOSTING_RIGHT_REQUIRED");
+        expect(await courseCount()).toBe(before);
+      });
+
+      it("giving the right back lets the medrese open a course again", async () => {
+        await http()
+          .delete(`${path()}/${suleymaniye}?coursesAction=KEEP`)
+          .set("Authorization", auth(NAZIM))
+          .expect(204);
+        await openAs(HEAD).expect(403);
+        await http()
+          .post(path())
+          .set("Authorization", auth(NAZIM))
+          .send({ madrasahId: suleymaniye })
+          .expect(201);
+        const res = await openAs(HEAD).expect(201);
+        expect(res.body).toMatchObject({ title: "Yeni ders", koskId });
+        expect((await course(res.body.id)).status).toBe(CourseStatus.DRAFT);
+      });
+    });
+  });
+
+  describe("a Medaris nazımı", () => {
+    // Functions, so each request is built when it is sent, one after the other.
+    const attempts = (sub: string) => [
+      () => http().get(path()).set("Authorization", auth(sub)),
+      () =>
+        http()
+          .post(path())
+          .set("Authorization", auth(sub))
+          .send({ madrasahId: fatih }),
+      () =>
+        http()
+          .delete(`${path()}/${suleymaniye}?coursesAction=HIDE`)
+          .set("Authorization", auth(sub)),
+    ];
+    const expectNothingWritten = async () => {
+      expect(await held(fatih)).toHaveLength(0);
+      expect((await held(suleymaniye))[0].revokedAt).toBeNull();
+      expect((await course(liveCourse)).archivedAt).toBeNull();
+      expect(await db().select().from(auditLog)).toHaveLength(0);
+    };
+
+    it.each([
+      ["with no grant", MEDARIS_BARE],
+      ["holding only platform.kosk_edit", MEDARIS_KOSK_EDIT],
+    ])("%s is refused on the list, the grant and the withdrawal, and nothing is written", async (_what, sub) => {
+      for (const attempt of attempts(sub)) await attempt().expect(403);
+      await expectNothingWritten();
+    });
+
+    it("holding platform.hosting_grant lists, gives and withdraws in any köşk", async () => {
+      for (const id of [koskId, otherKoskId]) {
+        const listed = await http()
+          .get(path(id))
+          .set("Authorization", auth(MEDARIS_HOSTING))
+          .expect(200);
+        expect(listed.body).toHaveLength(id === koskId ? 1 : 0);
+
+        const given = await http()
+          .post(path(id))
+          .set("Authorization", auth(MEDARIS_HOSTING))
+          .send({ madrasahId: fatih })
+          .expect(201);
+        expect(given.body.grantedBy).toMatchObject({
+          id: MEDARIS_HOSTING,
+          role: "MEDARIS_NAZIM",
+        });
+
+        await http()
+          .delete(`${path(id)}/${fatih}?coursesAction=KEEP`)
+          .set("Authorization", auth(MEDARIS_HOSTING))
+          .expect(204);
+        expect((await held(fatih, id))[0].revokedBy).toBe(MEDARIS_HOSTING);
+      }
+      for (const action of ["hosting_right.grant", "hosting_right.revoke"]) {
+        const rows = await audits(action);
+        expect(rows).toHaveLength(2);
+        expect(rows.map((r) => r.actorId)).toEqual([
+          MEDARIS_HOSTING,
+          MEDARIS_HOSTING,
+        ]);
+        expect(rows.map((r) => r.entityId).sort()).toEqual(
+          [koskId, otherKoskId].sort()
+        );
+      }
+    });
+
+    it("whose grant has expired is refused like one with no grant", async () => {
+      await db()
+        .update(permissionGrants)
+        .set({ expiresAt: new Date(Date.now() - 60_000) })
+        .where(eq(permissionGrants.userId, MEDARIS_HOSTING));
+      for (const attempt of attempts(MEDARIS_HOSTING))
+        await attempt().expect(403);
+      await expectNothingWritten();
     });
   });
 });

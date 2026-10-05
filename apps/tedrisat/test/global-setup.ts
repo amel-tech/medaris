@@ -34,7 +34,7 @@ import type { TestProject } from "vitest/node";
  * ever used in type position. `TestProject` has no runtime export at all, so a
  * value import of it fails at load time under the SWC/ESM transform.
  *
- * This is NOT the `useImportType` trap CLAUDE.md warns about. That one is about
+ * This is NOT the `useImportType` trap AGENTS.md warns about. That one is about
  * NestJS constructor parameters, whose types have to survive into
  * `design:paramtypes` metadata; nothing here is injected by Nest. Biome's rule
  * stays off for this package either way — these are hand-written, not the rule
@@ -156,7 +156,7 @@ for (const signal of ["SIGINT", "SIGTERM"] as const) {
   process.once(signal, () => {
     // 128 + the signal number, the shell convention. Exiting 0 — which is what
     // the per-fork handlers this replaced did — reports an interrupted run as a
-    // passing one, and `-t test` is the gate CLAUDE.md says cannot be skipped.
+    // passing one, and `-t test` is the gate AGENTS.md says cannot be skipped.
     const code = signal === "SIGINT" ? 130 : 143;
     // `finally`, not `then`: a container that fails to stop must still exit,
     // rather than leave the process hanging with no exit code at all.

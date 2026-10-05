@@ -265,7 +265,7 @@ describe("GrantsView (nizam 38)", () => {
     expect(html).not.toContain("medrese kadrosu verir");
   });
 
-  it("names the edit and dismiss buttons for the person, and keeps 'Görevden al' shut before the gate (criterion 4)", () => {
+  it("names the edit and dismiss buttons for the person, and offers 'Görevden al' with no date gate (criterion 4, MDRS-215)", () => {
     const html = view();
     expect(html).toContain(
       'aria-label="İzinleri düzenle: Yusuf Kerem Aydınoğlu"'
@@ -274,8 +274,21 @@ describe("GrantsView (nizam 38)", () => {
       html.indexOf('aria-label="Görevden al: Yusuf Kerem Aydınoğlu"') - 400,
       html.indexOf('aria-label="Görevden al: Yusuf Kerem Aydınoğlu"') + 80
     );
-    // Static markup has not run the client's clock: the gate is closed.
-    expect(dismiss).toContain("disabled");
+    expect(dismiss).not.toContain("disabled");
+  });
+
+  it("offers no 'İzinleri düzenle' on the viewer's own post, which the API refuses, but keeps it for the başnazım (MDRS-108)", () => {
+    const own = {
+      ...data,
+      items: [{ ...grant, user: { ...grant.user, id: "ME" } }],
+    };
+    const edit = 'aria-label="İzinleri düzenle: Yusuf Kerem Aydınoğlu"';
+    const html = view(own);
+    expect(html).not.toContain(edit);
+    expect(html).toContain('aria-label="Görevden al: Yusuf Kerem Aydınoğlu"');
+    expect(
+      render(<GrantsView koskId="k1" data={own} viewerId="me" viewerIsChief />)
+    ).toContain(edit);
   });
 
   it("says there is none yet when the list is empty", () => {

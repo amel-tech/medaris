@@ -274,6 +274,7 @@ describe("the nazir message catalogue", () => {
       "SessionPlan",
       "CourseStudents",
       "Curriculum",
+      "CurriculumHide",
       "Recordings",
     ] as const;
     for (const locale of locales) {

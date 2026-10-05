@@ -12,8 +12,9 @@ import {
 // (MDRS-104). The primary key IS the Keycloak `sub`, so every existing
 // `owner_id` / `user_id` column already points at it without a migration.
 // Keycloak stays the source of truth for the identity: `email` and the names
-// are refreshed from the token by `UserSyncInterceptor`; only `time_zone` and
-// `locale` are the user's own settings, written by `PATCH /me`.
+// are refreshed from the token by `UserSyncInterceptor`; only `time_zone`,
+// `locale` and `lesson_invitation_emails` are the user's own settings,
+// written by `PATCH /me`.
 //
 // What is stored here must match the privacy notice (MDRS-102) — see
 // docs/migration/mdrs-104-users-table.md.
@@ -30,6 +31,12 @@ export const users = table(
     timeZone: text("time_zone"),
     // BCP 47 tag, e.g. "tr".
     locale: text("locale"),
+    // Lesson invitations by e-mail (MDRS-121), the user's own setting like
+    // the two above. On unless they turned it off on Hesap; off stops every
+    // further invitation, update and cancellation to this address.
+    lessonInvitationEmails: boolean("lesson_invitation_emails")
+      .default(true)
+      .notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),

@@ -242,7 +242,7 @@ export class CoursesApi extends runtime.BaseAPI {
     }
 
     /**
-     * The köşk manager\'s way to take a course down: nothing is deleted, every list leaves it out, and it answers 404 to everyone but the köşk manager and SYSTEM_ADMIN until it is restored (MDRS-124). The level the caller acts at is recorded with the hide (köşk, medrese, or platform for SYSTEM_ADMIN) and decides who may restore it (MDRS-135).
+     * Nothing is deleted, every list leaves the course out, and it answers 404 to everyone but those who may hide it until it is restored (MDRS-124). Who hides it (MDRS-143): the köşk\'s nazımı (`course.hide`), the başmüderris or a nazır given `madrasah.course_hide` for a medrese course, and platform management (`platform.course_hide`, the başnazım by bypass). The level the caller acts at is recorded with the hide (köşk, medrese or platform) and decides who may restore it (MDRS-135). A course hidden already answers 409 (COURSE_ALREADY_HIDDEN) and nothing is written.
      * Hide a course (Gizle)
      */
     async archiveCourseRaw(requestParameters: ArchiveCourseRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CourseDetailResponse>> {
@@ -277,7 +277,7 @@ export class CoursesApi extends runtime.BaseAPI {
     }
 
     /**
-     * The köşk manager\'s way to take a course down: nothing is deleted, every list leaves it out, and it answers 404 to everyone but the köşk manager and SYSTEM_ADMIN until it is restored (MDRS-124). The level the caller acts at is recorded with the hide (köşk, medrese, or platform for SYSTEM_ADMIN) and decides who may restore it (MDRS-135).
+     * Nothing is deleted, every list leaves the course out, and it answers 404 to everyone but those who may hide it until it is restored (MDRS-124). Who hides it (MDRS-143): the köşk\'s nazımı (`course.hide`), the başmüderris or a nazır given `madrasah.course_hide` for a medrese course, and platform management (`platform.course_hide`, the başnazım by bypass). The level the caller acts at is recorded with the hide (köşk, medrese or platform) and decides who may restore it (MDRS-135). A course hidden already answers 409 (COURSE_ALREADY_HIDDEN) and nothing is written.
      * Hide a course (Gizle)
      */
     async archiveCourse(requestParameters: ArchiveCourseRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CourseDetailResponse> {
@@ -286,7 +286,8 @@ export class CoursesApi extends runtime.BaseAPI {
     }
 
     /**
-     * Create a new course under a köşk
+     * The köşk\'s nazımı opens it, and so does the başnazım (MDRS-136). It is opened with at least one müderris who has an account, and one of them is the imam: `imamUserId`, or the account listed first.
+     * Create a new course under a köşk, together with its müderrisler
      */
     async createCourseRaw(requestParameters: CreateCourseRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CourseDetailResponse>> {
         if (requestParameters['koskId'] == null) {
@@ -330,7 +331,8 @@ export class CoursesApi extends runtime.BaseAPI {
     }
 
     /**
-     * Create a new course under a köşk
+     * The köşk\'s nazımı opens it, and so does the başnazım (MDRS-136). It is opened with at least one müderris who has an account, and one of them is the imam: `imamUserId`, or the account listed first.
+     * Create a new course under a köşk, together with its müderrisler
      */
     async createCourse(requestParameters: CreateCourseRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CourseDetailResponse> {
         const response = await this.createCourseRaw(requestParameters, initOverrides);
@@ -1051,7 +1053,7 @@ export class CoursesApi extends runtime.BaseAPI {
     }
 
     /**
-     * By kademe (MDRS-135): the level that hid the course, or any level above it (course < medrese < köşk < platform). A lower level answers 403 (ARCHIVE_RESTORE_LEVEL), naming the level that hid it and the caller\'s. A course hidden before the level was recorded counts as the lowest level that could have hidden it.
+     * By kademe (MDRS-135): the level that hid the course, or any level above it (course < medrese < köşk < platform). A lower level answers 403 (ARCHIVE_RESTORE_LEVEL), naming the level that hid it and the caller\'s. A course hidden before the level was recorded counts as the lowest level that could have hidden it. As on the archive route, a course whose köşk or medrese is still hidden answers 409 (ARCHIVE_PARENT_HIDDEN); a course that is not hidden answers 409 (COURSE_NOT_HIDDEN) and nothing is written.
      * Restore a hidden course (Geri al)
      */
     async restoreCourseRaw(requestParameters: RestoreCourseRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CourseDetailResponse>> {
@@ -1086,7 +1088,7 @@ export class CoursesApi extends runtime.BaseAPI {
     }
 
     /**
-     * By kademe (MDRS-135): the level that hid the course, or any level above it (course < medrese < köşk < platform). A lower level answers 403 (ARCHIVE_RESTORE_LEVEL), naming the level that hid it and the caller\'s. A course hidden before the level was recorded counts as the lowest level that could have hidden it.
+     * By kademe (MDRS-135): the level that hid the course, or any level above it (course < medrese < köşk < platform). A lower level answers 403 (ARCHIVE_RESTORE_LEVEL), naming the level that hid it and the caller\'s. A course hidden before the level was recorded counts as the lowest level that could have hidden it. As on the archive route, a course whose köşk or medrese is still hidden answers 409 (ARCHIVE_PARENT_HIDDEN); a course that is not hidden answers 409 (COURSE_NOT_HIDDEN) and nothing is written.
      * Restore a hidden course (Geri al)
      */
     async restoreCourse(requestParameters: RestoreCourseRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CourseDetailResponse> {
@@ -1095,7 +1097,7 @@ export class CoursesApi extends runtime.BaseAPI {
     }
 
     /**
-     * Partial update for the \'Müderrisleri düzenle\' dialog (MDRS-176): only the müderris list and the imam change, not the syllabus. Needs `assign_muderris`; the change is written to `audit_log`. The list is never empty and the imam is one of its accounts.
+     * Partial update for the \'Müderrisleri düzenle\' dialog (MDRS-176): only the müderris list and the imam change, not the syllabus. Needs `course.open_standalone` (or `madrasah.muderris_manage` for a medrese\'s course); the change is written to `audit_log`. The list is never empty and the imam is one of its accounts.
      * Replace a course\'s müderris list and pick its imam
      */
     async setCourseMuderrisRaw(requestParameters: SetCourseMuderrisRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MuderrisListResponse>> {
@@ -1140,7 +1142,7 @@ export class CoursesApi extends runtime.BaseAPI {
     }
 
     /**
-     * Partial update for the \'Müderrisleri düzenle\' dialog (MDRS-176): only the müderris list and the imam change, not the syllabus. Needs `assign_muderris`; the change is written to `audit_log`. The list is never empty and the imam is one of its accounts.
+     * Partial update for the \'Müderrisleri düzenle\' dialog (MDRS-176): only the müderris list and the imam change, not the syllabus. Needs `course.open_standalone` (or `madrasah.muderris_manage` for a medrese\'s course); the change is written to `audit_log`. The list is never empty and the imam is one of its accounts.
      * Replace a course\'s müderris list and pick its imam
      */
     async setCourseMuderris(requestParameters: SetCourseMuderrisRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MuderrisListResponse> {

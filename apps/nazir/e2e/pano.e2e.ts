@@ -53,7 +53,11 @@ const open = async (page: Page) => {
 
 const applications = (page: Page) =>
   page.locator("[data-testid=applications] tbody tr:visible");
-const counter = (page: Page) => page.getByTestId("applications-counter");
+const counter = (page: Page) =>
+  page.getByTestId("applications-counter").filter({ visible: true });
+// `visible`: after a reload the finished page sits hidden beside the one on screen
+const greeting = (page: Page) =>
+  page.getByTestId("greeting").filter({ visible: true });
 
 test("nazir/01 — the medrese's Pano shows three scope cards, two sessions and three applications, and the greeting counts the same (criteria 1, 2)", async ({
   as,
@@ -62,11 +66,14 @@ test("nazir/01 — the medrese's Pano shows three scope cards, two sessions and 
   const page = await as("MEDRESE_BASMUDERRIS");
   await open(page);
 
-  await expect(page.getByTestId("greeting")).toContainText(
+  await expect(greeting(page)).toContainText(
     "Önümüzdeki 7 günde 2 celse var; 3 başvuru onayınızı bekliyor."
   );
 
-  const cards = page.getByTestId("scopes").locator(".mds-card");
+  const cards = page
+    .getByTestId("scopes")
+    .filter({ visible: true })
+    .locator(".mds-card");
   await expect(cards).toHaveCount(3);
   await expect(cards.first()).toContainText(base?.madrasah.name ?? "");
   await expect(cards.first()).toContainText("Medrese başmüderrisi");
@@ -99,7 +106,7 @@ test("nazir/01 — the medrese's Pano shows three scope cards, two sessions and 
   );
   await expect(counter(page)).toHaveText("3 başvuru · 2 derste");
 
-  const hosts = page.getByTestId("hosting-kosks");
+  const hosts = page.getByTestId("hosting-kosks").filter({ visible: true });
   await expect(hosts).toContainText(base?.first.koskName ?? "");
   await expect(hosts).toContainText("2 medrese dersi");
   await expect(
@@ -119,7 +126,9 @@ test("nazir/01 — 'Onayla' takes the row and the count away, the talebe has a s
   const first = pano?.applicants[0];
 
   await page.getByRole("button", { name: `Onayla: ${first?.name}` }).click();
-  await expect(page.getByText("Başvuru onaylandı")).toBeVisible();
+  await expect(
+    page.getByText("Başvuru onaylandı").filter({ visible: true })
+  ).toBeVisible();
   await expect(applications(page)).toHaveCount(2);
   await expect(
     applications(page).filter({ hasText: first?.name ?? "" })
@@ -131,9 +140,7 @@ test("nazir/01 — 'Onayla' takes the row and the count away, the talebe has a s
 
   await page.reload();
   await expect(applications(page)).toHaveCount(2);
-  await expect(page.getByTestId("greeting")).toContainText(
-    "2 başvuru onayınızı bekliyor."
-  );
+  await expect(greeting(page)).toContainText("2 başvuru onayınızı bekliyor.");
   await expect(counter(page)).toHaveText("2 başvuru · 2 derste");
   // the menu's badge is the courses that still hold an application
   await expect(
@@ -160,7 +167,9 @@ test("nazir/01 — 'Reddet' asks once, takes no reason, and removes the applicat
 
   await page.getByRole("button", { name: `Reddet: ${second?.name}` }).click();
   await ask.getByRole("button", { name: "Reddet", exact: true }).click();
-  await expect(page.getByText("Başvuru reddedildi")).toBeVisible();
+  await expect(
+    page.getByText("Başvuru reddedildi").filter({ visible: true })
+  ).toBeVisible();
   await expect(applications(page)).toHaveCount(2);
   await expect(counter(page)).toHaveText("2 başvuru · 1 derste");
   expect(
@@ -179,7 +188,10 @@ test("nazir/01 — on a 390 px screen the cards are one column and the tables re
     page.getByRole("heading", { level: 1, name: "Pano" })
   ).toBeVisible();
 
-  const cards = page.getByTestId("scopes").locator(".mds-card");
+  const cards = page
+    .getByTestId("scopes")
+    .filter({ visible: true })
+    .locator(".mds-card");
   const boxes = await cards.evaluateAll((nodes) =>
     nodes.map((node) => {
       const { left, width } = node.getBoundingClientRect();
@@ -202,10 +214,12 @@ test("nazir/01 — a medrese nazır is refused the dashboard: the cards stay, a 
   test.skip(!(ready() && canSignIn(MEDRESE_NAZIR)), "no medrese nazır account");
   const page = await as("MEDRESE_NAZIR");
   await open(page);
-  await expect(page.getByText("Bu sayfaya izniniz yok")).toBeVisible();
-  await expect(page.getByTestId("scopes")).toContainText(
-    base?.madrasah.name ?? ""
-  );
+  await expect(
+    page.getByText("Bu sayfaya izniniz yok").filter({ visible: true })
+  ).toBeVisible();
+  await expect(
+    page.getByTestId("scopes").filter({ visible: true })
+  ).toContainText(base?.madrasah.name ?? "");
   await expect(page.getByTestId("applications")).toHaveCount(0);
   await expect(
     page.getByRole("link", { name: "Medrese dersi aç" })

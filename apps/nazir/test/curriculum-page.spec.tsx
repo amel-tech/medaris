@@ -521,6 +521,20 @@ describe("what each permission lets the form do", () => {
     expect(field("lesson-1-0-time").disabled).toBe(false);
   });
 
+  it("offers the page that hides by its own routes only to a holder of week.hide (MDRS-143)", async () => {
+    state.permissions = holding("course.edit", "session.manage");
+    await mount();
+    expect(form().querySelector('a[href$="/mufredat/gizle"]')).toBeNull();
+  });
+
+  it("offers the page that hides by its own routes to a holder of week.hide, even one who cannot save the course", async () => {
+    state.permissions = holding("week.hide");
+    await mount();
+    const link = form().querySelector('a[href$="/mufredat/gizle"]');
+    expect(link?.textContent).toContain("Hafta ve celse gizle");
+    expect(save()).toBeUndefined();
+  });
+
   it("lets a holder of course.edit alone change what the course and its sessions say, and not add, move or hide a session", async () => {
     state.permissions = holding("course.edit");
     await mount();

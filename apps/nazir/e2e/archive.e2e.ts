@@ -79,8 +79,11 @@ test("nazir/12 — the tabs count what is hidden, and each asks for its own kind
   await expect(rows(page)).toHaveCount(4);
 
   await tabs.getByRole("link", { name: /^Ders kayıtları/ }).click();
+  // `visible`: a page Next keeps hidden after a navigation holds the same text
   await expect(
-    page.getByText("Bu medresede gizlenmiş bir ders kaydı yok.")
+    page
+      .getByText("Bu medresede gizlenmiş bir ders kaydı yok.")
+      .filter({ visible: true })
   ).toBeVisible();
 });
 
@@ -163,7 +166,9 @@ test("nazir/12 — 'Geri al' brings a week back at once: it leaves the list and 
     .getByRole("button", { name: /^Geri al/ })
     .click();
 
-  await expect(page.getByText("Geri alındı")).toBeVisible();
+  await expect(
+    page.getByText("Geri alındı").filter({ visible: true })
+  ).toBeVisible();
   await expect(rowOf(page, archive?.week.title ?? "")).toHaveCount(0);
   await expect(rows(page)).toHaveCount(4);
   expect(await archive?.isHidden("course_weeks", archive?.week.id ?? "")).toBe(
@@ -184,7 +189,9 @@ test("nazir/12 — 'Geri al' brings a course back, with the weeks it holds; the 
   await rowOf(page, archive?.course.title ?? "")
     .getByRole("button", { name: /^Geri al/ })
     .click();
-  await expect(page.getByText("Geri alındı")).toBeVisible();
+  await expect(
+    page.getByText("Geri alındı").filter({ visible: true })
+  ).toBeVisible();
   await expect(rowOf(page, archive?.course.title ?? "")).toHaveCount(0);
   await expect(
     page.getByRole("navigation", { name: "Arşivdeki öğe türleri" })
@@ -200,12 +207,16 @@ test("nazir/12 — a long list is paged ten at a time", async ({ as }) => {
   const page = await as("MEDRESE_BASMUDERRIS");
   await open(page);
   await expect(rows(page)).toHaveCount(10);
-  await expect(page.getByText("1–10 / 12")).toBeVisible();
+  await expect(
+    page.getByText("1–10 / 12").filter({ visible: true })
+  ).toBeVisible();
 
   await page.getByRole("link", { name: "Sonraki" }).click();
   await expect(page).toHaveURL(/sayfa=2/);
   await expect(rows(page)).toHaveCount(2);
-  await expect(page.getByText("11–12 / 12")).toBeVisible();
+  await expect(
+    page.getByText("11–12 / 12").filter({ visible: true })
+  ).toBeVisible();
   await expect(page.getByRole("link", { name: "Sonraki" })).toHaveCount(0);
   await page.getByRole("link", { name: "Önceki" }).click();
   await expect(rows(page)).toHaveCount(10);
@@ -229,9 +240,11 @@ test("nazir/12 — 'Medreseyi gizle' asks first, hides the medrese and its cours
       page.getByRole("heading", { level: 1, name: "Arşiv" })
     ).toBeVisible();
     await expect(
-      page.getByText(
-        "Hiçbir şey silinmez; medreseyi yalnız Medaris yönetimi geri getirebilir."
-      )
+      page
+        .getByText(
+          "Hiçbir şey silinmez; medreseyi, onu gizleyen kademe ya da üstü geri getirir: sizin gizlediğinizi siz ya da Medaris yönetimi."
+        )
+        .filter({ visible: true })
     ).toBeVisible();
 
     await page.getByRole("button", { name: "Medreseyi gizle" }).click();
@@ -269,16 +282,41 @@ test("nazir/12 — 'Medreseyi gizle' asks first, hides the medrese and its cours
       own.madrasah.id,
     ]);
 
-    // the başmüderris still opens the archive, and its courses cannot be brought back from here
+    // the başmüderris still opens the archive, which says the medrese is hidden and offers
+    // "Medreseyi geri getir" (the level that hid it); no second "Medreseyi gizle" (MDRS-143)
     await page.reload();
+    await expect(
+      page.getByTestId("madrasah-hidden").filter({ visible: true })
+    ).toContainText("Medrese gizli");
+    await expect(
+      page.getByRole("button", { name: "Medreseyi gizle" })
+    ).toHaveCount(0);
     await expect(rows(page)).toHaveCount(2);
+    // its courses cannot be brought back one by one while the medrese is hidden
     await rows(page)
       .first()
       .getByRole("button", { name: /^Geri al/ })
       .click();
+    // the toast's own text: its screen-reader copy says the same
     await expect(
-      page.getByText("Medreseyi yalnız Medaris yönetimi geri getirebilir.")
+      page
+        .locator(".mds-toast--error")
+        .getByText("Medreseyi, onu gizleyen kademe ya da üstü geri getirir.")
     ).toBeVisible();
+
+    // the medrese itself comes back, with the courses hidden together
+    await page
+      .getByTestId("madrasah-hidden")
+      .getByRole("button", { name: /^Geri getir: / })
+      .click();
+    await expect(
+      page.getByText("Medrese geri getirildi").filter({ visible: true })
+    ).toBeVisible();
+    const restored = await client.query(
+      "select archived_at from madrasahs where id = $1",
+      [own.madrasah.id]
+    );
+    expect(restored.rows[0].archived_at).toBeNull();
   } finally {
     await client.end();
     await own.remove();
@@ -291,7 +329,9 @@ test("nazir/12 — a medrese nazır is refused: a notice, no list and no way to 
   test.skip(!(ready() && canSignIn(MEDRESE_NAZIR)), "no medrese nazır account");
   const page = await as("MEDRESE_NAZIR");
   await open(page);
-  await expect(page.getByText("Bu sayfaya izniniz yok")).toBeVisible();
+  await expect(
+    page.getByText("Bu sayfaya izniniz yok").filter({ visible: true })
+  ).toBeVisible();
   await expect(page.getByTestId("archive")).toHaveCount(0);
   await expect(
     page.getByRole("button", { name: "Medreseyi gizle" })

@@ -28,6 +28,7 @@ import {
   groupItems,
   type Messages,
   permissionErrorKey,
+  selfMadeItems,
 } from "../present";
 
 /** The Shell's role names, for the two roles it spells differently. */
@@ -87,7 +88,8 @@ export function DismissDialog({
     void load();
   }, [open, load]);
 
-  const list = Array.isArray(items) ? decisionItems(items) : [];
+  const list = Array.isArray(items) ? decisionItems(items, userId) : [];
+  const selfMade = Array.isArray(items) ? selfMadeItems(items, userId) : [];
   const groups = Array.isArray(items) ? groupItems(items) : [];
   const ready = Array.isArray(items) && dismissReady(list, answers);
 
@@ -176,11 +178,15 @@ export function DismissDialog({
             {t("retry")}
           </Button>
         </Alert>
-      ) : list.length === 0 && groups.length === 0 ? (
+      ) : list.length === 0 && groups.length === 0 && selfMade.length === 0 ? (
         <p className="mds-caption">{t("nothingHandedOn")}</p>
       ) : (
         <>
-          <p>{t("question", { count: list.length })}</p>
+          {list.length > 0 ? (
+            <p>{t("question", { count: list.length })}</p>
+          ) : (
+            <p className="mds-caption">{t("nothingHandedOn")}</p>
+          )}
           <ul
             className="mds-card flex flex-col divide-y divide-[var(--border-neutral-subtle)] p-0"
             data-testid="given-items"
@@ -228,6 +234,28 @@ export function DismissDialog({
           </ul>
           {list.length > 0 ? (
             <p className="mds-caption">{t("answersNote")}</p>
+          ) : null}
+          {selfMade.length > 0 ? (
+            <section
+              className="flex flex-col gap-2"
+              data-testid="given-self-made"
+            >
+              <p>{t("selfMadeQuestion", { count: selfMade.length })}</p>
+              <ul className="mds-card flex flex-col divide-y divide-[var(--border-neutral-subtle)] p-0">
+                {selfMade.map((item) => (
+                  <li
+                    key={givenKey(item)}
+                    className="flex flex-col px-card py-3"
+                    data-testid="given-self-made-item"
+                  >
+                    <bdi className="font-semibold">{what(item)}</bdi>
+                    {item.scopeName ? (
+                      <bdi className="mds-caption">{item.scopeName}</bdi>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            </section>
           ) : null}
           {groups.length > 0 ? (
             <section className="flex flex-col gap-2" data-testid="given-groups">

@@ -81,6 +81,7 @@
       "curriculum": "Syllabus",
       "sessions": "Sessions",
       "students": "Talebe",
+      "questions": "Questions",
       "recordings": "Recordings",
       "deck": "Course deck",
       "bans": "Bans",
@@ -155,6 +156,7 @@
       "recording_upload": "Upload a recording",
       "recording_watch_restricted": "Watch recordings open to enrolled talebe only",
       "session_view_content": "See the content and meeting links of a session",
+      "question_answer": "See the course's questions and answer them",
       "ban_course": "Ban a talebe from the course (includes seeing the course's ban list)",
       "ban_lift_course": "Lift a course ban, with a reason",
       "deck_manage_course": "Create and edit the course's deck",
@@ -210,7 +212,8 @@
     "expiryInvalid": "The end date cannot be in the past or after the end of the appointment.",
     "groupGone": "This group no longer exists. The groups were refreshed; choose again.",
     "groupNameTaken": "Another group has this name. Choose a different name.",
-    "exceedsGiver": "You do not hold some of these permissions; you can only give what you hold yourself. Ask the Medaris administration for the ones you need."
+    "exceedsGiver": "You do not hold some of these permissions; you can only give what you hold yourself. Ask the Medaris administration for the ones you need.",
+    "selfGrant": "You cannot give yourself a role or a permission; taking over one that was given to you counts as that."
   },
   "Settings": {
     "title": "Medrese settings",
@@ -369,6 +372,7 @@
     "dismissedBody": "{name} is no longer a nazır of this medrese.",
     "failedTitle": "The nazır could not be dismissed",
     "changed": "What this person gave changed while you were looking. The list was refreshed; make your choices again.",
+    "cascade": "Someone whose post you are dropping gave roles or permissions to others, which would stay without anyone deciding on them. Dismiss that person first and decide on what they gave, or take their post over.",
     "gone": "This person is no longer a nazır of this medrese.",
     "loadFailedTitle": "The list could not be read",
     "loadFailed": "What this person gave cannot be read right now. Try again in a moment."
@@ -393,11 +397,12 @@
     "courses": "Courses",
     "noCourses": "This medrese has no courses yet.",
     "coursesProblem": "Choose at least one course.",
-    "expires": "End date (optional)",
-    "expiresHelp": "Leave empty for no end date. The permission lapses by itself when the date passes.",
+    "expires": "End date and time (optional)",
+    "expiresHelp": "Leave empty for no end. The permission lapses by itself at that moment.",
     "expiresProblems": {
-      "past": "The end date cannot be in the past.",
-      "afterAppointment": "The end date cannot be after the end of the appointment."
+      "past": "The end must be after the current time.",
+      "afterAppointment": "The end cannot be after the end of the appointment.",
+      "unfinished": "Complete the end date and time."
     },
     "note": "They cannot pass on a permission they receive. Every permission given and taken back is written to the audit log.",
     "summary": {
@@ -521,7 +526,7 @@
     "errors": {
       "forbidden": "You may not bring this back; a higher level may have hidden it. The list was refreshed.",
       "gone": "This item is no longer in the archive. The list was refreshed.",
-      "parentHidden": "The medrese or köşk this belongs to is still hidden, so it could not be brought back. Only Medaris administration can bring a medrese back."
+      "parentHidden": "The medrese or köşk this belongs to is still hidden, so it could not be brought back. A medrese is brought back by the level that hid it, or one above."
     },
     "empty": {
       "all": "Nothing is hidden in this medrese.",
@@ -541,16 +546,103 @@
     "loadFailed": "The archive cannot be read right now. Try again in a few seconds.",
     "hide": {
       "title": "Hide the medrese",
-      "text": "{name} and its courses disappear from every list and from search; the medrese and course pages close to everyone except you and Medaris administration. The köşks that host its courses are not hidden. Nothing is deleted; only Medaris administration can bring the medrese back.",
+      "text": "{name} and its courses disappear from every list and from search; the medrese and course pages close to everyone except you and Medaris administration. The köşks that host its courses are not hidden. Nothing is deleted; the medrese is brought back by the level that hid it, or one above: what you hid, by you or Medaris administration.",
       "button": "Hide the medrese",
-      "confirmBody": "{name} and its visible courses will be hidden from everyone; only you and Medaris administration will be able to open its pages. Nothing is deleted, but only Medaris administration can bring the medrese back; until then you cannot bring the courses back from the Archive.",
+      "confirmBody": "{name} and its visible courses will be hidden from everyone; only you and Medaris administration will be able to open its pages. Nothing is deleted; you or Medaris administration can bring the medrese back. Until then you cannot bring the courses back from the Archive.",
       "confirm": "Hide",
       "cancel": "Cancel",
       "done": "Medrese hidden",
-      "doneBody": "{name} and its courses are now visible to nobody except you and Medaris administration. Ask Medaris administration to bring it back.",
-      "already": "This medrese is already hidden. Ask Medaris administration to bring it back.",
-      "failedTitle": "The medrese could not be hidden"
+      "doneBody": "{name} and its courses are now visible to nobody except you and Medaris administration. You or Medaris administration can bring the medrese back.",
+      "already": "This medrese is already hidden. The level that hid it, or one above it, can bring it back.",
+      "failedTitle": "The medrese could not be hidden",
+      "restoreLevel": "Medaris administration hid this medrese; only Medaris administration can bring it back."
+    },
+    "hidden": {
+      "title": "The medrese is hidden",
+      "body": "{name} and its courses have left every list and the search; only you and the Medaris administration can open its pages. Its courses return with it when it is restored.",
+      "restore": "Bring the medrese back",
+      "restoreLabel": "Bring back: {name}",
+      "restored": "Medrese brought back",
+      "restoredBody": "{name} and the courses hidden with it are visible again.",
+      "failedTitle": "The medrese could not be brought back",
+      "notHidden": "This medrese is not hidden any more. The page was refreshed."
     }
+  },
+  "CourseArchive": {
+    "title": "Archive",
+    "intro": "The weeks and sessions hidden in this course. None is deleted; the level that hid an item, or one above, restores it.",
+    "tabs": {
+      "all": "All",
+      "weeks": "Weeks",
+      "sessions": "Sessions"
+    },
+    "empty": {
+      "all": "Nothing is hidden in this course.",
+      "weeks": "No week is hidden in this course.",
+      "sessions": "No session is hidden in this course."
+    }
+  },
+  "CurriculumHide": {
+    "title": "Curriculum",
+    "intro": "Here you hide weeks and sessions; none is deleted, and the Archive brings them back. Editing the curriculum is not this page’s job.",
+    "weekLabel": "Week {number}",
+    "sessionCount": "{count, plural, one {# session} other {# sessions}}",
+    "noSessions": "This week has no sessions.",
+    "empty": "This course has no weeks yet.",
+    "hideWeek": "Hide the week",
+    "hideWeekLabel": "Hide the week: {title}",
+    "hideSession": "Hide the session",
+    "hideSessionLabel": "Hide the session: {title}",
+    "week": {
+      "title": "Hide the week",
+      "body": "{title} and its {count, plural, one {# session} other {# sessions}} leave the course; talebe do not see them. Nothing is deleted; the level that hid it, or one above, restores it from the Archive.",
+      "done": "Week hidden",
+      "doneBody": "{title} and its sessions have left the course. You can restore them from the Archive.",
+      "failedTitle": "Could not hide the week"
+    },
+    "session": {
+      "title": "Hide the session",
+      "body": "{title} leaves the course; talebe do not see it. Nothing is deleted; the level that hid it, or one above, restores it from the Archive.",
+      "done": "Session hidden",
+      "doneBody": "{title} has left the course. You can restore it from the Archive.",
+      "failedTitle": "Could not hide the session"
+    },
+    "confirm": "Hide",
+    "cancel": "Cancel",
+    "gone": "This week or session no longer exists. The page was refreshed.",
+    "loadFailedTitle": "Could not read the curriculum",
+    "loadFailed": "The curriculum could not be read just now. Try again in a few seconds."
+  },
+  "Curriculum": {
+    "title": "Curriculum",
+    "intro": "Here you hide weeks and sessions; none is deleted, and the Archive brings them back. Editing the curriculum is not this page’s job.",
+    "weekLabel": "Week {number}",
+    "sessionCount": "{count, plural, one {# session} other {# sessions}}",
+    "noSessions": "This week has no sessions.",
+    "empty": "This course has no weeks yet.",
+    "hideWeek": "Hide the week",
+    "hideWeekLabel": "Hide the week: {title}",
+    "hideSession": "Hide the session",
+    "hideSessionLabel": "Hide the session: {title}",
+    "week": {
+      "title": "Hide the week",
+      "body": "{title} and its {count, plural, one {# session} other {# sessions}} leave the course; talebe do not see them. Nothing is deleted; the level that hid it, or one above, restores it from the Archive.",
+      "done": "Week hidden",
+      "doneBody": "{title} and its sessions have left the course. You can restore them from the Archive.",
+      "failedTitle": "Could not hide the week"
+    },
+    "session": {
+      "title": "Hide the session",
+      "body": "{title} leaves the course; talebe do not see it. Nothing is deleted; the level that hid it, or one above, restores it from the Archive.",
+      "done": "Session hidden",
+      "doneBody": "{title} has left the course. You can restore it from the Archive.",
+      "failedTitle": "Could not hide the session"
+    },
+    "confirm": "Hide",
+    "cancel": "Cancel",
+    "gone": "This week or session no longer exists. The page was refreshed.",
+    "loadFailedTitle": "Could not read the curriculum",
+    "loadFailed": "The curriculum could not be read just now. Try again in a few seconds."
   },
   "Courses": {
     "title": "Courses",
@@ -767,6 +859,37 @@
     "clearFilters": "Clear the filters",
     "loadFailedTitle": "The talebe could not be read",
     "loadFailed": "The talebe could not be read right now. Try again in a few seconds."
+  },
+  "Questions": {
+    "title": "Questions",
+    "subtitle": "What the talebe asked on the sessions of {name}; those waiting for an answer come first.",
+    "subtitleUnnamed": "What the talebe asked on the sessions of the course; those waiting for an answer come first.",
+    "empty": "No question has been asked in this course yet.",
+    "sessionLine": "Week {week} · {title}",
+    "questionLabel": "Question asked by {name}",
+    "unknownAuthor": "A talebe with no name on record",
+    "answered": "Answered",
+    "waiting": "Waiting",
+    "answer": "Answer",
+    "answerBy": "Answer from {name}",
+    "answerLabel": "Your answer",
+    "bodyHelp": "You can write Markdown. At most {max} characters.",
+    "answerAction": "Answer",
+    "answering": "Sending",
+    "change": "Change the answer",
+    "save": "Save",
+    "cancel": "Cancel",
+    "bodyRequired": "The answer cannot be empty.",
+    "loadMore": "Show more",
+    "loadingMore": "Loading",
+    "loadMoreFailed": "More questions could not be loaded. Try again.",
+    "loadFailedTitle": "The questions could not be read",
+    "loadFailed": "The questions could not be read right now. Try again in a few seconds.",
+    "errors": {
+      "gone": "This question no longer exists, or you may not answer it. Refresh the page.",
+      "invalid": "The answer cannot be empty or too long.",
+      "failed": "The answer could not be saved. Try again in a moment."
+    }
   },
   "Bans": {
     "title": "Bans",
@@ -1294,6 +1417,7 @@
     "zoneIstanbul": "Istanbul time",
     "zoneOther": "{zone} time",
     "generate": "Generate weekly sessions",
+    "hidePage": "Hide weeks and sessions",
     "addWeek": "Add a week",
     "generateNote": "You have unsaved changes; save before generating sessions, or the changes on this page are lost.",
     "untitledWeek": "Untitled week",

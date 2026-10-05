@@ -35,3 +35,21 @@ export async function hideMedrese(
   if (!result.success) console.error("Error hiding the medrese:", result.error);
   return outcomeOf(result);
 }
+
+/**
+ * "Medreseyi geri getir" (`POST /madrasahs/:id/restore`): the medrese and the
+ * courses hidden with it, by the level that hid it or one above. A refusal is
+ * its code (ARCHIVE_RESTORE_LEVEL when Medaris yönetimi hid it,
+ * MADRASAH_NOT_HIDDEN when it is shown already) and the page words it.
+ */
+export async function restoreMedrese(
+  madrasahId: string
+): Promise<ActionOutcome<null>> {
+  const result = await authenticatedAction(async (api) => {
+    await api.madrasahs.restoreMadrasah({ id: madrasahId });
+    return null;
+  });
+  if (!result.success)
+    console.error("Error bringing the medrese back:", result.error);
+  return outcomeOf(result);
+}

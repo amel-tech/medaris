@@ -84,6 +84,8 @@ export function CurriculumEditor({
     edit: boolean;
     /** `session.manage`: sessions can be added, moved and hidden */
     sessions: boolean;
+    /** `week.hide`: the page that hides a week or a session by its own routes */
+    hide: boolean;
   };
   locale: string;
   /** the zone the dates and times of the sessions are written in */
@@ -346,6 +348,11 @@ export function CurriculumEditor({
                 iconLeft={<Icon name="repeat" size="sm" />}
               >
                 {t("Curriculum.generate")}
+              </Button>
+            ) : null}
+            {can.hide ? (
+              <Button variant="ghost" href={`/ders/${course.id}/mufredat/gizle`}>
+                {t("Curriculum.hidePage")}
               </Button>
             ) : null}
             {can.edit ? (

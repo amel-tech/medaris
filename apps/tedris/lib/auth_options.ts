@@ -3,6 +3,7 @@ import {
   createAccessTokenReader,
   isKeycloakSessionEnded,
   logRefreshFailure,
+  REFRESH_ACCESS_TOKEN_ERROR,
   refreshDeadline,
   refreshFailureError,
 } from "@medaris/services/auth";
@@ -31,14 +32,18 @@ const refreshAccessToken = async (token: JWT) => {
   // token is dead, and only a new sign-in replaces the token.
   if (isKeycloakSessionEnded(token)) return token;
 
-  try {
-    if (
-      typeof token.refreshTokenExpireIn === "number" &&
-      Date.now() > token.refreshTokenExpireIn
-    ) {
-      throw new Error("refresh token expired");
-    }
+  // The refresh token has passed its own deadline: the session ran out, which
+  // is expected and not worth an error log. A server component cannot write the
+  // cookie back, so every session read of the same request would otherwise log
+  // it again (three times per page in tedris). The sentinel is unchanged.
+  if (
+    typeof token.refreshTokenExpireIn === "number" &&
+    Date.now() > token.refreshTokenExpireIn
+  ) {
+    return { ...token, error: REFRESH_ACCESS_TOKEN_ERROR };
+  }
 
+  try {
     const url = `${env.KEYCLOAK_ISSUER}/protocol/openid-connect/token`;
 
     const response = await fetch(url, {

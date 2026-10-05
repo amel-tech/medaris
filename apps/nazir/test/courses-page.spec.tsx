@@ -146,10 +146,9 @@ const kosks = [
   {
     id: "k-1",
     name: "Nûruosmaniye Köşkü",
-    field: "Arapça dil ilimleri",
     courseCount: 2,
   },
-  { id: "k-2", name: "Fatih Köşkü", field: "Fıkıh", courseCount: 1 },
+  { id: "k-2", name: "Fatih Köşkü", courseCount: 1 },
 ];
 const none: Filters = { kosk: null, status: null };
 
@@ -267,13 +266,12 @@ describe("Dersler", () => {
     expect(out).not.toContain('href="/ders/c-2"');
   });
 
-  it("lists the köşks that host the medrese beside the table, with their field and courses", async () => {
+  it("lists the köşks that host the medrese beside the table, with their courses", async () => {
     const out = await markup();
     const side = out.slice(out.indexOf('data-testid="hosting-kosks"'));
-    expect(textOf(side)).toContain(
-      "Nûruosmaniye Köşkü Arapça dil ilimleri · 2 medrese dersi"
-    );
-    expect(textOf(side)).toContain("Fatih Köşkü Fıkıh · 1 medrese dersi");
+    expect(textOf(side)).toContain("Nûruosmaniye Köşkü 2 medrese dersi");
+    expect(textOf(side)).toContain("Fatih Köşkü 1 medrese dersi");
+    expect(textOf(side)).not.toContain("Arapça dil ilimleri");
     expect(textOf(out)).toContain("Ders açabileceğiniz köşkler");
     expect(textOf(out)).toContain("Medrese dışı ders");
   });

@@ -41,7 +41,6 @@ export function KoskCoursesView({
   tedrisUrl,
 }: Props) {
   const t = useTranslations("nizam.KoskCourses");
-  const tl = useTranslations("nizam.Levels");
   const locale = useLocale();
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -95,14 +94,7 @@ export function KoskCoursesView({
         <div className="flex min-w-0 flex-col gap-2">
           <h1 className="mds-h1">{t("title")}</h1>
           <p>
-            {[
-              kosk.name,
-              kosk.field,
-              kosk.level
-                ? t("levelValue", { level: tl(kosk.level as never) })
-                : null,
-              kosk.isPrivate ? t("unlisted") : t("listed"),
-            ]
+            {[kosk.name, kosk.isPrivate ? t("unlisted") : t("listed")]
               .filter(Boolean)
               .join(" · ")}
           </p>

@@ -120,6 +120,57 @@ describe("SelfGrantGuard (review B1, M4)", () => {
     });
   });
 
+  it("reads the caller's holdings at `heldAt`, and records the refusal on the resource", async () => {
+    const course = {
+      entity: ENTITIES.COURSE,
+      id: "bbbbbbbb-0000-4000-8000-000000000009",
+    };
+    const asked: string[] = [];
+    const records: IAuthzAuditEntry[] = [];
+    const authz = {
+      isSystemAdmin: () => false,
+      effective: async (
+        _u: unknown,
+        at: { id: string }
+      ): Promise<IEffective> => {
+        asked.push(at.id);
+        return {
+          codes: new Set(
+            at.id === resource.id ? ROLE_DEFAULT_PERMISSIONS.MUDERRIS : []
+          ),
+          openedPassive: null,
+        };
+      },
+    } as unknown as AuthzService;
+    const guard = new SelfGrantGuard(authz, {
+      record: async (entry) => {
+        records.push(entry);
+      },
+    });
+    await expect(
+      guard.assertNotSelf(
+        user(ME),
+        [ME],
+        course,
+        { role: ASSIGNED_ROLES.MUDERRIS, heldAt: resource },
+        "test"
+      )
+    ).resolves.toBeUndefined();
+    await expect(
+      guard.assertNotSelf(
+        user(ME),
+        [ME],
+        course,
+        { role: ASSIGNED_ROLES.MUDERRIS },
+        "test"
+      )
+    ).rejects.toBeInstanceOf(SelfGrantRefusedError);
+    expect(asked).toEqual([resource.id, course.id]);
+    expect(records).toMatchObject([
+      { entity: ENTITIES.COURSE, entityId: course.id },
+    ]);
+  });
+
   it("holding nothing at all refuses even a single code", async () => {
     const { guard } = build([]);
     await expect(

@@ -31,6 +31,7 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import {
+  ApiBadRequestResponse,
   ApiBearerAuth,
   ApiConflictResponse,
   ApiCreatedResponse,
@@ -100,25 +101,6 @@ export class KoskController {
     private readonly koskAdmin: KoskAdminService,
     private readonly selfGrant: SelfGrantGuard
   ) {}
-
-  /**
-   * Who is changing the managers, for the check under the köşk lock. The
-   * başnazım and a Medaris nazımı holding "Köşk nazımlarını yönet" are not
-   * managers of the köşk and pass it by right (review M7: the guard let the
-   * second in and the repository then refused them).
-   */
-  private async managerActor(request: AuthorizedRequest, koskId: string) {
-    return {
-      id: request.user.sub,
-      bypass:
-        this.authz.isSystemAdmin(request.user) ||
-        (await this.authz.can(
-          request.user,
-          { entity: ENTITIES.KOSK, id: koskId },
-          PERMISSIONS.PLATFORM_KOSK_NAZIM_MANAGE
-        )),
-    };
-  }
 
   @ApiOperation({
     summary: "Get a paginated list of köşks",
@@ -244,6 +226,28 @@ export class KoskController {
     );
   }
 
+  /**
+   * A hidden köşk (MDRS-174) opens for its nazımları, Medaris yönetimi holding
+   * `platform.kosk_edit` and the başnazım only (MDRS-143); for everyone else it
+   * is one that does not exist.
+   */
+  private async assertMayOpenHidden(
+    request: PublicRequest,
+    id: string
+  ): Promise<void> {
+    if (
+      !(
+        request.user &&
+        (await this.authz.can(request.user, { entity: ENTITIES.KOSK, id }, [
+          PERMISSIONS.KOSK_MANAGE,
+          PERMISSIONS.PLATFORM_KOSK_EDIT,
+        ]))
+      )
+    ) {
+      throw new KoskNotFoundError(id);
+    }
+  }
+
   @ApiOperation({
     summary: "Get a köşk by ID",
     description:
@@ -261,25 +265,14 @@ export class KoskController {
   ): Promise<KoskResponse> {
     const userId = request.user?.sub ?? null;
     const kosk = await this.koskService.findById(id, userId);
-    // A hidden köşk (MDRS-174) opens for its nazımları and the başnazım
-    // only; for everyone else it is one that does not exist.
-    if (
-      kosk.archivedAt !== null &&
-      !(
-        request.user &&
-        (this.authz.isSystemAdmin(request.user) ||
-          kosk.managerIds.includes(request.user.sub.toLowerCase()))
-      )
-    ) {
-      throw new KoskNotFoundError(id);
-    }
+    if (kosk.archivedAt !== null) await this.assertMayOpenHidden(request, id);
     return userId === null ? maskKoskForAnonymous(kosk) : kosk;
   }
 
   @ApiOperation({
     summary: "Get the köşk's decks (MDRS-159)",
     description:
-      "The shared decks the köşk offers its talebe, for a signed-in caller who is a talebe (ENROLLED or COMPLETED), a müderris or a manager of the köşk. For anyone else `accessible` is false and `decks` is empty, so the köşk page can leave the block out; the köşk's existence is never denied to them here, `GET /kosks/:id` answers that.",
+      "The shared decks the köşk offers its talebe, for a signed-in caller who is a talebe (ENROLLED or COMPLETED), a müderris or a manager of the köşk. For anyone else `accessible` is false and `decks` is empty, so the köşk page can leave the block out; the köşk's existence is never denied to them here, `GET /kosks/:id` answers that. A hidden köşk answers 404 to all but its nazımları, Medaris yönetimi holding `platform.kosk_edit` and the başnazım, as `GET /kosks/:id` does.",
     operationId: "getKoskDecks",
   })
   @ApiOkResponse({ type: KoskDecksResponse })
@@ -290,45 +283,51 @@ export class KoskController {
     @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<KoskDecksResponse> {
+    if ((await this.koskService.findVisibility(id))?.hidden) {
+      await this.assertMayOpenHidden(request, id);
+    }
     return this.koskService.findDecks(id, request.user.sub);
   }
 
   @ApiOperation({
-    summary: "Create a new köşk",
+    summary: "Create a new köşk together with its nazımları",
     operationId: "createKosk",
   })
   @ApiCreatedResponse({ type: KoskResponse })
   @ApiForbiddenResponse()
-  // SYSTEM_ADMIN only (owner decision, 2026-10-02), replacing MDRS-43's
-  // self-service exemption of 2026-09-23. `platform.kosk_create` is no
-  // relationship's and no role's default, so only the realm bypass and a Medaris
-  // nazımı who was given it pass. Self-service made any caller
-  // a köşk manager on demand, and `GET /users?email=` (MDRS-104) trusts
-  // "manages a köşk" as its gate, so an open create let anybody grant
-  // themselves that lookup.
+  @ApiBadRequestResponse({
+    description:
+      "No nazım named, the same account twice, or an id that is no uuid (MDRS-136).",
+  })
+  // The başnazım's, or a Medaris nazımı's who was given it (owner decision,
+  // 2026-10-02), replacing MDRS-43's self-service exemption of 2026-09-23.
+  // `platform.kosk_create` is no relationship's and no role's default, so only
+  // the realm bypass and a Medaris nazımı who was given it pass. Self-service
+  // made any caller a köşk manager on demand, and `GET /users?email=`
+  // (MDRS-104) trusts "manages a köşk" as its gate, so an open create let
+  // anybody grant themselves that lookup.
   @Authz(PERMISSIONS.PLATFORM_KOSK_CREATE, forNew(ENTITIES.KOSK))
   @Post()
   async create(
     @Req() request: AuthenticatedUserRequest,
     @Body() koskDto: CreateKoskDto
   ): Promise<KoskResponse> {
-    const ownerId = request.user.sub;
-    // With `managerUserIds` this is nizam/10: the başnazım opens the köşk
-    // for the nazımları they named and is not one of them.
-    const { managerUserIds, ...fields } = koskDto;
-    if (managerUserIds) {
-      await this.selfGrant.assertNotSelf(
-        request.user,
-        managerUserIds,
-        { entity: ENTITIES.KOSK, id: "new" },
-        { role: ASSIGNED_ROLES.KOSK_NAZIM, always: true },
-        "kosk.create.nazims"
-      );
-    }
-    const created = managerUserIds
-      ? await this.koskAdmin.createWithNazims(request.user, koskDto)
-      : await this.koskService.create({ ownerId, ...fields });
-    return this.koskService.findById(created.id, ownerId);
+    // nizam/10 and MDRS-136: a köşk is opened together with its nazımları,
+    // and the one who opens it is not one of them. `always: true` because a
+    // Medaris nazımı holding `platform.kosk_create` who named themselves would
+    // be the köşk's nazımı by their own hand (the SYSTEM_ADMIN is not asked).
+    await this.selfGrant.assertNotSelf(
+      request.user,
+      koskDto.managerUserIds,
+      { entity: ENTITIES.KOSK, id: "new" },
+      { role: ASSIGNED_ROLES.KOSK_NAZIM, always: true },
+      "kosk.create.nazims"
+    );
+    const created = await this.koskAdmin.createWithNazims(
+      request.user,
+      koskDto
+    );
+    return this.koskService.findById(created.id, request.user.sub);
   }
 
   @ApiOperation({
@@ -350,7 +349,9 @@ export class KoskController {
     @Param("id", ParseUUIDPipe) id: string,
     @Body() koskDto: UpdateKoskDto
   ): Promise<KoskResponse> {
-    await this.koskService.update(id, koskDto, request.user.sub);
+    await this.koskService.update(id, koskDto, request.user.sub, {
+      systemAdmin: this.authz.isSystemAdmin(request.user),
+    });
     return this.koskService.findById(id, request.user.sub);
   }
 
@@ -375,7 +376,7 @@ export class KoskController {
   @ApiOperation({
     summary: "Make a user a manager of the köşk",
     description:
-      "Idempotent. Open to the köşk's managers and SYSTEM_ADMIN (MDRS-126).",
+      "Idempotent. Adding a köşk's nazımı is decided by `platform.kosk_nazim_manage` (the başnazım, or a Medaris nazımı holding it) and not by being a nazım of the köşk: a köşk nazımı does not add their peers (MDRS-136, owner decision d-1004-12). The caller does not seat themselves unless they are the başnazım.",
     operationId: "addKoskManager",
   })
   @ApiCreatedResponse({ type: KoskResponse })
@@ -385,10 +386,7 @@ export class KoskController {
       "No such köşk, or the user has never signed in (KOSK_MANAGER_UNKNOWN_USER)",
   })
   @Post(":id/managers/:userId")
-  @Authz(
-    [PERMISSIONS.KOSK_MANAGE, PERMISSIONS.PLATFORM_KOSK_NAZIM_MANAGE],
-    byExistingKosk
-  )
+  @Authz(PERMISSIONS.PLATFORM_KOSK_NAZIM_MANAGE, byExistingKosk)
   async addManager(
     @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string,
@@ -402,42 +400,61 @@ export class KoskController {
       { role: ASSIGNED_ROLES.KOSK_NAZIM },
       "kosk.managers.add"
     );
-    await this.koskService.addManager(
-      id,
-      userId,
-      await this.managerActor(request, id)
-    );
+    await this.koskService.addManager(id, userId, request.user.sub);
     return this.koskService.findById(id, request.user.sub);
   }
 
   @ApiOperation({
     summary: "Remove a manager from the köşk",
     description:
-      "The last manager cannot be removed (409 KOSK_LAST_MANAGER). A manager may remove themselves while another remains (MDRS-126).",
+      "Decided by `platform.kosk_nazim_manage`, like adding one: a köşk nazımı cannot remove a peer or resign (MDRS-136, owner decision d-1004-12). The last manager cannot be removed unless `successorUserId` names who takes the seat, who is seated first in the same transaction; the başnazım may name themselves (409 KOSK_LAST_MANAGER otherwise).",
     operationId: "removeKoskManager",
   })
+  @ApiQuery({
+    name: "successorUserId",
+    required: false,
+    type: String,
+    format: "uuid",
+    description:
+      "Who takes the seat when the removed manager is the last one (they are seated before the removal; a known account, never the manager removed).",
+  })
   @ApiOkResponse({ type: KoskResponse })
+  @ApiBadRequestResponse({
+    description:
+      "The successor is the manager being removed (KOSK_SUCCESSOR_INVALID)",
+  })
   @ApiForbiddenResponse()
   @ApiNotFoundResponse({
-    description: "No such köşk, or the user is not one of its managers",
+    description:
+      "No such köşk, the user is not one of its managers, or the successor has never signed in (KOSK_MANAGER_UNKNOWN_USER)",
   })
   @ApiConflictResponse({
-    description: "The user is the köşk's last manager (KOSK_LAST_MANAGER)",
+    description:
+      "The user is the köşk's last manager and no successor was named (KOSK_LAST_MANAGER)",
   })
   @Delete(":id/managers/:userId")
-  @Authz(
-    [PERMISSIONS.KOSK_MANAGE, PERMISSIONS.PLATFORM_KOSK_NAZIM_MANAGE],
-    byExistingKosk
-  )
+  @Authz(PERMISSIONS.PLATFORM_KOSK_NAZIM_MANAGE, byExistingKosk)
   async removeManager(
     @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string,
-    @Param("userId", ParseUUIDPipe) userId: string
+    @Param("userId", ParseUUIDPipe) userId: string,
+    @Query("successorUserId", new ParseUUIDPipe({ optional: true }))
+    successorUserId?: string
   ): Promise<KoskResponse> {
+    if (successorUserId) {
+      await this.selfGrant.assertNotSelf(
+        request.user,
+        [successorUserId],
+        { entity: ENTITIES.KOSK, id },
+        { role: ASSIGNED_ROLES.KOSK_NAZIM },
+        "kosk.managers.remove.successor"
+      );
+    }
     await this.koskService.removeManager(
       id,
       userId,
-      await this.managerActor(request, id)
+      request.user.sub,
+      successorUserId
     );
     return this.koskService.findById(id, request.user.sub);
   }

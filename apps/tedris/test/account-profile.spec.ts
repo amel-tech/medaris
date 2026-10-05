@@ -13,6 +13,7 @@ import { cleanup, click, render, settle } from "./dom";
 const mocks = vi.hoisted(() => ({
   updateName: vi.fn(),
   updateZone: vi.fn(),
+  updateInvitations: vi.fn(),
   notify: vi.fn(),
 }));
 
@@ -22,11 +23,13 @@ vi.mock("next-intl", async (orig) =>
 vi.mock("~/features/account/profile-actions", () => ({
   updateMyName: mocks.updateName,
   updateMyTimeZone: mocks.updateZone,
+  updateMyInvitationEmails: mocks.updateInvitations,
 }));
 // The component imports the action through a relative path; mock both spellings.
 vi.mock("../features/account/profile-actions", () => ({
   updateMyName: mocks.updateName,
   updateMyTimeZone: mocks.updateZone,
+  updateMyInvitationEmails: mocks.updateInvitations,
 }));
 vi.mock("@medaris/ui/mds/toast", async (orig) => ({
   ...(await orig<Record<string, unknown>>()),
@@ -48,6 +51,7 @@ const mount = async (over: Record<string, unknown> = {}) => {
       familyName: "Karahanlı",
       email: "zeynep.karahanli@example.com",
       timeZone: "Europe/Istanbul",
+      lessonInvitationEmails: true,
       ...over,
     })
   );
@@ -112,7 +116,9 @@ describe("Hesap cards (design tedris/34)", () => {
     );
     expect(hrefs).toContain("/tr/account/calendar");
     expect(hrefs).toContain("/tr/auth/signout");
-    expect(hrefs).toContain("/tr/account/public-profile");
+    // Hidden for now (MDRS-141): the card and its link are gone.
+    expect(hrefs.filter((h) => h?.includes("public-profile"))).toEqual([]);
+    expect(host.textContent).not.toContain("Herkese açık profil");
     expect(host.textContent).toContain("Takvim bağlantını yönet");
     expect(host.textContent).toContain("Çıkış yap");
   });
@@ -162,5 +168,55 @@ describe("Hesap cards (design tedris/34)", () => {
   it("opens the full zone list for a saved zone outside the presets", async () => {
     const host = await mount({ timeZone: "Asia/Tokyo" });
     expect(host.textContent).toContain("Diğer saat dilimi");
+  });
+});
+
+describe("Lesson invitations by e-mail (MDRS-121, B13)", () => {
+  const invitationSwitch = (host: HTMLElement) =>
+    host.querySelector('[role="switch"]') as HTMLElement;
+  /** What a person presses: the switch's label text. */
+  const flip = (host: HTMLElement) =>
+    click(
+      invitationSwitch(host)
+        .closest(".mds-choice")
+        ?.querySelector(".mds-choice__label") as Element
+    );
+
+  it("shows the switch in the calendar card, as saved", async () => {
+    const on = await mount();
+    expect(on.textContent).toContain("Ders davetlerini e-postayla gönder");
+    expect(invitationSwitch(on).getAttribute("aria-checked")).toBe("true");
+    await cleanup();
+    const off = await mount({ lessonInvitationEmails: false });
+    expect(invitationSwitch(off).getAttribute("aria-checked")).toBe("false");
+  });
+
+  it("saves the opt-out the moment it is flipped, and confirms it", async () => {
+    mocks.updateInvitations.mockResolvedValue({
+      success: true,
+      data: { lessonInvitationEmails: false },
+    });
+    const host = await mount();
+    await flip(host);
+    await settle();
+    expect(mocks.updateInvitations).toHaveBeenCalledWith(false);
+    expect(invitationSwitch(host).getAttribute("aria-checked")).toBe("false");
+    expect(mocks.notify).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tone: "success",
+        title: "Ders davetleri kapatıldı; artık davet e-postası gelmeyecek.",
+      })
+    );
+  });
+
+  it("puts the switch back and says so when the save fails", async () => {
+    mocks.updateInvitations.mockResolvedValue({ success: false, error: "no" });
+    const host = await mount();
+    await flip(host);
+    await settle();
+    expect(invitationSwitch(host).getAttribute("aria-checked")).toBe("true");
+    expect(mocks.notify).toHaveBeenCalledWith(
+      expect.objectContaining({ tone: "error" })
+    );
   });
 });

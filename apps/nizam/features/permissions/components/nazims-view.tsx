@@ -16,7 +16,6 @@ import { useLocale, useTimeZone, useTranslations } from "next-intl";
 import { useEffect, useState, useTransition } from "react";
 import {
   codeKey,
-  dismissOpen,
   endLabel,
   formatDay,
   heldGroupsOf,
@@ -37,9 +36,7 @@ interface Props {
  * Medaris nazımları (nizam 11): who holds the Medaris nazımı role right now,
  * with their groups, single permissions, end, who gave it and when. "Medaris
  * nazımı ata" and "İzinleri düzenle" open nizam/12; "Görevden al" opens the
- * dismissal question. The last stays shut until the version gate of 4 Ekim 2026
- * (decided on the viewer's clock, so the page itself needs no reload when the
- * day comes); the screen never says why.
+ * dismissal question.
  */
 export function NazimsView({ nazims, catalog, groups }: Props) {
   const tm = useTranslations("nizam.NazimsPage");
@@ -55,13 +52,8 @@ export function NazimsView({ nazims, catalog, groups }: Props) {
     null
   );
   // Read on the client after mounting, so server and browser agree while hydrating.
-  const [gateOpen, setGateOpen] = useState(false);
   const [now, setNow] = useState<Date | null>(null);
-  useEffect(() => {
-    const at = Date.now();
-    setNow(new Date(at));
-    setGateOpen(dismissOpen(at));
-  }, []);
+  useEffect(() => setNow(new Date()), []);
 
   const refresh = () => startTransition(() => router.refresh());
   const ready = catalog !== null && groups !== null;
@@ -193,7 +185,6 @@ export function NazimsView({ nazims, catalog, groups }: Props) {
           <Button
             variant="ghost"
             size="small"
-            disabled={!gateOpen}
             aria-label={t("dismissLabel", { name: n.user.name ?? "" })}
             onClick={() => setDismissing(n)}
           >

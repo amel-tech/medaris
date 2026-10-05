@@ -60,6 +60,8 @@ export function Tabs({
   children,
 }: TabsProps) {
   const { ref, lang } = usePageLocale(locale);
+  const panelsRef = useRef<HTMLDivElement>(null);
+  const [panelsMinBlockSize, setPanelsMinBlockSize] = useState(0);
   const count = (t: TabItem) =>
     t.count != null ? (
       <span className="mds-tab__count">{formatCount(t.count, lang)}</span>
@@ -87,7 +89,17 @@ export function Tabs({
     );
   }
   return (
-    <BaseTabs.Root value={value} onValueChange={(v) => onChange?.(String(v))}>
+    <BaseTabs.Root
+      value={value}
+      onValueChange={(v) => {
+        // A shorter panel must not shorten the page under the reader: the
+        // browser would clamp the scroll position and the tab row would jump.
+        // The panel area keeps the tallest height it has shown.
+        const shown = panelsRef.current?.offsetHeight ?? 0;
+        setPanelsMinBlockSize((tallest) => Math.max(tallest, shown));
+        onChange?.(String(v));
+      }}
+    >
       <BaseTabs.List
         ref={ref as React.RefObject<HTMLDivElement>}
         activateOnFocus
@@ -101,7 +113,15 @@ export function Tabs({
           </BaseTabs.Tab>
         ))}
       </BaseTabs.List>
-      {children}
+      <div
+        ref={panelsRef}
+        data-tabs-panels=""
+        style={
+          panelsMinBlockSize ? { minBlockSize: panelsMinBlockSize } : undefined
+        }
+      >
+        {children}
+      </div>
     </BaseTabs.Root>
   );
 }
