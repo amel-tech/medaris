@@ -12,6 +12,7 @@ export type CoursePermissions = ReadonlySet<string>;
 export const CODES = {
   courseEdit: "course.edit",
   sessionManage: "session.manage",
+  courseNazirAssign: "course_nazir.assign",
   weekHide: "week.hide",
   sessionLiveLink: "session.live_link",
   staffRead: "course.staff_read",
@@ -26,6 +27,7 @@ export const CODES = {
 export const PAGE_CODES = {
   sessions: [CODES.sessionManage, CODES.sessionLiveLink],
   plan: [CODES.sessionManage],
+  nazirs: [CODES.courseNazirAssign],
   students: [
     CODES.staffRead,
     CODES.enrollmentDecide,
