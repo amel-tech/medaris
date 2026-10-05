@@ -345,7 +345,7 @@ describe("a refusal", () => {
       COURSE_NAZIR_NOT_FOUND: "Bu ders nazırı artık yok; liste yenilendi.",
       COURSE_NAZIR_UNKNOWN_ACCOUNT: "Bu hesap bulunamadı.",
       COURSE_NAZIR_HOLDS_SEAT:
-        "Bu kişinin bu derste zaten bir görevi var (müderris, medrese ya da köşk görevi); ders nazırı yapılamaz.",
+        "Bu kişinin bu derste zaten bir görevi var (müderris; medrese, köşk ya da Medaris görevi); ders nazırı yapılamaz.",
       COURSE_NAZIR_BARRED: "Bu kişi bu dersten yasaklı; ders nazırı yapılamaz.",
       GRANT_COURSE_INVALID: "Gizli bir derse ders nazırı atanamaz.",
       DISMISS_SEAT_HANDED_ON:
