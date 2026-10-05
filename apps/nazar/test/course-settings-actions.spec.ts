@@ -121,7 +121,7 @@ describe("Örnek ders", () => {
     });
   });
 
-  it("hands back the code of a stale page (409)", async () => {
+  it("unmarks a session the same way, and hands back the code of a stale page (409)", async () => {
     const { setSampleLesson } = await actions();
     api.lessons.updateLesson.mockRejectedValue(
       refusal(409, { code: "COURSE_VERSION_CONFLICT", message: "6 != 7" })
@@ -129,6 +129,10 @@ describe("Örnek ders", () => {
     expect(
       await setSampleLesson("l-1", { version: 6, isPreview: false })
     ).toEqual({ success: false, code: "COURSE_VERSION_CONFLICT" });
+    expect(api.lessons.updateLesson).toHaveBeenCalledExactlyOnceWith({
+      id: "l-1",
+      updateLessonDto: { version: 6, isPreview: false },
+    });
   });
 });
 
