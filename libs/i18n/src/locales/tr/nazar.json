@@ -1529,7 +1529,7 @@
     "loadFailedTitle": "Ders ayarları yüklenemedi",
     "loadFailed": "Ders şu an okunamıyor. Biraz sonra yeniden deneyin.",
     "errors": {
-      "versionConflict": "Ders, bu sayfayı açtığınızdan beri başkası tarafından kaydedildi. Sayfayı yenileyip yeniden deneyin.",
+      "versionConflict": "Ders, bu sayfayı açtığınızdan beri başkası tarafından kaydedildi; ayarlar yeniden okundu. Yeniden deneyin.",
       "policy": "Bir politika bu değişikliği kilitliyor; ayar değiştirilmedi.",
       "invalid": "Bu değer kaydedilemez. Sayfayı yenileyip yeniden deneyin.",
       "generic": "İşlem tamamlanamadı. Biraz sonra yeniden deneyin."

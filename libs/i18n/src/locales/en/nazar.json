@@ -1529,7 +1529,7 @@
     "loadFailedTitle": "Course settings could not be loaded",
     "loadFailed": "The course cannot be read right now. Try again in a moment.",
     "errors": {
-      "versionConflict": "Someone saved the course since you opened this page. Reload the page and try again.",
+      "versionConflict": "Someone saved the course since you opened this page; the settings were read again. Try again.",
       "policy": "A policy locks this change; the setting was not changed.",
       "invalid": "This value cannot be saved. Reload the page and try again.",
       "generic": "That could not be completed. Try again in a moment."

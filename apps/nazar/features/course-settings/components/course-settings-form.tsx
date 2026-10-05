@@ -77,15 +77,16 @@ export function CourseSettingsForm({
     // leaves the form saying what is stored.
     let now = saved;
     let version = course.version;
-    const stop = (description: string) => {
+    const stop = (code: string, description?: string) => {
       setSaving(false);
       setSaved(now);
       notify({
         tone: "error",
         title: t("CourseSettings.failed"),
-        description,
+        description: description ?? words(courseSettingsErrorKey(code)),
       });
-      if (now !== saved) refresh();
+      // A stale version is read again too, or every retry would send it.
+      if (now !== saved || code === "COURSE_VERSION_CONFLICT") refresh();
     };
 
     if (draft.sampleLessonId !== saved.sampleLessonId) {
@@ -95,7 +96,7 @@ export function CourseSettingsForm({
           isPreview: false,
         });
         if (!result.success) {
-          stop(words(courseSettingsErrorKey(result.code)));
+          stop(result.code);
           return;
         }
         version = result.data.courseVersion;
@@ -108,8 +109,9 @@ export function CourseSettingsForm({
         });
         if (!result.success) {
           stop(
+            result.code,
             now.sampleLessonId === saved.sampleLessonId
-              ? words(courseSettingsErrorKey(result.code))
+              ? undefined
               : t("CourseSettings.sampleFailed")
           );
           return;
@@ -121,7 +123,7 @@ export function CourseSettingsForm({
     if (patch) {
       const result = await saveCourseSettings(course.id, patch);
       if (!result.success) {
-        stop(words(courseSettingsErrorKey(result.code)));
+        stop(result.code);
         return;
       }
     }

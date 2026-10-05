@@ -259,7 +259,7 @@ describe("the sample session", () => {
     expect(refresh).toHaveBeenCalledOnce();
   });
 
-  it("words a stale page from its code when the first write is refused, and keeps the form", async () => {
+  it("words a stale page from its code when the first write is refused, keeps the form and reads the page again", async () => {
     setSampleLesson.mockResolvedValueOnce({
       success: false,
       code: "COURSE_VERSION_CONFLICT",
@@ -269,9 +269,10 @@ describe("the sample session", () => {
     await submit();
     expect(setSampleLesson).toHaveBeenCalledOnce();
     expect(toast("error")).toContain(
-      "Ders, bu sayfayı açtığınızdan beri başkası tarafından kaydedildi."
+      "Ders, bu sayfayı açtığınızdan beri başkası tarafından kaydedildi; ayarlar yeniden okundu."
     );
-    expect(refresh).not.toHaveBeenCalled();
+    // the read brings the course's new version, so Kaydet can go again
+    expect(refresh).toHaveBeenCalledOnce();
     expect(button("Kaydet").disabled).toBe(false);
   });
 });
