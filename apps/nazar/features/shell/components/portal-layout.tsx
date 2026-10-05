@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { getMessages } from "~/lib/i18n/messages";
+import { adminCourseScope } from "../admin-scope";
 import { getMenuCounts, getPortal } from "../reads";
 import {
   defaultScope,
@@ -37,7 +38,9 @@ export async function PortalUnavailable({
  *
  * A scope that is not one of the caller's answers 404, in the same words as a
  * route that is not there, so the portal never says which ids exist. A person
- * with no scope at all is sent to the no-access page instead.
+ * with no scope at all is sent to the no-access page instead. The one
+ * exception is the başnazım, who opens any course by its address (MDRS-270):
+ * the course is his scope for that page only, and `/` is never sent back to it.
  */
 export async function PortalLayout({
   scope: wanted,
@@ -53,6 +56,23 @@ export async function PortalLayout({
     ? findScope(portal.scopes, wanted.kind, wanted.id)
     : defaultScope(portal.scopes, (await cookies()).get(SCOPE_COOKIE)?.value);
   if (!current) {
+    const admin =
+      wanted?.kind === "ders" ? await adminCourseScope(wanted.id) : null;
+    if (admin?.status === "failed") return <PortalUnavailable />;
+    if (admin?.status === "ok") {
+      return (
+        <PortalFrame
+          person={portal.person}
+          roles={portal.roles.length > 0 ? portal.roles : ["SYSTEM_ADMIN"]}
+          scopes={[...portal.scopes, admin.scope]}
+          current={admin.scope}
+          counts={await getMenuCounts(admin.scope)}
+          remember={false}
+        >
+          {children}
+        </PortalFrame>
+      );
+    }
     if (portal.scopes.length === 0) redirect(NO_ACCESS_PATH);
     notFound();
   }

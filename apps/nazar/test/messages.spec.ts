@@ -177,6 +177,7 @@ describe("the nazar message catalogue", () => {
         "MEDRESE_NAZIR",
         "MUDERRIS",
         "DERS_NAZIR",
+        "SYSTEM_ADMIN",
       ].map((role) => `Roles.${role}`),
       // Müfredat and Ders kayıtları build these from a tone, a state and a refusal's code.
       ...["AUTHZ_FORBIDDEN", "COURSE_VERSION_CONFLICT", "SOMETHING_NEW"].map(

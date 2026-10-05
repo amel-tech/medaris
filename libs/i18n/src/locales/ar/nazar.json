@@ -53,6 +53,7 @@
     "MEDRESE_NAZIR": "ناظر المدرسة",
     "MUDERRIS": "مدرّس",
     "DERS_NAZIR": "ناظر الدرس",
+    "SYSTEM_ADMIN": "كبير ناظري مداريس",
     "STUDENT": "طالب"
   },
   "Nav": {
