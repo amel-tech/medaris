@@ -10,6 +10,8 @@ import { useTranslations } from "next-intl";
 import { useEffect, useState, useTransition } from "react";
 import { whenLabel } from "../../sessions/sessions";
 import {
+  anyBunnyPending,
+  bunnyPending,
   chipOf,
   hostOf,
   type SessionSlot,
@@ -17,25 +19,31 @@ import {
   slotState,
   type WeekBlock,
 } from "../recordings";
-import { RecordingDialog } from "./recording-dialog";
+import { useRefreshWhile } from "../use-refresh-while";
+import { type RecordingAbilities, RecordingDialog } from "./recording-dialog";
 
 /**
  * The weeks of Ders kayıtları, newest first, each a table of its sessions and
  * the recording each holds: its title, where it lives (the provider chip, or
  * the host when it has no name), whether it plays yet and who may watch it. A
  * session that has begun and has none offers "Kayıt ekle"; a recording offers
- * "Düzenle". Both open the one dialog. The clock is read here and moves while
- * the page is open, as on Celseler.
+ * "Düzenle" to a holder of `recording.manage`, and a Bunny upload still
+ * PROCESSING offers "Devam et" to a holder of `recording.upload`, for an
+ * upload left halfway. All open the one dialog. The clock is read here and
+ * moves while the page is open, as on Celseler; while a Bunny upload is being
+ * prepared the page is read again every few seconds, until none is.
  */
 export function RecordingsTable({
   blocks,
   closed,
+  can,
   locale,
   timeZone,
 }: {
   blocks: WeekBlock[];
   /** the course is closed: nothing is opened to everyone */
   closed: boolean;
+  can: RecordingAbilities;
   locale: string;
   timeZone: string;
 }) {
@@ -47,10 +55,14 @@ export function RecordingsTable({
     const id = setInterval(() => setNow(new Date()), 60_000);
     return () => clearInterval(id);
   }, []);
-  const [target, setTarget] = useState<SessionSlot | null>(null);
+  const [target, setTarget] = useState<{
+    slot: SessionSlot;
+    resume: boolean;
+  } | null>(null);
 
   const counts = slotCounts(blocks, now);
   const refresh = () => startTransition(() => router.refresh());
+  useRefreshWhile(anyBunnyPending(blocks), refresh);
   const dash = <span aria-hidden="true">—</span>;
 
   const columns: TableColumn<SessionSlot>[] = [
@@ -180,24 +192,46 @@ export function RecordingsTable({
       render: (slot) => {
         const state = slotState(slot, now);
         if (state === "recorded") {
-          return (
+          const resume =
+            can.upload && bunnyPending(slot) ? (
+              <Button
+                variant="outline"
+                size="small"
+                aria-label={t("Recordings.upload.resumeLabel", {
+                  session: slot.title,
+                })}
+                onClick={() => setTarget({ slot, resume: true })}
+              >
+                {t("Recordings.upload.resume")}
+              </Button>
+            ) : null;
+          const edit = can.manage ? (
             <Button
               variant="outline"
               size="small"
               aria-label={t("Recordings.editLabel", { session: slot.title })}
-              onClick={() => setTarget(slot)}
+              onClick={() => setTarget({ slot, resume: false })}
             >
               {t("Recordings.edit")}
             </Button>
-          );
+          ) : null;
+          if (resume && edit) {
+            return (
+              <span className="flex flex-wrap items-center justify-end gap-2">
+                {resume}
+                {edit}
+              </span>
+            );
+          }
+          return resume ?? edit ?? dash;
         }
-        if (state === "missing") {
+        if (state === "missing" && (can.manage || can.upload)) {
           return (
             <Button
               variant="outline"
               size="small"
               aria-label={t("Recordings.addLabel", { session: slot.title })}
-              onClick={() => setTarget(slot)}
+              onClick={() => setTarget({ slot, resume: false })}
             >
               {t("Recordings.add")}
             </Button>
@@ -248,9 +282,11 @@ export function RecordingsTable({
       )}
       {target ? (
         <RecordingDialog
-          // a fresh form for every session and every recording it holds
-          key={`${target.lessonId}-${target.recording?.id ?? "new"}`}
-          slot={target}
+          // a fresh form for every session, every recording it holds, and every way in
+          key={`${target.slot.lessonId}-${target.slot.recording?.id ?? "new"}-${target.resume}`}
+          slot={target.slot}
+          can={can}
+          resume={target.resume}
           closed={closed}
           onClose={() => setTarget(null)}
           onDone={refresh}
