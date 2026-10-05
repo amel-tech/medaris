@@ -146,6 +146,27 @@ describe("LessonRow", () => {
     ).toBe("Kilitli");
   });
 
+  it("viewing is the page, tinted and marked, and wins over current", async () => {
+    const host = await render(
+      <ol>
+        <LessonRow title="A" type="live" viewing href="/a" />
+        <LessonRow title="B" type="live" state="current" viewing href="/b" />
+      </ol>
+    );
+    const [only, both] = Array.from(host.querySelectorAll("li"));
+    expect(only?.className).toContain("is-viewing");
+    expect(only?.querySelector("[aria-current=page]")).not.toBeNull();
+    expect(only?.querySelector(".mds-lesson-row__marker")?.textContent).toBe(
+      "Bu celse"
+    );
+    expect(both?.querySelector("[aria-current=step]")).toBeNull();
+    expect(
+      Array.from(both?.querySelectorAll(".mds-lesson-row__marker") ?? []).map(
+        (m) => m.textContent
+      )
+    ).toEqual(["Bu celse", "Sıradaki"]);
+  });
+
   it("prints the course zone and the viewer's own time when the zones differ", async () => {
     const host = await render(
       <ol>

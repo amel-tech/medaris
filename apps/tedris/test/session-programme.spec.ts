@@ -95,12 +95,28 @@ const course = {
   ],
 } as unknown as CourseDetailResponse;
 
-const render = async () => {
+const render = async (viewingId?: string) => {
   const { SessionProgramme } = await import(
     "~/features/courses/components/session-programme"
   );
-  return renderToStaticMarkup(await SessionProgramme({ course, now: NOW }));
+  return renderToStaticMarkup(
+    await SessionProgramme({ course, now: NOW, viewingId })
+  );
 };
+
+/** Whether the week's trigger says its panel is open. */
+const expanded = (html: string, weekTitle: string) => {
+  const trigger = html
+    .split("<button")
+    .find((part) => part.includes(weekTitle));
+  return trigger?.match(/aria-expanded="(true|false)"/)?.[1];
+};
+
+/** The `<li>` of one row, by its link. */
+const row = (html: string, id: string) =>
+  html
+    .split("<li")
+    .find((part) => part.includes(`href="/courses/c1/lessons/${id}"`)) ?? "";
 
 describe("session page programme (design tedris/15, Müfredat)", () => {
   it("heads the block with the week count and badges each week by its state", async () => {
@@ -134,5 +150,32 @@ describe("session page programme (design tedris/15, Müfredat)", () => {
     for (const id of ["old", "now", "cancelled", "makeup", "later"]) {
       expect(html).toContain(`href="/courses/c1/lessons/${id}"`);
     }
+  });
+
+  it("marks the session being read as the page and opens its week (no viewing: the clock's week only)", async () => {
+    const plain = await render();
+    expect(plain).not.toContain('aria-current="page"');
+    expect(expanded(plain, "Mehmûz fiiller")).toBe("true");
+    expect(expanded(plain, "Muzâaf fiiller")).toBe("false");
+
+    const html = await render("later");
+    const later = row(html, "later");
+    expect(later).toContain("is-viewing");
+    expect(later).toContain('aria-current="page"');
+    expect(later).toContain("Bu celse");
+    expect(expanded(html, "Muzâaf fiiller")).toBe("true");
+    // the clock's week stays open and its next session keeps its words
+    expect(expanded(html, "Mehmûz fiiller")).toBe("true");
+    const next = row(html, "now");
+    expect(next).toContain('aria-current="step"');
+    expect(next).toContain("Sıradaki");
+    expect(next).not.toContain("is-viewing");
+  });
+
+  it("is both the page and the next session when the reader opens the next one", async () => {
+    const now = row(await render("now"), "now");
+    expect(now).toContain('aria-current="page"');
+    expect(now).toContain("Bu celse");
+    expect(now).toContain("Sıradaki");
   });
 });

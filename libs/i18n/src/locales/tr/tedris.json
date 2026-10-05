@@ -520,6 +520,7 @@
     "opensOn": "{date} tarihinde açılır",
     "weekEmpty": "Bu hafta için henüz celse eklenmedi.",
     "rowCurrent": "Sıradaki",
+    "rowViewing": "Bu celse",
     "rowCurrentLive": "Sıradaki · Şu an canlı",
     "rowDone": ", sona erdi",
     "rowCancelled": "İptal edildi",

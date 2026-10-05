@@ -520,6 +520,7 @@
     "opensOn": "يُفتح في {date}",
     "weekEmpty": "لم تُضَف حلقات إلى هذا الأسبوع بعد.",
     "rowCurrent": "التالية",
+    "rowViewing": "هذه الجلسة",
     "rowCurrentLive": "التالية · مباشر الآن",
     "rowDone": "، انتهت",
     "rowCancelled": "أُلغيت",

@@ -79,6 +79,8 @@ export interface LessonRowProps
   title: ReactNode;
   type: LessonType;
   state?: "default" | "current" | "done";
+  /** The row of the page being read: `aria-current="page"`, tinted, marked */
+  viewing?: boolean;
   /** `locked` locks the body and the link, never the programme */
   access?: "open" | "locked";
   href?: string;
@@ -91,6 +93,7 @@ export interface LessonRowProps
   courseTimeZone?: string;
   courseZoneName?: string;
   currentLabel?: string;
+  viewingLabel?: string;
   doneLabel?: string;
   lockedLabel?: string;
   localTimeLabel?: string;
@@ -104,6 +107,7 @@ export function LessonRow({
   title,
   type,
   state = "default",
+  viewing = false,
   access = "open",
   href,
   typeLabel,
@@ -114,6 +118,7 @@ export function LessonRow({
   courseTimeZone,
   courseZoneName,
   currentLabel = "Sıradaki",
+  viewingLabel = "Bu celse",
   doneLabel = ", tamamlandı",
   lockedLabel = "Kilitli",
   localTimeLabel = "senin saatinle",
@@ -128,7 +133,11 @@ export function LessonRow({
   const titleProps = {
     className: "mds-lesson-row__title",
     dir: "auto" as const,
-    "aria-current": state === "current" ? ("step" as const) : undefined,
+    "aria-current": viewing
+      ? ("page" as const)
+      : state === "current"
+        ? ("step" as const)
+        : undefined,
   };
   const name = (
     <>
@@ -139,6 +148,12 @@ export function LessonRow({
     </>
   );
   const meta: ReactNode[] = [];
+  if (viewing)
+    meta.push(
+      <span key="viewing" className="mds-lesson-row__marker">
+        {viewingLabel}
+      </span>
+    );
   if (state === "current")
     meta.push(
       <span key="marker" className="mds-lesson-row__marker">
@@ -169,6 +184,7 @@ export function LessonRow({
         "mds-lesson-row",
         `mds-lesson-row--${type}`,
         state === "done" && "is-done",
+        viewing && "is-viewing",
         locked && "is-locked",
         className
       )}
