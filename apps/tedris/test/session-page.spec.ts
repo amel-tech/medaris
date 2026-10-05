@@ -214,6 +214,28 @@ describe("session page, upcoming (design tedris/15)", () => {
   it("is not an alert: no cancellation text", async () => {
     expect(await render(session())).not.toContain("Bu celse iptal edildi");
   });
+
+  it("writes the session's own kaynak under its title, Arabic runs set apart (MDRS-279)", async () => {
+    const html = await render(session({ kaynak: "Bina · s. 4–9 · البناء" }));
+    const line = html.match(
+      /<p[^>]*data-testid="session-kaynak"[^>]*>.*?<\/p>/
+    )?.[0];
+    expect(line).toContain(">Kaynak<");
+    expect(line).toContain('dir="auto"');
+    expect(line).toContain("Bina · s. 4–9 · ");
+    expect(line).toContain(
+      '<span lang="ar" dir="rtl" class="mds-arabic">البناء</span>'
+    );
+  });
+
+  it("draws no kaynak line when the API sent none or a blank one", async () => {
+    expect(await render(session())).not.toContain(
+      'data-testid="session-kaynak"'
+    );
+    expect(await render(session({ kaynak: "  " }))).not.toContain(
+      'data-testid="session-kaynak"'
+    );
+  });
 });
 
 describe("session page, cancelled (design tedris/18)", () => {

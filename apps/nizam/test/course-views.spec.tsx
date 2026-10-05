@@ -264,6 +264,30 @@ describe("Müfredat (nizam 54)", () => {
     expect(html).toContain("Hafta ekle");
     expect(html).not.toContain("Kaydedilmemiş değişiklikler var");
   });
+
+  it("offers each session's kaynak beside its title, and none on a cancelled one (MDRS-279)", () => {
+    const withKaynak = {
+      ...course,
+      weeks: course.weeks.map((w) => ({
+        ...w,
+        lessons: w.lessons.map((l) =>
+          l.id === "l2" ? { ...l, kaynak: "Bina · s. 4-9" } : l
+        ),
+      })),
+    } as CourseDetailResponse;
+    const html = render(
+      <CurriculumEditor kosk={{ id: "k1", name: "N" }} course={withKaynak} />
+    );
+    const input = (name: string) =>
+      html.match(new RegExp(`<input[^>]*name="${name}"[^>]*>`))?.[0];
+    expect(input("lesson-1-0-kaynak")).toContain('value="Bina · s. 4-9"');
+    expect(input("lesson-1-0-kaynak")).toContain('maxLength="120"');
+    expect(input("lesson-1-0-kaynak")).toContain('dir="auto"');
+    expect(html).toContain("Ör. Bina · s. 4–9");
+    // l3 is cancelled: shown as information, with no field
+    expect(input("lesson-1-1-kaynak")).toBeUndefined();
+    expect(input("lesson-1-2-kaynak")).toContain('value=""');
+  });
 });
 
 describe("Celse planla (nizam 55)", () => {

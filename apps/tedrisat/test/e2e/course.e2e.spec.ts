@@ -1119,6 +1119,36 @@ describe("CourseController (e2e)", () => {
         });
     });
 
+    it("keeps a session's kaynak left out of the PUT and clears one sent as null (MDRS-279)", async () => {
+      const detail = await createAndLoad();
+      const [week1, week2] = detail.weeks;
+      const serh = week1.lessons[1];
+      expect(await lessonRow(serh.id)).toHaveProperty(
+        "kaynak",
+        "Bina · s. 4-9"
+      );
+
+      // nizam and nazar send an emptied kaynak as null; a missing key is not SET.
+      const kept = (
+        await request(app.getHttpServer())
+          .put(`/courses/${detail.id}`)
+          .send(replaceBody(detail, [week1, week2]))
+          .expect(200)
+      ).body as Detail;
+      expect(await lessonRow(serh.id)).toHaveProperty(
+        "kaynak",
+        "Bina · s. 4-9"
+      );
+
+      const body = replaceBody(kept, [week1, week2]);
+      (body.weeks[0].lessons[1] as Record<string, unknown>).kaynak = null;
+      await request(app.getHttpServer())
+        .put(`/courses/${detail.id}`)
+        .send(body)
+        .expect(200);
+      expect(await lessonRow(serh.id)).toHaveProperty("kaynak", null);
+    });
+
     it("PATCH /lessons/:id with a new weekId keeps its id", async () => {
       const detail = await createAndLoad();
       const [week1, week2] = detail.weeks;

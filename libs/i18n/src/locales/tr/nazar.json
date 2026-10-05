@@ -1439,6 +1439,8 @@
     "cancelledNote": "{when} tarihinde iptal edildi. Toplantı bağlantısı gösterilmez.",
     "lessonTitleLabel": "Celse başlığı",
     "makeupNote": "Telafi celsesi ait olduğu haftada (Hafta {n}) kalır.",
+    "kaynakLabel": "Kaynak",
+    "kaynakHelp": "İsteğe bağlı; celsede okunacak yer. Ör. Bina · s. 4–9",
     "dateLabel": "Tarih",
     "timeLabel": "Saat",
     "durationLabel": "Süre (dk)",

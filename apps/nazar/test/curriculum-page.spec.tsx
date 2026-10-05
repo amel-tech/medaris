@@ -367,6 +367,26 @@ describe("editing", () => {
     expect(save().disabled).toBe(true);
   });
 
+  it("writes each session's kaynak, sends it, and offers no field on a cancelled session (MDRS-279)", async () => {
+    await mount();
+    expect(field("lesson-1-0-kaynak").value).toBe("");
+    expect(field("lesson-1-0-kaynak").maxLength).toBe(120);
+    // l-4 is cancelled: it is information, with no field to edit
+    expect(field("lesson-1-2-kaynak")).toBeNull();
+    await typeInto(field("lesson-1-0-kaynak"), "Bina · s. 4-9");
+    expect(save().disabled).toBe(false);
+    await submit();
+    expect(sentBody().weeks[1]?.lessons[0]).toMatchObject({
+      id: "l-2",
+      kaynak: "Bina · s. 4-9",
+    });
+    // An untouched empty one goes as null, which tedrisat stores as none.
+    expect(sentBody().weeks[1]?.lessons[1]).toMatchObject({
+      id: "l-3",
+      kaynak: null,
+    });
+  });
+
   it("shows the platform chip as a link is typed", async () => {
     await mount();
     await typeInto(field("lesson-1-1-url"), "https://meet.google.com/abc");

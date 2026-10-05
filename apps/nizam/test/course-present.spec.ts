@@ -587,6 +587,37 @@ describe("the curriculum (nizam 54)", () => {
       "2026-10-04T17:00:00.000Z"
     );
   });
+
+  it("round-trips a session's kaynak, trimmed, and clears an emptied one with null (MDRS-279)", () => {
+    const source = {
+      ...detail,
+      weeks: [
+        {
+          ...detail.weeks[0],
+          lessons: [
+            { ...detail.weeks[0]?.lessons[0], kaynak: "Bina · s. 4-9" },
+          ],
+        },
+      ],
+    } as unknown as CourseDetailResponse;
+    const weeks = weekDraftsOf(source);
+    const first = (weeks[0] as WeekDraft).lessons[0] as LessonDraft;
+    expect(first.kaynak).toBe("Bina · s. 4-9");
+    const sent = (kaynak: string) => {
+      first.kaynak = kaynak;
+      return curriculumPayload(source, {
+        title: "Emsile ve Bina",
+        description: "Sarf",
+        tone: "bordo",
+        weeks,
+      }).weeks?.[0]?.lessons?.[0]?.kaynak;
+    };
+    expect(sent("Bina · s. 4-9")).toBe("Bina · s. 4-9");
+    expect(sent("  Bina · s. 10-15 ")).toBe("Bina · s. 10-15");
+    // tedrisat leaves a missing key alone; only null clears the column.
+    expect(sent("")).toBeNull();
+    expect(sent("   ")).toBeNull();
+  });
 });
 
 describe("cover and errors", () => {

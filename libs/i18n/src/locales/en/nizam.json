@@ -2699,6 +2699,8 @@
     "cancelledNote": "Cancelled on {when}. The meeting link is not shown.",
     "lessonTitleLabel": "Session title",
     "makeupNote": "A make-up session stays in the week it belongs to (Week {n}).",
+    "kaynakLabel": "Source",
+    "kaynakHelp": "Optional; what the session reads. E.g. Bina · pp. 4–9",
     "dateLabel": "Date",
     "timeLabel": "Time",
     "durationLabel": "Length (min)",

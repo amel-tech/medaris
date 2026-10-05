@@ -269,10 +269,10 @@ const lessonBody = (draft: LessonDraft, timeZone: string): CreateLessonDto => {
     title: draft.title.trim(),
     type: draft.type as CreateLessonDto["type"],
     durationMinutes: draft.duration ? Number(draft.duration) : undefined,
-    kaynak: draft.kaynak || undefined,
     scheduledAt: at ?? undefined,
-    // An emptied link is sent as null: tedrisat clears the column for null and
-    // leaves it alone for a missing key.
+    // An emptied link or source line is sent as null: tedrisat clears the
+    // column for null and leaves it alone for a missing key (MDRS-279).
+    kaynak: (draft.kaynak.trim() || null) as unknown as string,
     meetingUrl: (url || null) as unknown as string,
     agenda: draft.agenda,
     isPreview: draft.isPreview,

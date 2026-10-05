@@ -543,34 +543,55 @@ export function CurriculumEditor({
                         </div>
                       ) : (
                         <>
-                          <Field
-                            label={t("Curriculum.lessonTitleLabel")}
-                            required
-                            help={
-                              lesson.makeup
-                                ? t("Curriculum.makeupNote", {
-                                    n: week.weekNumber,
-                                  })
-                                : undefined
-                            }
-                            error={
-                              shown("lessonTitle", wi, li)
-                                ? t("Curriculum.errors.lessonTitle")
-                                : undefined
-                            }
-                          >
-                            <Input
-                              name={`lesson-${wi}-${li}-title`}
-                              value={lesson.title}
-                              maxLength={200}
-                              disabled={locked}
-                              onChange={(event) =>
-                                patchLesson(wi, li, {
-                                  title: event.target.value,
-                                })
+                          <div className="grid gap-4 md:grid-cols-2">
+                            <Field
+                              label={t("Curriculum.lessonTitleLabel")}
+                              required
+                              help={
+                                lesson.makeup
+                                  ? t("Curriculum.makeupNote", {
+                                      n: week.weekNumber,
+                                    })
+                                  : undefined
                               }
-                            />
-                          </Field>
+                              error={
+                                shown("lessonTitle", wi, li)
+                                  ? t("Curriculum.errors.lessonTitle")
+                                  : undefined
+                              }
+                            >
+                              <Input
+                                name={`lesson-${wi}-${li}-title`}
+                                value={lesson.title}
+                                maxLength={200}
+                                disabled={locked}
+                                onChange={(event) =>
+                                  patchLesson(wi, li, {
+                                    title: event.target.value,
+                                  })
+                                }
+                              />
+                            </Field>
+                            {/* MDRS-279: the session's own source line, the
+                                tedrisat column's 120 characters at most. */}
+                            <Field
+                              label={t("Curriculum.kaynakLabel")}
+                              help={t("Curriculum.kaynakHelp")}
+                            >
+                              <Input
+                                name={`lesson-${wi}-${li}-kaynak`}
+                                value={lesson.kaynak}
+                                maxLength={120}
+                                dir="auto"
+                                disabled={locked}
+                                onChange={(event) =>
+                                  patchLesson(wi, li, {
+                                    kaynak: event.target.value,
+                                  })
+                                }
+                              />
+                            </Field>
+                          </div>
                           <div className="grid gap-4 sm:grid-cols-3">
                             <Field
                               label={t("Curriculum.dateLabel")}

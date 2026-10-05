@@ -383,6 +383,21 @@ describe("the whole-course body of Kaydet", () => {
     ).toBeNull();
   });
 
+  it("sends a session's kaynak trimmed, and null for an emptied one, so tedrisat clears it (MDRS-279)", () => {
+    const weeks = weekDraftsOf(course(), ZONE);
+    const first = weeks[0]?.lessons[0] as LessonDraft;
+    const sent = () =>
+      curriculumPayload(course(), form({ weeks }), ZONE).weeks?.[0]
+        ?.lessons?.[0]?.kaynak;
+    expect(sent()).toBe("Kitap");
+    first.kaynak = "  Bina · s. 4-9 ";
+    expect(sent()).toBe("Bina · s. 4-9");
+    first.kaynak = "";
+    expect(sent()).toBeNull();
+    first.kaynak = "   ";
+    expect(sent()).toBeNull();
+  });
+
   it("sends a cancelled session as it is stored, and a new week and session without ids", () => {
     const source = course({
       weeks: [
