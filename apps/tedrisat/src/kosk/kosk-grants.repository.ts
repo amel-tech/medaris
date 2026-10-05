@@ -179,8 +179,9 @@ export class KoskGrantsRepository {
   }
 
   /**
-   * Who holds the post, if it is a held post in one of this köşk's courses. A
-   * post never changes hands, so the answer stands for the write that follows.
+   * Who holds the post, if it is a held post in one of this köşk's
+   * medrese-free courses. A post never changes hands, so the answer stands
+   * for the write that follows.
    */
   async postHolder(koskId: string, postId: string): Promise<string | null> {
     const [row] = await this.db
@@ -192,6 +193,7 @@ export class KoskGrantsRepository {
           eq(roleAssignments.id, postId),
           eq(roleAssignments.role, NAZIR),
           eq(courses.koskId, koskId),
+          isNull(courses.madrasahId),
           isHeld()
         )
       )
@@ -199,7 +201,11 @@ export class KoskGrantsRepository {
     return row?.userId ?? null;
   }
 
-  /** The held post, if it is in one of this köşk's courses. */
+  /**
+   * The held post, if it is in one of this köşk's medrese-free courses. A
+   * medrese course's posts are its own staff's (MDRS-270, d-1001-35): this
+   * page never lists them, and it cannot reach them by id either.
+   */
   private async lockPost(
     tx: Tx,
     koskId: string,
@@ -224,6 +230,7 @@ export class KoskGrantsRepository {
           eq(roleAssignments.id, postId),
           eq(roleAssignments.role, NAZIR),
           eq(courses.koskId, koskId),
+          isNull(courses.madrasahId),
           isHeld()
         )
       )
