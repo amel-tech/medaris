@@ -528,6 +528,7 @@
     "recordingPlaceholder": "The recording plays here",
     "recordingOpen": "Open the recording",
     "recordingKind": "Recording",
+    "bunnyFrameTitle": "Recording player: {title}",
     "liveStreamTitle": "Live stream",
     "liveStreamPlaceholder": "The live stream plays here",
     "liveStreamOpen": "Open the stream",

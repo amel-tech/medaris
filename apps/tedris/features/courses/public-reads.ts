@@ -36,6 +36,13 @@ const anonymousApi = () =>
 const viewerApi = async () =>
   createServerTedrisatAPIs(await getAccessToken(), env.TEDRISAT_API_BASE_URL);
 
+/**
+ * For the reads that carry recordings: a Bunny recording's `url` is a player
+ * link signed for this viewer, which expires (MDRS-114, MDRS-119). It is read
+ * at render time and never kept in Next's data cache for another request.
+ */
+const NO_STORE: RequestInit = { cache: "no-store" };
+
 /** Null on any failure — a 404 included; the page decides what that means. */
 const orNull = async <T>(read: () => Promise<T>): Promise<T | null> => {
   try {
@@ -83,7 +90,7 @@ export const getMadrasahOverview = (
 export const getSession = cache(
   (courseId: string, sessionId: string): Promise<SessionResponse | null> =>
     orNull(async () =>
-      (await viewerApi()).lessons.getSession({ courseId, sessionId })
+      (await viewerApi()).lessons.getSession({ courseId, sessionId }, NO_STORE)
     )
 );
 
@@ -97,7 +104,7 @@ export const getRecordings = (
   courseId: string
 ): Promise<RecordingResponse[] | null> =>
   orNull(async () =>
-    (await viewerApi()).lessons.listCourseRecordings({ id: courseId })
+    (await viewerApi()).lessons.listCourseRecordings({ id: courseId }, NO_STORE)
   );
 
 /** Whether the visitor has a usable token — what tedrisat will see. */

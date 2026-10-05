@@ -54,6 +54,17 @@ vi.mock("~/features/courses/components/session-programme", () => ({
 const NOW = new Date("2026-10-03T17:52:00.000Z");
 const at = (minutes: number) => new Date(NOW.getTime() + minutes * 60_000);
 
+// A Bunny player link as tedrisat signs it for one viewer (MDRS-119).
+const BUNNY =
+  "https://player.mediadelivery.net/embed/424242/3f1c2b4a-5d6e-4f70-8a9b-0c1d2e3f4a5b?token=9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08&expires=1790000000";
+
+/** The one frame of a page's markup. */
+const iframeOf = (html: string) => {
+  const frames = html.match(/<iframe[^>]*>/g) ?? [];
+  expect(frames).toHaveLength(1);
+  return frames[0];
+};
+
 const course = {
   id: "c1",
   koskId: "k1",
@@ -390,6 +401,52 @@ describe("session page, ended with a recording (design tedris/17, MDRS-162)", ()
     expect(html).not.toContain("<iframe");
     expect(html).toContain("Ders kaydı burada oynar");
     expect(html).toContain('href="https://example.org/kayit"');
+    expect(html).toContain("Ders kaydını aç");
+  });
+
+  it("keeps the YouTube frame as it was: its sandbox, its permissions, the recording's title", async () => {
+    const frame = iframeOf(await render(ended()));
+    expect(frame).toContain(
+      'sandbox="allow-scripts allow-same-origin allow-presentation allow-popups"'
+    );
+    expect(frame).toContain(
+      'allow="encrypted-media; picture-in-picture; fullscreen"'
+    );
+    expect(frame).not.toContain("allowFullScreen");
+    expect(frame).toContain('title="Mezîd fiiller ve bâblar: celse kaydı"');
+  });
+
+  it("plays a Bunny recording in Bunny's player, on the very link the API signed (MDRS-114)", async () => {
+    const frame = iframeOf(
+      await render(
+        ended({ recording: recording({ provider: "BUNNY", url: BUNNY }) })
+      )
+    );
+    expect(frame).toContain(`src="${BUNNY.replaceAll("&", "&amp;")}"`);
+    expect(frame).toContain(
+      'title="Ders kaydı oynatıcısı: Mezîd fiiller ve bâblar: celse kaydı"'
+    );
+    expect(frame).toContain(
+      'allow="autoplay; encrypted-media; picture-in-picture; fullscreen"'
+    );
+    expect(frame).toContain('allowFullScreen=""');
+    expect(frame).toContain('referrerPolicy="strict-origin-when-cross-origin"');
+    expect(frame).toContain('loading="lazy"');
+    expect(frame).toContain("aspect-video");
+    expect(frame).not.toContain("sandbox");
+  });
+
+  it.each([
+    ["Bunny's older iframe host", BUNNY.replace("player.", "iframe.")],
+    ["an unsigned player link", BUNNY.slice(0, BUNNY.indexOf("?"))],
+    ["an extra query key", `${BUNNY}&autoplay=true`],
+  ])("opens a Bunny link it will not frame at its host: %s", async (_label, url) => {
+    const html = await render(
+      ended({ recording: recording({ provider: "BUNNY", url }) })
+    );
+    expect(html).not.toContain("<iframe");
+    expect(html).toContain("Ders kaydı burada oynar");
+    expect(html).toContain(`href="${url.replaceAll("&", "&amp;")}"`);
     expect(html).toContain("Ders kaydını aç");
   });
 
