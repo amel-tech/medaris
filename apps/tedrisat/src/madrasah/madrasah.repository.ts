@@ -8,18 +8,28 @@ import {
   isNotNull,
   isNull,
   min,
+  or,
   type SQL,
   sql,
 } from "drizzle-orm";
+import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import { ArchiveRestoreLevelError } from "../archive/errors/archive-errors";
+import { recordHide } from "../archive/hide-audit";
 import {
   type HideLevel,
   hiderLevelOf,
   mayRestoreAt,
 } from "../archive/hide-level";
-import { DismissDecisionsError } from "../assignment/admin/errors";
+import {
+  DismissDecisionsError,
+  DismissTakeOverWithoutSeatError,
+} from "../assignment/admin/errors";
+import {
+  assertNothingLeftUnder,
+  revokeOrphanedGrants,
+} from "../assignment/admin/orphaned-grants";
 import { grantHeld } from "../assignment/assignment.repository";
-import type { Tx } from "../course/course-purge";
+import { recordDeletion, type Tx } from "../course/course-purge";
 import { CourseStatus } from "../course/domain/course-status.enum";
 import { EnrollmentStatus } from "../course/domain/enrollment-status.enum";
 import { DatabaseService } from "../database/database.service";
@@ -52,9 +62,13 @@ import {
   ASSIGNED_ROLES,
   roleAssignments,
   SCOPE_TYPES,
+  type ScopeType,
 } from "../database/schema/role-assignment.schema";
 import { users } from "../database/schema/user.schema";
+import { auditImpactOf } from "../passivation/passivation-impact";
+import { PassivationImpactRepository } from "../passivation/passivation-impact.repository";
 import {
+  DeactivateMadrasahResult,
   HideMadrasahResult,
   ICreateMadrasah,
   ICreateMadrasahWithHead,
@@ -93,7 +107,12 @@ const TALEBE_STATES = [EnrollmentStatus.ENROLLED, EnrollmentStatus.COMPLETED];
 
 @Injectable()
 export class MadrasahRepository {
-  constructor(private readonly databaseService: DatabaseService) {}
+  // Must stay value imports: `import type` erases them from
+  // `design:paramtypes` and Nest can no longer inject them.
+  constructor(
+    private readonly databaseService: DatabaseService,
+    private readonly impact: PassivationImpactRepository
+  ) {}
 
   private get db() {
     return this.databaseService.db;
@@ -178,16 +197,40 @@ export class MadrasahRepository {
   /**
    * SYSTEM_ADMIN's delete. The medrese's role rows go explicitly — `scope_id`
    * is no foreign key — in the same transaction; its hosting rights cascade,
-   * and its courses stay in their köşks with no medrese (`SET NULL`).
+   * and its courses stay in their köşks with no medrese (`SET NULL`). Like
+   * every real delete it leaves a `madrasah.delete` row in `audit_log` naming
+   * who did it (MDRS-143); `false` when there is no such medrese.
    */
-  async delete(id: string): Promise<boolean> {
+  async delete(id: string, actorId: string): Promise<boolean> {
     return this.db.transaction(async (tx) => {
-      const deleted = await tx
-        .delete(madrasahs)
+      const [medrese] = await tx
+        .select({ name: madrasahs.name, handle: madrasahs.handle })
+        .from(madrasahs)
         .where(eq(madrasahs.id, id))
-        .returning({ id: madrasahs.id });
-      if (deleted.length === 0) return false;
-      await deleteAssignmentsIn(tx, SCOPE_TYPES.MADRASAH, [id]);
+        .for("update");
+      if (!medrese) return false;
+      const courseCount = (
+        await tx
+          .select({ id: courses.id })
+          .from(courses)
+          .where(eq(courses.madrasahId, id))
+      ).length;
+      await tx.delete(madrasahs).where(eq(madrasahs.id, id));
+      const nazirIds = await deleteAssignmentsIn(tx, SCOPE_TYPES.MADRASAH, [
+        id,
+      ]);
+      await recordDeletion(tx, {
+        actorId,
+        entity: "madrasah",
+        entityId: id,
+        details: {
+          name: medrese.name,
+          handle: medrese.handle,
+          nazirIds,
+          // The courses are not deleted: they stay in their köşks, with no medrese.
+          coursesKept: courseCount,
+        },
+      });
       return true;
     });
   }
@@ -287,9 +330,37 @@ export class MadrasahRepository {
     return result;
   }
 
+  /** The recipients of these role and grant rows, whatever their state. */
+  async recipientsOf(
+    items: ReadonlyArray<{ kind: "ROLE" | "GRANT"; id: string }>
+  ): Promise<string[]> {
+    const ids = (kind: "ROLE" | "GRANT") =>
+      items.filter((i) => i.kind === kind).map((i) => i.id);
+    const [roles, grants] = await Promise.all([
+      ids("ROLE").length > 0
+        ? this.db
+            .select({ userId: roleAssignments.userId })
+            .from(roleAssignments)
+            .where(inArray(roleAssignments.id, ids("ROLE")))
+        : [],
+      ids("GRANT").length > 0
+        ? this.db
+            .select({ userId: permissionGrants.userId })
+            .from(permissionGrants)
+            .where(inArray(permissionGrants.id, ids("GRANT")))
+        : [],
+    ]);
+    return [...new Set([...roles, ...grants].map((row) => row.userId))];
+  }
+
+  /**
+   * Every role and permission the sitting başmüderris gave in the medrese and
+   * its courses that is still held, whoever holds it: the incoming başmüderris
+   * too, whose rows from the outgoing one are decided like anyone's (owner,
+   * d-1004: the remover decides each row, no default choice).
+   */
   async headDelegations(
     madrasahId: string,
-    exceptUserId?: string,
     db: Tx | DatabaseService["db"] = this.db
   ): Promise<IHeadDelegation[]> {
     const heads = (
@@ -299,21 +370,43 @@ export class MadrasahRepository {
         .where(holdsIn(NAZIR_ROLE, madrasahId))
     ).map((h) => h.userId);
     if (heads.length === 0) return [];
+    // The medrese and its courses: a seat or a grant in one of its courses
+    // (a müderris named, nazir/06 limited to some courses) is handed on as
+    // much as one held in the medrese, and is decided like it (owner, d-1004:
+    // every role and permission the person gave). Where each sits goes with
+    // it, so two grants of one code for two courses are told apart.
+    const medreseCourses = db
+      .select({ id: courses.id })
+      .from(courses)
+      .where(eq(courses.madrasahId, madrasahId));
+    const inMedrese = (type: AnyPgColumn, id: AnyPgColumn) =>
+      or(
+        and(eq(type, SCOPE_TYPES.MADRASAH), eq(id, madrasahId)),
+        and(eq(type, SCOPE_TYPES.COURSE), inArray(id, medreseCourses))
+      );
     const roles = await db
       .select({
         id: roleAssignments.id,
         userId: roleAssignments.userId,
         role: roleAssignments.role,
+        scopeType: roleAssignments.scopeType,
+        scopeId: roleAssignments.scopeId,
+        courseTitle: courses.title,
         grantedAt: roleAssignments.createdAt,
         expiresAt: roleAssignments.expiresAt,
       })
       .from(roleAssignments)
+      .leftJoin(
+        courses,
+        and(
+          eq(roleAssignments.scopeType, SCOPE_TYPES.COURSE),
+          eq(courses.id, roleAssignments.scopeId)
+        )
+      )
       .where(
         and(
-          eq(roleAssignments.scopeType, SCOPE_TYPES.MADRASAH),
-          eq(roleAssignments.scopeId, madrasahId),
+          inMedrese(roleAssignments.scopeType, roleAssignments.scopeId),
           inArray(roleAssignments.grantedBy, heads),
-          eq(roleAssignments.role, ASSIGNED_ROLES.MEDRESE_NAZIR),
           isHeld()
         )
       )
@@ -325,6 +418,9 @@ export class MadrasahRepository {
         permission: permissionGrants.permission,
         groupId: permissionGrants.groupId,
         groupName: permissionGroups.name,
+        scopeType: permissionGrants.scopeType,
+        scopeId: permissionGrants.scopeId,
+        courseTitle: courses.title,
         grantedAt: permissionGrants.createdAt,
         expiresAt: permissionGrants.expiresAt,
       })
@@ -333,10 +429,16 @@ export class MadrasahRepository {
         permissionGroups,
         eq(permissionGroups.id, permissionGrants.groupId)
       )
+      .leftJoin(
+        courses,
+        and(
+          eq(permissionGrants.scopeType, SCOPE_TYPES.COURSE),
+          eq(courses.id, permissionGrants.scopeId)
+        )
+      )
       .where(
         and(
-          eq(permissionGrants.scopeType, SCOPE_TYPES.MADRASAH),
-          eq(permissionGrants.scopeId, madrasahId),
+          inMedrese(permissionGrants.scopeType, permissionGrants.scopeId),
           inArray(permissionGrants.grantedBy, heads),
           grantHeld()
         )
@@ -350,6 +452,9 @@ export class MadrasahRepository {
         role: r.role as string,
         permission: null,
         groupName: null,
+        scopeType: r.scopeType,
+        scopeId: r.scopeId,
+        courseTitle: r.courseTitle,
         grantedAt: r.grantedAt,
         expiresAt: r.expiresAt,
       })),
@@ -360,11 +465,14 @@ export class MadrasahRepository {
         role: null,
         permission: g.permission,
         groupName: g.groupName,
+        scopeType: g.scopeType,
+        scopeId: g.scopeId,
+        courseTitle: g.courseTitle,
         grantedAt: g.grantedAt,
         expiresAt: g.expiresAt,
       })),
     ];
-    return rows.filter((r) => r.userId !== exceptUserId);
+    return rows;
   }
 
   /**
@@ -408,8 +516,14 @@ export class MadrasahRepository {
 
       let tookOver = 0;
       let dropped = 0;
+      const droppedSeats: Array<{
+        userId: string;
+        scopeType: ScopeType;
+        scopeId: string | null;
+      }> = [];
+      const takenOver: string[] = [];
       if (replacing) {
-        const given = await this.headDelegations(madrasahId, userId, tx);
+        const given = await this.headDelegations(madrasahId, tx);
         const key = (kind: string, id: string) => `${kind}:${id}`;
         const decisions = options.decisions ?? [];
         const decided = new Map(decisions.map((d) => [key(d.kind, d.id), d]));
@@ -426,6 +540,14 @@ export class MadrasahRepository {
             : { revokedAt: sql`now()`, revokedBy: actorId };
           if (take) tookOver += 1;
           else dropped += 1;
+          if (item.kind === "ROLE" && !take) {
+            droppedSeats.push({
+              userId: item.userId,
+              scopeType: item.scopeType,
+              scopeId: item.scopeId,
+            });
+          }
+          if (item.kind === "GRANT" && take) takenOver.push(item.id);
           if (item.kind === "ROLE") {
             await tx
               .update(roleAssignments)
@@ -440,7 +562,8 @@ export class MadrasahRepository {
         }
       }
 
-      for (const other of previous.filter((id) => id !== userId)) {
+      const outgoing = previous.filter((id) => id !== userId);
+      for (const other of outgoing) {
         await revokeRole(tx, {
           userId: other,
           role: NAZIR_ROLE,
@@ -448,6 +571,9 @@ export class MadrasahRepository {
           revokedBy: actorId,
         });
       }
+      // The new başmüderris is seated before anything cascades: a nazır seat
+      // of theirs answered Düşür leaves behind nothing their new seat covers,
+      // and what they handed on under it stays backed.
       await grantRole(tx, {
         userId,
         role: NAZIR_ROLE,
@@ -455,6 +581,38 @@ export class MadrasahRepository {
         grantedBy: actorId,
         expiresAt: options.endsAt ?? null,
       });
+      // A seat that goes takes with it what its holder was given in its
+      // scope, by anyone, that no other role of theirs there still covers (a
+      // permission cannot outlast its role): the seats answered Düşür, in
+      // their own scope, and the outgoing başmüderris's own, in the medrese.
+      // A grant answered Devral that would go with them is refused rather
+      // than kept with no seat behind it.
+      const droppedWithSeats: string[] = [];
+      const seats = [
+        ...droppedSeats,
+        ...outgoing.map((holder) => ({
+          userId: holder,
+          scopeType: SCOPE_TYPES.MADRASAH as ScopeType,
+          scopeId: madrasahId as string | null,
+        })),
+      ];
+      for (const seat of seats) {
+        droppedWithSeats.push(
+          ...(await revokeOrphanedGrants(tx, {
+            userId: seat.userId,
+            within: seat,
+            revokedBy: actorId,
+          }))
+        );
+      }
+      const seatless = takenOver.filter((id) => droppedWithSeats.includes(id));
+      if (seatless.length > 0) {
+        throw new DismissTakeOverWithoutSeatError(seatless);
+      }
+      // One level down (owner, d-1004): a seat answered Düşür whose holder
+      // handed on something still held under it, which no seat of theirs
+      // backs any more, would leave rows nobody was asked about.
+      await assertNothingLeftUnder(tx, droppedSeats);
       await tx
         .update(madrasahs)
         .set({
@@ -474,6 +632,7 @@ export class MadrasahRepository {
           endsAt: options.endsAt?.toISOString() ?? null,
           tookOver,
           dropped,
+          droppedWithSeats,
         },
       });
       return true;
@@ -494,12 +653,13 @@ export class MadrasahRepository {
   ): Promise<HideMadrasahResult> {
     return this.db.transaction(async (tx) => {
       const [row] = await tx
-        .select({ archivedAt: madrasahs.archivedAt })
+        .select({ name: madrasahs.name, archivedAt: madrasahs.archivedAt })
         .from(madrasahs)
         .where(eq(madrasahs.id, madrasahId))
         .for("no key update");
       if (!row) return "not-found";
       if (row.archivedAt !== null) return "already-hidden";
+      const { name } = row;
       const now = new Date();
       await tx
         .update(madrasahs)
@@ -524,14 +684,82 @@ export class MadrasahRepository {
           and(eq(courses.madrasahId, madrasahId), isNull(courses.archivedAt))
         )
         .returning({ id: courses.id });
-      await tx.insert(auditLog).values({
+      await recordHide(tx, {
         actorId,
-        action: "madrasah.hide",
+        verb: "hide",
         entity: "madrasah",
         entityId: madrasahId,
-        details: { courses: hidden.length },
+        title: name,
+        level,
+        madrasahId,
+        extra: { courses: hidden.length },
       });
       return "hidden";
+    });
+  }
+
+  /**
+   * "Medreseyi pasife al" (MDRS-227): the medrese is passive and its held
+   * başmüderris is taken off the post, in one transaction with the audit row
+   * naming them and the impact the person confirmed. Locks the medrese first,
+   * like `setHeadMuderris`, and measures the impact again under the lock: a
+   * `confirmation` that is not for these numbers and this caller throws
+   * `PassivationImpactChangedError` and nothing is written. The medrese's
+   * nazırları and every grant stay; a başmüderris appointed later opens it again.
+   */
+  async deactivate(
+    madrasahId: string,
+    actorId: string,
+    confirmation: string
+  ): Promise<DeactivateMadrasahResult> {
+    return this.db.transaction(async (tx) => {
+      const [row] = await tx
+        .select({ name: madrasahs.name, passiveSince: madrasahs.passiveSince })
+        .from(madrasahs)
+        .where(eq(madrasahs.id, madrasahId))
+        .for("no key update");
+      if (!row) return "not-found";
+      if (row.passiveSince !== null) return "already-passive";
+      const impact = await this.impact.confirmed(
+        tx,
+        { type: "MADRASAH", id: madrasahId },
+        actorId,
+        confirmation
+      );
+      const held = await tx
+        .select({ userId: roleAssignments.userId })
+        .from(roleAssignments)
+        .where(holdsIn(NAZIR_ROLE, madrasahId));
+      for (const { userId } of held) {
+        await revokeRole(tx, {
+          userId,
+          role: NAZIR_ROLE,
+          scopeId: madrasahId,
+          revokedBy: actorId,
+        });
+      }
+      const now = new Date();
+      await tx
+        .update(madrasahs)
+        .set({
+          passiveSince: now,
+          passiveReason: "DEACTIVATED_BY_ADMIN",
+          updatedAt: now,
+        })
+        .where(eq(madrasahs.id, madrasahId));
+      await tx.insert(auditLog).values({
+        actorId,
+        action: "madrasah.deactivate",
+        entity: "madrasah",
+        entityId: madrasahId,
+        details: {
+          name: row.name,
+          removedHeadIds: held.map((h) => h.userId),
+          impact: auditImpactOf(impact),
+          confirmation,
+        },
+      });
+      return "deactivated";
     });
   }
 
@@ -547,6 +775,7 @@ export class MadrasahRepository {
     return this.db.transaction(async (tx) => {
       const [row] = await tx
         .select({
+          name: madrasahs.name,
           archivedAt: madrasahs.archivedAt,
           archivedLevel: madrasahs.archivedLevel,
         })
@@ -592,12 +821,16 @@ export class MadrasahRepository {
           )
         )
         .returning({ id: courses.id });
-      await tx.insert(auditLog).values({
+      await recordHide(tx, {
         actorId,
-        action: "madrasah.restore",
+        verb: "restore",
         entity: "madrasah",
         entityId: madrasahId,
-        details: {
+        title: row.name,
+        level,
+        hiddenLevel: hiddenAt,
+        madrasahId,
+        extra: {
           hiddenSince: row.archivedAt.toISOString(),
           courses: shown.length,
         },
@@ -677,6 +910,7 @@ export class MadrasahRepository {
       cover_hue: number;
       status: MadrasahStatus;
       since: Date | string | null;
+      hidden_level: HideLevel | null;
       head_id: string | null;
       head_name: string | null;
       course_count: string;
@@ -685,6 +919,8 @@ export class MadrasahRepository {
       select m.id, m.handle, m.name, m.cover_hue,
              ${this.statusSql()} as status,
              coalesce(m.archived_at, m.passive_since) as since,
+             case when m.archived_at is not null
+                  then coalesce(m.archived_level::text, 'madrasah') end as hidden_level,
              h.user_id as head_id,
              nullif(trim(concat_ws(' ', u.given_name, u.family_name)), '') as head_name,
              (select count(*) from courses c
@@ -714,6 +950,7 @@ export class MadrasahRepository {
       status: r.status,
       // A raw `execute` skips drizzle's column mappers: timestamps arrive as text.
       since: r.since ? new Date(r.since) : null,
+      hiddenLevel: r.hidden_level,
       headMuderris: r.head_id ? { id: r.head_id, name: r.head_name } : null,
       courseCount: Number(r.course_count),
       hostingKosks: r.hosting,
@@ -902,7 +1139,8 @@ export class MadrasahRepository {
 
   /**
    * What the medrese page shows (MDRS-157): the live, published courses of the
-   * medrese in listed köşks — an unlisted köşk is in no list (MDRS-122) — each
+   * medrese in listed, shown köşks — an unlisted köşk is in no list (MDRS-122)
+   * and a hidden one closes its courses (MDRS-143) — each
    * with its müderrisler, the caller's enrollment and the next session; the
    * köşks those courses are in; and the başmüderris. Four small reads over the
    * course ids rather than one wide join, so a course with many müderrisler or
@@ -928,6 +1166,7 @@ export class MadrasahRepository {
           eq(courses.madrasahId, madrasahId),
           eq(courses.status, CourseStatus.PUBLISHED),
           isNull(courses.archivedAt),
+          isNull(kosks.archivedAt),
           eq(kosks.isPrivate, false)
         )
       )
@@ -1216,7 +1455,9 @@ export class MadrasahRepository {
    * The medrese's courses for the nazırs' screens (nazir/04's "Politikaların
    * uygulandığı dersler", nazir/07's table): drafts and published ones, a
    * hidden one not, by title, with the talebe and the müderrisler. The köşk
-   * can be unlisted — this is the nazırs' own view, not the public page's.
+   * can be unlisted — this is the nazırs' own view, not the public page's —
+   * but not hidden: a hidden köşk closes its courses to a medrese, which is not
+   * above it (MDRS-143).
    */
   async findCourseList(
     madrasahId: string,
@@ -1239,6 +1480,7 @@ export class MadrasahRepository {
         and(
           eq(courses.madrasahId, madrasahId),
           isNull(courses.archivedAt),
+          isNull(kosks.archivedAt),
           filter.koskId ? eq(courses.koskId, filter.koskId) : undefined,
           filter.status ? eq(courses.status, filter.status) : undefined,
           filter.courseId ? eq(courses.id, filter.courseId) : undefined

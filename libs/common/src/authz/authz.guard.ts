@@ -83,6 +83,10 @@ export class AuthzGuard implements CanActivate {
 
     const resource = await this.resolveResource(meta, request);
 
+    // A closed resource (a course of a hidden köşk) answers its own 404 to
+    // everyone but the people above it, whatever the route asks for, so no
+    // route has to remember the rule.
+    await this.authz.assertOpen(user, resource);
     const allowed = await this.authz.can(user, resource, meta.permission);
     if (!allowed) {
       throw new AuthzForbiddenError(undefined, {

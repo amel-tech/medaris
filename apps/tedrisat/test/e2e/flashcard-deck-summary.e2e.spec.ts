@@ -203,13 +203,18 @@ describe("Deck lists, publish request and course decks (e2e)", () => {
       expect(long.status).toBe(400);
     });
 
-    it("keeps the status in step when a caller still sends isPublic", async () => {
+    // MDRS-148: publishing is the başnazım's, so the flag is not in the body
+    // at all and a caller that still sends it is told so.
+    it.each([
+      true,
+      false,
+    ])("refuses a body that sends isPublic %s", async (isPublic) => {
       const res = await http()
         .post("/flashcard/decks")
         .set("Authorization", auth(AUTHOR_ID))
-        .send({ title: "Açık deste", isPublic: true });
-      expect(res.status).toBe(201);
-      expect(res.body.publishStatus).toBe(DeckPublishStatus.PUBLISHED);
+        .send({ title: "Açık deste", isPublic });
+      expect(res.status).toBe(400);
+      expect(await db().select().from(decks)).toHaveLength(0);
     });
 
     it("does not let a deck's card type be edited", async () => {

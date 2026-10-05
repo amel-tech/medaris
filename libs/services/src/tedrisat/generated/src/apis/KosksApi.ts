@@ -44,6 +44,8 @@ import type {
   KoskStatusFilter,
   ManagedKoskDecksResponse,
   PaginatedKoskResponse,
+  PassivateScopeDto,
+  PassivationImpactResponse,
   RejectReasonDto,
   UpdateKoskDto,
   UpdateKoskGrantDto,
@@ -107,6 +109,10 @@ import {
     ManagedKoskDecksResponseToJSON,
     PaginatedKoskResponseFromJSON,
     PaginatedKoskResponseToJSON,
+    PassivateScopeDtoFromJSON,
+    PassivateScopeDtoToJSON,
+    PassivationImpactResponseFromJSON,
+    PassivationImpactResponseToJSON,
     RejectReasonDtoFromJSON,
     RejectReasonDtoToJSON,
     UpdateKoskDtoFromJSON,
@@ -151,6 +157,7 @@ export interface CreateKoskGrantRequest {
 
 export interface DeactivateKoskRequest {
     id: string;
+    passivateScopeDto: PassivateScopeDto;
 }
 
 export interface DeleteKoskRequest {
@@ -186,6 +193,10 @@ export interface GetKoskCourseRosterRequest {
 export interface GetKoskDashboardRequest {
     id: string;
     sessions?: DashboardSessionTab;
+}
+
+export interface GetKoskDeactivationPreviewRequest {
+    id: string;
 }
 
 export interface GetKoskDecksRequest {
@@ -261,6 +272,7 @@ export interface RejectKoskDeckProposalRequest {
 export interface RemoveKoskManagerRequest {
     id: string;
     userId: string;
+    successorUserId?: string;
 }
 
 export interface RestoreKoskRequest {
@@ -352,7 +364,7 @@ export class KosksApi extends runtime.BaseAPI {
     }
 
     /**
-     * Idempotent. Open to the köşk\'s managers and SYSTEM_ADMIN (MDRS-126).
+     * Idempotent. Adding a köşk\'s nazımı is decided by `platform.kosk_nazim_manage` (the başnazım, or a Medaris nazımı holding it) and not by being a nazım of the köşk: a köşk nazımı does not add their peers (MDRS-136, owner decision d-1004-12). The caller does not seat themselves unless they are the başnazım.
      * Make a user a manager of the köşk
      */
     async addKoskManagerRaw(requestParameters: AddKoskManagerRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<KoskResponse>> {
@@ -395,7 +407,7 @@ export class KosksApi extends runtime.BaseAPI {
     }
 
     /**
-     * Idempotent. Open to the köşk\'s managers and SYSTEM_ADMIN (MDRS-126).
+     * Idempotent. Adding a köşk\'s nazımı is decided by `platform.kosk_nazim_manage` (the başnazım, or a Medaris nazımı holding it) and not by being a nazım of the köşk: a köşk nazımı does not add their peers (MDRS-136, owner decision d-1004-12). The caller does not seat themselves unless they are the başnazım.
      * Make a user a manager of the köşk
      */
     async addKoskManager(requestParameters: AddKoskManagerRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<KoskResponse> {
@@ -512,7 +524,7 @@ export class KosksApi extends runtime.BaseAPI {
     }
 
     /**
-     * Create a new köşk
+     * Create a new köşk together with its nazımları
      */
     async createKoskRaw(requestParameters: CreateKoskRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<KoskResponse>> {
         if (requestParameters['createKoskDto'] == null) {
@@ -548,7 +560,7 @@ export class KosksApi extends runtime.BaseAPI {
     }
 
     /**
-     * Create a new köşk
+     * Create a new köşk together with its nazımları
      */
     async createKosk(requestParameters: CreateKoskRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<KoskResponse> {
         const response = await this.createKoskRaw(requestParameters, initOverrides);
@@ -664,8 +676,8 @@ export class KosksApi extends runtime.BaseAPI {
     }
 
     /**
-     * nizam/20. The köşk becomes passive and its nazımları are taken off the post; nothing is hidden or deleted, and adding a nazım makes it active again. 409 (KOSK_ALREADY_PASSIVE) when it is passive already. Written to the audit log, naming the nazımları removed.
-     * Take a köşk out of service (Köşkü pasife al, SYSTEM_ADMIN only)
+     * nizam/20. The köşk becomes passive and its nazımları are taken off the post; every course below it closes. Nothing is hidden or deleted, and adding a nazım makes it active again. The body carries the `confirmation` of the preview the person read: the impact is measured again and a token that is not for these numbers and this caller is 409 (PASSIVATION_IMPACT_CHANGED, with the fresh preview in `context.impact`) and writes nothing. 409 (KOSK_ALREADY_PASSIVE) when it is passive already. Written to the audit log with the nazımları removed and the impact confirmed. The Medaris başnazımı and a Medaris nazımı holding `platform.kosk_edit`.
+     * Take a köşk out of service (Köşkü pasife al, Medaris yönetimi)
      */
     async deactivateKoskRaw(requestParameters: DeactivateKoskRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<KoskDirectoryItemResponse>> {
         if (requestParameters['id'] == null) {
@@ -675,9 +687,18 @@ export class KosksApi extends runtime.BaseAPI {
             );
         }
 
+        if (requestParameters['passivateScopeDto'] == null) {
+            throw new runtime.RequiredError(
+                'passivateScopeDto',
+                'Required parameter "passivateScopeDto" was null or undefined when calling deactivateKosk().'
+            );
+        }
+
         const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
 
         if (this.configuration && this.configuration.accessToken) {
             // oauth required
@@ -693,14 +714,15 @@ export class KosksApi extends runtime.BaseAPI {
             method: 'POST',
             headers: headerParameters,
             query: queryParameters,
+            body: PassivateScopeDtoToJSON(requestParameters['passivateScopeDto']),
         }, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => KoskDirectoryItemResponseFromJSON(jsonValue));
     }
 
     /**
-     * nizam/20. The köşk becomes passive and its nazımları are taken off the post; nothing is hidden or deleted, and adding a nazım makes it active again. 409 (KOSK_ALREADY_PASSIVE) when it is passive already. Written to the audit log, naming the nazımları removed.
-     * Take a köşk out of service (Köşkü pasife al, SYSTEM_ADMIN only)
+     * nizam/20. The köşk becomes passive and its nazımları are taken off the post; every course below it closes. Nothing is hidden or deleted, and adding a nazım makes it active again. The body carries the `confirmation` of the preview the person read: the impact is measured again and a token that is not for these numbers and this caller is 409 (PASSIVATION_IMPACT_CHANGED, with the fresh preview in `context.impact`) and writes nothing. 409 (KOSK_ALREADY_PASSIVE) when it is passive already. Written to the audit log with the nazımları removed and the impact confirmed. The Medaris başnazımı and a Medaris nazımı holding `platform.kosk_edit`.
+     * Take a köşk out of service (Köşkü pasife al, Medaris yönetimi)
      */
     async deactivateKosk(requestParameters: DeactivateKoskRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<KoskDirectoryItemResponse> {
         const response = await this.deactivateKoskRaw(requestParameters, initOverrides);
@@ -950,7 +972,7 @@ export class KosksApi extends runtime.BaseAPI {
     }
 
     /**
-     * nizam/23 and 20. Hidden courses too, newest first, each with its müderrisler (the imam flagged), talebe, waiting applications and bans, plus the counts the tabs show.
+     * nizam/23 and 20. Hidden courses too, newest first, each with its müderrisler (the imam flagged), talebe, waiting applications and bans, plus the counts the tabs show. A hidden course says whether the caller may bring it back (`canRestore`, by kademe).
      * Every course of the köşk for the Dersler table
      */
     async getKoskCourseRosterRaw(requestParameters: GetKoskCourseRosterRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<KoskCourseRosterResponse>> {
@@ -985,7 +1007,7 @@ export class KosksApi extends runtime.BaseAPI {
     }
 
     /**
-     * nizam/23 and 20. Hidden courses too, newest first, each with its müderrisler (the imam flagged), talebe, waiting applications and bans, plus the counts the tabs show.
+     * nizam/23 and 20. Hidden courses too, newest first, each with its müderrisler (the imam flagged), talebe, waiting applications and bans, plus the counts the tabs show. A hidden course says whether the caller may bring it back (`canRestore`, by kademe).
      * Every course of the köşk for the Dersler table
      */
     async getKoskCourseRoster(requestParameters: GetKoskCourseRosterRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<KoskCourseRosterResponse> {
@@ -994,7 +1016,7 @@ export class KosksApi extends runtime.BaseAPI {
     }
 
     /**
-     * nizam/02. The numbers, the sessions of one tab (`sessions`: UPCOMING is the next seven days, PAST and CANCELLED the latest twenty), the newest waiting applications and the müderrisler. For the köşk\'s nazımları and the başnazım.
+     * nizam/02. The numbers, the sessions of one tab (`sessions`: UPCOMING is the next seven days, PAST and CANCELLED the latest twenty), the newest waiting applications and the müderrisler. For the köşk\'s nazımları and the başnazım. A Medaris nazımı holding only `platform.kosk_edit` gets it without the meeting links and without the applications (`contentLocked`: `latestApplications` is empty, `counts.pendingApplications` still says how many wait). A course in a passive scope is left out for everyone but the köşk\'s nazımları and holders of `platform.inactive_scopes_manage`. The applicants handed out are written to `audit_log` as a roster read on every call that sends them (none for a `contentLocked` caller), and each course whose meeting link is handed out as a content read unless the caller teaches it.
      * A köşk nazımı\'s home page (numbers, celse table, applications)
      */
     async getKoskDashboardRaw(requestParameters: GetKoskDashboardRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<KoskDashboardResponse>> {
@@ -1033,7 +1055,7 @@ export class KosksApi extends runtime.BaseAPI {
     }
 
     /**
-     * nizam/02. The numbers, the sessions of one tab (`sessions`: UPCOMING is the next seven days, PAST and CANCELLED the latest twenty), the newest waiting applications and the müderrisler. For the köşk\'s nazımları and the başnazım.
+     * nizam/02. The numbers, the sessions of one tab (`sessions`: UPCOMING is the next seven days, PAST and CANCELLED the latest twenty), the newest waiting applications and the müderrisler. For the köşk\'s nazımları and the başnazım. A Medaris nazımı holding only `platform.kosk_edit` gets it without the meeting links and without the applications (`contentLocked`: `latestApplications` is empty, `counts.pendingApplications` still says how many wait). A course in a passive scope is left out for everyone but the köşk\'s nazımları and holders of `platform.inactive_scopes_manage`. The applicants handed out are written to `audit_log` as a roster read on every call that sends them (none for a `contentLocked` caller), and each course whose meeting link is handed out as a content read unless the caller teaches it.
      * A köşk nazımı\'s home page (numbers, celse table, applications)
      */
     async getKoskDashboard(requestParameters: GetKoskDashboardRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<KoskDashboardResponse> {
@@ -1042,7 +1064,51 @@ export class KosksApi extends runtime.BaseAPI {
     }
 
     /**
-     * The shared decks the köşk offers its talebe, for a signed-in caller who is a talebe (ENROLLED or COMPLETED), a müderris or a manager of the köşk. For anyone else `accessible` is false and `decks` is empty, so the köşk page can leave the block out; the köşk\'s existence is never denied to them here, `GET /kosks/:id` answers that.
+     * nizam/20, MDRS-227. The courses below the köşk (the courses of medreses it hosts too), how many have a müderris in the post now, the talebe enrolled, the live sessions in the next days and the nazımları who leave, with the `confirmation` to post to `deactivate`. 200 with `alreadyPassive` when it is passive already. The Medaris başnazımı and a Medaris nazımı holding `platform.kosk_edit`.
+     * What taking a köşk out of service takes along
+     */
+    async getKoskDeactivationPreviewRaw(requestParameters: GetKoskDeactivationPreviewRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PassivationImpactResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling getKoskDeactivationPreview().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/kosks/{id}/deactivation-preview`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => PassivationImpactResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * nizam/20, MDRS-227. The courses below the köşk (the courses of medreses it hosts too), how many have a müderris in the post now, the talebe enrolled, the live sessions in the next days and the nazımları who leave, with the `confirmation` to post to `deactivate`. 200 with `alreadyPassive` when it is passive already. The Medaris başnazımı and a Medaris nazımı holding `platform.kosk_edit`.
+     * What taking a köşk out of service takes along
+     */
+    async getKoskDeactivationPreview(requestParameters: GetKoskDeactivationPreviewRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PassivationImpactResponse> {
+        const response = await this.getKoskDeactivationPreviewRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * The shared decks the köşk offers its talebe, for a signed-in caller who is a talebe (ENROLLED or COMPLETED), a müderris or a manager of the köşk. For anyone else `accessible` is false and `decks` is empty, so the köşk page can leave the block out; the köşk\'s existence is never denied to them here, `GET /kosks/:id` answers that. A hidden köşk answers 404 to all but its nazımları, Medaris yönetimi holding `platform.kosk_edit` and the başnazım, as `GET /kosks/:id` does.
      * Get the köşk\'s decks (MDRS-159)
      */
     async getKoskDecksRaw(requestParameters: GetKoskDecksRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<KoskDecksResponse>> {
@@ -1077,7 +1143,7 @@ export class KosksApi extends runtime.BaseAPI {
     }
 
     /**
-     * The shared decks the köşk offers its talebe, for a signed-in caller who is a talebe (ENROLLED or COMPLETED), a müderris or a manager of the köşk. For anyone else `accessible` is false and `decks` is empty, so the köşk page can leave the block out; the köşk\'s existence is never denied to them here, `GET /kosks/:id` answers that.
+     * The shared decks the köşk offers its talebe, for a signed-in caller who is a talebe (ENROLLED or COMPLETED), a müderris or a manager of the köşk. For anyone else `accessible` is false and `decks` is empty, so the köşk page can leave the block out; the köşk\'s existence is never denied to them here, `GET /kosks/:id` answers that. A hidden köşk answers 404 to all but its nazımları, Medaris yönetimi holding `platform.kosk_edit` and the başnazım, as `GET /kosks/:id` does.
      * Get the köşk\'s decks (MDRS-159)
      */
     async getKoskDecks(requestParameters: GetKoskDecksRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<KoskDecksResponse> {
@@ -1771,7 +1837,7 @@ export class KosksApi extends runtime.BaseAPI {
     }
 
     /**
-     * The last manager cannot be removed (409 KOSK_LAST_MANAGER). A manager may remove themselves while another remains (MDRS-126).
+     * Decided by `platform.kosk_nazim_manage`, like adding one: a köşk nazımı cannot remove a peer or resign (MDRS-136, owner decision d-1004-12). The last manager cannot be removed unless `successorUserId` names who takes the seat, who is seated first in the same transaction; the başnazım may name themselves (409 KOSK_LAST_MANAGER otherwise).
      * Remove a manager from the köşk
      */
     async removeKoskManagerRaw(requestParameters: RemoveKoskManagerRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<KoskResponse>> {
@@ -1790,6 +1856,10 @@ export class KosksApi extends runtime.BaseAPI {
         }
 
         const queryParameters: any = {};
+
+        if (requestParameters['successorUserId'] != null) {
+            queryParameters['successorUserId'] = requestParameters['successorUserId'];
+        }
 
         const headerParameters: runtime.HTTPHeaders = {};
 
@@ -1814,7 +1884,7 @@ export class KosksApi extends runtime.BaseAPI {
     }
 
     /**
-     * The last manager cannot be removed (409 KOSK_LAST_MANAGER). A manager may remove themselves while another remains (MDRS-126).
+     * Decided by `platform.kosk_nazim_manage`, like adding one: a köşk nazımı cannot remove a peer or resign (MDRS-136, owner decision d-1004-12). The last manager cannot be removed unless `successorUserId` names who takes the seat, who is seated first in the same transaction; the başnazım may name themselves (409 KOSK_LAST_MANAGER otherwise).
      * Remove a manager from the köşk
      */
     async removeKoskManager(requestParameters: RemoveKoskManagerRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<KoskResponse> {
@@ -2078,7 +2148,7 @@ export class KosksApi extends runtime.BaseAPI {
     }
 
     /**
-     * nizam/38 \'İzinleri düzenle\'. Replaces the whole set; what stays keeps its giver and date. The post ends when the permissions do. Written to the audit log.
+     * nizam/38 \'İzinleri düzenle\'. Replaces the whole set; what stays keeps its giver and date. The post ends when the permissions do. Written to the audit log. 403 (SELF_GRANT_REFUSED) for the caller\'s own post, SYSTEM_ADMIN excepted.
      * Change a ders nazırı\'s permissions and end
      */
     async updateKoskGrantRaw(requestParameters: UpdateKoskGrantRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<KoskGrantsResponse>> {
@@ -2131,7 +2201,7 @@ export class KosksApi extends runtime.BaseAPI {
     }
 
     /**
-     * nizam/38 \'İzinleri düzenle\'. Replaces the whole set; what stays keeps its giver and date. The post ends when the permissions do. Written to the audit log.
+     * nizam/38 \'İzinleri düzenle\'. Replaces the whole set; what stays keeps its giver and date. The post ends when the permissions do. Written to the audit log. 403 (SELF_GRANT_REFUSED) for the caller\'s own post, SYSTEM_ADMIN excepted.
      * Change a ders nazırı\'s permissions and end
      */
     async updateKoskGrant(requestParameters: UpdateKoskGrantRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<KoskGrantsResponse> {

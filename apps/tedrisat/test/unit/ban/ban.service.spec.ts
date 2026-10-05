@@ -1,4 +1,4 @@
-import type { AuthzService } from "@medaris/common";
+import { type IHeldGrantCodes, PERMISSIONS } from "@medaris/common";
 import type { BanRepository, IBanEntry } from "../../../src/ban/ban.repository";
 import { BanService } from "../../../src/ban/ban.service";
 import {
@@ -10,15 +10,20 @@ import {
   BanTargetInvalidError,
 } from "../../../src/ban/errors/ban-errors";
 import { CourseNotFoundError } from "../../../src/course/errors/course-not-found.error";
-import { ASSIGNED_ROLES } from "../../../src/database/schema/role-assignment.schema";
+import {
+  ASSIGNED_ROLES,
+  type AssignedRole,
+} from "../../../src/database/schema/role-assignment.schema";
 import type { KoskService } from "../../../src/kosk/kosk.service";
 import type { NotificationService } from "../../../src/notification/notification.service";
+import { authorityOf, grantOf, heldRole } from "../../helpers/ban-holdings";
 
 const KOSK = "b0000000-0000-4000-8000-0000000000aa";
 const COURSE = "b0000000-0000-4000-8000-0000000000bb";
 const TALEBE = "b0000000-0000-4000-8000-0000000000cc";
 const BAN_ID = "b0000000-0000-4000-8000-0000000000dd";
 const course = { id: COURSE, koskId: KOSK, madrasahId: null, title: "Emsile" };
+const where = { koskId: KOSK, courseId: COURSE };
 const person = (id: string) => ({ id, name: id, email: null });
 
 const entry = (over: Partial<IBanEntry> = {}): IBanEntry => ({
@@ -42,20 +47,27 @@ const entry = (over: Partial<IBanEntry> = {}): IBanEntry => ({
   lifterPerson: null,
   courseTitle: "Emsile",
   madrasahName: null,
+  placeMadrasahId: null,
   extendedFromCourseTitle: null,
   koskName: "Nûruosmaniye Köşkü",
   permanentRequestedAt: null,
   ...over,
 });
 
+/**
+ * The service for a caller who holds `roles` (each where it is held in this
+ * köşk and course) and, optionally, `grants`: the standing is the catalogue's,
+ * computed from those, not set by the spec.
+ */
 function build(
-  roles: string[],
+  roles: AssignedRole[],
   repo: Record<string, unknown> = {},
-  admin = false
+  admin = false,
+  grants: IHeldGrantCodes[] = []
 ) {
   const full = {
     findCourse: vi.fn().mockResolvedValue(course),
-    rolesHeld: vi.fn().mockResolvedValueOnce(roles).mockResolvedValue([]),
+    rolesHeld: vi.fn().mockResolvedValue([]),
     create: vi.fn().mockResolvedValue({ ban: { id: BAN_ID }, created: true }),
     findEntry: vi.fn().mockResolvedValue(entry()),
     findById: vi.fn().mockResolvedValue(entry()),
@@ -69,8 +81,12 @@ function build(
   const service = new BanService(
     full as unknown as BanRepository,
     { exists: vi.fn().mockResolvedValue(true) } as unknown as KoskService,
-    { isSystemAdmin: () => admin } as unknown as AuthzService,
-    { notify } as unknown as NotificationService
+    { notify } as unknown as NotificationService,
+    authorityOf(
+      roles.map((role) => heldRole(role, where)),
+      grants,
+      admin
+    )
   );
   return { service, repo: full, notify };
 }
@@ -175,10 +191,30 @@ describe("BanService (MDRS-177)", () => {
       );
     });
 
-    it("refuses someone who holds no moderating role", async () => {
-      const { service } = build([ASSIGNED_ROLES.MEDRESE_NAZIR]);
-      await expect(service.create({ sub: "x" }, COURSE, dto)).rejects.toThrow(
-        BanForbiddenError
+    it("refuses someone who holds no ban permission, whatever role they hold (MDRS-205)", async () => {
+      for (const role of [
+        ASSIGNED_ROLES.MEDRESE_NAZIR,
+        ASSIGNED_ROLES.DERS_NAZIR,
+        ASSIGNED_ROLES.MEDARIS_NAZIM,
+      ]) {
+        const { service, repo } = build([role]);
+        await expect(service.create({ sub: "x" }, COURSE, dto)).rejects.toThrow(
+          BanForbiddenError
+        );
+        expect(repo.create).not.toHaveBeenCalled();
+      }
+    });
+
+    it("lets a ders nazırı bar once the permission is granted, at the course's tier", async () => {
+      const { service, repo } = build([ASSIGNED_ROLES.DERS_NAZIR], {}, false, [
+        grantOf([PERMISSIONS.BAN_COURSE], { type: "course", id: COURSE }),
+      ]);
+      await service.create({ sub: "x" }, COURSE, dto);
+      expect(repo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          bannedRole: "DERS_NAZIR",
+          bannedTier: 1,
+        })
       );
     });
 
@@ -220,10 +256,7 @@ describe("BanService (MDRS-177)", () => {
         )
       ).rejects.toThrow(BanTargetInvalidError);
       const staff = build([ASSIGNED_ROLES.MUDERRIS], {
-        rolesHeld: vi
-          .fn()
-          .mockResolvedValueOnce([ASSIGNED_ROLES.MUDERRIS])
-          .mockResolvedValueOnce([ASSIGNED_ROLES.KOSK_NAZIM]),
+        rolesHeld: vi.fn().mockResolvedValue([ASSIGNED_ROLES.KOSK_NAZIM]),
       });
       await expect(
         staff.service.create({ sub: "m1" }, COURSE, dto)
@@ -338,26 +371,53 @@ describe("BanService (MDRS-177)", () => {
 
   describe("listAll (MDRS-178)", () => {
     const filter = { status: "ACTIVE" as const, limit: 50, offset: 0 };
-    const allRepo = (rows: IBanEntry[], platform = true) => ({
+    const allRepo = (rows: IBanEntry[]) => ({
       listAll: vi.fn().mockResolvedValue({ items: rows, total: rows.length }),
       counts: vi.fn().mockResolvedValue({ active: 12, lifted: 3, recent: 3 }),
-      holdsPlatformRole: vi.fn().mockResolvedValue(platform),
     });
+    /** A Medaris nazımı holds nothing until a grant says so. */
+    const medaris = (
+      ...codes: (typeof PERMISSIONS)[keyof typeof PERMISSIONS][]
+    ) => [[ASSIGNED_ROLES.MEDARIS_NAZIM], false, [grantOf(codes)]] as const;
 
     it("is for Medaris administration only", async () => {
-      const { service, repo } = build(
+      for (const roles of [
         [ASSIGNED_ROLES.KOSK_NAZIM],
-        allRepo([], false)
-      );
-      await expect(service.listAll({ sub: "n1" }, filter)).rejects.toThrow(
+        // A Medaris nazımı with no grant is no longer Medaris administration here.
+        [ASSIGNED_ROLES.MEDARIS_NAZIM],
+      ]) {
+        const { service, repo } = build(roles, allRepo([]));
+        await expect(service.listAll({ sub: "n1" }, filter)).rejects.toThrow(
+          BanForbiddenError
+        );
+        expect(repo.listAll).not.toHaveBeenCalled();
+      }
+    });
+
+    it("reads with platform.ban_scoped or platform.ban_account, and with no other platform permission it does not", async () => {
+      for (const code of [
+        PERMISSIONS.PLATFORM_BAN_SCOPED,
+        PERMISSIONS.PLATFORM_BAN_ACCOUNT,
+      ]) {
+        const [roles, admin, grants] = medaris(code);
+        const { service } = build([...roles], allRepo([]), admin, [...grants]);
+        await expect(
+          service.listAll({ sub: "m" }, filter)
+        ).resolves.toMatchObject({ total: 0 });
+      }
+      const [roles, admin, grants] = medaris(PERMISSIONS.PLATFORM_KOSK_EDIT);
+      const { service } = build([...roles], allRepo([]), admin, [...grants]);
+      await expect(service.listAll({ sub: "m" }, filter)).rejects.toThrow(
         BanForbiddenError
       );
-      expect(repo.listAll).not.toHaveBeenCalled();
     });
 
     it("lets the başnazım and a Medaris nazımı in, with platform-wide counts", async () => {
       const rows = [entry(), entry({ id: "k", scope: "KOSK", courseId: null })];
-      const nazim = build([], allRepo(rows));
+      const [roles, nazimAdmin, grants] = medaris(
+        PERMISSIONS.PLATFORM_BAN_SCOPED
+      );
+      const nazim = build([...roles], allRepo(rows), nazimAdmin, [...grants]);
       const list = await nazim.service.listAll({ sub: "m" }, filter);
       expect(nazim.repo.counts).toHaveBeenCalledWith(null, expect.any(Date));
       expect(list).toMatchObject({
@@ -366,7 +426,7 @@ describe("BanService (MDRS-177)", () => {
         liftedCount: 3,
         recentCount: 3,
       });
-      const admin = build([], allRepo([], false), true);
+      const admin = build([], allRepo([]), true);
       await expect(
         admin.service.listAll({ sub: "a" }, filter)
       ).resolves.toMatchObject({ total: 0 });
@@ -379,7 +439,8 @@ describe("BanService (MDRS-177)", () => {
         entry({ id: "c", userId: "u2", scope: "KOSK", courseId: null }),
         entry({ id: "d", userId: "u1", koskId: "other-kosk" }),
       ];
-      const { service } = build([], allRepo(rows));
+      const [roles, admin, grants] = medaris(PERMISSIONS.PLATFORM_BAN_SCOPED);
+      const { service } = build([...roles], allRepo(rows), admin, [...grants]);
       const list = await service.listAll({ sub: "m" }, filter);
       expect(list.items.map((i) => [i.id, i.viewerMayExtend])).toEqual([
         ["a", true],

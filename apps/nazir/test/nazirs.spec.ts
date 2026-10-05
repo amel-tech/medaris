@@ -499,6 +499,8 @@ describe("a refused appointment or dismissal", () => {
       "Dismiss.changed"
     );
     expect(nazirErrorKey("MADRASAH_NAZIR_NOT_FOUND")).toBe("Dismiss.gone");
+    expect(nazirErrorKey("DISMISS_SEAT_HANDED_ON")).toBe("Dismiss.cascade");
+    expect(nazirErrorKey("SELF_GRANT_REFUSED")).toBe("Problems.selfGrant");
     expect(nazirErrorKey("AUTHZ_FORBIDDEN")).toBe("Problems.actionForbidden");
     expect(nazirErrorKey("")).toBe("Problems.actionGeneric");
   });

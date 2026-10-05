@@ -68,10 +68,9 @@ const kosks = [
   {
     id: "k-1",
     name: "Nûruosmaniye Köşkü",
-    field: "Arapça dil ilimleri",
     courseCount: 1,
   },
-  { id: "k-2", name: "Fatih Köşkü", field: "Fıkıh", courseCount: 1 },
+  { id: "k-2", name: "Fatih Köşkü", courseCount: 1 },
 ];
 const settings = (policies: Record<string, boolean> = {}) => ({
   status: "ok" as const,
@@ -175,11 +174,12 @@ describe("Medrese dersi aç", () => {
     const out = await markup();
     const choice = out.slice(out.indexOf('name="kosk"') - 400);
     expect(textOf(choice)).toContain(
-      "Nûruosmaniye Köşkü Arapça dil ilimleri · medresenin burada 1 dersi var"
+      "Nûruosmaniye Köşkü medresenin burada 1 dersi var"
     );
     expect(textOf(choice)).toContain(
-      "Fatih Köşkü Fıkıh · medresenin burada 1 dersi var"
+      "Fatih Köşkü medresenin burada 1 dersi var"
     );
+    expect(textOf(choice)).not.toContain("Arapça dil ilimleri");
     expect(textOf(out)).toContain(
       "Yalnız medresenizin barındırma hakkı olan köşkler listelenir."
     );

@@ -1,13 +1,11 @@
-import { AuthGuard, Authz, AuthzGuard, PERMISSIONS } from "@medaris/common";
+import { AuthGuard, Authz, AuthzGuard } from "@medaris/common";
 import {
-  BadRequestException,
   Controller,
   DefaultValuePipe,
   Get,
   Param,
   ParseIntPipe,
   ParseUUIDPipe,
-  PipeTransform,
   Query,
   Req,
   UseGuards,
@@ -26,37 +24,21 @@ import { AuthenticatedUserRequest } from "../user/interfaces/authenticated-user-
 import { ArchiveService } from "./archive.service";
 import { presentItem } from "./archive-present";
 import {
-  ARCHIVE_ITEM_TYPES,
   ArchiveItemType,
   DEFAULT_ARCHIVE_PAGE_SIZE,
   MADRASAH_ARCHIVE_ITEM_TYPES,
   MAX_ARCHIVE_PAGE_SIZE,
 } from "./archive-types";
+import { ArchiveTypesPipe } from "./archive-types.pipe";
 import { PaginatedMadrasahArchiveResponse } from "./dto/archive-response.dto";
-
-/** `types=week,session`: a comma-separated list of archive types, none for all. */
-class ArchiveTypesPipe
-  implements PipeTransform<unknown, ArchiveItemType[] | undefined>
-{
-  transform(value: unknown): ArchiveItemType[] | undefined {
-    if (typeof value !== "string" || value.trim() === "") return undefined;
-    const types = value.split(",").map((t) => t.trim());
-    const unknown = types.filter(
-      (t) => !(ARCHIVE_ITEM_TYPES as readonly string[]).includes(t)
-    );
-    if (unknown.length > 0) {
-      throw new BadRequestException(
-        `Validation failed (unknown archive type: ${unknown.join(", ")})`
-      );
-    }
-    return types as ArchiveItemType[];
-  }
-}
+import { MADRASAH_ARCHIVE_READ_CODES } from "./hide-codes";
 
 /**
- * A medrese's archive (MDRS-185, nazir/12). `madrasah.course_hide` (or
- * `madrasah.settings_edit`) is the medrese's başmüderris's and SYSTEM_ADMIN's,
- * and a nazır's once given; bringing an item back is
+ * A medrese's archive (MDRS-185, nazir/12). Whoever may hide in the medrese or
+ * bring something back reads it: `madrasah.course_hide`, `madrasah.hide`,
+ * `platform.madrasah_edit` (and `madrasah.settings_edit`, which opened it
+ * before). They are the başmüderris's by default, a nazır's once given, and
+ * Medaris yönetimi's with the platform code. Bringing an item back is
  * `POST /archive/:type/:id/restore`, which decides by kademe.
  */
 @ApiTags("archive")
@@ -90,10 +72,7 @@ export class MadrasahArchiveController {
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()
   @Get(":id/archive")
-  @Authz(
-    [PERMISSIONS.MADRASAH_COURSE_HIDE, PERMISSIONS.MADRASAH_SETTINGS_EDIT],
-    byExistingMadrasah
-  )
+  @Authz(MADRASAH_ARCHIVE_READ_CODES, byExistingMadrasah)
   async list(
     @Req() request: AuthenticatedUserRequest,
     @Param("id", ParseUUIDPipe) id: string,
@@ -112,13 +91,11 @@ export class MadrasahArchiveController {
       limit: Math.min(Math.max(limit, 1), MAX_ARCHIVE_PAGE_SIZE),
     });
     return {
-      items: result.items.map((entry) => ({
-        ...presentItem(entry),
-        canRestore: entry.canRestore,
-      })),
+      items: result.items.map(presentItem),
       total: result.total,
       page: result.page,
       limit: result.limit,
+      madrasah: result.madrasah,
       counts: result.counts,
     };
   }

@@ -3,6 +3,7 @@ import { Module } from "@nestjs/common";
 import { AuditModule } from "../audit/audit.module";
 import { DatabaseService } from "../database/database.service";
 import { KeycloakAdminModule } from "../keycloak-admin/keycloak-admin.module";
+import { PassivationModule } from "../passivation/passivation.module";
 import { PlatformPolicyModule } from "../platform-policy/platform-policy.module";
 import { KoskController } from "./kosk.controller";
 import { KoskRepository } from "./kosk.repository";
@@ -22,6 +23,7 @@ import { KoskGrantsService } from "./kosk-grants.service";
     KeycloakAdminModule,
     AuditModule,
     PlatformPolicyModule,
+    PassivationModule,
   ],
   // `KoskAdminController` first: `GET /kosks/directory` must be matched before
   // `GET /kosks/:id` reads "directory" as an id.

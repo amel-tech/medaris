@@ -361,11 +361,13 @@ describe("Medrese archive (e2e)", () => {
       await restore(ADMIN_ID, "session", sessionByNazim).expect(200);
     });
 
-    it("counts a row hidden before levels were recorded as the lowest level that could have hidden it", async () => {
-      // A medrese's course could be hidden by the medrese: its başmüderris may restore it.
+    it("counts a row with no level as the lowest level that could have hidden it", async () => {
+      // 0048 gave every hidden row that names its hider a level; one left with none
+      // names nobody. A medrese's course could be hidden by the medrese: its
+      // başmüderris may restore it.
       const legacy = await addCourse("Ders: Eski gizleme", {
         archivedAt: hours(7),
-        archivedBy: NAZIM_ID,
+        archivedBy: null,
       });
       expect((await courseRow(legacy)).archivedLevel).toBeNull();
       await restore(HEAD_ID, "course", legacy).expect(200);
@@ -378,7 +380,7 @@ describe("Medrese archive (e2e)", () => {
           weekNumber: 12,
           title: "Hafta 12",
           archivedAt: hours(7),
-          archivedBy: MUDERRIS_ID,
+          archivedBy: null,
         })
         .returning({ id: courseWeeks.id });
       await restore(HEAD_ID, "week", legacyWeek.id).expect(200);

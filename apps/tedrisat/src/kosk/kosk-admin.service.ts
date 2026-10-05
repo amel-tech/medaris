@@ -8,11 +8,23 @@ import {
   ROLES,
 } from "@medaris/common";
 import { Injectable, Logger } from "@nestjs/common";
-import { actingLevel, type IHideStep } from "../archive/hide-level";
+import {
+  actingLevel,
+  COURSE_HIDE_LADDER,
+  hiderLevelOf,
+  KOSK_HIDE_LADDER,
+  mayRestoreHidden,
+} from "../archive/hide-level";
 import { GrantExpiryInvalidError } from "../assignment/admin/errors";
 import { checkGrantExpiry } from "../assignment/admin/grant-plan";
 import { SCOPE_TYPES } from "../database/schema/scope-type.schema";
 import { KeycloakAdminService } from "../keycloak-admin/keycloak-admin.service";
+import type {
+  PassivateScopeDto,
+  PassivationImpactResponse,
+} from "../passivation/dto/passivation.dto";
+import { presentImpact } from "../passivation/passivation-impact";
+import { PassivationImpactRepository } from "../passivation/passivation-impact.repository";
 import type { CreateKoskDto } from "./dto/create-kosk.dto";
 import type {
   AddKoskNazimsDto,
@@ -69,12 +81,6 @@ const nameOf = (row: IPersonRow | undefined): string | null => {
  * alone, like the medrese screens before them; a köşk's nazımları read their
  * own table and nazım list and may hide their köşk.
  */
-/** How a köşk is hidden and restored: the platform's `platform.kosk_edit`, or the köşk's own `kosk.manage`. */
-const KOSK_HIDE_LADDER: readonly IHideStep[] = [
-  { level: SCOPE_TYPES.PLATFORM, codes: [PERMISSIONS.PLATFORM_KOSK_EDIT] },
-  { level: SCOPE_TYPES.KOSK, codes: [PERMISSIONS.KOSK_MANAGE] },
-];
-
 @Injectable()
 export class KoskAdminService {
   private readonly logger = new Logger(KoskAdminService.name);
@@ -85,7 +91,8 @@ export class KoskAdminService {
     private readonly repo: KoskAdminRepository,
     private readonly koskService: KoskService,
     private readonly authz: AuthzService,
-    private readonly keycloak: KeycloakAdminService
+    private readonly keycloak: KeycloakAdminService,
+    private readonly impact: PassivationImpactRepository
   ) {}
 
   // ---- who is asking -----------------------------------------------------------
@@ -164,7 +171,9 @@ export class KoskAdminService {
       this.resolvePeople(items.flatMap((i) => i.nazimIds)),
     ]);
     return {
-      items: items.map((row) => this.presentRow(row, people)),
+      items: await Promise.all(
+        items.map((row) => this.presentRow(user, row, people))
+      ),
       total,
       page: query.page,
       limit: query.limit,
@@ -196,21 +205,39 @@ export class KoskAdminService {
     );
   }
 
-  private presentRow(
+  /**
+   * A row as the table draws it. `canRestore` is whether the caller may bring a
+   * hidden köşk back, by the same ladder and kademe the restore asks, so the
+   * "Geri al" button is shown to exactly the people it will work for.
+   */
+  private async presentRow(
+    user: AuthenticatedUser,
     row: IKoskDirectoryRow,
     people: Map<string, IPersonRow>
-  ): KoskDirectoryItemResponse {
+  ): Promise<KoskDirectoryItemResponse> {
     const { nazimIds, ...rest } = row;
     return {
       ...rest,
       nazims: nazimIds.map((id) => this.person(id, people)),
+      canRestore:
+        row.hiddenLevel !== null &&
+        (await mayRestoreHidden(
+          this.authz,
+          user,
+          { entity: ENTITIES.KOSK, id: row.id },
+          KOSK_HIDE_LADDER,
+          row.hiddenLevel
+        )),
     };
   }
 
-  private async presentOne(koskId: string): Promise<KoskDirectoryItemResponse> {
+  private async presentOne(
+    user: AuthenticatedUser,
+    koskId: string
+  ): Promise<KoskDirectoryItemResponse> {
     const row = await this.repo.findDirectoryItem(koskId);
     if (!row) throw new KoskNotFoundError(koskId);
-    return this.presentRow(row, await this.resolvePeople(row.nazimIds));
+    return this.presentRow(user, row, await this.resolvePeople(row.nazimIds));
   }
 
   // ---- nizam/24 and 09: hiding and bringing back ---------------------------------------
@@ -230,7 +257,7 @@ export class KoskAdminService {
     const outcome = await this.repo.hide(koskId, user.sub, level);
     if (outcome === "no-kosk") throw new KoskNotFoundError(koskId);
     if (outcome === "already-hidden") throw new KoskAlreadyHiddenError(koskId);
-    return this.presentOne(koskId);
+    return this.presentOne(user, koskId);
   }
 
   async restore(
@@ -255,25 +282,73 @@ export class KoskAdminService {
     const outcome = await this.repo.restore(koskId, user.sub, level);
     if (outcome === "no-kosk") throw new KoskNotFoundError(koskId);
     if (outcome === "not-hidden") throw new KoskNotHiddenError(koskId);
-    return this.presentOne(koskId);
+    return this.presentOne(user, koskId);
   }
 
   // ---- nizam/20 and 23: the köşk page, its courses, taking it out of service ----
 
   /** `@Authz([kosk.manage, platform.kosk_edit])` on the route decided who may read. */
-  async overview(koskId: string): Promise<KoskOverviewResponse> {
+  async overview(
+    user: AuthenticatedUser,
+    koskId: string
+  ): Promise<KoskOverviewResponse> {
     const row = await this.repo.overview(koskId);
     if (!row) throw new KoskNotFoundError(koskId);
     const { ownerId, ...rest } = row;
     const people = await this.resolvePeople([ownerId]);
-    return { ...rest, openedBy: this.person(ownerId, people) };
+    return {
+      ...rest,
+      openedBy: this.person(ownerId, people),
+      canRestore:
+        row.hiddenLevel !== null &&
+        (await mayRestoreHidden(
+          this.authz,
+          user,
+          { entity: ENTITIES.KOSK, id: koskId },
+          KOSK_HIDE_LADDER,
+          row.hiddenLevel
+        )),
+    };
   }
 
-  async courseRoster(koskId: string): Promise<KoskCourseRosterResponse> {
+  /**
+   * The Dersler table. A hidden course says the level that hid it and whether
+   * the caller may bring it back (`COURSE_HIDE_LADDER`, as `POST
+   * /courses/:id/restore` decides), so the table offers "Geri al" only where the
+   * API would accept it and a köşk nazımı is not shown it for a course the
+   * platform hid (MDRS-108, MDRS-143).
+   */
+  async courseRoster(
+    user: AuthenticatedUser,
+    koskId: string
+  ): Promise<KoskCourseRosterResponse> {
     if (!(await this.repo.koskName(koskId))) {
       throw new KoskNotFoundError(koskId);
     }
-    const items = await this.repo.courseRoster(koskId);
+    const rows = await this.repo.courseRoster(koskId);
+    const items = await Promise.all(
+      rows.map(async ({ hiddenLevel: recorded, ...row }) => {
+        if (row.status !== "HIDDEN") {
+          return { ...row, hiddenLevel: null, canRestore: false };
+        }
+        const hiddenLevel = hiderLevelOf({
+          type: "course",
+          madrasahId: row.madrasah?.id ?? null,
+          archivedLevel: recorded,
+        });
+        return {
+          ...row,
+          hiddenLevel,
+          canRestore: await mayRestoreHidden(
+            this.authz,
+            user,
+            { entity: ENTITIES.COURSE, id: row.id },
+            COURSE_HIDE_LADDER,
+            hiddenLevel
+          ),
+        };
+      })
+    );
     return {
       items,
       counts: {
@@ -285,21 +360,35 @@ export class KoskAdminService {
     };
   }
 
-  async deactivate(
+  /**
+   * What "Köşkü pasife al" takes along, with the confirmation to post back
+   * (MDRS-227). `@Authz(platform.kosk_edit)` on the route decided who may read.
+   */
+  async previewDeactivation(
     user: AuthenticatedUser,
     koskId: string
+  ): Promise<PassivationImpactResponse> {
+    const impact = await this.impact.measure({ type: "KOSK", id: koskId });
+    if (!impact) throw new KoskNotFoundError(koskId);
+    return presentImpact(impact, user.sub);
+  }
+
+  /** `@Authz(platform.kosk_edit)` on the route decided who may; the confirmation is checked under the row lock. */
+  async deactivate(
+    user: AuthenticatedUser,
+    koskId: string,
+    dto: PassivateScopeDto
   ): Promise<KoskDirectoryItemResponse> {
-    await this.requirePlatform(
-      user,
-      PERMISSIONS.PLATFORM_KOSK_EDIT,
-      "take a köşk out of service"
+    const outcome = await this.repo.deactivate(
+      koskId,
+      user.sub,
+      dto.confirmation
     );
-    const outcome = await this.repo.deactivate(koskId, user.sub);
     if (outcome === "no-kosk") throw new KoskNotFoundError(koskId);
     if (outcome === "already-passive") {
       throw new KoskAlreadyPassiveError(koskId);
     }
-    return this.presentOne(koskId);
+    return this.presentOne(user, koskId);
   }
 
   // ---- nizam/25 and 21: the nazımları ------------------------------------------------------
@@ -430,7 +519,7 @@ export class KoskAdminService {
       "open a köşk with nazımları"
     );
     const { managerUserIds, ...kosk } = dto;
-    const nazimIds = (managerUserIds ?? []).map((id) => id.toLowerCase());
+    const nazimIds = managerUserIds.map((id) => id.toLowerCase());
     await this.koskService.assertHandleFree(kosk.handle);
     await this.assertKnownAccounts(nazimIds);
     return this.repo.createWithNazims({ ownerId: user.sub, ...kosk }, nazimIds);

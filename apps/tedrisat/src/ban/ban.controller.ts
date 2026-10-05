@@ -51,8 +51,12 @@ const presentAll = (list: IAllBansList): AllBansListResponse => ({
 
 /**
  * Bans (MDRS-177, screens nizam/41 and nizam/42). Like `ArchiveController`,
- * no `AuthzGuard`: the engine has no ban entity, and `BanService` makes the
- * one decision every route shares, the kademe rule.
+ * no `AuthzGuard`: the engine has no ban entity, and what a route asks depends
+ * on the ban in hand (its scope, and where it sits). `BanService` decides every
+ * route from the permission catalogue (MDRS-205, `ban-codes.ts`: `ban.course`,
+ * `ban.lift_course`, `ban.manage_kosk`, `madrasah.ban`,
+ * `madrasah.permanent_ban_request`, `platform.ban_scoped`, `platform.ban_account`),
+ * and the kademe rule only orders who may lift whom.
  *
  * The reason of a ban is returned here, to people who place and lift bans,
  * and nowhere a talebe reads: no course, enrollment or profile response of
@@ -70,7 +74,7 @@ export class BanController {
   @ApiOperation({
     summary: "Bar a talebe from a course or its köşk (Yasakla)",
     description:
-      "Takes effect at once: the talebe cannot enroll, apply again or leave, and loses the course's content. A COURSE ban is the course's müderris's and above; a KOSK ban, placed from this course, is the köşk nazımı's and above. Barring someone already barred in that scope returns the standing ban. The reason is kept for those who see and lift bans and never sent to the talebe.",
+      "Takes effect at once: the talebe cannot enroll, apply again or leave, and loses the course's content. A COURSE ban takes `ban.course` in the course (its müderris, its başmüderris and the köşk's nazımı hold it; a ders nazırı only if given it) or, in a medrese's course, `madrasah.ban` of that medrese (its başmüderris holds it; a nazır only if given it); a Medaris nazımı holding only `platform.ban_scoped` has neither, the başnazım does. A KOSK ban, placed from this course, takes `ban.manage_kosk` in the köşk or `platform.ban_scoped`. Barring someone already barred in that scope returns the standing ban. The reason is kept for those who see and lift bans and never sent to the talebe.",
     operationId: "createBan",
   })
   @ApiCreatedResponse({ type: BanResponse })
@@ -88,7 +92,7 @@ export class BanController {
   @ApiOperation({
     summary: "A köşk's bans, open or lifted (Yasaklamalar)",
     description:
-      "Newest first, with the counts the tabs show. The köşk's nazım and above. Each row says whether the caller's kademe reaches the ban's (`viewerMayLift`).",
+      "Newest first, with the counts the tabs show. For `ban.manage_kosk` in the köşk, and for a Medaris nazımı holding `platform.ban_scoped` or `platform.ban_account`. Each row says whether the caller may lift the ban: the permission for its level, and a kademe that reaches the ban's (`viewerMayLift`).",
     operationId: "listKoskBans",
   })
   @ApiQuery({ name: "status", required: false, enum: BAN_STATUSES })
@@ -114,7 +118,7 @@ export class BanController {
   @ApiOperation({
     summary: "Every ban of every köşk, open or lifted (Medaris Yasaklamalar)",
     description:
-      "Newest first, one page at a time, with platform-wide counts for the tabs. Medaris administration only: the başnazım and the Medaris nazımı. `q` matches the person's name or e-mail; `scope` keeps one scope.",
+      "Newest first, one page at a time, with platform-wide counts for the tabs. Medaris administration only: the başnazım and a Medaris nazımı holding `platform.ban_scoped` or `platform.ban_account`. `q` matches the person's name or e-mail; `scope` keeps one scope.",
     operationId: "listAllBans",
   })
   @ApiQuery({ name: "status", required: false, enum: BAN_STATUSES })
@@ -161,7 +165,7 @@ export class BanController {
   @ApiOperation({
     summary: "Widen a course ban to the whole köşk (Yasağı genişlet)",
     description:
-      "Opens a KOSK ban for the same person with its own reason and leaves the course ban standing; the audit row says `ban.extend`. The köşk's nazım and above. A person already barred from the köşk gets the standing ban back.",
+      "Opens a KOSK ban for the same person with its own reason and leaves the course ban standing; the audit row says `ban.extend`. Takes `ban.manage_kosk` in the köşk or `platform.ban_scoped`. A person already barred from the köşk gets the standing ban back.",
     operationId: "extendBan",
   })
   @ApiOkResponse({ type: BanResponse })
@@ -181,7 +185,7 @@ export class BanController {
   @ApiOperation({
     summary: "Lift a ban with a reason (Yasağı kaldır)",
     description:
-      "Only the kademe that placed the ban, or a higher one: a Medaris nazımı's ban is lifted by Medaris administration alone. The reason and the lifter's name are kept with the ban. A medrese's nazır and başmüderris lift bans in the medrese's courses and over the medrese (MDRS-187).",
+      "The permission to ban at a ban's level also lifts it: `ban.course` (or `ban.lift_course`, or `madrasah.ban` in a medrese's course) for a course ban, `ban.manage_kosk` or `platform.ban_scoped` for a köşk ban, `madrasah.ban` or `platform.ban_scoped` for a medrese ban. And only the kademe that placed the ban, or a higher one: a Medaris nazımı's ban is lifted by Medaris administration alone. A Medaris nazımı holding only `platform.ban_scoped` lifts no course ban. The reason and the lifter's name are kept with the ban.",
     operationId: "liftBan",
   })
   @ApiOkResponse({ type: BanResponse })
@@ -201,7 +205,7 @@ export class BanController {
   @ApiOperation({
     summary: "Widen a course ban to the whole medrese (Medreseden de yasakla)",
     description:
-      "For an open course ban in a course of a medrese: a second ban beside the first, which stays, barring the talebe from every course of the medrese, present and future. A medrese nazır or above of that medrese; a köşk nazımı or a müderris is not one. The person already barred from the medrese gets that ban back. 409 (BAN_NOT_ESCALATABLE) for any other ban.",
+      "For an open course ban in a course of a medrese: a second ban beside the first, which stays, barring the talebe from every course of the medrese, present and future. Takes `madrasah.ban` in the medrese (its başmüderris holds it; a nazır only if given it) or `platform.ban_scoped`; a köşk nazımı or a müderris holds neither. The person already barred from the medrese gets that ban back. 409 (BAN_NOT_ESCALATABLE) for any other ban.",
     operationId: "escalateBan",
   })
   @ApiCreatedResponse({ type: MadrasahBanResponse })
@@ -225,7 +229,7 @@ export class BanController {
   @ApiOperation({
     summary: "Ask for a ban to be made permanent (Kalıcı yasak talebi aç)",
     description:
-      "Records the medrese's request, with its reason, for Medaris administration. Nothing is decided here: the ban stands as it was, and deciding the request is a later phase. A medrese nazır or above, on an open ban in a course of the medrese or over the medrese itself that Medaris administration did not place. One request per ban (409 BAN_PERMANENT_REQUEST_EXISTS).",
+      "Records the medrese's request, with its reason, for Medaris administration. Nothing is decided here: the ban stands as it was, and deciding the request is a later phase. Takes `madrasah.permanent_ban_request` in the medrese (its başmüderris holds it; a nazır only if given it), on an open ban in a course of the medrese or over the medrese itself that Medaris administration did not place. One request per ban (409 BAN_PERMANENT_REQUEST_EXISTS).",
     operationId: "requestPermanentBan",
   })
   @ApiCreatedResponse({ type: MadrasahBanResponse })

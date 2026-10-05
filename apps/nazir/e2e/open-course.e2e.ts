@@ -75,12 +75,8 @@ test("nazir/08 — only the köşks that host the medrese can be chosen, the fir
   await expect(
     page.getByRole("radio", { name: courses?.kosk.name ?? "" })
   ).toBeVisible();
-  await expect(
-    page.getByText("Arapça dil ilimleri · medresenin burada 3 dersi var")
-  ).toBeVisible();
-  await expect(
-    page.getByText("Fıkıh · medresenin burada 1 dersi var")
-  ).toBeVisible();
+  await expect(page.getByText("medresenin burada 3 dersi var")).toBeVisible();
+  await expect(page.getByText("medresenin burada 1 dersi var")).toBeVisible();
   await expect(page.getByText(courses?.noRight.name ?? "")).toHaveCount(0);
   await expect(page.getByText(courses?.hiddenKosk.name ?? "")).toHaveCount(0);
   await expect(

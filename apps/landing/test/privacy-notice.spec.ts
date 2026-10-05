@@ -1,6 +1,5 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
-import { resources } from "@medaris/i18n";
 import { PRIVACY_NOTICE_PATH, PRIVACY_NOTICE_URL } from "@medaris/utils";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -24,8 +23,10 @@ vi.mock("next/font/google", () => {
 
 const LANDING = join(__dirname, "..");
 const REPO = join(LANDING, "..", "..");
-const CONTENT_FILE = join(LANDING, "content", "aydinlatma-metni.ts");
 
+// The controller's former placeholders (MDRS-102). The owner removed the
+// title, address, KEP and MERSİS for now (4 October); none may come back as
+// a bracketed placeholder.
 const PLACEHOLDERS = [
   "[Veri sorumlusu unvanı]",
   "[Adres]",
@@ -144,23 +145,17 @@ describe("the privacy notice page (MDRS-102)", () => {
   });
 });
 
-describe("the controller placeholders (MDRS-102)", () => {
-  it("are all in CONTROLLER, and all on the page", () => {
-    expect(Object.values(CONTROLLER).sort()).toEqual([...PLACEHOLDERS].sort());
-    for (const placeholder of PLACEHOLDERS) {
-      expect(text).toContain(placeholder);
-    }
+describe("the controller (MDRS-102)", () => {
+  it("is named by its e-mail address, selam@medaris.app, on the page", () => {
+    expect(CONTROLLER).toEqual({ email: "selam@medaris.app" });
+    expect(text).toContain("E-posta: selam@medaris.app");
+    expect(text).toContain("adresinizden selam@medaris.app adresine");
   });
 
-  it("are each written exactly once, in the content file, and nowhere else", () => {
-    const content = readFileSync(CONTENT_FILE, "utf8");
-    for (const placeholder of PLACEHOLDERS) {
-      expect(content.split(placeholder).length - 1, placeholder).toBe(1);
-    }
-
+  it("leaves no bracketed placeholder on the page or in the workspace's source", () => {
+    expect(text).not.toMatch(/\[[^\]]+\]/);
     const elsewhere = ["apps", "libs", "config"]
       .flatMap((dir) => sourceFiles(join(REPO, dir)))
-      .filter((file) => file !== CONTENT_FILE)
       .filter((file) => !file.endsWith("privacy-notice.spec.ts"))
       .filter((file) => {
         const source = readFileSync(file, "utf8");
@@ -171,13 +166,23 @@ describe("the controller placeholders (MDRS-102)", () => {
   });
 });
 
+describe("the draft note (owner, 4 October)", () => {
+  it("shows in development and never in a production build", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.resetModules();
+    const { IS_DRAFT } = await import("../content/aydinlatma-metni");
+    expect(IS_DRAFT).toBe(false);
+    vi.stubEnv("NODE_ENV", "development");
+    vi.resetModules();
+    const dev = await import("../content/aydinlatma-metni");
+    expect(dev.IS_DRAFT).toBe(true);
+    vi.unstubAllEnvs();
+  });
+});
+
 describe("landing's footer (MDRS-102)", () => {
   it("links to the notice", () => {
     expect(footerLinks.map((link) => link.href)).toContain(PRIVACY_NOTICE_PATH);
-  });
-
-  it.each(["tr", "en", "ar"] as const)("labels the link in %s", (lang) => {
-    expect(resources[lang].landing.footer.privacyNotice).toMatch(/\p{L}/u);
   });
 });
 

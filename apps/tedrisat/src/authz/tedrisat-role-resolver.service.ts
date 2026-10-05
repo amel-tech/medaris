@@ -1,8 +1,10 @@
 import {
   AnonymousRelation,
   ENTITIES,
+  PERMISSIONS,
   RELATIONS,
   Relation,
+  ResourceClosure,
   ResourceRef,
   RoleResolver,
 } from "@medaris/common";
@@ -79,6 +81,31 @@ export class TedrisatRoleResolver implements RoleResolver {
       default:
         return null;
     }
+  }
+
+  /**
+   * A course is shown only while its köşk is (MDRS-143): a hidden köşk closes
+   * its courses, to the talebe enrolled in them and to a müderris or a
+   * başmüderris too, and only the people above the courses still open them:
+   * the köşk's nazımları (`course.hide` on the course by nesting), Medaris
+   * yönetimi holding `platform.kosk_edit`, and the başnazım. A medrese is not
+   * above a köşk. Read from the köşk's own state, not from a cascade, so a
+   * course opened after the hide is closed as well and a restore reopens
+   * exactly what the hide closed. `AuthzGuard` asks it in front of every
+   * signed-in route on a course, so the closure is one rule, not one check per
+   * route.
+   */
+  async closure(resource: ResourceRef): Promise<ResourceClosure | null> {
+    if (resource.entity !== ENTITIES.COURSE || !UUID_REGEX.test(resource.id)) {
+      return null;
+    }
+    if (!(await this.courseRepo.findHideState(resource.id))?.koskArchivedAt) {
+      return null;
+    }
+    return {
+      openTo: [PERMISSIONS.COURSE_HIDE, PERMISSIONS.PLATFORM_KOSK_EDIT],
+      notFound: new CourseNotFoundError(resource.id),
+    };
   }
 
   /**

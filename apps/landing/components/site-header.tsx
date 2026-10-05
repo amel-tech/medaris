@@ -1,5 +1,6 @@
 import { Icon } from "@medaris/ui/mds/icon";
 import { Logo } from "@medaris/ui/mds/logo";
+import { ThemeToggle } from "@medaris/ui/mds/theme-toggle";
 import Link from "next/link";
 import { registerHref, signInHref } from "~/lib/tedris";
 
@@ -11,6 +12,9 @@ import { registerHref, signInHref } from "~/lib/tedris";
  *
  * "Giriş yap" and "Kayıt ol" are plain links to the entry routes, not
  * <Link>: they leave the landing app.
+ *
+ * The theme toggle sits first among the actions in both bars; only one bar is
+ * drawn at a time.
  */
 export function SiteHeader({
   title,
@@ -37,6 +41,7 @@ export function SiteHeader({
           {title}
         </p>
         <div className="mds-appbar__actions">
+          <ThemeToggle />
           <a
             className="mds-btn mds-icon-btn mds-btn--large mds-btn--ghost"
             href={signInHref}
@@ -51,6 +56,7 @@ export function SiteHeader({
           <Logo wordmark />
         </Link>
         <div className="ms-auto flex items-center gap-2">
+          <ThemeToggle />
           <a className="mds-btn mds-btn--ghost" href={signInHref}>
             Giriş yap
           </a>

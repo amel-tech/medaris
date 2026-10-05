@@ -161,9 +161,14 @@ test("nizam/20 — 'Köşkü pasife al' takes the nazımları off the post and w
   await shot(page, "20-pasife-al-oncesi");
   await page.getByRole("button", { name: "Köşkü pasife al" }).click();
   const dialog = page.getByRole("dialog");
-  await expect(dialog).toContainText("1 köşk nazımı görevden alınacak");
+  // MDRS-227: the dialog shows what it takes along before it asks. The seed's
+  // two talebe are enrolled in the köşk's courses.
+  await expect(dialog).toContainText("Pasife almak yanında şunları götürür");
+  await expect(dialog).toContainText("1 köşk nazımı görevden alınır");
+  await expect(dialog).toContainText("ders kapanır");
+  await expect(dialog).toContainText("2 kayıtlı talebe içeriğe erişemez");
   await shot(page, "20-pasife-al");
-  await dialog.getByRole("button", { name: "Pasife al" }).click();
+  await dialog.getByRole("button", { name: "Yine de pasife al" }).click();
   await expect(page.getByText("Köşk pasife alındı")).toBeVisible();
   await expect.poll(async () => (await fixture.koskRow()).passive).toBe(true);
   expect(await fixture.nazims()).toEqual([]);

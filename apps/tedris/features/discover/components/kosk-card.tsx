@@ -1,8 +1,6 @@
 import type { KoskResponse } from "@medaris/services/tedrisat";
 import { Avatar } from "@medaris/ui/mds/avatar";
-import { Badge } from "@medaris/ui/mds/badge";
 import { Card } from "@medaris/ui/mds/card";
-import { koskLevelLabel } from "~/features/courses/components/labels";
 import type { LooseTranslator } from "~/lib/i18n/loose";
 import { FollowButton } from "./follow-button";
 
@@ -11,9 +9,8 @@ import { FollowButton } from "./follow-button";
 type Translate = LooseTranslator;
 
 /**
- * A köşk on Keşfet (MDRS-159, design tedris/02): its mark, name and ilim
- * alanı, a line of description, and its level and course count beside the
- * follow button. The whole card is one link, to the köşk's page.
+ * A köşk on Keşfet (MDRS-159, design tedris/02): its mark and name, a line of
+ * description, and its course count beside the follow button. The whole card is one link, to the köşk's page.
  */
 export const KoskCard = ({
   kosk,
@@ -24,7 +21,6 @@ export const KoskCard = ({
   t: Translate;
   signedIn?: boolean;
 }) => {
-  const level = koskLevelLabel(kosk.level, t as never, "DiscoverPage");
   return (
     <Card
       className="flex flex-col"
@@ -38,14 +34,6 @@ export const KoskCard = ({
       footer={
         <div className="flex items-center justify-between gap-3">
           <span>
-            {level ? (
-              <>
-                {level}
-                <span className="mds-sep" aria-hidden="true">
-                  ·
-                </span>
-              </>
-            ) : null}
             {t("DiscoverPage.coursesCount", { count: kosk.courseCount })}
           </span>
           {signedIn ? (
@@ -63,11 +51,6 @@ export const KoskCard = ({
         </div>
       }
     >
-      {kosk.field ? (
-        <p className="mbs-4">
-          <Badge variant="secondary">{kosk.field}</Badge>
-        </p>
-      ) : null}
       {kosk.description ? (
         <p className="mds-card__body grow" dir="auto">
           {kosk.description}

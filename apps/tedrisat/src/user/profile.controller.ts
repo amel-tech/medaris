@@ -23,17 +23,25 @@ import {
   UpdatePublicProfileDto,
 } from "./dto/public-profile.dto";
 import { AuthenticatedUserRequest } from "./interfaces/authenticated-user-request.interface";
+import { PublicProfileEnabledGuard } from "./public-profile-enabled.guard";
 import { UserProfileService } from "./user-profile.service";
+
+const PROFILE_HIDDEN =
+  "The public profile is hidden for everyone for now (PUBLIC_PROFILE_UNAVAILABLE).";
 
 /**
  * Herkese açık profil (MDRS-166). The caller's own routes act on
  * `request.user.sub` only; the route that reads another person needs a
  * signed-in caller and nothing more, because what it returns is already
  * filtered to what its owner chose to show.
+ *
+ * Hidden for everyone while `PUBLIC_PROFILE_ENABLED` is off (MDRS-141): every
+ * route here answers 404 PUBLIC_PROFILE_UNAVAILABLE before it reads or writes
+ * anything.
  */
 @ApiTags("me")
 @ApiBearerAuth()
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, PublicProfileEnabledGuard)
 @Controller()
 export class ProfileController {
   constructor(private readonly profile: UserProfileService) {}
@@ -43,6 +51,7 @@ export class ProfileController {
     operationId: "getMyPublicProfile",
   })
   @ApiOkResponse({ type: MyPublicProfileResponse })
+  @ApiNotFoundResponse({ description: PROFILE_HIDDEN })
   @Get("me/public-profile")
   async getMine(
     @Req() request: AuthenticatedUserRequest
@@ -58,6 +67,7 @@ export class ProfileController {
   })
   @ApiOkResponse({ type: MyPublicProfileResponse })
   @ApiConflictResponse({ description: "The künye is taken (KUNYE_TAKEN)." })
+  @ApiNotFoundResponse({ description: PROFILE_HIDDEN })
   @Patch("me/public-profile")
   async updateMine(
     @Req() request: AuthenticatedUserRequest,
@@ -72,7 +82,7 @@ export class ProfileController {
   })
   @ApiOkResponse({ type: PublicProfileResponse })
   @ApiNotFoundResponse({
-    description: "The person has not chosen a künye yet.",
+    description: `${PROFILE_HIDDEN} Otherwise: the person has not chosen a künye yet (PUBLIC_PROFILE_NOT_FOUND).`,
   })
   @Get("users/:id/public-profile")
   async getPublic(

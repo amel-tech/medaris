@@ -246,14 +246,11 @@ export function courseRows(
   });
 }
 
-/** The köşk in the side list: its field and how many of the medrese's courses it holds. */
+/** The köşk in the side list: how many of the medrese's courses it holds. */
 export const hostLine = (
-  kosk: Pick<MadrasahCourseKoskResponse, "field" | "courseCount">,
+  kosk: Pick<MadrasahCourseKoskResponse, "courseCount">,
   t: Messages
-): string =>
-  [kosk.field, t("Courses.hosts.courses", { count: kosk.courseCount })]
-    .filter(Boolean)
-    .join(" · ");
+): string => t("Courses.hosts.courses", { count: kosk.courseCount });
 
 // ---- Medrese dersi aç ----------------------------------------------------------------
 
@@ -270,19 +267,14 @@ export function titleProblem(title: string): TitleProblem | null {
   return length > TITLE_MAX ? "long" : null;
 }
 
-/** The köşk's line in the choice: its field and what the medrese already has there. */
+/** The köşk's line in the choice: what the medrese already has there. */
 export const koskChoiceLine = (
-  kosk: Pick<MadrasahCourseKoskResponse, "field" | "courseCount">,
+  kosk: Pick<MadrasahCourseKoskResponse, "courseCount">,
   t: Messages
 ): string =>
-  [
-    kosk.field,
-    kosk.courseCount > 0
-      ? t("OpenCourse.kosk.courses", { count: kosk.courseCount })
-      : t("OpenCourse.kosk.noCourses"),
-  ]
-    .filter(Boolean)
-    .join(" · ");
+  kosk.courseCount > 0
+    ? t("OpenCourse.kosk.courses", { count: kosk.courseCount })
+    : t("OpenCourse.kosk.noCourses");
 
 /** The medrese's policies that fix an answer of the form: it is on and cannot be turned off. */
 export interface Locks {

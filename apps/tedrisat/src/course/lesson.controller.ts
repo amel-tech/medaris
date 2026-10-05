@@ -52,7 +52,10 @@ import {
 } from "./calendar/lesson-calendar";
 import { CourseRepository } from "./course.repository";
 import { CourseService } from "./course.service";
-import { LessonMutationResponse } from "./dto/course-response.dto";
+import {
+  LessonMutationResponse,
+  WeekHideResponse,
+} from "./dto/course-response.dto";
 import { CreateWeekLessonDto } from "./dto/create-lesson.dto";
 import { CancelLessonDto } from "./dto/muderris-list.dto";
 import { RecordingResponse } from "./dto/recording-response.dto";
@@ -262,7 +265,9 @@ export class LessonController {
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()
   @Post("courses/:courseId/weeks/:weekId/lessons")
-  @Authz(PERMISSIONS.COURSE_EDIT, byParam(ENTITIES.COURSE, "courseId"))
+  // Adding a session is `session.manage` ("Celse ekle"), like the batch and
+  // every other session write here; `course.edit` is the course's text.
+  @Authz(PERMISSIONS.SESSION_MANAGE, byParam(ENTITIES.COURSE, "courseId"))
   @UsePipes(new MedarisValidationPipe({ transform: true }))
   async create(
     @Param("courseId", ParseUUIDPipe) courseId: string,
@@ -386,17 +391,41 @@ export class LessonController {
 
   @ApiOperation({
     summary: "Remove a lesson from the course; it is archived, never deleted",
+    description:
+      "`week.hide` (Hafta ve celse gizle, geri al) or `session.manage`. The level the caller acts at is recorded with the hide and decides who may bring it back (MDRS-135); written to `audit_log` as `lesson.hide` (MDRS-143).",
     operationId: "archiveLesson",
   })
   @ApiOkResponse({ type: LessonMutationResponse })
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()
   @Delete("lessons/:id")
-  @Authz(PERMISSIONS.SESSION_MANAGE, byLessonCourse)
+  @Authz([PERMISSIONS.WEEK_HIDE, PERMISSIONS.SESSION_MANAGE], byLessonCourse)
   async archive(
     @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<LessonMutationResponse> {
     return this.courseService.archiveLesson(id, request.user);
+  }
+
+  @ApiOperation({
+    summary: "Hide a week with its sessions (Gizle)",
+    description:
+      "Nothing is deleted: the week and its live sessions leave the course at one instant, at the level the caller acts at (the course team's, the köşk's, the medrese's), and the course `version` is bumped, so an editor that loaded the course before is refused with 409. Brought back by that level or one above, through `POST /archive/week/:id/restore`; the course's Arşiv lists it (`GET /courses/:id/archive`). Written to `audit_log` as `week.hide` (MDRS-143).",
+    operationId: "hideCourseWeek",
+  })
+  @ApiOkResponse({ type: WeekHideResponse })
+  @ApiForbiddenResponse()
+  @ApiNotFoundResponse({
+    description: "No such course, or no such live week in it (WEEK_NOT_FOUND).",
+  })
+  @Post("courses/:courseId/weeks/:weekId/hide")
+  @HttpCode(HttpStatus.OK)
+  @Authz(PERMISSIONS.WEEK_HIDE, byParam(ENTITIES.COURSE, "courseId"))
+  async hideWeek(
+    @Req() request: AuthorizedRequest,
+    @Param("courseId", ParseUUIDPipe) courseId: string,
+    @Param("weekId", ParseUUIDPipe) weekId: string
+  ): Promise<WeekHideResponse> {
+    return this.courseService.archiveWeek(courseId, weekId, request.user);
   }
 }
