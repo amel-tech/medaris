@@ -1,4 +1,5 @@
 // @vitest-environment happy-dom
+import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Select } from "../src/mds/select";
 import { Tabs, TabsPanel } from "../src/mds/tabs";
@@ -44,6 +45,35 @@ describe("Tabs", () => {
     );
     await click(items[1]);
     expect(onChange).toHaveBeenCalledWith("b");
+  });
+
+  it("keeps the panel area as tall as the tallest panel shown, so switching does not jump", async () => {
+    const heights: Record<string, number> = { a: 640, b: 120 };
+    const offset = vi
+      .spyOn(HTMLElement.prototype, "offsetHeight", "get")
+      .mockImplementation(function (this: HTMLElement) {
+        if (!this.hasAttribute("data-tabs-panels")) return 0;
+        const shown = this.querySelector("[role=tabpanel]:not([hidden])");
+        return heights[shown?.textContent ?? ""] ?? 0;
+      });
+    function Harness() {
+      const [value, setValue] = useState("a");
+      return (
+        <Tabs tabs={tabs} value={value} label="Bölümler" onChange={setValue}>
+          <TabsPanel value="a">a</TabsPanel>
+          <TabsPanel value="b">b</TabsPanel>
+        </Tabs>
+      );
+    }
+    const host = await render(<Harness />);
+    const panels = host.querySelector("[data-tabs-panels]") as HTMLElement;
+    expect(panels.style.minBlockSize).toBe("");
+    await click(host.querySelectorAll("[role=tab]")[1]);
+    expect(host.querySelector("[role=tabpanel]")?.textContent).toBe("b");
+    expect(panels.style.minBlockSize).toBe("640px");
+    await click(host.querySelectorAll("[role=tab]")[0]);
+    expect(panels.style.minBlockSize).toBe("640px");
+    offset.mockRestore();
   });
 
   it("mode=links is a named nav of links with aria-current", async () => {

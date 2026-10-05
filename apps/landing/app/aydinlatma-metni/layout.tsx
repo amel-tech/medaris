@@ -1,4 +1,5 @@
 import { textFontsHref } from "@medaris/tokens/medaris-fonts";
+import { ThemeScript } from "@medaris/ui/mds/theme-script";
 import type { ReactNode } from "react";
 import "@medaris/ui/medaris.css";
 
@@ -15,8 +16,15 @@ export default function PrivacyNoticeLayout({
   children: ReactNode;
 }) {
   return (
-    <html lang="tr" dir="ltr" data-app="landing">
+    <html
+      lang="tr"
+      dir="ltr"
+      data-app="landing"
+      data-theme="light"
+      suppressHydrationWarning
+    >
       <head>
+        <ThemeScript />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link
           rel="preconnect"

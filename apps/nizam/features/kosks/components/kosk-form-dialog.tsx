@@ -13,13 +13,6 @@ import {
 } from "@medaris/ui/components/dialog";
 import { Input } from "@medaris/ui/components/input";
 import { Label } from "@medaris/ui/components/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@medaris/ui/components/select";
 import { toast } from "@medaris/ui/components/sonner";
 import { Switch } from "@medaris/ui/components/switch";
 import { Textarea } from "@medaris/ui/components/textarea";
@@ -36,24 +29,15 @@ import { KoskCover } from "~/features/kosks/components/kosk-cover";
 import {
   addTag,
   clampHue,
-  isKoskLevel,
   KOSK_FORM_LIMITS,
-  KOSK_LEVELS,
   type KoskFormState,
   toKoskDto,
 } from "~/features/kosks/kosk-form";
-
-/** Radix Select cannot carry an empty value, so "not set" has its own. */
-const LEVEL_UNSET = "__unset__";
 
 const initialState = (kosk?: KoskResponse): KoskFormState => ({
   name: kosk?.name ?? "",
   handle: kosk?.handle ?? "",
   description: kosk?.description ?? "",
-  field: kosk?.field ?? "",
-  level: isKoskLevel(kosk?.level)
-    ? (kosk?.level as KoskFormState["level"])
-    : "",
   tags: kosk?.tags ?? [],
   coverHue: kosk?.coverHue ?? 215,
   // A new köşk is listed unless its manager unlists it (MDRS-122).
@@ -61,7 +45,8 @@ const initialState = (kosk?: KoskResponse): KoskFormState => ({
 });
 
 /**
- * Create or edit a köşk (MDRS-108 adds field, level, tags and cover hue).
+ * Create or edit a köşk (MDRS-108 adds tags and cover hue; its field and level
+ * are not on the form, MDRS-252).
  * Who sees the edit trigger is decided by the caller — `koskAbilities(...).edit`
  * on the köşk page; "Yeni Köşk" is open to everyone signed in.
  */
@@ -208,44 +193,6 @@ export function KoskFormDialog({
               onChange={(e) => set("description", e.target.value)}
               placeholder={t("KoskForm.descriptionPlaceholder")}
             />
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
-              <Label htmlFor="kosk-field" className="mb-1.5">
-                {t("KoskForm.field")}
-              </Label>
-              <Input
-                id="kosk-field"
-                value={form.field}
-                maxLength={KOSK_FORM_LIMITS.fieldMax}
-                onChange={(e) => set("field", e.target.value)}
-                placeholder={t("KoskForm.fieldPlaceholder")}
-              />
-            </div>
-            <div>
-              <Label htmlFor="kosk-level" className="mb-1.5">
-                {t("KoskForm.level")}
-              </Label>
-              <Select
-                value={form.level || LEVEL_UNSET}
-                onValueChange={(v) => set("level", isKoskLevel(v) ? v : "")}
-              >
-                <SelectTrigger id="kosk-level" className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={LEVEL_UNSET}>
-                    {t("KoskForm.levelUnset")}
-                  </SelectItem>
-                  {KOSK_LEVELS.map((level) => (
-                    <SelectItem key={level} value={level}>
-                      {t(`Levels.${level}`)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
           </div>
 
           <div>

@@ -105,6 +105,9 @@ services:
       # calendar files (MDRS-117). Empty is allowed: only GET
       # /lessons/:id/calendar.ics needs it, and it answers 503 until it is set.
       TEDRIS_WEB_URL: ${TEDRISAT__TEDRIS_WEB_URL:-}
+      # Hides the talebe's public profile while it is not `true` (MDRS-141): the
+      # three /public-profile routes answer 404 PUBLIC_PROFILE_UNAVAILABLE.
+      PUBLIC_PROFILE_ENABLED: ${TEDRISAT__PUBLIC_PROFILE_ENABLED:-${API__PUBLIC_PROFILE_ENABLED:-false}}
 
       # The service account that reads the realm's users (MDRS-169). Both
       # empty is allowed: only GET /users/lookup needs them, and it answers 503.
@@ -299,6 +302,7 @@ services:
       TEDRISAT_API_BASE_URL: http://tedrisat:3001
       NIZAM_URL: ${TEDRIS__NIZAM_URL:-}
       NAZIR_URL: ${TEDRIS__NAZIR_URL:-}
+      LANDING_URL: ${TEDRIS__LANDING_URL:-${WEB__LANDING_URL:-}}
     depends_on:
       - tedrisat
 
@@ -321,6 +325,7 @@ services:
       TEDRISAT_API_BASE_URL: http://tedrisat:3001
       NAZIR_URL: ${NIZAM__NAZIR_URL:-}
       TEDRIS_URL: ${NIZAM__TEDRIS_URL:-}
+      LANDING_URL: ${NIZAM__LANDING_URL:-${WEB__LANDING_URL:-}}
     depends_on:
       - tedrisat
 
@@ -359,6 +364,14 @@ services:
       OTEL_SERVICE_NAME: ${LANDING__OTEL_SERVICE_NAME:-landing-web}
       OTEL_EXPORTER_OTLP_ENDPOINT: ${LANDING__OTEL_EXPORTER_OTLP_ENDPOINT:-${WEB__OTEL_EXPORTER_OTLP_ENDPOINT:?set WEB__OTEL_EXPORTER_OTLP_ENDPOINT in .env}}
       TEDRIS_APP_URL: ${LANDING__TEDRIS_APP_URL:-http://localhost:${TEDRIS_WEB_PORT:-4000}}
+      # The İletişim form's sender; empty SMTP_HOST means the form answers 503.
+      SMTP_HOST: ${LANDING__SMTP_HOST:-}
+      SMTP_SECURITY: ${LANDING__SMTP_SECURITY:-}
+      SMTP_PORT: ${LANDING__SMTP_PORT:-}
+      SMTP_FROM: ${LANDING__SMTP_FROM:-}
+      SMTP_FROM_DISPLAY_NAME: ${LANDING__SMTP_FROM_DISPLAY_NAME:-}
+      SMTP_USER: ${LANDING__SMTP_USER:-}
+      SMTP_PASSWORD: ${LANDING__SMTP_PASSWORD:-}
 
 
   medaris-db:

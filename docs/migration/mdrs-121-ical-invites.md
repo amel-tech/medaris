@@ -48,8 +48,8 @@ addresses come from there.
   the language is the talebe's `locale`, else Turkish. The footer links Hesap,
   where invitations are turned off. Titles are HTML-escaped; the subject is
   kept on one line.
-- **State** (migration `0048_lesson_invitations`, rollback in
-  `rollbacks/0048_lesson_invitations.down.sql`):
+- **State** (migration `0054_lesson_invitations`, rollback in
+  `rollbacks/0054_lesson_invitations.down.sql`):
   - `lesson_invitations` (PK lesson_id + user_id, plus `course_id`; **no
     foreign key**): the SEQUENCE and what the last message said (start,
     length, both titles), `cancelled_at` once a CANCEL went out. The row
@@ -66,9 +66,13 @@ addresses come from there.
   It reconciles instead of reacting event by event: one SQL rule decides
   whether a (session, talebe) pair should be in the calendar —
   session ahead, timed, not cancelled, session and week not hidden; course
-  PUBLISHED, not hidden, köşk not hidden, not passive (neither
-  `passive_since` nor "had a müderris post and none is held now", the
-  Pasif kapsamlar rule, so a post that simply lapses counts); seat ENROLLED;
+  PUBLISHED, not hidden, köşk not hidden, in no passive scope (not
+  `passive_since`, and neither the course, its köşk nor its medrese "had a
+  müderris, nazım or başmüderris post and none is held now": `isPassiveScope`,
+  the fact the permission engine reads to close a scope's content to a talebe,
+  so a post that simply lapses counts and a talebe who cannot open the course
+  is not invited to it; the port onto the reviewed MDRS-135 widened this from
+  the course alone to the three scopes); seat ENROLLED;
   no open ban on the course, köşk or medrese. Each round:
   - **CANCEL** every standing invitation for a time not yet come whose pair
     no longer passes (cancelled, moved into the past, hidden, passive,
@@ -167,7 +171,7 @@ network):
   MIME from nodemailer's stream transport: `multipart/alternative` with a
   `text/calendar; charset=utf-8; method=REQUEST` part).
 - tedris-web `test/account-profile.spec.ts`: 3 new tests for the switch.
-- `drizzle-kit generate` after the migration (re-run after 0048 dropped its
+- `drizzle-kit generate` after the migration (re-run after 0054 dropped its
   foreign key and gained `course_id`): "No schema changes".
 - `node tools/ci/assert-openapi-spec-fresh.mjs`: 169 paths, identical.
 
@@ -203,11 +207,11 @@ network):
 
 ## Follow-ups
 
-- `0048_lesson_invitations` was edited in place in the review round (no
+- `0054_lesson_invitations` was edited in place in the review round (no
   foreign key, `course_id` added) because it has not reached `main`. A local
   database that booted an earlier commit of this branch holds the old table:
-  run the rollback in `rollbacks/0048_lesson_invitations.down.sql`, delete
-  0048's row from `"drizzle"."__drizzle_migrations"`, and boot again.
+  run the rollback in `rollbacks/0054_lesson_invitations.down.sql`, delete
+  0054's row from `"drizzle"."__drizzle_migrations"`, and boot again.
 
 - Manual check in Gmail and Apple Mail (above) once `TEDRISAT__SMTP_*` is set
   on an environment.

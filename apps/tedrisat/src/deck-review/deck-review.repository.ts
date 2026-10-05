@@ -9,6 +9,7 @@ import {
   isNull,
   sql,
 } from "drizzle-orm";
+import type { HideLevel } from "../archive/hide-level";
 import { DatabaseService } from "../database/database.service";
 import { holdsIn } from "../database/role-assignments";
 import { auditLog } from "../database/schema/audit.schema";
@@ -23,6 +24,8 @@ import {
 import { users } from "../database/schema/user.schema";
 import { DeckPublishStatus } from "../flashcard/domain/deck-publish-status.enum";
 import { FlashcardType } from "../flashcard/domain/flashcard-type.enum";
+
+export const UNPUBLISH_ACTION = "deck.unpublish";
 
 export interface IPerson {
   id: string;
@@ -279,6 +282,48 @@ export class DeckReviewRepository {
     return rows.length > 0;
   }
 
+  /**
+   * PUBLISHED to PRIVATE by the başnazım, and the `audit_log` row in the same
+   * transaction. The decision columns are wiped, as on every change of
+   * visibility, so the row is the only record of who took the deck down and
+   * why: it is written with the change or the change does not happen. False
+   * when the deck is not published any more.
+   */
+  async unpublish(
+    deck: { id: string; title: string; authorId: string },
+    by: string,
+    reason: string
+  ): Promise<boolean> {
+    return this.db.transaction(async (tx) => {
+      const rows = await tx
+        .update(decks)
+        .set({
+          isPublic: false,
+          publishStatus: DeckPublishStatus.PRIVATE,
+          publishRequestedAt: null,
+          publishDecidedAt: null,
+          publishDecidedBy: null,
+          publishRejectReason: null,
+        })
+        .where(
+          and(
+            eq(decks.id, deck.id),
+            eq(decks.publishStatus, DeckPublishStatus.PUBLISHED)
+          )
+        )
+        .returning({ id: decks.id });
+      if (rows.length === 0) return false;
+      await tx.insert(auditLog).values({
+        actorId: by,
+        action: UNPUBLISH_ACTION,
+        entity: "deck",
+        entityId: deck.id,
+        details: { title: deck.title, owner: deck.authorId, reason },
+      });
+      return true;
+    });
+  }
+
   async displayName(userId: string): Promise<string | null> {
     const [row] = await this.db
       .select({
@@ -376,10 +421,10 @@ export class DeckReviewRepository {
   }
 
   /** Hides a shown köşk deck; false when there is none to hide. */
-  async hideDeck(id: string, by: string): Promise<boolean> {
+  async hideDeck(id: string, by: string, level: HideLevel): Promise<boolean> {
     const rows = await this.db
       .update(decks)
-      .set({ archivedAt: new Date(), archivedBy: by })
+      .set({ archivedAt: new Date(), archivedBy: by, archivedLevel: level })
       .where(
         and(eq(decks.id, id), isNotNull(decks.koskId), isNull(decks.archivedAt))
       )

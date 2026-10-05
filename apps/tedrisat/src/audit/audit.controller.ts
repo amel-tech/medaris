@@ -23,7 +23,7 @@ import { AuditService } from "./audit.service";
 /**
  * The audit trail (MDRS-181, nizam/17). Read-only by construction: this
  * controller has no route that writes, updates or deletes. No `AuthzGuard`:
- * the matrix has no entity for it, so `AuditService` decides, the başnazım or a
+ * the engine has no entity for it, so `AuditService` decides, the başnazım or a
  * Medaris nazımı holding "Denetim kaydını oku", and everyone else is a 403.
  */
 @ApiTags("nizam")

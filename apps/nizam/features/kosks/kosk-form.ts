@@ -1,8 +1,4 @@
-import {
-  type CreateKoskDto,
-  KoskLevel,
-  type UpdateKoskDto,
-} from "@medaris/services/tedrisat";
+import type { CreateKoskDto, UpdateKoskDto } from "@medaris/services/tedrisat";
 
 /**
  * The köşk form's rules (MDRS-108). The limits repeat tedrisat's
@@ -14,17 +10,10 @@ export const KOSK_FORM_LIMITS = {
   nameMax: 120,
   handleMax: 60,
   descriptionMax: 1000,
-  fieldMax: 60,
   hueMax: 360,
   tagsMax: 10,
   tagMax: 40,
 } as const;
-
-export const KOSK_LEVELS: KoskLevel[] = Object.values(KoskLevel);
-
-/** `kosks.level` is free text in the database; only these four are labelled. */
-export const isKoskLevel = (value: unknown): value is KoskLevel =>
-  typeof value === "string" && (KOSK_LEVELS as string[]).includes(value);
 
 export type AddTagResult =
   | { ok: true; tags: string[] }
@@ -60,8 +49,6 @@ export interface KoskFormState {
   name: string;
   handle: string;
   description: string;
-  field: string;
-  level: KoskLevel | "";
   tags: string[];
   coverHue: number;
   isPrivate: boolean;
@@ -85,8 +72,6 @@ export function toKoskDto(
     name: state.name.trim(),
     handle: text(state.handle),
     description: text(state.description),
-    field: text(state.field),
-    level: state.level || empty,
     tags: state.tags,
     coverHue: clampHue(state.coverHue),
     isPrivate: state.isPrivate,

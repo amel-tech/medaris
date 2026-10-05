@@ -1,6 +1,7 @@
 import { setRequestLocale } from "next-intl/server";
 import { SiteFooter } from "~/components/site-footer";
 import { SiteHeader } from "~/components/site-header";
+import { IS_DRAFT } from "~/content/aydinlatma-metni";
 import { legal } from "~/content/legal";
 
 export const metadata = { title: "Kullanım şartları · Medaris" };
@@ -26,23 +27,25 @@ export default async function Page({
               Girişte gördüğünüz şartların özeti, bu metnin kısa hâlidir.
             </p>
             <p className="mds-caption">
-              Son güncelleme: <time dateTime="2026-10-01">1 Ekim 2026</time> ·
+              Son güncelleme: <time dateTime="2026-10-04">4 Ekim 2026</time> ·
               Yürürlük tarihi: {legal.termsEffectiveDate}
             </p>
           </div>
         </div>
 
-        <div
-          className="mds-alert mds-alert--neutral max-inline-measure"
-          role="note"
-        >
-          <span className="mds-alert__icon" aria-hidden="true"></span>
-          <div>
-            <p className="mds-alert__title">Taslak — hukuk onayı bekliyor</p>
-            Bu metin henüz hukukçu onayından geçmedi. Köşeli parantezli bilgiler
-            eklenip onay alındığında yürürlüğe girer.
+        {IS_DRAFT && (
+          <div
+            className="mds-alert mds-alert--neutral max-inline-measure"
+            role="note"
+          >
+            <span className="mds-alert__icon" aria-hidden="true"></span>
+            <div>
+              <p className="mds-alert__title">Taslak — hukuk onayı bekliyor</p>
+              Bu metin henüz hukukçu onayından geçmedi. Bu not yalnız geliştirme
+              ortamında görünür.
+            </div>
           </div>
-        </div>
+        )}
 
         <div className="grid items-start gap-6 grid-cols-[var(--layout-pane)_minmax(0,1fr)] max-md:grid-cols-1">
           <aside className="sticky inset-bs-[calc(var(--layout-topbar)+var(--space-6))] flex flex-col gap-4 max-md:static">
@@ -99,8 +102,7 @@ export default async function Page({
               </h2>
               <p>
                 Bu şartlar, Medaris’i ziyaret eden, hesap açan ve derslere
-                katılan herkes için geçerlidir. Medaris, {legal.controllerTitle}{" "}
-                tarafından işletilir.
+                katılan herkes için geçerlidir.
               </p>
               <p>Metinde geçen adlar şu anlamlarda kullanılır:</p>
               <dl className="grid gap-y-4 gap-x-6 grid-cols-[repeat(auto-fit,minmax(min(14rem,100%),1fr))]">
@@ -385,10 +387,13 @@ export default async function Page({
                 8. Cihaz kısıtlaması
               </h2>
               <p>
-                Medaris’i açan her tarayıcıya, ilk ziyarette rastgele üretilmiş
-                bir cihaz tanımlayıcısı taşıyan bir çerez yerleştirilir. Çerezin
+                Medaris, erişimi kaldırılan bir kişinin aynı cihazdan başka bir
+                hesapla dönmesini önlemek için cihaz kısıtlaması uygulayabilir.
+                Bunun için her tarayıcıya rastgele üretilmiş bir cihaz
+                tanımlayıcısı taşıyan bir çerez kullanılacaktır; tarayıcı parmak
+                izi alınmaz. Bu çerez henüz kullanılmıyor; devreye alındığında
                 amacı ve süresi <a href="/cerezler">Çerezler</a> sayfasında ve{" "}
-                <a href="/aydinlatma-metni">Aydınlatma Metni</a>’nde anlatılır.
+                <a href="/aydinlatma-metni">Aydınlatma Metni</a>’nde yazılır.
               </p>
               <ul className="mbe-0 ps-6">
                 <li>
@@ -461,13 +466,9 @@ export default async function Page({
               <p>
                 Bu şartlara ilişkin sorular ve bildirimler{" "}
                 <a href="/iletisim">İletişim</a> sayfasındaki formla ya da
-                aşağıdaki adrese iletilebilir.
+                aşağıdaki e-posta adresine iletilebilir.
               </p>
               <dl className="grid gap-y-2 gap-x-6 items-baseline grid-cols-[max-content_minmax(0,1fr)]">
-                <dt className="mds-label">Unvan</dt>
-                <dd>{legal.controllerTitle}</dd>
-                <dt className="mds-label">Adres</dt>
-                <dd>{legal.address}</dd>
                 <dt className="mds-label">E-posta</dt>
                 <dd>{legal.supportEmail}</dd>
               </dl>

@@ -210,6 +210,11 @@ export interface SetPlatformPolicyRequest {
     setPlatformPolicyDto: SetPlatformPolicyDto;
 }
 
+export interface UnpublishDeckRequest {
+    id: string;
+    rejectReasonDto: RejectReasonDto;
+}
+
 export interface UpdatePermissionGroupRequest {
     id: string;
     updatePermissionGroupDto: UpdatePermissionGroupDto;
@@ -528,7 +533,7 @@ export class NizamApi extends runtime.BaseAPI {
     }
 
     /**
-     * nizam/11. `decisions` answers every item `…/given` lists: TAKE_OVER leaves the right in place under the başnazım\'s name, DROP revokes it. The appointment and the platform permissions are revoked. Written to the audit log.
+     * nizam/11. `decisions` answers every role and grant `…/given` lists as given to someone else: TAKE_OVER leaves the right in place under the başnazım\'s name, DROP revokes it, and a seat dropped takes with it what its holder was given in its scope. What the person gave themselves is revoked and takes no answer (a TAKE_OVER for it is refused with DISMISS_DECISIONS_INCOMPLETE). The appointment and the platform permissions are revoked. Written to the audit log.
      * Dismiss a Medaris nazımı
      */
     async dismissMedarisNazimRaw(requestParameters: DismissMedarisNazimRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
@@ -573,7 +578,7 @@ export class NizamApi extends runtime.BaseAPI {
     }
 
     /**
-     * nizam/11. `decisions` answers every item `…/given` lists: TAKE_OVER leaves the right in place under the başnazım\'s name, DROP revokes it. The appointment and the platform permissions are revoked. Written to the audit log.
+     * nizam/11. `decisions` answers every role and grant `…/given` lists as given to someone else: TAKE_OVER leaves the right in place under the başnazım\'s name, DROP revokes it, and a seat dropped takes with it what its holder was given in its scope. What the person gave themselves is revoked and takes no answer (a TAKE_OVER for it is refused with DISMISS_DECISIONS_INCOMPLETE). The appointment and the platform permissions are revoked. Written to the audit log.
      * Dismiss a Medaris nazımı
      */
     async dismissMedarisNazim(requestParameters: DismissMedarisNazimRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
@@ -757,7 +762,7 @@ export class NizamApi extends runtime.BaseAPI {
     }
 
     /**
-     * nizam/11\'s dismissal question: the roles and permissions this person gave to others that are still held.
+     * nizam/11\'s dismissal question: the roles and permissions this person gave that are still held, the ones they gave themselves included (`to` is the person), and the groups they defined or changed. Only the rows given to others take an answer; the self-made ones go with the dismissal.
      * What a Medaris nazımı has handed on
      */
     async getMedarisNazimGivenRaw(requestParameters: GetMedarisNazimGivenRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<GivenItemResponse>>> {
@@ -792,7 +797,7 @@ export class NizamApi extends runtime.BaseAPI {
     }
 
     /**
-     * nizam/11\'s dismissal question: the roles and permissions this person gave to others that are still held.
+     * nizam/11\'s dismissal question: the roles and permissions this person gave that are still held, the ones they gave themselves included (`to` is the person), and the groups they defined or changed. Only the rows given to others take an answer; the self-made ones go with the dismissal.
      * What a Medaris nazımı has handed on
      */
     async getMedarisNazimGiven(requestParameters: GetMedarisNazimGivenRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<GivenItemResponse>> {
@@ -1047,7 +1052,7 @@ export class NizamApi extends runtime.BaseAPI {
     }
 
     /**
-     * The members\' requests to make a deck public, oldest waiting first, or the answered ones, newest first, a page at a time. Both tab counts (every request, not the page) come with it. The Medaris başnazımı (SYSTEM_ADMIN) only.
+     * The members\' requests to make a deck public, oldest waiting first, or the answered ones, newest first, a page at a time. Both tab counts (every request, not the page) come with it. The Medaris başnazımı, or a Medaris nazımı holding platform.deck_publish.
      * Deck publish requests (Bekleyen / Karara bağlanan)
      */
     async listDeckPublishRequestsRaw(requestParameters: ListDeckPublishRequestsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DeckPublishRequestListResponse>> {
@@ -1086,7 +1091,7 @@ export class NizamApi extends runtime.BaseAPI {
     }
 
     /**
-     * The members\' requests to make a deck public, oldest waiting first, or the answered ones, newest first, a page at a time. Both tab counts (every request, not the page) come with it. The Medaris başnazımı (SYSTEM_ADMIN) only.
+     * The members\' requests to make a deck public, oldest waiting first, or the answered ones, newest first, a page at a time. Both tab counts (every request, not the page) come with it. The Medaris başnazımı, or a Medaris nazımı holding platform.deck_publish.
      * Deck publish requests (Bekleyen / Karara bağlanan)
      */
     async listDeckPublishRequests(requestParameters: ListDeckPublishRequestsRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DeckPublishRequestListResponse> {
@@ -1464,6 +1469,59 @@ export class NizamApi extends runtime.BaseAPI {
     async setPlatformPolicy(requestParameters: SetPlatformPolicyRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PlatformPolicyListResponse> {
         const response = await this.setPlatformPolicyRaw(requestParameters, initOverrides);
         return await response.value();
+    }
+
+    /**
+     * The deck becomes private again and the reason goes to its owner, who may ask again. The reason is required. The Medaris başnazımı (SYSTEM_ADMIN) only; the change is written to the audit log (`deck.unpublish`).
+     * Take a published deck back (Yayından kaldır)
+     */
+    async unpublishDeckRaw(requestParameters: UnpublishDeckRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling unpublishDeck().'
+            );
+        }
+
+        if (requestParameters['rejectReasonDto'] == null) {
+            throw new runtime.RequiredError(
+                'rejectReasonDto',
+                'Required parameter "rejectReasonDto" was null or undefined when calling unpublishDeck().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/nizam/deck-publish-requests/{id}/unpublish`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: RejectReasonDtoToJSON(requestParameters['rejectReasonDto']),
+        }, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * The deck becomes private again and the reason goes to its owner, who may ask again. The reason is required. The Medaris başnazımı (SYSTEM_ADMIN) only; the change is written to the audit log (`deck.unpublish`).
+     * Take a published deck back (Yayından kaldır)
+     */
+    async unpublishDeck(requestParameters: UnpublishDeckRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.unpublishDeckRaw(requestParameters, initOverrides);
     }
 
     /**

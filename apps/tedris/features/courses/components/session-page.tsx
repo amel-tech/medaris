@@ -13,9 +13,11 @@ import { resolveMeetingPlatform } from "@medaris/utils";
 import { getLocale, getTimeZone, getTranslations } from "next-intl/server";
 import type { ReactNode } from "react";
 import type { LooseTranslator } from "~/lib/i18n/loose";
+import { canWriteNotes } from "../lesson-note-model";
 import {
   embedUrlOf,
   liveEmbedUrlOf,
+  playerApiUrlOf,
   recordingsTabPath,
 } from "../recordings-model";
 import {
@@ -24,6 +26,7 @@ import {
   sessionJoinLabels,
 } from "../session-join-labels";
 import { splitArabic, zoneLabel } from "../session-model";
+import { LessonNotes } from "./lesson-notes";
 import { LiveChat } from "./live-chat";
 import { MediaPlayer } from "./media-player";
 import { SessionJoinLive } from "./session-join-live";
@@ -169,6 +172,23 @@ export const SessionPage = async ({
     session.status === "ENDED" && recording?.status === "READY";
   const liveStream = session.status === "LIVE" ? session.liveStreamUrl : null;
   const liveEmbed = liveEmbedUrlOf(liveStream);
+  // MDRS-150: an enrolled talebe takes private notes on the video on screen,
+  // the stream while it is live and the recording once it is up. The frames
+  // get the player API only then, so every other viewer's page is unchanged.
+  const mayTakeNotes =
+    !session.contentLocked && canWriteNotes(course.enrollment?.status);
+  const noteFrame = (framed: string | null, frameId: string) =>
+    mayTakeNotes && framed
+      ? { embedUrl: playerApiUrlOf(framed), frameId }
+      : { embedUrl: framed, frameId: undefined };
+  const liveFrame = noteFrame(liveEmbed, "live-stream-frame");
+  const recordingFrame = noteFrame(recordingEmbed, "recording-frame");
+  const notesVideo =
+    liveStream && liveEmbed
+      ? { frameId: "live-stream-frame", framed: liveEmbed }
+      : showRecording
+        ? { frameId: "recording-frame", framed: recordingEmbed }
+        : null;
   const recordedOn = recording?.recordedAt
     ? new Intl.DateTimeFormat(locale, {
         weekday: "long",
@@ -257,7 +277,8 @@ export const SessionPage = async ({
             <MediaPlayer
               id="recording-title"
               title={recording.title}
-              embedUrl={recordingEmbed}
+              embedUrl={recordingFrame.embedUrl}
+              frameId={recordingFrame.frameId}
               placeholder={t("SessionPage.recordingPlaceholder")}
               openHref={recordingEmbed ? null : recording.url}
               openLabel={t("SessionPage.recordingOpen")}
@@ -328,7 +349,8 @@ export const SessionPage = async ({
             <MediaPlayer
               id="live-stream-title"
               title={t("SessionPage.liveStreamTitle")}
-              embedUrl={liveEmbed}
+              embedUrl={liveFrame.embedUrl}
+              frameId={liveFrame.frameId}
               placeholder={t("SessionPage.liveStreamPlaceholder")}
               openHref={liveEmbed ? null : liveStream}
               openLabel={t("SessionPage.liveStreamOpen")}
@@ -338,6 +360,20 @@ export const SessionPage = async ({
           ) : null}
 
           {liveStream && liveEmbed ? <LiveChat streamUrl={liveStream} /> : null}
+
+          {mayTakeNotes && notesVideo ? (
+            <LessonNotes
+              lessonId={session.id}
+              // Only a YouTube frame reports a position; anything else is typed.
+              frameId={
+                notesVideo.framed?.startsWith(
+                  "https://www.youtube-nocookie.com/"
+                )
+                  ? notesVideo.frameId
+                  : null
+              }
+            />
+          ) : null}
 
           {session.previous || session.next ? (
             <nav

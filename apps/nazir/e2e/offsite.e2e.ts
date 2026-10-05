@@ -49,7 +49,9 @@ const open = async (page: Page) => {
   ).toBeVisible();
 };
 
-const form = (page: Page) => page.getByTestId("offsite-form");
+// `visible`: a page Next keeps hidden after a navigation holds the same form
+const form = (page: Page) =>
+  page.getByTestId("offsite-form").filter({ visible: true });
 const submit = (page: Page) =>
   form(page).getByRole("button", { name: "Talebi gönder" });
 
@@ -74,11 +76,15 @@ test("nazir/09 — Dersler leads to the form, which has the canvas's fields and 
   await expect(
     form(page).getByText("Önerdiğiniz ad; dersi açan değiştirebilir.")
   ).toBeVisible();
-  await expect(page.getByText("Talepten sonra")).toBeVisible();
   await expect(
-    page.getByText(
-      "Kabul edilirse dersi köşk nazımı açar ve müderrislerini seçer."
-    )
+    page.getByText("Talepten sonra").filter({ visible: true })
+  ).toBeVisible();
+  await expect(
+    page
+      .getByText(
+        "Kabul edilirse dersi köşk nazımı açar ve müderrislerini seçer."
+      )
+      .filter({ visible: true })
   ).toBeVisible();
   await expect(
     form(page).getByRole("link", { name: "Vazgeç" })
@@ -93,8 +99,12 @@ test("nazir/09 — a form with a field missing sends nothing and says which, und
   await open(page);
   await submit(page).click();
 
-  await expect(page.getByText("Ders adı boş olamaz.")).toBeVisible();
-  await expect(page.getByText("Bir gerekçe yazın.")).toBeVisible();
+  await expect(
+    page.getByText("Ders adı boş olamaz.").filter({ visible: true })
+  ).toBeVisible();
+  await expect(
+    page.getByText("Bir gerekçe yazın.").filter({ visible: true })
+  ).toBeVisible();
   await expect(form(page).getByLabel("Ders adı")).toBeFocused();
   expect(await offsite?.requests()).toHaveLength(0);
 });
@@ -116,12 +126,16 @@ test("nazir/09 — köşk, name and reason are recorded as a pending request of 
     .getByLabel("Gerekçe")
     .fill("  E2E bu metni okutan bir ders yok.  ");
   await expect(
-    page.getByText(`Talep ${base?.first.koskName}`, { exact: false })
+    page
+      .getByText(`Talep ${base?.first.koskName}`, { exact: false })
+      .filter({ visible: true })
   ).toBeVisible();
   await submit(page).click();
 
   await expect(page).toHaveURL(/\/dersler$/);
-  await expect(page.getByText("Talep gönderildi")).toBeVisible();
+  await expect(
+    page.getByText("Talep gönderildi").filter({ visible: true })
+  ).toBeVisible();
   const [request] = (await offsite?.requests()) ?? [];
   expect(request).toMatchObject({
     madrasahId: base?.madrasah.id,
@@ -144,6 +158,8 @@ test("nazir/09 — a medrese nazır is refused: a notice and no form", async ({
   test.skip(!(ready() && canSignIn(MEDRESE_NAZIR)), "no medrese nazır account");
   const page = await as("MEDRESE_NAZIR");
   await open(page);
-  await expect(page.getByText("Bu sayfaya izniniz yok")).toBeVisible();
+  await expect(
+    page.getByText("Bu sayfaya izniniz yok").filter({ visible: true })
+  ).toBeVisible();
   await expect(form(page)).toHaveCount(0);
 });

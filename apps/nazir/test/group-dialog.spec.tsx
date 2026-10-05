@@ -68,6 +68,7 @@ const COURSE = [
   "recording.upload",
   "recording.watch_restricted",
   "session.view_content",
+  "question.answer",
   "ban.course",
   "ban.lift_course",
   "deck.manage_course",
@@ -171,7 +172,7 @@ describe("'İzin grubu tanımla' (nazir 16)", () => {
     );
     expect(dialog().textContent).toContain("Medrese kapsamı · 0 izin seçili");
     expect(scopeRadio("Medrese").getAttribute("aria-checked")).toBe("true");
-    expect(dialog().querySelectorAll("[role=checkbox]")).toHaveLength(30);
+    expect(dialog().querySelectorAll("[role=checkbox]")).toHaveLength(31);
     expect(button(dialog(), "Grubu kaydet")).toBeDefined();
     expect(document.activeElement).toBe(nameField());
   });
@@ -192,7 +193,7 @@ describe("'İzin grubu tanımla' (nazir 16)", () => {
     loadCatalog.mockResolvedValueOnce(catalog());
     await click(button(dialog(), "Yeniden dene"));
     await settle(80);
-    expect(dialog().querySelectorAll("[role=checkbox]")).toHaveLength(30);
+    expect(dialog().querySelectorAll("[role=checkbox]")).toHaveLength(31);
   });
 
   it("is not saved without a name and a permission, and says which is missing (criterion 1)", async () => {
@@ -487,6 +488,7 @@ describe("the groups under the nazırs (nazir 05, 16)", () => {
           madrasahId="m-1"
           madrasahName="Süleymaniye Medresesi"
           cards={cards}
+          manages
         />
       )
     );

@@ -3,11 +3,9 @@ import { and, eq, sql } from "drizzle-orm";
 import { CourseStatus } from "../course/domain/course-status.enum";
 import { EnrollmentStatus } from "../course/domain/enrollment-status.enum";
 import { DatabaseService } from "../database/database.service";
+import { isPassiveScope } from "../database/role-assignments";
 import { lessonInvitations } from "../database/schema/lesson-invitation.schema";
-import {
-  ASSIGNED_ROLES,
-  SCOPE_TYPES,
-} from "../database/schema/role-assignment.schema";
+import { ASSIGNED_ROLES } from "../database/schema/role-assignment.schema";
 
 /** Where neither the talebe nor a deleted course still names a zone. */
 const FALLBACK_TIME_ZONE = "Europe/Istanbul";
@@ -73,9 +71,12 @@ const toDue = (r: Row): IInvitationDue => ({
  * - the session is ahead, has a time, is not cancelled and is not hidden,
  *   nor is its week;
  * - the course is published, not hidden, in a köşk that is not hidden, and
- *   not passive — neither marked so nor left without any müderris after it
- *   had one (the Pasif kapsamlar rule, MDRS-172; a lapsed post counts as
- *   gone without anyone touching the row);
+ *   in no passive scope: not marked so, and neither the course (its müderris),
+ *   its köşk (its nazım) nor its medrese (its başmüderris) left without anyone
+ *   after it had one. That is the fact the engine reads to close a scope's
+ *   content to a talebe (`isPassiveScope`, MDRS-135/MDRS-136), so a talebe who
+ *   cannot open the course is not invited to its sessions; a lapsed post
+ *   counts as gone without anyone touching the row;
  * - the seat is ENROLLED, and its holder is barred by no open ban on the
  *   course, its köşk or its medrese (MDRS-113).
  */
@@ -85,14 +86,9 @@ const SHOULD_HOLD = sql`(
   and c.status = ${CourseStatus.PUBLISHED} and c.archived_at is null
   and k.archived_at is null and c.passive_since is null
   and not (
-    exists (select 1 from role_assignments ra
-             where ra.role = ${ASSIGNED_ROLES.MUDERRIS}
-               and ra.scope_type = ${SCOPE_TYPES.COURSE} and ra.scope_id = c.id)
-    and not exists (select 1 from role_assignments h
-             where h.role = ${ASSIGNED_ROLES.MUDERRIS}
-               and h.scope_type = ${SCOPE_TYPES.COURSE} and h.scope_id = c.id
-               and h.revoked_at is null
-               and (h.expires_at is null or h.expires_at > now())))
+    ${isPassiveScope(ASSIGNED_ROLES.MUDERRIS, sql`c.id`)}
+    or ${isPassiveScope(ASSIGNED_ROLES.KOSK_NAZIM, sql`c.kosk_id`)}
+    or ${isPassiveScope(ASSIGNED_ROLES.MEDRESE_BASMUDERRIS, sql`c.madrasah_id`)})
   and e.status = ${EnrollmentStatus.ENROLLED}
   and not exists (select 1 from bans b
              where b.user_id = e.user_id and b.lifted_at is null

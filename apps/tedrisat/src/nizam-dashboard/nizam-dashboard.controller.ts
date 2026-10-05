@@ -13,8 +13,9 @@ import { NizamDashboardService } from "./nizam-dashboard.service";
 
 /**
  * The Medaris home page (MDRS-182, nizam/01 and 05). No `AuthzGuard`: the
- * matrix has no entity for the platform, and `NizamDashboardService` decides
- * (the başnazım, or a Medaris nazımı).
+ * catalogue has no entity for the platform, and `NizamDashboardService` decides
+ * (the başnazım, or a Medaris nazımı: the page asks for the role, no code opens
+ * it, and what it shows is cut to the platform permissions the viewer holds).
  */
 @ApiTags("nizam")
 @ApiBearerAuth()

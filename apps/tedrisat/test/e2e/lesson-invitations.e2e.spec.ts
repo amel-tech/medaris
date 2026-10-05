@@ -416,6 +416,27 @@ describe("Lesson invitations by e-mail (MDRS-121, e2e)", () => {
     expect(sent).toHaveLength(0);
   });
 
+  it("cancels the invitations of a course whose köşk turns passive: its talebe can no longer open the course", async () => {
+    await approve(TALEBE_ID);
+    await settle();
+    sent.length = 0;
+
+    // The köşk's only nazım post ends: the passive scope the engine closes to a
+    // talebe (MDRS-135), though the course still has its müderris.
+    await db()
+      .update(roleAssignments)
+      .set({ revokedAt: new Date(), revokedBy: MANAGER_ID })
+      .where(
+        and(
+          eq(roleAssignments.userId, MANAGER_ID),
+          eq(roleAssignments.role, ASSIGNED_ROLES.KOSK_NAZIM)
+        )
+      );
+    await sweep();
+
+    expect(sent.map((m) => calendarOf(m).method)).toEqual(["CANCEL"]);
+  });
+
   it("cancels the invitations of a course that is hidden", async () => {
     await approve(TALEBE_ID);
     await settle();

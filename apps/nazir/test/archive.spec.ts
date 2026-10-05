@@ -5,6 +5,7 @@ import {
   archiveErrorKey,
   archiveHref,
   archiveRows,
+  medreseRestoreOf,
   pageOf,
   pageWindow,
   restoreOf,
@@ -38,6 +39,7 @@ const item = (over: Record<string, unknown> = {}) =>
     archivedAt: new Date("2026-09-28T13:10:00Z"),
     archivedBy: { id: "u-1", name: "Mehmet Emin Işıkoğlu", role: "MUDERRIS" },
     canRestore: true,
+    hiddenLevel: "course",
     ...over,
   }) as never;
 
@@ -298,9 +300,44 @@ describe("the rows (criterion 4)", () => {
   });
 });
 
+describe("the hidden medrese's banner (MDRS-143)", () => {
+  const banner = (
+    madrasah: Parameters<typeof medreseRestoreOf>[0]
+  ): ReturnType<typeof medreseRestoreOf> => medreseRestoreOf(madrasah, t, "tr");
+  const by = (role: string | null) => ({
+    id: "u-2",
+    name: "Ömer Nasuhi Bilmenoğlu",
+    role,
+  });
+
+  it("is the button for whoever may bring the medrese back", () => {
+    expect(
+      banner({ canRestore: true, hiddenBy: by("MEDRESE_BASMUDERRIS") })
+    ).toEqual({ kind: "button" });
+  });
+
+  it("names the kademe that hid it for whoever may not, as a row does", () => {
+    expect(banner({ canRestore: false, hiddenBy: by(null) })).toEqual({
+      kind: "note",
+      text: "Bunu Medaris yönetimi gizledi; yalnız o kademe ya da üstü geri alabilir.",
+    });
+    expect(banner({ canRestore: false, hiddenBy: by("KOSK_NAZIM") })).toEqual({
+      kind: "note",
+      text: "Bunu köşk nazımı gizledi; yalnız o kademe ya da üstü geri alabilir.",
+    });
+    expect(banner({ canRestore: false, hiddenBy: null })).toEqual({
+      kind: "note",
+      text: "Yalnız gizleyen kademe ya da üstü geri alabilir.",
+    });
+  });
+});
+
 describe("a refused restore or hide", () => {
   it("is worded from the API's code", () => {
     expect(archiveErrorKey("ARCHIVE_FORBIDDEN")).toBe(
+      "Archive.errors.forbidden"
+    );
+    expect(archiveErrorKey("ARCHIVE_RESTORE_LEVEL")).toBe(
       "Archive.errors.forbidden"
     );
     expect(archiveErrorKey("ARCHIVE_ITEM_NOT_FOUND")).toBe(
@@ -311,6 +348,9 @@ describe("a refused restore or hide", () => {
     );
     expect(archiveErrorKey("MADRASAH_ALREADY_HIDDEN")).toBe(
       "Archive.hide.already"
+    );
+    expect(archiveErrorKey("MADRASAH_NOT_HIDDEN")).toBe(
+      "Archive.hidden.notHidden"
     );
     expect(archiveErrorKey("AUTHZ_FORBIDDEN")).toBe("Problems.actionForbidden");
     expect(archiveErrorKey("")).toBe("Problems.actionGeneric");
@@ -339,9 +379,11 @@ describe("message keys of the archive", () => {
         ),
         ...[
           "ARCHIVE_FORBIDDEN",
+          "ARCHIVE_RESTORE_LEVEL",
           "ARCHIVE_ITEM_NOT_FOUND",
           "ARCHIVE_PARENT_HIDDEN",
           "MADRASAH_ALREADY_HIDDEN",
+          "MADRASAH_NOT_HIDDEN",
           "AUTHZ_FORBIDDEN",
           "",
         ].map(archiveErrorKey),

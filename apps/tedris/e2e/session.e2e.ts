@@ -188,16 +188,19 @@ test.describe("an enrolled talebe", () => {
     await expect(programme.getByText("Sona erdi").first()).toBeVisible();
   });
 
-  test("answers 404 for a missing session and for a lesson that is not a live one", async ({
+  test("is the not-found page for a missing session and for a lesson that is not a live one", async ({
     page,
   }) => {
     for (const lessonId of [
       "a0000000-0000-4000-8000-0000000000ff",
       fixture.sessions.video.id,
     ]) {
-      const response = await page.goto(sessionPath(lessonId));
-      expect(response?.status()).toBe(404);
-      await expect(page.getByText("Sayfa bulunamadı")).toBeVisible();
+      // The status stays 200: the segment's loading.tsx streams its shell
+      // before the page decides (MDRS-141, MDRS-160); a signed-in page is not indexed.
+      await page.goto(sessionPath(lessonId));
+      await expect(
+        page.getByText("Sayfa bulunamadı").filter({ visible: true })
+      ).toBeVisible();
     }
   });
 

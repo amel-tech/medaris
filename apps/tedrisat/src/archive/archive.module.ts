@@ -3,7 +3,6 @@ import { Module } from "@nestjs/common";
 import { DatabaseModule } from "../database/database.module";
 import { KoskModule } from "../kosk/kosk.module";
 import { LessonInvitationModule } from "../lesson-invitation/lesson-invitation.module";
-import { MadrasahModule } from "../madrasah/madrasah.module";
 import { ArchiveController } from "./archive.controller";
 import { ArchiveRepository } from "./archive.repository";
 import { ArchiveService } from "./archive.service";
@@ -15,7 +14,6 @@ import { MadrasahArchiveController } from "./madrasah-archive.controller";
     AuthGuardModule,
     DatabaseModule,
     KoskModule,
-    MadrasahModule,
     LessonInvitationModule,
   ],
   controllers: [ArchiveController, MadrasahArchiveController],

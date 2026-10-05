@@ -1,6 +1,6 @@
 {
-  "id": "e3fa9b6d-9a84-4311-b0a5-fdcf6949058b",
-  "prevId": "71273f98-9c67-413d-b016-e3e3593a5fba",
+  "id": "e4787a3f-d334-4b6e-b5b7-1cf0b2e92463",
+  "prevId": "f4636102-11e5-4a85-9cf5-50cb825f2bc3",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -808,6 +808,13 @@
           "primaryKey": false,
           "notNull": false
         },
+        "archived_level": {
+          "name": "archived_level",
+          "type": "scope_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp",
@@ -982,6 +989,13 @@
         "archived_by": {
           "name": "archived_by",
           "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "archived_level": {
+          "name": "archived_level",
+          "type": "scope_type",
+          "typeSchema": "public",
           "primaryKey": false,
           "notNull": false
         },
@@ -1202,18 +1216,6 @@
           "notNull": true,
           "default": "'PROCESSING'"
         },
-        "bunny_video_id": {
-          "name": "bunny_video_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "upload_expires_at": {
-          "name": "upload_expires_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp",
@@ -1244,21 +1246,6 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
-        },
-        "lesson_recordings_bunny_video_id_uq": {
-          "name": "lesson_recordings_bunny_video_id_uq",
-          "columns": [
-            {
-              "expression": "bunny_video_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
         }
       },
       "foreignKeys": {
@@ -1279,12 +1266,7 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {
-        "lesson_recordings_provider_columns": {
-          "name": "lesson_recordings_provider_columns",
-          "value": "case when \"lesson_recordings\".\"provider\"::text = 'BUNNY' then \"lesson_recordings\".\"bunny_video_id\" is not null and \"lesson_recordings\".\"upload_expires_at\" is not null and \"lesson_recordings\".\"url\" is null else \"lesson_recordings\".\"bunny_video_id\" is null and \"lesson_recordings\".\"upload_expires_at\" is null and (\"lesson_recordings\".\"url\" is not null or \"lesson_recordings\".\"status\"::text = 'PROCESSING') end"
-        }
-      },
+      "checkConstraints": {},
       "isRLSEnabled": false
     },
     "public.lessons": {
@@ -1399,6 +1381,13 @@
         "archived_by": {
           "name": "archived_by",
           "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "archived_level": {
+          "name": "archived_level",
+          "type": "scope_type",
+          "typeSchema": "public",
           "primaryKey": false,
           "notNull": false
         },
@@ -1925,6 +1914,13 @@
         "archived_by": {
           "name": "archived_by",
           "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "archived_level": {
+          "name": "archived_level",
+          "type": "scope_type",
+          "typeSchema": "public",
           "primaryKey": false,
           "notNull": false
         },
@@ -2658,6 +2654,13 @@
           "primaryKey": false,
           "notNull": false
         },
+        "archived_level": {
+          "name": "archived_level",
+          "type": "scope_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp",
@@ -2824,112 +2827,6 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.lesson_invitations": {
-      "name": "lesson_invitations",
-      "schema": "",
-      "columns": {
-        "lesson_id": {
-          "name": "lesson_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "course_id": {
-          "name": "course_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "user_id": {
-          "name": "user_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "sequence": {
-          "name": "sequence",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "starts_at": {
-          "name": "starts_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "duration_minutes": {
-          "name": "duration_minutes",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "course_title": {
-          "name": "course_title",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "lesson_title": {
-          "name": "lesson_title",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "cancelled_at": {
-          "name": "cancelled_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "lesson_invitations_open_starts_at_idx": {
-          "name": "lesson_invitations_open_starts_at_idx",
-          "columns": [
-            {
-              "expression": "starts_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "where": "\"lesson_invitations\".\"cancelled_at\" is null",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {
-        "lesson_invitations_lesson_id_user_id_pk": {
-          "name": "lesson_invitations_lesson_id_user_id_pk",
-          "columns": [
-            "lesson_id",
-            "user_id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
     "public.madrasah_settings": {
       "name": "madrasah_settings",
       "schema": "",
@@ -3060,6 +2957,13 @@
         "archived_by": {
           "name": "archived_by",
           "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "archived_level": {
+          "name": "archived_level",
+          "type": "scope_type",
+          "typeSchema": "public",
           "primaryKey": false,
           "notNull": false
         },
@@ -3363,6 +3267,13 @@
           "type": "uuid",
           "primaryKey": false,
           "notNull": true
+        },
+        "authority_scope_type": {
+          "name": "authority_scope_type",
+          "type": "scope_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
         },
         "created_at": {
           "name": "created_at",
@@ -4026,13 +3937,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "lesson_invitation_emails": {
-          "name": "lesson_invitation_emails",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": true
-        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -4240,8 +4144,7 @@
       "values": [
         "YOUTUBE",
         "DRIVE",
-        "OTHER",
-        "BUNNY"
+        "OTHER"
       ]
     },
     "public.recording_status": {
@@ -4249,8 +4152,7 @@
       "schema": "public",
       "values": [
         "PROCESSING",
-        "READY",
-        "FAILED"
+        "READY"
       ]
     },
     "public.recording_visibility": {

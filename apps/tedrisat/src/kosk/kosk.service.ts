@@ -8,9 +8,9 @@ import { KoskLastManagerError } from "./errors/kosk-last-manager.error";
 import { KoskManagerNotFoundError } from "./errors/kosk-manager-not-found.error";
 import { KoskManagerUnknownUserError } from "./errors/kosk-manager-unknown-user.error";
 import { KoskNotFoundError } from "./errors/kosk-not-found.error";
+import { KoskSuccessorInvalidError } from "./errors/kosk-successor-invalid.error";
 import { KoskRepository } from "./kosk.repository";
 import {
-  ICreateKosk,
   IFollowedKoskCourse,
   IKosk,
   IKoskDecks,
@@ -18,7 +18,6 @@ import {
   IKoskRef,
   IKoskVisibility,
   IKoskWithStats,
-  IManagerActor,
   IPaginatedKosks,
   IUpdateKosk,
 } from "./kosk.repository.interface";
@@ -136,11 +135,6 @@ export class KoskService {
     }
   }
 
-  async create(newKosk: ICreateKosk): Promise<IKosk> {
-    await this.assertHandleFree(newKosk.handle);
-    return this.koskRepo.create(newKosk);
-  }
-
   /** 409 when a typed short name belongs to another köşk (nizam/10). */
   async assertHandleFree(
     handle: string | null | undefined,
@@ -172,19 +166,18 @@ export class KoskService {
   }
 
   /**
-   * Makes `userId` a manager of the köşk (MDRS-126). Idempotent. The route's
-   * `@Authz(SCOPES.MANAGE_KOSK_MANAGERS, byExistingKosk)` checks the actor
-   * first; the repository checks again under the köşk lock. 404 when that
-   * user has never signed in.
+   * Makes `userId` a manager of the köşk (MDRS-126). Idempotent. Who may is
+   * the route's `@Authz(platform.kosk_nazim_manage, byExistingKosk)` and
+   * nothing else (MDRS-136, owner decision d-1004-12: by permission, not by
+   * role). 404 when that user has never signed in.
    */
   async addManager(
     koskId: string,
     userId: string,
-    actor: IManagerActor
+    actorId: string
   ): Promise<void> {
-    const outcome = await this.koskRepo.addManager(koskId, userId, actor);
+    const outcome = await this.koskRepo.addManager(koskId, userId, actorId);
     if (outcome === "no-kosk") throw new KoskNotFoundError(koskId);
-    if (outcome === "forbidden") throw new KoskForbiddenError();
     if (outcome === "unknown-user") {
       throw new KoskManagerUnknownUserError(userId);
     }
@@ -192,36 +185,51 @@ export class KoskService {
 
   /**
    * Removes `userId` from the köşk's managers. 404 when they are not one,
-   * 409 when they are the last one — a köşk is never left unmanaged.
+   * 409 when they are the last one and no successor is named — a köşk is
+   * never left unmanaged by accident; the başnazım may name themselves as the
+   * successor to take the seat (d-1004-13).
    */
   async removeManager(
     koskId: string,
     userId: string,
-    actor: IManagerActor
+    actorId: string,
+    successorUserId?: string
   ): Promise<void> {
-    const outcome = await this.koskRepo.removeManager(koskId, userId, actor);
+    const outcome = await this.koskRepo.removeManager(
+      koskId,
+      userId,
+      actorId,
+      successorUserId
+    );
     if (outcome === "no-kosk") throw new KoskNotFoundError(koskId);
-    if (outcome === "forbidden") throw new KoskForbiddenError();
     if (outcome === "not-manager") {
       throw new KoskManagerNotFoundError(koskId, userId);
     }
     if (outcome === "last") {
       throw new KoskLastManagerError(koskId, userId);
     }
+    if (outcome === "successor-is-removed") {
+      throw new KoskSuccessorInvalidError(userId);
+    }
+    if (outcome === "unknown-user") {
+      throw new KoskManagerUnknownUserError(successorUserId ?? userId);
+    }
   }
 
   /**
-   * Authorization is `@Authz(SCOPES.EDIT, …)` on `KoskController.update`: the
-   * köşk's managers. A medrese has no say over a köşk since MDRS-134.
+   * Authorization is `@Authz([kosk.manage, platform.kosk_edit], …)` on
+   * `KoskController.update`: the köşk's nazımları and a Medaris nazımı given it. A medrese has no say over a köşk since MDRS-134.
    */
   async update(
     id: string,
     updates: IUpdateKosk,
-    actorId?: string
+    actorId?: string,
+    /** The başnazım (SYSTEM_ADMIN): no policy refuses him, here as on a course (owner, 4 October). */
+    { systemAdmin = false }: { systemAdmin?: boolean } = {}
   ): Promise<IKosk> {
     await this.assertHandleFree(updates.handle, id);
     // A platform policy that is on cannot be switched off from below (MDRS-181).
-    await this.platformPolicies.assertKoskMayChange(updates);
+    if (!systemAdmin) await this.platformPolicies.assertKoskMayChange(updates);
     const updated = await this.koskRepo.update(id, updates);
     if (!updated) {
       throw new KoskNotFoundError(id);
@@ -247,8 +255,9 @@ export class KoskService {
   }
 
   /**
-   * SYSTEM_ADMIN's delete (MDRS-124) — `@Authz(SCOPES.DELETE, …)` on the
-   * controller, and DELETE is on no role row, so nobody else reaches this.
+   * SYSTEM_ADMIN's delete (MDRS-124) — `@Authz(kosk.delete, …)` on the
+   * controller, and `kosk.delete` is held by no role or grant, so nobody else
+   * reaches this.
    * Removes the köşk's courses and everything under them explicitly and
    * writes an audit entry; see `KoskRepository.purge`.
    */

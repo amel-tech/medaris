@@ -14,25 +14,24 @@ import { NazimsView } from "~/features/permissions/components/nazims-view";
 import {
   catalogFor,
   codeKey,
-  DISMISS_OPENS_AT,
+  type DecisionItem,
   dayIn,
-  dayInputValue,
   daysLeft,
+  decisionItems,
   dismissDecisions,
-  dismissOpen,
   dismissReady,
-  endError,
   endLabel,
-  endOfDayIso,
   extrasToSend,
   formatDay,
   givenKey,
+  groupItems,
   groupNameError,
   keepAllowed,
   needsUsersQuestion,
   orderByCatalog,
   permissionErrorKey,
   platformGroupOf,
+  selfMadeItems,
   summaryCounts,
   toggleExtra,
   withoutGroupCodes,
@@ -68,6 +67,7 @@ describe("codes and messages", () => {
       "platform.kosk_create",
       "platform.kosk_nazim_manage",
       "platform.kosk_edit",
+      "platform.course_hide",
       "platform.hosting_grant",
       "platform.madrasah_create",
       "platform.head_muderris_manage",
@@ -97,7 +97,9 @@ describe("codes and messages", () => {
         expect(entry?.title, `${lang} ${code}`).toBeTruthy();
         expect(entry?.short, `${lang} ${code}`).toBeTruthy();
       }
-      expect(Object.keys(catalog.course)).toHaveLength(18);
+      // The 18 course permissions of nizam/13, the owner's 1 October entry
+      // "propose a köşk deck" and `question.answer` (MDRS-150).
+      expect(Object.keys(catalog.course)).toHaveLength(20);
     }
   });
 });
@@ -140,49 +142,10 @@ describe("the end of a permission (nizam 11 criterion 2)", () => {
   });
 });
 
-describe("the end date field (nizam 12 criterion 3)", () => {
-  const now = new Date("2026-10-02T09:00:00Z");
-
-  it("turns a day into the last second of it in the viewer's zone", () => {
-    expect(endOfDayIso("2026-12-31", IST)).toBe("2026-12-31T20:59:59.000Z");
-    // Summer time is also +03 in Istanbul now, but a zone with a shift moves the instant.
-    expect(endOfDayIso("2026-07-15", "America/New_York")).toBe(
-      "2026-07-16T03:59:59.000Z"
-    );
-    expect(endOfDayIso("2026-01-15", "America/New_York")).toBe(
-      "2026-01-16T04:59:59.000Z"
-    );
-    expect(endOfDayIso("nope", IST)).toBeNull();
-    expect(endOfDayIso("2026-02-31x", IST)).toBeNull();
-  });
-
-  it("round-trips through the date input", () => {
-    expect(dayInputValue("2026-12-31T20:59:59.000Z", IST)).toBe("2026-12-31");
-    expect(dayInputValue(null, IST)).toBe("");
+describe("the calendar day of an instant", () => {
+  it("is read in the viewer's zone", () => {
+    expect(dayIn(new Date("2026-12-31T20:59:59Z"), IST)).toBe("2026-12-31");
     expect(dayIn(new Date("2026-12-31T21:00:00Z"), IST)).toBe("2027-01-01");
-  });
-
-  it("accepts no date, a later one, and the appointment's own last day", () => {
-    const assignmentEnd = "2026-12-31T20:59:59Z";
-    const check = (day: string) =>
-      endError(day, { now, timeZone: IST, assignmentEnd });
-    expect(check("")).toBeNull();
-    expect(check("2026-11-15")).toBeNull();
-    expect(check("2026-12-31")).toBeNull();
-  });
-
-  it("refuses today or the past, and a day after the appointment ends", () => {
-    const assignmentEnd = "2026-12-31T20:59:59Z";
-    const check = (day: string) =>
-      endError(day, { now, timeZone: IST, assignmentEnd });
-    expect(check("2026-10-01")).toBe("past");
-    // Today is not "in the future", though its last second still lies ahead.
-    expect(check("2026-10-02")).toBe("past");
-    expect(check("2026-10-03")).toBeNull();
-    expect(check("2027-01-01")).toBe("afterAssignment");
-    expect(
-      endError("2030-01-01", { now, timeZone: IST, assignmentEnd: null })
-    ).toBeNull();
   });
 });
 
@@ -196,16 +159,6 @@ describe("single permissions in the list", () => {
       "x",
     ]);
     expect(orderByCatalog(["b", "a"], null)).toEqual(["b", "a"]);
-  });
-});
-
-describe("the dismissal gate (4 Ekim 2026)", () => {
-  it("opens at midnight in Istanbul, not before", () => {
-    expect(DISMISS_OPENS_AT).toBe(Date.parse("2026-10-03T21:00:00Z"));
-    expect(dismissOpen(Date.parse("2026-10-02T12:00:00Z"))).toBe(false);
-    expect(dismissOpen(Date.parse("2026-10-03T20:59:59Z"))).toBe(false);
-    expect(dismissOpen(Date.parse("2026-10-03T21:00:00Z"))).toBe(true);
-    expect(dismissOpen(Date.parse("2026-12-01T00:00:00Z"))).toBe(true);
   });
 });
 
@@ -264,10 +217,10 @@ describe("the dismissal question (nizam 11, _kurallar 14, 15)", () => {
   const items = [
     { kind: "ROLE", id: "r1" },
     { kind: "GRANT", id: "g1" },
-  ] as GivenItemResponse[];
+  ] as DecisionItem[];
 
   it("is ready only when every item has an answer", () => {
-    const [role, grant] = items as [GivenItemResponse, GivenItemResponse];
+    const [role, grant] = items as [DecisionItem, DecisionItem];
     expect(dismissReady(items, {})).toBe(false);
     expect(dismissReady(items, { [givenKey(role)]: "DROP" })).toBe(false);
     const all = {
@@ -283,6 +236,48 @@ describe("the dismissal question (nizam 11, _kurallar 14, 15)", () => {
 
   it("is ready at once when the person handed nothing on", () => {
     expect(dismissReady([], {})).toBe(true);
+  });
+
+  it("asks nothing about a group the person defined or changed: it is listed, not decided", () => {
+    const given = [
+      { kind: "ROLE", id: "r1" },
+      { kind: "GROUP", id: "p1", groupName: "Kadro", groupAction: "update" },
+      { kind: "GRANT", id: "g1" },
+    ] as GivenItemResponse[];
+    expect(decisionItems(given).map(givenKey)).toEqual(["ROLE:r1", "GRANT:g1"]);
+    expect(groupItems(given).map((g) => g.groupName)).toEqual(["Kadro"]);
+    const all = { "ROLE:r1": "DROP", "GRANT:g1": "DROP" } as const;
+    expect(dismissReady(decisionItems(given), all)).toBe(true);
+    expect(
+      dismissDecisions(decisionItems(given), all).map((d) => d.kind)
+    ).toEqual(["ROLE", "GRANT"]);
+  });
+
+  it("asks nothing about a row the person made for themselves: the API revokes it and takes no answer for it", () => {
+    const person = "AAAAAAAA-0000-4000-8000-000000000001";
+    const given = [
+      { kind: "ROLE", id: "r1", to: { id: "u-rabia" } },
+      { kind: "ROLE", id: "r2", to: { id: person.toLowerCase() } },
+      { kind: "GRANT", id: "g1", to: { id: person.toLowerCase() } },
+      { kind: "GROUP", id: "p1", to: null },
+    ] as GivenItemResponse[];
+    expect(decisionItems(given, person).map(givenKey)).toEqual(["ROLE:r1"]);
+    expect(selfMadeItems(given, person).map(givenKey)).toEqual([
+      "ROLE:r2",
+      "GRANT:g1",
+    ]);
+    const answers = { "ROLE:r1": "TAKE_OVER" } as const;
+    expect(dismissReady(decisionItems(given, person), answers)).toBe(true);
+    expect(dismissDecisions(decisionItems(given, person), answers)).toEqual([
+      { kind: "ROLE", id: "r1", action: "TAKE_OVER" },
+    ]);
+    // Without the person, nothing is set apart (the older call still works).
+    expect(decisionItems(given).map(givenKey)).toEqual([
+      "ROLE:r1",
+      "ROLE:r2",
+      "GRANT:g1",
+    ]);
+    expect(selfMadeItems(given, undefined)).toEqual([]);
   });
 });
 
@@ -343,6 +338,12 @@ describe("the group form (nizam 13 criteria 2, 3, 4)", () => {
     );
     expect(permissionErrorKey({ code: "WHATEVER" })).toBe("errors.generic");
     expect(permissionErrorKey(undefined)).toBe("errors.generic");
+    expect(permissionErrorKey({ code: "DISMISS_SEAT_HANDED_ON" })).toBe(
+      "errors.dismissCascade"
+    );
+    expect(permissionErrorKey({ code: "DISMISS_TAKE_OVER_WITHOUT_SEAT" })).toBe(
+      "errors.dismissSeatless"
+    );
   });
 });
 
@@ -521,14 +522,13 @@ describe("NazimsView (nizam 11)", () => {
     expect(html).toContain("Görevden al: Seyyid Ahmet Kocabeyoğlu");
   });
 
-  it("keeps 'Görevden al' off until the gate has opened", () => {
-    // Before mounting the gate is shut, so the markup a server sends has it disabled.
+  it("offers 'Görevden al' enabled (MDRS-215: the 4 Ekim gate is gone)", () => {
     const html = view();
     const button = html.match(
       /<button[^>]*aria-label="Görevden al: Hasan Basri Gündoğdu"[^>]*>/
     )?.[0];
     expect(button).toBeDefined();
-    expect(button).toMatch(/disabled/);
+    expect(button).not.toMatch(/disabled/);
     const edit = html.match(
       /<button[^>]*aria-label="İzinleri düzenle: Hasan Basri Gündoğdu"[^>]*>/
     )?.[0];

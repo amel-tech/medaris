@@ -20,7 +20,7 @@ export class PlatformPolicyLockedError extends ConflictError {
   constructor(key: string, context?: ErrorContext) {
     super(
       PlatformPolicyLockedError.code,
-      `The platform policy ${key} is on; a köşk or course below it cannot switch it off`,
+      `The policy ${key} is on above this scope; a köşk, medrese or course below it cannot switch it off`,
       context
     );
   }
@@ -65,21 +65,6 @@ export class PlatformPolicyService {
       (await this.repo.isOn("RECORDINGS_NEVER_PUBLIC"))
     ) {
       throw new PlatformPolicyLockedError("RECORDINGS_NEVER_PUBLIC");
-    }
-  }
-
-  /**
-   * The same rule for a course's own "requires approval" setting: while
-   * 'Kayıt her zaman onaylı' is on, a course cannot switch it off either.
-   */
-  async assertCourseMayChange(change: {
-    requiresApproval?: boolean;
-  }): Promise<void> {
-    if (
-      change.requiresApproval === false &&
-      (await this.repo.isOn("ALWAYS_REQUIRE_APPROVAL"))
-    ) {
-      throw new PlatformPolicyLockedError("ALWAYS_REQUIRE_APPROVAL");
     }
   }
 

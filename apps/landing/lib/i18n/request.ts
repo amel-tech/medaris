@@ -6,9 +6,7 @@ import { routing } from "./routing";
 const resolveMessagesForLang = async (locale: keyof typeof resources) => {
   const messages = resources[locale];
   return Object.fromEntries(
-    Object.entries(messages).filter(([key]) =>
-      ["common", "landing"].includes(key)
-    )
+    Object.entries(messages).filter(([key]) => key === "common")
   );
 };
 

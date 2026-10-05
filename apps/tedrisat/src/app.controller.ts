@@ -5,7 +5,7 @@ import { AppService } from "./app.service";
 
 // No guard on this controller, so `@AuthzPublic()` below changes nothing
 // today. It is the explicit, greppable exemption MDRS-44 needs when it flips
-// the matrix to closed-by-default: a load balancer probes `/health` with no
+// the guard to closed-by-default: a load balancer probes `/health` with no
 // token and must keep getting 200.
 @ApiTags("Tedrisat Service")
 @Controller()

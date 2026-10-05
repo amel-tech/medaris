@@ -44,7 +44,7 @@ import { PermissionAdminService } from "./permission-admin.service";
 /**
  * Medaris nazımları, the permission catalog and the permission groups
  * (MDRS-171; screens nizam/11, 12 and 13). Like `NizamController` there is no
- * `AuthzGuard`: the matrix knows no such entity, and `PermissionAdminService`
+ * `AuthzGuard`: the engine knows no such entity, and `PermissionAdminService`
  * makes the one decision every route shares — only the SYSTEM_ADMIN realm role
  * passes.
  */
@@ -123,7 +123,7 @@ export class PermissionAdminController {
   @ApiOperation({
     summary: "What a Medaris nazımı has handed on",
     description:
-      "nizam/11's dismissal question: the roles and permissions this person gave to others that are still held.",
+      "nizam/11's dismissal question: the roles and permissions this person gave that are still held, the ones they gave themselves included (`to` is the person), and the groups they defined or changed. Only the rows given to others take an answer; the self-made ones go with the dismissal.",
     operationId: "getMedarisNazimGiven",
   })
   @ApiOkResponse({ type: GivenItemResponse, isArray: true })
@@ -140,7 +140,7 @@ export class PermissionAdminController {
   @ApiOperation({
     summary: "Dismiss a Medaris nazımı",
     description:
-      "nizam/11. `decisions` answers every item `…/given` lists: TAKE_OVER leaves the right in place under the başnazım's name, DROP revokes it. The appointment and the platform permissions are revoked. Written to the audit log.",
+      "nizam/11. `decisions` answers every role and grant `…/given` lists as given to someone else: TAKE_OVER leaves the right in place under the başnazım's name, DROP revokes it, and a seat dropped takes with it what its holder was given in its scope. What the person gave themselves is revoked and takes no answer (a TAKE_OVER for it is refused with DISMISS_DECISIONS_INCOMPLETE). The appointment and the platform permissions are revoked. Written to the audit log.",
     operationId: "dismissMedarisNazim",
   })
   @ApiNoContentResponse()

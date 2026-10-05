@@ -1,6 +1,5 @@
 "use client";
 
-import { AppProviders } from "@medaris/ui/mds/app-providers";
 import { Button } from "@medaris/ui/mds/button";
 import { Card } from "@medaris/ui/mds/card";
 import { Field } from "@medaris/ui/mds/field";
@@ -11,6 +10,8 @@ import { Switch } from "@medaris/ui/mds/switch";
 import { useToaster } from "@medaris/ui/mds/toast";
 import { useLocale } from "next-intl";
 import { type FormEvent, useState, useTransition } from "react";
+import { LocaleAppProviders } from "~/components/locale-app-providers";
+import { PUBLIC_PROFILE_ENABLED } from "~/features/public-profile/availability";
 import { useAccountTranslations } from "~/lib/i18n/loose";
 import { CARD_GAP } from "../card-gap";
 import {
@@ -309,23 +310,23 @@ function SignOutCard() {
 
 /**
  * The cards of Hesap (design tedris/34, MDRS-166): personal information, time
- * zone and language, calendar, and the sign-out aside, plus a way to the public
- * profile (design tedris/35). The roles section (design 43) follows below it on
- * the page. A client component so the Toast root and the form state share one
- * tree.
+ * zone and language, calendar, and the sign-out aside, plus, while the public
+ * profile is shown (MDRS-141 hid it), a way to it (design tedris/35). The roles
+ * section (design 43) follows below it on the page. A client component so the
+ * Toast root and the form state share one tree.
  */
 export function AccountSettings(props: AccountSettingsProps) {
   return (
-    <AppProviders>
+    <LocaleAppProviders>
       <div className="grid items-start gap-section lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <div className="flex min-inline-0 flex-col gap-section">
           <PersonalCard {...props} />
           <TimeLanguageCard timeZone={props.timeZone} />
           <CalendarCard lessonInvitationEmails={props.lessonInvitationEmails} />
-          <PublicProfileCard />
+          {PUBLIC_PROFILE_ENABLED && <PublicProfileCard />}
         </div>
         <SignOutCard />
       </div>
-    </AppProviders>
+    </LocaleAppProviders>
   );
 }

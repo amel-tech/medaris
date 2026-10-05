@@ -553,6 +553,9 @@ importers:
       next-intl:
         specifier: 'catalog:'
         version: 4.13.4(@swc/helpers@0.5.23)(next@16.3.8(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.63.0)(@types/node@22.20.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(react@19.2.8)(typescript@5.9.3)
+      nodemailer:
+        specifier: 'catalog:'
+        version: 10.0.13
       react:
         specifier: 'catalog:'
         version: 19.2.8

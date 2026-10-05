@@ -1,13 +1,11 @@
 import { AuthenticatedUser } from "@medaris/common";
 import { Injectable } from "@nestjs/common";
-import { PERMISSIONS } from "../assignment/permission-catalog";
 import { uploadExpiry } from "../bunny-stream/bunny-signature";
 import {
   BunnyStreamClient,
   type IBunnyUploadAuthorization,
 } from "../bunny-stream/bunny-stream.client";
 import { CourseRepository } from "./course.repository";
-import { CourseAccessService } from "./course-access.service";
 import {
   RecordingProvider,
   RecordingStatus,
@@ -35,31 +33,27 @@ export interface IRecordingUpload extends IBunnyUploadAuthorization {
  * from the browser straight to Bunny and never through this server.
  *
  * Both routes are `recording.upload`'s: the müderris and the köşk nazımı hold
- * it by default, a ders nazırı when given it. It is asked through the
- * permission catalogue (`CourseAccessService`) for the reason
- * `LiveStreamService` gives: the route matrix has no row for a ders nazırı.
- * The permission is asked before anything else is read, so a caller who may
- * not upload learns nothing about the session's recording, and before the
- * library's configuration, so they get 403 rather than 503.
+ * it by default, a ders nazırı when given it. The routes ask it in their
+ * `@Authz` on the lesson's course, so by the time a handler runs the caller
+ * holds it: a caller who may not upload learns nothing about the session's
+ * recording, and gets 403 rather than 503 when the library is not configured.
+ * What is left here is existence, which the başnazım's bypass skips in the
+ * guard, and the library's configuration.
  */
 @Injectable()
 export class RecordingUploadService {
-  // All four must stay value imports: `import type` erases them from
+  // All three must stay value imports: `import type` erases them from
   // `design:paramtypes` and Nest can no longer inject them.
   constructor(
-    private readonly access: CourseAccessService,
     private readonly courseRepo: CourseRepository,
     private readonly recordings: RecordingRepository,
     private readonly bunny: BunnyStreamClient
   ) {}
 
-  private async assertMayUpload(
-    lessonId: string,
-    user: AuthenticatedUser
-  ): Promise<void> {
-    const courseId = await this.courseRepo.findLessonCourseId(lessonId);
-    if (!courseId) throw new LessonNotFoundError(lessonId);
-    await this.access.assert(user, courseId, PERMISSIONS.RECORDING_UPLOAD);
+  private async assertLessonAndLibrary(lessonId: string): Promise<void> {
+    if (!(await this.courseRepo.findLessonCourseId(lessonId))) {
+      throw new LessonNotFoundError(lessonId);
+    }
     this.bunny.assertConfigured();
   }
 
@@ -78,7 +72,7 @@ export class RecordingUploadService {
     user: AuthenticatedUser,
     now: Date = new Date()
   ): Promise<IRecordingUpload> {
-    await this.assertMayUpload(lessonId, user);
+    await this.assertLessonAndLibrary(lessonId);
     // An archived session is a 404 here, not first in Bunny: the transaction
     // would refuse it anyway, after an empty video had been created.
     if (!(await this.recordings.findOpenLessonCourseId(lessonId))) {
@@ -123,7 +117,7 @@ export class RecordingUploadService {
     user: AuthenticatedUser,
     now: Date = new Date()
   ): Promise<IRecordingUpload> {
-    await this.assertMayUpload(lessonId, user);
+    await this.assertLessonAndLibrary(lessonId);
     const upload = await this.recordings.findBunnyUpload(lessonId, videoId);
     if (!upload) throw new RecordingUploadNotFoundError(lessonId, videoId);
     if (upload.status !== RecordingStatus.PROCESSING) {

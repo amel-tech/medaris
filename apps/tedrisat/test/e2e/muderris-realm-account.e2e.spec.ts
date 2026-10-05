@@ -8,7 +8,7 @@ import {
   KEYCLOAK_ADMIN_FETCH,
   KeycloakAdminService,
 } from "../../src/keycloak-admin/keycloak-admin.service";
-import { asSystemAdmin } from "../helpers/system-admin.helper";
+import { openKosk } from "../helpers/open-scopes.helper";
 import { createTestApp, TEST_USER_ID } from "../helpers/test-app.helper";
 import {
   COURSE_TREE_TABLES,
@@ -101,11 +101,7 @@ describe("müderris accounts that never signed in (e2e)", () => {
     await databaseService.db
       .insert(users)
       .values([TEST_USER_ID, SIGNED_IN].map((id) => ({ id })));
-    const kosk = await request(adminApp.getHttpServer())
-      .post("/kosks")
-      .set("Authorization", asSystemAdmin(TEST_USER_ID))
-      .send({ name: "Süleymaniye Köşkü" })
-      .expect(201);
+    const kosk = await openKosk(adminApp);
     koskId = kosk.body.id;
   });
 

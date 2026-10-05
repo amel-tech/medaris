@@ -51,6 +51,15 @@ export const countsAfterLeaving = (
   decided: answered ? counts.decided + 1 : counts.decided,
 });
 
+/** The tab counts after a published deck is taken back: it leaves "Karara bağlanan" and is not waiting. */
+export const countsAfterUnpublish = (counts: {
+  pending: number;
+  decided: number;
+}): { pending: number; decided: number } => ({
+  ...counts,
+  decided: Math.max(0, counts.decided - 1),
+});
+
 /** "29 Eyl 21:10" — the day and minute a request or proposal came, in the viewer's zone. */
 export function shortDateTime(
   at: Date | string,
@@ -104,6 +113,7 @@ const ERROR_KEYS: Record<string, string> = {
   DECK_PROPOSAL_NOT_FOUND: "errors.proposalGone",
   KOSK_DECK_NOT_FOUND: "errors.deckGone",
   DECK_REVIEW_FORBIDDEN: "errors.forbidden",
+  DECK_NOT_PUBLISHED: "errors.notPublished",
 };
 
 export const errorCode = (body: unknown): string | null =>
@@ -131,7 +141,18 @@ export const isGone = (body: unknown): boolean =>
     "DECK_REQUEST_NOT_FOUND",
     "DECK_PROPOSAL_NOT_PENDING",
     "DECK_PROPOSAL_NOT_FOUND",
+    "DECK_NOT_PUBLISHED",
   ].includes(errorCode(body) ?? "");
+
+/**
+ * "Yayından kaldır" sits on a published deck and only for the başnazım: a
+ * Medaris nazımı holding `platform.deck_publish` sees the list without it, and
+ * tedrisat answers him 403 all the same.
+ */
+export const canUnpublish = (
+  outcome: "PENDING" | "PUBLISHED" | "REJECTED",
+  isBasnazim: boolean
+): boolean => isBasnazim && outcome === "PUBLISHED";
 
 export interface DeckFormValues {
   title: string;
