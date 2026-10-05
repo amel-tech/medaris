@@ -244,6 +244,7 @@ export * from './MuderrisListItemDto';
 export * from './MuderrisListResponse';
 export * from './MuderrisResponse';
 export * from './MyAssignmentsResponse';
+export * from './MyCoursePermissionsResponse';
 export * from './MyEffectivePermissionsResponse';
 export * from './MyEnrollmentResponse';
 export * from './MyGrantsResponse';

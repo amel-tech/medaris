@@ -265,6 +265,7 @@ src/models/MuderrisListItemDto.ts
 src/models/MuderrisListResponse.ts
 src/models/MuderrisResponse.ts
 src/models/MyAssignmentsResponse.ts
+src/models/MyCoursePermissionsResponse.ts
 src/models/MyEffectivePermissionsResponse.ts
 src/models/MyEnrollmentResponse.ts
 src/models/MyGrantsResponse.ts

@@ -2975,6 +2975,46 @@
         ]
       }
     },
+    "/courses/{id}/my-permissions": {
+      "get": {
+        "description": "The permission codes the signed-in caller holds in this course (`permissions`, sorted), and whether they may read its talebe (`staffRead`). Asked about themselves only: it answers with the caller's own codes and no one else's. The codes are the ones the routes decide with (`AuthzService.effective`, the computation behind every `@Authz`), so a screen can hide a button the API would refuse; the API still checks every write. A draft the caller may not edit, a hidden course they may not restore, and an unknown course are 404 (COURSE_NOT_FOUND). Nothing is written to `audit_log`.",
+        "operationId": "getMyCoursePermissions",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyCoursePermissionsResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "What the caller holds in a course",
+        "tags": [
+          "courses"
+        ]
+      }
+    },
     "/courses/{id}/muderris": {
       "put": {
         "description": "Partial update for the 'Müderrisleri düzenle' dialog (MDRS-176): only the müderris list and the imam change, not the syllabus. Needs `course.open_standalone` (or `madrasah.muderris_manage` for a medrese's course); the change is written to `audit_log`. The list is never empty and the imam is one of its accounts.",
@@ -4238,7 +4278,7 @@
     },
     "/lessons/{id}/cancel": {
       "post": {
-        "description": "The session stays in the programme as 'İptal edildi' (MDRS-158); its meeting link is no longer shown. The reason is course content. Written to `audit_log` (MDRS-176).",
+        "description": "The session stays in the programme as 'İptal edildi' (MDRS-158); its meeting link is no longer shown. The reason is course content. `replacementLessonId` links the session that makes up for it (telafi), which the session page shows as its replacement. Written to `audit_log` (MDRS-176).",
         "operationId": "cancelLesson",
         "parameters": [
           {
@@ -4271,6 +4311,9 @@
               }
             }
           },
+          "400": {
+            "description": "Field validation, or a make-up that is the session itself or not a live, standing session of the same course (LESSON_REPLACEMENT_INVALID)."
+          },
           "403": {
             "description": ""
           },
@@ -4278,7 +4321,7 @@
             "description": ""
           },
           "409": {
-            "description": "The course changed since `version` was loaded (COURSE_VERSION_CONFLICT), or the session is cancelled already (LESSON_ALREADY_CANCELLED)."
+            "description": "The course changed since `version` was loaded (COURSE_VERSION_CONFLICT), the session is cancelled already (LESSON_ALREADY_CANCELLED), or the named make-up already makes up for another session (LESSON_REPLACEMENT_TAKEN)."
           }
         },
         "security": [
@@ -15440,6 +15483,30 @@
           "enrollment"
         ]
       },
+      "MyCoursePermissionsResponse": {
+        "type": "object",
+        "properties": {
+          "permissions": {
+            "example": [
+              "course.enroll",
+              "course.view"
+            ],
+            "description": "Every permission code the caller holds in this course, sorted: the relationship (enrolled, pending, or any signed-in caller), the roles and grants they hold in the course and in the köşk and medrese above it, cut by the policies and a passive scope. It is the decision the routes make, so a code listed here is a code the course's routes will accept, and one that is not listed is refused.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "staffRead": {
+            "type": "boolean",
+            "description": "Whether the caller may read the course's talebe, which is what opens the staff pages (`course.staff_read` is in `permissions`)."
+          }
+        },
+        "required": [
+          "permissions",
+          "staffRead"
+        ]
+      },
       "UpdateCourseDto": {
         "type": "object",
         "properties": {
@@ -16864,6 +16931,11 @@
           "reason": {
             "type": "string",
             "example": "Müderris hasta"
+          },
+          "replacementLessonId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The session that makes up for this one (telafi). It must be a live session of the same course that is not cancelled, is not this session and is not already another session's make-up. Left out, the session is cancelled with no make-up."
           }
         },
         "required": [

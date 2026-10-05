@@ -79,4 +79,16 @@ export class CancelLessonDto {
   @IsString()
   @MaxLength(500)
   reason?: string;
+
+  @ApiPropertyOptional({
+    format: "uuid",
+    description:
+      "The session that makes up for this one (telafi). It must be a live " +
+      "session of the same course that is not cancelled, is not this session " +
+      "and is not already another session's make-up. Left out, the session is " +
+      "cancelled with no make-up.",
+  })
+  @IsOptional()
+  @IsUUID()
+  replacementLessonId?: string;
 }

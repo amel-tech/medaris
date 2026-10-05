@@ -62,6 +62,7 @@ import {
   withContent,
   withoutContent,
 } from "./domain/course-content";
+import { SYSTEM_ADMIN_COURSE_CODES } from "./domain/course-permissions";
 import { CourseStatus } from "./domain/course-status.enum";
 import { EnrollmentStatus } from "./domain/enrollment-status.enum";
 import {
@@ -696,6 +697,38 @@ export class CourseService {
   }
 
   /**
+   * The permission codes the caller holds in this course, for the screens that
+   * draw buttons and decide whether a page opens. It is `AuthzService.effective`,
+   * the computation `can` decides every route with, minus the audit rows, so
+   * what is listed here and what a route accepts cannot differ. The başnazım's
+   * realm bypass has no computation behind it and is listed as holding every
+   * course code.
+   *
+   * The course must be visible to the caller first, as for `GET /courses/:id`:
+   * a missing course, a draft the caller may not edit, or a hidden one they may
+   * not restore is not-found, so the answer leaks nothing the page would not.
+   */
+  async myPermissions(
+    courseId: string,
+    user: AuthenticatedUser
+  ): Promise<{ permissions: PermissionCode[]; staffRead: boolean }> {
+    await this.getDetail(courseId, user);
+    const held: Iterable<PermissionCode> = this.authz.isSystemAdmin(user)
+      ? SYSTEM_ADMIN_COURSE_CODES
+      : ((
+          await this.authz.effective(user, {
+            entity: ENTITIES.COURSE,
+            id: courseId,
+          })
+        )?.codes ?? []);
+    const permissions = [...held].sort();
+    return {
+      permissions,
+      staffRead: permissions.includes(PERMISSIONS.COURSE_STAFF_READ),
+    };
+  }
+
+  /**
    * Whether a PUBLIC recording may be shown to someone who cannot read the
    * course's content: not for a closed course (MDRS-176), and not when the
    * köşk's policy says its recordings are never public (nizam/34).
@@ -1031,18 +1064,25 @@ export class CourseService {
     return updated;
   }
 
-  /** Cancels the session; it keeps its slot in the programme (MDRS-176). */
+  /**
+   * Cancels the session; it keeps its slot in the programme (MDRS-176), and
+   * links the session that makes up for it when one is named.
+   */
   async cancelLesson(
     lessonId: string,
     expectedVersion: number,
     reason: string | null,
-    actorId: string
+    actorId: string,
+    replacementLessonId: string | null = null
   ): Promise<ILessonMutation> {
+    // `ParseUUIDPipe` accepts upper case; the self-reference check compares
+    // the two ids as text, so both are lower-cased.
     const cancelled = await this.courseRepo.cancelLesson(
-      lessonId,
+      lessonId.toLowerCase(),
       expectedVersion,
       reason,
-      actorId
+      actorId,
+      replacementLessonId?.toLowerCase() ?? null
     );
     await this.notifier.sessionCancelled(cancelled, actorId);
     this.invitations.kick();
