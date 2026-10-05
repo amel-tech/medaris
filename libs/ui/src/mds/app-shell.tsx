@@ -62,7 +62,11 @@ export interface SidebarProps extends HTMLAttributes<HTMLElement> {
   navLabel?: string;
 }
 
-/** The desktop sidebar: brand (and its tools), scope, a named `<nav>` (none while it has no items), and the account at the block-end. Hidden below 768. */
+/**
+ * The desktop sidebar: brand (and its tools), scope, a named `<nav>` (none while it has no items), and the account at the block-end. Hidden below 768.
+ * It holds the viewport while the page scrolls (MDRS-273): sticky, one viewport tall, scrolling on its own
+ * when its items do not fit, so the account row stays at the viewport's block-end.
+ */
 export function Sidebar({
   brand,
   scope,
@@ -76,7 +80,7 @@ export function Sidebar({
   return (
     <aside
       className={cx(
-        "flex flex-col gap-[2px] pbs-5 pbe-3 px-3 bg-neutral-surface border-e border-neutral-subtle max-md:hidden",
+        "sticky inset-bs-0 self-start flex block-dvh flex-col gap-[2px] overflow-y-auto overscroll-contain pbs-5 pbe-3 px-3 bg-neutral-surface border-e border-neutral-subtle max-md:hidden",
         className
       )}
       {...rest}
