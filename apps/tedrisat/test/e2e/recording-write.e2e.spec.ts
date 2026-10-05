@@ -2,6 +2,12 @@ import { ROLES } from "@medaris/common";
 import { INestApplication } from "@nestjs/common";
 import { and, eq } from "drizzle-orm";
 import request from "supertest";
+import { embedViewToken } from "../../src/bunny-stream/bunny-signature";
+import {
+  BUNNY_STREAM_CONFIG,
+  BUNNY_STREAM_FETCH,
+} from "../../src/bunny-stream/bunny-stream.client";
+import type { IBunnyStreamConfig } from "../../src/config/bunny-stream-env";
 import { CourseStatus } from "../../src/course/domain/course-status.enum";
 import { EnrollmentStatus } from "../../src/course/domain/enrollment-status.enum";
 import { LessonType } from "../../src/course/domain/lesson-type.enum";
@@ -10,6 +16,7 @@ import {
   RecordingStatus,
   RecordingVisibility,
 } from "../../src/course/domain/recording";
+import { RecordingEncodingPoller } from "../../src/course/recording-encoding.poller";
 import { DatabaseService } from "../../src/database/database.service";
 import { auditLog } from "../../src/database/schema/audit.schema";
 import {
@@ -38,10 +45,12 @@ import { bearerFor } from "../helpers/test-keycloak.helper";
  * MDRS-247 — `POST /lessons/:id/recordings` and `PATCH /recordings/:id`: the
  * course staff paste a recording link, then rename it, replace the link or
  * change who may watch. The read side is `GET /courses/:id/recordings`
- * (MDRS-162, `recordings.e2e.spec.ts`); the provider and the YouTube rule are
- * unit-tested (`test/unit/course/recording.spec.ts`). This covers the guard,
- * the permission `recording.manage` for every way it is held, the lesson's
- * state, the audit rows and the round trip to the talebe.
+ * (MDRS-162, `recordings.e2e.spec.ts`); how a link is read is unit-tested
+ * (`test/unit/course/recording-link.spec.ts`). This covers the guard, the
+ * permission `recording.manage` for every way it is held, the lesson's state,
+ * the audit rows, the round trip to the talebe, and a pasted Bunny link: one
+ * app runs with a Bunny library configured (its transport a stub that must
+ * never be called: a pasted link asks nothing of Bunny), the other with none.
  */
 
 const MANAGER_ID = "e2470000-0000-4000-8000-000000000001";
@@ -59,8 +68,38 @@ const ZOOM = "https://us02web.zoom.us/rec/share/abc123";
 const DRIVE = "https://drive.google.com/file/d/xyz/view";
 const YOUTUBE = "https://www.youtube.com/watch?v=dQw4w9WgXcQ";
 
+const LIBRARY: IBunnyStreamConfig = {
+  libraryId: "424242",
+  apiKey: "e2e-library-api-key",
+  tokenKey: "e2e-token-key",
+  embedLifetimeSeconds: 6 * 3600,
+};
+const VIDEO = "b2470000-0000-4000-8000-000000000001";
+const OTHER_VIDEO = "b2470000-0000-4000-8000-000000000002";
+/** A player link of a video in a library, as Bunny's dashboard copies it. */
+const bunnyLink = (video: string, library = LIBRARY.libraryId) =>
+  `https://player.mediadelivery.net/embed/${library}/${video}?autoplay=false`;
+const PLAYER = new RegExp(
+  `^https://player\\.mediadelivery\\.net/embed/${LIBRARY.libraryId}/([0-9a-f-]{36})\\?token=([0-9a-f]{64})&expires=(\\d+)$`
+);
+
+/** Checks a player link signed for `video` with the library's token key. */
+function expectSigned(url: unknown, video: string) {
+  const match = PLAYER.exec(String(url));
+  expect(match, `not a signed player link: ${url}`).not.toBeNull();
+  const [, id, token, expires] = match as RegExpExecArray;
+  expect(id).toBe(video);
+  expect(Number(expires)).toBeGreaterThan(Date.now() / 1000);
+  expect(token).toBe(
+    embedViewToken(LIBRARY.tokenKey ?? "", video, Number(expires))
+  );
+}
+
 describe("a session's recording link (MDRS-247, e2e)", () => {
   let app: INestApplication;
+  /** The same API with a Bunny library configured. */
+  let library: INestApplication;
+  const bunnyCalls: string[] = [];
   let databaseService: DatabaseService;
   let dbUtils: TestDatabaseUtils;
 
@@ -82,14 +121,14 @@ describe("a session's recording link (MDRS-247, e2e)", () => {
         })
       : bearerFor({ sub });
 
-  const add = (id: string, sub: string, body: unknown) =>
-    http()
+  const add = (id: string, sub: string, body: unknown, target = app) =>
+    request(target.getHttpServer())
       .post(`/lessons/${id}/recordings`)
       .set("Authorization", as(sub))
       .send(body as object);
 
-  const change = (id: string, sub: string, body: unknown) =>
-    http()
+  const change = (id: string, sub: string, body: unknown, target = app) =>
+    request(target.getHttpServer())
       .patch(`/recordings/${id}`)
       .set("Authorization", as(sub))
       .send(body as object);
@@ -98,6 +137,36 @@ describe("a session's recording link (MDRS-247, e2e)", () => {
     db().select().from(lessonRecordings).where(eq(lessonRecordings.id, id));
 
   const recordingRows = () => db().select().from(lessonRecordings);
+
+  const recordingOf = async (lesson: string) =>
+    (
+      await db()
+        .select()
+        .from(lessonRecordings)
+        .where(eq(lessonRecordings.lessonId, lesson))
+    )[0];
+
+  /** A Bunny upload of the session (MDRS-116) in the state given, written as the upload route writes it. */
+  const bunnyUpload = async (
+    lesson: string,
+    status: RecordingStatus,
+    video = OTHER_VIDEO
+  ) =>
+    (
+      await db()
+        .insert(lessonRecordings)
+        .values({
+          lessonId: lesson,
+          title: "Yükleme",
+          provider: RecordingProvider.BUNNY,
+          url: null,
+          bunnyVideoId: video,
+          uploadExpiresAt: new Date(Date.now() - 3_600_000),
+          visibility: RecordingVisibility.ENROLLED,
+          status,
+        })
+        .returning()
+    )[0];
 
   const auditRows = (entityId?: string) =>
     db()
@@ -132,11 +201,24 @@ describe("a session's recording link (MDRS-247, e2e)", () => {
 
   beforeAll(async () => {
     app = await createTestApp();
+    library = await createTestApp({
+      overrides: [
+        { provide: BUNNY_STREAM_CONFIG, useValue: LIBRARY },
+        {
+          provide: BUNNY_STREAM_FETCH,
+          useValue: async (input: string | URL | Request) => {
+            bunnyCalls.push(String(input));
+            return new Response("{}", { status: 404 });
+          },
+        },
+      ],
+    });
     databaseService = app.get<DatabaseService>(DatabaseService);
     dbUtils = new TestDatabaseUtils(databaseService);
   });
 
   beforeEach(async () => {
+    bunnyCalls.length = 0;
     await clean();
     const [kosk] = await db()
       .insert(kosks)
@@ -289,6 +371,7 @@ describe("a session's recording link (MDRS-247, e2e)", () => {
 
   afterAll(async () => {
     await clean();
+    await library.close();
     await app.close();
   });
 
@@ -345,24 +428,52 @@ describe("a session's recording link (MDRS-247, e2e)", () => {
       });
     });
 
-    it("takes a YouTube link only as PUBLIC", async () => {
-      const refused = await add(lessonId, MUDERRIS_ID, {
-        title: "YouTube",
-        url: YOUTUBE,
-      }).expect(400);
-      expect(refused.body.code).toBe("RECORDING_YOUTUBE_PUBLIC_ONLY");
-      expect(await recordingRows()).toHaveLength(0);
-      expect(await auditRows()).toHaveLength(0);
-
+    it("takes a YouTube link that is not public, and stores it as its watch link (MDRS-114 AC4)", async () => {
       const res = await add(lessonId, MUDERRIS_ID, {
         title: "YouTube",
-        url: YOUTUBE,
-        visibility: "PUBLIC",
+        url: "https://youtu.be/dQw4w9WgXcQ?si=tracking",
       }).expect(201);
       expect(res.body).toMatchObject({
         provider: RecordingProvider.YOUTUBE,
-        visibility: RecordingVisibility.PUBLIC,
+        url: YOUTUBE,
+        visibility: RecordingVisibility.ENROLLED,
+        status: RecordingStatus.READY,
       });
+      expect(await recordingOf(lessonId)).toMatchObject({
+        provider: RecordingProvider.YOUTUBE,
+        url: YOUTUBE,
+        visibility: RecordingVisibility.ENROLLED,
+      });
+
+      const talebe = await http()
+        .get(`/courses/${courseId}/recordings`)
+        .set("Authorization", as(TALEBE_ID))
+        .expect(200);
+      expect(talebe.body[0]).toMatchObject({ url: YOUTUBE });
+    });
+
+    it.each([
+      [
+        "a YouTube page that names no video",
+        "https://www.youtube.com/@medaris",
+        "youtube-no-video",
+      ],
+      [
+        "a Bunny host that is not a player",
+        `https://vz-abc.b-cdn.net/${VIDEO}/play_720p.mp4`,
+        "bunny-no-video",
+      ],
+    ])("refuses %s with 400 RECORDING_LINK_INVALID, writing nothing", async (_name, url, reason) => {
+      const res = await add(lessonId, MUDERRIS_ID, {
+        title: "Kayıt",
+        url,
+      }).expect(400);
+      expect(res.body).toMatchObject({
+        code: "RECORDING_LINK_INVALID",
+        context: { reason },
+      });
+      expect(await recordingRows()).toHaveLength(0);
+      expect(await auditRows()).toHaveLength(0);
     });
 
     it("gives the enrolled talebe the link, and a stranger none while it is ENROLLED", async () => {
@@ -415,10 +526,10 @@ describe("a session's recording link (MDRS-247, e2e)", () => {
       ["a stranger", STRANGER_ID],
       ["a ders nazırı given only another permission", OTHER_NAZIR_ID],
       ["a ders nazırı whose grant has lapsed", EXPIRED_NAZIR_ID],
-    ])("refuses %s with 403, before the YouTube rule", async (_name, sub) => {
+    ])("refuses %s with 403, before the link is read", async (_name, sub) => {
       for (const body of [
         { title: "Kayıt", url: ZOOM },
-        { title: "Kayıt", url: YOUTUBE },
+        { title: "Kayıt", url: "https://www.youtube.com/@medaris" },
       ]) {
         const res = await add(lessonId, sub, body).expect(403);
         expect(res.body.code).toBe("AUTHZ_FORBIDDEN");
@@ -546,22 +657,44 @@ describe("a session's recording link (MDRS-247, e2e)", () => {
       });
     });
 
-    it("moves a recording to YouTube only together with PUBLIC, and never takes one back to ENROLLED", async () => {
-      const refused = await change(recordingId, MUDERRIS_ID, {
-        url: YOUTUBE,
-      }).expect(400);
-      expect(refused.body.code).toBe("RECORDING_YOUTUBE_PUBLIC_ONLY");
-      expect((await stored(recordingId))[0]?.url).toBe(ZOOM);
-
-      await change(recordingId, MUDERRIS_ID, {
-        url: YOUTUBE,
-        visibility: "PUBLIC",
+    it("moves a recording to YouTube while it stays ENROLLED, and takes a public one back to ENROLLED", async () => {
+      const moved = await change(recordingId, MUDERRIS_ID, {
+        url: "https://www.youtube.com/live/dQw4w9WgXcQ?feature=share",
       }).expect(200);
-      const back = await change(recordingId, MUDERRIS_ID, {
+      expect(moved.body).toMatchObject({
+        provider: RecordingProvider.YOUTUBE,
+        url: YOUTUBE,
+        visibility: RecordingVisibility.ENROLLED,
+      });
+
+      await change(recordingId, MUDERRIS_ID, { visibility: "PUBLIC" }).expect(
+        200
+      );
+      await change(recordingId, MUDERRIS_ID, {
         visibility: "ENROLLED",
+      }).expect(200);
+      expect((await stored(recordingId))[0]).toMatchObject({
+        provider: RecordingProvider.YOUTUBE,
+        url: YOUTUBE,
+        visibility: RecordingVisibility.ENROLLED,
+      });
+    });
+
+    it("refuses a new link that cannot be stored with 400 RECORDING_LINK_INVALID, and keeps the old one", async () => {
+      const res = await change(recordingId, MUDERRIS_ID, {
+        url: "https://www.youtube.com/playlist?list=PL1234567",
       }).expect(400);
-      expect(back.body.code).toBe("RECORDING_YOUTUBE_PUBLIC_ONLY");
-      expect((await stored(recordingId))[0]?.visibility).toBe("PUBLIC");
+      expect(res.body).toMatchObject({
+        code: "RECORDING_LINK_INVALID",
+        context: { reason: "youtube-no-video" },
+      });
+      expect((await stored(recordingId))[0]).toMatchObject({
+        provider: RecordingProvider.OTHER,
+        url: ZOOM,
+      });
+      expect((await auditRows(recordingId)).map((r) => r.action)).toEqual([
+        "recording.add",
+      ]);
     });
 
     it.each([
@@ -630,6 +763,268 @@ describe("a session's recording link (MDRS-247, e2e)", () => {
         .patch(`/recordings/${recordingId}`)
         .send({ title: "Yeni" })
         .expect(401);
+    });
+  });
+
+  describe("a pasted Bunny link (MDRS-247 on MDRS-119)", () => {
+    it("stores a player link of our library as its video, READY with no url, and plays it signed", async () => {
+      const res = await add(
+        lessonId,
+        MUDERRIS_ID,
+        { title: "Bunny", url: bunnyLink(VIDEO.toUpperCase()) },
+        library
+      ).expect(201);
+      expect(res.body).toMatchObject({
+        lessonId,
+        provider: RecordingProvider.BUNNY,
+        status: RecordingStatus.READY,
+        visibility: RecordingVisibility.ENROLLED,
+      });
+      // the writer is answered with a signed link, never the video id itself
+      expectSigned(res.body.url, VIDEO);
+      expect(Object.keys(res.body)).not.toContain("bunnyVideoId");
+
+      const row = await recordingOf(lessonId);
+      expect(row).toMatchObject({
+        provider: RecordingProvider.BUNNY,
+        url: null,
+        bunnyVideoId: VIDEO,
+        status: RecordingStatus.READY,
+      });
+      expect(row?.uploadExpiresAt?.getTime()).toBeLessThanOrEqual(Date.now());
+      const [entry] = await auditRows(res.body.id);
+      expect(entry).toMatchObject({
+        action: "recording.add",
+        details: {
+          provider: RecordingProvider.BUNNY,
+          url: null,
+          bunnyVideoId: VIDEO,
+        },
+      });
+
+      const talebe = await request(library.getHttpServer())
+        .get(`/courses/${courseId}/recordings`)
+        .set("Authorization", as(TALEBE_ID))
+        .expect(200);
+      expect(talebe.body).toHaveLength(1);
+      expectSigned(talebe.body[0].url, VIDEO);
+
+      // READY, so the encoding poll leaves it alone; nothing asked Bunny
+      await library.get(RecordingEncodingPoller).pollOnce(new Date());
+      expect(await recordingOf(lessonId)).toMatchObject({
+        status: RecordingStatus.READY,
+        bunnyVideoId: VIDEO,
+      });
+      expect(bunnyCalls).toEqual([]);
+    });
+
+    it("refuses a player link of another library with 400 bunny-foreign-library, writing nothing", async () => {
+      const res = await add(
+        lessonId,
+        MUDERRIS_ID,
+        { title: "Bunny", url: bunnyLink(VIDEO, "999999") },
+        library
+      ).expect(400);
+      expect(res.body).toMatchObject({
+        code: "RECORDING_LINK_INVALID",
+        context: { reason: "bunny-foreign-library" },
+      });
+      expect(await recordingRows()).toHaveLength(0);
+      expect(await auditRows()).toHaveLength(0);
+    });
+
+    it("refuses any Bunny link while no library is configured", async () => {
+      const res = await add(lessonId, MUDERRIS_ID, {
+        title: "Bunny",
+        url: bunnyLink(VIDEO),
+      }).expect(400);
+      expect(res.body).toMatchObject({
+        code: "RECORDING_LINK_INVALID",
+        context: { reason: "bunny-foreign-library" },
+      });
+      expect(await recordingRows()).toHaveLength(0);
+    });
+
+    it("refuses a video another session holds with 400 bunny-video-used, on add and on change", async () => {
+      await add(
+        lessonId,
+        MUDERRIS_ID,
+        { title: "Bunny", url: bunnyLink(VIDEO) },
+        library
+      ).expect(201);
+      const other = `https://iframe.mediadelivery.net/embed/${LIBRARY.libraryId}/${VIDEO}`;
+      const added = await add(
+        secondLessonId,
+        MUDERRIS_ID,
+        { title: "Aynı video", url: other },
+        library
+      ).expect(400);
+      expect(added.body).toMatchObject({
+        code: "RECORDING_LINK_INVALID",
+        context: { reason: "bunny-video-used" },
+      });
+      expect(await recordingOf(secondLessonId)).toBeUndefined();
+
+      // an upload's video is held the same way
+      await bunnyUpload(thirdLessonId, RecordingStatus.PROCESSING, OTHER_VIDEO);
+      const zoom = await add(secondLessonId, MUDERRIS_ID, {
+        title: "Zoom",
+        url: ZOOM,
+      }).expect(201);
+      for (const video of [VIDEO, OTHER_VIDEO]) {
+        const changed = await change(
+          zoom.body.id,
+          MUDERRIS_ID,
+          { url: bunnyLink(video) },
+          library
+        ).expect(400);
+        expect(changed.body.context).toEqual({ reason: "bunny-video-used" });
+      }
+      expect(await recordingOf(secondLessonId)).toMatchObject({
+        provider: RecordingProvider.OTHER,
+        url: ZOOM,
+        bunnyVideoId: null,
+      });
+    });
+
+    it("replaces a Bunny upload that FAILED with the pasted link, in the same row", async () => {
+      const failed = await bunnyUpload(lessonId, RecordingStatus.FAILED);
+      const res = await add(lessonId, MUDERRIS_ID, {
+        title: "Zoom kaydı",
+        url: ZOOM,
+      }).expect(201);
+      expect(res.body).toMatchObject({
+        id: failed.id,
+        provider: RecordingProvider.OTHER,
+        url: ZOOM,
+        status: RecordingStatus.READY,
+      });
+      const rows = await recordingRows();
+      expect(rows).toHaveLength(1);
+      expect(rows[0]).toMatchObject({
+        id: failed.id,
+        title: "Zoom kaydı",
+        provider: RecordingProvider.OTHER,
+        url: ZOOM,
+        bunnyVideoId: null,
+        uploadExpiresAt: null,
+        status: RecordingStatus.READY,
+      });
+      const [entry] = await auditRows(failed.id);
+      expect(entry?.details).toMatchObject({ replacedVideoId: OTHER_VIDEO });
+    });
+
+    it("replaces a FAILED upload with a Bunny link too, even of the same video", async () => {
+      const failed = await bunnyUpload(lessonId, RecordingStatus.FAILED);
+      await add(
+        lessonId,
+        MUDERRIS_ID,
+        { title: "Bunny", url: bunnyLink(OTHER_VIDEO) },
+        library
+      ).expect(201);
+      expect(await recordingOf(lessonId)).toMatchObject({
+        id: failed.id,
+        provider: RecordingProvider.BUNNY,
+        bunnyVideoId: OTHER_VIDEO,
+        status: RecordingStatus.READY,
+      });
+    });
+
+    it.each([
+      ["READY", RecordingStatus.READY],
+      ["still PROCESSING", RecordingStatus.PROCESSING],
+    ])("keeps a Bunny upload that is %s: 409 RECORDING_EXISTS names it", async (_name, status) => {
+      const upload = await bunnyUpload(lessonId, status);
+      const res = await add(lessonId, MUDERRIS_ID, {
+        title: "Zoom",
+        url: ZOOM,
+      }).expect(409);
+      expect(res.body).toMatchObject({
+        code: "RECORDING_EXISTS",
+        context: { lessonId, recordingId: upload.id },
+      });
+      expect(await recordingOf(lessonId)).toMatchObject({
+        provider: RecordingProvider.BUNNY,
+        bunnyVideoId: OTHER_VIDEO,
+        status,
+      });
+      expect(await auditRows()).toHaveLength(0);
+    });
+
+    it("moves a recording from a pasted link to a Bunny video and back, every column with it", async () => {
+      const zoom = await add(lessonId, MUDERRIS_ID, {
+        title: "Kayıt",
+        url: ZOOM,
+      }).expect(201);
+      const id = zoom.body.id;
+
+      const toBunny = await change(
+        id,
+        MUDERRIS_ID,
+        { url: bunnyLink(VIDEO) },
+        library
+      ).expect(200);
+      expectSigned(toBunny.body.url, VIDEO);
+      expect((await stored(id))[0]).toMatchObject({
+        provider: RecordingProvider.BUNNY,
+        url: null,
+        bunnyVideoId: VIDEO,
+        status: RecordingStatus.READY,
+      });
+      expect((await stored(id))[0]?.uploadExpiresAt).not.toBeNull();
+
+      // its own video again is no conflict; a rename leaves the video alone
+      await change(id, MUDERRIS_ID, { url: bunnyLink(VIDEO) }, library).expect(
+        200
+      );
+      await change(id, MUDERRIS_ID, { title: "Yeni ad" }, library).expect(200);
+      expect((await stored(id))[0]).toMatchObject({
+        title: "Yeni ad",
+        provider: RecordingProvider.BUNNY,
+        bunnyVideoId: VIDEO,
+      });
+
+      const back = await change(id, MUDERRIS_ID, { url: DRIVE }).expect(200);
+      expect(back.body).toMatchObject({
+        provider: RecordingProvider.DRIVE,
+        url: DRIVE,
+      });
+      expect((await stored(id))[0]).toMatchObject({
+        provider: RecordingProvider.DRIVE,
+        url: DRIVE,
+        bunnyVideoId: null,
+        uploadExpiresAt: null,
+        status: RecordingStatus.READY,
+      });
+
+      const rows = await auditRows(id);
+      expect(rows[1]?.details).toMatchObject({
+        previous: { provider: RecordingProvider.OTHER, url: ZOOM },
+        next: {
+          provider: RecordingProvider.BUNNY,
+          url: null,
+          bunnyVideoId: VIDEO,
+        },
+      });
+      expect(rows.at(-1)?.details).toMatchObject({
+        previous: { provider: RecordingProvider.BUNNY, bunnyVideoId: VIDEO },
+        next: { provider: RecordingProvider.DRIVE, bunnyVideoId: null },
+      });
+      expect(bunnyCalls).toEqual([]);
+    });
+
+    it("replaces an upload still PROCESSING with a pasted link, which the poll then leaves alone", async () => {
+      const upload = await bunnyUpload(lessonId, RecordingStatus.PROCESSING);
+      await change(upload.id, MUDERRIS_ID, { url: ZOOM }, library).expect(200);
+      expect(await recordingOf(lessonId)).toMatchObject({
+        provider: RecordingProvider.OTHER,
+        url: ZOOM,
+        bunnyVideoId: null,
+        uploadExpiresAt: null,
+        status: RecordingStatus.READY,
+      });
+      await library.get(RecordingEncodingPoller).pollOnce(new Date());
+      expect(bunnyCalls).toEqual([]);
     });
   });
 });

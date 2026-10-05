@@ -1,15 +1,12 @@
 import {
-  applyRecordingPatch,
   type IRecordingRow,
   liveStreamFor,
-  providerOfUrl,
   RecordingProvider,
   RecordingStatus,
   RecordingVisibility,
   visibleRecordings,
 } from "../../../src/course/domain/recording";
 import { SessionStatus } from "../../../src/course/domain/session-status.enum";
-import { RecordingYoutubePublicOnlyError } from "../../../src/course/errors/recording-youtube-public-only.error";
 
 const row = (id: string, over: Partial<IRecordingRow> = {}): IRecordingRow => ({
   id,
@@ -116,85 +113,5 @@ describe("liveStreamFor (MDRS-162)", () => {
 
   it("is null when none was set", () => {
     expect(liveStreamFor(SessionStatus.LIVE, null, true)).toBeNull();
-  });
-});
-
-describe("providerOfUrl (MDRS-247)", () => {
-  it.each([
-    ["https://www.youtube.com/watch?v=abc", RecordingProvider.YOUTUBE],
-    ["https://youtu.be/abc", RecordingProvider.YOUTUBE],
-    ["https://www.youtube-nocookie.com/embed/abc", RecordingProvider.YOUTUBE],
-    ["https://drive.google.com/file/d/xyz/view", RecordingProvider.DRIVE],
-    ["https://docs.google.com/document/d/xyz", RecordingProvider.DRIVE],
-    ["https://us02web.zoom.us/rec/share/abc", RecordingProvider.OTHER],
-    ["https://meet.google.com/abc-defg-hij", RecordingProvider.OTHER],
-    ["https://notyoutube.com/watch?v=abc", RecordingProvider.OTHER],
-    ["https://youtube.com.example.org/x", RecordingProvider.OTHER],
-    ["not a link", RecordingProvider.OTHER],
-  ])("reads %s as %s", (url, provider) => {
-    expect(providerOfUrl(url)).toBe(provider);
-  });
-});
-
-describe("applyRecordingPatch (MDRS-247)", () => {
-  const current = {
-    title: "Kayıt",
-    url: "https://us02web.zoom.us/rec/share/abc",
-    visibility: RecordingVisibility.ENROLLED,
-    provider: RecordingProvider.OTHER,
-  };
-
-  it("changes only the keys that are present", () => {
-    expect(applyRecordingPatch(current, { title: "Yeni" })).toEqual({
-      ...current,
-      title: "Yeni",
-    });
-  });
-
-  it("reads the provider again when the link changes", () => {
-    expect(
-      applyRecordingPatch(current, {
-        url: "https://drive.google.com/file/d/xyz/view",
-      })
-    ).toMatchObject({ provider: RecordingProvider.DRIVE });
-  });
-
-  it("lets a YouTube link be PUBLIC and refuses it ENROLLED", () => {
-    const youtube = "https://youtu.be/abc";
-    expect(
-      applyRecordingPatch(current, {
-        url: youtube,
-        visibility: RecordingVisibility.PUBLIC,
-      })
-    ).toMatchObject({ provider: RecordingProvider.YOUTUBE });
-    expect(() => applyRecordingPatch(current, { url: youtube })).toThrow(
-      RecordingYoutubePublicOnlyError
-    );
-  });
-
-  it("refuses to take a YouTube recording back to ENROLLED", () => {
-    const youtube = {
-      ...current,
-      url: "https://youtu.be/abc",
-      provider: RecordingProvider.YOUTUBE,
-      visibility: RecordingVisibility.PUBLIC,
-    };
-    expect(() =>
-      applyRecordingPatch(youtube, {
-        visibility: RecordingVisibility.ENROLLED,
-      })
-    ).toThrow(RecordingYoutubePublicOnlyError);
-  });
-
-  it("does not check a write that touches neither link nor visibility", () => {
-    const older = {
-      ...current,
-      url: "https://youtu.be/abc",
-      provider: RecordingProvider.YOUTUBE,
-    };
-    expect(applyRecordingPatch(older, { title: "Düzeltildi" })).toMatchObject({
-      title: "Düzeltildi",
-      visibility: RecordingVisibility.ENROLLED,
-    });
   });
 });
