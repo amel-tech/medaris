@@ -29,6 +29,7 @@ import { splitArabic, zoneLabel } from "../session-model";
 import { LessonNotes } from "./lesson-notes";
 import { LiveChat } from "./live-chat";
 import { MediaPlayer } from "./media-player";
+import { PlayerWithNotes } from "./player-with-notes";
 import { SessionJoinLive } from "./session-join-live";
 import { SessionProgramme } from "./session-programme";
 
@@ -190,6 +191,20 @@ export const SessionPage = async ({
       : showRecording
         ? { frameId: "recording-frame", framed: recordingEmbed }
         : null;
+  // The panel goes under the video it is about (MDRS-280), never further down
+  // the page.
+  const notesUnder = (frameId: string) =>
+    mayTakeNotes && notesVideo?.frameId === frameId ? (
+      <LessonNotes
+        lessonId={session.id}
+        // Only a YouTube frame reports a position; anything else is typed.
+        frameId={
+          notesVideo.framed?.startsWith("https://www.youtube-nocookie.com/")
+            ? frameId
+            : null
+        }
+      />
+    ) : null;
   const recordedOn = recording?.recordedAt
     ? new Intl.DateTimeFormat(locale, {
         weekday: "long",
@@ -275,32 +290,39 @@ export const SessionPage = async ({
           ) : null}
 
           {showRecording && recording ? (
-            <MediaPlayer
-              id="recording-title"
-              title={recording.title}
-              embedUrl={recordingFrame.embedUrl}
-              frameId={recordingFrame.frameId}
-              frameTitle={
-                recording.provider === "BUNNY"
-                  ? t("SessionPage.bunnyFrameTitle", { title: recording.title })
-                  : undefined
+            <PlayerWithNotes
+              player={
+                <MediaPlayer
+                  id="recording-title"
+                  title={recording.title}
+                  embedUrl={recordingFrame.embedUrl}
+                  frameId={recordingFrame.frameId}
+                  frameTitle={
+                    recording.provider === "BUNNY"
+                      ? t("SessionPage.bunnyFrameTitle", {
+                          title: recording.title,
+                        })
+                      : undefined
+                  }
+                  placeholder={t("SessionPage.recordingPlaceholder")}
+                  openHref={recordingEmbed ? null : recording.url}
+                  openLabel={t("SessionPage.recordingOpen")}
+                >
+                  {[
+                    t("SessionPage.recordingKind"),
+                    recordedOn,
+                    recording.durationMinutes != null
+                      ? t("SessionPage.minutes", {
+                          count: recording.durationMinutes,
+                        })
+                      : null,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </MediaPlayer>
               }
-              placeholder={t("SessionPage.recordingPlaceholder")}
-              openHref={recordingEmbed ? null : recording.url}
-              openLabel={t("SessionPage.recordingOpen")}
-            >
-              {[
-                t("SessionPage.recordingKind"),
-                recordedOn,
-                recording.durationMinutes != null
-                  ? t("SessionPage.minutes", {
-                      count: recording.durationMinutes,
-                    })
-                  : null,
-              ]
-                .filter(Boolean)
-                .join(" · ")}
-            </MediaPlayer>
+              notes={notesUnder("recording-frame")}
+            />
           ) : session.status === "ENDED" &&
             !recording &&
             !session.contentLocked ? (
@@ -352,34 +374,25 @@ export const SessionPage = async ({
           </div>
 
           {liveStream ? (
-            <MediaPlayer
-              id="live-stream-title"
-              title={t("SessionPage.liveStreamTitle")}
-              embedUrl={liveFrame.embedUrl}
-              frameId={liveFrame.frameId}
-              placeholder={t("SessionPage.liveStreamPlaceholder")}
-              openHref={liveEmbed ? null : liveStream}
-              openLabel={t("SessionPage.liveStreamOpen")}
-            >
-              {t("SessionPage.liveStreamText")}
-            </MediaPlayer>
+            <PlayerWithNotes
+              player={
+                <MediaPlayer
+                  id="live-stream-title"
+                  title={t("SessionPage.liveStreamTitle")}
+                  embedUrl={liveFrame.embedUrl}
+                  frameId={liveFrame.frameId}
+                  placeholder={t("SessionPage.liveStreamPlaceholder")}
+                  openHref={liveEmbed ? null : liveStream}
+                  openLabel={t("SessionPage.liveStreamOpen")}
+                >
+                  {t("SessionPage.liveStreamText")}
+                </MediaPlayer>
+              }
+              notes={notesUnder("live-stream-frame")}
+            />
           ) : null}
 
           {liveStream && liveEmbed ? <LiveChat streamUrl={liveStream} /> : null}
-
-          {mayTakeNotes && notesVideo ? (
-            <LessonNotes
-              lessonId={session.id}
-              // Only a YouTube frame reports a position; anything else is typed.
-              frameId={
-                notesVideo.framed?.startsWith(
-                  "https://www.youtube-nocookie.com/"
-                )
-                  ? notesVideo.frameId
-                  : null
-              }
-            />
-          ) : null}
 
           {session.previous || session.next ? (
             <nav
