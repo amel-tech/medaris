@@ -11,13 +11,15 @@ import { isBlank, REASON_MAX } from "../present";
 /**
  * The refusals that share this dialog: a publish request and a proposal
  * (nizam 16, 30), and, since MDRS-181, a köşk application (nizam 15) and a
- * medrese's course request (nizam 39).
+ * medrese's course request (nizam 39); and, since MDRS-148, the başnazım's
+ * taking a published deck back, which words its own button and label.
  */
 export type RejectKind =
   | "request"
   | "proposal"
   | "application"
-  | "courseRequest";
+  | "courseRequest"
+  | "unpublish";
 
 interface Props {
   open: boolean;
@@ -54,6 +56,9 @@ export function RejectDialog({
     }
   }, [open]);
 
+  // A kind that is not a refusal words its own button and label.
+  const own = (key: "submit" | "reasonLabel") =>
+    t.has(`${kind}.${key}` as never) ? t(`${kind}.${key}` as never) : t(key);
   const blank = isBlank(reason);
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -83,7 +88,7 @@ export function RejectDialog({
         <>
           <DialogClose>{t("cancel")}</DialogClose>
           <Button type="submit" loading={saving} disabled={blank}>
-            {t("submit")}
+            {own("submit")}
           </Button>
         </>
       }
@@ -91,7 +96,7 @@ export function RejectDialog({
       <p>{t(`${kind}.body`)}</p>
       <p className="mds-caption">* {t("requiredNote")}</p>
       <Field
-        label={t("reasonLabel")}
+        label={own("reasonLabel")}
         required
         help={t(`${kind}.help`)}
         error={touched && blank ? t("reasonRequired") : undefined}

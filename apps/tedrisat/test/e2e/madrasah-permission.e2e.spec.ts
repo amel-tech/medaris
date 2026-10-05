@@ -212,11 +212,18 @@ describe("Medrese permissions and groups (e2e)", () => {
   });
 
   describe("the dictionary", () => {
-    it("lists the ten medrese and the twenty course permissions and what the caller may give", async () => {
+    // Ten medrese permissions and the twenty course permissions of nazir/06, and
+    // one more of each from the owner's 1 October list: "request a non-medrese
+    // course in a köşk" (medrese) and "propose a köşk deck" (course); the
+    // twenty-second course permission is `question.answer` (MDRS-150).
+    it("lists the eleven medrese and the twenty-two course permissions and what the caller may give", async () => {
       const res = await get(HEAD_ID, at("/permissions")).expect(200);
-      expect(res.body.madrasah).toHaveLength(10);
+      expect(res.body.madrasah).toHaveLength(11);
       expect(res.body.madrasah[0]).toBe("madrasah.course_open");
-      expect(res.body.course).toHaveLength(20);
+      expect(res.body.madrasah).toContain("madrasah.offsite_course_request");
+      expect(res.body.course).toHaveLength(22);
+      expect(res.body.course).toContain("deck.propose_kosk");
+      expect(res.body.course).toContain("question.answer");
       expect(res.body.course[0]).toBe("course.edit");
       expect(res.body.givable).toEqual([
         ...res.body.madrasah,

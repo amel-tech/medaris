@@ -17,7 +17,7 @@ import {
 } from "../../src/database/schema/course.schema";
 import { kosks } from "../../src/database/schema/kosk.schema";
 import { ASSIGNED_ROLES } from "../../src/database/schema/role-assignment.schema";
-import { asSystemAdmin } from "../helpers/system-admin.helper";
+import { FIXTURE_MUDERRIS_ID, openKosk } from "../helpers/open-scopes.helper";
 import { createTestApp, TEST_USER_ID } from "../helpers/test-app.helper";
 import {
   assignRole,
@@ -39,7 +39,12 @@ const coursePayload = () => ({
   status: "PUBLISHED",
   grantsCertificate: true,
   muderris: [
-    { name: "Müderris Ahmed Hilmi", title: "Sarf Müderrisi", avatarHue: 145 },
+    {
+      userId: FIXTURE_MUDERRIS_ID,
+      name: "Müderris Ahmed Hilmi",
+      title: "Sarf Müderrisi",
+      avatarHue: 145,
+    },
   ],
   resources: [{ name: "Bina ve İzhar", meta: "PDF · 124 sayfa", type: "pdf" }],
   weeks: [
@@ -88,11 +93,7 @@ describe("CourseController (e2e)", () => {
 
   beforeEach(async () => {
     await dbUtils.cleanTables(...COURSE_TREE_TABLES);
-    const kosk = await request(adminApp.getHttpServer())
-      .post("/kosks")
-      .set("Authorization", asSystemAdmin(TEST_USER_ID))
-      .send({ name: "Süleymaniye Köşkü" })
-      .expect(201);
+    const kosk = await openKosk(adminApp);
     koskId = kosk.body.id;
   });
 
@@ -311,7 +312,6 @@ describe("CourseController (e2e)", () => {
       const payload = coursePayload();
       payload.title = "Güncellenmiş Kurs";
       payload.status = "PUBLISHED";
-      payload.muderris = [];
       payload.resources = [];
       payload.weeks = [
         {
@@ -328,10 +328,11 @@ describe("CourseController (e2e)", () => {
         .expect((res) => {
           expect(res.body).toHaveProperty("title", "Güncellenmiş Kurs");
           expect(res.body).toHaveProperty("status", "PUBLISHED");
-          // curriculum fully replaced (was 2 weeks / 1 müderris / 1 resource)
+          // curriculum fully replaced (was 2 weeks / 1 resource); the team is
+          // never emptied by a save (MDRS-136)
           expect(res.body.weeks).toHaveLength(1);
           expect(res.body.weeks[0].lessons).toHaveLength(1);
-          expect(res.body.muderris).toHaveLength(0);
+          expect(res.body.muderris).toHaveLength(1);
           expect(res.body.resources).toHaveLength(0);
         });
     });

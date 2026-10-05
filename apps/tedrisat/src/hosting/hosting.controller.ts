@@ -3,7 +3,8 @@ import {
   Authz,
   AuthzGuard,
   AuthzService,
-  SCOPES,
+  ENTITIES,
+  PERMISSIONS,
 } from "@medaris/common";
 import {
   Body,
@@ -31,6 +32,8 @@ import {
   ApiQuery,
   ApiTags,
 } from "@nestjs/swagger";
+import { actingLevel } from "../archive/hide-level";
+import { SCOPE_TYPES } from "../database/schema/scope-type.schema";
 import { AuthorizedRequest } from "../kosk/interfaces/authorized-request.interface";
 import { byExistingKosk } from "../kosk/kosk.controller";
 import {
@@ -39,6 +42,7 @@ import {
   GrantHostingRightDto,
   HostingRightResponse,
 } from "./dto/hosting-right.dto";
+import type { GrantedByRole } from "./hosting.repository";
 import { HostingService } from "./hosting.service";
 
 /**
@@ -66,7 +70,10 @@ export class HostingController {
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()
   @Get(":id/hosting-rights")
-  @Authz(SCOPES.EDIT, byExistingKosk)
+  @Authz(
+    [PERMISSIONS.KOSK_HOSTING, PERMISSIONS.PLATFORM_HOSTING_GRANT],
+    byExistingKosk
+  )
   list(
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<HostingRightResponse[]> {
@@ -83,24 +90,45 @@ export class HostingController {
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()
   @Post(":id/hosting-rights")
-  @Authz(SCOPES.EDIT, byExistingKosk)
-  grant(
+  @Authz(
+    [PERMISSIONS.KOSK_HOSTING, PERMISSIONS.PLATFORM_HOSTING_GRANT],
+    byExistingKosk
+  )
+  async grant(
     @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string,
     @Body() dto: GrantHostingRightDto
   ): Promise<HostingRightResponse> {
     return this.hosting.grant(id, dto.madrasahId, {
       id: request.user.sub,
-      role: this.authz.isSystemAdmin(request.user)
-        ? "SYSTEM_ADMIN"
-        : "KOSK_NAZIM",
+      role: await this.grantedByRole(request, id),
     });
+  }
+
+  /**
+   * How the caller was entitled to give the right: the başnazım, the köşk's
+   * own nazımı (who holds `kosk.hosting` by role default), or a Medaris nazımı
+   * holding `platform.hosting_grant`, who must not be recorded as the köşk's
+   * nazımı (review L11).
+   */
+  private async grantedByRole(
+    request: AuthorizedRequest,
+    koskId: string
+  ): Promise<GrantedByRole> {
+    if (this.authz.isSystemAdmin(request.user)) return "SYSTEM_ADMIN";
+    return (await this.authz.can(
+      request.user,
+      { entity: ENTITIES.KOSK, id: koskId },
+      PERMISSIONS.KOSK_HOSTING
+    ))
+      ? "KOSK_NAZIM"
+      : "MEDARIS_NAZIM";
   }
 
   @ApiOperation({
     summary: "Withdraw a medrese's hosting right",
     description:
-      "`coursesAction` decides what becomes of the medrese's courses in this köşk: KEEP leaves them as they are, HIDE hides each (they come back from the archive). The medrese can open no new course here. Written to the audit log.",
+      "`coursesAction` decides what becomes of the medrese's courses in this köşk: KEEP leaves them as they are, HIDE hides each (they come back from the archive, by the level the caller acts at: the köşk's nazımı hides at the köşk's level, a Medaris nazımı or SYSTEM_ADMIN at the platform's, so the medrese's own başmüderris cannot bring them back). The medrese can open no new course here. Written to the audit log.",
     operationId: "revokeKoskHostingRight",
   })
   @ApiQuery({
@@ -114,7 +142,10 @@ export class HostingController {
   @ApiNotFoundResponse()
   @Delete(":id/hosting-rights/:madrasahId")
   @HttpCode(HttpStatus.NO_CONTENT)
-  @Authz(SCOPES.EDIT, byExistingKosk)
+  @Authz(
+    [PERMISSIONS.KOSK_HOSTING, PERMISSIONS.PLATFORM_HOSTING_GRANT],
+    byExistingKosk
+  )
   async revoke(
     @Req() request: AuthorizedRequest,
     @Param("id", ParseUUIDPipe) id: string,
@@ -122,6 +153,27 @@ export class HostingController {
     @Query("coursesAction", new ParseEnumPipe(COURSES_ACTIONS))
     coursesAction: CoursesAction
   ): Promise<void> {
-    await this.hosting.revoke(id, madrasahId, coursesAction, request.user.sub);
+    // The courses it hides are hidden at the level the caller acts at, so that
+    // the medrese's own head cannot bring back what the köşk hid (MDRS-135).
+    const level = await actingLevel(
+      this.authz,
+      request.user,
+      { entity: ENTITIES.KOSK, id },
+      [
+        {
+          level: SCOPE_TYPES.PLATFORM,
+          codes: [PERMISSIONS.PLATFORM_HOSTING_GRANT],
+        },
+        { level: SCOPE_TYPES.KOSK, codes: [PERMISSIONS.KOSK_HOSTING] },
+      ],
+      SCOPE_TYPES.KOSK
+    );
+    await this.hosting.revoke(
+      id,
+      madrasahId,
+      coursesAction,
+      request.user.sub,
+      level
+    );
   }
 }

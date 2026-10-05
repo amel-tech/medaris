@@ -50,7 +50,7 @@ describe("Rate limiting (e2e)", () => {
 
       const deck = await request(app.getHttpServer())
         .post("/flashcard/decks")
-        .send({ title: "Rate limit deck", isPublic: false });
+        .send({ title: "Rate limit deck" });
       expect(deck.status).toBe(201);
       deckId = deck.body.id;
     });

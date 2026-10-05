@@ -1,5 +1,5 @@
 {
-  "id": "71273f98-9c67-413d-b016-e3e3593a5fba",
+  "id": "f4636102-11e5-4a85-9cf5-50cb825f2bc3",
   "prevId": "bdb74326-fc5f-402f-b1a5-da84a6d0537c",
   "version": "7",
   "dialect": "postgresql",
@@ -1202,18 +1202,6 @@
           "notNull": true,
           "default": "'PROCESSING'"
         },
-        "bunny_video_id": {
-          "name": "bunny_video_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "upload_expires_at": {
-          "name": "upload_expires_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp",
@@ -1244,21 +1232,6 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
-        },
-        "lesson_recordings_bunny_video_id_uq": {
-          "name": "lesson_recordings_bunny_video_id_uq",
-          "columns": [
-            {
-              "expression": "bunny_video_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
         }
       },
       "foreignKeys": {
@@ -1279,12 +1252,7 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {
-        "lesson_recordings_provider_columns": {
-          "name": "lesson_recordings_provider_columns",
-          "value": "case when \"lesson_recordings\".\"provider\"::text = 'BUNNY' then \"lesson_recordings\".\"bunny_video_id\" is not null and \"lesson_recordings\".\"upload_expires_at\" is not null and \"lesson_recordings\".\"url\" is null else \"lesson_recordings\".\"bunny_video_id\" is null and \"lesson_recordings\".\"upload_expires_at\" is null and (\"lesson_recordings\".\"url\" is not null or \"lesson_recordings\".\"status\"::text = 'PROCESSING') end"
-        }
-      },
+      "checkConstraints": {},
       "isRLSEnabled": false
     },
     "public.lessons": {
@@ -3258,6 +3226,13 @@
           "primaryKey": false,
           "notNull": true
         },
+        "authority_scope_type": {
+          "name": "authority_scope_type",
+          "type": "scope_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -4127,8 +4102,7 @@
       "values": [
         "YOUTUBE",
         "DRIVE",
-        "OTHER",
-        "BUNNY"
+        "OTHER"
       ]
     },
     "public.recording_status": {
@@ -4136,8 +4110,7 @@
       "schema": "public",
       "values": [
         "PROCESSING",
-        "READY",
-        "FAILED"
+        "READY"
       ]
     },
     "public.recording_visibility": {

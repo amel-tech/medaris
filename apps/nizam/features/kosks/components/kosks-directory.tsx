@@ -3,7 +3,6 @@
 import type {
   KoskDirectoryItemResponse,
   KoskDirectoryResponse,
-  KoskLevel,
   KoskListingFilter,
   KoskStatusFilter,
 } from "@medaris/services/tedrisat";
@@ -16,12 +15,12 @@ import { CoverPattern } from "@medaris/ui/mds/cover-pattern";
 import { Field } from "@medaris/ui/mds/field";
 import { Icon } from "@medaris/ui/mds/icon";
 import { Input } from "@medaris/ui/mds/input";
-import { Select } from "@medaris/ui/mds/select";
 import { Table, type TableColumn } from "@medaris/ui/mds/table";
 import { Tabs, TabsPanel } from "@medaris/ui/mds/tabs";
 import { useRouter } from "next/navigation";
 import { useLocale, useTimeZone, useTranslations } from "next-intl";
 import { useEffect, useRef, useState, useTransition } from "react";
+import { hideLevelOf } from "../../archive/hide-level";
 import { dateWithCase } from "../../madrasahs/present";
 import { restoreKosk } from "../admin-actions";
 import {
@@ -30,7 +29,6 @@ import {
   handleLabel,
   isNazimOf,
   koskErrorKey,
-  LEVEL_FILTERS,
   LISTING_CHIPS,
   type Messages,
   nazimNames,
@@ -48,23 +46,24 @@ interface Props {
   filters: DirectoryFilters;
   /** the signed-in person, for the "Siz" under a row they manage */
   viewerId: string | null;
-  /** the başnazım opens köşks and brings hidden ones back; a köşk nazımı only reads */
+  /** the başnazım opens köşks and reads the platform Arşiv; "Geri al" is each row's `canRestore` */
   chief: boolean;
   /** the home page's "Köşk aç" lands here with the form already open (the başnazım's) */
   initialOpen?: boolean;
 }
 
 const SEARCH_DELAY_MS = 300;
-const ALL = "all";
 
 /**
- * Köşkler (nizam 09): every köşk with its nazımları, field, course count and
- * status, the status tabs with their counts, a search, a level select, the
- * Alan and Görünürlük chips and a pager. The URL is the one source of the
+ * Köşkler (nizam 09): every köşk with its nazımları, course count and status,
+ * the status tabs with their counts, a search, the Görünürlük chips and a
+ * pager (a köşk's alan and level are not shown or filtered, MDRS-252). The URL is the one source of the
  * filters: a tab, a chip or a search navigates, the server reads again, so
  * the counts and the rows always come from the same answer. "Geri al" brings
- * a hidden köşk back; "Köşk aç" is nizam/10. A köşk nazımı sees only their
- * own köşks and neither button.
+ * a hidden köşk back, to whoever hid it or a level above (the row's
+ * `canRestore`: a köşk nazımı reopens what they hid, not what Medaris yönetimi
+ * did); "Köşk aç" is nizam/10 and the başnazım's. A köşk nazımı sees only
+ * their own köşks.
  */
 export function KosksDirectory({
   directory,
@@ -75,6 +74,7 @@ export function KosksDirectory({
 }: Props) {
   const tm = useTranslations("nizam.KoskDirectory");
   const t = tm as unknown as Messages;
+  const tl = useTranslations("nizam.HideLevel");
   const locale = useLocale();
   const timeZone = useTimeZone() ?? "Europe/Istanbul";
   const router = useRouter();
@@ -201,12 +201,6 @@ export function KosksDirectory({
         ),
     },
     {
-      key: "field",
-      header: t("columns.field"),
-      width: "16%",
-      render: (k) => <bdi>{k.field ?? ""}</bdi>,
-    },
-    {
       key: "courses",
       header: t("columns.courses"),
       align: "right",
@@ -259,7 +253,7 @@ export function KosksDirectory({
       align: "right",
       width: "14%",
       render: (k) =>
-        chief && k.status === "HIDDEN" ? (
+        k.status !== "HIDDEN" ? null : k.canRestore ? (
           <Button
             variant="outline"
             size="small"
@@ -270,7 +264,15 @@ export function KosksDirectory({
           >
             {t("restore")}
           </Button>
-        ) : null,
+        ) : (
+          // Whoever hid it, or a level above, brings it back: say who, rather
+          // than offer a button the API would refuse (MDRS-143).
+          <span className="mds-caption">
+            {tl("locked", {
+              level: tl(hideLevelOf(k.hiddenLevel, "kosk")),
+            })}
+          </span>
+        ),
     },
   ];
 
@@ -278,15 +280,6 @@ export function KosksDirectory({
   const pages = directory ? pageCount(directory.total, directory.limit) : 1;
   const emptyText =
     directory && directory.counts.all === 0 ? t("emptyAll") : t("emptyFilter");
-
-  const fieldChoices = [
-    { value: ALL, label: t("allChip") },
-    ...(directory?.fields ?? []).map((f) => ({ value: f, label: f })),
-  ];
-  // A field in the URL that no köşk carries any more still shows as chosen.
-  if (filters.field && !fieldChoices.some((c) => c.value === filters.field)) {
-    fieldChoices.push({ value: filters.field, label: filters.field });
-  }
 
   return (
     <div
@@ -353,42 +346,8 @@ export function KosksDirectory({
                         />
                       </Field>
                     </div>
-                    <div className="w-[14rem]">
-                      <Select
-                        aria-label={t("levelLabel")}
-                        value={filters.level ?? ALL}
-                        options={[
-                          { value: ALL, label: t("levelAll") },
-                          ...LEVEL_FILTERS.map((level) => ({
-                            value: level,
-                            label: t("levelValue", {
-                              level: t(`levels.${level}`),
-                            }),
-                          })),
-                        ]}
-                        onChange={(next) =>
-                          change({
-                            level:
-                              !next || next === ALL
-                                ? undefined
-                                : (next as KoskLevel),
-                          })
-                        }
-                      />
-                    </div>
                   </div>
                   <div className="flex flex-wrap gap-x-10 gap-y-4">
-                    <ChoiceChips
-                      legend={t("fieldLegend")}
-                      legendVisible
-                      options={fieldChoices}
-                      value={filters.field ?? ALL}
-                      onChange={(next) =>
-                        change({
-                          field: !next || next === ALL ? undefined : next,
-                        })
-                      }
-                    />
                     <ChoiceChips
                       legend={t("listingLegend")}
                       legendVisible

@@ -89,7 +89,6 @@ const data = (over: Record<string, unknown> = {}) => ({
   koskTotal: 1,
   madrasahs: [madrasah()],
   allMadrasahs: [madrasah()],
-  fields: ["Arapça dil ilimleri", "Fıkıh"],
   ...over,
 });
 
@@ -119,7 +118,6 @@ describe("Keşfet (design tedris/02)", () => {
           kosk({
             id: "k2",
             name: "Fatih Köşkü",
-            level: "INTERMEDIATE",
             isFollowing: false,
           }),
         ],
@@ -140,8 +138,7 @@ describe("Keşfet (design tedris/02)", () => {
     expect(html).toContain(">Köşkler<");
     expect(html).toContain(">Medreseler<");
     expect(html).toContain("Nûruosmaniye Köşkü");
-    expect(html).toContain("Başlangıç seviyesi");
-    expect(html).toContain("Orta seviye");
+    expect(html).toContain("Fatih Köşkü");
     expect(html).toContain("3 ders");
   });
 
@@ -213,13 +210,13 @@ describe("Keşfet (design tedris/02)", () => {
   it("is an Alert with a retry, never an empty list, when the read failed", async () => {
     const html = await renderDiscover(
       null,
-      parseDiscoverQuery({ level: "BEGINNER" }),
+      parseDiscoverQuery({ q: "sarf" }),
       true
     );
     expect(html).toContain('role="alert"');
     expect(html).toContain("Keşfet yüklenemedi");
     expect(html).toContain("Yeniden dene");
-    expect(html).toContain('href="/discover?level=BEGINNER"');
+    expect(html).toContain('href="/discover?q=sarf"');
     expect(html).not.toContain("0 köşk ve 0 medrese");
     expect(html).not.toContain("Köşk açma başvurusu");
   });
@@ -227,11 +224,11 @@ describe("Keşfet (design tedris/02)", () => {
   it("pages the köşks 12 at a time, keeping the filters in the links", async () => {
     const html = await renderDiscover(
       data({ koskTotal: 30 }),
-      parseDiscoverQuery({ page: "2", level: "BEGINNER" })
+      parseDiscoverQuery({ page: "2", q: "sarf" })
     );
     expect(html).toContain("2 / 3");
-    expect(html).toContain('href="/discover?level=BEGINNER"');
-    expect(html).toContain('href="/discover?level=BEGINNER&amp;page=3"');
+    expect(html).toContain('href="/discover?q=sarf"');
+    expect(html).toContain('href="/discover?q=sarf&amp;page=3"');
   });
 
   it("shows no pager for one page", async () => {
@@ -239,13 +236,22 @@ describe("Keşfet (design tedris/02)", () => {
     expect(html).not.toContain("Sonraki");
   });
 
-  it("gives the filters: a search, the two selects and the alan chips with 'Tümü'", async () => {
+  it("gives the filters: a search and the medrese select, and none for a köşk's level or alan (MDRS-252)", async () => {
     const html = await renderDiscover(data());
     expect(html).toContain('type="search"');
-    expect(html).toContain("Bütün seviyeler");
     expect(html).toContain("Bütün medreseler");
-    expect(html).toContain(">Tümü<");
-    expect(html).toContain(">Fıkıh<");
+    expect(html).not.toContain("Bütün seviyeler");
+    expect(html).not.toContain(">Tümü<");
+    expect(html).not.toContain(">Fıkıh<");
+  });
+
+  it("shows a köşk by its name, description and course count, not its level or alan (MDRS-252)", async () => {
+    const html = await renderDiscover(data());
+    expect(html).toContain("Nûruosmaniye Köşkü");
+    expect(html).toContain("Arapça dil ilimlerinin köşkü.");
+    expect(html).toContain("3 ders");
+    expect(html).not.toContain("Başlangıç seviyesi");
+    expect(html).not.toContain(">Arapça dil ilimleri<");
   });
 });
 
@@ -275,11 +281,16 @@ const renderKosk = async (
 };
 
 describe("köşk page (design tedris/04)", () => {
-  it("names the köşk, its alan, level and course count, and links back to Keşfet", async () => {
-    const html = await renderKosk([summary()], null);
+  it("names the köşk and its course count, not its alan or level, and links back to Keşfet", async () => {
+    const html = await renderKosk(
+      [summary()],
+      null,
+      true,
+      kosk({ level: "ADVANCED" })
+    );
     expect(html).toContain("Nûruosmaniye Köşkü");
-    expect(html).toContain("Arapça dil ilimleri");
-    expect(html).toContain("Başlangıç seviyesi");
+    expect(html).not.toContain(">Arapça dil ilimleri<");
+    expect(html).not.toContain("İleri seviye");
     expect(html).toContain("3 ders");
     expect(html).toContain('href="/discover"');
     expect(html).toContain("Takip ediliyor");

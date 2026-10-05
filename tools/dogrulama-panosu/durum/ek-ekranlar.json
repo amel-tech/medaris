@@ -1,0 +1,53 @@
+{
+  "22": {
+    "neden": "Landing ekranları; paket kod aktarımı olduğu için PLAN.md'de ekran listesi boş kaldı",
+    "ekranlar": [
+      "landing/karsilama",
+      "landing/karsilama-telefon",
+      "landing/sss",
+      "landing/aydinlatma-metni",
+      "landing/kullanim-sartlari",
+      "landing/cerezler",
+      "landing/iletisim"
+    ]
+  },
+  "25": {
+    "neden": "Kodlu ama hiçbir pakete bağlanmamış giriş/kayıt ekranları, iki e-posta ve telefon görünümleri",
+    "ekranlar": [
+      "medaris/02",
+      "medaris/04",
+      "medaris/06",
+      "medaris/10",
+      "medaris/11",
+      "medaris/18",
+      "medaris/19",
+      "medaris/01-telefon",
+      "medaris/03-telefon",
+      "medaris/06-telefon"
+    ]
+  },
+  "28": { "neden": "Telefon görünümü", "ekranlar": ["tedris/15-telefon"] },
+  "29": {
+    "neden": "Telefon görünümleri",
+    "ekranlar": ["tedris/02-telefon", "tedris/04-telefon"]
+  },
+  "30": { "neden": "Telefon görünümü", "ekranlar": ["tedris/09-telefon"] },
+  "31": {
+    "neden": "Telefon görünümleri",
+    "ekranlar": ["tedris/05-telefon", "tedris/12-telefon"]
+  },
+  "33": { "neden": "Telefon görünümü", "ekranlar": ["tedris/21-telefon"] },
+  "34": {
+    "neden": "Telefon görünümleri",
+    "ekranlar": ["tedris/25-telefon", "tedris/31-telefon"]
+  },
+  "35": {
+    "neden": "Telefon görünümleri",
+    "ekranlar": ["tedris/01-telefon", "tedris/30-telefon"]
+  },
+  "39": {
+    "neden": "Kullanıcı seçici durumları; /users/lookup bu pakette",
+    "ekranlar": ["nizam/43"]
+  },
+  "52": { "neden": "Telefon görünümü", "ekranlar": ["nizam/02-telefon"] }
+}

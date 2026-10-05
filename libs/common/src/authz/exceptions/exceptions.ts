@@ -48,3 +48,20 @@ export class AuthzResolverError extends InternalServerError {
     );
   }
 }
+
+/**
+ * Raised when a caller names themselves into a role or permissions they do not
+ * already hold (MDRS-135): a path that appoints or grants, with the caller as
+ * the person it names.
+ */
+export class SelfGrantRefusedError extends ForbiddenError {
+  static readonly code = "SELF_GRANT_REFUSED";
+
+  constructor(context?: ErrorContext) {
+    super(
+      SelfGrantRefusedError.code,
+      "You cannot give yourself a role or permissions you do not already hold",
+      context
+    );
+  }
+}

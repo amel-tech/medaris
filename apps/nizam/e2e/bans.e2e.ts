@@ -149,7 +149,9 @@ test("nizam/41 — barring marks the row 'Yasaklı', swaps 'Dersten çıkar' for
   await dialog.getByRole("button", { name: "Yasakla", exact: true }).click();
 
   await expect(dialog).toBeHidden();
-  await expect(page.getByText("Yasak kaydedildi")).toBeVisible();
+  await expect(
+    page.getByText("Yasak kaydedildi").filter({ visible: true })
+  ).toBeVisible();
   await expect(row).toContainText("Yasaklı");
   await expect(row).toContainText("Bu ders");
   await expect(row.getByRole("button", { name: /Dersten çıkar/ })).toHaveCount(
@@ -253,7 +255,9 @@ test("nizam/42 — lifting needs a reason, then moves the ban to 'Kaldırılan' 
   await submit.click();
 
   await expect(dialog).toBeHidden();
-  await expect(page.getByText("Yasak kaldırıldı")).toBeVisible();
+  await expect(
+    page.getByText("Yasak kaldırıldı").filter({ visible: true })
+  ).toBeVisible();
   await expect(page.locator("tbody tr")).toHaveCount(1);
   await expect(page.getByRole("tab", { name: /Etkin\s*1/ })).toBeVisible();
   await expect(page.getByRole("tab", { name: /Kaldırılan\s*1/ })).toBeVisible();
@@ -280,7 +284,9 @@ test("nizam/42 — 'Köşkten de yasakla' widens a course ban to the köşk", as
       name: `Köşkten de yasakla: ${fixture.byMuderris.name}`,
     })
     .click();
-  await expect(page.getByText("Köşkten de yasaklandı")).toBeVisible();
+  await expect(
+    page.getByText("Köşkten de yasaklandı").filter({ visible: true })
+  ).toBeVisible();
   const rows = rowOf(page, fixture.byMuderris.name);
   await expect(rows).toHaveCount(2);
   await expect(rows.filter({ hasText: "Köşk" }).first()).toContainText(

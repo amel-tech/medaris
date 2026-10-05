@@ -1,9 +1,8 @@
 import { AuthenticatedUser } from "@medaris/common";
 import { parseYoutubeLiveUrl } from "@medaris/utils/src/youtube-live.js";
 import { Injectable } from "@nestjs/common";
-import { PERMISSIONS } from "../assignment/permission-catalog";
 import { CourseRepository } from "./course.repository";
-import { CourseAccessService } from "./course-access.service";
+import { CourseNotFoundError } from "./errors/course-not-found.error";
 import { LessonNotFoundError } from "./errors/lesson-not-found.error";
 import { LiveStreamUrlInvalidError } from "./errors/live-stream-url-invalid.error";
 import {
@@ -18,27 +17,26 @@ import {
  *
  * Both routes are `session.live_link`'s: "Canlı yayın bağlantısını celseye
  * ekle". The müderris and the köşk nazımı hold it by default; a ders nazırı
- * holds it when it is given on the köşk's İzinler page. It is asked for by
- * code (`CourseAccessService`) rather than through a matrix scope, because
- * the matrix has no row for a ders nazırı and widening `EDIT` to reach one
- * would hand them every syllabus write with it.
+ * holds it when it is given on the köşk's İzinler page. The routes ask it in
+ * their `@Authz`, so by the time a handler runs the caller holds it; what is
+ * left here is existence, which the başnazım's bypass skips in the guard.
  */
 @Injectable()
 export class LiveStreamService {
-  // All three must stay value imports: `import type` erases them from
+  // Both must stay value imports: `import type` erases them from
   // `design:paramtypes` and Nest can no longer inject them.
   constructor(
-    private readonly access: CourseAccessService,
     private readonly courseRepo: CourseRepository,
     private readonly recordings: RecordingRepository
   ) {}
 
   /** The course's sessions that have a link, for the staff's Celseler page. */
-  async list(
-    courseId: string,
-    user: AuthenticatedUser
-  ): Promise<ILiveStreamLink[]> {
-    await this.access.assert(user, courseId, PERMISSIONS.SESSION_LIVE_LINK);
+  async list(courseId: string): Promise<ILiveStreamLink[]> {
+    // Existence for the başnazım too: the guard's bypass answers before any
+    // resolver looks the course up.
+    if ((await this.courseRepo.findKoskId(courseId)) === null) {
+      throw new CourseNotFoundError(courseId);
+    }
     return this.recordings.findLiveStreams(courseId);
   }
 
@@ -54,7 +52,6 @@ export class LiveStreamService {
   ): Promise<ILiveStreamLink> {
     const courseId = await this.courseRepo.findLessonCourseId(lessonId);
     if (!courseId) throw new LessonNotFoundError(lessonId);
-    await this.access.assert(user, courseId, PERMISSIONS.SESSION_LIVE_LINK);
 
     let url: string | null = null;
     if (liveStreamUrl !== null) {

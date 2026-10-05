@@ -47,6 +47,9 @@ export async function seedArchive(subs: {
   };
   try {
     await client.query("begin");
+    // Every hide here is the köşk nazımı's, so each records the köşk as its level
+    // (`archived_level`, MDRS-135): a row without one counts as the lowest level
+    // that could have hidden it, which is not who hid these.
     await client.query(
       "insert into kosks(id, owner_id, name) values ($1, $2, $3), ($4, $2, $5)",
       [koskId, subs.nazim, koskName, otherKoskId, `E2E Öteki Köşk ${tail}`]
@@ -56,7 +59,7 @@ export async function seedArchive(subs: {
       [subs.nazim, koskId]
     );
     await client.query(
-      "insert into courses(id, kosk_id, author_id, title, status, archived_at, archived_by) values ($1, $2, $3, $4, 'PUBLISHED', now() - interval '2 hours', $3)",
+      "insert into courses(id, kosk_id, author_id, title, status, archived_at, archived_by, archived_level) values ($1, $2, $3, $4, 'PUBLISHED', now() - interval '2 hours', $3, 'kosk')",
       [course.id, koskId, subs.nazim, course.title]
     );
     await client.query(
@@ -68,7 +71,7 @@ export async function seedArchive(subs: {
       [liveCourseId, koskId, subs.nazim]
     );
     await client.query(
-      "insert into course_weeks(id, course_id, week_number, title, archived_at, archived_by) values ($1, $2, 11, $3, now() - interval '3 hours', $4)",
+      "insert into course_weeks(id, course_id, week_number, title, archived_at, archived_by, archived_level) values ($1, $2, 11, $3, now() - interval '3 hours', $4, 'kosk')",
       [week.id, liveCourseId, week.title, subs.nazim]
     );
     await client.query(
@@ -76,11 +79,11 @@ export async function seedArchive(subs: {
       [liveWeekId, liveCourseId]
     );
     await client.query(
-      "insert into lessons(id, week_id, title, type, scheduled_at, archived_at, archived_by) values ($1, $2, $3, 'LIVE', now() + interval '2 days', now() - interval '1 hour', $4)",
+      "insert into lessons(id, week_id, title, type, scheduled_at, archived_at, archived_by, archived_level) values ($1, $2, $3, 'LIVE', now() + interval '2 days', now() - interval '1 hour', $4, 'kosk')",
       [session.id, liveWeekId, session.title, subs.nazim]
     );
     await client.query(
-      "insert into courses(id, kosk_id, author_id, title, status, archived_at, archived_by) values ($1, $2, $3, $4, 'PUBLISHED', now(), $3)",
+      "insert into courses(id, kosk_id, author_id, title, status, archived_at, archived_by, archived_level) values ($1, $2, $3, $4, 'PUBLISHED', now(), $3, 'kosk')",
       [foreignCourse.id, otherKoskId, subs.nazim, foreignCourse.title]
     );
     await client.query("commit");

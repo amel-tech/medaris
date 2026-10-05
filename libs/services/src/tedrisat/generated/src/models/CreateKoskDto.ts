@@ -88,11 +88,11 @@ export interface CreateKoskDto {
      */
     recordingsNeverPublic?: boolean;
     /**
-     * nizam/10: the köşk's first nazımları, found by e-mail (`GET /users/lookup`). SYSTEM_ADMIN only; when given, they are the köşk's nazımları and the caller is not one. Omitted: the caller becomes the köşk's only nazım, as before.
+     * nizam/10: the köşk's first nazımları, found by e-mail (`GET /users/lookup`). A köşk is opened together with at least one nazım (MDRS-136); the caller is never one of them, so a Medaris nazımı holding `platform.kosk_create` cannot seat themselves by leaving the list out.
      * @type {Array<string>}
      * @memberof CreateKoskDto
      */
-    managerUserIds?: Array<string>;
+    managerUserIds: Array<string>;
 }
 
 
@@ -102,6 +102,7 @@ export interface CreateKoskDto {
  */
 export function instanceOfCreateKoskDto(value: object): value is CreateKoskDto {
     if (!('name' in value) || value['name'] === undefined) return false;
+    if (!('managerUserIds' in value) || value['managerUserIds'] === undefined) return false;
     return true;
 }
 
@@ -125,7 +126,7 @@ export function CreateKoskDtoFromJSONTyped(json: any, ignoreDiscriminator: boole
         'tags': json['tags'] == null ? undefined : json['tags'],
         'alwaysRequireApproval': json['alwaysRequireApproval'] == null ? undefined : json['alwaysRequireApproval'],
         'recordingsNeverPublic': json['recordingsNeverPublic'] == null ? undefined : json['recordingsNeverPublic'],
-        'managerUserIds': json['managerUserIds'] == null ? undefined : json['managerUserIds'],
+        'managerUserIds': json['managerUserIds'],
     };
 }
 

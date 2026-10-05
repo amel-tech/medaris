@@ -43,6 +43,19 @@ export class DeckRequestNotPendingError extends ConflictError {
   }
 }
 
+/** The deck is not published (any more): it was taken back, or never went public. */
+export class DeckNotPublishedError extends ConflictError {
+  static readonly code = "DECK_NOT_PUBLISHED";
+
+  constructor(deckId: string, context?: ErrorContext) {
+    super(
+      DeckNotPublishedError.code,
+      `Deck ${deckId} is not published`,
+      context
+    );
+  }
+}
+
 export class DeckProposalNotFoundError extends NotFoundError {
   static readonly code = "DECK_PROPOSAL_NOT_FOUND";
 

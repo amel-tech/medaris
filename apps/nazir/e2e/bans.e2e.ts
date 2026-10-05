@@ -141,7 +141,9 @@ test("nazir/11 — the scope filter and the search narrow the rows, and the filt
   await page.getByRole("combobox", { name: "Kapsam" }).click();
   await page.getByRole("option", { name: "Medrese düzeyi" }).click();
   await expect(page).toHaveURL(/kapsam=medrese/);
-  await expect(page.getByText("Bu süzgece uyan yasak yok.")).toBeVisible();
+  await expect(
+    page.getByText("Bu süzgece uyan yasak yok.").filter({ visible: true })
+  ).toBeVisible();
 
   await page.getByRole("button", { name: "Süzgeçleri temizle" }).click();
   await expect(rows(page)).toHaveCount(2);
@@ -217,7 +219,9 @@ test("nazir/11 — 'Yasağı kaldır' wants a reason, lifts the ban, and moves i
   await dialog.getByLabel("Kaldırma gerekçesi").fill("  E2E söz verdi  ");
   await submit.click();
 
-  await expect(page.getByText("Yasak kaldırıldı")).toBeVisible();
+  await expect(
+    page.getByText("Yasak kaldırıldı").filter({ visible: true })
+  ).toBeVisible();
   const [lifted] = (await bans?.bansOf(bans.open.id)) ?? [];
   expect(lifted?.liftedAt).not.toBeNull();
   expect(lifted?.liftReason).toBe("E2E söz verdi");
@@ -246,7 +250,9 @@ test("nazir/11 — 'Kalıcı yasak talebi aç' records the request with the reas
   await dialog.getByLabel("Talep gerekçesi").fill("E2E üçüncü kez tekrarladı");
   await submit.click();
 
-  await expect(page.getByText("Kalıcı yasak talebi açıldı")).toBeVisible();
+  await expect(
+    page.getByText("Kalıcı yasak talebi açıldı").filter({ visible: true })
+  ).toBeVisible();
   expect(await bans?.requestsOf(bans.open.id)).toBe(1);
   const own = rowOf(page, bans?.open.name ?? "");
   await expect(own).toContainText("Kalıcı yasak talebi bekliyor");
@@ -282,7 +288,9 @@ test("nazir/11 — 'Yasakla' finds the person by e-mail and bars them from the c
   await dialog.getByLabel("Yasaklama gerekçesi").fill("E2E hesabını paylaştı");
   await submit.click();
 
-  await expect(page.getByText("Yasak kaydedildi")).toBeVisible();
+  await expect(
+    page.getByText("Yasak kaydedildi").filter({ visible: true })
+  ).toBeVisible();
   const [ban] = (await bans?.bansOf(TALEBE.sub as string)) ?? [];
   expect(ban).toMatchObject({
     scope: "COURSE",
@@ -299,7 +307,9 @@ test("nazir/11 — a medrese nazır is refused: a notice, no list and no 'Yasakl
   test.skip(!(ready() && canSignIn(MEDRESE_NAZIR)), "no medrese nazır account");
   const page = await as("MEDRESE_NAZIR");
   await open(page);
-  await expect(page.getByText("Bu sayfaya izniniz yok")).toBeVisible();
+  await expect(
+    page.getByText("Bu sayfaya izniniz yok").filter({ visible: true })
+  ).toBeVisible();
   await expect(page.getByTestId("bans")).toHaveCount(0);
   await expect(
     page.getByRole("button", { name: "Yasakla", exact: true })

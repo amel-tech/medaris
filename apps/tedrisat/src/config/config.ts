@@ -72,6 +72,12 @@ export default () => {
     // The Bunny Stream library recordings are uploaded to (MDRS-116); null
     // when unset, and the upload routes answer 503.
     bunnyStream: readBunnyStreamConfig(process.env),
+    publicProfile: {
+      // Off until the owner decides the talebe's profile is ready (MDRS-141):
+      // while false the three /public-profile routes answer 404
+      // PUBLIC_PROFILE_UNAVAILABLE for every caller.
+      enabled: process.env.PUBLIC_PROFILE_ENABLED === "true",
+    },
     keycloak: {
       jwksUrl: security.jwksUrl,
       issuer: security.issuer,

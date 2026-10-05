@@ -84,6 +84,12 @@ export const permissionGrants = table(
       onDelete: "restrict",
     }),
     grantedBy: uuid("granted_by").notNull(),
+    // The level of the authority the giver acted under when they made the grant
+    // (MDRS-135): the başnazım and a Medaris nazımı act as `platform`, a köşk
+    // nazımı as `kosk`, a başmüderris as `madrasah`, a müderris as `course`. A
+    // grant made from above a policy's level survives that policy. Null on
+    // rows that predate the column: they count as made at their own scope.
+    authorityScopeType: scopeType("authority_scope_type"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),

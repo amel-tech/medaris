@@ -22,16 +22,20 @@ export interface GroupCard {
  * "İzin grupları" under the roster (nazir 05, 16): the medrese's groups as
  * cards, "Grup tanımla" above them and "Düzenle" on each. The dialog for both
  * is opened from here, which is why this is a client component; once a group
- * is saved or deleted the page reads the roster and the groups again.
+ * is saved or deleted the page reads the roster and the groups again. Defining
+ * or changing a group is giving permissions, so both buttons are drawn only
+ * for whoever gives them, the başmüderris (MDRS-108).
  */
 export function PermissionGroups({
   madrasahId,
   madrasahName,
   cards,
+  manages,
 }: {
   madrasahId: string;
   madrasahName: string;
   cards: GroupCard[];
+  manages: boolean;
 }) {
   const t = useTranslations("nazir");
   const router = useRouter();
@@ -51,13 +55,15 @@ export function PermissionGroups({
           </h2>
           <p className="mds-body-sm text-neutral-muted">{t("Groups.intro")}</p>
         </div>
-        <Button
-          variant="secondary"
-          iconLeft={<Icon name="plus" size="sm" />}
-          onClick={() => setTarget({ mode: "create" })}
-        >
-          {t("Groups.define")}
-        </Button>
+        {manages ? (
+          <Button
+            variant="secondary"
+            iconLeft={<Icon name="plus" size="sm" />}
+            onClick={() => setTarget({ mode: "create" })}
+          >
+            {t("Groups.define")}
+          </Button>
+        ) : null}
       </header>
       {cards.length === 0 ? (
         <EmptyState>{t("Groups.empty")}</EmptyState>
@@ -79,14 +85,16 @@ export function PermissionGroups({
                 </span>
                 <span className="mds-caption">{usage}</span>
               </span>
-              <Button
-                variant="ghost"
-                size="small"
-                aria-label={t("Groups.editLabel", { name: group.name })}
-                onClick={() => setTarget({ mode: "edit", group })}
-              >
-                {t("Groups.edit")}
-              </Button>
+              {manages ? (
+                <Button
+                  variant="ghost"
+                  size="small"
+                  aria-label={t("Groups.editLabel", { name: group.name })}
+                  onClick={() => setTarget({ mode: "edit", group })}
+                >
+                  {t("Groups.edit")}
+                </Button>
+              ) : null}
             </li>
           ))}
         </ul>

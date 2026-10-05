@@ -1,5 +1,6 @@
-import { PRIVACY_NOTICE_URL } from "@medaris/utils";
+import { privacyNoticeUrl } from "@medaris/utils";
 import { getTranslations } from "next-intl/server";
+import { env } from "~/env";
 
 /**
  * The footer every page carries (MDRS-102): the privacy notice, published on
@@ -12,7 +13,7 @@ export async function LegalFooter() {
     <footer className="mt-auto border-t border-gray-200 py-4 text-sm text-gray-500">
       <div className="container mx-auto flex justify-center gap-6 px-4">
         <a
-          href={PRIVACY_NOTICE_URL}
+          href={privacyNoticeUrl(env.LANDING_URL)}
           target="_blank"
           rel="noopener noreferrer"
           className="hover:text-brand-primary hover:underline"

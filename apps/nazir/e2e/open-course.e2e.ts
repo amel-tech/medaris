@@ -49,12 +49,15 @@ const open = async (page: Page) => {
 };
 
 const search = async (page: Page, email: string) => {
-  const field = page.getByLabel("Müderris", { exact: true });
+  const field = page
+    .getByLabel("Müderris", { exact: true })
+    .filter({ visible: true });
   await field.fill(email);
   await field.press("Enter");
 };
 
-const name = (page: Page) => page.getByLabel("Ders adı");
+const name = (page: Page) =>
+  page.getByLabel("Ders adı").filter({ visible: true });
 const submit = (page: Page) => page.getByRole("button", { name: "Dersi aç" });
 
 test("nazir/08 — only the köşks that host the medrese can be chosen, the first is chosen, and the way back is Dersler (criterion 1)", async ({
@@ -75,18 +78,21 @@ test("nazir/08 — only the köşks that host the medrese can be chosen, the fir
   await expect(
     page.getByRole("radio", { name: courses?.kosk.name ?? "" })
   ).toBeVisible();
+  // `visible`: a page Next keeps hidden after a navigation holds the same radios
   await expect(
-    page.getByText("Arapça dil ilimleri · medresenin burada 3 dersi var")
+    page.getByText("medresenin burada 3 dersi var").filter({ visible: true })
   ).toBeVisible();
   await expect(
-    page.getByText("Fıkıh · medresenin burada 1 dersi var")
+    page.getByText("medresenin burada 1 dersi var").filter({ visible: true })
   ).toBeVisible();
   await expect(page.getByText(courses?.noRight.name ?? "")).toHaveCount(0);
   await expect(page.getByText(courses?.hiddenKosk.name ?? "")).toHaveCount(0);
   await expect(
-    page.getByText(
-      "Yalnız medresenizin barındırma hakkı olan köşkler listelenir."
-    )
+    page
+      .getByText(
+        "Yalnız medresenizin barındırma hakkı olan köşkler listelenir."
+      )
+      .filter({ visible: true })
   ).toBeVisible();
 
   const crumbs = page.getByRole("navigation", { name: "Sayfa yolu" });
@@ -104,7 +110,9 @@ test("nazir/08 — 'Dersi aç' without a name and a müderris says what is missi
   await open(page);
   await submit(page).click();
 
-  await expect(page.getByText("Ders adı boş olamaz.")).toBeVisible();
+  await expect(
+    page.getByText("Ders adı boş olamaz.").filter({ visible: true })
+  ).toBeVisible();
   await expect(
     page.getByText("En az bir müderris seçin.").last()
   ).toBeVisible();
@@ -114,7 +122,9 @@ test("nazir/08 — 'Dersi aç' without a name and a müderris says what is missi
   await name(page).fill("Maksûd şerhi");
   await submit(page).click();
   await expect(page.getByText("Ders adı boş olamaz.")).toHaveCount(0);
-  await expect(page.getByLabel("Müderris", { exact: true })).toBeFocused();
+  await expect(
+    page.getByLabel("Müderris", { exact: true }).filter({ visible: true })
+  ).toBeFocused();
   expect(await courses?.created()).toHaveLength(0);
 });
 
@@ -130,7 +140,7 @@ test("nazir/08 — köşk, name and a müderris's e-mail open a draft of the med
   await page.getByRole("radio", { name: courses?.fatih.name ?? "" }).check();
   await name(page).fill(`  ${title} `);
   await search(page, TALEBE.email ?? "");
-  const picker = page.getByTestId("muderris-picker");
+  const picker = page.getByTestId("muderris-picker").filter({ visible: true });
   await expect(picker).toContainText(TALEBE.email ?? "");
   // criterion 3: a lone müderris is the imam, with nothing to choose
   await expect(picker.getByText("Dersin imamı", { exact: true })).toBeVisible();
@@ -138,7 +148,9 @@ test("nazir/08 — köşk, name and a müderris's e-mail open a draft of the med
   await submit(page).click();
 
   await expect(page).toHaveURL(/\/dersler$/);
-  await expect(page.getByText("Ders taslak olarak açıldı")).toBeVisible();
+  await expect(
+    page.getByText("Ders taslak olarak açıldı").filter({ visible: true })
+  ).toBeVisible();
   const row = page
     .locator("[data-testid=courses] tbody tr:visible")
     .filter({ hasText: title });
@@ -173,7 +185,7 @@ test("nazir/08 — with several müderrisler the imam is chosen, and the one cho
   await search(page, TALEBE.email ?? "");
   await search(page, DERS_NAZIR.email ?? "");
 
-  const picker = page.getByTestId("muderris-picker");
+  const picker = page.getByTestId("muderris-picker").filter({ visible: true });
   await expect(picker.getByRole("radio")).toHaveCount(2);
   // the first is the imam until another is chosen
   await expect(picker.getByRole("radio").first()).toBeChecked();
@@ -203,7 +215,7 @@ test("nazir/08 — where the medrese always approves, 'Kayıt onayı gereksin' i
   await expect(
     page.getByRole("checkbox", { name: "Kapalı ders" })
   ).not.toBeDisabled();
-  const lock = page.getByTestId("policy-lock");
+  const lock = page.getByTestId("policy-lock").filter({ visible: true });
   await expect(lock).toContainText(
     "Medresenin “Kayıt her zaman onaylı” politikası bu ayarı kilitler."
   );
@@ -235,9 +247,9 @@ test("nazir/08 — where the medrese requires closed courses, 'Kapalı ders' is 
   await expect(
     page.getByRole("checkbox", { name: "Kayıt onayı gereksin" })
   ).not.toBeDisabled();
-  await expect(page.getByTestId("policy-lock")).toContainText(
-    "“Kapalı ders zorunlu”"
-  );
+  await expect(
+    page.getByTestId("policy-lock").filter({ visible: true })
+  ).toContainText("“Kapalı ders zorunlu”");
 });
 
 test("nazir/08 — a köşk that took its right back after the page opened refuses the course, and says why", async ({
@@ -250,9 +262,9 @@ test("nazir/08 — a köşk that took its right back after the page opened refus
   await page.getByRole("radio", { name: courses?.kosk.name ?? "" }).check();
   await name(page).fill(`E2E Mantığa giriş ${courses?.tail}`);
   await search(page, TALEBE.email ?? "");
-  await expect(page.getByTestId("muderris-picker")).toContainText(
-    TALEBE.email ?? ""
-  );
+  await expect(
+    page.getByTestId("muderris-picker").filter({ visible: true })
+  ).toContainText(TALEBE.email ?? "");
   await courses?.revokeHosting(courses?.kosk.id ?? "");
   await submit(page).click();
 
