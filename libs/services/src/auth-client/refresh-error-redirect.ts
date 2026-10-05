@@ -27,7 +27,7 @@ export interface RefreshErrorRedirectProps {
    * Keycloak.
    *
    * Passed in, like `locale`, because each app owns its own list. Omitted, every
-   * page is protected (nizam, nazir).
+   * page is protected (nizam, nazar).
    */
   isPublicPath?: (pathname: string) => boolean;
 }

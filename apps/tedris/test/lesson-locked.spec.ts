@@ -242,4 +242,17 @@ describe("tedris/17 criterion 3: the public recording of a sample session", () =
     const html = await render("apply", "tr", { status: "ENDED" });
     expect(html).not.toContain("<iframe");
   });
+
+  it("plays a public Bunny recording in Bunny's player, on the link the API signed (MDRS-114)", async () => {
+    const signed =
+      "https://player.mediadelivery.net/embed/424242/3f1c2b4a-5d6e-4f70-8a9b-0c1d2e3f4a5b?token=9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08&expires=1790000000";
+    const html = await render("apply", "tr", {
+      ...ended,
+      recording: { ...ended.recording, provider: "BUNNY", url: signed },
+    });
+    const [frame] = html.match(/<iframe[^>]*>/g) ?? [];
+    expect(frame).toContain(`src="${signed.replaceAll("&", "&amp;")}"`);
+    expect(frame).toContain('title="Ders kaydı oynatıcısı: Açık ders kaydı"');
+    expect(frame).toContain('allowFullScreen=""');
+  });
 });

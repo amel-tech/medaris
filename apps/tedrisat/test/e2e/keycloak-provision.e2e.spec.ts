@@ -321,7 +321,7 @@ describe("Keycloak configuration package (e2e)", () => {
     process.env.KEYCLOAK_ALLOWED_CLIENTS = [
       "tedris-local",
       "nizam-local",
-      "nazir-local",
+      "nazar-local",
     ].join(",");
     app = await createTestApp({ keyProvider: "real" });
   }, 300_000);

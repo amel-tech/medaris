@@ -4,8 +4,8 @@ Follows MDRS-116 (PR #209, merged, ported to the permission catalogue of
 MDRS-135). The recording table, the read endpoints, the recordings filter
 (`visibleRecordings`) and the Bunny client already exist on main; this
 change covers what MDRS-119 still lacked on the read side, plus the pure link
-detector the write endpoints need. The write endpoints themselves are in
-Taha's open PR #202 and are not rewritten here.
+detector the write endpoints use. The write endpoints are MDRS-247's (#202);
+how they store a link is in `mdrs-247-recordings.md`.
 
 ## What was done
 
@@ -58,8 +58,11 @@ Taha's open PR #202 and are not rewritten here.
   `GET /courses/:courseId/sessions/:sessionId`; that is the lesson read that is
   signed and tested. Adding a separate route was left out to avoid colliding
   with #202, which owns the `/lessons/:id/recordings` routes.
-- `detectRecordingLink` is not called by any endpoint yet: the write endpoints
-  live in #202. See "Follow-ups".
+- `detectRecordingLink` was not called by any endpoint in this change. The
+  write endpoints of MDRS-247 (#202) call it now: `POST /lessons/:id/recordings`
+  and `PATCH /recordings/:id` store what it reads, a pasted Bunny link as a
+  READY BUNNY row with its upload lifetime closed at the write
+  (`docs/migration/mdrs-247-recordings.md`).
 - There is no `youtube_video_id` column; `youtubeVideoId` is returned to the
   caller and not stored.
 
@@ -136,14 +139,5 @@ thumbnails and previews", need the CDN token layer).
 
 ## Follow-ups
 
-- **#202 (MDRS-247)**: its write endpoints (`POST /lessons/:id/recordings`,
-  `PATCH /recordings/:id`) should call
-  `detectRecordingLink(url, bunny.libraryId)` instead of `providerOfUrl(url)`,
-  and store `provider` plus `url` (or `bunny_video_id` for BUNNY). For a pasted
-  Bunny link the row must also fill `upload_expires_at`
-  (`lesson_recordings_provider_columns` CHECK) and be READY.
-- **#202 still enforces "a YouTube recording is PUBLIC only"**
-  (`RecordingYoutubePublicOnlyError`). That contradicts the owner's
-  3 October decision and should be removed there.
 - Owner-side: see "Owner-side setup the PR cannot do" above. Without the embed token key a Bunny link is unsigned
   and plays for anyone holding it.

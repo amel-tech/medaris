@@ -1,5 +1,22 @@
 import { Icon } from "@medaris/ui/mds/icon";
 import type { ReactNode } from "react";
+import { bunnyPlayerUrlOf } from "../recordings-model";
+
+/**
+ * Bunny's player (MDRS-114) is framed the way its own embed code frames it,
+ * which is how it was measured playing on a real library: autoplay and full
+ * screen allowed, no sandbox. Its address is the signed link tedrisat
+ * returned, accepted by `bunnyPlayerUrlOf`. Every other player keeps the
+ * sandbox it had.
+ */
+const BUNNY_FRAME = {
+  allow: "autoplay; encrypted-media; picture-in-picture; fullscreen",
+  allowFullScreen: true,
+};
+const SANDBOXED_FRAME = {
+  allow: "encrypted-media; picture-in-picture; fullscreen",
+  sandbox: "allow-scripts allow-same-origin allow-presentation allow-popups",
+};
 
 /**
  * The player card of the session page and of the recordings tab (designs
@@ -18,6 +35,7 @@ export const MediaPlayer = ({
   children,
   heading = 2,
   frameId,
+  frameTitle,
 }: {
   id: string;
   title: string;
@@ -32,6 +50,8 @@ export const MediaPlayer = ({
   heading?: 2 | 3;
   /** The frame's `id`, for a client piece that attaches the player API to it (MDRS-150). */
   frameId?: string;
+  /** The frame's accessible name, when it is not the title. */
+  frameTitle?: string;
 }) => {
   const Heading = `h${heading}` as "h2";
   return (
@@ -42,11 +62,10 @@ export const MediaPlayer = ({
             id={frameId}
             className="block inline-full border-0 aspect-video"
             src={embedUrl}
-            title={title}
+            title={frameTitle ?? title}
             loading="lazy"
-            allow="encrypted-media; picture-in-picture; fullscreen"
             referrerPolicy="strict-origin-when-cross-origin"
-            sandbox="allow-scripts allow-same-origin allow-presentation allow-popups"
+            {...(bunnyPlayerUrlOf(embedUrl) ? BUNNY_FRAME : SANDBOXED_FRAME)}
           />
         ) : (
           <div className="mds-join__status flex aspect-video flex-col items-center justify-center gap-3 text-center">

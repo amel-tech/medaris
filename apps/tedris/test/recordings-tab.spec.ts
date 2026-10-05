@@ -1,4 +1,5 @@
 // @vitest-environment happy-dom
+import { resources } from "@medaris/i18n";
 import type { RecordingResponse } from "@medaris/services/tedrisat";
 import { createElement, type ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -35,16 +36,18 @@ vi.mock("~/features/courses/components/media-player", () => ({
     id,
     title,
     embedUrl,
+    frameTitle,
     children,
   }: {
     id: string;
     title: string;
     embedUrl: string | null;
+    frameTitle?: string;
     children?: ReactNode;
   }) =>
     createElement(
       "section",
-      { "data-embed": embedUrl },
+      { "data-embed": embedUrl, "data-frame-title": frameTitle ?? "" },
       createElement("h2", { id }, title),
       createElement("p", null, children)
     ),
@@ -231,5 +234,80 @@ describe("recordings tab (design tedris/24, MDRS-162)", () => {
     const host = await mount([FIVE[0], FIVE[2]]);
     expect(host.querySelector("#recording-player")).toBeNull();
     expect(text(host)).toContain("Bütün ders kayıtları");
+  });
+});
+
+describe("recordings tab, Bunny recordings (MDRS-114)", () => {
+  // A player link as tedrisat signs it for one viewer (MDRS-119).
+  const SIGNED =
+    "https://player.mediadelivery.net/embed/424242/3f1c2b4a-5d6e-4f70-8a9b-0c1d2e3f4a5b?token=9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08&expires=1790000000";
+  const bunny = (url: string) =>
+    rec("Hafta sonu müzakeresi: Bunny kaydı", {
+      weekId: "w5",
+      weekNumber: 5,
+      weekTitle: "Mehmûz fiiller",
+      provider: "BUNNY",
+      recordedAt: new Date("2026-10-03T18:00:00Z"),
+      durationMinutes: 52,
+      url,
+    });
+
+  it("plays the newest one in the player, on the very link the API signed", async () => {
+    const host = await mount([bunny(SIGNED), ...FIVE]);
+    expect(
+      (host.querySelector("#recording-player") as HTMLElement).textContent
+    ).toBe("Hafta sonu müzakeresi: Bunny kaydı");
+    const player = host.querySelector("[data-embed]") as HTMLElement;
+    expect(player.getAttribute("data-embed")).toBe(SIGNED);
+    expect(player.getAttribute("data-frame-title")).toBe(
+      "Ders kaydı oynatıcısı: Hafta sonu müzakeresi: Bunny kaydı"
+    );
+  });
+
+  it("offers Oynat on its row, with the platform chip, and loads it on click", async () => {
+    const host = await mount([...FIVE, bunny(SIGNED)]);
+    const row = [...host.querySelectorAll("li")].find((li) =>
+      li.textContent?.includes("Bunny kaydı")
+    ) as HTMLElement;
+    expect(text(row)).toContain("Bunny Stream");
+    expect(row.querySelector("a")).toBeNull();
+    await click(row.querySelector("button") as HTMLElement);
+    expect(host.querySelector("[data-embed]")?.getAttribute("data-embed")).toBe(
+      SIGNED
+    );
+  });
+
+  it("opens a Bunny link it will not frame in a new tab instead of playing it", async () => {
+    const foreign = SIGNED.replace("player.", "iframe.");
+    const host = await mount([bunny(foreign)]);
+    expect(host.querySelector("#recording-player")).toBeNull();
+    const link = host.querySelector("li a") as HTMLAnchorElement;
+    expect(link.getAttribute("href")).toBe(foreign);
+    expect(link.getAttribute("target")).toBe("_blank");
+    expect(link.getAttribute("rel")).toBe("noopener noreferrer");
+  });
+
+  it("gives a YouTube recording in the player no frame title of its own", async () => {
+    const host = await mount([bunny(SIGNED), ...FIVE]);
+    const row = [...host.querySelectorAll("li")].find((li) =>
+      li.textContent?.includes("Emsile-i muttaride: mâzî")
+    ) as HTMLElement;
+    await click(row.querySelector("button") as HTMLElement);
+    const player = host.querySelector("[data-embed]") as HTMLElement;
+    expect(player.getAttribute("data-embed")).toBe(
+      "https://www.youtube-nocookie.com/embed/muttaride001"
+    );
+    expect(player.getAttribute("data-frame-title")).toBe("");
+  });
+});
+
+describe("recordings tab strings", () => {
+  it("has every key in every locale", () => {
+    const keys = Object.keys(resources.tr.tedrisLearn.RecordingsTab).sort();
+    for (const locale of ["en", "ar"] as const) {
+      expect(
+        Object.keys(resources[locale].tedrisLearn.RecordingsTab).sort()
+      ).toEqual(keys);
+    }
   });
 });

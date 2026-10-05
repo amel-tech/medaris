@@ -3,11 +3,11 @@ import { RecordingProvider } from "./recording";
 
 /**
  * What a pasted recording link is stored as (MDRS-119), per provider. The
- * `lesson_recordings_provider_columns` CHECK (migration 0047) wants a URL for
+ * `lesson_recordings_provider_columns` CHECK (migration 0053) wants a URL for
  * every provider but BUNNY and a `bunny_video_id` with no URL for BUNNY; it
- * also wants a BUNNY row's `upload_expires_at`, which a write endpoint storing
- * a pasted Bunny link must fill. There is no `youtube_video_id` column yet:
- * `youtubeVideoId` is returned for the caller, not stored.
+ * also wants a BUNNY row's `upload_expires_at`, which `linkColumns` fills.
+ * There is no `youtube_video_id` column yet: `youtubeVideoId` is returned for
+ * the caller, not stored.
  *
  * - YOUTUBE: the watch link rebuilt from the video id, so a tracking query
  *   (`si=`, `feature=`) or a `/live/` or `/shorts/` form is never stored, and
@@ -26,7 +26,11 @@ export type DetectedRecordingLink =
       url: string;
     };
 
-/** Why a pasted link was refused; the error's `reason`, so nazir can word it. */
+/**
+ * Why a pasted link was refused; the error's `reason`, so nazar can word it.
+ * All but the last are `detectRecordingLink`'s; the last is the write's, which
+ * alone can see the other recordings.
+ */
 export type RecordingLinkProblem =
   /** not a link, or one with a user name or password in it */
   | "invalid"
@@ -37,7 +41,9 @@ export type RecordingLinkProblem =
   /** a Bunny link that is not a player link with a library id and a video id */
   | "bunny-no-video"
   /** a Bunny player link of a library that is not ours, or no library is configured */
-  | "bunny-foreign-library";
+  | "bunny-foreign-library"
+  /** a Bunny video that is already another session's recording (MDRS-247) */
+  | "bunny-video-used";
 
 /** tedrisat's limit on a stored link, as on the live stream link (MDRS-228). */
 export const RECORDING_LINK_MAX_LENGTH = 500;
@@ -172,4 +178,39 @@ export function detectRecordingLink(
     return { provider: RecordingProvider.DRIVE, url: value };
   }
   return { provider: RecordingProvider.OTHER, url: value };
+}
+
+/** The columns of `lesson_recordings` that say where a recording lives. */
+export interface IRecordingLinkColumns {
+  provider: RecordingProvider;
+  url: string | null;
+  bunnyVideoId: string | null;
+  uploadExpiresAt: Date | null;
+}
+
+/**
+ * What a pasted link is written as (MDRS-247), every column the
+ * `lesson_recordings_provider_columns` CHECK reads set, so a row that moves
+ * between a Bunny video and any other link is left consistent. A pasted Bunny
+ * link was never uploaded through tedrisat: its upload lifetime is closed at
+ * `now`, which the CHECK demands, and the row is READY, so neither the
+ * encoding poll nor the re-sign route (both PROCESSING only) takes it up.
+ */
+export function linkColumns(
+  link: DetectedRecordingLink,
+  now: Date
+): IRecordingLinkColumns {
+  return link.provider === RecordingProvider.BUNNY
+    ? {
+        provider: RecordingProvider.BUNNY,
+        url: null,
+        bunnyVideoId: link.bunnyVideoId,
+        uploadExpiresAt: now,
+      }
+    : {
+        provider: link.provider,
+        url: link.url,
+        bunnyVideoId: null,
+        uploadExpiresAt: null,
+      };
 }

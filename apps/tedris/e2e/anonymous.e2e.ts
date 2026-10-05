@@ -331,9 +331,18 @@ test.describe("where a visitor starts (MDRS-256)", () => {
     }) => {
       await page.goto(path);
       await expect(page).toHaveURL(/\/tr\/discover$/);
+      // `exact`: the wordmark is named "Medaris Tedris, ana sayfa", and for a
+      // visitor it opens Keşfet
       await expect(
-        page.getByRole("link", { name: "Ana sayfa" }).filter({ visible: true })
+        page
+          .getByRole("link", { name: "Ana sayfa", exact: true })
+          .filter({ visible: true })
       ).toHaveCount(0);
+      await expect(
+        page
+          .getByRole("link", { name: "Medaris Tedris, ana sayfa" })
+          .filter({ visible: true })
+      ).toHaveAttribute("href", "/tr/discover");
     });
   }
 });

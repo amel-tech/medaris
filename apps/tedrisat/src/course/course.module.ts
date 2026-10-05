@@ -17,7 +17,9 @@ import { CourseStatsRepository } from "./course-stats.repository";
 import { LessonController } from "./lesson.controller";
 import { LiveStreamController } from "./live-stream.controller";
 import { LiveStreamService } from "./live-stream.service";
+import { RecordingController } from "./recording.controller";
 import { RecordingRepository } from "./recording.repository";
+import { RecordingService } from "./recording.service";
 import { RecordingEncodingPoller } from "./recording-encoding.poller";
 import { RecordingUploadController } from "./recording-upload.controller";
 import { RecordingUploadService } from "./recording-upload.service";
@@ -37,6 +39,7 @@ import { RecordingUploadService } from "./recording-upload.service";
     CourseController,
     LessonController,
     LiveStreamController,
+    RecordingController,
     RecordingUploadController,
   ],
   providers: [
@@ -44,6 +47,7 @@ import { RecordingUploadService } from "./recording-upload.service";
     CourseRepository,
     LiveStreamService,
     RecordingRepository,
+    RecordingService,
     RecordingUploadService,
     RecordingEncodingPoller,
     CourseStatsRepository,

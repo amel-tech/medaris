@@ -68,7 +68,7 @@ export default async function Page({
       signedIn={signedIn}
       signInHref={hrefs.signIn}
       registerHref={hrefs.register}
-      nazirUrl={env.NAZIR_URL || null}
+      nazarUrl={env.NAZAR_URL || null}
       recordings={recordings}
       initialTab={typeof tab === "string" ? tab : undefined}
     />

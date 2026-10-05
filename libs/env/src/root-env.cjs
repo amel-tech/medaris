@@ -12,7 +12,7 @@
 // NextAuth actually reads:
 //
 //   KEY=value          every app
-//   WEB__KEY=value     landing, nazir, nizam, tedris   (overrides shared)
+//   WEB__KEY=value     landing, nazar, nizam, tedris   (overrides shared)
 //   API__KEY=value     tedrisat, teskilat              (overrides shared)
 //   NIZAM__KEY=value   that one app                    (overrides both)
 //
@@ -54,7 +54,7 @@
 const { existsSync, readFileSync } = require("node:fs");
 const { dirname, join, resolve } = require("node:path");
 
-const WEB_APPS = ["landing", "nazir", "nizam", "tedris"];
+const WEB_APPS = ["landing", "nazar", "nizam", "tedris"];
 const API_APPS = ["tedrisat", "teskilat"];
 const APPS = [...WEB_APPS, ...API_APPS];
 
@@ -70,7 +70,7 @@ const ROOT_ONLY = new Set([
   "TESKILAT_PORT",
   "TEDRIS_WEB_PORT",
   "NIZAM_WEB_PORT",
-  "NAZIR_WEB_PORT",
+  "NAZAR_WEB_PORT",
   "LANDING_WEB_PORT",
   "MEDARIS_POSTGRES_USER",
   "MEDARIS_POSTGRES_PASSWORD",
@@ -226,7 +226,11 @@ function parseEnv(text) {
       }
       value = body;
     } else {
-      value = rest.replace(/\s+#.*$/, "").trim();
+      // The comment starts at the first whitespace-preceded `#`. A plain
+      // search, not `/\s+#.*$/`: that backtracks quadratically on a long
+      // run of blanks in an .env line.
+      const comment = rest.search(/\s#/);
+      value = (comment === -1 ? rest : rest.slice(0, comment)).trim();
       // `KEY= # note` is `# note` to compose (nothing precedes the `#`, so
       // there is no whitespace-preceded comment to strip). Parity is kept, but
       // a value that is really a comment is another plausible-looking wrong

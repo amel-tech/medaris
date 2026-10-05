@@ -6,12 +6,12 @@ const NIZAM_ROLES: ReadonlySet<string> = new Set([
   "KOSK_NAZIM",
 ]);
 
-export type Landing = "nizam" | "nazir" | "none";
+export type Landing = "nizam" | "nazar" | "none";
 
 /**
  * Where a signed-in person belongs when they open Nizam (nizam 04):
  * a nazım, or SYSTEM_ADMIN, stays; someone whose only roles are the medrese's
- * and the course's is sent to the "Bu işler Nazır'da" page; someone with no
+ * and the course's is sent to the "Bu işler Nazar'da" page; someone with no
  * role has no page of their own here yet and also stays.
  */
 export function landingFor(me: {
@@ -20,7 +20,7 @@ export function landingFor(me: {
 }): Landing {
   if (me.systemAdmin) return "nizam";
   if (me.assignments.some((a) => NIZAM_ROLES.has(a.role))) return "nizam";
-  return me.assignments.length > 0 ? "nazir" : "none";
+  return me.assignments.length > 0 ? "nazar" : "none";
 }
 
 export interface TaskRow {

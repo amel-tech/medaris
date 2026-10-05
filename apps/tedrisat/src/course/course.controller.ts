@@ -19,6 +19,7 @@ import {
   DefaultValuePipe,
   Delete,
   Get,
+  Header,
   HttpCode,
   HttpStatus,
   Param,
@@ -66,6 +67,7 @@ import {
   SetEnrollmentStatusDto,
 } from "./dto/enrollment-actions.dto";
 import { MuderrisListResponse, SetMuderrisDto } from "./dto/muderris-list.dto";
+import { MyCoursePermissionsResponse } from "./dto/my-course-permissions.dto";
 import { ReplaceCourseDto } from "./dto/replace-course.dto";
 import { UpdateCourseDto } from "./dto/update-course.dto";
 import { UpdateProgressDto } from "./dto/update-progress.dto";
@@ -249,6 +251,29 @@ export class CourseController {
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<CourseDetailResponse> {
     return this.courseService.viewDetail(id, request.user ?? null);
+  }
+
+  @ApiOperation({
+    summary: "What the caller holds in a course",
+    description:
+      "The permission codes the signed-in caller holds in this course (`permissions`, sorted), and whether they may read its talebe (`staffRead`). Asked about themselves only: it answers with the caller's own codes and no one else's. The codes are the ones the routes decide with (`AuthzService.effective`, the computation behind every `@Authz`), so a screen can hide a button the API would refuse; the API still checks every write. A draft the caller may not edit, a hidden course they may not restore, and an unknown course are 404 (COURSE_NOT_FOUND). Nothing is written to `audit_log`.",
+    operationId: "getMyCoursePermissions",
+  })
+  @ApiOkResponse({ type: MyCoursePermissionsResponse })
+  @ApiNotFoundResponse()
+  // `course.view` is held by every signed-in caller, so this asks nothing a
+  // visitor with a token does not hold; `getDetail` is what hides a course the
+  // caller may not see. `byExistingCourse` because the başnazım bypasses the
+  // resolver and a missing course must still be a 404.
+  @Authz(PERMISSIONS.COURSE_VIEW, byExistingCourse)
+  // Per-user answer; no shared cache may keep it.
+  @Header("Cache-Control", "private, no-store")
+  @Get("courses/:id/my-permissions")
+  async myPermissions(
+    @Req() request: AuthorizedRequest,
+    @Param("id", ParseUUIDPipe) id: string
+  ): Promise<MyCoursePermissionsResponse> {
+    return this.courseService.myPermissions(id, request.user);
   }
 
   @ApiOperation({

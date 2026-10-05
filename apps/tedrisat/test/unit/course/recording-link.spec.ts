@@ -1,6 +1,7 @@
 import { RecordingProvider } from "../../../src/course/domain/recording";
 import {
   detectRecordingLink,
+  linkColumns,
   RECORDING_LINK_MAX_LENGTH,
   type RecordingLinkProblem,
 } from "../../../src/course/domain/recording-link";
@@ -217,7 +218,7 @@ describe("detectRecordingLink: other links (MDRS-119)", () => {
     expect(problemOf(url)).toBe(problem);
   });
 
-  it("names the reason in the error, for nazir to word", () => {
+  it("names the reason in the error, for nazar to word", () => {
     try {
       detectRecordingLink(
         `https://player.mediadelivery.net/embed/1/${VIDEO}`,
@@ -228,6 +229,54 @@ describe("detectRecordingLink: other links (MDRS-119)", () => {
       expect(error).toMatchObject({
         code: "RECORDING_LINK_INVALID",
         reason: "bunny-foreign-library",
+      });
+    }
+  });
+});
+
+describe("linkColumns (MDRS-247)", () => {
+  const now = new Date("2026-10-05T12:00:00Z");
+
+  it("stores a pasted Bunny link as the video alone, its upload closed now", () => {
+    expect(
+      linkColumns(
+        detectRecordingLink(
+          `https://player.mediadelivery.net/embed/${LIBRARY}/${VIDEO}`,
+          LIBRARY
+        ),
+        now
+      )
+    ).toEqual({
+      provider: RecordingProvider.BUNNY,
+      url: null,
+      bunnyVideoId: VIDEO,
+      uploadExpiresAt: now,
+    });
+  });
+
+  it("stores every other link as its url, with no video and no upload", () => {
+    for (const [url, provider, stored] of [
+      [
+        "https://youtu.be/dQw4w9WgXcQ?si=x",
+        RecordingProvider.YOUTUBE,
+        "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+      ],
+      [
+        "https://drive.google.com/file/d/1AbC/view",
+        RecordingProvider.DRIVE,
+        "https://drive.google.com/file/d/1AbC/view",
+      ],
+      [
+        "https://us02web.zoom.us/rec/share/abc",
+        RecordingProvider.OTHER,
+        "https://us02web.zoom.us/rec/share/abc",
+      ],
+    ] as const) {
+      expect(linkColumns(detectRecordingLink(url, LIBRARY), now)).toEqual({
+        provider,
+        url: stored,
+        bunnyVideoId: null,
+        uploadExpiresAt: null,
       });
     }
   });

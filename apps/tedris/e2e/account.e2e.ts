@@ -17,8 +17,8 @@ const MUDERRIS = account("MUDERRIS");
 const KOSK_NAZIM = account("KOSK_NAZIM");
 const MEDARIS_NAZIM = account("MEDARIS_NAZIM");
 const TALEBE = account("TALEBE");
-const NAZIR_URL = (
-  process.env.E2E_NAZIR_URL ?? "http://localhost:4002"
+const NAZAR_URL = (
+  process.env.E2E_NAZAR_URL ?? "http://localhost:4002"
 ).replace(/\/$/, "");
 const NIZAM_URL = process.env.E2E_NIZAM_URL ?? "http://localhost:4001";
 
@@ -55,7 +55,7 @@ async function signIn(
 const tasks = (page: Page) =>
   page.getByRole("table", { name: "Görevlerin" }).locator("tbody tr");
 
-test("a müderris sees every role with scope, badge, grantor, term and Nazır button", async ({
+test("a müderris sees every role with scope, badge, grantor, term and Nazar button", async ({
   page,
 }) => {
   test.skip(!ready, "no Keycloak accounts in the environment");
@@ -81,13 +81,13 @@ test("a müderris sees every role with scope, badge, grantor, term and Nazır bu
   await expect(row(fixture.published.title)).toContainText("Süresiz");
 
   const open = row(fixture.published.title).getByRole("link", {
-    name: /Nazır’da aç/,
+    name: /Nazar’da aç/,
   });
   await expect(open).toHaveAttribute("target", "_blank");
-  // a course seat opens the Nazır itself, which finds the course (only a köşk has a deep link)
-  await expect(open).toHaveAttribute("href", NAZIR_URL);
+  // a course seat opens the Nazar itself, which finds the course (only a köşk has a deep link)
+  await expect(open).toHaveAttribute("href", NAZAR_URL);
   await expect(open).toHaveAccessibleName(
-    `Nazır’da aç: müderris, ${fixture.published.title}`
+    `Nazar’da aç: müderris, ${fixture.published.title}`
   );
 
   // permissions come from the role only: a müderris holds no köşk permission

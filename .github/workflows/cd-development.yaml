@@ -15,9 +15,9 @@ name: CD (development)
 #
 # Measured on this repo at 68faa44 (`nx show projects --affected --files <f>`):
 #   libs/common/src/index.ts   -> tedrisat, teskilat
-#   libs/ui/src/lib/utils.ts   -> keycloak-theme, landing-web, nazir-web,
+#   libs/ui/src/lib/utils.ts   -> keycloak-theme, landing-web, nazar-web,
 #                                 nizam-web, tedris-web
-#   libs/tokens/package.json   -> keycloak-theme, landing-web, nazir-web,
+#   libs/tokens/package.json   -> keycloak-theme, landing-web, nazar-web,
 #                                 nizam-web, tedris-web
 #
 # TRIGGERS (MDRS-86)
@@ -128,8 +128,8 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       # The seven deployable Nx PROJECT names — not directory names. The web
-      # apps are landing-web / nazir-web / nizam-web / tedris-web while their
-      # directories are apps/landing, apps/nazir, apps/nizam, apps/tedris; the
+      # apps are landing-web / nazar-web / nizam-web / tedris-web while their
+      # directories are apps/landing, apps/nazar, apps/nizam, apps/tedris; the
       # APIs and the theme match their directories. Verified against each
       # apps/*/project.json and `nx show projects`.
       - name: Compute affected deployable projects
@@ -142,7 +142,7 @@ jobs:
           pnpm exec nx show projects --affected --json > affected.json
           echo "all affected projects: $(cat affected.json)"
 
-          deployable='["landing-web","nazir-web","nizam-web","tedris-web","tedrisat","teskilat","keycloak-theme"]'
+          deployable='["landing-web","nazar-web","nizam-web","tedris-web","tedrisat","teskilat","keycloak-theme"]'
           projects=$(jq -c --argjson d "$deployable" \
             '[ .[] | select(. as $p | $d | index($p)) ] | sort' affected.json)
           count=$(echo "$projects" | jq 'length')
@@ -185,10 +185,10 @@ jobs:
       packages: write
     secrets: inherit
 
-  nazir-web:
+  nazar-web:
     needs: detect
-    if: ${{ github.event.inputs.dry_run != 'true' && contains(fromJSON(needs.detect.outputs.projects), 'nazir-web') }}
-    uses: ./.github/workflows/nazir-web.yaml
+    if: ${{ github.event.inputs.dry_run != 'true' && contains(fromJSON(needs.detect.outputs.projects), 'nazar-web') }}
+    uses: ./.github/workflows/nazar-web.yaml
     permissions:
       contents: read
       packages: write

@@ -31,6 +31,12 @@ export interface CancelLessonDto {
      * @memberof CancelLessonDto
      */
     reason?: string;
+    /**
+     * The session that makes up for this one (telafi). It must be a live session of the same course that is not cancelled, is not this session and is not already another session's make-up. Left out, the session is cancelled with no make-up.
+     * @type {string}
+     * @memberof CancelLessonDto
+     */
+    replacementLessonId?: string;
 }
 
 /**
@@ -53,6 +59,7 @@ export function CancelLessonDtoFromJSONTyped(json: any, ignoreDiscriminator: boo
         
         'version': json['version'],
         'reason': json['reason'] == null ? undefined : json['reason'],
+        'replacementLessonId': json['replacementLessonId'] == null ? undefined : json['replacementLessonId'],
     };
 }
 
@@ -69,6 +76,7 @@ export function CancelLessonDtoToJSONTyped(value?: CancelLessonDto | null, ignor
         
         'version': value['version'],
         'reason': value['reason'],
+        'replacementLessonId': value['replacementLessonId'],
     };
 }
 

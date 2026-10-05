@@ -11,7 +11,7 @@
 # Two properties this buys, beyond being readable:
 #
 #   * Least privilege. `env_file: .env` would hand the tedrisat container every
-#     other app's secrets too — nazir's and nizam's NEXTAUTH_SECRET, tedris's
+#     other app's secrets too — nazar's and nizam's NEXTAUTH_SECRET, tedris's
 #     Keycloak client secret. Naming the keys means a container receives only
 #     what it needs.
 #   * The same precedence the loader applies. Each value tries the app-specific
@@ -265,7 +265,7 @@ services:
   # The `:?` keys below are required by *any* compose invocation, not just
   # `--profile web up` — same rule as the teskilat/tedrisat comment above:
   # compose interpolates the whole file before it selects services, so a
-  # plain `docker compose up` now also demands TEDRIS__/NIZAM__/NAZIR__
+  # plain `docker compose up` now also demands TEDRIS__/NIZAM__/NAZAR__
   # KEYCLOAK_CLIENT_ID, KEYCLOAK_CLIENT_SECRET, NEXTAUTH_SECRET, and
   # WEB__KEYCLOAK_ISSUER / WEB__OTEL_EXPORTER_OTLP_ENDPOINT — even though it
   # starts no web container. A `.env` copied fresh from `.env.example` has all
@@ -301,7 +301,7 @@ services:
       # bare `docker run`) needs the localhost value instead.
       TEDRISAT_API_BASE_URL: http://tedrisat:3001
       NIZAM_URL: ${TEDRIS__NIZAM_URL:-}
-      NAZIR_URL: ${TEDRIS__NAZIR_URL:-}
+      NAZAR_URL: ${TEDRIS__NAZAR_URL:-}
       LANDING_URL: ${TEDRIS__LANDING_URL:-${WEB__LANDING_URL:-}}
     depends_on:
       - tedrisat
@@ -323,30 +323,30 @@ services:
       NEXTAUTH_SECRET: ${NIZAM__NEXTAUTH_SECRET:?set NIZAM__NEXTAUTH_SECRET in .env}
       API_MOCKING: ${NIZAM__API_MOCKING:-${WEB__API_MOCKING:-disabled}}
       TEDRISAT_API_BASE_URL: http://tedrisat:3001
-      NAZIR_URL: ${NIZAM__NAZIR_URL:-}
+      NAZAR_URL: ${NIZAM__NAZAR_URL:-}
       TEDRIS_URL: ${NIZAM__TEDRIS_URL:-}
       LANDING_URL: ${NIZAM__LANDING_URL:-${WEB__LANDING_URL:-}}
     depends_on:
       - tedrisat
 
-  nazir:
+  nazar:
     build:
       context: .
-      dockerfile: apps/nazir/Dockerfile
+      dockerfile: apps/nazar/Dockerfile
     profiles: [web]
     ports:
-      - "${NAZIR_WEB_PORT:-4002}:4002"
+      - "${NAZAR_WEB_PORT:-4002}:4002"
     environment:
-      OTEL_SERVICE_NAME: ${NAZIR__OTEL_SERVICE_NAME:-nazir-web}
-      OTEL_EXPORTER_OTLP_ENDPOINT: ${NAZIR__OTEL_EXPORTER_OTLP_ENDPOINT:-${WEB__OTEL_EXPORTER_OTLP_ENDPOINT:?set WEB__OTEL_EXPORTER_OTLP_ENDPOINT in .env}}
-      KEYCLOAK_ISSUER: ${NAZIR__KEYCLOAK_ISSUER:-${WEB__KEYCLOAK_ISSUER:?set WEB__KEYCLOAK_ISSUER in .env}}
-      KEYCLOAK_CLIENT_ID: ${NAZIR__KEYCLOAK_CLIENT_ID:?set NAZIR__KEYCLOAK_CLIENT_ID in .env}
-      KEYCLOAK_CLIENT_SECRET: ${NAZIR__KEYCLOAK_CLIENT_SECRET:?set NAZIR__KEYCLOAK_CLIENT_SECRET in .env}
-      NEXTAUTH_URL: ${NAZIR__NEXTAUTH_URL:-http://localhost:${NAZIR_WEB_PORT:-4002}}
-      NEXTAUTH_SECRET: ${NAZIR__NEXTAUTH_SECRET:?set NAZIR__NEXTAUTH_SECRET in .env}
-      API_MOCKING: ${NAZIR__API_MOCKING:-${WEB__API_MOCKING:-disabled}}
+      OTEL_SERVICE_NAME: ${NAZAR__OTEL_SERVICE_NAME:-nazar-web}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${NAZAR__OTEL_EXPORTER_OTLP_ENDPOINT:-${WEB__OTEL_EXPORTER_OTLP_ENDPOINT:?set WEB__OTEL_EXPORTER_OTLP_ENDPOINT in .env}}
+      KEYCLOAK_ISSUER: ${NAZAR__KEYCLOAK_ISSUER:-${WEB__KEYCLOAK_ISSUER:?set WEB__KEYCLOAK_ISSUER in .env}}
+      KEYCLOAK_CLIENT_ID: ${NAZAR__KEYCLOAK_CLIENT_ID:?set NAZAR__KEYCLOAK_CLIENT_ID in .env}
+      KEYCLOAK_CLIENT_SECRET: ${NAZAR__KEYCLOAK_CLIENT_SECRET:?set NAZAR__KEYCLOAK_CLIENT_SECRET in .env}
+      NEXTAUTH_URL: ${NAZAR__NEXTAUTH_URL:-http://localhost:${NAZAR_WEB_PORT:-4002}}
+      NEXTAUTH_SECRET: ${NAZAR__NEXTAUTH_SECRET:?set NAZAR__NEXTAUTH_SECRET in .env}
+      API_MOCKING: ${NAZAR__API_MOCKING:-${WEB__API_MOCKING:-disabled}}
       TEDRISAT_API_BASE_URL: http://tedrisat:3001
-      TEDRIS_URL: ${NAZIR__TEDRIS_URL:-}
+      TEDRIS_URL: ${NAZAR__TEDRIS_URL:-}
     depends_on:
       - tedrisat
 

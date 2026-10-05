@@ -70,7 +70,7 @@ describe("who is sent here", () => {
     expect(landingFor({ systemAdmin: false, assignments: [] })).toBe("none");
     expect(
       landingFor({ systemAdmin: false, assignments: [{ role: "MUDERRIS" }] })
-    ).toBe("nazir");
+    ).toBe("nazar");
     expect(landingFor({ systemAdmin: true, assignments: [] })).toBe("nizam");
   });
 });

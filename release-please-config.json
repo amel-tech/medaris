@@ -41,14 +41,14 @@
       "component": "nizam-web",
       "path": "apps/nizam"
     },
-    "apps/nazir": {
+    "apps/nazar": {
       "release-type": "node",
-      "package-name": "nazir-web",
+      "package-name": "nazar-web",
       "include-component-in-tag": true,
-      "pull-request-title-pattern": "chore(nazir-web): release ${version}",
-      "pull-request-header": "Release for Nazir Web",
-      "component": "nazir-web",
-      "path": "apps/nazir"
+      "pull-request-title-pattern": "chore(nazar-web): release ${version}",
+      "pull-request-header": "Release for Nazar Web",
+      "component": "nazar-web",
+      "path": "apps/nazar"
     },
     "apps/landing": {
       "release-type": "node",

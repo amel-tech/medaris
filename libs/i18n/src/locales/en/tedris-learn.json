@@ -53,7 +53,8 @@
     "play": "Play",
     "playLabel": "Play: {title}",
     "open": "Open the recording",
-    "openLabel": ": {title} (opens in a new tab)"
+    "openLabel": ": {title} (opens in a new tab)",
+    "bunnyFrameTitle": "Recording player: {title}"
   },
   "LessonNotes": {
     "title": "My notes",

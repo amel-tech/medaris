@@ -13,7 +13,7 @@
 /** The six deployable apps the prefix scheme knows about. */
 export type MedarisApp =
   | "landing"
-  | "nazir"
+  | "nazar"
   | "nizam"
   | "tedris"
   | "tedrisat"

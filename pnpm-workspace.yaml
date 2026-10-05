@@ -18,7 +18,7 @@ packages:
   - 'apps/teskilat'
   - 'apps/tedris'
   - 'apps/nizam'
-  - 'apps/nazir'
+  - 'apps/nazar'
   - 'apps/landing'
   - 'apps/keycloak-theme'
   - 'libs/common'
@@ -360,6 +360,7 @@ catalog:
   #             per-package exception was needed for this migration either.
   '@opentelemetry/api': ^1.9.0
   '@vercel/otel': ^2.1.3 # MDRS-21: +1 major
+  tus-js-client: ^4.3.1 # MDRS-114: nazar-web's resumable browser upload to Bunny Stream
   xlsx: ^0.18.5 # ⚠ security FU-5 (unfloorable; replace SheetJS)
 
   # ═══ Frontend build / styling / codegen ═══

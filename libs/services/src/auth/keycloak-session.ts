@@ -6,7 +6,7 @@ import { REFRESH_ACCESS_TOKEN_ERROR } from "./refresh-error";
  * Keeps each web app's NextAuth session tied to the one Keycloak SSO session
  * behind it (MDRS-210).
  *
- * tedris, nizam and nazir each keep their own NextAuth cookie against the same
+ * tedris, nizam and nazar each keep their own NextAuth cookie against the same
  * realm. Signing out of one of them ends the Keycloak SSO session through the
  * end-session endpoint (`createKeycloakSignOut`), but the other two never
  * asked Keycloak again until their access token expired, so they went on
