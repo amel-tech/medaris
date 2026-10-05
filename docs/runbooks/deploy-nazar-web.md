@@ -9,7 +9,7 @@
 | GHCR image | `ghcr.io/amel-tech/medaris-nazar-web` |
 | Container port | `4002` |
 | Coolify application | `nazar-web` — uuid `rcwww0wkosws0g8ks8oks4c4`, project *Medaris*, environment `development`, server `mdrs1` (`193.111.78.115`), `https://nazar-dev.medaris.app` (the application was `nazir-web` on `https://nazir-dev.medaris.app` until MDRS-250; if it was recreated rather than renamed, its uuid changed: put the new one here and in §3) |
-| Coolify webhook secret | `NAZAR_WEB_COOLIFY_WEBHOOK` (repo secret; MDRS-250 renamed it from `NAZIR_WEB_COOLIFY_WEBHOOK`, set 2026-09-16) |
+| Coolify webhook secret | `NAZAR_WEB_COOLIFY_WEBHOOK` (repo secret; MDRS-250 renamed it from `NAZIR_WEB_COOLIFY_WEBHOOK`, set 2026-09-16). Until the new names exist the workflow falls back to the old ones: `NAZIR_WEB_COOLIFY_WEBHOOK` and `NAZIR_WEB_PROD_COOLIFY_WEBHOOK`. |
 | Deploy token | `COOLIFY_DEPLOY_TOKEN` (org secret — present) |
 
 The image name is not hardcoded: the workflow sets
