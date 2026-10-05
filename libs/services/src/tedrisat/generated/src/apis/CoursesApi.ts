@@ -369,7 +369,7 @@ export class CoursesApi extends runtime.BaseAPI {
     }
 
     /**
-     * nazar \'Ders nazırı ata\'. Needs `course_nazir.assign`; giving permissions also needs `permission.grant` through a role (müderris, başmüderris, köşk nazımı) or the başnazım, else 403 PERMISSION_NOT_GIVABLE for any code. The post and the permissions end together at `endsAt`. 403 GRANT_EXCEEDS_GIVER for a permission the caller does not hold here; 403 PERMISSION_NOT_GIVABLE for a köşk nazımı in a medrese course; 403 SELF_GRANT_REFUSED for oneself, SYSTEM_ADMIN excepted; 400 for a code outside the course catalog, a hidden course or an end in the past; 404 COURSE_NAZIR_UNKNOWN_ACCOUNT. Written to the audit log. Answers the list as it is now.
+     * nazar \'Ders nazırı ata\'. Needs `course_nazir.assign`; giving permissions also needs `permission.grant` through a role (müderris, başmüderris, köşk nazımı) or the başnazım, else 403 PERMISSION_NOT_GIVABLE for any code. The post and the permissions end together at `endsAt`. 403 GRANT_EXCEEDS_GIVER for a permission the caller does not hold here; 403 PERMISSION_NOT_GIVABLE for a köşk nazımı in a medrese course; 403 SELF_GRANT_REFUSED for oneself, SYSTEM_ADMIN excepted; 400 for a code outside the course catalog, a hidden course or an end in the past; 404 COURSE_NAZIR_UNKNOWN_ACCOUNT; 409 COURSE_NAZIR_BARRED for an account an open ban bars from the course. Written to the audit log. Answers the list as it is now.
      * Make someone the course\'s ders nazırı
      */
     async createCourseNazirRaw(requestParameters: CreateCourseNazirRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CourseNazirsResponse>> {
@@ -414,7 +414,7 @@ export class CoursesApi extends runtime.BaseAPI {
     }
 
     /**
-     * nazar \'Ders nazırı ata\'. Needs `course_nazir.assign`; giving permissions also needs `permission.grant` through a role (müderris, başmüderris, köşk nazımı) or the başnazım, else 403 PERMISSION_NOT_GIVABLE for any code. The post and the permissions end together at `endsAt`. 403 GRANT_EXCEEDS_GIVER for a permission the caller does not hold here; 403 PERMISSION_NOT_GIVABLE for a köşk nazımı in a medrese course; 403 SELF_GRANT_REFUSED for oneself, SYSTEM_ADMIN excepted; 400 for a code outside the course catalog, a hidden course or an end in the past; 404 COURSE_NAZIR_UNKNOWN_ACCOUNT. Written to the audit log. Answers the list as it is now.
+     * nazar \'Ders nazırı ata\'. Needs `course_nazir.assign`; giving permissions also needs `permission.grant` through a role (müderris, başmüderris, köşk nazımı) or the başnazım, else 403 PERMISSION_NOT_GIVABLE for any code. The post and the permissions end together at `endsAt`. 403 GRANT_EXCEEDS_GIVER for a permission the caller does not hold here; 403 PERMISSION_NOT_GIVABLE for a köşk nazımı in a medrese course; 403 SELF_GRANT_REFUSED for oneself, SYSTEM_ADMIN excepted; 400 for a code outside the course catalog, a hidden course or an end in the past; 404 COURSE_NAZIR_UNKNOWN_ACCOUNT; 409 COURSE_NAZIR_BARRED for an account an open ban bars from the course. Written to the audit log. Answers the list as it is now.
      * Make someone the course\'s ders nazırı
      */
     async createCourseNazir(requestParameters: CreateCourseNazirRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CourseNazirsResponse> {

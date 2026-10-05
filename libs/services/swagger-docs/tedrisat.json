@@ -736,7 +736,7 @@
         ]
       },
       "delete": {
-        "description": "nizam/38 'Görevden al'. The post and every permission the person holds in the course end at once. Written to the audit log.",
+        "description": "nizam/38 'Görevden al'. The post and every permission the person holds in the course end at once. 409 DISMISS_SEAT_HANDED_ON while someone the person appointed from the course still holds their post. Written to the audit log.",
         "operationId": "revokeKoskGrant",
         "parameters": [
           {
@@ -765,6 +765,9 @@
           },
           "404": {
             "description": ""
+          },
+          "409": {
+            "description": "DISMISS_SEAT_HANDED_ON"
           }
         },
         "security": [
@@ -4768,7 +4771,7 @@
         ]
       },
       "post": {
-        "description": "nazar 'Ders nazırı ata'. Needs `course_nazir.assign`; giving permissions also needs `permission.grant` through a role (müderris, başmüderris, köşk nazımı) or the başnazım, else 403 PERMISSION_NOT_GIVABLE for any code. The post and the permissions end together at `endsAt`. 403 GRANT_EXCEEDS_GIVER for a permission the caller does not hold here; 403 PERMISSION_NOT_GIVABLE for a köşk nazımı in a medrese course; 403 SELF_GRANT_REFUSED for oneself, SYSTEM_ADMIN excepted; 400 for a code outside the course catalog, a hidden course or an end in the past; 404 COURSE_NAZIR_UNKNOWN_ACCOUNT. Written to the audit log. Answers the list as it is now.",
+        "description": "nazar 'Ders nazırı ata'. Needs `course_nazir.assign`; giving permissions also needs `permission.grant` through a role (müderris, başmüderris, köşk nazımı) or the başnazım, else 403 PERMISSION_NOT_GIVABLE for any code. The post and the permissions end together at `endsAt`. 403 GRANT_EXCEEDS_GIVER for a permission the caller does not hold here; 403 PERMISSION_NOT_GIVABLE for a köşk nazımı in a medrese course; 403 SELF_GRANT_REFUSED for oneself, SYSTEM_ADMIN excepted; 400 for a code outside the course catalog, a hidden course or an end in the past; 404 COURSE_NAZIR_UNKNOWN_ACCOUNT; 409 COURSE_NAZIR_BARRED for an account an open ban bars from the course. Written to the audit log. Answers the list as it is now.",
         "operationId": "createCourseNazir",
         "parameters": [
           {
@@ -4811,7 +4814,7 @@
             "description": ""
           },
           "409": {
-            "description": "COURSE_NAZIR_EXISTS, COURSE_NAZIR_HOLDS_SEAT"
+            "description": "COURSE_NAZIR_EXISTS, COURSE_NAZIR_HOLDS_SEAT, COURSE_NAZIR_BARRED"
           },
           "503": {
             "description": "KEYCLOAK_ADMIN_UNAVAILABLE: the account could not be checked"
