@@ -1,5 +1,7 @@
+"use client";
+
 import { Field as BaseField } from "@base-ui/react/field";
-import type { ComponentProps, ReactNode } from "react";
+import type { ComponentProps, MouseEvent, ReactNode } from "react";
 import { cx } from "./cx";
 
 export interface InputProps
@@ -13,9 +15,30 @@ export interface InputProps
   trailing?: ReactNode;
 }
 
+// The types whose value comes from a picker. Chromium opens it only from its
+// own icon, so a click on the text did nothing visible (MDRS-277).
+const PICKER_TYPES = new Set([
+  "date",
+  "time",
+  "datetime-local",
+  "month",
+  "week",
+]);
+
+function openPicker(event: MouseEvent<HTMLInputElement>) {
+  const input = event.currentTarget;
+  if (!PICKER_TYPES.has(input.type) || input.readOnly || input.disabled) return;
+  try {
+    input.showPicker?.();
+  } catch {
+    // no user activation, or a cross-origin frame: the icon still works
+  }
+}
+
 /**
  * `.mds-input` on Base UI's `Field.Control`. Always inside a `Field`
  * (canvas rule 9), which owns the label, the help and `aria-invalid`.
+ * A date or time input opens its picker on a click anywhere in the field.
  */
 export function Input({
   size = "regular",
@@ -23,11 +46,16 @@ export function Input({
   leading,
   trailing,
   className,
+  onClick,
   ...rest
 }: InputProps) {
   const input = (
     <BaseField.Control
       {...rest}
+      onClick={(event: MouseEvent<HTMLInputElement>) => {
+        onClick?.(event);
+        if (!event.defaultPrevented) openPicker(event);
+      }}
       dir={mono ? "ltr" : rest.dir}
       className={cx(
         "mds-input",
