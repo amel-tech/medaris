@@ -75,6 +75,12 @@ describe("authPageUnderCallbackLocale — the sign-in page keeps the reader's la
     expect(at("/auth/signin", "?callbackUrl=%2Fde%2Fx")).toBeNull();
   });
 
+  it("treats trailing slashes, however many, as the same page", () => {
+    const search = "?callbackUrl=%2Fen%2Fkosks";
+    expect(at("/auth/signin///", search)).toBe(`/en/auth/signin${search}`);
+    expect(at(`/auth/signin${"/".repeat(50_000)}x`, search)).toBeNull();
+  });
+
   it("does nothing to a page that already has a locale or is not an auth page", () => {
     const search = "?callbackUrl=%2Fen%2Fkosks";
     expect(at("/tr/auth/signin", search)).toBeNull();

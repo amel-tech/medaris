@@ -50,7 +50,11 @@ export const authPageUnderCallbackLocale = (
     locales,
   }: { authPaths: readonly string[]; locales: readonly string[] }
 ): string | null => {
-  const path = pathname.replace(/\/+$/, "") || "/";
+  // A loop, not /\/+$/: the path is the request's, and that pattern backtracks
+  // polynomially on a long run of slashes (CodeQL js/polynomial-redos).
+  let end = pathname.length;
+  while (end > 0 && pathname[end - 1] === "/") end--;
+  const path = pathname.slice(0, end) || "/";
   if (!authPaths.includes(path)) return null;
   const callbackUrl = new URLSearchParams(search).get("callbackUrl");
   if (!callbackUrl) return null;
