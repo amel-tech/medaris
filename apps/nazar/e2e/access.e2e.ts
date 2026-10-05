@@ -1,5 +1,5 @@
 import { account, canSignIn, expect, test } from "./accounts";
-import { type NazirFixture, seedPortal } from "./seed";
+import { type NazarFixture, seedPortal } from "./seed";
 
 /**
  * Design nazir/02 (Bu portala erişiminiz yok) and the gate in front of it,
@@ -14,7 +14,7 @@ import { type NazirFixture, seedPortal } from "./seed";
 const TALEBE = account("TALEBE");
 const BASMUDERRIS = account("MEDRESE_BASMUDERRIS");
 
-let fixture: NazirFixture | undefined;
+let fixture: NazarFixture | undefined;
 
 test.beforeAll(async () => {
   if (!BASMUDERRIS.sub) return;

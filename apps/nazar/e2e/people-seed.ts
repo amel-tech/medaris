@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import pg from "pg";
-import type { NazirFixture } from "./seed";
+import type { NazarFixture } from "./seed";
 
 /**
  * What the specs of Talebeler, Yasaklamalar, Pano and Medrese dışı ders talebi
@@ -32,7 +32,7 @@ async function connect(): Promise<pg.Client> {
 /** Removes the bans of the given people, of the medrese and of its courses, with what hangs on them. */
 async function removeBans(
   client: pg.Client,
-  base: NazirFixture,
+  base: NazarFixture,
   users: string[]
 ): Promise<void> {
   const courses = [base.first.id, base.second.id];
@@ -99,7 +99,7 @@ export interface StudentsFixture {
  * their account is read.
  */
 export async function seedStudents(
-  base: NazirFixture
+  base: NazarFixture
 ): Promise<StudentsFixture> {
   const client = await connect();
   const tail = randomUUID().slice(0, 8);
@@ -192,7 +192,7 @@ export interface BansFixture {
 }
 
 export async function seedBans(
-  base: NazirFixture,
+  base: NazarFixture,
   head: string
 ): Promise<BansFixture> {
   const client = await connect();
@@ -307,7 +307,7 @@ export interface PanoFixture {
  * köşk both courses are in hosts the medrese.
  */
 export async function seedPano(
-  base: NazirFixture,
+  base: NazarFixture,
   head: string
 ): Promise<PanoFixture> {
   const client = await connect();
@@ -414,7 +414,7 @@ export interface OffsiteFixture {
   remove: () => Promise<void>;
 }
 
-export async function seedOffsite(base: NazirFixture): Promise<OffsiteFixture> {
+export async function seedOffsite(base: NazarFixture): Promise<OffsiteFixture> {
   const client = await connect();
   return {
     requests: async () => {

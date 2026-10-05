@@ -2,7 +2,7 @@ import type { Page } from "@playwright/test";
 import pg from "pg";
 import { account, canSignIn, expect, test } from "./accounts";
 import { type ArchiveFixture, seedArchive } from "./archive-seed";
-import { type NazirFixture, seedPortal } from "./seed";
+import { type NazarFixture, seedPortal } from "./seed";
 
 /**
  * Design nazir/12 (Arşiv) against the running app and API with real Keycloak
@@ -16,7 +16,7 @@ import { type NazirFixture, seedPortal } from "./seed";
 const BASMUDERRIS = account("MEDRESE_BASMUDERRIS");
 const MEDRESE_NAZIR = account("MEDRESE_NAZIR");
 
-let base: NazirFixture | undefined;
+let base: NazarFixture | undefined;
 let archive: ArchiveFixture | undefined;
 
 test.beforeAll(async () => {

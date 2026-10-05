@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import pg from "pg";
-import type { NazirFixture } from "./seed";
+import type { NazarFixture } from "./seed";
 
 /**
  * What the archive specs add to `seedPortal`'s medrese (MDRS-185), under random
@@ -40,7 +40,7 @@ export interface ArchiveFixture {
 const DAY = 24 * 3600 * 1000;
 
 export async function seedArchive(
-  base: NazirFixture,
+  base: NazarFixture,
   head: string
 ): Promise<ArchiveFixture> {
   const url = process.env.E2E_DATABASE_URL;

@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import pg from "pg";
-import type { NazirFixture } from "./seed";
+import type { NazarFixture } from "./seed";
 
 /**
  * What the settings and nazır specs add to `seedPortal`'s medrese (MDRS-184),
@@ -80,7 +80,7 @@ export interface NazirsFixture {
   remove: () => Promise<void>;
 }
 
-export async function seedNazirs(base: NazirFixture): Promise<NazirsFixture> {
+export async function seedNazirs(base: NazarFixture): Promise<NazirsFixture> {
   const url = process.env.E2E_DATABASE_URL;
   if (!url) throw new Error("E2E_DATABASE_URL is not set.");
   const client = new pg.Client({ connectionString: url });
