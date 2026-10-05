@@ -1,3 +1,5 @@
+import { authorityAbove, SCOPE_TYPES, type ScopeType } from "@medaris/common";
+
 /**
  * What saving nizam/12 changes (MDRS-171), as plain data: which held grants
  * stay, which go, which get a new end and which codes and group are new. Pure
@@ -119,6 +121,102 @@ export function longestRunning<
   const ridersOf = new Map<string, T[]>();
   for (const [item, row] of lead) ridersOf.set(row.id, riding.get(item) ?? []);
   return { leads, ridersOf };
+}
+
+/** A grant a ders nazırı holds in their course, with the level it was given at (null: before MDRS-135). */
+export interface IHeldPostGrant extends IHeldGrant {
+  authority: ScopeType | null;
+}
+
+/**
+ * What saving a ders nazırı's post from the course changes (MDRS-270). Only a
+ * code given or moved later is handed on, and only that is held to the
+ * giver's ceiling: dropping a code or moving its end earlier gives nothing.
+ */
+export interface IPostPlan {
+  /** Group rows, and every row of a code not wanted (the lead and its riders). */
+  revoke: string[];
+  /** The lead and the riders of a kept code that run past an earlier wanted end. */
+  shorten: string[];
+  /** Leads moved later whose stored authority the actor reaches: they become the actor's. */
+  extendInPlace: string[];
+  /** Leads moved later that were given from above the actor: the extra time is a new row beside them. */
+  extendAlongside: Array<{ id: string; permission: string }>;
+  /** Codes wanted and not held. */
+  insert: string[];
+}
+
+/**
+ * The post's whole set from now on, against what the holder has in the
+ * course. The course route gives single codes only, so a group row (the
+ * köşk's or nizam's) is revoked, as the köşk route revokes it. Per code, the
+ * longest-running row leads and decides (`planGrants`); a later end on a row
+ * the actor's authority does not reach (one the başnazım made, lengthened by
+ * a müderris) never rewrites that row: the actor's own row runs beside it,
+ * as the medrese's save does (review B-extension-recaps-row).
+ */
+export function planPostGrants(
+  held: readonly IHeldPostGrant[],
+  wanted: {
+    permissions: readonly string[];
+    expiresAt: Date | null;
+    /** The level the actor gives at. */
+    actor: ScopeType;
+  }
+): IPostPlan {
+  const plan: IPostPlan = {
+    revoke: held.filter((row) => row.groupId !== null).map((row) => row.id),
+    shorten: [],
+    extendInPlace: [],
+    extendAlongside: [],
+    insert: [],
+  };
+  const { leads, ridersOf } = longestRunning(
+    held.filter((row) => row.groupId === null && row.permission !== null)
+  );
+  const decided = planGrants(leads, {
+    groupId: null,
+    permissions: wanted.permissions,
+    expiresAt: wanted.expiresAt,
+  });
+  const ridersOfId = (id: string) => ridersOf.get(id) ?? [];
+  for (const id of decided.revoke) {
+    plan.revoke.push(id, ...ridersOfId(id).map((row) => row.id));
+  }
+  const end = wanted.expiresAt;
+  for (const lead of leads.filter((row) => decided.retime.includes(row.id))) {
+    const later =
+      end === null
+        ? lead.expiresAt !== null
+        : lead.expiresAt !== null && end > lead.expiresAt;
+    if (!later) {
+      // `end` is a date here: no end is never earlier than any.
+      plan.shorten.push(
+        lead.id,
+        ...ridersOfId(lead.id)
+          .filter(
+            (rider) =>
+              end !== null &&
+              (rider.expiresAt === null || rider.expiresAt > end)
+          )
+          .map((rider) => rider.id)
+      );
+      continue;
+    }
+    const stored = lead.authority ?? SCOPE_TYPES.COURSE;
+    if (stored === wanted.actor || authorityAbove(wanted.actor, stored)) {
+      plan.extendInPlace.push(lead.id);
+    } else {
+      plan.extendAlongside.push({
+        id: lead.id,
+        permission: lead.permission as string,
+      });
+    }
+  }
+  for (const item of decided.insert) {
+    if ("permission" in item) plan.insert.push(item.permission);
+  }
+  return plan;
 }
 
 /**

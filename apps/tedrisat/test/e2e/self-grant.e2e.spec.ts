@@ -647,4 +647,98 @@ describe("Naming yourself on the remaining paths (MDRS-135 review, e2e)", () => 
       }).expect(404);
     });
   });
+
+  describe("POST and PATCH /courses/:id/nazirs", () => {
+    const path = () => `/courses/${ownCourse}/nazirs`;
+    const postsOf = (userId: string) =>
+      db()
+        .select()
+        .from(roleAssignments)
+        .where(
+          and(
+            eq(roleAssignments.userId, userId),
+            eq(roleAssignments.role, ASSIGNED_ROLES.DERS_NAZIR)
+          )
+        );
+
+    it("a müderris cannot make themselves the course's ders nazırı", async () => {
+      await assignRole(db(), {
+        userId: OTHER,
+        role: ASSIGNED_ROLES.MUDERRIS,
+        scopeId: ownCourse,
+        grantedBy: NAZIM,
+      });
+      const res = await send("post", OTHER, path(), {
+        userId: OTHER,
+        permissions: [PERMISSIONS.SESSION_MANAGE],
+      }).expect(403);
+      expect(res.body.code).toBe("SELF_GRANT_REFUSED");
+      expect(await postsOf(OTHER)).toHaveLength(0);
+      expect(await refusals()).toMatchObject([
+        {
+          actorId: OTHER,
+          entity: "course",
+          entityId: ownCourse,
+          details: { route: "course.nazirs.create" },
+        },
+      ]);
+    });
+
+    it("a ders nazırı cannot widen or lengthen their own post through the course route", async () => {
+      // A co-nazım seated the nazım as ders nazırı of the köşk's course, with
+      // an end; as the köşk's nazım he gives in that course.
+      const [row] = await db()
+        .insert(roleAssignments)
+        .values({
+          userId: NAZIM,
+          role: ASSIGNED_ROLES.DERS_NAZIR,
+          scopeType: SCOPE_TYPES.COURSE,
+          scopeId: ownCourse,
+          grantedBy: CO_NAZIM,
+          expiresAt: new Date(Date.now() + 7 * 24 * 3600 * 1000),
+        })
+        .returning();
+      const body = {
+        permissions: [PERMISSIONS.COURSE_EDIT, PERMISSIONS.SESSION_MANAGE],
+        endsAt: null,
+      };
+      const res = await send(
+        "patch",
+        NAZIM,
+        `${path()}/${row.id}`,
+        body
+      ).expect(403);
+      expect(res.body.code).toBe("SELF_GRANT_REFUSED");
+      const [post] = await db()
+        .select()
+        .from(roleAssignments)
+        .where(eq(roleAssignments.id, row.id));
+      expect(post.expiresAt).not.toBeNull();
+      expect(
+        await db()
+          .select()
+          .from(permissionGrants)
+          .where(eq(permissionGrants.userId, NAZIM))
+      ).toHaveLength(0);
+      expect(await refusals()).toMatchObject([
+        {
+          actorId: NAZIM,
+          entity: "course",
+          entityId: ownCourse,
+          details: { route: "course.nazirs.update" },
+        },
+      ]);
+
+      await send("patch", CO_NAZIM, `${path()}/${row.id}`, body).expect(200);
+    });
+
+    it("the başnazım is not asked", async () => {
+      await send("post", ADMIN, path(), {
+        userId: ADMIN,
+        permissions: [PERMISSIONS.SESSION_MANAGE],
+      }).expect(201);
+      expect(await postsOf(ADMIN)).toHaveLength(1);
+      expect(await refusals()).toHaveLength(0);
+    });
+  });
 });

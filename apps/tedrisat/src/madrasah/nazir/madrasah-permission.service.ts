@@ -99,7 +99,7 @@ function holdingsFrom(effective: IEffective | null): IHoldings {
 }
 
 /** The kademe, lowest first: course < medrese < köşk < platform (owner, 29 September). */
-const KADEME: Record<ScopeType, number> = {
+export const KADEME: Record<ScopeType, number> = {
   [SCOPE_TYPES.COURSE]: 0,
   [SCOPE_TYPES.MADRASAH]: 1,
   [SCOPE_TYPES.KOSK]: 2,

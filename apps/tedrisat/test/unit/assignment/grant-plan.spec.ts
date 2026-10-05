@@ -4,7 +4,9 @@ import {
   earliestEnd,
   extrasBeyondGroup,
   type IHeldGrant,
+  type IHeldPostGrant,
   planGrants,
+  planPostGrants,
 } from "../../../src/assignment/admin/grant-plan";
 import {
   COURSE_CATALOG,
@@ -93,6 +95,171 @@ describe("planGrants (MDRS-171)", () => {
       }
     );
     expect(same.retime).toEqual([]);
+  });
+});
+
+describe("planPostGrants (MDRS-270)", () => {
+  const row = (
+    over: Partial<IHeldPostGrant> & { id: string }
+  ): IHeldPostGrant => ({
+    permission: null,
+    groupId: null,
+    expiresAt: null,
+    authority: null,
+    ...over,
+  });
+  const nothing = {
+    revoke: [],
+    shorten: [],
+    extendInPlace: [],
+    extendAlongside: [],
+    insert: [],
+  };
+
+  it("revokes a code left out with the rows riding along", () => {
+    const plan = planPostGrants(
+      [
+        row({ id: "lead", permission: "session.manage" }),
+        row({ id: "rider", permission: "session.manage", expiresAt: day(5) }),
+        row({ id: "kept", permission: "week.hide" }),
+      ],
+      { permissions: ["week.hide"], expiresAt: null, actor: "course" }
+    );
+    expect(plan).toEqual({ ...nothing, revoke: ["lead", "rider"] });
+  });
+
+  it("revokes a group row", () => {
+    const plan = planPostGrants(
+      [
+        row({ id: "g", groupId: "grp" }),
+        row({ id: "p", permission: "week.hide" }),
+      ],
+      { permissions: ["week.hide"], expiresAt: null, actor: "kosk" }
+    );
+    expect(plan).toEqual({ ...nothing, revoke: ["g"] });
+  });
+
+  it("inserts a new code", () => {
+    const plan = planPostGrants([row({ id: "p", permission: "week.hide" })], {
+      permissions: ["week.hide", "recording.manage"],
+      expiresAt: null,
+      actor: "course",
+    });
+    expect(plan).toEqual({ ...nothing, insert: ["recording.manage"] });
+  });
+
+  it("moves a lead later in place when the actor reaches its authority", () => {
+    const held = [
+      row({ id: "own", permission: "week.hide", expiresAt: day(5) }),
+      row({
+        id: "older",
+        permission: "session.manage",
+        expiresAt: day(5),
+        authority: null,
+      }),
+      row({
+        id: "below",
+        permission: "recording.manage",
+        expiresAt: day(5),
+        authority: "course",
+      }),
+    ];
+    // the same level, an old row counted at its course's level, and a köşk over a course
+    expect(
+      planPostGrants(held.slice(0, 2), {
+        permissions: ["week.hide", "session.manage"],
+        expiresAt: day(20),
+        actor: "course",
+      })
+    ).toEqual({ ...nothing, extendInPlace: ["own", "older"] });
+    expect(
+      planPostGrants(held.slice(2), {
+        permissions: ["recording.manage"],
+        expiresAt: null,
+        actor: "kosk",
+      })
+    ).toEqual({ ...nothing, extendInPlace: ["below"] });
+  });
+
+  it("adds a row beside a lead stored above the actor", () => {
+    const held = [
+      row({
+        id: "admin",
+        permission: "session.manage",
+        expiresAt: day(5),
+        authority: "platform",
+      }),
+      row({
+        id: "kosk",
+        permission: "week.hide",
+        expiresAt: day(5),
+        authority: "kosk",
+      }),
+    ];
+    expect(
+      planPostGrants(held, {
+        permissions: ["session.manage", "week.hide"],
+        expiresAt: day(20),
+        actor: "course",
+      })
+    ).toEqual({
+      ...nothing,
+      extendAlongside: [
+        { id: "admin", permission: "session.manage" },
+        { id: "kosk", permission: "week.hide" },
+      ],
+    });
+    // a köşk and a medrese are not above one another
+    expect(
+      planPostGrants(held.slice(1), {
+        permissions: ["week.hide"],
+        expiresAt: null,
+        actor: "madrasah",
+      }).extendAlongside
+    ).toEqual([{ id: "kosk", permission: "week.hide" }]);
+  });
+
+  it("shortens a lead and every rider running past an earlier end", () => {
+    const plan = planPostGrants(
+      [
+        row({
+          id: "lead",
+          permission: "session.manage",
+          authority: "platform",
+        }),
+        row({
+          id: "past",
+          permission: "session.manage",
+          expiresAt: day(25),
+          authority: "course",
+        }),
+        row({
+          id: "inside",
+          permission: "session.manage",
+          expiresAt: day(8),
+          authority: "course",
+        }),
+      ],
+      { permissions: ["session.manage"], expiresAt: day(10), actor: "course" }
+    );
+    // shortening gives nothing, so even a row from above is shortened in place
+    expect(plan).toEqual({ ...nothing, shorten: ["lead", "past"] });
+  });
+
+  it("touches nothing when the end and the set are the same", () => {
+    const plan = planPostGrants(
+      [
+        row({ id: "a", permission: "week.hide", expiresAt: day(20) }),
+        row({ id: "b", permission: "session.manage", expiresAt: day(20) }),
+        row({ id: "rider", permission: "session.manage", expiresAt: day(3) }),
+      ],
+      {
+        permissions: ["session.manage", "week.hide"],
+        expiresAt: new Date(day(20)),
+        actor: "course",
+      }
+    );
+    expect(plan).toEqual(nothing);
   });
 });
 
