@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.2.0](https://github.com/amel-tech/medaris/compare/landing-web-v2.1.1...landing-web-v2.2.0) (2026-10-05)
+
+
+### Features
+
+* **tedrisat, tedris-web:** MDRS-121 e-mail lesson invitations as iCalendar REQUEST and CANCEL ([#213](https://github.com/amel-tech/medaris/issues/213)) ([a5903ea](https://github.com/amel-tech/medaris/commit/a5903ea64b624e1af379637e575f8197ad49b530))
+
 ## [2.1.1](https://github.com/amel-tech/medaris/compare/landing-web-v2.1.0...landing-web-v2.1.1) (2026-10-05)
 
 
