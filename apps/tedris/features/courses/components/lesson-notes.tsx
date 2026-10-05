@@ -340,7 +340,8 @@ const NoteForm = ({
 /**
  * One note on the timeline: its time first (a button that moves the YouTube
  * player there, a label otherwise), its text after, its actions at the end.
- * In a narrow panel the text goes under the time and the actions.
+ * In a narrow panel the text goes under the time and the actions; under a
+ * page-wide video it keeps a reading measure of 70ch.
  */
 const NoteItem = ({
   note,
@@ -469,7 +470,7 @@ const NoteItem = ({
           </span>
         )}
       </span>
-      <div className="col-span-2 row-start-2 min-inline-0 @min-[30rem]:col-span-1 @min-[30rem]:col-start-2 @min-[30rem]:row-start-1">
+      <div className="col-span-2 row-start-2 min-inline-0 max-inline-[70ch] @min-[30rem]:col-span-1 @min-[30rem]:col-start-2 @min-[30rem]:row-start-1">
         <Markdown source={note.body} />
       </div>
       <span className="col-start-2 row-start-1 flex items-center gap-1 justify-self-end @min-[30rem]:col-start-3">
