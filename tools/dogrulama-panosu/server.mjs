@@ -463,11 +463,11 @@ async function surec() {
 const SAATLIK = 60 * 60_000;
 // Aşamalar: ilki görünür hedeftir; sonrakiler gizli kalır, ancak saati geçip iş bitmemişse sırayla açılır.
 const ASAMALAR = [
-  { ad: "Normal", saat: "2026-10-04T21:00:00+03:00" },
-  { ad: "Anormal", saat: "2026-10-05T00:00:00+03:00" },
-  { ad: "Kriz", saat: "2026-10-05T03:00:00+03:00" },
-  { ad: "Seferberlik", saat: "2026-10-05T06:00:00+03:00" },
-  { ad: "Son çizgi", saat: "2026-10-05T09:00:00+03:00" },
+  { ad: "Normal", saat: "2026-10-05T12:00:00+03:00" },
+  { ad: "Anormal", saat: "2026-10-05T15:00:00+03:00" },
+  { ad: "Kriz", saat: "2026-10-05T18:00:00+03:00" },
+  { ad: "Seferberlik", saat: "2026-10-05T21:00:00+03:00" },
+  { ad: "Son çizgi", saat: "2026-10-06T00:00:00+03:00" },
 ];
 const tahminVarsayilan = () => ({
   hedef: ASAMALAR[0].saat,
@@ -517,7 +517,7 @@ function hizOlc(items) {
 const gorevDk = (i, oran) => Math.max(1, Math.round(tabanDk(i) * oran));
 
 // Günün başlangıcı (bar "09:00'da başladık" buradan sayar)
-const GUN_BASLANGIC = "2026-10-04T09:00:00+03:00";
+const GUN_BASLANGIC = "2026-10-05T00:00:00+03:00";
 // Dev ortamı adresleri (docs/runbooks/deploy-*.md; 2026-10-04 curl ile 200 doğrulandı)
 const LINKLER = {
   web: [
@@ -784,15 +784,18 @@ function planHesapla(items, etkiler, acilis, dmap) {
       a.no - b.no
   );
   const simdi = Date.now();
+  // Yüzde tüm onayları sayar; tempo yalnız gün başlangıcından (00:00) sonraki onaylardan ölçülür
+  const gunBas = Date.parse(GUN_BASLANGIC);
   const bittiMi = (x) => x.onayGecerli || sorunda(x);
+  const bugunBitti = (x) => bittiMi(x) && Date.parse(x.onay?.tarih) >= gunBas;
   // Tempo: 09:00'dan beri geçen duvar saati ÷ biten işlerin kart süresi. Molalar ve boş geçen saatler buradan
   // tahmine girer; hiç iş bitmediyse en iyi ihtimal alınır (sıradaki iş şu an bitseydi). Her onayda yeniden ölçülür.
   const gecenDk = Math.max(0, (simdi - Date.parse(GUN_BASLANGIC)) / 60_000);
   const bitenDk =
     items
-      .filter((i) => bittiMi(i) && i.onem.kapsam !== "taha")
+      .filter((i) => bugunBitti(i) && i.onem.kapsam !== "taha")
       .reduce((x, i) => x + gorevDk(i, oran), 0) +
-    etkiler.filter(bittiMi).reduce((x, e) => x + e.dk, 0);
+    etkiler.filter(bugunBitti).reduce((x, e) => x + e.dk, 0);
   const tempo = Math.max(1, gecenDk / (bitenDk || gorevler[0]?.dk || 1));
   // baslangic/bitis = odaklı çalışırsan (kart saati); tBitis = bu tempoyla gerçekte
   let imlec = simdi;
@@ -811,14 +814,14 @@ function planHesapla(items, etkiler, acilis, dmap) {
   }
   const bitenPaket = items.filter(
     (i) =>
-      (i.onayGecerli || sorunda(i)) &&
+      bittiMi(i) &&
       i.onem.kapsam !== "taha" &&
       !PROJELER[PROJE_SIRA[projeBul(i, dmap)]].istege
   ).length;
-  const bitenEtki = etkiler.filter((e) => e.onayGecerli || sorunda(e)).length;
+  const bitenEtki = etkiler.filter(bittiMi).length;
   const tamamlanan = [
     ...items
-      .filter((i) => (i.onayGecerli || sorunda(i)) && i.onem.kapsam !== "taha")
+      .filter((i) => bittiMi(i) && i.onem.kapsam !== "taha")
       .map((i) => ({
         tur: "paket",
         key: `p${i.no}`,
@@ -828,17 +831,15 @@ function planHesapla(items, etkiler, acilis, dmap) {
         not: i.onay.not || "",
         proje: projeBul(i, dmap),
       })),
-    ...etkiler
-      .filter((e) => e.onayGecerli || sorunda(e))
-      .map((e) => ({
-        tur: "etki",
-        key: `e${e.no}`,
-        no: e.no,
-        durum: e.onayGecerli ? "tamam" : "sorun",
-        tarih: e.onay.tarih,
-        not: e.onay.not || "",
-        proje: e.proje,
-      })),
+    ...etkiler.filter(bittiMi).map((e) => ({
+      tur: "etki",
+      key: `e${e.no}`,
+      no: e.no,
+      durum: e.onayGecerli ? "tamam" : "sorun",
+      tarih: e.onay.tarih,
+      not: e.onay.not || "",
+      proje: e.proje,
+    })),
   ].sort((a, b) => Date.parse(b.tarih) - Date.parse(a.tarih));
   const biten = bitenPaket + bitenEtki;
   const bekleyen = gorevler.filter(zorunlu);
@@ -858,7 +859,6 @@ function planHesapla(items, etkiler, acilis, dmap) {
     const k = asamalar.findIndex((a) => Date.parse(a.saat) >= son);
     aktif = k < 0 ? asamalar.length - 1 : k;
   }
-  const ilk = Date.parse(t.gecmis[0]?.zaman || new Date(simdi).toISOString());
   const yuzdeAt = (saat) => {
     const kalanDk = (Date.parse(saat) - simdi) / 60_000;
     let n = 0;
@@ -876,7 +876,7 @@ function planHesapla(items, etkiler, acilis, dmap) {
     yuzde: Date.parse(a.saat) > simdi ? yuzdeAt(a.saat) : null,
   }));
   const hedef = asamalar[aktif];
-  const oncekiSaat = aktif ? Date.parse(asamalar[aktif - 1].saat) : ilk;
+  const oncekiSaat = aktif ? Date.parse(asamalar[aktif - 1].saat) : gunBas;
   const zamanOrani = Math.min(
     1,
     Math.max(0, (simdi - oncekiSaat) / (Date.parse(hedef.saat) - oncekiSaat))
