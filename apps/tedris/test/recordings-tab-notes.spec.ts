@@ -126,8 +126,8 @@ describe("the recordings tab's notes panel", () => {
 
   it("follows the player to another recording, and its frame with it", async () => {
     const host = await mount(true);
-    const play = [...host.querySelectorAll("button")].find((b) =>
-      b.textContent?.includes("Oynat")
+    const play = host.querySelector(
+      'button[aria-label="Oynat: eski"]'
     ) as HTMLButtonElement;
     await click(play);
     await settle();
@@ -140,6 +140,30 @@ describe("the recordings tab's notes panel", () => {
     expect(
       host.querySelector("[data-player]")?.getAttribute("data-frame")
     ).toBe("recording-frame-eski");
+  });
+
+  it("comes under the player, in one column at the widths the course page has (MDRS-280)", async () => {
+    const host = await mount(true);
+    const player = host.querySelector("[data-player]") as HTMLElement;
+    const panel = host.querySelector("[data-notes]") as HTMLElement;
+    // the player first, the panel after it, in the same layout
+    expect(
+      player.compareDocumentPosition(panel) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+    const grid = player.parentElement as HTMLElement;
+    expect(grid).toBe(panel.parentElement);
+    const classes = (grid.getAttribute("class") ?? "").split(/\s+/);
+    expect(classes).toContain("grid-cols-1");
+    // a second column only where the column itself is wide: a container
+    // query on it, never a viewport breakpoint (the system has only md:)
+    expect(
+      classes.filter((c) => c.includes("grid-cols-") && c !== "grid-cols-1")
+    ).toEqual(["@min-[64rem]:grid-cols-[minmax(0,1fr)_minmax(0,22rem)]"]);
+    expect(grid.parentElement?.getAttribute("class")).toContain("@container");
+    const all = [...host.querySelectorAll("[class]")].flatMap((el) =>
+      (el.getAttribute("class") ?? "").split(/\s+/)
+    );
+    expect(all.filter((c) => /^(max-)?(sm|lg|xl|2xl):/.test(c))).toEqual([]);
   });
 
   it("stays beside a Bunny recording, asking for a typed time (MDRS-114)", async () => {

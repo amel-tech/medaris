@@ -168,12 +168,11 @@ test.describe("the enrolled talebe", () => {
     const panel = notesPanel(page);
     const current = panel.getByRole("button", { name: "Şimdiki an" });
     await expect(current).toBeVisible({ timeout: 30_000 });
-    await expect(
-      panel.getByText(
-        "Oynatıcıdaki an yazılır; değiştirebilir ya da boş bırakabilirsin."
-      )
-    ).toBeVisible();
     const time = panel.locator("form").getByLabel("Videodaki an");
+    // the time sits beside "Şimdiki an"; what it takes is its description
+    await expect(time).toHaveAccessibleDescription(
+      "Oynatıcıdaki an yazılır; değiştirebilir ya da boş bırakabilirsin."
+    );
     // the moment the talebe starts writing is the note's moment
     await panel.locator("form").getByLabel("Not", { exact: true }).focus();
     await expect(time).toHaveValue("0:00");
@@ -209,6 +208,12 @@ test.describe("the enrolled talebe", () => {
     await expect(
       page.getByRole("heading", { level: 2, name: youtube.recordingTitle })
     ).toBeVisible();
+    // the row playing is marked, and the panel follows it
+    await expect(
+      page.getByRole("button", {
+        name: `Oynatıcıda: ${youtube.recordingTitle}`,
+      })
+    ).toHaveAttribute("aria-current", "true");
     await addNote(notesPanel(page), "Kayıttan: mâzînin on dört sîgası", "3:20");
     await expect(notesPanel(page).getByRole("listitem")).toContainText("3:20");
 
@@ -221,6 +226,45 @@ test.describe("the enrolled talebe", () => {
     );
   });
 
+  for (const [label, size] of [
+    ["a desktop window", { width: 1440, height: 900 }],
+    ["a phone", { width: 390, height: 844 }],
+  ] as const) {
+    test(`on the recordings tab on ${label}: the player is first and full width, the notes under it, nothing wider than the screen (MDRS-280)`, async ({
+      page,
+    }) => {
+      await blockBunny(page);
+      await page.setViewportSize(size);
+      await page.goto(`/tr/courses/${fixture.courseId}?tab=kayitlar`);
+      const panel = notesPanel(page);
+      await expect(
+        panel.getByText("Bu celse için henüz notun yok.")
+      ).toBeVisible();
+      const frame = page.getByRole("main").locator("iframe").first();
+      // the panel is a lazy piece that hydration may swap in: measure once
+      // both are on the page
+      const boxes = async () => ({
+        player: await frame.boundingBox(),
+        notes: await panel.boundingBox(),
+      });
+      await expect
+        .poll(async () => {
+          const b = await boxes();
+          return Boolean(b.player && b.notes);
+        })
+        .toBe(true);
+      const { player, notes } = await boxes();
+      if (!player || !notes)
+        throw new Error("the player or the panel has no box");
+      expect(notes.y).toBeGreaterThanOrEqual(player.y + player.height);
+      expect(player.width).toBeGreaterThan(notes.width * 0.9);
+      expect(player.width / player.height).toBeCloseTo(16 / 9, 1);
+      expect(
+        await page.evaluate(() => document.documentElement.scrollWidth)
+      ).toBeLessThanOrEqual(size.width);
+    });
+  }
+
   test("on a pasted Bunny link: the time is typed, there is no position to take, and the note keeps it", async ({
     page,
   }) => {
@@ -229,8 +273,11 @@ test.describe("the enrolled talebe", () => {
     await page.goto(sessionPath(s.id));
     const panel = notesPanel(page);
     await expect(
-      panel.getByText("Örneğin 12:34. Boş bırakabilirsin.")
+      panel.getByText("İsteğe bağlı: oynatıcıdaki süreyi yaz.")
     ).toBeVisible();
+    await expect(
+      panel.locator("form").getByLabel("Videodaki an")
+    ).toHaveAccessibleDescription("İsteğe bağlı: oynatıcıdaki süreyi yaz.");
     await expect(panel.getByRole("button", { name: "Şimdiki an" })).toHaveCount(
       0
     );
@@ -275,7 +322,7 @@ test.describe("the enrolled talebe", () => {
     await expect(notesPanel(page)).toBeVisible();
   });
 
-  test("while a session is on air with a live stream: the panel is beside the stream and takes a note", async ({
+  test("while a session is on air with a live stream: the panel is under the stream and takes a note", async ({
     page,
   }) => {
     const s = fixture.sessions.live;

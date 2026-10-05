@@ -4,6 +4,7 @@ import {
   formatOffset,
   LESSON_NOTE_OFFSET_MAX,
   parseOffset,
+  showsBodyCount,
   sortNotes,
 } from "~/features/courses/lesson-note-model";
 import { playerApiUrlOf } from "~/features/courses/recordings-model";
@@ -85,6 +86,15 @@ describe("the order of the notes", () => {
     const list = [note("b", 9, 1), note("a", 1, 2)];
     sortNotes(list);
     expect(list.map((n) => n.id)).toEqual(["b", "a"]);
+  });
+});
+
+describe("the character count (MDRS-280)", () => {
+  it("shows only in the last tenth before the API's 4000", () => {
+    expect(showsBodyCount(0)).toBe(false);
+    expect(showsBodyCount(3599)).toBe(false);
+    expect(showsBodyCount(3600)).toBe(true);
+    expect(showsBodyCount(4000)).toBe(true);
   });
 });
 
