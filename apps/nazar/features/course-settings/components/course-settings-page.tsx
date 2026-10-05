@@ -27,8 +27,10 @@ import { CourseSettingsForm } from "./course-settings-form";
  * every write. Not on this page: icazet (MDRS-149), the müderris list and
  * the imam, hiding the course and the köşk's policies. The course's roster
  * is not read (`GET /courses/:id/stats` writes an audit row), so the note
- * under "Taslağa çek" names no number. The form is keyed by the course
- * version, so reading the course again after a save starts a fresh form.
+ * under "Taslağa çek" names no number. The form is keyed by what it shows
+ * as stored, not by the version: a read that brings other stored values (its
+ * own save, someone else's) starts a fresh form, and one that only moved the
+ * version ("Yayımla", "Taslağa çek") keeps what is being changed.
  */
 export async function CourseSettingsPage({ courseId }: { courseId: string }) {
   const [t, course, permissions] = await Promise.all([
@@ -56,7 +58,8 @@ export async function CourseSettingsPage({ courseId }: { courseId: string }) {
       </>
     );
   }
-  const controls = controlsOf(permissions.data, settingsOf(course.data));
+  const stored = settingsOf(course.data);
+  const controls = controlsOf(permissions.data, stored);
   const pageUrl = coursePageUrl(env.TEDRIS_URL, course.data.id);
 
   return (
@@ -86,7 +89,7 @@ export async function CourseSettingsPage({ courseId }: { courseId: string }) {
       </header>
       <div className="grid gap-grid md:grid-cols-[minmax(0,1fr)_var(--layout-aside)] md:items-start">
         <CourseSettingsForm
-          key={course.data.version}
+          key={JSON.stringify(stored)}
           course={course.data}
           controls={controls}
         />

@@ -4,7 +4,7 @@ import { Toaster, ToastProvider } from "@medaris/ui/mds/toast";
 import { NextIntlClientProvider } from "next-intl";
 import type { ReactElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, settle } from "./dom";
+import { cleanup, click, render, rerender, settle } from "./dom";
 import { expand, html, textOf, translatorFor } from "./server-render";
 
 /**
@@ -169,6 +169,36 @@ describe("Ders ayarları", () => {
     expect(button("Kaydet")?.disabled).toBe(true);
     expect(button("Taslağa çek")).toBeDefined();
     expect(text).not.toContain("izniniz yok");
+  });
+
+  it("keeps a change not yet saved when the course is read again with only a new version, as after 'Yayımla'", async () => {
+    state.course = { status: "ok", data: course({ status: "DRAFT" }) };
+    const host = await render((await expand(await element())) as ReactElement);
+    await settle(20);
+    await click(row("Kapalı ders"));
+    expect(checked("Kapalı ders")).toBe(true);
+    expect(button("Kaydet")?.disabled).toBe(false);
+
+    // publishing bumps the version; nothing the form shows was stored
+    state.course = {
+      status: "ok",
+      data: course({ status: "PUBLISHED", version: 8 }),
+    };
+    await rerender(host, (await expand(await element())) as ReactElement);
+    await settle(20);
+    expect(checked("Kapalı ders")).toBe(true);
+    expect(button("Kaydet")?.disabled).toBe(false);
+
+    // a read that brings other stored values starts the form from them
+    state.course = {
+      status: "ok",
+      data: course({ version: 9, requiresApproval: false }),
+    };
+    await rerender(host, (await expand(await element())) as ReactElement);
+    await settle(20);
+    expect(checked("Kapalı ders")).toBe(false);
+    expect(checked("Kayıt onayı gereksin")).toBe(false);
+    expect(button("Kaydet")?.disabled).toBe(true);
   });
 
   it("links to the course's public page in a new tab, only when Tedris's address is set", async () => {
