@@ -39,7 +39,7 @@ test("a talebe with no medrese and no course opens '/' and sees nazir/02, with t
   await expect(
     page
       .getByText(
-        "Nazır, medrese ve ders görevlilerinin portalıdır. Hesabınızda bir medrese ya da ders görevi yok; görev aldığınızda bu portal açılır."
+        "Nazar, medrese ve ders görevlilerinin portalıdır. Hesabınızda bir medrese ya da ders görevi yok; görev aldığınızda bu portal açılır."
       )
       .filter({ visible: true })
   ).toBeVisible();

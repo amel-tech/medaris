@@ -14,7 +14,7 @@ export const env = createEnv({
     OTEL_SERVICE_NAME: z.string().min(1).optional(),
     API_MOCKING: z.enum(["enabled", "disabled"]).default("disabled"),
     TEDRISAT_API_BASE_URL: z.string().min(1).url(),
-    // Where the account page's "Nizam'da aç" and "Nazır'da aç" point
+    // Where the account page's "Nizam'da aç" and "Nazar'da aç" point
     // (MDRS-169). Unset or empty: the buttons are left out.
     NIZAM_URL: z.union([z.string().url(), z.literal("")]).optional(),
     NAZAR_URL: z.union([z.string().url(), z.literal("")]).optional(),

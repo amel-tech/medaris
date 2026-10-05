@@ -3,7 +3,7 @@ import type { AuthOptions } from "next-auth";
 /**
  * Cookie names must stay out of `auth_options.ts` so middleware can import
  * them without pulling KeycloakProvider / openid-client into the Edge bundle.
- * App-specific names keep Nazır from colliding with Nizam and Tedris on
+ * App-specific names keep Nazar from colliding with Nizam and Tedris on
  * localhost (MDRS-24).
  */
 const useSecureCookies = (process.env.NEXTAUTH_URL ?? "").startsWith(

@@ -10,7 +10,7 @@ const ARABIC_PATH =
 const appNames = {
   tedris: "Tedris",
   nizam: "Nizam",
-  nazar: "Nazır",
+  nazar: "Nazar",
   giris: "Giriş",
 } as const;
 

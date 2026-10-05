@@ -1,7 +1,7 @@
 import type { AssignmentResponse } from "@medaris/services/tedrisat";
 
 /**
- * The scopes of the Nazır portal (MDRS-183): a medrese the person runs, and the
+ * The scopes of the Nazar portal (MDRS-183): a medrese the person runs, and the
  * courses they teach or look after. Pure on purpose: the rules for deduping,
  * ordering, the remembered scope and the links are exercised without a server.
  */

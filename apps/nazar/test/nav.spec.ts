@@ -259,13 +259,13 @@ describe("the labelled menu", () => {
 
   it("names the page for the phone bar", () => {
     const outside = [{ path: "/hesap", title: "Hesap ve ayarlar" }];
-    expect(pageTitle(labelled, "/medrese/m-1/dersler", outside, "Nazır")).toBe(
+    expect(pageTitle(labelled, "/medrese/m-1/dersler", outside, "Nazar")).toBe(
       "nav:medrese.courses"
     );
-    expect(pageTitle(labelled, "/hesap", outside, "Nazır")).toBe(
+    expect(pageTitle(labelled, "/hesap", outside, "Nazar")).toBe(
       "Hesap ve ayarlar"
     );
-    expect(pageTitle(labelled, "/baska", outside, "Nazır")).toBe("Nazır");
+    expect(pageTitle(labelled, "/baska", outside, "Nazar")).toBe("Nazar");
   });
 });
 

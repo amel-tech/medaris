@@ -132,7 +132,7 @@ describe("/erisim-yok (nazir 02)", () => {
     const result = await outcome(page);
     expect(result).toContain("Bu portala erişiminiz yok");
     expect(result).toContain(
-      "Nazır, medrese ve ders görevlilerinin portalıdır. Hesabınızda bir medrese ya da ders görevi yok; görev aldığınızda bu portal açılır."
+      "Nazar, medrese ve ders görevlilerinin portalıdır. Hesabınızda bir medrese ya da ders görevi yok; görev aldığınızda bu portal açılır."
     );
     expect(result).toContain(
       "Giriş yaptığınız hesap: elif.tasdelen@example.com"

@@ -14,7 +14,7 @@ export const env = createEnv({
     OTEL_SERVICE_NAME: z.string().min(1).optional(),
     API_MOCKING: z.enum(["enabled", "disabled"]).default("disabled"),
     TEDRISAT_API_BASE_URL: z.string().min(1).url(),
-    // Where "Nazır'a git" points (MDRS-169). Unset or empty: the button is
+    // Where "Nazar'a git" points (MDRS-169). Unset or empty: the button is
     // left out.
     NAZAR_URL: z.union([z.string().url(), z.literal("")]).optional(),
     // landing-web's origin, for the privacy-notice link (MDRS-248). Unset or

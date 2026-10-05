@@ -144,7 +144,7 @@ export function courseMeta(
 
 /**
  * Where "Medrese sayfasını gör" goes: the medrese's public page in Tedris,
- * whose address is the app's `TEDRIS_URL`. Nazır is Turkish only, so the page
+ * whose address is the app's `TEDRIS_URL`. Nazar is Turkish only, so the page
  * is the Turkish one. `null` when Tedris's address is not set.
  */
 export function medresePageUrl(

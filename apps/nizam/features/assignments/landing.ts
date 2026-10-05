@@ -11,7 +11,7 @@ export type Landing = "nizam" | "nazar" | "none";
 /**
  * Where a signed-in person belongs when they open Nizam (nizam 04):
  * a nazım, or SYSTEM_ADMIN, stays; someone whose only roles are the medrese's
- * and the course's is sent to the "Bu işler Nazır'da" page; someone with no
+ * and the course's is sent to the "Bu işler Nazar'da" page; someone with no
  * role has no page of their own here yet and also stays.
  */
 export function landingFor(me: {

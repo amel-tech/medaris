@@ -7,12 +7,12 @@ import { ClientProviders } from "~/components/providers/client-providers";
 import "@medaris/ui/medaris.css";
 
 export const metadata: Metadata = {
-  title: { default: "Medaris Nazır", template: "%s · Medaris Nazır" },
+  title: { default: "Medaris Nazar", template: "%s · Medaris Nazar" },
   description: "Medrese ve ders görevlilerinin portalı.",
 };
 
 // MDRS-183: the unified design system (design-system/medaris-unified). The
-// root attributes are MDS-LAY-03: Nazır is Turkish only at launch, so `lang`
+// root attributes are MDS-LAY-03: Nazar is Turkish only at launch, so `lang`
 // and `dir` are fixed. Management pages put `data-density="compact"` on their
 // own `<main>`; the shell does it, not this layout. The page is light until the
 // viewer picks dark with the shell's toggle (`data-theme="light"`, ThemeScript,

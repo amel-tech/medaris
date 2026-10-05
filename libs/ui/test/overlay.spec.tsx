@@ -428,7 +428,7 @@ describe("AppShell, Sidebar and TopBar", () => {
         }
         appBar={
           <AppBar
-            title="Nazır"
+            title="Nazar"
             logo={<Logo app="nazar" size="sm" />}
             footer={<span>kullanıcı</span>}
           />

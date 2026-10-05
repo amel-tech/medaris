@@ -9,7 +9,7 @@ import { keycloakSignOut } from "~/lib/keycloak-logout";
 /**
  * "Çıkış yap" (nazir 20): ends the NextAuth session and Keycloak's, through
  * the helper the other apps share. The sentence above the button says what it
- * does; the canvas has no separate confirmation window for Nazır, and the
+ * does; the canvas has no separate confirmation window for Nazar, and the
  * sign-out page at `/auth/signout` is NextAuth's own `GET` target, not this.
  */
 export function SignOutButton({

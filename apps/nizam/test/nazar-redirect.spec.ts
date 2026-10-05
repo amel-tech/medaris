@@ -63,7 +63,7 @@ describe("landingFor (nizam 04)", () => {
     expect(landingFor({ systemAdmin: false, assignments: [] })).toBe("none");
   });
 
-  it("sends someone with only medrese and course roles to Nazır", () => {
+  it("sends someone with only medrese and course roles to Nazar", () => {
     expect(
       landingFor({
         systemAdmin: false,
@@ -126,7 +126,7 @@ describe("NazarRedirectPage", () => {
     );
   };
 
-  it("words the rows as the design does and links to Nazır", async () => {
+  it("words the rows as the design does and links to Nazar", async () => {
     const html = await render({
       rows: taskRows([
         a({
@@ -144,14 +144,14 @@ describe("NazarRedirectPage", () => {
         }),
       ]),
     });
-    expect(html).toContain("Medrese ve ders işleriniz Nazır’da");
+    expect(html).toContain("Medrese ve ders işleriniz Nazar’da");
     expect(html).toContain("Medrese başmüderrisi");
     expect(html).toContain("Müderris · Nûruosmaniye Köşkü · 35 talebe");
     expect(html).toContain("Dersin imamı");
     expect(html).toContain("Taslak");
     expect(html).not.toContain("0 talebe");
     expect(html).toContain('href="http://nazar.test"');
-    expect(html).toContain("Nazır’a git");
+    expect(html).toContain("Nazar’a git");
     expect((html.match(/data-testid="task-row"/g) ?? []).length).toBe(3);
   });
 
@@ -162,9 +162,9 @@ describe("NazarRedirectPage", () => {
     expect(html).not.toContain("henüz");
   });
 
-  it("leaves the button out without a Nazır address", async () => {
+  it("leaves the button out without a Nazar address", async () => {
     const html = await render({ nazarUrl: null });
-    expect(html).not.toContain("Nazır’a git");
+    expect(html).not.toContain("Nazar’a git");
   });
 });
 

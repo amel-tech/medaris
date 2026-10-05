@@ -4,7 +4,7 @@ import { authPages } from "~/lib/auth_pages";
 
 /**
  * Everything the matcher below lets through is behind the Keycloak session.
- * Nazır has no locale routing, so unlike nizam there is no intl middleware to
+ * Nazar has no locale routing, so unlike nizam there is no intl middleware to
  * hand a signed-in request on to: `withAuth` lets it through as it is.
  */
 export default withAuth({

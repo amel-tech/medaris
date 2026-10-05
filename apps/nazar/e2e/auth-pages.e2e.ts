@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 /**
- * Nazır's own auth pages and the gate in front of the rest (MDRS-183). None of
+ * Nazar's own auth pages and the gate in front of the rest (MDRS-183). None of
  * this signs in, so it needs `nazar-web` running but neither the API nor an
  * account.
  */

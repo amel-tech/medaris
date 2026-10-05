@@ -80,7 +80,7 @@ const mount = (
       }
       bellLabel={bell ?? undefined}
       outside={[{ path: "/hesap", title: "Hesap ve ayarlar" }]}
-      appName="Nazır"
+      appName="Nazar"
       labels={{ menu: "Menü", nav: "Ana menü", close: "Kapat" }}
     />
   );

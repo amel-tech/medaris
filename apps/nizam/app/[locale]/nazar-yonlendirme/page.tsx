@@ -15,7 +15,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 /**
- * Bu işler Nazır'da (design nizam/04). Only for someone whose roles are the
+ * Bu işler Nazar'da (design nizam/04). Only for someone whose roles are the
  * medrese's and the course's; a nazım, or a person with no role, is sent to
  * the home page.
  */

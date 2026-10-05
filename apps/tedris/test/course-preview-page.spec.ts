@@ -110,7 +110,7 @@ describe("tedris/14: a draft is shown as a preview", () => {
     }
   });
 
-  it("'Düzenlemeye dön' goes to Nazır, and is left out when there is no Nazır", async () => {
+  it("'Düzenlemeye dön' goes to Nazar, and is left out when there is no Nazar", async () => {
     const withNazar = await render("DRAFT", "http://nazar.test");
     expect(withNazar).toContain('href="http://nazar.test"');
     expect(withNazar).toContain(`>${tr.backToEditing}<`);

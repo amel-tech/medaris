@@ -174,7 +174,7 @@ test.describe("tedris/14: the draft preview", () => {
     await expect(
       page.getByText("12 Ekim Pazartesi 21:00").filter({ visible: true })
     ).toBeVisible();
-    // Criterion 5: "Düzenlemeye dön" goes to Nazır.
+    // Criterion 5: "Düzenlemeye dön" goes to Nazar.
     const back = page.getByRole("link", { name: /Düzenlemeye dön/ });
     await expect(back).toHaveAttribute("href", NAZAR_URL);
   });

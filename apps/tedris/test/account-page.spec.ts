@@ -109,7 +109,7 @@ describe("account messages (MDRS-169)", () => {
 });
 
 describe("assignment view helpers", () => {
-  it("sends köşk roles to Nizam and the rest to Nazır", () => {
+  it("sends köşk roles to Nizam and the rest to Nazar", () => {
     expect(roleApp("KOSK_NAZIM")).toBe("nizam");
     expect(roleApp("MEDARIS_NAZIM")).toBe("nizam");
     expect(roleApp("MUDERRIS")).toBe("nazar");
@@ -266,7 +266,7 @@ describe("RolesSection", () => {
     expect(html).toContain('href="http://nazar.test"');
     expect(html).toContain('target="_blank"');
     expect(html).toContain("Nizam’da aç: köşk nazımı, Nûruosmaniye Köşkü");
-    expect(html).toContain("Nazır’da aç: müderris, Emsile ve Bina");
+    expect(html).toContain("Nazar’da aç: müderris, Emsile ve Bina");
 
     expect(html).toContain("Nûruosmaniye Köşkü · köşk nazımı");
     expect(html).not.toContain("mds-badge--success");

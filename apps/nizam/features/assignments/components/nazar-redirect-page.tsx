@@ -15,9 +15,9 @@ type Messages = (
 ) => string;
 
 /**
- * "Bu işler Nazır'da" (design nizam/04): for someone whose roles are the
+ * "Bu işler Nazar'da" (design nizam/04): for someone whose roles are the
  * medrese's and the course's, none of which Nizam serves. The list is read
- * only; the one way on is the button to Nazır.
+ * only; the one way on is the button to Nazar.
  */
 export async function NazarRedirectPage({
   rows,

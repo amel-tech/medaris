@@ -6,7 +6,7 @@ import { env } from "~/env";
 import { getAccessToken } from "~/lib/auth_options";
 
 /**
- * Server-side reads behind the "Bu işler Nazır'da" and "erişim yok" screens
+ * Server-side reads behind the "Bu işler Nazar'da" and "erişim yok" screens
  * (MDRS-169). Not a `"use server"` module: only server components call them.
  */
 const api = async () =>

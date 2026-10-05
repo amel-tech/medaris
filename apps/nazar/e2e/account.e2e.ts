@@ -54,7 +54,7 @@ test("the roles table is the person's real assignments, the medrese first, with 
       .filter({ visible: true })
   ).toBeVisible();
   // and there is no way to "open in the app" from the app itself
-  await expect(page.getByRole("link", { name: /Nazır’da aç/ })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: /Nazar’da aç/ })).toHaveCount(0);
 });
 
 test("the permission sentences come from the person's courses, grouped under one heading", async ({

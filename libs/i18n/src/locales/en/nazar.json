@@ -21,7 +21,7 @@
     "back": "Back to the home page"
   },
   "Shell": {
-    "appName": "Nazır",
+    "appName": "Nazar",
     "navLabel": "Main menu",
     "menu": "Menu",
     "close": "Close",
@@ -92,7 +92,7 @@
   },
   "NoAccess": {
     "title": "You do not have access to this portal",
-    "text": "Nazır is the portal of medrese and course staff. Your account holds no medrese or course role; the portal opens once you are given one.",
+    "text": "Nazar is the portal of medrese and course staff. Your account holds no medrese or course role; the portal opens once you are given one.",
     "account": "Signed in as:",
     "back": "Back to Tedris"
   },

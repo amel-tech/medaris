@@ -63,7 +63,7 @@ export const CoursePage = ({
   /** False for a signed-out visitor (MDRS-122): the card asks them to sign in. */
   signedIn?: boolean;
   /**
-   * Where "Düzenlemeye dön" goes (design tedris/14), the Nazır app's address;
+   * Where "Düzenlemeye dön" goes (design tedris/14), the Nazar app's address;
    * null leaves the button out. Read from the server's environment.
    */
   nazarUrl?: string | null;

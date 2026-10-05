@@ -63,7 +63,7 @@ export const scopeMeta = (
     (part): part is string => Boolean(part)
   );
 
-/** The page a role's work is done in: köşk nazımı and above here, the rest in Nazır. */
+/** The page a role's work is done in: köşk nazımı and above here, the rest in Nazar. */
 export const roleApp = (role: string): "nizam" | "nazar" =>
   role === "MEDARIS_NAZIM" || role === "KOSK_NAZIM" ? "nizam" : "nazar";
 

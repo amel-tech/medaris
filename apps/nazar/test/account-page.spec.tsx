@@ -126,7 +126,7 @@ describe("Hesap ve ayarlar (nazir 20)", () => {
     for (const header of ["Görev", "Kapsam", "Atayan", "Süre"]) {
       expect(markup).toMatch(new RegExp(`<th[^>]*>${header}</th>`));
     }
-    expect(markup).not.toContain("Nazır’da aç");
+    expect(markup).not.toContain("Nazar’da aç");
     expect(text).toContain("Medrese başmüderrisi");
     expect(text).toContain("Süleymaniye Medresesi");
     expect(text).toContain("Yusuf Ziya Ertuğrul 1 Eylül 2026");

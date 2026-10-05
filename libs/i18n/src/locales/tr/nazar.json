@@ -21,7 +21,7 @@
     "back": "Ana sayfaya dön"
   },
   "Shell": {
-    "appName": "Nazır",
+    "appName": "Nazar",
     "navLabel": "Ana menü",
     "menu": "Menü",
     "close": "Kapat",
@@ -92,7 +92,7 @@
   },
   "NoAccess": {
     "title": "Bu portala erişiminiz yok",
-    "text": "Nazır, medrese ve ders görevlilerinin portalıdır. Hesabınızda bir medrese ya da ders görevi yok; görev aldığınızda bu portal açılır.",
+    "text": "Nazar, medrese ve ders görevlilerinin portalıdır. Hesabınızda bir medrese ya da ders görevi yok; görev aldığınızda bu portal açılır.",
     "account": "Giriş yaptığınız hesap:",
     "back": "Tedris’e dön"
   },

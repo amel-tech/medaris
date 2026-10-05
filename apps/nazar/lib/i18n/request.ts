@@ -3,7 +3,7 @@ import { DEFAULT_TIME_ZONE } from "@medaris/utils";
 import { getRequestConfig } from "next-intl/server";
 
 /**
- * Nazır is Turkish only at launch (canvas rule 3): no locale segment, no
+ * Nazar is Turkish only at launch (canvas rule 3): no locale segment, no
  * negotiation, one catalogue. Only the app's own namespaces are loaded, which
  * keeps another app's strings from being used by accident.
  *

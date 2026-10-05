@@ -47,7 +47,7 @@ async function signIn(
   await page.waitForURL(/localhost:4001/);
 }
 
-test("a müderris who is not a nazım lands on 'Bu işler Nazır'da' with the same roles the API returns", async ({
+test("a müderris who is not a nazım lands on 'Bu işler Nazar'da' with the same roles the API returns", async ({
   page,
 }) => {
   test.skip(!(seedable && MUDERRIS.password), "no müderris account");
@@ -58,7 +58,7 @@ test("a müderris who is not a nazım lands on 'Bu işler Nazır'da' with the sa
   await expect(
     page.getByRole("heading", {
       level: 1,
-      name: "Medrese ve ders işleriniz Nazır’da",
+      name: "Medrese ve ders işleriniz Nazar’da",
     })
   ).toBeVisible();
   const rows = page.getByTestId("task-row").filter({ visible: true });
@@ -77,15 +77,15 @@ test("a müderris who is not a nazım lands on 'Bu işler Nazır'da' with the sa
   );
 });
 
-test("'Nazır'a git' goes to the Nazır address", async ({ page }) => {
+test("'Nazar'a git' goes to the Nazar address", async ({ page }) => {
   test.skip(!(seedable && MUDERRIS.password), "no müderris account");
   await signIn(page, MUDERRIS);
   await page.goto("/tr/nazar-yonlendirme");
-  const go = page.getByRole("link", { name: "Nazır’a git" });
+  const go = page.getByRole("link", { name: "Nazar’a git" });
   await expect(go).toHaveAttribute("href", /localhost:4002/);
 });
 
-test("a köşk nazım is not sent to Nazır", async ({ page }) => {
+test("a köşk nazım is not sent to Nazar", async ({ page }) => {
   test.skip(
     !(KOSK_NAZIM.email && KOSK_NAZIM.password),
     "no köşk nazım account"

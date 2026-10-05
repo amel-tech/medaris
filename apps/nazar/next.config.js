@@ -18,7 +18,7 @@ requireCjs("@medaris/env").loadRootEnv("nazar");
 
 import createNextIntlPlugin from "next-intl/plugin";
 
-// Nazır is Turkish only at launch (canvas rule 3), so there is no `[locale]`
+// Nazar is Turkish only at launch (canvas rule 3), so there is no `[locale]`
 // segment and no locale routing; next-intl just carries the messages.
 const withNextIntl = createNextIntlPlugin("./lib/i18n/request.ts");
 
