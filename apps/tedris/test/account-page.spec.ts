@@ -68,7 +68,7 @@ vi.mock("~/features/account/reads", () => ({
   getAccountRoles: async () => currentRoles,
 }));
 vi.mock("~/env", () => ({
-  env: { NIZAM_URL: "http://nizam.test", NAZIR_URL: "http://nazir.test/" },
+  env: { NIZAM_URL: "http://nizam.test", NAZAR_URL: "http://nazir.test/" },
 }));
 vi.mock("next-intl/server", () => {
   const t = (key: string, values?: Record<string, unknown>) => {

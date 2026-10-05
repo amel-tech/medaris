@@ -34,7 +34,7 @@ export default async function Page({
     <NazirRedirectPage
       rows={me ? taskRows(me.assignments) : null}
       failed={me === null}
-      nazirUrl={env.NAZIR_URL || null}
+      nazirUrl={env.NAZAR_URL || null}
       retryHref={`/${locale}/nazir-yonlendirme`}
     />
   );

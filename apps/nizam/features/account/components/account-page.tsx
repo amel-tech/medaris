@@ -114,7 +114,7 @@ export async function AccountPage({
     [data.me.givenName, data.me.familyName].filter(Boolean).join(" ").trim() ||
     sessionName;
   const teaches = data.assignments.some((a) => a.role === "MUDERRIS");
-  const nazirUrl = env.NAZIR_URL ? env.NAZIR_URL.replace(/\/+$/, "") : null;
+  const nazirUrl = env.NAZAR_URL ? env.NAZAR_URL.replace(/\/+$/, "") : null;
 
   const names: Record<string, string> = {};
   for (const id of FEATURED_TIME_ZONES) names[id] = t(`zones.${id}`);

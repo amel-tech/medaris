@@ -1,13 +1,13 @@
 {
-  "clientId": "nazir",
-  "name": "nazir",
+  "clientId": "nazar",
+  "name": "nazar",
   "standardFlowEnabled": true,
-  "baseUrl": "https://nazir.medaris.app",
-  "redirectUris": ["https://nazir.medaris.app/api/auth/callback/keycloak"],
-  "webOrigins": ["https://nazir.medaris.app"],
+  "baseUrl": "https://nazar.medaris.app",
+  "redirectUris": ["https://nazar.medaris.app/api/auth/callback/keycloak"],
+  "webOrigins": ["https://nazar.medaris.app"],
   "attributes": {
     "pkce.code.challenge.method": "S256",
-    "post.logout.redirect.uris": "https://nazir.medaris.app##https://nazir.medaris.app/"
+    "post.logout.redirect.uris": "https://nazar.medaris.app##https://nazar.medaris.app/"
   },
   "protocolMappers": [
     {

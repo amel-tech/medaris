@@ -17,7 +17,7 @@ export const env = createEnv({
     // Where the account page's "Nizam'da aç" and "Nazır'da aç" point
     // (MDRS-169). Unset or empty: the buttons are left out.
     NIZAM_URL: z.union([z.string().url(), z.literal("")]).optional(),
-    NAZIR_URL: z.union([z.string().url(), z.literal("")]).optional(),
+    NAZAR_URL: z.union([z.string().url(), z.literal("")]).optional(),
     // landing-web's origin, for the privacy-notice link (MDRS-248). Unset or
     // empty: the production site.
     LANDING_URL: z.union([z.string().url(), z.literal("")]).optional(),
@@ -39,7 +39,7 @@ export const env = createEnv({
 
     TEDRISAT_API_BASE_URL: process.env.TEDRISAT_API_BASE_URL,
     NIZAM_URL: process.env.NIZAM_URL,
-    NAZIR_URL: process.env.NAZIR_URL,
+    NAZAR_URL: process.env.NAZAR_URL,
     LANDING_URL: process.env.LANDING_URL,
   },
 });

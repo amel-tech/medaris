@@ -192,7 +192,7 @@ describe("classify", () => {
   it("routes WEB__ to the four web apps and API__ to the two Nest apps", () => {
     expect(classify("WEB__X").targets).toEqual([
       "landing",
-      "nazir",
+      "nazar",
       "nizam",
       "tedris",
     ]);

@@ -14,7 +14,7 @@ import { createRequire } from "node:module";
 
 const requireCjs = createRequire(import.meta.url);
 
-requireCjs("@medaris/env").loadRootEnv("nazir");
+requireCjs("@medaris/env").loadRootEnv("nazar");
 
 import createNextIntlPlugin from "next-intl/plugin";
 

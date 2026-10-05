@@ -40,7 +40,7 @@ export async function RolesSection() {
     dateStyle: "long",
     timeZone,
   });
-  const urls = { nizam: env.NIZAM_URL, nazir: env.NAZIR_URL };
+  const urls = { nizam: env.NIZAM_URL, nazir: env.NAZAR_URL };
 
   const rows: AssignmentRow[] = roles.assignments.map((a) => {
     const roleLabel = t(`roles.${a.role}`);

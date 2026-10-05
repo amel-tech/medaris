@@ -12,7 +12,7 @@
 // NextAuth actually reads:
 //
 //   KEY=value          every app
-//   WEB__KEY=value     landing, nazir, nizam, tedris   (overrides shared)
+//   WEB__KEY=value     landing, nazar, nizam, tedris   (overrides shared)
 //   API__KEY=value     tedrisat, teskilat              (overrides shared)
 //   NIZAM__KEY=value   that one app                    (overrides both)
 //
@@ -54,7 +54,7 @@
 const { existsSync, readFileSync } = require("node:fs");
 const { dirname, join, resolve } = require("node:path");
 
-const WEB_APPS = ["landing", "nazir", "nizam", "tedris"];
+const WEB_APPS = ["landing", "nazar", "nizam", "tedris"];
 const API_APPS = ["tedrisat", "teskilat"];
 const APPS = [...WEB_APPS, ...API_APPS];
 
@@ -70,7 +70,7 @@ const ROOT_ONLY = new Set([
   "TESKILAT_PORT",
   "TEDRIS_WEB_PORT",
   "NIZAM_WEB_PORT",
-  "NAZIR_WEB_PORT",
+  "NAZAR_WEB_PORT",
   "LANDING_WEB_PORT",
   "MEDARIS_POSTGRES_USER",
   "MEDARIS_POSTGRES_PASSWORD",

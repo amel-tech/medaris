@@ -1,6 +1,6 @@
 {
-  "clientId": "nazir-local",
-  "name": "nazir (local)",
+  "clientId": "nazar-local",
+  "name": "nazar (local)",
   "standardFlowEnabled": true,
   "baseUrl": "http://localhost:4002",
   "redirectUris": ["http://localhost:4002/api/auth/callback/keycloak"],

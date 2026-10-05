@@ -64,7 +64,7 @@ const dig = (node: unknown, path: string) =>
     .reduce<unknown>((n, part) => (n as Record<string, unknown>)?.[part], node);
 
 vi.mock("~/env", () => ({
-  env: { NAZIR_URL: "http://nazir.test/" },
+  env: { NAZAR_URL: "http://nazir.test/" },
 }));
 vi.mock("next-intl/server", () => {
   const t = (key: string, values?: Record<string, unknown>) => {

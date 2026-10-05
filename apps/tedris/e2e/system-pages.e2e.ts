@@ -17,7 +17,7 @@ const account = (role: string) => ({
 const TALEBE = account("TALEBE");
 const MUDERRIS = account("MUDERRIS");
 const ready = Boolean(TALEBE.password && MUDERRIS.sub && MUDERRIS.password);
-const NAZIR_URL = process.env.E2E_NAZIR_URL ?? "http://localhost:4002";
+const NAZAR_URL = process.env.E2E_NAZAR_URL ?? "http://localhost:4002";
 
 let fixture: SystemFixture;
 
@@ -176,7 +176,7 @@ test.describe("tedris/14: the draft preview", () => {
     ).toBeVisible();
     // Criterion 5: "Düzenlemeye dön" goes to Nazır.
     const back = page.getByRole("link", { name: /Düzenlemeye dön/ });
-    await expect(back).toHaveAttribute("href", NAZIR_URL);
+    await expect(back).toHaveAttribute("href", NAZAR_URL);
   });
 
   test("anyone who may not edit it gets the not-found page", async ({

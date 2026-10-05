@@ -536,7 +536,7 @@ const LINKLER = {
       ad: "Nizam (yönetim)",
       url: "https://nizam-dev.medaris.app/tr",
     },
-    { id: "nazir", ad: "Nazır", url: "https://nazir-dev.medaris.app" },
+    { id: "nazar", ad: "Nazar", url: "https://nazar-dev.medaris.app" },
     {
       id: "keycloak",
       ad: "Keycloak — hesap / giriş (amel-tech-dev)",
@@ -583,8 +583,8 @@ const PROJELER = [
   { id: "tedris", ad: "Tedris" },
   { id: "nizam", ad: "Nizam" },
   {
-    id: "nazir",
-    ad: "Nazır",
+    id: "nazar",
+    ad: "Nazar",
     istege: true,
     not: "isteğe bağlı — bakılmayabilir",
   },
@@ -638,13 +638,13 @@ const EKRAN_PROJE = {
   landing: "landing",
   tedris: "tedris",
   nizam: "nizam",
-  nazir: "nazir",
+  nazir: "nazar",
 };
 const DOSYA_PROJE = [
   [/^apps\/(landing|keycloak-theme)\//, "landing"],
   [/^apps\/tedris\//, "tedris"],
   [/^apps\/nizam\//, "nizam"],
-  [/^apps\/nazir\//, "nazir"],
+  [/^apps\/nazar\//, "nazar"],
 ];
 function projeBul(i, dmap) {
   const say = {};
