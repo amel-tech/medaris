@@ -228,6 +228,11 @@ Expected conflicts: `placeholder.spec.tsx` 74–75 (the design note's resolution
 `courseNazirErrorKey` there too (keep both lines, `course-nazirs` first, as Biome sorts them).
 `nav.ts`, the shell, `fixtures.ts` and `e2e/seed.ts` are not touched.
 
+Merged in `taha/mdrs-270-nazar-course-nazirs-settings`: those two were the only conflicts and were
+resolved that way (`DERS_BUILT` in the menu's order, `nazirlar` before `ayarlar`); the other files of
+the table merged on their own, and the `CourseNazirs` and `CourseSettings` blocks each stay in one piece,
+at the same place in `tr`, `en` and `ar`.
+
 ## Not verified
 
 - `e2e/course-settings.e2e.ts` is written, not run (no Playwright, no stack, no dev realm here). Its
@@ -236,7 +241,9 @@ Expected conflicts: `placeholder.spec.tsx` 74–75 (the design note's resolution
   written.
 - The page in a browser: the selects' accessible names (`getByRole("combobox", { name: "Örnek ders" })`)
   and the toasts are read from the kit's code and the happy-dom specs, not from a real browser.
-- That the başnazım reaches the page: it depends on the other branch's shell change.
+- That the başnazım reaches the page in a running app: the other branch's shell change is merged in
+  `taha/mdrs-270-nazar-course-nazirs-settings` (its `access.spec.tsx` stubs the reads), and tedrisat's
+  `course-my-permissions.e2e.spec.ts` lists every course code for him; no browser has opened it.
 
 ## Risks that stay
 

@@ -113,7 +113,9 @@ reads the list again, which then shows who must go first.
 - `test/messages.spec.ts` needs an import line the design did not name (`courseNazirErrorKey`, after the
   `bans` import, where Biome's import order puts it); the settings branch's import goes on the same spot.
 - The browser spec leaves out `/ders/<id>/ayarlar` from the "nothing else" check: on this branch it is still
-  the placeholder. The settings branch's spec checks that page.
+  the placeholder. Merged with the settings branch it is Ders ayarları, which opens on `session.manage`,
+  one of the two permissions the spec gives, so it stays out there too. The settings branch's spec checks
+  that page.
 
 ## Tests
 
