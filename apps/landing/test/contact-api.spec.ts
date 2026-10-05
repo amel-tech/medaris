@@ -72,6 +72,8 @@ describe("POST /api/iletisim", () => {
     expect(createTransport).toHaveBeenCalledWith(
       expect.objectContaining({
         host: "smtp.example.org",
+        // EHLO: the sender's domain, not the container's hostname.
+        name: "medaris.app",
         port: 587,
         requireTLS: true,
         auth: { user: "relay", pass: "secret" },

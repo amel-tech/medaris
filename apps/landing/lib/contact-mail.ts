@@ -116,6 +116,11 @@ export async function sendContactMessage(
     contactTopics.find((t) => t.value === message.konu)?.label ?? message.konu;
   const transport = nodemailer.createTransport({
     host: config.host,
+    // The name sent in EHLO. Unset, nodemailer sends the machine's hostname —
+    // a random container id in production — and Google's smtp-relay closes the
+    // connection with "421 4.7.0 Try again later (EHLO)". The sender's domain
+    // is a name the relay accepts.
+    name: config.from.slice(config.from.lastIndexOf("@") + 1),
     port: config.port,
     secure: config.security === "ssl",
     requireTLS: config.security === "starttls",
