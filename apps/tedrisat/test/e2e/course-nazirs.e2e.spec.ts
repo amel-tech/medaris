@@ -455,6 +455,39 @@ describe("Course nazırs (e2e)", () => {
       expect(asNazim.grantable).toEqual([]);
       expect(asNazim.mayAppoint).toBe(false);
     });
+
+    it("offers a giver who holds a post no change of their own row, which the self guard would refuse", async () => {
+      await appoint(freeCourse, MUDERRIS).expect(201);
+      await appoint(freeCourse, MUDERRIS, { userId: ZEYNEP }).expect(201);
+      // made a co-nazımı of the köşk later: a giver here, still holding the post
+      await assignRole(db, {
+        userId: YUSUF,
+        role: ASSIGNED_ROLES.KOSK_NAZIM,
+        scopeId: koskId,
+        grantedBy: ADMIN,
+      });
+      const { items } = (await get(list(freeCourse), YUSUF).expect(200)).body;
+      const rows = Object.fromEntries(
+        (
+          items as Array<{
+            user: { id: string };
+            mayEdit: boolean;
+            mayEnd: boolean;
+          }>
+        ).map((item) => [item.user.id, [item.mayEdit, item.mayEnd]])
+      );
+      expect(rows).toEqual({
+        [YUSUF]: [false, true],
+        [ZEYNEP]: [true, true],
+      });
+      const own = await heldPost(YUSUF);
+      const res = await patch(
+        one(freeCourse, own.id),
+        { permissions: ["week.hide"], endsAt: null },
+        YUSUF
+      ).expect(403);
+      expect(res.body.code).toBe("SELF_GRANT_REFUSED");
+    });
   });
 
   describe("POST /courses/:id/nazirs (criterion 1)", () => {
@@ -1035,6 +1068,29 @@ describe("Course nazırs (e2e)", () => {
       expect(grant.expiresAt).toBeNull();
     });
 
+    it("moves a lead row later in place in the actor's name and at their level", async () => {
+      await appoint(freeCourse, MUDERRIS, {
+        permissions: ["session.manage"],
+        endsAt: daysFromNow(5),
+      }).expect(201);
+      const post = await heldPost(YUSUF);
+      const [lead] = await grantsOf(YUSUF);
+
+      await patch(
+        one(freeCourse, post.id),
+        { permissions: ["session.manage"], endsAt: null },
+        NAZIM
+      ).expect(200);
+      const rows = await liveGrants(YUSUF);
+      expect(rows).toHaveLength(1);
+      expect(rows[0]).toMatchObject({
+        id: lead.id,
+        grantedBy: NAZIM,
+        authorityScopeType: SCOPE_TYPES.KOSK,
+        expiresAt: null,
+      });
+    });
+
     it("cannot reach another course's post (404)", async () => {
       await appoint(freeCourse, MUDERRIS, {
         permissions: ["session.manage"],
@@ -1138,6 +1194,52 @@ describe("Course nazırs (e2e)", () => {
         (await heldPost(YUSUF, medreseCourse)).expiresAt?.toISOString()
       ).toBe(sooner);
     });
+
+    it("holds a code added on a passive course to what the başmüderris holds (403 GRANT_EXCEEDS_GIVER), writing nothing", async () => {
+      await appoint(medreseCourse, HEAD, {
+        permissions: ["course.settings"],
+      }).expect(201);
+      const post = await heldPost(YUSUF, medreseCourse);
+      await leaveMedreseCourse();
+
+      const res = await patch(
+        one(medreseCourse, post.id),
+        { permissions: ["course.settings", "course.edit"], endsAt: null },
+        HEAD
+      ).expect(403);
+      expect(res.body.code).toBe("GRANT_EXCEEDS_GIVER");
+      expect(res.body.context.codes).toEqual(["course.edit"]);
+      expect(
+        (await liveGrants(YUSUF, medreseCourse)).map((g) => g.permission)
+      ).toEqual(["course.settings"]);
+      expect(
+        (await nazirAudit()).filter((r) => r.action === "course_nazir.update")
+      ).toHaveLength(0);
+    });
+
+    it("holds the time added beside a başnazım-made row to what the başmüderris holds on a passive course (403), writing nothing", async () => {
+      const short = daysFromNow(10);
+      await appoint(medreseCourse, ADMIN, {
+        permissions: ["session.manage"],
+        endsAt: short,
+      }).expect(201);
+      const post = await heldPost(YUSUF, medreseCourse);
+      await leaveMedreseCourse();
+
+      const res = await patch(
+        one(medreseCourse, post.id),
+        { permissions: ["session.manage"], endsAt: daysFromNow(30) },
+        HEAD
+      ).expect(403);
+      expect(res.body.code).toBe("GRANT_EXCEEDS_GIVER");
+      expect(res.body.context.codes).toEqual(["session.manage"]);
+      const rows = await liveGrants(YUSUF, medreseCourse);
+      expect(rows).toHaveLength(1);
+      expect(rows[0].expiresAt?.toISOString()).toBe(short);
+      expect(
+        (await heldPost(YUSUF, medreseCourse)).expiresAt?.toISOString()
+      ).toBe(short);
+    });
   });
 
   describe("DELETE /courses/:id/nazirs/:postId (criterion 4)", () => {
@@ -1178,6 +1280,55 @@ describe("Course nazırs (e2e)", () => {
       expect(res.body.code).toBe("COURSE_NAZIR_NOT_FOUND");
       await del(one(freeCourse, post.id), MUDERRIS).expect(204);
       await del(one(freeCourse, post.id), MUDERRIS).expect(404);
+    });
+
+    it("cannot end a role that is no ders nazırı post: the müderris's seat stays, with his grants", async () => {
+      const [seat] = await db
+        .select()
+        .from(roleAssignments)
+        .where(eq(roleAssignments.userId, MUDERRIS));
+      await db.insert(permissionGrants).values({
+        userId: MUDERRIS,
+        scopeType: SCOPE_TYPES.COURSE,
+        scopeId: freeCourse,
+        permission: "recording.upload",
+        grantedBy: NAZIM,
+      });
+      const res = await del(one(freeCourse, seat.id), NAZIM).expect(404);
+      expect(res.body.code).toBe("COURSE_NAZIR_NOT_FOUND");
+      const [after] = await db
+        .select()
+        .from(roleAssignments)
+        .where(eq(roleAssignments.id, seat.id));
+      expect(after.revokedAt).toBeNull();
+      expect(await liveGrants(MUDERRIS)).toHaveLength(1);
+      expect(await nazirAudit()).toHaveLength(0);
+    });
+
+    it("cannot change nor end a post whose end has passed but that was never revoked (404)", async () => {
+      await appoint(freeCourse, MUDERRIS, {
+        permissions: ["week.hide"],
+      }).expect(201);
+      const post = await heldPost(YUSUF);
+      await db
+        .update(roleAssignments)
+        .set({ expiresAt: new Date(Date.now() - 1000) })
+        .where(eq(roleAssignments.id, post.id));
+      const changed = await patch(
+        one(freeCourse, post.id),
+        { permissions: ["week.hide", "session.manage"], endsAt: null },
+        NAZIM
+      ).expect(404);
+      expect(changed.body.code).toBe("COURSE_NAZIR_NOT_FOUND");
+      const ended = await del(one(freeCourse, post.id), NAZIM).expect(404);
+      expect(ended.body.code).toBe("COURSE_NAZIR_NOT_FOUND");
+      const [after] = await postsOf(YUSUF);
+      expect(after.revokedAt).toBeNull();
+      expect(after.expiresAt?.getTime()).toBeLessThan(Date.now());
+      expect((await liveGrants(YUSUF)).map((g) => g.permission)).toEqual([
+        "week.hide",
+      ]);
+      expect(await nazirAudit()).toHaveLength(1);
     });
 
     it("refuses to end a ders nazırı whose appointees still hold their posts (409 DISMISS_SEAT_HANDED_ON) and writes nothing", async () => {
