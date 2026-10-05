@@ -4,6 +4,7 @@ import { Html } from "../components/Html";
 import { privacyNoticeLabel } from "../components/privacyNoticeLabel";
 import type { I18n } from "../i18n";
 import type { KcContext } from "../KcContext";
+import { withKcLocale } from "../locale-url";
 import type { ExtendedPageProps } from "../types/PageProps";
 
 type RegisterProps = ExtendedPageProps<
@@ -88,7 +89,13 @@ export default function Register(props: RegisterProps) {
       infoNode={
         <>
           {msg("haveAccount")}{" "}
-          <a id="kc-login" href={url.loginUrl}>
+          <a
+            id="kc-login"
+            href={withKcLocale(
+              url.loginUrl,
+              kcContext.locale?.currentLanguageTag
+            )}
+          >
             {msg("doLogIn")}
           </a>
         </>

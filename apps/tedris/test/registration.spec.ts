@@ -19,7 +19,7 @@ describe("Kayıt ol opens Keycloak's registration form (MDRS-101)", () => {
     ).toEqual([
       "keycloak",
       { callbackUrl: "/tr/start" },
-      { ui_locales: "tr", prompt: "create" },
+      { ui_locales: "tr", kc_locale: "tr", prompt: "create" },
     ]);
   });
 
@@ -29,7 +29,7 @@ describe("Kayıt ol opens Keycloak's registration form (MDRS-101)", () => {
       callbackUrl: "/tr/start",
       locale: "tr",
     });
-    expect(params).toEqual({ ui_locales: "tr" });
+    expect(params).toEqual({ ui_locales: "tr", kc_locale: "tr" });
   });
 
   it("the register page starts that flow and ends on /start", async () => {

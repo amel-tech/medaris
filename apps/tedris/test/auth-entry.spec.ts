@@ -57,7 +57,7 @@ const mount = async (error?: string) => {
 const keycloak = [
   "keycloak",
   { callbackUrl: "/tr/courses/c1" },
-  { ui_locales: "tr" },
+  { ui_locales: "tr", kc_locale: "tr" },
 ];
 
 describe("the sign-in page after a failed round trip", () => {
