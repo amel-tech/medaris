@@ -156,6 +156,11 @@ export function LessonLocked({
                 id="recording-title"
                 title={recording.title}
                 embedUrl={recordingEmbed}
+                frameTitle={
+                  recording.provider === "BUNNY"
+                    ? sessionText("bunnyFrameTitle", { title: recording.title })
+                    : undefined
+                }
                 placeholder={sessionText("recordingPlaceholder")}
                 openHref={recordingEmbed ? null : recording.url}
                 openLabel={sessionText("recordingOpen")}

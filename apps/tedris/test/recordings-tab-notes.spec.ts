@@ -91,13 +91,13 @@ const RECORDINGS = [
   }),
 ];
 
-const mount = async (notes?: boolean) => {
+const mount = async (notes?: boolean, recordings = RECORDINGS) => {
   const { RecordingsTab } = await import(
     "~/features/courses/components/recordings-tab"
   );
   const host = await render(
     createElement(RecordingsTab, {
-      recordings: RECORDINGS,
+      recordings,
       timeZone: "Europe/Istanbul",
       ...(notes === undefined ? {} : { notes }),
     })
@@ -140,6 +140,24 @@ describe("the recordings tab's notes panel", () => {
     expect(
       host.querySelector("[data-player]")?.getAttribute("data-frame")
     ).toBe("recording-frame-eski");
+  });
+
+  it("stays beside a Bunny recording, asking for a typed time (MDRS-114)", async () => {
+    const signed =
+      "https://player.mediadelivery.net/embed/424242/3f1c2b4a-5d6e-4f70-8a9b-0c1d2e3f4a5b?token=9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08&expires=1790000000";
+    const host = await mount(true, [
+      rec("bunny", { provider: "BUNNY", url: signed }),
+      ...RECORDINGS,
+    ]);
+    expect(host.querySelector("[data-notes]")?.getAttribute("data-notes")).toBe(
+      "lesson-bunny"
+    );
+    expect(
+      host.querySelector("[data-notes]")?.getAttribute("data-notes-frame")
+    ).toBe("manual");
+    expect(
+      host.querySelector("[data-player]")?.getAttribute("data-embed")
+    ).toBe(signed);
   });
 
   it.each([
