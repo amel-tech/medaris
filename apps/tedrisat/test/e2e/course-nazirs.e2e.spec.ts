@@ -758,14 +758,17 @@ describe("Course nazırs (e2e)", () => {
 
     it("does not revive a permission left open from an earlier post", async () => {
       // A post that ran out with a permission whose own end never came.
-      await db.insert(roleAssignments).values({
-        userId: YUSUF,
-        role: ASSIGNED_ROLES.DERS_NAZIR,
-        scopeType: SCOPE_TYPES.COURSE,
-        scopeId: freeCourse,
-        grantedBy: NAZIM,
-        expiresAt: new Date(Date.now() - 60_000),
-      });
+      const [lapsed] = await db
+        .insert(roleAssignments)
+        .values({
+          userId: YUSUF,
+          role: ASSIGNED_ROLES.DERS_NAZIR,
+          scopeType: SCOPE_TYPES.COURSE,
+          scopeId: freeCourse,
+          grantedBy: NAZIM,
+          expiresAt: new Date(Date.now() - 60_000),
+        })
+        .returning();
       const [leftover] = await db
         .insert(permissionGrants)
         .values({
@@ -791,7 +794,10 @@ describe("Course nazırs (e2e)", () => {
         (await postsOf(YUSUF)).filter((p) => p.revokedAt === null)
       ).toHaveLength(1);
       const [row] = await nazirAudit();
-      expect(row.details).toMatchObject({ revokedLeftovers: [leftover.id] });
+      expect(row.details).toMatchObject({
+        revokedLeftovers: [leftover.id],
+        revokedLapsedPosts: [lapsed.id],
+      });
     });
   });
 
@@ -1089,6 +1095,7 @@ describe("Course nazırs (e2e)", () => {
       expect(unknown.body.code).toBe("PERMISSION_UNKNOWN");
       expect((await heldPost(YUSUF)).expiresAt).not.toBeNull();
 
+      const before = (await heldPost(YUSUF)).expiresAt;
       await patch(
         path,
         { permissions: ["session.manage"], endsAt: null },
@@ -1097,6 +1104,12 @@ describe("Course nazırs (e2e)", () => {
       expect((await heldPost(YUSUF)).expiresAt).toBeNull();
       const [grant] = await liveGrants(YUSUF);
       expect(grant.expiresAt).toBeNull();
+      // the audit row keeps the end the post had
+      const [, update] = await nazirAudit();
+      expect(update.details).toMatchObject({
+        endsAt: null,
+        previousEndsAt: before?.toISOString(),
+      });
     });
 
     it("moves a lead row later in place in the actor's name and at their level", async () => {

@@ -125,12 +125,18 @@ export class CourseNazirRepository {
     tx: Tx,
     courseId: string,
     postId: string
-  ): Promise<{ id: string; userId: string; grantedBy: string }> {
+  ): Promise<{
+    id: string;
+    userId: string;
+    grantedBy: string;
+    endsAt: Date | null;
+  }> {
     const [row] = await tx
       .select({
         id: roleAssignments.id,
         userId: roleAssignments.userId,
         grantedBy: roleAssignments.grantedBy,
+        endsAt: roleAssignments.expiresAt,
       })
       .from(roleAssignments)
       .where(this.postIn(courseId, postId))
@@ -226,7 +232,7 @@ export class CourseNazirRepository {
       if (seat) throw new CourseNazirHoldsSeatError(input.userId, courseId);
 
       // A post that lapsed but was never revoked would hold the unique index.
-      await tx
+      const lapsed = await tx
         .update(roleAssignments)
         .set({ revokedAt: sql`now()`, revokedBy: actorId })
         .where(
@@ -236,7 +242,8 @@ export class CourseNazirRepository {
             eq(roleAssignments.scopeId, courseId),
             isNull(roleAssignments.revokedAt)
           )
-        );
+        )
+        .returning({ id: roleAssignments.id });
       // What an earlier post left open would count again under the new one.
       const leftovers = await tx
         .update(permissionGrants)
@@ -290,6 +297,7 @@ export class CourseNazirRepository {
           standing: input.standing,
           authority: input.authority,
           revokedLeftovers: leftovers.map((row) => row.id),
+          revokedLapsedPosts: lapsed.map((row) => row.id),
         },
       });
     });
@@ -419,6 +427,7 @@ export class CourseNazirRepository {
           userId: post.userId,
           permissions: wanted.permissions,
           endsAt: iso(wanted.endsAt),
+          previousEndsAt: iso(post.endsAt),
           authority: wanted.authority,
           revoked: plan.revoke,
           shortened: plan.shorten.map((id) => ({
