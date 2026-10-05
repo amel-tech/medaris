@@ -1544,6 +1544,43 @@
         "bunnyVideoUsed": "This Bunny video is already the recording of another session. A video can be the recording of one session only."
       },
       "invalid": "Check the title and the https link and try again."
+    },
+    "upload": {
+      "note": "Upload a session's video to the Medaris video library (Bunny) from here; the file goes from your browser straight to Bunny. While the video is being processed the session says “Processing”, and the page reloads by itself until it is ready.",
+      "tabsLabel": "How to add the recording",
+      "tabUpload": "Upload to Bunny",
+      "tabLink": "Paste a link",
+      "fileLabel": "Video file",
+      "fileHelp": "At most {max}. If the connection drops, the upload continues where it stopped.",
+      "chosen": "{name} · {size}",
+      "submit": "Upload",
+      "cancel": "Stop",
+      "resume": "Continue",
+      "resumeLabel": "Continue the upload: {session}",
+      "resumeTitle": "Continue the upload",
+      "resumeHelp": "If the upload stopped halfway, pick the same file again in the browser you started it in; it continues where it stopped. If the upload finished, Bunny is processing the video and there is nothing to do.",
+      "signing": "Preparing the upload…",
+      "progressLabel": "Uploading",
+      "progressDone": "complete",
+      "progressBytes": "{sent} / {total}",
+      "aborted": "The upload was stopped. Bunny keeps what it received; continue where it stopped with “Continue”.",
+      "done": "Video uploaded",
+      "doneBody": "Bunny is processing the video of {session}; it says “Ready” once it is.",
+      "failedTitle": "The video could not be uploaded",
+      "errors": {
+        "type": "This is not a video file. Pick a video file.",
+        "size": "The file is over the {max} limit. Compress the recording and try again.",
+        "empty": "Pick a video file.",
+        "notConfigured": "The video library is not set up. Paste the recording's link for now.",
+        "unavailable": "Bunny is not answering right now. Try again in a little while.",
+        "closed": "This upload can no longer be continued. The page is reloading.",
+        "expired": "The upload's 24 hours have passed; it cannot be continued. The recording drops off shortly, and then you can upload the session's video again.",
+        "notFound": "No unfinished upload of this file was found in this browser. Pick the same file in the browser you started the upload in.",
+        "network": "The connection dropped. Check your internet connection and continue where it stopped with “Continue”.",
+        "refused": "Bunny did not accept the upload. Try again with “Continue”.",
+        "failed": "The video could not be sent. Try again with “Continue”, from where it stopped.",
+        "invalid": "Check the title and try again."
+      }
     }
   }
 }

@@ -16,6 +16,8 @@ const api = {
     createSessionBatch: vi.fn(),
     createLessonRecording: vi.fn(),
     updateRecording: vi.fn(),
+    startRecordingUpload: vi.fn(),
+    resignRecordingUpload: vi.fn(),
   },
   courses: {
     setEnrollmentStatus: vi.fn(),
@@ -542,5 +544,106 @@ describe("Kayıt ekle and Düzenle on Ders kayıtları", () => {
     });
     expect(api.lessons.createLessonRecording).not.toHaveBeenCalled();
     expect(api.lessons.updateRecording).not.toHaveBeenCalled();
+  });
+});
+
+describe("Yükle and Devam et on Ders kayıtları", () => {
+  const SIGNATURE = "c".repeat(64);
+  const answer = {
+    recordingId: "r-1",
+    endpoint: "https://video.bunnycdn.com/tusupload",
+    libraryId: "424242",
+    videoId: "v-1",
+    authorizationExpire: 1_791_300_000,
+    authorizationSignature: SIGNATURE,
+  };
+  const grant = {
+    endpoint: answer.endpoint,
+    libraryId: answer.libraryId,
+    videoId: answer.videoId,
+    authorizationExpire: answer.authorizationExpire,
+    authorizationSignature: SIGNATURE,
+  };
+
+  it("starts an upload with the title, who may watch and when, and hands back only what TUS needs", async () => {
+    const { startRecordingUpload } = await recordings();
+    api.lessons.startRecordingUpload.mockResolvedValue(answer);
+    expect(
+      await startRecordingUpload("l-1", {
+        title: "Hafta 1 kaydı",
+        visibility: "ENROLLED",
+        recordedAt: "2026-10-05T18:00:00.000Z",
+      })
+    ).toStrictEqual({ success: true, data: grant });
+    expect(api.lessons.startRecordingUpload).toHaveBeenCalledWith({
+      id: "l-1",
+      startRecordingUploadDto: {
+        title: "Hafta 1 kaydı",
+        visibility: "ENROLLED",
+        recordedAt: new Date("2026-10-05T18:00:00.000Z"),
+      },
+    });
+    await startRecordingUpload("l-1", { title: "x", visibility: "PUBLIC" });
+    expect(api.lessons.startRecordingUpload).toHaveBeenLastCalledWith({
+      id: "l-1",
+      startRecordingUploadDto: { title: "x", visibility: "PUBLIC" },
+    });
+  });
+
+  it("signs the same video again", async () => {
+    const { resignRecordingUpload } = await recordings();
+    api.lessons.resignRecordingUpload.mockResolvedValue(answer);
+    expect(await resignRecordingUpload("l-1", "v-1")).toStrictEqual({
+      success: true,
+      data: grant,
+    });
+    expect(api.lessons.resignRecordingUpload).toHaveBeenCalledWith({
+      id: "l-1",
+      videoId: "v-1",
+    });
+  });
+
+  it("hand back the code of a refusal and its reason, and never log the signature", async () => {
+    const { startRecordingUpload, resignRecordingUpload } = await recordings();
+    api.lessons.startRecordingUpload.mockRejectedValue(
+      refusal(503, {
+        code: "BUNNY_STREAM_NOT_CONFIGURED",
+        message: "The Bunny Stream library is not configured",
+      })
+    );
+    expect(
+      await startRecordingUpload("l-1", { title: "x", visibility: "ENROLLED" })
+    ).toStrictEqual({ success: false, code: "BUNNY_STREAM_NOT_CONFIGURED" });
+    api.lessons.resignRecordingUpload.mockRejectedValue(
+      refusal(409, {
+        code: "RECORDING_UPLOAD_CLOSED",
+        message: "The upload of video v-1 can no longer be resumed (expired)",
+        context: { reason: "expired" },
+      })
+    );
+    expect(await resignRecordingUpload("l-1", "v-1")).toEqual({
+      success: false,
+      code: "RECORDING_UPLOAD_CLOSED",
+      reason: "expired",
+    });
+    expect(errors).toHaveBeenCalledTimes(2);
+    api.lessons.startRecordingUpload.mockResolvedValue(answer);
+    await startRecordingUpload("l-1", { title: "x", visibility: "ENROLLED" });
+    expect(JSON.stringify(errors.mock.calls)).not.toContain(SIGNATURE);
+    expect(errors).toHaveBeenCalledTimes(2);
+  });
+
+  it("ask nothing without a session", async () => {
+    token = undefined;
+    const { startRecordingUpload, resignRecordingUpload } = await recordings();
+    expect(
+      await startRecordingUpload("l-1", { title: "x", visibility: "ENROLLED" })
+    ).toEqual({ success: false, code: "" });
+    expect(await resignRecordingUpload("l-1", "v-1")).toEqual({
+      success: false,
+      code: "",
+    });
+    expect(api.lessons.startRecordingUpload).not.toHaveBeenCalled();
+    expect(api.lessons.resignRecordingUpload).not.toHaveBeenCalled();
   });
 });

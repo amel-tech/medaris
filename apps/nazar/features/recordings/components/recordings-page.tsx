@@ -2,6 +2,8 @@ import { Skeleton } from "@medaris/ui/mds/skeleton";
 import { DEFAULT_TIME_ZONE, resolveTimeZone } from "@medaris/utils";
 import { getLocale } from "next-intl/server";
 import {
+  CODES,
+  holds,
   PAGE_CODES,
   pageGate,
   readCoursePermissions,
@@ -15,15 +17,17 @@ import { RecordingsTable } from "./recordings-table";
 
 /**
  * Ders kayıtları: the course's sessions by week with the recording each one
- * holds, and where staff add one by pasting its link (nothing is uploaded).
- * The page opens for a caller who holds `recording.manage` in this course,
- * read from `GET /courses/:id/my-permissions`; anyone else gets "Bu sayfaya
- * izniniz yok", and a permissions read that failed is the retry state. That
- * one code is also what "Kayıt ekle" and "Düzenle" ask of the API, so the
- * table draws both for everyone it is shown to. The recordings are read with
- * the same caller, who holds `recording.manage` and is listed every recording
- * of the course, whatever its visibility; a PROCESSING one has no link yet.
- * The API still decides every write, and its refusal is worded from the code.
+ * holds, and where staff add one, by uploading its video to Bunny Stream from
+ * the browser or by pasting its link. The page opens for a caller who holds
+ * `recording.manage` or `recording.upload` in this course, read from
+ * `GET /courses/:id/my-permissions`; anyone else gets "Bu sayfaya izniniz
+ * yok", and a permissions read that failed is the retry state. Each control
+ * is drawn for the code its route asks: pasting a link and "Düzenle" for
+ * `recording.manage`, the upload and its "Devam et" for `recording.upload`.
+ * The recordings are read with the same caller, who holds one of them and so
+ * reads the course's content: every recording is listed, whatever its
+ * visibility, and a PROCESSING one has no link yet. The API still decides
+ * every write, and its refusal is worded from the code.
  */
 export async function RecordingsPage({ courseId }: { courseId: string }) {
   const [t, locale, me, course, permissions, recordings] = await Promise.all([
@@ -40,6 +44,11 @@ export async function RecordingsPage({ courseId }: { courseId: string }) {
   ]);
   const timeZone = resolveTimeZone(me?.timeZone, DEFAULT_TIME_ZONE);
   const gate = pageGate([course], permissions, PAGE_CODES.recordings);
+  const held = permissions.status === "ok" ? permissions.data : null;
+  const can = {
+    manage: held !== null && holds(held, CODES.recordingManage),
+    upload: held !== null && holds(held, CODES.recordingUpload),
+  };
   const problem =
     gate !== "ok"
       ? gate
@@ -58,7 +67,7 @@ export async function RecordingsPage({ courseId }: { courseId: string }) {
         ) : null}
         {problem === null ? (
           <p className="mds-body-sm text-neutral-muted">
-            {t("Recordings.note")}
+            {t(can.upload ? "Recordings.upload.note" : "Recordings.note")}
           </p>
         ) : null}
       </header>
@@ -74,6 +83,7 @@ export async function RecordingsPage({ courseId }: { courseId: string }) {
         <RecordingsTable
           blocks={recordingWeeks(course.data, recordings.data)}
           closed={course.data.isClosed}
+          can={can}
           locale={locale}
           timeZone={timeZone}
         />

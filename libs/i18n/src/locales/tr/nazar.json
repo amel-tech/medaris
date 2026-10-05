@@ -1544,6 +1544,43 @@
         "bunnyVideoUsed": "Bu Bunny videosu başka bir celsenin kaydı olarak ekli. Bir video yalnızca bir celsenin kaydı olabilir."
       },
       "invalid": "Başlığı ve https bağlantısını denetleyip yeniden deneyin."
+    },
+    "upload": {
+      "note": "Bir celsenin videosunu buradan Medaris’in video kütüphanesine (Bunny) yükleyin; dosya tarayıcınızdan doğrudan Bunny’ye gider. Video işlenirken celsede “Hazırlanıyor” yazar ve sayfa, video hazır olana dek kendiliğinden yenilenir.",
+      "tabsLabel": "Kaydı nasıl ekleyeceksiniz",
+      "tabUpload": "Bunny’ye yükle",
+      "tabLink": "Bağlantı yapıştır",
+      "fileLabel": "Video dosyası",
+      "fileHelp": "En çok {max}. Bağlantı koparsa yükleme kaldığı yerden sürer.",
+      "chosen": "{name} · {size}",
+      "submit": "Yükle",
+      "cancel": "İptal",
+      "resume": "Devam et",
+      "resumeLabel": "Yüklemeye devam et: {session}",
+      "resumeTitle": "Yüklemeye devam et",
+      "resumeHelp": "Yükleme yarıda kaldıysa aynı dosyayı, yüklemeyi başlattığınız tarayıcıda yeniden seçin; kaldığı yerden sürer. Yükleme bittiyse video Bunny’de işleniyordur; bir şey yapmanız gerekmez.",
+      "signing": "Yükleme hazırlanıyor…",
+      "progressLabel": "Yükleniyor",
+      "progressDone": "tamamlandı",
+      "progressBytes": "{sent} / {total}",
+      "aborted": "Yükleme durduruldu. Bunny aldığı kısmı saklıyor; “Devam et” ile kaldığı yerden sürdürün.",
+      "done": "Video yüklendi",
+      "doneBody": "{session} celsesinin videosu Bunny’de işleniyor; hazır olunca “Hazır” yazar.",
+      "failedTitle": "Video yüklenemedi",
+      "errors": {
+        "type": "Bu bir video dosyası değil. Bir video dosyası seçin.",
+        "size": "Dosya {max} sınırını aşıyor. Kaydı sıkıştırıp yeniden deneyin.",
+        "empty": "Bir video dosyası seçin.",
+        "notConfigured": "Video kütüphanesi ayarlı değil. Şimdilik kaydın bağlantısını yapıştırın.",
+        "unavailable": "Bunny şu an yanıt vermiyor. Biraz sonra yeniden deneyin.",
+        "closed": "Bu yükleme artık sürdürülemez. Sayfa yenileniyor.",
+        "expired": "Yüklemenin 24 saatlik süresi doldu; sürdürülemez. Kayıt kısa süre içinde düşer, sonra celseye yeniden yükleyebilirsiniz.",
+        "notFound": "Bu dosyanın yarım kalan yüklemesi bu tarayıcıda bulunamadı. Yüklemeyi başlattığınız tarayıcıda aynı dosyayı seçin.",
+        "network": "Bağlantı koptu. İnternet bağlantınızı denetleyip “Devam et” ile kaldığı yerden sürdürün.",
+        "refused": "Bunny yüklemeyi kabul etmedi. “Devam et” ile yeniden deneyin.",
+        "failed": "Video gönderilemedi. “Devam et” ile kaldığı yerden yeniden deneyin.",
+        "invalid": "Başlığı denetleyip yeniden deneyin."
+      }
     }
   }
 }

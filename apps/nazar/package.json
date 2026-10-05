@@ -28,6 +28,7 @@
     "next-intl": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
+    "tus-js-client": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {

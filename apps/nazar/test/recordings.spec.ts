@@ -1,8 +1,11 @@
 import type { RecordingResponse } from "@medaris/services/tedrisat";
 import { describe, expect, it } from "vitest";
 import {
+  anyBunnyPending,
+  bunnyPending,
   chipOf,
   createBody,
+  formatBytes,
   formErrors,
   formOf,
   hostOf,
@@ -19,6 +22,11 @@ import {
   slotCounts,
   slotState,
   switchLocked,
+  uploadBody,
+  uploadContinues,
+  uploadErrorKey,
+  uploadMoved,
+  type WeekBlock,
 } from "~/features/recordings/recordings";
 
 /**
@@ -475,6 +483,141 @@ describe("what the API refuses", () => {
     }
     for (const code of ["AUTHZ_FORBIDDEN", "VALIDATION_ERROR", ""]) {
       expect(recordingsMoved(code), code).toBe(false);
+    }
+  });
+});
+
+describe("the upload", () => {
+  const slot = (
+    over: Partial<SessionSlot["recording"]> | null
+  ): SessionSlot => ({
+    lessonId: "l-1",
+    title: "Hafta 1",
+    startsAt: "2026-10-05T18:00:00.000Z",
+    recording:
+      over === null
+        ? null
+        : {
+            id: "r-1",
+            title: "Kayıt",
+            provider: "BUNNY",
+            url: null,
+            status: "PROCESSING",
+            visibility: "ENROLLED",
+            ...over,
+          },
+  });
+
+  it("waits only on a Bunny upload that is not READY, as only those move on their own", () => {
+    expect(bunnyPending(slot({}))).toBe(true);
+    expect(bunnyPending(slot({ status: "READY", url: "https://x" }))).toBe(
+      false
+    );
+    // a pasted link that is PROCESSING waits for someone to edit it
+    expect(bunnyPending(slot({ provider: "OTHER" }))).toBe(false);
+    expect(bunnyPending(slot(null))).toBe(false);
+    const week = (slots: SessionSlot[]): WeekBlock => ({
+      weekId: "w",
+      weekNumber: 1,
+      title: "",
+      slots,
+    });
+    expect(anyBunnyPending([week([slot(null)]), week([slot({})])])).toBe(true);
+    expect(
+      anyBunnyPending([week([slot(null), slot({ provider: "YOUTUBE" })])])
+    ).toBe(false);
+    expect(anyBunnyPending([])).toBe(false);
+  });
+
+  it("sends the title, who may watch and the session's time, and nothing without a title", () => {
+    expect(
+      uploadBody(
+        { title: "  Hafta 1 kaydı ", url: "", isPublic: false },
+        slot(null)
+      )
+    ).toEqual({
+      title: "Hafta 1 kaydı",
+      visibility: "ENROLLED",
+      recordedAt: "2026-10-05T18:00:00.000Z",
+    });
+    expect(
+      uploadBody(
+        { title: "Kayıt", url: "ignored", isPublic: true },
+        { startsAt: null }
+      )
+    ).toEqual({ title: "Kayıt", visibility: "PUBLIC" });
+    expect(
+      uploadBody({ title: " ", url: "", isPublic: false }, slot(null))
+    ).toBeNull();
+  });
+
+  it("writes a size in the page's language, in the largest unit under it", () => {
+    expect(formatBytes(512, "tr")).toBe("512 bayt");
+    expect(formatBytes(1_234_567, "tr")).toBe("1,2 MB");
+    expect(formatBytes(10_000_000_000, "tr")).toBe("10 GB");
+    expect(formatBytes(1_500_000_000, "en")).toBe("1.5 GB");
+    expect(formatBytes(1_500_000_000, "not a locale")).toBe("1,5 GB");
+  });
+
+  it.each([
+    ["AUTHZ_FORBIDDEN", null, "Problems.actionForbidden"],
+    ["RECORDING_EXISTS", null, "Recordings.errors.exists"],
+    ["LESSON_NOT_FOUND", null, "Recordings.errors.gone"],
+    [
+      "BUNNY_STREAM_NOT_CONFIGURED",
+      null,
+      "Recordings.upload.errors.notConfigured",
+    ],
+    ["BUNNY_STREAM_UNAVAILABLE", null, "Recordings.upload.errors.unavailable"],
+    ["RECORDING_UPLOAD_CLOSED", "expired", "Recordings.upload.errors.expired"],
+    [
+      "RECORDING_UPLOAD_CLOSED",
+      "not-processing",
+      "Recordings.upload.errors.closed",
+    ],
+    ["RECORDING_UPLOAD_NOT_FOUND", null, "Recordings.upload.errors.closed"],
+    ["VALIDATION_ERROR", null, "Recordings.upload.errors.invalid"],
+    ["UPLOAD_NOT_FOUND", null, "Recordings.upload.errors.notFound"],
+    ["UPLOAD_NETWORK", null, "Recordings.upload.errors.network"],
+    ["UPLOAD_REFUSED", null, "Recordings.upload.errors.refused"],
+    ["UPLOAD_FAILED", null, "Recordings.upload.errors.failed"],
+    ["SOMETHING_NEW", null, "Problems.actionGeneric"],
+    ["", null, "Problems.actionGeneric"],
+  ])("words a stopped upload's %s (%s) with %s", (code, reason, key) => {
+    expect(uploadErrorKey(code, reason)).toBe(key);
+  });
+
+  it("reads the page again behind the dialog when the session's recording changed under it", () => {
+    for (const code of [
+      "RECORDING_EXISTS",
+      "LESSON_NOT_FOUND",
+      "RECORDING_UPLOAD_CLOSED",
+      "RECORDING_UPLOAD_NOT_FOUND",
+    ]) {
+      expect(uploadMoved(code), code).toBe(true);
+    }
+    for (const code of [
+      "AUTHZ_FORBIDDEN",
+      "BUNNY_STREAM_NOT_CONFIGURED",
+      "UPLOAD_NETWORK",
+      "",
+    ]) {
+      expect(uploadMoved(code), code).toBe(false);
+    }
+  });
+
+  it("offers Devam et only for a video that exists and a stop between the browser and Bunny", () => {
+    for (const code of ["UPLOAD_NETWORK", "UPLOAD_REFUSED", "UPLOAD_FAILED"]) {
+      expect(uploadContinues(code, "v-1"), code).toBe(true);
+      expect(uploadContinues(code, null), code).toBe(false);
+    }
+    for (const code of [
+      "RECORDING_UPLOAD_CLOSED",
+      "AUTHZ_FORBIDDEN",
+      "BUNNY_STREAM_NOT_CONFIGURED",
+      "UPLOAD_NOT_FOUND",
+    ]) {
+      expect(uploadContinues(code, "v-1"), code).toBe(false);
     }
   });
 });
