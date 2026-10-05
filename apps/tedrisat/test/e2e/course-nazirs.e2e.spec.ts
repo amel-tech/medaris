@@ -632,6 +632,37 @@ describe("Course nazırs (e2e)", () => {
       expect(await postsOf(BLIP)).toHaveLength(0);
     });
 
+    it("refuses an end that names no instant (a basic-format date, 30 February), on POST and on PATCH", async () => {
+      const year = new Date().getUTCFullYear() + 1;
+      const basic = await appoint(freeCourse, MUDERRIS, {
+        endsAt: `${year}1231`,
+      }).expect(400);
+      expect(basic.body.code).toBe("GRANT_EXPIRY_INVALID");
+      const rolled = await appoint(freeCourse, MUDERRIS, {
+        endsAt: `${year}-02-30T10:00:00Z`,
+      }).expect(400);
+      expect(rolled.body.code).toBe("VALIDATION_ERROR");
+      await nothingWritten();
+
+      await appoint(freeCourse, MUDERRIS, {
+        permissions: ["week.hide"],
+      }).expect(201);
+      const path = one(freeCourse, (await heldPost(YUSUF)).id);
+      for (const [endsAt, code] of [
+        [`${year}1231`, "GRANT_EXPIRY_INVALID"],
+        [`${year}-02-30T10:00:00Z`, "VALIDATION_ERROR"],
+      ]) {
+        const res = await patch(
+          path,
+          { permissions: ["week.hide"], endsAt },
+          MUDERRIS
+        ).expect(400);
+        expect(res.body.code).toBe(code);
+      }
+      expect((await heldPost(YUSUF)).expiresAt).toBeNull();
+      expect((await liveGrants(YUSUF))[0].expiresAt).toBeNull();
+    });
+
     it("refuses a second post of the same person (409 COURSE_NAZIR_EXISTS)", async () => {
       await appoint(freeCourse, MUDERRIS).expect(201);
       const res = await appoint(freeCourse, NAZIM, {

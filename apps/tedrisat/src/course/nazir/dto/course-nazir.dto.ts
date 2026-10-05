@@ -133,7 +133,7 @@ export class CreateCourseNazirDto {
       "The post and its permissions end together. Omitted: until taken away. In the past: 400.",
   })
   @IsOptional()
-  @IsISO8601()
+  @IsISO8601({ strict: true })
   endsAt?: string;
 }
 
@@ -156,6 +156,6 @@ export class UpdateCourseNazirDto {
       "The new end; null means until taken away. Required, so an edit that leaves it out cannot lift an end by accident.",
   })
   @ValidateIf((_, value) => value !== null)
-  @IsISO8601()
+  @IsISO8601({ strict: true })
   endsAt!: string | null;
 }

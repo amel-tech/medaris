@@ -178,6 +178,10 @@ export class CourseNazirService {
 
   private endOf(value: string | null | undefined): Date | null {
     const endsAt = value ? new Date(value) : null;
+    // ISO 8601's basic format ("20261231") passes the DTO and is no Date.
+    if (endsAt && Number.isNaN(endsAt.getTime())) {
+      throw new GrantExpiryInvalidError("The end date is not an instant");
+    }
     if (checkGrantExpiry(endsAt, null, new Date()) === "past") {
       throw new GrantExpiryInvalidError("The end date is in the past");
     }
