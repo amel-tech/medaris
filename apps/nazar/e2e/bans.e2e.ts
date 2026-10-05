@@ -1,7 +1,7 @@
 import type { Page } from "@playwright/test";
 import { account, canSignIn, expect, test } from "./accounts";
 import { type BansFixture, seedBans } from "./people-seed";
-import { type NazirFixture, seedPortal } from "./seed";
+import { type NazarFixture, seedPortal } from "./seed";
 
 /**
  * Design nazir/11 (Yasaklamalar) against the running app and API with real
@@ -18,7 +18,7 @@ const BASMUDERRIS = account("MEDRESE_BASMUDERRIS");
 const MEDRESE_NAZIR = account("MEDRESE_NAZIR");
 const TALEBE = account("TALEBE");
 
-let base: NazirFixture | undefined;
+let base: NazarFixture | undefined;
 let bans: BansFixture | undefined;
 /** people a spec barred through "Yasakla", for the cleanup to free */
 const barred: string[] = [];

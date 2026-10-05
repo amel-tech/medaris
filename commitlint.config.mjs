@@ -35,8 +35,6 @@ const SCOPES = [
   "tedris-web",
   "nizam-web",
   "nazar-web",
-  // The app's name until MDRS-250; kept while open branches still use it. Drop it in a later PR.
-  "nazir-web",
   "landing-web",
   "keycloak-theme",
   // ── Libs (10) — @medaris/<dirname> ───────────────────────────────────────

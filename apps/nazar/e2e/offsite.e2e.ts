@@ -1,7 +1,7 @@
 import type { Page } from "@playwright/test";
 import { account, canSignIn, expect, test } from "./accounts";
 import { type OffsiteFixture, seedOffsite } from "./people-seed";
-import { type NazirFixture, seedPortal } from "./seed";
+import { type NazarFixture, seedPortal } from "./seed";
 
 /**
  * Design nazir/09 (Medrese dışı ders talebi) against the running app and API
@@ -15,7 +15,7 @@ import { type NazirFixture, seedPortal } from "./seed";
 const BASMUDERRIS = account("MEDRESE_BASMUDERRIS");
 const MEDRESE_NAZIR = account("MEDRESE_NAZIR");
 
-let base: NazirFixture | undefined;
+let base: NazarFixture | undefined;
 let offsite: OffsiteFixture | undefined;
 
 test.beforeAll(async () => {

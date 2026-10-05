@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 import { account, canSignIn, expect, test } from "./accounts";
-import { type NazirFixture, seedPortal } from "./seed";
+import { type NazarFixture, seedPortal } from "./seed";
 
 /**
  * Designs nazir/03 (kapsam seçici), nazir/21 and nazir/22 (the menus of a
@@ -16,7 +16,7 @@ const BASMUDERRIS = account("MEDRESE_BASMUDERRIS");
 const MEDRESE_NAZIR = account("MEDRESE_NAZIR");
 const DERS_NAZIR = account("DERS_NAZIR");
 
-let fixture: NazirFixture | undefined;
+let fixture: NazarFixture | undefined;
 
 test.beforeAll(async () => {
   if (!BASMUDERRIS.sub) return;

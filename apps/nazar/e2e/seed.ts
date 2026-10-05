@@ -13,7 +13,7 @@ import pg from "pg";
  * course's menu reads Celseler 1 (bağlantısı eksik) and Talebeler 2
  * (bekleyen başvuru).
  */
-export interface NazirFixture {
+export interface NazarFixture {
   madrasah: { id: string; name: string };
   /** the köşk both courses are in */
   koskId: string;
@@ -43,7 +43,7 @@ export interface NazirRoles {
   dersNazir?: string;
 }
 
-export async function seedPortal(roles: NazirRoles): Promise<NazirFixture> {
+export async function seedPortal(roles: NazirRoles): Promise<NazarFixture> {
   const url = process.env.E2E_DATABASE_URL;
   if (!url) throw new Error("E2E_DATABASE_URL is not set.");
   const client = new pg.Client({ connectionString: url });

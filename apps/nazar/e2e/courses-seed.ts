@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import pg from "pg";
-import type { NazirFixture } from "./seed";
+import type { NazarFixture } from "./seed";
 
 /**
  * What the course specs add to `seedPortal`'s medrese (MDRS-186), under random
@@ -82,7 +82,7 @@ const COLUMNS =
   "status, requires_approval, is_closed, archived_at, madrasah_id, kosk_id";
 
 export async function seedCourses(
-  base: NazirFixture,
+  base: NazarFixture,
   head: string
 ): Promise<CoursesFixture> {
   const url = process.env.E2E_DATABASE_URL;
