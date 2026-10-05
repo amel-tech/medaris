@@ -8,7 +8,7 @@ name: CodeQL
 # On "covering both stacks": both stacks ARE TypeScript, and CodeQL's
 # javascript-typescript extractor analyses the whole checkout, so one matrix
 # entry now spans what previously took two repos — apps/tedrisat, apps/teskilat
-# and libs/common (NestJS) plus apps/tedris, apps/nizam, apps/nazir,
+# and libs/common (NestJS) plus apps/tedris, apps/nizam, apps/nazar,
 # apps/landing, apps/keycloak-theme and the shared libs (Next/React). The
 # matrix earns its keep by adding `actions`, which analyses the workflow files
 # themselves — worth having in a repo whose CI is this much of the surface.

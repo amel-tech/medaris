@@ -35,7 +35,7 @@ Nx project names are not always the directory names — commands take the **proj
 | `apps/teskilat` | `teskilat` | NestJS API | 3002 |
 | `apps/tedris` | `tedris-web` | Next.js | 4000 |
 | `apps/nizam` | `nizam-web` | Next.js | 4001 |
-| `apps/nazir` | `nazir-web` | Next.js | 4002 |
+| `apps/nazar` | `nazar-web` | Next.js | 4002 |
 | `apps/landing` | `landing-web` | Next.js | 4003 |
 | `apps/keycloak-theme` | `keycloak-theme` | Keycloakify + Vite | Vite default |
 

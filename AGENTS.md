@@ -10,7 +10,7 @@ A single pnpm workspace orchestrated by Nx: the NestJS APIs (`apps/tedrisat`, `a
 
 - **`pnpm install` in every fresh clone and every new git worktree.** The husky dispatcher lives in git-ignored `.husky/_`; without it `commitlint` and `lint-staged` silently do not run and a bad commit lands clean.
 - **`libs/common` must be built before the Nest apps start**, otherwise they fail at boot with `TS2307`.
-- Use Nx **project names**, not directory names: `apps/tedris` is `tedris-web`, `apps/nizam` is `nizam-web`, `apps/nazir` is `nazir-web`, `apps/landing` is `landing-web`.
+- Use Nx **project names**, not directory names: `apps/tedris` is `tedris-web`, `apps/nizam` is `nizam-web`, `apps/nazar` is `nazar-web`, `apps/landing` is `landing-web`.
 
 ## The gate
 

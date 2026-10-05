@@ -1,10 +1,10 @@
 # syntax=docker/dockerfile:1.7
 #
-# @medaris/nazir-web — Next.js (Nx project name: `nazir-web`, NOT `nazir`).
-# Build from the REPO ROOT:  docker build -f apps/nazir/Dockerfile -t medaris-nazir .
+# @medaris/nazar-web — Next.js (Nx project name: `nazar-web`, NOT `nazar`).
+# Build from the REPO ROOT:  docker build -f apps/nazar/Dockerfile -t medaris-nazar .
 #
 # Four stages: base (toolchain) -> deps (manifest-only install, cached)
-#           -> build (source + `nx build nazir-web`) -> runner.
+#           -> build (source + `nx build nazar-web`) -> runner.
 # The `deps` stage is byte-identical in all six app Dockerfiles so BuildKit
 # reuses one install layer across every image.
 #
@@ -44,7 +44,7 @@ COPY apps/tedrisat/package.json       apps/tedrisat/
 COPY apps/teskilat/package.json       apps/teskilat/
 COPY apps/tedris/package.json         apps/tedris/
 COPY apps/nizam/package.json          apps/nizam/
-COPY apps/nazir/package.json          apps/nazir/
+COPY apps/nazar/package.json          apps/nazar/
 COPY apps/landing/package.json        apps/landing/
 COPY apps/keycloak-theme/package.json apps/keycloak-theme/
 COPY libs/common/package.json         libs/common/
@@ -70,7 +70,7 @@ FROM deps AS build
 # which busybox does not provide; without it Nx aborts while hashing.
 RUN apk add --no-cache perl-utils
 COPY . .
-# apps/nazir/env.ts validates the environment at build time via
+# apps/nazar/env.ts validates the environment at build time via
 # @t3-oss/env-nextjs, so `next build` needs values present. Since MDRS-25 there
 # is one .env, at the root; next.config.js applies it and strips the app prefix.
 # .env.example holds placeholders only, and that is all this build needs:
@@ -81,7 +81,7 @@ COPY . .
 # The placeholder .env is never copied into the runtime stage.
 RUN cp .env.example .env
 ENV NEXT_TELEMETRY_DISABLED=1
-RUN pnpm exec nx build nazir-web
+RUN pnpm exec nx build nazar-web
 
 # ---------------------------------------------------------------------------
 # runner
@@ -96,21 +96,21 @@ RUN addgroup -S nodejs -g 1001 && adduser -S nextjs -u 1001 -G nodejs
 
 # The standalone tree is rooted at the workspace root (Next infers the output
 # file-tracing root from pnpm-lock.yaml at /app), so it unpacks as
-# ./apps/nazir/server.js + ./node_modules.
-COPY --from=build --chown=nextjs:nodejs /app/apps/nazir/.next/standalone ./
+# ./apps/nazar/server.js + ./node_modules.
+COPY --from=build --chown=nextjs:nodejs /app/apps/nazar/.next/standalone ./
 # Static assets and public/ are deliberately excluded from the standalone tree
 # and have to be laid back on top.
-COPY --from=build --chown=nextjs:nodejs /app/apps/nazir/.next/static ./apps/nazir/.next/static
-COPY --from=build --chown=nextjs:nodejs /app/apps/nazir/public ./apps/nazir/public
+COPY --from=build --chown=nextjs:nodejs /app/apps/nazar/.next/static ./apps/nazar/.next/static
+COPY --from=build --chown=nextjs:nodejs /app/apps/nazar/public ./apps/nazar/public
 # Belt and braces: the build-time .env lives at the workspace root and Next
 # only traces the project directory, so nothing should have carried it in. A
 # placeholder that silently satisfies runtime env validation is worse than a
 # loud failure, so make sure of it.
-RUN rm -f ./.env ./apps/nazir/.env
+RUN rm -f ./.env ./apps/nazar/.env
 
 USER nextjs
 EXPOSE 4002
 
 # NOT `npm start` (= `next start`), which needs the full dev dependency tree.
 # server.js is the standalone entrypoint and honours PORT/HOSTNAME.
-CMD ["node", "apps/nazir/server.js"]
+CMD ["node", "apps/nazar/server.js"]

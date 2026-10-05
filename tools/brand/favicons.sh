@@ -4,7 +4,7 @@
 # its two colours written in (--icon-logo-ground = laciverd-700 #343D93,
 # --icon-logo-arch = laciverd-50 #EBEFFD), the same in both themes.
 #
-#   Next apps (landing, tedris, nizam, nazir): app/icon.svg, app/favicon.ico
+#   Next apps (landing, tedris, nizam, nazar): app/icon.svg, app/favicon.ico
 #     (16, 32, 48) and app/apple-icon.png (180), which Next serves by file
 #     convention; every middleware matcher skips paths with a dot.
 #   keycloak-theme: public/favicon.svg, public/favicon-32x32.png and
@@ -28,7 +28,7 @@ images = [Image.open(f"{tmp}/{s}.png").convert("RGBA") for s in (48, 32, 16)]
 images[0].save(f"{tmp}/favicon.ico", sizes=[(16, 16), (32, 32), (48, 48)], append_images=images[1:])
 PY
 
-for app in landing tedris nizam nazir; do
+for app in landing tedris nizam nazar; do
   cp "$src" "apps/$app/app/icon.svg"
   cp "$tmp/favicon.ico" "apps/$app/app/favicon.ico"
   cp "$tmp/180.png" "apps/$app/app/apple-icon.png"

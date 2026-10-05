@@ -1,13 +1,13 @@
-name: Nazir Web
+name: Nazar Web
 
-# Builds apps/nazir/Dockerfile and pushes to GHCR, then fires the Coolify
+# Builds apps/nazar/Dockerfile and pushes to GHCR, then fires the Coolify
 # webhook that makes the running service pull the new image.
 #
-# `context: .` + `file: ./apps/nazir/Dockerfile` is correct and deliberately
+# `context: .` + `file: ./apps/nazar/Dockerfile` is correct and deliberately
 # unchanged (MDRS-16): the image needs the whole workspace — pnpm-workspace.yaml,
 # pnpm-lock.yaml and all 17 member manifests — not just the app directory.
 #
-# Rollback: docs/runbooks/deploy-nazir-web.md
+# Rollback: docs/runbooks/deploy-nazar-web.md
 
 on:
   workflow_dispatch:
@@ -27,12 +27,12 @@ permissions:
 # cancelling between the push and the webhook leaves a new image in GHCR that
 # nothing was ever told to deploy.
 concurrency:
-  group: deploy-nazir-web
+  group: deploy-nazar-web
   cancel-in-progress: false
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}-nazir-web
+  IMAGE_NAME: ${{ github.repository }}-nazar-web
 
 jobs:
   build-and-push:
@@ -51,7 +51,7 @@ jobs:
     # checkmark. Stating the one real restriction instead — "on a release, the
     # tag must be ours" — is behaviour-identical for the three current triggers
     # and safe for any future one.
-    if: ${{ github.event_name != 'release' || startsWith(github.event.release.tag_name, 'nazir-web-') }}
+    if: ${{ github.event_name != 'release' || startsWith(github.event.release.tag_name, 'nazar-web-') }}
     permissions:
       contents: read
       packages: write
@@ -121,7 +121,7 @@ jobs:
           # pre-release still builds and still moves `latest`, so it reaches
           # `development` — which is where an rc belongs.
           tags: |
-            type=match,pattern=nazir-web-v(.+),group=1
+            type=match,pattern=nazar-web-v(.+),group=1
             type=raw,value=latest,enable=${{ github.event_name == 'release' || github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}
             type=sha
             type=raw,value=stable,enable=${{ github.event_name == 'release' && github.event.release.prerelease == false }}
@@ -131,12 +131,12 @@ jobs:
         uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
         with:
           context: .
-          file: ./apps/nazir/Dockerfile
+          file: ./apps/nazar/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha,scope=nazir-web
-          cache-to: type=gha,mode=max,scope=nazir-web
+          cache-from: type=gha,scope=nazar-web
+          cache-to: type=gha,mode=max,scope=nazar-web
 
       # What the rollback runbook needs, recorded on the run itself: the exact
       # tags that were pushed and the immutable digest they all point at.
@@ -144,7 +144,7 @@ jobs:
         run: |
           set -euo pipefail
           {
-            echo "### Nazir Web image pushed"
+            echo "### Nazar Web image pushed"
             echo
             echo "**Digest:** \`${{ steps.build.outputs.digest }}\`"
             echo
@@ -153,7 +153,7 @@ jobs:
             echo "${{ steps.meta.outputs.tags }}"
             echo '```'
             echo
-            echo "Rollback: docs/runbooks/deploy-nazir-web.md"
+            echo "Rollback: docs/runbooks/deploy-nazar-web.md"
           } >> "$GITHUB_STEP_SUMMARY"
 
       # The old form was `curl --request GET '<url>' --header '…'` with no
@@ -164,9 +164,9 @@ jobs:
       #
       # MDRS-87: the webhook is chosen by event. A full release — not a
       # pre-release, see `prerelease == false` above — deploys to the Coolify
-      # `production` application through NAZIR_WEB_PROD_COOLIFY_WEBHOOK;
+      # `production` application through NAZAR_WEB_PROD_COOLIFY_WEBHOOK;
       # everything else deploys to `development` through
-      # NAZIR_WEB_COOLIFY_WEBHOOK: a pre-release, a
+      # NAZAR_WEB_COOLIFY_WEBHOOK: a pre-release, a
       # workflow_dispatch, and the workflow_call cd-development.yaml makes on
       # every push to `main`. The secret each branch needs is checked on its
       # own, so a release with no production webhook fails here naming that
@@ -174,15 +174,15 @@ jobs:
       - name: Deploy to Coolify
         env:
           IS_PRODUCTION: ${{ github.event_name == 'release' && github.event.release.prerelease == false }}
-          DEV_WEBHOOK: ${{ secrets.NAZIR_WEB_COOLIFY_WEBHOOK }}
-          PROD_WEBHOOK: ${{ secrets.NAZIR_WEB_PROD_COOLIFY_WEBHOOK }}
+          DEV_WEBHOOK: ${{ secrets.NAZAR_WEB_COOLIFY_WEBHOOK }}
+          PROD_WEBHOOK: ${{ secrets.NAZAR_WEB_PROD_COOLIFY_WEBHOOK }}
           COOLIFY_TOKEN: ${{ secrets.COOLIFY_DEPLOY_TOKEN }}
         run: |
           set -euo pipefail
           if [ "${IS_PRODUCTION}" = "true" ]; then
-            COOLIFY_WEBHOOK="${PROD_WEBHOOK}"; CHANNEL="production"; SECRET_NAME="NAZIR_WEB_PROD_COOLIFY_WEBHOOK"
+            COOLIFY_WEBHOOK="${PROD_WEBHOOK}"; CHANNEL="production"; SECRET_NAME="NAZAR_WEB_PROD_COOLIFY_WEBHOOK"
           else
-            COOLIFY_WEBHOOK="${DEV_WEBHOOK}"; CHANNEL="development"; SECRET_NAME="NAZIR_WEB_COOLIFY_WEBHOOK"
+            COOLIFY_WEBHOOK="${DEV_WEBHOOK}"; CHANNEL="development"; SECRET_NAME="NAZAR_WEB_COOLIFY_WEBHOOK"
           fi
           if [ -z "${COOLIFY_WEBHOOK}" ]; then
             echo "::error::${SECRET_NAME} is not set — the image was pushed to GHCR but nothing was redeployed to ${CHANNEL}."

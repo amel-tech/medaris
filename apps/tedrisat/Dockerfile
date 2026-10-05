@@ -38,7 +38,7 @@ COPY apps/tedrisat/package.json       apps/tedrisat/
 COPY apps/teskilat/package.json       apps/teskilat/
 COPY apps/tedris/package.json         apps/tedris/
 COPY apps/nizam/package.json          apps/nizam/
-COPY apps/nazir/package.json          apps/nazir/
+COPY apps/nazar/package.json          apps/nazar/
 COPY apps/landing/package.json        apps/landing/
 COPY apps/keycloak-theme/package.json apps/keycloak-theme/
 COPY libs/common/package.json         libs/common/
@@ -78,7 +78,7 @@ COPY apps/tedrisat/package.json       apps/tedrisat/
 COPY apps/teskilat/package.json       apps/teskilat/
 COPY apps/tedris/package.json         apps/tedris/
 COPY apps/nizam/package.json          apps/nizam/
-COPY apps/nazir/package.json          apps/nazir/
+COPY apps/nazar/package.json          apps/nazar/
 COPY apps/landing/package.json        apps/landing/
 COPY apps/keycloak-theme/package.json apps/keycloak-theme/
 COPY libs/common/package.json         libs/common/

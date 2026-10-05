@@ -67,7 +67,7 @@ not always its directory name:
 | `teskilat` | `apps/teskilat` | NestJS service |
 | `tedris-web` | `apps/tedris` | Next.js app |
 | `nizam-web` | `apps/nizam` | Next.js app |
-| `nazir-web` | `apps/nazir` | Next.js app |
+| `nazar-web` | `apps/nazar` | Next.js app |
 | `landing-web` | `apps/landing` | Next.js app |
 | `keycloak-theme` | `apps/keycloak-theme` | Keycloakify theme |
 
@@ -253,7 +253,7 @@ the implementation.
 | `teskilat` | `app` | `node` | `app` |
 | `tedris-web` | `app` | `web` | `app` |
 | `nizam-web` | `app` | `web` | `app` |
-| `nazir-web` | `app` | `web` | `app` |
+| `nazar-web` | `app` | `web` | `app` |
 | `landing-web` | `app` | `web` | `app` |
 | `keycloak-theme` | `app` | `web` | `app` |
 | `common` | `server` | `node` | `infra` |
