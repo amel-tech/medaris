@@ -226,11 +226,12 @@ test.describe("the enrolled talebe", () => {
     );
   });
 
-  for (const [label, size] of [
-    ["a desktop window", { width: 1440, height: 900 }],
-    ["a phone", { width: 390, height: 844 }],
+  for (const [label, size, wide] of [
+    ["a desktop window", { width: 1440, height: 900 }, 1100],
+    ["a short desktop window", { width: 1440, height: 700 }, 1000],
+    ["a phone", { width: 390, height: 844 }, 340],
   ] as const) {
-    test(`on the recordings tab on ${label}: the player is first and full width, the notes under it, nothing wider than the screen (MDRS-280)`, async ({
+    test(`on the recordings tab on ${label}: the player is first, as wide as the page allows, whole on the screen, the notes under it, nothing wider than the screen (MDRS-280)`, async ({
       page,
     }) => {
       await blockBunny(page);
@@ -257,13 +258,34 @@ test.describe("the enrolled talebe", () => {
       if (!player || !notes)
         throw new Error("the player or the panel has no box");
       expect(notes.y).toBeGreaterThanOrEqual(player.y + player.height);
-      expect(player.width).toBeGreaterThan(notes.width * 0.9);
+      // both of the page's columns at md and up, the whole width on a phone
+      expect(player.width).toBeGreaterThan(wide);
       expect(player.width / player.height).toBeCloseTo(16 / 9, 1);
+      // a whole frame fits under the 64 px top bar
+      expect(player.height).toBeLessThanOrEqual(size.height - 64);
       expect(
         await page.evaluate(() => document.documentElement.scrollWidth)
       ).toBeLessThanOrEqual(size.width);
     });
   }
+
+  test("on the course page, switching to the recordings tab and back leaves the tab row where it was clicked (MDRS-280)", async ({
+    page,
+  }) => {
+    await blockBunny(page);
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto(`/tr/courses/${fixture.courseId}`);
+    await page.evaluate(() => document.fonts.ready);
+    const row = page.getByRole("tablist");
+    const top = async () => (await row.boundingBox())?.y ?? Number.NaN;
+    const before = await top();
+    await page.getByRole("tab", { name: /Ders kayıtları/ }).click();
+    await expect(notesPanel(page)).toBeVisible();
+    expect(Math.abs((await top()) - before)).toBeLessThanOrEqual(1);
+    await page.getByRole("tab", { name: /Müfredat/ }).click();
+    await expect(notesPanel(page)).toHaveCount(0);
+    expect(Math.abs((await top()) - before)).toBeLessThanOrEqual(1);
+  });
 
   test("on a pasted Bunny link: the time is typed, there is no position to take, and the note keeps it", async ({
     page,

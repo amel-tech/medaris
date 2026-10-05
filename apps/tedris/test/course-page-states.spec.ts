@@ -335,6 +335,33 @@ describe("tedris/24: the recordings tab (MDRS-162)", () => {
     expect(html).not.toContain("drive.google.com");
   });
 
+  // MDRS-280: the recordings tab's video takes the page's whole width.
+  const STICKY =
+    "sticky inset-bs-[calc(var(--layout-topbar)+var(--space-6))] md:col-start-2 md:row-start-1 md:row-span-2";
+
+  it.each([
+    ["an enrolled talebe", "ENROLLED" as Status],
+    ["a visitor", null],
+  ])("gives the recordings tab both columns, and keeps %s's card beside the header, not sticking", async (_label, status) => {
+    const html = await render(status, {
+      signedIn: status !== null,
+      recordings,
+      initialTab: "kayitlar",
+    });
+    expect(html).toContain("md:col-start-1 md:row-start-2 md:col-span-2");
+    expect(html).not.toContain(STICKY);
+    expect(html).toContain('class="md:col-start-2 md:row-start-1"');
+  });
+
+  it.each([
+    "mufredat",
+    "muderrisler",
+  ])("keeps the %s tab in the reading column, beside the sticky card", async (tab) => {
+    const html = await render("ENROLLED", { recordings, initialTab: tab });
+    expect(html).not.toContain("md:col-span-2");
+    expect(html).toContain(STICKY);
+  });
+
   it("opens on the curriculum for an unknown tab", async () => {
     const html = await render("ENROLLED", { initialTab: "yok" });
     expect(html).toMatch(/aria-selected="true"[^>]*>[^<]*Müfredat/);

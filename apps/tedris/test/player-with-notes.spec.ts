@@ -6,10 +6,9 @@ import { PlayerWithNotes } from "~/features/courses/components/player-with-notes
 
 /**
  * The layout the recordings tab and the session page share (MDRS-280): the
- * player first and at the full width of its column, the notes under it; side
- * by side only where the column itself is wide. The design system has one
- * viewport breakpoint (md:), so the width is asked of the column, as a
- * container query.
+ * player first, the notes under it, at every width; never side by side. The
+ * block takes the width the page gives it and, on a short window, narrows
+ * until a whole 16:9 frame fits under the top bar.
  */
 
 const html = (notes: boolean) =>
@@ -20,34 +19,38 @@ const html = (notes: boolean) =>
     })
   );
 
-const host = (markup: string) => {
-  const root = new DOMParser().parseFromString(markup, "text/html").body
+const block = (markup: string) =>
+  new DOMParser().parseFromString(markup, "text/html").body
     .firstElementChild as HTMLElement;
-  const grid = root.firstElementChild as HTMLElement;
-  return { root, grid, classes: (grid.getAttribute("class") ?? "").split(" ") };
-};
 
 describe("the player and its notes", () => {
-  it("puts the player first and the notes after it, in one grid", () => {
-    const { grid } = host(html(true));
-    expect([...grid.children].map((c) => c.id)).toEqual(["player", "notes"]);
+  it("puts the player first and the notes under it", () => {
+    const root = block(html(true));
+    expect([...root.children].map((c) => c.id)).toEqual(["player", "notes"]);
+    expect(root.className.split(" ")).toContain("flex-col");
   });
 
-  it("is one column unless the column itself is at least 64rem wide", () => {
-    const { root, classes } = host(html(true));
-    expect(root.getAttribute("class")).toBe("@container");
-    expect(classes).toContain("grid-cols-1");
-    expect(classes.filter((c) => c.includes("grid-cols-["))).toEqual([
-      "@min-[64rem]:grid-cols-[minmax(0,1fr)_minmax(0,22rem)]",
-    ]);
-    // no viewport breakpoint decides it: a phone is one column by default
-    expect(classes.filter((c) => /^(max-)?(sm|md|lg|xl|2xl):/.test(c))).toEqual(
-      []
+  it("is never two columns, at any width", () => {
+    const classes = block(html(true)).className.split(" ");
+    expect(classes.filter((c) => c.includes("grid-cols"))).toEqual([]);
+    expect(
+      classes.filter(
+        (c) => c.startsWith("@") || /^(max-)?(sm|md|lg|xl|2xl):/.test(c)
+      )
+    ).toEqual([]);
+  });
+
+  it("narrows, centred, until a whole 16:9 frame fits under the top bar", () => {
+    const classes = block(html(true)).className.split(" ");
+    expect(classes).toContain("mx-auto");
+    expect(classes).toContain(
+      "max-inline-[min(100%,calc((100svh_-_var(--layout-topbar)_-_var(--space-12))*16/9))]"
     );
   });
 
   it("is the player alone when the viewer takes no notes", () => {
-    const { grid } = host(html(false));
-    expect([...grid.children].map((c) => c.id)).toEqual(["player"]);
+    expect([...block(html(false)).children].map((c) => c.id)).toEqual([
+      "player",
+    ]);
   });
 });

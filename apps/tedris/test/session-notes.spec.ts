@@ -134,7 +134,7 @@ describe("the notes panel on the session page", () => {
     expect(html).toContain('id="recording-frame"');
   });
 
-  it("comes right under the recording, before the join card and the agenda (MDRS-280)", async () => {
+  it("gives a finished session's recording the page's width, the notes under it, before the join card and the agenda (MDRS-280)", async () => {
     const html = await render(
       course({ status: "ENROLLED" }),
       session({
@@ -145,27 +145,28 @@ describe("the notes panel on the session page", () => {
     );
     const frame = html.indexOf('id="recording-frame"');
     const notes = html.indexOf('data-notes="s1"');
+    const columns = html.indexOf(
+      "grid-cols-[minmax(0,1fr)_var(--layout-aside)]"
+    );
     expect(frame).toBeGreaterThan(-1);
     expect(notes).toBeGreaterThan(frame);
+    // the block is outside the page's two columns, above them: it is as wide
+    // as the page, and the join card, the agenda and the aside come after it
+    const block = html.lastIndexOf("data-player-with-notes", frame);
+    expect(block).toBeGreaterThan(-1);
+    expect(columns).toBeGreaterThan(notes);
     expect(notes).toBeLessThan(html.indexOf('id="agenda-title"'));
-    // the player and the panel share one layout: one column, a second only
-    // where the column itself is 64rem wide
-    const layout = html.lastIndexOf("data-player-with-notes", frame);
-    expect(layout).toBeGreaterThan(-1);
-    expect(html.indexOf("data-player-with-notes", layout + 1)).toBe(-1);
-    expect(html.slice(layout, frame)).toContain("grid-cols-1");
-    expect(html.slice(layout, frame)).toContain(
-      "@min-[64rem]:grid-cols-[minmax(0,1fr)_minmax(0,22rem)]"
-    );
   });
 
-  it("comes right under the live stream, before its chat (MDRS-280)", async () => {
+  it("keeps a live stream in the column after the join card, the notes under it (MDRS-280)", async () => {
     const html = await render(course({ status: "ENROLLED" }), LIVE);
     const frame = html.indexOf('id="live-stream-frame"');
     const notes = html.indexOf('data-notes="s1"');
     expect(notes).toBeGreaterThan(frame);
-    const layout = html.lastIndexOf("data-player-with-notes", frame);
-    expect(layout).toBeGreaterThan(-1);
+    const block = html.lastIndexOf("data-player-with-notes", frame);
+    expect(block).toBeGreaterThan(
+      html.indexOf("grid-cols-[minmax(0,1fr)_var(--layout-aside)]")
+    );
     // nothing of the page between the stream's card and the panel
     expect(html.slice(frame, notes)).not.toContain("<section");
   });
