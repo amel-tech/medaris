@@ -39,14 +39,14 @@ const course = {
   ],
 } as unknown as CourseDetailResponse;
 
-const mount = () =>
+const mount = (read: CourseDetailResponse = course) =>
   render(
     <NextIntlClientProvider
       locale="tr"
       timeZone="Europe/Istanbul"
       messages={{ nizam: resources.tr.nizam } as never}
     >
-      <CurriculumEditor kosk={{ id: "k1", name: "N" }} course={course} />
+      <CurriculumEditor kosk={{ id: "k1", name: "N" }} course={read} />
     </NextIntlClientProvider>
   );
 
@@ -113,6 +113,47 @@ describe("Bağlı kaynaklar (MDRS-279)", () => {
         url: "https://files.medaris.org/bina.pdf",
       },
       { name: "Emsile", meta: null, type: "link", url: "https://emsile.test/" },
+    ]);
+  });
+
+  it("saves a row stored without an address, sending none, so tedrisat keeps it", async () => {
+    await mount({
+      ...course,
+      resources: [
+        { id: "r2", name: "Emsile", meta: null, type: null, url: null },
+      ],
+    } as unknown as CourseDetailResponse);
+    await typeInto(field("title") as HTMLInputElement, "Emsile");
+    await click(button("Kaydet"));
+    await settle();
+    expect(saveCurriculum).toHaveBeenCalledTimes(1);
+    expect(saveCurriculum.mock.calls[0]?.[2].resources).toEqual([
+      { id: "r2", name: "Emsile", meta: null, type: undefined },
+    ]);
+  });
+
+  it("shows a content-locked read's rows read-only and saves them as they are", async () => {
+    await mount({
+      ...course,
+      contentLocked: true,
+      resources: [
+        { id: "r1", name: "Bina", meta: "PDF · 124 sayfa", type: "pdf" },
+      ],
+    } as unknown as CourseDetailResponse);
+    expect(section()).toContain("Bina");
+    expect(section()).toContain(
+      resources.tr.nizam.Curriculum.resourcesLocked as string
+    );
+    expect(field("resource-0-url")).toBeNull();
+    expect(field("resource-0-name")).toBeNull();
+    expect(button("Kaynak ekle")).toBeUndefined();
+    expect(button("Kaynağı çıkar")).toBeUndefined();
+    await typeInto(field("title") as HTMLInputElement, "Emsile");
+    await click(button("Kaydet"));
+    await settle();
+    expect(saveCurriculum).toHaveBeenCalledTimes(1);
+    expect(saveCurriculum.mock.calls[0]?.[2].resources).toEqual([
+      { id: "r1", name: "Bina", meta: "PDF · 124 sayfa", type: "pdf" },
     ]);
   });
 });

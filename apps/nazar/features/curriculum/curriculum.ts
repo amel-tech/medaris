@@ -70,6 +70,12 @@ export interface ResourceDraft {
   url: string;
   /** kept as stored; a row added here is a "link" */
   type: string | null;
+  /**
+   * Whether an empty address stops "Kaydet". Not for a row stored without
+   * one (it predates the rule) nor for any row of a content-locked read,
+   * which carries no address to show: tedrisat keeps what is stored.
+   */
+  urlRequired: boolean;
 }
 
 /** The whole form: what "Kaydet" sends and what "Vazgeç" puts back. */
@@ -139,7 +145,7 @@ export function weekDraftsOf(
 }
 
 export const resourceDraftsOf = (
-  course: Pick<CourseDetailResponse, "resources">
+  course: Pick<CourseDetailResponse, "resources" | "contentLocked">
 ): ResourceDraft[] =>
   course.resources.map((resource) => ({
     id: resource.id,
@@ -147,6 +153,7 @@ export const resourceDraftsOf = (
     meta: resource.meta ?? "",
     url: resource.url ?? "",
     type: resource.type ?? null,
+    urlRequired: !course.contentLocked && Boolean(resource.url),
   }));
 
 export const emptyResource = (): ResourceDraft => ({
@@ -154,6 +161,7 @@ export const emptyResource = (): ResourceDraft => ({
   meta: "",
   url: "",
   type: "link",
+  urlRequired: true,
 });
 
 export const emptyLesson = (date = ""): LessonDraft => ({
@@ -251,7 +259,8 @@ export interface CurriculumError {
  * The course name, each week's title, and for every live session its title,
  * date, time, length and https link. A cancelled session is information and
  * is not checked. Every resource needs a name and an http(s) address, as
- * tedrisat does (MDRS-279).
+ * tedrisat does (MDRS-279), but for a row that has none to show (see
+ * `urlRequired`).
  */
 export function curriculumErrors(
   title: string,
@@ -280,7 +289,11 @@ export function curriculumErrors(
     if (!resource.name.trim()) {
       errors.push({ kind: "resourceName", resourceIndex });
     }
-    if (resourceUrlProblem(resource.url)) {
+    // A typed address is always checked; an empty one only where required.
+    if (
+      (resource.url.trim() || resource.urlRequired) &&
+      resourceUrlProblem(resource.url)
+    ) {
       errors.push({ kind: "resourceUrl", resourceIndex });
     }
   });
@@ -303,7 +316,11 @@ function lessonInstant(draft: LessonDraft, timeZone: string): Date | null {
   return instantOf(draft.date, draft.time, timeZone) ?? stored;
 }
 
-const lessonBody = (draft: LessonDraft, timeZone: string): CreateLessonDto => {
+const lessonBody = (
+  draft: LessonDraft,
+  timeZone: string,
+  locked: boolean
+): CreateLessonDto => {
   const url = normalizeMeetingUrl(draft.meetingUrl);
   const at = draft.cancelledAt
     ? draft.scheduledAtIso
@@ -318,9 +335,19 @@ const lessonBody = (draft: LessonDraft, timeZone: string): CreateLessonDto => {
     scheduledAt: at ?? undefined,
     // An emptied link or source line is sent as null: tedrisat clears the
     // column for null and leaves it alone for a missing key (MDRS-279).
-    kaynak: (draft.kaynak.trim() || null) as unknown as string,
-    meetingUrl: (url || null) as unknown as string,
-    agenda: draft.agenda,
+    // A caller whose read was content-locked was sent no source line, link
+    // or agenda, so its empty drafts are not theirs to clear: those keys stay
+    // out and tedrisat keeps what is stored. A link such a caller types is
+    // still sent.
+    ...(locked
+      ? {}
+      : {
+          kaynak: (draft.kaynak.trim() || null) as unknown as string,
+          agenda: draft.agenda,
+        }),
+    ...(locked && !url
+      ? {}
+      : { meetingUrl: (url || null) as unknown as string }),
     isPreview: draft.isPreview,
   };
 };
@@ -348,7 +375,9 @@ export function curriculumPayload(
       weekNumber: week.weekNumber,
       title: week.title.trim(),
       summary: week.summary.trim() || undefined,
-      lessons: week.lessons.map((lesson) => lessonBody(lesson, timeZone)),
+      lessons: week.lessons.map((lesson) =>
+        lessonBody(lesson, timeZone, course.contentLocked)
+      ),
     })),
     muderris: course.muderris.map((m) => ({
       id: m.id,
@@ -365,7 +394,12 @@ export function curriculumPayload(
       name: resource.name.trim(),
       meta: (resource.meta.trim() || null) as unknown as string,
       type: resource.type ?? undefined,
-      url: resource.url.trim(),
+      // No address is sent for a row the caller could not see the address
+      // of (a content-locked read) or one stored without any: tedrisat
+      // keeps the stored url for a missing key.
+      ...(!course.contentLocked && resource.url.trim()
+        ? { url: resource.url.trim() }
+        : {}),
     })),
   };
 }

@@ -22,15 +22,60 @@ export function ResourcesEditor({
   resources,
   onChange,
   shown,
+  locked = false,
 }: {
   resources: ResourceDraft[];
   onChange: (next: ResourceDraft[]) => void;
   /** whether a problem of this row is to be shown (after a refused "Kaydet") */
   shown: (kind: CurriculumProblem, resourceIndex: number) => boolean;
+  /**
+   * the course was read content-locked: it carries no addresses, so the rows
+   * are shown and kept as they are, never edited (MDRS-279)
+   */
+  locked?: boolean;
 }) {
   const t = useTranslations("nizam.Curriculum");
   const patch = (ri: number, change: Partial<ResourceDraft>) =>
     onChange(resources.map((r, i) => (i === ri ? { ...r, ...change } : r)));
+
+  if (locked) {
+    return (
+      <section
+        className="mds-card flex flex-col gap-4"
+        aria-labelledby="c-resources"
+        data-testid="resources"
+      >
+        <div className="flex flex-col gap-1">
+          <h2 id="c-resources" className="mds-h2">
+            {t("resourcesTitle")}
+          </h2>
+          <p className="mds-caption">{t("resourcesLocked")}</p>
+        </div>
+        {resources.length === 0 ? (
+          <p className="mds-body-sm">{t("resourcesEmpty")}</p>
+        ) : (
+          <ul className="m-0 flex list-none flex-col p-0">
+            {resources.map((resource, ri) => (
+              <li
+                key={resource.id ?? ri}
+                className="flex flex-col py-3 border-be border-neutral-subtle last:border-be-0"
+                data-testid={`resource-${ri}`}
+              >
+                <span className="mds-label" dir="auto">
+                  {resource.name}
+                </span>
+                {resource.meta ? (
+                  <span className="mds-caption" dir="auto">
+                    {resource.meta}
+                  </span>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    );
+  }
 
   return (
     <section

@@ -571,10 +571,16 @@ export interface ResourceDraft {
   url: string;
   /** kept as stored; a row added here is a "link" */
   type: string | null;
+  /**
+   * Whether an empty address stops "Kaydet". Not for a row stored without
+   * one (it predates the rule) nor for any row of a content-locked read,
+   * which carries no address to show: tedrisat keeps what is stored.
+   */
+  urlRequired: boolean;
 }
 
 export function resourceDraftsOf(
-  course: Pick<CourseDetailResponse, "resources">
+  course: Pick<CourseDetailResponse, "resources" | "contentLocked">
 ): ResourceDraft[] {
   return course.resources.map((r) => ({
     id: r.id,
@@ -582,6 +588,7 @@ export function resourceDraftsOf(
     meta: r.meta ?? "",
     url: r.url ?? "",
     type: r.type ?? null,
+    urlRequired: !course.contentLocked && Boolean(r.url),
   }));
 }
 
@@ -590,6 +597,7 @@ export const emptyResource = (): ResourceDraft => ({
   meta: "",
   url: "",
   type: "link",
+  urlRequired: true,
 });
 
 export type CurriculumProblem =
@@ -614,7 +622,8 @@ export interface CurriculumError {
  * Everything that stops "Kaydet" (nizam/54): the course name, each week's
  * title, and for every live session its title, date, time, length and https
  * link. A cancelled session is information and is not checked. Every
- * resource needs a name and an http(s) address, as tedrisat does (MDRS-279).
+ * resource needs a name and an http(s) address, as tedrisat does (MDRS-279),
+ * but for a row that has none to show (see `urlRequired`).
  */
 export function curriculumErrors(
   title: string,
@@ -642,7 +651,8 @@ export function curriculumErrors(
   });
   resources.forEach((r, resourceIndex) => {
     if (!r.name.trim()) errors.push({ kind: "resourceName", resourceIndex });
-    if (resourceUrlProblem(r.url)) {
+    // A typed address is always checked; an empty one only where required.
+    if ((r.url.trim() || r.urlRequired) && resourceUrlProblem(r.url)) {
       errors.push({ kind: "resourceUrl", resourceIndex });
     }
   });

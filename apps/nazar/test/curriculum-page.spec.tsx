@@ -733,4 +733,55 @@ describe("Bağlı kaynaklar (MDRS-279)", () => {
     expect(buttonIn(section(), "Kaynak ekle")).toBeUndefined();
     expect(buttonIn(section(), "Kaynağı çıkar")).toBeUndefined();
   });
+
+  it("keeps what a content-locked read cannot see: kaynak off, rows read-only, saved as they are", async () => {
+    state.course = {
+      status: "ok",
+      data: course({
+        contentLocked: true,
+        resources: [
+          { id: "r1", name: "Bina", meta: "PDF · 124 sayfa", type: "pdf" },
+        ],
+      }),
+    };
+    await mount();
+    expect(field("lesson-1-0-kaynak").disabled).toBe(true);
+    expect(form().textContent).toContain(
+      resources.tr.nazar.Curriculum.kaynakLocked
+    );
+    expect(section().textContent).toContain(
+      resources.tr.nazar.Curriculum.resourcesLocked
+    );
+    expect(section().textContent).toContain("Bina");
+    expect(field("resource-0-url")).toBeNull();
+    expect(buttonIn(section(), "Kaynak ekle")).toBeUndefined();
+    expect(buttonIn(section(), "Kaynağı çıkar")).toBeUndefined();
+    await typeInto(field("title"), "Yeni ad");
+    await submit();
+    expect(resourcesSent()).toEqual([
+      { id: "r1", name: "Bina", meta: "PDF · 124 sayfa", type: "pdf" },
+    ]);
+    const first = sentBody().weeks[1]?.lessons[0] ?? {};
+    expect(first).toMatchObject({ id: "l-2" });
+    expect(Object.keys(first)).not.toContain("kaynak");
+    expect(Object.keys(first)).not.toContain("agenda");
+  });
+
+  it("saves a row stored without an address, sending none", async () => {
+    state.course = {
+      status: "ok",
+      data: course({
+        resources: [
+          { id: "r2", name: "Emsile", meta: null, type: null, url: null },
+        ],
+      }),
+    };
+    await mount();
+    await typeInto(field("title"), "Yeni ad");
+    await submit();
+    expect(saveCurriculum).toHaveBeenCalledTimes(1);
+    expect(resourcesSent()).toEqual([
+      { id: "r2", name: "Emsile", meta: null, type: undefined },
+    ]);
+  });
 });

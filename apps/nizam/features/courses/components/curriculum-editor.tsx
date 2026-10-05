@@ -304,6 +304,7 @@ export function CurriculumEditor({ kosk, course }: Props) {
         resources={resources}
         onChange={setResources}
         shown={shownResource}
+        locked={saved.contentLocked}
       />
 
       <section className="flex flex-col gap-4" aria-labelledby="c-weeks">
@@ -546,13 +547,21 @@ export function CurriculumEditor({ kosk, course }: Props) {
                                 tedrisat column's 120 characters at most. */}
                             <Field
                               label={t("kaynakLabel")}
-                              help={t("kaynakHelp")}
+                              help={t(
+                                saved.contentLocked
+                                  ? "kaynakLocked"
+                                  : "kaynakHelp"
+                              )}
                             >
                               <Input
                                 name={`lesson-${wi}-${li}-kaynak`}
                                 value={lesson.kaynak}
                                 maxLength={120}
                                 dir="auto"
+                                // A content-locked read carries no source
+                                // line: there is nothing here to edit, and the
+                                // save leaves the stored one alone.
+                                disabled={saved.contentLocked}
                                 onChange={(e) =>
                                   patchLesson(wi, li, {
                                     kaynak: e.target.value,

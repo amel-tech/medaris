@@ -27,7 +27,11 @@ export interface CurriculumEdit {
   resources: ResourceDraft[];
 }
 
-const lessonBody = (draft: LessonDraft, timeZone: string): CreateLessonDto => {
+const lessonBody = (
+  draft: LessonDraft,
+  timeZone: string,
+  locked: boolean
+): CreateLessonDto => {
   const url = normalizeMeetingUrl(draft.meetingUrl);
   const at = draft.cancelledAt
     ? draft.scheduledAtIso
@@ -40,9 +44,19 @@ const lessonBody = (draft: LessonDraft, timeZone: string): CreateLessonDto => {
     scheduledAt: at ? new Date(at) : undefined,
     // An emptied link or source line is sent as null: tedrisat clears the
     // column for null and leaves it alone for a missing key (MDRS-279).
-    kaynak: (draft.kaynak.trim() || null) as unknown as string,
-    meetingUrl: (url || null) as unknown as string,
-    agenda: draft.agenda,
+    // A caller whose read was content-locked was sent no source line, link
+    // or agenda, so its empty drafts are not theirs to clear: those keys stay
+    // out and tedrisat keeps what is stored. A link such a caller types is
+    // still sent.
+    ...(locked
+      ? {}
+      : {
+          kaynak: (draft.kaynak.trim() || null) as unknown as string,
+          agenda: draft.agenda,
+        }),
+    ...(locked && !url
+      ? {}
+      : { meetingUrl: (url || null) as unknown as string }),
     isPreview: draft.isPreview,
   };
 };
@@ -61,7 +75,9 @@ export function curriculumPayload(
       weekNumber: w.weekNumber,
       title: w.title.trim(),
       summary: w.summary.trim() || undefined,
-      lessons: w.lessons.map((l) => lessonBody(l, course.timeZone)),
+      lessons: w.lessons.map((l) =>
+        lessonBody(l, course.timeZone, course.contentLocked)
+      ),
     })),
     muderris: course.muderris.map((m) => ({
       id: m.id,
@@ -78,7 +94,10 @@ export function curriculumPayload(
       name: r.name.trim(),
       meta: (r.meta.trim() || null) as unknown as string,
       type: r.type ?? undefined,
-      url: r.url.trim(),
+      // No address is sent for a row the caller could not see the address
+      // of (a content-locked read) or one stored without any: tedrisat
+      // keeps the stored url for a missing key.
+      ...(!course.contentLocked && r.url.trim() ? { url: r.url.trim() } : {}),
     })),
   };
 }

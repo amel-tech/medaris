@@ -465,8 +465,17 @@ describe("the course's resources, as links (MDRS-279)", () => {
         meta: "PDF · 124 sayfa",
         url: "https://files.medaris.org/bina.pdf",
         type: "pdf",
+        urlRequired: true,
       },
-      { id: "r-2", name: "Emsile", meta: "", url: "", type: null },
+      // stored without an address: an empty one does not stop Kaydet
+      {
+        id: "r-2",
+        name: "Emsile",
+        meta: "",
+        url: "",
+        type: null,
+        urlRequired: false,
+      },
     ]);
   });
 
@@ -476,6 +485,7 @@ describe("the course's resources, as links (MDRS-279)", () => {
       meta: "",
       url: "",
       type: "link",
+      urlRequired: true,
     });
   });
 
@@ -568,6 +578,85 @@ describe("the course's resources, as links (MDRS-279)", () => {
     expect(
       curriculumPayload(linked(), form({ resources: [] }), ZONE).resources
     ).toEqual([]);
+  });
+});
+
+describe("what a save keeps (MDRS-279)", () => {
+  // The body a content-locked read carries: no kaynak, agenda, link or url.
+  const locked = () =>
+    course({
+      contentLocked: true,
+      weeks: [
+        {
+          id: "w-1",
+          weekNumber: 1,
+          title: "Birinci",
+          summary: "Özet",
+          lessons: [
+            lesson({
+              meetingUrl: undefined,
+              kaynak: undefined,
+              agenda: undefined,
+            }),
+          ],
+        },
+      ],
+      resources: [
+        { id: "r-1", name: "Kitap", meta: "PDF · 124 sayfa", type: "pdf" },
+      ],
+    });
+  const lockedForm = () =>
+    form({
+      weeks: weekDraftsOf(locked(), ZONE),
+      resources: resourceDraftsOf(locked()),
+    });
+
+  it("leaves out the kaynak, agenda and empty link of a content-locked read, so tedrisat keeps them", () => {
+    const sent = curriculumPayload(locked(), lockedForm(), ZONE).weeks?.[0]
+      ?.lessons?.[0];
+    expect(sent).toMatchObject({ id: "l-1", title: "Hafta 1" });
+    for (const key of ["kaynak", "agenda", "meetingUrl"]) {
+      expect(Object.keys(sent ?? {})).not.toContain(key);
+    }
+    // A link such a caller types is still sent.
+    const typed = lockedForm();
+    (typed.weeks[0]?.lessons[0] as LessonDraft).meetingUrl = "zoom.us/j/9";
+    expect(
+      curriculumPayload(locked(), typed, ZONE).weeks?.[0]?.lessons?.[0]
+        ?.meetingUrl
+    ).toBe("https://zoom.us/j/9");
+  });
+
+  it("saves a content-locked read with its resources as they are, their urls left out", () => {
+    expect(resourceDraftsOf(locked())[0]?.urlRequired).toBe(false);
+    expect(curriculumErrors("Bina", [], resourceDraftsOf(locked()))).toEqual(
+      []
+    );
+    expect(curriculumPayload(locked(), lockedForm(), ZONE).resources).toEqual([
+      { id: "r-1", name: "Kitap", meta: "PDF · 124 sayfa", type: "pdf" },
+    ]);
+  });
+
+  it("does not let a row stored without an address stop Kaydet, and sends it without one", () => {
+    const drafts = resourceDraftsOf(course());
+    expect(curriculumErrors("Bina", [], drafts)).toEqual([]);
+    expect(
+      curriculumPayload(course(), form({ resources: drafts }), ZONE).resources
+    ).toEqual([{ id: "r-1", name: "Kitap", meta: null, type: "PDF" }]);
+    // An address typed into it is checked; a new row still needs one.
+    expect(
+      curriculumErrors(
+        "Bina",
+        [],
+        [
+          { ...(drafts[0] as ResourceDraft), url: "kitap.pdf" },
+          { ...emptyResource(), name: "Tatbikat" },
+        ]
+      )
+    ).toEqual([
+      { kind: "resourceUrl", resourceIndex: 0 },
+      { kind: "resourceUrl", resourceIndex: 1 },
+    ]);
   });
 });
 

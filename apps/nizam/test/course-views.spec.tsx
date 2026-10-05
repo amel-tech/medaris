@@ -325,6 +325,19 @@ describe("Müfredat (nizam 54)", () => {
     expect(none).toContain("Kaynak ekle");
   });
 
+  it("turns the kaynak off for a content-locked read and says why (MDRS-279)", () => {
+    const html = render(
+      <CurriculumEditor
+        kosk={{ id: "k1", name: "N" }}
+        course={{ ...course, contentLocked: true } as CourseDetailResponse}
+      />
+    );
+    expect(
+      html.match(/<input[^>]*name="lesson-1-0-kaynak"[^>]*>/)?.[0]
+    ).toContain("disabled");
+    expect(html).toContain(resources.tr.nizam.Curriculum.kaynakLocked);
+  });
+
   it("words the resources in every locale", () => {
     for (const locale of ["en", "ar"] as const) {
       const html = render(

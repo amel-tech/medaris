@@ -668,14 +668,24 @@ describe("Bağlı kaynaklar, as links (MDRS-279)", () => {
         meta: "PDF · 124 sayfa",
         url: "https://files.medaris.org/bina.pdf",
         type: "pdf",
+        urlRequired: true,
       },
-      { id: "r2", name: "Emsile", meta: "", url: "", type: null },
+      // stored without an address: an empty one does not stop Kaydet
+      {
+        id: "r2",
+        name: "Emsile",
+        meta: "",
+        url: "",
+        type: null,
+        urlRequired: false,
+      },
     ]);
     expect(emptyResource()).toEqual({
       name: "",
       meta: "",
       url: "",
       type: "link",
+      urlRequired: true,
     });
   });
 
@@ -754,6 +764,106 @@ describe("Bağlı kaynaklar, as links (MDRS-279)", () => {
     ]);
     // A row taken out of the form is not sent, so tedrisat removes it.
     expect(curriculumPayload(course, edit([])).resources).toEqual([]);
+  });
+});
+
+describe("what a save keeps (MDRS-279)", () => {
+  const lesson = {
+    id: "l1",
+    weekId: "w1",
+    title: "Birinci",
+    type: "LIVE",
+    durationMinutes: 60,
+    scheduledAt: "2026-10-03T18:00:00.000Z",
+    isPreview: false,
+    orderIndex: 0,
+    cancelledAt: null,
+    replacementLessonId: null,
+  };
+  const base = {
+    id: "c1",
+    version: 4,
+    timeZone: "Europe/Istanbul",
+    title: "Emsile ve Bina",
+    description: null,
+    coverHue: 20,
+    muderris: [],
+    weeks: [{ id: "w1", weekNumber: 1, title: "Birinci", lessons: [lesson] }],
+  };
+  // The body a content-locked read carries: no kaynak, agenda, link or url.
+  const locked = {
+    ...base,
+    contentLocked: true,
+    resources: [
+      { id: "r1", name: "Bina", meta: "PDF · 124 sayfa", type: "pdf" },
+    ],
+  } as unknown as CourseDetailResponse;
+  const save = (course: CourseDetailResponse, resources: ResourceDraft[]) =>
+    curriculumPayload(course, {
+      title: "Emsile ve Bina",
+      description: "",
+      tone: "bordo",
+      weeks: weekDraftsOf(course),
+      resources,
+    });
+
+  it("leaves out the kaynak, agenda and empty link of a content-locked read, so tedrisat keeps them", () => {
+    const sent = save(locked, resourceDraftsOf(locked)).weeks?.[0]
+      ?.lessons?.[0];
+    expect(sent).toMatchObject({ id: "l1", title: "Birinci" });
+    expect(Object.keys(sent ?? {})).not.toContain("kaynak");
+    expect(Object.keys(sent ?? {})).not.toContain("agenda");
+    expect(Object.keys(sent ?? {})).not.toContain("meetingUrl");
+    // A link such a caller types is still sent.
+    const weeks = weekDraftsOf(locked);
+    (weeks[0]?.lessons[0] as LessonDraft).meetingUrl = "https://zoom.us/j/9";
+    const typed = curriculumPayload(locked, {
+      title: "Emsile ve Bina",
+      description: "",
+      tone: "bordo",
+      weeks,
+      resources: resourceDraftsOf(locked),
+    }).weeks?.[0]?.lessons?.[0];
+    expect(typed?.meetingUrl).toBe("https://zoom.us/j/9");
+    expect(Object.keys(typed ?? {})).not.toContain("kaynak");
+  });
+
+  it("saves a content-locked read with its resources as they are, their urls left out", () => {
+    const drafts = resourceDraftsOf(locked);
+    expect(drafts[0]?.urlRequired).toBe(false);
+    expect(curriculumErrors("Emsile ve Bina", [], drafts)).toEqual([]);
+    expect(save(locked, drafts).resources).toEqual([
+      { id: "r1", name: "Bina", meta: "PDF · 124 sayfa", type: "pdf" },
+    ]);
+  });
+
+  it("does not let a row stored without an address stop Kaydet, and sends it without one", () => {
+    const legacy = {
+      ...base,
+      contentLocked: false,
+      resources: [
+        { id: "r2", name: "Emsile", meta: null, type: null, url: null },
+      ],
+    } as unknown as CourseDetailResponse;
+    const drafts = resourceDraftsOf(legacy);
+    expect(curriculumErrors("Emsile ve Bina", [], drafts)).toEqual([]);
+    expect(save(legacy, drafts).resources).toEqual([
+      { id: "r2", name: "Emsile", meta: null, type: undefined },
+    ]);
+    // An address typed into it is checked; a new row still needs one.
+    expect(
+      curriculumErrors(
+        "Emsile ve Bina",
+        [],
+        [
+          { ...(drafts[0] as ResourceDraft), url: "emsile.pdf" },
+          { ...emptyResource(), name: "Tatbikat" },
+        ]
+      )
+    ).toEqual([
+      { kind: "resourceUrl", resourceIndex: 0 },
+      { kind: "resourceUrl", resourceIndex: 1 },
+    ]);
   });
 });
 
