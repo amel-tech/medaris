@@ -64,9 +64,6 @@ test("nizam/07 — the tabs' numbers are the database's totals, and each medrese
   page,
 }) => {
   test.skip(!(seedable && SYSTEM_ADMIN.password), "no SYSTEM_ADMIN account");
-  // the button is shut before 4 Ekim 2026 on the viewer's clock, which the real
-  // clock of a run has passed: pin it so the spec says what it means
-  await page.clock.setFixedTime(new Date("2026-10-02T09:00:00+03:00"));
   await signIn(page, SYSTEM_ADMIN);
   await openMedreseler(page);
 
@@ -81,14 +78,14 @@ test("nizam/07 — the tabs' numbers are the database's totals, and each medrese
   await expect(active).toContainText("Etkin");
   await expect(active).toContainText(`@${fixture.active.handle}`);
   await expect(active).toContainText(fixture.koskName);
-  // an active row has nizam/22's button, shut until the version gate, and
-  // MDRS-227's "Pasife al"
+  // an active row has nizam/22's button, on since MDRS-215 dropped the version
+  // gate, and MDRS-227's "Pasife al"
   await expect(active.getByRole("button")).toHaveCount(2);
   await expect(
     active.getByRole("button", {
       name: `Başmüderrisi değiştir: ${fixture.active.name}`,
     })
-  ).toBeDisabled();
+  ).toBeEnabled();
   await expect(
     active.getByRole("button", { name: `Pasife al: ${fixture.active.name}` })
   ).toBeEnabled();
@@ -145,9 +142,6 @@ test("nizam/07 — 'Geri al' brings a hidden medrese back as Etkin (criterion 3)
   page,
 }) => {
   test.skip(!(seedable && SYSTEM_ADMIN.password), "no SYSTEM_ADMIN account");
-  // the button is shut before 4 Ekim 2026 on the viewer's clock, which the real
-  // clock of a run has passed: pin it so the spec says what it means
-  await page.clock.setFixedTime(new Date("2026-10-02T09:00:00+03:00"));
   await signIn(page, SYSTEM_ADMIN);
   await openMedreseler(page);
 
@@ -160,13 +154,13 @@ test("nizam/07 — 'Geri al' brings a hidden medrese back as Etkin (criterion 3)
   ).toBeVisible();
   await expect(row).toContainText("Etkin");
   await expect(row).not.toContainText("Gizli");
-  // it is an active medrese with a başmüderris now: nizam/22's shut button and "Pasife al"
+  // it is an active medrese with a başmüderris now: nizam/22's button and "Pasife al"
   await expect(row.getByRole("button")).toHaveCount(2);
   await expect(
     row.getByRole("button", {
       name: `Başmüderrisi değiştir: ${fixture.hidden.name}`,
     })
-  ).toBeDisabled();
+  ).toBeEnabled();
   expect(
     (await fixture.madrasahByHandle(fixture.hidden.handle))?.archived
   ).toBe(false);

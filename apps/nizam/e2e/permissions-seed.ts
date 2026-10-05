@@ -45,9 +45,12 @@ export interface PermissionsFixture {
   }>;
   /** a MEDARIS_NAZIM role for the account, taken out with the rest */
   makeMedarisNazim: (sub: string) => Promise<void>;
-  /** removes a person the spec appointed through the screen */
+  /**
+   * Takes out, with the rest, what a spec gives a real account through the
+   * screen from now on. Only that: the account's own row and the roles the
+   * shared test seed gives it stay.
+   */
   forget: (userId: string) => Promise<void>;
-  /** the kept `users` rows that are not ours: the account a spec appoints */
   remove: () => Promise<void>;
 }
 
@@ -89,7 +92,8 @@ export async function seedPermissions(): Promise<PermissionsFixture> {
     dersDenetimi: { id: ids.dersDenetimi, name: `E2E Ders denetimi ${tail}` },
   };
   const koskName = `E2E Nûruosmaniye Köşkü ${tail}`;
-  const extraUsers: string[] = [];
+  // real accounts a spec appoints through the screen, each with the moment it began
+  const extraUsers: Array<{ id: string; since: Date }> = [];
   const medarisNazims: HeldMedarisNazim[] = [];
 
   // Appointed 14, 15 and 22 September; the second ends in 14 days.
@@ -194,7 +198,6 @@ export async function seedPermissions(): Promise<PermissionsFixture> {
     seyyid.id,
     lapsed.id,
     handed.id,
-    ...extraUsers,
   ];
 
   return {
@@ -272,7 +275,10 @@ export async function seedPermissions(): Promise<PermissionsFixture> {
       medarisNazims.push(await holdMedarisNazim(sub));
     },
     forget: async (userId) => {
-      extraUsers.push(userId);
+      const {
+        rows: [{ now }],
+      } = await client.query("select now() as now");
+      extraUsers.push({ id: userId, since: now });
     },
     remove: async () => {
       try {
@@ -289,6 +295,18 @@ export async function seedPermissions(): Promise<PermissionsFixture> {
           "delete from role_assignments where user_id = any($1) or granted_by = any($1)",
           [people]
         );
+        // a real account keeps what it held before the spec; it lost its
+        // standing köşk nazımı row here once, for every spec after this one
+        for (const extra of extraUsers) {
+          await client.query(
+            "delete from permission_grants where user_id = $1 and created_at >= $2",
+            [extra.id, extra.since]
+          );
+          await client.query(
+            "delete from role_assignments where user_id = $1 and created_at >= $2",
+            [extra.id, extra.since]
+          );
+        }
         // Groups the specs made have the tail in their name.
         await client.query(
           "delete from permission_group_items where group_id in (select id from permission_groups where name like $1)",
