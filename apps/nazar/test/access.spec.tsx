@@ -29,6 +29,7 @@ const state = {
   tedris: "http://localhost:4000" as string | undefined,
   counts: {} as Record<string, number>,
   admin: { status: "none" } as AdminScope,
+  adminOutside: "none" as "ok" | "none" | "failed",
   viewer: null as unknown,
   course: { status: "failed" } as
     | { status: "ok"; data: unknown }
@@ -77,6 +78,7 @@ vi.mock("~/features/shell/admin-scope", () => ({
     adminAsked(courseId);
     return state.admin;
   },
+  adminOutsideScopes: async () => state.adminOutside,
 }));
 // What the real `adminCourseScope` reads, for its own describe below.
 vi.mock("~/features/account/reads", () => ({
@@ -118,6 +120,7 @@ beforeEach(() => {
   state.tedris = "http://localhost:4000";
   state.counts = {};
   state.admin = { status: "none" };
+  state.adminOutside = "none";
   state.viewer = null;
   state.course = { status: "failed" };
   adminAsked.mockReset();
@@ -380,6 +383,25 @@ describe("the layouts", () => {
     expect(result).not.toContain("sayfa");
   });
 
+  it("opens /hesap and /bildirimler to the başnazım who holds no seat, in the frame without a scope", async () => {
+    // the frame of a course he opened by its address links to both
+    state.portal = ok([]);
+    state.adminOutside = "ok";
+    const result = await outcome(() => layout(null));
+    expect(result).toMatch(/^rendered:/);
+    expect(result).toContain("sayfa");
+    expect(result).toContain("Medaris başnazımı");
+    expect(result).not.toContain("Ders ayarları");
+  });
+
+  it("is the retry state there, not the no-access page, when /me could not be read", async () => {
+    state.portal = ok([]);
+    state.adminOutside = "failed";
+    const result = await outcome(() => layout(null));
+    expect(result).toContain("Görevleriniz okunamadı");
+    expect(result).not.toContain("sayfa");
+  });
+
   it("never opens a medrese that way, nor asks for one's own scope", async () => {
     state.portal = ok([medrese()]);
     state.admin = { status: "ok", scope: adminCourse };
@@ -392,6 +414,8 @@ describe("the layouts", () => {
 });
 
 describe("the başnazım's course scope", () => {
+  /** A course id as the API has it; the address may write it in capitals. */
+  const COURSE = "0e1c7a52-3f4b-4d1e-9a6c-2b8f5d7e9a10";
   const scopeOf = async (courseId: string) => {
     const { adminCourseScope } = await vi.importActual<
       typeof import("~/features/shell/admin-scope")
@@ -400,24 +424,55 @@ describe("the başnazım's course scope", () => {
   };
 
   it("is nothing, and reads no course, for anyone /me does not call the başnazım", async () => {
-    for (const viewer of [null, { id: "u-1", roles: { systemAdmin: false } }]) {
-      state.viewer = viewer;
-      state.course = {
-        status: "ok",
-        data: { id: "c-9", title: "Şerh-i Akaid" },
-      };
-      expect(await scopeOf("c-9")).toEqual({ status: "none" });
-    }
+    state.viewer = { id: "u-1", roles: { systemAdmin: false } };
+    state.course = {
+      status: "ok",
+      data: { id: COURSE, title: "Şerh-i Akaid" },
+    };
+    expect(await scopeOf(COURSE)).toEqual({ status: "none" });
     expect(courseRead).not.toHaveBeenCalled();
+  });
+
+  it("is the retry state, never a verdict, when /me could not be read", async () => {
+    state.viewer = null;
+    state.course = {
+      status: "ok",
+      data: { id: COURSE, title: "Şerh-i Akaid" },
+    };
+    expect(await scopeOf(COURSE)).toEqual({ status: "failed" });
+    expect(courseRead).not.toHaveBeenCalled();
+  });
+
+  it("is the portal's 404 for an address that names no course id, as for anyone", async () => {
+    state.viewer = { id: "u-0", roles: { systemAdmin: true } };
+    await expect(scopeOf("1234-abcd")).rejects.toThrow(NOT_FOUND);
+    expect(courseRead).not.toHaveBeenCalled();
+  });
+
+  it("tells the pages outside any scope whether /me calls the caller the başnazım", async () => {
+    const { adminOutsideScopes } = await vi.importActual<
+      typeof import("~/features/shell/admin-scope")
+    >("~/features/shell/admin-scope");
+    for (const [viewer, answer] of [
+      [{ id: "u-0", roles: { systemAdmin: true } }, "ok"],
+      [{ id: "u-1", roles: { systemAdmin: false } }, "none"],
+      [null, "failed"],
+    ] as const) {
+      state.viewer = viewer;
+      expect(await adminOutsideScopes(), answer).toBe(answer);
+    }
   });
 
   it("is the course, by its own id and title, for the başnazım", async () => {
     state.viewer = { id: "u-0", roles: { systemAdmin: true } };
     state.course = {
       status: "ok",
-      data: { id: "c-9", title: "Şerh-i Akaid" },
+      data: { id: COURSE, title: "Şerh-i Akaid" },
     };
-    expect(await scopeOf("C-9")).toEqual({ status: "ok", scope: adminCourse });
+    expect(await scopeOf(COURSE.toUpperCase())).toEqual({
+      status: "ok",
+      scope: { ...adminCourse, id: COURSE },
+    });
     expect(courseRead).toHaveBeenCalledExactlyOnceWith("the course");
   });
 
@@ -428,7 +483,7 @@ describe("the başnazım's course scope", () => {
       { status: "forbidden" },
     ] as const) {
       state.course = course;
-      expect(await scopeOf("c-9")).toEqual({ status: "failed" });
+      expect(await scopeOf(COURSE)).toEqual({ status: "failed" });
     }
   });
 });

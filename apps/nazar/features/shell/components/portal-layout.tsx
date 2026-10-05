@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { getMessages } from "~/lib/i18n/messages";
-import { adminCourseScope } from "../admin-scope";
+import { adminCourseScope, adminOutsideScopes } from "../admin-scope";
 import { getMenuCounts, getPortal } from "../reads";
 import {
   defaultScope,
@@ -41,6 +41,8 @@ export async function PortalUnavailable({
  * with no scope at all is sent to the no-access page instead. The one
  * exception is the başnazım, who opens any course by its address (MDRS-270):
  * the course is his scope for that page only, and `/` is never sent back to it.
+ * The pages outside any scope that its frame links to open to him too, in the
+ * frame without a scope.
  */
 export async function PortalLayout({
   scope: wanted,
@@ -56,14 +58,32 @@ export async function PortalLayout({
     ? findScope(portal.scopes, wanted.kind, wanted.id)
     : defaultScope(portal.scopes, (await cookies()).get(SCOPE_COOKIE)?.value);
   if (!current) {
+    const adminRoles =
+      portal.roles.length > 0 ? portal.roles : ["SYSTEM_ADMIN"];
+    // Outside any scope, `defaultScope` found none: the caller holds no scope.
+    if (!wanted) {
+      const admin = await adminOutsideScopes();
+      if (admin === "failed") return <PortalUnavailable />;
+      if (admin === "none") redirect(NO_ACCESS_PATH);
+      return (
+        <PortalFrame
+          person={portal.person}
+          roles={adminRoles}
+          scopes={[]}
+          current={null}
+        >
+          {children}
+        </PortalFrame>
+      );
+    }
     const admin =
-      wanted?.kind === "ders" ? await adminCourseScope(wanted.id) : null;
+      wanted.kind === "ders" ? await adminCourseScope(wanted.id) : null;
     if (admin?.status === "failed") return <PortalUnavailable />;
     if (admin?.status === "ok") {
       return (
         <PortalFrame
           person={portal.person}
-          roles={portal.roles.length > 0 ? portal.roles : ["SYSTEM_ADMIN"]}
+          roles={adminRoles}
           scopes={[...portal.scopes, admin.scope]}
           current={admin.scope}
           counts={await getMenuCounts(admin.scope)}
