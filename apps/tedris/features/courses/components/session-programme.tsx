@@ -16,18 +16,30 @@ const LESSON_TYPES: Record<string, LessonType> = {
  * The Müfredat block of the session page: the course's weeks as the kit's
  * accordion, the current week open, each live session a row. Done weeks and
  * rows follow the clock; a cancelled session keeps its place, marked.
+ *
+ * `viewingId` is the session the page shows. Its row is the one marked as the
+ * page (`aria-current="page"`) and its week opens beside the current one, so
+ * the programme follows the reader rather than staying on the clock's week 1.
  */
 export const SessionProgramme = async ({
   course,
   now,
+  viewingId,
 }: {
   course: CourseDetailResponse;
   now: Date;
+  viewingId?: string;
 }) => {
   const t = await getTranslations("tedris");
   const locale = await getLocale();
   const timeZone = await getTimeZone();
   const { weeks } = buildProgramme(course, now);
+  const openWeeks = weeks
+    .filter(
+      ({ week, state }) =>
+        state === "active" || week.lessons.some((l) => l.id === viewingId)
+    )
+    .map(({ week }) => week.weekNumber);
 
   return (
     <section
@@ -42,7 +54,7 @@ export const SessionProgramme = async ({
           {t("SessionPage.weeksCount", { count: weeks.length })}
         </span>
       </div>
-      <Weeks>
+      <Weeks defaultOpen={openWeeks}>
         {weeks.map(({ week, state, opensOn, sessionCount, minutes, rows }) => (
           <WeekAccordion
             key={week.id}
@@ -75,6 +87,8 @@ export const SessionProgramme = async ({
                 title={lesson.title}
                 type={LESSON_TYPES[lesson.type] ?? "document"}
                 state={rowState}
+                viewing={lesson.id === viewingId}
+                viewingLabel={t("SessionPage.rowViewing")}
                 href={`/courses/${course.id}/lessons/${lesson.id}`}
                 typeLabel={
                   lesson.type === "LIVE" ? t("SessionPage.liveType") : undefined

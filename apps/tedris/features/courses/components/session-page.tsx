@@ -440,7 +440,7 @@ export const SessionPage = async ({
               </ul>
             </Card>
           ) : null}
-          <SessionProgramme course={course} now={now} />
+          <SessionProgramme course={course} now={now} viewingId={session.id} />
         </aside>
       </div>
     </main>

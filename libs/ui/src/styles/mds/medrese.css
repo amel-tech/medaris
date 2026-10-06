@@ -22,7 +22,8 @@
 /* The hairline sits between two ordinary rows; the current row's tint replaces it. */
 .mds-lesson-row + .mds-lesson-row::before { content: ""; position: absolute; inset-inline: var(--space-4); inset-block-start: 0; border-block-start: var(--border-width-thin) solid var(--border-neutral-subtle); }
 .mds-lesson-row:has(.mds-lesson-row__title[aria-current="step"])::before,
-.mds-lesson-row:has(.mds-lesson-row__title[aria-current="step"]) + .mds-lesson-row::before { content: none; }
+.mds-lesson-row:has(.mds-lesson-row__title[aria-current="step"]) + .mds-lesson-row::before,
+.mds-lesson-row.is-viewing::before, .mds-lesson-row.is-viewing + .mds-lesson-row::before { content: none; }
 .mds-lesson-row:has(a.mds-lesson-row__title):hover { background: var(--background-neutral-hover); }
 .mds-lesson-row:has(a.mds-lesson-row__title):hover::before, .mds-lesson-row:has(a.mds-lesson-row__title):hover + .mds-lesson-row::before { content: none; }
 
@@ -65,6 +66,12 @@ a.mds-lesson-row__title::after { content: ""; position: absolute; inset: 0; bord
 /* current: the lâciverd tint, a lâciverd medallion and the printed "Sıradaki" marker — never the tint alone */
 .mds-lesson-row:has(.mds-lesson-row__title[aria-current="step"]) { background: var(--background-brand-subtle); }
 .mds-lesson-row:has(.mds-lesson-row__title[aria-current="step"]) .mds-lesson-row__medallion { background: var(--background-brand-bold); border-color: var(--background-brand-bold); color: var(--text-neutral-on-bold); }
+/* viewing: the session page marks its own row the same way, with its own printed marker. Once a programme
+   holds the page being read, that row alone carries the tint; "Sıradaki" stays as words on its row. */
+.mds-lesson-row.is-viewing { background: var(--background-brand-subtle); }
+.mds-lesson-row.is-viewing .mds-lesson-row__medallion { background: var(--background-brand-bold); border-color: var(--background-brand-bold); color: var(--text-neutral-on-bold); }
+.mds-weeks:has(.mds-lesson-row.is-viewing) .mds-lesson-row:not(.is-viewing):has(.mds-lesson-row__title[aria-current="step"]) { background: transparent; }
+.mds-weeks:has(.mds-lesson-row.is-viewing) .mds-lesson-row:not(.is-viewing):has(.mds-lesson-row__title[aria-current="step"]) .mds-lesson-row__medallion { background: var(--background-neutral-surface); border-color: var(--border-brand-default); color: var(--text-brand-default); }
 /* done: a check on the success tint; the title stays as it is (tekrar is the method) */
 .mds-lesson-row.is-done .mds-lesson-row__medallion { background: var(--background-success-subtle); border-color: transparent; color: var(--text-success-default); }
 /* locked: the title stays readable; the dashed ring is decorative — the lock and the reason printed once
@@ -76,6 +83,8 @@ a.mds-lesson-row__title::after { content: ""; position: absolute; inset: 0; bord
   .mds-lesson-row__medallion::before, .mds-lesson-row__lock { forced-color-adjust: none; background-color: CanvasText; }
   .mds-lesson-row:has(.mds-lesson-row__title[aria-current="step"]) .mds-lesson-row__medallion { forced-color-adjust: none; background: Highlight; border-color: Highlight; }
   .mds-lesson-row:has(.mds-lesson-row__title[aria-current="step"]) .mds-lesson-row__medallion::before { background-color: HighlightText; }
+  .mds-lesson-row.is-viewing .mds-lesson-row__medallion { forced-color-adjust: none; background: Highlight; border-color: Highlight; }
+  .mds-lesson-row.is-viewing .mds-lesson-row__medallion::before { background-color: HighlightText; }
 }
 
 /* ---------------------------------------------------------------- Week accordion */
