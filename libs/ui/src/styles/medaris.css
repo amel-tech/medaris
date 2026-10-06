@@ -30,6 +30,9 @@
 /* Base UI data-* twins of the native state selectors, and the open list. */
 @import "./mds/baseui.css" layer(components);
 
+/* The date and time fields, which the system has no part for yet (MDRS-278). */
+@import "./mds/datepicker.css" layer(components);
+
 /* Utilities read the tokens; nothing is written to :root. */
 @import "@medaris/tokens/tailwind.css";
 
