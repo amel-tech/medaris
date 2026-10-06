@@ -22,3 +22,5 @@
 @import "./mds/components.css" layer(components);
 @import "./mds/medrese.css" layer(components);
 @import "./mds/baseui.css" layer(components);
+/* The date and time fields (MDRS-278), as medaris.css brings them. */
+@import "./mds/datepicker.css" layer(components);
