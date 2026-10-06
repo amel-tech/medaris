@@ -264,6 +264,91 @@ describe("Müfredat (nizam 54)", () => {
     expect(html).toContain("Hafta ekle");
     expect(html).not.toContain("Kaydedilmemiş değişiklikler var");
   });
+
+  it("offers each session's kaynak beside its title, and none on a cancelled one (MDRS-279)", () => {
+    const withKaynak = {
+      ...course,
+      weeks: course.weeks.map((w) => ({
+        ...w,
+        lessons: w.lessons.map((l) =>
+          l.id === "l2" ? { ...l, kaynak: "Bina · s. 4-9" } : l
+        ),
+      })),
+    } as CourseDetailResponse;
+    const html = render(
+      <CurriculumEditor kosk={{ id: "k1", name: "N" }} course={withKaynak} />
+    );
+    const input = (name: string) =>
+      html.match(new RegExp(`<input[^>]*name="${name}"[^>]*>`))?.[0];
+    expect(input("lesson-1-0-kaynak")).toContain('value="Bina · s. 4-9"');
+    expect(input("lesson-1-0-kaynak")).toContain('maxLength="120"');
+    expect(input("lesson-1-0-kaynak")).toContain('dir="auto"');
+    expect(html).toContain("Ör. Bina · s. 4–9");
+    // l3 is cancelled: shown as information, with no field
+    expect(input("lesson-1-1-kaynak")).toBeUndefined();
+    expect(input("lesson-1-2-kaynak")).toContain('value=""');
+  });
+
+  it("lists the course's resources as links to edit, with Kaynak ekle (MDRS-279)", () => {
+    const linked = {
+      ...course,
+      resources: [
+        {
+          id: "r1",
+          name: "Bina",
+          meta: "PDF · 124 sayfa",
+          type: "pdf",
+          url: "https://files.medaris.org/bina.pdf",
+        },
+      ],
+    } as unknown as CourseDetailResponse;
+    const html = render(
+      <CurriculumEditor kosk={{ id: "k1", name: "N" }} course={linked} />
+    );
+    const input = (name: string) =>
+      html.match(new RegExp(`<input[^>]*name="${name}"[^>]*>`))?.[0];
+    expect(html).toContain("Bağlı kaynaklar");
+    expect(input("resource-0-name")).toContain('value="Bina"');
+    expect(input("resource-0-meta")).toContain('value="PDF · 124 sayfa"');
+    expect(input("resource-0-url")).toContain(
+      'value="https://files.medaris.org/bina.pdf"'
+    );
+    expect(input("resource-0-url")).toContain('dir="ltr"');
+    expect(html).toContain("Kaynağı çıkar");
+    expect(html).toContain("Kaynak ekle");
+    expect(html).not.toContain("Bu derse henüz kaynak bağlanmadı.");
+
+    const none = render(
+      <CurriculumEditor kosk={{ id: "k1", name: "N" }} course={course} />
+    );
+    expect(none).toContain("Bu derse henüz kaynak bağlanmadı.");
+    expect(none).toContain("Kaynak ekle");
+  });
+
+  it("turns the kaynak off for a content-locked read and says why (MDRS-279)", () => {
+    const html = render(
+      <CurriculumEditor
+        kosk={{ id: "k1", name: "N" }}
+        course={{ ...course, contentLocked: true } as CourseDetailResponse}
+      />
+    );
+    expect(
+      html.match(/<input[^>]*name="lesson-1-0-kaynak"[^>]*>/)?.[0]
+    ).toContain("disabled");
+    expect(html).toContain(resources.tr.nizam.Curriculum.kaynakLocked);
+  });
+
+  it("words the resources in every locale", () => {
+    for (const locale of ["en", "ar"] as const) {
+      const html = render(
+        <CurriculumEditor kosk={{ id: "k1", name: "N" }} course={course} />,
+        locale
+      );
+      expect(html).toContain(
+        resources[locale].nizam.Curriculum.resourcesTitle as string
+      );
+    }
+  });
 });
 
 describe("Celse planla (nizam 55)", () => {

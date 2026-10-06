@@ -14992,14 +14992,17 @@
           },
           "meta": {
             "type": "string",
-            "example": "PDF · 124 sayfa"
+            "example": "PDF · 124 sayfa",
+            "description": "null clears it on replace; a missing key keeps it."
           },
           "type": {
             "type": "string",
             "example": "pdf"
           },
           "url": {
-            "type": "string"
+            "type": "string",
+            "example": "https://files.medaris.org/bina.pdf",
+            "description": "Where the resource opens: an absolute http:// or https:// URL (MDRS-279). null clears it on replace; a missing key keeps it."
           }
         },
         "required": [

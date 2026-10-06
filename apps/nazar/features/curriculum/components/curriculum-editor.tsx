@@ -42,10 +42,13 @@ import {
   headingDay,
   type LessonDraft,
   nextWeekNumber,
+  type ResourceDraft,
+  resourceDraftsOf,
   type WeekDraft,
   weekDraftsOf,
   weekFacts,
 } from "../curriculum";
+import { ResourcesEditor } from "./resources-editor";
 
 const TONES = ["laciverd", "bordo", "zumrut", "murekkep"] as const;
 
@@ -102,11 +105,13 @@ export function CurriculumEditor({
     description: course.description ?? "",
     tone: toneOfHue(course.coverHue),
     weeks: weekDraftsOf(course, timeZone),
+    resources: resourceDraftsOf(course),
   }));
   const [title, setTitle] = useState(saved.title);
   const [description, setDescription] = useState(saved.description);
   const [tone, setTone] = useState(saved.tone);
   const [weeks, setWeeks] = useState<WeekDraft[]>(saved.weeks);
+  const [resources, setResources] = useState<ResourceDraft[]>(saved.resources);
   const [sent, setSent] = useState(false);
   const [saving, setSaving] = useState(false);
   const [conflict, setConflict] = useState(false);
@@ -124,9 +129,15 @@ export function CurriculumEditor({
       .map((week) => week.weekNumber);
   });
 
-  const current: CurriculumForm = { title, description, tone, weeks };
+  const current: CurriculumForm = {
+    title,
+    description,
+    tone,
+    weeks,
+    resources,
+  };
   const dirty = curriculumDirty(current, saved);
-  const errors = curriculumErrors(title, weeks);
+  const errors = curriculumErrors(title, weeks, resources);
   const shown = (kind: CurriculumProblem, wi?: number, li?: number) =>
     sent &&
     errors.some(
@@ -134,6 +145,12 @@ export function CurriculumEditor({
         error.kind === kind &&
         error.weekIndex === wi &&
         error.lessonIndex === li
+    );
+  const shownResource = (kind: CurriculumProblem, ri: number) =>
+    sent &&
+    errors.some(
+      (error: CurriculumError) =>
+        error.kind === kind && error.resourceIndex === ri
     );
   const locked = saving || refreshing || !can.edit;
   const sessionsLocked = locked || !can.sessions;
@@ -149,6 +166,7 @@ export function CurriculumEditor({
     setDescription(saved.description);
     setTone(saved.tone);
     setWeeks(saved.weeks);
+    setResources(saved.resources);
     setSent(false);
   };
 
@@ -333,6 +351,15 @@ export function CurriculumEditor({
           />
         </Field>
       </section>
+
+      <ResourcesEditor
+        resources={resources}
+        onChange={setResources}
+        shown={shownResource}
+        disabled={locked}
+        editable={can.edit}
+        locked={course.contentLocked}
+      />
 
       <section className="flex flex-col gap-4" aria-labelledby="c-weeks">
         <div className="flex flex-wrap items-end justify-between gap-3">
@@ -544,34 +571,62 @@ export function CurriculumEditor({
                         </div>
                       ) : (
                         <>
-                          <Field
-                            label={t("Curriculum.lessonTitleLabel")}
-                            required
-                            help={
-                              lesson.makeup
-                                ? t("Curriculum.makeupNote", {
-                                    n: week.weekNumber,
-                                  })
-                                : undefined
-                            }
-                            error={
-                              shown("lessonTitle", wi, li)
-                                ? t("Curriculum.errors.lessonTitle")
-                                : undefined
-                            }
-                          >
-                            <Input
-                              name={`lesson-${wi}-${li}-title`}
-                              value={lesson.title}
-                              maxLength={200}
-                              disabled={locked}
-                              onChange={(event) =>
-                                patchLesson(wi, li, {
-                                  title: event.target.value,
-                                })
+                          <div className="grid gap-4 md:grid-cols-2">
+                            <Field
+                              label={t("Curriculum.lessonTitleLabel")}
+                              required
+                              help={
+                                lesson.makeup
+                                  ? t("Curriculum.makeupNote", {
+                                      n: week.weekNumber,
+                                    })
+                                  : undefined
                               }
-                            />
-                          </Field>
+                              error={
+                                shown("lessonTitle", wi, li)
+                                  ? t("Curriculum.errors.lessonTitle")
+                                  : undefined
+                              }
+                            >
+                              <Input
+                                name={`lesson-${wi}-${li}-title`}
+                                value={lesson.title}
+                                maxLength={200}
+                                disabled={locked}
+                                onChange={(event) =>
+                                  patchLesson(wi, li, {
+                                    title: event.target.value,
+                                  })
+                                }
+                              />
+                            </Field>
+                            {/* MDRS-279: the session's own source line, the
+                                tedrisat column's 120 characters at most. */}
+                            <Field
+                              label={t("Curriculum.kaynakLabel")}
+                              help={t(
+                                course.contentLocked
+                                  ? "Curriculum.kaynakLocked"
+                                  : "Curriculum.kaynakHelp"
+                              )}
+                            >
+                              <Input
+                                name={`lesson-${wi}-${li}-kaynak`}
+                                value={lesson.kaynak}
+                                maxLength={120}
+                                dir="auto"
+                                // A content-locked read carries no source
+                                // line: there is nothing here to edit, and the
+                                // save leaves the stored one alone.
+                                disabled={locked || course.contentLocked}
+                                onChange={(event) =>
+                                  patchLesson(wi, li, {
+                                    kaynak: event.target.value,
+                                  })
+                                }
+                              />
+                            </Field>
+                          </div>
                           <div className="grid gap-4 sm:grid-cols-3">
                             <Field
                               label={t("Curriculum.dateLabel")}

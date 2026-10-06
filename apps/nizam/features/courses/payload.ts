@@ -5,22 +5,33 @@ import type {
 } from "@medaris/services/tedrisat";
 import { normalizeMeetingUrl } from "@medaris/utils";
 import { TONE_HUE } from "~/features/kosks/admin-present";
-import { type LessonDraft, lessonInstant, type WeekDraft } from "./present";
+import {
+  type LessonDraft,
+  lessonInstant,
+  type ResourceDraft,
+  type WeekDraft,
+} from "./present";
 
 /**
  * The whole-course body of "Kaydet" on the curriculum (nizam 54): what the form
- * holds, plus everything it does not edit and a PUT would otherwise drop —
- * the müderris rows (unchanged, so a müderris may save) and the resources.
- * A week or a session left out of `weeks` is hidden by the PUT, never deleted.
+ * holds, plus what it does not edit and a PUT would otherwise drop — the
+ * müderris rows (unchanged, so a müderris may save). A week or a session left
+ * out of `weeks` is hidden by the PUT, never deleted. A resource left out of
+ * `resources` is removed: a link has nothing hanging off it (MDRS-279).
  */
 export interface CurriculumEdit {
   title: string;
   description: string;
   tone: keyof typeof TONE_HUE;
   weeks: WeekDraft[];
+  resources: ResourceDraft[];
 }
 
-const lessonBody = (draft: LessonDraft, timeZone: string): CreateLessonDto => {
+const lessonBody = (
+  draft: LessonDraft,
+  timeZone: string,
+  locked: boolean
+): CreateLessonDto => {
   const url = normalizeMeetingUrl(draft.meetingUrl);
   const at = draft.cancelledAt
     ? draft.scheduledAtIso
@@ -30,12 +41,22 @@ const lessonBody = (draft: LessonDraft, timeZone: string): CreateLessonDto => {
     title: draft.title.trim(),
     type: draft.type as CreateLessonDto["type"],
     durationMinutes: draft.duration ? Number(draft.duration) : undefined,
-    kaynak: draft.kaynak || undefined,
     scheduledAt: at ? new Date(at) : undefined,
-    // An emptied link is sent as null: tedrisat clears the column for null and
-    // leaves it alone for a missing key.
-    meetingUrl: (url || null) as unknown as string,
-    agenda: draft.agenda,
+    // An emptied link or source line is sent as null: tedrisat clears the
+    // column for null and leaves it alone for a missing key (MDRS-279).
+    // A caller whose read was content-locked was sent no source line, link
+    // or agenda, so its empty drafts are not theirs to clear: those keys stay
+    // out and tedrisat keeps what is stored. A link such a caller types is
+    // still sent.
+    ...(locked
+      ? {}
+      : {
+          kaynak: (draft.kaynak.trim() || null) as unknown as string,
+          agenda: draft.agenda,
+        }),
+    ...(locked && !url
+      ? {}
+      : { meetingUrl: (url || null) as unknown as string }),
     isPreview: draft.isPreview,
   };
 };
@@ -54,7 +75,9 @@ export function curriculumPayload(
       weekNumber: w.weekNumber,
       title: w.title.trim(),
       summary: w.summary.trim() || undefined,
-      lessons: w.lessons.map((l) => lessonBody(l, course.timeZone)),
+      lessons: w.lessons.map((l) =>
+        lessonBody(l, course.timeZone, course.contentLocked)
+      ),
     })),
     muderris: course.muderris.map((m) => ({
       id: m.id,
@@ -64,12 +87,17 @@ export function curriculumPayload(
       bio: m.bio ?? undefined,
       avatarHue: m.avatarHue,
     })),
-    resources: course.resources.map((r) => ({
-      id: r.id,
-      name: r.name,
-      meta: r.meta ?? undefined,
+    // In list order (tedrisat stores the order as sent); an emptied line is
+    // null, which clears it, like a session's link.
+    resources: edit.resources.map((r) => ({
+      ...(r.id ? { id: r.id } : {}),
+      name: r.name.trim(),
+      meta: (r.meta.trim() || null) as unknown as string,
       type: r.type ?? undefined,
-      url: r.url ?? undefined,
+      // No address is sent for a row the caller could not see the address
+      // of (a content-locked read) or one stored without any: tedrisat
+      // keeps the stored url for a missing key.
+      ...(!course.contentLocked && r.url.trim() ? { url: r.url.trim() } : {}),
     })),
   };
 }

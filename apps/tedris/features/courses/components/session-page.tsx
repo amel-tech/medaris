@@ -26,6 +26,7 @@ import {
   sessionJoinLabels,
 } from "../session-join-labels";
 import { splitArabic, zoneLabel } from "../session-model";
+import { CourseResources } from "./course-resources";
 import { LessonNotes } from "./lesson-notes";
 import { LiveChat } from "./live-chat";
 import { MediaPlayer } from "./media-player";
@@ -161,6 +162,7 @@ export const SessionPage = async ({
       }).format(replacement.startsAt)
     : null;
   const agenda = session.agenda ?? [];
+  const kaynak = session.kaynak?.trim() || null;
 
   // MDRS-162: the recording of a finished celse and the stream of a live one
   // are content the API sends only to who may read it, so a body without them
@@ -258,6 +260,20 @@ export const SessionPage = async ({
             <h1 className="mds-h1" dir="auto">
               {session.title}
             </h1>
+            {/* MDRS-279: the session's source line ("Bina · s. 4–9"). It is
+                content: the API sends it only to who may read it, and to
+                everyone for the sample session (MDRS-161). */}
+            {kaynak ? (
+              <p
+                className="mds-body-sm flex flex-wrap items-baseline gap-x-2"
+                data-testid="session-kaynak"
+              >
+                <span className="mds-eyebrow">{t("SessionPage.kaynak")}</span>
+                <span dir="auto">
+                  <ArabicText text={kaynak} />
+                </span>
+              </p>
+            ) : null}
           </div>
         </div>
       </div>
@@ -459,6 +475,15 @@ export const SessionPage = async ({
               </ul>
             </Card>
           ) : null}
+          <CourseResources
+            resources={course.resources}
+            locked={course.contentLocked}
+            labels={{
+              title: t("SessionPage.resourcesTitle"),
+              newTab: t("SessionPage.newTab"),
+              locked: t("SessionPage.resourcesLocked"),
+            }}
+          />
           <SessionProgramme course={course} now={now} viewingId={session.id} />
         </aside>
       </div>

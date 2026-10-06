@@ -8,7 +8,9 @@ import {
   copyWeek,
   courseErrorKey,
   coursePattern,
+  curriculumDirty,
   curriculumErrors,
+  emptyResource,
   groupSessions,
   isoWeekdayOf,
   type LessonDraft,
@@ -19,7 +21,9 @@ import {
   planErrors,
   planPattern,
   planSummary,
+  type ResourceDraft,
   removeMember,
+  resourceDraftsOf,
   type ScheduleForm,
   sampleOf,
   sampleOptions,
@@ -546,7 +550,7 @@ describe("the curriculum (nizam 54)", () => {
     expect(w?.lessons[2]?.makeup).toBe(true);
   });
 
-  it("builds the whole-course PUT with the version, the team and the resources", () => {
+  it("builds the whole-course PUT with the version and the team", () => {
     const weeks = weekDraftsOf(detail);
     (weeks[0] as WeekDraft).lessons[0] = {
       ...(weeks[0] as WeekDraft).lessons[0],
@@ -559,6 +563,7 @@ describe("the curriculum (nizam 54)", () => {
       description: "Sarf",
       tone: "bordo",
       weeks,
+      resources: resourceDraftsOf(detail),
     });
     expect(body.version).toBe(7);
     expect(body.coverHue).toBe(20);
@@ -572,7 +577,6 @@ describe("the curriculum (nizam 54)", () => {
         avatarHue: 120,
       },
     ]);
-    expect(body.resources?.[0]).toMatchObject({ id: "r1", name: "Kitap" });
     const lessons = body.weeks?.[0]?.lessons ?? [];
     expect(lessons[0]).toMatchObject({
       id: "l1",
@@ -586,6 +590,280 @@ describe("the curriculum (nizam 54)", () => {
     expect(lessons[1]?.scheduledAt?.toISOString()).toBe(
       "2026-10-04T17:00:00.000Z"
     );
+  });
+
+  it("round-trips a session's kaynak, trimmed, and clears an emptied one with null (MDRS-279)", () => {
+    const source = {
+      ...detail,
+      weeks: [
+        {
+          ...detail.weeks[0],
+          lessons: [
+            { ...detail.weeks[0]?.lessons[0], kaynak: "Bina · s. 4-9" },
+          ],
+        },
+      ],
+    } as unknown as CourseDetailResponse;
+    const weeks = weekDraftsOf(source);
+    const first = (weeks[0] as WeekDraft).lessons[0] as LessonDraft;
+    expect(first.kaynak).toBe("Bina · s. 4-9");
+    const sent = (kaynak: string) => {
+      first.kaynak = kaynak;
+      return curriculumPayload(source, {
+        title: "Emsile ve Bina",
+        description: "Sarf",
+        tone: "bordo",
+        weeks,
+        resources: [],
+      }).weeks?.[0]?.lessons?.[0]?.kaynak;
+    };
+    expect(sent("Bina · s. 4-9")).toBe("Bina · s. 4-9");
+    expect(sent("  Bina · s. 10-15 ")).toBe("Bina · s. 10-15");
+    // tedrisat leaves a missing key alone; only null clears the column.
+    expect(sent("")).toBeNull();
+    expect(sent("   ")).toBeNull();
+  });
+});
+
+describe("Bağlı kaynaklar, as links (MDRS-279)", () => {
+  const course = {
+    id: "c1",
+    version: 4,
+    timeZone: "Europe/Istanbul",
+    title: "Emsile ve Bina",
+    description: null,
+    coverHue: 20,
+    muderris: [],
+    weeks: [],
+    resources: [
+      {
+        id: "r1",
+        name: "Bina",
+        meta: "PDF · 124 sayfa",
+        type: "pdf",
+        url: "https://files.medaris.org/bina.pdf",
+      },
+      { id: "r2", name: "Emsile", meta: null, type: null, url: null },
+    ],
+  } as unknown as CourseDetailResponse;
+  const row = (over: Partial<ResourceDraft> = {}): ResourceDraft => ({
+    ...emptyResource(),
+    name: "Tatbikat",
+    url: "https://files.medaris.org/tatbikat.pdf",
+    ...over,
+  });
+  const edit = (resources: ResourceDraft[]) => ({
+    title: "Emsile ve Bina",
+    description: "",
+    tone: "bordo" as const,
+    weeks: [],
+    resources,
+  });
+
+  it("reads the stored rows as drafts, keeping their id and type; a new row is a link", () => {
+    expect(resourceDraftsOf(course)).toEqual([
+      {
+        id: "r1",
+        name: "Bina",
+        meta: "PDF · 124 sayfa",
+        url: "https://files.medaris.org/bina.pdf",
+        type: "pdf",
+        urlRequired: true,
+      },
+      // stored without an address: an empty one does not stop Kaydet
+      {
+        id: "r2",
+        name: "Emsile",
+        meta: "",
+        url: "",
+        type: null,
+        urlRequired: false,
+      },
+    ]);
+    expect(emptyResource()).toEqual({
+      name: "",
+      meta: "",
+      url: "",
+      type: "link",
+      urlRequired: true,
+    });
+  });
+
+  it("stops Kaydet for a row without a name or an absolute http(s) address", () => {
+    expect(
+      curriculumErrors(
+        "Emsile",
+        [],
+        [row(), row({ url: "http://emsile.test" })]
+      )
+    ).toEqual([]);
+    expect(
+      curriculumErrors(
+        "Emsile",
+        [],
+        [
+          row({ name: " " }),
+          row({ url: "" }),
+          row({ url: "javascript:alert(1)" }),
+          row({ url: "emsile.test/kitap" }),
+        ]
+      )
+    ).toEqual([
+      { kind: "resourceName", resourceIndex: 0 },
+      { kind: "resourceUrl", resourceIndex: 1 },
+      { kind: "resourceUrl", resourceIndex: 2 },
+      { kind: "resourceUrl", resourceIndex: 3 },
+    ]);
+  });
+
+  it("is dirty when a row is added, changed or removed", () => {
+    const saved = edit(resourceDraftsOf(course));
+    expect(curriculumDirty(edit(resourceDraftsOf(course)), saved)).toBe(false);
+    expect(
+      curriculumDirty(edit([...resourceDraftsOf(course), row()]), saved)
+    ).toBe(true);
+    expect(
+      curriculumDirty(edit(resourceDraftsOf(course).slice(1)), saved)
+    ).toBe(true);
+  });
+
+  it("sends the rows in list order, existing ones with their id, trimmed, an emptied line as null", () => {
+    const [bina, emsile] = resourceDraftsOf(course) as [
+      ResourceDraft,
+      ResourceDraft,
+    ];
+    const body = curriculumPayload(
+      course,
+      edit([
+        { ...emsile, url: " https://emsile.test/ " },
+        row({ name: " Tatbikat ", meta: " Doküman " }),
+        { ...bina, meta: "" },
+      ])
+    );
+    expect(body.resources).toEqual([
+      {
+        id: "r2",
+        name: "Emsile",
+        meta: null,
+        type: undefined,
+        url: "https://emsile.test/",
+      },
+      {
+        name: "Tatbikat",
+        meta: "Doküman",
+        type: "link",
+        url: "https://files.medaris.org/tatbikat.pdf",
+      },
+      {
+        id: "r1",
+        name: "Bina",
+        meta: null,
+        type: "pdf",
+        url: "https://files.medaris.org/bina.pdf",
+      },
+    ]);
+    // A row taken out of the form is not sent, so tedrisat removes it.
+    expect(curriculumPayload(course, edit([])).resources).toEqual([]);
+  });
+});
+
+describe("what a save keeps (MDRS-279)", () => {
+  const lesson = {
+    id: "l1",
+    weekId: "w1",
+    title: "Birinci",
+    type: "LIVE",
+    durationMinutes: 60,
+    scheduledAt: "2026-10-03T18:00:00.000Z",
+    isPreview: false,
+    orderIndex: 0,
+    cancelledAt: null,
+    replacementLessonId: null,
+  };
+  const base = {
+    id: "c1",
+    version: 4,
+    timeZone: "Europe/Istanbul",
+    title: "Emsile ve Bina",
+    description: null,
+    coverHue: 20,
+    muderris: [],
+    weeks: [{ id: "w1", weekNumber: 1, title: "Birinci", lessons: [lesson] }],
+  };
+  // The body a content-locked read carries: no kaynak, agenda, link or url.
+  const locked = {
+    ...base,
+    contentLocked: true,
+    resources: [
+      { id: "r1", name: "Bina", meta: "PDF · 124 sayfa", type: "pdf" },
+    ],
+  } as unknown as CourseDetailResponse;
+  const save = (course: CourseDetailResponse, resources: ResourceDraft[]) =>
+    curriculumPayload(course, {
+      title: "Emsile ve Bina",
+      description: "",
+      tone: "bordo",
+      weeks: weekDraftsOf(course),
+      resources,
+    });
+
+  it("leaves out the kaynak, agenda and empty link of a content-locked read, so tedrisat keeps them", () => {
+    const sent = save(locked, resourceDraftsOf(locked)).weeks?.[0]
+      ?.lessons?.[0];
+    expect(sent).toMatchObject({ id: "l1", title: "Birinci" });
+    expect(Object.keys(sent ?? {})).not.toContain("kaynak");
+    expect(Object.keys(sent ?? {})).not.toContain("agenda");
+    expect(Object.keys(sent ?? {})).not.toContain("meetingUrl");
+    // A link such a caller types is still sent.
+    const weeks = weekDraftsOf(locked);
+    (weeks[0]?.lessons[0] as LessonDraft).meetingUrl = "https://zoom.us/j/9";
+    const typed = curriculumPayload(locked, {
+      title: "Emsile ve Bina",
+      description: "",
+      tone: "bordo",
+      weeks,
+      resources: resourceDraftsOf(locked),
+    }).weeks?.[0]?.lessons?.[0];
+    expect(typed?.meetingUrl).toBe("https://zoom.us/j/9");
+    expect(Object.keys(typed ?? {})).not.toContain("kaynak");
+  });
+
+  it("saves a content-locked read with its resources as they are, their urls left out", () => {
+    const drafts = resourceDraftsOf(locked);
+    expect(drafts[0]?.urlRequired).toBe(false);
+    expect(curriculumErrors("Emsile ve Bina", [], drafts)).toEqual([]);
+    expect(save(locked, drafts).resources).toEqual([
+      { id: "r1", name: "Bina", meta: "PDF · 124 sayfa", type: "pdf" },
+    ]);
+  });
+
+  it("does not let a row stored without an address stop Kaydet, and sends it without one", () => {
+    const legacy = {
+      ...base,
+      contentLocked: false,
+      resources: [
+        { id: "r2", name: "Emsile", meta: null, type: null, url: null },
+      ],
+    } as unknown as CourseDetailResponse;
+    const drafts = resourceDraftsOf(legacy);
+    expect(curriculumErrors("Emsile ve Bina", [], drafts)).toEqual([]);
+    expect(save(legacy, drafts).resources).toEqual([
+      { id: "r2", name: "Emsile", meta: null, type: undefined },
+    ]);
+    // An address typed into it is checked; a new row still needs one.
+    expect(
+      curriculumErrors(
+        "Emsile ve Bina",
+        [],
+        [
+          { ...(drafts[0] as ResourceDraft), url: "emsile.pdf" },
+          { ...emptyResource(), name: "Tatbikat" },
+        ]
+      )
+    ).toEqual([
+      { kind: "resourceUrl", resourceIndex: 0 },
+      { kind: "resourceUrl", resourceIndex: 1 },
+    ]);
   });
 });
 

@@ -215,7 +215,10 @@ export class CreateResourceDto {
   @MaxLength(200)
   name!: string;
 
-  @ApiPropertyOptional({ example: "PDF · 124 sayfa" })
+  @ApiPropertyOptional({
+    example: "PDF · 124 sayfa",
+    description: "null clears it on replace; a missing key keeps it.",
+  })
   @IsOptional()
   @IsString()
   @MaxLength(120)
@@ -227,9 +230,20 @@ export class CreateResourceDto {
   @MaxLength(40)
   type?: string;
 
-  @ApiPropertyOptional()
+  // MDRS-279: tedris renders this as a link, so only an absolute http(s)
+  // address is stored; a `javascript:` or schemeless value would become an
+  // href. `@IsOptional` lets null through, which clears the column.
+  @ApiPropertyOptional({
+    example: "https://files.medaris.org/bina.pdf",
+    description:
+      "Where the resource opens: an absolute http:// or https:// URL " +
+      "(MDRS-279). null clears it on replace; a missing key keeps it.",
+  })
   @IsOptional()
-  @IsString()
+  @IsUrl(
+    { require_protocol: true, protocols: ["http", "https"] },
+    { message: "$property must be an http:// or https:// URL" }
+  )
   @MaxLength(500)
   url?: string;
 }

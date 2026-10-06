@@ -4,7 +4,7 @@ import type {
   ReplaceCourseDto,
 } from "@medaris/services/tedrisat";
 import { type CoverTone, TONE_HUE } from "@medaris/ui/mds/cover-pattern";
-import { normalizeMeetingUrl } from "@medaris/utils";
+import { normalizeMeetingUrl, resourceUrlProblem } from "@medaris/utils";
 import {
   addDays,
   fieldsOf,
@@ -58,12 +58,33 @@ export interface WeekDraft {
   lessons: LessonDraft[];
 }
 
+/**
+ * A row of "Bağlı kaynaklar" (MDRS-279). Resources are links only for now: a
+ * name, an optional short line ("PDF · 88 sayfa") and the address it opens.
+ */
+export interface ResourceDraft {
+  id?: string;
+  name: string;
+  /** '' = none */
+  meta: string;
+  url: string;
+  /** kept as stored; a row added here is a "link" */
+  type: string | null;
+  /**
+   * Whether an empty address stops "Kaydet". Not for a row stored without
+   * one (it predates the rule) nor for any row of a content-locked read,
+   * which carries no address to show: tedrisat keeps what is stored.
+   */
+  urlRequired: boolean;
+}
+
 /** The whole form: what "Kaydet" sends and what "Vazgeç" puts back. */
 export interface CurriculumForm {
   title: string;
   description: string;
   tone: CoverTone;
   weeks: WeekDraft[];
+  resources: ResourceDraft[];
 }
 
 type CourseLesson = CourseDetailResponse["weeks"][number]["lessons"][number];
@@ -122,6 +143,26 @@ export function weekDraftsOf(
     ),
   }));
 }
+
+export const resourceDraftsOf = (
+  course: Pick<CourseDetailResponse, "resources" | "contentLocked">
+): ResourceDraft[] =>
+  course.resources.map((resource) => ({
+    id: resource.id,
+    name: resource.name,
+    meta: resource.meta ?? "",
+    url: resource.url ?? "",
+    type: resource.type ?? null,
+    urlRequired: !course.contentLocked && Boolean(resource.url),
+  }));
+
+export const emptyResource = (): ResourceDraft => ({
+  name: "",
+  meta: "",
+  url: "",
+  type: "link",
+  urlRequired: true,
+});
 
 export const emptyLesson = (date = ""): LessonDraft => ({
   title: "",
@@ -203,22 +244,28 @@ export type CurriculumProblem =
   | "lessonDate"
   | "lessonTime"
   | "lessonDuration"
-  | "link";
+  | "link"
+  | "resourceName"
+  | "resourceUrl";
 
 export interface CurriculumError {
   kind: CurriculumProblem;
   weekIndex?: number;
   lessonIndex?: number;
+  resourceIndex?: number;
 }
 
 /**
  * The course name, each week's title, and for every live session its title,
  * date, time, length and https link. A cancelled session is information and
- * is not checked.
+ * is not checked. Every resource needs a name and an http(s) address, as
+ * tedrisat does (MDRS-279), but for a row that has none to show (see
+ * `urlRequired`).
  */
 export function curriculumErrors(
   title: string,
-  weeks: readonly WeekDraft[]
+  weeks: readonly WeekDraft[],
+  resources: readonly ResourceDraft[] = []
 ): CurriculumError[] {
   const errors: CurriculumError[] = [];
   if (title.trim().length < 2) errors.push({ kind: "title" });
@@ -237,6 +284,18 @@ export function curriculumErrors(
       }
       if (linkProblem(lesson.meetingUrl)) errors.push({ kind: "link", ...at });
     });
+  });
+  resources.forEach((resource, resourceIndex) => {
+    if (!resource.name.trim()) {
+      errors.push({ kind: "resourceName", resourceIndex });
+    }
+    // A typed address is always checked; an empty one only where required.
+    if (
+      (resource.url.trim() || resource.urlRequired) &&
+      resourceUrlProblem(resource.url)
+    ) {
+      errors.push({ kind: "resourceUrl", resourceIndex });
+    }
   });
   return errors;
 }
@@ -257,7 +316,11 @@ function lessonInstant(draft: LessonDraft, timeZone: string): Date | null {
   return instantOf(draft.date, draft.time, timeZone) ?? stored;
 }
 
-const lessonBody = (draft: LessonDraft, timeZone: string): CreateLessonDto => {
+const lessonBody = (
+  draft: LessonDraft,
+  timeZone: string,
+  locked: boolean
+): CreateLessonDto => {
   const url = normalizeMeetingUrl(draft.meetingUrl);
   const at = draft.cancelledAt
     ? draft.scheduledAtIso
@@ -269,21 +332,32 @@ const lessonBody = (draft: LessonDraft, timeZone: string): CreateLessonDto => {
     title: draft.title.trim(),
     type: draft.type as CreateLessonDto["type"],
     durationMinutes: draft.duration ? Number(draft.duration) : undefined,
-    kaynak: draft.kaynak || undefined,
     scheduledAt: at ?? undefined,
-    // An emptied link is sent as null: tedrisat clears the column for null and
-    // leaves it alone for a missing key.
-    meetingUrl: (url || null) as unknown as string,
-    agenda: draft.agenda,
+    // An emptied link or source line is sent as null: tedrisat clears the
+    // column for null and leaves it alone for a missing key (MDRS-279).
+    // A caller whose read was content-locked was sent no source line, link
+    // or agenda, so its empty drafts are not theirs to clear: those keys stay
+    // out and tedrisat keeps what is stored. A link such a caller types is
+    // still sent.
+    ...(locked
+      ? {}
+      : {
+          kaynak: (draft.kaynak.trim() || null) as unknown as string,
+          agenda: draft.agenda,
+        }),
+    ...(locked && !url
+      ? {}
+      : { meetingUrl: (url || null) as unknown as string }),
     isPreview: draft.isPreview,
   };
 };
 
 /**
  * The whole-course body of "Kaydet" (`PUT /courses/:id`): what the form holds,
- * plus everything it does not edit and a PUT would otherwise drop, the
- * müderris rows (unchanged, so a müderris may save) and the resources. A week
- * or a session left out of `weeks` is hidden by the PUT, never deleted.
+ * plus what it does not edit and a PUT would otherwise drop, the müderris rows
+ * (unchanged, so a müderris may save). A week or a session left out of
+ * `weeks` is hidden by the PUT, never deleted; a resource left out of
+ * `resources` is removed, as a link has nothing hanging off it (MDRS-279).
  * `version` is the course version the page was read at.
  */
 export function curriculumPayload(
@@ -301,7 +375,9 @@ export function curriculumPayload(
       weekNumber: week.weekNumber,
       title: week.title.trim(),
       summary: week.summary.trim() || undefined,
-      lessons: week.lessons.map((lesson) => lessonBody(lesson, timeZone)),
+      lessons: week.lessons.map((lesson) =>
+        lessonBody(lesson, timeZone, course.contentLocked)
+      ),
     })),
     muderris: course.muderris.map((m) => ({
       id: m.id,
@@ -311,12 +387,19 @@ export function curriculumPayload(
       bio: m.bio ?? undefined,
       avatarHue: m.avatarHue,
     })),
-    resources: course.resources.map((r) => ({
-      id: r.id,
-      name: r.name,
-      meta: r.meta ?? undefined,
-      type: r.type ?? undefined,
-      url: r.url ?? undefined,
+    // In list order (tedrisat stores the order as sent); an emptied line is
+    // null, which clears it, like a session's link.
+    resources: form.resources.map((resource) => ({
+      ...(resource.id ? { id: resource.id } : {}),
+      name: resource.name.trim(),
+      meta: (resource.meta.trim() || null) as unknown as string,
+      type: resource.type ?? undefined,
+      // No address is sent for a row the caller could not see the address
+      // of (a content-locked read) or one stored without any: tedrisat
+      // keeps the stored url for a missing key.
+      ...(!course.contentLocked && resource.url.trim()
+        ? { url: resource.url.trim() }
+        : {}),
     })),
   };
 }

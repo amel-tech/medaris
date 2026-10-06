@@ -522,6 +522,80 @@ describe("CourseController (e2e)", () => {
       ]);
     });
 
+    // MDRS-279: tedris renders a resource's url as a link, so anything but an
+    // absolute http(s) address would be a stored href (`javascript:` above all).
+    it.each([
+      "javascript:alert(document.cookie)",
+      "files.medaris.test/bina.pdf",
+      "/bina.pdf",
+      "ftp://files.medaris.test/bina.pdf",
+    ])("rejects the resource url %s with a 400 naming the field (MDRS-279)", async (url) => {
+      const created = await createCourse().expect(201);
+      // Built one at a time: a supertest request listens as it is created.
+      for (const call of [
+        () =>
+          request(app.getHttpServer())
+            .post(`/kosks/${koskId}/courses`)
+            .send({ ...coursePayload(), resources: [{ name: "Bina", url }] }),
+        () =>
+          request(app.getHttpServer())
+            .put(`/courses/${created.body.id}`)
+            .send({ title: "Bina", resources: [{ name: "Bina", url }] }),
+      ]) {
+        const res = await call().expect(400);
+        expect(res.body.context.errors).toEqual([
+          expect.objectContaining({
+            property: "resources.0.url",
+            constraints: { isUrl: "url must be an http:// or https:// URL" },
+          }),
+        ]);
+      }
+    });
+
+    it("stores an http or https resource url, and clears its meta and url sent as null on replace (MDRS-279)", async () => {
+      const created = (
+        await request(app.getHttpServer())
+          .post(`/kosks/${koskId}/courses`)
+          .send({
+            ...coursePayload(),
+            resources: [
+              {
+                name: "Bina",
+                meta: "PDF · 124 sayfa",
+                type: "link",
+                url: "https://files.medaris.test/bina.pdf",
+              },
+              { name: "Emsile", type: "link", url: "http://emsile.test/" },
+            ],
+          })
+          .expect(201)
+      ).body;
+      expect(created.resources.map((r: { url: string }) => r.url)).toEqual([
+        "https://files.medaris.test/bina.pdf",
+        "http://emsile.test/",
+      ]);
+
+      const [bina, emsile] = created.resources as { id: string }[];
+      await request(app.getHttpServer())
+        .put(`/courses/${created.id}`)
+        .send({
+          title: created.title,
+          resources: [
+            { id: bina.id, name: "Bina", meta: null, type: "link", url: null },
+            { id: emsile.id, name: "Emsile", type: "link" },
+          ],
+        })
+        .expect(200);
+      const rows = await databaseService.db
+        .select()
+        .from(courseResources)
+        .where(eq(courseResources.courseId, created.id));
+      const byId = new Map(rows.map((r) => [r.id, r]));
+      expect(byId.get(bina.id)).toMatchObject({ meta: null, url: null });
+      // A key left out is not SET: the url stays.
+      expect(byId.get(emsile.id)).toMatchObject({ url: "http://emsile.test/" });
+    });
+
     it("stores a course's time zone and edits it, refusing what is not an IANA zone (MDRS-110)", async () => {
       const created = (
         await request(app.getHttpServer())
@@ -1117,6 +1191,36 @@ describe("CourseController (e2e)", () => {
         .expect((res) => {
           expect(res.body[0]).toHaveProperty("lessonCount", 2);
         });
+    });
+
+    it("keeps a session's kaynak left out of the PUT and clears one sent as null (MDRS-279)", async () => {
+      const detail = await createAndLoad();
+      const [week1, week2] = detail.weeks;
+      const serh = week1.lessons[1];
+      expect(await lessonRow(serh.id)).toHaveProperty(
+        "kaynak",
+        "Bina · s. 4-9"
+      );
+
+      // nizam and nazar send an emptied kaynak as null; a missing key is not SET.
+      const kept = (
+        await request(app.getHttpServer())
+          .put(`/courses/${detail.id}`)
+          .send(replaceBody(detail, [week1, week2]))
+          .expect(200)
+      ).body as Detail;
+      expect(await lessonRow(serh.id)).toHaveProperty(
+        "kaynak",
+        "Bina · s. 4-9"
+      );
+
+      const body = replaceBody(kept, [week1, week2]);
+      (body.weeks[0].lessons[1] as Record<string, unknown>).kaynak = null;
+      await request(app.getHttpServer())
+        .put(`/courses/${detail.id}`)
+        .send(body)
+        .expect(200);
+      expect(await lessonRow(serh.id)).toHaveProperty("kaynak", null);
     });
 
     it("PATCH /lessons/:id with a new weekId keeps its id", async () => {

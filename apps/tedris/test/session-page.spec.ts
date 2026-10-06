@@ -214,6 +214,61 @@ describe("session page, upcoming (design tedris/15)", () => {
   it("is not an alert: no cancellation text", async () => {
     expect(await render(session())).not.toContain("Bu celse iptal edildi");
   });
+
+  it("writes the session's own kaynak under its title, Arabic runs set apart (MDRS-279)", async () => {
+    const html = await render(session({ kaynak: "Bina · s. 4–9 · البناء" }));
+    const line = html.match(
+      /<p[^>]*data-testid="session-kaynak"[^>]*>.*?<\/p>/
+    )?.[0];
+    expect(line).toContain(">Kaynak<");
+    expect(line).toContain('dir="auto"');
+    expect(line).toContain("Bina · s. 4–9 · ");
+    expect(line).toContain(
+      '<span lang="ar" dir="rtl" class="mds-arabic">البناء</span>'
+    );
+  });
+
+  it("lists the course's resources in the aside, linked in a new tab (MDRS-279)", async () => {
+    const { SessionPage } = await import(
+      "~/features/courses/components/session-page"
+    );
+    const withLinks = {
+      ...course,
+      contentLocked: false,
+      resources: [
+        {
+          id: "r1",
+          name: "Bina",
+          meta: "PDF · 124 sayfa",
+          type: "pdf",
+          url: "https://files.medaris.org/bina.pdf",
+        },
+      ],
+    } as unknown as CourseDetailResponse;
+    const html = renderToStaticMarkup(
+      await SessionPage({
+        course: withLinks,
+        session: session(),
+        koskName: null,
+        now: NOW,
+      })
+    );
+    expect(html).toContain(">Dersin kaynakları<");
+    expect(html).toContain(
+      '<a class="mds-link" href="https://files.medaris.org/bina.pdf" target="_blank" rel="noopener noreferrer">'
+    );
+    // none on a course without any (the fixture's)
+    expect(await render(session())).not.toContain("Dersin kaynakları");
+  });
+
+  it("draws no kaynak line when the API sent none or a blank one", async () => {
+    expect(await render(session())).not.toContain(
+      'data-testid="session-kaynak"'
+    );
+    expect(await render(session({ kaynak: "  " }))).not.toContain(
+      'data-testid="session-kaynak"'
+    );
+  });
 });
 
 describe("session page, cancelled (design tedris/18)", () => {
