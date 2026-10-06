@@ -34,8 +34,7 @@
       "other": "Other…"
     },
     "language": "Language",
-    "languageHelp": "Read only. Medaris is Turkish only for now.",
-    "languageValue": "Türkçe",
+    "languageHelp": "The interface language. Your choice is kept in this browser only.",
     "calendarTitle": "Calendar",
     "calendarName": "Calendar subscription",
     "calendarText": "Add the sessions of all your courses to Google or Apple Calendar with your personal calendar link.",

@@ -34,8 +34,7 @@
       "other": "Diğer…"
     },
     "language": "Dil",
-    "languageHelp": "Salt okunur. Medaris şimdilik yalnız Türkçe görünür.",
-    "languageValue": "Türkçe",
+    "languageHelp": "Arayüzün dili. Seçimin yalnız bu tarayıcıda saklanır.",
     "calendarTitle": "Takvim",
     "calendarName": "Takvim aboneliği",
     "calendarText": "Bütün derslerinin celselerini kişisel takvim bağlantınla Google ya da Apple Takvim’e ekle.",

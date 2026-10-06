@@ -18,7 +18,6 @@ vi.mock("next-intl/server", async () => {
 });
 vi.mock("~/lib/auth_options", () => ({ auth: async () => null }));
 vi.mock("~/features/keycloak/login", () => ({ default: () => null }));
-vi.mock("~/components/i18n/locale-switcher", () => ({ default: () => null }));
 
 const renderHeader = async (languageTag: string) => {
   locale.current = languageTag;
