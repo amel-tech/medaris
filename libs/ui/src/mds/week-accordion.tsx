@@ -6,6 +6,8 @@ import {
   isValidElement,
   type ReactElement,
   type ReactNode,
+  useEffect,
+  useRef,
 } from "react";
 import { cx } from "./cx";
 import { formatNumber, joinRun, usePageLocale } from "./locale";
@@ -96,6 +98,7 @@ export function WeekAccordion({
     <Accordion.Item
       ref={ref}
       value={String(week)}
+      data-week={week}
       className={cx(
         "mds-week",
         shown !== "default" && `is-${shown}`,
@@ -166,15 +169,78 @@ export interface WeeksProps {
   children: ReactNode;
   /** the weeks open at first (week numbers); the active week when omitted */
   defaultOpen?: number[];
+  /** the open weeks, for a caller that controls them (an editor that opens the week it adds) */
+  value?: number[];
+  onValueChange?: (open: number[]) => void;
+  /** with `value`: bring a week that opens to the top of the viewport, for the editors' long weeks (MDRS-276) */
+  scrollOnOpen?: boolean;
   className?: string;
+}
+
+/** Scrolls week `n`'s heading to the block-start, below any fixed chrome (`scroll-padding`). */
+function scrollToWeek(root: HTMLElement | null, n: number) {
+  const item = root?.querySelector<HTMLElement>(`[data-week="${n}"]`);
+  if (!item) return;
+  const reduce = window.matchMedia?.(
+    "(prefers-reduced-motion: reduce)"
+  ).matches;
+  item.scrollIntoView({ block: "start", behavior: reduce ? "auto" : "smooth" });
 }
 
 /**
  * The `div.mds-weeks` that stacks weeks 8px apart: a Base UI Accordion root
  * with `multiple` (several weeks may be open) and `hiddenUntilFound` (the
  * browser's find-in-page opens a collapsed week).
+ *
+ * Uncontrolled, it opens `defaultOpen` (or the active week) and starts over
+ * when that set changes. Given `value`, the caller owns the open weeks and
+ * nothing remounts; with `scrollOnOpen` too, a week that joins the open set,
+ * by a click or by the caller, is scrolled into view.
  */
-export function Weeks({ children, defaultOpen, className }: WeeksProps) {
+export function Weeks({
+  children,
+  defaultOpen,
+  value,
+  onValueChange,
+  scrollOnOpen = false,
+  className,
+}: WeeksProps) {
+  const root = useRef<HTMLDivElement>(null);
+  const previous = useRef(value);
+  const openKey = value?.join(",");
+
+  // A week that was not open before and is now: scroll to it once the panel
+  // is laid out. Never on the first render: the page opens where it is.
+  useEffect(() => {
+    const before = previous.current;
+    previous.current = value;
+    if (!scrollOnOpen || !value || !before) return;
+    const added = value.filter((n) => !before.includes(n));
+    const target = added[added.length - 1];
+    if (target === undefined) return;
+    const frame = requestAnimationFrame(() =>
+      scrollToWeek(root.current, target)
+    );
+    return () => cancelAnimationFrame(frame);
+  }, [openKey, scrollOnOpen]);
+
+  const change = (next: unknown[]) => onValueChange?.(next.map(Number));
+
+  if (value !== undefined) {
+    return (
+      <Accordion.Root
+        ref={root}
+        multiple
+        hiddenUntilFound
+        value={value.map(String)}
+        onValueChange={change}
+        className={cx("mds-weeks", className)}
+      >
+        {children}
+      </Accordion.Root>
+    );
+  }
+
   const fromState = Children.toArray(children)
     .filter(
       (c): c is ReactElement<WeekAccordionProps> =>
@@ -186,10 +252,12 @@ export function Weeks({ children, defaultOpen, className }: WeeksProps) {
   const initial = defaultOpen ? defaultOpen.map(String) : fromState;
   return (
     <Accordion.Root
+      ref={root}
       key={initial.join(",")}
       multiple
       hiddenUntilFound
       defaultValue={initial}
+      onValueChange={change}
       className={cx("mds-weeks", className)}
     >
       {children}
