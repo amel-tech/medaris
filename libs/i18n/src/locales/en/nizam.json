@@ -1751,7 +1751,8 @@
       "notFound": "This ders nazır no longer exists.",
       "expiryInvalid": "The end date is in the past.",
       "unknownAccount": "This account was not found.",
-      "forbidden": "You may not do this."
+      "forbidden": "You may not do this.",
+      "handedOn": "People this ders nazır appointed still hold their posts; dismiss them first."
     }
   },
   "KoskGrantDialog": {
@@ -2451,7 +2452,9 @@
     "openEnrollment": "Open: talebe join when they apply",
     "loadFailedTitle": "The numbers could not be loaded",
     "loadFailed": "The course's numbers cannot be read right now. Try again in a moment.",
-    "retry": "Try again"
+    "retry": "Try again",
+    "openInNazar": "Open in Nazar",
+    "openInNazarHint": "(ders nazırs and course settings, opens in a new tab)"
   },
   "CourseLoad": {
     "title": "The course could not be read",

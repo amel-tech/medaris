@@ -383,6 +383,37 @@ test("nizam/53 — 'Müfredatı düzenle' and 'Celse planla' go to the course's 
   );
 });
 
+test("nizam/53 — the başnazım is offered 'Nazar’da aç', a new tab on the course's Ders nazırları in nazar; the köşk nazımı is not (MDRS-270)", async ({
+  page,
+}) => {
+  test.skip(
+    !(seedable && SYSTEM_ADMIN.password && KOSK_NAZIM.password),
+    "no SYSTEM_ADMIN or KOSK_NAZIM account"
+  );
+  const nazar = page.getByRole("link", { name: /^Nazar’da aç/ });
+  await signIn(page, SYSTEM_ADMIN);
+  // the köşk's own course and the one a medrese holds in it
+  for (const course of [fixture.own, fixture.hosted]) {
+    await page.goto(`/tr/kosks/${fixture.kosk.id}/courses/${course.id}`);
+    await expect(
+      page.getByRole("heading", { level: 1, name: /Genel bakış/ })
+    ).toBeVisible();
+    await expect(nazar).toHaveAttribute(
+      "href",
+      new RegExp(`^https?://[^/]+/ders/${course.id}/nazirlar$`)
+    );
+    await expect(nazar).toHaveAttribute("target", "_blank");
+  }
+
+  await page.context().clearCookies();
+  await signIn(page, KOSK_NAZIM);
+  await page.goto(`/tr/kosks/${fixture.kosk.id}/courses/${fixture.own.id}`);
+  await expect(
+    page.getByRole("link", { name: "Müfredatı düzenle" })
+  ).toBeVisible();
+  await expect(nazar).toHaveCount(0);
+});
+
 test("nizam/53 — 'Onayla' takes the application off the list and adds one to Kayıtlı talebe; 'Reddet' only takes it off (criterion 4)", async ({
   page,
 }) => {

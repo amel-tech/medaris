@@ -24,6 +24,18 @@ export async function render(element: ReactElement): Promise<HTMLElement> {
   return host;
 }
 
+/** Renders a new element into the root `render` made in `host`: the same page, read again. */
+export async function rerender(
+  host: HTMLElement,
+  element: ReactElement
+): Promise<void> {
+  const entry = mounted.find((m) => m.host === host);
+  if (!entry) throw new Error("rerender: nothing was rendered in this host");
+  await act(async () => {
+    entry.root.render(element);
+  });
+}
+
 export async function cleanup(): Promise<void> {
   for (const { root, host } of mounted.splice(0)) {
     await act(async () => root.unmount());

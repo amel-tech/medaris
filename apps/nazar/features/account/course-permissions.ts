@@ -12,6 +12,7 @@ export type CoursePermissions = ReadonlySet<string>;
 export const CODES = {
   courseEdit: "course.edit",
   sessionManage: "session.manage",
+  courseNazirAssign: "course_nazir.assign",
   weekHide: "week.hide",
   sessionLiveLink: "session.live_link",
   staffRead: "course.staff_read",
@@ -20,12 +21,17 @@ export const CODES = {
   enrollmentRemove: "enrollment.remove",
   recordingManage: "recording.manage",
   recordingUpload: "recording.upload",
+  courseSettings: "course.settings",
+  coursePublish: "course.publish",
+  settingApprovalOff: "setting.approval_off",
+  settingCourseOpen: "setting.course_open",
 } as const;
 
 /** The codes that open each page: holding any one of them is enough. */
 export const PAGE_CODES = {
   sessions: [CODES.sessionManage, CODES.sessionLiveLink],
   plan: [CODES.sessionManage],
+  nazirs: [CODES.courseNazirAssign],
   students: [
     CODES.staffRead,
     CODES.enrollmentDecide,
@@ -34,6 +40,12 @@ export const PAGE_CODES = {
   ],
   curriculum: [CODES.courseEdit, CODES.sessionManage, CODES.weekHide],
   recordings: [CODES.recordingManage, CODES.recordingUpload],
+  settings: [
+    CODES.courseEdit,
+    CODES.courseSettings,
+    CODES.coursePublish,
+    CODES.sessionManage,
+  ],
 } as const satisfies Record<string, readonly string[]>;
 
 export const holds = (held: CoursePermissions, code: string): boolean =>

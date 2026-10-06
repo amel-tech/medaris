@@ -151,6 +151,10 @@ describe("the refusals' sentences", () => {
     expect(grantErrorKey({ code: "GRANT_EXPIRY_INVALID" })).toBe(
       "errors.expiryInvalid"
     );
+    // a ders nazırı who appointed others from the course (MDRS-270)
+    expect(grantErrorKey({ code: "DISMISS_SEAT_HANDED_ON" })).toBe(
+      "errors.handedOn"
+    );
     expect(grantErrorKey({ code: "WHATEVER" })).toBe("errors.generic");
     expect(grantErrorKey(undefined)).toBe("errors.generic");
   });
@@ -172,6 +176,7 @@ describe("the refusals' sentences", () => {
         "expiryInvalid",
         "unknownAccount",
         "forbidden",
+        "handedOn",
       ]) {
         expect(errors[key], `${lang} ${key}`).toBeTruthy();
       }

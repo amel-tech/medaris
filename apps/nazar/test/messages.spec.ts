@@ -3,6 +3,8 @@ import { authErrorMessageKey } from "@medaris/services/auth-client";
 import { createTranslator } from "next-intl";
 import { describe, expect, it } from "vitest";
 import { banErrorKey } from "~/features/bans/bans";
+import { courseNazirErrorKey } from "~/features/course-nazirs/course-nazirs";
+import { courseSettingsErrorKey } from "~/features/course-settings/course-settings";
 import { curriculumErrorKey } from "~/features/curriculum/curriculum";
 import { enrolmentErrorKey } from "~/features/enrolments/enrolments";
 import { offsiteErrorKey } from "~/features/offsite/offsite";
@@ -170,6 +172,28 @@ describe("the nazar message catalogue", () => {
       ...refusals,
       ...course,
       ...reasons,
+      // Ders nazırları words a refusal from its code and an end from its problem (MDRS-270).
+      ...[
+        "SELF_GRANT_REFUSED",
+        "AUTHZ_FORBIDDEN",
+        "PERMISSION_NOT_GIVABLE",
+        "PERMISSION_UNKNOWN",
+        "NAZIR_NOT_APPOINTED_BY_YOU",
+        "GRANT_EXCEEDS_GIVER",
+        "GRANT_EXPIRY_INVALID",
+        "COURSE_NAZIR_EXISTS",
+        "COURSE_NAZIR_NOT_FOUND",
+        "COURSE_NAZIR_UNKNOWN_ACCOUNT",
+        "COURSE_NAZIR_HOLDS_SEAT",
+        "COURSE_NAZIR_BARRED",
+        "GRANT_COURSE_INVALID",
+        "DISMISS_SEAT_HANDED_ON",
+        "KEYCLOAK_ADMIN_UNAVAILABLE",
+        "SOMETHING_NEW",
+      ].map(courseNazirErrorKey),
+      ...["past", "unfinished"].map(
+        (problem) => `CourseNazirs.dialog.endProblems.${problem}`
+      ),
       ...[
         "MEDARIS_NAZIM",
         "KOSK_NAZIM",
@@ -177,6 +201,7 @@ describe("the nazar message catalogue", () => {
         "MEDRESE_NAZIR",
         "MUDERRIS",
         "DERS_NAZIR",
+        "SYSTEM_ADMIN",
       ].map((role) => `Roles.${role}`),
       // Müfredat and Ders kayıtları build these from a tone, a state and a refusal's code.
       ...["AUTHZ_FORBIDDEN", "COURSE_VERSION_CONFLICT", "SOMETHING_NEW"].map(
@@ -243,6 +268,14 @@ describe("the nazar message catalogue", () => {
       ...["required", "short", "long"].map(
         (p) => `OpenCourse.nameProblems.${p}`
       ),
+      // Ders ayarları words a refused save from its code.
+      ...[
+        "AUTHZ_FORBIDDEN",
+        "PLATFORM_POLICY_LOCKED",
+        "COURSE_VERSION_CONFLICT",
+        "VALIDATION_ERROR",
+        "SOMETHING_NEW",
+      ].map(courseSettingsErrorKey),
     ];
     for (const locale of locales) {
       for (const key of keys) {
@@ -295,12 +328,14 @@ describe("the nazar message catalogue", () => {
       missing: 1,
       size: "1,2 GB",
       sent: "512 MB",
+      date: "5 Ekim 2026",
     };
     const sections = [
       "Students",
       "Bans",
       "BanDialog",
       "Reasons",
+      "CourseNazirs",
       "Offsite",
       "Pano",
       "Sessions",
@@ -309,6 +344,7 @@ describe("the nazar message catalogue", () => {
       "Curriculum",
       "CurriculumHide",
       "Recordings",
+      "CourseSettings",
     ] as const;
     for (const locale of locales) {
       const errors: string[] = [];

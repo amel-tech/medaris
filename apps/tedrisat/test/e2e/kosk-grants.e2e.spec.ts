@@ -259,6 +259,24 @@ describe("Köşk grants (e2e)", () => {
       sub
     );
 
+  /**
+   * A ders nazırı of the medrese's course, made from the course itself
+   * (MDRS-270) by the başnazım, with an end. Returns the post's id.
+   */
+  const medresePost = async () => {
+    await post(
+      `/courses/${madrasahCourse}/nazirs`,
+      {
+        userId: YUSUF,
+        permissions: ["session.manage"],
+        endsAt: daysFromNow(10),
+      },
+      ADMIN
+    ).expect(201);
+    const [row] = await postsOf(YUSUF);
+    return row.id;
+  };
+
   describe("who may call", () => {
     it("lets the köşk's nazım and the başnazım in, and nobody else", async () => {
       await get(`/kosks/${koskA}/grants`).expect(200);
@@ -431,6 +449,20 @@ describe("Köşk grants (e2e)", () => {
         OTHER_NAZIM
       ).expect(404);
     });
+
+    it("cannot change a post in a medrese course (404), which the course route made", async () => {
+      const post = await medresePost();
+      const res = await patch(`/kosks/${koskA}/grants/${post}`, {
+        permissions: [...COURSE_CATALOG],
+        endsAt: null,
+      }).expect(404);
+      expect(res.body.code).toBe("COURSE_NAZIR_NOT_FOUND");
+      const held = (await grantsOf(YUSUF, madrasahCourse)).filter(
+        (g) => g.revokedAt === null
+      );
+      expect(held.map((g) => g.permission)).toEqual(["session.manage"]);
+      expect(held[0].expiresAt).not.toBeNull();
+    });
   });
 
   describe("DELETE /kosks/:id/grants/:grantId (criterion 4)", () => {
@@ -457,6 +489,44 @@ describe("Köşk grants (e2e)", () => {
       await del(`/kosks/${koskB}/grants/${post.id}`, OTHER_NAZIM).expect(404);
       await del(`/kosks/${koskA}/grants/${post.id}`).expect(204);
       await del(`/kosks/${koskA}/grants/${post.id}`).expect(404);
+    });
+
+    it("cannot end a post in a medrese course (404), which the course route made", async () => {
+      const post = await medresePost();
+      const res = await del(`/kosks/${koskA}/grants/${post}`).expect(404);
+      expect(res.body.code).toBe("COURSE_NAZIR_NOT_FOUND");
+      const [held] = await postsOf(YUSUF);
+      expect(held.revokedAt).toBeNull();
+      expect(
+        (await grantsOf(YUSUF, madrasahCourse)).filter(
+          (g) => g.revokedAt === null
+        )
+      ).toHaveLength(1);
+    });
+
+    it("refuses to end a ders nazırı whose appointees still hold their posts (409 DISMISS_SEAT_HANDED_ON), as the course route does", async () => {
+      await create({ permissions: ["course_nazir.assign"] }).expect(201);
+      // made from the course itself (MDRS-270): the post names YUSUF as appointer
+      await post(
+        `/courses/${freeCourse}/nazirs`,
+        { userId: TALEBE, permissions: [] },
+        YUSUF
+      ).expect(201);
+      const [yusuf] = await postsOf(YUSUF);
+      const [talebe] = await postsOf(TALEBE);
+      expect(talebe.grantedBy).toBe(YUSUF);
+
+      const res = await del(`/kosks/${koskA}/grants/${yusuf.id}`).expect(409);
+      expect(res.body.code).toBe("DISMISS_SEAT_HANDED_ON");
+      expect((await postsOf(YUSUF))[0].revokedAt).toBeNull();
+      expect(
+        (await grantsOf(YUSUF)).filter((g) => g.revokedAt === null)
+      ).toHaveLength(1);
+      expect(await auditActions()).not.toContain("course_nazir.revoke");
+
+      // the remover ends the appointee first
+      await del(`/kosks/${koskA}/grants/${talebe.id}`).expect(204);
+      await del(`/kosks/${koskA}/grants/${yusuf.id}`).expect(204);
     });
 
     it("lets the same person be made a ders nazırı again afterwards", async () => {

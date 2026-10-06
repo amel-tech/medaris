@@ -1937,7 +1937,7 @@ export class KosksApi extends runtime.BaseAPI {
     }
 
     /**
-     * nizam/38 \'Görevden al\'. The post and every permission the person holds in the course end at once. Written to the audit log.
+     * nizam/38 \'Görevden al\'. The post and every permission the person holds in the course end at once. 409 DISMISS_SEAT_HANDED_ON while someone the person appointed from the course still holds their post. Written to the audit log.
      * Take a ders nazırı\'s post and permissions away
      */
     async revokeKoskGrantRaw(requestParameters: RevokeKoskGrantRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
@@ -1980,7 +1980,7 @@ export class KosksApi extends runtime.BaseAPI {
     }
 
     /**
-     * nizam/38 \'Görevden al\'. The post and every permission the person holds in the course end at once. Written to the audit log.
+     * nizam/38 \'Görevden al\'. The post and every permission the person holds in the course end at once. 409 DISMISS_SEAT_HANDED_ON while someone the person appointed from the course still holds their post. Written to the audit log.
      * Take a ders nazırı\'s post and permissions away
      */
     async revokeKoskGrant(requestParameters: RevokeKoskGrantRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {

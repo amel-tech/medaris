@@ -64,6 +64,9 @@ src/models/CourseBadgeCountsResponse.ts
 src/models/CourseDetailMadrasahResponse.ts
 src/models/CourseDetailResponse.ts
 src/models/CourseMadrasahResponse.ts
+src/models/CourseNazirCourseResponse.ts
+src/models/CourseNazirResponse.ts
+src/models/CourseNazirsResponse.ts
 src/models/CourseQuestionResponse.ts
 src/models/CourseRequestListResponse.ts
 src/models/CourseRequestPersonResponse.ts
@@ -73,6 +76,7 @@ src/models/CourseStatsResponse.ts
 src/models/CourseSummaryResponse.ts
 src/models/CreateBanDto.ts
 src/models/CreateCourseDto.ts
+src/models/CreateCourseNazirDto.ts
 src/models/CreateCourseRequestDto.ts
 src/models/CreateDeckProposalDto.ts
 src/models/CreateFlashcardDeckDto.ts
@@ -360,6 +364,7 @@ src/models/SummaryMuderrisResponse.ts
 src/models/TaughtCourseRef.ts
 src/models/TeamSettableEnrollmentStatus.ts
 src/models/UpdateCourseDto.ts
+src/models/UpdateCourseNazirDto.ts
 src/models/UpdateFlashcardDeckDto.ts
 src/models/UpdateFlashcardDto.ts
 src/models/UpdateKoskDto.ts

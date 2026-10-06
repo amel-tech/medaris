@@ -560,11 +560,92 @@ describe("The permission engine (MDRS-135, e2e)", () => {
         scope: "MADRASAH",
         permissions: [PERMISSIONS.MADRASAH_STUDENTS_VIEW],
       }).expect(403);
+      // The course's own route (MDRS-270) lets them in on course_nazir.assign,
+      // and gives them nothing to hand on there either.
+      const given = await post(DERS_ID, `/courses/${ownCourse}/nazirs`, {
+        userId: TALEBE_ID,
+        permissions: [PERMISSIONS.COURSE_EDIT],
+      }).expect(403);
+      expect(given.body.code).toBe("PERMISSION_NOT_GIVABLE");
+      const [other] = await db()
+        .insert(roleAssignments)
+        .values({
+          userId: NEWCOMER_ID,
+          role: ASSIGNED_ROLES.DERS_NAZIR,
+          scopeType: SCOPE_TYPES.COURSE,
+          scopeId: ownCourse,
+          grantedBy: NAZIM_ID,
+        })
+        .returning();
+      const changed = await patch(
+        DERS_ID,
+        `/courses/${ownCourse}/nazirs/${other.id}`,
+        { permissions: [PERMISSIONS.COURSE_EDIT], endsAt: null }
+      ).expect(403);
+      expect(changed.body.code).toBe("PERMISSION_NOT_GIVABLE");
+      expect(
+        await db()
+          .select()
+          .from(roleAssignments)
+          .where(eq(roleAssignments.userId, TALEBE_ID))
+      ).toHaveLength(0);
+      for (const userId of [TALEBE_ID, NEWCOMER_ID]) {
+        expect(
+          await db()
+            .select()
+            .from(permissionGrants)
+            .where(eq(permissionGrants.userId, userId))
+        ).toHaveLength(0);
+      }
       const effective = await authz.effective(user(DERS_ID), {
         entity: "course",
         id: ownCourse,
       });
       expect(effective?.codes.has(PERMISSIONS.PERMISSION_GRANT)).toBe(false);
+    });
+
+    it("may appoint with no permission when granted course_nazir.assign, and nothing more", async () => {
+      await grant(
+        DERS_ID,
+        { type: SCOPE_TYPES.COURSE, id: ownCourse },
+        { permission: PERMISSIONS.COURSE_NAZIR_ASSIGN },
+        { grantedBy: NAZIM_ID }
+      );
+      await post(DERS_ID, `/courses/${ownCourse}/nazirs`, {
+        userId: NEWCOMER_ID,
+        permissions: [],
+      }).expect(201);
+      const [appointed] = await db()
+        .select()
+        .from(roleAssignments)
+        .where(eq(roleAssignments.userId, NEWCOMER_ID));
+      expect(appointed).toMatchObject({
+        role: ASSIGNED_ROLES.DERS_NAZIR,
+        scopeId: ownCourse,
+        grantedBy: DERS_ID,
+      });
+      // What they were given themselves is not theirs to give.
+      const res = await post(DERS_ID, `/courses/${ownCourse}/nazirs`, {
+        userId: TALEBE_ID,
+        permissions: [PERMISSIONS.COURSE_NAZIR_ASSIGN],
+      }).expect(403);
+      expect(res.body.code).toBe("PERMISSION_NOT_GIVABLE");
+      await patch(DERS_ID, `/courses/${ownCourse}/nazirs/${appointed.id}`, {
+        permissions: [PERMISSIONS.COURSE_NAZIR_ASSIGN],
+        endsAt: null,
+      }).expect(403);
+      expect(
+        await db()
+          .select()
+          .from(permissionGrants)
+          .where(eq(permissionGrants.grantedBy, DERS_ID))
+      ).toHaveLength(0);
+      const appointee = await authz.effective(user(NEWCOMER_ID), {
+        entity: "course",
+        id: ownCourse,
+      });
+      expect(appointee?.codes.has(PERMISSIONS.COURSE_NAZIR_ASSIGN)).toBe(false);
+      expect(appointee?.codes.has(PERMISSIONS.COURSE_EDIT)).toBe(false);
     });
 
     it("a grant that carries the permission to grant is ignored, so it cannot be smuggled in", async () => {

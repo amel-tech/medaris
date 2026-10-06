@@ -1,6 +1,7 @@
 import { AuthGuardModule } from "@medaris/common";
 import { Module } from "@nestjs/common";
 import { AssignmentModule } from "../assignment/assignment.module";
+import { TedrisatAuthzContext } from "../authz/tedrisat-authz-context.service";
 import { BanModule } from "../ban/ban.module";
 import { BunnyStreamModule } from "../bunny-stream/bunny-stream.module";
 import { DatabaseService } from "../database/database.service";
@@ -17,6 +18,9 @@ import { CourseStatsRepository } from "./course-stats.repository";
 import { LessonController } from "./lesson.controller";
 import { LiveStreamController } from "./live-stream.controller";
 import { LiveStreamService } from "./live-stream.service";
+import { CourseNazirController } from "./nazir/course-nazir.controller";
+import { CourseNazirRepository } from "./nazir/course-nazir.repository";
+import { CourseNazirService } from "./nazir/course-nazir.service";
 import { RecordingController } from "./recording.controller";
 import { RecordingRepository } from "./recording.repository";
 import { RecordingService } from "./recording.service";
@@ -41,7 +45,10 @@ import { RecordingUploadService } from "./recording-upload.service";
     LiveStreamController,
     RecordingController,
     RecordingUploadController,
+    CourseNazirController,
   ],
+  // The context loader is read straight from the database, as `BanModule`
+  // does: `CourseNazirService` asks the engine which role confers what.
   providers: [
     CourseService,
     CourseRepository,
@@ -53,6 +60,9 @@ import { RecordingUploadService } from "./recording-upload.service";
     CourseStatsRepository,
     CourseNotifier,
     CourseNotificationRepository,
+    CourseNazirService,
+    CourseNazirRepository,
+    TedrisatAuthzContext,
     DatabaseService,
   ],
   // For AuthzBindingsModule's role resolver (MDRS-41): findKoskId,

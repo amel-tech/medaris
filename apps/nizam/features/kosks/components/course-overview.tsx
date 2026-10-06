@@ -41,6 +41,8 @@ interface Props {
   pending: RosterEnrollmentResponse[] | null;
   /** the köşk's row of this course, for the imam; null when it could not be read */
   row: KoskCourseRowResponse | null;
+  /** the course's pages in nazar, for the başnazım (`nazarCourseHref`); null for anyone else */
+  nazarHref?: string | null;
 }
 
 /**
@@ -49,9 +51,18 @@ interface Props {
  * applications to decide, the course's müderrisler and the settings that
  * matter. The numbers come from `GET /courses/:id/stats`; the sessions from
  * the course itself. Not drawn, because the backend has no model for them: the
- * Ders kayıtları card and section, the YouTube line and the ders nazırları.
+ * Ders kayıtları card and section and the YouTube line. The ders nazırları and
+ * the course's settings are nazar's pages (MDRS-270); the başnazım is offered
+ * "Nazar’da aç" to them.
  */
-export function CourseOverview({ kosk, course, stats, pending, row }: Props) {
+export function CourseOverview({
+  kosk,
+  course,
+  stats,
+  pending,
+  row,
+  nazarHref = null,
+}: Props) {
   const t = useTranslations("nizam.CourseOverview");
   const tm = t as unknown as Messages;
   const locale = useLocale();
@@ -260,6 +271,21 @@ export function CourseOverview({ kosk, course, stats, pending, row }: Props) {
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
+          {nazarHref ? (
+            <Button
+              variant="secondary"
+              href={nazarHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              iconLeft={<Icon name="externalLink" size="sm" />}
+            >
+              {t("openInNazar")}
+              <span className="mds-visually-hidden">
+                {" "}
+                {t("openInNazarHint")}
+              </span>
+            </Button>
+          ) : null}
           <Button
             variant="outline"
             href={editHref}
