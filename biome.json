@@ -31,6 +31,8 @@
       "!libs/tokens/medaris.css",
       "!libs/tokens/medaris-fonts.js",
       "!libs/tokens/tailwind.css",
+      "!libs/tokens/tailwind-roles.css",
+      "!libs/tokens/tailwind-scales.css",
       "!libs/ui/src/styles/mds",
       "!libs/ui/src/mds/glyphs.ts",
       "!design-system",

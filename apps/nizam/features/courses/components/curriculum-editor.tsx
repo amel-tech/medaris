@@ -100,6 +100,22 @@ export function CurriculumEditor({ kosk, course }: Props) {
   );
   const [sent, setSent] = useState(false);
   const [saving, setSaving] = useState(false);
+  // The open weeks are held here, not derived from the dates on each render:
+  // derived, a date edit changed the set and the accordion started over,
+  // closing every week (MDRS-276). It opens on the first week still running.
+  const [openWeeks, setOpenWeeks] = useState<number[]>(() => {
+    const today = toZonedDatetimeLocal(new Date(), course.timeZone).slice(
+      0,
+      10
+    );
+    return initial.weeks
+      .filter((w) => {
+        const f = weekFacts(w);
+        return f.to !== null && f.from !== null && f.to >= today;
+      })
+      .slice(0, 1)
+      .map((w) => w.weekNumber);
+  });
 
   const current = { title, description, tone, weeks, resources };
   const dirty = curriculumDirty(current, initial);
@@ -339,17 +355,15 @@ export function CurriculumEditor({ kosk, course }: Props) {
               variant="outline"
               type="button"
               iconLeft={<Icon name="plus" size="sm" />}
-              onClick={() =>
+              onClick={() => {
+                const weekNumber = nextNumber();
                 setWeeks((all) => [
                   ...all,
-                  {
-                    weekNumber: nextNumber(),
-                    title: "",
-                    summary: "",
-                    lessons: [],
-                  },
-                ])
-              }
+                  { weekNumber, title: "", summary: "", lessons: [] },
+                ]);
+                // the new week opens, and Weeks brings it into view
+                setOpenWeeks((open) => [...open, weekNumber]);
+              }}
             >
               {t("addWeek")}
             </Button>
@@ -359,15 +373,7 @@ export function CurriculumEditor({ kosk, course }: Props) {
           <p className="mds-caption">{t("generateNote")}</p>
         ) : null}
 
-        <Weeks
-          defaultOpen={weeks
-            .filter((w) => {
-              const f = weekFacts(w);
-              return f.to !== null && f.from !== null && f.to >= nowDay;
-            })
-            .slice(0, 1)
-            .map((w) => w.weekNumber)}
-        >
+        <Weeks value={openWeeks} onValueChange={setOpenWeeks} scrollOnOpen>
           {weeks.map((week, wi) => {
             const facts = weekFacts(week);
             const done = facts.to !== null && facts.to < nowDay;
@@ -700,12 +706,11 @@ export function CurriculumEditor({ kosk, course }: Props) {
                       size="small"
                       type="button"
                       iconLeft={<Icon name="copy" size="sm" />}
-                      onClick={() =>
-                        setWeeks((all) => [
-                          ...all,
-                          copyWeek(week, nextNumber()),
-                        ])
-                      }
+                      onClick={() => {
+                        const weekNumber = nextNumber();
+                        setWeeks((all) => [...all, copyWeek(week, weekNumber)]);
+                        setOpenWeeks((open) => [...open, weekNumber]);
+                      }}
                     >
                       {t("copyWeek")}
                     </Button>

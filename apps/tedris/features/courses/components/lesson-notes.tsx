@@ -4,11 +4,12 @@ import type { LessonNoteResponse } from "@medaris/services/tedrisat";
 import { Button } from "@medaris/ui/mds/button";
 import { Field } from "@medaris/ui/mds/field";
 import { Icon } from "@medaris/ui/mds/icon";
+import { IconButton } from "@medaris/ui/mds/icon-button";
 import { Input } from "@medaris/ui/mds/input";
 import { Markdown } from "@medaris/ui/mds/markdown";
 import { Textarea } from "@medaris/ui/mds/textarea";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useId, useState } from "react";
 import {
   createLessonNote,
   deleteLessonNote,
@@ -19,6 +20,7 @@ import {
   formatOffset,
   LESSON_NOTE_BODY_MAX,
   parseOffset,
+  showsBodyCount,
   sortNotes,
 } from "../lesson-note-model";
 import { type PlayerControl, useYouTubePlayer } from "../youtube-player";
@@ -32,17 +34,25 @@ interface Draft {
 }
 
 /**
- * The talebe's private notes next to a session's video (MDRS-150, designs
- * tedris/15 and 24). One panel for the live stream and the recording of a
- * session: the notes belong to the session, and a note's time is the position
- * from the start of the video, so one taken on the stream points at the same
- * moment in the recording.
+ * A note's text grows with what is typed, from two lines to about ten, where
+ * the browser can size a field to its content (`field-sizing`); elsewhere it
+ * stays at two lines and can be dragged taller (MDRS-280).
+ */
+const GROWING =
+  "field-sizing-content min-block-[calc(2lh+1.125rem)] max-block-[calc(10lh+1.125rem)]";
+
+/**
+ * The talebe's private notes under a session's video (MDRS-150, designs
+ * tedris/15 and 24; laid out for use while watching in MDRS-280). One panel
+ * for the live stream and the recording of a session: the notes belong to the
+ * session, and a note's time is the position from the start of the video, so
+ * one taken on the stream points at the same moment in the recording.
  *
  * `frameId` names the YouTube frame on the page. With it the panel reads the
  * player's position for a new note and a note's time seeks the player; without
- * it (Drive and other hosts report no position) the time is typed, and may be
- * left empty. Only the author's notes ever reach the panel: the API returns no
- * others.
+ * it (Bunny, Drive and other hosts report no position) the time is typed, and
+ * may be left empty. Only the author's notes ever reach the panel: the API
+ * returns no others.
  */
 export function LessonNotes({
   lessonId,
@@ -82,14 +92,12 @@ export function LessonNotes({
 
   return (
     <section
-      className="mds-card flex flex-col gap-4"
+      className="mds-card @container flex flex-col gap-3"
       aria-labelledby={`notes-${lessonId}`}
     >
-      <div className="mds-card__header flex flex-col gap-1">
-        <h2
-          className="mds-card__title flex items-center gap-2"
-          id={`notes-${lessonId}`}
-        >
+      {/* One line: the panel's name and, beside it, who reads it. */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <h2 className="mds-h3 flex items-center gap-2" id={`notes-${lessonId}`}>
           <Icon name="note" />
           {t("title")}
         </h2>
@@ -112,7 +120,7 @@ export function LessonNotes({
       ) : notes.length === 0 ? (
         <p className="mds-caption">{t("empty")}</p>
       ) : (
-        <ul className="m-0 flex list-none flex-col p-0">
+        <ul className="m-0 flex list-none flex-col p-0 border-bs border-neutral-subtle">
           {notes.map((note) => (
             <NoteItem
               key={note.id}
@@ -137,6 +145,75 @@ const useWriteError = () => {
     status === 403 ? t("forbidden") : t("saveFailed");
 };
 
+/**
+ * The note's text. Its only help, that Markdown is welcome, shows once the
+ * talebe writes, with the count of characters added near the API's limit.
+ */
+const BodyField = ({
+  value,
+  onChange,
+  onFocus,
+  placeholder,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  onFocus?: () => void;
+  placeholder?: string;
+}) => {
+  const t = useTranslations("tedrisLearn.LessonNotes");
+  const help =
+    value === ""
+      ? undefined
+      : showsBodyCount(value.length)
+        ? `${t("bodyHint")} · ${t("bodyCount", { count: value.length, max: LESSON_NOTE_BODY_MAX })}`
+        : t("bodyHint");
+  return (
+    <Field help={help}>
+      <Textarea
+        aria-label={t("bodyLabel")}
+        rows={2}
+        dir="auto"
+        maxLength={LESSON_NOTE_BODY_MAX}
+        placeholder={placeholder}
+        className={GROWING}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        onFocus={onFocus}
+      />
+    </Field>
+  );
+};
+
+/** The moment of the video a note is about, as `12:34`: a small typed field. */
+const TimeField = ({
+  value,
+  onChange,
+  describedBy,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  /** The id of the line that says what the field takes. */
+  describedBy: string;
+}) => {
+  const t = useTranslations("tedrisLearn.LessonNotes");
+  return (
+    <Field className="shrink-0 inline-[7.5rem]">
+      <Input
+        size="small"
+        mono
+        inputMode="numeric"
+        autoComplete="off"
+        aria-label={t("timeLabel")}
+        aria-describedby={describedBy}
+        placeholder={t("timePlaceholder")}
+        leading={<Icon name="clock" size="sm" />}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+      />
+    </Field>
+  );
+};
+
 const NoteForm = ({
   lessonId,
   player,
@@ -148,6 +225,7 @@ const NoteForm = ({
 }) => {
   const t = useTranslations("tedrisLearn.LessonNotes");
   const writeError = useWriteError();
+  const hintId = useId();
   const [draft, setDraft] = useState<Draft>({ body: "", time: "" });
   const [touched, setTouched] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -187,84 +265,84 @@ const NoteForm = ({
 
   return (
     <form
-      className="flex flex-col gap-3"
+      className="flex flex-col gap-2"
       noValidate
       onSubmit={(event) => {
         event.preventDefault();
         void submit();
       }}
     >
-      <Field
-        label={t("bodyLabel")}
-        help={t("bodyHelp", { max: LESSON_NOTE_BODY_MAX })}
-      >
-        <Textarea
-          rows={3}
-          dir="auto"
-          maxLength={LESSON_NOTE_BODY_MAX}
-          value={draft.body}
-          onChange={(event) =>
-            setDraft((d) => ({ ...d, body: event.target.value }))
-          }
-          onFocus={() => {
-            // The moment the talebe starts writing is the moment the note is
-            // about, unless they already gave a time themselves.
-            if (!touched && draft.time === "") takePosition();
-          }}
-        />
-      </Field>
-      <div className="flex flex-wrap items-end gap-3">
-        <Field
-          label={t("timeLabel")}
-          help={player ? t("timeHelpPlayer") : t("timeHelpManual")}
-          className="flex-1"
-        >
-          <Input
-            mono
-            inputMode="numeric"
-            autoComplete="off"
-            placeholder="12:34"
+      <BodyField
+        value={draft.body}
+        placeholder={t("bodyPlaceholder")}
+        onChange={(body) => setDraft((d) => ({ ...d, body }))}
+        onFocus={() => {
+          // The moment the talebe starts writing is the moment the note is
+          // about, unless they already gave a time themselves.
+          if (!touched && draft.time === "") takePosition();
+        }}
+      />
+      <div className="flex flex-col gap-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <TimeField
             value={draft.time}
-            onChange={(event) => {
+            describedBy={hintId}
+            onChange={(time) => {
               setTouched(true);
-              setDraft((d) => ({ ...d, time: event.target.value }));
+              setDraft((d) => ({ ...d, time }));
             }}
           />
-        </Field>
-        {player ? (
+          {player ? (
+            <>
+              <Button
+                variant="outline"
+                size="small"
+                onClick={() => {
+                  setTouched(true);
+                  takePosition();
+                }}
+              >
+                {t("useCurrent")}
+              </Button>
+              <span className="mds-visually-hidden" id={hintId}>
+                {t("timeHelpPlayer")}
+              </span>
+            </>
+          ) : null}
           <Button
-            variant="outline"
+            type="submit"
             size="small"
-            iconLeft={<Icon name="clock" size="sm" />}
-            onClick={() => {
-              setTouched(true);
-              takePosition();
-            }}
+            className="ms-auto"
+            iconLeft={<Icon name="plus" size="sm" />}
+            loading={saving}
+            loadingLabel={t("saving")}
           >
-            {t("useCurrent")}
+            {t("add")}
           </Button>
-        ) : null}
+        </div>
+        {player ? null : (
+          // Bunny, Drive and other hosts report no position: the talebe reads
+          // it off the player, or leaves it out.
+          <p className="mds-help" id={hintId}>
+            {t("timeHelpManual")}
+          </p>
+        )}
       </div>
       {error ? (
         <p className="mds-error" role="alert">
           {error}
         </p>
       ) : null}
-      <div>
-        <Button
-          type="submit"
-          size="small"
-          iconLeft={<Icon name="plus" size="sm" />}
-          loading={saving}
-          loadingLabel={t("saving")}
-        >
-          {t("add")}
-        </Button>
-      </div>
     </form>
   );
 };
 
+/**
+ * One note on the timeline: its time first (a button that moves the YouTube
+ * player there, a label otherwise), its text after, its actions at the end.
+ * In a narrow panel the text goes under the time and the actions; under a
+ * page-wide video it keeps a reading measure of 70ch.
+ */
 const NoteItem = ({
   note,
   player,
@@ -278,6 +356,7 @@ const NoteItem = ({
 }) => {
   const t = useTranslations("tedrisLearn.LessonNotes");
   const writeError = useWriteError();
+  const hintId = useId();
   const [mode, setMode] = useState<"view" | "edit" | "confirm">("view");
   const [draft, setDraft] = useState<Draft>({ body: "", time: "" });
   const [error, setError] = useState<string | null>(null);
@@ -329,38 +408,28 @@ const NoteItem = ({
     setBusy(false);
   };
 
+  const errorLine = error ? (
+    <p className="mds-error col-span-full" role="alert">
+      {error}
+    </p>
+  ) : null;
+
   if (mode === "edit") {
     return (
-      <li className="flex flex-col gap-3 py-3 border-be border-neutral-subtle last:border-be-0">
-        <Field label={t("bodyLabel")}>
-          <Textarea
-            rows={3}
-            dir="auto"
-            maxLength={LESSON_NOTE_BODY_MAX}
-            value={draft.body}
-            onChange={(event) =>
-              setDraft((d) => ({ ...d, body: event.target.value }))
-            }
-          />
-        </Field>
-        <Field label={t("timeLabel")} help={t("timeHelpManual")}>
-          <Input
-            mono
-            inputMode="numeric"
-            autoComplete="off"
-            placeholder="12:34"
+      <li className="flex flex-col gap-2 py-3 border-be border-neutral-subtle last:border-be-0">
+        <BodyField
+          value={draft.body}
+          onChange={(body) => setDraft((d) => ({ ...d, body }))}
+        />
+        <div className="flex flex-wrap items-center gap-2">
+          <TimeField
             value={draft.time}
-            onChange={(event) =>
-              setDraft((d) => ({ ...d, time: event.target.value }))
-            }
+            describedBy={hintId}
+            onChange={(time) => setDraft((d) => ({ ...d, time }))}
           />
-        </Field>
-        {error ? (
-          <p className="mds-error" role="alert">
-            {error}
-          </p>
-        ) : null}
-        <div className="flex flex-wrap gap-2">
+          <span className="mds-visually-hidden" id={hintId}>
+            {t("timeHelpManual")}
+          </span>
           <Button
             size="small"
             loading={busy}
@@ -373,6 +442,7 @@ const NoteItem = ({
             {t("cancel")}
           </Button>
         </div>
+        {errorLine}
       </li>
     );
   }
@@ -380,11 +450,11 @@ const NoteItem = ({
   const seek = note.offsetSeconds;
   const time = seek === null ? t("noTime") : formatOffset(seek);
   return (
-    <li className="flex flex-col gap-2 py-3 border-be border-neutral-subtle last:border-be-0">
-      <div className="flex flex-wrap items-center justify-between gap-2">
+    <li className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-1 py-3 border-be border-neutral-subtle last:border-be-0 @min-[30rem]:grid-cols-[5.5rem_minmax(0,1fr)_auto]">
+      <span className="col-start-1 row-start-1 justify-self-start">
         {player && seek !== null ? (
           <Button
-            variant="ghost"
+            variant="outline"
             size="mini"
             iconLeft={<Icon name="play" size="sm" />}
             onClick={() => player.seekTo(seek)}
@@ -393,56 +463,55 @@ const NoteItem = ({
             <span className="mds-num">{time}</span>
           </Button>
         ) : (
-          <span className="mds-badge mds-badge--outline mds-num">{time}</span>
-        )}
-        {mode === "confirm" ? (
-          <span className="flex flex-wrap items-center gap-2">
-            <span className="mds-caption">{t("deleteAsk")}</span>
-            <Button
-              variant="destructive"
-              size="mini"
-              loading={busy}
-              loadingLabel={t("deleting")}
-              onClick={() => void remove()}
-            >
-              {t("delete")}
-            </Button>
-            <Button variant="ghost" size="mini" onClick={() => setMode("view")}>
-              {t("cancel")}
-            </Button>
+          <span
+            className={`mds-badge mds-num ${seek === null ? "mds-badge--outline" : "mds-badge--secondary"}`}
+          >
+            {time}
           </span>
-        ) : (
-          <span className="flex items-center gap-1">
-            <Button
-              variant="ghost"
+        )}
+      </span>
+      <div className="col-span-2 row-start-2 min-inline-0 max-inline-[70ch] @min-[30rem]:col-span-1 @min-[30rem]:col-start-2 @min-[30rem]:row-start-1">
+        <Markdown source={note.body} />
+      </div>
+      <span className="col-start-2 row-start-1 flex items-center gap-1 justify-self-end @min-[30rem]:col-start-3">
+        {mode === "confirm" ? null : (
+          <>
+            <IconButton
               size="mini"
-              iconLeft={<Icon name="edit" size="sm" />}
+              icon={<Icon name="edit" size="sm" />}
+              label={t("editLabel", { time })}
               onClick={edit}
-              aria-label={t("editLabel", { time })}
-            >
-              {t("edit")}
-            </Button>
-            <Button
-              variant="ghost"
+            />
+            <IconButton
               size="mini"
-              iconLeft={<Icon name="trash" size="sm" />}
+              icon={<Icon name="trash" size="sm" />}
+              label={t("deleteLabel", { time })}
               onClick={() => {
                 setError(null);
                 setMode("confirm");
               }}
-              aria-label={t("deleteLabel", { time })}
-            >
-              {t("delete")}
-            </Button>
-          </span>
+            />
+          </>
         )}
-      </div>
-      <Markdown source={note.body} />
-      {error ? (
-        <p className="mds-error" role="alert">
-          {error}
-        </p>
+      </span>
+      {mode === "confirm" ? (
+        <span className="col-span-full flex flex-wrap items-center justify-end gap-2">
+          <span className="mds-caption">{t("deleteAsk")}</span>
+          <Button
+            variant="destructive"
+            size="mini"
+            loading={busy}
+            loadingLabel={t("deleting")}
+            onClick={() => void remove()}
+          >
+            {t("delete")}
+          </Button>
+          <Button variant="ghost" size="mini" onClick={() => setMode("view")}>
+            {t("cancel")}
+          </Button>
+        </span>
       ) : null}
+      {errorLine}
     </li>
   );
 };

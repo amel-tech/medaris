@@ -21,6 +21,7 @@ import {
 import {
   checkGrantExpiry,
   type IHeldGrant,
+  longestRunning,
   planGrants,
 } from "../../assignment/admin/grant-plan";
 import {
@@ -111,47 +112,6 @@ function inMedreseTree(
       and(eq(type, SCOPE_TYPES.MADRASAH), eq(id, madrasahId)),
       and(eq(type, SCOPE_TYPES.COURSE), inArray(id, medreseCourses))
     ) as SQL;
-}
-
-/**
- * The rows of one scope, by code or group: for each, the one that runs longest
- * (no end beats any end; on a tie, the oldest) leads, and the others ride
- * along with it. A code can be held twice when a kept row was given more time
- * by someone whose holding sits below the row's authority (`setPermissions`).
- */
-export function longestRunning<
-  T extends {
-    id: string;
-    permission: string | null;
-    groupId: string | null;
-    expiresAt: Date | null;
-  },
->(rows: readonly T[]): { leads: T[]; ridersOf: Map<string, T[]> } {
-  const itemOf = (row: T) =>
-    row.groupId ? `group:${row.groupId}` : `code:${row.permission}`;
-  const runsLonger = (a: T, b: T) =>
-    a.expiresAt === null
-      ? b.expiresAt !== null
-      : b.expiresAt !== null && a.expiresAt > b.expiresAt;
-  const lead = new Map<string, T>();
-  const riding = new Map<string, T[]>();
-  for (const row of rows) {
-    const item = itemOf(row);
-    const current = lead.get(item);
-    if (!current) {
-      lead.set(item, row);
-      riding.set(item, []);
-    } else if (runsLonger(row, current)) {
-      riding.get(item)?.push(current);
-      lead.set(item, row);
-    } else {
-      riding.get(item)?.push(row);
-    }
-  }
-  const leads = rows.filter((row) => lead.get(itemOf(row)) === row);
-  const ridersOf = new Map<string, T[]>();
-  for (const [item, row] of lead) ridersOf.set(row.id, riding.get(item) ?? []);
-  return { leads, ridersOf };
 }
 
 /** Reads and writes behind nazir/05, 06 and 15: the medrese's MEDRESE_NAZIR roles and what hangs on them. */

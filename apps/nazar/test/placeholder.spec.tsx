@@ -71,8 +71,15 @@ describe("the shared placeholder under a medrese", () => {
   });
 });
 
-/** The course's sections that have a page of their own: Celseler, Talebeler, Müfredat and Ders kayıtları (MDRS-247). */
-const DERS_BUILT = ["celseler", "talebeler", "mufredat", "kayitlar"];
+/** The course's sections that have a page of their own: Celseler, Talebeler, Müfredat and Ders kayıtları (MDRS-247), Ders nazırları and Ders ayarları (MDRS-270). */
+const DERS_BUILT = [
+  "celseler",
+  "talebeler",
+  "mufredat",
+  "kayitlar",
+  "nazirlar",
+  "ayarlar",
+];
 
 describe("the shared placeholder under a course", () => {
   const page = async (bolum: string) =>
@@ -85,9 +92,6 @@ describe("the shared placeholder under a course", () => {
       expect(text, segment).toContain("Bu sayfa henüz hazır değil.");
     }
     expect(textOf(await html(await page("deste")))).toMatch(/^Ders destesi /);
-    expect(textOf(await html(await page("ayarlar")))).toMatch(
-      /^Ders ayarları /
-    );
   });
 
   it("leaves the sections that have a page to their own route folder", () => {

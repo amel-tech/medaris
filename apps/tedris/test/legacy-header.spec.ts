@@ -47,7 +47,6 @@ vi.mock("~/features/keycloak/login", () => ({
 vi.mock("~/components/header/user-notification-menu", () => ({
   UserNotifications: () => null,
 }));
-vi.mock("~/components/i18n/locale-switcher", () => ({ default: () => null }));
 
 const admin = { user: { name: "E2E Sistem Admin" }, expires: "2099-01-01" };
 

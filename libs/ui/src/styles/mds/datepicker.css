@@ -1,0 +1,82 @@
+/* Date and time fields (MDRS-278). The system has no date picker; these are
+   composed from what it has: the .mds-input box, the .mds-popup surface,
+   ghost .mds-btn buttons and the base layer's focus ring. Semantic tokens
+   only; this file declares no custom property. Logical properties only, so
+   the button, the month arrows and the grid follow dir="rtl". */
+
+/* ---------------------------------------------------------------- Field box */
+/* The box and its button: the button sits inside the box at inline-end, and
+   the text keeps clear of it. */
+.mds-datefield { position: relative; display: block; inline-size: 100%; min-inline-size: 0; }
+.mds-datefield > .mds-input { padding-inline-end: calc(var(--space-1) + var(--size-control-mini) + var(--space-2)); font-variant-numeric: tabular-nums; }
+.mds-datefield > .mds-input--large { padding-inline-end: calc(var(--space-2) + var(--size-control-small) + var(--space-2)); }
+.mds-datefield__trigger { position: absolute; inset-block: 0; inset-inline-end: var(--space-1); margin-block: auto; color: var(--text-neutral-subtle); }
+.mds-datefield > .mds-input--large ~ .mds-datefield__trigger { inset-inline-end: var(--space-2); }
+.mds-datefield__trigger[data-popup-open] { background: var(--background-neutral-hover); color: var(--text-neutral-default); }
+/* A mini box is as tall as a mini button: the button shrinks inside its edge. */
+.mds-datefield > .mds-input--mini { padding-inline-end: calc(20px + var(--space-1)); }
+.mds-datefield > .mds-input--mini ~ .mds-datefield__trigger { inset-inline-end: 2px; inline-size: 20px; block-size: 20px; }
+
+/* Date beside time, the time under the date when the row is narrow. */
+.mds-datetime { display: flex; flex-wrap: wrap; gap: var(--space-2); min-inline-size: 0; }
+.mds-datetime__date { flex: 3 1 11rem; inline-size: auto; }
+.mds-datetime__time { flex: 2 1 7rem; min-inline-size: 0; }
+
+/* ---------------------------------------------------------------- Calendar */
+/* The popup keeps the .mds-popup surface but sizes to the month, not to the field. */
+.mds-popup.mds-datepicker { min-inline-size: 0; max-block-size: none; overflow: visible; padding: var(--space-3); }
+.mds-calendar { display: flex; flex-direction: column; gap: var(--space-2); inline-size: max-content; font-family: var(--font-ui); color: var(--text-neutral-default); }
+.mds-calendar__head { display: flex; align-items: center; gap: var(--space-2); }
+.mds-calendar__title { flex: 1; text-align: center; font-size: var(--fs-body-sm); font-weight: var(--weight-semibold); line-height: var(--lh-ui); }
+.mds-calendar__grid { border-collapse: collapse; }
+.mds-calendar__grid :is(th, td) { padding: 1px; text-align: center; }
+.mds-calendar__weekday { padding-block-end: var(--space-1); color: var(--text-neutral-subtle); font-size: var(--fs-caption); font-weight: var(--weight-medium); }
+.mds-calendar__day {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: var(--size-control-small);
+  block-size: var(--size-control-small);
+  margin: 0;
+  padding: 0;
+  border: var(--border-width-thin) solid transparent;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--text-neutral-default);
+  font-family: var(--font-ui);
+  font-size: var(--fs-body-sm);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: var(--transition-colors);
+}
+.mds-calendar__day:hover:not([aria-disabled="true"]) { background: var(--background-neutral-hover); }
+/* Today: a strong edge and the semibold weight. */
+.mds-calendar__day[aria-current="date"] { border-color: var(--border-neutral-strong); font-weight: var(--weight-semibold); }
+/* The chosen day: the action ink fill, the semibold weight, and aria-selected on its cell. */
+.mds-calendar__grid [aria-selected="true"] > .mds-calendar__day { background: var(--background-action-bold); border-color: var(--background-action-bold); color: var(--text-neutral-on-bold); font-weight: var(--weight-semibold); }
+.mds-calendar__grid [aria-selected="true"] > .mds-calendar__day:hover { background: var(--background-action-bold-hover); }
+/* Chosen and today: a field-colour line inside the fill keeps today's edge visible. */
+.mds-calendar__grid [aria-selected="true"] > .mds-calendar__day[aria-current="date"] { box-shadow: inset 0 0 0 2px var(--background-neutral-surface); }
+.mds-calendar__grid [aria-selected="true"] > .mds-calendar__day[aria-current="date"]:focus-visible { box-shadow: inset 0 0 0 2px var(--background-neutral-surface), var(--ring-focus); }
+/* Out of range: disabled ink and a strike, so the state reads without colour. */
+.mds-calendar__day[aria-disabled="true"] { color: var(--text-neutral-disabled); text-decoration: line-through; cursor: not-allowed; }
+.mds-calendar__foot { display: flex; justify-content: flex-end; padding-block-start: var(--space-2); border-block-start: var(--border-width-thin) solid var(--border-neutral-subtle); }
+@media (forced-colors: active) {
+  .mds-calendar__day[aria-current="date"] { border-color: CanvasText; }
+  .mds-calendar__grid [aria-selected="true"] > .mds-calendar__day { forced-color-adjust: none; background: Highlight; border-color: Highlight; color: HighlightText; }
+  .mds-calendar__grid [aria-selected="true"] > .mds-calendar__day[aria-current="date"] { box-shadow: inset 0 0 0 2px Canvas; }
+  .mds-calendar__day[aria-disabled="true"] { color: GrayText; }
+}
+
+/* ---------------------------------------------------------------- Time list */
+/* .mds-option rows; the chosen one is semibold with a check (.mds-option[data-selected]). */
+.mds-timelist .mds-option { justify-content: space-between; font-variant-numeric: tabular-nums; cursor: pointer; }
+.mds-timelist .mds-option:hover:not([data-disabled]) { background: var(--background-neutral-hover); }
+/* Inside the scrolling list the ring is drawn inward, where overflow cannot clip it. */
+.mds-timelist .mds-option:focus-visible { background: var(--background-neutral-hover); outline: var(--ring-focus-outline); box-shadow: inset 0 0 0 var(--ring-focus-width) var(--ring-focus-color); }
+.mds-timelist .mds-option[data-disabled] { text-decoration: line-through; }
+@media (forced-colors: active) {
+  .mds-timelist .mds-option:focus-visible { outline: 2px solid Highlight; outline-offset: -2px; }
+  .mds-timelist .mds-option[data-disabled] { color: GrayText; }
+}

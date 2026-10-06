@@ -126,8 +126,8 @@ describe("the recordings tab's notes panel", () => {
 
   it("follows the player to another recording, and its frame with it", async () => {
     const host = await mount(true);
-    const play = [...host.querySelectorAll("button")].find((b) =>
-      b.textContent?.includes("Oynat")
+    const play = host.querySelector(
+      'button[aria-label="Oynat: eski"]'
     ) as HTMLButtonElement;
     await click(play);
     await settle();
@@ -142,7 +142,28 @@ describe("the recordings tab's notes panel", () => {
     ).toBe("recording-frame-eski");
   });
 
-  it("stays beside a Bunny recording, asking for a typed time (MDRS-114)", async () => {
+  it("comes under the player, at every width (MDRS-280)", async () => {
+    const host = await mount(true);
+    const player = host.querySelector("[data-player]") as HTMLElement;
+    const panel = host.querySelector("[data-notes]") as HTMLElement;
+    // the player first, the panel after it, in the same block
+    expect(
+      player.compareDocumentPosition(panel) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+    const block = player.parentElement as HTMLElement;
+    expect(block).toBe(panel.parentElement);
+    expect(block.hasAttribute("data-player-with-notes")).toBe(true);
+    // one column: no grid of two, no container or viewport query to make one
+    const classes = (block.getAttribute("class") ?? "").split(/\s+/);
+    expect(classes).toContain("flex-col");
+    expect(classes.filter((c) => c.includes("grid-cols"))).toEqual([]);
+    const all = [...host.querySelectorAll("[class]")].flatMap((el) =>
+      (el.getAttribute("class") ?? "").split(/\s+/)
+    );
+    expect(all.filter((c) => /^(max-)?(sm|lg|xl|2xl):/.test(c))).toEqual([]);
+  });
+
+  it("stays with a Bunny recording, asking for a typed time (MDRS-114)", async () => {
     const signed =
       "https://player.mediadelivery.net/embed/424242/3f1c2b4a-5d6e-4f70-8a9b-0c1d2e3f4a5b?token=9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08&expires=1790000000";
     const host = await mount(true, [

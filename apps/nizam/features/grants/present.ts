@@ -92,6 +92,7 @@ const KNOWN: Record<string, string> = {
   GRANT_EXPIRY_INVALID: "errors.expiryInvalid",
   KOSK_NAZIM_UNKNOWN_ACCOUNT: "errors.unknownAccount",
   AUTHZ_FORBIDDEN: "errors.forbidden",
+  DISMISS_SEAT_HANDED_ON: "errors.handedOn",
 };
 
 /** The `nizam.KoskGrantsPage` key for a refusal's code, or the generic one. */

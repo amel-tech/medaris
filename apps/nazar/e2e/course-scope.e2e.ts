@@ -118,7 +118,7 @@ test("Müfredat opens the course's form, with nothing to save until something ch
   ).toHaveAttribute("aria-current", "page");
 });
 
-test("Ders kayıtları lists the course's sessions by week and says nothing is uploaded here", async ({
+test("Ders kayıtları lists the course's sessions by week and says the video goes to Bunny from here", async ({
   as,
 }) => {
   test.skip(!seeded(), "no medrese başmüderris");
@@ -130,7 +130,12 @@ test("Ders kayıtları lists the course's sessions by week and says nothing is u
     page.getByRole("heading", { level: 1, name: "Ders kayıtları" })
   ).toBeVisible();
   await expect(page.getByText("Bu sayfa henüz hazır değil.")).toHaveCount(0);
-  await expect(page.getByText(/Burada yükleme yoktur/)).toBeVisible();
+  // a holder of recording.upload (the başmüderris is one) is told that the file
+  // goes straight to Bunny (MDRS-114); "Burada yükleme yoktur" is the
+  // recording.manage-only wording
+  await expect(
+    page.getByText(/dosya tarayıcınızdan doğrudan Bunny/)
+  ).toBeVisible();
   await expect(
     page.locator("aside").getByRole("link", { name: /^Ders kayıtları/ })
   ).toHaveAttribute("aria-current", "page");

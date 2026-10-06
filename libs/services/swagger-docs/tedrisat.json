@@ -736,7 +736,7 @@
         ]
       },
       "delete": {
-        "description": "nizam/38 'Görevden al'. The post and every permission the person holds in the course end at once. Written to the audit log.",
+        "description": "nizam/38 'Görevden al'. The post and every permission the person holds in the course end at once. 409 DISMISS_SEAT_HANDED_ON while someone the person appointed from the course still holds their post. Written to the audit log.",
         "operationId": "revokeKoskGrant",
         "parameters": [
           {
@@ -765,6 +765,9 @@
           },
           "404": {
             "description": ""
+          },
+          "409": {
+            "description": "DISMISS_SEAT_HANDED_ON"
           }
         },
         "security": [
@@ -4722,6 +4725,218 @@
         "summary": "Sign a session's Bunny upload again, to resume it",
         "tags": [
           "lessons"
+        ]
+      }
+    },
+    "/courses/{id}/nazirs": {
+      "get": {
+        "description": "nazar 'Ders nazırları'. Needs `course_nazir.assign` on the course. The posts held in the course with their permission codes, end, appointer and date; the catalog; the codes the caller may hand out (empty for one who holds `course_nazir.assign` by a grant: they appoint only); and on each post whether the caller may change or end it.",
+        "operationId": "getCourseNazirs",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CourseNazirsResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The course's ders nazırları and what the caller may do",
+        "tags": [
+          "courses"
+        ]
+      },
+      "post": {
+        "description": "nazar 'Ders nazırı ata'. Needs `course_nazir.assign`; giving permissions also needs `permission.grant` through a role (müderris, başmüderris, köşk nazımı) or the başnazım, else 403 PERMISSION_NOT_GIVABLE for any code. The post and the permissions end together at `endsAt`. 403 GRANT_EXCEEDS_GIVER for a permission the caller does not hold here; 403 PERMISSION_NOT_GIVABLE for a köşk nazımı in a medrese course; 403 SELF_GRANT_REFUSED for oneself, SYSTEM_ADMIN excepted; 400 for a code outside the course catalog, a hidden course or an end in the past; 404 COURSE_NAZIR_UNKNOWN_ACCOUNT; 409 COURSE_NAZIR_BARRED for an account an open ban bars from the course. Written to the audit log. Answers the list as it is now.",
+        "operationId": "createCourseNazir",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCourseNazirDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CourseNazirsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": "COURSE_NAZIR_EXISTS, COURSE_NAZIR_HOLDS_SEAT, COURSE_NAZIR_BARRED"
+          },
+          "503": {
+            "description": "KEYCLOAK_ADMIN_UNAVAILABLE: the account could not be checked"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Make someone the course's ders nazırı",
+        "tags": [
+          "courses"
+        ]
+      }
+    },
+    "/courses/{id}/nazirs/{postId}": {
+      "patch": {
+        "description": "nazar 'İzinleri düzenle'. Only a giver (`permission.grant` through a role, or the başnazım). Replaces the whole set; what stays keeps its giver and date. `endsAt` is required (null: no end), and the post ends when the permissions do. A code given or moved later is held to the caller's own; a row given from above the caller is never lengthened, the extra time is a row of the caller's own beside it. 403 SELF_GRANT_REFUSED for the caller's own post, SYSTEM_ADMIN excepted. Written to the audit log.",
+        "operationId": "updateCourseNazir",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "postId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCourseNazirDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CourseNazirsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Change a ders nazırı's permissions and end",
+        "tags": [
+          "courses"
+        ]
+      },
+      "delete": {
+        "description": "nazar 'Görevden al'. The post and every permission the person holds in the course end at once. One who holds `course_nazir.assign` by a grant ends only the posts they appointed (403 NAZIR_NOT_APPOINTED_BY_YOU); 409 DISMISS_SEAT_HANDED_ON while someone the person appointed still holds their post. Written to the audit log.",
+        "operationId": "revokeCourseNazir",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "postId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": "DISMISS_SEAT_HANDED_ON"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Take a ders nazırı's post and permissions away",
+        "tags": [
+          "courses"
         ]
       }
     },
@@ -17115,6 +17330,173 @@
           "videoId",
           "authorizationExpire",
           "authorizationSignature"
+        ]
+      },
+      "CourseNazirCourseResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string",
+            "example": "Emsile ve Bina"
+          },
+          "madrasahName": {
+            "type": "string",
+            "nullable": true,
+            "description": "The medrese the course is the work of; null for a köşk's own"
+          }
+        },
+        "required": [
+          "id",
+          "title"
+        ]
+      },
+      "CourseNazirResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The ders nazırı post; `PATCH` and `DELETE` address it"
+          },
+          "user": {
+            "$ref": "#/components/schemas/KoskPersonResponse"
+          },
+          "permissions": {
+            "description": "Course permission codes the person holds in the course now, in the catalog's order",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "endsAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true,
+            "description": "When the post and its permissions end, at the same instant; null means until they are taken away"
+          },
+          "grantedBy": {
+            "description": "Who appointed the person",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/KoskPersonResponse"
+              }
+            ]
+          },
+          "grantedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "mayEdit": {
+            "type": "boolean",
+            "description": "Whether the caller may change this post's permissions and end: a giver, never on their own post (the başnazım excepted)"
+          },
+          "mayEnd": {
+            "type": "boolean",
+            "description": "Whether the caller may end this post: a giver ends any, an appointer only the ones they appointed"
+          }
+        },
+        "required": [
+          "id",
+          "user",
+          "permissions",
+          "grantedBy",
+          "grantedAt",
+          "mayEdit",
+          "mayEnd"
+        ]
+      },
+      "CourseNazirsResponse": {
+        "type": "object",
+        "properties": {
+          "course": {
+            "$ref": "#/components/schemas/CourseNazirCourseResponse"
+          },
+          "items": {
+            "description": "The ders nazırları of the course, oldest post first",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CourseNazirResponse"
+            }
+          },
+          "catalog": {
+            "description": "Every code a ders nazırı can be given in a course, in the order the dialog draws them",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "grantable": {
+            "description": "The codes the caller may hand out here, in the catalog's order; empty for one who appoints only",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "mayAppoint": {
+            "type": "boolean",
+            "description": "Whether the caller may appoint a ders nazırı in this course now"
+          }
+        },
+        "required": [
+          "course",
+          "items",
+          "catalog",
+          "grantable",
+          "mayAppoint"
+        ]
+      },
+      "CreateCourseNazirDto": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The account that becomes a ders nazırı (`GET /users/lookup`)"
+          },
+          "permissions": {
+            "maxItems": 40,
+            "description": "Course permission codes; none the caller does not hold themselves (403 GRANT_EXCEEDS_GIVER). Empty appoints with no permission, all one who appoints only may send",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "endsAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The post and its permissions end together. Omitted: until taken away. In the past: 400."
+          }
+        },
+        "required": [
+          "userId",
+          "permissions"
+        ]
+      },
+      "UpdateCourseNazirDto": {
+        "type": "object",
+        "properties": {
+          "permissions": {
+            "maxItems": 40,
+            "description": "The whole set the person holds from now on",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "endsAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "The new end; null means until taken away. Required, so an edit that leaves it out cannot lift an end by accident."
+          }
+        },
+        "required": [
+          "permissions",
+          "endsAt"
         ]
       },
       "CreateBanDto": {

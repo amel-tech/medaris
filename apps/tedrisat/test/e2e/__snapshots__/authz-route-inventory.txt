@@ -3,6 +3,7 @@ DELETE /courses/:id -> course.delete on byExistingCourse
 DELETE /courses/:id/enroll -> course.view on course
 DELETE /courses/:id/enrollment -> course.view on course
 DELETE /courses/:id/enrollments/:userId -> enrollment.decide on course
+DELETE /courses/:id/nazirs/:postId -> course_nazir.assign on byExistingCourse
 DELETE /flashcard-deck-label/delete/:id -> no AuthzGuard
 DELETE /flashcard-label/delete/:id -> no AuthzGuard
 DELETE /flashcard/cards/:id -> deck.manage_cards on custom
@@ -36,6 +37,7 @@ GET /courses/:id/enrollments -> course.staff_read on course
 GET /courses/:id/enrollments/removed -> course.staff_read on course
 GET /courses/:id/live-streams -> session.live_link on course
 GET /courses/:id/my-permissions -> course.view on byExistingCourse
+GET /courses/:id/nazirs -> course_nazir.assign on byExistingCourse
 GET /courses/:id/questions -> question.answer on byExistingCourse
 GET /courses/:id/questions/mine -> course.view on course
 GET /courses/:id/recordings -> course.view on course (public)
@@ -132,6 +134,7 @@ GET /users/:id/public-profile -> no AuthzGuard
 GET /users/lookup -> no AuthzGuard
 PATCH /courses/:id -> course.edit on course
 PATCH /courses/:id/enrollments/:userId -> enrollment.complete on course
+PATCH /courses/:id/nazirs/:postId -> course_nazir.assign on byExistingCourse
 PATCH /flashcard/cards/:id -> deck.manage_cards on custom
 PATCH /flashcard/decks/:id -> deck.manage_private on flashcard-deck
 PATCH /kosks/:id -> kosk.manage | platform.kosk_edit on byExistingKosk
@@ -161,6 +164,7 @@ POST /courses/:id/archive -> course.hide | madrasah.course_hide | platform.cours
 POST /courses/:id/enroll -> course.enroll on course
 POST /courses/:id/enrollments/:userId/approve -> enrollment.decide on course
 POST /courses/:id/enrollments/:userId/remove -> enrollment.remove on course
+POST /courses/:id/nazirs -> course_nazir.assign on byExistingCourse
 POST /courses/:id/restore -> course.hide | madrasah.course_hide | platform.course_hide on byExistingCourse
 POST /decks/:id/hide -> no AuthzGuard
 POST /flashcard-deck-label/create -> no AuthzGuard

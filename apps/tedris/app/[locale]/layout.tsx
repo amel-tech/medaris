@@ -1,7 +1,8 @@
+import { LocalePreference } from "@medaris/ui/mds/locale-switcher";
 import { ThemeScript } from "@medaris/ui/mds/theme-script";
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import "@medaris/ui/globals.css";
+import "../tedris.css";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -61,6 +62,8 @@ export default async function LocaleLayout({
         className={`${inter.className} h-full flex flex-col`}
         suppressHydrationWarning
       >
+        {/* a later visit follows this browser's language choice (MDRS-275) */}
+        <LocalePreference locale={locale} locales={routing.locales} />
         <NextIntlClientProvider>
           <ClientProviders>
             <Header />

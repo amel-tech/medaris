@@ -5,6 +5,7 @@ import { Card } from "@medaris/ui/mds/card";
 import { Field } from "@medaris/ui/mds/field";
 import { Icon } from "@medaris/ui/mds/icon";
 import { Input } from "@medaris/ui/mds/input";
+import { LocaleSelect } from "@medaris/ui/mds/locale-switcher";
 import { Select } from "@medaris/ui/mds/select";
 import { Switch } from "@medaris/ui/mds/switch";
 import { useToaster } from "@medaris/ui/mds/toast";
@@ -13,6 +14,7 @@ import { type FormEvent, useState, useTransition } from "react";
 import { LocaleAppProviders } from "~/components/locale-app-providers";
 import { PUBLIC_PROFILE_ENABLED } from "~/features/public-profile/availability";
 import { useAccountTranslations } from "~/lib/i18n/loose";
+import { locales } from "~/lib/i18n/routing";
 import { CARD_GAP } from "../card-gap";
 import {
   updateMyInvitationEmails,
@@ -127,6 +129,7 @@ function PersonalCard({
 function TimeLanguageCard({
   timeZone,
 }: Pick<AccountSettingsProps, "timeZone">) {
+  const locale = useLocale();
   const t = useAccountTranslations("AccountProfile");
   const toaster = useToaster();
   const [saved, setSaved] = useState(timeZone ?? "Europe/Istanbul");
@@ -201,7 +204,11 @@ function TimeLanguageCard({
           </Field>
         ) : null}
         <Field label={t("language")} help={t("languageHelp")}>
-          <Input name="language" readOnly value={t("languageValue")} />
+          <LocaleSelect
+            locale={locale}
+            locales={locales}
+            label={t("language")}
+          />
         </Field>
       </div>
     </Card>

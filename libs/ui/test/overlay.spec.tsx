@@ -389,6 +389,16 @@ describe("AppShell, Sidebar and TopBar", () => {
     const aside = host.querySelector("aside") as HTMLElement;
     expect(aside.className).toContain("max-md:hidden");
     expect(aside.className).toContain("border-e");
+    // MDRS-273: the sidebar holds the viewport and scrolls on its own
+    for (const utility of [
+      "sticky",
+      "inset-bs-0",
+      "self-start",
+      "block-dvh",
+      "overflow-y-auto",
+    ]) {
+      expect(aside.className.split(" ")).toContain(utility);
+    }
     expect(aside.querySelector("nav")?.getAttribute("aria-label")).toBe(
       "Ana menü"
     );

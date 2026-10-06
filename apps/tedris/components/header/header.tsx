@@ -5,7 +5,6 @@ import { Suspense } from "react";
 import { env } from "~/env";
 import KeycloakLogin from "~/features/keycloak/login";
 import { auth } from "~/lib/auth_options";
-import LocaleSwitcher from "../i18n/locale-switcher";
 import { UserHeaderMenu } from "./user-header-menu";
 import { UserNotifications } from "./user-notification-menu";
 
@@ -41,7 +40,6 @@ export const Header = async () => {
         ) : (
           <KeycloakLogin />
         )}
-        <LocaleSwitcher />
       </div>
     </header>
   );

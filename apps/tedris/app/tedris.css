@@ -1,0 +1,23 @@
+/* tedris-web's one stylesheet (MDRS-281), loaded once by the locale layout.
+
+   tedris renders the shadcn kit (the header menus, the toasts, a few forms)
+   and the unified design system side by side while its pages move to the
+   system. It used to load the kit's @medaris/ui/globals.css here and the
+   system's @medaris/ui/medaris.css again in each moved segment: two Tailwind
+   builds, each declaring its own copy of the utility classes, and the later
+   copy won. The system's build has one breakpoint, so its plain classes beat
+   the kit's lg:, max-lg: and sm: variants on every moved page.
+
+   Now there is one Tailwind build: the kit's theme and utilities
+   (globals.css), the system without Tailwind (medaris-components.css), and
+   the system's roles added to the kit's theme (tailwind-roles.css), last, so
+   a name both define (font-medium, text-caption) means what the system says,
+   as it did on every moved page. The layer order is written out first, the
+   same as in medaris-components.css, so nothing depends on the order the
+   imports arrive in. The standalone documents outside the locale layout
+   (app/not-found.tsx, app/global-error.tsx) keep medaris.css alone. */
+@layer theme, base, mds-base, components, utilities;
+
+@import "@medaris/ui/globals.css";
+@import "@medaris/ui/medaris-components.css";
+@import "@medaris/tokens/tailwind-roles.css";

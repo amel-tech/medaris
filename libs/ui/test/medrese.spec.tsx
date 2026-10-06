@@ -1,5 +1,7 @@
 // @vitest-environment happy-dom
-import { afterEach, describe, expect, it } from "vitest";
+
+import { useState } from "react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { Avatar, initials } from "../src/mds/avatar";
 import { LessonRow } from "../src/mds/lesson-row";
 import { Progress } from "../src/mds/progress";
@@ -144,6 +146,27 @@ describe("LessonRow", () => {
     expect(
       locked?.querySelector("[role=img]")?.getAttribute("aria-label")
     ).toBe("Kilitli");
+  });
+
+  it("viewing is the page, tinted and marked, and wins over current", async () => {
+    const host = await render(
+      <ol>
+        <LessonRow title="A" type="live" viewing href="/a" />
+        <LessonRow title="B" type="live" state="current" viewing href="/b" />
+      </ol>
+    );
+    const [only, both] = Array.from(host.querySelectorAll("li"));
+    expect(only?.className).toContain("is-viewing");
+    expect(only?.querySelector("[aria-current=page]")).not.toBeNull();
+    expect(only?.querySelector(".mds-lesson-row__marker")?.textContent).toBe(
+      "Bu celse"
+    );
+    expect(both?.querySelector("[aria-current=step]")).toBeNull();
+    expect(
+      Array.from(both?.querySelectorAll(".mds-lesson-row__marker") ?? []).map(
+        (m) => m.textContent
+      )
+    ).toEqual(["Bu celse", "Sıradaki"]);
   });
 
   it("prints the course zone and the viewer's own time when the zones differ", async () => {
@@ -380,5 +403,96 @@ describe("Weeks and WeekAccordion", () => {
     ).toBe(", kilitli");
     expect(w.querySelector(".mds-week__medallion")?.textContent).toBe("");
     expect(w.querySelector(".mds-badge--success")).toBeNull();
+  });
+});
+
+describe("Weeks under the caller's control (MDRS-276)", () => {
+  /** An editor in miniature: it owns the open weeks and can add one. */
+  function Editor({ onOpen }: { onOpen?: (open: number[]) => void }) {
+    const [weeks, setWeeks] = useState([1, 2]);
+    const [open, setOpen] = useState<number[]>([1]);
+    return (
+      <>
+        <button
+          type="button"
+          data-add
+          onClick={() => {
+            const n = weeks.length + 1;
+            setWeeks([...weeks, n]);
+            setOpen([...open, n]);
+          }}
+        >
+          Hafta ekle
+        </button>
+        <Weeks
+          value={open}
+          onValueChange={(next) => {
+            onOpen?.(next);
+            setOpen(next);
+          }}
+          scrollOnOpen
+        >
+          {weeks.map((n) => (
+            <WeekAccordion
+              key={n}
+              week={n}
+              title={`Hafta ${n}`}
+              locale="tr-TR"
+            />
+          ))}
+        </Weeks>
+      </>
+    );
+  }
+
+  const expanded = (host: HTMLElement) =>
+    Array.from(host.querySelectorAll("button.mds-week__trigger")).map((t) =>
+      t.getAttribute("aria-expanded")
+    );
+
+  it("does not scroll on the first render, and scrolls to a week the reader opens", async () => {
+    const scrolled: (string | null)[] = [];
+    const spy = vi
+      .spyOn(HTMLElement.prototype, "scrollIntoView")
+      .mockImplementation(function (this: HTMLElement) {
+        scrolled.push(this.getAttribute("data-week"));
+      });
+    const opened: number[][] = [];
+    const host = await render(<Editor onOpen={(o) => opened.push(o)} />);
+    await settle();
+    expect(expanded(host)).toEqual(["true", "false"]);
+    expect(scrolled).toEqual([]);
+
+    await click(
+      host.querySelectorAll("button.mds-week__trigger")[1] as HTMLElement
+    );
+    await settle();
+    expect(opened.at(-1)).toEqual([1, 2]);
+    expect(expanded(host)).toEqual(["true", "true"]);
+    expect(scrolled).toEqual(["2"]);
+
+    // closing a week scrolls nowhere
+    await click(
+      host.querySelectorAll("button.mds-week__trigger")[0] as HTMLElement
+    );
+    await settle();
+    expect(expanded(host)).toEqual(["false", "true"]);
+    expect(scrolled).toEqual(["2"]);
+    spy.mockRestore();
+  });
+
+  it("opens and scrolls to a week the caller adds, keeping the others as they were", async () => {
+    const scrolled: (string | null)[] = [];
+    const spy = vi
+      .spyOn(HTMLElement.prototype, "scrollIntoView")
+      .mockImplementation(function (this: HTMLElement) {
+        scrolled.push(this.getAttribute("data-week"));
+      });
+    const host = await render(<Editor />);
+    await click(host.querySelector("[data-add]") as HTMLElement);
+    await settle();
+    expect(expanded(host)).toEqual(["true", "false", "true"]);
+    expect(scrolled).toEqual(["3"]);
+    spy.mockRestore();
   });
 });

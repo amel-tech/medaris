@@ -52,6 +52,7 @@
   "exports": {
     "./globals.css": "./src/styles/globals.css",
     "./medaris.css": "./src/styles/medaris.css",
+    "./medaris-components.css": "./src/styles/medaris-components.css",
     "./postcss.config": "./postcss.config.js",
     "./lib/*": "./src/lib/*.ts",
     "./components/*": "./src/components/*.tsx",

@@ -14,6 +14,11 @@ import {
   courses,
   lessonRecordings,
 } from "../../src/database/schema/course.schema";
+import { kosks } from "../../src/database/schema/kosk.schema";
+import {
+  madrasahSettings,
+  madrasahs,
+} from "../../src/database/schema/madrasah.schema";
 import {
   bearerOf,
   CAST,
@@ -72,6 +77,7 @@ describe("what a caller holds in a course (MDRS-247, e2e)", () => {
       "permission_grants",
       "permission_groups",
       ...COURSE_TREE_TABLES,
+      "madrasahs",
       "audit_log",
       "users"
     );
@@ -262,6 +268,58 @@ describe("what a caller holds in a course (MDRS-247, e2e)", () => {
           "course.open_standalone",
           "course.hide",
         ])
+      );
+    });
+
+    it("lists the settings abilities a müderris holds, and drops the one a policy closes", async () => {
+      // What nazar's Ders ayarları draws its locks from (MDRS-270): the
+      // derived abilities ride on course.settings, and a policy above the
+      // course closes the one it names, and only that one.
+      expect(await codesOf(CAST.MUDERRIS)).toEqual(
+        expect.arrayContaining([
+          "course.settings",
+          "setting.approval_off",
+          "setting.course_open",
+          "course_nazir.assign",
+          "permission.grant",
+        ])
+      );
+
+      await db()
+        .update(kosks)
+        .set({ alwaysRequireApproval: true })
+        .where(eq(kosks.id, ids.koskId));
+      const underKosk = await codesOf(CAST.MUDERRIS);
+      expect(underKosk).not.toContain("setting.approval_off");
+      expect(underKosk).toEqual(
+        expect.arrayContaining(["course.settings", "setting.course_open"])
+      );
+
+      await db()
+        .update(kosks)
+        .set({ alwaysRequireApproval: false })
+        .where(eq(kosks.id, ids.koskId));
+      const [madrasah] = await db()
+        .insert(madrasahs)
+        .values({
+          handle: "suleymaniye",
+          name: "Süleymaniye Medresesi",
+          createdBy: CAST.ADMIN,
+        })
+        .returning();
+      await db().insert(madrasahSettings).values({
+        madrasahId: madrasah.id,
+        policyClosedCourseRequired: true,
+        updatedBy: CAST.ADMIN,
+      });
+      await db()
+        .update(courses)
+        .set({ madrasahId: madrasah.id })
+        .where(eq(courses.id, ids.courseId));
+      const underMedrese = await codesOf(CAST.MUDERRIS);
+      expect(underMedrese).not.toContain("setting.course_open");
+      expect(underMedrese).toEqual(
+        expect.arrayContaining(["course.settings", "setting.approval_off"])
       );
     });
 

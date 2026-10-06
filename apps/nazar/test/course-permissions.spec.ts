@@ -97,6 +97,7 @@ describe("whether a page opens", () => {
       "session.live_link",
     ]);
     expect(PAGE_CODES.plan).toEqual(["session.manage"]);
+    expect(PAGE_CODES.nazirs).toEqual(["course_nazir.assign"]);
     expect(PAGE_CODES.curriculum).toEqual([
       "course.edit",
       "session.manage",
@@ -112,6 +113,13 @@ describe("whether a page opens", () => {
       "enrollment.decide",
       "enrollment.complete",
       "enrollment.remove",
+    ]);
+    // Ders ayarları: its controls ask the first three, the sample session the last
+    expect(PAGE_CODES.settings).toEqual([
+      "course.edit",
+      "course.settings",
+      "course.publish",
+      "session.manage",
     ]);
   });
 

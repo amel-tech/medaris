@@ -718,6 +718,7 @@
     "close": "Kapat",
     "themeDark": "Koyu temaya geç",
     "themeLight": "Açık temaya geç",
+    "languageMenu": "Dil",
     "switchKosk": "Köşk değiştir:",
     "userLink": "Hesap",
     "bell": "Bildirimler",
@@ -1750,7 +1751,8 @@
       "notFound": "Bu ders nazırı artık yok.",
       "expiryInvalid": "Bitiş tarihi geçmişte.",
       "unknownAccount": "Bu hesap bulunamadı.",
-      "forbidden": "Bunu yapma izniniz yok."
+      "forbidden": "Bunu yapma izniniz yok.",
+      "handedOn": "Bu ders nazırının atadığı kişiler hâlâ görevde; önce onları görevden alın."
     }
   },
   "KoskGrantDialog": {
@@ -2152,8 +2154,7 @@
     "zoneFailedTitle": "Saat dilimi kaydedilemedi.",
     "zoneFailedText": "Önceki saat diliminiz geçerli. Yeniden deneyin.",
     "language": "Dil",
-    "languageValue": "Türkçe",
-    "languageHelp": "Medaris şimdilik yalnız Türkçe görünür.",
+    "languageHelp": "Arayüzün dili. Seçimin yalnız bu tarayıcıda saklanır.",
     "accountTitle": "Hesap",
     "email": "E-posta",
     "emailHelp": "Salt okunur. Hesabınıza kayıtlı adres; buradan değiştirilemez.",
@@ -2451,7 +2452,9 @@
     "openEnrollment": "Açık: talebe başvurunca derse girer",
     "loadFailedTitle": "Sayısal bilgiler yüklenemedi",
     "loadFailed": "Dersin sayıları şu an okunamıyor. Biraz sonra yeniden deneyin.",
-    "retry": "Yeniden dene"
+    "retry": "Yeniden dene",
+    "openInNazar": "Nazar’da aç",
+    "openInNazarHint": "(ders nazırları ve ders ayarları, yeni sekmede açılır)"
   },
   "CourseLoad": {
     "title": "Ders bilgisi okunamadı",

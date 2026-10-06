@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { Field } from "../src/mds/field";
 import { Input } from "../src/mds/input";
 import { Textarea } from "../src/mds/textarea";
-import { cleanup, render } from "./render";
+import { cleanup, click, render } from "./render";
 
 afterEach(cleanup);
 
@@ -82,5 +82,53 @@ describe("Textarea", () => {
     expect((host.querySelector("label") as HTMLLabelElement).htmlFor).toBe(
       ta.id
     );
+  });
+
+  it("a date or time input opens its picker on a click anywhere in it (MDRS-277)", async () => {
+    const host = await render(
+      <div>
+        <Field label="Tarih">
+          <Input type="date" />
+        </Field>
+        <Field label="Saat">
+          <Input type="time" />
+        </Field>
+        <Field label="Bitiş">
+          <Input type="datetime-local" readOnly />
+        </Field>
+        <Field label="Ad">
+          <Input type="text" />
+        </Field>
+      </div>
+    );
+    const [date, time, readOnly, text] = Array.from(
+      host.querySelectorAll("input")
+    ) as HTMLInputElement[];
+    const calls: string[] = [];
+    for (const input of [date, time, readOnly, text]) {
+      if (!input) continue;
+      input.showPicker = () => {
+        calls.push(input.type);
+      };
+    }
+    for (const input of [date, time, readOnly, text]) {
+      if (input) await click(input);
+    }
+    expect(calls).toEqual(["date", "time"]);
+  });
+
+  it("a caller's onClick runs first and can keep the picker shut", async () => {
+    let opened = false;
+    const host = await render(
+      <Field label="Tarih">
+        <Input type="date" onClick={(e) => e.preventDefault()} />
+      </Field>
+    );
+    const input = host.querySelector("input") as HTMLInputElement;
+    input.showPicker = () => {
+      opened = true;
+    };
+    await click(input);
+    expect(opened).toBe(false);
   });
 });

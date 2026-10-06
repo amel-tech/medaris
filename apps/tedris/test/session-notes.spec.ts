@@ -134,6 +134,43 @@ describe("the notes panel on the session page", () => {
     expect(html).toContain('id="recording-frame"');
   });
 
+  it("gives a finished session's recording the page's width, the notes under it, before the join card and the agenda (MDRS-280)", async () => {
+    const html = await render(
+      course({ status: "ENROLLED" }),
+      session({
+        status: "ENDED",
+        recording: recording(),
+        agenda: [{ time: "21:00", title: "Mezîd fiiller" }],
+      })
+    );
+    const frame = html.indexOf('id="recording-frame"');
+    const notes = html.indexOf('data-notes="s1"');
+    const columns = html.indexOf(
+      "grid-cols-[minmax(0,1fr)_var(--layout-aside)]"
+    );
+    expect(frame).toBeGreaterThan(-1);
+    expect(notes).toBeGreaterThan(frame);
+    // the block is outside the page's two columns, above them: it is as wide
+    // as the page, and the join card, the agenda and the aside come after it
+    const block = html.lastIndexOf("data-player-with-notes", frame);
+    expect(block).toBeGreaterThan(-1);
+    expect(columns).toBeGreaterThan(notes);
+    expect(notes).toBeLessThan(html.indexOf('id="agenda-title"'));
+  });
+
+  it("keeps a live stream in the column after the join card, the notes under it (MDRS-280)", async () => {
+    const html = await render(course({ status: "ENROLLED" }), LIVE);
+    const frame = html.indexOf('id="live-stream-frame"');
+    const notes = html.indexOf('data-notes="s1"');
+    expect(notes).toBeGreaterThan(frame);
+    const block = html.lastIndexOf("data-player-with-notes", frame);
+    expect(block).toBeGreaterThan(
+      html.indexOf("grid-cols-[minmax(0,1fr)_var(--layout-aside)]")
+    );
+    // nothing of the page between the stream's card and the panel
+    expect(html.slice(frame, notes)).not.toContain("<section");
+  });
+
   it("asks for a typed time on a Drive recording: no player API, no frame to read", async () => {
     const html = await render(
       course({ status: "ENROLLED" }),

@@ -1,4 +1,3 @@
-import "@medaris/ui/medaris.css";
 import { textFontsHref } from "@medaris/tokens/medaris-fonts";
 import { getTranslations } from "next-intl/server";
 import type { ReactNode } from "react";
@@ -7,9 +6,9 @@ import { NotificationsProviders } from "~/features/notifications/components/noti
 
 /**
  * The notifications page is on the unified design system (MDRS-167) while the
- * rest of tedris is still on the shadcn kit, so the system's stylesheet and
- * faces load here, with the segment, until the shell moves — the same
- * arrangement as the medrese pages.
+ * rest of tedris is still on the shadcn kit, so the system's faces load here,
+ * with the segment, until the shell moves — the same arrangement as the
+ * medrese pages. Its stylesheet is part of app/tedris.css (MDRS-281).
  */
 export default async function NotificationsLayout({
   children,

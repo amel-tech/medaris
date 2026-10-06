@@ -18,14 +18,17 @@ export class GrantExceedsGiverError extends ForbiddenError {
   }
 }
 
-/** The course is not one of this köşk's, or it belongs to a medrese. */
+/**
+ * The course is not one of this köşk's, or it belongs to a medrese; on the
+ * course's own route (MDRS-270), it is hidden.
+ */
 export class GrantCourseInvalidError extends BadRequestError {
   static readonly code = "GRANT_COURSE_INVALID";
 
-  constructor(courseId: string, context?: ErrorContext) {
+  constructor(courseId: string, context?: ErrorContext, message?: string) {
     super(
       GrantCourseInvalidError.code,
-      `Course ${courseId} is not a medrese-free course of this köşk`,
+      message ?? `Course ${courseId} is not a medrese-free course of this köşk`,
       context
     );
   }
@@ -44,14 +47,14 @@ export class CourseNazirExistsError extends ConflictError {
   }
 }
 
-/** No held ders nazırı post with that id in this köşk. */
+/** No held ders nazırı post with that id in this köşk (or, on the course's route, this course). */
 export class CourseNazirNotFoundError extends NotFoundError {
   static readonly code = "COURSE_NAZIR_NOT_FOUND";
 
-  constructor(grantId: string, context?: ErrorContext) {
+  constructor(grantId: string, context?: ErrorContext, where = "in this köşk") {
     super(
       CourseNazirNotFoundError.code,
-      `No ders nazırı post ${grantId} in this köşk`,
+      `No ders nazırı post ${grantId} ${where}`,
       context
     );
   }

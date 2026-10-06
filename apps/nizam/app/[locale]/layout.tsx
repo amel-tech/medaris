@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "@medaris/ui/globals.css";
 import "@medaris/ui/medaris.css";
 import { textFontsHref } from "@medaris/tokens/medaris-fonts";
+import { LocalePreference } from "@medaris/ui/mds/locale-switcher";
 import { ThemeScript } from "@medaris/ui/mds/theme-script";
 import { notFound } from "next/navigation";
 import { hasLocale, NextIntlClientProvider } from "next-intl";
@@ -57,6 +58,8 @@ export default async function LocaleLayout({
         <link rel="stylesheet" href={textFontsHref} precedence="default" />
       </head>
       <body suppressHydrationWarning>
+        {/* a later visit follows this browser's language choice (MDRS-275) */}
+        <LocalePreference locale={locale} locales={routing.locales} />
         <NextIntlClientProvider>
           <ClientProviders>
             <NizamShell footer={<LegalFooter />}>{children}</NizamShell>

@@ -10,9 +10,9 @@ import { PhoneMenu } from "./phone-menu";
  * talebe's (design tedris/44). The app's old header and tab row step aside at
  * every width, so the page has one bar, not two.
  *
- * Mounted by the layouts of the segments that load the system's stylesheet
- * (`MedarisAssets` or a direct `medaris.css` import): both bars are drawn by
- * that stylesheet and unstyled without it.
+ * Mounted by the layouts of the segments that are on the system. Both bars are
+ * drawn by the system's stylesheet, which every page has since it became part
+ * of the app's one stylesheet (app/tedris.css, MDRS-281).
  *
  * `section` and `title` are for the pages whose place and name the address
  * cannot tell: a course page is Derslerim's for its talebe and Keşfet's for

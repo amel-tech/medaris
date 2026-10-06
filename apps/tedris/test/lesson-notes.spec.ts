@@ -123,6 +123,9 @@ const button = (host: HTMLElement, label: string) =>
   [...host.querySelectorAll("button")].find((b) =>
     b.textContent?.includes(label)
   ) as HTMLButtonElement;
+/** A button by its accessible name's start: the row's actions are icons. */
+const named = (host: HTMLElement, name: string) =>
+  host.querySelector(`button[aria-label^="${name}"]`) as HTMLButtonElement;
 const submit = async (host: HTMLElement) => {
   await act(async () => {
     host
@@ -241,7 +244,9 @@ describe("with the YouTube player", () => {
 describe("without a player to read (Drive and other hosts)", () => {
   it("offers a typed time and no button to take one from the player", async () => {
     const host = await mount({ frameId: null });
-    expect(host.textContent).toContain("Örneğin 12:34. Boş bırakabilirsin.");
+    expect(host.textContent).toContain(
+      "İsteğe bağlı: oynatıcıdaki süreyi yaz."
+    );
     expect(button(host, "Şimdiki an")).toBeUndefined();
     await act(async () => textarea(host).focus());
     expect(timeInput(host).value).toBe("");
@@ -308,7 +313,7 @@ describe("editing and deleting", () => {
       ok(note("a", { body: "ilk (düzeltildi)", offsetSeconds: 30 }))
     );
     const host = await mount();
-    await click(button(host, "Düzenle"));
+    await click(named(host, "Notu düzenle, 0:10"));
     const body = host.querySelector("li textarea");
     const inputs = host.querySelectorAll("li input");
     await set(body as HTMLTextAreaElement, "ilk (düzeltildi)");
@@ -330,7 +335,7 @@ describe("editing and deleting", () => {
     mocks.list.mockResolvedValue(ok([note("a", { offsetSeconds: 10 })]));
     mocks.update.mockResolvedValue(ok(note("a", { offsetSeconds: null })));
     const host = await mount();
-    await click(button(host, "Düzenle"));
+    await click(named(host, "Notu düzenle, 0:10"));
     const inputs = host.querySelectorAll("li input");
     await set(inputs[inputs.length - 1] as HTMLInputElement, "");
     await click(button(host, "Kaydet"));
@@ -345,7 +350,7 @@ describe("editing and deleting", () => {
     mocks.list.mockResolvedValue(ok([note("a"), note("b")]));
     mocks.remove.mockResolvedValue(ok(undefined));
     const host = await mount();
-    await click(button(host, "Sil"));
+    await click(named(host, "Notu sil, Zamansız"));
     expect(mocks.remove).not.toHaveBeenCalled();
     expect(host.textContent).toContain("Silinsin mi?");
 
@@ -371,5 +376,120 @@ describe("editing and deleting", () => {
       "derse kayıtlı olman gerekir"
     );
     expect(textarea(host).value).toBe("Not");
+  });
+});
+
+describe("laid out for use while watching (MDRS-280)", () => {
+  it("names the panel and who reads it on one line, with no card header to stretch", async () => {
+    const host = await mount();
+    const heading = host.querySelector("h2") as HTMLElement;
+    expect(heading.textContent).toBe("Notlarım");
+    const caption = heading.nextElementSibling as HTMLElement;
+    expect(caption.textContent).toBe("Yalnızca sen görürsün.");
+    expect(heading.parentElement?.getAttribute("class")).toContain("flex-wrap");
+    // a .mds-card__title in a column (flex: 1 1 12ch) was 144px tall: the
+    // blank space above "Notlarım"
+    expect(
+      host.querySelector(".mds-card__header, .mds-card__title")
+    ).toBeNull();
+  });
+
+  it("starts the note at two lines that grow with the text, labelled for assistive tech", async () => {
+    const host = await mount();
+    const body = textarea(host);
+    expect(body.getAttribute("rows")).toBe("2");
+    expect(body.getAttribute("class")).toContain("field-sizing-content");
+    expect(body.getAttribute("aria-label")).toBe("Not");
+    expect(body.getAttribute("placeholder")).toBe("Notunu yaz…");
+  });
+
+  it("says Markdown is welcome only once the talebe writes, and counts only near the limit", async () => {
+    const host = await mount();
+    expect(host.textContent).not.toContain("Markdown");
+    expect(host.textContent).not.toContain("4000");
+
+    await set(textarea(host), "Bâb-ı evvel");
+    expect(host.textContent).toContain("Markdown yazabilirsin.");
+    expect(host.textContent).not.toContain("/4000");
+
+    await set(textarea(host), "a".repeat(3599));
+    expect(host.textContent).not.toContain("/4000");
+    await set(textarea(host), "a".repeat(3600));
+    expect(host.textContent).toContain("3600/4000 karakter");
+  });
+
+  it("puts the time next to the add button, typed with an honest placeholder when nothing reports it", async () => {
+    const host = await mount({ frameId: null });
+    const time = timeInput(host);
+    expect(time.getAttribute("aria-label")).toBe("Videodaki an");
+    expect(time.getAttribute("placeholder")).toBe("dk:sn");
+    const add = button(host, "Notu ekle");
+    // the field's row is the add button's row
+    expect(add.parentElement?.contains(time)).toBe(true);
+    const hint = document.getElementById(
+      time.getAttribute("aria-describedby") ?? ""
+    );
+    expect(hint?.textContent).toBe("İsteğe bağlı: oynatıcıdaki süreyi yaz.");
+    expect(hint?.classList.contains("mds-visually-hidden")).toBe(false);
+  });
+
+  it("with a player, offers 'Şimdiki an' beside the field and keeps the help for assistive tech", async () => {
+    mocks.player.current = player(65);
+    const host = await mount({ frameId: "recording-frame" });
+    const time = timeInput(host);
+    const add = button(host, "Notu ekle");
+    const current = button(host, "Şimdiki an");
+    expect(add.parentElement?.contains(time)).toBe(true);
+    expect(add.parentElement?.contains(current)).toBe(true);
+    const hint = document.getElementById(
+      time.getAttribute("aria-describedby") ?? ""
+    );
+    expect(hint?.textContent).toBe(
+      "Oynatıcıdaki an yazılır; değiştirebilir ya da boş bırakabilirsin."
+    );
+    expect(hint?.classList.contains("mds-visually-hidden")).toBe(true);
+    expect(host.textContent).not.toContain("İsteğe bağlı");
+    await click(current);
+    expect(time.value).toBe("1:05");
+  });
+
+  it("reads each note as a timeline row: its time, its text, then its actions", async () => {
+    mocks.list.mockResolvedValue(
+      ok([note("n1", { body: "Bâb-ı evvel", offsetSeconds: 135 })])
+    );
+    const host = await mount();
+    const row = host.querySelector("ul > li") as HTMLElement;
+    const [time, body, actions] = [...row.children];
+    expect(time.textContent).toBe("2:15");
+    expect(body.textContent).toBe("Bâb-ı evvel");
+    expect(
+      [...actions.querySelectorAll("button")].map((b) =>
+        b.getAttribute("aria-label")
+      )
+    ).toEqual(["Notu düzenle, 2:15", "Notu sil, 2:15"]);
+    // in a narrow panel the text goes under the time; from 30rem beside it
+    expect(body.getAttribute("class")).toContain("col-span-2");
+    expect(body.getAttribute("class")).toContain("@min-[30rem]:col-start-2");
+  });
+
+  it("says there are no notes in one short line", async () => {
+    const host = await mount();
+    const section = host.querySelector("section") as HTMLElement;
+    expect(section.lastElementChild?.textContent).toBe(
+      "Bu celse için henüz notun yok."
+    );
+    expect(section.querySelector("ul")).toBeNull();
+  });
+});
+
+describe("notes panel strings", () => {
+  it("has every key in every locale", async () => {
+    const { resources } = await import("@medaris/i18n");
+    const keys = Object.keys(resources.tr.tedrisLearn.LessonNotes).sort();
+    for (const locale of ["en", "ar"] as const) {
+      expect(
+        Object.keys(resources[locale].tedrisLearn.LessonNotes).sort()
+      ).toEqual(keys);
+    }
   });
 });

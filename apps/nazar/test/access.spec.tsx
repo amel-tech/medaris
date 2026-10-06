@@ -18,12 +18,26 @@ type Portal =
     }
   | { status: "unavailable" };
 
+type AdminScope =
+  | { status: "ok"; scope: ReturnType<typeof buildScopes>[number] }
+  | { status: "none" }
+  | { status: "failed" };
+
 const state = {
   portal: { status: "unavailable" } as Portal,
   cookie: undefined as string | undefined,
   tedris: "http://localhost:4000" as string | undefined,
   counts: {} as Record<string, number>,
+  admin: { status: "none" } as AdminScope,
+  adminOutside: "none" as "ok" | "none" | "failed",
+  viewer: null as unknown,
+  course: { status: "failed" } as
+    | { status: "ok"; data: unknown }
+    | { status: "forbidden" }
+    | { status: "failed" },
 };
+const adminAsked = vi.fn();
+const courseRead = vi.fn();
 const REDIRECT = "NEXT_REDIRECT";
 const NOT_FOUND = "NEXT_NOT_FOUND";
 
@@ -48,6 +62,9 @@ vi.mock("next/headers", () => ({
 vi.mock("next-intl/server", () => ({
   getTranslations: async (namespace: string) => translatorFor(namespace),
 }));
+vi.mock("next-auth/react", () => ({
+  useSession: () => ({ data: { idToken: "id-token" } }),
+}));
 vi.mock("~/env", () => ({
   env: {
     get TEDRIS_URL() {
@@ -58,6 +75,24 @@ vi.mock("~/env", () => ({
 vi.mock("~/features/shell/reads", () => ({
   getPortal: async () => state.portal,
   getMenuCounts: async () => state.counts,
+}));
+vi.mock("~/features/shell/admin-scope", () => ({
+  adminCourseScope: async (courseId: string) => {
+    adminAsked(courseId);
+    return state.admin;
+  },
+  adminOutsideScopes: async () => state.adminOutside,
+}));
+// What the real `adminCourseScope` reads, for its own describe below.
+vi.mock("~/features/account/reads", () => ({
+  getViewer: async () => state.viewer,
+}));
+vi.mock("~/lib/tedrisat-read", () => ({
+  readOnce: async (what: string, call: (api: unknown) => Promise<unknown>) => {
+    courseRead(what);
+    await call({ courses: { getCourseById: async () => {} } });
+    return state.course;
+  },
 }));
 
 const ok = (
@@ -87,7 +122,23 @@ beforeEach(() => {
   state.cookie = undefined;
   state.tedris = "http://localhost:4000";
   state.counts = {};
+  state.admin = { status: "none" };
+  state.adminOutside = "none";
+  state.viewer = null;
+  state.course = { status: "failed" };
+  adminAsked.mockReset();
+  courseRead.mockReset();
 });
+
+/** A course the başnazım opened by its address, as `adminCourseScope` answers it. */
+const adminCourse = {
+  kind: "ders" as const,
+  id: "c-9",
+  name: "Şerh-i Akaid",
+  role: "SYSTEM_ADMIN",
+  isImam: false,
+  koskName: null,
+};
 
 describe("/ (landing)", () => {
   const home = async () => (await import("../app/page")).default();
@@ -196,6 +247,18 @@ describe("/erisim-yok (nazir 02)", () => {
     }
   });
 
+  it("offers 'Çıkış yap', so a person signed in with the wrong account is not stuck (MDRS-248)", async () => {
+    state.portal = ok([]);
+    const { default: Page } = await import("../app/erisim-yok/page");
+    for (const tedris of [undefined, "http://localhost:4000"]) {
+      state.tedris = tedris;
+      const markup = await html(await Page());
+      expect(markup).toMatch(
+        /<button[^>]*>[\s\S]*?Çıkış yap[\s\S]*?<\/button>/
+      );
+    }
+  });
+
   it("has no menu, no picker and no way to the account page (criterion 1)", async () => {
     state.portal = ok([]);
     const { default: Page } = await import("../app/erisim-yok/page");
@@ -280,5 +343,162 @@ describe("the layouts", () => {
     };
     expect(scoped.props.remember).toBe(true);
     expect(global.props.remember).toBe(false);
+  });
+
+  it("opens a course to the başnazım by its address, named after the course, with 'Medaris başnazımı' on the user row", async () => {
+    state.portal = ok([]);
+    state.admin = { status: "ok", scope: adminCourse };
+    const result = await outcome(() => layout({ kind: "ders", id: "c-9" }));
+    expect(adminAsked).toHaveBeenCalledExactlyOnceWith("c-9");
+    expect(result).toMatch(/^rendered:/);
+    expect(result).toContain("sayfa");
+    expect(result).toContain("Şerh-i Akaid");
+    expect(result).toContain("Medaris başnazımı");
+    // the course's own menu, with the pages MDRS-270 builds
+    expect(result).toContain("Ders nazırları");
+    expect(result).toContain("Ders ayarları");
+  });
+
+  it("opens it beside the scopes the başnazım holds himself, under the roles he holds", async () => {
+    state.portal = ok([medrese()], { roles: ["MEDRESE_BASMUDERRIS"] });
+    state.admin = { status: "ok", scope: adminCourse };
+    const { PortalLayout } = await import(
+      "~/features/shell/components/portal-layout"
+    );
+    const opened = (await PortalLayout({
+      scope: { kind: "ders", id: "c-9" },
+      children: null,
+    })) as { props: { scopes: Array<{ id: string }>; roles: string[] } };
+    expect(opened.props.scopes.map((scope) => scope.id)).toEqual([
+      "m-1",
+      "c-9",
+    ]);
+    expect(opened.props.roles).toEqual(["MEDRESE_BASMUDERRIS"]);
+  });
+
+  it("does not remember the başnazım's course for '/'", async () => {
+    state.portal = ok([]);
+    state.admin = { status: "ok", scope: adminCourse };
+    const { PortalLayout } = await import(
+      "~/features/shell/components/portal-layout"
+    );
+    const opened = (await PortalLayout({
+      scope: { kind: "ders", id: "c-9" },
+      children: null,
+    })) as { props: { remember: boolean; current: { id: string } } };
+    expect(opened.props.current.id).toBe("c-9");
+    expect(opened.props.remember).toBe(false);
+  });
+
+  it("is the retry state when the başnazım's course could not be read", async () => {
+    state.portal = ok([]);
+    state.admin = { status: "failed" };
+    const result = await outcome(() => layout({ kind: "ders", id: "c-9" }));
+    expect(result).toContain("Görevleriniz okunamadı");
+    expect(result).not.toContain("sayfa");
+  });
+
+  it("opens /hesap and /bildirimler to the başnazım who holds no seat, in the frame without a scope", async () => {
+    // the frame of a course he opened by its address links to both
+    state.portal = ok([]);
+    state.adminOutside = "ok";
+    const result = await outcome(() => layout(null));
+    expect(result).toMatch(/^rendered:/);
+    expect(result).toContain("sayfa");
+    expect(result).toContain("Medaris başnazımı");
+    expect(result).not.toContain("Ders ayarları");
+  });
+
+  it("is the retry state there, not the no-access page, when /me could not be read", async () => {
+    state.portal = ok([]);
+    state.adminOutside = "failed";
+    const result = await outcome(() => layout(null));
+    expect(result).toContain("Görevleriniz okunamadı");
+    expect(result).not.toContain("sayfa");
+  });
+
+  it("never opens a medrese that way, nor asks for one's own scope", async () => {
+    state.portal = ok([medrese()]);
+    state.admin = { status: "ok", scope: adminCourse };
+    expect(
+      await outcome(() => layout({ kind: "medrese", id: "baskasi" }))
+    ).toBe(NOT_FOUND);
+    await outcome(() => layout({ kind: "medrese", id: "m-1" }));
+    expect(adminAsked).not.toHaveBeenCalled();
+  });
+});
+
+describe("the başnazım's course scope", () => {
+  /** A course id as the API has it; the address may write it in capitals. */
+  const COURSE = "0e1c7a52-3f4b-4d1e-9a6c-2b8f5d7e9a10";
+  const scopeOf = async (courseId: string) => {
+    const { adminCourseScope } = await vi.importActual<
+      typeof import("~/features/shell/admin-scope")
+    >("~/features/shell/admin-scope");
+    return adminCourseScope(courseId);
+  };
+
+  it("is nothing, and reads no course, for anyone /me does not call the başnazım", async () => {
+    state.viewer = { id: "u-1", roles: { systemAdmin: false } };
+    state.course = {
+      status: "ok",
+      data: { id: COURSE, title: "Şerh-i Akaid" },
+    };
+    expect(await scopeOf(COURSE)).toEqual({ status: "none" });
+    expect(courseRead).not.toHaveBeenCalled();
+  });
+
+  it("is the retry state, never a verdict, when /me could not be read", async () => {
+    state.viewer = null;
+    state.course = {
+      status: "ok",
+      data: { id: COURSE, title: "Şerh-i Akaid" },
+    };
+    expect(await scopeOf(COURSE)).toEqual({ status: "failed" });
+    expect(courseRead).not.toHaveBeenCalled();
+  });
+
+  it("is the portal's 404 for an address that names no course id, as for anyone", async () => {
+    state.viewer = { id: "u-0", roles: { systemAdmin: true } };
+    await expect(scopeOf("1234-abcd")).rejects.toThrow(NOT_FOUND);
+    expect(courseRead).not.toHaveBeenCalled();
+  });
+
+  it("tells the pages outside any scope whether /me calls the caller the başnazım", async () => {
+    const { adminOutsideScopes } = await vi.importActual<
+      typeof import("~/features/shell/admin-scope")
+    >("~/features/shell/admin-scope");
+    for (const [viewer, answer] of [
+      [{ id: "u-0", roles: { systemAdmin: true } }, "ok"],
+      [{ id: "u-1", roles: { systemAdmin: false } }, "none"],
+      [null, "failed"],
+    ] as const) {
+      state.viewer = viewer;
+      expect(await adminOutsideScopes(), answer).toBe(answer);
+    }
+  });
+
+  it("is the course, by its own id and title, for the başnazım", async () => {
+    state.viewer = { id: "u-0", roles: { systemAdmin: true } };
+    state.course = {
+      status: "ok",
+      data: { id: COURSE, title: "Şerh-i Akaid" },
+    };
+    expect(await scopeOf(COURSE.toUpperCase())).toEqual({
+      status: "ok",
+      scope: { ...adminCourse, id: COURSE },
+    });
+    expect(courseRead).toHaveBeenCalledExactlyOnceWith("the course");
+  });
+
+  it("is the retry state, never a scope, when the course read failed or was refused", async () => {
+    state.viewer = { id: "u-0", roles: { systemAdmin: true } };
+    for (const course of [
+      { status: "failed" },
+      { status: "forbidden" },
+    ] as const) {
+      state.course = course;
+      expect(await scopeOf(COURSE)).toEqual({ status: "failed" });
+    }
   });
 });
