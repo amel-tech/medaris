@@ -48,6 +48,9 @@ vi.mock("next/headers", () => ({
 vi.mock("next-intl/server", () => ({
   getTranslations: async (namespace: string) => translatorFor(namespace),
 }));
+vi.mock("next-auth/react", () => ({
+  useSession: () => ({ data: { idToken: "id-token" } }),
+}));
 vi.mock("~/env", () => ({
   env: {
     get TEDRIS_URL() {
@@ -193,6 +196,18 @@ describe("/erisim-yok (nazir 02)", () => {
     for (const unset of [undefined, ""]) {
       state.tedris = unset;
       expect(await outcome(page)).not.toContain("Tedris’e dön");
+    }
+  });
+
+  it("offers 'Çıkış yap', so a person signed in with the wrong account is not stuck (MDRS-248)", async () => {
+    state.portal = ok([]);
+    const { default: Page } = await import("../app/erisim-yok/page");
+    for (const tedris of [undefined, "http://localhost:4000"]) {
+      state.tedris = tedris;
+      const markup = await html(await Page());
+      expect(markup).toMatch(
+        /<button[^>]*>[\s\S]*?Çıkış yap[\s\S]*?<\/button>/
+      );
     }
   });
 
