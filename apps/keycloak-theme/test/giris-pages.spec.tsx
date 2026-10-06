@@ -9,6 +9,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { act } from "react";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
+import { withKcLocale } from "../src/login/locale-url";
 import { REGISTER_ATTRIBUTES } from "../src/login/pages/Register";
 import { type RenderedPage, renderPage } from "./render-page";
 
@@ -53,7 +54,10 @@ describe("login.ftl", () => {
     expect(q('input[name="username"]')).not.toBeNull();
     expect(q('input[name="password"]')).not.toBeNull();
     expect(q("#kc-registration")?.getAttribute("href")).toBe(
-      (page.kcContext.url as Record<string, string>).registrationUrl
+      withKcLocale(
+        (page.kcContext.url as Record<string, string>).registrationUrl ?? "",
+        "tr"
+      )
     );
     expect(q("a.mds-btn--link")?.textContent).toBe("Şifremi unuttum");
   });
@@ -235,7 +239,7 @@ describe("register.ftl and login-update-password.ftl", () => {
     );
     expect(document.body.textContent).toContain("Hesabın var mı?");
     expect(q("#kc-login")?.getAttribute("href")).toBe(
-      page.kcContext.url.loginUrl
+      withKcLocale(page.kcContext.url.loginUrl, "tr")
     );
   });
 
@@ -276,5 +280,41 @@ describe("register.ftl and login-update-password.ftl", () => {
     expect(emailRule()?.textContent).not.toContain("karşılandı");
     await typeInto("s25kayit");
     expect(emailRule()?.textContent).toContain("karşılandı");
+  });
+});
+
+describe("the login and register forms keep the page's language between them (MDRS-274)", () => {
+  for (const tag of ["en", "ar"] as const) {
+    it(`login → register and register → login carry kc_locale=${tag}`, async () => {
+      // the mock's URLs are "#"; Keycloak's are absolute
+      page = await renderPage("login.ftl", tag, {
+        url: {
+          registrationUrl:
+            "https://auth.example/realms/r/registrations?client_id=nizam",
+        },
+      });
+      const register = new URL(
+        q("#kc-registration")?.getAttribute("href") ?? ""
+      );
+      expect(register.searchParams.get("kc_locale")).toBe(tag);
+      page = await renderPage("register.ftl", tag, {
+        url: {
+          loginUrl:
+            "https://auth.example/realms/r/login-actions/authenticate?client_id=nizam",
+        },
+      });
+      const login = new URL(q("#kc-login")?.getAttribute("href") ?? "");
+      expect(login.searchParams.get("kc_locale")).toBe(tag);
+    });
+  }
+
+  it("withKcLocale replaces a kc_locale already there and leaves a bad URL alone", () => {
+    expect(
+      withKcLocale("https://auth.example/realms/r/login?kc_locale=tr&x=1", "en")
+    ).toBe("https://auth.example/realms/r/login?kc_locale=en&x=1");
+    expect(withKcLocale("not a url", "en")).toBe("not a url");
+    expect(withKcLocale("https://auth.example/a", undefined)).toBe(
+      "https://auth.example/a"
+    );
   });
 });

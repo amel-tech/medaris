@@ -4,6 +4,7 @@ import { Button } from "@medaris/ui/mds/button";
 import { kcSanitize } from "keycloakify/lib/kcSanitize";
 import type { I18n } from "../i18n";
 import type { KcContext } from "../KcContext";
+import { withKcLocale } from "../locale-url";
 import type { ExtendedPageProps } from "../types/PageProps";
 
 /**
@@ -68,7 +69,13 @@ export default function Login(
       infoNode={
         <>
           {msg("noAccount")}{" "}
-          <a id="kc-registration" href={url.registrationUrl}>
+          <a
+            id="kc-registration"
+            href={withKcLocale(
+              url.registrationUrl,
+              kcContext.locale?.currentLanguageTag
+            )}
+          >
             {msg("doRegister")}
           </a>
         </>

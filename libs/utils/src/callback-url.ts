@@ -32,3 +32,39 @@ export const destinationFromCallback = (
 
   return `${path}${target.search}${target.hash}`;
 };
+
+/**
+ * Where a sign-in page reached without a locale should go instead (MDRS-274),
+ * or `null` when it already has one or names nothing to go by.
+ *
+ * `withAuth` sends a signed-out visitor to the app's `pages.signIn`, which
+ * has no locale (`/auth/signin?callbackUrl=…/en/courses`). Left to next-intl,
+ * that becomes the default `/tr/auth/signin`, and Keycloak opens in Turkish
+ * for someone who was reading the English app. The locale of the page they
+ * were stopped on is in `callbackUrl`; this moves the auth page under it.
+ */
+export const authPageUnderCallbackLocale = (
+  { pathname, search }: { pathname: string; search: string },
+  {
+    authPaths,
+    locales,
+  }: { authPaths: readonly string[]; locales: readonly string[] }
+): string | null => {
+  // A loop, not /\/+$/: the path is the request's, and that pattern backtracks
+  // polynomially on a long run of slashes (CodeQL js/polynomial-redos).
+  let end = pathname.length;
+  while (end > 0 && pathname[end - 1] === "/") end--;
+  const path = pathname.slice(0, end) || "/";
+  if (!authPaths.includes(path)) return null;
+  const callbackUrl = new URLSearchParams(search).get("callbackUrl");
+  if (!callbackUrl) return null;
+  let target: URL;
+  try {
+    target = new URL(callbackUrl, "http://callback.invalid");
+  } catch {
+    return null;
+  }
+  const first = target.pathname.split("/")[1]?.toLowerCase();
+  const locale = locales.find((l) => l.toLowerCase() === first);
+  return locale ? `/${locale}${path}${search}` : null;
+};

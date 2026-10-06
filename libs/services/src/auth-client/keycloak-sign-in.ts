@@ -15,7 +15,13 @@ export interface KeycloakSignInRequest {
   intent: KeycloakSignInIntent;
   /** Where NextAuth sends the browser after the callback. */
   callbackUrl: string;
-  /** The active locale; it becomes Keycloak's `ui_locales`. */
+  /**
+   * The active locale. It becomes both `ui_locales`, the OIDC hint kept on
+   * the auth session, and `kc_locale`, the explicit choice Keycloak ranks
+   * above its own `KEYCLOAK_LOCALE` cookie and remembers for the forms that
+   * follow (login → register → back). With only the hint, a stale cookie or a
+   * restarted flow showed a Turkish form to an English visitor (MDRS-274).
+   */
   locale: string;
 }
 
@@ -33,7 +39,10 @@ export const keycloakSignInArgs = ({
   { callbackUrl: string },
   Record<string, string>,
 ] => {
-  const authorizationParams: Record<string, string> = { ui_locales: locale };
+  const authorizationParams: Record<string, string> = {
+    ui_locales: locale,
+    kc_locale: locale,
+  };
   if (intent === "register") authorizationParams.prompt = "create";
   return ["keycloak", { callbackUrl }, authorizationParams];
 };

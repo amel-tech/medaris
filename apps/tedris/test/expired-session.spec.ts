@@ -90,7 +90,7 @@ const openWith = async (pathname: string, session: unknown) => {
 const keycloak = (pathname: string) => [
   "keycloak",
   { callbackUrl: `http://localhost:3000${pathname}` },
-  { ui_locales: "tr" },
+  { ui_locales: "tr", kc_locale: "tr" },
 ];
 
 describe("a failed refresh on the client (RefreshErrorRedirect)", () => {
