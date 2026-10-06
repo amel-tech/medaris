@@ -6,6 +6,14 @@
 /** The API's limit on a note's Markdown source (`LESSON_NOTE_BODY_MAX`). */
 export const LESSON_NOTE_BODY_MAX = 4000;
 
+/**
+ * Whether the panel shows how many characters a note has: only in the last
+ * tenth before the API's limit, where the count tells the talebe something
+ * (MDRS-280).
+ */
+export const showsBodyCount = (length: number): boolean =>
+  length >= LESSON_NOTE_BODY_MAX * 0.9;
+
 /** The API's latest position, 99:59:59 (`LESSON_NOTE_OFFSET_MAX`). */
 export const LESSON_NOTE_OFFSET_MAX = 359_999;
 

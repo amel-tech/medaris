@@ -2,7 +2,7 @@ import { LocalePreference } from "@medaris/ui/mds/locale-switcher";
 import { ThemeScript } from "@medaris/ui/mds/theme-script";
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import "@medaris/ui/globals.css";
+import "../tedris.css";
 
 const inter = Inter({ subsets: ["latin"] });
 

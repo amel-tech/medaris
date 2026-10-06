@@ -150,9 +150,9 @@ describe("recordings tab, read failed (design tedris/24)", () => {
 describe("recordings tab (design tedris/24, MDRS-162)", () => {
   it("groups the recordings by week, newest first, with date and length", async () => {
     const host = await mount(FIVE);
-    const weeks = [...host.querySelectorAll("section.mds-card")].filter((s) =>
-      s.querySelector(".mds-eyebrow")
-    );
+    const weeks = [
+      ...host.querySelectorAll('section[aria-labelledby^="week-"]'),
+    ];
     expect(
       weeks.map((w) => text(w.querySelector(".mds-eyebrow") as Element))
     ).toEqual(["Hafta 4", "Hafta 3", "Hafta 2", "Hafta 1"]);
@@ -206,7 +206,9 @@ describe("recordings tab (design tedris/24, MDRS-162)", () => {
     ) as HTMLElement;
     expect(text(row)).toContain("Herkese açık");
     expect(text(row)).toContain("YouTube");
-    expect(text(row)).toContain("Oynat");
+    expect(row.querySelector("button")?.getAttribute("aria-label")).toBe(
+      "Oynat: Emsile-i muhtelife: sülâsî fiilin on kalıbı"
+    );
   });
 
   it("loads the chosen recording into the player on Oynat", async () => {
@@ -298,6 +300,109 @@ describe("recordings tab, Bunny recordings (MDRS-114)", () => {
       "https://www.youtube-nocookie.com/embed/muttaride001"
     );
     expect(player.getAttribute("data-frame-title")).toBe("");
+  });
+});
+
+describe("recordings tab, the playlist under the player (MDRS-280)", () => {
+  const rowOf = (host: HTMLElement, title: string) =>
+    [...host.querySelectorAll("li")].find((li) =>
+      li.textContent?.includes(title)
+    ) as HTMLElement;
+
+  it("does not list a lone recording that is already playing above", async () => {
+    const host = await mount([FIVE[4]]);
+    expect(
+      (host.querySelector("#recording-player") as HTMLElement).textContent
+    ).toBe("Emsile-i muhtelife: sülâsî fiilin on kalıbı");
+    expect(text(host)).not.toContain("Bütün ders kayıtları");
+    expect(host.querySelectorAll("li")).toHaveLength(0);
+  });
+
+  it.each([
+    ["one that opens at its host", FIVE[2]],
+    ["one still being prepared", FIVE[0]],
+  ])("lists a lone recording that does not play in the frame: %s", async (_label, only) => {
+    const host = await mount([only]);
+    expect(host.querySelector("#recording-player")).toBeNull();
+    expect(text(host)).toContain("Bütün ders kayıtları");
+    expect(host.querySelectorAll("li")).toHaveLength(1);
+  });
+
+  it("makes the whole row the button: a click on the title plays it", async () => {
+    const host = await mount(FIVE);
+    const row = rowOf(host, "Emsile-i muttaride: mâzî");
+    const button = row.querySelector("button") as HTMLElement;
+    expect(button.textContent).toContain(
+      "Emsile-i muttaride: mâzî ve muzâri çekimi"
+    );
+    expect(button.textContent).toContain("12 Eylül 2026 · 55 dk");
+    await click(button.querySelector(".mds-label") as HTMLElement);
+    expect(
+      (host.querySelector("#recording-player") as HTMLElement).textContent
+    ).toBe("Emsile-i muttaride: mâzî ve muzâri çekimi");
+  });
+
+  it("marks the row that is playing, and only that one", async () => {
+    const host = await mount(FIVE);
+    const current = host.querySelectorAll('[aria-current="true"]');
+    expect(current).toHaveLength(1);
+    expect(current[0].getAttribute("aria-label")).toBe(
+      "Oynatıcıda: Mezîd fiiller ve bâblar: celse kaydı"
+    );
+    expect(text(current[0])).toContain("Oynatıcıda");
+
+    await click(
+      rowOf(host, "Emsile-i muttaride: mâzî").querySelector(
+        "button"
+      ) as HTMLElement
+    );
+    const now = host.querySelectorAll('[aria-current="true"]');
+    expect(now).toHaveLength(1);
+    expect(text(now[0])).toContain("Emsile-i muttaride: mâzî");
+  });
+
+  it("names each row's facts as its description", async () => {
+    const host = await mount(FIVE);
+    const button = rowOf(host, "Emsile-i muttaride: mâzî").querySelector(
+      "button"
+    ) as HTMLElement;
+    const facts = document.getElementById(
+      button.getAttribute("aria-describedby") ?? ""
+    );
+    expect(facts?.textContent).toBe("12 Eylül 2026 · 55 dk");
+  });
+
+  it("makes a row that opens at its host one link, in a new tab", async () => {
+    const host = await mount(FIVE);
+    const link = rowOf(host, "Sülâsî mücerred").querySelector(
+      "a"
+    ) as HTMLAnchorElement;
+    expect(link.getAttribute("aria-label")).toBe(
+      "Ders kaydını aç: Sülâsî mücerred bâblar: celse kaydı (yeni sekmede açılır)"
+    );
+    expect(link.textContent).toContain("Sülâsî mücerred bâblar: celse kaydı");
+    expect(link.textContent).toContain("Google Drive");
+  });
+
+  it("prints a week whose title only names the week once", async () => {
+    const host = await mount([
+      rec("Celse kaydı", {
+        weekId: "w3",
+        weekNumber: 3,
+        weekTitle: "Hafta 3",
+        url: "https://youtu.be/hafta3aaaaa",
+      }),
+      rec("Eski kayıt", {
+        weekId: "w2",
+        weekNumber: 2,
+        weekTitle: "Emsile-i muttaride",
+        url: "https://youtu.be/hafta2aaaaa",
+      }),
+    ]);
+    const headings = [
+      ...host.querySelectorAll('section[aria-labelledby^="week-"] h3'),
+    ].map((h) => text(h));
+    expect(headings).toEqual(["Hafta 3", "Hafta 2 Emsile-i muttaride"]);
   });
 });
 

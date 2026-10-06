@@ -5,12 +5,12 @@ import { Button } from "@medaris/ui/mds/button";
 import { SystemState } from "@medaris/ui/mds/system-state";
 import { useSession } from "next-auth/react";
 import { useLocale, useTranslations } from "next-intl";
-import "@medaris/ui/medaris.css";
 
 /**
- * The system's stylesheet and faces for the pages below. A not-found or error
- * boundary replaces its segment, so the segment layouts that load them for the
- * medrese and session pages are not around it: the boundary brings its own.
+ * The system's faces for the pages below. A not-found or error boundary
+ * replaces its segment, so the segment layouts that load them for the medrese
+ * and session pages are not around it: the boundary brings its own. The
+ * stylesheet comes with the locale layout (app/tedris.css, MDRS-281).
  */
 export function SystemPageAssets() {
   return (

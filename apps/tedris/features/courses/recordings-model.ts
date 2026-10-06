@@ -171,6 +171,36 @@ export const firstPlayable = (
 ): RecordingResponse | null =>
   recordings.find((r) => recordingAction(r) === "play") ?? null;
 
+/**
+ * Whether the tab lists the recordings under its player (MDRS-280): when
+ * there is more than one to choose from, or when the only one does not play
+ * in the frame (it opens at its host or is still being prepared) and the list
+ * is the only place it appears. A lone recording that is already playing
+ * above is not listed a second time.
+ */
+export const listsRecordings = (recordings: RecordingResponse[]): boolean =>
+  recordings.length > 1 || firstPlayable(recordings) === null;
+
+const WEEK_WORD = "(?:hafta|week|الأسبوع|أسبوع)";
+
+/**
+ * Whether a week's title only says which week it is: empty, "Hafta 3",
+ * "3. hafta", "Week 3" (any case, leading zeros). The list then prints the
+ * week once, as its label, instead of "Hafta 3" over "Hafta 3" (MDRS-280).
+ */
+export const isPlainWeekTitle = (
+  title: string,
+  weekNumber: number
+): boolean => {
+  const value = title.trim().replace(/\s+/g, " ").toLocaleLowerCase("tr");
+  if (value === "") return true;
+  const n = `0*${weekNumber}`;
+  return new RegExp(
+    `^(?:${WEEK_WORD} ?${n}|${n}\\.? ?${WEEK_WORD})$`,
+    "u"
+  ).test(value);
+};
+
 /** The address of a course's recordings tab. */
 export const recordingsTabPath = (courseId: string): string =>
   `/courses/${courseId}?tab=kayitlar`;

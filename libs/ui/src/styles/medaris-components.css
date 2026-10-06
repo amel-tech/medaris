@@ -1,0 +1,24 @@
+/* @medaris/ui/medaris-components.css: the unified design system without
+   Tailwind (MDRS-281). It is ./medaris.css less its Tailwind theme and
+   utilities: the tokens with the element defaults and the type classes, the
+   class layer and the Base UI twins. It is for an app that still renders the
+   shadcn kit of ./globals.css beside the system (tedris) and so builds its
+   utilities once, in its own entry, with the kit's theme and the system's
+   roles (@medaris/tokens/tailwind-roles.css).
+
+   Why not ./medaris.css there: it builds a second set of utilities with the
+   system's theme, which has one breakpoint. Loaded after ./globals.css it
+   declared again, later in the same layer, most of the classes the kit's
+   sheet had already built, and its plain `grid-cols-3` then won over the
+   kit's `max-lg:grid-cols-2`: the decks grid kept three columns at 800 px.
+
+   The layer order is written out, and the app's entry writes the same line,
+   so it does not matter which of the two files the browser reads first: the
+   kit's preflight and base, then the system's element defaults (mds-base),
+   then the class layer, then the app's one set of utilities over all of them. */
+@layer theme, base, mds-base, components, utilities;
+
+@import "@medaris/tokens/medaris.css" layer(mds-base);
+@import "./mds/components.css" layer(components);
+@import "./mds/medrese.css" layer(components);
+@import "./mds/baseui.css" layer(components);

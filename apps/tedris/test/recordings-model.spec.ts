@@ -5,6 +5,8 @@ import {
   embedUrlOf,
   firstPlayable,
   groupByWeek,
+  isPlainWeekTitle,
+  listsRecordings,
   liveChatUrlOf,
   liveEmbedUrlOf,
   playerApiUrlOf,
@@ -333,6 +335,59 @@ describe("groupByWeek and firstPlayable", () => {
   it("starts it on a Bunny recording when that is the newest", () => {
     const bunny = rec("e", { weekId: "w5", provider: "BUNNY", url: SIGNED });
     expect(firstPlayable([bunny, ...list])?.id).toBe("e");
+  });
+});
+
+describe("listsRecordings (MDRS-280)", () => {
+  const youtube = rec("y");
+  const drive = rec("d", {
+    provider: "DRIVE",
+    url: "https://drive.google.com/file/d/abcdef123/view",
+  });
+  const preparing = rec("p", { status: "PROCESSING", url: null });
+
+  it("does not list a lone recording that plays in the player above", () => {
+    expect(listsRecordings([youtube])).toBe(false);
+    expect(
+      listsRecordings([rec("b", { provider: "BUNNY", url: SIGNED })])
+    ).toBe(false);
+  });
+
+  it("lists a lone recording that does not play in the frame", () => {
+    expect(listsRecordings([drive])).toBe(true);
+    expect(listsRecordings([preparing])).toBe(true);
+  });
+
+  it("lists more than one, whatever they are", () => {
+    expect(listsRecordings([youtube, rec("z")])).toBe(true);
+    expect(listsRecordings([youtube, preparing])).toBe(true);
+  });
+});
+
+describe("isPlainWeekTitle (MDRS-280)", () => {
+  it.each([
+    ["Hafta 3", 3],
+    ["hafta 3", 3],
+    ["HAFTA 03", 3],
+    ["  Hafta   3 ", 3],
+    ["Hafta3", 3],
+    ["3. hafta", 3],
+    ["3 Hafta", 3],
+    ["Week 3", 3],
+    ["الأسبوع 3", 3],
+    ["", 3],
+  ])("takes %j as only naming week %i", (title, n) => {
+    expect(isPlainWeekTitle(title, n)).toBe(true);
+  });
+
+  it.each([
+    ["Hafta 3", 4],
+    ["Hafta 13", 3],
+    ["Hafta 3: Mezîd fiiller", 3],
+    ["Mezîd fiiller", 3],
+    ["İkinci hafta", 2],
+  ])("keeps %j as a title of week %i", (title, n) => {
+    expect(isPlainWeekTitle(title, n)).toBe(false);
   });
 });
 
