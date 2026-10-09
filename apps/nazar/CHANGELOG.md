@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.3](https://github.com/amel-tech/medaris/compare/nazar-web-v0.2.2...nazar-web-v0.2.3) (2026-10-09)
+
+
+### Features
+
+* **nazar-web:** let a medrese's başmüderris and nazırs open its courses ([#267](https://github.com/amel-tech/medaris/issues/267)) ([61cd3a1](https://github.com/amel-tech/medaris/commit/61cd3a12c2aa4741b70dc5ab5bdd8dbaff06cdf7))
+
 ## [0.2.2](https://github.com/amel-tech/medaris/compare/nazar-web-v0.2.1...nazar-web-v0.2.2) (2026-10-09)
 
 
