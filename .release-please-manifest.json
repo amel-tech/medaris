@@ -3,7 +3,7 @@
   "apps/teskilat": "0.2.1",
   "apps/tedris": "2.1.0",
   "apps/nizam": "0.2.1",
-  "apps/nazar": "0.2.1",
+  "apps/nazar": "0.2.2",
   "apps/landing": "2.2.0",
   "apps/keycloak-theme": "1.4.0"
 }
