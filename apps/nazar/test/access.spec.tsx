@@ -507,6 +507,88 @@ describe("the scope a page is drawn in", () => {
   });
 });
 
+describe("a course of one's own medrese, opened by its address", () => {
+  const COURSE = "0e1c7a52-3f4b-4d1e-9a6c-2b8f5d7e9a10";
+  const layout = async (id = COURSE) => {
+    const { PortalLayout } = await import(
+      "~/features/shell/components/portal-layout"
+    );
+    return PortalLayout({
+      scope: { kind: "ders", id },
+      children: <p>sayfa</p>,
+    });
+  };
+  const ofMedrese = (madrasah: { id: string } | null) => ({
+    status: "ok" as const,
+    data: { id: COURSE, title: "Şerh-i Akaid", madrasah },
+  });
+
+  it("opens to a nazır of the medrese, under the medrese role, with the course's own menu", async () => {
+    state.portal = ok([medrese({ role: "MEDRESE_NAZIR" })], {
+      roles: ["MEDRESE_NAZIR"],
+    });
+    // the API may spell the medrese's id in any case
+    state.course = ofMedrese({ id: "M-1" });
+    const result = await outcome(() => layout());
+    expect(courseRead).toHaveBeenCalledExactlyOnceWith("the course");
+    expect(result).toMatch(/^rendered:/);
+    expect(result).toContain("sayfa");
+    expect(result).toContain("Şerh-i Akaid");
+    expect(result).toContain("Medrese nazırı");
+    expect(result).toContain("Ders nazırları");
+    expect(result).toContain("Ders ayarları");
+  });
+
+  it("opens to its başmüderris as well, and is not remembered for '/'", async () => {
+    state.portal = ok([medrese()], { roles: ["MEDRESE_BASMUDERRIS"] });
+    state.course = ofMedrese({ id: "m-1" });
+    const opened = (await layout()) as {
+      props: { remember: boolean; current: { id: string; role: string } };
+    };
+    expect(opened.props.current).toMatchObject({
+      id: COURSE,
+      role: "MEDRESE_BASMUDERRIS",
+    });
+    expect(opened.props.remember).toBe(false);
+  });
+
+  it("is the portal's 404 for a course of another medrese, a köşk's own course, or one the API refuses", async () => {
+    state.portal = ok([medrese({ role: "MEDRESE_NAZIR" })]);
+    for (const course of [
+      ofMedrese({ id: "m-2" }),
+      ofMedrese(null),
+      { status: "forbidden" as const },
+    ]) {
+      state.course = course;
+      expect(await outcome(() => layout())).toBe(NOT_FOUND);
+    }
+  });
+
+  it("reads no course for someone with no medrese seat", async () => {
+    state.portal = ok([assignment({ course: course() })]);
+    state.course = ofMedrese({ id: "m-1" });
+    expect(await outcome(() => layout())).toBe(NOT_FOUND);
+    expect(courseRead).not.toHaveBeenCalled();
+  });
+
+  it("is the retry state when the course could not be read", async () => {
+    state.portal = ok([medrese({ role: "MEDRESE_NAZIR" })]);
+    state.course = { status: "failed" };
+    const result = await outcome(() => layout());
+    expect(result).toContain("Görevleriniz okunamadı");
+    expect(result).not.toContain("sayfa");
+  });
+
+  it("leaves the başnazım's own way first, and asks for a medrese's course only when it is not his", async () => {
+    state.portal = ok([medrese({ role: "MEDRESE_NAZIR" })]);
+    state.admin = { status: "ok", scope: adminCourse };
+    state.course = ofMedrese({ id: "m-1" });
+    const opened = (await layout()) as { props: { current: { role: string } } };
+    expect(opened.props.current.role).toBe("SYSTEM_ADMIN");
+    expect(courseRead).not.toHaveBeenCalled();
+  });
+});
+
 describe("the başnazım's scope", () => {
   /** A course id as the API has it; the address may write it in capitals. */
   const COURSE = "0e1c7a52-3f4b-4d1e-9a6c-2b8f5d7e9a10";

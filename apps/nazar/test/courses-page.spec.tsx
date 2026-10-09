@@ -267,14 +267,7 @@ describe("Dersler", () => {
     expect(textOf(await markup())).toContain("3 ders · 2 köşkte");
   });
 
-  it("names a course's page only where the caller holds a scope in it", async () => {
-    const out = await markup();
-    expect(out).toContain('href="/ders/c-1"');
-    expect(out).not.toContain('href="/ders/c-2"');
-  });
-
-  it("names every course's page for the başnazım, who opens any course by its address", async () => {
-    state.systemAdmin = true;
+  it("names every course's page: the başmüderris, a nazır and the başnazım open the medrese's courses", async () => {
     const out = await markup();
     for (const id of ["c-1", "c-2", "c-3"]) {
       expect(out).toContain(`href="/ders/${id}"`);

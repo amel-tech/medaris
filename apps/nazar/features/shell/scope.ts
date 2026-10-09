@@ -138,20 +138,14 @@ export const runsMedrese = (
 ): boolean => systemAdmin || scope?.role === "MEDRESE_BASMUDERRIS";
 
 /**
- * The courses a medrese's lists link to, lower case: those the person holds a
- * scope in, and for the başnazım, who opens any course by its address, every
- * one listed.
+ * The courses a medrese's lists link to, lower case: every one listed. Whoever
+ * is on a medrese's pages opens its courses by their address: its başmüderris
+ * and its nazırs as the medrese's, the başnazım as the platform
+ * (`openedScope`). What they may do in a course is the API's answer there.
  */
-export function openableCourses(
-  scopes: readonly Pick<Scope, "kind" | "id">[],
-  systemAdmin: boolean,
+export const medreseCourseLinks = (
   listed: readonly string[]
-): ReadonlySet<string> {
-  const own = scopes.filter((s) => s.kind === "ders").map((s) => s.id);
-  return new Set(
-    [...own, ...(systemAdmin ? listed : [])].map((id) => id.toLowerCase())
-  );
-}
+): ReadonlySet<string> => new Set(listed.map((id) => id.toLowerCase()));
 
 /** The `nazar-scope` cookie's value as a kind and an id, or null for anything else. */
 export function parseScopeCookie(
