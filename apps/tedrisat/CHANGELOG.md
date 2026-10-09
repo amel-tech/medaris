@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.2](https://github.com/amel-tech/medaris/compare/tedrisat-v0.2.1...tedrisat-v0.2.2) (2026-10-09)
+
+
+### Features
+
+* **nazar-web, tedrisat, i18n:** MDRS-270 appoint a ders nazırı, edit course settings ([#258](https://github.com/amel-tech/medaris/issues/258)) ([679f91a](https://github.com/amel-tech/medaris/commit/679f91ad8891d2001ca3aae703f4c239cb7dc242))
+* **nizam-web:** MDRS-279 edit session kaynak and course resource links, show them in tedris ([#256](https://github.com/amel-tech/medaris/issues/256)) ([7ba47ca](https://github.com/amel-tech/medaris/commit/7ba47ca196d7ce5c8d8ff476b81d97f150273e43))
+
 ## [0.2.1](https://github.com/amel-tech/medaris/compare/tedrisat-v0.2.0...tedrisat-v0.2.1) (2026-10-05)
 
 
