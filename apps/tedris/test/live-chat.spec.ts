@@ -15,6 +15,8 @@ vi.mock("next-intl", () => ({
       liveChatShow: "Sohbeti göster",
       liveChatHide: "Gizle",
       liveChatText: "Sohbet YouTube'dan gelir.",
+      liveChatPopout: "Sohbeti YouTube'da aç",
+      liveChatNewTab: "(yeni sekmede açılır)",
     })[key] ?? key,
 }));
 
@@ -66,6 +68,23 @@ describe("LiveChat", () => {
     expect(src.searchParams.get("v")).toBe("ybHyHDBiRoE");
     expect(src.searchParams.get("embed_domain")).toBe(location.hostname);
     expect(src.searchParams.has("dark_theme")).toBe(false);
+  });
+
+  it("offers the same chat as YouTube's own page in a new tab, where a sign-in the frame cannot see counts", async () => {
+    const host = await mount();
+    const link = [...host.querySelectorAll<HTMLAnchorElement>("a")].find((a) =>
+      a.textContent?.includes("Sohbeti YouTube'da aç")
+    );
+    expect(link).toBeDefined();
+    const href = new URL(link?.href ?? "");
+    expect(href.origin + href.pathname).toBe(
+      "https://www.youtube.com/live_chat"
+    );
+    expect(href.searchParams.get("is_popout")).toBe("1");
+    expect(href.searchParams.get("v")).toBe("ybHyHDBiRoE");
+    expect(link?.target).toBe("_blank");
+    expect(link?.rel).toBe("noopener noreferrer");
+    expect(link?.textContent).toContain("(yeni sekmede açılır)");
   });
 
   it("waits closed on a phone, with no frame until it is opened", async () => {
