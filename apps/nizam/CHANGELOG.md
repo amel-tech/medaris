@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.2.2](https://github.com/amel-tech/medaris/compare/nizam-web-v0.2.1...nizam-web-v0.2.2) (2026-10-09)
+
+
+### Features
+
+* **nazar-web, nizam-web, i18n:** let the başnazım run a medrese from nazar ([#266](https://github.com/amel-tech/medaris/issues/266)) ([848b58a](https://github.com/amel-tech/medaris/commit/848b58a9b6700b572fc7b517d33ba38894a85c6e))
+* **nazar-web, tedrisat, i18n:** MDRS-270 appoint a ders nazırı, edit course settings ([#258](https://github.com/amel-tech/medaris/issues/258)) ([679f91a](https://github.com/amel-tech/medaris/commit/679f91ad8891d2001ca3aae703f4c239cb7dc242))
+* **nizam-web:** MDRS-279 edit session kaynak and course resource links, show them in tedris ([#256](https://github.com/amel-tech/medaris/issues/256)) ([7ba47ca](https://github.com/amel-tech/medaris/commit/7ba47ca196d7ce5c8d8ff476b81d97f150273e43))
+* **tedris-web:** MDRS-275 add a language menu to tedris and nizam, remembered in this browser ([#255](https://github.com/amel-tech/medaris/issues/255)) ([1775327](https://github.com/amel-tech/medaris/commit/17753275d556d13a222d4eeb790542d178623536))
+
+
+### Bug Fixes
+
+* **nizam-web:** MDRS-274 keep the app's language through Keycloak's login and register forms ([#253](https://github.com/amel-tech/medaris/issues/253)) ([de2c8b3](https://github.com/amel-tech/medaris/commit/de2c8b3130a5f777f22689e0a62d31350e9fb69f))
+* **nizam-web:** MDRS-276 scroll an opened week into view and keep weeks open while editing ([#252](https://github.com/amel-tech/medaris/issues/252)) ([3829eec](https://github.com/amel-tech/medaris/commit/3829eec714925654dda099baf63b173b1d488f43))
+
 ## [0.2.1](https://github.com/amel-tech/medaris/compare/nizam-web-v0.2.0...nizam-web-v0.2.1) (2026-10-05)
 
 
