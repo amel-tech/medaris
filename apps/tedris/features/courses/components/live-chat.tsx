@@ -3,7 +3,7 @@
 import { Icon } from "@medaris/ui/mds/icon";
 import { useTranslations } from "next-intl";
 import { useEffect, useState, useSyncExternalStore } from "react";
-import { liveChatUrlOf } from "../recordings-model";
+import { liveChatPopoutUrlOf, liveChatUrlOf } from "../recordings-model";
 
 /** Open from this width up; below it the chat waits behind its summary. */
 const WIDE = "(min-width: 768px)";
@@ -38,8 +38,9 @@ const subscribeTheme = (onChange: () => void) => {
  * disclosure card: open on a wide window, closed on a phone so the player and
  * "Celseye katıl" keep their place. The frame mounts only while open, in the
  * browser (its `embed_domain` is this page's host), and follows the page's
- * theme. Its look inside is YouTube's; writing needs a YouTube sign-in in the
- * same browser.
+ * theme. Its look inside is YouTube's; writing needs a YouTube sign-in the
+ * frame can see, which many browsers keep out of a frame on another site, so
+ * under it "Sohbeti YouTube'da aç" opens the same chat as YouTube's own page.
  */
 export function LiveChat({ streamUrl }: { streamUrl: string }) {
   const t = useTranslations("tedris.SessionPage");
@@ -53,6 +54,7 @@ export function LiveChat({ streamUrl }: { streamUrl: string }) {
   }, []);
 
   const src = host ? liveChatUrlOf(streamUrl, { host, dark }) : null;
+  const popout = liveChatPopoutUrlOf(streamUrl);
 
   return (
     <details
@@ -85,7 +87,21 @@ export function LiveChat({ streamUrl }: { streamUrl: string }) {
           sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-forms"
         />
       ) : null}
-      <p className="mds-card__body mds-caption">{t("liveChatText")}</p>
+      <div className="mds-card__body flex flex-col items-start gap-3">
+        <p className="mds-caption">{t("liveChatText")}</p>
+        {popout ? (
+          <a
+            className="mds-btn mds-btn--outline mds-btn--small"
+            href={popout}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {t("liveChatPopout")}
+            <span className="mds-visually-hidden"> {t("liveChatNewTab")}</span>
+            <Icon name="externalLink" size="sm" />
+          </a>
+        ) : null}
+      </div>
     </details>
   );
 }
