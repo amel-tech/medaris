@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { getMessages } from "~/lib/i18n/messages";
-import { adminCourseScope, adminOutsideScopes } from "../admin-scope";
+import { adminOutsideScopes, adminScope } from "../admin-scope";
 import { getMenuCounts, getPortal } from "../reads";
 import {
   defaultScope,
@@ -39,10 +39,10 @@ export async function PortalUnavailable({
  * A scope that is not one of the caller's answers 404, in the same words as a
  * route that is not there, so the portal never says which ids exist. A person
  * with no scope at all is sent to the no-access page instead. The one
- * exception is the başnazım, who opens any course by its address (MDRS-270):
- * the course is his scope for that page only, and `/` is never sent back to it.
- * The pages outside any scope that its frame links to open to him too, in the
- * frame without a scope.
+ * exception is the başnazım, who opens any medrese and any course by its
+ * address (MDRS-270 for a course): it is his scope for that page only, and `/`
+ * is never sent back to it. The pages outside any scope that its frame links
+ * to open to him too, in the frame without a scope.
  */
 export async function PortalLayout({
   scope: wanted,
@@ -76,10 +76,9 @@ export async function PortalLayout({
         </PortalFrame>
       );
     }
-    const admin =
-      wanted.kind === "ders" ? await adminCourseScope(wanted.id) : null;
-    if (admin?.status === "failed") return <PortalUnavailable />;
-    if (admin?.status === "ok") {
+    const admin = await adminScope(wanted.kind, wanted.id);
+    if (admin.status === "failed") return <PortalUnavailable />;
+    if (admin.status === "ok") {
       return (
         <PortalFrame
           person={portal.person}

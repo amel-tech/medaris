@@ -110,6 +110,24 @@ export function madrasahAbilities(
   };
 }
 
+/**
+ * nazar's address for a row's "Nazar’da aç": the başnazım opens any medrese's
+ * pages there by their address, as he does a course's (MDRS-270), and
+ * appoints its nazırs and opens its courses from them. Null for anyone else,
+ * and while nazar's address is not set.
+ */
+export function nazarForMadrasahs(
+  me: { systemAdmin: boolean } | null,
+  nazarUrl: string | undefined
+): string | null {
+  if (!me?.systemAdmin || !nazarUrl) return null;
+  return nazarUrl.replace(/\/+$/, "");
+}
+
+/** A medrese's Pano in nazar, under the address `nazarForMadrasahs` gave. */
+export const nazarMadrasahHref = (nazarUrl: string, madrasahId: string) =>
+  `${nazarUrl}/medrese/${encodeURIComponent(madrasahId)}`;
+
 /** How a status is drawn in the Durum column. Hidden is plain text with its glyph, as in the design. */
 export const STATUS_LOOK: Record<
   MadrasahStatus,

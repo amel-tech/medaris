@@ -3,8 +3,7 @@ import { Breadcrumb } from "@medaris/ui/mds/breadcrumb";
 import { Button } from "@medaris/ui/mds/button";
 import { Skeleton } from "@medaris/ui/mds/skeleton";
 import { PageProblem } from "~/features/shell/components/page-problem";
-import { getPortal } from "~/features/shell/reads";
-import { findScope } from "~/features/shell/scope";
+import { pageScope } from "~/features/shell/page-scope";
 import { getMessages } from "~/lib/i18n/messages";
 import { readOnce } from "~/lib/tedrisat-read";
 import { coursesHref, koskChoiceLine, locksOf } from "../courses";
@@ -20,9 +19,9 @@ import { OpenCourseForm } from "./open-course-form";
  * fails leaves them open, and the API applies the policies all the same.
  */
 export async function OpenCoursePage({ madrasahId }: { madrasahId: string }) {
-  const [t, portal, hosting, settings] = await Promise.all([
+  const [t, scope, hosting, settings] = await Promise.all([
     getMessages("nazar"),
-    getPortal(),
+    pageScope("medrese", madrasahId),
     readOnce("the medrese's hosting köşks", (api) =>
       api.madrasahs.getMadrasahHostingKosks({ id: madrasahId })
     ),
@@ -30,10 +29,7 @@ export async function OpenCoursePage({ madrasahId }: { madrasahId: string }) {
       api.madrasahs.getMadrasahSettings({ id: madrasahId })
     ),
   ]);
-  const madrasahName =
-    (portal.status === "ok"
-      ? findScope(portal.scopes, "medrese", madrasahId)?.name
-      : undefined) ?? "";
+  const madrasahName = scope?.name ?? "";
   const listHref = coursesHref(madrasahId, { kosk: null, status: null });
 
   return (

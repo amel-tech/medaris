@@ -923,7 +923,9 @@
     "change": "Change head müderris",
     "changeLabel": "Change head müderris: {name}",
     "passivate": "Take out of service",
-    "passivateLabel": "Take out of service: {name}"
+    "passivateLabel": "Take out of service: {name}",
+    "openInNazar": "Open in Nazar",
+    "openInNazarLabel": "Open in Nazar, in a new tab: {name}"
   },
   "HeadPicker": {
     "label": "Head müderris",

@@ -7,8 +7,10 @@ import {
   heldRoles,
   landingPath,
   NO_ACCESS_PATH,
+  openableCourses,
   panoHref,
   parseScopeCookie,
+  runsMedrese,
   SCOPE_COOKIE,
   scopeHref,
   scopeKey,
@@ -218,5 +220,37 @@ describe("displayName", () => {
     ).toBe("Elif Nur Taşdelen");
     expect(displayName({ email: "elif@example.com" })).toBe("elif@example.com");
     expect(displayName({})).toBe("");
+  });
+});
+
+describe("who runs a medrese (runsMedrese)", () => {
+  it("is its başmüderris, and the başnazım whatever seat he holds there", () => {
+    expect(runsMedrese({ role: "MEDRESE_BASMUDERRIS" }, false)).toBe(true);
+    for (const role of ["SYSTEM_ADMIN", "MEDRESE_NAZIR"]) {
+      expect(runsMedrese({ role }, true), role).toBe(true);
+    }
+    expect(runsMedrese(undefined, true)).toBe(true);
+  });
+
+  it("is never a nazır of the medrese, nor someone with no scope there", () => {
+    expect(runsMedrese({ role: "MEDRESE_NAZIR" }, false)).toBe(false);
+    expect(runsMedrese(undefined, false)).toBe(false);
+  });
+});
+
+describe("the courses a medrese's lists link to (openableCourses)", () => {
+  const scopes = buildScopes([medrese(), bina]);
+
+  it("is the courses the person holds a scope in, lower case, never the medrese", () => {
+    expect([...openableCourses(scopes, false, ["c-bina", "C-OTHER"])]).toEqual([
+      "c-bina",
+    ]);
+  });
+
+  it("is every listed course as well for the başnazım", () => {
+    expect([...openableCourses(scopes, true, ["C-OTHER"])].sort()).toEqual([
+      "c-bina",
+      "c-other",
+    ]);
   });
 });

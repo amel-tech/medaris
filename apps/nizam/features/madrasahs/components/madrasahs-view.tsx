@@ -29,6 +29,7 @@ import {
   type MadrasahAbilities,
   type Messages,
   madrasahErrorKey,
+  nazarMadrasahHref,
   STATUS_LOOK,
   STATUS_TABS,
   sinceLabel,
@@ -44,6 +45,8 @@ interface Props {
   q: string;
   /** The buttons the viewer may use (MDRS-108); all of them when omitted. */
   can?: MadrasahAbilities;
+  /** nazar's address for "Nazar’da aç", the başnazım's alone (`nazarForMadrasahs`); null for anyone else */
+  nazarUrl?: string | null;
 }
 
 const SEARCH_DELAY_MS = 300;
@@ -59,12 +62,15 @@ const SEARCH_DELAY_MS = 300;
  * "Pasife al" shows what taking a medrese out of service takes along and asks
  * to confirm it (MDRS-227); "Medrese aç" is nizam/08. Each is drawn only for a
  * viewer whose permissions open it (`can`), so none leads to a 403 (MDRS-108).
+ * "Nazar’da aç" takes the başnazım to an active medrese's Pano in nazar, where
+ * he appoints its nazırs and opens its courses.
  */
 export function MadrasahsView({
   directory,
   status,
   q,
   can = ALL_MADRASAH_ABILITIES,
+  nazarUrl = null,
 }: Props) {
   const tm = useTranslations("nizam.MadrasahsPage");
   const t = tm as unknown as Messages;
@@ -259,8 +265,22 @@ export function MadrasahsView({
           >
             {t("assign")}
           </Button>
-        ) : m.status === "ACTIVE" && (can.assign || can.passivate) ? (
+        ) : m.status === "ACTIVE" &&
+          (can.assign || can.passivate || nazarUrl) ? (
           <span className="flex flex-wrap justify-end gap-2">
+            {nazarUrl ? (
+              <Button
+                variant="outline"
+                size="small"
+                href={nazarMadrasahHref(nazarUrl, m.id)}
+                target="_blank"
+                rel="noopener noreferrer"
+                iconLeft={<Icon name="externalLink" size="sm" />}
+                aria-label={t("openInNazarLabel", { name: m.name })}
+              >
+                {t("openInNazar")}
+              </Button>
+            ) : null}
             {m.headMuderris && can.assign ? (
               <Button
                 variant="outline"

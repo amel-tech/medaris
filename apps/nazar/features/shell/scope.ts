@@ -127,6 +127,32 @@ export function findScope(
   return scopes.find((s) => s.kind === kind && s.id.toLowerCase() === wanted);
 }
 
+/**
+ * Whoever runs a medrese here: gives its nazırs permissions, dismisses any of
+ * them and hides the medrese. Its başmüderris, and the başnazım whatever seat
+ * he holds in it, as the API's `madrasahAuthorityOf` decides.
+ */
+export const runsMedrese = (
+  scope: Pick<Scope, "role"> | undefined,
+  systemAdmin: boolean
+): boolean => systemAdmin || scope?.role === "MEDRESE_BASMUDERRIS";
+
+/**
+ * The courses a medrese's lists link to, lower case: those the person holds a
+ * scope in, and for the başnazım, who opens any course by its address, every
+ * one listed.
+ */
+export function openableCourses(
+  scopes: readonly Pick<Scope, "kind" | "id">[],
+  systemAdmin: boolean,
+  listed: readonly string[]
+): ReadonlySet<string> {
+  const own = scopes.filter((s) => s.kind === "ders").map((s) => s.id);
+  return new Set(
+    [...own, ...(systemAdmin ? listed : [])].map((id) => id.toLowerCase())
+  );
+}
+
 /** The `nazar-scope` cookie's value as a kind and an id, or null for anything else. */
 export function parseScopeCookie(
   raw: string | null | undefined

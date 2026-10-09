@@ -24,6 +24,8 @@ import {
   madrasahAbilities,
   madrasahErrorKey,
   nameError,
+  nazarForMadrasahs,
+  nazarMadrasahHref,
   openPayload,
   personDecisions,
   personsReady,
@@ -535,6 +537,50 @@ describe("MadrasahsView (nizam 07)", () => {
     expect(html).not.toContain("Geri al: ");
     expect(html).not.toContain("Pasife al: ");
     expect(html).not.toContain('href="/tr/arsiv"');
+  });
+
+  it("offers the başnazım 'Nazar’da aç' on an active medrese, to its Pano in a new tab, and on no passive or hidden one", () => {
+    const html = render(
+      <MadrasahsView
+        directory={directory(three)}
+        status="ALL"
+        q=""
+        nazarUrl="https://nazar.example"
+      />
+    );
+    const label =
+      'aria-label="Nazar’da aç, yeni sekmede: Süleymaniye Medresesi"';
+    expect(html).toContain(label);
+    const link = html.slice(html.lastIndexOf("<a", html.indexOf(label)));
+    expect(link).toMatch(
+      /^<a[^>]*href="https:\/\/nazar\.example\/medrese\/m1"/
+    );
+    expect(link).toMatch(/^<a[^>]*target="_blank"/);
+    expect(html.match(/aria-label="Nazar’da aç, /g)).toHaveLength(1);
+  });
+
+  it("offers 'Nazar’da aç' to nobody without nazar's address", () => {
+    expect(view(directory(three))).not.toContain("Nazar’da aç");
+  });
+});
+
+describe("where 'Nazar’da aç' goes from Medreseler", () => {
+  it("is nazar's address for the başnazım alone, and nothing while it is not set", () => {
+    expect(
+      nazarForMadrasahs({ systemAdmin: true }, "https://nazar.example//")
+    ).toBe("https://nazar.example");
+    expect(
+      nazarForMadrasahs({ systemAdmin: false }, "https://nazar.example")
+    ).toBeNull();
+    expect(nazarForMadrasahs(null, "https://nazar.example")).toBeNull();
+    expect(nazarForMadrasahs({ systemAdmin: true }, "")).toBeNull();
+    expect(nazarForMadrasahs({ systemAdmin: true }, undefined)).toBeNull();
+  });
+
+  it("is the medrese's Pano under that address", () => {
+    expect(nazarMadrasahHref("https://nazar.example", "m 1")).toBe(
+      "https://nazar.example/medrese/m%201"
+    );
   });
 });
 
