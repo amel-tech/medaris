@@ -112,6 +112,17 @@ import does not resolve from the workspace root under `tsc`.
   26.0.7 does not) and a realm with registration enabled (MDRS-100).
 - **Rendering of the placeholder screens** (spacing, RTL) — no DOM tests.
 
+### Observed by hand (MDRS-248, 2026-10-09)
+
+B1 seen in production at `https://tedris.medaris.app/tr/welcome`, signed in,
+Turkish: the title with the user's name, the three steps from
+`tedris.WelcomePage.steps` and the "Öğrenmeye başla" button, as built above.
+Still the MDRS-101 placeholder; MDRS-127 has not delivered B1 yet. Which path
+led there (fresh registration or a later first sign-in) was not recorded, so
+the full chain above stays unverified. RTL was not looked at.
+
+![B1 in production, 2026-10-09](img/mdrs-101-b1-welcome-prod.png)
+
 ## Follow-up
 
 - Replace the B1, sign-in/error/sign-out placeholders and landing's CTA block
