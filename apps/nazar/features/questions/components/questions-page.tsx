@@ -4,8 +4,7 @@ import { getLocale } from "next-intl/server";
 import { getViewer } from "~/features/account/reads";
 import { genitive } from "~/features/courses/courses";
 import { PageProblem } from "~/features/shell/components/page-problem";
-import { getPortal } from "~/features/shell/reads";
-import { findScope } from "~/features/shell/scope";
+import { pageScope } from "~/features/shell/page-scope";
 import { getMessages } from "~/lib/i18n/messages";
 import { readOnce } from "~/lib/tedrisat-read";
 import { QuestionsList } from "./questions-list";
@@ -20,20 +19,17 @@ import { QuestionsList } from "./questions-list";
  * rest comes with "Daha fazla göster".
  */
 export async function QuestionsPage({ courseId }: { courseId: string }) {
-  const [t, locale, me, portal, questions] = await Promise.all([
+  const [t, locale, me, scope, questions] = await Promise.all([
     getMessages("nazar"),
     getLocale(),
     getViewer(),
-    getPortal(),
+    pageScope("ders", courseId),
     readOnce("the course's questions", (api) =>
       api.lessons.listCourseQuestions({ id: courseId })
     ),
   ]);
   const timeZone = resolveTimeZone(me?.timeZone, DEFAULT_TIME_ZONE);
-  const courseName =
-    (portal.status === "ok"
-      ? findScope(portal.scopes, "ders", courseId)?.name
-      : undefined) ?? "";
+  const courseName = scope?.name ?? "";
 
   return (
     <>

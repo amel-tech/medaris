@@ -10,8 +10,7 @@ import type { ReactNode } from "react";
 import { getViewer } from "~/features/account/reads";
 import { PageProblem } from "~/features/shell/components/page-problem";
 import { pageScope } from "~/features/shell/page-scope";
-import { getPortal } from "~/features/shell/reads";
-import { openableCourses } from "~/features/shell/scope";
+import { medreseCourseLinks } from "~/features/shell/scope";
 import { getMessages } from "~/lib/i18n/messages";
 import { readOnce } from "~/lib/tedrisat-read";
 import {
@@ -68,11 +67,10 @@ export async function CoursesPage({
   madrasahId: string;
   filters: Filters;
 }) {
-  const [t, locale, me, portal, medrese, courses, hosting] = await Promise.all([
+  const [t, locale, me, medrese, courses, hosting] = await Promise.all([
     getMessages("nazar"),
     getLocale(),
     getViewer(),
-    getPortal(),
     pageScope("medrese", madrasahId),
     readOnce("the medrese's courses", (api) =>
       api.madrasahs.getMadrasahCourses({
@@ -87,9 +85,7 @@ export async function CoursesPage({
   ]);
   const timeZone = resolveTimeZone(me?.timeZone, DEFAULT_TIME_ZONE);
   const madrasahName = medrese?.name ?? "";
-  const held = openableCourses(
-    portal.status === "ok" ? portal.scopes : [],
-    me?.roles.systemAdmin === true,
+  const held = medreseCourseLinks(
     courses.status === "ok" ? courses.data.map((course) => course.id) : []
   );
   const kosks = hosting.status === "ok" ? hosting.data : [];

@@ -6,8 +6,8 @@ import {
   findScope,
   heldRoles,
   landingPath,
+  medreseCourseLinks,
   NO_ACCESS_PATH,
-  openableCourses,
   panoHref,
   parseScopeCookie,
   runsMedrese,
@@ -238,19 +238,12 @@ describe("who runs a medrese (runsMedrese)", () => {
   });
 });
 
-describe("the courses a medrese's lists link to (openableCourses)", () => {
-  const scopes = buildScopes([medrese(), bina]);
-
-  it("is the courses the person holds a scope in, lower case, never the medrese", () => {
-    expect([...openableCourses(scopes, false, ["c-bina", "C-OTHER"])]).toEqual([
-      "c-bina",
-    ]);
-  });
-
-  it("is every listed course as well for the başnazım", () => {
-    expect([...openableCourses(scopes, true, ["C-OTHER"])].sort()).toEqual([
+describe("the courses a medrese's lists link to (medreseCourseLinks)", () => {
+  it("is every course listed, lower case: whoever is on a medrese's pages opens its courses", () => {
+    expect([...medreseCourseLinks(["c-bina", "C-OTHER"])]).toEqual([
       "c-bina",
       "c-other",
     ]);
+    expect(medreseCourseLinks([]).size).toBe(0);
   });
 });

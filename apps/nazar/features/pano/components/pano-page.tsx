@@ -17,7 +17,7 @@ import {
 import { PageProblem } from "~/features/shell/components/page-problem";
 import { pageScope } from "~/features/shell/page-scope";
 import { getPortal } from "~/features/shell/reads";
-import { openableCourses } from "~/features/shell/scope";
+import { medreseCourseLinks } from "~/features/shell/scope";
 import { getMessages } from "~/lib/i18n/messages";
 import { readOnce } from "~/lib/tedrisat-read";
 import { applicationRows, courseCards, greetingOf, sessionRows } from "../pano";
@@ -73,9 +73,7 @@ export async function PanoPage({ madrasahId }: { madrasahId: string }) {
   const scopes = portal.status === "ok" ? portal.scopes : [];
   const assignments = portal.status === "ok" ? portal.assignments : [];
   const data = dashboard.status === "ok" ? dashboard.data : null;
-  const held = openableCourses(
-    scopes,
-    me?.roles.systemAdmin === true,
+  const held = medreseCourseLinks(
     data ? data.upcomingSessions.map((session) => session.courseId) : []
   );
   const numbers = new Intl.NumberFormat(locale);
