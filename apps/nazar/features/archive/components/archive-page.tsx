@@ -3,8 +3,8 @@ import { DEFAULT_TIME_ZONE, resolveTimeZone } from "@medaris/utils";
 import { getLocale } from "next-intl/server";
 import { getViewer } from "~/features/account/reads";
 import { PageProblem } from "~/features/shell/components/page-problem";
-import { getPortal } from "~/features/shell/reads";
-import { findScope } from "~/features/shell/scope";
+import { pageScope } from "~/features/shell/page-scope";
+import { runsMedrese } from "~/features/shell/scope";
 import { getMessages, type Messages } from "~/lib/i18n/messages";
 import { readOnce } from "~/lib/tedrisat-read";
 import {
@@ -26,8 +26,9 @@ import { RestoreMadrasah } from "./restore-madrasah";
  * "Medreseyi gizle". The medrese's başmüderris opens the page, and so does a
  * nazır given `madrasah.course_hide` or `madrasah.settings_edit` (and Medaris
  * yönetimi); a refusal is a notice, and "Medreseyi gizle" is left out with the
- * list. "Medreseyi gizle" is the başmüderris's alone: `madrasah.hide` is no
- * grant, so a nazır is not shown a button the API answers with 403 (MDRS-108).
+ * list. "Medreseyi gizle" is the başmüderris's and the başnazım's alone
+ * (`runsMedrese`): `madrasah.hide` is no grant, so a nazır is not shown a
+ * button the API answers with 403 (MDRS-108).
  * A medrese that is hidden says so in a banner above the list, with "Medreseyi
  * geri getir" for whoever hid it or a level above, and offers no "Medreseyi
  * gizle" (MDRS-143). Which tab and which page are in the address (`?tur=`,
@@ -43,11 +44,11 @@ export async function ArchivePage({
   page: number;
 }) {
   const tab = tabOf(tabParam);
-  const [t, locale, me, portal, archive] = await Promise.all([
+  const [t, locale, me, scope, archive] = await Promise.all([
     getMessages("nazar"),
     getLocale(),
     getViewer(),
-    getPortal(),
+    pageScope("medrese", madrasahId),
     readOnce("the medrese's archive", (api) =>
       api.archive.listMadrasahArchive({
         id: madrasahId,
@@ -58,12 +59,8 @@ export async function ArchivePage({
     ),
   ]);
   const timeZone = resolveTimeZone(me?.timeZone, DEFAULT_TIME_ZONE);
-  const scope =
-    portal.status === "ok"
-      ? findScope(portal.scopes, "medrese", madrasahId)
-      : undefined;
   const madrasahName = scope?.name ?? "";
-  const mayHide = scope?.role === "MEDRESE_BASMUDERRIS";
+  const mayHide = runsMedrese(scope, me?.roles.systemAdmin === true);
 
   const medreseRestore =
     archive.status === "ok"

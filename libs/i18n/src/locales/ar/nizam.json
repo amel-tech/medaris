@@ -923,7 +923,9 @@
     "change": "تغيير كبير المدرّسين",
     "changeLabel": "تغيير كبير المدرّسين: {name}",
     "passivate": "إيقاف التنشيط",
-    "passivateLabel": "إيقاف التنشيط: {name}"
+    "passivateLabel": "إيقاف التنشيط: {name}",
+    "openInNazar": "افتح في نظر",
+    "openInNazarLabel": "افتح في نظر، في لسان جديد: {name}"
   },
   "HeadPicker": {
     "label": "كبير المدرّسين",

@@ -4,8 +4,7 @@ import { DEFAULT_TIME_ZONE, resolveTimeZone } from "@medaris/utils";
 import { getLocale } from "next-intl/server";
 import { getViewer } from "~/features/account/reads";
 import { PageProblem } from "~/features/shell/components/page-problem";
-import { getPortal } from "~/features/shell/reads";
-import { findScope } from "~/features/shell/scope";
+import { pageScope } from "~/features/shell/page-scope";
 import { getMessages } from "~/lib/i18n/messages";
 import { readOnce } from "~/lib/tedrisat-read";
 import { banRows, type Filters, listRequest, scopeOptions } from "../bans";
@@ -30,11 +29,11 @@ export async function BansPage({
   madrasahId: string;
   filters: Filters;
 }) {
-  const [t, locale, me, portal, bans, courses] = await Promise.all([
+  const [t, locale, me, scope, bans, courses] = await Promise.all([
     getMessages("nazar"),
     getLocale(),
     getViewer(),
-    getPortal(),
+    pageScope("medrese", madrasahId),
     readOnce("the medrese's bans", (api) =>
       api.bans.listMadrasahBans({ id: madrasahId, ...listRequest(filters) })
     ),
@@ -43,10 +42,7 @@ export async function BansPage({
     ),
   ]);
   const timeZone = resolveTimeZone(me?.timeZone, DEFAULT_TIME_ZONE);
-  const madrasahName =
-    (portal.status === "ok"
-      ? findScope(portal.scopes, "medrese", madrasahId)?.name
-      : undefined) ?? "";
+  const madrasahName = scope?.name ?? "";
   const choices =
     courses.status === "ok"
       ? courses.data.map((course) => ({ id: course.id, title: course.title }))

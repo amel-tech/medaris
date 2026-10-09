@@ -4,8 +4,8 @@ import { DEFAULT_TIME_ZONE, resolveTimeZone } from "@medaris/utils";
 import { getLocale } from "next-intl/server";
 import { getViewer } from "~/features/account/reads";
 import { PageProblem } from "~/features/shell/components/page-problem";
-import { getPortal } from "~/features/shell/reads";
-import { findScope } from "~/features/shell/scope";
+import { pageScope } from "~/features/shell/page-scope";
+import { runsMedrese } from "~/features/shell/scope";
 import { dayFormat } from "~/lib/dates";
 import { getMessages } from "~/lib/i18n/messages";
 import { readOnce } from "~/lib/tedrisat-read";
@@ -18,8 +18,9 @@ import { PermissionGroups } from "./permission-groups";
 /**
  * Medrese nazırları (nazir 05): who holds the nazır role in the medrese, with
  * their groups, single permissions, end and giver, and the band that names a
- * nazır who has not received a permission yet. The medrese's başmüderris opens
- * the page, and so does a nazır given "Medrese nazırı ata", who appoints but
+ * nazır who has not received a permission yet. The medrese's başmüderris and
+ * the başnazım open the page and run it (`runsMedrese`), and so does a nazır
+ * given "Medrese nazırı ata", who appoints but
  * gives nothing and dismisses only the nazırs they seated: the table and the
  * groups draw only those buttons for them (MDRS-108). The API refuses any
  * other nazır of the medrese, so that answer is a notice, not a table, and the
@@ -28,11 +29,11 @@ import { PermissionGroups } from "./permission-groups";
  * (nazir 06) are in the table.
  */
 export async function NazirsPage({ madrasahId }: { madrasahId: string }) {
-  const [t, locale, me, portal, nazirs, groups] = await Promise.all([
+  const [t, locale, me, scope, nazirs, groups] = await Promise.all([
     getMessages("nazar"),
     getLocale(),
     getViewer(),
-    getPortal(),
+    pageScope("medrese", madrasahId),
     readOnce("the medrese's nazırs", (api) =>
       api.madrasahs.getMadrasahNazirs({ id: madrasahId })
     ),
@@ -41,14 +42,8 @@ export async function NazirsPage({ madrasahId }: { madrasahId: string }) {
     ),
   ]);
   const timeZone = resolveTimeZone(me?.timeZone, DEFAULT_TIME_ZONE);
-  const scope =
-    portal.status === "ok"
-      ? findScope(portal.scopes, "medrese", madrasahId)
-      : undefined;
   const madrasahName = scope?.name ?? "";
-  // Whoever gives permissions here and dismisses any nazır: the başmüderris
-  // (the API's `madrasahAuthorityOf`; the platform works in nizam).
-  const manages = scope?.role === "MEDRESE_BASMUDERRIS";
+  const manages = runsMedrese(scope, me?.roles.systemAdmin === true);
 
   const notice =
     nazirs.status === "ok"

@@ -23,6 +23,8 @@ const state = {
   courses: { status: "failed" } as Answer<unknown[]>,
   hosting: { status: "failed" } as Answer<unknown[]>,
   asked: [] as unknown[],
+  /** Whether `GET /me` calls the viewer the başnazım. */
+  systemAdmin: false,
 };
 const refresh = vi.fn();
 const replace = vi.fn();
@@ -54,7 +56,11 @@ vi.mock("~/lib/tedrisat-read", () => ({
   },
 }));
 vi.mock("~/features/account/reads", () => ({
-  getViewer: async () => ({ id: "u-1", timeZone: "Europe/Istanbul" }),
+  getViewer: async () => ({
+    id: "u-1",
+    timeZone: "Europe/Istanbul",
+    roles: { systemAdmin: state.systemAdmin },
+  }),
 }));
 vi.mock("~/features/shell/reads", () => ({
   getPortal: async () => ({
@@ -195,6 +201,7 @@ beforeEach(() => {
   state.courses = { status: "ok", data: courses };
   state.hosting = { status: "ok", data: kosks };
   state.asked = [];
+  state.systemAdmin = false;
   for (const fn of [
     refresh,
     replace,
@@ -264,6 +271,14 @@ describe("Dersler", () => {
     const out = await markup();
     expect(out).toContain('href="/ders/c-1"');
     expect(out).not.toContain('href="/ders/c-2"');
+  });
+
+  it("names every course's page for the başnazım, who opens any course by its address", async () => {
+    state.systemAdmin = true;
+    const out = await markup();
+    for (const id of ["c-1", "c-2", "c-3"]) {
+      expect(out).toContain(`href="/ders/${id}"`);
+    }
   });
 
   it("lists the köşks that host the medrese beside the table, with their courses", async () => {

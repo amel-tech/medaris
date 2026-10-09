@@ -33,6 +33,8 @@ type Answer<T> =
 const state = {
   dashboard: { status: "failed" } as Answer<unknown>,
   givenName: "Mehmet Emin" as string | undefined,
+  /** Whether `GET /me` calls the viewer the başnazım. */
+  systemAdmin: false,
 };
 const refresh = vi.fn();
 const approveApplication = vi.fn();
@@ -56,6 +58,7 @@ vi.mock("~/features/account/reads", () => ({
     id: "u-me",
     givenName: state.givenName,
     timeZone: "Europe/Istanbul",
+    roles: { systemAdmin: state.systemAdmin },
   }),
 }));
 
@@ -220,6 +223,7 @@ beforeEach(() => {
   vi.setSystemTime(new Date("2026-10-02T12:00:00+03:00"));
   state.dashboard = ok();
   state.givenName = "Mehmet Emin";
+  state.systemAdmin = false;
   for (const fn of [refresh, approveApplication, rejectApplication]) {
     fn.mockReset();
   }

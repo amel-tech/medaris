@@ -923,7 +923,9 @@
     "change": "Başmüderrisi değiştir",
     "changeLabel": "Başmüderrisi değiştir: {name}",
     "passivate": "Pasife al",
-    "passivateLabel": "Pasife al: {name}"
+    "passivateLabel": "Pasife al: {name}",
+    "openInNazar": "Nazar’da aç",
+    "openInNazarLabel": "Nazar’da aç, yeni sekmede: {name}"
   },
   "HeadPicker": {
     "label": "Başmüderris",

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { forbidden } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import { env } from "~/env";
 import {
   getMyAssignments,
   getMyPermissionCodes,
@@ -8,6 +9,7 @@ import {
 import { MadrasahsView } from "~/features/madrasahs/components/madrasahs-view";
 import {
   madrasahAbilities,
+  nazarForMadrasahs,
   searchFromParam,
   statusFromParam,
 } from "~/features/madrasahs/present";
@@ -56,6 +58,7 @@ export default async function Page({
         status={status}
         q={q}
         can={madrasahAbilities(me, held)}
+        nazarUrl={nazarForMadrasahs(me, env.NAZAR_URL)}
       />
     </div>
   );

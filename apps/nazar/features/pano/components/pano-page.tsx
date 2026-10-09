@@ -15,8 +15,9 @@ import {
   openCourseHref,
 } from "~/features/courses/courses";
 import { PageProblem } from "~/features/shell/components/page-problem";
+import { pageScope } from "~/features/shell/page-scope";
 import { getPortal } from "~/features/shell/reads";
-import { findScope } from "~/features/shell/scope";
+import { openableCourses } from "~/features/shell/scope";
 import { getMessages } from "~/lib/i18n/messages";
 import { readOnce } from "~/lib/tedrisat-read";
 import { applicationRows, courseCards, greetingOf, sessionRows } from "../pano";
@@ -58,11 +59,12 @@ function Section({
  * notice under the cards and "Medrese dersi aç" is left out with the rest.
  */
 export async function PanoPage({ madrasahId }: { madrasahId: string }) {
-  const [t, locale, me, portal, dashboard] = await Promise.all([
+  const [t, locale, me, portal, medrese, dashboard] = await Promise.all([
     getMessages("nazar"),
     getLocale(),
     getViewer(),
     getPortal(),
+    pageScope("medrese", madrasahId),
     readOnce("the medrese's dashboard", (api) =>
       api.madrasahs.getMadrasahDashboard({ id: madrasahId })
     ),
@@ -70,10 +72,11 @@ export async function PanoPage({ madrasahId }: { madrasahId: string }) {
   const timeZone = resolveTimeZone(me?.timeZone, DEFAULT_TIME_ZONE);
   const scopes = portal.status === "ok" ? portal.scopes : [];
   const assignments = portal.status === "ok" ? portal.assignments : [];
-  const medrese = findScope(scopes, "medrese", madrasahId);
   const data = dashboard.status === "ok" ? dashboard.data : null;
-  const held = new Set(
-    scopes.filter((s) => s.kind === "ders").map((s) => s.id.toLowerCase())
+  const held = openableCourses(
+    scopes,
+    me?.roles.systemAdmin === true,
+    data ? data.upcomingSessions.map((session) => session.courseId) : []
   );
   const numbers = new Intl.NumberFormat(locale);
 

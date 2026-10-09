@@ -3,17 +3,18 @@ import { cache } from "react";
 import { getViewer } from "~/features/account/reads";
 import { isUuid } from "~/features/courses/courses";
 import { readOnce } from "~/lib/tedrisat-read";
-import type { Scope } from "./scope";
+import type { Scope, ScopeKind } from "./scope";
 
 /**
- * A course the başnazım opens by its address, with no seat in it (MDRS-270).
- * Not a `"use server"` module: only the layout calls it.
+ * A medrese or a course the başnazım opens by its address, with no seat in it
+ * (MDRS-270 for a course; the same for a medrese). Not a `"use server"`
+ * module: only the layout and `pageScope` call it.
  */
 export type AdminScope =
   | { status: "ok"; scope: Scope }
   /** not the başnazım: the layout goes on as before */
   | { status: "none" }
-  /** `GET /me`, or the başnazım's course, could not be read: the retry state */
+  /** `GET /me`, or the başnazım's medrese or course, could not be read: the retry state */
   | { status: "failed" };
 
 /**
@@ -25,31 +26,50 @@ async function isAdmin(): Promise<boolean | null> {
   return me ? me.roles.systemAdmin : null;
 }
 
+/** The scope's id and name as the API has them; null when the read did not answer. */
+async function readScope(
+  kind: ScopeKind,
+  id: string
+): Promise<{ id: string; name: string } | null> {
+  if (kind === "medrese") {
+    const madrasah = await readOnce("the medrese", (api) =>
+      api.madrasahs.getMadrasahById({ id })
+    );
+    return madrasah.status === "ok"
+      ? { id: madrasah.data.id, name: madrasah.data.name }
+      : null;
+  }
+  const course = await readOnce("the course", (api) =>
+    api.courses.getCourseById({ id })
+  );
+  return course.status === "ok"
+    ? { id: course.data.id, name: course.data.title }
+    : null;
+}
+
 /**
- * The başnazım opens any course by its address (d-1001-06 "medaris başnazımı
- * nazir'e girebilir"); nobody else gains a scope this way. `GET /me` says who
- * he is, so a person with no `roles.systemAdmin` never makes the course read.
- * A course that is not there, or an address that names no course id, is the
- * portal's 404, as for anyone; the scope is built for this request only and
- * never joins the picker's list for `/`.
+ * The başnazım opens any medrese and any course by its address (d-1001-06
+ * "medaris başnazımı nazir'e girebilir"); nobody else gains a scope this way.
+ * `GET /me` says who he is, so a person with no `roles.systemAdmin` never
+ * makes the read. A medrese or a course that is not there, or an address that
+ * names no id, is the portal's 404, as for anyone; the scope is built for this
+ * request only and never joins the picker's list for `/`.
  */
-export const adminCourseScope = cache(
-  async (courseId: string): Promise<AdminScope> => {
+export const adminScope = cache(
+  async (kind: ScopeKind, id: string): Promise<AdminScope> => {
     const admin = await isAdmin();
     if (admin === null) return { status: "failed" };
     if (!admin) return { status: "none" };
     // The route would answer a malformed id 400, which no retry mends.
-    if (!isUuid(courseId)) notFound();
-    const course = await readOnce("the course", (api) =>
-      api.courses.getCourseById({ id: courseId })
-    );
-    if (course.status !== "ok") return { status: "failed" };
+    if (!isUuid(id)) notFound();
+    const found = await readScope(kind, id);
+    if (!found) return { status: "failed" };
     return {
       status: "ok",
       scope: {
-        kind: "ders",
-        id: course.data.id,
-        name: course.data.title,
+        kind,
+        id: found.id,
+        name: found.name,
         role: "SYSTEM_ADMIN",
         isImam: false,
         koskName: null,
@@ -60,9 +80,9 @@ export const adminCourseScope = cache(
 
 /**
  * The pages outside any scope (`/hesap`, `/bildirimler`) for a caller who
- * holds none. The frame of a course the başnazım opened by its address links
- * to both, so they open to him (`ok`); anyone else is sent to the no-access
- * page as before (`none`).
+ * holds none. The frame of a medrese or a course the başnazım opened by its
+ * address links to both, so they open to him (`ok`); anyone else is sent to
+ * the no-access page as before (`none`).
  */
 export const adminOutsideScopes = cache(
   async (): Promise<"ok" | "none" | "failed"> => {

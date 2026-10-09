@@ -9,8 +9,9 @@ import { getLocale } from "next-intl/server";
 import type { ReactNode } from "react";
 import { getViewer } from "~/features/account/reads";
 import { PageProblem } from "~/features/shell/components/page-problem";
+import { pageScope } from "~/features/shell/page-scope";
 import { getPortal } from "~/features/shell/reads";
-import { findScope } from "~/features/shell/scope";
+import { openableCourses } from "~/features/shell/scope";
 import { getMessages } from "~/lib/i18n/messages";
 import { readOnce } from "~/lib/tedrisat-read";
 import {
@@ -67,11 +68,12 @@ export async function CoursesPage({
   madrasahId: string;
   filters: Filters;
 }) {
-  const [t, locale, me, portal, courses, hosting] = await Promise.all([
+  const [t, locale, me, portal, medrese, courses, hosting] = await Promise.all([
     getMessages("nazar"),
     getLocale(),
     getViewer(),
     getPortal(),
+    pageScope("medrese", madrasahId),
     readOnce("the medrese's courses", (api) =>
       api.madrasahs.getMadrasahCourses({
         id: madrasahId,
@@ -84,10 +86,11 @@ export async function CoursesPage({
     ),
   ]);
   const timeZone = resolveTimeZone(me?.timeZone, DEFAULT_TIME_ZONE);
-  const scopes = portal.status === "ok" ? portal.scopes : [];
-  const madrasahName = findScope(scopes, "medrese", madrasahId)?.name ?? "";
-  const held = new Set(
-    scopes.filter((s) => s.kind === "ders").map((s) => s.id.toLowerCase())
+  const madrasahName = medrese?.name ?? "";
+  const held = openableCourses(
+    portal.status === "ok" ? portal.scopes : [],
+    me?.roles.systemAdmin === true,
+    courses.status === "ok" ? courses.data.map((course) => course.id) : []
   );
   const kosks = hosting.status === "ok" ? hosting.data : [];
   const canOpen = hosting.status !== "ok" || kosks.length > 0;

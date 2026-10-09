@@ -21,6 +21,8 @@ const state = {
   asked: [] as unknown[],
   /** The viewer's role in the medrese, as the portal reads it. */
   role: "MEDRESE_BASMUDERRIS",
+  /** Whether `GET /me` calls the viewer the başnazım. */
+  systemAdmin: false,
 };
 const refresh = vi.fn();
 const restoreItem = vi.fn();
@@ -50,7 +52,11 @@ vi.mock("~/lib/tedrisat-read", () => ({
   },
 }));
 vi.mock("~/features/account/reads", () => ({
-  getViewer: async () => ({ id: "u-1", timeZone: "Europe/Istanbul" }),
+  getViewer: async () => ({
+    id: "u-1",
+    timeZone: "Europe/Istanbul",
+    roles: { systemAdmin: state.systemAdmin },
+  }),
 }));
 vi.mock("~/features/shell/reads", () => ({
   getPortal: async () => ({
@@ -231,6 +237,7 @@ beforeEach(() => {
   state.archive = { status: "ok", data: listing() };
   state.asked = [];
   state.role = "MEDRESE_BASMUDERRIS";
+  state.systemAdmin = false;
   for (const fn of [refresh, restoreItem, hideMedrese, restoreMedrese]) {
     fn.mockReset();
   }
@@ -338,6 +345,14 @@ describe("Arşiv", () => {
     expect(out).toContain('data-testid="archive"');
     expect(out).not.toContain('data-testid="hide-madrasah"');
     expect(textOf(out)).not.toContain("Medreseyi gizle");
+  });
+
+  it("offers 'Medreseyi gizle' to the başnazım, whatever seat he holds in the medrese", async () => {
+    state.systemAdmin = true;
+    for (const role of ["SYSTEM_ADMIN", "MEDRESE_NAZIR"]) {
+      state.role = role;
+      expect(await markup(), role).toContain('data-testid="hide-madrasah"');
+    }
   });
 
   it("says in one sentence what is missing on a tab with nothing hidden", async () => {

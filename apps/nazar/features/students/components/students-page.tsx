@@ -5,8 +5,7 @@ import { getLocale } from "next-intl/server";
 import { getViewer } from "~/features/account/reads";
 import { genitive } from "~/features/courses/courses";
 import { PageProblem } from "~/features/shell/components/page-problem";
-import { getPortal } from "~/features/shell/reads";
-import { findScope } from "~/features/shell/scope";
+import { pageScope } from "~/features/shell/page-scope";
 import { getMessages } from "~/lib/i18n/messages";
 import { readOnce } from "~/lib/tedrisat-read";
 import {
@@ -38,11 +37,11 @@ export async function StudentsPage({
   madrasahId: string;
   filters: Filters;
 }) {
-  const [t, locale, me, portal, students, courses] = await Promise.all([
+  const [t, locale, me, scope, students, courses] = await Promise.all([
     getMessages("nazar"),
     getLocale(),
     getViewer(),
-    getPortal(),
+    pageScope("medrese", madrasahId),
     readOnce("the medrese's talebe", (api) =>
       api.madrasahs.getMadrasahStudents({
         id: madrasahId,
@@ -67,10 +66,7 @@ export async function StudentsPage({
     );
   }
   const timeZone = resolveTimeZone(me?.timeZone, DEFAULT_TIME_ZONE);
-  const madrasahName =
-    (portal.status === "ok"
-      ? findScope(portal.scopes, "medrese", madrasahId)?.name
-      : undefined) ?? "";
+  const madrasahName = scope?.name ?? "";
 
   return (
     <>

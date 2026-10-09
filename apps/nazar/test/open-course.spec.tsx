@@ -40,6 +40,11 @@ vi.mock("~/lib/tedrisat-read", () => ({
   readOnce: async (what: string) =>
     what.includes("hosting") ? state.hosting : state.settings,
 }));
+// `pageScope` reaches `adminScope` through this module; the portal below
+// holds the medrese, so it is never asked.
+vi.mock("~/features/account/reads", () => ({
+  getViewer: async () => null,
+}));
 vi.mock("~/features/shell/reads", () => ({
   getPortal: async () => ({
     status: "ok",
