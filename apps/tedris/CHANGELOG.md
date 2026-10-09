@@ -1,5 +1,20 @@
 # Changelog
 
+## [2.2.0](https://github.com/amel-tech/medaris/compare/tedris-web-v2.1.0...tedris-web-v2.2.0) (2026-10-09)
+
+
+### Features
+
+* **nizam-web:** MDRS-279 edit session kaynak and course resource links, show them in tedris ([#256](https://github.com/amel-tech/medaris/issues/256)) ([7ba47ca](https://github.com/amel-tech/medaris/commit/7ba47ca196d7ce5c8d8ff476b81d97f150273e43))
+* **tedris-web, ui, tokens:** MDRS-280 wide player with notes below, MDRS-281 one stylesheet ([#254](https://github.com/amel-tech/medaris/issues/254)) ([47911b0](https://github.com/amel-tech/medaris/commit/47911b09983cf006cd585528aac45b544fa3c4b5))
+* **tedris-web:** MDRS-275 add a language menu to tedris and nizam, remembered in this browser ([#255](https://github.com/amel-tech/medaris/issues/255)) ([1775327](https://github.com/amel-tech/medaris/commit/17753275d556d13a222d4eeb790542d178623536))
+
+
+### Bug Fixes
+
+* **nizam-web:** MDRS-274 keep the app's language through Keycloak's login and register forms ([#253](https://github.com/amel-tech/medaris/issues/253)) ([de2c8b3](https://github.com/amel-tech/medaris/commit/de2c8b3130a5f777f22689e0a62d31350e9fb69f))
+* **tedris-web:** MDRS-271 mark the session being read in the session page's programme ([#248](https://github.com/amel-tech/medaris/issues/248)) ([83cef59](https://github.com/amel-tech/medaris/commit/83cef59ad5884f39628b56f6c8b42d10400c3fd8))
+
 ## [2.1.0](https://github.com/amel-tech/medaris/compare/tedris-web-v2.0.0...tedris-web-v2.1.0) (2026-10-05)
 
 
