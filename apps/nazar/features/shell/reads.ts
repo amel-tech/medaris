@@ -2,7 +2,7 @@ import {
   type AssignmentResponse,
   ResponseError,
 } from "@medaris/services/tedrisat";
-import { redirect } from "next/navigation";
+import { redirect, unstable_rethrow } from "next/navigation";
 import { cache } from "react";
 import { auth } from "~/lib/auth_options";
 import { tedrisatApi } from "~/lib/tedrisat-api";
@@ -33,8 +33,10 @@ export type Portal =
 
 /**
  * Who is signed in and which scopes they hold, once per request: the layout
- * and the page under it both ask. Any failure of the read is `unavailable`;
- * only a read that succeeded and found nothing sends a person to nazir 02.
+ * and the page under it both ask. A session that is over goes to sign-in (no
+ * session here, no token in `tedrisatApi`); any other failure of the read is
+ * `unavailable`; only a read that succeeded and found nothing sends a person
+ * to nazir 02.
  */
 export const getPortal = cache(async (): Promise<Portal> => {
   const session = await auth();
@@ -54,6 +56,8 @@ export const getPortal = cache(async (): Promise<Portal> => {
       roles: heldRoles(assignments),
     };
   } catch (error) {
+    // `tedrisatApi`'s way to sign-in is no failed read.
+    unstable_rethrow(error);
     console.error("Error fetching the caller's assignments:", error);
     return { status: "unavailable" };
   }
@@ -90,6 +94,8 @@ export async function getMenuCounts(scope: Scope): Promise<MenuCounts> {
   try {
     client = await tedrisatApi();
   } catch (error) {
+    // `tedrisatApi`'s way to sign-in when the session is over.
+    unstable_rethrow(error);
     console.error("Error creating the API client for the menu counts:", error);
     return {};
   }

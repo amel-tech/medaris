@@ -2,6 +2,7 @@ import type {
   EffectivePermissionGroup,
   MeResponse,
 } from "@medaris/services/tedrisat";
+import { unstable_rethrow } from "next/navigation";
 import { cache } from "react";
 import { tedrisatApi } from "~/lib/tedrisat-api";
 
@@ -16,6 +17,8 @@ export const getViewer = cache(async (): Promise<MeResponse | null> => {
   try {
     return await (await tedrisatApi()).me.getMe();
   } catch (error) {
+    // `tedrisatApi`'s way to sign-in when the session is over.
+    unstable_rethrow(error);
     console.error("Error fetching the caller's profile:", error);
     return null;
   }
@@ -31,6 +34,7 @@ export const getEffectivePermissions = async (): Promise<
     ).me.getMyEffectivePermissions();
     return groups;
   } catch (error) {
+    unstable_rethrow(error);
     console.error("Error fetching the caller's permissions:", error);
     return null;
   }
