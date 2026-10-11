@@ -856,3 +856,212 @@ describe("Bağlı kaynaklar (MDRS-279)", () => {
     ]);
   });
 });
+
+describe("Celsenin kaynakları (MDRS-286)", () => {
+  const links = [
+    {
+      id: "lr-1",
+      lessonId: "l-2",
+      name: "Emsile şerhi",
+      meta: "PDF · 12 sayfa",
+      url: "https://drive.google.com/file/d/1a2b3c/view",
+      orderIndex: 0,
+    },
+    {
+      id: "lr-2",
+      lessonId: "l-2",
+      name: "Tatbikat",
+      meta: null,
+      url: "https://files.medaris.org/tatbikat.pdf",
+      orderIndex: 1,
+    },
+  ];
+  /** The course with the running week's first session (l-2) carrying `rows`. */
+  const withLinks = (
+    rows: unknown[] = links,
+    over: Record<string, unknown> = {}
+  ) =>
+    course({
+      ...over,
+      weeks: course().weeks.map((week) => ({
+        ...week,
+        lessons: week.lessons.map((l) =>
+          l.id === "l-2" ? { ...l, resources: rows } : l
+        ),
+      })),
+    });
+  const group = () =>
+    document.querySelector(
+      '[data-testid="resources-lesson-1-0"]'
+    ) as HTMLElement;
+  const row = (ri: number) =>
+    document.querySelector(
+      `[data-testid="resource-lesson-1-0-${ri}"]`
+    ) as HTMLElement;
+  const named = (root: ParentNode, label: string) =>
+    [...root.querySelectorAll("button")].find(
+      (b) =>
+        b.textContent?.trim() === label ||
+        b.getAttribute("aria-label") === label
+    ) as HTMLButtonElement;
+  const sessionSent = () => sentBody().weeks[1]?.lessons[0] ?? {};
+
+  it("lists a session's links under its kaynak, in order, to edit", async () => {
+    state.course = { status: "ok", data: withLinks() };
+    await mount();
+    expect(group().textContent).toContain("Celsenin kaynakları");
+    expect(group().textContent).toContain(
+      "Adlarını herkes görür; bağlantıları derse kayıtlı talebeler açar."
+    );
+    expect(field("lesson-1-0-resource-0-name").value).toBe("Emsile şerhi");
+    expect(field("lesson-1-0-resource-0-meta").value).toBe("PDF · 12 sayfa");
+    expect(field("lesson-1-0-resource-0-url").value).toBe(
+      "https://drive.google.com/file/d/1a2b3c/view"
+    );
+    expect(field("lesson-1-0-resource-1-name").value).toBe("Tatbikat");
+    expect(field("lesson-1-0-resource-0-name").maxLength).toBe(200);
+    expect(field("lesson-1-0-resource-0-meta").maxLength).toBe(120);
+    expect(field("lesson-1-0-resource-0-url").maxLength).toBe(500);
+    expect(named(row(0), "Yukarı taşı").disabled).toBe(true);
+    expect(named(row(0), "Aşağı taşı").disabled).toBe(false);
+    expect(named(row(1), "Aşağı taşı").disabled).toBe(true);
+    // a session with none says so; a cancelled one has no list
+    const second = document.querySelector(
+      '[data-testid="resources-lesson-1-1"]'
+    );
+    expect(second?.textContent).toContain(
+      "Bu celseye henüz kaynak bağlanmadı."
+    );
+    expect(
+      document.querySelector('[data-testid="resources-lesson-1-2"]')
+    ).toBeNull();
+  });
+
+  it("sends no list for a session whose links did not change, so tedrisat keeps them", async () => {
+    state.course = { status: "ok", data: withLinks() };
+    await mount();
+    await typeInto(field("title"), "Yeni ad");
+    await submit();
+    expect(saveCurriculum).toHaveBeenCalledTimes(1);
+    for (const lessons of sentBody().weeks.map((w) => w.lessons)) {
+      for (const l of lessons) {
+        expect(Object.keys(l), String(l.id)).not.toContain("resources");
+      }
+    }
+  });
+
+  it("adds, renames, reorders and removes a session's links, and sends that list whole", async () => {
+    state.course = { status: "ok", data: withLinks() };
+    await mount();
+    await click(named(group(), "Kaynak ekle"));
+    expect(save().disabled).toBe(false);
+    await typeInto(field("lesson-1-0-resource-2-name"), "Bina");
+    await typeInto(
+      field("lesson-1-0-resource-2-url"),
+      "https://files.medaris.org/bina.pdf"
+    );
+    await typeInto(field("lesson-1-0-resource-1-name"), "Tatbikat defteri");
+    await click(named(row(1), "Yukarı taşı"));
+    expect(field("lesson-1-0-resource-0-name").value).toBe("Tatbikat defteri");
+    await click(named(row(1), "Kaynağı çıkar"));
+    expect(field("lesson-1-0-resource-1-name").value).toBe("Bina");
+    await submit();
+    expect(saveCurriculum).toHaveBeenCalledTimes(1);
+    expect(sessionSent().resources).toEqual([
+      {
+        id: "lr-2",
+        name: "Tatbikat defteri",
+        meta: null,
+        url: "https://files.medaris.org/tatbikat.pdf",
+      },
+      { name: "Bina", meta: null, url: "https://files.medaris.org/bina.pdf" },
+    ]);
+    // the session beside it did not change
+    expect(Object.keys(sentBody().weeks[1]?.lessons[1] ?? {})).not.toContain(
+      "resources"
+    );
+  });
+
+  it("sends an empty list when every link of a session is removed", async () => {
+    state.course = { status: "ok", data: withLinks() };
+    await mount();
+    await click(named(row(0), "Kaynağı çıkar"));
+    await click(named(row(0), "Kaynağı çıkar"));
+    expect(group().textContent).toContain(
+      "Bu celseye henüz kaynak bağlanmadı."
+    );
+    await submit();
+    expect(sessionSent().resources).toEqual([]);
+  });
+
+  it("puts a session's links back with Vazgeç", async () => {
+    state.course = { status: "ok", data: withLinks() };
+    await mount();
+    await click(named(row(0), "Aşağı taşı"));
+    expect(field("lesson-1-0-resource-0-name").value).toBe("Tatbikat");
+    expect(save().disabled).toBe(false);
+    await click(cancel());
+    expect(field("lesson-1-0-resource-0-name").value).toBe("Emsile şerhi");
+    expect(save().disabled).toBe(true);
+  });
+
+  it("does not send a link without a name or an http(s) address, and says so on its row", async () => {
+    await mount();
+    await click(named(group(), "Kaynak ekle"));
+    await typeInto(
+      field("lesson-1-0-resource-0-url"),
+      "drive.google.com/file/d/1a2b3c"
+    );
+    await submit();
+    expect(saveCurriculum).not.toHaveBeenCalled();
+    expect(row(0).textContent).toContain("Kaynağın adını yazın.");
+    expect(row(0).textContent).toContain(
+      "Bağlantı, http:// ya da https:// ile başlayan tam bir adres olmalı."
+    );
+    // the course's own resources are not blamed
+    const courseSection = document.querySelector('[data-testid="resources"]');
+    expect(courseSection?.textContent).not.toContain("Kaynağın adını yazın.");
+  });
+
+  it("is read-only for a holder of course.edit alone, says why, and sends no list", async () => {
+    state.course = { status: "ok", data: withLinks() };
+    state.permissions = holding("course.edit");
+    await mount();
+    expect(group().textContent).toContain(
+      "Celsenin kaynaklarını değiştirmek için celse yönetimi izni gerekir"
+    );
+    for (const name of ["name", "meta", "url"]) {
+      expect(field(`lesson-1-0-resource-0-${name}`).disabled, name).toBe(true);
+    }
+    expect(named(group(), "Kaynak ekle")).toBeUndefined();
+    expect(named(group(), "Kaynağı çıkar")).toBeUndefined();
+    expect(named(group(), "Yukarı taşı")).toBeUndefined();
+    await typeInto(field("title"), "Yeni ad");
+    await submit();
+    expect(saveCurriculum).toHaveBeenCalledTimes(1);
+    expect(Object.keys(sessionSent())).not.toContain("resources");
+  });
+
+  it("shows a content-locked read's links by name only, says why, and sends no list", async () => {
+    state.course = {
+      status: "ok",
+      data: withLinks(
+        links.map(({ url: _url, ...rest }) => rest),
+        { contentLocked: true }
+      ),
+    };
+    await mount();
+    expect(group().textContent).toContain("Emsile şerhi");
+    expect(group().textContent).toContain("PDF · 12 sayfa");
+    expect(group().textContent).toContain(
+      resources.tr.nazar.Curriculum.lessonResourcesLocked
+    );
+    expect(field("lesson-1-0-resource-0-name")).toBeNull();
+    expect(named(group(), "Kaynak ekle")).toBeUndefined();
+    await typeInto(field("title"), "Yeni ad");
+    await submit();
+    expect(saveCurriculum).toHaveBeenCalledTimes(1);
+    expect(sessionSent()).toMatchObject({ id: "l-2" });
+    expect(Object.keys(sessionSent())).not.toContain("resources");
+  });
+});

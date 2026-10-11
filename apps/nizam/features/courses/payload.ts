@@ -7,7 +7,9 @@ import { normalizeMeetingUrl } from "@medaris/utils";
 import { TONE_HUE } from "~/features/kosks/admin-present";
 import {
   type LessonDraft,
+  type LessonResourceDraft,
   lessonInstant,
+  lessonResourceDraftsOf,
   type ResourceDraft,
   type WeekDraft,
 } from "./present";
@@ -17,7 +19,8 @@ import {
  * holds, plus what it does not edit and a PUT would otherwise drop — the
  * müderris rows (unchanged, so a müderris may save). A week or a session left
  * out of `weeks` is hidden by the PUT, never deleted. A resource left out of
- * `resources` is removed: a link has nothing hanging off it (MDRS-279).
+ * `resources` is removed: a link has nothing hanging off it (MDRS-279). A
+ * session's own resources go only when the form changed them (MDRS-286).
  */
 export interface CurriculumEdit {
   title: string;
@@ -27,10 +30,34 @@ export interface CurriculumEdit {
   resources: ResourceDraft[];
 }
 
+/**
+ * A session's own resources as "Kaydet" sends them (MDRS-286), or nothing
+ * when the form left them as they were read: tedrisat keeps the stored list
+ * for a missing key. Sent, the list replaces the stored one in its order,
+ * keeping the rows that carry their id. Only a changed list is sent because
+ * the whole-course PUT counts any change to it as session work, and a
+ * content-locked read has no address to send back.
+ */
+function lessonResourcesBody(
+  draft: LessonDraft,
+  read: readonly LessonResourceDraft[]
+): Pick<CreateLessonDto, "resources"> {
+  if (JSON.stringify(draft.resources) === JSON.stringify(read)) return {};
+  return {
+    resources: draft.resources.map((r) => ({
+      ...(r.id ? { id: r.id } : {}),
+      name: r.name.trim(),
+      meta: r.meta.trim() || null,
+      url: r.url.trim(),
+    })),
+  };
+}
+
 const lessonBody = (
   draft: LessonDraft,
   timeZone: string,
-  locked: boolean
+  locked: boolean,
+  readResources: readonly LessonResourceDraft[]
 ): CreateLessonDto => {
   const url = normalizeMeetingUrl(draft.meetingUrl);
   const at = draft.cancelledAt
@@ -58,6 +85,7 @@ const lessonBody = (
       ? {}
       : { meetingUrl: (url || null) as unknown as string }),
     isPreview: draft.isPreview,
+    ...lessonResourcesBody(draft, readResources),
   };
 };
 
@@ -65,6 +93,12 @@ export function curriculumPayload(
   course: CourseDetailResponse,
   edit: CurriculumEdit
 ): ReplaceCourseDto {
+  // Each stored session's resources as read; a new session had none.
+  const readResources = new Map(
+    course.weeks.flatMap((w) =>
+      w.lessons.map((l) => [l.id, lessonResourceDraftsOf(l)] as const)
+    )
+  );
   return {
     version: course.version,
     title: edit.title.trim(),
@@ -76,7 +110,12 @@ export function curriculumPayload(
       title: w.title.trim(),
       summary: w.summary.trim() || undefined,
       lessons: w.lessons.map((l) =>
-        lessonBody(l, course.timeZone, course.contentLocked)
+        lessonBody(
+          l,
+          course.timeZone,
+          course.contentLocked,
+          (l.id && readResources.get(l.id)) || []
+        )
       ),
     })),
     muderris: course.muderris.map((m) => ({

@@ -1,6 +1,7 @@
 import type {
   IAgendaStep,
   ICourseDetailView,
+  ILessonResourceView,
   ILessonView,
   IWeekView,
 } from "../course.repository.interface";
@@ -45,6 +46,12 @@ export interface ISessionView extends ISessionRef {
   kaynak?: string | null;
   /** Course content: absent for a caller who may not read it. */
   agenda?: IAgendaStep[] | null;
+  /**
+   * The session's own resources, in order (MDRS-286): every name for everyone
+   * who may see the session, each `url` only for a caller who may read the
+   * course content, as on the course page.
+   */
+  resources: ILessonResourceView[];
   /**
    * Course content: absent for a caller who may not read it, and null once
    * the session is cancelled or over — there is nothing left to join.
@@ -180,6 +187,8 @@ export function buildSessionView(
     // The filtered lesson carries the session's own mark only for a content
     // reader; `CourseService.getSession` puts the session's for everyone.
     inPerson: lesson.inPerson ?? course.inPerson,
+    // Already filtered with the lesson: a locked caller's rows carry no `url`.
+    resources: lesson.resources,
     contentLocked: course.contentLocked,
   };
 

@@ -51,6 +51,61 @@ export class AgendaStepDto {
   title!: string;
 }
 
+/**
+ * One link of a session's own resources (MDRS-286), validated exactly as a
+ * course resource's link is since MDRS-279 (`CreateResourceDto.url`): tedris
+ * renders it as an href, so only an absolute http:// or https:// address of
+ * at most 500 characters is stored. Unlike a course resource, the link is
+ * required: a session's resource is a link and nothing else for now.
+ *
+ * The name and the line are stored trimmed, as the nazar and nizam editors
+ * send them: a name of spaces only is refused, a line of spaces only is none.
+ * tedris would otherwise draw an empty label or caption for them.
+ */
+export class CreateLessonResourceDto {
+  @ApiPropertyOptional({
+    format: "uuid",
+    description:
+      "One of this session's stored resources, to keep it (and its id); any other row is added.",
+  })
+  @IsOptional()
+  @IsUUID()
+  id?: string;
+
+  @ApiProperty({ example: "Emsile şerhi" })
+  @Transform(({ value }) => (typeof value === "string" ? value.trim() : value))
+  @IsString()
+  @MinLength(1)
+  @MaxLength(200)
+  name!: string;
+
+  @ApiPropertyOptional({
+    type: String,
+    nullable: true,
+    example: "PDF · 12 sayfa",
+    description: "A short line under the name; missing or null is none.",
+  })
+  @Transform(({ value }) =>
+    typeof value === "string" ? value.trim() || null : value
+  )
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  meta?: string | null;
+
+  @ApiProperty({
+    example: "https://drive.google.com/file/d/1a2b3c/view",
+    description:
+      "Where the resource opens: an absolute http:// or https:// URL of at most 500 characters.",
+  })
+  @IsUrl(
+    { require_protocol: true, protocols: ["http", "https"] },
+    { message: "$property must be an http:// or https:// URL" }
+  )
+  @MaxLength(500)
+  url!: string;
+}
+
 export class CreateLessonDto {
   @ApiPropertyOptional({
     description: "Existing lesson id (preserved on replace)",
@@ -137,6 +192,18 @@ export class CreateLessonDto {
   @IsOptional()
   @IsBoolean()
   inPersonOverride?: boolean | null;
+
+  @ApiPropertyOptional({
+    type: [CreateLessonResourceDto],
+    description:
+      "The session's own resources, in order (MDRS-286). Absent leaves them as they are; sent, the list replaces the stored one: a row whose `id` is one of this session's is kept and rewritten whole, any other row is added, and a stored row left out is removed. Changing them is session work (`session.manage`), like the meeting link. Never null.",
+  })
+  // Not `@IsOptional()`: that lets null through, and null is not a list.
+  @ValidateIf((_: unknown, value: unknown) => value !== undefined)
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateLessonResourceDto)
+  resources?: CreateLessonResourceDto[];
 }
 
 export class CreateWeekDto {

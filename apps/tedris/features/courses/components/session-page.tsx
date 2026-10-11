@@ -126,9 +126,10 @@ const NeighbourCard = ({
  * neighbours are the API's; the course is the programme the aside lists.
  *
  * Since MDRS-285 it is the celse's detail page: the join card with the
- * meeting link, the agenda, the kaynak, the müderris, the course's resources
- * and the programme. The stream and the recording play on the watch page,
- * which the join card's "Yayını izle" or "Kaydı izle" leads to.
+ * meeting link, the agenda, the kaynak, the müderris, the celse's own
+ * resources (MDRS-286) over the course's, and the programme. The stream and
+ * the recording play on the watch page, which the join card's "Yayını izle"
+ * or "Kaydı izle" leads to.
  */
 export const SessionPage = async ({
   course,
@@ -406,6 +407,20 @@ export const SessionPage = async ({
               </ul>
             </Card>
           ) : null}
+          {/* MDRS-286: the celse's own resources, then the course's. The
+              same rule as the course's: every name to whoever may see the
+              celse, each link only to who may read the content, so a locked
+              body lists the names and says who opens them. */}
+          <CourseResources
+            resources={session.resources}
+            locked={session.contentLocked}
+            testId="session-resources"
+            labels={{
+              title: t("SessionPage.lessonResourcesTitle"),
+              newTab: t("SessionPage.newTab"),
+              locked: t("SessionPage.resourcesLocked"),
+            }}
+          />
           <CourseResources
             resources={course.resources}
             locked={course.contentLocked}

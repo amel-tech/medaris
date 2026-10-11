@@ -45,6 +45,7 @@ import {
   IEnrollment,
   ILesson,
   ILessonMutation,
+  ILessonResourceView,
   IMuderris,
   IPendingEnrollment,
   IRemovedEnrollment,
@@ -62,6 +63,7 @@ import {
   type RosterRead,
   withContent,
   withoutContent,
+  withoutResourceLinks,
 } from "./domain/course-content";
 import { SYSTEM_ADMIN_COURSE_CODES } from "./domain/course-permissions";
 import { CourseStatus } from "./domain/course-status.enum";
@@ -991,8 +993,9 @@ export class CourseService {
 
   /**
    * The sessions inside a whole-course save (MDRS-135): adding or dropping a
-   * session, or changing a kept one's time, meeting link, agenda or preview
-   * flag, needs `session.manage`, exactly as the session routes on
+   * session, or changing a kept one's time, meeting link, agenda, preview
+   * flag or own resources (MDRS-286), needs `session.manage`, exactly as the
+   * session routes on
    * LessonController do. A caller holding only `course.edit` keeps the
    * titles, texts, order and weeks, so a save that leaves every session as
    * stored still goes through. Refused whole with 403 before anything is
@@ -1189,7 +1192,9 @@ export class CourseService {
   async archiveLesson(
     lessonId: string,
     user: AuthenticatedUser
-  ): Promise<ILessonMutation> {
+  ): Promise<
+    Omit<ILessonMutation, "resources"> & { resources: ILessonResourceView[] }
+  > {
     const courseId = await this.courseRepo.findLessonCourseId(lessonId);
     const level = courseId
       ? await this.courseLevel(user, courseId)
@@ -1200,7 +1205,16 @@ export class CourseService {
       level
     );
     this.invitations.kick();
-    return archived;
+    // `week.hide` alone hides a session and opens no content: its resources'
+    // links go only to a content reader, as on `GET /courses/:id` (MDRS-286).
+    const mayReadContent =
+      courseId !== null &&
+      (await this.authz.can(
+        user,
+        { entity: ENTITIES.COURSE, id: courseId },
+        PERMISSIONS.COURSE_VIEW_DETAILS
+      ));
+    return mayReadContent ? archived : withoutResourceLinks(archived);
   }
 
   /**

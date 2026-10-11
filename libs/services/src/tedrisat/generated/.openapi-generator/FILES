@@ -92,6 +92,7 @@ src/models/CreateKoskDto.ts
 src/models/CreateKoskGrantDto.ts
 src/models/CreateLessonDto.ts
 src/models/CreateLessonNoteDto.ts
+src/models/CreateLessonResourceDto.ts
 src/models/CreateMadrasahBanDto.ts
 src/models/CreateMadrasahDto.ts
 src/models/CreateMadrasahPermissionGroupDto.ts
@@ -216,6 +217,7 @@ src/models/LabelStatsResponse.ts
 src/models/LessonMutationResponse.ts
 src/models/LessonNoteResponse.ts
 src/models/LessonQuestionResponse.ts
+src/models/LessonResourceResponse.ts
 src/models/LessonResponse.ts
 src/models/LiftBanDto.ts
 src/models/LiveStreamResponse.ts

@@ -13,6 +13,19 @@ export interface IAgendaStep {
   title: string;
 }
 
+/**
+ * One link of a session's own resources (MDRS-286), as the course's resources
+ * are links since MDRS-279. The name is programme; `url` is course content.
+ */
+export interface ILessonResource {
+  id: string;
+  lessonId: string;
+  name: string;
+  meta: string | null;
+  url: string;
+  orderIndex: number;
+}
+
 export interface ILesson {
   id: string;
   weekId: string;
@@ -41,6 +54,8 @@ export interface ILesson {
   inPersonOverride: boolean | null;
   /** A live stream link is set (MDRS-283); the link itself never rides here. */
   hasLiveStream: boolean;
+  /** The session's own resources, in order (MDRS-286). */
+  resources: ILessonResource[];
 }
 
 export interface IWeek {
@@ -135,9 +150,18 @@ export type LessonContentField =
   | "inPersonOverride"
   | "hasLiveStream";
 
-/** A lesson as a response carries it: the content fields may be absent. */
-export type ILessonView = Omit<ILesson, LessonContentField> &
-  Partial<Pick<ILesson, LessonContentField>>;
+/** A session's resource as a response carries it: `url` is content (MDRS-286). */
+export type ILessonResourceView = Omit<ILessonResource, "url"> &
+  Partial<Pick<ILessonResource, "url">>;
+
+/**
+ * A lesson as a response carries it: the content fields may be absent, and
+ * so may each of its resources' links.
+ */
+export type ILessonView = Omit<ILesson, LessonContentField | "resources"> &
+  Partial<Pick<ILesson, LessonContentField>> & {
+    resources: ILessonResourceView[];
+  };
 
 /** A resource as a response carries it: `url` is content (MDRS-103). */
 export type IResourceView = Omit<IResource, "url"> &
@@ -263,6 +287,20 @@ export interface ICreateLesson {
   isPreview?: boolean;
   /** The session's own in-person mark (MDRS-283); null or absent follows the course. */
   inPersonOverride?: boolean | null;
+  /** The session's own resources (MDRS-286); absent leaves them, a list replaces them. */
+  resources?: ICreateLessonResource[];
+}
+
+/**
+ * One row of a session's resource list as a write sends it (MDRS-286). A row
+ * is written whole: a missing `meta` is none.
+ */
+export interface ICreateLessonResource {
+  /** One of the session's stored rows, to keep it; anything else is added. */
+  id?: string;
+  name: string;
+  meta?: string | null;
+  url: string;
 }
 
 export interface ICreateWeek {
@@ -359,6 +397,8 @@ export interface IUpdateLesson {
   orderIndex?: number;
   /** true or false overrides the course's in-person mark, null follows it (MDRS-283). */
   inPersonOverride?: boolean | null;
+  /** The session's own resources (MDRS-286); absent leaves them, a list replaces them. */
+  resources?: ICreateLessonResource[];
 }
 
 /** A lesson as returned by the session-level endpoints, with the course

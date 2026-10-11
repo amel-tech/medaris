@@ -272,6 +272,122 @@ describe("session page, upcoming (design tedris/15)", () => {
   });
 });
 
+describe("session page, the celse's own resources (MDRS-286)", () => {
+  const withCourseResources = {
+    ...course,
+    contentLocked: false,
+    resources: [
+      {
+        id: "r1",
+        name: "Bina",
+        meta: "PDF · 124 sayfa",
+        type: "pdf",
+        url: "https://files.medaris.org/bina.pdf",
+      },
+    ],
+  } as unknown as CourseDetailResponse;
+  const own = [
+    {
+      id: "lr1",
+      lessonId: "s1",
+      name: "Mehmûz tablosu",
+      meta: "Tek sayfa",
+      url: "https://drive.google.com/file/d/1a2b3c/view",
+      orderIndex: 0,
+    },
+    {
+      id: "lr2",
+      lessonId: "s1",
+      name: "Kara’e çekimi",
+      meta: null,
+      url: "https://files.medaris.org/karae.pdf",
+      orderIndex: 1,
+    },
+  ];
+  const draw = async (
+    s: SessionResponse,
+    c: CourseDetailResponse = withCourseResources
+  ) => {
+    const { SessionPage } = await import(
+      "~/features/courses/components/session-page"
+    );
+    return renderToStaticMarkup(
+      await SessionPage({ course: c, session: s, koskName: null, now: NOW })
+    );
+  };
+  /** The markup of one resources card, by its test id. */
+  const card = (html: string, testId: string) =>
+    html.match(
+      new RegExp(
+        `<div[^>]*data-testid="${testId}"[^>]*>.*?</ul>(<p[^>]*>.*?</p>)?`
+      )
+    )?.[0];
+  const aside = (html: string) => html.match(/<aside[^>]*>.*<\/aside>/)?.[0];
+
+  it("lists them first in the aside, then the course's, each linked in a new tab", async () => {
+    const html = await draw(session({ resources: own }));
+    const side = aside(html) ?? "";
+    expect(side).toContain(">Bu celsenin kaynakları<");
+    expect(side.indexOf(">Bu celsenin kaynakları<")).toBeLessThan(
+      side.indexOf(">Dersin kaynakları<")
+    );
+    const mine = card(html, "session-resources") ?? "";
+    expect(mine.indexOf(">Mehmûz tablosu<")).toBeLessThan(
+      mine.indexOf(">Kara’e çekimi<")
+    );
+    expect(mine).toContain(
+      '<a class="mds-link" href="https://drive.google.com/file/d/1a2b3c/view" target="_blank" rel="noopener noreferrer">'
+    );
+    expect(mine).toContain(
+      '<a class="mds-link" href="https://files.medaris.org/karae.pdf" target="_blank" rel="noopener noreferrer">'
+    );
+    expect(mine).toContain("Tek sayfa");
+    expect(mine).not.toContain("Bina");
+    expect(mine).not.toContain(resources.tr.tedris.SessionPage.resourcesLocked);
+  });
+
+  it("says a Google Drive link is on Google Drive, and no other", async () => {
+    const mine =
+      card(await draw(session({ resources: own })), "session-resources") ?? "";
+    const chips = mine.match(/<span class="mds-platform-chip[^"]*">[^<]*</g);
+    expect(chips).toEqual([
+      '<span class="mds-platform-chip mds-platform-chip--google-drive self-start mbs-1">Google Drive<',
+    ]);
+    expect(mine.indexOf("Google Drive")).toBeLessThan(
+      mine.indexOf(">Kara’e çekimi<")
+    );
+  });
+
+  it("lists the names without links, and says who opens them, to who may not read the content", async () => {
+    const locked = own.map(({ url: _url, ...rest }) => rest);
+    const html = await draw(
+      session({ resources: locked, contentLocked: true })
+    );
+    const mine = card(html, "session-resources") ?? "";
+    expect(mine).toContain(">Mehmûz tablosu<");
+    expect(mine).toContain(">Kara’e çekimi<");
+    expect(mine).not.toContain("<a ");
+    expect(mine).not.toContain("Google Drive");
+    expect(mine).toContain(resources.tr.tedris.SessionPage.resourcesLocked);
+    expect(html).not.toContain("drive.google.com");
+  });
+
+  it("draws no card for a celse without any, and keeps the course's", async () => {
+    for (const s of [session({ resources: [] }), session()]) {
+      const html = await draw(s);
+      expect(html).not.toContain("Bu celsenin kaynakları");
+      expect(html).not.toContain('data-testid="session-resources"');
+      expect(html).toContain(">Dersin kaynakları<");
+    }
+  });
+
+  it("draws them on a course without resources of its own", async () => {
+    const html = await draw(session({ resources: own }), course);
+    expect(html).toContain(">Bu celsenin kaynakları<");
+    expect(html).not.toContain("Dersin kaynakları");
+  });
+});
+
 describe("session page, cancelled (design tedris/18)", () => {
   const cancelled = (over: Record<string, unknown> = {}) =>
     session({

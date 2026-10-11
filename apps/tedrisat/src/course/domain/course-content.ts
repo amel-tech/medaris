@@ -2,6 +2,8 @@ import type {
   ICourseDetail,
   ICourseDetailView,
   ILesson,
+  ILessonResource,
+  ILessonResourceView,
   ILessonView,
   IResource,
   IResourceView,
@@ -16,15 +18,22 @@ import { EnrollmentStatus } from "./enrollment-status.enum";
  * length — the programme a visitor needs in order to decide to enroll.
  * Content: a lesson's `meetingUrl`, `agenda`, `kaynak` and `cancelReason`, how
  * it is attended (`inPerson`, `inPersonOverride`, `hasLiveStream`, MDRS-283),
- * and a resource's `url`. A caller without `course.view_details` gets the programme only, and the
- * content keys are removed rather than nulled.
+ * and a resource's `url`, the course's or a session's own (MDRS-286). A caller
+ * without `course.view_details` gets the programme only, and the content keys
+ * are removed rather than nulled. A resource's name is programme: "Adlarını
+ * herkes görür; bağlantıları derse kayıtlı talebeler açar."
  *
  * A meeting link is never public (MDRS-103 "What to build" 3). A sample
  * session (`isPreview`, "Örnek celse", tedris/05) is the one exception to the
  * rest of the content (MDRS-161): its source line and its agenda stay, so a
- * visitor can read what a session is like before applying. Its meeting link
- * and a cancellation's reason never do.
+ * visitor can read what a session is like before applying. Its meeting link,
+ * a cancellation's reason and its resources' links never do.
  */
+
+const lessonResourceWithoutContent = ({
+  url: _url,
+  ...listing
+}: ILessonResource): ILessonResourceView => listing;
 
 const lessonWithoutContent = ({
   kaynak,
@@ -35,9 +44,15 @@ const lessonWithoutContent = ({
   inPerson: _inPerson,
   inPersonOverride: _inPersonOverride,
   hasLiveStream: _hasLiveStream,
-  ...programme
-}: ILesson): ILessonView =>
-  programme.isPreview ? { ...programme, kaynak, agenda } : programme;
+  resources,
+  ...rest
+}: ILesson): ILessonView => {
+  const programme = {
+    ...rest,
+    resources: resources.map(lessonResourceWithoutContent),
+  };
+  return programme.isPreview ? { ...programme, kaynak, agenda } : programme;
+};
 
 const resourceWithoutContent = ({
   url: _url,
@@ -54,6 +69,22 @@ export function withoutContent(course: ICourseDetail): ICourseDetailView {
     })),
     resources: course.resources.map(resourceWithoutContent),
     contentLocked: true,
+  };
+}
+
+/**
+ * A session write's answer for a caller who may not read the content: its
+ * resources' links removed, as `withoutContent` removes them (MDRS-286). Only
+ * `DELETE /lessons/:id` has such a caller, as `week.hide` alone may hide a
+ * session; the other session writes ask for `session.manage`, which opens the
+ * content.
+ */
+export function withoutResourceLinks<
+  T extends { resources: ILessonResource[] },
+>(lesson: T): Omit<T, "resources"> & { resources: ILessonResourceView[] } {
+  return {
+    ...lesson,
+    resources: lesson.resources.map(lessonResourceWithoutContent),
   };
 }
 

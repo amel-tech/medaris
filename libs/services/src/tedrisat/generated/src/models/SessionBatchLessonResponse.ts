@@ -13,6 +13,13 @@
  */
 
 import { mapValues } from '../runtime';
+import type { LessonResourceResponse } from './LessonResourceResponse';
+import {
+    LessonResourceResponseFromJSON,
+    LessonResourceResponseFromJSONTyped,
+    LessonResourceResponseToJSON,
+    LessonResourceResponseToJSONTyped,
+} from './LessonResourceResponse';
 import type { AgendaStepResponse } from './AgendaStepResponse';
 import {
     AgendaStepResponseFromJSON,
@@ -130,6 +137,12 @@ export interface SessionBatchLessonResponse {
      */
     hasLiveStream?: boolean;
     /**
+     * The session's own resources, in order (MDRS-286): every name to everyone who may see the session, each `url` only to a caller holding `view_details`.
+     * @type {Array<LessonResourceResponse>}
+     * @memberof SessionBatchLessonResponse
+     */
+    resources: Array<LessonResourceResponse>;
+    /**
      * 
      * @type {number}
      * @memberof SessionBatchLessonResponse
@@ -160,6 +173,7 @@ export function instanceOfSessionBatchLessonResponse(value: object): value is Se
     if (!('type' in value) || value['type'] === undefined) return false;
     if (!('isPreview' in value) || value['isPreview'] === undefined) return false;
     if (!('orderIndex' in value) || value['orderIndex'] === undefined) return false;
+    if (!('resources' in value) || value['resources'] === undefined) return false;
     if (!('weekNumber' in value) || value['weekNumber'] === undefined) return false;
     return true;
 }
@@ -191,6 +205,7 @@ export function SessionBatchLessonResponseFromJSONTyped(json: any, ignoreDiscrim
         'inPerson': json['inPerson'] == null ? undefined : json['inPerson'],
         'inPersonOverride': json['inPersonOverride'] == null ? undefined : json['inPersonOverride'],
         'hasLiveStream': json['hasLiveStream'] == null ? undefined : json['hasLiveStream'],
+        'resources': ((json['resources'] as Array<any>).map(LessonResourceResponseFromJSON)),
         'weekNumber': json['weekNumber'],
     };
 }
@@ -223,6 +238,7 @@ export function SessionBatchLessonResponseToJSONTyped(value?: SessionBatchLesson
         'inPerson': value['inPerson'],
         'inPersonOverride': value['inPersonOverride'],
         'hasLiveStream': value['hasLiveStream'],
+        'resources': ((value['resources'] as Array<any>).map(LessonResourceResponseToJSON)),
         'weekNumber': value['weekNumber'],
     };
 }

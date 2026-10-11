@@ -59,6 +59,28 @@ export interface LessonDraft {
     inPersonOverride: boolean | null;
     hasLiveStream: boolean;
   } | null;
+  /** the session's own links, in order (MDRS-286) */
+  resources: LessonResourceDraft[];
+}
+
+/**
+ * A link of a session's own resources (MDRS-286): a name, an optional short
+ * line and the address it opens, as a row of "Bağlı kaynaklar". tedrisat
+ * stores none without an address. Changing them is session work
+ * (`session.manage`), so a save sends a session's list only when the form
+ * changed it (see `curriculumPayload`).
+ */
+export interface LessonResourceDraft {
+  id?: string;
+  name: string;
+  /** '' = none */
+  meta: string;
+  url: string;
+  /**
+   * Whether an empty address stops "Kaydet": not for a row of a
+   * content-locked read, which carries no address to show and is never sent.
+   */
+  urlRequired: boolean;
 }
 
 /** A session made on this page: it follows the course and has no stream yet. */
@@ -103,6 +125,39 @@ export interface CurriculumForm {
 
 type CourseLesson = CourseDetailResponse["weeks"][number]["lessons"][number];
 
+/**
+ * A session's resources as read (MDRS-286). A stored row always has an
+ * address, so a row read without one comes from a content-locked read.
+ */
+export const lessonResourceDraftsOf = (
+  lesson: Pick<CourseLesson, "resources">
+): LessonResourceDraft[] =>
+  (lesson.resources ?? []).map((resource) => ({
+    id: resource.id,
+    name: resource.name,
+    meta: resource.meta ?? "",
+    url: resource.url ?? "",
+    urlRequired: Boolean(resource.url),
+  }));
+
+export const emptyLessonResource = (): LessonResourceDraft => ({
+  name: "",
+  meta: "",
+  url: "",
+  urlRequired: true,
+});
+
+/** The rows with the one at `from` moved to `to`; the same rows when either is out of range. */
+export function moveRow<T>(rows: readonly T[], from: number, to: number): T[] {
+  const next = [...rows];
+  if (from < 0 || to < 0 || from >= next.length || to >= next.length) {
+    return next;
+  }
+  const [row] = next.splice(from, 1) as [T];
+  next.splice(to, 0, row);
+  return next;
+}
+
 export function lessonDraftOf(
   lesson: CourseLesson,
   timeZone: string,
@@ -138,6 +193,7 @@ export function lessonDraftOf(
             inPersonOverride: lesson.inPersonOverride ?? null,
             hasLiveStream: lesson.hasLiveStream === true,
           },
+    resources: lessonResourceDraftsOf(lesson),
   };
 }
 
@@ -200,12 +256,14 @@ export const emptyLesson = (date = ""): LessonDraft => ({
   scheduledAtIso: null,
   makeup: false,
   attendance: FRESH_ATTENDANCE,
+  resources: [],
 });
 
 /**
  * "Haftayı kopyala": the week again, 7 days later, with no links and nothing
  * cancelled. The copies are new sessions: they follow the course's in-person
- * mark and have no stream.
+ * mark and have no stream. Nor do they take the sessions' own resources
+ * (MDRS-286): those are links too, and belong to the session they were added to.
  */
 export function copyWeek(week: WeekDraft, nextNumber: number): WeekDraft {
   return {
@@ -225,6 +283,7 @@ export function copyWeek(week: WeekDraft, nextNumber: number): WeekDraft {
         scheduledAtIso: null,
         makeup: false,
         attendance: FRESH_ATTENDANCE,
+        resources: [],
       })),
   };
 }
@@ -324,21 +383,24 @@ export type CurriculumProblem =
   | "lessonDuration"
   | "link"
   | "resourceName"
-  | "resourceUrl";
+  | "resourceUrl"
+  | "lessonResourceName"
+  | "lessonResourceUrl";
 
 export interface CurriculumError {
   kind: CurriculumProblem;
   weekIndex?: number;
   lessonIndex?: number;
+  /** the course's resource, or with a session's indexes that session's own */
   resourceIndex?: number;
 }
 
 /**
  * The course name, each week's title, and for every live session its title,
  * date, time, length and https link. A cancelled session is information and
- * is not checked. Every resource needs a name and an http(s) address, as
- * tedrisat does (MDRS-279), but for a row that has none to show (see
- * `urlRequired`).
+ * is not checked. Every resource, the course's or a session's own (MDRS-286),
+ * needs a name and an http(s) address, as tedrisat does (MDRS-279), but for a
+ * row that has none to show (see `urlRequired`).
  */
 export function curriculumErrors(
   title: string,
@@ -353,6 +415,17 @@ export function curriculumErrors(
       if (lesson.cancelledAt) return;
       const at = { weekIndex, lessonIndex };
       if (!lesson.title.trim()) errors.push({ kind: "lessonTitle", ...at });
+      lesson.resources.forEach((resource, resourceIndex) => {
+        if (!resource.name.trim()) {
+          errors.push({ kind: "lessonResourceName", ...at, resourceIndex });
+        }
+        if (
+          (resource.url.trim() || resource.urlRequired) &&
+          resourceUrlProblem(resource.url)
+        ) {
+          errors.push({ kind: "lessonResourceUrl", ...at, resourceIndex });
+        }
+      });
       if (lesson.type !== "LIVE") return;
       if (!lesson.date) errors.push({ kind: "lessonDate", ...at });
       if (!lesson.time) errors.push({ kind: "lessonTime", ...at });
@@ -394,10 +467,35 @@ function lessonInstant(draft: LessonDraft, timeZone: string): Date | null {
   return instantOf(draft.date, draft.time, timeZone) ?? stored;
 }
 
+/**
+ * A session's own resources as "Kaydet" sends them (MDRS-286), or nothing
+ * when the form left them as they were read: tedrisat keeps the stored list
+ * for a missing key. Sent, the list replaces the stored one in its order,
+ * keeping the rows that carry their id. Only a changed list is sent because
+ * the whole-course PUT counts any change to it as session work: a caller
+ * without `session.manage` cannot change it here, and a content-locked read
+ * has no address to send back.
+ */
+function lessonResourcesBody(
+  draft: LessonDraft,
+  read: readonly LessonResourceDraft[]
+): Pick<CreateLessonDto, "resources"> {
+  if (JSON.stringify(draft.resources) === JSON.stringify(read)) return {};
+  return {
+    resources: draft.resources.map((resource) => ({
+      ...(resource.id ? { id: resource.id } : {}),
+      name: resource.name.trim(),
+      meta: resource.meta.trim() || null,
+      url: resource.url.trim(),
+    })),
+  };
+}
+
 const lessonBody = (
   draft: LessonDraft,
   timeZone: string,
-  locked: boolean
+  locked: boolean,
+  readResources: readonly LessonResourceDraft[]
 ): CreateLessonDto => {
   const url = normalizeMeetingUrl(draft.meetingUrl);
   const at = draft.cancelledAt
@@ -427,6 +525,7 @@ const lessonBody = (
       ? {}
       : { meetingUrl: (url || null) as unknown as string }),
     isPreview: draft.isPreview,
+    ...lessonResourcesBody(draft, readResources),
   };
 };
 
@@ -436,6 +535,7 @@ const lessonBody = (
  * (unchanged, so a müderris may save). A week or a session left out of
  * `weeks` is hidden by the PUT, never deleted; a resource left out of
  * `resources` is removed, as a link has nothing hanging off it (MDRS-279).
+ * A session's own resources go only when the form changed them (MDRS-286).
  * `version` is the course version the page was read at.
  */
 export function curriculumPayload(
@@ -443,6 +543,14 @@ export function curriculumPayload(
   form: CurriculumForm,
   timeZone: string
 ): ReplaceCourseDto {
+  // Each stored session's resources as read; a new session had none.
+  const readResources = new Map(
+    course.weeks.flatMap((week) =>
+      week.lessons.map(
+        (lesson) => [lesson.id, lessonResourceDraftsOf(lesson)] as const
+      )
+    )
+  );
   return {
     version: course.version,
     title: form.title.trim(),
@@ -454,7 +562,12 @@ export function curriculumPayload(
       title: week.title.trim(),
       summary: week.summary.trim() || undefined,
       lessons: week.lessons.map((lesson) =>
-        lessonBody(lesson, timeZone, course.contentLocked)
+        lessonBody(
+          lesson,
+          timeZone,
+          course.contentLocked,
+          (lesson.id && readResources.get(lesson.id)) || []
+        )
       ),
     })),
     muderris: course.muderris.map((m) => ({

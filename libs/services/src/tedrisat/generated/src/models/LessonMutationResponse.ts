@@ -13,6 +13,13 @@
  */
 
 import { mapValues } from '../runtime';
+import type { LessonResourceResponse } from './LessonResourceResponse';
+import {
+    LessonResourceResponseFromJSON,
+    LessonResourceResponseFromJSONTyped,
+    LessonResourceResponseToJSON,
+    LessonResourceResponseToJSONTyped,
+} from './LessonResourceResponse';
 import type { AgendaStepResponse } from './AgendaStepResponse';
 import {
     AgendaStepResponseFromJSON,
@@ -130,6 +137,12 @@ export interface LessonMutationResponse {
      */
     hasLiveStream?: boolean;
     /**
+     * The session's own resources, in order (MDRS-286): every name to everyone who may see the session, each `url` only to a caller holding `view_details`.
+     * @type {Array<LessonResourceResponse>}
+     * @memberof LessonMutationResponse
+     */
+    resources: Array<LessonResourceResponse>;
+    /**
      * The course version this write produced; send it with the next PUT /courses/:id or PATCH /lessons/:id.
      * @type {number}
      * @memberof LessonMutationResponse
@@ -160,6 +173,7 @@ export function instanceOfLessonMutationResponse(value: object): value is Lesson
     if (!('type' in value) || value['type'] === undefined) return false;
     if (!('isPreview' in value) || value['isPreview'] === undefined) return false;
     if (!('orderIndex' in value) || value['orderIndex'] === undefined) return false;
+    if (!('resources' in value) || value['resources'] === undefined) return false;
     if (!('courseVersion' in value) || value['courseVersion'] === undefined) return false;
     return true;
 }
@@ -191,6 +205,7 @@ export function LessonMutationResponseFromJSONTyped(json: any, ignoreDiscriminat
         'inPerson': json['inPerson'] == null ? undefined : json['inPerson'],
         'inPersonOverride': json['inPersonOverride'] == null ? undefined : json['inPersonOverride'],
         'hasLiveStream': json['hasLiveStream'] == null ? undefined : json['hasLiveStream'],
+        'resources': ((json['resources'] as Array<any>).map(LessonResourceResponseFromJSON)),
         'courseVersion': json['courseVersion'],
     };
 }
@@ -223,6 +238,7 @@ export function LessonMutationResponseToJSONTyped(value?: LessonMutationResponse
         'inPerson': value['inPerson'],
         'inPersonOverride': value['inPersonOverride'],
         'hasLiveStream': value['hasLiveStream'],
+        'resources': ((value['resources'] as Array<any>).map(LessonResourceResponseToJSON)),
         'courseVersion': value['courseVersion'],
     };
 }

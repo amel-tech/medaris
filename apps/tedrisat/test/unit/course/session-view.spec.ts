@@ -64,6 +64,7 @@ const lesson = (id: string, over: Partial<ILessonView> = {}): ILessonView => ({
   inPerson: false,
   inPersonOverride: null,
   hasLiveStream: false,
+  resources: [],
   ...over,
 });
 
@@ -211,6 +212,32 @@ describe("buildSessionView (MDRS-158)", () => {
     const view = buildSessionView(locked, "now", NOW);
     expect(view).not.toHaveProperty("hasLiveStream");
     expect(view?.inPerson).toBe(true);
+  });
+
+  // MDRS-286: the session page lists the session's own resources, filtered
+  // with the lesson, so a locked caller is sent the names and no link.
+  it("lists the session's own resources as the filtered lesson holds them", () => {
+    const row = {
+      id: "r1",
+      lessonId: "now",
+      name: "Emsile şerhi",
+      meta: "PDF · 12 sayfa",
+      orderIndex: 0,
+    };
+    const url = "https://drive.google.com/file/d/1a2b3c/view";
+    const open = course(
+      week(5, lesson("now", { resources: [{ ...row, url }] }))
+    );
+    expect(buildSessionView(open, "now", NOW)?.resources).toEqual([
+      { ...row, url },
+    ]);
+    const locked = {
+      ...course(week(5, lesson("now", { resources: [row] }))),
+      contentLocked: true,
+    } as ICourseDetailView;
+    const [listed] = buildSessionView(locked, "now", NOW)?.resources ?? [];
+    expect(listed).toEqual(row);
+    expect(listed).not.toHaveProperty("url");
   });
 
   it("carries the session's own in-person mark for a content reader", () => {

@@ -2799,7 +2799,7 @@
     },
     "/courses/{id}": {
       "get": {
-        "description": "Anyone may read the course page, with or without a token (MDRS-122): its description and programme (week and lesson titles, types, schedule, length, müderris). Lesson content — `meetingUrl`, `agenda`, `kaynak`, how a session is attended (`inPerson`, `inPersonOverride`, `hasLiveStream`; MDRS-283) and resource `url` — is sent only to a caller holding `view_details` (the enrolled talebe, the müderris, the köşk manager); for everyone else, PENDING included, those keys are absent and `contentLocked` is true. A content read by anyone who is neither enrolled nor a müderris of the course is recorded in `audit_log` (MDRS-103). A caller with no token gets the same filtered body, and 404 for a draft, a hidden course, or any course of an unlisted köşk.",
+        "description": "Anyone may read the course page, with or without a token (MDRS-122): its description and programme (week and lesson titles, types, schedule, length, müderris). Lesson content — `meetingUrl`, `agenda`, `kaynak`, how a session is attended (`inPerson`, `inPersonOverride`, `hasLiveStream`; MDRS-283) and the `url` of a resource, the course's or a session's own (MDRS-286) — is sent only to a caller holding `view_details` (the enrolled talebe, the müderris, the köşk manager); for everyone else, PENDING included, those keys are absent and `contentLocked` is true. A content read by anyone who is neither enrolled nor a müderris of the course is recorded in `audit_log` (MDRS-103). A caller with no token gets the same filtered body, and 404 for a draft, a hidden course, or any course of an unlisted köşk.",
         "operationId": "getCourseById",
         "parameters": [
           {
@@ -2917,7 +2917,7 @@
             }
           },
           "403": {
-            "description": "No `course.edit` on the course, or the save changes the müderris list without `course.open_standalone` (or `madrasah.muderris_manage` for a medrese's course) — a müderris may save the course but not change who teaches it (MUDERRIS_ASSIGNMENT_FORBIDDEN). Adding or dropping a session, or changing a session's time, meeting link, agenda, preview flag or in-person mark (`inPersonOverride`), needs `session.manage` as well (AUTHZ_FORBIDDEN). SELF_GRANT_REFUSED: a changed list names the caller, who does not already hold every müderris permission on the course (SYSTEM_ADMIN excepted)."
+            "description": "No `course.edit` on the course, or the save changes the müderris list without `course.open_standalone` (or `madrasah.muderris_manage` for a medrese's course) — a müderris may save the course but not change who teaches it (MUDERRIS_ASSIGNMENT_FORBIDDEN). Adding or dropping a session, or changing a session's time, meeting link, agenda, preview flag, in-person mark (`inPersonOverride`) or own `resources` (MDRS-286), needs `session.manage` as well (AUTHZ_FORBIDDEN). SELF_GRANT_REFUSED: a changed list names the caller, who does not already hold every müderris permission on the course (SYSTEM_ADMIN excepted)."
           },
           "404": {
             "description": "No such course, or a müderris row links an id that names no account in the app or the realm (MUDERRIS_UNKNOWN_USER)."
@@ -3922,7 +3922,7 @@
     },
     "/courses/{courseId}/sessions/{sessionId}": {
       "get": {
-        "description": "Open to callers with no token, like the course page (MDRS-122), and filtered the same way: `meetingUrl`, `agenda`, `kaynak` and `cancelReason` are sent only to a caller holding `view_details` (the enrolled talebe, the müderris, the köşk manager); for everyone else, PENDING included, those keys are absent and `contentLocked` is true. `status` is derived from the clock and the cancellation, never stored: CANCELLED once cancelled, else ENDED after the session's length (60 minutes when it has none), LIVE while it runs, SCHEDULED before. `meetingUrl` is null for a cancelled or finished session. `inPerson` (MDRS-283) is sent to everyone; `hasLiveStream` is content and is sent whatever the status; `liveStreamUrl` is sent from the scheduled start until the session has a READY recording, with a bound its field states (MDRS-285). `previous` and `next` are the neighbouring live sessions in programme order, cancelled ones skipped. A content read by anyone who is neither enrolled nor a müderris is recorded in `audit_log`, as on `GET /courses/:id` (MDRS-158).",
+        "description": "Open to callers with no token, like the course page (MDRS-122), and filtered the same way: `meetingUrl`, `agenda`, `kaynak` and `cancelReason` are sent only to a caller holding `view_details` (the enrolled talebe, the müderris, the köşk manager); for everyone else, PENDING included, those keys are absent and `contentLocked` is true. The session's own `resources` (MDRS-286) are listed to everyone, each `url` only to a caller holding `view_details`. `status` is derived from the clock and the cancellation, never stored: CANCELLED once cancelled, else ENDED after the session's length (60 minutes when it has none), LIVE while it runs, SCHEDULED before. `meetingUrl` is null for a cancelled or finished session. `inPerson` (MDRS-283) is sent to everyone; `hasLiveStream` is content and is sent whatever the status; `liveStreamUrl` is sent from the scheduled start until the session has a READY recording, with a bound its field states (MDRS-285). `previous` and `next` are the neighbouring live sessions in programme order, cancelled ones skipped. A content read by anyone who is neither enrolled nor a müderris is recorded in `audit_log`, as on `GET /courses/:id` (MDRS-158).",
         "operationId": "getSession",
         "parameters": [
           {
@@ -14876,6 +14876,35 @@
           "title"
         ]
       },
+      "CreateLessonResourceDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "One of this session's stored resources, to keep it (and its id); any other row is added."
+          },
+          "name": {
+            "type": "string",
+            "example": "Emsile şerhi"
+          },
+          "meta": {
+            "type": "string",
+            "nullable": true,
+            "example": "PDF · 12 sayfa",
+            "description": "A short line under the name; missing or null is none."
+          },
+          "url": {
+            "type": "string",
+            "example": "https://drive.google.com/file/d/1a2b3c/view",
+            "description": "Where the resource opens: an absolute http:// or https:// URL of at most 500 characters."
+          }
+        },
+        "required": [
+          "name",
+          "url"
+        ]
+      },
       "CreateLessonDto": {
         "type": "object",
         "properties": {
@@ -14935,6 +14964,13 @@
             "nullable": true,
             "example": null,
             "description": "The session's own in-person mark (MDRS-283): true or false overrides the course's `inPerson`, null follows it. Absent leaves it as it is. Changing it is session work (`session.manage`), like the meeting link."
+          },
+          "resources": {
+            "description": "The session's own resources, in order (MDRS-286). Absent leaves them as they are; sent, the list replaces the stored one: a row whose `id` is one of this session's is kept and rewritten whole, any other row is added, and a stored row left out is removed. Changing them is session work (`session.manage`), like the meeting link. Never null.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CreateLessonResourceDto"
+            }
           }
         },
         "required": [
@@ -15179,6 +15215,40 @@
           "title"
         ]
       },
+      "LessonResourceResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "lessonId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "description": "Sent to everyone who may see the session."
+          },
+          "meta": {
+            "type": "string",
+            "nullable": true
+          },
+          "url": {
+            "type": "string",
+            "description": "Where it opens: an absolute http:// or https:// URL. Course content: absent unless the caller holds `view_details` on the course (MDRS-103), a sample session's included."
+          },
+          "orderIndex": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "lessonId",
+          "name",
+          "orderIndex"
+        ]
+      },
       "LessonResponse": {
         "type": "object",
         "properties": {
@@ -15257,6 +15327,13 @@
           "hasLiveStream": {
             "type": "boolean",
             "description": "A live stream link is set for the session; never the link itself, which only the stream routes and the LIVE session page carry. Course content: absent unless the caller holds `view_details` on the course (MDRS-103); a sample session (`isPreview`) keeps its `kaynak` and `agenda` for everyone (MDRS-161), never its `meetingUrl`."
+          },
+          "resources": {
+            "description": "The session's own resources, in order (MDRS-286): every name to everyone who may see the session, each `url` only to a caller holding `view_details`.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LessonResourceResponse"
+            }
           }
         },
         "required": [
@@ -15265,7 +15342,8 @@
           "title",
           "type",
           "isPreview",
-          "orderIndex"
+          "orderIndex",
+          "resources"
         ]
       },
       "WeekResponse": {
@@ -16572,6 +16650,13 @@
               "$ref": "#/components/schemas/AgendaStepResponse"
             }
           },
+          "resources": {
+            "description": "The session's own resources, in order (MDRS-286): every name to everyone who may see the session, each `url` only to a caller holding `view_details`, as on the course page.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LessonResourceResponse"
+            }
+          },
           "meetingUrl": {
             "type": "string",
             "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103). Null once the session is cancelled or over: there is nothing left to join."
@@ -16639,6 +16724,7 @@
           "courseId",
           "weekId",
           "weekTitle",
+          "resources",
           "inPerson",
           "muderris",
           "contentLocked"
@@ -16769,6 +16855,13 @@
             "nullable": true,
             "example": null,
             "description": "The session's own in-person mark (MDRS-283): true or false overrides the course's `inPerson`, null follows it. Absent leaves it as it is. Changing it is session work (`session.manage`), like the meeting link."
+          },
+          "resources": {
+            "description": "The session's own resources, in order (MDRS-286). Absent leaves them as they are; sent, the list replaces the stored one: a row whose `id` is one of this session's is kept and rewritten whole, any other row is added, and a stored row left out is removed. Changing them is session work (`session.manage`), like the meeting link. Never null.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CreateLessonResourceDto"
+            }
           }
         },
         "required": [
@@ -16855,6 +16948,13 @@
             "type": "boolean",
             "description": "A live stream link is set for the session; never the link itself, which only the stream routes and the LIVE session page carry. Course content: absent unless the caller holds `view_details` on the course (MDRS-103); a sample session (`isPreview`) keeps its `kaynak` and `agenda` for everyone (MDRS-161), never its `meetingUrl`."
           },
+          "resources": {
+            "description": "The session's own resources, in order (MDRS-286): every name to everyone who may see the session, each `url` only to a caller holding `view_details`.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LessonResourceResponse"
+            }
+          },
           "courseVersion": {
             "type": "number",
             "description": "The course version this write produced; send it with the next PUT /courses/:id or PATCH /lessons/:id."
@@ -16867,6 +16967,7 @@
           "type",
           "isPreview",
           "orderIndex",
+          "resources",
           "courseVersion"
         ]
       },
@@ -17130,6 +17231,13 @@
             "type": "boolean",
             "description": "A live stream link is set for the session; never the link itself, which only the stream routes and the LIVE session page carry. Course content: absent unless the caller holds `view_details` on the course (MDRS-103); a sample session (`isPreview`) keeps its `kaynak` and `agenda` for everyone (MDRS-161), never its `meetingUrl`."
           },
+          "resources": {
+            "description": "The session's own resources, in order (MDRS-286): every name to everyone who may see the session, each `url` only to a caller holding `view_details`.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LessonResourceResponse"
+            }
+          },
           "weekNumber": {
             "type": "number"
           }
@@ -17141,6 +17249,7 @@
           "type",
           "isPreview",
           "orderIndex",
+          "resources",
           "weekNumber"
         ]
       },
@@ -17245,6 +17354,13 @@
             "type": "number",
             "example": 0,
             "minimum": 0
+          },
+          "resources": {
+            "description": "The session's own resources, in order (MDRS-286). Absent leaves them as they are; sent, the list replaces the stored one: a row whose `id` is one of this session's is kept and rewritten whole, any other row is added, and a stored row left out is removed. Never null.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CreateLessonResourceDto"
+            }
           }
         },
         "required": [

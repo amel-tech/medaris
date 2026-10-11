@@ -11,12 +11,16 @@ import {
   curriculumPayload,
   dayLabel,
   emptyLesson,
+  emptyLessonResource,
   emptyResource,
   headingDay,
   type LessonDraft,
+  type LessonResourceDraft,
   lessonDraftOf,
+  lessonResourceDraftsOf,
   lessonWithoutAccess,
   linkHelpKey,
+  moveRow,
   nextWeekNumber,
   type ResourceDraft,
   resourceDraftsOf,
@@ -791,6 +795,236 @@ describe("what a save keeps (MDRS-279)", () => {
       { kind: "resourceUrl", resourceIndex: 0 },
       { kind: "resourceUrl", resourceIndex: 1 },
     ]);
+  });
+});
+
+describe("a session's own resources (MDRS-286)", () => {
+  const stored = [
+    {
+      id: "lr-1",
+      lessonId: "l-1",
+      name: "Emsile şerhi",
+      meta: "PDF · 12 sayfa",
+      url: "https://drive.google.com/file/d/1a2b3c/view",
+      orderIndex: 0,
+    },
+    {
+      id: "lr-2",
+      lessonId: "l-1",
+      name: "Tatbikat",
+      meta: null,
+      url: "https://files.medaris.org/tatbikat.pdf",
+      orderIndex: 1,
+    },
+  ];
+  const linked = (over: Record<string, unknown> = {}) =>
+    course({
+      weeks: [
+        {
+          id: "w-1",
+          weekNumber: 1,
+          title: "Birinci",
+          summary: "Özet",
+          lessons: [
+            lesson({ resources: stored, ...over }),
+            lesson({ id: "l-2", resources: [] }),
+          ],
+        },
+      ],
+    });
+  /** What the save sends for each session after `change` on the first one's rows. */
+  const sent = (
+    change: (rows: LessonResourceDraft[]) => LessonResourceDraft[] = (rows) =>
+      rows,
+    read = linked()
+  ) => {
+    const weeks = weekDraftsOf(read, ZONE);
+    const first = weeks[0]?.lessons[0] as LessonDraft;
+    first.resources = change(first.resources);
+    return (
+      curriculumPayload(read, form({ weeks, resources: [] }), ZONE).weeks?.[0]
+        ?.lessons ?? []
+    );
+  };
+
+  it("are read as drafts, in order, keeping their ids", () => {
+    expect(weekDraftsOf(linked(), ZONE)[0]?.lessons[0]?.resources).toEqual([
+      {
+        id: "lr-1",
+        name: "Emsile şerhi",
+        meta: "PDF · 12 sayfa",
+        url: "https://drive.google.com/file/d/1a2b3c/view",
+        urlRequired: true,
+      },
+      {
+        id: "lr-2",
+        name: "Tatbikat",
+        meta: "",
+        url: "https://files.medaris.org/tatbikat.pdf",
+        urlRequired: true,
+      },
+    ]);
+    // a content-locked read carries no address, so none is required
+    expect(
+      lessonResourceDraftsOf({
+        resources: [{ ...stored[0], url: undefined }],
+      } as never)
+    ).toEqual([
+      {
+        id: "lr-1",
+        name: "Emsile şerhi",
+        meta: "PDF · 12 sayfa",
+        url: "",
+        urlRequired: false,
+      },
+    ]);
+  });
+
+  it("start empty on a new session, and are not copied with the week", () => {
+    expect(emptyLesson("2026-10-12").resources).toEqual([]);
+    const copy = copyWeek(
+      weekDraftsOf(linked(), ZONE)[0] as WeekDraft,
+      nextWeekNumber([])
+    );
+    expect(copy.lessons.map((l) => l.resources)).toEqual([[], []]);
+    expect(emptyLessonResource()).toEqual({
+      name: "",
+      meta: "",
+      url: "",
+      urlRequired: true,
+    });
+  });
+
+  it("move a row up or down, and stay as they are out of range", () => {
+    expect(moveRow(["a", "b", "c"], 2, 1)).toEqual(["a", "c", "b"]);
+    expect(moveRow(["a", "b", "c"], 0, 1)).toEqual(["b", "a", "c"]);
+    expect(moveRow(["a", "b"], 0, -1)).toEqual(["a", "b"]);
+    expect(moveRow(["a", "b"], 1, 2)).toEqual(["a", "b"]);
+  });
+
+  it("need a name and an absolute http(s) address, named by their session", () => {
+    const weeks = weekDraftsOf(linked(), ZONE);
+    const second = weeks[0]?.lessons[1] as LessonDraft;
+    second.resources = [
+      { ...emptyLessonResource(), url: "https://a.test/" },
+      { ...emptyLessonResource(), name: "Bina", url: "" },
+      { ...emptyLessonResource(), name: "Bina", url: "javascript:alert(1)" },
+      { ...emptyLessonResource(), name: "Bina", url: "drive.google.com/x" },
+    ];
+    const at = { weekIndex: 0, lessonIndex: 1 };
+    expect(curriculumErrors("Bina ve İzhar", weeks)).toEqual([
+      { kind: "lessonResourceName", ...at, resourceIndex: 0 },
+      { kind: "lessonResourceUrl", ...at, resourceIndex: 1 },
+      { kind: "lessonResourceUrl", ...at, resourceIndex: 2 },
+      { kind: "lessonResourceUrl", ...at, resourceIndex: 3 },
+    ]);
+    // a cancelled session is information and is not checked
+    second.cancelledAt = "2026-10-01T00:00:00.000Z";
+    expect(curriculumErrors("Bina ve İzhar", weeks)).toEqual([]);
+  });
+
+  it("make the form dirty when a session's row moves", () => {
+    const saved = form({ weeks: weekDraftsOf(linked(), ZONE) });
+    const weeks = weekDraftsOf(linked(), ZONE);
+    expect(curriculumDirty(form({ weeks }), saved)).toBe(false);
+    const first = weeks[0]?.lessons[0] as LessonDraft;
+    first.resources = moveRow(first.resources, 0, 1);
+    expect(curriculumDirty(form({ weeks }), saved)).toBe(true);
+  });
+
+  it("are not sent for a session whose list the form left as read, so tedrisat keeps it", () => {
+    const lessons = sent();
+    expect(lessons.map((l) => l.id)).toEqual(["l-1", "l-2"]);
+    for (const l of lessons) expect(Object.keys(l)).not.toContain("resources");
+  });
+
+  it("are sent whole when changed: in order, kept rows with their ids, trimmed, an empty line as null", () => {
+    const [first, second] = sent((rows) => [
+      { ...(rows[1] as LessonResourceDraft), name: " Tatbikat defteri " },
+      rows[0] as LessonResourceDraft,
+      {
+        ...emptyLessonResource(),
+        name: " Bina ",
+        meta: "  ",
+        url: " https://files.medaris.org/bina.pdf ",
+      },
+    ]);
+    expect(first?.resources).toEqual([
+      {
+        id: "lr-2",
+        name: "Tatbikat defteri",
+        meta: null,
+        url: "https://files.medaris.org/tatbikat.pdf",
+      },
+      {
+        id: "lr-1",
+        name: "Emsile şerhi",
+        meta: "PDF · 12 sayfa",
+        url: "https://drive.google.com/file/d/1a2b3c/view",
+      },
+      { name: "Bina", meta: null, url: "https://files.medaris.org/bina.pdf" },
+    ]);
+    // the other session's list did not change
+    expect(Object.keys(second ?? {})).not.toContain("resources");
+  });
+
+  it("are sent reordered, and as an empty list when every row is removed", () => {
+    expect(
+      sent((rows) => moveRow(rows, 1, 0))[0]?.resources?.map((r) => r.id)
+    ).toEqual(["lr-2", "lr-1"]);
+    expect(sent(() => [])[0]?.resources).toEqual([]);
+  });
+
+  it("are sent for a new session that has some, and not for one that has none", () => {
+    const read = linked();
+    const weeks = weekDraftsOf(read, ZONE);
+    (weeks[0] as WeekDraft).lessons.push(
+      draft({
+        resources: [
+          {
+            ...emptyLessonResource(),
+            name: "Emsile",
+            url: "https://emsile.test/",
+          },
+        ],
+      }),
+      draft()
+    );
+    const [, , added, bare] =
+      curriculumPayload(read, form({ weeks }), ZONE).weeks?.[0]?.lessons ?? [];
+    expect(added).not.toHaveProperty("id");
+    expect(added?.resources).toEqual([
+      { name: "Emsile", meta: null, url: "https://emsile.test/" },
+    ]);
+    expect(Object.keys(bare ?? {})).not.toContain("resources");
+  });
+
+  it("are neither required nor sent back for a content-locked read", () => {
+    const locked = course({
+      contentLocked: true,
+      weeks: [
+        {
+          id: "w-1",
+          weekNumber: 1,
+          title: "Birinci",
+          lessons: [
+            lesson({
+              meetingUrl: undefined,
+              kaynak: undefined,
+              agenda: undefined,
+              resources: stored.map(({ url: _url, ...row }) => row),
+            }),
+          ],
+        },
+      ],
+    });
+    const weeks = weekDraftsOf(locked, ZONE);
+    expect(curriculumErrors("Bina ve İzhar", weeks)).toEqual([]);
+    const [first] =
+      curriculumPayload(locked, form({ weeks }), ZONE).weeks?.[0]?.lessons ??
+      [];
+    expect(first).toMatchObject({ id: "l-1" });
+    expect(Object.keys(first ?? {})).not.toContain("resources");
   });
 });
 

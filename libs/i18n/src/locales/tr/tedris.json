@@ -520,6 +520,7 @@
     "agendaTitle": "Celse akışı",
     "agendaZone": "Saatler {zone} saatiyle.",
     "kaynak": "Kaynak",
+    "lessonResourcesTitle": "Bu celsenin kaynakları",
     "resourcesTitle": "Dersin kaynakları",
     "resourcesLocked": "Bağlantıları derse kayıtlı talebeler açar.",
     "neighbours": "Önceki ve sonraki celse",

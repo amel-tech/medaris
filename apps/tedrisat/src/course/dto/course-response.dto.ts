@@ -13,6 +13,23 @@ export class AgendaStepResponse {
 const CONTENT_FIELD =
   "Course content: absent unless the caller holds `view_details` on the course (MDRS-103); a sample session (`isPreview`) keeps its `kaynak` and `agenda` for everyone (MDRS-161), never its `meetingUrl`.";
 
+/** One link of a session's own resources (MDRS-286). */
+export class LessonResourceResponse {
+  @ApiProperty({ format: "uuid" }) id!: string;
+  @ApiProperty({ format: "uuid" }) lessonId!: string;
+  @ApiProperty({ description: "Sent to everyone who may see the session." })
+  name!: string;
+  @ApiPropertyOptional({ type: String, nullable: true })
+  meta!: string | null;
+  @ApiPropertyOptional({
+    type: String,
+    description:
+      "Where it opens: an absolute http:// or https:// URL. Course content: absent unless the caller holds `view_details` on the course (MDRS-103), a sample session's included.",
+  })
+  url?: string;
+  @ApiProperty() orderIndex!: number;
+}
+
 export class LessonResponse {
   @ApiProperty() id!: string;
   @ApiProperty() weekId!: string;
@@ -71,6 +88,12 @@ export class LessonResponse {
     description: `A live stream link is set for the session; never the link itself, which only the stream routes and the LIVE session page carry. ${CONTENT_FIELD}`,
   })
   hasLiveStream?: boolean;
+  @ApiProperty({
+    type: [LessonResourceResponse],
+    description:
+      "The session's own resources, in order (MDRS-286): every name to everyone who may see the session, each `url` only to a caller holding `view_details`.",
+  })
+  resources!: LessonResourceResponse[];
 }
 
 /** A lesson written through a session-level endpoint (MDRS-95). */

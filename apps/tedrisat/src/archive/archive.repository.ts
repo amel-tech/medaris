@@ -12,6 +12,7 @@ import { auditLog } from "../database/schema/audit.schema";
 import {
   courses,
   courseWeeks,
+  lessonResources,
   lessons,
 } from "../database/schema/course.schema";
 import {
@@ -763,6 +764,10 @@ export class ArchiveRepository {
         await tx
           .delete(lessonQuestions)
           .where(inArray(lessonQuestions.lessonId, weekLessonIds));
+        // A session's own resources (MDRS-286) are links: they go with it.
+        await tx
+          .delete(lessonResources)
+          .where(inArray(lessonResources.lessonId, weekLessonIds));
         const removedSessions = (
           await tx
             .delete(lessons)
@@ -789,6 +794,9 @@ export class ArchiveRepository {
         await tx
           .delete(lessonQuestions)
           .where(eq(lessonQuestions.lessonId, id));
+        await tx
+          .delete(lessonResources)
+          .where(eq(lessonResources.lessonId, id));
         await tx.delete(lessons).where(eq(lessons.id, id));
         const [week] = await tx
           .select({ courseId: courseWeeks.courseId })

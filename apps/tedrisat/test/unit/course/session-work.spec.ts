@@ -33,6 +33,7 @@ const lesson = (over: Partial<ILesson>): ILesson => ({
   inPerson: false,
   inPersonOverride: null,
   hasLiveStream: false,
+  resources: [],
   ...over,
 });
 
@@ -237,5 +238,83 @@ describe("sessionWorkChanged (MDRS-135: course.edit or session.manage in a whole
     expect(
       sessionWorkChanged(stored, withLive({ inPersonOverride: null }))
     ).toBe(false);
+  });
+});
+
+/**
+ * MDRS-286: a session's own resources are written under the permission that
+ * edits a session ("session.manage, as the kaynak field is"). In a
+ * whole-course save, adding, renaming, reordering or removing one is session
+ * work; sending the list back as read, or leaving it out, is not.
+ */
+describe("a session's own resources in a whole-course save (MDRS-286)", () => {
+  const R1 = "20000000-0000-4000-8000-000000000001";
+  const R2 = "20000000-0000-4000-8000-000000000002";
+  const rows = [
+    {
+      id: R1,
+      lessonId: LIVE_ID,
+      name: "Emsile şerhi",
+      meta: "PDF · 12 sayfa",
+      url: "https://drive.google.com/file/d/1a2b3c/view",
+      orderIndex: 0,
+    },
+    {
+      id: R2,
+      lessonId: LIVE_ID,
+      name: "Bina",
+      meta: null,
+      url: "https://example.org/bina.pdf",
+      orderIndex: 1,
+    },
+  ];
+  const withResources: IWeek[] = [
+    {
+      ...stored[0],
+      lessons: [
+        { ...stored[0].lessons[0], resources: rows },
+        stored[0].lessons[1],
+      ],
+    },
+  ];
+  /** The list as the editor read it, sent back. */
+  const asRead = () =>
+    rows.map(({ id, name, meta, url }) => ({ id, name, meta, url }));
+
+  it("is false for the list left out or sent back as read", () => {
+    expect(sessionWorkChanged(withResources, asSent())).toBe(false);
+    expect(
+      sessionWorkChanged(withResources, withLive({ resources: asRead() }))
+    ).toBe(false);
+  });
+
+  it("is true for a resource added, renamed, given a new line or link, reordered or removed", () => {
+    const [first, second] = asRead();
+    for (const resources of [
+      [first, second, { name: "Yeni", url: "https://example.org/yeni" }],
+      [{ ...first, name: "Emsile şerhi (yeni)" }, second],
+      [{ ...first, meta: null }, second],
+      [{ ...first, url: "https://example.org/emsile.pdf" }, second],
+      [second, first],
+      [first],
+      [],
+      // The same row sent without its id is a new row: the old one goes.
+      [{ ...first, id: undefined }, second],
+    ]) {
+      expect(sessionWorkChanged(withResources, withLive({ resources }))).toBe(
+        true
+      );
+    }
+  });
+
+  it("is true for the first resource of a session that had none", () => {
+    expect(
+      sessionWorkChanged(
+        stored,
+        withLive({
+          resources: [{ name: "Emsile", url: "https://example.org/emsile" }],
+        })
+      )
+    ).toBe(true);
   });
 });
