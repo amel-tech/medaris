@@ -3,14 +3,14 @@ import type {
   GrantResponse,
   KoskDashboardSessionResponse,
 } from "@medaris/services/tedrisat";
-import { platformOf } from "../kosks/overview-present";
+import { type AttendanceView, attendanceView } from "../courses/attendance";
 
 /**
  * Pure helpers behind the three home pages (nizam 01, 02 and 05, MDRS-182): the
- * greeting's number, "Bugün 08:45", the state of a celse row and what its
- * button says, the cards of "İzinleriniz" and the footnote under them. No React
- * and no I/O, so the sentences and rules the designs show can be pinned by
- * plain specs.
+ * greeting's number, "Bugün 08:45", the state of a celse row, how it is
+ * attended and what its button says, the cards of "İzinleriniz" and the
+ * footnote under them. No React and no I/O, so the sentences and rules the
+ * designs show can be pinned by plain specs.
  */
 export type Messages = (
   key: string,
@@ -112,44 +112,72 @@ export function sessionWhenLong(at: Date | string, zone: Zone): string {
 
 // ---- the celse table --------------------------------------------------------
 
-export type SessionState = "missingLink" | "planned" | "cancelled" | "past";
+export type SessionState = "withoutAccess" | "planned" | "cancelled" | "past";
 
-/** What the Durum column says: a celse that is over or cancelled says so; one ahead with no link is "Bağlantı eksik". */
+/**
+ * How a celse row stands: one that is over or cancelled says so; one ahead
+ * that nobody can attend is "withoutAccess" (MDRS-283). Whether it can be
+ * attended is tedrisat's answer (`withoutAccess`: no meeting link, no live
+ * stream and not held in person), the rule behind the alert's count.
+ */
 export function sessionState(
   s: Pick<
     KoskDashboardSessionResponse,
-    "cancelled" | "meetingUrl" | "scheduledAt"
+    "cancelled" | "scheduledAt" | "withoutAccess"
   >,
   now: Date
 ): SessionState {
   if (s.cancelled) return "cancelled";
   if (new Date(s.scheduledAt).getTime() < now.getTime()) return "past";
-  return s.meetingUrl ? "planned" : "missingLink";
+  return s.withoutAccess ? "withoutAccess" : "planned";
 }
+
+/**
+ * The word in the Durum column. A celse nobody can attend is still planned:
+ * the lack is said once, in "Katılım".
+ */
+export const stateWord = (
+  state: SessionState
+): Exclude<SessionState, "withoutAccess"> =>
+  state === "withoutAccess" ? "planned" : state;
 
 export type SessionAction = "addLink" | "edit" | "view";
 
-/** The button of a row: add the missing link, edit what is planned, look at what is over. */
+/** The button of a row: add a way in to what has none, edit what is planned, look at what is over. */
 export function sessionAction(state: SessionState): SessionAction {
-  if (state === "missingLink") return "addLink";
+  if (state === "withoutAccess") return "addLink";
   return state === "planned" ? "edit" : "view";
 }
 
-export interface PlatformView {
-  /** the `PlatformChip` key, or "other" for a host the chip does not know */
-  platform: string;
-  host?: string;
-}
-
-/** Where the celse meets, read off its link; null when it has none. */
-export function platformView(
-  url: string | null | undefined
-): PlatformView | null {
-  const name = platformOf(url);
-  if (!name) return null;
-  if (name === "Zoom") return { platform: "zoom" };
-  if (name === "Google Meet") return { platform: "google-meet" };
-  return { platform: "other", host: name };
+/**
+ * The "Katılım" cell of a row, as Celseler draws it (MDRS-283). Whether it is
+ * flagged is tedrisat's `withoutAccess`. A page read without the köşk's
+ * content (`contentLocked`) carries no link and no stream: a row says what is
+ * known, the flag or the in-person mark, and nothing otherwise (null).
+ */
+export function sessionAttendance(
+  s: Pick<
+    KoskDashboardSessionResponse,
+    "meetingUrl" | "hasLiveStream" | "inPerson" | "withoutAccess"
+  >,
+  contentLocked: boolean
+): AttendanceView | null {
+  if (contentLocked) {
+    if (s.withoutAccess) {
+      return { inPerson: false, platform: null, stream: null, lack: "missing" };
+    }
+    return s.inPerson
+      ? { inPerson: true, platform: null, stream: null, lack: null }
+      : null;
+  }
+  return attendanceView(
+    {
+      meeting: s.meetingUrl ?? null,
+      hasLiveStream: s.hasLiveStream === true,
+      inPerson: s.inPerson,
+    },
+    s.withoutAccess
+  );
 }
 
 /** "Hafta 5", "Hafta 5, telafi celsesi": the first line under a course. */

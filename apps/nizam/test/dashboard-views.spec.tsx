@@ -2,6 +2,7 @@ import { resources } from "@medaris/i18n";
 import type {
   GrantResponse,
   KoskDashboardResponse,
+  KoskDashboardSessionResponse,
   NizamDashboardResponse,
 } from "@medaris/services/tedrisat";
 import { NextIntlClientProvider } from "next-intl";
@@ -299,6 +300,7 @@ const kosk: KoskDashboardResponse = {
       scheduledAt: new Date("2026-10-03T18:00:00Z"),
       durationMinutes: 60,
       inPerson: false,
+      hasLiveStream: false,
       withoutAccess: true,
       isMakeup: false,
       studentCount: 28,
@@ -315,6 +317,7 @@ const kosk: KoskDashboardResponse = {
       durationMinutes: 60,
       meetingUrl: "https://zoom.us/j/1",
       inPerson: false,
+      hasLiveStream: false,
       withoutAccess: false,
       isMakeup: false,
       studentCount: 35,
@@ -331,6 +334,7 @@ const kosk: KoskDashboardResponse = {
       scheduledAt: new Date("2026-10-07T18:00:00Z"),
       meetingUrl: "https://meet.google.com/abc",
       inPerson: false,
+      hasLiveStream: false,
       withoutAccess: false,
       isMakeup: true,
       studentCount: 28,
@@ -383,16 +387,18 @@ const kosk: KoskDashboardResponse = {
 describe("a köşk nazımı's home page (nizam 02)", () => {
   const html = render(<KoskHome data={kosk} nowIso={NOW} />);
 
-  it("greets with the week's celse and the one that lacks a link", () => {
+  it("greets with the week's celse and the one nobody can attend (MDRS-283)", () => {
     expect(html).toContain(
-      "Selâmün aleyküm, Abdülhamit Hoca. Önümüzdeki yedi günde 4 celse var; birinin toplantı bağlantısı eksik."
+      "Selâmün aleyküm, Abdülhamit Hoca. Önümüzdeki yedi günde 4 celse var; birinin katılım yolu eksik."
     );
   });
 
-  it("warns about the celse with no link, by course and day", () => {
-    expect(html).toContain("Bir celsenin toplantı bağlantısı eksik");
+  it("warns about the celse nobody can attend, by course and day", () => {
+    expect(html).toContain("Bir celsenin katılım yolu eksik");
     expect(html).toContain("Emsile ve Bina, 3 Ekim Cumartesi 21:00.");
-    expect(html).toContain("bağlantı olmadan talebeler celseye katılamaz");
+    expect(html).toContain(
+      "Toplantı bağlantısı, canlı yayın ya da yüz yüze işareti yok"
+    );
   });
 
   it("draws the four numbers (criterion 2)", () => {
@@ -414,15 +420,17 @@ describe("a köşk nazımı's home page (nizam 02)", () => {
     expect(html).toContain(">13<");
   });
 
-  it("draws each celse with its state, platform and button", () => {
+  it("draws each celse with its state, Katılım and button", () => {
     expect(html).toContain("Hafta 5 · Abdülhamit Karaosmanoğlu, imam");
     expect(html).toContain(
       "Hafta 4 · Mehmet Emin Işıkoğlu, imam · Süleymaniye Medresesi"
     );
     expect(html).toContain("Hafta 5, telafi celsesi");
     expect(html).toContain("3 Eki Cmt 21:00");
-    expect(html).toContain("Bağlantı eksik");
-    expect(html).toContain("Toplantı bağlantısı yok");
+    expect(html).toContain(">Katılım<");
+    // the one nobody can attend says "Eksik" once, in Katılım; Durum says planned
+    expect(html.split('data-testid="attendance-missing"')).toHaveLength(2);
+    expect(html).not.toContain("Bağlantı eksik");
     expect(html).toContain("Toplantı bağlantısı ekle");
     expect(html).toContain("Zoom");
     expect(html).toContain("Google Meet");
@@ -454,14 +462,67 @@ describe("a köşk nazımı's home page (nizam 02)", () => {
     expect(html).toContain("Süleymaniye Medresesi · 2 ders · 35 talebe");
   });
 
-  it("leaves out the alert when no link is missing, and names the open course button", () => {
+  it("covers a celse that is only streamed or held in person: no alert, no Eksik (MDRS-283)", () => {
+    const covered = render(
+      <KoskHome
+        data={{
+          ...kosk,
+          withoutAccessCount: 0,
+          firstWithoutAccess: undefined,
+          sessions: [
+            {
+              ...(kosk.sessions[0] as KoskDashboardSessionResponse),
+              hasLiveStream: true,
+              withoutAccess: false,
+            },
+            {
+              ...(kosk.sessions[0] as KoskDashboardSessionResponse),
+              id: "s4",
+              inPerson: true,
+              withoutAccess: false,
+            },
+          ],
+        }}
+        nowIso={NOW}
+      />
+    );
+    expect(covered).not.toContain("katılım yolu eksik");
+    expect(covered).not.toContain('data-testid="attendance-missing"');
+    expect(covered).toContain("Yalnız yayın");
+    expect(covered).toContain("Yüz yüze");
+    expect(covered).not.toContain("Toplantı bağlantısı ekle");
+  });
+
+  it("says only what a page read without the köşk's content carries", () => {
+    const locked = render(
+      <KoskHome
+        data={{
+          ...kosk,
+          contentLocked: true,
+          latestApplications: [],
+          sessions: kosk.sessions.map((s) => ({
+            ...s,
+            meetingUrl: undefined,
+            hasLiveStream: undefined,
+          })),
+        }}
+        nowIso={NOW}
+      />
+    );
+    // tedrisat's flag still stands; the others say nothing they were not told
+    expect(locked.split('data-testid="attendance-missing"')).toHaveLength(2);
+    expect(locked).toContain("Katılım bilgisi gösterilmez");
+    expect(locked).not.toContain("Zoom");
+  });
+
+  it("leaves out the alert when every celse can be attended, and names the open course button", () => {
     const fine = render(
       <KoskHome
         data={{ ...kosk, withoutAccessCount: 0, firstWithoutAccess: undefined }}
         nowIso={NOW}
       />
     );
-    expect(fine).not.toContain("toplantı bağlantısı eksik");
+    expect(fine).not.toContain("katılım yolu eksik");
     expect(fine).toContain("Önümüzdeki yedi günde 4 celse var.");
     expect(fine).toContain("/tr/kosks/k1/courses/new");
   });

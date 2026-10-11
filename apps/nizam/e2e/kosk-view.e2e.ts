@@ -321,7 +321,7 @@ test("nizam/23 — 'Ders aç' opens the new-course form", async ({ page }) => {
   await page.waitForURL(new RegExp(`/kosks/${fixture.kosk.id}/courses/new`));
 });
 
-test("nizam/53 — the overview draws the course, warns about the missing link and lists the next sessions (criteria 1, 2, 3, 6)", async ({
+test("nizam/53 — the overview draws the course, warns about the session nobody can attend and lists the next sessions (criteria 1, 2, 3, 6)", async ({
   page,
 }) => {
   test.skip(!(seedable && KOSK_NAZIM.password), "no KOSK_NAZIM account");
@@ -336,9 +336,7 @@ test("nizam/53 — the overview draws the course, warns about the missing link a
   await expect(page.getByText("4 celse").first()).toBeVisible();
 
   await expect(
-    page
-      .getByText("celsesinin toplantı bağlantısı eksik")
-      .filter({ visible: true })
+    page.getByText("celsesinin katılım yolu eksik").filter({ visible: true })
   ).toBeVisible();
   const sessions = page.locator("tbody tr:visible").filter({
     hasText: /celse/,
@@ -350,7 +348,8 @@ test("nizam/53 — the overview draws the course, warns about the missing link a
     .allInnerTexts();
   expect(rows).toHaveLength(3);
   expect(rows[0]).toContain("Bağlantısız celse");
-  expect(rows[0]).toContain("Bağlantı eksik");
+  // MDRS-283: no link, no stream, not in person: "Eksik" in Katılım
+  expect(rows[0]).toContain("Eksik");
   // The cancelled one keeps its slot, by date, between the two.
   expect(rows[1]).toContain("İptal edilen celse");
   expect(rows[1]).toContain("İptal edildi");

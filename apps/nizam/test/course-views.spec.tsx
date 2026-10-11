@@ -72,8 +72,16 @@ const lesson = (
   orderIndex: 0,
   cancelledAt: null,
   replacementLessonId: null,
+  // the attendance a course read carries for whoever may read its content (MDRS-283)
+  inPerson: false,
+  inPersonOverride: null,
+  hasLiveStream: false,
   ...extra,
 });
+
+/** The `<label>` of the choice whose text holds `text`, as rendered. */
+const choiceOf = (html: string, text: string) =>
+  html.split("<label").find((part) => part.includes(text)) ?? "";
 
 const course = {
   id: "c1",
@@ -86,6 +94,7 @@ const course = {
   timeZone: "Europe/Istanbul",
   isClosed: false,
   requiresApproval: true,
+  inPerson: false,
   coverLabel: null,
   muderris: [
     {
@@ -147,6 +156,15 @@ describe("Ders aç (nizam 32)", () => {
     expect(html).toContain("Kapalı ders");
     expect(html).toContain("Taslak olarak aç");
     expect(html).toContain("Hemen yayımla");
+  });
+
+  it("offers 'Celseler yüz yüze yapılır', off at first (MDRS-283)", () => {
+    const box = choiceOf(
+      render(<CourseCreateForm kosk={kosk} />),
+      "Celseler yüz yüze yapılır"
+    );
+    expect(box).toContain('aria-checked="false"');
+    expect(box).toContain("Celseler sayfasından");
   });
 
   it("fixes the approval box when the köşk always requires it", () => {
@@ -235,6 +253,25 @@ describe("Ders ayarları (nizam 34)", () => {
     expect(html).not.toContain("Taslağa çek<");
     expect(html).not.toContain("Müderrisleri düzenle");
     expect(html).not.toContain("Dersi gizle");
+  });
+
+  it("shows 'Celseler yüz yüze yapılır' with the course's value (MDRS-283)", () => {
+    const view = (inPerson: boolean) =>
+      choiceOf(
+        render(
+          <CourseSettingsPage
+            kosk={kosk}
+            course={{ ...course, inPerson } as CourseDetailResponse}
+            enrolledCount={0}
+            manager={false}
+            tedrisUrl={null}
+          />
+        ),
+        "Celseler yüz yüze yapılır"
+      );
+    expect(view(false)).toContain('aria-checked="false"');
+    expect(view(true)).toContain('aria-checked="true"');
+    expect(view(true)).not.toContain("disabled");
   });
 
   it("checks and locks the approval box under the köşk policy", () => {
@@ -338,6 +375,63 @@ describe("Müfredat (nizam 54)", () => {
     expect(html).toContain(resources.tr.nizam.Curriculum.kaynakLocked);
   });
 
+  it("flags only a session still ahead that nobody can attend, and asks a link only of it (MDRS-283)", () => {
+    const html = render(
+      <CurriculumEditor
+        kosk={{ id: "k1", name: "N" }}
+        course={
+          {
+            ...course,
+            weeks: [
+              ...course.weeks,
+              {
+                id: "w6",
+                weekNumber: 6,
+                title: "Muzâaf fiiller",
+                lessons: [
+                  lesson("s1", "2026-10-14T18:00:00.000Z", {
+                    hasLiveStream: true,
+                  }),
+                  lesson("s2", "2026-10-15T18:00:00.000Z", {
+                    inPerson: true,
+                    inPersonOverride: true,
+                  }),
+                ],
+              },
+            ],
+          } as CourseDetailResponse
+        }
+      />
+    );
+    const tr = resources.tr.nizam.Curriculum;
+    const card = (id: string) =>
+      html.split('data-testid="lesson-').find((part) => part.startsWith(id)) ??
+      "";
+    // l5 (11 Oct) is ahead with nothing: flagged, and told it needs a link
+    expect(card("1-3")).toContain(tr.accessMissing);
+    expect(card("1-3")).toContain(tr.linkHelp);
+    // l2 is live now and has a link; l1 is over
+    expect(card("1-0")).not.toContain(tr.accessMissing);
+    expect(card("0-0")).not.toContain(tr.accessMissing);
+    // streamed, and held in person: covered without a link
+    expect(card("2-0")).not.toContain(tr.accessMissing);
+    expect(card("2-0")).toContain(tr.linkHelpStream);
+    expect(card("2-1")).not.toContain(tr.accessMissing);
+    expect(card("2-1")).toContain(tr.linkHelpInPerson);
+    expect(html.split(tr.accessMissing)).toHaveLength(2);
+  });
+
+  it("flags no session of a course held in person", () => {
+    const html = render(
+      <CurriculumEditor
+        kosk={{ id: "k1", name: "N" }}
+        course={{ ...course, inPerson: true } as CourseDetailResponse}
+      />
+    );
+    expect(html).not.toContain(resources.tr.nizam.Curriculum.accessMissing);
+    expect(html).toContain(resources.tr.nizam.Curriculum.linkHelpInPerson);
+  });
+
   it("words the resources in every locale", () => {
     for (const locale of ["en", "ar"] as const) {
       const html = render(
@@ -360,9 +454,11 @@ describe("Celse planla (nizam 55)", () => {
           id: "c1",
           title: "Emsile ve Bina",
           timeZone: "Europe/Istanbul",
+          inPerson: false,
         }}
       />
     );
+    expect(html).not.toContain('data-testid="plan-in-person"');
     expect(html).toContain("Planlama biçimi");
     expect(html).toContain("Haftalık tekrar");
     expect(html).toContain("Boş bırak");
@@ -370,6 +466,22 @@ describe("Celse planla (nizam 55)", () => {
     expect(html).toContain("Önizleme");
     expect(html).toContain("0 celse");
     expect(html).toContain("Haftanın tekrarı");
+  });
+
+  it("says the new sessions follow a course held in person (MDRS-283)", () => {
+    const html = render(
+      <SessionPlanForm
+        kosk={{ id: "k1", name: "N" }}
+        course={{
+          id: "c1",
+          title: "Emsile ve Bina",
+          timeZone: "Europe/Istanbul",
+          inPerson: true,
+        }}
+      />
+    );
+    expect(html).toContain('data-testid="plan-in-person"');
+    expect(html).toContain(resources.tr.nizam.SessionPlan.inPersonNote);
   });
 });
 
@@ -411,8 +523,16 @@ describe("Celseler (nizam 56)", () => {
     expect(html).toContain("Tarihi değiştir");
   });
 
-  it("counts recordings of a past session", () => {
-    expect(html).toContain("2 ders kaydı");
+  it("says a past session has a recording, as plain words (MDRS-283)", () => {
+    expect(html).toContain("Kaydı var");
     expect(html).toContain("Sona erdi");
+  });
+
+  it("says how each session is attended in one Katılım column", () => {
+    expect(html).toContain(">Katılım<");
+    expect(html).not.toContain(">Toplantı bağlantısı<");
+    // l5 (11 Oct, nothing set) is the one session flagged
+    expect(html.split('data-testid="attendance-missing"')).toHaveLength(2);
+    expect(html).toContain("Yüz yüze ayarı");
   });
 });

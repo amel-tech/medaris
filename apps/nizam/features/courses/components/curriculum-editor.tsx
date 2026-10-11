@@ -34,7 +34,10 @@ import {
   courseErrorKey,
   curriculumDirty,
   curriculumErrors,
+  FRESH_ATTENDANCE,
   type LessonDraft,
+  lessonWithoutAccess,
+  linkHelpKey,
   linkProblem,
   type ResourceDraft,
   resourceDraftsOf,
@@ -63,6 +66,7 @@ const emptyLesson = (): LessonDraft => ({
   cancelReason: null,
   scheduledAtIso: null,
   makeup: false,
+  attendance: FRESH_ATTENDANCE,
 });
 
 /**
@@ -71,7 +75,9 @@ const emptyLesson = (): LessonDraft => ({
  * with the version it was loaded with; a week or a session taken out of the
  * form is hidden by that save, never deleted. A cancelled session is shown as
  * information. While the form differs from the saved course a strip says so,
- * with "Vazgeç" to put the saved values back.
+ * with "Vazgeç" to put the saved values back. A session still ahead with no
+ * link, no live stream and not held in person is flagged "Katılım yolu eksik";
+ * a link is not asked of one that is streamed or held in person (MDRS-283).
  */
 export function CurriculumEditor({ kosk, course }: Props) {
   const t = useTranslations("nizam.Curriculum");
@@ -201,7 +207,8 @@ export function CurriculumEditor({ kosk, course }: Props) {
 
   // Today in the course's zone: the sessions' dates are written in it, and
   // the UTC day is a day behind in Istanbul from 00:00 to 03:00.
-  const nowDay = toZonedDatetimeLocal(new Date(), zone).slice(0, 10);
+  const now = new Date();
+  const nowDay = toZonedDatetimeLocal(now, zone).slice(0, 10);
 
   return (
     <form
@@ -470,12 +477,17 @@ export function CurriculumEditor({ kosk, course }: Props) {
                         <span className="flex items-center gap-2">
                           {lesson.cancelledAt ? (
                             <Badge variant="outline">{t("cancelled")}</Badge>
-                          ) : !url ? (
+                          ) : lessonWithoutAccess(
+                              lesson,
+                              saved.inPerson,
+                              zone,
+                              now
+                            ) ? (
                             <Badge
                               variant="warning"
                               icon={<Icon name="link" size="sm" />}
                             >
-                              {t("linkMissing")}
+                              {t("accessMissing")}
                             </Badge>
                           ) : (
                             <Badge variant="secondary">{t("scheduled")}</Badge>
@@ -651,7 +663,7 @@ export function CurriculumEditor({ kosk, course }: Props) {
                                 ) : null}
                               </span>
                             }
-                            help={t(url ? "linkHelpFilled" : "linkHelp")}
+                            help={t(linkHelpKey(lesson, saved.inPerson))}
                             error={
                               shown("link", wi, li) && problem
                                 ? t("errors.link")

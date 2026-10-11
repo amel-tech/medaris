@@ -92,10 +92,14 @@ export async function getLiveStreams(
   }
 }
 
-/** The recordings of a course, for the count in the past sessions; empty when unread. */
+/**
+ * The recordings of a course, for "Kaydı var" / "Kayıt yok" on the past
+ * sessions; null when they could not be read, so a session is never said to
+ * have no recording because the read failed (MDRS-283).
+ */
 export async function getRecordings(
   courseId: string
-): Promise<RecordingResponse[]> {
+): Promise<RecordingResponse[] | null> {
   try {
     const { lessons } = await createServerTedrisatAPIs(
       await getAccessToken(),
@@ -104,6 +108,6 @@ export async function getRecordings(
     return await lessons.listCourseRecordings({ id: courseId });
   } catch (error) {
     console.error("Error fetching the course recordings:", error);
-    return [];
+    return null;
   }
 }

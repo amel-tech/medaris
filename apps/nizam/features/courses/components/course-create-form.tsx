@@ -84,6 +84,7 @@ export function CourseCreateForm({ kosk, request }: Props) {
   const [timeZone, setTimeZone] = useState(DEFAULT_TIME_ZONE);
   const [isClosed, setIsClosed] = useState(false);
   const [requiresApproval, setRequiresApproval] = useState(true);
+  const [inPerson, setInPerson] = useState(false);
   const [publish, setPublish] = useState<"draft" | "publish">("draft");
   const [sent, setSent] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -131,6 +132,8 @@ export function CourseCreateForm({ kosk, request }: Props) {
       coverLabel: label ?? undefined,
       isClosed,
       requiresApproval,
+      // MDRS-283: the sessions made next follow it, as every one made later.
+      inPerson,
       status: publish === "publish" ? "PUBLISHED" : "DRAFT",
       timeZone,
       muderris: payload.muderris,
@@ -450,6 +453,16 @@ export function CourseCreateForm({ kosk, request }: Props) {
             disabled={saving || kosk.alwaysRequireApproval}
             onCheckedChange={(checked) => setRequiresApproval(checked === true)}
             name="requiresApproval"
+          />
+          <Checkbox
+            bordered
+            icon={<Icon name="group" size="sm" />}
+            label={t("inPersonLabel")}
+            description={t("inPersonDesc")}
+            checked={inPerson}
+            disabled={saving}
+            onCheckedChange={(checked) => setInPerson(checked === true)}
+            name="inPerson"
           />
           <RadioGroup
             legend={t("visibilityLegend")}

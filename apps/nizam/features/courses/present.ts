@@ -13,6 +13,12 @@ import {
   toZonedDatetimeLocal,
   type YoutubeLiveProblem,
 } from "@medaris/utils";
+import {
+  type AttendanceView,
+  attendanceView,
+  hasAccess,
+  lessonAttendance,
+} from "./attendance";
 
 /**
  * The pure parts of the course screens (nizam 32, 33, 34, 54, 55, 56): the
@@ -336,6 +342,19 @@ export interface SessionRow {
   start: Date;
   durationMinutes: number;
   meetingUrl: string | null;
+  /**
+   * A live stream link is set. Read from the course, not from the stream
+   * links, so whoever may not set the link sees it too (MDRS-283).
+   */
+  hasLiveStream: boolean;
+  /**
+   * Held in person: the session's own mark, else the course's. Null when the
+   * read carried no attendance, as a content-locked one does not, so nothing
+   * can be said of it.
+   */
+  inPerson: boolean | null;
+  /** the session's own mark: true or false overrides the course, null follows it */
+  inPersonOverride: boolean | null;
   cancelledAt: Date | null;
   cancelReason: string | null;
   state: SessionState;
@@ -388,6 +407,9 @@ export function sessionRows(
         start,
         durationMinutes,
         meetingUrl: lesson.meetingUrl ?? null,
+        hasLiveStream: lesson.hasLiveStream === true,
+        inPerson: lesson.inPerson ?? null,
+        inPersonOverride: lesson.inPersonOverride ?? null,
         cancelledAt,
         cancelReason: lesson.cancelReason ?? null,
         state,
@@ -434,6 +456,38 @@ export function groupSessions(rows: SessionRow[], now: Date): SessionGroups {
       weeks.length === 0 ? null : lo === hi ? String(lo) : `${lo}–${hi}`,
   };
 }
+
+// ---- how a session is attended (MDRS-283) -----------------------------------
+
+/**
+ * The "Katılım" cell of a row: its meeting link, its stream and the in-person
+ * mark, flagged only while the session is still ahead. Null when the course
+ * read carried no attendance (`inPerson` null), so nothing is claimed.
+ */
+export function rowAttendance(
+  row: Pick<SessionRow, "meetingUrl" | "hasLiveStream" | "inPerson" | "state">
+): AttendanceView | null {
+  if (row.inPerson === null) return null;
+  return attendanceView(
+    {
+      meeting: row.meetingUrl,
+      hasLiveStream: row.hasLiveStream,
+      inPerson: row.inPerson,
+    },
+    row.state === "scheduled"
+  );
+}
+
+/** The three answers of a session's in-person row action. */
+export type InPersonChoice = "course" | "yes" | "no";
+
+/** "Dersin ayarına uy" for a session without its own mark, else "Yüz yüze" or "Yüz yüze değil". */
+export const inPersonChoiceOf = (override: boolean | null): InPersonChoice =>
+  override === null ? "course" : override ? "yes" : "no";
+
+/** The `inPersonOverride` a choice writes: null follows the course. */
+export const inPersonOverrideOf = (choice: InPersonChoice): boolean | null =>
+  choice === "course" ? null : choice === "yes";
 
 /** The recordings per session id, from GET /courses/:id/recordings. */
 export function recordingCounts(
@@ -486,7 +540,23 @@ export interface LessonDraft {
   scheduledAtIso: string | null;
   /** this session makes up for a cancelled one: it stays in its own week */
   makeup: boolean;
+  /**
+   * How the session is attended besides its link (MDRS-283): its own
+   * in-person mark (null follows the course) and whether a live stream is
+   * set. Null when the read carried neither (a content-locked one), so the
+   * session is not judged. Never sent: the save leaves both as stored.
+   */
+  attendance: {
+    inPersonOverride: boolean | null;
+    hasLiveStream: boolean;
+  } | null;
 }
+
+/** A session made on this page: it follows the course and has no stream yet. */
+export const FRESH_ATTENDANCE: NonNullable<LessonDraft["attendance"]> = {
+  inPersonOverride: null,
+  hasLiveStream: false,
+};
 
 export interface WeekDraft {
   id?: string;
@@ -528,6 +598,12 @@ export function lessonDraftOf(
       ? new Date(lesson.scheduledAt).toISOString()
       : null,
     makeup: makeupIds.has(lesson.id),
+    attendance: lessonAttendance(lesson)
+      ? {
+          inPersonOverride: lesson.inPersonOverride ?? null,
+          hasLiveStream: lesson.hasLiveStream === true,
+        }
+      : null,
   };
 }
 
@@ -659,7 +735,11 @@ export function curriculumErrors(
   return errors;
 }
 
-/** "Haftayı kopyala": the week again, 7 days later, with no links and nothing cancelled. */
+/**
+ * "Haftayı kopyala": the week again, 7 days later, with no links and nothing
+ * cancelled. The copies are new sessions: they follow the course's in-person
+ * mark and have no stream (MDRS-283).
+ */
 export function copyWeek(week: WeekDraft, nextNumber: number): WeekDraft {
   return {
     weekNumber: nextNumber,
@@ -677,6 +757,7 @@ export function copyWeek(week: WeekDraft, nextNumber: number): WeekDraft {
         cancelReason: null,
         scheduledAtIso: null,
         makeup: false,
+        attendance: FRESH_ATTENDANCE,
       })),
   };
 }
@@ -712,6 +793,58 @@ export function weekFacts(week: WeekDraft): {
     from: dates[0] ?? null,
     to: dates[dates.length - 1] ?? null,
   };
+}
+
+/**
+ * Whether Müfredat flags a session as having no way in (MDRS-283): a live
+ * one, not cancelled, still ahead, with no link typed, no live stream and not
+ * held in person (its own mark, else the course's). One that is under way or
+ * over is not flagged, nor one whose attendance the read did not carry.
+ */
+export function lessonWithoutAccess(
+  draft: Pick<
+    LessonDraft,
+    | "type"
+    | "cancelledAt"
+    | "date"
+    | "time"
+    | "scheduledAtIso"
+    | "meetingUrl"
+    | "attendance"
+  >,
+  courseInPerson: boolean,
+  timeZone: string,
+  now: Date
+): boolean {
+  if (draft.cancelledAt || draft.type !== "LIVE" || !draft.attendance) {
+    return false;
+  }
+  const start = lessonInstant(draft, timeZone);
+  if (!start || start.getTime() <= now.getTime()) return false;
+  return !hasAccess({
+    meeting: normalizeMeetingUrl(draft.meetingUrl),
+    hasLiveStream: draft.attendance.hasLiveStream,
+    inPerson: draft.attendance.inPersonOverride ?? courseInPerson,
+  });
+}
+
+/**
+ * The help under a session's link field. "Talebeler bağlantı olmadan celseye
+ * katılamaz" is said only of a session that has no other way in: one held in
+ * person or streamed needs no link (MDRS-283). A session whose attendance the
+ * read did not carry gets the plain line.
+ */
+export function linkHelpKey(
+  draft: Pick<LessonDraft, "meetingUrl" | "attendance">,
+  courseInPerson: boolean
+): "linkHelp" | "linkHelpFilled" | "linkHelpInPerson" | "linkHelpStream" {
+  if (normalizeMeetingUrl(draft.meetingUrl) || !draft.attendance) {
+    return "linkHelpFilled";
+  }
+  if (draft.attendance.inPersonOverride ?? courseInPerson) {
+    return "linkHelpInPerson";
+  }
+  return draft.attendance.hasLiveStream ? "linkHelpStream" : "linkHelp";
 }
 
 // ---- the sample session ------------------------------------------------------
@@ -752,6 +885,8 @@ export function sampleOf(course: Pick<CourseDetailResponse, "weeks">): string {
 export interface SettingsForm {
   isClosed: boolean;
   requiresApproval: boolean;
+  /** "Celseler yüz yüze yapılır" (MDRS-283): what a session without its own mark follows */
+  inPerson: boolean;
   timeZone: string;
   sampleLessonId: string;
 }
@@ -759,15 +894,35 @@ export interface SettingsForm {
 export function settingsOf(
   course: Pick<
     CourseDetailResponse,
-    "isClosed" | "requiresApproval" | "timeZone" | "weeks"
+    "isClosed" | "requiresApproval" | "inPerson" | "timeZone" | "weeks"
   >
 ): SettingsForm {
   return {
     isClosed: course.isClosed,
     requiresApproval: course.requiresApproval,
+    inPerson: course.inPerson,
     timeZone: course.timeZone,
     sampleLessonId: sampleOf(course),
   };
+}
+
+/**
+ * The course-level fields "Kaydet" sends (`PATCH /courses/:id`): only the
+ * ones that differ from the stored course, nothing at all when none does.
+ * The sample session is not one of them; it moves with its own writes.
+ */
+export function settingsPatch(
+  form: SettingsForm,
+  stored: SettingsForm
+): Partial<Omit<SettingsForm, "sampleLessonId">> | null {
+  const patch: Partial<Omit<SettingsForm, "sampleLessonId">> = {};
+  if (form.isClosed !== stored.isClosed) patch.isClosed = form.isClosed;
+  if (form.requiresApproval !== stored.requiresApproval) {
+    patch.requiresApproval = form.requiresApproval;
+  }
+  if (form.inPerson !== stored.inPerson) patch.inPerson = form.inPerson;
+  if (form.timeZone !== stored.timeZone) patch.timeZone = form.timeZone;
+  return Object.keys(patch).length > 0 ? patch : null;
 }
 
 export const settingsChanged = (a: SettingsForm, b: SettingsForm): boolean =>

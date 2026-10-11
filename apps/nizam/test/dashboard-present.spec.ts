@@ -6,11 +6,12 @@ import {
   momentLabel,
   muderrisLine,
   pendingTotal,
-  platformView,
   sessionAction,
+  sessionAttendance,
   sessionState,
   sessionWhen,
   sessionWhenLong,
+  stateWord,
   weekLine,
 } from "~/features/dashboard/present";
 import { filterByPermissions, navGroups } from "~/lib/shell-nav";
@@ -81,53 +82,89 @@ describe("a celse's state and button (nizam 02)", () => {
   const ahead = new Date(NOW.getTime() + 3_600_000);
   const behind = new Date(NOW.getTime() - 3_600_000);
 
-  it("says a missing link first, then planned, cancelled and past", () => {
-    expect(sessionState({ cancelled: false, scheduledAt: ahead }, NOW)).toBe(
-      "missingLink"
+  it("says a celse nobody can attend first, then planned, cancelled and past (MDRS-283)", () => {
+    const row = { cancelled: false, scheduledAt: ahead, withoutAccess: false };
+    expect(sessionState({ ...row, withoutAccess: true }, NOW)).toBe(
+      "withoutAccess"
     );
+    expect(sessionState(row, NOW)).toBe("planned");
     expect(
-      sessionState(
-        {
-          cancelled: false,
-          scheduledAt: ahead,
-          meetingUrl: "https://zoom.us/j/1",
-        },
-        NOW
-      )
-    ).toBe("planned");
-    expect(sessionState({ cancelled: true, scheduledAt: ahead }, NOW)).toBe(
-      "cancelled"
-    );
-    expect(
-      sessionState(
-        {
-          cancelled: false,
-          scheduledAt: behind,
-          meetingUrl: "https://zoom.us/j/1",
-        },
-        NOW
-      )
-    ).toBe("past");
+      sessionState({ ...row, cancelled: true, withoutAccess: true }, NOW)
+    ).toBe("cancelled");
+    expect(sessionState({ ...row, scheduledAt: behind }, NOW)).toBe("past");
   });
 
-  it("adds the link, edits what is planned, looks at what is over", () => {
-    expect(sessionAction("missingLink")).toBe("addLink");
+  it("says Durum once: a celse nobody can attend is still planned there", () => {
+    expect(stateWord("withoutAccess")).toBe("planned");
+    expect(stateWord("planned")).toBe("planned");
+    expect(stateWord("cancelled")).toBe("cancelled");
+    expect(stateWord("past")).toBe("past");
+  });
+
+  it("adds a way in, edits what is planned, looks at what is over", () => {
+    expect(sessionAction("withoutAccess")).toBe("addLink");
     expect(sessionAction("planned")).toBe("edit");
     expect(sessionAction("past")).toBe("view");
     expect(sessionAction("cancelled")).toBe("view");
   });
 
-  it("reads the platform off the link", () => {
-    expect(platformView("https://zoom.us/j/123")).toEqual({ platform: "zoom" });
-    expect(platformView("https://meet.google.com/abc-defg")).toEqual({
-      platform: "google-meet",
+  it("draws Katılım from the link, the stream and the in-person mark, flagged as tedrisat says (MDRS-283)", () => {
+    const row = {
+      meetingUrl: null,
+      hasLiveStream: false,
+      inPerson: false,
+      withoutAccess: true,
+    };
+    expect(sessionAttendance(row, false)).toEqual({
+      inPerson: false,
+      platform: null,
+      stream: null,
+      lack: "missing",
     });
-    expect(platformView("https://meet.example.org/x")).toEqual({
-      platform: "other",
-      host: "meet.example.org",
+    expect(
+      sessionAttendance(
+        { ...row, hasLiveStream: true, withoutAccess: false },
+        false
+      )
+    ).toEqual({ inPerson: false, platform: null, stream: "alone", lack: null });
+    expect(
+      sessionAttendance({ ...row, inPerson: true, withoutAccess: false }, false)
+    ).toEqual({ inPerson: true, platform: null, stream: null, lack: null });
+    expect(
+      sessionAttendance(
+        {
+          ...row,
+          meetingUrl: "https://zoom.us/j/123",
+          hasLiveStream: true,
+          withoutAccess: false,
+        },
+        false
+      )
+    ).toEqual({
+      inPerson: false,
+      platform: { id: "zoom", host: "zoom.us" },
+      stream: "beside",
+      lack: null,
     });
-    expect(platformView(undefined)).toBeNull();
-    expect(platformView("  ")).toBeNull();
+    // a celse that is over with nothing is said plainly, not flagged
+    expect(
+      sessionAttendance({ ...row, withoutAccess: false }, false)?.lack
+    ).toBe("none");
+  });
+
+  it("says only what a content-locked row carries: the flag, the in-person mark, or nothing", () => {
+    // the link and the stream are not sent, whatever the row was
+    const locked = { inPerson: false, withoutAccess: false };
+    expect(sessionAttendance(locked, true)).toBeNull();
+    expect(sessionAttendance({ ...locked, inPerson: true }, true)).toEqual({
+      inPerson: true,
+      platform: null,
+      stream: null,
+      lack: null,
+    });
+    expect(
+      sessionAttendance({ ...locked, withoutAccess: true }, true)?.lack
+    ).toBe("missing");
   });
 
   it("writes the lines under a course", () => {

@@ -11,9 +11,14 @@ import {
   curriculumDirty,
   curriculumErrors,
   emptyResource,
+  FRESH_ATTENDANCE,
   groupSessions,
+  inPersonChoiceOf,
+  inPersonOverrideOf,
   isoWeekdayOf,
   type LessonDraft,
+  lessonWithoutAccess,
+  linkHelpKey,
   linkProblem,
   normalizedImam,
   type PlanForm,
@@ -24,12 +29,15 @@ import {
   type ResourceDraft,
   removeMember,
   resourceDraftsOf,
+  rowAttendance,
   type ScheduleForm,
   sampleOf,
   sampleOptions,
   scheduleErrors,
   sessionRows,
   sessionState,
+  settingsOf,
+  settingsPatch,
   teamChanged,
   teamDiff,
   teamOfCourse,
@@ -384,6 +392,7 @@ describe("the curriculum (nizam 54)", () => {
     cancelReason: null,
     scheduledAtIso: "2026-10-03T18:00:00.000Z",
     makeup: false,
+    attendance: { inPersonOverride: null, hasLiveStream: false },
     ...over,
   });
   const week = (
@@ -451,6 +460,18 @@ describe("the curriculum (nizam 54)", () => {
       meetingUrl: "",
       isPreview: false,
     });
+  });
+
+  it("copies a week's sessions as new ones: they follow the course and have no stream (MDRS-283)", () => {
+    const copy = copyWeek(
+      week([
+        draft({
+          attendance: { inPersonOverride: false, hasLiveStream: true },
+        }),
+      ]),
+      6
+    );
+    expect(copy.lessons[0]?.attendance).toEqual(FRESH_ATTENDANCE);
   });
 
   it("totals a week's sessions and minutes and gives its date span", () => {
@@ -864,6 +885,254 @@ describe("what a save keeps (MDRS-279)", () => {
       { kind: "resourceUrl", resourceIndex: 0 },
       { kind: "resourceUrl", resourceIndex: 1 },
     ]);
+  });
+});
+
+describe("how a session is attended (MDRS-283)", () => {
+  const now = new Date("2026-10-03T18:14:00Z");
+  const lesson = (id: string, at: string, extra: Record<string, unknown>) => ({
+    id,
+    weekId: "w",
+    title: `Celse ${id}`,
+    type: "LIVE",
+    durationMinutes: 60,
+    scheduledAt: at,
+    isPreview: false,
+    orderIndex: 0,
+    cancelledAt: null,
+    replacementLessonId: null,
+    ...extra,
+  });
+  const read = (...lessons: ReturnType<typeof lesson>[]) =>
+    ({
+      id: "c1",
+      version: 2,
+      title: "Emsile ve Bina",
+      timeZone: "Europe/Istanbul",
+      inPerson: false,
+      muderris: [],
+      resources: [],
+      weeks: [{ id: "w", weekNumber: 1, title: "Bir", lessons }],
+    }) as unknown as CourseDetailResponse;
+  const facts = {
+    inPerson: false,
+    inPersonOverride: null,
+    hasLiveStream: false,
+  };
+
+  it("reads each session's stream and in-person mark off the course, and nothing off a content-locked read", () => {
+    const [streamed, own, locked] = sessionRows(
+      read(
+        lesson("s", "2026-10-07T18:00:00Z", { ...facts, hasLiveStream: true }),
+        lesson("o", "2026-10-08T18:00:00Z", {
+          ...facts,
+          inPerson: true,
+          inPersonOverride: true,
+        }),
+        lesson("l", "2026-10-09T18:00:00Z", {})
+      ),
+      now
+    );
+    expect(streamed).toMatchObject({
+      hasLiveStream: true,
+      inPerson: false,
+      inPersonOverride: null,
+    });
+    expect(own).toMatchObject({ inPerson: true, inPersonOverride: true });
+    expect(locked).toMatchObject({
+      hasLiveStream: false,
+      inPerson: null,
+      inPersonOverride: null,
+    });
+  });
+
+  it("covers a session by its link, its stream or the in-person mark, and flags only a planned one with none", () => {
+    const row = {
+      meetingUrl: null,
+      hasLiveStream: false,
+      inPerson: false,
+      state: "scheduled" as const,
+    };
+    expect(rowAttendance(row)).toEqual({
+      inPerson: false,
+      platform: null,
+      stream: null,
+      lack: "missing",
+    });
+    expect(rowAttendance({ ...row, hasLiveStream: true })).toMatchObject({
+      stream: "alone",
+      lack: null,
+    });
+    expect(rowAttendance({ ...row, inPerson: true })).toMatchObject({
+      inPerson: true,
+      lack: null,
+    });
+    expect(
+      rowAttendance({ ...row, inPerson: true, hasLiveStream: true })
+    ).toMatchObject({ inPerson: true, stream: "beside", lack: null });
+    expect(
+      rowAttendance({
+        ...row,
+        meetingUrl: "https://zoom.us/j/1",
+        hasLiveStream: true,
+      })
+    ).toMatchObject({
+      platform: { id: "zoom", host: "zoom.us" },
+      stream: "beside",
+      lack: null,
+    });
+    // a blank link is no link
+    expect(rowAttendance({ ...row, meetingUrl: "  " })?.lack).toBe("missing");
+  });
+
+  it("does not flag a session that is under way or over, and claims nothing it was not told", () => {
+    const row = { meetingUrl: null, hasLiveStream: false, inPerson: false };
+    expect(rowAttendance({ ...row, state: "live" })?.lack).toBe("none");
+    expect(rowAttendance({ ...row, state: "ended" })?.lack).toBe("none");
+    expect(
+      rowAttendance({ ...row, inPerson: null, state: "scheduled" })
+    ).toBeNull();
+  });
+
+  it("maps the three answers of the in-person choice to the mark and back", () => {
+    expect(inPersonChoiceOf(null)).toBe("course");
+    expect(inPersonChoiceOf(true)).toBe("yes");
+    expect(inPersonChoiceOf(false)).toBe("no");
+    expect(inPersonOverrideOf("course")).toBeNull();
+    expect(inPersonOverrideOf("yes")).toBe(true);
+    expect(inPersonOverrideOf("no")).toBe(false);
+  });
+
+  it("keeps a session's attendance on its draft and never sends it, so the save leaves the stored mark", () => {
+    const course = read(
+      lesson("o", "2026-10-08T18:00:00Z", {
+        ...facts,
+        inPerson: true,
+        inPersonOverride: true,
+        hasLiveStream: true,
+      }),
+      lesson("l", "2026-10-09T18:00:00Z", {})
+    );
+    const weeks = weekDraftsOf(course);
+    expect(weeks[0]?.lessons[0]?.attendance).toEqual({
+      inPersonOverride: true,
+      hasLiveStream: true,
+    });
+    expect(weeks[0]?.lessons[1]?.attendance).toBeNull();
+    const sent = curriculumPayload(course, {
+      title: "Emsile ve Bina",
+      description: "",
+      tone: "bordo",
+      weeks,
+      resources: [],
+    }).weeks?.[0]?.lessons?.[0];
+    expect(Object.keys(sent ?? {})).not.toContain("inPersonOverride");
+    expect(Object.keys(sent ?? {})).not.toContain("attendance");
+  });
+
+  describe("Müfredat's flag and link help", () => {
+    const zone = "Europe/Istanbul";
+    const draft = (over: Partial<LessonDraft> = {}): LessonDraft => ({
+      id: "l1",
+      title: "Mehmûz fiiller",
+      type: "LIVE",
+      date: "2026-10-08",
+      time: "21:00",
+      duration: "60",
+      meetingUrl: "",
+      kaynak: "",
+      agenda: [],
+      isPreview: false,
+      cancelledAt: null,
+      cancelReason: null,
+      scheduledAtIso: "2026-10-08T18:00:00.000Z",
+      makeup: false,
+      attendance: { inPersonOverride: null, hasLiveStream: false },
+      ...over,
+    });
+    const flagged = (over: Partial<LessonDraft>, courseInPerson = false) =>
+      lessonWithoutAccess(draft(over), courseInPerson, zone, now);
+
+    it("flags a live session still ahead with no link, no stream and not held in person", () => {
+      expect(flagged({})).toBe(true);
+      expect(flagged({ meetingUrl: "zoom.us/j/1" })).toBe(false);
+      expect(
+        flagged({ attendance: { inPersonOverride: null, hasLiveStream: true } })
+      ).toBe(false);
+      expect(flagged({}, true)).toBe(false);
+      expect(
+        flagged({
+          attendance: { inPersonOverride: true, hasLiveStream: false },
+        })
+      ).toBe(false);
+      // taken out of an in-person course, with nothing else
+      expect(
+        flagged(
+          { attendance: { inPersonOverride: false, hasLiveStream: false } },
+          true
+        )
+      ).toBe(true);
+    });
+
+    it("does not flag one that is under way, over, cancelled, not live, undated or not judged", () => {
+      expect(flagged({ date: "2026-10-03", time: "21:00" })).toBe(false);
+      expect(flagged({ date: "2026-09-26" })).toBe(false);
+      expect(flagged({ cancelledAt: "2026-10-03T05:40:00.000Z" })).toBe(false);
+      expect(flagged({ type: "VIDEO" })).toBe(false);
+      expect(flagged({ date: "" })).toBe(false);
+      expect(flagged({ attendance: null })).toBe(false);
+    });
+
+    it("says a link is needed only where nothing else lets the talebe in", () => {
+      expect(linkHelpKey(draft(), false)).toBe("linkHelp");
+      expect(
+        linkHelpKey(draft({ meetingUrl: "https://zoom.us/j/1" }), false)
+      ).toBe("linkHelpFilled");
+      expect(linkHelpKey(draft(), true)).toBe("linkHelpInPerson");
+      expect(
+        linkHelpKey(
+          draft({
+            attendance: { inPersonOverride: true, hasLiveStream: true },
+          }),
+          false
+        )
+      ).toBe("linkHelpInPerson");
+      expect(
+        linkHelpKey(
+          draft({
+            attendance: { inPersonOverride: null, hasLiveStream: true },
+          }),
+          false
+        )
+      ).toBe("linkHelpStream");
+      expect(linkHelpKey(draft({ attendance: null }), false)).toBe(
+        "linkHelpFilled"
+      );
+    });
+  });
+
+  it("reads and sends 'Celseler yüz yüze yapılır' with the other settings, only when it changed", () => {
+    const stored = settingsOf({
+      isClosed: false,
+      requiresApproval: true,
+      inPerson: false,
+      timeZone: "Europe/Istanbul",
+      weeks: [],
+    });
+    expect(stored.inPerson).toBe(false);
+    expect(settingsPatch(stored, stored)).toBeNull();
+    expect(settingsPatch({ ...stored, inPerson: true }, stored)).toEqual({
+      inPerson: true,
+    });
+    expect(
+      settingsPatch(
+        { ...stored, isClosed: true, timeZone: "Europe/Berlin" },
+        stored
+      )
+    ).toEqual({ isClosed: true, timeZone: "Europe/Berlin" });
+    expect(settingsOf({ ...stored, inPerson: true, weeks: [] }).inPerson).toBe(
+      true
+    );
   });
 });
 
