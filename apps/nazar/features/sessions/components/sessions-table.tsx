@@ -18,7 +18,9 @@ import {
   useState,
   useTransition,
 } from "react";
+import { dayMonthClock } from "~/lib/dates";
 import type { Messages } from "~/lib/i18n/messages";
+import { ReleaseDialog } from "../../recordings/components/release-dialog";
 import { changeSession, setLiveStream } from "../actions";
 import {
   courseMoved,
@@ -71,6 +73,11 @@ const PAST_PREVIEW = 2;
  * again. A session that is over says "Kayıt yok" when the course holds no
  * recording of it, as plain words: nothing counts it (`recorded` is null when
  * the recordings could not be read, and then nothing is said).
+ *
+ * "Kayıt erişimi" (MDRS-288) sets when talebe may watch a session's
+ * recording, before it exists, for a holder of `recording.manage`
+ * (`canRelease`): the dialog Ders kayıtları opens from its rows, on the
+ * course's clock. A time still ahead is said under the row's state.
  */
 export function SessionsTable({
   courseId,
@@ -80,8 +87,11 @@ export function SessionsTable({
   streams: serverStreams,
   courseInPerson,
   recorded,
+  releases,
+  canRelease,
   locale,
   timeZone,
+  courseTimeZone,
 }: {
   courseId: string;
   version: number;
@@ -93,8 +103,15 @@ export function SessionsTable({
   courseInPerson: boolean;
   /** the ids of the sessions that hold a recording; null when they could not be read */
   recorded: string[] | null;
+  /** when talebe may watch each session's recording, as `{ lessonId: ISO time }` */
+  releases: Record<string, string>;
+  /** the caller holds `recording.manage` in this course */
+  canRelease: boolean;
   locale: string;
+  /** the viewer's zone, which the sessions' times are written in */
   timeZone: string;
+  /** the course's zone, which the release times are typed and written in */
+  courseTimeZone: string;
 }) {
   const t = useTranslations("nazar");
   const words = t as unknown as Messages;
@@ -129,6 +146,7 @@ export function SessionsTable({
   const [problem, setProblem] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [cancelling, setCancelling] = useState<SessionRow | null>(null);
+  const [releasing, setReleasing] = useState<SessionRow | null>(null);
   const [allPast, setAllPast] = useState(false);
 
   const refresh = () => startTransition(() => router.refresh());
@@ -302,7 +320,20 @@ export function SessionsTable({
     );
   };
 
-  const stateCell = (row: SessionRow) => {
+  /** "Kayıt 14 Ekim 20:00’de açılır", while the session's release time is ahead. */
+  const releaseNote = (row: SessionRow) => {
+    const at = releases[row.id] ? new Date(releases[row.id] as string) : null;
+    if (!at || at <= now) return null;
+    return (
+      <span className="mds-caption" data-testid="release-note">
+        {t("Sessions.release.opens", {
+          when: dayMonthClock(at, locale, courseTimeZone),
+        })}
+      </span>
+    );
+  };
+
+  const stateOf = (row: SessionRow) => {
     switch (row.state) {
       case "live":
         return (
@@ -354,6 +385,18 @@ export function SessionsTable({
     }
   };
 
+  const stateCell = (row: SessionRow) => {
+    const note = row.state === "cancelled" ? null : releaseNote(row);
+    return note ? (
+      <span className="flex flex-col gap-1">
+        {stateOf(row)}
+        {note}
+      </span>
+    ) : (
+      stateOf(row)
+    );
+  };
+
   const sessionColumn: TableColumn<SessionRow> = {
     key: "session",
     header: t("Sessions.columns.session"),
@@ -395,7 +438,8 @@ export function SessionsTable({
       align: "right",
       width: "32%",
       render: (row) =>
-        row.state === "cancelled" || (!canManage && streams === null) ? (
+        row.state === "cancelled" ||
+        (!canManage && streams === null && !canRelease) ? (
           <span className="mds-visually-hidden">{t("Sessions.noActions")}</span>
         ) : (
           <span className="flex flex-wrap items-center justify-end gap-1">
@@ -443,6 +487,18 @@ export function SessionsTable({
                     ? "Sessions.stream.update"
                     : "Sessions.stream.add"
                 )}
+              </Button>
+            ) : null}
+            {canRelease ? (
+              <Button
+                variant="ghost"
+                size="small"
+                aria-label={t("Sessions.release.buttonLabel", {
+                  when: when(row),
+                })}
+                onClick={() => setReleasing(row)}
+              >
+                {t("Sessions.release.button")}
               </Button>
             ) : null}
             {canManage && row.state === "scheduled" ? (
@@ -695,6 +751,17 @@ export function SessionsTable({
           timeZone={timeZone}
           onClose={() => setCancelling(null)}
           onVersion={setVersion}
+          onDone={refresh}
+        />
+      ) : null}
+      {releasing ? (
+        <ReleaseDialog
+          key={releasing.id}
+          lessonId={releasing.id}
+          session={fullWhen(releasing)}
+          held={releases[releasing.id] ?? null}
+          timeZone={courseTimeZone}
+          onClose={() => setReleasing(null)}
           onDone={refresh}
         />
       ) : null}

@@ -2,7 +2,7 @@
 import { resources } from "@medaris/i18n";
 import { Toaster, ToastProvider } from "@medaris/ui/mds/toast";
 import { NextIntlClientProvider } from "next-intl";
-import type { ReactElement } from "react";
+import { act, type ReactElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, click, render, settle, type as typeInto } from "./dom";
 import { expand, html, textOf, translatorFor } from "./server-render";
@@ -50,6 +50,7 @@ const changeSession = vi.fn();
 const cancelSession = vi.fn();
 const setLiveStream = vi.fn();
 const createSessions = vi.fn();
+const setRecordingAvailability = vi.fn();
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh, replace: vi.fn(), push: vi.fn() }),
@@ -89,6 +90,10 @@ vi.mock("~/features/sessions/actions", () => ({
   setLiveStream: (...args: unknown[]) => setLiveStream(...args),
   createSessions: (...args: unknown[]) => createSessions(...args),
   previewSessions: vi.fn(),
+}));
+vi.mock("~/features/recordings/actions", () => ({
+  setRecordingAvailability: (...args: unknown[]) =>
+    setRecordingAvailability(...args),
 }));
 
 const lesson = (id: string, title: string, at: string, over = {}) => ({
@@ -223,9 +228,16 @@ beforeEach(() => {
     cancelSession,
     setLiveStream,
     createSessions,
+    setRecordingAvailability,
   ]) {
     fn.mockReset();
   }
+  setRecordingAvailability.mockImplementation(
+    async (_lessonId: string, availableAt: string | null) => ({
+      success: true,
+      data: { availableAt },
+    })
+  );
 });
 afterEach(async () => {
   await cleanup();
@@ -1146,5 +1158,116 @@ describe("a session that is over (MDRS-283)", () => {
     const out = await markup();
     expect(out).not.toContain('data-testid="recording-state"');
     expect(textOf(out)).toContain("Sona erdi");
+  });
+});
+
+describe("Kayıt erişimi of a session (MDRS-288)", () => {
+  /** 14 Ekim 20:00 in Istanbul */
+  const AHEAD = "2026-10-14T17:00:00.000Z";
+  const LABEL = `${L3} celsesinin kayıt erişimi`;
+  /** The course with `lessonId` holding a release time. */
+  const releasing = (lessonId: string, at: string) => {
+    const base = course();
+    return {
+      ...base,
+      weeks: base.weeks.map((week) => ({
+        ...week,
+        lessons: week.lessons.map((lesson) =>
+          lesson.id === lessonId
+            ? { ...lesson, recordingAvailableAt: new Date(at) }
+            : lesson
+        ),
+      })),
+    };
+  };
+  const rowOf = (out: string, title: string) =>
+    textOf(
+      out
+        .split("<tr")
+        .slice(1)
+        .find((row) => textOf(row).includes(title)) ?? ""
+    );
+  const choose = async (label: string) => {
+    const option = [...dialog().querySelectorAll("label.mds-choice")].find(
+      (l) => l.querySelector(".mds-choice__label")?.textContent === label
+    );
+    await click(option?.querySelector("[role=radio]") as Element);
+    await settle(20);
+  };
+  const enter = async (date: string, time: string) => {
+    const [day, clock] = [
+      ...dialog().querySelectorAll<HTMLInputElement>(
+        ".mds-datetime input.mds-input"
+      ),
+    ] as [HTMLInputElement, HTMLInputElement];
+    for (const [box, text] of [
+      [day, date],
+      [clock, time],
+    ] as const) {
+      await act(async () => box.focus());
+      await typeInto(box, text);
+      await act(async () => box.blur());
+    }
+    await settle(20);
+  };
+
+  it("is offered on every session still standing to a holder of recording.manage, and to nobody else", async () => {
+    let out = await markup();
+    expect(out).toContain(`aria-label="${L2} celsesinin kayıt erişimi"`);
+    expect(out).toContain(`aria-label="${LABEL}"`);
+    expect(out).not.toContain("19 Eki Pzt 21:00 celsesinin kayıt erişimi");
+    state.permissions = holding("session.manage", "session.live_link");
+    out = await markup();
+    expect(out).not.toContain("kayıt erişimi");
+  });
+
+  it("gives a holder of recording.manage and session.live_link alone the one button they may use", async () => {
+    state.permissions = holding("session.live_link", "recording.manage");
+    const out = await markup();
+    expect(out).toContain(`aria-label="${LABEL}"`);
+    expect(out).not.toContain("celsesini iptal et");
+  });
+
+  it("sets the time before the recording exists, on the course's clock, and reads the page again", async () => {
+    await mount();
+    await click(byLabel(LABEL));
+    await settle(40);
+    expect(dialog().textContent).toContain("12 Ekim 2026 Pazartesi 21:00");
+    await choose("Şu tarih ve saatte");
+    await enter("14.10.2026", "20:00");
+    await click(buttonIn(dialog(), "Kaydet"));
+    await settle(60);
+    expect(setRecordingAvailability).toHaveBeenCalledExactlyOnceWith(
+      "l-3",
+      AHEAD
+    );
+    // the course version is not involved
+    expect(changeSession).not.toHaveBeenCalled();
+    expect(toast("success")).toContain(
+      "12 Ekim 2026 Pazartesi 21:00 celsesinin kaydı talebeye 14 Ekim 20:00’de açılır."
+    );
+    expect(refresh).toHaveBeenCalledOnce();
+    expect(dialog()).toBeNull();
+  });
+
+  it("starts from the time the session holds", async () => {
+    state.course = { status: "ok", data: releasing("l-3", AHEAD) };
+    await mount();
+    await click(byLabel(LABEL));
+    await settle(40);
+    expect(
+      (dialog().querySelector('input[name="availableAt"]') as HTMLInputElement)
+        .value
+    ).toBe("2026-10-14T20:00");
+  });
+
+  it("says under the state when the recording opens, while that is ahead", async () => {
+    state.course = { status: "ok", data: releasing("l-3", AHEAD) };
+    let out = await markup();
+    expect(rowOf(out, "Hafta 3")).toContain("Kayıt 14 Ekim 20:00’de açılır");
+    expect(rowOf(out, "Hafta 2")).not.toContain("açılır");
+    vi.setSystemTime(new Date("2026-10-14T20:00:00+03:00"));
+    out = await markup();
+    expect(out).not.toContain('data-testid="release-note"');
   });
 });

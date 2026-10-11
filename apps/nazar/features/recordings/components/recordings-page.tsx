@@ -35,6 +35,9 @@ import { RecordingsTable } from "./recordings-table";
  * `recording.manage`; the stream links are read only for a caller who also
  * holds `session.live_link` (the only one they are sent to). Without it, or
  * when that read fails, the button is left out and the rest stays.
+ *
+ * When talebe may watch each recording (MDRS-288) is read from the course,
+ * and typed and written on the course's clock, not the viewer's.
  */
 export async function RecordingsPage({ courseId }: { courseId: string }) {
   const [t, locale, me, course, permissions, recordings] = await Promise.all([
@@ -106,6 +109,10 @@ export async function RecordingsPage({ courseId }: { courseId: string }) {
           can={can}
           locale={locale}
           timeZone={timeZone}
+          courseTimeZone={resolveTimeZone(
+            course.data.timeZone,
+            DEFAULT_TIME_ZONE
+          )}
         />
       )}
     </>

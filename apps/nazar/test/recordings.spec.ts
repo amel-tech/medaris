@@ -1,6 +1,7 @@
 import type { RecordingResponse } from "@medaris/services/tedrisat";
 import { describe, expect, it } from "vitest";
 import {
+  accessOf,
   anyBunnyPending,
   bunnyPending,
   chipOf,
@@ -13,11 +14,17 @@ import {
   patchBody,
   providerOfLink,
   type RecordingFact,
+  type ReleaseForm,
   recordingErrorKey,
   recordingsHref,
   recordingsMoved,
   recordingWeeks,
   refusalReasonOf,
+  releaseChange,
+  releaseErrorKey,
+  releaseFormOf,
+  releaseProblem,
+  releasesOf,
   type SessionSlot,
   slotCounts,
   slotState,
@@ -30,6 +37,7 @@ import {
   uploadMoved,
   type WeekBlock,
 } from "~/features/recordings/recordings";
+import { clockLocative, dayMonthClock } from "~/lib/dates";
 
 /**
  * Ders kayıtları's rules: the weeks and the session each recording belongs to,
@@ -166,6 +174,7 @@ describe("what a session offers", () => {
     endsAt: "2026-10-05T19:00:00.000Z",
     streamUrl: null,
     recording: null,
+    availableAt: null,
     ...over,
   });
   const held: RecordingFact = {
@@ -224,6 +233,7 @@ describe("Yayını kayıt olarak ekle (MDRS-283)", () => {
     endsAt: "2026-10-05T19:00:00.000Z",
     streamUrl: STREAM,
     recording: null,
+    availableAt: null,
     ...over,
   });
   const OVER = new Date("2026-10-05T19:00:00Z");
@@ -587,6 +597,7 @@ describe("the upload", () => {
             visibility: "ENROLLED",
             ...over,
           },
+    availableAt: null,
   });
 
   it("waits only on a Bunny upload that is not READY, as only those move on their own", () => {
@@ -700,5 +711,214 @@ describe("the upload", () => {
     ]) {
       expect(uploadContinues(code, "v-1"), code).toBe(false);
     }
+  });
+});
+
+describe("when talebe may watch (MDRS-288)", () => {
+  /** 12:00 in Istanbul */
+  const NOW = new Date("2026-10-06T09:00:00Z");
+  /** 14 Ekim 20:00 in Istanbul */
+  const AHEAD = "2026-10-14T17:00:00.000Z";
+  /** 5 Ekim 20:00 in Istanbul */
+  const PAST = "2026-10-05T17:00:00.000Z";
+  const IST = "Europe/Istanbul";
+  const ready: RecordingFact = {
+    id: "r",
+    title: "Kayıt",
+    provider: "OTHER",
+    url: "https://zoom.us/rec/1",
+    status: "READY",
+    visibility: "ENROLLED",
+  };
+  const processing: RecordingFact = {
+    ...ready,
+    url: null,
+    status: "PROCESSING",
+  };
+  const at = (local: string, over: Partial<ReleaseForm> = {}): ReleaseForm => ({
+    mode: "at",
+    local,
+    bad: false,
+    ...over,
+  });
+  const soon: ReleaseForm = { mode: "ready", local: "", bad: false };
+
+  it("takes each session's time from the course read, else from its recording", () => {
+    const blocks = recordingWeeks(
+      course([
+        {
+          id: "w",
+          weekNumber: 1,
+          title: "",
+          lessons: [
+            lesson("a", { recordingAvailableAt: new Date(AHEAD) }),
+            lesson("b", { scheduledAt: new Date("2026-10-06T18:00:00Z") }),
+            lesson("c", { scheduledAt: new Date("2026-10-07T18:00:00Z") }),
+          ],
+        },
+      ]),
+      [recording("b", { availableAt: new Date(PAST) }), recording("c")]
+    );
+    expect(blocks[0]?.slots.map((s) => [s.lessonId, s.availableAt])).toEqual([
+      ["a", AHEAD],
+      ["b", PAST],
+      ["c", null],
+    ]);
+  });
+
+  it("reads the times the course carries, by session", () => {
+    expect(
+      releasesOf(
+        course([
+          {
+            weekNumber: 1,
+            lessons: [
+              lesson("a", { recordingAvailableAt: new Date(AHEAD) }),
+              lesson("b", { recordingAvailableAt: null }),
+              lesson("c"),
+            ],
+          },
+        ])
+      )
+    ).toEqual({ a: AHEAD });
+  });
+
+  it("says 'Açık' for a READY recording with no time, or a time that has come, the very minute included", () => {
+    expect(accessOf({ recording: ready, availableAt: null }, NOW)).toEqual({
+      kind: "open",
+    });
+    expect(accessOf({ recording: ready, availableAt: PAST }, NOW)).toEqual({
+      kind: "open",
+    });
+    expect(
+      accessOf({ recording: ready, availableAt: AHEAD }, new Date(AHEAD))
+    ).toEqual({ kind: "open" });
+  });
+
+  it("says when it opens while the time is ahead, with a recording or before one exists", () => {
+    for (const recording of [ready, processing, null]) {
+      expect(accessOf({ recording, availableAt: AHEAD }, NOW)).toEqual({
+        kind: "at",
+        at: new Date(AHEAD),
+      });
+    }
+  });
+
+  it("says 'Hazır olunca açılır' while nothing holds back a recording that is not READY, or not there yet", () => {
+    expect(accessOf({ recording: processing, availableAt: null }, NOW)).toEqual(
+      { kind: "whenReady" }
+    );
+    expect(accessOf({ recording: processing, availableAt: PAST }, NOW)).toEqual(
+      { kind: "whenReady" }
+    );
+    expect(accessOf({ recording: null, availableAt: null }, NOW)).toEqual({
+      kind: "whenReady",
+    });
+  });
+
+  it("starts the choice from what the session holds, on the course's clock", () => {
+    expect(releaseFormOf(null, IST)).toEqual(soon);
+    expect(releaseFormOf(AHEAD, IST)).toEqual(at("2026-10-14T20:00"));
+    expect(releaseFormOf(AHEAD, "America/New_York")).toEqual(
+      at("2026-10-14T13:00")
+    );
+  });
+
+  it("asks for a date and a time it can read, and a new time after now", () => {
+    expect(releaseProblem(soon, AHEAD, IST, NOW)).toBeNull();
+    expect(releaseProblem(at(""), null, IST, NOW)).toBe("empty");
+    expect(
+      releaseProblem(at("2026-10-14T20:00", { bad: true }), null, IST, NOW)
+    ).toBe("empty");
+    expect(releaseProblem(at("2026-10-05T20:00"), null, IST, NOW)).toBe("past");
+    // the minute of now is not after it
+    expect(releaseProblem(at("2026-10-06T12:00"), null, IST, NOW)).toBe("past");
+    expect(releaseProblem(at("2026-10-06T12:01"), null, IST, NOW)).toBeNull();
+    // a stored time that has passed is the one the recording opened at, not a new one
+    expect(releaseProblem(at("2026-10-05T20:00"), PAST, IST, NOW)).toBeNull();
+  });
+
+  it("sends an instant read on the course's clock, null for as soon as it is ready, and nothing unchanged", () => {
+    expect(releaseChange(at("2026-10-14T20:00"), null, IST)).toEqual({
+      availableAt: AHEAD,
+    });
+    expect(
+      releaseChange(at("2026-10-15T20:00"), null, "America/New_York")
+    ).toEqual({ availableAt: "2026-10-16T00:00:00.000Z" });
+    expect(
+      releaseChange({ ...soon, local: "2026-10-14T20:00" }, AHEAD, IST)
+    ).toEqual({ availableAt: null });
+    expect(releaseChange(at("2026-10-14T20:00"), AHEAD, IST)).toBeNull();
+    expect(releaseChange(soon, null, IST)).toBeNull();
+  });
+
+  it("keeps a stored time to the second while its field is left as it was", () => {
+    const odd = "2026-10-14T17:00:30.000Z";
+    expect(releaseChange(at("2026-10-14T20:00"), odd, IST)).toBeNull();
+    expect(releaseProblem(at("2026-10-14T20:00"), odd, IST, NOW)).toBeNull();
+    expect(releaseChange(at("2026-10-14T20:30"), odd, IST)).toEqual({
+      availableAt: "2026-10-14T17:30:00.000Z",
+    });
+  });
+
+  it("goes with the link it is added with, and with an edit as one more change", () => {
+    const filled = {
+      title: "Kayıt",
+      url: "https://zoom.us/rec/1",
+      isPublic: false,
+    };
+    expect(createBody(filled, { availableAt: AHEAD })).toEqual({
+      title: "Kayıt",
+      url: "https://zoom.us/rec/1",
+      visibility: "ENROLLED",
+      availableAt: AHEAD,
+    });
+    expect(createBody(filled, { availableAt: null })).toHaveProperty(
+      "availableAt",
+      null
+    );
+    expect(createBody(filled)).not.toHaveProperty("availableAt");
+    expect(patchBody(filled, ready, { availableAt: AHEAD })).toEqual({
+      availableAt: AHEAD,
+    });
+    expect(patchBody(filled, ready, { availableAt: null })).toEqual({
+      availableAt: null,
+    });
+    expect(patchBody(filled, ready)).toBeNull();
+  });
+
+  it.each([
+    ["AUTHZ_FORBIDDEN", "Problems.actionForbidden"],
+    ["LESSON_NOT_FOUND", "Recordings.errors.gone"],
+    ["VALIDATION_ERROR", "Recordings.release.errors.invalid"],
+    ["SOMETHING_NEW", "Problems.actionGeneric"],
+  ])("words a refused time (%s) with %s", (code, key) => {
+    expect(releaseErrorKey(code)).toBe(key);
+  });
+
+  it("writes the time as a sentence says when, in the zone it is given", () => {
+    expect(dayMonthClock(new Date(AHEAD), "tr", IST)).toBe("14 Ekim 20:00’de");
+    expect(dayMonthClock(new Date(AHEAD), "tr", "America/New_York")).toBe(
+      "14 Ekim 13:00’te"
+    );
+    expect(dayMonthClock(new Date(AHEAD), "en", IST)).toBe("October 14, 20:00");
+  });
+
+  it.each([
+    ["20:00", "20:00’de"],
+    ["19:00", "19:00’da"],
+    ["13:00", "13:00’te"],
+    ["14:00", "14:00’te"],
+    ["16:00", "16:00’da"],
+    ["10:00", "10:00’da"],
+    ["00:00", "00:00’da"],
+    ["20:30", "20:30’da"],
+    ["20:15", "20:15’te"],
+    ["20:40", "20:40’ta"],
+    ["20:50", "20:50’de"],
+    ["21:09", "21:09’da"],
+  ])("gives %s the Turkish locative of how it is said: %s", (clock, said) => {
+    expect(clockLocative(clock, "tr")).toBe(said);
+    expect(clockLocative(clock, "en")).toBe(clock);
   });
 });

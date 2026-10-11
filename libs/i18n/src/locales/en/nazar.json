@@ -1263,6 +1263,11 @@
     },
     "recorded": "Recorded",
     "notRecorded": "No recording",
+    "release": {
+      "button": "Recording access",
+      "buttonLabel": "Recording access of the session on {when}",
+      "opens": "Recording opens on {when}"
+    },
     "state": {
       "live": "Live now",
       "cancelled": "Cancelled",
@@ -1679,6 +1684,7 @@
       "recording": "Recording",
       "state": "Status",
       "visibility": "Visibility",
+      "access": "Access",
       "actions": "Actions"
     },
     "none": "No recording",
@@ -1691,6 +1697,40 @@
     "visibility": {
       "public": "Public",
       "enrolled": "Enrolled talebe"
+    },
+    "access": {
+      "open": "Open",
+      "at": "Opens on {when}",
+      "whenReady": "Opens when ready",
+      "zone": "({zone})",
+      "change": "Change",
+      "changeLabel": "Change recording access: {session}"
+    },
+    "release": {
+      "title": "Recording access",
+      "legend": "When talebe may watch the recording",
+      "ready": "As soon as it is ready",
+      "readyHelp": "Talebe can watch it once the recording is ready.",
+      "at": "At a date and time",
+      "atHelp": "The course team watches it at once; talebe from this time on.",
+      "whenLabel": "Opening date and time",
+      "whenHelp": "{zone}. Talebe get the “Recording added” notice at this moment, unless it was sent before.",
+      "timeLabel": "Time",
+      "openCalendar": "Open calendar",
+      "pickDate": "Choose a date",
+      "pickTime": "Choose a time",
+      "prevMonth": "Previous month",
+      "nextMonth": "Next month",
+      "today": "Today",
+      "saved": "Recording access saved",
+      "savedAt": "The recording of {session} opens to talebe on {when}.",
+      "savedReady": "The recording of {session} opens to talebe once it is ready.",
+      "failed": "Recording access could not be saved",
+      "errors": {
+        "empty": "Enter the date and the time.",
+        "past": "Choose a time in the future.",
+        "invalid": "The opening time could not be read. Check the date and the time and try again."
+      }
     },
     "titleSuffix": "recording",
     "add": "Add recording",

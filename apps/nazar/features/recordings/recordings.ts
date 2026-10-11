@@ -2,7 +2,11 @@ import type {
   CourseDetailResponse,
   RecordingResponse,
 } from "@medaris/services/tedrisat";
-import { normalizeMeetingUrl } from "@medaris/utils";
+import {
+  isoToZonedLocal,
+  normalizeMeetingUrl,
+  zonedLocalToIso,
+} from "@medaris/utils";
 import {
   DEFAULT_SESSION_MINUTES,
   linkProblem,
@@ -56,6 +60,12 @@ export interface SessionSlot {
    */
   streamUrl: string | null;
   recording: RecordingFact | null;
+  /**
+   * ISO time talebe may watch the session's recording from (MDRS-288); null
+   * opens it as soon as it is READY. Kept on the session, so a session with
+   * no recording yet may have one.
+   */
+  availableAt: string | null;
 }
 
 export interface WeekBlock {
@@ -89,6 +99,9 @@ export function recordingWeeks(
         const start = lesson.scheduledAt
           ? new Date(lesson.scheduledAt).getTime()
           : null;
+        // the course read carries the session's time; a recording carries it too
+        const release =
+          lesson.recordingAvailableAt ?? recording?.availableAt ?? null;
         return [
           {
             lessonId: lesson.id,
@@ -115,6 +128,7 @@ export function recordingWeeks(
                   visibility: recording.visibility,
                 }
               : null,
+            availableAt: release ? new Date(release).toISOString() : null,
           },
         ];
       });
@@ -226,6 +240,142 @@ export const bunnyPending = (slot: SessionSlot): boolean =>
 export const anyBunnyPending = (blocks: readonly WeekBlock[]): boolean =>
   blocks.some((block) => block.slots.some(bunnyPending));
 
+// ---- when talebe may watch (MDRS-288) ------------------------------------------------
+
+/**
+ * The "Erişim" cell: "Açık" once talebe can watch the recording, "{when}
+ * açılır" while the session's time is ahead (a session with no recording yet
+ * included), and "Hazır olunca açılır" otherwise: the recording is not READY,
+ * or not there yet, and nothing holds it back. tedrisat's rule
+ * (`isReleased`): open when READY and the time, if any, is not after now.
+ */
+export type Access =
+  | { kind: "open" }
+  | { kind: "at"; at: Date }
+  | { kind: "whenReady" };
+
+export function accessOf(
+  slot: Pick<SessionSlot, "recording" | "availableAt">,
+  now: Date
+): Access {
+  const at = slot.availableAt ? new Date(slot.availableAt) : null;
+  if (at && at.getTime() > now.getTime()) return { kind: "at", at };
+  return slot.recording?.status === "READY"
+    ? { kind: "open" }
+    : { kind: "whenReady" };
+}
+
+/** The sessions of the course read that have a time set, as `{ lessonId: ISO time }`. */
+export function releasesOf(
+  course: Pick<CourseDetailResponse, "weeks">
+): Record<string, string> {
+  return Object.fromEntries(
+    course.weeks.flatMap((week) =>
+      week.lessons.flatMap((lesson) =>
+        lesson.recordingAvailableAt
+          ? [
+              [
+                lesson.id,
+                new Date(lesson.recordingAvailableAt).toISOString(),
+              ] as const,
+            ]
+          : []
+      )
+    )
+  );
+}
+
+/**
+ * The choice "Hazır olunca hemen" / "Şu tarih ve saatte" as a form holds it.
+ * The date and time are a wall time on the course's clock, as the course is
+ * planned (`courses.time_zone`), whatever the viewer's.
+ */
+export interface ReleaseForm {
+  mode: "ready" | "at";
+  /** "YYYY-MM-DDTHH:mm" on the course's clock, or "" */
+  local: string;
+  /** the field holds text it cannot read, or only one half of it */
+  bad: boolean;
+}
+
+/** The form a session's time starts from. */
+export const releaseFormOf = (
+  availableAt: string | null,
+  timeZone: string
+): ReleaseForm => ({
+  mode: availableAt ? "at" : "ready",
+  local: isoToZonedLocal(availableAt, timeZone),
+  bad: false,
+});
+
+/**
+ * The instant the form names: null for "Hazır olunca hemen", undefined when
+ * the field cannot be read. A field left as the stored time sends that time
+ * back as it is (the field has minute precision).
+ */
+function releaseInstant(
+  form: ReleaseForm,
+  held: string | null,
+  timeZone: string
+): string | null | undefined {
+  if (form.mode === "ready") return null;
+  if (form.bad || !form.local) return undefined;
+  if (held && form.local === isoToZonedLocal(held, timeZone)) {
+    return new Date(held).toISOString();
+  }
+  return zonedLocalToIso(form.local, timeZone) ?? undefined;
+}
+
+export type ReleaseProblem = "empty" | "past";
+
+/**
+ * What is wrong with the choice: "empty" when "Şu tarih ve saatte" has no
+ * readable date and time, "past" when a new time is not after now (the
+ * stored one may be: the recording opened then). Null when it is fine.
+ */
+export function releaseProblem(
+  form: ReleaseForm,
+  held: string | null,
+  timeZone: string,
+  now: Date
+): ReleaseProblem | null {
+  const at = releaseInstant(form, held, timeZone);
+  if (at === null) return null;
+  if (at === undefined) return "empty";
+  const stored = held ? new Date(held).toISOString() : null;
+  return at !== stored && Date.parse(at) <= now.getTime() ? "past" : null;
+}
+
+/**
+ * What a write sends of the choice: `{ availableAt }`, null for "Hazır olunca
+ * hemen", or null when it is what the session holds, so nothing is written
+ * again. Read only once `releaseProblem` has nothing to say.
+ */
+export function releaseChange(
+  form: ReleaseForm,
+  held: string | null,
+  timeZone: string
+): { availableAt: string | null } | null {
+  const at = releaseInstant(form, held, timeZone);
+  if (at === undefined) return null;
+  const stored = held ? new Date(held).toISOString() : null;
+  return at === stored ? null : { availableAt: at };
+}
+
+/** The message key of a refused write of the time (`PUT /lessons/:id/recording-availability`). */
+export function releaseErrorKey(code: string): string {
+  switch (code) {
+    case "AUTHZ_FORBIDDEN":
+      return "Problems.actionForbidden";
+    case "LESSON_NOT_FOUND":
+      return "Recordings.errors.gone";
+    case "VALIDATION_ERROR":
+      return "Recordings.release.errors.invalid";
+    default:
+      return "Problems.actionGeneric";
+  }
+}
+
 // ---- the form ---------------------------------------------------------------------
 
 /** What the add and edit form holds. */
@@ -309,11 +459,19 @@ export const formOf = (recording: RecordingFact): RecordingForm => ({
   isPublic: recording.visibility === "PUBLIC",
 });
 
-/** The body of "Kaydı ekle"; null while the form has a problem. */
-export function createBody(form: RecordingForm): {
+/**
+ * The body of "Kaydı ekle"; null while the form has a problem. A changed
+ * release time (`releaseChange`) goes with the link, so tedrisat writes both
+ * at once and a recording added for later is never open in between (MDRS-288).
+ */
+export function createBody(
+  form: RecordingForm,
+  release: { availableAt: string | null } | null = null
+): {
   title: string;
   url: string;
   visibility: Visibility;
+  availableAt?: string | null;
 } | null {
   const url = sendableLink(form.url);
   if (!url || Object.keys(formErrors(form)).length > 0) return null;
@@ -321,26 +479,40 @@ export function createBody(form: RecordingForm): {
     title: form.title.trim(),
     url,
     visibility: form.isPublic ? "PUBLIC" : "ENROLLED",
+    ...(release ? { availableAt: release.availableAt } : {}),
   };
 }
 
 /**
  * The body of "Kaydet" on an existing recording: only what changed, so the
- * link is not written again when it was not touched. Null while the form has
- * a problem, and also when nothing changed.
+ * link is not written again when it was not touched, the release time
+ * (`releaseChange`) included. Null while the form has a problem, and also
+ * when nothing changed.
  */
 export function patchBody(
   form: RecordingForm,
-  recording: RecordingFact
-): { title?: string; url?: string; visibility?: Visibility } | null {
+  recording: RecordingFact,
+  release: { availableAt: string | null } | null = null
+): {
+  title?: string;
+  url?: string;
+  visibility?: Visibility;
+  availableAt?: string | null;
+} | null {
   if (Object.keys(formErrors(form)).length > 0) return null;
   const url = sendableLink(form.url);
   if (!url) return null;
-  const body: { title?: string; url?: string; visibility?: Visibility } = {};
+  const body: {
+    title?: string;
+    url?: string;
+    visibility?: Visibility;
+    availableAt?: string | null;
+  } = {};
   if (form.title.trim() !== recording.title) body.title = form.title.trim();
   if (url !== normalizeMeetingUrl(recording.url)) body.url = url;
   const visibility: Visibility = form.isPublic ? "PUBLIC" : "ENROLLED";
   if (visibility !== recording.visibility) body.visibility = visibility;
+  if (release) body.availableAt = release.availableAt;
   return Object.keys(body).length > 0 ? body : null;
 }
 

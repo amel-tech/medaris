@@ -1263,6 +1263,11 @@
     },
     "recorded": "Kaydı var",
     "notRecorded": "Kayıt yok",
+    "release": {
+      "button": "Kayıt erişimi",
+      "buttonLabel": "{when} celsesinin kayıt erişimi",
+      "opens": "Kayıt {when} açılır"
+    },
     "state": {
       "live": "Şu an canlı",
       "cancelled": "İptal edildi",
@@ -1679,6 +1684,7 @@
       "recording": "Kayıt",
       "state": "Durum",
       "visibility": "Görünürlük",
+      "access": "Erişim",
       "actions": "İşlemler"
     },
     "none": "Kayıt yok",
@@ -1691,6 +1697,40 @@
     "visibility": {
       "public": "Herkese açık",
       "enrolled": "Kayıtlı talebe"
+    },
+    "access": {
+      "open": "Açık",
+      "at": "{when} açılır",
+      "whenReady": "Hazır olunca açılır",
+      "zone": "{zone} saatiyle",
+      "change": "Değiştir",
+      "changeLabel": "Kayıt erişimini değiştir: {session}"
+    },
+    "release": {
+      "title": "Kayıt erişimi",
+      "legend": "Talebe kaydı ne zaman izlesin",
+      "ready": "Hazır olunca hemen",
+      "readyHelp": "Kayıt hazır olur olmaz talebeye açılır.",
+      "at": "Şu tarih ve saatte",
+      "atHelp": "Ders ekibi kaydı hemen izler; talebe bu zamandan sonra.",
+      "whenLabel": "Açılış tarihi ve saati",
+      "whenHelp": "{zone} saatiyle. “Kayıt eklendi” bildirimi daha önce gitmediyse talebeye bu anda gider.",
+      "timeLabel": "Saat",
+      "openCalendar": "Takvimi aç",
+      "pickDate": "Tarih seç",
+      "pickTime": "Saat seç",
+      "prevMonth": "Önceki ay",
+      "nextMonth": "Sonraki ay",
+      "today": "Bugün",
+      "saved": "Kayıt erişimi kaydedildi",
+      "savedAt": "{session} celsesinin kaydı talebeye {when} açılır.",
+      "savedReady": "{session} celsesinin kaydı hazır olunca talebeye açılır.",
+      "failed": "Kayıt erişimi kaydedilemedi",
+      "errors": {
+        "empty": "Tarihi ve saati yazın.",
+        "past": "İleri bir tarih ve saat seçin.",
+        "invalid": "Açılış zamanı okunamadı. Tarihi ve saati denetleyip yeniden deneyin."
+      }
     },
     "titleSuffix": "kaydı",
     "add": "Kayıt ekle",
