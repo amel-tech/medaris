@@ -12,6 +12,12 @@ export interface SessionJoinLabels {
   cancelledLabel: string;
   cancelledText: string;
   noLinkText: string;
+  /** MDRS-283: what a celse without a link says when a stream or the in-person mark covers it */
+  inPersonText: string;
+  streamText: string;
+  streamLiveText: string;
+  inPersonStreamText: string;
+  inPersonStreamLiveText: string;
   /** keeps a literal `{minutes}`, which the card fills in */
   joinOpensText: string;
   joinLabel: string;
@@ -33,7 +39,8 @@ export type CalendarLabels = CalendarMenuLabels;
  * moves it on every half minute: the countdown ("8 dakika sonra"), the
  * ten-minute join window and the live/ended states follow the clock without a
  * reload. The meeting link is whatever the API sent; a caller who may not read
- * it never got one.
+ * it never got one. Without one, a stream or the in-person mark (MDRS-283)
+ * says how the celse is attended instead.
  */
 export function SessionJoinLive({
   renderedAt,
@@ -47,6 +54,8 @@ export function SessionJoinLive({
   meetingUrl,
   platform,
   platformHost,
+  inPerson,
+  hasLiveStream,
   locale,
   timeZone,
   courseTimeZone,
@@ -67,6 +76,10 @@ export function SessionJoinLive({
   /** a platform id of the kit's chip; absent when there is no link */
   platform?: string;
   platformHost?: string;
+  /** held in person: the session's own mark, else the course's (MDRS-283) */
+  inPerson?: boolean;
+  /** a live stream is set; absent for a caller who may not read it (MDRS-283) */
+  hasLiveStream?: boolean;
   locale: string;
   timeZone: string;
   courseTimeZone: string;
@@ -135,6 +148,8 @@ export function SessionJoinLive({
       platform={meetingUrl ? platform : undefined}
       host={platformHost}
       href={meetingUrl}
+      inPerson={inPerson}
+      hasLiveStream={hasLiveStream}
       actions={addToCalendar}
       recordingsHref={recordingsHref}
       elapsedText={elapsed}

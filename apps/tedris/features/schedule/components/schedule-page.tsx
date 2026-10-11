@@ -7,6 +7,7 @@ import { PlatformChip } from "@medaris/ui/mds/platform-chip";
 import { DEFAULT_TIME_ZONE, resolveMeetingPlatform } from "@medaris/utils";
 import Link from "next/link";
 import { getLocale, getTranslations } from "next-intl/server";
+import { withoutLinkKey } from "~/features/courses/attendance";
 import { CalendarMenu } from "~/features/courses/components/calendar-menu";
 import { sessionStateOf, zoneLabel } from "~/features/courses/session-model";
 import type { LooseTranslator } from "~/lib/i18n/loose";
@@ -100,8 +101,13 @@ const ScheduleRow = ({
               host={hostOf(session.meetingUrl)}
             />
           </p>
-        ) : (
-          <p className="mds-caption">{t("SchedulePage.noLink")}</p>
+        ) : state === "ended" ? null : (
+          // MDRS-283: a stream or the in-person mark covers a celse without
+          // a link; the row says which, as the join card does. An ended row
+          // has no link either way and says nothing of one.
+          <p className="mds-caption">
+            {t(`SchedulePage.${withoutLinkKey(session, state === "live")}`)}
+          </p>
         )}
       </div>
 

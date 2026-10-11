@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { Avatar, initials } from "../src/mds/avatar";
 import { LessonRow } from "../src/mds/lesson-row";
 import { Progress } from "../src/mds/progress";
-import { SessionJoin } from "../src/mds/session-join";
+import { SessionJoin, type SessionJoinProps } from "../src/mds/session-join";
 import { WeekAccordion, Weeks } from "../src/mds/week-accordion";
 import { cleanup, click, render, settle } from "./render";
 
@@ -306,6 +306,93 @@ describe("SessionJoin", () => {
     expect(nolink?.querySelector(".mds-join__status")?.textContent).toBe(
       "Bağlantı henüz eklenmedi."
     );
+  });
+
+  it("without a link, says how the celse is attended: a stream, in person, or both (MDRS-283)", async () => {
+    const before = "2026-10-03T17:00:00Z";
+    const during = "2026-10-03T18:20:00Z";
+    const card = (over: Partial<SessionJoinProps>, now: string) => (
+      <SessionJoin
+        {...base}
+        href={undefined}
+        platform={undefined}
+        now={now}
+        inPersonText="IN PERSON"
+        streamText="STREAM SOON"
+        streamLiveText="STREAM NOW"
+        inPersonStreamText="IN PERSON, STREAM SOON"
+        inPersonStreamLiveText="IN PERSON, STREAM NOW"
+        {...over}
+      />
+    );
+    const host = await render(
+      <>
+        {card({ hasLiveStream: true }, before)}
+        {card({ hasLiveStream: true, state: "live" }, during)}
+        {card({ inPerson: true }, before)}
+        {card({ inPerson: true, state: "live" }, during)}
+        {card({ inPerson: true, hasLiveStream: true }, before)}
+        {card({ inPerson: true, hasLiveStream: true, state: "live" }, during)}
+        {card({}, before)}
+      </>
+    );
+    const said = Array.from(host.querySelectorAll("section")).map(
+      (s) => s.querySelector(".mds-join__status")?.textContent
+    );
+    expect(said).toEqual([
+      "STREAM SOON",
+      "STREAM NOW",
+      "IN PERSON",
+      "IN PERSON",
+      "IN PERSON, STREAM SOON",
+      "IN PERSON, STREAM NOW",
+      "Bağlantı henüz eklenmedi.",
+    ]);
+    expect(host.querySelector("a.mds-join__link")).toBeNull();
+  });
+
+  it("keeps the link the way in for a celse that also has a stream or is in person", async () => {
+    const host = await render(
+      <SessionJoin
+        {...base}
+        inPerson
+        hasLiveStream
+        state="live"
+        now="2026-10-03T18:20:00Z"
+      />
+    );
+    expect(host.querySelector("a.mds-join__link")?.getAttribute("href")).toBe(
+      "https://meet.example/abc"
+    );
+    expect(host.querySelector(".mds-join__status")).toBeNull();
+  });
+
+  it("says nothing of the stream or the in-person mark once the celse is cancelled or over", async () => {
+    const host = await render(
+      <>
+        <SessionJoin
+          {...base}
+          href={undefined}
+          inPerson
+          hasLiveStream
+          state="cancelled"
+          now="2026-10-03T17:00:00Z"
+        />
+        <SessionJoin
+          {...base}
+          href={undefined}
+          inPerson
+          hasLiveStream
+          state="ended"
+          now="2026-10-04T00:00:00Z"
+        />
+      </>
+    );
+    const [cancelled, ended] = Array.from(host.querySelectorAll("section"));
+    expect(cancelled?.querySelector(".mds-join__status")?.textContent).toBe(
+      "Bu celse iptal edildi."
+    );
+    expect(ended?.querySelector(".mds-join__status")).toBeNull();
   });
 });
 

@@ -98,9 +98,15 @@ const CourseCard = ({
         </>
       }
     >
-      <p className="mds-card__body grow" dir="auto">
-        {muderrisLine(course, t)}
-      </p>
+      <div className="mds-card__body flex grow flex-col gap-2">
+        {/* MDRS-283: the course's own "Yüz yüze" setting, public like its title. */}
+        {course.inPerson ? (
+          <Badge variant="secondary" className="self-start">
+            {t("MadrasahPage.inPerson")}
+          </Badge>
+        ) : null}
+        <p dir="auto">{muderrisLine(course, t)}</p>
+      </div>
     </Card>
   );
 };

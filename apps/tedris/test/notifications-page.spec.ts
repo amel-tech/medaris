@@ -106,6 +106,8 @@ describe("notifications page (tedris/36)", () => {
     // "Neler bildirilir" is there; the e-mail card part is not (SMTP).
     expect(html).toContain("Neler bildirilir");
     expect(html).not.toContain("E-posta tercihleri");
+    // MDRS-283: the recordings row is back with its producer.
+    expect(html).toContain("Derslerine eklenen ders kayıtları");
   });
 
   it("disables 'Tümünü okundu say' when nothing is unread", async () => {

@@ -10,9 +10,9 @@ import { useTranslations } from "next-intl";
  * part).
  *
  * Only what tedrisat sends (MDRS-213). The design's "Derslerine eklenen ders
- * kayıtları" row (SESSION_ADDED) and the make-up session of a cancelled one
- * are left out until something can produce them: no route adds a recording
- * or links a make-up session yet. Put them back with their producer.
+ * kayıtları" row came back with its producer, RECORDING_ADDED (MDRS-283). The
+ * make-up session of a cancelled one is still left out: no route links a
+ * make-up session yet. Put it back with its producer.
  */
 const ITEMS: Array<{
   icon: IconName;
@@ -24,6 +24,7 @@ const ITEMS: Array<{
   { icon: "lock", title: "accessRemoved", text: "accessRemovedText" },
   { icon: "clock", title: "rescheduled" },
   { icon: "close", title: "cancelled" },
+  { icon: "video", title: "recording" },
   { icon: "kosk", title: "kosk", text: "koskText" },
   { icon: "cards", title: "deck", text: "deckText" },
 ];

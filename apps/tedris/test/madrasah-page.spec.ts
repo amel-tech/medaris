@@ -124,6 +124,21 @@ describe("medrese page", () => {
     expect(html).toContain("Planlı celse yok");
   });
 
+  it("labels an in-person course 'Yüz yüze', and no other (MDRS-283)", async () => {
+    const html = await render({
+      ...overview,
+      courses: [
+        course({ id: "c1", title: "Yüz yüze ders", inPerson: true }),
+        course({ id: "c2", title: "Çevrim içi ders", inPerson: false }),
+      ],
+    } as MadrasahOverviewResponse);
+    expect(html.match(/>Yüz yüze</g)).toHaveLength(1);
+    const card = html.slice(html.indexOf('href="/courses/c1"'));
+    expect(card.indexOf(">Yüz yüze<")).toBeLessThan(
+      card.indexOf('href="/courses/c2"')
+    );
+  });
+
   it("says so when the medrese has no courses, and lists no köşk", async () => {
     const html = await render({
       headMuderris: null,

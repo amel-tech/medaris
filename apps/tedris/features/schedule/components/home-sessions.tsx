@@ -10,6 +10,7 @@ import { joinRun } from "~/features/courses/join-run";
 import { formatSessionMoment } from "~/features/courses/my-courses";
 import {
   calendarLabels,
+  elsewhereJoinLabels,
   hostOf,
   sessionJoinLabels,
 } from "~/features/courses/session-join-labels";
@@ -151,13 +152,17 @@ export const HomeSessions = async ({
                 platformHost={
                   next.meetingUrl ? hostOf(next.meetingUrl) : undefined
                 }
+                inPerson={next.inPerson}
+                hasLiveStream={next.hasLiveStream}
                 locale={locale}
                 timeZone={timeZone}
                 courseTimeZone={timeZone}
                 calendar={calendarLabels(t)}
+                // Programım's words: the stream and the recording are on the
+                // session page, not on this card (MDRS-283).
                 labels={{
                   ...sessionJoinLabels(t),
-                  noLinkText: t("SchedulePage.noLink"),
+                  ...elsewhereJoinLabels(t),
                 }}
               />
             </section>

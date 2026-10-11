@@ -187,6 +187,43 @@ describe("the signed-in Ana sayfa's sessions (design tedris/44)", () => {
     expect(html).not.toContain("Toplantı bağlantısı henüz eklenmedi.");
   });
 
+  it("says how the next celse is attended when it has no link, pointing to its page (MDRS-283)", async () => {
+    const stream = await render([
+      session({ hasLiveStream: true, inPerson: false }),
+    ]);
+    expect(stream).toContain(
+      "Bu celse YouTube&#x27;da canlı yayınlanır; yayın celse başlayınca celse sayfasında açılır."
+    );
+    expect(stream).not.toContain("Toplantı bağlantısı henüz eklenmedi.");
+    expect(stream).not.toContain("burada açılır");
+    const inPerson = await render([
+      session({ inPerson: true, hasLiveStream: false }),
+    ]);
+    expect(inPerson).toContain(
+      "Bu celse yüz yüze yapılır. Kaydı eklenirse celse sayfasında yayımlanır."
+    );
+    const both = await render([
+      session({ inPerson: true, hasLiveStream: true }),
+    ]);
+    expect(both).toContain(
+      "Bu celse yüz yüze yapılır ve YouTube&#x27;da canlı yayınlanır; yayın celse başlayınca celse sayfasında açılır."
+    );
+  });
+
+  it("while the next celse is streamed live, says the stream is on its page (MDRS-283)", async () => {
+    const html = await render([
+      session({
+        status: "LIVE",
+        startsAt: new Date("2026-10-01T06:50:00Z"),
+        hasLiveStream: true,
+      }),
+    ]);
+    expect(html).toContain(
+      "Bu celse YouTube&#x27;da canlı yayınlanıyor; yayını celse sayfasında izleyebilirsin."
+    );
+    expect(html).not.toContain("Toplantı bağlantısı henüz eklenmedi.");
+  });
+
   it("changes the sentence when there is no session, and when the read failed", async () => {
     expect(await render([])).toContain("Planlı bir celsen görünmüyor.");
     expect(await render(null)).toContain("Celselerin şu an okunamadı.");

@@ -330,6 +330,21 @@ describe("köşk page (design tedris/04)", () => {
     expect(html).not.toMatch(/Abdülhamit Karaosmanoğlu<\/bdi>, imam/);
   });
 
+  it("labels an in-person course 'Yüz yüze', and no other (MDRS-283)", async () => {
+    const html = await renderKosk(
+      [
+        summary({ id: "a", title: "Yüz yüze ders", inPerson: true }),
+        summary({ id: "b", title: "Çevrim içi ders", inPerson: false }),
+      ],
+      null
+    );
+    expect(html.match(/>Yüz yüze</g)).toHaveLength(1);
+    const card = html.slice(html.indexOf('href="/courses/a"'));
+    expect(card.indexOf(">Yüz yüze<")).toBeLessThan(
+      card.indexOf('href="/courses/b"')
+    );
+  });
+
   it("writes the next session as weekday and clock, or says none is planned", async () => {
     const html = await renderKosk(
       [

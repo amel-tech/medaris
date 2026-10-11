@@ -390,6 +390,99 @@ describe("session page, live (design tedris/16, MDRS-162)", () => {
   });
 });
 
+describe("session page, how a celse is attended (MDRS-283)", () => {
+  // The catalogue's sentence as the markup writes it: React escapes the
+  // apostrophe of "YouTube'da".
+  const said = (key: string) =>
+    (resources.tr.tedris.SessionPage as Record<string, string>)[key].replaceAll(
+      "'",
+      "&#x27;"
+    );
+  const noLink = "Toplantı bağlantısı henüz eklenmedi.";
+  const ahead = (over: Record<string, unknown>) =>
+    session({ meetingUrl: null, startsAt: at(45), ...over });
+  const live = (over: Record<string, unknown>) =>
+    session({
+      status: "LIVE",
+      startsAt: at(-14),
+      meetingUrl: null,
+      liveStreamUrl: "https://www.youtube.com/watch?v=live123abc",
+      hasLiveStream: true,
+      ...over,
+    });
+
+  it("before the start, says a stream-only celse is streamed and opens here, not that its link is missing", async () => {
+    const html = await render(ahead({ hasLiveStream: true, inPerson: false }));
+    expect(html).toContain(said("streamText"));
+    expect(html).toContain(
+      "Bu celse YouTube&#x27;da canlı yayınlanır; yayın celse başlayınca burada açılır."
+    );
+    expect(html).not.toContain(noLink);
+    expect(html).not.toContain("Celseye katıl");
+  });
+
+  it("says an in-person celse is held in person and its recording comes here", async () => {
+    const html = await render(ahead({ inPerson: true, hasLiveStream: false }));
+    expect(html).toContain(
+      "Bu celse yüz yüze yapılır. Kaydı eklenirse burada yayımlanır."
+    );
+    expect(html).not.toContain(noLink);
+  });
+
+  it("says an in-person celse with a stream is both", async () => {
+    const html = await render(ahead({ inPerson: true, hasLiveStream: true }));
+    expect(html).toContain(said("inPersonStreamText"));
+    expect(html).not.toContain(said("inPersonText"));
+    expect(html).not.toContain(noLink);
+  });
+
+  it("keeps the link the way in, as today, for a celse that has one", async () => {
+    const html = await render(
+      session({ startsAt: at(5), inPerson: true, hasLiveStream: true })
+    );
+    expect(html).toContain("Celseye katıl");
+    expect(html).not.toContain(said("inPersonStreamText"));
+    expect(html).not.toContain(noLink);
+  });
+
+  it("still says the link is missing when the celse has none of the three", async () => {
+    const html = await render(ahead({ inPerson: false, hasLiveStream: false }));
+    expect(html).toContain(noLink);
+  });
+
+  it("while a stream-only celse runs, says it is on this page and sends questions to the live chat", async () => {
+    const html = await render(live({}));
+    expect(html).toContain(said("streamLiveText"));
+    expect(html).not.toContain(noLink);
+    expect(html).toContain(
+      "Yayını buradan izleyebilirsin. Soru sormak için canlı sohbete yaz."
+    );
+    expect(html).not.toContain("celseye katıl.");
+    expect(html).not.toContain("Celseye katıl");
+  });
+
+  it("while an in-person celse with a stream runs, says both", async () => {
+    const html = await render(live({ inPerson: true }));
+    expect(html).toContain(said("inPersonStreamLiveText"));
+  });
+
+  it("a stream that came with a meeting link still asks to join for questions", async () => {
+    const html = await render(
+      live({ meetingUrl: "https://zoom.us/j/123456789" })
+    );
+    expect(html).toContain("Celseye katıl");
+    expect(html).toContain(
+      "Yayını buradan izleyebilirsin. Soru sormak ve konuşmaya katılmak için celseye katıl."
+    );
+    expect(html).not.toContain("canlı sohbete yaz");
+  });
+
+  it("knows a running celse has a stream from its link alone when the flag is absent", async () => {
+    const html = await render(live({ hasLiveStream: undefined }));
+    expect(html).toContain(said("streamLiveText"));
+  });
+});
+
 describe("session page, ended with a recording (design tedris/17, MDRS-162)", () => {
   const recording = (over: Record<string, unknown> = {}) => ({
     id: "r1",

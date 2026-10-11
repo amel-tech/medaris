@@ -85,12 +85,27 @@ export interface SessionJoinProps
   /** a fixed "now" (tests, snapshots); without it the card re-renders every 30 s */
   now?: string | number | Date;
   joinWindowMinutes?: number;
+  /** held face to face (MDRS-283): without a link, the card says so instead of "no link yet" */
+  inPerson?: boolean;
+  /** a live stream is set (MDRS-283): without a link, the card says where it plays */
+  hasLiveStream?: boolean;
   label?: string;
   liveLabel?: string;
   endedLabel?: string;
   cancelledLabel?: string;
   cancelledText?: string;
+  /** no link, no stream, not in person */
   noLinkText?: string;
+  /** in person, no link, no stream */
+  inPersonText?: string;
+  /** a stream and no link, before the start */
+  streamText?: string;
+  /** a stream and no link, while the celse runs */
+  streamLiveText?: string;
+  /** in person with a stream and no link, before the start */
+  inPersonStreamText?: string;
+  /** in person with a stream and no link, while the celse runs */
+  inPersonStreamLiveText?: string;
   joinOpensText?: string;
   joinLabel?: string;
   newTabLabel?: string;
@@ -125,12 +140,19 @@ export function SessionJoin({
   action,
   now,
   joinWindowMinutes = 10,
+  inPerson = false,
+  hasLiveStream = false,
   label = "Canlı ders",
   liveLabel = "Şu an canlı",
   endedLabel = "Sona erdi",
   cancelledLabel = "İptal edildi",
   cancelledText = "Bu celse iptal edildi.",
   noLinkText = "Bağlantı henüz eklenmedi.",
+  inPersonText = "Bu celse yüz yüze yapılır. Kaydı eklenirse burada yayımlanır.",
+  streamText = "Bu celse YouTube'da canlı yayınlanır; yayın celse başlayınca burada açılır.",
+  streamLiveText = "Bu celse YouTube'da canlı yayınlanıyor; yayını bu sayfada izleyebilirsin.",
+  inPersonStreamText = "Bu celse yüz yüze yapılır ve YouTube'da canlı yayınlanır; yayın celse başlayınca burada açılır.",
+  inPersonStreamLiveText = "Bu celse yüz yüze yapılıyor ve YouTube'da canlı yayınlanıyor; yayını bu sayfada izleyebilirsin.",
   joinOpensText = "Katılım, celse başlamadan {minutes} dakika önce açılır.",
   joinLabel = "Celseye katıl",
   newTabLabel = " (yeni sekmede açılır)",
@@ -298,8 +320,18 @@ export function SessionJoin({
         {recordingsLabel}
       </a>
     ) : null;
-  else if (!href) body = status(noLinkText);
-  else if (!windowOpen)
+  else if (!href) {
+    // MDRS-283: a celse without a link is still covered by a stream or by
+    // being held in person, and the card says which. A link, when there is
+    // one, stays the way in whatever else the celse has.
+    const live = state === "live";
+    let text = noLinkText;
+    if (inPerson && hasLiveStream)
+      text = live ? inPersonStreamLiveText : inPersonStreamText;
+    else if (hasLiveStream) text = live ? streamLiveText : streamText;
+    else if (inPerson) text = inPersonText;
+    body = status(text);
+  } else if (!windowOpen)
     body = status(
       joinOpensText.replace(
         "{minutes}",

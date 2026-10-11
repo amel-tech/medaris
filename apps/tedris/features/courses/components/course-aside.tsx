@@ -13,6 +13,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { type ReactNode, useEffect, useState, useTransition } from "react";
 import { courseActionErrorKey } from "../action-error";
 import { enrollInCourse } from "../actions";
+import { withoutLinkKey } from "../attendance";
 import { courseActionsLabels } from "../course-actions-labels";
 import {
   type CourseViewState,
@@ -137,6 +138,13 @@ export const CourseAside = ({
       </Badge>
     )
   ) : null;
+  // MDRS-283: a celse without a link may still be streamed or held in person,
+  // and then the card says so, in Programım's words, instead of "no link".
+  const withoutLinkCase = next ? withoutLinkKey(next.lesson, nextLive) : null;
+  const withoutLink =
+    withoutLinkCase && withoutLinkCase !== "noLink"
+      ? tRoot(`SchedulePage.${withoutLinkCase}`)
+      : t("meetingNotAdded");
   // A talebe's card (designs tedris/12, 16): the title, then the day and
   // length on one line, then whether the link is in.
   const seatNext = next ? (
@@ -156,7 +164,7 @@ export const CourseAside = ({
         {t("minutes", { minutes: next.lesson.durationMinutes ?? 60 })}
       </p>
       {next.lesson.type === "LIVE" && !next.lesson.meetingUrl ? (
-        <p className="mds-caption">{t("meetingNotAdded")}</p>
+        <p className="mds-caption">{withoutLink}</p>
       ) : null}
     </div>
   ) : null;
