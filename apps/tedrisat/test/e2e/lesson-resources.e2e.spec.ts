@@ -475,6 +475,42 @@ describe("a celse's own resources (MDRS-286, e2e)", () => {
       ).toEqual(["Emsile şerhi", "Bina"]);
     });
 
+    // `week.hide` alone hides a celse and opens no content: the answer to the
+    // hide lists the names and no link, as the course page does for that
+    // caller; a session.manage caller's answer keeps them.
+    it("answers a ders nazırı holding only week.hide with the names and no link", async () => {
+      const hidden = await http()
+        .delete(`/lessons/${sessionId}`)
+        .set("Authorization", bearerOf(CAST.WEEK_HIDE))
+        .expect(200);
+      expect(hidden.body.resources).toEqual([
+        expect.objectContaining({
+          name: "Emsile şerhi",
+          meta: "PDF · 12 sayfa",
+          orderIndex: 0,
+        }),
+        expect.objectContaining({ name: "Bina", meta: null, orderIndex: 1 }),
+      ]);
+      for (const row of hidden.body.resources as IResourceBody[]) {
+        expect(row).not.toHaveProperty("url");
+      }
+      expect(JSON.stringify(hidden.body)).not.toContain("drive.google.com");
+      expect(JSON.stringify(hidden.body)).not.toContain("files.medaris.test");
+      expect(await storedRows(sessionId)).toHaveLength(2);
+
+      await patch(CAST.MANAGER, sampleId, {
+        version: await storedVersion(),
+        resources: [{ name: "Örnek metin", url: DRIVE }],
+      }).expect(200);
+      const managed = await http()
+        .delete(`/lessons/${sampleId}`)
+        .set("Authorization", bearerOf(CAST.SESSION))
+        .expect(200);
+      expect(
+        (managed.body.resources as IResourceBody[]).map((r) => r.url)
+      ).toEqual([DRIVE]);
+    });
+
     it("deletes a hidden celse for real with its links, from the platform archive", async () => {
       await http()
         .delete(`/lessons/${sessionId}`)

@@ -57,6 +57,10 @@ export class AgendaStepDto {
  * renders it as an href, so only an absolute http:// or https:// address of
  * at most 500 characters is stored. Unlike a course resource, the link is
  * required: a session's resource is a link and nothing else for now.
+ *
+ * The name and the line are stored trimmed, as the nazar and nizam editors
+ * send them: a name of spaces only is refused, a line of spaces only is none.
+ * tedris would otherwise draw an empty label or caption for them.
  */
 export class CreateLessonResourceDto {
   @ApiPropertyOptional({
@@ -69,6 +73,7 @@ export class CreateLessonResourceDto {
   id?: string;
 
   @ApiProperty({ example: "Emsile şerhi" })
+  @Transform(({ value }) => (typeof value === "string" ? value.trim() : value))
   @IsString()
   @MinLength(1)
   @MaxLength(200)
@@ -80,6 +85,9 @@ export class CreateLessonResourceDto {
     example: "PDF · 12 sayfa",
     description: "A short line under the name; missing or null is none.",
   })
+  @Transform(({ value }) =>
+    typeof value === "string" ? value.trim() || null : value
+  )
   @IsOptional()
   @IsString()
   @MaxLength(120)

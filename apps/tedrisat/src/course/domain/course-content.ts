@@ -73,6 +73,22 @@ export function withoutContent(course: ICourseDetail): ICourseDetailView {
 }
 
 /**
+ * A session write's answer for a caller who may not read the content: its
+ * resources' links removed, as `withoutContent` removes them (MDRS-286). Only
+ * `DELETE /lessons/:id` has such a caller, as `week.hide` alone may hide a
+ * session; the other session writes ask for `session.manage`, which opens the
+ * content.
+ */
+export function withoutResourceLinks<
+  T extends { resources: ILessonResource[] },
+>(lesson: T): Omit<T, "resources"> & { resources: ILessonResourceView[] } {
+  return {
+    ...lesson,
+    resources: lesson.resources.map(lessonResourceWithoutContent),
+  };
+}
+
+/**
  * The detail for a caller who may read the content. A cancelled session's
  * meeting link is not sent even to them (nizam/56): the session page already
  * answers `meetingUrl: null` for it, and the course body must say the same.
