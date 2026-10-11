@@ -27,6 +27,11 @@ export type WatchTarget =
  * who may not read it gets neither. A cancelled celse has no stream, but a
  * recording it holds still plays: a cancellation does not remove one, and
  * "Ders kayıtları" lists it and leads here.
+ *
+ * MDRS-288: a READY recording plays only with its link. Before the release
+ * time the course team set, tedrisat sends a talebe the recording without
+ * one and keeps sending the stream, so the stream plays, or nothing; the
+ * course team gets the link and plays the recording.
  */
 export const watchTargetOf = (
   session: Pick<
@@ -35,7 +40,7 @@ export const watchTargetOf = (
   >
 ): WatchTarget | null => {
   if (session.contentLocked) return null;
-  if (session.recording?.status === "READY") {
+  if (session.recording?.status === "READY" && session.recording.url) {
     return { kind: "recording", recording: session.recording };
   }
   if (session.status === "CANCELLED") return null;

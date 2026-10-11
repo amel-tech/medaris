@@ -45,6 +45,12 @@ export interface CreateRecordingDto {
      * @memberof CreateRecordingDto
      */
     visibility?: RecordingVisibility;
+    /**
+     * When the session's talebe may watch its recording (MDRS-288), an ISO 8601 instant with its offset; the page enters it in the course's time zone. Kept on the session, so it outlives a recording that is replaced. `null` opens the recording as soon as it is READY. Before it, every read gives a talebe or a visitor the recording with this `availableAt` and a null `url`, and signs no Bunny link; the course team (`recording.manage`) plays it as before. "Kayıt eklendi" goes to the talebe at that moment, once: a time moved before it fires moves it, a time moved after it changes nothing. Written with the link, so a recording added for later is never open in between. Absent: the session's time stays as it is (null unless set before).
+     * @type {Date}
+     * @memberof CreateRecordingDto
+     */
+    availableAt?: Date | null;
 }
 
 
@@ -71,6 +77,7 @@ export function CreateRecordingDtoFromJSONTyped(json: any, ignoreDiscriminator: 
         'title': json['title'],
         'url': json['url'],
         'visibility': json['visibility'] == null ? undefined : RecordingVisibilityFromJSON(json['visibility']),
+        'availableAt': json['availableAt'] == null ? undefined : (new Date(json['availableAt'])),
     };
 }
 
@@ -88,6 +95,7 @@ export function CreateRecordingDtoToJSONTyped(value?: CreateRecordingDto | null,
         'title': value['title'],
         'url': value['url'],
         'visibility': RecordingVisibilityToJSON(value['visibility']),
+        'availableAt': value['availableAt'] === null ? null : ((value['availableAt'] as any)?.toISOString()),
     };
 }
 

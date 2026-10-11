@@ -78,7 +78,7 @@ export class SessionResponse extends SessionRefResponse {
     nullable: true,
     description:
       CONTENT_FIELD +
-      ` The embeddable stream, when one was set: from the scheduled start until the session has a READY \`recording\`, and never later than ${LIVE_STREAM_HOURS_AFTER_END} hours after the scheduled end (MDRS-285), so a lesson that runs long keeps it. Null otherwise; non-null means the stream may be watched now.`,
+      ` The embeddable stream, when one was set: from the scheduled start until the session has a \`recording\` open to talebe (READY and past its \`availableAt\`, MDRS-288), and never later than ${LIVE_STREAM_HOURS_AFTER_END} hours after the scheduled end (MDRS-285), so a lesson that runs long keeps it. Null otherwise; non-null means the stream may be watched now.`,
   })
   liveStreamUrl?: string | null;
   @ApiProperty({
@@ -98,7 +98,7 @@ export class SessionResponse extends SessionRefResponse {
     nullable: true,
     description:
       CONTENT_FIELD +
-      " The session's recording, or null when it has none. Its `url` is null while it is PROCESSING.",
+      " The session's recording, or null when it has none. Its `url` is null while it is PROCESSING, and before its `availableAt` for anyone but the course team (MDRS-288).",
   })
   recording?: SessionRecordingResponse | null;
   @ApiPropertyOptional({

@@ -6,13 +6,20 @@ import { Button } from "@medaris/ui/mds/button";
 import { PlatformChip } from "@medaris/ui/mds/platform-chip";
 import { Table, type TableColumn } from "@medaris/ui/mds/table";
 import { useToaster } from "@medaris/ui/mds/toast";
+import {
+  DEFAULT_TIME_ZONE,
+  showsDifferentTime,
+  timeZoneCity,
+} from "@medaris/utils";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useEffect, useState, useTransition } from "react";
+import { dayMonthClock } from "~/lib/dates";
 import type { Messages } from "~/lib/i18n/messages";
 import { whenLabel } from "../../sessions/sessions";
 import { addRecording } from "../actions";
 import {
+  accessOf,
   anyBunnyPending,
   bunnyPending,
   chipOf,
@@ -28,6 +35,7 @@ import {
 } from "../recordings";
 import { useRefreshWhile } from "../use-refresh-while";
 import { type RecordingAbilities, RecordingDialog } from "./recording-dialog";
+import { ReleaseDialog } from "./release-dialog";
 
 /**
  * The weeks of Ders kayıtları, newest first, each a table of its sessions and
@@ -45,6 +53,12 @@ import { type RecordingAbilities, RecordingDialog } from "./recording-dialog";
  * link to the route "Kayıt ekle" uses, for the enrolled, with the title the
  * form would start from. It plays once YouTube has archived the stream, and
  * the row says so.
+ *
+ * "Erişim" (MDRS-288) says when talebe may watch each session's recording:
+ * "Açık", "{when} açılır" or "Hazır olunca açılır", the time on the course's
+ * clock, named when the viewer's shows another. A holder of
+ * `recording.manage` changes it from the row ("Değiştir"), with or without a
+ * recording, as in the recording's own dialog.
  */
 export function RecordingsTable({
   blocks,
@@ -52,13 +66,17 @@ export function RecordingsTable({
   can,
   locale,
   timeZone,
+  courseTimeZone,
 }: {
   blocks: WeekBlock[];
   /** the course is closed: nothing is opened to everyone */
   closed: boolean;
   can: RecordingAbilities;
   locale: string;
+  /** the viewer's zone, which the sessions' times are written in */
   timeZone: string;
+  /** the course's zone, which the release times are typed and written in */
+  courseTimeZone: string;
 }) {
   const t = useTranslations("nazar");
   const words = t as unknown as Messages;
@@ -76,6 +94,12 @@ export function RecordingsTable({
     slot: SessionSlot;
     resume: boolean;
   } | null>(null);
+  /** the session whose release time is being changed on its own */
+  const [releasing, setReleasing] = useState<SessionSlot | null>(null);
+  const courseZone =
+    courseTimeZone === DEFAULT_TIME_ZONE
+      ? t("Sessions.zoneIstanbul")
+      : timeZoneCity(courseTimeZone);
 
   const counts = slotCounts(blocks, now);
   const refresh = () => startTransition(() => router.refresh());
@@ -107,12 +131,52 @@ export function RecordingsTable({
   useRefreshWhile(anyBunnyPending(blocks), refresh);
   const dash = <span aria-hidden="true">—</span>;
 
+  const accessCell = (slot: SessionSlot) => {
+    const access = accessOf(slot, now);
+    return (
+      <span className="flex flex-col items-start gap-1">
+        {access.kind === "at" ? (
+          <>
+            <time dateTime={access.at.toISOString()}>
+              {t("Recordings.access.at", {
+                when: dayMonthClock(access.at, locale, courseTimeZone),
+              })}
+            </time>
+            {showsDifferentTime(access.at, courseTimeZone, timeZone) ? (
+              <span className="mds-caption">
+                {t("Recordings.access.zone", { zone: courseZone })}
+              </span>
+            ) : null}
+          </>
+        ) : access.kind === "open" ? (
+          <span>{t("Recordings.access.open")}</span>
+        ) : (
+          <span className="text-neutral-muted">
+            {t("Recordings.access.whenReady")}
+          </span>
+        )}
+        {can.manage ? (
+          <button
+            type="button"
+            className="mds-link mds-caption"
+            aria-label={t("Recordings.access.changeLabel", {
+              session: slot.title,
+            })}
+            onClick={() => setReleasing(slot)}
+          >
+            {t("Recordings.access.change")}
+          </button>
+        ) : null}
+      </span>
+    );
+  };
+
   const columns: TableColumn<SessionSlot>[] = [
     {
       key: "session",
       header: t("Recordings.columns.session"),
       rowHeader: true,
-      width: "22%",
+      width: "20%",
       render: (slot) => (
         <span className="flex min-inline-0 flex-col gap-1">
           <span className="font-semibold">
@@ -133,7 +197,7 @@ export function RecordingsTable({
     {
       key: "recording",
       header: t("Recordings.columns.recording"),
-      width: "30%",
+      width: "26%",
       render: (slot) => {
         const recording = slot.recording;
         if (!recording) {
@@ -190,7 +254,7 @@ export function RecordingsTable({
     {
       key: "state",
       header: t("Recordings.columns.state"),
-      width: "14%",
+      width: "12%",
       render: (slot) =>
         slot.recording ? (
           <Badge
@@ -211,7 +275,7 @@ export function RecordingsTable({
     {
       key: "visibility",
       header: t("Recordings.columns.visibility"),
-      width: "16%",
+      width: "12%",
       render: (slot) =>
         slot.recording ? (
           <Badge
@@ -230,6 +294,12 @@ export function RecordingsTable({
         ),
     },
     {
+      key: "access",
+      header: t("Recordings.columns.access"),
+      width: "14%",
+      render: accessCell,
+    },
+    {
       key: "actions",
       header: (
         <span className="mds-visually-hidden">
@@ -237,7 +307,7 @@ export function RecordingsTable({
         </span>
       ),
       align: "right",
-      width: "18%",
+      width: "16%",
       render: (slot) => {
         const state = slotState(slot, now);
         if (state === "recorded") {
@@ -356,7 +426,19 @@ export function RecordingsTable({
           can={can}
           resume={target.resume}
           closed={closed}
+          timeZone={courseTimeZone}
           onClose={() => setTarget(null)}
+          onDone={refresh}
+        />
+      ) : null}
+      {releasing ? (
+        <ReleaseDialog
+          key={releasing.lessonId}
+          lessonId={releasing.lessonId}
+          session={releasing.title}
+          held={releasing.availableAt}
+          timeZone={courseTimeZone}
+          onClose={() => setReleasing(null)}
           onDone={refresh}
         />
       ) : null}

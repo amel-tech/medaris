@@ -227,6 +227,7 @@ PUT /flashcard/cards/:id -> deck.manage_cards on custom
 PUT /flashcard/cards/progress -> exempt
 PUT /flashcard/decks/:id -> deck.manage_private on flashcard-deck
 PUT /lessons/:id/live-stream -> session.live_link on byLessonCourse
+PUT /lessons/:id/recording-availability -> recording.manage on byLessonCourse
 PUT /madrasahs/:id/courses/:courseId/muderrises -> madrasah.muderris_manage on byExistingMadrasah
 PUT /madrasahs/:id/head-muderris -> platform.head_muderris_manage on byExistingMadrasah
 PUT /madrasahs/:id/nazirs/:userId/permissions -> madrasah.nazir_appoint | platform.madrasah_nazir_grant on byExistingMadrasah

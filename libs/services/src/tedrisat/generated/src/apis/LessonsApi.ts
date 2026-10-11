@@ -29,12 +29,14 @@ import type {
   LiveStreamResponse,
   PaginatedCourseQuestionResponse,
   PaginatedLessonQuestionResponse,
+  RecordingAvailabilityResponse,
   RecordingResponse,
   RecordingUploadResponse,
   SessionBatchPreviewResponse,
   SessionBatchResponse,
   SessionResponse,
   SetLiveStreamDto,
+  SetRecordingAvailabilityDto,
   StartRecordingUploadDto,
   UpdateLessonDto,
   UpdateLessonNoteDto,
@@ -72,6 +74,8 @@ import {
     PaginatedCourseQuestionResponseToJSON,
     PaginatedLessonQuestionResponseFromJSON,
     PaginatedLessonQuestionResponseToJSON,
+    RecordingAvailabilityResponseFromJSON,
+    RecordingAvailabilityResponseToJSON,
     RecordingResponseFromJSON,
     RecordingResponseToJSON,
     RecordingUploadResponseFromJSON,
@@ -84,6 +88,8 @@ import {
     SessionResponseToJSON,
     SetLiveStreamDtoFromJSON,
     SetLiveStreamDtoToJSON,
+    SetRecordingAvailabilityDtoFromJSON,
+    SetRecordingAvailabilityDtoToJSON,
     StartRecordingUploadDtoFromJSON,
     StartRecordingUploadDtoToJSON,
     UpdateLessonDtoFromJSON,
@@ -201,6 +207,11 @@ export interface ResignRecordingUploadRequest {
 export interface SetLessonLiveStreamRequest {
     id: string;
     setLiveStreamDto: SetLiveStreamDto;
+}
+
+export interface SetLessonRecordingAvailabilityRequest {
+    id: string;
+    setRecordingAvailabilityDto: SetRecordingAvailabilityDto;
 }
 
 export interface StartRecordingUploadRequest {
@@ -809,7 +820,7 @@ export class LessonsApi extends runtime.BaseAPI {
     }
 
     /**
-     * Open to callers with no token, like the course page (MDRS-122), and filtered the same way: `meetingUrl`, `agenda`, `kaynak` and `cancelReason` are sent only to a caller holding `view_details` (the enrolled talebe, the müderris, the köşk manager); for everyone else, PENDING included, those keys are absent and `contentLocked` is true. The session\'s own `resources` (MDRS-286) are listed to everyone, each `url` only to a caller holding `view_details`. `status` is derived from the clock and the cancellation, never stored: CANCELLED once cancelled, else ENDED after the session\'s length (60 minutes when it has none), LIVE while it runs, SCHEDULED before. `meetingUrl` is null for a cancelled or finished session. `inPerson` (MDRS-283) is sent to everyone; `hasLiveStream` is content and is sent whatever the status; `liveStreamUrl` is sent from the scheduled start until the session has a READY recording, with a bound its field states (MDRS-285). `previous` and `next` are the neighbouring live sessions in programme order, cancelled ones skipped. A content read by anyone who is neither enrolled nor a müderris is recorded in `audit_log`, as on `GET /courses/:id` (MDRS-158).
+     * Open to callers with no token, like the course page (MDRS-122), and filtered the same way: `meetingUrl`, `agenda`, `kaynak` and `cancelReason` are sent only to a caller holding `view_details` (the enrolled talebe, the müderris, the köşk manager); for everyone else, PENDING included, those keys are absent and `contentLocked` is true. The session\'s own `resources` (MDRS-286) are listed to everyone, each `url` only to a caller holding `view_details`. `status` is derived from the clock and the cancellation, never stored: CANCELLED once cancelled, else ENDED after the session\'s length (60 minutes when it has none), LIVE while it runs, SCHEDULED before. `meetingUrl` is null for a cancelled or finished session. `inPerson` (MDRS-283) is sent to everyone; `hasLiveStream` is content and is sent whatever the status; `liveStreamUrl` is sent from the scheduled start until the session has a recording open to talebe, with a bound its field states (MDRS-285, MDRS-288). The `recording` keeps its link back until its `availableAt` from everyone but the course team (`recording.manage`), and no Bunny link is signed for them (MDRS-288). `previous` and `next` are the neighbouring live sessions in programme order, cancelled ones skipped. A content read by anyone who is neither enrolled nor a müderris is recorded in `audit_log`, as on `GET /courses/:id` (MDRS-158).
      * One live session: its status, cancellation, neighbours and link
      */
     async getSessionRaw(requestParameters: GetSessionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<SessionResponse>> {
@@ -852,7 +863,7 @@ export class LessonsApi extends runtime.BaseAPI {
     }
 
     /**
-     * Open to callers with no token, like the course page (MDRS-122), and filtered the same way: `meetingUrl`, `agenda`, `kaynak` and `cancelReason` are sent only to a caller holding `view_details` (the enrolled talebe, the müderris, the köşk manager); for everyone else, PENDING included, those keys are absent and `contentLocked` is true. The session\'s own `resources` (MDRS-286) are listed to everyone, each `url` only to a caller holding `view_details`. `status` is derived from the clock and the cancellation, never stored: CANCELLED once cancelled, else ENDED after the session\'s length (60 minutes when it has none), LIVE while it runs, SCHEDULED before. `meetingUrl` is null for a cancelled or finished session. `inPerson` (MDRS-283) is sent to everyone; `hasLiveStream` is content and is sent whatever the status; `liveStreamUrl` is sent from the scheduled start until the session has a READY recording, with a bound its field states (MDRS-285). `previous` and `next` are the neighbouring live sessions in programme order, cancelled ones skipped. A content read by anyone who is neither enrolled nor a müderris is recorded in `audit_log`, as on `GET /courses/:id` (MDRS-158).
+     * Open to callers with no token, like the course page (MDRS-122), and filtered the same way: `meetingUrl`, `agenda`, `kaynak` and `cancelReason` are sent only to a caller holding `view_details` (the enrolled talebe, the müderris, the köşk manager); for everyone else, PENDING included, those keys are absent and `contentLocked` is true. The session\'s own `resources` (MDRS-286) are listed to everyone, each `url` only to a caller holding `view_details`. `status` is derived from the clock and the cancellation, never stored: CANCELLED once cancelled, else ENDED after the session\'s length (60 minutes when it has none), LIVE while it runs, SCHEDULED before. `meetingUrl` is null for a cancelled or finished session. `inPerson` (MDRS-283) is sent to everyone; `hasLiveStream` is content and is sent whatever the status; `liveStreamUrl` is sent from the scheduled start until the session has a recording open to talebe, with a bound its field states (MDRS-285, MDRS-288). The `recording` keeps its link back until its `availableAt` from everyone but the course team (`recording.manage`), and no Bunny link is signed for them (MDRS-288). `previous` and `next` are the neighbouring live sessions in programme order, cancelled ones skipped. A content read by anyone who is neither enrolled nor a müderris is recorded in `audit_log`, as on `GET /courses/:id` (MDRS-158).
      * One live session: its status, cancellation, neighbours and link
      */
     async getSession(requestParameters: GetSessionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SessionResponse> {
@@ -1009,7 +1020,7 @@ export class LessonsApi extends runtime.BaseAPI {
     }
 
     /**
-     * Open to callers with no token, like the course page. A caller holding `view_details` sees every recording; everyone else, PENDING and revoked included, only those with `visibility` PUBLIC. A recording whose `status` is PROCESSING is listed with a null `url`. Sorted by week number descending, then by `recordedAt` descending (MDRS-162). A READY BUNNY recording\'s `url` is a player link signed for this response, built only for a recording the caller may see, and expiring after `BUNNY_STREAM_EMBED_TTL_SECONDS` (6 hours by default); the response is `Cache-Control: private, no-store` (MDRS-119). What this protects: with embed token authentication on in the Bunny library, only a signed link opens the player page, and a signed link passed on opens it until it expires; the stream behind the page (playlist, segments, MP4) is protected only by the library\'s separate CDN token authentication, so a viewer who saved the video address can play it after the link has expired unless that is on. A YouTube, Drive or other pasted link plays for anyone who has it; for those the filter decides who is shown the link, not who can open it.
+     * Open to callers with no token, like the course page. A caller holding `view_details` sees every recording; everyone else, PENDING and revoked included, only those with `visibility` PUBLIC. A recording whose `status` is PROCESSING is listed with a null `url`, and so is a READY one before its `availableAt`, for everyone but the course team (`recording.manage`), with no Bunny link signed (MDRS-288). Sorted by week number descending, then by `recordedAt` descending (MDRS-162). A READY BUNNY recording\'s `url` is a player link signed for this response, built only for a recording the caller may see, and expiring after `BUNNY_STREAM_EMBED_TTL_SECONDS` (6 hours by default); the response is `Cache-Control: private, no-store` (MDRS-119). What this protects: with embed token authentication on in the Bunny library, only a signed link opens the player page, and a signed link passed on opens it until it expires; the stream behind the page (playlist, segments, MP4) is protected only by the library\'s separate CDN token authentication, so a viewer who saved the video address can play it after the link has expired unless that is on. A YouTube, Drive or other pasted link plays for anyone who has it; for those the filter decides who is shown the link, not who can open it.
      * The course\'s lesson recordings, newest week first
      */
     async listCourseRecordingsRaw(requestParameters: ListCourseRecordingsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<RecordingResponse>>> {
@@ -1044,7 +1055,7 @@ export class LessonsApi extends runtime.BaseAPI {
     }
 
     /**
-     * Open to callers with no token, like the course page. A caller holding `view_details` sees every recording; everyone else, PENDING and revoked included, only those with `visibility` PUBLIC. A recording whose `status` is PROCESSING is listed with a null `url`. Sorted by week number descending, then by `recordedAt` descending (MDRS-162). A READY BUNNY recording\'s `url` is a player link signed for this response, built only for a recording the caller may see, and expiring after `BUNNY_STREAM_EMBED_TTL_SECONDS` (6 hours by default); the response is `Cache-Control: private, no-store` (MDRS-119). What this protects: with embed token authentication on in the Bunny library, only a signed link opens the player page, and a signed link passed on opens it until it expires; the stream behind the page (playlist, segments, MP4) is protected only by the library\'s separate CDN token authentication, so a viewer who saved the video address can play it after the link has expired unless that is on. A YouTube, Drive or other pasted link plays for anyone who has it; for those the filter decides who is shown the link, not who can open it.
+     * Open to callers with no token, like the course page. A caller holding `view_details` sees every recording; everyone else, PENDING and revoked included, only those with `visibility` PUBLIC. A recording whose `status` is PROCESSING is listed with a null `url`, and so is a READY one before its `availableAt`, for everyone but the course team (`recording.manage`), with no Bunny link signed (MDRS-288). Sorted by week number descending, then by `recordedAt` descending (MDRS-162). A READY BUNNY recording\'s `url` is a player link signed for this response, built only for a recording the caller may see, and expiring after `BUNNY_STREAM_EMBED_TTL_SECONDS` (6 hours by default); the response is `Cache-Control: private, no-store` (MDRS-119). What this protects: with embed token authentication on in the Bunny library, only a signed link opens the player page, and a signed link passed on opens it until it expires; the stream behind the page (playlist, segments, MP4) is protected only by the library\'s separate CDN token authentication, so a viewer who saved the video address can play it after the link has expired unless that is on. A YouTube, Drive or other pasted link plays for anyone who has it; for those the filter decides who is shown the link, not who can open it.
      * The course\'s lesson recordings, newest week first
      */
     async listCourseRecordings(requestParameters: ListCourseRecordingsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<RecordingResponse>> {
@@ -1305,6 +1316,60 @@ export class LessonsApi extends runtime.BaseAPI {
      */
     async setLessonLiveStream(requestParameters: SetLessonLiveStreamRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<LiveStreamResponse> {
         const response = await this.setLessonLiveStreamRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * `recording.manage`, like the recording writes (MDRS-288). Kept on the session, so it may be set before a recording exists and outlives one that is replaced; `POST /lessons/:id/recordings` and `PATCH /recordings/:id` take the same `availableAt`. `null` opens the recording as soon as it is READY, which is how a session starts. A recording this opens now is announced to the talebe now; one it holds back is announced at the time, once. Written to `audit_log` as `lesson.recording_availability_set`. Does not change the course version.
+     * Set when the session\'s talebe may watch its recording
+     */
+    async setLessonRecordingAvailabilityRaw(requestParameters: SetLessonRecordingAvailabilityRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<RecordingAvailabilityResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling setLessonRecordingAvailability().'
+            );
+        }
+
+        if (requestParameters['setRecordingAvailabilityDto'] == null) {
+            throw new runtime.RequiredError(
+                'setRecordingAvailabilityDto',
+                'Required parameter "setRecordingAvailabilityDto" was null or undefined when calling setLessonRecordingAvailability().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/lessons/{id}/recording-availability`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: SetRecordingAvailabilityDtoToJSON(requestParameters['setRecordingAvailabilityDto']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => RecordingAvailabilityResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * `recording.manage`, like the recording writes (MDRS-288). Kept on the session, so it may be set before a recording exists and outlives one that is replaced; `POST /lessons/:id/recordings` and `PATCH /recordings/:id` take the same `availableAt`. `null` opens the recording as soon as it is READY, which is how a session starts. A recording this opens now is announced to the talebe now; one it holds back is announced at the time, once. Written to `audit_log` as `lesson.recording_availability_set`. Does not change the course version.
+     * Set when the session\'s talebe may watch its recording
+     */
+    async setLessonRecordingAvailability(requestParameters: SetLessonRecordingAvailabilityRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<RecordingAvailabilityResponse> {
+        const response = await this.setLessonRecordingAvailabilityRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

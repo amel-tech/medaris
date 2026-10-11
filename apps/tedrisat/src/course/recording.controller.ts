@@ -14,6 +14,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Put,
   Req,
   UseGuards,
   UsePipes,
@@ -32,6 +33,8 @@ import {
 import { RecordingResponse } from "./dto/recording-response.dto";
 import {
   CreateRecordingDto,
+  RecordingAvailabilityResponse,
+  SetRecordingAvailabilityDto,
   UpdateRecordingDto,
 } from "./dto/recording-write.dto";
 import { RecordingNotFoundError } from "./errors/recording-not-found.error";
@@ -61,7 +64,8 @@ const byRecordingCourse: AuthzResolve = async (req, moduleRef) => {
 };
 
 /**
- * Adding and changing a session's recording link (MDRS-247). Both routes ask
+ * Adding and changing a session's recording link (MDRS-247), and when its
+ * talebe may watch it (MDRS-288). Every route asks
  * `recording.manage` of the course in their `@Authz`: the müderris and the
  * köşk nazımı hold it by default, a ders nazırı when given it. A missing
  * lesson or recording is answered 404 by the resolver, and by the service for
@@ -126,5 +130,34 @@ export class RecordingController {
     @Body() dto: UpdateRecordingDto
   ): Promise<RecordingResponse> {
     return this.service.change(id, dto, request.user);
+  }
+
+  @ApiOperation({
+    summary: "Set when the session's talebe may watch its recording",
+    description:
+      "`recording.manage`, like the recording writes (MDRS-288). Kept on the session, so it may be set before a recording exists and outlives one that is replaced; `POST /lessons/:id/recordings` and `PATCH /recordings/:id` take the same `availableAt`. `null` opens the recording as soon as it is READY, which is how a session starts. A recording this opens now is announced to the talebe now; one it holds back is announced at the time, once. Written to `audit_log` as `lesson.recording_availability_set`. Does not change the course version.",
+    operationId: "setLessonRecordingAvailability",
+  })
+  @ApiOkResponse({ type: RecordingAvailabilityResponse })
+  @ApiBadRequestResponse({ description: "VALIDATION_ERROR" })
+  @ApiForbiddenResponse({ description: "AUTHZ_FORBIDDEN" })
+  @ApiNotFoundResponse({ description: "LESSON_NOT_FOUND" })
+  @Authz(PERMISSIONS.RECORDING_MANAGE, byLessonCourse)
+  @UsePipes(new MedarisValidationPipe({ transform: true }))
+  @Put("lessons/:id/recording-availability")
+  async setAvailability(
+    @Req() request: AuthorizedRequest,
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body() dto: SetRecordingAvailabilityDto
+  ): Promise<RecordingAvailabilityResponse> {
+    const saved = await this.service.setAvailability(
+      id,
+      dto.availableAt,
+      request.user
+    );
+    return {
+      lessonId: saved.lessonId,
+      recordingAvailableAt: saved.recordingAvailableAt,
+    };
   }
 }

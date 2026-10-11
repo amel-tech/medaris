@@ -14,7 +14,12 @@ import { getLocale, getTimeZone, getTranslations } from "next-intl/server";
 import type { ReactNode } from "react";
 import type { LooseTranslator } from "~/lib/i18n/loose";
 import { canWriteNotes } from "../lesson-note-model";
-import { recordingsTabPath } from "../recordings-model";
+import {
+  type ReleaseTranslate,
+  recordingReleaseOf,
+  recordingsTabPath,
+  releaseWordsOf,
+} from "../recordings-model";
 import {
   calendarLabels,
   hostOf,
@@ -24,6 +29,7 @@ import { splitArabic, zoneLabel } from "../session-model";
 import { watchPath, watchTargetOf } from "../watch-model";
 import { CourseResources } from "./course-resources";
 import { LessonNotes } from "./lesson-notes";
+import { RecordingReleaseNote } from "./recording-release";
 import { SessionJoinLive } from "./session-join-live";
 import { SessionProgramme } from "./session-programme";
 
@@ -169,6 +175,19 @@ export const SessionPage = async ({
   // (MDRS-162), so a body without them offers no way there.
   const recording = session.recording ?? null;
   const target = watchTargetOf(session);
+  // MDRS-288: a recording the course team holds back until a time says when
+  // it opens: to a talebe, who has no link to it yet, and to the course team,
+  // who play it already. The time is the course's, the viewer's clock beside.
+  const release = recordingReleaseOf(recording, now);
+  const releaseWords = release
+    ? releaseWordsOf(
+        release,
+        (await getTranslations(
+          "tedrisLearn.RecordingRelease"
+        )) as ReleaseTranslate,
+        { locale, courseTimeZone: course.timeZone, viewerTimeZone: timeZone }
+      )
+    : null;
   // MDRS-266: an enrolled talebe takes private notes on every celse that
   // stands, before it starts as well. Where a video can be watched now the
   // panel is beside it on the watch page; with none it is here, under the
@@ -304,6 +323,15 @@ export const SessionPage = async ({
               <EmptyState icon={<Icon name="playCircle" />}>
                 {t("SessionPage.noRecording")}
               </EmptyState>
+            </Card>
+          ) : null}
+
+          {releaseWords ? (
+            // MDRS-288: the place the recording takes says when it opens.
+            <Card title={t("SessionPage.recordingCardTitle")} headingLevel={2}>
+              <p className="mds-body-sm mbs-2">
+                <RecordingReleaseNote words={releaseWords} />
+              </p>
             </Card>
           ) : null}
 

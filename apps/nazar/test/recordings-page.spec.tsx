@@ -2,7 +2,7 @@
 import { resources } from "@medaris/i18n";
 import { Toaster, ToastProvider } from "@medaris/ui/mds/toast";
 import { NextIntlClientProvider } from "next-intl";
-import type { ReactElement } from "react";
+import { act, type ReactElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, click, render, settle, type as typeInto } from "./dom";
 import { expand, html, textOf, translatorFor } from "./server-render";
@@ -30,6 +30,7 @@ const state = {
 const refresh = vi.fn();
 const addRecording = vi.fn();
 const changeRecording = vi.fn();
+const setRecordingAvailability = vi.fn();
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh, replace: vi.fn(), push: vi.fn() }),
@@ -65,6 +66,8 @@ vi.mock("~/features/account/reads", () => ({
 vi.mock("~/features/recordings/actions", () => ({
   addRecording: (...args: unknown[]) => addRecording(...args),
   changeRecording: (...args: unknown[]) => changeRecording(...args),
+  setRecordingAvailability: (...args: unknown[]) =>
+    setRecordingAvailability(...args),
 }));
 
 const lesson = (id: string, title: string, at: string, over = {}) => ({
@@ -216,9 +219,22 @@ beforeEach(() => {
   state.reads = [];
   state.viewer = { id: "u-1", timeZone: "Europe/Istanbul" };
   state.permissions = holding("recording.manage");
-  for (const fn of [refresh, addRecording, changeRecording]) fn.mockReset();
+  for (const fn of [
+    refresh,
+    addRecording,
+    changeRecording,
+    setRecordingAvailability,
+  ]) {
+    fn.mockReset();
+  }
   addRecording.mockResolvedValue({ success: true, data: { id: "r-new" } });
   changeRecording.mockResolvedValue({ success: true, data: { id: "r-l-1" } });
+  setRecordingAvailability.mockImplementation(
+    async (_lessonId: string, availableAt: string | null) => ({
+      success: true,
+      data: { availableAt },
+    })
+  );
 });
 afterEach(async () => {
   await cleanup();
@@ -700,5 +716,234 @@ describe("Yayını kayıt olarak ekle (MDRS-283)", () => {
     const out = await markup();
     expect(out).not.toContain("Yayını kayıt olarak ekle");
     expect(out).toContain('aria-label="Kayıt ekle: Hafta 2"');
+  });
+});
+
+describe("when talebe may watch (MDRS-288)", () => {
+  /** 14 Ekim 20:00 in Istanbul */
+  const AHEAD = "2026-10-14T17:00:00.000Z";
+  /** The course with `lessonId` holding a release time. */
+  const releasing = (
+    lessonId: string,
+    at: string,
+    over: Record<string, unknown> = {}
+  ) => {
+    const base = course(over);
+    return {
+      ...base,
+      weeks: base.weeks.map((week) => ({
+        ...week,
+        lessons: week.lessons.map((lesson) =>
+          lesson.id === lessonId
+            ? { ...lesson, recordingAvailableAt: new Date(at) }
+            : lesson
+        ),
+      })),
+    };
+  };
+  const radio = (label: string) =>
+    [...dialog().querySelectorAll("label.mds-choice")].find(
+      (l) => l.querySelector(".mds-choice__label")?.textContent === label
+    ) as HTMLElement;
+  const picked = (label: string) =>
+    radio(label).querySelector("[role=radio]")?.getAttribute("aria-checked") ===
+    "true";
+  const pick = async (label: string) => {
+    await click(radio(label).querySelector("[role=radio]") as Element);
+    await settle(20);
+  };
+  const boxes = () =>
+    [
+      ...dialog().querySelectorAll<HTMLInputElement>(
+        ".mds-datetime input.mds-input"
+      ),
+    ] as [HTMLInputElement, HTMLInputElement];
+  /** Types a date and a time into the kit's field, each committed as the box is left. */
+  const enter = async (date: string, time: string) => {
+    for (const [box, text] of boxes().map(
+      (b, i) => [b, i === 0 ? date : time] as const
+    )) {
+      await act(async () => box.focus());
+      await typeInto(box, text);
+      await act(async () => box.blur());
+    }
+    await settle(20);
+  };
+  const posted = () =>
+    (dialog().querySelector('input[name="availableAt"]') as HTMLInputElement)
+      ?.value;
+  const openRelease = async (session: string) => {
+    await mount();
+    await click(byLabel(`Kayıt erişimini değiştir: ${session}`));
+    await settle(20);
+  };
+
+  it("says in Erişim whether each recording is open, when it opens, or that it opens once ready", async () => {
+    state.course = { status: "ok", data: releasing("l-1", AHEAD) };
+    const out = await markup();
+    expect(textOf(out)).toContain("Erişim");
+    expect(textOf(rowOf(out, "Kayıt l-1"))).toContain(
+      "14 Ekim 20:00’de açılır"
+    );
+    expect(rowOf(out, "Kayıt l-1").toLowerCase()).toContain(
+      `datetime="${AHEAD.toLowerCase()}"`
+    );
+    expect(textOf(rowOf(out, "Kayıt l-5"))).toContain("Açık");
+    expect(textOf(rowOf(out, "Kayıt l-6"))).toContain("Hazır olunca açılır");
+    // the viewer reads the course's clock: nothing to name
+    expect(textOf(out)).not.toContain("saatiyle");
+  });
+
+  it("says it on the course's clock, and names that clock when the viewer's shows another time", async () => {
+    state.course = { status: "ok", data: releasing("l-1", AHEAD) };
+    state.viewer = { id: "u-1", timeZone: "Europe/Berlin" };
+    const berlin = textOf(rowOf(await markup(), "Kayıt l-1"));
+    expect(berlin).toContain("14 Ekim 20:00’de açılır");
+    expect(berlin).toContain("İstanbul saatiyle");
+    state.course = {
+      status: "ok",
+      data: releasing("l-1", AHEAD, { timeZone: "America/New_York" }),
+    };
+    state.viewer = { id: "u-1", timeZone: "Europe/Istanbul" };
+    const newYork = textOf(rowOf(await markup(), "Kayıt l-1"));
+    expect(newYork).toContain("14 Ekim 13:00’te açılır");
+    expect(newYork).toContain("New York saatiyle");
+  });
+
+  it("is changed from any row, recorded or not, by a holder of recording.manage only", async () => {
+    let out = await markup();
+    expect(out).toContain('aria-label="Kayıt erişimini değiştir: Hafta 1"');
+    expect(out).toContain('aria-label="Kayıt erişimini değiştir: Hafta 2"');
+    expect(out).toContain('aria-label="Kayıt erişimini değiştir: Hafta 2b"');
+    state.permissions = holding("recording.upload");
+    out = await markup();
+    expect(out).toContain("Hazır olunca açılır");
+    expect(out).not.toContain("Kayıt erişimini değiştir");
+  });
+
+  it("sets a time from the row on the course's clock, says so and reads the page again", async () => {
+    await openRelease("Hafta 2");
+    expect(dialog().textContent).toContain("Kayıt erişimi");
+    expect(picked("Hazır olunca hemen")).toBe(true);
+    expect(dialog().querySelector(".mds-datetime")).toBeNull();
+    await pick("Şu tarih ve saatte");
+    expect(dialog().textContent).toContain("İstanbul saatiyle.");
+    await enter("14.10.2026", "20:00");
+    expect(posted()).toBe("2026-10-14T20:00");
+    await submit("Kaydet");
+    expect(setRecordingAvailability).toHaveBeenCalledExactlyOnceWith(
+      "l-2",
+      AHEAD
+    );
+    expect(toast("success")).toContain("Kayıt erişimi kaydedildi");
+    expect(toast("success")).toContain(
+      "Hafta 2 celsesinin kaydı talebeye 14 Ekim 20:00’de açılır."
+    );
+    expect(refresh).toHaveBeenCalledOnce();
+    expect(dialog()).toBeNull();
+  });
+
+  it("reads the time typed on a course in another zone on that zone's clock", async () => {
+    state.course = {
+      status: "ok",
+      data: course({ timeZone: "America/New_York" }),
+    };
+    await openRelease("Hafta 2");
+    await pick("Şu tarih ve saatte");
+    expect(dialog().textContent).toContain("New York saatiyle.");
+    await enter("15.10.2026", "20:00");
+    await submit("Kaydet");
+    expect(setRecordingAvailability).toHaveBeenCalledWith(
+      "l-2",
+      "2026-10-16T00:00:00.000Z"
+    );
+  });
+
+  it("asks for a date and a time, refuses one that has passed, and sends nothing", async () => {
+    await openRelease("Hafta 2");
+    await pick("Şu tarih ve saatte");
+    await submit("Kaydet");
+    expect(dialog().textContent).toContain("Tarihi ve saati yazın.");
+    await enter("05.10.2026", "20:00");
+    expect(dialog().textContent).toContain("İleri bir tarih ve saat seçin.");
+    await submit("Kaydet");
+    expect(setRecordingAvailability).not.toHaveBeenCalled();
+    expect(dialog()).not.toBeNull();
+  });
+
+  it("opens a held time back to as soon as it is ready", async () => {
+    state.course = { status: "ok", data: releasing("l-1", AHEAD) };
+    await openRelease("Hafta 1");
+    expect(picked("Şu tarih ve saatte")).toBe(true);
+    expect(boxes().map((box) => box.value)).toEqual(["14.10.2026", "20:00"]);
+    await pick("Hazır olunca hemen");
+    await submit("Kaydet");
+    expect(setRecordingAvailability).toHaveBeenCalledExactlyOnceWith(
+      "l-1",
+      null
+    );
+    expect(toast("success")).toContain(
+      "Hafta 1 celsesinin kaydı hazır olunca talebeye açılır."
+    );
+  });
+
+  it("closes without writing when the choice is what the session holds", async () => {
+    await openRelease("Hafta 2");
+    await submit("Kaydet");
+    expect(setRecordingAvailability).not.toHaveBeenCalled();
+    expect(dialog()).toBeNull();
+  });
+
+  it("words a refusal from its code and keeps the dialog", async () => {
+    setRecordingAvailability.mockResolvedValue({
+      success: false,
+      code: "AUTHZ_FORBIDDEN",
+    });
+    await openRelease("Hafta 2");
+    await pick("Şu tarih ve saatte");
+    await enter("14.10.2026", "20:00");
+    await submit("Kaydet");
+    expect(toast("error")).toContain("Kayıt erişimi kaydedilemedi");
+    expect(toast("error")).toContain("Bunu yapma izniniz yok.");
+    expect(dialog()).not.toBeNull();
+    expect(refresh).not.toHaveBeenCalled();
+  });
+
+  it("goes with a pasted link in the same write, so the recording is never open before its time", async () => {
+    await mount();
+    await click(byLabel("Kayıt ekle: Hafta 2"));
+    await settle(20);
+    expect(picked("Hazır olunca hemen")).toBe(true);
+    await typeInto(field("url"), ZOOM);
+    await pick("Şu tarih ve saatte");
+    await enter("14.10.2026", "20:00");
+    await submit("Kaydı ekle");
+    expect(addRecording).toHaveBeenCalledExactlyOnceWith("l-2", {
+      title: "Hafta 2 kaydı",
+      url: ZOOM,
+      visibility: "ENROLLED",
+      availableAt: AHEAD,
+    });
+    expect(setRecordingAvailability).not.toHaveBeenCalled();
+  });
+
+  it("goes with an edit as one more change: moved, or opened back to as soon as it is ready", async () => {
+    state.course = { status: "ok", data: releasing("l-1", AHEAD) };
+    await mount();
+    await click(byLabel("Kaydı düzenle: Hafta 1"));
+    await settle(20);
+    expect(picked("Şu tarih ve saatte")).toBe(true);
+    await enter("15.10.2026", "21:30");
+    await submit("Kaydet");
+    expect(changeRecording).toHaveBeenLastCalledWith("r-l-1", {
+      availableAt: "2026-10-15T18:30:00.000Z",
+    });
+    await click(byLabel("Kaydı düzenle: Hafta 1"));
+    await settle(20);
+    await pick("Hazır olunca hemen");
+    await submit("Kaydet");
+    expect(changeRecording).toHaveBeenLastCalledWith("r-l-1", {
+      availableAt: null,
+    });
   });
 });

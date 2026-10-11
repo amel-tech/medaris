@@ -59,8 +59,9 @@ export interface ISessionView extends ISessionRef {
   meetingUrl?: string | null;
   /**
    * Course content (MDRS-162); from the scheduled start until the session
-   * has a READY recording, with a bound past its scheduled end (MDRS-285,
-   * `liveStreamFor`). Non-null is how a page knows a stream may be watched.
+   * has a recording open to talebe (MDRS-288), with a bound past its
+   * scheduled end (MDRS-285, `liveStreamFor`). Non-null is how a page knows
+   * a stream may be watched.
    */
   liveStreamUrl?: string | null;
   /**

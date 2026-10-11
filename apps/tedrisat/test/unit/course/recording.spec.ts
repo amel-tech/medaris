@@ -1,7 +1,9 @@
 import {
   type IRecordingRow,
+  isReleased,
   LIVE_STREAM_HOURS_AFTER_END,
   liveStreamFor,
+  mayPlay,
   RecordingProvider,
   RecordingStatus,
   RecordingVisibility,
@@ -22,6 +24,7 @@ const row = (id: string, over: Partial<IRecordingRow> = {}): IRecordingRow => ({
   url: `https://youtu.be/${id}`,
   visibility: RecordingVisibility.ENROLLED,
   status: RecordingStatus.READY,
+  availableAt: null,
   ...over,
 });
 
@@ -99,6 +102,68 @@ describe("visibleRecordings (MDRS-162)", () => {
   });
 });
 
+/**
+ * MDRS-288: the course team sets, per celse, when talebe may watch the
+ * recording. Before that time a talebe or a visitor is told the recording
+ * and when it opens, never its link; the course team plays it as before.
+ */
+describe("the release time (MDRS-288)", () => {
+  const AT = new Date("2026-10-14T17:00:00.000Z");
+  const before = new Date(AT.getTime() - 1);
+  const talebe = (now: Date) => ({ now, team: false });
+  const team = (now: Date) => ({ now, team: true });
+  const held = row("a", { availableAt: AT });
+
+  it("opens a READY recording at its time, not a moment before", () => {
+    expect(isReleased(held, before)).toBe(false);
+    expect(isReleased(held, AT)).toBe(true);
+    expect(isReleased(held, new Date(AT.getTime() + 3_600_000))).toBe(true);
+  });
+
+  it("opens one with no time as soon as it is READY, and never one that is not", () => {
+    expect(isReleased(row("a"), before)).toBe(true);
+    for (const status of [RecordingStatus.PROCESSING, RecordingStatus.FAILED]) {
+      expect(isReleased(row("a", { status }), AT)).toBe(false);
+      expect(mayPlay(row("a", { status }), team(AT))).toBe(false);
+    }
+  });
+
+  it("lists it to a talebe before the time with its availableAt and no link, and with the link at the time", () => {
+    const [early] = visibleRecordings([held], true, true, talebe(before));
+    expect(early).toMatchObject({ id: "a", availableAt: AT, url: null });
+    expect(early.status).toBe(RecordingStatus.READY);
+    const [due] = visibleRecordings([held], true, true, talebe(AT));
+    expect(due.url).toBe("https://youtu.be/a");
+  });
+
+  it("gives a visitor the same for a PUBLIC recording", () => {
+    const shown = row("a", {
+      availableAt: AT,
+      visibility: RecordingVisibility.PUBLIC,
+    });
+    const [early] = visibleRecordings([shown], false, true, talebe(before));
+    expect(early).toMatchObject({ availableAt: AT, url: null });
+    const [due] = visibleRecordings([shown], false, true, talebe(AT));
+    expect(due.url).toBe("https://youtu.be/a");
+  });
+
+  it("gives the course team the link before the time", () => {
+    const [early] = visibleRecordings([held], true, true, team(before));
+    expect(early).toMatchObject({
+      availableAt: AT,
+      url: "https://youtu.be/a",
+    });
+    expect(mayPlay(held, team(before))).toBe(true);
+    expect(mayPlay(held, talebe(before))).toBe(false);
+  });
+
+  it("reads a call that names no reader as a talebe's, now", () => {
+    const later = new Date(Date.now() + 3_600_000);
+    const [only] = visibleRecordings([row("a", { availableAt: later })], true);
+    expect(only.url).toBeNull();
+  });
+});
+
 describe("liveStreamFor (MDRS-162, MDRS-285)", () => {
   const url = "https://youtube.com/live/abc";
   const START = new Date("2026-10-11T17:00:00.000Z");
@@ -113,8 +178,16 @@ describe("liveStreamFor (MDRS-162, MDRS-285)", () => {
   const stream = (
     now: Date,
     recording: RecordingStatus | null = null,
-    over: Partial<typeof celse> = {}
-  ) => liveStreamFor({ ...celse, ...over }, url, recording, true, now);
+    over: Partial<typeof celse> = {},
+    availableAt: Date | null = null
+  ) =>
+    liveStreamFor(
+      { ...celse, ...over },
+      url,
+      recording === null ? null : { status: recording, availableAt },
+      true,
+      now
+    );
 
   it("is null before the scheduled start", () => {
     expect(stream(at(-0.01))).toBeNull();
@@ -142,6 +215,21 @@ describe("liveStreamFor (MDRS-162, MDRS-285)", () => {
   it("stops once the session has a READY recording, even while the clock says LIVE", () => {
     expect(stream(at(3), RecordingStatus.READY)).toBeNull();
     expect(stream(at(1), RecordingStatus.READY)).toBeNull();
+  });
+
+  it("keeps giving it while a READY recording waits for its release time, and stops at that time (MDRS-288)", () => {
+    const release = at(6);
+    expect(stream(at(3), RecordingStatus.READY, {}, release)).toBe(url);
+    expect(
+      stream(
+        new Date(release.getTime() - 1),
+        RecordingStatus.READY,
+        {},
+        release
+      )
+    ).toBe(url);
+    expect(stream(release, RecordingStatus.READY, {}, release)).toBeNull();
+    expect(stream(at(1), RecordingStatus.READY, {}, at(0.5))).toBeNull();
   });
 
   it("stops LIVE_STREAM_HOURS_AFTER_END hours after the scheduled end with no recording", () => {

@@ -2,7 +2,6 @@ import { AuthenticatedUser } from "@medaris/common";
 import { Injectable } from "@nestjs/common";
 import { BunnyStreamClient } from "../bunny-stream/bunny-stream.client";
 import { CourseRepository } from "./course.repository";
-import { CourseNotifier } from "./course-notifier";
 import {
   type IRecordingRow,
   RecordingStatus,
@@ -16,16 +15,19 @@ import type {
 import { LessonNotFoundError } from "./errors/lesson-not-found.error";
 import { RecordingNotFoundError } from "./errors/recording-not-found.error";
 import {
+  type IRecordingAvailability,
   type IWrittenRecording,
   RecordingRepository,
 } from "./recording.repository";
+import { RecordingReleasePoller } from "./recording-release.poller";
 
 /**
  * The recordings of a course, written by its staff (MDRS-247): a link that is
- * pasted, its title, its visibility. Both routes are `recording.manage`'s
- * ("Kayıtları yönet"): the müderris and the köşk nazımı hold it by default, a
- * ders nazırı when it is given. The routes ask it in their `@Authz`, so by the
- * time a handler runs the caller holds it; what is left here is existence,
+ * pasted, its title, its visibility, and when its talebe may watch it
+ * (MDRS-288). Every route is `recording.manage`'s ("Kayıtları yönet"): the
+ * müderris and the köşk nazımı hold it by default, a ders nazırı when it is
+ * given. The routes ask it in their `@Authz`, so by the time a handler runs
+ * the caller holds it; what is left here is existence,
  * which the başnazım's bypass skips in the guard, and the link itself.
  *
  * A link is read by `detectRecordingLink` (MDRS-119) and nothing else: a
@@ -42,7 +44,7 @@ export class RecordingService {
     private readonly courseRepo: CourseRepository,
     private readonly recordings: RecordingRepository,
     private readonly bunny: BunnyStreamClient,
-    private readonly notifier: CourseNotifier
+    private readonly release: RecordingReleasePoller
   ) {}
 
   /**
@@ -64,13 +66,14 @@ export class RecordingService {
       title: dto.title,
       link: detectRecordingLink(dto.url, this.bunny.libraryId),
       visibility: dto.visibility ?? RecordingVisibility.ENROLLED,
+      availableAt: dto.availableAt,
       actorId: user.sub,
     });
-    await this.announce(written, user);
+    await this.release.announce(lessonId, user.sub);
     return this.answer(written);
   }
 
-  /** Changes a recording's title, link or visibility. */
+  /** Changes a recording's title, link, visibility or release time. */
   async change(
     recordingId: string,
     dto: UpdateRecordingDto,
@@ -88,31 +91,40 @@ export class RecordingService {
             ? undefined
             : detectRecordingLink(dto.url, this.bunny.libraryId),
         visibility: dto.visibility,
+        availableAt: dto.availableAt,
       },
       user.sub
     );
-    await this.announce(written, user);
+    await this.release.announce(written.recording.lessonId, user.sub);
     return this.answer(written);
   }
 
   /**
-   * Tells the session's talebe, once, that its recording can be watched
-   * (MDRS-283): when this write made it READY and it was not. Adding a pasted
-   * link does; replacing the link of a READY recording, or changing its title
-   * or visibility, does not. The writer is not told of their own write.
+   * Sets when the session's talebe may watch its recording (MDRS-288), with
+   * or before a recording: null opens it as soon as it is READY. A recording
+   * this opens now is announced now; one it holds back is announced by the
+   * release poll at the time, unless it was announced already.
    */
-  private async announce(
-    { recording, becameReady }: IWrittenRecording,
+  async setAvailability(
+    lessonId: string,
+    availableAt: Date | null,
     user: AuthenticatedUser
-  ): Promise<void> {
-    if (!becameReady) return;
-    await this.notifier.recordingAdded(recording.lessonId, user.sub);
+  ): Promise<IRecordingAvailability> {
+    const saved = await this.recordings.setRecordingAvailableAt(
+      lessonId,
+      availableAt,
+      user.sub
+    );
+    await this.release.announce(lessonId, user.sub);
+    return saved;
   }
 
   /**
    * The recording as its writer is answered: a READY Bunny recording carries
    * its player link signed for this response, as on the reads (MDRS-119);
-   * the video id itself is never returned.
+   * the video id itself is never returned. The writer holds
+   * `recording.manage`, so a recording held back until its release time is
+   * played for them as for the rest of the course team (MDRS-288).
    */
   private answer({
     recording,

@@ -346,6 +346,8 @@ export const CoursePage = ({
                   )
                 }
                 watch={!course.contentLocked}
+                // MDRS-288: whether a recording's release time is still ahead.
+                now={now}
               />
             </TabsPanel>
             {seat ? (

@@ -34,6 +34,7 @@ const addRecording = vi.fn();
 const changeRecording = vi.fn();
 const startRecordingUpload = vi.fn();
 const resignRecordingUpload = vi.fn();
+const setRecordingAvailability = vi.fn();
 
 /** tus-js-client: an `Upload` that records what it is given, and its storage in memory. */
 const tus = vi.hoisted(() => {
@@ -116,6 +117,8 @@ vi.mock("~/features/recordings/actions", () => ({
   changeRecording: (...args: unknown[]) => changeRecording(...args),
   startRecordingUpload: (...args: unknown[]) => startRecordingUpload(...args),
   resignRecordingUpload: (...args: unknown[]) => resignRecordingUpload(...args),
+  setRecordingAvailability: (...args: unknown[]) =>
+    setRecordingAvailability(...args),
 }));
 
 const lesson = (id: string, title: string, at: string) => ({
@@ -263,9 +266,16 @@ beforeEach(() => {
     changeRecording,
     startRecordingUpload,
     resignRecordingUpload,
+    setRecordingAvailability,
   ]) {
     fn.mockReset();
   }
+  setRecordingAvailability.mockImplementation(
+    async (_lessonId: string, availableAt: string | null) => ({
+      success: true,
+      data: { availableAt },
+    })
+  );
   tus.made.length = 0;
   tus.entries.clear();
   addRecording.mockResolvedValue({ success: true, data: { id: "r-new" } });
@@ -634,5 +644,86 @@ describe("reading again while something is pending", () => {
     expect(call).toHaveBeenCalledTimes(1);
     await act(async () => root.unmount());
     host.remove();
+  });
+});
+
+describe("when talebe may watch an upload (MDRS-288)", () => {
+  /** 14 Ekim 20:00 in Istanbul */
+  const AHEAD = "2026-10-14T17:00:00.000Z";
+  const choose = async (label: string) => {
+    const option = [...dialog().querySelectorAll("label.mds-choice")].find(
+      (l) => l.querySelector(".mds-choice__label")?.textContent === label
+    );
+    await click(option?.querySelector("[role=radio]") as Element);
+    await settle(20);
+  };
+  const enter = async (date: string, time: string) => {
+    const [day, clock] = [
+      ...dialog().querySelectorAll<HTMLInputElement>(
+        ".mds-datetime input.mds-input"
+      ),
+    ] as [HTMLInputElement, HTMLInputElement];
+    for (const [box, text] of [
+      [day, date],
+      [clock, time],
+    ] as const) {
+      await act(async () => box.focus());
+      await typeInto(box, text);
+      await act(async () => box.blur());
+    }
+    await settle(20);
+  };
+
+  it("writes a changed time on its own route before anything is uploaded, so the video never opens before it", async () => {
+    await openAdd();
+    await choose("Şu tarih ve saatte");
+    await enter("14.10.2026", "20:00");
+    await pick(video());
+    await press("Yükle");
+    expect(setRecordingAvailability).toHaveBeenCalledExactlyOnceWith(
+      "l-2",
+      AHEAD
+    );
+    expect(startRecordingUpload).toHaveBeenCalledOnce();
+    expect(setRecordingAvailability.mock.invocationCallOrder[0]).toBeLessThan(
+      startRecordingUpload.mock.invocationCallOrder[0] as number
+    );
+    expect(lastTus().starts).toBe(1);
+  });
+
+  it("uploads nothing when the time is refused, and says so in the dialog", async () => {
+    setRecordingAvailability.mockResolvedValue({
+      success: false,
+      code: "AUTHZ_FORBIDDEN",
+    });
+    await openAdd();
+    await choose("Şu tarih ve saatte");
+    await enter("14.10.2026", "20:00");
+    await pick(video());
+    await press("Yükle");
+    const alert = dialog().querySelector("[role=alert]");
+    expect(alert?.textContent).toContain("Kayıt erişimi kaydedilemedi");
+    expect(alert?.textContent).toContain("Bunu yapma izniniz yok.");
+    expect(startRecordingUpload).not.toHaveBeenCalled();
+    expect(tus.made).toHaveLength(0);
+    expect(buttonIn(dialog(), "Yükle")).toBeDefined();
+  });
+
+  it("writes no time when the choice is left as the session holds it", async () => {
+    await openAdd();
+    await pick(video());
+    await press("Yükle");
+    expect(setRecordingAvailability).not.toHaveBeenCalled();
+    expect(startRecordingUpload).toHaveBeenCalledOnce();
+  });
+
+  it("is not offered to a holder of recording.upload alone, as recording.manage writes it", async () => {
+    state.permissions = holding("recording.upload");
+    await openAdd();
+    expect(dialog().querySelector('[data-testid="release"]')).toBeNull();
+    await cleanup();
+    state.permissions = holding("recording.manage", "recording.upload");
+    await openAdd();
+    expect(dialog().querySelector('[data-testid="release"]')).not.toBeNull();
   });
 });

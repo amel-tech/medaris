@@ -25,6 +25,7 @@ import { RecordingController } from "./recording.controller";
 import { RecordingRepository } from "./recording.repository";
 import { RecordingService } from "./recording.service";
 import { RecordingEncodingPoller } from "./recording-encoding.poller";
+import { RecordingReleasePoller } from "./recording-release.poller";
 import { RecordingUploadController } from "./recording-upload.controller";
 import { RecordingUploadService } from "./recording-upload.service";
 
@@ -57,6 +58,7 @@ import { RecordingUploadService } from "./recording-upload.service";
     RecordingService,
     RecordingUploadService,
     RecordingEncodingPoller,
+    RecordingReleasePoller,
     CourseStatsRepository,
     CourseNotifier,
     CourseNotificationRepository,

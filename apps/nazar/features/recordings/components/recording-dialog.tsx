@@ -24,6 +24,7 @@ import {
   addRecording,
   changeRecording,
   resignRecordingUpload,
+  setRecordingAvailability,
   startRecordingUpload,
 } from "../actions";
 import {
@@ -45,6 +46,10 @@ import {
   type RecordingFact,
   recordingErrorKey,
   recordingsMoved,
+  releaseChange,
+  releaseErrorKey,
+  releaseFormOf,
+  releaseProblem,
   type SessionSlot,
   switchLocked,
   uploadBody,
@@ -52,6 +57,7 @@ import {
   uploadErrorKey,
   uploadMoved,
 } from "../recordings";
+import { ReleaseFields } from "./release-fields";
 
 /** What the caller holds of the two recording codes in this course. */
 export interface RecordingAbilities {
@@ -86,12 +92,20 @@ type Step = "idle" | "signing" | "sending" | "stopped" | "failed";
  * what changed. A refusal is worded from the API's code and, for a link
  * tedrisat cannot store, its reason; when it means the page is out of date,
  * the dialog closes and the page is read again.
+ *
+ * Under them, for a holder of `recording.manage`, when talebe may watch it
+ * (MDRS-288): "Hazır olunca hemen" or "Şu tarih ve saatte" on the course's
+ * clock, starting from what the session holds. A changed choice goes with the
+ * pasted link or the edit, in the same write; before an upload it is written
+ * first, on its own route, so the video is never open to talebe before its
+ * time while Bunny prepares it.
  */
 export function RecordingDialog({
   slot,
   can,
   resume = false,
   closed,
+  timeZone,
   onClose,
   onDone,
 }: {
@@ -101,6 +115,8 @@ export function RecordingDialog({
   resume?: boolean;
   /** the course is closed: nothing is opened to everyone */
   closed: boolean;
+  /** the course's zone, which the release time is typed in */
+  timeZone: string;
   onClose: () => void;
   /** called once something was written, or the page is out of date, for it to be read again */
   onDone: () => void;
@@ -126,12 +142,33 @@ export function RecordingDialog({
   const [failure, setFailure] = useState<{
     code: string;
     reason: string | null;
+    /** the release time was refused, before anything was uploaded */
+    release?: true;
   } | null>(null);
   const [videoId, setVideoId] = useState<string | null>(null);
   const job = useRef<BunnyUpload | null>(null);
   const busy = step === "signing" || step === "sending";
   // once a video exists it is the session's recording: nothing else may be sent instead
   const locked = busy || videoId !== null;
+
+  // When talebe may watch it: only `recording.manage` writes it.
+  const releasing = !resume && can.manage;
+  const [release, setRelease] = useState(() =>
+    releaseFormOf(slot.availableAt, timeZone)
+  );
+  // what this dialog already wrote before an upload; the session's time otherwise
+  const [releaseWritten, setReleaseWritten] = useState<
+    string | null | undefined
+  >(undefined);
+  const heldRelease =
+    releaseWritten === undefined ? slot.availableAt : releaseWritten;
+  const releaseIssue = releasing
+    ? releaseProblem(release, heldRelease, timeZone, new Date())
+    : null;
+  const releaseDelta =
+    releasing && releaseIssue === null
+      ? releaseChange(release, heldRelease, timeZone)
+      : null;
 
   // A page left while the bytes go would drop the upload: the browser asks first.
   useEffect(() => {
@@ -153,8 +190,8 @@ export function RecordingDialog({
 
   const close = () => {
     onClose();
-    // the session holds the video's recording now, "Hazırlanıyor"
-    if (videoId !== null) onDone();
+    // the session holds the video's recording now, "Hazırlanıyor", or its new time
+    if (videoId !== null || releaseWritten !== undefined) onDone();
   };
 
   // A file with a problem marks its field invalid, and the kit's form is not
@@ -177,9 +214,25 @@ export function RecordingDialog({
       return;
     }
     const body = uploadBody(form, slot);
-    if (!body) {
+    if (!body || releaseIssue !== null) {
       setSent(true);
       return;
+    }
+    // The time first: the video must not open to talebe while Bunny prepares it.
+    if (releaseDelta) {
+      setFailure(null);
+      setStep("signing");
+      const saved = await setRecordingAvailability(
+        slot.lessonId,
+        releaseDelta.availableAt
+      );
+      if (!saved.success) {
+        setStep("failed");
+        setFailure({ code: saved.code, reason: null, release: true });
+        if (saved.code === "LESSON_NOT_FOUND") onDone();
+        return;
+      }
+      setReleaseWritten(releaseDelta.availableAt);
     }
     if (!job.current) {
       job.current = new BunnyUpload({
@@ -225,12 +278,12 @@ export function RecordingDialog({
       return;
     }
     if (pending) return;
-    if (Object.keys(errors).length > 0) {
+    if (Object.keys(errors).length > 0 || releaseIssue !== null) {
       setSent(true);
       return;
     }
-    const patch = editing ? patchBody(form, editing) : null;
-    const create = editing ? null : createBody(form);
+    const patch = editing ? patchBody(form, editing, releaseDelta) : null;
+    const create = editing ? null : createBody(form, releaseDelta);
     if (!patch && !create) {
       // nothing changed
       onClose();
@@ -372,8 +425,21 @@ export function RecordingDialog({
         </Alert>
       ) : null}
       {step === "failed" && failure ? (
-        <Alert tone="error" title={t("Recordings.upload.failedTitle")}>
-          <p>{words(uploadErrorKey(failure.code, failure.reason))}</p>
+        <Alert
+          tone="error"
+          title={t(
+            failure.release
+              ? "Recordings.release.failed"
+              : "Recordings.upload.failedTitle"
+          )}
+        >
+          <p>
+            {words(
+              failure.release
+                ? releaseErrorKey(failure.code)
+                : uploadErrorKey(failure.code, failure.reason)
+            )}
+          </p>
         </Alert>
       ) : null}
     </>
@@ -502,6 +568,17 @@ export function RecordingDialog({
           onCheckedChange={(checked) => setForm({ ...form, isPublic: checked })}
         />
       )}
+      {releasing ? (
+        <ReleaseFields
+          value={release}
+          onChange={(patch) =>
+            setRelease((current) => ({ ...current, ...patch }))
+          }
+          timeZone={timeZone}
+          problem={sent ? releaseIssue : null}
+          disabled={pending || locked}
+        />
+      ) : null}
     </Dialog>
   );
 }

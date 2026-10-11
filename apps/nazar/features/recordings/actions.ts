@@ -57,19 +57,38 @@ const grantOf = ({
   authorizationSignature,
 });
 
-/** "Kaydı ekle" (`POST /lessons/:id/recordings`): the recording of one session, READY at once. */
+/**
+ * The release time as the client sends it (MDRS-288): an ISO time crosses
+ * from the browser as text, and null is "Hazır olunca hemen". Absent stays
+ * absent, so the session's time is left as it is.
+ */
+const releaseOf = (
+  availableAt: string | null | undefined
+): { availableAt?: Date | null } =>
+  availableAt === undefined
+    ? {}
+    : { availableAt: availableAt === null ? null : new Date(availableAt) };
+
+/**
+ * "Kaydı ekle" (`POST /lessons/:id/recordings`): the recording of one
+ * session, READY at once, and when its talebe may watch it when that changed,
+ * written with it.
+ */
 export async function addRecording(
   lessonId: string,
   body: {
     title: string;
     url: string;
     visibility: RecordingResponse["visibility"];
+    /** ISO time; null opens it as soon as it is READY */
+    availableAt?: string | null;
   }
 ): Promise<RecordingOutcome> {
+  const { availableAt, ...rest } = body;
   const result = await authenticatedAction(async (api) => {
     const { id } = await api.lessons.createLessonRecording({
       id: lessonId,
-      createRecordingDto: body,
+      createRecordingDto: { ...rest, ...releaseOf(availableAt) },
     });
     return { id };
   });
@@ -84,18 +103,52 @@ export async function changeRecording(
     title?: string;
     url?: string;
     visibility?: RecordingResponse["visibility"];
+    /** ISO time; null opens it as soon as it is READY */
+    availableAt?: string | null;
   }
 ): Promise<RecordingOutcome> {
+  const { availableAt, ...rest } = body;
   const result = await authenticatedAction(async (api) => {
     const { id } = await api.lessons.updateRecording({
       id: recordingId,
-      updateRecordingDto: body,
+      updateRecordingDto: { ...rest, ...releaseOf(availableAt) },
     });
     return { id };
   });
   if (!result.success)
     console.error("Error changing a recording:", result.error);
   return recordingOutcomeOf(result);
+}
+
+/**
+ * When the session's talebe may watch its recording
+ * (`PUT /lessons/:id/recording-availability`, MDRS-288): an ISO time, or null
+ * for as soon as it is READY. Kept on the session, so it may be set before a
+ * recording exists; the course version is not involved. `recording.manage`.
+ */
+export async function setRecordingAvailability(
+  lessonId: string,
+  availableAt: string | null
+): Promise<
+  | Extract<ActionOutcome<{ availableAt: string | null }>, { success: true }>
+  | { success: false; code: string; reason?: string }
+> {
+  const result = await authenticatedAction(async (api) => {
+    const saved = await api.lessons.setLessonRecordingAvailability({
+      id: lessonId,
+      setRecordingAvailabilityDto: {
+        availableAt: availableAt === null ? null : new Date(availableAt),
+      },
+    });
+    return {
+      availableAt: saved.recordingAvailableAt
+        ? new Date(saved.recordingAvailableAt).toISOString()
+        : null,
+    };
+  });
+  if (!result.success)
+    console.error("Error setting a recording's release time:", result.error);
+  return withReason(result);
 }
 
 /**

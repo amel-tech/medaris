@@ -6,11 +6,14 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, click, render } from "./dom";
 
 const refresh = vi.hoisted(() => vi.fn());
+/** The viewer's zone (MDRS-288). */
+const viewerZone = vi.hoisted(() => ({ current: "Europe/Istanbul" }));
 
 vi.mock("next-intl", async () => {
   const { resources } = await import("@medaris/i18n");
   return {
     useLocale: () => "tr",
+    useTimeZone: () => viewerZone.current,
     useTranslations: (namespace: string) => {
       const read = (key: string) =>
         [...namespace.split("."), ...key.split(".")].reduce<unknown>(
@@ -102,6 +105,9 @@ const COURSE = "c1";
  * one who may not. Every recording's lesson is a celse unless `celses` says
  * which are.
  */
+// The page's instant: 3 Ekim 2026, before any release time below.
+const NOW = Date.parse("2026-10-03T17:52:00.000Z");
+
 const mount = async (
   recordings: RecordingResponse[] | null,
   watch = true,
@@ -119,6 +125,7 @@ const mount = async (
       courseId: COURSE,
       celses,
       watch,
+      now: NOW,
     })
   );
 };
@@ -317,6 +324,87 @@ describe("recordings tab, Bunny recordings (MDRS-114)", () => {
   });
 });
 
+describe("recordings tab, a recording held back until its release time (MDRS-288)", () => {
+  // 14 Ekim 2026 Çarşamba 20:00 in İstanbul, after NOW.
+  const AT = new Date("2026-10-14T17:00:00.000Z");
+  const LINE = "Ders kaydı 14 Ekim Çarşamba 20:00’de açılır.";
+  const held = rec("Mehmûz fiiller: celse kaydı", {
+    // An id without spaces, as the API's are: a row names two of them.
+    id: "r-mehmuz",
+    weekId: "w5",
+    weekNumber: 5,
+    weekTitle: "Mehmûz fiiller",
+    recordedAt: new Date("2026-10-02T18:00:00Z"),
+    durationMinutes: 52,
+    url: null,
+    availableAt: AT,
+  });
+  afterEach(() => {
+    viewerZone.current = "Europe/Istanbul";
+  });
+
+  it("lists it to a talebe with when it opens, and plays nothing", async () => {
+    const host = await mount([held, ...FIVE]);
+    const row = rowOf(host, "Mehmûz fiiller: celse kaydı");
+    expect(text(row)).toContain(LINE);
+    expect(text(row)).toContain("2 Ekim 2026 · 52 dk");
+    expect(row.querySelector("a")).toBeNull();
+    expect(row.querySelector("button")).toBeNull();
+    // It is ready, only not open yet.
+    expect(text(row)).not.toContain("Hazırlanıyor");
+    expect(text(row)).toContain("YouTube");
+  });
+
+  it("lists a visitor's public recording the same way, with no link out", async () => {
+    const host = await mount([{ ...held, visibility: "PUBLIC" }], false);
+    const row = rowOf(host, "Mehmûz fiiller: celse kaydı");
+    expect(text(row)).toContain(LINE);
+    expect(text(row)).toContain("Herkese açık");
+    expect(row.querySelector("a")).toBeNull();
+  });
+
+  it("names the course's zone and the viewer's clock when that shows another time", async () => {
+    viewerZone.current = "Europe/Berlin";
+    const host = await mount([held]);
+    expect(text(rowOf(host, "Mehmûz fiiller"))).toContain(
+      `${LINE} İstanbul saatiyle · 19:00 senin saatinle`
+    );
+  });
+
+  it("lets the course team play it from its row, marked with the time talebe may", async () => {
+    const early = { ...held, url: "https://youtu.be/mehmuzfiil1" };
+    const host = await mount([early]);
+    const link = rowOf(host, "Mehmûz fiiller").querySelector(
+      "a"
+    ) as HTMLAnchorElement;
+    expect(link.getAttribute("href")).toBe(
+      `/courses/${COURSE}/lessons/l-Mehmûz fiiller: celse kaydı/izle`
+    );
+    expect(text(link)).toContain(
+      "Talebelere 14 Ekim Çarşamba 20:00’de açılacak"
+    );
+    const described = (link.getAttribute("aria-describedby") ?? "")
+      .split(" ")
+      .map((id) => text(document.getElementById(id) as Element));
+    expect(described).toEqual([
+      "2 Ekim 2026 · 52 dk",
+      "Talebelere 14 Ekim Çarşamba 20:00’de açılacak",
+    ]);
+  });
+
+  it("says nothing once the time has come, or with none ('Hazır olunca hemen')", async () => {
+    for (const availableAt of [new Date(NOW - 60_000), null]) {
+      const host = await mount([
+        { ...held, url: "https://youtu.be/mehmuzfiil1", availableAt },
+      ]);
+      const row = rowOf(host, "Mehmûz fiiller");
+      expect(row.querySelector("[data-recording-release]")).toBeNull();
+      expect(row.querySelector("a")?.getAttribute("href")).toMatch(/\/izle$/);
+      await cleanup();
+    }
+  });
+});
+
 describe("recordings tab strings", () => {
   it("has every key in every locale", () => {
     const keys = Object.keys(resources.tr.tedrisLearn.RecordingsTab).sort();
@@ -324,6 +412,19 @@ describe("recordings tab strings", () => {
       expect(
         Object.keys(resources[locale].tedrisLearn.RecordingsTab).sort()
       ).toEqual(keys);
+    }
+  });
+
+  it("has every release key in every locale (MDRS-288)", () => {
+    const keys = Object.keys(resources.tr.tedrisLearn.RecordingRelease).sort();
+    expect(keys).toEqual(["early", "opens", "zone"]);
+    for (const locale of ["en", "ar"] as const) {
+      expect(
+        Object.keys(resources[locale].tedrisLearn.RecordingRelease).sort()
+      ).toEqual(keys);
+      expect(
+        resources[locale].tedrisLearn.WatchPage.streamEndedHeldText
+      ).toBeTruthy();
     }
   });
 });

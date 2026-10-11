@@ -1,4 +1,7 @@
-import { ResponseError } from "@medaris/services/tedrisat";
+import {
+  ResponseError,
+  SetRecordingAvailabilityDtoToJSON,
+} from "@medaris/services/tedrisat";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
@@ -18,6 +21,7 @@ const api = {
     updateRecording: vi.fn(),
     startRecordingUpload: vi.fn(),
     resignRecordingUpload: vi.fn(),
+    setLessonRecordingAvailability: vi.fn(),
   },
   courses: {
     setEnrollmentStatus: vi.fn(),
@@ -659,5 +663,120 @@ describe("Yükle and Devam et on Ders kayıtları", () => {
     });
     expect(api.lessons.startRecordingUpload).not.toHaveBeenCalled();
     expect(api.lessons.resignRecordingUpload).not.toHaveBeenCalled();
+  });
+});
+
+describe("when talebe may watch a session's recording (MDRS-288)", () => {
+  const AHEAD = "2026-10-14T17:00:00.000Z";
+  const body = {
+    title: "Hafta 1 kaydı",
+    url: "https://us02web.zoom.us/rec/share/abc",
+    visibility: "ENROLLED" as const,
+  };
+
+  it("sends the time with the link it is added with, as an instant, and null as null", async () => {
+    const { addRecording } = await recordings();
+    api.lessons.createLessonRecording.mockResolvedValue({ id: "r-1" });
+    await addRecording("l-1", { ...body, availableAt: AHEAD });
+    expect(api.lessons.createLessonRecording).toHaveBeenLastCalledWith({
+      id: "l-1",
+      createRecordingDto: { ...body, availableAt: new Date(AHEAD) },
+    });
+    await addRecording("l-1", { ...body, availableAt: null });
+    expect(api.lessons.createLessonRecording).toHaveBeenLastCalledWith({
+      id: "l-1",
+      createRecordingDto: { ...body, availableAt: null },
+    });
+    await addRecording("l-1", body);
+    const [{ createRecordingDto }] = api.lessons.createLessonRecording.mock
+      .lastCall as [{ createRecordingDto: object }];
+    // absent stays absent: the session's time is left as it is
+    expect(createRecordingDto).not.toHaveProperty("availableAt");
+  });
+
+  it("sends the time with an edit only when it is given", async () => {
+    const { changeRecording } = await recordings();
+    api.lessons.updateRecording.mockResolvedValue({ id: "r-1" });
+    await changeRecording("r-1", { availableAt: null });
+    expect(api.lessons.updateRecording).toHaveBeenLastCalledWith({
+      id: "r-1",
+      updateRecordingDto: { availableAt: null },
+    });
+    await changeRecording("r-1", { title: "Yeni", availableAt: AHEAD });
+    expect(api.lessons.updateRecording).toHaveBeenLastCalledWith({
+      id: "r-1",
+      updateRecordingDto: { title: "Yeni", availableAt: new Date(AHEAD) },
+    });
+  });
+
+  it("sets the time on its own, before or without a recording, and hands back what was saved", async () => {
+    const { setRecordingAvailability } = await recordings();
+    api.lessons.setLessonRecordingAvailability.mockResolvedValue({
+      lessonId: "l-1",
+      recordingAvailableAt: new Date(AHEAD),
+    });
+    expect(await setRecordingAvailability("l-1", AHEAD)).toStrictEqual({
+      success: true,
+      data: { availableAt: AHEAD },
+    });
+    expect(api.lessons.setLessonRecordingAvailability).toHaveBeenCalledWith({
+      id: "l-1",
+      setRecordingAvailabilityDto: { availableAt: new Date(AHEAD) },
+    });
+    api.lessons.setLessonRecordingAvailability.mockResolvedValue({
+      lessonId: "l-1",
+      recordingAvailableAt: null,
+    });
+    expect(await setRecordingAvailability("l-1", null)).toStrictEqual({
+      success: true,
+      data: { availableAt: null },
+    });
+    expect(api.lessons.setLessonRecordingAvailability).toHaveBeenLastCalledWith(
+      { id: "l-1", setRecordingAvailabilityDto: { availableAt: null } }
+    );
+  });
+
+  it('puts "Hazır olunca hemen" on the wire as null, through the generated serializer the client sends with', async () => {
+    // The API client is a stub above; the serializer is the real one. For a
+    // required nullable date it called toISOString() on null and threw, so
+    // the release dialog and the upload could never clear a time.
+    const { setRecordingAvailability } = await recordings();
+    api.lessons.setLessonRecordingAvailability.mockResolvedValue({
+      lessonId: "l-1",
+      recordingAvailableAt: null,
+    });
+    await setRecordingAvailability("l-1", null);
+    await setRecordingAvailability("l-1", AHEAD);
+    const [[cleared], [timed]] = api.lessons.setLessonRecordingAvailability.mock
+      .calls as [{ setRecordingAvailabilityDto: unknown }][];
+    const wire = (dto: unknown) =>
+      JSON.stringify(SetRecordingAvailabilityDtoToJSON(dto as never));
+    expect(wire(cleared.setRecordingAvailabilityDto)).toBe(
+      '{"availableAt":null}'
+    );
+    expect(wire(timed.setRecordingAvailabilityDto)).toBe(
+      `{"availableAt":"${AHEAD}"}`
+    );
+  });
+
+  it("hands back the code of a refusal, never its message, and writes nothing without a session", async () => {
+    const { setRecordingAvailability } = await recordings();
+    api.lessons.setLessonRecordingAvailability.mockRejectedValue(
+      refusal(403, {
+        code: "AUTHZ_FORBIDDEN",
+        message: "needs recording.manage",
+      })
+    );
+    expect(await setRecordingAvailability("l-1", AHEAD)).toStrictEqual({
+      success: false,
+      code: "AUTHZ_FORBIDDEN",
+    });
+    token = undefined;
+    api.lessons.setLessonRecordingAvailability.mockReset();
+    expect(await setRecordingAvailability("l-1", AHEAD)).toEqual({
+      success: false,
+      code: "",
+    });
+    expect(api.lessons.setLessonRecordingAvailability).not.toHaveBeenCalled();
   });
 });

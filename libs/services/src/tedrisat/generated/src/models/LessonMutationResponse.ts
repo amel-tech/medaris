@@ -143,6 +143,12 @@ export interface LessonMutationResponse {
      */
     resources: Array<LessonResourceResponse>;
     /**
+     * When talebe may watch the session's recording (MDRS-288), set by the course team with `PUT /lessons/:id/recording-availability` or with the recording; null opens it as soon as it is READY. Never a link: the recording reads hold the link back until then. Course content: absent unless the caller holds `view_details` on the course (MDRS-103); a sample session (`isPreview`) keeps its `kaynak` and `agenda` for everyone (MDRS-161), never its `meetingUrl`.
+     * @type {Date}
+     * @memberof LessonMutationResponse
+     */
+    recordingAvailableAt?: Date | null;
+    /**
      * The course version this write produced; send it with the next PUT /courses/:id or PATCH /lessons/:id.
      * @type {number}
      * @memberof LessonMutationResponse
@@ -206,6 +212,7 @@ export function LessonMutationResponseFromJSONTyped(json: any, ignoreDiscriminat
         'inPersonOverride': json['inPersonOverride'] == null ? undefined : json['inPersonOverride'],
         'hasLiveStream': json['hasLiveStream'] == null ? undefined : json['hasLiveStream'],
         'resources': ((json['resources'] as Array<any>).map(LessonResourceResponseFromJSON)),
+        'recordingAvailableAt': json['recordingAvailableAt'] == null ? undefined : (new Date(json['recordingAvailableAt'])),
         'courseVersion': json['courseVersion'],
     };
 }
@@ -239,6 +246,7 @@ export function LessonMutationResponseToJSONTyped(value?: LessonMutationResponse
         'inPersonOverride': value['inPersonOverride'],
         'hasLiveStream': value['hasLiveStream'],
         'resources': ((value['resources'] as Array<any>).map(LessonResourceResponseToJSON)),
+        'recordingAvailableAt': value['recordingAvailableAt'] === null ? null : ((value['recordingAvailableAt'] as any)?.toISOString()),
         'courseVersion': value['courseVersion'],
     };
 }

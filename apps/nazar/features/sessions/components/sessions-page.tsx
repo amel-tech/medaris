@@ -18,6 +18,7 @@ import { getViewer } from "~/features/account/reads";
 import { PageProblem } from "~/features/shell/components/page-problem";
 import { getMessages } from "~/lib/i18n/messages";
 import { readOnce } from "~/lib/tedrisat-read";
+import { releasesOf } from "../../recordings/recordings";
 import { planHref, sessionFacts, streamsOf } from "../sessions";
 import { SessionsTable } from "./sessions-table";
 
@@ -34,6 +35,10 @@ import { SessionsTable } from "./sessions-table";
  * (MDRS-283). The course's recordings are read so a session that is over can
  * say "Kayıt yok"; when that read fails nothing is said of them. The writes
  * carry the course version of this read.
+ *
+ * "Kayıt erişimi" (MDRS-288), when talebe may watch a session's recording,
+ * is set here too, before the recording exists, by a holder of
+ * `recording.manage`, on the course's clock; the time is read from the course.
  */
 export async function SessionsPage({ courseId }: { courseId: string }) {
   const [t, locale, me, course, permissions] = await Promise.all([
@@ -110,8 +115,14 @@ export async function SessionsPage({ courseId }: { courseId: string }) {
               ? recordings.data.map((recording) => recording.lessonId)
               : null
           }
+          releases={releasesOf(course.data)}
+          canRelease={held !== null && holds(held, CODES.recordingManage)}
           locale={locale}
           timeZone={timeZone}
+          courseTimeZone={resolveTimeZone(
+            course.data.timeZone,
+            DEFAULT_TIME_ZONE
+          )}
         />
       )}
     </>

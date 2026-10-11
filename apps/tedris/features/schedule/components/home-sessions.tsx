@@ -15,11 +15,7 @@ import {
   sessionJoinLabels,
 } from "~/features/courses/session-join-labels";
 import { dayInZone } from "~/features/courses/session-model";
-import {
-  atTime,
-  trLocative,
-  trNumberWord,
-} from "~/features/flashcards/deck-model";
+import { atClock } from "~/features/flashcards/deck-model";
 import type { LooseTranslator } from "~/lib/i18n/loose";
 import { type DayLabel, dayLabel, formatClock } from "../schedule-model";
 
@@ -30,14 +26,6 @@ const relativeText = (label: DayLabel, t: Translate): string =>
   label.kind === "inDays"
     ? t("SchedulePage.inDays", { count: label.count })
     : t(`SchedulePage.${label.kind}`);
-
-/** "21:00’de": a time on the hour is said by its hour (yirmi bir’de), any other by its minutes. */
-const atClock = (clock: string, locale: string): string => {
-  if (!locale.startsWith("tr") || !clock.endsWith(":00")) {
-    return atTime(clock, locale);
-  }
-  return `${clock}’${trLocative(trNumberWord(Number(clock.slice(0, 2))), true)}`;
-};
 
 /** "Öbür gün, Cumartesi 21:00": when a session is, from today's point of view. */
 const whenText = (

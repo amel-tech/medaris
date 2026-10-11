@@ -6,6 +6,7 @@ import type {
 import { act, createElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { WatchVideo } from "~/features/courses/components/watch-view";
+import type { ReleaseWords } from "~/features/courses/recordings-model";
 import { cleanup, click, render, settle } from "./dom";
 
 /**
@@ -131,7 +132,12 @@ const stream: WatchVideo = {
 };
 
 const mount = async (
-  over: { video?: WatchVideo; notes?: boolean; questions?: boolean } = {}
+  over: {
+    video?: WatchVideo;
+    release?: ReleaseWords | null;
+    notes?: boolean;
+    questions?: boolean;
+  } = {}
 ) => {
   const { WatchView } = await import(
     "~/features/courses/components/watch-view"
@@ -477,6 +483,71 @@ describe("a recording", () => {
     expect(host.textContent).toContain(
       "İsteğe bağlı: oynatıcıdaki süreyi yaz."
     );
+  });
+});
+
+describe("a recording held back until its release time (MDRS-288)", () => {
+  const releaseLine = (host: HTMLElement) =>
+    host
+      .querySelector("[data-recording-release]")
+      ?.textContent?.replace(/\s+/g, " ")
+      .trim();
+
+  it("tells a talebe beside the stream when the recording opens, and again once the stream ended", async () => {
+    const host = await mount({
+      release: {
+        text: "Ders kaydı 14 Ekim Çarşamba 20:00’de açılır.",
+        zone: "İstanbul saatiyle · 19:00 senin saatinle",
+      },
+    });
+    expect(releaseLine(host)).toBe(
+      "Ders kaydı 14 Ekim Çarşamba 20:00’de açılır. İstanbul saatiyle · 19:00 senin saatinle"
+    );
+    // In the header line, after the badge it does not take the place of.
+    expect(
+      host
+        .querySelector("h1")
+        ?.parentElement?.contains(
+          host.querySelector("[data-recording-release]")
+        )
+    ).toBe(true);
+    expect(badge(host)).toBe("Canlı · 24 dk");
+    await playerSays({ state: 0 });
+    expect(host.textContent).toContain(
+      "Canlı yayın bitti. Ders kaydı açılınca burada oynar."
+    );
+    expect(host.textContent).not.toContain("Ders kaydı eklenince");
+  });
+
+  it("marks the recording the course team plays early", async () => {
+    const host = await mount({
+      video: {
+        kind: "recording",
+        title: "Mehmûz fiiller",
+        embedUrl: "https://www.youtube-nocookie.com/embed/abcdefgh",
+        openUrl: "https://www.youtube.com/watch?v=abcdefgh",
+        bunny: false,
+        facts: "Ders kaydı · 3 Ekim 2026 · 58 dk",
+        reportsPosition: false,
+      },
+      release: {
+        text: "Talebelere 14 Ekim Çarşamba 20:00’de açılacak",
+        zone: null,
+      },
+      notes: false,
+      questions: false,
+    });
+    expect(frame(host)?.getAttribute("src")).toBe(
+      "https://www.youtube-nocookie.com/embed/abcdefgh"
+    );
+    expect(releaseLine(host)).toBe(
+      "Talebelere 14 Ekim Çarşamba 20:00’de açılacak"
+    );
+  });
+
+  it("says nothing of a release without one", async () => {
+    const host = await mount();
+    expect(host.querySelector("[data-recording-release]")).toBeNull();
   });
 });
 

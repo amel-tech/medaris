@@ -6,6 +6,7 @@ import type {
 import type { ReactElement } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { WatchVideo } from "~/features/courses/components/watch-view";
+import type { ReleaseWords } from "~/features/courses/recordings-model";
 import type { WatchTarget } from "~/features/courses/watch-model";
 
 /**
@@ -19,10 +20,13 @@ const mocks = vi.hoisted(() => ({
   getCourse: vi.fn(),
   getSession: vi.fn(),
   auth: vi.fn(),
+  /** The viewer's zone. */
+  timeZone: { current: "Europe/Istanbul" },
 }));
 
 vi.mock("next-intl/server", () => ({
   getLocale: async () => "tr",
+  getTimeZone: async () => mocks.timeZone.current,
   getTranslations: async (namespace: string) => {
     const messages = namespace
       .split(".")
@@ -108,6 +112,7 @@ interface ViewProps {
   startsAt: string | null;
   renderedAt: string;
   video: WatchVideo;
+  release: ReleaseWords | null;
   notes: boolean;
   questions: boolean;
 }
@@ -232,6 +237,69 @@ describe("WatchPage: what plays for this viewer", () => {
   });
 });
 
+describe("WatchPage: a recording held back until its release time (MDRS-288)", () => {
+  // 14 Ekim 2026 Çarşamba 20:00 in İstanbul, after NOW.
+  const AT = new Date("2026-10-14T17:00:00.000Z");
+  beforeEach(() => {
+    mocks.timeZone.current = "Europe/Istanbul";
+  });
+
+  it("tells a talebe beside the stream when the recording opens", async () => {
+    const held = recording({ url: null, availableAt: AT });
+    const props = await watch(course(), session({ recording: held }), {
+      kind: "stream",
+      url: STREAM,
+    });
+    expect(props.release).toEqual({
+      text: "Ders kaydı 14 Ekim Çarşamba 20:00’de açılır.",
+      zone: null,
+    });
+    expect(JSON.stringify(props)).not.toContain("abcdefgh");
+  });
+
+  it("marks the recording the course team plays early with the time talebe may", async () => {
+    const early = recording({ availableAt: AT });
+    const props = await watch(
+      course({ enrollment: undefined }),
+      session({ recording: early }),
+      {
+        kind: "recording",
+        recording: early as never,
+      }
+    );
+    expect(props.release?.text).toBe(
+      "Talebelere 14 Ekim Çarşamba 20:00’de açılacak"
+    );
+    expect(props.video).toMatchObject({
+      kind: "recording",
+      embedUrl: "https://www.youtube-nocookie.com/embed/abcdefgh",
+    });
+  });
+
+  it("names the course's zone and the viewer's clock when that shows another time", async () => {
+    mocks.timeZone.current = "Europe/Berlin";
+    const props = await watch(
+      course(),
+      session({ recording: recording({ url: null, availableAt: AT }) }),
+      { kind: "stream", url: STREAM }
+    );
+    expect(props.release?.zone).toBe(
+      "İstanbul saatiyle · 19:00 senin saatinle"
+    );
+  });
+
+  it("says nothing once the time has come, or with none ('Hazır olunca hemen')", async () => {
+    for (const availableAt of [new Date("2026-10-03T19:00:00.000Z"), null]) {
+      const rec = recording({ availableAt });
+      const props = await watch(course(), session({ recording: rec }), {
+        kind: "recording",
+        recording: rec as never,
+      });
+      expect(props.release).toBeNull();
+    }
+  });
+});
+
 describe("the route", () => {
   beforeEach(() => {
     mocks.getCourse.mockReset().mockResolvedValue(course());
@@ -297,6 +365,30 @@ describe("the route", () => {
       })
     );
     expect(await redirectOf()).toBe(DETAIL);
+  });
+
+  it("plays the stream to a talebe, not the recording held back from them (MDRS-288)", async () => {
+    const held = recording({
+      url: null,
+      availableAt: new Date("2026-10-14T17:00:00.000Z"),
+    });
+    mocks.getSession.mockResolvedValue(session({ recording: held }));
+    const el = (await open()) as ReactElement<{ target: WatchTarget }>;
+    expect(el.props.target).toEqual({ kind: "stream", url: STREAM });
+    // Once tedrisat stops sending the stream, the detail page says when it opens.
+    mocks.getSession.mockResolvedValue(
+      session({ liveStreamUrl: null, recording: held })
+    );
+    expect(await redirectOf()).toBe(DETAIL);
+  });
+
+  it("plays the course team the recording before its release time (MDRS-288)", async () => {
+    const early = recording({
+      availableAt: new Date("2026-10-14T17:00:00.000Z"),
+    });
+    mocks.getSession.mockResolvedValue(session({ recording: early }));
+    const el = (await open()) as ReactElement<{ target: WatchTarget }>;
+    expect(el.props.target).toEqual({ kind: "recording", recording: early });
   });
 
   it("sends a viewer who may not read the content to the detail page's locked card", async () => {

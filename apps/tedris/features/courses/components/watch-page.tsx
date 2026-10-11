@@ -2,12 +2,15 @@ import type {
   CourseDetailResponse,
   SessionResponse,
 } from "@medaris/services/tedrisat";
-import { getLocale, getTranslations } from "next-intl/server";
+import { getLocale, getTimeZone, getTranslations } from "next-intl/server";
 import { canWriteNotes } from "../lesson-note-model";
 import {
   embedUrlOf,
   liveEmbedUrlOf,
   playerApiUrlOf,
+  type ReleaseTranslate,
+  recordingReleaseOf,
+  releaseWordsOf,
 } from "../recordings-model";
 import type { WatchTarget } from "../watch-model";
 import { type WatchVideo, WatchView } from "./watch-view";
@@ -80,6 +83,25 @@ export const WatchPage = async ({
     };
   }
 
+  // MDRS-288: a recording held back until the time the course team set. A
+  // talebe, sent no link to it, watches the stream while tedrisat still
+  // sends it and is told when the recording opens; the course team plays
+  // the recording and is told when talebe may.
+  const release = recordingReleaseOf(session.recording, now);
+  const releaseWords = release
+    ? releaseWordsOf(
+        release,
+        (await getTranslations(
+          "tedrisLearn.RecordingRelease"
+        )) as ReleaseTranslate,
+        {
+          locale,
+          courseTimeZone: course.timeZone,
+          viewerTimeZone: await getTimeZone(),
+        }
+      )
+    : null;
+
   return (
     <WatchView
       courseId={course.id}
@@ -91,6 +113,7 @@ export const WatchPage = async ({
       startsAt={session.startsAt?.toISOString() ?? null}
       renderedAt={now.toISOString()}
       video={video}
+      release={releaseWords}
       notes={talebe}
       questions={talebe}
     />

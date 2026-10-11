@@ -40,8 +40,8 @@ export const MediaPlayer = ({
   id: string;
   title: string;
   embedUrl: string | null;
-  /** The text of the empty frame: "Ders kaydı burada oynar". */
-  placeholder: string;
+  /** The text of the empty frame: "Ders kaydı burada oynar", or when it opens (MDRS-288). */
+  placeholder: ReactNode;
   /** For a recording that cannot be framed: where it opens. */
   openHref?: string | null;
   openLabel?: string;

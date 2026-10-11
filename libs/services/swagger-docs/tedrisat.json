@@ -3922,7 +3922,7 @@
     },
     "/courses/{courseId}/sessions/{sessionId}": {
       "get": {
-        "description": "Open to callers with no token, like the course page (MDRS-122), and filtered the same way: `meetingUrl`, `agenda`, `kaynak` and `cancelReason` are sent only to a caller holding `view_details` (the enrolled talebe, the müderris, the köşk manager); for everyone else, PENDING included, those keys are absent and `contentLocked` is true. The session's own `resources` (MDRS-286) are listed to everyone, each `url` only to a caller holding `view_details`. `status` is derived from the clock and the cancellation, never stored: CANCELLED once cancelled, else ENDED after the session's length (60 minutes when it has none), LIVE while it runs, SCHEDULED before. `meetingUrl` is null for a cancelled or finished session. `inPerson` (MDRS-283) is sent to everyone; `hasLiveStream` is content and is sent whatever the status; `liveStreamUrl` is sent from the scheduled start until the session has a READY recording, with a bound its field states (MDRS-285). `previous` and `next` are the neighbouring live sessions in programme order, cancelled ones skipped. A content read by anyone who is neither enrolled nor a müderris is recorded in `audit_log`, as on `GET /courses/:id` (MDRS-158).",
+        "description": "Open to callers with no token, like the course page (MDRS-122), and filtered the same way: `meetingUrl`, `agenda`, `kaynak` and `cancelReason` are sent only to a caller holding `view_details` (the enrolled talebe, the müderris, the köşk manager); for everyone else, PENDING included, those keys are absent and `contentLocked` is true. The session's own `resources` (MDRS-286) are listed to everyone, each `url` only to a caller holding `view_details`. `status` is derived from the clock and the cancellation, never stored: CANCELLED once cancelled, else ENDED after the session's length (60 minutes when it has none), LIVE while it runs, SCHEDULED before. `meetingUrl` is null for a cancelled or finished session. `inPerson` (MDRS-283) is sent to everyone; `hasLiveStream` is content and is sent whatever the status; `liveStreamUrl` is sent from the scheduled start until the session has a recording open to talebe, with a bound its field states (MDRS-285, MDRS-288). The `recording` keeps its link back until its `availableAt` from everyone but the course team (`recording.manage`), and no Bunny link is signed for them (MDRS-288). `previous` and `next` are the neighbouring live sessions in programme order, cancelled ones skipped. A content read by anyone who is neither enrolled nor a müderris is recorded in `audit_log`, as on `GET /courses/:id` (MDRS-158).",
         "operationId": "getSession",
         "parameters": [
           {
@@ -3970,7 +3970,7 @@
     },
     "/courses/{id}/recordings": {
       "get": {
-        "description": "Open to callers with no token, like the course page. A caller holding `view_details` sees every recording; everyone else, PENDING and revoked included, only those with `visibility` PUBLIC. A recording whose `status` is PROCESSING is listed with a null `url`. Sorted by week number descending, then by `recordedAt` descending (MDRS-162). A READY BUNNY recording's `url` is a player link signed for this response, built only for a recording the caller may see, and expiring after `BUNNY_STREAM_EMBED_TTL_SECONDS` (6 hours by default); the response is `Cache-Control: private, no-store` (MDRS-119). What this protects: with embed token authentication on in the Bunny library, only a signed link opens the player page, and a signed link passed on opens it until it expires; the stream behind the page (playlist, segments, MP4) is protected only by the library's separate CDN token authentication, so a viewer who saved the video address can play it after the link has expired unless that is on. A YouTube, Drive or other pasted link plays for anyone who has it; for those the filter decides who is shown the link, not who can open it.",
+        "description": "Open to callers with no token, like the course page. A caller holding `view_details` sees every recording; everyone else, PENDING and revoked included, only those with `visibility` PUBLIC. A recording whose `status` is PROCESSING is listed with a null `url`, and so is a READY one before its `availableAt`, for everyone but the course team (`recording.manage`), with no Bunny link signed (MDRS-288). Sorted by week number descending, then by `recordedAt` descending (MDRS-162). A READY BUNNY recording's `url` is a player link signed for this response, built only for a recording the caller may see, and expiring after `BUNNY_STREAM_EMBED_TTL_SECONDS` (6 hours by default); the response is `Cache-Control: private, no-store` (MDRS-119). What this protects: with embed token authentication on in the Bunny library, only a signed link opens the player page, and a signed link passed on opens it until it expires; the stream behind the page (playlist, segments, MP4) is protected only by the library's separate CDN token authentication, so a viewer who saved the video address can play it after the link has expired unless that is on. A YouTube, Drive or other pasted link plays for anyone who has it; for those the filter decides who is shown the link, not who can open it.",
         "operationId": "listCourseRecordings",
         "parameters": [
           {
@@ -4604,6 +4604,62 @@
           }
         ],
         "summary": "Rename a recording, replace its link, or change who may watch it",
+        "tags": [
+          "lessons"
+        ]
+      }
+    },
+    "/lessons/{id}/recording-availability": {
+      "put": {
+        "description": "`recording.manage`, like the recording writes (MDRS-288). Kept on the session, so it may be set before a recording exists and outlives one that is replaced; `POST /lessons/:id/recordings` and `PATCH /recordings/:id` take the same `availableAt`. `null` opens the recording as soon as it is READY, which is how a session starts. A recording this opens now is announced to the talebe now; one it holds back is announced at the time, once. Written to `audit_log` as `lesson.recording_availability_set`. Does not change the course version.",
+        "operationId": "setLessonRecordingAvailability",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetRecordingAvailabilityDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordingAvailabilityResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_ERROR"
+          },
+          "403": {
+            "description": "AUTHZ_FORBIDDEN"
+          },
+          "404": {
+            "description": "LESSON_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Set when the session's talebe may watch its recording",
         "tags": [
           "lessons"
         ]
@@ -15334,6 +15390,12 @@
             "items": {
               "$ref": "#/components/schemas/LessonResourceResponse"
             }
+          },
+          "recordingAvailableAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true,
+            "description": "When talebe may watch the session's recording (MDRS-288), set by the course team with `PUT /lessons/:id/recording-availability` or with the recording; null opens it as soon as it is READY. Never a link: the recording reads hold the link back until then. Course content: absent unless the caller holds `view_details` on the course (MDRS-103); a sample session (`isPreview`) keeps its `kaynak` and `agenda` for everyone (MDRS-161), never its `meetingUrl`."
           }
         },
         "required": [
@@ -16547,6 +16609,12 @@
                 "$ref": "#/components/schemas/RecordingStatus"
               }
             ]
+          },
+          "availableAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true,
+            "description": "When talebe may watch it (MDRS-288): its session's release time, set by the course team; null when it opens as soon as it is READY. Until then a talebe or a visitor is given the recording with a null `url`, and no Bunny link is signed for them; the course team (`recording.manage`) is given its link as before."
           }
         },
         "required": [
@@ -16664,7 +16732,7 @@
           "liveStreamUrl": {
             "type": "string",
             "nullable": true,
-            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103). The embeddable stream, when one was set: from the scheduled start until the session has a READY `recording`, and never later than 24 hours after the scheduled end (MDRS-285), so a lesson that runs long keeps it. Null otherwise; non-null means the stream may be watched now."
+            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103). The embeddable stream, when one was set: from the scheduled start until the session has a `recording` open to talebe (READY and past its `availableAt`, MDRS-288), and never later than 24 hours after the scheduled end (MDRS-285), so a lesson that runs long keeps it. Null otherwise; non-null means the stream may be watched now."
           },
           "inPerson": {
             "type": "boolean",
@@ -16676,7 +16744,7 @@
           },
           "recording": {
             "nullable": true,
-            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103). The session's recording, or null when it has none. Its `url` is null while it is PROCESSING.",
+            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103). The session's recording, or null when it has none. Its `url` is null while it is PROCESSING, and before its `availableAt` for anyone but the course team (MDRS-288).",
             "type": "object",
             "allOf": [
               {
@@ -16771,7 +16839,7 @@
           "url": {
             "type": "string",
             "nullable": true,
-            "description": "Null unless the recording is READY. For a BUNNY recording it is Bunny's player link, `https://player.mediadelivery.net/embed/<libraryId>/<videoId>?token=<token>&expires=<unix seconds>`, signed for this response only and only for a caller allowed to see the recording (MDRS-116, MDRS-119); its player page opens until `expires` (6 hours by default, `BUNNY_STREAM_EMBED_TTL_SECONDS`), even if passed on; whether the stream behind it stops too depends on the library's CDN token authentication (docs/migration/mdrs-119-signed-playback.md). Any other provider's link is returned as stored: anyone holding it can open it, so for those our authorization decides who is shown the link, not who can play it."
+            "description": "Null unless the recording is READY, and, for anyone but the course team, until its `availableAt` (MDRS-288). For a BUNNY recording it is Bunny's player link, `https://player.mediadelivery.net/embed/<libraryId>/<videoId>?token=<token>&expires=<unix seconds>`, signed for this response only and only for a caller allowed to see the recording (MDRS-116, MDRS-119); its player page opens until `expires` (6 hours by default, `BUNNY_STREAM_EMBED_TTL_SECONDS`), even if passed on; whether the stream behind it stops too depends on the library's CDN token authentication (docs/migration/mdrs-119-signed-playback.md). Any other provider's link is returned as stored: anyone holding it can open it, so for those our authorization decides who is shown the link, not who can play it."
           },
           "visibility": {
             "allOf": [
@@ -16786,6 +16854,12 @@
                 "$ref": "#/components/schemas/RecordingStatus"
               }
             ]
+          },
+          "availableAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true,
+            "description": "When talebe may watch it (MDRS-288): its session's release time, set by the course team; null when it opens as soon as it is READY. Until then a talebe or a visitor is given the recording with a null `url`, and no Bunny link is signed for them; the course team (`recording.manage`) is given its link as before."
           }
         },
         "required": [
@@ -16954,6 +17028,12 @@
             "items": {
               "$ref": "#/components/schemas/LessonResourceResponse"
             }
+          },
+          "recordingAvailableAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true,
+            "description": "When talebe may watch the session's recording (MDRS-288), set by the course team with `PUT /lessons/:id/recording-availability` or with the recording; null opens it as soon as it is READY. Never a link: the recording reads hold the link back until then. Course content: absent unless the caller holds `view_details` on the course (MDRS-103); a sample session (`isPreview`) keeps its `kaynak` and `agenda` for everyone (MDRS-161), never its `meetingUrl`."
           },
           "courseVersion": {
             "type": "number",
@@ -17238,6 +17318,12 @@
               "$ref": "#/components/schemas/LessonResourceResponse"
             }
           },
+          "recordingAvailableAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true,
+            "description": "When talebe may watch the session's recording (MDRS-288), set by the course team with `PUT /lessons/:id/recording-availability` or with the recording; null opens it as soon as it is READY. Never a link: the recording reads hold the link back until then. Course content: absent unless the caller holds `view_details` on the course (MDRS-103); a sample session (`isPreview`) keeps its `kaynak` and `agenda` for everyone (MDRS-161), never its `meetingUrl`."
+          },
           "weekNumber": {
             "type": "number"
           }
@@ -17467,6 +17553,13 @@
                 "$ref": "#/components/schemas/RecordingVisibility"
               }
             ]
+          },
+          "availableAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true,
+            "example": "2026-10-14T17:00:00.000Z",
+            "description": "When the session's talebe may watch its recording (MDRS-288), an ISO 8601 instant with its offset; the page enters it in the course's time zone. Kept on the session, so it outlives a recording that is replaced. `null` opens the recording as soon as it is READY. Before it, every read gives a talebe or a visitor the recording with this `availableAt` and a null `url`, and signs no Bunny link; the course team (`recording.manage`) plays it as before. \"Kayıt eklendi\" goes to the talebe at that moment, once: a time moved before it fires moves it, a time moved after it changes nothing. Written with the link, so a recording added for later is never open in between. Absent: the session's time stays as it is (null unless set before)."
           }
         },
         "required": [
@@ -17492,8 +17585,46 @@
                 "$ref": "#/components/schemas/RecordingVisibility"
               }
             ]
+          },
+          "availableAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true,
+            "example": "2026-10-14T17:00:00.000Z",
+            "description": "When the session's talebe may watch its recording (MDRS-288), an ISO 8601 instant with its offset; the page enters it in the course's time zone. Kept on the session, so it outlives a recording that is replaced. `null` opens the recording as soon as it is READY. Before it, every read gives a talebe or a visitor the recording with this `availableAt` and a null `url`, and signs no Bunny link; the course team (`recording.manage`) plays it as before. \"Kayıt eklendi\" goes to the talebe at that moment, once: a time moved before it fires moves it, a time moved after it changes nothing. Absent: left as it is."
           }
         }
+      },
+      "SetRecordingAvailabilityDto": {
+        "type": "object",
+        "properties": {
+          "availableAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true,
+            "example": "2026-10-14T17:00:00.000Z",
+            "description": "When the session's talebe may watch its recording (MDRS-288), an ISO 8601 instant with its offset; the page enters it in the course's time zone. Kept on the session, so it outlives a recording that is replaced. `null` opens the recording as soon as it is READY. Before it, every read gives a talebe or a visitor the recording with this `availableAt` and a null `url`, and signs no Bunny link; the course team (`recording.manage`) plays it as before. \"Kayıt eklendi\" goes to the talebe at that moment, once: a time moved before it fires moves it, a time moved after it changes nothing. The key must be sent: a body without it is 400."
+          }
+        }
+      },
+      "RecordingAvailabilityResponse": {
+        "type": "object",
+        "properties": {
+          "lessonId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "recordingAvailableAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true,
+            "description": "When the session's talebe may watch its recording; null: as soon as it is READY."
+          }
+        },
+        "required": [
+          "lessonId",
+          "recordingAvailableAt"
+        ]
       },
       "StartRecordingUploadDto": {
         "type": "object",

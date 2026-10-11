@@ -4,6 +4,7 @@ import { Badge } from "@medaris/ui/mds/badge";
 import { Icon } from "@medaris/ui/mds/icon";
 import { useTranslations } from "next-intl";
 import { useEffect, useReducer, useState } from "react";
+import type { ReleaseWords } from "../recordings-model";
 import {
   minutesSince,
   type StreamPhase,
@@ -14,6 +15,7 @@ import { LessonNotes } from "./lesson-notes";
 import { LessonQuestions } from "./lesson-questions";
 import { LiveChat } from "./live-chat";
 import { MediaPlayer } from "./media-player";
+import { RecordingReleaseNote } from "./recording-release";
 
 /** The one frame of the watch page, which the notes panel and the page both read. */
 export const WATCH_FRAME_ID = "watch-frame";
@@ -71,6 +73,11 @@ const useClock = (renderedAt: string, ticking: boolean): Date => {
  * whose player never started, keeps the chat until the celse has a READY
  * recording; then tedrisat stops sending the stream and the page shows the
  * recording.
+ *
+ * MDRS-288: a recording the course team holds back until a time is not
+ * played to a talebe before it; the header says when it opens, beside the
+ * stream that still plays. The course team plays it, marked with the time it
+ * opens to talebe.
  */
 export function WatchView({
   courseId,
@@ -82,6 +89,7 @@ export function WatchView({
   startsAt,
   renderedAt,
   video,
+  release = null,
   notes,
   questions,
 }: {
@@ -97,6 +105,12 @@ export function WatchView({
   /** The instant the server rendered at, so the first client paint matches it. */
   renderedAt: string;
   video: WatchVideo;
+  /**
+   * When the celse's recording opens to talebe, while that is ahead
+   * (MDRS-288): "Ders kaydı … açılır." beside a stream, "Talebelere …
+   * açılacak" over the recording the course team plays early.
+   */
+  release?: ReleaseWords | null;
   /** The viewer takes notes: an enrolled talebe. */
   notes: boolean;
   /** The viewer asks questions: an enrolled talebe. */
@@ -147,7 +161,13 @@ export function WatchView({
         openLabel={t("streamOpen")}
       >
         {/* The player stays after the end: the archive may play in it. */}
-        {t(phase === "live" ? "streamLiveText" : "streamEndedText")}
+        {t(
+          phase === "live"
+            ? "streamLiveText"
+            : release
+              ? "streamEndedHeldText"
+              : "streamEndedText"
+        )}
       </MediaPlayer>
     ) : (
       <MediaPlayer
@@ -196,6 +216,11 @@ export function WatchView({
           {t("heading", { week: weekNumber, title })}
         </h1>
         {badge}
+        {release ? (
+          <p className="mds-body-sm">
+            <RecordingReleaseNote words={release} />
+          </p>
+        ) : null}
         {/* The badge follows the player, and a screen reader hears the
             stream end or start again; not every minute it counts. */}
         {stream ? (
