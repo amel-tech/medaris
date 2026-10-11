@@ -46,10 +46,58 @@ export interface IRecordingRow {
   url: string | null;
   visibility: RecordingVisibility;
   status: RecordingStatus;
+  /**
+   * When talebe may watch it (MDRS-288): its session's release time, set by
+   * the course team; null opens it as soon as it is READY.
+   */
+  availableAt: Date | null;
 }
 
 /** What a caller is told about one recording; `url` is null until it is ready. */
 export type IRecordingView = IRecordingRow;
+
+/**
+ * Who reads a recording, as far as its release time goes (MDRS-288): the
+ * read's clock, and whether the caller is the course team, who see and play
+ * a recording before its talebe may.
+ */
+export interface IRecordingReader {
+  now: Date;
+  /** Holds `recording.manage` on the course, or the başnazım's bypass. */
+  team: boolean;
+}
+
+/**
+ * Open to talebe (MDRS-288): READY, and its session's release time, when one
+ * is set, has come. The one place the release time is read: the reads that
+ * hand out a recording link, the stream rule below and the announcement of
+ * a recording all ask this, or its SQL twin in `RecordingRepository`.
+ */
+export function isReleased(
+  recording: Pick<IRecordingRow, "status" | "availableAt">,
+  now: Date
+): boolean {
+  return (
+    recording.status === RecordingStatus.READY &&
+    (!recording.availableAt || recording.availableAt.getTime() <= now.getTime())
+  );
+}
+
+/**
+ * Whether `reader` is handed the recording's link, a Bunny one signed for
+ * them included: READY, and released or read by the course team. Before its
+ * release time a talebe or a visitor is told of the recording and its
+ * `availableAt`, never its link (MDRS-288).
+ */
+export function mayPlay(
+  recording: Pick<IRecordingRow, "status" | "availableAt">,
+  reader: IRecordingReader
+): boolean {
+  return (
+    recording.status === RecordingStatus.READY &&
+    (reader.team || isReleased(recording, reader.now))
+  );
+}
 
 /**
  * The recordings a caller may see, newest week first and, inside a week, the
@@ -63,12 +111,15 @@ export type IRecordingView = IRecordingRow;
  * that was never completed or could not be encoded, MDRS-116) is not listed
  * at all: there is nothing to play or wait for, and a reader would otherwise
  * be shown "Hazırlanıyor" for good. The müderris retries it through the
- * upload route.
+ * upload route. A READY one whose release time has not come is listed with
+ * its `availableAt` and no link, except to the course team (`mayPlay`,
+ * MDRS-288). A call that names no `reader` is read as a talebe's, now.
  */
 export function visibleRecordings(
   rows: IRecordingRow[],
   canReadContent: boolean,
-  publicAllowed = true
+  publicAllowed = true,
+  reader: IRecordingReader = { now: new Date(), team: false }
 ): IRecordingView[] {
   return rows
     .filter(
@@ -79,7 +130,7 @@ export function visibleRecordings(
     )
     .map((r) => ({
       ...r,
-      url: r.status === RecordingStatus.READY ? r.url : null,
+      url: mayPlay(r, reader) ? r.url : null,
     }))
     .sort(
       (a, b) =>
@@ -90,7 +141,7 @@ export function visibleRecordings(
 
 /**
  * How long after a session's scheduled end its stream link is still sent when
- * no READY recording has replaced it (MDRS-285). A PROPOSAL, NOT AN OWNER
+ * no released recording has replaced it (MDRS-285). A PROPOSAL, NOT AN OWNER
  * DECISION: the owner decided that a lesson ends when its stream ends, which
  * only each viewer's player learns, and the issue proposed this bound for a
  * session that never gets a recording. Change it here and nowhere else.
@@ -100,23 +151,25 @@ export const LIVE_STREAM_HOURS_AFTER_END = 24;
 /**
  * The live stream link of a session, which is joinable content: only a caller
  * who may read content gets it, from the scheduled start until the session
- * has a READY recording (MDRS-285). It used to stop when the clock said the
- * session was over, which cut a lesson that ran long off mid-stream; the end
- * of a stream is now learned by the viewer's player, never by the server. A
- * PROCESSING or FAILED recording has nothing to play yet, so the stream stays.
- * With no READY recording it stops `LIVE_STREAM_HOURS_AFTER_END` hours after
- * the scheduled end. A cancelled session, or one with no time, has none.
+ * has a recording open to talebe (MDRS-285; MDRS-288: `isReleased`, READY and
+ * past its release time). It used to stop when the clock said the session was
+ * over, which cut a lesson that ran long off mid-stream; the end of a stream
+ * is now learned by the viewer's player, never by the server. A PROCESSING or
+ * FAILED recording has nothing to play yet, and a READY one held back until
+ * its release time plays for the course team alone, so the stream stays.
+ * With no released recording it stops `LIVE_STREAM_HOURS_AFTER_END` hours
+ * after the scheduled end. A cancelled session, or one with no time, has none.
  */
 export function liveStreamFor(
   session: SessionTiming,
   url: string | null,
-  recording: RecordingStatus | null,
+  recording: Pick<IRecordingRow, "status" | "availableAt"> | null,
   canReadContent: boolean,
   now: Date
 ): string | null {
   if (!canReadContent || url === null) return null;
   if (session.cancelledAt || !session.scheduledAt) return null;
-  if (recording === RecordingStatus.READY) return null;
+  if (recording && isReleased(recording, now)) return null;
   const at = now.getTime();
   const stop =
     scheduledEnd(session.scheduledAt, session.durationMinutes) +

@@ -6,9 +6,9 @@ import {
 } from "@nestjs/common";
 import { encodingOutcome } from "../bunny-stream/bunny-signature";
 import { BunnyStreamClient } from "../bunny-stream/bunny-stream.client";
-import { CourseNotifier } from "./course-notifier";
 import { RecordingStatus } from "./domain/recording";
 import { RecordingRepository } from "./recording.repository";
+import { RecordingReleasePoller } from "./recording-release.poller";
 
 /** How often the poll runs while the library is configured. */
 export const ENCODING_POLL_INTERVAL_MS = 60_000;
@@ -51,7 +51,7 @@ export class RecordingEncodingPoller
   constructor(
     private readonly bunny: BunnyStreamClient,
     private readonly recordings: RecordingRepository,
-    private readonly notifier: CourseNotifier
+    private readonly release: RecordingReleasePoller
   ) {}
 
   onApplicationBootstrap(): void {
@@ -121,9 +121,11 @@ export class RecordingEncodingPoller
           if (changed) {
             if (outcome === "READY") {
               result.ready++;
-              // The upload was PROCESSING until now: this is the moment the
-              // session's talebe can watch it, and the only one (MDRS-283).
-              await this.notifier.recordingAdded(upload.lessonId);
+              // The upload was PROCESSING until now: with no release time,
+              // or one already past, this is the moment the session's talebe
+              // can watch it (MDRS-283); with one still ahead the release
+              // poll announces it then (MDRS-288).
+              await this.release.announce(upload.lessonId, undefined, now);
             } else result.failed++;
           }
         } catch (error) {

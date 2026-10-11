@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { Transform } from "class-transformer";
+import { Transform, Type } from "class-transformer";
 import {
+  IsDate,
   IsEnum,
   IsOptional,
   IsString,
@@ -10,6 +11,10 @@ import {
   ValidateIf,
 } from "class-validator";
 import { RecordingVisibility } from "../domain/recording";
+
+/** What the release time is, said once for every route that takes it (MDRS-288). */
+const AVAILABLE_AT =
+  "When the session's talebe may watch its recording (MDRS-288), an ISO 8601 instant with its offset; the page enters it in the course's time zone. Kept on the session, so it outlives a recording that is replaced. `null` opens the recording as soon as it is READY. Before it, every read gives a talebe or a visitor the recording with this `availableAt` and a null `url`, and signs no Bunny link; the course team (`recording.manage`) plays it as before. \"Kayıt eklendi\" goes to the talebe at that moment, once: a time moved before it fires moves it, a time moved after it changes nothing.";
 
 const HTTPS_ONLY = {
   require_protocol: true,
@@ -52,6 +57,17 @@ export class CreateRecordingDto {
   @IsOptional()
   @IsEnum(RecordingVisibility)
   visibility?: RecordingVisibility;
+
+  @ApiPropertyOptional({
+    type: Date,
+    nullable: true,
+    example: "2026-10-14T17:00:00.000Z",
+    description: `${AVAILABLE_AT} Written with the link, so a recording added for later is never open in between. Absent: the session's time stays as it is (null unless set before).`,
+  })
+  @IsOptional()
+  @Type(() => Date)
+  @IsDate()
+  availableAt?: Date | null;
 }
 
 /** `PATCH /recordings/:id`: only the keys that are present change. */
@@ -82,4 +98,47 @@ export class UpdateRecordingDto {
   @OmittedButNotNull()
   @IsEnum(RecordingVisibility)
   visibility?: RecordingVisibility;
+
+  @ApiPropertyOptional({
+    type: Date,
+    nullable: true,
+    example: "2026-10-14T17:00:00.000Z",
+    description: `${AVAILABLE_AT} Absent: left as it is.`,
+  })
+  @IsOptional()
+  @Type(() => Date)
+  @IsDate()
+  availableAt?: Date | null;
+}
+
+/**
+ * `PUT /lessons/:id/recording-availability` (MDRS-288): the session's release
+ * time, with or before a recording. The key is required: a missing key is a
+ * 400, `null` opens the recording as soon as it is READY.
+ */
+export class SetRecordingAvailabilityDto {
+  @ApiProperty({
+    type: Date,
+    nullable: true,
+    example: "2026-10-14T17:00:00.000Z",
+    description: AVAILABLE_AT,
+  })
+  @ValidateIf((_: unknown, value: unknown) => value !== null)
+  @Type(() => Date)
+  @IsDate()
+  availableAt!: Date | null;
+}
+
+/** A session's recording release time, as the course team set it (MDRS-288). */
+export class RecordingAvailabilityResponse {
+  @ApiProperty({ format: "uuid" })
+  lessonId!: string;
+
+  @ApiProperty({
+    type: Date,
+    nullable: true,
+    description:
+      "When the session's talebe may watch its recording; null: as soon as it is READY.",
+  })
+  recordingAvailableAt!: Date | null;
 }

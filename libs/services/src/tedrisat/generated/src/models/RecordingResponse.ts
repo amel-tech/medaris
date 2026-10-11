@@ -96,7 +96,7 @@ export interface RecordingResponse {
      */
     provider: RecordingProvider;
     /**
-     * Null unless the recording is READY. For a BUNNY recording it is Bunny's player link, `https://player.mediadelivery.net/embed/<libraryId>/<videoId>?token=<token>&expires=<unix seconds>`, signed for this response only and only for a caller allowed to see the recording (MDRS-116, MDRS-119); its player page opens until `expires` (6 hours by default, `BUNNY_STREAM_EMBED_TTL_SECONDS`), even if passed on; whether the stream behind it stops too depends on the library's CDN token authentication (docs/migration/mdrs-119-signed-playback.md). Any other provider's link is returned as stored: anyone holding it can open it, so for those our authorization decides who is shown the link, not who can play it.
+     * Null unless the recording is READY, and, for anyone but the course team, until its `availableAt` (MDRS-288). For a BUNNY recording it is Bunny's player link, `https://player.mediadelivery.net/embed/<libraryId>/<videoId>?token=<token>&expires=<unix seconds>`, signed for this response only and only for a caller allowed to see the recording (MDRS-116, MDRS-119); its player page opens until `expires` (6 hours by default, `BUNNY_STREAM_EMBED_TTL_SECONDS`), even if passed on; whether the stream behind it stops too depends on the library's CDN token authentication (docs/migration/mdrs-119-signed-playback.md). Any other provider's link is returned as stored: anyone holding it can open it, so for those our authorization decides who is shown the link, not who can play it.
      * @type {string}
      * @memberof RecordingResponse
      */
@@ -113,6 +113,12 @@ export interface RecordingResponse {
      * @memberof RecordingResponse
      */
     status: RecordingStatus;
+    /**
+     * When talebe may watch it (MDRS-288): its session's release time, set by the course team; null when it opens as soon as it is READY. Until then a talebe or a visitor is given the recording with a null `url`, and no Bunny link is signed for them; the course team (`recording.manage`) is given its link as before.
+     * @type {Date}
+     * @memberof RecordingResponse
+     */
+    availableAt?: Date | null;
 }
 
 
@@ -155,6 +161,7 @@ export function RecordingResponseFromJSONTyped(json: any, ignoreDiscriminator: b
         'url': json['url'] == null ? undefined : json['url'],
         'visibility': RecordingVisibilityFromJSON(json['visibility']),
         'status': RecordingStatusFromJSON(json['status']),
+        'availableAt': json['availableAt'] == null ? undefined : (new Date(json['availableAt'])),
     };
 }
 
@@ -181,6 +188,7 @@ export function RecordingResponseToJSONTyped(value?: RecordingResponse | null, i
         'url': value['url'],
         'visibility': RecordingVisibilityToJSON(value['visibility']),
         'status': RecordingStatusToJSON(value['status']),
+        'availableAt': value['availableAt'] === null ? null : ((value['availableAt'] as any)?.toISOString()),
     };
 }
 

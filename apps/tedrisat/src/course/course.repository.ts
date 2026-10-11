@@ -839,6 +839,7 @@ export class CourseRepository implements ICourseRepository {
       replacementLessonId: row.replacementLessonId,
       ...sessionAttendance(row, course.inPerson),
       resources,
+      recordingAvailableAt: row.recordingAvailableAt,
       courseVersion: course.version,
     };
   }

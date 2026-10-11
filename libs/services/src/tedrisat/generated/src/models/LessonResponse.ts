@@ -142,6 +142,12 @@ export interface LessonResponse {
      * @memberof LessonResponse
      */
     resources: Array<LessonResourceResponse>;
+    /**
+     * When talebe may watch the session's recording (MDRS-288), set by the course team with `PUT /lessons/:id/recording-availability` or with the recording; null opens it as soon as it is READY. Never a link: the recording reads hold the link back until then. Course content: absent unless the caller holds `view_details` on the course (MDRS-103); a sample session (`isPreview`) keeps its `kaynak` and `agenda` for everyone (MDRS-161), never its `meetingUrl`.
+     * @type {Date}
+     * @memberof LessonResponse
+     */
+    recordingAvailableAt?: Date | null;
 }
 
 
@@ -199,6 +205,7 @@ export function LessonResponseFromJSONTyped(json: any, ignoreDiscriminator: bool
         'inPersonOverride': json['inPersonOverride'] == null ? undefined : json['inPersonOverride'],
         'hasLiveStream': json['hasLiveStream'] == null ? undefined : json['hasLiveStream'],
         'resources': ((json['resources'] as Array<any>).map(LessonResourceResponseFromJSON)),
+        'recordingAvailableAt': json['recordingAvailableAt'] == null ? undefined : (new Date(json['recordingAvailableAt'])),
     };
 }
 
@@ -231,6 +238,7 @@ export function LessonResponseToJSONTyped(value?: LessonResponse | null, ignoreD
         'inPersonOverride': value['inPersonOverride'],
         'hasLiveStream': value['hasLiveStream'],
         'resources': ((value['resources'] as Array<any>).map(LessonResourceResponseToJSON)),
+        'recordingAvailableAt': value['recordingAvailableAt'] === null ? null : ((value['recordingAvailableAt'] as any)?.toISOString()),
     };
 }
 

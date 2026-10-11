@@ -77,9 +77,12 @@ import {
   newlyLinkedUserIds,
 } from "./domain/muderris-list";
 import {
+  type IRecordingReader,
   type IRecordingRow,
   type IRecordingView,
+  isReleased,
   liveStreamFor,
+  mayPlay,
   RecordingProvider,
   RecordingStatus,
   visibleRecordings,
@@ -175,12 +178,13 @@ export class CourseService {
    * The recordings a caller was let see, each BUNNY one READY given its
    * signed player link (MDRS-116, MDRS-119): built now, with a fresh token
    * and expiry when the library has a token key. The Bunny video id itself
-   * never reaches a response.
+   * never reaches a response. A recording held back until its release time
+   * gets no link signed for anyone but the course team (`mayPlay`, MDRS-288).
    */
   private signPlayback(
     visible: IRecordingView[],
     videoIds: Map<string, string>,
-    now: Date
+    reader: IRecordingReader
   ): IRecordingView[] {
     return visible.map((rec) => {
       if (rec.provider !== RecordingProvider.BUNNY) return rec;
@@ -188,11 +192,38 @@ export class CourseService {
       return {
         ...rec,
         url:
-          rec.status === RecordingStatus.READY && videoId
-            ? this.bunny.embedUrl(videoId, now)
+          mayPlay(rec, reader) && videoId
+            ? this.bunny.embedUrl(videoId, reader.now)
             : null,
       };
     });
+  }
+
+  /**
+   * Who reads the course's recordings, as far as their release times go
+   * (MDRS-288). The course team is whoever holds `recording.manage` on the
+   * course, the başnazım's bypass included, the code the recording writes
+   * ask. It is asked only when one of `recordings` is READY and still held
+   * back at `now`, so a read with nothing held back costs nothing more.
+   */
+  private async recordingReader(
+    user: AuthenticatedUser | null,
+    courseId: string,
+    recordings: Pick<IRecordingRow, "status" | "availableAt">[],
+    now: Date
+  ): Promise<IRecordingReader> {
+    const heldBack = recordings.some(
+      (rec) => rec.status === RecordingStatus.READY && !isReleased(rec, now)
+    );
+    const team =
+      heldBack &&
+      user !== null &&
+      (await this.authz.can(
+        user,
+        { entity: ENTITIES.COURSE, id: courseId },
+        PERMISSIONS.RECORDING_MANAGE
+      ));
+    return { now, team };
   }
 
   /**
@@ -636,8 +667,9 @@ export class CourseService {
         await this.recordingRepo.findByLessonIds([sessionId])
       );
       const [stored] = recordings;
-      // The stream is sent past the scheduled end until a READY recording
-      // takes its place (MDRS-285), so it is read after the recording.
+      // The stream is sent past the scheduled end until a recording open to
+      // talebe takes its place (MDRS-285, MDRS-288), so it is read after the
+      // recording.
       if (!detail.contentLocked) {
         view.liveStreamUrl = liveStreamFor(
           {
@@ -646,11 +678,17 @@ export class CourseService {
             cancelledAt: view.cancelledAt,
           },
           await this.recordingRepo.findLiveStreamUrl(sessionId),
-          stored?.status ?? null,
+          stored ?? null,
           true,
           now
         );
       }
+      const reader = await this.recordingReader(
+        user,
+        courseId,
+        recordings,
+        now
+      );
       const [shown] = stored
         ? this.signPlayback(
             visibleRecordings(
@@ -663,10 +701,11 @@ export class CourseService {
                 },
               ],
               !detail.contentLocked,
-              await this.publicRecordingsAllowed(detail)
+              await this.publicRecordingsAllowed(detail),
+              reader
             ),
             videoIds,
-            now
+            reader
           )
         : [];
       if (shown) {
@@ -689,8 +728,10 @@ export class CourseService {
    * The course's lesson recordings (MDRS-162), newest week first. A caller who
    * may read course content sees them all; anyone else, a visitor included,
    * only those marked PUBLIC. A recording that is still PROCESSING is listed
-   * with no link. Built from the filtered detail like `getSession`, so a
-   * draft, a hidden course or an archived lesson is not listed or is a 404.
+   * with no link, and so is one held back until its release time, for anyone
+   * but the course team (MDRS-288). Built from the filtered detail like
+   * `getSession`, so a draft, a hidden course or an archived lesson is not
+   * listed or is a 404. `now` is a parameter so a spec can pin the clock.
    */
   async listRecordings(
     courseId: string,
@@ -723,14 +764,16 @@ export class CourseService {
           ]
         : [];
     });
+    const reader = await this.recordingReader(user, courseId, rows, now);
     return this.signPlayback(
       visibleRecordings(
         rows,
         !detail.contentLocked,
-        await this.publicRecordingsAllowed(detail)
+        await this.publicRecordingsAllowed(detail),
+        reader
       ),
       videoIds,
-      now
+      reader
     );
   }
 

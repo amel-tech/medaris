@@ -5,6 +5,9 @@ import {
   RecordingVisibility,
 } from "../domain/recording";
 
+const AVAILABLE_AT =
+  "When talebe may watch it (MDRS-288): its session's release time, set by the course team; null when it opens as soon as it is READY. Until then a talebe or a visitor is given the recording with a null `url`, and no Bunny link is signed for them; the course team (`recording.manage`) is given its link as before.";
+
 export class RecordingResponse {
   @ApiProperty() id!: string;
   @ApiProperty({ description: "The session this is the recording of." })
@@ -23,13 +26,19 @@ export class RecordingResponse {
     type: String,
     nullable: true,
     description:
-      "Null unless the recording is READY. For a BUNNY recording it is Bunny's player link, `https://player.mediadelivery.net/embed/<libraryId>/<videoId>?token=<token>&expires=<unix seconds>`, signed for this response only and only for a caller allowed to see the recording (MDRS-116, MDRS-119); its player page opens until `expires` (6 hours by default, `BUNNY_STREAM_EMBED_TTL_SECONDS`), even if passed on; whether the stream behind it stops too depends on the library's CDN token authentication (docs/migration/mdrs-119-signed-playback.md). Any other provider's link is returned as stored: anyone holding it can open it, so for those our authorization decides who is shown the link, not who can play it.",
+      "Null unless the recording is READY, and, for anyone but the course team, until its `availableAt` (MDRS-288). For a BUNNY recording it is Bunny's player link, `https://player.mediadelivery.net/embed/<libraryId>/<videoId>?token=<token>&expires=<unix seconds>`, signed for this response only and only for a caller allowed to see the recording (MDRS-116, MDRS-119); its player page opens until `expires` (6 hours by default, `BUNNY_STREAM_EMBED_TTL_SECONDS`), even if passed on; whether the stream behind it stops too depends on the library's CDN token authentication (docs/migration/mdrs-119-signed-playback.md). Any other provider's link is returned as stored: anyone holding it can open it, so for those our authorization decides who is shown the link, not who can play it.",
   })
   url!: string | null;
   @ApiProperty({ enum: RecordingVisibility, enumName: "RecordingVisibility" })
   visibility!: RecordingVisibility;
   @ApiProperty({ enum: RecordingStatus, enumName: "RecordingStatus" })
   status!: RecordingStatus;
+  @ApiPropertyOptional({
+    type: Date,
+    nullable: true,
+    description: AVAILABLE_AT,
+  })
+  availableAt!: Date | null;
 }
 
 /** The recording a session page plays: the list entry without its place in the programme. */
@@ -53,4 +62,10 @@ export class SessionRecordingResponse {
   visibility!: RecordingVisibility;
   @ApiProperty({ enum: RecordingStatus, enumName: "RecordingStatus" })
   status!: RecordingStatus;
+  @ApiPropertyOptional({
+    type: Date,
+    nullable: true,
+    description: AVAILABLE_AT,
+  })
+  availableAt!: Date | null;
 }

@@ -89,6 +89,12 @@ export interface SessionRecordingResponse {
      * @memberof SessionRecordingResponse
      */
     status: RecordingStatus;
+    /**
+     * When talebe may watch it (MDRS-288): its session's release time, set by the course team; null when it opens as soon as it is READY. Until then a talebe or a visitor is given the recording with a null `url`, and no Bunny link is signed for them; the course team (`recording.manage`) is given its link as before.
+     * @type {Date}
+     * @memberof SessionRecordingResponse
+     */
+    availableAt?: Date | null;
 }
 
 
@@ -123,6 +129,7 @@ export function SessionRecordingResponseFromJSONTyped(json: any, ignoreDiscrimin
         'url': json['url'] == null ? undefined : json['url'],
         'visibility': RecordingVisibilityFromJSON(json['visibility']),
         'status': RecordingStatusFromJSON(json['status']),
+        'availableAt': json['availableAt'] == null ? undefined : (new Date(json['availableAt'])),
     };
 }
 
@@ -145,6 +152,7 @@ export function SessionRecordingResponseToJSONTyped(value?: SessionRecordingResp
         'url': value['url'],
         'visibility': RecordingVisibilityToJSON(value['visibility']),
         'status': RecordingStatusToJSON(value['status']),
+        'availableAt': value['availableAt'] === null ? null : ((value['availableAt'] as any)?.toISOString()),
     };
 }
 

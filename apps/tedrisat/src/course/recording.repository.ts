@@ -1,5 +1,15 @@
 import { Injectable } from "@nestjs/common";
-import { and, asc, eq, inArray, isNotNull, isNull, ne } from "drizzle-orm";
+import {
+  and,
+  asc,
+  eq,
+  inArray,
+  isNotNull,
+  isNull,
+  lte,
+  ne,
+  or,
+} from "drizzle-orm";
 import { DatabaseService } from "../database/database.service";
 import { auditLog } from "../database/schema/audit.schema";
 import {
@@ -51,6 +61,23 @@ function toBunnyUpload(row: {
   };
 }
 
+/**
+ * `isReleased` as SQL (MDRS-288): the session's release time is unset or has
+ * come by `now`. The recording's own READY is the caller's half.
+ */
+const releasedBy = (now: Date) =>
+  or(
+    isNull(lessons.recordingAvailableAt),
+    lte(lessons.recordingAvailableAt, now)
+  );
+
+/** A session's recording release time, as the course team set it (MDRS-288). */
+export interface IRecordingAvailability {
+  lessonId: string;
+  courseId: string;
+  recordingAvailableAt: Date | null;
+}
+
 /** One session's live stream link, as the course staff read and write it (MDRS-228). */
 export interface ILiveStreamLink {
   lessonId: string;
@@ -70,6 +97,8 @@ export interface IStoredRecording {
   status: RecordingStatus;
   /** Set on a BUNNY recording only (MDRS-116); never handed to a caller as is. */
   bunnyVideoId: string | null;
+  /** The session's release time (MDRS-288), read off its lesson. */
+  availableAt: Date | null;
 }
 
 /** A session's Bunny upload, as the re-sign route and the encoding poll read it (MDRS-116). */
@@ -98,6 +127,8 @@ export interface INewPastedRecording {
   title: string;
   link: DetectedRecordingLink;
   visibility: RecordingVisibility;
+  /** The session's release time (MDRS-288); absent leaves it as it is. */
+  availableAt?: Date | null;
   actorId: string;
 }
 
@@ -106,32 +137,31 @@ export interface IRecordingPatch {
   title?: string;
   link?: DetectedRecordingLink;
   visibility?: RecordingVisibility;
+  /** The session's release time (MDRS-288); null opens it as soon as READY. */
+  availableAt?: Date | null;
 }
 
 /**
  * A recording as a write leaves it, with its Bunny video id kept aside: the
  * service signs the player link from it and never hands the id itself out.
+ * Whether the write is news to the talebe is not decided here: the service
+ * asks `claimAnnouncement` after every write (MDRS-283, MDRS-288).
  */
 export interface IWrittenRecording {
   recording: IRecordingRow;
   bunnyVideoId: string | null;
-  /**
-   * The write made the recording READY and it was not before (MDRS-283): the
-   * one moment talebe are told a recording was added. A link replaced or a
-   * title changed on a READY recording is not that moment.
-   */
-  becameReady: boolean;
 }
 
 function written(
   row: typeof lessonRecordings.$inferSelect,
-  at: { weekId: string; weekNumber: number; weekTitle: string },
-  previousStatus: RecordingStatus | null
+  at: {
+    weekId: string;
+    weekNumber: number;
+    weekTitle: string;
+    availableAt: Date | null;
+  }
 ): IWrittenRecording {
   return {
-    becameReady:
-      row.status === RecordingStatus.READY &&
-      previousStatus !== RecordingStatus.READY,
     recording: {
       id: row.id,
       lessonId: row.lessonId,
@@ -145,6 +175,7 @@ function written(
       url: row.url,
       visibility: row.visibility,
       status: row.status,
+      availableAt: at.availableAt,
     },
     bunnyVideoId: row.bunnyVideoId,
   };
@@ -205,9 +236,124 @@ export class RecordingRepository {
         visibility: lessonRecordings.visibility,
         status: lessonRecordings.status,
         bunnyVideoId: lessonRecordings.bunnyVideoId,
+        availableAt: lessons.recordingAvailableAt,
       })
       .from(lessonRecordings)
+      .innerJoin(lessons, eq(lessonRecordings.lessonId, lessons.id))
       .where(inArray(lessonRecordings.lessonId, lessonIds));
+  }
+
+  /**
+   * Sets or clears a session's recording release time (MDRS-288) and writes
+   * the change to `audit_log` in the same transaction, the lesson row locked
+   * first, as the stream link is set. A session that is archived is not
+   * there. The course version is not bumped: the time is no part of the
+   * course document `PUT /courses/:id` saves, which leaves the column alone.
+   */
+  async setRecordingAvailableAt(
+    lessonId: string,
+    availableAt: Date | null,
+    actorId: string
+  ): Promise<IRecordingAvailability> {
+    return this.db.transaction(async (tx) => {
+      const [current] = await tx
+        .select({
+          courseId: courseWeeks.courseId,
+          recordingAvailableAt: lessons.recordingAvailableAt,
+        })
+        .from(lessons)
+        .innerJoin(courseWeeks, eq(lessons.weekId, courseWeeks.id))
+        .where(and(eq(lessons.id, lessonId), isNull(lessons.archivedAt)))
+        .limit(1)
+        .for("update", { of: lessons });
+      if (!current) throw new LessonNotFoundError(lessonId);
+      await tx
+        .update(lessons)
+        .set({ recordingAvailableAt: availableAt, updatedAt: new Date() })
+        .where(eq(lessons.id, lessonId));
+      await tx.insert(auditLog).values({
+        actorId,
+        action: "lesson.recording_availability_set",
+        entity: "lesson",
+        entityId: lessonId,
+        details: {
+          courseId: current.courseId,
+          recordingAvailableAt: availableAt?.toISOString() ?? null,
+          previous: current.recordingAvailableAt?.toISOString() ?? null,
+        },
+      });
+      return {
+        lessonId,
+        courseId: current.courseId,
+        recordingAvailableAt: availableAt,
+      };
+    });
+  }
+
+  /**
+   * Marks the session's recording announced ("Kayıt eklendi", MDRS-283) when
+   * it is READY, released by `now` (MDRS-288) and not announced yet; true
+   * when this call marked it, and only then may the caller tell the talebe.
+   * The check and the mark are one statement, so of two writers, or a writer
+   * and the release poll, exactly one is told yes.
+   */
+  async claimAnnouncement(lessonId: string, now: Date): Promise<boolean> {
+    const claimed = await this.db
+      .update(lessonRecordings)
+      .set({ notifiedAt: now })
+      .where(
+        and(
+          eq(lessonRecordings.lessonId, lessonId),
+          eq(lessonRecordings.status, RecordingStatus.READY),
+          isNull(lessonRecordings.notifiedAt),
+          inArray(
+            lessonRecordings.lessonId,
+            this.db
+              .select({ id: lessons.id })
+              .from(lessons)
+              .where(and(eq(lessons.id, lessonId), releasedBy(now)))
+          )
+        )
+      )
+      .returning({ id: lessonRecordings.id });
+    return claimed.length > 0;
+  }
+
+  /**
+   * Marks announced, and returns the sessions of, up to `limit` READY
+   * recordings whose session's release time has come by `now` and that were
+   * not announced yet (MDRS-288), earliest release first: the release
+   * poll's work. A recording with no release time is announced by the write
+   * or the encoding poll that made it READY, never here. The mark is checked
+   * again in the same statement, so a recording claimed by anyone else
+   * meanwhile is not returned.
+   */
+  async claimDueAnnouncements(now: Date, limit: number): Promise<string[]> {
+    const due = this.db
+      .select({ id: lessonRecordings.id })
+      .from(lessonRecordings)
+      .innerJoin(lessons, eq(lessonRecordings.lessonId, lessons.id))
+      .where(
+        and(
+          eq(lessonRecordings.status, RecordingStatus.READY),
+          isNull(lessonRecordings.notifiedAt),
+          isNotNull(lessons.recordingAvailableAt),
+          lte(lessons.recordingAvailableAt, now)
+        )
+      )
+      .orderBy(asc(lessons.recordingAvailableAt))
+      .limit(limit);
+    const claimed = await this.db
+      .update(lessonRecordings)
+      .set({ notifiedAt: now })
+      .where(
+        and(
+          inArray(lessonRecordings.id, due),
+          isNull(lessonRecordings.notifiedAt)
+        )
+      )
+      .returning({ lessonId: lessonRecordings.lessonId });
+    return claimed.map((row) => row.lessonId);
   }
 
   /**
@@ -516,6 +662,7 @@ export class RecordingRepository {
           scheduledAt: lessons.scheduledAt,
           durationMinutes: lessons.durationMinutes,
           cancelledAt: lessons.cancelledAt,
+          recordingAvailableAt: lessons.recordingAvailableAt,
         })
         .from(lessons)
         .innerJoin(courseWeeks, eq(lessons.weekId, courseWeeks.id))
@@ -525,6 +672,18 @@ export class RecordingRepository {
       if (!at) throw new LessonNotFoundError(input.lessonId);
       if (at.cancelledAt !== null) {
         throw new LessonCancelledError(input.lessonId);
+      }
+      // The release time is written with the link (MDRS-288), so a link
+      // added for later is never open, nor announced, in between.
+      const availableAt =
+        input.availableAt === undefined
+          ? at.recordingAvailableAt
+          : input.availableAt;
+      if (input.availableAt !== undefined) {
+        await tx
+          .update(lessons)
+          .set({ recordingAvailableAt: availableAt, updatedAt: new Date() })
+          .where(eq(lessons.id, input.lessonId));
       }
       const [existing] = await tx
         .select({
@@ -576,14 +735,16 @@ export class RecordingRepository {
           url: row.url,
           bunnyVideoId: row.bunnyVideoId,
           replacedVideoId: existing?.bunnyVideoId ?? null,
+          recordingAvailableAt: availableAt?.toISOString() ?? null,
         },
       });
-      return written(row, at, existing?.status ?? null);
+      return written(row, { ...at, availableAt });
     });
   }
 
   /**
-   * Changes a recording's title, link or visibility and audits it. The row is
+   * Changes a recording's title, link, visibility or its session's release
+   * time (MDRS-288) and audits it. The row is
    * locked; a key that is absent is left as it is. A new link is written with
    * every column `linkColumns` sets, so a Bunny video swapped for a pasted
    * link loses its video id and upload lifetime and the other way round, and
@@ -603,6 +764,7 @@ export class RecordingRepository {
           weekId: courseWeeks.id,
           weekNumber: courseWeeks.weekNumber,
           weekTitle: courseWeeks.title,
+          recordingAvailableAt: lessons.recordingAvailableAt,
         })
         .from(lessonRecordings)
         .innerJoin(lessons, eq(lessonRecordings.lessonId, lessons.id))
@@ -632,12 +794,23 @@ export class RecordingRepository {
         })
         .where(eq(lessonRecordings.id, recordingId))
         .returning();
-      const audited = (r: typeof before) => ({
+      const availableAt =
+        patch.availableAt === undefined
+          ? at.recordingAvailableAt
+          : patch.availableAt;
+      if (patch.availableAt !== undefined) {
+        await tx
+          .update(lessons)
+          .set({ recordingAvailableAt: availableAt, updatedAt: now })
+          .where(eq(lessons.id, before.lessonId));
+      }
+      const audited = (r: typeof before, releaseAt: Date | null) => ({
         title: r.title,
         provider: r.provider,
         url: r.url,
         bunnyVideoId: r.bunnyVideoId,
         visibility: r.visibility,
+        recordingAvailableAt: releaseAt?.toISOString() ?? null,
       });
       await tx.insert(auditLog).values({
         actorId,
@@ -647,11 +820,11 @@ export class RecordingRepository {
         details: {
           courseId: at.courseId,
           lessonId: before.lessonId,
-          previous: audited(before),
-          next: audited(row),
+          previous: audited(before, at.recordingAvailableAt),
+          next: audited(row, availableAt),
         },
       });
-      return written(row, at, before.status);
+      return written(row, { ...at, availableAt });
     });
   }
 }

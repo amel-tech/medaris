@@ -56,6 +56,12 @@ export interface ILesson {
   hasLiveStream: boolean;
   /** The session's own resources, in order (MDRS-286). */
   resources: ILessonResource[];
+  /**
+   * When talebe may watch the session's recording (MDRS-288); null as soon
+   * as it is READY. Course content, so the course team's session editor and
+   * the talebe's page read it; the recording reads enforce it.
+   */
+  recordingAvailableAt: Date | null;
 }
 
 export interface IWeek {
@@ -148,7 +154,8 @@ export type LessonContentField =
   | "cancelReason"
   | "inPerson"
   | "inPersonOverride"
-  | "hasLiveStream";
+  | "hasLiveStream"
+  | "recordingAvailableAt";
 
 /** A session's resource as a response carries it: `url` is content (MDRS-286). */
 export type ILessonResourceView = Omit<ILessonResource, "url"> &

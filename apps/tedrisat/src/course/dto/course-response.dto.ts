@@ -94,6 +94,12 @@ export class LessonResponse {
       "The session's own resources, in order (MDRS-286): every name to everyone who may see the session, each `url` only to a caller holding `view_details`.",
   })
   resources!: LessonResourceResponse[];
+  @ApiPropertyOptional({
+    type: Date,
+    nullable: true,
+    description: `When talebe may watch the session's recording (MDRS-288), set by the course team with \`PUT /lessons/:id/recording-availability\` or with the recording; null opens it as soon as it is READY. Never a link: the recording reads hold the link back until then. ${CONTENT_FIELD}`,
+  })
+  recordingAvailableAt?: Date | null;
 }
 
 /** A lesson written through a session-level endpoint (MDRS-95). */

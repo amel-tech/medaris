@@ -174,6 +174,13 @@ export const lessons = table(
     // so that a spread row is never mistaken for the effective value,
     // `coalesce(lessons.in_person, courses.in_person)`.
     inPersonOverride: boolean("in_person"),
+    // When talebe may watch the session's recording (MDRS-288), set by the
+    // course team under `recording.manage`; null opens it as soon as it is
+    // READY. Kept on the session rather than the recording so it can be set
+    // before a recording exists and outlives a recording that is replaced.
+    recordingAvailableAt: timestamp("recording_available_at", {
+      withTimezone: true,
+    }),
     agenda: jsonb("agenda").$type<{ time: string; title: string }[]>(),
     isPreview: boolean("is_preview").default(false).notNull(),
     orderIndex: integer("order_index").default(0).notNull(),
@@ -387,6 +394,11 @@ export const lessonRecordings = table(
     status: recordingStatus().default(RecordingStatus.PROCESSING).notNull(),
     bunnyVideoId: text("bunny_video_id"),
     uploadExpiresAt: timestamp("upload_expires_at", { withTimezone: true }),
+    // When the session's talebe were told the recording can be watched
+    // ("Kayıt eklendi", MDRS-283), claimed in the same statement that checks
+    // it is READY and released (MDRS-288), so they are told once whoever
+    // gets there first: the write, the encoding poll or the release poll.
+    notifiedAt: timestamp("notified_at", { withTimezone: true }),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },

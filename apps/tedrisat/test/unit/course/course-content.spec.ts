@@ -27,6 +27,7 @@ const lesson = (id: string, cancelledAt: Date | null): ILesson => ({
   inPersonOverride: true,
   hasLiveStream: true,
   resources: [],
+  recordingAvailableAt: new Date("2026-10-14T17:00:00Z"),
 });
 
 describe("withContent (nizam/56)", () => {
@@ -172,5 +173,44 @@ describe("a session's own resources under the content rule (MDRS-286)", () => {
     }
     // The sample session keeps the rest of what MDRS-161 opened.
     expect(sample).toHaveProperty("kaynak");
+  });
+});
+
+/**
+ * MDRS-288: when a session's recording opens is course content too. The
+ * session editor and the talebe's page read it off the course; a locked
+ * caller is told only what a PUBLIC recording carries itself.
+ */
+describe("the recording release time under the content rule (MDRS-288)", () => {
+  const course = {
+    inPerson: false,
+    weeks: [
+      {
+        id: "w1",
+        courseId: "c1",
+        weekNumber: 1,
+        title: "Hafta 1",
+        summary: null,
+        orderIndex: 0,
+        lessons: [
+          lesson("plain", null),
+          { ...lesson("sample", null), isPreview: true },
+        ],
+      },
+    ],
+    resources: [],
+  } as unknown as ICourseDetail;
+
+  it("keeps it for a content reader", () => {
+    const [plain] = withContent(course).weeks[0].lessons;
+    expect(plain.recordingAvailableAt).toEqual(
+      new Date("2026-10-14T17:00:00Z")
+    );
+  });
+
+  it("removes the key for everyone else, a sample session included", () => {
+    for (const l of withoutContent(course).weeks[0].lessons) {
+      expect(l).not.toHaveProperty("recordingAvailableAt");
+    }
   });
 });
