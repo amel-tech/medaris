@@ -543,7 +543,9 @@
     "liveChatTitle": "Live chat",
     "liveChatShow": "Show chat",
     "liveChatHide": "Hide",
-    "liveChatText": "The chat comes from YouTube and is visible there. To write, sign in to YouTube in this browser.",
+    "liveChatText": "The chat comes from YouTube and is visible there. Some browsers (Firefox, Safari or a private window, for example) keep your YouTube sign-in out of this frame; if you are signed in and still cannot write, open the chat on YouTube.",
+    "liveChatPopout": "Open the chat on YouTube",
+    "liveChatNewTab": "(opens in a new tab)",
     "noReplacement": "If the müderris sets a new time, you will see it in My schedule.",
     "recordingCardTitle": "Recording",
     "noRecording": "This session has no recording yet."

@@ -7,6 +7,7 @@ import {
   groupByWeek,
   isPlainWeekTitle,
   listsRecordings,
+  liveChatPopoutUrlOf,
   liveChatUrlOf,
   liveEmbedUrlOf,
   playerApiUrlOf,
@@ -249,6 +250,34 @@ describe("liveChatUrlOf (MDRS-229)", () => {
     expect(
       liveChatUrlOf("https://youtu.be/ybHyHDBiRoE", { host: "", dark: false })
     ).toBeNull();
+  });
+});
+
+describe("liveChatPopoutUrlOf", () => {
+  it("is YouTube's own chat page for the video, with no embedding host", () => {
+    for (const link of [
+      "https://www.youtube.com/live/ybHyHDBiRoE?si=x",
+      "https://youtu.be/ybHyHDBiRoE",
+      "https://www.youtube.com/watch?v=ybHyHDBiRoE",
+    ]) {
+      const url = new URL(liveChatPopoutUrlOf(link) ?? "");
+      expect(url.origin + url.pathname, link).toBe(
+        "https://www.youtube.com/live_chat"
+      );
+      expect(url.searchParams.get("is_popout"), link).toBe("1");
+      expect(url.searchParams.get("v"), link).toBe("ybHyHDBiRoE");
+      expect(url.searchParams.has("embed_domain"), link).toBe(false);
+    }
+  });
+
+  it("is nothing for a link without a video id, another host, or none", () => {
+    expect(
+      liveChatPopoutUrlOf("https://www.youtube.com/@medaris/live")
+    ).toBeNull();
+    expect(
+      liveChatPopoutUrlOf("https://example.org/live/ybHyHDBiRoE")
+    ).toBeNull();
+    expect(liveChatPopoutUrlOf(null)).toBeNull();
   });
 });
 
