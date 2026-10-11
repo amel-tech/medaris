@@ -142,18 +142,32 @@ const render = async (
     initialTab?: string;
     /** the course's resources, as the API sent them to this caller */
     resources?: Record<string, unknown>[];
+    /** a lesson's kind changed from LIVE, by its id */
+    retyped?: Record<string, string>;
   } = {}
 ) => {
   const { CoursePage } = await import(
     "~/features/courses/components/course-page"
   );
   const seat = status === "ENROLLED" || status === "COMPLETED";
-  const { resources: links, ...rest } = props;
+  const { resources: links, retyped, ...rest } = props;
+  const base = course(status, !seat);
   return renderToStaticMarkup(
     createElement(CoursePage, {
       course: {
-        ...course(status, !seat),
+        ...base,
         ...(links ? { resources: links } : {}),
+        ...(retyped
+          ? {
+              weeks: base.weeks.map((week) => ({
+                ...week,
+                lessons: week.lessons.map((lesson) => ({
+                  ...lesson,
+                  type: retyped[lesson.id] ?? lesson.type,
+                })),
+              })),
+            }
+          : {}),
       } as CourseDetailResponse,
       koskName: "Nûruosmaniye Köşkü",
       signedIn: true,
@@ -379,6 +393,29 @@ describe("tedris/24: the recordings tab (MDRS-162)", () => {
     });
     expect(html).toContain('href="https://youtu.be/aaaaaaaaaaa"');
     expect(html).not.toContain("/izle");
+  });
+
+  it("opens the recording of a cancelled celse on its watch page, which plays it", async () => {
+    const html = await render("ENROLLED", {
+      recordings: [{ ...recordings[0], lessonId: "iptal" }],
+      initialTab: "kayitlar",
+    });
+    expect(html).toContain(
+      'href="/courses/c1000000-0000-4000-8000-000000000001/lessons/iptal/izle"'
+    );
+  });
+
+  it("opens at its host the recording of a lesson that is no longer a celse: it has no watch page", async () => {
+    const html = await render("ENROLLED", {
+      recordings,
+      initialTab: "kayitlar",
+      retyped: { next: "VIDEO" },
+    });
+    expect(html).toContain('href="https://youtu.be/aaaaaaaaaaa"');
+    expect(html).not.toContain("/lessons/next/izle");
+    expect(html).toContain(
+      'href="/courses/c1000000-0000-4000-8000-000000000001/lessons/sample/izle"'
+    );
   });
 
   it("opens on the curriculum for an unknown tab", async () => {

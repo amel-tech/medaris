@@ -24,8 +24,9 @@ export type WatchTarget =
  * stops sending the stream once one exists. Otherwise the stream, while the
  * API sends its link: from the scheduled start until the celse has a READY
  * recording, the clock's end notwithstanding. Both are content, so a caller
- * who may not read it gets neither, and a cancelled celse has nothing to
- * watch.
+ * who may not read it gets neither. A cancelled celse has no stream, but a
+ * recording it holds still plays: a cancellation does not remove one, and
+ * "Ders kayıtları" lists it and leads here.
  */
 export const watchTargetOf = (
   session: Pick<
@@ -33,10 +34,11 @@ export const watchTargetOf = (
     "status" | "contentLocked" | "recording" | "liveStreamUrl"
   >
 ): WatchTarget | null => {
-  if (session.contentLocked || session.status === "CANCELLED") return null;
+  if (session.contentLocked) return null;
   if (session.recording?.status === "READY") {
     return { kind: "recording", recording: session.recording };
   }
+  if (session.status === "CANCELLED") return null;
   return session.liveStreamUrl
     ? { kind: "stream", url: session.liveStreamUrl }
     : null;

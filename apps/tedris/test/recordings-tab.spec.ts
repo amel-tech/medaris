@@ -97,8 +97,18 @@ const FIVE = [
 
 const COURSE = "c1";
 
-/** The tab as a viewer who may read the content sees it, or (`watch` false) one who may not. */
-const mount = async (recordings: RecordingResponse[] | null, watch = true) => {
+/**
+ * The tab as a viewer who may read the content sees it, or (`watch` false)
+ * one who may not. Every recording's lesson is a celse unless `celses` says
+ * which are.
+ */
+const mount = async (
+  recordings: RecordingResponse[] | null,
+  watch = true,
+  celses: ReadonlySet<string> = new Set(
+    (recordings ?? []).map((r) => r.lessonId)
+  )
+) => {
   const { RecordingsTab } = await import(
     "~/features/courses/components/recordings-tab"
   );
@@ -107,6 +117,7 @@ const mount = async (recordings: RecordingResponse[] | null, watch = true) => {
       recordings,
       timeZone: "Europe/Istanbul",
       courseId: COURSE,
+      celses,
       watch,
     })
   );
@@ -242,6 +253,20 @@ describe("recordings tab rows open the watch page (MDRS-285)", () => {
     );
     expect(host.querySelector('a[href$="/izle"]')).toBeNull();
     expect(rowOf(host, "Hafta sonu müzakeresi").querySelector("a")).toBeNull();
+  });
+
+  it("opens at its host the recording of a lesson that is not a celse: only a celse has a watch page", async () => {
+    const celse = FIVE[3];
+    const video = FIVE[4];
+    const host = await mount([celse, video], true, new Set([celse.lessonId]));
+    const link = rowOf(host, "sülâsî fiilin on kalıbı").querySelector(
+      "a"
+    ) as HTMLAnchorElement;
+    expect(link.getAttribute("href")).toBe("https://youtu.be/muhtelife001");
+    expect(link.getAttribute("target")).toBe("_blank");
+    expect(
+      rowOf(host, "Emsile-i muttaride").querySelector("a")?.getAttribute("href")
+    ).toBe(`/courses/${COURSE}/lessons/${celse.lessonId}/izle`);
   });
 
   it("prints a week whose title only names the week once", async () => {

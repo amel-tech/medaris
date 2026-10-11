@@ -272,6 +272,21 @@ describe("the route", () => {
     expect(el.props.target).toEqual({ kind: "recording", recording: rec });
   });
 
+  it("opens on the READY recording of a cancelled celse, which the recordings tab leads to", async () => {
+    const rec = recording();
+    const cancelled = { status: "CANCELLED", cancelledAt: NOW };
+    mocks.getSession.mockResolvedValue(
+      session({ ...cancelled, liveStreamUrl: null, recording: rec })
+    );
+    const el = (await open()) as ReactElement<{ target: WatchTarget }>;
+    expect(el.props.target).toEqual({ kind: "recording", recording: rec });
+    // Without one it has nothing to watch.
+    mocks.getSession.mockResolvedValue(
+      session({ ...cancelled, liveStreamUrl: null })
+    );
+    expect(await redirectOf()).toBe(DETAIL);
+  });
+
   it("sends the viewer to the detail page when there is nothing to watch", async () => {
     mocks.getSession.mockResolvedValue(session({ liveStreamUrl: null }));
     expect(await redirectOf()).toBe(DETAIL);

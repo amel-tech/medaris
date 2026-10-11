@@ -86,16 +86,24 @@ describe("watchTargetOf", () => {
     expect(watchTargetOf(session({ liveStreamUrl: "" }))).toBeNull();
   });
 
-  it("offers nothing to a caller who may not read the content, nor on a cancelled celse", () => {
+  it("offers nothing to a caller who may not read the content", () => {
     expect(watchTargetOf(session({ contentLocked: true }))).toBeNull();
     expect(
       watchTargetOf(
         session({ contentLocked: true, recording: recording("READY") })
       )
     ).toBeNull();
+  });
+
+  it("plays the READY recording of a cancelled celse, which the recordings tab lists, but never its stream", () => {
+    const ready = recording("READY");
+    expect(
+      watchTargetOf(session({ status: "CANCELLED", recording: ready }))
+    ).toEqual({ kind: "recording", recording: ready });
+    expect(watchTargetOf(session({ status: "CANCELLED" }))).toBeNull();
     expect(
       watchTargetOf(
-        session({ status: "CANCELLED", recording: recording("READY") })
+        session({ status: "CANCELLED", recording: recording("PROCESSING") })
       )
     ).toBeNull();
   });

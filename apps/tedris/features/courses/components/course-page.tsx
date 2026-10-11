@@ -330,11 +330,21 @@ export const CoursePage = ({
             </TabsPanel>
             <TabsPanel value="kayitlar" className="pbs-4">
               {/* MDRS-285: a row opens its celse's watch page, which keeps
-                  the content gating of the celse's own page. */}
+                  the content gating of the celse's own page. Only a LIVE
+                  lesson has one. */}
               <RecordingsTab
                 recordings={recordings}
                 timeZone={zone}
                 courseId={course.id}
+                celses={
+                  new Set(
+                    course.weeks.flatMap((week) =>
+                      week.lessons
+                        .filter((lesson) => lesson.type === "LIVE")
+                        .map((lesson) => lesson.id)
+                    )
+                  )
+                }
                 watch={!course.contentLocked}
               />
             </TabsPanel>

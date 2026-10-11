@@ -34,19 +34,27 @@ const ROW =
  * row offers. Since MDRS-285 a recording plays on its celse's watch page, with
  * the talebe's notes and questions beside it, and the tab has no player of
  * its own: a ready row opens that page, or the recording at its host for a
- * viewer who may not read the content (`watch` false); one still being
+ * viewer who may not read the content (`watch` false) and for a recording of
+ * a lesson that is not a celse, which has no watch page; one still being
  * prepared offers nothing.
  */
 export const RecordingsTab = ({
   recordings,
   timeZone,
   courseId,
+  celses,
   watch = false,
 }: {
   /** Null when the read failed: the tab says so and offers a retry. */
   recordings: RecordingResponse[] | null;
   timeZone: string;
   courseId: string;
+  /**
+   * The ids of the course's celses (its LIVE lessons), the only lessons with
+   * a watch page. tedrisat lists the recording of any lesson, and a lesson
+   * may change kind after it was recorded.
+   */
+  celses: ReadonlySet<string>;
   /** Whether the viewer may read the course's content, and so open its watch pages. */
   watch?: boolean;
 }) => {
@@ -56,6 +64,7 @@ export const RecordingsTab = ({
       recordings={recordings}
       timeZone={timeZone}
       courseId={courseId}
+      celses={celses}
       watch={watch}
     />
   );
@@ -65,11 +74,13 @@ const RecordingsList = ({
   recordings,
   timeZone,
   courseId,
+  celses,
   watch,
 }: {
   recordings: RecordingResponse[];
   timeZone: string;
   courseId: string;
+  celses: ReadonlySet<string>;
   watch: boolean;
 }) => {
   const t = useTranslations("tedrisLearn.RecordingsTab");
@@ -134,7 +145,10 @@ const RecordingsList = ({
                     <RecordingRow
                       recording={rec}
                       facts={facts(rec)}
-                      action={recordingAction(rec, watch)}
+                      action={recordingAction(
+                        rec,
+                        watch && celses.has(rec.lessonId)
+                      )}
                       watchHref={watchPath(courseId, rec.lessonId)}
                     />
                   </li>
