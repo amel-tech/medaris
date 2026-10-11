@@ -4,25 +4,14 @@ import type { RecordingResponse } from "@medaris/services/tedrisat";
 import { EmptyState } from "@medaris/ui/mds/empty-state";
 import { Icon } from "@medaris/ui/mds/icon";
 import { useLocale, useTranslations } from "next-intl";
-import { lazy, Suspense, useState } from "react";
 import {
-  embedUrlOf,
-  firstPlayable,
   groupByWeek,
   isPlainWeekTitle,
-  listsRecordings,
-  playerApiUrlOf,
+  type RecordingAction,
   recordingAction,
 } from "../recordings-model";
-import { MediaPlayer } from "./media-player";
-import { PlayerWithNotes } from "./player-with-notes";
+import { watchPath } from "../watch-model";
 import { RecordingsFailed } from "./recordings-failed";
-
-// Loaded when a talebe's player first shows: the panel brings the notes actions
-// and YouTube's player script with it, which no other viewer of the tab needs.
-const LessonNotes = lazy(() =>
-  import("./lesson-notes").then((m) => ({ default: m.LessonNotes }))
-);
 
 const PROVIDER_NAMES: Record<string, string | undefined> = {
   YOUTUBE: "YouTube",
@@ -31,56 +20,60 @@ const PROVIDER_NAMES: Record<string, string | undefined> = {
 };
 
 /**
- * One playlist row: the whole row is the button or the link (MDRS-280). In a
- * narrow list its chips go under the title instead of squeezing it.
+ * One row: the whole row is the link (MDRS-280). In a narrow list its chips
+ * go under the title instead of squeezing it.
  */
 const ROW =
   "grid inline-full grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 gap-y-1 rounded-control px-3 py-2 text-start text-neutral-default no-underline @min-[30rem]:grid-cols-[auto_minmax(0,1fr)_auto]";
 
 /**
  * The "Ders kayıtları" tab of the course page (design tedris/24, MDRS-162):
- * a player over the course's recordings grouped by week, newest first. The
- * list is the API's — it already leaves out what this caller may not see — so
- * the tab only chooses what each row offers: a YouTube or Bunny recording
- * (MDRS-114) plays in the frame above, anything else opens at its host, one
- * still being prepared offers nothing. A Bunny recording's address is the
- * player link the API signed for this viewer in this response. For an
- * enrolled talebe (`notes`) the player has their private notes panel under it
- * (MDRS-150, MDRS-280).
+ * the course's recordings grouped by week, newest first, each with its date,
+ * its length and where it is hosted. The list is the API's — it already
+ * leaves out what this caller may not see — so the tab only chooses what each
+ * row offers. Since MDRS-285 a recording plays on its celse's watch page, with
+ * the talebe's notes and questions beside it, and the tab has no player of
+ * its own: a ready row opens that page, or the recording at its host for a
+ * viewer who may not read the content (`watch` false); one still being
+ * prepared offers nothing.
  */
 export const RecordingsTab = ({
   recordings,
   timeZone,
-  notes = false,
+  courseId,
+  watch = false,
 }: {
   /** Null when the read failed: the tab says so and offers a retry. */
   recordings: RecordingResponse[] | null;
   timeZone: string;
-  /** Whether the viewer may take notes: an enrolled talebe (MDRS-150). */
-  notes?: boolean;
+  courseId: string;
+  /** Whether the viewer may read the course's content, and so open its watch pages. */
+  watch?: boolean;
 }) => {
   if (recordings === null) return <RecordingsFailed />;
   return (
-    <RecordingsList recordings={recordings} timeZone={timeZone} notes={notes} />
+    <RecordingsList
+      recordings={recordings}
+      timeZone={timeZone}
+      courseId={courseId}
+      watch={watch}
+    />
   );
 };
 
 const RecordingsList = ({
   recordings,
   timeZone,
-  notes,
+  courseId,
+  watch,
 }: {
   recordings: RecordingResponse[];
   timeZone: string;
-  notes: boolean;
+  courseId: string;
+  watch: boolean;
 }) => {
   const t = useTranslations("tedrisLearn.RecordingsTab");
   const locale = useLocale();
-  const [selectedId, setSelectedId] = useState<string | null>(
-    () => firstPlayable(recordings)?.id ?? null
-  );
-  const selected = recordings.find((r) => r.id === selectedId) ?? null;
-  const frameId = selected ? `recording-frame-${selected.id}` : undefined;
 
   if (recordings.length === 0) return <EmptyState>{t("empty")}</EmptyState>;
 
@@ -91,156 +84,88 @@ const RecordingsList = ({
       year: "numeric",
       timeZone,
     }).format(at);
-  const longDate = (at: Date) =>
-    new Intl.DateTimeFormat(locale, {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-      weekday: "long",
-      timeZone,
-    }).format(at);
-  const minutes = (n: number) => t("minutes", { count: n });
 
-  const facts = (rec: RecordingResponse, long: boolean) => {
+  const facts = (rec: RecordingResponse) => {
     const at = rec.recordedAt ? new Date(rec.recordedAt) : null;
-    const parts = [
-      ...(long ? [t("weekLabel", { number: rec.weekNumber })] : []),
-      ...(at ? [long ? longDate(at) : date(at)] : []),
-      ...(rec.durationMinutes != null ? [minutes(rec.durationMinutes)] : []),
-    ];
-    return parts.join(" · ");
+    if (rec.status !== "READY")
+      return [...(at ? [date(at)] : []), t("preparingHint")].join(" · ");
+    return [
+      ...(at ? [date(at)] : []),
+      ...(rec.durationMinutes != null
+        ? [t("minutes", { count: rec.durationMinutes })]
+        : []),
+    ].join(" · ");
   };
 
   return (
-    <div className="flex flex-col gap-section">
-      {selected ? (
-        <PlayerWithNotes
-          player={
-            <MediaPlayer
-              // A new recording is a new frame: the player API is attached to one.
-              key={selected.id}
-              id="recording-player"
-              title={selected.title}
-              embedUrl={
-                notes
-                  ? playerApiUrlOf(embedUrlOf(selected.provider, selected.url))
-                  : embedUrlOf(selected.provider, selected.url)
-              }
-              placeholder={t("playerPlaceholder")}
-              frameId={notes ? frameId : undefined}
-              frameTitle={
-                selected.provider === "BUNNY"
-                  ? t("bunnyFrameTitle", { title: selected.title })
-                  : undefined
-              }
+    <section className="flex flex-col gap-3" aria-labelledby="all-recordings">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <h2 className="mds-h3" id="all-recordings">
+          {t("allTitle")}
+        </h2>
+        <span className="mds-caption">{t("allHint")}</span>
+      </div>
+      <div
+        className="mds-card @container flex flex-col gap-4"
+        data-density="compact"
+      >
+        {groupByWeek(recordings).map((group) => {
+          const label = t("weekLabel", { number: group.weekNumber });
+          return (
+            <section
+              key={group.weekId}
+              className="flex flex-col gap-1"
+              aria-labelledby={`week-${group.weekId}`}
             >
-              {facts(selected, true)}
-            </MediaPlayer>
-          }
-          notes={
-            notes ? (
-              <Suspense fallback={null}>
-                <LessonNotes
-                  key={selected.lessonId}
-                  lessonId={selected.lessonId}
-                  frameId={
-                    selected.provider === "YOUTUBE" &&
-                    embedUrlOf(selected.provider, selected.url)
-                      ? frameId
-                      : null
-                  }
-                />
-              </Suspense>
-            ) : null
-          }
-        />
-      ) : null}
-
-      {listsRecordings(recordings) ? (
-        <section
-          className="flex flex-col gap-3"
-          aria-labelledby="all-recordings"
-        >
-          <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-            <h2 className="mds-h3" id="all-recordings">
-              {t("allTitle")}
-            </h2>
-            <span className="mds-caption">{t("allHint")}</span>
-          </div>
-          <div
-            className="mds-card @container flex flex-col gap-4"
-            data-density="compact"
-          >
-            {groupByWeek(recordings).map((group) => {
-              const label = t("weekLabel", { number: group.weekNumber });
-              return (
-                <section
-                  key={group.weekId}
-                  className="flex flex-col gap-1"
-                  aria-labelledby={`week-${group.weekId}`}
-                >
-                  <h3
-                    className="m-0 flex flex-wrap items-baseline gap-x-2 px-3"
-                    id={`week-${group.weekId}`}
-                  >
-                    <span className="mds-eyebrow">{label}</span>{" "}
-                    {isPlainWeekTitle(
-                      group.weekTitle,
-                      group.weekNumber
-                    ) ? null : (
-                      <span className="mds-label" dir="auto">
-                        {group.weekTitle}
-                      </span>
-                    )}
-                  </h3>
-                  <ul className="m-0 flex list-none flex-col p-0">
-                    {group.items.map((rec) => (
-                      <li key={rec.id}>
-                        <PlaylistRow
-                          recording={rec}
-                          current={
-                            rec.id === selectedId &&
-                            recordingAction(rec) === "play"
-                          }
-                          facts={
-                            rec.status !== "READY"
-                              ? `${rec.recordedAt ? `${date(new Date(rec.recordedAt))} · ` : ""}${t("preparingHint")}`
-                              : facts(rec, false)
-                          }
-                          onPlay={() => setSelectedId(rec.id)}
-                        />
-                      </li>
-                    ))}
-                  </ul>
-                </section>
-              );
-            })}
-          </div>
-        </section>
-      ) : null}
-    </div>
+              <h3
+                className="m-0 flex flex-wrap items-baseline gap-x-2 px-3"
+                id={`week-${group.weekId}`}
+              >
+                <span className="mds-eyebrow">{label}</span>{" "}
+                {isPlainWeekTitle(group.weekTitle, group.weekNumber) ? null : (
+                  <span className="mds-label" dir="auto">
+                    {group.weekTitle}
+                  </span>
+                )}
+              </h3>
+              <ul className="m-0 flex list-none flex-col p-0">
+                {group.items.map((rec) => (
+                  <li key={rec.id}>
+                    <RecordingRow
+                      recording={rec}
+                      facts={facts(rec)}
+                      action={recordingAction(rec, watch)}
+                      watchHref={watchPath(courseId, rec.lessonId)}
+                    />
+                  </li>
+                ))}
+              </ul>
+            </section>
+          );
+        })}
+      </div>
+    </section>
   );
 };
 
 /**
- * A recording in the playlist. A row that plays is one button that loads it
- * into the player, and the one playing is marked (`aria-current`); a row that
- * opens at its host is one link to it, in a new tab; a row still being
- * prepared is plain text.
+ * A recording in the list. A ready one is one link, to its celse's watch
+ * page in this tab, or to its host in a new tab; one still being prepared is
+ * plain text.
  */
-const PlaylistRow = ({
+const RecordingRow = ({
   recording: rec,
-  current,
   facts,
-  onPlay,
+  action,
+  watchHref,
 }: {
   recording: RecordingResponse;
-  current: boolean;
   facts: string;
-  onPlay: () => void;
+  action: RecordingAction;
+  /** Its celse's watch page. */
+  watchHref: string;
 }) => {
   const t = useTranslations("tedrisLearn.RecordingsTab");
-  const action = recordingAction(rec);
   const provider = PROVIDER_NAMES[rec.provider];
   const factsId = `recording-facts-${rec.id}`;
 
@@ -266,11 +191,6 @@ const PlaylistRow = ({
         ) : provider ? (
           <span className="mds-platform-chip">{provider}</span>
         ) : null}
-        {current ? (
-          <span className="mds-caption font-semibold text-brand-default">
-            {t("inPlayer")}
-          </span>
-        ) : null}
         {action === "open" ? (
           <span className="mds-caption flex items-center gap-1 text-neutral-default">
             {t("open")}
@@ -281,21 +201,17 @@ const PlaylistRow = ({
     </>
   );
 
-  if (action === "play") {
+  if (action === "watch") {
     return (
-      <button
-        type="button"
-        className={`${ROW} cursor-pointer transition-colors ${current ? "bg-brand-subtle" : "hover:bg-neutral-hover"}`}
-        aria-current={current ? "true" : undefined}
-        aria-label={t(current ? "playingLabel" : "playLabel", {
-          title: rec.title,
-        })}
+      <a
+        className={`${ROW} transition-colors hover:bg-neutral-hover`}
+        href={watchHref}
+        aria-label={t("watchLabel", { title: rec.title })}
         aria-describedby={factsId}
-        onClick={onPlay}
       >
-        <Icon name="play" size="sm" filled={current} />
+        <Icon name="play" size="sm" />
         {body}
-      </button>
+      </a>
     );
   }
   if (action === "open" && rec.url) {

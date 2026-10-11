@@ -14,6 +14,7 @@ import { signIn } from "./sign-in";
  * A talebe's questions to the course staff (MDRS-150) on tedris, against the
  * running app and API with real Keycloak sign-ins: the Sorularım tab of the
  * course page, asking on a session in each state (one on air among them),
+ * "Soru sor" beside a recording on the session's watch page (MDRS-285),
  * editing and deleting while it waits, reading the müderris's answer, and who
  * may not ask. The answer is given through the API as the müderris
  * (E2E_MUDERRIS_*); nazar's Sorular page, where the staff answer, has its own
@@ -178,6 +179,48 @@ test.describe("the enrolled talebe", () => {
     ).toEqual([live.id, liveLinkOnly.id, upcoming.id]);
   });
 
+  test("on a recording's watch page: asks in Soru sor with no session to pick, reads it there and on Sorularım; beside a stream on air the live chat stands there instead (MDRS-285)", async ({
+    page,
+  }) => {
+    const { youtube, live } = fixture.sessions;
+    await page.goto(`/tr/courses/${fixture.courseId}/lessons/${youtube.id}`);
+    await page
+      .getByRole("main")
+      .getByRole("link", { name: "Kaydı izle" })
+      .click();
+    await expect(page).toHaveURL(new RegExp(`/lessons/${youtube.id}/izle$`));
+    const panel = page.getByRole("region", { name: "Soru sor" });
+    await expect(
+      panel.getByText(
+        "Sorularını ve cevaplarını yalnızca sen, dersin müderrisi ve ders nazırı görür; diğer talebeler görmez."
+      )
+    ).toBeVisible();
+    await expect(
+      panel.getByText("Bu celsede henüz soru sormadın.")
+    ).toBeVisible();
+    await expect(panel.getByRole("combobox", { name: "Celse" })).toHaveCount(0);
+
+    await panel
+      .getByLabel("Sorun")
+      .fill("Fe‘ale bâbının muzârisi neden yef‘ulu?");
+    await panel.getByRole("button", { name: "Soruyu gönder" }).click();
+    await expect(panel.getByLabel("Sorun")).toHaveValue("");
+    await expect(card(page, youtube.title)).toContainText("Cevap bekleniyor");
+    expect(await fixture.questionsOf(talebe.sub as string)).toMatchObject([
+      { lesson_id: youtube.id, answer: null },
+    ]);
+
+    await page.reload();
+    await expect(card(page, youtube.title)).toContainText("yef‘ulu");
+    await page.goto(questionsTab());
+    await expect(card(page, youtube.title)).toContainText("yef‘ulu");
+
+    // owner's decision 4: while the stream is on air, questions go to its chat
+    await page.goto(`/tr/courses/${fixture.courseId}/lessons/${live.id}/izle`);
+    await expect(page.getByTitle("Canlı sohbet")).toBeVisible();
+    await expect(page.getByRole("region", { name: "Soru sor" })).toHaveCount(0);
+  });
+
   test("reads the müderris's answer, and a question that has one can be deleted but not edited", async ({
     page,
   }) => {
@@ -201,6 +244,16 @@ test.describe("the enrolled talebe", () => {
     await expect(q).toContainText("Cevaplandı");
     await expect(q.getByText(/^Cevap(: .+)?$/)).toBeVisible();
     await expect(q.locator("strong")).toHaveText("eyn");
+    // the same answer beside the recording, on the session's watch page
+    // (MDRS-285); the Bunny video id is made up, so nothing leaves for Bunny
+    await page.route(
+      (url) => url.hostname.endsWith("mediadelivery.net"),
+      (route) => route.abort()
+    );
+    await page.goto(`/tr/courses/${fixture.courseId}/lessons/${s.id}/izle`);
+    await expect(card(page, s.title)).toContainText("Cevaplandı");
+    await expect(card(page, s.title).locator("strong")).toHaveText("eyn");
+    await page.goto(questionsTab());
     await expect(
       q.getByRole("button", { name: `Soruyu düzenle, ${s.title}` })
     ).toHaveCount(0);

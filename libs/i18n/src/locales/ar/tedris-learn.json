@@ -41,20 +41,16 @@
     "errorTitle": "تعذّر تحميل التسجيلات",
     "errorText": "تعذّر الوصول إلى التسجيلات الآن. حاول مرة أخرى بعد قليل.",
     "retry": "أعد المحاولة",
-    "playerPlaceholder": "يُعرض التسجيل هنا",
     "allTitle": "كل التسجيلات",
     "allHint": "حسب الأسبوع، الأحدث أولًا",
     "weekLabel": "الأسبوع {number}",
     "minutes": "{count} د",
     "preparing": "قيد الإعداد",
-    "preparingHint": "يُعرض هنا عند جاهزيته",
+    "preparingHint": "يُفتح من هنا عند جاهزيته",
     "public": "متاح للجميع",
-    "inPlayer": "في المشغّل",
-    "playLabel": "تشغيل: {title}",
-    "playingLabel": "في المشغّل: {title}",
     "open": "فتح التسجيل",
     "openLabel": ": {title} (يُفتح في تبويب جديد)",
-    "bunnyFrameTitle": "مشغّل التسجيل: {title}"
+    "watchLabel": "شاهد التسجيل: {title}"
   },
   "LessonNotes": {
     "title": "ملاحظاتي",

@@ -14,23 +14,16 @@ import { getLocale, getTimeZone, getTranslations } from "next-intl/server";
 import type { ReactNode } from "react";
 import type { LooseTranslator } from "~/lib/i18n/loose";
 import { canWriteNotes } from "../lesson-note-model";
-import {
-  embedUrlOf,
-  liveEmbedUrlOf,
-  playerApiUrlOf,
-  recordingsTabPath,
-} from "../recordings-model";
+import { recordingsTabPath } from "../recordings-model";
 import {
   calendarLabels,
   hostOf,
   sessionJoinLabels,
 } from "../session-join-labels";
 import { splitArabic, zoneLabel } from "../session-model";
+import { watchPath, watchTargetOf } from "../watch-model";
 import { CourseResources } from "./course-resources";
 import { LessonNotes } from "./lesson-notes";
-import { LiveChat } from "./live-chat";
-import { MediaPlayer } from "./media-player";
-import { PlayerWithNotes } from "./player-with-notes";
 import { SessionJoinLive } from "./session-join-live";
 import { SessionProgramme } from "./session-programme";
 
@@ -127,10 +120,15 @@ const NeighbourCard = ({
 
 /**
  * The session page (MDRS-158, designs tedris/15 and 18): a live celse of a
- * course the viewer may read. Server component; the only client piece is the
- * join card, which keeps a clock. `session` is `GET /courses/:id/sessions/:id`
- * — its status, cancellation, replacement and neighbours are the API's; the
- * course is the programme the aside lists.
+ * course the viewer may read. Server component; the client pieces are the
+ * join card, which keeps a clock, and the notes panel. `session` is
+ * `GET /courses/:id/sessions/:id` — its status, cancellation, replacement and
+ * neighbours are the API's; the course is the programme the aside lists.
+ *
+ * Since MDRS-285 it is the celse's detail page: the join card with the
+ * meeting link, the agenda, the kaynak, the müderris, the course's resources
+ * and the programme. The stream and the recording play on the watch page,
+ * which the join card's "Yayını izle" or "Kaydı izle" leads to.
  */
 export const SessionPage = async ({
   course,
@@ -164,56 +162,20 @@ export const SessionPage = async ({
   const agenda = session.agenda ?? [];
   const kaynak = session.kaynak?.trim() || null;
 
-  // MDRS-162: the recording of a finished celse and the stream of a live one
-  // are content the API sends only to who may read it, so a body without them
-  // draws neither. A Bunny recording's address is the player link the API
-  // signed for this viewer in this response (MDRS-114).
+  // MDRS-285: the stream and the recording play on the celse's watch page,
+  // with the chat or the questions and the notes beside them; this page
+  // only leads there. Both are content the API sends only to who may read it
+  // (MDRS-162), so a body without them offers no way there.
   const recording = session.recording ?? null;
-  const recordingEmbed = recording
-    ? embedUrlOf(recording.provider, recording.url)
-    : null;
-  const showRecording =
-    session.status === "ENDED" && recording?.status === "READY";
-  const liveStream = session.status === "LIVE" ? session.liveStreamUrl : null;
-  const liveEmbed = liveEmbedUrlOf(liveStream);
-  // MDRS-150: an enrolled talebe takes private notes on the video on screen,
-  // the stream while it is live and the recording once it is up. The frames
-  // get the player API only then, so every other viewer's page is unchanged.
-  // MDRS-266: and on every celse that stands, whatever it has: a meeting
-  // link, a stream, a recording, only the in-person mark or nothing yet,
-  // before it starts as well. Never on a cancelled one.
+  const target = watchTargetOf(session);
+  // MDRS-266: an enrolled talebe takes private notes on every celse that
+  // stands, before it starts as well. Where a video can be watched now the
+  // panel is beside it on the watch page; with none it is here, under the
+  // join card, and the celse's clock gives a note's time while it is live.
   const mayTakeNotes =
     !session.contentLocked && canWriteNotes(course.enrollment?.status);
-  const noteFrame = (framed: string | null, frameId: string) =>
-    mayTakeNotes && framed
-      ? { embedUrl: playerApiUrlOf(framed), frameId }
-      : { embedUrl: framed, frameId: undefined };
-  const liveFrame = noteFrame(liveEmbed, "live-stream-frame");
-  const recordingFrame = noteFrame(recordingEmbed, "recording-frame");
-  const notesVideo =
-    liveStream && liveEmbed
-      ? { frameId: "live-stream-frame", framed: liveEmbed }
-      : showRecording
-        ? { frameId: "recording-frame", framed: recordingEmbed }
-        : null;
-  // The panel goes under the video it is about (MDRS-280), never further down
-  // the page.
-  const notesUnder = (frameId: string) =>
-    mayTakeNotes && notesVideo?.frameId === frameId ? (
-      <LessonNotes
-        lessonId={session.id}
-        // Only a YouTube frame reports a position; anything else is typed.
-        frameId={
-          notesVideo.framed?.startsWith("https://www.youtube-nocookie.com/")
-            ? frameId
-            : null
-        }
-      />
-    ) : null;
-  // MDRS-266: with no video on screen the panel goes under the join card,
-  // and the celse's clock gives a note's time while it is live.
-  const notesWithoutVideo =
-    mayTakeNotes && !cancelled && !notesVideo ? (
+  const notes =
+    mayTakeNotes && !cancelled && !target ? (
       <LessonNotes
         lessonId={session.id}
         frameId={null}
@@ -224,15 +186,6 @@ export const SessionPage = async ({
         }}
       />
     ) : null;
-  const recordedOn = recording?.recordedAt
-    ? new Intl.DateTimeFormat(locale, {
-        weekday: "long",
-        day: "numeric",
-        month: "long",
-        year: "numeric",
-        timeZone: course.timeZone,
-      }).format(recording.recordedAt)
-    : null;
 
   const crumbs: { label: string; href?: string }[] = [];
   if (koskName)
@@ -257,17 +210,32 @@ export const SessionPage = async ({
       platform={platform?.id}
       platformHost={meetingUrl ? hostOf(meetingUrl) : undefined}
       // MDRS-283: without a link the card says the celse is streamed or held
-      // in person. `hasLiveStream` comes before the start, the link only
-      // while LIVE; a caller who may not read the content gets neither.
+      // in person. `hasLiveStream` comes before the start, the link from the
+      // start; a caller who may not read the content gets neither.
       inPerson={session.inPerson}
-      hasLiveStream={session.hasLiveStream ?? Boolean(liveStream)}
+      hasLiveStream={session.hasLiveStream ?? Boolean(session.liveStreamUrl)}
       locale={locale}
       timeZone={timeZone}
       courseTimeZone={course.timeZone}
       calendar={calendar}
       recordingsHref={recording ? recordingsTabPath(course.id) : undefined}
+      // MDRS-285: "Yayını izle" or "Kaydı izle", to the watch page.
+      watchHref={watchPath(course.id, session.id)}
+      watch={target?.kind ?? null}
       labels={sessionJoinLabels(t)}
     />
+  ) : target ? (
+    // A celse with no time has no card; what it has to watch is still offered.
+    <a
+      className="mds-btn mds-btn--primary mds-btn--large self-start"
+      href={watchPath(course.id, session.id)}
+    >
+      {t(
+        target.kind === "recording"
+          ? "SessionPage.watchRecording"
+          : "SessionPage.watchStream"
+      )}
+    </a>
   ) : null;
 
   return (
@@ -299,46 +267,6 @@ export const SessionPage = async ({
           </div>
         </div>
       </div>
-
-      {/* MDRS-280: a finished session's recording takes the page's whole
-          width, above the join card and the aside, with the talebe's notes
-          under it. A live stream stays in the column after the join card, so
-          "Celseye katıl" is not pushed under a page-wide video. */}
-      {showRecording && recording ? (
-        <PlayerWithNotes
-          player={
-            <MediaPlayer
-              id="recording-title"
-              title={recording.title}
-              embedUrl={recordingFrame.embedUrl}
-              frameId={recordingFrame.frameId}
-              frameTitle={
-                recording.provider === "BUNNY"
-                  ? t("SessionPage.bunnyFrameTitle", {
-                      title: recording.title,
-                    })
-                  : undefined
-              }
-              placeholder={t("SessionPage.recordingPlaceholder")}
-              openHref={recordingEmbed ? null : recording.url}
-              openLabel={t("SessionPage.recordingOpen")}
-            >
-              {[
-                t("SessionPage.recordingKind"),
-                recordedOn,
-                recording.durationMinutes != null
-                  ? t("SessionPage.minutes", {
-                      count: recording.durationMinutes,
-                    })
-                  : null,
-              ]
-                .filter(Boolean)
-                .join(" · ")}
-            </MediaPlayer>
-          }
-          notes={notesUnder("recording-frame")}
-        />
-      ) : null}
 
       <div className="grid items-start gap-8 grid-cols-[minmax(0,1fr)_var(--layout-aside)] max-md:grid-cols-1">
         <div className="flex min-inline-0 flex-col gap-section">
@@ -417,34 +345,7 @@ export const SessionPage = async ({
             ) : null}
           </div>
 
-          {notesWithoutVideo}
-
-          {liveStream ? (
-            <PlayerWithNotes
-              player={
-                <MediaPlayer
-                  id="live-stream-title"
-                  title={t("SessionPage.liveStreamTitle")}
-                  embedUrl={liveFrame.embedUrl}
-                  frameId={liveFrame.frameId}
-                  placeholder={t("SessionPage.liveStreamPlaceholder")}
-                  openHref={liveEmbed ? null : liveStream}
-                  openLabel={t("SessionPage.liveStreamOpen")}
-                >
-                  {/* MDRS-283: with no meeting link there is nothing to
-                      join; questions go to the live chat. */}
-                  {t(
-                    meetingUrl
-                      ? "SessionPage.liveStreamText"
-                      : "SessionPage.liveStreamChatText"
-                  )}
-                </MediaPlayer>
-              }
-              notes={notesUnder("live-stream-frame")}
-            />
-          ) : null}
-
-          {liveStream && liveEmbed ? <LiveChat streamUrl={liveStream} /> : null}
+          {notes}
 
           {session.previous || session.next ? (
             <nav

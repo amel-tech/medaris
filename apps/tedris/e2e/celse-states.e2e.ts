@@ -4,7 +4,8 @@ import { type CelseStatesFixture, seedCelseStates } from "./celse-states-seed";
 /**
  * Designs tedris/16 (session on air), 17 (session over, with its recording),
  * 19 (no access, B8) and 24 (recordings tab), against the running app and API
- * (MDRS-162). The lesson routes sit behind the auth middleware, so each spec
+ * (MDRS-162). Since MDRS-285 the stream and the recording play on the
+ * session's watch page, which its detail page and the recordings tab lead to. The lesson routes sit behind the auth middleware, so each spec
  * signs in through Keycloak: the enrolled talebe with E2E_TALEBE_EMAIL,
  * E2E_TALEBE_PASSWORD and E2E_TALEBE_SUB, and a second account who is not
  * enrolled with E2E_OTHER_EMAIL, E2E_OTHER_PASSWORD and E2E_OTHER_SUB. A spec
@@ -48,6 +49,7 @@ const signIn = async (
 const sessionPath = (id: string) =>
   `/tr/courses/${fixture.courseId}/lessons/${id}`;
 const coursePath = () => `/tr/courses/${fixture.courseId}`;
+const watchPath = (id: string) => `${sessionPath(id)}/izle`;
 
 test.describe("an enrolled talebe", () => {
   test.beforeEach(async ({ page }) => {
@@ -58,22 +60,40 @@ test.describe("an enrolled talebe", () => {
     await signIn(page, talebe);
   });
 
-  test("tedris/16: a session on air says so, frames the stream and opens the meeting in a new tab", async ({
+  test("tedris/16: a session on air says so, opens the meeting in a new tab, and leads to the stream on its watch page (MDRS-285)", async ({
     page,
   }) => {
-    await page.goto(sessionPath(fixture.sessions.live.id));
+    const s = fixture.sessions.live;
+    await page.goto(sessionPath(s.id));
     const main = page.getByRole("main");
     await expect(main.getByText("Şu an canlı").first()).toBeVisible();
     await expect(main.getByText(/dakikadır sürüyor/)).toBeVisible();
+    const join = main.getByRole("link", { name: /Celseye katıl/ });
+    await expect(join).toHaveAttribute("href", fixture.meetingUrl);
+    await expect(join).toHaveAttribute("target", "_blank");
+    await expect(
+      main.getByText(
+        "Konuşmak ve soru sormak için celseye katıl; yalnız izleyeceksen yayını aç."
+      )
+    ).toBeVisible();
+    // the detail page frames nothing itself
+    await expect(page.locator("iframe")).toHaveCount(0);
+
+    await main.getByRole("link", { name: "Yayını izle" }).click();
+    await expect(page).toHaveURL(new RegExp(`/lessons/${s.id}/izle$`));
     // the stream's frame; the live chat has a frame of its own beside it
-    await expect(page.locator("#live-stream-frame")).toHaveAttribute(
+    await expect(page.locator("#watch-frame")).toHaveAttribute(
       "src",
       new RegExp(`youtube-nocookie\\.com/embed/${fixture.streamId}`)
     );
     await expect(page.getByTitle("Canlı sohbet")).toBeVisible();
-    const join = main.getByRole("link", { name: /Celseye katıl/ });
-    await expect(join).toHaveAttribute("href", fixture.meetingUrl);
-    await expect(join).toHaveAttribute("target", "_blank");
+    // the meeting link is on the detail page only (owner's decision 6)
+    await expect(page.getByRole("link", { name: /Celseye katıl/ })).toHaveCount(
+      0
+    );
+    expect(await page.content()).not.toContain(fixture.meetingUrl);
+    await page.getByRole("link", { name: "Celse ayrıntıları" }).click();
+    await expect(page).toHaveURL(new RegExp(`/lessons/${s.id}$`));
   });
 
   test("tedris/16: the Müfredat row of the session on air reads Sıradaki · Şu an canlı", async ({
@@ -88,33 +108,45 @@ test.describe("an enrolled talebe", () => {
     ).toBeVisible();
   });
 
-  test("tedris/17: a session that is over plays its recording and links to the tab", async ({
+  test("tedris/17: a session that is over leads to its recording on the watch page (MDRS-285)", async ({
     page,
   }) => {
     const s = fixture.sessions.ended;
     await page.goto(sessionPath(s.id));
     const main = page.getByRole("main");
     await expect(main.getByText("Sona erdi").first()).toBeVisible();
+    await expect(page.locator("iframe")).toHaveCount(0);
+    await main.getByRole("link", { name: "Kaydı izle" }).click();
+    await expect(page).toHaveURL(new RegExp(`/lessons/${s.id}/izle$`));
     await expect(
-      main.getByRole("heading", { name: s.recordingTitle })
+      page.getByRole("heading", { name: s.recordingTitle })
     ).toBeVisible();
-    await expect(page.locator("iframe:visible")).toHaveAttribute(
+    await expect(page.locator("iframe:visible").first()).toHaveAttribute(
       "src",
       /^https:\/\/(www\.)?youtube-nocookie\.com\/embed\/9bZkp7q19f0/
     );
-    await main.getByRole("link", { name: /Ders kayıtlarına git/ }).click();
+  });
+
+  test("tedris/17: a recording still being prepared has no player, no watch page, and links to the tab", async ({
+    page,
+  }) => {
+    const s = fixture.sessions.processing;
+    await page.goto(sessionPath(s.id));
+    const main = page.getByRole("main");
+    await expect(main).toBeVisible();
+    await expect(page.locator("iframe")).toHaveCount(0);
+    await expect(main.getByRole("link", { name: "Kaydı izle" })).toHaveCount(0);
+    // its watch page has nothing to play and sends the talebe back
+    await page.goto(watchPath(s.id));
+    await expect(page).toHaveURL(new RegExp(`${sessionPath(s.id)}$`));
+    await page
+      .getByRole("main")
+      .getByRole("link", { name: /Ders kayıtlarına git/ })
+      .click();
     await expect(page).toHaveURL(/tab=kayitlar/);
   });
 
-  test("tedris/17: a recording still being prepared has no player", async ({
-    page,
-  }) => {
-    await page.goto(sessionPath(fixture.sessions.processing.id));
-    await expect(page.getByRole("main")).toBeVisible();
-    await expect(page.locator("iframe")).toHaveCount(0);
-  });
-
-  test("tedris/24: the tab lists the recordings by week, with the one being prepared offering nothing", async ({
+  test("tedris/24: the tab lists the recordings by week, the one being prepared offering nothing, and a row opens its watch page (MDRS-285)", async ({
     page,
   }) => {
     await page.goto(`${coursePath()}?tab=kayitlar`);
@@ -128,12 +160,14 @@ test.describe("an enrolled talebe", () => {
       page.getByText(fixture.sessions.ended.recordingTitle).first()
     ).toBeVisible();
     await expect(page.getByText("Hazırlanıyor").first()).toBeVisible();
+    // no player in the tab any more
+    await expect(page.locator("iframe")).toHaveCount(0);
+    const { sample } = fixture.sessions;
     await page
-      .getByRole("button", {
-        name: `Oynat: ${fixture.sessions.sample.recordingTitle}`,
-      })
+      .getByRole("link", { name: `Kaydı izle: ${sample.recordingTitle}` })
       .click();
-    await expect(page.locator("iframe:visible")).toHaveAttribute(
+    await expect(page).toHaveURL(new RegExp(`/lessons/${sample.id}/izle$`));
+    await expect(page.locator("iframe:visible").first()).toHaveAttribute(
       "src",
       /^https:\/\/(www\.)?youtube-nocookie\.com\/embed\/dQw4w9WgXcQ/
     );
@@ -162,6 +196,11 @@ test.describe("a caller who may not read the course", () => {
       expect(html).not.toContain(fixture.meetingUrl);
       expect(html).not.toContain(fixture.streamId);
       expect(html).not.toContain("9bZkp7q19f0");
+      expect(html).not.toMatch(/href="[^"]*\/izle"/);
+      await expect(page.locator("iframe")).toHaveCount(0);
+      // the watch page keeps the detail page's gating (MDRS-285)
+      await page.goto(watchPath(s.id));
+      await expect(page).toHaveURL(new RegExp(`${sessionPath(s.id)}$`));
       await expect(page.locator("iframe")).toHaveCount(0);
     }
     await page.goto(sessionPath(fixture.sessions.ended.id));
@@ -183,17 +222,23 @@ test.describe("a caller who may not read the course", () => {
     ).toHaveCount(0);
   });
 
-  test("tedris/24: the tab shows only the public recording, and no private link is in the page", async ({
+  test("tedris/24: the tab shows only the public recording, opening it at its host, and no private link is in the page", async ({
     page,
   }) => {
     const response = await page.goto(`${coursePath()}?tab=kayitlar`);
     const html = (await response?.text()) ?? "";
     expect(html).not.toContain("9bZkp7q19f0");
-    await expect(
-      page.getByText(fixture.sessions.sample.recordingTitle).first()
-    ).toBeVisible();
+    const { sample } = fixture.sessions;
+    await expect(page.getByText(sample.recordingTitle).first()).toBeVisible();
     await expect(
       page.getByText(fixture.sessions.ended.recordingTitle)
     ).toHaveCount(0);
+    // the watch page would send this caller to the locked card (MDRS-285)
+    const open = page.getByRole("link", {
+      name: `Ders kaydını aç: ${sample.recordingTitle} (yeni sekmede açılır)`,
+    });
+    await expect(open).toHaveAttribute("href", "https://youtu.be/dQw4w9WgXcQ");
+    await expect(open).toHaveAttribute("target", "_blank");
+    await expect(page.locator('a[href$="/izle"]')).toHaveCount(0);
   });
 });

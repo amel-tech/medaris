@@ -170,6 +170,18 @@ describe("WatchPage: what plays for this viewer", () => {
     });
   });
 
+  it("hands over no meeting link: the Zoom link is on the detail page only (owner's decision 6)", async () => {
+    const zoom = "https://zoom.us/j/123456789";
+    const live = session({ status: "LIVE", meetingUrl: zoom });
+    for (const target of [
+      { kind: "stream", url: STREAM },
+      { kind: "recording", recording: recording() },
+    ] as WatchTarget[]) {
+      const props = await watch(course(), live, target);
+      expect(JSON.stringify(props)).not.toContain("zoom.us");
+    }
+  });
+
   it("frames a YouTube recording with the player API for a talebe's notes, and says what it is", async () => {
     const rec = recording();
     const props = await watch(course(), session(), {

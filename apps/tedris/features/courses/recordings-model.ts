@@ -1,14 +1,14 @@
 import type { RecordingResponse } from "@medaris/services/tedrisat";
 
 /**
- * What the recordings tab and the session page derive from a recording
- * (MDRS-162). Pure: a spec pins every rule.
+ * What the recordings tab and the watch page derive from a recording
+ * (MDRS-162, MDRS-285). Pure: a spec pins every rule.
  *
  * tedris sends no Content Security Policy today. One added later must allow
  * the players these pages frame in `frame-src` (MDRS-114):
  * `https://player.mediadelivery.net` (Bunny) and
  * `https://www.youtube-nocookie.com` (YouTube), plus
- * `https://drive.google.com` (a Drive recording on the session page) and
+ * `https://drive.google.com` (a Drive recording on the watch page) and
  * `https://www.youtube.com` (the live chat, MDRS-229).
  */
 
@@ -117,22 +117,23 @@ export const playerApiUrlOf = (embedUrl: string | null): string | null =>
 export const liveEmbedUrlOf = (url: string | null | undefined) =>
   embedUrlOf("YOUTUBE", url);
 
-export type RecordingAction = "play" | "open" | "none";
+export type RecordingAction = "watch" | "open" | "none";
 
 /**
- * What a list row offers (tedris/24): a YouTube or Bunny recording (MDRS-114)
- * plays in the page's player, any other ready one opens at its host in a new
- * tab, as does one whose link cannot be framed; one that is still being
+ * What a row of the recordings tab offers (tedris/24, MDRS-285): a ready
+ * recording opens its celse's watch page, which plays it with the notes and
+ * the questions beside it (owner's decision, 2026-10-11). The watch page
+ * keeps the detail page's gating, so a viewer who may not read the course's
+ * content, to whom the API lists only PUBLIC recordings (MDRS-162), is sent
+ * to the recording at its host in a new tab instead. One still being
  * prepared offers nothing.
  */
 export const recordingAction = (
-  recording: Pick<RecordingResponse, "provider" | "status" | "url">
+  recording: Pick<RecordingResponse, "status" | "url">,
+  watch: boolean
 ): RecordingAction => {
   if (recording.status !== "READY" || !recording.url) return "none";
-  return embedUrlOf(recording.provider, recording.url) &&
-    (recording.provider === "YOUTUBE" || recording.provider === "BUNNY")
-    ? "play"
-    : "open";
+  return watch ? "watch" : "open";
 };
 
 export interface RecordingWeekGroup {
@@ -164,22 +165,6 @@ export const groupByWeek = (
   }
   return groups;
 };
-
-/** The recording the player starts on: the newest one that plays in it. */
-export const firstPlayable = (
-  recordings: RecordingResponse[]
-): RecordingResponse | null =>
-  recordings.find((r) => recordingAction(r) === "play") ?? null;
-
-/**
- * Whether the tab lists the recordings under its player (MDRS-280): when
- * there is more than one to choose from, or when the only one does not play
- * in the frame (it opens at its host or is still being prepared) and the list
- * is the only place it appears. A lone recording that is already playing
- * above is not listed a second time.
- */
-export const listsRecordings = (recordings: RecordingResponse[]): boolean =>
-  recordings.length > 1 || firstPlayable(recordings) === null;
 
 const WEEK_WORD = "(?:hafta|week|الأسبوع|أسبوع)";
 

@@ -341,32 +341,44 @@ describe("tedris/24: the recordings tab (MDRS-162)", () => {
     expect(html).not.toContain("drive.google.com");
   });
 
-  // MDRS-280: the recordings tab's video takes the page's whole width.
+  // MDRS-285: the tab has no player of its own any more, so it keeps the
+  // reading column and the sticky card like every other tab (MDRS-280 gave
+  // it both columns for its video).
   const STICKY =
     "sticky inset-bs-[calc(var(--layout-topbar)+var(--space-6))] md:col-start-2 md:row-start-1 md:row-span-2";
 
   it.each([
-    ["an enrolled talebe", "ENROLLED" as Status],
-    ["a visitor", null],
-  ])("gives the recordings tab both columns, and keeps %s's card beside the header, not sticking", async (_label, status) => {
-    const html = await render(status, {
-      signedIn: status !== null,
-      recordings,
-      initialTab: "kayitlar",
-    });
-    expect(html).toContain("md:col-start-1 md:row-start-2 md:col-span-2");
-    expect(html).not.toContain(STICKY);
-    // the wrapper may carry more classes (the resources card stacks in it)
-    expect(html).toMatch(/class="md:col-start-2 md:row-start-1( [^"]*)?"/);
-  });
-
-  it.each([
+    "kayitlar",
     "mufredat",
     "muderrisler",
   ])("keeps the %s tab in the reading column, beside the sticky card", async (tab) => {
     const html = await render("ENROLLED", { recordings, initialTab: tab });
     expect(html).not.toContain("md:col-span-2");
     expect(html).toContain(STICKY);
+  });
+
+  it("opens a recording's watch page from its row for an enrolled talebe (MDRS-285)", async () => {
+    const html = await render("ENROLLED", {
+      recordings,
+      initialTab: "kayitlar",
+    });
+    expect(html).toContain(
+      'href="/courses/c1000000-0000-4000-8000-000000000001/lessons/next/izle"'
+    );
+    expect(html).toContain(
+      'href="/courses/c1000000-0000-4000-8000-000000000001/lessons/sample/izle"'
+    );
+    expect(html).not.toContain("<iframe");
+  });
+
+  it("opens a visitor's public recording at its host: the watch page would turn them away", async () => {
+    const html = await render(null, {
+      signedIn: false,
+      recordings: [recordings[0]],
+      initialTab: "kayitlar",
+    });
+    expect(html).toContain('href="https://youtu.be/aaaaaaaaaaa"');
+    expect(html).not.toContain("/izle");
   });
 
   it("opens on the curriculum for an unknown tab", async () => {

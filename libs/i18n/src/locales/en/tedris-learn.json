@@ -41,20 +41,16 @@
     "errorTitle": "Recordings could not be loaded",
     "errorText": "We could not reach the recordings right now. Try again in a moment.",
     "retry": "Try again",
-    "playerPlaceholder": "The recording plays here",
     "allTitle": "All recordings",
     "allHint": "By week, newest first",
     "weekLabel": "Week {number}",
     "minutes": "{count} min",
     "preparing": "Being prepared",
-    "preparingHint": "Plays here once it is ready",
+    "preparingHint": "Opens from here once it is ready",
     "public": "Open to everyone",
-    "inPlayer": "In the player",
-    "playLabel": "Play: {title}",
-    "playingLabel": "In the player: {title}",
     "open": "Open the recording",
     "openLabel": ": {title} (opens in a new tab)",
-    "bunnyFrameTitle": "Recording player: {title}"
+    "watchLabel": "Watch the recording: {title}"
   },
   "LessonNotes": {
     "title": "My notes",
