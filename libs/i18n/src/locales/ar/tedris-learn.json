@@ -132,5 +132,33 @@
     "loadMore": "عرض المزيد",
     "loadingMore": "جارٍ التحميل",
     "loadMoreFailed": "تعذّر تحميل المزيد من الأسئلة. أعد المحاولة."
+  },
+  "WatchPage": {
+    "backSr": "العودة إلى الدرس: ",
+    "heading": "الأسبوع {week} · {title}",
+    "liveBadge": "مباشر · {minutes} د",
+    "liveBadgeShort": "مباشر",
+    "endedBadge": "انتهى البث",
+    "recordingBadge": "تسجيل",
+    "minutes": "{count} د",
+    "details": "تفاصيل الجلسة",
+    "streamTitle": "البث المباشر",
+    "streamPlaceholder": "يُعرض البث المباشر هنا",
+    "streamOpen": "فتح البث",
+    "streamLiveText": "للسؤال اكتب في الدردشة المباشرة.",
+    "streamEndedText": "انتهى البث المباشر. يُعرض التسجيل هنا بعد إضافته.",
+    "recordingPlaceholder": "يُعرض التسجيل هنا",
+    "recordingOpen": "فتح التسجيل",
+    "bunnyFrameTitle": "مشغّل التسجيل: {title}",
+    "sideLive": "الدردشة والملاحظات",
+    "sideQuestions": "الأسئلة والملاحظات",
+    "panels": "الأقسام",
+    "chatTab": "الدردشة المباشرة",
+    "questionsTab": "اطرح سؤالًا",
+    "notesTab": "ملاحظاتي",
+    "questionsTitle": "اطرح سؤالًا",
+    "questionPlaceholder": "اكتب سؤالك عن هذه الجلسة…",
+    "questionsList": "أسئلتك في هذه الجلسة",
+    "questionsEmpty": "لم تطرح أي سؤال في هذه الجلسة بعد."
   }
 }

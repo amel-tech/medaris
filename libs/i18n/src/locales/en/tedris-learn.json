@@ -132,5 +132,33 @@
     "loadMore": "Show more",
     "loadingMore": "Loading",
     "loadMoreFailed": "More questions could not be loaded. Try again."
+  },
+  "WatchPage": {
+    "backSr": "Back to the course: ",
+    "heading": "Week {week} · {title}",
+    "liveBadge": "Live · {minutes} min",
+    "liveBadgeShort": "Live",
+    "endedBadge": "Stream ended",
+    "recordingBadge": "Recording",
+    "minutes": "{count} min",
+    "details": "Session details",
+    "streamTitle": "Live stream",
+    "streamPlaceholder": "The live stream plays here",
+    "streamOpen": "Open the stream",
+    "streamLiveText": "To ask a question, write in the live chat.",
+    "streamEndedText": "The live stream has ended. The recording will play here once it is added.",
+    "recordingPlaceholder": "The recording plays here",
+    "recordingOpen": "Open the recording",
+    "bunnyFrameTitle": "Recording player: {title}",
+    "sideLive": "Chat and notes",
+    "sideQuestions": "Questions and notes",
+    "panels": "Sections",
+    "chatTab": "Live chat",
+    "questionsTab": "Ask a question",
+    "notesTab": "My notes",
+    "questionsTitle": "Ask a question",
+    "questionPlaceholder": "Write your question about this session…",
+    "questionsList": "Your questions in this session",
+    "questionsEmpty": "You have not asked a question in this session yet."
   }
 }

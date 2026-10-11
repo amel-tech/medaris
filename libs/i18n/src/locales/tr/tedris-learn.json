@@ -132,5 +132,33 @@
     "loadMore": "Daha fazla göster",
     "loadingMore": "Yükleniyor",
     "loadMoreFailed": "Diğer sorular yüklenemedi. Yeniden dene."
+  },
+  "WatchPage": {
+    "backSr": "Derse dön: ",
+    "heading": "Hafta {week} · {title}",
+    "liveBadge": "Canlı · {minutes} dk",
+    "liveBadgeShort": "Canlı",
+    "endedBadge": "Yayın bitti",
+    "recordingBadge": "Ders kaydı",
+    "minutes": "{count} dk",
+    "details": "Celse ayrıntıları",
+    "streamTitle": "Canlı yayın",
+    "streamPlaceholder": "Canlı yayın burada oynar",
+    "streamOpen": "Yayını aç",
+    "streamLiveText": "Soru sormak için canlı sohbete yaz.",
+    "streamEndedText": "Canlı yayın bitti. Ders kaydı eklenince burada oynar.",
+    "recordingPlaceholder": "Ders kaydı burada oynar",
+    "recordingOpen": "Ders kaydını aç",
+    "bunnyFrameTitle": "Ders kaydı oynatıcısı: {title}",
+    "sideLive": "Sohbet ve notlar",
+    "sideQuestions": "Sorular ve notlar",
+    "panels": "Bölümler",
+    "chatTab": "Canlı sohbet",
+    "questionsTab": "Soru sor",
+    "notesTab": "Notlarım",
+    "questionsTitle": "Soru sor",
+    "questionPlaceholder": "Bu celseyle ilgili sorunu yaz…",
+    "questionsList": "Bu celsedeki soruların",
+    "questionsEmpty": "Bu celsede henüz soru sormadın."
   }
 }

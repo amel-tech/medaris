@@ -160,16 +160,23 @@ export function CourseQuestions({
   );
 }
 
-const QuestionCard = ({
+/**
+ * One question with its answer, edited and deleted in place. `inLesson` is the
+ * watch page's list of one celse's questions (MDRS-285): a row of a panel,
+ * not a card, and no line naming the celse the panel is already about.
+ */
+export const QuestionCard = ({
   question,
   timeZone,
   onSaved,
   onDeleted,
+  inLesson = false,
 }: {
   question: LessonQuestionResponse;
   timeZone: string;
   onSaved: (question: LessonQuestionResponse) => void;
   onDeleted: (id: string) => void;
+  inLesson?: boolean;
 }) => {
   const t = useTranslations("tedrisLearn.CourseQuestions");
   const locale = useLocale();
@@ -231,16 +238,18 @@ const QuestionCard = ({
 
   return (
     <article
-      className="mds-card flex flex-col gap-3"
+      className={`${inLesson ? "" : "mds-card "}flex flex-col gap-3`}
       aria-label={t("questionLabel", { session: question.lessonTitle })}
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="mds-eyebrow" dir="auto">
-          {t("sessionLine", {
-            week: question.weekNumber,
-            title: question.lessonTitle,
-          })}
-        </p>
+        {inLesson ? null : (
+          <p className="mds-eyebrow" dir="auto">
+            {t("sessionLine", {
+              week: question.weekNumber,
+              title: question.lessonTitle,
+            })}
+          </p>
+        )}
         {question.answer ? (
           <Badge variant="success" icon={<Icon name="check" size="sm" />}>
             {t("answered")}
