@@ -32,8 +32,14 @@ const translate = Object.assign(lookup, {
 vi.mock("@medaris/ui/mds/toast", () => ({
   useToaster: () => ({ notify: () => "", dismiss: () => {} }),
 }));
+// `tedrisLearn.RecordingRelease` (MDRS-288) is the one other namespace the page reads.
+const release = (key: string, values?: Record<string, string>) =>
+  (resources.tr.tedrisLearn.RecordingRelease as Record<string, string>)[
+    key
+  ].replace(/\{(\w+)\}/g, (_, name: string) => values?.[name] ?? "");
 vi.mock("next-intl/server", () => ({
-  getTranslations: async () => translate,
+  getTranslations: async (namespace?: string) =>
+    namespace === "tedrisLearn.RecordingRelease" ? release : translate,
   getLocale: async () => "tr",
   getTimeZone: async () => "Europe/Istanbul",
 }));
@@ -699,6 +705,87 @@ describe("session page, ended with a recording (design tedris/17, MDRS-162, MDRS
       ["Kaydı izle", "/courses/c1/lessons/s1/izle"],
     ]);
     expect(html).not.toContain("yalnız izleyeceksen yayını aç");
+  });
+});
+
+describe("session page, a recording held back until its release time (MDRS-288)", () => {
+  // 14 Ekim 2026 Çarşamba 20:00 in İstanbul, eleven days after NOW.
+  const AT = new Date("2026-10-14T17:00:00Z");
+  const LINE = "Ders kaydı 14 Ekim Çarşamba 20:00’de açılır.";
+  const recording = (over: Record<string, unknown> = {}) => ({
+    id: "r1",
+    title: "Mehmûz fiiller: celse kaydı",
+    provider: "YOUTUBE",
+    url: null,
+    durationMinutes: 58,
+    recordedAt: new Date("2026-10-02T18:00:00Z"),
+    visibility: "ENROLLED",
+    status: "READY",
+    availableAt: AT,
+    ...over,
+  });
+  const ended = (over: Record<string, unknown> = {}) =>
+    session({
+      status: "ENDED",
+      startsAt: at(-26 * 60),
+      meetingUrl: null,
+      liveStreamUrl: null,
+      recording: recording(),
+      ...over,
+    });
+
+  it("tells a talebe when the recording opens and offers nothing to play before it", async () => {
+    const html = await render(ended());
+    expect(html).toContain(LINE);
+    expect(watchButtons(html)).toEqual([]);
+    expect(html).not.toContain("/izle");
+    expect(html).not.toContain("<iframe");
+    // The tab lists it with the same line.
+    expect(html).toContain('href="/courses/c1?tab=kayitlar"');
+    expect(html).not.toContain("Bu celsede henüz ders kaydı yok.");
+  });
+
+  it("still leads a talebe to the stream tedrisat keeps sending, and says when the recording opens", async () => {
+    const html = await render(
+      ended({
+        startsAt: at(-90),
+        liveStreamUrl: "https://www.youtube.com/watch?v=live123abc",
+        hasLiveStream: true,
+      })
+    );
+    expect(watchButtons(html)).toEqual([
+      ["Yayını izle", "/courses/c1/lessons/s1/izle"],
+    ]);
+    expect(html).toContain(LINE);
+  });
+
+  it("lets the course team play it now, marked with the time talebe may", async () => {
+    const html = await render(
+      ended({ recording: recording({ url: "https://youtu.be/rec456abc" }) })
+    );
+    expect(watchButtons(html)).toEqual([
+      ["Kaydı izle", "/courses/c1/lessons/s1/izle"],
+    ]);
+    expect(html).toContain("Talebelere 14 Ekim Çarşamba 20:00’de açılacak");
+    expect(html).not.toContain(LINE);
+  });
+
+  it("says nothing of a time that has come, or of none ('Hazır olunca hemen')", async () => {
+    for (const availableAt of [at(-60), null]) {
+      const html = await render(
+        ended({
+          recording: recording({
+            url: "https://youtu.be/rec456abc",
+            availableAt,
+          }),
+        })
+      );
+      expect(html).not.toContain("data-recording-release");
+      expect(html).not.toContain("Talebelere");
+      expect(watchButtons(html)).toEqual([
+        ["Kaydı izle", "/courses/c1/lessons/s1/izle"],
+      ]);
+    }
   });
 });
 

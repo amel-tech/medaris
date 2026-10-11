@@ -52,6 +52,11 @@
     "openLabel": ": {title} (opens in a new tab)",
     "watchLabel": "Watch the recording: {title}"
   },
+  "RecordingRelease": {
+    "opens": "The recording opens on {day} at {time}.",
+    "early": "Opens to talebe on {day} at {time}",
+    "zone": "{zone} time · {time} your time"
+  },
   "LessonNotes": {
     "title": "My notes",
     "private": "Only you can see them.",
@@ -143,6 +148,7 @@
     "streamOpen": "Open the stream",
     "streamLiveText": "To ask a question, write in the live chat.",
     "streamEndedText": "The live stream has ended. The recording will play here once it is added.",
+    "streamEndedHeldText": "The live stream has ended. The recording will play here once it opens.",
     "recordingPlaceholder": "The recording plays here",
     "recordingOpen": "Open the recording",
     "bunnyFrameTitle": "Recording player: {title}",

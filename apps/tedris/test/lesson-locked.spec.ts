@@ -238,6 +238,21 @@ describe("tedris/17 criterion 3: the public recording of a sample session", () =
     expect(html).toContain("Açık ders kaydı");
   });
 
+  it("says when a public recording held back until its release time opens, and frames nothing (MDRS-288)", async () => {
+    const html = await render("apply", "tr", {
+      ...ended,
+      recording: {
+        ...ended.recording,
+        url: null,
+        availableAt: new Date("2026-10-14T17:00:00Z"),
+      },
+    });
+    expect(html).not.toContain("<iframe");
+    expect(html).not.toContain("dQw4w9WgXcQ");
+    expect(html).toContain("Ders kaydı 14 Ekim Çarşamba 20:00’de açılır.");
+    expect(html).not.toContain("Ders kaydı burada oynar");
+  });
+
   it("draws no player when the API left the recording out", async () => {
     const html = await render("apply", "tr", { status: "ENDED" });
     expect(html).not.toContain("<iframe");

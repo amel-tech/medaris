@@ -3,14 +3,20 @@
 import type { RecordingResponse } from "@medaris/services/tedrisat";
 import { EmptyState } from "@medaris/ui/mds/empty-state";
 import { Icon } from "@medaris/ui/mds/icon";
-import { useLocale, useTranslations } from "next-intl";
+import { useLocale, useTimeZone, useTranslations } from "next-intl";
+import { useState } from "react";
 import {
   groupByWeek,
   isPlainWeekTitle,
   type RecordingAction,
+  type RecordingRelease,
+  type ReleaseTranslate,
   recordingAction,
+  recordingReleaseOf,
+  releaseWordsOf,
 } from "../recordings-model";
 import { watchPath } from "../watch-model";
+import { RecordingReleaseNote } from "./recording-release";
 import { RecordingsFailed } from "./recordings-failed";
 
 const PROVIDER_NAMES: Record<string, string | undefined> = {
@@ -37,6 +43,11 @@ const ROW =
  * viewer who may not read the content (`watch` false) and for a recording of
  * a lesson that is not a celse, which has no watch page; one still being
  * prepared offers nothing.
+ *
+ * MDRS-288: a recording held back until the time the course team set is
+ * listed to a talebe or a visitor with that time and no link, so its row
+ * says when it opens and plays nothing. The course team, whose link came
+ * with it, plays it from its row, marked with the time talebe may.
  */
 export const RecordingsTab = ({
   recordings,
@@ -44,6 +55,7 @@ export const RecordingsTab = ({
   courseId,
   celses,
   watch = false,
+  now,
 }: {
   /** Null when the read failed: the tab says so and offers a retry. */
   recordings: RecordingResponse[] | null;
@@ -57,6 +69,8 @@ export const RecordingsTab = ({
   celses: ReadonlySet<string>;
   /** Whether the viewer may read the course's content, and so open its watch pages. */
   watch?: boolean;
+  /** The instant the page is drawn at (the course page's), against which a release time is ahead. */
+  now?: number;
 }) => {
   if (recordings === null) return <RecordingsFailed />;
   return (
@@ -66,6 +80,7 @@ export const RecordingsTab = ({
       courseId={courseId}
       celses={celses}
       watch={watch}
+      now={now}
     />
   );
 };
@@ -76,15 +91,18 @@ const RecordingsList = ({
   courseId,
   celses,
   watch,
+  now: nowProp,
 }: {
   recordings: RecordingResponse[];
   timeZone: string;
   courseId: string;
   celses: ReadonlySet<string>;
   watch: boolean;
+  now?: number;
 }) => {
   const t = useTranslations("tedrisLearn.RecordingsTab");
   const locale = useLocale();
+  const [now] = useState(() => new Date(nowProp ?? Date.now()));
 
   if (recordings.length === 0) return <EmptyState>{t("empty")}</EmptyState>;
 
@@ -149,6 +167,8 @@ const RecordingsList = ({
                         rec,
                         watch && celses.has(rec.lessonId)
                       )}
+                      release={recordingReleaseOf(rec, now)}
+                      timeZone={timeZone}
                       watchHref={watchPath(courseId, rec.lessonId)}
                     />
                   </li>
@@ -163,25 +183,66 @@ const RecordingsList = ({
 };
 
 /**
+ * When a held-back recording opens (MDRS-288), on the course's clock and the
+ * viewer's: drawn only on such a row, the one place the tab reads the
+ * viewer's zone.
+ */
+const ReleaseLine = ({
+  release,
+  timeZone,
+  id,
+}: {
+  release: RecordingRelease;
+  /** The course's zone. */
+  timeZone: string;
+  id: string;
+}) => {
+  const t = useTranslations("tedrisLearn.RecordingRelease");
+  const locale = useLocale();
+  const viewerTimeZone = useTimeZone() ?? timeZone;
+  return (
+    <RecordingReleaseNote
+      id={id}
+      className="mds-caption"
+      words={releaseWordsOf(release, t as ReleaseTranslate, {
+        locale,
+        courseTimeZone: timeZone,
+        viewerTimeZone,
+      })}
+    />
+  );
+};
+
+/**
  * A recording in the list. A ready one is one link, to its celse's watch
- * page in this tab, or to its host in a new tab; one still being prepared is
- * plain text.
+ * page in this tab, or to its host in a new tab; one still being prepared,
+ * or held back from this viewer until its release time, is plain text.
  */
 const RecordingRow = ({
   recording: rec,
   facts,
   action,
+  release,
+  timeZone,
   watchHref,
 }: {
   recording: RecordingResponse;
   facts: string;
   action: RecordingAction;
+  /** Its release time while that is ahead (MDRS-288). */
+  release: RecordingRelease | null;
+  /** The course's zone. */
+  timeZone: string;
   /** Its celse's watch page. */
   watchHref: string;
 }) => {
   const t = useTranslations("tedrisLearn.RecordingsTab");
   const provider = PROVIDER_NAMES[rec.provider];
   const factsId = `recording-facts-${rec.id}`;
+  const releaseId = `recording-release-${rec.id}`;
+  const describedBy = release ? `${factsId} ${releaseId}` : factsId;
+  // A READY recording held back has no link but is no longer prepared.
+  const preparing = rec.status !== "READY" || (action === "none" && !release);
 
   const body = (
     <>
@@ -192,12 +253,15 @@ const RecordingRow = ({
         <span className="mds-caption" id={factsId}>
           {facts}
         </span>
+        {release ? (
+          <ReleaseLine release={release} timeZone={timeZone} id={releaseId} />
+        ) : null}
       </span>
       <span className="col-start-2 flex flex-wrap items-center gap-2 @min-[30rem]:col-start-3 @min-[30rem]:row-start-1 @min-[30rem]:justify-end">
         {rec.visibility === "PUBLIC" ? (
           <span className="mds-badge mds-badge--outline">{t("public")}</span>
         ) : null}
-        {action === "none" ? (
+        {preparing ? (
           <span className="mds-badge mds-badge--secondary">
             <Icon name="clock" size="sm" />
             {t("preparing")}
@@ -221,7 +285,7 @@ const RecordingRow = ({
         className={`${ROW} transition-colors hover:bg-neutral-hover`}
         href={watchHref}
         aria-label={t("watchLabel", { title: rec.title })}
-        aria-describedby={factsId}
+        aria-describedby={describedBy}
       >
         <Icon name="play" size="sm" />
         {body}
@@ -236,7 +300,7 @@ const RecordingRow = ({
         target="_blank"
         rel="noopener noreferrer"
         aria-label={`${t("open")}${t("openLabel", { title: rec.title })}`}
-        aria-describedby={factsId}
+        aria-describedby={describedBy}
       >
         <Icon name="playCircle" size="sm" />
         {body}

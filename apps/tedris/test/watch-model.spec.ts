@@ -80,6 +80,26 @@ describe("watchTargetOf", () => {
     }
   });
 
+  it("does not play a READY recording the API sent without its link, held back until its release time (MDRS-288)", () => {
+    const held = {
+      ...recording("READY"),
+      url: null,
+      availableAt: new Date("2026-10-14T17:00:00Z"),
+    };
+    // A talebe still gets the stream from tedrisat: it plays, beside the line.
+    expect(
+      watchTargetOf(session({ status: "ENDED", recording: held }))
+    ).toEqual({ kind: "stream", url: STREAM });
+    expect(
+      watchTargetOf(session({ liveStreamUrl: null, recording: held }))
+    ).toBeNull();
+    // The course team gets the link with it, and plays it before the time.
+    const early = { ...held, url: "https://youtu.be/abcdefgh" };
+    expect(
+      watchTargetOf(session({ liveStreamUrl: null, recording: early }))
+    ).toEqual({ kind: "recording", recording: early });
+  });
+
   it("offers nothing without a link or a recording, so the page goes to the detail page", () => {
     expect(watchTargetOf(session({ liveStreamUrl: null }))).toBeNull();
     expect(watchTargetOf(session({ liveStreamUrl: undefined }))).toBeNull();

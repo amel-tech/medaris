@@ -52,6 +52,11 @@
     "openLabel": ": {title} (يُفتح في تبويب جديد)",
     "watchLabel": "شاهد التسجيل: {title}"
   },
+  "RecordingRelease": {
+    "opens": "يُتاح التسجيل يوم {day} الساعة {time}.",
+    "early": "يُتاح للطلاب يوم {day} الساعة {time}",
+    "zone": "بتوقيت {zone} · {time} بتوقيتك"
+  },
   "LessonNotes": {
     "title": "ملاحظاتي",
     "private": "أنت وحدك من يراها.",
@@ -143,6 +148,7 @@
     "streamOpen": "فتح البث",
     "streamLiveText": "للسؤال اكتب في الدردشة المباشرة.",
     "streamEndedText": "انتهى البث المباشر. يُعرض التسجيل هنا بعد إضافته.",
+    "streamEndedHeldText": "انتهى البث المباشر. يُعرض التسجيل هنا عند إتاحته.",
     "recordingPlaceholder": "يُعرض التسجيل هنا",
     "recordingOpen": "فتح التسجيل",
     "bunnyFrameTitle": "مشغّل التسجيل: {title}",

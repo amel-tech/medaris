@@ -52,6 +52,11 @@
     "openLabel": ": {title} (yeni sekmede açılır)",
     "watchLabel": "Kaydı izle: {title}"
   },
+  "RecordingRelease": {
+    "opens": "Ders kaydı {day} {time} açılır.",
+    "early": "Talebelere {day} {time} açılacak",
+    "zone": "{zone} saatiyle · {time} senin saatinle"
+  },
   "LessonNotes": {
     "title": "Notlarım",
     "private": "Yalnızca sen görürsün.",
@@ -143,6 +148,7 @@
     "streamOpen": "Yayını aç",
     "streamLiveText": "Soru sormak için canlı sohbete yaz.",
     "streamEndedText": "Canlı yayın bitti. Ders kaydı eklenince burada oynar.",
+    "streamEndedHeldText": "Canlı yayın bitti. Ders kaydı açılınca burada oynar.",
     "recordingPlaceholder": "Ders kaydı burada oynar",
     "recordingOpen": "Ders kaydını aç",
     "bunnyFrameTitle": "Ders kaydı oynatıcısı: {title}",

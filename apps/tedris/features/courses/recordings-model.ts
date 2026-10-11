@@ -1,4 +1,7 @@
 import type { RecordingResponse } from "@medaris/services/tedrisat";
+import { isSameCalendarDay, showsDifferentTime } from "@medaris/utils";
+import { atClock } from "../flashcards/deck-model";
+import { zoneLabel } from "./session-model";
 
 /**
  * What the recordings tab and the watch page derive from a recording
@@ -134,6 +137,100 @@ export const recordingAction = (
 ): RecordingAction => {
   if (recording.status !== "READY" || !recording.url) return "none";
   return watch ? "watch" : "open";
+};
+
+/**
+ * A recording talebe may not watch yet (MDRS-288): its session's release
+ * time, which the course team set, is still ahead. tedrisat decides who
+ * plays it and says so by the link alone: before the time a talebe or a
+ * visitor gets the recording with its `availableAt` and no `url` ("held":
+ * "Ders kaydı … açılır.", nothing to play), the course team gets its link as
+ * well ("early": they play it now, marked "Talebelere … açılacak"). A
+ * recording still being prepared has no link for anyone, so it reads as held.
+ */
+export type RecordingRelease = { kind: "held" | "early"; at: Date };
+
+/**
+ * The release of a recording at `now`, or null when it opens as soon as it
+ * is READY ("Hazır olunca hemen") or its time has come. Accepts the session
+ * view's recording as well as the recordings list's.
+ */
+export const recordingReleaseOf = (
+  recording:
+    | {
+        status: string;
+        url?: string | null;
+        availableAt?: Date | string | null;
+      }
+    | null
+    | undefined,
+  now: Date
+): RecordingRelease | null => {
+  if (!recording?.availableAt) return null;
+  // A Date across the server/client boundary, a string from a raw body.
+  const at = new Date(recording.availableAt);
+  if (Number.isNaN(at.getTime()) || at.getTime() <= now.getTime()) return null;
+  return {
+    kind: recording.status === "READY" && recording.url ? "early" : "held",
+    at,
+  };
+};
+
+/** The keys of `tedrisLearn.RecordingRelease`, which `releaseWordsOf` fills in. */
+export type ReleaseTranslate = (
+  key: "opens" | "early" | "zone",
+  values: Record<string, string>
+) => string;
+
+export interface ReleaseWords {
+  /** "Ders kaydı 14 Ekim Çarşamba 20:00’de açılır.", or for the course team "Talebelere 14 Ekim Çarşamba 20:00’de açılacak". */
+  text: string;
+  /** "İstanbul saatiyle · 19:00 senin saatinle" when the viewer's clock shows another time; null when it does not. */
+  zone: string | null;
+}
+
+/**
+ * The release time worded for this viewer (MDRS-288): the day and the clock
+ * in the course's zone, where the course team set it, the Turkish clock
+ * carrying its locative ("20:00’de", "14:15’te"); and, as the join card does,
+ * the course's zone and the viewer's own clock when that shows another time,
+ * with the weekday when it falls on another day.
+ */
+export const releaseWordsOf = (
+  release: RecordingRelease,
+  t: ReleaseTranslate,
+  {
+    locale,
+    courseTimeZone,
+    viewerTimeZone,
+  }: { locale: string; courseTimeZone: string; viewerTimeZone: string }
+): ReleaseWords => {
+  const format = (timeZone: string, options: Intl.DateTimeFormatOptions) =>
+    new Intl.DateTimeFormat(locale, { ...options, timeZone }).format(
+      release.at
+    );
+  const clock = { hour: "2-digit", minute: "2-digit" } as const;
+  const text = t(release.kind === "held" ? "opens" : "early", {
+    day: format(courseTimeZone, {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+    }),
+    time: atClock(format(courseTimeZone, clock), locale),
+  });
+  if (!showsDifferentTime(release.at, courseTimeZone, viewerTimeZone)) {
+    return { text, zone: null };
+  }
+  const local = format(
+    viewerTimeZone,
+    isSameCalendarDay(release.at, courseTimeZone, viewerTimeZone)
+      ? clock
+      : { weekday: "short", ...clock }
+  );
+  return {
+    text,
+    zone: t("zone", { zone: zoneLabel(courseTimeZone, locale), time: local }),
+  };
 };
 
 export interface RecordingWeekGroup {

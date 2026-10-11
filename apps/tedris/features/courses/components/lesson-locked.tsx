@@ -20,7 +20,12 @@ import { courseActionErrorKey } from "../action-error";
 import { enrollInCourse } from "../actions";
 import { courseTotals, courseViewState } from "../course-view";
 import type { LessonLockReason } from "../lesson-lock";
-import { embedUrlOf } from "../recordings-model";
+import {
+  embedUrlOf,
+  type ReleaseTranslate,
+  recordingReleaseOf,
+  releaseWordsOf,
+} from "../recordings-model";
 import { sessionStateOf } from "../session-model";
 import { CourseProgramme } from "./course-programme";
 import { EnrollmentReceivedDialog } from "./enrollment-received-dialog";
@@ -56,6 +61,7 @@ export function LessonLocked({
   const t = useTranslations("tedris.LessonLocked");
   const sessionText = useTranslations("tedris.SessionPage");
   const courseText = useTranslations("tedris.CoursePage");
+  const releaseText = useTranslations("tedrisLearn.RecordingRelease");
   const locale = useLocale();
   const router = useRouter();
   const [sending, startTransition] = useTransition();
@@ -124,6 +130,17 @@ export function LessonLocked({
   const recordingEmbed = recording
     ? embedUrlOf(recording.provider, recording.url)
     : null;
+  // MDRS-288: before the release time the course team set, the API sends a
+  // visitor the public recording without its link; the frame says when it
+  // opens instead.
+  const release = recordingReleaseOf(recording, new Date(now));
+  const releaseWords = release
+    ? releaseWordsOf(release, releaseText as ReleaseTranslate, {
+        locale,
+        courseTimeZone: course.timeZone,
+        viewerTimeZone: timeZone ?? course.timeZone,
+      })
+    : null;
   const recordedOn = recording?.recordedAt
     ? new Intl.DateTimeFormat(locale, {
         weekday: "long",
@@ -161,7 +178,23 @@ export function LessonLocked({
                     ? sessionText("bunnyFrameTitle", { title: recording.title })
                     : undefined
                 }
-                placeholder={sessionText("recordingPlaceholder")}
+                placeholder={
+                  releaseWords ? (
+                    <>
+                      {releaseWords.text}
+                      {releaseWords.zone ? (
+                        <>
+                          {" "}
+                          <span className="mds-caption block">
+                            {releaseWords.zone}
+                          </span>
+                        </>
+                      ) : null}
+                    </>
+                  ) : (
+                    sessionText("recordingPlaceholder")
+                  )
+                }
                 openHref={recordingEmbed ? null : recording.url}
                 openLabel={sessionText("recordingOpen")}
               >

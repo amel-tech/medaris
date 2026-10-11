@@ -1,3 +1,4 @@
+import { resources } from "@medaris/i18n";
 import type { RecordingResponse } from "@medaris/services/tedrisat";
 import { describe, expect, it } from "vitest";
 import {
@@ -9,8 +10,11 @@ import {
   liveChatUrlOf,
   liveEmbedUrlOf,
   playerApiUrlOf,
+  type ReleaseTranslate,
   recordingAction,
+  recordingReleaseOf,
   recordingsTabPath,
+  releaseWordsOf,
 } from "~/features/courses/recordings-model";
 
 // A player link as tedrisat signs it (MDRS-119): library, video GUID, token, expiry.
@@ -377,5 +381,131 @@ describe("isPlainWeekTitle (MDRS-280)", () => {
 describe("recordingsTabPath", () => {
   it("is the course page's recordings tab", () => {
     expect(recordingsTabPath("c1")).toBe("/courses/c1?tab=kayitlar");
+  });
+});
+
+describe("recordingReleaseOf (MDRS-288)", () => {
+  const NOW = new Date("2026-10-03T17:52:00.000Z");
+  const AT = new Date("2026-10-14T17:00:00.000Z");
+
+  it("holds a recording the API sent without its link until its time: a talebe or a visitor", () => {
+    expect(
+      recordingReleaseOf(rec("a", { url: null, availableAt: AT }), NOW)
+    ).toEqual({ kind: "held", at: AT });
+  });
+
+  it("marks the course team's early play: the link came with a time still ahead", () => {
+    expect(recordingReleaseOf(rec("a", { availableAt: AT }), NOW)).toEqual({
+      kind: "early",
+      at: AT,
+    });
+  });
+
+  it("reads a recording still being prepared, with a time ahead, as held", () => {
+    expect(
+      recordingReleaseOf(
+        rec("a", { status: "PROCESSING", url: null, availableAt: AT }),
+        NOW
+      )
+    ).toEqual({ kind: "held", at: AT });
+  });
+
+  it("has nothing to say once the time has come, or with no time ('Hazır olunca hemen')", () => {
+    expect(recordingReleaseOf(rec("a", { availableAt: AT }), AT)).toBeNull();
+    expect(
+      recordingReleaseOf(
+        rec("a", { availableAt: new Date(NOW.getTime() - 60_000) }),
+        NOW
+      )
+    ).toBeNull();
+    expect(recordingReleaseOf(rec("a", { availableAt: null }), NOW)).toBeNull();
+    expect(recordingReleaseOf(rec("a"), NOW)).toBeNull();
+    expect(recordingReleaseOf(null, NOW)).toBeNull();
+  });
+
+  it("takes the time as a string too, as a body crosses to the browser", () => {
+    expect(
+      recordingReleaseOf(
+        { status: "READY", url: null, availableAt: AT.toISOString() },
+        NOW
+      )
+    ).toEqual({ kind: "held", at: AT });
+  });
+});
+
+describe("releaseWordsOf (MDRS-288)", () => {
+  const translator =
+    (locale: "tr" | "en" | "ar"): ReleaseTranslate =>
+    (key, values) =>
+      resources[locale].tedrisLearn.RecordingRelease[key].replace(
+        /\{(\w+)\}/g,
+        (_, name: string) => values[name] ?? ""
+      );
+  const ISTANBUL = "Europe/Istanbul";
+  const words = (
+    at: string,
+    kind: "held" | "early",
+    {
+      locale = "tr",
+      viewer = ISTANBUL,
+    }: { locale?: "tr" | "en" | "ar"; viewer?: string } = {}
+  ) =>
+    releaseWordsOf({ kind, at: new Date(at) }, translator(locale), {
+      locale,
+      courseTimeZone: ISTANBUL,
+      viewerTimeZone: viewer,
+    });
+
+  it("tells a talebe the day and the clock in the course's zone, the Turkish clock in the locative", () => {
+    expect(words("2026-10-14T17:00:00Z", "held")).toEqual({
+      text: "Ders kaydı 14 Ekim Çarşamba 20:00’de açılır.",
+      zone: null,
+    });
+    expect(words("2026-10-14T11:15:00Z", "held").text).toBe(
+      "Ders kaydı 14 Ekim Çarşamba 14:15’te açılır."
+    );
+    expect(words("2026-10-14T16:30:00Z", "held").text).toBe(
+      "Ders kaydı 14 Ekim Çarşamba 19:30’da açılır."
+    );
+  });
+
+  it("tells the course team when talebe may watch what they play now", () => {
+    expect(words("2026-10-14T17:00:00Z", "early").text).toBe(
+      "Talebelere 14 Ekim Çarşamba 20:00’de açılacak"
+    );
+  });
+
+  it("names the course's zone and gives the viewer's clock when it shows another time", () => {
+    expect(
+      words("2026-10-14T17:00:00Z", "held", { viewer: "Europe/Berlin" })
+    ).toEqual({
+      text: "Ders kaydı 14 Ekim Çarşamba 20:00’de açılır.",
+      zone: "İstanbul saatiyle · 19:00 senin saatinle",
+    });
+  });
+
+  it("gives the viewer's weekday when their clock falls on another day", () => {
+    expect(
+      words("2026-10-14T03:30:00Z", "held", { viewer: "America/New_York" }).zone
+    ).toBe("İstanbul saatiyle · Sal 23:30 senin saatinle");
+  });
+
+  it("is worded in English and Arabic", () => {
+    expect(words("2026-10-14T17:00:00Z", "held", { locale: "en" }).text).toBe(
+      "The recording opens on Wednesday, October 14 at 08:00 PM."
+    );
+    expect(
+      words("2026-10-14T17:00:00Z", "early", {
+        locale: "en",
+        viewer: "Europe/Berlin",
+      })
+    ).toEqual({
+      text: "Opens to talebe on Wednesday, October 14 at 08:00 PM",
+      zone: "Istanbul time · 07:00 PM your time",
+    });
+    // The digits are left to the runtime's Arabic numbering.
+    expect(
+      words("2026-10-14T17:00:00Z", "held", { locale: "ar" }).text
+    ).toMatch(/^يُتاح التسجيل يوم الأربعاء، .+ أكتوبر الساعة .+\.$/);
   });
 });

@@ -387,6 +387,14 @@ export const atTime = (time: string, locale: string): string => {
   return `${time}’${trLocative(word, true)}`;
 };
 
+/** "21:00’de": a time on the hour is said by its hour (yirmi bir’de), any other by its minutes. */
+export const atClock = (clock: string, locale: string): string => {
+  if (!locale.startsWith("tr") || !clock.endsWith(":00")) {
+    return atTime(clock, locale);
+  }
+  return `${clock}’${trLocative(trNumberWord(Number(clock.slice(0, 2))), true)}`;
+};
+
 /** "6’sı": a count with its possessive suffix, as Turkish counts it ("40 karttan 6’sı"); other locales get the bare count. */
 export const countOf = (n: number, locale: string): string => {
   if (!locale.startsWith("tr")) return String(n);
