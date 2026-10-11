@@ -5,10 +5,16 @@ import type {
 } from "@medaris/services/tedrisat";
 import { describe, expect, it } from "vitest";
 import {
-  buildProgramme,
+  actionCaseOf,
+  attendanceOf,
+  celseNumberOf,
+  celseTimeWords,
+  currentAgendaStep,
   dayInZone,
   sessionStateOf,
   splitArabic,
+  syllabusOf,
+  timeUntil,
   zoneLabel,
 } from "~/features/courses/session-model";
 
@@ -73,118 +79,245 @@ const week = (weekNumber: number, ...lessons: LessonResponse[]): WeekResponse =>
 const course = (...weeks: WeekResponse[]) =>
   ({ weeks, timeZone: "Europe/Istanbul" }) as CourseDetailResponse;
 
-describe("buildProgramme (MDRS-158)", () => {
-  const past = (id: string) => lesson(id, { scheduledAt: at(-60 * 24 * 7) });
-  const result = buildProgramme(
-    course(
-      week(1, past("a"), past("b")),
-      week(
-        5,
-        lesson("now", { scheduledAt: at(8), durationMinutes: 60 }),
-        lesson("cancelled", {
-          scheduledAt: at(60 * 24),
-          cancelledAt: NOW,
-          replacementLessonId: "makeup",
-        }),
-        lesson("makeup", { scheduledAt: at(60 * 24 * 4) })
-      ),
-      week(
-        6,
-        lesson("later", { scheduledAt: new Date("2026-10-10T18:00:00Z") })
-      ),
-      week(7)
-    ),
-    NOW
+describe("celseNumberOf (MDRS-289)", () => {
+  const programme = course(
+    week(4, lesson("a")),
+    week(
+      5,
+      lesson("b", { cancelledAt: at(-10) }),
+      lesson("doc", { type: "DOCUMENT" }),
+      lesson("c")
+    )
   );
 
-  it("marks the first week that is not over as active and the finished ones as done", () => {
-    expect(result.weeks.map((w) => w.state)).toEqual([
-      "done",
-      "active",
-      "default",
-      "default",
+  it("counts the celse's place in its week, a cancelled one kept, other lesson types not", () => {
+    expect(celseNumberOf(programme, "a")).toBe(1);
+    expect(celseNumberOf(programme, "b")).toBe(1);
+    expect(celseNumberOf(programme, "c")).toBe(2);
+  });
+
+  it("knows none for a celse the course does not list", () => {
+    expect(celseNumberOf(programme, "x")).toBeNull();
+    expect(celseNumberOf(course(), "a")).toBeNull();
+  });
+});
+
+describe("syllabusOf (MDRS-289)", () => {
+  const ids = (rows: { lesson: LessonResponse }[]) =>
+    rows.map((row) => row.lesson.id);
+  const seven = course(
+    week(1, lesson("s1", { scheduledAt: at(-7 * 24 * 60) })),
+    week(
+      2,
+      lesson("s2", { scheduledAt: at(-30) }),
+      lesson("s3", { scheduledAt: at(60), cancelledAt: at(-5) })
+    ),
+    week(3, lesson("s4", { scheduledAt: at(24 * 60) })),
+    week(4, lesson("doc", { type: "DOCUMENT" }), lesson("s5")),
+    week(5, lesson("s6"), lesson("s7"))
+  );
+
+  it("keeps five celses around the one on the page, in programme order", () => {
+    const { rows } = syllabusOf(seven, "s4", NOW);
+    expect(ids(rows)).toEqual(["s2", "s3", "s4", "s5", "s6"]);
+    expect(
+      rows.filter((row) => row.viewing).map((row) => row.lesson.id)
+    ).toEqual(["s4"]);
+    expect(rows.map((row) => row.weekNumber)).toEqual([2, 2, 3, 4, 5]);
+  });
+
+  it("moves the window inward at either end, so it stays full", () => {
+    expect(ids(syllabusOf(seven, "s1", NOW).rows)).toEqual([
+      "s1",
+      "s2",
+      "s3",
+      "s4",
+      "s5",
+    ]);
+    expect(ids(syllabusOf(seven, "s7", NOW).rows)).toEqual([
+      "s3",
+      "s4",
+      "s5",
+      "s6",
+      "s7",
     ]);
   });
 
-  it("marks the next standing session as the one up next, never a cancelled one", () => {
-    expect(result.nextLessonId).toBe("now");
-    const rows = result.weeks[1].rows;
-    expect(rows.map((r) => r.state)).toEqual(["current", "default", "default"]);
-    expect(rows[1].cancelled).toBe(true);
-    expect(result.weeks[0].rows.map((r) => r.state)).toEqual(["done", "done"]);
-  });
-
-  it("puts the celse on air first, even when an earlier week holds one still ahead", () => {
-    const mixed = buildProgramme(
-      course(
-        week(1, lesson("ahead", { scheduledAt: at(60 * 24) })),
-        week(5, lesson("onAir", { scheduledAt: at(-14), durationMinutes: 60 }))
-      ),
-      NOW
+  it("says where each stands on the clock, a cancelled one marked", () => {
+    const states = Object.fromEntries(
+      syllabusOf(seven, "s1", NOW, 7).rows.map((row) => [
+        row.lesson.id,
+        row.state,
+      ])
     );
-    expect(mixed.nextLessonId).toBe("onAir");
-    expect(mixed.weeks.map((w) => w.state)).toEqual(["default", "active"]);
-    expect(mixed.weeks[1].rows[0]).toMatchObject({
-      state: "current",
-      live: true,
+    expect(states).toEqual({
+      s1: "ended",
+      s2: "live",
+      s3: "cancelled",
+      s4: "upcoming",
+      s5: "upcoming",
+      s6: "upcoming",
+      s7: "upcoming",
     });
   });
 
-  it("picks the nearest celse by time, not by week order", () => {
-    const outOfOrder = buildProgramme(
-      course(
-        week(1, lesson("late", { scheduledAt: at(60 * 24 * 3) })),
-        week(2, lesson("soon", { scheduledAt: at(60) }))
-      ),
-      NOW
+  it("counts the celses that stand", () => {
+    expect(syllabusOf(seven, "s1", NOW).count).toBe(6);
+  });
+
+  it("starts from the top when the page's celse is not listed", () => {
+    expect(ids(syllabusOf(seven, "x", NOW, 2).rows)).toEqual(["s1", "s2"]);
+    expect(syllabusOf(course(), "x", NOW)).toEqual({ rows: [], count: 0 });
+  });
+});
+
+describe("currentAgendaStep (MDRS-289)", () => {
+  // 21:00 in İstanbul is 18:00Z.
+  const start = new Date("2026-10-03T18:00:00.000Z");
+  const minute = (n: number) => new Date(start.getTime() + n * 60_000);
+  const agenda = [{ time: "21:00" }, { time: "21:25" }, { time: "21:45" }];
+  const step = (now: Date, steps = agenda, startsAt = start) =>
+    currentAgendaStep(
+      steps,
+      { startsAt, durationMinutes: 60, timeZone: "Europe/Istanbul" },
+      now
     );
-    expect(outOfOrder.nextLessonId).toBe("soon");
+
+  it("marks the step whose time has come while the celse is live", () => {
+    expect(step(minute(0))).toBe(0);
+    expect(step(minute(24))).toBe(0);
+    expect(step(minute(25))).toBe(1);
+    expect(step(minute(59))).toBe(2);
   });
 
-  it("marks the row of a session on air as live, and only that one", () => {
-    const onAir = buildProgramme(
-      course(
-        week(
-          1,
-          lesson("air", { scheduledAt: at(-14), durationMinutes: 60 }),
-          lesson("later", { scheduledAt: at(60 * 24) })
-        )
-      ),
-      NOW
+  it("marks none before the start or after the end", () => {
+    expect(step(minute(-1))).toBeNull();
+    expect(step(minute(60))).toBeNull();
+  });
+
+  it("reads the steps on the course's clock past midnight", () => {
+    const late = new Date("2026-10-03T20:20:00.000Z"); // 23:20 in İstanbul
+    const steps = [{ time: "23:20" }, { time: "23:40" }, { time: "00:05" }];
+    const at = (n: number) => new Date(late.getTime() + n * 60_000);
+    expect(step(at(30), steps, late)).toBe(1);
+    expect(step(at(46), steps, late)).toBe(2);
+  });
+
+  it("skips a time it cannot read, and marks none when none can be", () => {
+    expect(step(minute(30), [{ time: "21:00" }, { time: "sonra" }])).toBe(0);
+    expect(step(minute(30), [{ time: "—" }])).toBeNull();
+  });
+});
+
+describe("timeUntil (MDRS-289)", () => {
+  const after = (minutes: number) => at(minutes);
+
+  it("says the two largest units", () => {
+    expect(timeUntil(after(2 * 24 * 60 + 4 * 60 + 10), NOW, "tr")).toBe(
+      "2 gün 4 saat"
     );
-    expect(onAir.weeks[0].rows.map((r) => [r.state, r.live])).toEqual([
-      ["current", true],
-      ["default", false],
-    ]);
-    expect(result.weeks[1].rows.every((r) => !r.live)).toBe(true);
+    expect(timeUntil(after(65), NOW, "tr")).toBe("1 saat 5 dakika");
+    expect(timeUntil(after(45), NOW, "tr")).toBe("45 dakika");
+    expect(timeUntil(after(24 * 60), NOW, "tr")).toBe("1 gün");
   });
 
-  it("counts only the sessions that stand, and their minutes", () => {
-    const { sessionCount, minutes } = result.weeks[1];
-    expect(sessionCount).toBe(2);
-    expect(minutes).toBe(60 + 45);
+  it("never says less than a minute, and speaks the page's language", () => {
+    expect(timeUntil(new Date(NOW.getTime() + 5_000), NOW, "tr")).toBe(
+      "1 dakika"
+    );
+    expect(timeUntil(after(2 * 24 * 60 + 4 * 60), NOW, "en")).toBe(
+      "2 days 4 hours"
+    );
+  });
+});
+
+describe("celseTimeWords (MDRS-289)", () => {
+  const late = new Date("2026-10-03T20:20:00.000Z"); // 23:20 in İstanbul
+
+  it("words the day and the time on the course's clock, the end after the start", () => {
+    expect(
+      celseTimeWords(late, 60, {
+        locale: "tr",
+        courseTimeZone: "Europe/Istanbul",
+        viewerTimeZone: "Europe/Istanbul",
+      })
+    ).toEqual({
+      day: "3 Ekim Cumartesi",
+      weekday: "Cumartesi",
+      date: "3 Ekim",
+      clock: "23:20–00:20",
+      local: null,
+    });
   });
 
-  it("gives a week still ahead the day its first session falls on, in the course's zone", () => {
-    expect(result.weeks[2].opensOn).toBe("2026-10-10");
-    expect(result.weeks[3].opensOn).toBeUndefined();
-    expect(result.weeks[1].opensOn).toBeUndefined();
+  it("gives the start alone without a length, and the viewer's clock when it shows another time", () => {
+    const words = celseTimeWords(late, null, {
+      locale: "tr",
+      courseTimeZone: "Europe/Istanbul",
+      viewerTimeZone: "Asia/Tokyo",
+    });
+    expect(words.clock).toBe("23:20");
+    expect(words.local).toBe("Paz 05:20");
+    expect(
+      celseTimeWords(new Date("2026-10-03T18:00:00.000Z"), 60, {
+        locale: "tr",
+        courseTimeZone: "Europe/Istanbul",
+        viewerTimeZone: "Europe/Berlin",
+      }).local
+    ).toBe("20:00");
+  });
+});
+
+describe("actionCaseOf and attendanceOf (MDRS-289)", () => {
+  it("says a cancelled celse is cancelled whatever else it has, then the lock", () => {
+    expect(
+      actionCaseOf({
+        state: "cancelled",
+        locked: true,
+        watch: "recording",
+        hasLiveStream: true,
+      })
+    ).toBe("cancelled");
+    expect(
+      actionCaseOf({
+        state: "live",
+        locked: true,
+        watch: null,
+        hasLiveStream: true,
+      })
+    ).toBe("locked");
   });
 
+  it("offers what the API sent to watch, or a stream from the start of a page drawn before it", () => {
+    const of = (
+      state: "upcoming" | "live" | "ended",
+      watch: "recording" | "stream" | null,
+      hasLiveStream: boolean
+    ) => actionCaseOf({ state, locked: false, watch, hasLiveStream });
+    expect(of("ended", "recording", false)).toBe("recording");
+    expect(of("ended", "stream", true)).toBe("stream");
+    expect(of("live", null, true)).toBe("stream");
+    expect(of("upcoming", null, true)).toBe("date");
+    expect(of("ended", null, true)).toBe("date");
+    expect(of("live", null, false)).toBe("date");
+  });
+
+  it("keeps the link the way in, then says how the celse is held (MDRS-283)", () => {
+    const of = (hasLink: boolean, inPerson: boolean, hasLiveStream: boolean) =>
+      attendanceOf({ hasLink, inPerson, hasLiveStream });
+    expect(of(true, true, true)).toBe("link");
+    expect(of(false, true, true)).toBe("inPersonStream");
+    expect(of(false, false, true)).toBe("stream");
+    expect(of(false, true, false)).toBe("inPerson");
+    expect(of(false, false, false)).toBe("none");
+  });
+});
+
+describe("dayInZone", () => {
   it("reads the day in the zone, not in UTC", () => {
-    // 22:30 on 3 October in UTC is already the 4th in Istanbul.
-    const late = new Date("2026-10-03T22:30:00Z");
+    const late = new Date("2026-10-03T22:30:00.000Z");
     expect(dayInZone(late, "Europe/Istanbul")).toBe("2026-10-04");
     expect(dayInZone(late, "UTC")).toBe("2026-10-03");
-  });
-
-  it("has no session up next when everything is over", () => {
-    const over = buildProgramme(
-      course(week(1, lesson("a", { scheduledAt: at(-9000) }))),
-      NOW
-    );
-    expect(over.nextLessonId).toBeNull();
-    expect(over.weeks[0].state).toBe("done");
   });
 });
 

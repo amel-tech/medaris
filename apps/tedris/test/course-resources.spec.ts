@@ -2,7 +2,10 @@ import type { CourseDetailResponse } from "@medaris/services/tedrisat";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { CourseResources } from "~/features/courses/components/course-resources";
+import {
+  CourseResources,
+  ResourceList,
+} from "~/features/courses/components/course-resources";
 
 // MDRS-279: a course's resources are links, and a link is an href on the
 // page. Only an http(s) address becomes one, in a new tab with no opener and
@@ -123,9 +126,9 @@ describe("CourseResources, the provider of a link", () => {
     expect(html).not.toContain("Google Drive");
   });
 
-  it("takes a celse's row, which has no type and may send a null line", () => {
+  it("takes a celse's row, which has no type and may send a null line, as a bare list the detail page names (MDRS-289)", () => {
     const html = renderToStaticMarkup(
-      createElement(CourseResources, {
+      createElement(ResourceList, {
         resources: [
           {
             id: "lr1",
@@ -134,17 +137,25 @@ describe("CourseResources, the provider of a link", () => {
             url: "https://docs.google.com/document/d/1a2b3c/edit",
           },
         ],
-        labels: { ...labels, title: "Bu celsenin kaynakları" },
+        newTab: labels.newTab,
         testId: "session-resources",
       })
     );
-    expect(html).toContain('data-testid="session-resources"');
-    expect(html).toContain(">Bu celsenin kaynakları<");
+    expect(
+      html.startsWith(
+        '<ul class="m-0 flex list-none flex-col p-0" data-testid="session-resources">'
+      )
+    ).toBe(true);
+    expect(html).toContain(">Celse notu<");
     expect(html).toContain(DRIVE_CHIP);
     expect(html).not.toContain('class="mds-caption"');
+    expect(html).not.toContain("mds-card");
   });
 
-  it("keeps the course's own test id by default", () => {
-    expect(draw([row()])).toContain('data-testid="course-resources"');
+  it("keeps the course's own test id on its card", () => {
+    const html = draw([row()]);
+    expect(html.match(/data-testid="[^"]*"/g)).toEqual([
+      'data-testid="course-resources"',
+    ]);
   });
 });

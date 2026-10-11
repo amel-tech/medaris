@@ -158,8 +158,51 @@ describe("tedris/19 renders (MDRS-162)", () => {
     expect(html).toContain("Mastar kalıpları ve ism-i fâil");
     expect(html).toContain("Hafta 4");
     expect(html).toContain("3 gün sonra");
-    expect(html).toContain("4 Ekim Pazar 21:00");
+    expect(html).toContain("4 Ekim Pazar · 21:00–22:00");
     expect(html).toContain(tr.description.apply);
+  });
+
+  // MDRS-289: the detail page's header and its main card's frame, today's lock in it.
+  it("has the detail page's header: Köşk › Ders › Hafta N, the celse's place, the badge", async () => {
+    const html = await render("apply");
+    const crumbs = html.match(/<nav class="mds-breadcrumb".*?<\/nav>/)?.[0];
+    expect(crumbs).toContain('aria-current="page"><bdi>Hafta 4</bdi>');
+    expect(html).toContain(">Hafta 4 · 1. celse</p>");
+    expect(
+      html.match(/<div[^>]*data-testid="session-state"[^>]*>.*?<\/div>/)?.[0]
+    ).toContain("3 gün sonra");
+  });
+
+  it("holds the lock and the way in inside the main card's frame, beside the date", async () => {
+    const html = await render("apply");
+    const card =
+      html.match(
+        /<section[^>]*data-testid="session-action".*?<\/section>/
+      )?.[0] ?? "";
+    expect(card).toContain('data-case="locked"');
+    expect(card).toContain(
+      `<span class="mds-join__status mds-join__status--locked">${tr.description.apply}</span>`
+    );
+    expect(card).toMatch(/<button[^>]*mds-btn--primary[^>]*>/);
+    expect(card).toContain(">Pazar<");
+    expect(card).toContain(">4 Ekim<");
+    expect(card).toContain(">21:00–22:00<");
+    expect(card).not.toContain("Takvime ekle");
+  });
+
+  it("says a cancelled celse was cancelled, with no way in to offer", async () => {
+    const html = await render("apply", "tr", {
+      status: "CANCELLED",
+      cancelledAt: new Date("2026-09-30T09:00:00Z"),
+    });
+    const card =
+      html.match(
+        /<section[^>]*data-testid="session-action".*?<\/section>/
+      )?.[0] ?? "";
+    expect(card).toContain('data-case="cancelled"');
+    expect(card).toContain(resources.tr.tedris.SessionPage.cancelledTitle);
+    expect(card).toContain(resources.tr.tedris.SessionPage.cancelledJoinText);
+    expect(card).not.toContain(tr.apply);
   });
 
   it("shows the course card and the programme with locked rows", async () => {
@@ -173,8 +216,9 @@ describe("tedris/19 renders (MDRS-162)", () => {
   it("names none of the content a locked body does not carry", async () => {
     const html = await render("apply");
     expect(html).not.toContain("zoom.us");
-    expect(html).not.toContain("Celseye katıl");
-    expect(html).not.toContain("Celse akışı");
+    expect(html).not.toContain("Toplantıya katıl");
+    expect(html).not.toContain("Gündem");
+    expect(html).not.toContain("Kaynaklar");
   });
 
   it("shows sign in, linking back to the lesson", async () => {

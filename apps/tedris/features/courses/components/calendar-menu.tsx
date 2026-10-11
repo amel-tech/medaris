@@ -29,8 +29,9 @@ export interface CalendarMenuLabels {
  * page's own origin; the file comes from tedrisat through tedris's handler.
  * Neither carries the meeting link: the note under the rows says so.
  *
- * `text` draws the small text button of the session page's join card; without
- * it the trigger is the icon-only button of a Programım row.
+ * `text` draws a text button: small on a join card, beside the meeting link
+ * on the celse detail page's main card (`size`, `className`, MDRS-289);
+ * without it the trigger is the icon-only button of a Programım row.
  */
 export function CalendarMenu({
   courseId,
@@ -39,6 +40,8 @@ export function CalendarMenu({
   locale,
   labels,
   text = false,
+  size,
+  className,
 }: {
   courseId: string;
   courseTitle: string;
@@ -51,6 +54,10 @@ export function CalendarMenu({
   locale: string;
   labels: CalendarMenuLabels;
   text?: boolean;
+  /** the text button's height; "small" by default */
+  size?: "small" | "regular" | "large";
+  /** a variant beside the trigger's ghost one, e.g. "mds-btn--outline" */
+  className?: string;
 }) {
   const router = useRouter();
   const toaster = useToaster();
@@ -86,7 +93,8 @@ export function CalendarMenu({
     <Menu
       label={labels.button}
       text={text ? labels.button : undefined}
-      size={text ? "small" : "mini"}
+      size={text ? (size ?? "small") : "mini"}
+      className={className}
       icon={<Icon name="calendarPlus" size="sm" />}
       note={labels.note}
       items={[
