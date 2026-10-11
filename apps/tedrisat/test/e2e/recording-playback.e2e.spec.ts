@@ -403,14 +403,17 @@ describe("signed Bunny playback (MDRS-119, e2e)", () => {
   });
 
   describe("GET /courses/:id", () => {
+    // MDRS-288: a content reader's lessons carry the celse's release time
+    // (`recordingAvailableAt`, a time and never a link), so that one key is
+    // allowed for them; every other caller still gets no recording key at all.
     it.each([
-      ["an enrolled talebe", TALEBE_ID],
-      ["the müderris", MUDERRIS_ID],
-      ["the köşk nazımı", MANAGER_ID],
-      ["a stranger", STRANGER_ID],
-      ["a banned talebe", BANNED_ID],
-      ["a visitor with no token", null],
-    ])("carries no recording data for %s", async (_who, sub) => {
+      ["an enrolled talebe", TALEBE_ID, true],
+      ["the müderris", MUDERRIS_ID, true],
+      ["the köşk nazımı", MANAGER_ID, true],
+      ["a stranger", STRANGER_ID, false],
+      ["a banned talebe", BANNED_ID, false],
+      ["a visitor with no token", null, false],
+    ])("carries no recording data for %s", async (_who, sub, readsContent) => {
       const res = await get(`/courses/${courseId}`, sub).expect(200);
       const text = JSON.stringify(res.body);
       for (const recordingValue of [
@@ -427,8 +430,11 @@ describe("signed Bunny playback (MDRS-119, e2e)", () => {
       ]) {
         expect(text).not.toContain(recordingValue);
       }
+      const allowed = readsContent ? ["recordingavailableat"] : [];
       expect(
-        keysOf(res.body).filter((key) => key.includes("recording"))
+        keysOf(res.body).filter(
+          (key) => key.includes("recording") && !allowed.includes(key)
+        )
       ).toEqual([]);
     });
   });
