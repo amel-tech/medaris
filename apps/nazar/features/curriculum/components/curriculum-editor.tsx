@@ -50,6 +50,7 @@ import {
   weekDraftsOf,
   weekFacts,
 } from "../curriculum";
+import { LessonResourcesEditor } from "./lesson-resources-editor";
 import { ResourcesEditor } from "./resources-editor";
 
 const TONES = ["laciverd", "bordo", "zumrut", "murekkep"] as const;
@@ -75,10 +76,10 @@ const TONES = ["laciverd", "bordo", "zumrut", "murekkep"] as const;
  * What the form offers follows what the caller holds in the course (`can`).
  * Saving the course is `course.edit`: without it the form is read-only and has
  * no "Kaydet". A save that adds, moves or hides a session is `session.manage`
- * as well, so without it the buttons that add, copy or hide a session or a week
- * and the date and time of a stored session are off; the title, the agenda,
- * the link and the other fields are still `course.edit` alone. The API decides
- * the save either way.
+ * as well, so without it the buttons that add, copy or hide a session or a week,
+ * the date and time of a stored session and the session's own resources
+ * (MDRS-286) are off; the title, the agenda, the link and the other fields are
+ * still `course.edit` alone. The API decides the save either way.
  */
 export function CurriculumEditor({
   course,
@@ -156,6 +157,20 @@ export function CurriculumEditor({
     errors.some(
       (error: CurriculumError) =>
         error.kind === kind && error.resourceIndex === ri
+    );
+  const shownLessonResource = (
+    kind: CurriculumProblem,
+    wi: number,
+    li: number,
+    ri: number
+  ) =>
+    sent &&
+    errors.some(
+      (error: CurriculumError) =>
+        error.kind === kind &&
+        error.weekIndex === wi &&
+        error.lessonIndex === li &&
+        error.resourceIndex === ri
     );
   const locked = saving || refreshing || !can.edit;
   const sessionsLocked = locked || !can.sessions;
@@ -638,6 +653,22 @@ export function CurriculumEditor({
                               />
                             </Field>
                           </div>
+                          {/* MDRS-286: the session's own links, under its
+                              source line. Changing them is session work. */}
+                          <LessonResourcesEditor
+                            prefix={`lesson-${wi}-${li}`}
+                            resources={lesson.resources}
+                            onChange={(resources) =>
+                              patchLesson(wi, li, { resources })
+                            }
+                            shown={(kind, ri) =>
+                              shownLessonResource(kind, wi, li, ri)
+                            }
+                            locked={course.contentLocked}
+                            disabled={sessionsLocked}
+                            editable={can.edit && can.sessions}
+                            sessionsNote={can.edit && !can.sessions}
+                          />
                           <div className="grid gap-4 sm:grid-cols-3">
                             <Field
                               label={t("Curriculum.dateLabel")}

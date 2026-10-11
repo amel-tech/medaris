@@ -45,6 +45,7 @@ import {
   weekDraftsOf,
   weekFacts,
 } from "../present";
+import { LessonResourcesEditor } from "./lesson-resources-editor";
 import { ResourcesEditor } from "./resources-editor";
 
 interface Props {
@@ -67,6 +68,7 @@ const emptyLesson = (): LessonDraft => ({
   scheduledAtIso: null,
   makeup: false,
   attendance: FRESH_ATTENDANCE,
+  resources: [],
 });
 
 /**
@@ -135,6 +137,20 @@ export function CurriculumEditor({ kosk, course }: Props) {
     sent && has(kind, wi, li);
   const shownResource = (kind: CurriculumProblem, ri: number) =>
     sent && errors.some((e) => e.kind === kind && e.resourceIndex === ri);
+  const shownLessonResource = (
+    kind: CurriculumProblem,
+    wi: number,
+    li: number,
+    ri: number
+  ) =>
+    sent &&
+    errors.some(
+      (e) =>
+        e.kind === kind &&
+        e.weekIndex === wi &&
+        e.lessonIndex === li &&
+        e.resourceIndex === ri
+    );
 
   const base = `/${locale}/kosks/${kosk.id}`;
   const courseBase = `${base}/courses/${saved.id}`;
@@ -588,6 +604,19 @@ export function CurriculumEditor({ kosk, course }: Props) {
                               />
                             </Field>
                           </div>
+                          {/* MDRS-286: the session's own links, under its
+                              source line. */}
+                          <LessonResourcesEditor
+                            prefix={`lesson-${wi}-${li}`}
+                            resources={lesson.resources}
+                            onChange={(resources) =>
+                              patchLesson(wi, li, { resources })
+                            }
+                            shown={(kind, ri) =>
+                              shownLessonResource(kind, wi, li, ri)
+                            }
+                            locked={saved.contentLocked}
+                          />
                           <div className="grid gap-4 sm:grid-cols-3">
                             <Field
                               label={t("dateLabel")}

@@ -10,6 +10,7 @@ import {
   coursePattern,
   curriculumDirty,
   curriculumErrors,
+  emptyLessonResource,
   emptyResource,
   FRESH_ATTENDANCE,
   groupSessions,
@@ -17,9 +18,12 @@ import {
   inPersonOverrideOf,
   isoWeekdayOf,
   type LessonDraft,
+  type LessonResourceDraft,
+  lessonResourceDraftsOf,
   lessonWithoutAccess,
   linkHelpKey,
   linkProblem,
+  moveRow,
   normalizedImam,
   type PlanForm,
   patternDates,
@@ -393,6 +397,7 @@ describe("the curriculum (nizam 54)", () => {
     scheduledAtIso: "2026-10-03T18:00:00.000Z",
     makeup: false,
     attendance: { inPersonOverride: null, hasLiveStream: false },
+    resources: [],
     ...over,
   });
   const week = (
@@ -888,6 +893,256 @@ describe("what a save keeps (MDRS-279)", () => {
   });
 });
 
+describe("a session's own resources (MDRS-286)", () => {
+  const stored = [
+    {
+      id: "lr1",
+      lessonId: "l1",
+      name: "Emsile şerhi",
+      meta: "PDF · 12 sayfa",
+      url: "https://drive.google.com/file/d/1a2b3c/view",
+      orderIndex: 0,
+    },
+    {
+      id: "lr2",
+      lessonId: "l1",
+      name: "Tatbikat",
+      meta: null,
+      url: "https://files.medaris.org/tatbikat.pdf",
+      orderIndex: 1,
+    },
+  ];
+  const lesson = (over: Record<string, unknown> = {}) => ({
+    id: "l1",
+    weekId: "w1",
+    title: "Birinci",
+    type: "LIVE",
+    durationMinutes: 60,
+    scheduledAt: "2026-10-03T18:00:00.000Z",
+    meetingUrl: "https://zoom.us/j/1",
+    kaynak: "Bina",
+    agenda: [],
+    isPreview: false,
+    orderIndex: 0,
+    cancelledAt: null,
+    replacementLessonId: null,
+    resources: stored,
+    ...over,
+  });
+  const course = (over: Record<string, unknown> = {}) =>
+    ({
+      id: "c1",
+      version: 4,
+      timeZone: "Europe/Istanbul",
+      title: "Emsile ve Bina",
+      description: null,
+      coverHue: 20,
+      contentLocked: false,
+      muderris: [],
+      resources: [],
+      weeks: [
+        {
+          id: "w1",
+          weekNumber: 1,
+          title: "Birinci",
+          lessons: [lesson(), lesson({ id: "l2", resources: [] })],
+        },
+      ],
+      ...over,
+    }) as unknown as CourseDetailResponse;
+  const save = (read: CourseDetailResponse, weeks: WeekDraft[]) =>
+    curriculumPayload(read, {
+      title: "Emsile ve Bina",
+      description: "",
+      tone: "bordo",
+      weeks,
+      resources: [],
+    }).weeks?.[0]?.lessons ?? [];
+  /** The first session's drafts, changed by `change`. */
+  const edited = (
+    change: (rows: LessonResourceDraft[]) => LessonResourceDraft[],
+    read = course()
+  ) => {
+    const weeks = weekDraftsOf(read);
+    const first = weeks[0]?.lessons[0] as LessonDraft;
+    first.resources = change(first.resources);
+    return save(read, weeks);
+  };
+
+  it("reads a session's links as drafts, in order, keeping their ids", () => {
+    expect(weekDraftsOf(course())[0]?.lessons[0]?.resources).toEqual([
+      {
+        id: "lr1",
+        name: "Emsile şerhi",
+        meta: "PDF · 12 sayfa",
+        url: "https://drive.google.com/file/d/1a2b3c/view",
+        urlRequired: true,
+      },
+      {
+        id: "lr2",
+        name: "Tatbikat",
+        meta: "",
+        url: "https://files.medaris.org/tatbikat.pdf",
+        urlRequired: true,
+      },
+    ]);
+    // a content-locked read carries no address: nothing to require
+    expect(
+      lessonResourceDraftsOf({
+        resources: [{ ...stored[0], url: undefined }],
+      } as never)
+    ).toEqual([
+      {
+        id: "lr1",
+        name: "Emsile şerhi",
+        meta: "PDF · 12 sayfa",
+        url: "",
+        urlRequired: false,
+      },
+    ]);
+  });
+
+  it("does not copy them with the week: the copies are new sessions with no links", () => {
+    const copy = copyWeek(weekDraftsOf(course())[0] as WeekDraft, 2);
+    expect(copy.lessons.map((l) => l.resources)).toEqual([[], []]);
+  });
+
+  it("moves a row up or down, and leaves the rows alone out of range", () => {
+    expect(moveRow(["a", "b", "c"], 2, 1)).toEqual(["a", "c", "b"]);
+    expect(moveRow(["a", "b", "c"], 0, 1)).toEqual(["b", "a", "c"]);
+    expect(moveRow(["a", "b"], 0, -1)).toEqual(["a", "b"]);
+    expect(moveRow(["a", "b"], 1, 2)).toEqual(["a", "b"]);
+  });
+
+  it("stops Kaydet for a row without a name or an absolute http(s) address, naming its session", () => {
+    const weeks = weekDraftsOf(course());
+    const second = weeks[0]?.lessons[1] as LessonDraft;
+    second.resources = [
+      { ...emptyLessonResource(), url: "https://a.test/" },
+      { ...emptyLessonResource(), name: "Bina", url: "" },
+      { ...emptyLessonResource(), name: "Bina", url: "javascript:alert(1)" },
+      { ...emptyLessonResource(), name: "Bina", url: "drive.google.com/x" },
+    ];
+    const at = { weekIndex: 0, lessonIndex: 1 };
+    expect(curriculumErrors("Emsile ve Bina", weeks)).toEqual([
+      { kind: "lessonResourceName", ...at, resourceIndex: 0 },
+      { kind: "lessonResourceUrl", ...at, resourceIndex: 1 },
+      { kind: "lessonResourceUrl", ...at, resourceIndex: 2 },
+      { kind: "lessonResourceUrl", ...at, resourceIndex: 3 },
+    ]);
+    // not on a cancelled session, which is information
+    second.cancelledAt = "2026-10-03T05:40:00.000Z";
+    expect(curriculumErrors("Emsile ve Bina", weeks)).toEqual([]);
+  });
+
+  it("lets a content-locked read's rows through: they are not edited", () => {
+    const locked = course({
+      contentLocked: true,
+      weeks: [
+        {
+          id: "w1",
+          weekNumber: 1,
+          title: "Birinci",
+          lessons: [
+            lesson({
+              meetingUrl: undefined,
+              kaynak: undefined,
+              agenda: undefined,
+              resources: stored.map(({ url: _url, ...row }) => row),
+            }),
+          ],
+        },
+      ],
+    });
+    const weeks = weekDraftsOf(locked);
+    expect(curriculumErrors("Emsile ve Bina", weeks)).toEqual([]);
+    expect(Object.keys(save(locked, weeks)[0] ?? {})).not.toContain(
+      "resources"
+    );
+  });
+
+  it("sends no session's list the form left as read, so tedrisat keeps it", () => {
+    const lessons = save(course(), weekDraftsOf(course()));
+    expect(lessons.map((l) => l.id)).toEqual(["l1", "l2"]);
+    for (const l of lessons) expect(Object.keys(l)).not.toContain("resources");
+  });
+
+  it("sends a changed list whole, in its order, the kept rows with their ids, trimmed, an empty line as null", () => {
+    const [first] = edited((rows) => [
+      { ...(rows[1] as LessonResourceDraft), name: " Tatbikat defteri " },
+      rows[0] as LessonResourceDraft,
+      {
+        ...emptyLessonResource(),
+        name: " Bina ",
+        meta: "  ",
+        url: " https://files.medaris.org/bina.pdf ",
+      },
+    ]);
+    expect(first?.resources).toEqual([
+      {
+        id: "lr2",
+        name: "Tatbikat defteri",
+        meta: null,
+        url: "https://files.medaris.org/tatbikat.pdf",
+      },
+      {
+        id: "lr1",
+        name: "Emsile şerhi",
+        meta: "PDF · 12 sayfa",
+        url: "https://drive.google.com/file/d/1a2b3c/view",
+      },
+      { name: "Bina", meta: null, url: "https://files.medaris.org/bina.pdf" },
+    ]);
+  });
+
+  it("sends a reordered list, and an empty one when every row is removed", () => {
+    expect(
+      edited((rows) => moveRow(rows, 1, 0))[0]?.resources?.map((r) => r.id)
+    ).toEqual(["lr2", "lr1"]);
+    expect(edited(() => [])[0]?.resources).toEqual([]);
+  });
+
+  it("sends a new session's links, and nothing for one without", () => {
+    const read = course();
+    const weeks = weekDraftsOf(read);
+    (weeks[0] as WeekDraft).lessons.push(
+      {
+        ...(weeks[0]?.lessons[1] as LessonDraft),
+        id: undefined,
+        resources: [
+          {
+            ...emptyLessonResource(),
+            name: "Emsile",
+            url: "https://emsile.test/",
+          },
+        ],
+      },
+      { ...(weeks[0]?.lessons[1] as LessonDraft), id: undefined }
+    );
+    const [, , added, bare] = save(read, weeks);
+    expect(added?.resources).toEqual([
+      { name: "Emsile", meta: null, url: "https://emsile.test/" },
+    ]);
+    expect(Object.keys(bare ?? {})).not.toContain("resources");
+  });
+
+  it("makes the form dirty when a session's row changes", () => {
+    const form = (weeks: WeekDraft[]) => ({
+      title: "Emsile ve Bina",
+      description: "",
+      tone: "bordo",
+      weeks,
+      resources: [],
+    });
+    const saved = form(weekDraftsOf(course()));
+    const weeks = weekDraftsOf(course());
+    expect(curriculumDirty(form(weeks), saved)).toBe(false);
+    const first = weeks[0]?.lessons[0] as LessonDraft;
+    first.resources = moveRow(first.resources, 0, 1);
+    expect(curriculumDirty(form(weeks), saved)).toBe(true);
+  });
+});
+
 describe("how a session is attended (MDRS-283)", () => {
   const now = new Date("2026-10-03T18:14:00Z");
   const lesson = (id: string, at: string, extra: Record<string, unknown>) => ({
@@ -1048,6 +1303,7 @@ describe("how a session is attended (MDRS-283)", () => {
       scheduledAtIso: "2026-10-08T18:00:00.000Z",
       makeup: false,
       attendance: { inPersonOverride: null, hasLiveStream: false },
+      resources: [],
       ...over,
     });
     const flagged = (over: Partial<LessonDraft>, courseInPerson = false) =>
