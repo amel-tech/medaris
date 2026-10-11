@@ -1,5 +1,6 @@
 import { ROLES } from "@medaris/common";
 import { INestApplication } from "@nestjs/common";
+import { eq } from "drizzle-orm";
 import request from "supertest";
 import { CourseStatus } from "../../src/course/domain/course-status.enum";
 import { EnrollmentStatus } from "../../src/course/domain/enrollment-status.enum";
@@ -496,6 +497,80 @@ describe("Medrese talebe list and Pano (e2e)", () => {
         lessonId: expect.any(String),
       });
       expect(JSON.stringify(res.body)).not.toContain("abc-defg-hij");
+    });
+
+    /**
+     * MDRS-283 review: a passive scope closes a course's content to the
+     * medrese's başmüderris, so the Pano says nothing read off it for that
+     * course: not the meeting link's host, not whether a stream is set, not
+     * whether the celse is flagged. A course that is not passive is told as
+     * before.
+     */
+    it("says nothing read off the content of a course in a passive scope", async () => {
+      await seedSessions();
+      // Mantığa giriş lost its müderris: it is passive (MDRS-136).
+      await db().insert(roleAssignments).values({
+        userId: STRANGER_ID,
+        role: ASSIGNED_ROLES.MUDERRIS,
+        scopeType: "course",
+        scopeId: mantikId,
+        grantedBy: HEAD_ID,
+        revokedAt: new Date(),
+        revokedBy: HEAD_ID,
+      });
+      const [mantikWeek] = await db()
+        .select({ id: courseWeeks.id })
+        .from(courseWeeks)
+        .where(eq(courseWeeks.courseId, mantikId));
+      await db()
+        .insert(lessons)
+        .values([
+          // Nothing at all: the Pano would flag it, were it not passive.
+          session({
+            weekId: mantikWeek.id,
+            title: "Hiçbiri",
+            scheduledAt: inDays(4),
+          }),
+          session({
+            weekId: mantikWeek.id,
+            title: "Yayında",
+            scheduledAt: inDays(5),
+            liveStreamUrl: "https://www.youtube.com/live/dQw4w9WgXcQ",
+          }),
+        ]);
+
+      const res = await dashboard().expect(200);
+      type Row = {
+        courseId: string;
+        meetingHost: string | null;
+        inPerson: boolean;
+        hasLiveStream: boolean | null;
+        withoutAccess: boolean | null;
+      };
+      const rows = res.body.upcomingSessions as Row[];
+      const passive = rows.filter((s) => s.courseId === mantikId);
+      expect(passive).toHaveLength(3);
+      for (const row of passive) {
+        expect(row).toMatchObject({
+          meetingHost: null,
+          inPerson: false,
+          hasLiveStream: null,
+          withoutAccess: null,
+        });
+      }
+      expect(JSON.stringify(res.body)).not.toContain("zoom.us");
+      expect(
+        rows
+          .filter((s) => s.courseId === binaId)
+          .map(({ meetingHost, hasLiveStream, withoutAccess }) => [
+            meetingHost,
+            hasLiveStream,
+            withoutAccess,
+          ])
+      ).toEqual([
+        ["meet.google.com", false, false],
+        [null, false, true],
+      ]);
     });
 
     it("lists the pending applications newest first with the whole count, and says which the caller may decide", async () => {

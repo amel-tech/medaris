@@ -24,7 +24,9 @@ import {
  * "Yaklaşan celseler" (nazir 01): the sessions of the next seven days, the
  * soonest first. "Katılım" says how each is attended, as on Celseler: the
  * platform read from the link's host, the stream, the in-person mark, or
- * "Eksik" for a celse with none of them (MDRS-283). "Düzenle" opens the course's celseler where the caller holds
+ * "Eksik" for a celse with none of them (MDRS-283); a celse of a course in a
+ * passive scope, whose content the Pano is not sent, claims nothing ("—").
+ * "Düzenle" opens the course's celseler where the caller holds
  * a scope in the course, and is left out where they do not.
  */
 export function SessionsTable({ rows }: { rows: SessionRow[] }) {
@@ -62,7 +64,17 @@ export function SessionsTable({ rows }: { rows: SessionRow[] }) {
       key: "attendance",
       header: t("Pano.sessions.columns.attendance"),
       width: "20%",
-      render: (row) => <AttendanceCell view={row.attendance} />,
+      render: (row) =>
+        row.attendance ? (
+          <AttendanceCell view={row.attendance} />
+        ) : (
+          <span>
+            <span aria-hidden="true">—</span>
+            <span className="mds-visually-hidden">
+              {t("Sessions.attendance.unknown")}
+            </span>
+          </span>
+        ),
     },
     {
       key: "status",

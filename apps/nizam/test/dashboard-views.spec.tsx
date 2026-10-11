@@ -504,15 +504,19 @@ describe("a köşk nazımı's home page (nizam 02)", () => {
             ...s,
             meetingUrl: undefined,
             hasLiveStream: undefined,
+            inPerson: undefined,
+            withoutAccess: undefined,
           })),
         }}
         nowIso={NOW}
       />
     );
-    // tedrisat's flag still stands; the others say nothing they were not told
-    expect(locked.split('data-testid="attendance-missing"')).toHaveLength(2);
+    // No row carries how it is attended (MDRS-283 review): none claims
+    // anything, while the alert above still names the count.
+    expect(locked).not.toContain('data-testid="attendance-missing"');
     expect(locked).toContain("Katılım bilgisi gösterilmez");
     expect(locked).not.toContain("Zoom");
+    expect(locked).toContain("katılım yolu eksik");
   });
 
   it("leaves out the alert when every celse can be attended, and names the open course button", () => {

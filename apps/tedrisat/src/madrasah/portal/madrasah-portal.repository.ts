@@ -22,7 +22,11 @@ import {
   withoutAccessSql,
 } from "../../course/domain/session-access";
 import { DatabaseService } from "../../database/database.service";
-import { holdsIn, isHeld } from "../../database/role-assignments";
+import {
+  holdsIn,
+  isHeld,
+  isPassiveScope,
+} from "../../database/role-assignments";
 import {
   courses,
   courseWeeks,
@@ -219,6 +223,13 @@ export class MadrasahPortalRepository {
    * here (a medrese is not above the köşk, MDRS-143); the database clock decides
    * what "now" is, as for the badge counts. Each says how it is attended and
    * whether nobody can attend it as it stands (MDRS-283); never a link.
+   *
+   * A course in a passive scope (its müderris, its köşk's nazımı or its
+   * medrese's başmüderris gone, MDRS-136) has its content closed to the
+   * medrese's başmüderris (`effectivePermissions`), so its rows say neither
+   * the meeting link's host, nor whether a stream is set, nor whether it is
+   * flagged, which is read off both: all three are null. The in-person mark
+   * is a public label and stays.
    */
   async findUpcomingSessions(
     madrasahId: string,
@@ -232,6 +243,15 @@ export class MadrasahPortalRepository {
       lessonInPerson: lessons.inPersonOverride,
       courseInPerson: courses.inPerson,
     };
+    // The scopes the engine reads for a course, as the köşk nazımı's home
+    // page reads them (`KoskDashboardRepository`).
+    const passive = sql<boolean>`(${isPassiveScope(
+      ASSIGNED_ROLES.MUDERRIS,
+      courses.id
+    )} or ${isPassiveScope(ASSIGNED_ROLES.KOSK_NAZIM, courses.koskId)} or ${isPassiveScope(
+      ASSIGNED_ROLES.MEDRESE_BASMUDERRIS,
+      courses.madrasahId
+    )})`;
     const rows = await this.db
       .select({
         lessonId: lessons.id,
@@ -246,6 +266,7 @@ export class MadrasahPortalRepository {
         inPerson: inPersonSql(attendance),
         hasLiveStream: hasLiveStreamSql(attendance),
         withoutAccess: withoutAccessSql(attendance),
+        passive,
       })
       .from(lessons)
       .innerJoin(courseWeeks, eq(courseWeeks.id, lessons.weekId))
@@ -266,11 +287,22 @@ export class MadrasahPortalRepository {
         )
       )
       .orderBy(asc(lessons.scheduledAt), asc(lessons.id));
-    return rows.map(({ meetingUrl, scheduledAt, ...row }) => ({
-      ...row,
-      scheduledAt: scheduledAt as Date,
-      meetingHost: hostOf(meetingUrl),
-    }));
+    return rows.map(
+      ({
+        meetingUrl,
+        scheduledAt,
+        passive: closed,
+        hasLiveStream,
+        withoutAccess,
+        ...row
+      }) => ({
+        ...row,
+        scheduledAt: scheduledAt as Date,
+        meetingHost: closed ? null : hostOf(meetingUrl),
+        hasLiveStream: closed ? null : hasLiveStream,
+        withoutAccess: closed ? null : withoutAccess,
+      })
+    );
   }
 
   /** The pending applications across the medrese's shown courses, newest first. */

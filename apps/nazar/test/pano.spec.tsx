@@ -279,7 +279,7 @@ describe("the rules behind the Pano", () => {
       t,
       { ...where, held: new Set() }
     );
-    expect(rows.map((row) => row.attendance.platform)).toEqual([
+    expect(rows.map((row) => row.attendance?.platform)).toEqual([
       { id: "google-meet", host: "meet.google.com" },
       { id: "zoom", host: "zoom.us" },
       { id: "unknown", host: "toplanti.example.org" },
@@ -308,6 +308,26 @@ describe("the rules behind the Pano", () => {
       { inPerson: true, platform: null, stream: null, lack: null },
       { inPerson: true, platform: null, stream: "beside", lack: null },
       { inPerson: false, platform: null, stream: null, lack: "missing" },
+    ]);
+  });
+
+  it("claims nothing for a celse of a passive course, which is sent no host, stream or flag (MDRS-283 review)", () => {
+    const passive = {
+      meetingHost: null,
+      hasLiveStream: null,
+      withoutAccess: null,
+    };
+    const rows = sessionRows(
+      [
+        session(passive),
+        session({ lessonId: "l-2", ...passive, inPerson: true }),
+      ] as never,
+      t,
+      { ...where, held: new Set() }
+    );
+    expect(rows.map((row) => row.attendance)).toEqual([
+      null,
+      { inPerson: true, platform: null, stream: null, lack: null },
     ]);
   });
 
@@ -545,6 +565,23 @@ describe("Pano", () => {
     expect(rows[2]).toContain("Yüz yüze · YouTube yayını");
     expect(rows[3]).toContain("Zoom · YouTube yayını");
     for (const row of rows) expect(row).not.toContain("Eksik");
+  });
+
+  it("draws no 'Eksik' for a celse of a passive course, whose content the Pano is not sent (MDRS-283 review)", async () => {
+    state.dashboard = ok({
+      upcomingSessions: [
+        session({
+          meetingHost: null,
+          hasLiveStream: null,
+          withoutAccess: null,
+        }),
+      ],
+    });
+    const out = section(await markup(), "sessions-heading");
+    expect(out).not.toContain('data-testid="attendance-missing"');
+    const [row] = out.split("<tr").slice(2).map(textOf);
+    expect(row).not.toContain("Eksik");
+    expect(row).toContain("Katılım bilgisi gösterilmez");
   });
 
   it("lists the applications with the student, the course and the day, and the counter above them", async () => {

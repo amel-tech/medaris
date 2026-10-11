@@ -76,11 +76,11 @@ export interface KoskDashboardSessionResponse {
      */
     meetingUrl?: string | null;
     /**
-     * Held in person (MDRS-283): the session's own mark, else the course's. A label, sent whether or not `contentLocked`.
+     * Held in person (MDRS-283): the session's own mark, else the course's. Absent when `contentLocked` is true: a row of such a page says no more than it did before MDRS-283.
      * @type {boolean}
      * @memberof KoskDashboardSessionResponse
      */
-    inPerson: boolean;
+    inPerson?: boolean;
     /**
      * A live stream is set for the session (MDRS-283); never the link. Course content like `meetingUrl`: absent when `contentLocked` is true.
      * @type {boolean}
@@ -88,11 +88,11 @@ export interface KoskDashboardSessionResponse {
      */
     hasLiveStream?: boolean;
     /**
-     * Flagged (MDRS-283): still ahead, not cancelled, and nobody can attend it as it stands: no meeting link, no live stream and not held in person. The rule behind `withoutAccessCount`; always false on the PAST and CANCELLED tabs.
+     * Flagged (MDRS-283): still ahead, not cancelled, and nobody can attend it as it stands: no meeting link, no live stream and not held in person. The rule behind `withoutAccessCount`; always false on the PAST and CANCELLED tabs. Read off the course content, so absent when `contentLocked` is true: such a page keeps only `withoutAccessCount` and `firstWithoutAccess`.
      * @type {boolean}
      * @memberof KoskDashboardSessionResponse
      */
-    withoutAccess: boolean;
+    withoutAccess?: boolean;
     /**
      * It makes up for a cancelled session (telafi)
      * @type {boolean}
@@ -135,8 +135,6 @@ export function instanceOfKoskDashboardSessionResponse(value: object): value is 
     if (!('courseCoverHue' in value) || value['courseCoverHue'] === undefined) return false;
     if (!('weekNumber' in value) || value['weekNumber'] === undefined) return false;
     if (!('scheduledAt' in value) || value['scheduledAt'] === undefined) return false;
-    if (!('inPerson' in value) || value['inPerson'] === undefined) return false;
-    if (!('withoutAccess' in value) || value['withoutAccess'] === undefined) return false;
     if (!('isMakeup' in value) || value['isMakeup'] === undefined) return false;
     if (!('studentCount' in value) || value['studentCount'] === undefined) return false;
     if (!('cancelled' in value) || value['cancelled'] === undefined) return false;
@@ -162,9 +160,9 @@ export function KoskDashboardSessionResponseFromJSONTyped(json: any, ignoreDiscr
         'scheduledAt': (new Date(json['scheduledAt'])),
         'durationMinutes': json['durationMinutes'] == null ? undefined : json['durationMinutes'],
         'meetingUrl': json['meetingUrl'] == null ? undefined : json['meetingUrl'],
-        'inPerson': json['inPerson'],
+        'inPerson': json['inPerson'] == null ? undefined : json['inPerson'],
         'hasLiveStream': json['hasLiveStream'] == null ? undefined : json['hasLiveStream'],
-        'withoutAccess': json['withoutAccess'],
+        'withoutAccess': json['withoutAccess'] == null ? undefined : json['withoutAccess'],
         'isMakeup': json['isMakeup'],
         'studentCount': json['studentCount'],
         'cancelled': json['cancelled'],

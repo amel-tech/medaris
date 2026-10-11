@@ -68,7 +68,7 @@ export interface DashboardSessionResponse {
      */
     scheduledAt: Date;
     /**
-     * The host of the session's meeting link, never the link: the client names the platform from it. Null when the session has no link; whether that leaves it without a way in is `withoutAccess`
+     * The host of the session's meeting link, never the link: the client names the platform from it. Null when the session has no link; whether that leaves it without a way in is `withoutAccess`. Also null when the course is in a passive scope, whose content is closed to the Pano; `withoutAccess` is then null too
      * @type {string}
      * @memberof DashboardSessionResponse
      */
@@ -80,17 +80,17 @@ export interface DashboardSessionResponse {
      */
     inPerson: boolean;
     /**
-     * A live stream is set for the session (MDRS-283); never the link
+     * A live stream is set for the session (MDRS-283); never the link. Null when the course is in a passive scope, whose content is closed to the Pano
      * @type {boolean}
      * @memberof DashboardSessionResponse
      */
-    hasLiveStream: boolean;
+    hasLiveStream: boolean | null;
     /**
-     * Nobody can attend it as it stands: no meeting link, no live stream and not held in person (MDRS-283). The row the Pano flags; the rule is the one behind the course menu's badge (`sessionsWithoutAccess`)
+     * Nobody can attend it as it stands: no meeting link, no live stream and not held in person (MDRS-283). The row the Pano flags; the rule is the one behind the course menu's badge (`sessionsWithoutAccess`). Null when the course is in a passive scope: it is read off the content, which is closed to the Pano, so the row is not flagged either way
      * @type {boolean}
      * @memberof DashboardSessionResponse
      */
-    withoutAccess: boolean;
+    withoutAccess: boolean | null;
 }
 
 /**

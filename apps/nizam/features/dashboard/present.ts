@@ -152,8 +152,9 @@ export function sessionAction(state: SessionState): SessionAction {
 /**
  * The "Katılım" cell of a row, as Celseler draws it (MDRS-283). Whether it is
  * flagged is tedrisat's `withoutAccess`. A page read without the köşk's
- * content (`contentLocked`) carries no link and no stream: a row says what is
- * known, the flag or the in-person mark, and nothing otherwise (null).
+ * content (`contentLocked`) carries none of it per row: no link, no stream, no
+ * in-person mark and no flag, so the row claims nothing (null); the alert
+ * above the table still names the count and the first such celse.
  */
 export function sessionAttendance(
   s: Pick<
@@ -162,21 +163,14 @@ export function sessionAttendance(
   >,
   contentLocked: boolean
 ): AttendanceView | null {
-  if (contentLocked) {
-    if (s.withoutAccess) {
-      return { inPerson: false, platform: null, stream: null, lack: "missing" };
-    }
-    return s.inPerson
-      ? { inPerson: true, platform: null, stream: null, lack: null }
-      : null;
-  }
+  if (contentLocked) return null;
   return attendanceView(
     {
       meeting: s.meetingUrl ?? null,
       hasLiveStream: s.hasLiveStream === true,
-      inPerson: s.inPerson,
+      inPerson: s.inPerson === true,
     },
-    s.withoutAccess
+    s.withoutAccess === true
   );
 }
 

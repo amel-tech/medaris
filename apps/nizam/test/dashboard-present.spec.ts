@@ -152,19 +152,13 @@ describe("a celse's state and button (nizam 02)", () => {
     ).toBe("none");
   });
 
-  it("says only what a content-locked row carries: the flag, the in-person mark, or nothing", () => {
-    // the link and the stream are not sent, whatever the row was
-    const locked = { inPerson: false, withoutAccess: false };
-    expect(sessionAttendance(locked, true)).toBeNull();
-    expect(sessionAttendance({ ...locked, inPerson: true }, true)).toEqual({
-      inPerson: true,
-      platform: null,
-      stream: null,
-      lack: null,
-    });
+  it("claims nothing for a content-locked row, which carries no attendance (MDRS-283 review)", () => {
+    // the link, the stream, the in-person mark and the flag are not sent
+    expect(sessionAttendance({}, true)).toBeNull();
+    // and a row that did carry them is not read either
     expect(
-      sessionAttendance({ ...locked, withoutAccess: true }, true)?.lack
-    ).toBe("missing");
+      sessionAttendance({ inPerson: true, withoutAccess: true }, true)
+    ).toBeNull();
   });
 
   it("writes the lines under a course", () => {

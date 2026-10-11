@@ -82,11 +82,12 @@ export class KoskDashboardSessionResponse {
   })
   meetingUrl?: string | null;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
+    type: Boolean,
     description:
-      "Held in person (MDRS-283): the session's own mark, else the course's. A label, sent whether or not `contentLocked`.",
+      "Held in person (MDRS-283): the session's own mark, else the course's. Absent when `contentLocked` is true: a row of such a page says no more than it did before MDRS-283.",
   })
-  inPerson!: boolean;
+  inPerson?: boolean;
 
   @ApiPropertyOptional({
     type: Boolean,
@@ -95,11 +96,12 @@ export class KoskDashboardSessionResponse {
   })
   hasLiveStream?: boolean;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
+    type: Boolean,
     description:
-      "Flagged (MDRS-283): still ahead, not cancelled, and nobody can attend it as it stands: no meeting link, no live stream and not held in person. The rule behind `withoutAccessCount`; always false on the PAST and CANCELLED tabs.",
+      "Flagged (MDRS-283): still ahead, not cancelled, and nobody can attend it as it stands: no meeting link, no live stream and not held in person. The rule behind `withoutAccessCount`; always false on the PAST and CANCELLED tabs. Read off the course content, so absent when `contentLocked` is true: such a page keeps only `withoutAccessCount` and `firstWithoutAccess`.",
   })
-  withoutAccess!: boolean;
+  withoutAccess?: boolean;
 
   @ApiProperty({ description: "It makes up for a cancelled session (telafi)" })
   isMakeup!: boolean;

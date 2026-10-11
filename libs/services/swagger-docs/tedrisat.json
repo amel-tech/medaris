@@ -12092,7 +12092,7 @@
           },
           "inPerson": {
             "type": "boolean",
-            "description": "Held in person (MDRS-283): the session's own mark, else the course's. A label, sent whether or not `contentLocked`."
+            "description": "Held in person (MDRS-283): the session's own mark, else the course's. Absent when `contentLocked` is true: a row of such a page says no more than it did before MDRS-283."
           },
           "hasLiveStream": {
             "type": "boolean",
@@ -12100,7 +12100,7 @@
           },
           "withoutAccess": {
             "type": "boolean",
-            "description": "Flagged (MDRS-283): still ahead, not cancelled, and nobody can attend it as it stands: no meeting link, no live stream and not held in person. The rule behind `withoutAccessCount`; always false on the PAST and CANCELLED tabs."
+            "description": "Flagged (MDRS-283): still ahead, not cancelled, and nobody can attend it as it stands: no meeting link, no live stream and not held in person. The rule behind `withoutAccessCount`; always false on the PAST and CANCELLED tabs. Read off the course content, so absent when `contentLocked` is true: such a page keeps only `withoutAccessCount` and `firstWithoutAccess`."
           },
           "isMakeup": {
             "type": "boolean",
@@ -12132,8 +12132,6 @@
           "courseCoverHue",
           "weekNumber",
           "scheduledAt",
-          "inPerson",
-          "withoutAccess",
           "isMakeup",
           "studentCount",
           "cancelled",
@@ -21769,7 +21767,7 @@
             "type": "string",
             "nullable": true,
             "example": "meet.google.com",
-            "description": "The host of the session's meeting link, never the link: the client names the platform from it. Null when the session has no link; whether that leaves it without a way in is `withoutAccess`"
+            "description": "The host of the session's meeting link, never the link: the client names the platform from it. Null when the session has no link; whether that leaves it without a way in is `withoutAccess`. Also null when the course is in a passive scope, whose content is closed to the Pano; `withoutAccess` is then null too"
           },
           "inPerson": {
             "type": "boolean",
@@ -21777,11 +21775,13 @@
           },
           "hasLiveStream": {
             "type": "boolean",
-            "description": "A live stream is set for the session (MDRS-283); never the link"
+            "nullable": true,
+            "description": "A live stream is set for the session (MDRS-283); never the link. Null when the course is in a passive scope, whose content is closed to the Pano"
           },
           "withoutAccess": {
             "type": "boolean",
-            "description": "Nobody can attend it as it stands: no meeting link, no live stream and not held in person (MDRS-283). The row the Pano flags; the rule is the one behind the course menu's badge (`sessionsWithoutAccess`)"
+            "nullable": true,
+            "description": "Nobody can attend it as it stands: no meeting link, no live stream and not held in person (MDRS-283). The row the Pano flags; the rule is the one behind the course menu's badge (`sessionsWithoutAccess`). Null when the course is in a passive scope: it is read off the content, which is closed to the Pano, so the row is not flagged either way"
           }
         },
         "required": [

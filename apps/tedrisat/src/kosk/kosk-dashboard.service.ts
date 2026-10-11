@@ -27,12 +27,17 @@ const APPLICATION_ROWS = 5;
 const VIA = "kosk-dashboard" satisfies RosterRead;
 
 /**
- * A session without what is course content: the meeting link, and whether a
- * live stream is set (MDRS-283), which goes only where the link goes.
+ * A session without what is course content: the meeting link, and how the
+ * session is attended (MDRS-283): whether a live stream is set, whether it is
+ * held in person and whether it is flagged, which says that it has neither a
+ * link nor a stream. A `platform.kosk_edit` holder got the count and the
+ * first such session before MDRS-283 and no per-row answer; that is kept.
  */
 const withoutLink = ({
   meetingUrl: _link,
   hasLiveStream: _stream,
+  inPerson: _inPerson,
+  withoutAccess: _withoutAccess,
   ...session
 }: KoskDashboardSessionResponse): KoskDashboardSessionResponse => session;
 

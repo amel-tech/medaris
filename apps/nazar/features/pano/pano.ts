@@ -116,8 +116,10 @@ export interface SessionRow {
   /**
    * How the celse is attended (MDRS-283): the platform its link's host names,
    * its stream and the in-person mark, or "Eksik" when it has none of them.
+   * Null for a celse of a course in a passive scope, whose content the Pano
+   * is not sent: the cell then claims nothing rather than "Eksik".
    */
-  attendance: AttendanceView;
+  attendance: AttendanceView | null;
   /** the course's own page for the celseler, while the caller holds a scope there */
   editHref: string | null;
 }
@@ -142,7 +144,10 @@ export const sessionTime = (
  * and never picked by hand; no link is ever sent, only its host. Each says how
  * it is attended by the rule Celseler uses: a celse with a stream or the
  * in-person mark is covered without a link, and only one with none of the
- * three is flagged (MDRS-283). All of them are still ahead.
+ * three is flagged (MDRS-283). All of them are still ahead. A course in a
+ * passive scope is sent neither the host, nor the stream, nor the flag
+ * (`withoutAccess` null): its row says only the in-person mark, which is a
+ * public label, and nothing when there is none.
  */
 export function sessionRows(
   items: readonly DashboardSessionResponse[],
@@ -160,14 +165,19 @@ export function sessionRows(
         item.koskName,
       ].join(" · "),
       time: { label: sessionTime(at, where), iso: at.toISOString() },
-      attendance: attendanceView(
-        {
-          meeting: item.meetingHost,
-          hasLiveStream: item.hasLiveStream,
-          inPerson: item.inPerson,
-        },
-        true
-      ),
+      attendance:
+        item.withoutAccess === null
+          ? item.inPerson
+            ? { inPerson: true, platform: null, stream: null, lack: null }
+            : null
+          : attendanceView(
+              {
+                meeting: item.meetingHost,
+                hasLiveStream: item.hasLiveStream === true,
+                inPerson: item.inPerson,
+              },
+              true
+            ),
       editHref: where.held.has(item.courseId.toLowerCase())
         ? `/ders/${encodeURIComponent(item.courseId)}/celseler`
         : null,
