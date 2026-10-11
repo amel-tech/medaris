@@ -58,12 +58,13 @@ const at = (minutes: number) => new Date(NOW.getTime() + minutes * 60_000);
 const BUNNY =
   "https://player.mediadelivery.net/embed/424242/3f1c2b4a-5d6e-4f70-8a9b-0c1d2e3f4a5b?token=9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08&expires=1790000000";
 
-/** The one frame of a page's markup. */
-const iframeOf = (html: string) => {
-  const frames = html.match(/<iframe[^>]*>/g) ?? [];
-  expect(frames).toHaveLength(1);
-  return frames[0];
-};
+/** The buttons to the watch page (MDRS-285), as [text, href]. */
+const watchButtons = (html: string) =>
+  [
+    ...html.matchAll(
+      /<a class="mds-btn[^"]*" href="([^"]*\/izle)"[^>]*>([^<]*)</g
+    ),
+  ].map(([, href, text]) => [text, href]);
 
 const course = {
   id: "c1",
@@ -330,7 +331,7 @@ describe("session page strings", () => {
   });
 });
 
-describe("session page, live (design tedris/16, MDRS-162)", () => {
+describe("session page, live (design tedris/16, MDRS-162, MDRS-285)", () => {
   const live = (over: Record<string, unknown> = {}) =>
     session({
       status: "LIVE",
@@ -346,47 +347,56 @@ describe("session page, live (design tedris/16, MDRS-162)", () => {
     expect(html).toContain("Celseye katıl");
   });
 
-  it("frames the stream from the video id alone, and says what it is", async () => {
+  it("leads to the watch page instead of framing the stream or its chat here", async () => {
     const html = await render(live());
-    expect(html).toContain(
-      'src="https://www.youtube-nocookie.com/embed/live123abc"'
-    );
-    expect(html).toContain("Canlı yayın");
-    expect(html).toContain("Yayını buradan izleyebilirsin.");
+    expect(html).not.toContain("<iframe");
+    expect(html).not.toContain("data-live-chat");
+    expect(html).not.toContain("live123abc");
+    expect(watchButtons(html)).toEqual([
+      ["Yayını izle", "/courses/c1/lessons/s1/izle"],
+    ]);
   });
 
-  it("links a stream that cannot be framed instead of framing it", async () => {
+  it("keeps the meeting link here, the secondary button under the stream's, and says what each is for", async () => {
+    const html = await render(live());
+    const join = html.match(
+      /<a class="mds-btn [^"]*mds-join__link"[^>]*>/
+    )?.[0];
+    expect(join).toContain('href="https://zoom.us/j/123456789"');
+    expect(join).toContain("mds-btn--secondary");
+    expect(html.indexOf("Yayını izle")).toBeLessThan(
+      html.indexOf("Celseye katıl")
+    );
+    expect(html).toContain(
+      "Konuşmak ve soru sormak için celseye katıl; yalnız izleyeceksen yayını aç."
+    );
+  });
+
+  it("offers the watch page for a stream it could not frame too: the watch page opens it at its host", async () => {
     const html = await render(live({ liveStreamUrl: "https://example.org/x" }));
     expect(html).not.toContain("<iframe");
-    expect(html).toContain("Canlı yayın burada oynar");
-    expect(html).toContain('href="https://example.org/x"');
+    expect(html).not.toContain("example.org");
+    expect(watchButtons(html)).toEqual([
+      ["Yayını izle", "/courses/c1/lessons/s1/izle"],
+    ]);
   });
 
-  it("puts the live chat under a YouTube stream (MDRS-229)", async () => {
-    const html = await render(live());
-    expect(html).toContain(
-      'data-live-chat="https://www.youtube.com/watch?v=live123abc"'
-    );
-    expect(html.indexOf("Yayını buradan izleyebilirsin.")).toBeLessThan(
-      html.indexOf("data-live-chat")
-    );
-  });
-
-  it("has no chat for a stream it cannot frame, nor without a stream", async () => {
+  it("offers no watch page when the API sent no stream (tedris/16 §3)", async () => {
+    for (const s of [
+      live({ liveStreamUrl: null }),
+      live({ liveStreamUrl: undefined, contentLocked: true }),
+    ]) {
+      const html = await render(s);
+      expect(html).not.toContain("/izle");
+      expect(html).not.toContain("Yayını izle");
+      expect(html).not.toContain("<iframe");
+    }
+    // the meeting link is the primary way in again
     expect(
-      await render(live({ liveStreamUrl: "https://example.org/x" }))
-    ).not.toContain("data-live-chat");
-    expect(await render(live({ liveStreamUrl: null }))).not.toContain(
-      "data-live-chat"
-    );
-  });
-
-  it("draws no player when the API sent no stream (tedris/16 §3)", async () => {
-    const none = await render(live({ liveStreamUrl: null }));
-    expect(none).not.toContain("Canlı yayın");
-    expect(none).not.toContain("<iframe");
-    const locked = await render(live({ liveStreamUrl: undefined }));
-    expect(locked).not.toContain("<iframe");
+      (await render(live({ liveStreamUrl: null }))).match(
+        /<a class="mds-btn [^"]*mds-join__link"/
+      )?.[0]
+    ).toContain("mds-btn--primary");
   });
 });
 
@@ -450,14 +460,18 @@ describe("session page, how a celse is attended (MDRS-283)", () => {
     expect(html).toContain(noLink);
   });
 
-  it("while a stream-only celse runs, says it is on this page and sends questions to the live chat", async () => {
+  it("while a stream-only celse runs, leads to the stream and sends questions to its live chat (MDRS-285)", async () => {
     const html = await render(live({}));
     expect(html).toContain(said("streamLiveText"));
-    expect(html).not.toContain(noLink);
     expect(html).toContain(
-      "Yayını buradan izleyebilirsin. Soru sormak için canlı sohbete yaz."
+      "Bu celse YouTube&#x27;da canlı yayınlanıyor; sorularını yayının canlı sohbetine yaz."
     );
-    expect(html).not.toContain("celseye katıl.");
+    expect(html).not.toContain("bu sayfada izleyebilirsin");
+    expect(html).not.toContain(noLink);
+    expect(watchButtons(html)).toEqual([
+      ["Yayını izle", "/courses/c1/lessons/s1/izle"],
+    ]);
+    expect(html).not.toContain("celseye katıl");
     expect(html).not.toContain("Celseye katıl");
   });
 
@@ -472,9 +486,9 @@ describe("session page, how a celse is attended (MDRS-283)", () => {
     );
     expect(html).toContain("Celseye katıl");
     expect(html).toContain(
-      "Yayını buradan izleyebilirsin. Soru sormak ve konuşmaya katılmak için celseye katıl."
+      "Konuşmak ve soru sormak için celseye katıl; yalnız izleyeceksen yayını aç."
     );
-    expect(html).not.toContain("canlı sohbete yaz");
+    expect(html).not.toContain("canlı sohbetine yaz");
   });
 
   it("knows a running celse has a stream from its link alone when the flag is absent", async () => {
@@ -483,7 +497,7 @@ describe("session page, how a celse is attended (MDRS-283)", () => {
   });
 });
 
-describe("session page, ended with a recording (design tedris/17, MDRS-162)", () => {
+describe("session page, ended with a recording (design tedris/17, MDRS-162, MDRS-285)", () => {
   const recording = (over: Record<string, unknown> = {}) => ({
     id: "r1",
     title: "Mezîd fiiller ve bâblar: celse kaydı",
@@ -504,112 +518,150 @@ describe("session page, ended with a recording (design tedris/17, MDRS-162)", ()
       ...over,
     });
 
-  it("shows the player with the recording's title and its date and length", async () => {
-    const html = await render(ended());
-    expect(html).toContain("Mezîd fiiller ve bâblar: celse kaydı");
-    expect(html).toContain(
-      'src="https://www.youtube-nocookie.com/embed/rec456abc"'
-    );
-    expect(html).toContain("Ders kaydı");
-    expect(html).toContain("26 Eylül 2026 Cumartesi");
-    expect(html).toContain("58 dk");
-  });
-
-  it("says the session is over and links the recordings tab", async () => {
+  it("says the session is over and leads to its recording on the watch page", async () => {
     const html = await render(ended());
     expect(html).toContain("Sona erdi");
-    expect(html).toContain("Ders kayıtlarına git");
-    expect(html).toContain('href="/courses/c1?tab=kayitlar"');
+    expect(watchButtons(html)).toEqual([
+      ["Kaydı izle", "/courses/c1/lessons/s1/izle"],
+    ]);
     expect(html).not.toContain("Celseye katıl");
-  });
-
-  it("frames a Drive recording through its preview", async () => {
-    const html = await render(
-      ended({
-        recording: recording({
-          provider: "DRIVE",
-          url: "https://drive.google.com/file/d/abcDEF123456/view?usp=sharing",
-        }),
-      })
-    );
-    expect(html).toContain(
-      'src="https://drive.google.com/file/d/abcDEF123456/preview"'
-    );
-  });
-
-  it("opens a recording that cannot be framed at its host", async () => {
-    const html = await render(
-      ended({
-        recording: recording({
-          provider: "OTHER",
-          url: "https://example.org/kayit",
-        }),
-      })
-    );
-    expect(html).not.toContain("<iframe");
-    expect(html).toContain("Ders kaydı burada oynar");
-    expect(html).toContain('href="https://example.org/kayit"');
-    expect(html).toContain("Ders kaydını aç");
-  });
-
-  it("keeps the YouTube frame as it was: its sandbox, its permissions, the recording's title", async () => {
-    const frame = iframeOf(await render(ended()));
-    expect(frame).toContain(
-      'sandbox="allow-scripts allow-same-origin allow-presentation allow-popups"'
-    );
-    expect(frame).toContain(
-      'allow="encrypted-media; picture-in-picture; fullscreen"'
-    );
-    expect(frame).not.toContain("allowFullScreen");
-    expect(frame).toContain('title="Mezîd fiiller ve bâblar: celse kaydı"');
-  });
-
-  it("plays a Bunny recording in Bunny's player, on the very link the API signed (MDRS-114)", async () => {
-    const frame = iframeOf(
-      await render(
-        ended({ recording: recording({ provider: "BUNNY", url: BUNNY }) })
-      )
-    );
-    expect(frame).toContain(`src="${BUNNY.replaceAll("&", "&amp;")}"`);
-    expect(frame).toContain(
-      'title="Ders kaydı oynatıcısı: Mezîd fiiller ve bâblar: celse kaydı"'
-    );
-    expect(frame).toContain(
-      'allow="autoplay; encrypted-media; picture-in-picture; fullscreen"'
-    );
-    expect(frame).toContain('allowFullScreen=""');
-    expect(frame).toContain('referrerPolicy="strict-origin-when-cross-origin"');
-    expect(frame).toContain('loading="lazy"');
-    expect(frame).toContain("aspect-video");
-    expect(frame).not.toContain("sandbox");
+    // the watch page's button takes the place of the tab's
+    expect(html).not.toContain("Ders kayıtlarına git");
   });
 
   it.each([
-    ["Bunny's older iframe host", BUNNY.replace("player.", "iframe.")],
-    ["an unsigned player link", BUNNY.slice(0, BUNNY.indexOf("?"))],
-    ["an extra query key", `${BUNNY}&autoplay=true`],
-  ])("opens a Bunny link it will not frame at its host: %s", async (_label, url) => {
-    const html = await render(
-      ended({ recording: recording({ provider: "BUNNY", url }) })
-    );
+    ["YouTube", {}],
+    [
+      "Drive",
+      {
+        provider: "DRIVE",
+        url: "https://drive.google.com/file/d/abcDEF123456/view?usp=sharing",
+      },
+    ],
+    ["Bunny", { provider: "BUNNY", url: BUNNY }],
+    ["another host", { provider: "OTHER", url: "https://example.org/kayit" }],
+  ])("plays no %s recording here: no frame, no player, not its link", async (_label, over) => {
+    const r = recording(over);
+    const html = await render(ended({ recording: r }));
     expect(html).not.toContain("<iframe");
-    expect(html).toContain("Ders kaydı burada oynar");
-    expect(html).toContain(`href="${url.replaceAll("&", "&amp;")}"`);
-    expect(html).toContain("Ders kaydını aç");
+    expect(html).not.toContain("Ders kaydı burada oynar");
+    expect(html).not.toContain(r.url.replaceAll("&", "&amp;"));
+    expect(html).not.toContain("Mezîd fiiller ve bâblar: celse kaydı");
+    expect(watchButtons(html)).toEqual([
+      ["Kaydı izle", "/courses/c1/lessons/s1/izle"],
+    ]);
   });
 
-  it("draws no player while the recording is being prepared, but still links the tab", async () => {
+  it("offers no recording to watch while it is being prepared, but still links the tab", async () => {
     const html = await render(
       ended({ recording: recording({ status: "PROCESSING", url: null }) })
     );
     expect(html).not.toContain("<iframe");
-    expect(html).not.toContain("Mezîd fiiller ve bâblar: celse kaydı");
+    expect(html).not.toContain("/izle");
     expect(html).toContain('href="/courses/c1?tab=kayitlar"');
+    expect(html).toContain("Ders kayıtlarına git");
   });
 
-  it("draws neither player nor link when there is no recording", async () => {
+  it("offers neither the watch page nor the tab when there is no recording", async () => {
     const html = await render(ended({ recording: null }));
     expect(html).not.toContain("<iframe");
+    expect(html).not.toContain("/izle");
     expect(html).not.toContain("Ders kayıtlarına git");
+    expect(html).toContain("Bu celsede henüz ders kaydı yok.");
+  });
+
+  it("offers the recording, not the stream, once it is READY while the clock still says live", async () => {
+    const html = await render(
+      ended({
+        status: "LIVE",
+        startsAt: at(-14),
+        meetingUrl: "https://zoom.us/j/123456789",
+        liveStreamUrl: null,
+      })
+    );
+    expect(watchButtons(html)).toEqual([
+      ["Kaydı izle", "/courses/c1/lessons/s1/izle"],
+    ]);
+    expect(html).not.toContain("yalnız izleyeceksen yayını aç");
+  });
+});
+
+describe("session page, a stream past its scheduled end (MDRS-285)", () => {
+  const over = (extra: Record<string, unknown> = {}) =>
+    session({
+      status: "ENDED",
+      startsAt: at(-90),
+      meetingUrl: null,
+      recording: null,
+      liveStreamUrl: "https://www.youtube.com/watch?v=live123abc",
+      hasLiveStream: true,
+      ...extra,
+    });
+
+  it("still leads to the stream while the API sends it, a lesson may run long", async () => {
+    const html = await render(over());
+    expect(html).toContain("Sona erdi");
+    expect(watchButtons(html)).toEqual([
+      ["Yayını izle", "/courses/c1/lessons/s1/izle"],
+    ]);
+    expect(html).not.toContain("<iframe");
+  });
+
+  it("leads there over a recording still being prepared", async () => {
+    const html = await render(
+      over({
+        recording: {
+          id: "r1",
+          title: "Kayıt",
+          provider: "YOUTUBE",
+          url: null,
+          durationMinutes: null,
+          recordedAt: null,
+          visibility: "ENROLLED",
+          status: "PROCESSING",
+        },
+      })
+    );
+    expect(watchButtons(html)).toEqual([
+      ["Yayını izle", "/courses/c1/lessons/s1/izle"],
+    ]);
+  });
+
+  it("offers nothing to watch once the API stops sending the link", async () => {
+    const html = await render(over({ liveStreamUrl: null }));
+    expect(html).not.toContain("/izle");
+  });
+
+  it("offers nothing to watch on a cancelled celse", async () => {
+    const html = await render(
+      over({ status: "CANCELLED", cancelledAt: at(-200) })
+    );
+    expect(html).not.toContain("/izle");
+  });
+});
+
+describe("session page, a celse with no time (MDRS-285)", () => {
+  it("has no join card but still leads to what it has to watch", async () => {
+    const html = await render(
+      session({
+        startsAt: null,
+        status: "ENDED",
+        meetingUrl: null,
+        recording: {
+          id: "r1",
+          title: "Kayıt",
+          provider: "YOUTUBE",
+          url: "https://youtu.be/rec456abc",
+          durationMinutes: 58,
+          recordedAt: null,
+          visibility: "ENROLLED",
+          status: "READY",
+        },
+      })
+    );
+    expect(html).not.toContain("mds-join");
+    expect(watchButtons(html)).toEqual([
+      ["Kaydı izle", "/courses/c1/lessons/s1/izle"],
+    ]);
   });
 });

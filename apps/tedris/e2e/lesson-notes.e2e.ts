@@ -19,14 +19,15 @@ import { type E2eAccount, signIn } from "./sign-in";
 
 /**
  * A talebe's private notes on a session's video (MDRS-150) against the running
- * app and API, with real Keycloak sign-ins: the notes panel of the session page
- * and of the recordings tab, on a YouTube recording, a pasted Bunny link and a
- * live stream; on every session with no video too, under the join card, timed
- * by the session's clock while it is live (MDRS-266); and who never reads
- * them. Accounts: the enrolled talebe (E2E_TALEBE_*), a second person
- * enrolled or not as each test sets (see `second` in the seed), the course's
- * müderris (E2E_MUDERRIS_*) and the başnazım (E2E_SISTEM_ADMIN_*). A test
- * whose account is missing is skipped.
+ * app and API, with real Keycloak sign-ins: the notes panel of the watch page
+ * (MDRS-285), reached from the session's detail page and from the recordings
+ * tab, on a YouTube recording, a pasted Bunny link and a live stream; on
+ * every session with nothing to watch too, on its detail page under the join
+ * card, timed by the session's clock while it is live (MDRS-266); and who
+ * never reads them. Accounts: the enrolled talebe (E2E_TALEBE_*), a second
+ * person enrolled or not as each test sets (see `second` in the seed), the
+ * course's müderris (E2E_MUDERRIS_*) and the başnazım (E2E_SISTEM_ADMIN_*). A
+ * test whose account is missing is skipped.
  * The API calls as another person take the direct grant of `sign-in.ts`.
  *
  * Every request to Bunny's hosts is aborted: the video id is made up. The
@@ -56,6 +57,23 @@ test.afterAll(async () => {
 
 const sessionPath = (id: string, courseId = fixture.courseId) =>
   `/tr/courses/${courseId}/lessons/${id}`;
+/** The session's watch page (MDRS-285). */
+const watchPath = (id: string, courseId = fixture.courseId) =>
+  `${sessionPath(id, courseId)}/izle`;
+
+/** From the session's detail page to its watch page, by the join card's button (MDRS-285). */
+async function openWatchPage(
+  page: Page,
+  id: string,
+  button: "Yayını izle" | "Kaydı izle"
+) {
+  await page.goto(sessionPath(id));
+  // the detail page plays nothing itself and takes no note on a video
+  await expect(page.locator("iframe")).toHaveCount(0);
+  await expect(notesPanel(page)).toHaveCount(0);
+  await page.getByRole("main").getByRole("link", { name: button }).click();
+  await expect(page).toHaveURL(new RegExp(`/lessons/${id}/izle$`));
+}
 
 /** No request leaves for Bunny: the video id is made up. */
 const blockBunny = (page: Page) =>
@@ -150,13 +168,13 @@ test.describe("the enrolled talebe", () => {
     await signIn(page, talebe);
   });
 
-  test("on a YouTube recording's session page: adds a note with a time and one without, edits, deletes, and finds them after a reload", async ({
+  test("on a YouTube recording's watch page, reached by Kaydı izle: adds a note with a time and one without, edits, deletes, and finds them after a reload", async ({
     page,
   }) => {
     const s = fixture.sessions.youtube;
-    await page.goto(sessionPath(s.id));
+    await openWatchPage(page, s.id, "Kaydı izle");
     // the frame carries YouTube's player API for the panel
-    await expect(page.locator("#recording-frame")).toHaveAttribute(
+    await expect(page.locator("#watch-frame")).toHaveAttribute(
       "src",
       "https://www.youtube-nocookie.com/embed/9bZkp7q19f0?enablejsapi=1"
     );
@@ -222,7 +240,7 @@ test.describe("the enrolled talebe", () => {
     page,
   }) => {
     // YouTube's own player API, loaded from youtube.com by the page
-    await page.goto(sessionPath(fixture.sessions.youtube.id));
+    await page.goto(watchPath(fixture.sessions.youtube.id));
     const panel = notesPanel(page);
     const current = panel.getByRole("button", { name: "Şimdiki an" });
     await expect(current).toBeVisible({ timeout: 30_000 });
@@ -245,7 +263,7 @@ test.describe("the enrolled talebe", () => {
     }).toPass({ timeout: 15_000 });
   });
 
-  test("on the recordings tab: the panel follows the recording in the player, and its note is the session's", async ({
+  test("on the recordings tab: a row opens its session's watch page, whose panel takes the session's note (MDRS-285)", async ({
     page,
   }) => {
     await blockBunny(page);
@@ -254,28 +272,18 @@ test.describe("the enrolled talebe", () => {
     await expect(
       page.getByRole("tab", { name: /Ders kayıtları/ })
     ).toHaveAttribute("aria-selected", "true");
-    // the newest recording is in the player first
-    await expect(
-      page.getByRole("heading", { level: 2, name: bunny.recordingTitle })
-    ).toBeVisible();
-    await expect(notesPanel(page)).toBeVisible();
+    // the tab has no player and no panel of its own any more
+    await expect(page.locator("iframe")).toHaveCount(0);
+    await expect(notesPanel(page)).toHaveCount(0);
 
     await page
-      .getByRole("button", { name: `Oynat: ${youtube.recordingTitle}` })
+      .getByRole("link", { name: `Kaydı izle: ${youtube.recordingTitle}` })
       .click();
-    await expect(
-      page.getByRole("heading", { level: 2, name: youtube.recordingTitle })
-    ).toBeVisible();
-    // the row playing is marked, and the panel follows it
-    await expect(
-      page.getByRole("button", {
-        name: `Oynatıcıda: ${youtube.recordingTitle}`,
-      })
-    ).toHaveAttribute("aria-current", "true");
+    await expect(page).toHaveURL(new RegExp(`/lessons/${youtube.id}/izle$`));
     await addNote(notesPanel(page), "Kayıttan: mâzînin on dört sîgası", "3:20");
     await expect(notesPanel(page).getByRole("listitem")).toContainText("3:20");
 
-    await page.goto(sessionPath(youtube.id));
+    await page.reload();
     await expect(notesPanel(page).getByRole("listitem")).toContainText(
       "Kayıttan: mâzînin on dört sîgası"
     );
@@ -284,53 +292,78 @@ test.describe("the enrolled talebe", () => {
     );
   });
 
-  for (const [label, size, wide] of [
-    ["a desktop window", { width: 1440, height: 900 }, 1100],
-    ["a short desktop window", { width: 1440, height: 700 }, 1000],
-    ["a phone", { width: 390, height: 844 }, 340],
+  for (const [label, size] of [
+    ["a desktop window", { width: 1440, height: 900 }],
+    ["a narrower desktop window", { width: 1180, height: 800 }],
   ] as const) {
-    test(`on the recordings tab on ${label}: the player is first, as wide as the page allows, whole on the screen, the notes under it, nothing wider than the screen (MDRS-280)`, async ({
+    test(`on the watch page on ${label}: the video is the largest thing, the notes beside it, no join card, nothing wider than the screen (MDRS-285)`, async ({
       page,
     }) => {
-      await blockBunny(page);
       await page.setViewportSize(size);
-      await page.goto(`/tr/courses/${fixture.courseId}?tab=kayitlar`);
+      await page.goto(watchPath(fixture.sessions.youtube.id));
       const panel = notesPanel(page);
       await expect(
         panel.getByText("Bu celse için henüz notun yok.")
       ).toBeVisible();
-      const frame = page.getByRole("main").locator("iframe").first();
-      // the panel is a lazy piece that hydration may swap in: measure once
-      // both are on the page
-      const boxes = async () => ({
-        player: await frame.boundingBox(),
-        notes: await panel.boundingBox(),
-      });
-      await expect
-        .poll(async () => {
-          const b = await boxes();
-          return Boolean(b.player && b.notes);
-        })
-        .toBe(true);
-      const { player, notes } = await boxes();
-      if (!player || !notes)
-        throw new Error("the player or the panel has no box");
-      expect(notes.y).toBeGreaterThanOrEqual(player.y + player.height);
-      // both of the page's columns at md and up, the whole width on a phone
-      expect(player.width).toBeGreaterThan(wide);
+      const frame = page.locator("#watch-frame");
+      const player = await frame.boundingBox();
+      const notes = await panel.boundingBox();
+      const questions = await page
+        .getByRole("region", { name: "Soru sor" })
+        .boundingBox();
+      if (!player || !notes || !questions)
+        throw new Error("the player or a panel has no box");
+      // the video's column, then the side column of about 380 px
+      expect(notes.x).toBeGreaterThanOrEqual(player.x + player.width);
+      expect(questions.y).toBeLessThan(notes.y);
+      expect(player.width).toBeGreaterThan(notes.width);
+      expect(player.width * player.height).toBeGreaterThan(
+        notes.width * notes.height
+      );
       expect(player.width / player.height).toBeCloseTo(16 / 9, 1);
-      // a whole frame fits under the 64 px top bar
-      expect(player.height).toBeLessThanOrEqual(size.height - 64);
+      await expect(page.locator(".mds-join")).toHaveCount(0);
+      await expect(
+        page.getByRole("link", { name: /Celseye katıl/ })
+      ).toHaveCount(0);
       expect(
         await page.evaluate(() => document.documentElement.scrollWidth)
       ).toBeLessThanOrEqual(size.width);
     });
   }
 
-  test("on the course page, switching to the recordings tab and back leaves the tab row where it was clicked (MDRS-280)", async ({
+  test("on the watch page on a phone: the video first, then the title, then two tabs for the questions and the notes (MDRS-285)", async ({
     page,
   }) => {
-    await blockBunny(page);
+    const size = { width: 390, height: 844 };
+    await page.setViewportSize(size);
+    const s = fixture.sessions.youtube;
+    await page.goto(watchPath(s.id));
+    const player = await page.locator("#watch-frame").boundingBox();
+    const title = await page
+      .getByRole("heading", { level: 1, name: new RegExp(s.title) })
+      .boundingBox();
+    if (!player || !title)
+      throw new Error("the player or the title has no box");
+    expect(title.y).toBeGreaterThanOrEqual(player.y + player.height);
+    expect(player.width).toBeGreaterThan(size.width - 2);
+
+    const questionsTab = page.getByRole("button", { name: "Soru sor" });
+    const notesTab = page.getByRole("button", { name: "Notlarım" });
+    await expect(questionsTab).toHaveAttribute("aria-pressed", "true");
+    await expect(notesPanel(page)).toBeHidden();
+    await notesTab.click();
+    await expect(notesTab).toHaveAttribute("aria-pressed", "true");
+    await expect(notesPanel(page)).toBeVisible();
+    await expect(page.getByRole("region", { name: "Soru sor" })).toBeHidden();
+    await expect(page.locator(".mds-join")).toHaveCount(0);
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth)
+    ).toBeLessThanOrEqual(size.width);
+  });
+
+  test("on the course page, switching to the recordings tab and back leaves the tab row where it was clicked", async ({
+    page,
+  }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto(`/tr/courses/${fixture.courseId}`);
     await page.evaluate(() => document.fonts.ready);
@@ -338,10 +371,11 @@ test.describe("the enrolled talebe", () => {
     const top = async () => (await row.boundingBox())?.y ?? Number.NaN;
     const before = await top();
     await page.getByRole("tab", { name: /Ders kayıtları/ }).click();
-    await expect(notesPanel(page)).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Bütün ders kayıtları" })
+    ).toBeVisible();
     expect(Math.abs((await top()) - before)).toBeLessThanOrEqual(1);
     await page.getByRole("tab", { name: /Müfredat/ }).click();
-    await expect(notesPanel(page)).toHaveCount(0);
     expect(Math.abs((await top()) - before)).toBeLessThanOrEqual(1);
   });
 
@@ -350,7 +384,7 @@ test.describe("the enrolled talebe", () => {
   }) => {
     await blockBunny(page);
     const s = fixture.sessions.bunny;
-    await page.goto(sessionPath(s.id));
+    await openWatchPage(page, s.id, "Kaydı izle");
     const panel = notesPanel(page);
     await expect(
       panel.getByText("İsteğe bağlı: oynatıcıdaki süreyi yaz.")
@@ -368,10 +402,12 @@ test.describe("the enrolled talebe", () => {
       panel.getByRole("button", { name: "Videoyu 12:34 anına götür" })
     ).toHaveCount(0);
 
+    // the same note, reached from the recordings tab's row
     await page.goto(`/tr/courses/${fixture.courseId}?tab=kayitlar`);
-    await expect(
-      page.getByRole("heading", { level: 2, name: s.recordingTitle })
-    ).toBeVisible();
+    await page
+      .getByRole("link", { name: `Kaydı izle: ${s.recordingTitle}` })
+      .click();
+    await expect(page).toHaveURL(new RegExp(`/lessons/${s.id}/izle$`));
     await expect(notesPanel(page).getByRole("listitem")).toContainText(
       "Muzâride hurûf-i mudâraa: eyn"
     );
@@ -380,7 +416,7 @@ test.describe("the enrolled talebe", () => {
     ]);
   });
 
-  test("on a pasted Bunny link: the session page frames Bunny's player on the link tedrisat signed", async ({
+  test("on a pasted Bunny link: the watch page frames Bunny's player on the link tedrisat signed", async ({
     page,
   }) => {
     test.skip(
@@ -389,7 +425,7 @@ test.describe("the enrolled talebe", () => {
     );
     await blockBunny(page);
     const s = fixture.sessions.bunny;
-    await page.goto(sessionPath(s.id));
+    await page.goto(watchPath(s.id));
     const frame = page.locator(
       `iframe[title="Ders kaydı oynatıcısı: ${s.recordingTitle}"]`
     );
@@ -402,17 +438,27 @@ test.describe("the enrolled talebe", () => {
     await expect(notesPanel(page)).toBeVisible();
   });
 
-  test("while a session is on air with a live stream: the panel is under the stream and takes a note", async ({
+  test("while a session is on air with a live stream: the detail page keeps the meeting link and leads to the watch page, whose panel is beside the stream and takes a note (MDRS-285)", async ({
     page,
   }) => {
     const s = fixture.sessions.live;
     await page.goto(sessionPath(s.id));
     const main = page.getByRole("main");
     await expect(main.getByText("Şu an canlı").first()).toBeVisible();
-    await expect(page.locator("#live-stream-frame")).toHaveAttribute(
+    await expect(
+      main.getByRole("link", { name: /Celseye katıl/ })
+    ).toHaveAttribute("href", "https://zoom.us/j/741852963");
+    await openWatchPage(page, s.id, "Yayını izle");
+    await expect(page.locator("#watch-frame")).toHaveAttribute(
       "src",
       "https://www.youtube-nocookie.com/embed/jNQXAC9IVRw?enablejsapi=1"
     );
+    // the live chat beside it, and no way into the meeting here
+    await expect(page.getByTitle("Canlı sohbet")).toBeVisible();
+    await expect(page.getByRole("link", { name: /Celseye katıl/ })).toHaveCount(
+      0
+    );
+    expect(await page.content()).not.toContain("zoom.us");
     await addNote(notesPanel(page), "Canlı derste: nehy lâ ile", "14:05");
     await expect(notesPanel(page).getByRole("listitem")).toContainText("14:05");
     expect(await fixture.notesOf(talebe.sub as string, s.id)).toMatchObject([
@@ -432,6 +478,8 @@ test.describe("the enrolled talebe", () => {
     ).toHaveAttribute("href", "https://zoom.us/j/741852963");
     await expectUnderJoinCard(page);
     await expect(page.locator("iframe")).toHaveCount(0);
+    // nothing to watch: no way to a watch page (MDRS-285)
+    await expect(main.getByRole("link", { name: /izle$/ })).toHaveCount(0);
 
     const panel = notesPanel(page);
     const form = panel.locator("form");
@@ -577,7 +625,7 @@ test.describe("the enrolled talebe", () => {
     await expect(notesPanel(page)).toHaveCount(0);
   });
 
-  test("a passive course: no panel on the session page or the recordings tab, and the API closes the notes", async ({
+  test("a passive course: no panel on the session page or the recordings tab, no watch page, and the API closes the notes", async ({
     page,
   }) => {
     const undo = await fixture.enroll(
@@ -592,6 +640,12 @@ test.describe("the enrolled talebe", () => {
         page.getByRole("heading", { level: 1, name: "Emsile-i muhtelife" })
       ).toBeVisible();
       await expect(notesPanel(page)).toHaveCount(0);
+      await expect(page.locator("iframe")).toHaveCount(0);
+      // its watch page sends them back to the detail page's locked card
+      await page.goto(watchPath(sessionId, courseId));
+      await expect(page).toHaveURL(
+        new RegExp(`${sessionPath(sessionId, courseId)}$`)
+      );
       await expect(page.locator("iframe")).toHaveCount(0);
 
       await page.goto(`/tr/courses/${courseId}?tab=kayitlar`);
@@ -706,19 +760,20 @@ test("nobody else reads a talebe's notes: a second enrolled talebe, the müderri
 
     // the second talebe has a panel of their own, empty
     const theirs = await pageAs(browser, second);
-    await theirs.goto(sessionPath(s.id));
+    await theirs.goto(watchPath(s.id));
     await expect(
       notesPanel(theirs).getByText("Bu celse için henüz notun yok.")
     ).toBeVisible();
     expect(await theirs.content()).not.toContain(secret);
     await theirs.context().close();
 
-    // the müderris and the başnazım are not talebe here: no panel at all
+    // the müderris and the başnazım are not talebe here: no panel at all,
+    // beside the video or on the detail page
     for (const who of [muderris, basnazim]) {
       const page = await pageAs(browser, who);
-      await page.goto(sessionPath(s.id));
+      await page.goto(watchPath(s.id));
       await expect(
-        page.getByRole("heading", { level: 1, name: s.title })
+        page.getByRole("heading", { level: 1, name: new RegExp(s.title) })
       ).toBeVisible();
       await expect(notesPanel(page)).toHaveCount(0);
       expect(await page.content()).not.toContain(secret);
@@ -740,7 +795,9 @@ test("a talebe who is not enrolled, waits for approval or was taken out has no p
       ? await fixture.enroll(second.sub as string, status)
       : undefined;
     try {
-      await page.goto(sessionPath(s.id));
+      // the watch page sends them to the detail page's locked card (MDRS-285)
+      await page.goto(watchPath(s.id));
+      await expect(page).toHaveURL(new RegExp(`${sessionPath(s.id)}$`));
       await expect(
         page.getByRole("heading", { level: 1, name: s.title })
       ).toBeVisible();

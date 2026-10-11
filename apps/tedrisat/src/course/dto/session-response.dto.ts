@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { LIVE_STREAM_HOURS_AFTER_END } from "../domain/recording";
 import { SessionStatus } from "../domain/session-status.enum";
 import { AgendaStepResponse } from "./course-response.dto";
 import { SessionRecordingResponse } from "./recording-response.dto";
@@ -68,7 +69,7 @@ export class SessionResponse extends SessionRefResponse {
     nullable: true,
     description:
       CONTENT_FIELD +
-      " The embeddable stream, sent only while the session is LIVE and only when one was set.",
+      ` The embeddable stream, when one was set: from the scheduled start until the session has a READY \`recording\`, and never later than ${LIVE_STREAM_HOURS_AFTER_END} hours after the scheduled end (MDRS-285), so a lesson that runs long keeps it. Null otherwise; non-null means the stream may be watched now.`,
   })
   liveStreamUrl?: string | null;
   @ApiProperty({
@@ -80,7 +81,7 @@ export class SessionResponse extends SessionRefResponse {
     type: Boolean,
     description:
       CONTENT_FIELD +
-      " A live stream is set for the session (MDRS-283), whatever its status, so the page can say so before it starts; the link itself is `liveStreamUrl`, LIVE only.",
+      " A live stream is set for the session (MDRS-283), whatever its status, so the page can say so before it starts; the link itself is `liveStreamUrl`.",
   })
   hasLiveStream?: boolean;
   @ApiPropertyOptional({

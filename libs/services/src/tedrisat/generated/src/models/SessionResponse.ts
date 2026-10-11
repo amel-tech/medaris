@@ -152,7 +152,7 @@ export interface SessionResponse {
      */
     meetingUrl?: string;
     /**
-     * Course content: absent unless the caller holds `view_details` on the course (MDRS-103). The embeddable stream, sent only while the session is LIVE and only when one was set.
+     * Course content: absent unless the caller holds `view_details` on the course (MDRS-103). The embeddable stream, when one was set: from the scheduled start until the session has a READY `recording`, and never later than 24 hours after the scheduled end (MDRS-285), so a lesson that runs long keeps it. Null otherwise; non-null means the stream may be watched now.
      * @type {string}
      * @memberof SessionResponse
      */
@@ -164,7 +164,7 @@ export interface SessionResponse {
      */
     inPerson: boolean;
     /**
-     * Course content: absent unless the caller holds `view_details` on the course (MDRS-103). A live stream is set for the session (MDRS-283), whatever its status, so the page can say so before it starts; the link itself is `liveStreamUrl`, LIVE only.
+     * Course content: absent unless the caller holds `view_details` on the course (MDRS-103). A live stream is set for the session (MDRS-283), whatever its status, so the page can say so before it starts; the link itself is `liveStreamUrl`.
      * @type {boolean}
      * @memberof SessionResponse
      */

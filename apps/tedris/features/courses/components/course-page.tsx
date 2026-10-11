@@ -16,7 +16,7 @@ import { zoneName } from "@medaris/ui/mds/locale";
 import { Tabs, TabsPanel } from "@medaris/ui/mds/tabs";
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
-import { Fragment, useLayoutEffect, useRef, useState } from "react";
+import { Fragment, useState } from "react";
 import { courseCover } from "~/features/courses/course-cover";
 import {
   courseTotals,
@@ -138,32 +138,6 @@ export const CoursePage = ({
       ? (initialTab as string)
       : "mufredat"
   );
-  // MDRS-280: the recordings tab gives its video the page's whole width. From
-  // md up its panel spans both columns, so the aside card stays beside the
-  // header and does not stick beside the tabs there; every other tab keeps the
-  // reading column and the sticky card.
-  const wide = tab === "kayitlar";
-  const asidePlace = wide
-    ? "md:col-start-2 md:row-start-1"
-    : "sticky inset-bs-[calc(var(--layout-topbar)+var(--space-6))] md:col-start-2 md:row-start-1 md:row-span-2 max-md:static";
-  // The tab row starts under the taller of the header and the aside card on
-  // the recordings tab, and under the header on the others, so a switch can
-  // move it. It is held where the reader clicked it: the page scrolls by what
-  // the row moved, as the browser's own scroll anchoring would.
-  const tabRow = useRef<HTMLDivElement>(null);
-  const pending = useRef<{ tab: string; top: number } | null>(null);
-  const changeTab = (next: string) => {
-    const top = tabRow.current?.getBoundingClientRect().top;
-    pending.current = top === undefined ? null : { tab: next, top };
-    setTab(next);
-  };
-  useLayoutEffect(() => {
-    const before = pending.current;
-    if (!before || before.tab !== tab || !tabRow.current) return;
-    pending.current = null;
-    const moved = tabRow.current.getBoundingClientRect().top - before.top;
-    if (moved !== 0) window.scrollBy(0, moved);
-  }, [tab]);
 
   const typeLabel = (type: string) =>
     ({
@@ -293,7 +267,7 @@ export const CoursePage = ({
           </div>
         </div>
         {preview ? (
-          <aside className={`${asidePlace} flex flex-col gap-4`}>
+          <aside className="sticky inset-bs-[calc(var(--layout-topbar)+var(--space-6))] md:col-start-2 md:row-start-1 md:row-span-2 max-md:static flex flex-col gap-4">
             <Card
               title={t("previewCardTitle")}
               headingLevel={2}
@@ -325,7 +299,7 @@ export const CoursePage = ({
             {resourceList}
           </aside>
         ) : (
-          <div className={`${asidePlace} flex flex-col gap-4`}>
+          <div className="sticky inset-bs-[calc(var(--layout-topbar)+var(--space-6))] md:col-start-2 md:row-start-1 md:row-span-2 max-md:static flex flex-col gap-4">
             <CourseAside
               course={course}
               state={state}
@@ -337,14 +311,11 @@ export const CoursePage = ({
             {resourceList}
           </div>
         )}
-        <div
-          ref={tabRow}
-          className={`flex min-inline-0 flex-col gap-section md:col-start-1 md:row-start-2 ${wide ? "md:col-span-2" : ""}`}
-        >
+        <div className="flex min-inline-0 flex-col gap-section md:col-start-1 md:row-start-2">
           <Tabs
             tabs={tabs}
             value={tab}
-            onChange={changeTab}
+            onChange={setTab}
             label={t("tabsLabel")}
           >
             <TabsPanel value="mufredat" className="flex flex-col gap-3 pbs-4">
@@ -358,13 +329,23 @@ export const CoursePage = ({
               <CourseProgramme course={course} state={state} now={now} />
             </TabsPanel>
             <TabsPanel value="kayitlar" className="pbs-4">
+              {/* MDRS-285: a row opens its celse's watch page, which keeps
+                  the content gating of the celse's own page. Only a LIVE
+                  lesson has one. */}
               <RecordingsTab
                 recordings={recordings}
                 timeZone={zone}
-                notes={
-                  !course.contentLocked &&
-                  canWriteNotes(course.enrollment?.status)
+                courseId={course.id}
+                celses={
+                  new Set(
+                    course.weeks.flatMap((week) =>
+                      week.lessons
+                        .filter((lesson) => lesson.type === "LIVE")
+                        .map((lesson) => lesson.id)
+                    )
+                  )
                 }
+                watch={!course.contentLocked}
               />
             </TabsPanel>
             {seat ? (

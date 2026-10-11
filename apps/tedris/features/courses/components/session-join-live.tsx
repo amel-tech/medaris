@@ -28,6 +28,11 @@ export interface SessionJoinLabels {
   recordingsLabel?: string;
   /** keeps a literal `{minutes}`, which the card fills in while the celse runs */
   elapsedText?: string;
+  /** MDRS-285: the watch page's button, for a stream and for a recording */
+  watchStreamLabel?: string;
+  watchRecordingLabel?: string;
+  /** under the buttons when a stream and a meeting link are both offered */
+  watchOrJoinText?: string;
 }
 
 export type CalendarLabels = CalendarMenuLabels;
@@ -62,6 +67,8 @@ export function SessionJoinLive({
   labels,
   calendar,
   recordingsHref,
+  watchHref,
+  watch,
   headingLevel,
 }: {
   renderedAt: string;
@@ -88,6 +95,10 @@ export function SessionJoinLive({
   calendar?: CalendarLabels;
   /** where "Ders kayıtlarına git" goes once the celse is over; absent without a recording */
   recordingsHref?: string;
+  /** the celse's watch page (MDRS-285); absent where the card offers no way to it */
+  watchHref?: string;
+  /** what the watch page plays as the page was rendered: the API's say, null for nothing */
+  watch?: "stream" | "recording" | null;
   /** set where the card names its celse (Ana sayfa: 3); the session page's own h1 already does */
   headingLevel?: 2 | 3 | 4;
 }) {
@@ -107,7 +118,13 @@ export function SessionJoinLive({
     now
   );
 
-  const { elapsedText, ...joinLabels } = labels;
+  const {
+    elapsedText,
+    watchStreamLabel,
+    watchRecordingLabel,
+    watchOrJoinText,
+    ...joinLabels
+  } = labels;
   const elapsed =
     state === "live" && elapsedText
       ? elapsedText.replace(
@@ -122,6 +139,15 @@ export function SessionJoinLive({
           )
         )
       : undefined;
+
+  // MDRS-285: what the watch page plays is the API's say at render time. A
+  // page drawn before the start has no stream link yet; the card still opens
+  // the way to a stream once its clock reaches the start, as it says it will
+  // ("yayın celse başlayınca burada açılır"), and the watch page then reads
+  // the link itself. `hasLiveStream` reaches only who may read the content.
+  const watching =
+    watch ?? (hasLiveStream && state === "live" ? "stream" : null);
+  const open = state === "upcoming" || state === "live";
 
   // Not on a live celse: the design's live card has only the way in.
   const addToCalendar =
@@ -152,6 +178,15 @@ export function SessionJoinLive({
       hasLiveStream={hasLiveStream}
       actions={addToCalendar}
       recordingsHref={recordingsHref}
+      watchHref={watchHref && watching ? watchHref : undefined}
+      watchLabel={
+        watching === "recording" ? watchRecordingLabel : watchStreamLabel
+      }
+      watchText={
+        watching === "stream" && meetingUrl && open
+          ? watchOrJoinText
+          : undefined
+      }
       elapsedText={elapsed}
       now={now}
       locale={locale}

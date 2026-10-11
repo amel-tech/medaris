@@ -50,7 +50,11 @@ export interface ISessionView extends ISessionRef {
    * the session is cancelled or over — there is nothing left to join.
    */
   meetingUrl?: string | null;
-  /** Course content; only while the session is LIVE (MDRS-162). */
+  /**
+   * Course content (MDRS-162); from the scheduled start until the session
+   * has a READY recording, with a bound past its scheduled end (MDRS-285,
+   * `liveStreamFor`). Non-null is how a page knows a stream may be watched.
+   */
   liveStreamUrl?: string | null;
   /**
    * Held in person (MDRS-283): the session's own mark, else the course's.
@@ -59,7 +63,7 @@ export interface ISessionView extends ISessionRef {
   inPerson: boolean;
   /**
    * A live stream is set for the session (MDRS-283), whatever its status, so
-   * the page can say so before it starts; the link itself stays LIVE-only.
+   * the page can say so before it starts; the link itself is `liveStreamUrl`.
    * Course content: absent for a caller who may not read it.
    */
   hasLiveStream?: boolean;
@@ -75,20 +79,36 @@ export interface ISessionView extends ISessionRef {
   contentLocked: boolean;
 }
 
+/** What the clock-based rules read off a session. */
+export type SessionTiming = Pick<
+  ILessonView,
+  "cancelledAt" | "scheduledAt" | "durationMinutes"
+>;
+
+/**
+ * When a session's scheduled time is over, in epoch milliseconds: the start
+ * plus its length, or the default hour when it has none.
+ */
+export function scheduledEnd(
+  scheduledAt: Date,
+  durationMinutes: number | null
+): number {
+  return (
+    scheduledAt.getTime() +
+    (durationMinutes ?? DEFAULT_SESSION_MINUTES) * 60_000
+  );
+}
+
 /**
  * Where a session stands at `now`. Stored nowhere: a cancellation is the only
  * fact the row holds, the rest follows from its schedule, so the status can
  * never disagree with the clock.
  */
-export function sessionStatus(
-  lesson: Pick<ILessonView, "cancelledAt" | "scheduledAt" | "durationMinutes">,
-  now: Date
-): SessionStatus {
+export function sessionStatus(lesson: SessionTiming, now: Date): SessionStatus {
   if (lesson.cancelledAt) return SessionStatus.CANCELLED;
   if (!lesson.scheduledAt) return SessionStatus.SCHEDULED;
   const start = lesson.scheduledAt.getTime();
-  const end =
-    start + (lesson.durationMinutes ?? DEFAULT_SESSION_MINUTES) * 60_000;
+  const end = scheduledEnd(lesson.scheduledAt, lesson.durationMinutes);
   if (now.getTime() >= end) return SessionStatus.ENDED;
   if (now.getTime() >= start) return SessionStatus.LIVE;
   return SessionStatus.SCHEDULED;

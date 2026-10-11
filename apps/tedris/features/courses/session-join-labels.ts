@@ -28,6 +28,9 @@ export const sessionJoinLabels = (t: Translate): SessionJoinLabels => ({
   minuteUnit: t("SessionPage.minuteUnit"),
   recordingsLabel: t("SessionPage.recordingsGo"),
   elapsedText: t("SessionPage.elapsed", { minutes: "{minutes}" }),
+  watchStreamLabel: t("SessionPage.watchStream"),
+  watchRecordingLabel: t("SessionPage.watchRecording"),
+  watchOrJoinText: t("SessionPage.watchOrJoin"),
 });
 
 /**

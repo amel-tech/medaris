@@ -4,16 +4,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render } from "./dom";
 
 /**
- * YouTube's live chat under the stream (MDRS-229): open on a wide window and
- * closed on a phone, framed for this page's host, and dark on a dark page.
+ * YouTube's live chat of the stream (MDRS-229), the watch page's "Canlı
+ * sohbet" panel (MDRS-285): open from the start at every width, framed for
+ * this page's host, dark on a dark page, and with YouTube's own chat page one
+ * link away for a sign-in the frame cannot see.
  */
 
 vi.mock("next-intl", () => ({
   useTranslations: () => (key: string) =>
     ({
       liveChatTitle: "Canlı sohbet",
-      liveChatShow: "Sohbeti göster",
-      liveChatHide: "Gizle",
       liveChatText: "Sohbet YouTube'dan gelir.",
       liveChatPopout: "Sohbeti YouTube'da aç",
       liveChatNewTab: "(yeni sekmede açılır)",
@@ -60,9 +60,10 @@ const frame = (host: HTMLElement) =>
   host.querySelector<HTMLIFrameElement>("iframe");
 
 describe("LiveChat", () => {
-  it("opens on a wide window with YouTube's chat for this page's host", async () => {
+  it("is open with YouTube's chat for this page's host, with nothing to unfold", async () => {
     const host = await mount();
-    expect(host.querySelector("details")?.open).toBe(true);
+    expect(host.querySelector("details, summary")).toBeNull();
+    expect(host.querySelector("section h2")?.textContent).toBe("Canlı sohbet");
     const src = new URL(frame(host)?.src ?? "");
     expect(src.pathname).toBe("/live_chat");
     expect(src.searchParams.get("v")).toBe("ybHyHDBiRoE");
@@ -85,14 +86,19 @@ describe("LiveChat", () => {
     expect(link?.target).toBe("_blank");
     expect(link?.rel).toBe("noopener noreferrer");
     expect(link?.textContent).toContain("(yeni sekmede açılır)");
+    // In the header, beside the panel's title, as in the wireframe.
+    expect(link?.parentElement?.querySelector("h2")?.textContent).toBe(
+      "Canlı sohbet"
+    );
   });
 
-  it("waits closed on a phone, with no frame until it is opened", async () => {
+  it("is open on a phone too: the frame and the link are there from the start", async () => {
     media.wide = false;
     const host = await mount();
-    expect(host.querySelector("details")?.open).toBe(false);
-    expect(frame(host)).toBeNull();
-    expect(host.textContent).toContain("Sohbeti göster");
+    expect(frame(host)?.src).toContain("/live_chat?v=ybHyHDBiRoE");
+    expect(
+      host.querySelector('a[href*="is_popout=1"]')?.getAttribute("target")
+    ).toBe("_blank");
   });
 
   it("is dark on a page dark by the system, unless the page is forced light", async () => {

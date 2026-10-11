@@ -394,6 +394,125 @@ describe("SessionJoin", () => {
     );
     expect(ended?.querySelector(".mds-join__status")).toBeNull();
   });
+
+  describe("the watch page's button (MDRS-285)", () => {
+    const buttons = (section: Element | undefined) =>
+      Array.from(section?.querySelectorAll("a.mds-btn") ?? []).map((a) => ({
+        text: a.childNodes[0]?.textContent,
+        href: a.getAttribute("href"),
+        primary: a.classList.contains("mds-btn--primary"),
+        newTab: a.getAttribute("target") === "_blank",
+      }));
+
+    it("comes first and is the primary one, the meeting link the secondary one under it, with the line under both", async () => {
+      const host = await render(
+        <SessionJoin
+          {...base}
+          state="live"
+          watchHref="/izle"
+          watchText="WATCH OR JOIN"
+          now="2026-10-03T18:20:00Z"
+        />
+      );
+      const section = host.querySelector("section") as HTMLElement;
+      expect(buttons(section)).toEqual([
+        { text: "Yayını izle", href: "/izle", primary: true, newTab: false },
+        {
+          text: "Celseye katıl",
+          href: "https://meet.example/abc",
+          primary: false,
+          newTab: true,
+        },
+      ]);
+      expect(section.querySelector(".mds-join__reveal")).not.toBeNull();
+      expect(section.querySelector(".mds-join__notice")?.textContent).toBe(
+        "WATCH OR JOIN"
+      );
+    });
+
+    it("stands over the line of a celse without a link, and before the join window opens", async () => {
+      const host = await render(
+        <>
+          <SessionJoin
+            {...base}
+            href={undefined}
+            platform={undefined}
+            hasLiveStream
+            streamLiveText="STREAM NOW"
+            state="live"
+            watchHref="/izle"
+            now="2026-10-03T18:20:00Z"
+          />
+          <SessionJoin {...base} watchHref="/izle" now="2026-10-03T17:00:00Z" />
+        </>
+      );
+      const [streamOnly, early] = Array.from(host.querySelectorAll("section"));
+      expect(buttons(streamOnly)).toEqual([
+        { text: "Yayını izle", href: "/izle", primary: true, newTab: false },
+      ]);
+      expect(streamOnly?.querySelector(".mds-join__status")?.textContent).toBe(
+        "STREAM NOW"
+      );
+      expect(buttons(early).map((b) => b.text)).toEqual(["Yayını izle"]);
+      expect(early?.querySelector(".mds-join__status")?.textContent).toBe(
+        "Katılım, celse başlamadan 10 dakika önce açılır."
+      );
+    });
+
+    it("takes the place of the recordings button once the celse is over", async () => {
+      const host = await render(
+        <SessionJoin
+          {...base}
+          state="ended"
+          recordingsHref="/kayitlar"
+          watchHref="/izle"
+          watchLabel="Kaydı izle"
+          now="2026-10-04T00:00:00Z"
+        />
+      );
+      expect(buttons(host.querySelector("section") as HTMLElement)).toEqual([
+        { text: "Kaydı izle", href: "/izle", primary: true, newTab: false },
+      ]);
+    });
+
+    it("is never on a cancelled or a locked card, and its line goes with it", async () => {
+      const host = await render(
+        <>
+          <SessionJoin
+            {...base}
+            state="cancelled"
+            watchHref="/izle"
+            watchText="WATCH OR JOIN"
+            now="2026-10-03T17:55:00Z"
+          />
+          <SessionJoin
+            {...base}
+            state="live"
+            access="locked"
+            watchHref="/izle"
+            watchText="WATCH OR JOIN"
+            now="2026-10-03T18:20:00Z"
+          />
+        </>
+      );
+      expect(host.querySelector('a[href="/izle"]')).toBeNull();
+      expect(host.textContent).not.toContain("WATCH OR JOIN");
+    });
+
+    it("leaves the card as it was without it: the meeting link is the primary button", async () => {
+      const host = await render(
+        <SessionJoin {...base} state="live" now="2026-10-03T18:20:00Z" />
+      );
+      expect(buttons(host.querySelector("section") as HTMLElement)).toEqual([
+        {
+          text: "Celseye katıl",
+          href: "https://meet.example/abc",
+          primary: true,
+          newTab: true,
+        },
+      ]);
+    });
+  });
 });
 
 describe("Weeks and WeekAccordion", () => {

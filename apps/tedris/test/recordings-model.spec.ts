@@ -3,10 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
   bunnyPlayerUrlOf,
   embedUrlOf,
-  firstPlayable,
   groupByWeek,
   isPlainWeekTitle,
-  listsRecordings,
   liveChatPopoutUrlOf,
   liveChatUrlOf,
   liveEmbedUrlOf,
@@ -193,9 +191,6 @@ describe("bunnyPlayerUrlOf (MDRS-114)", () => {
     "OTHER",
   ])("does not frame a Bunny-looking link stored as %s", (provider) => {
     expect(embedUrlOf(provider, SIGNED)).toBeNull();
-    expect(
-      recordingAction({ provider, status: "READY", url: SIGNED } as never)
-    ).toBe("open");
   });
 
   it("leaves the signed link as it is for the notes panel: no player API", () => {
@@ -281,57 +276,53 @@ describe("liveChatPopoutUrlOf", () => {
   });
 });
 
-describe("recordingAction (tedris/24 criteria 3 and 4)", () => {
-  it("plays a ready YouTube recording in the page's player", () => {
-    expect(recordingAction(rec("a"))).toBe("play");
+describe("recordingAction (tedris/24, MDRS-285)", () => {
+  const drive = rec("a", {
+    provider: "DRIVE",
+    url: "https://drive.google.com/file/d/abcdef123/view",
+  });
+  const bunny = rec("a", { provider: "BUNNY", url: SIGNED });
+  const other = rec("a", { provider: "OTHER", url: "https://example.org/k" });
+
+  it.each([
+    ["YouTube", rec("a")],
+    ["Bunny", bunny],
+    ["Drive", drive],
+    ["another host", other],
+    [
+      "a YouTube link that cannot be framed",
+      rec("a", { url: "https://www.youtube.com/@kanal" }),
+    ],
+  ])("opens the watch page for a ready %s recording, to a viewer who may read the content", (_label, recording) => {
+    expect(recordingAction(recording, true)).toBe("watch");
   });
 
-  it("opens a Drive recording at its host", () => {
+  it.each([
+    ["YouTube", rec("a", { visibility: "PUBLIC" })],
+    ["Bunny", { ...bunny, visibility: "PUBLIC" } as RecordingResponse],
+    ["Drive", drive],
+  ])("opens a ready %s recording at its host for a viewer who may not, whom the watch page would turn away", (_label, recording) => {
+    expect(recordingAction(recording, false)).toBe("open");
+  });
+
+  it.each([
+    true,
+    false,
+  ])("offers nothing for a recording being prepared (watch: %s)", (watch) => {
+    expect(
+      recordingAction(rec("a", { status: "PROCESSING", url: null }), watch)
+    ).toBe("none");
     expect(
       recordingAction(
-        rec("a", {
-          provider: "DRIVE",
-          url: "https://drive.google.com/file/d/abcdef123/view",
-        })
-      )
-    ).toBe("open");
-  });
-
-  it("opens a YouTube link it cannot frame instead of playing it", () => {
-    expect(
-      recordingAction(rec("a", { url: "https://www.youtube.com/@kanal" }))
-    ).toBe("open");
-  });
-
-  it("offers nothing for a recording being prepared", () => {
-    expect(recordingAction(rec("a", { status: "PROCESSING", url: null }))).toBe(
-      "none"
-    );
-    expect(recordingAction(rec("a", { url: null }))).toBe("none");
-  });
-
-  it("plays a ready Bunny recording in the page's player (MDRS-114)", () => {
-    expect(recordingAction(rec("a", { provider: "BUNNY", url: SIGNED }))).toBe(
-      "play"
-    );
-  });
-
-  it("opens a Bunny link it will not frame instead of playing it", () => {
-    expect(recordingAction(rec("a", { provider: "BUNNY", url: PLAYER }))).toBe(
-      "open"
-    );
-  });
-
-  it("offers nothing for a Bunny upload still being encoded", () => {
-    expect(
-      recordingAction(
-        rec("a", { provider: "BUNNY", status: "PROCESSING", url: null })
+        rec("a", { provider: "BUNNY", status: "PROCESSING", url: null }),
+        watch
       )
     ).toBe("none");
+    expect(recordingAction(rec("a", { url: null }), watch)).toBe("none");
   });
 });
 
-describe("groupByWeek and firstPlayable", () => {
+describe("groupByWeek", () => {
   const list = [
     rec("d", { weekId: "w4", weekNumber: 4, status: "PROCESSING", url: null }),
     rec("c", { weekId: "w4", weekNumber: 4 }),
@@ -353,43 +344,6 @@ describe("groupByWeek and firstPlayable", () => {
         [1, ["a"]],
       ]
     );
-  });
-
-  it("starts the player on the newest recording that plays in it", () => {
-    expect(firstPlayable(list)?.id).toBe("c");
-    expect(firstPlayable([list[0], list[2]])).toBeNull();
-    expect(firstPlayable([])).toBeNull();
-  });
-
-  it("starts it on a Bunny recording when that is the newest", () => {
-    const bunny = rec("e", { weekId: "w5", provider: "BUNNY", url: SIGNED });
-    expect(firstPlayable([bunny, ...list])?.id).toBe("e");
-  });
-});
-
-describe("listsRecordings (MDRS-280)", () => {
-  const youtube = rec("y");
-  const drive = rec("d", {
-    provider: "DRIVE",
-    url: "https://drive.google.com/file/d/abcdef123/view",
-  });
-  const preparing = rec("p", { status: "PROCESSING", url: null });
-
-  it("does not list a lone recording that plays in the player above", () => {
-    expect(listsRecordings([youtube])).toBe(false);
-    expect(
-      listsRecordings([rec("b", { provider: "BUNNY", url: SIGNED })])
-    ).toBe(false);
-  });
-
-  it("lists a lone recording that does not play in the frame", () => {
-    expect(listsRecordings([drive])).toBe(true);
-    expect(listsRecordings([preparing])).toBe(true);
-  });
-
-  it("lists more than one, whatever they are", () => {
-    expect(listsRecordings([youtube, rec("z")])).toBe(true);
-    expect(listsRecordings([youtube, preparing])).toBe(true);
   });
 });
 

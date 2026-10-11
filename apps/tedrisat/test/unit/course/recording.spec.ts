@@ -1,12 +1,13 @@
 import {
   type IRecordingRow,
+  LIVE_STREAM_HOURS_AFTER_END,
   liveStreamFor,
   RecordingProvider,
   RecordingStatus,
   RecordingVisibility,
   visibleRecordings,
 } from "../../../src/course/domain/recording";
-import { SessionStatus } from "../../../src/course/domain/session-status.enum";
+import { DEFAULT_SESSION_MINUTES } from "../../../src/course/domain/session-view";
 
 const row = (id: string, over: Partial<IRecordingRow> = {}): IRecordingRow => ({
   id,
@@ -98,20 +99,81 @@ describe("visibleRecordings (MDRS-162)", () => {
   });
 });
 
-describe("liveStreamFor (MDRS-162)", () => {
+describe("liveStreamFor (MDRS-162, MDRS-285)", () => {
   const url = "https://youtube.com/live/abc";
-  it("gives the stream only while the session is LIVE", () => {
-    expect(liveStreamFor(SessionStatus.LIVE, url, true)).toBe(url);
-    expect(liveStreamFor(SessionStatus.SCHEDULED, url, true)).toBeNull();
-    expect(liveStreamFor(SessionStatus.ENDED, url, true)).toBeNull();
-    expect(liveStreamFor(SessionStatus.CANCELLED, url, true)).toBeNull();
+  const START = new Date("2026-10-11T17:00:00.000Z");
+  const HOUR = 3_600_000;
+  const at = (hours: number) => new Date(START.getTime() + hours * HOUR);
+  // A 90-minute celse: its scheduled end is at 1.5 hours.
+  const celse = {
+    scheduledAt: START,
+    durationMinutes: 90,
+    cancelledAt: null as Date | null,
+  };
+  const stream = (
+    now: Date,
+    recording: RecordingStatus | null = null,
+    over: Partial<typeof celse> = {}
+  ) => liveStreamFor({ ...celse, ...over }, url, recording, true, now);
+
+  it("is null before the scheduled start", () => {
+    expect(stream(at(-0.01))).toBeNull();
+    expect(stream(at(-24))).toBeNull();
+  });
+
+  it("gives the stream from the start and while the clock says LIVE", () => {
+    expect(stream(START)).toBe(url);
+    expect(stream(at(1))).toBe(url);
+  });
+
+  it("keeps giving it after the scheduled end while there is no recording", () => {
+    expect(stream(at(1.5))).toBe(url);
+    expect(stream(at(3))).toBe(url);
+    expect(stream(at(20))).toBe(url);
+  });
+
+  it("keeps giving it while the recording is PROCESSING or FAILED", () => {
+    for (const status of [RecordingStatus.PROCESSING, RecordingStatus.FAILED]) {
+      expect(stream(at(1), status)).toBe(url);
+      expect(stream(at(3), status)).toBe(url);
+    }
+  });
+
+  it("stops once the session has a READY recording, even while the clock says LIVE", () => {
+    expect(stream(at(3), RecordingStatus.READY)).toBeNull();
+    expect(stream(at(1), RecordingStatus.READY)).toBeNull();
+  });
+
+  it("stops LIVE_STREAM_HOURS_AFTER_END hours after the scheduled end with no recording", () => {
+    expect(LIVE_STREAM_HOURS_AFTER_END).toBe(24);
+    const cap = 1.5 + LIVE_STREAM_HOURS_AFTER_END;
+    expect(stream(new Date(at(cap).getTime() - 1))).toBe(url);
+    expect(stream(at(cap))).toBeNull();
+    expect(stream(at(cap + 24))).toBeNull();
+    expect(stream(at(cap), RecordingStatus.PROCESSING)).toBeNull();
+  });
+
+  it("counts the default hour for a session with no length", () => {
+    const cap = 1 + LIVE_STREAM_HOURS_AFTER_END;
+    expect(DEFAULT_SESSION_MINUTES).toBe(60);
+    expect(
+      stream(new Date(at(cap).getTime() - 1), null, { durationMinutes: null })
+    ).toBe(url);
+    expect(stream(at(cap), null, { durationMinutes: null })).toBeNull();
+  });
+
+  it("is null for a cancelled session and for one with no time", () => {
+    expect(stream(at(1), null, { cancelledAt: at(-48) })).toBeNull();
+    expect(stream(at(1), null, { scheduledAt: null })).toBeNull();
   });
 
   it("gives it to nobody who may not read content", () => {
-    expect(liveStreamFor(SessionStatus.LIVE, url, false)).toBeNull();
+    expect(liveStreamFor(celse, url, null, false, at(1))).toBeNull();
+    expect(liveStreamFor(celse, url, null, false, at(3))).toBeNull();
   });
 
   it("is null when none was set", () => {
-    expect(liveStreamFor(SessionStatus.LIVE, null, true)).toBeNull();
+    expect(liveStreamFor(celse, null, null, true, at(1))).toBeNull();
+    expect(liveStreamFor(celse, null, null, true, at(3))).toBeNull();
   });
 });
