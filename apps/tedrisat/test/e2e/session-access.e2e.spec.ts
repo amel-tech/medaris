@@ -415,7 +415,7 @@ describe("how a celse is attended (MDRS-283, e2e)", () => {
     const session = (id: string, courseId = ids.courseId) =>
       `/courses/${courseId}/sessions/${id}`;
 
-    it("says a stream is set before the celse starts, to a content reader only, and keeps the link LIVE-only", async () => {
+    it("says a stream is set before the celse starts, to a content reader only, and holds the link back until it starts", async () => {
       const talebe = await get(session(stream), CAST.TALEBE).expect(200);
       expect(talebe.body).toMatchObject({
         status: "SCHEDULED",

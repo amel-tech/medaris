@@ -1,4 +1,4 @@
-import { SessionStatus } from "./session-status.enum";
+import { type SessionTiming, scheduledEnd } from "./session-view";
 
 /**
  * Where a lesson recording lives. YOUTUBE, DRIVE and OTHER are links the
@@ -89,13 +89,37 @@ export function visibleRecordings(
 }
 
 /**
+ * How long after a session's scheduled end its stream link is still sent when
+ * no READY recording has replaced it (MDRS-285). A PROPOSAL, NOT AN OWNER
+ * DECISION: the owner decided that a lesson ends when its stream ends, which
+ * only each viewer's player learns, and the issue proposed this bound for a
+ * session that never gets a recording. Change it here and nowhere else.
+ */
+export const LIVE_STREAM_HOURS_AFTER_END = 24;
+
+/**
  * The live stream link of a session, which is joinable content: only a caller
- * who may read content, and only while the session is on air.
+ * who may read content gets it, from the scheduled start until the session
+ * has a READY recording (MDRS-285). It used to stop when the clock said the
+ * session was over, which cut a lesson that ran long off mid-stream; the end
+ * of a stream is now learned by the viewer's player, never by the server. A
+ * PROCESSING or FAILED recording has nothing to play yet, so the stream stays.
+ * With no READY recording it stops `LIVE_STREAM_HOURS_AFTER_END` hours after
+ * the scheduled end. A cancelled session, or one with no time, has none.
  */
 export function liveStreamFor(
-  status: SessionStatus,
+  session: SessionTiming,
   url: string | null,
-  canReadContent: boolean
+  recording: RecordingStatus | null,
+  canReadContent: boolean,
+  now: Date
 ): string | null {
-  return canReadContent && status === SessionStatus.LIVE ? url : null;
+  if (!canReadContent || url === null) return null;
+  if (session.cancelledAt || !session.scheduledAt) return null;
+  if (recording === RecordingStatus.READY) return null;
+  const at = now.getTime();
+  const stop =
+    scheduledEnd(session.scheduledAt, session.durationMinutes) +
+    LIVE_STREAM_HOURS_AFTER_END * 3_600_000;
+  return at >= session.scheduledAt.getTime() && at < stop ? url : null;
 }

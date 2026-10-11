@@ -290,24 +290,111 @@ describe("lesson recordings (MDRS-162, e2e)", () => {
       expect(res.body.liveStreamUrl).toBeNull();
     });
 
-    it("gives the live stream link only while the session is LIVE", async () => {
-      const live = await http()
-        .get(session(liveLessonId))
-        .set("Authorization", as(TALEBE_ID))
-        .expect(200);
-      expect(live.body.status).toBe("LIVE");
-      expect(live.body.liveStreamUrl).toBe(STREAM);
-      expect(live.body.recording).toBeNull();
+    // MDRS-285: the link is sent from the scheduled start until a READY
+    // recording takes its place, so a lesson that runs long keeps its
+    // stream; the rule itself is unit-tested (recording.spec.ts).
+    describe("the stream link (MDRS-285)", () => {
+      const startAt = (scheduledAt: Date) =>
+        db()
+          .update(lessons)
+          .set({ scheduledAt })
+          .where(eq(lessons.id, liveLessonId));
+      const read = async (sub = TALEBE_ID) =>
+        (
+          await http()
+            .get(session(liveLessonId))
+            .set("Authorization", as(sub))
+            .expect(200)
+        ).body;
 
-      await db()
-        .update(lessons)
-        .set({ scheduledAt: new Date(Date.now() - 3 * HOUR) })
-        .where(eq(lessons.id, liveLessonId));
-      const ended = await http()
-        .get(session(liveLessonId))
-        .set("Authorization", as(TALEBE_ID))
-        .expect(200);
-      expect(ended.body.liveStreamUrl).toBeNull();
+      it("holds the link back before the session starts", async () => {
+        await startAt(new Date(Date.now() + 2 * HOUR));
+        const body = await read();
+        expect(body.status).toBe("SCHEDULED");
+        expect(body.hasLiveStream).toBe(true);
+        expect(body.liveStreamUrl).toBeNull();
+      });
+
+      it("gives the link while the session is LIVE", async () => {
+        const body = await read();
+        expect(body.status).toBe("LIVE");
+        expect(body.liveStreamUrl).toBe(STREAM);
+        expect(body.recording).toBeNull();
+      });
+
+      it("keeps the link after the scheduled end while there is no recording, to content readers only", async () => {
+        await startAt(new Date(Date.now() - 3 * HOUR));
+        const body = await read();
+        expect(body.status).toBe("ENDED");
+        expect(body.liveStreamUrl).toBe(STREAM);
+        expect(body.recording).toBeNull();
+        for (const token of [undefined, as(STRANGER_ID), as(PENDING_ID)]) {
+          const req = http().get(session(liveLessonId));
+          const res = await (token
+            ? req.set("Authorization", token)
+            : req
+          ).expect(200);
+          expect(res.body).not.toHaveProperty("liveStreamUrl");
+          expect(JSON.stringify(res.body)).not.toContain(STREAM);
+        }
+      });
+
+      it("keeps the link while the recording is FAILED or PROCESSING, and drops it once it is READY", async () => {
+        await startAt(new Date(Date.now() - 3 * HOUR));
+        await db()
+          .insert(lessonRecordings)
+          .values({
+            lessonId: liveLessonId,
+            title: "Canlı: celse kaydı",
+            provider: RecordingProvider.BUNNY,
+            bunnyVideoId: "c0ffee00-0000-4000-8000-000000000285",
+            uploadExpiresAt: new Date(Date.now() - HOUR),
+            visibility: RecordingVisibility.ENROLLED,
+            status: RecordingStatus.FAILED,
+          });
+        const failed = await read();
+        expect(failed.recording).toBeNull();
+        expect(failed.liveStreamUrl).toBe(STREAM);
+
+        await db()
+          .delete(lessonRecordings)
+          .where(eq(lessonRecordings.lessonId, liveLessonId));
+        await db().insert(lessonRecordings).values({
+          lessonId: liveLessonId,
+          title: "Canlı: celse kaydı",
+          provider: RecordingProvider.YOUTUBE,
+          visibility: RecordingVisibility.ENROLLED,
+          status: RecordingStatus.PROCESSING,
+        });
+        const processing = await read();
+        expect(processing.recording).toMatchObject({
+          status: "PROCESSING",
+          url: null,
+        });
+        expect(processing.liveStreamUrl).toBe(STREAM);
+
+        await db()
+          .update(lessonRecordings)
+          .set({ status: RecordingStatus.READY, url: RECORDING_URL })
+          .where(eq(lessonRecordings.lessonId, liveLessonId));
+        const ready = await read();
+        expect(ready.recording).toMatchObject({
+          status: "READY",
+          url: RECORDING_URL,
+        });
+        expect(ready.liveStreamUrl).toBeNull();
+        expect(ready.hasLiveStream).toBe(true);
+      });
+
+      it("drops the link a day after the scheduled end when no recording came", async () => {
+        // 60 minutes long: 24 hours after the start the end is 23 hours ago.
+        await startAt(new Date(Date.now() - 24 * HOUR));
+        expect((await read()).liveStreamUrl).toBe(STREAM);
+        await startAt(new Date(Date.now() - 26 * HOUR));
+        const body = await read();
+        expect(body.status).toBe("ENDED");
+        expect(body.liveStreamUrl).toBeNull();
+      });
     });
 
     it("names neither key to a caller who may not read content", async () => {

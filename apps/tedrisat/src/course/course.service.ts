@@ -629,18 +629,26 @@ export class CourseService {
     const sample = detail.weeks
       .flatMap((week) => week.lessons)
       .some((lesson) => lesson.id === sessionId && lesson.isPreview);
-    if (!detail.contentLocked) {
-      view.liveStreamUrl = liveStreamFor(
-        view.status,
-        await this.recordingRepo.findLiveStreamUrl(sessionId),
-        true
-      );
-    }
     if (!detail.contentLocked || sample) {
       const { recordings, videoIds } = this.withoutVideoIds(
         await this.recordingRepo.findByLessonIds([sessionId])
       );
       const [stored] = recordings;
+      // The stream is sent past the scheduled end until a READY recording
+      // takes its place (MDRS-285), so it is read after the recording.
+      if (!detail.contentLocked) {
+        view.liveStreamUrl = liveStreamFor(
+          {
+            scheduledAt: view.startsAt,
+            durationMinutes: view.durationMinutes,
+            cancelledAt: view.cancelledAt,
+          },
+          await this.recordingRepo.findLiveStreamUrl(sessionId),
+          stored?.status ?? null,
+          true,
+          now
+        );
+      }
       const [shown] = stored
         ? this.signPlayback(
             visibleRecordings(
