@@ -124,8 +124,15 @@ test.describe("the enrolled talebe", () => {
   test("while a lesson is on: asks on the session on air, and the form offers every session, over and to come", async ({
     page,
   }) => {
-    const { live, liveLinkOnly, upcoming, youtube, bunny, endedBare } =
-      fixture.sessions;
+    const {
+      live,
+      liveLinkOnly,
+      upcoming,
+      inPerson,
+      youtube,
+      bunny,
+      endedBare,
+    } = fixture.sessions;
     await page.goto(`/tr/courses/${fixture.courseId}/lessons/${live.id}`);
     await expect(
       page.getByRole("main").getByText("Şu an canlı").first()
@@ -134,6 +141,7 @@ test.describe("the enrolled talebe", () => {
     await page.goto(questionsTab());
     const form = page.getByRole("form", { name: "Soru sor" });
     await form.getByRole("combobox", { name: "Celse" }).click();
+    // the seed's cancelled session is not offered
     await expect(page.getByRole("option")).toHaveText([
       `Hafta 1 · ${youtube.title}`,
       `Hafta 1 · ${bunny.title}`,
@@ -141,6 +149,7 @@ test.describe("the enrolled talebe", () => {
       `Hafta 2 · ${live.title}`,
       `Hafta 2 · ${liveLinkOnly.title}`,
       `Hafta 2 · ${upcoming.title}`,
+      `Hafta 2 · ${inPerson.title}`,
     ]);
     await page.keyboard.press("Escape");
 

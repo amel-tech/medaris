@@ -9,8 +9,10 @@ import { describe, expect, it, vi } from "vitest";
 /**
  * Where the notes panel is drawn on the session page (MDRS-150): for an
  * enrolled talebe, under the video on screen, with the YouTube frame ready
- * for the player API; for everyone else, nowhere, and the frames are the ones
- * they always were. What the panel does is `lesson-notes.spec.ts`.
+ * for the player API; with no video, under the join card, on the celse's
+ * clock (MDRS-266); on a cancelled celse and for everyone else, nowhere, and
+ * the frames are the ones they always were. What the panel does is
+ * `lesson-notes.spec.ts`.
  */
 
 vi.mock("next-intl/server", () => ({
@@ -33,21 +35,32 @@ vi.mock("~/features/courses/components/live-chat", () => ({
 vi.mock("~/features/courses/components/session-programme", () => ({
   SessionProgramme: () => null,
 }));
+// The join card keeps its own clock (session-page.spec.ts); here only where it is.
 vi.mock("~/features/courses/components/session-join-live", () => ({
-  SessionJoinLive: () => null,
+  SessionJoinLive: () => createElement("div", { "data-join-card": "" }),
 }));
-// The panel is a client component with its own spec; here only where it is mounted.
+// The panel is a client component with its own spec; here only where it is
+// mounted and what it is given.
 vi.mock("~/features/courses/components/lesson-notes", () => ({
   LessonNotes: ({
     lessonId,
     frameId,
+    clock,
   }: {
     lessonId: string;
     frameId?: string | null;
+    clock?: {
+      startsAt: string | null;
+      durationMinutes?: number;
+      renderedAt: string;
+    };
   }) =>
     createElement("div", {
       "data-notes": lessonId,
       "data-notes-frame": frameId ?? "manual",
+      "data-notes-clock": clock
+        ? `${clock.startsAt}|${clock.durationMinutes}|${clock.renderedAt}`
+        : "video",
     }),
 }));
 
@@ -122,6 +135,9 @@ describe("the notes panel on the session page", () => {
       'src="https://www.youtube-nocookie.com/embed/live123abc?enablejsapi=1"'
     );
     expect(html).toContain('id="live-stream-frame"');
+    // the stream's position, not the clock (MDRS-266), and one panel only
+    expect(html).toContain('data-notes-clock="video"');
+    expect(html.match(/data-notes="/g)).toHaveLength(1);
   });
 
   it("sits under the recording of a finished session for a completed talebe", async () => {
@@ -132,6 +148,8 @@ describe("the notes panel on the session page", () => {
       'src="https://www.youtube-nocookie.com/embed/rec456abc?enablejsapi=1"'
     );
     expect(html).toContain('id="recording-frame"');
+    expect(html).toContain('data-notes-clock="video"');
+    expect(html.match(/data-notes="/g)).toHaveLength(1);
   });
 
   it("gives a finished session's recording the page's width, the notes under it, before the join card and the agenda (MDRS-280)", async () => {
@@ -233,32 +251,149 @@ describe("the notes panel on the session page", () => {
     );
     expect(html).not.toContain("data-notes");
   });
+});
 
-  it("is not drawn when there is no video to take notes on", async () => {
-    const enrolled = course({ status: "ENROLLED" });
-    expect(
-      await render(enrolled, session({ liveStreamUrl: null }))
-    ).not.toContain("data-notes");
-    expect(
-      await render(enrolled, session({ status: "ENDED", recording: null }))
-    ).not.toContain("data-notes");
-    expect(
-      await render(
-        enrolled,
-        session({
-          status: "ENDED",
-          recording: recording({ status: "PROCESSING", url: null }),
-        })
-      )
-    ).not.toContain("data-notes");
-    expect(
-      await render(
-        enrolled,
-        session({
+describe("the notes panel on a celse with no video on screen (MDRS-266)", () => {
+  const ZOOM = "https://zoom.us/j/741852963";
+  const AHEAD = new Date(NOW.getTime() + 2 * 3_600_000);
+  const enrolled = course({ status: "ENROLLED" });
+
+  /**
+   * One panel, with no frame to read, handed the celse's clock (its start,
+   * its length and the instant the page was rendered at), under the join card
+   * in the page's main column, and no frame switched to the player API.
+   */
+  const expectUnderJoinCard = (html: string, s: SessionResponse) => {
+    expect(html.match(/data-notes="/g)).toHaveLength(1);
+    expect(html).toContain('data-notes-frame="manual"');
+    expect(html).toContain(
+      `data-notes-clock="${s.startsAt?.toISOString()}|60|${NOW.toISOString()}"`
+    );
+    const columns = html.indexOf(
+      "grid-cols-[minmax(0,1fr)_var(--layout-aside)]"
+    );
+    const join = html.indexOf("data-join-card");
+    const notes = html.indexOf('data-notes="s1"');
+    expect(columns).toBeGreaterThan(-1);
+    expect(join).toBeGreaterThan(columns);
+    expect(notes).toBeGreaterThan(join);
+    expect(notes).toBeLessThan(html.indexOf("<aside"));
+    expect(html).not.toContain("enablejsapi");
+  };
+
+  it.each([
+    [
+      "a celse on a meeting link, before it starts",
+      session({ status: "SCHEDULED", startsAt: AHEAD, meetingUrl: ZOOM }),
+    ],
+    [
+      "a celse on a meeting link, while it is live",
+      session({ meetingUrl: ZOOM }),
+    ],
+    [
+      "a celse on a meeting link, over with no recording",
+      session({ status: "ENDED", recording: null }),
+    ],
+    [
+      "a celse over whose recording is still being prepared",
+      session({
+        status: "ENDED",
+        recording: recording({ status: "PROCESSING", url: null }),
+      }),
+    ],
+    [
+      "an in-person celse, before it starts",
+      session({ status: "SCHEDULED", startsAt: AHEAD, inPerson: true }),
+    ],
+    ["an in-person celse, while it is live", session({ inPerson: true })],
+    [
+      "a celse with a stream that has not started",
+      session({ status: "SCHEDULED", startsAt: AHEAD, hasLiveStream: true }),
+    ],
+    [
+      "a live celse whose stream only opens at its host",
+      session({ liveStreamUrl: "https://www.twitch.tv/medrese" }),
+    ],
+    [
+      "a celse with nothing set yet",
+      session({ status: "SCHEDULED", startsAt: AHEAD }),
+    ],
+  ])("is under the join card on %s", async (_label, s) => {
+    expectUnderJoinCard(await render(enrolled, s), s);
+  });
+
+  it("is drawn for a completed talebe too", async () => {
+    const s = session({ meetingUrl: ZOOM });
+    expectUnderJoinCard(await render(course({ status: "COMPLETED" }), s), s);
+  });
+
+  it("comes after the agenda beside the join card, before the neighbours", async () => {
+    const html = await render(
+      enrolled,
+      session({
+        meetingUrl: ZOOM,
+        agenda: [{ time: "21:00", title: "Mezîd fiiller" }],
+        next: {
+          id: "s2",
+          title: "Sonraki",
+          weekNumber: 6,
+          startsAt: AHEAD,
           status: "SCHEDULED",
-          startsAt: new Date(NOW.getTime() + 3_600_000),
+        },
+      })
+    );
+    const notes = html.indexOf('data-notes="s1"');
+    expect(notes).toBeGreaterThan(html.indexOf('id="agenda-title"'));
+    expect(notes).toBeLessThan(
+      html.indexOf('aria-label="SessionPage.neighbours"')
+    );
+  });
+
+  it("has no clock to read on a celse without a time", async () => {
+    const html = await render(enrolled, session({ startsAt: null }));
+    expect(html.match(/data-notes="/g)).toHaveLength(1);
+    expect(html).toContain(`data-notes-clock="null|60|${NOW.toISOString()}"`);
+  });
+
+  it("is not drawn on a cancelled celse", async () => {
+    for (const over of [
+      { meetingUrl: null },
+      { inPerson: true },
+      { hasLiveStream: true },
+    ]) {
+      const html = await render(
+        enrolled,
+        session({
+          status: "CANCELLED",
+          cancelledAt: new Date(NOW.getTime() - 86_400_000),
+          startsAt: AHEAD,
+          ...over,
         })
-      )
-    ).not.toContain("data-notes");
+      );
+      expect(html).not.toContain("data-notes");
+    }
+  });
+
+  it.each([
+    ["a pending applicant", { status: "PENDING" }],
+    ["a revoked talebe", { status: "REVOKED" }],
+    ["someone with no enrollment (the müderris, a visitor)", undefined],
+  ])("is not drawn for %s", async (_label, enrollment) => {
+    for (const s of [
+      session({ status: "SCHEDULED", startsAt: AHEAD, meetingUrl: ZOOM }),
+      session({ meetingUrl: ZOOM }),
+      session({ inPerson: true }),
+      session({ status: "ENDED", recording: null }),
+    ]) {
+      expect(await render(course(enrollment), s)).not.toContain("data-notes");
+    }
+  });
+
+  it("is not drawn when the content is locked", async () => {
+    const html = await render(
+      enrolled,
+      session({ status: "SCHEDULED", startsAt: AHEAD, contentLocked: true })
+    );
+    expect(html).not.toContain("data-notes");
   });
 });

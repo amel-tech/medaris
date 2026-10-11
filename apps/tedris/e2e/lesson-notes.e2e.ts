@@ -21,10 +21,12 @@ import { type E2eAccount, signIn } from "./sign-in";
  * A talebe's private notes on a session's video (MDRS-150) against the running
  * app and API, with real Keycloak sign-ins: the notes panel of the session page
  * and of the recordings tab, on a YouTube recording, a pasted Bunny link and a
- * live stream, and who never reads them. Accounts: the enrolled talebe
- * (E2E_TALEBE_*), a second person enrolled or not as each test sets (see
- * `second` in the seed), the course's müderris (E2E_MUDERRIS_*) and the
- * başnazım (E2E_SISTEM_ADMIN_*). A test whose account is missing is skipped.
+ * live stream; on every session with no video too, under the join card, timed
+ * by the session's clock while it is live (MDRS-266); and who never reads
+ * them. Accounts: the enrolled talebe (E2E_TALEBE_*), a second person
+ * enrolled or not as each test sets (see `second` in the seed), the course's
+ * müderris (E2E_MUDERRIS_*) and the başnazım (E2E_SISTEM_ADMIN_*). A test
+ * whose account is missing is skipped.
  * The API calls as another person take the direct grant of `sign-in.ts`.
  *
  * Every request to Bunny's hosts is aborted: the video id is made up. The
@@ -68,15 +70,71 @@ const blockBunny = (page: Page) =>
 const notesPanel = (page: Page) =>
   page.getByRole("region", { name: "Notlarım" });
 
+/** The time field's name: the video's moment, or the session's with no video (MDRS-266). */
+type TimeLabel = "Videodaki an" | "Celsedeki an";
+
 /** Writes a note through the panel's form; an empty `time` leaves it without one. */
-async function addNote(panel: Locator, body: string, time: string) {
+async function addNote(
+  panel: Locator,
+  body: string,
+  time: string,
+  timeLabel: TimeLabel = "Videodaki an"
+) {
   const form = panel.locator("form");
   await form.getByLabel("Not", { exact: true }).fill(body);
-  // Focusing the note takes the YouTube player's position when it has one;
-  // the time typed afterwards (or cleared) is the one that is saved.
-  await form.getByLabel("Videodaki an").fill(time);
+  // Focusing the note takes the YouTube player's position when it has one,
+  // or the session's clock while it is live and no video is on screen; the
+  // time typed afterwards (or cleared) is the one that is saved.
+  await form.getByLabel(timeLabel).fill(time);
   await form.getByRole("button", { name: "Notu ekle" }).click();
   await expect(form.getByLabel("Not", { exact: true })).toHaveValue("");
+}
+
+/** With no video on screen the panel is under the join card (MDRS-266). */
+async function expectUnderJoinCard(page: Page) {
+  await expect(notesPanel(page)).toBeVisible();
+  const join = await page.getByRole("main").locator(".mds-join").boundingBox();
+  const notes = await notesPanel(page).boundingBox();
+  if (!join || !notes) throw new Error("the join card or the panel has no box");
+  expect(notes.y).toBeGreaterThanOrEqual(join.y + join.height);
+}
+
+/**
+ * Edits the panel's one note on a session with no video to `body` at `time`,
+ * then deletes it; the database follows each step (MDRS-266).
+ */
+async function editThenDelete(
+  page: Page,
+  lessonId: string,
+  body: string,
+  time: string,
+  seconds: number | null
+) {
+  const panel = notesPanel(page);
+  const items = panel.getByRole("listitem");
+  await expect(items).toHaveCount(1);
+  await panel.getByRole("button", { name: /^Notu düzenle, / }).click();
+  const editing = items.filter({
+    has: page.getByRole("button", { name: "Kaydet" }),
+  });
+  await editing.getByLabel("Not", { exact: true }).fill(body);
+  await editing.getByLabel("Celsedeki an").fill(time);
+  await editing.getByRole("button", { name: "Kaydet" }).click();
+  await expect(panel.getByRole("button", { name: "Kaydet" })).toHaveCount(0);
+  await expect(items).toContainText(body);
+  expect(await fixture.notesOf(talebe.sub as string, lessonId)).toMatchObject([
+    { body, offset_seconds: seconds },
+  ]);
+
+  await panel
+    .getByRole("button", {
+      name: `Notu sil, ${time === "" ? "Zamansız" : time}`,
+    })
+    .click();
+  await expect(panel.getByText("Silinsin mi?")).toBeVisible();
+  await panel.getByRole("button", { name: "Sil", exact: true }).click();
+  await expect(items).toHaveCount(0);
+  expect(await fixture.notesOf(talebe.sub as string, lessonId)).toEqual([]);
 }
 
 async function pageAs(browser: Browser, who: E2eAccount) {
@@ -362,17 +420,85 @@ test.describe("the enrolled talebe", () => {
     ]);
   });
 
-  test("notes go with a video: no panel on a session on air with only a meeting link, one over with no recording, or one still to come", async ({
+  test("on a session on air with only a meeting link: the panel is under the join card, the time is the clock's since the start, and the note is taken, edited and deleted (MDRS-266)", async ({
     page,
   }) => {
-    const { liveLinkOnly, endedBare, upcoming } = fixture.sessions;
-    await page.goto(sessionPath(liveLinkOnly.id));
+    const s = fixture.sessions.liveLinkOnly;
+    await page.goto(sessionPath(s.id));
     const main = page.getByRole("main");
     await expect(main.getByText("Şu an canlı").first()).toBeVisible();
     await expect(
       main.getByRole("link", { name: /Celseye katıl/ })
     ).toHaveAttribute("href", "https://zoom.us/j/741852963");
-    await expect(notesPanel(page)).toHaveCount(0);
+    await expectUnderJoinCard(page);
+    await expect(page.locator("iframe")).toHaveCount(0);
+
+    const panel = notesPanel(page);
+    const form = panel.locator("form");
+    const time = form.getByLabel("Celsedeki an");
+    await expect(time).toHaveAccessibleDescription(
+      "Celsenin başından beri geçen süre yazılır; değiştirebilir ya da boş bırakabilirsin."
+    );
+    // the session began 5 minutes before the seed ran, and lasts 60
+    const sinceStart = /^([5-9]|[1-5]\d):\d{2}$/;
+    await form.getByLabel("Not", { exact: true }).focus();
+    await expect(time).toHaveValue(sinceStart);
+    await time.fill("");
+    await panel.getByRole("button", { name: "Şimdiki an" }).click();
+    await expect(time).toHaveValue(sinceStart);
+
+    // saved as it stands, then corrected and deleted
+    await form
+      .getByLabel("Not", { exact: true })
+      .fill("Zoom derste: nehy lâ ile");
+    await form.getByRole("button", { name: "Notu ekle" }).click();
+    await expect(form.getByLabel("Not", { exact: true })).toHaveValue("");
+    const [taken] = await fixture.notesOf(talebe.sub as string, s.id);
+    expect(taken.offset_seconds).toBeGreaterThanOrEqual(300);
+    expect(taken.offset_seconds).toBeLessThan(3600);
+    await editThenDelete(
+      page,
+      s.id,
+      "Zoom derste: nehy lâ ile, kayıt iki dakika geç başladı",
+      "2:10",
+      130
+    );
+  });
+
+  test("on a session with only a meeting link still to come, and on one over with no recording: the panel is under the join card, the time is typed or left empty, and the note is taken, edited and deleted (MDRS-266)", async ({
+    page,
+  }) => {
+    const { upcoming, endedBare } = fixture.sessions;
+    await page.goto(sessionPath(upcoming.id));
+    await expect(
+      page.getByRole("heading", { level: 1, name: upcoming.title })
+    ).toBeVisible();
+    await expectUnderJoinCard(page);
+    let panel = notesPanel(page);
+    await expect(
+      panel.getByText("Bu celse için henüz notun yok.")
+    ).toBeVisible();
+    const time = panel.locator("form").getByLabel("Celsedeki an");
+    await expect(time).toHaveAccessibleDescription(
+      "İsteğe bağlı: celsenin başından beri geçen süreyi yaz."
+    );
+    await expect(panel.getByRole("button", { name: "Şimdiki an" })).toHaveCount(
+      0
+    );
+    await panel.locator("form").getByLabel("Not", { exact: true }).focus();
+    await expect(time).toHaveValue("");
+    await addNote(panel, "Hazırlık: ism-i fâil", "", "Celsedeki an");
+    await expect(panel.getByRole("listitem")).toContainText("Zamansız");
+    expect(
+      await fixture.notesOf(talebe.sub as string, upcoming.id)
+    ).toMatchObject([{ offset_seconds: null }]);
+    await editThenDelete(
+      page,
+      upcoming.id,
+      "Hazırlık: ism-i fâil ve ism-i mef‘ûl",
+      "0:45",
+      45
+    );
 
     await page.goto(sessionPath(endedBare.id));
     await expect(
@@ -380,11 +506,73 @@ test.describe("the enrolled talebe", () => {
         .getByText("Bu celsede henüz ders kaydı yok.")
         .filter({ visible: true })
     ).toBeVisible();
-    await expect(notesPanel(page)).toHaveCount(0);
+    await expectUnderJoinCard(page);
+    panel = notesPanel(page);
+    await expect(panel.getByRole("button", { name: "Şimdiki an" })).toHaveCount(
+      0
+    );
+    await addNote(panel, "Emr-i hâzırda hazf", "12:34", "Celsedeki an");
+    await expect(panel.getByRole("listitem")).toContainText("12:34");
+    expect(
+      await fixture.notesOf(talebe.sub as string, endedBare.id)
+    ).toMatchObject([{ offset_seconds: 754 }]);
+    await editThenDelete(
+      page,
+      endedBare.id,
+      "Emr-i hâzırda hazf ve bina",
+      "",
+      null
+    );
+  });
 
-    await page.goto(sessionPath(upcoming.id));
+  test("on an in-person session on air: the card says so, the panel is under it, and the time is the clock's since the start (MDRS-266)", async ({
+    page,
+  }) => {
+    const s = fixture.sessions.inPerson;
+    await page.goto(sessionPath(s.id));
+    const main = page.getByRole("main");
+    await expect(main.getByText("Şu an canlı").first()).toBeVisible();
     await expect(
-      page.getByRole("heading", { level: 1, name: upcoming.title })
+      main.getByText(
+        "Bu celse yüz yüze yapılır. Kaydı eklenirse burada yayımlanır."
+      )
+    ).toBeVisible();
+    await expect(main.getByRole("link", { name: /Celseye katıl/ })).toHaveCount(
+      0
+    );
+    await expectUnderJoinCard(page);
+
+    const form = notesPanel(page).locator("form");
+    await form.getByLabel("Not", { exact: true }).focus();
+    // the session began 20 minutes before the seed ran, and lasts 60
+    await expect(form.getByLabel("Celsedeki an")).toHaveValue(
+      /^[2-5]\d:\d{2}$/
+    );
+    await form
+      .getByLabel("Not", { exact: true })
+      .fill("Yüz yüze derste: emr-i gâib");
+    await form.getByRole("button", { name: "Notu ekle" }).click();
+    await expect(form.getByLabel("Not", { exact: true })).toHaveValue("");
+    const [taken] = await fixture.notesOf(talebe.sub as string, s.id);
+    expect(taken.offset_seconds).toBeGreaterThanOrEqual(1200);
+    expect(taken.offset_seconds).toBeLessThan(3600);
+    await editThenDelete(
+      page,
+      s.id,
+      "Yüz yüze derste: emr-i gâib ve lâm-ı emr",
+      "21:00",
+      1260
+    );
+  });
+
+  test("no panel on a cancelled session (MDRS-266)", async ({ page }) => {
+    const s = fixture.sessions.cancelled;
+    await page.goto(sessionPath(s.id));
+    await expect(
+      page.getByRole("heading", { level: 1, name: s.title })
+    ).toBeVisible();
+    await expect(
+      page.getByRole("main").getByText("Bu celse iptal edildi")
     ).toBeVisible();
     await expect(notesPanel(page)).toHaveCount(0);
   });

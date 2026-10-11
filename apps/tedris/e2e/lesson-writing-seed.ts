@@ -5,7 +5,7 @@ import { directGrant, type E2eAccount } from "./sign-in";
 /**
  * What the notes and questions specs (MDRS-150) put in tedrisat's database,
  * under random ids, and take out again: a published course with a müderris and
- * six sessions, one in each state a talebe meets during the course, and a
+ * eight sessions, one in each state a talebe meets during the course, and a
  * second course whose müderris was taken off with nobody seated since, so a
  * passive scope (MDRS-136) closes its content to the talebe. Direct SQL for
  * the same reasons as `celse-states-seed.ts`: the times are relative to now
@@ -37,6 +37,10 @@ export interface LessonWritingFixture {
     liveLinkOnly: { id: string; title: string };
     /** Begins in 2 days. */
     upcoming: { id: string; title: string };
+    /** On air: began 20 minutes ago, held in person, with no meeting link (MDRS-283). */
+    inPerson: { id: string; title: string };
+    /** Was to begin tomorrow, with a meeting link; cancelled. */
+    cancelled: { id: string; title: string };
   };
   /** The passive course: one session over, with a READY YouTube recording. */
   passive: { courseId: string; sessionId: string; recordingTitle: string };
@@ -99,6 +103,8 @@ export async function seedLessonWriting(roles: {
     live: { id: id(), title: "Nehy-i hâzır" },
     liveLinkOnly: { id: id(), title: "Müzakere: nehy ve nefy" },
     upcoming: { id: id(), title: "İsm-i fâil ve ism-i mef‘ûl" },
+    inPerson: { id: id(), title: "Mütalaa: emr-i gâib" },
+    cancelled: { id: id(), title: "Müzakere (iptal)" },
   };
   const passive = {
     courseId: passiveCourseId,
@@ -113,12 +119,22 @@ export async function seedLessonWriting(roles: {
     title: string,
     order: number,
     when: string,
-    stream: string | null = null
+    stream: string | null = null,
+    // MDRS-283: a session held in person needs no meeting link.
+    { inPerson = null }: { inPerson?: boolean | null } = {}
   ) =>
     client.query(
-      `insert into lessons(id, week_id, title, type, order_index, duration_minutes, scheduled_at, meeting_url, live_stream_url)
-       values ($1, $2, $3, 'LIVE', $4, 60, ${when}, $5, $6)`,
-      [lessonId, weekId, title, order, meetingUrl, stream]
+      `insert into lessons(id, week_id, title, type, order_index, duration_minutes, scheduled_at, meeting_url, live_stream_url, in_person)
+       values ($1, $2, $3, 'LIVE', $4, 60, ${when}, $5, $6, $7)`,
+      [
+        lessonId,
+        weekId,
+        title,
+        order,
+        inPerson ? null : meetingUrl,
+        stream,
+        inPerson,
+      ]
     );
 
   try {
@@ -178,6 +194,26 @@ export async function seedLessonWriting(roles: {
       s.upcoming.title,
       2,
       "now() + interval '2 days'"
+    );
+    await lesson(
+      s.inPerson.id,
+      weeks.w2,
+      s.inPerson.title,
+      3,
+      "now() - interval '20 minutes'",
+      null,
+      { inPerson: true }
+    );
+    await lesson(
+      s.cancelled.id,
+      weeks.w2,
+      s.cancelled.title,
+      4,
+      "now() + interval '1 day'"
+    );
+    await client.query(
+      "update lessons set cancelled_at = now(), cancel_reason = 'Müderris yolda' where id = $1",
+      [s.cancelled.id]
     );
     await lesson(
       passive.sessionId,

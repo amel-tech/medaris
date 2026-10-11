@@ -7,7 +7,8 @@ import { cleanup, click, render, settle } from "./dom";
 /**
  * The notes panel (MDRS-150): the author's notes next to a video, a new note
  * stamped from the YouTube player when there is one, and a typed time when
- * there is not (Drive and other hosts report no position).
+ * there is not (Drive and other hosts report no position). With no video on
+ * screen at all, the celse's clock while it is live (MDRS-266).
  */
 
 const mocks = vi.hoisted(() => ({
@@ -94,7 +95,16 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 
-const mount = async (props: { frameId?: string | null } = {}) => {
+const mount = async (
+  props: {
+    frameId?: string | null;
+    clock?: {
+      startsAt: string | null;
+      durationMinutes?: number;
+      renderedAt: string;
+    };
+  } = {}
+) => {
   const { LessonNotes } = await import(
     "~/features/courses/components/lesson-notes"
   );
@@ -298,6 +308,168 @@ describe("without a player to read (Drive and other hosts)", () => {
     const host = await mount({ frameId: null });
     expect(button(host, "12:34")).toBeUndefined();
     expect(host.textContent).toContain("12:34");
+  });
+});
+
+describe("with no video on screen, on the celse's clock (MDRS-266)", () => {
+  const START = new Date("2026-10-11T18:00:00.000Z");
+  const at = (seconds: number) => new Date(START.getTime() + seconds * 1000);
+  const clockAt = (renderedAt: Date) => ({
+    startsAt: START.toISOString(),
+    durationMinutes: 60,
+    renderedAt: renderedAt.toISOString(),
+  });
+  /** The panel as the page draws it at `now`, with the browser's clock there too. */
+  const mountAt = async (now: Date) => {
+    vi.setSystemTime(now);
+    return mount({ frameId: null, clock: clockAt(now) });
+  };
+  const focusBody = async (host: HTMLElement) =>
+    act(async () => textarea(host).focus());
+  const hintOf = (host: HTMLElement) =>
+    document.getElementById(
+      timeInput(host).getAttribute("aria-describedby") ?? ""
+    );
+
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date", "setInterval", "clearInterval"] });
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("fills the time since the start when the talebe starts writing, while the celse is live", async () => {
+    const host = await mountAt(at(845));
+    expect(frames.every((frame) => frame === null)).toBe(true);
+    await focusBody(host);
+    expect(timeInput(host).value).toBe("14:05");
+  });
+
+  it("names the field for the celse and says, in sight, where the time comes from", async () => {
+    const host = await mountAt(at(845));
+    expect(timeInput(host).getAttribute("aria-label")).toBe("Celsedeki an");
+    const hint = hintOf(host);
+    expect(hint?.textContent).toBe(
+      "Celsenin başından beri geçen süre yazılır; değiştirebilir ya da boş bırakabilirsin."
+    );
+    expect(hint?.classList.contains("mds-visually-hidden")).toBe(false);
+    expect(host.textContent).not.toContain("oynatıcı");
+  });
+
+  it("refills it on 'Şimdiki an' from the clock at that moment, and keeps a typed time", async () => {
+    const host = await mountAt(at(845));
+    await set(timeInput(host), "3:00");
+    await focusBody(host);
+    expect(timeInput(host).value).toBe("3:00");
+
+    vi.setSystemTime(at(940));
+    await click(button(host, "Şimdiki an"));
+    expect(timeInput(host).value).toBe("15:40");
+  });
+
+  it("saves the time from the clock, or the one the talebe corrected it to", async () => {
+    mocks.create.mockResolvedValue(ok(note("yeni", { offsetSeconds: 845 })));
+    const host = await mountAt(at(845));
+    await focusBody(host);
+    await set(textarea(host), "Zoom derste: nehy lâ ile");
+    await submit(host);
+    expect(mocks.create).toHaveBeenLastCalledWith("l1", {
+      body: "Zoom derste: nehy lâ ile",
+      offsetSeconds: 845,
+    });
+    // the form is empty again, and the next note takes the clock anew
+    expect(timeInput(host).value).toBe("");
+
+    vi.setSystemTime(at(1000));
+    await focusBody(host);
+    await act(async () => textarea(host).blur());
+    await focusBody(host);
+    expect(timeInput(host).value).toBe("16:40");
+    await set(timeInput(host), "13:30");
+    await set(textarea(host), "Kayıt geç başladı");
+    await submit(host);
+    expect(mocks.create).toHaveBeenLastCalledWith("l1", {
+      body: "Kayıt geç başladı",
+      offsetSeconds: 810,
+    });
+  });
+
+  it.each([
+    ["before the celse starts", -600],
+    ["once it is over", 3600],
+    ["a day after", 86_400],
+  ])("leaves the time empty %s, to be typed or left out", async (_label, seconds) => {
+    const host = await mountAt(at(seconds));
+    expect(button(host, "Şimdiki an")).toBeUndefined();
+    await focusBody(host);
+    expect(timeInput(host).value).toBe("");
+    expect(timeInput(host).getAttribute("aria-label")).toBe("Celsedeki an");
+    expect(hintOf(host)?.textContent).toBe(
+      "İsteğe bağlı: celsenin başından beri geçen süreyi yaz."
+    );
+  });
+
+  it("leaves it empty on a celse without a time", async () => {
+    vi.setSystemTime(at(845));
+    const host = await mount({
+      frameId: null,
+      clock: { startsAt: null, renderedAt: at(845).toISOString() },
+    });
+    expect(button(host, "Şimdiki an")).toBeUndefined();
+    await focusBody(host);
+    expect(timeInput(host).value).toBe("");
+  });
+
+  it("takes the clock once the celse begins while the page is open", async () => {
+    const host = await mountAt(at(-20));
+    expect(button(host, "Şimdiki an")).toBeUndefined();
+
+    // the half-minute tick after the start
+    await act(async () => {
+      vi.advanceTimersByTime(30_000);
+    });
+    expect(button(host, "Şimdiki an")).toBeDefined();
+    await focusBody(host);
+    expect(timeInput(host).value).toBe("0:10");
+  });
+
+  it("draws its first paint from the instant the server rendered at", async () => {
+    const { renderToStaticMarkup } = await import("react-dom/server");
+    const { LessonNotes } = await import(
+      "~/features/courses/components/lesson-notes"
+    );
+    // the browser's clock says the celse has not begun; the server said live
+    vi.setSystemTime(at(-3600));
+    const live = renderToStaticMarkup(
+      createElement(LessonNotes, { lessonId: "l1", clock: clockAt(at(845)) })
+    );
+    expect(live).toContain("Şimdiki an");
+    expect(live).toContain("Celsenin başından beri geçen süre yazılır");
+
+    const ahead = renderToStaticMarkup(
+      createElement(LessonNotes, { lessonId: "l1", clock: clockAt(at(-60)) })
+    );
+    expect(ahead).not.toContain("Şimdiki an");
+    expect(ahead).toContain("celsenin başından beri geçen süreyi yaz");
+  });
+
+  it("shows a note's time as a label: there is no player to move", async () => {
+    mocks.list.mockResolvedValue(ok([note("n1", { offsetSeconds: 754 })]));
+    const host = await mountAt(at(845));
+    expect(button(host, "12:34")).toBeUndefined();
+    expect(host.textContent).toContain("12:34");
+  });
+
+  it("names the field for the celse when a note is edited", async () => {
+    mocks.list.mockResolvedValue(ok([note("n1", { offsetSeconds: 754 })]));
+    const host = await mountAt(at(845));
+    await click(named(host, "Notu düzenle, 12:34"));
+    const field = host.querySelector("li input") as HTMLInputElement;
+    expect(field.getAttribute("aria-label")).toBe("Celsedeki an");
+    expect(
+      document.getElementById(field.getAttribute("aria-describedby") ?? "")
+        ?.textContent
+    ).toBe("İsteğe bağlı: celsenin başından beri geçen süreyi yaz.");
   });
 });
 
