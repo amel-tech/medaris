@@ -93,17 +93,17 @@ export interface KoskDashboardResponse {
      */
     sessionCounts: KoskDashboardSessionCountsResponse;
     /**
-     * Sessions in the next seven days with no meeting link: the alert's reason
+     * Sessions in the next seven days, not cancelled, that nobody can attend as they stand: no meeting link, no live stream and not held in person (MDRS-283). The alert's reason
      * @type {number}
      * @memberof KoskDashboardResponse
      */
-    missingLinkCount: number;
+    withoutAccessCount: number;
     /**
      * The soonest of them: the alert names its course and day; null when none
      * @type {KoskDashboardSessionResponse}
      * @memberof KoskDashboardResponse
      */
-    firstMissingLink?: KoskDashboardSessionResponse | null;
+    firstWithoutAccess?: KoskDashboardSessionResponse | null;
     /**
      * Which tab `sessions` is the list of
      * @type {DashboardSessionTab}
@@ -146,7 +146,7 @@ export function instanceOfKoskDashboardResponse(value: object): value is KoskDas
     if (!('koskName' in value) || value['koskName'] === undefined) return false;
     if (!('counts' in value) || value['counts'] === undefined) return false;
     if (!('sessionCounts' in value) || value['sessionCounts'] === undefined) return false;
-    if (!('missingLinkCount' in value) || value['missingLinkCount'] === undefined) return false;
+    if (!('withoutAccessCount' in value) || value['withoutAccessCount'] === undefined) return false;
     if (!('tab' in value) || value['tab'] === undefined) return false;
     if (!('contentLocked' in value) || value['contentLocked'] === undefined) return false;
     if (!('sessions' in value) || value['sessions'] === undefined) return false;
@@ -170,8 +170,8 @@ export function KoskDashboardResponseFromJSONTyped(json: any, ignoreDiscriminato
         'greetingName': json['greetingName'] == null ? undefined : json['greetingName'],
         'counts': KoskDashboardCountsResponseFromJSON(json['counts']),
         'sessionCounts': KoskDashboardSessionCountsResponseFromJSON(json['sessionCounts']),
-        'missingLinkCount': json['missingLinkCount'],
-        'firstMissingLink': json['firstMissingLink'] == null ? undefined : KoskDashboardSessionResponseFromJSON(json['firstMissingLink']),
+        'withoutAccessCount': json['withoutAccessCount'],
+        'firstWithoutAccess': json['firstWithoutAccess'] == null ? undefined : KoskDashboardSessionResponseFromJSON(json['firstWithoutAccess']),
         'tab': DashboardSessionTabFromJSON(json['tab']),
         'contentLocked': json['contentLocked'],
         'sessions': ((json['sessions'] as Array<any>).map(KoskDashboardSessionResponseFromJSON)),
@@ -196,8 +196,8 @@ export function KoskDashboardResponseToJSONTyped(value?: KoskDashboardResponse |
         'greetingName': value['greetingName'],
         'counts': KoskDashboardCountsResponseToJSON(value['counts']),
         'sessionCounts': KoskDashboardSessionCountsResponseToJSON(value['sessionCounts']),
-        'missingLinkCount': value['missingLinkCount'],
-        'firstMissingLink': KoskDashboardSessionResponseToJSON(value['firstMissingLink']),
+        'withoutAccessCount': value['withoutAccessCount'],
+        'firstWithoutAccess': KoskDashboardSessionResponseToJSON(value['firstWithoutAccess']),
         'tab': DashboardSessionTabToJSON(value['tab']),
         'contentLocked': value['contentLocked'],
         'sessions': ((value['sessions'] as Array<any>).map(KoskDashboardSessionResponseToJSON)),

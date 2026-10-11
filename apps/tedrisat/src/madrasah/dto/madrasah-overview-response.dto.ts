@@ -12,6 +12,11 @@ export class MadrasahCourseResponse {
   @ApiPropertyOptional({ type: String, nullable: true })
   category!: string | null;
   @ApiProperty({ example: 215 }) coverHue!: number;
+  @ApiProperty({
+    description:
+      '"Yüz yüze" (MDRS-283): the course\'s sessions are held in person. A public label.',
+  })
+  inPerson!: boolean;
   @ApiProperty() koskId!: string;
   @ApiProperty() koskName!: string;
   @ApiProperty({ type: [MadrasahCourseMuderrisResponse] })

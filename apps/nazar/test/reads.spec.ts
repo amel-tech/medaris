@@ -140,7 +140,7 @@ describe("getMenuCounts", () => {
       total: 3,
     });
     api.courses.getCourseBadgeCounts.mockResolvedValue({
-      missingMeetingLinks: 1,
+      sessionsWithoutAccess: 1,
       pendingApplications: 2,
     });
     expect(await counts("ders")).toEqual({

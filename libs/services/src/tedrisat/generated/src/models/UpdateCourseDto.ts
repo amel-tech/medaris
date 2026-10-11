@@ -103,6 +103,12 @@ export interface UpdateCourseDto {
      * @memberof UpdateCourseDto
      */
     coverLabel?: string;
+    /**
+     * "Celseler yüz yüze yapılır" (MDRS-283): the course's sessions are held face to face, unless a session says otherwise (`inPersonOverride`). Under `course.edit`, like the rest of the course's fields.
+     * @type {boolean}
+     * @memberof UpdateCourseDto
+     */
+    inPerson?: boolean;
 }
 
 
@@ -157,6 +163,7 @@ export function UpdateCourseDtoFromJSONTyped(json: any, ignoreDiscriminator: boo
         'requiresApproval': json['requiresApproval'] == null ? undefined : json['requiresApproval'],
         'isClosed': json['isClosed'] == null ? undefined : json['isClosed'],
         'coverLabel': json['coverLabel'] == null ? undefined : json['coverLabel'],
+        'inPerson': json['inPerson'] == null ? undefined : json['inPerson'],
     };
 }
 
@@ -185,6 +192,7 @@ export function UpdateCourseDtoToJSONTyped(value?: UpdateCourseDto | null, ignor
         'requiresApproval': value['requiresApproval'],
         'isClosed': value['isClosed'],
         'coverLabel': value['coverLabel'],
+        'inPerson': value['inPerson'],
     };
 }
 

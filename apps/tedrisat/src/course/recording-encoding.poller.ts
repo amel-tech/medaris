@@ -6,6 +6,7 @@ import {
 } from "@nestjs/common";
 import { encodingOutcome } from "../bunny-stream/bunny-signature";
 import { BunnyStreamClient } from "../bunny-stream/bunny-stream.client";
+import { CourseNotifier } from "./course-notifier";
 import { RecordingStatus } from "./domain/recording";
 import { RecordingRepository } from "./recording.repository";
 
@@ -45,11 +46,12 @@ export class RecordingEncodingPoller
   private timer: NodeJS.Timeout | null = null;
   private running = false;
 
-  // Both must stay value imports: `import type` erases them from
+  // All three must stay value imports: `import type` erases them from
   // `design:paramtypes` and Nest can no longer inject them.
   constructor(
     private readonly bunny: BunnyStreamClient,
-    private readonly recordings: RecordingRepository
+    private readonly recordings: RecordingRepository,
+    private readonly notifier: CourseNotifier
   ) {}
 
   onApplicationBootstrap(): void {
@@ -117,8 +119,12 @@ export class RecordingEncodingPoller
             minutes
           );
           if (changed) {
-            if (outcome === "READY") result.ready++;
-            else result.failed++;
+            if (outcome === "READY") {
+              result.ready++;
+              // The upload was PROCESSING until now: this is the moment the
+              // session's talebe can watch it, and the only one (MDRS-283).
+              await this.notifier.recordingAdded(upload.lessonId);
+            } else result.failed++;
           }
         } catch (error) {
           result.errors++;

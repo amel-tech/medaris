@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { DatabaseService } from "../database/database.service";
 import {
   courses,
@@ -63,6 +63,29 @@ export class CourseNotificationRepository {
       .innerJoin(courses, eq(courses.id, courseWeeks.courseId))
       .leftJoin(kosks, eq(kosks.id, courses.koskId))
       .where(eq(lessons.id, lessonId))
+      .limit(1);
+    return row ?? null;
+  }
+
+  /**
+   * A session that is still in its programme (neither it nor its week is
+   * hidden), with when it is set to start; null for one that is missing or
+   * hidden (MDRS-283). A recording of a hidden session is nobody's news.
+   */
+  async findOpenSession(
+    lessonId: string
+  ): Promise<{ scheduledAt: Date | null } | null> {
+    const [row] = await this.db
+      .select({ scheduledAt: lessons.scheduledAt })
+      .from(lessons)
+      .innerJoin(courseWeeks, eq(courseWeeks.id, lessons.weekId))
+      .where(
+        and(
+          eq(lessons.id, lessonId),
+          isNull(lessons.archivedAt),
+          isNull(courseWeeks.archivedAt)
+        )
+      )
       .limit(1);
     return row ?? null;
   }

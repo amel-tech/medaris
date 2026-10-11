@@ -14,7 +14,8 @@ import {
  * Tells talebe what the course team did to their enrolment or their sessions
  * (MDRS-213): the producers of the course types in `notification-types.ts`.
  * `CourseService` calls one method per transition, after the write has
- * succeeded.
+ * succeeded; `RecordingService` and the encoding poll call `recordingAdded`
+ * (MDRS-283).
  *
  * Like every producer, a notification that cannot be written never undoes the
  * change: the failure is logged and the write stands. Nobody is told of their
@@ -124,6 +125,32 @@ export class CourseNotifier {
     });
   }
 
+  /**
+   * A session's recording became READY for the first time (MDRS-283): a
+   * pasted link when it is saved, a Bunny upload when the encoding poll marks
+   * it READY. The caller says when it is the first time, so a recording that
+   * is replaced or edited afterwards is not news again. A session that is
+   * hidden is not news at all. The poll has no actor: nobody is left out.
+   */
+  async recordingAdded(lessonId: string, actorId?: string): Promise<void> {
+    let session: { scheduledAt: Date | null } | null;
+    try {
+      session = await this.repo.findOpenSession(lessonId);
+    } catch (error) {
+      this.logger.error(`Could not read session ${lessonId}`, error);
+      return;
+    }
+    if (!session) return;
+    await this.tellSeats(
+      "RECORDING_ADDED",
+      { id: lessonId },
+      actorId,
+      session.scheduledAt
+        ? { sessionAt: session.scheduledAt.toISOString() }
+        : {}
+    );
+  }
+
   private async tellTalebe(
     type: NotificationInput["type"],
     courseId: string,
@@ -149,7 +176,7 @@ export class CourseNotifier {
 
   private async tellSeats(
     type: NotificationInput["type"],
-    session: ILessonMutation,
+    session: Pick<ILessonMutation, "id">,
     actorId: string | undefined,
     extra: NotificationParams
   ): Promise<void> {

@@ -483,10 +483,10 @@ describe("Nizam dashboards (e2e)", () => {
           pendingApplications: 2,
         },
         sessionCounts: { upcoming: 2, past: 1, cancelled: 1 },
-        missingLinkCount: 1,
+        withoutAccessCount: 1,
         tab: "UPCOMING",
       });
-      expect(res.body.firstMissingLink.id).toBe(lessonNoLink);
+      expect(res.body.firstWithoutAccess.id).toBe(lessonNoLink);
       expect(res.body.sessions).toHaveLength(2);
       expect(res.body.sessions[0]).toMatchObject({
         courseTitle: "Emsile ve Bina",

@@ -105,6 +105,8 @@ const toResponse = (row: IScheduledSession, now: Date) => {
     durationMinutes: row.durationMinutes,
     status,
     meetingUrl: joinable ? row.meetingUrl : null,
+    inPerson: row.inPerson,
+    hasLiveStream: row.hasLiveStream,
   };
   return response;
 };

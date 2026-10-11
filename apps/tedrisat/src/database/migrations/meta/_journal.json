@@ -358,6 +358,13 @@
       "when": 1791120060000,
       "tag": "0054_lesson_invitations",
       "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "7",
+      "when": 1791727648051,
+      "tag": "0055_in_person",
+      "breakpoints": true
     }
   ]
 }

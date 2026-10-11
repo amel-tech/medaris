@@ -14,8 +14,9 @@ import { EnrollmentStatus } from "./enrollment-status.enum";
  *
  * Public: the course, its weeks, and each lesson's title, type, schedule and
  * length — the programme a visitor needs in order to decide to enroll.
- * Content: a lesson's `meetingUrl`, `agenda`, `kaynak` and `cancelReason`, and a resource's
- * `url`. A caller without `course.view_details` gets the programme only, and the
+ * Content: a lesson's `meetingUrl`, `agenda`, `kaynak` and `cancelReason`, how
+ * it is attended (`inPerson`, `inPersonOverride`, `hasLiveStream`, MDRS-283),
+ * and a resource's `url`. A caller without `course.view_details` gets the programme only, and the
  * content keys are removed rather than nulled.
  *
  * A meeting link is never public (MDRS-103 "What to build" 3). A sample
@@ -30,6 +31,10 @@ const lessonWithoutContent = ({
   meetingUrl: _meetingUrl,
   agenda,
   cancelReason: _cancelReason,
+  // How the session is attended goes where the meeting link goes (MDRS-283).
+  inPerson: _inPerson,
+  inPersonOverride: _inPersonOverride,
+  hasLiveStream: _hasLiveStream,
   ...programme
 }: ILesson): ILessonView =>
   programme.isPreview ? { ...programme, kaynak, agenda } : programme;

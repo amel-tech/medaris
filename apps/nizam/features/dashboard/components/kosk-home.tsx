@@ -194,11 +194,11 @@ export function KoskHome({ data, nowIso }: Props) {
   const weekSentence =
     data.counts.upcomingSessions === 0
       ? t("week.none")
-      : data.missingLinkCount === 0
+      : data.withoutAccessCount === 0
         ? t("week.some", { count: data.counts.upcomingSessions })
         : t("week.missing", {
             count: data.counts.upcomingSessions,
-            missing: data.missingLinkCount,
+            missing: data.withoutAccessCount,
           });
 
   const stateLabel = (s: KoskDashboardSessionResponse) =>
@@ -402,16 +402,16 @@ export function KoskHome({ data, nowIso }: Props) {
         </Button>
       </header>
 
-      {data.missingLinkCount > 0 && data.firstMissingLink ? (
+      {data.withoutAccessCount > 0 && data.firstWithoutAccess ? (
         <Alert
           tone="warning"
-          title={t("missingAlert.title", { count: data.missingLinkCount })}
+          title={t("missingAlert.title", { count: data.withoutAccessCount })}
         >
           <p data-testid="home-missing-link">
             {t("missingAlert.body", {
-              course: data.firstMissingLink.courseTitle,
-              when: sessionWhenLong(data.firstMissingLink.scheduledAt, zone),
-              count: data.missingLinkCount,
+              course: data.firstWithoutAccess.courseTitle,
+              when: sessionWhenLong(data.firstWithoutAccess.scheduledAt, zone),
+              count: data.withoutAccessCount,
             })}
           </p>
         </Alert>

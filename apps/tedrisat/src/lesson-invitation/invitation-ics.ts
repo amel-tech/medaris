@@ -1,4 +1,5 @@
 import {
+  type CalendarAttendance,
   type CalendarLocale,
   escapeIcsText,
   foldIcsLine,
@@ -15,9 +16,10 @@ import type { CalendarMethod } from "../mail/mail.service";
  * the event back out of the calendar.
  *
  * What it shares with the "Takvime ekle" file (MDRS-117) is the event's
- * words: the summary, and a description that says the meeting link is on the
- * session page. The meeting link itself is never here — the input has no
- * field for it, and the sweep never reads `lessons.meeting_url`.
+ * words: the summary, and a description that says how the session is attended
+ * and that the page has the rest (MDRS-283). The meeting link itself is never
+ * here — the input has no field for it, and the sweep reads only whether
+ * `lessons.meeting_url` is set.
  *
  * What differs, on purpose:
  *
@@ -45,6 +47,8 @@ export interface InvitationInput {
   sequence: number;
   /** Absolute URL of the session page in tedris-web. */
   sessionPageUrl: string;
+  /** How the session is attended, for the description (MDRS-283). */
+  attendance: CalendarAttendance;
   locale: CalendarLocale;
   organizer: { address: string; name: string };
   attendee: string;
@@ -80,7 +84,7 @@ export const buildInvitationIcs = (input: InvitationInput): string => {
     `STATUS:${cancel ? "CANCELLED" : "CONFIRMED"}`,
     "TRANSP:OPAQUE",
     `SUMMARY:${escapeIcsText(lessonCalendarSummary(input.courseTitle, input.lessonTitle))}`,
-    `DESCRIPTION:${escapeIcsText(lessonCalendarDescription(input.sessionPageUrl, input.locale))}`,
+    `DESCRIPTION:${escapeIcsText(lessonCalendarDescription(input.sessionPageUrl, input.locale, input.attendance))}`,
     `URL:${input.sessionPageUrl}`,
     `LOCATION:${escapeIcsText(input.sessionPageUrl)}`,
     `ORGANIZER;CN=${quoteParam(input.organizer.name)}:${calAddress(input.organizer.address)}`,

@@ -26,8 +26,13 @@ const APPLICATION_ROWS = 5;
 /** `details.via` of the page's audit rows. */
 const VIA = "kosk-dashboard" satisfies RosterRead;
 
+/**
+ * A session without what is course content: the meeting link, and whether a
+ * live stream is set (MDRS-283), which goes only where the link goes.
+ */
 const withoutLink = ({
   meetingUrl: _link,
+  hasLiveStream: _stream,
   ...session
 }: KoskDashboardSessionResponse): KoskDashboardSessionResponse => session;
 
@@ -82,12 +87,12 @@ export class KoskDashboardService {
     const contentLocked = !manages;
     const passive = { closePassive: !(nazim || management) };
 
-    const [numbers, sessions, firstMissing, applications, muderris, name] =
+    const [numbers, sessions, firstUncovered, applications, muderris, name] =
       await Promise.all([
         this.repo.numbers(koskId, passive),
         this.repo.sessions(koskId, tab, passive),
         this.repo.sessions(koskId, "UPCOMING", {
-          onlyMissingLink: true,
+          onlyWithoutAccess: true,
           limit: 1,
           ...passive,
         }),
@@ -107,7 +112,7 @@ export class KoskDashboardService {
     const shown = contentLocked
       ? withoutLink
       : (s: KoskDashboardSessionResponse) => s;
-    const missing = firstMissing[0];
+    const uncovered = firstUncovered[0];
     return {
       koskId,
       koskName,
@@ -123,8 +128,8 @@ export class KoskDashboardService {
         past: numbers.past,
         cancelled: numbers.cancelled,
       },
-      missingLinkCount: numbers.missingLink,
-      firstMissingLink: missing ? shown(missing) : null,
+      withoutAccessCount: numbers.withoutAccess,
+      firstWithoutAccess: uncovered ? shown(uncovered) : null,
       tab,
       contentLocked,
       sessions: sessions.map(shown),

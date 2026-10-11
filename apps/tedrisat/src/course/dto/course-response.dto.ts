@@ -54,6 +54,23 @@ export class LessonResponse {
   replacementLessonId!: string | null;
   @ApiPropertyOptional({ type: String, description: CONTENT_FIELD })
   cancelReason?: string | null;
+  // How the session is attended (MDRS-283): gated like `meetingUrl`.
+  @ApiPropertyOptional({
+    type: Boolean,
+    description: `Held in person: the session's own \`inPersonOverride\` when it has one, else the course's \`inPerson\`. ${CONTENT_FIELD}`,
+  })
+  inPerson?: boolean;
+  @ApiPropertyOptional({
+    type: Boolean,
+    nullable: true,
+    description: `The session's own in-person mark: true or false overrides the course, null follows it. ${CONTENT_FIELD}`,
+  })
+  inPersonOverride?: boolean | null;
+  @ApiPropertyOptional({
+    type: Boolean,
+    description: `A live stream link is set for the session; never the link itself, which only the stream routes and the LIVE session page carry. ${CONTENT_FIELD}`,
+  })
+  hasLiveStream?: boolean;
 }
 
 /** A lesson written through a session-level endpoint (MDRS-95). */
@@ -206,6 +223,11 @@ class CourseBase {
     description: "The word printed on the cover; null when none.",
   })
   coverLabel!: string | null;
+  @ApiProperty({
+    description:
+      '"Celseler yüz yüze yapılır" (MDRS-283): the course\'s sessions are held face to face unless a session says otherwise. A public label, like the title.',
+  })
+  inPerson!: boolean;
   @ApiProperty({
     example: "Europe/Istanbul",
     description:

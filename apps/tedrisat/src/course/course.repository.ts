@@ -80,6 +80,7 @@ import { ROSTER_READ_ACTION } from "./domain/course-content";
 import { CourseStatus } from "./domain/course-status.enum";
 import { EnrollmentStatus } from "./domain/enrollment-status.enum";
 import { LessonType } from "./domain/lesson-type.enum";
+import { sessionAttendance, withoutAccessSql } from "./domain/session-access";
 import {
   type IDatedWeek,
   localDateOf,
@@ -111,6 +112,13 @@ const enrollmentOf = (
   column: typeof enrollments.userId,
   userId: string | null
 ) => (userId === null ? sql`false` : eq(column, userId));
+
+/** What a syllabus write reads back off the course row it locked. */
+interface ICourseStamp {
+  version: number;
+  /** The course's in-person mark, which a lesson without its own follows (MDRS-283). */
+  inPerson: boolean;
+}
 
 /**
  * The earliest session still ahead that stands (a cancelled one does not
@@ -271,10 +279,24 @@ export class CourseRepository implements ICourseRepository {
     });
 
     if (!row) return null;
-    const { enrollments: enr, ...course } = row;
+    const { enrollments: enr, weeks, ...course } = row;
     const { madrasahName, imamKeys } = await this.madrasahsAndImamsOf([row]);
     return {
       ...course,
+      // The stream link is read only to say whether there is one (MDRS-283):
+      // the detail never carries the link itself, whoever reads it.
+      weeks: weeks.map((week) => ({
+        ...week,
+        lessons: week.lessons.map(
+          ({ liveStreamUrl, inPersonOverride, ...lesson }) => ({
+            ...lesson,
+            ...sessionAttendance(
+              { liveStreamUrl, inPersonOverride },
+              row.inPerson
+            ),
+          })
+        ),
+      })),
       muderris: row.muderris.map((m) => ({
         ...m,
         isImam: m.userId !== null && imamKeys.has(`${row.id}:${m.userId}`),
@@ -432,6 +454,7 @@ export class CourseRepository implements ICourseRepository {
               meetingUrl: l.meetingUrl,
               agenda: l.agenda,
               isPreview: l.isPreview ?? false,
+              inPersonOverride: l.inPersonOverride,
               orderIndex: li,
             }))
           );
@@ -585,6 +608,8 @@ export class CourseRepository implements ICourseRepository {
             meetingUrl: l.meetingUrl,
             agenda: l.agenda,
             isPreview: l.isPreview ?? false,
+            // Absent keeps the session's own mark, null clears it (MDRS-283).
+            inPersonOverride: l.inPersonOverride,
             orderIndex: li,
           };
           // Deleting from the set as ids are claimed does two jobs: what is
@@ -674,8 +699,9 @@ export class CourseRepository implements ICourseRepository {
 
   /**
    * Bumps the course's `version` (and applies `set`, if any) and returns the
-   * new value. With `expectedVersion`, only a course still at that version is
-   * written; anything else is a conflict. Without it the bump is
+   * new value, with the course's in-person mark, which a written lesson's
+   * answer needs (MDRS-283). With `expectedVersion`, only a course still at
+   * that version is written; anything else is a conflict. Without it the bump is
    * unconditional — used by the session-level writes that take no token, so
    * that a whole-course PUT loaded before them is still refused afterwards.
    *
@@ -687,7 +713,7 @@ export class CourseRepository implements ICourseRepository {
     courseId: string,
     expectedVersion: number | undefined,
     set: Partial<typeof courses.$inferInsert> = {}
-  ): Promise<number> {
+  ): Promise<ICourseStamp> {
     const [row] = await tx
       .update(courses)
       .set({
@@ -700,8 +726,8 @@ export class CourseRepository implements ICourseRepository {
           ? eq(courses.id, courseId)
           : and(eq(courses.id, courseId), eq(courses.version, expectedVersion))
       )
-      .returning({ version: courses.version });
-    if (row) return row.version;
+      .returning({ version: courses.version, inPerson: courses.inPerson });
+    if (row) return row;
 
     if (expectedVersion !== undefined) {
       const [exists] = await tx
@@ -762,7 +788,7 @@ export class CourseRepository implements ICourseRepository {
 
   private toLessonMutation(
     row: typeof lessons.$inferSelect,
-    courseVersion: number
+    course: ICourseStamp
   ): ILessonMutation {
     return {
       id: row.id,
@@ -779,7 +805,8 @@ export class CourseRepository implements ICourseRepository {
       cancelledAt: row.cancelledAt,
       cancelReason: row.cancelReason,
       replacementLessonId: row.replacementLessonId,
-      courseVersion,
+      ...sessionAttendance(row, course.inPerson),
+      courseVersion: course.version,
     };
   }
 
@@ -874,7 +901,7 @@ export class CourseRepository implements ICourseRepository {
     data: ICreateLesson
   ): Promise<ILessonMutation> {
     return this.db.transaction(async (tx) => {
-      const courseVersion = await this.bumpVersion(tx, courseId, undefined);
+      const course = await this.bumpVersion(tx, courseId, undefined);
       await this.assertLiveWeek(tx, courseId, weekId);
       const [row] = await tx
         .insert(lessons)
@@ -889,10 +916,11 @@ export class CourseRepository implements ICourseRepository {
           meetingUrl: data.meetingUrl,
           agenda: data.agenda,
           isPreview: data.isPreview ?? false,
+          inPersonOverride: data.inPersonOverride,
           orderIndex: await this.nextOrderIndex(tx, weekId),
         })
         .returning();
-      return this.toLessonMutation(row, courseVersion);
+      return this.toLessonMutation(row, course);
     });
   }
 
@@ -905,11 +933,7 @@ export class CourseRepository implements ICourseRepository {
   ): Promise<ILessonMutation> {
     return this.db.transaction(async (tx) => {
       const courseId = await this.findLiveLessonCourseId(tx, lessonId);
-      const courseVersion = await this.bumpVersion(
-        tx,
-        courseId,
-        expectedVersion
-      );
+      const course = await this.bumpVersion(tx, courseId, expectedVersion);
       if (replacementLessonId !== null) {
         // A session that is cancelled already is answered as that, whatever
         // make-up the request names.
@@ -940,7 +964,7 @@ export class CourseRepository implements ICourseRepository {
         entityId: lessonId,
         details: { courseId, reason, replacementLessonId },
       });
-      return this.toLessonMutation(row, courseVersion);
+      return this.toLessonMutation(row, course);
     });
   }
 
@@ -1007,7 +1031,7 @@ export class CourseRepository implements ICourseRepository {
     actorId: string
   ): Promise<{ muderris: IMuderris[]; courseVersion: number }> {
     return this.db.transaction(async (tx) => {
-      const courseVersion = await this.bumpVersion(
+      const { version: courseVersion } = await this.bumpVersion(
         tx,
         courseId,
         expectedVersion
@@ -1095,11 +1119,7 @@ export class CourseRepository implements ICourseRepository {
       // Every write that could archive or move this lesson bumps the version
       // under the same row lock, so once this succeeds the lesson read above
       // is still live and still in `courseId`.
-      const courseVersion = await this.bumpVersion(
-        tx,
-        courseId,
-        expectedVersion
-      );
+      const course = await this.bumpVersion(tx, courseId, expectedVersion);
       const { weekId, orderIndex, ...fields } = data;
       const set: Partial<typeof lessons.$inferInsert> = {
         ...fields,
@@ -1126,7 +1146,7 @@ export class CourseRepository implements ICourseRepository {
         .set(set)
         .where(eq(lessons.id, lessonId))
         .returning();
-      return this.toLessonMutation(row, courseVersion);
+      return this.toLessonMutation(row, course);
     });
   }
 
@@ -1137,7 +1157,7 @@ export class CourseRepository implements ICourseRepository {
   ): Promise<ILessonMutation> {
     return this.db.transaction(async (tx) => {
       const courseId = await this.findLiveLessonCourseId(tx, lessonId);
-      const courseVersion = await this.bumpVersion(tx, courseId, undefined);
+      const course = await this.bumpVersion(tx, courseId, undefined);
       const now = new Date();
       const [row] = await tx
         .update(lessons)
@@ -1164,7 +1184,7 @@ export class CourseRepository implements ICourseRepository {
           ...(await courseParents(tx, courseId)),
         });
       }
-      return this.toLessonMutation(row, courseVersion);
+      return this.toLessonMutation(row, course);
     });
   }
 
@@ -1182,7 +1202,11 @@ export class CourseRepository implements ICourseRepository {
     level: HideLevel
   ): Promise<IWeekHide> {
     return this.db.transaction(async (tx) => {
-      const courseVersion = await this.bumpVersion(tx, courseId, undefined);
+      const { version: courseVersion } = await this.bumpVersion(
+        tx,
+        courseId,
+        undefined
+      );
       const [week] = await tx
         .select({ title: courseWeeks.title })
         .from(courseWeeks)
@@ -1279,7 +1303,7 @@ export class CourseRepository implements ICourseRepository {
     batch: ICreateSessionBatch
   ): Promise<ISessionBatchResult> {
     return this.db.transaction(async (tx) => {
-      const courseVersion = await this.bumpVersion(tx, courseId, undefined);
+      const stamp = await this.bumpVersion(tx, courseId, undefined);
       const [course] = await tx
         .select({ timeZone: courses.timeZone })
         .from(courses)
@@ -1379,18 +1403,21 @@ export class CourseRepository implements ICourseRepository {
           // Links change every week (MDRS-109): only the first gets one.
           meetingUrl: i === 0 ? batch.meetingUrl : undefined,
           isPreview: false,
+          // No in-person mark of its own (MDRS-283): a planned session
+          // follows the course's, as it stands now and after any change.
+          inPersonOverride: null,
           orderIndex,
         };
       });
       const rows = await tx.insert(lessons).values(values).returning();
       const weekNumberOf = new Map(touched.map((w) => [w.id, w.weekNumber]));
       return {
-        courseVersion,
+        courseVersion: stamp.version,
         weeks: touched,
         lessons: rows
           .map((row) => {
             const { courseVersion: _version, ...lesson } =
-              this.toLessonMutation(row, courseVersion);
+              this.toLessonMutation(row, stamp);
             return {
               ...lesson,
               weekNumber: weekNumberOf.get(row.weekId) as number,
@@ -1638,14 +1665,16 @@ export class CourseRepository implements ICourseRepository {
   }
 
   /**
-   * The counts behind the nazır portal's course menu (MDRS-183). A session
-   * "misses its link" when it is live, still ahead, not cancelled, belongs to
-   * a week and a lesson nobody hid, and its `meeting_url` is null or only
-   * whitespace. A session already under way is not counted: a link added now
-   * would come too late for it.
+   * The counts behind the nazır portal's course menu (MDRS-183). A session is
+   * counted when it is live, still ahead, not cancelled, belongs to a week and
+   * a lesson nobody hid, and nobody can attend it as it stands: no meeting
+   * link, no live stream and not held in person (`withoutAccessSql`,
+   * MDRS-283). A session already under way is not counted: a link added now
+   * would come too late for it, and a finished one without a recording is
+   * information, not work.
    */
   async getBadgeCounts(courseId: string): Promise<ICourseBadgeCounts> {
-    const [[pending], [missing]] = await Promise.all([
+    const [[pending], [withoutAccess]] = await Promise.all([
       this.db
         .select({ value: sql<number>`count(*)`.mapWith(Number) })
         .from(enrollments)
@@ -1659,6 +1688,7 @@ export class CourseRepository implements ICourseRepository {
         .select({ value: sql<number>`count(*)`.mapWith(Number) })
         .from(lessons)
         .innerJoin(courseWeeks, eq(courseWeeks.id, lessons.weekId))
+        .innerJoin(courses, eq(courses.id, courseWeeks.courseId))
         .where(
           and(
             eq(courseWeeks.courseId, courseId),
@@ -1667,15 +1697,17 @@ export class CourseRepository implements ICourseRepository {
             isNull(lessons.cancelledAt),
             eq(lessons.type, LessonType.LIVE),
             gte(lessons.scheduledAt, sql`now()`),
-            or(
-              isNull(lessons.meetingUrl),
-              sql`btrim(${lessons.meetingUrl}) = ''`
-            )
+            withoutAccessSql({
+              meetingUrl: lessons.meetingUrl,
+              liveStreamUrl: lessons.liveStreamUrl,
+              lessonInPerson: lessons.inPersonOverride,
+              courseInPerson: courses.inPerson,
+            })
           )
         ),
     ]);
     return {
-      missingMeetingLinks: missing?.value ?? 0,
+      sessionsWithoutAccess: withoutAccess?.value ?? 0,
       pendingApplications: pending?.value ?? 0,
     };
   }

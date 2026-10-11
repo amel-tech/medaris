@@ -28,6 +28,9 @@ const session = (over: Partial<ILessonMutation> = {}): ILessonMutation => ({
   cancelledAt: null,
   cancelReason: null,
   replacementLessonId: null,
+  inPerson: false,
+  inPersonOverride: null,
+  hasLiveStream: false,
   courseVersion: 2,
   ...over,
 });
@@ -43,6 +46,9 @@ function build(seats = [TALEBE, OTHER]) {
     findSessionCourse: vi.fn().mockResolvedValue(context),
     findSessionStart: vi.fn().mockResolvedValue(null),
     findSeatHolders: vi.fn().mockResolvedValue(seats),
+    findOpenSession: vi
+      .fn()
+      .mockResolvedValue({ scheduledAt: new Date("2026-10-09T18:00:00Z") }),
   };
   const notify = vi.fn().mockResolvedValue(undefined);
   const notifier = new CourseNotifier(
@@ -164,6 +170,63 @@ describe("CourseNotifier (MDRS-213)", () => {
         session({ scheduledAt: inHours(48), cancelledAt: new Date() })
       );
       expect(notify).not.toHaveBeenCalled();
+    });
+  });
+
+  // MDRS-283: "Kayıt eklendi", once, to the active seats.
+  describe("recordings", () => {
+    it("tells every active seat but the actor that the session's recording was added", async () => {
+      const { notifier, notify, repo } = build([TALEBE, MUDERRIS, OTHER]);
+      await notifier.recordingAdded(SESSION, MUDERRIS);
+      expect(repo.findOpenSession).toHaveBeenCalledWith(SESSION);
+      expect(notify).toHaveBeenCalledTimes(1);
+      expect(notify.mock.calls[0]).toEqual([
+        {
+          userId: TALEBE,
+          type: "RECORDING_ADDED",
+          targetType: "SESSION",
+          targetId: SESSION,
+          params: {
+            courseId: COURSE,
+            courseTitle: "Emsile",
+            source: "Beyazıt Köşkü",
+            sessionAt: "2026-10-09T18:00:00.000Z",
+          },
+        },
+        expect.objectContaining({ userId: OTHER, type: "RECORDING_ADDED" }),
+      ]);
+    });
+
+    it("tells everyone when nobody acted, as the encoding poll does", async () => {
+      const { notifier, notify } = build([TALEBE, OTHER]);
+      await notifier.recordingAdded(SESSION);
+      expect(
+        notify.mock.calls[0].map((n: { userId: string }) => n.userId)
+      ).toEqual([TALEBE, OTHER]);
+    });
+
+    it("leaves the time out for a session that has none", async () => {
+      const { notifier, notify, repo } = build([TALEBE]);
+      repo.findOpenSession.mockResolvedValue({ scheduledAt: null });
+      await notifier.recordingAdded(SESSION, MUDERRIS);
+      expect(notify.mock.calls[0][0].params).not.toHaveProperty("sessionAt");
+    });
+
+    it("stays silent for a session that is hidden or gone", async () => {
+      const { notifier, notify, repo } = build([TALEBE]);
+      repo.findOpenSession.mockResolvedValue(null);
+      await notifier.recordingAdded(SESSION, MUDERRIS);
+      expect(notify).not.toHaveBeenCalled();
+    });
+
+    it("never fails the write it reports on", async () => {
+      const { notifier, notify, repo } = build([TALEBE]);
+      notify.mockRejectedValue(new Error("db down"));
+      await expect(
+        notifier.recordingAdded(SESSION, MUDERRIS)
+      ).resolves.toBeUndefined();
+      repo.findOpenSession.mockRejectedValue(new Error("db down"));
+      await expect(notifier.recordingAdded(SESSION)).resolves.toBeUndefined();
     });
   });
 });

@@ -1,7 +1,13 @@
 import { Injectable } from "@nestjs/common";
 import { and, asc, eq, gte, inArray, isNull, lte, or } from "drizzle-orm";
+import type { CalendarAttendance } from "../course/calendar/lesson-calendar";
 import { CourseStatus } from "../course/domain/course-status.enum";
 import { EnrollmentStatus } from "../course/domain/enrollment-status.enum";
+import {
+  hasLiveStreamSql,
+  hasMeetingLinkSql,
+  inPersonSql,
+} from "../course/domain/session-access";
 import { DatabaseService } from "../database/database.service";
 import { enrolledCourseIds } from "../database/enrolled-courses";
 import { isHeld } from "../database/role-assignments";
@@ -18,7 +24,7 @@ import {
 } from "../database/schema/role-assignment.schema";
 import { users } from "../database/schema/user.schema";
 
-/** One session as the feed needs it — and nothing else (no meeting link). */
+/** One session as the feed needs it — and nothing else (no meeting link, no stream link). */
 export interface IFeedSession {
   courseId: string;
   courseTitle: string;
@@ -32,6 +38,11 @@ export interface IFeedSession {
    * session was cancelled and keeps its slot (MDRS-158).
    */
   cancelled: boolean;
+  /**
+   * How the session is attended, for the description line (MDRS-283):
+   * booleans read in the query, so no link leaves the database.
+   */
+  attendance: CalendarAttendance;
 }
 
 /**
@@ -144,6 +155,14 @@ export class CalendarFeedRepository {
         lessonArchivedAt: lessons.archivedAt,
         lessonCancelledAt: lessons.cancelledAt,
         weekArchivedAt: courseWeeks.archivedAt,
+        inPerson: inPersonSql({
+          lessonInPerson: lessons.inPersonOverride,
+          courseInPerson: courses.inPerson,
+        }),
+        hasMeetingLink: hasMeetingLinkSql({ meetingUrl: lessons.meetingUrl }),
+        hasLiveStream: hasLiveStreamSql({
+          liveStreamUrl: lessons.liveStreamUrl,
+        }),
       })
       .from(lessons)
       .innerJoin(courseWeeks, eq(courseWeeks.id, lessons.weekId))
@@ -175,6 +194,9 @@ export class CalendarFeedRepository {
         lessonArchivedAt,
         lessonCancelledAt,
         weekArchivedAt,
+        inPerson,
+        hasMeetingLink,
+        hasLiveStream,
         ...row
       }) =>
         // Never null here — the range predicate excludes NULL — but the
@@ -188,6 +210,7 @@ export class CalendarFeedRepository {
                   lessonArchivedAt !== null ||
                   lessonCancelledAt !== null ||
                   weekArchivedAt !== null,
+                attendance: { inPerson, hasMeetingLink, hasLiveStream },
               },
             ]
           : []

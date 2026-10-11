@@ -102,9 +102,27 @@ export class DashboardSessionResponse {
     nullable: true,
     example: "meet.google.com",
     description:
-      'The host of the session\'s meeting link, never the link: the client names the platform from it. Null when the session has no link ("bağlantısı eksik")',
+      "The host of the session's meeting link, never the link: the client names the platform from it. Null when the session has no link; whether that leaves it without a way in is `withoutAccess`",
   })
   meetingHost!: string | null;
+
+  @ApiProperty({
+    description:
+      "Held in person (MDRS-283): the session's own mark, else the course's",
+  })
+  inPerson!: boolean;
+
+  @ApiProperty({
+    description:
+      "A live stream is set for the session (MDRS-283); never the link",
+  })
+  hasLiveStream!: boolean;
+
+  @ApiProperty({
+    description:
+      "Nobody can attend it as it stands: no meeting link, no live stream and not held in person (MDRS-283). The row the Pano flags; the rule is the one behind the course menu's badge (`sessionsWithoutAccess`)",
+  })
+  withoutAccess!: boolean;
 }
 
 export class DashboardApplicationResponse {

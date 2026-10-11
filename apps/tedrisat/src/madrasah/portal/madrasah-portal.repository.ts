@@ -16,6 +16,11 @@ import {
 import { CourseStatus } from "../../course/domain/course-status.enum";
 import { EnrollmentStatus } from "../../course/domain/enrollment-status.enum";
 import { LessonType } from "../../course/domain/lesson-type.enum";
+import {
+  hasLiveStreamSql,
+  inPersonSql,
+  withoutAccessSql,
+} from "../../course/domain/session-access";
 import { DatabaseService } from "../../database/database.service";
 import { holdsIn, isHeld } from "../../database/role-assignments";
 import {
@@ -212,12 +217,21 @@ export class MadrasahPortalRepository {
    * `days` days ahead, soonest first. A cancelled or hidden session, a hidden
    * week, a hidden or draft course and any course of a hidden köşk are not
    * here (a medrese is not above the köşk, MDRS-143); the database clock decides
-   * what "now" is, as for the badge counts.
+   * what "now" is, as for the badge counts. Each says how it is attended and
+   * whether nobody can attend it as it stands (MDRS-283); never a link.
    */
   async findUpcomingSessions(
     madrasahId: string,
     days: number
   ): Promise<IDashboardSession[]> {
+    // How each session is attended, by the one coverage rule the course
+    // menu's badge and the köşk nazımı's home page read (MDRS-283).
+    const attendance = {
+      meetingUrl: lessons.meetingUrl,
+      liveStreamUrl: lessons.liveStreamUrl,
+      lessonInPerson: lessons.inPersonOverride,
+      courseInPerson: courses.inPerson,
+    };
     const rows = await this.db
       .select({
         lessonId: lessons.id,
@@ -229,6 +243,9 @@ export class MadrasahPortalRepository {
         weekNumber: courseWeeks.weekNumber,
         scheduledAt: lessons.scheduledAt,
         meetingUrl: lessons.meetingUrl,
+        inPerson: inPersonSql(attendance),
+        hasLiveStream: hasLiveStreamSql(attendance),
+        withoutAccess: withoutAccessSql(attendance),
       })
       .from(lessons)
       .innerJoin(courseWeeks, eq(courseWeeks.id, lessons.weekId))

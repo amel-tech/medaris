@@ -78,9 +78,28 @@ export class KoskDashboardSessionResponse {
     type: String,
     nullable: true,
     description:
-      "Where talebe join. The köşk nazımı is the course team, so it is shown; null: no link yet (Bağlantı eksik). Absent when `contentLocked` is true.",
+      "Where talebe join. The köşk nazımı is the course team, so it is shown; null: no link yet. Absent when `contentLocked` is true.",
   })
   meetingUrl?: string | null;
+
+  @ApiProperty({
+    description:
+      "Held in person (MDRS-283): the session's own mark, else the course's. A label, sent whether or not `contentLocked`.",
+  })
+  inPerson!: boolean;
+
+  @ApiPropertyOptional({
+    type: Boolean,
+    description:
+      "A live stream is set for the session (MDRS-283); never the link. Course content like `meetingUrl`: absent when `contentLocked` is true.",
+  })
+  hasLiveStream?: boolean;
+
+  @ApiProperty({
+    description:
+      "Flagged (MDRS-283): still ahead, not cancelled, and nobody can attend it as it stands: no meeting link, no live stream and not held in person. The rule behind `withoutAccessCount`; always false on the PAST and CANCELLED tabs.",
+  })
+  withoutAccess!: boolean;
 
   @ApiProperty({ description: "It makes up for a cancelled session (telafi)" })
   isMakeup!: boolean;
@@ -178,9 +197,9 @@ export class KoskDashboardResponse {
 
   @ApiProperty({
     description:
-      "Sessions in the next seven days with no meeting link: the alert's reason",
+      "Sessions in the next seven days, not cancelled, that nobody can attend as they stand: no meeting link, no live stream and not held in person (MDRS-283). The alert's reason",
   })
-  missingLinkCount!: number;
+  withoutAccessCount!: number;
 
   @ApiPropertyOptional({
     type: KoskDashboardSessionResponse,
@@ -188,7 +207,7 @@ export class KoskDashboardResponse {
     description:
       "The soonest of them: the alert names its course and day; null when none",
   })
-  firstMissingLink!: KoskDashboardSessionResponse | null;
+  firstWithoutAccess!: KoskDashboardSessionResponse | null;
 
   @ApiProperty({
     enum: DASHBOARD_SESSION_TABS,

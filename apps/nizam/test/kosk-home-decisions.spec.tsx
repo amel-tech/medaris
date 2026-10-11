@@ -65,7 +65,7 @@ const home = (
       pendingApplications: latestApplications.length,
     },
     sessionCounts: { upcoming: 0, past: 0, cancelled: 0 },
-    missingLinkCount: 0,
+    withoutAccessCount: 0,
     tab: "UPCOMING",
     contentLocked: false,
     sessions: [],

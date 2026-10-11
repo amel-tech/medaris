@@ -60,6 +60,8 @@ export interface IMadrasahCourse {
   title: string;
   category: string | null;
   coverHue: number;
+  /** "Yüz yüze" (MDRS-283): the course's sessions are held in person. */
+  inPerson: boolean;
   koskId: string;
   koskName: string;
   muderris: IMadrasahCourseMuderris[];

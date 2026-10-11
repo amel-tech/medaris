@@ -115,7 +115,7 @@ export async function getMenuCounts(scope: Scope): Promise<MenuCounts> {
   const course = client.courses.getCourseBadgeCounts({ id: scope.id });
   const counts = await Promise.all([
     unread,
-    countOf(async () => (await course).missingMeetingLinks, "course badge"),
+    countOf(async () => (await course).sessionsWithoutAccess, "course badge"),
     countOf(async () => (await course).pendingApplications, "course badge"),
   ]);
   return {

@@ -4,7 +4,7 @@ import request from "supertest";
 import { FEED_POLL_LIMIT } from "../../src/calendar-feed/feed-poll-limiter";
 import { DatabaseService } from "../../src/database/database.service";
 import { BAN_SCOPES, bans } from "../../src/database/schema/ban.schema";
-import { courses } from "../../src/database/schema/course.schema";
+import { courses, lessons } from "../../src/database/schema/course.schema";
 import { madrasahs } from "../../src/database/schema/madrasah.schema";
 import { FIXTURE_TEAM, openKosk } from "../helpers/open-scopes.helper";
 import {
@@ -209,6 +209,44 @@ describe("calendar feed (e2e)", () => {
       "Bina ve İzhar Şerhi — Açılış"
     );
     expect(prop(event as string[], "SEQUENCE")).toBe(String(detail.version));
+  });
+
+  // MDRS-283: each event says how its session is attended, in the reader's language.
+  it("says in each event's description how the session is attended", async () => {
+    const detail = await createCourse("Yüz yüze ders", {
+      sessions: [
+        { title: "Bağlantılı", at: inDays(7) },
+        { title: "Yayında", at: inDays(8) },
+      ],
+    });
+    const [linked, streamed] = detail.weeks[0].lessons;
+    await request(app.getHttpServer())
+      .patch(`/courses/${detail.id}`)
+      .send({ inPerson: true })
+      .expect(200);
+    const db = app.get(DatabaseService).db;
+    await db
+      .update(lessons)
+      .set({
+        inPersonOverride: false,
+        meetingUrl: null,
+        liveStreamUrl: "https://www.youtube.com/live/dQw4w9WgXcQ",
+      })
+      .where(eq(lessons.id, streamed.id));
+    await request(otherApp.getHttpServer())
+      .post(`/courses/${detail.id}/enroll`)
+      .expect(201);
+
+    const ics = (await fetchFeed((await issueFeed(otherApp)).url).expect(200))
+      .body as string;
+    expect(prop(eventFor(ics, linked.id) as string[], "DESCRIPTION")).toMatch(
+      /^Bu celse yüz yüze yapılır\. Celse sayfası:/
+    );
+    expect(prop(eventFor(ics, streamed.id) as string[], "DESCRIPTION")).toMatch(
+      /^Bu celse canlı yayınlanır\\; yayın celse sayfasındadır:/
+    );
+    expect(ics).not.toContain("dQw4w9WgXcQ");
+    expect(ics).not.toContain("oturum");
   });
 
   it("leaves out courses the talebe is not in, is still waiting for, or has left", async () => {

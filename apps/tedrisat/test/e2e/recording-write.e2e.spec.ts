@@ -27,6 +27,7 @@ import {
   lessons,
 } from "../../src/database/schema/course.schema";
 import { kosks } from "../../src/database/schema/kosk.schema";
+import { notifications } from "../../src/database/schema/notification.schema";
 import {
   permissionGrants,
   permissionGroupItems,
@@ -195,9 +196,17 @@ describe("a session's recording link (MDRS-247, e2e)", () => {
       "permission_grants",
       "permission_groups",
       ...COURSE_TREE_TABLES,
+      "notifications",
       "audit_log",
       "users"
     );
+
+  /** The "Kayıt eklendi" rows written so far (MDRS-283). */
+  const recordingNews = () =>
+    db()
+      .select()
+      .from(notifications)
+      .where(eq(notifications.type, "RECORDING_ADDED"));
 
   beforeAll(async () => {
     app = await createTestApp();
@@ -1025,6 +1034,94 @@ describe("a session's recording link (MDRS-247, e2e)", () => {
       });
       await library.get(RecordingEncodingPoller).pollOnce(new Date());
       expect(bunnyCalls).toEqual([]);
+    });
+  });
+
+  /**
+   * MDRS-283: "Kayıt eklendi". The session's active seats are told once, when
+   * its recording first becomes READY; replacing or editing a READY one is
+   * not news again. The Bunny half, READY by the encoding poll, is in
+   * recording-upload.e2e.spec.ts.
+   */
+  describe("RECORDING_ADDED (MDRS-283)", () => {
+    beforeEach(async () => {
+      // A request and a completed seat are not active seats.
+      await db()
+        .insert(enrollments)
+        .values([
+          {
+            userId: STRANGER_ID,
+            courseId,
+            status: EnrollmentStatus.PENDING,
+          },
+          {
+            userId: OTHER_NAZIR_ID,
+            courseId,
+            status: EnrollmentStatus.COMPLETED,
+          },
+        ]);
+    });
+
+    it("tells the enrolled talebe once when a pasted link is saved, and not again when it is edited or replaced", async () => {
+      const res = await add(lessonId, MUDERRIS_ID, {
+        title: "Bir: celse kaydı",
+        url: DRIVE,
+      }).expect(201);
+      const news = await recordingNews();
+      expect(news).toHaveLength(1);
+      expect(news[0]).toMatchObject({
+        userId: TALEBE_ID,
+        targetType: "SESSION",
+        targetId: lessonId,
+        readAt: null,
+        params: {
+          courseId,
+          courseTitle: "Emsile ve Bina",
+          source: "Nûruosmaniye Köşkü",
+        },
+      });
+      expect(news[0].params.sessionAt).toEqual(expect.any(String));
+
+      await change(res.body.id, MUDERRIS_ID, { title: "Yeni ad" }).expect(200);
+      await change(res.body.id, MUDERRIS_ID, { url: YOUTUBE }).expect(200);
+      await change(res.body.id, MUDERRIS_ID, {
+        visibility: RecordingVisibility.PUBLIC,
+      }).expect(200);
+      expect(await recordingNews()).toHaveLength(1);
+    });
+
+    it("does not tell the writer of their own recording", async () => {
+      await db()
+        .update(enrollments)
+        .set({ userId: NAZIR_ID })
+        .where(eq(enrollments.userId, TALEBE_ID));
+      await add(lessonId, NAZIR_ID, { title: "Kayıt", url: DRIVE }).expect(201);
+      expect(await recordingNews()).toEqual([]);
+    });
+
+    it("tells them when a pasted link takes the place of an upload that never played", async () => {
+      await bunnyUpload(lessonId, RecordingStatus.FAILED);
+      await add(lessonId, MUDERRIS_ID, { title: "Kayıt", url: ZOOM }).expect(
+        201
+      );
+      expect(await recordingNews()).toHaveLength(1);
+
+      const upload = await bunnyUpload(
+        secondLessonId,
+        RecordingStatus.PROCESSING,
+        VIDEO
+      );
+      await change(upload.id, MUDERRIS_ID, { url: ZOOM }, library).expect(200);
+      const news = await recordingNews();
+      expect(news.map((n) => n.targetId).sort()).toEqual(
+        [lessonId, secondLessonId].sort()
+      );
+    });
+
+    it("tells nobody when a recording that is still PROCESSING is only renamed", async () => {
+      const upload = await bunnyUpload(lessonId, RecordingStatus.PROCESSING);
+      await change(upload.id, MUDERRIS_ID, { title: "Yeni ad" }).expect(200);
+      expect(await recordingNews()).toEqual([]);
     });
   });
 });

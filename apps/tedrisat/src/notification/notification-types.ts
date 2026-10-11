@@ -5,9 +5,10 @@
  *
  * A producer calls `NotificationService.notify` with one of these. The
  * course types are written by `CourseNotifier` (MDRS-213) and
- * COURSE_ACCESS_REMOVED by `BanService` when a ban takes a seat. SESSION_ADDED
- * — a lesson recording added, as tedris words it — has no producer yet: no
- * route adds a recording.
+ * COURSE_ACCESS_REMOVED by `BanService` when a ban takes a seat.
+ * RECORDING_ADDED is a session's recording becoming READY for the first time
+ * (MDRS-283). SESSION_ADDED — a lesson recording added, as tedris words it —
+ * has no producer: RECORDING_ADDED is the one written for that.
  */
 export const NOTIFICATION_TYPES = [
   "ENROLLMENT_APPROVED",
@@ -17,6 +18,7 @@ export const NOTIFICATION_TYPES = [
   "SESSION_RESCHEDULED",
   "SESSION_CANCELLED",
   "SESSION_ADDED",
+  "RECORDING_ADDED",
   "KOSK_APPLICATION_RESULT",
   "DECK_PUBLISH_RESULT",
   // Nizam side (MDRS-179): what a köşk nazımı or Medaris nazımı is told.

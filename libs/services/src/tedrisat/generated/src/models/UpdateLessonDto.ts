@@ -58,6 +58,12 @@ export interface UpdateLessonDto {
      */
     agenda?: Array<AgendaStepDto>;
     /**
+     * The session's own in-person mark (MDRS-283): true or false overrides the course's `inPerson`, null follows it. Absent leaves it as it is. Changing it is session work (`session.manage`), like the meeting link.
+     * @type {boolean}
+     * @memberof UpdateLessonDto
+     */
+    inPersonOverride?: boolean | null;
+    /**
      * The course `version` the caller last saw. A stale value is refused with 409 COURSE_VERSION_CONFLICT.
      * @type {number}
      * @memberof UpdateLessonDto
@@ -131,6 +137,7 @@ export function UpdateLessonDtoFromJSONTyped(json: any, ignoreDiscriminator: boo
         'scheduledAt': json['scheduledAt'] == null ? undefined : (new Date(json['scheduledAt'])),
         'meetingUrl': json['meetingUrl'] == null ? undefined : json['meetingUrl'],
         'agenda': json['agenda'] == null ? undefined : ((json['agenda'] as Array<any>).map(AgendaStepDtoFromJSON)),
+        'inPersonOverride': json['inPersonOverride'] == null ? undefined : json['inPersonOverride'],
         'version': json['version'],
         'title': json['title'] == null ? undefined : json['title'],
         'type': json['type'] == null ? undefined : json['type'],
@@ -156,6 +163,7 @@ export function UpdateLessonDtoToJSONTyped(value?: UpdateLessonDto | null, ignor
         'scheduledAt': value['scheduledAt'] == null ? undefined : ((value['scheduledAt']).toISOString()),
         'meetingUrl': value['meetingUrl'],
         'agenda': value['agenda'] == null ? undefined : ((value['agenda'] as Array<any>).map(AgendaStepDtoToJSON)),
+        'inPersonOverride': value['inPersonOverride'],
         'version': value['version'],
         'title': value['title'],
         'type': value['type'],

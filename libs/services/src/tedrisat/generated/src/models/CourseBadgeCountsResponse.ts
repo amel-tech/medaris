@@ -20,11 +20,11 @@ import { mapValues } from '../runtime';
  */
 export interface CourseBadgeCountsResponse {
     /**
-     * Live sessions still ahead whose meeting link is empty. A cancelled or hidden session is not counted.
+     * Live sessions still ahead that nobody can attend as they stand: no meeting link, no live stream and not held in person (MDRS-283). A cancelled or hidden session is not counted, nor is one already under way or over.
      * @type {number}
      * @memberof CourseBadgeCountsResponse
      */
-    missingMeetingLinks: number;
+    sessionsWithoutAccess: number;
     /**
      * Enrollment requests waiting for approval.
      * @type {number}
@@ -37,7 +37,7 @@ export interface CourseBadgeCountsResponse {
  * Check if a given object implements the CourseBadgeCountsResponse interface.
  */
 export function instanceOfCourseBadgeCountsResponse(value: object): value is CourseBadgeCountsResponse {
-    if (!('missingMeetingLinks' in value) || value['missingMeetingLinks'] === undefined) return false;
+    if (!('sessionsWithoutAccess' in value) || value['sessionsWithoutAccess'] === undefined) return false;
     if (!('pendingApplications' in value) || value['pendingApplications'] === undefined) return false;
     return true;
 }
@@ -52,7 +52,7 @@ export function CourseBadgeCountsResponseFromJSONTyped(json: any, ignoreDiscrimi
     }
     return {
         
-        'missingMeetingLinks': json['missingMeetingLinks'],
+        'sessionsWithoutAccess': json['sessionsWithoutAccess'],
         'pendingApplications': json['pendingApplications'],
     };
 }
@@ -68,7 +68,7 @@ export function CourseBadgeCountsResponseToJSONTyped(value?: CourseBadgeCountsRe
 
     return {
         
-        'missingMeetingLinks': value['missingMeetingLinks'],
+        'sessionsWithoutAccess': value['sessionsWithoutAccess'],
         'pendingApplications': value['pendingApplications'],
     };
 }

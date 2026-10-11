@@ -18,8 +18,18 @@ const input = (
   durationMinutes: 60,
   timeZone: "Europe/Istanbul",
   sessionPageUrl: PAGE,
+  attendance: { inPerson: false, hasMeetingLink: true, hasLiveStream: false },
   accountUrl: ACCOUNT,
   ...overrides,
+});
+
+const attended = (
+  attendance: Partial<InvitationMailInput["attendance"]>
+): InvitationMailInput["attendance"] => ({
+  inPerson: false,
+  hasMeetingLink: false,
+  hasLiveStream: false,
+  ...attendance,
 });
 
 describe("lesson invitation e-mail (MDRS-121)", () => {
@@ -74,5 +84,74 @@ describe("lesson invitation e-mail (MDRS-121)", () => {
     expect(mail.html).not.toContain("<script>");
     expect(mail.html).toContain("&lt;script&gt;");
     expect(mail.subject).not.toMatch(/[\r\n]/);
+  });
+
+  /**
+   * MDRS-283: the line under the page says how the session is attended, in
+   * the event's own terms: the meeting link only where the session can have
+   * one, its own line for a session held in person or only streamed.
+   */
+  it.each([
+    [
+      "a meeting link",
+      { hasMeetingLink: true },
+      {
+        tr: "Toplantı bağlantısı yalnızca celse sayfasında",
+        en: "The meeting link is shown only on the session page",
+        ar: "رابط الاجتماع",
+      },
+    ],
+    [
+      "only a stream",
+      { hasLiveStream: true },
+      {
+        tr: "Bu celse canlı yayınlanır.",
+        en: "This session is streamed live.",
+        ar: "تُبثّ هذه الحلقة بثًّا مباشرًا.",
+      },
+    ],
+    [
+      "the in-person mark",
+      { inPerson: true },
+      {
+        tr: "Bu celse yüz yüze yapılır.",
+        en: "This session is held in person.",
+        ar: "تُعقد هذه الحلقة حضوريًّا.",
+      },
+    ],
+    [
+      "the in-person mark and a stream",
+      { inPerson: true, hasLiveStream: true },
+      {
+        tr: "Bu celse yüz yüze yapılır ve canlı yayınlanır.",
+        en: "This session is held in person and streamed live.",
+        ar: "تُعقد هذه الحلقة حضوريًّا وتُبثّ بثًّا مباشرًا.",
+      },
+    ],
+  ] as const)("words a session with %s by it, in tr, en and ar", (_name, attendance, words) => {
+    for (const locale of ["tr", "en", "ar"] as const) {
+      const mail = buildInvitationMail(
+        input({ locale, attendance: attended(attendance) })
+      );
+      expect(mail.text).toContain(words[locale]);
+      expect(mail.html).toContain(words[locale]);
+    }
+    if (!("hasMeetingLink" in attendance)) {
+      for (const locale of ["tr", "en", "ar"] as const) {
+        const text = buildInvitationMail(
+          input({ locale, attendance: attended(attendance) })
+        ).text;
+        expect(text).not.toMatch(
+          /Toplantı bağlantısı|meeting link|رابط الاجتماع/
+        );
+      }
+    }
+  });
+
+  it("leaves the line out of a CANCEL, whatever the session was", () => {
+    const mail = buildInvitationMail(
+      input({ kind: "CANCEL", attendance: attended({ inPerson: true }) })
+    );
+    expect(mail.text).not.toContain("yüz yüze");
   });
 });

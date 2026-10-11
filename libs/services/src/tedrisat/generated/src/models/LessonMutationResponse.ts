@@ -112,6 +112,24 @@ export interface LessonMutationResponse {
      */
     cancelReason?: string;
     /**
+     * Held in person: the session's own `inPersonOverride` when it has one, else the course's `inPerson`. Course content: absent unless the caller holds `view_details` on the course (MDRS-103); a sample session (`isPreview`) keeps its `kaynak` and `agenda` for everyone (MDRS-161), never its `meetingUrl`.
+     * @type {boolean}
+     * @memberof LessonMutationResponse
+     */
+    inPerson?: boolean;
+    /**
+     * The session's own in-person mark: true or false overrides the course, null follows it. Course content: absent unless the caller holds `view_details` on the course (MDRS-103); a sample session (`isPreview`) keeps its `kaynak` and `agenda` for everyone (MDRS-161), never its `meetingUrl`.
+     * @type {boolean}
+     * @memberof LessonMutationResponse
+     */
+    inPersonOverride?: boolean | null;
+    /**
+     * A live stream link is set for the session; never the link itself, which only the stream routes and the LIVE session page carry. Course content: absent unless the caller holds `view_details` on the course (MDRS-103); a sample session (`isPreview`) keeps its `kaynak` and `agenda` for everyone (MDRS-161), never its `meetingUrl`.
+     * @type {boolean}
+     * @memberof LessonMutationResponse
+     */
+    hasLiveStream?: boolean;
+    /**
      * The course version this write produced; send it with the next PUT /courses/:id or PATCH /lessons/:id.
      * @type {number}
      * @memberof LessonMutationResponse
@@ -170,6 +188,9 @@ export function LessonMutationResponseFromJSONTyped(json: any, ignoreDiscriminat
         'cancelledAt': json['cancelledAt'] == null ? undefined : (new Date(json['cancelledAt'])),
         'replacementLessonId': json['replacementLessonId'] == null ? undefined : json['replacementLessonId'],
         'cancelReason': json['cancelReason'] == null ? undefined : json['cancelReason'],
+        'inPerson': json['inPerson'] == null ? undefined : json['inPerson'],
+        'inPersonOverride': json['inPersonOverride'] == null ? undefined : json['inPersonOverride'],
+        'hasLiveStream': json['hasLiveStream'] == null ? undefined : json['hasLiveStream'],
         'courseVersion': json['courseVersion'],
     };
 }
@@ -199,6 +220,9 @@ export function LessonMutationResponseToJSONTyped(value?: LessonMutationResponse
         'cancelledAt': value['cancelledAt'] === null ? null : ((value['cancelledAt'] as any)?.toISOString()),
         'replacementLessonId': value['replacementLessonId'],
         'cancelReason': value['cancelReason'],
+        'inPerson': value['inPerson'],
+        'inPersonOverride': value['inPersonOverride'],
+        'hasLiveStream': value['hasLiveStream'],
         'courseVersion': value['courseVersion'],
     };
 }

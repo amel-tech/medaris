@@ -14,6 +14,7 @@ import {
 import { CourseStatus } from "../course/domain/course-status.enum";
 import { EnrollmentStatus } from "../course/domain/enrollment-status.enum";
 import { LessonType } from "../course/domain/lesson-type.enum";
+import { hasLiveStreamSql, inPersonSql } from "../course/domain/session-access";
 import { DEFAULT_SESSION_MINUTES } from "../course/domain/session-view";
 import { DatabaseService } from "../database/database.service";
 import { enrolledCourseIds } from "../database/enrolled-courses";
@@ -39,6 +40,10 @@ export interface IScheduledSession {
   durationMinutes: number | null;
   cancelledAt: Date | null;
   meetingUrl: string | null;
+  /** Held in person: the session's own mark, else the course's (MDRS-283). */
+  inPerson: boolean;
+  /** A live stream link is set; never the link (MDRS-283). */
+  hasLiveStream: boolean;
 }
 
 @Injectable()
@@ -157,6 +162,13 @@ export class ScheduleRepository {
         durationMinutes: lessons.durationMinutes,
         cancelledAt: lessons.cancelledAt,
         meetingUrl: lessons.meetingUrl,
+        inPerson: inPersonSql({
+          lessonInPerson: lessons.inPersonOverride,
+          courseInPerson: courses.inPerson,
+        }),
+        hasLiveStream: hasLiveStreamSql({
+          liveStreamUrl: lessons.liveStreamUrl,
+        }),
       })
       .from(lessons)
       .innerJoin(courseWeeks, eq(courseWeeks.id, lessons.weekId))

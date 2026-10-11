@@ -71,6 +71,18 @@ export class SessionResponse extends SessionRefResponse {
       " The embeddable stream, sent only while the session is LIVE and only when one was set.",
   })
   liveStreamUrl?: string | null;
+  @ApiProperty({
+    description:
+      "Held in person (MDRS-283): the session's own mark, else the course's. Sent to everyone who may see the session; a label, not a way in.",
+  })
+  inPerson!: boolean;
+  @ApiPropertyOptional({
+    type: Boolean,
+    description:
+      CONTENT_FIELD +
+      " A live stream is set for the session (MDRS-283), whatever its status, so the page can say so before it starts; the link itself is `liveStreamUrl`, LIVE only.",
+  })
+  hasLiveStream?: boolean;
   @ApiPropertyOptional({
     type: SessionRecordingResponse,
     nullable: true,

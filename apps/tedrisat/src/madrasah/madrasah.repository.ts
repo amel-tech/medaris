@@ -1156,6 +1156,7 @@ export class MadrasahRepository {
         title: courses.title,
         category: courses.category,
         coverHue: courses.coverHue,
+        inPerson: courses.inPerson,
         koskId: courses.koskId,
         koskName: kosks.name,
       })

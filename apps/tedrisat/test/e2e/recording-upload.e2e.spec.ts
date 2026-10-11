@@ -26,6 +26,7 @@ import {
   lessons,
 } from "../../src/database/schema/course.schema";
 import { kosks } from "../../src/database/schema/kosk.schema";
+import { notifications } from "../../src/database/schema/notification.schema";
 import { ASSIGNED_ROLES } from "../../src/database/schema/role-assignment.schema";
 import { createTestApp } from "../helpers/test-app.helper";
 import {
@@ -147,7 +148,12 @@ describe("recording uploads to Bunny Stream (MDRS-116, e2e)", () => {
 
   beforeEach(async () => {
     bunny.reset();
-    await dbUtils.cleanTables(...COURSE_TREE_TABLES, "audit_log", "users");
+    await dbUtils.cleanTables(
+      ...COURSE_TREE_TABLES,
+      "notifications",
+      "audit_log",
+      "users"
+    );
     const [kosk] = await db()
       .insert(kosks)
       .values({ ownerId: MANAGER_ID, name: "Nûruosmaniye Köşkü" })
@@ -214,7 +220,12 @@ describe("recording uploads to Bunny Stream (MDRS-116, e2e)", () => {
   });
 
   afterAll(async () => {
-    await dbUtils.cleanTables(...COURSE_TREE_TABLES, "audit_log", "users");
+    await dbUtils.cleanTables(
+      ...COURSE_TREE_TABLES,
+      "notifications",
+      "audit_log",
+      "users"
+    );
     await bare.close();
     await app.close();
   });
@@ -403,6 +414,46 @@ describe("recording uploads to Bunny Stream (MDRS-116, e2e)", () => {
 
       const signed = await resign(MUDERRIS_ID, videoId).expect(409);
       expect(signed.body.code).toBe("RECORDING_UPLOAD_CLOSED");
+    });
+
+    // MDRS-283: "Kayıt eklendi" for an upload is the poll's READY, once.
+    it("tells the enrolled talebe once, when the poll marks the upload READY", async () => {
+      const news = () =>
+        db()
+          .select()
+          .from(notifications)
+          .where(eq(notifications.type, "RECORDING_ADDED"));
+      const { videoId } = (await start(MUDERRIS_ID).expect(201)).body;
+      expect(await news()).toEqual([]);
+      await poll();
+      expect(await news()).toEqual([]);
+
+      bunny.videos.set(videoId, { status: 4, length: 1_830 });
+      expect(await poll()).toMatchObject({ ready: 1 });
+      const told = await news();
+      expect(told).toHaveLength(1);
+      expect(told[0]).toMatchObject({
+        userId: TALEBE_ID,
+        targetType: "SESSION",
+        targetId: lessonId,
+        params: { courseId, courseTitle: "Emsile ve Bina" },
+      });
+
+      // Settled: a later poll does not read it again, so nobody is told twice.
+      await poll();
+      expect(await news()).toHaveLength(1);
+    });
+
+    it("tells nobody of an upload that failed", async () => {
+      const { videoId } = (await start(MUDERRIS_ID).expect(201)).body;
+      bunny.videos.set(videoId, { status: 5, length: 0 });
+      expect(await poll()).toMatchObject({ failed: 1 });
+      expect(
+        await db()
+          .select()
+          .from(notifications)
+          .where(eq(notifications.type, "RECORDING_ADDED"))
+      ).toEqual([]);
     });
 
     it("fails an upload that never completed within its lifetime, and a new upload replaces it", async () => {

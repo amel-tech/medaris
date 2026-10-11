@@ -286,7 +286,7 @@ const kosk: KoskDashboardResponse = {
     pendingApplications: 5,
   },
   sessionCounts: { upcoming: 4, past: 13, cancelled: 1 },
-  missingLinkCount: 1,
+  withoutAccessCount: 1,
   contentLocked: false,
   tab: "UPCOMING",
   sessions: [
@@ -298,6 +298,8 @@ const kosk: KoskDashboardResponse = {
       weekNumber: 5,
       scheduledAt: new Date("2026-10-03T18:00:00Z"),
       durationMinutes: 60,
+      inPerson: false,
+      withoutAccess: true,
       isMakeup: false,
       studentCount: 28,
       cancelled: false,
@@ -312,6 +314,8 @@ const kosk: KoskDashboardResponse = {
       scheduledAt: new Date("2026-10-04T18:00:00Z"),
       durationMinutes: 60,
       meetingUrl: "https://zoom.us/j/1",
+      inPerson: false,
+      withoutAccess: false,
       isMakeup: false,
       studentCount: 35,
       cancelled: false,
@@ -326,19 +330,23 @@ const kosk: KoskDashboardResponse = {
       weekNumber: 5,
       scheduledAt: new Date("2026-10-07T18:00:00Z"),
       meetingUrl: "https://meet.google.com/abc",
+      inPerson: false,
+      withoutAccess: false,
       isMakeup: true,
       studentCount: 28,
       cancelled: false,
       muderris: [],
     },
   ],
-  firstMissingLink: {
+  firstWithoutAccess: {
     id: "s1",
     courseId: "c1",
     courseTitle: "Emsile ve Bina",
     courseCoverHue: 220,
     weekNumber: 5,
     scheduledAt: new Date("2026-10-03T18:00:00Z"),
+    inPerson: false,
+    withoutAccess: true,
     isMakeup: false,
     studentCount: 28,
     cancelled: false,
@@ -449,7 +457,7 @@ describe("a köşk nazımı's home page (nizam 02)", () => {
   it("leaves out the alert when no link is missing, and names the open course button", () => {
     const fine = render(
       <KoskHome
-        data={{ ...kosk, missingLinkCount: 0, firstMissingLink: undefined }}
+        data={{ ...kosk, withoutAccessCount: 0, firstWithoutAccess: undefined }}
         nowIso={NOW}
       />
     );
@@ -476,8 +484,8 @@ describe("a köşk nazımı's home page (nizam 02)", () => {
       <KoskHome
         data={{
           ...kosk,
-          missingLinkCount: 0,
-          firstMissingLink: undefined,
+          withoutAccessCount: 0,
+          firstWithoutAccess: undefined,
           counts: { ...kosk.counts, upcomingSessions: 0 },
           sessions: [],
           latestApplications: [],

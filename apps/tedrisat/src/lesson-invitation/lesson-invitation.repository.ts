@@ -1,7 +1,13 @@
 import { Injectable } from "@nestjs/common";
 import { and, eq, sql } from "drizzle-orm";
+import type { CalendarAttendance } from "../course/calendar/lesson-calendar";
 import { CourseStatus } from "../course/domain/course-status.enum";
 import { EnrollmentStatus } from "../course/domain/enrollment-status.enum";
+import {
+  hasLiveStreamSql,
+  hasMeetingLinkSql,
+  inPersonSql,
+} from "../course/domain/session-access";
 import { DatabaseService } from "../database/database.service";
 import { isPassiveScope } from "../database/role-assignments";
 import { lessonInvitations } from "../database/schema/lesson-invitation.schema";
@@ -27,6 +33,12 @@ export interface IInvitationDue {
   lastSequence: number | null;
   /** The last message sent was a CANCEL (or none was). */
   lastCancelled: boolean;
+  /**
+   * How the session is attended, for the mail's line and the event's
+   * description (MDRS-283): booleans read in the query, never a link. All
+   * false when the session no longer exists (a CANCEL for a deleted one).
+   */
+  attendance: CalendarAttendance;
 }
 
 /** What the last message for a pair said, to put back when a send fails. */
@@ -45,6 +57,9 @@ type Row = {
   duration_minutes: number | null;
   last_sequence: number | null;
   last_cancelled: boolean | null;
+  in_person: boolean | null;
+  has_meeting_link: boolean | null;
+  has_live_stream: boolean | null;
 };
 
 const toDue = (r: Row): IInvitationDue => ({
@@ -61,7 +76,23 @@ const toDue = (r: Row): IInvitationDue => ({
   durationMinutes: r.duration_minutes,
   lastSequence: r.last_sequence,
   lastCancelled: r.last_cancelled ?? true,
+  attendance: {
+    inPerson: r.in_person ?? false,
+    hasMeetingLink: r.has_meeting_link ?? false,
+    hasLiveStream: r.has_live_stream ?? false,
+  },
 });
+
+/**
+ * How the session `l` of course `c` is attended (MDRS-283), as the columns
+ * `toDue` reads. Over outer joins, a session that is gone reads as null.
+ */
+const ATTENDANCE = sql`${inPersonSql({
+  lessonInPerson: sql`l.in_person`,
+  courseInPerson: sql`c.in_person`,
+})} as in_person,
+             ${hasMeetingLinkSql({ meetingUrl: sql`l.meeting_url` })} as has_meeting_link,
+             ${hasLiveStreamSql({ liveStreamUrl: sql`l.live_stream_url` })} as has_live_stream`;
 
 /**
  * Whether the session `l` of course `c` (week `w`, köşk `k`) is one a seat
@@ -131,7 +162,8 @@ export class LessonInvitationRepository {
              c.id as course_id, c.title as course_title, l.title as lesson_title,
              l.scheduled_at as starts_at, l.duration_minutes,
              inv.sequence as last_sequence,
-             (inv.lesson_id is null or inv.cancelled_at is not null) as last_cancelled
+             (inv.lesson_id is null or inv.cancelled_at is not null) as last_cancelled,
+             ${ATTENDANCE}
         from lessons l
         join course_weeks w on w.id = l.week_id
         join courses c on c.id = w.course_id
@@ -169,7 +201,8 @@ export class LessonInvitationRepository {
              coalesce(u.time_zone, c.time_zone, ${FALLBACK_TIME_ZONE}) as time_zone,
              inv.course_id, inv.course_title, inv.lesson_title,
              inv.starts_at, inv.duration_minutes,
-             inv.sequence as last_sequence, false as last_cancelled
+             inv.sequence as last_sequence, false as last_cancelled,
+             ${ATTENDANCE}
         from lesson_invitations inv
         join users u on u.id = inv.user_id
         left join lessons l on l.id = inv.lesson_id

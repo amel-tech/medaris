@@ -98,6 +98,10 @@ export class CalendarFeedService {
           scheduledAt: s.scheduledAt,
           durationMinutes: s.durationMinutes,
         },
+        // The feed holds the courses its owner is enrolled in, teaches or
+        // manages: readers of their content, who are told how each session
+        // is attended (MDRS-283).
+        attendance: s.attendance,
         sessionPageUrl: sessionPageUrl(webUrl, s.courseId, s.lessonId),
         locale,
         now,
