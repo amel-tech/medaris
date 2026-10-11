@@ -115,13 +115,20 @@ export class UpdateRecordingDto {
  * `PUT /lessons/:id/recording-availability` (MDRS-288): the session's release
  * time, with or before a recording. The key is required: a missing key is a
  * 400, `null` opens the recording as soon as it is READY.
+ *
+ * The validators below are what require it. The OpenAPI document marks it
+ * optional on purpose: for a required nullable date, openapi-generator's
+ * typescript-fetch serialiser calls `toISOString()` on `null` and throws, so
+ * nazar could never send "Hazır olunca hemen". An optional one gets the null
+ * check, as on the Create and Update DTOs above.
  */
 export class SetRecordingAvailabilityDto {
   @ApiProperty({
     type: Date,
     nullable: true,
+    required: false,
     example: "2026-10-14T17:00:00.000Z",
-    description: AVAILABLE_AT,
+    description: `${AVAILABLE_AT} The key must be sent: a body without it is 400.`,
   })
   @ValidateIf((_: unknown, value: unknown) => value !== null)
   @Type(() => Date)

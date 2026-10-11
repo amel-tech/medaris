@@ -17603,12 +17603,9 @@
             "type": "string",
             "nullable": true,
             "example": "2026-10-14T17:00:00.000Z",
-            "description": "When the session's talebe may watch its recording (MDRS-288), an ISO 8601 instant with its offset; the page enters it in the course's time zone. Kept on the session, so it outlives a recording that is replaced. `null` opens the recording as soon as it is READY. Before it, every read gives a talebe or a visitor the recording with this `availableAt` and a null `url`, and signs no Bunny link; the course team (`recording.manage`) plays it as before. \"Kayıt eklendi\" goes to the talebe at that moment, once: a time moved before it fires moves it, a time moved after it changes nothing."
+            "description": "When the session's talebe may watch its recording (MDRS-288), an ISO 8601 instant with its offset; the page enters it in the course's time zone. Kept on the session, so it outlives a recording that is replaced. `null` opens the recording as soon as it is READY. Before it, every read gives a talebe or a visitor the recording with this `availableAt` and a null `url`, and signs no Bunny link; the course team (`recording.manage`) plays it as before. \"Kayıt eklendi\" goes to the talebe at that moment, once: a time moved before it fires moves it, a time moved after it changes nothing. The key must be sent: a body without it is 400."
           }
-        },
-        "required": [
-          "availableAt"
-        ]
+        }
       },
       "RecordingAvailabilityResponse": {
         "type": "object",

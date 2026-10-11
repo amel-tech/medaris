@@ -1,4 +1,7 @@
-import { ResponseError } from "@medaris/services/tedrisat";
+import {
+  ResponseError,
+  SetRecordingAvailabilityDtoToJSON,
+} from "@medaris/services/tedrisat";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
@@ -730,6 +733,29 @@ describe("when talebe may watch a session's recording (MDRS-288)", () => {
     });
     expect(api.lessons.setLessonRecordingAvailability).toHaveBeenLastCalledWith(
       { id: "l-1", setRecordingAvailabilityDto: { availableAt: null } }
+    );
+  });
+
+  it('puts "Hazır olunca hemen" on the wire as null, through the generated serializer the client sends with', async () => {
+    // The API client is a stub above; the serializer is the real one. For a
+    // required nullable date it called toISOString() on null and threw, so
+    // the release dialog and the upload could never clear a time.
+    const { setRecordingAvailability } = await recordings();
+    api.lessons.setLessonRecordingAvailability.mockResolvedValue({
+      lessonId: "l-1",
+      recordingAvailableAt: null,
+    });
+    await setRecordingAvailability("l-1", null);
+    await setRecordingAvailability("l-1", AHEAD);
+    const [[cleared], [timed]] = api.lessons.setLessonRecordingAvailability.mock
+      .calls as [{ setRecordingAvailabilityDto: unknown }][];
+    const wire = (dto: unknown) =>
+      JSON.stringify(SetRecordingAvailabilityDtoToJSON(dto as never));
+    expect(wire(cleared.setRecordingAvailabilityDto)).toBe(
+      '{"availableAt":null}'
+    );
+    expect(wire(timed.setRecordingAvailabilityDto)).toBe(
+      `{"availableAt":"${AHEAD}"}`
     );
   });
 
