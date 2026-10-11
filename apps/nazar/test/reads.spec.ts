@@ -15,16 +15,24 @@ const api = {
   courses: { getCourseBadgeCounts: vi.fn() },
 };
 let clientFails = false;
+/** `tedrisatApi` with no token: the session is over and it sends the caller to sign-in. */
+let sessionOver = false;
 
 vi.mock("next/navigation", () => ({
   redirect: (to: string) => {
     throw new Error(`${REDIRECT}:${to}`);
   },
+  unstable_rethrow: (error: unknown) => {
+    if (error instanceof Error && error.message.startsWith(REDIRECT)) {
+      throw error;
+    }
+  },
 }));
 vi.mock("~/lib/auth_options", () => ({ auth: async () => session }));
 vi.mock("~/lib/tedrisat-api", () => ({
   tedrisatApi: async () => {
-    if (clientFails) throw new Error("no token");
+    if (sessionOver) throw new Error(`${REDIRECT}:/auth/signin`);
+    if (clientFails) throw new Error("the client could not be made");
     return api;
   },
 }));
@@ -38,6 +46,7 @@ beforeEach(() => {
     user: { name: "Mehmet Emin Işıkoğlu", email: "mehmet@example.com" },
   };
   clientFails = false;
+  sessionOver = false;
   for (const group of Object.values(api)) {
     for (const fn of Object.values(group)) fn.mockReset();
   }
@@ -101,6 +110,14 @@ describe("getPortal", () => {
   it("sends a request with no session to the sign-in page", async () => {
     session = null;
     await expect(portal()).rejects.toThrow(`${REDIRECT}:/auth/signin`);
+  });
+
+  it("sends a session that is over for the server to sign-in too, never to the retry state", async () => {
+    // auth() still reads the cookie as signed in; the token is gone.
+    sessionOver = true;
+    await expect(portal()).rejects.toThrow(`${REDIRECT}:/auth/signin`);
+    expect(api.me.getMyAssignments).not.toHaveBeenCalled();
+    expect(errors).not.toHaveBeenCalled();
   });
 });
 
@@ -193,5 +210,10 @@ describe("getMenuCounts", () => {
     clientFails = true;
     expect(await counts("medrese")).toEqual({});
     expect(await counts("ders")).toEqual({});
+  });
+
+  it("passes the way to sign-in on when the session is over", async () => {
+    sessionOver = true;
+    await expect(counts("medrese")).rejects.toThrow(`${REDIRECT}:/auth/signin`);
   });
 });

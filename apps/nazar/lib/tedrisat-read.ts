@@ -1,5 +1,5 @@
 import { ResponseError } from "@medaris/services/tedrisat";
-import { notFound } from "next/navigation";
+import { notFound, unstable_rethrow } from "next/navigation";
 import { tedrisatApi } from "~/lib/tedrisat-api";
 
 /**
@@ -22,6 +22,8 @@ export async function readOnce<T>(
   try {
     return { status: "ok", data: await call(await tedrisatApi()) };
   } catch (error) {
+    // `tedrisatApi`'s way to sign-in when the session is over.
+    unstable_rethrow(error);
     if (error instanceof ResponseError) {
       if (error.response.status === 403) return { status: "forbidden" };
       if (error.response.status === 404) notFound();

@@ -37,6 +37,8 @@ vi.mock("next/navigation", () => ({
   notFound: () => {
     throw new Error("NEXT_NOT_FOUND");
   },
+  // `readOnce` passes a redirect on; the reads here throw none.
+  unstable_rethrow: () => {},
 }));
 vi.mock("~/lib/auth_options", () => ({ getAccessToken: async () => token }));
 vi.mock("~/lib/tedrisat-api", () => ({ tedrisatApi: async () => api }));
