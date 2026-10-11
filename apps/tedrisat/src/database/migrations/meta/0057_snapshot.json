@@ -1,6 +1,6 @@
 {
-  "id": "86ca32ac-67d7-4d69-81cd-490b23286219",
-  "prevId": "6b8a82c9-293c-4007-941e-2cd6be2bf6b8",
+  "id": "bc7da698-41e3-463d-ae64-e2418c29f120",
+  "prevId": "be26a3dd-07e9-4554-8b4c-c14f7f76b382",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -1312,6 +1312,87 @@
           "value": "case when \"lesson_recordings\".\"provider\"::text = 'BUNNY' then \"lesson_recordings\".\"bunny_video_id\" is not null and \"lesson_recordings\".\"upload_expires_at\" is not null and \"lesson_recordings\".\"url\" is null else \"lesson_recordings\".\"bunny_video_id\" is null and \"lesson_recordings\".\"upload_expires_at\" is null and (\"lesson_recordings\".\"url\" is not null or \"lesson_recordings\".\"status\"::text = 'PROCESSING') end"
         }
       },
+      "isRLSEnabled": false
+    },
+    "public.lesson_resources": {
+      "name": "lesson_resources",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "lesson_id": {
+          "name": "lesson_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "meta": {
+          "name": "meta",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "url": {
+          "name": "url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "order_index": {
+          "name": "order_index",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        }
+      },
+      "indexes": {
+        "lesson_resources_lesson_id_idx": {
+          "name": "lesson_resources_lesson_id_idx",
+          "columns": [
+            {
+              "expression": "lesson_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "lesson_resources_lesson_id_lessons_id_fk": {
+          "name": "lesson_resources_lesson_id_lessons_id_fk",
+          "tableFrom": "lesson_resources",
+          "tableTo": "lessons",
+          "columnsFrom": [
+            "lesson_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
       "isRLSEnabled": false
     },
     "public.lessons": {
