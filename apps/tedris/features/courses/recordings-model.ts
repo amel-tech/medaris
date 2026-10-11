@@ -225,3 +225,22 @@ export const liveChatUrlOf = (
   if (dark) chat.searchParams.set("dark_theme", "1");
   return chat.toString();
 };
+
+/**
+ * The same chat as YouTube's own page, to open in a tab of its own. There the
+ * viewer's YouTube sign-in is first-party, so they can write where the browser
+ * keeps YouTube's cookies out of a frame on another site (Firefox's Total
+ * Cookie Protection, Safari, a private window) and the framed chat asks them
+ * to sign in although they are.
+ */
+export const liveChatPopoutUrlOf = (
+  url: string | null | undefined
+): string | null => {
+  const parsed = url ? parse(url) : null;
+  const id = parsed ? youtubeIdOf(parsed) : null;
+  if (!id) return null;
+  const chat = new URL("https://www.youtube.com/live_chat");
+  chat.searchParams.set("is_popout", "1");
+  chat.searchParams.set("v", id);
+  return chat.toString();
+};
