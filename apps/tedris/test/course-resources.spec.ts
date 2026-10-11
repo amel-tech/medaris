@@ -83,3 +83,68 @@ describe("CourseResources", () => {
     expect(draw(undefined)).toBe("");
   });
 });
+
+// MDRS-286: a link on Google Drive reads as such, with the platform chip's
+// look for a provider (its name alone, no dot), under the row's name.
+describe("CourseResources, the provider of a link", () => {
+  const DRIVE_CHIP =
+    '<span class="mds-platform-chip mds-platform-chip--google-drive self-start mbs-1">Google Drive</span>';
+
+  it("labels a Google Drive link, and only that row", () => {
+    const html = draw([
+      row({
+        id: "r1",
+        name: "Bina şerhi",
+        url: "https://drive.google.com/file/d/1a2b3c/view",
+      }),
+      row({ id: "r2", name: "Emsile", url: "https://files.medaris.org/e.pdf" }),
+    ]);
+    expect(html.split(DRIVE_CHIP)).toHaveLength(2);
+    expect(html.indexOf(DRIVE_CHIP)).toBeGreaterThan(
+      html.indexOf(">Bina şerhi<")
+    );
+    expect(html.indexOf(DRIVE_CHIP)).toBeLessThan(html.indexOf(">Emsile<"));
+    expect(html).not.toContain("mds-platform-chip__dot");
+  });
+
+  it("labels nothing it does not link: no address, or one that is not http(s)", () => {
+    const html = draw(
+      [
+        row({ url: undefined }),
+        row({
+          id: "r2",
+          name: "Zararlı",
+          url: "javascript://drive.google.com/%0aalert(1)",
+        }),
+      ],
+      true
+    );
+    expect(html).not.toContain("mds-platform-chip");
+    expect(html).not.toContain("Google Drive");
+  });
+
+  it("takes a celse's row, which has no type and may send a null line", () => {
+    const html = renderToStaticMarkup(
+      createElement(CourseResources, {
+        resources: [
+          {
+            id: "lr1",
+            name: "Celse notu",
+            meta: null,
+            url: "https://docs.google.com/document/d/1a2b3c/edit",
+          },
+        ],
+        labels: { ...labels, title: "Bu celsenin kaynakları" },
+        testId: "session-resources",
+      })
+    );
+    expect(html).toContain('data-testid="session-resources"');
+    expect(html).toContain(">Bu celsenin kaynakları<");
+    expect(html).toContain(DRIVE_CHIP);
+    expect(html).not.toContain('class="mds-caption"');
+  });
+
+  it("keeps the course's own test id by default", () => {
+    expect(draw([row()])).toContain('data-testid="course-resources"');
+  });
+});

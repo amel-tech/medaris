@@ -520,6 +520,7 @@
     "agendaTitle": "Session flow",
     "agendaZone": "Times are in {zone} time.",
     "kaynak": "Source",
+    "lessonResourcesTitle": "This session's resources",
     "resourcesTitle": "Course resources",
     "resourcesLocked": "Talebe enrolled in the course open the links.",
     "neighbours": "Previous and next session",
