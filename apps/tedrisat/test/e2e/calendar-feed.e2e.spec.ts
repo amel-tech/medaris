@@ -217,9 +217,10 @@ describe("calendar feed (e2e)", () => {
       sessions: [
         { title: "Bağlantılı", at: inDays(7) },
         { title: "Yayında", at: inDays(8) },
+        { title: "Yalnız yüz yüze", at: inDays(9) },
       ],
     });
-    const [linked, streamed] = detail.weeks[0].lessons;
+    const [linked, streamed, inPersonOnly] = detail.weeks[0].lessons;
     await request(app.getHttpServer())
       .patch(`/courses/${detail.id}`)
       .send({ inPerson: true })
@@ -233,15 +234,24 @@ describe("calendar feed (e2e)", () => {
         liveStreamUrl: "https://www.youtube.com/live/dQw4w9WgXcQ",
       })
       .where(eq(lessons.id, streamed.id));
+    await db
+      .update(lessons)
+      .set({ meetingUrl: null })
+      .where(eq(lessons.id, inPersonOnly.id));
     await request(otherApp.getHttpServer())
       .post(`/courses/${detail.id}/enroll`)
       .expect(201);
 
     const ics = (await fetchFeed((await issueFeed(otherApp)).url).expect(200))
       .body as string;
+    // In person with a meeting link (hybrid): both, so a talebe joining
+    // from afar learns where the link is.
     expect(prop(eventFor(ics, linked.id) as string[], "DESCRIPTION")).toMatch(
-      /^Bu celse yüz yüze yapılır\. Celse sayfası:/
+      /^Bu celse yüz yüze yapılır\\; toplantı bağlantısı celse sayfasındadır:/
     );
+    expect(
+      prop(eventFor(ics, inPersonOnly.id) as string[], "DESCRIPTION")
+    ).toMatch(/^Bu celse yüz yüze yapılır\. Celse sayfası:/);
     expect(prop(eventFor(ics, streamed.id) as string[], "DESCRIPTION")).toMatch(
       /^Bu celse canlı yayınlanır\\; yayın celse sayfasındadır:/
     );

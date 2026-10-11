@@ -38,18 +38,26 @@ export type CalendarAttendanceKind =
   | "MEETING"
   | "STREAM"
   | "IN_PERSON"
+  | "IN_PERSON_MEETING"
   | "IN_PERSON_STREAM";
 
 /**
  * The kind of line a session gets. The meeting link is named only where the
- * session can have one: not for a session held in person, nor for one that
- * is only streamed. A session with nothing yet is one that still needs its
- * link, and gets the meeting link's line, as every session did before.
+ * session can have one: not for a session held in person without one, nor
+ * for one that is only streamed. A session held in person that also has a
+ * meeting link (hybrid) names both, so a talebe joining from afar learns
+ * where the link is; as with a meeting link and a stream, the link is the way
+ * in and the stream is not named beside it. A session with nothing yet is
+ * one that still needs its link, and gets the meeting link's line, as every
+ * session did before.
  */
 export const calendarAttendanceKind = (
   a: CalendarAttendance
 ): CalendarAttendanceKind => {
-  if (a.inPerson) return a.hasLiveStream ? "IN_PERSON_STREAM" : "IN_PERSON";
+  if (a.inPerson) {
+    if (a.hasMeetingLink) return "IN_PERSON_MEETING";
+    return a.hasLiveStream ? "IN_PERSON_STREAM" : "IN_PERSON";
+  }
   if (a.hasLiveStream && !a.hasMeetingLink) return "STREAM";
   return "MEETING";
 };
@@ -77,6 +85,11 @@ const ATTENDANCE_LINE: Record<
     tr: "Bu celse yüz yüze yapılır. Celse sayfası:",
     en: "This session is held in person. Session page:",
     ar: "تُعقد هذه الحلقة حضوريًّا. صفحة الحلقة:",
+  },
+  IN_PERSON_MEETING: {
+    tr: "Bu celse yüz yüze yapılır; toplantı bağlantısı celse sayfasındadır:",
+    en: "This session is held in person; the meeting link is on the session page:",
+    ar: "تُعقد هذه الحلقة حضوريًّا؛ رابط الاجتماع موجود في صفحة الحلقة:",
   },
   IN_PERSON_STREAM: {
     tr: "Bu celse yüz yüze yapılır ve canlı yayınlanır; yayın celse sayfasındadır:",

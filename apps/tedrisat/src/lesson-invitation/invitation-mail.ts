@@ -14,7 +14,7 @@ import {
  * Like the event, the mail names the session, its time and its page — never
  * the meeting link, which stays behind enrollment on that page. The line
  * under the page says how the session is attended (MDRS-283): a meeting link
- * on the page, a stream, or in person.
+ * on the page, a stream, in person, or in person with a meeting link.
  *
  * Pure: the caller passes the times and the URLs.
  */
@@ -76,6 +76,8 @@ const WORDS: Record<CalendarLocale, Words> = {
         "Bu celse canlı yayınlanır. Yayın celse sayfasında, derse kayıtlıyken giriş yaptığında açılır.",
       IN_PERSON:
         "Bu celse yüz yüze yapılır. Kaydı eklenirse celse sayfasında yayımlanır.",
+      IN_PERSON_MEETING:
+        "Bu celse yüz yüze yapılır. Toplantı bağlantısı yalnızca celse sayfasında, derse kayıtlıyken giriş yaptığında görünür.",
       IN_PERSON_STREAM:
         "Bu celse yüz yüze yapılır ve canlı yayınlanır. Yayın celse sayfasında, derse kayıtlıyken giriş yaptığında açılır.",
     },
@@ -103,6 +105,8 @@ const WORDS: Record<CalendarLocale, Words> = {
         "This session is streamed live. The stream opens on the session page, while you are signed in and enrolled in the course.",
       IN_PERSON:
         "This session is held in person. If a recording is added, it is published on the session page.",
+      IN_PERSON_MEETING:
+        "This session is held in person. The meeting link is shown only on the session page, while you are signed in and enrolled in the course.",
       IN_PERSON_STREAM:
         "This session is held in person and streamed live. The stream opens on the session page, while you are signed in and enrolled in the course.",
     },
@@ -129,6 +133,8 @@ const WORDS: Record<CalendarLocale, Words> = {
       STREAM:
         "تُبثّ هذه الحلقة بثًّا مباشرًا. يُفتح البثّ في صفحة الحلقة، عند تسجيل دخولك وأنت مسجَّل في الدرس.",
       IN_PERSON: "تُعقد هذه الحلقة حضوريًّا. إن أُضيف تسجيلها نُشر في صفحة الحلقة.",
+      IN_PERSON_MEETING:
+        "تُعقد هذه الحلقة حضوريًّا. يظهر رابط الاجتماع في صفحة الحلقة فقط، عند تسجيل دخولك وأنت مسجَّل في الدرس.",
       IN_PERSON_STREAM:
         "تُعقد هذه الحلقة حضوريًّا وتُبثّ بثًّا مباشرًا. يُفتح البثّ في صفحة الحلقة، عند تسجيل دخولك وأنت مسجَّل في الدرس.",
     },

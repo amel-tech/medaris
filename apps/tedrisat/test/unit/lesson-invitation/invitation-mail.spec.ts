@@ -120,6 +120,15 @@ describe("lesson invitation e-mail (MDRS-121)", () => {
       },
     ],
     [
+      "the in-person mark and a meeting link",
+      { inPerson: true, hasMeetingLink: true },
+      {
+        tr: "Bu celse yüz yüze yapılır. Toplantı bağlantısı yalnızca celse sayfasında",
+        en: "This session is held in person. The meeting link is shown only on the session page",
+        ar: "تُعقد هذه الحلقة حضوريًّا. يظهر رابط الاجتماع في صفحة الحلقة",
+      },
+    ],
+    [
       "the in-person mark and a stream",
       { inPerson: true, hasLiveStream: true },
       {

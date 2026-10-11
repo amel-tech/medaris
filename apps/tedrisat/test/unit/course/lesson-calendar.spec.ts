@@ -180,9 +180,16 @@ describe("lesson calendar description by attendance (MDRS-283)", () => {
     expect(calendarAttendanceKind(attended({ inPerson: true }))).toBe(
       "IN_PERSON"
     );
+    // Hybrid: held in person, with a meeting link for whoever joins from afar.
     expect(
       calendarAttendanceKind(attended({ inPerson: true, hasMeetingLink: true }))
-    ).toBe("IN_PERSON");
+    ).toBe("IN_PERSON_MEETING");
+    // ... and with a stream too: the link is the way in, as without the mark.
+    expect(
+      calendarAttendanceKind(
+        attended({ inPerson: true, hasMeetingLink: true, hasLiveStream: true })
+      )
+    ).toBe("IN_PERSON_MEETING");
     expect(
       calendarAttendanceKind(attended({ inPerson: true, hasLiveStream: true }))
     ).toBe("IN_PERSON_STREAM");
@@ -212,6 +219,18 @@ describe("lesson calendar description by attendance (MDRS-283)", () => {
     expect(ar).not.toContain("رابط الاجتماع");
   });
 
+  it("says a hybrid session is held in person and its meeting link is on the page", () => {
+    expect(description({ inPerson: true, hasMeetingLink: true })).toBe(
+      `Bu celse yüz yüze yapılır\\; toplantı bağlantısı celse sayfasındadır:\\n${PAGE}`
+    );
+    expect(description({ inPerson: true, hasMeetingLink: true }, "en")).toBe(
+      `This session is held in person\\; the meeting link is on the session page:\\n${PAGE}`
+    );
+    const ar = description({ inPerson: true, hasMeetingLink: true }, "ar");
+    expect(ar).toContain("حضوريًّا");
+    expect(ar).toContain("رابط الاجتماع");
+  });
+
   it("says an in-person session with a stream is both", () => {
     expect(description({ inPerson: true, hasLiveStream: true })).toBe(
       `Bu celse yüz yüze yapılır ve canlı yayınlanır\\; yayın celse sayfasındadır:\\n${PAGE}`
@@ -230,6 +249,7 @@ describe("lesson calendar description by attendance (MDRS-283)", () => {
       { hasMeetingLink: true },
       { hasLiveStream: true },
       { inPerson: true },
+      { inPerson: true, hasMeetingLink: true },
       { inPerson: true, hasLiveStream: true },
     ]) {
       expect(description(a)).not.toContain("oturum");
