@@ -12,6 +12,7 @@ import { getViewer } from "~/features/account/reads";
 import { PageProblem } from "~/features/shell/components/page-problem";
 import { getMessages } from "~/lib/i18n/messages";
 import { readOnce } from "~/lib/tedrisat-read";
+import { streamsOf } from "../../sessions/sessions";
 import { recordingWeeks } from "../recordings";
 import { RecordingsTable } from "./recordings-table";
 
@@ -28,6 +29,12 @@ import { RecordingsTable } from "./recordings-table";
  * reads the course's content: every recording is listed, whatever its
  * visibility, and a PROCESSING one has no link yet. The API still decides
  * every write, and its refusal is worded from the code.
+ *
+ * "Yayını kayıt olarak ekle" (MDRS-283) adds a session's live stream as its
+ * recording through the same route as a pasted link, so it is
+ * `recording.manage`; the stream links are read only for a caller who also
+ * holds `session.live_link` (the only one they are sent to). Without it, or
+ * when that read fails, the button is left out and the rest stays.
  */
 export async function RecordingsPage({ courseId }: { courseId: string }) {
   const [t, locale, me, course, permissions, recordings] = await Promise.all([
@@ -49,6 +56,15 @@ export async function RecordingsPage({ courseId }: { courseId: string }) {
     manage: held !== null && holds(held, CODES.recordingManage),
     upload: held !== null && holds(held, CODES.recordingUpload),
   };
+  const streams =
+    gate === "ok" &&
+    can.manage &&
+    held !== null &&
+    holds(held, CODES.sessionLiveLink)
+      ? await readOnce("the course's live stream links", (api) =>
+          api.lessons.listCourseLiveStreams({ id: courseId })
+        )
+      : null;
   const problem =
     gate !== "ok"
       ? gate
@@ -81,7 +97,11 @@ export async function RecordingsPage({ courseId }: { courseId: string }) {
         />
       ) : (
         <RecordingsTable
-          blocks={recordingWeeks(course.data, recordings.data)}
+          blocks={recordingWeeks(
+            course.data,
+            recordings.data,
+            streams?.status === "ok" ? streamsOf(streams.data) : {}
+          )}
           closed={course.data.isClosed}
           can={can}
           locale={locale}

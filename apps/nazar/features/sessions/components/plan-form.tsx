@@ -51,16 +51,21 @@ const PREVIEW_DELAY_MS = 250;
  * that saves it), so it shows the week each session lands in and nothing is
  * written until "N celse oluştur". Every session has a link of its own, so the
  * links stay empty or go to the first session only. The times are typed on the
- * viewer's clock unless another zone is chosen.
+ * viewer's clock unless another zone is chosen. The sessions carry no
+ * in-person mark of their own: they follow the course's, and the form says so
+ * when the course is held in person (MDRS-283).
  */
 export function PlanForm({
   courseId,
   courseTitle,
+  courseInPerson,
   locale,
   timeZone,
 }: {
   courseId: string;
   courseTitle: string;
+  /** "Celseler yüz yüze yapılır" of the course */
+  courseInPerson: boolean;
   locale: string;
   timeZone: string;
 }) {
@@ -407,6 +412,11 @@ export function PlanForm({
             ) : null}
             <Alert tone="info">
               <p>{t("SessionPlan.linksNote")}</p>
+              {courseInPerson ? (
+                <p data-testid="plan-in-person">
+                  {t("SessionPlan.inPersonNote")}
+                </p>
+              ) : null}
             </Alert>
           </section>
 

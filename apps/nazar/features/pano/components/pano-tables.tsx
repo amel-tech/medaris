@@ -4,13 +4,12 @@ import { AlertDialog } from "@medaris/ui/mds/alert-dialog";
 import { Badge } from "@medaris/ui/mds/badge";
 import { Button } from "@medaris/ui/mds/button";
 import { CoverPattern } from "@medaris/ui/mds/cover-pattern";
-import { Icon } from "@medaris/ui/mds/icon";
-import { PlatformChip } from "@medaris/ui/mds/platform-chip";
 import { Table, type TableColumn } from "@medaris/ui/mds/table";
 import { useToaster } from "@medaris/ui/mds/toast";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
+import { AttendanceCell } from "~/features/sessions/components/attendance-cell";
 import type { Messages } from "~/lib/i18n/messages";
 import { approveApplication, rejectApplication } from "../actions";
 import {
@@ -23,8 +22,9 @@ import {
 
 /**
  * "Yaklaşan celseler" (nazir 01): the sessions of the next seven days, the
- * soonest first. A celse with no link yet says so; the platform is read from
- * the link's host. "Düzenle" opens the course's celseler where the caller holds
+ * soonest first. "Katılım" says how each is attended, as on Celseler: the
+ * platform read from the link's host, the stream, the in-person mark, or
+ * "Eksik" for a celse with none of them (MDRS-283). "Düzenle" opens the course's celseler where the caller holds
  * a scope in the course, and is left out where they do not.
  */
 export function SessionsTable({ rows }: { rows: SessionRow[] }) {
@@ -59,21 +59,10 @@ export function SessionsTable({ rows }: { rows: SessionRow[] }) {
       ),
     },
     {
-      key: "platform",
-      header: t("Pano.sessions.columns.platform"),
+      key: "attendance",
+      header: t("Pano.sessions.columns.attendance"),
       width: "20%",
-      render: (row) =>
-        row.platform ? (
-          <PlatformChip
-            platform={row.platform.id}
-            host={row.platform.host}
-            unknownLabel={t("Pano.sessions.unknownPlatform")}
-          />
-        ) : (
-          <Badge variant="warning" icon={<Icon name="warning" size="sm" />}>
-            {t("Pano.sessions.noLink")}
-          </Badge>
-        ),
+      render: (row) => <AttendanceCell view={row.attendance} />,
     },
     {
       key: "status",

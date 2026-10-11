@@ -23,7 +23,7 @@ const sections = (kind: "medrese" | "ders") =>
         counts: {
           unread: 3,
           coursesWithApplications: 2,
-          missingLinks: 1,
+          withoutAccess: 1,
           applications: 2,
         },
       }

@@ -33,6 +33,7 @@ const course = (over: Record<string, unknown> = {}) =>
     status: "PUBLISHED",
     isClosed: false,
     requiresApproval: true,
+    inPerson: false,
     timeZone: "Europe/Istanbul",
     version: 7,
     weeks: [
@@ -52,6 +53,7 @@ const course = (over: Record<string, unknown> = {}) =>
 const OPEN: CourseSettingsControls = {
   closed: "open",
   approval: "open",
+  inPerson: true,
   zone: true,
   sample: true,
   publish: true,
@@ -184,6 +186,45 @@ describe("Kaydet and Vazgeç", () => {
     expect(saveCourseSettings).toHaveBeenCalledExactlyOnceWith("c-1", {
       isClosed: true,
     });
+  });
+});
+
+describe("Celseler yüz yüze yapılır (MDRS-283)", () => {
+  it("shows the course's mark and sends it alone when it changes, in either direction", async () => {
+    await mount();
+    expect(checked("Celseler yüz yüze yapılır")).toBe(false);
+    expect(row("Celseler yüz yüze yapılır").textContent).toContain(
+      "Tek bir celseyi Celseler sayfasından değiştirebilirsiniz."
+    );
+    await toggle("Celseler yüz yüze yapılır");
+    await submit();
+    expect(saveCourseSettings).toHaveBeenCalledExactlyOnceWith("c-1", {
+      inPerson: true,
+    });
+    expect(setSampleLesson).not.toHaveBeenCalled();
+    await cleanup();
+
+    saveCourseSettings.mockClear();
+    await mount({ inPerson: true });
+    expect(checked("Celseler yüz yüze yapılır")).toBe(true);
+    await toggle("Celseler yüz yüze yapılır");
+    await submit();
+    expect(saveCourseSettings).toHaveBeenCalledExactlyOnceWith("c-1", {
+      inPerson: false,
+    });
+  });
+
+  it("waits for Kaydet like the other boxes, and is off for a caller who may not change it", async () => {
+    await mount();
+    await toggle("Celseler yüz yüze yapılır");
+    expect(saveCourseSettings).not.toHaveBeenCalled();
+    expect(button("Kaydet").disabled).toBe(false);
+    await cleanup();
+
+    await mount({}, { ...OPEN, inPerson: false });
+    await toggle("Celseler yüz yüze yapılır");
+    expect(checked("Celseler yüz yüze yapılır")).toBe(false);
+    expect(button("Kaydet").disabled).toBe(true);
   });
 });
 

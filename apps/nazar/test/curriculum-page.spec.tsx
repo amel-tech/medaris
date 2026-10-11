@@ -71,6 +71,9 @@ const lesson = (id: string, title: string, at: string, over = {}) => ({
   cancelledAt: null,
   cancelReason: null,
   replacementLessonId: null,
+  inPerson: false,
+  inPersonOverride: null,
+  hasLiveStream: false,
   ...over,
 });
 
@@ -84,6 +87,7 @@ const course = (over: Record<string, unknown> = {}) => ({
   timeZone: "Europe/Istanbul",
   contentLocked: false,
   isClosed: false,
+  inPerson: false,
   weeks: [
     {
       id: "w1",
@@ -237,10 +241,77 @@ describe("Müfredat", () => {
     expect(field("lesson-1-1-url").value).toBe("");
     const text = form().textContent ?? "";
     expect(text).toContain("Planlandı");
-    expect(text).toContain("Bağlantı eksik");
+    expect(text).toContain("Katılım yolu eksik");
     expect(text).toContain("İptal edildi");
     // a cancelled session is information, not fields
     expect(field("lesson-1-2-title")).toBeNull();
+  });
+
+  describe("a session with no link (MDRS-283)", () => {
+    /** The running week's second session, which has no link. */
+    const card = () =>
+      document.querySelector('[data-testid="lesson-1-1"]')?.textContent ?? "";
+    const withL3 = (over: Record<string, unknown>, top = {}) =>
+      course({
+        ...top,
+        weeks: course().weeks.map((week) => ({
+          ...week,
+          lessons: week.lessons.map((l) =>
+            l.id === "l-3" ? { ...l, ...over } : l
+          ),
+        })),
+      });
+
+    it("is flagged, and told the talebe cannot join without one, when it has nothing else", async () => {
+      await mount();
+      expect(card()).toContain("Katılım yolu eksik");
+      expect(card()).toContain("Talebeler bağlantı olmadan celseye katılamaz.");
+    });
+
+    it("is neither flagged nor told so when it is streamed", async () => {
+      state.course = { status: "ok", data: withL3({ hasLiveStream: true }) };
+      await mount();
+      expect(card()).not.toContain("Katılım yolu eksik");
+      expect(card()).toContain("Planlandı");
+      expect(card()).not.toContain("bağlantı olmadan");
+      expect(card()).toContain(
+        "Bu celse canlı yayınlanır; bağlantı isteğe bağlıdır."
+      );
+    });
+
+    it("is neither flagged nor told so when the course is held in person, or the session on its own", async () => {
+      for (const data of [
+        withL3({ inPerson: true }, { inPerson: true }),
+        withL3({ inPerson: true, inPersonOverride: true }),
+      ]) {
+        state.course = { status: "ok", data };
+        await mount();
+        expect(card()).not.toContain("Katılım yolu eksik");
+        expect(card()).not.toContain("bağlantı olmadan");
+        expect(card()).toContain(
+          "Bu celse yüz yüze yapılır; bağlantı isteğe bağlıdır."
+        );
+        await cleanup();
+      }
+    });
+
+    it("is flagged when it is taken out of an in-person course and has nothing else", async () => {
+      state.course = {
+        status: "ok",
+        data: withL3(
+          { inPerson: false, inPersonOverride: false },
+          { inPerson: true }
+        ),
+      };
+      await mount();
+      expect(card()).toContain("Katılım yolu eksik");
+    });
+
+    it("is not flagged once its time has come", async () => {
+      vi.setSystemTime(new Date("2026-10-06T21:30:00+03:00"));
+      await mount();
+      expect(card()).not.toContain("Katılım yolu eksik");
+    });
   });
 
   it("offers the weekly generator on Celse planla, not on this page's own form", async () => {

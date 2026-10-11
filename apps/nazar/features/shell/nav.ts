@@ -14,7 +14,7 @@ export type NavSectionId = "general" | "medrese" | "ders" | "management";
 export type CountSource =
   | "unread"
   | "coursesWithApplications"
-  | "missingLinks"
+  | "withoutAccess"
   | "applications";
 
 export type MenuCounts = Partial<Record<CountSource, number>>;
@@ -22,7 +22,7 @@ export type MenuCounts = Partial<Record<CountSource, number>>;
 const COUNT_LABEL_KEY: Readonly<Record<CountSource, string>> = {
   unread: "countUnread",
   coursesWithApplications: "countCoursesWithApplications",
-  missingLinks: "countMissingLinks",
+  withoutAccess: "countWithoutAccess",
   applications: "countApplications",
 };
 
@@ -100,7 +100,7 @@ export const NAV: Readonly<Record<ScopeKind, readonly NavSectionDef[]>> = {
           id: "sessions",
           icon: "calendar",
           to: page("celseler"),
-          count: "missingLinks",
+          count: "withoutAccess",
         },
         {
           id: "students",

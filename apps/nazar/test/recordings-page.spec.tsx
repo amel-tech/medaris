@@ -21,7 +21,10 @@ type Answer<T> =
 const state = {
   course: { status: "failed" } as Answer<unknown>,
   recordings: { status: "failed" } as Answer<unknown>,
+  streams: { status: "failed" } as Answer<unknown>,
   viewer: { id: "u-1", timeZone: "Europe/Istanbul" } as unknown,
+  /** what each read asked for, in order */
+  reads: [] as string[],
   permissions: { status: "failed" } as Answer<unknown>,
 };
 const refresh = vi.fn();
@@ -40,14 +43,19 @@ vi.mock("next-intl/server", () => ({
 }));
 vi.mock("~/lib/tedrisat-read", () => ({
   readOnce: async (what: string, call: (api: unknown) => Promise<unknown>) => {
+    state.reads.push(what);
     await call({
       courses: {
         getCourseById: async () => {},
         getMyCoursePermissions: async () => {},
       },
-      lessons: { listCourseRecordings: async () => {} },
+      lessons: {
+        listCourseRecordings: async () => {},
+        listCourseLiveStreams: async () => {},
+      },
     });
     if (what.includes("holds in the course")) return state.permissions;
+    if (what.includes("live stream")) return state.streams;
     return what.includes("recordings") ? state.recordings : state.course;
   },
 }));
@@ -69,6 +77,7 @@ const lesson = (id: string, title: string, at: string, over = {}) => ({
 });
 
 const ZOOM = "https://us02web.zoom.us/rec/share/abc123";
+const STREAM = "https://www.youtube.com/live/abcdefghijk";
 const VIDEO = "b2470000-0000-4000-8000-000000000001";
 /** A Bunny player link as tedrisat hands it out: signed for this read. */
 const SIGNED = `https://player.mediadelivery.net/embed/424242/${VIDEO}?token=${"a".repeat(64)}&expires=1791300000`;
@@ -194,6 +203,17 @@ beforeEach(() => {
   vi.setSystemTime(new Date("2026-10-06T12:00:00+03:00"));
   state.course = { status: "ok", data: course() };
   state.recordings = { status: "ok", data: recordings() };
+  state.streams = {
+    status: "ok",
+    data: [
+      { lessonId: "l-2", liveStreamUrl: STREAM },
+      {
+        lessonId: "l-3",
+        liveStreamUrl: "https://www.youtube.com/live/zyxwvutsrqp",
+      },
+    ],
+  };
+  state.reads = [];
   state.viewer = { id: "u-1", timeZone: "Europe/Istanbul" };
   state.permissions = holding("recording.manage");
   for (const fn of [refresh, addRecording, changeRecording]) fn.mockReset();
@@ -609,5 +629,76 @@ describe("Düzenle", () => {
     expect(toast("error")).toContain("artık yok");
     expect(dialog()).toBeNull();
     expect(refresh).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("Yayını kayıt olarak ekle (MDRS-283)", () => {
+  const LABEL = "Yayını kayıt olarak ekle: Hafta 2";
+
+  it("is offered on a session that is over, had a stream and holds no recording, and says when it plays", async () => {
+    state.permissions = holding("recording.manage", "session.live_link");
+    const out = await markup();
+    expect(state.reads).toContain("the course's live stream links");
+    expect(out).toContain(`aria-label="${LABEL}"`);
+    const row = textOf(rowOf(out, "Hafta 2 "));
+    expect(row).toContain("Kayıt yok");
+    expect(row).toContain("YouTube yayını arşivleyince kayıt olarak oynar.");
+    expect(row).toContain("Kayıt ekle");
+    // the session still ahead has a stream too, and is not offered it
+    expect(out).not.toContain("Yayını kayıt olarak ekle: Hafta 2b");
+  });
+
+  it("adds the stream's link through the recording route, for the enrolled, says so and reads the page again", async () => {
+    state.permissions = holding("recording.manage", "session.live_link");
+    await mount();
+    await click(byLabel(LABEL));
+    await settle(60);
+    expect(addRecording).toHaveBeenCalledExactlyOnceWith("l-2", {
+      title: "Hafta 2 kaydı",
+      url: STREAM,
+      visibility: "ENROLLED",
+    });
+    expect(toast("success")).toContain("Yayın kayıt olarak eklendi");
+    expect(toast("success")).toContain(
+      "Hafta 2 celsesinin kaydı, YouTube yayını arşivleyince oynar."
+    );
+    expect(refresh).toHaveBeenCalledOnce();
+  });
+
+  it("words a refusal from its code and reads the page again when it moved", async () => {
+    state.permissions = holding("recording.manage", "session.live_link");
+    addRecording.mockResolvedValue({
+      success: false,
+      code: "RECORDING_EXISTS",
+    });
+    await mount();
+    await click(byLabel(LABEL));
+    await settle(60);
+    expect(toast("error")).toContain("Kayıt kaydedilemedi");
+    expect(toast("error")).toContain("Bu celsenin zaten bir kaydı var");
+    expect(refresh).toHaveBeenCalledOnce();
+  });
+
+  it("is not offered, and the links are not read, without session.live_link, which they are sent to", async () => {
+    const out = await markup();
+    expect(state.reads).not.toContain("the course's live stream links");
+    expect(out).not.toContain("Yayını kayıt olarak ekle");
+    expect(out).not.toContain("arşivleyince");
+    expect(out).toContain('aria-label="Kayıt ekle: Hafta 2"');
+  });
+
+  it("is not offered to an uploader without recording.manage, whose route it is not", async () => {
+    state.permissions = holding("recording.upload", "session.live_link");
+    const out = await markup();
+    expect(state.reads).not.toContain("the course's live stream links");
+    expect(out).not.toContain("Yayını kayıt olarak ekle");
+  });
+
+  it("is left out, and the rest stays, when the links cannot be read", async () => {
+    state.permissions = holding("recording.manage", "session.live_link");
+    state.streams = { status: "failed" };
+    const out = await markup();
+    expect(out).not.toContain("Yayını kayıt olarak ekle");
+    expect(out).toContain('aria-label="Kayıt ekle: Hafta 2"');
   });
 });

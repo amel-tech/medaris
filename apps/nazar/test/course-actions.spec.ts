@@ -57,7 +57,7 @@ const enrolments = () => import("~/features/enrolments/actions");
 const curriculum = () => import("~/features/curriculum/actions");
 const recordings = () => import("~/features/recordings/actions");
 
-describe("Bağlantıyı güncelle and Tarihi değiştir", () => {
+describe("Bağlantıyı güncelle, Tarihi değiştir and Yüz yüze ayarı", () => {
   it("send the link alone, with the course version, and hand back the version the course is now at", async () => {
     const { changeSession } = await sessions();
     api.lessons.updateLesson.mockResolvedValue({
@@ -91,6 +91,20 @@ describe("Bağlantıyı güncelle and Tarihi değiştir", () => {
         scheduledAt: new Date("2026-10-12T18:00:00.000Z"),
       },
     });
+  });
+
+  it("send the in-person mark alone: true, false, or null to follow the course (MDRS-283)", async () => {
+    const { changeSession } = await sessions();
+    api.lessons.updateLesson.mockResolvedValue({ courseVersion: 9 });
+    for (const inPersonOverride of [true, false, null]) {
+      expect(
+        await changeSession("l-1", { version: 8, inPersonOverride })
+      ).toEqual({ success: true, data: { courseVersion: 9 } });
+      expect(api.lessons.updateLesson).toHaveBeenLastCalledWith({
+        id: "l-1",
+        updateLessonDto: { version: 8, inPersonOverride },
+      });
+    }
   });
 
   it("hand back the code of a stale save (409), never the message", async () => {

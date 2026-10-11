@@ -113,14 +113,14 @@ describe("the menu of a course (nazir 22)", () => {
     ]);
   });
 
-  it("badges Celseler with the missing links and Talebeler with the waiting applications", () => {
+  it("badges Celseler with the sessions without a way in (MDRS-283) and Talebeler with the waiting applications", () => {
     const items = navFor(ders, {
       panoHref: "/ders/c-1",
-      counts: { unread: 3, missingLinks: 1, applications: 2 },
+      counts: { unread: 3, withoutAccess: 1, applications: 2 },
     }).flatMap((s) => s.items);
     expect(items.find((i) => i.id === "sessions")).toMatchObject({
       count: 1,
-      countLabelKey: "countMissingLinks",
+      countLabelKey: "countWithoutAccess",
     });
     expect(items.find((i) => i.id === "students")).toMatchObject({
       count: 2,
@@ -139,7 +139,7 @@ describe("a number that is missing or zero", () => {
   it("leaves the item without a badge", () => {
     const items = navFor(ders, {
       panoHref: "/ders/c-1",
-      counts: { unread: 0, missingLinks: undefined, applications: -1 },
+      counts: { unread: 0, withoutAccess: undefined, applications: -1 },
     }).flatMap((s) => s.items);
     for (const item of items) {
       expect(item.count, item.id).toBeUndefined();
@@ -291,7 +291,7 @@ describe("message keys of the menu", () => {
             counts: {
               unread: 1,
               coursesWithApplications: 1,
-              missingLinks: 1,
+              withoutAccess: 1,
               applications: 1,
             },
           }
@@ -327,8 +327,8 @@ describe("message keys of the menu", () => {
     expect([...sources].sort()).toEqual([
       "applications",
       "coursesWithApplications",
-      "missingLinks",
       "unread",
+      "withoutAccess",
     ]);
   });
 });

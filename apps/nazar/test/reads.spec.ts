@@ -145,7 +145,7 @@ describe("getMenuCounts", () => {
     });
     expect(await counts("ders")).toEqual({
       unread: 3,
-      missingLinks: 1,
+      withoutAccess: 1,
       applications: 2,
     });
     expect(api.courses.getCourseBadgeCounts).toHaveBeenCalledWith({
@@ -167,7 +167,7 @@ describe("getMenuCounts", () => {
     });
     expect(await counts("ders")).toEqual({
       unread: 4,
-      missingLinks: undefined,
+      withoutAccess: undefined,
       applications: undefined,
     });
     expect(errors).not.toHaveBeenCalled();
@@ -183,7 +183,7 @@ describe("getMenuCounts", () => {
     });
     await expect(counts("ders")).resolves.toEqual({
       unread: undefined,
-      missingLinks: undefined,
+      withoutAccess: undefined,
       applications: undefined,
     });
     expect(errors).toHaveBeenCalled();

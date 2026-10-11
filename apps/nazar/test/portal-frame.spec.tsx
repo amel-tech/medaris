@@ -185,7 +185,7 @@ describe("the shell of a course (nazir 22)", () => {
       assignments: [medrese(), bina, mantik],
       current: 1,
       roles: ["MUDERRIS"],
-      counts: { unread: 3, missingLinks: 1, applications: 2 },
+      counts: { unread: 3, withoutAccess: 1, applications: 2 },
     });
 
   it("lists the course's menu, not the medrese's", async () => {
@@ -217,7 +217,7 @@ describe("the shell of a course (nazir 22)", () => {
     ]);
     expect(aside).not.toContain("Kabul kuralları");
     expect(aside).toMatch(
-      /Celseler<span class="mds-nav-item__count">1<span class="mds-visually-hidden"> bağlantısı eksik/
+      /Celseler<span class="mds-nav-item__count">1<span class="mds-visually-hidden"> katılım yolu eksik/
     );
     expect(aside).toMatch(
       /Talebeler<span class="mds-nav-item__count">2<span class="mds-visually-hidden"> bekleyen başvuru/

@@ -50,6 +50,7 @@ export async function PlanPage({ courseId }: { courseId: string }) {
     <PlanForm
       courseId={courseId}
       courseTitle={course.data.title}
+      courseInPerson={course.data.inPerson}
       locale={locale}
       timeZone={resolveTimeZone(me?.timeZone, DEFAULT_TIME_ZONE)}
     />

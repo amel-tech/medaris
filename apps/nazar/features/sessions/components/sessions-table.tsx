@@ -5,13 +5,10 @@ import { Badge } from "@medaris/ui/mds/badge";
 import { Button } from "@medaris/ui/mds/button";
 import { Field } from "@medaris/ui/mds/field";
 import { Input } from "@medaris/ui/mds/input";
-import { PlatformChip } from "@medaris/ui/mds/platform-chip";
+import { RadioGroup } from "@medaris/ui/mds/radio-group";
 import { Table, type TableColumn } from "@medaris/ui/mds/table";
 import { useToaster } from "@medaris/ui/mds/toast";
-import {
-  normalizeYoutubeLiveUrl,
-  resolveMeetingPlatform,
-} from "@medaris/utils";
+import { normalizeYoutubeLiveUrl } from "@medaris/utils";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import {
@@ -27,8 +24,12 @@ import {
   courseMoved,
   fieldsOf,
   groupSessions,
+  type InPersonChoice,
+  inPersonChoiceOf,
+  inPersonOverrideOf,
   instantOf,
   liveStreamProblem,
+  rowAttendance,
   type SessionFact,
   type SessionRow,
   sendableLink,
@@ -36,11 +37,13 @@ import {
   sessionRows,
   whenLabel,
 } from "../sessions";
+import { AttendanceCell } from "./attendance-cell";
 import { CancelDialog } from "./cancel-dialog";
 
 type Editing =
   | { kind: "link"; id: string; value: string }
   | { kind: "stream"; id: string; value: string }
+  | { kind: "inPerson"; id: string; value: InPersonChoice }
   | { kind: "time"; id: string; date: string; time: string };
 
 /** How many past sessions show before "N geçmiş celsenin tümü". */
@@ -52,12 +55,22 @@ const PAST_PREVIEW = 2;
  * page is open. A link is added or replaced inline (https only), a time is
  * moved on the viewer's clock, and "İptal et" keeps the session in the
  * programme marked cancelled and can add its make-up, which the cancelled
- * session then links to. Link, time, cancel and make-up are `session.manage`
- * (`canManage`). The live stream link is set the same way, for whoever holds
- * `session.live_link`: `streams` is null when the caller does not hold it or
- * the page could not read the links, which leaves the column and the buttons
- * out. A hidden button is not the check: every write carries the course
- * version the page last saw, and a refusal is worded from the API's code.
+ * session then links to. Link, time, cancel, make-up and the in-person mark
+ * are `session.manage` (`canManage`). The live stream link is set the same
+ * way, for whoever holds `session.live_link`: `streams` is null when the
+ * caller does not hold it or the page could not read the links, which leaves
+ * its buttons out. A hidden button is not the check: every write carries the
+ * course version the page last saw, and a refusal is worded from the API's
+ * code.
+ *
+ * "Katılım" (MDRS-283) says how each session is attended: its meeting link,
+ * its live stream and the in-person mark, or "Eksik" for a session still
+ * ahead with none of them. Whether there is a stream is read from the course
+ * (`hasLiveStream`), so a caller without `session.live_link` sees it too; a
+ * stream set or cleared on this page is laid over it until the page is read
+ * again. A session that is over says "Kayıt yok" when the course holds no
+ * recording of it, as plain words: nothing counts it (`recorded` is null when
+ * the recordings could not be read, and then nothing is said).
  */
 export function SessionsTable({
   courseId,
@@ -65,6 +78,8 @@ export function SessionsTable({
   facts,
   canManage,
   streams: serverStreams,
+  courseInPerson,
+  recorded,
   locale,
   timeZone,
 }: {
@@ -74,6 +89,10 @@ export function SessionsTable({
   /** the caller holds `session.manage` in this course */
   canManage: boolean;
   streams: Record<string, string> | null;
+  /** "Celseler yüz yüze yapılır": what a session without its own mark follows */
+  courseInPerson: boolean;
+  /** the ids of the sessions that hold a recording; null when they could not be read */
+  recorded: string[] | null;
   locale: string;
   timeZone: string;
 }) {
@@ -87,6 +106,9 @@ export function SessionsTable({
   useEffect(() => setVersion(serverVersion), [serverVersion]);
   const [streams, setStreams] = useState(serverStreams);
   useEffect(() => setStreams(serverStreams), [serverStreams]);
+  // The streams this page set (true) or cleared (false), over the course read.
+  const [streamWrites, setStreamWrites] = useState<Record<string, boolean>>({});
+  useEffect(() => setStreamWrites({}), [facts]);
 
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
@@ -94,7 +116,14 @@ export function SessionsTable({
     return () => clearInterval(id);
   }, []);
 
-  const rows = sessionRows(facts, now);
+  const rows = sessionRows(
+    facts.map((fact) => ({
+      ...fact,
+      hasLiveStream: streamWrites[fact.id] ?? fact.hasLiveStream,
+    })),
+    now
+  );
+  const recordedIds = recorded === null ? null : new Set(recorded);
   const groups = groupSessions(rows, now);
   const [editing, setEditing] = useState<Editing | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
@@ -130,6 +159,14 @@ export function SessionsTable({
     setProblem(null);
     setEditing({ kind: "time", id: row.id, ...fieldsOf(row.start, timeZone) });
   };
+  const startInPerson = (row: SessionRow) => {
+    setProblem(null);
+    setEditing({
+      kind: "inPerson",
+      id: row.id,
+      value: inPersonChoiceOf(row.inPersonOverride),
+    });
+  };
 
   /** Sets the stream link, or clears it with `null`. */
   const writeStream = async (lessonId: string, url: string | null) => {
@@ -147,6 +184,7 @@ export function SessionsTable({
       else delete next[lessonId];
       return next;
     });
+    setStreamWrites((current) => ({ ...current, [lessonId]: Boolean(saved) }));
     setEditing(null);
     notify({
       title: t(saved ? "Sessions.stream.saved" : "Sessions.stream.removed"),
@@ -175,6 +213,8 @@ export function SessionsTable({
         return;
       }
       change = { version, meetingUrl: url };
+    } else if (editing.kind === "inPerson") {
+      change = { version, inPersonOverride: inPersonOverrideOf(editing.value) };
     } else {
       const at = instantOf(editing.date, editing.time, timeZone);
       if (!at) {
@@ -194,7 +234,11 @@ export function SessionsTable({
     setEditing(null);
     notify({
       title: t(
-        editing.kind === "link" ? "Sessions.linkSaved" : "Sessions.timeSaved"
+        editing.kind === "link"
+          ? "Sessions.linkSaved"
+          : editing.kind === "inPerson"
+            ? "Sessions.inPerson.saved"
+            : "Sessions.timeSaved"
       ),
     });
     refresh();
@@ -243,29 +287,18 @@ export function SessionsTable({
     </span>
   );
 
-  const linkCell = (row: SessionRow) => {
+  const attendanceCell = (row: SessionRow) => {
     if (row.state === "cancelled") return hidden;
-    if (!row.meetingUrl) {
-      return (
-        <span className="text-neutral-muted">{t("Sessions.linkMissing")}</span>
-      );
-    }
-    const platform = resolveMeetingPlatform(row.meetingUrl);
-    return platform.id === "unknown" ? (
-      <bdi dir="ltr" className="mds-caption font-mono">
-        {hostOf(row.meetingUrl)}
-      </bdi>
+    const view = rowAttendance(row);
+    return view ? (
+      <AttendanceCell view={view} />
     ) : (
-      <PlatformChip platform={platform.id} />
-    );
-  };
-
-  const streamCell = (row: SessionRow) => {
-    if (row.state === "cancelled") return hidden;
-    return streams?.[row.id] ? (
-      <span data-testid="stream-set">{t("Sessions.stream.set")}</span>
-    ) : (
-      <span className="text-neutral-muted">{t("Sessions.stream.missing")}</span>
+      <span>
+        <span aria-hidden="true">—</span>
+        <span className="mds-visually-hidden">
+          {t("Sessions.attendance.unknown")}
+        </span>
+      </span>
     );
   };
 
@@ -300,7 +333,20 @@ export function SessionsTable({
         );
       }
       case "ended":
-        return <span>{t("Sessions.state.ended")}</span>;
+        return (
+          <span className="flex flex-col gap-1">
+            <span>{t("Sessions.state.ended")}</span>
+            {recordedIds === null ? null : (
+              <span className="mds-caption" data-testid="recording-state">
+                {t(
+                  recordedIds.has(row.id)
+                    ? "Sessions.recorded"
+                    : "Sessions.notRecorded"
+                )}
+              </span>
+            )}
+          </span>
+        );
       default:
         return (
           <Badge variant="secondary">{t("Sessions.state.scheduled")}</Badge>
@@ -308,48 +354,36 @@ export function SessionsTable({
     }
   };
 
-  const withStream = streams !== null;
   const sessionColumn: TableColumn<SessionRow> = {
     key: "session",
     header: t("Sessions.columns.session"),
     rowHeader: true,
-    width: withStream ? "20%" : "22%",
+    width: "20%",
     render: nameCell,
   };
   const timeColumn: TableColumn<SessionRow> = {
     key: "time",
     header: t("Sessions.columns.time"),
-    width: withStream ? "15%" : "17%",
+    width: "15%",
     render: timeCell,
   };
-  const linkColumn: TableColumn<SessionRow> = {
-    key: "link",
-    header: t("Sessions.columns.link"),
-    width: withStream ? "13%" : "15%",
-    render: linkCell,
+  const attendanceColumn: TableColumn<SessionRow> = {
+    key: "attendance",
+    header: t("Sessions.attendance.column"),
+    width: "20%",
+    render: attendanceCell,
   };
   const stateColumn: TableColumn<SessionRow> = {
     key: "state",
     header: t("Sessions.columns.state"),
-    width: withStream ? "13%" : "15%",
+    width: "13%",
     render: stateCell,
   };
-  const streamColumns: TableColumn<SessionRow>[] = withStream
-    ? [
-        {
-          key: "stream",
-          header: t("Sessions.stream.column"),
-          width: "11%",
-          render: streamCell,
-        },
-      ]
-    : [];
 
   const upcomingColumns: TableColumn<SessionRow>[] = [
     sessionColumn,
     timeColumn,
-    linkColumn,
-    ...streamColumns,
+    attendanceColumn,
     stateColumn,
     {
       key: "actions",
@@ -359,7 +393,7 @@ export function SessionsTable({
         </span>
       ),
       align: "right",
-      width: withStream ? "28%" : "31%",
+      width: "32%",
       render: (row) =>
         row.state === "cancelled" || (!canManage && streams === null) ? (
           <span className="mds-visually-hidden">{t("Sessions.noActions")}</span>
@@ -378,6 +412,18 @@ export function SessionsTable({
                 onClick={() => startLink(row)}
               >
                 {t(row.meetingUrl ? "Sessions.updateLink" : "Sessions.addLink")}
+              </Button>
+            ) : null}
+            {canManage && row.inPerson !== null ? (
+              <Button
+                variant="ghost"
+                size="small"
+                aria-label={t("Sessions.inPerson.buttonLabel", {
+                  when: when(row),
+                })}
+                onClick={() => startInPerson(row)}
+              >
+                {t("Sessions.inPerson.button")}
               </Button>
             ) : null}
             {streams !== null ? (
@@ -429,8 +475,7 @@ export function SessionsTable({
   const pastColumns: TableColumn<SessionRow>[] = [
     sessionColumn,
     timeColumn,
-    linkColumn,
-    ...streamColumns,
+    attendanceColumn,
     stateColumn,
   ];
 
@@ -488,7 +533,9 @@ export function SessionsTable({
                     ? "Sessions.linkFormTitle"
                     : editing.kind === "stream"
                       ? "Sessions.stream.formTitle"
-                      : "Sessions.timeFormTitle",
+                      : editing.kind === "inPerson"
+                        ? "Sessions.inPerson.formTitle"
+                        : "Sessions.timeFormTitle",
                   { when: fullWhen(target) }
                 )}
               </h3>
@@ -510,6 +557,29 @@ export function SessionsTable({
                     }
                   />
                 </Field>
+              ) : editing.kind === "inPerson" ? (
+                <RadioGroup
+                  legend={t("Sessions.inPerson.legend")}
+                  name="inPerson"
+                  bordered
+                  value={editing.value}
+                  onChange={(value) =>
+                    setEditing({ ...editing, value: value as InPersonChoice })
+                  }
+                  options={[
+                    {
+                      value: "course",
+                      label: t("Sessions.inPerson.course"),
+                      description: t(
+                        courseInPerson
+                          ? "Sessions.inPerson.courseYes"
+                          : "Sessions.inPerson.courseNo"
+                      ),
+                    },
+                    { value: "yes", label: t("Sessions.inPerson.yes") },
+                    { value: "no", label: t("Sessions.inPerson.no") },
+                  ]}
+                />
               ) : editing.kind === "link" ? (
                 <Field
                   label={t("Sessions.linkFormLabel")}
@@ -634,12 +704,3 @@ export function SessionsTable({
 
 /** The id a session's row carries, for the link from the session it makes up for. */
 const sessionAnchor = (id: string): string => `celse-${id}`;
-
-/** The host of a link for display; the link itself when it cannot be parsed. */
-function hostOf(url: string): string {
-  try {
-    return new URL(url).hostname;
-  } catch {
-    return url;
-  }
-}

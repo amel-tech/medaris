@@ -5,18 +5,25 @@ import { Badge } from "@medaris/ui/mds/badge";
 import { Button } from "@medaris/ui/mds/button";
 import { PlatformChip } from "@medaris/ui/mds/platform-chip";
 import { Table, type TableColumn } from "@medaris/ui/mds/table";
+import { useToaster } from "@medaris/ui/mds/toast";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useEffect, useState, useTransition } from "react";
+import type { Messages } from "~/lib/i18n/messages";
 import { whenLabel } from "../../sessions/sessions";
+import { addRecording } from "../actions";
 import {
   anyBunnyPending,
   bunnyPending,
   chipOf,
   hostOf,
+  recordingErrorKey,
+  recordingsMoved,
   type SessionSlot,
   slotCounts,
   slotState,
+  streamRecordingBody,
+  streamToRecord,
   type WeekBlock,
 } from "../recordings";
 import { useRefreshWhile } from "../use-refresh-while";
@@ -32,6 +39,12 @@ import { type RecordingAbilities, RecordingDialog } from "./recording-dialog";
  * upload left halfway. All open the one dialog. The clock is read here and
  * moves while the page is open, as on Celseler; while a Bunny upload is being
  * prepared the page is read again every few seconds, until none is.
+ *
+ * A session that is over, had a live stream and holds no recording also
+ * offers "Yayını kayıt olarak ekle" (MDRS-283): one click sends the stream's
+ * link to the route "Kayıt ekle" uses, for the enrolled, with the title the
+ * form would start from. It plays once YouTube has archived the stream, and
+ * the row says so.
  */
 export function RecordingsTable({
   blocks,
@@ -48,8 +61,12 @@ export function RecordingsTable({
   timeZone: string;
 }) {
   const t = useTranslations("nazar");
+  const words = t as unknown as Messages;
   const router = useRouter();
+  const { notify } = useToaster();
   const [, startTransition] = useTransition();
+  /** the session whose stream is being added as its recording */
+  const [adding, setAdding] = useState<string | null>(null);
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 60_000);
@@ -62,6 +79,31 @@ export function RecordingsTable({
 
   const counts = slotCounts(blocks, now);
   const refresh = () => startTransition(() => router.refresh());
+
+  const addStream = async (slot: SessionSlot, streamUrl: string) => {
+    setAdding(slot.lessonId);
+    const result = await addRecording(
+      slot.lessonId,
+      streamRecordingBody(slot, streamUrl, t("Recordings.titleSuffix"))
+    );
+    setAdding(null);
+    if (result.success) {
+      notify({
+        title: t("Recordings.fromStreamDone"),
+        description: t("Recordings.fromStreamDoneBody", {
+          session: slot.title,
+        }),
+      });
+      refresh();
+      return;
+    }
+    notify({
+      tone: "error",
+      title: t("Recordings.failed"),
+      description: words(recordingErrorKey(result.code, result.reason)),
+    });
+    if (recordingsMoved(result.code)) refresh();
+  };
   useRefreshWhile(anyBunnyPending(blocks), refresh);
   const dash = <span aria-hidden="true">—</span>;
 
@@ -97,10 +139,17 @@ export function RecordingsTable({
         if (!recording) {
           const state = slotState(slot, now);
           return (
-            <span className="text-neutral-muted">
-              {state === "notYet"
-                ? t("Recordings.notYet")
-                : t("Recordings.none")}
+            <span className="flex flex-col gap-1">
+              <span className="text-neutral-muted">
+                {state === "notYet"
+                  ? t("Recordings.notYet")
+                  : t("Recordings.none")}
+              </span>
+              {can.manage && streamToRecord(slot, now) ? (
+                <span className="mds-caption">
+                  {t("Recordings.fromStreamNote")}
+                </span>
+              ) : null}
             </span>
           );
         }
@@ -226,7 +275,7 @@ export function RecordingsTable({
           return resume ?? edit ?? dash;
         }
         if (state === "missing" && (can.manage || can.upload)) {
-          return (
+          const add = (
             <Button
               variant="outline"
               size="small"
@@ -235,6 +284,25 @@ export function RecordingsTable({
             >
               {t("Recordings.add")}
             </Button>
+          );
+          const streamUrl = can.manage ? streamToRecord(slot, now) : null;
+          if (!streamUrl) return add;
+          return (
+            <span className="flex flex-wrap items-center justify-end gap-2">
+              <Button
+                variant="outline"
+                size="small"
+                loading={adding === slot.lessonId}
+                disabled={adding !== null && adding !== slot.lessonId}
+                aria-label={t("Recordings.fromStreamLabel", {
+                  session: slot.title,
+                })}
+                onClick={() => void addStream(slot, streamUrl)}
+              >
+                {t("Recordings.fromStream")}
+              </Button>
+              {add}
+            </span>
           );
         }
         return dash;

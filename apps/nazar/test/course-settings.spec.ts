@@ -21,6 +21,7 @@ import {
 const stored: CourseSettingsValues = {
   isClosed: false,
   requiresApproval: true,
+  inPerson: false,
   timeZone: "Europe/Istanbul",
   sampleLessonId: "l-2",
 };
@@ -37,6 +38,7 @@ const course = (over: Record<string, unknown> = {}) =>
   ({
     isClosed: false,
     requiresApproval: true,
+    inPerson: false,
     timeZone: "Europe/Istanbul",
     weeks: [
       {
@@ -70,16 +72,30 @@ describe("what Kaydet sends to PATCH /courses/:id", () => {
     const all = courseSettingsPatch(stored, {
       isClosed: true,
       requiresApproval: false,
+      inPerson: true,
       timeZone: "Europe/Berlin",
       sampleLessonId: "l-2",
     });
     expect(all).toEqual({
       isClosed: true,
       requiresApproval: false,
+      inPerson: true,
       timeZone: "Europe/Berlin",
     });
     expect(Object.values(all ?? {})).not.toContain(null);
     expect(all).not.toHaveProperty("version");
+  });
+
+  it("sends 'Celseler yüz yüze yapılır' when it changes, either way (MDRS-283)", () => {
+    expect(courseSettingsPatch(stored, { ...stored, inPerson: true })).toEqual({
+      inPerson: true,
+    });
+    expect(
+      courseSettingsPatch(
+        { ...stored, inPerson: true },
+        { ...stored, inPerson: false }
+      )
+    ).toEqual({ inPerson: false });
   });
 
   it("leaves the sample session out of the course's body, but counts it as a change", () => {
@@ -112,6 +128,7 @@ describe("what the caller may change (controlsOf)", () => {
     expect(controls).toEqual({
       closed: "open",
       approval: "open",
+      inPerson: true,
       zone: true,
       sample: true,
       publish: true,
@@ -120,11 +137,12 @@ describe("what the caller may change (controlsOf)", () => {
     });
   });
 
-  it("opens neither box to course.edit alone, but the time zone, and draws no publishing", () => {
+  it("opens neither box to course.edit alone, but the time zone and the in-person mark, and draws no publishing", () => {
     const controls = controlsOf(holding("course.edit"), stored);
     expect(controls.closed).toBe("shown");
     expect(controls.approval).toBe("shown");
     expect(controls.zone).toBe(true);
+    expect(controls.inPerson).toBe(true);
     expect(controls.publish).toBe(false);
     expect(controls.save).toBe(true);
   });
@@ -137,6 +155,7 @@ describe("what the caller may change (controlsOf)", () => {
     expect(controls).toMatchObject({
       closed: "shown",
       approval: "shown",
+      inPerson: false,
       zone: false,
       sample: false,
       save: false,
@@ -182,6 +201,7 @@ describe("what the caller may change (controlsOf)", () => {
     expect(controls).toMatchObject({
       closed: "shown",
       approval: "shown",
+      inPerson: false,
       zone: false,
       sample: true,
       publish: false,
@@ -194,6 +214,7 @@ describe("what the caller may change (controlsOf)", () => {
     expect(controlsOf(holding("course.view_details"), stored)).toEqual({
       closed: "shown",
       approval: "shown",
+      inPerson: false,
       zone: false,
       sample: false,
       publish: false,
@@ -219,9 +240,10 @@ describe("the sample session", () => {
   });
 
   it("is read into the form with the course's own fields", () => {
-    expect(settingsOf(course({ isClosed: true }))).toEqual({
+    expect(settingsOf(course({ isClosed: true, inPerson: true }))).toEqual({
       isClosed: true,
       requiresApproval: true,
+      inPerson: true,
       timeZone: "Europe/Istanbul",
       sampleLessonId: "l-2",
     });

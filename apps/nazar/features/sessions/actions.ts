@@ -19,12 +19,17 @@ import {
  * browser.
  */
 
-/** "Bağlantıyı güncelle" / "Tarihi değiştir" (`PATCH /lessons/:id`): one session, nothing else of the course. */
+/**
+ * "Bağlantıyı güncelle" / "Tarihi değiştir" / "Yüz yüze" (`PATCH /lessons/:id`):
+ * one session, nothing else of the course. The in-person mark is `true`,
+ * `false`, or `null` to follow the course (MDRS-283).
+ */
 export async function changeSession(
   lessonId: string,
   change:
     | { version: number; meetingUrl: string }
     | { version: number; scheduledAt: string }
+    | { version: number; inPersonOverride: boolean | null }
 ): Promise<ActionOutcome<{ courseVersion: number }>> {
   const result = await authenticatedAction(async (api) => {
     const { courseVersion } = await api.lessons.updateLesson({
@@ -32,10 +37,15 @@ export async function changeSession(
       updateLessonDto:
         "meetingUrl" in change
           ? { version: change.version, meetingUrl: change.meetingUrl }
-          : {
-              version: change.version,
-              scheduledAt: new Date(change.scheduledAt),
-            },
+          : "inPersonOverride" in change
+            ? {
+                version: change.version,
+                inPersonOverride: change.inPersonOverride,
+              }
+            : {
+                version: change.version,
+                scheduledAt: new Date(change.scheduledAt),
+              },
     });
     return { courseVersion };
   });

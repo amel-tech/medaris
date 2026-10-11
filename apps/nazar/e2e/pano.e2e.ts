@@ -93,7 +93,7 @@ test("nazir/01 — the medrese's Pano shows three scope cards, two sessions and 
   await expect(sessions).toHaveCount(2);
   await expect(sessions.first()).toContainText(base?.first.title ?? "");
   await expect(sessions.first()).toContainText("Hafta 1");
-  await expect(sessions.first()).toContainText("Bağlantısı eksik");
+  await expect(sessions.first()).toContainText("Eksik");
   await expect(sessions.first()).toContainText("Planlandı");
   await expect(sessions.nth(1)).toContainText("Zoom");
   await expect(

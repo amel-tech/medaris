@@ -29,8 +29,11 @@ import { SessionsTable } from "./sessions-table";
  * yok", and a permissions read that failed is the retry state. Each control is
  * drawn for the code it needs (`SessionsTable`), and the API still decides
  * every write. The live stream links are read only for a holder of
- * `session.live_link`; when that read fails the "Canlı yayın" column and
- * buttons are left out. The writes carry the course version of this read.
+ * `session.live_link`; when that read fails its buttons are left out, while
+ * "Katılım" still says which sessions are streamed, from the course read
+ * (MDRS-283). The course's recordings are read so a session that is over can
+ * say "Kayıt yok"; when that read fails nothing is said of them. The writes
+ * carry the course version of this read.
  */
 export async function SessionsPage({ courseId }: { courseId: string }) {
   const [t, locale, me, course, permissions] = await Promise.all([
@@ -46,12 +49,19 @@ export async function SessionsPage({ courseId }: { courseId: string }) {
   const gate = pageGate([course], permissions, PAGE_CODES.sessions);
   const held = permissions.status === "ok" ? permissions.data : null;
   const canManage = held !== null && holds(held, CODES.sessionManage);
-  const streams =
-    gate === "ok" && held !== null && holds(held, CODES.sessionLiveLink)
-      ? await readOnce("the course's live stream links", (api) =>
-          api.lessons.listCourseLiveStreams({ id: courseId })
-        )
-      : null;
+  const [streams, recordings] =
+    gate === "ok"
+      ? await Promise.all([
+          held !== null && holds(held, CODES.sessionLiveLink)
+            ? readOnce("the course's live stream links", (api) =>
+                api.lessons.listCourseLiveStreams({ id: courseId })
+              )
+            : null,
+          readOnce("the course's recordings", (api) =>
+            api.lessons.listCourseRecordings({ id: courseId })
+          ),
+        ])
+      : [null, null];
 
   return (
     <>
@@ -94,6 +104,12 @@ export async function SessionsPage({ courseId }: { courseId: string }) {
           facts={sessionFacts(course.data)}
           canManage={canManage}
           streams={streams?.status === "ok" ? streamsOf(streams.data) : null}
+          courseInPerson={course.data.inPerson}
+          recorded={
+            recordings?.status === "ok"
+              ? recordings.data.map((recording) => recording.lessonId)
+              : null
+          }
           locale={locale}
           timeZone={timeZone}
         />
