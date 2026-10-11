@@ -61,6 +61,9 @@ const lesson = (id: string, over: Partial<ILessonView> = {}): ILessonView => ({
   meetingUrl: "https://zoom.us/j/1",
   agenda: null,
   cancelReason: null,
+  inPerson: false,
+  inPersonOverride: null,
+  hasLiveStream: false,
   ...over,
 });
 
@@ -175,5 +178,46 @@ describe("buildSessionView (MDRS-158)", () => {
       expect(view).not.toHaveProperty(key);
     }
     expect(view).toHaveProperty("contentLocked", true);
+  });
+
+  // MDRS-283: the page says how the session is attended before it starts.
+  it("says a stream is set, whatever the status, without the stream", () => {
+    const streamed = course(
+      week(1, lesson("ahead", { hasLiveStream: true }), lesson("plain"))
+    );
+    const ahead = buildSessionView(streamed, "ahead", NOW);
+    expect(ahead?.status).toBe(SessionStatus.SCHEDULED);
+    expect(ahead?.hasLiveStream).toBe(true);
+    expect(ahead).not.toHaveProperty("liveStreamUrl");
+    expect(buildSessionView(streamed, "plain", NOW)?.hasLiveStream).toBe(false);
+  });
+
+  it("names no stream to a caller who may not read content, and falls back to the course's in-person mark", () => {
+    const {
+      meetingUrl: _m,
+      agenda: _a,
+      kaynak: _k,
+      cancelReason: _r,
+      inPerson: _i,
+      inPersonOverride: _o,
+      hasLiveStream: _h,
+      ...open
+    } = lesson("now", { hasLiveStream: true, inPerson: true });
+    const locked = {
+      ...course(week(5, open)),
+      inPerson: true,
+      contentLocked: true,
+    } as ICourseDetailView;
+    const view = buildSessionView(locked, "now", NOW);
+    expect(view).not.toHaveProperty("hasLiveStream");
+    expect(view?.inPerson).toBe(true);
+  });
+
+  it("carries the session's own in-person mark for a content reader", () => {
+    const own = {
+      ...course(week(1, lesson("own", { inPerson: false }))),
+      inPerson: true,
+    } as ICourseDetailView;
+    expect(buildSessionView(own, "own", NOW)?.inPerson).toBe(false);
   });
 });

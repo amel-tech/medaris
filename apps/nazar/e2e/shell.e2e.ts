@@ -170,9 +170,9 @@ test("nazir/21 and 22 — the badges are the real counts", async ({ as }) => {
     .locator("aside")
     .getByRole("link", { name: /^Celseler/ });
   await expect(celseler).toContainText(
-    String(fixture?.expected.firstMissingLinks)
+    String(fixture?.expected.firstWithoutAccess)
   );
-  await expect(celseler).toContainText("bağlantısı eksik");
+  await expect(celseler).toContainText("katılım yolu eksik");
   const talebeler = page
     .locator("aside")
     .getByRole("link", { name: /^Talebeler/ });

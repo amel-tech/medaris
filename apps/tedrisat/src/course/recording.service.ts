@@ -2,6 +2,7 @@ import { AuthenticatedUser } from "@medaris/common";
 import { Injectable } from "@nestjs/common";
 import { BunnyStreamClient } from "../bunny-stream/bunny-stream.client";
 import { CourseRepository } from "./course.repository";
+import { CourseNotifier } from "./course-notifier";
 import {
   type IRecordingRow,
   RecordingStatus,
@@ -35,12 +36,13 @@ import {
  */
 @Injectable()
 export class RecordingService {
-  // All three must stay value imports: `import type` erases them from
+  // All four must stay value imports: `import type` erases them from
   // `design:paramtypes` and Nest can no longer inject them.
   constructor(
     private readonly courseRepo: CourseRepository,
     private readonly recordings: RecordingRepository,
-    private readonly bunny: BunnyStreamClient
+    private readonly bunny: BunnyStreamClient,
+    private readonly notifier: CourseNotifier
   ) {}
 
   /**
@@ -64,6 +66,7 @@ export class RecordingService {
       visibility: dto.visibility ?? RecordingVisibility.ENROLLED,
       actorId: user.sub,
     });
+    await this.announce(written, user);
     return this.answer(written);
   }
 
@@ -88,7 +91,22 @@ export class RecordingService {
       },
       user.sub
     );
+    await this.announce(written, user);
     return this.answer(written);
+  }
+
+  /**
+   * Tells the session's talebe, once, that its recording can be watched
+   * (MDRS-283): when this write made it READY and it was not. Adding a pasted
+   * link does; replacing the link of a READY recording, or changing its title
+   * or visibility, does not. The writer is not told of their own write.
+   */
+  private async announce(
+    { recording, becameReady }: IWrittenRecording,
+    user: AuthenticatedUser
+  ): Promise<void> {
+    if (!becameReady) return;
+    await this.notifier.recordingAdded(recording.lessonId, user.sub);
   }
 
   /**

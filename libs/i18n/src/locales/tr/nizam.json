@@ -2396,8 +2396,8 @@
     "sessions": "{count} celse",
     "editSyllabus": "Müfredatı düzenle",
     "planSession": "Celse planla",
-    "missingTitle": "{day} celsesinin toplantı bağlantısı eksik",
-    "missingBody": "{title}: {when}. Talebeler bağlantı olmadan celseye katılamaz; celse başlamadan ekleyin.",
+    "missingTitle": "{day} celsesinin katılım yolu eksik",
+    "missingBody": "{title}: {when}. Toplantı bağlantısı, canlı yayın ya da yüz yüze işareti yok; talebeler celseye katılamaz. Celse başlamadan birini ekleyin.",
     "summaryLabel": "Dersin sayıları",
     "stats": {
       "students": "Kayıtlı talebe",
@@ -2411,7 +2411,7 @@
       "session": "Celse",
       "when": "Zaman",
       "length": "Süre",
-      "platform": "Platform",
+      "attendance": "Katılım",
       "status": "Durum",
       "actions": "İşlemler",
       "talebe": "Talebe",
@@ -2421,7 +2421,6 @@
     "minutes": "{count} dk",
     "status": {
       "cancelled": "İptal edildi",
-      "missingLink": "Bağlantı eksik",
       "planned": "Planlandı"
     },
     "addLink": "Toplantı bağlantısı ekle",
@@ -2553,6 +2552,8 @@
     "approvalLabel": "Kayıt onayı gereksin",
     "approvalDesc": "Talebeler başvurur, ders kadrosu ya da siz onaylayınca derse girer. İşareti kaldırırsanız talebe hemen kaydolur.",
     "approvalFixed": "Köşk politikası gereği her kayıt onaya bağlıdır; bu derste değiştirilemez.",
+    "inPersonLabel": "Celseler yüz yüze yapılır",
+    "inPersonDesc": "Kendi ayarı seçilmeyen her celse yüz yüze sayılır ve toplantı bağlantısı olmadan da eksik görünmez. Tek bir celseyi sonra Celseler sayfasından değiştirebilirsiniz.",
     "visibilityLegend": "Görünürlük",
     "draftLabel": "Taslak olarak aç",
     "draftDesc": "Müderrisler müfredatı ve celseleri hazırlar; siz yayımlayana kadar talebeler dersi görmez.",
@@ -2604,6 +2605,8 @@
     "approvalLabel": "Kayıt onayı gereksin",
     "approvalDesc": "Talebeler başvurur, ders kadrosu ya da siz onaylayınca derse girer. İşareti kaldırırsanız talebe hemen kaydolur.",
     "approvalFixed": "Köşk politikası gereği her kayıt onaya bağlıdır; bu derste değiştirilemez.",
+    "inPersonLabel": "Celseler yüz yüze yapılır",
+    "inPersonDesc": "Kendi ayarı seçilmeyen her celse yüz yüze sayılır ve toplantı bağlantısı olmadan da eksik görünmez. Tek bir celseyi Celseler sayfasından değiştirebilirsiniz.",
     "zoneLabel": "Saat dilimi",
     "zoneHelp": "Celseler bu saat diliminde planlanır ve gösterilir.",
     "zoneIstanbul": "İstanbul",
@@ -2697,7 +2700,7 @@
     "weekSummaryHelp": "İsteğe bağlı; herkes görür.",
     "lessonHeading": "Celse {n} · {when}",
     "cancelled": "İptal edildi",
-    "linkMissing": "Bağlantı eksik",
+    "accessMissing": "Katılım yolu eksik",
     "scheduled": "Planlandı",
     "hide": "Gizle",
     "minutes": "{minutes} dk",
@@ -2715,6 +2718,8 @@
     "detected": ", bağlantıdan algılandı",
     "linkHelp": "Talebeler bağlantı olmadan celseye katılamaz. Yalnız https bağlantılar kabul edilir.",
     "linkHelpFilled": "Yalnız https bağlantılar kabul edilir; platform, bağlantının adresinden anlaşılır.",
+    "linkHelpInPerson": "Bu celse yüz yüze yapılır; bağlantı isteğe bağlıdır. Yalnız https bağlantılar kabul edilir.",
+    "linkHelpStream": "Bu celse canlı yayınlanır; bağlantı isteğe bağlıdır. Yalnız https bağlantılar kabul edilir.",
     "addLesson": "Celse ekle",
     "copyWeek": "Haftayı kopyala",
     "hideWeek": "Haftayı gizle",
@@ -2795,6 +2800,7 @@
     "linkLabel": "İlk celsenin bağlantısı",
     "linkHelp": "Yalnız https bağlantılar kabul edilir.",
     "linksNote": "Her celsenin kendi toplantı bağlantısı vardır ve bağlantı her hafta değişir. Böylece dersten çıkarılan bir talebe sonraki celseye eski bağlantıyla giremez.",
+    "inPersonNote": "Ders yüz yüze yapılıyor; bu celseler de yüz yüze sayılır. Tek bir celseyi Celseler sayfasından değiştirebilirsiniz.",
     "cancel": "Vazgeç",
     "submit": "{count} celse oluştur",
     "saving": "Oluşturuluyor…",
@@ -2849,14 +2855,25 @@
     "columns": {
       "session": "Celse",
       "time": "Zaman",
-      "link": "Toplantı bağlantısı",
       "state": "Durum",
       "actions": "İşlemler"
     },
     "week": "Hafta {n}",
     "minutes": "{minutes} dk",
     "linkHidden": "Bağlantı gösterilmez",
-    "linkMissing": "Eklenmedi",
+    "attendance": {
+      "column": "Katılım",
+      "inPerson": "Yüz yüze",
+      "stream": "YouTube yayını",
+      "streamOnly": "Yalnız yayın",
+      "missing": "Eksik",
+      "missingDetail": "toplantı bağlantısı, canlı yayın ya da yüz yüze işareti yok",
+      "none": "Eklenmedi",
+      "unknown": "Katılım bilgisi gösterilmez",
+      "unknownPlatform": "Bilinmeyen platform"
+    },
+    "recorded": "Kaydı var",
+    "notRecorded": "Kayıt yok",
     "state": {
       "live": "Şu an canlı",
       "cancelled": "İptal edildi",
@@ -2864,7 +2881,6 @@
       "scheduled": "Planlandı"
     },
     "livePassed": "{minutes} dakikadır sürüyor",
-    "recordings": "{count} ders kaydı",
     "noActions": "İşlem yok",
     "updateLink": "Bağlantıyı güncelle",
     "addLink": "Bağlantı ekle",
@@ -2874,6 +2890,18 @@
     "changeTimeLabel": "{when} celsesinin tarihini değiştir",
     "cancel": "İptal et",
     "cancelLabel": "{when} celsesini iptal et",
+    "inPerson": {
+      "button": "Yüz yüze ayarı",
+      "buttonLabel": "{when} celsesinin yüz yüze ayarı",
+      "formTitle": "{when} celsesinin yüz yüze ayarı",
+      "legend": "Bu celse",
+      "course": "Dersin ayarına uy",
+      "courseYes": "Ders yüz yüze yapılıyor; bu celse de yüz yüze sayılır.",
+      "courseNo": "Ders yüz yüze yapılmıyor; bu celse de yüz yüze sayılmaz.",
+      "yes": "Yüz yüze",
+      "no": "Yüz yüze değil",
+      "saved": "Yüz yüze ayarı kaydedildi"
+    },
     "linkFormTitle": "{when} celsesinin toplantı bağlantısı",
     "timeFormTitle": "{when} celsesinin zamanı",
     "linkFormLabel": "Toplantı bağlantısı",
@@ -2908,9 +2936,6 @@
       "time": "Tarihi ve saati girin."
     },
     "stream": {
-      "column": "Canlı yayın",
-      "set": "Eklendi",
-      "missing": "Eklenmedi",
       "add": "Canlı yayın ekle",
       "update": "Canlı yayını güncelle",
       "addLabel": "{when} celsesine canlı yayın bağlantısı ekle",
@@ -3454,7 +3479,7 @@
     "week": {
       "none": "Önümüzdeki yedi günde celse yok.",
       "some": "Önümüzdeki yedi günde {count} celse var.",
-      "missing": "Önümüzdeki yedi günde {count} celse var; {missing, plural, =1 {birinin} other {# tanesinin}} toplantı bağlantısı eksik."
+      "missing": "Önümüzdeki yedi günde {count} celse var; {missing, plural, =1 {birinin} other {# tanesinin}} katılım yolu eksik."
     },
     "counts": {
       "title": "Platform sayıları",
@@ -3471,8 +3496,8 @@
       "goMadrasahs": "Medreselere git"
     },
     "missingAlert": {
-      "title": "{count, plural, =1 {Bir celsenin toplantı bağlantısı eksik} other {# celsenin toplantı bağlantısı eksik}}",
-      "body": "{course}, {when}. Celse başlamadan ekleyin; bağlantı olmadan talebeler celseye katılamaz."
+      "title": "{count, plural, =1 {Bir celsenin katılım yolu eksik} other {# celsenin katılım yolu eksik}}",
+      "body": "{course}, {when}. Toplantı bağlantısı, canlı yayın ya da yüz yüze işareti yok; celse başlamadan birini ekleyin, yoksa talebeler celseye katılamaz."
     },
     "applications": {
       "title": "Köşk başvuruları",
@@ -3569,7 +3594,7 @@
       "columns": {
         "course": "Ders",
         "when": "Zaman",
-        "platform": "Platform",
+        "attendance": "Katılım",
         "students": "Talebe",
         "state": "Durum",
         "actions": "İşlemler"
@@ -3577,9 +3602,7 @@
       "week": "Hafta {number}",
       "makeup": "telafi celsesi",
       "imam": "imam",
-      "noLink": "Toplantı bağlantısı yok",
       "state": {
-        "missingLink": "Bağlantı eksik",
         "planned": "Planlandı",
         "cancelled": "İptal edildi",
         "past": "Yapıldı"

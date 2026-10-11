@@ -21,6 +21,7 @@ const ICONS: Record<string, IconName> = {
   SESSION_RESCHEDULED: "clock",
   SESSION_CANCELLED: "close",
   SESSION_ADDED: "video",
+  RECORDING_ADDED: "video",
   KOSK_APPLICATION_RESULT: "kosk",
   DECK_PUBLISH_RESULT: "cards",
 };
@@ -148,6 +149,10 @@ export const describeNotification = (
       break;
     case "SESSION_ADDED":
       if (!has("sessionLabel")) bodyKey = "bodyNoSession";
+      break;
+    // MDRS-283: tedrisat names the session by its start, when it has one.
+    case "RECORDING_ADDED":
+      if (!has("sessionAt")) bodyKey = "bodyNoSession";
       break;
     case "ENROLLMENT_REJECTED":
     case "REMOVED_FROM_COURSE":

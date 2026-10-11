@@ -88,6 +88,41 @@ describe("describeNotification (tedris/36 sentences)", () => {
     );
   });
 
+  it("words a recording that became ready, naming its session by its start (MDRS-283)", () => {
+    const n = notification({
+      type: "RECORDING_ADDED",
+      targetType: "SESSION",
+      targetId: SESSION,
+      params: {
+        courseTitle: "Emsile ve Bina",
+        courseId: COURSE,
+        sessionAt: "2026-10-04T17:00:00Z",
+        source: "Nûruosmaniye Köşkü",
+      },
+    });
+    expect(describeAs(n)).toEqual({
+      title: "Ders kaydı eklendi",
+      body: "Emsile ve Bina dersinin Paz 4 Ekim 20:00 celsesine ders kaydı eklendi.",
+      source: "Nûruosmaniye Köşkü",
+    });
+    expect(describeAs(n, "en")).toMatchObject({
+      title: "Recording added",
+      body: "A recording was added to the Sun 4 October 20:00 session of Emsile ve Bina.",
+    });
+    expect(notificationIcon("RECORDING_ADDED")).toBe("video");
+    expect(notificationHref(n)).toBe(`/courses/${COURSE}/lessons/${SESSION}`);
+  });
+
+  it("words a recording whose session has no start without one (MDRS-283)", () => {
+    const text = describeAs(
+      notification({
+        type: "RECORDING_ADDED",
+        params: { courseTitle: "Emsile ve Bina" },
+      })
+    );
+    expect(text.body).toBe("Emsile ve Bina dersine ders kaydı eklendi.");
+  });
+
   it.each([
     [
       "SESSION_ADDED",
@@ -161,7 +196,7 @@ describe("describeNotification (tedris/36 sentences)", () => {
 
   it("has a sentence for every type in every language", () => {
     const types = Object.keys(resources.tr.tedris.NotificationsPage.types);
-    expect(types).toHaveLength(9);
+    expect(types).toHaveLength(10);
     for (const locale of ["tr", "en", "ar"] as const) {
       for (const type of types) {
         const text = describeAs(

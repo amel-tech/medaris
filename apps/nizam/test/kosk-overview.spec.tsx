@@ -21,12 +21,11 @@ import {
   courseHideOutcome,
   errorCodeOf,
   filterCourses,
-  firstMissingLink,
+  firstWithoutAccess,
   listWords,
   type Messages,
   meetingSlots,
   nazarCourseHref,
-  platformOf,
   registrationChips,
   rowActions,
   sessionCount,
@@ -255,6 +254,10 @@ const lesson = (
   meetingUrl: "https://zoom.us/j/1",
   isPreview: false,
   orderIndex: 0,
+  // the attendance a course read carries for whoever may read its content (MDRS-283)
+  inPerson: false,
+  inPersonOverride: null,
+  hasLiveStream: false,
   ...over,
 });
 
@@ -303,7 +306,7 @@ describe("a course's upcoming sessions (nizam 53)", () => {
       "pazar",
     ]);
     expect(next.map((s) => s.status)).toEqual([
-      "missingLink",
+      "withoutAccess",
       "cancelled",
       "planned",
       "planned",
@@ -316,10 +319,10 @@ describe("a course's upcoming sessions (nizam 53)", () => {
     ).toBe(false);
   });
 
-  it("names the first upcoming session with no link, never a cancelled one (criterion 2)", () => {
-    expect(firstMissingLink(course, NOW)?.lesson.id).toBe("cumartesi");
+  it("names the first upcoming session nobody can attend, never a cancelled one (criterion 2)", () => {
+    expect(firstWithoutAccess(course, NOW)?.lesson.id).toBe("cumartesi");
     expect(
-      firstMissingLink(
+      firstWithoutAccess(
         {
           weeks: [
             {
@@ -339,7 +342,7 @@ describe("a course's upcoming sessions (nizam 53)", () => {
     ).toBeNull();
   });
 
-  it("looks for the missing link beyond the four it lists", () => {
+  it("looks for it beyond the four it lists", () => {
     const far = {
       weeks: [
         {
@@ -355,17 +358,73 @@ describe("a course's upcoming sessions (nizam 53)", () => {
       ],
     } as unknown as CourseDetailResponse;
     expect(upcomingSessions(far, NOW)).toHaveLength(4);
-    expect(firstMissingLink(far, NOW)?.lesson.id).toBe("geç");
+    expect(firstWithoutAccess(far, NOW)?.lesson.id).toBe("geç");
   });
 
-  it("counts a blank link as a missing one", () => {
-    expect(sessionStatus({ meetingUrl: "  " })).toBe("missingLink");
-    expect(sessionStatus({ meetingUrl: "https://meet.google.com/x" })).toBe(
-      "planned"
-    );
-    expect(sessionStatus({ cancelledAt: new Date(), meetingUrl: "x" })).toBe(
+  it("covers a session by its link, its stream or the in-person mark, and counts a blank link as none (MDRS-283)", () => {
+    const none = { meetingUrl: "  ", hasLiveStream: false, inPerson: false };
+    expect(sessionStatus(none)).toBe("withoutAccess");
+    expect(
+      sessionStatus({ ...none, meetingUrl: "https://meet.google.com/x" })
+    ).toBe("planned");
+    expect(sessionStatus({ ...none, hasLiveStream: true })).toBe("planned");
+    expect(sessionStatus({ ...none, inPerson: true })).toBe("planned");
+    expect(sessionStatus({ ...none, cancelledAt: new Date() })).toBe(
       "cancelled"
     );
+  });
+
+  it("never flags a session whose attendance the read did not carry (content-locked)", () => {
+    expect(sessionStatus({ meetingUrl: undefined })).toBe("planned");
+    const locked = {
+      weeks: [
+        {
+          id: "w",
+          weekNumber: 1,
+          lessons: [
+            lesson("kilitli", "2026-10-03T18:00:00Z", {
+              meetingUrl: undefined,
+              inPerson: undefined,
+              inPersonOverride: undefined,
+              hasLiveStream: undefined,
+            }),
+          ],
+        },
+      ],
+    } as unknown as CourseDetailResponse;
+    expect(firstWithoutAccess(locked, NOW)).toBeNull();
+    expect(upcomingSessions(locked, NOW)[0]?.attendance).toBeNull();
+  });
+
+  it("does not name a session that is only streamed or held in person (MDRS-283)", () => {
+    const covered = {
+      weeks: [
+        {
+          id: "w",
+          weekNumber: 1,
+          lessons: [
+            lesson("yayın", "2026-10-03T18:00:00Z", {
+              meetingUrl: undefined,
+              hasLiveStream: true,
+            }),
+            lesson("yüz yüze", "2026-10-04T18:00:00Z", {
+              meetingUrl: undefined,
+              inPerson: true,
+            }),
+          ],
+        },
+      ],
+    } as unknown as CourseDetailResponse;
+    expect(firstWithoutAccess(covered, NOW)).toBeNull();
+    expect(
+      upcomingSessions(covered, NOW).map((s) => [s.status, s.attendance])
+    ).toEqual([
+      [
+        "planned",
+        { inPerson: false, platform: null, stream: "alone", lack: null },
+      ],
+      ["planned", { inPerson: true, platform: null, stream: null, lack: null }],
+    ]);
   });
 
   it("counts the live sessions of the programme and writes the days it meets", () => {
@@ -373,24 +432,6 @@ describe("a course's upcoming sessions (nizam 53)", () => {
     expect(listWords(meetingSlots(course, "tr"), "tr")).toBe(
       "Çarşamba 21:00, Cumartesi 21:00 ve Pazar 20:00"
     );
-  });
-});
-
-describe("the platform of a meeting link", () => {
-  it("names the ones a talebe knows and falls back to the host", () => {
-    expect(platformOf("https://us02web.zoom.us/j/123")).toBe("Zoom");
-    expect(platformOf("https://meet.google.com/abc-defg-hij")).toBe(
-      "Google Meet"
-    );
-    expect(platformOf("https://teams.microsoft.com/l/meetup-join/x")).toBe(
-      "Microsoft Teams"
-    );
-    expect(platformOf("https://www.youtube.com/live/x")).toBe("YouTube");
-    expect(platformOf("https://meet.example.org/room")).toBe(
-      "meet.example.org"
-    );
-    expect(platformOf("not a link")).toBeNull();
-    expect(platformOf(undefined)).toBeNull();
   });
 });
 
@@ -720,12 +761,62 @@ describe("Genel bakış (nizam 53)", () => {
     expect(html).toContain("Reddet: Ömer Faruk Demirkaya");
   });
 
-  it("warns about the first missing link and marks the row (criterion 2)", () => {
+  it("warns about the first session nobody can attend and marks it in Katılım (criterion 2, MDRS-283)", () => {
     const html = view();
-    expect(html).toContain("celsesinin toplantı bağlantısı eksik");
-    expect(html).toContain("Bağlantı eksik");
+    expect(html).toContain("Cumartesi celsesinin katılım yolu eksik");
+    expect(html).toContain(
+      "Toplantı bağlantısı, canlı yayın ya da yüz yüze işareti yok"
+    );
+    expect(html).toContain(">Katılım<");
+    expect(html.split('data-testid="attendance-missing"')).toHaveLength(2);
     expect(html).toContain("Toplantı bağlantısı ekle");
     expect(html).toContain("İptal edildi");
+    expect(html).toContain("Zoom");
+  });
+
+  it("neither warns about nor flags a session that is only streamed or held in person (MDRS-283)", () => {
+    const covered = (over: Record<string, unknown>) =>
+      ({
+        ...course,
+        weeks: course.weeks.map((w) => ({
+          ...w,
+          lessons: w.lessons.map((l) =>
+            l.meetingUrl === undefined && !l.cancelledAt ? { ...l, ...over } : l
+          ),
+        })),
+      }) as unknown as CourseDetailResponse;
+    for (const [over, words] of [
+      [{ hasLiveStream: true }, "Yalnız yayın"],
+      [{ inPerson: true }, "Yüz yüze"],
+    ] as const) {
+      const html = view({ course: covered(over) });
+      expect(html).not.toContain("katılım yolu eksik");
+      expect(html).not.toContain('data-testid="attendance-missing"');
+      expect(html).toContain(words);
+      expect(html).not.toContain("Toplantı bağlantısı ekle");
+    }
+  });
+
+  it("claims nothing for a content-locked read", () => {
+    const html = view({
+      course: {
+        ...course,
+        contentLocked: true,
+        weeks: course.weeks.map((w) => ({
+          ...w,
+          lessons: w.lessons.map((l) => ({
+            ...l,
+            meetingUrl: undefined,
+            inPerson: undefined,
+            inPersonOverride: undefined,
+            hasLiveStream: undefined,
+          })),
+        })),
+      } as unknown as CourseDetailResponse,
+    });
+    expect(html).not.toContain("katılım yolu eksik");
+    expect(html).not.toContain('data-testid="attendance-missing"');
+    expect(html).toContain("Katılım bilgisi gösterilmez");
   });
 
   it("sends Müfredatı düzenle and Celse planla to the course's editor (criterion 5)", () => {

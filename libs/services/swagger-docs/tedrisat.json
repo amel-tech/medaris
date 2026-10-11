@@ -2799,7 +2799,7 @@
     },
     "/courses/{id}": {
       "get": {
-        "description": "Anyone may read the course page, with or without a token (MDRS-122): its description and programme (week and lesson titles, types, schedule, length, müderris). Lesson content — `meetingUrl`, `agenda`, `kaynak` and resource `url` — is sent only to a caller holding `view_details` (the enrolled talebe, the müderris, the köşk manager); for everyone else, PENDING included, those keys are absent and `contentLocked` is true. A content read by anyone who is neither enrolled nor a müderris of the course is recorded in `audit_log` (MDRS-103). A caller with no token gets the same filtered body, and 404 for a draft, a hidden course, or any course of an unlisted köşk.",
+        "description": "Anyone may read the course page, with or without a token (MDRS-122): its description and programme (week and lesson titles, types, schedule, length, müderris). Lesson content — `meetingUrl`, `agenda`, `kaynak`, how a session is attended (`inPerson`, `inPersonOverride`, `hasLiveStream`; MDRS-283) and resource `url` — is sent only to a caller holding `view_details` (the enrolled talebe, the müderris, the köşk manager); for everyone else, PENDING included, those keys are absent and `contentLocked` is true. A content read by anyone who is neither enrolled nor a müderris of the course is recorded in `audit_log` (MDRS-103). A caller with no token gets the same filtered body, and 404 for a draft, a hidden course, or any course of an unlisted köşk.",
         "operationId": "getCourseById",
         "parameters": [
           {
@@ -2917,7 +2917,7 @@
             }
           },
           "403": {
-            "description": "No `course.edit` on the course, or the save changes the müderris list without `course.open_standalone` (or `madrasah.muderris_manage` for a medrese's course) — a müderris may save the course but not change who teaches it (MUDERRIS_ASSIGNMENT_FORBIDDEN). Adding or dropping a session, or changing a session's time, meeting link, agenda or preview flag, needs `session.manage` as well (AUTHZ_FORBIDDEN). SELF_GRANT_REFUSED: a changed list names the caller, who does not already hold every müderris permission on the course (SYSTEM_ADMIN excepted)."
+            "description": "No `course.edit` on the course, or the save changes the müderris list without `course.open_standalone` (or `madrasah.muderris_manage` for a medrese's course) — a müderris may save the course but not change who teaches it (MUDERRIS_ASSIGNMENT_FORBIDDEN). Adding or dropping a session, or changing a session's time, meeting link, agenda, preview flag or in-person mark (`inPersonOverride`), needs `session.manage` as well (AUTHZ_FORBIDDEN). SELF_GRANT_REFUSED: a changed list names the caller, who does not already hold every müderris permission on the course (SYSTEM_ADMIN excepted)."
           },
           "404": {
             "description": "No such course, or a müderris row links an id that names no account in the app or the realm (MUDERRIS_UNKNOWN_USER)."
@@ -3492,7 +3492,7 @@
     },
     "/courses/{id}/badge-counts": {
       "get": {
-        "description": "For the course team (MDRS-183): the live sessions still ahead that have no meeting link — cancelled and hidden ones are not counted — and the pending enrollment requests.",
+        "description": "For the course team (MDRS-183): the live sessions still ahead that nobody can attend as they stand — no meeting link, no live stream, not held in person (MDRS-283); cancelled and hidden ones are not counted — and the pending enrollment requests.",
         "operationId": "getCourseBadgeCounts",
         "parameters": [
           {
@@ -3862,7 +3862,7 @@
     },
     "/lessons/{id}/calendar.ics": {
       "get": {
-        "description": "Authorized like the session page (`GET /courses/:id`). The event links to the Medaris session page, never to the meeting link. `UID` is derived from the lesson id and `SEQUENCE` is the course version, so a re-import after the session moved updates the event instead of duplicating it (MDRS-117).",
+        "description": "Authorized like the session page (`GET /courses/:id`). The event links to the Medaris session page, never to the meeting link. Its description says how the session is attended: in person, streamed, or by the meeting link on the page (MDRS-283); whether it has a link or a stream is said only to a caller who may read the course's content. `UID` is derived from the lesson id and `SEQUENCE` is the course version, so a re-import after the session moved updates the event instead of duplicating it (MDRS-117).",
         "operationId": "getLessonCalendar",
         "parameters": [
           {
@@ -3922,7 +3922,7 @@
     },
     "/courses/{courseId}/sessions/{sessionId}": {
       "get": {
-        "description": "Open to callers with no token, like the course page (MDRS-122), and filtered the same way: `meetingUrl`, `agenda`, `kaynak` and `cancelReason` are sent only to a caller holding `view_details` (the enrolled talebe, the müderris, the köşk manager); for everyone else, PENDING included, those keys are absent and `contentLocked` is true. `status` is derived from the clock and the cancellation, never stored: CANCELLED once cancelled, else ENDED after the session's length (60 minutes when it has none), LIVE while it runs, SCHEDULED before. `meetingUrl` is null for a cancelled or finished session. `previous` and `next` are the neighbouring live sessions in programme order, cancelled ones skipped. A content read by anyone who is neither enrolled nor a müderris is recorded in `audit_log`, as on `GET /courses/:id` (MDRS-158).",
+        "description": "Open to callers with no token, like the course page (MDRS-122), and filtered the same way: `meetingUrl`, `agenda`, `kaynak` and `cancelReason` are sent only to a caller holding `view_details` (the enrolled talebe, the müderris, the köşk manager); for everyone else, PENDING included, those keys are absent and `contentLocked` is true. `status` is derived from the clock and the cancellation, never stored: CANCELLED once cancelled, else ENDED after the session's length (60 minutes when it has none), LIVE while it runs, SCHEDULED before. `meetingUrl` is null for a cancelled or finished session. `inPerson` (MDRS-283) is sent to everyone; `hasLiveStream` is content and is sent whatever the status, while `liveStreamUrl` stays LIVE-only. `previous` and `next` are the neighbouring live sessions in programme order, cancelled ones skipped. A content read by anyone who is neither enrolled nor a müderris is recorded in `audit_log`, as on `GET /courses/:id` (MDRS-158).",
         "operationId": "getSession",
         "parameters": [
           {
@@ -5524,7 +5524,7 @@
             "name": "types",
             "required": false,
             "in": "query",
-            "description": "Comma separated; only these types are listed. Any of ENROLLMENT_APPROVED, ENROLLMENT_REJECTED, REMOVED_FROM_COURSE, COURSE_ACCESS_REMOVED, SESSION_RESCHEDULED, SESSION_CANCELLED, SESSION_ADDED, KOSK_APPLICATION_RESULT, DECK_PUBLISH_RESULT, COURSE_BAN_PLACED, KOSK_BAN_PLACED.",
+            "description": "Comma separated; only these types are listed. Any of ENROLLMENT_APPROVED, ENROLLMENT_REJECTED, REMOVED_FROM_COURSE, COURSE_ACCESS_REMOVED, SESSION_RESCHEDULED, SESSION_CANCELLED, SESSION_ADDED, RECORDING_ADDED, KOSK_APPLICATION_RESULT, DECK_PUBLISH_RESULT, COURSE_BAN_PLACED, KOSK_BAN_PLACED.",
             "schema": {
               "type": "string"
             }
@@ -5565,7 +5565,7 @@
             "name": "types",
             "required": false,
             "in": "query",
-            "description": "Comma separated; only these types are counted. Any of ENROLLMENT_APPROVED, ENROLLMENT_REJECTED, REMOVED_FROM_COURSE, COURSE_ACCESS_REMOVED, SESSION_RESCHEDULED, SESSION_CANCELLED, SESSION_ADDED, KOSK_APPLICATION_RESULT, DECK_PUBLISH_RESULT, COURSE_BAN_PLACED, KOSK_BAN_PLACED.",
+            "description": "Comma separated; only these types are counted. Any of ENROLLMENT_APPROVED, ENROLLMENT_REJECTED, REMOVED_FROM_COURSE, COURSE_ACCESS_REMOVED, SESSION_RESCHEDULED, SESSION_CANCELLED, SESSION_ADDED, RECORDING_ADDED, KOSK_APPLICATION_RESULT, DECK_PUBLISH_RESULT, COURSE_BAN_PLACED, KOSK_BAN_PLACED.",
             "schema": {
               "type": "string"
             }
@@ -5605,7 +5605,7 @@
             "name": "types",
             "required": false,
             "in": "query",
-            "description": "Comma separated; only these types are marked read. Any of ENROLLMENT_APPROVED, ENROLLMENT_REJECTED, REMOVED_FROM_COURSE, COURSE_ACCESS_REMOVED, SESSION_RESCHEDULED, SESSION_CANCELLED, SESSION_ADDED, KOSK_APPLICATION_RESULT, DECK_PUBLISH_RESULT, COURSE_BAN_PLACED, KOSK_BAN_PLACED.",
+            "description": "Comma separated; only these types are marked read. Any of ENROLLMENT_APPROVED, ENROLLMENT_REJECTED, REMOVED_FROM_COURSE, COURSE_ACCESS_REMOVED, SESSION_RESCHEDULED, SESSION_CANCELLED, SESSION_ADDED, RECORDING_ADDED, KOSK_APPLICATION_RESULT, DECK_PUBLISH_RESULT, COURSE_BAN_PLACED, KOSK_BAN_PLACED.",
             "schema": {
               "type": "string"
             }
@@ -12088,7 +12088,19 @@
           "meetingUrl": {
             "type": "string",
             "nullable": true,
-            "description": "Where talebe join. The köşk nazımı is the course team, so it is shown; null: no link yet (Bağlantı eksik). Absent when `contentLocked` is true."
+            "description": "Where talebe join. The köşk nazımı is the course team, so it is shown; null: no link yet. Absent when `contentLocked` is true."
+          },
+          "inPerson": {
+            "type": "boolean",
+            "description": "Held in person (MDRS-283): the session's own mark, else the course's. Absent when `contentLocked` is true: a row of such a page says no more than it did before MDRS-283."
+          },
+          "hasLiveStream": {
+            "type": "boolean",
+            "description": "A live stream is set for the session (MDRS-283); never the link. Course content like `meetingUrl`: absent when `contentLocked` is true."
+          },
+          "withoutAccess": {
+            "type": "boolean",
+            "description": "Flagged (MDRS-283): still ahead, not cancelled, and nobody can attend it as it stands: no meeting link, no live stream and not held in person. The rule behind `withoutAccessCount`; always false on the PAST and CANCELLED tabs. Read off the course content, so absent when `contentLocked` is true: such a page keeps only `withoutAccessCount` and `firstWithoutAccess`."
           },
           "isMakeup": {
             "type": "boolean",
@@ -12223,11 +12235,11 @@
           "sessionCounts": {
             "$ref": "#/components/schemas/KoskDashboardSessionCountsResponse"
           },
-          "missingLinkCount": {
+          "withoutAccessCount": {
             "type": "number",
-            "description": "Sessions in the next seven days with no meeting link: the alert's reason"
+            "description": "Sessions in the next seven days, not cancelled, that nobody can attend as they stand: no meeting link, no live stream and not held in person (MDRS-283). The alert's reason"
           },
-          "firstMissingLink": {
+          "firstWithoutAccess": {
             "nullable": true,
             "description": "The soonest of them: the alert names its course and day; null when none",
             "type": "object",
@@ -12275,7 +12287,7 @@
           "koskName",
           "counts",
           "sessionCounts",
-          "missingLinkCount",
+          "withoutAccessCount",
           "tab",
           "contentLocked",
           "sessions",
@@ -14052,6 +14064,10 @@
             "type": "number",
             "example": 215
           },
+          "inPerson": {
+            "type": "boolean",
+            "description": "\"Yüz yüze\" (MDRS-283): the course's sessions are held in person. A public label."
+          },
           "koskId": {
             "type": "string"
           },
@@ -14085,6 +14101,7 @@
           "id",
           "title",
           "coverHue",
+          "inPerson",
           "koskId",
           "koskName",
           "muderris"
@@ -14752,6 +14769,10 @@
             "nullable": true,
             "description": "The word printed on the cover; null when none."
           },
+          "inPerson": {
+            "type": "boolean",
+            "description": "\"Celseler yüz yüze yapılır\" (MDRS-283): the course's sessions are held face to face unless a session says otherwise. A public label, like the title."
+          },
           "timeZone": {
             "type": "string",
             "example": "Europe/Istanbul",
@@ -14827,6 +14848,7 @@
           "grantsCertificate",
           "requiresApproval",
           "isClosed",
+          "inPerson",
           "timeZone",
           "version",
           "createdAt",
@@ -14907,6 +14929,12 @@
           "isPreview": {
             "type": "boolean",
             "example": false
+          },
+          "inPersonOverride": {
+            "type": "boolean",
+            "nullable": true,
+            "example": null,
+            "description": "The session's own in-person mark (MDRS-283): true or false overrides the course's `inPerson`, null follows it. Absent leaves it as it is. Changing it is session work (`session.manage`), like the meeting link."
           }
         },
         "required": [
@@ -15082,6 +15110,11 @@
             "example": "Sarf",
             "description": "The word printed on the cover."
           },
+          "inPerson": {
+            "type": "boolean",
+            "example": false,
+            "description": "\"Celseler yüz yüze yapılır\" (MDRS-283): the course's sessions are held face to face, unless a session says otherwise (`inPersonOverride`). A label only. Defaults to false; never null."
+          },
           "weeks": {
             "type": "array",
             "items": {
@@ -15211,6 +15244,19 @@
           "cancelReason": {
             "type": "string",
             "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103); a sample session (`isPreview`) keeps its `kaynak` and `agenda` for everyone (MDRS-161), never its `meetingUrl`."
+          },
+          "inPerson": {
+            "type": "boolean",
+            "description": "Held in person: the session's own `inPersonOverride` when it has one, else the course's `inPerson`. Course content: absent unless the caller holds `view_details` on the course (MDRS-103); a sample session (`isPreview`) keeps its `kaynak` and `agenda` for everyone (MDRS-161), never its `meetingUrl`."
+          },
+          "inPersonOverride": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "The session's own in-person mark: true or false overrides the course, null follows it. Course content: absent unless the caller holds `view_details` on the course (MDRS-103); a sample session (`isPreview`) keeps its `kaynak` and `agenda` for everyone (MDRS-161), never its `meetingUrl`."
+          },
+          "hasLiveStream": {
+            "type": "boolean",
+            "description": "A live stream link is set for the session; never the link itself, which only the stream routes and the LIVE session page carry. Course content: absent unless the caller holds `view_details` on the course (MDRS-103); a sample session (`isPreview`) keeps its `kaynak` and `agenda` for everyone (MDRS-161), never its `meetingUrl`."
           }
         },
         "required": [
@@ -15396,6 +15442,10 @@
             "nullable": true,
             "description": "The word printed on the cover; null when none."
           },
+          "inPerson": {
+            "type": "boolean",
+            "description": "\"Celseler yüz yüze yapılır\" (MDRS-283): the course's sessions are held face to face unless a session says otherwise. A public label, like the title."
+          },
           "timeZone": {
             "type": "string",
             "example": "Europe/Istanbul",
@@ -15472,6 +15522,7 @@
           "grantsCertificate",
           "requiresApproval",
           "isClosed",
+          "inPerson",
           "timeZone",
           "version",
           "createdAt",
@@ -15616,6 +15667,10 @@
             "nullable": true,
             "description": "The word printed on the cover; null when none."
           },
+          "inPerson": {
+            "type": "boolean",
+            "description": "\"Celseler yüz yüze yapılır\" (MDRS-283): the course's sessions are held face to face unless a session says otherwise. A public label, like the title."
+          },
           "timeZone": {
             "type": "string",
             "example": "Europe/Istanbul",
@@ -15690,6 +15745,7 @@
           "grantsCertificate",
           "requiresApproval",
           "isClosed",
+          "inPerson",
           "timeZone",
           "version",
           "createdAt",
@@ -15797,6 +15853,11 @@
             "type": "string",
             "example": "Sarf",
             "description": "The word printed on the cover."
+          },
+          "inPerson": {
+            "type": "boolean",
+            "example": true,
+            "description": "\"Celseler yüz yüze yapılır\" (MDRS-283): the course's sessions are held face to face, unless a session says otherwise (`inPersonOverride`). Under `course.edit`, like the rest of the course's fields."
           }
         }
       },
@@ -15872,6 +15933,11 @@
             "type": "string",
             "example": "Sarf",
             "description": "The word printed on the cover."
+          },
+          "inPerson": {
+            "type": "boolean",
+            "example": false,
+            "description": "\"Celseler yüz yüze yapılır\" (MDRS-283): the course's sessions are held face to face, unless a session says otherwise (`inPersonOverride`). A label only. Defaults to false; never null."
           },
           "weeks": {
             "type": "array",
@@ -16204,10 +16270,10 @@
       "CourseBadgeCountsResponse": {
         "type": "object",
         "properties": {
-          "missingMeetingLinks": {
+          "sessionsWithoutAccess": {
             "type": "number",
             "example": 1,
-            "description": "Live sessions still ahead whose meeting link is empty. A cancelled or hidden session is not counted."
+            "description": "Live sessions still ahead that nobody can attend as they stand: no meeting link, no live stream and not held in person (MDRS-283). A cancelled or hidden session is not counted, nor is one already under way or over."
           },
           "pendingApplications": {
             "type": "number",
@@ -16216,7 +16282,7 @@
           }
         },
         "required": [
-          "missingMeetingLinks",
+          "sessionsWithoutAccess",
           "pendingApplications"
         ]
       },
@@ -16515,6 +16581,14 @@
             "nullable": true,
             "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103). The embeddable stream, sent only while the session is LIVE and only when one was set."
           },
+          "inPerson": {
+            "type": "boolean",
+            "description": "Held in person (MDRS-283): the session's own mark, else the course's. Sent to everyone who may see the session; a label, not a way in."
+          },
+          "hasLiveStream": {
+            "type": "boolean",
+            "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103). A live stream is set for the session (MDRS-283), whatever its status, so the page can say so before it starts; the link itself is `liveStreamUrl`, LIVE only."
+          },
           "recording": {
             "nullable": true,
             "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103). The session's recording, or null when it has none. Its `url` is null while it is PROCESSING.",
@@ -16565,6 +16639,7 @@
           "courseId",
           "weekId",
           "weekTitle",
+          "inPerson",
           "muderris",
           "contentLocked"
         ]
@@ -16688,6 +16763,12 @@
           "isPreview": {
             "type": "boolean",
             "example": false
+          },
+          "inPersonOverride": {
+            "type": "boolean",
+            "nullable": true,
+            "example": null,
+            "description": "The session's own in-person mark (MDRS-283): true or false overrides the course's `inPerson`, null follows it. Absent leaves it as it is. Changing it is session work (`session.manage`), like the meeting link."
           }
         },
         "required": [
@@ -16760,6 +16841,19 @@
           "cancelReason": {
             "type": "string",
             "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103); a sample session (`isPreview`) keeps its `kaynak` and `agenda` for everyone (MDRS-161), never its `meetingUrl`."
+          },
+          "inPerson": {
+            "type": "boolean",
+            "description": "Held in person: the session's own `inPersonOverride` when it has one, else the course's `inPerson`. Course content: absent unless the caller holds `view_details` on the course (MDRS-103); a sample session (`isPreview`) keeps its `kaynak` and `agenda` for everyone (MDRS-161), never its `meetingUrl`."
+          },
+          "inPersonOverride": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "The session's own in-person mark: true or false overrides the course, null follows it. Course content: absent unless the caller holds `view_details` on the course (MDRS-103); a sample session (`isPreview`) keeps its `kaynak` and `agenda` for everyone (MDRS-161), never its `meetingUrl`."
+          },
+          "hasLiveStream": {
+            "type": "boolean",
+            "description": "A live stream link is set for the session; never the link itself, which only the stream routes and the LIVE session page carry. Course content: absent unless the caller holds `view_details` on the course (MDRS-103); a sample session (`isPreview`) keeps its `kaynak` and `agenda` for everyone (MDRS-161), never its `meetingUrl`."
           },
           "courseVersion": {
             "type": "number",
@@ -17023,6 +17117,19 @@
             "type": "string",
             "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103); a sample session (`isPreview`) keeps its `kaynak` and `agenda` for everyone (MDRS-161), never its `meetingUrl`."
           },
+          "inPerson": {
+            "type": "boolean",
+            "description": "Held in person: the session's own `inPersonOverride` when it has one, else the course's `inPerson`. Course content: absent unless the caller holds `view_details` on the course (MDRS-103); a sample session (`isPreview`) keeps its `kaynak` and `agenda` for everyone (MDRS-161), never its `meetingUrl`."
+          },
+          "inPersonOverride": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "The session's own in-person mark: true or false overrides the course, null follows it. Course content: absent unless the caller holds `view_details` on the course (MDRS-103); a sample session (`isPreview`) keeps its `kaynak` and `agenda` for everyone (MDRS-161), never its `meetingUrl`."
+          },
+          "hasLiveStream": {
+            "type": "boolean",
+            "description": "A live stream link is set for the session; never the link itself, which only the stream routes and the LIVE session page carry. Course content: absent unless the caller holds `view_details` on the course (MDRS-103); a sample session (`isPreview`) keeps its `kaynak` and `agenda` for everyone (MDRS-161), never its `meetingUrl`."
+          },
           "weekNumber": {
             "type": "number"
           }
@@ -17099,6 +17206,12 @@
             "items": {
               "$ref": "#/components/schemas/AgendaStepDto"
             }
+          },
+          "inPersonOverride": {
+            "type": "boolean",
+            "nullable": true,
+            "example": null,
+            "description": "The session's own in-person mark (MDRS-283): true or false overrides the course's `inPerson`, null follows it. Absent leaves it as it is. Changing it is session work (`session.manage`), like the meeting link."
           },
           "version": {
             "type": "number",
@@ -17992,6 +18105,7 @@
               "SESSION_RESCHEDULED",
               "SESSION_CANCELLED",
               "SESSION_ADDED",
+              "RECORDING_ADDED",
               "KOSK_APPLICATION_RESULT",
               "DECK_PUBLISH_RESULT",
               "COURSE_BAN_PLACED",
@@ -20689,6 +20803,14 @@
             "type": "string",
             "nullable": true,
             "description": "The meeting link; null when none was added, and always null once the session is cancelled or over. Only an enrolled caller receives this response, so the link is theirs to read."
+          },
+          "inPerson": {
+            "type": "boolean",
+            "description": "Held in person (MDRS-283): the session's own mark, else the course's. Programım and the home page word the session by it."
+          },
+          "hasLiveStream": {
+            "type": "boolean",
+            "description": "A live stream is set for the session (MDRS-283), whatever its status; never the link, which the session page gives while it is LIVE."
           }
         },
         "required": [
@@ -20702,7 +20824,9 @@
           "startsAt",
           "durationMinutes",
           "status",
-          "meetingUrl"
+          "meetingUrl",
+          "inPerson",
+          "hasLiveStream"
         ]
       },
       "MadrasahNazirGroupResponse": {
@@ -21643,7 +21767,21 @@
             "type": "string",
             "nullable": true,
             "example": "meet.google.com",
-            "description": "The host of the session's meeting link, never the link: the client names the platform from it. Null when the session has no link (\"bağlantısı eksik\")"
+            "description": "The host of the session's meeting link, never the link: the client names the platform from it. Null when the session has no link; whether that leaves it without a way in is `withoutAccess`. Also null when the course is in a passive scope, whose content is closed to the Pano; `withoutAccess` is then null too"
+          },
+          "inPerson": {
+            "type": "boolean",
+            "description": "Held in person (MDRS-283): the session's own mark, else the course's"
+          },
+          "hasLiveStream": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "A live stream is set for the session (MDRS-283); never the link. Null when the course is in a passive scope, whose content is closed to the Pano"
+          },
+          "withoutAccess": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "Nobody can attend it as it stands: no meeting link, no live stream and not held in person (MDRS-283). The row the Pano flags; the rule is the one behind the course menu's badge (`sessionsWithoutAccess`). Null when the course is in a passive scope: it is read off the content, which is closed to the Pano, so the row is not flagged either way"
           }
         },
         "required": [
@@ -21655,7 +21793,10 @@
           "koskName",
           "weekNumber",
           "scheduledAt",
-          "meetingHost"
+          "meetingHost",
+          "inPerson",
+          "hasLiveStream",
+          "withoutAccess"
         ]
       },
       "DashboardApplicationResponse": {

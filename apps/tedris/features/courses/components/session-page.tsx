@@ -239,6 +239,11 @@ export const SessionPage = async ({
       meetingUrl={meetingUrl}
       platform={platform?.id}
       platformHost={meetingUrl ? hostOf(meetingUrl) : undefined}
+      // MDRS-283: without a link the card says the celse is streamed or held
+      // in person. `hasLiveStream` comes before the start, the link only
+      // while LIVE; a caller who may not read the content gets neither.
+      inPerson={session.inPerson}
+      hasLiveStream={session.hasLiveStream ?? Boolean(liveStream)}
       locale={locale}
       timeZone={timeZone}
       courseTimeZone={course.timeZone}
@@ -407,7 +412,13 @@ export const SessionPage = async ({
                   openHref={liveEmbed ? null : liveStream}
                   openLabel={t("SessionPage.liveStreamOpen")}
                 >
-                  {t("SessionPage.liveStreamText")}
+                  {/* MDRS-283: with no meeting link there is nothing to
+                      join; questions go to the live chat. */}
+                  {t(
+                    meetingUrl
+                      ? "SessionPage.liveStreamText"
+                      : "SessionPage.liveStreamChatText"
+                  )}
                 </MediaPlayer>
               }
               notes={notesUnder("live-stream-frame")}

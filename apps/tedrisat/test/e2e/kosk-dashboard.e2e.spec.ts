@@ -275,6 +275,89 @@ describe("The köşk home page under MDRS-135 (e2e)", () => {
     expect(await rows("scope.passive_open")).toEqual([]);
   });
 
+  /**
+   * MDRS-283 review: how a session is attended is read off the course content
+   * (`withoutAccess` says it has neither a link nor a stream), so a
+   * `platform.kosk_edit` holder gets the rows as before MDRS-283: no per-row
+   * flag, no in-person mark, no stream. The count and the first uncovered
+   * session stay, as the old count and first did.
+   */
+  it("gives a platform.kosk_edit holder no per-row attendance, only the count and the first uncovered session", async () => {
+    const [week] = await db()
+      .select({ id: courseWeeks.id })
+      .from(courseWeeks)
+      .where(eq(courseWeeks.courseId, taughtId));
+    await db()
+      .update(lessons)
+      .set({
+        inPersonOverride: true,
+        liveStreamUrl: "https://www.youtube.com/live/dQw4w9WgXcQ",
+      })
+      .where(eq(lessons.weekId, week.id));
+    await db()
+      .insert(lessons)
+      .values({
+        weekId: week.id,
+        title: "Bağlantısız celse",
+        type: LessonType.LIVE,
+        scheduledAt: new Date(Date.now() + 26 * 3600 * 1000),
+        orderIndex: 1,
+      });
+    // The keys every row carried before MDRS-283, the link aside.
+    const LOCKED_ROW_KEYS = [
+      "cancelled",
+      "courseCoverHue",
+      "courseId",
+      "courseTitle",
+      "durationMinutes",
+      "id",
+      "isMakeup",
+      "madrasahName",
+      "muderris",
+      "scheduledAt",
+      "studentCount",
+      "weekNumber",
+    ];
+    type Row = Record<string, unknown>;
+    type Page = {
+      contentLocked: boolean;
+      sessions: Row[];
+      withoutAccessCount: number;
+      firstWithoutAccess: Row | null;
+    };
+
+    await grantMedaris(PERMISSIONS.PLATFORM_KOSK_EDIT);
+    const locked = (await dashboard(MEDARIS_ID).expect(200)).body as Page;
+    expect(locked.contentLocked).toBe(true);
+    expect(locked.sessions).toHaveLength(2);
+    for (const row of locked.sessions) {
+      expect(Object.keys(row).sort()).toEqual(LOCKED_ROW_KEYS);
+    }
+    expect(locked.withoutAccessCount).toBe(1);
+    expect(locked.firstWithoutAccess).not.toBeNull();
+    expect(Object.keys(locked.firstWithoutAccess as Row).sort()).toEqual(
+      LOCKED_ROW_KEYS
+    );
+
+    // The köşk's own management still reads each row's answer.
+    const managed = (await dashboard(NAZIM_ID).expect(200)).body as Page;
+    expect(managed.contentLocked).toBe(false);
+    const taught = managed.sessions.filter((s) => s.courseId === taughtId);
+    expect(
+      taught
+        .map(({ inPerson, hasLiveStream, withoutAccess }) => ({
+          inPerson,
+          hasLiveStream,
+          withoutAccess,
+        }))
+        .sort((a, b) => Number(a.inPerson) - Number(b.inPerson))
+    ).toEqual([
+      { inPerson: false, hasLiveStream: false, withoutAccess: true },
+      { inPerson: true, hasLiveStream: true, withoutAccess: false },
+    ]);
+    expect(managed.firstWithoutAccess).toMatchObject({ withoutAccess: true });
+  });
+
   it("keeps a passive course off the page for a kosk.manage grant, and on it for platform.inactive_scopes_manage", async () => {
     await grantMedaris(PERMISSIONS.KOSK_MANAGE, koskId);
     const managed = (await dashboard(MEDARIS_ID).expect(200)) as {

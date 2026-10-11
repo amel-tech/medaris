@@ -30,6 +30,9 @@ const lesson = (over: Partial<ILesson>): ILesson => ({
   cancelledAt: null,
   cancelReason: null,
   replacementLessonId: null,
+  inPerson: false,
+  inPersonOverride: null,
+  hasLiveStream: false,
   ...over,
 });
 
@@ -200,5 +203,39 @@ describe("sessionWorkChanged (MDRS-135: course.edit or session.manage in a whole
       meetingUrl: "   ",
     };
     expect(sessionWorkChanged(stored, video)).toBe(false);
+  });
+
+  // MDRS-283: how talebe attend a session is session work, like its link.
+  it("is true for a changed in-person mark, in either direction, and for one cleared", () => {
+    for (const inPersonOverride of [true, false]) {
+      expect(sessionWorkChanged(stored, withLive({ inPersonOverride }))).toBe(
+        true
+      );
+    }
+    const marked: IWeek[] = [
+      {
+        ...stored[0],
+        lessons: [
+          { ...stored[0].lessons[0], inPersonOverride: true },
+          stored[0].lessons[1],
+        ],
+      },
+    ];
+    // Back to "follow the course".
+    expect(
+      sessionWorkChanged(marked, withLive({ inPersonOverride: null }))
+    ).toBe(true);
+    expect(
+      sessionWorkChanged(marked, withLive({ inPersonOverride: true }))
+    ).toBe(false);
+  });
+
+  it("is false for an in-person mark the save leaves out or sends as stored", () => {
+    expect(
+      sessionWorkChanged(stored, withLive({ inPersonOverride: undefined }))
+    ).toBe(false);
+    expect(
+      sessionWorkChanged(stored, withLive({ inPersonOverride: null }))
+    ).toBe(false);
   });
 });

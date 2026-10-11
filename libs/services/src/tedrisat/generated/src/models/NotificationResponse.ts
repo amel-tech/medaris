@@ -75,6 +75,7 @@ export const NotificationResponseTypeEnum = {
     SessionRescheduled: 'SESSION_RESCHEDULED',
     SessionCancelled: 'SESSION_CANCELLED',
     SessionAdded: 'SESSION_ADDED',
+    RecordingAdded: 'RECORDING_ADDED',
     KoskApplicationResult: 'KOSK_APPLICATION_RESULT',
     DeckPublishResult: 'DECK_PUBLISH_RESULT',
     CourseBanPlaced: 'COURSE_BAN_PLACED',

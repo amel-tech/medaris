@@ -70,11 +70,29 @@ export interface KoskDashboardSessionResponse {
      */
     durationMinutes?: number | null;
     /**
-     * Where talebe join. The köşk nazımı is the course team, so it is shown; null: no link yet (Bağlantı eksik). Absent when `contentLocked` is true.
+     * Where talebe join. The köşk nazımı is the course team, so it is shown; null: no link yet. Absent when `contentLocked` is true.
      * @type {string}
      * @memberof KoskDashboardSessionResponse
      */
     meetingUrl?: string | null;
+    /**
+     * Held in person (MDRS-283): the session's own mark, else the course's. Absent when `contentLocked` is true: a row of such a page says no more than it did before MDRS-283.
+     * @type {boolean}
+     * @memberof KoskDashboardSessionResponse
+     */
+    inPerson?: boolean;
+    /**
+     * A live stream is set for the session (MDRS-283); never the link. Course content like `meetingUrl`: absent when `contentLocked` is true.
+     * @type {boolean}
+     * @memberof KoskDashboardSessionResponse
+     */
+    hasLiveStream?: boolean;
+    /**
+     * Flagged (MDRS-283): still ahead, not cancelled, and nobody can attend it as it stands: no meeting link, no live stream and not held in person. The rule behind `withoutAccessCount`; always false on the PAST and CANCELLED tabs. Read off the course content, so absent when `contentLocked` is true: such a page keeps only `withoutAccessCount` and `firstWithoutAccess`.
+     * @type {boolean}
+     * @memberof KoskDashboardSessionResponse
+     */
+    withoutAccess?: boolean;
     /**
      * It makes up for a cancelled session (telafi)
      * @type {boolean}
@@ -142,6 +160,9 @@ export function KoskDashboardSessionResponseFromJSONTyped(json: any, ignoreDiscr
         'scheduledAt': (new Date(json['scheduledAt'])),
         'durationMinutes': json['durationMinutes'] == null ? undefined : json['durationMinutes'],
         'meetingUrl': json['meetingUrl'] == null ? undefined : json['meetingUrl'],
+        'inPerson': json['inPerson'] == null ? undefined : json['inPerson'],
+        'hasLiveStream': json['hasLiveStream'] == null ? undefined : json['hasLiveStream'],
+        'withoutAccess': json['withoutAccess'] == null ? undefined : json['withoutAccess'],
         'isMakeup': json['isMakeup'],
         'studentCount': json['studentCount'],
         'cancelled': json['cancelled'],
@@ -169,6 +190,9 @@ export function KoskDashboardSessionResponseToJSONTyped(value?: KoskDashboardSes
         'scheduledAt': ((value['scheduledAt']).toISOString()),
         'durationMinutes': value['durationMinutes'],
         'meetingUrl': value['meetingUrl'],
+        'inPerson': value['inPerson'],
+        'hasLiveStream': value['hasLiveStream'],
+        'withoutAccess': value['withoutAccess'],
         'isMakeup': value['isMakeup'],
         'studentCount': value['studentCount'],
         'cancelled': value['cancelled'],

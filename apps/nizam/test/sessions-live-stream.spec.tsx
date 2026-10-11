@@ -16,9 +16,10 @@ import {
 ).IS_REACT_ACT_ENVIRONMENT = true;
 
 /**
- * "Canlı yayın" on Celseler (nizam 56, MDRS-228): the column and the buttons
- * only for someone tedrisat lets set the link, the inline form that adds,
- * changes and removes it, and the messages for a link that cannot be one.
+ * "Canlı yayın" on Celseler (nizam 56, MDRS-228): the buttons only for someone
+ * tedrisat lets set the link, the inline form that adds, changes and removes
+ * it, and the messages for a link that cannot be one. Whether a session is
+ * streamed is said in "Katılım" (MDRS-283), from the course read.
  */
 
 const actions = vi.hoisted(() => ({
@@ -37,6 +38,7 @@ const ID = "dQw4w9WgXcQ";
 const STUDIO = `https://studio.youtube.com/video/${ID}/livestreaming`;
 const STORED = `https://www.youtube.com/live/${ID}`;
 const tr = resources.tr.nizam.Sessions;
+const STREAMED = `Zoom · ${tr.attendance.stream}`;
 
 const lesson = (
   id: string,
@@ -53,6 +55,10 @@ const lesson = (
   orderIndex: 0,
   cancelledAt: null,
   meetingUrl: "https://zoom.us/j/1",
+  // the attendance a course read carries for whoever may read its content (MDRS-283)
+  inPerson: false,
+  inPersonOverride: null,
+  hasLiveStream: false,
   ...extra,
 });
 
@@ -73,7 +79,7 @@ const course = {
         lesson("gone", "2026-10-04T17:00:00.000Z", {
           cancelledAt: "2026-10-03T05:40:00.000Z",
         }),
-        lesson("next", "2026-10-07T18:00:00.000Z"),
+        lesson("next", "2026-10-07T18:00:00.000Z", { hasLiveStream: true }),
       ],
     },
   ],
@@ -162,21 +168,23 @@ afterEach(async () => {
 });
 
 describe("Celseler — the live stream control (nizam 56, MDRS-228)", () => {
-  it("is left out for someone who may not set the link", async () => {
+  it("is left out for someone who may not set the link, who still sees which session is streamed", async () => {
     await mount(null);
-    expect(host.textContent).not.toContain(tr.stream.column);
     expect(buttons(tr.stream.add)).toHaveLength(0);
     expect(buttons(tr.stream.update)).toHaveLength(0);
     // the meeting link's own buttons are still there
     expect(buttons(tr.updateLink).length).toBeGreaterThan(0);
+    // the stream is read from the course, not from the links (MDRS-283)
+    expect(rowOf("next")).toContain(STREAMED);
+    expect(rowOf("live")).not.toContain(tr.attendance.stream);
   });
 
   it("says on each row whether a stream is set, and offers the right button", async () => {
     await mount({ next: STORED });
-    expect(host.textContent).toContain(tr.stream.column);
-    expect(rowOf("next")).toContain(tr.stream.set);
-    expect(rowOf("live")).toContain(tr.stream.missing);
-    expect(rowOf("past")).toContain(tr.stream.missing);
+    expect(host.textContent).toContain(tr.attendance.column);
+    expect(rowOf("next")).toContain(STREAMED);
+    expect(rowOf("live")).not.toContain(tr.attendance.stream);
+    expect(rowOf("past")).not.toContain(tr.attendance.stream);
     // one "add" (the live session), one "update" (the planned one with a
     // link), none for the cancelled session or the past one
     expect(buttons(tr.stream.add)).toHaveLength(1);
@@ -203,7 +211,8 @@ describe("Celseler — the live stream control (nizam 56, MDRS-228)", () => {
     );
     expect(toast.success).toHaveBeenCalledWith(tr.stream.saved);
     expect(host.querySelector("[data-testid=session-edit]")).toBeNull();
-    expect(rowOf("live")).toContain(tr.stream.set);
+    // shown at once, before the page is read again
+    expect(rowOf("live")).toContain(STREAMED);
   });
 
   it("changes a link: the field opens with the stored one", async () => {
@@ -243,7 +252,7 @@ describe("Celseler — the live stream control (nizam 56, MDRS-228)", () => {
       null
     );
     expect(toast.success).toHaveBeenCalledWith(tr.stream.removed);
-    expect(rowOf("next")).toContain(tr.stream.missing);
+    expect(rowOf("next")).not.toContain(tr.attendance.stream);
   });
 
   it("offers no remove button while the session has no link", async () => {

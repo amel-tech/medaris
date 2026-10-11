@@ -126,6 +126,12 @@ export interface CreateCourseDto {
      */
     coverLabel?: string;
     /**
+     * "Celseler yüz yüze yapılır" (MDRS-283): the course's sessions are held face to face, unless a session says otherwise (`inPersonOverride`). A label only. Defaults to false; never null.
+     * @type {boolean}
+     * @memberof CreateCourseDto
+     */
+    inPerson?: boolean;
+    /**
      * 
      * @type {Array<CreateWeekDto>}
      * @memberof CreateCourseDto
@@ -205,6 +211,7 @@ export function CreateCourseDtoFromJSONTyped(json: any, ignoreDiscriminator: boo
         'requiresApproval': json['requiresApproval'] == null ? undefined : json['requiresApproval'],
         'isClosed': json['isClosed'] == null ? undefined : json['isClosed'],
         'coverLabel': json['coverLabel'] == null ? undefined : json['coverLabel'],
+        'inPerson': json['inPerson'] == null ? undefined : json['inPerson'],
         'weeks': json['weeks'] == null ? undefined : ((json['weeks'] as Array<any>).map(CreateWeekDtoFromJSON)),
         'muderris': ((json['muderris'] as Array<any>).map(CreateMuderrisDtoFromJSON)),
         'imamUserId': json['imamUserId'] == null ? undefined : json['imamUserId'],
@@ -237,6 +244,7 @@ export function CreateCourseDtoToJSONTyped(value?: CreateCourseDto | null, ignor
         'requiresApproval': value['requiresApproval'],
         'isClosed': value['isClosed'],
         'coverLabel': value['coverLabel'],
+        'inPerson': value['inPerson'],
         'weeks': value['weeks'] == null ? undefined : ((value['weeks'] as Array<any>).map(CreateWeekDtoToJSON)),
         'muderris': ((value['muderris'] as Array<any>).map(CreateMuderrisDtoToJSON)),
         'imamUserId': value['imamUserId'],

@@ -29,6 +29,7 @@ import {
   sampleOptions,
   settingsChanged,
   settingsOf,
+  settingsPatch,
 } from "../present";
 import { MuderrisDialog } from "./muderris-dialog";
 
@@ -44,9 +45,10 @@ interface Props {
 }
 
 /**
- * Ders ayarları (nizam 34): the course's access, enrolment and time zone, its
- * publication, its team and "Dersi gizle". "Kaydet" sends only what changed
- * and does nothing while nothing did; "Vazgeç" puts the course's values back.
+ * Ders ayarları (nizam 34): the course's access, enrolment, "Celseler yüz
+ * yüze yapılır" (MDRS-283) and time zone, its publication, its team and
+ * "Dersi gizle". "Kaydet" sends only what changed and does nothing while
+ * nothing did; "Vazgeç" puts the course's values back.
  * With the köşk policy "Her zaman kayıt onayı" the approval box is checked and
  * off-limits. The köşk policy on recordings is the köşk's, changed here by the
  * manager and saved with the rest.
@@ -127,14 +129,8 @@ export function CourseSettingsPage({
         // The last write: nothing after it carries the version.
       }
     }
-    const courseChanges = {
-      ...(form.isClosed !== stored.isClosed ? { isClosed: form.isClosed } : {}),
-      ...(form.requiresApproval !== stored.requiresApproval
-        ? { requiresApproval: form.requiresApproval }
-        : {}),
-      ...(form.timeZone !== stored.timeZone ? { timeZone: form.timeZone } : {}),
-    };
-    if (Object.keys(courseChanges).length > 0) {
+    const courseChanges = settingsPatch(form, stored);
+    if (courseChanges) {
       const res = await patchCourse(kosk.id, course.id, courseChanges);
       if (!res.success) {
         setSaving(false);
@@ -245,6 +241,16 @@ export function CourseSettingsPage({
             disabled={saving || fixed}
             onCheckedChange={(v) => set("requiresApproval", v === true)}
             name="requiresApproval"
+          />
+          <Checkbox
+            bordered
+            icon={<Icon name="group" size="sm" />}
+            label={t("inPersonLabel")}
+            description={t("inPersonDesc")}
+            checked={form.inPerson}
+            disabled={saving}
+            onCheckedChange={(v) => set("inPerson", v === true)}
+            name="inPerson"
           />
           <Field label={t("zoneLabel")} help={t("zoneHelp")}>
             <Select

@@ -18,6 +18,7 @@ const input = (overrides: Partial<InvitationInput> = {}): InvitationInput => ({
   durationMinutes: 90,
   sequence: 0,
   sessionPageUrl: PAGE,
+  attendance: { inPerson: false, hasMeetingLink: true, hasLiveStream: false },
   locale: "tr",
   organizer: { address: "no-reply@medaris.test", name: 'Medaris "Ders"' },
   attendee: "talebe@example.org",
@@ -66,6 +67,37 @@ describe("lesson invitation .ics (MDRS-121)", () => {
     expect(prop(ics, "URL")).toBe(PAGE);
     expect(prop(ics, "DESCRIPTION")).toContain(PAGE);
     expect(ics).not.toMatch(/meet|zoom|X-GOOGLE-CONFERENCE/i);
+  });
+
+  it("says how the session is attended, as the one-session file does (MDRS-283)", () => {
+    expect(prop(buildInvitationIcs(input()), "DESCRIPTION")).toBe(
+      `Toplantı bağlantısı celse sayfasındadır:\\n${PAGE}`
+    );
+    const inPerson = buildInvitationIcs(
+      input({
+        attendance: {
+          inPerson: true,
+          hasMeetingLink: false,
+          hasLiveStream: false,
+        },
+      })
+    );
+    expect(prop(inPerson, "DESCRIPTION")).toBe(
+      `Bu celse yüz yüze yapılır. Celse sayfası:\\n${PAGE}`
+    );
+    const streamed = buildInvitationIcs(
+      input({
+        locale: "en",
+        attendance: {
+          inPerson: false,
+          hasMeetingLink: false,
+          hasLiveStream: true,
+        },
+      })
+    );
+    expect(prop(streamed, "DESCRIPTION")).toBe(
+      `This session is streamed live\\; the stream is on the session page:\\n${PAGE}`
+    );
   });
 
   it("cancels the same event with a higher SEQUENCE", () => {

@@ -11,6 +11,7 @@ import {
   toZonedDatetimeLocal,
   type YoutubeLiveProblem,
 } from "@medaris/utils";
+import { type AttendanceView, attendanceView } from "./attendance";
 
 /**
  * Celseler and "Celse planla" as rules: a course's sessions against
@@ -101,6 +102,19 @@ export interface SessionFact {
   startsAt: string;
   durationMinutes: number;
   meetingUrl: string | null;
+  /**
+   * A live stream link is set. Read from the course, not from the stream
+   * links, so a caller without `session.live_link` sees it too (MDRS-283).
+   */
+  hasLiveStream: boolean;
+  /**
+   * Held in person: the session's own mark, else the course's. Null when the
+   * read carried no attendance, as a content-locked one does not, so nothing
+   * can be said of it.
+   */
+  inPerson: boolean | null;
+  /** the session's own mark: true or false overrides the course, null follows it */
+  inPersonOverride: boolean | null;
   /** ISO time; null while the session stands */
   cancelledAt: string | null;
   /** the session that makes up for this one once it is cancelled */
@@ -122,6 +136,9 @@ export function sessionFacts(
         startsAt: new Date(lesson.scheduledAt).toISOString(),
         durationMinutes: lesson.durationMinutes ?? DEFAULT_SESSION_MINUTES,
         meetingUrl: lesson.meetingUrl ?? null,
+        hasLiveStream: lesson.hasLiveStream === true,
+        inPerson: lesson.inPerson ?? null,
+        inPersonOverride: lesson.inPersonOverride ?? null,
         cancelledAt: lesson.cancelledAt
           ? new Date(lesson.cancelledAt).toISOString()
           : null,
@@ -219,6 +236,39 @@ export function groupSessions(
       weeks.length === 0 ? null : lo === hi ? String(lo) : `${lo}–${hi}`,
   };
 }
+
+// ---- how a session is attended ------------------------------------------------------
+
+/**
+ * The "Katılım" cell of a row (MDRS-283): its meeting link, its stream and
+ * the in-person mark, flagged only while the session is still ahead (the
+ * course menu's badge counts the same sessions). Null when the course read
+ * carried no attendance (`inPerson` null), so nothing is claimed.
+ */
+export function rowAttendance(
+  row: Pick<SessionRow, "meetingUrl" | "hasLiveStream" | "inPerson" | "state">
+): AttendanceView | null {
+  if (row.inPerson === null) return null;
+  return attendanceView(
+    {
+      meeting: row.meetingUrl,
+      hasLiveStream: row.hasLiveStream,
+      inPerson: row.inPerson,
+    },
+    row.state === "scheduled"
+  );
+}
+
+/** The three answers of a session's in-person row action (MDRS-283). */
+export type InPersonChoice = "course" | "yes" | "no";
+
+/** "Dersin ayarına uy" for a session without its own mark, else "Yüz yüze" or "Yüz yüze değil". */
+export const inPersonChoiceOf = (override: boolean | null): InPersonChoice =>
+  override === null ? "course" : override ? "yes" : "no";
+
+/** The `inPersonOverride` a choice writes: null follows the course. */
+export const inPersonOverrideOf = (choice: InPersonChoice): boolean | null =>
+  choice === "course" ? null : choice === "yes";
 
 // ---- the meeting link ---------------------------------------------------------------
 
@@ -389,7 +439,11 @@ export function planSummary(sessions: ReadonlyArray<{ localDate: string }>): {
   };
 }
 
-/** The body of "N celse oluştur": the pattern, a title, a length, and the first session's link when one was given. */
+/**
+ * The body of "N celse oluştur": the pattern, a title, a length, and the
+ * first session's link when one was given. No in-person mark: the sessions
+ * follow the course's (MDRS-283), and one is changed on Celseler.
+ */
 export function planRequest(
   pattern: WeeklyPatternDto,
   form: Pick<PlanForm, "duration">,

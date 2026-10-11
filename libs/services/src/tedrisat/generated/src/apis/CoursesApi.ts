@@ -513,7 +513,7 @@ export class CoursesApi extends runtime.BaseAPI {
     }
 
     /**
-     * For the course team (MDRS-183): the live sessions still ahead that have no meeting link — cancelled and hidden ones are not counted — and the pending enrollment requests.
+     * For the course team (MDRS-183): the live sessions still ahead that nobody can attend as they stand — no meeting link, no live stream, not held in person (MDRS-283); cancelled and hidden ones are not counted — and the pending enrollment requests.
      * Get the counts behind the nazır portal\'s course menu badges
      */
     async getCourseBadgeCountsRaw(requestParameters: GetCourseBadgeCountsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CourseBadgeCountsResponse>> {
@@ -548,7 +548,7 @@ export class CoursesApi extends runtime.BaseAPI {
     }
 
     /**
-     * For the course team (MDRS-183): the live sessions still ahead that have no meeting link — cancelled and hidden ones are not counted — and the pending enrollment requests.
+     * For the course team (MDRS-183): the live sessions still ahead that nobody can attend as they stand — no meeting link, no live stream, not held in person (MDRS-283); cancelled and hidden ones are not counted — and the pending enrollment requests.
      * Get the counts behind the nazır portal\'s course menu badges
      */
     async getCourseBadgeCounts(requestParameters: GetCourseBadgeCountsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CourseBadgeCountsResponse> {
@@ -557,7 +557,7 @@ export class CoursesApi extends runtime.BaseAPI {
     }
 
     /**
-     * Anyone may read the course page, with or without a token (MDRS-122): its description and programme (week and lesson titles, types, schedule, length, müderris). Lesson content — `meetingUrl`, `agenda`, `kaynak` and resource `url` — is sent only to a caller holding `view_details` (the enrolled talebe, the müderris, the köşk manager); for everyone else, PENDING included, those keys are absent and `contentLocked` is true. A content read by anyone who is neither enrolled nor a müderris of the course is recorded in `audit_log` (MDRS-103). A caller with no token gets the same filtered body, and 404 for a draft, a hidden course, or any course of an unlisted köşk.
+     * Anyone may read the course page, with or without a token (MDRS-122): its description and programme (week and lesson titles, types, schedule, length, müderris). Lesson content — `meetingUrl`, `agenda`, `kaynak`, how a session is attended (`inPerson`, `inPersonOverride`, `hasLiveStream`; MDRS-283) and resource `url` — is sent only to a caller holding `view_details` (the enrolled talebe, the müderris, the köşk manager); for everyone else, PENDING included, those keys are absent and `contentLocked` is true. A content read by anyone who is neither enrolled nor a müderris of the course is recorded in `audit_log` (MDRS-103). A caller with no token gets the same filtered body, and 404 for a draft, a hidden course, or any course of an unlisted köşk.
      * Get a course with its syllabus, müderris and resources
      */
     async getCourseByIdRaw(requestParameters: GetCourseByIdRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CourseDetailResponse>> {
@@ -592,7 +592,7 @@ export class CoursesApi extends runtime.BaseAPI {
     }
 
     /**
-     * Anyone may read the course page, with or without a token (MDRS-122): its description and programme (week and lesson titles, types, schedule, length, müderris). Lesson content — `meetingUrl`, `agenda`, `kaynak` and resource `url` — is sent only to a caller holding `view_details` (the enrolled talebe, the müderris, the köşk manager); for everyone else, PENDING included, those keys are absent and `contentLocked` is true. A content read by anyone who is neither enrolled nor a müderris of the course is recorded in `audit_log` (MDRS-103). A caller with no token gets the same filtered body, and 404 for a draft, a hidden course, or any course of an unlisted köşk.
+     * Anyone may read the course page, with or without a token (MDRS-122): its description and programme (week and lesson titles, types, schedule, length, müderris). Lesson content — `meetingUrl`, `agenda`, `kaynak`, how a session is attended (`inPerson`, `inPersonOverride`, `hasLiveStream`; MDRS-283) and resource `url` — is sent only to a caller holding `view_details` (the enrolled talebe, the müderris, the köşk manager); for everyone else, PENDING included, those keys are absent and `contentLocked` is true. A content read by anyone who is neither enrolled nor a müderris of the course is recorded in `audit_log` (MDRS-103). A caller with no token gets the same filtered body, and 404 for a draft, a hidden course, or any course of an unlisted köşk.
      * Get a course with its syllabus, müderris and resources
      */
     async getCourseById(requestParameters: GetCourseByIdRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CourseDetailResponse> {

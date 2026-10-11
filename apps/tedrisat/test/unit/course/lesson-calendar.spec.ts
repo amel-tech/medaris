@@ -1,6 +1,8 @@
 import {
   buildLessonIcs,
+  type CalendarAttendance,
   type CalendarLessonInput,
+  calendarAttendanceKind,
   escapeIcsText,
   foldIcsLine,
   formatIcsUtc,
@@ -24,6 +26,7 @@ const input = (
     durationMinutes: 90,
     ...overrides,
   },
+  attendance: { inPerson: false, hasMeetingLink: true, hasLiveStream: false },
   sessionPageUrl: PAGE,
   locale: "tr",
   now: new Date("2026-09-28T09:15:30.456Z"),
@@ -53,8 +56,9 @@ describe("lesson calendar (MDRS-117)", () => {
     expect(prop(ics, "SUMMARY")).toBe("Bina ve İzhar Şerhi — Açılış");
     expect(prop(ics, "URL")).toBe(PAGE);
     expect(prop(ics, "LOCATION")).toBe(PAGE);
+    // "celse", as everywhere else, not "oturum" (MDRS-283).
     expect(prop(ics, "DESCRIPTION")).toBe(
-      `Toplantı bağlantısı oturum sayfasındadır:\\n${PAGE}`
+      `Toplantı bağlantısı celse sayfasındadır:\\n${PAGE}`
     );
   });
 
@@ -134,5 +138,121 @@ describe("lesson calendar (MDRS-117)", () => {
     expect(prop(planned, "STATUS")).toBeUndefined();
     expect(prop(cancelled, "STATUS")).toBe("CANCELLED");
     expect(prop(cancelled, "UID")).toBe(prop(planned, "UID"));
+  });
+});
+
+/**
+ * MDRS-283: the description names the meeting link only where the session can
+ * have one. A session held in person and one that is only streamed get their
+ * own line, in each of the three languages; the page's URL follows every one.
+ */
+describe("lesson calendar description by attendance (MDRS-283)", () => {
+  const attended = (attendance: Partial<CalendarAttendance>) => ({
+    inPerson: false,
+    hasMeetingLink: false,
+    hasLiveStream: false,
+    ...attendance,
+  });
+  const description = (
+    attendance: Partial<CalendarAttendance>,
+    locale: CalendarLessonInput["locale"] = "tr"
+  ) =>
+    prop(
+      buildLessonIcs({ ...input(), attendance: attended(attendance), locale }),
+      "DESCRIPTION"
+    );
+
+  it("picks the line by what the session has", () => {
+    expect(calendarAttendanceKind(attended({ hasMeetingLink: true }))).toBe(
+      "MEETING"
+    );
+    // Nothing yet: the session still needs its link.
+    expect(calendarAttendanceKind(attended({}))).toBe("MEETING");
+    // A meeting link and a stream: the link is where talebe join.
+    expect(
+      calendarAttendanceKind(
+        attended({ hasMeetingLink: true, hasLiveStream: true })
+      )
+    ).toBe("MEETING");
+    expect(calendarAttendanceKind(attended({ hasLiveStream: true }))).toBe(
+      "STREAM"
+    );
+    expect(calendarAttendanceKind(attended({ inPerson: true }))).toBe(
+      "IN_PERSON"
+    );
+    // Hybrid: held in person, with a meeting link for whoever joins from afar.
+    expect(
+      calendarAttendanceKind(attended({ inPerson: true, hasMeetingLink: true }))
+    ).toBe("IN_PERSON_MEETING");
+    // ... and with a stream too: the link is the way in, as without the mark.
+    expect(
+      calendarAttendanceKind(
+        attended({ inPerson: true, hasMeetingLink: true, hasLiveStream: true })
+      )
+    ).toBe("IN_PERSON_MEETING");
+    expect(
+      calendarAttendanceKind(attended({ inPerson: true, hasLiveStream: true }))
+    ).toBe("IN_PERSON_STREAM");
+  });
+
+  it("says a streamed session is streamed, not that its meeting link is on the page", () => {
+    expect(description({ hasLiveStream: true })).toBe(
+      `Bu celse canlı yayınlanır\\; yayın celse sayfasındadır:\\n${PAGE}`
+    );
+    expect(description({ hasLiveStream: true }, "en")).toBe(
+      `This session is streamed live\\; the stream is on the session page:\\n${PAGE}`
+    );
+    const ar = description({ hasLiveStream: true }, "ar");
+    expect(ar).toContain("بثًّا مباشرًا");
+    expect(ar).not.toContain("رابط الاجتماع");
+  });
+
+  it("says an in-person session is held in person", () => {
+    expect(description({ inPerson: true })).toBe(
+      `Bu celse yüz yüze yapılır. Celse sayfası:\\n${PAGE}`
+    );
+    expect(description({ inPerson: true }, "en")).toBe(
+      `This session is held in person. Session page:\\n${PAGE}`
+    );
+    const ar = description({ inPerson: true }, "ar");
+    expect(ar).toContain("حضوريًّا");
+    expect(ar).not.toContain("رابط الاجتماع");
+  });
+
+  it("says a hybrid session is held in person and its meeting link is on the page", () => {
+    expect(description({ inPerson: true, hasMeetingLink: true })).toBe(
+      `Bu celse yüz yüze yapılır\\; toplantı bağlantısı celse sayfasındadır:\\n${PAGE}`
+    );
+    expect(description({ inPerson: true, hasMeetingLink: true }, "en")).toBe(
+      `This session is held in person\\; the meeting link is on the session page:\\n${PAGE}`
+    );
+    const ar = description({ inPerson: true, hasMeetingLink: true }, "ar");
+    expect(ar).toContain("حضوريًّا");
+    expect(ar).toContain("رابط الاجتماع");
+  });
+
+  it("says an in-person session with a stream is both", () => {
+    expect(description({ inPerson: true, hasLiveStream: true })).toBe(
+      `Bu celse yüz yüze yapılır ve canlı yayınlanır\\; yayın celse sayfasındadır:\\n${PAGE}`
+    );
+    expect(description({ inPerson: true, hasLiveStream: true }, "en")).toBe(
+      `This session is held in person and streamed live\\; the stream is on the session page:\\n${PAGE}`
+    );
+    const ar = description({ inPerson: true, hasLiveStream: true }, "ar");
+    expect(ar).toContain("حضوريًّا");
+    expect(ar).toContain("بثًّا مباشرًا");
+  });
+
+  it("never says 'oturum', in any of the lines", () => {
+    for (const a of [
+      {},
+      { hasMeetingLink: true },
+      { hasLiveStream: true },
+      { inPerson: true },
+      { inPerson: true, hasMeetingLink: true },
+      { inPerson: true, hasLiveStream: true },
+    ]) {
+      expect(description(a)).not.toContain("oturum");
+    }
   });
 });

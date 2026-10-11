@@ -35,6 +35,7 @@ const event = (
     scheduledAt: new Date("2026-10-01T18:00:00.000Z"),
     durationMinutes: 60,
   },
+  attendance: { inPerson: false, hasMeetingLink: true, hasLiveStream: false },
   sessionPageUrl: sessionPageUrl("https://tedris.example", COURSE_ID, lessonId),
   locale: "tr",
   now: new Date("2026-09-28T09:15:30.000Z"),

@@ -75,6 +75,12 @@ export interface CreateWeekLessonDto {
      * @memberof CreateWeekLessonDto
      */
     isPreview?: boolean;
+    /**
+     * The session's own in-person mark (MDRS-283): true or false overrides the course's `inPerson`, null follows it. Absent leaves it as it is. Changing it is session work (`session.manage`), like the meeting link.
+     * @type {boolean}
+     * @memberof CreateWeekLessonDto
+     */
+    inPersonOverride?: boolean | null;
 }
 
 
@@ -117,6 +123,7 @@ export function CreateWeekLessonDtoFromJSONTyped(json: any, ignoreDiscriminator:
         'meetingUrl': json['meetingUrl'] == null ? undefined : json['meetingUrl'],
         'agenda': json['agenda'] == null ? undefined : ((json['agenda'] as Array<any>).map(AgendaStepDtoFromJSON)),
         'isPreview': json['isPreview'] == null ? undefined : json['isPreview'],
+        'inPersonOverride': json['inPersonOverride'] == null ? undefined : json['inPersonOverride'],
     };
 }
 
@@ -139,6 +146,7 @@ export function CreateWeekLessonDtoToJSONTyped(value?: CreateWeekLessonDto | nul
         'meetingUrl': value['meetingUrl'],
         'agenda': value['agenda'] == null ? undefined : ((value['agenda'] as Array<any>).map(AgendaStepDtoToJSON)),
         'isPreview': value['isPreview'],
+        'inPersonOverride': value['inPersonOverride'],
     };
 }
 

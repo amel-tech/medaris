@@ -7,7 +7,10 @@
  *    meeting link changes every week and stays behind enrollment; a calendar
  *    entry can be forwarded and is stored on Google's and Apple's servers.
  *    Nothing here reads `lessons.meeting_url`: the input type below has no
- *    such field, and the controller passes the lesson field by field.
+ *    such field, and the controller passes the lesson field by field. What
+ *    it does carry is how the session is attended (MDRS-283), as booleans,
+ *    so the description can say "in person" or "streamed" instead of naming
+ *    a meeting link the session will never have.
  * 2. `UID` is derived from the lesson id, which MDRS-95 keeps stable across
  *    edits, so a moved session re-imports over the old event instead of
  *    beside it. `SEQUENCE` is the course version (MDRS-95), which every
@@ -20,12 +23,86 @@ export const CALENDAR_LOCALES = { tr: "tr", en: "en", ar: "ar" } as const;
 export type CalendarLocale =
   (typeof CALENDAR_LOCALES)[keyof typeof CALENDAR_LOCALES];
 
-/** The one line that tells the reader where the meeting link is. */
-const LINK_IS_ON_THE_PAGE: Record<CalendarLocale, string> = {
-  tr: "Toplantı bağlantısı oturum sayfasındadır:",
-  en: "The meeting link is on the session page:",
-  ar: "رابط الاجتماع موجود في صفحة الجلسة:",
+/**
+ * How a session is attended, as far as a calendar entry says it (MDRS-283):
+ * whether there is a meeting link and a stream, never the links themselves.
+ */
+export interface CalendarAttendance {
+  inPerson: boolean;
+  hasMeetingLink: boolean;
+  hasLiveStream: boolean;
+}
+
+/** What a calendar entry tells about the session's way in (MDRS-283). */
+export type CalendarAttendanceKind =
+  | "MEETING"
+  | "STREAM"
+  | "IN_PERSON"
+  | "IN_PERSON_MEETING"
+  | "IN_PERSON_STREAM";
+
+/**
+ * The kind of line a session gets. The meeting link is named only where the
+ * session can have one: not for a session held in person without one, nor
+ * for one that is only streamed. A session held in person that also has a
+ * meeting link (hybrid) names both, so a talebe joining from afar learns
+ * where the link is; as with a meeting link and a stream, the link is the way
+ * in and the stream is not named beside it. A session with nothing yet is
+ * one that still needs its link, and gets the meeting link's line, as every
+ * session did before.
+ */
+export const calendarAttendanceKind = (
+  a: CalendarAttendance
+): CalendarAttendanceKind => {
+  if (a.inPerson) {
+    if (a.hasMeetingLink) return "IN_PERSON_MEETING";
+    return a.hasLiveStream ? "IN_PERSON_STREAM" : "IN_PERSON";
+  }
+  if (a.hasLiveStream && !a.hasMeetingLink) return "STREAM";
+  return "MEETING";
 };
+
+/**
+ * The one line that tells the reader how the session is attended and that
+ * the page has the rest; the page's URL follows it. "Celse", not "oturum"
+ * (MDRS-283), as everywhere else.
+ */
+const ATTENDANCE_LINE: Record<
+  CalendarAttendanceKind,
+  Record<CalendarLocale, string>
+> = {
+  MEETING: {
+    tr: "Toplantı bağlantısı celse sayfasındadır:",
+    en: "The meeting link is on the session page:",
+    ar: "رابط الاجتماع موجود في صفحة الحلقة:",
+  },
+  STREAM: {
+    tr: "Bu celse canlı yayınlanır; yayın celse sayfasındadır:",
+    en: "This session is streamed live; the stream is on the session page:",
+    ar: "تُبثّ هذه الحلقة بثًّا مباشرًا؛ البثّ في صفحة الحلقة:",
+  },
+  IN_PERSON: {
+    tr: "Bu celse yüz yüze yapılır. Celse sayfası:",
+    en: "This session is held in person. Session page:",
+    ar: "تُعقد هذه الحلقة حضوريًّا. صفحة الحلقة:",
+  },
+  IN_PERSON_MEETING: {
+    tr: "Bu celse yüz yüze yapılır; toplantı bağlantısı celse sayfasındadır:",
+    en: "This session is held in person; the meeting link is on the session page:",
+    ar: "تُعقد هذه الحلقة حضوريًّا؛ رابط الاجتماع موجود في صفحة الحلقة:",
+  },
+  IN_PERSON_STREAM: {
+    tr: "Bu celse yüz yüze yapılır ve canlı yayınlanır; yayın celse sayfasındadır:",
+    en: "This session is held in person and streamed live; the stream is on the session page:",
+    ar: "تُعقد هذه الحلقة حضوريًّا وتُبثّ بثًّا مباشرًا؛ البثّ في صفحة الحلقة:",
+  },
+};
+
+/** The line alone, without the page's URL (MDRS-283). */
+export const calendarAttendanceLine = (
+  attendance: CalendarAttendance,
+  locale: CalendarLocale
+): string => ATTENDANCE_LINE[calendarAttendanceKind(attendance)][locale];
 
 export interface CalendarLessonInput {
   course: { id: string; title: string; version: number };
@@ -35,6 +112,8 @@ export interface CalendarLessonInput {
     scheduledAt: Date;
     durationMinutes: number | null;
   };
+  /** How the session is attended: booleans only, never a link (MDRS-283). */
+  attendance: CalendarAttendance;
   /** Absolute URL of the session page in tedris-web. */
   sessionPageUrl: string;
   locale: CalendarLocale;
@@ -68,11 +147,12 @@ export const lessonCalendarSummary = (
   lessonTitle: string
 ): string => `${courseTitle} — ${lessonTitle}`;
 
-/** `DESCRIPTION`: where the link is, then the page. */
+/** `DESCRIPTION`: how the session is attended, then the page. */
 export const lessonCalendarDescription = (
   pageUrl: string,
-  locale: CalendarLocale
-): string => `${LINK_IS_ON_THE_PAGE[locale]}\n${pageUrl}`;
+  locale: CalendarLocale,
+  attendance: CalendarAttendance
+): string => `${calendarAttendanceLine(attendance, locale)}\n${pageUrl}`;
 
 /**
  * The end instant, or null when the session has no length. RFC 5545 §3.6.1:
@@ -175,7 +255,7 @@ const lessonEventLines = (input: CalendarEventInput): string[] => {
       : []),
     ...(input.cancelled ? ["STATUS:CANCELLED"] : []),
     `SUMMARY:${escapeIcsText(lessonCalendarSummary(course.title, lesson.title))}`,
-    `DESCRIPTION:${escapeIcsText(lessonCalendarDescription(pageUrl, locale))}`,
+    `DESCRIPTION:${escapeIcsText(lessonCalendarDescription(pageUrl, locale, input.attendance))}`,
     // URL is a URI value (§3.8.4.6) and is not TEXT-escaped; LOCATION is TEXT.
     `URL:${pageUrl}`,
     `LOCATION:${escapeIcsText(pageUrl)}`,

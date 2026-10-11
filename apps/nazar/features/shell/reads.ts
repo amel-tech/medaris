@@ -82,8 +82,9 @@ const countOf = async (
 /**
  * The numbers behind the menu's badges. Dersler (a medrese) is the number of
  * courses holding an application, Celseler and Talebeler (a course) are the
- * sessions without a meeting link and the applications waiting, Bildirimler
- * is the caller's own unread count.
+ * sessions still ahead with no way in (no meeting link, no live stream, not
+ * in person: MDRS-283) and the applications waiting, Bildirimler is the
+ * caller's own unread count.
  */
 export async function getMenuCounts(scope: Scope): Promise<MenuCounts> {
   let client: Awaited<ReturnType<typeof tedrisatApi>>;
@@ -115,12 +116,12 @@ export async function getMenuCounts(scope: Scope): Promise<MenuCounts> {
   const course = client.courses.getCourseBadgeCounts({ id: scope.id });
   const counts = await Promise.all([
     unread,
-    countOf(async () => (await course).missingMeetingLinks, "course badge"),
+    countOf(async () => (await course).sessionsWithoutAccess, "course badge"),
     countOf(async () => (await course).pendingApplications, "course badge"),
   ]);
   return {
     unread: counts[0],
-    missingLinks: counts[1],
+    withoutAccess: counts[1],
     applications: counts[2],
   };
 }

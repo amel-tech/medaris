@@ -262,6 +262,7 @@ export class LessonInvitationService
       durationMinutes: due.durationMinutes,
       sequence,
       sessionPageUrl: pageUrl,
+      attendance: due.attendance,
       locale,
       organizer: {
         address: this.mail.senderAddress() ?? "",
@@ -279,6 +280,7 @@ export class LessonInvitationService
       durationMinutes: due.durationMinutes,
       timeZone: usableTimeZone(due.timeZone),
       sessionPageUrl: pageUrl,
+      attendance: due.attendance,
       accountUrl: `${webUrl}/account`,
     });
 

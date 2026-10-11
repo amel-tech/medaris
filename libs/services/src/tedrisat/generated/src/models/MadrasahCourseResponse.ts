@@ -52,6 +52,12 @@ export interface MadrasahCourseResponse {
      */
     coverHue: number;
     /**
+     * "Yüz yüze" (MDRS-283): the course's sessions are held in person. A public label.
+     * @type {boolean}
+     * @memberof MadrasahCourseResponse
+     */
+    inPerson: boolean;
+    /**
      * 
      * @type {string}
      * @memberof MadrasahCourseResponse
@@ -102,6 +108,7 @@ export function instanceOfMadrasahCourseResponse(value: object): value is Madras
     if (!('id' in value) || value['id'] === undefined) return false;
     if (!('title' in value) || value['title'] === undefined) return false;
     if (!('coverHue' in value) || value['coverHue'] === undefined) return false;
+    if (!('inPerson' in value) || value['inPerson'] === undefined) return false;
     if (!('koskId' in value) || value['koskId'] === undefined) return false;
     if (!('koskName' in value) || value['koskName'] === undefined) return false;
     if (!('muderris' in value) || value['muderris'] === undefined) return false;
@@ -122,6 +129,7 @@ export function MadrasahCourseResponseFromJSONTyped(json: any, ignoreDiscriminat
         'title': json['title'],
         'category': json['category'] == null ? undefined : json['category'],
         'coverHue': json['coverHue'],
+        'inPerson': json['inPerson'],
         'koskId': json['koskId'],
         'koskName': json['koskName'],
         'muderris': ((json['muderris'] as Array<any>).map(MadrasahCourseMuderrisResponseFromJSON)),
@@ -145,6 +153,7 @@ export function MadrasahCourseResponseToJSONTyped(value?: MadrasahCourseResponse
         'title': value['title'],
         'category': value['category'],
         'coverHue': value['coverHue'],
+        'inPerson': value['inPerson'],
         'koskId': value['koskId'],
         'koskName': value['koskName'],
         'muderris': ((value['muderris'] as Array<any>).map(MadrasahCourseMuderrisResponseToJSON)),

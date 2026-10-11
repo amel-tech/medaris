@@ -9,8 +9,9 @@ import { expand, html, textOf, translatorFor } from "./server-render";
 
 /**
  * Celseler of a course as the server renders it, and what can be done on it:
- * link, time, live stream, cancel and its make-up. The reads, the viewer and the
- * actions are stubs; what is under test is what the page does with each answer.
+ * link, time, live stream, the in-person mark, cancel and its make-up. The
+ * reads, the viewer and the actions are stubs; what is under test is what the
+ * page does with each answer.
  */
 type Answer<T> =
   | { status: "ok"; data: T }
@@ -38,6 +39,7 @@ const holding = (...codes: string[]): Answer<unknown> => ({
 const state = {
   course: { status: "failed" } as Answer<unknown>,
   streams: { status: "failed" } as Answer<unknown>,
+  recordings: { status: "failed" } as Answer<unknown>,
   permissions: { status: "failed" } as Answer<unknown>,
   viewer: { id: "u-1", timeZone: "Europe/Istanbul" } as unknown,
   /** what each read asked for, in order */
@@ -67,9 +69,13 @@ vi.mock("~/lib/tedrisat-read", () => ({
         getCourseById: async () => {},
         getMyCoursePermissions: async () => {},
       },
-      lessons: { listCourseLiveStreams: async () => {} },
+      lessons: {
+        listCourseLiveStreams: async () => {},
+        listCourseRecordings: async () => {},
+      },
     });
     if (what.includes("live stream")) return state.streams;
+    if (what.includes("recordings")) return state.recordings;
     if (what.includes("holds in the course")) return state.permissions;
     return state.course;
   },
@@ -95,17 +101,21 @@ const lesson = (id: string, title: string, at: string, over = {}) => ({
   isPreview: false,
   orderIndex: 0,
   meetingUrl: undefined,
+  inPerson: false,
+  inPersonOverride: null,
+  hasLiveStream: false,
   cancelledAt: null,
   ...over,
 });
 
-/** One session over, one planned with a link, one planned without, one cancelled. */
+/** One session over, one planned with a link and a stream, one planned with neither, one cancelled. */
 const course = (over: Record<string, unknown> = {}) => ({
   id: "c-1",
   title: "Bina ve İzhar Şerhi",
   version: 7,
   timeZone: "Europe/Istanbul",
   contentLocked: false,
+  inPerson: false,
   weeks: [
     {
       id: "w1",
@@ -120,6 +130,7 @@ const course = (over: Record<string, unknown> = {}) => ({
       lessons: [
         lesson("l-2", "Hafta 2", "2026-10-05T21:00:00+03:00", {
           meetingUrl: "https://zoom.us/j/123456",
+          hasLiveStream: true,
         }),
       ],
     },
@@ -204,6 +215,7 @@ beforeEach(() => {
       },
     ],
   };
+  state.recordings = { status: "ok", data: [] };
   state.viewer = { id: "u-1", timeZone: "Europe/Istanbul" };
   for (const fn of [
     refresh,
@@ -243,7 +255,7 @@ describe("Celseler", () => {
     expect(textOf(out)).toContain("Celse planla");
   });
 
-  it("lists the upcoming sessions by date with their state, link and week, and counts them", async () => {
+  it("lists the upcoming sessions by date with their state, attendance and week, and counts them", async () => {
     const out = await markup();
     const upcoming = out.slice(
       out.indexOf('aria-labelledby="sessions-up"'),
@@ -253,10 +265,10 @@ describe("Celseler", () => {
     expect(rows).toHaveLength(3);
     expect(rows[0]).toContain("Hafta 2");
     expect(rows[0]).toContain(L2);
-    expect(rows[0]).toContain("Zoom");
+    expect(rows[0]).toContain("Zoom · YouTube yayını");
     expect(rows[0]).toContain("Planlandı");
     expect(rows[1]).toContain(L3);
-    expect(rows[1]).toContain("Eklenmedi");
+    expect(rows[1]).toContain("Eksik");
     expect(rows[2]).toContain("İptal edildi");
     expect(textOf(upcoming)).toContain("3 celse · 1 iptal edildi · Hafta 2–4");
   });
@@ -291,9 +303,9 @@ describe("Celseler", () => {
     expect(out).toContain(`aria-label="${L3} celsesinin tarihini değiştir"`);
   });
 
-  it("shows the live stream column and buttons to whoever may set the link", async () => {
+  it("shows the live stream buttons to whoever may set the link", async () => {
     const out = await markup();
-    expect(textOf(out)).toContain("Canlı yayın");
+    expect(textOf(out)).toContain("Canlı yayın ekle");
     expect(out).toContain(
       `aria-label="${L2} celsesinin canlı yayın bağlantısını güncelle"`
     );
@@ -303,12 +315,14 @@ describe("Celseler", () => {
     expect(out).toContain('data-testid="stream-set"');
   });
 
-  it("leaves the live stream column and buttons out when the links are refused or cannot be read", async () => {
+  it("leaves the live stream buttons out when the links are refused or cannot be read, and still says which session is streamed", async () => {
     for (const streams of [{ status: "forbidden" }, { status: "failed" }]) {
       state.streams = streams as Answer<unknown>;
       const out = await markup();
       expect(textOf(out)).not.toContain("Canlı yayın");
       expect(out).not.toContain("canlı yayın bağlantısı");
+      // the stream is read from the course, not from the links (MDRS-283)
+      expect(textOf(out)).toContain("Zoom · YouTube yayını");
       // the rest of the page stays
       expect(out).toContain(
         `aria-label="${L2} celsesinin bağlantısını güncelle"`
@@ -868,5 +882,269 @@ describe("the live stream link", () => {
     expect(toast("error")).toContain(
       "Yalnız canlı celselere yayın bağlantısı eklenebilir."
     );
+  });
+});
+
+describe("Katılım (MDRS-283)", () => {
+  /** The course with session `id` changed by `over`. */
+  const withLesson = (id: string, over: Record<string, unknown>, top = {}) =>
+    course({
+      ...top,
+      weeks: course().weeks.map((week) => ({
+        ...week,
+        lessons: week.lessons.map((l) => (l.id === id ? { ...l, ...over } : l)),
+      })),
+    });
+  const rowOf = (out: string, title: string) =>
+    textOf(
+      out
+        .split("<tr")
+        .slice(1)
+        .find((row) => textOf(row).includes(title)) ?? ""
+    );
+
+  it("is one column instead of the link and the stream", async () => {
+    const out = await markup();
+    const head = textOf(out.slice(0, out.indexOf("</thead>")));
+    expect(head).toContain("Katılım");
+    expect(head).not.toContain("Toplantı bağlantısı");
+    expect(head).not.toContain("Canlı yayın");
+  });
+
+  it("covers a session that is only streamed, and flags none of the three", async () => {
+    state.course = {
+      status: "ok",
+      data: withLesson("l-3", { hasLiveStream: true }),
+    };
+    const out = await markup();
+    expect(rowOf(out, "Hafta 3")).toContain("Yalnız yayın");
+    expect(out).not.toContain('data-testid="attendance-missing"');
+  });
+
+  it("shows a ders nazırı with session.manage and without session.live_link a stream-only session as covered", async () => {
+    state.permissions = holding("course.view_details", "session.manage");
+    state.course = {
+      status: "ok",
+      data: withLesson("l-3", { hasLiveStream: true }),
+    };
+    const out = await markup();
+    expect(state.reads).not.toContain("the course's live stream links");
+    expect(rowOf(out, "Hafta 3")).toContain("Yalnız yayın");
+    expect(rowOf(out, "Hafta 3")).not.toContain("Eksik");
+    expect(rowOf(out, "Hafta 2")).toContain("Zoom · YouTube yayını");
+  });
+
+  it("covers a session of a course held in person, and one marked in person on its own", async () => {
+    state.course = {
+      status: "ok",
+      data: withLesson("l-3", { inPerson: true }, { inPerson: true }),
+    };
+    expect(rowOf(await markup(), "Hafta 3")).toContain("Yüz yüze");
+    state.course = {
+      status: "ok",
+      data: withLesson("l-3", { inPerson: true, inPersonOverride: true }),
+    };
+    const out = await markup();
+    expect(rowOf(out, "Hafta 3")).toContain("Yüz yüze");
+    expect(rowOf(out, "Hafta 3")).not.toContain("Eksik");
+  });
+
+  it("says 'Yüz yüze · YouTube yayını' for a session held in person and streamed", async () => {
+    state.course = {
+      status: "ok",
+      data: withLesson("l-3", { inPerson: true, hasLiveStream: true }),
+    };
+    expect(rowOf(await markup(), "Hafta 3")).toContain(
+      "Yüz yüze · YouTube yayını"
+    );
+  });
+
+  it("flags a session taken out of an in-person course when it has nothing else", async () => {
+    state.course = {
+      status: "ok",
+      data: withLesson(
+        "l-3",
+        { inPerson: false, inPersonOverride: false },
+        { inPerson: true }
+      ),
+    };
+    expect(rowOf(await markup(), "Hafta 3")).toContain("Eksik");
+  });
+
+  it("does not flag a session that is under way or over: it says 'Eklenmedi' in plain words", async () => {
+    vi.setSystemTime(new Date("2026-10-12T21:10:00+03:00"));
+    const out = await markup();
+    expect(rowOf(out, "Hafta 3")).toContain("Eklenmedi");
+    expect(rowOf(out, "Hafta 1")).toContain("Eklenmedi");
+    expect(out).not.toContain('data-testid="attendance-missing"');
+  });
+
+  it("claims nothing for a content-locked read, which carries no attendance", async () => {
+    state.permissions = holding("session.manage");
+    state.course = {
+      status: "ok",
+      data: course({
+        contentLocked: true,
+        weeks: course().weeks.map((week) => ({
+          ...week,
+          lessons: week.lessons.map((l) => ({
+            ...l,
+            meetingUrl: undefined,
+            inPerson: undefined,
+            inPersonOverride: undefined,
+            hasLiveStream: undefined,
+          })),
+        })),
+      }),
+    };
+    const out = await markup();
+    expect(rowOf(out, "Hafta 3")).toContain("Katılım bilgisi gösterilmez");
+    expect(out).not.toContain('data-testid="attendance-missing"');
+    // nothing to start the in-person choice from, so it is not offered
+    expect(out).not.toContain("yüz yüze ayarı");
+  });
+});
+
+describe("the in-person mark of a session (MDRS-283)", () => {
+  const radio = (label: string) =>
+    [...editor().querySelectorAll("label.mds-choice")].find(
+      (l) => l.querySelector(".mds-choice__label")?.textContent === label
+    ) as HTMLElement;
+  const picked = (label: string) =>
+    radio(label).querySelector("[role=radio]")?.getAttribute("aria-checked") ===
+    "true";
+  const pick = (label: string) =>
+    click(radio(label).querySelector("[role=radio]") as Element);
+  const open = async (label = `${L3} celsesinin yüz yüze ayarı`) => {
+    await mount();
+    await click(byLabel(label));
+    await settle(40);
+  };
+
+  it("is offered on every session still standing to a holder of session.manage, and to nobody else", async () => {
+    let out = await markup();
+    expect(out).toContain(`aria-label="${L2} celsesinin yüz yüze ayarı"`);
+    expect(out).toContain(`aria-label="${L3} celsesinin yüz yüze ayarı"`);
+    // not on the cancelled one
+    expect(out).not.toContain("19 Eki Pzt 21:00 celsesinin yüz yüze ayarı");
+    state.permissions = holding("session.live_link");
+    out = await markup();
+    expect(out).not.toContain("yüz yüze ayarı");
+  });
+
+  it("starts from 'Dersin ayarına uy' and says what the course does", async () => {
+    await open();
+    expect(editor().textContent).toContain(
+      "12 Ekim 2026 Pazartesi 21:00 celsesinin yüz yüze ayarı"
+    );
+    expect(picked("Dersin ayarına uy")).toBe(true);
+    expect(editor().textContent).toContain(
+      "Ders yüz yüze yapılmıyor; bu celse de yüz yüze sayılmaz."
+    );
+  });
+
+  it("marks the session in person at the course version, says so and reads the page again", async () => {
+    changeSession.mockResolvedValue({
+      success: true,
+      data: { courseVersion: 8 },
+    });
+    await open();
+    await pick("Yüz yüze");
+    await settle(20);
+    await click(save());
+    await settle(60);
+    expect(changeSession).toHaveBeenCalledExactlyOnceWith("l-3", {
+      version: 7,
+      inPersonOverride: true,
+    });
+    expect(toast("success")).toContain("Yüz yüze ayarı kaydedildi");
+    expect(refresh).toHaveBeenCalledOnce();
+    expect(editor()).toBeNull();
+  });
+
+  it("takes a session out of an in-person course, and puts it back to follow the course with null", async () => {
+    changeSession.mockResolvedValue({
+      success: true,
+      data: { courseVersion: 8 },
+    });
+    state.course = {
+      status: "ok",
+      data: course({
+        inPerson: true,
+        weeks: course().weeks.map((week) => ({
+          ...week,
+          lessons: week.lessons.map((l) =>
+            l.id === "l-3"
+              ? { ...l, inPerson: false, inPersonOverride: false }
+              : { ...l, inPerson: true }
+          ),
+        })),
+      }),
+    };
+    await open();
+    expect(picked("Yüz yüze değil")).toBe(true);
+    expect(editor().textContent).toContain(
+      "Ders yüz yüze yapılıyor; bu celse de yüz yüze sayılır."
+    );
+    await pick("Dersin ayarına uy");
+    await settle(20);
+    await click(save());
+    await settle(60);
+    expect(changeSession).toHaveBeenCalledExactlyOnceWith("l-3", {
+      version: 7,
+      inPersonOverride: null,
+    });
+  });
+
+  it("words a refusal from its code and keeps the form", async () => {
+    changeSession.mockResolvedValue({
+      success: false,
+      code: "AUTHZ_FORBIDDEN",
+    });
+    await open();
+    await pick("Yüz yüze değil");
+    await settle(20);
+    await click(save());
+    await settle(60);
+    expect(changeSession).toHaveBeenCalledExactlyOnceWith("l-3", {
+      version: 7,
+      inPersonOverride: false,
+    });
+    expect(toast("error")).toContain("Bunu yapma izniniz yok.");
+    expect(editor()).not.toBeNull();
+  });
+});
+
+describe("a session that is over (MDRS-283)", () => {
+  const past = (out: string) =>
+    textOf(out.slice(out.indexOf('aria-labelledby="sessions-past"')));
+
+  it("says 'Kayıt yok' in plain words when the course holds no recording of it, and nothing counts it", async () => {
+    const out = await markup();
+    expect(past(out)).toContain("Sona erdi Kayıt yok");
+    const pastMarkup = out.slice(
+      out.indexOf('aria-labelledby="sessions-past"')
+    );
+    expect(pastMarkup).not.toContain("mds-badge--warning");
+    expect(pastMarkup).not.toContain('data-testid="attendance-missing"');
+    // the counts above the list are the upcoming sessions', as before
+    expect(textOf(out)).toContain("3 celse · 1 iptal edildi · Hafta 2–4");
+  });
+
+  it("says it holds one when it does", async () => {
+    state.recordings = {
+      status: "ok",
+      data: [{ id: "r-1", lessonId: "l-1", title: "Hafta 1 kaydı" }],
+    };
+    const out = await markup();
+    expect(past(out)).toContain("Kaydı var");
+    expect(past(out)).not.toContain("Kayıt yok");
+  });
+
+  it("says nothing of recordings when they cannot be read", async () => {
+    state.recordings = { status: "failed" };
+    const out = await markup();
+    expect(out).not.toContain('data-testid="recording-state"');
+    expect(textOf(out)).toContain("Sona erdi");
   });
 });

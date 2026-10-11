@@ -83,6 +83,11 @@ export const courses = table("courses", {
   isClosed: boolean("is_closed").default(false).notNull(),
   // The short word printed on the cover ("Sarf", "Tecvid"); null: none.
   coverLabel: text("cover_label"),
+  // "Celseler yüz yüze yapılır" (MDRS-283): the course's sessions are held
+  // face to face. A label only (no address, no seats); each session may say
+  // otherwise (`lessons.in_person`). An in-person session needs no meeting
+  // link to count as covered.
+  inPerson: boolean("in_person").default(false).notNull(),
   // IANA zone the course's sessions are authored in (MDRS-110). An editor
   // types "21:00" meaning 21:00 here; talebe elsewhere see it converted.
   timeZone: text("time_zone").default("Europe/Istanbul").notNull(),
@@ -164,6 +169,11 @@ export const lessons = table(
     // from `meeting_url`, which is where talebe join and speak. Course
     // content, like the meeting link.
     liveStreamUrl: text("live_stream_url"),
+    // This session's own in-person mark (MDRS-283): true or false overrides
+    // the course's `in_person`, null follows it. Named `inPersonOverride` here
+    // so that a spread row is never mistaken for the effective value,
+    // `coalesce(lessons.in_person, courses.in_person)`.
+    inPersonOverride: boolean("in_person"),
     agenda: jsonb("agenda").$type<{ time: string; title: string }[]>(),
     isPreview: boolean("is_preview").default(false).notNull(),
     orderIndex: integer("order_index").default(0).notNull(),

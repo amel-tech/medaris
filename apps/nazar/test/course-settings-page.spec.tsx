@@ -66,6 +66,7 @@ const course = (over: Record<string, unknown> = {}) => ({
   status: "PUBLISHED",
   isClosed: false,
   requiresApproval: true,
+  inPerson: true,
   timeZone: "Europe/Istanbul",
   version: 7,
   weeks: [
@@ -157,10 +158,16 @@ describe("Ders ayarları", () => {
     expect(text).toContain(
       "Bina ve İzhar Şerhi dersinin yayın, erişim, kayıt ve saat dilimi ayarları."
     );
-    for (const label of ["Kapalı ders", "Kayıt onayı gereksin"]) {
+    for (const label of [
+      "Kapalı ders",
+      "Kayıt onayı gereksin",
+      "Celseler yüz yüze yapılır",
+    ]) {
       expect(locked(label), label).toBe(false);
     }
     expect(checked("Kayıt onayı gereksin")).toBe(true);
+    // the course's in-person mark, as stored (MDRS-283)
+    expect(checked("Celseler yüz yüze yapılır")).toBe(true);
     expect(checked("Kapalı ders")).toBe(false);
     expect(shut("sample")).toBe(false);
     expect(shut("zone")).toBe(false);
@@ -269,6 +276,7 @@ describe("Ders ayarları", () => {
     await mount();
     expect(locked("Kapalı ders")).toBe(true);
     expect(locked("Kayıt onayı gereksin")).toBe(true);
+    expect(locked("Celseler yüz yüze yapılır")).toBe(false);
     expect(shut("sample")).toBe(true);
     expect(shut("zone")).toBe(false);
     expect(button("Kaydet")).toBeDefined();
@@ -281,6 +289,7 @@ describe("Ders ayarları", () => {
     expect(shut("zone")).toBe(true);
     expect(locked("Kapalı ders")).toBe(true);
     expect(locked("Kayıt onayı gereksin")).toBe(true);
+    expect(locked("Celseler yüz yüze yapılır")).toBe(true);
     expect(document.body.textContent).not.toContain("Taslağa çek");
   });
 

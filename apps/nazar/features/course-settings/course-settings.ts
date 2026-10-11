@@ -13,10 +13,12 @@ import type {
  * because this module goes to the browser with the form.
  */
 
-/** What the form holds: the course's three fields and its sample session. */
+/** What the form holds: the course's four fields and its sample session. */
 export interface CourseSettingsValues {
   isClosed: boolean;
   requiresApproval: boolean;
+  /** "Celseler yüz yüze yapılır" (MDRS-283): what a session without its own mark follows */
+  inPerson: boolean;
   timeZone: string;
   /** the sample session's id; "" for none */
   sampleLessonId: string;
@@ -60,11 +62,12 @@ export function sampleOptions(
 export const settingsOf = (
   course: Pick<
     CourseDetailResponse,
-    "isClosed" | "requiresApproval" | "timeZone" | "weeks"
+    "isClosed" | "requiresApproval" | "inPerson" | "timeZone" | "weeks"
   >
 ): CourseSettingsValues => ({
   isClosed: course.isClosed,
   requiresApproval: course.requiresApproval,
+  inPerson: course.inPerson,
   timeZone: course.timeZone,
   sampleLessonId: sampleOf(course),
 });
@@ -86,6 +89,7 @@ export function courseSettingsPatch(
   if (draft.requiresApproval !== stored.requiresApproval) {
     patch.requiresApproval = draft.requiresApproval;
   }
+  if (draft.inPerson !== stored.inPerson) patch.inPerson = draft.inPerson;
   if (draft.timeZone !== stored.timeZone) patch.timeZone = draft.timeZone;
   return Object.keys(patch).length > 0 ? patch : null;
 }
@@ -109,6 +113,8 @@ export interface CourseSettingsControls {
   closed: BoxState;
   /** "Kayıt onayı gereksin" */
   approval: BoxState;
+  /** "Celseler yüz yüze yapılır" may be changed */
+  inPerson: boolean;
   /** "Saat dilimi" may be changed */
   zone: boolean;
   /** "Örnek ders" may be changed */

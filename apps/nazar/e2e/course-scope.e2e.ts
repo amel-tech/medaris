@@ -54,7 +54,7 @@ test("Celseler lists the course's sessions, says which has no link, and offers t
   const upcoming = page.getByRole("table", { name: "Yaklaşan celseler" });
   await expect(upcoming.getByRole("row")).toHaveCount(3);
   await expect(upcoming).toContainText("Celse 1");
-  await expect(upcoming).toContainText("Eklenmedi");
+  await expect(upcoming).toContainText("Eksik");
   await expect(upcoming).toContainText("Celse 2");
   await expect(
     page.locator("aside").getByRole("link", { name: /^Celseler/ })

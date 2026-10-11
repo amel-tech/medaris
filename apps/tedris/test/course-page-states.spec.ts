@@ -416,6 +416,74 @@ describe("the course's resources (MDRS-279)", () => {
   });
 });
 
+describe("how the course and its next celse are attended (MDRS-283)", () => {
+  // As the markup writes them: React escapes the apostrophe of "YouTube'da".
+  const schedule = Object.fromEntries(
+    Object.entries(resources.tr.tedris.SchedulePage).map(([k, v]) => [
+      k,
+      v.replaceAll("'", "&#x27;"),
+    ])
+  ) as typeof resources.tr.tedris.SchedulePage;
+  /** The enrolled talebe's page, the course and its next celse changed. */
+  const renderWith = async (
+    over: Record<string, unknown>,
+    next: Record<string, unknown> = {},
+    status: Status = "ENROLLED"
+  ) => {
+    const { CoursePage } = await import(
+      "~/features/courses/components/course-page"
+    );
+    const seat = status === "ENROLLED" || status === "COMPLETED";
+    const base = course(status, !seat);
+    return renderToStaticMarkup(
+      createElement(CoursePage, {
+        course: {
+          ...base,
+          ...over,
+          weeks: base.weeks.map((week) => ({
+            ...week,
+            lessons: week.lessons.map((l) =>
+              l.id === "next" ? { ...l, ...next } : l
+            ),
+          })),
+        } as CourseDetailResponse,
+        koskName: "Nûruosmaniye Köşkü",
+        signedIn: status !== null,
+        now: NOW,
+      })
+    );
+  };
+
+  it("labels an in-person course 'Yüz yüze' for everyone, a visitor included", async () => {
+    const badge = `>${tr.inPersonBadge}</span>`;
+    expect(await renderWith({ inPerson: true })).toContain(badge);
+    expect(await renderWith({ inPerson: true }, {}, null)).toContain(badge);
+    expect(await renderWith({ inPerson: false })).not.toContain(badge);
+    expect(await renderWith({})).not.toContain(badge);
+  });
+
+  it("says the next celse is held in person or streamed, not that its link is missing", async () => {
+    const inPerson = await renderWith({}, { inPerson: true });
+    expect(inPerson).toContain(schedule.inPerson);
+    expect(inPerson).not.toContain(tr.meetingNotAdded);
+    const stream = await renderWith({}, { hasLiveStream: true });
+    expect(stream).toContain(schedule.stream);
+    expect(stream).not.toContain(tr.meetingNotAdded);
+    const both = await renderWith({}, { inPerson: true, hasLiveStream: true });
+    expect(both).toContain(schedule.inPersonStream);
+  });
+
+  it("still says the link is missing when the next celse has none of the three", async () => {
+    const none = await renderWith(
+      {},
+      { inPerson: false, hasLiveStream: false }
+    );
+    expect(none).toContain(tr.meetingNotAdded);
+    expect(none).not.toContain(schedule.inPerson);
+    expect(none).not.toContain(schedule.stream);
+  });
+});
+
 describe("the new keys", () => {
   it("exist in every locale", () => {
     for (const locale of ["tr", "en", "ar"] as const) {

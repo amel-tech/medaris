@@ -115,13 +115,23 @@ export interface IRecordingPatch {
 export interface IWrittenRecording {
   recording: IRecordingRow;
   bunnyVideoId: string | null;
+  /**
+   * The write made the recording READY and it was not before (MDRS-283): the
+   * one moment talebe are told a recording was added. A link replaced or a
+   * title changed on a READY recording is not that moment.
+   */
+  becameReady: boolean;
 }
 
 function written(
   row: typeof lessonRecordings.$inferSelect,
-  at: { weekId: string; weekNumber: number; weekTitle: string }
+  at: { weekId: string; weekNumber: number; weekTitle: string },
+  previousStatus: RecordingStatus | null
 ): IWrittenRecording {
   return {
+    becameReady:
+      row.status === RecordingStatus.READY &&
+      previousStatus !== RecordingStatus.READY,
     recording: {
       id: row.id,
       lessonId: row.lessonId,
@@ -568,7 +578,7 @@ export class RecordingRepository {
           replacedVideoId: existing?.bunnyVideoId ?? null,
         },
       });
-      return written(row, at);
+      return written(row, at, existing?.status ?? null);
     });
   }
 
@@ -641,7 +651,7 @@ export class RecordingRepository {
           next: audited(row),
         },
       });
-      return written(row, at);
+      return written(row, at, before.status);
     });
   }
 }

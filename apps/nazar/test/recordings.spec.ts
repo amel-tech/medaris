@@ -21,6 +21,8 @@ import {
   type SessionSlot,
   slotCounts,
   slotState,
+  streamRecordingBody,
+  streamToRecord,
   switchLocked,
   uploadBody,
   uploadContinues,
@@ -161,6 +163,8 @@ describe("what a session offers", () => {
     lessonId: "a",
     title: "Celse",
     startsAt: "2026-10-05T18:00:00.000Z",
+    endsAt: "2026-10-05T19:00:00.000Z",
+    streamUrl: null,
     recording: null,
     ...over,
   });
@@ -208,6 +212,81 @@ describe("what a session offers", () => {
       NOW
     );
     expect(counts).toEqual({ recorded: 1, missing: 1 });
+  });
+});
+
+describe("Yayını kayıt olarak ekle (MDRS-283)", () => {
+  const STREAM = "https://www.youtube.com/live/abcdefghijk";
+  const slot = (over: Partial<SessionSlot> = {}): SessionSlot => ({
+    lessonId: "a",
+    title: "Hafta 2",
+    startsAt: "2026-10-05T18:00:00.000Z",
+    endsAt: "2026-10-05T19:00:00.000Z",
+    streamUrl: STREAM,
+    recording: null,
+    ...over,
+  });
+  const OVER = new Date("2026-10-05T19:00:00Z");
+
+  it("is offered on a session that is over, had a stream and holds no recording", () => {
+    expect(streamToRecord(slot(), OVER)).toBe(STREAM);
+  });
+
+  it("is not offered while the session runs, nor without a stream, a time or with a recording", () => {
+    expect(streamToRecord(slot(), new Date("2026-10-05T18:59:00Z"))).toBeNull();
+    expect(streamToRecord(slot({ streamUrl: null }), OVER)).toBeNull();
+    expect(streamToRecord(slot({ endsAt: null }), OVER)).toBeNull();
+    expect(
+      streamToRecord(
+        slot({
+          recording: {
+            id: "r",
+            title: "Kayıt",
+            provider: "YOUTUBE",
+            url: STREAM,
+            status: "READY",
+            visibility: "ENROLLED",
+          },
+        }),
+        OVER
+      )
+    ).toBeNull();
+  });
+
+  it("sends the stream link as it is, with the title the form would start from, for the enrolled", () => {
+    expect(streamRecordingBody(slot(), STREAM, "kaydı")).toEqual({
+      title: "Hafta 2 kaydı",
+      url: STREAM,
+      visibility: "ENROLLED",
+    });
+  });
+
+  it("reads the end and the stream of each session into the list", () => {
+    const blocks = recordingWeeks(
+      course([
+        {
+          id: "w",
+          weekNumber: 1,
+          title: "",
+          lessons: [
+            lesson("s", {
+              scheduledAt: new Date("2026-10-05T18:00:00Z"),
+              durationMinutes: 90,
+            }),
+            lesson("t", {
+              scheduledAt: new Date("2026-10-06T18:00:00Z"),
+              durationMinutes: null,
+            }),
+          ],
+        },
+      ]),
+      [],
+      { s: STREAM }
+    );
+    expect(blocks[0]?.slots.map((s) => [s.endsAt, s.streamUrl])).toEqual([
+      ["2026-10-05T19:30:00.000Z", STREAM],
+      ["2026-10-06T19:00:00.000Z", null],
+    ]);
   });
 });
 
@@ -494,6 +573,8 @@ describe("the upload", () => {
     lessonId: "l-1",
     title: "Hafta 1",
     startsAt: "2026-10-05T18:00:00.000Z",
+    endsAt: "2026-10-05T19:00:00.000Z",
+    streamUrl: null,
     recording:
       over === null
         ? null

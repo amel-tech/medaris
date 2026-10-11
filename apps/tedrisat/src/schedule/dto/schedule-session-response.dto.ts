@@ -35,4 +35,14 @@ export class ScheduleSessionResponse {
       "The meeting link; null when none was added, and always null once the session is cancelled or over. Only an enrolled caller receives this response, so the link is theirs to read.",
   })
   meetingUrl!: string | null;
+  @ApiProperty({
+    description:
+      "Held in person (MDRS-283): the session's own mark, else the course's. Programım and the home page word the session by it.",
+  })
+  inPerson!: boolean;
+  @ApiProperty({
+    description:
+      "A live stream is set for the session (MDRS-283), whatever its status; never the link, which the session page gives while it is LIVE.",
+  })
+  hasLiveStream!: boolean;
 }

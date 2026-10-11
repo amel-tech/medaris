@@ -4,6 +4,8 @@ import {
   courseMoved,
   fieldsOf,
   groupSessions,
+  inPersonChoiceOf,
+  inPersonOverrideOf,
   instantOf,
   isoWeekdayOf,
   linkProblem,
@@ -16,6 +18,7 @@ import {
   planPattern,
   planRequest,
   planSummary,
+  rowAttendance,
   type SessionFact,
   sendableLink,
   sessionErrorKey,
@@ -38,6 +41,9 @@ const fact = (over: Partial<SessionFact> = {}): SessionFact => ({
   startsAt: "2026-10-05T18:00:00.000Z",
   durationMinutes: 60,
   meetingUrl: null,
+  hasLiveStream: false,
+  inPerson: false,
+  inPersonOverride: null,
   cancelledAt: null,
   replacementId: null,
   ...over,
@@ -50,6 +56,9 @@ const lesson = (over: Record<string, unknown> = {}) => ({
   scheduledAt: new Date("2026-10-05T18:00:00Z"),
   durationMinutes: 90,
   meetingUrl: "https://zoom.us/j/123",
+  inPerson: false,
+  inPersonOverride: null,
+  hasLiveStream: false,
   cancelledAt: null,
   ...over,
 });
@@ -100,8 +109,57 @@ describe("the sessions of a course", () => {
       startsAt: "2026-10-05T18:00:00.000Z",
       durationMinutes: 90,
       meetingUrl: "https://zoom.us/j/123",
+      hasLiveStream: false,
+      inPerson: false,
+      inPersonOverride: null,
       cancelledAt: "2026-10-03T08:00:00.000Z",
       replacementId: null,
+    });
+  });
+
+  it("carry how each is attended from the course read, the stream as a yes or no (MDRS-283)", () => {
+    const [fact] = sessionFacts({
+      weeks: [
+        {
+          weekNumber: 1,
+          lessons: [
+            lesson({
+              hasLiveStream: true,
+              inPerson: true,
+              inPersonOverride: true,
+            }),
+          ],
+        },
+      ],
+    } as never);
+    expect(fact).toMatchObject({
+      hasLiveStream: true,
+      inPerson: true,
+      inPersonOverride: true,
+    });
+  });
+
+  it("say nothing of attendance when the read carried none, as a content-locked one does not", () => {
+    const [fact] = sessionFacts({
+      weeks: [
+        {
+          weekNumber: 1,
+          lessons: [
+            lesson({
+              meetingUrl: undefined,
+              inPerson: undefined,
+              inPersonOverride: undefined,
+              hasLiveStream: undefined,
+            }),
+          ],
+        },
+      ],
+    } as never);
+    expect(fact).toMatchObject({
+      meetingUrl: null,
+      hasLiveStream: false,
+      inPerson: null,
+      inPersonOverride: null,
     });
   });
 
@@ -229,6 +287,77 @@ describe("the two lists", () => {
       groupSessions(sessionRows([facts[2] as SessionFact], NOW), NOW).weekRange
     ).toBe("4");
     expect(groupSessions([], NOW).weekRange).toBeNull();
+  });
+});
+
+describe("how a session is attended (MDRS-283)", () => {
+  const row = (over: Partial<SessionFact>, now = NOW) =>
+    sessionRows([fact(over)], now)[0] as NonNullable<
+      ReturnType<typeof sessionRows>[number]
+    >;
+  const START = Date.parse("2026-10-05T18:00:00Z");
+
+  it("is covered by a meeting link, a stream or the in-person mark, each alone", () => {
+    expect(rowAttendance(row({ meetingUrl: "https://zoom.us/j/1" }))).toEqual({
+      inPerson: false,
+      platform: { id: "zoom", host: "zoom.us" },
+      stream: null,
+      lack: null,
+    });
+    expect(rowAttendance(row({ hasLiveStream: true }))).toEqual({
+      inPerson: false,
+      platform: null,
+      stream: "alone",
+      lack: null,
+    });
+    expect(rowAttendance(row({ inPerson: true }))).toEqual({
+      inPerson: true,
+      platform: null,
+      stream: null,
+      lack: null,
+    });
+  });
+
+  it("names the stream beside another way in, and only alone as 'Yalnız yayın'", () => {
+    expect(
+      rowAttendance(
+        row({ meetingUrl: "https://zoom.us/j/1", hasLiveStream: true })
+      )?.stream
+    ).toBe("beside");
+    expect(
+      rowAttendance(row({ inPerson: true, hasLiveStream: true }))?.stream
+    ).toBe("beside");
+  });
+
+  it("flags a session with none of the three only while it is still ahead", () => {
+    expect(rowAttendance(row({}, new Date(START - 1)))?.lack).toBe("missing");
+    expect(rowAttendance(row({}, new Date(START + 5 * 60_000)))?.lack).toBe(
+      "none"
+    );
+    expect(rowAttendance(row({}, new Date(START + 61 * 60_000)))?.lack).toBe(
+      "none"
+    );
+  });
+
+  it("does not take a blank link for a way in", () => {
+    expect(rowAttendance(row({ meetingUrl: "  " }))?.lack).toBe("missing");
+  });
+
+  it("claims nothing for a session the read carried no attendance of", () => {
+    expect(rowAttendance(row({ inPerson: null }))).toBeNull();
+  });
+
+  it("offers the three answers of the row action, and writes null to follow the course", () => {
+    expect([null, true, false].map(inPersonChoiceOf)).toEqual([
+      "course",
+      "yes",
+      "no",
+    ]);
+    expect((["course", "yes", "no"] as const).map(inPersonOverrideOf)).toEqual([
+      null,
+      true,
+      false,
+    ]);
   });
 });
 
@@ -422,6 +551,14 @@ describe("the plan", () => {
     expect(
       planRequest(pattern, weekly, "Haftanın tekrarı", "https://zoom.us/j/1")
     ).toMatchObject({ meetingUrl: "https://zoom.us/j/1" });
+  });
+
+  it("writes no in-person mark: the sessions follow the course's (MDRS-283)", () => {
+    const pattern = planPattern(weekly);
+    if (!pattern) throw new Error("no pattern");
+    expect(
+      planRequest(pattern, weekly, "Haftanın tekrarı", "https://zoom.us/j/1")
+    ).not.toHaveProperty("inPersonOverride");
   });
 
   it("sums the preview up by count and by first and last day", () => {

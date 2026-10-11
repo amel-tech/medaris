@@ -158,6 +158,18 @@ export interface SessionResponse {
      */
     liveStreamUrl?: string | null;
     /**
+     * Held in person (MDRS-283): the session's own mark, else the course's. Sent to everyone who may see the session; a label, not a way in.
+     * @type {boolean}
+     * @memberof SessionResponse
+     */
+    inPerson: boolean;
+    /**
+     * Course content: absent unless the caller holds `view_details` on the course (MDRS-103). A live stream is set for the session (MDRS-283), whatever its status, so the page can say so before it starts; the link itself is `liveStreamUrl`, LIVE only.
+     * @type {boolean}
+     * @memberof SessionResponse
+     */
+    hasLiveStream?: boolean;
+    /**
      * Course content: absent unless the caller holds `view_details` on the course (MDRS-103). The session's recording, or null when it has none. Its `url` is null while it is PROCESSING.
      * @type {SessionRecordingResponse}
      * @memberof SessionResponse
@@ -202,6 +214,7 @@ export function instanceOfSessionResponse(value: object): value is SessionRespon
     if (!('courseId' in value) || value['courseId'] === undefined) return false;
     if (!('weekId' in value) || value['weekId'] === undefined) return false;
     if (!('weekTitle' in value) || value['weekTitle'] === undefined) return false;
+    if (!('inPerson' in value) || value['inPerson'] === undefined) return false;
     if (!('muderris' in value) || value['muderris'] === undefined) return false;
     if (!('contentLocked' in value) || value['contentLocked'] === undefined) return false;
     return true;
@@ -234,6 +247,8 @@ export function SessionResponseFromJSONTyped(json: any, ignoreDiscriminator: boo
         'agenda': json['agenda'] == null ? undefined : ((json['agenda'] as Array<any>).map(AgendaStepResponseFromJSON)),
         'meetingUrl': json['meetingUrl'] == null ? undefined : json['meetingUrl'],
         'liveStreamUrl': json['liveStreamUrl'] == null ? undefined : json['liveStreamUrl'],
+        'inPerson': json['inPerson'],
+        'hasLiveStream': json['hasLiveStream'] == null ? undefined : json['hasLiveStream'],
         'recording': json['recording'] == null ? undefined : SessionRecordingResponseFromJSON(json['recording']),
         'previous': json['previous'] == null ? undefined : SessionRefResponseFromJSON(json['previous']),
         'next': json['next'] == null ? undefined : SessionRefResponseFromJSON(json['next']),
@@ -270,6 +285,8 @@ export function SessionResponseToJSONTyped(value?: SessionResponse | null, ignor
         'agenda': value['agenda'] == null ? undefined : ((value['agenda'] as Array<any>).map(AgendaStepResponseToJSON)),
         'meetingUrl': value['meetingUrl'],
         'liveStreamUrl': value['liveStreamUrl'],
+        'inPerson': value['inPerson'],
+        'hasLiveStream': value['hasLiveStream'],
         'recording': SessionRecordingResponseToJSON(value['recording']),
         'previous': SessionRefResponseToJSON(value['previous']),
         'next': SessionRefResponseToJSON(value['next']),

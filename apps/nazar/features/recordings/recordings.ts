@@ -3,7 +3,11 @@ import type {
   RecordingResponse,
 } from "@medaris/services/tedrisat";
 import { normalizeMeetingUrl } from "@medaris/utils";
-import { linkProblem, sendableLink } from "../sessions/sessions";
+import {
+  DEFAULT_SESSION_MINUTES,
+  linkProblem,
+  sendableLink,
+} from "../sessions/sessions";
 
 /**
  * Ders kayıtları as rules: a course's sessions with the recording each one
@@ -44,6 +48,13 @@ export interface SessionSlot {
   title: string;
   /** ISO time; null for a session with no time set */
   startsAt: string | null;
+  /** ISO time the session is over (a lesson without a length is an hour); null with no time set */
+  endsAt: string | null;
+  /**
+   * The session's live stream link, when the page could read it (the caller
+   * holds `session.live_link`): what "Yayını kayıt olarak ekle" sends.
+   */
+  streamUrl: string | null;
   recording: RecordingFact | null;
 }
 
@@ -58,11 +69,13 @@ export interface WeekBlock {
  * The weeks of the course, newest first as tedris lists them, each with its
  * live sessions by time. A session of another kind is listed only if it holds
  * a recording, and a cancelled one only if it still does; a week with nothing
- * to list is left out.
+ * to list is left out. `streams` are the stream links by session, when they
+ * could be read.
  */
 export function recordingWeeks(
   course: Pick<CourseDetailResponse, "weeks">,
-  recordings: readonly RecordingResponse[]
+  recordings: readonly RecordingResponse[],
+  streams: Readonly<Record<string, string>> = {}
 ): WeekBlock[] {
   const byLesson = new Map(
     recordings.map((recording) => [recording.lessonId, recording] as const)
@@ -73,12 +86,24 @@ export function recordingWeeks(
         const recording = byLesson.get(lesson.id) ?? null;
         const cancelled = Boolean(lesson.cancelledAt);
         if (!recording && (lesson.type !== "LIVE" || cancelled)) return [];
+        const start = lesson.scheduledAt
+          ? new Date(lesson.scheduledAt).getTime()
+          : null;
         return [
           {
             lessonId: lesson.id,
             title: lesson.title,
-            startsAt: lesson.scheduledAt
-              ? new Date(lesson.scheduledAt).toISOString()
+            startsAt: start === null ? null : new Date(start).toISOString(),
+            endsAt:
+              start === null
+                ? null
+                : new Date(
+                    start +
+                      (lesson.durationMinutes ?? DEFAULT_SESSION_MINUTES) *
+                        60_000
+                  ).toISOString(),
+            streamUrl: Object.hasOwn(streams, lesson.id)
+              ? (streams[lesson.id] ?? null)
               : null,
             recording: recording
               ? {
@@ -123,6 +148,28 @@ export function slotState(slot: SessionSlot, now: Date): SlotState {
   }
   return "missing";
 }
+
+/**
+ * "Yayını kayıt olarak ekle" (MDRS-283): the stream link of a session that is
+ * over, has a stream and holds no recording; null for any other. The link is
+ * sent to the recording route as it is: tedrisat reads a `/live/<id>` link as
+ * the YouTube video, which plays once YouTube has archived the stream.
+ */
+export function streamToRecord(slot: SessionSlot, now: Date): string | null {
+  if (slot.recording || !slot.streamUrl || !slot.endsAt) return null;
+  return Date.parse(slot.endsAt) <= now.getTime() ? slot.streamUrl : null;
+}
+
+/** The body that adds a session's stream as its recording: the form's title, for the enrolled. */
+export const streamRecordingBody = (
+  slot: Pick<SessionSlot, "title">,
+  streamUrl: string,
+  suffix: string
+): { title: string; url: string; visibility: Visibility } => ({
+  title: newForm(slot.title, suffix).title,
+  url: streamUrl,
+  visibility: "ENROLLED",
+});
 
 /** How many sessions hold a recording, and how many that have begun do not. */
 export function slotCounts(

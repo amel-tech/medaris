@@ -26,14 +26,17 @@ describe("CourseRepository.getBadgeCounts", () => {
   const rowsFor = (text: string) =>
     text.includes('from "enrollments"') ? [["2"]] : [["1"]];
 
-  it("counts pending requests and the sessions still waiting for a link", async () => {
+  it("counts pending requests and the sessions nobody can attend yet", async () => {
     const { databaseService, queries } = recordingDatabase(rowsFor);
 
     const counts = await new CourseRepository(databaseService).getBadgeCounts(
       COURSE_ID
     );
 
-    expect(counts).toEqual({ missingMeetingLinks: 1, pendingApplications: 2 });
+    expect(counts).toEqual({
+      sessionsWithoutAccess: 1,
+      pendingApplications: 2,
+    });
     expect(queries).toHaveLength(2);
   });
 
@@ -47,7 +50,7 @@ describe("CourseRepository.getBadgeCounts", () => {
     expect(pending?.values).toEqual([COURSE_ID, "PENDING"]);
   });
 
-  it("counts a live session only while it is ahead, standing, visible and without a link", async () => {
+  it("counts a live session only while it is ahead, standing, visible and without a way in", async () => {
     const { databaseService, queries } = recordingDatabase(rowsFor);
     await new CourseRepository(databaseService).getBadgeCounts(COURSE_ID);
 
@@ -62,9 +65,14 @@ describe("CourseRepository.getBadgeCounts", () => {
     expect(text).toContain('"lessons"."type" = $2');
     // Still ahead; one already under way is past help.
     expect(text).toContain('"lessons"."scheduled_at" >= now()');
-    // A link of spaces is no link.
+    // MDRS-283: covered by a meeting link, a live stream or the in-person
+    // mark, the session's own or else the course's. A link of spaces is no
+    // link, and a stream of spaces no stream.
     expect(text).toContain(
-      '("lessons"."meeting_url" is null or btrim("lessons"."meeting_url") = \'\')'
+      'inner join "courses" on "courses"."id" = "course_weeks"."course_id"'
+    );
+    expect(text).toContain(
+      '(("lessons"."meeting_url" is null or btrim("lessons"."meeting_url") = \'\') and ("lessons"."live_stream_url" is null or btrim("lessons"."live_stream_url") = \'\') and not coalesce("lessons"."in_person", "courses"."in_person"))'
     );
     expect(missing?.values).toEqual([COURSE_ID, "LIVE"]);
   });
@@ -74,7 +82,7 @@ describe("CourseRepository.getBadgeCounts", () => {
 
     await expect(
       new CourseRepository(databaseService).getBadgeCounts(COURSE_ID)
-    ).resolves.toEqual({ missingMeetingLinks: 0, pendingApplications: 0 });
+    ).resolves.toEqual({ sessionsWithoutAccess: 0, pendingApplications: 0 });
   });
 });
 

@@ -52,6 +52,17 @@ export interface ISessionView extends ISessionRef {
   meetingUrl?: string | null;
   /** Course content; only while the session is LIVE (MDRS-162). */
   liveStreamUrl?: string | null;
+  /**
+   * Held in person (MDRS-283): the session's own mark, else the course's.
+   * Sent to everyone who may see the session, like the course's own mark.
+   */
+  inPerson: boolean;
+  /**
+   * A live stream is set for the session (MDRS-283), whatever its status, so
+   * the page can say so before it starts; the link itself stays LIVE-only.
+   * Course content: absent for a caller who may not read it.
+   */
+  hasLiveStream?: boolean;
   /** Course content: absent for a caller who may not read it (MDRS-162). */
   recording?: Omit<
     IRecordingView,
@@ -146,6 +157,9 @@ export function buildSessionView(
       title: m.title,
       isImam: imamUserId !== null && m.userId === imamUserId,
     })),
+    // The filtered lesson carries the session's own mark only for a content
+    // reader; `CourseService.getSession` puts the session's for everyone.
+    inPerson: lesson.inPerson ?? course.inPerson,
     contentLocked: course.contentLocked,
   };
 
@@ -154,6 +168,7 @@ export function buildSessionView(
   if ("cancelReason" in lesson) view.cancelReason = lesson.cancelReason;
   if ("kaynak" in lesson) view.kaynak = lesson.kaynak;
   if ("agenda" in lesson) view.agenda = lesson.agenda;
+  if ("hasLiveStream" in lesson) view.hasLiveStream = lesson.hasLiveStream;
   if ("meetingUrl" in lesson) {
     const joinable =
       status === SessionStatus.SCHEDULED || status === SessionStatus.LIVE;

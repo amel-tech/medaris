@@ -126,6 +126,12 @@ export interface ReplaceCourseDto {
      */
     coverLabel?: string;
     /**
+     * "Celseler yüz yüze yapılır" (MDRS-283): the course's sessions are held face to face, unless a session says otherwise (`inPersonOverride`). A label only. Defaults to false; never null.
+     * @type {boolean}
+     * @memberof ReplaceCourseDto
+     */
+    inPerson?: boolean;
+    /**
      * 
      * @type {Array<CreateWeekDto>}
      * @memberof ReplaceCourseDto
@@ -204,6 +210,7 @@ export function ReplaceCourseDtoFromJSONTyped(json: any, ignoreDiscriminator: bo
         'requiresApproval': json['requiresApproval'] == null ? undefined : json['requiresApproval'],
         'isClosed': json['isClosed'] == null ? undefined : json['isClosed'],
         'coverLabel': json['coverLabel'] == null ? undefined : json['coverLabel'],
+        'inPerson': json['inPerson'] == null ? undefined : json['inPerson'],
         'weeks': json['weeks'] == null ? undefined : ((json['weeks'] as Array<any>).map(CreateWeekDtoFromJSON)),
         'resources': json['resources'] == null ? undefined : ((json['resources'] as Array<any>).map(CreateResourceDtoFromJSON)),
         'muderris': json['muderris'] == null ? undefined : ((json['muderris'] as Array<any>).map(CreateMuderrisDtoFromJSON)),
@@ -236,6 +243,7 @@ export function ReplaceCourseDtoToJSONTyped(value?: ReplaceCourseDto | null, ign
         'requiresApproval': value['requiresApproval'],
         'isClosed': value['isClosed'],
         'coverLabel': value['coverLabel'],
+        'inPerson': value['inPerson'],
         'weeks': value['weeks'] == null ? undefined : ((value['weeks'] as Array<any>).map(CreateWeekDtoToJSON)),
         'resources': value['resources'] == null ? undefined : ((value['resources'] as Array<any>).map(CreateResourceDtoToJSON)),
         'muderris': value['muderris'] == null ? undefined : ((value['muderris'] as Array<any>).map(CreateMuderrisDtoToJSON)),

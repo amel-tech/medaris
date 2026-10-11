@@ -38,7 +38,7 @@ import {
 
 interface Props {
   kosk: { id: string; name: string };
-  course: Pick<CourseDetailResponse, "id" | "title" | "timeZone">;
+  course: Pick<CourseDetailResponse, "id" | "title" | "timeZone" | "inPerson">;
 }
 
 type Links = "empty" | "first";
@@ -48,7 +48,9 @@ type Links = "empty" | "first";
  * preview on the right is tedrisat's own expansion of the pattern (the same
  * call that saves it), so it shows the week each session lands in. Nothing is
  * written until "N celse oluştur". Every session has a link of its own, so the
- * links stay empty or go to the first session only.
+ * links stay empty or go to the first session only. No in-person mark is sent:
+ * the sessions follow the course's (MDRS-283), which the form says when the
+ * course is held in person; one is changed on Celseler.
  */
 export function SessionPlanForm({ kosk, course }: Props) {
   const t = useTranslations("nizam.SessionPlan");
@@ -378,6 +380,9 @@ export function SessionPlanForm({ kosk, course }: Props) {
             ) : null}
             <Alert tone="info">
               <p>{t("linksNote")}</p>
+              {course.inPerson ? (
+                <p data-testid="plan-in-person">{t("inPersonNote")}</p>
+              ) : null}
             </Alert>
           </section>
 

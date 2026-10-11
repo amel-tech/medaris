@@ -37,6 +37,7 @@ export default async function Page({
           id: scope.course.id,
           title: scope.course.title,
           timeZone: scope.course.timeZone,
+          inPerson: scope.course.inPerson,
         }}
       />
     </div>

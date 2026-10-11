@@ -93,6 +93,18 @@ export interface ScheduleSessionResponse {
      * @memberof ScheduleSessionResponse
      */
     meetingUrl: string | null;
+    /**
+     * Held in person (MDRS-283): the session's own mark, else the course's. Programım and the home page word the session by it.
+     * @type {boolean}
+     * @memberof ScheduleSessionResponse
+     */
+    inPerson: boolean;
+    /**
+     * A live stream is set for the session (MDRS-283), whatever its status; never the link, which the session page gives while it is LIVE.
+     * @type {boolean}
+     * @memberof ScheduleSessionResponse
+     */
+    hasLiveStream: boolean;
 }
 
 
@@ -112,6 +124,8 @@ export function instanceOfScheduleSessionResponse(value: object): value is Sched
     if (!('durationMinutes' in value) || value['durationMinutes'] === undefined) return false;
     if (!('status' in value) || value['status'] === undefined) return false;
     if (!('meetingUrl' in value) || value['meetingUrl'] === undefined) return false;
+    if (!('inPerson' in value) || value['inPerson'] === undefined) return false;
+    if (!('hasLiveStream' in value) || value['hasLiveStream'] === undefined) return false;
     return true;
 }
 
@@ -136,6 +150,8 @@ export function ScheduleSessionResponseFromJSONTyped(json: any, ignoreDiscrimina
         'durationMinutes': json['durationMinutes'],
         'status': SessionStatusFromJSON(json['status']),
         'meetingUrl': json['meetingUrl'],
+        'inPerson': json['inPerson'],
+        'hasLiveStream': json['hasLiveStream'],
     };
 }
 
@@ -161,6 +177,8 @@ export function ScheduleSessionResponseToJSONTyped(value?: ScheduleSessionRespon
         'durationMinutes': value['durationMinutes'],
         'status': SessionStatusToJSON(value['status']),
         'meetingUrl': value['meetingUrl'],
+        'inPerson': value['inPerson'],
+        'hasLiveStream': value['hasLiveStream'],
     };
 }
 

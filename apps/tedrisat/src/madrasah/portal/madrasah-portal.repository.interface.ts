@@ -44,8 +44,24 @@ export interface IDashboardSession {
   koskName: string;
   weekNumber: number;
   scheduledAt: Date;
-  /** The host of the meeting link, or null when the session has none. */
+  /**
+   * The host of the meeting link, or null when the session has none or its
+   * course is in a passive scope.
+   */
   meetingHost: string | null;
+  /** Held in person: the session's own mark, else the course's (MDRS-283). */
+  inPerson: boolean;
+  /**
+   * A live stream link is set; never the link (MDRS-283). Null when the
+   * course is in a passive scope, whose content is closed to the Pano.
+   */
+  hasLiveStream: boolean | null;
+  /**
+   * No meeting link, no live stream and not in person: the Pano flags it
+   * (MDRS-283). Null when the course is in a passive scope: it is read off
+   * the content.
+   */
+  withoutAccess: boolean | null;
 }
 
 /** A pending application in the Pano's "Bekleyen başvurular". */

@@ -26,8 +26,18 @@ const APPLICATION_ROWS = 5;
 /** `details.via` of the page's audit rows. */
 const VIA = "kosk-dashboard" satisfies RosterRead;
 
+/**
+ * A session without what is course content: the meeting link, and how the
+ * session is attended (MDRS-283): whether a live stream is set, whether it is
+ * held in person and whether it is flagged, which says that it has neither a
+ * link nor a stream. A `platform.kosk_edit` holder got the count and the
+ * first such session before MDRS-283 and no per-row answer; that is kept.
+ */
 const withoutLink = ({
   meetingUrl: _link,
+  hasLiveStream: _stream,
+  inPerson: _inPerson,
+  withoutAccess: _withoutAccess,
   ...session
 }: KoskDashboardSessionResponse): KoskDashboardSessionResponse => session;
 
@@ -82,12 +92,12 @@ export class KoskDashboardService {
     const contentLocked = !manages;
     const passive = { closePassive: !(nazim || management) };
 
-    const [numbers, sessions, firstMissing, applications, muderris, name] =
+    const [numbers, sessions, firstUncovered, applications, muderris, name] =
       await Promise.all([
         this.repo.numbers(koskId, passive),
         this.repo.sessions(koskId, tab, passive),
         this.repo.sessions(koskId, "UPCOMING", {
-          onlyMissingLink: true,
+          onlyWithoutAccess: true,
           limit: 1,
           ...passive,
         }),
@@ -107,7 +117,7 @@ export class KoskDashboardService {
     const shown = contentLocked
       ? withoutLink
       : (s: KoskDashboardSessionResponse) => s;
-    const missing = firstMissing[0];
+    const uncovered = firstUncovered[0];
     return {
       koskId,
       koskName,
@@ -123,8 +133,8 @@ export class KoskDashboardService {
         past: numbers.past,
         cancelled: numbers.cancelled,
       },
-      missingLinkCount: numbers.missingLink,
-      firstMissingLink: missing ? shown(missing) : null,
+      withoutAccessCount: numbers.withoutAccess,
+      firstWithoutAccess: uncovered ? shown(uncovered) : null,
       tab,
       contentLocked,
       sessions: sessions.map(shown),

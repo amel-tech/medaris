@@ -4,13 +4,13 @@ import pg from "pg";
 /**
  * What the nazır specs put in tedrisat's database (MDRS-183), under random
  * ids, and take out again: a medrese with two published courses, applications
- * waiting on both, a session with no meeting link, and the roles that tie the
- * signed-in accounts to them. Direct SQL: there is no endpoint that does this
- * for a test.
+ * waiting on both, a session with no meeting link, no live stream and not in
+ * person (MDRS-283), and the roles that tie the signed-in accounts to them.
+ * Direct SQL: there is no endpoint that does this for a test.
  *
  * Two applications wait on the first course and one on the second, so the
  * medrese's Dersler badge is 2 (courses holding an application), and the first
- * course's menu reads Celseler 1 (bağlantısı eksik) and Talebeler 2
+ * course's menu reads Celseler 1 (katılım yolu eksik) and Talebeler 2
  * (bekleyen başvuru).
  */
 export interface NazarFixture {
@@ -23,7 +23,7 @@ export interface NazarFixture {
   expected: {
     coursesWithApplications: number;
     firstApplications: number;
-    firstMissingLinks: number;
+    firstWithoutAccess: number;
   };
   /**
    * The medrese and course seats the başmüderris account holds outside this
@@ -154,7 +154,7 @@ export async function seedPortal(roles: NazirRoles): Promise<NazarFixture> {
     expected: {
       coursesWithApplications: 2,
       firstApplications: 2,
-      firstMissingLinks: 1,
+      firstWithoutAccess: 1,
     },
     remove: async () => {
       const courseIds = [first.id, second.id];

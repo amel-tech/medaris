@@ -5,6 +5,7 @@ import type {
 } from "@medaris/services/tedrisat";
 import { type CoverTone, TONE_HUE } from "@medaris/ui/mds/cover-pattern";
 import { normalizeMeetingUrl, resourceUrlProblem } from "@medaris/utils";
+import { hasAccess } from "../sessions/attendance";
 import {
   addDays,
   fieldsOf,
@@ -48,7 +49,20 @@ export interface LessonDraft {
   scheduledAtIso: string | null;
   /** this session makes up for a cancelled one: it stays in its own week */
   makeup: boolean;
+  /**
+   * How the session is attended besides its link (MDRS-283): its own
+   * in-person mark (null follows the course) and whether a live stream is
+   * set. Null when the read carried neither (a content-locked one), so the
+   * session is not judged. Never sent: the save leaves both as stored.
+   */
+  attendance: {
+    inPersonOverride: boolean | null;
+    hasLiveStream: boolean;
+  } | null;
 }
+
+/** A session made on this page: it follows the course and has no stream yet. */
+const FRESH_ATTENDANCE = { inPersonOverride: null, hasLiveStream: false };
 
 export interface WeekDraft {
   id?: string;
@@ -117,6 +131,13 @@ export function lessonDraftOf(
     cancelReason: lesson.cancelReason ?? null,
     scheduledAtIso: at ? at.toISOString() : null,
     makeup: makeupIds.has(lesson.id),
+    attendance:
+      lesson.inPerson === undefined
+        ? null
+        : {
+            inPersonOverride: lesson.inPersonOverride ?? null,
+            hasLiveStream: lesson.hasLiveStream === true,
+          },
   };
 }
 
@@ -178,9 +199,14 @@ export const emptyLesson = (date = ""): LessonDraft => ({
   cancelReason: null,
   scheduledAtIso: null,
   makeup: false,
+  attendance: FRESH_ATTENDANCE,
 });
 
-/** "Haftayı kopyala": the week again, 7 days later, with no links and nothing cancelled. */
+/**
+ * "Haftayı kopyala": the week again, 7 days later, with no links and nothing
+ * cancelled. The copies are new sessions: they follow the course's in-person
+ * mark and have no stream.
+ */
 export function copyWeek(week: WeekDraft, nextNumber: number): WeekDraft {
   return {
     weekNumber: nextNumber,
@@ -198,6 +224,7 @@ export function copyWeek(week: WeekDraft, nextNumber: number): WeekDraft {
         cancelReason: null,
         scheduledAtIso: null,
         makeup: false,
+        attendance: FRESH_ATTENDANCE,
       })),
   };
 }
@@ -233,6 +260,57 @@ export function weekFacts(week: WeekDraft): {
     from: dates[0] ?? null,
     to: dates[dates.length - 1] ?? null,
   };
+}
+
+// ---- how a session is attended ----------------------------------------------------
+
+/**
+ * Whether Müfredat flags a session as having no way in (MDRS-283): a live
+ * one, not cancelled, still ahead, with no link typed, no live stream and not
+ * held in person (its own mark, else the course's). The course menu's badge
+ * counts the same sessions; one that is under way or over is not flagged.
+ */
+export function lessonWithoutAccess(
+  draft: LessonDraft,
+  courseInPerson: boolean,
+  timeZone: string,
+  now: Date
+): boolean {
+  if (draft.cancelledAt || draft.type !== "LIVE" || !draft.attendance) {
+    return false;
+  }
+  const start = lessonInstant(draft, timeZone);
+  if (!start || start <= now) return false;
+  return !hasAccess({
+    meeting: normalizeMeetingUrl(draft.meetingUrl),
+    hasLiveStream: draft.attendance.hasLiveStream,
+    inPerson: draft.attendance.inPersonOverride ?? courseInPerson,
+  });
+}
+
+/**
+ * The help under a session's link field. "Talebeler bağlantı olmadan celseye
+ * katılamaz" is said only of a session that has no other way in: one held in
+ * person or streamed needs no link (MDRS-283). A session whose attendance the
+ * read did not carry gets the plain line.
+ */
+export function linkHelpKey(
+  draft: LessonDraft,
+  courseInPerson: boolean
+):
+  | "Curriculum.linkHelp"
+  | "Curriculum.linkHelpFilled"
+  | "Curriculum.linkHelpInPerson"
+  | "Curriculum.linkHelpStream" {
+  if (normalizeMeetingUrl(draft.meetingUrl) || !draft.attendance) {
+    return "Curriculum.linkHelpFilled";
+  }
+  if (draft.attendance.inPersonOverride ?? courseInPerson) {
+    return "Curriculum.linkHelpInPerson";
+  }
+  return draft.attendance.hasLiveStream
+    ? "Curriculum.linkHelpStream"
+    : "Curriculum.linkHelp";
 }
 
 // ---- what stops "Kaydet" ----------------------------------------------------------

@@ -30,6 +30,7 @@ import {
   PlatformPolicyLockedError,
   PlatformPolicyService,
 } from "../platform-policy/platform-policy.service";
+import type { CalendarAttendance } from "./calendar/lesson-calendar";
 import { CourseRepository } from "./course.repository";
 import {
   ICourse,
@@ -81,6 +82,7 @@ import {
   RecordingStatus,
   visibleRecordings,
 } from "./domain/recording";
+import { hasLink } from "./domain/session-access";
 import { buildSessionView, type ISessionView } from "./domain/session-view";
 import { sessionWorkChanged } from "./domain/session-work";
 import { withCanonicalTimeZone } from "./domain/time-zone";
@@ -543,6 +545,7 @@ export class CourseService {
   ): Promise<{
     course: ICourseDetail;
     lesson: ILesson & { scheduledAt: Date };
+    attendance: CalendarAttendance;
   }> {
     const courseId = await this.courseRepo.findLessonCourseId(lessonId);
     if (!courseId) throw new LessonNotFoundError(lessonId);
@@ -564,7 +567,22 @@ export class CourseService {
     if (!lesson) throw new LessonNotFoundError(lessonId);
     if (!lesson.scheduledAt) throw new LessonNotScheduledError(lessonId);
 
-    return { course, lesson: { ...lesson, scheduledAt: lesson.scheduledAt } };
+    // The entry's one line says how the session is attended (MDRS-283).
+    // Whether it has a meeting link or a stream is content, so a caller who
+    // may not read it is told only the in-person mark, which the session page
+    // tells everyone; nothing else in the file changes for them.
+    const readsContent = await this.contentIsOpen(user, courseId);
+    const attendance: CalendarAttendance = {
+      inPerson: lesson.inPerson,
+      hasMeetingLink:
+        readsContent && !lesson.cancelledAt && hasLink(lesson.meetingUrl),
+      hasLiveStream: readsContent && lesson.hasLiveStream,
+    };
+    return {
+      course,
+      lesson: { ...lesson, scheduledAt: lesson.scheduledAt },
+      attendance,
+    };
   }
 
   /**
@@ -584,7 +602,10 @@ export class CourseService {
     user: AuthenticatedUser | null,
     now: Date = new Date()
   ): Promise<ISessionView> {
-    const detail = await this.viewDetail(courseId, user);
+    // `viewDetail`, in two steps: the stored detail is kept for the one
+    // field the content rule leaves to everyone here.
+    const course = await this.getDetail(courseId, user, { read: true });
+    const detail = await this.present(course, user, { audit: true });
     const view = buildSessionView(
       detail,
       sessionId,
@@ -592,6 +613,13 @@ export class CourseService {
       await this.courseRepo.findImamUserId(courseId)
     );
     if (!view) throw new LessonNotFoundError(sessionId);
+    // Whether the session is held in person is said to everyone who may see
+    // it (MDRS-283), the session's own mark included: the course's mark is
+    // public, and the mark is a label, not a way in.
+    const stored = course.weeks
+      .flatMap((week) => week.lessons)
+      .find((lesson) => lesson.id === sessionId);
+    if (stored) view.inPerson = stored.inPerson;
 
     // The stream link and the recording are content (MDRS-162): a caller who
     // may not read content gets neither key, as for the meeting link. The

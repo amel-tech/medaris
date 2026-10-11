@@ -15,8 +15,9 @@ import type {
  * `course.edit` at the route and the setting's own code inside it, so a
  * control is open only when both are held: none is offered that the route
  * would refuse. The two boxes ask `course.edit` and `course.settings`;
- * publishing asks `course.edit` and `course.publish`; the time zone
- * `course.edit`; the sample session `session.manage` (`PATCH /lessons/:id`).
+ * publishing asks `course.edit` and `course.publish`; the time zone and
+ * "Celseler yüz yüze yapılır" (MDRS-283) `course.edit`; the sample session
+ * `session.manage` (`PATCH /lessons/:id`).
  * The derived `setting.*` codes come with `course.settings` minus what a
  * policy closes: without `setting.approval_off` approval cannot be switched
  * off, so the box is held ticked (the enrolment waits anyway, MDRS-207);
@@ -40,14 +41,17 @@ export function controlsOf(
   const approval: BoxState =
     settings && !holds(held, CODES.settingApprovalOff) ? "locked" : open;
   const zone = edit;
+  const inPerson = edit;
   const sample = holds(held, CODES.sessionManage);
   return {
     closed,
     approval,
+    inPerson,
     zone,
     sample,
     publish: edit && publish,
-    save: closed === "open" || approval === "open" || zone || sample,
+    save:
+      closed === "open" || approval === "open" || inPerson || zone || sample,
     needsEdit: !edit && (settings || publish),
   };
 }

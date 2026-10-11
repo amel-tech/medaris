@@ -4,8 +4,11 @@ import type {
   DashboardSessionResponse,
 } from "@medaris/services/tedrisat";
 import type { BadgeVariant } from "@medaris/ui/mds/badge";
-import { resolveMeetingPlatform } from "@medaris/utils";
 import { BADGE_VARIANT, scopeBadge } from "~/features/account/assignments-view";
+import {
+  type AttendanceView,
+  attendanceView,
+} from "~/features/sessions/attendance";
 import type { Scope } from "~/features/shell/scope";
 import { scopeOption } from "~/features/shell/scope-option";
 import { shortDay } from "~/lib/dates";
@@ -110,8 +113,13 @@ export interface SessionRow {
   meta: string;
   /** "3 Eki Cmt 19:00" */
   time: { label: string; iso: string };
-  /** the platform the host names; null when the celse has no link yet */
-  platform: { id: string; host: string } | null;
+  /**
+   * How the celse is attended (MDRS-283): the platform its link's host names,
+   * its stream and the in-person mark, or "Eksik" when it has none of them.
+   * Null for a celse of a course in a passive scope, whose content the Pano
+   * is not sent: the cell then claims nothing rather than "Eksik".
+   */
+  attendance: AttendanceView | null;
   /** the course's own page for the celseler, while the caller holds a scope there */
   editHref: string | null;
 }
@@ -133,7 +141,13 @@ export const sessionTime = (
 /**
  * The sessions of the next seven days, in the order the API sends them (the
  * soonest first). The platform is resolved from the host by `resolveMeetingPlatform`
- * and never picked by hand; no link is ever sent, only its host.
+ * and never picked by hand; no link is ever sent, only its host. Each says how
+ * it is attended by the rule Celseler uses: a celse with a stream or the
+ * in-person mark is covered without a link, and only one with none of the
+ * three is flagged (MDRS-283). All of them are still ahead. A course in a
+ * passive scope is sent neither the host, nor the stream, nor the flag
+ * (`withoutAccess` null): its row says only the in-person mark, which is a
+ * public label, and nothing when there is none.
  */
 export function sessionRows(
   items: readonly DashboardSessionResponse[],
@@ -151,12 +165,19 @@ export function sessionRows(
         item.koskName,
       ].join(" · "),
       time: { label: sessionTime(at, where), iso: at.toISOString() },
-      platform: item.meetingHost
-        ? {
-            id: resolveMeetingPlatform(item.meetingHost).id,
-            host: item.meetingHost,
-          }
-        : null,
+      attendance:
+        item.withoutAccess === null
+          ? item.inPerson
+            ? { inPerson: true, platform: null, stream: null, lack: null }
+            : null
+          : attendanceView(
+              {
+                meeting: item.meetingHost,
+                hasLiveStream: item.hasLiveStream === true,
+                inPerson: item.inPerson,
+              },
+              true
+            ),
       editHref: where.held.has(item.courseId.toLowerCase())
         ? `/ders/${encodeURIComponent(item.courseId)}/celseler`
         : null,

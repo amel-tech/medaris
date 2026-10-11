@@ -139,7 +139,7 @@ export class LessonController {
     summary:
       "One session as an iCalendar (.ics) file, for Apple Calendar, Google Calendar and Outlook",
     description:
-      "Authorized like the session page (`GET /courses/:id`). The event links to the Medaris session page, never to the meeting link. `UID` is derived from the lesson id and `SEQUENCE` is the course version, so a re-import after the session moved updates the event instead of duplicating it (MDRS-117).",
+      "Authorized like the session page (`GET /courses/:id`). The event links to the Medaris session page, never to the meeting link. Its description says how the session is attended: in person, streamed, or by the meeting link on the page (MDRS-283); whether it has a link or a stream is said only to a caller who may read the course's content. `UID` is derived from the lesson id and `SEQUENCE` is the course version, so a re-import after the session moved updates the event instead of duplicating it (MDRS-117).",
     operationId: "getLessonCalendar",
   })
   @ApiQuery({
@@ -168,7 +168,9 @@ export class LessonController {
   // carries `@Authz(course.view)` since MDRS-103, but any signed-in caller
   // holds `course.view`, so it adds nothing `getDetail` does not already
   // decide. The file
-  // carries no content field (see below), so there is nothing to filter.
+  // carries no content field (see below), so there is nothing to filter; its
+  // description says whether the session has a meeting link or a stream only
+  // to a caller who may read content (`getScheduledLesson`, MDRS-283).
   @AuthzExempt()
   // Per-user authorization decided this answer; no shared cache may keep it.
   @Header("Cache-Control", "private, no-store")
@@ -181,12 +183,11 @@ export class LessonController {
     const webUrl = this.config.get<string | null>("tedrisWeb.url");
     if (!webUrl) throw new CalendarNotConfiguredError();
 
-    const { course, lesson } = await this.courseService.getScheduledLesson(
-      id,
-      request.user
-    );
+    const { course, lesson, attendance } =
+      await this.courseService.getScheduledLesson(id, request.user);
     // Only the fields the event uses. The lesson row also carries
-    // `meetingUrl`, which must never reach a calendar file.
+    // `meetingUrl`, which must never reach a calendar file; how the session
+    // is attended travels as booleans (MDRS-283).
     const ics = buildLessonIcs({
       course: { id: course.id, title: course.title, version: course.version },
       lesson: {
@@ -195,6 +196,7 @@ export class LessonController {
         scheduledAt: lesson.scheduledAt,
         durationMinutes: lesson.durationMinutes,
       },
+      attendance,
       sessionPageUrl: sessionPageUrl(webUrl, course.id, lesson.id),
       locale: locale ?? CALENDAR_LOCALES.tr,
       now: new Date(),
@@ -210,7 +212,7 @@ export class LessonController {
   @ApiOperation({
     summary: "One live session: its status, cancellation, neighbours and link",
     description:
-      "Open to callers with no token, like the course page (MDRS-122), and filtered the same way: `meetingUrl`, `agenda`, `kaynak` and `cancelReason` are sent only to a caller holding `view_details` (the enrolled talebe, the müderris, the köşk manager); for everyone else, PENDING included, those keys are absent and `contentLocked` is true. `status` is derived from the clock and the cancellation, never stored: CANCELLED once cancelled, else ENDED after the session's length (60 minutes when it has none), LIVE while it runs, SCHEDULED before. `meetingUrl` is null for a cancelled or finished session. `previous` and `next` are the neighbouring live sessions in programme order, cancelled ones skipped. A content read by anyone who is neither enrolled nor a müderris is recorded in `audit_log`, as on `GET /courses/:id` (MDRS-158).",
+      "Open to callers with no token, like the course page (MDRS-122), and filtered the same way: `meetingUrl`, `agenda`, `kaynak` and `cancelReason` are sent only to a caller holding `view_details` (the enrolled talebe, the müderris, the köşk manager); for everyone else, PENDING included, those keys are absent and `contentLocked` is true. `status` is derived from the clock and the cancellation, never stored: CANCELLED once cancelled, else ENDED after the session's length (60 minutes when it has none), LIVE while it runs, SCHEDULED before. `meetingUrl` is null for a cancelled or finished session. `inPerson` (MDRS-283) is sent to everyone; `hasLiveStream` is content and is sent whatever the status, while `liveStreamUrl` stays LIVE-only. `previous` and `next` are the neighbouring live sessions in programme order, cancelled ones skipped. A content read by anyone who is neither enrolled nor a müderris is recorded in `audit_log`, as on `GET /courses/:id` (MDRS-158).",
     operationId: "getSession",
   })
   @ApiOkResponse({ type: SessionResponse })

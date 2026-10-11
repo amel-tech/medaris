@@ -32,6 +32,15 @@ export interface ILesson {
   cancelReason: string | null;
   /** The session that makes up for a cancelled one, if there is one. */
   replacementLessonId: string | null;
+  /**
+   * Held in person (MDRS-283): `inPersonOverride` when the session has one,
+   * else the course's `inPerson`. Course content, like the meeting link.
+   */
+  inPerson: boolean;
+  /** The session's own mark: true or false overrides the course, null follows it. */
+  inPersonOverride: boolean | null;
+  /** A live stream link is set (MDRS-283); the link itself never rides here. */
+  hasLiveStream: boolean;
 }
 
 export interface IWeek {
@@ -86,6 +95,8 @@ export interface ICourse {
   isClosed: boolean;
   /** The word printed on the cover; null when none (MDRS-176). */
   coverLabel: string | null;
+  /** "Celseler yüz yüze yapılır" (MDRS-283): a label, public like the title. */
+  inPerson: boolean;
   /** IANA zone the sessions are authored in (MDRS-110). */
   timeZone: string;
   /** Optimistic-concurrency token; bumped by every course or syllabus write. */
@@ -111,13 +122,18 @@ export interface ICourseDetail extends ICourse {
  * The lesson fields that are course content rather than programme (MDRS-103):
  * only a caller holding `VIEW_DETAILS` on the course receives them. Everyone
  * else gets the lesson without these keys — absent, not null, so no body
- * sent to a non-enrolled caller names them at all.
+ * sent to a non-enrolled caller names them at all. How a session is attended
+ * (`inPerson`, `inPersonOverride`, `hasLiveStream`, MDRS-283) is gated the
+ * same way; the course's own `inPerson` is public.
  */
 export type LessonContentField =
   | "kaynak"
   | "meetingUrl"
   | "agenda"
-  | "cancelReason";
+  | "cancelReason"
+  | "inPerson"
+  | "inPersonOverride"
+  | "hasLiveStream";
 
 /** A lesson as a response carries it: the content fields may be absent. */
 export type ILessonView = Omit<ILesson, LessonContentField> &
@@ -198,8 +214,11 @@ export interface IPendingEnrollment extends IEnrollment {
 
 /** What the nazır portal's course menu badges count (MDRS-183). */
 export interface ICourseBadgeCounts {
-  /** Live sessions still ahead, not cancelled, that have no meeting link. */
-  missingMeetingLinks: number;
+  /**
+   * Live sessions still ahead, not cancelled, that nobody can attend as they
+   * stand: no meeting link, no live stream, not in person (MDRS-283).
+   */
+  sessionsWithoutAccess: number;
   /** PENDING enrollments of the course. */
   pendingApplications: number;
 }
@@ -242,6 +261,8 @@ export interface ICreateLesson {
   meetingUrl?: string;
   agenda?: IAgendaStep[];
   isPreview?: boolean;
+  /** The session's own in-person mark (MDRS-283); null or absent follows the course. */
+  inPersonOverride?: boolean | null;
 }
 
 export interface ICreateWeek {
@@ -285,6 +306,7 @@ export interface ICreateCourse {
   requiresApproval?: boolean;
   isClosed?: boolean;
   coverLabel?: string | null;
+  inPerson?: boolean;
   timeZone?: string;
   weeks?: ICreateWeek[];
   muderris?: ICreateMuderris[];
@@ -307,6 +329,7 @@ export interface IUpdateCourse {
   requiresApproval?: boolean;
   isClosed?: boolean;
   coverLabel?: string | null;
+  inPerson?: boolean;
   timeZone?: string;
 }
 
@@ -334,6 +357,8 @@ export interface IUpdateLesson {
   agenda?: IAgendaStep[];
   isPreview?: boolean;
   orderIndex?: number;
+  /** true or false overrides the course's in-person mark, null follows it (MDRS-283). */
+  inPersonOverride?: boolean | null;
 }
 
 /** A lesson as returned by the session-level endpoints, with the course

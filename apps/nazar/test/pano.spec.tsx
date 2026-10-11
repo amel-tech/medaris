@@ -118,6 +118,9 @@ const session = (over: Record<string, unknown>) => ({
   weekNumber: 2,
   scheduledAt: new Date("2026-10-03T19:00:00+03:00"),
   meetingHost: "meet.google.com",
+  inPerson: false,
+  hasLiveStream: false,
+  withoutAccess: false,
   ...over,
 });
 const application = (over: Record<string, unknown>) => ({
@@ -271,16 +274,60 @@ describe("the rules behind the Pano", () => {
         session({ meetingHost: "meet.google.com" }),
         session({ lessonId: "l-2", meetingHost: "zoom.us" }),
         session({ lessonId: "l-3", meetingHost: "toplanti.example.org" }),
-        session({ lessonId: "l-4", meetingHost: null }),
+        session({ lessonId: "l-4", meetingHost: null, withoutAccess: true }),
       ] as never,
       t,
       { ...where, held: new Set() }
     );
-    expect(rows.map((row) => row.platform)).toEqual([
+    expect(rows.map((row) => row.attendance?.platform)).toEqual([
       { id: "google-meet", host: "meet.google.com" },
       { id: "zoom", host: "zoom.us" },
       { id: "unknown", host: "toplanti.example.org" },
       null,
+    ]);
+  });
+
+  it("flags only a celse with no link, no stream and no in-person mark (MDRS-283)", () => {
+    const rows = sessionRows(
+      [
+        session({ meetingHost: null, hasLiveStream: true }),
+        session({ lessonId: "l-2", meetingHost: null, inPerson: true }),
+        session({
+          lessonId: "l-3",
+          meetingHost: null,
+          inPerson: true,
+          hasLiveStream: true,
+        }),
+        session({ lessonId: "l-4", meetingHost: null, withoutAccess: true }),
+      ] as never,
+      t,
+      { ...where, held: new Set() }
+    );
+    expect(rows.map((row) => row.attendance)).toEqual([
+      { inPerson: false, platform: null, stream: "alone", lack: null },
+      { inPerson: true, platform: null, stream: null, lack: null },
+      { inPerson: true, platform: null, stream: "beside", lack: null },
+      { inPerson: false, platform: null, stream: null, lack: "missing" },
+    ]);
+  });
+
+  it("claims nothing for a celse of a passive course, which is sent no host, stream or flag (MDRS-283 review)", () => {
+    const passive = {
+      meetingHost: null,
+      hasLiveStream: null,
+      withoutAccess: null,
+    };
+    const rows = sessionRows(
+      [
+        session(passive),
+        session({ lessonId: "l-2", ...passive, inPerson: true }),
+      ] as never,
+      t,
+      { ...where, held: new Set() }
+    );
+    expect(rows.map((row) => row.attendance)).toEqual([
+      null,
+      { inPerson: true, platform: null, stream: null, lack: null },
     ]);
   });
 
@@ -476,20 +523,65 @@ describe("Pano", () => {
     expect(sessions).toContain('href="/ders/c-1/celseler"');
   });
 
-  it("says 'Bağlantısı eksik' for a celse with no link, and names an unknown host", async () => {
+  it("says 'Eksik' for a celse with no way in, and names an unknown host", async () => {
     state.dashboard = ok({
       upcomingSessions: [
-        session({ meetingHost: null }),
+        session({ meetingHost: null, withoutAccess: true }),
         session({ lessonId: "l-2", meetingHost: "toplanti.example.org" }),
       ],
     });
-    const rows = section(await markup(), "sessions-heading")
-      .split("<tr")
-      .slice(2)
-      .map(textOf);
-    expect(rows[0]).toContain("Bağlantısı eksik");
+    const out = section(await markup(), "sessions-heading");
+    expect(textOf(out)).toContain("Katılım");
+    const rows = out.split("<tr").slice(2).map(textOf);
+    expect(rows[0]).toContain("Eksik");
     expect(rows[1]).toContain("Bilinmeyen platform");
     expect(rows[1]).toContain("toplanti.example.org");
+  });
+
+  it("does not flag a celse that is streamed or held in person, and says how it is attended (MDRS-283)", async () => {
+    state.dashboard = ok({
+      upcomingSessions: [
+        session({ meetingHost: null, hasLiveStream: true }),
+        session({ lessonId: "l-2", meetingHost: null, inPerson: true }),
+        session({
+          lessonId: "l-3",
+          meetingHost: null,
+          inPerson: true,
+          hasLiveStream: true,
+        }),
+        session({
+          lessonId: "l-4",
+          meetingHost: "zoom.us",
+          hasLiveStream: true,
+        }),
+      ],
+    });
+    const out = section(await markup(), "sessions-heading");
+    expect(out).not.toContain('data-testid="attendance-missing"');
+    const rows = out.split("<tr").slice(2).map(textOf);
+    expect(rows[0]).toContain("Yalnız yayın");
+    expect(rows[1]).toContain("Yüz yüze");
+    expect(rows[1]).not.toContain("yayın");
+    expect(rows[2]).toContain("Yüz yüze · YouTube yayını");
+    expect(rows[3]).toContain("Zoom · YouTube yayını");
+    for (const row of rows) expect(row).not.toContain("Eksik");
+  });
+
+  it("draws no 'Eksik' for a celse of a passive course, whose content the Pano is not sent (MDRS-283 review)", async () => {
+    state.dashboard = ok({
+      upcomingSessions: [
+        session({
+          meetingHost: null,
+          hasLiveStream: null,
+          withoutAccess: null,
+        }),
+      ],
+    });
+    const out = section(await markup(), "sessions-heading");
+    expect(out).not.toContain('data-testid="attendance-missing"');
+    const [row] = out.split("<tr").slice(2).map(textOf);
+    expect(row).not.toContain("Eksik");
+    expect(row).toContain("Katılım bilgisi gösterilmez");
   });
 
   it("lists the applications with the student, the course and the day, and the counter above them", async () => {

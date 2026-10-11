@@ -2396,8 +2396,8 @@
     "sessions": "{count, plural, one {# session} other {# sessions}}",
     "editSyllabus": "Edit syllabus",
     "planSession": "Plan a session",
-    "missingTitle": "The meeting link of the {day} session is missing",
-    "missingBody": "{title}: {when}. Talebe cannot join a session without a link; add it before the session starts.",
+    "missingTitle": "The {day} session has no way to attend",
+    "missingBody": "{title}: {when}. It has no meeting link, live stream or in-person mark, so talebe cannot join; add one before the session starts.",
     "summaryLabel": "Course numbers",
     "stats": {
       "students": "Enrolled talebe",
@@ -2411,7 +2411,7 @@
       "session": "Session",
       "when": "When",
       "length": "Length",
-      "platform": "Platform",
+      "attendance": "Attendance",
       "status": "Status",
       "actions": "Actions",
       "talebe": "Talebe",
@@ -2421,7 +2421,6 @@
     "minutes": "{count} min",
     "status": {
       "cancelled": "Cancelled",
-      "missingLink": "Link missing",
       "planned": "Planned"
     },
     "addLink": "Add meeting link",
@@ -2553,6 +2552,8 @@
     "approvalLabel": "Require enrolment approval",
     "approvalDesc": "Talebe apply and join once the course team or you approve. Clear it and talebe enrol at once.",
     "approvalFixed": "By the köşk’s policy every enrolment needs approval; it cannot be changed for this course.",
+    "inPersonLabel": "Sessions are held in person",
+    "inPersonDesc": "Every session without a setting of its own counts as in person and is not shown as missing without a meeting link. Change a single session later on the Sessions page.",
     "visibilityLegend": "Visibility",
     "draftLabel": "Open as a draft",
     "draftDesc": "The müderrisler prepare the syllabus and sessions; talebe do not see the course until you publish it.",
@@ -2604,6 +2605,8 @@
     "approvalLabel": "Require enrolment approval",
     "approvalDesc": "Talebe apply and join once the course team or you approve. Clear it and talebe enrol at once.",
     "approvalFixed": "By the köşk’s policy every enrolment needs approval; it cannot be changed for this course.",
+    "inPersonLabel": "Sessions are held in person",
+    "inPersonDesc": "Every session without a setting of its own counts as in person and is not shown as missing without a meeting link. Change a single session on the Sessions page.",
     "zoneLabel": "Time zone",
     "zoneHelp": "Sessions are planned and shown in this time zone.",
     "zoneIstanbul": "Istanbul",
@@ -2697,7 +2700,7 @@
     "weekSummaryHelp": "Optional; everyone sees it.",
     "lessonHeading": "Session {n} · {when}",
     "cancelled": "Cancelled",
-    "linkMissing": "Link missing",
+    "accessMissing": "No way to attend",
     "scheduled": "Planned",
     "hide": "Hide",
     "minutes": "{minutes} min",
@@ -2715,6 +2718,8 @@
     "detected": ", read from the link",
     "linkHelp": "Talebe cannot join a session without a link. Only https links are accepted.",
     "linkHelpFilled": "Only https links are accepted; the platform is read from the address.",
+    "linkHelpInPerson": "This session is held in person, so a link is optional. Only https links are accepted.",
+    "linkHelpStream": "This session is streamed live, so a link is optional. Only https links are accepted.",
     "addLesson": "Add a session",
     "copyWeek": "Copy the week",
     "hideWeek": "Hide the week",
@@ -2795,6 +2800,7 @@
     "linkLabel": "Link of the first session",
     "linkHelp": "Only https links are accepted.",
     "linksNote": "Every session has its own meeting link and the link changes every week. That way a talib removed from the course cannot join the next session with the old link.",
+    "inPersonNote": "The course is held in person, so these sessions are too. Change a single session on the Sessions page.",
     "cancel": "Cancel",
     "submit": "{count, plural, one {Create # session} other {Create # sessions}}",
     "saving": "Creating…",
@@ -2849,14 +2855,25 @@
     "columns": {
       "session": "Session",
       "time": "Time",
-      "link": "Meeting link",
       "state": "Status",
       "actions": "Actions"
     },
     "week": "Week {n}",
     "minutes": "{minutes} min",
     "linkHidden": "Link not shown",
-    "linkMissing": "Not added",
+    "attendance": {
+      "column": "Attendance",
+      "inPerson": "In person",
+      "stream": "YouTube stream",
+      "streamOnly": "Stream only",
+      "missing": "Missing",
+      "missingDetail": "no meeting link, live stream or in-person mark",
+      "none": "Not added",
+      "unknown": "Attendance not shown",
+      "unknownPlatform": "Unknown platform"
+    },
+    "recorded": "Recorded",
+    "notRecorded": "No recording",
     "state": {
       "live": "Live now",
       "cancelled": "Cancelled",
@@ -2864,7 +2881,6 @@
       "scheduled": "Planned"
     },
     "livePassed": "running for {minutes} minutes",
-    "recordings": "{count, plural, =0 {no recording} one {# recording} other {# recordings}}",
     "noActions": "No actions",
     "updateLink": "Update link",
     "addLink": "Add link",
@@ -2874,6 +2890,18 @@
     "changeTimeLabel": "Change the date of the session on {when}",
     "cancel": "Cancel",
     "cancelLabel": "Cancel the session on {when}",
+    "inPerson": {
+      "button": "In-person setting",
+      "buttonLabel": "In-person setting of the session on {when}",
+      "formTitle": "In-person setting of the session on {when}",
+      "legend": "This session",
+      "course": "Follow the course",
+      "courseYes": "The course is held in person, so this session is too.",
+      "courseNo": "The course is not held in person, so this session is not either.",
+      "yes": "In person",
+      "no": "Not in person",
+      "saved": "In-person setting saved"
+    },
     "linkFormTitle": "Meeting link of the session on {when}",
     "timeFormTitle": "Time of the session on {when}",
     "linkFormLabel": "Meeting link",
@@ -2908,9 +2936,6 @@
       "time": "Enter the date and the time."
     },
     "stream": {
-      "column": "Live stream",
-      "set": "Added",
-      "missing": "Not added",
       "add": "Add live stream",
       "update": "Update live stream",
       "addLabel": "Add a live stream link to the session on {when}",
@@ -3454,7 +3479,7 @@
     "week": {
       "none": "There is no session in the next seven days.",
       "some": "{count, plural, one {There is # session in the next seven days.} other {There are # sessions in the next seven days.}}",
-      "missing": "{count, plural, one {There is # session in the next seven days} other {There are # sessions in the next seven days}}; {missing, plural, one {one is} other {# are}} missing a meeting link."
+      "missing": "{count, plural, one {There is # session in the next seven days} other {There are # sessions in the next seven days}}; {missing, plural, one {one has} other {# have}} no way to attend."
     },
     "counts": {
       "title": "Platform numbers",
@@ -3471,8 +3496,8 @@
       "goMadrasahs": "Go to madrasahs"
     },
     "missingAlert": {
-      "title": "{count, plural, one {A session is missing its meeting link} other {# sessions are missing their meeting link}}",
-      "body": "{course}, {when}. Add it before the session starts; without a link students cannot join."
+      "title": "{count, plural, one {A session has no way to attend} other {# sessions have no way to attend}}",
+      "body": "{course}, {when}. It has no meeting link, live stream or in-person mark; add one before the session starts, or students cannot join."
     },
     "applications": {
       "title": "Köşk applications",
@@ -3569,7 +3594,7 @@
       "columns": {
         "course": "Course",
         "when": "Time",
-        "platform": "Platform",
+        "attendance": "Attendance",
         "students": "Students",
         "state": "Status",
         "actions": "Actions"
@@ -3577,9 +3602,7 @@
       "week": "Week {number}",
       "makeup": "make-up session",
       "imam": "imam",
-      "noLink": "No meeting link",
       "state": {
-        "missingLink": "Link missing",
         "planned": "Planned",
         "cancelled": "Cancelled",
         "past": "Held"

@@ -21,12 +21,12 @@ import { useMemo, useTransition } from "react";
 import { toRow } from "../../applications/present";
 import { useDecisions } from "../../applications/use-decisions";
 import { hiddenAtLabel, sessionWhen } from "../../archive/present";
+import { AttendanceCell } from "../../courses/components/attendance-cell";
 import {
-  firstMissingLink,
+  firstWithoutAccess,
   listWords,
   type Messages,
   meetingSlots,
-  platformOf,
   sessionCount,
   type UpcomingSession,
   upcomingSessions,
@@ -47,9 +47,10 @@ interface Props {
 
 /**
  * Genel bakış (nizam 53): one course for its köşk nazımı — the programme's
- * next sessions with the meeting links still missing, the waiting
- * applications to decide, the course's müderrisler and the settings that
- * matter. The numbers come from `GET /courses/:id/stats`; the sessions from
+ * next sessions with how each is attended ("Katılım", as on Celseler) and the
+ * one nobody can attend yet (MDRS-283: no meeting link, no live stream and not
+ * held in person), the waiting applications to decide, the course's
+ * müderrisler and the settings that matter. The numbers come from `GET /courses/:id/stats`; the sessions from
  * the course itself. Not drawn, because the backend has no model for them: the
  * Ders kayıtları card and section and the YouTube line. The ders nazırları and
  * the course's settings are nazar's pages (MDRS-270); the başnazım is offered
@@ -76,7 +77,7 @@ export function CourseOverview({
   const editHref = `${base}/courses/${course.id}/edit`;
 
   const sessions = upcomingSessions(course, now);
-  const missing = firstMissingLink(course, now);
+  const missing = firstWithoutAccess(course, now);
   const slots = listWords(meetingSlots(course, locale), locale);
   const total = sessionCount(course);
   const published = course.status === "PUBLISHED";
@@ -128,26 +129,20 @@ export function CourseOverview({
         ),
     },
     {
-      key: "platform",
-      header: t("columns.platform"),
-      width: "12%",
-      render: (s) => {
-        const platform =
-          s.status === "cancelled" ? null : platformOf(s.lesson.meetingUrl);
-        return platform ? <Badge variant="outline">{platform}</Badge> : "—";
-      },
+      key: "attendance",
+      header: t("columns.attendance"),
+      width: "18%",
+      // A session nobody can attend says "Eksik" here, once.
+      render: (s) =>
+        s.status === "cancelled" ? "—" : <AttendanceCell view={s.attendance} />,
     },
     {
       key: "status",
       header: t("columns.status"),
-      width: "14%",
+      width: "10%",
       render: (s) =>
         s.status === "cancelled" ? (
           <Badge variant="outline">{t("status.cancelled")}</Badge>
-        ) : s.status === "missingLink" ? (
-          <Badge variant="warning" icon={<Icon name="link" size="sm" />}>
-            {t("status.missingLink")}
-          </Badge>
         ) : (
           <Badge variant="secondary">{t("status.planned")}</Badge>
         ),
@@ -158,7 +153,7 @@ export function CourseOverview({
         <span className="mds-visually-hidden">{t("columns.actions")}</span>
       ),
       align: "right",
-      width: "24%",
+      width: "22%",
       render: (s) =>
         s.status === "cancelled" ? null : (
           <Button
@@ -166,11 +161,13 @@ export function CourseOverview({
             size="small"
             href={editHref}
             aria-label={t(
-              s.status === "missingLink" ? "addLinkLabel" : "editSessionLabel",
+              s.status === "withoutAccess"
+                ? "addLinkLabel"
+                : "editSessionLabel",
               { name: s.lesson.title }
             )}
           >
-            {s.status === "missingLink" ? t("addLink") : t("editSession")}
+            {s.status === "withoutAccess" ? t("addLink") : t("editSession")}
           </Button>
         ),
     },

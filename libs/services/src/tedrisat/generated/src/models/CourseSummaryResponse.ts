@@ -138,6 +138,12 @@ export interface CourseSummaryResponse {
      */
     coverLabel?: string | null;
     /**
+     * "Celseler yüz yüze yapılır" (MDRS-283): the course's sessions are held face to face unless a session says otherwise. A public label, like the title.
+     * @type {boolean}
+     * @memberof CourseSummaryResponse
+     */
+    inPerson: boolean;
+    /**
      * IANA time zone the course's sessions are authored in (MDRS-110).
      * @type {string}
      * @memberof CourseSummaryResponse
@@ -253,6 +259,7 @@ export function instanceOfCourseSummaryResponse(value: object): value is CourseS
     if (!('grantsCertificate' in value) || value['grantsCertificate'] === undefined) return false;
     if (!('requiresApproval' in value) || value['requiresApproval'] === undefined) return false;
     if (!('isClosed' in value) || value['isClosed'] === undefined) return false;
+    if (!('inPerson' in value) || value['inPerson'] === undefined) return false;
     if (!('timeZone' in value) || value['timeZone'] === undefined) return false;
     if (!('version' in value) || value['version'] === undefined) return false;
     if (!('createdAt' in value) || value['createdAt'] === undefined) return false;
@@ -290,6 +297,7 @@ export function CourseSummaryResponseFromJSONTyped(json: any, ignoreDiscriminato
         'requiresApproval': json['requiresApproval'],
         'isClosed': json['isClosed'],
         'coverLabel': json['coverLabel'] == null ? undefined : json['coverLabel'],
+        'inPerson': json['inPerson'],
         'timeZone': json['timeZone'],
         'version': json['version'],
         'archivedAt': json['archivedAt'] == null ? undefined : (new Date(json['archivedAt'])),
@@ -333,6 +341,7 @@ export function CourseSummaryResponseToJSONTyped(value?: CourseSummaryResponse |
         'requiresApproval': value['requiresApproval'],
         'isClosed': value['isClosed'],
         'coverLabel': value['coverLabel'],
+        'inPerson': value['inPerson'],
         'timeZone': value['timeZone'],
         'version': value['version'],
         'archivedAt': value['archivedAt'] === null ? null : ((value['archivedAt'] as any)?.toISOString()),

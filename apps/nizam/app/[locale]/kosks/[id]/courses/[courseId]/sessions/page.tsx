@@ -44,7 +44,11 @@ export default async function Page({
       <SessionsView
         kosk={{ id: scope.kosk.id, name: scope.kosk.name }}
         course={scope.course}
-        recordings={Object.fromEntries(recordingCounts(recordings))}
+        recordings={
+          recordings === null
+            ? null
+            : Object.fromEntries(recordingCounts(recordings))
+        }
         liveStreams={liveStreams}
         tedrisUrl={env.TEDRIS_URL || null}
       />

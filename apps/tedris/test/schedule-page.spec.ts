@@ -119,6 +119,40 @@ describe("Programım (design tedris/21)", () => {
     expect(html).toContain("Toplantı bağlantısı henüz eklenmedi.");
   });
 
+  it("says how a celse without a link is attended: a stream, in person, or both (MDRS-283)", async () => {
+    const html = await render([
+      s({ id: "a", hasLiveStream: true, inPerson: false }),
+      s({ id: "b", inPerson: true, hasLiveStream: false }),
+      s({ id: "c", inPerson: true, hasLiveStream: true }),
+    ]);
+    expect(html).toContain(
+      "Bu celse YouTube&#x27;da canlı yayınlanır; yayın celse başlayınca celse sayfasında açılır."
+    );
+    expect(html).toContain(
+      "Bu celse yüz yüze yapılır. Kaydı eklenirse celse sayfasında yayımlanır."
+    );
+    expect(html).toContain(
+      "Bu celse yüz yüze yapılır ve YouTube&#x27;da canlı yayınlanır; yayın celse başlayınca celse sayfasında açılır."
+    );
+    expect(html).not.toContain("Toplantı bağlantısı henüz eklenmedi.");
+  });
+
+  it("says a running stream-only celse is on its session page, and a finished row says nothing of a link (MDRS-283)", async () => {
+    const live = s({
+      id: "a",
+      status: "LIVE",
+      startsAt: new Date("2026-10-01T06:30:00Z"),
+      hasLiveStream: true,
+    });
+    const over = s({ id: "b", startsAt: new Date("2026-10-01T04:00:00Z") });
+    const html = await render([over, live]);
+    expect(html).toContain(
+      "Bu celse YouTube&#x27;da canlı yayınlanıyor; yayını celse sayfasında izleyebilirsin."
+    );
+    expect(html).not.toContain("Celseye katıl");
+    expect(html).not.toContain("Toplantı bağlantısı henüz eklenmedi.");
+  });
+
   it("lists a cancelled session with the dashed badge and its note, without a calendar menu or a link", async () => {
     const html = await render([
       s({ id: "a", status: "CANCELLED", meetingUrl: null }),

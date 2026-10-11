@@ -218,11 +218,18 @@ export const CoursePage = ({
             <CoverPattern {...courseCover(course)} size="lg" />
           </div>
           <div className="flex min-inline-0 flex-col gap-3">
-            {preview && (
-              <Badge variant="outline" className="self-start">
-                {t("draftBadge")}
-              </Badge>
-            )}
+            {/* MDRS-283: "Yüz yüze" is the course's own setting, public like
+                its title; a celse may still say otherwise on its page. */}
+            {preview || course.inPerson ? (
+              <div className="flex flex-wrap items-center gap-2">
+                {preview ? (
+                  <Badge variant="outline">{t("draftBadge")}</Badge>
+                ) : null}
+                {course.inPerson ? (
+                  <Badge variant="secondary">{t("inPersonBadge")}</Badge>
+                ) : null}
+              </div>
+            ) : null}
             <h1 className="mds-h1" dir="auto">
               {course.title}
             </h1>

@@ -208,20 +208,24 @@ test("nizam/02 — the köşk nazımı lands on their köşk's home page with th
   await expect(
     page.getByTestId("home-greeting").filter({ visible: true })
   ).toContainText(
-    `Önümüzdeki yedi günde ${counts.upcomingIn} celse var; birinin toplantı bağlantısı eksik.`
+    `Önümüzdeki yedi günde ${counts.upcomingIn} celse var; birinin katılım yolu eksik.`
   );
   await expect(
     page.getByTestId("home-missing-link").filter({ visible: true })
   ).toContainText(fixture.course.title);
 
-  // the celse table: the one with a link is Planlandı on Zoom, the other is flagged
+  // the celse table: the one with a link is on Zoom, the other is flagged in
+  // Katılım (MDRS-283); Durum says Planlandı for both
   const rows = page.locator("[data-testid=home-sessions-table] tbody tr");
+  const flagged = rows.filter({
+    has: page.getByTestId("attendance-missing"),
+  });
   await expect(rows).toHaveCount(counts.upcomingIn);
-  await expect(rows.filter({ hasText: "Bağlantı eksik" })).toHaveCount(1);
-  await expect(rows.filter({ hasText: "Planlandı" })).toHaveCount(1);
+  await expect(flagged).toHaveCount(1);
+  await expect(rows.filter({ hasText: "Planlandı" })).toHaveCount(2);
   await expect(rows.filter({ hasText: "Zoom" })).toHaveCount(1);
   await expect(
-    rows.filter({ hasText: "Bağlantı eksik" }).getByRole("link", {
+    flagged.getByRole("link", {
       name: /Toplantı bağlantısı ekle/,
     })
   ).toHaveAttribute(

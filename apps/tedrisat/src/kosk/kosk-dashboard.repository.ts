@@ -2,6 +2,11 @@ import type { ScopeRef } from "@medaris/common";
 import { Injectable } from "@nestjs/common";
 import { and, eq, inArray, type SQL, sql } from "drizzle-orm";
 import type { IAuditEntry } from "../audit/audit.repository";
+import {
+  hasLiveStreamSql,
+  inPersonSql,
+  withoutAccessSql,
+} from "../course/domain/session-access";
 import { DatabaseService } from "../database/database.service";
 import { passiveScopesOf } from "../database/passive-courses";
 import { isPassiveScope } from "../database/role-assignments";
@@ -29,7 +34,8 @@ export interface IKoskDashboardNumbers {
   upcoming: number;
   past: number;
   cancelled: number;
-  missingLink: number;
+  /** Upcoming sessions nobody can attend as they stand (MDRS-283). */
+  withoutAccess: number;
 }
 
 /** What the caller may not be shown of a passive scope's courses (MDRS-136). */
@@ -44,6 +50,19 @@ export interface IPassiveFilter {
 }
 
 const asDate = (value: Date | string): Date => new Date(value);
+
+/**
+ * How a session of `l` (lesson) in `c` (course) is attended (MDRS-283). The
+ * coverage rule is `withoutAccessSql`'s, the same the course menu's badge and
+ * the Pano read.
+ */
+const attendance = {
+  meetingUrl: sql`l.meeting_url`,
+  liveStreamUrl: sql`l.live_stream_url`,
+  lessonInPerson: sql`l.in_person`,
+  courseInPerson: sql`c.in_person`,
+};
+const withoutAccess = withoutAccessSql(attendance);
 
 /** Over `c` (course): the course sits in a passive scope (MDRS-136). */
 const passiveCourse = sql`(${isPassiveScope(
@@ -138,7 +157,7 @@ export class KoskDashboardRepository {
             and l.cancelled_at is null
             and l.scheduled_at >= now()
             and l.scheduled_at < now() + make_interval(days => ${UPCOMING_DAYS})
-            and (l.meeting_url is null or btrim(l.meeting_url) = '')) as missing`);
+            and ${withoutAccess}) as without_access`);
     const r = result.rows[0] ?? {};
     return {
       courses: Number(r.courses ?? 0),
@@ -147,21 +166,25 @@ export class KoskDashboardRepository {
       upcoming: Number(r.upcoming ?? 0),
       past: Number(r.past ?? 0),
       cancelled: Number(r.cancelled ?? 0),
-      missingLink: Number(r.missing ?? 0),
+      withoutAccess: Number(r.without_access ?? 0),
     };
   }
 
-  /** The sessions of one tab; `onlyMissingLink` narrows the upcoming ones to those with no link. */
+  /**
+   * The sessions of one tab; `onlyWithoutAccess` narrows the upcoming ones to
+   * those nobody can attend as they stand: no meeting link, no live stream,
+   * not in person (MDRS-283).
+   */
   async sessions(
     koskId: string,
     tab: DashboardSessionTab,
-    opts: { onlyMissingLink?: boolean; limit?: number } & IPassiveFilter = {}
+    opts: { onlyWithoutAccess?: boolean; limit?: number } & IPassiveFilter = {}
   ): Promise<KoskDashboardSessionResponse[]> {
     const where =
       tab === "UPCOMING"
         ? sql`l.cancelled_at is null and l.scheduled_at >= now()
               and l.scheduled_at < now() + make_interval(days => ${UPCOMING_DAYS})
-              ${opts.onlyMissingLink ? sql`and (l.meeting_url is null or btrim(l.meeting_url) = '')` : sql``}`
+              ${opts.onlyWithoutAccess ? sql`and ${withoutAccess}` : sql``}`
         : tab === "PAST"
           ? sql`l.cancelled_at is null and l.scheduled_at < now()`
           : sql`l.cancelled_at is not null`;
@@ -179,6 +202,9 @@ export class KoskDashboardRepository {
       scheduled_at: Date | string;
       duration_minutes: number | null;
       meeting_url: string | null;
+      in_person: boolean;
+      has_live_stream: boolean;
+      without_access: boolean;
       cancelled: boolean;
       is_makeup: boolean;
       students: string;
@@ -187,6 +213,11 @@ export class KoskDashboardRepository {
       select l.id, c.id as course_id, c.title as course_title,
              c.cover_hue as course_cover_hue, w.week_number,
              l.scheduled_at, l.duration_minutes, l.meeting_url,
+             ${inPersonSql(attendance)} as in_person,
+             ${hasLiveStreamSql(attendance)} as has_live_stream,
+             -- Flagged as the count flags: standing, still ahead, uncovered.
+             (l.cancelled_at is null and l.scheduled_at >= now()
+              and ${withoutAccess}) as without_access,
              (l.cancelled_at is not null) as cancelled,
              exists (select 1 from lessons o
                       where o.replacement_lesson_id = l.id) as is_makeup,
@@ -229,6 +260,9 @@ export class KoskDashboardRepository {
       scheduledAt: asDate(r.scheduled_at),
       durationMinutes: r.duration_minutes,
       meetingUrl: r.meeting_url?.trim() ? r.meeting_url : null,
+      inPerson: r.in_person,
+      hasLiveStream: r.has_live_stream,
+      withoutAccess: r.without_access,
       isMakeup: r.is_makeup,
       studentCount: Number(r.students),
       cancelled: r.cancelled,

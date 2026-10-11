@@ -9,7 +9,12 @@ import { LessonType } from "./lesson-type.enum";
 /** The lesson fields that are session work, not curriculum (MDRS-135). */
 type SessionFields = Pick<
   ILesson,
-  "type" | "scheduledAt" | "meetingUrl" | "agenda" | "isPreview"
+  | "type"
+  | "scheduledAt"
+  | "meetingUrl"
+  | "agenda"
+  | "isPreview"
+  | "inPersonOverride"
 >;
 
 /**
@@ -22,6 +27,7 @@ interface SentLesson {
   meetingUrl?: string | null;
   agenda?: IAgendaStep[] | null;
   isPreview?: boolean | null;
+  inPersonOverride?: boolean | null;
 }
 
 const sameInstant = (a: Date | null, b: Date | null): boolean =>
@@ -73,14 +79,22 @@ function sessionFieldsDiffer(stored: SessionFields, sent: SentLesson): boolean {
   ) {
     return true;
   }
+  // How talebe attend it (MDRS-283), like the link: in person, not, or as
+  // the course says.
+  if (
+    sent.inPersonOverride !== undefined &&
+    (sent.inPersonOverride ?? null) !== stored.inPersonOverride
+  ) {
+    return true;
+  }
   return (sent.isPreview ?? false) !== stored.isPreview;
 }
 
 /**
  * Whether a whole-course save (`PUT /courses/:id`) does session work: it adds
  * a session, drops one (the replace hides it), changes a kept session's time,
- * meeting link, agenda or preview flag, or makes a lesson live or no longer
- * live. That is `session.manage`'s
+ * meeting link, agenda, preview flag or in-person mark (MDRS-283), or makes a
+ * lesson live or no longer live. That is `session.manage`'s
  * ("Celse ekle, tarihini değiştir, iptal et; toplantı bağlantısını gir"), not
  * `course.edit`'s, which keeps the titles, texts, order and weeks.
  *

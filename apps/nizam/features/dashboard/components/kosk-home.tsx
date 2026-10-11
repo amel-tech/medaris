@@ -13,7 +13,6 @@ import { Button } from "@medaris/ui/mds/button";
 import { CoverPattern } from "@medaris/ui/mds/cover-pattern";
 import { EmptyState } from "@medaris/ui/mds/empty-state";
 import { Icon } from "@medaris/ui/mds/icon";
-import { PlatformChip } from "@medaris/ui/mds/platform-chip";
 import { Stat } from "@medaris/ui/mds/stat";
 import { Table, type TableColumn } from "@medaris/ui/mds/table";
 import { Tabs } from "@medaris/ui/mds/tabs";
@@ -26,17 +25,19 @@ import {
   rejectEnrollment,
 } from "~/features/kosks/actions/courses";
 import { decisionErrorKey } from "../../applications/present";
+import { AttendanceCell } from "../../courses/components/attendance-cell";
 import { toneOfHue } from "../../kosks/admin-present";
 import { loadKoskSessions } from "../actions";
 import {
   type Messages,
   momentLabel,
   muderrisLine,
-  platformView,
   sessionAction,
+  sessionAttendance,
   sessionState,
   sessionWhen,
   sessionWhenLong,
+  stateWord,
   weekLine,
 } from "../present";
 import { HomeSection } from "./home-parts";
@@ -52,9 +53,10 @@ const TABS: DashboardSessionTab[] = ["UPCOMING", "PAST", "CANCELLED"];
 
 /**
  * A köşk nazımı's home page (nizam 02): the greeting with the week's celse
- * count, the alert about a celse with no meeting link, the four numbers, the
- * Celseler card with its three tabs, the newest applications to answer on the
- * spot, and the müderrisler. One read feeds it; the other two tabs are read
+ * count, the alert about a celse nobody can attend (MDRS-283: no meeting
+ * link, no live stream and not held in person; tedrisat counts it), the four
+ * numbers, the Celseler card with its three tabs, the newest applications to
+ * answer on the spot, and the müderrisler. One read feeds it; the other two tabs are read
  * when they are opened. "Onayla" answers at once; "Reddet" asks for a reason
  * that may be left empty.
  */
@@ -194,15 +196,15 @@ export function KoskHome({ data, nowIso }: Props) {
   const weekSentence =
     data.counts.upcomingSessions === 0
       ? t("week.none")
-      : data.missingLinkCount === 0
+      : data.withoutAccessCount === 0
         ? t("week.some", { count: data.counts.upcomingSessions })
         : t("week.missing", {
             count: data.counts.upcomingSessions,
-            missing: data.missingLinkCount,
+            missing: data.withoutAccessCount,
           });
 
   const stateLabel = (s: KoskDashboardSessionResponse) =>
-    t(`sessions.state.${sessionState(s, now)}`);
+    t(`sessions.state.${stateWord(sessionState(s, now))}`);
 
   const sessionColumns: TableColumn<KoskDashboardSessionResponse>[] = [
     {
@@ -238,20 +240,16 @@ export function KoskHome({ data, nowIso }: Props) {
       render: (s) => <span>{sessionWhen(s.scheduledAt, zone)}</span>,
     },
     {
-      key: "platform",
-      header: t("sessions.columns.platform"),
+      key: "attendance",
+      header: t("sessions.columns.attendance"),
       width: "13%",
-      render: (s) => {
-        const view = platformView(s.meetingUrl);
-        return view ? (
-          <PlatformChip platform={view.platform} host={view.host} />
+      // A celse nobody can attend says "Eksik" here, once; Durum says planned.
+      render: (s) =>
+        s.cancelled ? (
+          "—"
         ) : (
-          <span className="flex flex-col">
-            <span aria-hidden="true">—</span>
-            <span className="mds-caption">{t("sessions.noLink")}</span>
-          </span>
-        );
-      },
+          <AttendanceCell view={sessionAttendance(s, data.contentLocked)} />
+        ),
     },
     {
       key: "students",
@@ -264,14 +262,7 @@ export function KoskHome({ data, nowIso }: Props) {
       key: "state",
       header: t("sessions.columns.state"),
       width: "13%",
-      render: (s) => {
-        const state = sessionState(s, now);
-        return (
-          <Badge variant={state === "missingLink" ? "warning" : "secondary"}>
-            {stateLabel(s)}
-          </Badge>
-        );
-      },
+      render: (s) => <Badge variant="secondary">{stateLabel(s)}</Badge>,
     },
     {
       key: "actions",
@@ -402,16 +393,16 @@ export function KoskHome({ data, nowIso }: Props) {
         </Button>
       </header>
 
-      {data.missingLinkCount > 0 && data.firstMissingLink ? (
+      {data.withoutAccessCount > 0 && data.firstWithoutAccess ? (
         <Alert
           tone="warning"
-          title={t("missingAlert.title", { count: data.missingLinkCount })}
+          title={t("missingAlert.title", { count: data.withoutAccessCount })}
         >
           <p data-testid="home-missing-link">
             {t("missingAlert.body", {
-              course: data.firstMissingLink.courseTitle,
-              when: sessionWhenLong(data.firstMissingLink.scheduledAt, zone),
-              count: data.missingLinkCount,
+              course: data.firstWithoutAccess.courseTitle,
+              when: sessionWhenLong(data.firstWithoutAccess.scheduledAt, zone),
+              count: data.withoutAccessCount,
             })}
           </p>
         </Alert>

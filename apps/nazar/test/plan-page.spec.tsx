@@ -125,7 +125,12 @@ const fillWeekly = async () => {
 beforeEach(() => {
   state.course = {
     status: "ok",
-    data: { id: "c-1", title: "Bina ve İzhar Şerhi", contentLocked: false },
+    data: {
+      id: "c-1",
+      title: "Bina ve İzhar Şerhi",
+      contentLocked: false,
+      inPerson: false,
+    },
   };
   state.permissions = holding("session.manage");
   state.viewer = { id: "u-1", timeZone: "Europe/Istanbul" };
@@ -146,6 +151,22 @@ describe("Celse planla", () => {
     expect(out).toContain('href="/ders/c-1/celseler"');
     expect(out).toMatch(/<button[^>]*type="submit"[^>]*disabled/);
     expect(textOf(out)).toContain("0 celse oluştur");
+  });
+
+  it("says the sessions follow the course when it is held in person, and nothing of it otherwise (MDRS-283)", async () => {
+    expect(await markup()).not.toContain('data-testid="plan-in-person"');
+    state.course = {
+      status: "ok",
+      data: {
+        id: "c-1",
+        title: "Bina ve İzhar Şerhi",
+        contentLocked: false,
+        inPerson: true,
+      },
+    };
+    expect(textOf(await markup())).toContain(
+      "Ders yüz yüze yapılıyor; bu celseler de yüz yüze sayılır."
+    );
   });
 
   it("starts the zone as the viewer's own", async () => {

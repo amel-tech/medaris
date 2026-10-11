@@ -15,6 +15,11 @@ export const sessionJoinLabels = (t: Translate): SessionJoinLabels => ({
   cancelledLabel: t("SessionPage.cancelledLabel"),
   cancelledText: t("SessionPage.cancelledJoinText"),
   noLinkText: t("SessionPage.noLinkText"),
+  inPersonText: t("SessionPage.inPersonText"),
+  streamText: t("SessionPage.streamText"),
+  streamLiveText: t("SessionPage.streamLiveText"),
+  inPersonStreamText: t("SessionPage.inPersonStreamText"),
+  inPersonStreamLiveText: t("SessionPage.inPersonStreamLiveText"),
   joinOpensText: t("SessionPage.joinOpensText", { minutes: "{minutes}" }),
   joinLabel: t("SessionPage.joinAction"),
   newTabLabel: t("SessionPage.newTab"),
@@ -23,6 +28,30 @@ export const sessionJoinLabels = (t: Translate): SessionJoinLabels => ({
   minuteUnit: t("SessionPage.minuteUnit"),
   recordingsLabel: t("SessionPage.recordingsGo"),
   elapsedText: t("SessionPage.elapsed", { minutes: "{minutes}" }),
+});
+
+/**
+ * The card's sentences for a celse without a link, where the card is not on
+ * the session page (Ana sayfa): the stream and the recording are on the
+ * session page, not "here" (MDRS-283). The same words as Programım's rows.
+ */
+export const elsewhereJoinLabels = (
+  t: Translate
+): Pick<
+  SessionJoinLabels,
+  | "noLinkText"
+  | "inPersonText"
+  | "streamText"
+  | "streamLiveText"
+  | "inPersonStreamText"
+  | "inPersonStreamLiveText"
+> => ({
+  noLinkText: t("SchedulePage.noLink"),
+  inPersonText: t("SchedulePage.inPerson"),
+  streamText: t("SchedulePage.stream"),
+  streamLiveText: t("SchedulePage.streamLive"),
+  inPersonStreamText: t("SchedulePage.inPersonStream"),
+  inPersonStreamLiveText: t("SchedulePage.inPersonStreamLive"),
 });
 
 /** "Takvime ekle" and its menu. */

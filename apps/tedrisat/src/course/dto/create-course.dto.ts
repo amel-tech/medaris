@@ -126,6 +126,17 @@ export class CreateLessonDto {
   @IsOptional()
   @IsBoolean()
   isPreview?: boolean;
+
+  @ApiPropertyOptional({
+    type: Boolean,
+    nullable: true,
+    example: null,
+    description:
+      "The session's own in-person mark (MDRS-283): true or false overrides the course's `inPerson`, null follows it. Absent leaves it as it is. Changing it is session work (`session.manage`), like the meeting link.",
+  })
+  @IsOptional()
+  @IsBoolean()
+  inPersonOverride?: boolean | null;
 }
 
 export class CreateWeekDto {
@@ -348,6 +359,16 @@ export class CreateCourseDto {
   @IsString()
   @MaxLength(40)
   coverLabel?: string;
+
+  @ApiPropertyOptional({
+    example: false,
+    description:
+      '"Celseler yüz yüze yapılır" (MDRS-283): the course\'s sessions are held face to face, unless a session says otherwise (`inPersonOverride`). A label only. Defaults to false; never null.',
+  })
+  // Not `@IsOptional()`: that lets null through to a NOT NULL column.
+  @ValidateIf((_: unknown, value: unknown) => value !== undefined)
+  @IsBoolean()
+  inPerson?: boolean;
 
   @ApiPropertyOptional({ type: [CreateWeekDto] })
   @IsOptional()

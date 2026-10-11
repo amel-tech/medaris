@@ -41,6 +41,8 @@ import {
   emptyLesson,
   headingDay,
   type LessonDraft,
+  lessonWithoutAccess,
+  linkHelpKey,
   nextWeekNumber,
   type ResourceDraft,
   resourceDraftsOf,
@@ -58,7 +60,10 @@ const TONES = ["laciverd", "bordo", "zumrut", "murekkep"] as const;
  * the course version this page was read at. A week or a session taken out of
  * the form is hidden by that save, never deleted. A cancelled session is
  * shown as information. While the form differs from the saved course a strip
- * says so, with "Vazgeç" to put the saved values back.
+ * says so, with "Vazgeç" to put the saved values back. A session still ahead
+ * with no link, no live stream and not held in person is flagged "Katılım
+ * yolu eksik"; a link is not asked of one that is streamed or held in person
+ * (MDRS-283).
  *
  * When somebody saved the course since the page was read, the API answers 409
  * and writes nothing: a prompt says so and offers the current course, which
@@ -224,7 +229,8 @@ export function CurriculumEditor({
 
   // Today in the zone the sessions' dates are written in: the UTC day is a day
   // behind in Istanbul from 00:00 to 03:00.
-  const nowDay = toZonedDatetimeLocal(new Date(), timeZone).slice(0, 10);
+  const now = new Date();
+  const nowDay = toZonedDatetimeLocal(now, timeZone).slice(0, 10);
 
   return (
     <form
@@ -518,12 +524,17 @@ export function CurriculumEditor({
                             <Badge variant="outline">
                               {t("Curriculum.cancelled")}
                             </Badge>
-                          ) : !url ? (
+                          ) : lessonWithoutAccess(
+                              lesson,
+                              course.inPerson,
+                              timeZone,
+                              now
+                            ) ? (
                             <Badge
                               variant="warning"
                               icon={<Icon name="link" size="sm" />}
                             >
-                              {t("Curriculum.linkMissing")}
+                              {t("Curriculum.accessMissing")}
                             </Badge>
                           ) : (
                             <Badge variant="secondary">
@@ -709,11 +720,7 @@ export function CurriculumEditor({
                                 ) : null}
                               </span>
                             }
-                            help={t(
-                              url
-                                ? "Curriculum.linkHelpFilled"
-                                : "Curriculum.linkHelp"
-                            )}
+                            help={t(linkHelpKey(lesson, course.inPerson))}
                             error={
                               shown("link", wi, li) && problem
                                 ? t("Curriculum.errors.link")

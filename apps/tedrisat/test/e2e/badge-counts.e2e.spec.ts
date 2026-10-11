@@ -299,7 +299,7 @@ describe("Badge counts (e2e)", () => {
     it("counts the sessions still waiting for a link and the pending requests", async () => {
       const res = await get(courseA, MANAGER_ID).expect(200);
       expect(res.body).toEqual({
-        missingMeetingLinks: 2,
+        sessionsWithoutAccess: 2,
         pendingApplications: 2,
       });
     });
@@ -307,7 +307,7 @@ describe("Badge counts (e2e)", () => {
     it("answers a course with no sessions and one request", async () => {
       const res = await get(courseB, MANAGER_ID).expect(200);
       expect(res.body).toEqual({
-        missingMeetingLinks: 0,
+        sessionsWithoutAccess: 0,
         pendingApplications: 1,
       });
     });
@@ -318,7 +318,7 @@ describe("Badge counts (e2e)", () => {
         .set({ meetingUrl: MEETING_URL })
         .where(eq(lessons.type, LessonType.LIVE));
       const res = await get(courseA, MANAGER_ID).expect(200);
-      expect(res.body.missingMeetingLinks).toBe(0);
+      expect(res.body.sessionsWithoutAccess).toBe(0);
     });
 
     it("is open to the course's müderris and to SYSTEM_ADMIN", async () => {

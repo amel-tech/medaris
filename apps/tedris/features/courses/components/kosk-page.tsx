@@ -87,6 +87,12 @@ const CourseCard = ({
       }
     >
       <div className="mds-card__body flex grow flex-col gap-2">
+        {/* MDRS-283: the course's own "Yüz yüze" setting, public like its title. */}
+        {course.inPerson ? (
+          <Badge variant="secondary" className="self-start">
+            {t("KoskPage.inPerson")}
+          </Badge>
+        ) : null}
         {course.madrasah ? (
           <p className="flex items-start gap-2">
             <Icon name="medrese" size="sm" className="mbs-1 flex-none" />

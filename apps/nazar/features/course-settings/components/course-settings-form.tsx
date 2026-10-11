@@ -29,8 +29,10 @@ const NONE = "none";
 
 /**
  * "Erişim, kayıt ve saat dilimi" of Ders ayarları (nizam 34 in nazar's form
- * idiom): Kapalı ders, Örnek ders, Kayıt onayı gereksin and Saat dilimi. The
- * boxes are checkboxes, not switches: they wait for Kaydet. Each control is
+ * idiom): Kapalı ders, Örnek ders, Kayıt onayı gereksin, Celseler yüz yüze
+ * yapılır (MDRS-283) and Saat dilimi. The boxes are checkboxes, not switches:
+ * they wait for Kaydet (the design kit: a control that needs a save button
+ * next to it is not a switch). Each control is
  * open only when the caller holds what its route asks (`controlsOf`); a box a
  * policy holds is shown ticked and says why. Kaydet is off until something
  * differs. The sample session moves first, with its own writes: the old one
@@ -202,6 +204,16 @@ export function CourseSettingsForm({
         disabled={busy || controls.approval !== "open"}
         onCheckedChange={(checked) => set("requiresApproval", checked === true)}
         name="requiresApproval"
+      />
+      <Checkbox
+        bordered
+        icon={<Icon name="group" size="sm" />}
+        label={t("CourseSettings.inPersonLabel")}
+        description={t("CourseSettings.inPersonDesc")}
+        checked={draft.inPerson}
+        disabled={busy || !controls.inPerson}
+        onCheckedChange={(checked) => set("inPerson", checked === true)}
+        name="inPerson"
       />
       <Field
         label={t("CourseSettings.zoneLabel")}

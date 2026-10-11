@@ -324,6 +324,70 @@ describe("Lesson invitations by e-mail (MDRS-121, e2e)", () => {
     });
   });
 
+  // MDRS-283: the mail and its event say how the session is attended.
+  it("words the invitation by how the session is attended: in person, only streamed, or in person with a meeting link", async () => {
+    await db()
+      .update(lessons)
+      .set({ inPersonOverride: true, meetingUrl: null })
+      .where(eq(lessons.id, sessionId));
+    await approve(TALEBE_ID);
+    await settle();
+    expect(sent).toHaveLength(1);
+    const [inPerson] = sent;
+    expect(String(inPerson.text)).toContain("This session is held in person.");
+    expect(String(inPerson.text)).not.toContain("meeting link");
+    expect(icsProp(calendarOf(inPerson).ics, "DESCRIPTION")).toMatch(
+      /^This session is held in person\. Session page:/
+    );
+
+    // The same session as a stream with no meeting link, after a move that
+    // sends the update.
+    sent.length = 0;
+    await db()
+      .update(lessons)
+      .set({
+        inPersonOverride: null,
+        meetingUrl: null,
+        liveStreamUrl: "https://www.youtube.com/live/dQw4w9WgXcQ",
+        scheduledAt: new Date(sessionAt.getTime() + 3_600_000),
+      })
+      .where(eq(lessons.id, sessionId));
+    invitations.kick();
+    await settle();
+    expect(sent).toHaveLength(1);
+    const [streamed] = sent;
+    expect(String(streamed.text)).toContain("This session is streamed live.");
+    expect(icsProp(calendarOf(streamed).ics, "DESCRIPTION")).toMatch(
+      /^This session is streamed live\\; the stream is on the session page:/
+    );
+    expect(JSON.stringify(streamed)).not.toContain("dQw4w9WgXcQ");
+
+    // Held in person with a meeting link (hybrid): the mail and the event
+    // say both, so a talebe joining from afar learns where the link is; the
+    // link itself is in neither.
+    sent.length = 0;
+    await db()
+      .update(lessons)
+      .set({
+        inPersonOverride: true,
+        meetingUrl: MEETING_URL,
+        liveStreamUrl: null,
+        scheduledAt: new Date(sessionAt.getTime() + 2 * 3_600_000),
+      })
+      .where(eq(lessons.id, sessionId));
+    invitations.kick();
+    await settle();
+    expect(sent).toHaveLength(1);
+    const [hybrid] = sent;
+    expect(String(hybrid.text)).toContain(
+      "This session is held in person. The meeting link is shown only on the session page"
+    );
+    expect(icsProp(calendarOf(hybrid).ics, "DESCRIPTION")).toMatch(
+      /^This session is held in person\\; the meeting link is on the session page:/
+    );
+    expect(JSON.stringify(hybrid)).not.toContain(MEETING_URL);
+  });
+
   it("sends a moved session again as an update of the same event", async () => {
     await approve(TALEBE_ID);
     await settle();

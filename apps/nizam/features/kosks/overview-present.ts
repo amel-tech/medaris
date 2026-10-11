@@ -7,12 +7,19 @@ import type {
 } from "@medaris/services/tedrisat";
 import type { BadgeVariant } from "@medaris/ui/mds/badge";
 import type { IconName } from "@medaris/ui/mds/icon";
+import {
+  type AttendanceView,
+  attendanceView,
+  hasAccess,
+  lessonAttendance,
+} from "../courses/attendance";
 
 /**
  * Pure helpers behind the köşk page of the Medaris yönetimi, the Dersler table
  * and a course's overview (nizam 20, 23 and 53, MDRS-175): the tabs and their
  * numbers, which buttons a row carries, how a row's cells read, the next
- * sessions and the warning for a missing meeting link. No React and no I/O, so
+ * sessions and the warning for a session nobody can attend (MDRS-283: no
+ * meeting link, no live stream and not held in person). No React and no I/O, so
  * the sentences and counts the designs show can be pinned by plain specs.
  */
 export type Messages = (
@@ -172,7 +179,7 @@ export const canHide = (status: "ACTIVE" | "PASSIVE" | "HIDDEN"): boolean =>
 
 export const NEXT_SESSIONS = 4;
 
-export type SessionStatus = "cancelled" | "missingLink" | "planned";
+export type SessionStatus = "cancelled" | "withoutAccess" | "planned";
 
 const liveSessions = (course: Pick<CourseDetailResponse, "weeks">) =>
   course.weeks.flatMap((week) =>
@@ -186,14 +193,28 @@ export interface UpcomingSession {
   weekNumber: number;
   at: Date;
   status: SessionStatus;
+  /**
+   * "Katılım", as Celseler draws it; null for a cancelled session and for one
+   * whose attendance the read did not carry (a content-locked read).
+   */
+  attendance: AttendanceView | null;
 }
 
-/** How one live session stands: cancelled, planned with no link yet, or planned. */
+/**
+ * How one live session that has not begun stands (MDRS-283): cancelled;
+ * planned with no meeting link, no live stream and not held in person, which
+ * is flagged; or planned. A session whose attendance the read did not carry
+ * is never flagged: nothing is known of it.
+ */
 export function sessionStatus(
-  lesson: Pick<LessonResponse, "cancelledAt" | "meetingUrl">
+  lesson: Pick<
+    LessonResponse,
+    "cancelledAt" | "meetingUrl" | "hasLiveStream" | "inPerson"
+  >
 ): SessionStatus {
   if (lesson.cancelledAt) return "cancelled";
-  return lesson.meetingUrl?.trim() ? "planned" : "missingLink";
+  const facts = lessonAttendance(lesson);
+  return facts && !hasAccess(facts) ? "withoutAccess" : "planned";
 }
 
 /**
@@ -206,12 +227,16 @@ export function upcomingSessions(
   limit = NEXT_SESSIONS
 ): UpcomingSession[] {
   return liveSessions(course)
-    .map(({ week, lesson }) => ({
-      lesson,
-      weekNumber: week.weekNumber,
-      at: new Date(lesson.scheduledAt as Date),
-      status: sessionStatus(lesson),
-    }))
+    .map(({ week, lesson }) => {
+      const facts = lesson.cancelledAt ? null : lessonAttendance(lesson);
+      return {
+        lesson,
+        weekNumber: week.weekNumber,
+        at: new Date(lesson.scheduledAt as Date),
+        status: sessionStatus(lesson),
+        attendance: facts ? attendanceView(facts, true) : null,
+      };
+    })
     .filter((s) => s.at.getTime() >= now.getTime())
     .sort((a, b) => a.at.getTime() - b.at.getTime())
     .slice(0, limit);
@@ -219,16 +244,17 @@ export function upcomingSessions(
 
 /**
  * The session the warning above the numbers names: the first upcoming one that
- * is not cancelled and has no meeting link. Looked for among every upcoming
- * session, not only the four listed.
+ * is not cancelled and has no way in (MDRS-283). A session with a live stream
+ * or held in person is covered without a link. Looked for among every
+ * upcoming session, not only the four listed.
  */
-export function firstMissingLink(
+export function firstWithoutAccess(
   course: Pick<CourseDetailResponse, "weeks">,
   now: Date
 ): UpcomingSession | null {
   return (
     upcomingSessions(course, now, Number.MAX_SAFE_INTEGER).find(
-      (s) => s.status === "missingLink"
+      (s) => s.status === "withoutAccess"
     ) ?? null
   );
 }
@@ -292,28 +318,6 @@ export function listWords(items: string[], locale: string): string {
   } catch {
     return items.join(", ");
   }
-}
-
-/**
- * The platform a meeting link is on, from its address: "Zoom", "Google Meet",
- * "Microsoft Teams", "YouTube", else the host's name. Nothing for no link or
- * one that is no address.
- */
-export function platformOf(url: string | null | undefined): string | null {
-  if (!url?.trim()) return null;
-  let host: string;
-  try {
-    host = new URL(url).hostname.toLowerCase().replace(/^www\./, "");
-  } catch {
-    return null;
-  }
-  const known: [RegExp, string][] = [
-    [/(^|\.)zoom\.(us|com)$/, "Zoom"],
-    [/^meet\.google\.com$/, "Google Meet"],
-    [/(^|\.)teams\.(microsoft|live)\.com$/, "Microsoft Teams"],
-    [/(^|\.)(youtube\.com|youtu\.be)$/, "YouTube"],
-  ];
-  return known.find(([pattern]) => pattern.test(host))?.[1] ?? host;
 }
 
 // ---- nazar -------------------------------------------------------------------

@@ -1,4 +1,9 @@
-import type { CalendarLocale } from "../course/calendar/lesson-calendar";
+import {
+  type CalendarAttendance,
+  type CalendarAttendanceKind,
+  type CalendarLocale,
+  calendarAttendanceKind,
+} from "../course/calendar/lesson-calendar";
 
 /**
  * The words of a lesson-invitation e-mail (MDRS-121), in the three languages
@@ -7,7 +12,9 @@ import type { CalendarLocale } from "../course/calendar/lesson-calendar";
  * parts shows instead.
  *
  * Like the event, the mail names the session, its time and its page — never
- * the meeting link, which stays behind enrollment on that page.
+ * the meeting link, which stays behind enrollment on that page. The line
+ * under the page says how the session is attended (MDRS-283): a meeting link
+ * on the page, a stream, in person, or in person with a meeting link.
  *
  * Pure: the caller passes the times and the URLs.
  */
@@ -23,6 +30,8 @@ export interface InvitationMailInput {
   /** IANA zone the time is written in: the talebe's own, else the course's. */
   timeZone: string;
   sessionPageUrl: string;
+  /** How the session is attended, for the line under the link (MDRS-283). */
+  attendance: CalendarAttendance;
   /** Hesap, where the invitations are turned off. */
   accountUrl: string;
 }
@@ -40,7 +49,8 @@ interface Words {
   minutes: (n: number) => string;
   page: string;
   open: string;
-  link: string;
+  /** What the page holds for this session, by how it is attended (MDRS-283). */
+  link: Record<CalendarAttendanceKind, string>;
   footer: string;
   turnOff: string;
 }
@@ -59,7 +69,18 @@ const WORDS: Record<CalendarLocale, Words> = {
     minutes: (n) => `${n} dakika`,
     page: "Celse sayfası",
     open: "Celse sayfasını aç",
-    link: "Toplantı bağlantısı yalnızca celse sayfasında, derse kayıtlıyken giriş yaptığında görünür.",
+    link: {
+      MEETING:
+        "Toplantı bağlantısı yalnızca celse sayfasında, derse kayıtlıyken giriş yaptığında görünür.",
+      STREAM:
+        "Bu celse canlı yayınlanır. Yayın celse sayfasında, derse kayıtlıyken giriş yaptığında açılır.",
+      IN_PERSON:
+        "Bu celse yüz yüze yapılır. Kaydı eklenirse celse sayfasında yayımlanır.",
+      IN_PERSON_MEETING:
+        "Bu celse yüz yüze yapılır. Toplantı bağlantısı yalnızca celse sayfasında, derse kayıtlıyken giriş yaptığında görünür.",
+      IN_PERSON_STREAM:
+        "Bu celse yüz yüze yapılır ve canlı yayınlanır. Yayın celse sayfasında, derse kayıtlıyken giriş yaptığında açılır.",
+    },
     footer:
       "Bu e-postayı Medaris’teki ders kaydın nedeniyle aldın; yanıtlaman gerekmez.",
     turnOff: "Ders davetlerini Hesap sayfasından kapatabilirsin",
@@ -77,7 +98,18 @@ const WORDS: Record<CalendarLocale, Words> = {
     minutes: (n) => `${n} minutes`,
     page: "Session page",
     open: "Open the session page",
-    link: "The meeting link is shown only on the session page, while you are signed in and enrolled in the course.",
+    link: {
+      MEETING:
+        "The meeting link is shown only on the session page, while you are signed in and enrolled in the course.",
+      STREAM:
+        "This session is streamed live. The stream opens on the session page, while you are signed in and enrolled in the course.",
+      IN_PERSON:
+        "This session is held in person. If a recording is added, it is published on the session page.",
+      IN_PERSON_MEETING:
+        "This session is held in person. The meeting link is shown only on the session page, while you are signed in and enrolled in the course.",
+      IN_PERSON_STREAM:
+        "This session is held in person and streamed live. The stream opens on the session page, while you are signed in and enrolled in the course.",
+    },
     footer:
       "You received this e-mail because you are enrolled in a course on Medaris; there is no need to reply.",
     turnOff: "You can turn lesson invitations off on your Account page",
@@ -95,7 +127,17 @@ const WORDS: Record<CalendarLocale, Words> = {
     minutes: (n) => `${n} دقيقة`,
     page: "صفحة الحلقة",
     open: "افتح صفحة الحلقة",
-    link: "يظهر رابط الاجتماع في صفحة الحلقة فقط، عند تسجيل دخولك وأنت مسجَّل في الدرس.",
+    link: {
+      MEETING:
+        "يظهر رابط الاجتماع في صفحة الحلقة فقط، عند تسجيل دخولك وأنت مسجَّل في الدرس.",
+      STREAM:
+        "تُبثّ هذه الحلقة بثًّا مباشرًا. يُفتح البثّ في صفحة الحلقة، عند تسجيل دخولك وأنت مسجَّل في الدرس.",
+      IN_PERSON: "تُعقد هذه الحلقة حضوريًّا. إن أُضيف تسجيلها نُشر في صفحة الحلقة.",
+      IN_PERSON_MEETING:
+        "تُعقد هذه الحلقة حضوريًّا. يظهر رابط الاجتماع في صفحة الحلقة فقط، عند تسجيل دخولك وأنت مسجَّل في الدرس.",
+      IN_PERSON_STREAM:
+        "تُعقد هذه الحلقة حضوريًّا وتُبثّ بثًّا مباشرًا. يُفتح البثّ في صفحة الحلقة، عند تسجيل دخولك وأنت مسجَّل في الدرس.",
+    },
     footer: "وصلتك هذه الرسالة لأنك مسجَّل في درس على Medaris؛ لا حاجة إلى الرد.",
     turnOff: "يمكنك إيقاف دعوات الدروس من صفحة الحساب",
   },
@@ -146,6 +188,7 @@ export const buildInvitationMail = (
 ): InvitationMail => {
   const w = WORDS[input.locale];
   const lead = w.lead[input.kind](input.lessonTitle, input.courseTitle);
+  const link = w.link[calendarAttendanceKind(input.attendance)];
   const when = formatInvitationTime(
     input.startsAt,
     input.locale,
@@ -167,7 +210,7 @@ export const buildInvitationMail = (
     `${w.when}: ${whenLine}`,
     ...(input.kind === "CANCEL"
       ? []
-      : [`${w.page}: ${input.sessionPageUrl}`, "", w.link]),
+      : [`${w.page}: ${input.sessionPageUrl}`, "", link]),
     "",
     "—",
     w.footer,
@@ -185,7 +228,7 @@ export const buildInvitationMail = (
       ? []
       : [
           `<p><a href="${page}">${escapeHtml(w.open)}</a></p>`,
-          `<p style="color:#555">${escapeHtml(w.link)}</p>`,
+          `<p style="color:#555">${escapeHtml(link)}</p>`,
         ]),
     `<hr style="border:none;border-top:1px solid #ddd">`,
     `<p style="color:#777;font-size:13px">${escapeHtml(w.footer)}<br><a href="${escapeHtml(input.accountUrl)}">${escapeHtml(w.turnOff)}</a></p>`,

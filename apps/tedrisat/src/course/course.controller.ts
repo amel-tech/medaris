@@ -229,7 +229,7 @@ export class CourseController {
   @ApiOperation({
     summary: "Get a course with its syllabus, müderris and resources",
     description:
-      "Anyone may read the course page, with or without a token (MDRS-122): its description and programme (week and lesson titles, types, schedule, length, müderris). Lesson content — `meetingUrl`, `agenda`, `kaynak` and resource `url` — is sent only to a caller holding `view_details` (the enrolled talebe, the müderris, the köşk manager); for everyone else, PENDING included, those keys are absent and `contentLocked` is true. A content read by anyone who is neither enrolled nor a müderris of the course is recorded in `audit_log` (MDRS-103). A caller with no token gets the same filtered body, and 404 for a draft, a hidden course, or any course of an unlisted köşk.",
+      "Anyone may read the course page, with or without a token (MDRS-122): its description and programme (week and lesson titles, types, schedule, length, müderris). Lesson content — `meetingUrl`, `agenda`, `kaynak`, how a session is attended (`inPerson`, `inPersonOverride`, `hasLiveStream`; MDRS-283) and resource `url` — is sent only to a caller holding `view_details` (the enrolled talebe, the müderris, the köşk manager); for everyone else, PENDING included, those keys are absent and `contentLocked` is true. A content read by anyone who is neither enrolled nor a müderris of the course is recorded in `audit_log` (MDRS-103). A caller with no token gets the same filtered body, and 404 for a draft, a hidden course, or any course of an unlisted köşk.",
     operationId: "getCourseById",
   })
   @ApiOkResponse({ type: CourseDetailResponse })
@@ -307,7 +307,7 @@ export class CourseController {
   })
   @ApiForbiddenResponse({
     description:
-      "No `course.edit` on the course, or the save changes the müderris list without `course.open_standalone` (or `madrasah.muderris_manage` for a medrese's course) — a müderris may save the course but not change who teaches it (MUDERRIS_ASSIGNMENT_FORBIDDEN). Adding or dropping a session, or changing a session's time, meeting link, agenda or preview flag, needs `session.manage` as well (AUTHZ_FORBIDDEN). SELF_GRANT_REFUSED: a changed list names the caller, who does not already hold every müderris permission on the course (SYSTEM_ADMIN excepted).",
+      "No `course.edit` on the course, or the save changes the müderris list without `course.open_standalone` (or `madrasah.muderris_manage` for a medrese's course) — a müderris may save the course but not change who teaches it (MUDERRIS_ASSIGNMENT_FORBIDDEN). Adding or dropping a session, or changing a session's time, meeting link, agenda, preview flag or in-person mark (`inPersonOverride`), needs `session.manage` as well (AUTHZ_FORBIDDEN). SELF_GRANT_REFUSED: a changed list names the caller, who does not already hold every müderris permission on the course (SYSTEM_ADMIN excepted).",
   })
   @ApiConflictResponse({
     description:
@@ -545,7 +545,7 @@ export class CourseController {
   @ApiOperation({
     summary: "Get the counts behind the nazır portal's course menu badges",
     description:
-      "For the course team (MDRS-183): the live sessions still ahead that have no meeting link — cancelled and hidden ones are not counted — and the pending enrollment requests.",
+      "For the course team (MDRS-183): the live sessions still ahead that nobody can attend as they stand — no meeting link, no live stream, not held in person (MDRS-283); cancelled and hidden ones are not counted — and the pending enrollment requests.",
     operationId: "getCourseBadgeCounts",
   })
   @ApiOkResponse({ type: CourseBadgeCountsResponse })
