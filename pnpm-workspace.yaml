@@ -210,6 +210,24 @@ overrides:
   # opens an FTP connection, so nothing here exercises it.
   # Removal condition: get-uri ships a release whose basic-ftp admits >= 6.2.1.
   basic-ftp: ^6.2.1
+
+  # 2026-10-12 security pass. Four advisories published 2026-09-18..10-06
+  # turned Security gates red on main; each has a published fix.
+  # proxy-addr < 2.0.8, GHSA-jqcg-44mw-7w3h (critical, IP spoofing through an
+  # IPv4-mapped IPv6 trust subnet). express 5 declares ^2.0.7, so this only
+  # forces the re-resolve the caret allows. Runtime of both Nest apps.
+  proxy-addr: ^2.0.8
+  # sharp < 0.35.5, GHSA-wq5f-xc86-pv6w (high, bundled librsvg). next 16.3
+  # declares ^0.35.4; same re-resolve. Runtime of the Next image optimizer.
+  sharp: ^0.35.5
+  # Dev-only from here. shell-quote 1.8.4..1.10.x, GHSA-pqg4-j6r4-53mv
+  # (critical): concurrently 10.0.4 (under openapi-generator-cli) pins the
+  # exact "1.9.0". Removal condition: concurrently admits >= 1.11.0.
+  shell-quote: ^1.11.0
+  # source-map-js < 1.2.2, GHSA-68fv-2mgg-jv7q (high): postcss declares
+  # ^1.2.1, magicast (under @vitest/coverage-v8) pins the exact "1.2.1".
+  # Removal condition: magicast admits >= 1.2.2.
+  source-map-js: ^1.2.2
 # xlsx@0.18.5 stays un-overridden and unfloored: no patched npm version
 # exists (FU-5, tracked as a replace-SheetJS follow-up, not an override).
 
@@ -277,7 +295,7 @@ catalog:
   '@playwright/test': 1.63.0 # MDRS-157: tedris-web's browser e2e (nx test:e2e), same version as the browsers cached on the dev machines
   '@types/pg': ^8.23.1 # MDRS-21
   cache-manager: ^7.1.1
-  compression: ^1.8.1
+  compression: ^1.8.2 # GHSA-vc2v-76pw-4v95 (high, memory-leak DoS), 2026-10-12
   '@types/compression': ^1.8.1
   helmet: ^8.1.0
   exceljs: ^4.4.0
