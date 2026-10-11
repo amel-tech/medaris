@@ -551,8 +551,6 @@
     "recordingKind": "Ders kaydı",
     "bunnyFrameTitle": "Ders kaydı oynatıcısı: {title}",
     "liveChatTitle": "Canlı sohbet",
-    "liveChatShow": "Sohbeti göster",
-    "liveChatHide": "Gizle",
     "liveChatText": "Sohbet YouTube'dan gelir ve YouTube'da görünür. Bazı tarayıcılar (ör. Firefox, Safari ya da gizli pencere) YouTube oturumunu bu çerçeveye taşımaz; giriş yapmış olduğun hâlde yazamıyorsan sohbeti YouTube'da aç.",
     "liveChatPopout": "Sohbeti YouTube'da aç",
     "liveChatNewTab": "(yeni sekmede açılır)",

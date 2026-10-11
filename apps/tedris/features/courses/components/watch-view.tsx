@@ -168,8 +168,21 @@ export function WatchView({
   const reportsPosition =
     video.kind === "stream" ? framedStream : video.reportsPosition;
 
+  // The chat fills its panel, as in the wireframe. Beside the video (the main,
+  // a size container, at least 640 + 16 + 380 = 1036 px wide) the side column
+  // is as tall as the video and the chat takes what the notes leave of it;
+  // under the video, and in the phone's tab, the panel is at least 36rem high.
+  const topPanel = [
+    chat
+      ? "flex flex-col min-block-[36rem] @min-[1036px]:min-block-auto @min-[1036px]:flex-1"
+      : "",
+    tabs && tab !== "top" ? "max-md:hidden" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   return (
-    <main className="font-ui flex inline-full flex-wrap items-start gap-4 pbs-4 pbe-10 px-6 max-md:gap-0 max-md:px-0 max-md:pbs-0">
+    <main className="font-ui @container flex inline-full flex-wrap items-start gap-4 pbs-4 pbe-10 px-6 max-md:gap-0 max-md:px-0 max-md:pbs-0">
       <div className="flex basis-full flex-wrap items-center gap-x-4 gap-y-2 max-md:order-2 max-md:px-gutter max-md:py-3">
         <a
           className="mds-btn mds-btn--link inline-flex items-center gap-1"
@@ -205,7 +218,7 @@ export function WatchView({
 
       {top || notes ? (
         <aside
-          className="flex min-inline-0 flex-[1_1_380px] flex-col gap-4 max-md:order-3 max-md:basis-full max-md:px-gutter"
+          className="flex min-inline-0 flex-[1_1_380px] flex-col gap-4 self-stretch max-md:order-3 max-md:basis-full max-md:px-gutter"
           aria-label={t(
             chat ? (notes ? "sideLive" : "chatTab") : "sideQuestions"
           )}
@@ -236,11 +249,10 @@ export function WatchView({
             </fieldset>
           ) : null}
           {top ? (
-            <div
-              className={tabs && tab !== "top" ? "max-md:hidden" : undefined}
-              data-watch-panel="top"
-            >
-              {chat && stream ? <LiveChat streamUrl={stream.url} /> : null}
+            <div className={topPanel || undefined} data-watch-panel="top">
+              {chat && stream ? (
+                <LiveChat streamUrl={stream.url} className="flex-1" />
+              ) : null}
               {showQuestions ? (
                 <div hidden={chat}>
                   <LessonQuestions

@@ -15,7 +15,9 @@ import { cleanup, click, render, settle } from "./dom";
  * broadcast would send. Ended (0) turns "Canlı sohbet" into "Soru sor";
  * playing (1) or buffering (3) brings the chat back; an error, a pause and a
  * player not started change nothing. Nothing reaches the server but the
- * questions and notes the talebe reads and writes.
+ * questions and notes the talebe reads and writes. The chat is the real one,
+ * its frame never loaded: open from the start at every width, with YouTube's
+ * own chat page one link away.
  */
 
 const mocks = vi.hoisted(() => ({
@@ -59,11 +61,6 @@ const questions = {
 };
 vi.mock("~/features/courses/actions/questions", () => questions);
 vi.mock("../features/courses/actions/questions", () => questions);
-// YouTube's chat has its own spec (live-chat.spec.ts); here only where it is.
-vi.mock("~/features/courses/components/live-chat", () => ({
-  LiveChat: ({ streamUrl }: { streamUrl: string }) =>
-    createElement("div", { "data-live-chat": streamUrl }),
-}));
 
 interface FakeEvents {
   onReady: () => void;
@@ -117,6 +114,7 @@ beforeEach(() => {
 afterEach(async () => {
   await cleanup();
   vi.useRealTimers();
+  vi.unstubAllGlobals();
   delete (window as unknown as { YT?: unknown }).YT;
 });
 
@@ -169,7 +167,22 @@ const playerSays = async (event: { state: number } | { error: number }) => {
   await settle();
 };
 
-const chat = (host: HTMLElement) => host.querySelector("[data-live-chat]");
+/** The "Canlı sohbet" panel: YouTube's chat of the stream. */
+const chat = (host: HTMLElement) =>
+  [...host.querySelectorAll("section")].find(
+    (section) => section.querySelector("h2")?.textContent === "Canlı sohbet"
+  ) ?? null;
+const chatFrame = (host: HTMLElement) =>
+  chat(host)?.querySelector<HTMLIFrameElement>("iframe") ?? null;
+/** "Sohbeti YouTube'da aç": the same chat as YouTube's own page. */
+const popout = (host: HTMLElement) =>
+  [...host.querySelectorAll<HTMLAnchorElement>("a")].find((a) =>
+    a.textContent?.includes("Sohbeti YouTube'da aç")
+  );
+const top = (host: HTMLElement) =>
+  host.querySelector('[data-watch-panel="top"]') as HTMLElement;
+const notesPanel = (host: HTMLElement) =>
+  host.querySelector('[data-watch-panel="notes"]') as HTMLElement;
 /** The "Soru sor" panel, when it is in sight. */
 const askPanel = (host: HTMLElement) => {
   const panel = host.querySelector('section[aria-labelledby="questions-s1"]');
@@ -193,7 +206,10 @@ describe("a live stream", () => {
   it("plays with the player API on, the chat beside it and the notes under the chat", async () => {
     const host = await mount();
     expect(frame(host)?.getAttribute("src")).toBe(STREAM_FRAME);
-    expect(chat(host)?.getAttribute("data-live-chat")).toBe(STREAM);
+    const src = new URL(chatFrame(host)?.src ?? "");
+    expect(src.pathname).toBe("/live_chat");
+    expect(src.searchParams.get("v")).toBe("ybHyHDBiRoE");
+    expect(src.searchParams.get("embed_domain")).toBe(location.hostname);
     expect(askPanel(host)).toBeNull();
     expect(host.textContent).toContain("Notlarım");
     expect(badge(host)).toBe("Canlı · 24 dk");
@@ -201,6 +217,41 @@ describe("a live stream", () => {
     expect(host.textContent).toContain("Soru sormak için canlı sohbete yaz.");
     // The questions are not read while nobody can see them.
     expect(mocks.listQuestions).not.toHaveBeenCalled();
+  });
+
+  it("carries 'Sohbeti YouTube'da aç' beside the chat's title: the same chat on YouTube's own page, in a new tab", async () => {
+    const host = await mount();
+    const link = popout(host);
+    expect(link?.closest("section")).toBe(chat(host));
+    expect(link?.parentElement?.querySelector("h2")?.textContent).toBe(
+      "Canlı sohbet"
+    );
+    const href = new URL(link?.href ?? "");
+    expect(href.origin + href.pathname).toBe(
+      "https://www.youtube.com/live_chat"
+    );
+    expect(href.searchParams.get("is_popout")).toBe("1");
+    expect(href.searchParams.get("v")).toBe("ybHyHDBiRoE");
+    expect(link?.target).toBe("_blank");
+    expect(link?.rel).toBe("noopener noreferrer");
+    expect(link?.textContent).toContain("(yeni sekmede açılır)");
+    // It goes with the chat when the stream ends.
+    await playerSays({ state: 0 });
+    expect(popout(host)).toBeUndefined();
+  });
+
+  it("fills the panel beside the video with the chat, and gives the room back to 'Soru sor' once it ended", async () => {
+    const host = await mount();
+    // The side column is as tall as the video beside it, and the chat takes
+    // what the notes leave of it; the width is read off the page's main.
+    expect(host.querySelector("main")?.className).toContain("@container");
+    expect(host.querySelector("aside")?.className).toContain("self-stretch");
+    expect(top(host).className).toContain("@min-[1036px]:flex-1");
+    expect(top(host).className).toContain("min-block-[36rem]");
+    expect(chat(host)?.className).toContain("flex-1");
+    await playerSays({ state: 0 });
+    // "Soru sor" keeps its own height: the notes stay right under it.
+    expect(top(host).className).not.toContain("flex-1");
   });
 
   it("listens to the player the notes read: one player for the frame", async () => {
@@ -430,10 +481,25 @@ describe("a recording", () => {
 });
 
 describe("on a phone", () => {
-  const top = (host: HTMLElement) =>
-    host.querySelector('[data-watch-panel="top"]') as HTMLElement;
-  const notesPanel = (host: HTMLElement) =>
-    host.querySelector('[data-watch-panel="notes"]') as HTMLElement;
+  it("opens the chat in its tab from the start: the frame and the link to YouTube, nothing to unfold", async () => {
+    // Every media query answers as a phone's would (narrow, light).
+    vi.stubGlobal("matchMedia", (query: string) => ({
+      matches: false,
+      media: query,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    }));
+    const host = await mount();
+    expect(button(host, "Canlı sohbet").getAttribute("aria-pressed")).toBe(
+      "true"
+    );
+    const panel = top(host);
+    expect(panel.className).not.toContain("max-md:hidden");
+    expect(panel.querySelector("details, summary")).toBeNull();
+    expect(chatFrame(host)?.closest('[data-watch-panel="top"]')).toBe(panel);
+    expect(chatFrame(host)?.src).toContain("/live_chat?v=ybHyHDBiRoE");
+    expect(popout(host)?.closest('[data-watch-panel="top"]')).toBe(panel);
+  });
 
   it("puts the two panels under two tabs, the chat's or the questions' first", async () => {
     const host = await mount();
