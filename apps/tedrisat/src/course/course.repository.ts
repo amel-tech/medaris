@@ -35,6 +35,7 @@ import {
   courses,
   courseWeeks,
   enrollments,
+  lessonResources,
   lessons,
 } from "../database/schema/course.schema";
 import { kosks } from "../database/schema/kosk.schema";
@@ -57,12 +58,14 @@ import {
   ICourseSummary,
   ICreateCourse,
   ICreateLesson,
+  ICreateLessonResource,
   ICreateMuderris,
   ICreateSessionBatch,
   IEnrolledCourse,
   IEnrollment,
   IEnrollOptions,
   ILessonMutation,
+  ILessonResource,
   IMuderris,
   IPendingEnrollment,
   IRejectEnrollment,
@@ -269,6 +272,13 @@ export class CourseRepository implements ICourseRepository {
               columns: { archivedAt: false, duration: false },
               where: (l, { isNull }) => isNull(l.archivedAt),
               orderBy: (l, { asc }) => [asc(l.orderIndex)],
+              // The session's own resources (MDRS-286); the content rule
+              // decides who is sent their links.
+              with: {
+                resources: {
+                  orderBy: (r, { asc }) => [asc(r.orderIndex), asc(r.id)],
+                },
+              },
             },
           },
         },
@@ -442,22 +452,33 @@ export class CourseRepository implements ICourseRepository {
           .returning();
 
         if (week.lessons?.length) {
-          await tx.insert(lessons).values(
-            week.lessons.map((l, li) => ({
-              weekId: createdWeek.id,
-              title: l.title,
-              type: l.type,
-              durationMinutes: l.durationMinutes,
-              duration: legacyDuration(l.durationMinutes),
-              kaynak: l.kaynak,
-              scheduledAt: l.scheduledAt,
-              meetingUrl: l.meetingUrl,
-              agenda: l.agenda,
-              isPreview: l.isPreview ?? false,
-              inPersonOverride: l.inPersonOverride,
-              orderIndex: li,
-            }))
-          );
+          const created = await tx
+            .insert(lessons)
+            .values(
+              week.lessons.map((l, li) => ({
+                weekId: createdWeek.id,
+                title: l.title,
+                type: l.type,
+                durationMinutes: l.durationMinutes,
+                duration: legacyDuration(l.durationMinutes),
+                kaynak: l.kaynak,
+                scheduledAt: l.scheduledAt,
+                meetingUrl: l.meetingUrl,
+                agenda: l.agenda,
+                isPreview: l.isPreview ?? false,
+                inPersonOverride: l.inPersonOverride,
+                orderIndex: li,
+              }))
+            )
+            .returning({ id: lessons.id, orderIndex: lessons.orderIndex });
+          // Matched by position in the week, which each row was given above,
+          // rather than by the order RETURNING happens to list them in.
+          for (const row of created) {
+            const sent = week.lessons[row.orderIndex]?.resources;
+            if (sent?.length) {
+              await this.writeLessonResources(tx, row.id, sent);
+            }
+          }
         }
       }
 
@@ -620,8 +641,18 @@ export class CourseRepository implements ICourseRepository {
               .update(lessons)
               .set({ ...lessonValues, updatedAt: now })
               .where(eq(lessons.id, l.id));
+            // Left out, the session's resources stay as they are (MDRS-286).
+            if (l.resources != null) {
+              await this.writeLessonResources(tx, l.id, l.resources);
+            }
           } else {
-            await tx.insert(lessons).values(lessonValues);
+            const [inserted] = await tx
+              .insert(lessons)
+              .values(lessonValues)
+              .returning({ id: lessons.id });
+            if (l.resources?.length) {
+              await this.writeLessonResources(tx, inserted.id, l.resources);
+            }
           }
         }
       }
@@ -788,7 +819,8 @@ export class CourseRepository implements ICourseRepository {
 
   private toLessonMutation(
     row: typeof lessons.$inferSelect,
-    course: ICourseStamp
+    course: ICourseStamp,
+    resources: ILessonResource[]
   ): ILessonMutation {
     return {
       id: row.id,
@@ -806,8 +838,75 @@ export class CourseRepository implements ICourseRepository {
       cancelReason: row.cancelReason,
       replacementLessonId: row.replacementLessonId,
       ...sessionAttendance(row, course.inPerson),
+      resources,
       courseVersion: course.version,
     };
+  }
+
+  /**
+   * Writes a session's own resources as `sent` lists them (MDRS-286), inside
+   * the caller's transaction: a row whose id is one of this lesson's is kept
+   * and rewritten whole, any other row is added, and a stored row the list
+   * leaves out is deleted, as a link has nothing hanging off it (MDRS-279).
+   * The order is the list's.
+   */
+  private async writeLessonResources(
+    tx: Tx,
+    lessonId: string,
+    sent: readonly ICreateLessonResource[]
+  ): Promise<void> {
+    const stored = new Set(
+      (
+        await tx
+          .select({ id: lessonResources.id })
+          .from(lessonResources)
+          .where(eq(lessonResources.lessonId, lessonId))
+      ).map((r) => r.id)
+    );
+    // Each stored id is claimed once; a repeat in the list is a new row.
+    const kept = new Set<string>();
+    const rows = sent.map((r, orderIndex) => {
+      const id = r.id && stored.has(r.id) && !kept.has(r.id) ? r.id : null;
+      if (id) kept.add(id);
+      return {
+        id,
+        values: {
+          lessonId,
+          name: r.name,
+          meta: r.meta ?? null,
+          url: r.url,
+          orderIndex,
+        },
+      };
+    });
+    const dropped = [...stored].filter((id) => !kept.has(id));
+    if (dropped.length) {
+      await tx
+        .delete(lessonResources)
+        .where(inArray(lessonResources.id, dropped));
+    }
+    for (const { id, values } of rows) {
+      if (id) {
+        await tx
+          .update(lessonResources)
+          .set(values)
+          .where(eq(lessonResources.id, id));
+      } else {
+        await tx.insert(lessonResources).values(values);
+      }
+    }
+  }
+
+  /** A session's own resources in order (MDRS-286), for a write's answer. */
+  private async lessonResourcesOf(
+    tx: Tx,
+    lessonId: string
+  ): Promise<ILessonResource[]> {
+    return tx
+      .select()
+      .from(lessonResources)
+      .where(eq(lessonResources.lessonId, lessonId))
+      .orderBy(lessonResources.orderIndex, lessonResources.id);
   }
 
   /** The müderris half of a whole-course save, inside its transaction. */
@@ -920,7 +1019,14 @@ export class CourseRepository implements ICourseRepository {
           orderIndex: await this.nextOrderIndex(tx, weekId),
         })
         .returning();
-      return this.toLessonMutation(row, course);
+      if (data.resources?.length) {
+        await this.writeLessonResources(tx, row.id, data.resources);
+      }
+      return this.toLessonMutation(
+        row,
+        course,
+        await this.lessonResourcesOf(tx, row.id)
+      );
     });
   }
 
@@ -964,7 +1070,11 @@ export class CourseRepository implements ICourseRepository {
         entityId: lessonId,
         details: { courseId, reason, replacementLessonId },
       });
-      return this.toLessonMutation(row, course);
+      return this.toLessonMutation(
+        row,
+        course,
+        await this.lessonResourcesOf(tx, lessonId)
+      );
     });
   }
 
@@ -1120,7 +1230,7 @@ export class CourseRepository implements ICourseRepository {
       // under the same row lock, so once this succeeds the lesson read above
       // is still live and still in `courseId`.
       const course = await this.bumpVersion(tx, courseId, expectedVersion);
-      const { weekId, orderIndex, ...fields } = data;
+      const { weekId, orderIndex, resources, ...fields } = data;
       const set: Partial<typeof lessons.$inferInsert> = {
         ...fields,
         updatedAt: new Date(),
@@ -1146,7 +1256,15 @@ export class CourseRepository implements ICourseRepository {
         .set(set)
         .where(eq(lessons.id, lessonId))
         .returning();
-      return this.toLessonMutation(row, course);
+      // Left out, the session's resources stay as they are (MDRS-286).
+      if (resources != null) {
+        await this.writeLessonResources(tx, lessonId, resources);
+      }
+      return this.toLessonMutation(
+        row,
+        course,
+        await this.lessonResourcesOf(tx, lessonId)
+      );
     });
   }
 
@@ -1184,7 +1302,11 @@ export class CourseRepository implements ICourseRepository {
           ...(await courseParents(tx, courseId)),
         });
       }
-      return this.toLessonMutation(row, course);
+      return this.toLessonMutation(
+        row,
+        course,
+        await this.lessonResourcesOf(tx, lessonId)
+      );
     });
   }
 
@@ -1416,8 +1538,9 @@ export class CourseRepository implements ICourseRepository {
         weeks: touched,
         lessons: rows
           .map((row) => {
+            // A planned session has no resources of its own yet (MDRS-286).
             const { courseVersion: _version, ...lesson } =
-              this.toLessonMutation(row, stamp);
+              this.toLessonMutation(row, stamp, []);
             return {
               ...lesson,
               weekNumber: weekNumberOf.get(row.weekId) as number,

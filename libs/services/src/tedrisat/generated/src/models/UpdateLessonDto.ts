@@ -20,6 +20,13 @@ import {
     AgendaStepDtoToJSON,
     AgendaStepDtoToJSONTyped,
 } from './AgendaStepDto';
+import type { CreateLessonResourceDto } from './CreateLessonResourceDto';
+import {
+    CreateLessonResourceDtoFromJSON,
+    CreateLessonResourceDtoFromJSONTyped,
+    CreateLessonResourceDtoToJSON,
+    CreateLessonResourceDtoToJSONTyped,
+} from './CreateLessonResourceDto';
 
 /**
  * 
@@ -99,6 +106,12 @@ export interface UpdateLessonDto {
      * @memberof UpdateLessonDto
      */
     orderIndex?: number;
+    /**
+     * The session's own resources, in order (MDRS-286). Absent leaves them as they are; sent, the list replaces the stored one: a row whose `id` is one of this session's is kept and rewritten whole, any other row is added, and a stored row left out is removed. Never null.
+     * @type {Array<CreateLessonResourceDto>}
+     * @memberof UpdateLessonDto
+     */
+    resources?: Array<CreateLessonResourceDto>;
 }
 
 
@@ -144,6 +157,7 @@ export function UpdateLessonDtoFromJSONTyped(json: any, ignoreDiscriminator: boo
         'isPreview': json['isPreview'] == null ? undefined : json['isPreview'],
         'weekId': json['weekId'] == null ? undefined : json['weekId'],
         'orderIndex': json['orderIndex'] == null ? undefined : json['orderIndex'],
+        'resources': json['resources'] == null ? undefined : ((json['resources'] as Array<any>).map(CreateLessonResourceDtoFromJSON)),
     };
 }
 
@@ -170,6 +184,7 @@ export function UpdateLessonDtoToJSONTyped(value?: UpdateLessonDto | null, ignor
         'isPreview': value['isPreview'],
         'weekId': value['weekId'],
         'orderIndex': value['orderIndex'],
+        'resources': value['resources'] == null ? undefined : ((value['resources'] as Array<any>).map(CreateLessonResourceDtoToJSON)),
     };
 }
 

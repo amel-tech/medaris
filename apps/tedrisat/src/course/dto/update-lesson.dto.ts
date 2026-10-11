@@ -4,7 +4,9 @@ import {
   OmitType,
   PartialType,
 } from "@nestjs/swagger";
+import { Type } from "class-transformer";
 import {
+  IsArray,
   IsBoolean,
   IsEnum,
   IsInt,
@@ -14,9 +16,10 @@ import {
   Min,
   MinLength,
   ValidateIf,
+  ValidateNested,
 } from "class-validator";
 import { LessonType } from "../domain/lesson-type.enum";
-import { CreateLessonDto } from "./create-course.dto";
+import { CreateLessonDto, CreateLessonResourceDto } from "./create-course.dto";
 
 /**
  * Optional, but never null: `@IsOptional()` skips validation for `null` as
@@ -29,7 +32,13 @@ const OmittedButNotNull = () =>
   ValidateIf((_: unknown, value: unknown) => value !== undefined);
 
 export class UpdateLessonDto extends PartialType(
-  OmitType(CreateLessonDto, ["id", "title", "type", "isPreview"] as const)
+  OmitType(CreateLessonDto, [
+    "id",
+    "title",
+    "type",
+    "isPreview",
+    "resources",
+  ] as const)
 ) {
   @ApiProperty({
     example: 3,
@@ -74,4 +83,17 @@ export class UpdateLessonDto extends PartialType(
   @IsInt()
   @Min(0)
   orderIndex?: number;
+
+  // Redeclared rather than inherited: `PartialType` would add `@IsOptional()`,
+  // which lets null through, and null is not a list (MDRS-286).
+  @ApiPropertyOptional({
+    type: [CreateLessonResourceDto],
+    description:
+      "The session's own resources, in order (MDRS-286). Absent leaves them as they are; sent, the list replaces the stored one: a row whose `id` is one of this session's is kept and rewritten whole, any other row is added, and a stored row left out is removed. Never null.",
+  })
+  @OmittedButNotNull()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateLessonResourceDto)
+  resources?: CreateLessonResourceDto[];
 }

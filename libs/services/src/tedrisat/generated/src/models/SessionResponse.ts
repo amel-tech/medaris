@@ -13,6 +13,13 @@
  */
 
 import { mapValues } from '../runtime';
+import type { LessonResourceResponse } from './LessonResourceResponse';
+import {
+    LessonResourceResponseFromJSON,
+    LessonResourceResponseFromJSONTyped,
+    LessonResourceResponseToJSON,
+    LessonResourceResponseToJSONTyped,
+} from './LessonResourceResponse';
 import type { SessionMuderrisResponse } from './SessionMuderrisResponse';
 import {
     SessionMuderrisResponseFromJSON,
@@ -146,6 +153,12 @@ export interface SessionResponse {
      */
     agenda?: Array<AgendaStepResponse>;
     /**
+     * The session's own resources, in order (MDRS-286): every name to everyone who may see the session, each `url` only to a caller holding `view_details`, as on the course page.
+     * @type {Array<LessonResourceResponse>}
+     * @memberof SessionResponse
+     */
+    resources: Array<LessonResourceResponse>;
+    /**
      * Course content: absent unless the caller holds `view_details` on the course (MDRS-103). Null once the session is cancelled or over: there is nothing left to join.
      * @type {string}
      * @memberof SessionResponse
@@ -214,6 +227,7 @@ export function instanceOfSessionResponse(value: object): value is SessionRespon
     if (!('courseId' in value) || value['courseId'] === undefined) return false;
     if (!('weekId' in value) || value['weekId'] === undefined) return false;
     if (!('weekTitle' in value) || value['weekTitle'] === undefined) return false;
+    if (!('resources' in value) || value['resources'] === undefined) return false;
     if (!('inPerson' in value) || value['inPerson'] === undefined) return false;
     if (!('muderris' in value) || value['muderris'] === undefined) return false;
     if (!('contentLocked' in value) || value['contentLocked'] === undefined) return false;
@@ -245,6 +259,7 @@ export function SessionResponseFromJSONTyped(json: any, ignoreDiscriminator: boo
         'replacement': json['replacement'] == null ? undefined : SessionRefResponseFromJSON(json['replacement']),
         'kaynak': json['kaynak'] == null ? undefined : json['kaynak'],
         'agenda': json['agenda'] == null ? undefined : ((json['agenda'] as Array<any>).map(AgendaStepResponseFromJSON)),
+        'resources': ((json['resources'] as Array<any>).map(LessonResourceResponseFromJSON)),
         'meetingUrl': json['meetingUrl'] == null ? undefined : json['meetingUrl'],
         'liveStreamUrl': json['liveStreamUrl'] == null ? undefined : json['liveStreamUrl'],
         'inPerson': json['inPerson'],
@@ -283,6 +298,7 @@ export function SessionResponseToJSONTyped(value?: SessionResponse | null, ignor
         'replacement': SessionRefResponseToJSON(value['replacement']),
         'kaynak': value['kaynak'],
         'agenda': value['agenda'] == null ? undefined : ((value['agenda'] as Array<any>).map(AgendaStepResponseToJSON)),
+        'resources': ((value['resources'] as Array<any>).map(LessonResourceResponseToJSON)),
         'meetingUrl': value['meetingUrl'],
         'liveStreamUrl': value['liveStreamUrl'],
         'inPerson': value['inPerson'],

@@ -20,6 +20,13 @@ import {
     AgendaStepDtoToJSON,
     AgendaStepDtoToJSONTyped,
 } from './AgendaStepDto';
+import type { CreateLessonResourceDto } from './CreateLessonResourceDto';
+import {
+    CreateLessonResourceDtoFromJSON,
+    CreateLessonResourceDtoFromJSONTyped,
+    CreateLessonResourceDtoToJSON,
+    CreateLessonResourceDtoToJSONTyped,
+} from './CreateLessonResourceDto';
 
 /**
  * 
@@ -81,6 +88,12 @@ export interface CreateWeekLessonDto {
      * @memberof CreateWeekLessonDto
      */
     inPersonOverride?: boolean | null;
+    /**
+     * The session's own resources, in order (MDRS-286). Absent leaves them as they are; sent, the list replaces the stored one: a row whose `id` is one of this session's is kept and rewritten whole, any other row is added, and a stored row left out is removed. Changing them is session work (`session.manage`), like the meeting link. Never null.
+     * @type {Array<CreateLessonResourceDto>}
+     * @memberof CreateWeekLessonDto
+     */
+    resources?: Array<CreateLessonResourceDto>;
 }
 
 
@@ -124,6 +137,7 @@ export function CreateWeekLessonDtoFromJSONTyped(json: any, ignoreDiscriminator:
         'agenda': json['agenda'] == null ? undefined : ((json['agenda'] as Array<any>).map(AgendaStepDtoFromJSON)),
         'isPreview': json['isPreview'] == null ? undefined : json['isPreview'],
         'inPersonOverride': json['inPersonOverride'] == null ? undefined : json['inPersonOverride'],
+        'resources': json['resources'] == null ? undefined : ((json['resources'] as Array<any>).map(CreateLessonResourceDtoFromJSON)),
     };
 }
 
@@ -147,6 +161,7 @@ export function CreateWeekLessonDtoToJSONTyped(value?: CreateWeekLessonDto | nul
         'agenda': value['agenda'] == null ? undefined : ((value['agenda'] as Array<any>).map(AgendaStepDtoToJSON)),
         'isPreview': value['isPreview'],
         'inPersonOverride': value['inPersonOverride'],
+        'resources': value['resources'] == null ? undefined : ((value['resources'] as Array<any>).map(CreateLessonResourceDtoToJSON)),
     };
 }
 

@@ -9,6 +9,7 @@ import {
   courseWeeks,
   enrollments,
   lessonRecordings,
+  lessonResources,
   lessons,
 } from "../database/schema/course.schema";
 import { lessonNotes } from "../database/schema/lesson-note.schema";
@@ -63,8 +64,8 @@ export async function purgeCourses(
   ).map((w) => w.id);
 
   if (weekIds.length > 0) {
-    // Recordings (MDRS-162), notes and questions (MDRS-150) hang off lessons;
-    // they go first, uncounted. `lesson_invitations` (MDRS-121) is left on
+    // Recordings (MDRS-162), notes and questions (MDRS-150) and a session's
+    // own resources (MDRS-286) hang off lessons; they go first, uncounted. `lesson_invitations` (MDRS-121) is left on
     // purpose: it holds no key to the lesson, and the invitation sweep reads it
     // to send each talebe the CANCEL for a session that is gone, then deletes it.
     const lessonIds = tx
@@ -80,6 +81,9 @@ export async function purgeCourses(
     await tx
       .delete(lessonQuestions)
       .where(inArray(lessonQuestions.lessonId, lessonIds));
+    await tx
+      .delete(lessonResources)
+      .where(inArray(lessonResources.lessonId, lessonIds));
     counts.lessons = (
       await tx
         .delete(lessons)

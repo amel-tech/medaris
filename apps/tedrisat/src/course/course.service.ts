@@ -991,8 +991,9 @@ export class CourseService {
 
   /**
    * The sessions inside a whole-course save (MDRS-135): adding or dropping a
-   * session, or changing a kept one's time, meeting link, agenda or preview
-   * flag, needs `session.manage`, exactly as the session routes on
+   * session, or changing a kept one's time, meeting link, agenda, preview
+   * flag or own resources (MDRS-286), needs `session.manage`, exactly as the
+   * session routes on
    * LessonController do. A caller holding only `course.edit` keeps the
    * titles, texts, order and weeks, so a save that leaves every session as
    * stored still goes through. Refused whole with 403 before anything is

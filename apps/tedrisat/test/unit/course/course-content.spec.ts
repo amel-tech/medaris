@@ -26,6 +26,7 @@ const lesson = (id: string, cancelledAt: Date | null): ILesson => ({
   inPerson: true,
   inPersonOverride: true,
   hasLiveStream: true,
+  resources: [],
 });
 
 describe("withContent (nizam/56)", () => {
@@ -94,5 +95,82 @@ describe("the attendance fields under the content rule (MDRS-283)", () => {
         expect(l).not.toHaveProperty(key);
       }
     }
+  });
+});
+
+/**
+ * MDRS-286: a session's own resources are read like the course's (MDRS-279):
+ * "Adlarını herkes görür; bağlantıları derse kayıtlı talebeler açar." Every
+ * name for everyone who may see the session, each link for a content reader
+ * only, a sample session's included.
+ */
+describe("a session's own resources under the content rule (MDRS-286)", () => {
+  const resource = (lessonId: string, orderIndex: number) => ({
+    id: `${lessonId}-r${orderIndex}`,
+    lessonId,
+    name: `Kaynak ${orderIndex + 1}`,
+    meta: orderIndex === 0 ? "PDF · 12 sayfa" : null,
+    url: `https://drive.google.com/file/d/${lessonId}-${orderIndex}/view`,
+    orderIndex,
+  });
+  const course = {
+    inPerson: false,
+    weeks: [
+      {
+        id: "w1",
+        courseId: "c1",
+        weekNumber: 1,
+        title: "Hafta 1",
+        summary: null,
+        orderIndex: 0,
+        lessons: [
+          {
+            ...lesson("plain", null),
+            resources: [resource("plain", 0), resource("plain", 1)],
+          },
+          {
+            ...lesson("sample", null),
+            isPreview: true,
+            resources: [resource("sample", 0)],
+          },
+        ],
+      },
+    ],
+    resources: [],
+  } as unknown as ICourseDetail;
+
+  it("gives a content reader every name and every link, in order", () => {
+    const [plain, sample] = withContent(course).weeks[0].lessons;
+    expect(plain.resources).toEqual([
+      resource("plain", 0),
+      resource("plain", 1),
+    ]);
+    expect(sample.resources).toEqual([resource("sample", 0)]);
+  });
+
+  it("gives everyone else the names and lines without a single link, a sample session's included", () => {
+    const [plain, sample] = withoutContent(course).weeks[0].lessons;
+    expect(plain.resources).toEqual([
+      {
+        id: "plain-r0",
+        lessonId: "plain",
+        name: "Kaynak 1",
+        meta: "PDF · 12 sayfa",
+        orderIndex: 0,
+      },
+      {
+        id: "plain-r1",
+        lessonId: "plain",
+        name: "Kaynak 2",
+        meta: null,
+        orderIndex: 1,
+      },
+    ]);
+    expect(sample.resources).toHaveLength(1);
+    for (const row of [...plain.resources, ...sample.resources]) {
+      expect(row).not.toHaveProperty("url");
+    }
+    // The sample session keeps the rest of what MDRS-161 opened.
+    expect(sample).toHaveProperty("kaynak");
   });
 });

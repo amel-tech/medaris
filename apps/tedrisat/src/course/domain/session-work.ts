@@ -1,5 +1,6 @@
 import type {
   IAgendaStep,
+  ICreateLessonResource,
   ICreateWeek,
   ILesson,
   IWeek,
@@ -15,6 +16,7 @@ type SessionFields = Pick<
   | "agenda"
   | "isPreview"
   | "inPersonOverride"
+  | "resources"
 >;
 
 /**
@@ -28,6 +30,7 @@ interface SentLesson {
   agenda?: IAgendaStep[] | null;
   isPreview?: boolean | null;
   inPersonOverride?: boolean | null;
+  resources?: ICreateLessonResource[] | null;
 }
 
 const sameInstant = (a: Date | null, b: Date | null): boolean =>
@@ -40,6 +43,17 @@ const link = (value: string | null | undefined): string | null =>
 /** An empty agenda and no agenda are the same; keys compare in a fixed order. */
 const agendaKey = (steps: readonly IAgendaStep[] | null | undefined): string =>
   JSON.stringify((steps ?? []).map((step) => [step.time, step.title]));
+
+/**
+ * A resource list as `CourseRepository` stores it (MDRS-286): each row whole,
+ * in order. A row sent without an id is added, so it never matches a stored one.
+ */
+const resourcesKey = (
+  rows: readonly (Omit<ICreateLessonResource, "id"> & { id?: string | null })[]
+): string =>
+  JSON.stringify(
+    rows.map((row) => [row.id ?? null, row.name, row.meta ?? null, row.url])
+  );
 
 /**
  * Whether the save writes a session field of a lesson it keeps. Mirrors what
@@ -87,14 +101,24 @@ function sessionFieldsDiffer(stored: SessionFields, sent: SentLesson): boolean {
   ) {
     return true;
   }
+  // The session's own resources (MDRS-286) are written under the permission
+  // that edits a session, as the owner asked: adding, renaming, reordering or
+  // removing one. A save that sends the list back as read leaves it alone.
+  if (
+    sent.resources != null &&
+    resourcesKey(stored.resources) !== resourcesKey(sent.resources)
+  ) {
+    return true;
+  }
   return (sent.isPreview ?? false) !== stored.isPreview;
 }
 
 /**
  * Whether a whole-course save (`PUT /courses/:id`) does session work: it adds
  * a session, drops one (the replace hides it), changes a kept session's time,
- * meeting link, agenda, preview flag or in-person mark (MDRS-283), or makes a
- * lesson live or no longer live. That is `session.manage`'s
+ * meeting link, agenda, preview flag, in-person mark (MDRS-283) or own
+ * resources (MDRS-286), or makes a lesson live or no longer live. That is
+ * `session.manage`'s
  * ("Celse ekle, tarihini değiştir, iptal et; toplantı bağlantısını gir"), not
  * `course.edit`'s, which keeps the titles, texts, order and weeks.
  *

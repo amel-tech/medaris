@@ -13,6 +13,13 @@
  */
 
 import { mapValues } from '../runtime';
+import type { LessonResourceResponse } from './LessonResourceResponse';
+import {
+    LessonResourceResponseFromJSON,
+    LessonResourceResponseFromJSONTyped,
+    LessonResourceResponseToJSON,
+    LessonResourceResponseToJSONTyped,
+} from './LessonResourceResponse';
 import type { AgendaStepResponse } from './AgendaStepResponse';
 import {
     AgendaStepResponseFromJSON,
@@ -129,6 +136,12 @@ export interface LessonResponse {
      * @memberof LessonResponse
      */
     hasLiveStream?: boolean;
+    /**
+     * The session's own resources, in order (MDRS-286): every name to everyone who may see the session, each `url` only to a caller holding `view_details`.
+     * @type {Array<LessonResourceResponse>}
+     * @memberof LessonResponse
+     */
+    resources: Array<LessonResourceResponse>;
 }
 
 
@@ -154,6 +167,7 @@ export function instanceOfLessonResponse(value: object): value is LessonResponse
     if (!('type' in value) || value['type'] === undefined) return false;
     if (!('isPreview' in value) || value['isPreview'] === undefined) return false;
     if (!('orderIndex' in value) || value['orderIndex'] === undefined) return false;
+    if (!('resources' in value) || value['resources'] === undefined) return false;
     return true;
 }
 
@@ -184,6 +198,7 @@ export function LessonResponseFromJSONTyped(json: any, ignoreDiscriminator: bool
         'inPerson': json['inPerson'] == null ? undefined : json['inPerson'],
         'inPersonOverride': json['inPersonOverride'] == null ? undefined : json['inPersonOverride'],
         'hasLiveStream': json['hasLiveStream'] == null ? undefined : json['hasLiveStream'],
+        'resources': ((json['resources'] as Array<any>).map(LessonResourceResponseFromJSON)),
     };
 }
 
@@ -215,6 +230,7 @@ export function LessonResponseToJSONTyped(value?: LessonResponse | null, ignoreD
         'inPerson': value['inPerson'],
         'inPersonOverride': value['inPersonOverride'],
         'hasLiveStream': value['hasLiveStream'],
+        'resources': ((value['resources'] as Array<any>).map(LessonResourceResponseToJSON)),
     };
 }
 

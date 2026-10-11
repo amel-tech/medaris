@@ -1,7 +1,10 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { LIVE_STREAM_HOURS_AFTER_END } from "../domain/recording";
 import { SessionStatus } from "../domain/session-status.enum";
-import { AgendaStepResponse } from "./course-response.dto";
+import {
+  AgendaStepResponse,
+  LessonResourceResponse,
+} from "./course-response.dto";
 import { SessionRecordingResponse } from "./recording-response.dto";
 
 const CONTENT_FIELD =
@@ -57,6 +60,12 @@ export class SessionResponse extends SessionRefResponse {
     description: CONTENT_FIELD,
   })
   agenda?: AgendaStepResponse[] | null;
+  @ApiProperty({
+    type: [LessonResourceResponse],
+    description:
+      "The session's own resources, in order (MDRS-286): every name to everyone who may see the session, each `url` only to a caller holding `view_details`, as on the course page.",
+  })
+  resources!: LessonResourceResponse[];
   @ApiPropertyOptional({
     type: String,
     description:

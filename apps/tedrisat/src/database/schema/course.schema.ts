@@ -249,6 +249,31 @@ export const courseResources = table("course_resources", {
   orderIndex: integer("order_index").default(0).notNull(),
 });
 
+// A celse's own resources (MDRS-286): links, like the course's since MDRS-279
+// — a name, a short line ("PDF · 12 sayfa") and the address it opens, which
+// tedrisat stores only as an absolute http:// or https:// URL of at most 500
+// characters. Uploading the file itself is MDRS-287. The names are programme,
+// read by everyone who may see the celse; the links are course content
+// (`course/domain/course-content.ts`). RESTRICT like every foreign key here: a
+// lesson is hidden, never deleted, and `course/course-purge.ts` and the
+// archive's week and session purge remove these before the lessons.
+export const lessonResources = table(
+  "lesson_resources",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    lessonId: uuid("lesson_id")
+      .references(() => lessons.id, { onDelete: "restrict" })
+      .notNull(),
+    name: text("name").notNull(),
+    meta: text("meta"),
+    url: text("url").notNull(),
+    orderIndex: integer("order_index").default(0).notNull(),
+  },
+  // The course page reads every lesson's list at once, and the purges delete
+  // by lesson; Postgres does not index the referencing side on its own.
+  (t) => [index("lesson_resources_lesson_id_idx").on(t.lessonId)]
+);
+
 export const enrollments = table(
   "enrollments",
   {
@@ -289,12 +314,23 @@ export const courseWeeksRelations = relations(courseWeeks, ({ one, many }) => ({
   lessons: many(lessons),
 }));
 
-export const lessonsRelations = relations(lessons, ({ one }) => ({
+export const lessonsRelations = relations(lessons, ({ one, many }) => ({
   week: one(courseWeeks, {
     fields: [lessons.weekId],
     references: [courseWeeks.id],
   }),
+  resources: many(lessonResources),
 }));
+
+export const lessonResourcesRelations = relations(
+  lessonResources,
+  ({ one }) => ({
+    lesson: one(lessons, {
+      fields: [lessonResources.lessonId],
+      references: [lessons.id],
+    }),
+  })
+);
 
 export const courseMuderrisRelations = relations(courseMuderris, ({ one }) => ({
   course: one(courses, {
