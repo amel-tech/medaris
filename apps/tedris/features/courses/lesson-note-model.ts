@@ -39,6 +39,15 @@ export const sortNotes = <
     return a.createdAt.getTime() - b.createdAt.getTime();
   });
 
+/**
+ * A note's time from the clock when no video is on screen (MDRS-266): the
+ * whole seconds from the celse's scheduled start to `now`, never below 0.
+ * The panel asks for it only while the celse is live, and the talebe may
+ * change it: a recording that started late is off by as much.
+ */
+export const secondsSinceStart = (startsAt: Date, now: Date): number =>
+  Math.max(0, Math.floor((now.getTime() - startsAt.getTime()) / 1000));
+
 const two = (n: number) => String(n).padStart(2, "0");
 
 /** `754` as `12:34`, `3723` as `1:02:03`. */

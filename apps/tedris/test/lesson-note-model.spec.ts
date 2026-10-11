@@ -4,10 +4,28 @@ import {
   formatOffset,
   LESSON_NOTE_OFFSET_MAX,
   parseOffset,
+  secondsSinceStart,
   showsBodyCount,
   sortNotes,
 } from "~/features/courses/lesson-note-model";
 import { playerApiUrlOf } from "~/features/courses/recordings-model";
+
+describe("a note's time from the celse's clock (MDRS-266)", () => {
+  const start = new Date("2026-10-11T18:00:00.000Z");
+  const at = (ms: number) => new Date(start.getTime() + ms);
+
+  it("is the whole seconds since the scheduled start", () => {
+    expect(secondsSinceStart(start, start)).toBe(0);
+    expect(secondsSinceStart(start, at(845_000))).toBe(845);
+    expect(secondsSinceStart(start, at(845_999))).toBe(845);
+    expect(formatOffset(secondsSinceStart(start, at(845_000)))).toBe("14:05");
+  });
+
+  it("is never below 0", () => {
+    expect(secondsSinceStart(start, at(-1))).toBe(0);
+    expect(secondsSinceStart(start, at(-90_000))).toBe(0);
+  });
+});
 
 describe("a note's time", () => {
   it("is written as minutes and seconds, with hours only when there are some", () => {

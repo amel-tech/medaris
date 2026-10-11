@@ -179,6 +179,9 @@ export const SessionPage = async ({
   // MDRS-150: an enrolled talebe takes private notes on the video on screen,
   // the stream while it is live and the recording once it is up. The frames
   // get the player API only then, so every other viewer's page is unchanged.
+  // MDRS-266: and on every celse that stands, whatever it has: a meeting
+  // link, a stream, a recording, only the in-person mark or nothing yet,
+  // before it starts as well. Never on a cancelled one.
   const mayTakeNotes =
     !session.contentLocked && canWriteNotes(course.enrollment?.status);
   const noteFrame = (framed: string | null, frameId: string) =>
@@ -205,6 +208,20 @@ export const SessionPage = async ({
             ? frameId
             : null
         }
+      />
+    ) : null;
+  // MDRS-266: with no video on screen the panel goes under the join card,
+  // and the celse's clock gives a note's time while it is live.
+  const notesWithoutVideo =
+    mayTakeNotes && !cancelled && !notesVideo ? (
+      <LessonNotes
+        lessonId={session.id}
+        frameId={null}
+        clock={{
+          startsAt: session.startsAt?.toISOString() ?? null,
+          durationMinutes: session.durationMinutes ?? undefined,
+          renderedAt: now.toISOString(),
+        }}
       />
     ) : null;
   const recordedOn = recording?.recordedAt
@@ -399,6 +416,8 @@ export const SessionPage = async ({
               </section>
             ) : null}
           </div>
+
+          {notesWithoutVideo}
 
           {liveStream ? (
             <PlayerWithNotes

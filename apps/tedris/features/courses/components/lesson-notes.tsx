@@ -20,12 +20,60 @@ import {
   formatOffset,
   LESSON_NOTE_BODY_MAX,
   parseOffset,
+  secondsSinceStart,
   showsBodyCount,
   sortNotes,
 } from "../lesson-note-model";
+import { sessionStateOf } from "../session-model";
 import { type PlayerControl, useYouTubePlayer } from "../youtube-player";
 
 type Load = { state: "loading" } | { state: "failed" } | { state: "ready" };
+
+/**
+ * The celse a panel with no video on screen is about (MDRS-266). Its clock
+ * gives a new note's time while it is live.
+ */
+export interface CelseClock {
+  /** The scheduled start, ISO; null for a celse without one. */
+  startsAt: string | null;
+  durationMinutes?: number;
+  /** The instant the server rendered at, so the first client paint matches it. */
+  renderedAt: string;
+}
+
+/** Where a new note's time is taken from: a player, or the celse's clock. */
+type TimeSource = Pick<PlayerControl, "position">;
+
+/**
+ * The celse's clock as a source of a new note's time: the time since its
+ * scheduled start while it is live, else null and the time is typed. Like the
+ * join card, it starts from the server's instant and then follows the
+ * browser's clock every half minute, so a page opened before the start takes
+ * the time once the celse begins.
+ */
+const useCelseClock = (clock: CelseClock | undefined): TimeSource | null => {
+  const ticking = clock !== undefined;
+  const [now, setNow] = useState(() =>
+    clock ? new Date(clock.renderedAt) : null
+  );
+  useEffect(() => {
+    if (!ticking) return;
+    setNow(new Date());
+    const timer = setInterval(() => setNow(new Date()), 30_000);
+    return () => clearInterval(timer);
+  }, [ticking]);
+
+  if (!clock?.startsAt || !now) return null;
+  const startsAt = new Date(clock.startsAt);
+  const live =
+    sessionStateOf(
+      { startsAt, durationMinutes: clock.durationMinutes },
+      now
+    ) === "live";
+  return live
+    ? { position: () => secondsSinceStart(startsAt, new Date()) }
+    : null;
+};
 
 /** A body and a time field, as typed. */
 interface Draft {
@@ -53,16 +101,26 @@ const GROWING =
  * it (Bunny, Drive and other hosts report no position) the time is typed, and
  * may be left empty. Only the author's notes ever reach the panel: the API
  * returns no others.
+ *
+ * `clock` says there is no video on screen at all (MDRS-266): the panel is
+ * about the celse itself, held on a meeting link, in person or not started
+ * yet. While the celse is live a new note's time is the time since its
+ * scheduled start, prefilled and editable; before and after, it is typed or
+ * left empty.
  */
 export function LessonNotes({
   lessonId,
   frameId = null,
+  clock,
 }: {
   lessonId: string;
   frameId?: string | null;
+  clock?: CelseClock;
 }) {
   const t = useTranslations("tedrisLearn.LessonNotes");
   const player = useYouTubePlayer(frameId);
+  const celse = useCelseClock(clock);
+  const video = clock === undefined;
   const [load, setLoad] = useState<Load>({ state: "loading" });
   const [notes, setNotes] = useState<LessonNoteResponse[]>([]);
 
@@ -104,7 +162,13 @@ export function LessonNotes({
         <p className="mds-caption">{t("private")}</p>
       </div>
 
-      <NoteForm lessonId={lessonId} player={player} onSaved={put} />
+      <NoteForm
+        lessonId={lessonId}
+        player={player}
+        clock={celse}
+        video={video}
+        onSaved={put}
+      />
 
       {load.state === "loading" ? (
         <output className="mds-caption">{t("loading")}</output>
@@ -126,6 +190,7 @@ export function LessonNotes({
               key={note.id}
               note={note}
               player={player}
+              video={video}
               onSaved={put}
               onDeleted={(id) =>
                 setNotes((all) => all.filter((n) => n.id !== id))
@@ -184,16 +249,21 @@ const BodyField = ({
   );
 };
 
-/** The moment of the video a note is about, as `12:34`: a small typed field. */
+/**
+ * The moment a note is about, as `12:34`: a small typed field. The moment of
+ * the video, or of the celse when no video is on screen (MDRS-266).
+ */
 const TimeField = ({
   value,
   onChange,
   describedBy,
+  video,
 }: {
   value: string;
   onChange: (value: string) => void;
   /** The id of the line that says what the field takes. */
   describedBy: string;
+  video: boolean;
 }) => {
   const t = useTranslations("tedrisLearn.LessonNotes");
   return (
@@ -203,7 +273,7 @@ const TimeField = ({
         mono
         inputMode="numeric"
         autoComplete="off"
-        aria-label={t("timeLabel")}
+        aria-label={t(video ? "timeLabel" : "timeLabelSession")}
         aria-describedby={describedBy}
         placeholder={t("timePlaceholder")}
         leading={<Icon name="clock" size="sm" />}
@@ -217,10 +287,15 @@ const TimeField = ({
 const NoteForm = ({
   lessonId,
   player,
+  clock,
+  video,
   onSaved,
 }: {
   lessonId: string;
   player: PlayerControl | null;
+  /** The celse's clock while it is live and no video is on screen. */
+  clock: TimeSource | null;
+  video: boolean;
   onSaved: (note: LessonNoteResponse) => void;
 }) => {
   const t = useTranslations("tedrisLearn.LessonNotes");
@@ -230,9 +305,12 @@ const NoteForm = ({
   const [touched, setTouched] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  // The player's position, or, with no video on screen, the time since the
+  // live celse began (MDRS-266).
+  const source = player ?? clock;
 
   const takePosition = () => {
-    const seconds = player?.position();
+    const seconds = source?.position();
     if (seconds != null) {
       setDraft((d) => ({ ...d, time: formatOffset(seconds) }));
     }
@@ -287,12 +365,13 @@ const NoteForm = ({
           <TimeField
             value={draft.time}
             describedBy={hintId}
+            video={video}
             onChange={(time) => {
               setTouched(true);
               setDraft((d) => ({ ...d, time }));
             }}
           />
-          {player ? (
+          {source ? (
             <>
               <Button
                 variant="outline"
@@ -304,9 +383,11 @@ const NoteForm = ({
               >
                 {t("useCurrent")}
               </Button>
-              <span className="mds-visually-hidden" id={hintId}>
-                {t("timeHelpPlayer")}
-              </span>
+              {player ? (
+                <span className="mds-visually-hidden" id={hintId}>
+                  {t("timeHelpPlayer")}
+                </span>
+              ) : null}
             </>
           ) : null}
           <Button
@@ -322,9 +403,18 @@ const NoteForm = ({
         </div>
         {player ? null : (
           // Bunny, Drive and other hosts report no position: the talebe reads
-          // it off the player, or leaves it out.
+          // it off the player, or leaves it out. With no video, the line says
+          // the time is the celse's, from its clock while it is live and
+          // typed otherwise (MDRS-266); it stays in sight, as no video
+          // explains the number.
           <p className="mds-help" id={hintId}>
-            {t("timeHelpManual")}
+            {t(
+              clock
+                ? "timeHelpClock"
+                : video
+                  ? "timeHelpManual"
+                  : "timeHelpSession"
+            )}
           </p>
         )}
       </div>
@@ -346,11 +436,13 @@ const NoteForm = ({
 const NoteItem = ({
   note,
   player,
+  video,
   onSaved,
   onDeleted,
 }: {
   note: LessonNoteResponse;
   player: PlayerControl | null;
+  video: boolean;
   onSaved: (note: LessonNoteResponse) => void;
   onDeleted: (id: string) => void;
 }) => {
@@ -425,10 +517,11 @@ const NoteItem = ({
           <TimeField
             value={draft.time}
             describedBy={hintId}
+            video={video}
             onChange={(time) => setDraft((d) => ({ ...d, time }))}
           />
           <span className="mds-visually-hidden" id={hintId}>
-            {t("timeHelpManual")}
+            {t(video ? "timeHelpManual" : "timeHelpSession")}
           </span>
           <Button
             size="small"
