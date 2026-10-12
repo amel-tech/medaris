@@ -21,7 +21,7 @@ export const IS_DRAFT = process.env.NODE_ENV !== "production";
 
 export const TITLE = "Kişisel Verilerin Korunması Hakkında Aydınlatma Metni";
 
-export const LAST_UPDATED = "4 Ekim 2026";
+export const LAST_UPDATED = "12 Ekim 2026";
 
 /**
  * Every column of tedrisat's `users` table (MDRS-104,
@@ -67,7 +67,7 @@ export const SECTIONS: NoticeSection[] = [
       "Kimlik: adınız ve soyadınız.",
       "İletişim: e-posta adresiniz.",
       "Hesap ve kullanım verileri: hesap kimliğiniz, e-posta adresinizin doğrulanıp doğrulanmadığı, dil ve saat dilimi tercihiniz, hesabınızın oluşturulma ve platformu en son kullandığınız zaman, oturum açma kayıtları.",
-      "Eğitim kayıtları: katıldığınız köşkler, derslere kaydınız ve katılımınız, oluşturduğunuz ezber kartları, celse videolarına aldığınız notlar ve ders kadrosuna sorduğunuz sorular.",
+      "Eğitim kayıtları: katıldığınız köşkler, derslere kaydınız ve katılımınız, oluşturduğunuz ezber kartları, celse videolarına aldığınız notlar, ders kadrosuna sorduğunuz sorular ve celselere yüklediğiniz ödev dosyaları; ödev dosyalarınızı yalnız siz ve ders kadrosu görür.",
       "Yazışmalar: iletişim formundan gönderdiğiniz ad, e-posta adresi, konu ve mesaj.",
       "Teknik kayıtlar: sunucuların tuttuğu istek kayıtları (IP adresi, tarayıcı bilgisi, açılan sayfa ve zamanı).",
     ],
@@ -80,7 +80,7 @@ export const SECTIONS: NoticeSection[] = [
     heading: "3. İşleme amaçları",
     items: [
       "Üyelik hesabınızın oluşturulması ve yönetilmesi.",
-      "Eğitim hizmetlerinin sunulması: köşklere ve derslere kayıt, canlı ders takvimi, ders kayıtlarına erişim.",
+      "Eğitim hizmetlerinin sunulması: köşklere ve derslere kayıt, canlı ders takvimi, ders kayıtlarına ve ders kaynaklarına erişim, ödev dosyalarının ders kadrosuna ulaştırılması.",
       "Kimliğinizin doğrulanması ve hesap güvenliğinin sağlanması.",
       "E-posta adresinizin doğrulanması, parola sıfırlama ve celse davetleri gibi hesabınızla ve derslerinizle ilgili e-postaların gönderilmesi; celse davetlerini Hesap sayfanızdan kapatabilirsiniz.",
       "İletişim formundan gönderdiğiniz mesajlara cevap verilmesi.",
@@ -95,6 +95,10 @@ export const SECTIONS: NoticeSection[] = [
     ],
     items: [
       "Barındırma hizmeti: platform ve veritabanı, Türkiye’deki sunucularında barındırıldığımız Hosting Dünyam’da çalışır.",
+      // The storage the owner chose on 12 October for file uploads (MDRS-287,
+      // not built yet): a Bunny Storage zone in Frankfurt. BunnyWay d.o.o. is
+      // the entity bunny.net/privacy and bunny.net/tos name.
+      "Dosya depolama: derslere ve celselere yüklenen kaynak dosyaları ile talebelerin celselere yüklediği ödev dosyaları yurt dışında, Bunny Storage’ın (BunnyWay d.o.o., Slovenya) Almanya’nın Frankfurt kentindeki depolama alanında saklanır.",
       "Kimlik doğrulama sunucusu: kaydınız ve oturum açmanız Medaris’in kendi kimlik sunucusu üzerinden yürütülür; ad, soyad, e-posta adresi ve parolanız (şifrelenmiş olarak) orada tutulur.",
       "E-posta gönderimi: doğrulama, parola sıfırlama ve celse daveti e-postaları ile iletişim formu mesajları bir e-posta gönderim hizmeti üzerinden iletilir; bu e-postalarda adınız, e-posta adresiniz ve ilgili ders bilgisi yer alır.",
     ],

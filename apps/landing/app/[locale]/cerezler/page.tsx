@@ -30,7 +30,7 @@ export default async function Page({
               tercih çerezini kullanır.
             </p>
             <p className="mds-caption">
-              Son güncelleme: <time dateTime="2026-10-04">4 Ekim 2026</time>
+              Son güncelleme: <time dateTime="2026-10-12">12 Ekim 2026</time>
             </p>
           </div>
         </div>
@@ -110,10 +110,13 @@ export default async function Page({
             </section>
           ))}
           <p className="mds-caption max-inline-measure">
-            Güvenli bağlantıda giriş çerezlerinin adı{" "}
-            <code className="mds-mono">__Secure-</code> ya da{" "}
-            <code className="mds-mono">__Host-</code> ile başlar; bu ek,
-            tarayıcının çerezi yalnız şifreli bağlantıda göndermesini sağlar.
+            Tedris, Nizam ve Nazar’ın giriş çerezlerini tarayıcıdaki betikler
+            okuyamaz (HttpOnly) ve başka bir sitenin arka planda yaptığı
+            isteklerle gönderilmezler (SameSite=Lax). Güvenli bağlantıda adları{" "}
+            <code className="mds-mono">__Host-</code> ile başlar (örneğin{" "}
+            <code className="mds-mono">__Host-tedris.session</code>): tarayıcı
+            bu çerezleri yalnız şifreli bağlantıda (Secure) ve yalnız onları
+            yerleştiren adrese gönderir.
           </p>
           <section className="mds-reading" aria-labelledby="c2">
             <h2 className="mds-h3" id="c2">
