@@ -97,7 +97,7 @@ describe("Keycloak image", () => {
     ["the e-mail e2e spec", "apps/keycloak-theme/test/email.e2e.spec.ts"],
   ])("%s takes the Keycloak version from the Dockerfile", (_label, path) => {
     const text = read(path);
-    expect(text).not.toMatch(/quay\.io\/keycloak\/keycloak:\d/);
+    expect(text).not.toContain("quay.io/keycloak/keycloak:");
     expect(text).not.toMatch(/\b26\.\d+\.\d+\b/);
   });
 
