@@ -58,6 +58,7 @@ const LIBRARY: IBunnyStreamConfig = {
   apiKey: "e2e-library-api-key",
   tokenKey: "e2e-token-key",
   embedLifetimeSeconds: LIFETIME_SECONDS,
+  collectionId: null,
 };
 
 /** The Bunny videos: two only the course's people may see, one public. */

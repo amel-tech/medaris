@@ -59,6 +59,7 @@ const LIBRARY: IBunnyStreamConfig = {
   apiKey: "e2e-library-api-key",
   tokenKey: "e2e-token-key",
   embedLifetimeSeconds: 6 * 3600,
+  collectionId: null,
 };
 
 /** A stand-in for Bunny's Stream API: Create Video and Get Video, in memory. */

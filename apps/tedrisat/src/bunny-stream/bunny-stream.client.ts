@@ -82,12 +82,21 @@ export class BunnyStreamClient {
     return this.config;
   }
 
-  /** Creates an empty video in the library and returns its id (Bunny's `guid`). */
+  /**
+   * Creates an empty video in the library and returns its id (Bunny's `guid`).
+   * With a collection configured the video is created in it, otherwise at the
+   * library root.
+   */
   async createVideo(title: string): Promise<string> {
-    const { libraryId } = this.settings;
+    const { libraryId, collectionId } = this.settings;
     const body = await this.request<{ guid?: unknown }>(
       `${API_ROOT}/${libraryId}/videos`,
-      { method: "POST", body: JSON.stringify({ title }) }
+      {
+        method: "POST",
+        body: JSON.stringify(
+          collectionId ? { title, collectionId } : { title }
+        ),
+      }
     );
     if (body === null || typeof body.guid !== "string" || !body.guid) {
       this.logger.warn("Bunny Create Video answered without a guid");

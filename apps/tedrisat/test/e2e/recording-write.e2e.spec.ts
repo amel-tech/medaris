@@ -74,6 +74,7 @@ const LIBRARY: IBunnyStreamConfig = {
   apiKey: "e2e-library-api-key",
   tokenKey: "e2e-token-key",
   embedLifetimeSeconds: 6 * 3600,
+  collectionId: null,
 };
 const VIDEO = "b2470000-0000-4000-8000-000000000001";
 const OTHER_VIDEO = "b2470000-0000-4000-8000-000000000002";

@@ -14,7 +14,15 @@ export interface IBunnyStreamConfig {
   tokenKey: string | null;
   /** How many seconds a signed player link plays after it is handed out (MDRS-119). */
   embedLifetimeSeconds: number;
+  /**
+   * The collection new videos are created in, or null for the library root.
+   * Dev and prod share one library, so each keeps its videos in its own collection.
+   */
+  collectionId: string | null;
 }
+
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
  * Reads `BUNNY_STREAM_LIBRARY_ID`, `BUNNY_STREAM_API_KEY` and
@@ -31,6 +39,12 @@ export interface IBunnyStreamConfig {
  * plays: 6 hours when unset, and a whole number of seconds from a minute to a
  * week otherwise. Anything else stops the boot rather than silently signing
  * links that expire at once or almost never.
+ *
+ * `BUNNY_STREAM_COLLECTION_ID` is the collection new videos are created in.
+ * Dev and prod share one library, and each environment keeps its videos in its
+ * own collection. Unset, videos are created at the library root; set, it must
+ * be the collection's id (a UUID), or the boot stops rather than every upload
+ * failing at Bunny.
  */
 export function readBunnyStreamConfig(
   env: NodeJS.ProcessEnv
@@ -55,7 +69,19 @@ export function readBunnyStreamConfig(
     apiKey,
     tokenKey,
     embedLifetimeSeconds: readEmbedLifetime(env.BUNNY_STREAM_EMBED_TTL_SECONDS),
+    collectionId: readCollectionId(env.BUNNY_STREAM_COLLECTION_ID),
   };
+}
+
+function readCollectionId(raw: string | undefined): string | null {
+  const value = raw?.trim();
+  if (!value) return null;
+  if (!UUID_REGEX.test(value)) {
+    throw new Error(
+      `BUNNY_STREAM_COLLECTION_ID must be the collection's id (a UUID), got "${value}".`
+    );
+  }
+  return value;
 }
 
 function readEmbedLifetime(raw: string | undefined): number {

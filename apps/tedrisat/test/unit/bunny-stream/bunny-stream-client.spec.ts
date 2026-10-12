@@ -27,6 +27,7 @@ describe("readBunnyStreamConfig (MDRS-116)", () => {
       apiKey: "set-me-api-key",
       tokenKey: null,
       embedLifetimeSeconds: 21_600,
+      collectionId: null,
     });
     expect(
       readBunnyStreamConfig({ ...ENV, BUNNY_STREAM_TOKEN_KEY: "tk" })?.tokenKey
@@ -73,6 +74,39 @@ describe("BUNNY_STREAM_EMBED_TTL_SECONDS (MDRS-119)", () => {
   it("stops the boot on anything else", () => {
     for (const bad of ["59", "604801", "0", "-60", "3600.5", "6h", "1e4"]) {
       expect(() => ttl(bad)).toThrow(/BUNNY_STREAM_EMBED_TTL_SECONDS/);
+    }
+  });
+});
+
+const COLLECTION = "cb1f4b38-8764-4337-92e4-12733e54dd6f";
+
+describe("BUNNY_STREAM_COLLECTION_ID", () => {
+  const collection = (value: string | undefined) =>
+    readBunnyStreamConfig({ ...ENV, BUNNY_STREAM_COLLECTION_ID: value })
+      ?.collectionId;
+
+  it("is null when unset or empty: videos go to the library root", () => {
+    expect(readBunnyStreamConfig(ENV)?.collectionId).toBeNull();
+    expect(collection(undefined)).toBeNull();
+    expect(collection("")).toBeNull();
+    expect(collection("  ")).toBeNull();
+  });
+
+  it("takes a collection's id", () => {
+    expect(collection(COLLECTION)).toBe(COLLECTION);
+    expect(collection(` ${COLLECTION} `)).toBe(COLLECTION);
+  });
+
+  it("stops the boot on anything that is not a UUID", () => {
+    for (const bad of [
+      "prod",
+      "12345",
+      "cb1f4b38-8764-4337-92e4-12733e54dd6",
+      "cb1f4b388764433792e412733e54dd6f",
+      `${COLLECTION}x`,
+      `{${COLLECTION}}`,
+    ]) {
+      expect(() => collection(bad)).toThrow(/BUNNY_STREAM_COLLECTION_ID/);
     }
   });
 });
@@ -135,6 +169,24 @@ describe("BunnyStreamClient (MDRS-116)", () => {
     expect(init.method).toBe("POST");
     expect(init.headers.AccessKey).toBe("set-me-api-key");
     expect(JSON.parse(String(init.body))).toEqual({ title: "Celse kaydı" });
+  });
+
+  it("creates the video in the configured collection", async () => {
+    const fetchImpl = vi.fn(async () => json({ guid: "video-1" }));
+    const client = new BunnyStreamClient(
+      readBunnyStreamConfig({ ...ENV, BUNNY_STREAM_COLLECTION_ID: COLLECTION }),
+      fetchImpl as never
+    );
+    await expect(client.createVideo("Celse kaydı")).resolves.toBe("video-1");
+    const [url, init] = fetchImpl.mock.calls[0] as unknown as [
+      string,
+      RequestInit,
+    ];
+    expect(url).toBe("https://video.bunnycdn.com/library/12345/videos");
+    expect(JSON.parse(String(init.body))).toEqual({
+      title: "Celse kaydı",
+      collectionId: COLLECTION,
+    });
   });
 
   it("reads a video's status, and null once Bunny no longer has it", async () => {
