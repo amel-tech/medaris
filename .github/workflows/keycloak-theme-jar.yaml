@@ -6,6 +6,12 @@ name: Keycloak Theme JAR
 # build and bakes the artifact into the Keycloak image, so the JAR that is
 # smoke-tested here is the JAR that ships.
 #
+# No `push` trigger (2026-10-12). On main this workflow runs through
+# cd-development.yaml -> keycloak-theme-app.yaml whenever `nx affected` lists
+# keycloak-theme, which covers apps/keycloak-theme and the libs it builds
+# from; a push trigger of its own built the same JAR a second time on every
+# such push. Pull requests still run it directly, with the path filter below.
+#
 # Why a separate workflow rather than a job in ci.yaml: ci.yaml's Verify job
 # runs `nx affected -t build`, and apps/keycloak-theme has no `build` target —
 # the JAR comes from `build-keycloak-theme`, which needs a JDK and Maven that
@@ -14,17 +20,6 @@ name: Keycloak Theme JAR
 
 on:
   pull_request:
-    paths:
-      - apps/keycloak-theme/**
-      - libs/ui/**
-      - libs/icons/**
-      - libs/tokens/**
-      - pnpm-lock.yaml
-      - pnpm-workspace.yaml
-      - tools/keycloak/smoke-theme-jar.sh
-      - .github/workflows/keycloak-theme-jar.yaml
-  push:
-    branches: [main]
     paths:
       - apps/keycloak-theme/**
       - libs/ui/**

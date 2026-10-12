@@ -20,7 +20,7 @@ owner.
 | Source | `apps/keycloak-theme/` |
 | Dockerfile | `apps/keycloak-theme/Dockerfile`; the build context is the theme JAR alone, not the repository |
 | Keycloak version | `ARG KEYCLOAK_VERSION` in that Dockerfile, the only pin: **26.6.3**, the version production ran on 2026-10-12 (`kc.sh --version` → 26.6.3, JVM 21.0.11) |
-| Workflows | `.github/workflows/keycloak-theme-jar.yaml` (JAR build and smoke test, every change) and `.github/workflows/keycloak-theme-app.yaml` (**Keycloak**: image, promotion, deploy) |
+| Workflows | `.github/workflows/keycloak-theme-jar.yaml` (JAR build and smoke test: pull requests, and every Keycloak run) and `.github/workflows/keycloak-theme-app.yaml` (**Keycloak**: image, promotion, deploy) |
 | GHCR image | `ghcr.io/amel-tech/medaris-keycloak` (`IMAGE_NAME: ${{ github.repository }}-keycloak`) |
 | Theme id | `medaris-keycloak-theme` (`apps/keycloak-theme/src/kc.gen.tsx`; the realms ask for it in `config/keycloak/realms/_base.json`) |
 | In the image | `/opt/keycloak/providers/medaris-keycloak-theme.jar`, owned by `keycloak:root` like the rest of `/opt/keycloak` |
@@ -94,11 +94,11 @@ fails on a pin below 26.6.3.
 ## 1. What the build runs
 
 `.github/workflows/keycloak-theme-jar.yaml` builds the JAR on every pull
-request and every push to `main` that touches `apps/keycloak-theme/**` (the
-Dockerfile included), `libs/ui`, `libs/icons`, `libs/tokens`, the lockfile or
-the smoke script, and keeps it as the artifact `keycloak-theme-jar-<sha>` (90
-days). The Keycloak workflow calls the same workflow for its build, so the JAR
-in the image is the one that passed the smoke test.
+request that touches `apps/keycloak-theme/**` (the Dockerfile included),
+`libs/ui`, `libs/icons`, `libs/tokens`, the lockfile or the smoke script, and
+keeps it as the artifact `keycloak-theme-jar-<sha>` (90 days). On `main` it
+runs only as part of the Keycloak workflow, which calls it for its build, so
+the JAR in the image is the one that passed the smoke test, built once.
 
 ```bash
 pnpm exec nx run keycloak-theme:build-keycloak-theme   # = vite build && keycloakify build

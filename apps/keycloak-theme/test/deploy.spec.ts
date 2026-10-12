@@ -119,11 +119,15 @@ describe("theme JAR workflow", () => {
     return block?.[1] ?? "";
   };
 
-  it.each([
-    "pull_request",
-    "push",
-  ])("runs on %s for every change to apps/keycloak-theme", (event) => {
-    expect(trigger(event)).toContain("- apps/keycloak-theme/**");
+  it("runs on every pull request that changes apps/keycloak-theme", () => {
+    expect(trigger("pull_request")).toContain("- apps/keycloak-theme/**");
+  });
+
+  it("builds once per push to main, through the Keycloak workflow", () => {
+    // cd-development.yaml calls keycloak-theme-app.yaml, which calls this
+    // workflow; a push trigger of its own would build the same JAR twice.
+    expect(workflow).not.toMatch(/\n {2}push:\n/);
+    expect(workflow).toMatch(/\n {2}workflow_call:\n/);
   });
 
   it("builds, smoke-tests and keeps the Keycloak 26 JAR", () => {
