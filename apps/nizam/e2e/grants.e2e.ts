@@ -148,9 +148,10 @@ test("nizam/38 — 'Ders nazırı ata' finds the person by e-mail, offers only m
   const save = dialog.getByRole("button", { name: "Kaydet" });
   await expect(save).toBeDisabled();
 
-  // only what a köşk nazımı holds is offered: the 20 course permissions
-  // (`COURSE_CATALOG`, which question.answer joined with MDRS-150)
-  await expect(dialog.getByRole("checkbox")).toHaveCount(20);
+  // only what a köşk nazımı holds is offered: the 21 course permissions
+  // (`COURSE_CATALOG`, which question.answer joined with MDRS-150 and
+  // submission.read with MDRS-290)
+  await expect(dialog.getByRole("checkbox")).toHaveCount(21);
 
   const email = dialog.getByRole("textbox", { name: /^Ders nazırı/ });
   await email.fill("kimse-yok-boyle@example.test");

@@ -43,6 +43,7 @@ const CATALOG = [
   "recording.watch_restricted",
   "session.view_content",
   "question.answer",
+  "submission.read",
   "ban.course",
   "ban.lift_course",
   "deck.manage_course",
