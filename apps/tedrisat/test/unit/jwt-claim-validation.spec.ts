@@ -1,9 +1,15 @@
-import { createHmac, createSign, generateKeyPairSync } from "node:crypto";
+import {
+  createHmac,
+  createPublicKey,
+  createSign,
+  generateKeyPairSync,
+} from "node:crypto";
 import {
   AuthGuard,
   IPublicKeyProvider,
   JWT_VERIFIER,
   JwtVerifierService,
+  KeyNotFoundError,
   PUBLIC_KEY_PROVIDER,
 } from "@medaris/common";
 import { Controller, Get, INestApplication, UseGuards } from "@nestjs/common";
@@ -15,8 +21,10 @@ import request from "supertest";
  * Covers the claim checks MDRS-30 added to JwtVerifierService.
  *
  * The realm signing key is generated here. Tokens are assembled with
- * node:crypto rather than `jsonwebtoken` so the fixtures do not depend on the
- * same library that verifies them.
+ * node:crypto rather than jose so the fixtures do not depend on the same
+ * library that verifies them. The reasons asserted below are jose's (auth
+ * audit C5 replaced `jsonwebtoken`); libs/common/test/auth-guard has the
+ * jose-signed RS256, ES256 and EdDSA cases against a served JWKS.
  *
  * This spec owns its keypair rather than taking the run-wide one that
  * `test/global-setup.ts` provides (MDRS-89): it is a unit spec, it needs a
@@ -43,9 +51,9 @@ const otherKeyPair = generateKeyPairSync("rsa", {
 });
 
 const keyProvider: IPublicKeyProvider = {
-  async getKey(kid: string): Promise<string> {
-    if (kid !== KID) throw new Error("Key not found");
-    return publicKey;
+  async getKey({ kid }) {
+    if (kid !== KID) throw new KeyNotFoundError();
+    return createPublicKey(publicKey);
   },
 };
 
@@ -192,7 +200,7 @@ describe("JwtVerifierService claim validation", () => {
       const token = signRs256(validClaims({ aud: "teskilat-api" }));
 
       await expect(verifier.verifyToken(token)).rejects.toThrow(
-        /audience invalid/i
+        /unexpected "aud" claim value/
       );
     });
 
@@ -202,7 +210,7 @@ describe("JwtVerifierService claim validation", () => {
       );
 
       await expect(verifier.verifyToken(token)).rejects.toThrow(
-        /issuer invalid/i
+        /unexpected "iss" claim value/
       );
     });
 
@@ -223,7 +231,7 @@ describe("JwtVerifierService claim validation", () => {
     });
 
     it("rejects a token that carries no exp claim", async () => {
-      // jsonwebtoken enforces exp when present but accepts a token without it.
+      // jose enforces exp when present but accepts a token without it.
       const token = signRs256(validClaims({ exp: undefined }));
 
       await expect(verifier.verifyToken(token)).rejects.toThrow(
@@ -234,7 +242,7 @@ describe("JwtVerifierService claim validation", () => {
     it("rejects an HS256 token signed with the published public key", async () => {
       await expect(
         verifier.verifyToken(signHs256(validClaims()))
-      ).rejects.toThrow(/invalid algorithm/i);
+      ).rejects.toThrow(/ERR_JOSE_ALG_NOT_ALLOWED/);
     });
 
     it("rejects a token signed by a key that is not the realm's", async () => {

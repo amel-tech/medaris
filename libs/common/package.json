@@ -29,19 +29,17 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@nestjs/cache-manager": "catalog:",
     "@nestjs/common": "catalog:",
     "@nestjs/config": "catalog:",
     "@nestjs/core": "catalog:",
     "@nestjs/swagger": "catalog:",
     "@nestjs/throttler": "catalog:",
-    "cache-manager": "catalog:",
     "class-transformer": "catalog:",
     "class-validator": "catalog:",
     "compression": "catalog:",
     "exceljs": "catalog:",
     "helmet": "catalog:",
-    "jsonwebtoken": "catalog:",
+    "jose": "catalog:",
     "pino": "catalog:",
     "pino-pretty": "catalog:",
     "winston": "catalog:"
@@ -49,7 +47,6 @@
   "devDependencies": {
     "@types/compression": "catalog:",
     "@types/express": "catalog:",
-    "@types/jsonwebtoken": "catalog:",
     "@types/multer": "catalog:",
     "@types/node": "catalog:",
     "@vitest/coverage-v8": "catalog:",

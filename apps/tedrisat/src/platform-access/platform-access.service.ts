@@ -3,6 +3,7 @@ import {
   AuthzForbiddenError,
   ENTITIES,
   effectivePermissions,
+  mapAccessTokenClaims,
   RELATIONS,
   ROLES,
 } from "@medaris/common";
@@ -12,10 +13,8 @@ import { TedrisatAuthzContext } from "../authz/tedrisat-authz-context.service";
 import { DatabaseModule } from "../database/database.module";
 
 /** The başnazım is the realm's SYSTEM_ADMIN role, read off the token as `AuthzService` does. */
-export const isSystemAdmin = (user: AuthenticatedUser): boolean => {
-  const roles = user.realm_access?.roles;
-  return Array.isArray(roles) && roles.includes(ROLES.SYSTEM_ADMIN);
-};
+export const isSystemAdmin = (user: AuthenticatedUser): boolean =>
+  mapAccessTokenClaims(user).roles.includes(ROLES.SYSTEM_ADMIN);
 
 /**
  * Who may use the Medaris management screens (MDRS-181): the başnazım

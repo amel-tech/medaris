@@ -307,7 +307,7 @@ describe("Keycloak realm ↔ audience check (e2e)", () => {
     // to itself, so the reason is read from the verifier the guard delegates to.
     await expect(
       app.get<IJwtVerifier>(JWT_VERIFIER).verifyToken(token)
-    ).rejects.toThrow(/jwt audience invalid/);
+    ).rejects.toThrow(/unexpected "aud" claim value/);
   });
 
   it("treats a URL that only starts with http://localhost: as remote", () => {
