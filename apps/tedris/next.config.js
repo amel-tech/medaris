@@ -77,6 +77,12 @@ const nextConfig = {
       "@medaris/icons/ssr",
       "@phosphor-icons/react",
     ],
+    // MDRS-290: `proxy.ts` matches the homework upload route (so the session
+    // is renewed on the way), and Next reads the body of every request it
+    // matches and cuts it off at this size, 10 MB by default. A file may have
+    // 25 MB (`MAX_FILE_BYTES`) plus the multipart around it; see the
+    // file-proxy section of libs/services/README.md.
+    proxyClientMaxBodySize: "26mb",
   },
   redirects: async () => {
     return [

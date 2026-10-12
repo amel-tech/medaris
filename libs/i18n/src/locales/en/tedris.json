@@ -115,7 +115,7 @@
     "sourceHeading": "Sources",
     "resourcesTitle": "Resources of this course",
     "resourcesNewTab": " (opens in a new tab)",
-    "resourcesLocked": "Talebe enrolled in the course open the links.",
+    "resourcesLocked": "Talebe enrolled in the course open the resources.",
     "deckEmpty": "No deck is linked to this course.",
     "teachers": "Teachers",
     "typeLive": "Live session",
@@ -133,7 +133,8 @@
     "completedNote": "The course team confirmed it on {date}. While the course runs you keep access to its sessions and recordings.",
     "openSession": "Open the session page",
     "leaveBody": "You are about to leave <b>{title}</b>. You lose access to its sessions, meeting links, recordings and deck, and its sessions drop out of your calendar.",
-    "leaveBodyCards": "The cards you copied into your own decks stay with you. You can apply to the course again."
+    "leaveBodyCards": "The cards you copied into your own decks stay with you. You can apply to the course again.",
+    "resourcesDownload": " (downloads)"
   },
   "DataTable": {
     "noResults": "No results."
@@ -509,7 +510,7 @@
     "agendaTitle": "Agenda",
     "agendaZone": "Times are in {zone} time.",
     "resourcesTitle": "Resources",
-    "resourcesLocked": "Talebe enrolled in the course open the links.",
+    "resourcesLocked": "Talebe enrolled in the course open the resources.",
     "neighbours": "Between sessions",
     "previousWeek": "Previous · Week {number}",
     "nextWeek": "Next · Week {number}",
@@ -561,7 +562,8 @@
     "readingPlace": "Reading:",
     "resourcesOwn": "This session",
     "resourcesCourse": "Whole course",
-    "rowRecording": "Recording available"
+    "rowRecording": "Recording available",
+    "download": " (downloads)"
   },
   "AccountPage": {
     "pageTitle": "Account",

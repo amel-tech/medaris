@@ -18,7 +18,10 @@ libs/services/
 │   │   ├── generated/     # Auto-generated API client (do not edit)
 │   │   ├── api-factory.ts # Factory for creating authenticated clients
 │   │   └── index.ts       # Public exports
+│   ├── file-proxy/        # File uploads/downloads   -> @medaris/services/file-proxy
+│   ├── file-rules/        # File limits, types, size -> @medaris/services/file-rules
 │   └── utils/             # Error helpers            -> @medaris/services/utils
+├── test/                  # Vitest specs (file-proxy, file-rules)
 └── openapitools.json      # OpenAPI generator configuration
 ```
 
@@ -85,6 +88,126 @@ const { decks } = createTedrisatAPIs({
 })
 ```
 
+### File uploads and downloads (`@medaris/services/file-proxy`)
+
+The generated client reads every answer as JSON, and the browser holds no
+token, so a file goes through the app's own route handler, which hands it to
+`proxyUpload` or `proxyDownload` (MDRS-287, MDRS-290). Both are server-only.
+Every app wires them the same way:
+
+- `proxyUpload(request, { apiBaseUrl, path, accessToken, maxBytes })` checks
+  that the body is `multipart/form-data` with a boundary (else 415
+  `MULTIPART_REQUIRED`) and that its `Content-Length` is at most `maxBytes`
+  plus a 64 KiB multipart allowance (else 413 `FILE_TOO_LARGE`), then sends
+  the request's own stream to tedrisat, unread, with the bearer token and the
+  original `Content-Type`. tedrisat's status and JSON body come back as they
+  are.
+- `proxyDownload({ apiBaseUrl, path, accessToken, request, signInUrl })`
+  streams the file back with the headers tedrisat set for it (`Content-Type`,
+  `Content-Length`, `Content-Disposition`, `X-Content-Type-Options`,
+  `Cache-Control`, `Content-Security-Policy`) and no other. A refusal (403,
+  404, 503 …) comes back as tedrisat's JSON to a `fetch()`. To a link the
+  browser followed as a page (`Sec-Fetch-Dest: document`), it is a 303
+  instead: a 401 goes to `signInUrl(<the Referer's path, or "/">)` (with
+  `reauth` when tedrisat refused the token), anything else back to the
+  same-origin Referer with `?fileError=forbidden|notFound|unavailable|failed`
+  (`FILE_ERROR_PARAM`, `fileDownloadError` in `file-rules`), or a short
+  `text/plain` page when there is no such Referer. `request` and `signInUrl`
+  (the app's, from `~/lib/auth`) go together; `signal` defaults to
+  `request.signal`.
+- No token (`await getAccessToken()` gave nothing) answers 401
+  `{ kind: "unauthenticated" }`; a token tedrisat refused answers 401
+  `{ kind: "unauthenticated", reauth: true }`. Never a redirect to a
+  `fetch()`: the page hands that body to `handleUnauthenticated` from
+  `@medaris/auth/client`. Only a download link followed as a page is
+  redirected (above).
+- Only a path under `/courses/` or `/lessons/` made of plain segments
+  (letters, digits, `-`, `_`) is sent; anything else answers 400
+  `INVALID_PATH`. Check the route params with `isUuid` first and answer 404
+  yourself.
+
+```typescript
+// app/api/files/courses/[courseId]/resources/[resourceId]/route.ts
+import { isUuid, proxyDownload } from '@medaris/services/file-proxy'
+import { env } from '~/env'
+import { getAccessToken, signInUrl } from '~/lib/auth'
+
+export async function GET(
+  request: Request,
+  { params }: { params: Promise<{ courseId: string; resourceId: string }> }
+) {
+  const { courseId, resourceId } = await params
+  if (!isUuid(courseId) || !isUuid(resourceId)) {
+    return Response.json({ code: 'NOT_FOUND' }, { status: 404 })
+  }
+  return proxyDownload({
+    apiBaseUrl: env.TEDRISAT_API_BASE_URL,
+    path: `/courses/${courseId}/resources/${resourceId}/file`,
+    accessToken: await getAccessToken(),
+    request,
+    signInUrl,
+  })
+}
+```
+
+```typescript
+// app/api/files/courses/[courseId]/resources/route.ts
+import { isUuid, MAX_FILE_BYTES, proxyUpload } from '@medaris/services/file-proxy'
+import { env } from '~/env'
+import { getAccessToken } from '~/lib/auth'
+
+export async function POST(
+  request: Request,
+  { params }: { params: Promise<{ courseId: string }> }
+) {
+  const { courseId } = await params
+  if (!isUuid(courseId)) {
+    return Response.json({ code: 'NOT_FOUND' }, { status: 404 })
+  }
+  return proxyUpload(request, {
+    apiBaseUrl: env.TEDRISAT_API_BASE_URL,
+    path: `/courses/${courseId}/resources/files`,
+    accessToken: await getAccessToken(),
+    maxBytes: MAX_FILE_BYTES,
+  })
+}
+```
+
+In the page, a download is a plain link (`<a href="/api/files/…">`) without
+the `download` attribute: `Content-Disposition: attachment` already saves the
+file, and a `download` link would save a refusal's redirect target as the
+file too. A page that lists files reads `?fileError=` once, says why, and
+takes it off the address. An upload is a `fetch` with a `FormData` body whose
+file field is `file`; on 401, pass the JSON to
+`handleUnauthenticated(body, { locale })`.
+
+What a page shows and checks about a file comes from
+`@medaris/services/file-rules`, which is client-safe (no `server-only`):
+`MAX_FILE_BYTES` (25 MB; the proxy re-exports the same number),
+`MAX_SUBMISSION_FILES`, `ALLOWED_FILE_TYPES` and the input's `FILE_ACCEPT`,
+`fileTypeChip(contentType)` (`PDF`, `PNG`, `JPEG`, `WEBP`, `DOCX`, `XLSX`,
+`PPTX`, `TXT`, or null) and `formatFileSize(bytes, locale)`, counted in steps
+of 1024 as the limit is, so a file at the limit reads "25 MB". The words
+around them (a chip's name, a refusal) stay each app's.
+
+**`proxy.ts` and upload size.** Next.js reads the whole body of every request
+its `proxy.ts` matches before the route handler runs, and cuts it off at
+`experimental.proxyClientMaxBodySize`, 10 MB by default (read in
+`next/dist/server/body-streams.js` and `next-server.js` of Next 16.3; not
+measured against a running app). An upload route the app's proxy matches
+therefore loses everything past 10 MB unless one of these is done:
+
+- raise `experimental.proxyClientMaxBodySize` in `next.config.js` above
+  `MAX_FILE_BYTES` plus the allowance (e.g. `'26mb'`). Next then holds each
+  upload in memory once before the handler streams it on; the proxy still
+  renews the session; or
+- leave the upload route out of the proxy's `matcher`. The body then streams
+  end to end, but the proxy does not renew the session on that request, so an
+  expired access token answers 401 until the page has made a request the proxy
+  sees (for example `GET /api/auth/session`).
+
+Downloads (`GET`) carry no body and are not affected.
+
 ## Development
 
 ### Generate API Clients
@@ -118,6 +241,7 @@ npm run build
 - `npm run build` - Build the package (runs generation first)
 - `npm run clean` - Clean build artifacts and generated files
 - `npm run typecheck` - Run TypeScript type checking
+- `npm run test` - Run the Vitest specs (`pnpm nx run services:test`)
 - `npm run lint` - Run ESLint
 
 ## Notes

@@ -52,11 +52,13 @@ export class AgendaStepDto {
 }
 
 /**
- * One link of a session's own resources (MDRS-286), validated exactly as a
- * course resource's link is since MDRS-279 (`CreateResourceDto.url`): tedris
+ * One row of a session's own resources (MDRS-286), its link validated exactly
+ * as a course resource's is since MDRS-279 (`CreateResourceDto.url`): tedris
  * renders it as an href, so only an absolute http:// or https:// address of
- * at most 500 characters is stored. Unlike a course resource, the link is
- * required: a session's resource is a link and nothing else for now.
+ * at most 500 characters is stored. Unlike a course resource's, a new row's
+ * link is required. A row naming a stored one may leave it out: a link keeps
+ * its address, and a file (MDRS-287), which only its upload route adds, keeps
+ * its file and refuses an address (RESOURCE_IS_FILE).
  *
  * The name and the line are stored trimmed, as the nazar and nizam editors
  * send them: a name of spaces only is refused, a line of spaces only is none.
@@ -93,17 +95,22 @@ export class CreateLessonResourceDto {
   @MaxLength(120)
   meta?: string | null;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
+    type: String,
+    nullable: true,
     example: "https://drive.google.com/file/d/1a2b3c/view",
     description:
-      "Where the resource opens: an absolute http:// or https:// URL of at most 500 characters.",
+      "Where the resource opens: an absolute http:// or https:// URL of at most 500 characters. Required on a row without `id`. On a stored link, absent or null keeps its address; a stored file (MDRS-287) takes none.",
   })
+  // Required unless the row names a stored resource; the repository decides
+  // the rest against what is stored (RESOURCE_URL_REQUIRED, RESOURCE_IS_FILE).
+  @ValidateIf((row: CreateLessonResourceDto) => !row.id || row.url != null)
   @IsUrl(
     { require_protocol: true, protocols: ["http", "https"] },
     { message: "$property must be an http:// or https:// URL" }
   )
   @MaxLength(500)
-  url!: string;
+  url?: string | null;
 }
 
 export class CreateLessonDto {
@@ -196,7 +203,7 @@ export class CreateLessonDto {
   @ApiPropertyOptional({
     type: [CreateLessonResourceDto],
     description:
-      "The session's own resources, in order (MDRS-286). Absent leaves them as they are; sent, the list replaces the stored one: a row whose `id` is one of this session's is kept and rewritten whole, any other row is added, and a stored row left out is removed. Changing them is session work (`session.manage`), like the meeting link. Never null.",
+      "The session's own resources, in order (MDRS-286). Absent leaves them as they are; sent, the list replaces the stored one: a row whose `id` is one of this session's is kept and rewritten whole, any other row is added, and a stored row left out is removed (a file with its stored object, MDRS-287). Files are added through `POST /lessons/:id/resources/files`. Changing them is session work (`session.manage`), like the meeting link. Never null.",
   })
   // Not `@IsOptional()`: that lets null through, and null is not a list.
   @ValidateIf((_: unknown, value: unknown) => value !== undefined)
@@ -315,7 +322,11 @@ export class CreateResourceDto {
     example: "https://files.medaris.org/bina.pdf",
     description:
       "Where the resource opens: an absolute http:// or https:// URL " +
-      "(MDRS-279). null clears it on replace; a missing key keeps it.",
+      "(MDRS-279). null clears it on replace; a missing key keeps it. A " +
+      "stored file (MDRS-287) keeps its file and takes no url " +
+      "(RESOURCE_IS_FILE); files are added through " +
+      "`POST /courses/:id/resources/files`, and a file left out of the list " +
+      "is removed, from storage too.",
   })
   @IsOptional()
   @IsUrl(

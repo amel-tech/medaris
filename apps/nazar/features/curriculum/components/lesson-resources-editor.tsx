@@ -1,17 +1,27 @@
 "use client";
 
+import type { LessonResourceFileUploadResponse } from "@medaris/services/tedrisat";
+import { Badge } from "@medaris/ui/mds/badge";
 import { Button } from "@medaris/ui/mds/button";
 import { Field } from "@medaris/ui/mds/field";
 import { Icon } from "@medaris/ui/mds/icon";
 import { IconButton } from "@medaris/ui/mds/icon-button";
 import { Input } from "@medaris/ui/mds/input";
 import { useTranslations } from "next-intl";
+import { useState } from "react";
+import { FileLink } from "../../files/components/file-link";
+import {
+  FileUpload,
+  type UploadControl,
+} from "../../files/components/file-upload";
+import { fileRoutes } from "../../files/files";
 import {
   type CurriculumProblem,
   emptyLessonResource,
   type LessonResourceDraft,
   moveRow,
 } from "../curriculum";
+import { RemoveFileDialog } from "./remove-file-dialog";
 
 /**
  * "Celsenin kaynakları" on a session of the curriculum (MDRS-286): the
@@ -22,9 +32,16 @@ import {
  * "Kaydet", and "Vazgeç" puts the saved rows back. Changing them is session
  * work: `course.edit` and `session.manage`, as the API decides. nizam's
  * curriculum has the same list (`apps/nizam/features/courses/components`).
+ *
+ * Since MDRS-287 a row may be a file: "Dosya yükle" stores it at once (it is
+ * session work too, `session.manage`), and the row is renamed, moved and
+ * removed like a link, with its file shown instead of an address. Taking a
+ * file off asks first, as the save that follows deletes it. A session added
+ * on this page has no id yet, so it takes files once the curriculum is saved.
  */
 export function LessonResourcesEditor({
   prefix,
+  lessonId,
   resources,
   onChange,
   shown,
@@ -32,9 +49,13 @@ export function LessonResourcesEditor({
   disabled,
   editable,
   sessionsNote,
+  upload,
+  locale,
 }: {
   /** the session's field names, `lesson-<week>-<session>` */
   prefix: string;
+  /** the stored session's id; none for one added on this page */
+  lessonId: string | undefined;
   resources: LessonResourceDraft[];
   onChange: (next: LessonResourceDraft[]) => void;
   /** whether a problem of this row is to be shown (after a refused "Kaydet") */
@@ -50,10 +71,16 @@ export function LessonResourcesEditor({
   editable: boolean;
   /** say that changing the rows needs `session.manage` */
   sessionsNote: boolean;
+  /** "Dosya yükle" (MDRS-287), offered with `editable`; its route is null for a new session */
+  upload: UploadControl<LessonResourceFileUploadResponse>;
+  locale: string;
 }) {
   const t = useTranslations("nazar");
+  const [removing, setRemoving] = useState<number | null>(null);
   const patch = (ri: number, change: Partial<LessonResourceDraft>) =>
     onChange(resources.map((r, i) => (i === ri ? { ...r, ...change } : r)));
+  const remove = (ri: number) => onChange(resources.filter((_, i) => i !== ri));
+  const asking = removing === null ? null : resources[removing];
   const name = (ri: number, field: "name" | "meta" | "url") =>
     `${prefix}-resource-${ri}-${field}`;
 
@@ -105,8 +132,13 @@ export function LessonResourcesEditor({
                 data-testid={`resource-${prefix}-${ri}`}
               >
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="mds-caption">
-                    {t("Curriculum.resourceHeading", { n: ri + 1 })}
+                  <span className="flex items-center gap-2">
+                    <span className="mds-caption">
+                      {t("Curriculum.resourceHeading", { n: ri + 1 })}
+                    </span>
+                    {resource.file ? (
+                      <Badge variant="secondary">{t("Files.fileBadge")}</Badge>
+                    ) : null}
                   </span>
                   {editable ? (
                     <span className="flex items-center gap-1">
@@ -131,7 +163,7 @@ export function LessonResourcesEditor({
                         disabled={disabled}
                         iconLeft={<Icon name="trash" size="sm" />}
                         onClick={() =>
-                          onChange(resources.filter((_, i) => i !== ri))
+                          resource.file ? setRemoving(ri) : remove(ri)
                         }
                       >
                         {t("Curriculum.removeResource")}
@@ -172,35 +204,47 @@ export function LessonResourcesEditor({
                     />
                   </Field>
                 </div>
-                <Field
-                  label={t("Curriculum.resourceUrlLabel")}
-                  required
-                  help={t("Curriculum.resourceUrlHelp")}
-                  error={
-                    shown("lessonResourceUrl", ri)
-                      ? t("Curriculum.errors.resourceUrl")
-                      : undefined
-                  }
-                >
-                  <Input
-                    mono
-                    type="url"
-                    name={name(ri, "url")}
-                    disabled={disabled}
-                    value={resource.url}
-                    maxLength={500}
-                    placeholder="https://…"
-                    autoComplete="off"
-                    spellCheck={false}
-                    onChange={(e) => patch(ri, { url: e.target.value })}
+                {resource.file ? (
+                  <FileLink
+                    file={resource.file}
+                    href={
+                      lessonId && resource.id
+                        ? fileRoutes.lessonResource(lessonId, resource.id)
+                        : null
+                    }
+                    locale={locale}
                   />
-                </Field>
+                ) : (
+                  <Field
+                    label={t("Curriculum.resourceUrlLabel")}
+                    required
+                    help={t("Curriculum.resourceUrlHelp")}
+                    error={
+                      shown("lessonResourceUrl", ri)
+                        ? t("Curriculum.errors.resourceUrl")
+                        : undefined
+                    }
+                  >
+                    <Input
+                      mono
+                      type="url"
+                      name={name(ri, "url")}
+                      disabled={disabled}
+                      value={resource.url}
+                      maxLength={500}
+                      placeholder="https://…"
+                      autoComplete="off"
+                      spellCheck={false}
+                      onChange={(e) => patch(ri, { url: e.target.value })}
+                    />
+                  </Field>
+                )}
               </li>
             ))}
           </ol>
         )}
         {editable && !locked ? (
-          <div>
+          <div className="flex flex-wrap items-start gap-2">
             <Button
               variant="outline"
               size="small"
@@ -209,11 +253,27 @@ export function LessonResourcesEditor({
               iconLeft={<Icon name="plus" size="sm" />}
               onClick={() => onChange([...resources, emptyLessonResource()])}
             >
-              {t("Curriculum.addResource")}
+              {t("Curriculum.addLink")}
             </Button>
+            <FileUpload
+              prefix={`${prefix}-resource`}
+              control={upload}
+              disabled={disabled}
+              locale={locale}
+            />
           </div>
         ) : null}
       </fieldset>
+      {asking ? (
+        <RemoveFileDialog
+          name={asking.name.trim() || (asking.file?.name ?? "")}
+          onConfirm={() => {
+            if (removing !== null) remove(removing);
+            setRemoving(null);
+          }}
+          onClose={() => setRemoving(null)}
+        />
+      ) : null}
     </div>
   );
 }

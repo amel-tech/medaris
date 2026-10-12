@@ -695,6 +695,8 @@ describe("Bağlı kaynaklar, as links (MDRS-279)", () => {
         url: "https://files.medaris.org/bina.pdf",
         type: "pdf",
         urlRequired: true,
+        // a link, not an uploaded file (MDRS-287)
+        file: null,
       },
       // stored without an address: an empty one does not stop Kaydet
       {
@@ -704,6 +706,7 @@ describe("Bağlı kaynaklar, as links (MDRS-279)", () => {
         url: "",
         type: null,
         urlRequired: false,
+        file: null,
       },
     ]);
     expect(emptyResource()).toEqual({
@@ -712,6 +715,7 @@ describe("Bağlı kaynaklar, as links (MDRS-279)", () => {
       url: "",
       type: "link",
       urlRequired: true,
+      file: null,
     });
   });
 
@@ -977,6 +981,8 @@ describe("a session's own resources (MDRS-286)", () => {
         meta: "PDF · 12 sayfa",
         url: "https://drive.google.com/file/d/1a2b3c/view",
         urlRequired: true,
+        // links, not uploaded files (MDRS-287)
+        file: null,
       },
       {
         id: "lr2",
@@ -984,6 +990,7 @@ describe("a session's own resources (MDRS-286)", () => {
         meta: "",
         url: "https://files.medaris.org/tatbikat.pdf",
         urlRequired: true,
+        file: null,
       },
     ]);
     // a content-locked read carries no address: nothing to require
@@ -998,6 +1005,7 @@ describe("a session's own resources (MDRS-286)", () => {
         meta: "PDF · 12 sayfa",
         url: "",
         urlRequired: false,
+        file: null,
       },
     ]);
   });

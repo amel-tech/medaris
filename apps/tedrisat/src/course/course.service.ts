@@ -30,6 +30,7 @@ import {
   PlatformPolicyLockedError,
   PlatformPolicyService,
 } from "../platform-policy/platform-policy.service";
+import { StorageDeletionService } from "../storage/storage-deletion.service";
 import type { CalendarAttendance } from "./calendar/lesson-calendar";
 import { CourseRepository } from "./course.repository";
 import {
@@ -152,7 +153,10 @@ export class CourseService {
     private readonly bunny: BunnyStreamClient,
     // Kicked after every write that can change which sessions a talebe's
     // calendar should hold (MDRS-121); it does nothing without a sender.
-    private readonly invitations: LessonInvitationService
+    private readonly invitations: LessonInvitationService,
+    // Kicked after every write that can let a stored file go (MDRS-287): a
+    // resource list that drops one, a purge. It does nothing without storage.
+    private readonly storageDeletions: StorageDeletionService
   ) {}
 
   /**
@@ -1031,6 +1035,7 @@ export class CourseService {
       await this.courseLevel(user, id)
     );
     this.invitations.kick();
+    this.storageDeletions.kick();
     return this.present(replaced, user, { audit: false });
   }
 
@@ -1139,10 +1144,12 @@ export class CourseService {
     const updated = await this.courseRepo.updateLesson(
       lessonId,
       expectedVersion,
-      data
+      data,
+      actorId ?? null
     );
     await this.notifier.sessionRescheduled(before, updated, actorId);
     this.invitations.kick();
+    if (data.resources != null) this.storageDeletions.kick();
     return updated;
   }
 
@@ -1429,6 +1436,8 @@ export class CourseService {
     if (!removed) throw new CourseNotFoundError(id);
     // The invitation rows outlive the sessions: send their CANCELs.
     this.invitations.kick();
+    // And the files the course held go from storage (MDRS-287).
+    this.storageDeletions.kick();
     return true;
   }
 

@@ -4784,6 +4784,282 @@
         ]
       }
     },
+    "/courses/{id}/resources/files": {
+      "post": {
+        "description": "`course.edit`, the permission that edits the course's resources. The file is the multipart field `file`: at most 25 MB (a body announcing more is refused before it is read, 413 FILE_TOO_LARGE), and a PDF, PNG, JPEG, WebP, Word (docx), Excel (xlsx), PowerPoint (pptx) or plain UTF-8 text file as read from its bytes, whatever its name or claimed type says (415 FILE_TYPE_NOT_ALLOWED: HTML, SVG, a plain ZIP, an executable, a macro-enabled Office file). Its name is sanitised and kept as a label only; it is stored under a key tedrisat makes. The new resource is added last and the course's version is bumped, so an editor holding the old version reloads before its next save could drop the row (MDRS-95); the answer carries the new version. Written to `audit_log` as `resource.file_upload`. Removing the row from the list later removes the file from storage too, as `resource.file_delete`.",
+        "operationId": "uploadCourseResourceFile",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "At most 25 MB; PDF, PNG, JPEG, WebP, docx, xlsx, pptx or plain UTF-8 text, as read from its bytes."
+                  },
+                  "name": {
+                    "type": "string",
+                    "maxLength": 200
+                  },
+                  "meta": {
+                    "type": "string",
+                    "maxLength": 120
+                  }
+                },
+                "required": [
+                  "file"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CourseResourceFileUploadResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "FILE_REQUIRED: no file, or an empty one; field validation."
+          },
+          "403": {
+            "description": "No `course.edit` on the course."
+          },
+          "404": {
+            "description": "COURSE_NOT_FOUND"
+          },
+          "413": {
+            "description": "FILE_TOO_LARGE"
+          },
+          "415": {
+            "description": "FILE_TYPE_NOT_ALLOWED"
+          },
+          "503": {
+            "description": "STORAGE_NOT_CONFIGURED, STORAGE_UNAVAILABLE"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Upload a file as one of the course's resources",
+        "tags": [
+          "resources"
+        ]
+      }
+    },
+    "/courses/{id}/resources/{resourceId}/file": {
+      "get": {
+        "description": "Only for a caller who may read the course's content (`course.view_details`: the enrolled talebe, the course team), as for a link's address; read like the course page, so a hidden course or a draft is not found, and the read of anyone who is neither enrolled nor a müderris is written to `audit_log` (MDRS-103). The file is streamed through tedrisat with `Content-Disposition: attachment` and the stored name, the type read at upload, `X-Content-Type-Options: nosniff` and `Cache-Control: private, no-store`; there is no storage address to pass on. 404 RESOURCE_FILE_NOT_FOUND for no such resource, a link, or a file the store no longer has.",
+        "operationId": "downloadCourseResourceFile",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "resourceId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller may not read the course's content."
+          },
+          "404": {
+            "description": "COURSE_NOT_FOUND, RESOURCE_FILE_NOT_FOUND"
+          },
+          "503": {
+            "description": "STORAGE_NOT_CONFIGURED, STORAGE_UNAVAILABLE"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Download a file of the course's resources",
+        "tags": [
+          "resources"
+        ]
+      }
+    },
+    "/lessons/{id}/resources/files": {
+      "post": {
+        "description": "`session.manage`, the permission that edits a session's resources (MDRS-286). The session must be live: a hidden one answers LESSON_NOT_FOUND. The file is the multipart field `file`: at most 25 MB (a body announcing more is refused before it is read, 413 FILE_TOO_LARGE), and a PDF, PNG, JPEG, WebP, Word (docx), Excel (xlsx), PowerPoint (pptx) or plain UTF-8 text file as read from its bytes, whatever its name or claimed type says (415 FILE_TYPE_NOT_ALLOWED: HTML, SVG, a plain ZIP, an executable, a macro-enabled Office file). Its name is sanitised and kept as a label only; it is stored under a key tedrisat makes. The new resource is added last and the course's version is bumped, so an editor holding the old version reloads before its next save could drop the row (MDRS-95); the answer carries the new version. Written to `audit_log` as `resource.file_upload`. Removing the row from the list later removes the file from storage too, as `resource.file_delete`.",
+        "operationId": "uploadLessonResourceFile",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "At most 25 MB; PDF, PNG, JPEG, WebP, docx, xlsx, pptx or plain UTF-8 text, as read from its bytes."
+                  },
+                  "name": {
+                    "type": "string",
+                    "maxLength": 200
+                  },
+                  "meta": {
+                    "type": "string",
+                    "maxLength": 120
+                  }
+                },
+                "required": [
+                  "file"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LessonResourceFileUploadResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "FILE_REQUIRED: no file, or an empty one; field validation."
+          },
+          "403": {
+            "description": "No `session.manage` on the course."
+          },
+          "404": {
+            "description": "LESSON_NOT_FOUND"
+          },
+          "413": {
+            "description": "FILE_TOO_LARGE"
+          },
+          "415": {
+            "description": "FILE_TYPE_NOT_ALLOWED"
+          },
+          "503": {
+            "description": "STORAGE_NOT_CONFIGURED, STORAGE_UNAVAILABLE"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Upload a file as one of a session's own resources",
+        "tags": [
+          "resources"
+        ]
+      }
+    },
+    "/lessons/{id}/resources/{resourceId}/file": {
+      "get": {
+        "description": "Only for a caller who may read the course's content (`course.view_details`: the enrolled talebe, the course team), as for a link's address; read like the course page, so a hidden course or a draft is not found, and the read of anyone who is neither enrolled nor a müderris is written to `audit_log` (MDRS-103). The file is streamed through tedrisat with `Content-Disposition: attachment` and the stored name, the type read at upload, `X-Content-Type-Options: nosniff` and `Cache-Control: private, no-store`; there is no storage address to pass on. 404 RESOURCE_FILE_NOT_FOUND for no such resource, a link, or a file the store no longer has. The session must be live: a hidden one keeps its resources but serves none (LESSON_NOT_FOUND).",
+        "operationId": "downloadLessonResourceFile",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "resourceId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller may not read the course's content."
+          },
+          "404": {
+            "description": "LESSON_NOT_FOUND, RESOURCE_FILE_NOT_FOUND"
+          },
+          "503": {
+            "description": "STORAGE_NOT_CONFIGURED, STORAGE_UNAVAILABLE"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Download a file of a session's own resources",
+        "tags": [
+          "resources"
+        ]
+      }
+    },
     "/courses/{id}/nazirs": {
       "get": {
         "description": "nazar 'Ders nazırları'. Needs `course_nazir.assign` on the course. The posts held in the course with their permission codes, end, appointer and date; the catalog; the codes the caller may hand out (empty for one who holds `course_nazir.assign` by a grant: they appoint only); and on each post whether the caller may change or end it.",
@@ -8718,6 +8994,385 @@
         "summary": "Delete the caller's own question",
         "tags": [
           "lessons"
+        ]
+      }
+    },
+    "/lessons/{id}/submission": {
+      "get": {
+        "description": "Only the caller's own, null while they have handed nothing in, with the limits a new file must keep. A talebe who was removed or barred still reads theirs while the course is open; a course in a passive scope is closed (403 SUBMISSION_FORBIDDEN), and a hidden course is as not found as a session that is not there.",
+        "operationId": "getMySubmission",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OwnSubmissionResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "SUBMISSION_FORBIDDEN"
+          },
+          "404": {
+            "description": "LESSON_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The caller's own homework on a session",
+        "tags": [
+          "submissions"
+        ]
+      },
+      "put": {
+        "description": "Makes the homework if there is none yet. A talebe enrolled in the course (ENROLLED or COMPLETED, not barred) while its content is open, on a live session: anyone else is 403 SUBMISSION_FORBIDDEN, a hidden session 404. There is no deadline.",
+        "operationId": "saveMySubmissionNote",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveSubmissionNoteDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LessonSubmissionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Field validation"
+          },
+          "403": {
+            "description": "SUBMISSION_FORBIDDEN"
+          },
+          "404": {
+            "description": "LESSON_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Write the note of the caller's homework on a session",
+        "tags": [
+          "submissions"
+        ]
+      }
+    },
+    "/lessons/{id}/submission/files": {
+      "post": {
+        "description": "Makes the homework if there is none yet; at most 5 files (409 SUBMISSION_FILE_LIMIT). The file is the multipart field `file`: at most 25 MB (413 FILE_TOO_LARGE) and a PDF, PNG, JPEG, WebP, Word (docx), Excel (xlsx), PowerPoint (pptx) or plain UTF-8 text file as read from its bytes (415 FILE_TYPE_NOT_ALLOWED). Its name is sanitised and kept as a label; it is stored under a key tedrisat makes. Written to `audit_log` as `submission.file_upload`. A talebe enrolled in the course (ENROLLED or COMPLETED, not barred) while its content is open, on a live session: anyone else is 403 SUBMISSION_FORBIDDEN, a hidden session 404. There is no deadline.",
+        "operationId": "addMySubmissionFile",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                },
+                "required": [
+                  "file"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LessonSubmissionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "FILE_REQUIRED"
+          },
+          "403": {
+            "description": "SUBMISSION_FORBIDDEN"
+          },
+          "404": {
+            "description": "LESSON_NOT_FOUND"
+          },
+          "409": {
+            "description": "SUBMISSION_FILE_LIMIT"
+          },
+          "413": {
+            "description": "FILE_TOO_LARGE"
+          },
+          "415": {
+            "description": "FILE_TYPE_NOT_ALLOWED"
+          },
+          "503": {
+            "description": "STORAGE_NOT_CONFIGURED, STORAGE_UNAVAILABLE"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Add a file to the caller's homework on a session",
+        "tags": [
+          "submissions"
+        ]
+      }
+    },
+    "/lessons/{id}/submission/files/{fileId}": {
+      "delete": {
+        "description": "The file is removed from storage too, and the removal written to `audit_log` as `submission.file_delete`. Another talebe's file is 403 SUBMISSION_FORBIDDEN. A talebe enrolled in the course (ENROLLED or COMPLETED, not barred) while its content is open, on a live session: anyone else is 403 SUBMISSION_FORBIDDEN, a hidden session 404. There is no deadline.",
+        "operationId": "deleteMySubmissionFile",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "fileId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "403": {
+            "description": "SUBMISSION_FORBIDDEN"
+          },
+          "404": {
+            "description": "LESSON_NOT_FOUND, SUBMISSION_FILE_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Remove a file from the caller's homework on a session",
+        "tags": [
+          "submissions"
+        ]
+      },
+      "get": {
+        "description": "Only the talebe who handed it in, while the course is open to them: another talebe's file, or one asked for by staff here, is 403 SUBMISSION_FORBIDDEN (staff read homework through `GET /courses/:id/submissions/files/:fileId`). Streamed through tedrisat with `Content-Disposition: attachment` and the stored name, the type read at upload, `X-Content-Type-Options: nosniff` and `Cache-Control: private, no-store`; there is no storage address to pass on.",
+        "operationId": "downloadMySubmissionFile",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "fileId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "SUBMISSION_FORBIDDEN"
+          },
+          "404": {
+            "description": "LESSON_NOT_FOUND, SUBMISSION_FILE_NOT_FOUND"
+          },
+          "503": {
+            "description": "STORAGE_NOT_CONFIGURED, STORAGE_UNAVAILABLE"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Download a file of the caller's own homework",
+        "tags": [
+          "submissions"
+        ]
+      }
+    },
+    "/courses/{id}/submissions": {
+      "get": {
+        "description": "`submission.read`: everyone's homework on the course's live sessions, with who handed it in, when they last changed it, the note and the files, by programme order and the latest change first within a session. `lessonId` narrows it to one session. A hidden course or a draft is not found, as on its page.",
+        "operationId": "listCourseSubmissions",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "lessonId",
+            "required": false,
+            "in": "query",
+            "description": "Only this session's homework.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CourseSubmissionsResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No `submission.read` on the course."
+          },
+          "404": {
+            "description": "COURSE_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The homework handed in on the course's sessions",
+        "tags": [
+          "submissions"
+        ]
+      }
+    },
+    "/courses/{id}/submissions/files/{fileId}": {
+      "get": {
+        "description": "`submission.read` on the course. Written to `audit_log` as `submission.file_download` before the file is sent, naming the talebe and the file. Streamed through tedrisat with `Content-Disposition: attachment` and the stored name, the type read at upload, `X-Content-Type-Options: nosniff` and `Cache-Control: private, no-store`; there is no storage address to pass on.",
+        "operationId": "downloadCourseSubmissionFile",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "fileId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No `submission.read` on the course."
+          },
+          "404": {
+            "description": "COURSE_NOT_FOUND, SUBMISSION_FILE_NOT_FOUND"
+          },
+          "503": {
+            "description": "STORAGE_NOT_CONFIGURED, STORAGE_UNAVAILABLE"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Download a file of a talebe's homework, as the course's staff",
+        "tags": [
+          "submissions"
         ]
       }
     },
@@ -14952,13 +15607,13 @@
           },
           "url": {
             "type": "string",
+            "nullable": true,
             "example": "https://drive.google.com/file/d/1a2b3c/view",
-            "description": "Where the resource opens: an absolute http:// or https:// URL of at most 500 characters."
+            "description": "Where the resource opens: an absolute http:// or https:// URL of at most 500 characters. Required on a row without `id`. On a stored link, absent or null keeps its address; a stored file (MDRS-287) takes none."
           }
         },
         "required": [
-          "name",
-          "url"
+          "name"
         ]
       },
       "CreateLessonDto": {
@@ -15022,7 +15677,7 @@
             "description": "The session's own in-person mark (MDRS-283): true or false overrides the course's `inPerson`, null follows it. Absent leaves it as it is. Changing it is session work (`session.manage`), like the meeting link."
           },
           "resources": {
-            "description": "The session's own resources, in order (MDRS-286). Absent leaves them as they are; sent, the list replaces the stored one: a row whose `id` is one of this session's is kept and rewritten whole, any other row is added, and a stored row left out is removed. Changing them is session work (`session.manage`), like the meeting link. Never null.",
+            "description": "The session's own resources, in order (MDRS-286). Absent leaves them as they are; sent, the list replaces the stored one: a row whose `id` is one of this session's is kept and rewritten whole, any other row is added, and a stored row left out is removed (a file with its stored object, MDRS-287). Files are added through `POST /lessons/:id/resources/files`. Changing them is session work (`session.manage`), like the meeting link. Never null.",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/CreateLessonResourceDto"
@@ -15122,7 +15777,7 @@
           "url": {
             "type": "string",
             "example": "https://files.medaris.org/bina.pdf",
-            "description": "Where the resource opens: an absolute http:// or https:// URL (MDRS-279). null clears it on replace; a missing key keeps it."
+            "description": "Where the resource opens: an absolute http:// or https:// URL (MDRS-279). null clears it on replace; a missing key keeps it. A stored file (MDRS-287) keeps its file and takes no url (RESOURCE_IS_FILE); files are added through `POST /courses/:id/resources/files`, and a file left out of the list is removed, from storage too."
           }
         },
         "required": [
@@ -15271,6 +15926,36 @@
           "title"
         ]
       },
+      "ResourceFileResponse": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Emsile şerhi.pdf",
+            "description": "The sanitised name it was uploaded under; its download is saved as this."
+          },
+          "contentType": {
+            "type": "string",
+            "example": "application/pdf",
+            "description": "The type read from the file's bytes at upload."
+          },
+          "sizeBytes": {
+            "type": "number",
+            "example": 482133
+          },
+          "downloadUrl": {
+            "type": "string",
+            "example": "/courses/0b9c1e52-1111-4a5e-9d55-6b1f0c2a7e01/resources/5d6e7f80-2222-4b3c-8d9e-0a1b2c3d4e5f/file",
+            "description": "tedrisat's download route for it, a path from the API's root (`GET /courses/:id/resources/:resourceId/file` or `GET /lessons/:id/resources/:resourceId/file`). It needs the caller's own token and answers only a reader of the course's content; there is no link that works for anyone else."
+          }
+        },
+        "required": [
+          "name",
+          "contentType",
+          "sizeBytes",
+          "downloadUrl"
+        ]
+      },
       "LessonResourceResponse": {
         "type": "object",
         "properties": {
@@ -15292,7 +15977,18 @@
           },
           "url": {
             "type": "string",
-            "description": "Where it opens: an absolute http:// or https:// URL. Course content: absent unless the caller holds `view_details` on the course (MDRS-103), a sample session's included."
+            "nullable": true,
+            "description": "Where it opens: an absolute http:// or https:// URL; null for a file. Course content: absent unless the caller holds `view_details` on the course (MDRS-103), a sample session's included."
+          },
+          "file": {
+            "nullable": true,
+            "description": "The resource's file in Medaris storage (MDRS-287); null for a link. Course content, like `url`: absent unless the caller holds `view_details` on the course (MDRS-103), a sample session's included.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ResourceFileResponse"
+              }
+            ]
           },
           "orderIndex": {
             "type": "number"
@@ -15507,6 +16203,16 @@
           "url": {
             "type": "string",
             "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103); a sample session (`isPreview`) keeps its `kaynak` and `agenda` for everyone (MDRS-161), never its `meetingUrl`."
+          },
+          "file": {
+            "nullable": true,
+            "description": "The resource's file in Medaris storage (MDRS-287); null for a link. Course content, like `url`: absent unless the caller holds `view_details` on the course (MDRS-103), a sample session's included.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ResourceFileResponse"
+              }
+            ]
           },
           "orderIndex": {
             "type": "number"
@@ -16931,7 +17637,7 @@
             "description": "The session's own in-person mark (MDRS-283): true or false overrides the course's `inPerson`, null follows it. Absent leaves it as it is. Changing it is session work (`session.manage`), like the meeting link."
           },
           "resources": {
-            "description": "The session's own resources, in order (MDRS-286). Absent leaves them as they are; sent, the list replaces the stored one: a row whose `id` is one of this session's is kept and rewritten whole, any other row is added, and a stored row left out is removed. Changing them is session work (`session.manage`), like the meeting link. Never null.",
+            "description": "The session's own resources, in order (MDRS-286). Absent leaves them as they are; sent, the list replaces the stored one: a row whose `id` is one of this session's is kept and rewritten whole, any other row is added, and a stored row left out is removed (a file with its stored object, MDRS-287). Files are added through `POST /lessons/:id/resources/files`. Changing them is session work (`session.manage`), like the meeting link. Never null.",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/CreateLessonResourceDto"
@@ -17442,7 +18148,7 @@
             "minimum": 0
           },
           "resources": {
-            "description": "The session's own resources, in order (MDRS-286). Absent leaves them as they are; sent, the list replaces the stored one: a row whose `id` is one of this session's is kept and rewritten whole, any other row is added, and a stored row left out is removed. Never null.",
+            "description": "The session's own resources, in order (MDRS-286). Absent leaves them as they are; sent, the list replaces the stored one: a row whose `id` is one of this session's is kept and rewritten whole, any other row is added, and a stored row left out is removed (a file with its stored object, MDRS-287). Files are added through `POST /lessons/:id/resources/files`. Never null.",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/CreateLessonResourceDto"
@@ -17690,6 +18396,48 @@
           "videoId",
           "authorizationExpire",
           "authorizationSignature"
+        ]
+      },
+      "CourseResourceFileUploadResponse": {
+        "type": "object",
+        "properties": {
+          "resource": {
+            "description": "The new resource, last in the course's list, with its `file`. Keep it in an editor's list: a whole-course save that leaves it out removes it, file and all.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ResourceResponse"
+              }
+            ]
+          },
+          "courseVersion": {
+            "type": "number",
+            "description": "The course's version after the upload, which bumps it; send it with the next save."
+          }
+        },
+        "required": [
+          "resource",
+          "courseVersion"
+        ]
+      },
+      "LessonResourceFileUploadResponse": {
+        "type": "object",
+        "properties": {
+          "resource": {
+            "description": "The new resource, last in the session's list, with its `file`. Keep it in an editor's list: a save of the session's resources that leaves it out removes it, file and all.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/LessonResourceResponse"
+              }
+            ]
+          },
+          "courseVersion": {
+            "type": "number",
+            "description": "The course's version after the upload, which bumps it; send it with the next save."
+          }
+        },
+        "required": [
+          "resource",
+          "courseVersion"
         ]
       },
       "CourseNazirCourseResponse": {
@@ -20656,6 +21404,211 @@
         },
         "required": [
           "body"
+        ]
+      },
+      "SubmissionFileResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "example": "Ödev 1.pdf",
+            "description": "The sanitised name it was handed in under; its download is saved as this."
+          },
+          "contentType": {
+            "type": "string",
+            "example": "application/pdf",
+            "description": "The type read from the file's bytes at upload."
+          },
+          "sizeBytes": {
+            "type": "number",
+            "example": 482133
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "downloadUrl": {
+            "type": "string",
+            "description": "tedrisat's download route for the caller, a path from the API's root: `/lessons/:id/submission/files/:fileId` on the talebe's own homework, `/courses/:id/submissions/files/:fileId` in the staff list. It needs the caller's own token."
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "contentType",
+          "sizeBytes",
+          "createdAt",
+          "downloadUrl"
+        ]
+      },
+      "LessonSubmissionResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "lessonId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "note": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string",
+            "description": "When the talebe last changed it: the note, or a file added or removed."
+          },
+          "files": {
+            "description": "Oldest first.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SubmissionFileResponse"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "lessonId",
+          "note",
+          "createdAt",
+          "updatedAt",
+          "files"
+        ]
+      },
+      "OwnSubmissionResponse": {
+        "type": "object",
+        "properties": {
+          "submission": {
+            "nullable": true,
+            "description": "Null while the talebe has handed nothing in on the session.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/LessonSubmissionResponse"
+              }
+            ]
+          },
+          "maxFiles": {
+            "type": "number",
+            "example": 5
+          },
+          "maxFileBytes": {
+            "type": "number",
+            "example": 26214400
+          }
+        },
+        "required": [
+          "submission",
+          "maxFiles",
+          "maxFileBytes"
+        ]
+      },
+      "SaveSubmissionNoteDto": {
+        "type": "object",
+        "properties": {
+          "note": {
+            "type": "string",
+            "nullable": true,
+            "example": "Birinci babın çekimlerini yazdım.",
+            "description": "The talebe's note on their homework, at most 4000 characters after trimming; null, absent or blank clears it. Stored as typed and never rendered as HTML."
+          }
+        }
+      },
+      "SubmissionTalebeResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true,
+            "description": "The account's name, else its e-mail; null for an account tedrisat has not seen sign in."
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
+      "CourseSubmissionResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "lessonId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "note": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string",
+            "description": "When the talebe last changed it: the note, or a file added or removed."
+          },
+          "files": {
+            "description": "Oldest first.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SubmissionFileResponse"
+            }
+          },
+          "lessonTitle": {
+            "type": "string"
+          },
+          "weekNumber": {
+            "type": "number"
+          },
+          "talebe": {
+            "$ref": "#/components/schemas/SubmissionTalebeResponse"
+          }
+        },
+        "required": [
+          "id",
+          "lessonId",
+          "note",
+          "createdAt",
+          "updatedAt",
+          "files",
+          "lessonTitle",
+          "weekNumber",
+          "talebe"
+        ]
+      },
+      "CourseSubmissionsResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "description": "By programme order (week, then session), the latest change first within a session.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CourseSubmissionResponse"
+            }
+          }
+        },
+        "required": [
+          "items"
         ]
       },
       "CalendarFeedStatusResponse": {

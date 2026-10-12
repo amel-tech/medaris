@@ -17,6 +17,7 @@ DELETE /kosks/:id/hosting-rights/:madrasahId -> kosk.hosting | platform.hosting_
 DELETE /kosks/:id/managers/:userId -> platform.kosk_nazim_manage on byExistingKosk
 DELETE /lessons/:id -> week.hide | session.manage on byLessonCourse
 DELETE /lessons/:id/notes/:noteId -> course.view on byLessonCourse
+DELETE /lessons/:id/submission/files/:fileId -> course.view on byLessonCourse
 DELETE /madrasahs/:id -> madrasah.delete on byExistingMadrasah
 DELETE /madrasahs/:id/nazirs/:userId -> madrasah.nazir_appoint | platform.madrasah_nazir_grant on byExistingMadrasah
 DELETE /madrasahs/:id/permission-groups/:groupId -> madrasah.nazir_appoint | platform.madrasah_nazir_grant on byExistingMadrasah
@@ -41,7 +42,10 @@ GET /courses/:id/nazirs -> course_nazir.assign on byExistingCourse
 GET /courses/:id/questions -> question.answer on byExistingCourse
 GET /courses/:id/questions/mine -> course.view on course
 GET /courses/:id/recordings -> course.view on course (public)
+GET /courses/:id/resources/:resourceId/file -> course.view_details on byExistingCourse
 GET /courses/:id/stats -> course.staff_read on byExistingCourse
+GET /courses/:id/submissions -> submission.read on byExistingCourse
+GET /courses/:id/submissions/files/:fileId -> submission.read on byExistingCourse
 GET /courses/enrolled -> exempt
 GET /flashcard-deck-label/:id -> no AuthzGuard
 GET /flashcard-deck-label/getStats/:id -> no AuthzGuard
@@ -80,6 +84,9 @@ GET /kosks/fields -> public
 GET /kosks/followed/courses -> exempt
 GET /lessons/:id/calendar.ics -> exempt
 GET /lessons/:id/notes -> course.view on byLessonCourse
+GET /lessons/:id/resources/:resourceId/file -> course.view_details on byLessonCourse
+GET /lessons/:id/submission -> course.view on byLessonCourse
+GET /lessons/:id/submission/files/:fileId -> course.view on byLessonCourse
 GET /madrasahs -> madrasah.view on madrasah (public)
 GET /madrasahs/:id -> madrasah.view on byExistingMadrasah (public)
 GET /madrasahs/:id/archive -> madrasah.course_hide | madrasah.hide | platform.madrasah_edit | madrasah.settings_edit on byExistingMadrasah
@@ -165,6 +172,7 @@ POST /courses/:id/enroll -> course.enroll on course
 POST /courses/:id/enrollments/:userId/approve -> enrollment.decide on course
 POST /courses/:id/enrollments/:userId/remove -> enrollment.remove on course
 POST /courses/:id/nazirs -> course_nazir.assign on byExistingCourse
+POST /courses/:id/resources/files -> course.edit on byExistingCourse
 POST /courses/:id/restore -> course.hide | madrasah.course_hide | platform.course_hide on byExistingCourse
 POST /decks/:id/hide -> no AuthzGuard
 POST /flashcard-deck-label/create -> no AuthzGuard
@@ -198,6 +206,8 @@ POST /lessons/:id/questions -> course.view on byLessonCourse
 POST /lessons/:id/recordings -> recording.manage on byLessonCourse
 POST /lessons/:id/recordings/uploads -> recording.upload on byLessonCourse
 POST /lessons/:id/recordings/uploads/:videoId/signature -> recording.upload on byLessonCourse
+POST /lessons/:id/resources/files -> session.manage on byLessonCourse
+POST /lessons/:id/submission/files -> course.view on byLessonCourse
 POST /madrasahs -> platform.madrasah_create on madrasah
 POST /madrasahs/:id/bans -> madrasah.ban | platform.ban_scoped on byExistingMadrasah
 POST /madrasahs/:id/courses -> madrasah.course_open on byExistingMadrasah
@@ -228,6 +238,7 @@ PUT /flashcard/cards/progress -> exempt
 PUT /flashcard/decks/:id -> deck.manage_private on flashcard-deck
 PUT /lessons/:id/live-stream -> session.live_link on byLessonCourse
 PUT /lessons/:id/recording-availability -> recording.manage on byLessonCourse
+PUT /lessons/:id/submission -> course.view on byLessonCourse
 PUT /madrasahs/:id/courses/:courseId/muderrises -> madrasah.muderris_manage on byExistingMadrasah
 PUT /madrasahs/:id/head-muderris -> platform.head_muderris_manage on byExistingMadrasah
 PUT /madrasahs/:id/nazirs/:userId/permissions -> madrasah.nazir_appoint | platform.madrasah_nazir_grant on byExistingMadrasah

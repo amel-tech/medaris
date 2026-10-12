@@ -1052,6 +1052,36 @@ describe("effective permissions: who holds a course code by default (MDRS-228)",
     ).toBe(true);
   });
 
+  it("gives submission.read to the müderris, the köşk nazımı and the başmüderris, and to a ders nazırı only through a grant (MDRS-290)", () => {
+    for (const held_ of [
+      role(ASSIGNED_ROLES.MUDERRIS, course()),
+      role(ASSIGNED_ROLES.KOSK_NAZIM, kosk()),
+    ]) {
+      expect(held(courseFacts(), [held_]).has(P.SUBMISSION_READ)).toBe(true);
+    }
+    expect(
+      held(courseFacts({ medrese: true }), [
+        role(ASSIGNED_ROLES.MEDRESE_BASMUDERRIS, madrasah()),
+      ]).has(P.SUBMISSION_READ)
+    ).toBe(true);
+    expect(held(courseFacts()).has(P.SUBMISSION_READ)).toBe(false);
+    const nazir = role(ASSIGNED_ROLES.DERS_NAZIR, course());
+    expect(held(courseFacts(), [nazir]).has(P.SUBMISSION_READ)).toBe(false);
+    const given = held(
+      courseFacts(),
+      [nazir],
+      [grant(course(), [P.SUBMISSION_READ])]
+    );
+    expect(given.has(P.SUBMISSION_READ)).toBe(true);
+    // Reading homework opens nothing else of the course.
+    expect(given.has(P.COURSE_VIEW_DETAILS)).toBe(false);
+    expect(
+      held(courseFacts({ passiveScope: course() }), [
+        role(ASSIGNED_ROLES.MUDERRIS, course()),
+      ]).has(P.SUBMISSION_READ)
+    ).toBe(false);
+  });
+
   it("gives permission_group.define to the müderris", () => {
     expect(
       held(courseFacts(), [role(ASSIGNED_ROLES.MUDERRIS, course())]).has(

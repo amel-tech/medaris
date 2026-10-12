@@ -89,7 +89,7 @@ export class UpdateLessonDto extends PartialType(
   @ApiPropertyOptional({
     type: [CreateLessonResourceDto],
     description:
-      "The session's own resources, in order (MDRS-286). Absent leaves them as they are; sent, the list replaces the stored one: a row whose `id` is one of this session's is kept and rewritten whole, any other row is added, and a stored row left out is removed. Never null.",
+      "The session's own resources, in order (MDRS-286). Absent leaves them as they are; sent, the list replaces the stored one: a row whose `id` is one of this session's is kept and rewritten whole, any other row is added, and a stored row left out is removed (a file with its stored object, MDRS-287). Files are added through `POST /lessons/:id/resources/files`. Never null.",
   })
   @OmittedButNotNull()
   @IsArray()

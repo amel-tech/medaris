@@ -121,6 +121,15 @@ services:
       BUNNY_STREAM_TOKEN_KEY: ${TEDRISAT__BUNNY_STREAM_TOKEN_KEY:-}
       BUNNY_STREAM_EMBED_TTL_SECONDS: ${TEDRISAT__BUNNY_STREAM_EMBED_TTL_SECONDS:-}
 
+      # The Bunny Storage zone uploaded files are kept in (MDRS-287). All
+      # empty is allowed: the upload and download routes answer 503.
+      BUNNY_STORAGE_ENDPOINT: ${TEDRISAT__BUNNY_STORAGE_ENDPOINT:-}
+      BUNNY_STORAGE_REGION: ${TEDRISAT__BUNNY_STORAGE_REGION:-}
+      BUNNY_STORAGE_BUCKET: ${TEDRISAT__BUNNY_STORAGE_BUCKET:-}
+      BUNNY_STORAGE_ACCESS_KEY_ID: ${TEDRISAT__BUNNY_STORAGE_ACCESS_KEY_ID:-}
+      BUNNY_STORAGE_SECRET_ACCESS_KEY: ${TEDRISAT__BUNNY_STORAGE_SECRET_ACCESS_KEY:-}
+      BUNNY_STORAGE_KEY_PREFIX: ${TEDRISAT__BUNNY_STORAGE_KEY_PREFIX:-}
+
       # The SMTP server lesson invitations go out through (MDRS-121). Empty
       # HOST is allowed: nothing is e-mailed and no sweep runs.
       SMTP_HOST: ${TEDRISAT__SMTP_HOST:-}

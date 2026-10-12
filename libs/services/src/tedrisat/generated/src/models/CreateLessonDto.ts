@@ -95,7 +95,7 @@ export interface CreateLessonDto {
      */
     inPersonOverride?: boolean | null;
     /**
-     * The session's own resources, in order (MDRS-286). Absent leaves them as they are; sent, the list replaces the stored one: a row whose `id` is one of this session's is kept and rewritten whole, any other row is added, and a stored row left out is removed. Changing them is session work (`session.manage`), like the meeting link. Never null.
+     * The session's own resources, in order (MDRS-286). Absent leaves them as they are; sent, the list replaces the stored one: a row whose `id` is one of this session's is kept and rewritten whole, any other row is added, and a stored row left out is removed (a file with its stored object, MDRS-287). Files are added through `POST /lessons/:id/resources/files`. Changing them is session work (`session.manage`), like the meeting link. Never null.
      * @type {Array<CreateLessonResourceDto>}
      * @memberof CreateLessonDto
      */

@@ -24,10 +24,12 @@ import {
 import { celseTimeWords, zoneLabel } from "../session-model";
 import { watchPath, watchTargetOf } from "../watch-model";
 import { CalendarMenu } from "./calendar-menu";
+import { FileErrorNotice } from "./file-error-notice";
 import { LessonNotes } from "./lesson-notes";
 import { SessionActionCard, type WatchPoster } from "./session-action-card";
 import { SessionAgenda } from "./session-agenda";
 import { SessionHeader } from "./session-header";
+import { SessionHomework } from "./session-homework";
 import { SessionPager } from "./session-pager";
 import { hasSessionResources, SessionResources } from "./session-resources";
 import { SessionStateBadge } from "./session-state-badge";
@@ -44,8 +46,9 @@ import { SessionStateBadge } from "./session-state-badge";
  * where the celse stands, its time and its müderris); one wide card, the
  * page's main action (the way to the watch page, or the date and how the
  * celse is attended, with the meeting link); "Notlarım" when there is
- * nothing to watch; "Gündem" and "Kaynaklar" side by side, either alone
- * across the width; last, the previous celse, the Müfredat and the next.
+ * nothing to watch; "Ödevim" for a talebe who may hand in (MDRS-290);
+ * "Gündem" and "Kaynaklar" side by side, either alone across the width;
+ * last, the previous celse, the Müfredat and the next.
  * The owner: "hep önce-müfredat-sonra şeklinde olabilir, kaynaklar ve gündem
  * gibi diğer detaylar bunların üstünde olur". A phone stacks the two cards.
  */
@@ -61,6 +64,7 @@ export const SessionPage = async ({
   now: Date;
 }) => {
   const t = await getTranslations("tedris");
+  const fileErrors = await getTranslations("tedrisLearn.FileDownload");
   const locale = await getLocale();
   const timeZone = await getTimeZone();
   const cancelled = session.status === "CANCELLED";
@@ -132,6 +136,15 @@ export const SessionPage = async ({
           renderedAt,
         }}
       />
+    ) : null;
+
+  // MDRS-290: the talebe's homework on the celse, on the same terms as the
+  // notes (enrolled or completed, the content open, the celse standing),
+  // whether or not there is a video to watch: the watch page is for watching.
+  // It comes after the notes and before Gündem and Kaynaklar.
+  const homework =
+    mayTakeNotes && !cancelled ? (
+      <SessionHomework lessonId={session.id} />
     ) : null;
 
   const cancellation: ReactNode = cancelled ? (
@@ -262,14 +275,25 @@ export const SessionPage = async ({
           own: t("SessionPage.resourcesOwn"),
           course: t("SessionPage.resourcesCourse"),
           newTab: t("SessionPage.newTab"),
+          download: t("SessionPage.download"),
           locked: t("SessionPage.resourcesLocked"),
         }}
+        locale={locale}
       />
     ) : null,
   ].filter(Boolean);
 
   return (
     <main className="font-ui mx-auto flex inline-full max-inline-content flex-col gap-section pbs-8 pbe-16 px-gutter max-md:pbs-5 max-md:pbe-10">
+      <FileErrorNotice
+        labels={{
+          title: fileErrors("title"),
+          forbidden: fileErrors("forbidden"),
+          notFound: fileErrors("notFound"),
+          unavailable: fileErrors("unavailable"),
+          failed: fileErrors("failed"),
+        }}
+      />
       <SessionHeader
         {...sessionHeaderProps(t, {
           course,
@@ -296,6 +320,8 @@ export const SessionPage = async ({
       {card}
 
       {notes}
+
+      {homework}
 
       {details.length > 0 ? (
         <div

@@ -13,7 +13,10 @@ const api = {
   me: { getMyAssignments: vi.fn() },
   notifications: { getNotificationCounts: vi.fn() },
   madrasahs: { getMadrasahBadgeCounts: vi.fn() },
-  courses: { getCourseBadgeCounts: vi.fn() },
+  courses: {
+    getCourseBadgeCounts: vi.fn(),
+    getMyCoursePermissions: vi.fn(),
+  },
 };
 let clientFails = false;
 /** `tedrisatApi` with no token: the session is over and it sends the caller to sign-in. */
@@ -233,5 +236,43 @@ describe("getMenuCounts", () => {
   it("passes the way to sign-in on when the session is over", async () => {
     sessionOver = true;
     await expect(counts("medrese")).rejects.toThrow(`${REDIRECT}:/auth/signin`);
+  });
+});
+
+describe("getMenuPermissions (MDRS-290)", () => {
+  const held = async (kind: "medrese" | "ders") =>
+    (await import("~/features/shell/reads")).getMenuPermissions({
+      kind,
+      id: "x-1",
+    });
+
+  it("reads what the caller holds in the course the menu is for", async () => {
+    api.courses.getMyCoursePermissions.mockResolvedValue({
+      permissions: ["course.view", "submission.read"],
+      staffRead: true,
+    });
+    expect([...(await held("ders"))]).toEqual([
+      "course.view",
+      "submission.read",
+    ]);
+    expect(api.courses.getMyCoursePermissions).toHaveBeenCalledWith({
+      id: "x-1",
+    });
+  });
+
+  it("asks nothing for a medrese", async () => {
+    expect((await held("medrese")).size).toBe(0);
+    expect(api.courses.getMyCoursePermissions).not.toHaveBeenCalled();
+  });
+
+  it("holds nothing when the read fails, so an item drawn to holders is left out, and logs it", async () => {
+    api.courses.getMyCoursePermissions.mockRejectedValue(status(500));
+    expect((await held("ders")).size).toBe(0);
+    expect(errors).toHaveBeenCalled();
+  });
+
+  it("passes the way to sign-in on when the session is over", async () => {
+    sessionOver = true;
+    await expect(held("ders")).rejects.toThrow(`${REDIRECT}:/auth/signin`);
   });
 });
