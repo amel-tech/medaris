@@ -16,6 +16,7 @@ import { useTranslations } from "next-intl";
 import { useEffect, useState, useTransition } from "react";
 import { dayMonthClock } from "~/lib/dates";
 import type { Messages } from "~/lib/i18n/messages";
+import { handleUnauthenticated } from "~/lib/unauthenticated";
 import { whenLabel } from "../../sessions/sessions";
 import { addRecording } from "../actions";
 import {
@@ -110,6 +111,7 @@ export function RecordingsTable({
       slot.lessonId,
       streamRecordingBody(slot, streamUrl, t("Recordings.titleSuffix"))
     );
+    if (handleUnauthenticated(result)) return;
     setAdding(null);
     if (result.success) {
       notify({

@@ -1,5 +1,10 @@
 "use server";
 
+import {
+  isUnauthenticated,
+  type Unauthenticated,
+  unauthenticated,
+} from "@medaris/auth/server";
 import type {
   CreateMadrasahPermissionGroupDto,
   DismissMadrasahNazirDecisionDto,
@@ -35,13 +40,18 @@ export type LookupOutcome =
  * log, so the dialog searches on Enter, not on every key. Finding no one is an
  * answer; a directory that cannot be reached is "şu an yapılamıyor".
  */
-export async function lookupPerson(email: string): Promise<LookupOutcome> {
+export async function lookupPerson(
+  email: string
+): Promise<LookupOutcome | Unauthenticated> {
   const result = await authenticatedAction((api) =>
     api.users.lookupUser({ email: email.trim() })
   );
   if (!result.success) {
     console.error("Error looking a user up:", result.error);
-    return { kind: "unavailable" };
+    // A session that is over is not "şu an yapılamıyor": the dialog sends it to sign-in.
+    return isUnauthenticated(result)
+      ? unauthenticated()
+      : { kind: "unavailable" };
   }
   const [user] = result.data;
   return user
@@ -199,20 +209,22 @@ export async function saveNazirPermissions(
  */
 const groupOutcome = (
   result: AuthenticatedActionResult<unknown>
-): GroupOutcome =>
-  result.success
+): GroupOutcome | Unauthenticated => {
+  if (isUnauthenticated(result)) return unauthenticated();
+  return result.success
     ? { success: true }
     : {
         success: false,
         code: errorCodeOf(result.errorBody),
         userCount: userCountOf(result.errorBody),
       };
+};
 
 /** "Grubu kaydet" of a new group (`POST /madrasahs/:id/permission-groups`). */
 export async function createGroup(
   madrasahId: string,
   body: CreateMadrasahPermissionGroupDto
-): Promise<GroupOutcome> {
+): Promise<GroupOutcome | Unauthenticated> {
   const result = await authenticatedAction((api) =>
     api.madrasahs.createMadrasahPermissionGroup({
       id: madrasahId,
@@ -229,7 +241,7 @@ export async function updateGroup(
   groupId: string,
   patch: GroupPatch,
   usersPolicy?: UsersPolicy
-): Promise<GroupOutcome> {
+): Promise<GroupOutcome | Unauthenticated> {
   const result = await authenticatedAction((api) =>
     api.madrasahs.updateMadrasahPermissionGroup({
       id: madrasahId,
@@ -246,7 +258,7 @@ export async function removeGroup(
   madrasahId: string,
   groupId: string,
   usersPolicy?: UsersPolicy
-): Promise<GroupOutcome> {
+): Promise<GroupOutcome | Unauthenticated> {
   const result = await authenticatedAction(async (api) => {
     await api.madrasahs.deleteMadrasahPermissionGroup({
       id: madrasahId,

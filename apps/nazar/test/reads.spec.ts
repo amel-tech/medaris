@@ -4,7 +4,8 @@ import { assignment, course, medrese } from "./fixtures";
 
 /**
  * The portal's reads: the roles behind the gate and the numbers behind the
- * badges. The API client is a stub; the sign-in session is a stub.
+ * badges. The API client is a stub; the session is a real sealed cookie read
+ * by the real `~/lib/auth`.
  */
 const REDIRECT = "NEXT_REDIRECT";
 let session: { user: Record<string, unknown> } | null;
@@ -28,7 +29,17 @@ vi.mock("next/navigation", () => ({
     }
   },
 }));
-vi.mock("~/lib/auth_options", () => ({ auth: async () => session }));
+// The real `~/lib/auth`, reading a sealed session cookie for `session`, or
+// none; the proxy's return path is the page being served.
+vi.mock("next/headers", async () =>
+  (await import("./sealed-session")).nextHeaders(
+    () =>
+      session === null
+        ? null
+        : { user: { sub: "user-1", ...(session.user as object) } },
+    () => "/medrese/m-1/dersler?sekme=bekleyen"
+  )
+);
 vi.mock("~/lib/tedrisat-api", () => ({
   tedrisatApi: async () => {
     if (sessionOver) throw new Error(`${REDIRECT}:/auth/signin`);
@@ -107,13 +118,16 @@ describe("getPortal", () => {
     expect(await portal()).toEqual({ status: "unavailable" });
   });
 
-  it("sends a request with no session to the sign-in page", async () => {
+  it("sends a request with no session to the sign-in page, and back to the page afterwards", async () => {
     session = null;
-    await expect(portal()).rejects.toThrow(`${REDIRECT}:/auth/signin`);
+    await expect(portal()).rejects.toThrow(
+      `${REDIRECT}:/auth/signin?callbackUrl=${encodeURIComponent("/medrese/m-1/dersler?sekme=bekleyen")}`
+    );
+    expect(api.me.getMyAssignments).not.toHaveBeenCalled();
   });
 
   it("sends a session that is over for the server to sign-in too, never to the retry state", async () => {
-    // auth() still reads the cookie as signed in; the token is gone.
+    // `tedrisatApi`'s way to sign-in passes through the catch.
     sessionOver = true;
     await expect(portal()).rejects.toThrow(`${REDIRECT}:/auth/signin`);
     expect(api.me.getMyAssignments).not.toHaveBeenCalled();

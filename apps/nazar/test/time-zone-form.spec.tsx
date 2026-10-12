@@ -124,6 +124,36 @@ describe("the time zone select (nazir 20)", () => {
     expect(refresh).not.toHaveBeenCalled();
   });
 
+  it("sends a session that is over to sign-in, back to this page, and says nothing failed", async () => {
+    const assign = vi.fn();
+    const realLocation = window.location;
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      value: {
+        ...realLocation,
+        pathname: "/hesap",
+        search: "",
+        hash: "",
+        assign,
+      },
+    });
+    try {
+      save.mockResolvedValue({ kind: "unauthenticated" });
+      await mount();
+      await choose(0, "Berlin");
+      expect(assign).toHaveBeenCalledExactlyOnceWith(
+        "/api/auth/signin?callbackUrl=%2Fhesap&locale=tr"
+      );
+      expect(document.querySelector(".mds-toast--error")).toBeNull();
+      expect(refresh).not.toHaveBeenCalled();
+    } finally {
+      Object.defineProperty(window, "location", {
+        configurable: true,
+        value: realLocation,
+      });
+    }
+  });
+
   it("does not save the zone that is already chosen", async () => {
     await mount();
     await choose(0, "İstanbul");

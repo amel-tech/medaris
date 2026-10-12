@@ -13,6 +13,7 @@ import { useState, useTransition } from "react";
 import { approveApplication, rejectApplication } from "~/features/pano/actions";
 import { applicationGone, decisionErrorKey } from "~/features/pano/pano";
 import type { Messages } from "~/lib/i18n/messages";
+import { handleUnauthenticated } from "~/lib/unauthenticated";
 import type {
   ApplicationRow,
   Lists,
@@ -74,6 +75,7 @@ export function EnrolmentsTabs({
       const result = await (action === "approve"
         ? approveApplication
         : rejectApplication)(courseId, row.userId);
+      if (handleUnauthenticated(result)) return;
       if (result.success) {
         notify({
           title: t(

@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import type { Messages } from "~/lib/i18n/messages";
+import { handleUnauthenticated } from "~/lib/unauthenticated";
 import { restoreItem } from "../actions";
 import { type ArchiveRow, archiveErrorKey } from "../archive";
 
@@ -61,6 +62,7 @@ export function ArchiveList({
     setBusy(row.key);
     startTransition(async () => {
       const result = await restoreItem(row.type, row.id);
+      if (handleUnauthenticated(result)) return;
       if (result.success) {
         notify({
           tone: "success",

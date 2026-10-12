@@ -9,6 +9,7 @@ import { useToaster } from "@medaris/ui/mds/toast";
 import { useTranslations } from "next-intl";
 import { type FormEvent, useRef, useState, useTransition } from "react";
 import type { Messages } from "~/lib/i18n/messages";
+import { handleUnauthenticated } from "~/lib/unauthenticated";
 import { escalateBan, liftBan, requestPermanentBan } from "../actions";
 import {
   type BanRow,
@@ -68,6 +69,7 @@ export function ReasonDialog({
     }
     startTransition(async () => {
       const result = await ACTION[kind](row.id, reason.trim());
+      if (handleUnauthenticated(result)) return;
       if (result.success) {
         notify({
           title: t(`Reasons.${kind}.done`),

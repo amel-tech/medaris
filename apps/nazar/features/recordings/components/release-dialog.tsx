@@ -7,6 +7,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { type FormEvent, useState, useTransition } from "react";
 import { dayMonthClock } from "~/lib/dates";
 import type { Messages } from "~/lib/i18n/messages";
+import { handleUnauthenticated } from "~/lib/unauthenticated";
 import { setRecordingAvailability } from "../actions";
 import {
   releaseChange,
@@ -70,6 +71,7 @@ export function ReleaseDialog({
         lessonId,
         change.availableAt
       );
+      if (handleUnauthenticated(result)) return;
       if (!result.success) {
         notify({
           tone: "error",

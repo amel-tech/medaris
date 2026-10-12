@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import type { Messages } from "~/lib/i18n/messages";
+import { handleUnauthenticated } from "~/lib/unauthenticated";
 import { hideMedrese } from "../actions";
 import { archiveErrorKey } from "../archive";
 
@@ -45,6 +46,7 @@ export function HideMadrasah({
   const hide = () =>
     startTransition(async () => {
       const result = await hideMedrese(madrasahId);
+      if (handleUnauthenticated(result)) return;
       if (result.success || result.code === "MADRASAH_ALREADY_HIDDEN") {
         setOpen(false);
         setHidden(result.success ? "mine" : "already");

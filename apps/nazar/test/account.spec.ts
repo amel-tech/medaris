@@ -407,7 +407,9 @@ describe("the time zone lists (nazir 20)", () => {
 describe("updateTimeZone", () => {
   const run = async (
     zone: string,
-    outcome: { success: boolean; error?: string } = { success: true }
+    outcome: { success: boolean; error?: string; kind?: string } = {
+      success: true,
+    }
   ) => {
     vi.resetModules();
     const updateMe = vi.fn().mockResolvedValue({});
@@ -442,6 +444,17 @@ describe("updateTimeZone", () => {
       error: "internal detail",
     });
     expect(result).toEqual({ success: false });
+    quiet.mockRestore();
+  });
+
+  it("hands back a session that is over as such, for the page to send to sign-in", async () => {
+    const quiet = vi.spyOn(console, "error").mockImplementation(() => {});
+    const { result } = await run("Europe/Berlin", {
+      kind: "unauthenticated",
+      success: false,
+      error: "No usable session",
+    });
+    expect(result).toEqual({ kind: "unauthenticated" });
     quiet.mockRestore();
   });
 });

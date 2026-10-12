@@ -30,6 +30,7 @@ const nextConfig = {
   output: "standalone",
   // ADR-001 §D3: explicit, not relying on Turbopack auto-transpilation.
   transpilePackages: [
+    "@medaris/auth",
     "@medaris/ui",
     "@medaris/icons",
     "@medaris/i18n",

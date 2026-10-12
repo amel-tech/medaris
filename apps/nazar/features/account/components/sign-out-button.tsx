@@ -1,16 +1,18 @@
 "use client";
 
+import { signOut } from "@medaris/auth/client";
 import { Button } from "@medaris/ui/mds/button";
 import { Icon } from "@medaris/ui/mds/icon";
-import { useSession } from "next-auth/react";
 import { useState } from "react";
-import { keycloakSignOut } from "~/lib/keycloak-logout";
+import { LOCALE } from "~/lib/i18n/locale";
 
 /**
- * "Çıkış yap" (nazir 20): ends the NextAuth session and Keycloak's, through
- * the helper the other apps share. The sentence above the button says what it
- * does; the canvas has no separate confirmation window for Nazar, and the
- * sign-out page at `/auth/signout` is NextAuth's own `GET` target, not this.
+ * "Çıkış yap" (nazir 20): ends nazar's session and Keycloak's. `signOut`
+ * posts to `/api/auth/signout`, which reads the ID token on the server for the
+ * `id_token_hint` and comes back to `/`, behind the session, so the person
+ * ends on Keycloak's form. The sentence above the button says what it does;
+ * the canvas has no separate confirmation window for Nazar (the page at
+ * `/auth/signout` is the confirming one).
  */
 export function SignOutButton({
   label,
@@ -19,24 +21,18 @@ export function SignOutButton({
   label: string;
   busy: string;
 }) {
-  const { data: session } = useSession();
   const [signingOut, setSigningOut] = useState(false);
 
-  const signOut = async () => {
+  const leave = () => {
     setSigningOut(true);
-    try {
-      await keycloakSignOut(session?.idToken);
-    } catch {
-      // The navigation to Keycloak never started; let the person try again.
-      setSigningOut(false);
-    }
+    signOut({ locale: LOCALE });
   };
 
   return (
     <Button
       variant="secondary"
       iconLeft={<Icon name="signOut" size="sm" />}
-      onClick={signOut}
+      onClick={leave}
       loading={signingOut}
       loadingLabel={busy}
     >

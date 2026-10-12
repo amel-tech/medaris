@@ -18,6 +18,7 @@ import {
   useTransition,
 } from "react";
 import type { Messages } from "~/lib/i18n/messages";
+import { handleUnauthenticated } from "~/lib/unauthenticated";
 import { appointNazir, lookupPerson } from "../actions";
 import { isEmailLike, nazirErrorKey, type PickedPerson } from "../nazirs";
 
@@ -66,6 +67,7 @@ export function AppointNazir({
     searched.current = wanted;
     setSearch("searching");
     const result = await lookupPerson(wanted);
+    if (handleUnauthenticated(result)) return;
     if (searched.current !== wanted) return;
     if (result.kind === "found") {
       setPicked(result.person);
@@ -94,6 +96,7 @@ export function AppointNazir({
     if (!picked || already || pending) return;
     startTransition(async () => {
       const result = await appointNazir(madrasahId, picked.id);
+      if (handleUnauthenticated(result)) return;
       if (result.success) {
         notify({
           tone: "success",

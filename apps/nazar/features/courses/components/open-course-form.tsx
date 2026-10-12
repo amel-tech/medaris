@@ -12,6 +12,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { type FormEvent, useState, useTransition } from "react";
 import type { Messages } from "~/lib/i18n/messages";
+import { handleUnauthenticated } from "~/lib/unauthenticated";
 import { openCourse } from "../actions";
 import {
   blankForm,
@@ -100,6 +101,7 @@ export function OpenCourseForm({
     if (pending) return;
     startTransition(async () => {
       const result = await openCourse(madrasahId, openRequest(form, locks));
+      if (handleUnauthenticated(result)) return;
       if (result.success) {
         notify({
           title: t("OpenCourse.opened"),

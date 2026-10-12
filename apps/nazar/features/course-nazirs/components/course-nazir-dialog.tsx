@@ -23,6 +23,7 @@ import { lookupPerson } from "~/features/nazirs/actions";
 import { PermissionSection } from "~/features/nazirs/components/permission-section";
 import { isEmailLike, type PickedPerson } from "~/features/nazirs/nazirs";
 import type { Messages } from "~/lib/i18n/messages";
+import { handleUnauthenticated } from "~/lib/unauthenticated";
 import { appointCourseNazir, changeCourseNazir } from "../actions";
 import {
   boxState,
@@ -113,6 +114,7 @@ export function CourseNazirDialog({
     searched.current = wanted;
     setSearch("searching");
     const result = await lookupPerson(wanted);
+    if (handleUnauthenticated(result)) return;
     if (searched.current !== wanted) return;
     if (result.kind === "found") {
       setPicked(result.person);
@@ -178,6 +180,7 @@ export function CourseNazirDialog({
             permissions: sent,
             ...(iso ? { endsAt: iso } : {}),
           });
+      if (handleUnauthenticated(result)) return;
       if (result.success) {
         notify({
           tone: "success",

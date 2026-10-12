@@ -24,6 +24,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { type FormEvent, useState, useTransition } from "react";
 import type { Messages } from "~/lib/i18n/messages";
+import { handleUnauthenticated } from "~/lib/unauthenticated";
 import { linkProblem, planHref } from "../../sessions/sessions";
 import { saveCurriculum } from "../actions";
 import {
@@ -220,6 +221,7 @@ export function CurriculumEditor({
       course.id,
       curriculumPayload(course, current, timeZone)
     );
+    if (handleUnauthenticated(result)) return;
     setSaving(false);
     if (!result.success) {
       if (curriculumConflict(result.code)) {

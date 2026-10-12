@@ -13,7 +13,13 @@ const api = {
 };
 let token: string | undefined;
 
-vi.mock("~/lib/auth_options", () => ({ getAccessToken: async () => token }));
+// The real `~/lib/auth`, reading a sealed session cookie whose access token is
+// `token`, or none.
+vi.mock("next/headers", async () =>
+  (await import("./sealed-session")).nextHeaders(() =>
+    token === undefined ? null : { accessToken: token }
+  )
+);
 vi.mock("@medaris/services/tedrisat", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@medaris/services/tedrisat")>()),
   createServerTedrisatAPIs: async () => api,
@@ -141,15 +147,13 @@ it("writes nothing without a session", async () => {
   const { saveCourseSettings, setCourseStatus, setSampleLesson } =
     await actions();
   expect(await saveCourseSettings("c-1", { isClosed: true })).toEqual({
-    success: false,
-    code: "",
+    kind: "unauthenticated",
   });
   expect(await setCourseStatus("c-1", "DRAFT")).toEqual({
-    success: false,
-    code: "",
+    kind: "unauthenticated",
   });
   expect(await setSampleLesson("l-1", { version: 7, isPreview: true })).toEqual(
-    { success: false, code: "" }
+    { kind: "unauthenticated" }
   );
   expect(api.courses.updateCourse).not.toHaveBeenCalled();
   expect(api.lessons.updateLesson).not.toHaveBeenCalled();

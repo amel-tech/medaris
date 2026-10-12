@@ -1,5 +1,5 @@
+import { authErrorMessageKey } from "@medaris/auth/client";
 import { resources } from "@medaris/i18n";
-import { authErrorMessageKey } from "@medaris/services/auth-client";
 import { createTranslator } from "next-intl";
 import { describe, expect, it } from "vitest";
 import { banErrorKey } from "~/features/bans/bans";
@@ -68,13 +68,14 @@ describe("the nazar message catalogue", () => {
     }
   });
 
-  it("has a message for every NextAuth error the sign-in pages can show", () => {
+  it("has a message for every error the sign-in page can show", () => {
     // `authErrorMessageKey` builds the key at run time, so nothing else pins it.
     const codes = [
       "AccessDenied",
       "Configuration",
       "OAuthSignin",
       "OAuthCallback",
+      "SignInLimit",
       "Callback",
       "Verification",
       "Default",

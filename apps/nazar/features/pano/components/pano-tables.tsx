@@ -11,6 +11,7 @@ import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import { AttendanceCell } from "~/features/sessions/components/attendance-cell";
 import type { Messages } from "~/lib/i18n/messages";
+import { handleUnauthenticated } from "~/lib/unauthenticated";
 import { approveApplication, rejectApplication } from "../actions";
 import {
   type ApplicationRow,
@@ -162,6 +163,7 @@ export function ApplicationsPanel({
       const result = await (action === "approve"
         ? approveApplication
         : rejectApplication)(row.courseId, row.userId);
+      if (handleUnauthenticated(result)) return;
       if (result.success) {
         notify({
           title: t(

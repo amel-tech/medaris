@@ -12,6 +12,7 @@ import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import type { Messages } from "~/lib/i18n/messages";
+import { handleUnauthenticated } from "~/lib/unauthenticated";
 import { setCompleted } from "../actions";
 import {
   byName,
@@ -75,6 +76,7 @@ export function RosterTable({
     setBusy(row.userId);
     startTransition(async () => {
       const result = await setCompleted(courseId, row.userId, completed);
+      if (handleUnauthenticated(result)) return;
       if (result.success) {
         notify({
           title: t(
