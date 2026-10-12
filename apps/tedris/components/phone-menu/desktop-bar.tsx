@@ -7,6 +7,7 @@ import { LocaleMenu } from "@medaris/ui/mds/locale-switcher";
 import { Logo } from "@medaris/ui/mds/logo";
 import { NavItem } from "@medaris/ui/mds/nav-item";
 import { ThemeToggle } from "@medaris/ui/mds/theme-toggle";
+import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import { usePathname } from "~/lib/i18n/navigation";
 import { locales } from "~/lib/i18n/routing";
@@ -24,6 +25,10 @@ import { type Section, sectionOf } from "./member-phone-menu";
  * `section` overrides the place worked out from the address, for the pages
  * whose place depends on who is looking (a course page is Derslerim's for its
  * talebe and Keşfet's for everyone else).
+ *
+ * Every place goes through `next/link`, under the page's locale: as plain
+ * anchors each click was a full document load (the layout, the session read
+ * and the message catalogue again).
  */
 export function DesktopBar({
   signedIn,
@@ -46,7 +51,11 @@ export function DesktopBar({
   const hrefs = inviteHrefs(locale, pathname === "/" ? "/home" : pathname);
 
   const item = (key: Exclude<Section, null>, href: string, label: string) => (
-    <NavItem href={`/${locale}${href}`} active={section === key}>
+    <NavItem
+      href={`/${locale}${href}`}
+      linkComponent={Link}
+      active={section === key}
+    >
       {label}
     </NavItem>
   );
@@ -56,13 +65,13 @@ export function DesktopBar({
       data-system-chrome
       className="sticky inset-bs-0 z-[2] flex block-topbar items-center gap-6 px-gutter bg-neutral-surface border-be border-neutral-subtle font-ui max-md:hidden"
     >
-      <a
+      <Link
         href={`/${locale}/${signedIn ? "home" : "discover"}`}
         aria-label={t("homeLabel")}
         aria-current={section === "home" ? "page" : undefined}
       >
         <Logo wordmark />
-      </a>
+      </Link>
       <nav aria-label={t("navLabel")} className="flex items-center gap-1">
         {signedIn ? item("home", "/home", t("home")) : null}
         {item("discover", "/discover", t("discover"))}
@@ -83,23 +92,23 @@ export function DesktopBar({
         <ThemeToggle darkLabel={t("themeDark")} lightLabel={t("themeLight")} />
         {signedIn ? (
           <>
-            <a
+            <Link
               className="mds-btn mds-icon-btn mds-btn--large mds-btn--ghost"
               href={`/${locale}/notifications`}
               aria-label={t("notifications")}
             >
               <Icon name="bell" />
-            </a>
+            </Link>
             {/* The bell's ghost icon button, not `.mds-nav-user`: that is the
                 sidebar's footer row, with a top border, padding and a hover
                 fill as tall as the bar. */}
-            <a
+            <Link
               className="mds-btn mds-icon-btn mds-btn--large mds-btn--ghost"
               href={`/${locale}/account`}
             >
               <Avatar name={name} size="sm" decorative />
               <span className="mds-visually-hidden">{t("account")}</span>
-            </a>
+            </Link>
           </>
         ) : (
           <>

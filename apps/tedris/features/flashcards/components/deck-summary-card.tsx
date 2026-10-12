@@ -65,7 +65,7 @@ export function DeckSummaryCard({
   return (
     <Card
       className="flex grow flex-col min-inline-0"
-      href={`/decks/${deck.id}`}
+      href={`/${locale}/decks/${deck.id}`}
       title={
         <span className="flex items-center gap-3">
           <Avatar entity decorative name={deck.title} />
@@ -158,9 +158,10 @@ export function StudyButton({
   label: string;
   accessibleLabel: string;
 }) {
+  const locale = useLocale();
   return (
     <Button
-      href={`/decks/study/${deckId}`}
+      href={`/${locale}/decks/study/${deckId}`}
       variant="outline"
       size="small"
       aria-label={accessibleLabel}

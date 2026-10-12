@@ -54,7 +54,7 @@ describe("Deste, girişsiz ziyaretçi (design tedris/32)", () => {
     const study = [...header.querySelectorAll("a")].find(
       (a) => a.textContent === "Çalış"
     );
-    expect(study?.getAttribute("href")).toBe("/decks/study/d1");
+    expect(study?.getAttribute("href")).toBe("/tr/decks/study/d1");
   });
 
   it("tells the visitor nothing is saved and links the sign-in", async () => {

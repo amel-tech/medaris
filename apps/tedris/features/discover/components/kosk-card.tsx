@@ -15,16 +15,18 @@ type Translate = LooseTranslator;
 export const KoskCard = ({
   kosk,
   t,
+  locale,
   signedIn = true,
 }: {
   kosk: KoskResponse;
   t: Translate;
+  locale: string;
   signedIn?: boolean;
 }) => {
   return (
     <Card
       className="flex flex-col"
-      href={`/kosks/${kosk.id}`}
+      href={`/${locale}/kosks/${kosk.id}`}
       title={
         <span className="flex items-center gap-3">
           <Avatar entity decorative name={kosk.name} />

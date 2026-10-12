@@ -10,7 +10,7 @@ import { RadioGroup } from "@medaris/ui/mds/radio-group";
 import { Textarea } from "@medaris/ui/mds/textarea";
 import { useToaster } from "@medaris/ui/mds/toast";
 import { useRouter } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { type FormEvent, useState } from "react";
 import { createDeck } from "../actions";
 import { attempt } from "../attempt";
@@ -42,6 +42,7 @@ const SAMPLE_FRONT = {
  */
 export function CreateDeckPage() {
   const t = useTranslations("tedris.Decks");
+  const locale = useLocale();
   const router = useRouter();
   const toaster = useToaster();
   const [title, setTitle] = useState("");
@@ -83,7 +84,7 @@ export function CreateDeckPage() {
       })
     );
     if (result.success) {
-      router.push(`/decks/${result.data.id}`);
+      router.push(`/${locale}/decks/${result.data.id}`);
       return;
     }
     setBusy(false);
@@ -100,7 +101,7 @@ export function CreateDeckPage() {
       <div className="flex flex-col gap-3">
         <Breadcrumb
           label={t("breadcrumbLabel")}
-          items={[{ label: t("title"), href: "/decks" }, t("create")]}
+          items={[{ label: t("title"), href: `/${locale}/decks` }, t("create")]}
         />
         <h1 className="mds-h1">{t("create")}</h1>
         <p className="mds-body-sm max-inline-measure">{t("createSubtitle")}</p>
@@ -194,7 +195,7 @@ export function CreateDeckPage() {
             {t("noticeText")}
           </Alert>
           <div className="flex flex-wrap justify-end gap-3">
-            <Button href="/decks" variant="ghost">
+            <Button href={`/${locale}/decks`} variant="ghost">
               {t("cancel")}
             </Button>
             <Button type="submit" loading={busy}>

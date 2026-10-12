@@ -73,6 +73,9 @@ const render = async (path: string, name = "Zeynep Betül Karahanlı") => {
   return renderToStaticMarkup(createElement(MemberPhoneMenu, { name }));
 };
 const nav = (html: string) => /<nav>(.*?)<\/nav>/.exec(html)?.[1] as string;
+/** The item marked as the page; next/link writes `href` after the item's own attributes. */
+const current = (html: string) =>
+  /<a [^>]*aria-current="page"[^>]*>/.exec(html)?.[0];
 
 describe("the phone menu of a signed-in talebe (design tedris/44)", () => {
   it("holds the five pages in order, and no 'Çıkış yap'", async () => {
@@ -92,18 +95,18 @@ describe("the phone menu of a signed-in talebe (design tedris/44)", () => {
 
   it("marks the page the talebe is on, and names the bar after it", async () => {
     const schedule = await render("/schedule");
-    expect(nav(schedule)).toMatch(/href="\/tr\/schedule" aria-current="page"/);
-    expect(nav(schedule)).not.toMatch(/href="\/tr\/home" aria-current/);
+    expect(current(nav(schedule))).toContain('href="/tr/schedule"');
+    expect(current(nav(schedule))).not.toContain('href="/tr/home"');
     expect(schedule).toMatch(/data-title="true">Programım</);
     // A köşk or a medrese page belongs to Keşfet.
-    expect(nav(await render("/kosks/k1"))).toMatch(
-      /href="\/tr\/discover" aria-current="page"/
+    expect(current(nav(await render("/kosks/k1")))).toContain(
+      'href="/tr/discover"'
     );
-    expect(nav(await render("/madrasahs/m1"))).toMatch(
-      /href="\/tr\/discover" aria-current="page"/
+    expect(current(nav(await render("/madrasahs/m1")))).toContain(
+      'href="/tr/discover"'
     );
-    expect(nav(await render("/my-courses"))).toMatch(
-      /href="\/tr\/my-courses" aria-current="page"/
+    expect(current(nav(await render("/my-courses")))).toContain(
+      'href="/tr/my-courses"'
     );
   });
 
@@ -118,9 +121,10 @@ describe("the phone menu of a signed-in talebe (design tedris/44)", () => {
   });
 
   it("has the bell as its action", async () => {
-    expect(await render("/home")).toMatch(
-      /href="\/tr\/notifications"[^>]*aria-label="Bildirimler"/
-    );
+    const bell = /<a [^>]*aria-label="Bildirimler"[^>]*>/.exec(
+      await render("/home")
+    )?.[0];
+    expect(bell).toContain('href="/tr/notifications"');
   });
 });
 
@@ -171,12 +175,12 @@ describe("the signed-in Ana sayfa's sessions (design tedris/44)", () => {
     expect(html).toContain("Sıradaki celse");
     expect(html).toContain("Toplantı bağlantısı henüz eklenmedi.");
     expect(html).toMatch(
-      /href="\/courses\/c1\/lessons\/l1"[^>]*>Celse sayfası</
+      /href="\/tr\/courses\/c1\/lessons\/l1"[^>]*>Celse sayfası</
     );
     expect(html).toContain("data-menu");
     expect(html).toContain("Sonraki celseler");
     expect(html).toContain("Sonraki ders");
-    expect(html).toMatch(/href="\/schedule"/);
+    expect(html).toMatch(/href="\/tr\/schedule"/);
   });
 
   it("shows the platform when the link is there", async () => {

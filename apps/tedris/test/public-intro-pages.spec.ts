@@ -68,7 +68,7 @@ describe("course page sticky card (MDRS-122)", () => {
     const html = await renderCard({ signedIn: false });
     expect(html).toContain(tr.signInToApply);
     expect(html).toContain(
-      `callbackUrl=${encodeURIComponent(`/courses/${COURSE_ID}`)}`
+      `callbackUrl=${encodeURIComponent(`/tr/courses/${COURSE_ID}`)}`
     );
     expect(html).not.toContain(`>${tr.enroll}</button>`);
   });

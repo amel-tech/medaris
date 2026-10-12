@@ -164,7 +164,7 @@ const RecordingsList = ({
                       )}
                       release={recordingReleaseOf(rec, now)}
                       timeZone={timeZone}
-                      watchHref={watchPath(courseId, rec.lessonId)}
+                      watchHref={`/${locale}${watchPath(courseId, rec.lessonId)}`}
                     />
                   </li>
                 ))}

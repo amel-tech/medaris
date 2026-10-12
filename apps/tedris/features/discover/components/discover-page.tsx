@@ -16,18 +16,24 @@ import { DiscoverFilters } from "./discover-filters";
 import { KoskCard } from "./kosk-card";
 import { MadrasahCard } from "./madrasah-card";
 
-/** Where "Köşk açma başvurusu" leads (design tedris/37, a later package). */
+/**
+ * Where "Köşk açma başvurusu" leads (design tedris/37, a later package); the
+ * page puts its locale in front.
+ */
 export const KOSK_APPLICATION_HREF = "/kosk-applications/new";
 
 const Pagination = ({
   query,
   total,
   t,
+  path,
 }: {
   query: DiscoverQuery;
   total: number;
   // Narrow on purpose: the full translator type hits TS2589 here (MDRS-162).
   t: LooseTranslator;
+  /** Keşfet's own path, with the locale */
+  path: string;
 }) => {
   const pages = pageCount(total);
   if (pages <= 1) return null;
@@ -40,7 +46,7 @@ const Pagination = ({
         <Button
           variant="outline"
           size="small"
-          href={discoverHref({ ...query, page: query.page - 1 })}
+          href={discoverHref({ ...query, page: query.page - 1 }, path)}
           rel="prev"
         >
           {t("DiscoverPage.prev")}
@@ -53,7 +59,7 @@ const Pagination = ({
         <Button
           variant="outline"
           size="small"
-          href={discoverHref({ ...query, page: query.page + 1 })}
+          href={discoverHref({ ...query, page: query.page + 1 }, path)}
           rel="next"
         >
           {t("DiscoverPage.next")}
@@ -85,6 +91,8 @@ export const DiscoverPage = async ({
 }) => {
   const t = await getTranslations("tedris");
   const locale = await getLocale();
+  // Every link keeps the page's language: a path without one lands on Turkish.
+  const path = `/${locale}/discover`;
 
   return (
     <main className="font-ui mx-auto flex inline-full max-inline-content flex-col gap-section pbs-8 pbe-16 px-gutter max-md:pbs-5 max-md:pbe-10">
@@ -97,7 +105,11 @@ export const DiscoverPage = async ({
         <Alert tone="error" title={t("DiscoverPage.loadErrorTitle")}>
           <p>{t("DiscoverPage.loadError")}</p>
           <p className="mbs-3">
-            <Button variant="outline" size="small" href={discoverHref(query)}>
+            <Button
+              variant="outline"
+              size="small"
+              href={discoverHref(query, path)}
+            >
               {t("DiscoverPage.retry")}
             </Button>
           </p>
@@ -155,11 +167,17 @@ export const DiscoverPage = async ({
                         key={kosk.id}
                         kosk={kosk}
                         t={t}
+                        locale={locale}
                         signedIn={signedIn}
                       />
                     ))}
                   </div>
-                  <Pagination query={query} total={data.koskTotal} t={t} />
+                  <Pagination
+                    query={query}
+                    total={data.koskTotal}
+                    t={t}
+                    path={path}
+                  />
                 </section>
               ) : null}
               {data.madrasahs.length > 0 ? (
@@ -176,6 +194,7 @@ export const DiscoverPage = async ({
                         key={madrasah.id}
                         madrasah={madrasah}
                         t={t}
+                        locale={locale}
                       />
                     ))}
                   </div>
@@ -187,7 +206,10 @@ export const DiscoverPage = async ({
           {signedIn ? (
             <Card className="flex flex-row flex-wrap items-center justify-between gap-4">
               <p className="mds-body-sm">{t("DiscoverPage.applyNotice")}</p>
-              <Button variant="outline" href={KOSK_APPLICATION_HREF}>
+              <Button
+                variant="outline"
+                href={`/${locale}${KOSK_APPLICATION_HREF}`}
+              >
                 {t("DiscoverPage.applyLink")}
               </Button>
             </Card>

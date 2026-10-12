@@ -52,7 +52,7 @@ export function NotificationRow({
       <div className="flex min-inline-0 flex-1 flex-col gap-1">
         {href ? (
           <Link
-            href={href}
+            href={`/${locale}${href}`}
             onClick={() => unread && onRead(n)}
             className="flex flex-col gap-1"
           >

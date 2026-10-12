@@ -9,7 +9,7 @@ import type { PlayerEvent } from "./youtube-player";
  * player reports. Pure and clock-free: a spec pins every rule.
  */
 
-/** The watch page of a celse, entered from its detail page. */
+/** The watch page of a celse, entered from its detail page; without the locale, which the link puts in front. */
 export const watchPath = (courseId: string, lessonId: string): string =>
   `/courses/${courseId}/lessons/${lessonId}/izle`;
 
