@@ -1,6 +1,8 @@
 "use client";
 
 import { Alert } from "@medaris/ui/mds/alert";
+import { Badge } from "@medaris/ui/mds/badge";
+import { Icon } from "@medaris/ui/mds/icon";
 import { Select } from "@medaris/ui/mds/select";
 import { Table, type TableColumn } from "@medaris/ui/mds/table";
 import { DEFAULT_TIME_ZONE, timeZoneCity } from "@medaris/utils";
@@ -14,6 +16,7 @@ import {
   changedLabel,
   type HomeworkRow,
   type HomeworkSession,
+  hasHomework,
   homeworkCounts,
   noteExcerpt,
   shownSessions,
@@ -24,9 +27,12 @@ import {
  * celseler" first, then each in programme order with how many handed in),
  * and a table per celse: the talebe, the files they handed in (download
  * links with type and size), when they last changed it, on the course's
- * clock, and their note, cut short with a way to read it whole. "Bütün
- * celseler" draws the celses that hold homework; one celse is drawn even
- * when nobody has handed in on it, and its table says so.
+ * clock, and their note, cut short with a way to read it whole. Each celse
+ * says under its heading whether the course team set homework on it ("Ödev
+ * verildi" or "Ödev verilmedi") and "N / M teslim": how many of the enrolled
+ * talebe handed in. "Bütün celseler" draws the celses with homework set or
+ * handed in; one celse is drawn even when nobody has handed in on it, and
+ * its table says so.
  */
 export function HomeworkList({
   courseId,
@@ -50,7 +56,7 @@ export function HomeworkList({
       : timeZoneCity(courseTimeZone);
   const dash = <span aria-hidden="true">—</span>;
 
-  if (counts.submissions === 0) {
+  if (!hasHomework(sessions)) {
     return (
       <Alert tone="info" title={t("Homework.emptyTitle")}>
         <p>{t("Homework.emptyBody")}</p>
@@ -156,15 +162,35 @@ export function HomeworkList({
               <h2 id={`homework-${session.lessonId}`} className="mds-h2">
                 <bdi>{heading}</bdi>
               </h2>
-              {session.startsAt ? (
-                <time className="mds-caption" dateTime={session.startsAt}>
-                  {whenLabel(
-                    new Date(session.startsAt),
-                    { locale, timeZone: courseTimeZone },
-                    "short"
-                  )}
-                </time>
-              ) : null}
+              <p
+                className="flex flex-wrap items-center gap-x-3 gap-y-1"
+                data-testid={`homework-status-${session.lessonId}`}
+              >
+                {session.startsAt ? (
+                  <time className="mds-caption" dateTime={session.startsAt}>
+                    {whenLabel(
+                      new Date(session.startsAt),
+                      { locale, timeZone: courseTimeZone },
+                      "short"
+                    )}
+                  </time>
+                ) : null}
+                {session.hasAssignment ? (
+                  <Badge
+                    variant="secondary"
+                    icon={<Icon name="note" size="sm" />}
+                  >
+                    {t("Homework.hasAssignment")}
+                  </Badge>
+                ) : (
+                  <Badge variant="outline">{t("Homework.noAssignment")}</Badge>
+                )}
+                {session.handIns ? (
+                  <span className="mds-caption mds-num">
+                    {t("Homework.handedIn", session.handIns)}
+                  </span>
+                ) : null}
+              </p>
             </div>
             <Table
               caption={t("Homework.caption", { session: heading })}

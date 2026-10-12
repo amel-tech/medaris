@@ -1009,10 +1009,13 @@
     "noteMore": "Show all",
     "noteLess": "Show less",
     "emptyTitle": "No homework yet",
-    "emptyBody": "Nobody has handed in homework in this course yet. Talebe upload their homework on the session's page; what they hand in is listed here, session by session.",
+    "emptyBody": "No homework has been set in this course and nobody has handed any in yet. You set a session's homework on the Syllabus page; talebe upload theirs on the session's page, and what they hand in is listed here, session by session.",
     "sessionEmpty": "Nobody has handed in homework on this session yet.",
     "loadFailedTitle": "The homework could not be read",
-    "loadFailed": "The homework cannot be read right now. Try again in a few seconds."
+    "loadFailed": "The homework cannot be read right now. Try again in a few seconds.",
+    "hasAssignment": "Homework set",
+    "noAssignment": "No homework set",
+    "handedIn": "{count} / {total} handed in"
   },
   "Bans": {
     "title": "Bans",
@@ -1734,7 +1737,33 @@
       "link": "The meeting link must start with https://. Copy the link again from the platform.",
       "resourceName": "Write the resource name.",
       "resourceUrl": "The link must be a full address starting with http:// or https://."
-    }
+    },
+    "assignmentTitle": "Homework",
+    "assignmentIntro": "Kept apart from the resources: talebe see the homework in its own section of the session's page and hand it in there. What they hand in is on the Homework page.",
+    "assignmentSessions": "Changing this session's homework needs the permission to manage sessions.",
+    "assignmentLocked": "You cannot see this course's content, so this session's homework is not shown and cannot be changed here; the stored one is kept.",
+    "assignmentSaveFirst": "Save the syllabus first to set homework on a new session.",
+    "assignmentToggle": "This session has homework",
+    "assignmentToggleHelp": "Turning it on or off is stored at once; you need not save the syllabus for it.",
+    "assignmentDescLabel": "What the homework is",
+    "assignmentDescHelp": "Optional. Write what the talebe are to do; line breaks are kept.",
+    "assignmentDescSave": "Save the description",
+    "assignmentDescSaving": "Saving…",
+    "assignmentDescDirty": "The description has unsaved changes.",
+    "assignmentDescSaved": "Description saved.",
+    "assignmentTooLong": "The description can be at most {max} characters.",
+    "assignmentFilesTitle": "Homework files",
+    "assignmentFilesEmpty": "No file has been added to this homework yet.",
+    "assignmentFileRemove": "Delete {name}",
+    "assignmentFileRemoveTitle": "Delete the file",
+    "assignmentFileRemoveBody": "will be deleted from the homework for good.",
+    "assignmentFileRemoveConfirm": "Delete",
+    "assignmentNone": "This session has no homework.",
+    "assignmentRemoveTitle": "Remove the homework",
+    "assignmentRemoveBody": "This session's homework will be deleted for good, with its description and files. The homework talebe handed in is not deleted.",
+    "assignmentRemoveConfirm": "Remove the homework",
+    "assignmentRemoved": "Homework removed",
+    "assignmentFailed": "The homework could not be saved"
   },
   "Files": {
     "upload": "Upload a file",
@@ -1791,8 +1820,11 @@
       "lessonGone": "This session is no longer there, or it was hidden. Reload the page.",
       "courseGone": "This course is no longer there. Reload the page.",
       "invalid": "A resource name may be at most 200 characters, and its short line at most 120.",
-      "network": "The connection dropped and the file was not sent. Check your connection and try again."
-    }
+      "network": "The connection dropped and the file was not sent. Check your connection and try again.",
+      "assignmentGone": "This session no longer has homework. Reload the page."
+    },
+    "assignmentUploadNote": "An uploaded file is added to the homework at once; you need not save the syllabus for it.",
+    "assignmentUploadedBody": "{name} was added to the homework."
   },
   "Recordings": {
     "title": "Course recordings",

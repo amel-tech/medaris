@@ -1,13 +1,16 @@
 import type {
   CourseDetailResponse,
   CourseSubmissionResponse,
+  CourseSubmissionSessionResponse,
 } from "@medaris/services/tedrisat";
 import { type StoredFile, storedFileOf } from "../files/files";
 
 /**
  * Ödevler of a course as rules (MDRS-290): what talebe handed in on each
  * celse, by celse in programme order, for the course team who hold
- * `submission.read`. Pure on purpose, so the page has nothing to decide.
+ * `submission.read`, and for each celse whether the course team set homework
+ * on it and "N / M teslim": how many of the enrolled talebe handed in. Pure
+ * on purpose, so the page has nothing to decide.
  */
 
 export const homeworkHref = (courseId: string): string =>
@@ -34,6 +37,19 @@ export interface HomeworkSession {
   startsAt: string | null;
   /** latest change first, as tedrisat lists them */
   rows: HomeworkRow[];
+  /** the course team set homework on it */
+  hasAssignment: boolean;
+  /**
+   * "N / M teslim": enrolled talebe who handed in, of all enrolled; null for
+   * a celse tedrisat no longer counts (one hidden since)
+   */
+  handIns: { count: number; total: number } | null;
+}
+
+/** tedrisat's count beside the homework: each live celse's, and the enrolled talebe. */
+export interface HandIns {
+  sessions: readonly CourseSubmissionSessionResponse[];
+  talebeCount: number;
 }
 
 const rowOf = (item: CourseSubmissionResponse): HomeworkRow => ({
@@ -46,15 +62,29 @@ const rowOf = (item: CourseSubmissionResponse): HomeworkRow => ({
 
 /**
  * The course's celses in programme order (week, then the order within it),
- * each with its homework. A cancelled celse is listed only when somebody
- * handed in on it. Homework on a celse the course read does not list (one
+ * each with its homework, whether homework was set on it and how many
+ * handed in. A cancelled celse is listed only when somebody handed in on it
+ * or it has homework. Homework on a celse the course read does not list (one
  * hidden since) still shows, under the title and week it was handed in on,
- * after the listed celses of that week.
+ * after the listed celses of that week, without a count.
  */
 export function homeworkSessions(
   course: Pick<CourseDetailResponse, "weeks">,
-  items: readonly CourseSubmissionResponse[]
+  items: readonly CourseSubmissionResponse[],
+  handIns: HandIns = { sessions: [], talebeCount: 0 }
 ): HomeworkSession[] {
+  const counted = new Map(
+    handIns.sessions.map((session) => [session.lessonId, session])
+  );
+  const countOf = (lessonId: string) => {
+    const session = counted.get(lessonId);
+    return {
+      hasAssignment: session?.hasAssignment ?? false,
+      handIns: session
+        ? { count: session.handedInCount, total: handIns.talebeCount }
+        : null,
+    };
+  };
   const byLesson = new Map<string, HomeworkRow[]>();
   for (const item of items) {
     const rows = byLesson.get(item.lessonId) ?? [];
@@ -67,7 +97,9 @@ export function homeworkSessions(
     for (const lesson of week.lessons) {
       listed.add(lesson.id);
       const rows = byLesson.get(lesson.id) ?? [];
-      if (lesson.cancelledAt && rows.length === 0) continue;
+      const counts = countOf(lesson.id);
+      if (lesson.cancelledAt && rows.length === 0 && !counts.hasAssignment)
+        continue;
       sessions.push({
         lessonId: lesson.id,
         weekNumber: week.weekNumber,
@@ -76,6 +108,7 @@ export function homeworkSessions(
           ? new Date(lesson.scheduledAt).toISOString()
           : null,
         rows,
+        ...counts,
       });
     }
   }
@@ -88,6 +121,7 @@ export function homeworkSessions(
       title: item.lessonTitle,
       startsAt: null,
       rows: byLesson.get(item.lessonId) ?? [],
+      ...countOf(item.lessonId),
     });
   }
   // A stable sort: the course's own order stays within each week.
@@ -98,9 +132,10 @@ export function homeworkSessions(
 export const ALL_SESSIONS = "all";
 
 /**
- * The celses the page draws for a filter value: every celse that holds
- * homework for "all", else the one chosen, empty or not. A value that names
- * no celse (one gone since) is taken as "all".
+ * The celses the page draws for a filter value: for "all", every celse that
+ * has homework set or handed in, so a celse with homework and no hand-in
+ * shows its "0 / M teslim"; else the one chosen, empty or not. A value that
+ * names no celse (one gone since) is taken as "all".
  */
 export function shownSessions(
   sessions: readonly HomeworkSession[],
@@ -108,8 +143,14 @@ export function shownSessions(
 ): HomeworkSession[] {
   const chosen = sessions.find((session) => session.lessonId === value);
   if (value !== ALL_SESSIONS && chosen) return [chosen];
-  return sessions.filter((session) => session.rows.length > 0);
+  return sessions.filter(
+    (session) => session.rows.length > 0 || session.hasAssignment
+  );
 }
+
+/** Whether the page has anything to draw: homework set on a celse, or handed in. */
+export const hasHomework = (sessions: readonly HomeworkSession[]): boolean =>
+  sessions.some((session) => session.rows.length > 0 || session.hasAssignment);
 
 /** The number of submissions, and of the celses holding them. */
 export const homeworkCounts = (

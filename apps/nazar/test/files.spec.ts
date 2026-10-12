@@ -93,6 +93,13 @@ describe("the routes", () => {
     expect(fileRoutes.submissionFile("c-1", "f-1")).toBe(
       "/api/files/courses/c-1/submissions/f-1"
     );
+    // A celse's homework has routes of its own, apart from its resources.
+    expect(fileRoutes.lessonAssignment("l-1")).toBe(
+      "/api/files/lessons/l-1/assignment"
+    );
+    expect(fileRoutes.lessonAssignmentFile("l-1", "f/1")).toBe(
+      "/api/files/lessons/l-1/assignment/f%2F1"
+    );
   });
 });
 
@@ -111,6 +118,12 @@ describe("a refused upload", () => {
       "Files.errors.notFound"
     );
     expect(fileErrorKey("LESSON_NOT_FOUND")).toBe("Files.errors.lessonGone");
+    expect(fileErrorKey("LESSON_ASSIGNMENT_NOT_FOUND")).toBe(
+      "Files.errors.assignmentGone"
+    );
+    expect(fileErrorKey("LESSON_ASSIGNMENT_FILE_NOT_FOUND")).toBe(
+      "Files.errors.notFound"
+    );
     expect(fileErrorKey("NETWORK")).toBe("Files.errors.network");
     expect(fileErrorKey("AUTHZ_FORBIDDEN")).toBe("Problems.actionForbidden");
     expect(fileErrorKey("SUBMISSION_FORBIDDEN")).toBe(
@@ -130,6 +143,8 @@ describe("a refused upload", () => {
       "TEDRISAT_UNREACHABLE",
       "RESOURCE_FILE_NOT_FOUND",
       "LESSON_NOT_FOUND",
+      "LESSON_ASSIGNMENT_NOT_FOUND",
+      "LESSON_ASSIGNMENT_FILE_NOT_FOUND",
       "COURSE_NOT_FOUND",
       "VALIDATION_ERROR",
       "NETWORK",

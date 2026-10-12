@@ -1009,10 +1009,13 @@
     "noteMore": "Tamamını göster",
     "noteLess": "Kısalt",
     "emptyTitle": "Henüz ödev yok",
-    "emptyBody": "Bu derste henüz kimse ödev teslim etmedi. Talebeler ödevlerini celsenin sayfasından yükler; teslim edilenler burada celse celse listelenir.",
+    "emptyBody": "Bu derste henüz ödev verilmedi, kimse de ödev teslim etmedi. Bir celsenin ödevini Müfredat’ta verirsiniz; talebeler ödevlerini celsenin sayfasından yükler, teslim edilenler burada celse celse listelenir.",
     "sessionEmpty": "Bu celseye henüz ödev teslim edilmedi.",
     "loadFailedTitle": "Ödevler okunamadı",
-    "loadFailed": "Ödevler şu an okunamadı. Birkaç saniye sonra yeniden deneyin."
+    "loadFailed": "Ödevler şu an okunamadı. Birkaç saniye sonra yeniden deneyin.",
+    "hasAssignment": "Ödev verildi",
+    "noAssignment": "Ödev verilmedi",
+    "handedIn": "{count} / {total} teslim"
   },
   "Bans": {
     "title": "Yasaklamalar",
@@ -1734,7 +1737,33 @@
       "link": "Toplantı bağlantısı https:// ile başlamalı. Bağlantıyı platformdan yeniden kopyalayın.",
       "resourceName": "Kaynağın adını yazın.",
       "resourceUrl": "Bağlantı, http:// ya da https:// ile başlayan tam bir adres olmalı."
-    }
+    },
+    "assignmentTitle": "Ödev",
+    "assignmentIntro": "Kaynaklardan ayrı durur: talebeler ödevi celsenin sayfasında kendi bölümünde görür ve orada teslim eder. Teslim edilenler Ödevler sayfasındadır.",
+    "assignmentSessions": "Celsenin ödevini değiştirmek için celse yönetimi izni gerekir.",
+    "assignmentLocked": "Ders içeriğini görme izniniz olmadığı için celsenin ödevi gösterilmez ve burada değiştirilemez; kayıtlı olan korunur.",
+    "assignmentSaveFirst": "Yeni celseye ödev vermek için önce müfredatı kaydedin.",
+    "assignmentToggle": "Bu celsenin ödevi var",
+    "assignmentToggleHelp": "Açınca ve kapatınca hemen kaydedilir; müfredatı ayrıca kaydetmeniz gerekmez.",
+    "assignmentDescLabel": "Ödevin açıklaması",
+    "assignmentDescHelp": "İsteğe bağlı. Talebelerin ne yapacağını yazın; satır başları korunur.",
+    "assignmentDescSave": "Açıklamayı kaydet",
+    "assignmentDescSaving": "Kaydediliyor…",
+    "assignmentDescDirty": "Açıklamada kaydedilmemiş değişiklik var.",
+    "assignmentDescSaved": "Açıklama kaydedildi.",
+    "assignmentTooLong": "Açıklama en çok {max} karakter olabilir.",
+    "assignmentFilesTitle": "Ödevin dosyaları",
+    "assignmentFilesEmpty": "Bu ödeve henüz dosya eklenmedi.",
+    "assignmentFileRemove": "{name} dosyasını sil",
+    "assignmentFileRemoveTitle": "Dosyayı sil",
+    "assignmentFileRemoveBody": "ödevden kalıcı olarak silinir.",
+    "assignmentFileRemoveConfirm": "Sil",
+    "assignmentNone": "Bu celsenin ödevi yok.",
+    "assignmentRemoveTitle": "Ödevi kaldır",
+    "assignmentRemoveBody": "Bu celsenin ödevi açıklaması ve dosyalarıyla birlikte kalıcı olarak silinir. Talebelerin teslim ettiği ödevler silinmez.",
+    "assignmentRemoveConfirm": "Ödevi kaldır",
+    "assignmentRemoved": "Ödev kaldırıldı",
+    "assignmentFailed": "Ödev kaydedilemedi"
   },
   "Files": {
     "upload": "Dosya yükle",
@@ -1791,8 +1820,11 @@
       "lessonGone": "Bu celse artık yok ya da gizlendi. Sayfayı yenileyin.",
       "courseGone": "Bu ders artık yok. Sayfayı yenileyin.",
       "invalid": "Kaynak adı en çok 200, kısa bilgi en çok 120 karakter olabilir.",
-      "network": "Bağlantı koptu; dosya gönderilemedi. İnternet bağlantınızı denetleyip yeniden deneyin."
-    }
+      "network": "Bağlantı koptu; dosya gönderilemedi. İnternet bağlantınızı denetleyip yeniden deneyin.",
+      "assignmentGone": "Bu celsenin ödevi artık yok. Sayfayı yenileyin."
+    },
+    "assignmentUploadNote": "Dosya yüklenince hemen ödeve eklenir; bunun için müfredatı ayrıca kaydetmeniz gerekmez.",
+    "assignmentUploadedBody": "{name} ödeve eklendi."
   },
   "Recordings": {
     "title": "Ders kayıtları",

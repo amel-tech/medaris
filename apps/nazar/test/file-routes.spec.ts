@@ -104,6 +104,29 @@ describe("POST /api/files/lessons/:lessonId/resources", () => {
   });
 });
 
+describe("POST /api/files/lessons/:lessonId/assignment", () => {
+  const route = () =>
+    import("~/app/api/files/lessons/[lessonId]/assignment/route");
+
+  it("streams the upload to the celse's homework files, never its resources", async () => {
+    const request = post();
+    const { POST } = await route();
+    await POST(request, params({ lessonId: LESSON }));
+    expect(proxy.upload).toHaveBeenCalledWith(request, {
+      apiBaseUrl: API,
+      path: `/lessons/${LESSON}/assignment/files`,
+      accessToken: "access-token",
+      maxBytes: MAX,
+    });
+  });
+
+  it("answers 404 for an id that is not a UUID", async () => {
+    const { POST } = await route();
+    expect((await POST(post(), params({ lessonId: "l-1" }))).status).toBe(404);
+    expect(proxy.upload).not.toHaveBeenCalled();
+  });
+});
+
 describe("the downloads", () => {
   const cases = [
     {
@@ -123,6 +146,13 @@ describe("the downloads", () => {
         ),
       ids: { lessonId: LESSON, resourceId: ITEM },
       path: `/lessons/${LESSON}/resources/${ITEM}/file`,
+    },
+    {
+      name: "a file of a celse's homework",
+      load: () =>
+        import("~/app/api/files/lessons/[lessonId]/assignment/[fileId]/route"),
+      ids: { lessonId: LESSON, fileId: ITEM },
+      path: `/lessons/${LESSON}/assignment/files/${ITEM}`,
     },
     {
       name: "a file a talebe handed in",
@@ -179,6 +209,8 @@ describe("proxy.ts", () => {
       `/api/files/courses/${COURSE}/resources/${ITEM}`,
       `/api/files/lessons/${LESSON}/resources/${ITEM}`,
       `/api/files/courses/${COURSE}/submissions/${ITEM}`,
+      `/api/files/lessons/${LESSON}/assignment`,
+      `/api/files/lessons/${LESSON}/assignment/${ITEM}`,
     ]) {
       expect(matches(path), path).toBe(true);
     }

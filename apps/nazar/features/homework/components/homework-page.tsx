@@ -23,7 +23,8 @@ import { HomeworkList } from "./homework-list";
  * yok". A permissions read that failed is the retry state.
  *
  * The homework is read with the same caller (`GET /courses/:id/submissions`),
- * which tedrisat refuses to anyone else. Each file is a plain link to this
+ * which tedrisat refuses to anyone else, together with whether each celse
+ * has homework set and "N / M teslim". Each file is a plain link to this
  * app's route, which streams it from tedrisat as an attachment; tedrisat
  * writes each such download to the audit log. Times are on the course's
  * clock, as a celse's are for the course team.
@@ -71,7 +72,11 @@ export async function HomeworkPage({ courseId }: { courseId: string }) {
       ) : (
         <HomeworkList
           courseId={courseId}
-          sessions={homeworkSessions(course.data, submissions.data.items)}
+          sessions={homeworkSessions(
+            course.data,
+            submissions.data.items,
+            submissions.data
+          )}
           locale={locale}
           courseTimeZone={resolveTimeZone(
             course.data.timeZone,
