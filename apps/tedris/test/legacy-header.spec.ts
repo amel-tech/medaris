@@ -1,5 +1,4 @@
 // @vitest-environment happy-dom
-import { REFRESH_ACCESS_TOKEN_ERROR } from "@medaris/services/auth";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -30,16 +29,17 @@ vi.mock("next-intl/server", async () => {
       ),
   };
 });
-vi.mock("next-auth/react", () => ({
-  useSession: () => ({
-    data: mocks.clientSession,
-    status: mocks.clientSession ? "authenticated" : "unauthenticated",
-  }),
+vi.mock("@medaris/auth/client", () => ({
+  useSession: () => {
+    const session = mocks.clientSession as { user: unknown } | null;
+    return {
+      session,
+      user: session?.user ?? null,
+      status: session ? "authenticated" : "unauthenticated",
+    };
+  },
 }));
-vi.mock("next-auth", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("next-auth")>()),
-  getServerSession: async () => mocks.serverSession,
-}));
+vi.mock("~/lib/auth", () => ({ auth: async () => mocks.serverSession }));
 vi.mock("~/env", () => ({ env: { KEYCLOAK_ISSUER: "http://kc.test" } }));
 vi.mock("~/features/keycloak/login", () => ({
   default: () => createElement("a", { "data-sign-in": "" }, "Giriş yap"),
@@ -48,7 +48,10 @@ vi.mock("~/components/header/user-notification-menu", () => ({
   UserNotifications: () => null,
 }));
 
-const admin = { user: { name: "E2E Sistem Admin" }, expires: "2099-01-01" };
+const admin = {
+  user: { sub: "admin-1", name: "E2E Sistem Admin" },
+  expiresAt: Date.UTC(2099, 0, 1),
+};
 
 const renderHeader = async () => {
   const { Header } = await import("~/components/header/header");
@@ -69,13 +72,20 @@ describe("the legacy header", () => {
     expect(header.textContent).not.toContain("Online Madrasah");
   });
 
-  it("offers a session whose refresh failed the way in, not a 'Talebe' menu", async () => {
-    const failed = { ...admin, error: REFRESH_ACCESS_TOKEN_ERROR };
-    mocks.serverSession = failed;
-    mocks.clientSession = failed;
+  // A session whose refresh failed is no session: `auth()` answers null for
+  // it (MDRS-216), as it does for a visitor.
+  it("offers a visitor, or a session that ended, the way in, not a 'Talebe' menu", async () => {
     const header = await renderHeader();
     expect(header.querySelector("[data-sign-in]")).not.toBeNull();
     expect(header.textContent).not.toContain("Talebe");
+  });
+
+  it("draws no account when the session ended under the page, instead of crashing (A23)", async () => {
+    mocks.serverSession = admin;
+    mocks.clientSession = null;
+    const header = await renderHeader();
+    expect(header.textContent).not.toContain("E2E Sistem Admin");
+    expect(header.querySelector("[data-sign-in]")).toBeNull();
   });
 
   it("names a signed-in account without guessing its role", async () => {

@@ -3,7 +3,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { hasLocale } from "next-intl";
-import { getAccessToken } from "~/lib/auth_options";
+import { getAccessToken } from "~/lib/auth";
 import { routing } from "~/lib/i18n/routing";
 import {
   learningPath,

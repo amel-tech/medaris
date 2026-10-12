@@ -15,6 +15,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import { courseCover } from "~/features/courses/course-cover";
 import type { LooseTranslator } from "~/lib/i18n/loose";
+import { sendToSignIn } from "~/lib/send-to-sign-in";
 import { courseActionErrorKey } from "../action-error";
 import { enrollInCourse } from "../actions";
 import { courseTotals, courseViewState } from "../course-view";
@@ -83,6 +84,7 @@ export function LessonLocked({
   const apply = () =>
     startTransition(async () => {
       const res = await enrollInCourse(course.id);
+      if (sendToSignIn(res)) return;
       if (res.success === false) {
         toast.error(courseText(courseActionErrorKey(res.status)));
         return;

@@ -10,7 +10,7 @@ import {
 } from "~/features/home/components/home-sections";
 import { HomeSessions } from "~/features/schedule/components/home-sessions";
 import { getMyUpcomingLessons } from "~/features/schedule/reads";
-import { auth } from "~/lib/auth_options";
+import { auth } from "~/lib/auth";
 
 // Asked by a visitor it redirects to Keşfet (MDRS-256), so it reads the sign-in.
 export const dynamic = "force-dynamic";

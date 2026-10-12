@@ -14,6 +14,7 @@ import { useToaster } from "@medaris/ui/mds/toast";
 import { useRouter } from "next/navigation";
 import { useLocale, useTimeZone, useTranslations } from "next-intl";
 import { useCallback, useRef, useState, useTransition } from "react";
+import { sendToSignIn } from "~/lib/send-to-sign-in";
 import {
   loadNotificationCounts,
   loadNotifications,
@@ -82,6 +83,7 @@ export function NotificationsPage({ initial, now }: NotificationsPageProps) {
     (target: TabKey, cursor?: string) =>
       startTransition(async () => {
         const res = await loadNotifications(target, cursor);
+        if (sendToSignIn(res)) return;
         if (!res.success) {
           setFailed(target);
           return;
@@ -100,6 +102,7 @@ export function NotificationsPage({ initial, now }: NotificationsPageProps) {
         loadNotifications("all"),
         loadNotificationCounts(),
       ]);
+      if (sendToSignIn(list) || sendToSignIn(counts)) return;
       if (!list.success || !counts.success) return;
       setFailed(null);
       setState(
@@ -113,6 +116,7 @@ export function NotificationsPage({ initial, now }: NotificationsPageProps) {
     if (!before) return;
     update((s) => markRead(s, n.id, new Date()));
     void markNotificationRead(n.id).then((res) => {
+      if (sendToSignIn(res)) return;
       if (res.success) {
         router.refresh();
         return;
@@ -131,6 +135,7 @@ export function NotificationsPage({ initial, now }: NotificationsPageProps) {
     if (!before) return;
     update((s) => markAllRead(s, new Date()));
     void markAllNotificationsRead().then((res) => {
+      if (sendToSignIn(res)) return;
       if (res.success) {
         router.refresh();
         return;

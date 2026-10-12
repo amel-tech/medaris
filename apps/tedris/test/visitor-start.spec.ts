@@ -32,7 +32,7 @@ vi.mock("~/features/schedule/components/home-sessions", () => ({
 vi.mock("~/features/schedule/reads", () => ({
   getMyUpcomingLessons: async () => [],
 }));
-vi.mock("~/lib/auth_options", () => ({
+vi.mock("~/lib/auth", () => ({
   auth: async () => ({ user: { name: "Ayşe" } }),
 }));
 

@@ -1,34 +1,34 @@
 "use client";
 
+import { signOut } from "@medaris/auth/client";
 import { Button } from "@medaris/ui/mds/button";
 import { Logo } from "@medaris/ui/mds/logo";
 import { useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
 import { useLocale, useTranslations } from "next-intl";
 import { useId, useState } from "react";
-import { keycloakSignOut } from "~/lib/keycloak-logout";
 
 /**
- * The app's one sign-out confirmation (design medaris/16, d-1001-33). It
- * replaces NextAuth's English "Are you sure you want to sign out?" page, which
- * `GET /api/auth/signout` renders (MDRS-101), and the user menu goes through it
- * instead of signing out on a click. Confirming ends both sessions, NextAuth's
- * and Keycloak's; "Vazgeç" goes back to where the visitor came from.
+ * The app's one sign-out confirmation (design medaris/16, d-1001-33). The user
+ * menu and the account page go through it instead of signing out on a click.
+ * Confirming ends both sessions, this app's and Keycloak's: `signOut` posts to
+ * `/api/auth/signout`, which reads the ID token for `id_token_hint` on the
+ * server (it never reaches the browser), clears the cookie and goes on to
+ * Keycloak's end-session page in the visitor's language (MDRS-222), and from
+ * there back to this app. "Vazgeç" goes back to where the visitor came from.
  */
 export function SignOutConfirm() {
   const t = useTranslations("tedris");
   const locale = useLocale();
   const router = useRouter();
-  const { data: session } = useSession();
   const [busy, setBusy] = useState(false);
   const titleId = useId();
 
-  const signOut = async () => {
+  const confirm = () => {
     setBusy(true);
     try {
-      await keycloakSignOut(session?.idToken);
+      signOut({ locale });
     } catch (error) {
-      // The navigation to Keycloak did not start: let the button be pressed again.
+      // The form never left: let the button be pressed again.
       console.error("Sign-out failed:", error);
       setBusy(false);
     }
@@ -62,7 +62,7 @@ export function SignOutConfirm() {
             fullWidth
             loading={busy}
             loadingLabel={t("Auth.signingOut")}
-            onClick={signOut}
+            onClick={confirm}
           >
             {t("Auth.signOutConfirm")}
           </Button>

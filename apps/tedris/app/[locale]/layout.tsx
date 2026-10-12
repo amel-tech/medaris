@@ -13,7 +13,7 @@ import { Header } from "~/components/header/header";
 import { LegalFooter } from "~/components/legal-footer";
 import { ClientProviders } from "~/components/providers/client-providers";
 import { TabView } from "~/components/tab-view";
-import { auth } from "~/lib/auth_options";
+import { auth } from "~/lib/auth";
 import { htmlLangDir } from "~/lib/i18n/direction";
 import { routing } from "~/lib/i18n/routing";
 
@@ -36,7 +36,9 @@ export default async function LocaleLayout({
   }
 
   setRequestLocale(locale);
-  const signedIn = Boolean(await auth());
+  // One read of the session cookie per request: the header, the phone chrome
+  // and the pages below ask `auth()` again and get this same answer (D1).
+  const session = await auth();
   // `/ar/*` must render right to left (MDRS-217); the language and the
   // direction come from the route, never a hardcoded tr.
   const { lang, dir } = htmlLangDir(locale);
@@ -65,9 +67,9 @@ export default async function LocaleLayout({
         {/* a later visit follows this browser's language choice (MDRS-275) */}
         <LocalePreference locale={locale} locales={routing.locales} />
         <NextIntlClientProvider>
-          <ClientProviders>
+          <ClientProviders session={session}>
             <Header />
-            <TabView signedIn={signedIn}>{children}</TabView>
+            <TabView signedIn={session !== null}>{children}</TabView>
             <LegalFooter />
           </ClientProviders>
         </NextIntlClientProvider>

@@ -1,44 +1,40 @@
 "use client";
 
-import {
-  KeycloakSessionWatch,
-  RefreshErrorRedirect,
-} from "@medaris/services/auth-client";
+import { type Session, SessionProvider } from "@medaris/auth/client";
 import {
   DismissStaleSonnerToasts,
   Toaster,
 } from "@medaris/ui/components/sonner";
 import { usePathname } from "next/navigation";
-import { SessionProvider } from "next-auth/react";
-import { useLocale, useTranslations } from "next-intl";
-import { isPublicPath } from "~/lib/public-paths";
+import { useTranslations } from "next-intl";
 import { TimeZoneSync } from "./time-zone-sync";
 
 /**
- * `RefreshErrorRedirect` is shared with the other web app through
- * `@medaris/services/auth-client` — it is the client half of the same refresh
- * contract `createAccessTokenReader` implements on the server, and the
- * `RefreshAccessTokenError` sentinel it compares against is produced by this
- * app's own `refreshAccessToken`. The locale and the middleware's list of
- * public pages are the app-local inputs: on a public page a failed refresh
- * leaves the visitor where they are, signed out (MDRS-216).
- *
- * `KeycloakSessionWatch` is its counterpart for a session Keycloak has ended
- * — a sign-out or a switch of account in another Medaris app (MDRS-210): it
- * reloads the page so the server renders it without the ended session.
+ * `SessionProvider` is fed by the locale layout's `auth()`, so the first
+ * render already knows who is signed in, and no token reaches the browser.
+ * When the tab is shown again it reads `/api/auth/session` through the proxy,
+ * which is where a sign-out (or a switch of account) in another Medaris app is
+ * noticed (MDRS-210); a session that ended under the page reloads it, so a
+ * protected page goes to sign-in and a public one renders for the visitor
+ * (MDRS-216). That replaces NextAuth's provider and the two components that
+ * watched it, `RefreshErrorRedirect` and `KeycloakSessionWatch`: a failed
+ * refresh now ends the session in the proxy, which redirects on the server.
  *
  * `DismissStaleSonnerToasts` takes the toasts from before the user's last
  * action off the screen when the pathname changes (MDRS-214).
  */
-export function ClientProviders({ children }: { children: React.ReactNode }) {
-  const locale = useLocale();
+export function ClientProviders({
+  session,
+  children,
+}: {
+  session: Session | null;
+  children: React.ReactNode;
+}) {
   const t = useTranslations("common");
   const pathname = usePathname() ?? "";
 
   return (
-    <SessionProvider>
-      <RefreshErrorRedirect locale={locale} isPublicPath={isPublicPath} />
-      <KeycloakSessionWatch />
+    <SessionProvider session={session}>
       <TimeZoneSync />
       <DismissStaleSonnerToasts routeKey={pathname} />
       {children}

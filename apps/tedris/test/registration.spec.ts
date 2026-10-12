@@ -1,4 +1,4 @@
-import { keycloakSignInArgs } from "@medaris/services/auth-client";
+import { signInHref } from "@medaris/auth/client";
 import { describe, expect, it, vi } from "vitest";
 
 // `setRequestLocale` needs Next's server-component runtime; the page's
@@ -9,27 +9,21 @@ vi.mock("next-intl/server", () => ({
 }));
 
 describe("Kayıt ol opens Keycloak's registration form (MDRS-101)", () => {
-  it("asks Keycloak for registration with prompt=create", () => {
+  // The start route turns `intent=register` into `prompt=create`, and the
+  // locale into `ui_locales` and `kc_locale` (MDRS-274): libs/auth's
+  // sign-in-route spec.
+  it("asks the start route for registration, in the page's language", () => {
     expect(
-      keycloakSignInArgs({
-        intent: "register",
-        callbackUrl: "/tr/start",
-        locale: "tr",
-      })
-    ).toEqual([
-      "keycloak",
-      { callbackUrl: "/tr/start" },
-      { ui_locales: "tr", kc_locale: "tr", prompt: "create" },
-    ]);
+      signInHref({ intent: "register", callbackUrl: "/tr/start", locale: "tr" })
+    ).toBe(
+      "/api/auth/signin?callbackUrl=%2Ftr%2Fstart&locale=tr&intent=register"
+    );
   });
 
   it("leaves a plain sign-in on the login form", () => {
-    const [, , params] = keycloakSignInArgs({
-      intent: "signin",
-      callbackUrl: "/tr/start",
-      locale: "tr",
-    });
-    expect(params).toEqual({ ui_locales: "tr", kc_locale: "tr" });
+    expect(
+      signInHref({ intent: "signin", callbackUrl: "/en/start", locale: "en" })
+    ).toBe("/api/auth/signin?callbackUrl=%2Fen%2Fstart&locale=en");
   });
 
   it("the register page starts that flow and ends on /start", async () => {

@@ -4,7 +4,7 @@ import { WatchPage } from "~/features/courses/components/watch-page";
 import { lessonLockReason } from "~/features/courses/lesson-lock";
 import { getSession } from "~/features/courses/public-reads";
 import { watchTargetOf } from "~/features/courses/watch-model";
-import { auth } from "~/lib/auth_options";
+import { auth } from "~/lib/auth";
 
 /**
  * The watch page of a celse (MDRS-285): its stream or its recording, with the

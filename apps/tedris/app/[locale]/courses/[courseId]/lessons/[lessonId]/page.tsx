@@ -5,7 +5,7 @@ import { LessonLocked } from "~/features/courses/components/lesson-locked";
 import { SessionPage } from "~/features/courses/components/session-page";
 import { lessonLockReason } from "~/features/courses/lesson-lock";
 import { getSession } from "~/features/courses/public-reads";
-import { auth } from "~/lib/auth_options";
+import { auth } from "~/lib/auth";
 import { inviteHrefs } from "~/lib/invite-hrefs";
 
 export default async function Page({

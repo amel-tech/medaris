@@ -1,9 +1,9 @@
 "use client";
 
+import { useSession } from "@medaris/auth/client";
 import {
   BookIcon,
   CaretDownIcon,
-  CircleNotchIcon,
   GearIcon,
   QuestionIcon,
   SignOutIcon,
@@ -18,7 +18,6 @@ import {
   DropdownMenuTrigger,
 } from "@medaris/ui/components/dropdown-menu";
 import NextLink from "next/link";
-import { useSession } from "next-auth/react";
 import { useLocale, useTranslations } from "next-intl";
 import { UserAvatar } from "~/features/user-avatar";
 import { authPages } from "~/lib/auth_pages";
@@ -33,22 +32,20 @@ type UserHeaderMenuProps = {
 export const UserHeaderMenu = ({ imageIssuer }: UserHeaderMenuProps) => {
   const t = useTranslations("tedris");
   const locale = useLocale();
-  const { data: session, status } = useSession();
+  const { user } = useSession();
 
-  if (status === "loading") {
-    return <CircleNotchIcon className="h-6 w-6 animate-spin" />;
-  }
+  // The session ended under the page (a sign-out in another Medaris app,
+  // MDRS-210): the provider is reloading it, and there is no one to draw (A23).
+  if (!user) return null;
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger>
         <div className="flex items-center gap-2 cursor-pointer select-none hover:bg-gray-100 rounded-md">
-          <UserAvatar user={session?.user} imageIssuer={imageIssuer} />
+          <UserAvatar user={user} imageIssuer={imageIssuer} />
           {/* No role line: the session does not carry the account's roles,
               and a fixed "Talebe" mislabelled a sistem admin (MDRS-216). */}
-          <p className="text-sm whitespace-nowrap text-start">
-            {session?.user?.name}
-          </p>
+          <p className="text-sm whitespace-nowrap text-start">{user.name}</p>
           <CaretDownIcon size={16} />
         </div>
       </DropdownMenuTrigger>

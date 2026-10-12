@@ -5,7 +5,7 @@ import {
 } from "@medaris/services/tedrisat";
 import { NextResponse } from "next/server";
 import { env } from "~/env";
-import { getAccessToken } from "~/lib/auth_options";
+import { getAccessToken, signInUrl } from "~/lib/auth";
 
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -34,15 +34,10 @@ export async function GET(
   const locale = url.searchParams.get("locale") ?? "";
 
   // Opened as a download link, so a JSON 401 would just be a broken file.
-  // Sign in, then come back here and download.
+  // Sign in on the app's sign-in page, then come back here and download.
   const back = `/api/lessons/${id}/calendar${LOCALES.includes(locale) ? `?locale=${locale}` : ""}`;
   const signIn = () =>
-    NextResponse.redirect(
-      new URL(
-        `/api/auth/signin?callbackUrl=${encodeURIComponent(back)}`,
-        env.NEXTAUTH_URL
-      )
-    );
+    NextResponse.redirect(new URL(signInUrl(back), env.NEXTAUTH_URL));
 
   const accessToken = await getAccessToken();
   if (!accessToken) return signIn();

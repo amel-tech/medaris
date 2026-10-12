@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { CreateDeckPage } from "~/features/flashcards/components/create-deck-page";
-import { requireAccessToken } from "~/lib/require-access-token";
+import { requireAccessToken } from "~/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +16,6 @@ export default async function Page({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
-  await requireAccessToken(`/${locale}/decks/create`);
+  await requireAccessToken({ callbackUrl: `/${locale}/decks/create` });
   return <CreateDeckPage />;
 }

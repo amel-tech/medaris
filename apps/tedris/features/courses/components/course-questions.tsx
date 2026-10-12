@@ -11,6 +11,7 @@ import { Select } from "@medaris/ui/mds/select";
 import { Textarea } from "@medaris/ui/mds/textarea";
 import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
+import { sendToSignIn } from "~/lib/send-to-sign-in";
 import {
   askLessonQuestion,
   deleteLessonQuestion,
@@ -58,6 +59,7 @@ export function CourseQuestions({
     setLoad({ state: "loading" });
     try {
       const result = await listMyCourseQuestions(courseId);
+      if (sendToSignIn(result)) return;
       if (result.success) {
         setQuestions(result.data.items);
         setNextCursor(result.data.nextCursor);
@@ -79,6 +81,7 @@ export function CourseQuestions({
     setMore("loading");
     try {
       const result = await listMyCourseQuestions(courseId, nextCursor);
+      if (sendToSignIn(result)) return;
       if (result.success) {
         setQuestions((all) => appendQuestions(all, result.data.items));
         setNextCursor(result.data.nextCursor);
@@ -200,6 +203,7 @@ export const QuestionCard = ({
     setError(null);
     try {
       const result = await updateLessonQuestion(question.id, draft);
+      if (sendToSignIn(result)) return;
       if (result.success) {
         onSaved(result.data);
         setMode("view");
@@ -225,6 +229,7 @@ export const QuestionCard = ({
     setError(null);
     try {
       const result = await deleteLessonQuestion(question.id);
+      if (sendToSignIn(result)) return;
       // Gone already is what the author wanted.
       if (result.success || ("status" in result && result.status === 404)) {
         return onDeleted(question.id);
@@ -406,6 +411,7 @@ const AskForm = ({
     setError(null);
     try {
       const result = await askLessonQuestion(lessonId, body);
+      if (sendToSignIn(result)) return;
       if (result.success) {
         onAsked(result.data);
         setBody("");

@@ -5,6 +5,7 @@ import { Button } from "@medaris/ui/mds/button";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useTransition } from "react";
+import { sendToSignIn } from "~/lib/send-to-sign-in";
 import { courseActionErrorKey } from "../action-error";
 import { withdrawEnrollment } from "../actions";
 
@@ -25,6 +26,7 @@ export const LeaveCourse = ({ courseId }: { courseId: string }) => {
   const leave = () =>
     startTransition(async () => {
       const res = await withdrawEnrollment(courseId);
+      if (sendToSignIn(res)) return;
       if (res.success === false) {
         // The page was drawn, so the course exists: a 404 here means the
         // enrollment is gone or settled elsewhere (an application approved in

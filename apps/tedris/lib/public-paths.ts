@@ -5,10 +5,10 @@ const uuidPattern =
   "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
 
 /**
- * Pages a signed-out visitor may open (MDRS-101 split this out of
- * `middleware.ts` so it can be tested). The auth pages have to be here: behind
- * `withAuth`, the sign-in page would redirect to itself, and NextAuth refuses
- * an error page that requires authentication.
+ * Pages a signed-out visitor may open (MDRS-101 split this out of the
+ * middleware so it can be tested); `proxy.ts` hands it to the auth gate. The
+ * auth pages are here so a visitor reaches them without a session; the
+ * sign-out confirmation too, which a session that ended under it still shows.
  */
 export const publicPages = [
   "/",
@@ -16,7 +16,6 @@ export const publicPages = [
   "/discover",
   authPages.signIn,
   authPages.signOut,
-  authPages.error,
   registerPage,
 ];
 

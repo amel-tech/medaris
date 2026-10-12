@@ -52,7 +52,7 @@ vi.mock("~/features/courses/actions", () => ({ getCourse: mocks.getCourse }));
 vi.mock("~/features/courses/public-reads", () => ({
   getSession: mocks.getSession,
 }));
-vi.mock("~/lib/auth_options", () => ({ auth: mocks.auth }));
+vi.mock("~/lib/auth", () => ({ auth: mocks.auth }));
 // The client half has its own spec; here only what it is given.
 vi.mock("~/features/courses/components/watch-view", () => ({
   WatchView: () => null,

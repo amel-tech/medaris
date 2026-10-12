@@ -1,12 +1,12 @@
 // @vitest-environment happy-dom
 import { createElement } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, click, render, settle } from "./dom";
+import { cleanup, click, render } from "./dom";
 
 const mocks = vi.hoisted(() => ({
   back: vi.fn(),
   push: vi.fn(),
-  signOut: vi.fn<(idToken?: string) => Promise<void>>(),
+  signOut: vi.fn<(options?: { locale?: string }) => void>(),
 }));
 vi.mock("next-intl", async () => {
   const { resources } = await import("@medaris/i18n");
@@ -22,10 +22,7 @@ vi.mock("next-intl", async () => {
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ back: mocks.back, push: mocks.push }),
 }));
-vi.mock("next-auth/react", () => ({
-  useSession: () => ({ data: { idToken: "id-token-1" } }),
-}));
-vi.mock("~/lib/keycloak-logout", () => ({ keycloakSignOut: mocks.signOut }));
+vi.mock("@medaris/auth/client", () => ({ signOut: mocks.signOut }));
 
 afterEach(async () => {
   await cleanup();
@@ -55,11 +52,12 @@ describe("medaris/16: the sign-out confirmation", () => {
     expect(button("Vazgeç")).toBeDefined();
   });
 
-  it("'Çıkış yap' signs out of both sessions with the id token and shows it is busy", async () => {
-    mocks.signOut.mockReturnValue(new Promise(() => {}));
+  // The ID token for `id_token_hint` is read from the cookie by the sign-out
+  // route; the page only says which language Keycloak's page is in (MDRS-222).
+  it("'Çıkış yap' signs out of both sessions in the page's language and shows it is busy", async () => {
     const { button } = await mount();
     await click(button("Çıkış yap"));
-    expect(mocks.signOut).toHaveBeenCalledWith("id-token-1");
+    expect(mocks.signOut).toHaveBeenCalledWith({ locale: "tr" });
     expect(button("Çıkış yap").getAttribute("aria-busy")).toBe("true");
     expect(
       button("Çıkış yap").querySelector(".mds-btn__spinner")
@@ -69,10 +67,11 @@ describe("medaris/16: the sign-out confirmation", () => {
 
   it("lets the button be pressed again when the sign-out did not start", async () => {
     const log = vi.spyOn(console, "error").mockImplementation(() => {});
-    mocks.signOut.mockRejectedValue(new Error("offline"));
+    mocks.signOut.mockImplementationOnce(() => {
+      throw new Error("no form");
+    });
     const { button } = await mount();
     await click(button("Çıkış yap"));
-    await settle();
     expect(button("Çıkış yap").getAttribute("aria-busy")).toBeNull();
     log.mockRestore();
   });

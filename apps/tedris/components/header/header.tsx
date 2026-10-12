@@ -4,7 +4,7 @@ import { getTranslations } from "next-intl/server";
 import { Suspense } from "react";
 import { env } from "~/env";
 import KeycloakLogin from "~/features/keycloak/login";
-import { auth } from "~/lib/auth_options";
+import { auth } from "~/lib/auth";
 import { UserHeaderMenu } from "./user-header-menu";
 import { UserNotifications } from "./user-notification-menu";
 

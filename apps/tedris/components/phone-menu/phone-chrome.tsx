@@ -1,5 +1,4 @@
-import { isSignedIn } from "~/features/courses/public-reads";
-import { auth } from "~/lib/auth_options";
+import { auth } from "~/lib/auth";
 import { DesktopBar } from "./desktop-bar";
 import { MemberPhoneMenu, type Section } from "./member-phone-menu";
 import { PhoneMenu } from "./phone-menu";
@@ -25,9 +24,11 @@ export const PhoneChrome = async ({
   section?: Section;
   title?: string;
 } = {}) => {
-  const signedIn = await isSignedIn();
-  const session = signedIn ? await auth() : null;
-  const name = session?.user?.name ?? "";
+  // The layout's read of the session, not another one (`auth()` is cached
+  // per request); signed in exactly when there is a usable token.
+  const session = await auth();
+  const signedIn = session !== null;
+  const name = session?.user.name ?? "";
   return (
     <>
       {/* A page drawn inside the shell's legacy wrapper (the not-found page)

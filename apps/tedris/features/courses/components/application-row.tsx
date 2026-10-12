@@ -5,6 +5,7 @@ import { Button } from "@medaris/ui/mds/button";
 import { Card } from "@medaris/ui/mds/card";
 import { useRouter } from "next/navigation";
 import { type ReactNode, useState, useTransition } from "react";
+import { sendToSignIn } from "~/lib/send-to-sign-in";
 import { leaveCourse } from "../actions";
 
 /**
@@ -39,6 +40,7 @@ export function ApplicationRow({
     startTransition(async () => {
       setGone(true);
       const result = await leaveCourse(courseId);
+      if (sendToSignIn(result)) return;
       if (result.success === false) {
         setGone(false);
         toast.error(labels.failed);
