@@ -3583,6 +3583,65 @@
         ]
       }
     },
+    "/courses/{id}/enrollments/bulk": {
+      "post": {
+        "description": "\"Toplu talebe ekle\": up to 500 addresses, each looked up exactly in the realm (a disabled account counts as none), five at a time. The course team chooses these people, so the course's approval rules do not apply: someone with no enrollment gets an ENROLLED seat, a waiting request is approved as `POST …/:userId/approve` approves it (ENROLLMENT_APPROVED notification included), an active seat is left as it is. A barred person, a seat the team took away (REVOKED: reinstating is decided one person at a time) and a completion are skipped with the reason. Every address is looked up before anything is written. One `enrollment.bulk_add` row goes to `audit_log` with the counts and the accounts enrolled or approved.",
+        "operationId": "bulkEnroll",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkEnrollDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkEnrollmentResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "More than 500 entries, or one that is not a string (VALIDATION_ERROR)."
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": "No such course, or one no talebe could enrol in on their own: a draft, a hidden course, a course of a hidden köşk (COURSE_NOT_FOUND). Nothing is enrolled."
+          },
+          "503": {
+            "description": "The realm's directory is not configured (KEYCLOAK_ADMIN_NOT_CONFIGURED) or did not answer (KEYCLOAK_ADMIN_UNAVAILABLE). Nothing is enrolled."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Enrol a list of people by e-mail address (course team)",
+        "tags": [
+          "courses"
+        ]
+      }
+    },
     "/courses/{id}/enrollments/{userId}": {
       "delete": {
         "description": "The body is optional: a `reason` (nizam/02, Ret gerekçesi) is kept with the refusal in the audit log as `enrollment.reject`.",
@@ -17130,6 +17189,98 @@
         "required": [
           "sessionsWithoutAccess",
           "pendingApplications"
+        ]
+      },
+      "BulkEnrollDto": {
+        "type": "object",
+        "properties": {
+          "emails": {
+            "maxItems": 500,
+            "example": [
+              "ayse@example.com",
+              "Yusuf@Example.com "
+            ],
+            "description": "The e-mail addresses of the people to enrol, as typed. Each is trimmed and lower-cased; empty entries and repeats are dropped; one that does not look like an address comes back in `invalid`.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "emails"
+        ]
+      },
+      "BulkEnrollmentSkipResponse": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "example": "ayse@example.com"
+          },
+          "reason": {
+            "type": "string",
+            "example": "barred",
+            "description": "`barred` (an open ban bars them from the course), `revoked` (the course team took them out; approve the seat on the roster to put them back), `changed` (their request moved while this one ran), or the status of the enrollment they already hold (`COMPLETED`)."
+          }
+        },
+        "required": [
+          "email",
+          "reason"
+        ]
+      },
+      "BulkEnrollmentResponse": {
+        "type": "object",
+        "properties": {
+          "enrolled": {
+            "description": "Given an ENROLLED seat: they had no enrollment.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "approved": {
+            "description": "Their waiting request was approved, as `POST …/:userId/approve` does, notification included.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "already": {
+            "description": "Already enrolled.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "notFound": {
+            "description": "No enabled account in the realm has this address.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "invalid": {
+            "description": "Not an e-mail address; never looked up.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "skipped": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BulkEnrollmentSkipResponse"
+            }
+          }
+        },
+        "required": [
+          "enrolled",
+          "approved",
+          "already",
+          "notFound",
+          "invalid",
+          "skipped"
         ]
       },
       "RejectEnrollmentDto": {

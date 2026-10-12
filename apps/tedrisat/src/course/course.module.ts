@@ -5,11 +5,13 @@ import { TedrisatAuthzContext } from "../authz/tedrisat-authz-context.service";
 import { BanModule } from "../ban/ban.module";
 import { BunnyStreamModule } from "../bunny-stream/bunny-stream.module";
 import { DatabaseService } from "../database/database.service";
+import { KeycloakAdminModule } from "../keycloak-admin/keycloak-admin.module";
 import { KoskModule } from "../kosk/kosk.module";
 import { LessonInvitationModule } from "../lesson-invitation/lesson-invitation.module";
 import { NotificationModule } from "../notification/notification.module";
 import { PlatformPolicyModule } from "../platform-policy/platform-policy.module";
 import { StorageModule } from "../storage/storage.module";
+import { BulkEnrollmentService } from "./bulk-enrollment.service";
 import { CourseController } from "./course.controller";
 import { CourseRepository } from "./course.repository";
 import { CourseService } from "./course.service";
@@ -43,6 +45,8 @@ import { ResourceFileService } from "./resource-file.service";
     BunnyStreamModule,
     LessonInvitationModule,
     StorageModule,
+    // "Toplu talebe ekle" looks the addresses up in the realm.
+    KeycloakAdminModule,
   ],
   controllers: [
     CourseController,
@@ -57,6 +61,7 @@ import { ResourceFileService } from "./resource-file.service";
   // does: `CourseNazirService` asks the engine which role confers what.
   providers: [
     CourseService,
+    BulkEnrollmentService,
     CourseRepository,
     LiveStreamService,
     RecordingRepository,

@@ -85,6 +85,7 @@ import {
   IWeekHide,
 } from "./course.repository.interface";
 import { IPurgeCounts, purgeCourses, recordDeletion, Tx } from "./course-purge";
+import { BULK_ENROLLMENT_ACTION } from "./domain/bulk-enrollment";
 import { ROSTER_READ_ACTION } from "./domain/course-content";
 import { CourseStatus } from "./domain/course-status.enum";
 import { EnrollmentStatus } from "./domain/enrollment-status.enum";
@@ -2265,6 +2266,25 @@ export class CourseRepository implements ICourseRepository {
       action: ROSTER_READ_ACTION,
       entity: entry.entity,
       entityId: entry.entityId,
+      details: entry.details,
+    });
+  }
+
+  /**
+   * One `enrollment.bulk_add` row for a "Toplu talebe ekle" (owner,
+   * 2026-10-12): who did it, in which course, the counts of each outcome and
+   * the accounts it enrolled or approved.
+   */
+  async recordBulkEnrollment(entry: {
+    actorId: string;
+    courseId: string;
+    details: Record<string, unknown>;
+  }): Promise<void> {
+    await this.db.insert(auditLog).values({
+      actorId: entry.actorId,
+      action: BULK_ENROLLMENT_ACTION,
+      entity: "course",
+      entityId: entry.courseId,
       details: entry.details,
     });
   }

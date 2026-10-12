@@ -1545,11 +1545,15 @@ export class CourseService {
    * `setEnrollmentStatus`), since the team now includes every müderris. A
    * revoked seat is the one way back in: approving it reinstates the talebe
    * (MDRS-161).
+   *
+   * `kick: false` is for "Toplu talebe ekle" (`BulkEnrollmentService`), which
+   * approves many requests this way and runs the invitations once at the end.
    */
   async approveEnrollment(
     courseId: string,
     studentId: string,
-    actorId?: string
+    actorId?: string,
+    { kick = true }: { kick?: boolean } = {}
   ): Promise<IEnrollment> {
     const existing = await this.courseRepo.findEnrollment(studentId, courseId);
     if (!existing) throw new EnrollmentNotFoundError(courseId);
@@ -1569,7 +1573,7 @@ export class CourseService {
       return this.lostRace(courseId, studentId, EnrollmentStatus.ENROLLED);
     }
     await this.notifier.enrollmentApproved(courseId, studentId, actorId);
-    this.invitations.kick();
+    if (kick) this.invitations.kick();
     return updated;
   }
 

@@ -15,6 +15,8 @@
 
 import * as runtime from '../runtime';
 import type {
+  BulkEnrollDto,
+  BulkEnrollmentResponse,
   CourseBadgeCountsResponse,
   CourseDetailResponse,
   CourseNazirsResponse,
@@ -39,6 +41,10 @@ import type {
   UpdateProgressDto,
 } from '../models/index';
 import {
+    BulkEnrollDtoFromJSON,
+    BulkEnrollDtoToJSON,
+    BulkEnrollmentResponseFromJSON,
+    BulkEnrollmentResponseToJSON,
     CourseBadgeCountsResponseFromJSON,
     CourseBadgeCountsResponseToJSON,
     CourseDetailResponseFromJSON,
@@ -92,6 +98,11 @@ export interface ApproveEnrollmentRequest {
 
 export interface ArchiveCourseRequest {
     id: string;
+}
+
+export interface BulkEnrollRequest {
+    id: string;
+    bulkEnrollDto: BulkEnrollDto;
 }
 
 export interface CreateCourseRequest {
@@ -311,6 +322,60 @@ export class CoursesApi extends runtime.BaseAPI {
      */
     async archiveCourse(requestParameters: ArchiveCourseRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CourseDetailResponse> {
         const response = await this.archiveCourseRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * \"Toplu talebe ekle\": up to 500 addresses, each looked up exactly in the realm (a disabled account counts as none), five at a time. The course team chooses these people, so the course\'s approval rules do not apply: someone with no enrollment gets an ENROLLED seat, a waiting request is approved as `POST …/:userId/approve` approves it (ENROLLMENT_APPROVED notification included), an active seat is left as it is. A barred person, a seat the team took away (REVOKED: reinstating is decided one person at a time) and a completion are skipped with the reason. Every address is looked up before anything is written. One `enrollment.bulk_add` row goes to `audit_log` with the counts and the accounts enrolled or approved.
+     * Enrol a list of people by e-mail address (course team)
+     */
+    async bulkEnrollRaw(requestParameters: BulkEnrollRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<BulkEnrollmentResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling bulkEnroll().'
+            );
+        }
+
+        if (requestParameters['bulkEnrollDto'] == null) {
+            throw new runtime.RequiredError(
+                'bulkEnrollDto',
+                'Required parameter "bulkEnrollDto" was null or undefined when calling bulkEnroll().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/courses/{id}/enrollments/bulk`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: BulkEnrollDtoToJSON(requestParameters['bulkEnrollDto']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => BulkEnrollmentResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * \"Toplu talebe ekle\": up to 500 addresses, each looked up exactly in the realm (a disabled account counts as none), five at a time. The course team chooses these people, so the course\'s approval rules do not apply: someone with no enrollment gets an ENROLLED seat, a waiting request is approved as `POST …/:userId/approve` approves it (ENROLLMENT_APPROVED notification included), an active seat is left as it is. A barred person, a seat the team took away (REVOKED: reinstating is decided one person at a time) and a completion are skipped with the reason. Every address is looked up before anything is written. One `enrollment.bulk_add` row goes to `audit_log` with the counts and the accounts enrolled or approved.
+     * Enrol a list of people by e-mail address (course team)
+     */
+    async bulkEnroll(requestParameters: BulkEnrollRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BulkEnrollmentResponse> {
+        const response = await this.bulkEnrollRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
