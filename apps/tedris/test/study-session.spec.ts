@@ -72,7 +72,7 @@ describe("Çalışma (design tedris/30)", () => {
       "Çalışma",
     ]);
     const finish = byText("a", "Çalışmayı bitir");
-    expect(finish.getAttribute("href")).toBe("/decks/d1");
+    expect(finish.getAttribute("href")).toBe("/tr/decks/d1");
   });
 
   it("names the subtitle by the round: only new cards when none is due", async () => {
@@ -148,7 +148,9 @@ describe("Çalışma (design tedris/30)", () => {
     await settle();
     expect(main()).toContain("Tur bitti");
     expect(main()).toContain("1 kartı çalıştın.");
-    expect(byText("a", "Desteye dön").getAttribute("href")).toBe("/decks/d1");
+    expect(byText("a", "Desteye dön").getAttribute("href")).toBe(
+      "/tr/decks/d1"
+    );
   });
 
   it("says the day is done when nothing waits", async () => {

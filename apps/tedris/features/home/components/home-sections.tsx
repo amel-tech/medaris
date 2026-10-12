@@ -125,7 +125,7 @@ const ContinueCard = ({
 }) => (
   <Card
     className="flex flex-col"
-    href={`/courses/${course.id}`}
+    href={`/${locale}/courses/${course.id}`}
     title={course.title}
     media={<CoverPattern {...courseCover(course)} size="sm" />}
     footer={
@@ -184,7 +184,7 @@ export const ContinueSection = async () => {
       <SectionHead
         id="home-continue"
         title={learn("Home.continueTitle")}
-        href="/my-courses"
+        href={`/${locale}/my-courses`}
         link={t("PhoneMenu.courses")}
       />
       {courses === null ? (
@@ -195,7 +195,7 @@ export const ContinueSection = async () => {
       ) : shown.length === 0 ? (
         <EmptyState
           action={
-            <Button variant="outline" href="/discover">
+            <Button variant="outline" href={`/${locale}/discover`}>
               {t("MyCoursesPage.goDiscover")}
             </Button>
           }
@@ -236,9 +236,10 @@ const deckKindLabel = (deck: FlashcardDeckSummaryResponse, t: Translate) => {
 
 /** "Bugün çalışılacak desteler": the decks with cards to repeat or new cards. */
 export const DecksSection = async () => {
-  const [t, learn, decks] = await Promise.all([
+  const [t, learn, locale, decks] = await Promise.all([
     getTranslations("tedris"),
     getTranslations("tedrisLearn"),
+    getLocale(),
     getHomeDecks(),
   ]);
   return (
@@ -249,7 +250,7 @@ export const DecksSection = async () => {
       <SectionHead
         id="home-decks"
         title={learn("Home.decksTitle")}
-        href="/decks"
+        href={`/${locale}/decks`}
         link={t("PhoneMenu.decks")}
       />
       {decks === null ? (
@@ -273,7 +274,7 @@ export const DecksSection = async () => {
                     <Avatar entity decorative name={deck.title} />
                     <div className="flex min-inline-0 flex-col">
                       <Link
-                        href={`/decks/${deck.id}`}
+                        href={`/${locale}/decks/${deck.id}`}
                         className="mds-body font-medium"
                         dir="auto"
                       >
@@ -290,7 +291,7 @@ export const DecksSection = async () => {
                     </div>
                   </div>
                   <Button
-                    href={`/decks/study/${deck.id}`}
+                    href={`/${locale}/decks/study/${deck.id}`}
                     variant="outline"
                     size="small"
                     aria-label={learn("Home.studyDeck", { title: deck.title })}
@@ -311,15 +312,17 @@ export const DecksSection = async () => {
 const FollowedLine = ({
   course,
   t,
+  locale,
 }: {
   course: FollowedKoskCourseResponse;
   t: Translate;
+  locale: string;
 }) => (
   <li className="flex items-center gap-3 py-3 border-be border-neutral-subtle first:pbs-0 last:pbe-0 last:border-be-0">
     <CoverPattern {...courseCover(course)} size="xs" aria-hidden="true" />
     <div className="flex min-inline-0 flex-col">
       <Link
-        href={`/courses/${course.id}`}
+        href={`/${locale}/courses/${course.id}`}
         className="mds-body underline underline-offset-4"
         dir="auto"
       >
@@ -344,9 +347,10 @@ const FollowedLine = ({
 
 /** "Takip ettiğin köşklerden": courses of the köşks the caller follows. */
 export const FollowedSection = async () => {
-  const [t, learn, courses] = await Promise.all([
+  const [t, learn, locale, courses] = await Promise.all([
     getTranslations("tedris"),
     getTranslations("tedrisLearn"),
+    getLocale(),
     getHomeFollowedCourses(),
   ]);
   return (
@@ -357,7 +361,7 @@ export const FollowedSection = async () => {
       <SectionHead
         id="home-followed"
         title={learn("Home.followedTitle")}
-        href="/discover"
+        href={`/${locale}/discover`}
         link={t("PhoneMenu.discover")}
       />
       {courses === null ? (
@@ -371,7 +375,12 @@ export const FollowedSection = async () => {
         <Card>
           <ul className="m-0 flex list-none flex-col p-0">
             {courses.map((course) => (
-              <FollowedLine key={course.id} course={course} t={t} />
+              <FollowedLine
+                key={course.id}
+                course={course}
+                t={t}
+                locale={locale}
+              />
             ))}
           </ul>
         </Card>

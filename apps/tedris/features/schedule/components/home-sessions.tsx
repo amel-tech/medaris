@@ -107,7 +107,7 @@ export const HomeSessions = async ({
                 </h2>
                 <Link
                   className="mds-btn mds-btn--link"
-                  href={`/courses/${next.courseId}/lessons/${next.id}`}
+                  href={`/${locale}/courses/${next.courseId}/lessons/${next.id}`}
                 >
                   {t("PhoneMenu.sessionPage")}
                 </Link>
@@ -116,7 +116,7 @@ export const HomeSessions = async ({
                 {joinRun([
                   <Link
                     key="c"
-                    href={`/courses/${next.courseId}`}
+                    href={`/${locale}/courses/${next.courseId}`}
                     className="underline underline-offset-4"
                   >
                     <bdi>{next.courseTitle}</bdi>
@@ -165,7 +165,10 @@ export const HomeSessions = async ({
                 <h2 className="mds-h2" id="home-later">
                   {t("PhoneMenu.upcomingTitle")}
                 </h2>
-                <Link className="mds-btn mds-btn--link" href="/schedule">
+                <Link
+                  className="mds-btn mds-btn--link"
+                  href={`/${locale}/schedule`}
+                >
                   {t("PhoneMenu.schedule")}
                 </Link>
               </div>
@@ -185,7 +188,7 @@ export const HomeSessions = async ({
                         </span>
                         <div className="flex min-inline-0 flex-col gap-1">
                           <Link
-                            href={`/courses/${session.courseId}/lessons/${session.id}`}
+                            href={`/${locale}/courses/${session.courseId}/lessons/${session.id}`}
                             className="mds-h4"
                             dir="auto"
                           >

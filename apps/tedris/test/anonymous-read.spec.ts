@@ -191,7 +191,7 @@ describe("Keşfet for a visitor (design tedris/09)", () => {
     const hrefs = inviteHrefs("tr", "/discover");
     expect(html).toContain(`href="${hrefs.signIn}">giriş yap</a>`);
     expect(html).toContain(`href="${hrefs.register}">kayıt ol</a>`);
-    expect(hrefs.signIn).toBe("/tr/auth/signin?callbackUrl=%2Fdiscover");
+    expect(hrefs.signIn).toBe("/tr/auth/signin?callbackUrl=%2Ftr%2Fdiscover");
     expect(html).toContain("hesap açmadan da göz atabilirsin");
     expect(html).not.toContain(tr.DiscoverPage.applyLink);
   });
@@ -208,7 +208,7 @@ describe("Keşfet for a visitor (design tedris/09)", () => {
       })
     );
     expect(html).toContain(
-      `callbackUrl=${encodeURIComponent("/discover?q=sarf")}`
+      `callbackUrl=${encodeURIComponent("/tr/discover?q=sarf")}`
     );
   });
 
@@ -364,13 +364,13 @@ describe("the medrese page for a visitor (design tedris/11)", () => {
     const html = await render(false);
     expect(html).toContain(">NK</span>");
     expect(html).toContain(
-      'href="/kosks/k1"><bdi>Nûruosmaniye Köşkü</bdi></a>'
+      'href="/tr/kosks/k1"><bdi>Nûruosmaniye Köşkü</bdi></a>'
     );
     expect(html).toContain(">Bina ve İzhar Şerhi</span>");
   });
 
   it("leads back to Keşfet, which a visitor may now open", async () => {
-    expect(await render(false)).toContain('href="/discover"');
+    expect(await render(false)).toContain('href="/tr/discover"');
   });
 
   it("leaves the invitation out for a signed-in caller", async () => {
@@ -381,7 +381,7 @@ describe("the medrese page for a visitor (design tedris/11)", () => {
 describe("the links of the invitation", () => {
   it("send sign-in back to the page, and registration to its own page", () => {
     expect(inviteHrefs("tr", "/kosks/k1?x=1")).toEqual({
-      signIn: "/tr/auth/signin?callbackUrl=%2Fkosks%2Fk1%3Fx%3D1",
+      signIn: "/tr/auth/signin?callbackUrl=%2Ftr%2Fkosks%2Fk1%3Fx%3D1",
       register: "/tr/auth/register",
     });
   });
@@ -411,7 +411,9 @@ describe("the phone menu of a visitor (design tedris/45)", () => {
 
   it("marks the page the visitor is on", async () => {
     const discover = nav(await render("/kosks/k1"));
-    expect(discover).toMatch(/href="\/tr\/discover" aria-current="page"/);
+    // next/link writes `href` after the item's own attributes.
+    const current = /<a [^>]*aria-current="page"[^>]*>/.exec(discover)?.[0];
+    expect(current).toContain('href="/tr/discover"');
     expect(discover).not.toContain("/tr/home");
   });
 

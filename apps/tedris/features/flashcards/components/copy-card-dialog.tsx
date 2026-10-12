@@ -10,7 +10,7 @@ import { Dialog, DialogClose } from "@medaris/ui/mds/dialog";
 import { RadioGroup } from "@medaris/ui/mds/radio-group";
 import { useToaster } from "@medaris/ui/mds/toast";
 import { useRouter } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { type FormEvent, useState } from "react";
 import { copyCard } from "../actions";
 import { attempt } from "../attempt";
@@ -36,6 +36,7 @@ export function CopyCardDialog({
   onClose: () => void;
 }) {
   const t = useTranslations("tedris.Decks");
+  const locale = useLocale();
   const router = useRouter();
   const toaster = useToaster();
   // No default: copying is the caller's explicit choice of where the card goes.
@@ -91,7 +92,7 @@ export function CopyCardDialog({
         <>
           <DialogClose>{t("cancel")}</DialogClose>
           {none ? (
-            <Button href="/decks/create">{t("create")}</Button>
+            <Button href={`/${locale}/decks/create`}>{t("create")}</Button>
           ) : (
             <Button type="submit" loading={busy}>
               {t("copySubmit")}

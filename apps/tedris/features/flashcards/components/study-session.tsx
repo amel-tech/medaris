@@ -119,7 +119,7 @@ export function StudySession({
           label={decks("breadcrumbLabel")}
           items={[
             { label: root.label, href: root.href },
-            { label: deck.title, href: `/decks/${deck.id}` },
+            { label: deck.title, href: `/${locale}/decks/${deck.id}` },
             t("title"),
           ]}
         />
@@ -130,7 +130,7 @@ export function StudySession({
               {subtitle}
             </p>
           </div>
-          <Button variant="ghost" href={`/decks/${deck.id}`}>
+          <Button variant="ghost" href={`/${locale}/decks/${deck.id}`}>
             {t("finish")}
           </Button>
         </div>
@@ -153,7 +153,7 @@ export function StudySession({
         {total === 0 ? (
           <EmptyState
             action={
-              <Button variant="outline" href={`/decks/${deck.id}`}>
+              <Button variant="outline" href={`/${locale}/decks/${deck.id}`}>
                 {t("backToDeck")}
               </Button>
             }
@@ -164,7 +164,7 @@ export function StudySession({
         ) : finished ? (
           <EmptyState
             action={
-              <Button variant="outline" href={`/decks/${deck.id}`}>
+              <Button variant="outline" href={`/${locale}/decks/${deck.id}`}>
                 {t("backToDeck")}
               </Button>
             }

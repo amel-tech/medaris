@@ -53,10 +53,10 @@ export function DeckPublicView({
         isOwner={false}
         cardCount={total}
         tab="cards"
-        root={{ label: discover("discover"), href: "/discover" }}
+        root={{ label: discover("discover"), href: `/${locale}/discover` }}
         actions={
           <Button
-            href={`/decks/study/${deck.id}`}
+            href={`/${locale}/decks/study/${deck.id}`}
             size="large"
             iconLeft={<Icon name="play" />}
           >

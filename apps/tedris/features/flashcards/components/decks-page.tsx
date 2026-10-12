@@ -125,13 +125,16 @@ export function DecksPage({ decks }: DecksPageProps) {
         </div>
         <div className="flex flex-wrap gap-3">
           <Button
-            href="/decks/explore"
+            href={`/${locale}/decks/explore`}
             variant="outline"
             iconLeft={<Icon name="search" />}
           >
             {t("explore")}
           </Button>
-          <Button href="/decks/create" iconLeft={<Icon name="plus" />}>
+          <Button
+            href={`/${locale}/decks/create`}
+            iconLeft={<Icon name="plus" />}
+          >
             {t("create")}
           </Button>
         </div>
@@ -181,7 +184,10 @@ export function DecksPage({ decks }: DecksPageProps) {
             icon={<Icon name="cards" size="lg" />}
             action={
               mine.length === 0 ? (
-                <Button href="/decks/create" iconLeft={<Icon name="plus" />}>
+                <Button
+                  href={`/${locale}/decks/create`}
+                  iconLeft={<Icon name="plus" />}
+                >
                   {t("create")}
                 </Button>
               ) : undefined
@@ -227,7 +233,7 @@ export function DecksPage({ decks }: DecksPageProps) {
             action={
               collected.length === 0 ? (
                 <Button
-                  href="/decks/explore"
+                  href={`/${locale}/decks/explore`}
                   variant="outline"
                   iconLeft={<Icon name="search" />}
                 >

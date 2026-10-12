@@ -290,7 +290,7 @@ export const isPlainWeekTitle = (
   ).test(value);
 };
 
-/** The address of a course's recordings tab. */
+/** The address of a course's recordings tab, without the locale, which the link puts in front. */
 export const recordingsTabPath = (courseId: string): string =>
   `/courses/${courseId}?tab=kayitlar`;
 

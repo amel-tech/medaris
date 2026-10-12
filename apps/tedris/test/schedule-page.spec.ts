@@ -78,7 +78,7 @@ describe("Programım (design tedris/21)", () => {
     expect(html).toContain("Saatler İstanbul saatiyle.");
     expect(html).toContain(">Saat dilimini değiştir<");
     expect(html).toMatch(
-      /href="\/account\/calendar"[^>]*>[\s\S]*Takvim aboneliği/
+      /href="\/tr\/account\/calendar"[^>]*>[\s\S]*Takvim aboneliği/
     );
   });
 
@@ -107,7 +107,7 @@ describe("Programım (design tedris/21)", () => {
     expect(html).toContain(">45 dk<");
     expect(html).toContain("<bdi>Emsile ve Bina</bdi>");
     expect(html).toContain("Hafta 5");
-    expect(html).toMatch(/href="\/courses\/c1\/lessons\/a"[^>]*>Birinci</);
+    expect(html).toMatch(/href="\/tr\/courses\/c1\/lessons\/a"[^>]*>Birinci</);
   });
 
   it("shows the platform of a link, or says there is none", async () => {
@@ -186,10 +186,10 @@ describe("Programım (design tedris/21)", () => {
 
   it("offers the next seven days, and the way back once it has moved on", async () => {
     const first = await render([s({})]);
-    expect(first).toContain('href="/schedule?from=2026-10-08"');
+    expect(first).toContain('href="/tr/schedule?from=2026-10-08"');
     expect(first).not.toContain("Bugüne dön");
     const later = await render([s({})], "2026-10-08");
-    expect(later).toContain('href="/schedule?from=2026-10-15"');
+    expect(later).toContain('href="/tr/schedule?from=2026-10-15"');
     expect(later).toContain(">Bugüne dön<");
   });
 

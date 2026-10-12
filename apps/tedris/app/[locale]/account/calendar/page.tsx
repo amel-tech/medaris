@@ -1,6 +1,6 @@
 import { Breadcrumb } from "@medaris/ui/mds/breadcrumb";
 import type { Metadata } from "next";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import { getMyCalendarFeed } from "~/features/courses/actions";
 import { CalendarSubscription } from "~/features/courses/components/calendar-subscription";
 
@@ -15,6 +15,7 @@ export async function generateMetadata(): Promise<Metadata> {
 /** "Takvim aboneliği" (design tedris/23, MDRS-120/163), under Hesap. */
 export default async function CalendarSubscriptionPage() {
   const t = await getTranslations("tedris.CalendarSubscription");
+  const locale = await getLocale();
   const feed = await getMyCalendarFeed();
 
   return (
@@ -23,7 +24,7 @@ export default async function CalendarSubscriptionPage() {
         <Breadcrumb
           label={t("trail")}
           items={[
-            { label: t("breadcrumbAccount"), href: "/account" },
+            { label: t("breadcrumbAccount"), href: `/${locale}/account` },
             { label: t("breadcrumb") },
           ]}
         />

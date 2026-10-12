@@ -99,7 +99,7 @@ test.describe("Keşfet (tedris/09)", () => {
     ).toHaveCount(0);
     await expect(main.getByRole("link", { name: "giriş yap" })).toHaveAttribute(
       "href",
-      /callbackUrl=%2Fdiscover/
+      /callbackUrl=%2Ftr%2Fdiscover/
     );
   });
 
@@ -204,7 +204,7 @@ test.describe("köşk page (tedris/10)", () => {
     await expect(main.getByRole("link", { name: "giriş yap" })).toHaveAttribute(
       "href",
       new RegExp(
-        `callbackUrl=${encodeURIComponent(`/kosks/${fx.kosks.nur.id}`)}`
+        `callbackUrl=${encodeURIComponent(`/tr/kosks/${fx.kosks.nur.id}`)}`
       )
     );
   });

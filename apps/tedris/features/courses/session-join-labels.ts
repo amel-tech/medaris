@@ -106,8 +106,8 @@ export const sessionHeaderProps = (
   const week = t("SessionPage.week", { number: session.weekNumber });
   const crumbs: { label: string; href?: string }[] = [];
   if (koskName)
-    crumbs.push({ label: koskName, href: `/kosks/${course.koskId}` });
-  crumbs.push({ label: course.title, href: `/courses/${course.id}` });
+    crumbs.push({ label: koskName, href: `/${locale}/kosks/${course.koskId}` });
+  crumbs.push({ label: course.title, href: `/${locale}/courses/${course.id}` });
   crumbs.push({ label: week });
   const number = celseNumberOf(course, session.id);
   const words = session.startsAt

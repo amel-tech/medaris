@@ -23,9 +23,11 @@ const { lang, dir } = htmlLangDir("tr");
  * launch language, Turkish. It follows the viewer's theme like every page
  * (light unless they chose dark): the script runs when this is rendered on
  * the server, the usual way a shell failure arrives; React does not run it
- * when this is rendered in the browser.
+ * when this is rendered in the browser. "Yeniden dene" is Next's `retry`,
+ * which asks the server for the shell again; `reset` would only re-render the
+ * payload that failed.
  */
-export default function GlobalError({ reset }: { reset: () => void }) {
+export default function GlobalError({ retry }: { retry: () => void }) {
   return (
     <html lang={lang} dir={dir} data-theme="light" suppressHydrationWarning>
       <head>
@@ -37,7 +39,7 @@ export default function GlobalError({ reset }: { reset: () => void }) {
           className="font-ui"
           title="Bir şeyler ters gitti"
           action={
-            <Button variant="secondary" onClick={() => reset()}>
+            <Button variant="secondary" onClick={() => retry()}>
               Yeniden dene
             </Button>
           }

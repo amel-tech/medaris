@@ -105,7 +105,7 @@ export function ForbiddenState({ deck }: ForbiddenStateProps) {
 }
 
 /** Design tedris/40: the segment threw. The error itself is never shown (criterion 3). */
-export function ErrorState({ reset }: { reset: () => void }) {
+export function ErrorState({ retry }: { retry: () => void }) {
   const t = useTranslations("tedris.SystemPages");
   return (
     <>
@@ -115,7 +115,7 @@ export function ErrorState({ reset }: { reset: () => void }) {
         className="font-ui"
         title={t("errorTitle")}
         action={
-          <Button variant="secondary" onClick={() => reset()}>
+          <Button variant="secondary" onClick={() => retry()}>
             {t("errorAction")}
           </Button>
         }
