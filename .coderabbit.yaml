@@ -253,17 +253,20 @@ reviews:
           different runtimes with different trust boundaries.
 
     # ── Lens 1: authz — Next.js edges ───────────────────────────────────────
-    - path: "apps/{tedris,nizam,nazar,landing}/{middleware.ts,app/api/**,features/**/actions/**}"
+    - path: "apps/{tedris,nizam,nazar,landing}/{proxy.ts,middleware.ts,app/api/**,features/**/actions/**}"
       instructions: |
         LENS: authorization at the Next.js edges.
 
-        `apps/tedris/middleware.ts:51` and the identical `apps/nizam/middleware.ts:51`
-        use the matcher `["/((?!api|trpc|_next|_vercel|.*\\..*).*)"]`, which
-        EXCLUDES /api by construction. Route handlers under app/api/** get no
-        middleware authentication and must check the session themselves. Server
-        Actions (features/*/actions/*.ts, `"use server"`) are HTTP endpoints like any
-        other and need the same check — see the comment at
-        apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:255.
+        tedris, nizam and nazar gate their pages in `proxy.ts` (Next 16, Node
+        runtime) through `@medaris/auth`'s proxy (libs/auth/README.md). It keeps
+        the app's own `/api/**` routes in its matcher so their session is
+        refreshed, but it never redirects a route handler or a Server Action:
+        route handlers under app/api/** must check the session themselves
+        (`getAccessToken()`, 401 without one), and Server Actions
+        (features/*/actions/*.ts, `"use server"`) are HTTP endpoints like any
+        other and need the same check (`withAccessToken`) — see the comment at
+        apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:255. landing
+        has no auth; its `middleware.ts` is next-intl only.
 
         Report a NEW handler or action that reads or mutates user data without
         establishing the session first. The browser is not a trust boundary: a check

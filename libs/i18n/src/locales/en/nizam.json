@@ -847,8 +847,7 @@
     "body": "You will be signed out of Medaris in this browser.",
     "confirm": "Sign out",
     "cancel": "Cancel",
-    "busy": "Signing out",
-    "failed": "Could not sign out. Try again."
+    "busy": "Signing out"
   },
   "MadrasahsPage": {
     "title": "Medreses",

@@ -18,8 +18,7 @@ libs/services/
 │   │   ├── generated/     # Auto-generated API client (do not edit)
 │   │   ├── api-factory.ts # Factory for creating authenticated clients
 │   │   └── index.ts       # Public exports
-│   ├── utils/             # Error helpers            -> @medaris/services/utils
-│   └── auth/              # Server-side token reader -> @medaris/services/auth
+│   └── utils/             # Error helpers            -> @medaris/services/utils
 └── openapitools.json      # OpenAPI generator configuration
 ```
 
@@ -51,7 +50,7 @@ const deck = await decks.getFlashcardDeckById({
 
 ```typescript
 import { createServerTedrisatAPIs } from '@medaris/services/tedrisat'
-import { getAccessToken } from '~/lib/auth_options'
+import { getAccessToken } from '~/lib/auth'
 
 // In server components, route handlers and server actions
 const token = await getAccessToken()
@@ -60,16 +59,16 @@ const { decks } = await createServerTedrisatAPIs(token, env.TEDRISAT_API_BASE_UR
 const decks = await decks.getAllFlashcardDecks()
 ```
 
-`getAccessToken()` reads the Keycloak access token out of the encrypted session
-cookie, refreshes it when it has expired, and is memoized per request. Each app
-builds it from `createAccessTokenReader` in `@medaris/services/auth`, supplying
-its `NEXTAUTH_SECRET`, its session cookie name and its own `refreshAccessToken`.
+`getAccessToken()` reads the Keycloak access token out of the session cookie,
+once per request, and never refreshes it: the app's `proxy.ts` does that.
+Each app builds it with `createAuth` from `@medaris/auth` (see
+`libs/auth/README.md`).
 
 ### Client-Side Usage (React)
 
-Since MDRS-28 the `Session` object no longer carries the access token — NextAuth
-serves the session from `GET /api/auth/session` to any script on the page, so
-the token must not be on it. Client components therefore cannot call tedrisat
+The client-side session (`useSession()` from `@medaris/auth/client`, and
+`GET /api/auth/session`) carries no token: any script on the page can read it.
+Client components therefore cannot call tedrisat
 directly with the user's token. Go through a server action (see
 `~/lib/authenticated-action.ts` in each app) or a route handler under
 `app/api/**`, both of which read the token server-side with `getAccessToken()`.

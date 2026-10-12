@@ -2,8 +2,8 @@
 
 One OIDC session for the web apps (tedris, nazar, nizam), built on
 [openid-client](https://github.com/panva/openid-client) v6 and
-[jose](https://github.com/panva/jose) v6. It replaces next-auth 4 one app at a
-time; an app drops next-auth when it moves.
+[jose](https://github.com/panva/jose) v6. It replaced next-auth 4 in all three
+apps; no app depends on next-auth any more.
 
 What it does, and where:
 
@@ -44,9 +44,7 @@ types, the error codes and message keys (`AUTH_ERROR_CODES`,
 
 Dependencies: `"@medaris/auth": "workspace:*"` in the app's `package.json`,
 `"@medaris/auth"` in `transpilePackages` (`next.config.js`), a
-`{ "path": "../../libs/auth" }` reference in its `tsconfig.json`. Remove
-`next-auth`, `lib/auth_options.ts`, `lib/auth_cookies.ts`, `next-auth.d.ts`,
-`middleware.ts` and `app/api/auth/[...nextauth]/route.ts` in the same change.
+`{ "path": "../../libs/auth" }` reference in its `tsconfig.json`.
 
 ### `lib/auth.ts`
 
