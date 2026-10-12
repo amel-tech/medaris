@@ -115,7 +115,7 @@
     "sourceHeading": "Kaynaklar",
     "resourcesTitle": "Bu dersin kaynakları",
     "resourcesNewTab": " (yeni sekmede açılır)",
-    "resourcesLocked": "Bağlantıları derse kayıtlı talebeler açar.",
+    "resourcesLocked": "Kaynakları derse kayıtlı talebeler açar.",
     "deckEmpty": "Bu derse bağlı bir deste yok.",
     "teachers": "Müderrisler",
     "typeLive": "Canlı ders",
@@ -133,7 +133,8 @@
     "completedNote": "Ders kadrosu {date} onayladı. Ders sürerken celselere ve ders kayıtlarına erişimin sürer.",
     "openSession": "Celse sayfasını aç",
     "leaveBody": "<b>{title}</b> dersinden ayrılacaksın. Celselere, toplantı bağlantılarına, ders kayıtlarına ve ders destesine erişimin kalkar; dersin celseleri takviminden de düşer.",
-    "leaveBodyCards": "Kendi destene kopyaladığın kartlar sende kalır. İstersen derse yeniden başvurabilirsin."
+    "leaveBodyCards": "Kendi destene kopyaladığın kartlar sende kalır. İstersen derse yeniden başvurabilirsin.",
+    "resourcesDownload": " (indirilir)"
   },
   "DataTable": {
     "noResults": "Sonuç bulunamadı."
@@ -509,7 +510,7 @@
     "agendaTitle": "Gündem",
     "agendaZone": "Saatler {zone} saatiyle.",
     "resourcesTitle": "Kaynaklar",
-    "resourcesLocked": "Bağlantıları derse kayıtlı talebeler açar.",
+    "resourcesLocked": "Kaynakları derse kayıtlı talebeler açar.",
     "neighbours": "Celseler arasında",
     "previousWeek": "Önceki · Hafta {number}",
     "nextWeek": "Sonraki · Hafta {number}",
@@ -561,7 +562,8 @@
     "readingPlace": "Okunacak yer:",
     "resourcesOwn": "Bu celse",
     "resourcesCourse": "Ders geneli",
-    "rowRecording": "Kayıt var"
+    "rowRecording": "Kayıt var",
+    "download": " (indirilir)"
   },
   "AccountPage": {
     "pageTitle": "Hesap",

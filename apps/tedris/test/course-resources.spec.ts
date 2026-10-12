@@ -17,12 +17,13 @@ type Resource = CourseDetailResponse["resources"][number];
 const labels = {
   title: "Bu dersin kaynakları",
   newTab: " (yeni sekmede açılır)",
-  locked: "Bağlantıları derse kayıtlı talebeler açar.",
+  download: " (indirilir)",
+  locked: "Kaynakları derse kayıtlı talebeler açar.",
 };
 
 const draw = (resources: Resource[] | undefined, locked = false) =>
   renderToStaticMarkup(
-    createElement(CourseResources, { resources, labels, locked })
+    createElement(CourseResources, { resources, labels, locale: "tr", locked })
   );
 
 const row = (over: Partial<Resource> = {}): Resource =>
@@ -137,7 +138,8 @@ describe("CourseResources, the provider of a link", () => {
             url: "https://docs.google.com/document/d/1a2b3c/edit",
           },
         ],
-        newTab: labels.newTab,
+        labels,
+        locale: "tr",
         testId: "session-resources",
       })
     );
@@ -157,5 +159,101 @@ describe("CourseResources, the provider of a link", () => {
     expect(html.match(/data-testid="[^"]*"/g)).toEqual([
       'data-testid="course-resources"',
     ]);
+  });
+});
+
+// MDRS-287: a resource may be a file in Medaris storage. Its address is this
+// app's download route, which adds the token on the server and hands back an
+// attachment; the row says its type and size. Like a link's address, the
+// file comes only to who may read the content: a locked row is a name.
+describe("CourseResources, a file", () => {
+  const COURSE = "0b7f6c1e-2a4d-4c8e-9f10-3a5b6c7d8e9f";
+  const LESSON = "11111111-1111-4111-8111-111111111111";
+  const R1 = "5d2e8f40-1c3b-4a6d-8e7f-90a1b2c3d4e5";
+  const fileRow = (over: Partial<Resource> = {}): Resource =>
+    row({
+      id: R1,
+      name: "Bina şerhi",
+      meta: undefined,
+      type: undefined,
+      url: undefined,
+      file: {
+        name: "bina-serhi.pdf",
+        contentType: "application/pdf",
+        sizeBytes: 2.5 * 1024 * 1024,
+        downloadUrl: `/courses/${COURSE}/resources/${R1}/file`,
+      },
+      ...over,
+    });
+
+  it("downloads through this app's route, not in a new tab, with its type and size under its name", () => {
+    const html = draw([fileRow()]);
+    expect(anchors(html)).toEqual([
+      `<a class="mds-link" href="/api/files/courses/${COURSE}/resources/${R1}" download="">`,
+    ]);
+    expect(html).toContain(
+      '<span class="mds-visually-hidden"> (indirilir)</span>'
+    );
+    expect(html).not.toContain("target=");
+    expect(html).not.toContain("yeni sekmede");
+    expect(html).toContain(
+      '<span class="mds-badge mds-badge--secondary">PDF</span>'
+    );
+    expect(html).toContain("2,5 MB");
+    expect(html).not.toContain(labels.locked);
+  });
+
+  it("downloads a celse's file through the celse's route", () => {
+    const html = renderToStaticMarkup(
+      createElement(ResourceList, {
+        resources: [
+          {
+            id: R1,
+            name: "Çekim tablosu",
+            meta: null,
+            url: null,
+            file: {
+              name: "tablo.xlsx",
+              contentType:
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+              sizeBytes: 18 * 1024,
+              downloadUrl: `/lessons/${LESSON}/resources/${R1}/file`,
+            },
+          },
+        ],
+        labels,
+        locale: "tr",
+      })
+    );
+    expect(anchors(html)).toEqual([
+      `<a class="mds-link" href="/api/files/lessons/${LESSON}/resources/${R1}" download="">`,
+    ]);
+    expect(html).toContain(">XLSX<");
+    expect(html).toContain("18 kB");
+  });
+
+  it("names a file without a link, a chip or a size to who may not read the content", () => {
+    const html = draw([fileRow({ file: undefined })], true);
+    expect(html).toContain(">Bina şerhi<");
+    expect(anchors(html)).toEqual([]);
+    expect(html).not.toContain("mds-badge");
+    expect(html).not.toContain("/api/files");
+    expect(html).toContain(labels.locked);
+  });
+
+  it("links no file whose route is not tedrisat's download route", () => {
+    const html = draw([
+      fileRow({
+        file: {
+          name: "x.pdf",
+          contentType: "application/pdf",
+          sizeBytes: 10,
+          downloadUrl: "https://storage.bunnycdn.com/medaris/x.pdf",
+        },
+      }),
+    ]);
+    expect(anchors(html)).toEqual([]);
+    expect(html).not.toContain("bunnycdn");
+    expect(html).toContain(">Bina şerhi<");
   });
 });

@@ -460,6 +460,39 @@ describe("the course's resources (MDRS-279)", () => {
     expect(html).toContain(tr.resourcesLocked);
   });
 
+  it("downloads a file through this app for an enrolled talebe, and names it alone for a visitor (MDRS-287)", async () => {
+    const COURSE = "0b7f6c1e-2a4d-4c8e-9f10-3a5b6c7d8e9f";
+    const R1 = "5d2e8f40-1c3b-4a6d-8e7f-90a1b2c3d4e5";
+    const reader = await render("ENROLLED", {
+      resources: [
+        {
+          id: R1,
+          name: "Bina şerhi",
+          file: {
+            name: "bina.pdf",
+            contentType: "application/pdf",
+            sizeBytes: 1024 * 1024,
+            downloadUrl: `/courses/${COURSE}/resources/${R1}/file`,
+          },
+        },
+      ],
+    });
+    expect(reader).toContain(
+      `<a class="mds-link" href="/api/files/courses/${COURSE}/resources/${R1}" download="">`
+    );
+    expect(reader).toContain(`>${tr.resourcesDownload}</span>`);
+    expect(reader).toContain(">PDF<");
+    expect(reader).toContain("1 MB");
+
+    const visitor = await render(null, {
+      signedIn: false,
+      resources: [{ id: R1, name: "Bina şerhi" }],
+    });
+    expect(visitor).toContain(">Bina şerhi<");
+    expect(visitor).not.toContain("/api/files");
+    expect(visitor).toContain(tr.resourcesLocked);
+  });
+
   it("draws nothing for a course without any", async () => {
     expect(await render("ENROLLED")).not.toContain(tr.resourcesTitle);
   });

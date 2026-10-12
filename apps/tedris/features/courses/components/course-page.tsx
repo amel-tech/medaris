@@ -102,14 +102,17 @@ export const CoursePage = ({
 
   const firstSession = preview ? firstSessionAt(course) : null;
 
-  // MDRS-279: the course's links, under the card on the right.
+  // MDRS-279: the course's links, under the card on the right; since
+  // MDRS-287 its files too, each downloaded through this app.
   const resourceList = (
     <CourseResources
       resources={course.resources}
       locked={course.contentLocked}
+      locale={locale}
       labels={{
         title: t("resourcesTitle"),
         newTab: t("resourcesNewTab"),
+        download: t("resourcesDownload"),
         locked: t("resourcesLocked"),
       }}
     />
