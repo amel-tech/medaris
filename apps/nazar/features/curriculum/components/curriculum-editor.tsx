@@ -1,6 +1,10 @@
 "use client";
 
-import type { CourseDetailResponse } from "@medaris/services/tedrisat";
+import type {
+  CourseDetailResponse,
+  CourseResourceFileUploadResponse,
+  LessonResourceFileUploadResponse,
+} from "@medaris/services/tedrisat";
 import { Alert } from "@medaris/ui/mds/alert";
 import { Badge } from "@medaris/ui/mds/badge";
 import { Button } from "@medaris/ui/mds/button";
@@ -25,6 +29,7 @@ import { useTranslations } from "next-intl";
 import { type FormEvent, useState, useTransition } from "react";
 import type { Messages } from "~/lib/i18n/messages";
 import { handleUnauthenticated } from "~/lib/unauthenticated";
+import { fileRoutes } from "../../files/files";
 import { linkProblem, planHref } from "../../sessions/sessions";
 import { saveCurriculum } from "../actions";
 import {
@@ -33,6 +38,8 @@ import {
   type CurriculumProblem,
   cancelledLabel,
   copyWeek,
+  courseAfterLessonUpload,
+  courseAfterUpload,
   curriculumConflict,
   curriculumDirty,
   curriculumErrorKey,
@@ -42,14 +49,17 @@ import {
   emptyLesson,
   headingDay,
   type LessonDraft,
+  lessonResourceDraftOf,
   lessonWithoutAccess,
   linkHelpKey,
   nextWeekNumber,
   type ResourceDraft,
+  resourceDraftOf,
   resourceDraftsOf,
   type WeekDraft,
   weekDraftsOf,
   weekFacts,
+  withLessonResource,
 } from "../curriculum";
 import { LessonResourcesEditor } from "./lesson-resources-editor";
 import { ResourcesEditor } from "./resources-editor";
@@ -81,6 +91,14 @@ const TONES = ["laciverd", "bordo", "zumrut", "murekkep"] as const;
  * the date and time of a stored session and the session's own resources
  * (MDRS-286) are off; the title, the agenda, the link and the other fields are
  * still `course.edit` alone. The API decides the save either way.
+ *
+ * A file uploaded to the course's or a session's resources (MDRS-287) is
+ * stored by its upload, which also bumps the course's version. The editor
+ * keeps the course as it now stands (`read`): the new row joins both the form
+ * and its saved values, so it is no unsaved change and "Vazgeç" keeps it, and
+ * the next "Kaydet" sends the version the upload answered with. One upload
+ * runs at a time, and "Kaydet" waits for it, so no save goes out with a
+ * version an upload is about to move.
  */
 export function CurriculumEditor({
   course,
@@ -106,6 +124,10 @@ export function CurriculumEditor({
   const router = useRouter();
   const { notify } = useToaster();
   const [refreshing, startRefresh] = useTransition();
+  // The course as stored, as far as this page knows: the read, then each
+  // upload's row and version (MDRS-287). The save is built against it.
+  const [read, setRead] = useState(course);
+  const [uploads, setUploads] = useState(0);
 
   const [saved, setSaved] = useState<CurriculumForm>(() => ({
     title: course.title,
@@ -175,6 +197,25 @@ export function CurriculumEditor({
     );
   const locked = saving || refreshing || !can.edit;
   const sessionsLocked = locked || !can.sessions;
+  const onBusyChange = (busy: boolean) =>
+    setUploads((n) => Math.max(0, n + (busy ? 1 : -1)));
+
+  const onCourseUpload = (upload: CourseResourceFileUploadResponse) => {
+    const row = resourceDraftOf(upload.resource);
+    setRead((now) => courseAfterUpload(now, upload));
+    setResources((rows) => [...rows, row]);
+    setSaved((now) => ({ ...now, resources: [...now.resources, row] }));
+  };
+  const onLessonUpload =
+    (lessonId: string) => (upload: LessonResourceFileUploadResponse) => {
+      const row = lessonResourceDraftOf(upload.resource);
+      setRead((now) => courseAfterLessonUpload(now, lessonId, upload));
+      setWeeks((all) => withLessonResource(all, lessonId, row));
+      setSaved((now) => ({
+        ...now,
+        weeks: withLessonResource(now.weeks, lessonId, row),
+      }));
+    };
 
   const sessionCount = weeks.reduce(
     (n, week) =>
@@ -211,7 +252,7 @@ export function CurriculumEditor({
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
-    if (locked || conflict) return;
+    if (locked || conflict || uploads > 0) return;
     if (errors.length > 0) {
       setSent(true);
       return;
@@ -219,7 +260,7 @@ export function CurriculumEditor({
     setSaving(true);
     const result = await saveCurriculum(
       course.id,
-      curriculumPayload(course, current, timeZone)
+      curriculumPayload(read, current, timeZone)
     );
     if (handleUnauthenticated(result)) return;
     setSaving(false);
@@ -282,7 +323,7 @@ export function CurriculumEditor({
               type="submit"
               loading={saving}
               loadingLabel={t("Curriculum.saving")}
-              disabled={!dirty || refreshing || conflict}
+              disabled={!dirty || refreshing || conflict || uploads > 0}
             >
               {t("Curriculum.save")}
             </Button>
@@ -376,12 +417,20 @@ export function CurriculumEditor({
       </section>
 
       <ResourcesEditor
+        courseId={course.id}
         resources={resources}
         onChange={setResources}
         shown={shownResource}
         disabled={locked}
         editable={can.edit}
         locked={course.contentLocked}
+        upload={{
+          route: fileRoutes.courseResources(course.id),
+          blocked: uploads > 0,
+          onBusyChange,
+          onUploaded: onCourseUpload,
+        }}
+        locale={locale}
       />
 
       <section className="flex flex-col gap-4" aria-labelledby="c-weeks">
@@ -659,6 +708,7 @@ export function CurriculumEditor({
                               source line. Changing them is session work. */}
                           <LessonResourcesEditor
                             prefix={`lesson-${wi}-${li}`}
+                            lessonId={lesson.id}
                             resources={lesson.resources}
                             onChange={(resources) =>
                               patchLesson(wi, li, { resources })
@@ -670,6 +720,17 @@ export function CurriculumEditor({
                             disabled={sessionsLocked}
                             editable={can.edit && can.sessions}
                             sessionsNote={can.edit && !can.sessions}
+                            upload={{
+                              route: lesson.id
+                                ? fileRoutes.lessonResources(lesson.id)
+                                : null,
+                              blocked: uploads > 0,
+                              onBusyChange,
+                              onUploaded: lesson.id
+                                ? onLessonUpload(lesson.id)
+                                : () => undefined,
+                            }}
+                            locale={locale}
                           />
                           <div className="grid gap-4 sm:grid-cols-3">
                             <Field

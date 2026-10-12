@@ -25,6 +25,7 @@ export const CODES = {
   coursePublish: "course.publish",
   settingApprovalOff: "setting.approval_off",
   settingCourseOpen: "setting.course_open",
+  submissionRead: "submission.read",
 } as const;
 
 /** The codes that open each page: holding any one of them is enough. */
@@ -40,6 +41,7 @@ export const PAGE_CODES = {
   ],
   curriculum: [CODES.courseEdit, CODES.sessionManage, CODES.weekHide],
   recordings: [CODES.recordingManage, CODES.recordingUpload],
+  homework: [CODES.submissionRead],
   settings: [
     CODES.courseEdit,
     CODES.courseSettings,

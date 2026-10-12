@@ -37,6 +37,12 @@ interface NavEntry {
   icon: IconName;
   to: NavTarget;
   count?: CountSource;
+  /**
+   * A course permission the item is drawn for, and only then (MDRS-290):
+   * the page opens to nobody else, so the menu does not offer it. Read
+   * from what the caller holds in the course (`navFor`'s `held`).
+   */
+  requires?: string;
 }
 
 interface NavSectionDef {
@@ -109,6 +115,12 @@ export const NAV: Readonly<Record<ScopeKind, readonly NavSectionDef[]>> = {
           count: "applications",
         },
         { id: "questions", icon: "chats", to: page("sorular") },
+        {
+          id: "homework",
+          icon: "inbox",
+          to: page("odevler"),
+          requires: "submission.read",
+        },
         { id: "recordings", icon: "video", to: page("kayitlar") },
         { id: "deck", icon: "cards", to: page("deste") },
         { id: "bans", icon: "ban", to: page("yasaklamalar") },
@@ -149,43 +161,56 @@ export interface NavSectionView {
 /**
  * The menu of one scope with its numbers. A number that is missing, or zero,
  * leaves the item without one: a failed count is no badge, never an error.
+ * An item that requires a permission is left out unless `held` has it; a
+ * permissions read that failed is no permission, so it is left out then too.
  */
 export function navFor(
   scope: Pick<Scope, "kind" | "id">,
-  { panoHref, counts }: { panoHref: string; counts: MenuCounts }
+  {
+    panoHref,
+    counts,
+    held = new Set(),
+  }: {
+    panoHref: string;
+    counts: MenuCounts;
+    /** what the caller holds in the scope (a course's `my-permissions`) */
+    held?: ReadonlySet<string>;
+  }
 ): NavSectionView[] {
   const home = scopeHref(scope);
   return NAV[scope.kind].map((section) => ({
     id: section.id,
     labelKey: `sections.${section.id}`,
-    items: section.entries.map((entry): NavItemView => {
-      const href =
-        entry.to.type === "pano"
-          ? panoHref
-          : entry.to.type === "global"
-            ? entry.to.path
-            : entry.to.segment === null
-              ? home
-              : `${home}/${entry.to.segment}`;
-      const count = entry.count ? counts[entry.count] : undefined;
-      return {
-        id: entry.id,
-        href,
-        icon: entry.icon,
-        labelKey:
-          section.id === "general"
-            ? `general.${entry.id}`
-            : `${scope.kind}.${entry.id}`,
-        count: count && count > 0 ? count : undefined,
-        countLabelKey:
-          entry.count && count && count > 0
-            ? COUNT_LABEL_KEY[entry.count]
-            : undefined,
-        exact:
-          entry.to.type === "pano" ||
-          (entry.to.type === "scope" && entry.to.segment === null),
-      };
-    }),
+    items: section.entries
+      .filter((entry) => !entry.requires || held.has(entry.requires))
+      .map((entry): NavItemView => {
+        const href =
+          entry.to.type === "pano"
+            ? panoHref
+            : entry.to.type === "global"
+              ? entry.to.path
+              : entry.to.segment === null
+                ? home
+                : `${home}/${entry.to.segment}`;
+        const count = entry.count ? counts[entry.count] : undefined;
+        return {
+          id: entry.id,
+          href,
+          icon: entry.icon,
+          labelKey:
+            section.id === "general"
+              ? `general.${entry.id}`
+              : `${scope.kind}.${entry.id}`,
+          count: count && count > 0 ? count : undefined,
+          countLabelKey:
+            entry.count && count && count > 0
+              ? COUNT_LABEL_KEY[entry.count]
+              : undefined,
+          exact:
+            entry.to.type === "pano" ||
+            (entry.to.type === "scope" && entry.to.segment === null),
+        };
+      }),
   }));
 }
 

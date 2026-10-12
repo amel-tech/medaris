@@ -746,7 +746,7 @@ describe("Bağlı kaynaklar (MDRS-279)", () => {
   it("adds a link, sends it after the stored one, and is dirty until saved", async () => {
     state.course = { status: "ok", data: linked() };
     await mount();
-    await click(buttonIn(section(), "Kaynak ekle"));
+    await click(buttonIn(section(), "Bağlantı ekle"));
     expect(save().disabled).toBe(false);
     await typeInto(field("resource-1-name"), "Tatbikat defteri");
     await typeInto(field("resource-1-url"), "https://files.medaris.org/t.pdf");
@@ -770,7 +770,7 @@ describe("Bağlı kaynaklar (MDRS-279)", () => {
 
   it("does not send a row without a name or an http(s) address, and says which", async () => {
     await mount();
-    await click(buttonIn(section(), "Kaynak ekle"));
+    await click(buttonIn(section(), "Bağlantı ekle"));
     await typeInto(field("resource-0-url"), "javascript:alert(1)");
     await submit();
     expect(saveCurriculum).not.toHaveBeenCalled();
@@ -801,7 +801,7 @@ describe("Bağlı kaynaklar (MDRS-279)", () => {
     await mount();
     expect(field("resource-0-name").disabled).toBe(true);
     expect(field("resource-0-url").disabled).toBe(true);
-    expect(buttonIn(section(), "Kaynak ekle")).toBeUndefined();
+    expect(buttonIn(section(), "Bağlantı ekle")).toBeUndefined();
     expect(buttonIn(section(), "Kaynağı çıkar")).toBeUndefined();
   });
 
@@ -825,7 +825,8 @@ describe("Bağlı kaynaklar (MDRS-279)", () => {
     );
     expect(section().textContent).toContain("Bina");
     expect(field("resource-0-url")).toBeNull();
-    expect(buttonIn(section(), "Kaynak ekle")).toBeUndefined();
+    expect(buttonIn(section(), "Bağlantı ekle")).toBeUndefined();
+    expect(buttonIn(section(), "Dosya yükle")).toBeUndefined();
     expect(buttonIn(section(), "Kaynağı çıkar")).toBeUndefined();
     await typeInto(field("title"), "Yeni ad");
     await submit();
@@ -911,7 +912,7 @@ describe("Celsenin kaynakları (MDRS-286)", () => {
     await mount();
     expect(group().textContent).toContain("Celsenin kaynakları");
     expect(group().textContent).toContain(
-      "Adlarını herkes görür; bağlantıları derse kayıtlı talebeler açar."
+      "Adlarını herkes görür; bağlantıları ve dosyaları derse kayıtlı talebeler açar."
     );
     expect(field("lesson-1-0-resource-0-name").value).toBe("Emsile şerhi");
     expect(field("lesson-1-0-resource-0-meta").value).toBe("PDF · 12 sayfa");
@@ -953,7 +954,7 @@ describe("Celsenin kaynakları (MDRS-286)", () => {
   it("adds, renames, reorders and removes a session's links, and sends that list whole", async () => {
     state.course = { status: "ok", data: withLinks() };
     await mount();
-    await click(named(group(), "Kaynak ekle"));
+    await click(named(group(), "Bağlantı ekle"));
     expect(save().disabled).toBe(false);
     await typeInto(field("lesson-1-0-resource-2-name"), "Bina");
     await typeInto(
@@ -1007,7 +1008,7 @@ describe("Celsenin kaynakları (MDRS-286)", () => {
 
   it("does not send a link without a name or an http(s) address, and says so on its row", async () => {
     await mount();
-    await click(named(group(), "Kaynak ekle"));
+    await click(named(group(), "Bağlantı ekle"));
     await typeInto(
       field("lesson-1-0-resource-0-url"),
       "drive.google.com/file/d/1a2b3c"
@@ -1033,7 +1034,7 @@ describe("Celsenin kaynakları (MDRS-286)", () => {
     for (const name of ["name", "meta", "url"]) {
       expect(field(`lesson-1-0-resource-0-${name}`).disabled, name).toBe(true);
     }
-    expect(named(group(), "Kaynak ekle")).toBeUndefined();
+    expect(named(group(), "Bağlantı ekle")).toBeUndefined();
     expect(named(group(), "Kaynağı çıkar")).toBeUndefined();
     expect(named(group(), "Yukarı taşı")).toBeUndefined();
     await typeInto(field("title"), "Yeni ad");
@@ -1057,7 +1058,8 @@ describe("Celsenin kaynakları (MDRS-286)", () => {
       resources.tr.nazar.Curriculum.lessonResourcesLocked
     );
     expect(field("lesson-1-0-resource-0-name")).toBeNull();
-    expect(named(group(), "Kaynak ekle")).toBeUndefined();
+    expect(named(group(), "Bağlantı ekle")).toBeUndefined();
+    expect(named(group(), "Dosya yükle")).toBeUndefined();
     await typeInto(field("title"), "Yeni ad");
     await submit();
     expect(saveCurriculum).toHaveBeenCalledTimes(1);
