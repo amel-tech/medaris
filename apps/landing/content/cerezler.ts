@@ -6,7 +6,11 @@
 // own cookies with the realm's lifetimes in config/keycloak/realms/_base.json
 // (#226: SSO idle 18000 s, max 36000 s; remember me on, 14 days idle, 30 days
 // max), and the apps' own cookies and storage keys. #285 removed next-auth's
-// cookies and `tedris.welcomed`.
+// cookies and `tedris.welcomed`. auth Phase 2 (libs/auth/src/server/
+// session-store.ts): with WEB__AUTH_STORE_URL set (production, once its three
+// apps have the variable), the session cookie keeps its name but holds only a
+// random id, and the session itself is kept, sealed, in Medaris's own Valkey;
+// no new third party.
 // A cookie that is not set by any code is not listed: the device cookie of
 // MDRS-125 is not built yet.
 //
@@ -53,7 +57,7 @@ export const cookieGroups: CookieGroup[] = [
       {
         names: "tedris.session, nizam.session, nazar.session",
         purpose:
-          "Giriş yaptığınızı hatırlar. Şifrelenmiştir; tarayıcıdaki betikler okuyamaz. Tek çereze sığmadığında adının sonuna .0, .1 … eklenerek parçalara bölünür.",
+          "Giriş yaptığınızı hatırlar. Yalnızca rastgele bir oturum numarası tutar; giriş bilgileriniz Medaris’in Türkiye’deki sunucusunda şifrelenmiş olarak saklanır. Tarayıcıdaki betikler okuyamaz.",
         setBy: "Tedris, Nizam ve Nazar",
         lifetime: `Kimlik sunucusundaki oturum kadar (sunucu bir süre bildirmezse ${sessionCookieMax}): ${sessionEnds}`,
       },

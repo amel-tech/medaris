@@ -64,6 +64,21 @@ describe("Çerezler", () => {
     expect(page).toContain("__Host-");
   });
 
+  // auth Phase 2: with a session store the cookie holds a random id
+  // (libs/auth/src/server/session-store.ts) and the session stays on
+  // Medaris's server; no chunks.
+  it("says the session cookie holds only an id, the sign-in data staying on Medaris's server in Turkey", () => {
+    expect(source("libs/auth/src/server/session-store.ts")).toContain(
+      "new Uint8Array(32)"
+    );
+    const row = cookieGroups
+      .flatMap((group) => group.rows)
+      .find((r) => r.names.startsWith("tedris.session"));
+    expect(row?.purpose).toContain("rastgele bir oturum numarası");
+    expect(row?.purpose).toContain("Türkiye’deki sunucusunda");
+    expect(row?.purpose).not.toMatch(/\.0, \.1/);
+  });
+
   it("lists every storage key of @medaris/auth's sign-in", async () => {
     const page = await text();
     const keys = [
