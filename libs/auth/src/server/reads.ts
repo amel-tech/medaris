@@ -13,9 +13,13 @@ import { RETURN_TO_HEADER, safeReturnTo } from "./return-to";
 import {
   hasUsableAccessToken,
   publicSession,
-  type SessionCookie,
   type StoredSession,
 } from "./session-cookie";
+import type { SessionStore } from "./session-store";
+import {
+  isSessionStoreUnavailable,
+  SessionStoreUnavailableError,
+} from "./store-backend";
 
 /**
  * The reads for Server Components, Server Actions and route handlers. None of
@@ -28,6 +32,13 @@ import {
  * #270, where the cookie read as signed in while no token could be had, and a
  * page drew "could not be read" with a retry that never worked. It also keeps
  * MDRS-216: a public page with an ended session renders the visitor's view.
+ *
+ * With a session store (auth Phase 2) that one read is a `GET` per request.
+ * When the store cannot be asked, `auth()` and `getAccessToken()` see a
+ * visitor (a public page renders as for one), while everything that would
+ * send the caller to sign in throws `SessionStoreUnavailableError` instead:
+ * the session may be there, and the IdP would only send the browser back to
+ * the same store. A protected page then ends on the app's error page.
  */
 export interface RequireOptions {
   /**
@@ -61,7 +72,8 @@ export interface ServerReads {
    * Runs `call` with the access token, for a Server Action or a route handler.
    * No token, or an API that answered 401, is `{ kind: "unauthenticated" }`;
    * the client hands that to `handleUnauthenticated`. Any other failure is
-   * thrown as it was.
+   * thrown as it was, and so is `SessionStoreUnavailableError` when the
+   * session store could not be asked.
    */
   withAccessToken<T>(
     call: (accessToken: string) => Promise<T>
@@ -69,7 +81,8 @@ export interface ServerReads {
   /**
    * Redirects to the app's sign-in page. Call outside any `try`. Throws
    * (rather than redirecting the page to itself, a loop) when called while
-   * the sign-in page itself renders.
+   * the sign-in page itself renders, and throws
+   * `SessionStoreUnavailableError` when the session store could not be asked.
    */
   redirectToSignIn(options?: SignInRedirectOptions): Promise<never>;
   /**
@@ -85,20 +98,41 @@ export interface ServerReads {
 
 export function createServerReads(
   config: ResolvedAuthConfig,
-  sessionCookie: SessionCookie
+  store: SessionStore
 ): ServerReads {
-  const current = cache(async (): Promise<StoredSession | null> => {
-    const stored = await sessionCookie.read(await cookies());
-    return stored && hasUsableAccessToken(stored, config.now()) ? stored : null;
-  });
+  /** This request's session (`null` for a visitor), and whether the store could be asked. */
+  const read = cache(
+    async (): Promise<{
+      session: StoredSession | null;
+      unavailable: boolean;
+    }> => {
+      const source = await cookies();
+      try {
+        const loaded = await store.load(source);
+        const session =
+          loaded && hasUsableAccessToken(loaded.session, config.now())
+            ? loaded.session
+            : null;
+        return { session, unavailable: false };
+      } catch (error) {
+        if (!isSessionStoreUnavailable(error)) throw error;
+        return { session: null, unavailable: true };
+      }
+    }
+  );
+
+  /** Sending the caller to sign in is a mistake while the store cannot be asked. */
+  const assertAnswered = async () => {
+    if ((await read()).unavailable) throw new SessionStoreUnavailableError();
+  };
 
   const auth = cache(async (): Promise<Session | null> => {
-    const stored = await current();
-    return stored ? publicSession(stored) : null;
+    const { session } = await read();
+    return session ? publicSession(session) : null;
   });
 
   const getAccessToken = cache(
-    async (): Promise<string | undefined> => (await current())?.accessToken
+    async (): Promise<string | undefined> => (await read()).session?.accessToken
   );
 
   /** Whether `path`, a validated return path, is the app's sign-in page itself. */
@@ -148,6 +182,7 @@ export function createServerReads(
   const redirectToSignIn = async (
     options: SignInRedirectOptions = {}
   ): Promise<never> => {
+    await assertAnswered();
     const here = await servedPage();
     // The sign-in page asking for a session (its layout calls
     // requireSession, say) would redirect to itself, a level deeper each
@@ -175,7 +210,10 @@ export function createServerReads(
     },
     async withAccessToken(call) {
       const token = await getAccessToken();
-      if (!token) return unauthenticated();
+      if (!token) {
+        await assertAnswered();
+        return unauthenticated();
+      }
       try {
         return await call(token);
       } catch (error) {

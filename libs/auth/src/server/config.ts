@@ -8,6 +8,40 @@
  * package knowing either prefix.
  */
 import { AUTH_ROUTES } from "../shared/routes";
+import type { StoreBackend } from "./store-backend";
+
+/**
+ * Where the sessions live (auth Phase 2).
+ *
+ * With a store (`url`, or `backend` in the specs) they live in Valkey: the
+ * cookie holds only a random id, a refresh is stored once for every replica,
+ * and a back-channel logout from the IdP can find a session by its `sid`.
+ * Without one they are sealed into the cookie itself, as in Phase 1: local
+ * development without Valkey, and most specs.
+ */
+export interface SessionStoreConfig {
+  /**
+   * `WEB__AUTH_STORE_URL`: `redis://<user>:<password>@<host>:6379/0`
+   * (`rediss://` over TLS). Empty or absent: no store.
+   */
+  url?: string;
+  /**
+   * `WEB__AUTH_STORE_KEY_PREFIX`: `dev` or `prod`. Every key starts with
+   * `<keyPrefix>:auth:<cookiePrefix>:`, and the Valkey ACL lets each
+   * environment's user touch only its own prefix, so a store without one
+   * refuses to start rather than write where its user may not.
+   */
+  keyPrefix?: string;
+  /** The key-value store to use instead of connecting to `url` (the specs' in-memory one). */
+  backend?: StoreBackend;
+}
+
+export interface ResolvedStoreConfig {
+  /** `<keyPrefix>:auth:<cookiePrefix>:`, in front of every key. */
+  namespace: string;
+  url?: string;
+  backend?: StoreBackend;
+}
 
 export interface AuthPages {
   /**
@@ -84,6 +118,8 @@ export interface AuthConfig {
   httpTimeout?: number;
   /** A clock for the specs. Default `Date.now`. */
   now?: () => number;
+  /** Where the sessions live; see `SessionStoreConfig`. Default: the cookie. */
+  sessionStore?: SessionStoreConfig;
 }
 
 /** Refresh when the access token has less than this left. */
@@ -121,9 +157,12 @@ export interface ResolvedAuthConfig {
   sessionMaxAge: number;
   httpTimeout: number;
   now: () => number;
+  /** `null`: the session is sealed into the cookie (Phase 1). */
+  store: ResolvedStoreConfig | null;
 }
 
 const COOKIE_PREFIX_PATTERN = /^[a-z][a-z0-9-]*$/;
+const KEY_PREFIX_PATTERN = /^[a-z][a-z0-9-]*$/;
 
 const required = (value: string, name: string): string => {
   if (!value) throw new Error(`@medaris/auth: ${name} is empty`);
@@ -190,6 +229,36 @@ export function resolveCookieConfig(
   };
 }
 
+/**
+ * The store, or `null` for the cookie. Throws when a store is named without a
+ * usable key prefix, or with a URL that is not `redis://` / `rediss://`: both
+ * would otherwise surface only as refused writes on the first sign-in. The
+ * URL carries the password, so no message here repeats it.
+ */
+function resolveStore(
+  store: SessionStoreConfig | undefined,
+  cookiePrefix: string
+): ResolvedStoreConfig | null {
+  const url = store?.url?.trim() || undefined;
+  if (!url && !store?.backend) return null;
+  const keyPrefix = store?.keyPrefix?.trim() ?? "";
+  if (!KEY_PREFIX_PATTERN.test(keyPrefix)) {
+    throw new Error(
+      `@medaris/auth: a session store needs a key prefix (WEB__AUTH_STORE_KEY_PREFIX, a lowercase name such as "prod"), got ${JSON.stringify(keyPrefix)}`
+    );
+  }
+  if (url && !/^rediss?:\/\//.test(url)) {
+    throw new Error(
+      "@medaris/auth: the session store URL (WEB__AUTH_STORE_URL) must start with redis:// or rediss://"
+    );
+  }
+  return {
+    namespace: `${keyPrefix}:auth:${cookiePrefix}:`,
+    ...(url ? { url } : {}),
+    ...(store?.backend ? { backend: store.backend } : {}),
+  };
+}
+
 export function resolveConfig(config: AuthConfig): ResolvedAuthConfig {
   const cookie = resolveCookieConfig(config);
   const { signIn, afterSignIn } = config.pages;
@@ -211,5 +280,6 @@ export function resolveConfig(config: AuthConfig): ResolvedAuthConfig {
         : () => afterSignIn ?? "/",
     afterSignOut: config.pages.afterSignOut ?? "/",
     httpTimeout: config.httpTimeout ?? 10,
+    store: resolveStore(config.sessionStore, cookie.cookiePrefix),
   };
 }

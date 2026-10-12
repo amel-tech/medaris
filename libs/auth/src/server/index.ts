@@ -22,7 +22,7 @@ export {
   type Unauthenticated,
   unauthenticated,
 } from "../shared/unauthenticated";
-export type { AuthConfig, AuthPages } from "./config";
+export type { AuthConfig, AuthPages, SessionStoreConfig } from "./config";
 export { type Auth, createAuth } from "./create-auth";
 export type { AuthProxy, AuthProxyOptions } from "./proxy";
 export type {
@@ -32,3 +32,8 @@ export type {
 } from "./reads";
 export { RETURN_TO_HEADER } from "./return-to";
 export type { AuthRouteHandlers } from "./routes";
+export {
+  isSessionStoreUnavailable,
+  SessionStoreUnavailableError,
+  type StoreBackend,
+} from "./store-backend";

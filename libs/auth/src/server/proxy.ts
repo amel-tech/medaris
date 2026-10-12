@@ -1,14 +1,17 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { AUTH_BASE_PATH, AUTH_ROUTES } from "../shared/routes";
 import type { ResolvedAuthConfig } from "./config";
-import { type CookieWrite, forwardCookies, writeCookies } from "./cookies";
+import {
+  type CookieSource,
+  type CookieWrite,
+  forwardCookies,
+  writeCookies,
+} from "./cookies";
 import type { SessionRenewal } from "./renewal";
 import { RETURN_TO_HEADER } from "./return-to";
-import {
-  hasUsableAccessToken,
-  type SessionCookie,
-  type StoredSession,
-} from "./session-cookie";
+import { hasUsableAccessToken, type StoredSession } from "./session-cookie";
+import type { SessionStore } from "./session-store";
+import { isSessionStoreUnavailable } from "./store-backend";
 
 /**
  * The auth half of an app's `proxy.ts` (Next 16; Node runtime): the one place
@@ -31,6 +34,15 @@ import {
  * Next's own advice stands: the proxy is the optimistic check; every Server
  * Function still reads the session itself (`requireSession`,
  * `withAccessToken`).
+ *
+ * With a session store (auth Phase 2) the cookie names the session and a
+ * refresh writes the store, so the cookie only changes when a Phase 1 cookie
+ * is moved into the store (its first request after the deploy) or the
+ * session ends. When the store cannot be asked, nothing is decided: no
+ * redirect to sign-in (the session may well be there, and a trip through the
+ * IdP would only come back to the same store), no cookie removed. The request
+ * goes on; its page reads fail closed (`requireSession()` throws
+ * `SessionStoreUnavailableError`), and the next request asks again.
  */
 export interface AuthProxyOptions {
   /**
@@ -111,35 +123,73 @@ function forwardRequestHeaders(
 
 export function createAuthProxy(
   config: ResolvedAuthConfig,
-  sessionCookie: SessionCookie,
+  store: SessionStore,
   renewal: SessionRenewal
 ): AuthProxy {
+  /** The session as it stands after this request's renewal, and the cookie writes that say so. */
+  const settle = async (
+    source: CookieSource
+  ): Promise<{ current: StoredSession | null; writes: CookieWrite[] }> => {
+    let loaded = await store.load(source);
+    // Cookies that do not open (another secret, a damaged chunk) or name a
+    // session the store no longer has (ended, expired) go.
+    if (!loaded) {
+      return { current: null, writes: await store.remove(source, null) };
+    }
+    let writes: CookieWrite[] = [];
+    const moved = await store.migrate(source, loaded);
+    if (moved) ({ loaded, writes } = moved);
+    const held = loaded;
+    const renewed = await renewal.renew(held.session, (refresh) =>
+      store.refreshExclusively(held, refresh)
+    );
+    if (renewed.kind === "updated") {
+      return {
+        current: renewed.session,
+        writes: await store.renewed(source, held, renewed.session),
+      };
+    }
+    if (renewed.kind === "ended") {
+      // With a store, another replica may have refreshed this session since
+      // this request read it (its token ran out while the IdP did not answer
+      // here, say): that newer session is kept, not deleted.
+      if (held.key) {
+        const again = await store.load(source);
+        if (
+          again?.key === held.key &&
+          again.session.accessToken !== held.session.accessToken
+        ) {
+          return {
+            current: again.session,
+            writes: await store.renewed(source, again, again.session),
+          };
+        }
+      }
+      return { current: null, writes: await store.remove(source, held) };
+    }
+    return { current: held.session, writes };
+  };
+
   return async (request, options = {}) => {
     const { pathname, search } = request.nextUrl;
     const api = isApiPath(pathname);
 
-    // Starting, finishing and ending a sign-in manage the cookie themselves.
-    // The session route is not among them: a tab regaining focus reads it,
-    // and that read is where a sign-out in another app is noticed.
+    // Starting, finishing and ending a sign-in manage the cookie themselves,
+    // and the IdP's back-channel logout carries no cookie at all. The session
+    // route is not among them: a tab regaining focus reads it, and that read
+    // is where a sign-out in another app is noticed.
     if (isAuthRoute(pathname) && pathname !== AUTH_ROUTES.session) {
       return NextResponse.next();
     }
 
-    const stored = await sessionCookie.read(request.cookies);
-    let current: StoredSession | null = stored;
+    let current: StoredSession | null = null;
     let writes: CookieWrite[] = [];
-    if (stored) {
-      const renewed = await renewal.renew(stored);
-      if (renewed.kind === "updated") {
-        current = renewed.session;
-        writes = await sessionCookie.writes(request.cookies, current);
-      } else if (renewed.kind === "ended") {
-        current = null;
-        writes = await sessionCookie.writes(request.cookies, null);
-      }
-    } else {
-      // Cookies that do not open (another secret, a damaged chunk) go.
-      writes = await sessionCookie.writes(request.cookies, null);
+    let unavailable = false;
+    try {
+      ({ current, writes } = await settle(request.cookies));
+    } catch (error) {
+      if (!isSessionStoreUnavailable(error)) throw error;
+      unavailable = true;
     }
     const signedIn =
       current !== null && hasUsableAccessToken(current, config.now());
@@ -147,6 +197,7 @@ export function createAuthProxy(
     const returnTo = `${pathname}${search}`;
     if (
       !signedIn &&
+      !unavailable &&
       !api &&
       !isServerAction(request) &&
       !options.isPublicPath?.(pathname)

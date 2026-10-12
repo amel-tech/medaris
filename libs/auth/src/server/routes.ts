@@ -2,22 +2,28 @@ import { type NextRequest, NextResponse } from "next/server";
 import * as client from "openid-client";
 import type { AuthErrorCode } from "../shared/auth-error";
 import { AUTH_ROUTES, REAUTH_PARAM } from "../shared/routes";
+import {
+  InvalidLogoutTokenError,
+  JTI_TTL_MS,
+  verifyLogoutToken,
+} from "./backchannel";
 import type { ResolvedAuthConfig } from "./config";
-import { cookieAttributes, writeCookies } from "./cookies";
+import { type CookieWrite, cookieAttributes, writeCookies } from "./cookies";
 import { callbackErrorCode, failureSummary, type Oidc } from "./oidc";
 import { acceptedLocale, safeReturnTo } from "./return-to";
 import { deriveKey, seal, unseal } from "./seal";
 import {
   hasUsableAccessToken,
   publicSession,
-  type SessionCookie,
   sessionFromTokens,
   type TokenSet,
 } from "./session-cookie";
+import type { LoadedSession, SessionStore } from "./session-store";
+import { isSessionStoreUnavailable } from "./store-backend";
 
 /**
- * The four route handlers: start a sign-in, take the IdP's answer, sign out,
- * and serve the client-safe session.
+ * The five route handlers: start a sign-in, take the IdP's answer, sign out,
+ * serve the client-safe session, and take the IdP's back-channel logout.
  *
  * Every round trip keeps its own `state`, nonce and PKCE verifier in its own
  * short-lived sealed cookie, named after the state. NextAuth kept one per
@@ -67,7 +73,9 @@ export interface AuthRouteHandlers {
   signOut(request: NextRequest): Promise<Response>;
   /** `GET /api/auth/session` */
   session(request: NextRequest): Promise<Response>;
-  /** All four behind one catch-all route (`app/api/auth/[...auth]/route.ts`). */
+  /** `POST /api/auth/backchannel-logout` (form field `logout_token`), from the IdP */
+  backchannelLogout(request: NextRequest): Promise<Response>;
+  /** All five behind one catch-all route (`app/api/auth/[...auth]/route.ts`). */
   GET(request: NextRequest): Promise<Response>;
   POST(request: NextRequest): Promise<Response>;
 }
@@ -84,10 +92,23 @@ const parseStarts = (value: string | undefined, now: number) => {
     : { count: 0, since: now };
 };
 
+/** The session the request's cookies name; `null` too when the store cannot be asked. */
+const loadOrNull = async (
+  store: SessionStore,
+  request: NextRequest
+): Promise<LoadedSession | null> => {
+  try {
+    return await store.load(request.cookies);
+  } catch (error) {
+    if (isSessionStoreUnavailable(error)) return null;
+    throw error;
+  }
+};
+
 export function createRouteHandlers(
   config: ResolvedAuthConfig,
   oidc: Oidc,
-  sessionCookie: SessionCookie
+  store: SessionStore
 ): AuthRouteHandlers {
   let flowKey: Promise<Uint8Array> | undefined;
   const flowKeyOf = () => {
@@ -140,17 +161,30 @@ export function createRouteHandlers(
       return response;
     };
 
+    let existing: LoadedSession | null;
+    try {
+      existing = await store.load(request.cookies);
+    } catch (error) {
+      if (!isSessionStoreUnavailable(error)) throw error;
+      // A round trip now would end at a callback that cannot store its
+      // session: say "could not start" here instead of sending anyone
+      // through the IdP for nothing.
+      return redirect(errorPage("OAuthSignin", returnTo));
+    }
+
     // Already signed in (another tab's round trip finished, or a stale link):
     // go on rather than through the IdP again, counted like a start, since a
     // page that keeps sending a signed-in browser here would otherwise loop
     // through this step for free. Not for "Kayıt ol", which asks for the
     // registration form on purpose, nor for `reauth`, where the session is
     // what the API refused.
-    if (!register && !reauth) {
-      const session = await sessionCookie.read(request.cookies);
-      if (session && hasUsableAccessToken(session, now)) {
-        return countThisVisit(redirect(absolute(destination)));
-      }
+    if (
+      !register &&
+      !reauth &&
+      existing &&
+      hasUsableAccessToken(existing.session, now)
+    ) {
+      return countThisVisit(redirect(absolute(destination)));
     }
 
     let configuration: client.Configuration;
@@ -237,9 +271,9 @@ export function createRouteHandlers(
       // No round trip of this browser's has this state: the Back button
       // replaying a callback that already signed in (MDRS-249 B), or a link
       // from somewhere else. Signed in already: go on, quietly.
-      const session = await sessionCookie.read(request.cookies);
+      const loaded = await loadOrNull(store, request);
       const response =
-        session && hasUsableAccessToken(session, now)
+        loaded && hasUsableAccessToken(loaded.session, now)
           ? redirect(absolute(config.afterSignIn(null)))
           : redirect(errorPage("OAuthCallback", null));
       if (cookieName && sealed) removeCookie(response, cookieName);
@@ -268,12 +302,16 @@ export function createRouteHandlers(
       const session = sessionFromTokens(tokens as unknown as TokenSet, now);
       if (!session) throw new Error("the ID token names no subject");
 
-      const response = redirect(absolute(flow.returnTo));
-      writeCookies(
-        response.cookies,
-        await sessionCookie.writes(request.cookies, session),
-        config.secure
+      // A new session under a new id; the one this browser had (a `reauth`,
+      // or a sign-in as someone else) is ended with it. A store that cannot
+      // be asked fails the sign-in here like any other callback failure.
+      const { writes } = await store.create(
+        request.cookies,
+        session,
+        await store.load(request.cookies)
       );
+      const response = redirect(absolute(flow.returnTo));
+      writeCookies(response.cookies, writes, config.secure);
       removeCookie(response, cookieName as string);
       return response;
     } catch (error) {
@@ -314,19 +352,30 @@ export function createRouteHandlers(
       // no body: no locale
     }
 
-    const session = await sessionCookie.read(request.cookies);
+    let loaded: LoadedSession | null = null;
+    let unreadable = false;
+    try {
+      loaded = await store.load(request.cookies);
+    } catch (error) {
+      if (!isSessionStoreUnavailable(error)) throw error;
+      unreadable = true;
+    }
+    const idToken = loaded?.session.idToken;
     let target = absolute(config.afterSignOut);
     // Without an ID token there is no hint to send, and Keycloak would answer
     // with its own English "Do you want to log out?" page (A20, B7): sign out
-    // here only. Never an empty `id_token_hint=`.
-    if (session?.idToken) {
+    // here only. Never an empty `id_token_hint=`. The one exception is a
+    // session store that cannot be asked: the ID token is in it, and signing
+    // out here only would leave the IdP session alive for the next "Giriş
+    // yap", so the IdP is asked without a hint and shows its confirmation.
+    if (idToken || unreadable) {
       try {
         const configuration = await oidc.configuration();
         if (configuration.serverMetadata().end_session_endpoint) {
           const parameters: Record<string, string> = {
-            id_token_hint: session.idToken,
             post_logout_redirect_uri: config.postLogoutRedirectUri,
           };
+          if (idToken) parameters.id_token_hint = idToken;
           if (locale) parameters.ui_locales = locale;
           target = client.buildEndSessionUrl(configuration, parameters);
         }
@@ -338,24 +387,119 @@ export function createRouteHandlers(
       }
     }
 
+    // The store entry and its index entries go first (the IdP then tells the
+    // other apps through back-channel logout); the cookie goes whatever the
+    // store answers.
+    let writes: CookieWrite[] = store.clearCookie(request.cookies);
+    if (loaded) {
+      try {
+        writes = await store.remove(request.cookies, loaded);
+      } catch (error) {
+        if (!isSessionStoreUnavailable(error)) throw error;
+      }
+    }
     const response = redirect(target);
-    writeCookies(
-      response.cookies,
-      await sessionCookie.writes(request.cookies, null),
-      config.secure
-    );
+    writeCookies(response.cookies, writes, config.secure);
     return response;
   };
 
   const session: AuthRouteHandlers["session"] = async (request) => {
-    const stored = await sessionCookie.read(request.cookies);
+    let loaded: LoadedSession | null;
+    try {
+      loaded = await store.load(request.cookies);
+    } catch (error) {
+      if (!isSessionStoreUnavailable(error)) throw error;
+      // Not `null`: that would read as "signed out" and reload the page. The
+      // client takes an answer that is not 200 as "could not ask".
+      return NextResponse.json(
+        { error: "temporarily_unavailable" },
+        { status: 503, headers: { "Cache-Control": "no-store, max-age=0" } }
+      );
+    }
     const body =
-      stored && hasUsableAccessToken(stored, config.now())
-        ? publicSession(stored)
+      loaded && hasUsableAccessToken(loaded.session, config.now())
+        ? publicSession(loaded.session)
         : null;
     return NextResponse.json(body, {
       headers: { "Cache-Control": "no-store, max-age=0" },
     });
+  };
+
+  /**
+   * OIDC Back-Channel Logout 1.0: the IdP, not a browser, posts a signed
+   * `logout_token` when an SSO session ends (a sign-out in another Medaris
+   * app, an admin, an expiry). Every session of this app behind that IdP
+   * session (`sid`), or of that account when the token names no `sid`, ends
+   * at once, instead of within a minute through the `userinfo` probe.
+   *
+   * 200 with `Cache-Control: no-store` when done; 400 with an OAuth error
+   * body for a token that fails a check (§2.8), a repeated `jti` included;
+   * 503 when the IdP's keys or the store cannot be reached. With the session
+   * in the cookie there is nothing to look a session up in: a valid token is
+   * answered 501, so the IdP's log says this app did not end its session.
+   */
+  const backchannelLogout: AuthRouteHandlers["backchannelLogout"] = async (
+    request
+  ) => {
+    const headers = { "Cache-Control": "no-store" };
+    const answer = (status: number, error?: string, description?: string) =>
+      error
+        ? NextResponse.json(
+            {
+              error,
+              ...(description ? { error_description: description } : {}),
+            },
+            { status, headers }
+          )
+        : new NextResponse(null, { status, headers });
+
+    if (request.method !== "POST") {
+      return new NextResponse(null, {
+        status: 405,
+        headers: { ...headers, Allow: "POST" },
+      });
+    }
+    let token: string | null = null;
+    try {
+      const value = (await request.formData()).get("logout_token");
+      token = typeof value === "string" && value ? value : null;
+    } catch {
+      // not a form: no token
+    }
+    if (!token) {
+      return answer(400, "invalid_request", "logout_token is missing");
+    }
+
+    try {
+      const configuration = await oidc.configuration();
+      const claims = await verifyLogoutToken(token, {
+        keys: await oidc.jwks(),
+        issuer: configuration.serverMetadata().issuer,
+        clientId: config.clientId,
+        now: config.now(),
+      });
+      if (!(await store.firstUse(claims.jti, JTI_TTL_MS))) {
+        return answer(400, "invalid_request", "logout_token was used before");
+      }
+      const ended = await store.endIdpSession(claims);
+      if (ended === null) {
+        return answer(
+          501,
+          "unsupported",
+          "this app keeps its sessions in the cookie and cannot end one from here"
+        );
+      }
+      return answer(200);
+    } catch (error) {
+      if (error instanceof InvalidLogoutTokenError) {
+        return answer(400, "invalid_request", error.message);
+      }
+      console.error(
+        "@medaris/auth: back-channel logout failed",
+        failureSummary(error)
+      );
+      return answer(503, "temporarily_unavailable");
+    }
   };
 
   const notFound = () => new NextResponse(null, { status: 404 });
@@ -365,6 +509,7 @@ export function createRouteHandlers(
     callback,
     signOut,
     session,
+    backchannelLogout,
     GET(request) {
       switch (request.nextUrl.pathname) {
         case AUTH_ROUTES.signIn:
@@ -375,14 +520,21 @@ export function createRouteHandlers(
           return session(request);
         case AUTH_ROUTES.signOut:
           return signOut(request);
+        case AUTH_ROUTES.backchannelLogout:
+          return backchannelLogout(request);
         default:
           return Promise.resolve(notFound());
       }
     },
     POST(request) {
-      return request.nextUrl.pathname === AUTH_ROUTES.signOut
-        ? signOut(request)
-        : Promise.resolve(notFound());
+      switch (request.nextUrl.pathname) {
+        case AUTH_ROUTES.signOut:
+          return signOut(request);
+        case AUTH_ROUTES.backchannelLogout:
+          return backchannelLogout(request);
+        default:
+          return Promise.resolve(notFound());
+      }
     },
   };
 }

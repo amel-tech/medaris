@@ -26,6 +26,12 @@ export interface StoredSession {
   /** Epoch ms; absent when the IdP set no deadline (Keycloak `refresh_expires_in: 0`). */
   refreshTokenExpiresAt?: number;
   idToken?: string;
+  /**
+   * The IdP's session id, the ID token's `sid` claim: what a back-channel
+   * logout names (auth Phase 2). Kept across a refresh whose ID token does
+   * not repeat it.
+   */
+  sid?: string;
   /** Epoch ms when the IdP last confirmed the SSO session (MDRS-210). */
   checkedAt: number;
 }
@@ -96,7 +102,8 @@ export function sessionFromTokens(
   now: number,
   previous?: StoredSession
 ): StoredSession | null {
-  const user = userFromClaims(tokens.claims()) ?? previous?.user ?? null;
+  const claims = tokens.claims();
+  const user = userFromClaims(claims) ?? previous?.user ?? null;
   if (!user) return null;
   const refreshIn = tokens.refresh_expires_in;
   const hasNewRefreshToken = typeof tokens.refresh_token === "string";
@@ -116,6 +123,10 @@ export function sessionFromTokens(
   }
   const idToken = tokens.id_token ?? previous?.idToken;
   if (idToken) session.idToken = idToken;
+  const sid =
+    (claims && text(claims, "sid")) ??
+    (previous ? idpSessionOf(previous) : undefined);
+  if (sid) session.sid = sid;
   return session;
 }
 
@@ -159,6 +170,55 @@ const isStoredSession = (value: unknown): value is StoredSession => {
   );
 };
 
+/**
+ * The session in an opened seal, or `null` when it is not one. The JWT claims
+ * (`iat`, `exp`) stay behind; only the session's own fields come out. Shared
+ * by the cookie and the Valkey store, which seal the same object.
+ */
+export function storedSessionFrom(opened: unknown): StoredSession | null {
+  if (!isStoredSession(opened)) return null;
+  const {
+    v,
+    user,
+    accessToken,
+    accessTokenExpiresAt,
+    refreshToken,
+    refreshTokenExpiresAt,
+    idToken,
+    sid,
+    checkedAt,
+  } = opened;
+  return {
+    v,
+    user,
+    accessToken,
+    accessTokenExpiresAt,
+    checkedAt,
+    ...(refreshToken ? { refreshToken } : {}),
+    ...(refreshTokenExpiresAt ? { refreshTokenExpiresAt } : {}),
+    ...(idToken ? { idToken } : {}),
+    ...(typeof sid === "string" && sid ? { sid } : {}),
+  };
+}
+
+/**
+ * The IdP's session id (`sid`) behind a session: what a back-channel logout
+ * names (auth Phase 2). A session sealed by Phase 1 has no `sid` field; its
+ * ID token has the claim. That token was checked by openid-client when it
+ * arrived and has been sealed since, so it is decoded here, not verified
+ * again. `undefined` without one.
+ */
+export function idpSessionOf(session: StoredSession): string | undefined {
+  if (session.sid) return session.sid;
+  if (!session.idToken) return undefined;
+  try {
+    const { sid } = decodeJwt(session.idToken);
+    return typeof sid === "string" && sid ? sid : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 /** Reads and writes the session cookie for one app. */
 export interface SessionCookie {
   read(source: CookieSource): Promise<StoredSession | null>;
@@ -186,29 +246,9 @@ export function createSessionCookie(
     async read(source) {
       const sealed = readChunked(source, name);
       if (!sealed) return null;
-      const opened = await unseal<unknown>(sealed, await keyOf(), config.now());
-      if (!isStoredSession(opened)) return null;
-      const {
-        v,
-        user,
-        accessToken,
-        accessTokenExpiresAt,
-        refreshToken,
-        refreshTokenExpiresAt,
-        idToken,
-        checkedAt,
-      } = opened;
-      // The JWT claims (`iat`, `exp`) stay behind; only the session's own fields come out.
-      return {
-        v,
-        user,
-        accessToken,
-        accessTokenExpiresAt,
-        checkedAt,
-        ...(refreshToken ? { refreshToken } : {}),
-        ...(refreshTokenExpiresAt ? { refreshTokenExpiresAt } : {}),
-        ...(idToken ? { idToken } : {}),
-      };
+      return storedSessionFrom(
+        await unseal<unknown>(sealed, await keyOf(), config.now())
+      );
     },
     async writes(source, session) {
       if (!session) return chunkedWrites(source, name, null, 0);

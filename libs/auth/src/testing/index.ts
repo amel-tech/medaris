@@ -152,7 +152,8 @@ export function sessionFromTokenResponse(
 
 /**
  * Forgets what every auth instance in this process keeps for a few seconds
- * per token: a refresh's result (30 s) and a `userinfo` verdict (10 s). An
+ * per token: a refresh's result (30 s), a `userinfo` verdict (10 s) and, with
+ * a session store, the new id a Phase 1 cookie was moved to (30 s). An
  * app builds its auth once per module, so a spec that asks the proxy about
  * the same access token as the spec before it would otherwise get the
  * earlier answer without the IdP stand-in being asked. Call it in

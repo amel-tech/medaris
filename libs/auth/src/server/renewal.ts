@@ -39,6 +39,16 @@ import { createSingleFlight } from "./single-flight";
  *   call a minute rather than one per request. Never run in the last minute
  *   of a token's life, where a refresh answers the same question and clock
  *   skew could turn a valid token into a 401 (B10).
+ *
+ *   Only with the session in the cookie (`sessionCheck`). With a session
+ *   store (auth Phase 2) the IdP ends a session itself, through back-channel
+ *   logout, and the refresh at the access token's expiry (about five
+ *   minutes) is the backstop for a logout that did not arrive.
+ *
+ * The refresh runs inside a `RefreshGate` the session store hands in: with
+ * Valkey, a lock that lets one replica spend the refresh token while the
+ * others wait for what it stores. The in-process single-flight stays in front
+ * of it, so parallel requests in one replica do not even ask for the lock.
  */
 export type Renewal =
   | { kind: "unchanged" }
@@ -55,9 +65,16 @@ export type EndReason =
   /** `userinfo` said 401, or named another account. */
   | "ended-at-idp";
 
-type RefreshOutcome =
+export type RefreshOutcome =
   | { kind: "refreshed"; session: StoredSession }
   | { kind: "failed"; final: boolean };
+
+/** Runs a refresh, or hands back the result another replica stored. */
+export type RefreshGate = (
+  refresh: () => Promise<RefreshOutcome>
+) => Promise<RefreshOutcome>;
+
+const ungated: RefreshGate = (refresh) => refresh();
 
 type CheckVerdict = "active" | "ended" | "unknown";
 
@@ -66,12 +83,22 @@ const REFRESH_GRACE_MS = 30_000;
 const CHECK_GRACE_MS = 10_000;
 
 export interface SessionRenewal {
-  renew(session: StoredSession): Promise<Renewal>;
+  renew(session: StoredSession, gate?: RefreshGate): Promise<Renewal>;
+}
+
+export interface SessionRenewalOptions {
+  /**
+   * Ask `userinfo` once a minute whether the SSO session still exists
+   * (MDRS-210). Default `true`; off with a session store, where back-channel
+   * logout does that job.
+   */
+  sessionCheck?: boolean;
 }
 
 export function createSessionRenewal(
   config: ResolvedAuthConfig,
-  oidc: Oidc
+  oidc: Oidc,
+  { sessionCheck = true }: SessionRenewalOptions = {}
 ): SessionRenewal {
   const refreshes = createSingleFlight<RefreshOutcome>(
     REFRESH_GRACE_MS,
@@ -137,7 +164,7 @@ export function createSessionRenewal(
   };
 
   return {
-    async renew(session) {
+    async renew(session, gate = ungated) {
       const now = config.now();
       const left = session.accessTokenExpiresAt - now;
 
@@ -155,7 +182,7 @@ export function createSessionRenewal(
             : { kind: "ended", reason: "expired" };
         }
         const outcome = await refreshes.run(refreshToken, () =>
-          refresh(session, refreshToken)
+          gate(() => refresh(session, refreshToken))
         );
         if (outcome.kind === "refreshed") {
           return { kind: "updated", session: outcome.session };
@@ -166,6 +193,7 @@ export function createSessionRenewal(
           : { kind: "ended", reason: "refresh-unavailable" };
       }
 
+      if (!sessionCheck) return { kind: "unchanged" };
       const sinceCheck = now - session.checkedAt;
       if (sinceCheck >= 0 && sinceCheck < SESSION_CHECK_INTERVAL_MS) {
         return { kind: "unchanged" };

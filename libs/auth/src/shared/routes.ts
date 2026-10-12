@@ -1,5 +1,5 @@
 /**
- * Where the four auth routes live in every app. The callback path is the
+ * Where the five auth routes live in every app. The callback path is the
  * redirect URI the Keycloak clients have registered since NextAuth
  * (`<NEXTAUTH_URL>/api/auth/callback/keycloak`); keeping it means no client
  * changes at the IdP when an app moves to this package.
@@ -15,6 +15,11 @@ export const AUTH_ROUTES = {
   signOut: `${AUTH_BASE_PATH}/signout`,
   /** GET: the client-safe session, or `null`. */
   session: `${AUTH_BASE_PATH}/session`,
+  /**
+   * POST, from the IdP and never from a browser: OIDC Back-Channel Logout
+   * 1.0. Ends this app's sessions of an IdP session that ended (auth Phase 2).
+   */
+  backchannelLogout: `${AUTH_BASE_PATH}/backchannel-logout`,
 } as const;
 
 /**
