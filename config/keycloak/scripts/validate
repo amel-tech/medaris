@@ -4,7 +4,8 @@
 # Checks the package without talking to any server: every JSON file parses,
 # the required fields are there, the web clients are the shape RUNBOOK.md
 # promises (confidential, PKCE S256, exact URIs, no wildcard, the tedrisat-api
-# audience mapper), and no file carries a literal secret. With <env>, only that
+# audience mapper, front-channel logout off wherever a back-channel logout URL
+# is set), and no file carries a literal secret. With <env>, only that
 # environment's clients are checked; without, every environment's.
 #
 # Exit 0 when everything passes, 1 with one line per problem otherwise.
@@ -163,6 +164,8 @@ if [[ $parsed -eq 1 ]]; then
                (if ($c.redirectUris // []) | length == 0 then "\($f): redirectUris is empty" else empty end),
                (if ($c.webOrigins // []) | length == 0 then "\($f): webOrigins is empty" else empty end),
                (if ($c.attributes["post.logout.redirect.uris"] // "") == "" then "\($f): post.logout.redirect.uris is empty" else empty end),
+               (if ($c.attributes["backchannel.logout.url"] // "") != "" and $c.frontchannelLogout != false
+                then "\($f): a backchannel.logout.url needs frontchannelLogout false; Keycloak sends no back-channel logout to a front-channel client" else empty end),
                ((($c.redirectUris // []) + ($c.webOrigins // [])
                   + (($c.attributes["post.logout.redirect.uris"] // "") | split("##")))[]
                  | select(test("\\*") or . == "+" or . == "-")

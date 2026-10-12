@@ -30,7 +30,7 @@ Requirements: `bash`, `curl`, `jq`.
 
 | Script | Talks to the server | Writes | Exit code |
 | -- | -- | -- | -- |
-| `validate [<env>]` | no | no | 1 on any problem: invalid JSON, a missing required field, a wildcard or empty redirect URI, a web client without PKCE S256 or the audience mapper, or a **literal secret** in any file |
+| `validate [<env>]` | no | no | 1 on any problem: invalid JSON, a missing required field, a wildcard or empty redirect URI, a web client without PKCE S256 or the audience mapper, a back-channel logout URL on a client with front-channel logout on, or a **literal secret** in any file |
 | `dry-run <env>` | reads | no | 0; prints what `provision` would create or update |
 | `provision <env>` | reads, writes | yes | 0 on success; runs `validate <env>` first and stops on a failure |
 | `verify <env>` | reads | no | 1 if the server differs from the repository, with one line per difference |
@@ -136,3 +136,89 @@ Edit `realms/_base.json` (or, for the name and display name only,
 `provision <env>` → `verify <env>`. The same holds for `user-profile.json`:
 its `PUT` replaces the whole profile, so an attribute that is not in the file
 is removed from the realm.
+
+## Back-channel logout and the session store (auth Phase 2)
+
+tedris, nizam and nazar keep their sessions in Valkey when
+`AUTH_STORE_URL` is set (`libs/auth/README.md`, "Phase 2"). Keycloak then
+tells each app when an SSO session ends (OIDC Back-Channel Logout), and the
+app deletes the sessions behind it at once; a sign-out in one app ends the
+others without waiting for the minute-long `userinfo` check.
+
+### The clients
+
+`clients/<env>/{tedris,nizam,nazar}.json` set, for each web client:
+
+| Setting (admin console: Client → Settings → Logout settings) | Value |
+| -- | -- |
+| `frontchannelLogout` (Front channel logout) | `false` |
+| `backchannel.logout.url` (Backchannel logout URL) | prod: `https://<app>.medaris.app/api/auth/backchannel-logout`; local: `http://host.docker.internal:400x/api/auth/backchannel-logout` |
+| `backchannel.logout.session.required` (Backchannel logout session required) | `"true"`: the token names the SSO session (`sid`) the apps index |
+| `backchannel.logout.revoke.offline.tokens` (Backchannel logout revoke offline sessions) | `"false"`: the apps hold no offline tokens |
+
+Front-channel logout has to be off: Keycloak skips the back-channel call for a
+client that has it on (`AuthenticationManager.backchannelLogoutClientSession`
+and `browserLogoutAllClients` in Keycloak 26.3.2,
+`services/src/main/java/org/keycloak/services/managers/AuthenticationManager.java`).
+`validate` refuses a back-channel URL on a front-channel client.
+`tedrisat-api` is not a web client and is unchanged. Apply with
+`dry-run prod` → `provision prod` → `verify prod`, like any client change.
+
+A failed back-channel call (the app is down, or still keeps its sessions in
+the cookie and answers 501) does not stop the sign-out and is not retried;
+the app notices at its next refresh (about five minutes), or within a minute
+in cookie mode. So the steps below can happen in any order; the order that
+leaves nothing waiting is: deploy the apps, provision the clients, then set
+the store variables.
+
+The local Keycloak reaches the apps on the host as `host.docker.internal`;
+on Linux start it with `--add-host=host.docker.internal:host-gateway`
+(`env/local.env.example`).
+
+The shared dev realm `amel-tech-dev` is not provisioned from here, and
+`tools/keycloak/setup-realm.sh` never reconfigures an existing client (it only
+warns when these settings differ). Its clients `tedris-dev`, `nizam-dev` and
+`nazar-dev` are set by hand: admin console → realm `amel-tech-dev` → Clients
+→ the client → Settings → Logout settings → Front channel logout **Off**,
+Backchannel logout URL `https://<app>-dev.medaris.app/api/auth/backchannel-logout`,
+Backchannel logout session required **On**, Backchannel logout revoke offline
+sessions **Off** → Save.
+
+### Valkey
+
+One ACL user per environment, limited to its own key prefix and to the
+commands the store sends (`libs/auth/test/valkey-store.e2e.spec.ts` runs the
+store as exactly this user against `valkey/valkey:8`):
+
+```
+ACL SETUSER medaris-prod reset on >********** ~prod:auth:* resetchannels -@all +get +set +del +sadd +srem +smembers +pexpire +eval
+ACL SETUSER medaris-dev  reset on >********** ~dev:auth:*  resetchannels -@all +get +set +del +sadd +srem +smembers +pexpire +eval
+```
+
+Keep the users across restarts (an ACL file with `ACL SAVE`, or `user` lines
+in the server's configuration). Keys, under `<prefix>:auth:<app>:`:
+`s:<sha256 of the cookie's id>` (the sealed session), `sid:<sid>` and
+`sub:<sub>` (sets, for back-channel logout), `lock:<hash>` (a refresh in
+progress, 10 s), `jti:<jti>` (a logout token already used, 3 minutes). Every
+key has a TTL; the sessions' follow the refresh token's lifetime.
+
+Each of the three apps, in Coolify:
+
+| Variable | prod | dev |
+| -- | -- | -- |
+| `AUTH_STORE_URL` | `redis://medaris-prod:<password>@<valkey host>:6379/0` | `redis://medaris-dev:<password>@<valkey host>:6379/0` |
+| `AUTH_STORE_KEY_PREFIX` | `prod` | `dev` |
+
+(`WEB__AUTH_STORE_URL` and `WEB__AUTH_STORE_KEY_PREFIX` in a root `.env`.) An
+app given the URL without a prefix fails loudly: `createAuth` throws, so every
+request answers 500 until the prefix is set. On the first request after the
+switch, each browser's Phase 1 session cookie is moved into the store;
+nobody signs in again.
+
+To check: sign in to two apps, sign out in one, and reload the other: it is
+signed out at once. `prod:auth:*` keys appear in Valkey
+(`SCAN 0 MATCH prod:auth:* COUNT 100` as an admin user).
+
+If Valkey cannot be reached, protected pages show the app's error page and
+public pages render as for a visitor; nobody is sent through Keycloak. The
+apps log `@medaris/auth: session store unavailable` at most every 30 s.

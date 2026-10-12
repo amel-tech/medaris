@@ -19,7 +19,10 @@
 #   web clients   tedris-dev, nizam-dev, nazar-dev (WEB_CLIENTS) — confidential
 #                 (@medaris/auth holds the secret server-side), standard flow only,
 #                 PKCE S256 required, each with an audience mapper that puts
-#                 `tedrisat-api` into the access token's `aud`.
+#                 `tedrisat-api` into the access token's `aud`, and (auth
+#                 Phase 2) front-channel logout off and a back-channel logout
+#                 URL `<origin>/api/auth/backchannel-logout` that carries the
+#                 session's `sid`.
 #   test users    owner-user / stranger-user — only with --with-test-users,
 #                 only against a localhost Keycloak, and only in a realm that
 #                 holds no other user.
@@ -264,6 +267,15 @@ for entry in $WEB_CLIENTS; do
       warn "$client_id allows the implicit flow; it is about to receive the $API_CLIENT_ID audience"
     [[ "$(jq -r .serviceAccountsEnabled <<<"$current")" == "false" ]] ||
       warn "$client_id has a service account, which can mint an $API_CLIENT_ID token with no user"
+    # auth Phase 2: Keycloak sends a back-channel logout only to a client whose
+    # front-channel logout is off (AuthenticationManager.backchannelLogoutClientSession,
+    # 26.3.2), to the URL below, with the `sid` the app's store indexes.
+    [[ "$(jq -r .frontchannelLogout <<<"$current")" == "false" ]] ||
+      warn "$client_id has front-channel logout on, so Keycloak never sends it a back-channel logout; turn it off"
+    [[ "$(jq -r '.attributes["backchannel.logout.url"] // ""' <<<"$current")" == "$origin/api/auth/backchannel-logout" ]] ||
+      warn "$client_id's back-channel logout URL is not $origin/api/auth/backchannel-logout"
+    [[ "$(jq -r '.attributes["backchannel.logout.session.required"] // ""' <<<"$current")" == "true" ]] ||
+      warn "$client_id's back-channel logout does not carry the session (sid); turn \"Backchannel logout session required\" on"
   elif [[ $is_local -eq 0 && -z "$WEB_CLIENTS_EXPLICIT" ]]; then
     warn "$client_id does not exist on this realm and was not created; set WEB_CLIENTS with its real origin to create it"
     continue
@@ -278,11 +290,15 @@ for entry in $WEB_CLIENTS; do
       implicitFlowEnabled: false,
       directAccessGrantsEnabled: false,
       serviceAccountsEnabled: false,
+      frontchannelLogout: false,
       redirectUris: [($o + "/*")],
       webOrigins: [$o],
       attributes: {
         "pkce.code.challenge.method": "S256",
-        "post.logout.redirect.uris": ($o + "/*")
+        "post.logout.redirect.uris": ($o + "/*"),
+        "backchannel.logout.url": ($o + "/api/auth/backchannel-logout"),
+        "backchannel.logout.session.required": "true",
+        "backchannel.logout.revoke.offline.tokens": "false"
       }
     }')" >/dev/null
     uuid=$(client_uuid "$client_id")
