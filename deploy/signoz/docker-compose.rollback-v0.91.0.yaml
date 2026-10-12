@@ -1,0 +1,266 @@
+# Rollback target (README.md, "Rollback"): the stack the fork deployed,
+# SigNoz v0.91.0 with collector and schema migrator v0.128.2 on ClickHouse
+# 24.1.2, for use only together with the volume backup taken before step 1
+# (ClickHouse does not read its data back after 25.x has rewritten it).
+# It exists because the fork's own compose names bitnami/zookeeper:3.7.1,
+# which Docker Hub no longer serves, so redeploying the fork fails when
+# Coolify pulls. Same layout as step 1.
+services:
+  init-clickhouse:
+    image: clickhouse/clickhouse-server:24.1.2-alpine
+    container_name: signoz-init-clickhouse
+    exclude_from_hc: true
+    restart: on-failure
+    command:
+      - bash
+      - -c
+      - |
+        version="v0.0.1"
+        node_os=$$(uname -s | tr '[:upper:]' '[:lower:]')
+        node_arch=$$(uname -m | sed s/aarch64/arm64/ | sed s/x86_64/amd64/)
+        echo "Fetching histogram-binary for $${node_os}/$${node_arch}"
+        cd /tmp
+        wget -O histogram-quantile.tar.gz "https://github.com/SigNoz/signoz/releases/download/histogram-quantile%2F$${version}/histogram-quantile_$${node_os}_$${node_arch}.tar.gz"
+        tar -xvzf histogram-quantile.tar.gz
+        mv histogram-quantile /var/lib/clickhouse/user_scripts/histogramQuantile
+    volumes:
+      - user-scripts:/var/lib/clickhouse/user_scripts
+    mem_limit: 256m
+    cpus: 0.5
+    networks:
+      - signoz-net
+    logging:
+      options:
+        max-size: 50m
+        max-file: "3"
+
+  zookeeper-1:
+    image: signoz/zookeeper:3.7.1
+    container_name: signoz-zookeeper-1
+    restart: unless-stopped
+    user: root
+    environment:
+      - ZOO_SERVER_ID=1
+      - ALLOW_ANONYMOUS_LOGIN=yes
+      - ZOO_AUTOPURGE_INTERVAL=1
+      - ZOO_ENABLE_PROMETHEUS_METRICS=yes
+      - ZOO_PROMETHEUS_METRICS_PORT_NUMBER=9141
+      - ZOO_HEAP_SIZE=256
+    volumes:
+      - zookeeper-1:/bitnami/zookeeper
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - curl -s -m 2 http://localhost:8080/commands/ruok | grep error | grep null
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    mem_limit: 512m
+    cpus: 0.5
+    networks:
+      - signoz-net
+    logging:
+      options:
+        max-size: 50m
+        max-file: "3"
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.1.2-alpine
+    container_name: signoz-clickhouse
+    restart: unless-stopped
+    tty: true
+    depends_on:
+      init-clickhouse:
+        condition: service_completed_successfully
+      zookeeper-1:
+        condition: service_healthy
+    volumes:
+      - type: bind
+        source: ./legacy/clickhouse/config.xml
+        target: /etc/clickhouse-server/config.xml
+      - type: bind
+        source: ./legacy/clickhouse/users.xml
+        target: /etc/clickhouse-server/users.xml
+      - type: bind
+        source: ./legacy/clickhouse/custom-function.xml
+        target: /etc/clickhouse-server/custom-function.xml
+      - type: bind
+        source: ./legacy/clickhouse/cluster.xml
+        target: /etc/clickhouse-server/config.d/cluster.xml
+      - user-scripts:/var/lib/clickhouse/user_scripts
+      - clickhouse:/var/lib/clickhouse/
+    ulimits:
+      nproc: 65535
+      nofile:
+        soft: 262144
+        hard: 262144
+    healthcheck:
+      test:
+        - CMD
+        - wget
+        - --spider
+        - -q
+        - 0.0.0.0:8123/ping
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    mem_limit: 2560m
+    cpus: 2
+    networks:
+      - signoz-net
+    logging:
+      options:
+        max-size: 50m
+        max-file: "3"
+
+  schema-migrator-sync:
+    image: signoz/signoz-schema-migrator:v0.128.2
+    container_name: schema-migrator-sync
+    exclude_from_hc: true
+    restart: on-failure
+    command:
+      - sync
+      - --dsn=tcp://clickhouse:9000
+      - --up=
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+    mem_limit: 256m
+    cpus: 0.5
+    networks:
+      - signoz-net
+    logging:
+      options:
+        max-size: 50m
+        max-file: "3"
+
+  schema-migrator-async:
+    image: signoz/signoz-schema-migrator:v0.128.2
+    container_name: schema-migrator-async
+    exclude_from_hc: true
+    restart: on-failure
+    command:
+      - async
+      - --dsn=tcp://clickhouse:9000
+      - --up=
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+      schema-migrator-sync:
+        condition: service_completed_successfully
+    mem_limit: 256m
+    cpus: 0.5
+    networks:
+      - signoz-net
+    logging:
+      options:
+        max-size: 50m
+        max-file: "3"
+
+  signoz:
+    image: signoz/signoz:v0.91.0
+    container_name: signoz
+    restart: unless-stopped
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+      schema-migrator-sync:
+        condition: service_completed_successfully
+    command:
+      - --config=/root/config/prometheus.yml
+    environment:
+      - SIGNOZ_ALERTMANAGER_PROVIDER=signoz
+      # v0.91.0 signs sessions as JWTs with this key
+      # (README.md, "JWT secret"). Set once in Coolify;
+      # Older releases read the first name, newer ones the second.
+      - SIGNOZ_JWT_SECRET=${SIGNOZ_JWT_SECRET:?set SIGNOZ_JWT_SECRET in Coolify}
+      - SIGNOZ_TOKENIZER_JWT_SECRET=${SIGNOZ_JWT_SECRET:?set SIGNOZ_JWT_SECRET in Coolify}
+      - SIGNOZ_TELEMETRYSTORE_CLICKHOUSE_DSN=tcp://clickhouse:9000
+      - SIGNOZ_SQLSTORE_SQLITE_PATH=/var/lib/signoz/signoz.db
+      - DASHBOARDS_PATH=/root/config/dashboards
+      - STORAGE=clickhouse
+      - GODEBUG=netdns=go
+      - TELEMETRY_ENABLED=true
+      - DEPLOYMENT_TYPE=docker-standalone-amd
+      - DOT_METRICS_ENABLED=true
+    ports:
+      - "8081:8080"
+    volumes:
+      - type: bind
+        source: ./legacy/signoz/prometheus.yml
+        target: /root/config/prometheus.yml
+      - type: bind
+        source: ./legacy/dashboards
+        target: /root/config/dashboards
+        is_directory: true
+      - sqlite:/var/lib/signoz/
+    healthcheck:
+      test:
+        - CMD
+        - wget
+        - --spider
+        - -q
+        - localhost:8080/api/v1/health
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    mem_limit: 1g
+    cpus: 1
+    networks:
+      - signoz-net
+    logging:
+      options:
+        max-size: 50m
+        max-file: "3"
+
+  otel-collector:
+    image: signoz/signoz-otel-collector:v0.128.2
+    container_name: signoz-otel-collector
+    restart: unless-stopped
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+      schema-migrator-sync:
+        condition: service_completed_successfully
+      signoz:
+        condition: service_healthy
+    command:
+      - --config=/etc/otel-collector-config.yaml
+      - --manager-config=/etc/manager-config.yaml
+      - --copy-path=/var/tmp/collector-config.yaml
+      - --feature-gates=-pkg.translator.prometheus.NormalizeName
+    environment:
+      - OTEL_RESOURCE_ATTRIBUTES=host.name=signoz-host,os.type=linux
+      - LOW_CARDINAL_EXCEPTION_GROUPING=false
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+    volumes:
+      - type: bind
+        source: ./legacy/otel-collector-config.v0.91.yaml
+        target: /etc/otel-collector-config.yaml
+      - type: bind
+        source: ./legacy/signoz/otel-collector-opamp-config.yaml
+        target: /etc/manager-config.yaml
+    mem_limit: 768m
+    cpus: 1
+    networks:
+      - signoz-net
+    logging:
+      options:
+        max-size: 50m
+        max-file: "3"
+
+networks:
+  signoz-net:
+    name: signoz-net
+
+volumes:
+  clickhouse:
+    name: signoz-clickhouse
+  sqlite:
+    name: signoz-sqlite
+  zookeeper-1:
+    name: signoz-zookeeper-1
+  user-scripts:
+    name: signoz-user-scripts

@@ -1,0 +1,262 @@
+# SigNoz v0.143.0 for the Coolify application `signoz` (base directory
+# /deploy/signoz). README.md explains every choice below; the short version:
+#
+# - Derived from upstream's forged layout in upstream/pours/ (Foundry v0.3.0),
+#   keeping our service names (Coolify attaches the domains to `signoz` and
+#   `otel-collector`) and our volume keys (Coolify names a volume
+#   `<app uuid>_<key>`, so `clickhouse`, `sqlite` and `zookeeper-1` must not
+#   change or the data is left behind).
+# - Coolify-only keys, stripped by Coolify before `docker compose up`:
+#   `exclude_from_hc` (one-shot containers do not mark the app unhealthy).
+#   For a local run use local/compose.sh, which strips them the same way.
+# - No YAML anchors or merge keys: Coolify's parser does not expand them.
+# - Bind sources are relative to the base directory; Coolify copies it to the
+#   server only with "Preserve Repository During Deployment" enabled.
+# - No secrets. Nothing here needs one: login sessions use opaque tokens since
+#   v0.143.0, and ClickHouse is reachable only on the stack's network.
+services:
+  init-clickhouse:
+    image: clickhouse/clickhouse-server:25.12.5
+    container_name: signoz-init-clickhouse
+    exclude_from_hc: true
+    restart: on-failure
+    command:
+      - bash
+      - -c
+      - |
+        version="v0.0.1"
+        node_os=$$(uname -s | tr '[:upper:]' '[:lower:]')
+        node_arch=$$(uname -m | sed s/aarch64/arm64/ | sed s/x86_64/amd64/)
+        echo "Fetching histogram-binary for $${node_os}/$${node_arch}"
+        cd /tmp
+        wget -O histogram-quantile.tar.gz "https://github.com/SigNoz/signoz/releases/download/histogram-quantile%2F$${version}/histogram-quantile_$${node_os}_$${node_arch}.tar.gz"
+        tar -xvzf histogram-quantile.tar.gz
+        mv histogram-quantile /var/lib/clickhouse/user_scripts/histogramQuantile
+    volumes:
+      - user-scripts:/var/lib/clickhouse/user_scripts
+    mem_limit: 256m
+    cpus: 0.5
+    networks:
+      - signoz-net
+    logging:
+      options:
+        max-size: 50m
+        max-file: "3"
+
+  zookeeper-1:
+    image: signoz/zookeeper:3.7.1
+    container_name: signoz-zookeeper-1
+    restart: unless-stopped
+    # The volume's files were written as root by the bitnami image.
+    user: root
+    environment:
+      - ZOO_SERVER_ID=1
+      - ALLOW_ANONYMOUS_LOGIN=yes
+      - ZOO_4LW_COMMANDS_WHITELIST=srvr, mntr, ruok
+      - ZOO_AUTOPURGE_INTERVAL=1
+      - ZOO_AUTOPURGE_RETAIN_COUNT=3
+      - ZOO_ENABLE_PROMETHEUS_METRICS=yes
+      # Upstream sets 1024 (MB, used for both -Xms and -Xmx). Measured use is
+      # 170 MiB in total, so the heap is cut to fit mem_limit below.
+      - ZOO_HEAP_SIZE=256
+      - ZOO_INIT_LIMIT=10
+      - ZOO_LOG_LEVEL=INFO
+      - ZOO_MAX_CLIENT_CNXNS=60
+      - ZOO_MAX_SESSION_TIMEOUT=40000
+      - ZOO_PRE_ALLOC_SIZE=65536
+      - ZOO_PROMETHEUS_METRICS_PORT_NUMBER=9141
+      - ZOO_SNAPCOUNT=100000
+      - ZOO_SYNC_LIMIT=5
+      - ZOO_TICK_TIME=2000
+    volumes:
+      - zookeeper-1:/bitnami/zookeeper
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - curl -s -m 2 http://localhost:8080/commands/ruok | grep error | grep null
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    mem_limit: 512m
+    cpus: 0.5
+    networks:
+      - signoz-net
+    logging:
+      options:
+        max-size: 50m
+        max-file: "3"
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:25.12.5
+    container_name: signoz-clickhouse
+    restart: unless-stopped
+    depends_on:
+      init-clickhouse:
+        condition: service_completed_successfully
+      zookeeper-1:
+        condition: service_healthy
+    environment:
+      - CLICKHOUSE_SKIP_USER_SETUP=1
+      - CLICKHOUSE_CONFIG=/etc/clickhouse-server/config-0-0.yaml
+    volumes:
+      - clickhouse:/var/lib/clickhouse/
+      - user-scripts:/var/lib/clickhouse/user_scripts:ro
+      - type: bind
+        source: ./config/clickhouse/config-0-0.yaml
+        target: /etc/clickhouse-server/config-0-0.yaml
+        read_only: true
+      - type: bind
+        source: ./config/clickhouse/functions.yaml
+        target: /etc/clickhouse-server/functions.yaml
+        read_only: true
+    ulimits:
+      nproc: 65535
+      nofile:
+        soft: 262144
+        hard: 262144
+    healthcheck:
+      test:
+        - CMD
+        - wget
+        - --spider
+        - -q
+        - http://localhost:8123/ping
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    # Owner-approved. ClickHouse sizes its own ceiling from the cgroup limit
+    # (max_server_memory_usage_to_ram_ratio, default 0.9), see README.md.
+    mem_limit: 2560m
+    cpus: 2
+    networks:
+      - signoz-net
+    logging:
+      options:
+        max-size: 50m
+        max-file: "3"
+
+  signoz-telemetrystore-migrator:
+    image: signoz/signoz-otel-collector:v0.144.11
+    container_name: signoz-telemetrystore-migrator
+    exclude_from_hc: true
+    restart: on-failure
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+    entrypoint:
+      - /bin/sh
+    command:
+      - -c
+      - |
+        /signoz-otel-collector migrate ready &&
+        /signoz-otel-collector migrate bootstrap &&
+        /signoz-otel-collector migrate sync up &&
+        /signoz-otel-collector migrate async up
+    environment:
+      - SIGNOZ_OTEL_COLLECTOR_CLICKHOUSE_DSN=tcp://clickhouse:9000
+      - SIGNOZ_OTEL_COLLECTOR_TIMEOUT=10m
+    mem_limit: 256m
+    cpus: 0.5
+    networks:
+      - signoz-net
+    logging:
+      options:
+        max-size: 50m
+        max-file: "3"
+
+  signoz:
+    image: signoz/signoz:v0.143.0
+    container_name: signoz
+    restart: unless-stopped
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+    environment:
+      - SIGNOZ_ALERTMANAGER_PROVIDER=signoz
+      - SIGNOZ_SQLSTORE_PROVIDER=sqlite
+      - SIGNOZ_SQLSTORE_SQLITE_PATH=/var/lib/signoz/signoz.db
+      - SIGNOZ_TELEMETRYSTORE_PROVIDER=clickhouse
+      - SIGNOZ_TELEMETRYSTORE_CLICKHOUSE_DSN=tcp://clickhouse:9000
+    ports:
+      # Host port 8080 belongs to Coolify's proxy; the UI is served through
+      # the Coolify domain on container port 8080.
+      - "8081:8080"
+    volumes:
+      - sqlite:/var/lib/signoz/
+    healthcheck:
+      test:
+        - CMD
+        - wget
+        - --spider
+        - -q
+        - http://localhost:8080/api/v1/health
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    mem_limit: 1g
+    cpus: 1
+    networks:
+      - signoz-net
+    logging:
+      options:
+        max-size: 50m
+        max-file: "3"
+
+  otel-collector:
+    image: signoz/signoz-otel-collector:v0.144.11
+    container_name: signoz-otel-collector
+    restart: unless-stopped
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+    # Refuses to start until the migrator's sync migrations are in; the
+    # restart policy retries until they are.
+    entrypoint:
+      - /bin/sh
+    command:
+      - -c
+      - |
+        /signoz-otel-collector migrate sync check &&
+        /signoz-otel-collector --config=/etc/otel-collector-config.yaml --manager-config=/etc/opamp-config.yaml --copy-path=/var/tmp/collector-config.yaml
+    environment:
+      - OTEL_RESOURCE_ATTRIBUTES=host.name=signoz-host,os.type=linux
+      - LOW_CARDINAL_EXCEPTION_GROUPING=false
+      - SIGNOZ_OTEL_COLLECTOR_CLICKHOUSE_DSN=tcp://clickhouse:9000
+      - SIGNOZ_OTEL_COLLECTOR_TIMEOUT=10m
+    ports:
+      - "4317:4317" # OTLP gRPC
+      - "4318:4318" # OTLP HTTP
+    volumes:
+      - type: bind
+        source: ./config/ingester/ingester.yaml
+        target: /etc/otel-collector-config.yaml
+        read_only: true
+      - type: bind
+        source: ./config/ingester/opamp.yaml
+        target: /etc/opamp-config.yaml
+        read_only: true
+    mem_limit: 768m
+    cpus: 1
+    networks:
+      - signoz-net
+    logging:
+      options:
+        max-size: 50m
+        max-file: "3"
+
+networks:
+  signoz-net:
+    name: signoz-net
+
+volumes:
+  clickhouse:
+    name: signoz-clickhouse
+  sqlite:
+    name: signoz-sqlite
+  zookeeper-1:
+    name: signoz-zookeeper-1
+  user-scripts:
+    name: signoz-user-scripts
