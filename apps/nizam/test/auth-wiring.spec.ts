@@ -1,3 +1,4 @@
+import { RETURN_TO_HEADER, resetRenewalCache } from "@medaris/auth/testing";
 import { ResponseError } from "@medaris/services/tedrisat";
 import { unstable_doesMiddlewareMatch } from "next/experimental/testing/server";
 import { NextRequest } from "next/server";
@@ -15,10 +16,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const ORIGIN = process.env.NEXTAUTH_URL as string;
 const ISSUER = process.env.KEYCLOAK_ISSUER as string;
 const CLIENT_ID = process.env.KEYCLOAK_CLIENT_ID as string;
-// The header the proxy hands the render: the page being served
-// (libs/auth/src/server/return-to.ts). Server Components read their
-// destination from it.
-const RETURN_TO = "x-medaris-auth-return-to";
 
 const state = vi.hoisted(() => ({
   /** the request's cookies, as `cookies()` gives them to Server Components */
@@ -43,8 +40,10 @@ vi.mock("next/headers", () => {
       get: (name: string) => jar().find((c) => c.name === name),
       getAll: () => jar(),
     }),
+    // The header the proxy hands the render: the page being served. Server
+    // Components read their destination from it.
     headers: async () =>
-      new Headers(state.returnTo ? { [RETURN_TO]: state.returnTo } : {}),
+      new Headers(state.returnTo ? { [RETURN_TO_HEADER]: state.returnTo } : {}),
   };
 });
 
@@ -176,6 +175,8 @@ const refused = (status: number, body: unknown = {}) =>
   );
 
 beforeEach(() => {
+  // Every sign-in here gets the same access token from the stand-in.
+  resetRenewalCache();
   vi.stubGlobal("fetch", keycloak);
   keycloak.mockClear();
   createServerTedrisatAPIs.mockClear();
@@ -391,12 +392,12 @@ describe("a server read with the session over (A16, B4)", () => {
     expect(createServerTedrisatAPIs).not.toHaveBeenCalled();
   });
 
-  it("a token tedrisat refuses (401) is sign-in too, not 'izniniz yok'", async () => {
+  it("a token tedrisat refuses (401) is sign-in for new tokens (reauth), not 'izniniz yok'", async () => {
     state.cookie = await signIn();
     state.returnTo = "/tr/kosks/k1";
     state.api = () => Promise.reject(refused(401));
     expect(await redirectOf(getMe())).toBe(
-      "/tr/auth/signin?callbackUrl=%2Ftr%2Fkosks%2Fk1"
+      "/tr/auth/signin?callbackUrl=%2Ftr%2Fkosks%2Fk1&reauth=1"
     );
     expect(createServerTedrisatAPIs).toHaveBeenCalledWith(
       "access-1",
@@ -424,12 +425,13 @@ describe("a Server Action with the session over", () => {
     expect(createServerTedrisatAPIs).not.toHaveBeenCalled();
   });
 
-  it("answers the same when tedrisat refuses the token, and keeps every other failure an ordinary one", async () => {
+  it("answers the same, marked for new tokens, when tedrisat refuses the token, and keeps every other failure an ordinary one", async () => {
     state.cookie = await signIn();
 
     state.api = () => Promise.reject(refused(401));
     expect(await authenticatedAction((api) => api.me.getMe())).toEqual({
       kind: "unauthenticated",
+      reauth: true,
     });
 
     state.api = () =>

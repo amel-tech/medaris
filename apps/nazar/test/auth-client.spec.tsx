@@ -75,6 +75,11 @@ afterAll(() => {
   });
 });
 
+const buttonNamed = (host: HTMLElement, name: string) =>
+  [...host.querySelectorAll("button")].find(
+    (button) => button.textContent?.trim() === name
+  );
+
 describe("the sign-in page's entry", () => {
   it("starts one round trip by itself, Keycloak's form in Turkish, and comes back to the page (B3)", async () => {
     await render(withIntl(<AuthEntry callbackUrl="/hesap" />));
@@ -95,16 +100,42 @@ describe("the sign-in page's entry", () => {
     expect(assign).toHaveBeenCalledExactlyOnceWith("/hesap");
   });
 
-  it("shows a refusal at once and starts nothing by itself (B2)", async () => {
+  it("shows a refusal at once, with no retry, and starts nothing by itself (B2)", async () => {
     const host = await render(
       withIntl(<AuthEntry callbackUrl="/hesap" error="AccessDenied" />)
     );
     await settle(50);
 
     expect(host.textContent).toContain("Giriş yapılamadı");
-    expect(host.textContent).toContain("Bu hesabın giriş izni yok.");
+    expect(host.textContent).toContain(resources.tr.nazar.Auth.accessDenied);
+    expect(buttonNamed(host, resources.tr.nazar.Auth.retry)).toBeUndefined();
     expect(assign).not.toHaveBeenCalled();
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("says to wait a few minutes when the sign-in budget is spent, not 'try again'", async () => {
+    const host = await render(
+      withIntl(<AuthEntry callbackUrl="/hesap" error="SignInLimit" />)
+    );
+    await settle(50);
+
+    expect(host.textContent).toContain(resources.tr.nazar.Auth.signInLimit);
+    expect(buttonNamed(host, resources.tr.nazar.Auth.retry)).toBeUndefined();
+    expect(assign).not.toHaveBeenCalled();
+  });
+
+  it("does not go on with the session whose token tedrisat refused (`?reauth=1`), and a click asks for new tokens", async () => {
+    session = { user: { sub: "user-1" }, expiresAt: Date.now() + 60_000 };
+    const host = await render(
+      withIntl(<AuthEntry callbackUrl="/hesap" reauth />)
+    );
+    await settle(50);
+    expect(assign).not.toHaveBeenCalledWith("/hesap");
+
+    await click(buttonNamed(host, resources.tr.nazar.Auth.continue) as Element);
+    expect(assign).toHaveBeenCalledExactlyOnceWith(
+      "/api/auth/signin?callbackUrl=%2Fhesap&locale=tr&reauth=1"
+    );
   });
 });
 
@@ -115,6 +146,17 @@ describe("an action whose session is over", () => {
       `/api/auth/signin?callbackUrl=${encodeURIComponent(
         "/medrese/m1/ayarlar?sekme=genel#politikalar"
       )}&locale=tr`
+    );
+  });
+
+  it("asks for new tokens when tedrisat refused the one it had (reauth)", () => {
+    expect(
+      handleUnauthenticated({ kind: "unauthenticated", reauth: true })
+    ).toBe(true);
+    expect(assign).toHaveBeenCalledExactlyOnceWith(
+      `/api/auth/signin?callbackUrl=${encodeURIComponent(
+        "/medrese/m1/ayarlar?sekme=genel#politikalar"
+      )}&locale=tr&reauth=1`
     );
   });
 

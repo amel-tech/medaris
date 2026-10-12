@@ -16,11 +16,12 @@ import { withAccessToken } from "~/lib/auth";
 type ApiClient = Awaited<ReturnType<typeof createServerTedrisatAPIs>>;
 
 /**
- * The session is over: there was no token, or the API refused it (401). To
- * the action it is a failure like any other (`success: false`, so its log line
- * names it); `outcomeOf` hands the browser only `{ kind: "unauthenticated" }`,
- * which the page sends to sign-in (`handleUnauthenticated`), never a
- * "kaydedilemedi" (auth Phase 1, A16).
+ * The session is over: there was no token, or the API refused it (401, marked
+ * `reauth`). To the action it is a failure like any other (`success: false`,
+ * so its log line names it); `outcomeOf` hands the browser only
+ * `{ kind: "unauthenticated" }` (with `reauth` kept), which the page sends to
+ * sign-in (`handleUnauthenticated`), never a "kaydedilemedi" (auth Phase 1,
+ * A16).
  */
 type SessionOver = Unauthenticated & {
   success: false;
@@ -108,7 +109,9 @@ export type ActionOutcome<T> =
 export const outcomeOf = <T>(
   result: AuthenticatedActionResult<T>
 ): ActionOutcome<T> => {
-  if (isUnauthenticated(result)) return unauthenticated();
+  // `reauth` stays: a refused token must not go straight back with this session.
+  if (isUnauthenticated(result))
+    return unauthenticated({ reauth: result.reauth });
   return result.success
     ? result
     : { success: false, code: errorCodeOf(result.errorBody) };

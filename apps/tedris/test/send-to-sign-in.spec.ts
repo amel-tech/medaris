@@ -48,6 +48,15 @@ describe("sendToSignIn", () => {
     );
   });
 
+  it("asks Keycloak for new tokens when tedrisat refused the one the session holds (reauth)", async () => {
+    at("/en/courses/c1");
+    const { sendToSignIn } = await import("~/lib/send-to-sign-in");
+    expect(sendToSignIn({ ...signedOut, reauth: true })).toBe(true);
+    expect(assign).toHaveBeenCalledWith(
+      `/api/auth/signin?callbackUrl=${encodeURIComponent("/en/courses/c1")}&locale=en&reauth=1`
+    );
+  });
+
   it("leaves the locale to Keycloak when the address names none", async () => {
     at("/api/decks/d1/export");
     const { sendToSignIn } = await import("~/lib/send-to-sign-in");

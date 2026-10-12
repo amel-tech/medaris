@@ -1,6 +1,11 @@
+import {
+  RETURN_TO_HEADER,
+  sealSessionCookies,
+  sessionFromTokenResponse,
+  type TokenResponse,
+} from "@medaris/auth/testing";
 import { NextRequest } from "next/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { type GrantTokens, tedrisSessionCookies } from "../e2e/session-cookie";
 
 /**
  * tedris on `@medaris/auth`: the instance `lib/auth.ts` builds, the route
@@ -24,9 +29,7 @@ vi.mock("next/headers", async () => {
         headers: state.cookie ? { cookie: state.cookie } : {},
       }).cookies,
     headers: async () =>
-      new Headers(
-        state.returnTo ? { "x-medaris-auth-return-to": state.returnTo } : {}
-      ),
+      new Headers(state.returnTo ? { [RETURN_TO_HEADER]: state.returnTo } : {}),
   };
 });
 
@@ -35,7 +38,7 @@ const ORIGIN = "http://localhost:4000";
 const unsignedJwt = (claims: Record<string, unknown>) =>
   `e30.${Buffer.from(JSON.stringify(claims)).toString("base64url")}.sig`;
 
-const tokens = (overrides: Partial<GrantTokens> = {}): GrantTokens => ({
+const tokens = (overrides: Partial<TokenResponse> = {}): TokenResponse => ({
   access_token: "access-token-1",
   refresh_token: "refresh-1",
   id_token: unsignedJwt({
@@ -48,15 +51,19 @@ const tokens = (overrides: Partial<GrantTokens> = {}): GrantTokens => ({
   ...overrides,
 });
 
-/** The cookie header of a session the app wrote at `now`. */
-const sessionCookie = async (now = Date.now(), overrides = {}) => {
-  const { cookies } = await tedrisSessionCookies(tokens(overrides), {
-    secret: "test-nextauth-secret",
-    secure: false,
-    now,
-  });
-  return cookies.map(({ name, value }) => `${name}=${value}`).join("; ");
-};
+/** The cookie header of a session the app wrote at `now`, sealed by the package itself. */
+const sessionCookie = async (now = Date.now(), overrides = {}) =>
+  (
+    await sealSessionCookies(
+      {
+        baseUrl: ORIGIN,
+        secret: "test-nextauth-secret",
+        cookiePrefix: "tedris",
+        now: () => now,
+      },
+      sessionFromTokenResponse(tokens(overrides), now)
+    )
+  ).header;
 
 /** Where a thrown `redirect()` was going. */
 const redirectOf = async (run: () => Promise<unknown>) => {
@@ -206,6 +213,27 @@ describe("a member read without a session (A16)", () => {
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
+  it("sends a token tedrisat refuses (401) to sign in for new tokens (reauth), not to 'could not be read'", async () => {
+    state.cookie = await sessionCookie();
+    state.returnTo = "/en/schedule?from=2026-10-12";
+    fetchSpy.mockResolvedValue(new Response(null, { status: 401 }));
+    const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+    const { getMySessions } = await import("~/features/schedule/reads");
+    expect(await redirectOf(() => getMySessions("a", "b"))).toBe(
+      `/en/auth/signin?callbackUrl=${encodeURIComponent("/en/schedule?from=2026-10-12")}&reauth=1`
+    );
+    expect(errors).not.toHaveBeenCalled();
+  });
+
+  it("keeps the header's bell a side read: a refused token leaves it at 0, with no redirect", async () => {
+    state.cookie = await sessionCookie();
+    fetchSpy.mockResolvedValue(new Response(null, { status: 401 }));
+    const { getUnreadNotificationCount } = await import(
+      "~/features/notifications/reads"
+    );
+    expect(await getUnreadNotificationCount()).toBe(0);
+  });
+
   it("leaves the header's bell at 0 for a visitor, with no request and no redirect", async () => {
     const { getUnreadNotificationCount } = await import(
       "~/features/notifications/reads"
@@ -235,12 +263,13 @@ describe("a Server Action without a session (E2)", () => {
     expect(action).not.toHaveBeenCalled();
   });
 
-  it("answers the same when tedrisat refuses the token", async () => {
+  it("answers the same when tedrisat refuses the token, marked for new tokens (reauth)", async () => {
     state.cookie = await sessionCookie();
     fetchSpy.mockResolvedValue(new Response(null, { status: 401 }));
     const { followKosk } = await import("~/features/courses/actions");
     expect(await followKosk("k1")).toMatchObject({
       kind: "unauthenticated",
+      reauth: true,
       success: false,
     });
   });

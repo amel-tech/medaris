@@ -11,7 +11,7 @@ import {
 import { cache } from "react";
 import { env } from "~/env";
 import { getAccessToken } from "~/lib/auth";
-import { memberApi } from "~/lib/tedrisat-api";
+import { memberApi, reauthIfRefused } from "~/lib/tedrisat-api";
 
 /**
  * Server-side reads for the deck screens (MDRS-164). Not a `"use server"`
@@ -20,8 +20,9 @@ import { memberApi } from "~/lib/tedrisat-api";
  * so and offer a retry rather than fall to the framework's error page.
  *
  * The caller's own lists and study round need a session and send a visitor to
- * sign in (A16); a deck by its id is also read for a visitor, with no token
- * (design tedris/32), so `readDeck` takes the session when there is one.
+ * sign in (A16), and a token tedrisat refused to sign in for new tokens
+ * (`reauthIfRefused`); a deck by its id is also read for a visitor, with no
+ * token (design tedris/32), so `readDeck` takes the session when there is one.
  */
 
 const viewerApi = async () =>
@@ -34,6 +35,7 @@ export const getDeckSummaries = async (): Promise<
   try {
     return await decks.getFlashcardDeckSummaries();
   } catch (error) {
+    await reauthIfRefused(error);
     console.error("Error fetching the caller's decks:", error);
     return null;
   }
@@ -46,6 +48,7 @@ export const getDeckExplore = async (
   try {
     return await decks.exploreFlashcardDecks({ cardType });
   } catch (error) {
+    await reauthIfRefused(error);
     console.error("Error fetching the deck explorer:", error);
     return null;
   }
@@ -110,6 +113,7 @@ export const readStudyRound = async (id: string): Promise<StudyRead> => {
     ]);
     return { status: "ok", deck, round };
   } catch (error) {
+    await reauthIfRefused(error);
     if (error instanceof ResponseError) {
       if (error.response.status === 404 || error.response.status === 400) {
         return { status: "missing" };

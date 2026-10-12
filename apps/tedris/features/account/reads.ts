@@ -5,13 +5,14 @@ import type {
   MyPublicProfileResponse,
 } from "@medaris/services/tedrisat";
 import { cache } from "react";
-import { memberApi } from "~/lib/tedrisat-api";
+import { memberApi, reauthIfRefused } from "~/lib/tedrisat-api";
 
 /**
  * Server-side reads for the account page's "Görevlerin ve izinlerin" section
  * (MDRS-169). Not a `"use server"` module: only server components call these.
  * Without a session they send the visitor to sign in (A16); the client is
  * built outside each `try` so that redirect is not taken for a failed read.
+ * A token tedrisat refused is sign-in for new tokens (`reauthIfRefused`).
  */
 export interface AccountRoles {
   assignments: MyAssignmentsResponse["assignments"];
@@ -31,6 +32,7 @@ export const getAccountRoles = cache(async (): Promise<AccountRoles | null> => {
       groups: permissions.groups,
     };
   } catch (error) {
+    await reauthIfRefused(error);
     console.error("Error fetching the caller's roles:", error);
     return null;
   }
@@ -42,6 +44,7 @@ export const getMyProfile = async (): Promise<MeResponse | null> => {
   try {
     return await me.getMe();
   } catch (error) {
+    await reauthIfRefused(error);
     console.error("Error fetching the caller's profile:", error);
     return null;
   }
@@ -54,6 +57,7 @@ export const getMyPublicProfile =
     try {
       return await me.getMyPublicProfile();
     } catch (error) {
+      await reauthIfRefused(error);
       console.error("Error fetching the caller's public profile:", error);
       return null;
     }

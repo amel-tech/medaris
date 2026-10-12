@@ -1,4 +1,5 @@
 import { createRequire } from "node:module";
+import { RETURN_TO_HEADER, resetRenewalCache } from "@medaris/auth/testing";
 import { NextRequest } from "next/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import proxy, { config } from "../proxy";
@@ -40,11 +41,7 @@ const request = async (
   } = {}
 ) => {
   const cookie = session
-    ? cookieHeader(
-        await sessionCookies(storedSession(session), {
-          secret: process.env.NEXTAUTH_SECRET as string,
-        })
-      )
+    ? cookieHeader(await sessionCookies(storedSession(session)))
     : undefined;
   return new NextRequest(`${ORIGIN}${path}`, {
     method,
@@ -54,6 +51,7 @@ const request = async (
 
 let fetchMock: ReturnType<typeof vi.fn>;
 beforeEach(() => {
+  resetRenewalCache();
   fetchMock = stubIdp();
   vi.spyOn(console, "error").mockImplementation(() => undefined);
 });
@@ -136,7 +134,7 @@ describe("the session gate", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("x-middleware-next")).toBe("1");
     expect(
-      response.headers.get("x-middleware-request-x-medaris-auth-return-to")
+      response.headers.get(`x-middleware-request-${RETURN_TO_HEADER}`)
     ).toBe("/hesap");
     expect(response.headers.get("set-cookie")).toBeNull();
     expect(fetchMock).not.toHaveBeenCalled();

@@ -19,6 +19,12 @@ export interface AuthEntryProps {
   callbackUrl: string;
   /** The `?error=` code a failed round trip came back with (`AuthErrorCode`). */
   error?: string | null;
+  /**
+   * `?reauth=1`: tedrisat refused the token this session holds, so the
+   * session the page came with does not count as signed in; the round trip
+   * fetches new tokens instead of going straight back to the refusal.
+   */
+  reauth?: boolean;
 }
 
 /**
@@ -32,17 +38,26 @@ export interface AuthEntryProps {
  * counted per tab, and so are the automatic starts, so a failure that repeats
  * ends on the box instead of bouncing between here and Keycloak.
  * `AccessDenied`, `Configuration` and `SignInLimit` fail the same way every
- * time and show the box at once. See `enterSignIn` in `@medaris/auth/client`.
+ * time and show the box at once. With `?reauth=1` (a page whose token
+ * tedrisat refused) the session already there does not count: only a newer
+ * one goes on. See `enterSignIn` in `@medaris/auth/client`.
  */
-export function AuthEntry({ intent, callbackUrl, error }: AuthEntryProps) {
+export function AuthEntry({
+  intent,
+  callbackUrl,
+  error,
+  reauth,
+}: AuthEntryProps) {
   const t = useTranslations("tedris");
   const locale = useLocale();
-  const retryable = isRetryableAuthError(error);
-  const [failed, setFailed] = useState(Boolean(error) && !retryable);
+  // The code whose message the box shows; `null` while there is no box.
+  const [shown, setShown] = useState<string | null>(
+    error && !isRetryableAuthError(error) ? error : null
+  );
   const started = useRef(false);
   const request = useMemo(
-    () => ({ intent, callbackUrl, locale }),
-    [intent, callbackUrl, locale]
+    () => ({ intent, callbackUrl, locale, reauth }),
+    [intent, callbackUrl, locale, reauth]
   );
 
   useEffect(() => {
@@ -51,20 +66,22 @@ export function AuthEntry({ intent, callbackUrl, error }: AuthEntryProps) {
     if (started.current) return;
     started.current = true;
     void enterSignIn(request, error, browserSignInDeps()).then((outcome) => {
-      if (outcome === "show-error") setFailed(true);
+      // `outcome.error`, not the page's `?error=`: a tab whose budget ran
+      // out had no error, and shows `SignInLimit`.
+      if (outcome.kind === "show-error") setShown(outcome.error);
     });
   }, [request, error]);
 
   const start = () => signIn(request);
 
-  if (failed) {
+  if (shown !== null) {
     return (
       <SystemState
         shell
         className="font-ui"
         title={t("Auth.errorTitle")}
         action={
-          retryable ? (
+          isRetryableAuthError(shown) ? (
             // "Giriş sayfasına dön" (MDRS-216, the Keycloak theme's own error
             // box): the sign-in page is Keycloak's, so going back starts a new
             // round trip, claimed over any waiting tab.
@@ -78,7 +95,7 @@ export function AuthEntry({ intent, callbackUrl, error }: AuthEntryProps) {
           )
         }
       >
-        {t(`Auth.${authErrorMessageKey(error)}`)}
+        {t(`Auth.${authErrorMessageKey(shown)}`)}
       </SystemState>
     );
   }

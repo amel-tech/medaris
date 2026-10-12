@@ -106,11 +106,7 @@ describe("getPortal", () => {
   });
 
   it("is unavailable, not empty, for any other failure too", async () => {
-    for (const failure of [
-      status(401),
-      status(403),
-      new TypeError("fetch failed"),
-    ]) {
+    for (const failure of [status(403), new TypeError("fetch failed")]) {
       api.me.getMyAssignments.mockRejectedValue(failure);
       expect(await portal()).toEqual({ status: "unavailable" });
     }
@@ -124,6 +120,14 @@ describe("getPortal", () => {
       `${REDIRECT}:/auth/signin?callbackUrl=${encodeURIComponent("/medrese/m-1/dersler?sekme=bekleyen")}`
     );
     expect(api.me.getMyAssignments).not.toHaveBeenCalled();
+  });
+
+  it("sends a token tedrisat refused (401) to sign in for new tokens (reauth), never to the retry state", async () => {
+    api.me.getMyAssignments.mockRejectedValue(status(401));
+    await expect(portal()).rejects.toThrow(
+      `${REDIRECT}:/auth/signin?callbackUrl=${encodeURIComponent("/medrese/m-1/dersler?sekme=bekleyen")}&reauth=1`
+    );
+    expect(errors).not.toHaveBeenCalled();
   });
 
   it("sends a session that is over for the server to sign-in too, never to the retry state", async () => {

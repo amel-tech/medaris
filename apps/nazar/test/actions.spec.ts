@@ -162,11 +162,14 @@ describe("Kaydet", () => {
     expect(api.madrasahs.updateMadrasahSettings).not.toHaveBeenCalled();
   });
 
-  it("hands back the session being over, not a failed save, when the API refuses the token (401)", async () => {
+  it("hands back the session being over, not a failed save, when the API refuses the token (401), marked for new tokens", async () => {
     api.madrasahs.updateMadrasahSettings.mockRejectedValue(
       refusal(401, { code: "AUTH_INVALID_TOKEN", message: "Unauthorized" })
     );
-    expect(await save({ name: "x" })).toEqual({ kind: "unauthenticated" });
+    expect(await save({ name: "x" })).toEqual({
+      kind: "unauthenticated",
+      reauth: true,
+    });
     expect(api.madrasahs.updateMadrasahSettings).toHaveBeenCalledOnce();
   });
 });
@@ -200,6 +203,7 @@ describe("the nazır actions", () => {
     api.users.lookupUser.mockRejectedValue(refusal(401));
     expect(await lookupPerson("a@example.com")).toEqual({
       kind: "unauthenticated",
+      reauth: true,
     });
     token = undefined;
     api.users.lookupUser.mockReset();

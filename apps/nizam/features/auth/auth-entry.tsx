@@ -17,6 +17,12 @@ export interface AuthEntryProps {
   callbackUrl: string;
   /** The `?error=` code of a failed round trip. */
   error?: string | null;
+  /**
+   * `?reauth=1`: tedrisat refused the token this session holds, so the
+   * session the page came with does not count as signed in; the round trip
+   * fetches new tokens instead of going straight back to the refusal.
+   */
+  reauth?: boolean;
 }
 
 /**
@@ -32,20 +38,23 @@ export interface AuthEntryProps {
  * retried once per tab, then shows the box; and a tab that keeps starting on
  * its own ends on the box too, so a Keycloak that is down or a client secret
  * that no longer matches cannot bounce it between here and Keycloak (B2).
- * `AccessDenied`, `Configuration` and `SignInLimit` show the box at once.
+ * `AccessDenied`, `Configuration` and `SignInLimit` show the box at once,
+ * without a retry. With `?reauth=1` (a page whose token tedrisat refused) the
+ * session already there does not count: only a newer one goes on.
  *
  * Placeholder layout until the launch screens are designed (MDRS-127).
  */
-export function AuthEntry({ callbackUrl, error }: AuthEntryProps) {
+export function AuthEntry({ callbackUrl, error, reauth }: AuthEntryProps) {
   const t = useTranslations("nizam");
   const locale = useLocale();
-  const [failed, setFailed] = useState(
-    Boolean(error) && !isRetryableAuthError(error)
+  // The code whose message the box shows; `null` while there is no box.
+  const [shown, setShown] = useState<string | null>(
+    error && !isRetryableAuthError(error) ? error : null
   );
   const started = useRef(false);
   const request = useMemo(
-    () => ({ intent: "signin" as const, callbackUrl, locale }),
-    [callbackUrl, locale]
+    () => ({ intent: "signin" as const, callbackUrl, locale, reauth }),
+    [callbackUrl, locale, reauth]
   );
 
   useEffect(() => {
@@ -54,7 +63,9 @@ export function AuthEntry({ callbackUrl, error }: AuthEntryProps) {
     if (started.current) return;
     started.current = true;
     void enterSignIn(request, error, browserSignInDeps()).then((outcome) => {
-      if (outcome === "show-error") setFailed(true);
+      // `outcome.error`, not the page's `?error=`: a tab whose budget ran
+      // out had no error, and shows `SignInLimit`.
+      if (outcome.kind === "show-error") setShown(outcome.error);
     });
   }, [request, error]);
 
@@ -62,17 +73,20 @@ export function AuthEntry({ callbackUrl, error }: AuthEntryProps) {
   // tab that is waiting.
   const start = () => signIn(request);
 
-  if (failed) {
+  if (shown !== null) {
     return (
       <section className="mx-auto flex max-w-md flex-col gap-4 py-16 text-center">
         <h1 className="text-2xl font-semibold text-brand-primary">
           {t("Auth.errorTitle")}
         </h1>
         <p className="text-neutral-secondary">
-          {t(`Auth.${authErrorMessageKey(error)}`)}
+          {t(`Auth.${authErrorMessageKey(shown)}`)}
         </p>
         <div className="flex justify-center gap-2">
-          <Button onClick={start}>{t("Auth.retry")}</Button>
+          {/* A final error fails the same way on a click too. */}
+          {isRetryableAuthError(shown) && (
+            <Button onClick={start}>{t("Auth.retry")}</Button>
+          )}
           <Button variant="outline" asChild>
             <Link href={`/${locale}`}>{t("Auth.backHome")}</Link>
           </Button>

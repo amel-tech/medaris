@@ -27,18 +27,25 @@ export const tedrisatApi = async (): Promise<TedrisatApi> =>
 
 /**
  * What a read does when tedrisat refuses the token itself (401): `sign-in`
- * sends the visitor to sign in again, like no token at all; `fail` leaves the
+ * sends the visitor to sign in for new tokens (`reauth`); `fail` leaves the
  * error to the read's own answer. Only the shell says `fail`: it also wraps the
- * sign-in page, where a redirect to sign-in would only lead back to itself.
+ * sign-in page, where a redirect to sign-in would only lead back to itself,
+ * and its reads are a frame's side data, drawn without when they fail.
  */
 export type OnRefused = "sign-in" | "fail";
 
 /**
  * The first line of a read's `catch`. Passes on `tedrisatApi`'s way to
  * sign-in (and Next's other control-flow errors, `unstable_rethrow`), and
- * turns a refused token into the same redirect, so a session tedrisat no
- * longer accepts is never drawn as an empty list, "izniniz yok" or "not
+ * turns a refused token into a redirect to sign-in too, so a session tedrisat
+ * no longer accepts is never drawn as an empty list, "izniniz yok" or "not
  * found". Returns for every other error, for the read to answer as before.
+ *
+ * The refused token's redirect carries `reauth`: the page had a token, so the
+ * browser is still signed in, and a plain redirect would have the sign-in page
+ * send it straight back to the same refusal. With `reauth` the sign-in page
+ * fetches new tokens from Keycloak, and a token tedrisat never takes ends on
+ * the "too many attempts" box instead of a loop.
  */
 export async function passOnSignIn(
   error: unknown,
@@ -46,6 +53,6 @@ export async function passOnSignIn(
 ): Promise<void> {
   unstable_rethrow(error);
   if (onRefused === "sign-in" && isUnauthorizedError(error)) {
-    await redirectToSignIn();
+    await redirectToSignIn({ reauth: true });
   }
 }

@@ -1,95 +1,30 @@
-import { EncryptJWT } from "jose";
+import {
+  cookieHeader,
+  RETURN_TO_HEADER,
+  type StoredSession,
+  sealSessionCookies,
+} from "@medaris/auth/testing";
 
 /**
- * Nazar's session cookie as `@medaris/auth` writes it, for the specs (through
- * a `next/headers` stand-in, so `~/lib/auth` is the real one) and for the
- * Playwright helper that signs a browser in without Keycloak's form
- * (`e2e/accounts.ts`).
- *
- * The format: a compact JWE, `dir` + `A256GCM`, its key HKDF-SHA-256 over
- * NEXTAUTH_SECRET, salted with the cookie prefix and labelled with the
- * purpose; split into `<name>.0`, `<name>.1`, … past 3800 characters. The
- * package keeps it in `libs/auth/src/server/seal.ts`, `session-cookie.ts` and
- * `cookies.ts` and exports no way to write it (its server entry is
- * `server-only`), so it is written out again here. A change there needs the
- * same change here; the specs that sign in through this file fail if the two
- * part.
+ * Nazar's session cookie for the specs, written by `@medaris/auth/testing`
+ * (the package's own sealing and chunking), so nothing here copies the format
+ * and drifts from it. The specs hand `nextHeaders` to a `next/headers`
+ * stand-in, so `~/lib/auth` is the real one.
  */
-export interface StoredSession {
-  v: 1;
-  user: { sub: string; name?: string; email?: string };
-  accessToken: string;
-  accessTokenExpiresAt: number;
-  refreshToken?: string;
-  refreshTokenExpiresAt?: number;
-  idToken?: string;
-  checkedAt: number;
-}
+export { cookieHeader, type StoredSession };
 
-export interface SealOptions {
-  /** NEXTAUTH_SECRET */
-  secret: string;
-  /** `cookiePrefix` in lib/auth.ts */
-  cookiePrefix?: string;
-  /** `https` base URL: the `__Host-` prefix */
-  secure?: boolean;
-  now?: number;
-}
-
-const CHUNK = 3800;
-
-export async function sealSession(
-  session: StoredSession,
-  { secret, cookiePrefix = "nazar", now = Date.now() }: SealOptions
-): Promise<string> {
-  const encoder = new TextEncoder();
-  const material = await crypto.subtle.importKey(
-    "raw",
-    encoder.encode(secret),
-    "HKDF",
-    false,
-    ["deriveBits"]
-  );
-  const key = new Uint8Array(
-    await crypto.subtle.deriveBits(
-      {
-        name: "HKDF",
-        hash: "SHA-256",
-        salt: encoder.encode(`medaris-auth:${cookiePrefix}`),
-        info: encoder.encode("medaris-auth session cookie v1"),
-      },
-      material,
-      256
-    )
-  );
-  // As long as the cookie lives: the refresh token's deadline, 30 days when
-  // it has none, the access token's life without one (`cookieLifetime`).
-  const until = session.refreshToken
-    ? (session.refreshTokenExpiresAt ?? now + 30 * 24 * 60 * 60_000)
-    : session.accessTokenExpiresAt;
-  return new EncryptJWT({ ...session })
-    .setProtectedHeader({ alg: "dir", enc: "A256GCM" })
-    .setIssuedAt(Math.floor(now / 1000))
-    .setExpirationTime(Math.floor(until / 1000))
-    .encrypt(key);
-}
+/** nazar's cookie settings as `lib/auth.ts` has them, with vitest.config.ts's values. */
+const cookieConfig = () => ({
+  baseUrl: process.env.NEXTAUTH_URL as string,
+  secret: process.env.NEXTAUTH_SECRET as string,
+  cookiePrefix: "nazar",
+});
 
 /** The cookies that hold `session`: one, or numbered chunks. */
 export async function sessionCookies(
-  session: StoredSession,
-  options: SealOptions
+  session: StoredSession
 ): Promise<Array<{ name: string; value: string }>> {
-  const sealed = await sealSession(session, options);
-  const name = `${options.secure ? "__Host-" : ""}${options.cookiePrefix ?? "nazar"}.session`;
-  if (sealed.length <= CHUNK) return [{ name, value: sealed }];
-  const cookies: Array<{ name: string; value: string }> = [];
-  for (let start = 0; start < sealed.length; start += CHUNK) {
-    cookies.push({
-      name: `${name}.${cookies.length}`,
-      value: sealed.slice(start, start + CHUNK),
-    });
-  }
-  return cookies;
+  return (await sealSessionCookies(cookieConfig(), session)).cookies;
 }
 
 /** A fresh session, Keycloak's confirmation just in, for the specs. */
@@ -111,16 +46,10 @@ export const storedSession = (
   ...overrides,
 });
 
-/** `name=value; …`, as a browser sends them. */
-export const cookieHeader = (
-  cookies: ReadonlyArray<{ name: string; value: string }>
-) => cookies.map(({ name, value }) => `${name}=${value}`).join("; ");
-
 /**
  * What the specs hand `vi.mock("next/headers", …)`: `cookies()` holds the
- * session `session()` names (sealed with vitest.config.ts's NEXTAUTH_SECRET),
- * or none for `null`; `headers()` carries the return path the proxy would
- * have set (`x-medaris-auth-return-to`).
+ * session `session()` names, or none for `null`; `headers()` carries the
+ * return path the proxy would have set (`RETURN_TO_HEADER`).
  */
 export function nextHeaders(
   session: () => Partial<StoredSession> | null,
@@ -128,11 +57,7 @@ export function nextHeaders(
 ) {
   const jar = async () => {
     const wanted = session();
-    return wanted === null
-      ? []
-      : sessionCookies(storedSession(wanted), {
-          secret: process.env.NEXTAUTH_SECRET as string,
-        });
+    return wanted === null ? [] : sessionCookies(storedSession(wanted));
   };
   return {
     cookies: async () => {
@@ -144,7 +69,7 @@ export function nextHeaders(
     },
     headers: async () => {
       const path = returnTo();
-      return new Headers(path ? { "x-medaris-auth-return-to": path } : {});
+      return new Headers(path ? { [RETURN_TO_HEADER]: path } : {});
     },
   };
 }

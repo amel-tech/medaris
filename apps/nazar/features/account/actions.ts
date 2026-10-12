@@ -23,6 +23,7 @@ export async function updateTimeZone(
   );
   if (!result.success)
     console.error("Error saving the time zone:", result.error);
-  if (isUnauthenticated(result)) return unauthenticated();
+  if (isUnauthenticated(result))
+    return unauthenticated({ reauth: result.reauth });
   return { success: result.success };
 }

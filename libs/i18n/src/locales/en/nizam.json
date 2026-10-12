@@ -445,6 +445,7 @@
     "errorDescription": "Something went wrong while signing you in. Please try again.",
     "accessDenied": "This account is not allowed to sign in.",
     "configurationError": "Sign-in is unavailable right now. Please try again later.",
+    "signInLimit": "Too many sign-in attempts. Please try again in a few minutes.",
     "retry": "Try again",
     "backHome": "Back to the home page",
     "signOutTitle": "Sign out",

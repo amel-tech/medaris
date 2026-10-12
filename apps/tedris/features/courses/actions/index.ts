@@ -18,7 +18,7 @@ import {
   type AuthenticatedActionResult,
   authenticatedAction,
 } from "~/lib/authenticated-action";
-import { memberApi } from "~/lib/tedrisat-api";
+import { memberApi, reauthIfRefused } from "~/lib/tedrisat-api";
 
 /**
  * The API said no, about this course or köşk: unknown id or a malformed one (400,
@@ -90,6 +90,7 @@ export const getMyCourses = async (): Promise<EnrolledCourseResponse[]> => {
   try {
     return await courses.getEnrolledCourses();
   } catch (error) {
+    await reauthIfRefused(error);
     console.error("Error fetching enrolled courses:", error);
     return [];
   }
@@ -98,16 +99,22 @@ export const getMyCourses = async (): Promise<EnrolledCourseResponse[]> => {
 /**
  * The caller's courses for Derslerim (MDRS-159): enrolled, completed, the
  * requests still waiting for approval and the courses whose access was withdrawn. A failure throws: an empty list would
- * read as "you have no courses" (design tedris/20).
+ * read as "you have no courses" (design tedris/20). A token tedrisat refused
+ * is sign-in for new tokens instead (`reauthIfRefused`).
  */
 export const getMyCoursesWithApplications = async (): Promise<
   EnrolledCourseResponse[]
 > => {
   const { courses } = await memberApi();
-  return courses.getEnrolledCourses({
-    includePending: true,
-    includeRevoked: true,
-  });
+  try {
+    return await courses.getEnrolledCourses({
+      includePending: true,
+      includeRevoked: true,
+    });
+  } catch (error) {
+    await reauthIfRefused(error);
+    throw error;
+  }
 };
 
 /** Where a köşk's follow state shows: Keşfet and the köşk's own page (MDRS-159). */
@@ -205,6 +212,7 @@ export const getMyCalendarFeed =
     try {
       return await me.getMyCalendarFeed();
     } catch (error) {
+      await reauthIfRefused(error);
       console.error("Error fetching the calendar feed status:", error);
       return null;
     }

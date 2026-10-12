@@ -27,11 +27,7 @@ const request = async (
 ) => {
   const headers: Record<string, string> = { origin: ORIGIN };
   if (session) {
-    headers.cookie = cookieHeader(
-      await sessionCookies(storedSession(session), {
-        secret: process.env.NEXTAUTH_SECRET as string,
-      })
-    );
+    headers.cookie = cookieHeader(await sessionCookies(storedSession(session)));
   }
   if (body !== undefined) {
     headers["content-type"] = "application/x-www-form-urlencoded";

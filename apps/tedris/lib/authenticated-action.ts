@@ -14,8 +14,10 @@ type ApiClient = Awaited<ReturnType<typeof createServerTedrisatAPIs>>;
  * The session is over (no token, or tedrisat refused it with 401): the one
  * "unauthenticated" answer of `@medaris/auth`, which the client hands to
  * `sendToSignIn` (`lib/send-to-sign-in.ts`) to go to sign-in and come back to
- * the same page. It is also a failure (`success: false`), so a caller that
- * does not look for it still draws its ordinary error, never a crash.
+ * the same page. A refused token keeps `reauth`, so that sign-in fetches new
+ * tokens rather than going straight back with the refused ones. It is also a
+ * failure (`success: false`), so a caller that does not look for it still
+ * draws its ordinary error, never a crash.
  */
 export type SignedOut = Unauthenticated & {
   success: false;
@@ -85,5 +87,6 @@ export async function authenticatedAction<T>(
       }
     }
   );
-  return isUnauthenticated(result) ? signedOut : result;
+  if (!isUnauthenticated(result)) return result;
+  return result.reauth ? { ...signedOut, reauth: true } : signedOut;
 }

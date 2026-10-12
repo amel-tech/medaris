@@ -9,7 +9,9 @@ import { locales } from "~/lib/i18n/routing";
  * The client half of the one "unauthenticated" path (`@medaris/auth`): a
  * Server Action answered `{ kind: "unauthenticated" }`, so the session is
  * over. Sends the user to sign in, in the language of the page they are on
- * (MDRS-274), and back to exactly where they were (path, query, fragment).
+ * (MDRS-274), and back to exactly where they were (path, query, fragment);
+ * a result marked `reauth` (tedrisat refused the token) asks Keycloak for new
+ * tokens on the way (`handleUnauthenticated` passes it into `signIn`).
  * `true` tells the caller to draw nothing else: no "could not be saved" or
  * "could not be loaded" for what is only an expired session (E2, A16).
  *

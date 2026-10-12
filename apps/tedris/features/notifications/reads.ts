@@ -5,7 +5,7 @@ import {
 } from "@medaris/services/tedrisat";
 import { env } from "~/env";
 import { getAccessToken } from "~/lib/auth";
-import { memberApi } from "~/lib/tedrisat-api";
+import { memberApi, reauthIfRefused } from "~/lib/tedrisat-api";
 
 /**
  * Server-side reads for the notifications page and the header bell. Not a
@@ -30,6 +30,8 @@ export const getNotificationsOverview =
       ]);
       return { first, counts };
     } catch (error) {
+      // A token tedrisat refused is sign-in for new tokens, not a retry.
+      await reauthIfRefused(error);
       console.error("Error fetching notifications:", error);
       return null;
     }

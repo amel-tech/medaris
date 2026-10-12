@@ -445,6 +445,7 @@
     "errorDescription": "Giriş sırasında bir sorun oluştu. Lütfen tekrar deneyin.",
     "accessDenied": "Bu hesabın giriş izni yok.",
     "configurationError": "Giriş hizmeti şu anda kullanılamıyor. Lütfen daha sonra tekrar deneyin.",
+    "signInLimit": "Çok fazla giriş denemesi yapıldı. Lütfen birkaç dakika sonra tekrar deneyin.",
     "retry": "Tekrar dene",
     "backHome": "Ana sayfaya dön",
     "signOutTitle": "Çıkış yap",

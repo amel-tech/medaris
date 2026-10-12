@@ -3,14 +3,19 @@ import type {
   FlashcardDeckSummaryResponse,
   FollowedKoskCourseResponse,
 } from "@medaris/services/tedrisat";
-import { memberApi, type TedrisatClient } from "~/lib/tedrisat-api";
+import {
+  memberApi,
+  reauthIfRefused,
+  type TedrisatClient,
+} from "~/lib/tedrisat-api";
 
 /**
  * Server-side reads of Ana sayfa's three sections (MDRS-165). Not a
  * `"use server"` module: only server components call these. Each answers
  * `null` when tedrisat cannot, so one section can say so (and offer a retry)
  * while the others still show: an empty list would read as "you have nothing".
- * No session is not one of those: it is a trip to sign in (A16).
+ * No session is not one of those: it is a trip to sign in (A16), and neither
+ * is a token tedrisat refused (`reauthIfRefused`).
  */
 const orNull = async <T>(
   what: string,
@@ -21,6 +26,7 @@ const orNull = async <T>(
   try {
     return await read(api);
   } catch (error) {
+    await reauthIfRefused(error);
     console.error(`Error fetching ${what}:`, error);
     return null;
   }

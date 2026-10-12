@@ -53,13 +53,14 @@ afterEach(async () => {
   vi.restoreAllMocks();
 });
 
-const mount = async (error?: string) => {
+const mount = async (error?: string, extra: { reauth?: boolean } = {}) => {
   const { AuthEntry } = await import("~/features/auth/auth-entry");
   await render(
     createElement(AuthEntry, {
       intent: "signin",
       callbackUrl: "/tr/courses/c1",
       error,
+      ...extra,
     })
   );
   // `enterSignIn` reads the session, then lets the claim settle (50 ms).
@@ -132,10 +133,41 @@ describe("the sign-in page after a failed round trip", () => {
     expect(document.body.textContent).toContain("Bu hesabın giriş izni yok.");
   });
 
+  it("says SignInLimit in its own words: wait a few minutes", async () => {
+    const { resources } = await import("@medaris/i18n");
+    await mount("SignInLimit");
+    expect(document.body.textContent).toContain(
+      resources.tr.tedris.Auth.signInLimit
+    );
+  });
+
+  it("shows SignInLimit when this tab's own budget is spent, though the page came without an error", async () => {
+    const { resources } = await import("@medaris/i18n");
+    sessionStorage.setItem(
+      "medaris.auth.auto-start",
+      JSON.stringify({ count: 3, at: Date.now() })
+    );
+    const { button } = await mount();
+    expect(state.assign).not.toHaveBeenCalled();
+    expect(document.body.textContent).toContain(
+      resources.tr.tedris.Auth.signInLimit
+    );
+    expect(button("Giriş sayfasına dön")).toBeUndefined();
+  });
+
   it("without an error, starts the round trip on its own, in the page's language", async () => {
     await mount();
     expect(state.assign).toHaveBeenCalledWith(autoStart);
     expect(document.querySelector("h1")).toBeNull();
+  });
+
+  it("with `?reauth=1`, does not go on with the session whose token tedrisat refused, and asks for new tokens", async () => {
+    state.session = { user: { sub: "u1", name: "Enes" }, expiresAt: 1 };
+    await mount(undefined, { reauth: true });
+    expect(state.assign).toHaveBeenCalledTimes(1);
+    expect(state.assign).toHaveBeenCalledWith(
+      "/api/auth/signin?callbackUrl=%2Ftr%2Fcourses%2Fc1&locale=tr&reauth=1&auto=1"
+    );
   });
 
   it("waits for another tab already in a round trip instead of starting its own (#180)", async () => {

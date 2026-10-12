@@ -1,5 +1,9 @@
+import {
+  sealSessionCookies,
+  sessionFromTokenResponse,
+  type TokenResponse,
+} from "@medaris/auth/testing";
 import type { Page } from "@playwright/test";
-import { type GrantTokens, tedrisSessionCookies } from "./session-cookie";
 
 /** A Keycloak account the specs sign in as, from E2E_<ROLE>_* variables. */
 export interface E2eAccount {
@@ -41,7 +45,10 @@ export async function directGrant(who: E2eAccount) {
     }),
   });
   if (!res.ok) throw new Error(`Keycloak direct grant answered ${res.status}`);
-  return (await res.json()) as GrantTokens;
+  return (await res.json()) as TokenResponse & {
+    refresh_token: string;
+    id_token: string;
+  };
 }
 
 /**
@@ -55,10 +62,14 @@ export async function directGrant(who: E2eAccount) {
 export async function signIn(page: Page, who: E2eAccount): Promise<void> {
   const base = new URL(process.env.E2E_BASE_URL ?? "http://localhost:4000");
   if (canUseDirectGrant && base.port !== "4000") {
-    const secure = base.protocol === "https:";
-    const { cookies, maxAge } = await tedrisSessionCookies(
-      await directGrant(who),
-      { secret: NEXTAUTH_SECRET as string, secure, now: Date.now() }
+    // Sealed by the package itself, so the format is never copied here.
+    const { cookies, maxAge, secure } = await sealSessionCookies(
+      {
+        baseUrl: base.origin,
+        secret: NEXTAUTH_SECRET as string,
+        cookiePrefix: "tedris",
+      },
+      sessionFromTokenResponse(await directGrant(who))
     );
     await page.context().addCookies(
       cookies.map(({ name, value }) => ({

@@ -1,6 +1,11 @@
+import {
+  RETURN_TO_HEADER,
+  resetRenewalCache,
+  sealSessionCookies,
+  sessionFromTokenResponse,
+} from "@medaris/auth/testing";
 import { NextRequest } from "next/server";
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { tedrisSessionCookies } from "../e2e/session-cookie";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import proxy, { config } from "../proxy";
 
 /**
@@ -20,19 +25,23 @@ const unsignedJwt = (claims: Record<string, unknown>) =>
   `e30.${Buffer.from(JSON.stringify(claims)).toString("base64url")}.sig`;
 
 /** A session the app wrote a moment ago, with five minutes left on its token. */
-const liveCookie = async () => {
-  const { cookies } = await tedrisSessionCookies(
-    {
-      access_token: unsignedJwt({ sub: "talebe-1" }),
-      refresh_token: "refresh-1",
-      id_token: unsignedJwt({ sub: "talebe-1", name: "Ayşe Yılmaz" }),
-      expires_in: 300,
-      refresh_expires_in: 1800,
-    },
-    { secret: "test-nextauth-secret", secure: false, now: Date.now() }
-  );
-  return cookies.map(({ name, value }) => `${name}=${value}`).join("; ");
-};
+const liveCookie = async () =>
+  (
+    await sealSessionCookies(
+      {
+        baseUrl: ORIGIN,
+        secret: "test-nextauth-secret",
+        cookiePrefix: "tedris",
+      },
+      sessionFromTokenResponse({
+        access_token: unsignedJwt({ sub: "talebe-1" }),
+        refresh_token: "refresh-1",
+        id_token: unsignedJwt({ sub: "talebe-1", name: "Ayşe Yılmaz" }),
+        expires_in: 300,
+        refresh_expires_in: 1800,
+      })
+    )
+  ).header;
 
 /** A session cookie that no longer opens: another secret, an old format. */
 const deadCookie = "tedris.session=not-a-sealed-session";
@@ -64,6 +73,9 @@ const dropsSession = (response: Response) =>
     .some(
       (cookie) => /^tedris\.session=;/.test(cookie) && /Max-Age=0/i.test(cookie)
     );
+
+// Every live session here carries the same access token.
+beforeEach(() => resetRenewalCache());
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -174,7 +186,7 @@ describe("a signed-in talebe", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("location")).toBeNull();
     expect(
-      response.headers.get("x-middleware-request-x-medaris-auth-return-to")
+      response.headers.get(`x-middleware-request-${RETURN_TO_HEADER}`)
     ).toBe("/tr/my-courses");
   });
 

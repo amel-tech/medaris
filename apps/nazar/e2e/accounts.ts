@@ -2,12 +2,15 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
+  sealSessionCookies,
+  sessionFromTokenResponse,
+} from "@medaris/auth/testing";
+import {
   type Browser,
   type BrowserContext,
   test as base,
   type Page,
 } from "@playwright/test";
-import { sessionCookies } from "../test/sealed-session";
 
 /**
  * The Keycloak accounts the specs sign in with, from the environment only:
@@ -87,43 +90,30 @@ export async function directGrant(who: Account) {
 /**
  * Writes the session cookie `@medaris/auth` would have written after a
  * sign-in, from tokens of the direct grant, as tedris's `sign-in.ts` does for
- * an instance on a port its client does not list. The reading of the session
- * and every API call are the real ones. The app cannot refresh these tokens
- * with its own client, so such a session lasts as long as the access token
- * (five minutes on the dev realm) and is never kept across tests.
+ * an instance on a port its client does not list. The package's own testing
+ * entry seals it, so the format is never copied here. The reading of the
+ * session and every API call are the real ones. The app cannot refresh these
+ * tokens with its own client, so such a session lasts as long as the access
+ * token (five minutes on the dev realm) and is never kept across tests.
  */
 async function mintSession(page: Page, who: Account): Promise<void> {
   const base = new URL(process.env.E2E_BASE_URL ?? "http://localhost:4002");
-  const t = await directGrant(who);
-  const claims = JSON.parse(
-    Buffer.from(t.access_token.split(".")[1], "base64url").toString()
-  ) as { sub: string; name?: string; email?: string };
-  const now = Date.now();
-  const secure = base.protocol === "https:";
-  const cookies = await sessionCookies(
+  const { cookies, maxAge, secure } = await sealSessionCookies(
     {
-      v: 1,
-      user: { sub: claims.sub, name: claims.name, email: claims.email },
-      accessToken: t.access_token,
-      accessTokenExpiresAt: now + t.expires_in * 1000,
-      refreshToken: t.refresh_token,
-      ...(t.refresh_expires_in > 0
-        ? { refreshTokenExpiresAt: now + t.refresh_expires_in * 1000 }
-        : {}),
-      idToken: t.id_token,
-      checkedAt: now,
+      baseUrl: base.origin,
+      secret: NEXTAUTH_SECRET as string,
+      cookiePrefix: "nazar",
     },
-    { secret: NEXTAUTH_SECRET as string, secure, now }
+    sessionFromTokenResponse(await directGrant(who))
   );
   await page.context().addCookies(
-    cookies.map(({ name, value }) => ({
-      name,
-      value,
-      domain: base.hostname,
-      path: "/",
+    cookies.map((cookie) => ({
+      ...cookie,
+      url: base.origin,
       httpOnly: true,
       secure,
       sameSite: "Lax" as const,
+      expires: Math.floor(Date.now() / 1000) + maxAge,
     }))
   );
 }

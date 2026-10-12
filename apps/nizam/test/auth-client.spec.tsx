@@ -56,7 +56,7 @@ afterEach(cleanup);
 
 describe("AuthEntry (the sign-in page)", () => {
   it("enters through enterSignIn with the page's locale and destination, not straight to Keycloak (B3)", async () => {
-    auth.enterSignIn.mockResolvedValue("signing-in");
+    auth.enterSignIn.mockResolvedValue({ kind: "signing-in" });
     const host = await render(
       inLocale("en", <AuthEntry callbackUrl="/en/kosks" error={null} />)
     );
@@ -74,7 +74,10 @@ describe("AuthEntry (the sign-in page)", () => {
   });
 
   it("shows the error box when enterSignIn says so, and retries only on a click", async () => {
-    auth.enterSignIn.mockResolvedValue("show-error");
+    auth.enterSignIn.mockResolvedValue({
+      kind: "show-error",
+      error: "OAuthCallback",
+    });
     const host = await render(
       inLocale(
         "tr",
@@ -93,12 +96,51 @@ describe("AuthEntry (the sign-in page)", () => {
     });
   });
 
-  it("shows a final error at once, worded for it", async () => {
-    auth.enterSignIn.mockResolvedValue("show-error");
+  it("shows a final error at once, worded for it, with no retry", async () => {
+    auth.enterSignIn.mockResolvedValue({
+      kind: "show-error",
+      error: "AccessDenied",
+    });
     const host = await render(
       inLocale("ar", <AuthEntry callbackUrl="/ar" error="AccessDenied" />)
     );
     expect(host.textContent).toContain(resources.ar.nizam.Auth.accessDenied);
+    expect(button(host, resources.ar.nizam.Auth.retry)).toBeUndefined();
+  });
+
+  it("words the box from enterSignIn's error: a spent budget says to wait, not 'try again'", async () => {
+    // The page had no `?error=`; this tab's own budget ran out.
+    auth.enterSignIn.mockResolvedValue({
+      kind: "show-error",
+      error: "SignInLimit",
+    });
+    const host = await render(
+      inLocale("en", <AuthEntry callbackUrl="/en/kosks" error={null} />)
+    );
+    await settle();
+    expect(host.textContent).toContain(resources.en.nizam.Auth.signInLimit);
+    expect(button(host, resources.en.nizam.Auth.retry)).toBeUndefined();
+  });
+
+  it("passes `?reauth=1` on to enterSignIn and to a click, so a refused token is replaced, not reused", async () => {
+    auth.enterSignIn.mockResolvedValue({ kind: "signing-in" });
+    const host = await render(
+      inLocale("tr", <AuthEntry callbackUrl="/tr/kosks" error={null} reauth />)
+    );
+    await settle();
+    const request = {
+      intent: "signin",
+      callbackUrl: "/tr/kosks",
+      locale: "tr",
+      reauth: true,
+    };
+    expect(auth.enterSignIn).toHaveBeenCalledWith(
+      request,
+      null,
+      expect.any(Object)
+    );
+    await click(button(host, resources.tr.nizam.Auth.continue));
+    expect(auth.signIn).toHaveBeenCalledWith(request);
   });
 });
 
@@ -112,10 +154,10 @@ describe("SignOutConfirm (the sign-out page)", () => {
 });
 
 describe("redirectIfUnauthenticated (an action's answer on the client)", () => {
-  it("hands an unauthenticated answer to handleUnauthenticated with the page's locale (MDRS-274)", () => {
+  it("hands an unauthenticated answer, reauth and all, to handleUnauthenticated with the page's locale (MDRS-274)", () => {
     auth.handleUnauthenticated.mockReturnValue(true);
     window.history.replaceState(null, "", "/ar/kosks/k1?sekme=x");
-    const answer = { kind: "unauthenticated" } as const;
+    const answer = { kind: "unauthenticated", reauth: true } as const;
     expect(redirectIfUnauthenticated(answer)).toBe(true);
     expect(auth.handleUnauthenticated).toHaveBeenCalledWith(answer, {
       locale: "ar",

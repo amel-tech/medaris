@@ -17,6 +17,12 @@ export interface AuthEntryProps {
   callbackUrl: string;
   /** The `?error=` code of a failed round trip. */
   error?: string | null;
+  /**
+   * `?reauth=1`: tedrisat refused the token this session holds, so the
+   * session the page came with does not count as signed in; the round trip
+   * fetches new tokens instead of going straight back to the refusal.
+   */
+  reauth?: boolean;
 }
 
 /**
@@ -32,20 +38,23 @@ export interface AuthEntryProps {
  * starts on its own without end (B2): a tab starts at most a few round trips
  * by itself in two minutes, and the start route refuses a browser that starts
  * too many (`SignInLimit`). `AccessDenied`, `Configuration` and `SignInLimit`
- * show the box at once.
+ * show the box at once, without a retry. With `?reauth=1` (a page whose
+ * token tedrisat refused) the session already there does not count: only a
+ * newer one goes on.
  *
  * Its look is as before; the twin of tedris's, on the unified kit.
  */
-export function AuthEntry({ callbackUrl, error }: AuthEntryProps) {
+export function AuthEntry({ callbackUrl, error, reauth }: AuthEntryProps) {
   const t = useTranslations("nazar.Auth");
   const locale = useLocale();
-  const [failed, setFailed] = useState(
-    Boolean(error) && !isRetryableAuthError(error)
+  // The code whose message the box shows; `null` while there is no box.
+  const [shown, setShown] = useState<string | null>(
+    error && !isRetryableAuthError(error) ? error : null
   );
   const started = useRef(false);
   const request = useMemo(
-    () => ({ intent: "signin" as const, callbackUrl, locale }),
-    [callbackUrl, locale]
+    () => ({ intent: "signin" as const, callbackUrl, locale, reauth }),
+    [callbackUrl, locale, reauth]
   );
 
   useEffect(() => {
@@ -55,28 +64,33 @@ export function AuthEntry({ callbackUrl, error }: AuthEntryProps) {
     if (started.current) return;
     started.current = true;
     void enterSignIn(request, error, browserSignInDeps()).then((outcome) => {
-      if (outcome === "show-error") setFailed(true);
+      // `outcome.error`, not the page's `?error=`: a tab whose budget ran
+      // out had no error, and shows `SignInLimit`.
+      if (outcome.kind === "show-error") setShown(outcome.error);
     });
   }, [request, error]);
 
   // A click is the visitor's own decision: it goes, whatever another tab is doing.
   const start = () => signIn(request);
 
-  if (failed) {
+  if (shown !== null) {
     return (
       <SystemState
         kind="error"
         title={t("errorTitle")}
         action={
           <div className="flex flex-wrap justify-center gap-2">
-            <Button onClick={start}>{t("retry")}</Button>
+            {/* A final error fails the same way on a click too. */}
+            {isRetryableAuthError(shown) && (
+              <Button onClick={start}>{t("retry")}</Button>
+            )}
             <Button href="/" variant="secondary">
               {t("backHome")}
             </Button>
           </div>
         }
       >
-        {t(authErrorMessageKey(error))}
+        {t(authErrorMessageKey(shown))}
       </SystemState>
     );
   }

@@ -50,7 +50,7 @@ export async function lookupPerson(
     console.error("Error looking a user up:", result.error);
     // A session that is over is not "şu an yapılamıyor": the dialog sends it to sign-in.
     return isUnauthenticated(result)
-      ? unauthenticated()
+      ? unauthenticated({ reauth: result.reauth })
       : { kind: "unavailable" };
   }
   const [user] = result.data;
@@ -210,7 +210,8 @@ export async function saveNazirPermissions(
 const groupOutcome = (
   result: AuthenticatedActionResult<unknown>
 ): GroupOutcome | Unauthenticated => {
-  if (isUnauthenticated(result)) return unauthenticated();
+  if (isUnauthenticated(result))
+    return unauthenticated({ reauth: result.reauth });
   return result.success
     ? { success: true }
     : {
