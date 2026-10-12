@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { AccountPage } from "~/features/account/components/account-page";
 import { getAccountData } from "~/features/account/reads";
-import { auth } from "~/lib/auth_options";
+import { auth } from "~/lib/auth";
 
 // Behind the sign-in middleware, and per caller.
 export const dynamic = "force-dynamic";

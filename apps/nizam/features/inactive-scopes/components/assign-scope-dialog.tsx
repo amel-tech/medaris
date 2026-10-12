@@ -9,6 +9,7 @@ import { Input } from "@medaris/ui/mds/input";
 import { isUnfinishedEnd, resolveEnd } from "@medaris/utils";
 import { useTimeZone, useTranslations } from "next-intl";
 import { type FormEvent, useEffect, useState } from "react";
+import { redirectIfUnauthenticated } from "~/lib/unauthenticated";
 import { HeadPicker } from "../../madrasahs/components/head-picker";
 import type { PickedUser } from "../../madrasahs/present";
 import { assignScope } from "../actions";
@@ -81,6 +82,7 @@ export function AssignScopeDialog({
       endIso ? new Date(endIso) : undefined
     );
     setSaving(false);
+    if (redirectIfUnauthenticated(result)) return;
     if (!result.success) {
       toast.error(t("failed"), {
         description: tp(inactiveErrorKey(result.errorBody) as never),

@@ -1,11 +1,9 @@
 import {
   type AllBansListResponse,
   type BanListResponse,
-  createServerTedrisatAPIs,
   ResponseError,
 } from "@medaris/services/tedrisat";
-import { env } from "~/env";
-import { getAccessToken } from "~/lib/auth_options";
+import { passOnSignIn, tedrisatApi } from "~/lib/tedrisat-api";
 
 /**
  * Server-side first read of the ban list (nizam 42, MDRS-177). Not a
@@ -17,12 +15,10 @@ export type AllBansRead = AllBansListResponse | "forbidden" | null;
 /** First page of the Medaris-wide ban list (nizam 48): open bans, newest first. */
 export const getAllBans = async (): Promise<AllBansRead> => {
   try {
-    const api = await createServerTedrisatAPIs(
-      await getAccessToken(),
-      env.TEDRISAT_API_BASE_URL
-    );
+    const api = await tedrisatApi();
     return await api.bans.listAllBans({ status: "ACTIVE", limit: 20 });
   } catch (error) {
+    await passOnSignIn(error);
     if (error instanceof ResponseError && error.response.status === 403) {
       return "forbidden";
     }
@@ -35,12 +31,10 @@ export type BansRead = BanListResponse | "forbidden" | "not-found" | null;
 
 export const getKoskBans = async (koskId: string): Promise<BansRead> => {
   try {
-    const api = await createServerTedrisatAPIs(
-      await getAccessToken(),
-      env.TEDRISAT_API_BASE_URL
-    );
+    const api = await tedrisatApi();
     return await api.bans.listKoskBans({ koskId, status: "ACTIVE" });
   } catch (error) {
+    await passOnSignIn(error);
     if (error instanceof ResponseError) {
       if (error.response.status === 403) return "forbidden";
       if (error.response.status === 404) return "not-found";

@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import {
   type AuthenticatedActionResult,
   authenticatedAction,
+  succeeded,
 } from "~/lib/authenticated-action";
 import { syncViewerTimeZone } from "~/lib/viewer-time-zone";
 
@@ -25,7 +26,7 @@ export const saveTimeZone = async (
   const result = await authenticatedAction((api) =>
     api.me.updateMe({ updateMeDto: { timeZone } })
   );
-  if (result.success) {
+  if (succeeded(result)) {
     await syncViewerTimeZone(timeZone);
     revalidatePath("/", "layout");
   }

@@ -20,6 +20,7 @@ import { useTranslations } from "next-intl";
 import type React from "react";
 import { useState } from "react";
 import { createFlashcardDeck } from "~/features/decks/actions";
+import { redirectIfUnauthenticated } from "~/lib/unauthenticated";
 
 export function DecksTableHeader() {
   const t = useTranslations("nizam");
@@ -43,6 +44,7 @@ export function DecksTableHeader() {
 
     setIsLoading(true);
     const result = await createFlashcardDeck(formData);
+    if (redirectIfUnauthenticated(result)) return;
     if (result.success) {
       toastHelper.success({
         title: t("TableHeader.deckCreated"),

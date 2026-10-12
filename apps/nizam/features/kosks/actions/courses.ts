@@ -16,6 +16,7 @@ import { revalidatePath } from "next/cache";
 import {
   type AuthenticatedActionResult,
   authenticatedAction,
+  succeeded,
 } from "~/lib/authenticated-action";
 
 export const createKoskCourse = async (
@@ -25,7 +26,7 @@ export const createKoskCourse = async (
   const result = await authenticatedAction((api) =>
     api.courses.createCourse({ koskId, createCourseDto: course })
   );
-  if (result.success) revalidatePath(`/kosks/${koskId}`);
+  if (succeeded(result)) revalidatePath(`/kosks/${koskId}`);
   return result;
 };
 
@@ -42,7 +43,7 @@ export const updateKoskCourse = async (
   const result = await authenticatedAction((api) =>
     api.courses.replaceCourse({ id: courseId, replaceCourseDto: course })
   );
-  if (result.success) {
+  if (succeeded(result)) {
     revalidatePath(`/kosks/${koskId}`);
     revalidatePath(`/kosks/${koskId}/courses/${courseId}/edit`);
   }
@@ -74,7 +75,7 @@ export const createCourseSessions = async (
   const result = await authenticatedAction((api) =>
     api.lessons.createSessionBatch({ courseId, createSessionBatchDto: batch })
   );
-  if (result.success) {
+  if (succeeded(result)) {
     revalidatePath(`/kosks/${koskId}`);
     revalidatePath(`/kosks/${koskId}/courses/${courseId}/edit`);
   }
@@ -95,7 +96,7 @@ export const approveEnrollment = async (
   const result = await authenticatedAction((api) =>
     api.courses.approveEnrollment({ id: courseId, userId })
   );
-  if (result.success) revalidateEnrollments(koskId, courseId);
+  if (succeeded(result)) revalidateEnrollments(koskId, courseId);
   return result;
 };
 
@@ -114,7 +115,7 @@ export const rejectEnrollment = async (
       rejectEnrollmentDto: trimmed ? { reason: trimmed } : {},
     })
   );
-  if (result.success) revalidateEnrollments(koskId, courseId);
+  if (succeeded(result)) revalidateEnrollments(koskId, courseId);
   return result;
 };
 
@@ -135,7 +136,7 @@ export const setEnrollmentStatus = async (
       setEnrollmentStatusDto: { status },
     })
   );
-  if (result.success) revalidateEnrollments(koskId, courseId);
+  if (succeeded(result)) revalidateEnrollments(koskId, courseId);
   return result;
 };
 
@@ -156,7 +157,7 @@ export const removeEnrollment = async (
       removeEnrollmentDto: { reason },
     })
   );
-  if (result.success) revalidateEnrollments(koskId, courseId);
+  if (succeeded(result)) revalidateEnrollments(koskId, courseId);
   return result;
 };
 

@@ -13,6 +13,7 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
+    "@medaris/auth": "workspace:*",
     "@medaris/env": "workspace:*",
     "@medaris/i18n": "workspace:*",
     "@medaris/icons": "workspace:*",
@@ -25,7 +26,6 @@
     "@tanstack/react-table": "catalog:",
     "@vercel/otel": "catalog:",
     "next": "catalog:",
-    "next-auth": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
     "xlsx": "catalog:",

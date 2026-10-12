@@ -13,6 +13,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { redirectIfUnauthenticated } from "~/lib/unauthenticated";
 import { lookupUserByEmail } from "../../madrasahs/actions";
 import { isEmailLike, type LookupState } from "../../madrasahs/present";
 import {
@@ -70,6 +71,7 @@ export function TeamPicker({
     setState({ kind: "searching" });
     const result = await lookupUserByEmail(wanted);
     if (searched.current !== wanted) return;
+    if (redirectIfUnauthenticated(result)) return;
     if (result.kind === "found") {
       const known = value.members.some(
         (m) => m.userId.toLowerCase() === result.user.id.toLowerCase()

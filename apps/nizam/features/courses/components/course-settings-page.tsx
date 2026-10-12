@@ -20,6 +20,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { type FormEvent, useMemo, useState, useTransition } from "react";
 import { updateKosk } from "~/features/kosks/actions";
 import { HideCourseDialog } from "~/features/kosks/components/hide-course-dialog";
+import { redirectIfUnauthenticated } from "~/lib/unauthenticated";
 import { patchCourse, patchLesson } from "../actions";
 import {
   courseErrorKey,
@@ -109,6 +110,7 @@ export function CourseSettingsPage({
           version,
           isPreview: false,
         });
+        if (redirectIfUnauthenticated(res)) return;
         if (!res.success) {
           setSaving(false);
           fail(res.errorBody);
@@ -121,6 +123,7 @@ export function CourseSettingsPage({
           version,
           isPreview: true,
         });
+        if (redirectIfUnauthenticated(res)) return;
         if (!res.success) {
           setSaving(false);
           fail(res.errorBody);
@@ -132,6 +135,7 @@ export function CourseSettingsPage({
     const courseChanges = settingsPatch(form, stored);
     if (courseChanges) {
       const res = await patchCourse(kosk.id, course.id, courseChanges);
+      if (redirectIfUnauthenticated(res)) return;
       if (!res.success) {
         setSaving(false);
         fail(res.errorBody);
@@ -142,6 +146,7 @@ export function CourseSettingsPage({
       const res = await updateKosk(kosk.id, {
         recordingsNeverPublic: neverPublic,
       });
+      if (redirectIfUnauthenticated(res)) return;
       if (!res.success) {
         setSaving(false);
         fail(res.errorBody);
@@ -159,6 +164,7 @@ export function CourseSettingsPage({
     setPublishBusy(true);
     const res = await patchCourse(kosk.id, course.id, { status });
     setPublishBusy(false);
+    if (redirectIfUnauthenticated(res)) return;
     if (!res.success) {
       fail(res.errorBody);
       return;

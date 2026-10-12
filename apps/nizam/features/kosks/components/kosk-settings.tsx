@@ -15,6 +15,7 @@ import { Textarea } from "@medaris/ui/mds/textarea";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { type FormEvent, useState, useTransition } from "react";
+import { redirectIfUnauthenticated } from "~/lib/unauthenticated";
 import { updateKosk } from "../actions";
 import {
   COVER_TONES,
@@ -72,6 +73,7 @@ export function KoskSettings({ kosk, nazimCount, hostingCount }: Props) {
     setSaving(true);
     const result = await updateKosk(base.id, settingsPayload(form, base));
     setSaving(false);
+    if (redirectIfUnauthenticated(result)) return;
     if (!result.success) {
       toast.error(t("failed"), {
         description: t(koskErrorKey(result.errorBody) as never),

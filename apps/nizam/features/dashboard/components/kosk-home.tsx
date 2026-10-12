@@ -24,6 +24,7 @@ import {
   approveEnrollment,
   rejectEnrollment,
 } from "~/features/kosks/actions/courses";
+import { redirectIfUnauthenticated } from "~/lib/unauthenticated";
 import { decisionErrorKey } from "../../applications/present";
 import { AttendanceCell } from "../../courses/components/attendance-cell";
 import { toneOfHue } from "../../kosks/admin-present";
@@ -105,6 +106,7 @@ export function KoskHome({ data, nowIso }: Props) {
     }
     if (wanted.current !== value) return;
     setLoading(false);
+    if (redirectIfUnauthenticated(result)) return;
     if (!result?.success) {
       setTabFailed(true);
       setSessions([]);
@@ -146,6 +148,7 @@ export function KoskHome({ data, nowIso }: Props) {
       result = null;
     }
     setBusy(null);
+    if (redirectIfUnauthenticated(result)) return;
     if (!result?.success) {
       failure(a, result?.errorBody);
       return;
@@ -175,6 +178,7 @@ export function KoskHome({ data, nowIso }: Props) {
     } catch {
       result = null;
     }
+    if (redirectIfUnauthenticated(result)) return false;
     if (!result?.success) {
       // a row that is gone has nothing left to reject: the dialog closes with it
       return failure(a, result?.errorBody) === "errorGone";

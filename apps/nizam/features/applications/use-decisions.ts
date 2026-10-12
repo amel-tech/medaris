@@ -8,6 +8,7 @@ import {
   approveEnrollment,
   rejectEnrollment,
 } from "~/features/kosks/actions/courses";
+import { redirectIfUnauthenticated } from "~/lib/unauthenticated";
 import {
   type ApplicationRow,
   decisionErrorKey,
@@ -53,6 +54,7 @@ export function useDecisions(koskId: string) {
         setBusy(null);
       }
 
+      if (redirectIfUnauthenticated(result)) return;
       if (!result.success) {
         const errorKey = decisionErrorKey(result.errorBody);
         toaster.notify({

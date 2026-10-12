@@ -9,6 +9,7 @@ import { Field } from "@medaris/ui/mds/field";
 import { Select } from "@medaris/ui/mds/select";
 import { useTranslations } from "next-intl";
 import { type FormEvent, useEffect, useState } from "react";
+import { redirectIfUnauthenticated } from "~/lib/unauthenticated";
 import { grantHostingRight } from "../actions";
 import { hostingErrorKey } from "../present";
 
@@ -53,6 +54,7 @@ export function GrantDialog({
     setSaving(true);
     const result = await grantHostingRight(koskId, madrasahId);
     setSaving(false);
+    if (redirectIfUnauthenticated(result)) return;
     if (!result.success) {
       toast.error(t("failed"), {
         description: tp(hostingErrorKey(result.errorBody) as never),

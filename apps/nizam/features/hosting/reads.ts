@@ -1,11 +1,9 @@
 import {
-  createServerTedrisatAPIs,
   type HostingRightResponse,
   type MadrasahResponse,
   ResponseError,
 } from "@medaris/services/tedrisat";
-import { env } from "~/env";
-import { getAccessToken } from "~/lib/auth_options";
+import { passOnSignIn, tedrisatApi } from "~/lib/tedrisat-api";
 
 /**
  * Server-side first reads of Barındırma hakları (MDRS-170). Not a
@@ -13,17 +11,17 @@ import { getAccessToken } from "~/lib/auth_options";
  * the page can show its error state; a 403 and a 404 are told apart so the
  * page shows "Bu bölüm için izniniz yok" (nizam/03, 06) instead.
  */
-const api = async () =>
-  createServerTedrisatAPIs(await getAccessToken(), env.TEDRISAT_API_BASE_URL);
-
 export type HostingRead<T> = T | "forbidden" | "not-found" | null;
 
 export const getHostingRights = async (
   koskId: string
 ): Promise<HostingRead<HostingRightResponse[]>> => {
   try {
-    return await (await api()).kosks.getKoskHostingRights({ id: koskId });
+    return await (await tedrisatApi()).kosks.getKoskHostingRights({
+      id: koskId,
+    });
   } catch (error) {
+    await passOnSignIn(error);
     if (error instanceof ResponseError) {
       if (error.response.status === 403) return "forbidden";
       if (error.response.status === 404) return "not-found";
@@ -46,7 +44,7 @@ export const getMadrasahOptions = async (): Promise<
   MadrasahResponse[] | null
 > => {
   try {
-    const { madrasahs } = await api();
+    const { madrasahs } = await tedrisatApi();
     const options: MadrasahResponse[] = [];
     for (let page = 1; ; page += 1) {
       const read = await madrasahs.getAllMadrasahs({
@@ -60,6 +58,7 @@ export const getMadrasahOptions = async (): Promise<
       }
     }
   } catch (error) {
+    await passOnSignIn(error);
     console.error("Error fetching the medreses:", error);
     return null;
   }

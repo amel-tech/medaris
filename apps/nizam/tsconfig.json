@@ -35,6 +35,9 @@
   "exclude": ["node_modules", ".next/**", "vitest.config.ts"],
   "references": [
     {
+      "path": "../../libs/auth"
+    },
+    {
       "path": "../../libs/i18n"
     },
     {

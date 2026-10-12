@@ -8,6 +8,7 @@ import { Input } from "@medaris/ui/mds/input";
 import { isUnfinishedEnd, resolveEnd } from "@medaris/utils";
 import { useLocale, useTimeZone, useTranslations } from "next-intl";
 import { type FormEvent, useEffect, useRef, useState } from "react";
+import { redirectIfUnauthenticated } from "~/lib/unauthenticated";
 import type { PickedUser } from "../../madrasahs/present";
 import { addKoskNazims } from "../admin-actions";
 import { koskCase, koskErrorKey } from "../admin-present";
@@ -86,6 +87,7 @@ export function AddNazimDialog({
       endIso ?? undefined
     );
     setSaving(false);
+    if (redirectIfUnauthenticated(result)) return;
     if (!result.success) {
       toast.error(t("failed"), {
         description: t(koskErrorKey(result.errorBody) as never),

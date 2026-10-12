@@ -18,6 +18,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { redirectIfUnauthenticated } from "~/lib/unauthenticated";
 import { dismissNazim, getGivenItems } from "../actions";
 import {
   type DismissAnswer,
@@ -77,6 +78,7 @@ export function DismissDialog({
     if (!userId) return;
     setItems(null);
     const result = await getGivenItems(userId);
+    if (redirectIfUnauthenticated(result)) return;
     setItems(result.success ? result.data : "failed");
   }, [userId]);
 
@@ -102,6 +104,7 @@ export function DismissDialog({
       dismissDecisions(list, answers)
     );
     setSaving(false);
+    if (redirectIfUnauthenticated(result)) return;
     if (!result.success) {
       toast.error(t("failed"), {
         description: tp(permissionErrorKey(result.errorBody) as never),

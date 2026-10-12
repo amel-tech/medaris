@@ -12,6 +12,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { redirectIfUnauthenticated } from "~/lib/unauthenticated";
 import { lookupUserByEmail } from "../../madrasahs/actions";
 import {
   isEmailLike,
@@ -62,6 +63,7 @@ export function NazimPicker({
     setState({ kind: "searching" });
     const result = await lookupUserByEmail(wanted);
     if (searched.current !== wanted) return;
+    if (redirectIfUnauthenticated(result)) return;
     if (result.kind === "found") {
       const known = value.some(
         (p) => p.id.toLowerCase() === result.user.id.toLowerCase()

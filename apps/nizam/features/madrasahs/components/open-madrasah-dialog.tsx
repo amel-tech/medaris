@@ -8,6 +8,7 @@ import { Input } from "@medaris/ui/mds/input";
 import { Textarea } from "@medaris/ui/mds/textarea";
 import { useTranslations } from "next-intl";
 import { type FormEvent, useEffect, useRef, useState } from "react";
+import { redirectIfUnauthenticated } from "~/lib/unauthenticated";
 import { openMadrasah } from "../actions";
 import {
   canOpen,
@@ -79,6 +80,7 @@ export function OpenMadrasahDialog({ open, onOpenChange, onOpened }: Props) {
     setSaving(true);
     const result = await openMadrasah(openPayload(form));
     setSaving(false);
+    if (redirectIfUnauthenticated(result)) return;
     if (!result.success) {
       const key = madrasahErrorKey(result.errorBody);
       if (key === "errors.handleTaken") {

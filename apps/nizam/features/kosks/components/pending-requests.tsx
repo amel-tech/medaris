@@ -19,6 +19,7 @@ import {
   approveEnrollment,
   rejectEnrollment,
 } from "~/features/kosks/actions/courses";
+import { redirectIfUnauthenticated } from "~/lib/unauthenticated";
 
 export function PendingRequests({
   koskId,
@@ -44,6 +45,7 @@ export function PendingRequests({
     startTransition(async () => {
       const res = await fn(koskId, req.courseId, req.userId);
       setActingKey(null);
+      if (redirectIfUnauthenticated(res)) return;
       if (res.success === false) {
         toast.error(res.error);
         return;

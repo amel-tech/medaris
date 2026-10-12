@@ -9,6 +9,7 @@ import {
   updateFlashcardDeck,
 } from "~/features/decks/actions";
 import { useDecksColumns } from "~/features/decks/hooks/useDecksColumns";
+import { redirectIfUnauthenticated } from "~/lib/unauthenticated";
 import { DecksTableHeader } from "./decks-table-header";
 
 export default function Decks({ decks }: { decks: FlashcardDeckResponse[] }) {
@@ -16,6 +17,7 @@ export default function Decks({ decks }: { decks: FlashcardDeckResponse[] }) {
 
   const handleRowDelete = async (id: string) => {
     const result = await deleteFlashcardDeck(id);
+    if (redirectIfUnauthenticated(result)) return false;
     if (result.success) {
       toastHelper.success(
         {
@@ -38,6 +40,7 @@ export default function Decks({ decks }: { decks: FlashcardDeckResponse[] }) {
       title: updatedRow.title,
       description: updatedRow.description,
     });
+    if (redirectIfUnauthenticated(result)) return false;
     if (result.success) {
       toastHelper.success({
         title: "Card Updated",

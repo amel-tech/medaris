@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import {
   type AuthenticatedActionResult,
   authenticatedAction,
+  succeeded,
 } from "~/lib/authenticated-action";
 
 /** "Gizle" (nizam 23): the course leaves every list and waits in the Arşiv. */
@@ -14,7 +15,7 @@ export const hideCourse = async (
   const result = await authenticatedAction((api) =>
     api.courses.archiveCourse({ id: courseId })
   );
-  if (result.success) revalidatePath("/", "layout");
+  if (succeeded(result)) revalidatePath("/", "layout");
   return result;
 };
 
@@ -25,6 +26,6 @@ export const restoreCourse = async (
   const result = await authenticatedAction((api) =>
     api.courses.restoreCourse({ id: courseId })
   );
-  if (result.success) revalidatePath("/", "layout");
+  if (succeeded(result)) revalidatePath("/", "layout");
   return result;
 };

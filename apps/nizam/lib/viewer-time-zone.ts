@@ -2,7 +2,7 @@
 
 import { isValidTimeZone, TIME_ZONE_COOKIE } from "@medaris/utils";
 import { cookies } from "next/headers";
-import { authenticatedAction } from "~/lib/authenticated-action";
+import { authenticatedAction, succeeded } from "~/lib/authenticated-action";
 
 const ONE_YEAR_IN_SECONDS = 60 * 60 * 24 * 365;
 
@@ -11,7 +11,9 @@ const ONE_YEAR_IN_SECONDS = 60 * 60 * 24 * 365;
  * `TIME_ZONE_COOKIE` cookie, which `lib/i18n/request.ts` hands to next-intl
  * on the server (MDRS-110). The zone saved on the user's profile
  * (`users.time_zone`, MDRS-104) wins; the browser's own zone is the fallback,
- * and the only source for a visitor who is not signed in.
+ * and the only source for a visitor who is not signed in, or whose session
+ * has ended: `TimeZoneSync` runs on the public pages too, so an
+ * `unauthenticated` answer here is not a reason to send anyone to sign in.
  *
  * Returns whether the cookie changed. Setting a cookie in a Server Action
  * makes Next re-render the current route in the action's response, so the
@@ -21,7 +23,7 @@ export async function syncViewerTimeZone(
   browserTimeZone: string
 ): Promise<{ changed: boolean }> {
   const me = await authenticatedAction((api) => api.me.getMe());
-  const profileTimeZone = me.success ? me.data.timeZone : undefined;
+  const profileTimeZone = succeeded(me) ? me.data.timeZone : undefined;
   const timeZone = isValidTimeZone(profileTimeZone)
     ? profileTimeZone
     : isValidTimeZone(browserTimeZone)

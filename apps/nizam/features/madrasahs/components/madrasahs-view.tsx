@@ -18,6 +18,7 @@ import { Tabs, TabsPanel } from "@medaris/ui/mds/tabs";
 import { useRouter } from "next/navigation";
 import { useLocale, useTimeZone, useTranslations } from "next-intl";
 import { useEffect, useRef, useState, useTransition } from "react";
+import { redirectIfUnauthenticated } from "~/lib/unauthenticated";
 import { hideLevelOf } from "../../archive/hide-level";
 import { PassivateScopeDialog } from "../../passivation/components/passivate-scope-dialog";
 import { restoreMadrasah } from "../actions";
@@ -120,6 +121,7 @@ export function MadrasahsView({
     setBusyId(item.id);
     const result = await restoreMadrasah(item.id);
     setBusyId(null);
+    if (redirectIfUnauthenticated(result)) return;
     if (!result.success) {
       toast.error(t("restoreFailed"), {
         description: t(madrasahErrorKey(result.errorBody)),

@@ -1,6 +1,10 @@
 "use server";
 
 import {
+  isUnauthorizedError,
+  type Unauthenticated,
+} from "@medaris/auth/server";
+import {
   type CreateMadrasahDto,
   createServerTedrisatAPIs,
   type DismissDecisionDto,
@@ -12,10 +16,11 @@ import {
 } from "@medaris/services/tedrisat";
 import { revalidatePath } from "next/cache";
 import { env } from "~/env";
-import { getAccessToken } from "~/lib/auth_options";
+import { withAccessToken } from "~/lib/auth";
 import {
   type AuthenticatedActionResult,
   authenticatedAction,
+  succeeded,
 } from "~/lib/authenticated-action";
 import { type PickedUser, pickedUser } from "./present";
 
@@ -27,7 +32,7 @@ export const openMadrasah = async (
     api.madrasahs.createMadrasah({ createMadrasahDto: dto })
   );
   // The list, the archive's scopes and the köşk pages' pickers all show it.
-  if (result.success) revalidatePath("/", "layout");
+  if (succeeded(result)) revalidatePath("/", "layout");
   return result;
 };
 
@@ -38,7 +43,7 @@ export const restoreMadrasah = async (
   const result = await authenticatedAction((api) =>
     api.madrasahs.restoreMadrasah({ id })
   );
-  if (result.success) revalidatePath("/", "layout");
+  if (succeeded(result)) revalidatePath("/", "layout");
   return result;
 };
 
@@ -65,7 +70,7 @@ export const deactivateMadrasah = async (
       passivateScopeDto: { confirmation },
     })
   );
-  if (result.success) revalidatePath("/", "layout");
+  if (succeeded(result)) revalidatePath("/", "layout");
   return result;
 };
 
@@ -89,7 +94,7 @@ export const setHeadMuderris = async (
       },
     })
   );
-  if (result.success) revalidatePath("/", "layout");
+  if (succeeded(result)) revalidatePath("/", "layout");
   return result;
 };
 
@@ -104,34 +109,35 @@ export const getHeadDelegations = async (
 export type LookupResult =
   | { kind: "found"; user: PickedUser }
   | { kind: "none" }
-  | { kind: "unavailable" };
+  | { kind: "unavailable" }
+  | Unauthenticated;
 
 /**
  * The başmüderris picker's search (nizam 08): an exact e-mail address against
  * the realm's directory. Every call is written to the audit log by the API,
  * so the caller searches on Enter, not on every key. Not finding anyone is an
  * answer, not a failure; a directory that cannot be reached is the picker's
- * "şu an yapılamıyor".
+ * "şu an yapılamıyor". An ended session is `unauthenticated`, no longer
+ * "şu an yapılamıyor": the picker sends the caller to sign in.
  */
-export const lookupUserByEmail = async (
-  email: string
-): Promise<LookupResult> => {
-  const accessToken = await getAccessToken();
-  if (!accessToken) return { kind: "unavailable" };
-  try {
-    const { users } = await createServerTedrisatAPIs(
-      accessToken,
-      env.TEDRISAT_API_BASE_URL
-    );
-    const found = await users.lookupUser({ email: email.trim() });
-    const [first] = found;
-    return first
-      ? { kind: "found", user: pickedUser(first) }
-      : { kind: "none" };
-  } catch (error) {
-    if (!(error instanceof ResponseError)) {
-      console.error("Error looking a user up:", error);
+export const lookupUserByEmail = async (email: string): Promise<LookupResult> =>
+  withAccessToken(async (accessToken): Promise<LookupResult> => {
+    try {
+      const { users } = await createServerTedrisatAPIs(
+        accessToken,
+        env.TEDRISAT_API_BASE_URL
+      );
+      const found = await users.lookupUser({ email: email.trim() });
+      const [first] = found;
+      return first
+        ? { kind: "found", user: pickedUser(first) }
+        : { kind: "none" };
+    } catch (error) {
+      // A refused token: `withAccessToken` answers `unauthenticated`.
+      if (isUnauthorizedError(error)) throw error;
+      if (!(error instanceof ResponseError)) {
+        console.error("Error looking a user up:", error);
+      }
+      return { kind: "unavailable" };
     }
-    return { kind: "unavailable" };
-  }
-};
+  });

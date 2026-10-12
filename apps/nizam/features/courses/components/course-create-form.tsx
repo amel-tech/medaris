@@ -28,6 +28,7 @@ import {
   TONE_HUE,
 } from "~/features/kosks/admin-present";
 import { acceptCourseRequest } from "~/features/platform-admin/actions";
+import { redirectIfUnauthenticated } from "~/lib/unauthenticated";
 import { formatDay, weekdayName } from "../format";
 import {
   arabicOfCoverLabel,
@@ -140,6 +141,7 @@ export function CourseCreateForm({ kosk, request }: Props) {
       weeks: [],
       resources: [],
     });
+    if (redirectIfUnauthenticated(created)) return;
     if (!created.success) {
       setSaving(false);
       toast.error(t("failed"), {
@@ -160,6 +162,7 @@ export function CourseCreateForm({ kosk, request }: Props) {
       durationMinutes: Number(duration),
     });
     setSaving(false);
+    if (redirectIfUnauthenticated(sessions)) return;
     if (!sessions.success) {
       toast.error(t("sessionsFailed"), {
         id: TOAST_ID,

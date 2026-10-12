@@ -18,6 +18,7 @@ import { useCallback, useEffect, useState } from "react";
 import { RejectDialog } from "~/features/deck-review/components/reject-dialog";
 import { longDateTime, shortDateTime } from "~/features/deck-review/present";
 import { OpenKoskDialog } from "~/features/kosks/components/open-kosk-dialog";
+import { redirectIfUnauthenticated } from "~/lib/unauthenticated";
 import {
   approveKoskApplication,
   loadKoskApplication,
@@ -91,6 +92,7 @@ export function ApplicationsView({ initial, initialSelectedId }: Props) {
         result = null;
       }
       setLoading(false);
+      if (redirectIfUnauthenticated(result)) return;
       if (!result?.success) {
         setFailed(true);
         toast.error(t("loadFailedTitle"), {
@@ -127,6 +129,7 @@ export function ApplicationsView({ initial, initialSelectedId }: Props) {
     setDetail({ state: "loading" });
     void loadKoskApplication(selectedId).then((result) => {
       if (!current) return;
+      if (redirectIfUnauthenticated(result)) return;
       setDetail(
         result.success
           ? { state: "ready", ...result.data }
@@ -161,6 +164,7 @@ export function ApplicationsView({ initial, initialSelectedId }: Props) {
   const opened = async (name: string, koskId: string) => {
     if (!selected) return;
     const result = await approveKoskApplication(selected.id, koskId);
+    if (redirectIfUnauthenticated(result)) return;
     if (!result.success) {
       fail(result.errorBody, selected.id);
       return;
@@ -174,6 +178,7 @@ export function ApplicationsView({ initial, initialSelectedId }: Props) {
   const reject = async (reason: string): Promise<boolean> => {
     if (!selected) return false;
     const result = await rejectKoskApplication(selected.id, reason);
+    if (redirectIfUnauthenticated(result)) return false;
     if (!result.success) {
       fail(result.errorBody, selected.id);
       return isSettled(result.errorBody);

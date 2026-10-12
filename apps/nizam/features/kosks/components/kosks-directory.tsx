@@ -20,6 +20,7 @@ import { Tabs, TabsPanel } from "@medaris/ui/mds/tabs";
 import { useRouter } from "next/navigation";
 import { useLocale, useTimeZone, useTranslations } from "next-intl";
 import { useEffect, useRef, useState, useTransition } from "react";
+import { redirectIfUnauthenticated } from "~/lib/unauthenticated";
 import { hideLevelOf } from "../../archive/hide-level";
 import { dateWithCase } from "../../madrasahs/present";
 import { restoreKosk } from "../admin-actions";
@@ -125,6 +126,7 @@ export function KosksDirectory({
     setBusyId(item.id);
     const result = await restoreKosk(item.id);
     setBusyId(null);
+    if (redirectIfUnauthenticated(result)) return;
     if (!result.success) {
       toast.error(t("restoreFailed"), {
         description: t(koskErrorKey(result.errorBody)),

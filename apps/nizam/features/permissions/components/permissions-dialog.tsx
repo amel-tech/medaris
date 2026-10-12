@@ -15,6 +15,7 @@ import { Select } from "@medaris/ui/mds/select";
 import { isoToZonedLocal, isUnfinishedEnd, resolveEnd } from "@medaris/utils";
 import { useLocale, useTimeZone, useTranslations } from "next-intl";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { redirectIfUnauthenticated } from "~/lib/unauthenticated";
 import type { PickedUser } from "../../madrasahs/present";
 import { appointNazim, setNazimGrants } from "../actions";
 import {
@@ -150,6 +151,7 @@ export function PermissionsDialog({
       ? await setNazimGrants(nazim.user.id, body)
       : await appointNazim({ userId: (picked as PickedUser).id, ...body });
     setSaving(false);
+    if (redirectIfUnauthenticated(result)) return;
     if (!result.success) {
       toast.error(t(nazim ? "failed" : "appointFailed"), {
         description: tp(permissionErrorKey(result.errorBody) as never),

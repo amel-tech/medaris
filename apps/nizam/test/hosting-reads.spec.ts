@@ -19,7 +19,12 @@ vi.mock("@medaris/services/tedrisat", async (original) => ({
   ...(await original<object>()),
   createServerTedrisatAPIs: async () => ({ madrasahs: { getAllMadrasahs } }),
 }));
-vi.mock("~/lib/auth_options", () => ({ getAccessToken: async () => "token" }));
+vi.mock("~/lib/auth", () => ({
+  requireAccessToken: async () => "token",
+  redirectToSignIn: async () => {
+    throw new Error("redirected to sign-in");
+  },
+}));
 
 const madrasah = (n: number) => ({ id: `m${n}` }) as MadrasahResponse;
 const make = (count: number) =>

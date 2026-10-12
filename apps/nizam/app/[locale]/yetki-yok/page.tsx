@@ -5,7 +5,7 @@ import { env } from "~/env";
 import { NoRolePage } from "~/features/assignments/components/no-role-page";
 import { landingFor } from "~/features/assignments/landing";
 import { getMyAssignments } from "~/features/assignments/reads";
-import { auth } from "~/lib/auth_options";
+import { auth } from "~/lib/auth";
 
 // Behind the sign-in middleware, and per caller.
 export const dynamic = "force-dynamic";

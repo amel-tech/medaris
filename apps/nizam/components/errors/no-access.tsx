@@ -2,7 +2,7 @@ import { Button } from "@medaris/ui/mds/button";
 import { SystemState } from "@medaris/ui/mds/system-state";
 import { getTranslations } from "next-intl/server";
 import { getChiefNazimName } from "~/features/assignments/reads";
-import { auth } from "~/lib/auth_options";
+import { auth } from "~/lib/auth";
 
 type Messages = (
   key: string,

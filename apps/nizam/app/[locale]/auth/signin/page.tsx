@@ -5,8 +5,8 @@ import { AuthEntry } from "~/features/auth/auth-entry";
 import { locales } from "~/lib/i18n/routing";
 
 /**
- * `pages.signIn` (MDRS-101): sends the visitor straight to Keycloak instead of
- * NextAuth's English provider chooser, or shows a failed round trip's error.
+ * The sign-in page (MDRS-101; `pages.signIn` in `lib/auth.ts`): sends the
+ * visitor on to Keycloak, or shows a failed round trip's error.
  */
 export default async function SignInPage({
   params,

@@ -13,6 +13,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { redirectIfUnauthenticated } from "~/lib/unauthenticated";
 import { readCourse, setCourseMuderris } from "../actions";
 import {
   courseErrorKey,
@@ -65,6 +66,7 @@ export function MuderrisDialog({
     setFailed(false);
     const result = await readCourse(courseId);
     setLoading(false);
+    if (redirectIfUnauthenticated(result)) return;
     if (!result.success) {
       setFailed(true);
       return;
@@ -96,6 +98,7 @@ export function MuderrisDialog({
     setSaving(true);
     const result = await setCourseMuderris(koskId, courseId, payload);
     setSaving(false);
+    if (redirectIfUnauthenticated(result)) return;
     if (!result.success) {
       const key = courseErrorKey(result.errorBody);
       toast.error(t("failed"), {

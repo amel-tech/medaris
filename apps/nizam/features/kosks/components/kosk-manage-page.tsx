@@ -20,6 +20,7 @@ import { Table, type TableColumn } from "@medaris/ui/mds/table";
 import { useRouter } from "next/navigation";
 import { useLocale, useTimeZone, useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
+import { redirectIfUnauthenticated } from "~/lib/unauthenticated";
 import { hideLevelOf } from "../../archive/hide-level";
 import { RevokeDialog } from "../../hosting/components/revoke-dialog";
 import {
@@ -100,6 +101,7 @@ export function KoskManagePage({
     setRestoring(true);
     const result = await restoreKosk(kosk.id);
     setRestoring(false);
+    if (redirectIfUnauthenticated(result)) return;
     if (!result.success) {
       toast.error(t("restoreFailed"), {
         description: t(koskErrorKey(result.errorBody) as never),

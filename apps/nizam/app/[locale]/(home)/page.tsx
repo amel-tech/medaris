@@ -8,7 +8,7 @@ import { getMyAssignments } from "~/features/assignments/reads";
 import { MedarisHome } from "~/features/dashboard/components/medaris-home";
 import { getMyGrants, getNizamDashboard } from "~/features/dashboard/reads";
 import { LoadFailed } from "~/features/kosks/components/load-failed";
-import { auth } from "~/lib/auth_options";
+import { auth } from "~/lib/auth";
 import { shellVariant } from "~/lib/shell-nav";
 
 // Per caller: who they are decides where they land.

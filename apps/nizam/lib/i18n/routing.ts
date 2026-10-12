@@ -13,3 +13,15 @@ export const routing = defineRouting({
     "/": "/",
   },
 });
+
+/**
+ * The locale a path is served in (`/en/kosks` → `en`), or `undefined` for a
+ * path outside the locale routes. Keeps a visitor's language on the way to
+ * sign-in and on Keycloak's own pages (MDRS-274).
+ */
+export const localeOfPath = (
+  path: string | null | undefined
+): MadrasahLocale | undefined => {
+  const first = path?.split(/[/?#]/)[1];
+  return locales.find((locale) => locale === first);
+};

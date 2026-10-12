@@ -1,42 +1,33 @@
 "use client";
 
+import { signOut } from "@medaris/auth/client";
 import { Button } from "@medaris/ui/mds/button";
 import { Logo } from "@medaris/ui/mds/logo";
 import { useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
 import { useLocale, useTranslations } from "next-intl";
 import { useId, useState } from "react";
-import { keycloakSignOut } from "~/lib/keycloak-logout";
 
 /**
  * "Çıkış yapılsın mı?" (design medaris/16, nizam's side): the one confirmation
- * before a sign-out, and the page `pages.signOut` points NextAuth at
- * (MDRS-101). A card on its own page, outside the shell, as the canvas draws
- * it. It stands in for NextAuth's English "Are you sure you want to sign out?"
- * page and keeps the confirmation step — signing out on a plain GET would let
- * any page log the visitor out — and ends the Keycloak session too. "Vazgeç"
- * goes back to where the person came from, the home page when there is
- * nowhere to go back to.
+ * before a sign-out (MDRS-101). A card on its own page, outside the shell, as
+ * the canvas draws it. It keeps the confirmation step — signing out on a plain
+ * GET would let any page log the visitor out — and ends the Keycloak session
+ * too: `signOut()` posts to `/api/auth/signout`, which reads the ID token from
+ * the cookie for `id_token_hint` (it no longer passes through the browser,
+ * B7) and asks Keycloak for its page in this locale. "Vazgeç" goes back to
+ * where the person came from, the home page when there is nowhere to go back
+ * to.
  */
 export function SignOutConfirm() {
   const t = useTranslations("nizam.SignOutPage");
   const locale = useLocale();
   const router = useRouter();
-  const { data: session } = useSession();
   const [busy, setBusy] = useState(false);
-  const [failed, setFailed] = useState(false);
   const headingId = useId();
 
-  const confirm = async () => {
+  const confirm = () => {
     setBusy(true);
-    setFailed(false);
-    try {
-      await keycloakSignOut(session?.idToken);
-    } catch {
-      // the sign-out config or NextAuth call failed: let the person try again
-      setFailed(true);
-      setBusy(false);
-    }
+    signOut({ locale });
   };
   const cancel = () => {
     if (window.history.length > 1) router.back();
@@ -54,11 +45,6 @@ export function SignOutConfirm() {
           {t("title")}
         </h1>
         <p className="mds-body">{t("body")}</p>
-        {failed ? (
-          <p role="alert" className="mds-body text-danger-strong">
-            {t("failed")}
-          </p>
-        ) : null}
         <div className="flex flex-col gap-2 pbs-2">
           <Button
             fullWidth
