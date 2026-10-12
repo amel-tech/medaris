@@ -550,33 +550,60 @@ export interface LessonDraft {
     inPersonOverride: boolean | null;
     hasLiveStream: boolean;
   } | null;
-  /** the session's own links, in order (MDRS-286) */
+  /** the session's own links and files, in order (MDRS-286, MDRS-287) */
   resources: LessonResourceDraft[];
 }
 
 /**
- * A link of a session's own resources (MDRS-286): a name, an optional short
- * line and the address it opens, as a row of "Bağlı kaynaklar". tedrisat
- * stores none without an address. Changing them is session work
- * (`session.manage`), so a save sends a session's list only when the form
- * changed it (`payload.ts`).
+ * A resource's file in Medaris storage as the editors show it (MDRS-287): the
+ * name it was uploaded under, the type read from its bytes and its size. It
+ * comes only with a read of the course's content; the file itself is fetched
+ * through the app's own route (`resource-files.ts`).
+ */
+export interface ResourceFileDraft {
+  name: string;
+  contentType: string;
+  sizeBytes: number;
+}
+
+const fileDraftOf = (
+  file: ResourceFileDraft | null | undefined
+): ResourceFileDraft | null =>
+  file
+    ? {
+        name: file.name,
+        contentType: file.contentType,
+        sizeBytes: file.sizeBytes,
+      }
+    : null;
+
+/**
+ * A resource of a session (MDRS-286): a name, an optional short line and the
+ * address it opens, as a row of "Bağlı kaynaklar", or since MDRS-287 a file
+ * uploaded to Medaris storage, which has no address. Changing them is session
+ * work (`session.manage`), so a save sends a session's list only when the
+ * form changed it (`payload.ts`).
  */
 export interface LessonResourceDraft {
   id?: string;
   name: string;
   /** '' = none */
   meta: string;
+  /** '' for a file, and for every row of a content-locked read */
   url: string;
   /**
-   * Whether an empty address stops "Kaydet": not for a row of a
-   * content-locked read, which carries no address to show and is never sent.
+   * Whether an empty address stops "Kaydet": not for a file, nor for a row of
+   * a content-locked read, which carries no address to show and is never sent.
    */
   urlRequired: boolean;
+  /** the uploaded file (MDRS-287); null for a link or a content-locked read */
+  file: ResourceFileDraft | null;
 }
 
 /**
- * A session's resources as read (MDRS-286). A stored row always has an
- * address, so a row read without one comes from a content-locked read.
+ * A session's resources as read (MDRS-286). A stored link always has an
+ * address and a stored file its `file`, so a row read with neither comes from
+ * a content-locked read.
  */
 export const lessonResourceDraftsOf = (
   lesson: Pick<
@@ -590,6 +617,7 @@ export const lessonResourceDraftsOf = (
     meta: r.meta ?? "",
     url: r.url ?? "",
     urlRequired: Boolean(r.url),
+    file: fileDraftOf(r.file),
   }));
 
 export const emptyLessonResource = (): LessonResourceDraft => ({
@@ -597,6 +625,7 @@ export const emptyLessonResource = (): LessonResourceDraft => ({
   meta: "",
   url: "",
   urlRequired: true,
+  file: null,
 });
 
 /** The rows with the one at `from` moved to `to`; the same rows when either is out of range. */
@@ -695,23 +724,28 @@ export function lessonInstant(
 }
 
 /**
- * A row of "Bağlı kaynaklar" (MDRS-279). Resources are links only for now: a
- * name, an optional short line ("PDF · 88 sayfa") and the address it opens.
+ * A row of "Bağlı kaynaklar" (MDRS-279): a name, an optional short line
+ * ("PDF · 88 sayfa") and the address it opens, or since MDRS-287 a file
+ * uploaded to Medaris storage, which has no address.
  */
 export interface ResourceDraft {
   id?: string;
   name: string;
   /** '' = none */
   meta: string;
+  /** '' for a file, and for every row of a content-locked read */
   url: string;
   /** kept as stored; a row added here is a "link" */
   type: string | null;
   /**
    * Whether an empty address stops "Kaydet". Not for a row stored without
-   * one (it predates the rule) nor for any row of a content-locked read,
-   * which carries no address to show: tedrisat keeps what is stored.
+   * one (it predates the rule), nor for a file, nor for any row of a
+   * content-locked read, which carries no address to show: tedrisat keeps
+   * what is stored.
    */
   urlRequired: boolean;
+  /** the uploaded file (MDRS-287); null for a link or a content-locked read */
+  file: ResourceFileDraft | null;
 }
 
 export function resourceDraftsOf(
@@ -724,6 +758,7 @@ export function resourceDraftsOf(
     url: r.url ?? "",
     type: r.type ?? null,
     urlRequired: !course.contentLocked && Boolean(r.url),
+    file: fileDraftOf(r.file),
   }));
 }
 
@@ -733,7 +768,85 @@ export const emptyResource = (): ResourceDraft => ({
   url: "",
   type: "link",
   urlRequired: true,
+  file: null,
 });
+
+// ---- uploaded resource files (MDRS-287) -----------------------------------
+
+type CourseResource = CourseDetailResponse["resources"][number];
+type LessonResource = NonNullable<
+  CourseDetailResponse["weeks"][number]["lessons"][number]["resources"]
+>[number];
+
+/**
+ * The course's version a save sends after one of this page's uploads. An
+ * upload adds its row at once and bumps the version by one, answering the new
+ * one. The page takes it when it is the very next one: the course is then
+ * what the page read plus the upload. A version further on means someone
+ * else saved in between, so the page keeps the one it read and its next save
+ * is refused as out of date (MDRS-95) rather than overwriting their change.
+ */
+export const versionAfterUpload = (held: number, answered: number): number =>
+  answered === held + 1 ? answered : held;
+
+/**
+ * The course as read with an uploaded file added last to its resources, as
+ * tedrisat added it, and the version that goes with it (`versionAfterUpload`).
+ * The curriculum's "read" is this, so the new row neither marks the form
+ * changed nor is taken out by "Vazgeç".
+ */
+export function withUploadedCourseResource(
+  course: CourseDetailResponse,
+  resource: CourseResource,
+  courseVersion: number
+): CourseDetailResponse {
+  return {
+    ...course,
+    version: versionAfterUpload(course.version, courseVersion),
+    resources: [...course.resources, resource],
+  };
+}
+
+/** The same for a file uploaded to one session's own resources. */
+export function withUploadedLessonResource(
+  course: CourseDetailResponse,
+  lessonId: string,
+  resource: LessonResource,
+  courseVersion: number
+): CourseDetailResponse {
+  return {
+    ...course,
+    version: versionAfterUpload(course.version, courseVersion),
+    weeks: course.weeks.map((w) => ({
+      ...w,
+      lessons: w.lessons.map((l) =>
+        l.id === lessonId
+          ? { ...l, resources: [...(l.resources ?? []), resource] }
+          : l
+      ),
+    })),
+  };
+}
+
+/**
+ * The form's weeks with an uploaded file added last to one session's
+ * resources, keeping every unsaved change around it. A session the form no
+ * longer holds (hidden before the upload answered) is left as it is.
+ */
+export function withUploadedLessonDraft(
+  weeks: WeekDraft[],
+  lessonId: string,
+  resource: LessonResource
+): WeekDraft[] {
+  const [row] = lessonResourceDraftsOf({ resources: [resource] });
+  if (!row) return weeks;
+  return weeks.map((w) => ({
+    ...w,
+    lessons: w.lessons.map((l) =>
+      l.id === lessonId ? { ...l, resources: [...l.resources, row] } : l
+    ),
+  }));
+}
 
 export type CurriculumProblem =
   | "title"
@@ -810,8 +923,8 @@ export function curriculumErrors(
  * "Haftayı kopyala": the week again, 7 days later, with no links and nothing
  * cancelled. The copies are new sessions: they follow the course's in-person
  * mark and have no stream (MDRS-283). Nor do they take the sessions' own
- * resources (MDRS-286): those are links too, and belong to the session they
- * were added to.
+ * resources (MDRS-286): those are links too, or files (MDRS-287), and belong
+ * to the session they were added to.
  */
 export function copyWeek(week: WeekDraft, nextNumber: number): WeekDraft {
   return {

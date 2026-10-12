@@ -45,6 +45,9 @@ import {
   type WeekDraft,
   weekDraftsOf,
   weekFacts,
+  withUploadedCourseResource,
+  withUploadedLessonDraft,
+  withUploadedLessonResource,
 } from "../present";
 import { LessonResourcesEditor } from "./lesson-resources-editor";
 import { ResourcesEditor } from "./resources-editor";
@@ -81,6 +84,9 @@ const emptyLesson = (): LessonDraft => ({
  * with "Vazgeç" to put the saved values back. A session still ahead with no
  * link, no live stream and not held in person is flagged "Katılım yolu eksik";
  * a link is not asked of one that is streamed or held in person (MDRS-283).
+ * A file uploaded to the course's or a session's resources is the one thing
+ * stored before "Kaydet" (MDRS-287): the page takes its row and the course's
+ * new version, so the save that follows keeps it and does not conflict.
  */
 export function CurriculumEditor({ kosk, course }: Props) {
   const t = useTranslations("nizam.Curriculum");
@@ -187,6 +193,41 @@ export function CurriculumEditor({ kosk, course }: Props) {
     );
 
   const nextNumber = () => Math.max(0, ...weeks.map((w) => w.weekNumber)) + 1;
+
+  // MDRS-287: an upload is stored at once, as the last resource, and bumps
+  // the course's version. The row joins what the page holds as saved (so it
+  // neither marks the form changed nor goes with "Vazgeç") and the form's
+  // rows (keeping every unsaved change), and the version the next "Kaydet"
+  // sends follows it (`versionAfterUpload`).
+  const courseFileUploaded = ({
+    resource,
+    courseVersion,
+  }: {
+    resource: CourseDetailResponse["resources"][number];
+    courseVersion: number;
+  }) => {
+    setSaved((read) =>
+      withUploadedCourseResource(read, resource, courseVersion)
+    );
+    setResources((rows) => [
+      ...rows,
+      ...resourceDraftsOf({ resources: [resource], contentLocked: false }),
+    ]);
+  };
+  const lessonFileUploaded =
+    (lessonId: string) =>
+    ({
+      resource,
+      courseVersion,
+    }: {
+      resource: Parameters<typeof withUploadedLessonResource>[2];
+      courseVersion: number;
+    }) => {
+      setSaved((read) =>
+        withUploadedLessonResource(read, lessonId, resource, courseVersion)
+      );
+      setWeeks((all) => withUploadedLessonDraft(all, lessonId, resource));
+    };
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -342,8 +383,11 @@ export function CurriculumEditor({ kosk, course }: Props) {
       </section>
 
       <ResourcesEditor
+        courseId={saved.id}
+        courseTitle={saved.title}
         resources={resources}
         onChange={setResources}
+        onUploaded={courseFileUploaded}
         shown={shownResource}
         locked={saved.contentLocked}
       />
@@ -610,9 +654,16 @@ export function CurriculumEditor({ kosk, course }: Props) {
                               source line. */}
                           <LessonResourcesEditor
                             prefix={`lesson-${wi}-${li}`}
+                            lessonId={lesson.id}
+                            lessonTitle={lesson.title || saved.title}
                             resources={lesson.resources}
                             onChange={(resources) =>
                               patchLesson(wi, li, { resources })
+                            }
+                            onUploaded={
+                              lesson.id
+                                ? lessonFileUploaded(lesson.id)
+                                : () => undefined
                             }
                             shown={(kind, ri) =>
                               shownLessonResource(kind, wi, li, ri)

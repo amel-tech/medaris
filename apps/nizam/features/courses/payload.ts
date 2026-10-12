@@ -19,8 +19,9 @@ import {
  * holds, plus what it does not edit and a PUT would otherwise drop — the
  * müderris rows (unchanged, so a müderris may save). A week or a session left
  * out of `weeks` is hidden by the PUT, never deleted. A resource left out of
- * `resources` is removed: a link has nothing hanging off it (MDRS-279). A
- * session's own resources go only when the form changed them (MDRS-286).
+ * `resources` is removed: a link has nothing hanging off it (MDRS-279), and an
+ * uploaded file goes from storage with it (MDRS-287). A session's own
+ * resources go only when the form changed them (MDRS-286).
  */
 export interface CurriculumEdit {
   title: string;
@@ -48,7 +49,9 @@ function lessonResourcesBody(
       ...(r.id ? { id: r.id } : {}),
       name: r.name.trim(),
       meta: r.meta.trim() || null,
-      url: r.url.trim(),
+      // A file goes back by its id alone: it keeps its file, and tedrisat
+      // refuses an address on it (RESOURCE_IS_FILE, MDRS-287).
+      ...(r.file ? {} : { url: r.url.trim() }),
     })),
   };
 }
@@ -135,8 +138,11 @@ export function curriculumPayload(
       type: r.type ?? undefined,
       // No address is sent for a row the caller could not see the address
       // of (a content-locked read) or one stored without any: tedrisat
-      // keeps the stored url for a missing key.
-      ...(!course.contentLocked && r.url.trim() ? { url: r.url.trim() } : {}),
+      // keeps the stored url for a missing key. Nor for a file, which keeps
+      // its file and refuses an address (RESOURCE_IS_FILE, MDRS-287).
+      ...(!course.contentLocked && !r.file && r.url.trim()
+        ? { url: r.url.trim() }
+        : {}),
     })),
   };
 }

@@ -1,31 +1,57 @@
 "use client";
 
+import type { ResourceResponse } from "@medaris/services/tedrisat";
 import { Button } from "@medaris/ui/mds/button";
 import { Field } from "@medaris/ui/mds/field";
 import { Icon } from "@medaris/ui/mds/icon";
 import { Input } from "@medaris/ui/mds/input";
 import { useTranslations } from "next-intl";
+import { useState } from "react";
 import {
   type CurriculumProblem,
   emptyResource,
   type ResourceDraft,
 } from "../present";
+import {
+  courseResourceFilePath,
+  courseResourceUploadPath,
+} from "../resource-files";
+import {
+  RemoveFileDialog,
+  ResourceFileLine,
+  ResourceUploadDialog,
+} from "./resource-file-parts";
 
 /**
  * "Bağlı kaynaklar" on the curriculum (MDRS-279, design nizam "Müderris ve
- * kaynaklar"): the course's resources as links, each a name, an optional
- * short line and the address it opens. Part of the curriculum form: nothing
- * is written until its "Kaydet", and "Vazgeç" puts the saved rows back. The
- * limits are tedrisat's: name 200, line 120, address 500.
+ * kaynaklar"): the course's resources, each a name, an optional short line
+ * and either the address it opens or, since MDRS-287, a file uploaded to
+ * Medaris storage. Part of the curriculum form: nothing is written until its
+ * "Kaydet", and "Vazgeç" puts the saved rows back. An upload is the
+ * exception: tedrisat stores the file and its row at once ("Dosya yükle"),
+ * and the form keeps the row as saved. A file row is renamed and removed
+ * like a link; its file is replaced by removing it and uploading another.
+ * The limits are tedrisat's: name 200, line 120, address 500.
  */
 export function ResourcesEditor({
+  courseId,
+  courseTitle,
   resources,
   onChange,
+  onUploaded,
   shown,
   locked = false,
 }: {
+  courseId: string;
+  /** names the course in the upload dialog */
+  courseTitle: string;
   resources: ResourceDraft[];
   onChange: (next: ResourceDraft[]) => void;
+  /** a file tedrisat stored as the last resource, and the course's new version */
+  onUploaded: (answer: {
+    resource: ResourceResponse;
+    courseVersion: number;
+  }) => void;
   /** whether a problem of this row is to be shown (after a refused "Kaydet") */
   shown: (kind: CurriculumProblem, resourceIndex: number) => boolean;
   /**
@@ -35,8 +61,11 @@ export function ResourcesEditor({
   locked?: boolean;
 }) {
   const t = useTranslations("nizam.Curriculum");
+  // The file row waiting for "Çıkar" in the confirmation (MDRS-287).
+  const [removing, setRemoving] = useState<number | null>(null);
   const patch = (ri: number, change: Partial<ResourceDraft>) =>
     onChange(resources.map((r, i) => (i === ri ? { ...r, ...change } : r)));
+  const remove = (ri: number) => onChange(resources.filter((_, i) => i !== ri));
 
   if (locked) {
     return (
@@ -77,6 +106,8 @@ export function ResourcesEditor({
     );
   }
 
+  const removingRow = removing === null ? undefined : resources[removing];
+
   return (
     <section
       className="mds-card flex flex-col gap-4"
@@ -108,7 +139,7 @@ export function ResourcesEditor({
                   size="small"
                   type="button"
                   iconLeft={<Icon name="trash" size="sm" />}
-                  onClick={() => onChange(resources.filter((_, i) => i !== ri))}
+                  onClick={() => (resource.file ? setRemoving(ri) : remove(ri))}
                 >
                   {t("removeResource")}
                 </Button>
@@ -144,31 +175,40 @@ export function ResourcesEditor({
                   />
                 </Field>
               </div>
-              <Field
-                label={t("resourceUrlLabel")}
-                required
-                help={t("resourceUrlHelp")}
-                error={
-                  shown("resourceUrl", ri) ? t("errors.resourceUrl") : undefined
-                }
-              >
-                <Input
-                  mono
-                  type="url"
-                  name={`resource-${ri}-url`}
-                  value={resource.url}
-                  maxLength={500}
-                  placeholder="https://…"
-                  autoComplete="off"
-                  spellCheck={false}
-                  onChange={(e) => patch(ri, { url: e.target.value })}
+              {resource.file && resource.id ? (
+                <ResourceFileLine
+                  file={resource.file}
+                  href={courseResourceFilePath(courseId, resource.id)}
                 />
-              </Field>
+              ) : (
+                <Field
+                  label={t("resourceUrlLabel")}
+                  required
+                  help={t("resourceUrlHelp")}
+                  error={
+                    shown("resourceUrl", ri)
+                      ? t("errors.resourceUrl")
+                      : undefined
+                  }
+                >
+                  <Input
+                    mono
+                    type="url"
+                    name={`resource-${ri}-url`}
+                    value={resource.url}
+                    maxLength={500}
+                    placeholder="https://…"
+                    autoComplete="off"
+                    spellCheck={false}
+                    onChange={(e) => patch(ri, { url: e.target.value })}
+                  />
+                </Field>
+              )}
             </li>
           ))}
         </ol>
       )}
-      <div>
+      <div className="flex flex-wrap gap-2">
         <Button
           variant="outline"
           size="small"
@@ -178,7 +218,22 @@ export function ResourcesEditor({
         >
           {t("addResource")}
         </Button>
+        <ResourceUploadDialog<ResourceResponse>
+          path={courseResourceUploadPath(courseId)}
+          eyebrow={courseTitle}
+          onUploaded={onUploaded}
+          testId="upload-course-file"
+        />
       </div>
+      <RemoveFileDialog
+        name={removingRow?.name ?? ""}
+        open={removingRow !== undefined}
+        onCancel={() => setRemoving(null)}
+        onConfirm={() => {
+          if (removing !== null) remove(removing);
+          setRemoving(null);
+        }}
+      />
     </section>
   );
 }
