@@ -2,12 +2,16 @@
   "clientId": "tedris",
   "name": "tedris",
   "standardFlowEnabled": true,
+  "frontchannelLogout": false,
   "baseUrl": "https://tedris.medaris.app",
   "redirectUris": ["https://tedris.medaris.app/api/auth/callback/keycloak"],
   "webOrigins": ["https://tedris.medaris.app"],
   "attributes": {
     "pkce.code.challenge.method": "S256",
-    "post.logout.redirect.uris": "https://tedris.medaris.app##https://tedris.medaris.app/"
+    "post.logout.redirect.uris": "https://tedris.medaris.app##https://tedris.medaris.app/",
+    "backchannel.logout.url": "https://tedris.medaris.app/api/auth/backchannel-logout",
+    "backchannel.logout.session.required": "true",
+    "backchannel.logout.revoke.offline.tokens": "false"
   },
   "protocolMappers": [
     {

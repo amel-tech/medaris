@@ -10,8 +10,12 @@ import { EncryptJWT, jwtDecrypt } from "jose";
  * info names the purpose, so an app's sign-in cookie cannot be replayed as its
  * session, and two apps that were given the same secret (the `.env.example`
  * placeholders are all "set-me-per-machine") still cannot open each other's.
+ *
+ * `store` (auth Phase 2) seals a session kept in Valkey. It is its own key, not
+ * `session`'s: a value copied out of a store dump does not open as a Phase 1
+ * session cookie, which the store still accepts once to move it in.
  */
-export type SealPurpose = "session" | "flow";
+export type SealPurpose = "session" | "flow" | "store";
 
 const encoder = new TextEncoder();
 

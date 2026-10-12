@@ -2,12 +2,16 @@
   "clientId": "nazar",
   "name": "nazar",
   "standardFlowEnabled": true,
+  "frontchannelLogout": false,
   "baseUrl": "https://nazar.medaris.app",
   "redirectUris": ["https://nazar.medaris.app/api/auth/callback/keycloak"],
   "webOrigins": ["https://nazar.medaris.app"],
   "attributes": {
     "pkce.code.challenge.method": "S256",
-    "post.logout.redirect.uris": "https://nazar.medaris.app##https://nazar.medaris.app/"
+    "post.logout.redirect.uris": "https://nazar.medaris.app##https://nazar.medaris.app/",
+    "backchannel.logout.url": "https://nazar.medaris.app/api/auth/backchannel-logout",
+    "backchannel.logout.session.required": "true",
+    "backchannel.logout.revoke.offline.tokens": "false"
   },
   "protocolMappers": [
     {

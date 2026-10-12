@@ -1,3 +1,4 @@
+import { createRemoteJWKSet, type JWTVerifyGetKey } from "jose";
 import * as client from "openid-client";
 import type { AuthErrorCode } from "../shared/auth-error";
 import { httpStatusOf } from "../shared/unauthenticated";
@@ -14,35 +15,55 @@ import type { ResolvedAuthConfig } from "./config";
  */
 export interface Oidc {
   configuration(): Promise<client.Configuration>;
+  /**
+   * The IdP's signing keys, from the discovered `jwks_uri`: what a
+   * back-channel logout token is verified against (auth Phase 2). jose
+   * caches them and fetches again for a `kid` it does not know.
+   */
+  jwks(): Promise<JWTVerifyGetKey>;
 }
 
 const LOOPBACK = new Set(["localhost", "127.0.0.1", "[::1]"]);
 
 export function createOidc(config: ResolvedAuthConfig): Oidc {
   let pending: Promise<client.Configuration> | undefined;
+  let keys: JWTVerifyGetKey | undefined;
   // openid-client refuses plain http. A Keycloak container on this machine
   // (the Playwright realm) is the one place that is fine.
   const insecure =
     config.issuer.protocol === "http:" && LOOPBACK.has(config.issuer.hostname);
 
+  const configuration = () => {
+    pending ??= client
+      .discovery(
+        config.issuer,
+        config.clientId,
+        config.clientSecret,
+        undefined,
+        {
+          timeout: config.httpTimeout,
+          execute: insecure ? [client.allowInsecureRequests] : [],
+        }
+      )
+      .catch((error: unknown) => {
+        pending = undefined;
+        throw error;
+      });
+    return pending;
+  };
+
   return {
-    configuration() {
-      pending ??= client
-        .discovery(
-          config.issuer,
-          config.clientId,
-          config.clientSecret,
-          undefined,
-          {
-            timeout: config.httpTimeout,
-            execute: insecure ? [client.allowInsecureRequests] : [],
-          }
-        )
-        .catch((error: unknown) => {
-          pending = undefined;
-          throw error;
-        });
-      return pending;
+    configuration,
+    async jwks() {
+      if (keys) return keys;
+      const { jwks_uri } = (await configuration()).serverMetadata();
+      if (!jwks_uri) {
+        throw new Error("@medaris/auth: the IdP's discovery names no jwks_uri");
+      }
+      keys = createRemoteJWKSet(new URL(jwks_uri), {
+        timeoutDuration: config.httpTimeout * 1000,
+      });
+      return keys;
     },
   };
 }

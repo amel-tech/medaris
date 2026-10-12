@@ -369,6 +369,10 @@ catalog:
   openid-client: ^6.8.8 # discovery, PKCE, code and refresh grants, userinfo, end-session
   server-only: ^0.0.1 # build-time guard: @medaris/auth/server never reaches a client bundle
   client-only: ^0.0.1 # build-time guard: @medaris/auth/client never reaches a server component
+  # auth Phase 2: @medaris/auth keeps the sessions in Valkey when WEB__AUTH_STORE_URL
+  # is set. Valkey 8 speaks the Redis protocol; libs/auth's valkey-store.e2e.spec.ts
+  # runs this client against a valkey/valkey:8 container.
+  ioredis: ^5.11.1
   next-intl: ^4.4.0
   '@t3-oss/env-nextjs': ^0.13.8
   '@fontsource/scheherazade-new': ^5.2.8

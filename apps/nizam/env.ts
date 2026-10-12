@@ -10,6 +10,12 @@ export const env = createEnv({
     KEYCLOAK_ISSUER: z.string().min(1).url(),
     NEXTAUTH_URL: z.string().min(1).url(),
     NEXTAUTH_SECRET: z.string().min(1),
+    // auth Phase 2: where the sessions live (WEB__AUTH_STORE_URL, a redis:// URL
+    // with the environment's Valkey user) and the environment's key prefix
+    // (WEB__AUTH_STORE_KEY_PREFIX, `dev` or `prod`). Unset or empty: the
+    // session stays sealed in the cookie, as in Phase 1.
+    AUTH_STORE_URL: z.string().optional(),
+    AUTH_STORE_KEY_PREFIX: z.string().optional(),
     OTEL_EXPORTER_OTLP_ENDPOINT: z.string().min(1).url().optional(),
     OTEL_SERVICE_NAME: z.string().min(1).optional(),
     API_MOCKING: z.enum(["enabled", "disabled"]).default("disabled"),
@@ -34,6 +40,8 @@ export const env = createEnv({
     OTEL_SERVICE_NAME: process.env.OTEL_SERVICE_NAME,
     NEXTAUTH_URL: process.env.NEXTAUTH_URL,
     NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET,
+    AUTH_STORE_URL: process.env.AUTH_STORE_URL,
+    AUTH_STORE_KEY_PREFIX: process.env.AUTH_STORE_KEY_PREFIX,
     API_MOCKING: process.env.API_MOCKING,
 
     TEDRISAT_API_BASE_URL: process.env.TEDRISAT_API_BASE_URL,

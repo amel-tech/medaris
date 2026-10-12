@@ -35,6 +35,7 @@
   },
   "dependencies": {
     "client-only": "catalog:",
+    "ioredis": "catalog:",
     "jose": "catalog:",
     "next": "catalog:",
     "openid-client": "catalog:",
@@ -45,6 +46,7 @@
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@vitest/coverage-v8": "catalog:",
+    "testcontainers": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
   }

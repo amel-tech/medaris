@@ -47,4 +47,8 @@ export const {
   },
   locales,
   kcLocale: true,
+  sessionStore: {
+    url: env.AUTH_STORE_URL,
+    keyPrefix: env.AUTH_STORE_KEY_PREFIX,
+  },
 });
