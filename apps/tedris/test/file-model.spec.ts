@@ -1,10 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
-  FILE_ACCEPT,
   fileErrorKey,
   fileIcon,
-  fileTypeLabel,
-  formatFileSize,
   parseSubmission,
   resourceFileHref,
   submissionFileHref,
@@ -17,7 +14,6 @@ import {
 const COURSE = "0b7f6c1e-2a4d-4c8e-9f10-3a5b6c7d8e9f";
 const LESSON = "11111111-1111-4111-8111-111111111111";
 const RESOURCE = "5d2e8f40-1c3b-4a6d-8e7f-90a1b2c3d4e5";
-const MB = 1024 * 1024;
 
 describe("resourceFileHref", () => {
   it("maps tedrisat's download route of a course's and a celse's file to this app's", () => {
@@ -68,57 +64,34 @@ describe("the homework routes", () => {
   });
 });
 
-describe("a file's type and size", () => {
+// The chip, the size and the picker's types are @medaris/services/file-rules,
+// pinned by its own spec; the glyph is this app's.
+describe("a file's glyph", () => {
   it.each([
-    ["application/pdf", "PDF", "pdf"],
-    ["image/png", "PNG", "fileDownload"],
-    ["image/jpeg", "JPEG", "fileDownload"],
-    ["image/webp", "WEBP", "fileDownload"],
+    ["application/pdf", "pdf"],
+    ["image/png", "fileDownload"],
+    ["image/jpeg", "fileDownload"],
+    ["image/webp", "fileDownload"],
     [
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      "DOCX",
       "doc",
     ],
     [
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "XLSX",
       "fileXls",
     ],
     [
       "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-      "PPTX",
       "doc",
     ],
-    ["text/plain; charset=utf-8", "TXT", "doc"],
-  ])("labels %s as %s", (contentType, label, icon) => {
-    expect(fileTypeLabel(contentType)).toBe(label);
+    ["text/plain; charset=utf-8", "doc"],
+  ])("draws %s as %s", (contentType, icon) => {
     expect(fileIcon(contentType)).toBe(icon);
   });
 
-  it("labels no type tedrisat does not store", () => {
-    expect(fileTypeLabel("text/html")).toBeNull();
-    expect(fileTypeLabel(undefined)).toBeNull();
+  it("draws a plain file for a type tedrisat does not store", () => {
     expect(fileIcon("image/svg+xml")).toBe("fileDownload");
-  });
-
-  it("writes the size in binary steps, in the page's language", () => {
-    expect(formatFileSize(25 * MB, "tr")).toBe("25 MB");
-    expect(formatFileSize(1.5 * MB, "tr")).toBe("1,5 MB");
-    expect(formatFileSize(1.5 * MB, "en")).toBe("1.5 MB");
-    expect(formatFileSize(20 * 1024, "tr")).toBe("20 kB");
-    expect(formatFileSize(512, "tr")).toBe("512 bayt");
-    expect(formatFileSize(-1, "tr")).toBe("0 bayt");
-  });
-
-  it("offers the picker tedrisat's types and nothing it refuses", () => {
-    const accept = FILE_ACCEPT.split(",");
-    for (const type of [".pdf", ".png", ".jpg", ".webp", ".docx", ".xlsx"]) {
-      expect(accept).toContain(type);
-    }
-    for (const type of [".pptx", ".txt", "text/plain"]) {
-      expect(accept).toContain(type);
-    }
-    expect(FILE_ACCEPT).not.toMatch(/svg|html|zip|\.doc,|\.xls,|\.ppt,/);
+    expect(fileIcon(undefined)).toBe("fileDownload");
   });
 });
 

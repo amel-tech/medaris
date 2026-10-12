@@ -1,5 +1,6 @@
 "use client";
 
+import { FILE_ACCEPT, formatFileSize } from "@medaris/services/file-rules";
 import { toast } from "@medaris/ui/components/sonner";
 import { Alert } from "@medaris/ui/mds/alert";
 import { AlertDialog } from "@medaris/ui/mds/alert-dialog";
@@ -17,8 +18,6 @@ import {
   FILE_FIELD_ERRORS,
   fileKind,
   fileProblem,
-  formatFileSize,
-  RESOURCE_FILE_ACCEPT,
   type UploadErrorKey,
   uploadResourceFile,
 } from "../resource-files";
@@ -225,7 +224,7 @@ export function ResourceUploadDialog<R extends { name: string }>({
             <Input
               type="file"
               name="file"
-              accept={RESOURCE_FILE_ACCEPT}
+              accept={FILE_ACCEPT}
               disabled={busy}
               onChange={(event) => {
                 setFile(event.target.files?.[0] ?? null);

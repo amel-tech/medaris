@@ -1,5 +1,6 @@
 "use client";
 
+import { FILE_ACCEPT, formatFileSize } from "@medaris/services/file-rules";
 import { Alert } from "@medaris/ui/mds/alert";
 import { Button } from "@medaris/ui/mds/button";
 import { Field } from "@medaris/ui/mds/field";
@@ -9,13 +10,7 @@ import { useToaster } from "@medaris/ui/mds/toast";
 import { useTranslations } from "next-intl";
 import { type KeyboardEvent, useId, useState } from "react";
 import type { Messages } from "~/lib/i18n/messages";
-import {
-  FILE_ACCEPT,
-  type FileProblem,
-  fileErrorKey,
-  fileProblem,
-  fileSize,
-} from "../files";
+import { type FileProblem, fileErrorKey, fileProblem } from "../files";
 import { uploadFile } from "../upload";
 
 /** What an editor hands its "Dosya yükle" (MDRS-287). */
@@ -187,7 +182,7 @@ export function FileUpload<T>({
             <bdi>
               {t("Files.chosen", {
                 name: file.name,
-                size: fileSize(file.size, locale),
+                size: formatFileSize(file.size, locale),
               })}
             </bdi>
           </p>

@@ -1,3 +1,4 @@
+import { MAX_FILE_BYTES } from "@medaris/services/file-rules";
 import type { CourseDetailResponse } from "@medaris/services/tedrisat";
 import { describe, expect, it } from "vitest";
 import { curriculumPayload } from "~/features/courses/payload";
@@ -15,17 +16,16 @@ import {
   courseResourceUploadPath,
   fileKind,
   fileProblem,
-  formatFileSize,
   lessonResourceFilePath,
   lessonResourceUploadPath,
-  MAX_RESOURCE_FILE_BYTES,
   uploadErrorKey,
 } from "~/features/courses/resource-files";
 
 // MDRS-287: the pure half of the curriculum's resource files. A file row goes
 // back to tedrisat by its id alone (an address on it is RESOURCE_IS_FILE),
 // an upload's row and version join what the page holds as saved, and the
-// app's routes, chips, sizes and refusals are worded here.
+// app's routes, chips and refusals are worded here (the limit and how a size
+// reads are @medaris/services/file-rules, pinned by its own spec).
 
 const pdf = {
   name: "emsile.pdf",
@@ -289,18 +289,11 @@ describe("routes, chips, sizes and refusals", () => {
     expect(fileKind("application/octet-stream", "adsiz")).toBeNull();
   });
 
-  it("prints a size in 1024s, so a file at the limit reads 25 MB", () => {
-    const tr = (n: number) => formatFileSize(n, "tr").replace(/\s/g, " ");
-    expect(tr(MAX_RESOURCE_FILE_BYTES)).toBe("25 MB");
-    expect(tr(1_468_006)).toBe("1,4 MB");
-    expect(tr(2048)).toBe("2 kB");
-  });
-
   it("refuses no file, an empty one and one past 25 MB before sending", () => {
     expect(fileProblem(null)).toBe("required");
     expect(fileProblem({ size: 0 })).toBe("empty");
-    expect(fileProblem({ size: MAX_RESOURCE_FILE_BYTES + 1 })).toBe("tooLarge");
-    expect(fileProblem({ size: MAX_RESOURCE_FILE_BYTES })).toBeNull();
+    expect(fileProblem({ size: MAX_FILE_BYTES + 1 })).toBe("tooLarge");
+    expect(fileProblem({ size: MAX_FILE_BYTES })).toBeNull();
   });
 
   it("words tedrisat's refusals by code, else by status", () => {

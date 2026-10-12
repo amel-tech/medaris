@@ -19,8 +19,9 @@ libs/services/
 │   │   ├── api-factory.ts # Factory for creating authenticated clients
 │   │   └── index.ts       # Public exports
 │   ├── file-proxy/        # File uploads/downloads   -> @medaris/services/file-proxy
+│   ├── file-rules/        # File limits, types, size -> @medaris/services/file-rules
 │   └── utils/             # Error helpers            -> @medaris/services/utils
-├── test/                  # Vitest specs (file-proxy)
+├── test/                  # Vitest specs (file-proxy, file-rules)
 └── openapitools.json      # OpenAPI generator configuration
 ```
 
@@ -165,6 +166,15 @@ export async function POST(
 In the page, a download is a plain link (`<a href="/api/files/…">`), and an
 upload a `fetch` with a `FormData` body whose file field is `file`; on 401,
 pass the JSON to `handleUnauthenticated(body, { locale })`.
+
+What a page shows and checks about a file comes from
+`@medaris/services/file-rules`, which is client-safe (no `server-only`):
+`MAX_FILE_BYTES` (25 MB; the proxy re-exports the same number),
+`MAX_SUBMISSION_FILES`, `ALLOWED_FILE_TYPES` and the input's `FILE_ACCEPT`,
+`fileTypeChip(contentType)` (`PDF`, `PNG`, `JPEG`, `WEBP`, `DOCX`, `XLSX`,
+`PPTX`, `TXT`, or null) and `formatFileSize(bytes, locale)`, counted in steps
+of 1024 as the limit is, so a file at the limit reads "25 MB". The words
+around them (a chip's name, a refusal) stay each app's.
 
 **`proxy.ts` and upload size.** Next.js reads the whole body of every request
 its `proxy.ts` matches before the route handler runs, and cuts it off at

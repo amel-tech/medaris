@@ -1,4 +1,5 @@
 import { unauthenticated } from "@medaris/auth/server";
+import { MAX_FILE_BYTES } from "../file-rules/file-rules";
 
 /**
  * One proxy for files between the browser and tedrisat (MDRS-287, MDRS-290).
@@ -11,8 +12,11 @@ import { unauthenticated } from "@medaris/auth/server";
  * keep a hand-copied proxy that drifts from the others (auth audit).
  */
 
-/** tedrisat's limit for one file: `MAX_UPLOAD_BYTES` in its `storage/upload.ts`. */
-export const MAX_FILE_BYTES = 25 * 1024 * 1024;
+/**
+ * tedrisat's limit for one file, from `@medaris/services/file-rules`: the
+ * pages check the same number before they send.
+ */
+export { MAX_FILE_BYTES };
 
 /**
  * What a multipart body may carry besides the file (boundaries, part headers,

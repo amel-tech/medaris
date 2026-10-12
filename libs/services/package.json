@@ -20,6 +20,11 @@
       "types": "./src/file-proxy/index.ts",
       "import": "./src/file-proxy/index.ts",
       "require": "./src/file-proxy/index.ts"
+    },
+    "./file-rules": {
+      "types": "./src/file-rules/index.ts",
+      "import": "./src/file-rules/index.ts",
+      "require": "./src/file-rules/index.ts"
     }
   },
   "scripts": {

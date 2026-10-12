@@ -1,4 +1,5 @@
 import { isUnauthenticated, type Unauthenticated } from "@medaris/auth/client";
+import { fileTypeChip, MAX_FILE_BYTES } from "@medaris/services/file-rules";
 
 /**
  * Resource files on the curriculum (MDRS-287): the app's own routes a file
@@ -7,40 +8,11 @@ import { isUnauthenticated, type Unauthenticated } from "@medaris/auth/client";
  * holds no token, so it never talks to tedrisat: `app/api/files/…` adds the
  * token on the server and streams the body on (`@medaris/services/file-proxy`).
  * Nothing here is server-only, so the editors import it.
+ *
+ * The limit, the picker's types (`FILE_ACCEPT`), the type chips and how a
+ * size reads (`formatFileSize`) are `@medaris/services/file-rules`, shared
+ * with tedris, nazar and the file proxy.
  */
-
-/**
- * tedrisat's limit for one file, 25 MB (`MAX_FILE_BYTES` of
- * `@medaris/services/file-proxy`, which is server-only and cannot be imported
- * here). Checked before sending so a file that is too large is refused at
- * once rather than after it has gone up; the server still enforces it.
- */
-export const MAX_RESOURCE_FILE_BYTES = 25 * 1024 * 1024;
-
-/**
- * What the picker offers: tedrisat's allow-list (PDF, PNG, JPEG, WebP, Word,
- * Excel, PowerPoint, plain text) by extension and by type. A picker can still
- * be told to show every file; tedrisat reads the type from the bytes.
- */
-export const RESOURCE_FILE_ACCEPT = [
-  ".pdf",
-  ".png",
-  ".jpg",
-  ".jpeg",
-  ".webp",
-  ".docx",
-  ".xlsx",
-  ".pptx",
-  ".txt",
-  "application/pdf",
-  "image/png",
-  "image/jpeg",
-  "image/webp",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-  "text/plain",
-].join(",");
 
 const id = (value: string) => encodeURIComponent(value);
 
@@ -64,55 +36,15 @@ export const lessonResourceFilePath = (
   resourceId: string
 ): string => `/api/files/lessons/${id(lessonId)}/resources/${id(resourceId)}`;
 
-const KINDS: Readonly<Record<string, string>> = {
-  "application/pdf": "PDF",
-  "image/png": "PNG",
-  "image/jpeg": "JPEG",
-  "image/webp": "WebP",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-    "DOCX",
-  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "XLSX",
-  "application/vnd.openxmlformats-officedocument.presentationml.presentation":
-    "PPTX",
-  "text/plain": "TXT",
-};
-
 /**
  * The type chip of a file: from the type tedrisat read from its bytes, else
  * its name's extension; null when neither says (the chip then reads "Dosya").
  */
 export function fileKind(contentType: string, fileName: string): string | null {
-  const base = contentType.split(";")[0]?.trim().toLowerCase() ?? "";
-  const known = KINDS[base];
+  const known = fileTypeChip(contentType);
   if (known) return known;
   const extension = /\.([A-Za-z0-9]{1,8})$/.exec(fileName)?.[1];
   return extension ? extension.toUpperCase() : null;
-}
-
-const SIZE_UNITS = ["byte", "kilobyte", "megabyte"] as const;
-
-/**
- * A file's size in the page's language: "1,4 MB". Counted in 1024s, as the
- * 25 MB limit is, so a file at the limit reads "25 MB" and not "26,2 MB".
- */
-export function formatFileSize(bytes: number, locale: string): string {
-  let value = Math.max(0, bytes);
-  let unit = 0;
-  while (value >= 1024 && unit < SIZE_UNITS.length - 1) {
-    value /= 1024;
-    unit += 1;
-  }
-  const options: Intl.NumberFormatOptions = {
-    style: "unit",
-    unit: SIZE_UNITS[unit],
-    unitDisplay: "short",
-    maximumFractionDigits: unit < 2 ? 0 : 1,
-  };
-  try {
-    return new Intl.NumberFormat(locale, options).format(value);
-  } catch {
-    return new Intl.NumberFormat("tr-TR", options).format(value);
-  }
 }
 
 /** The `uploadErrors.*` key of a refused upload. */
@@ -142,7 +74,7 @@ export function fileProblem(
 ): UploadErrorKey | null {
   if (!file) return "required";
   if (file.size === 0) return "empty";
-  if (file.size > MAX_RESOURCE_FILE_BYTES) return "tooLarge";
+  if (file.size > MAX_FILE_BYTES) return "tooLarge";
   return null;
 }
 

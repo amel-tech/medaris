@@ -1,3 +1,9 @@
+import {
+  type FileTypeChip,
+  fileTypeChip,
+  MAX_FILE_BYTES,
+} from "@medaris/services/file-rules";
+
 /**
  * Files in Medaris storage as nazar shows and sends them (MDRS-287, MDRS-290):
  * the course's and a celse's resource files, and the homework talebe hand in.
@@ -6,40 +12,13 @@
  * (`@medaris/services/file-proxy`), and a download is a plain link to the same
  * routes. Pure on purpose, so the editors and the Ödevler page have nothing to
  * decide.
+ *
+ * The limit, the chooser's types (`FILE_ACCEPT`), the type of a file and how
+ * its size reads (`formatFileSize`, in steps of 1024 as the limit is) are
+ * `@medaris/services/file-rules`, shared with tedris, nizam and the file
+ * proxy. Recordings keep their own decimal `formatBytes`: their limit is a
+ * decimal 10 GB.
  */
-
-/**
- * The largest file tedrisat takes, 25 MB (`MAX_UPLOAD_BYTES` in its
- * `storage/upload.ts`, `MAX_FILE_BYTES` in the file proxy). Kept here because
- * the proxy's module is server-only; `test/files.spec.ts` pins the two equal.
- * A larger file is refused before it is sent; the server refuses it anyway.
- */
-export const MAX_FILE_BYTES = 25 * 1024 * 1024;
-
-/**
- * What the file chooser offers: the types tedrisat accepts (PDF, PNG, JPEG,
- * WebP, Word, Excel, PowerPoint and plain text), by extension and by type.
- * Only a hint to the browser: tedrisat reads the type from the file's bytes.
- */
-export const FILE_ACCEPT = [
-  ".pdf",
-  ".png",
-  ".jpg",
-  ".jpeg",
-  ".webp",
-  ".docx",
-  ".xlsx",
-  ".pptx",
-  ".txt",
-  "application/pdf",
-  "image/png",
-  "image/jpeg",
-  "image/webp",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-  "text/plain",
-].join(",");
 
 /** A stored file as a row shows it: tedrisat's `file` without its own path. */
 export interface StoredFile {
@@ -54,6 +33,7 @@ export const storedFileOf = (file: StoredFile): StoredFile => ({
   sizeBytes: file.sizeBytes,
 });
 
+/** The key of a file's chip under `Files.kinds`, worded per language. */
 export type FileKind =
   | "pdf"
   | "png"
@@ -65,48 +45,22 @@ export type FileKind =
   | "text"
   | "other";
 
-const KINDS: Readonly<Record<string, FileKind>> = {
-  "application/pdf": "pdf",
-  "image/png": "png",
-  "image/jpeg": "jpeg",
-  "image/webp": "webp",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-    "docx",
-  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xlsx",
-  "application/vnd.openxmlformats-officedocument.presentationml.presentation":
-    "pptx",
-  "text/plain": "text",
+const KINDS: Readonly<Record<FileTypeChip, FileKind>> = {
+  PDF: "pdf",
+  PNG: "png",
+  JPEG: "jpeg",
+  WEBP: "webp",
+  DOCX: "docx",
+  XLSX: "xlsx",
+  PPTX: "pptx",
+  TXT: "text",
 };
 
 /** The chip of a file's type, from the type tedrisat read from its bytes. */
-export const fileKind = (contentType: string): FileKind =>
-  KINDS[(contentType.split(";")[0] ?? "").trim().toLowerCase()] ?? "other";
-
-const UNITS = ["byte", "kilobyte", "megabyte"] as const;
-
-/**
- * A file's size in the page's language: "840 kB", "1,2 MB". Counted in steps
- * of 1024, as the 25 MB limit is, so a file at the limit reads "25 MB".
- */
-export function fileSize(bytes: number, locale: string): string {
-  let value = Math.max(0, bytes);
-  let unit = 0;
-  while (value >= 1024 && unit < UNITS.length - 1) {
-    value /= 1024;
-    unit += 1;
-  }
-  const options: Intl.NumberFormatOptions = {
-    style: "unit",
-    unit: UNITS[unit],
-    unitDisplay: "short",
-    maximumFractionDigits: unit < 2 ? 0 : 1,
-  };
-  try {
-    return new Intl.NumberFormat(locale, options).format(value);
-  } catch {
-    return new Intl.NumberFormat("tr-TR", options).format(value);
-  }
-}
+export const fileKind = (contentType: string): FileKind => {
+  const chip = fileTypeChip(contentType);
+  return chip ? KINDS[chip] : "other";
+};
 
 // ---- this app's routes ------------------------------------------------------------
 

@@ -1,3 +1,4 @@
+import { type FileTypeChip, fileTypeChip } from "@medaris/services/file-rules";
 import type {
   LessonSubmissionResponse,
   ResourceFileResponse,
@@ -13,108 +14,31 @@ import type { IconName } from "@medaris/ui/mds/icon";
  */
 
 /**
- * tedrisat's limit for one file, 25 MB (`MAX_UPLOAD_BYTES`; the proxy's
- * `MAX_FILE_BYTES`, which a client component cannot import: it is
- * server-only). The answer to `GET /lessons/:id/submission` carries the
- * limits too, and the card takes those when it has them.
+ * The limits, the picker's types, the type chips and how a size reads are
+ * `@medaris/services/file-rules`, shared with nazar, nizam and the file proxy.
+ * The answer to `GET /lessons/:id/submission` carries the limits too, and the
+ * card takes those when it has them.
  */
-export const MAX_FILE_BYTES = 25 * 1024 * 1024;
-
-/** tedrisat's limit of files on one homework (409 SUBMISSION_FILE_LIMIT). */
-export const MAX_SUBMISSION_FILES = 5;
 
 /** tedrisat's limit on a homework's note, after trimming. */
 export const SUBMISSION_NOTE_MAX = 4000;
 
-/**
- * What the file picker offers: tedrisat's allow-list (PDF, PNG, JPEG, WebP,
- * Word, Excel, PowerPoint, plain text), by extension and by type. Only a hint
- * to the browser: tedrisat reads the type from the file's bytes and refuses
- * anything else with 415 FILE_TYPE_NOT_ALLOWED.
- */
-export const FILE_ACCEPT = [
-  ".pdf",
-  ".png",
-  ".jpg",
-  ".jpeg",
-  ".webp",
-  ".docx",
-  ".xlsx",
-  ".pptx",
-  ".txt",
-  "application/pdf",
-  "image/png",
-  "image/jpeg",
-  "image/webp",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-  "text/plain",
-].join(",");
-
-/** The chip and the glyph of each type tedrisat stores, by its `Content-Type`. */
-const FILE_TYPES: Record<string, { label: string; icon: IconName }> = {
-  "application/pdf": { label: "PDF", icon: "pdf" },
-  "image/png": { label: "PNG", icon: "fileDownload" },
-  "image/jpeg": { label: "JPEG", icon: "fileDownload" },
-  "image/webp": { label: "WEBP", icon: "fileDownload" },
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": {
-    label: "DOCX",
-    icon: "doc",
-  },
-  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
-    label: "XLSX",
-    icon: "fileXls",
-  },
-  "application/vnd.openxmlformats-officedocument.presentationml.presentation": {
-    label: "PPTX",
-    icon: "doc",
-  },
-  "text/plain": { label: "TXT", icon: "doc" },
+/** The glyph of each type chip; a type tedrisat does not store has none. */
+const FILE_ICONS: Record<FileTypeChip, IconName> = {
+  PDF: "pdf",
+  PNG: "fileDownload",
+  JPEG: "fileDownload",
+  WEBP: "fileDownload",
+  DOCX: "doc",
+  XLSX: "fileXls",
+  PPTX: "doc",
+  TXT: "doc",
 };
 
-/** The type without its parameters: `text/plain; charset=utf-8` is `text/plain`. */
-const bareType = (contentType: string | null | undefined): string =>
-  (contentType ?? "").split(";")[0].trim().toLowerCase();
-
-/**
- * The chip a file carries, its extension as people know it (`PDF`, `DOCX`):
- * the same in every language. Null for a type tedrisat does not store.
- */
-export const fileTypeLabel = (
-  contentType: string | null | undefined
-): string | null => FILE_TYPES[bareType(contentType)]?.label ?? null;
-
 /** The glyph of a file's row: a PDF, a sheet, a picture or a document. */
-export const fileIcon = (contentType: string | null | undefined): IconName =>
-  FILE_TYPES[bareType(contentType)]?.icon ?? "fileDownload";
-
-const SIZE_UNITS = ["byte", "kilobyte", "megabyte"] as const;
-
-/**
- * A file's size in the page's language, in binary steps as the limit is
- * counted (25 MB is 25 × 1024 × 1024 bytes, so a file at the limit reads
- * "25 MB" and not "26,2 MB"): whole bytes and kilobytes, megabytes to one
- * decimal.
- */
-export const formatFileSize = (bytes: number, locale: string): string => {
-  let value = Math.max(0, Number.isFinite(bytes) ? bytes : 0);
-  let unit = 0;
-  while (value >= 1024 && unit < SIZE_UNITS.length - 1) {
-    value /= 1024;
-    unit += 1;
-  }
-  const options: Intl.NumberFormatOptions = {
-    style: "unit",
-    unit: SIZE_UNITS[unit],
-    unitDisplay: "short",
-    maximumFractionDigits: unit < 2 ? 0 : 1,
-  };
-  try {
-    return new Intl.NumberFormat(locale, options).format(value);
-  } catch {
-    return new Intl.NumberFormat("tr-TR", options).format(value);
-  }
+export const fileIcon = (contentType: string | null | undefined): IconName => {
+  const chip = fileTypeChip(contentType);
+  return chip ? FILE_ICONS[chip] : "fileDownload";
 };
 
 const UUID =

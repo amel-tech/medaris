@@ -1,7 +1,8 @@
+import { formatFileSize } from "@medaris/services/file-rules";
 import { Badge } from "@medaris/ui/mds/badge";
 import { Icon } from "@medaris/ui/mds/icon";
 import { useTranslations } from "next-intl";
-import { fileKind, fileSize, type StoredFile } from "../files";
+import { fileKind, type StoredFile } from "../files";
 
 /**
  * A stored file as a row shows it (MDRS-287, MDRS-290): its name as a plain
@@ -40,7 +41,9 @@ export function FileLink({
         <bdi className="min-inline-0 break-words">{file.name}</bdi>
       )}
       <Badge variant="outline">{t(`Files.kinds.${kind}`)}</Badge>
-      <span className="mds-caption">{fileSize(file.sizeBytes, locale)}</span>
+      <span className="mds-caption">
+        {formatFileSize(file.sizeBytes, locale)}
+      </span>
     </span>
   );
 }

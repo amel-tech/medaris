@@ -1,3 +1,4 @@
+import { fileTypeChip, formatFileSize } from "@medaris/services/file-rules";
 import type {
   ResourceFileResponse,
   ResourceResponse,
@@ -7,12 +8,7 @@ import { Card } from "@medaris/ui/mds/card";
 import { Icon, type IconName } from "@medaris/ui/mds/icon";
 import { PlatformChip } from "@medaris/ui/mds/platform-chip";
 import { resourceHref } from "@medaris/utils";
-import {
-  fileIcon,
-  fileTypeLabel,
-  formatFileSize,
-  resourceFileHref,
-} from "../file-model";
+import { fileIcon, resourceFileHref } from "../file-model";
 import { resourceProviderOf } from "../resource-provider";
 
 const ICONS: Record<string, IconName> = {
@@ -89,7 +85,7 @@ export const ResourceList = ({
       const file = resource.file ?? null;
       if (file) {
         const download = resourceFileHref(file);
-        const type = fileTypeLabel(file.contentType);
+        const type = fileTypeChip(file.contentType);
         return (
           <li
             key={resource.id}

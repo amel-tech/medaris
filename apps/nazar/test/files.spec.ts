@@ -1,14 +1,11 @@
 import { resources } from "@medaris/i18n";
-import { MAX_FILE_BYTES as PROXY_MAX_FILE_BYTES } from "@medaris/services/file-proxy";
+import { MAX_FILE_BYTES } from "@medaris/services/file-rules";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  FILE_ACCEPT,
   fileErrorKey,
   fileKind,
   fileProblem,
   fileRoutes,
-  fileSize,
-  MAX_FILE_BYTES,
 } from "~/features/files/files";
 
 /**
@@ -33,37 +30,14 @@ const dig = (node: unknown, path: string) =>
       node
     );
 
+// The limit, the chooser's types and how a size reads are
+// @medaris/services/file-rules, pinned by its own spec.
 describe("the limits checked before a file is sent", () => {
-  it("are tedrisat's 25 MB, the same number the file proxy refuses at", () => {
-    expect(MAX_FILE_BYTES).toBe(25 * 1024 * 1024);
-    expect(MAX_FILE_BYTES).toBe(PROXY_MAX_FILE_BYTES);
-  });
-
   it("refuse an empty file and one over 25 MB, and take one at the limit", () => {
     expect(fileProblem({ size: 0 })).toBe("empty");
     expect(fileProblem({ size: MAX_FILE_BYTES + 1 })).toBe("tooLarge");
     expect(fileProblem({ size: MAX_FILE_BYTES })).toBeNull();
     expect(fileProblem({ size: 1 })).toBeNull();
-  });
-
-  it("offer the chooser the accepted types and nothing that runs", () => {
-    for (const type of [
-      ".pdf",
-      ".png",
-      ".jpg",
-      ".webp",
-      ".docx",
-      ".xlsx",
-      ".pptx",
-      ".txt",
-      "application/pdf",
-      "text/plain",
-    ]) {
-      expect(FILE_ACCEPT.split(","), type).toContain(type);
-    }
-    for (const type of [".html", ".svg", ".zip", ".exe", "text/html"]) {
-      expect(FILE_ACCEPT.split(","), type).not.toContain(type);
-    }
   });
 });
 
@@ -78,13 +52,6 @@ describe("a stored file", () => {
       )
     ).toBe("docx");
     expect(fileKind("application/octet-stream")).toBe("other");
-  });
-
-  it("has its size in steps of 1024, so a file at the limit reads 25 MB", () => {
-    expect(fileSize(MAX_FILE_BYTES, "tr")).toBe("25 MB");
-    expect(fileSize(1_258_291, "tr")).toBe("1,2 MB");
-    expect(fileSize(860_160, "en")).toBe("840 kB");
-    expect(fileSize(512, "en")).toBe("512 byte");
   });
 
   it("has a chip and every message in all three languages", () => {

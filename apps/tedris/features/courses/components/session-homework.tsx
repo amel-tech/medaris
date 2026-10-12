@@ -1,5 +1,12 @@
 "use client";
 
+import {
+  FILE_ACCEPT,
+  fileTypeChip,
+  formatFileSize,
+  MAX_FILE_BYTES,
+  MAX_SUBMISSION_FILES,
+} from "@medaris/services/file-rules";
 import type {
   LessonSubmissionResponse,
   SubmissionFileResponse,
@@ -20,14 +27,9 @@ import {
   saveMySubmissionNote,
 } from "../actions/submissions";
 import {
-  FILE_ACCEPT,
   type FileErrorKey,
   fileErrorKey,
   fileIcon,
-  fileTypeLabel,
-  formatFileSize,
-  MAX_FILE_BYTES,
-  MAX_SUBMISSION_FILES,
   parseSubmission,
   SUBMISSION_NOTE_MAX,
   submissionFileHref,
@@ -375,7 +377,7 @@ const FileRow = ({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const href = submissionFileHref(lessonId, file.id);
-  const type = fileTypeLabel(file.contentType);
+  const type = fileTypeChip(file.contentType);
 
   const remove = async () => {
     setBusy(true);
