@@ -17,4 +17,4 @@ file="${1:?usage: compose.sh <compose file in deploy/signoz> <docker compose arg
 shift
 
 sed -E '/^[[:space:]]+(exclude_from_hc|is_directory):[[:space:]]*true[[:space:]]*$/d' "$dir/$file" |
-  docker compose --project-directory "$dir" -p "${COMPOSE_PROJECT_NAME:-signoz}" -f - "$@"
+  docker compose --project-directory "$dir" -p "${COMPOSE_PROJECT_NAME:-signoz}" -f - -f "$dir/local/ui-port.yaml" "$@"

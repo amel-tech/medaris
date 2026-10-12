@@ -162,8 +162,8 @@ services:
       - SIGNOZ_TOKENIZER_JWT_SECRET=${SIGNOZ_JWT_SECRET:?set SIGNOZ_JWT_SECRET in Coolify}
       - SIGNOZ_TELEMETRYSTORE_CLICKHOUSE_DSN=tcp://clickhouse:9000
       - SIGNOZ_SQLSTORE_SQLITE_PATH=/var/lib/signoz/signoz.db
-    ports:
-      - "8081:8080"
+    # No published port: Coolify's proxy reaches the UI on container port
+    # 8080 over the stack's network, behind the domain's TLS.
     volumes:
       - sqlite:/var/lib/signoz/
     healthcheck:

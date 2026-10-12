@@ -83,7 +83,7 @@ what this directory carries forward:
 | YAML anchors and `!!merge <<:` expanded | Coolify's parser does not expand merge keys. | Kept: no anchors anywhere. |
 | Bind mounts in long syntax, `is_directory: true` on directories | Coolify creates a missing bind source and, when it cannot tell, makes it a directory. | Kept for `legacy/dashboards` (steps 1–2, rollback). The `user_scripts` bind directory became a named volume, as upstream has it now, so no other directory is bound. |
 | `exclude_from_hc: true` on one-shot services | An exited one-shot container would otherwise mark the application unhealthy. | Kept on `init-clickhouse` and the migrator(s). |
-| SigNoz published on host port 8081, not 8080 | Coolify's proxy holds host port 8080. | Kept. |
+| SigNoz published on host port 8081, not 8080 | Coolify's proxy holds host port 8080. | Dropped: no file publishes the UI. Coolify's proxy reaches container port 8080 over the stack's network, and a published port served the UI and its sign-in over plain HTTP on mdrs3's public address (answering on 2026-10-12). `local/ui-port.yaml` publishes it for local runs only. |
 | `signoz-net` network made external, then reverted | — | Nothing to carry. |
 
 Coolify deletes `exclude_from_hc` and `is_directory` before it runs Docker
@@ -146,7 +146,7 @@ unedited.
   by service name; `config/` is `pours/` with exactly those three host names
   replaced (`sed` below);
 - volume keys `clickhouse`, `sqlite`, `zookeeper-1` (see above);
-- Coolify adaptations, host port 8081, resource limits, ZooKeeper heap;
+- Coolify adaptations, resource limits, ZooKeeper heap;
 - the two global profiler settings above (in the casting, so also in `pours/`);
 - `LOW_CARDINAL_EXCEPTION_GROUPING=false` and `OTEL_RESOURCE_ATTRIBUTES` on the
   collector, `SIGNOZ_ALERTMANAGER_PROVIDER=signoz` on signoz, as the fork had;
@@ -258,6 +258,14 @@ differed only in not yet having the profiler override.
 Not proven locally: anything Coolify does (source switch, volume names,
 domains, Traefik and TLS in front of 8080 and 4317), the duration of the
 migrations on production's data, and resource use on mdrs3.
+
+The OTLP ports 4317 and 4318 stay published, as the fork had them. On
+2026-10-12, `https://otlp.medaris.net:4317` (the endpoint in the root
+`.env.example`) reached that published plain-gRPC port, where a TLS handshake
+fails (`wrong version number`), while `https://otlp.medaris.net/v1/traces`
+through Coolify's proxy on 443 answered 200. Which endpoint the apps use in
+Coolify, and whether their telemetry arrives, was not checked; until it is,
+the ports stay.
 
 ## Moving the Coolify application
 

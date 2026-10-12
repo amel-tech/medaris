@@ -183,8 +183,8 @@ services:
       - TELEMETRY_ENABLED=true
       - DEPLOYMENT_TYPE=docker-standalone-amd
       - DOT_METRICS_ENABLED=true
-    ports:
-      - "8081:8080"
+    # No published port: Coolify's proxy reaches the UI on container port
+    # 8080 over the stack's network, behind the domain's TLS.
     volumes:
       - type: bind
         source: ./legacy/signoz/prometheus.yml
