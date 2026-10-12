@@ -9,6 +9,7 @@ import {
   FlashcardlabelApi,
   KoskApplicationsApi,
   KosksApi,
+  LessonAssignmentsApi,
   LessonsApi,
   MadrasahsApi,
   MeApi,
@@ -44,6 +45,7 @@ export type {
   CourseQuestionResponse,
   CourseResourceFileUploadResponse,
   CourseSubmissionResponse,
+  CourseSubmissionSessionResponse,
   CourseSubmissionsResponse,
   CourseSummaryResponse,
   CreateCourseDto,
@@ -100,6 +102,8 @@ export type {
   KoskApplicationResponse,
   KoskResponse,
   LabelStatsResponse,
+  LessonAssignmentFileResponse,
+  LessonAssignmentResponse,
   LessonMutationResponse,
   LessonNoteResponse,
   LessonQuestionResponse,
@@ -136,6 +140,8 @@ export type {
   MyPermissionsResponse,
   MyPublicProfileResponse,
   MyRolesResponse,
+  MySubmissionSummaryResponse,
+  MySubmissionsResponse,
   NazimGroupResponse,
   NazimPermissionResponse,
   NazimPersonResponse,
@@ -162,6 +168,7 @@ export type {
   ResourceFileResponse,
   ResourceResponse,
   RosterEnrollmentResponse,
+  SaveLessonAssignmentDto,
   SaveSubmissionNoteDto,
   ScheduleSessionResponse,
   SetEnrollmentStatusDto,
@@ -269,6 +276,9 @@ export function createTedrisatAPIs(config: TedrisatAPIConfig) {
     // A talebe's homework on a celse, and the course staff's read of it
     // under `submission.read` (MDRS-290).
     submissions: new SubmissionsApi(configuration),
+    // The homework the course team sets on a celse, apart from its
+    // resources: its description and its own files (`session.manage`).
+    lessonAssignments: new LessonAssignmentsApi(configuration),
     // The two label controllers MDRS-58 published for the first time. Generated
     // classes that only `./generated/src` exported were reachable by no app —
     // this factory is what `@medaris/services/tedrisat` hands out.

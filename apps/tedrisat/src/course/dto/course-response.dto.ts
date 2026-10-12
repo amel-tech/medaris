@@ -4,6 +4,7 @@ import { CourseLevel } from "../domain/course-level.enum";
 import { CourseStatus } from "../domain/course-status.enum";
 import { EnrollmentStatus } from "../domain/enrollment-status.enum";
 import { LessonType } from "../domain/lesson-type.enum";
+import { LessonAssignmentResponse } from "./lesson-assignment.dto";
 
 export class AgendaStepResponse {
   @ApiProperty({ example: "21:00" }) time!: string;
@@ -133,6 +134,13 @@ export class LessonResponse {
     description: `When talebe may watch the session's recording (MDRS-288), set by the course team with \`PUT /lessons/:id/recording-availability\` or with the recording; null opens it as soon as it is READY. Never a link: the recording reads hold the link back until then. ${CONTENT_FIELD}`,
   })
   recordingAvailableAt?: Date | null;
+  @ApiPropertyOptional({
+    type: () => LessonAssignmentResponse,
+    nullable: true,
+    description:
+      "The homework the course team set on the session, apart from its `resources`: a description and its own files; null when the session has none. Course content, whether there is any included: absent unless the caller holds `view_details` on the course (MDRS-103), a sample session's included. Carried by the course read, never by a session write's answer.",
+  })
+  assignment?: LessonAssignmentResponse | null;
 }
 
 /** A lesson written through a session-level endpoint (MDRS-95). */

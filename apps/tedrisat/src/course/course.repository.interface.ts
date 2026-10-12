@@ -5,6 +5,7 @@ import type { IPurgeCounts } from "./course-purge";
 import { CourseLevel } from "./domain/course-level.enum";
 import { CourseStatus } from "./domain/course-status.enum";
 import { EnrollmentStatus } from "./domain/enrollment-status.enum";
+import type { ILessonAssignment } from "./domain/lesson-assignment";
 import { LessonType } from "./domain/lesson-type.enum";
 
 /** One step of a live lesson's müzakere akışı (agenda). */
@@ -86,6 +87,12 @@ export interface ILesson {
    * the talebe's page read it; the recording reads enforce it.
    */
   recordingAvailableAt: Date | null;
+  /**
+   * The homework the müderris set on the session, or null when it has none.
+   * Course content, whether there is any included. Read with the course
+   * detail only; a session write's answer leaves it out.
+   */
+  assignment?: ILessonAssignment | null;
 }
 
 export interface IWeek {
@@ -181,7 +188,8 @@ export type LessonContentField =
   | "inPerson"
   | "inPersonOverride"
   | "hasLiveStream"
-  | "recordingAvailableAt";
+  | "recordingAvailableAt"
+  | "assignment";
 
 /** A session's resource as a response carries it: `url` and `file` are content (MDRS-286, MDRS-287). */
 export type ILessonResourceView = Omit<ILessonResource, "url" | "file"> &

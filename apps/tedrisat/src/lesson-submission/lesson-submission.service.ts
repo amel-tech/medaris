@@ -12,6 +12,7 @@ import { UploadStore } from "../storage/upload-store";
 import type {
   CourseSubmissionsResponse,
   LessonSubmissionResponse,
+  MySubmissionsResponse,
   OwnSubmissionResponse,
 } from "./dto/lesson-submission.dto";
 import { MAX_SUBMISSION_FILES } from "./dto/lesson-submission.dto";
@@ -165,6 +166,23 @@ export class LessonSubmissionService {
     );
   }
 
+  /**
+   * The celses of the course the caller handed homework in on, for the
+   * course page's marks: "Ödev" on a celse with homework, highlighted where
+   * nothing is handed in yet. Only the caller's own, on the terms of their own
+   * homework's read (`own`).
+   */
+  async listOwnForCourse(
+    user: AuthenticatedUser,
+    courseId: string
+  ): Promise<MySubmissionsResponse> {
+    await this.courses.getDetail(courseId, user, { read: true });
+    if (!(await this.courses.mayReachOwnWriting(user, courseId))) {
+      throw new SubmissionForbiddenError();
+    }
+    return { items: await this.repo.listOwnHandedIn(courseId, user.sub) };
+  }
+
   async listForCourse(
     user: AuthenticatedUser,
     courseId: string,
@@ -172,7 +190,10 @@ export class LessonSubmissionService {
   ): Promise<CourseSubmissionsResponse> {
     // A hidden course or a draft is not found here as on its page.
     await this.courses.getDetail(courseId, user, { read: true });
-    const items = await this.repo.listForCourse(courseId, lessonId);
+    const [items, handIns] = await Promise.all([
+      this.repo.listForCourse(courseId, lessonId),
+      this.repo.handInsForCourse(courseId, lessonId),
+    ]);
     return {
       items: items.map((item) => ({
         ...present(item, (f) => staffFileUrl(courseId, f.id)),
@@ -180,6 +201,8 @@ export class LessonSubmissionService {
         weekNumber: item.weekNumber,
         talebe: item.talebe,
       })),
+      sessions: handIns.sessions,
+      talebeCount: handIns.talebeCount,
     };
   }
 

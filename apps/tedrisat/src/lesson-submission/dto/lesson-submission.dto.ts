@@ -95,6 +95,21 @@ export class CourseSubmissionResponse extends LessonSubmissionResponse {
   talebe!: SubmissionTalebeResponse;
 }
 
+/** Where a session of the course stands on homework, for its staff. */
+export class CourseSubmissionSessionResponse {
+  @ApiProperty({ format: "uuid" }) lessonId!: string;
+  @ApiProperty({
+    description:
+      "The course team set homework on the session (`PUT /lessons/:id/assignment`).",
+  })
+  hasAssignment!: boolean;
+  @ApiProperty({
+    description:
+      'How many of the course\'s enrolled talebe (ENROLLED or COMPLETED) handed homework in on the session: a submission with a note or at least one file. The "N" of "N / M teslim", against `talebeCount`.',
+  })
+  handedInCount!: number;
+}
+
 export class CourseSubmissionsResponse {
   @ApiProperty({
     type: [CourseSubmissionResponse],
@@ -102,4 +117,34 @@ export class CourseSubmissionsResponse {
       "By programme order (week, then session), the latest change first within a session.",
   })
   items!: CourseSubmissionResponse[];
+  @ApiProperty({
+    type: [CourseSubmissionSessionResponse],
+    description:
+      "Every live session of the course (the one `lessonId` names, when it is given), in programme order, with whether it has homework and how many hand-ins it has.",
+  })
+  sessions!: CourseSubmissionSessionResponse[];
+  @ApiProperty({
+    description:
+      'The course\'s enrolled talebe (ENROLLED or COMPLETED), who may hand homework in: the "M" of "N / M teslim".',
+  })
+  talebeCount!: number;
+}
+
+/** A session the caller handed homework in on. */
+export class MySubmissionSummaryResponse {
+  @ApiProperty({ format: "uuid" }) lessonId!: string;
+  @ApiProperty({
+    type: Date,
+    description: "When the caller last changed it.",
+  })
+  updatedAt!: Date;
+}
+
+export class MySubmissionsResponse {
+  @ApiProperty({
+    type: [MySubmissionSummaryResponse],
+    description:
+      "The course's live sessions the caller handed homework in on: a note or at least one file. A submission emptied since is not one.",
+  })
+  items!: MySubmissionSummaryResponse[];
 }

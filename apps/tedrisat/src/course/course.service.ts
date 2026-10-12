@@ -516,6 +516,35 @@ export class CourseService {
   }
 
   /**
+   * The course of a live celse the caller may write to (MDRS-287, and the
+   * celse's homework): a hidden celse, or one of a course they may not see or
+   * write to (a müderris does not write to a course the köşk hid), is not
+   * found, before anything is stored. The write checks the celse again under
+   * its own lock.
+   */
+  async findWritableLessonCourse(
+    lessonId: string,
+    user: AuthenticatedUser
+  ): Promise<string> {
+    const courseId = await this.courseRepo.findLessonCourseId(lessonId);
+    if (!courseId) throw new LessonNotFoundError(lessonId);
+    let live = false;
+    try {
+      const detail = await this.getDetail(courseId, user);
+      live = detail.weeks.some((week) =>
+        week.lessons.some((lesson) => lesson.id === lessonId)
+      );
+    } catch (error) {
+      if (error instanceof CourseNotFoundError) {
+        throw new LessonNotFoundError(lessonId);
+      }
+      throw error;
+    }
+    if (!live) throw new LessonNotFoundError(lessonId);
+    return courseId;
+  }
+
+  /**
    * Whether the person may write on the course as a talebe (a note, a
    * question; MDRS-150): an ENROLLED or COMPLETED enrollment that no ban bars,
    * and the course's content open to them. The enrollment is what the engine

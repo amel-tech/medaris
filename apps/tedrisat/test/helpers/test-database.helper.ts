@@ -53,6 +53,8 @@ export const COURSE_TREE_TABLES = [
   "lesson_questions",
   "submission_files",
   "lesson_submissions",
+  "lesson_assignment_files",
+  "lesson_assignments",
   "lesson_resources",
   "course_muderris",
   "lessons",

@@ -10,6 +10,7 @@ export * from './FlashcardDecksApi';
 export * from './FlashcardlabelApi';
 export * from './KoskApplicationsApi';
 export * from './KosksApi';
+export * from './LessonAssignmentsApi';
 export * from './LessonsApi';
 export * from './MadrasahsApi';
 export * from './MeApi';

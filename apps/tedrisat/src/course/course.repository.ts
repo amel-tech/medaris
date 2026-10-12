@@ -110,6 +110,7 @@ import { LessonReplacementTakenError } from "./errors/lesson-replacement-taken.e
 import { ResourceIsFileError } from "./errors/resource-is-file.error";
 import { ResourceUrlRequiredError } from "./errors/resource-url-required.error";
 import { WeekNotFoundError } from "./errors/week-not-found.error";
+import { findLessonAssignments } from "./lesson-assignment.repository";
 
 /**
  * The deprecated free-text `duration`, kept in step with `durationMinutes`
@@ -304,7 +305,15 @@ export class CourseRepository implements ICourseRepository {
 
     if (!row) return null;
     const { enrollments: enr, weeks, ...course } = row;
-    const { madrasahName, imamKeys } = await this.madrasahsAndImamsOf([row]);
+    const [{ madrasahName, imamKeys }, assignments] = await Promise.all([
+      this.madrasahsAndImamsOf([row]),
+      // Each session's homework, apart from its resources; the content rule
+      // decides who is sent it.
+      findLessonAssignments(
+        this.db,
+        weeks.flatMap((week) => week.lessons.map((lesson) => lesson.id))
+      ),
+    ]);
     return {
       ...course,
       // The stream link is read only to say whether there is one (MDRS-283):
@@ -319,6 +328,7 @@ export class CourseRepository implements ICourseRepository {
               row.inPerson
             ),
             resources: resources.map(lessonResourceOf),
+            assignment: assignments.get(lesson.id) ?? null,
           })
         ),
       })),

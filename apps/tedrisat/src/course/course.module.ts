@@ -19,6 +19,9 @@ import { CourseNotificationRepository } from "./course-notification.repository";
 import { CourseNotifier } from "./course-notifier";
 import { CourseStatsRepository } from "./course-stats.repository";
 import { LessonController } from "./lesson.controller";
+import { LessonAssignmentController } from "./lesson-assignment.controller";
+import { LessonAssignmentRepository } from "./lesson-assignment.repository";
+import { LessonAssignmentService } from "./lesson-assignment.service";
 import { LiveStreamController } from "./live-stream.controller";
 import { LiveStreamService } from "./live-stream.service";
 import { CourseNazirController } from "./nazir/course-nazir.controller";
@@ -55,6 +58,7 @@ import { ResourceFileService } from "./resource-file.service";
     RecordingController,
     RecordingUploadController,
     ResourceFileController,
+    LessonAssignmentController,
     CourseNazirController,
   ],
   // The context loader is read straight from the database, as `BanModule`
@@ -68,6 +72,8 @@ import { ResourceFileService } from "./resource-file.service";
     RecordingService,
     RecordingUploadService,
     ResourceFileService,
+    LessonAssignmentService,
+    LessonAssignmentRepository,
     RecordingEncodingPoller,
     RecordingReleasePoller,
     CourseStatsRepository,

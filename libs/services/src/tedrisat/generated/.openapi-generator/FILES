@@ -11,6 +11,7 @@ src/apis/FlashcardDecksApi.ts
 src/apis/FlashcardlabelApi.ts
 src/apis/KoskApplicationsApi.ts
 src/apis/KosksApi.ts
+src/apis/LessonAssignmentsApi.ts
 src/apis/LessonsApi.ts
 src/apis/MadrasahsApi.ts
 src/apis/MeApi.ts
@@ -80,6 +81,7 @@ src/models/CourseRequestResponse.ts
 src/models/CourseResourceFileUploadResponse.ts
 src/models/CourseStatsResponse.ts
 src/models/CourseSubmissionResponse.ts
+src/models/CourseSubmissionSessionResponse.ts
 src/models/CourseSubmissionsResponse.ts
 src/models/CourseSummaryResponse.ts
 src/models/CreateBanDto.ts
@@ -222,6 +224,8 @@ src/models/KoskResponse.ts
 src/models/KoskStatus.ts
 src/models/KoskStatusFilter.ts
 src/models/LabelStatsResponse.ts
+src/models/LessonAssignmentFileResponse.ts
+src/models/LessonAssignmentResponse.ts
 src/models/LessonMutationResponse.ts
 src/models/LessonNoteResponse.ts
 src/models/LessonQuestionResponse.ts
@@ -288,6 +292,8 @@ src/models/MyGrantsResponse.ts
 src/models/MyPermissionsResponse.ts
 src/models/MyPublicProfileResponse.ts
 src/models/MyRolesResponse.ts
+src/models/MySubmissionSummaryResponse.ts
+src/models/MySubmissionsResponse.ts
 src/models/NazimGroupResponse.ts
 src/models/NazimPermissionResponse.ts
 src/models/NazimPersonResponse.ts
@@ -352,6 +358,7 @@ src/models/ReviewRating.ts
 src/models/RoleSummary.ts
 src/models/RosterEnrollmentResponse.ts
 src/models/RowError.ts
+src/models/SaveLessonAssignmentDto.ts
 src/models/SaveSubmissionNoteDto.ts
 src/models/ScheduleSessionResponse.ts
 src/models/ScopeRefResponse.ts

@@ -240,6 +240,28 @@ describe("buildSessionView (MDRS-158)", () => {
     expect(listed).not.toHaveProperty("url");
   });
 
+  it("carries the session's homework for a content reader and names none to anyone else", () => {
+    const assignment = {
+      id: "a1",
+      lessonId: "now",
+      description: "Çekimleri yazın.",
+      files: [],
+      createdAt: NOW,
+      updatedAt: NOW,
+    };
+    const open = course(week(5, lesson("now", { assignment })));
+    expect(buildSessionView(open, "now", NOW)?.assignment).toEqual(assignment);
+    const none = course(week(5, lesson("now", { assignment: null })));
+    expect(buildSessionView(none, "now", NOW)?.assignment).toBeNull();
+    const locked = {
+      ...course(week(5, lesson("now"))),
+      contentLocked: true,
+    } as ICourseDetailView;
+    expect(buildSessionView(locked, "now", NOW)).not.toHaveProperty(
+      "assignment"
+    );
+  });
+
   it("carries the session's own in-person mark for a content reader", () => {
     const own = {
       ...course(week(1, lesson("own", { inPerson: false }))),

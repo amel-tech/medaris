@@ -13,6 +13,13 @@
  */
 
 import { mapValues } from '../runtime';
+import type { CourseSubmissionSessionResponse } from './CourseSubmissionSessionResponse';
+import {
+    CourseSubmissionSessionResponseFromJSON,
+    CourseSubmissionSessionResponseFromJSONTyped,
+    CourseSubmissionSessionResponseToJSON,
+    CourseSubmissionSessionResponseToJSONTyped,
+} from './CourseSubmissionSessionResponse';
 import type { CourseSubmissionResponse } from './CourseSubmissionResponse';
 import {
     CourseSubmissionResponseFromJSON,
@@ -33,6 +40,18 @@ export interface CourseSubmissionsResponse {
      * @memberof CourseSubmissionsResponse
      */
     items: Array<CourseSubmissionResponse>;
+    /**
+     * Every live session of the course (the one `lessonId` names, when it is given), in programme order, with whether it has homework and how many hand-ins it has.
+     * @type {Array<CourseSubmissionSessionResponse>}
+     * @memberof CourseSubmissionsResponse
+     */
+    sessions: Array<CourseSubmissionSessionResponse>;
+    /**
+     * The course's enrolled talebe (ENROLLED or COMPLETED), who may hand homework in: the "M" of "N / M teslim".
+     * @type {number}
+     * @memberof CourseSubmissionsResponse
+     */
+    talebeCount: number;
 }
 
 /**
@@ -40,6 +59,8 @@ export interface CourseSubmissionsResponse {
  */
 export function instanceOfCourseSubmissionsResponse(value: object): value is CourseSubmissionsResponse {
     if (!('items' in value) || value['items'] === undefined) return false;
+    if (!('sessions' in value) || value['sessions'] === undefined) return false;
+    if (!('talebeCount' in value) || value['talebeCount'] === undefined) return false;
     return true;
 }
 
@@ -54,6 +75,8 @@ export function CourseSubmissionsResponseFromJSONTyped(json: any, ignoreDiscrimi
     return {
         
         'items': ((json['items'] as Array<any>).map(CourseSubmissionResponseFromJSON)),
+        'sessions': ((json['sessions'] as Array<any>).map(CourseSubmissionSessionResponseFromJSON)),
+        'talebeCount': json['talebeCount'],
     };
 }
 
@@ -69,6 +92,8 @@ export function CourseSubmissionsResponseToJSONTyped(value?: CourseSubmissionsRe
     return {
         
         'items': ((value['items'] as Array<any>).map(CourseSubmissionResponseToJSON)),
+        'sessions': ((value['sessions'] as Array<any>).map(CourseSubmissionSessionResponseToJSON)),
+        'talebeCount': value['talebeCount'],
     };
 }
 
