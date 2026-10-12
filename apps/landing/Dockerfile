@@ -3,10 +3,10 @@
 # @medaris/landing-web — Next.js (Nx project name: `landing-web`, NOT `landing`).
 # Build from the REPO ROOT:  docker build -f apps/landing/Dockerfile -t medaris-landing .
 #
-# Four stages: base (toolchain) -> deps (manifest-only install, cached)
-#           -> build (source + `nx build landing-web`) -> runner.
+# Four stages: base (toolchain) -> deps (`pnpm fetch`, keyed on the lockfile)
+#           -> build (source, offline install, `nx build landing-web`) -> runner.
 # The `deps` stage is byte-identical in all six app Dockerfiles so BuildKit
-# reuses one install layer across every image.
+# reuses one fetch layer across every image.
 #
 # Runtime ships Next's `output: "standalone"` tree, not node_modules: under pnpm
 # node_modules is a symlink farm into node_modules/.pnpm, so copying any subtree
@@ -33,44 +33,36 @@ RUN corepack enable
 WORKDIR /app
 
 # ---------------------------------------------------------------------------
-# deps — the workspace manifest surface only, so the install layer survives
-# every source edit. pnpm-workspace.yaml enumerates its 18 members explicitly
-# (no globs), and --frozen-lockfile needs every one of their package.json
-# files present, so all 18 are copied here even though this image builds one.
+# deps — pnpm's documented `fetch` pattern: every package the lockfile names,
+# downloaded into the store, keyed on the lockfile alone. `pnpm fetch` reads
+# no workspace package.json, so none is copied: a release-please version bump
+# in one app no longer invalidates this layer in all six images, and a new
+# workspace package needs no Dockerfile edit. The root package.json is here
+# only because corepack reads pnpm's version from its `packageManager`; it
+# changes with the lockfile, never on a release.
+#
+# The store lives IN this layer, deliberately not in a `--mount=type=cache`:
+# `cache-to: type=gha` carries layers between runners but never cache mounts,
+# so a fresh runner would reuse a cached fetch layer over an empty store and
+# the offline install below would fail.
 # ---------------------------------------------------------------------------
 FROM base AS deps
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-COPY apps/tedrisat/package.json       apps/tedrisat/
-COPY apps/teskilat/package.json       apps/teskilat/
-COPY apps/tedris/package.json         apps/tedris/
-COPY apps/nizam/package.json          apps/nizam/
-COPY apps/nazar/package.json          apps/nazar/
-COPY apps/landing/package.json        apps/landing/
-COPY apps/keycloak-theme/package.json apps/keycloak-theme/
-COPY libs/common/package.json         libs/common/
-COPY libs/env/package.json            libs/env/
-COPY libs/ui/package.json             libs/ui/
-COPY libs/icons/package.json          libs/icons/
-COPY libs/tokens/package.json         libs/tokens/
-COPY libs/hooks/package.json          libs/hooks/
-COPY libs/services/package.json       libs/services/
-COPY libs/i18n/package.json           libs/i18n/
-COPY libs/types/package.json          libs/types/
-COPY libs/utils/package.json          libs/utils/
-COPY libs/auth/package.json           libs/auth/
-RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
-    pnpm install --frozen-lockfile
+RUN pnpm fetch
 
 # ---------------------------------------------------------------------------
-# build — source on top of the cached node_modules, then Nx. `nx.json`
-# targetDefaults.build sets dependsOn ["^build"], so the workspace libraries
-# this app consumes are built first.
+# build — source, node_modules linked from the fetched store, then Nx.
+# `nx.json` targetDefaults.build sets dependsOn ["^build"], so the workspace
+# libraries this app consumes are built first.
 # ---------------------------------------------------------------------------
 FROM deps AS build
 # nx.json's `sharedGlobals` includes a runtime input that pipes into `shasum`,
 # which busybox does not provide; without it Nx aborts while hashing.
 RUN apk add --no-cache perl-utils
 COPY . .
+# --offline: everything comes from the store the deps layer fetched. A package
+# missing there fails the build here instead of reaching for the registry.
+RUN pnpm install --offline --frozen-lockfile
 # apps/landing/env.ts validates the environment at build time via
 # @t3-oss/env-nextjs, so `next build` needs values present. Since MDRS-25 there
 # is one .env, at the root; next.config.js applies it and strips the app prefix.
