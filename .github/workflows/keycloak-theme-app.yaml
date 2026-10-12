@@ -27,8 +27,14 @@ permissions:
 # branches still race for the same providers directory and the same
 # Keycloak restart. `cancel-in-progress: false` — cancelling mid-`mv` on the
 # server is strictly worse than queueing.
+#
+# A release of another app gets a group of its own. Every release starts all
+# seven deploy workflows; the other six skip their job here, but would first
+# queue in this group, and GitHub keeps only one pending run per group, so a
+# pending theme deploy could be replaced by a run that deploys nothing (what
+# cancelled tedris-web-v2.4.0's production deploy on 2026-10-12).
 concurrency:
-  group: deploy-keycloak-theme
+  group: ${{ github.event_name == 'release' && !startsWith(github.event.release.tag_name, 'keycloak-theme-') && format('deploy-keycloak-theme-noop-{0}', github.run_id) || 'deploy-keycloak-theme' }}
   cancel-in-progress: false
 
 jobs:
