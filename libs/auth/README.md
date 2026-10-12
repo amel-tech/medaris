@@ -209,9 +209,11 @@ in from a public page comes back to it (S2).
 
 The sign-in page itself must not require a session: `redirectToSignIn()`
 (and so `requireSession()` and `requireAccessToken()`) throws while it renders
-rather than redirecting it to itself a level deeper each time. It can only
-tell when the proxy runs for the page, so keep the sign-in page in the
-matcher.
+rather than redirecting it to itself a level deeper each time. It knows the
+page from the return-path header the proxy sets, so it can tell only where
+the proxy runs for the sign-in page (tedris, nizam). Where the matcher skips
+it (nazar's `auth/`), nothing can tell, and the page simply must not call
+them.
 
 ### Sign-out
 
