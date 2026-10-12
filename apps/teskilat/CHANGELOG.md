@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.2](https://github.com/amel-tech/medaris/compare/teskilat-v0.2.1...teskilat-v0.2.2) (2026-10-12)
+
+
+### Features
+
+* **tedris-web, nazar-web, nizam-web:** one OIDC session package for the web apps ([#285](https://github.com/amel-tech/medaris/issues/285)) ([469b0d5](https://github.com/amel-tech/medaris/commit/469b0d5e8b557c514d4382b82f96ec8d71979bec))
+
 ## [0.2.1](https://github.com/amel-tech/medaris/compare/teskilat-v0.2.0...teskilat-v0.2.1) (2026-10-05)
 
 
