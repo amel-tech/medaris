@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.2.5](https://github.com/amel-tech/medaris/compare/nazar-web-v0.2.4...nazar-web-v0.2.5) (2026-10-12)
+
+
+### Features
+
+* **tedris-web, nazar-web, nizam-web:** one OIDC session package for the web apps ([#285](https://github.com/amel-tech/medaris/issues/285)) ([469b0d5](https://github.com/amel-tech/medaris/commit/469b0d5e8b557c514d4382b82f96ec8d71979bec))
+
+
+### Bug Fixes
+
+* **tedris-web, nizam-web, nazar-web, i18n:** locale-safe tedris links and error pages ([#284](https://github.com/amel-tech/medaris/issues/284)) ([579fa9c](https://github.com/amel-tech/medaris/commit/579fa9c0e6670a4745dc980e2d6e29886ca8c0b1))
+
 ## [0.2.4](https://github.com/amel-tech/medaris/compare/nazar-web-v0.2.3...nazar-web-v0.2.4) (2026-10-12)
 
 
