@@ -3,12 +3,13 @@
 # @medaris/teskilat — NestJS API (Nx project name: `teskilat`).
 # Build from the REPO ROOT:  docker build -f apps/teskilat/Dockerfile -t medaris-teskilat .
 #
-# Six stages: base (toolchain) -> deps (`pnpm fetch`, keyed on the lockfile)
-#           -> build (source, offline install, `nx build teskilat`)
-#           -> manifests (every package.json) -> prod-deps (offline
-#              runtime-only install) -> runner.
-# The `deps` stage is byte-identical in all six app Dockerfiles so BuildKit
-# reuses one fetch layer across every image.
+# Six stages: base (toolchain) -> manifests (normalised package.json files)
+#           -> deps (install, cached until a dependency changes)
+#           -> build (source + `nx build teskilat`)
+#           -> prod-deps (runtime-only install, from the same manifests)
+#           -> runner.
+# The `manifests` and `deps` stages are byte-identical in all six app
+# Dockerfiles so BuildKit reuses one install layer across every image.
 
 # ---------------------------------------------------------------------------
 # base — Node + corepack-pinned pnpm. Nothing app-specific.
@@ -29,25 +30,43 @@ RUN corepack enable
 WORKDIR /app
 
 # ---------------------------------------------------------------------------
-# deps — pnpm's documented `fetch` pattern: every package the lockfile names,
-# downloaded into the store, keyed on the lockfile alone. `pnpm fetch` reads
-# no workspace package.json, so none is copied: a release-please version bump
-# in one app no longer invalidates this layer in all six images, and a new
-# workspace package needs no Dockerfile edit. The root package.json is here
-# only because corepack reads pnpm's version from its `packageManager`; it
-# changes with the lockfile, never on a release.
-#
-# The store lives IN this layer, deliberately not in a `--mount=type=cache`:
-# `cache-to: type=gha` carries layers between runners but never cache mounts,
-# so a fresh runner would reuse a cached fetch layer over an empty store and
-# the offline installs below would fail.
+# manifests — the workspace's package.json files without their `version`,
+# written by tools/docker/workspace-manifests.mjs (which says why). It finds
+# them through pnpm-workspace.yaml, so nothing here is listed per package and
+# a new workspace package needs no Dockerfile edit. This stage re-runs on every
+# change to the context, in well under a second; what matters is its output.
 # ---------------------------------------------------------------------------
-FROM base AS deps
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-RUN pnpm fetch
+FROM base AS manifests
+RUN --mount=type=bind,target=/context \
+    node /context/tools/docker/workspace-manifests.mjs /context /out
 
 # ---------------------------------------------------------------------------
-# build — source, node_modules linked from the fetched store, then Nx.
+# deps — the install, from the normalised manifests and the lockfile alone.
+# BuildKit keys `COPY --from` on file content, so a source edit or a
+# release-please version bump leaves these layers, and the install, cached;
+# only a dependency change (a manifest's dependencies, the lockfile, the
+# workspace settings) reinstalls.
+#
+# The store and pnpm's metadata cache are cache mounts. They save the
+# download on a machine that has built before; a fresh CI runner starts with
+# them empty (`cache-to: type=gha` carries layers, never cache mounts) and
+# downloads, so nothing depends on them. Kept out of the layer, the metadata
+# cache (/root/.cache/pnpm, written by the install's lockfile verification)
+# no longer adds about 400 MB to every install layer the GHA cache stores
+# (measured 2026-10-12). node_modules is a real copy of the files and lives
+# in this layer.
+# ---------------------------------------------------------------------------
+FROM base AS deps
+COPY --from=manifests /out/ ./
+COPY pnpm-lock.yaml pnpm-workspace.yaml ./
+RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
+    --mount=type=cache,id=pnpm-metadata,target=/root/.cache/pnpm \
+    pnpm install --frozen-lockfile
+
+# ---------------------------------------------------------------------------
+# build — source on top of the installed node_modules, then Nx. `COPY . .`
+# brings the real manifests back; .dockerignore keeps node_modules out of the
+# context, so the installed tree stays.
 # `nx.json` targetDefaults.build sets dependsOn ["^build"], so this single
 # command builds @medaris/common first. The old `cd libs/common && npm run
 # build` line was redundant and is gone.
@@ -57,47 +76,29 @@ FROM deps AS build
 # which busybox does not provide; without it Nx aborts while hashing.
 RUN apk add --no-cache perl-utils
 COPY . .
-# --offline: everything comes from the store the deps layer fetched. A package
-# missing there fails the build here instead of reaching for the registry.
-RUN pnpm install --offline --frozen-lockfile
+# `pnpm exec` warns here that node_modules is "out of sync with your
+# lockfile. The workspace structure has changed since last install": deps
+# installed from the manifests without `version`, and pnpm-workspace.yaml
+# sets verifyDepsBeforeRun to warn. Expected; nothing is reinstalled.
 RUN pnpm exec nx build teskilat
 
 # ---------------------------------------------------------------------------
-# manifests — every package.json of the context, found rather than listed, so
-# a new workspace package needs no edit here. prod-deps copies this stage's
-# output, and BuildKit keys that COPY on content: a change that touches no
-# manifest leaves the runtime install below cached, as it was before
-# `pnpm fetch`.
-# ---------------------------------------------------------------------------
-FROM base AS manifests
-RUN --mount=type=bind,target=/context \
-    cd /context \
- && find . -name package.json -not -path '*/node_modules/*' \
-  | tar -cf - -T - | tar -xf - -C /app
-
-# ---------------------------------------------------------------------------
-# prod-deps — a second, runtime-only install, from the manifests alone, as
-# before. Re-resolving is far cheaper than trying to prune pnpm's symlink
-# farm, and it keeps @nestjs/cli, jest and friends out of the image.
-#
-# It installs offline from the store the deps layer fetched, mounted, and is
-# deliberately not built FROM deps: `pnpm fetch` also lays every package of
-# the lockfile out in node_modules/.pnpm, and a filtered --prod install on top
-# of that adds its links without pruning the rest. Built FROM deps, the
-# runner's node_modules was 1.2 GB with Next, Vite and Storybook in it
-# (measured 2026-10-12). The mount is read-write only so pnpm can write its
-# temporary files; nothing written there is kept.
+# prod-deps — a second, runtime-only install, from the same normalised
+# manifests, so it is cached exactly as long as `deps` is. Re-resolving is far
+# cheaper than trying to prune pnpm's symlink farm, and it keeps
+# @nestjs/cli, jest and friends out of the image.
 #
 # The two files deleted after the install are pnpm's bookkeeping, which
 # nothing reads at runtime and which carry timestamps. Without them the output
 # is byte-identical whenever the dependencies are, so the runner's
-# `COPY --from=prod-deps` stays a cache hit even after a version bump.
+# `COPY --from=prod-deps` stays a cache hit even when this stage re-runs.
 # ---------------------------------------------------------------------------
 FROM base AS prod-deps
-COPY --from=manifests /app ./
+COPY --from=manifests /out/ ./
 COPY pnpm-lock.yaml pnpm-workspace.yaml ./
-RUN --mount=type=bind,from=deps,source=/pnpm/store,target=/pnpm/store,rw \
-    pnpm install --offline --frozen-lockfile --prod --ignore-scripts \
+RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
+    --mount=type=cache,id=pnpm-metadata,target=/root/.cache/pnpm \
+    pnpm install --frozen-lockfile --prod --ignore-scripts \
       --filter "@medaris/teskilat..." \
  && rm -f node_modules/.modules.yaml node_modules/.pnpm-workspace-state*.json
 

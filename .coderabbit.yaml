@@ -420,8 +420,9 @@ reviews:
            version string added by this PR: medium — the version belongs in the
            catalog. A new package directory also needs: a line in
            pnpm-workspace.yaml `packages:`, `tags` in its project.json and a
-           commitlint scope. The Dockerfiles need no edit for it (they install
-           from a `pnpm fetch` layer and copy the whole context), except when
+           commitlint scope. The Dockerfiles need no edit for it (their
+           `manifests` stage finds every member through pnpm-workspace.yaml,
+           tools/docker/workspace-manifests.mjs), except when
            apps/tedrisat or apps/teskilat loads the package at runtime: their
            runner stages copy each runtime workspace lib by name, and a missing
            one fails the container at boot while local gates stay green.

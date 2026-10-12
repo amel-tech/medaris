@@ -3,10 +3,11 @@
 # @medaris/tedris-web — Next.js (Nx project name: `tedris-web`, NOT `tedris`).
 # Build from the REPO ROOT:  docker build -f apps/tedris/Dockerfile -t medaris-tedris .
 #
-# Four stages: base (toolchain) -> deps (`pnpm fetch`, keyed on the lockfile)
-#           -> build (source, offline install, `nx build tedris-web`) -> runner.
-# The `deps` stage is byte-identical in all six app Dockerfiles so BuildKit
-# reuses one fetch layer across every image.
+# Five stages: base (toolchain) -> manifests (normalised package.json files)
+#           -> deps (install, cached until a dependency changes)
+#           -> build (source + `nx build tedris-web`) -> runner.
+# The `manifests` and `deps` stages are byte-identical in all six app
+# Dockerfiles so BuildKit reuses one install layer across every image.
 #
 # Runtime ships Next's `output: "standalone"` tree, not node_modules: under pnpm
 # node_modules is a symlink farm into node_modules/.pnpm, so copying any subtree
@@ -33,36 +34,51 @@ RUN corepack enable
 WORKDIR /app
 
 # ---------------------------------------------------------------------------
-# deps — pnpm's documented `fetch` pattern: every package the lockfile names,
-# downloaded into the store, keyed on the lockfile alone. `pnpm fetch` reads
-# no workspace package.json, so none is copied: a release-please version bump
-# in one app no longer invalidates this layer in all six images, and a new
-# workspace package needs no Dockerfile edit. The root package.json is here
-# only because corepack reads pnpm's version from its `packageManager`; it
-# changes with the lockfile, never on a release.
-#
-# The store lives IN this layer, deliberately not in a `--mount=type=cache`:
-# `cache-to: type=gha` carries layers between runners but never cache mounts,
-# so a fresh runner would reuse a cached fetch layer over an empty store and
-# the offline install below would fail.
+# manifests — the workspace's package.json files without their `version`,
+# written by tools/docker/workspace-manifests.mjs (which says why). It finds
+# them through pnpm-workspace.yaml, so nothing here is listed per package and
+# a new workspace package needs no Dockerfile edit. This stage re-runs on every
+# change to the context, in well under a second; what matters is its output.
 # ---------------------------------------------------------------------------
-FROM base AS deps
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-RUN pnpm fetch
+FROM base AS manifests
+RUN --mount=type=bind,target=/context \
+    node /context/tools/docker/workspace-manifests.mjs /context /out
 
 # ---------------------------------------------------------------------------
-# build — source, node_modules linked from the fetched store, then Nx.
-# `nx.json` targetDefaults.build sets dependsOn ["^build"], so the workspace
-# libraries this app consumes are built first.
+# deps — the install, from the normalised manifests and the lockfile alone.
+# BuildKit keys `COPY --from` on file content, so a source edit or a
+# release-please version bump leaves these layers, and the install, cached;
+# only a dependency change (a manifest's dependencies, the lockfile, the
+# workspace settings) reinstalls.
+#
+# The store and pnpm's metadata cache are cache mounts. They save the
+# download on a machine that has built before; a fresh CI runner starts with
+# them empty (`cache-to: type=gha` carries layers, never cache mounts) and
+# downloads, so nothing depends on them. Kept out of the layer, the metadata
+# cache (/root/.cache/pnpm, written by the install's lockfile verification)
+# no longer adds about 400 MB to every install layer the GHA cache stores
+# (measured 2026-10-12). node_modules is a real copy of the files and lives
+# in this layer.
+# ---------------------------------------------------------------------------
+FROM base AS deps
+COPY --from=manifests /out/ ./
+COPY pnpm-lock.yaml pnpm-workspace.yaml ./
+RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
+    --mount=type=cache,id=pnpm-metadata,target=/root/.cache/pnpm \
+    pnpm install --frozen-lockfile
+
+# ---------------------------------------------------------------------------
+# build — source on top of the installed node_modules, then Nx. `COPY . .`
+# brings the real manifests back; .dockerignore keeps node_modules out of the
+# context, so the installed tree stays. `nx.json` targetDefaults.build sets
+# dependsOn ["^build"], so the workspace libraries this app consumes are
+# built first.
 # ---------------------------------------------------------------------------
 FROM deps AS build
 # nx.json's `sharedGlobals` includes a runtime input that pipes into `shasum`,
 # which busybox does not provide; without it Nx aborts while hashing.
 RUN apk add --no-cache perl-utils
 COPY . .
-# --offline: everything comes from the store the deps layer fetched. A package
-# missing there fails the build here instead of reaching for the registry.
-RUN pnpm install --offline --frozen-lockfile
 # apps/tedris/env.ts validates the environment at build time via
 # @t3-oss/env-nextjs, so `next build` needs values present. Since MDRS-25 there
 # is one .env, at the root; next.config.js applies it and strips the app prefix.
@@ -74,6 +90,10 @@ RUN pnpm install --offline --frozen-lockfile
 # The placeholder .env is never copied into the runtime stage.
 RUN cp .env.example .env
 ENV NEXT_TELEMETRY_DISABLED=1
+# `pnpm exec` warns here that node_modules is "out of sync with your
+# lockfile. The workspace structure has changed since last install": deps
+# installed from the manifests without `version`, and pnpm-workspace.yaml
+# sets verifyDepsBeforeRun to warn. Expected; nothing is reinstalled.
 RUN pnpm exec nx build tedris-web
 
 # ---------------------------------------------------------------------------
