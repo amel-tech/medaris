@@ -100,10 +100,10 @@ test.describe("an enrolled talebe", () => {
     page,
   }) => {
     await page.goto(sessionPath(fixture.sessions.live.id));
-    const programme = page.getByRole("region", { name: "Müfredat" });
-    const row = programme.getByRole("listitem").filter({
-      has: page.locator('[aria-current="page"]'),
-    });
+    await page.getByRole("button", { name: /^Müfredat: / }).click();
+    const row = page
+      .getByRole("listbox", { name: "Müfredat" })
+      .getByRole("option", { selected: true });
     await expect(row.getByText(/Bu celse/)).toBeVisible();
     await expect(row.getByText(/Şu an canlı/)).toBeVisible();
     await page.goto(coursePath());
