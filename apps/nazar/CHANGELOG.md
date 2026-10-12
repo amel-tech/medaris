@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.2.6](https://github.com/amel-tech/medaris/compare/nazar-web-v0.2.5...nazar-web-v0.2.6) (2026-10-12)
+
+
+### Features
+
+* **tedris-web, nazar-web, nizam-web:** sessions in Valkey and back-channel logout ([#295](https://github.com/amel-tech/medaris/issues/295)) ([a817026](https://github.com/amel-tech/medaris/commit/a817026b84dd63b58cc1aaf4550433c1cdd50071))
+* **tedrisat, nazar-web:** let a Bunny upload replace a session's link recording ([#301](https://github.com/amel-tech/medaris/issues/301)) ([81e7151](https://github.com/amel-tech/medaris/commit/81e715162bd115d48549d5f66261f747dbf47859))
+* **tedrisat, tedris-web, nazar-web, nizam-web:** files in Bunny Storage and celse homework ([#293](https://github.com/amel-tech/medaris/issues/293)) ([0f7668f](https://github.com/amel-tech/medaris/commit/0f7668f5411060cf3162ff182323526fab635e12))
+
 ## [0.2.5](https://github.com/amel-tech/medaris/compare/nazar-web-v0.2.4...nazar-web-v0.2.5) (2026-10-12)
 
 
