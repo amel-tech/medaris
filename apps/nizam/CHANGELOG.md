@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.3](https://github.com/amel-tech/medaris/compare/nizam-web-v0.2.2...nizam-web-v0.2.3) (2026-10-12)
+
+
+### Features
+
+* **tedrisat, nazar-web, nizam-web, tedris-web:** MDRS-283 cover a celse by link, stream, in person ([#271](https://github.com/amel-tech/medaris/issues/271)) ([d24612b](https://github.com/amel-tech/medaris/commit/d24612bbd3867d8698b77973b4e63525abd92840))
+* **tedrisat, nazar-web, nizam-web, tedris-web:** MDRS-286 give each celse its own resource links ([#274](https://github.com/amel-tech/medaris/issues/274)) ([ef2c400](https://github.com/amel-tech/medaris/commit/ef2c4002ca6c14a583723e0912f0c5a53b780839))
+
 ## [0.2.2](https://github.com/amel-tech/medaris/compare/nizam-web-v0.2.1...nizam-web-v0.2.2) (2026-10-09)
 
 
