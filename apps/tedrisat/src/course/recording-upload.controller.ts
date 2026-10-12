@@ -59,14 +59,17 @@ export class RecordingUploadController {
   @ApiOperation({
     summary: "Start uploading a session's recording to Bunny Stream",
     description:
-      "`recording.upload` (the müderris and the köşk nazımı by default, a ders nazırı when given it). Creates the video in the Medaris Bunny Stream library, records it as the session's recording with `provider` BUNNY and `status` PROCESSING, and returns what the browser needs for a TUS upload straight to Bunny; the file never passes through this API. The signature expires 24 hours later. A session that already has a recording is refused with 409, unless that recording is a Bunny upload that FAILED, which this one replaces. Written to `audit_log` as `recording.upload_start`. The recording becomes READY or FAILED when the encoding poll sees Bunny finish.",
+      "`recording.upload` (the müderris and the köşk nazımı by default, a ders nazırı when given it). Creates the video in the Medaris Bunny Stream library, records it as the session's recording with `provider` BUNNY and `status` PROCESSING, and returns what the browser needs for a TUS upload straight to Bunny; the file never passes through this API. The signature expires 24 hours later. A session whose recording is a link (YOUTUBE, DRIVE or OTHER: pasted, or its live stream) or a Bunny upload that FAILED has it replaced by this upload: the same recording takes this title and visibility, and its link is no longer stored on it. The session's release time is not changed. A session whose recording is a Bunny video PROCESSING or READY is refused with 409. Written to `audit_log` as `recording.upload_start`, with the replaced link's provider and URL in `replacedLink`. The recording becomes READY or FAILED when the encoding poll sees Bunny finish.",
     operationId: "startRecordingUpload",
   })
   @ApiCreatedResponse({ type: RecordingUploadResponse })
   @ApiBadRequestResponse({ description: "Field validation." })
   @ApiForbiddenResponse({ description: "AUTHZ_FORBIDDEN" })
   @ApiNotFoundResponse({ description: "LESSON_NOT_FOUND" })
-  @ApiConflictResponse({ description: "RECORDING_EXISTS" })
+  @ApiConflictResponse({
+    description:
+      "RECORDING_EXISTS: the session's recording is a Bunny video PROCESSING or READY.",
+  })
   @ApiServiceUnavailableResponse({
     description:
       "BUNNY_STREAM_NOT_CONFIGURED (the library is not set on this server) or BUNNY_STREAM_UNAVAILABLE (Bunny did not answer).",
