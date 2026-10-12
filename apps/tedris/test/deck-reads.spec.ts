@@ -14,7 +14,10 @@ vi.mock("@medaris/services/tedrisat", async (importOriginal) => ({
     cards: api,
   }),
 }));
-vi.mock("~/lib/auth_options", () => ({ getAccessToken: async () => "token" }));
+vi.mock("~/lib/auth", () => ({
+  getAccessToken: async () => "token",
+  requireAccessToken: async () => "token",
+}));
 
 const answer = (status: number) =>
   new ResponseError(new Response(null, { status }), "refused");

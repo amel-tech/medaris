@@ -3,9 +3,17 @@ import { createElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, click, render, settle } from "./dom";
 
-const mocks = vi.hoisted(() => ({
-  signIn: vi.fn(async () => undefined),
-  getSession: vi.fn(async (): Promise<unknown> => null),
+/**
+ * The sign-in page's body on `@medaris/auth` (#180, MDRS-216): one round trip
+ * per browser, "already signed in → go on", one automatic retry per tab, and
+ * the error box with the right way out. The page reads the session from
+ * `GET /api/auth/session` and starts a round trip by navigating to
+ * `GET /api/auth/signin`; both are stood in for here.
+ */
+
+const state = vi.hoisted(() => ({
+  session: null as unknown,
+  assign: vi.fn(),
 }));
 vi.mock("next-intl", async () => {
   const { resources } = await import("@medaris/i18n");
@@ -18,20 +26,29 @@ vi.mock("next-intl", async () => {
       ),
   };
 });
-vi.mock("next-auth/react", () => ({
-  signIn: mocks.signIn,
-  getSession: mocks.getSession,
-}));
 
 beforeEach(() => {
   vi.resetModules();
   localStorage.clear();
   sessionStorage.clear();
-  mocks.getSession.mockResolvedValue(null);
+  state.session = null;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (url: string) =>
+      url === "/api/auth/session"
+        ? Response.json(state.session)
+        : new Response(null, { status: 404 })
+    )
+  );
+  vi.spyOn(window, "location", "get").mockReturnValue({
+    ...window.location,
+    assign: state.assign,
+  });
 });
 
 afterEach(async () => {
   await cleanup();
+  vi.unstubAllGlobals();
   vi.clearAllMocks();
   vi.restoreAllMocks();
 });
@@ -45,7 +62,7 @@ const mount = async (error?: string) => {
       error,
     })
   );
-  // `enterKeycloak` reads the session, then lets the claim settle (50 ms).
+  // `enterSignIn` reads the session, then lets the claim settle (50 ms).
   await settle(120);
   const button = (label: string) =>
     [...document.querySelectorAll("button, a")].find(
@@ -54,16 +71,16 @@ const mount = async (error?: string) => {
   return { button };
 };
 
-const keycloak = [
-  "keycloak",
-  { callbackUrl: "/tr/courses/c1" },
-  { ui_locales: "tr", kc_locale: "tr" },
-];
+/** The start route, as the page starts it on its own and on a click. */
+const autoStart =
+  "/api/auth/signin?callbackUrl=%2Ftr%2Fcourses%2Fc1&locale=tr&auto=1";
+const clickStart =
+  "/api/auth/signin?callbackUrl=%2Ftr%2Fcourses%2Fc1&locale=tr";
 
 describe("the sign-in page after a failed round trip", () => {
   it("retries an OAuthCallback silently instead of showing 'Giriş tamamlanamadı'", async () => {
     await mount("OAuthCallback");
-    expect(mocks.signIn).toHaveBeenCalledWith(...keycloak);
+    expect(state.assign).toHaveBeenCalledWith(autoStart);
     expect(document.body.textContent).not.toContain("Giriş tamamlanamadı");
     expect(document.body.textContent).toContain(
       "Giriş sayfasına yönlendiriliyorsunuz…"
@@ -71,15 +88,10 @@ describe("the sign-in page after a failed round trip", () => {
   });
 
   it("goes straight to the page when another tab already signed in", async () => {
-    mocks.getSession.mockResolvedValue({ user: { name: "Enes" } });
-    const assign = vi.fn();
-    vi.spyOn(window, "location", "get").mockReturnValue({
-      ...window.location,
-      assign,
-    });
+    state.session = { user: { sub: "u1", name: "Enes" }, expiresAt: 1 };
     await mount("OAuthCallback");
-    expect(assign).toHaveBeenCalledWith("/tr/courses/c1");
-    expect(mocks.signIn).not.toHaveBeenCalled();
+    expect(state.assign).toHaveBeenCalledTimes(1);
+    expect(state.assign).toHaveBeenCalledWith("/tr/courses/c1");
   });
 
   it("shows the design's box once the automatic retry is spent, with the way back to sign-in (MDRS-216)", async () => {
@@ -88,7 +100,7 @@ describe("the sign-in page after a failed round trip", () => {
       JSON.stringify({ count: 1, at: Date.now() })
     );
     const { button } = await mount("OAuthCallback");
-    expect(mocks.signIn).not.toHaveBeenCalled();
+    expect(state.assign).not.toHaveBeenCalled();
     expect(document.querySelector("h1")?.textContent).toBe(
       "Giriş tamamlanamadı"
     );
@@ -99,23 +111,42 @@ describe("the sign-in page after a failed round trip", () => {
     expect(button("Tekrar dene")).toBeUndefined();
 
     await click(button("Giriş sayfasına dön") as HTMLElement);
-    expect(mocks.signIn).toHaveBeenCalledWith(...keycloak);
+    expect(state.assign).toHaveBeenCalledWith(clickStart);
   });
 
-  it("shows the box at once for AccessDenied, with the way home and no retry", async () => {
-    const { button } = await mount("AccessDenied");
-    expect(mocks.signIn).not.toHaveBeenCalled();
+  it.each([
+    "AccessDenied",
+    "SignInLimit",
+  ])("shows the box at once for %s, with the way home and no retry", async (error) => {
+    const { button } = await mount(error);
+    expect(state.assign).not.toHaveBeenCalled();
     expect(document.querySelector("h1")?.textContent).toBe(
       "Giriş tamamlanamadı"
     );
-    expect(document.body.textContent).toContain("Bu hesabın giriş izni yok.");
     expect(button("Giriş sayfasına dön")).toBeUndefined();
     expect(button("Ana sayfaya dön")?.getAttribute("href")).toBe("/tr");
   });
 
-  it("without an error, starts the round trip on its own", async () => {
+  it("says AccessDenied in its own words", async () => {
+    await mount("AccessDenied");
+    expect(document.body.textContent).toContain("Bu hesabın giriş izni yok.");
+  });
+
+  it("without an error, starts the round trip on its own, in the page's language", async () => {
     await mount();
-    expect(mocks.signIn).toHaveBeenCalledWith(...keycloak);
+    expect(state.assign).toHaveBeenCalledWith(autoStart);
     expect(document.querySelector("h1")).toBeNull();
+  });
+
+  it("waits for another tab already in a round trip instead of starting its own (#180)", async () => {
+    localStorage.setItem(
+      "medaris.auth.sign-in",
+      JSON.stringify({ tab: "another-tab", at: Date.now() })
+    );
+    await mount();
+    expect(state.assign).not.toHaveBeenCalled();
+    expect(document.body.textContent).toContain(
+      "Giriş sayfasına yönlendiriliyorsunuz…"
+    );
   });
 });

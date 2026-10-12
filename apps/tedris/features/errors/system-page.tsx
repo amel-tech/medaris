@@ -1,9 +1,9 @@
 "use client";
 
+import { useSession } from "@medaris/auth/client";
 import { textFontsHref } from "@medaris/tokens/medaris-fonts";
 import { Button } from "@medaris/ui/mds/button";
 import { SystemState } from "@medaris/ui/mds/system-state";
-import { useSession } from "next-auth/react";
 import { useLocale, useTranslations } from "next-intl";
 
 /**

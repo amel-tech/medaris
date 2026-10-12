@@ -6,6 +6,7 @@ import { Icon } from "@medaris/ui/mds/icon";
 import { Menu } from "@medaris/ui/mds/menu";
 import { useRouter } from "next/navigation";
 import { type ReactNode, useState, useTransition } from "react";
+import { sendToSignIn } from "~/lib/send-to-sign-in";
 import { leaveCourse } from "../actions";
 
 export interface CourseActionsLabels {
@@ -48,6 +49,7 @@ export function CourseActionsMenu({
   const leave = () =>
     startTransition(async () => {
       const res = await leaveCourse(courseId);
+      if (sendToSignIn(res)) return;
       setOpen(false);
       if (res.success === false) {
         const stale = res.status === 404 || res.status === 409;

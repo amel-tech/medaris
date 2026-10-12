@@ -8,6 +8,7 @@ import { Input } from "@medaris/ui/mds/input";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
+import { sendToSignIn } from "~/lib/send-to-sign-in";
 import { courseActionErrorKey } from "../action-error";
 import { updateCourseProgress } from "../actions";
 import { parseProgress } from "../course-view";
@@ -40,6 +41,7 @@ export const ProgressDialog = ({
     setError(null);
     startTransition(async () => {
       const res = await updateCourseProgress(courseId, progress);
+      if (sendToSignIn(res)) return;
       if (res.success === false) {
         toast.error(t(courseActionErrorKey(res.status)));
         return;

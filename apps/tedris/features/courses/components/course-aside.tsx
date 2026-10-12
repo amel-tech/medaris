@@ -11,6 +11,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { type ReactNode, useEffect, useState, useTransition } from "react";
+import { sendToSignIn } from "~/lib/send-to-sign-in";
 import { courseActionErrorKey } from "../action-error";
 import { enrollInCourse } from "../actions";
 import { withoutLinkKey } from "../attendance";
@@ -79,6 +80,7 @@ export const CourseAside = ({
   const handleEnroll = () =>
     startTransition(async () => {
       const res = await enrollInCourse(course.id);
+      if (sendToSignIn(res)) return;
       if (res.success === false) {
         toast.error(t(courseActionErrorKey(res.status)));
         return;

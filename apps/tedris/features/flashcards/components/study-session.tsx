@@ -13,6 +13,7 @@ import { useToaster } from "@medaris/ui/mds/toast";
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
+import { sendToSignIn } from "~/lib/send-to-sign-in";
 import { rateFlashcard } from "../actions";
 import { cardStatus } from "../deck-model";
 import { RATINGS, roundPercent, subtitleKind } from "../study-model";
@@ -91,6 +92,7 @@ export function StudySession({
     }
     setBusy(true);
     const result = await rateFlashcard(card.id, rating);
+    if (sendToSignIn(result)) return;
     setBusy(false);
     if (!result.success) {
       toaster.notify({

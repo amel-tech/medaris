@@ -23,7 +23,7 @@ vi.mock("next/navigation", () => ({
 vi.mock("~/features/courses/actions", () => ({
   getMyCourses: async () => enrolled,
 }));
-vi.mock("~/lib/auth_options", () => ({
+vi.mock("~/lib/auth", () => ({
   getAccessToken: async () => tokenFor(currentSub),
 }));
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { keycloakSignIn } from "@medaris/services/auth-client";
+import { signIn } from "@medaris/auth/client";
 import { Button } from "@medaris/ui/components/button";
 import { useLocale, useTranslations } from "next-intl";
 import { postSignInPage } from "~/lib/auth_pages";
@@ -9,6 +9,7 @@ import { postSignInPage } from "~/lib/auth_pages";
  * "Giriş yap" and "Kayıt ol" side by side (MDRS-101). Both name no page to
  * come back to, so both end on `/start`, which picks the first-login screen
  * or `/learning`. "Kayıt ol" opens Keycloak's registration form directly.
+ * A click takes the sign-in over any tab waiting for its turn (#180).
  */
 const KeycloakLogin = () => {
   const t = useTranslations("tedris");
@@ -19,16 +20,12 @@ const KeycloakLogin = () => {
     <div className="flex items-center gap-2">
       <Button
         variant="outline"
-        onClick={() =>
-          keycloakSignIn({ intent: "signin", callbackUrl, locale })
-        }
+        onClick={() => signIn({ intent: "signin", callbackUrl, locale })}
       >
         {t("Auth.signIn")}
       </Button>
       <Button
-        onClick={() =>
-          keycloakSignIn({ intent: "register", callbackUrl, locale })
-        }
+        onClick={() => signIn({ intent: "register", callbackUrl, locale })}
       >
         {t("Auth.register")}
       </Button>

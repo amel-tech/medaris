@@ -15,6 +15,7 @@ import { LocaleAppProviders } from "~/components/locale-app-providers";
 import { PUBLIC_PROFILE_ENABLED } from "~/features/public-profile/availability";
 import { useAccountTranslations } from "~/lib/i18n/loose";
 import { locales } from "~/lib/i18n/routing";
+import { sendToSignIn } from "~/lib/send-to-sign-in";
 import { CARD_GAP } from "../card-gap";
 import {
   updateMyInvitationEmails,
@@ -59,6 +60,7 @@ function PersonalCard({
     if (found.givenName || found.familyName) return;
     startTransition(async () => {
       const res = await updateMyName(givenName.trim(), familyName.trim());
+      if (sendToSignIn(res)) return;
       if (res.success === true) {
         setGivenName(res.data.givenName ?? givenName.trim());
         setFamilyName(res.data.familyName ?? familyName.trim());
@@ -154,6 +156,7 @@ function TimeLanguageCard({
     setSaved(zone);
     startTransition(async () => {
       const res = await updateMyTimeZone(zone);
+      if (sendToSignIn(res)) return;
       if (res.success === true) {
         toaster.notify({ tone: "success", title: t("zoneSaved") });
         return;
@@ -236,6 +239,7 @@ function CalendarCard({
     setSaving(true);
     void updateMyInvitationEmails(on)
       .then((res) => {
+        if (sendToSignIn(res)) return;
         if (res.success === true) {
           toaster.notify({
             tone: "success",

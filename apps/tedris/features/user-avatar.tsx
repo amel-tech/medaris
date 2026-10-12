@@ -1,14 +1,15 @@
+import type { SessionUser } from "@medaris/auth/client";
 import Image from "next/image";
-import type { BaseUser } from "next-auth";
 import { isOptimizableImageSrc } from "~/lib/image-hosts";
 
 type UserAvatar = {
-  user?: BaseUser;
+  /** The signed-in account's claims (`name`, and the `picture` claim as `image`). */
+  user: SessionUser;
   /** KEYCLOAK_ISSUER, read on the server at request time (see image-hosts.ts). */
   imageIssuer?: string;
 };
 export const UserAvatar = ({ user, imageIssuer }: UserAvatar) => {
-  const initials = `${user.name}`
+  const initials = (user.name ?? "")
     .split(" ")
     .map((name) => name.charAt(0))
     .join("");

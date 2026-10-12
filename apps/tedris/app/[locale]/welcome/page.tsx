@@ -1,7 +1,7 @@
 import { Button } from "@medaris/ui/components/button";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { completeWelcome } from "~/features/welcome/actions";
-import { auth } from "~/lib/auth_options";
+import { auth } from "~/lib/auth";
 
 const STEPS = ["kosk", "course", "decks"] as const;
 

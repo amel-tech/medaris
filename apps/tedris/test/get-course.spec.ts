@@ -6,7 +6,8 @@ vi.mock("@medaris/services/tedrisat", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@medaris/services/tedrisat")>()),
   createServerTedrisatAPIs: async () => ({ courses: { getCourseById } }),
 }));
-vi.mock("~/lib/auth_options", () => ({ getAccessToken: async () => "token" }));
+vi.mock("~/lib/auth", () => ({ getAccessToken: async () => "token" }));
+vi.mock("~/lib/tedrisat-api", () => ({ memberApi: vi.fn() }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
 const answer = (status: number) =>
@@ -19,15 +20,18 @@ beforeEach(() => {
 
 describe("tedris/38 and 40: what a failed course read means", () => {
   it.each([
-    400, 401, 403, 404,
+    400, 403, 404,
   ])("the API's %i is an answer about the course: null, so the page is not-found", async (status) => {
     getCourseById.mockRejectedValue(answer(status));
     const { getCourse } = await import("~/features/courses/actions");
     expect(await getCourse("c-1")).toBeNull();
   });
 
+  // 401: a refused token is not "no such course" (A16, E2). A visitor asks
+  // with no token, which this endpoint answers; a session only ever hands
+  // over a token the proxy has just renewed.
   it.each([
-    500, 502, 503,
+    401, 500, 502, 503,
   ])("the API's %i is a failure to ask: it throws, so the error page answers", async (status) => {
     getCourseById.mockRejectedValue(answer(status));
     const { getCourse } = await import("~/features/courses/actions");

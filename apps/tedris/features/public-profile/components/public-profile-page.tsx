@@ -18,6 +18,7 @@ import { type FormEvent, useState, useTransition } from "react";
 import { LocaleAppProviders } from "~/components/locale-app-providers";
 import { CARD_GAP } from "~/features/account/card-gap";
 import { useAccountTranslations } from "~/lib/i18n/loose";
+import { sendToSignIn } from "~/lib/send-to-sign-in";
 import { saveProfileTexts, saveVisibility } from "../actions";
 import {
   type Gender,
@@ -73,6 +74,7 @@ function Content({ profile }: PublicProfilePageProps) {
     if (found.kunye) return;
     startTransition(async () => {
       const res = await saveProfileTexts(draft);
+      if (sendToSignIn(res)) return;
       if (res.success === true) {
         const next = draftOf(res.data);
         setSaved(next);
@@ -107,7 +109,7 @@ function Content({ profile }: PublicProfilePageProps) {
     setSwitching(true);
     void saveVisibility({ [field]: on })
       .then((res) => {
-        if (res.success === true) return;
+        if (res.success === true || sendToSignIn(res)) return;
         setVisibility(before);
         toaster.notify({
           tone: "error",

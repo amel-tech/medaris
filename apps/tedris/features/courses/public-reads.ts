@@ -10,7 +10,7 @@ import {
 } from "@medaris/services/tedrisat";
 import { cache } from "react";
 import { env } from "~/env";
-import { getAccessToken } from "~/lib/auth_options";
+import { getAccessToken } from "~/lib/auth";
 
 /**
  * Reads for the köşk, medrese and course intro pages (MDRS-122), which a

@@ -7,7 +7,7 @@ Tedris is a Next.js application that serves as the main frontend for the Madrasa
 - **Next.js 14** - React framework with App Router
 - **TypeScript** - Type-safe development
 - **Tailwind CSS** - Utility-first CSS framework
-- **NextAuth.js** - Authentication with Keycloak integration
+- **@medaris/auth** - OIDC sign-in with Keycloak (`lib/auth.ts`, `proxy.ts`; see `libs/auth/README.md`)
 - **next-intl** - Internationalization with routing support
 - **Radix UI** - Accessible component primitives
 - **T3 Env** - Type-safe environment variable validation
@@ -213,7 +213,7 @@ apps/tedris/
 ├── components/            # React components
 │   └── keycloak/         # Keycloak-specific components
 ├── lib/                  # Utility libraries
-│   └── auth_options.ts   # NextAuth configuration
+│   └── auth.ts           # the @medaris/auth instance (createAuth)
 ├── env.ts                # Environment variable schema
 ├── env.sample            # Environment template
 └── package.json          # Dependencies and scripts
@@ -249,13 +249,8 @@ This application uses shared packages from the monorepo:
 
 ### Debugging
 
-Enable NextAuth.js debug mode:
-
-```env
-NEXTAUTH_DEBUG=true
-```
-
-This will provide detailed logs for authentication flows.
+A failed sign-in, refresh or sign-out is logged on the server console as
+`@medaris/auth: …`, with the IdP's error code and never a token.
 
 ## 📄 License
 

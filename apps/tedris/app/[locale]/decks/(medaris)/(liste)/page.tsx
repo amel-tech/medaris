@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { DecksPage } from "~/features/flashcards/components/decks-page";
 import { getDeckSummaries } from "~/features/flashcards/reads";
-import { requireAccessToken } from "~/lib/require-access-token";
+import { requireAccessToken } from "~/lib/auth";
 
 // Behind the sign-in middleware (not in `publicPages`), and per caller.
 export const dynamic = "force-dynamic";
@@ -18,6 +18,6 @@ export default async function Page({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
-  await requireAccessToken(`/${locale}/decks`);
+  await requireAccessToken({ callbackUrl: `/${locale}/decks` });
   return <DecksPage decks={await getDeckSummaries()} />;
 }
