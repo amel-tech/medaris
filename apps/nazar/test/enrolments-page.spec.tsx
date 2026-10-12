@@ -43,6 +43,7 @@ const approveApplication = vi.fn();
 const rejectApplication = vi.fn();
 const setCompleted = vi.fn();
 const removeStudent = vi.fn();
+const bulkEnroll = vi.fn();
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh, replace: vi.fn(), push: vi.fn() }),
@@ -89,6 +90,7 @@ vi.mock("~/features/pano/actions", () => ({
 vi.mock("~/features/enrolments/actions", () => ({
   setCompleted: (...args: unknown[]) => setCompleted(...args),
   removeStudent: (...args: unknown[]) => removeStudent(...args),
+  bulkEnroll: (...args: unknown[]) => bulkEnroll(...args),
 }));
 
 const item = (
@@ -205,6 +207,7 @@ beforeEach(() => {
     rejectApplication,
     setCompleted,
     removeStudent,
+    bulkEnroll,
   ]) {
     fn.mockReset();
   }
@@ -771,6 +774,221 @@ describe("what each permission shows", () => {
     await settle(60);
     expect(toast("error")).toContain("Bunu yapma izniniz yok.");
     expect(byLabel("Onayla: Talebe 1")).not.toBeNull();
+    expect(refresh).not.toHaveBeenCalled();
+  });
+});
+
+describe("'Toplu talebe ekle'", () => {
+  const opener = () => buttonIn(document, "Toplu talebe ekle");
+  const list = () =>
+    dialog().querySelector("textarea[name=emails]") as HTMLTextAreaElement;
+  const count = () =>
+    dialog().querySelector("[data-testid=bulk-count]")?.textContent;
+  const submit = () => buttonIn(dialog(), "Ekle");
+  const open = async () => {
+    await mount();
+    await click(opener());
+    await settle(80);
+  };
+  const answer = {
+    enrolled: Array.from({ length: 12 }, (_, i) => `yeni${i}@example.com`),
+    approved: ["a@example.com", "b@example.com", "c@example.com"],
+    already: ["k@example.com", "l@example.com"],
+    notFound: ["kimse@example.com"],
+    invalid: ["adres-degil"],
+    skipped: [
+      { email: "yasakli@example.com", reason: "barred" },
+      { email: "cikarilan@example.com", reason: "revoked" },
+      { email: "bitiren@example.com", reason: "COMPLETED" },
+    ],
+  };
+
+  it("is offered to a holder of enrollment.decide, and to nobody who only reads or decides seats", async () => {
+    state.permissions = holding("enrollment.decide");
+    expect(textOf(await markup())).toContain("Toplu talebe ekle");
+    for (const held of [
+      ["course.staff_read"],
+      ["enrollment.complete"],
+      ["enrollment.remove"],
+      ["course.staff_read", "enrollment.complete", "enrollment.remove"],
+    ]) {
+      state.permissions = holding(...held);
+      expect(textOf(await markup()), held.join()).not.toContain(
+        "Toplu talebe ekle"
+      );
+    }
+  });
+
+  it("opens a dialog for this course that counts the addresses as they are typed: a line, a comma or a semicolon each, a repeat once", async () => {
+    await open();
+    expect(dialog().textContent).toContain("Bina ve İzhar Şerhi");
+    expect(dialog().textContent).toContain(
+      "Her satıra bir tane (virgül ya da noktalı virgülle de ayırabilirsiniz)"
+    );
+    expect(count()).toBe("0 adres");
+    expect(submit().disabled).toBe(true);
+    await typeInto(
+      list(),
+      "ayse@example.com\nyusuf@example.com, zeynep@example.com; AYSE@example.com\n\n"
+    );
+    expect(count()).toBe("3 adres");
+    expect(submit().disabled).toBe(false);
+  });
+
+  it("refuses more than 500 addresses before anything is sent", async () => {
+    await open();
+    const many = (n: number) =>
+      Array.from({ length: n }, (_, i) => `kisi${i}@example.com`).join("\n");
+    await typeInto(list(), many(501));
+    expect(count()).toBe("501 adres");
+    expect(dialog().textContent).toContain(
+      "En fazla 500 adres ekleyebilirsiniz; listede 501 adres var."
+    );
+    expect(submit().disabled).toBe(true);
+    await click(submit());
+    await settle(40);
+    expect(bulkEnroll).not.toHaveBeenCalled();
+    await typeInto(list(), many(500));
+    expect(dialog().textContent).not.toContain("En fazla 500");
+    expect(submit().disabled).toBe(false);
+  });
+
+  it("sends the list as read, then tells each outcome with its count, the addresses to copy and the skipped ones with their reason", async () => {
+    bulkEnroll.mockResolvedValue({ success: true, data: answer });
+    await open();
+    await typeInto(list(), " Ayse@Example.com \nkimse@example.com,adres-degil");
+    await click(submit());
+    await settle(80);
+
+    expect(bulkEnroll).toHaveBeenCalledExactlyOnceWith("c-1", [
+      "ayse@example.com",
+      "kimse@example.com",
+      "adres-degil",
+    ]);
+    const outcomes = [
+      ...dialog().querySelectorAll("[data-testid=bulk-outcomes] li"),
+    ].map((li) => li.textContent);
+    expect(outcomes).toEqual([
+      "12 talebe eklendi",
+      "3 başvuru onaylandı",
+      "2 zaten kayıtlı",
+      "1 adresle hesap bulunamadı",
+      "1 adres e-posta adresi değil",
+      "3 adres atlandı",
+    ]);
+    const box = dialog().querySelector(
+      "[data-testid=bulk-unmatched] textarea"
+    ) as HTMLTextAreaElement;
+    expect(box.value).toBe("kimse@example.com\nadres-degil");
+    expect(box.readOnly).toBe(true);
+    expect(dialog().textContent).toContain(
+      "Bu adreslerle Medaris hesabı bulunamadı. Hesap açıldıktan sonra yeniden ekleyebilirsiniz."
+    );
+    const skipped = [
+      ...dialog().querySelectorAll("[data-testid=bulk-skipped] li"),
+    ].map((li) => li.textContent);
+    expect(skipped).toEqual([
+      "yasakli@example.com: Bu derse girişi yasaklı",
+      "cikarilan@example.com: Ders kadrosu dersten çıkarmış",
+      "bitiren@example.com: Dersi tamamlamış",
+    ]);
+    expect(buttonIn(dialog(), "Ekle")).toBeUndefined();
+    expect(refresh).not.toHaveBeenCalled();
+  });
+
+  it("leaves out the outcomes nobody is in, and the box when every address had an account", async () => {
+    bulkEnroll.mockResolvedValue({
+      success: true,
+      data: {
+        ...answer,
+        approved: [],
+        already: [],
+        notFound: [],
+        invalid: [],
+        skipped: [],
+      },
+    });
+    await open();
+    await typeInto(list(), "ayse@example.com");
+    await click(submit());
+    await settle(80);
+    const outcomes = [
+      ...dialog().querySelectorAll("[data-testid=bulk-outcomes] li"),
+    ].map((li) => li.textContent);
+    expect(outcomes).toEqual(["12 talebe eklendi"]);
+    expect(dialog().querySelector("[data-testid=bulk-unmatched]")).toBeNull();
+    expect(dialog().querySelector("[data-testid=bulk-skipped]")).toBeNull();
+  });
+
+  it("copies the addresses no account was found for, one a line", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true,
+    });
+    bulkEnroll.mockResolvedValue({ success: true, data: answer });
+    await open();
+    await typeInto(list(), "ayse@example.com");
+    await click(submit());
+    await settle(80);
+    await click(buttonIn(dialog(), "Kopyala"));
+    await settle(40);
+    expect(writeText).toHaveBeenCalledExactlyOnceWith(
+      "kimse@example.com\nadres-degil"
+    );
+    expect(toast("success")).toContain("Adresler kopyalandı");
+  });
+
+  it("says so, and leaves the box to copy by hand, when the clipboard refuses", async () => {
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText: vi.fn().mockRejectedValue(new Error("denied")) },
+      configurable: true,
+    });
+    bulkEnroll.mockResolvedValue({ success: true, data: answer });
+    await open();
+    await typeInto(list(), "ayse@example.com");
+    await click(submit());
+    await settle(80);
+    await click(buttonIn(dialog(), "Kopyala"));
+    await settle(40);
+    expect(toast("warning")).toContain(
+      "Kopyalanamadı; adresleri kutudan seçip kopyalayın."
+    );
+  });
+
+  it("reads the roster again once the answer is closed", async () => {
+    bulkEnroll.mockResolvedValue({ success: true, data: answer });
+    await open();
+    await typeInto(list(), "ayse@example.com");
+    await click(submit());
+    await settle(80);
+    await click(buttonIn(dialog(), "Kapat"));
+    await settle(60);
+    expect(dialog()).toBeNull();
+    expect(refresh).toHaveBeenCalledOnce();
+  });
+
+  it("closes on 'Vazgeç' without sending anything or reading the roster again", async () => {
+    await open();
+    await typeInto(list(), "ayse@example.com");
+    await click(buttonIn(dialog(), "Vazgeç"));
+    await settle(60);
+    expect(dialog()).toBeNull();
+    expect(bulkEnroll).not.toHaveBeenCalled();
+    expect(refresh).not.toHaveBeenCalled();
+  });
+
+  it("keeps the dialog and the list, and says why, when the API refuses", async () => {
+    bulkEnroll.mockResolvedValue({ success: false, code: "COURSE_NOT_FOUND" });
+    await open();
+    await typeInto(list(), "ayse@example.com");
+    await click(submit());
+    await settle(80);
+    expect(toast("error")).toContain("Talebeler eklenemedi");
+    expect(toast("error")).toContain(
+      "Bu derse şu an talebe eklenemez: ders taslakta ya da gizli."
+    );
+    expect(list().value).toBe("ayse@example.com");
     expect(refresh).not.toHaveBeenCalled();
   });
 });

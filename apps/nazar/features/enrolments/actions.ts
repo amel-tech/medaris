@@ -1,6 +1,9 @@
 "use server";
 
-import { TeamSettableEnrollmentStatus } from "@medaris/services/tedrisat";
+import {
+  type BulkEnrollmentResponse,
+  TeamSettableEnrollmentStatus,
+} from "@medaris/services/tedrisat";
 import {
   type ActionOutcome,
   authenticatedAction,
@@ -9,8 +12,9 @@ import {
 
 /**
  * Talebeler of a course. "Onayla" and "Reddet" are the Pano's actions
- * (`approveApplication`, `rejectApplication`); these two are the course team's
- * decisions on a seat. A refusal is its code (AUTHZ_FORBIDDEN,
+ * (`approveApplication`, `rejectApplication`); the first two here are the
+ * course team's decisions on a seat, the third its "Toplu talebe ekle". A
+ * refusal is its code (AUTHZ_FORBIDDEN,
  * ENROLLMENT_STATE_CONFLICT, ENROLLMENT_NOT_FOUND) and the page words it.
  */
 
@@ -63,5 +67,24 @@ export async function removeStudent(
   });
   if (!result.success)
     console.error("Error removing a talebe from a course:", result.error);
+  return outcomeOf(result);
+}
+
+/**
+ * "Toplu talebe ekle" (`POST /courses/:id/enrollments/bulk`): the course team
+ * enrols the people a list of e-mail addresses names, approving a waiting
+ * request on the way. The answer says, address by address, what came of it;
+ * a refusal is the API's code (AUTHZ_FORBIDDEN, COURSE_NOT_FOUND for a course
+ * that takes no enrolments, KEYCLOAK_ADMIN_* when the realm cannot be asked).
+ */
+export async function bulkEnroll(
+  courseId: string,
+  emails: string[]
+): Promise<ActionOutcome<BulkEnrollmentResponse>> {
+  const result = await authenticatedAction((api) =>
+    api.courses.bulkEnroll({ id: courseId, bulkEnrollDto: { emails } })
+  );
+  if (!result.success)
+    console.error("Error enrolling a list of talebe:", result.error);
   return outcomeOf(result);
 }
