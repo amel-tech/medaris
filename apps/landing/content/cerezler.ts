@@ -1,19 +1,29 @@
 // What Medaris stores in a browser, for the Çerezler page. Measured from the
-// code on 4 October (main together with the open pull requests): NextAuth 4's
-// cookies in apps/*/lib/auth_cookies.ts, Keycloak 26's own cookies with the
-// realm's lifetimes in config/keycloak/realms/_base.json (#226: SSO idle
-// 18000 s, max 36000 s; remember me on, 14 days idle, 30 days max), the
-// apps' own cookies and storage keys.
+// code on 12 October (main at #285): the sign-in cookies of @medaris/auth
+// (libs/auth/src/server/config.ts, cookies.ts, routes.ts and
+// session-cookie.ts) under the prefixes of apps/{tedris,nizam,nazar}/lib/
+// auth.ts, its storage keys in libs/auth/src/client/sign-in.ts, Keycloak 26's
+// own cookies with the realm's lifetimes in config/keycloak/realms/_base.json
+// (#226: SSO idle 18000 s, max 36000 s; remember me on, 14 days idle, 30 days
+// max), and the apps' own cookies and storage keys. #285 removed next-auth's
+// cookies and `tedris.welcomed`.
 // A cookie that is not set by any code is not listed: the device cookie of
 // MDRS-125 is not built yet.
 //
 // When the realm's session lifetimes change, `sessionIdle` and `sessionMax`
-// change with them.
+// change with them; `sessionCookieMax` follows `sessionMaxAge` in
+// libs/auth/src/server/config.ts.
 
 export const sessionIdle = "5 saat";
 export const sessionMax = "10 saat";
 export const rememberIdle = "14 gün";
 export const rememberMax = "30 gün";
+/**
+ * The session cookie lives until the refresh token's deadline, which the
+ * identity server sets from the realm's lifetimes above; this is its life when
+ * the server sets none (`sessionMaxAge`, default 30 days).
+ */
+export const sessionCookieMax = "30 gün";
 
 /** How long a signed-in session lasts, with and without "Beni hatırla". */
 const sessionEnds = `oturum ${sessionIdle} işlem yapılmazsa, en geç ${sessionMax} sonra sona erer; “Beni hatırla”yı işaretlediyseniz ${rememberIdle} işlem yapılmazsa, en geç ${rememberMax} sonra`;
@@ -41,24 +51,25 @@ export const cookieGroups: CookieGroup[] = [
       "Giriş yapmak ve hesabınızı güvenle kullanmak için gerekir; bunlar olmadan Medaris çalışmaz.",
     rows: [
       {
-        names: "tedris.session-token, nizam.session-token, nazar.session-token",
+        names: "tedris.session, nizam.session, nazar.session",
         purpose:
-          "Giriş yaptığınızı hatırlar. Şifrelenmiştir; tarayıcıdaki betikler okuyamaz.",
+          "Giriş yaptığınızı hatırlar. Şifrelenmiştir; tarayıcıdaki betikler okuyamaz. Tek çereze sığmadığında adının sonuna .0, .1 … eklenerek parçalara bölünür.",
         setBy: "Tedris, Nizam ve Nazar",
-        lifetime: `30 gün; içindeki ${sessionEnds}`,
+        lifetime: `Kimlik sunucusundaki oturum kadar (sunucu bir süre bildirmezse ${sessionCookieMax}): ${sessionEnds}`,
       },
       {
-        names: "csrf-token, callback-url",
+        names: "tedris.auth-flow.*, nizam.auth-flow.*, nazar.auth-flow.*",
         purpose:
-          "Giriş ve çıkışı sahte isteklere karşı korur; girişten sonra döneceğiniz sayfayı tutar.",
+          "Kimlik sunucusuna gidip gelen giriş adımını güvenceye alır; girişten sonra döneceğiniz sayfayı ve dili tutar. Her giriş denemesinin ayrı ve şifrelenmiş bir çerezi olur.",
         setBy: "Tedris, Nizam ve Nazar",
-        lifetime: "Tarayıcıyı kapatana kadar",
+        lifetime: "10 dakika; giriş sonuçlanınca silinir",
       },
       {
-        names: "pkce.code_verifier, state",
-        purpose: "Kimlik sunucusuna gidip gelen giriş adımını güvenceye alır.",
+        names: "tedris.auth-starts, nizam.auth-starts, nazar.auth-starts",
+        purpose:
+          "Beş dakika içinde kaç kez giriş başlatıldığını sayar ve girişin durmadan kendini tekrarlamasını önler; yalnız bir sayı ve bir zaman tutar.",
         setBy: "Tedris, Nizam ve Nazar",
-        lifetime: "15 dakika",
+        lifetime: "En çok 5 dakika",
       },
       {
         names: "KEYCLOAK_IDENTITY, KEYCLOAK_SESSION",
@@ -93,13 +104,6 @@ export const cookieGroups: CookieGroup[] = [
         purpose:
           "Saatlerin hangi saat diliminde gösterileceğini hatırlar: hesabınızdaki seçim, yoksa tarayıcınızınki.",
         setBy: "Tedris ve Nizam",
-        lifetime: "1 yıl",
-      },
-      {
-        names: "tedris.welcomed",
-        purpose:
-          "Bu tarayıcıda karşılama ekranını görmüş hesapları hatırlar (en çok beş hesap kimliği); çıkış yapınca da kalır.",
-        setBy: "Tedris",
         lifetime: "1 yıl",
       },
       {
@@ -149,9 +153,10 @@ export const cookieGroups: CookieGroup[] = [
         lifetime: "Siz silene kadar; 30 saniye sonra geçersiz sayılır",
       },
       {
-        names: "medaris.auth.tab, medaris.auth.auto-retry, medaris-tz-synced",
+        names:
+          "medaris.auth.tab, medaris.auth.auto-retry, medaris.auth.auto-start, medaris.auth.go-on, medaris-tz-synced",
         purpose:
-          "Sekmenin girişi ve saat dilimini bir kez göndermesi için kısa süreli işaretler.",
+          "Bir sekmenin kendiliğinden yaptığı giriş denemelerini sınırlayan ve saat dilimini bir kez göndermesini sağlayan kısa süreli işaretler.",
         setBy: "Tedris, Nizam ve Nazar",
         lifetime: "Sekmeyi kapatana kadar",
       },
