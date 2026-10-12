@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.4](https://github.com/amel-tech/medaris/compare/tedrisat-v0.2.3...tedrisat-v0.2.4) (2026-10-12)
+
+
+### Features
+
+* **tedris-web, nazar-web, nizam-web:** one OIDC session package for the web apps ([#285](https://github.com/amel-tech/medaris/issues/285)) ([469b0d5](https://github.com/amel-tech/medaris/commit/469b0d5e8b557c514d4382b82f96ec8d71979bec))
+* **tedrisat, common:** verify access tokens with jose and the JWKS, any listed algorithm ([#283](https://github.com/amel-tech/medaris/issues/283)) ([524538d](https://github.com/amel-tech/medaris/commit/524538dd466ad33782fcef6cfa8205e3004b61d1))
+
 ## [0.2.3](https://github.com/amel-tech/medaris/compare/tedrisat-v0.2.2...tedrisat-v0.2.3) (2026-10-12)
 
 
