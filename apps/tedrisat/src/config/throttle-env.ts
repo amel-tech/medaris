@@ -1,8 +1,8 @@
-import { resolveThrottlerTtl } from "@medaris/common";
+import { resolveUserThrottlerTtl } from "@medaris/common";
 import type { ThrottlerOptions } from "@nestjs/throttler";
 
 /**
- * The bulk routes get their own, much lower budget than the shared default
+ * The bulk routes get their own, much lower per-user budget than the default
  * (MDRS-31).
  *
  * `POST /flashcard/decks/:deckId/cards/bulk/import` accepts a 5MB workbook
@@ -11,6 +11,11 @@ import type { ThrottlerOptions } from "@nestjs/throttler";
  * magnitude more work than a hundred ordinary reads. Ten is also enough for
  * the real interaction: a person importing decks one file at a time never
  * approaches it.
+ *
+ * It is a budget for one person, so it overrides the per-user layer, not the
+ * address layer (2026-10-12): per address, which in production is the proxy's
+ * or the web server's for everyone, ten a minute was ten for the whole
+ * platform.
  *
  * This lives here, not in `libs/common/src/throttler/`, because it is
  * tedrisat-only tuning: teskilat has no bulk route and no `@Throttle` override
@@ -68,14 +73,19 @@ function readPositiveInt(
 /**
  * Window for the bulk routes (`THROTTLE_BULK_TTL`).
  *
- * Falls back to the shared default window rather than to a constant of its
- * own, so an operator who widens `THROTTLE_TTL` does not silently leave the
- * expensive routes measuring against the old one.
+ * Falls back to the per-user window (`THROTTLE_USER_TTL`, itself falling back
+ * to `THROTTLE_TTL`) rather than to a constant of its own, so an operator who
+ * widens the window does not silently leave the expensive routes measuring
+ * against the old one.
  */
 export function resolveBulkThrottlerTtl(
   env: NodeJS.ProcessEnv = process.env
 ): number {
-  return readPositiveInt(env, "THROTTLE_BULK_TTL", resolveThrottlerTtl(env));
+  return readPositiveInt(
+    env,
+    "THROTTLE_BULK_TTL",
+    resolveUserThrottlerTtl(env)
+  );
 }
 
 /** Requests allowed on a bulk route inside that window (`THROTTLE_BULK_LIMIT`). */
@@ -97,7 +107,7 @@ export function assertBulkThrottleEnv(env: NodeJS.ProcessEnv = process.env) {
 }
 
 /**
- * The override handed to `@Throttle({ default: BULK_THROTTLE })`.
+ * The override handed to `@Throttle({ user: BULK_THROTTLE })`.
  *
  * Both fields are resolver functions rather than numbers because a decorator
  * argument is evaluated when the controller class is defined — which happens

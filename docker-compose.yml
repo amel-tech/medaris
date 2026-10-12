@@ -156,12 +156,16 @@ services:
       KEYCLOAK_NOT_FOUND_CACHE_TTL: ${TEDRISAT__KEYCLOAK_NOT_FOUND_CACHE_TTL:-${API__KEYCLOAK_NOT_FOUND_CACHE_TTL:-60}}
       # MDRS-31. Left out of this block, an operator changing API__THROTTLE_*
       # in response to abuse sees no effect: buildThrottlerOptions falls back
-      # to its compiled defaults (100/window, bulk 10) whenever the container
-      # does not receive these names, the same gap this file already documents
-      # for KEYCLOAK_CACHE_TTL above. THROTTLE_BULK_TTL is tedrisat-only —
-      # unset falls through to THROTTLE_TTL (apps/tedrisat/src/config/throttle-env.ts).
+      # to its compiled defaults (3000/window per address, 100 per user, bulk
+      # 10) whenever the container does not receive these names, the same gap
+      # this file already documents for KEYCLOAK_CACHE_TTL above. An empty
+      # THROTTLE_USER_TTL falls through to THROTTLE_TTL. THROTTLE_BULK_TTL is
+      # tedrisat-only — unset falls through to THROTTLE_USER_TTL
+      # (apps/tedrisat/src/config/throttle-env.ts).
       THROTTLE_TTL: ${TEDRISAT__THROTTLE_TTL:-${API__THROTTLE_TTL:-60000}}
-      THROTTLE_LIMIT: ${TEDRISAT__THROTTLE_LIMIT:-${API__THROTTLE_LIMIT:-100}}
+      THROTTLE_LIMIT: ${TEDRISAT__THROTTLE_LIMIT:-${API__THROTTLE_LIMIT:-3000}}
+      THROTTLE_USER_TTL: ${TEDRISAT__THROTTLE_USER_TTL:-${API__THROTTLE_USER_TTL:-}}
+      THROTTLE_USER_LIMIT: ${TEDRISAT__THROTTLE_USER_LIMIT:-${API__THROTTLE_USER_LIMIT:-100}}
       THROTTLE_BULK_TTL: ${TEDRISAT__THROTTLE_BULK_TTL:-${API__THROTTLE_BULK_TTL:-}}
       THROTTLE_BULK_LIMIT: ${TEDRISAT__THROTTLE_BULK_LIMIT:-${API__THROTTLE_BULK_LIMIT:-10}}
       # 0 here matches this compose network having no reverse proxy in front —
@@ -227,10 +231,14 @@ services:
       OTEL_EXPORTER_OTLP_PROTOCOL: ${TESKILAT__OTEL_EXPORTER_OTLP_PROTOCOL:-${API__OTEL_EXPORTER_OTLP_PROTOCOL:-grpc}}
       OTEL_EXPORTER_OTLP_COMPRESSION: ${TESKILAT__OTEL_EXPORTER_OTLP_COMPRESSION:-${API__OTEL_EXPORTER_OTLP_COMPRESSION:-gzip}}
       # MDRS-31, same rule as tedrisat above. No bulk pair here: teskilat's
-      # AppModule imports only RateLimitModule's default throttler, never the
-      # tedrisat-only BULK_THROTTLE override.
+      # AppModule imports only RateLimitModule's two layers, never the
+      # tedrisat-only BULK_THROTTLE override. The per-user pair is read at boot
+      # like the others, though with no AuthGuard in teskilat yet that layer
+      # has nobody to count.
       THROTTLE_TTL: ${TESKILAT__THROTTLE_TTL:-${API__THROTTLE_TTL:-60000}}
-      THROTTLE_LIMIT: ${TESKILAT__THROTTLE_LIMIT:-${API__THROTTLE_LIMIT:-100}}
+      THROTTLE_LIMIT: ${TESKILAT__THROTTLE_LIMIT:-${API__THROTTLE_LIMIT:-3000}}
+      THROTTLE_USER_TTL: ${TESKILAT__THROTTLE_USER_TTL:-${API__THROTTLE_USER_TTL:-}}
+      THROTTLE_USER_LIMIT: ${TESKILAT__THROTTLE_USER_LIMIT:-${API__THROTTLE_USER_LIMIT:-100}}
       # Same as tedrisat's TRUST_PROXY_HOPS — 0 for this compose network.
       TRUST_PROXY_HOPS: ${TESKILAT__TRUST_PROXY_HOPS:-${API__TRUST_PROXY_HOPS:-0}}
       # No KEYCLOAK_* here. teskilat has no auth guard: nothing under

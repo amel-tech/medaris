@@ -324,9 +324,10 @@ export class FlashcardController {
 
   // The three bulk routes below carry a budget an order of magnitude lower than
   // every other endpoint: one workbook can be 5MB and is parsed row by row, and
-  // an export streams a whole deck. `default` names the single throttler
-  // registered in RateLimitModule — this overrides its limit for this handler
-  // only, it does not add a second one. See ../config/throttle-env.ts.
+  // an export streams a whole deck. `user` names RateLimitModule's per-user
+  // layer — this overrides that layer's budget for this handler only, and
+  // leaves the address layer (`default`) at its ceiling. See
+  // ../config/throttle-env.ts.
   // Post Bulk
   @ApiOperation({
     summary: "Bulk",
@@ -341,7 +342,7 @@ export class FlashcardController {
   @ApiTooManyRequestsResponse({
     description: "Bulk rate limit exceeded — see the Retry-After header",
   })
-  @Throttle({ default: BULK_THROTTLE })
+  @Throttle({ user: BULK_THROTTLE })
   @Authz(
     PERMISSIONS.DECK_CREATE_CARD,
     byParam(ENTITIES.FLASHCARD_DECK, "deckId")
@@ -402,7 +403,7 @@ export class FlashcardController {
   }
 
   // Get Export File
-  @Throttle({ default: BULK_THROTTLE })
+  @Throttle({ user: BULK_THROTTLE })
   @Authz(
     PERMISSIONS.DECK_MANAGE_CARDS,
     byParam(ENTITIES.FLASHCARD_DECK, "deckId")
@@ -452,7 +453,7 @@ export class FlashcardController {
   }
 
   // Post Import File
-  @Throttle({ default: BULK_THROTTLE })
+  @Throttle({ user: BULK_THROTTLE })
   @Authz(
     PERMISSIONS.DECK_CREATE_CARD,
     byParam(ENTITIES.FLASHCARD_DECK, "deckId")

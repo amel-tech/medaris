@@ -12,13 +12,16 @@ import { Throttle } from "@nestjs/throttler";
 import { CalendarFeedService } from "./calendar-feed.service";
 
 /**
- * The route's per-address budget, raised above the shared default.
+ * The route's per-address budget, on the address layer (`default`).
  *
  * Every read arrives through tedris-web, so one address carries every
- * subscriber's calendar app; the shared 100 a minute would start refusing
- * real feeds at a few thousand hourly subscribers. What this bounds is one
- * client trying made-up tokens. A single feed has its own, much lower limit,
- * counted per resolved token in `CalendarFeedService` (`FeedPollLimiter`).
+ * subscriber's calendar app; it was raised above the old shared 100 a minute,
+ * which would have refused real feeds at a few thousand hourly subscribers,
+ * and now sits below the 3000 ceiling (2026-10-12) because no token is
+ * verified here: what this bounds is one client trying made-up tokens. The
+ * per-user layer never counts this route, since nobody is signed in on it. A
+ * single feed has its own, much lower limit, counted per resolved token in
+ * `CalendarFeedService` (`FeedPollLimiter`).
  */
 export const CALENDAR_FEED_THROTTLE = { limit: 600, ttl: 60_000 };
 
