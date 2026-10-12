@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.2.3](https://github.com/amel-tech/medaris/compare/tedrisat-v0.2.2...tedrisat-v0.2.3) (2026-10-12)
+
+
+### Features
+
+* **tedrisat, nazar-web, nizam-web, tedris-web:** MDRS-283 cover a celse by link, stream, in person ([#271](https://github.com/amel-tech/medaris/issues/271)) ([d24612b](https://github.com/amel-tech/medaris/commit/d24612bbd3867d8698b77973b4e63525abd92840))
+* **tedrisat, nazar-web, nizam-web, tedris-web:** MDRS-286 give each celse its own resource links ([#274](https://github.com/amel-tech/medaris/issues/274)) ([ef2c400](https://github.com/amel-tech/medaris/commit/ef2c4002ca6c14a583723e0912f0c5a53b780839))
+* **tedrisat, nazar-web, tedris-web:** MDRS-288 open a celse's recording at a time the team sets ([#275](https://github.com/amel-tech/medaris/issues/275)) ([1fe3345](https://github.com/amel-tech/medaris/commit/1fe334503eac9287519e643c5cfc795fb2442cf9))
+* **tedrisat, tedris-web, ui, i18n:** MDRS-285 watch a celse on its own full-width page ([#273](https://github.com/amel-tech/medaris/issues/273)) ([adafdda](https://github.com/amel-tech/medaris/commit/adafdda6217b60cdadd3eff80acf441d2fcc6e1b))
+
+
+### Bug Fixes
+
+* **deps, tedrisat:** floor five advisories, let readers see the recording release time ([#280](https://github.com/amel-tech/medaris/issues/280)) ([4198f65](https://github.com/amel-tech/medaris/commit/4198f65b724679689a81ca1133ae10f0a4099673))
+
 ## [0.2.2](https://github.com/amel-tech/medaris/compare/tedrisat-v0.2.1...tedrisat-v0.2.2) (2026-10-09)
 
 
