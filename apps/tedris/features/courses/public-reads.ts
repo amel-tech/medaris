@@ -107,6 +107,20 @@ export const getRecordings = (
     (await viewerApi()).lessons.listCourseRecordings({ id: courseId }, NO_STORE)
   );
 
+/**
+ * The celses of a course the viewer handed homework in on (a note or a
+ * file), for the course page's "Ödev" marks. Null when the read fails: the
+ * page then marks the homework without saying it is not handed in.
+ */
+export const getMySubmissions = (courseId: string): Promise<string[] | null> =>
+  orNull(async () =>
+    (
+      await (
+        await viewerApi()
+      ).submissions.listMySubmissions({ id: courseId }, NO_STORE)
+    ).items.map((item) => item.lessonId)
+  );
+
 /** Whether the visitor has a usable token — what tedrisat will see. */
 export const isSignedIn = async (): Promise<boolean> =>
   Boolean(await getAccessToken());

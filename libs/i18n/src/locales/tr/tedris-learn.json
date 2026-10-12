@@ -203,7 +203,14 @@
       "storage": "Dosyalar şu an kaydedilemiyor. Biraz sonra yeniden dene.",
       "notFound": "Bu dosya artık yok.",
       "failed": "Dosya eklenemedi. Biraz sonra yeniden dene."
-    }
+    },
+    "sectionTitle": "Ödev",
+    "assignmentFiles": "Ödevin dosyaları",
+    "handedIn": "Teslim edildi",
+    "notHandedIn": "Teslim edilmedi",
+    "pendingTitle": "Bu ödevi henüz teslim etmedin",
+    "pendingBody": "Aşağıdan dosyanı ekle ya da notunu yaz; müderris ve ders ekibi görür.",
+    "noAssignment": "Bu celsede ödev verilmedi; daha önce teslim ettiğin ödev burada duruyor."
   },
   "FileDownload": {
     "title": "Dosya indirilemedi",

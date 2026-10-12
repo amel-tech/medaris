@@ -8,9 +8,12 @@ import {
   MAX_SUBMISSION_FILES,
 } from "@medaris/services/file-rules";
 import type {
+  LessonAssignmentFileResponse,
+  LessonAssignmentResponse,
   LessonSubmissionResponse,
   SubmissionFileResponse,
 } from "@medaris/services/tedrisat";
+import { Alert } from "@medaris/ui/mds/alert";
 import { Badge } from "@medaris/ui/mds/badge";
 import { Button } from "@medaris/ui/mds/button";
 import { Field } from "@medaris/ui/mds/field";
@@ -27,9 +30,11 @@ import {
   saveMySubmissionNote,
 } from "../actions/submissions";
 import {
+  assignmentFileHref,
   type FileErrorKey,
   fileErrorKey,
   fileIcon,
+  isHandedIn,
   parseSubmission,
   SUBMISSION_NOTE_MAX,
   submissionFileHref,
@@ -91,16 +96,35 @@ const send = async (lessonId: string, file: File): Promise<Sent> => {
 };
 
 /**
- * "Ödevim" on a celse's detail page (MDRS-290): the talebe's own homework on
- * the celse, for a talebe who may hand it in (enrolled or completed, the
- * content open, the celse not cancelled; the page decides, tedrisat
- * enforces). It lists the files handed in, each downloaded through this app,
- * adds new ones (at most 5, 25 MB each, the types tedrisat takes; a file over
- * the size is refused here before it is sent) and removes one after asking,
- * and keeps an optional note. The müderris and the course team read it in
- * nazar. There is no deadline and no grade.
+ * "Ödev" on a celse's detail page, a section of its own apart from
+ * "Kaynaklar". The owner, 2026-10-12: "ders/celse kaynağı ile ödev yükleme
+ * ve gösterim alanları ayrı olsun, ödevin ödev olduğu anlaşılsın ve
+ * yapılmamış ödevin vurgulanması sağlansın".
+ *
+ * On top, the homework the müderris set on the celse: its description and
+ * its own files, each downloaded through this app. Under it, "Ödevim"
+ * (MDRS-290): the talebe's own homework, with its state beside the heading,
+ * "Teslim edildi" (success) once it holds a note or a file, else "Teslim
+ * edilmedi" (warning) with a warning notice that asks them to hand it in.
+ * Ödevim lists the files handed in, adds new ones (at most 5, 25 MB each,
+ * the types tedrisat takes; a file over the size is refused here before it
+ * is sent), removes one after asking, and keeps an optional note. The
+ * müderris and the course team read it in nazar. No deadline and no grade.
+ *
+ * For a talebe who may hand in (enrolled or completed, the content open,
+ * the celse not cancelled; the page decides, tedrisat enforces). A celse
+ * with no homework draws nothing, unless the talebe handed something in on
+ * it before homework was set celse by celse: that stays theirs to see and
+ * manage, without a state.
  */
-export function SessionHomework({ lessonId }: { lessonId: string }) {
+export function SessionHomework({
+  lessonId,
+  assignment = null,
+}: {
+  lessonId: string;
+  /** the homework the müderris set on the celse; null when there is none */
+  assignment?: LessonAssignmentResponse | null;
+}) {
   const t = useTranslations("tedrisLearn.Homework");
   const locale = useLocale();
   const timeZone = useTimeZone();
@@ -205,154 +229,289 @@ export function SessionHomework({ lessonId }: { lessonId: string }) {
       }).format(submission.updatedAt)
     : null;
 
+  // A celse without homework: only a submission made before shows.
+  if (!assignment && (load.state !== "ready" || submission === null)) {
+    return null;
+  }
+  const handedIn = isHandedIn(submission);
+  const stateKnown = Boolean(assignment) && load.state === "ready";
+
   return (
     <section
       className="mds-card flex flex-col gap-4"
-      aria-labelledby={`homework-${lessonId}`}
+      aria-labelledby={`assignment-${lessonId}`}
       data-testid="session-homework"
     >
-      {/* One line: the card's name and, beside it, who reads it. */}
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
         <h2
-          className="mds-h3 flex items-center gap-2"
-          id={`homework-${lessonId}`}
+          className="mds-card__title flex items-center gap-2"
+          id={`assignment-${lessonId}`}
         >
-          <Icon name="upload" />
-          {t("title")}
+          <Icon name="note" />
+          {t("sectionTitle")}
         </h2>
-        <p className="mds-caption">{t("audience")}</p>
+        {stateKnown ? (
+          handedIn ? (
+            <Badge
+              variant="success"
+              icon={<Icon name="check" size="sm" />}
+              data-testid="homework-state"
+            >
+              {t("handedIn")}
+            </Badge>
+          ) : (
+            <Badge
+              variant="warning"
+              icon={<Icon name="warning" size="sm" />}
+              data-testid="homework-state"
+            >
+              {t("notHandedIn")}
+            </Badge>
+          )
+        ) : null}
       </div>
 
-      {load.state === "loading" ? (
-        <output className="mds-caption">{t("loading")}</output>
-      ) : load.state === "failed" ? (
-        <div className="flex flex-col gap-2" role="alert">
-          <p className="mds-body-sm">{t("loadFailed")}</p>
-          <div>
-            <Button variant="outline" size="small" onClick={() => void read()}>
-              {t("retry")}
-            </Button>
-          </div>
-        </div>
+      {assignment ? (
+        <AssignmentBody assignment={assignment} locale={locale} />
       ) : (
-        <>
-          {files.length > 0 ? (
-            <ul
-              className="m-0 flex list-none flex-col p-0"
-              aria-label={t("filesLabel")}
-              data-testid="homework-files"
-            >
-              {files.map((file) => (
-                <FileRow
-                  key={file.id}
-                  lessonId={lessonId}
-                  file={file}
-                  locale={locale}
-                  errorText={errorText}
-                  onRemoved={() => {
-                    setSubmission((current) =>
-                      current
-                        ? {
-                            ...current,
-                            files: current.files.filter(
-                              (f) => f.id !== file.id
-                            ),
-                          }
-                        : current
-                    );
-                    setStatus(t("removed", { name: file.name }));
-                    // The time it last changed is tedrisat's to say.
-                    void read(true);
-                  }}
-                />
-              ))}
-            </ul>
-          ) : uploads.length === 0 ? (
-            <p className="mds-caption">{t("empty")}</p>
-          ) : null}
-
-          {uploads.length > 0 ? (
-            <ul
-              className="m-0 flex list-none flex-col gap-2 p-0"
-              data-testid="homework-uploads"
-            >
-              {uploads.map((upload) => (
-                <li key={upload.key} className="flex items-start gap-3">
-                  <Icon
-                    name={upload.state === "failed" ? "warning" : "upload"}
-                    size="sm"
-                  />
-                  <span className="flex min-inline-0 flex-1 flex-col">
-                    <bdi className="mds-label">{upload.name}</bdi>
-                    {upload.state === "uploading" ? (
-                      <span className="mds-caption" aria-busy="true">
-                        {t("uploading")}
-                      </span>
-                    ) : (
-                      <span className="mds-error" role="alert">
-                        {errorText(upload.error ?? "failed")}
-                      </span>
-                    )}
-                  </span>
-                  {upload.state === "failed" ? (
-                    <IconButton
-                      size="mini"
-                      icon={<Icon name="close" size="sm" />}
-                      label={t("dismiss", { name: upload.name })}
-                      onClick={() => settle(upload.key, null)}
-                    />
-                  ) : null}
-                </li>
-              ))}
-            </ul>
-          ) : null}
-
-          <Field
-            label={t("addLabel")}
-            help={
-              full
-                ? t("full", { maxFiles: limits.maxFiles })
-                : t("limits", { maxFiles: limits.maxFiles, maxSize })
-            }
-          >
-            <Input
-              type="file"
-              name="file"
-              multiple
-              accept={FILE_ACCEPT}
-              disabled={full}
-              onChange={(event) => {
-                const chosen = [...(event.target.files ?? [])];
-                // The same file may be chosen again after a refusal.
-                event.target.value = "";
-                void add(chosen);
-              }}
-            />
-          </Field>
-
-          <NoteForm
-            lessonId={lessonId}
-            saved={submission?.note ?? null}
-            onSaved={setSubmission}
-          />
-
-          {submission && updatedAt ? (
-            <p className="mds-caption">
-              {t("updatedAt")}{" "}
-              <time dateTime={submission.updatedAt.toISOString()}>
-                {updatedAt}
-              </time>
-            </p>
-          ) : null}
-
-          <output className="mds-visually-hidden" aria-live="polite">
-            {status}
-          </output>
-        </>
+        <p className="mds-caption">{t("noAssignment")}</p>
       )}
+
+      {stateKnown && !handedIn ? (
+        <Alert tone="warning" title={t("pendingTitle")}>
+          {t("pendingBody")}
+        </Alert>
+      ) : null}
+
+      <div className="flex flex-col gap-4 border-bs border-neutral-subtle pbs-4">
+        {/* One line: Ödevim and, beside it, who reads it. */}
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <h3
+            className="mds-h3 flex items-center gap-2"
+            id={`homework-${lessonId}`}
+          >
+            <Icon name="upload" />
+            {t("title")}
+          </h3>
+          <p className="mds-caption">{t("audience")}</p>
+        </div>
+
+        {load.state === "loading" ? (
+          <output className="mds-caption">{t("loading")}</output>
+        ) : load.state === "failed" ? (
+          <div className="flex flex-col gap-2" role="alert">
+            <p className="mds-body-sm">{t("loadFailed")}</p>
+            <div>
+              <Button
+                variant="outline"
+                size="small"
+                onClick={() => void read()}
+              >
+                {t("retry")}
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <>
+            {files.length > 0 ? (
+              <ul
+                className="m-0 flex list-none flex-col p-0"
+                aria-label={t("filesLabel")}
+                data-testid="homework-files"
+              >
+                {files.map((file) => (
+                  <FileRow
+                    key={file.id}
+                    lessonId={lessonId}
+                    file={file}
+                    locale={locale}
+                    errorText={errorText}
+                    onRemoved={() => {
+                      setSubmission((current) =>
+                        current
+                          ? {
+                              ...current,
+                              files: current.files.filter(
+                                (f) => f.id !== file.id
+                              ),
+                            }
+                          : current
+                      );
+                      setStatus(t("removed", { name: file.name }));
+                      // The time it last changed is tedrisat's to say.
+                      void read(true);
+                    }}
+                  />
+                ))}
+              </ul>
+            ) : uploads.length === 0 ? (
+              <p className="mds-caption">{t("empty")}</p>
+            ) : null}
+
+            {uploads.length > 0 ? (
+              <ul
+                className="m-0 flex list-none flex-col gap-2 p-0"
+                data-testid="homework-uploads"
+              >
+                {uploads.map((upload) => (
+                  <li key={upload.key} className="flex items-start gap-3">
+                    <Icon
+                      name={upload.state === "failed" ? "warning" : "upload"}
+                      size="sm"
+                    />
+                    <span className="flex min-inline-0 flex-1 flex-col">
+                      <bdi className="mds-label">{upload.name}</bdi>
+                      {upload.state === "uploading" ? (
+                        <span className="mds-caption" aria-busy="true">
+                          {t("uploading")}
+                        </span>
+                      ) : (
+                        <span className="mds-error" role="alert">
+                          {errorText(upload.error ?? "failed")}
+                        </span>
+                      )}
+                    </span>
+                    {upload.state === "failed" ? (
+                      <IconButton
+                        size="mini"
+                        icon={<Icon name="close" size="sm" />}
+                        label={t("dismiss", { name: upload.name })}
+                        onClick={() => settle(upload.key, null)}
+                      />
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+
+            <Field
+              label={t("addLabel")}
+              help={
+                full
+                  ? t("full", { maxFiles: limits.maxFiles })
+                  : t("limits", { maxFiles: limits.maxFiles, maxSize })
+              }
+            >
+              <Input
+                type="file"
+                name="file"
+                multiple
+                accept={FILE_ACCEPT}
+                disabled={full}
+                onChange={(event) => {
+                  const chosen = [...(event.target.files ?? [])];
+                  // The same file may be chosen again after a refusal.
+                  event.target.value = "";
+                  void add(chosen);
+                }}
+              />
+            </Field>
+
+            <NoteForm
+              lessonId={lessonId}
+              saved={submission?.note ?? null}
+              onSaved={setSubmission}
+            />
+
+            {submission && updatedAt ? (
+              <p className="mds-caption">
+                {t("updatedAt")}{" "}
+                <time dateTime={submission.updatedAt.toISOString()}>
+                  {updatedAt}
+                </time>
+              </p>
+            ) : null}
+
+            <output className="mds-visually-hidden" aria-live="polite">
+              {status}
+            </output>
+          </>
+        )}
+      </div>
     </section>
   );
 }
+
+/**
+ * What the müderris set: the description as written, line breaks kept, and
+ * the homework's own files, each a plain download link through this app (a
+ * refusal comes back to the page with `?fileError=`) with its type and size.
+ */
+const AssignmentBody = ({
+  assignment,
+  locale,
+}: {
+  assignment: LessonAssignmentResponse;
+  locale: string;
+}) => {
+  const t = useTranslations("tedrisLearn.Homework");
+  const description = assignment.description?.trim();
+  return (
+    <div className="flex flex-col gap-3" data-testid="assignment-body">
+      {description ? (
+        <p
+          className="mds-body whitespace-pre-line break-words"
+          dir="auto"
+          data-testid="assignment-description"
+        >
+          {description}
+        </p>
+      ) : null}
+      {assignment.files.length > 0 ? (
+        <div className="flex flex-col gap-1">
+          <h3 className="mds-eyebrow">{t("assignmentFiles")}</h3>
+          <ul
+            className="m-0 flex list-none flex-col p-0"
+            aria-label={t("assignmentFiles")}
+            data-testid="assignment-files"
+          >
+            {assignment.files.map((file) => (
+              <AssignmentFileRow key={file.id} file={file} locale={locale} />
+            ))}
+          </ul>
+        </div>
+      ) : null}
+    </div>
+  );
+};
+
+const AssignmentFileRow = ({
+  file,
+  locale,
+}: {
+  file: LessonAssignmentFileResponse;
+  locale: string;
+}) => {
+  const t = useTranslations("tedrisLearn.Homework");
+  const href = assignmentFileHref(file);
+  const type = fileTypeChip(file.contentType);
+  const name = (
+    <span className="mds-label" dir="auto">
+      {file.name}
+    </span>
+  );
+  return (
+    <li className="flex items-center gap-3 py-2 border-be border-neutral-subtle last:border-be-0">
+      <Icon name={fileIcon(file.contentType)} size="sm" />
+      <span className="flex min-inline-0 flex-1 flex-col">
+        {href ? (
+          <a className="mds-link" href={href}>
+            {name}
+            <span className="mds-visually-hidden">{t("download")}</span>
+          </a>
+        ) : (
+          name
+        )}
+        <span className="flex flex-wrap items-center gap-2 mbs-1">
+          {type ? <Badge variant="secondary">{type}</Badge> : null}
+          <span className="mds-caption mds-num">
+            {formatFileSize(file.sizeBytes, locale)}
+          </span>
+        </span>
+      </span>
+    </li>
+  );
+};
 
 /**
  * One file handed in: its name as a download (through this app; a plain

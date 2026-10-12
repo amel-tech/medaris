@@ -134,7 +134,10 @@
     "openSession": "Open the session page",
     "leaveBody": "You are about to leave <b>{title}</b>. You lose access to its sessions, meeting links, recordings and deck, and its sessions drop out of your calendar.",
     "leaveBodyCards": "The cards you copied into your own decks stay with you. You can apply to the course again.",
-    "resourcesDownload": " (downloads)"
+    "resourcesDownload": " (downloads)",
+    "assignmentBadge": "Homework",
+    "assignmentPending": "Homework not handed in",
+    "assignmentsPending": "{count, plural, one {Homework not handed in on # session} other {Homework not handed in on # sessions}}"
   },
   "DataTable": {
     "noResults": "No results."

@@ -12,13 +12,19 @@ import { Button } from "@medaris/ui/mds/button";
 import { Card } from "@medaris/ui/mds/card";
 import { CoverPattern } from "@medaris/ui/mds/cover-pattern";
 import { EmptyState } from "@medaris/ui/mds/empty-state";
+import { Icon } from "@medaris/ui/mds/icon";
 import { zoneName } from "@medaris/ui/mds/locale";
 import { Tabs, TabsPanel } from "@medaris/ui/mds/tabs";
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
-import { Fragment, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { courseCover } from "~/features/courses/course-cover";
 import { inviteHrefs } from "~/lib/invite-hrefs";
+import {
+  type AssignmentViewer,
+  mayHandInOn,
+  pendingAssignments,
+} from "../assignment-marks";
 import {
   courseTotals,
   courseViewState,
@@ -53,6 +59,7 @@ export const CoursePage = ({
   signInHref,
   registerHref,
   recordings = [],
+  handedIn = null,
   initialTab,
   now: nowProp,
 }: {
@@ -78,6 +85,12 @@ export const CoursePage = ({
    * failed: the tab then offers a retry instead of the empty state.
    */
   recordings?: RecordingResponse[] | null;
+  /**
+   * The celses the talebe handed homework in on (`GET
+   * /courses/:id/my-submissions`); null when it was not read or the read
+   * failed, and then no celse is said to be not handed in.
+   */
+  handedIn?: readonly string[] | null;
   /** The tab the page opens on: `?tab=kayitlar` from a session page. */
   initialTab?: string;
   /** The instant the page is drawn at, for tests. */
@@ -94,6 +107,15 @@ export const CoursePage = ({
   const seat = holdsSeat(state);
   const totals = courseTotals(course);
   const zone = course.timeZone;
+  // The programme's homework marks, and how many are still to hand in.
+  const homework = useMemo<AssignmentViewer>(
+    () => ({
+      mayHandIn: mayHandInOn(course),
+      handedIn: handedIn ? new Set(handedIn) : null,
+    }),
+    [course, handedIn]
+  );
+  const pending = pendingAssignments(course, homework);
 
   const sample = course.weeks
     .flatMap((week) =>
@@ -335,14 +357,32 @@ export const CoursePage = ({
             label={t("tabsLabel")}
           >
             <TabsPanel value="mufredat" className="flex flex-col gap-3 pbs-4">
-              <p className="mds-caption">
-                {t("programmeSummary", {
-                  weeks: totals.weeks,
-                  sessions: totals.sessions,
-                  city: zoneName(zone),
-                })}
-              </p>
-              <CourseProgramme course={course} state={state} now={now} />
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                <p className="mds-caption">
+                  {t("programmeSummary", {
+                    weeks: totals.weeks,
+                    sessions: totals.sessions,
+                    city: zoneName(zone),
+                  })}
+                </p>
+                {/* How many celses' homework is still to hand in: a counted
+                    badge, none at 0 (Badge.prompt.md). */}
+                {pending > 0 ? (
+                  <Badge
+                    variant="warning"
+                    icon={<Icon name="note" size="sm" />}
+                    data-testid="assignments-pending"
+                  >
+                    {t("assignmentsPending", { count: pending })}
+                  </Badge>
+                ) : null}
+              </div>
+              <CourseProgramme
+                course={course}
+                state={state}
+                now={now}
+                homework={homework}
+              />
             </TabsPanel>
             <TabsPanel value="kayitlar" className="pbs-4">
               {/* MDRS-285: a row opens its celse's watch page, which keeps

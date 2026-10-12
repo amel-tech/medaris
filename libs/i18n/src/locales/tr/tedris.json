@@ -134,7 +134,10 @@
     "openSession": "Celse sayfasını aç",
     "leaveBody": "<b>{title}</b> dersinden ayrılacaksın. Celselere, toplantı bağlantılarına, ders kayıtlarına ve ders destesine erişimin kalkar; dersin celseleri takviminden de düşer.",
     "leaveBodyCards": "Kendi destene kopyaladığın kartlar sende kalır. İstersen derse yeniden başvurabilirsin.",
-    "resourcesDownload": " (indirilir)"
+    "resourcesDownload": " (indirilir)",
+    "assignmentBadge": "Ödev",
+    "assignmentPending": "Ödev teslim edilmedi",
+    "assignmentsPending": "{count} ödev teslim edilmedi"
   },
   "DataTable": {
     "noResults": "Sonuç bulunamadı."

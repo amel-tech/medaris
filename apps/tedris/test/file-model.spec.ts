@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  assignmentFileHref,
   fileErrorKey,
   fileIcon,
+  isHandedIn,
   parseSubmission,
   resourceFileHref,
   submissionFileHref,
@@ -45,6 +47,45 @@ describe("resourceFileHref", () => {
   it("links nothing without a file", () => {
     expect(resourceFileHref(null)).toBeNull();
     expect(resourceFileHref(undefined)).toBeNull();
+  });
+});
+
+describe("assignmentFileHref", () => {
+  it("maps tedrisat's download route of a homework file to this app's", () => {
+    expect(
+      assignmentFileHref({
+        downloadUrl: `/lessons/${LESSON}/assignment/files/${RESOURCE}`,
+      })
+    ).toBe(`/api/files/lessons/${LESSON}/assignment/${RESOURCE}`);
+  });
+
+  it.each([
+    "",
+    `/lessons/${LESSON}/resources/${RESOURCE}/file`,
+    `/courses/${COURSE}/assignment/files/${RESOURCE}`,
+    `/lessons/${LESSON}/assignment/files/${RESOURCE}?x=1`,
+    `//evil.test/lessons/${LESSON}/assignment/files/${RESOURCE}`,
+    "javascript:alert(1)",
+  ])("links nothing for %j", (downloadUrl) => {
+    expect(assignmentFileHref({ downloadUrl })).toBeNull();
+  });
+});
+
+describe("isHandedIn", () => {
+  const file = {
+    id: RESOURCE,
+    name: "a.pdf",
+    contentType: "application/pdf",
+    sizeBytes: 1,
+    createdAt: new Date(),
+    downloadUrl: "",
+  };
+  it("is true for a note or a file, false for nothing, an emptied submission or a blank note", () => {
+    expect(isHandedIn(null)).toBe(false);
+    expect(isHandedIn({ note: null, files: [] })).toBe(false);
+    expect(isHandedIn({ note: "   ", files: [] })).toBe(false);
+    expect(isHandedIn({ note: "Yaptım.", files: [] })).toBe(true);
+    expect(isHandedIn({ note: null, files: [file] })).toBe(true);
   });
 });
 

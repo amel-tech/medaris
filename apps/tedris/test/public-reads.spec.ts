@@ -8,10 +8,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const listCourseRecordings = vi.hoisted(() => vi.fn());
 const getSession = vi.hoisted(() => vi.fn());
+const listMySubmissions = vi.hoisted(() => vi.fn());
 vi.mock("@medaris/services/tedrisat", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@medaris/services/tedrisat")>()),
   createServerTedrisatAPIs: async () => ({
     lessons: { listCourseRecordings, getSession },
+    submissions: { listMySubmissions },
   }),
 }));
 vi.mock("~/lib/auth", () => ({ getAccessToken: async () => "token" }));
@@ -40,5 +42,26 @@ describe("reads of signed player links (MDRS-114)", () => {
       { courseId: "c1", sessionId: "s1" },
       { cache: "no-store" }
     );
+  });
+});
+
+describe("where the viewer handed homework in", () => {
+  it("is the celses' ids, read per request, and null when the read fails", async () => {
+    listMySubmissions.mockReset().mockResolvedValue({
+      items: [
+        { lessonId: "l1", updatedAt: new Date() },
+        { lessonId: "l3", updatedAt: new Date() },
+      ],
+    });
+    const { getMySubmissions } = await import(
+      "~/features/courses/public-reads"
+    );
+    expect(await getMySubmissions("c1")).toEqual(["l1", "l3"]);
+    expect(listMySubmissions).toHaveBeenCalledWith(
+      { id: "c1" },
+      { cache: "no-store" }
+    );
+    listMySubmissions.mockRejectedValue(new Error("down"));
+    expect(await getMySubmissions("c1")).toBeNull();
   });
 });
