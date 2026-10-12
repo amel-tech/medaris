@@ -1879,6 +1879,7 @@
       "fileLabel": "Video dosyası",
       "fileHelp": "En çok {max}. Bağlantı koparsa yükleme kaldığı yerden sürer.",
       "chosen": "{name} · {size}",
+      "replacesLink": "Yüklediğiniz video bu kaydın bağlantısının yerine geçer. Yükleme başlayınca bağlantı kayıttan kalkar.",
       "submit": "Yükle",
       "cancel": "İptal",
       "resume": "Devam et",

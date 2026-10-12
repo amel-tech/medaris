@@ -35,6 +35,7 @@ import {
   uploadContinues,
   uploadErrorKey,
   uploadMoved,
+  uploadReplaces,
   type WeekBlock,
 } from "~/features/recordings/recordings";
 import { clockLocative, dayMonthClock } from "~/lib/dates";
@@ -619,6 +620,20 @@ describe("the upload", () => {
       anyBunnyPending([week([slot(null), slot({ provider: "YOUTUBE" })])])
     ).toBe(false);
     expect(anyBunnyPending([])).toBe(false);
+  });
+
+  it("lets an upload replace a link of any provider, never a Bunny video", () => {
+    const of = (over: Partial<RecordingFact> | null) => slot(over).recording;
+    for (const provider of ["YOUTUBE", "DRIVE", "OTHER"] as const) {
+      expect(uploadReplaces(of({ provider, status: "READY" })), provider).toBe(
+        true
+      );
+    }
+    expect(uploadReplaces(of({}))).toBe(false);
+    expect(uploadReplaces(of({ status: "READY", url: "https://x" }))).toBe(
+      false
+    );
+    expect(uploadReplaces(of(null))).toBe(false);
   });
 
   it("sends the title, who may watch and the session's time, and nothing without a title", () => {

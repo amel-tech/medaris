@@ -7,9 +7,9 @@ import {
 } from "../bunny-stream/bunny-stream.client";
 import { CourseRepository } from "./course.repository";
 import {
-  RecordingProvider,
   RecordingStatus,
   RecordingVisibility,
+  uploadReplaces,
 } from "./domain/recording";
 import { LessonNotFoundError } from "./errors/lesson-not-found.error";
 import { RecordingExistsError } from "./errors/recording-exists.error";
@@ -59,7 +59,9 @@ export class RecordingUploadService {
 
   /**
    * Creates the video in Bunny, records it as a PROCESSING recording of the
-   * session, and signs its upload for 24 hours.
+   * session, and signs its upload for 24 hours. A recording that is a link,
+   * or a Bunny upload that FAILED, is replaced by it (`uploadReplaces`); a
+   * Bunny video PROCESSING or READY is refused.
    *
    * The session (missing or archived) and its existing recording are
    * checked before Bunny is called, so a refused start does not leave an
@@ -79,13 +81,7 @@ export class RecordingUploadService {
       throw new LessonNotFoundError(lessonId);
     }
     const [existing] = await this.recordings.findByLessonIds([lessonId]);
-    if (
-      existing &&
-      !(
-        existing.provider === RecordingProvider.BUNNY &&
-        existing.status === RecordingStatus.FAILED
-      )
-    ) {
+    if (existing && !uploadReplaces(existing)) {
       throw new RecordingExistsError(lessonId);
     }
 

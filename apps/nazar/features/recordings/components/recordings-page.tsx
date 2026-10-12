@@ -24,7 +24,8 @@ import { RecordingsTable } from "./recordings-table";
  * `GET /courses/:id/my-permissions`; anyone else gets "Bu sayfaya izniniz
  * yok", and a permissions read that failed is the retry state. Each control
  * is drawn for the code its route asks: pasting a link and "Düzenle" for
- * `recording.manage`, the upload and its "Devam et" for `recording.upload`.
+ * `recording.manage`, the upload and its "Devam et" for `recording.upload`,
+ * which also reaches "Düzenle" on a link, to upload its video in its place.
  * The recordings are read with the same caller, who holds one of them and so
  * reads the course's content: every recording is listed, whatever its
  * visibility, and a PROCESSING one has no link yet. The API still decides

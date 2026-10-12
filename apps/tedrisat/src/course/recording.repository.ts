@@ -24,6 +24,7 @@ import {
   RecordingProvider,
   RecordingStatus,
   type RecordingVisibility,
+  uploadReplaces,
 } from "./domain/recording";
 import {
   type DetectedRecordingLink,
@@ -364,9 +365,13 @@ export class RecordingRepository {
    *
    * The lesson row is locked first, so two uploads started at once for one
    * session are serialised and the second sees the first. A session that
-   * already has a recording is refused (`RecordingExistsError`) unless that
-   * recording is a Bunny upload that FAILED: that row is reused for the new
-   * video, so a failed upload can be retried without anyone deleting it.
+   * already has a recording is refused (`RecordingExistsError`) unless an
+   * upload may take its place (`uploadReplaces`): a link, or a Bunny upload
+   * that FAILED. That row is reused for the new video, with the title and
+   * visibility of this upload, so a failed upload can be retried, and a link
+   * that does not play swapped for the video, without anyone deleting it. A
+   * replaced link is kept in the audit entry (`replacedLink`). The session's
+   * release time, on its lesson, is left as it is.
    */
   async startBunnyUpload(
     upload: INewBunnyUpload
@@ -386,15 +391,13 @@ export class RecordingRepository {
           id: lessonRecordings.id,
           provider: lessonRecordings.provider,
           status: lessonRecordings.status,
+          url: lessonRecordings.url,
           bunnyVideoId: lessonRecordings.bunnyVideoId,
         })
         .from(lessonRecordings)
         .where(eq(lessonRecordings.lessonId, upload.lessonId))
         .limit(1);
-      const replaceable =
-        existing?.provider === RecordingProvider.BUNNY &&
-        existing.status === RecordingStatus.FAILED;
-      if (existing && !replaceable) {
+      if (existing && !uploadReplaces(existing)) {
         throw new RecordingExistsError(upload.lessonId);
       }
 
@@ -435,6 +438,11 @@ export class RecordingRepository {
           bunnyVideoId: upload.bunnyVideoId,
           visibility: upload.visibility,
           replacedVideoId: existing?.bunnyVideoId ?? null,
+          // The row no longer holds the link it replaced; this entry does.
+          replacedLink:
+            existing && existing.provider !== RecordingProvider.BUNNY
+              ? { provider: existing.provider, url: existing.url }
+              : null,
         },
       });
       return { recordingId, courseId: lesson.courseId };
