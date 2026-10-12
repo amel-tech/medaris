@@ -42,7 +42,8 @@ export default function proxy(request: NextRequest) {
 
 export const config = {
   // Everything but Next's own files, the three auth routes that manage the
-  // cookie themselves, the public calendar feed (`/calendar/<token>.ics`: a
+  // cookie themselves, the IdP's back-channel logout (auth Phase 2: a
+  // server-to-server POST with no cookie), the public calendar feed (`/calendar/<token>.ics`: a
   // calendar app has no session, and the token in the URL is the credential,
   // MDRS-120) and static files by extension. Each exclusion is anchored with a
   // slash or `$` (B11), and a dot alone no longer skips the gate: a protected
@@ -51,6 +52,6 @@ export const config = {
   // regaining focus reads the session through here (MDRS-210), and a route
   // handler reads a token this step has just renewed.
   matcher: [
-    "/((?!_next/|api/auth/(?:signin|signout|callback)(?:/|$)|calendar/|.*\\.(?:ico|png|jpe?g|gif|svg|webp|txt|xml|json|webmanifest|woff2?|ttf|otf|map)$).*)",
+    "/((?!_next/|api/auth/(?:signin|signout|callback|backchannel-logout)(?:/|$)|calendar/|.*\\.(?:ico|png|jpe?g|gif|svg|webp|txt|xml|json|webmanifest|woff2?|ttf|otf|map)$).*)",
   ],
 };

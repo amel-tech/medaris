@@ -80,6 +80,8 @@ describe("the matcher", () => {
       "/api/auth/signin",
       "/api/auth/signout",
       "/api/auth/callback/keycloak",
+      // The IdP posts it server to server, with no cookie (auth Phase 2).
+      "/api/auth/backchannel-logout",
       "/_next/static/chunks/main.js",
       "/favicon.ico",
       "/icon.svg",
