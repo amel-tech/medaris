@@ -1,5 +1,6 @@
 import {
   courseResourceKey,
+  lessonAssignmentFileKey,
   lessonResourceKey,
   submissionFileKey,
 } from "../../../src/storage/storage-keys";
@@ -27,6 +28,17 @@ describe("storage keys (MDRS-287, MDRS-290)", () => {
       new RegExp(
         `^local-dev/courses/${COURSE}/lessons/${LESSON}/resources/${UUID}$`
       )
+    );
+  });
+
+  it("files the homework set on a celse under the celse, apart from its resources", () => {
+    expect(lessonAssignmentFileKey("prod", COURSE, LESSON)).toMatch(
+      new RegExp(
+        `^prod/courses/${COURSE}/lessons/${LESSON}/assignment/${UUID}$`
+      )
+    );
+    expect(() => lessonAssignmentFileKey("prod", COURSE, "../x")).toThrow(
+      /lessonId/
     );
   });
 
