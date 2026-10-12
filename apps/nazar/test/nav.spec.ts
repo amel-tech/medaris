@@ -129,6 +129,34 @@ describe("the menu of a course (nazir 22)", () => {
     expect(items.find((i) => i.id === "notifications")?.count).toBe(3);
   });
 
+  it("offers Ödevler after Sorular to a holder of submission.read alone (MDRS-290)", () => {
+    const ids = (held?: ReadonlySet<string>) =>
+      navFor(ders, { panoHref: "/medrese/m-1", counts: {}, held })
+        .flatMap((s) => s.items)
+        .map((i) => i.id);
+    expect(ids()).not.toContain("homework");
+    expect(ids(new Set(["course.view", "question.answer"]))).not.toContain(
+      "homework"
+    );
+    const held = ids(new Set(["course.view", "submission.read"]));
+    expect(
+      held.slice(held.indexOf("questions"), held.indexOf("questions") + 3)
+    ).toEqual(["questions", "homework", "recordings"]);
+    const item = navFor(ders, {
+      panoHref: "/medrese/m-1",
+      counts: {},
+      held: new Set(["submission.read"]),
+    })
+      .flatMap((s) => s.items)
+      .find((i) => i.id === "homework");
+    expect(item).toMatchObject({
+      href: "/ders/c-1/odevler",
+      labelKey: "ders.homework",
+      icon: "inbox",
+    });
+    expect(resources.tr.nazar.Nav.ders.homework).toBe("Ödevler");
+  });
+
   it("is a different menu from the medrese's whichever way the scope changes", () => {
     const m = navFor(medrese, { panoHref: "/medrese/m-1", counts: {} });
     expect(view(m)).not.toEqual(view(sections));
@@ -201,6 +229,7 @@ describe("the pages behind the menu", () => {
       "celseler",
       "talebeler",
       "sorular",
+      "odevler",
       "kayitlar",
       "deste",
       "yasaklamalar",

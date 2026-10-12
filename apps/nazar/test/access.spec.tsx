@@ -28,6 +28,8 @@ const state = {
   cookie: undefined as string | undefined,
   tedris: "http://localhost:4000" as string | undefined,
   counts: {} as Record<string, number>,
+  /** what the caller holds in the course the menu is for */
+  held: new Set<string>() as ReadonlySet<string>,
   admin: { status: "none" } as AdminScope,
   adminOutside: "none" as "ok" | "none" | "failed",
   viewer: null as unknown,
@@ -72,6 +74,7 @@ vi.mock("~/env", () => ({
 vi.mock("~/features/shell/reads", () => ({
   getPortal: async () => state.portal,
   getMenuCounts: async () => state.counts,
+  getMenuPermissions: async () => state.held,
 }));
 vi.mock("~/features/shell/admin-scope", () => ({
   adminScope: async (kind: string, id: string) => {
@@ -122,6 +125,7 @@ beforeEach(() => {
   state.cookie = undefined;
   state.tedris = "http://localhost:4000";
   state.counts = {};
+  state.held = new Set();
   state.admin = { status: "none" };
   state.adminOutside = "none";
   state.viewer = null;
@@ -330,6 +334,23 @@ describe("the layouts", () => {
     const result = await outcome(() => layout(null));
     expect(result).toContain("Ders ayarları");
     expect(result).not.toContain("Medrese ayarları");
+  });
+
+  it("draws Ödevler in a course's menu for a holder of submission.read alone (MDRS-290)", async () => {
+    state.portal = ok([
+      assignment({
+        scopeId: "c-1",
+        scopeName: "Bina ve İzhar Şerhi",
+        course: course(),
+      }),
+    ]);
+    expect(
+      await outcome(() => layout({ kind: "ders", id: "c-1" }))
+    ).not.toContain("Ödevler");
+    state.held = new Set(["course.view", "submission.read"]);
+    expect(await outcome(() => layout({ kind: "ders", id: "c-1" }))).toContain(
+      "Ödevler"
+    );
   });
 
   it("is the retry state when the roles could not be read", async () => {

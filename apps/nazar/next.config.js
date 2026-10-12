@@ -37,6 +37,14 @@ const nextConfig = {
     "@medaris/utils",
     "@medaris/services",
   ],
+  experimental: {
+    // MDRS-287: `proxy.ts` reads the whole body of every request it matches
+    // and cuts it off at this size, 10 MB by default. The file uploads under
+    // `app/api/files` stay inside its matcher, so the session is renewed on
+    // them, and take up to 25 MB plus the multipart allowance
+    // (`@medaris/services/file-proxy`, `MAX_FILE_BYTES`).
+    proxyClientMaxBodySize: "26mb",
+  },
 };
 
 export default withNextIntl(nextConfig);
