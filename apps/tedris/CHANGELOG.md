@@ -1,5 +1,19 @@
 # Changelog
 
+## [2.3.0](https://github.com/amel-tech/medaris/compare/tedris-web-v2.2.0...tedris-web-v2.3.0) (2026-10-12)
+
+
+### Features
+
+* **tedris-web, i18n:** MDRS-266 take notes on every celse, not only beside a video ([#272](https://github.com/amel-tech/medaris/issues/272)) ([47ff7ca](https://github.com/amel-tech/medaris/commit/47ff7ca57809a6846918e00e445934aaf0233abf))
+* **tedris-web, i18n:** MDRS-289 put the curriculum in a combobox between previous and next ([#282](https://github.com/amel-tech/medaris/issues/282)) ([c1b0167](https://github.com/amel-tech/medaris/commit/c1b016728037cf6a9fccad8eb9177eb0e75fa147))
+* **tedris-web, i18n:** open the live chat on YouTube where the frame cannot sign in ([#269](https://github.com/amel-tech/medaris/issues/269)) ([970cf4c](https://github.com/amel-tech/medaris/commit/970cf4cc6e9ad9910d574662ebc21271a68591c7))
+* **tedris-web, ui, i18n:** MDRS-289 lay out the celse detail page around one main card ([#281](https://github.com/amel-tech/medaris/issues/281)) ([d9aae04](https://github.com/amel-tech/medaris/commit/d9aae04f400c0ea138fb3775251e6e3fb258f8c3))
+* **tedrisat, nazar-web, nizam-web, tedris-web:** MDRS-283 cover a celse by link, stream, in person ([#271](https://github.com/amel-tech/medaris/issues/271)) ([d24612b](https://github.com/amel-tech/medaris/commit/d24612bbd3867d8698b77973b4e63525abd92840))
+* **tedrisat, nazar-web, nizam-web, tedris-web:** MDRS-286 give each celse its own resource links ([#274](https://github.com/amel-tech/medaris/issues/274)) ([ef2c400](https://github.com/amel-tech/medaris/commit/ef2c4002ca6c14a583723e0912f0c5a53b780839))
+* **tedrisat, nazar-web, tedris-web:** MDRS-288 open a celse's recording at a time the team sets ([#275](https://github.com/amel-tech/medaris/issues/275)) ([1fe3345](https://github.com/amel-tech/medaris/commit/1fe334503eac9287519e643c5cfc795fb2442cf9))
+* **tedrisat, tedris-web, ui, i18n:** MDRS-285 watch a celse on its own full-width page ([#273](https://github.com/amel-tech/medaris/issues/273)) ([adafdda](https://github.com/amel-tech/medaris/commit/adafdda6217b60cdadd3eff80acf441d2fcc6e1b))
+
 ## [2.2.0](https://github.com/amel-tech/medaris/compare/tedris-web-v2.1.0...tedris-web-v2.2.0) (2026-10-09)
 
 
