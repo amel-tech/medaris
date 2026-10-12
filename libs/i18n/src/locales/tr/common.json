@@ -1,4 +1,9 @@
 {
+  "globalError": {
+    "title": "Bir şeyler ters gitti",
+    "text": "Sunucuya ulaşılamadı. İnternet bağlantınızı denetleyip yeniden deneyin.",
+    "retry": "Yeniden dene"
+  },
   "legal": {
     "privacyNotice": "Aydınlatma Metni"
   },

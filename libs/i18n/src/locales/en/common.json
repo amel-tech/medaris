@@ -1,4 +1,9 @@
 {
+  "globalError": {
+    "title": "Something went wrong",
+    "text": "The server could not be reached. Check your internet connection and try again.",
+    "retry": "Try again"
+  },
   "legal": {
     "privacyNotice": "Privacy Notice"
   },

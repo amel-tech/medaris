@@ -69,7 +69,7 @@ describe("the root boundaries describe the Turkish they draw (MDRS-217)", () => 
   it("global-error is tr, left to right", async () => {
     const { default: GlobalError } = await import("../app/global-error");
     expect(
-      renderToStaticMarkup(GlobalError({ reset: () => undefined }))
+      renderToStaticMarkup(GlobalError({ retry: () => undefined }))
     ).toMatch(/^<html lang="tr" dir="ltr"/);
   });
 });

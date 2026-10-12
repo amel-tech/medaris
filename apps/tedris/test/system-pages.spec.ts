@@ -1,5 +1,11 @@
 // @vitest-environment happy-dom
-import { createElement } from "react";
+import { Button } from "@medaris/ui/mds/button";
+import {
+  createElement,
+  isValidElement,
+  type ReactElement,
+  type ReactNode,
+} from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, click, render } from "./dom";
 
@@ -103,7 +109,7 @@ describe("tedris/39: forbidden", () => {
 describe("tedris/40: something went wrong", () => {
   it("shows the design's words and no error detail", async () => {
     const { ErrorState } = await load();
-    await render(createElement(ErrorState, { reset: vi.fn() }));
+    await render(createElement(ErrorState, { retry: vi.fn() }));
     expect(document.querySelector("h1")?.textContent).toBe(
       "Bir şeyler ters gitti"
     );
@@ -112,14 +118,62 @@ describe("tedris/40: something went wrong", () => {
     );
   });
 
-  it("'Yeniden dene' calls reset", async () => {
-    const reset = vi.fn();
+  it("'Yeniden dene' calls retry", async () => {
+    const retry = vi.fn();
     const { ErrorState } = await load();
-    await render(createElement(ErrorState, { reset }));
-    const retry = [...document.querySelectorAll("button")].find(
-      (b) => b.textContent === "Yeniden dene"
-    ) as HTMLElement;
-    await click(retry);
-    expect(reset).toHaveBeenCalledTimes(1);
+    await render(createElement(ErrorState, { retry }));
+    await click(button("Yeniden dene"));
+    expect(retry).toHaveBeenCalledTimes(1);
+  });
+
+  // Next 16.3's `retry` reads the segment from the server again; `reset`
+  // only re-rendered the payload that failed, hence the hand-made refresh
+  // this page used to wrap it in.
+  it("the segment boundary hands 'Yeniden dene' to Next's retry", async () => {
+    const retry = vi.fn();
+    const { default: ErrorPage } = await import("../app/[locale]/error");
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    await render(
+      createElement(ErrorPage, {
+        error: Object.assign(new Error("boom"), { digest: "d1" }),
+        retry,
+      })
+    );
+    await click(button("Yeniden dene"));
+    expect(retry).toHaveBeenCalledTimes(1);
+    expect(error).toHaveBeenCalledWith("Segment error:", "d1");
+    expect(document.body.textContent).not.toContain("boom");
+    error.mockRestore();
+  });
+
+  it("global-error hands 'Yeniden dene' to Next's retry", async () => {
+    const retry = vi.fn();
+    const { default: GlobalError } = await import("../app/global-error");
+    // It draws its own <html>, which a test cannot mount inside a <div>: the
+    // button is found in what it returns and pressed there.
+    const action = buttonIn(GlobalError({ retry }));
+    expect(action?.props.children).toBe("Yeniden dene");
+    action?.props.onClick();
+    expect(retry).toHaveBeenCalledTimes(1);
   });
 });
+
+const button = (text: string) =>
+  [...document.querySelectorAll("button")].find(
+    (b) => b.textContent === text
+  ) as HTMLElement;
+
+/** The kit's Button in an element tree, through `children` and `action`. */
+const buttonIn = (
+  node: ReactNode
+): ReactElement<{ children: ReactNode; onClick: () => void }> | undefined => {
+  if (Array.isArray(node)) return node.map(buttonIn).find(Boolean);
+  if (!isValidElement(node)) return undefined;
+  if (node.type === Button)
+    return node as ReactElement<{ children: ReactNode; onClick: () => void }>;
+  const { children, action } = node.props as {
+    children?: ReactNode;
+    action?: ReactNode;
+  };
+  return buttonIn(action) ?? buttonIn(children);
+};

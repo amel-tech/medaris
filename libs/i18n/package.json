@@ -27,6 +27,11 @@
       "types": "./src/locales/index.ts",
       "import": "./src/locales/index.ts",
       "default": "./src/locales/index.ts"
+    },
+    "./common": {
+      "types": "./src/locales/common.ts",
+      "import": "./src/locales/common.ts",
+      "default": "./src/locales/common.ts"
     }
   }
 }
