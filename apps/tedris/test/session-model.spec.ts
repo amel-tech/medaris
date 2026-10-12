@@ -10,10 +10,11 @@ import {
   celseNumberOf,
   celseTimeWords,
   currentAgendaStep,
+  curriculumMatches,
+  curriculumOf,
   dayInZone,
   sessionStateOf,
   splitArabic,
-  syllabusOf,
   timeUntil,
   zoneLabel,
 } from "~/features/courses/session-model";
@@ -102,9 +103,14 @@ describe("celseNumberOf (MDRS-289)", () => {
   });
 });
 
-describe("syllabusOf (MDRS-289)", () => {
+describe("curriculumOf (MDRS-289)", () => {
   const ids = (rows: { lesson: LessonResponse }[]) =>
     rows.map((row) => row.lesson.id);
+  const fifty = course(
+    ...Array.from({ length: 50 }, (_, i) =>
+      week(i + 1, lesson(`s${i + 1}`, { scheduledAt: at((i - 3) * 7 * 1440) }))
+    )
+  );
   const seven = course(
     week(1, lesson("s1", { scheduledAt: at(-7 * 24 * 60) })),
     week(
@@ -117,35 +123,27 @@ describe("syllabusOf (MDRS-289)", () => {
     week(5, lesson("s6"), lesson("s7"))
   );
 
-  it("keeps five celses around the one on the page, in programme order", () => {
-    const { rows } = syllabusOf(seven, "s4", NOW);
-    expect(ids(rows)).toEqual(["s2", "s3", "s4", "s5", "s6"]);
-    expect(
-      rows.filter((row) => row.viewing).map((row) => row.lesson.id)
-    ).toEqual(["s4"]);
-    expect(rows.map((row) => row.weekNumber)).toEqual([2, 2, 3, 4, 5]);
+  it("lists every celse of the course in programme order, not a window, other lesson types left out", () => {
+    const { rows } = curriculumOf(seven, "s4", NOW);
+    expect(ids(rows)).toEqual(["s1", "s2", "s3", "s4", "s5", "s6", "s7"]);
+    expect(rows.map((row) => row.weekNumber)).toEqual([1, 2, 2, 3, 4, 5, 5]);
+    expect(ids(curriculumOf(fifty, "s47", NOW).rows)).toHaveLength(50);
   });
 
-  it("moves the window inward at either end, so it stays full", () => {
-    expect(ids(syllabusOf(seven, "s1", NOW).rows)).toEqual([
-      "s1",
-      "s2",
-      "s3",
-      "s4",
-      "s5",
-    ]);
-    expect(ids(syllabusOf(seven, "s7", NOW).rows)).toEqual([
-      "s3",
-      "s4",
-      "s5",
-      "s6",
-      "s7",
-    ]);
+  it("marks the celse on the page, and none when the course does not list it", () => {
+    expect(
+      curriculumOf(seven, "s4", NOW)
+        .rows.filter((row) => row.viewing)
+        .map((row) => row.lesson.id)
+    ).toEqual(["s4"]);
+    expect(curriculumOf(seven, "x", NOW).rows.some((row) => row.viewing)).toBe(
+      false
+    );
   });
 
   it("says where each stands on the clock, a cancelled one marked", () => {
     const states = Object.fromEntries(
-      syllabusOf(seven, "s1", NOW, 7).rows.map((row) => [
+      curriculumOf(seven, "s1", NOW).rows.map((row) => [
         row.lesson.id,
         row.state,
       ])
@@ -161,13 +159,48 @@ describe("syllabusOf (MDRS-289)", () => {
     });
   });
 
-  it("counts the celses that stand", () => {
-    expect(syllabusOf(seven, "s1", NOW).count).toBe(6);
+  it("counts the programme's weeks by the highest week number", () => {
+    expect(curriculumOf(seven, "s1", NOW).weeks).toBe(5);
+    expect(curriculumOf(fifty, "s1", NOW).weeks).toBe(50);
+    expect(curriculumOf(course(week(3), week(9)), "s1", NOW).weeks).toBe(9);
+    expect(curriculumOf(course(), "x", NOW)).toEqual({ rows: [], weeks: 0 });
+  });
+});
+
+describe("curriculumMatches (MDRS-289)", () => {
+  const row = (weekNumber: number, title: string) => ({
+    weekNumber,
+    week: `Hafta ${weekNumber}`,
+    title,
+  });
+  const match = (query: string, r = row(5, "Mehmûz fiiller: kara’e")) =>
+    curriculumMatches(r, query, "tr");
+
+  it("keeps every row for an empty query", () => {
+    expect(match("")).toBe(true);
+    expect(match("   ")).toBe(true);
   });
 
-  it("starts from the top when the page's celse is not listed", () => {
-    expect(ids(syllabusOf(seven, "x", NOW, 2).rows)).toEqual(["s1", "s2"]);
-    expect(syllabusOf(course(), "x", NOW)).toEqual({ rows: [], count: 0 });
+  it("finds a week by its number, not the weeks that contain the digit", () => {
+    expect(match("5")).toBe(true);
+    expect(match("5", row(15, "Sülâsî"))).toBe(false);
+    expect(match("15", row(15, "Sülâsî"))).toBe(true);
+    expect(match("hafta 5")).toBe(true);
+    expect(match("hafta 6")).toBe(false);
+  });
+
+  it("finds a number that stands alone in the title", () => {
+    expect(match("12", row(3, "Emsile 12 bab"))).toBe(true);
+    expect(match("2", row(3, "Emsile 12 bab"))).toBe(false);
+  });
+
+  it("finds the title without case or marks, every word", () => {
+    expect(match("mehmuz")).toBe(true);
+    expect(match("MEHMÛZ FİİLLER")).toBe(true);
+    expect(match("fiil kara")).toBe(true);
+    expect(match("fiil sülâsî")).toBe(false);
+    expect(match("isaguci", row(2, "İsâgûcî"))).toBe(true);
+    expect(match("kiraat", row(2, "Kıraat"))).toBe(true);
   });
 });
 

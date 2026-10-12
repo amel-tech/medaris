@@ -1,6 +1,14 @@
 import { ArabicText } from "./arabic-text";
 import { ResourceList, type ResourceRow } from "./course-resources";
 
+/** Whether "Kaynaklar" has anything to show: a kaynak, or a link of the celse's or the course's. */
+export const hasSessionResources = (
+  kaynak: string | null,
+  own: readonly ResourceRow[] | undefined,
+  course: readonly ResourceRow[] | undefined
+): boolean =>
+  Boolean(kaynak) || (own?.length ?? 0) > 0 || (course?.length ?? 0) > 0;
+
 /**
  * "Kaynaklar" of the celse detail page (MDRS-289): one card for what to
  * read and open. The celse's kaynak on top as "Okunacak yer: …" (MDRS-279),
@@ -34,9 +42,9 @@ export const SessionResources = ({
     locked: string;
   };
 }) => {
+  if (!hasSessionResources(kaynak, own, course)) return null;
   const ownRows = own ?? [];
   const courseRows = course ?? [];
-  if (!kaynak && ownRows.length === 0 && courseRows.length === 0) return null;
   const locked =
     (ownLocked && ownRows.length > 0) ||
     (courseLocked && courseRows.length > 0);

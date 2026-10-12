@@ -49,6 +49,59 @@ vi.mock("next-intl/server", () => ({
 vi.mock("~/lib/i18n/navigation", () => ({
   useRouter: () => ({ push: vi.fn() }),
 }));
+// The Müfredat combobox goes to a celse through Next's router.
+vi.mock("next/navigation", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("next/navigation")>()),
+  useRouter: () => ({ push: vi.fn() }),
+}));
+// The Müfredat list is drawn only once the combobox opens, in the browser
+// (session-curriculum.spec.ts). Here the closed button is the real one, and
+// what the page hands the list is written out beside it.
+vi.mock(
+  "~/features/courses/components/session-curriculum",
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import("~/features/courses/components/session-curriculum")
+      >();
+    return {
+      ...actual,
+      SessionCurriculum: (
+        props: Parameters<typeof actual.SessionCurriculum>[0]
+      ) =>
+        createElement(
+          Fragment,
+          null,
+          createElement(actual.SessionCurriculum, props),
+          createElement(
+            "ol",
+            {
+              hidden: true,
+              "data-course-href": props.courseHref,
+              "data-count": props.labels.count,
+            },
+            props.options.map((option) =>
+              createElement(
+                "li",
+                {
+                  key: option.id,
+                  "data-id": option.id,
+                  "data-current": String(option.current),
+                  "data-href": option.href,
+                },
+                [
+                  option.week,
+                  option.title,
+                  option.meta.join(" · "),
+                  option.state,
+                ].join(" | ")
+              )
+            )
+          )
+        ),
+    };
+  }
+);
 
 beforeEach(() => {
   viewer.zone = "Europe/Istanbul";
@@ -979,7 +1032,76 @@ describe("session page, Kaynaklar (MDRS-279, MDRS-286, MDRS-289)", () => {
   });
 });
 
-describe("session page, Müfredat (MDRS-289)", () => {
+describe("session page, one column (MDRS-289)", () => {
+  const withResources = {
+    ...course,
+    contentLocked: false,
+    resources: [
+      { id: "r1", name: "Bina", type: "pdf", url: "https://x.org/bina.pdf" },
+    ],
+  } as unknown as CourseDetailResponse;
+  const detailsClass = (html: string) =>
+    html.match(/<div class="([^"]*)" data-testid="session-details">/)?.[1];
+  /** "Gündem" and "Kaynaklar", up to the bottom row. */
+  const details = (html: string) => {
+    const from = html.indexOf('data-testid="session-details"');
+    const to = html.indexOf('data-testid="session-pager"');
+    return from < 0 ? "" : html.slice(from, to < 0 ? undefined : to);
+  };
+
+  it("puts the details above the bottom row, the row last, and has no aside", async () => {
+    const html = await render(
+      session({ kaynak: "Bina · s. 4" }),
+      null,
+      withResources
+    );
+    const order = [
+      'data-testid="session-action"',
+      'id="agenda-title"',
+      'data-testid="session-resources-card"',
+      'data-testid="session-pager"',
+    ].map((needle) => html.indexOf(needle));
+    expect(order.every((i) => i > -1)).toBe(true);
+    expect([...order].sort((a, b) => a - b)).toEqual(order);
+    expect(html).toMatch(/<\/nav><\/main>$/);
+    expect(html).not.toContain("<aside");
+    expect(html).not.toContain("grid-cols-[minmax(0,1fr)_var(--layout-aside)]");
+  });
+
+  it("sets Gündem and Kaynaklar side by side in two equal columns, stacked on a phone", async () => {
+    const html = await render(session(), null, withResources);
+    expect(detailsClass(html)).toBe(
+      "grid gap-grid grid-cols-2 max-md:grid-cols-1"
+    );
+    const both = details(html);
+    expect(both.indexOf('id="agenda-title"')).toBeGreaterThan(-1);
+    expect(both.indexOf('id="agenda-title"')).toBeLessThan(
+      both.indexOf('data-testid="session-resources-card"')
+    );
+  });
+
+  it("gives either alone the whole width, and draws no row without both", async () => {
+    const agendaOnly = await render(session());
+    expect(detailsClass(agendaOnly)).toBe("grid gap-grid");
+    expect(details(agendaOnly)).toContain('id="agenda-title"');
+    expect(details(agendaOnly)).not.toContain("session-resources-card");
+    const resourcesOnly = await render(
+      session({ agenda: [] }),
+      null,
+      withResources
+    );
+    expect(detailsClass(resourcesOnly)).toBe("grid gap-grid");
+    expect(details(resourcesOnly)).toContain(
+      'data-testid="session-resources-card"'
+    );
+    expect(details(resourcesOnly)).not.toContain('id="agenda-title"');
+    expect(await render(session({ agenda: [] }))).not.toContain(
+      'data-testid="session-details"'
+    );
+  });
+});
+
+describe("session page, the bottom row (MDRS-289)", () => {
   const lesson = (id: string, over: Record<string, unknown> = {}) => ({
     id,
     title: `Celse ${id}`,
@@ -1010,105 +1132,231 @@ describe("session page, Müfredat (MDRS-289)", () => {
           lesson("s2", { cancelledAt: at(-60) }),
         ],
       },
+      {
+        id: "w10",
+        weekNumber: 10,
+        lessons: [lesson("s10", { scheduledAt: at(5 * 7 * 24 * 60) })],
+      },
     ],
   } as unknown as CourseDetailResponse;
-  const aside = (html: string) =>
-    html.match(/<aside[^>]*>.*<\/aside>/)?.[0] ?? "";
-  const rows = (html: string) => aside(html).match(/<li[^>]*>.*?<\/li>/g) ?? [];
+  const pager = (html: string) => region(html, "session-pager", "nav") ?? "";
+  const MARKERS = [
+    'data-neighbour="previous"',
+    'data-testid="session-curriculum"',
+    'data-neighbour="next"',
+  ];
+  /** The row's parts in reading order. */
+  const parts = (html: string) =>
+    MARKERS.map((marker) => [marker, pager(html).indexOf(marker)] as const)
+      .filter(([, i]) => i > -1)
+      .sort(([, a], [, b]) => a - b)
+      .map(([marker]) => marker.match(/"(.*)"/)?.[1]);
+  /** One part of the row, from its opening tag to the next part's. */
+  const piece = (html: string, marker: string) => {
+    const nav = pager(html);
+    const at = nav.indexOf(marker);
+    if (at < 0) return "";
+    const ends = MARKERS.map((m) => nav.indexOf(m))
+      .filter((i) => i > at)
+      .map((i) => nav.lastIndexOf("<div", i));
+    return nav.slice(
+      nav.lastIndexOf("<div", at),
+      ends.length > 0 ? Math.min(...ends) : undefined
+    );
+  };
+  const card = (html: string, direction: "previous" | "next") =>
+    piece(html, `data-neighbour="${direction}"`);
 
-  it("lists the course's celses, this one highlighted and marked as the page, not a link", async () => {
+  it("is previous, Müfredat, next, named as the way between celses", async () => {
     const html = await render(session(), null, programme);
-    expect(aside(html)).toContain(`>${tr.curriculum}</h2>`);
-    expect(text(aside(html))).toContain("3 hafta· 3 celse");
-    const [s9, s0, s1, s2] = rows(html);
-    expect(s1).toContain("bg-neutral-sunken");
-    expect(s1).toContain('aria-current="page"');
-    expect(s1).not.toContain("<a ");
-    expect(text(s1)).toContain(`Hafta 5· 3 Ekim· ${tr.rowViewing}`);
-    expect(s9).toContain('href="/courses/c1/lessons/s9"');
-    expect(s9).not.toContain('aria-current="page"');
-    expect(s9).not.toContain("bg-neutral-sunken");
-    expect(s0).toContain('href="/courses/c1/lessons/s0"');
-    expect(s2).toContain('href="/courses/c1/lessons/s2"');
+    expect(parts(html)).toEqual(["previous", "session-curriculum", "next"]);
+    expect(pager(html)).toContain(`aria-label="${tr.neighbours}"`);
   });
 
-  it("says where each stands: done, live, cancelled, or its day", async () => {
-    const [s9, s0, , s2] = rows(await render(session(), null, programme));
-    expect(s9).toContain('data-state="ended"');
-    expect(s9).toContain(
-      `<span class="mds-visually-hidden">${tr.rowDone}</span>`
+  it("leaves no hole for a missing neighbour: the Müfredat takes its room", async () => {
+    expect(
+      parts(await render(session({ previous: null }), null, programme))
+    ).toEqual(["session-curriculum", "next"]);
+    expect(
+      parts(await render(session({ next: null }), null, programme))
+    ).toEqual(["previous", "session-curriculum"]);
+    expect(
+      parts(
+        await render(session({ previous: null, next: null }), null, programme)
+      )
+    ).toEqual(["session-curriculum"]);
+    // the Müfredat grows into the row; a neighbour beside it keeps its width
+    const html = await render(session({ previous: null }), null, programme);
+    expect(piece(html, MARKERS[1])).toMatch(
+      /^<div class="relative flex min-inline-0 flex-\[1_1_var\(--layout-aside\)\] max-md:order-first max-md:basis-full"/
     );
-    expect(text(s9)).not.toContain("26 Eylül");
-    expect(s0).toContain('data-state="live"');
-    expect(text(s0)).toContain(tr.liveLabel);
-    expect(s2).toContain('data-state="cancelled"');
-    expect(text(s2)).toContain(tr.rowCancelled);
-  });
-
-  it("says this celse has a recording when it can be watched, and no other row", async () => {
-    const watched = session({
-      status: "ENDED",
-      startsAt: at(-26 * 60),
-      meetingUrl: null,
-      recording: {
-        id: "r1",
-        title: "Kayıt",
-        provider: "YOUTUBE",
-        url: "https://youtu.be/rec456abc",
-        durationMinutes: 58,
-        recordedAt: null,
-        visibility: "ENROLLED",
-        status: "READY",
-      },
-    });
-    const html = await render(watched, null, programme);
-    expect(aside(html).split(tr.rowRecording)).toHaveLength(2);
-    expect(rows(html)[2]).toContain(tr.rowRecording);
-    expect(aside(await render(session(), null, programme))).not.toContain(
-      tr.rowRecording
+    expect(card(html, "next")).toContain(
+      "flex-[1_1_0] items-center gap-3 px-4 py-0 md:flex-[0_1_var(--layout-sidebar)]"
     );
   });
 
-  it("leads to the whole programme on the course page", async () => {
-    expect(aside(await render(session(), null, programme))).toContain(
-      `<a class="mds-btn mds-btn--link self-start" href="/courses/c1">${tr.allCurriculum}</a>`
+  it("puts the Müfredat alone on a phone's first row, the two neighbours sharing the next", async () => {
+    const html = await render(session(), null, programme);
+    expect(pager(html)).toMatch(/^<nav class="flex gap-4 max-md:flex-wrap"/);
+    expect(piece(html, MARKERS[1])).toContain(
+      "max-md:order-first max-md:basis-full"
     );
-  });
-});
-
-describe("session page, previous and next (MDRS-289)", () => {
-  const nav = (html: string) =>
-    html.match(/<nav class="flex flex-wrap gap-4"[^>]*>.*?<\/nav>/)?.[0] ?? "";
-
-  it("links the previous celse at the start and the next at the end", async () => {
-    const html = nav(await render(session()));
-    expect(html).toContain(`aria-label="${tr.neighbours}"`);
-    expect(html.indexOf('data-neighbour="previous"')).toBeLessThan(
-      html.indexOf('data-neighbour="next"')
-    );
-    expect(html).toContain(tr.previous);
-    expect(html).toContain('href="/courses/c1/lessons/s0"');
-    expect(html).toContain("27 Eyl Paz 20:00");
-    expect(html).toContain(tr.next);
-    expect(html).toContain('href="/courses/c1/lessons/s2"');
-    expect(html).toContain("7 Eki Çar 21:00");
+    expect(card(html, "previous")).toContain("flex-[1_1_0]");
+    expect(card(html, "next")).toContain("flex-[1_1_0]");
   });
 
-  it("leaves a card out when there is no neighbour, the next one kept at the end", async () => {
-    const html = nav(await render(session({ previous: null })));
-    expect(html).not.toContain('data-neighbour="previous"');
-    expect(html).toMatch(
-      /class="mds-card [^"]* ms-auto" [^>]*data-neighbour="next"/
-    );
-    expect(nav(await render(session({ next: null })))).not.toContain(
-      'data-neighbour="next"'
-    );
+  it("gives the three the same height and the same three lines", async () => {
+    const html = await render(session(), null, programme);
+    expect(card(html, "previous")).toContain("min-block-20");
+    expect(card(html, "next")).toContain("min-block-20");
+    expect(pager(html)).toMatch(/<button[^>]*class="[^"]*min-block-20/);
+    for (const direction of ["previous", "next"] as const) {
+      expect(
+        card(html, direction).match(/<p class="[^"]*truncate/g)
+      ).toHaveLength(3);
+    }
   });
 
-  it("draws no footer without either", async () => {
+  it("words a neighbour: its week over it, the title as its one link, its day under it", async () => {
+    const html = await render(session(), null, programme);
+    const previous = card(html, "previous");
+    expect(previous).toContain(">Önceki · Hafta 4</p>");
+    expect(previous.match(/<a /g)).toHaveLength(1);
+    expect(previous).toContain(
+      '<a class="mds-card__link" href="/courses/c1/lessons/s0"><span class="mds-visually-hidden">Önceki celse: Hafta 4, </span>Hafta sonu müzakeresi</a>'
+    );
+    expect(text(previous)).toContain("27 Eyl Paz 20:00");
+    const next = card(html, "next");
+    expect(next).toContain(">Sonraki · Hafta 5</p>");
+    expect(next).toContain('href="/courses/c1/lessons/s2"');
+    expect(text(next)).toContain("7 Eki Çar 21:00");
+    expect(next).toContain("text-end");
+  });
+
+  it("says when a neighbour is on air or was cancelled", async () => {
+    const html = await render(
+      session({
+        previous: {
+          id: "s0",
+          title: "Önceki",
+          weekNumber: 4,
+          startsAt: at(-20),
+          status: "LIVE",
+        },
+        next: {
+          id: "s2",
+          title: "Sonraki",
+          weekNumber: 5,
+          startsAt: at(60),
+          status: "CANCELLED",
+        },
+      }),
+      null,
+      programme
+    );
+    expect(text(card(html, "previous"))).toContain(`· ${tr.liveLabel}`);
+    expect(text(card(html, "next"))).toContain(`· ${tr.rowCancelled}`);
+  });
+
+  it("lets the neighbours share the row when the course lists no celse, and draws nothing with neither", async () => {
+    const html = await render(session());
+    expect(parts(html)).toEqual(["previous", "next"]);
+    expect(card(html, "previous")).not.toContain("md:flex-[0_1");
     expect(await render(session({ previous: null, next: null }))).not.toContain(
-      tr.neighbours
+      'data-testid="session-pager"'
     );
+  });
+
+  describe("the Müfredat combobox", () => {
+    const trigger = (html: string) =>
+      pager(html).match(/<button.*?<\/button>/)?.[0] ?? "";
+    /** What the page hands the combobox, written out by the mock above. */
+    const handed = (html: string) =>
+      [...html.matchAll(/<li data-id="([^"]*)"[^>]*>(.*?)<\/li>/g)].map(
+        ([li, id, words]) => ({
+          id,
+          words: text(words),
+          current: li.includes('data-current="true"'),
+          href: li.match(/data-href="([^"]*)"/)?.[1],
+        })
+      );
+
+    it("is a closed button: the eyebrow, this celse's title, a thin bar with Hafta N / M, the chevron apart", async () => {
+      const button = trigger(await render(session(), null, programme));
+      expect(button).toContain('aria-haspopup="listbox"');
+      expect(button).toContain('aria-expanded="false"');
+      expect(button).not.toContain("aria-controls");
+      expect(button).toContain(
+        'aria-label="Müfredat: Hafta 5 / 10, Mehmûz fiiller: kara’e ve emr-i hâzır"'
+      );
+      expect(button).toContain(
+        `<span class="mds-eyebrow truncate">${tr.curriculum}</span>`
+      );
+      expect(text(button)).toContain(
+        `Mehmûz fiiller: kara’e ve emr-i hâzır·${tr.rowViewing}`
+      );
+      expect(button).toContain('style="--mds-progress:50%"');
+      expect(text(button)).toContain("Hafta 5 / 10");
+      expect(button).toContain(
+        '<span class="flex inline-12 flex-none items-center justify-center border-s border-neutral-subtle"><svg'
+      );
+    });
+
+    it("hands it every celse of the course in programme order, this one current, each to its page", async () => {
+      const rows = handed(await render(session(), null, programme));
+      expect(rows.map((row) => row.id)).toEqual([
+        "s9",
+        "s0",
+        "s1",
+        "s2",
+        "s10",
+      ]);
+      expect(rows.filter((row) => row.current).map((row) => row.id)).toEqual([
+        "s1",
+      ]);
+      expect(rows[0].href).toBe("/courses/c1/lessons/s9");
+      expect(rows.map((row) => row.words)).toEqual([
+        "Hafta 3 | Celse s9 | 26 Eyl | ended",
+        `Hafta 4 | Celse s0 | 3 Eki · ${tr.liveLabel} | live`,
+        `Hafta 5 | Celse s1 | 3 Eki · ${tr.rowViewing} | upcoming`,
+        `Hafta 5 | Celse s2 | 10 Eki · ${tr.rowCancelled} | cancelled`,
+        "Hafta 10 | Celse s10 | 7 Kas | upcoming",
+      ]);
+    });
+
+    it("says Kayıt var on this celse alone, when its recording can be watched", async () => {
+      const watched = session({
+        status: "ENDED",
+        startsAt: at(-26 * 60),
+        meetingUrl: null,
+        recording: {
+          id: "r1",
+          title: "Kayıt",
+          provider: "YOUTUBE",
+          url: "https://youtu.be/rec456abc",
+          durationMinutes: 58,
+          recordedAt: null,
+          visibility: "ENROLLED",
+          status: "READY",
+        },
+      });
+      expect(
+        handed(await render(watched, null, programme))
+          .filter((row) => row.words.includes(tr.rowRecording))
+          .map((row) => row.id)
+      ).toEqual(["s1"]);
+      expect(
+        handed(await render(session(), null, programme)).some((row) =>
+          row.words.includes(tr.rowRecording)
+        )
+      ).toBe(false);
+    });
+
+    it("leads to the course page's programme and counts the celses", async () => {
+      const html = pager(await render(session(), null, programme));
+      expect(html).toContain('data-course-href="/courses/c1?tab=mufredat"');
+      expect(html).toContain('data-count="5 celse"');
+    });
   });
 });
 
