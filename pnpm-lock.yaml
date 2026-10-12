@@ -1278,6 +1278,13 @@ importers:
         version: 19.2.3(@types/react@19.2.17)
 
   libs/services:
+    dependencies:
+      '@medaris/auth':
+        specifier: workspace:*
+        version: link:../auth
+      server-only:
+        specifier: 'catalog:'
+        version: 0.0.1
     devDependencies:
       '@openapitools/openapi-generator-cli':
         specifier: 'catalog:'
@@ -1285,12 +1292,18 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 22.20.1
+      '@vitest/coverage-v8':
+        specifier: 'catalog:'
+        version: 4.1.10(vitest@4.1.10)
       onchange:
         specifier: 'catalog:'
         version: 7.1.0
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@22.20.1)(@vitest/coverage-v8@4.1.10)(happy-dom@20.14.5)(vite@7.3.6(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.49.0)(tsx@4.23.1)(yaml@2.9.0))
 
   libs/tokens:
     devDependencies:
