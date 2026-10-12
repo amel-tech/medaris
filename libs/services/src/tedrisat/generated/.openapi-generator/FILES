@@ -53,6 +53,9 @@ src/models/BanPersonResponse.ts
 src/models/BanReasonDto.ts
 src/models/BanResponse.ts
 src/models/BanScope.ts
+src/models/BulkEnrollDto.ts
+src/models/BulkEnrollmentResponse.ts
+src/models/BulkEnrollmentSkipResponse.ts
 src/models/BulkFlashcardErrorContext.ts
 src/models/BulkFlashcardErrorResponse.ts
 src/models/BulkFlashcardResponse.ts

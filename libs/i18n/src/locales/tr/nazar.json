@@ -1535,6 +1535,44 @@
       "done": "Talebe dersten çıkarıldı",
       "doneBody": "{name} Erişimi kaldırılanlar sekmesine taşındı.",
       "failedTitle": "Talebe dersten çıkarılamadı"
+    },
+    "bulk": {
+      "open": "Toplu talebe ekle",
+      "title": "Toplu talebe ekle",
+      "intro": "Medaris hesabı olan kişileri bu derse talebe olarak ekleyin. Onay beklemeden kaydolurlar; bekleyen başvuruları da onaylanır.",
+      "label": "E-posta adresleri",
+      "help": "Her satıra bir tane (virgül ya da noktalı virgülle de ayırabilirsiniz)",
+      "count": "{count} adres",
+      "tooMany": "En fazla {max} adres ekleyebilirsiniz; listede {count} adres var.",
+      "cancel": "Vazgeç",
+      "submit": "Ekle",
+      "close": "Kapat",
+      "failedTitle": "Talebeler eklenemedi",
+      "outcomes": {
+        "enrolled": "{count} talebe eklendi",
+        "approved": "{count} başvuru onaylandı",
+        "already": "{count} zaten kayıtlı",
+        "notFound": "{count} adresle hesap bulunamadı",
+        "invalid": "{count} adres e-posta adresi değil",
+        "skipped": "{count} adres atlandı"
+      },
+      "unmatchedLabel": "Eklenemeyen adresler",
+      "unmatchedNote": "Bu adreslerle Medaris hesabı bulunamadı. Hesap açıldıktan sonra yeniden ekleyebilirsiniz.",
+      "copy": "Kopyala",
+      "copied": "Adresler kopyalandı",
+      "copyFailed": "Kopyalanamadı; adresleri kutudan seçip kopyalayın.",
+      "skippedTitle": "Atlananlar",
+      "reasons": {
+        "barred": "Bu derse girişi yasaklı",
+        "revoked": "Ders kadrosu dersten çıkarmış",
+        "completed": "Dersi tamamlamış",
+        "changed": "Kaydı bu sırada değişti; yeniden deneyin",
+        "other": "Eklenmedi"
+      },
+      "errors": {
+        "closed": "Bu derse şu an talebe eklenemez: ders taslakta ya da gizli.",
+        "directory": "Hesaplar şu an aranamıyor. Biraz sonra yeniden deneyin."
+      }
     }
   },
   "CourseSettings": {

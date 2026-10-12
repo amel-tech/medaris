@@ -1535,6 +1535,44 @@
       "done": "Student removed from the course",
       "doneBody": "{name} moved to the Removed tab.",
       "failedTitle": "The student could not be removed"
+    },
+    "bulk": {
+      "open": "Add students in bulk",
+      "title": "Add students in bulk",
+      "intro": "Add people who have a Medaris account to this course as students. They are enrolled without waiting for approval, and their waiting applications are approved.",
+      "label": "E-mail addresses",
+      "help": "One per line (you can also separate them with commas or semicolons)",
+      "count": "{count, plural, one {# address} other {# addresses}}",
+      "tooMany": "You can add at most {max} addresses; the list has {count}.",
+      "cancel": "Cancel",
+      "submit": "Add",
+      "close": "Close",
+      "failedTitle": "The students could not be added",
+      "outcomes": {
+        "enrolled": "{count, plural, one {# student added} other {# students added}}",
+        "approved": "{count, plural, one {# application approved} other {# applications approved}}",
+        "already": "{count} already enrolled",
+        "notFound": "{count, plural, one {No account found for # address} other {No account found for # addresses}}",
+        "invalid": "{count, plural, one {# entry is not an e-mail address} other {# entries are not e-mail addresses}}",
+        "skipped": "{count, plural, one {# address skipped} other {# addresses skipped}}"
+      },
+      "unmatchedLabel": "Addresses not added",
+      "unmatchedNote": "No Medaris account was found with these addresses. You can add them again once the accounts are opened.",
+      "copy": "Copy",
+      "copied": "Addresses copied",
+      "copyFailed": "Could not copy; select the addresses in the box and copy them.",
+      "skippedTitle": "Skipped",
+      "reasons": {
+        "barred": "Barred from this course",
+        "revoked": "Removed from the course by the course team",
+        "completed": "Has completed the course",
+        "changed": "Their enrollment changed meanwhile; try again",
+        "other": "Not added"
+      },
+      "errors": {
+        "closed": "Students cannot be added to this course now: it is a draft or hidden.",
+        "directory": "Accounts cannot be searched right now. Try again a little later."
+      }
     }
   },
   "CourseSettings": {

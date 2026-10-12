@@ -21,6 +21,7 @@ import type {
   RosterPermissions,
   Tab,
 } from "../enrolments";
+import { BulkAddDialog } from "./bulk-add-dialog";
 import { RemovedTable } from "./removed-table";
 import { RosterTable } from "./roster-table";
 
@@ -37,7 +38,8 @@ type Decision = "approve" | "reject";
  * `can` says which of the three decisions the caller holds in this course
  * (`enrollment.decide`, `enrollment.complete`, `enrollment.remove`); a button
  * for one they do not hold is not drawn, and the API still decides every
- * write. `removed` is null when that list could not be read.
+ * write. `removed` is null when that list could not be read. A holder of
+ * `enrollment.decide` also gets "Toplu talebe ekle" (`BulkAddDialog`).
  */
 export function EnrolmentsTabs({
   courseId,
@@ -66,6 +68,7 @@ export function EnrolmentsTabs({
     null
   );
   const [rejecting, setRejecting] = useState<ApplicationRow | null>(null);
+  const [bulkOpen, setBulkOpen] = useState(false);
 
   const waiting = lists.applications.filter((row) => !decided.has(row.userId));
 
@@ -190,6 +193,17 @@ export function EnrolmentsTabs({
 
   return (
     <>
+      {can.decide ? (
+        <div className="flex justify-end">
+          <Button
+            variant="secondary"
+            iconLeft={<Icon name="plus" size="sm" />}
+            onClick={() => setBulkOpen(true)}
+          >
+            {t("CourseStudents.bulk.open")}
+          </Button>
+        </div>
+      ) : null}
       <Tabs
         label={t("CourseStudents.tabsLabel")}
         value={tab}
@@ -282,6 +296,14 @@ export function EnrolmentsTabs({
             })}
           </p>
         </AlertDialog>
+      ) : null}
+      {bulkOpen ? (
+        <BulkAddDialog
+          courseId={courseId}
+          courseName={courseName}
+          onClose={() => setBulkOpen(false)}
+          onDone={() => router.refresh()}
+        />
       ) : null}
     </>
   );

@@ -44,11 +44,17 @@ import {
   ApiOkResponse,
   ApiOperation,
   ApiQuery,
+  ApiServiceUnavailableResponse,
   ApiTags,
 } from "@nestjs/swagger";
+import { BulkEnrollmentService } from "./bulk-enrollment.service";
 import { CourseRepository } from "./course.repository";
 import { CourseService } from "./course.service";
 import { CourseStatsRepository } from "./course-stats.repository";
+import {
+  BulkEnrollDto,
+  BulkEnrollmentResponse,
+} from "./dto/bulk-enrollment.dto";
 import { CourseBadgeCountsResponse } from "./dto/course-badge-counts-response.dto";
 import {
   CourseDetailResponse,
@@ -110,7 +116,8 @@ export class CourseController {
   constructor(
     private readonly courseService: CourseService,
     private readonly statsRepo: CourseStatsRepository,
-    private readonly selfGrant: SelfGrantGuard
+    private readonly selfGrant: SelfGrantGuard,
+    private readonly bulkEnrollment: BulkEnrollmentService
   ) {}
 
   @ApiOperation({
@@ -592,6 +599,39 @@ export class CourseController {
     @Param("userId", ParseUUIDPipe) userId: string
   ): Promise<EnrollmentResponse> {
     return this.courseService.approveEnrollment(id, userId, request.user.sub);
+  }
+
+  @ApiOperation({
+    summary: "Enrol a list of people by e-mail address (course team)",
+    description:
+      '"Toplu talebe ekle": up to 500 addresses, each looked up exactly in the realm (a disabled account counts as none), five at a time. The course team chooses these people, so the course\'s approval rules do not apply: someone with no enrollment gets an ENROLLED seat, a waiting request is approved as `POST …/:userId/approve` approves it (ENROLLMENT_APPROVED notification included), an active seat is left as it is. A barred person, a seat the team took away (REVOKED: reinstating is decided one person at a time) and a completion are skipped with the reason. Every address is looked up before anything is written. One `enrollment.bulk_add` row goes to `audit_log` with the counts and the accounts enrolled or approved.',
+    operationId: "bulkEnroll",
+  })
+  @ApiOkResponse({ type: BulkEnrollmentResponse })
+  @ApiBadRequestResponse({
+    description:
+      "More than 500 entries, or one that is not a string (VALIDATION_ERROR).",
+  })
+  @ApiForbiddenResponse()
+  @ApiNotFoundResponse({
+    description:
+      "No such course, or one no talebe could enrol in on their own: a draft, a hidden course, a course of a hidden köşk (COURSE_NOT_FOUND). Nothing is enrolled.",
+  })
+  @ApiServiceUnavailableResponse({
+    description:
+      "The realm's directory is not configured (KEYCLOAK_ADMIN_NOT_CONFIGURED) or did not answer (KEYCLOAK_ADMIN_UNAVAILABLE). Nothing is enrolled.",
+  })
+  // The approval's own permission: whoever may approve one request may add
+  // the people they choose, the köşk manager and the course's müderrisler.
+  @Authz(PERMISSIONS.ENROLLMENT_DECIDE, byParam(ENTITIES.COURSE))
+  @Post("courses/:id/enrollments/bulk")
+  @HttpCode(HttpStatus.OK)
+  async bulkEnroll(
+    @Req() request: AuthorizedRequest,
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body() dto: BulkEnrollDto
+  ): Promise<BulkEnrollmentResponse> {
+    return this.bulkEnrollment.bulkEnroll(id, request.user.sub, dto.emails);
   }
 
   @ApiOperation({

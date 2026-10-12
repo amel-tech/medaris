@@ -6,6 +6,11 @@ import { banErrorKey } from "~/features/bans/bans";
 import { courseNazirErrorKey } from "~/features/course-nazirs/course-nazirs";
 import { courseSettingsErrorKey } from "~/features/course-settings/course-settings";
 import { curriculumErrorKey } from "~/features/curriculum/curriculum";
+import {
+  bulkErrorKey,
+  OUTCOMES,
+  skipReasonKey,
+} from "~/features/enrolments/bulk";
 import { enrolmentErrorKey } from "~/features/enrolments/enrolments";
 import { offsiteErrorKey } from "~/features/offsite/offsite";
 import { decisionErrorKey } from "~/features/pano/pano";
@@ -157,6 +162,18 @@ describe("the nazar message catalogue", () => {
         `CourseStudents.roster.${action}`,
         `CourseStudents.roster.${action}Label`,
       ]),
+      // "Toplu talebe ekle" words each outcome, each skip reason and each refusal from the answer.
+      ...OUTCOMES.map((outcome) => `CourseStudents.bulk.outcomes.${outcome}`),
+      ...["barred", "revoked", "COMPLETED", "changed", "SOMETHING_NEW"].map(
+        (reason) => `CourseStudents.bulk.reasons.${skipReasonKey(reason)}`
+      ),
+      ...[
+        "AUTHZ_FORBIDDEN",
+        "COURSE_NOT_FOUND",
+        "KEYCLOAK_ADMIN_NOT_CONFIGURED",
+        "KEYCLOAK_ADMIN_UNAVAILABLE",
+        "SOMETHING_NEW",
+      ].map(bulkErrorKey),
     ];
     const reasons = ["lift", "escalate", "permanent"].flatMap((kind) =>
       [
