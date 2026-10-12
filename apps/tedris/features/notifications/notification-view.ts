@@ -46,7 +46,8 @@ const text = (params: Params, key: string): string | null => {
 };
 
 /**
- * Where the notification leads, as an app path; null when it leads nowhere
+ * Where the notification leads, as an app path without the locale (the row
+ * puts the page's in front); null when it leads nowhere
  * (no target, or a session whose course is not in `params`). A path from
  * stored values is built only from UUIDs the API validated, never from free
  * text.

@@ -275,7 +275,6 @@ catalog:
   '@nestjs/platform-express': ~11.1.19
   '@nestjs/testing': ~11.1.19
   '@nestjs/config': ^4.0.2
-  '@nestjs/cache-manager': ^3.0.1
   '@nestjs/throttler': ^6.5.0 # MDRS-31; 6.4.0 is the first release whose peer range admits Nest 11
   '@nestjs/swagger': ^11.4.7 # MDRS-21: patch pulls js-yaml 5.3.0, closing the 5.x DoS advisory
   '@nestjs/cli': ^11.0.10
@@ -295,13 +294,11 @@ catalog:
   pg: ^8.23.0 # MDRS-21
   '@playwright/test': 1.63.0 # MDRS-157: tedris-web's browser e2e (nx test:e2e), same version as the browsers cached on the dev machines
   '@types/pg': ^8.23.1 # MDRS-21
-  cache-manager: ^7.1.1
   compression: ^1.8.2 # GHSA-vc2v-76pw-4v95 (high, memory-leak DoS), 2026-10-12
   '@types/compression': ^1.8.1
   helmet: ^8.1.0
   exceljs: ^4.4.0
-  jsonwebtoken: ^9.0.2
-  '@types/jsonwebtoken': ^9.0.10
+  jose: ^6.2.12 # libs/common verifies access tokens against the JWKS (C5); libs/auth seals the session cookie (JWE dir + A256GCM); ESM-only
   pino: ^10.3.1 # MDRS-21: +1 major
   pino-pretty: ^13.0.0
   winston: ^3.17.0
@@ -369,7 +366,6 @@ catalog:
   # replaced next-auth 4 in all of them. openid-client and jose list only their
   # v6 lines as supported; the 5.7.1 and 4.15.9 that next-auth 4 pinned are not.
   openid-client: ^6.8.8 # discovery, PKCE, code and refresh grants, userinfo, end-session
-  jose: ^6.2.12 # the session cookie's JWE (dir + A256GCM)
   server-only: ^0.0.1 # build-time guard: @medaris/auth/server never reaches a client bundle
   client-only: ^0.0.1 # build-time guard: @medaris/auth/client never reaches a server component
   next-intl: ^4.4.0

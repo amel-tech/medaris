@@ -1,4 +1,5 @@
 import { Inject, Injectable, Optional } from "@nestjs/common";
+import { mapAccessTokenClaims } from "../auth-guard/access-token-claims";
 import { SCOPE_TYPES } from "./assignments";
 import {
   AUTHZ_AUDIT,
@@ -205,10 +206,10 @@ export class AuthzService {
 
   /** Reports whether the caller holds the SYSTEM_ADMIN realm role.
    *  Exposed for service-layer code that needs the bypass outside the
-   *  decision flow (e.g. multi-resource batch operations). */
+   *  decision flow (e.g. multi-resource batch operations). The role is read
+   *  through the IdP claim mapping (`realm_access.roles` on Keycloak). */
   isSystemAdmin(user: AuthenticatedUser): boolean {
-    const roles = user.realm_access?.roles;
-    return Array.isArray(roles) && roles.includes(SYSTEM_ADMIN_REALM_ROLE);
+    return mapAccessTokenClaims(user).roles.includes(SYSTEM_ADMIN_REALM_ROLE);
   }
 
   /**

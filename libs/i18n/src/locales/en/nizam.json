@@ -588,6 +588,11 @@
     "body": "There is no page at this address. Check the address or carry on from the home page.",
     "back": "Back to the home page"
   },
+  "PageError": {
+    "title": "Something went wrong",
+    "body": "There was a problem opening the page. Try again; if it keeps happening, look again in a few minutes.",
+    "retry": "Try again"
+  },
   "BansPage": {
     "title": "Bans",
     "intro": "Bans placed in {kosk} and its courses, with their reasons. A ban is lifted only by the kademe that placed it or a higher one, and lifting takes a reason.",

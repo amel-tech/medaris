@@ -48,7 +48,7 @@ export default async function Page({
         dueCount={0}
         newCount={cards.length}
         signedIn={false}
-        root={{ label: discover("discover"), href: "/discover" }}
+        root={{ label: discover("discover"), href: `/${locale}/discover` }}
         signInHref={inviteHrefs(locale, here).signIn}
       />
     );
@@ -64,7 +64,7 @@ export default async function Page({
       dueCount={read.round.dueCount}
       newCount={read.round.newCount}
       signedIn
-      root={{ label: decks("title"), href: "/decks" }}
+      root={{ label: decks("title"), href: `/${locale}/decks` }}
     />
   );
 }

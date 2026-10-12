@@ -99,7 +99,7 @@ export function DeckReaderView({
               {collected ? t("removeFromCollection") : t("add")}
             </Button>
             <Button
-              href={`/decks/study/${deck.id}`}
+              href={`/${locale}/decks/study/${deck.id}`}
               iconLeft={<Icon name="play" />}
             >
               {t("study")}

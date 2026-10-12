@@ -172,14 +172,14 @@ describe("Keşfet (design tedris/02)", () => {
       })
     );
     expect(html).toContain("Başmüderris Mehmet Emin Işıkoğlu");
-    expect(html).toContain('href="/courses/c1"');
+    expect(html).toContain('href="/tr/courses/c1"');
     expect(html).toContain("Bu medrese henüz ders açmadı.");
   });
 
   it("leads the köşk card to the köşk and the medrese card to the medrese", async () => {
     const html = await renderDiscover(data());
-    expect(html).toContain('href="/kosks/k1"');
-    expect(html).toContain('href="/madrasahs/m1"');
+    expect(html).toContain('href="/tr/kosks/k1"');
+    expect(html).toContain('href="/tr/madrasahs/m1"');
   });
 
   it("ends with the way to ask for a köşk", async () => {
@@ -216,7 +216,7 @@ describe("Keşfet (design tedris/02)", () => {
     expect(html).toContain('role="alert"');
     expect(html).toContain("Keşfet yüklenemedi");
     expect(html).toContain("Yeniden dene");
-    expect(html).toContain('href="/discover?q=sarf"');
+    expect(html).toContain('href="/tr/discover?q=sarf"');
     expect(html).not.toContain("0 köşk ve 0 medrese");
     expect(html).not.toContain("Köşk açma başvurusu");
   });
@@ -227,8 +227,8 @@ describe("Keşfet (design tedris/02)", () => {
       parseDiscoverQuery({ page: "2", q: "sarf" })
     );
     expect(html).toContain("2 / 3");
-    expect(html).toContain('href="/discover?q=sarf"');
-    expect(html).toContain('href="/discover?q=sarf&amp;page=3"');
+    expect(html).toContain('href="/tr/discover?q=sarf"');
+    expect(html).toContain('href="/tr/discover?q=sarf&amp;page=3"');
   });
 
   it("shows no pager for one page", async () => {
@@ -292,7 +292,7 @@ describe("köşk page (design tedris/04)", () => {
     expect(html).not.toContain(">Arapça dil ilimleri<");
     expect(html).not.toContain("İleri seviye");
     expect(html).toContain("3 ders");
-    expect(html).toContain('href="/discover"');
+    expect(html).toContain('href="/tr/discover"');
     expect(html).toContain("Takip ediliyor");
   });
 
@@ -324,7 +324,7 @@ describe("köşk page (design tedris/04)", () => {
       ],
       null
     );
-    expect(html).toContain('href="/madrasahs/m1"');
+    expect(html).toContain('href="/tr/madrasahs/m1"');
     expect(html).toContain("Süleymaniye Medresesi");
     expect(html).toMatch(/Mehmet Emin Işıkoğlu<\/bdi>, imam/);
     expect(html).not.toMatch(/Abdülhamit Karaosmanoğlu<\/bdi>, imam/);
@@ -339,9 +339,9 @@ describe("köşk page (design tedris/04)", () => {
       null
     );
     expect(html.match(/>Yüz yüze</g)).toHaveLength(1);
-    const card = html.slice(html.indexOf('href="/courses/a"'));
+    const card = html.slice(html.indexOf('href="/tr/courses/a"'));
     expect(card.indexOf(">Yüz yüze<")).toBeLessThan(
-      card.indexOf('href="/courses/b"')
+      card.indexOf('href="/tr/courses/b"')
     );
   });
 
@@ -376,7 +376,7 @@ describe("köşk page (design tedris/04)", () => {
     expect(html).toContain("Köşk destesi");
     expect(html).toContain("60 ezber kartı");
     expect(html.match(/Koleksiyonunda/g)).toHaveLength(1);
-    expect(html).toContain('href="/decks/d1"');
+    expect(html).toContain('href="/tr/decks/d1"');
   });
 
   it("leaves the deck block out for a caller the köşk does not know, and for a visitor", async () => {
@@ -488,7 +488,7 @@ describe("Derslerim (design tedris/20)", () => {
     expect(html).toContain("Başvuruyu geri çek");
     expect(html).toContain("Onay bekliyor");
     expect(html).toContain("Takvim aboneliği");
-    expect(html).toContain('href="/account/calendar"');
+    expect(html).toContain('href="/tr/account/calendar"');
     expect(html).toContain("Ders kayıtlarına git");
   });
 
@@ -504,7 +504,7 @@ describe("Derslerim (design tedris/20)", () => {
   it("sends a talebe with nothing at all to Keşfet", async () => {
     const html = await renderMine([]);
     expect(html).toContain("Henüz bir derse kayıtlı ya da başvurulu değilsin.");
-    expect(html).toContain('href="/discover"');
+    expect(html).toContain('href="/tr/discover"');
   });
 
   it("is an Alert, never 'no courses', when the read failed", async () => {

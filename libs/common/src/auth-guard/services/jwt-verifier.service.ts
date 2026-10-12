@@ -1,12 +1,20 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import * as jwt from "jsonwebtoken";
+import {
+  decodeProtectedHeader,
+  errors,
+  type JWSAlgorithm,
+  type JWTPayload,
+  jwtVerify,
+} from "jose";
+import { mapAccessTokenClaims } from "../access-token-claims";
 import { PUBLIC_KEY_PROVIDER } from "../auth-guard.tokens";
 import {
   JwtClaimError,
   JwtDecodeError,
   JwtMissingKidError,
   JwtVerificationError,
+  KeyNotFoundError,
 } from "../exceptions/exceptions";
 import { IJwtVerifier } from "../interfaces/jwt-verifier.interface";
 import { IPublicKeyProvider } from "../interfaces/public-key-provider.interface";
@@ -25,8 +33,9 @@ export interface JwtClaimPolicy {
   issuer: string;
   /**
    * Accepted `aud` values — the token must carry at least one of them. Typed
-   * as a non-empty tuple because an empty list would make `jsonwebtoken` skip
-   * the audience check entirely.
+   * as a non-empty tuple because an empty list is a configuration error:
+   * `jsonwebtoken` skipped the audience check on one, jose would refuse every
+   * token, and `loadJwtClaimPolicy` refuses to start instead.
    */
   audience: [string, ...string[]];
   /**
@@ -39,11 +48,29 @@ export interface JwtClaimPolicy {
 }
 
 /**
- * Keycloak stamps `typ` on the payload: `Bearer` for access tokens, `ID` for
- * ID tokens, `Refresh` for refresh tokens. Only an access token may be
- * presented to an API.
+ * The signature algorithms a token may use (auth audit C5). An explicit list,
+ * so the token's own `alg` header can never choose an HMAC (`HS256` keyed
+ * with the published public key) or `none`; jose refuses anything else before
+ * it looks for a key.
+ *
+ * `RS256` is what Keycloak signs with today. `ES256` and `EdDSA` are there so
+ * the IdP can move to an EC or Ed25519 key, or be replaced by one that signs
+ * that way (QAuth), without a code change; `Ed25519` is the RFC 9864 name for
+ * the same Ed25519 signatures. A key still has to be in the IdP's JWKS, and
+ * jose only takes a key of the type the `alg` names.
  */
-const REQUIRED_TOKEN_TYPE = "Bearer";
+const ACCEPTED_ALGORITHMS: JWSAlgorithm[] = [
+  "RS256",
+  "ES256",
+  "EdDSA",
+  "Ed25519",
+];
+
+/**
+ * Seconds of clock skew allowed on `exp` and `nbf`. Zero, as it was under
+ * `jsonwebtoken`, whose default it was.
+ */
+const CLOCK_TOLERANCE_SECONDS = 0;
 
 /**
  * Audiences Keycloak puts in *every* access token of a realm.
@@ -124,59 +151,79 @@ export function loadJwtClaimPolicy(config: ConfigService): JwtClaimPolicy {
   };
 }
 
+/**
+ * A jose failure as one of this module's errors: an unknown key stays
+ * `KeyNotFoundError`, as the key provider reported it before C5, and every
+ * other failure (signature, algorithm, `iss`, `aud`, `exp`, `nbf`, the JWKS
+ * fetch) is a `JwtVerificationError` carrying jose's code, e.g.
+ * `unexpected "aud" claim value (ERR_JWT_CLAIM_VALIDATION_FAILED)`.
+ */
+function verificationFailure(error: unknown): Error {
+  if (error instanceof KeyNotFoundError) {
+    return error;
+  }
+  if (error instanceof errors.JWKSNoMatchingKey) {
+    return new KeyNotFoundError(
+      "No key in the JWKS matches the token's kid and alg"
+    );
+  }
+  if (error instanceof errors.JOSEError) {
+    return new JwtVerificationError(`${error.message} (${error.code})`);
+  }
+  return new JwtVerificationError(
+    error instanceof Error ? error.message : String(error)
+  );
+}
+
 @Injectable()
 export class JwtVerifierService implements IJwtVerifier {
   private readonly policy: JwtClaimPolicy;
 
   constructor(
     @Inject(PUBLIC_KEY_PROVIDER) private keyProvider: IPublicKeyProvider,
-    @Inject() configService: ConfigService
+    // No bare `@Inject()` here: see KeycloakPublicKeyProvider's constructor.
+    configService: ConfigService
   ) {
     this.policy = loadJwtClaimPolicy(configService);
   }
 
-  async verifyToken(token: string): Promise<any> {
-    const decodedCompleteJwt = jwt.decode(token, { complete: true });
-    if (!decodedCompleteJwt || typeof decodedCompleteJwt === "string")
+  async verifyToken(token: string): Promise<JWTPayload> {
+    let kid: unknown;
+    try {
+      kid = decodeProtectedHeader(token).kid;
+    } catch {
       throw new JwtDecodeError();
-
-    const kid = decodedCompleteJwt.header.kid;
+    }
     if (!kid) throw new JwtMissingKidError();
 
-    const key = await this.keyProvider.getKey(kid);
+    let payload: JWTPayload;
+    try {
+      ({ payload } = await jwtVerify(
+        token,
+        (protectedHeader, flattened) =>
+          this.keyProvider.getKey(protectedHeader, flattened),
+        {
+          algorithms: ACCEPTED_ALGORITHMS,
+          issuer: this.policy.issuer,
+          audience: this.policy.audience,
+          clockTolerance: CLOCK_TOLERANCE_SECONDS,
+        }
+      ));
+    } catch (error) {
+      throw verificationFailure(error);
+    }
 
-    const decoded = await new Promise<jwt.JwtPayload | string | undefined>(
-      (resolve, reject) => {
-        jwt.verify(
-          token,
-          key,
-          {
-            algorithms: ["RS256"],
-            issuer: this.policy.issuer,
-            audience: this.policy.audience,
-          },
-          (err, verified) => {
-            if (err) return reject(new JwtVerificationError(err.message));
-            resolve(verified);
-          }
-        );
-      }
-    );
-
-    return this.assertClaims(decoded);
+    return this.assertClaims(payload);
   }
 
   /**
-   * Checks the claims `jsonwebtoken` does not know about. `iss`, `aud` and the
-   * expiry are already enforced by the verify options above.
+   * Checks the claims jose does not check on its own. `iss`, `aud`, `exp` and
+   * `nbf` are already enforced by the options above.
    */
-  private assertClaims(decoded: jwt.JwtPayload | string | undefined) {
-    if (!decoded || typeof decoded !== "object") {
-      throw new JwtDecodeError("JWT payload is not a JSON object");
-    }
-
-    // `jsonwebtoken` enforces `exp` when it is present but accepts a token
-    // that omits it, which would never expire. Keycloak always sets it.
+  private assertClaims(decoded: JWTPayload): JWTPayload {
+    // jose, like `jsonwebtoken` before it, enforces `exp` when it is present
+    // but accepts a token that omits it, which would never expire. Keycloak
+    // always sets it.
     if (typeof decoded.exp !== "number") {
       throw new JwtClaimError("JWT carries no exp claim, so it never expires");
     }
@@ -188,26 +235,28 @@ export class JwtVerifierService implements IJwtVerifier {
       throw new JwtClaimError("JWT carries no sub claim, so it names no user");
     }
 
-    const tokenType = decoded.typ;
-    if (tokenType !== REQUIRED_TOKEN_TYPE) {
+    // The token type and the client are IdP-specific claims, read through the
+    // one mapping (Keycloak's `typ` and `azp` today).
+    const claims = mapAccessTokenClaims(decoded);
+
+    if (!claims.isAccessToken) {
       throw new JwtClaimError(
         `JWT is not an access token: typ is ${
-          tokenType === undefined ? "absent" : `"${String(tokenType)}"`
-        }, expected "${REQUIRED_TOKEN_TYPE}"`
+          claims.tokenType === undefined
+            ? "absent"
+            : `"${String(claims.tokenType)}"`
+        }`
       );
     }
 
     if (this.policy.allowedClients.length > 0) {
-      const authorizedParty = decoded.azp;
       if (
-        typeof authorizedParty !== "string" ||
-        !this.policy.allowedClients.includes(authorizedParty)
+        claims.clientId === undefined ||
+        !this.policy.allowedClients.includes(claims.clientId)
       ) {
         throw new JwtClaimError(
           `JWT was issued to a client that may not call this API: azp is ${
-            authorizedParty === undefined
-              ? "absent"
-              : `"${String(authorizedParty)}"`
+            claims.clientId === undefined ? "absent" : `"${claims.clientId}"`
           }`
         );
       }

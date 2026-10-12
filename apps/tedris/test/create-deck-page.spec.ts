@@ -78,7 +78,7 @@ describe("Deste oluştur (design tedris/27)", () => {
     const cancel = [...document.querySelectorAll("a")].find(
       (a) => a.textContent === "Vazgeç"
     );
-    expect(cancel?.getAttribute("href")).toBe("/decks");
+    expect(cancel?.getAttribute("href")).toBe("/tr/decks");
   });
 
   it("an empty form says what is missing and sends nothing", async () => {
@@ -123,7 +123,7 @@ describe("Deste oluştur (design tedris/27)", () => {
       cardType: "HADEETH",
       tags: ["sarf", "nahiv"],
     });
-    expect(mocks.push).toHaveBeenCalledWith("/decks/new-deck");
+    expect(mocks.push).toHaveBeenCalledWith("/tr/decks/new-deck");
   });
 
   it("keeps what was typed and says so in a toast when the API refuses", async () => {

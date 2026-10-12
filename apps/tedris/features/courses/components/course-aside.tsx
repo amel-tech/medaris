@@ -211,7 +211,7 @@ export const CourseAside = ({
         >
           <p className="mds-body-sm mbs-3">{t("revokedBody")}</p>
           <Button
-            href="/my-courses"
+            href={`/${locale}/my-courses`}
             variant="secondary"
             fullWidth
             className="mbs-4"
@@ -255,7 +255,7 @@ export const CourseAside = ({
               <hr className="mds-separator" />
               {seatNext}
               <Button
-                href={`/courses/${course.id}/lessons/${next.lesson.id}`}
+                href={`/${locale}/courses/${course.id}/lessons/${next.lesson.id}`}
                 variant="secondary"
                 fullWidth
               >
@@ -286,7 +286,7 @@ export const CourseAside = ({
               {seatNext}
               <div className="flex flex-col gap-2">
                 <Button
-                  href={`/courses/${course.id}/lessons/${next.lesson.id}`}
+                  href={`/${locale}/courses/${course.id}/lessons/${next.lesson.id}`}
                   fullWidth
                   size="large"
                 >

@@ -18,6 +18,7 @@ import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import { Fragment, useState } from "react";
 import { courseCover } from "~/features/courses/course-cover";
+import { inviteHrefs } from "~/lib/invite-hrefs";
 import {
   courseTotals,
   courseViewState,
@@ -48,8 +49,8 @@ export const CoursePage = ({
   approvalRequired = course.requiresApproval,
   signedIn = true,
   nazarUrl = null,
-  signInHref = `/auth/signin?callbackUrl=${encodeURIComponent(`/courses/${course.id}`)}`,
-  registerHref = "/auth/register",
+  signInHref,
+  registerHref,
   recordings = [],
   initialTab,
   now: nowProp,
@@ -83,6 +84,7 @@ export const CoursePage = ({
 }) => {
   const t = useTranslations("tedris.CoursePage");
   const locale = useLocale();
+  const invite = inviteHrefs(locale, `/courses/${course.id}`);
   const [now] = useState(() => nowProp ?? Date.now());
   // Design tedris/14: a draft is shown to those who may edit it, as a preview.
   const preview = isPreview(course);
@@ -149,12 +151,12 @@ export const CoursePage = ({
 
   const meta = [
     course.madrasah ? (
-      <Link key="madrasah" href={`/madrasahs/${course.madrasah.id}`}>
+      <Link key="madrasah" href={`/${locale}/madrasahs/${course.madrasah.id}`}>
         <bdi>{course.madrasah.name}</bdi>
       </Link>
     ) : null,
     koskName ? (
-      <Link key="kosk" href={`/kosks/${course.koskId}`}>
+      <Link key="kosk" href={`/${locale}/kosks/${course.koskId}`}>
         <bdi>{koskName}</bdi>
       </Link>
     ) : null,
@@ -178,7 +180,7 @@ export const CoursePage = ({
       <Breadcrumb
         items={[
           ...(koskName
-            ? [{ label: koskName, href: `/kosks/${course.koskId}` }]
+            ? [{ label: koskName, href: `/${locale}/kosks/${course.koskId}` }]
             : []),
           { label: course.title },
         ]}
@@ -305,8 +307,8 @@ export const CoursePage = ({
               state={state}
               now={now}
               approvalRequired={approvalRequired}
-              signInHref={signInHref}
-              registerHref={registerHref}
+              signInHref={signInHref ?? invite.signIn}
+              registerHref={registerHref ?? invite.register}
             />
             {resourceList}
           </div>

@@ -1,4 +1,4 @@
-import { createSign } from "node:crypto";
+import { createPublicKey, createSign } from "node:crypto";
 import type { IPublicKeyProvider } from "@medaris/common";
 import { KeyNotFoundError } from "@medaris/common";
 import { inject } from "vitest";
@@ -33,13 +33,15 @@ function base64url(input: string | Buffer): string {
  *
  * It refuses an unknown `kid` exactly as the real one does, so the guard's
  * "key not found" path stays reachable from a test rather than being stubbed
- * into always-succeeding.
+ * into always-succeeding. It hands back a `KeyObject`, which jose verifies
+ * with as it would a key from the realm's JWKS (auth audit C5).
  */
 export function stubPublicKeyProvider(): IPublicKeyProvider {
   const { kid, publicKey } = inject("keycloak");
+  const key = createPublicKey(publicKey);
 
   return {
-    async getKey(requestedKid: string): Promise<string> {
+    async getKey({ kid: requestedKid }) {
       if (requestedKid !== kid) {
         // The real provider's own error class, not a bare `Error`: `AuthGuard`
         // has a catch-all today, but `keycloak-audience.e2e.spec.ts` calls
@@ -47,7 +49,7 @@ export function stubPublicKeyProvider(): IPublicKeyProvider {
         // would behave differently under the stub than in production.
         throw new KeyNotFoundError(`Signing key not found: ${requestedKid}`);
       }
-      return publicKey;
+      return key;
     },
   };
 }

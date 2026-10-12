@@ -7,6 +7,7 @@ import { LocaleMenu } from "@medaris/ui/mds/locale-switcher";
 import { Logo } from "@medaris/ui/mds/logo";
 import { NavItem } from "@medaris/ui/mds/nav-item";
 import { ThemeToggle } from "@medaris/ui/mds/theme-toggle";
+import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import { usePathname } from "~/lib/i18n/navigation";
 import { locales } from "~/lib/i18n/routing";
@@ -67,7 +68,11 @@ export function MemberPhoneMenu({
             : t("home"));
 
   const item = (key: Exclude<Section, null>, href: string, label: string) => (
-    <NavItem href={`/${locale}${href}`} active={section === key}>
+    <NavItem
+      href={`/${locale}${href}`}
+      linkComponent={Link}
+      active={section === key}
+    >
       {label}
     </NavItem>
   );
@@ -90,17 +95,17 @@ export function MemberPhoneMenu({
             darkLabel={t("themeDark")}
             lightLabel={t("themeLight")}
           />
-          <a
+          <Link
             className="mds-btn mds-icon-btn mds-btn--large mds-btn--ghost"
             href={`/${locale}/notifications`}
             aria-label={t("notifications")}
           >
             <Icon name="bell" />
-          </a>
+          </Link>
         </>
       }
       footer={
-        <a
+        <Link
           className="mds-nav-user"
           href={`/${locale}/account`}
           aria-label={t("accountLabel", { name })}
@@ -113,7 +118,7 @@ export function MemberPhoneMenu({
             <span className="mds-nav-user__role">{t("roleTalebe")}</span>
           </span>
           <Icon name="chevronRight" size="sm" />
-        </a>
+        </Link>
       }
     >
       {item("home", "/home", t("home"))}

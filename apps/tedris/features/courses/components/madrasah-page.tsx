@@ -52,7 +52,7 @@ const CourseCard = ({
   return (
     <Card
       className="flex flex-col"
-      href={`/courses/${course.id}`}
+      href={`/${locale}/courses/${course.id}`}
       title={course.title}
       media={<CoverPattern {...courseCover(course)} size="sm" />}
       action={
@@ -72,7 +72,7 @@ const CourseCard = ({
       footer={
         <>
           <span>
-            <Link href={`/kosks/${course.koskId}`}>
+            <Link href={`/${locale}/kosks/${course.koskId}`}>
               <bdi>{course.koskName}</bdi>
             </Link>
             <span className="mds-sep" aria-hidden="true">
@@ -140,7 +140,7 @@ export const MadrasahPage = async ({
       <div className="flex min-inline-0 flex-col gap-stack">
         <Breadcrumb
           items={[
-            { label: t("MadrasahPage.discover"), href: "/discover" },
+            { label: t("MadrasahPage.discover"), href: `/${locale}/discover` },
             { label: madrasah.name },
           ]}
         />
@@ -259,7 +259,7 @@ export const MadrasahPage = async ({
                   >
                     <Avatar entity size="sm" name={kosk.name} decorative />
                     <span className="flex min-inline-0 flex-1 flex-col gap-0.5">
-                      <Link href={`/kosks/${kosk.id}`}>
+                      <Link href={`/${locale}/kosks/${kosk.id}`}>
                         <bdi>{kosk.name}</bdi>
                       </Link>
                       {courses

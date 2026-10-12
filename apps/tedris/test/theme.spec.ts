@@ -79,7 +79,7 @@ describe("tedris's <html> (MDRS-245)", () => {
   it("is light by default on global-error", async () => {
     const { default: GlobalError } = await import("../app/global-error");
     expectsLightByDefault(
-      renderToStaticMarkup(GlobalError({ reset: () => undefined }))
+      renderToStaticMarkup(GlobalError({ retry: () => undefined }))
     );
   });
 });

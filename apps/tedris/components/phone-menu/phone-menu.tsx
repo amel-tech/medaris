@@ -7,6 +7,7 @@ import { LocaleMenu } from "@medaris/ui/mds/locale-switcher";
 import { Logo } from "@medaris/ui/mds/logo";
 import { NavItem } from "@medaris/ui/mds/nav-item";
 import { ThemeToggle } from "@medaris/ui/mds/theme-toggle";
+import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import { usePathname } from "~/lib/i18n/navigation";
 import { locales } from "~/lib/i18n/routing";
@@ -68,7 +69,7 @@ export function PhoneMenu({ title }: { title?: string } = {}) {
         </div>
       }
     >
-      <NavItem href={`/${locale}/discover`} active>
+      <NavItem href={`/${locale}/discover`} linkComponent={Link} active>
         {t("PhoneMenu.discover")}
       </NavItem>
     </AppBar>

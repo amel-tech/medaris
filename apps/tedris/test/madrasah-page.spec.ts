@@ -111,7 +111,7 @@ describe("medrese page", () => {
     expect(html).toContain("Onay bekliyor");
     expect(html).toContain("Paz 21:00");
     expect(html).toContain("Nûruosmaniye Köşkü");
-    expect(html).toContain('href="/courses/c1"');
+    expect(html).toContain('href="/tr/courses/c1"');
     expect(html).toContain(", imam");
   });
 
@@ -133,9 +133,9 @@ describe("medrese page", () => {
       ],
     } as MadrasahOverviewResponse);
     expect(html.match(/>Yüz yüze</g)).toHaveLength(1);
-    const card = html.slice(html.indexOf('href="/courses/c1"'));
+    const card = html.slice(html.indexOf('href="/tr/courses/c1"'));
     expect(card.indexOf(">Yüz yüze<")).toBeLessThan(
-      card.indexOf('href="/courses/c2"')
+      card.indexOf('href="/tr/courses/c2"')
     );
   });
 

@@ -64,7 +64,8 @@ export const SessionPage = async ({
   const locale = await getLocale();
   const timeZone = await getTimeZone();
   const cancelled = session.status === "CANCELLED";
-  const lessonHref = (id: string) => `/courses/${course.id}/lessons/${id}`;
+  const lessonHref = (id: string) =>
+    `/${locale}/courses/${course.id}/lessons/${id}`;
   const meetingUrl = session.meetingUrl || undefined;
   const platform = meetingUrl ? resolveMeetingPlatform(meetingUrl) : null;
   const replacement = cancelled ? session.replacement : null;
@@ -193,12 +194,14 @@ export const SessionPage = async ({
         hasLiveStream={session.hasLiveStream ?? Boolean(session.liveStreamUrl)}
         locale={locale}
         // MDRS-285: "Yayını izle" or "Kaydı izle", to the watch page.
-        watchHref={watchPath(course.id, session.id)}
+        watchHref={`/${locale}${watchPath(course.id, session.id)}`}
         watch={watch}
         recording={
           !recording ? "none" : release?.kind === "held" ? "held" : "preparing"
         }
-        recordingsHref={recording ? recordingsTabPath(course.id) : undefined}
+        recordingsHref={
+          recording ? `/${locale}${recordingsTabPath(course.id)}` : undefined
+        }
         release={releaseWords}
         notesHint={mayTakeNotes}
         calendar={

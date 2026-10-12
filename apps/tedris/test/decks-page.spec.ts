@@ -140,7 +140,7 @@ describe("Desteler (design tedris/25)", () => {
     const study = document.querySelector(
       'a[aria-label="Çalış: Mehmûz fiiller"]'
     ) as HTMLAnchorElement;
-    expect(study.getAttribute("href")).toBe("/decks/study/b");
+    expect(study.getAttribute("href")).toBe("/tr/decks/study/b");
     expect(study.textContent).toBe("Çalış");
   });
 
@@ -187,7 +187,7 @@ describe("Desteler (design tedris/25)", () => {
       "Henüz bir deste oluşturmadın."
     );
     expect(section("Destelerim").querySelector("a")?.getAttribute("href")).toBe(
-      "/decks/create"
+      "/tr/decks/create"
     );
     expect(section("Koleksiyonum").textContent).toContain(
       "Koleksiyonunda henüz deste yok."
@@ -222,7 +222,7 @@ describe("Desteler (design tedris/25)", () => {
         a.getAttribute("href"),
       ])
     );
-    expect(hrefs["Desteleri keşfet"]).toBe("/decks/explore");
-    expect(hrefs["Deste oluştur"]).toBe("/decks/create");
+    expect(hrefs["Desteleri keşfet"]).toBe("/tr/decks/explore");
+    expect(hrefs["Deste oluştur"]).toBe("/tr/decks/create");
   });
 });

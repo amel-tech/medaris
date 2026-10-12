@@ -588,6 +588,11 @@
     "body": "Bu adreste bir sayfa yok. Adresi denetleyin ya da ana sayfadan devam edin.",
     "back": "Ana sayfaya dön"
   },
+  "PageError": {
+    "title": "Bir şeyler ters gitti",
+    "body": "Sayfa açılırken bir sorun çıktı. Yeniden deneyin; sürerse birkaç dakika sonra tekrar bakın.",
+    "retry": "Yeniden dene"
+  },
   "BansPage": {
     "title": "Yasaklamalar",
     "intro": "{kosk} içinde ve derslerinde konan yasaklar, gerekçeleriyle. Bir yasağı yalnız onu koyan kademe ya da daha üst bir kademe kaldırır; kaldırırken gerekçe yazılır.",

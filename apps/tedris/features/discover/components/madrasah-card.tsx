@@ -19,13 +19,15 @@ type Translate = LooseTranslator;
 export const MadrasahCard = ({
   madrasah,
   t,
+  locale,
 }: {
   madrasah: MadrasahExploreResponse;
   t: Translate;
+  locale: string;
 }) => (
   <Card
     className="flex flex-col"
-    href={`/madrasahs/${madrasah.id}`}
+    href={`/${locale}/madrasahs/${madrasah.id}`}
     title={
       <span className="flex items-center gap-3">
         <Avatar entity decorative name={madrasah.name} />
@@ -58,7 +60,10 @@ export const MadrasahCard = ({
               size="xs"
               aria-hidden="true"
             />
-            <Link href={`/courses/${course.id}`} className="relative z-10">
+            <Link
+              href={`/${locale}/courses/${course.id}`}
+              className="relative z-10"
+            >
               <bdi>{course.title}</bdi>
             </Link>
           </li>

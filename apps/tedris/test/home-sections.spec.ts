@@ -73,8 +73,8 @@ describe("Kaldığın yerden devam et", () => {
     reads.courses.mockResolvedValue([course("c1", "Emsile ve Bina")]);
     const out = await html("ContinueSection");
     expect(out).toContain("Kaldığın yerden devam et");
-    expect(out).toContain('href="/my-courses"');
-    expect(out).toMatch(/href="\/courses\/c1"[^>]*>Emsile ve Bina</);
+    expect(out).toContain('href="/tr/my-courses"');
+    expect(out).toMatch(/href="\/tr\/courses\/c1"[^>]*>Emsile ve Bina</);
     expect(out).toContain("Abdülhamit");
     expect(out).toContain("imam");
     expect(out).toContain("İlerlemen 40");
@@ -96,7 +96,7 @@ describe("Kaldığın yerden devam et", () => {
     const out = await html("ContinueSection");
     expect(out).not.toContain("Bitti");
     expect(out).toContain("Devam eden dersin yok.");
-    expect(out).toContain('href="/discover"');
+    expect(out).toContain('href="/tr/discover"');
   });
 
   it("says it could not be read, with a retry, when the read fails", async () => {
@@ -136,9 +136,9 @@ describe("Bugün çalışılacak desteler", () => {
     expect(out).toContain("6 kart tekrar bekliyor");
     expect(out).toContain("Köşk destesi");
     expect(out).toContain("5 yeni kart");
-    expect(out).toContain('href="/decks/study/d1"');
+    expect(out).toContain('href="/tr/decks/study/d1"');
     expect(out).toContain('aria-label="Çalış: Mehmûz fiiller"');
-    expect(out).toContain('href="/decks"');
+    expect(out).toContain('href="/tr/decks"');
   });
 
   it("is an empty state when nothing waits, and an alert when it could not be read", async () => {
@@ -162,11 +162,11 @@ describe("Takip ettiğin köşklerden", () => {
       { id: "f2", title: "Fıkıh", koskName: "Fatih Köşkü", muderrisName: null },
     ]);
     const out = await html("FollowedSection");
-    expect(out).toMatch(/href="\/courses\/f1"[^>]*>Avâmil ve Tasrîf</);
+    expect(out).toMatch(/href="\/tr\/courses\/f1"[^>]*>Avâmil ve Tasrîf</);
     expect(out).toContain("Nûruosmaniye Köşkü");
     expect(out).toContain("Ayşe Nur Kılıçarslan");
     expect(out).toContain("imam");
-    expect(out).toContain('href="/discover"');
+    expect(out).toContain('href="/tr/discover"');
     expect(out).not.toContain("Müderris <bdi>null");
   });
 

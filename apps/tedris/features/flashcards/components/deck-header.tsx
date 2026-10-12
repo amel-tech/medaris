@@ -42,12 +42,15 @@ export function DeckHeader({
 }: DeckHeaderProps) {
   const t = useTranslations("tedris.Decks");
   const locale = useLocale();
-  const base = `/decks/${deck.id}`;
+  const base = `/${locale}/decks/${deck.id}`;
   return (
     <header className="flex flex-col gap-4">
       <Breadcrumb
         label={t("breadcrumbLabel")}
-        items={[root ?? { label: t("title"), href: "/decks" }, deck.title]}
+        items={[
+          root ?? { label: t("title"), href: `/${locale}/decks` },
+          deck.title,
+        ]}
       />
       <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-4">
         <div className="flex min-inline-0 flex-col gap-3">

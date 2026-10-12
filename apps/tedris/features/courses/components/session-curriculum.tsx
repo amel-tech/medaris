@@ -2,7 +2,7 @@
 
 import { Icon } from "@medaris/ui/mds/icon";
 // Not the locale router: its typed pathnames know no lesson page. The rows
-// go where the page's plain links go (`/courses/…/lessons/…`).
+// go where the page's plain links go (`/<locale>/courses/…/lessons/…`).
 import { useRouter } from "next/navigation";
 import {
   type CSSProperties,

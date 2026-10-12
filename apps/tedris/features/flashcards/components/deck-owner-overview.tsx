@@ -87,7 +87,7 @@ export function DeckOwnerOverview({
     setDeleting(true);
     const result = await attempt(() => deleteDeck(deck.id));
     if (result.success) {
-      router.push("/decks");
+      router.push(`/${locale}/decks`);
       return;
     }
     setDeleting(false);
@@ -158,7 +158,7 @@ export function DeckOwnerOverview({
             </h2>
             {cards.length > 0 ? (
               <Button
-                href={`/decks/${deck.id}/cards`}
+                href={`/${locale}/decks/${deck.id}/cards`}
                 variant="link"
                 size="small"
               >
@@ -171,7 +171,7 @@ export function DeckOwnerOverview({
               icon={<Icon name="cards" size="lg" />}
               action={
                 <Button
-                  href={`/decks/${deck.id}/cards`}
+                  href={`/${locale}/decks/${deck.id}/cards`}
                   iconLeft={<Icon name="plus" />}
                 >
                   {t("addCard")}
@@ -238,7 +238,7 @@ export function DeckOwnerOverview({
           <p className="mds-body-sm">{t("deckText")}</p>
           <div className="flex flex-wrap items-center gap-3">
             <Button
-              href={`/decks/${deck.id}/edit`}
+              href={`/${locale}/decks/${deck.id}/edit`}
               variant="secondary"
               iconLeft={<Icon name="edit" />}
             >

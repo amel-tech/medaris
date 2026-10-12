@@ -2,7 +2,7 @@ import { LockSimpleIcon } from "@medaris/icons/ssr";
 import { Button } from "@medaris/ui/components/button";
 import { Card, CardContent } from "@medaris/ui/components/card";
 import Link from "next/link";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 
 /**
  * Shown in place of a deck the API refused (403) or could not find (404).
@@ -12,6 +12,7 @@ import { getTranslations } from "next-intl/server";
  */
 export async function DeckUnavailable() {
   const t = await getTranslations("tedris.DeckUnavailable");
+  const locale = await getLocale();
 
   return (
     <div className="mx-auto flex max-w-md px-4 py-16">
@@ -23,7 +24,7 @@ export async function DeckUnavailable() {
           <h1 className="text-xl font-semibold">{t("title")}</h1>
           <p className="text-sm text-muted-foreground">{t("description")}</p>
           <Button asChild className="mt-2">
-            <Link href="/decks">{t("backToDecks")}</Link>
+            <Link href={`/${locale}/decks`}>{t("backToDecks")}</Link>
           </Button>
         </CardContent>
       </Card>
