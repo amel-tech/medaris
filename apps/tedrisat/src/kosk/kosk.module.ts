@@ -6,6 +6,7 @@ import { KeycloakAdminModule } from "../keycloak-admin/keycloak-admin.module";
 import { LessonInvitationModule } from "../lesson-invitation/lesson-invitation.module";
 import { PassivationModule } from "../passivation/passivation.module";
 import { PlatformPolicyModule } from "../platform-policy/platform-policy.module";
+import { StorageModule } from "../storage/storage.module";
 import { KoskController } from "./kosk.controller";
 import { KoskRepository } from "./kosk.repository";
 import { KoskService } from "./kosk.service";
@@ -26,6 +27,7 @@ import { KoskGrantsService } from "./kosk-grants.service";
     PlatformPolicyModule,
     LessonInvitationModule,
     PassivationModule,
+    StorageModule,
   ],
   // `KoskAdminController` first: `GET /kosks/directory` must be matched before
   // `GET /kosks/:id` reads "directory" as an id.

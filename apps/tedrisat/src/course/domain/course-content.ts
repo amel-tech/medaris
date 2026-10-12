@@ -19,7 +19,8 @@ import { EnrollmentStatus } from "./enrollment-status.enum";
  * Content: a lesson's `meetingUrl`, `agenda`, `kaynak` and `cancelReason`, how
  * it is attended (`inPerson`, `inPersonOverride`, `hasLiveStream`, MDRS-283),
  * when its recording opens (`recordingAvailableAt`, MDRS-288), and a
- * resource's `url`, the course's or a session's own (MDRS-286). A caller
+ * resource's `url` or `file`, the course's or a session's own (MDRS-286,
+ * MDRS-287). A caller
  * without `course.view_details` gets the programme only, and the content keys
  * are removed rather than nulled. A resource's name is programme: "Adlarını
  * herkes görür; bağlantıları derse kayıtlı talebeler açar."
@@ -33,6 +34,9 @@ import { EnrollmentStatus } from "./enrollment-status.enum";
 
 const lessonResourceWithoutContent = ({
   url: _url,
+  // A file is content like a link (MDRS-287): its name, type, size and
+  // download route go only where the link would.
+  file: _file,
   ...listing
 }: ILessonResource): ILessonResourceView => listing;
 
@@ -60,6 +64,7 @@ const lessonWithoutContent = ({
 
 const resourceWithoutContent = ({
   url: _url,
+  file: _file,
   ...listing
 }: IResource): IResourceView => listing;
 
@@ -78,7 +83,8 @@ export function withoutContent(course: ICourseDetail): ICourseDetailView {
 
 /**
  * A session write's answer for a caller who may not read the content: its
- * resources' links removed, as `withoutContent` removes them (MDRS-286). Only
+ * resources' links and files removed, as `withoutContent` removes them
+ * (MDRS-286, MDRS-287). Only
  * `DELETE /lessons/:id` has such a caller, as `week.hide` alone may hide a
  * session; the other session writes ask for `session.manage`, which opens the
  * content.

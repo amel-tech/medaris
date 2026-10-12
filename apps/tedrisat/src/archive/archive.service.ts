@@ -4,6 +4,7 @@ import { SCOPE_TYPES } from "../database/schema/scope-type.schema";
 import { KoskNotFoundError } from "../kosk/errors/kosk-not-found.error";
 import { KoskService } from "../kosk/kosk.service";
 import { LessonInvitationService } from "../lesson-invitation/lesson-invitation.service";
+import { StorageDeletionService } from "../storage/storage-deletion.service";
 import { ArchiveRepository, IArchiver } from "./archive.repository";
 import {
   ArchiveItemType,
@@ -106,7 +107,9 @@ export class ArchiveService {
     private readonly repo: ArchiveRepository,
     private readonly koskService: KoskService,
     private readonly authz: AuthzService,
-    private readonly invitations: LessonInvitationService
+    private readonly invitations: LessonInvitationService,
+    // The files a purge lets go are removed from storage (MDRS-287).
+    private readonly storageDeletions: StorageDeletionService
   ) {}
 
   /**
@@ -371,6 +374,7 @@ export class ArchiveService {
     // A purged session's invitation rows stay behind for their CANCELs
     // (MDRS-121); send any still owed now rather than on the next timer.
     this.invitations.kick();
+    this.storageDeletions.kick();
   }
 
   private async page(

@@ -13,6 +13,14 @@
  */
 
 import { mapValues } from '../runtime';
+import type { ResourceFileResponse } from './ResourceFileResponse';
+import {
+    ResourceFileResponseFromJSON,
+    ResourceFileResponseFromJSONTyped,
+    ResourceFileResponseToJSON,
+    ResourceFileResponseToJSONTyped,
+} from './ResourceFileResponse';
+
 /**
  * 
  * @export
@@ -44,11 +52,17 @@ export interface LessonResourceResponse {
      */
     meta?: string | null;
     /**
-     * Where it opens: an absolute http:// or https:// URL. Course content: absent unless the caller holds `view_details` on the course (MDRS-103), a sample session's included.
+     * Where it opens: an absolute http:// or https:// URL; null for a file. Course content: absent unless the caller holds `view_details` on the course (MDRS-103), a sample session's included.
      * @type {string}
      * @memberof LessonResourceResponse
      */
-    url?: string;
+    url?: string | null;
+    /**
+     * The resource's file in Medaris storage (MDRS-287); null for a link. Course content, like `url`: absent unless the caller holds `view_details` on the course (MDRS-103), a sample session's included.
+     * @type {ResourceFileResponse}
+     * @memberof LessonResourceResponse
+     */
+    file?: ResourceFileResponse | null;
     /**
      * 
      * @type {number}
@@ -83,6 +97,7 @@ export function LessonResourceResponseFromJSONTyped(json: any, ignoreDiscriminat
         'name': json['name'],
         'meta': json['meta'] == null ? undefined : json['meta'],
         'url': json['url'] == null ? undefined : json['url'],
+        'file': json['file'] == null ? undefined : ResourceFileResponseFromJSON(json['file']),
         'orderIndex': json['orderIndex'],
     };
 }
@@ -103,6 +118,7 @@ export function LessonResourceResponseToJSONTyped(value?: LessonResourceResponse
         'name': value['name'],
         'meta': value['meta'],
         'url': value['url'],
+        'file': ResourceFileResponseToJSON(value['file']),
         'orderIndex': value['orderIndex'],
     };
 }

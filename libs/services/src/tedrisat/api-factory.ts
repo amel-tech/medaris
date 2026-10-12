@@ -14,6 +14,7 @@ import {
   MeApi,
   NizamApi,
   NotificationsApi,
+  ResourcesApi,
   SessionsApi,
   TedrisatServiceApi,
   UsersApi,
@@ -40,6 +41,7 @@ export type {
   ChiefNazimResponse,
   CourseDetailResponse,
   CourseQuestionResponse,
+  CourseResourceFileUploadResponse,
   CourseSummaryResponse,
   CreateCourseDto,
   CreateFlashcardDeckDto,
@@ -98,6 +100,8 @@ export type {
   LessonMutationResponse,
   LessonNoteResponse,
   LessonQuestionResponse,
+  LessonResourceFileUploadResponse,
+  LessonResourceResponse,
   LessonResponse,
   MadrasahBanListResponse,
   MadrasahBanResponse,
@@ -150,6 +154,7 @@ export type {
   ReadAllNotificationsResponse,
   RemoveEnrollmentDto,
   ReplaceCourseDto,
+  ResourceFileResponse,
   ResourceResponse,
   RosterEnrollmentResponse,
   ScheduleSessionResponse,
@@ -250,6 +255,9 @@ export function createTedrisatAPIs(config: TedrisatAPIConfig) {
     archive: new ArchiveApi(configuration),
     // Barring a talebe and lifting it (MDRS-177).
     bans: new BansApi(configuration),
+    // A course's and a celse's resource files: upload and download through
+    // tedrisat, never from storage directly (MDRS-287).
+    resources: new ResourcesApi(configuration),
     // The two label controllers MDRS-58 published for the first time. Generated
     // classes that only `./generated/src` exported were reachable by no app —
     // this factory is what `@medaris/services/tedrisat` hands out.

@@ -50,6 +50,11 @@ import {
 import { SCOPE_TYPES } from "../database/schema/scope-type.schema";
 import { users } from "../database/schema/user.schema";
 import {
+  claimUpload,
+  enqueueStorageDeletions,
+} from "../storage/storage-deletions";
+import type { IStoredFile } from "../storage/stored-file";
+import {
   ICourse,
   ICourseBadgeCounts,
   ICourseDetail,
@@ -72,6 +77,7 @@ import {
   IRemovedEnrollment,
   IRemoveEnrollment,
   IReplaceCourse,
+  IResource,
   ISessionBatchResult,
   ISessionBatchWeek,
   IUpdateCourse,
@@ -83,6 +89,11 @@ import { ROSTER_READ_ACTION } from "./domain/course-content";
 import { CourseStatus } from "./domain/course-status.enum";
 import { EnrollmentStatus } from "./domain/enrollment-status.enum";
 import { LessonType } from "./domain/lesson-type.enum";
+import {
+  courseResourceOf,
+  lessonResourceOf,
+  storedFileOf,
+} from "./domain/resource-file";
 import { sessionAttendance, withoutAccessSql } from "./domain/session-access";
 import {
   type IDatedWeek,
@@ -95,6 +106,8 @@ import { LessonAlreadyCancelledError } from "./errors/lesson-already-cancelled.e
 import { LessonNotFoundError } from "./errors/lesson-not-found.error";
 import { LessonReplacementInvalidError } from "./errors/lesson-replacement-invalid.error";
 import { LessonReplacementTakenError } from "./errors/lesson-replacement-taken.error";
+import { ResourceIsFileError } from "./errors/resource-is-file.error";
+import { ResourceUrlRequiredError } from "./errors/resource-url-required.error";
 import { WeekNotFoundError } from "./errors/week-not-found.error";
 
 /**
@@ -298,15 +311,19 @@ export class CourseRepository implements ICourseRepository {
       weeks: weeks.map((week) => ({
         ...week,
         lessons: week.lessons.map(
-          ({ liveStreamUrl, inPersonOverride, ...lesson }) => ({
+          ({ liveStreamUrl, inPersonOverride, resources, ...lesson }) => ({
             ...lesson,
             ...sessionAttendance(
               { liveStreamUrl, inPersonOverride },
               row.inPerson
             ),
+            resources: resources.map(lessonResourceOf),
           })
         ),
       })),
+      // A file's storage key stays here (MDRS-287): the detail carries its
+      // name, type, size and download route.
+      resources: row.resources.map(courseResourceOf),
       muderris: row.muderris.map((m) => ({
         ...m,
         isImam: m.userId !== null && imamKeys.has(`${row.id}:${m.userId}`),
@@ -476,7 +493,10 @@ export class CourseRepository implements ICourseRepository {
           for (const row of created) {
             const sent = week.lessons[row.orderIndex]?.resources;
             if (sent?.length) {
-              await this.writeLessonResources(tx, row.id, sent);
+              await this.writeLessonResources(tx, row.id, sent, {
+                courseId: createdCourse.id,
+                actorId: course.authorId,
+              });
             }
           }
         }
@@ -519,22 +539,32 @@ export class CourseRepository implements ICourseRepository {
 
       // ---- resources: upsert by id, delete the rest ----
       const existingResources = await tx
-        .select({ id: courseResources.id })
+        .select()
         .from(courseResources)
         .where(eq(courseResources.courseId, id));
       const resourcesKeep = new Set(
         resources.map((r) => r.id).filter((x): x is string => Boolean(x))
       );
-      const resourcesToDelete = existingResources
-        .filter((e) => !resourcesKeep.has(e.id))
-        .map((e) => e.id);
+      const resourcesToDelete = existingResources.filter(
+        (e) => !resourcesKeep.has(e.id)
+      );
       if (resourcesToDelete.length) {
-        await tx
-          .delete(courseResources)
-          .where(inArray(courseResources.id, resourcesToDelete));
+        await tx.delete(courseResources).where(
+          inArray(
+            courseResources.id,
+            resourcesToDelete.map((e) => e.id)
+          )
+        );
+        // A file taken off the list goes from storage too (MDRS-287).
+        await this.letFilesGo(tx, resourcesToDelete, {
+          courseId: id,
+          actorId: userId,
+          via: "course.replace",
+        });
       }
-      const existingResourceIds = new Set(existingResources.map((e) => e.id));
+      const existingById = new Map(existingResources.map((e) => [e.id, e]));
       for (const [i, r] of resources.entries()) {
+        const kept = r.id ? existingById.get(r.id) : undefined;
         const values = {
           courseId: id,
           name: r.name,
@@ -543,11 +573,19 @@ export class CourseRepository implements ICourseRepository {
           url: r.url,
           orderIndex: i,
         };
-        if (r.id && existingResourceIds.has(r.id)) {
+        if (kept && storedFileOf(kept)) {
+          // A file keeps its file (MDRS-287); only its label and place change.
+          if (r.url) throw new ResourceIsFileError(kept.id);
+          const { url: _url, ...label } = values;
+          await tx
+            .update(courseResources)
+            .set(label)
+            .where(eq(courseResources.id, kept.id));
+        } else if (kept) {
           await tx
             .update(courseResources)
             .set(values)
-            .where(eq(courseResources.id, r.id));
+            .where(eq(courseResources.id, kept.id));
         } else {
           await tx.insert(courseResources).values(values);
         }
@@ -643,7 +681,10 @@ export class CourseRepository implements ICourseRepository {
               .where(eq(lessons.id, l.id));
             // Left out, the session's resources stay as they are (MDRS-286).
             if (l.resources != null) {
-              await this.writeLessonResources(tx, l.id, l.resources);
+              await this.writeLessonResources(tx, l.id, l.resources, {
+                courseId: id,
+                actorId: userId,
+              });
             }
           } else {
             const [inserted] = await tx
@@ -651,7 +692,10 @@ export class CourseRepository implements ICourseRepository {
               .values(lessonValues)
               .returning({ id: lessons.id });
             if (l.resources?.length) {
-              await this.writeLessonResources(tx, inserted.id, l.resources);
+              await this.writeLessonResources(tx, inserted.id, l.resources, {
+                courseId: id,
+                actorId: userId,
+              });
             }
           }
         }
@@ -848,43 +892,61 @@ export class CourseRepository implements ICourseRepository {
    * Writes a session's own resources as `sent` lists them (MDRS-286), inside
    * the caller's transaction: a row whose id is one of this lesson's is kept
    * and rewritten whole, any other row is added, and a stored row the list
-   * leaves out is deleted, as a link has nothing hanging off it (MDRS-279).
-   * The order is the list's.
+   * leaves out is deleted. The order is the list's.
+   *
+   * Since MDRS-287 a stored row may be a file: it keeps its file and takes no
+   * `url` (RESOURCE_IS_FILE), and once left out its object is marked for
+   * removal from storage and the removal goes to `audit_log`. A stored link
+   * sent without `url` keeps its link; a row the list adds is a link and
+   * needs one (RESOURCE_URL_REQUIRED), as files are added by their upload.
    */
   private async writeLessonResources(
     tx: Tx,
     lessonId: string,
-    sent: readonly ICreateLessonResource[]
+    sent: readonly ICreateLessonResource[],
+    context: { courseId: string; actorId: string | null }
   ): Promise<void> {
-    const stored = new Set(
+    const stored = new Map(
       (
         await tx
-          .select({ id: lessonResources.id })
+          .select()
           .from(lessonResources)
           .where(eq(lessonResources.lessonId, lessonId))
-      ).map((r) => r.id)
+      ).map((r) => [r.id, r])
     );
     // Each stored id is claimed once; a repeat in the list is a new row.
     const kept = new Set<string>();
     const rows = sent.map((r, orderIndex) => {
       const id = r.id && stored.has(r.id) && !kept.has(r.id) ? r.id : null;
       if (id) kept.add(id);
-      return {
-        id,
-        values: {
-          lessonId,
-          name: r.name,
-          meta: r.meta ?? null,
-          url: r.url,
-          orderIndex,
-        },
+      const label = {
+        lessonId,
+        name: r.name,
+        meta: r.meta ?? null,
+        orderIndex,
       };
+      const row = id ? stored.get(id) : undefined;
+      if (row && storedFileOf(row)) {
+        if (r.url) throw new ResourceIsFileError(row.id);
+        return { id, values: label };
+      }
+      const url = r.url || row?.url;
+      if (!url) throw new ResourceUrlRequiredError();
+      return { id, values: { ...label, url } };
     });
-    const dropped = [...stored].filter((id) => !kept.has(id));
+    const dropped = [...stored.values()].filter((r) => !kept.has(r.id));
     if (dropped.length) {
-      await tx
-        .delete(lessonResources)
-        .where(inArray(lessonResources.id, dropped));
+      await tx.delete(lessonResources).where(
+        inArray(
+          lessonResources.id,
+          dropped.map((r) => r.id)
+        )
+      );
+      await this.letFilesGo(tx, dropped, {
+        ...context,
+        lessonId,
+        via: "lesson.resources",
+      });
     }
     for (const { id, values } of rows) {
       if (id) {
@@ -898,16 +960,209 @@ export class CourseRepository implements ICourseRepository {
     }
   }
 
+  /**
+   * The removed resources that were files (MDRS-287): their objects are
+   * marked for removal from storage, in the transaction that removed the
+   * rows, and each removal is written to `audit_log` as
+   * `resource.file_delete`.
+   */
+  private async letFilesGo(
+    tx: Tx,
+    removed: readonly {
+      id: string;
+      name: string;
+      storageKey: string | null;
+      fileName: string | null;
+      contentType: string | null;
+      sizeBytes: number | null;
+    }[],
+    context: {
+      courseId: string;
+      lessonId?: string;
+      actorId: string | null;
+      via: string;
+    }
+  ): Promise<void> {
+    const files = removed.flatMap((row) => {
+      const file = storedFileOf(row);
+      return file ? [{ row, file }] : [];
+    });
+    if (files.length === 0) return;
+    await enqueueStorageDeletions(
+      tx,
+      files.map(({ file }) => file.storageKey),
+      "resource.remove"
+    );
+    const { actorId } = context;
+    if (actorId === null) return;
+    await tx.insert(auditLog).values(
+      files.map(({ row, file }) => ({
+        actorId,
+        action: "resource.file_delete",
+        entity: "resource",
+        entityId: row.id,
+        details: {
+          courseId: context.courseId,
+          ...(context.lessonId ? { lessonId: context.lessonId } : {}),
+          name: row.name,
+          fileName: file.fileName,
+          contentType: file.contentType,
+          sizeBytes: file.sizeBytes,
+          via: context.via,
+        },
+      }))
+    );
+  }
+
   /** A session's own resources in order (MDRS-286), for a write's answer. */
   private async lessonResourcesOf(
     tx: Tx,
     lessonId: string
   ): Promise<ILessonResource[]> {
-    return tx
+    return (
+      await tx
+        .select()
+        .from(lessonResources)
+        .where(eq(lessonResources.lessonId, lessonId))
+        .orderBy(lessonResources.orderIndex, lessonResources.id)
+    ).map(lessonResourceOf);
+  }
+
+  /**
+   * Adds a file as the last of the course's resources (MDRS-287), once its
+   * object is in storage: the row, the upload's claim on the object
+   * (`claimUpload`) and its `audit_log` row (`resource.file_upload`) in one
+   * transaction. The course's version is bumped, like every write to the
+   * course, so an editor holding the old one reloads before a whole-course
+   * save could drop the new row; the answer carries the new version.
+   */
+  async addCourseResourceFile(
+    courseId: string,
+    input: {
+      name: string;
+      meta: string | null;
+      file: IStoredFile;
+      actorId: string;
+    }
+  ): Promise<{ resource: IResource; courseVersion: number }> {
+    return this.db.transaction(async (tx) => {
+      const { version } = await this.bumpVersion(tx, courseId, undefined);
+      const [last] = await tx
+        .select({ at: max(courseResources.orderIndex) })
+        .from(courseResources)
+        .where(eq(courseResources.courseId, courseId));
+      const [row] = await tx
+        .insert(courseResources)
+        .values({
+          courseId,
+          name: input.name,
+          meta: input.meta,
+          ...input.file,
+          orderIndex: (last?.at ?? -1) + 1,
+        })
+        .returning();
+      await claimUpload(tx, input.file.storageKey);
+      await tx.insert(auditLog).values({
+        actorId: input.actorId,
+        action: "resource.file_upload",
+        entity: "resource",
+        entityId: row.id,
+        details: {
+          courseId,
+          name: row.name,
+          fileName: input.file.fileName,
+          contentType: input.file.contentType,
+          sizeBytes: input.file.sizeBytes,
+        },
+      });
+      return { resource: courseResourceOf(row), courseVersion: version };
+    });
+  }
+
+  /**
+   * Adds a file as the last of a live celse's own resources (MDRS-287), as
+   * `addCourseResourceFile` does for the course's. A celse that is hidden or
+   * gone answers LESSON_NOT_FOUND, and the upload's object is then removed.
+   */
+  async addLessonResourceFile(
+    lessonId: string,
+    input: {
+      name: string;
+      meta: string | null;
+      file: IStoredFile;
+      actorId: string;
+    }
+  ): Promise<{ resource: ILessonResource; courseVersion: number }> {
+    return this.db.transaction(async (tx) => {
+      const courseId = await this.findLiveLessonCourseId(tx, lessonId);
+      const { version } = await this.bumpVersion(tx, courseId, undefined);
+      const [last] = await tx
+        .select({ at: max(lessonResources.orderIndex) })
+        .from(lessonResources)
+        .where(eq(lessonResources.lessonId, lessonId));
+      const [row] = await tx
+        .insert(lessonResources)
+        .values({
+          lessonId,
+          name: input.name,
+          meta: input.meta,
+          ...input.file,
+          orderIndex: (last?.at ?? -1) + 1,
+        })
+        .returning();
+      await claimUpload(tx, input.file.storageKey);
+      await tx.insert(auditLog).values({
+        actorId: input.actorId,
+        action: "resource.file_upload",
+        entity: "resource",
+        entityId: row.id,
+        details: {
+          courseId,
+          lessonId,
+          name: row.name,
+          fileName: input.file.fileName,
+          contentType: input.file.contentType,
+          sizeBytes: input.file.sizeBytes,
+        },
+      });
+      return { resource: lessonResourceOf(row), courseVersion: version };
+    });
+  }
+
+  /** The stored file of one of the course's resources, or null for none or a link (MDRS-287). */
+  async findCourseResourceFile(
+    courseId: string,
+    resourceId: string
+  ): Promise<IStoredFile | null> {
+    const [row] = await this.db
+      .select()
+      .from(courseResources)
+      .where(
+        and(
+          eq(courseResources.id, resourceId),
+          eq(courseResources.courseId, courseId)
+        )
+      )
+      .limit(1);
+    return row ? storedFileOf(row) : null;
+  }
+
+  /** The stored file of one of a celse's own resources, or null for none or a link (MDRS-287). */
+  async findLessonResourceFile(
+    lessonId: string,
+    resourceId: string
+  ): Promise<IStoredFile | null> {
+    const [row] = await this.db
       .select()
       .from(lessonResources)
-      .where(eq(lessonResources.lessonId, lessonId))
-      .orderBy(lessonResources.orderIndex, lessonResources.id);
+      .where(
+        and(
+          eq(lessonResources.id, resourceId),
+          eq(lessonResources.lessonId, lessonId)
+        )
+      )
+      .limit(1);
+    return row ? storedFileOf(row) : null;
   }
 
   /** The müderris half of a whole-course save, inside its transaction. */
@@ -1021,7 +1276,10 @@ export class CourseRepository implements ICourseRepository {
         })
         .returning();
       if (data.resources?.length) {
-        await this.writeLessonResources(tx, row.id, data.resources);
+        await this.writeLessonResources(tx, row.id, data.resources, {
+          courseId,
+          actorId: null,
+        });
       }
       return this.toLessonMutation(
         row,
@@ -1223,7 +1481,8 @@ export class CourseRepository implements ICourseRepository {
   async updateLesson(
     lessonId: string,
     expectedVersion: number,
-    data: IUpdateLesson
+    data: IUpdateLesson,
+    actorId: string | null = null
   ): Promise<ILessonMutation> {
     return this.db.transaction(async (tx) => {
       const courseId = await this.findLiveLessonCourseId(tx, lessonId);
@@ -1259,7 +1518,10 @@ export class CourseRepository implements ICourseRepository {
         .returning();
       // Left out, the session's resources stay as they are (MDRS-286).
       if (resources != null) {
-        await this.writeLessonResources(tx, lessonId, resources);
+        await this.writeLessonResources(tx, lessonId, resources, {
+          courseId,
+          actorId,
+        });
       }
       return this.toLessonMutation(
         row,

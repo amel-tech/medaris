@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { AuditService } from "../audit/audit.service";
 import { LessonInvitationService } from "../lesson-invitation/lesson-invitation.service";
 import { PlatformPolicyService } from "../platform-policy/platform-policy.service";
+import { StorageDeletionService } from "../storage/storage-deletion.service";
 import { KoskForbiddenError } from "./errors/kosk-forbidden.error";
 import { KoskHandleTakenError } from "./errors/kosk-handle-taken.error";
 import { KoskLastManagerError } from "./errors/kosk-last-manager.error";
@@ -30,7 +31,9 @@ export class KoskService {
     private readonly koskRepo: KoskRepository,
     private readonly platformPolicies: PlatformPolicyService,
     private readonly audit: AuditService,
-    private readonly invitations: LessonInvitationService
+    private readonly invitations: LessonInvitationService,
+    // The files of the köşk's courses go from storage (MDRS-287).
+    private readonly storageDeletions: StorageDeletionService
   ) {}
 
   /**
@@ -266,6 +269,7 @@ export class KoskService {
     if (!removed) throw new KoskNotFoundError(id);
     // The invitation rows outlive the sessions: send their CANCELs (MDRS-121).
     this.invitations.kick();
+    this.storageDeletions.kick();
     return true;
   }
 

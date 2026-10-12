@@ -13,7 +13,33 @@ export class AgendaStepResponse {
 const CONTENT_FIELD =
   "Course content: absent unless the caller holds `view_details` on the course (MDRS-103); a sample session (`isPreview`) keeps its `kaynak` and `agenda` for everyone (MDRS-161), never its `meetingUrl`.";
 
-/** One link of a session's own resources (MDRS-286). */
+const FILE_FIELD =
+  "The resource's file in Medaris storage (MDRS-287); null for a link. Course content, like `url`: absent unless the caller holds `view_details` on the course (MDRS-103), a sample session's included.";
+
+/** A resource that is a file in Medaris storage (MDRS-287). */
+export class ResourceFileResponse {
+  @ApiProperty({
+    example: "Emsile şerhi.pdf",
+    description:
+      "The sanitised name it was uploaded under; its download is saved as this.",
+  })
+  name!: string;
+  @ApiProperty({
+    example: "application/pdf",
+    description: "The type read from the file's bytes at upload.",
+  })
+  contentType!: string;
+  @ApiProperty({ example: 482133 }) sizeBytes!: number;
+  @ApiProperty({
+    example:
+      "/courses/0b9c1e52-1111-4a5e-9d55-6b1f0c2a7e01/resources/5d6e7f80-2222-4b3c-8d9e-0a1b2c3d4e5f/file",
+    description:
+      "tedrisat's download route for it, a path from the API's root (`GET /courses/:id/resources/:resourceId/file` or `GET /lessons/:id/resources/:resourceId/file`). It needs the caller's own token and answers only a reader of the course's content; there is no link that works for anyone else.",
+  })
+  downloadUrl!: string;
+}
+
+/** One resource of a session (MDRS-286): a link, or a file (MDRS-287). */
 export class LessonResourceResponse {
   @ApiProperty({ format: "uuid" }) id!: string;
   @ApiProperty({ format: "uuid" }) lessonId!: string;
@@ -23,10 +49,17 @@ export class LessonResourceResponse {
   meta!: string | null;
   @ApiPropertyOptional({
     type: String,
+    nullable: true,
     description:
-      "Where it opens: an absolute http:// or https:// URL. Course content: absent unless the caller holds `view_details` on the course (MDRS-103), a sample session's included.",
+      "Where it opens: an absolute http:// or https:// URL; null for a file. Course content: absent unless the caller holds `view_details` on the course (MDRS-103), a sample session's included.",
   })
-  url?: string;
+  url?: string | null;
+  @ApiPropertyOptional({
+    type: () => ResourceFileResponse,
+    nullable: true,
+    description: FILE_FIELD,
+  })
+  file?: ResourceFileResponse | null;
   @ApiProperty() orderIndex!: number;
 }
 
@@ -163,6 +196,12 @@ export class ResourceResponse {
   @ApiPropertyOptional({ type: String }) type!: string | null;
   @ApiPropertyOptional({ type: String, description: CONTENT_FIELD })
   url?: string | null;
+  @ApiPropertyOptional({
+    type: () => ResourceFileResponse,
+    nullable: true,
+    description: FILE_FIELD,
+  })
+  file?: ResourceFileResponse | null;
   @ApiProperty() orderIndex!: number;
 }
 

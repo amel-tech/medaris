@@ -38,11 +38,11 @@ export interface CreateLessonResourceDto {
      */
     meta?: string | null;
     /**
-     * Where the resource opens: an absolute http:// or https:// URL of at most 500 characters.
+     * Where the resource opens: an absolute http:// or https:// URL of at most 500 characters. Required on a row without `id`. On a stored link, absent or null keeps its address; a stored file (MDRS-287) takes none.
      * @type {string}
      * @memberof CreateLessonResourceDto
      */
-    url: string;
+    url?: string | null;
 }
 
 /**
@@ -50,7 +50,6 @@ export interface CreateLessonResourceDto {
  */
 export function instanceOfCreateLessonResourceDto(value: object): value is CreateLessonResourceDto {
     if (!('name' in value) || value['name'] === undefined) return false;
-    if (!('url' in value) || value['url'] === undefined) return false;
     return true;
 }
 
@@ -67,7 +66,7 @@ export function CreateLessonResourceDtoFromJSONTyped(json: any, ignoreDiscrimina
         'id': json['id'] == null ? undefined : json['id'],
         'name': json['name'],
         'meta': json['meta'] == null ? undefined : json['meta'],
-        'url': json['url'],
+        'url': json['url'] == null ? undefined : json['url'],
     };
 }
 

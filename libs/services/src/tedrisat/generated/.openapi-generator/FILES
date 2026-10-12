@@ -16,6 +16,7 @@ src/apis/MadrasahsApi.ts
 src/apis/MeApi.ts
 src/apis/NizamApi.ts
 src/apis/NotificationsApi.ts
+src/apis/ResourcesApi.ts
 src/apis/SessionsApi.ts
 src/apis/TedrisatServiceApi.ts
 src/apis/UsersApi.ts
@@ -72,6 +73,7 @@ src/models/CourseRequestListResponse.ts
 src/models/CourseRequestPersonResponse.ts
 src/models/CourseRequestRefResponse.ts
 src/models/CourseRequestResponse.ts
+src/models/CourseResourceFileUploadResponse.ts
 src/models/CourseStatsResponse.ts
 src/models/CourseSummaryResponse.ts
 src/models/CreateBanDto.ts
@@ -217,6 +219,7 @@ src/models/LabelStatsResponse.ts
 src/models/LessonMutationResponse.ts
 src/models/LessonNoteResponse.ts
 src/models/LessonQuestionResponse.ts
+src/models/LessonResourceFileUploadResponse.ts
 src/models/LessonResourceResponse.ts
 src/models/LessonResponse.ts
 src/models/LiftBanDto.ts
@@ -335,6 +338,7 @@ src/models/RemoveEnrollmentDto.ts
 src/models/RemovedByResponse.ts
 src/models/RemovedEnrollmentResponse.ts
 src/models/ReplaceCourseDto.ts
+src/models/ResourceFileResponse.ts
 src/models/ResourceResponse.ts
 src/models/ReviewRating.ts
 src/models/RoleSummary.ts

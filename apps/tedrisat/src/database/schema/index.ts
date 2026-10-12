@@ -20,5 +20,6 @@ export * from "./offsite-course-request.schema";
 export * from "./permission.schema";
 export * from "./platform-policy.schema";
 export * from "./role-assignment.schema";
+export * from "./storage.schema";
 export * from "./user.schema";
 export * from "./user-profile.schema";

@@ -379,6 +379,13 @@
       "when": 1791756146846,
       "tag": "0057_recording_release",
       "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1791778400635,
+      "tag": "0058_resource_files",
+      "breakpoints": true
     }
   ]
 }

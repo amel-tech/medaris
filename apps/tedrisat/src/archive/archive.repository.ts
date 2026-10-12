@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { and, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import {
   courseIdsOfKosk,
+  deleteLessonResources,
   purgeCourses,
   recordDeletion,
   Tx,
@@ -12,7 +13,6 @@ import { auditLog } from "../database/schema/audit.schema";
 import {
   courses,
   courseWeeks,
-  lessonResources,
   lessons,
 } from "../database/schema/course.schema";
 import {
@@ -764,10 +764,9 @@ export class ArchiveRepository {
         await tx
           .delete(lessonQuestions)
           .where(inArray(lessonQuestions.lessonId, weekLessonIds));
-        // A session's own resources (MDRS-286) are links: they go with it.
-        await tx
-          .delete(lessonResources)
-          .where(inArray(lessonResources.lessonId, weekLessonIds));
+        // A session's own resources (MDRS-286) go with it, a file's object
+        // to be removed from storage once this commits (MDRS-287).
+        await deleteLessonResources(tx, weekLessonIds, "lesson.purge");
         const removedSessions = (
           await tx
             .delete(lessons)
@@ -794,9 +793,7 @@ export class ArchiveRepository {
         await tx
           .delete(lessonQuestions)
           .where(eq(lessonQuestions.lessonId, id));
-        await tx
-          .delete(lessonResources)
-          .where(eq(lessonResources.lessonId, id));
+        await deleteLessonResources(tx, [id], "lesson.purge");
         await tx.delete(lessons).where(eq(lessons.id, id));
         const [week] = await tx
           .select({ courseId: courseWeeks.courseId })

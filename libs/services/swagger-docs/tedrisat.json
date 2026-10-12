@@ -4784,6 +4784,282 @@
         ]
       }
     },
+    "/courses/{id}/resources/files": {
+      "post": {
+        "description": "`course.edit`, the permission that edits the course's resources. The file is the multipart field `file`: at most 25 MB (a body announcing more is refused before it is read, 413 FILE_TOO_LARGE), and a PDF, PNG, JPEG, WebP, Word (docx), Excel (xlsx), PowerPoint (pptx) or plain UTF-8 text file as read from its bytes, whatever its name or claimed type says (415 FILE_TYPE_NOT_ALLOWED: HTML, SVG, a plain ZIP, an executable, a macro-enabled Office file). Its name is sanitised and kept as a label only; it is stored under a key tedrisat makes. The new resource is added last and the course's version is bumped, so an editor holding the old version reloads before its next save could drop the row (MDRS-95); the answer carries the new version. Written to `audit_log` as `resource.file_upload`. Removing the row from the list later removes the file from storage too, as `resource.file_delete`.",
+        "operationId": "uploadCourseResourceFile",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "At most 25 MB; PDF, PNG, JPEG, WebP, docx, xlsx, pptx or plain UTF-8 text, as read from its bytes."
+                  },
+                  "name": {
+                    "type": "string",
+                    "maxLength": 200
+                  },
+                  "meta": {
+                    "type": "string",
+                    "maxLength": 120
+                  }
+                },
+                "required": [
+                  "file"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CourseResourceFileUploadResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "FILE_REQUIRED: no file, or an empty one; field validation."
+          },
+          "403": {
+            "description": "No `course.edit` on the course."
+          },
+          "404": {
+            "description": "COURSE_NOT_FOUND"
+          },
+          "413": {
+            "description": "FILE_TOO_LARGE"
+          },
+          "415": {
+            "description": "FILE_TYPE_NOT_ALLOWED"
+          },
+          "503": {
+            "description": "STORAGE_NOT_CONFIGURED, STORAGE_UNAVAILABLE"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Upload a file as one of the course's resources",
+        "tags": [
+          "resources"
+        ]
+      }
+    },
+    "/courses/{id}/resources/{resourceId}/file": {
+      "get": {
+        "description": "Only for a caller who may read the course's content (`course.view_details`: the enrolled talebe, the course team), as for a link's address; read like the course page, so a hidden course or a draft is not found, and the read of anyone who is neither enrolled nor a müderris is written to `audit_log` (MDRS-103). The file is streamed through tedrisat with `Content-Disposition: attachment` and the stored name, the type read at upload, `X-Content-Type-Options: nosniff` and `Cache-Control: private, no-store`; there is no storage address to pass on. 404 RESOURCE_FILE_NOT_FOUND for no such resource, a link, or a file the store no longer has.",
+        "operationId": "downloadCourseResourceFile",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "resourceId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller may not read the course's content."
+          },
+          "404": {
+            "description": "COURSE_NOT_FOUND, RESOURCE_FILE_NOT_FOUND"
+          },
+          "503": {
+            "description": "STORAGE_NOT_CONFIGURED, STORAGE_UNAVAILABLE"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Download a file of the course's resources",
+        "tags": [
+          "resources"
+        ]
+      }
+    },
+    "/lessons/{id}/resources/files": {
+      "post": {
+        "description": "`session.manage`, the permission that edits a session's resources (MDRS-286). The session must be live: a hidden one answers LESSON_NOT_FOUND. The file is the multipart field `file`: at most 25 MB (a body announcing more is refused before it is read, 413 FILE_TOO_LARGE), and a PDF, PNG, JPEG, WebP, Word (docx), Excel (xlsx), PowerPoint (pptx) or plain UTF-8 text file as read from its bytes, whatever its name or claimed type says (415 FILE_TYPE_NOT_ALLOWED: HTML, SVG, a plain ZIP, an executable, a macro-enabled Office file). Its name is sanitised and kept as a label only; it is stored under a key tedrisat makes. The new resource is added last and the course's version is bumped, so an editor holding the old version reloads before its next save could drop the row (MDRS-95); the answer carries the new version. Written to `audit_log` as `resource.file_upload`. Removing the row from the list later removes the file from storage too, as `resource.file_delete`.",
+        "operationId": "uploadLessonResourceFile",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "At most 25 MB; PDF, PNG, JPEG, WebP, docx, xlsx, pptx or plain UTF-8 text, as read from its bytes."
+                  },
+                  "name": {
+                    "type": "string",
+                    "maxLength": 200
+                  },
+                  "meta": {
+                    "type": "string",
+                    "maxLength": 120
+                  }
+                },
+                "required": [
+                  "file"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LessonResourceFileUploadResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "FILE_REQUIRED: no file, or an empty one; field validation."
+          },
+          "403": {
+            "description": "No `session.manage` on the course."
+          },
+          "404": {
+            "description": "LESSON_NOT_FOUND"
+          },
+          "413": {
+            "description": "FILE_TOO_LARGE"
+          },
+          "415": {
+            "description": "FILE_TYPE_NOT_ALLOWED"
+          },
+          "503": {
+            "description": "STORAGE_NOT_CONFIGURED, STORAGE_UNAVAILABLE"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Upload a file as one of a session's own resources",
+        "tags": [
+          "resources"
+        ]
+      }
+    },
+    "/lessons/{id}/resources/{resourceId}/file": {
+      "get": {
+        "description": "Only for a caller who may read the course's content (`course.view_details`: the enrolled talebe, the course team), as for a link's address; read like the course page, so a hidden course or a draft is not found, and the read of anyone who is neither enrolled nor a müderris is written to `audit_log` (MDRS-103). The file is streamed through tedrisat with `Content-Disposition: attachment` and the stored name, the type read at upload, `X-Content-Type-Options: nosniff` and `Cache-Control: private, no-store`; there is no storage address to pass on. 404 RESOURCE_FILE_NOT_FOUND for no such resource, a link, or a file the store no longer has. The session must be live: a hidden one keeps its resources but serves none (LESSON_NOT_FOUND).",
+        "operationId": "downloadLessonResourceFile",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "resourceId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller may not read the course's content."
+          },
+          "404": {
+            "description": "LESSON_NOT_FOUND, RESOURCE_FILE_NOT_FOUND"
+          },
+          "503": {
+            "description": "STORAGE_NOT_CONFIGURED, STORAGE_UNAVAILABLE"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Download a file of a session's own resources",
+        "tags": [
+          "resources"
+        ]
+      }
+    },
     "/courses/{id}/nazirs": {
       "get": {
         "description": "nazar 'Ders nazırları'. Needs `course_nazir.assign` on the course. The posts held in the course with their permission codes, end, appointer and date; the catalog; the codes the caller may hand out (empty for one who holds `course_nazir.assign` by a grant: they appoint only); and on each post whether the caller may change or end it.",
@@ -14952,13 +15228,13 @@
           },
           "url": {
             "type": "string",
+            "nullable": true,
             "example": "https://drive.google.com/file/d/1a2b3c/view",
-            "description": "Where the resource opens: an absolute http:// or https:// URL of at most 500 characters."
+            "description": "Where the resource opens: an absolute http:// or https:// URL of at most 500 characters. Required on a row without `id`. On a stored link, absent or null keeps its address; a stored file (MDRS-287) takes none."
           }
         },
         "required": [
-          "name",
-          "url"
+          "name"
         ]
       },
       "CreateLessonDto": {
@@ -15022,7 +15298,7 @@
             "description": "The session's own in-person mark (MDRS-283): true or false overrides the course's `inPerson`, null follows it. Absent leaves it as it is. Changing it is session work (`session.manage`), like the meeting link."
           },
           "resources": {
-            "description": "The session's own resources, in order (MDRS-286). Absent leaves them as they are; sent, the list replaces the stored one: a row whose `id` is one of this session's is kept and rewritten whole, any other row is added, and a stored row left out is removed. Changing them is session work (`session.manage`), like the meeting link. Never null.",
+            "description": "The session's own resources, in order (MDRS-286). Absent leaves them as they are; sent, the list replaces the stored one: a row whose `id` is one of this session's is kept and rewritten whole, any other row is added, and a stored row left out is removed (a file with its stored object, MDRS-287). Files are added through `POST /lessons/:id/resources/files`. Changing them is session work (`session.manage`), like the meeting link. Never null.",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/CreateLessonResourceDto"
@@ -15122,7 +15398,7 @@
           "url": {
             "type": "string",
             "example": "https://files.medaris.org/bina.pdf",
-            "description": "Where the resource opens: an absolute http:// or https:// URL (MDRS-279). null clears it on replace; a missing key keeps it."
+            "description": "Where the resource opens: an absolute http:// or https:// URL (MDRS-279). null clears it on replace; a missing key keeps it. A stored file (MDRS-287) keeps its file and takes no url (RESOURCE_IS_FILE); files are added through `POST /courses/:id/resources/files`, and a file left out of the list is removed, from storage too."
           }
         },
         "required": [
@@ -15271,6 +15547,36 @@
           "title"
         ]
       },
+      "ResourceFileResponse": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Emsile şerhi.pdf",
+            "description": "The sanitised name it was uploaded under; its download is saved as this."
+          },
+          "contentType": {
+            "type": "string",
+            "example": "application/pdf",
+            "description": "The type read from the file's bytes at upload."
+          },
+          "sizeBytes": {
+            "type": "number",
+            "example": 482133
+          },
+          "downloadUrl": {
+            "type": "string",
+            "example": "/courses/0b9c1e52-1111-4a5e-9d55-6b1f0c2a7e01/resources/5d6e7f80-2222-4b3c-8d9e-0a1b2c3d4e5f/file",
+            "description": "tedrisat's download route for it, a path from the API's root (`GET /courses/:id/resources/:resourceId/file` or `GET /lessons/:id/resources/:resourceId/file`). It needs the caller's own token and answers only a reader of the course's content; there is no link that works for anyone else."
+          }
+        },
+        "required": [
+          "name",
+          "contentType",
+          "sizeBytes",
+          "downloadUrl"
+        ]
+      },
       "LessonResourceResponse": {
         "type": "object",
         "properties": {
@@ -15292,7 +15598,18 @@
           },
           "url": {
             "type": "string",
-            "description": "Where it opens: an absolute http:// or https:// URL. Course content: absent unless the caller holds `view_details` on the course (MDRS-103), a sample session's included."
+            "nullable": true,
+            "description": "Where it opens: an absolute http:// or https:// URL; null for a file. Course content: absent unless the caller holds `view_details` on the course (MDRS-103), a sample session's included."
+          },
+          "file": {
+            "nullable": true,
+            "description": "The resource's file in Medaris storage (MDRS-287); null for a link. Course content, like `url`: absent unless the caller holds `view_details` on the course (MDRS-103), a sample session's included.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ResourceFileResponse"
+              }
+            ]
           },
           "orderIndex": {
             "type": "number"
@@ -15507,6 +15824,16 @@
           "url": {
             "type": "string",
             "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103); a sample session (`isPreview`) keeps its `kaynak` and `agenda` for everyone (MDRS-161), never its `meetingUrl`."
+          },
+          "file": {
+            "nullable": true,
+            "description": "The resource's file in Medaris storage (MDRS-287); null for a link. Course content, like `url`: absent unless the caller holds `view_details` on the course (MDRS-103), a sample session's included.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ResourceFileResponse"
+              }
+            ]
           },
           "orderIndex": {
             "type": "number"
@@ -16931,7 +17258,7 @@
             "description": "The session's own in-person mark (MDRS-283): true or false overrides the course's `inPerson`, null follows it. Absent leaves it as it is. Changing it is session work (`session.manage`), like the meeting link."
           },
           "resources": {
-            "description": "The session's own resources, in order (MDRS-286). Absent leaves them as they are; sent, the list replaces the stored one: a row whose `id` is one of this session's is kept and rewritten whole, any other row is added, and a stored row left out is removed. Changing them is session work (`session.manage`), like the meeting link. Never null.",
+            "description": "The session's own resources, in order (MDRS-286). Absent leaves them as they are; sent, the list replaces the stored one: a row whose `id` is one of this session's is kept and rewritten whole, any other row is added, and a stored row left out is removed (a file with its stored object, MDRS-287). Files are added through `POST /lessons/:id/resources/files`. Changing them is session work (`session.manage`), like the meeting link. Never null.",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/CreateLessonResourceDto"
@@ -17442,7 +17769,7 @@
             "minimum": 0
           },
           "resources": {
-            "description": "The session's own resources, in order (MDRS-286). Absent leaves them as they are; sent, the list replaces the stored one: a row whose `id` is one of this session's is kept and rewritten whole, any other row is added, and a stored row left out is removed. Never null.",
+            "description": "The session's own resources, in order (MDRS-286). Absent leaves them as they are; sent, the list replaces the stored one: a row whose `id` is one of this session's is kept and rewritten whole, any other row is added, and a stored row left out is removed (a file with its stored object, MDRS-287). Files are added through `POST /lessons/:id/resources/files`. Never null.",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/CreateLessonResourceDto"
@@ -17690,6 +18017,48 @@
           "videoId",
           "authorizationExpire",
           "authorizationSignature"
+        ]
+      },
+      "CourseResourceFileUploadResponse": {
+        "type": "object",
+        "properties": {
+          "resource": {
+            "description": "The new resource, last in the course's list, with its `file`. Keep it in an editor's list: a whole-course save that leaves it out removes it, file and all.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ResourceResponse"
+              }
+            ]
+          },
+          "courseVersion": {
+            "type": "number",
+            "description": "The course's version after the upload, which bumps it; send it with the next save."
+          }
+        },
+        "required": [
+          "resource",
+          "courseVersion"
+        ]
+      },
+      "LessonResourceFileUploadResponse": {
+        "type": "object",
+        "properties": {
+          "resource": {
+            "description": "The new resource, last in the session's list, with its `file`. Keep it in an editor's list: a save of the session's resources that leaves it out removes it, file and all.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/LessonResourceResponse"
+              }
+            ]
+          },
+          "courseVersion": {
+            "type": "number",
+            "description": "The course's version after the upload, which bumps it; send it with the next save."
+          }
+        },
+        "required": [
+          "resource",
+          "courseVersion"
         ]
       },
       "CourseNazirCourseResponse": {

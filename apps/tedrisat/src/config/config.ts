@@ -1,6 +1,7 @@
 import { resolveSwaggerEnabled } from "@medaris/common";
 import * as pkg from "../../package.json";
 import { resolveMigrationsFolder } from "../database/migrations-folder";
+import { readBunnyStorageConfig } from "./bunny-storage-env";
 import { readBunnyStreamConfig } from "./bunny-stream-env";
 import { resolveDatabaseSsl } from "./database-ssl";
 import { readKeycloakAdminConfig } from "./keycloak-admin-env";
@@ -73,6 +74,9 @@ export default () => {
     // The Bunny Stream library recordings are uploaded to (MDRS-116); null
     // when unset, and the upload routes answer 503.
     bunnyStream: readBunnyStreamConfig(process.env),
+    // The Bunny Storage zone uploaded files are kept in (MDRS-287); null when
+    // unset, and the upload and download routes answer 503.
+    bunnyStorage: readBunnyStorageConfig(process.env),
     // The SMTP server lesson invitations go out through (MDRS-121); null when
     // unset, and nothing is e-mailed.
     smtp: readSmtpConfig(process.env),
