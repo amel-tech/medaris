@@ -127,6 +127,14 @@ describe("the privacy notice page (MDRS-102)", () => {
     }
   });
 
+  it("says where uploaded course and homework files are kept (owner, 12 October)", () => {
+    expect(text).toContain("ödev dosyaları");
+    expect(text).toContain(
+      "Bunny Storage’ın (BunnyWay d.o.o., Slovenya) Almanya’nın Frankfurt kentindeki"
+    );
+    expect(text).toContain("yalnız siz ve ders kadrosu görür");
+  });
+
   it("lists every column tedrisat keeps about a user (MDRS-104)", () => {
     const schema = readFileSync(
       join(REPO, "apps/tedrisat/src/database/schema/user.schema.ts"),
