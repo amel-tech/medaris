@@ -11,6 +11,10 @@ import { browserSignInDeps, type SignInDeps, signIn } from "./sign-in";
  * and tells the caller so it draws nothing else, in particular no "could not
  * be saved" or "izniniz yok" for what is only an expired session.
  *
+ * A result marked `reauth` (the API refused the token the session holds)
+ * asks the start route for new tokens rather than "already signed in, go
+ * on", which would only bring the visitor back to the same refusal.
+ *
  * ```ts
  * const result = await saveNotes(input);
  * if (handleUnauthenticated(result, { locale })) return;
@@ -27,6 +31,13 @@ export function handleUnauthenticated(
   const here =
     deps.location?.() ??
     `${window.location.pathname}${window.location.search}${window.location.hash}`;
-  signIn({ callbackUrl: here, locale: options.locale }, deps);
+  signIn(
+    {
+      callbackUrl: here,
+      locale: options.locale,
+      ...(result.reauth ? { reauth: true } : {}),
+    },
+    deps
+  );
   return true;
 }

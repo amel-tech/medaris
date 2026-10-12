@@ -1,6 +1,6 @@
 import { decodeJwt } from "jose";
 import type { Session, SessionUser } from "../shared/session";
-import type { ResolvedAuthConfig } from "./config";
+import type { ResolvedCookieConfig } from "./config";
 import {
   type CookieSource,
   type CookieWrite,
@@ -169,7 +169,12 @@ export interface SessionCookie {
   ): Promise<CookieWrite[]>;
 }
 
-export function createSessionCookie(config: ResolvedAuthConfig): SessionCookie {
+export function createSessionCookie(
+  config: Pick<
+    ResolvedCookieConfig,
+    "secret" | "cookiePrefix" | "cookies" | "sessionMaxAge" | "now"
+  >
+): SessionCookie {
   let key: Promise<Uint8Array> | undefined;
   const keyOf = () => {
     key ??= deriveKey(config.secret, config.cookiePrefix, "session");

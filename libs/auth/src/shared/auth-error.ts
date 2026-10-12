@@ -13,30 +13,49 @@
  * - `Configuration`: the IdP refused the app (`invalid_client`: a client
  *   secret that no longer matches, as MDRS-269 saw on nazar-dev). Retrying
  *   cannot help, so nothing retries it;
- * - `SignInLimit`: this browser started too many round trips in a short time.
- *   The hard stop against a loop: nothing starts another by itself.
+ * - `SignInLimit`: this browser went to sign in too often in a short time,
+ *   whether the start route counted it or the sign-in page's own budget ran
+ *   out. The hard stop against a loop: nothing starts another by itself, and
+ *   the page says to wait a few minutes rather than "something went wrong".
  */
-export type AuthErrorCode =
-  | "OAuthSignin"
-  | "OAuthCallback"
-  | "AccessDenied"
-  | "Configuration"
-  | "SignInLimit";
+export const AUTH_ERROR_CODES = [
+  "OAuthSignin",
+  "OAuthCallback",
+  "AccessDenied",
+  "Configuration",
+  "SignInLimit",
+] as const;
 
-export type AuthErrorMessageKey =
-  | "accessDenied"
-  | "configurationError"
-  | "errorDescription";
+export type AuthErrorCode = (typeof AUTH_ERROR_CODES)[number];
 
+/**
+ * Every key `authErrorMessageKey` can answer, so an app can pin that its
+ * `Auth.*` messages have each one in every locale.
+ */
+export const AUTH_ERROR_MESSAGE_KEYS = [
+  "accessDenied",
+  "configurationError",
+  "signInLimit",
+  "errorDescription",
+] as const;
+
+export type AuthErrorMessageKey = (typeof AUTH_ERROR_MESSAGE_KEYS)[number];
+
+/** The `Auth.*` message for an `?error=` code; anything unknown is the generic one. */
 export const authErrorMessageKey = (
   error: string | null | undefined
 ): AuthErrorMessageKey => {
   if (error === "AccessDenied") return "accessDenied";
   if (error === "Configuration") return "configurationError";
+  if (error === "SignInLimit") return "signInLimit";
   return "errorDescription";
 };
 
-const FINAL_ERRORS = new Set(["AccessDenied", "Configuration", "SignInLimit"]);
+const FINAL_ERRORS = new Set<string>([
+  "AccessDenied",
+  "Configuration",
+  "SignInLimit",
+]);
 
 /** A failed round trip that one more automatic attempt may fix. */
 export const isRetryableAuthError = (error: string | null | undefined) =>

@@ -1,6 +1,7 @@
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { cache } from "react";
+import { REAUTH_PARAM } from "../shared/routes";
 import type { Session } from "../shared/session";
 import {
   isUnauthorizedError,
@@ -36,6 +37,17 @@ export interface RequireOptions {
   callbackUrl?: string;
 }
 
+export interface SignInRedirectOptions extends RequireOptions {
+  /**
+   * The API answered 401 to a token this session holds. The sign-in page then
+   * gets `?reauth=1` and fetches new tokens from the IdP instead of sending
+   * the still "signed-in" browser straight back to the same refusal; the
+   * round trips that takes count against the sign-in caps, so a token the
+   * API will never take ends on the `SignInLimit` box rather than in a loop.
+   */
+  reauth?: boolean;
+}
+
 export interface ServerReads {
   /** The signed-in session, or `null` for a visitor. Never a token. */
   auth(): Promise<Session | null>;
@@ -54,10 +66,21 @@ export interface ServerReads {
   withAccessToken<T>(
     call: (accessToken: string) => Promise<T>
   ): Promise<T | Unauthenticated>;
-  /** Redirects to the app's sign-in page. Call outside any `try`. */
-  redirectToSignIn(options?: RequireOptions): Promise<never>;
-  /** The app's sign-in page for `returnTo`, with `callbackUrl` set. */
-  signInUrl(returnTo?: string | null): string;
+  /**
+   * Redirects to the app's sign-in page. Call outside any `try`. Throws
+   * (rather than redirecting the page to itself, a loop) when called while
+   * the sign-in page itself renders.
+   */
+  redirectToSignIn(options?: SignInRedirectOptions): Promise<never>;
+  /**
+   * The app's sign-in page for `returnTo`, with `callbackUrl` set (and
+   * `reauth=1` when asked). A `returnTo` that is the sign-in page itself is
+   * replaced by its own `callbackUrl`, never nested.
+   */
+  signInUrl(
+    returnTo?: string | null,
+    options?: Pick<SignInRedirectOptions, "reauth">
+  ): string;
 }
 
 export function createServerReads(
@@ -78,16 +101,63 @@ export function createServerReads(
     async (): Promise<string | undefined> => (await current())?.accessToken
   );
 
-  const signInUrl = (returnTo?: string | null) => {
+  /** Whether `path`, a validated return path, is the app's sign-in page itself. */
+  const isSignInPage = (path: string) =>
+    new URL(path, config.origin).pathname ===
+    new URL(config.signInPage(path), config.origin).pathname;
+
+  /**
+   * Where a sign-in should come back to. A return path that is the sign-in
+   * page carries the real destination in its own `callbackUrl`: that one is
+   * used, once, so the address does not grow a level per hop.
+   */
+  const destinationOf = (returnTo: string | null | undefined) => {
     const safe = safeReturnTo(returnTo, config.origin);
-    const page = config.signInPage(safe);
-    return safe ? `${page}?callbackUrl=${encodeURIComponent(safe)}` : page;
+    if (!safe || !isSignInPage(safe)) return safe;
+    const inner = safeReturnTo(
+      new URL(safe, config.origin).searchParams.get("callbackUrl"),
+      config.origin
+    );
+    return inner && !isSignInPage(inner) ? inner : null;
   };
 
-  const redirectToSignIn = async (options?: RequireOptions): Promise<never> => {
-    const returnTo =
-      options?.callbackUrl ?? (await headers()).get(RETURN_TO_HEADER);
-    redirect(signInUrl(returnTo));
+  const signInUrl: ServerReads["signInUrl"] = (returnTo, options = {}) => {
+    const safe = destinationOf(returnTo);
+    const page = config.signInPage(safe);
+    const query = [
+      safe ? `callbackUrl=${encodeURIComponent(safe)}` : null,
+      options.reauth ? `${REAUTH_PARAM}=1` : null,
+    ]
+      .filter(Boolean)
+      .join("&");
+    return query ? `${page}?${query}` : page;
+  };
+
+  /** The page being served, as the proxy passed it on; `null` outside a request. */
+  const servedPage = async () => {
+    try {
+      return safeReturnTo(
+        (await headers()).get(RETURN_TO_HEADER),
+        config.origin
+      );
+    } catch {
+      return null;
+    }
+  };
+
+  const redirectToSignIn = async (
+    options: SignInRedirectOptions = {}
+  ): Promise<never> => {
+    const here = await servedPage();
+    // The sign-in page asking for a session (its layout calls
+    // requireSession, say) would redirect to itself, a level deeper each
+    // time, until the browser gives up. That is a bug in the page: say so.
+    if (here && isSignInPage(here)) {
+      throw new Error(
+        `@medaris/auth: redirectToSignIn() while rendering the sign-in page (${here}) would redirect it to itself; the sign-in page must not require a session`
+      );
+    }
+    redirect(signInUrl(options.callbackUrl ?? here, options));
   };
 
   return {
@@ -109,7 +179,10 @@ export function createServerReads(
       try {
         return await call(token);
       } catch (error) {
-        if (isUnauthorizedError(error)) return unauthenticated();
+        // A token went out and was refused: the client must not go straight
+        // back with this session (`reauth`).
+        if (isUnauthorizedError(error))
+          return unauthenticated({ reauth: true });
         throw error;
       }
     },

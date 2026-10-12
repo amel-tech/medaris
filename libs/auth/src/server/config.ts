@@ -130,7 +130,31 @@ const required = (value: string, name: string): string => {
   return value;
 };
 
-export function resolveConfig(config: AuthConfig): ResolvedAuthConfig {
+/**
+ * The part of `AuthConfig` the cookies are made from. `@medaris/auth/testing`
+ * takes only this, so a spec or a Playwright helper can seal a session
+ * without naming an IdP; an app's whole `AuthConfig` fits it too.
+ */
+export type CookieConfig = Pick<
+  AuthConfig,
+  "baseUrl" | "secret" | "cookiePrefix" | "sessionMaxAge" | "now"
+>;
+
+export type ResolvedCookieConfig = Pick<
+  ResolvedAuthConfig,
+  | "baseUrl"
+  | "origin"
+  | "secret"
+  | "cookiePrefix"
+  | "secure"
+  | "cookies"
+  | "sessionMaxAge"
+  | "now"
+>;
+
+export function resolveCookieConfig(
+  config: CookieConfig
+): ResolvedCookieConfig {
   const base = new URL(required(config.baseUrl, "baseUrl"));
   if (base.pathname !== "/" || base.search || base.hash) {
     // The redirect URI is built from the origin; a path here would silently
@@ -150,12 +174,7 @@ export function resolveConfig(config: AuthConfig): ResolvedAuthConfig {
   // why local development (http://localhost:400x) goes without it.
   const name = (suffix: string) =>
     `${secure ? "__Host-" : ""}${config.cookiePrefix}.${suffix}`;
-  const { signIn, afterSignIn } = config.pages;
-
   return {
-    issuer: new URL(required(config.issuer, "issuer")),
-    clientId: required(config.clientId, "clientId"),
-    clientSecret: required(config.clientSecret, "clientSecret"),
     baseUrl: config.baseUrl,
     origin: base.origin,
     secret: required(config.secret, "secret"),
@@ -166,7 +185,21 @@ export function resolveConfig(config: AuthConfig): ResolvedAuthConfig {
       flowPrefix: name("auth-flow."),
       starts: name("auth-starts"),
     },
-    redirectUri: `${base.origin}${AUTH_ROUTES.callback}`,
+    sessionMaxAge: config.sessionMaxAge ?? 30 * 24 * 60 * 60,
+    now: config.now ?? Date.now,
+  };
+}
+
+export function resolveConfig(config: AuthConfig): ResolvedAuthConfig {
+  const cookie = resolveCookieConfig(config);
+  const { signIn, afterSignIn } = config.pages;
+
+  return {
+    ...cookie,
+    issuer: new URL(required(config.issuer, "issuer")),
+    clientId: required(config.clientId, "clientId"),
+    clientSecret: required(config.clientSecret, "clientSecret"),
+    redirectUri: `${cookie.origin}${AUTH_ROUTES.callback}`,
     scope: config.scope ?? "openid profile email",
     locales: config.locales,
     kcLocale: config.kcLocale ?? false,
@@ -177,8 +210,6 @@ export function resolveConfig(config: AuthConfig): ResolvedAuthConfig {
         ? afterSignIn
         : () => afterSignIn ?? "/",
     afterSignOut: config.pages.afterSignOut ?? "/",
-    sessionMaxAge: config.sessionMaxAge ?? 30 * 24 * 60 * 60,
     httpTimeout: config.httpTimeout ?? 10,
-    now: config.now ?? Date.now,
   };
 }

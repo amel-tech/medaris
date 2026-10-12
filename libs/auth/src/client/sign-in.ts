@@ -1,5 +1,5 @@
-import { isRetryableAuthError } from "../shared/auth-error";
-import { AUTH_ROUTES } from "../shared/routes";
+import { type AuthErrorCode, isRetryableAuthError } from "../shared/auth-error";
+import { AUTH_ROUTES, REAUTH_PARAM } from "../shared/routes";
 import type { Session } from "../shared/session";
 
 /**
@@ -14,7 +14,14 @@ import type { Session } from "../shared/session";
  *   page. A hidden tab never starts one by itself. Tabs start together more
  *   often than it sounds: a browser restoring its tabs, or every tab of an
  *   app meeting the end of the same session;
- * - already signed in (another tab finished first): straight on;
+ * - already signed in (another tab finished first): straight on, at most a
+ *   couple of times per tab in two minutes. A page that sends a signed-in
+ *   browser here (its API refused a token the IdP still accepts: a wrong
+ *   audience, clock skew) would otherwise bounce between itself and this page
+ *   without end, since going on spends nothing else;
+ * - `reauth` (the API refused this session's token): the session the page
+ *   came with does not count as signed in; only a newer one does, so the tab
+ *   goes through the IdP for new tokens instead of straight back;
  * - after a failed round trip, one automatic retry per tab per two minutes,
  *   then the error box with a button; `AccessDenied`, `Configuration` and
  *   `SignInLimit` never retry by themselves;
@@ -22,6 +29,9 @@ import type { Session } from "../shared/session";
  *   whatever the reason. A session cookie the browser keeps refusing would
  *   otherwise send the tab from the page to the IdP and back without end. The
  *   start route has its own cap per browser (`SignInLimit`) under this one.
+ *
+ * A spent budget shows the box as `SignInLimit`: "too many attempts, wait a
+ * few minutes", which is what it is.
  */
 
 /** Which form the IdP should open: `register` asks for it with `prompt=create`. */
@@ -33,6 +43,12 @@ export interface SignInRequest {
   callbackUrl?: string;
   /** The active UI locale, passed to the IdP as `ui_locales` (MDRS-274). */
   locale?: string;
+  /**
+   * The API refused this session's token (`?reauth=1` on the sign-in page,
+   * `reauth` on an `Unauthenticated` result): get new tokens from the IdP
+   * rather than going straight back with the refused ones.
+   */
+  reauth?: boolean;
 }
 
 /** The start route's address for `request`. `auto` marks a start nobody clicked. */
@@ -41,6 +57,7 @@ export function signInHref(request: SignInRequest = {}, auto = false): string {
   if (request.callbackUrl) params.set("callbackUrl", request.callbackUrl);
   if (request.locale) params.set("locale", request.locale);
   if (request.intent === "register") params.set("intent", "register");
+  if (request.reauth) params.set(REAUTH_PARAM, "1");
   if (auto) params.set("auto", "1");
   const query = params.toString();
   return query ? `${AUTH_ROUTES.signIn}?${query}` : AUTH_ROUTES.signIn;
@@ -52,15 +69,24 @@ export const SIGN_IN_CLAIM_KEY = "medaris.auth.sign-in";
 export const AUTO_RETRY_KEY = "medaris.auth.auto-retry";
 /** `sessionStorage`: this tab's automatic starts, failed or not (the loop cap). */
 export const AUTO_START_KEY = "medaris.auth.auto-start";
+/** `sessionStorage`: this tab's "already signed in, go on" steps. */
+export const GO_ON_KEY = "medaris.auth.go-on";
 /** `sessionStorage`: this tab's id; it survives the trip to the IdP and back. */
 export const TAB_ID_KEY = "medaris.auth.tab";
 
 /** A claim older than this is abandoned (its tab was closed on the IdP's form). */
 export const SIGN_IN_CLAIM_TTL_MS = 30_000;
-/** The window both automatic budgets are counted in. */
+/** The window the automatic budgets are counted in. */
 export const AUTO_WINDOW_MS = 120_000;
 export const MAX_AUTO_RETRIES = 1;
 export const MAX_AUTO_STARTS = 3;
+/**
+ * Going on to the page because a session is already there. Twice covers the
+ * honest cases (another tab finished first; the Back button onto this page);
+ * a third time in two minutes is a page sending a signed-in browser back
+ * here, which going on again cannot fix.
+ */
+export const MAX_GO_ONS = 2;
 
 export type StorageLike = Pick<Storage, "getItem" | "setItem">;
 
@@ -181,6 +207,16 @@ export const takeAutoRetry = (storage: StorageLike | undefined, now: number) =>
 export const takeAutoStart = (storage: StorageLike | undefined, now: number) =>
   spend(storage, AUTO_START_KEY, MAX_AUTO_STARTS, now, true);
 
+/**
+ * One of this tab's "already signed in, go on" steps. Refused without
+ * `sessionStorage`: going on never reaches the start route, so the server's
+ * cap cannot stand in for the missing counter here. (A browser that refuses
+ * storage outright usually refuses the session cookie too, and then is not
+ * signed in to go on with.)
+ */
+export const takeGoOn = (storage: StorageLike | undefined, now: number) =>
+  spend(storage, GO_ON_KEY, MAX_GO_ONS, now, false);
+
 export interface SignInDeps {
   /** The current session, or `null`; a failure to ask counts as `null`. */
   getSession: () => Promise<Session | null>;
@@ -197,31 +233,53 @@ export interface SignInDeps {
   pollMs?: number;
 }
 
+/**
+ * What `enterSignIn` did. `show-error` carries the code whose message the
+ * box shows (`authErrorMessageKey(outcome.error)`): the page's own `?error=`
+ * as it came (any string; unknown ones get the generic message), or
+ * `SignInLimit` when this tab's budget ran out.
+ */
 export type SignInOutcome =
-  | "redirected"
-  | "signing-in"
-  | "show-error"
-  | "cancelled";
+  | { kind: "redirected" }
+  | { kind: "signing-in" }
+  | { kind: "cancelled" }
+  | { kind: "show-error"; error: string };
+
+const SIGN_IN_LIMIT: AuthErrorCode = "SignInLimit";
 
 /** A round trip this page has already started: a second one from the same page is pointless. */
 let startedHere = false;
 
-const begin = (deps: SignInDeps, href: string): "signing-in" => {
+const begin = (deps: SignInDeps, href: string): SignInOutcome => {
   startedHere = true;
   deps.navigate(href);
-  return "signing-in";
+  return { kind: "signing-in" };
 };
+
+const showError = (error: string): SignInOutcome => ({
+  kind: "show-error",
+  error,
+});
 
 /** Settles the claim race: two tabs that wrote in the same instant re-read after this. */
 const CLAIM_SETTLE_MS = 50;
+
+/** Whether `current` is another session than `refused`: another account, or new tokens. */
+const isNewer = (current: Session, refused: Session | null) =>
+  !refused ||
+  current.user.sub !== refused.user.sub ||
+  current.expiresAt !== refused.expiresAt;
 
 /**
  * What a sign-in page does instead of starting a round trip outright:
  *
  * 1. a final error (`AccessDenied`, `Configuration`, `SignInLimit`) → the box;
- * 2. a session already there → straight on to `callbackUrl`;
+ * 2. a session already there → straight on to `callbackUrl`, while this tab's
+ *    go-on budget lasts, else the box (`SignInLimit`). With `reauth`, the
+ *    session the page was sent with is not "there": only a newer one is;
  * 3. a retryable error → this tab's one automatic retry, else the box;
- * 4. the loop cap → the box once this tab has started too many on its own;
+ * 4. the loop cap → the box (`SignInLimit`) once this tab has started too
+ *    many on its own;
  * 5. otherwise wait for this tab's turn (visible, and no other tab in a round
  *    trip) and start one, unless the session arrives first.
  */
@@ -230,41 +288,48 @@ export async function enterSignIn(
   error: string | null | undefined,
   deps: SignInDeps
 ): Promise<SignInOutcome> {
-  if (error && !isRetryableAuthError(error)) return "show-error";
+  if (error && !isRetryableAuthError(error)) return showError(error);
 
-  const signedIn = async () => {
+  const read = async () => {
     try {
-      return Boolean((await deps.getSession())?.user);
+      const session = await deps.getSession();
+      return session?.user ? session : null;
     } catch {
-      return false;
+      return null;
     }
   };
-  const goOn = () => {
+  const first = await read();
+  // The session the API refused: going on with it is the loop `reauth` exists to stop.
+  const refused = request.reauth ? first : null;
+  const signedIn = (session: Session | null) =>
+    session !== null && isNewer(session, refused);
+  const goOn = (): SignInOutcome => {
+    if (!takeGoOn(deps.local, deps.now())) return showError(SIGN_IN_LIMIT);
     deps.navigate(request.callbackUrl ?? "/");
-    return "redirected" as const;
+    return { kind: "redirected" };
   };
 
-  if (await signedIn()) return goOn();
-  if (error && !takeAutoRetry(deps.local, deps.now())) return "show-error";
-  if (!takeAutoStart(deps.local, deps.now())) return "show-error";
+  if (signedIn(first)) return goOn();
+  if (error && !takeAutoRetry(deps.local, deps.now())) return showError(error);
+  if (!takeAutoStart(deps.local, deps.now())) return showError(SIGN_IN_LIMIT);
 
   const tab = tabIdOf(deps.local);
   const href = signInHref(request, true);
   const pollMs = deps.pollMs ?? 1000;
   for (;;) {
-    if (deps.cancelled?.()) return "cancelled";
-    if (startedHere) return "signing-in";
+    if (deps.cancelled?.()) return { kind: "cancelled" };
+    if (startedHere) return { kind: "signing-in" };
     if (
       deps.isVisible() &&
       claimSignIn({ shared: deps.shared, tab, now: deps.now() })
     ) {
       await deps.sleep(CLAIM_SETTLE_MS);
-      if (deps.cancelled?.()) return "cancelled";
-      if (startedHere) return "signing-in";
+      if (deps.cancelled?.()) return { kind: "cancelled" };
+      if (startedHere) return { kind: "signing-in" };
       if (holdsSignIn(deps.shared, tab)) return begin(deps, href);
     }
     await deps.sleep(pollMs);
-    if (await signedIn()) return goOn();
+    if (signedIn(await read())) return goOn();
   }
 }
 

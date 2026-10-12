@@ -131,6 +131,64 @@ describe("requireSession() and requireAccessToken()", () => {
   });
 });
 
+describe("redirectToSignIn() and signInUrl()", () => {
+  it("mark a token the API refused with reauth=1, keeping the page", async () => {
+    await signInWith();
+    request.headers.set(RETURN_TO_HEADER, "/ders/42?tab=celseler");
+    const auth = createAuth(testConfig());
+    await expect(
+      redirectOf(auth.redirectToSignIn({ reauth: true }))
+    ).resolves.toBe(
+      "/auth/signin?callbackUrl=%2Fders%2F42%3Ftab%3Dcelseler&reauth=1"
+    );
+    expect(auth.signInUrl(null, { reauth: true })).toBe(
+      "/auth/signin?reauth=1"
+    );
+  });
+
+  it("refuse to redirect the sign-in page to itself, rather than nest it a level per hop", async () => {
+    request.headers.set(RETURN_TO_HEADER, "/auth/signin?callbackUrl=%2Fhesap");
+    const auth = createAuth(testConfig());
+    await expect(auth.redirectToSignIn()).rejects.toThrow(/sign-in page/);
+    await expect(
+      auth.redirectToSignIn({ callbackUrl: "/hesap" })
+    ).rejects.toThrow(/sign-in page/);
+    await expect(auth.requireSession()).rejects.toThrow(/sign-in page/);
+  });
+
+  it("refuse it for a localised sign-in page too", async () => {
+    request.headers.set(RETURN_TO_HEADER, "/en/auth/signin");
+    const auth = createAuth(
+      testConfig({
+        pages: {
+          signIn: (returnTo) =>
+            `/${returnTo?.split("/")[1] || "tr"}/auth/signin`,
+        },
+      })
+    );
+    await expect(auth.requireAccessToken()).rejects.toThrow(/sign-in page/);
+  });
+
+  it("use the destination inside a return path that is the sign-in page, never nesting it", () => {
+    const auth = createAuth(
+      testConfig({
+        pages: {
+          signIn: (returnTo) =>
+            `/${returnTo?.split("/")[1] || "tr"}/auth/signin`,
+        },
+      })
+    );
+    expect(auth.signInUrl("/en/auth/signin?callbackUrl=%2Fen%2Fcourses")).toBe(
+      "/en/auth/signin?callbackUrl=%2Fen%2Fcourses"
+    );
+    const twice = `/tr/auth/signin?callbackUrl=${encodeURIComponent(
+      "/tr/auth/signin?callbackUrl=%2Ftr%2Fhesap"
+    )}`;
+    expect(auth.signInUrl(twice)).toBe("/tr/auth/signin");
+    expect(auth.signInUrl("/tr/auth/signin")).toBe("/tr/auth/signin");
+  });
+});
+
 describe("withAccessToken()", () => {
   it("runs the call with the token", async () => {
     await signInWith();
@@ -160,9 +218,11 @@ describe("withAccessToken()", () => {
         response: { status: 401 },
       }
     );
+    // `reauth`: a token went out and was refused, so the client must not go
+    // straight back with this session.
     await expect(
       auth.withAccessToken(() => Promise.reject(refused))
-    ).resolves.toEqual({ kind: "unauthenticated" });
+    ).resolves.toEqual({ kind: "unauthenticated", reauth: true });
   });
 
   it("lets every other failure through as it was", async () => {

@@ -131,6 +131,62 @@ describe("GET /api/auth/signin", () => {
     expect(response.status).toBe(303);
     expect(response.headers.get("location")).toBe(`${ORIGIN}/bildirimler`);
     expect(openid.buildAuthorizationUrl).not.toHaveBeenCalled();
+    // Counted like a start: going on is not free.
+    expect(setCookie(response, "nazar.auth-starts")?.value).toBe(
+      `1.${clock.now}`
+    );
+  });
+
+  it("stops going straight on at the cap, so a page that keeps sending a signed-in browser here cannot loop", async () => {
+    const config = testConfig();
+    const { handlers } = createAuth(config);
+    const response = await handlers.signIn(
+      request("/api/auth/signin?callbackUrl=%2Fbildirimler", {
+        cookie: `${await sessionCookieHeader(config, session())}; nazar.auth-starts=${MAX_STARTS_PER_WINDOW}.${clock.now - 60_000}`,
+      })
+    );
+    expect(response.headers.get("location")).toBe(
+      `${ORIGIN}/auth/signin?error=SignInLimit&callbackUrl=%2Fbildirimler`
+    );
+    expect(openid.buildAuthorizationUrl).not.toHaveBeenCalled();
+  });
+
+  it("goes through the IdP for new tokens with reauth=1, though signed in, and counts it", async () => {
+    const config = testConfig();
+    const { handlers } = createAuth(config);
+    const response = await handlers.signIn(
+      request("/api/auth/signin?callbackUrl=%2Fbildirimler&reauth=1", {
+        cookie: `${await sessionCookieHeader(config, session())}; nazar.auth-starts=2.${clock.now - 60_000}`,
+      })
+    );
+    expect(new URL(response.headers.get("location") as string).origin).toBe(
+      "https://idp.example"
+    );
+    expect(openid.buildAuthorizationUrl).toHaveBeenCalledTimes(1);
+    // No prompt=login: a live SSO session answers silently with new tokens.
+    expect(authorizeParams()).not.toHaveProperty("prompt");
+    expect(setCookie(response, "nazar.auth-starts")?.value).toBe(
+      `3.${clock.now - 60_000}`
+    );
+    const flow = flowCookieOf(response);
+    const key = await deriveKey("test-nextauth-secret", "nazar", "flow");
+    await expect(
+      unseal(flow?.value as string, key, clock.now)
+    ).resolves.toMatchObject({ returnTo: "/bildirimler" });
+  });
+
+  it("refuses reauth=1 at the cap like any start", async () => {
+    const config = testConfig();
+    const { handlers } = createAuth(config);
+    const response = await handlers.signIn(
+      request("/api/auth/signin?callbackUrl=%2Fbildirimler&reauth=1", {
+        cookie: `${await sessionCookieHeader(config, session())}; nazar.auth-starts=${MAX_STARTS_PER_WINDOW}.${clock.now - 60_000}`,
+      })
+    );
+    expect(response.headers.get("location")).toBe(
+      `${ORIGIN}/auth/signin?error=SignInLimit&callbackUrl=%2Fbildirimler`
+    );
+    expect(openid.buildAuthorizationUrl).not.toHaveBeenCalled();
   });
 
   it("still goes to the registration form when signed in", async () => {

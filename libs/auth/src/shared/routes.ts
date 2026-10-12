@@ -16,3 +16,13 @@ export const AUTH_ROUTES = {
   /** GET: the client-safe session, or `null`. */
   session: `${AUTH_BASE_PATH}/session`,
 } as const;
+
+/**
+ * `?reauth=1` on the app's sign-in page and on the start route: the API
+ * refused the token this browser's session holds, so "already signed in, go
+ * on" would only send it back to the same refusal. With it the sign-in page
+ * waits for a newer session than the one it was sent with, and the start
+ * route goes through the IdP for new tokens instead of straight back; both
+ * still count against the sign-in caps.
+ */
+export const REAUTH_PARAM = "reauth";

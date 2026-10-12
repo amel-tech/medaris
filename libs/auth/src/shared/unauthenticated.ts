@@ -10,15 +10,26 @@
  * `@medaris/auth/client`). Pages redirect on the server
  * (`requireSession`, `requireAccessToken`).
  *
+ * `reauth` marks the case where there WAS a token and the API refused it
+ * (401): the session this browser holds is the problem, so the sign-in that
+ * follows must not go straight back with it (that is a loop between the page
+ * and the sign-in page) but fetch new tokens from the IdP, within the sign-in
+ * caps.
+ *
  * Shared by both entries: the server builds it, the client recognises it.
  */
 export interface Unauthenticated {
   readonly kind: "unauthenticated";
+  /** The API refused a token this session holds: sign in again, do not go on with it. */
+  readonly reauth?: true;
 }
 
-export const unauthenticated = (): Unauthenticated => ({
-  kind: "unauthenticated",
-});
+export const unauthenticated = (
+  options: { reauth?: boolean } = {}
+): Unauthenticated =>
+  options.reauth
+    ? { kind: "unauthenticated", reauth: true }
+    : { kind: "unauthenticated" };
 
 export const isUnauthenticated = (value: unknown): value is Unauthenticated =>
   typeof value === "object" &&

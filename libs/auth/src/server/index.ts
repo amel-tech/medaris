@@ -5,11 +5,15 @@
  */
 import "server-only";
 
-export type {
-  AuthErrorCode,
-  AuthErrorMessageKey,
+export {
+  AUTH_ERROR_CODES,
+  AUTH_ERROR_MESSAGE_KEYS,
+  type AuthErrorCode,
+  type AuthErrorMessageKey,
+  authErrorMessageKey,
+  isRetryableAuthError,
 } from "../shared/auth-error";
-export { AUTH_BASE_PATH, AUTH_ROUTES } from "../shared/routes";
+export { AUTH_BASE_PATH, AUTH_ROUTES, REAUTH_PARAM } from "../shared/routes";
 export type { Session, SessionUser } from "../shared/session";
 export {
   httpStatusOf,
@@ -21,5 +25,10 @@ export {
 export type { AuthConfig, AuthPages } from "./config";
 export { type Auth, createAuth } from "./create-auth";
 export type { AuthProxy, AuthProxyOptions } from "./proxy";
-export type { RequireOptions, ServerReads } from "./reads";
+export type {
+  RequireOptions,
+  ServerReads,
+  SignInRedirectOptions,
+} from "./reads";
+export { RETURN_TO_HEADER } from "./return-to";
 export type { AuthRouteHandlers } from "./routes";

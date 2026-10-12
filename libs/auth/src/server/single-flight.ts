@@ -17,6 +17,23 @@ export interface SingleFlight<T> {
   run(key: string, call: () => Promise<T>): Promise<T>;
 }
 
+/**
+ * Every single-flight's table, held weakly, so `forgetAllFlights` (exported
+ * by `@medaris/auth/testing`) can empty them between specs. An app builds
+ * its auth once per module, so a spec that signs in with the same access
+ * token twice within the grace would otherwise get the first spec's answer.
+ */
+const everyTable = new Set<WeakRef<Map<string, unknown>>>();
+
+/** Forgets every call in flight or settled, in every single-flight of this process. */
+export function forgetAllFlights(): void {
+  for (const ref of everyTable) {
+    const table = ref.deref();
+    if (table) table.clear();
+    else everyTable.delete(ref);
+  }
+}
+
 export function createSingleFlight<T>(
   graceMs: number,
   now: () => number,
@@ -24,6 +41,11 @@ export function createSingleFlight<T>(
   reusable: (value: T) => boolean = () => true
 ): SingleFlight<T> {
   const flights = new Map<string, { result: Promise<T>; settledAt?: number }>();
+  everyTable.add(new WeakRef(flights));
+  // Only this flight's own entry: after `forgetAllFlights` a newer one may hold the key.
+  const drop = (key: string, flight: unknown) => {
+    if (flights.get(key) === flight) flights.delete(key);
+  };
 
   const sweep = (at: number) => {
     for (const [key, flight] of flights) {
@@ -47,9 +69,9 @@ export function createSingleFlight<T>(
       flight.result.then(
         (value) => {
           if (reusable(value) && graceMs > 0) flight.settledAt = now();
-          else flights.delete(key);
+          else drop(key, flight);
         },
-        () => flights.delete(key)
+        () => drop(key, flight)
       );
       return flight.result;
     },

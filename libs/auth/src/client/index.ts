@@ -10,12 +10,14 @@
 import "client-only";
 
 export {
+  AUTH_ERROR_CODES,
+  AUTH_ERROR_MESSAGE_KEYS,
   type AuthErrorCode,
   type AuthErrorMessageKey,
   authErrorMessageKey,
   isRetryableAuthError,
 } from "../shared/auth-error";
-export { AUTH_ROUTES } from "../shared/routes";
+export { AUTH_ROUTES, REAUTH_PARAM } from "../shared/routes";
 export type { Session, SessionUser } from "../shared/session";
 export {
   isUnauthenticated,

@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import * as client from "openid-client";
 import type { AuthErrorCode } from "../shared/auth-error";
-import { AUTH_ROUTES } from "../shared/routes";
+import { AUTH_ROUTES, REAUTH_PARAM } from "../shared/routes";
 import type { ResolvedAuthConfig } from "./config";
 import { cookieAttributes, writeCookies } from "./cookies";
 import { callbackErrorCode, failureSummary, type Oidc } from "./oidc";
@@ -42,12 +42,14 @@ const FLOW_MAX_AGE = 10 * 60;
 const MAX_OPEN_FLOWS = 3;
 
 /**
- * The hard cap: at most this many round trips started in a window, per
- * browser. Past it the start route refuses with `SignInLimit` and nothing
- * starts another on its own. It is the backstop under the client's own
- * budget (one automatic retry, a few automatic starts per tab): an IdP that is
- * down, a client secret that no longer matches, or a session cookie the
- * browser keeps refusing cannot turn into an endless redirect.
+ * The hard cap: at most this many visits to the start route in a window, per
+ * browser, whether they started a round trip or went straight on because the
+ * browser was signed in already. Past it the start route refuses with
+ * `SignInLimit` and nothing starts another on its own. It is the backstop
+ * under the client's own budget (one automatic retry, a few automatic starts
+ * and go-ons per tab): an IdP that is down, a client secret that no longer
+ * matches, a session cookie the browser keeps refusing, or an API that
+ * refuses a token the IdP still accepts cannot turn into an endless redirect.
  */
 export const MAX_STARTS_PER_WINDOW = 5;
 export const STARTS_WINDOW_MS = 5 * 60_000;
@@ -57,7 +59,7 @@ const STATE_PATTERN = /^[A-Za-z0-9_-]{16,128}$/;
 const flowId = (state: string) => state.slice(0, 16);
 
 export interface AuthRouteHandlers {
-  /** `GET /api/auth/signin?callbackUrl=&locale=&intent=register` */
+  /** `GET /api/auth/signin?callbackUrl=&locale=&intent=register&reauth=1` */
   signIn(request: NextRequest): Promise<Response>;
   /** `GET /api/auth/callback/keycloak` */
   callback(request: NextRequest): Promise<Response>;
@@ -116,16 +118,8 @@ export function createRouteHandlers(
     const returnTo = safeReturnTo(params.get("callbackUrl"), config.origin);
     const destination = returnTo ?? config.afterSignIn(locale);
     const register = params.get("intent") === "register";
-
-    // Already signed in (another tab's round trip finished, or a stale link):
-    // go on rather than through the IdP again. Not for "Kayıt ol", which asks
-    // for the registration form on purpose.
-    if (!register) {
-      const session = await sessionCookie.read(request.cookies);
-      if (session && hasUsableAccessToken(session, now)) {
-        return redirect(absolute(destination));
-      }
-    }
+    // The API refused this session's token: new tokens, not straight back.
+    const reauth = params.get(REAUTH_PARAM) === "1";
 
     const starts = parseStarts(
       request.cookies.get(config.cookies.starts)?.value,
@@ -133,6 +127,30 @@ export function createRouteHandlers(
     );
     if (starts.count >= MAX_STARTS_PER_WINDOW) {
       return redirect(errorPage("SignInLimit", returnTo));
+    }
+    const countThisVisit = (response: NextResponse) => {
+      response.cookies.set(
+        config.cookies.starts,
+        `${starts.count + 1}.${starts.since}`,
+        cookieAttributes(
+          config.secure,
+          Math.ceil((starts.since + STARTS_WINDOW_MS - now) / 1000)
+        )
+      );
+      return response;
+    };
+
+    // Already signed in (another tab's round trip finished, or a stale link):
+    // go on rather than through the IdP again, counted like a start, since a
+    // page that keeps sending a signed-in browser here would otherwise loop
+    // through this step for free. Not for "Kayıt ol", which asks for the
+    // registration form on purpose, nor for `reauth`, where the session is
+    // what the API refused.
+    if (!register && !reauth) {
+      const session = await sessionCookie.read(request.cookies);
+      if (session && hasUsableAccessToken(session, now)) {
+        return countThisVisit(redirect(absolute(destination)));
+      }
     }
 
     let configuration: client.Configuration;
@@ -173,8 +191,8 @@ export function createRouteHandlers(
       locale,
       startedAt: now,
     };
-    const response = redirect(
-      client.buildAuthorizationUrl(configuration, parameters)
+    const response = countThisVisit(
+      redirect(client.buildAuthorizationUrl(configuration, parameters))
     );
     response.cookies.set(
       `${config.cookies.flowPrefix}${flowId(state)}`,
@@ -183,14 +201,6 @@ export function createRouteHandlers(
         expiresAt: now + FLOW_MAX_AGE * 1000,
       }),
       cookieAttributes(config.secure, FLOW_MAX_AGE)
-    );
-    response.cookies.set(
-      config.cookies.starts,
-      `${starts.count + 1}.${starts.since}`,
-      cookieAttributes(
-        config.secure,
-        Math.ceil((starts.since + STARTS_WINDOW_MS - now) / 1000)
-      )
     );
 
     // Round trips abandoned on the IdP's form leave their cookie until it

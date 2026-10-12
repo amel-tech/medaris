@@ -19,6 +19,11 @@
       "types": "./src/client/index.ts",
       "import": "./src/client/index.ts",
       "default": "./src/client/index.ts"
+    },
+    "./testing": {
+      "types": "./src/testing/index.ts",
+      "import": "./src/testing/index.ts",
+      "default": "./src/testing/index.ts"
     }
   },
   "scripts": {
