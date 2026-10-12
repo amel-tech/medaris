@@ -77,7 +77,7 @@ export interface TestPostgresConnection {
 export interface TestKeycloakKeys {
   /** The `kid` both the stub provider and every minted token carry. */
   kid: string;
-  /** SPKI PEM — what the stub key provider hands the verifier. */
+  /** SPKI PEM — what the stub key provider builds the verifier's key from. */
   publicKey: string;
   /** PKCS#8 PEM — what `mintTestToken` signs with. */
   privateKey: string;
