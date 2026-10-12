@@ -1,0 +1,65 @@
+# Upstream reference for deploy/signoz (see ../README.md, "Upstream reference").
+#
+# SigNoz stopped shipping deploy/docker at v0.130.0; the supported layout is now
+# whatever Foundry (github.com/SigNoz/foundry) forges from a casting. This
+# casting reproduces our single-node setup the way upstream's
+# deploy/MIGRATION.md does for legacy Compose installs (SQLite metastore,
+# ZooKeeper keeper, the legacy macros and volume names), with every image
+# pinned and one override of ours, marked below. pours/ is foundryctl's
+# output, committed unedited; nothing deploys from it.
+# ../docker-compose.coolify.yaml and ../config/ are ours, derived from it.
+#
+# Regenerate (foundryctl v0.3.0, no network, no usage ledger):
+#   docker run --rm --network none --user "$(id -u):$(id -g)" \
+#     -v "$PWD/foundryctl:/opt/foundryctl:ro" -v "$PWD:/work" -w /work \
+#     --entrypoint /opt/foundryctl signoz/zookeeper:3.7.1 \
+#     forge --no-ledger --no-updater -f casting.yaml
+apiVersion: v1alpha1
+kind: Installation
+metadata:
+  name: signoz
+spec:
+  deployment:
+    flavor: compose
+    mode: docker
+  signoz:
+    spec:
+      image: signoz/signoz:v0.143.0
+  ingester:
+    spec:
+      image: signoz/signoz-otel-collector:v0.144.11
+  metastore:
+    kind: sqlite
+  telemetrykeeper:
+    kind: zookeeper
+    spec:
+      image: signoz/zookeeper:3.7.1
+  telemetrystore:
+    spec:
+      image: clickhouse/clickhouse-server:25.12.5
+      config:
+        data:
+          config-0-0.yaml: |
+            macros:
+              replica: "example01-01-1"
+              shard: "01"
+            # Ours, not upstream's: ClickHouse 25.x samples every thread
+            # every 10 s by default; measured here, an idle server drops from
+            # 82 % to 31 % of a CPU with both off (README.md, "What runs").
+            global_profiler_real_time_period_ns: 0
+            global_profiler_cpu_time_period_ns: 0
+  patches:
+    - target: "deployment/compose.yaml"
+      operations:
+        - op: replace
+          path: /volumes/signoz-telemetrykeeper-0-data/name
+          value: signoz-zookeeper-1
+        - op: replace
+          path: /volumes/signoz-telemetrystore-0-0-data/name
+          value: signoz-clickhouse
+        - op: replace
+          path: /volumes/signoz-metastore-sqlite-0-data/name
+          value: signoz-sqlite
+        - op: add
+          path: /services/signoz-telemetrykeeper-zookeeper-0/user
+          value: root
