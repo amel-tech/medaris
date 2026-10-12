@@ -17,5 +17,6 @@ export * from './NizamApi';
 export * from './NotificationsApi';
 export * from './ResourcesApi';
 export * from './SessionsApi';
+export * from './SubmissionsApi';
 export * from './TedrisatServiceApi';
 export * from './UsersApi';

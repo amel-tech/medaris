@@ -165,11 +165,12 @@ describe("the dictionary", () => {
     const { service } = build();
     const head = await service.catalog(HEAD, M);
     // The ten medrese and twenty course permissions of nazir/06, the owner's
-    // one more of each (1 October) and `question.answer` (MDRS-150).
+    // one more of each (1 October), `question.answer` (MDRS-150) and
+    // `submission.read` (MDRS-290).
     expect(head.madrasah).toHaveLength(11);
-    expect(head.course).toHaveLength(22);
-    expect(head.givable).toHaveLength(33);
-    expect((await service.catalog(ADMIN, M)).givable).toHaveLength(33);
+    expect(head.course).toHaveLength(23);
+    expect(head.givable).toHaveLength(34);
+    expect((await service.catalog(ADMIN, M)).givable).toHaveLength(34);
     expect((await service.catalog(STRANGER, M)).givable).toEqual([]);
   });
 });
@@ -689,7 +690,7 @@ describe('the ceiling of a Medaris nazımı (MDRS-209: "kendi izinleriyle sını
     expect(catalog.madrasah).toHaveLength(11);
     const empty = await build().service.catalog(MEDARIS, M);
     expect(empty.givable).toEqual([]);
-    expect(empty.course).toHaveLength(22);
+    expect(empty.course).toHaveLength(23);
   });
 
   it("the başnazım is not asked, and the başmüderris holds every code so is asked nothing", async () => {

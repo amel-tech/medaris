@@ -3,6 +3,7 @@ import { and, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import {
   courseIdsOfKosk,
   deleteLessonResources,
+  deleteLessonSubmissions,
   purgeCourses,
   recordDeletion,
   Tx,
@@ -767,6 +768,8 @@ export class ArchiveRepository {
         // A session's own resources (MDRS-286) go with it, a file's object
         // to be removed from storage once this commits (MDRS-287).
         await deleteLessonResources(tx, weekLessonIds, "lesson.purge");
+        // So does the talebe's homework, files and all (MDRS-290).
+        await deleteLessonSubmissions(tx, weekLessonIds, "lesson.purge");
         const removedSessions = (
           await tx
             .delete(lessons)
@@ -794,6 +797,7 @@ export class ArchiveRepository {
           .delete(lessonQuestions)
           .where(eq(lessonQuestions.lessonId, id));
         await deleteLessonResources(tx, [id], "lesson.purge");
+        await deleteLessonSubmissions(tx, [id], "lesson.purge");
         await tx.delete(lessons).where(eq(lessons.id, id));
         const [week] = await tx
           .select({ courseId: courseWeeks.courseId })

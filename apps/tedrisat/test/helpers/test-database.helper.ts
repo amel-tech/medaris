@@ -51,6 +51,8 @@ export const COURSE_TREE_TABLES = [
   "lesson_invitations",
   "lesson_notes",
   "lesson_questions",
+  "submission_files",
+  "lesson_submissions",
   "lesson_resources",
   "course_muderris",
   "lessons",

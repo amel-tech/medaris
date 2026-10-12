@@ -8997,6 +8997,385 @@
         ]
       }
     },
+    "/lessons/{id}/submission": {
+      "get": {
+        "description": "Only the caller's own, null while they have handed nothing in, with the limits a new file must keep. A talebe who was removed or barred still reads theirs while the course is open; a course in a passive scope is closed (403 SUBMISSION_FORBIDDEN), and a hidden course is as not found as a session that is not there.",
+        "operationId": "getMySubmission",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OwnSubmissionResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "SUBMISSION_FORBIDDEN"
+          },
+          "404": {
+            "description": "LESSON_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The caller's own homework on a session",
+        "tags": [
+          "submissions"
+        ]
+      },
+      "put": {
+        "description": "Makes the homework if there is none yet. A talebe enrolled in the course (ENROLLED or COMPLETED, not barred) while its content is open, on a live session: anyone else is 403 SUBMISSION_FORBIDDEN, a hidden session 404. There is no deadline.",
+        "operationId": "saveMySubmissionNote",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveSubmissionNoteDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LessonSubmissionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Field validation"
+          },
+          "403": {
+            "description": "SUBMISSION_FORBIDDEN"
+          },
+          "404": {
+            "description": "LESSON_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Write the note of the caller's homework on a session",
+        "tags": [
+          "submissions"
+        ]
+      }
+    },
+    "/lessons/{id}/submission/files": {
+      "post": {
+        "description": "Makes the homework if there is none yet; at most 5 files (409 SUBMISSION_FILE_LIMIT). The file is the multipart field `file`: at most 25 MB (413 FILE_TOO_LARGE) and a PDF, PNG, JPEG, WebP, Word (docx), Excel (xlsx), PowerPoint (pptx) or plain UTF-8 text file as read from its bytes (415 FILE_TYPE_NOT_ALLOWED). Its name is sanitised and kept as a label; it is stored under a key tedrisat makes. Written to `audit_log` as `submission.file_upload`. A talebe enrolled in the course (ENROLLED or COMPLETED, not barred) while its content is open, on a live session: anyone else is 403 SUBMISSION_FORBIDDEN, a hidden session 404. There is no deadline.",
+        "operationId": "addMySubmissionFile",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                },
+                "required": [
+                  "file"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LessonSubmissionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "FILE_REQUIRED"
+          },
+          "403": {
+            "description": "SUBMISSION_FORBIDDEN"
+          },
+          "404": {
+            "description": "LESSON_NOT_FOUND"
+          },
+          "409": {
+            "description": "SUBMISSION_FILE_LIMIT"
+          },
+          "413": {
+            "description": "FILE_TOO_LARGE"
+          },
+          "415": {
+            "description": "FILE_TYPE_NOT_ALLOWED"
+          },
+          "503": {
+            "description": "STORAGE_NOT_CONFIGURED, STORAGE_UNAVAILABLE"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Add a file to the caller's homework on a session",
+        "tags": [
+          "submissions"
+        ]
+      }
+    },
+    "/lessons/{id}/submission/files/{fileId}": {
+      "delete": {
+        "description": "The file is removed from storage too, and the removal written to `audit_log` as `submission.file_delete`. Another talebe's file is 403 SUBMISSION_FORBIDDEN. A talebe enrolled in the course (ENROLLED or COMPLETED, not barred) while its content is open, on a live session: anyone else is 403 SUBMISSION_FORBIDDEN, a hidden session 404. There is no deadline.",
+        "operationId": "deleteMySubmissionFile",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "fileId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "403": {
+            "description": "SUBMISSION_FORBIDDEN"
+          },
+          "404": {
+            "description": "LESSON_NOT_FOUND, SUBMISSION_FILE_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Remove a file from the caller's homework on a session",
+        "tags": [
+          "submissions"
+        ]
+      },
+      "get": {
+        "description": "Only the talebe who handed it in, while the course is open to them: another talebe's file, or one asked for by staff here, is 403 SUBMISSION_FORBIDDEN (staff read homework through `GET /courses/:id/submissions/files/:fileId`). Streamed through tedrisat with `Content-Disposition: attachment` and the stored name, the type read at upload, `X-Content-Type-Options: nosniff` and `Cache-Control: private, no-store`; there is no storage address to pass on.",
+        "operationId": "downloadMySubmissionFile",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "fileId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "SUBMISSION_FORBIDDEN"
+          },
+          "404": {
+            "description": "LESSON_NOT_FOUND, SUBMISSION_FILE_NOT_FOUND"
+          },
+          "503": {
+            "description": "STORAGE_NOT_CONFIGURED, STORAGE_UNAVAILABLE"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Download a file of the caller's own homework",
+        "tags": [
+          "submissions"
+        ]
+      }
+    },
+    "/courses/{id}/submissions": {
+      "get": {
+        "description": "`submission.read`: everyone's homework on the course's live sessions, with who handed it in, when they last changed it, the note and the files, by programme order and the latest change first within a session. `lessonId` narrows it to one session. A hidden course or a draft is not found, as on its page.",
+        "operationId": "listCourseSubmissions",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "lessonId",
+            "required": false,
+            "in": "query",
+            "description": "Only this session's homework.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CourseSubmissionsResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No `submission.read` on the course."
+          },
+          "404": {
+            "description": "COURSE_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The homework handed in on the course's sessions",
+        "tags": [
+          "submissions"
+        ]
+      }
+    },
+    "/courses/{id}/submissions/files/{fileId}": {
+      "get": {
+        "description": "`submission.read` on the course. Written to `audit_log` as `submission.file_download` before the file is sent, naming the talebe and the file. Streamed through tedrisat with `Content-Disposition: attachment` and the stored name, the type read at upload, `X-Content-Type-Options: nosniff` and `Cache-Control: private, no-store`; there is no storage address to pass on.",
+        "operationId": "downloadCourseSubmissionFile",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "fileId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No `submission.read` on the course."
+          },
+          "404": {
+            "description": "COURSE_NOT_FOUND, SUBMISSION_FILE_NOT_FOUND"
+          },
+          "503": {
+            "description": "STORAGE_NOT_CONFIGURED, STORAGE_UNAVAILABLE"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Download a file of a talebe's homework, as the course's staff",
+        "tags": [
+          "submissions"
+        ]
+      }
+    },
     "/calendar/{file}": {
       "get": {
         "description": "Every session of every course the feed's owner is enrolled in, teaches or manages, from 30 days back to 180 days ahead. Removed and cancelled sessions carry `STATUS:CANCELLED`; UIDs and SEQUENCE are those of `GET /lessons/:id/calendar.ics` (MDRS-117). No meeting links.",
@@ -21025,6 +21404,211 @@
         },
         "required": [
           "body"
+        ]
+      },
+      "SubmissionFileResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "example": "Ödev 1.pdf",
+            "description": "The sanitised name it was handed in under; its download is saved as this."
+          },
+          "contentType": {
+            "type": "string",
+            "example": "application/pdf",
+            "description": "The type read from the file's bytes at upload."
+          },
+          "sizeBytes": {
+            "type": "number",
+            "example": 482133
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "downloadUrl": {
+            "type": "string",
+            "description": "tedrisat's download route for the caller, a path from the API's root: `/lessons/:id/submission/files/:fileId` on the talebe's own homework, `/courses/:id/submissions/files/:fileId` in the staff list. It needs the caller's own token."
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "contentType",
+          "sizeBytes",
+          "createdAt",
+          "downloadUrl"
+        ]
+      },
+      "LessonSubmissionResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "lessonId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "note": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string",
+            "description": "When the talebe last changed it: the note, or a file added or removed."
+          },
+          "files": {
+            "description": "Oldest first.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SubmissionFileResponse"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "lessonId",
+          "note",
+          "createdAt",
+          "updatedAt",
+          "files"
+        ]
+      },
+      "OwnSubmissionResponse": {
+        "type": "object",
+        "properties": {
+          "submission": {
+            "nullable": true,
+            "description": "Null while the talebe has handed nothing in on the session.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/LessonSubmissionResponse"
+              }
+            ]
+          },
+          "maxFiles": {
+            "type": "number",
+            "example": 5
+          },
+          "maxFileBytes": {
+            "type": "number",
+            "example": 26214400
+          }
+        },
+        "required": [
+          "submission",
+          "maxFiles",
+          "maxFileBytes"
+        ]
+      },
+      "SaveSubmissionNoteDto": {
+        "type": "object",
+        "properties": {
+          "note": {
+            "type": "string",
+            "nullable": true,
+            "example": "Birinci babın çekimlerini yazdım.",
+            "description": "The talebe's note on their homework, at most 4000 characters after trimming; null, absent or blank clears it. Stored as typed and never rendered as HTML."
+          }
+        }
+      },
+      "SubmissionTalebeResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true,
+            "description": "The account's name, else its e-mail; null for an account tedrisat has not seen sign in."
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
+      "CourseSubmissionResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "lessonId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "note": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string",
+            "description": "When the talebe last changed it: the note, or a file added or removed."
+          },
+          "files": {
+            "description": "Oldest first.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SubmissionFileResponse"
+            }
+          },
+          "lessonTitle": {
+            "type": "string"
+          },
+          "weekNumber": {
+            "type": "number"
+          },
+          "talebe": {
+            "$ref": "#/components/schemas/SubmissionTalebeResponse"
+          }
+        },
+        "required": [
+          "id",
+          "lessonId",
+          "note",
+          "createdAt",
+          "updatedAt",
+          "files",
+          "lessonTitle",
+          "weekNumber",
+          "talebe"
+        ]
+      },
+      "CourseSubmissionsResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "description": "By programme order (week, then session), the latest change first within a session.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CourseSubmissionResponse"
+            }
+          }
+        },
+        "required": [
+          "items"
         ]
       },
       "CalendarFeedStatusResponse": {

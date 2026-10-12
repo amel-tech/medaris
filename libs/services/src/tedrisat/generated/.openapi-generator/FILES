@@ -18,6 +18,7 @@ src/apis/NizamApi.ts
 src/apis/NotificationsApi.ts
 src/apis/ResourcesApi.ts
 src/apis/SessionsApi.ts
+src/apis/SubmissionsApi.ts
 src/apis/TedrisatServiceApi.ts
 src/apis/UsersApi.ts
 src/apis/index.ts
@@ -75,6 +76,8 @@ src/models/CourseRequestRefResponse.ts
 src/models/CourseRequestResponse.ts
 src/models/CourseResourceFileUploadResponse.ts
 src/models/CourseStatsResponse.ts
+src/models/CourseSubmissionResponse.ts
+src/models/CourseSubmissionsResponse.ts
 src/models/CourseSummaryResponse.ts
 src/models/CreateBanDto.ts
 src/models/CreateCourseDto.ts
@@ -222,6 +225,7 @@ src/models/LessonQuestionResponse.ts
 src/models/LessonResourceFileUploadResponse.ts
 src/models/LessonResourceResponse.ts
 src/models/LessonResponse.ts
+src/models/LessonSubmissionResponse.ts
 src/models/LiftBanDto.ts
 src/models/LiveStreamResponse.ts
 src/models/MadrasahArchiveCountsResponse.ts
@@ -292,6 +296,7 @@ src/models/NotificationCountsResponse.ts
 src/models/NotificationResponse.ts
 src/models/OffsiteCourseRequestResponse.ts
 src/models/OpenMadrasahCourseDto.ts
+src/models/OwnSubmissionResponse.ts
 src/models/PaginatedArchiveResponse.ts
 src/models/PaginatedCourseArchiveResponse.ts
 src/models/PaginatedCourseQuestionResponse.ts
@@ -344,6 +349,7 @@ src/models/ReviewRating.ts
 src/models/RoleSummary.ts
 src/models/RosterEnrollmentResponse.ts
 src/models/RowError.ts
+src/models/SaveSubmissionNoteDto.ts
 src/models/ScheduleSessionResponse.ts
 src/models/ScopeRefResponse.ts
 src/models/ScopedPolicyListResponse.ts
@@ -368,6 +374,8 @@ src/models/SetNazimGrantsDto.ts
 src/models/SetPlatformPolicyDto.ts
 src/models/SetRecordingAvailabilityDto.ts
 src/models/StartRecordingUploadDto.ts
+src/models/SubmissionFileResponse.ts
+src/models/SubmissionTalebeResponse.ts
 src/models/SummaryMuderrisResponse.ts
 src/models/TaughtCourseRef.ts
 src/models/TeamSettableEnrollmentStatus.ts
