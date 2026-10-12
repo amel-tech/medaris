@@ -20,6 +20,7 @@ import {
   useTransition,
 } from "react";
 import type { Messages } from "~/lib/i18n/messages";
+import { handleUnauthenticated } from "~/lib/unauthenticated";
 import { createSessions, previewSessions } from "../actions";
 import {
   type PlanForm as PlanFields,
@@ -115,6 +116,7 @@ export function PlanForm({
     let live = true;
     const timer = setTimeout(async () => {
       const result = await previewSessions(courseId, pattern);
+      if (handleUnauthenticated(result)) return;
       if (!live) return;
       if (result.success) {
         setPreview(result.data.sessions);
@@ -153,6 +155,7 @@ export function PlanForm({
         courseId,
         planRequest(pattern, form, title, firstLink)
       );
+      if (handleUnauthenticated(result)) return;
       if (!result.success) {
         notify({
           tone: "error",

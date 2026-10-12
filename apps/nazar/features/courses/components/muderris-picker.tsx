@@ -19,6 +19,7 @@ import {
 } from "react";
 import { lookupPerson } from "~/features/nazirs/actions";
 import { isEmailLike } from "~/features/nazirs/nazirs";
+import { handleUnauthenticated } from "~/lib/unauthenticated";
 import {
   accountsOf,
   canRemove,
@@ -88,6 +89,7 @@ export function MuderrisPicker({
     setSearch("searching");
     setAnnounced(t("Team.searching"));
     const result = await lookupPerson(wanted);
+    if (handleUnauthenticated(result)) return;
     if (searched.current !== wanted) return;
     if (result.kind === "found") {
       const { id, name, email: address } = result.person;

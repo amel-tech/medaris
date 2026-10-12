@@ -21,6 +21,7 @@ import {
   useTransition,
 } from "react";
 import type { Messages } from "~/lib/i18n/messages";
+import { handleUnauthenticated } from "~/lib/unauthenticated";
 import { createGroup, loadCatalog, removeGroup, updateGroup } from "../actions";
 import { nazirErrorKey, permissionLabel } from "../nazirs";
 import {
@@ -103,6 +104,7 @@ export function GroupDialog({
     const ask = ++asked.current;
     setCatalog(null);
     const result = await loadCatalog(madrasahId);
+    if (handleUnauthenticated(result)) return;
     if (ask === asked.current)
       setCatalog(result.success ? result.data : "failed");
   }, [madrasahId]);
@@ -166,6 +168,7 @@ export function GroupDialog({
         patch,
         usersPolicy
       );
+      if (handleUnauthenticated(result)) return;
       if (result.success) {
         done(
           t("Groups.saved"),
@@ -188,6 +191,7 @@ export function GroupDialog({
     if (!group) return;
     startTransition(async () => {
       const result = await removeGroup(madrasahId, group.id, usersPolicy);
+      if (handleUnauthenticated(result)) return;
       if (result.success) {
         done(
           t("Groups.deleted"),
@@ -211,6 +215,7 @@ export function GroupDialog({
     if (!group) {
       startTransition(async () => {
         const result = await createGroup(madrasahId, groupBody(draft, known));
+        if (handleUnauthenticated(result)) return;
         if (result.success) {
           done(
             t("Groups.saved"),

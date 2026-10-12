@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { NextIntlClientProvider } from "next-intl";
 import type { ReactNode } from "react";
 import { ClientProviders } from "~/components/providers/client-providers";
+import { auth } from "~/lib/auth";
 import "@medaris/ui/medaris.css";
 
 export const metadata: Metadata = {
@@ -16,12 +17,15 @@ export const metadata: Metadata = {
 // and `dir` are fixed. Management pages put `data-density="compact"` on their
 // own `<main>`; the shell does it, not this layout. The page is light until the
 // viewer picks dark with the shell's toggle (`data-theme="light"`, ThemeScript,
-// suppressHydrationWarning).
-export default function RootLayout({
+// suppressHydrationWarning). The session comes from the server, so the first
+// render already knows who is signed in; no token is in it (auth Phase 1).
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: ReactNode;
 }>) {
+  const session = await auth();
+
   return (
     <html
       lang="tr"
@@ -45,7 +49,7 @@ export default function RootLayout({
       {/* The canvas's .ekran root, in the utilities the canvas note gives it. */}
       <body className="relative min-block-screen bg-neutral-page font-ui text-body leading-body text-neutral-default">
         <NextIntlClientProvider>
-          <ClientProviders>{children}</ClientProviders>
+          <ClientProviders session={session}>{children}</ClientProviders>
         </NextIntlClientProvider>
       </body>
     </html>

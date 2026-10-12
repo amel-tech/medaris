@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import type { Messages } from "~/lib/i18n/messages";
+import { handleUnauthenticated } from "~/lib/unauthenticated";
 import { hideSession, hideWeek } from "../actions";
 import { hideErrorKey, type WeekRow } from "../curriculum";
 
@@ -46,6 +47,7 @@ export function CurriculumList({
         target.kind === "week"
           ? await hideWeek(courseId, target.id)
           : await hideSession(target.id);
+      if (handleUnauthenticated(result)) return;
       if (result.success) {
         notify({
           title: t(`CurriculumHide.${target.kind}.done`),

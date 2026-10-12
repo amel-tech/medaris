@@ -13,6 +13,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { type FormEvent, useState, useTransition } from "react";
 import { dayFormat } from "~/lib/dates";
 import type { Messages } from "~/lib/i18n/messages";
+import { handleUnauthenticated } from "~/lib/unauthenticated";
 import { saveSettings } from "../actions";
 import {
   DESCRIPTION_MAX,
@@ -75,6 +76,7 @@ export function SettingsForm({
     if (!patch || pending) return;
     startTransition(async () => {
       const result = await saveSettings(madrasahId, patch);
+      if (handleUnauthenticated(result)) return;
       if (result.success) {
         setSaved(result.data);
         setDraft(result.data.form);

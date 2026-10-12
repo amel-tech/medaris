@@ -2,12 +2,17 @@
  * nazar-web — Vitest config for the `test` target (MDRS-183).
  *
  * Set up like nizam-web's: node environment, so the specs cover what runs on
- * the server or is pure — the NextAuth wiring, the middleware, the message
+ * the server or is pure — the auth wiring, the proxy, the message
  * catalogue, the scope and menu rules and the pages' markup
  * (`renderToStaticMarkup`). The few that need an open menu or a click ask for
  * happy-dom with a `@vitest-environment` docblock, as the kit's own specs do.
  * `~/…` resolves like tsconfig's `paths`. The env values are placeholders that
  * only satisfy `env.ts`'s schema; nothing here reaches Keycloak or the API.
+ *
+ * `server-only` throws unless it is resolved under React's `react-server`
+ * condition, which Next applies to server code and Node does not; pointed at
+ * an empty module, the specs can import `@medaris/auth/server` (through
+ * `~/lib/auth`), as libs/auth's own config does.
  */
 import { defineConfig, mergeConfig } from "vitest/config";
 import baseConfig from "../../vitest.config";
@@ -18,7 +23,13 @@ export default mergeConfig(
     // tsconfig says `jsx: react-jsx` for Next; the specs need it compiled.
     esbuild: { jsx: "automatic" },
     resolve: {
-      alias: [{ find: /^~\/(.*)$/, replacement: `${__dirname}/$1` }],
+      alias: [
+        { find: /^~\/(.*)$/, replacement: `${__dirname}/$1` },
+        {
+          find: /^server-only$/,
+          replacement: `${__dirname}/test/stubs/server-only.ts`,
+        },
+      ],
     },
     test: {
       root: __dirname,

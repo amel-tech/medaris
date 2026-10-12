@@ -9,6 +9,7 @@ import { useToaster } from "@medaris/ui/mds/toast";
 import { useTranslations } from "next-intl";
 import { type FormEvent, useState, useTransition } from "react";
 import type { Messages } from "~/lib/i18n/messages";
+import { handleUnauthenticated } from "~/lib/unauthenticated";
 import { cancelSession, createSessions } from "../actions";
 import {
   courseMoved,
@@ -70,6 +71,7 @@ export function CancelDialog({
       let replacementId: string | undefined;
       if (request) {
         const created = await createSessions(courseId, request);
+        if (handleUnauthenticated(created)) return;
         const madeId = created.success ? created.data.lessonIds[0] : undefined;
         if (!created.success || !madeId) {
           notify({
@@ -86,6 +88,7 @@ export function CancelDialog({
         onVersion(cancelAt);
       }
       const cancelled = await cancelSession(row.id, cancelAt, replacementId);
+      if (handleUnauthenticated(cancelled)) return;
       if (!cancelled.success) {
         notify({
           tone: "error",

@@ -62,9 +62,6 @@ vi.mock("next/headers", () => ({
 vi.mock("next-intl/server", () => ({
   getTranslations: async (namespace: string) => translatorFor(namespace),
 }));
-vi.mock("next-auth/react", () => ({
-  useSession: () => ({ data: { idToken: "id-token" } }),
-}));
 vi.mock("~/env", () => ({
   env: {
     get TEDRIS_URL() {

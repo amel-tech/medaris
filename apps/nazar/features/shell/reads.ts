@@ -2,9 +2,9 @@ import {
   type AssignmentResponse,
   ResponseError,
 } from "@medaris/services/tedrisat";
-import { redirect, unstable_rethrow } from "next/navigation";
+import { unstable_rethrow } from "next/navigation";
 import { cache } from "react";
-import { auth } from "~/lib/auth_options";
+import { requireSession } from "~/lib/auth";
 import { tedrisatApi } from "~/lib/tedrisat-api";
 import type { MenuCounts } from "./nav";
 import {
@@ -33,14 +33,13 @@ export type Portal =
 
 /**
  * Who is signed in and which scopes they hold, once per request: the layout
- * and the page under it both ask. A session that is over goes to sign-in (no
- * session here, no token in `tedrisatApi`); any other failure of the read is
- * `unavailable`; only a read that succeeded and found nothing sends a person
- * to nazir 02.
+ * and the page under it both ask. A session that is over goes to sign-in,
+ * back to this page afterwards (`requireSession`, and `tedrisatApi` with no
+ * token); any other failure of the read is `unavailable`; only a read that
+ * succeeded and found nothing sends a person to nazir 02.
  */
 export const getPortal = cache(async (): Promise<Portal> => {
-  const session = await auth();
-  if (!session?.user) redirect("/auth/signin");
+  const session = await requireSession();
 
   try {
     const { me } = await tedrisatApi();

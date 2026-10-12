@@ -12,6 +12,7 @@ import {
   useTransition,
 } from "react";
 import type { Messages } from "~/lib/i18n/messages";
+import { handleUnauthenticated } from "~/lib/unauthenticated";
 import { replaceMuderris } from "../actions";
 import { type CourseRow, courseErrorKey } from "../courses";
 import {
@@ -66,6 +67,7 @@ export function ChangeMuderris({
         course.id,
         teamRequest(team)
       );
+      if (handleUnauthenticated(result)) return;
       if (result.success) {
         notify({
           tone: "success",

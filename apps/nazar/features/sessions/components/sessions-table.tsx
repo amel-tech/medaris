@@ -20,6 +20,7 @@ import {
 } from "react";
 import { dayMonthClock } from "~/lib/dates";
 import type { Messages } from "~/lib/i18n/messages";
+import { handleUnauthenticated } from "~/lib/unauthenticated";
 import { ReleaseDialog } from "../../recordings/components/release-dialog";
 import { changeSession, setLiveStream } from "../actions";
 import {
@@ -190,6 +191,7 @@ export function SessionsTable({
   const writeStream = async (lessonId: string, url: string | null) => {
     setBusy(true);
     const result = await setLiveStream(lessonId, url);
+    if (handleUnauthenticated(result)) return;
     setBusy(false);
     if (!result.success) {
       refuse(result.code);
@@ -243,6 +245,7 @@ export function SessionsTable({
     }
     setBusy(true);
     const result = await changeSession(editing.id, change);
+    if (handleUnauthenticated(result)) return;
     setBusy(false);
     if (!result.success) {
       refuse(result.code);

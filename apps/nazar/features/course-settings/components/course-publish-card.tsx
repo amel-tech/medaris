@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import type { Messages } from "~/lib/i18n/messages";
+import { handleUnauthenticated } from "~/lib/unauthenticated";
 import { setCourseStatus } from "../actions";
 import { courseSettingsErrorKey } from "../course-settings";
 
@@ -41,6 +42,7 @@ export function CoursePublishCard({
   const change = (status: "DRAFT" | "PUBLISHED") =>
     startTransition(async () => {
       const result = await setCourseStatus(courseId, status);
+      if (handleUnauthenticated(result)) return;
       setAsking(false);
       if (!result.success) {
         notify({

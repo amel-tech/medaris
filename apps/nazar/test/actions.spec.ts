@@ -40,7 +40,13 @@ vi.mock("next/navigation", () => ({
   // `readOnce` passes a redirect on; the reads here throw none.
   unstable_rethrow: () => {},
 }));
-vi.mock("~/lib/auth_options", () => ({ getAccessToken: async () => token }));
+// The real `~/lib/auth`, reading a sealed session cookie whose access token is
+// `token`, or none.
+vi.mock("next/headers", async () =>
+  (await import("./sealed-session")).nextHeaders(() =>
+    token === undefined ? null : { accessToken: token }
+  )
+);
 vi.mock("~/lib/tedrisat-api", () => ({ tedrisatApi: async () => api }));
 vi.mock("@medaris/services/tedrisat", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@medaris/services/tedrisat")>()),
@@ -152,8 +158,16 @@ describe("Kaydet", () => {
 
   it("writes nothing without a session", async () => {
     token = undefined;
-    expect(await save({ name: "x" })).toEqual({ success: false, code: "" });
+    expect(await save({ name: "x" })).toEqual({ kind: "unauthenticated" });
     expect(api.madrasahs.updateMadrasahSettings).not.toHaveBeenCalled();
+  });
+
+  it("hands back the session being over, not a failed save, when the API refuses the token (401)", async () => {
+    api.madrasahs.updateMadrasahSettings.mockRejectedValue(
+      refusal(401, { code: "AUTH_INVALID_TOKEN", message: "Unauthorized" })
+    );
+    expect(await save({ name: "x" })).toEqual({ kind: "unauthenticated" });
+    expect(api.madrasahs.updateMadrasahSettings).toHaveBeenCalledOnce();
   });
 });
 
@@ -179,6 +193,24 @@ describe("the nazır actions", () => {
     expect(await lookupPerson("c@example.com")).toEqual({
       kind: "unavailable",
     });
+  });
+
+  it("tells a session that is over from a directory that cannot be reached", async () => {
+    const { lookupPerson, createGroup } = await actions();
+    api.users.lookupUser.mockRejectedValue(refusal(401));
+    expect(await lookupPerson("a@example.com")).toEqual({
+      kind: "unauthenticated",
+    });
+    token = undefined;
+    api.users.lookupUser.mockReset();
+    expect(await lookupPerson("a@example.com")).toEqual({
+      kind: "unauthenticated",
+    });
+    expect(
+      await createGroup("m-1", { name: "x", permissions: [] } as never)
+    ).toEqual({ kind: "unauthenticated" });
+    expect(api.users.lookupUser).not.toHaveBeenCalled();
+    expect(api.madrasahs.createMadrasahPermissionGroup).not.toHaveBeenCalled();
   });
 
   it("appoints by the id the search found", async () => {
@@ -637,10 +669,7 @@ describe("the course actions (nazir 08, 17, 18)", () => {
   it("writes nothing without a session", async () => {
     token = undefined;
     const { hideCourse } = await actions();
-    expect(await hideCourse("m-1", "c-1")).toEqual({
-      success: false,
-      code: "",
-    });
+    expect(await hideCourse("m-1", "c-1")).toEqual({ kind: "unauthenticated" });
     expect(api.madrasahs.hideMadrasahCourse).not.toHaveBeenCalled();
   });
 });

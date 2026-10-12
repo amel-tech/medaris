@@ -6,6 +6,7 @@ import { useToaster } from "@medaris/ui/mds/toast";
 import { listTimeZones } from "@medaris/utils";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
+import { handleUnauthenticated } from "~/lib/unauthenticated";
 import { updateTimeZone } from "../actions";
 import {
   commonZoneChoices,
@@ -58,11 +59,12 @@ export function TimeZoneForm({
     startTransition(async () => {
       // A dropped connection rejects the action instead of answering, and
       // that must read as a failed save, not as the page's error screen.
-      const saved = await updateTimeZone(next).then(
-        (result) => result.success,
-        () => false
-      );
-      if (saved) {
+      const result = await updateTimeZone(next).catch(() => ({
+        success: false,
+      }));
+      // A session that is over goes to sign-in, and back here.
+      if (handleUnauthenticated(result)) return;
+      if (result.success) {
         notify({ tone: "success", title: labels.saved });
         router.refresh();
       } else {

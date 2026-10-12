@@ -1,8 +1,8 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
-// The root layout without Next: the providers are stubbed, so only the
-// document it draws is left.
+// The root layout without Next: the providers and the session read are
+// stubbed, so only the document it draws is left.
 vi.mock("next-intl", async (orig) => ({
   ...(await orig<typeof import("next-intl")>()),
   NextIntlClientProvider: ({ children }: { children: React.ReactNode }) =>
@@ -11,6 +11,7 @@ vi.mock("next-intl", async (orig) => ({
 vi.mock("~/components/providers/client-providers", () => ({
   ClientProviders: ({ children }: { children: React.ReactNode }) => children,
 }));
+vi.mock("~/lib/auth", () => ({ auth: async () => null }));
 
 const htmlTag = (markup: string) => /^<html[^>]*>/.exec(markup)?.[0] ?? "";
 const headOf = (markup: string) =>
@@ -26,7 +27,8 @@ const headOf = (markup: string) =>
 describe("nazar's <html> (MDRS-245)", () => {
   it("is light by default, with the no-flash script", async () => {
     const { default: RootLayout } = await import("../app/layout");
-    const markup = renderToStaticMarkup(<RootLayout>page</RootLayout>);
+    // An async server component: called, then rendered.
+    const markup = renderToStaticMarkup(await RootLayout({ children: "page" }));
     expect(htmlTag(markup)).toContain('data-theme="light"');
     const head = headOf(markup);
     expect(head).toContain("<script>");

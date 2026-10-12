@@ -1,5 +1,6 @@
 "use client";
 
+import type { Unauthenticated } from "@medaris/auth/client";
 import { Alert } from "@medaris/ui/mds/alert";
 import { Button } from "@medaris/ui/mds/button";
 import { Dialog, DialogClose } from "@medaris/ui/mds/dialog";
@@ -19,6 +20,7 @@ import {
   useTransition,
 } from "react";
 import type { Messages } from "~/lib/i18n/messages";
+import { handleUnauthenticated } from "~/lib/unauthenticated";
 import { sendableLink } from "../../sessions/sessions";
 import {
   addRecording,
@@ -31,6 +33,7 @@ import {
   BunnyUpload,
   type FileProblem,
   fileProblem,
+  type GrantOutcome,
   MAX_UPLOAD_BYTES,
 } from "../bunny-upload";
 import {
@@ -58,6 +61,20 @@ import {
   uploadMoved,
 } from "../recordings";
 import { ReleaseFields } from "./release-fields";
+
+/**
+ * The upload's signature, or, when the session is over, the way to sign-in
+ * (`handleUnauthenticated`): the upload then waits on "signing" while the page
+ * goes, rather than drawing a failure for what is only an expired session.
+ */
+const grantOrSignIn = async (
+  pending: Promise<GrantOutcome | Unauthenticated>
+): Promise<GrantOutcome> => {
+  const outcome = await pending;
+  return handleUnauthenticated(outcome)
+    ? new Promise<never>(() => {})
+    : outcome;
+};
 
 /** What the caller holds of the two recording codes in this course. */
 export interface RecordingAbilities {
@@ -226,6 +243,7 @@ export function RecordingDialog({
         slot.lessonId,
         releaseDelta.availableAt
       );
+      if (handleUnauthenticated(saved)) return;
       if (!saved.success) {
         setStep("failed");
         setFailure({ code: saved.code, reason: null, release: true });
@@ -240,8 +258,8 @@ export function RecordingDialog({
         file,
         // continuing, the recording already has its title
         title: (resume && slot.recording?.title) || body.title,
-        start: () => startRecordingUpload(slot.lessonId, body),
-        resign: (id) => resignRecordingUpload(slot.lessonId, id),
+        start: () => grantOrSignIn(startRecordingUpload(slot.lessonId, body)),
+        resign: (id) => grantOrSignIn(resignRecordingUpload(slot.lessonId, id)),
         resumeOnly: resume,
         onPhase: setStep,
         onProgress: (bytesSent, bytesTotal) =>
@@ -296,7 +314,7 @@ export function RecordingDialog({
           : create
             ? await addRecording(slot.lessonId, create)
             : null;
-      if (!result) return;
+      if (!result || handleUnauthenticated(result)) return;
       if (!result.success) {
         notify({
           tone: "error",

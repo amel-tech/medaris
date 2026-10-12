@@ -6,6 +6,7 @@ import { useToaster } from "@medaris/ui/mds/toast";
 import { useTranslations } from "next-intl";
 import { type FormEvent, useRef, useTransition } from "react";
 import type { Messages } from "~/lib/i18n/messages";
+import { handleUnauthenticated } from "~/lib/unauthenticated";
 import { endCourseNazir } from "../actions";
 import {
   type CourseNazirRow,
@@ -48,6 +49,7 @@ export function EndCourseNazir({
     if (!row || pending) return;
     startTransition(async () => {
       const result = await endCourseNazir(courseId, row.id);
+      if (handleUnauthenticated(result)) return;
       if (result.success) {
         notify({
           tone: "success",

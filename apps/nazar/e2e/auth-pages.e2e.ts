@@ -19,10 +19,11 @@ test("a signed-out request for a page is sent to our sign-in page", async ({
   expect(location.searchParams.get("callbackUrl")).toBe("/hesap");
 });
 
-test("the error page says what happened, in Turkish and in the unified system", async ({
+test("a failed sign-in says what happened, in Turkish and in the unified system", async ({
   page,
 }) => {
-  await page.goto("/auth/error?error=AccessDenied");
+  // Where a refused round trip comes back to; `AccessDenied` starts nothing by itself.
+  await page.goto("/auth/signin?error=AccessDenied");
 
   const html = page.locator("html");
   await expect(html).toHaveAttribute("lang", "tr");

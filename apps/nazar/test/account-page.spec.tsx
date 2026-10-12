@@ -13,14 +13,10 @@ vi.mock("next/navigation", () => ({
   usePathname: () => "/hesap",
   useRouter: () => ({ refresh: vi.fn() }),
 }));
-vi.mock("next-auth/react", () => ({
-  useSession: () => ({ data: { idToken: "id-token" } }),
-}));
 vi.mock("next-intl/server", () => ({
   getTranslations: async (namespace?: string) => translatorFor(namespace),
   getLocale: async () => "tr",
 }));
-vi.mock("~/lib/keycloak-logout", () => ({ keycloakSignOut: vi.fn() }));
 vi.mock("~/features/account/actions", () => ({
   updateTimeZone: vi.fn(async () => ({ success: true })),
 }));
