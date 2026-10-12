@@ -236,6 +236,17 @@ export const bunnyPending = (slot: SessionSlot): boolean =>
   slot.recording?.provider === "BUNNY" &&
   slot.recording.status === "PROCESSING";
 
+/**
+ * Whether a video uploaded to Bunny may take the recording's place: a pasted
+ * or stream link, of any provider but BUNNY (tedrisat's `uploadReplaces`).
+ * The owner added a session's stream as its recording, found the stream
+ * private and had no way left to upload its video (12 October). A Bunny
+ * recording's "Düzenle" stays the link form alone.
+ */
+export const uploadReplaces = (
+  recording: Pick<RecordingFact, "provider"> | null
+): boolean => recording !== null && recording.provider !== "BUNNY";
+
 /** Whether the page has a Bunny upload to wait for, so it is read again until none is left. */
 export const anyBunnyPending = (blocks: readonly WeekBlock[]): boolean =>
   blocks.some((block) => block.slots.some(bunnyPending));

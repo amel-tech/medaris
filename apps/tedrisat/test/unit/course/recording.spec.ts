@@ -7,6 +7,7 @@ import {
   RecordingProvider,
   RecordingStatus,
   RecordingVisibility,
+  uploadReplaces,
   visibleRecordings,
 } from "../../../src/course/domain/recording";
 import { DEFAULT_SESSION_MINUTES } from "../../../src/course/domain/session-view";
@@ -99,6 +100,34 @@ describe("visibleRecordings (MDRS-162)", () => {
   it("keeps the link of a READY recording", () => {
     const [only] = visibleRecordings([row("a")], true);
     expect(only.url).toBe("https://youtu.be/a");
+  });
+});
+
+/**
+ * The owner's report of 12 October: a session's stream added as its
+ * recording turned out private, and its video could no longer be uploaded.
+ * A link of any provider now gives way to an upload; a Bunny video only when
+ * it FAILED.
+ */
+describe("uploadReplaces", () => {
+  it("lets an upload replace a link, whatever its provider or status", () => {
+    for (const provider of [
+      RecordingProvider.YOUTUBE,
+      RecordingProvider.DRIVE,
+      RecordingProvider.OTHER,
+    ]) {
+      for (const status of Object.values(RecordingStatus)) {
+        expect(uploadReplaces({ provider, status }), provider).toBe(true);
+      }
+    }
+  });
+
+  it("lets it replace a Bunny upload that FAILED, and no other Bunny video", () => {
+    const bunny = (status: RecordingStatus) =>
+      uploadReplaces({ provider: RecordingProvider.BUNNY, status });
+    expect(bunny(RecordingStatus.FAILED)).toBe(true);
+    expect(bunny(RecordingStatus.PROCESSING)).toBe(false);
+    expect(bunny(RecordingStatus.READY)).toBe(false);
   });
 });
 

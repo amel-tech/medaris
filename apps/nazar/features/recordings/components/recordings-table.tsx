@@ -32,6 +32,7 @@ import {
   slotState,
   streamRecordingBody,
   streamToRecord,
+  uploadReplaces,
   type WeekBlock,
 } from "../recordings";
 import { useRefreshWhile } from "../use-refresh-while";
@@ -43,9 +44,11 @@ import { ReleaseDialog } from "./release-dialog";
  * the recording each holds: its title, where it lives (the provider chip, or
  * the host when it has no name), whether it plays yet and who may watch it. A
  * session that has begun and has none offers "Kayıt ekle"; a recording offers
- * "Düzenle" to a holder of `recording.manage`, and a Bunny upload still
- * PROCESSING offers "Devam et" to a holder of `recording.upload`, for an
- * upload left halfway. All open the one dialog. The clock is read here and
+ * "Düzenle" to a holder of `recording.manage`, and a link (not a Bunny
+ * video) offers it to a holder of `recording.upload` too, whose dialog then
+ * holds the upload that replaces the link. A Bunny upload still PROCESSING
+ * offers "Devam et" to a holder of `recording.upload`, for an upload left
+ * halfway. All open the one dialog. The clock is read here and
  * moves while the page is open, as on Celseler; while a Bunny upload is being
  * prepared the page is read again every few seconds, until none is.
  *
@@ -326,16 +329,18 @@ export function RecordingsTable({
                 {t("Recordings.upload.resume")}
               </Button>
             ) : null;
-          const edit = can.manage ? (
-            <Button
-              variant="outline"
-              size="small"
-              aria-label={t("Recordings.editLabel", { session: slot.title })}
-              onClick={() => setTarget({ slot, resume: false })}
-            >
-              {t("Recordings.edit")}
-            </Button>
-          ) : null;
+          // a link's "Düzenle" also holds the upload that replaces it, which is recording.upload's
+          const edit =
+            can.manage || (can.upload && uploadReplaces(slot.recording)) ? (
+              <Button
+                variant="outline"
+                size="small"
+                aria-label={t("Recordings.editLabel", { session: slot.title })}
+                onClick={() => setTarget({ slot, resume: false })}
+              >
+                {t("Recordings.edit")}
+              </Button>
+            ) : null;
           if (resume && edit) {
             return (
               <span className="flex flex-wrap items-center justify-end gap-2">

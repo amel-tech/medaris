@@ -15,6 +15,8 @@ import {
   RecordingStatus,
   RecordingVisibility,
 } from "../../src/course/domain/recording";
+import { RecordingExistsError } from "../../src/course/errors/recording-exists.error";
+import { RecordingRepository } from "../../src/course/recording.repository";
 import { RecordingEncodingPoller } from "../../src/course/recording-encoding.poller";
 import { DatabaseService } from "../../src/database/database.service";
 import { auditLog } from "../../src/database/schema/audit.schema";
@@ -306,6 +308,7 @@ describe("recording uploads to Bunny Stream (MDRS-116, e2e)", () => {
           bunnyVideoId: videoId,
           visibility: "PUBLIC",
           replacedVideoId: null,
+          replacedLink: null,
         },
       });
     });
@@ -314,13 +317,80 @@ describe("recording uploads to Bunny Stream (MDRS-116, e2e)", () => {
       await start(MANAGER_ID).expect(201);
     });
 
-    it("refuses a session that already has a recording with 409, before Bunny is called", async () => {
-      const res = await start(MUDERRIS_ID, linkedLessonId).expect(409);
-      expect(res.body.code).toBe("RECORDING_EXISTS");
-      await start(MUDERRIS_ID).expect(201);
-      const again = await start(MUDERRIS_ID).expect(409);
-      expect(again.body.code).toBe("RECORDING_EXISTS");
+    it("refuses a session whose recording is a Bunny video PROCESSING or READY with 409, before Bunny is called", async () => {
+      const { videoId } = (await start(MUDERRIS_ID).expect(201)).body;
+      const processing = await start(MUDERRIS_ID).expect(409);
+      expect(processing.body.code).toBe("RECORDING_EXISTS");
+      await db()
+        .update(lessonRecordings)
+        .set({ status: RecordingStatus.READY })
+        .where(eq(lessonRecordings.lessonId, lessonId));
+      const ready = await start(MUDERRIS_ID).expect(409);
+      expect(ready.body.code).toBe("RECORDING_EXISTS");
       expect(bunny.calls.filter((c) => c.method === "POST")).toHaveLength(1);
+      expect((await recordingOf(lessonId)).bunnyVideoId).toBe(videoId);
+    });
+
+    // The owner's report of 12 October: a session's stream, added as its
+    // recording, was private; its video is uploaded in the link's place.
+    it("replaces a session's link with the upload, keeps the link in the audit entry and leaves the release time", async () => {
+      const releaseAt = new Date("2026-10-20T17:00:00.000Z");
+      await db()
+        .update(lessons)
+        .set({ recordingAvailableAt: releaseAt })
+        .where(eq(lessons.id, linkedLessonId));
+      const link = await recordingOf(linkedLessonId);
+
+      const res = await start(MUDERRIS_ID, linkedLessonId, {
+        title: "Bağlantılı: video",
+        visibility: RecordingVisibility.PUBLIC,
+      }).expect(201);
+      expect(res.body.recordingId).toBe(link.id);
+      expect(bunny.videos.has(res.body.videoId)).toBe(true);
+      expect(await recordingOf(linkedLessonId)).toMatchObject({
+        id: link.id,
+        title: "Bağlantılı: video",
+        provider: RecordingProvider.BUNNY,
+        status: RecordingStatus.PROCESSING,
+        visibility: RecordingVisibility.PUBLIC,
+        url: null,
+        bunnyVideoId: res.body.videoId,
+      });
+      const [lesson] = await db()
+        .select({ recordingAvailableAt: lessons.recordingAvailableAt })
+        .from(lessons)
+        .where(eq(lessons.id, linkedLessonId));
+      expect(lesson.recordingAvailableAt).toEqual(releaseAt);
+
+      const audit = await db()
+        .select()
+        .from(auditLog)
+        .where(
+          and(
+            eq(auditLog.entity, "lesson"),
+            eq(auditLog.entityId, linkedLessonId)
+          )
+        );
+      expect(audit).toHaveLength(1);
+      expect(audit[0]).toMatchObject({
+        actorId: MUDERRIS_ID,
+        action: "recording.upload_start",
+        details: {
+          courseId,
+          recordingId: link.id,
+          bunnyVideoId: res.body.videoId,
+          visibility: "PUBLIC",
+          replacedVideoId: null,
+          replacedLink: {
+            provider: "YOUTUBE",
+            url: "https://www.youtube.com/watch?v=rec456",
+          },
+        },
+      });
+
+      // the video is the recording now: a second upload is refused
+      const again = await start(MUDERRIS_ID, linkedLessonId).expect(409);
+      expect(again.body.code).toBe("RECORDING_EXISTS");
     });
 
     it("answers 404 for a missing lesson and 400 for a missing title", async () => {
@@ -525,6 +595,52 @@ describe("recording uploads to Bunny Stream (MDRS-116, e2e)", () => {
       expect((await recordingOf(lessonId)).status).toBe(
         RecordingStatus.PROCESSING
       );
+    });
+  });
+
+  // `start` judges the session's recording before Bunny is called; the write
+  // judges it again under the lesson's lock, as it is by then.
+  describe("the check made again under the lesson's lock", () => {
+    let n = 0;
+    const write = (id: string) =>
+      app.get(RecordingRepository).startBunnyUpload({
+        lessonId: id,
+        title: "Kilit altında",
+        visibility: RecordingVisibility.ENROLLED,
+        recordedAt: null,
+        bunnyVideoId: `c0000000-0000-4000-8000-${String(++n).padStart(12, "0")}`,
+        uploadExpiresAt: new Date(Date.now() + 3_600_000),
+        actorId: MUDERRIS_ID,
+      });
+
+    it("replaces a link", async () => {
+      const link = await recordingOf(linkedLessonId);
+      const { recordingId } = await write(linkedLessonId);
+      expect(recordingId).toBe(link.id);
+      expect(await recordingOf(linkedLessonId)).toMatchObject({
+        provider: RecordingProvider.BUNNY,
+        status: RecordingStatus.PROCESSING,
+        url: null,
+      });
+    });
+
+    it("refuses a Bunny video PROCESSING or READY, and leaves it as it was", async () => {
+      await write(lessonId);
+      const held = (await recordingOf(lessonId)).bunnyVideoId;
+      await expect(write(lessonId)).rejects.toBeInstanceOf(
+        RecordingExistsError
+      );
+      await db()
+        .update(lessonRecordings)
+        .set({ status: RecordingStatus.READY })
+        .where(eq(lessonRecordings.lessonId, lessonId));
+      await expect(write(lessonId)).rejects.toBeInstanceOf(
+        RecordingExistsError
+      );
+      expect(await recordingOf(lessonId)).toMatchObject({
+        status: RecordingStatus.READY,
+        bunnyVideoId: held,
+      });
     });
   });
 

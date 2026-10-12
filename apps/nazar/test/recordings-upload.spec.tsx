@@ -293,7 +293,7 @@ afterEach(async () => {
 });
 
 describe("who sees what", () => {
-  it("opens the page for a holder of recording.upload alone, says where to upload, and offers no Düzenle", async () => {
+  it("opens the page for a holder of recording.upload alone, says where to upload, and offers Düzenle on a link only, to replace it", async () => {
     state.permissions = holding("recording.upload");
     const out = await markup();
     const text = textOf(out);
@@ -301,7 +301,9 @@ describe("who sees what", () => {
     expect(text).toContain("Medaris’in video kütüphanesine (Bunny) yükleyin");
     expect(text).not.toContain("Burada yükleme yoktur");
     expect(out).toContain('aria-label="Kayıt ekle: Hafta 2"');
-    expect(out).not.toContain('aria-label="Kaydı düzenle: Hafta 1"');
+    // the pasted link may be replaced by an upload; the Bunny upload may not
+    expect(out).toContain('aria-label="Kaydı düzenle: Hafta 1"');
+    expect(out).not.toContain('aria-label="Kaydı düzenle: Hafta 1c"');
   });
 
   it("keeps the paste note for a holder of recording.manage alone", async () => {
@@ -529,6 +531,130 @@ describe("Bunny’ye yükle", () => {
       visibility: "ENROLLED",
     });
     expect(startRecordingUpload).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * The owner's report of 12 October: a session's stream added as its
+ * recording was private, and "Düzenle" offered the link alone. A link's
+ * "Düzenle" now holds the upload that replaces it.
+ */
+describe("Düzenle on a link: the upload that replaces it", () => {
+  const openEdit = async (session = "Hafta 1") => {
+    await mount();
+    await click(byLabel(`Kaydı düzenle: ${session}`));
+    await settle(20);
+  };
+  const warning = () =>
+    dialog().querySelector('[data-testid="upload-replaces"]')?.textContent ??
+    null;
+  const WARNING = "Yüklediğiniz video bu kaydın bağlantısının yerine geçer.";
+
+  it("offers 'Bunny’ye yükle' beside the link form to a holder of both codes, opening on the link", async () => {
+    await openEdit();
+    expect(dialog().textContent).toContain("Kaydı düzenle");
+    expect(tab("Bağlantı yapıştır")?.getAttribute("aria-selected")).toBe(
+      "true"
+    );
+    expect(tab("Bunny’ye yükle")?.getAttribute("aria-selected")).toBe("false");
+    expect(
+      (dialog().querySelector('[name="url"]') as HTMLInputElement).value
+    ).toBe("https://us02web.zoom.us/rec/share/abc123");
+    expect(buttonIn(dialog(), "Kaydet")).toBeDefined();
+    await click(tab("Bunny’ye yükle") as HTMLElement);
+    await settle(20);
+    expect(fileInput()).not.toBeNull();
+    expect(warning()).toContain(WARNING);
+    expect(warning()).toContain("Yükleme başlayınca bağlantı kayıttan kalkar.");
+    expect(buttonIn(dialog(), "Yükle")).toBeDefined();
+  });
+
+  it("says the video replaces the link until the bytes go, then uploads as when adding: progress, İptal, Devam et", async () => {
+    await openEdit();
+    await click(tab("Bunny’ye yükle") as HTMLElement);
+    await settle(20);
+    await typeInto(
+      dialog().querySelector('[name="title"]') as HTMLInputElement,
+      "Hafta 1 videosu"
+    );
+    await pick(video());
+    await press("Yükle");
+    expect(startRecordingUpload).toHaveBeenCalledExactlyOnceWith("l-1", {
+      title: "Hafta 1 videosu",
+      visibility: "ENROLLED",
+      recordedAt: "2026-09-28T18:00:00.000Z",
+    });
+    expect(changeRecording).not.toHaveBeenCalled();
+    expect(warning()).toBeNull();
+    await act(async () => lastTus().options.onProgress(1024, 4096));
+    expect(
+      dialog().querySelector('[data-testid="upload-progress"]')?.textContent
+    ).toContain("%25");
+    await press("İptal");
+    expect(dialog().textContent).toContain("Yükleme durduruldu.");
+    expect(warning()).toBeNull();
+    await press("Devam et");
+    expect(resignRecordingUpload).toHaveBeenCalledWith("l-1", "v-1");
+    expect(startRecordingUpload).toHaveBeenCalledOnce();
+  });
+
+  it("keeps the warning when tedrisat refused the start, as the link is still there", async () => {
+    startRecordingUpload.mockResolvedValue({
+      success: false,
+      code: "BUNNY_STREAM_UNAVAILABLE",
+    });
+    await openEdit();
+    await click(tab("Bunny’ye yükle") as HTMLElement);
+    await settle(20);
+    await pick(video());
+    await press("Yükle");
+    expect(dialog().querySelector("[role=alert]")?.textContent).toContain(
+      "Bunny şu an yanıt vermiyor"
+    );
+    expect(warning()).toContain(WARNING);
+  });
+
+  it("gives a holder of recording.upload alone the upload alone, with the warning", async () => {
+    state.permissions = holding("recording.upload");
+    await openEdit();
+    expect(document.querySelector("[role=tab]")).toBeNull();
+    expect(dialog().querySelector('[name="url"]')).toBeNull();
+    expect(fileInput()).not.toBeNull();
+    expect(warning()).toContain(WARNING);
+    expect(dialog().querySelector('[data-testid="release"]')).toBeNull();
+  });
+
+  it("leaves a Bunny recording's Düzenle the link form alone", async () => {
+    state.recordings = {
+      status: "ok",
+      data: [
+        recording("l-1", {
+          provider: "BUNNY",
+          url: "https://player.mediadelivery.net/embed/424242/v-0?token=t&expires=1",
+        }),
+        recording("l-6", {
+          provider: "BUNNY",
+          status: "PROCESSING",
+          url: null,
+        }),
+      ],
+    };
+    for (const session of ["Hafta 1", "Hafta 1c"]) {
+      await openEdit(session);
+      expect(document.querySelector("[role=tab]"), session).toBeNull();
+      expect(fileInput(), session).toBeNull();
+      expect(warning(), session).toBeNull();
+      expect(dialog().querySelector('[name="url"]'), session).not.toBeNull();
+      await cleanup();
+    }
+  });
+
+  it("leaves the link form of a holder of recording.manage alone as it was", async () => {
+    state.permissions = holding("recording.manage");
+    await openEdit();
+    expect(document.querySelector("[role=tab]")).toBeNull();
+    expect(fileInput()).toBeNull();
+    expect(warning()).toBeNull();
   });
 });
 

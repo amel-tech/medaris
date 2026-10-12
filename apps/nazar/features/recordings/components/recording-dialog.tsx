@@ -59,6 +59,7 @@ import {
   uploadContinues,
   uploadErrorKey,
   uploadMoved,
+  uploadReplaces,
 } from "../recordings";
 import { ReleaseFields } from "./release-fields";
 
@@ -110,6 +111,14 @@ type Step = "idle" | "signing" | "sending" | "stopped" | "failed";
  * tedrisat cannot store, its reason; when it means the page is out of date,
  * the dialog closes and the page is read again.
  *
+ * "Düzenle" on a recording that is a link (not a Bunny video) also offers
+ * "Bunny’ye yükle" to a holder of `recording.upload`. The link form stays
+ * `recording.manage`'s and is the tab it opens on; a holder of only one of
+ * the codes sees that form alone. Until the upload starts, the dialog says
+ * the video takes the link's place; from then on it runs as when adding, with
+ * the title and "Herkese açık" as the form holds them. A Bunny recording's
+ * "Düzenle" is the link form alone.
+ *
  * Under them, for a holder of `recording.manage`, when talebe may watch it
  * (MDRS-288): "Hazır olunca hemen" or "Şu tarih ve saatte" on the course's
  * clock, starting from what the session holds. A changed choice goes with the
@@ -149,9 +158,14 @@ export function RecordingDialog({
   );
   const [sent, setSent] = useState(false);
 
-  const uploadTab = resume || (!editing && can.upload);
-  const linkTab = !resume && (editing !== null || can.manage);
-  const [tab, setTab] = useState<Tab>(uploadTab ? "upload" : "link");
+  // "Düzenle" on a link: its video may be uploaded in its place
+  const replacing = can.upload && uploadReplaces(editing);
+  const uploadTab = resume || (!editing && can.upload) || replacing;
+  const linkTab = !resume && can.manage;
+  // "Düzenle" opens on the link the recording holds, adding on the upload
+  const [tab, setTab] = useState<Tab>(
+    uploadTab && !(editing && linkTab) ? "upload" : "link"
+  );
   const [file, setFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState<FileProblem | null>(null);
   const [step, setStep] = useState<Step>("idle");
@@ -387,6 +401,12 @@ export function RecordingDialog({
 
   const uploadPanel = (
     <>
+      {/* once the bytes go, the video is the recording and the link is gone */}
+      {replacing && videoId === null && step !== "sending" ? (
+        <Alert tone="warning" data-testid="upload-replaces">
+          <p>{t("Recordings.upload.replacesLink")}</p>
+        </Alert>
+      ) : null}
       <Field
         label={t("Recordings.upload.fileLabel")}
         required

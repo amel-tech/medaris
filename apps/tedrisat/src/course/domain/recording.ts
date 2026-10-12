@@ -32,6 +32,24 @@ export enum RecordingStatus {
   FAILED = "FAILED",
 }
 
+/**
+ * Whether a new Bunny upload may take the place of a session's recording
+ * (`POST /lessons/:id/recordings/uploads`): a pasted or stream link, of any
+ * provider but BUNNY, or a Bunny upload that FAILED. The owner added a
+ * session's stream as its recording, found the stream private and had no way
+ * left to upload its video instead (12 October): a link now gives way to an
+ * upload. A Bunny video PROCESSING or READY is kept: it is an upload under
+ * way or done. Asked before Bunny is called and again under the lesson's lock.
+ */
+export function uploadReplaces(
+  recording: Pick<IRecordingRow, "provider" | "status">
+): boolean {
+  return (
+    recording.provider !== RecordingProvider.BUNNY ||
+    recording.status === RecordingStatus.FAILED
+  );
+}
+
 /** A recording as the repository reads it, joined to its lesson's place in the programme. */
 export interface IRecordingRow {
   id: string;
