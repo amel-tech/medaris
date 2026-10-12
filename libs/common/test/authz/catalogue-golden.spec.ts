@@ -39,6 +39,7 @@ const GOLDEN: ReadonlyArray<readonly [string, string, string]> = [
   ["recording.watch_restricted", "course", "grantable|content"],
   ["session.view_content", "course", "grantable|content"],
   ["question.answer", "course", "grantable|content"],
+  ["submission.read", "course", "grantable|content"],
   ["ban.course", "course", "grantable"],
   ["ban.lift_course", "course", "grantable"],
   ["deck.manage_course", "course", "grantable"],

@@ -81,8 +81,9 @@ export const PLATFORM_CATALOG: ReadonlyArray<{
  * permissions a müderris holds by default that can be handed on, in the order
  * the account screen prints them. nizam/13 draws no list for these scopes;
  * this is the course half of the catalog. "Find people" and "define groups"
- * are no course work and never grantable. `question.answer` (MDRS-150) is on
- * no canvas yet: its sentence is the web messages' alone.
+ * are no course work and never grantable. `question.answer` (MDRS-150) and
+ * `submission.read` (MDRS-290) are on no canvas yet: their sentences are the
+ * web messages' alone.
  */
 export const COURSE_CATALOG: readonly PermissionCode[] = [
   PERMISSIONS.COURSE_EDIT,
@@ -100,6 +101,7 @@ export const COURSE_CATALOG: readonly PermissionCode[] = [
   PERMISSIONS.RECORDING_WATCH_RESTRICTED,
   PERMISSIONS.SESSION_VIEW_CONTENT,
   PERMISSIONS.QUESTION_ANSWER,
+  PERMISSIONS.SUBMISSION_READ,
   PERMISSIONS.BAN_COURSE,
   PERMISSIONS.BAN_LIFT_COURSE,
   PERMISSIONS.DECK_MANAGE_COURSE,

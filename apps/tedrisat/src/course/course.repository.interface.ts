@@ -14,15 +14,39 @@ export interface IAgendaStep {
 }
 
 /**
- * One link of a session's own resources (MDRS-286), as the course's resources
- * are links since MDRS-279. The name is programme; `url` is course content.
+ * A resource that is a file in Medaris storage (MDRS-287), as a response
+ * carries it. Course content, like a link: only a caller who may read the
+ * content is sent it. The storage key never leaves tedrisat; the file is
+ * fetched through `downloadUrl`.
+ */
+export interface IResourceFile {
+  /** The sanitised name the file was uploaded under, which its download is saved as. */
+  name: string;
+  /** The type read from its bytes when it was uploaded. */
+  contentType: string;
+  sizeBytes: number;
+  /**
+   * tedrisat's download route for it, a path from the API's root:
+   * `/courses/:id/resources/:resourceId/file` or
+   * `/lessons/:id/resources/:resourceId/file`.
+   */
+  downloadUrl: string;
+}
+
+/**
+ * One resource of a session (MDRS-286): a link, or since MDRS-287 a file in
+ * Medaris storage, never both. The name is programme; `url` and `file` are
+ * course content.
  */
 export interface ILessonResource {
   id: string;
   lessonId: string;
   name: string;
   meta: string | null;
-  url: string;
+  /** The link; null for a file. */
+  url: string | null;
+  /** The file; null for a link. */
+  file: IResourceFile | null;
   orderIndex: number;
 }
 
@@ -94,6 +118,8 @@ export interface IResource {
   meta: string | null;
   type: string | null;
   url: string | null;
+  /** The file in Medaris storage (MDRS-287); null for a link or a bare name. */
+  file: IResourceFile | null;
   orderIndex: number;
 }
 
@@ -157,9 +183,9 @@ export type LessonContentField =
   | "hasLiveStream"
   | "recordingAvailableAt";
 
-/** A session's resource as a response carries it: `url` is content (MDRS-286). */
-export type ILessonResourceView = Omit<ILessonResource, "url"> &
-  Partial<Pick<ILessonResource, "url">>;
+/** A session's resource as a response carries it: `url` and `file` are content (MDRS-286, MDRS-287). */
+export type ILessonResourceView = Omit<ILessonResource, "url" | "file"> &
+  Partial<Pick<ILessonResource, "url" | "file">>;
 
 /**
  * A lesson as a response carries it: the content fields may be absent, and
@@ -170,9 +196,9 @@ export type ILessonView = Omit<ILesson, LessonContentField | "resources"> &
     resources: ILessonResourceView[];
   };
 
-/** A resource as a response carries it: `url` is content (MDRS-103). */
-export type IResourceView = Omit<IResource, "url"> &
-  Partial<Pick<IResource, "url">>;
+/** A resource as a response carries it: `url` (MDRS-103) and `file` (MDRS-287) are content. */
+export type IResourceView = Omit<IResource, "url" | "file"> &
+  Partial<Pick<IResource, "url" | "file">>;
 
 export type IWeekView = Omit<IWeek, "lessons"> & { lessons: ILessonView[] };
 
@@ -300,14 +326,16 @@ export interface ICreateLesson {
 
 /**
  * One row of a session's resource list as a write sends it (MDRS-286). A row
- * is written whole: a missing `meta` is none.
+ * is written whole: a missing `meta` is none. A new row is a link and needs
+ * `url`; a stored row keeps its link when `url` is left out, and a stored
+ * file keeps its file and takes no `url` (MDRS-287).
  */
 export interface ICreateLessonResource {
   /** One of the session's stored rows, to keep it; anything else is added. */
   id?: string;
   name: string;
   meta?: string | null;
-  url: string;
+  url?: string | null;
 }
 
 export interface ICreateWeek {
@@ -538,7 +566,9 @@ export interface ICourseRepository {
   updateLesson(
     lessonId: string,
     expectedVersion: number,
-    data: IUpdateLesson
+    data: IUpdateLesson,
+    /** Who wrote it: a file the resource list drops is audited under them (MDRS-287). */
+    actorId?: string | null
   ): Promise<ILessonMutation>;
   archiveLesson(
     lessonId: string,

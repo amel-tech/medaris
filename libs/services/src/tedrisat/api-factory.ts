@@ -14,7 +14,9 @@ import {
   MeApi,
   NizamApi,
   NotificationsApi,
+  ResourcesApi,
   SessionsApi,
+  SubmissionsApi,
   TedrisatServiceApi,
   UsersApi,
 } from "./generated/src";
@@ -40,6 +42,9 @@ export type {
   ChiefNazimResponse,
   CourseDetailResponse,
   CourseQuestionResponse,
+  CourseResourceFileUploadResponse,
+  CourseSubmissionResponse,
+  CourseSubmissionsResponse,
   CourseSummaryResponse,
   CreateCourseDto,
   CreateFlashcardDeckDto,
@@ -98,7 +103,10 @@ export type {
   LessonMutationResponse,
   LessonNoteResponse,
   LessonQuestionResponse,
+  LessonResourceFileUploadResponse,
+  LessonResourceResponse,
   LessonResponse,
+  LessonSubmissionResponse,
   MadrasahBanListResponse,
   MadrasahBanResponse,
   MadrasahCourseKoskResponse,
@@ -135,6 +143,7 @@ export type {
   NotificationResponse,
   OffsiteCourseRequestResponse,
   OpenMadrasahCourseDto,
+  OwnSubmissionResponse,
   PaginatedArchiveResponse,
   PaginatedKoskResponse,
   PaginatedMadrasahResponse,
@@ -150,12 +159,16 @@ export type {
   ReadAllNotificationsResponse,
   RemoveEnrollmentDto,
   ReplaceCourseDto,
+  ResourceFileResponse,
   ResourceResponse,
   RosterEnrollmentResponse,
+  SaveSubmissionNoteDto,
   ScheduleSessionResponse,
   SetEnrollmentStatusDto,
   SetMadrasahCourseMuderrisDto,
   SetNazimGrantsDto,
+  SubmissionFileResponse,
+  SubmissionTalebeResponse,
   UpdateCourseDto,
   UpdateFlashcardDeckDto,
   UpdateFlashcardDto,
@@ -250,6 +263,12 @@ export function createTedrisatAPIs(config: TedrisatAPIConfig) {
     archive: new ArchiveApi(configuration),
     // Barring a talebe and lifting it (MDRS-177).
     bans: new BansApi(configuration),
+    // A course's and a celse's resource files: upload and download through
+    // tedrisat, never from storage directly (MDRS-287).
+    resources: new ResourcesApi(configuration),
+    // A talebe's homework on a celse, and the course staff's read of it
+    // under `submission.read` (MDRS-290).
+    submissions: new SubmissionsApi(configuration),
     // The two label controllers MDRS-58 published for the first time. Generated
     // classes that only `./generated/src` exported were reachable by no app —
     // this factory is what `@medaris/services/tedrisat` hands out.

@@ -137,3 +137,28 @@ export async function getMenuCounts(scope: Scope): Promise<MenuCounts> {
     applications: counts[2],
   };
 }
+
+/**
+ * What the caller holds in the course the menu is for
+ * (`GET /courses/:id/my-permissions`), for the items drawn only to holders of
+ * a permission (Ödevler, `submission.read`, MDRS-290). A medrese's menu asks
+ * nothing. A read that failed is logged and holds nothing, so such an item
+ * is left out rather than offered to someone the page would refuse.
+ */
+export async function getMenuPermissions(
+  scope: Pick<Scope, "kind" | "id">
+): Promise<ReadonlySet<string>> {
+  if (scope.kind !== "ders") return new Set();
+  try {
+    const { courses } = await tedrisatApi();
+    const { permissions } = await courses.getMyCoursePermissions({
+      id: scope.id,
+    });
+    return new Set(permissions);
+  } catch (error) {
+    // `tedrisatApi`'s way to sign-in when the session is over.
+    unstable_rethrow(error);
+    console.error("Error fetching the caller's course permissions:", error);
+    return new Set();
+  }
+}

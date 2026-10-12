@@ -19,6 +19,8 @@ export interface PortalFrameProps {
   /** the scope the menu is for; null before there is one (nazir 02) */
   current: Scope | null;
   counts?: MenuCounts;
+  /** what the caller holds in the course, for the items drawn to holders only */
+  held?: ReadonlySet<string>;
   /** leave the scope behind for `/` to reopen: only the scoped pages do */
   remember?: boolean;
   children: ReactNode;
@@ -36,6 +38,7 @@ export async function PortalFrame({
   scopes,
   current,
   counts = {},
+  held,
   remember = false,
   children,
 }: PortalFrameProps) {
@@ -59,7 +62,11 @@ export async function PortalFrame({
   };
   const sections = current
     ? labelNav(
-        navFor(current, { panoHref: panoHref(scopes, current), counts }),
+        navFor(current, {
+          panoHref: panoHref(scopes, current),
+          counts,
+          held,
+        }),
         { nav: (key) => t(`Nav.${key}`), shell }
       )
     : [];

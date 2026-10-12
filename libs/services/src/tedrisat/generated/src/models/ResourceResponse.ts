@@ -13,6 +13,14 @@
  */
 
 import { mapValues } from '../runtime';
+import type { ResourceFileResponse } from './ResourceFileResponse';
+import {
+    ResourceFileResponseFromJSON,
+    ResourceFileResponseFromJSONTyped,
+    ResourceFileResponseToJSON,
+    ResourceFileResponseToJSONTyped,
+} from './ResourceFileResponse';
+
 /**
  * 
  * @export
@@ -56,6 +64,12 @@ export interface ResourceResponse {
      */
     url?: string;
     /**
+     * The resource's file in Medaris storage (MDRS-287); null for a link. Course content, like `url`: absent unless the caller holds `view_details` on the course (MDRS-103), a sample session's included.
+     * @type {ResourceFileResponse}
+     * @memberof ResourceResponse
+     */
+    file?: ResourceFileResponse | null;
+    /**
      * 
      * @type {number}
      * @memberof ResourceResponse
@@ -90,6 +104,7 @@ export function ResourceResponseFromJSONTyped(json: any, ignoreDiscriminator: bo
         'meta': json['meta'] == null ? undefined : json['meta'],
         'type': json['type'] == null ? undefined : json['type'],
         'url': json['url'] == null ? undefined : json['url'],
+        'file': json['file'] == null ? undefined : ResourceFileResponseFromJSON(json['file']),
         'orderIndex': json['orderIndex'],
     };
 }
@@ -111,6 +126,7 @@ export function ResourceResponseToJSONTyped(value?: ResourceResponse | null, ign
         'meta': value['meta'],
         'type': value['type'],
         'url': value['url'],
+        'file': ResourceFileResponseToJSON(value['file']),
         'orderIndex': value['orderIndex'],
     };
 }

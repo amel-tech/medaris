@@ -244,26 +244,52 @@ export const courseMuderris = table(
   ]
 );
 
-export const courseResources = table("course_resources", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  courseId: uuid("course_id")
-    .references(() => courses.id, { onDelete: "restrict" })
-    .notNull(),
-  name: text("name").notNull(),
-  meta: text("meta"),
-  type: text("type"),
-  url: text("url"),
-  orderIndex: integer("order_index").default(0).notNull(),
+/**
+ * The columns of a resource that is a file in Medaris storage rather than a
+ * link (MDRS-287): the object's key, which never leaves tedrisat, and what the
+ * file is shown and served as. All four or none.
+ */
+const resourceFileColumns = () => ({
+  storageKey: text("storage_key"),
+  fileName: text("file_name"),
+  contentType: text("content_type"),
+  sizeBytes: integer("size_bytes"),
 });
 
-// A celse's own resources (MDRS-286): links, like the course's since MDRS-279
-// — a name, a short line ("PDF · 12 sayfa") and the address it opens, which
-// tedrisat stores only as an absolute http:// or https:// URL of at most 500
-// characters. Uploading the file itself is MDRS-287. The names are programme,
-// read by everyone who may see the celse; the links are course content
-// (`course/domain/course-content.ts`). RESTRICT like every foreign key here: a
-// lesson is hidden, never deleted, and `course/course-purge.ts` and the
-// archive's week and session purge remove these before the lessons.
+// A course's resources: a link (MDRS-279), a file (MDRS-287), or since before
+// either only a name and a line, which is why `url` may be null here; never a
+// link and a file at once.
+export const courseResources = table(
+  "course_resources",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    courseId: uuid("course_id")
+      .references(() => courses.id, { onDelete: "restrict" })
+      .notNull(),
+    name: text("name").notNull(),
+    meta: text("meta"),
+    type: text("type"),
+    url: text("url"),
+    ...resourceFileColumns(),
+    orderIndex: integer("order_index").default(0).notNull(),
+  },
+  (t) => [
+    uniqueIndex("course_resources_storage_key_uq").on(t.storageKey),
+    check(
+      "course_resources_link_or_file",
+      sql`(${t.storageKey} is null and ${t.fileName} is null and ${t.contentType} is null and ${t.sizeBytes} is null) or (${t.storageKey} is not null and ${t.fileName} is not null and ${t.contentType} is not null and ${t.sizeBytes} is not null and ${t.url} is null)`
+    ),
+  ]
+);
+
+// A celse's own resources (MDRS-286): a name, a short line ("PDF · 12 sayfa")
+// and either the address it opens, which tedrisat stores only as an absolute
+// http:// or https:// URL of at most 500 characters, or since MDRS-287 a file
+// in Medaris storage — exactly one of the two. The names are programme, read
+// by everyone who may see the celse; the links and the files are course
+// content (`course/domain/course-content.ts`). RESTRICT like every foreign key
+// here: a lesson is hidden, never deleted, and `course/course-purge.ts` and
+// the archive's week and session purge remove these before the lessons.
 export const lessonResources = table(
   "lesson_resources",
   {
@@ -273,12 +299,21 @@ export const lessonResources = table(
       .notNull(),
     name: text("name").notNull(),
     meta: text("meta"),
-    url: text("url").notNull(),
+    url: text("url"),
+    ...resourceFileColumns(),
     orderIndex: integer("order_index").default(0).notNull(),
   },
-  // The course page reads every lesson's list at once, and the purges delete
-  // by lesson; Postgres does not index the referencing side on its own.
-  (t) => [index("lesson_resources_lesson_id_idx").on(t.lessonId)]
+  (t) => [
+    // The course page reads every lesson's list at once, and the purges
+    // delete by lesson; Postgres does not index the referencing side on its
+    // own.
+    index("lesson_resources_lesson_id_idx").on(t.lessonId),
+    uniqueIndex("lesson_resources_storage_key_uq").on(t.storageKey),
+    check(
+      "lesson_resources_link_or_file",
+      sql`(${t.url} is not null and ${t.storageKey} is null and ${t.fileName} is null and ${t.contentType} is null and ${t.sizeBytes} is null) or (${t.url} is null and ${t.storageKey} is not null and ${t.fileName} is not null and ${t.contentType} is not null and ${t.sizeBytes} is not null)`
+    ),
+  ]
 );
 
 export const enrollments = table(

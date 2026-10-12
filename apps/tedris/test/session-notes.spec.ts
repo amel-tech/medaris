@@ -59,6 +59,13 @@ vi.mock("~/features/courses/components/lesson-notes", () => ({
     }),
 }));
 
+// "Ödevim" (MDRS-290) is a client component with its own spec
+// (`homework-card.spec.ts`); where it is drawn is `session-homework.spec.ts`.
+vi.mock("~/features/courses/components/session-homework", () => ({
+  SessionHomework: ({ lessonId }: { lessonId: string }) =>
+    createElement("div", { "data-homework": lessonId }),
+}));
+
 const NOW = new Date("2026-10-03T17:52:00.000Z");
 
 const course = (enrollment?: { status: string }) =>

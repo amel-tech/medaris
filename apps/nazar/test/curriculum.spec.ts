@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
   type CurriculumForm,
   copyWeek,
+  courseAfterLessonUpload,
+  courseAfterUpload,
   curriculumConflict,
   curriculumDirty,
   curriculumErrorKey,
@@ -17,16 +19,20 @@ import {
   type LessonDraft,
   type LessonResourceDraft,
   lessonDraftOf,
+  lessonResourceDraftOf,
   lessonResourceDraftsOf,
   lessonWithoutAccess,
   linkHelpKey,
   moveRow,
   nextWeekNumber,
   type ResourceDraft,
+  resourceDraftOf,
   resourceDraftsOf,
+  versionAfterUpload,
   type WeekDraft,
   weekDraftsOf,
   weekFacts,
+  withLessonResource,
 } from "~/features/curriculum/curriculum";
 
 /**
@@ -1025,6 +1031,165 @@ describe("a session's own resources (MDRS-286)", () => {
       [];
     expect(first).toMatchObject({ id: "l-1" });
     expect(Object.keys(first ?? {})).not.toContain("resources");
+  });
+});
+
+describe("file rows (MDRS-287)", () => {
+  const pdf = {
+    name: "bina.pdf",
+    contentType: "application/pdf",
+    sizeBytes: 1_258_291,
+    downloadUrl: "/courses/c-1/resources/r-9/file",
+  };
+  const courseFile = {
+    id: "r-9",
+    courseId: "c-1",
+    name: "Bina metni",
+    meta: "88 sayfa",
+    file: pdf,
+    orderIndex: 1,
+  };
+  const lessonFile = {
+    id: "lr-9",
+    lessonId: "l-1",
+    name: "Emsile",
+    meta: null,
+    url: null,
+    file: { ...pdf, downloadUrl: "/lessons/l-1/resources/lr-9/file" },
+    orderIndex: 0,
+  };
+  const withFiles = () =>
+    course({
+      weeks: [
+        {
+          id: "w-1",
+          weekNumber: 1,
+          title: "Birinci",
+          summary: "Özet",
+          lessons: [lesson({ resources: [lessonFile] })],
+        },
+      ],
+      resources: [
+        { id: "r-1", name: "Kitap", meta: null, type: "PDF", url: null },
+        courseFile,
+      ],
+    });
+
+  it("are read with their file and no address, which nothing requires", () => {
+    expect(resourceDraftsOf(withFiles())[1]).toEqual({
+      id: "r-9",
+      name: "Bina metni",
+      meta: "88 sayfa",
+      url: "",
+      type: null,
+      urlRequired: false,
+      file: {
+        name: "bina.pdf",
+        contentType: "application/pdf",
+        sizeBytes: 1_258_291,
+      },
+    });
+    expect(weekDraftsOf(withFiles(), ZONE)[0]?.lessons[0]?.resources).toEqual([
+      {
+        id: "lr-9",
+        name: "Emsile",
+        meta: "",
+        url: "",
+        urlRequired: false,
+        file: {
+          name: "bina.pdf",
+          contentType: "application/pdf",
+          sizeBytes: 1_258_291,
+        },
+      },
+    ]);
+    const weeks = weekDraftsOf(withFiles(), ZONE);
+    expect(
+      curriculumErrors("Bina ve İzhar", weeks, resourceDraftsOf(withFiles()))
+    ).toEqual([]);
+  });
+
+  it("go back in the course's list with their id and no address, so tedrisat keeps the file", () => {
+    const read = withFiles();
+    const [kitap, file] = resourceDraftsOf(read) as [
+      ResourceDraft,
+      ResourceDraft,
+    ];
+    const body = curriculumPayload(
+      read,
+      form({ resources: [{ ...file, name: " Bina ", meta: "" }, kitap] }),
+      ZONE
+    );
+    expect(body.resources).toEqual([
+      { id: "r-9", name: "Bina", meta: null, type: undefined },
+      { id: "r-1", name: "Kitap", meta: null, type: "PDF" },
+    ]);
+    // left out, a file row is not sent: tedrisat deletes it, file and all
+    expect(
+      curriculumPayload(read, form({ resources: [kitap] }), ZONE).resources
+    ).toEqual([{ id: "r-1", name: "Kitap", meta: null, type: "PDF" }]);
+  });
+
+  it("go back in a session's changed list with their id and no address", () => {
+    const read = withFiles();
+    const weeks = weekDraftsOf(read, ZONE);
+    const first = weeks[0]?.lessons[0] as LessonDraft;
+    first.resources = [
+      { ...(first.resources[0] as LessonResourceDraft), name: "Emsile şerhi" },
+      {
+        ...emptyLessonResource(),
+        name: "Tatbikat",
+        url: "https://files.medaris.org/t.pdf",
+      },
+    ];
+    const sent = curriculumPayload(read, form({ weeks }), ZONE).weeks?.[0]
+      ?.lessons?.[0];
+    expect(sent?.resources).toEqual([
+      { id: "lr-9", name: "Emsile şerhi", meta: null },
+      { name: "Tatbikat", meta: null, url: "https://files.medaris.org/t.pdf" },
+    ]);
+  });
+
+  it("take the version an upload answered with only when nobody else saved in between", () => {
+    expect(versionAfterUpload(7, 8)).toBe(8);
+    // 9: somebody saved the course since the page read 7; the next save must meet the 409
+    expect(versionAfterUpload(7, 9)).toBe(7);
+    expect(versionAfterUpload(7, 7)).toBe(7);
+  });
+
+  it("join the course as stored after an upload, so the save carries the new version and a session's list is unchanged", () => {
+    const read = course();
+    const after = courseAfterUpload(read, {
+      resource: courseFile as never,
+      courseVersion: 8,
+    });
+    expect(after.version).toBe(8);
+    expect(after.resources.map((r) => r.id)).toEqual(["r-1", "r-9"]);
+    const uploaded = courseAfterLessonUpload(after, "l-1", {
+      resource: lessonFile as never,
+      courseVersion: 9,
+    });
+    expect(uploaded.version).toBe(9);
+    const row = lessonResourceDraftOf(lessonFile as never);
+    const weeks = withLessonResource(weekDraftsOf(read, ZONE), "l-1", row);
+    expect(weeks[0]?.lessons[0]?.resources).toEqual([row]);
+    const body = curriculumPayload(
+      uploaded,
+      form({
+        weeks,
+        resources: [
+          ...resourceDraftsOf(read),
+          resourceDraftOf(courseFile as never),
+        ],
+      }),
+      ZONE
+    );
+    expect(body.version).toBe(9);
+    // the session's list is the one stored: it is not sent
+    expect(Object.keys(body.weeks?.[0]?.lessons?.[0] ?? {})).not.toContain(
+      "resources"
+    );
+    expect(body.resources?.map((r) => r.id)).toEqual(["r-1", "r-9"]);
   });
 });
 

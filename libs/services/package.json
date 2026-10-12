@@ -15,6 +15,16 @@
       "types": "./src/utils/index.ts",
       "import": "./src/utils/index.ts",
       "require": "./src/utils/index.ts"
+    },
+    "./file-proxy": {
+      "types": "./src/file-proxy/index.ts",
+      "import": "./src/file-proxy/index.ts",
+      "require": "./src/file-proxy/index.ts"
+    },
+    "./file-rules": {
+      "types": "./src/file-rules/index.ts",
+      "import": "./src/file-rules/index.ts",
+      "require": "./src/file-rules/index.ts"
     }
   },
   "scripts": {
@@ -23,13 +33,21 @@
     "generate": "pnpm run generate:tedrisat && pnpm run lint:fix",
     "generate:tedrisat": "openapi-generator-cli generate -i swagger-docs/tedrisat.json -g typescript-fetch -o src/tedrisat/generated --additional-properties=typescriptThreePlus=true,supportsES6=true,npmName=@medaris/tedrisatapi",
     "clean": "rm -rf .turbo node_modules dist .tsbuild src/*/generated",
-    "typecheck": "tsc -b tsconfig.json"
+    "typecheck": "tsc -b tsconfig.json",
+    "test": "vitest run --coverage",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@medaris/auth": "workspace:*",
+    "server-only": "catalog:"
   },
   "devDependencies": {
     "@openapitools/openapi-generator-cli": "catalog:",
     "@types/node": "catalog:",
+    "@vitest/coverage-v8": "catalog:",
     "onchange": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   },
   "private": true
 }

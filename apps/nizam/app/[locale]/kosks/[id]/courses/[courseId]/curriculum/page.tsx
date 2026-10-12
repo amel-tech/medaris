@@ -3,6 +3,7 @@ import { forbidden, notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { CourseLoadFailed } from "~/features/courses/components/course-load-failed";
 import { CurriculumEditor } from "~/features/courses/components/curriculum-editor";
+import { FileErrorNotice } from "~/features/courses/components/file-error-notice";
 import { readCourseScope } from "~/features/courses/reads";
 
 // Behind the sign-in middleware, and per caller.
@@ -16,7 +17,8 @@ export async function generateMetadata(): Promise<Metadata> {
 /**
  * Müfredat (design nizam/54): a course's details, weeks and sessions for the
  * köşk's manager and the course's müderris. Anyone else, or a course of
- * another köşk, gets the "Bu bölüm için izniniz yok" screen (nizam/06).
+ * another köşk, gets the "Bu bölüm için izniniz yok" screen (nizam/06). A
+ * refused file download comes back here with `?fileError=` (MDRS-287).
  */
 export default async function Page({
   params,
@@ -32,6 +34,7 @@ export default async function Page({
 
   return (
     <div className="mx-auto w-full max-w-[72rem]">
+      <FileErrorNotice />
       <CurriculumEditor
         kosk={{ id: scope.kosk.id, name: scope.kosk.name }}
         course={scope.course}

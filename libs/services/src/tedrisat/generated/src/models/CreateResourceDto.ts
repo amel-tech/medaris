@@ -44,7 +44,7 @@ export interface CreateResourceDto {
      */
     type?: string;
     /**
-     * Where the resource opens: an absolute http:// or https:// URL (MDRS-279). null clears it on replace; a missing key keeps it.
+     * Where the resource opens: an absolute http:// or https:// URL (MDRS-279). null clears it on replace; a missing key keeps it. A stored file (MDRS-287) keeps its file and takes no url (RESOURCE_IS_FILE); files are added through `POST /courses/:id/resources/files`, and a file left out of the list is removed, from storage too.
      * @type {string}
      * @memberof CreateResourceDto
      */

@@ -30,10 +30,11 @@ describe("the medrese's permission dictionary", () => {
   // nazir/06 prints ten medrese permissions and the twenty a müderris holds by
   // default; the owner's 1 October list adds "request a non-medrese course in a
   // köşk" (medrese) and "propose a köşk deck" (course); `question.answer`
-  // (MDRS-150) is the twenty-second course permission.
-  it("has the eleven medrese permissions and the twenty-two course permissions the dialogs print", () => {
+  // (MDRS-150) is the twenty-second course permission and `submission.read`
+  // (MDRS-290) the twenty-third.
+  it("has the eleven medrese permissions and the twenty-three course permissions the dialogs print", () => {
     expect(MADRASAH_CATALOG).toHaveLength(11);
-    expect(MADRASAH_COURSE_CATALOG).toHaveLength(22);
+    expect(MADRASAH_COURSE_CATALOG).toHaveLength(23);
   });
 
   it("offers a nazır every course permission a müderris holds, but the one to give permissions", () => {

@@ -4,16 +4,26 @@ import type { ReactNode } from "react";
 import { getMessages } from "~/lib/i18n/messages";
 import { adminOutsideScopes } from "../admin-scope";
 import { openedScope } from "../opened-scope";
-import { getMenuCounts, getPortal } from "../reads";
+import { getMenuCounts, getMenuPermissions, getPortal } from "../reads";
 import {
   defaultScope,
   findScope,
   NO_ACCESS_PATH,
   SCOPE_COOKIE,
+  type Scope,
   type ScopeKind,
 } from "../scope";
 import { LoadFailed } from "./load-failed";
 import { PortalFrame } from "./portal-frame";
+
+/** The menu's numbers and what the caller holds in its course, read side by side. */
+const menuReads = async (scope: Scope) => {
+  const [counts, held] = await Promise.all([
+    getMenuCounts(scope),
+    getMenuPermissions(scope),
+  ]);
+  return { counts, held };
+};
 
 /** The roles could not be read (nazir 02, criterion 5): a retry state, not a verdict about access. */
 export async function PortalUnavailable({
@@ -87,7 +97,7 @@ export async function PortalLayout({
           roles={adminRoles}
           scopes={[...portal.scopes, opened.scope]}
           current={opened.scope}
-          counts={await getMenuCounts(opened.scope)}
+          {...(await menuReads(opened.scope))}
           remember={false}
         >
           {children}
@@ -104,7 +114,7 @@ export async function PortalLayout({
       roles={portal.roles}
       scopes={portal.scopes}
       current={current}
-      counts={await getMenuCounts(current)}
+      {...(await menuReads(current))}
       remember={wanted !== null}
     >
       {children}

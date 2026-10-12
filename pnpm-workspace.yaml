@@ -302,6 +302,7 @@ catalog:
   pino: ^10.3.1 # MDRS-21: +1 major
   pino-pretty: ^13.0.0
   winston: ^3.17.0
+  express: ^5.2.1 # MDRS-287: tedrisat imports its Request/Response types for file streaming; the runtime copy comes with @nestjs/platform-express
   '@types/express': ^5.0.0
   '@types/multer': ^2.0.0 # ADR §D4: runtime → dev
   '@opentelemetry/sdk-node': ^0.222.0 # MDRS-21: closes GHSA prometheus-exporter crash (<0.217 vulnerable)

@@ -103,6 +103,13 @@ vi.mock(
   }
 );
 
+// "Ödevim" (MDRS-290) is a client component with its own spec
+// (`homework-card.spec.ts`); where it is drawn is `session-homework.spec.ts`.
+vi.mock("~/features/courses/components/session-homework", () => ({
+  SessionHomework: ({ lessonId }: { lessonId: string }) =>
+    createElement("div", { "data-homework": lessonId }),
+}));
+
 beforeEach(() => {
   viewer.zone = "Europe/Istanbul";
 });
@@ -1004,6 +1011,85 @@ describe("session page, Kaynaklar (MDRS-279, MDRS-286, MDRS-289)", () => {
     expect(box).not.toContain("Google Drive");
     expect(box.split(tr.resourcesLocked)).toHaveLength(2);
     expect(html).not.toContain("drive.google.com");
+  });
+
+  it("downloads a celse's and the course's files through this app, each with its type and size (MDRS-287)", async () => {
+    const LESSON = "11111111-1111-4111-8111-111111111111";
+    const COURSE = "0b7f6c1e-2a4d-4c8e-9f10-3a5b6c7d8e9f";
+    const R1 = "5d2e8f40-1c3b-4a6d-8e7f-90a1b2c3d4e5";
+    const R2 = "6e3f9a51-2d4c-4b7e-9f80-a1b2c3d4e5f6";
+    const html = await draw(
+      session({
+        id: LESSON,
+        resources: [
+          {
+            id: R1,
+            lessonId: LESSON,
+            name: "Çekim tablosu",
+            meta: null,
+            url: null,
+            file: {
+              name: "tablo.pdf",
+              contentType: "application/pdf",
+              sizeBytes: 3 * 1024 * 1024,
+              downloadUrl: `/lessons/${LESSON}/resources/${R1}/file`,
+            },
+            orderIndex: 0,
+          },
+        ],
+      }),
+      {
+        ...withCourseResources,
+        resources: [
+          {
+            id: R2,
+            courseId: COURSE,
+            name: "Bina şerhi",
+            file: {
+              name: "bina.docx",
+              contentType:
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+              sizeBytes: 40 * 1024,
+              downloadUrl: `/courses/${COURSE}/resources/${R2}/file`,
+            },
+            orderIndex: 0,
+          },
+        ],
+      } as unknown as CourseDetailResponse
+    );
+    const mine = list(html, "session-resources");
+    expect(mine).toContain(
+      `<a class="mds-link" href="/api/files/lessons/${LESSON}/resources/${R1}">`
+    );
+    expect(mine).toContain(`>${tr.download}</span>`);
+    expect(mine).toContain(">PDF<");
+    expect(mine).toContain("3 MB");
+    const theirs = list(html, "course-resources");
+    expect(theirs).toContain(
+      `<a class="mds-link" href="/api/files/courses/${COURSE}/resources/${R2}">`
+    );
+    expect(theirs).toContain(">DOCX<");
+    expect(theirs).toContain("40 kB");
+    expect(resourcesCard(html)).not.toContain('target="_blank"');
+    expect(resourcesCard(html)).not.toContain(tr.resourcesLocked);
+  });
+
+  it("names a file without a link to who may not read the content (MDRS-287)", async () => {
+    const html = await draw(
+      session({
+        contentLocked: true,
+        resources: [
+          { id: "lr9", lessonId: "s1", name: "Çekim tablosu", orderIndex: 0 },
+        ],
+      }),
+      course
+    );
+    const box = resourcesCard(html);
+    expect(box).toContain(">Çekim tablosu<");
+    expect(box).not.toContain("<a ");
+    expect(box).not.toContain("/api/files");
+    expect(box).not.toContain("mds-badge");
+    expect(box.split(tr.resourcesLocked)).toHaveLength(2);
   });
 
   it("shows a group only when it has rows", async () => {

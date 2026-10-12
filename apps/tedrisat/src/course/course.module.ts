@@ -9,6 +9,7 @@ import { KoskModule } from "../kosk/kosk.module";
 import { LessonInvitationModule } from "../lesson-invitation/lesson-invitation.module";
 import { NotificationModule } from "../notification/notification.module";
 import { PlatformPolicyModule } from "../platform-policy/platform-policy.module";
+import { StorageModule } from "../storage/storage.module";
 import { CourseController } from "./course.controller";
 import { CourseRepository } from "./course.repository";
 import { CourseService } from "./course.service";
@@ -28,6 +29,8 @@ import { RecordingEncodingPoller } from "./recording-encoding.poller";
 import { RecordingReleasePoller } from "./recording-release.poller";
 import { RecordingUploadController } from "./recording-upload.controller";
 import { RecordingUploadService } from "./recording-upload.service";
+import { ResourceFileController } from "./resource-file.controller";
+import { ResourceFileService } from "./resource-file.service";
 
 @Module({
   imports: [
@@ -39,6 +42,7 @@ import { RecordingUploadService } from "./recording-upload.service";
     AssignmentModule,
     BunnyStreamModule,
     LessonInvitationModule,
+    StorageModule,
   ],
   controllers: [
     CourseController,
@@ -46,6 +50,7 @@ import { RecordingUploadService } from "./recording-upload.service";
     LiveStreamController,
     RecordingController,
     RecordingUploadController,
+    ResourceFileController,
     CourseNazirController,
   ],
   // The context loader is read straight from the database, as `BanModule`
@@ -57,6 +62,7 @@ import { RecordingUploadService } from "./recording-upload.service";
     RecordingRepository,
     RecordingService,
     RecordingUploadService,
+    ResourceFileService,
     RecordingEncodingPoller,
     RecordingReleasePoller,
     CourseStatsRepository,

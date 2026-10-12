@@ -89,6 +89,7 @@ describe("codes and messages", () => {
           PermissionCatalog: {
             permissions: Record<string, { title: string; short: string }>;
             course: Record<string, string>;
+            courseShort: Record<string, string>;
           };
         }
       ).PermissionCatalog;
@@ -98,8 +99,11 @@ describe("codes and messages", () => {
         expect(entry?.short, `${lang} ${code}`).toBeTruthy();
       }
       // The 18 course permissions of nizam/13, the owner's 1 October entry
-      // "propose a köşk deck" and `question.answer` (MDRS-150).
-      expect(Object.keys(catalog.course)).toHaveLength(20);
+      // "propose a köşk deck", `question.answer` (MDRS-150) and
+      // `submission.read` (MDRS-290), which a köşk or medrese may now grant.
+      expect(Object.keys(catalog.course)).toHaveLength(21);
+      expect(catalog.course.submission_read, lang).toBeTruthy();
+      expect(catalog.courseShort.submission_read, lang).toBeTruthy();
     }
   });
 });

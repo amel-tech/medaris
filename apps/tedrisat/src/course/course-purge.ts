@@ -1,4 +1,4 @@
-import { eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, type SQLWrapper } from "drizzle-orm";
 import type { DatabaseService } from "../database/database.service";
 import { deleteAssignmentsIn } from "../database/role-assignments";
 import { auditLog } from "../database/schema/audit.schema";
@@ -14,7 +14,15 @@ import {
 } from "../database/schema/course.schema";
 import { lessonNotes } from "../database/schema/lesson-note.schema";
 import { lessonQuestions } from "../database/schema/lesson-question.schema";
+import {
+  lessonSubmissions,
+  submissionFiles,
+} from "../database/schema/lesson-submission.schema";
 import { SCOPE_TYPES } from "../database/schema/role-assignment.schema";
+import {
+  type DeletionReason,
+  enqueueStorageDeletions,
+} from "../storage/storage-deletions";
 
 export type Tx = Parameters<
   Parameters<DatabaseService["db"]["transaction"]>[0]
@@ -65,7 +73,9 @@ export async function purgeCourses(
 
   if (weekIds.length > 0) {
     // Recordings (MDRS-162), notes and questions (MDRS-150) and a session's
-    // own resources (MDRS-286) hang off lessons; they go first, uncounted. `lesson_invitations` (MDRS-121) is left on
+    // own resources (MDRS-286), their files with them (MDRS-287), and the
+    // talebe's homework with its files (MDRS-290) hang off lessons; they go
+    // first, uncounted. `lesson_invitations` (MDRS-121) is left on
     // purpose: it holds no key to the lesson, and the invitation sweep reads it
     // to send each talebe the CANCEL for a session that is gone, then deletes it.
     const lessonIds = tx
@@ -81,9 +91,8 @@ export async function purgeCourses(
     await tx
       .delete(lessonQuestions)
       .where(inArray(lessonQuestions.lessonId, lessonIds));
-    await tx
-      .delete(lessonResources)
-      .where(inArray(lessonResources.lessonId, lessonIds));
+    await deleteLessonResources(tx, lessonIds, "course.purge");
+    await deleteLessonSubmissions(tx, lessonIds, "course.purge");
     counts.lessons = (
       await tx
         .delete(lessons)
@@ -108,6 +117,23 @@ export async function purgeCourses(
       .where(inArray(courseMuderris.courseId, courseIds))
       .returning({ id: courseMuderris.id })
   ).length;
+  // A course resource that is a file (MDRS-287) leaves its object to be
+  // removed from storage once this commits.
+  await enqueueStorageDeletions(
+    tx,
+    (
+      await tx
+        .select({ key: courseResources.storageKey })
+        .from(courseResources)
+        .where(
+          and(
+            inArray(courseResources.courseId, courseIds),
+            isNotNull(courseResources.storageKey)
+          )
+        )
+    ).map((r) => r.key),
+    "course.purge"
+  );
   counts.resources = (
     await tx
       .delete(courseResources)
@@ -127,6 +153,64 @@ export async function purgeCourses(
       .returning({ id: courses.id })
   ).length;
   return counts;
+}
+
+/**
+ * Deletes the resources of the given lessons (MDRS-286) inside the caller's
+ * transaction, and marks the objects of those that are files (MDRS-287) for
+ * removal from storage once it commits. Shared by every purge that deletes
+ * lessons: the course's, and the archive's week and session.
+ */
+export async function deleteLessonResources(
+  tx: Tx,
+  lessonIds: SQLWrapper | string[],
+  reason: DeletionReason
+): Promise<void> {
+  const files = await tx
+    .select({ key: lessonResources.storageKey })
+    .from(lessonResources)
+    .where(
+      and(
+        inArray(lessonResources.lessonId, lessonIds),
+        isNotNull(lessonResources.storageKey)
+      )
+    );
+  await enqueueStorageDeletions(
+    tx,
+    files.map((f) => f.key),
+    reason
+  );
+  await tx
+    .delete(lessonResources)
+    .where(inArray(lessonResources.lessonId, lessonIds));
+}
+
+/**
+ * Deletes the talebe's homework on the given lessons (MDRS-290), files first,
+ * inside the caller's transaction, and marks every file's object for removal
+ * from storage once it commits. Shared by every purge that deletes lessons.
+ */
+export async function deleteLessonSubmissions(
+  tx: Tx,
+  lessonIds: SQLWrapper | string[],
+  reason: DeletionReason
+): Promise<void> {
+  const submissionIds = tx
+    .select({ id: lessonSubmissions.id })
+    .from(lessonSubmissions)
+    .where(inArray(lessonSubmissions.lessonId, lessonIds));
+  const removed = await tx
+    .delete(submissionFiles)
+    .where(inArray(submissionFiles.submissionId, submissionIds))
+    .returning({ key: submissionFiles.storageKey });
+  await enqueueStorageDeletions(
+    tx,
+    removed.map((f) => f.key),
+    reason
+  );
+  await tx
+    .delete(lessonSubmissions)
+    .where(inArray(lessonSubmissions.lessonId, lessonIds));
 }
 
 /** The ids of every course of a köşk, hidden or not. */

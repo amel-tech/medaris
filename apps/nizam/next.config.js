@@ -41,6 +41,12 @@ const nextConfig = {
       "@medaris/icons/ssr",
       "@phosphor-icons/react",
     ],
+    // MDRS-287: `proxy.ts` reads the whole body of every request it matches,
+    // the resource uploads under `app/api/files` included (kept in its
+    // matcher so the session is renewed), and cuts it off at this size, 10 MB
+    // by default. A file may be 25 MB, plus the multipart's own allowance.
+    // See libs/services/README.md, "proxy.ts and upload size".
+    proxyClientMaxBodySize: "26mb",
   },
 };
 

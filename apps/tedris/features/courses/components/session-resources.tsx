@@ -1,7 +1,7 @@
 import { ArabicText } from "./arabic-text";
 import { ResourceList, type ResourceRow } from "./course-resources";
 
-/** Whether "Kaynaklar" has anything to show: a kaynak, or a link of the celse's or the course's. */
+/** Whether "Kaynaklar" has anything to show: a kaynak, or a link or file of the celse's or the course's. */
 export const hasSessionResources = (
   kaynak: string | null,
   own: readonly ResourceRow[] | undefined,
@@ -12,9 +12,10 @@ export const hasSessionResources = (
 /**
  * "Kaynaklar" of the celse detail page (MDRS-289): one card for what to
  * read and open. The celse's kaynak on top as "Okunacak yer: …" (MDRS-279),
- * then the celse's own links under "Bu celse" (MDRS-286) and the course's
- * under "Ders geneli"; each group only when it has rows, and nothing at all
- * when none has. Every name goes to whoever may see the celse, each link
+ * then the celse's own resources under "Bu celse" (MDRS-286) and the
+ * course's under "Ders geneli"; each group only when it has rows, and nothing
+ * at all when none has. A resource is a link or, since MDRS-287, a file to
+ * download. Every name goes to whoever may see the celse, each link and file
  * only to who may read the content, so a locked body lists the names and
  * says who opens them. The kaynak is content as well: the API sends it to
  * who may read it, and to everyone for the sample session (MDRS-161).
@@ -26,6 +27,7 @@ export const SessionResources = ({
   course,
   courseLocked,
   labels,
+  locale,
 }: {
   kaynak: string | null;
   own: readonly ResourceRow[] | undefined;
@@ -39,8 +41,12 @@ export const SessionResources = ({
     own: string;
     course: string;
     newTab: string;
+    /** read after a file's name: " (indirilir)" */
+    download: string;
     locked: string;
   };
+  /** the page's language, for a file's size */
+  locale: string;
 }) => {
   if (!hasSessionResources(kaynak, own, course)) return null;
   const ownRows = own ?? [];
@@ -56,7 +62,12 @@ export const SessionResources = ({
     rows.length > 0 ? (
       <div className="flex flex-col gap-1">
         <h3 className="mds-eyebrow">{title}</h3>
-        <ResourceList resources={rows} newTab={labels.newTab} testId={testId} />
+        <ResourceList
+          resources={rows}
+          labels={labels}
+          locale={locale}
+          testId={testId}
+        />
       </div>
     ) : null;
   return (

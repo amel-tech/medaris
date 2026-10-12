@@ -60,6 +60,7 @@
     "@swc/core": "catalog:",
     "@testcontainers/postgresql": "catalog:",
     "@types/express": "catalog:",
+    "express": "catalog:",
     "@types/multer": "catalog:",
     "@types/node": "catalog:",
     "@types/pg": "catalog:",
