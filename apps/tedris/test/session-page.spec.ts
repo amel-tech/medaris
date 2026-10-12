@@ -63,8 +63,17 @@ const BUNNY =
   "https://player.mediadelivery.net/embed/424242/3f1c2b4a-5d6e-4f70-8a9b-0c1d2e3f4a5b?token=9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08&expires=1790000000";
 
 /** Markup without its tags, for a sentence that runs through several elements. */
-const text = (html: string | undefined) =>
-  (html ?? "").replace(/<[^>]+>/g, "").replaceAll("&#x27;", "'");
+const text = (html: string | undefined) => {
+  // Repeated until nothing changes, so a tag split by a removed one cannot
+  // survive (CodeQL js/incomplete-multi-character-sanitization).
+  let out = html ?? "";
+  let before: string;
+  do {
+    before = out;
+    out = out.replace(/<[^>]*>/g, "");
+  } while (out !== before);
+  return out.replaceAll("&#x27;", "'");
+};
 
 /** The buttons to the watch page (MDRS-285), as [text, href]. */
 const watchButtons = (html: string) =>
