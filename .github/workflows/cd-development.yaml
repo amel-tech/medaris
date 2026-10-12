@@ -176,6 +176,17 @@ jobs:
   # `github.event.inputs.dry_run` is compared as a string on purpose: a
   # workflow_dispatch boolean input arrives in the event payload as "true" /
   # "false", and a non-empty string is truthy in an `if:`.
+  #
+  # `actions: read` is not used on this path. The called workflows' jobs ask
+  # for it because a full release lists this workflow's runs to wait for the
+  # image it builds (tools/ci/promote-image.sh), and a called workflow cannot
+  # ask for a permission its caller did not pass: the run would fail to start.
+  #
+  # The `sha-<short>` image each called workflow pushes here is what a full
+  # release later promotes to production. A run of this workflow that is
+  # replaced while pending (a newer push to main, same `cd-development`
+  # group) leaves its commit without that image; the release then builds
+  # from its tag and warns.
   landing-web:
     needs: detect
     if: ${{ github.event.inputs.dry_run != 'true' && contains(fromJSON(needs.detect.outputs.projects), 'landing-web') }}
@@ -183,6 +194,7 @@ jobs:
     permissions:
       contents: read
       packages: write
+      actions: read
     secrets: inherit
 
   nazar-web:
@@ -192,6 +204,7 @@ jobs:
     permissions:
       contents: read
       packages: write
+      actions: read
     secrets: inherit
 
   nizam-web:
@@ -201,6 +214,7 @@ jobs:
     permissions:
       contents: read
       packages: write
+      actions: read
     secrets: inherit
 
   tedris-web:
@@ -210,6 +224,7 @@ jobs:
     permissions:
       contents: read
       packages: write
+      actions: read
     secrets: inherit
 
   tedrisat-api:
@@ -219,6 +234,7 @@ jobs:
     permissions:
       contents: read
       packages: write
+      actions: read
     secrets: inherit
 
   teskilat-api:
@@ -228,6 +244,7 @@ jobs:
     permissions:
       contents: read
       packages: write
+      actions: read
     secrets: inherit
 
   # No packages: write — this one ships a JAR over SSH, not an image. Never on
