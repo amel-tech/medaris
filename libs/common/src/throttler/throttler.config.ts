@@ -1,4 +1,4 @@
-import type { ThrottlerModuleOptions } from "@nestjs/throttler";
+import type { ThrottlerOptions } from "@nestjs/throttler";
 
 /**
  * Requests one client may make to a single route inside one window.
@@ -92,16 +92,17 @@ function resolveThrottlerLimit(env: NodeJS.ProcessEnv = process.env): number {
  * this module has no bulk-specific concept, since teskilat has no bulk route
  * to share one with.
  *
- * The store is `ThrottlerStorageService`, the in-memory default. It counts per
- * process, so with more than one replica the effective limit is the configured
- * one multiplied by the replica count. Redis is what fixes that — the
+ * The store is `MemoryThrottlerStorage` (./throttler-storage.ts), set by
+ * `RateLimitModule`. It counts per process, so with more than one replica the
+ * effective limit is the configured one multiplied by the replica count. Redis
+ * is what fixes that — the
  * connection details already exist as `redis.host` / `redis.port` /
  * `redis.password` in apps/tedrisat/src/config/config.ts — and it has to land
  * before tedrisat is scaled past a single instance.
  */
-export function buildThrottlerOptions(
-  env: NodeJS.ProcessEnv = process.env
-): ThrottlerModuleOptions {
+export function buildThrottlerOptions(env: NodeJS.ProcessEnv = process.env): {
+  throttlers: ThrottlerOptions[];
+} {
   return {
     throttlers: [
       {

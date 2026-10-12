@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 import { APP_GUARD } from "@nestjs/core";
 import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
 import { buildThrottlerOptions } from "./throttler.config";
+import { MemoryThrottlerStorage } from "./throttler-storage";
 
 /**
  * Rate limiting for both Nest APIs (MDRS-31).
@@ -34,7 +35,11 @@ import { buildThrottlerOptions } from "./throttler.config";
 @Module({
   imports: [
     ThrottlerModule.forRootAsync({
-      useFactory: () => buildThrottlerOptions(),
+      // Not the library's store: see ./throttler-storage.ts.
+      useFactory: () => ({
+        ...buildThrottlerOptions(),
+        storage: new MemoryThrottlerStorage(),
+      }),
     }),
   ],
   providers: [
