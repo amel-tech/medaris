@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.5.0](https://github.com/amel-tech/medaris/compare/tedris-web-v2.4.0...tedris-web-v2.5.0) (2026-10-12)
+
+
+### Features
+
+* **tedris-web, nazar-web, nizam-web:** sessions in Valkey and back-channel logout ([#295](https://github.com/amel-tech/medaris/issues/295)) ([a817026](https://github.com/amel-tech/medaris/commit/a817026b84dd63b58cc1aaf4550433c1cdd50071))
+* **tedrisat, tedris-web, nazar-web, nizam-web:** files in Bunny Storage and celse homework ([#293](https://github.com/amel-tech/medaris/issues/293)) ([0f7668f](https://github.com/amel-tech/medaris/commit/0f7668f5411060cf3162ff182323526fab635e12))
+
 ## [2.4.0](https://github.com/amel-tech/medaris/compare/tedris-web-v2.3.0...tedris-web-v2.4.0) (2026-10-12)
 
 
