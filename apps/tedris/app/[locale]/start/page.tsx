@@ -1,17 +1,11 @@
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { getMyCourses } from "~/features/courses/actions";
-import { getAccessToken } from "~/lib/auth";
-import {
-  hasWelcomed,
-  resolvePostSignInPath,
-  WELCOMED_COOKIE,
-} from "~/lib/post-sign-in";
-import { subjectOf } from "~/lib/token-subject";
 
 /**
- * Where every sign-in that names no page ends (MDRS-101): the first-login
- * screen B1 for a new user, `/learning` for everyone else. Renders nothing.
+ * `/start` used to be where a sign-in that named no page ended, choosing the
+ * first-login screen (B1) or `/learning` (MDRS-101). There is no such step any
+ * more: a sign-in lands on the page it named, or on Ana sayfa (`/<locale>`,
+ * `pages.afterSignIn` in lib/auth.ts). The address stays, as a redirect to Ana
+ * sayfa, for a bookmark or a sign-in round trip that was already under way.
  */
 export default async function StartPage({
   params,
@@ -19,12 +13,5 @@ export default async function StartPage({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
-  const welcomed = hasWelcomed(
-    (await cookies()).get(WELCOMED_COOKIE)?.value,
-    subjectOf(await getAccessToken())
-  );
-  // Only asked when the cookie is missing: a returning user on a new device.
-  const enrolledCourses = welcomed ? 0 : (await getMyCourses()).length;
-
-  redirect(resolvePostSignInPath({ locale, welcomed, enrolledCourses }));
+  redirect(`/${locale}`);
 }

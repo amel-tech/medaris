@@ -14,19 +14,17 @@ describe("Kayıt ol opens Keycloak's registration form (MDRS-101)", () => {
   // sign-in-route spec.
   it("asks the start route for registration, in the page's language", () => {
     expect(
-      signInHref({ intent: "register", callbackUrl: "/tr/start", locale: "tr" })
-    ).toBe(
-      "/api/auth/signin?callbackUrl=%2Ftr%2Fstart&locale=tr&intent=register"
-    );
+      signInHref({ intent: "register", callbackUrl: "/tr", locale: "tr" })
+    ).toBe("/api/auth/signin?callbackUrl=%2Ftr&locale=tr&intent=register");
   });
 
   it("leaves a plain sign-in on the login form", () => {
     expect(
-      signInHref({ intent: "signin", callbackUrl: "/en/start", locale: "en" })
-    ).toBe("/api/auth/signin?callbackUrl=%2Fen%2Fstart&locale=en");
+      signInHref({ intent: "signin", callbackUrl: "/en", locale: "en" })
+    ).toBe("/api/auth/signin?callbackUrl=%2Fen&locale=en");
   });
 
-  it("the register page starts that flow and ends on /start", async () => {
+  it("the register page starts that flow and ends on Ana sayfa, with no welcome step", async () => {
     const { default: RegisterPage } = await import(
       "../app/[locale]/auth/register/page"
     );
@@ -38,7 +36,7 @@ describe("Kayıt ol opens Keycloak's registration form (MDRS-101)", () => {
     const entry = element.props.children[1];
     expect(entry.props).toEqual({
       intent: "register",
-      callbackUrl: "/tr/start",
+      callbackUrl: "/tr",
     });
   });
 });

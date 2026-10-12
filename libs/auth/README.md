@@ -84,7 +84,7 @@ const localeOf = (path: string | null) =>
 
 pages: {
   signIn: (returnTo) => `/${localeOf(returnTo)}/auth/signin`,
-  afterSignIn: (locale) => `/${locale ?? "tr"}/start`, // nizam: `/${locale ?? "tr"}`
+  afterSignIn: (locale) => `/${locale ?? "tr"}`, // Ana sayfa in both
 },
 locales,
 ```

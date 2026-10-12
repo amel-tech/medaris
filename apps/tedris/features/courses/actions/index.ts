@@ -84,18 +84,6 @@ export const getCourse = async (
   }
 };
 
-export const getMyCourses = async (): Promise<EnrolledCourseResponse[]> => {
-  // Outside the `try`: no session is a trip to sign in, not "no courses" (A16).
-  const { courses } = await memberApi();
-  try {
-    return await courses.getEnrolledCourses();
-  } catch (error) {
-    await reauthIfRefused(error);
-    console.error("Error fetching enrolled courses:", error);
-    return [];
-  }
-};
-
 /**
  * The caller's courses for Derslerim (MDRS-159): enrolled, completed, the
  * requests still waiting for approval and the courses whose access was withdrawn. A failure throws: an empty list would

@@ -17,7 +17,7 @@ export const authPages = {
 export const registerPage = "/auth/register";
 
 /**
- * Where a sign-in that names no destination ends up: it decides between the
- * first-login screen and `/learning`. See `lib/post-sign-in.ts`.
+ * Ana sayfa in `locale`: where a sign-in that names no page ends (`/<locale>`
+ * sends a signed-in caller on to `/home`). There is no first-login step.
  */
-export const postSignInPage = "/start";
+export const homePath = (locale: string) => `/${locale}`;

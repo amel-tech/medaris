@@ -346,17 +346,6 @@
     "signOutCancel": "إلغاء",
     "signingOut": "جارٍ تسجيل الخروج"
   },
-  "WelcomePage": {
-    "title": "أهلًا بك!",
-    "titleWithName": "أهلًا بك، {name}!",
-    "description": "حسابك جاهز. خطواتك الأولى:",
-    "steps": {
-      "kosk": "اختر كُشكًا وتابِعه",
-      "course": "سجّل في دورة",
-      "decks": "ادرس بالبطاقات التعليمية"
-    },
-    "start": "ابدأ التعلّم"
-  },
   "DeckUnavailable": {
     "title": "هذه المجموعة غير متاحة",
     "description": "ربما حُذفت، أو أن صاحبها يبقيها خاصة به.",

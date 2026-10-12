@@ -346,17 +346,6 @@
     "signOutCancel": "Cancel",
     "signingOut": "Signing out"
   },
-  "WelcomePage": {
-    "title": "Welcome!",
-    "titleWithName": "Welcome, {name}!",
-    "description": "Your account is ready. Your first steps:",
-    "steps": {
-      "kosk": "Pick a köşk and follow it",
-      "course": "Enrol in a course",
-      "decks": "Study with flashcards"
-    },
-    "start": "Start learning"
-  },
   "DeckUnavailable": {
     "title": "This deck isn't available",
     "description": "It may have been deleted, or its owner keeps it private.",

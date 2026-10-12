@@ -1,6 +1,6 @@
 import { createAuth } from "@medaris/auth/server";
 import { env } from "~/env";
-import { authPages, postSignInPage } from "~/lib/auth_pages";
+import { authPages, homePath } from "~/lib/auth_pages";
 import { locales, routing } from "~/lib/i18n/routing";
 
 /**
@@ -51,9 +51,9 @@ export const {
   pages: {
     signIn: (returnTo) => `/${localeOf(returnTo)}${authPages.signIn}`,
     // A sign-in that names no page ("Giriş yap" in the header, "Kayıt ol")
-    // ends on /start, which picks the first-login screen or /learning.
-    afterSignIn: (locale) =>
-      `/${locale ?? routing.defaultLocale}${postSignInPage}`,
+    // ends on Ana sayfa: `/<locale>` sends a signed-in caller on to /home.
+    // There is no first-login step any more.
+    afterSignIn: (locale) => homePath(locale ?? routing.defaultLocale),
   },
   locales,
   kcLocale: true,

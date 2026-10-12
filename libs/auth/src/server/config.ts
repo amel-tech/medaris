@@ -22,8 +22,8 @@ export interface AuthPages {
    */
   signIn: string | ((returnTo: string | null) => string);
   /**
-   * Where a sign-in that names no page ends: tedris `/<locale>/start`, nizam
-   * `/<locale>`, nazar `/`. Receives the locale the sign-in was started in,
+   * Where a sign-in that names no page ends: tedris and nizam `/<locale>`,
+   * nazar `/`. Receives the locale the sign-in was started in,
    * when it named one. Default `/`.
    */
   afterSignIn?: string | ((locale: string | null) => string);

@@ -346,17 +346,6 @@
     "signOutCancel": "Vazgeç",
     "signingOut": "Çıkış yapılıyor"
   },
-  "WelcomePage": {
-    "title": "Hoş geldin!",
-    "titleWithName": "Hoş geldin, {name}!",
-    "description": "Hesabın hazır. İlk adımların:",
-    "steps": {
-      "kosk": "Bir köşk seç ve takip et",
-      "course": "Bir derse kaydol",
-      "decks": "Ezber kartlarıyla çalış"
-    },
-    "start": "Öğrenmeye başla"
-  },
   "DeckUnavailable": {
     "title": "Bu desteye ulaşılamıyor",
     "description": "Deste silinmiş olabilir ya da sahibi onu yalnızca kendine açık tutuyor.",

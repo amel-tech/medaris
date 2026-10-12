@@ -11,7 +11,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
  * tedris on `@medaris/auth`: the instance `lib/auth.ts` builds, the route
  * handler file, and the one "unauthenticated" path through the reads and the
  * actions. The package's own specs cover the flows; these pin what tedris
- * chose (the cookie prefix, the locale of the sign-in page, /start after a
+ * chose (the cookie prefix, the locale of the sign-in page, Ana sayfa after a
  * sign-in that names no page) and that its reads and actions take the path.
  * Nothing reaches Keycloak or tedrisat: `fetch` is a spy that fails the test
  * when a read goes out without a token.
@@ -142,11 +142,11 @@ describe("app/api/auth/[...auth]/route.ts", () => {
     expect(JSON.stringify(body)).not.toMatch(/access-token|refresh|e30\./);
   });
 
-  it("sends a browser already signed in on to /start in its language, past Keycloak", async () => {
+  it("sends a browser already signed in on to Ana sayfa in its language, past Keycloak and with no welcome step", async () => {
     const response = await call("GET", "/api/auth/signin?locale=en", {
       cookie: await sessionCookie(),
     });
-    expect(response.headers.get("location")).toBe(`${ORIGIN}/en/start`);
+    expect(response.headers.get("location")).toBe(`${ORIGIN}/en`);
   });
 
   it("signs out a browser with no session here, and lands on /", async () => {
