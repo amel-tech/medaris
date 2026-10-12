@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.3.0](https://github.com/amel-tech/medaris/compare/landing-web-v2.2.0...landing-web-v2.3.0) (2026-10-12)
+
+
+### Features
+
+* **tedris-web, nazar-web, nizam-web:** one OIDC session package for the web apps ([#285](https://github.com/amel-tech/medaris/issues/285)) ([469b0d5](https://github.com/amel-tech/medaris/commit/469b0d5e8b557c514d4382b82f96ec8d71979bec))
+
 ## [2.2.0](https://github.com/amel-tech/medaris/compare/landing-web-v2.1.1...landing-web-v2.2.0) (2026-10-05)
 
 
