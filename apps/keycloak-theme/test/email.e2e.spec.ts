@@ -3,10 +3,11 @@
  * the password-reset e-mail — arrive in our template and in that user's
  * language.
  *
- * Keycloak 26.3.2 (the version the repo runs) loads `src/email` as a folder
- * theme, exactly the files keycloakify packs into the JAR, and sends to a
- * Mailpit container on the same Docker network. Everything reached from the
- * test process is on loopback. Needs Docker, like tedrisat's e2e suites.
+ * The Keycloak pinned in apps/keycloak-theme/Dockerfile (the version
+ * production runs) loads `src/email` as a folder theme, exactly the files
+ * keycloakify packs into the JAR, and sends to a Mailpit container on the
+ * same Docker network. Everything reached from the test process is on
+ * loopback. Needs Docker, like tedrisat's e2e suites.
  */
 import {
   GenericContainer,
@@ -22,8 +23,8 @@ import {
   format,
   readMessages,
 } from "./email-theme";
+import { KEYCLOAK_IMAGE } from "./keycloak-image";
 
-const KEYCLOAK_IMAGE = "quay.io/keycloak/keycloak:26.3.2";
 const MAILPIT_IMAGE = "axllent/mailpit:v1.27";
 const THEME = "medaris-keycloak-theme";
 const REALM = "mdrs-100";

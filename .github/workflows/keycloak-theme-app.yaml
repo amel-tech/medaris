@@ -1,17 +1,26 @@
-name: Keycloak Theme Deploy
+name: Keycloak
 
-# The only deploy workflow that never touches Docker: it builds a JAR on the
-# runner, ships it over SSH and restarts Keycloak through a Coolify webhook.
-# Since MDRS-99 the build is keycloak-theme-jar.yaml (called below, so the JAR
-# that ships is the one that passed the Keycloak smoke test), SSH uses a deploy
-# key instead of a password, and the JAR lands as medaris-keycloak-theme.jar in
-# the host directory named by the KC_THEME_DIR repository variable — see
-# docs/runbooks/deploy-keycloak-theme.md.
+# Ships Keycloak as an image, like the other apps (2026-10-12):
+# ghcr.io/amel-tech/medaris-keycloak, built from apps/keycloak-theme/Dockerfile,
+# which pins the Keycloak version (ARG KEYCLOAK_VERSION) and bakes in the theme
+# JAR. It replaces the old deploy, which copied the JAR onto the Keycloak host
+# over SSH; tools/keycloak/deploy-theme.sh and the KC_SSH_* / KC_THEME_DIR
+# configuration are gone.
 #
-# It was also the only one that failed before reaching its first real step —
-# `cache: npm` + `cache-dependency-path: '**/package-lock.json'` hard-fails with
-# "Dependencies lock file is not found" because MDRS-10/MDRS-11 deleted every
-# package-lock.json. Toolchain here now matches ci.yaml exactly (MDRS-16).
+#   push to main (cd-development.yaml, when nx affected lists keycloak-theme)
+#       builds the JAR through keycloak-theme-jar.yaml, so the JAR that ships
+#       is the smoke-tested one, and pushes `sha-<short>` and `latest`. It
+#       deploys nothing: there is no development Keycloak.
+#   full release `keycloak-theme-v<semver>`
+#       promotes `sha-<short>` to `<semver>` and `stable` by digest, exactly
+#       like the other six workflows (tools/ci/promote-image.sh, same wait and
+#       fallback), then calls KEYCLOAK_COOLIFY_RESTART_WEBHOOK. That restarts
+#       the only Keycloak, which also serves applications outside Medaris:
+#       sign-in is unavailable while it starts.
+#   pre-release   builds and pushes `sha-<short>` and `<semver>`; no deploy.
+#   workflow_dispatch   builds and pushes `sha-<short>` only; no deploy.
+#
+# Runbook and rollback: docs/runbooks/deploy-keycloak-theme.md
 
 on:
   workflow_dispatch:
@@ -23,139 +32,216 @@ on:
 permissions:
   contents: read
 
-# Serialize deploys of this app. Not ref-scoped: two dispatches from different
-# branches still race for the same providers directory and the same
-# Keycloak restart. `cancel-in-progress: false` — cancelling mid-`mv` on the
-# server is strictly worse than queueing.
-#
-# A release of another app gets a group of its own. Every release starts all
-# seven deploy workflows; the other six skip their job here, but would first
-# queue in this group, and GitHub keeps only one pending run per group, so a
-# pending theme deploy could be replaced by a run that deploys nothing (what
-# cancelled tedris-web-v2.4.0's production deploy on 2026-10-12).
+# Serialize runs of this workflow, one queue per channel. GitHub keeps only
+# ONE pending run per group and cancels the older one when a newer one
+# arrives, so:
+#   - a release of another app gets a group of its own. Every release starts
+#     all seven deploy workflows; the other six skip their jobs here, but
+#     would first queue in this group and could replace a pending Keycloak
+#     release (what cancelled tedris-web-v2.4.0's production deploy on
+#     2026-10-12);
+#   - production (a full release) and everything else queue apart, because
+#     cd-development.yaml now calls this workflow on every push to main that
+#     touches the theme, and such a push must not replace a pending release.
+# `cancel-in-progress: false`: cancelling between a push and the restart
+# leaves an image nothing deployed.
 concurrency:
-  group: ${{ github.event_name == 'release' && !startsWith(github.event.release.tag_name, 'keycloak-theme-') && format('deploy-keycloak-theme-noop-{0}', github.run_id) || 'deploy-keycloak-theme' }}
+  group: ${{ github.event_name == 'release' && !startsWith(github.event.release.tag_name, 'keycloak-theme-') && format('deploy-keycloak-theme-noop-{0}', github.run_id) || (github.event_name == 'release' && !github.event.release.prerelease) && 'deploy-keycloak-theme-production' || 'deploy-keycloak-theme-development' }}
   cancel-in-progress: false
 
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}-keycloak
+
 jobs:
-  # Gate inverted (MDRS-16). The old form was
-  #   github.event_name == 'workflow_dispatch' || == 'workflow_call' || startsWith(...)
-  # which is a trap for `workflow_call`: inside a reusable workflow the
-  # `github` context belongs to the CALLER, so `github.event_name` is never
-  # 'workflow_call' — it is whatever triggered the caller. Since MDRS-86
-  # cd-development.yaml calls this workflow, and this gate is why that works.
-  # Stating the one real restriction instead — "on a release, the tag must be
-  # ours" — is safe for any future trigger. It sits on the first job only:
-  # build and deploy `need` it, so they are skipped with it.
+  # A full release first looks for the image development built from the
+  # release commit and promotes it. Its `digest` output is empty when that
+  # image does not exist, and then `jar` and `image` build it from the tag.
   #
-  # The configuration check runs before the build, so an unconfigured deploy
-  # fails in seconds instead of after a JDK/Maven build and a Keycloak boot.
-  preflight:
-    if: ${{ github.event_name != 'release' || startsWith(github.event.release.tag_name, 'keycloak-theme-') }}
+  # Gates: inside a called workflow `github` is the CALLER's context, so
+  # `github.event_name` is 'push' on cd-development.yaml's runs; the gates
+  # state the one real restriction, "on a release, the tag must be ours"
+  # (MDRS-16).
+  promote:
+    if: ${{ github.event_name == 'release' && startsWith(github.event.release.tag_name, 'keycloak-theme-') && github.event.release.prerelease == false }}
     runs-on: ubuntu-latest
-    timeout-minutes: 5
-    env:
-      KC_THEME_DIR: ${{ vars.KC_THEME_DIR }}
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+      actions: read
+    outputs:
+      digest: ${{ steps.promote.outputs.digest }}
     steps:
-      - name: Check deploy configuration
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@594f3bf4285d9ea8dc53c9a0c9c4092420091003 # v4.4.0
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # The tag rules of the `image` job below, as they evaluate on a full
+      # release, so `sha-<short>` here is the tag that job pushed for this
+      # commit on its push to main.
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5.10.0
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=match,pattern=keycloak-theme-v(.+),group=1
+            type=sha
+            type=raw,value=stable
+
+      # As the "Promote the development image" step of the six image
+      # workflows: waits while a cd-development.yaml run for this commit is
+      # queued or running (20 s polls, up to 20 minutes), retags by digest
+      # when the image is there, prints an empty digest when it never appears.
+      - name: Promote the development image
+        id: promote
         env:
-          HAS_HOST: ${{ secrets.KC_SSH_HOST != '' }}
-          HAS_USER: ${{ secrets.KC_SSH_USERNAME != '' }}
-          HAS_KEY: ${{ secrets.KC_SSH_PRIVATE_KEY != '' }}
-          HAS_FINGERPRINT: ${{ secrets.KC_SSH_HOST_FINGERPRINT != '' }}
-          HAS_WEBHOOK: ${{ secrets.KEYCLOAK_COOLIFY_RESTART_WEBHOOK != '' }}
+          GH_TOKEN: ${{ github.token }}
+          TAGS: ${{ steps.meta.outputs.tags }}
         run: |
           set -euo pipefail
-          missing=''
-          [ -n "${KC_THEME_DIR}" ] || missing="$missing variable:KC_THEME_DIR"
-          [ "$HAS_HOST" = true ] || missing="$missing secret:KC_SSH_HOST"
-          [ "$HAS_USER" = true ] || missing="$missing secret:KC_SSH_USERNAME"
-          [ "$HAS_KEY" = true ] || missing="$missing secret:KC_SSH_PRIVATE_KEY"
-          [ "$HAS_FINGERPRINT" = true ] || missing="$missing secret:KC_SSH_HOST_FINGERPRINT"
-          [ "$HAS_WEBHOOK" = true ] || missing="$missing secret:KEYCLOAK_COOLIFY_RESTART_WEBHOOK"
-          if [ -n "$missing" ]; then
-            echo "::error::Keycloak theme deploy is not configured; missing:${missing}. See docs/runbooks/deploy-keycloak-theme.md §0."
-            exit 1
+          source=$(grep ':sha-' <<<"$TAGS")
+          mapfile -t targets < <(grep -v -e ':sha-' -e '^$' <<<"$TAGS")
+          digest=$(tools/ci/promote-image.sh "$source" "${targets[@]}")
+          echo "digest=${digest}" >> "$GITHUB_OUTPUT"
+          if [ -n "${digest}" ]; then
+            {
+              echo "### Keycloak image"
+              echo
+              echo "**Path:** promoted: the image development built from this commit, retagged by digest (no rebuild)"
+              echo
+              echo "**Digest:** \`${digest}\`"
+              echo
+              echo "**Tags:**"
+              echo '```'
+              echo "${TAGS}"
+              echo '```'
+              echo
+              echo "Rollback: docs/runbooks/deploy-keycloak-theme.md"
+            } >> "$GITHUB_STEP_SUMMARY"
           fi
-          echo "Deploying to ${KC_THEME_DIR}"
 
-  build:
-    needs: preflight
+  # The JAR, built and smoke-tested by keycloak-theme-jar.yaml (the smoke test
+  # boots the image apps/keycloak-theme/Dockerfile builds). Skipped only when
+  # `promote` found the image.
+  jar:
+    needs: promote
+    if: ${{ !cancelled() && (github.event_name != 'release' || startsWith(github.event.release.tag_name, 'keycloak-theme-')) && needs.promote.result != 'failure' && needs.promote.outputs.digest == '' }}
     uses: ./.github/workflows/keycloak-theme-jar.yaml
     permissions:
       contents: read
 
-  deploy:
-    needs: build
+  image:
+    needs: jar
+    if: ${{ !cancelled() && needs.jar.result == 'success' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-    env:
-      # Host directory mounted at /opt/keycloak/providers in the Keycloak
-      # container. A repository VARIABLE, not a secret: it is not sensitive,
-      # and it must be readable in the run log to be checked. No default — the
-      # directory hard-coded before MDRS-99 was never confirmed to be mounted,
-      # and a JAR written to an unmounted path fails nothing (MDRS-99).
-      KC_THEME_DIR: ${{ vars.KC_THEME_DIR }}
-      # Where the JAR waits on the host between the copy and the swap: outside
-      # the providers directory, so a restart in between cannot load it, and
-      # relative, i.e. in the deploy user's home — not a world-writable /tmp,
-      # where another local user could swap the JAR before it is installed
-      # (a provider JAR runs inside Keycloak).
-      KC_STAGE_DIR: .medaris-keycloak-theme-staging/${{ github.run_id }}
-      KC_STAGED_JAR: .medaris-keycloak-theme-staging/${{ github.run_id }}/keycloak-theme-for-kc-all-other-versions.jar
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write
     steps:
-      # For script_path below: ssh-action reads tools/keycloak/deploy-theme.sh
-      # from this checkout and runs its contents on the host.
-      - name: Checkout code
+      # For apps/keycloak-theme/Dockerfile only; the build context is the JAR.
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Download the smoke-tested JAR
         uses: actions/download-artifact@v4
         with:
-          name: ${{ needs.build.outputs.artifact }}
+          name: ${{ needs.jar.outputs.artifact }}
           path: dist_keycloak
 
-      # Key, not password (MDRS-99): KC_SSH_PASSWORD is gone. The host key is
-      # pinned by fingerprint so a spoofed host cannot receive the JAR.
-      - name: Copy JAR file to server
-        uses: appleboy/scp-action@917f8b81dfc1ccd331fef9e2d61bdc6c8be94634 # v0.1.7
-        with:
-          host: ${{ secrets.KC_SSH_HOST }}
-          username: ${{ secrets.KC_SSH_USERNAME }}
-          key: ${{ secrets.KC_SSH_PRIVATE_KEY }}
-          fingerprint: ${{ secrets.KC_SSH_HOST_FINGERPRINT }}
-          port: ${{ secrets.KC_SSH_PORT || 22 }}
-          source: dist_keycloak/keycloak-theme-for-kc-all-other-versions.jar
-          target: ${{ env.KC_STAGE_DIR }}
-          strip_components: 1
-          overwrite: true
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@594f3bf4285d9ea8dc53c9a0c9c4092420091003 # v4.4.0
 
-      # tools/keycloak/deploy-theme.sh: back up the current
-      # medaris-keycloak-theme.jar, swap the new one in atomically, retire the
-      # pre-MDRS-10 JAR (old file name, old theme id) so it stops loading, and
-      # print the deployed SHA-256.
-      - name: Back up the current theme and activate the new JAR
-        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1.2.5
+      - name: Log in to the Container registry
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
         with:
-          host: ${{ secrets.KC_SSH_HOST }}
-          username: ${{ secrets.KC_SSH_USERNAME }}
-          key: ${{ secrets.KC_SSH_PRIVATE_KEY }}
-          fingerprint: ${{ secrets.KC_SSH_HOST_FINGERPRINT }}
-          port: ${{ secrets.KC_SSH_PORT || 22 }}
-          envs: KC_THEME_DIR,KC_STAGED_JAR
-          script_path: tools/keycloak/deploy-theme.sh
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      # A 401, a 404 or a Coolify 5xx fails the job: a new JAR on disk with an
-      # unrestarted Keycloak is not a deploy. Secrets come in through `env` so
-      # they are never spliced into the script body.
-      - name: Restart Keycloak at Coolify
+      # `sha-<short>` always: it is what a full release promotes. `latest` on a
+      # push to main only (on cd-development.yaml's runs event_name is the
+      # caller's, 'push'), so a workflow_dispatch pushes `sha-<short>` alone.
+      # `<semver>` on a release; `stable` only on a full release, which gets
+      # here only when `promote` found no development image.
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5.10.0
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=match,pattern=keycloak-theme-v(.+),group=1
+            type=raw,value=latest,enable=${{ github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}
+            type=sha
+            type=raw,value=stable,enable=${{ github.event_name == 'release' && github.event.release.prerelease == false }}
+
+      # No GHA layer cache: the image is the Keycloak base plus one COPY.
+      - name: Build and push Docker image
+        id: build
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        with:
+          context: dist_keycloak
+          file: ./apps/keycloak-theme/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+      - name: Record the image
+        env:
+          TAGS: ${{ steps.meta.outputs.tags }}
+          DIGEST: ${{ steps.build.outputs.digest }}
+          FULL_RELEASE: ${{ github.event_name == 'release' && github.event.release.prerelease == false }}
+        run: |
+          set -euo pipefail
+          path="built from source"
+          if [ "${FULL_RELEASE}" = "true" ]; then
+            path="built from the release tag: development never built this commit (see the promote job's log)"
+            echo "::warning title=Production gets an image development never ran::No development image for ${GITHUB_SHA} (no cd-development.yaml run built it), so this release was built from its tag and goes to production untested in development."
+          fi
+          {
+            echo "### Keycloak image"
+            echo
+            echo "**Path:** ${path}"
+            echo
+            echo "**Digest:** \`${DIGEST}\`"
+            echo
+            echo "**Tags:**"
+            echo '```'
+            echo "${TAGS}"
+            echo '```'
+            echo
+            echo "Rollback: docs/runbooks/deploy-keycloak-theme.md"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # Full releases only, after `stable` moved (by promotion or by the fallback
+  # build). Coolify's Keycloak service pulls `stable`; this deploy webhook
+  # makes it pull and recreate the container. A 401, a 404 or a Coolify 5xx
+  # fails the job: a new `stable` that nothing deployed is not a deploy.
+  restart:
+    needs: [promote, image]
+    if: ${{ !cancelled() && github.event_name == 'release' && startsWith(github.event.release.tag_name, 'keycloak-theme-') && github.event.release.prerelease == false && (needs.promote.outputs.digest != '' || needs.image.result == 'success') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Deploy Keycloak at Coolify
         env:
           COOLIFY_WEBHOOK: ${{ secrets.KEYCLOAK_COOLIFY_RESTART_WEBHOOK }}
           COOLIFY_TOKEN: ${{ secrets.COOLIFY_DEPLOY_TOKEN }}
         run: |
           set -euo pipefail
           if [ -z "${COOLIFY_WEBHOOK}" ]; then
-            echo "::error::KEYCLOAK_COOLIFY_RESTART_WEBHOOK is not set — the JAR is on the server but Keycloak was never restarted."
+            echo "::error::KEYCLOAK_COOLIFY_RESTART_WEBHOOK is not set — stable moved in GHCR but Keycloak was never redeployed."
             exit 1
           fi
           curl --fail-with-body --silent --show-error \
@@ -163,4 +249,4 @@ jobs:
                --request GET "${COOLIFY_WEBHOOK}" \
                --header "Authorization: Bearer ${COOLIFY_TOKEN}"
           echo
-          echo "Coolify restart webhook accepted."
+          echo "Coolify deploy webhook accepted."

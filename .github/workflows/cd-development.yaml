@@ -46,10 +46,13 @@ name: CD (development)
 #     very first run has no anchor and nx-set-shas falls back to HEAD~1:
 #     seed it once after merging with a `workflow_dispatch`, `dry_run: true`,
 #     `base: 5d52210` (the commit every development app runs today).
-#   * keycloak-theme is EXCLUDED from the push fan-out. Its workflow ships a
-#     JAR over SSH and restarts the one Keycloak in the Amel-Tech Auth project,
-#     which serves applications outside Medaris. That stays a hand-dispatched
-#     deploy in a window agreed with that project's owner.
+#   * keycloak-theme runs on a push too, since it ships as an image
+#     (2026-10-12): it builds the theme JAR and pushes
+#     ghcr.io/amel-tech/medaris-keycloak `sha-<short>` and `latest`, and
+#     deploys nothing. There is no development Keycloak; the one Keycloak, in
+#     the Amel-Tech Auth project, serves applications outside Medaris and is
+#     redeployed only by a full keycloak-theme release, which promotes the
+#     image built here.
 #
 # The seven called workflows' job-level `if:` gates read
 # `github.event_name != 'release' || startsWith(…)`: inside a reusable
@@ -247,12 +250,13 @@ jobs:
       actions: read
     secrets: inherit
 
-  # No packages: write — this one ships a JAR over SSH, not an image. Never on
-  # a push: it restarts the shared Keycloak (see the header).
+  # Builds and pushes the Keycloak image; restarts nothing (see the header).
   keycloak-theme:
     needs: detect
-    if: ${{ github.event_name != 'push' && github.event.inputs.dry_run != 'true' && contains(fromJSON(needs.detect.outputs.projects), 'keycloak-theme') }}
+    if: ${{ github.event.inputs.dry_run != 'true' && contains(fromJSON(needs.detect.outputs.projects), 'keycloak-theme') }}
     uses: ./.github/workflows/keycloak-theme-app.yaml
     permissions:
       contents: read
+      packages: write
+      actions: read
     secrets: inherit
