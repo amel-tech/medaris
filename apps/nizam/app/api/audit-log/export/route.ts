@@ -4,7 +4,7 @@ import {
   auditApiQuery,
   parseAuditFilters,
 } from "~/features/platform-admin/present";
-import { getAccessToken } from "~/lib/auth_options";
+import { getAccessToken } from "~/lib/auth";
 
 /**
  * "Dışa aktar" of the audit log (nizam/17): the page's filters, as the CSV

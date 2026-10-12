@@ -15,6 +15,7 @@ import { Skeleton } from "@medaris/ui/mds/skeleton";
 import { Tabs } from "@medaris/ui/mds/tabs";
 import { useLocale, useTimeZone, useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
+import { redirectIfUnauthenticated } from "~/lib/unauthenticated";
 import {
   approveDeckRequest,
   loadDeckRequests,
@@ -106,6 +107,7 @@ export function DeckRequestsView({
         result = null;
       }
       setLoading(false);
+      if (redirectIfUnauthenticated(result)) return;
       if (!result?.success) {
         setFailed(true);
         toast.error(t("loadFailedTitle"), {
@@ -136,6 +138,7 @@ export function DeckRequestsView({
       result = null;
     }
     setLoadingMore(false);
+    if (redirectIfUnauthenticated(result)) return;
     if (!result?.success) {
       toast.error(t("loadFailedTitle"), {
         description: t("loadFailed"),
@@ -170,6 +173,7 @@ export function DeckRequestsView({
     setCards({ state: "loading" });
     void loadRequestCards(selectedId, false).then((result) => {
       if (!current) return;
+      if (redirectIfUnauthenticated(result)) return;
       setCards(
         result.success
           ? { state: "ready", ...result.data }
@@ -185,6 +189,7 @@ export function DeckRequestsView({
     if (!selectedId) return;
     setCards({ state: "loading" });
     const result = await loadRequestCards(selectedId, true);
+    if (redirectIfUnauthenticated(result)) return;
     setShowAll(result.success);
     setCards(
       result.success ? { state: "ready", ...result.data } : { state: "failed" }
@@ -227,6 +232,7 @@ export function DeckRequestsView({
     setBusy(true);
     const result = await approveDeckRequest(selected.id);
     setBusy(false);
+    if (redirectIfUnauthenticated(result)) return;
     if (!result.success) {
       fail(result.errorBody, selected.id);
       return;
@@ -240,6 +246,7 @@ export function DeckRequestsView({
   const reject = async (reason: string): Promise<boolean> => {
     if (!selected) return false;
     const result = await rejectDeckRequest(selected.id, reason);
+    if (redirectIfUnauthenticated(result)) return false;
     if (!result.success) {
       fail(result.errorBody, selected.id);
       return isGone(result.errorBody);
@@ -254,6 +261,7 @@ export function DeckRequestsView({
   const unpublish = async (reason: string): Promise<boolean> => {
     if (!selected) return false;
     const result = await unpublishDeck(selected.id, reason);
+    if (redirectIfUnauthenticated(result)) return false;
     if (!result.success) {
       fail(result.errorBody, selected.id);
       return isGone(result.errorBody);

@@ -21,6 +21,7 @@ import { Skeleton } from "@medaris/ui/mds/skeleton";
 import { Table, type TableColumn } from "@medaris/ui/mds/table";
 import { useLocale, useTimeZone, useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { redirectIfUnauthenticated } from "~/lib/unauthenticated";
 import {
   deleteArchiveItem,
   loadArchive,
@@ -130,6 +131,7 @@ export function ArchiveView({ mode, initial, scopes, pageSize }: Props) {
       // A newer request (the next keystroke) supersedes this one.
       if (ticket !== request.current) return;
       setLoading(false);
+      if (redirectIfUnauthenticated(result)) return;
       if (!result.success) {
         setFailed(true);
         toast.error(t("loadFailedTitle"), {
@@ -168,6 +170,7 @@ export function ArchiveView({ mode, initial, scopes, pageSize }: Props) {
       item.id
     );
     setBusyId(null);
+    if (redirectIfUnauthenticated(result)) return;
     if (result.success) {
       setItems((current) => current.filter((i) => i.id !== item.id));
       setTotal((n) => Math.max(0, n - 1));
@@ -201,6 +204,7 @@ export function ArchiveView({ mode, initial, scopes, pageSize }: Props) {
       item.type as ArchiveItemType,
       item.id
     );
+    if (redirectIfUnauthenticated(result)) return;
     setImpact(result.success ? result.data : "failed");
   };
 
@@ -217,6 +221,7 @@ export function ArchiveView({ mode, initial, scopes, pageSize }: Props) {
       target.id
     );
     setDeleting(false);
+    if (redirectIfUnauthenticated(result)) return;
     const gone =
       !result.success &&
       errorCode(result.errorBody) === "ARCHIVE_ITEM_NOT_FOUND";

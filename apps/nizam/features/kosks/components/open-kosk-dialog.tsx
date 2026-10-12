@@ -12,6 +12,7 @@ import { RadioGroup } from "@medaris/ui/mds/radio-group";
 import { Textarea } from "@medaris/ui/mds/textarea";
 import { useTranslations } from "next-intl";
 import { type FormEvent, useEffect, useRef, useState } from "react";
+import { redirectIfUnauthenticated } from "~/lib/unauthenticated";
 import { cleanHandle, type PickedUser } from "../../madrasahs/present";
 import { openKosk } from "../admin-actions";
 import {
@@ -98,6 +99,7 @@ export function OpenKoskDialog({
     setSaving(true);
     const result = await openKosk(openPayload(current));
     setSaving(false);
+    if (redirectIfUnauthenticated(result)) return;
     if (!result.success) {
       const key = koskErrorKey(result.errorBody);
       if (key === "errors.handleTaken") {

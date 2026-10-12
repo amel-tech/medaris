@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
-// ClientProviders without the session, the auth watchers and the toasters:
+// ClientProviders without the session and the toasters:
 // only what it hands the kit's AppProviders is left (MDRS-242).
 const current = vi.hoisted(() => ({ locale: "tr" }));
 vi.mock("next-intl", () => ({
@@ -10,12 +10,8 @@ vi.mock("next-intl", () => ({
   useTranslations: () => (key: string) => key,
 }));
 vi.mock("next/navigation", () => ({ usePathname: () => "/kosks" }));
-vi.mock("next-auth/react", () => ({
+vi.mock("@medaris/auth/client", () => ({
   SessionProvider: ({ children }: { children: ReactNode }) => children,
-}));
-vi.mock("@medaris/services/auth-client", () => ({
-  KeycloakSessionWatch: () => null,
-  RefreshErrorRedirect: () => null,
 }));
 vi.mock("@medaris/ui/components/sonner", () => ({
   DismissStaleSonnerToasts: () => null,
@@ -39,7 +35,9 @@ const render = async (locale: string) => {
   const { ClientProviders } = await import(
     "~/components/providers/client-providers"
   );
-  return renderToStaticMarkup(<ClientProviders>page</ClientProviders>);
+  return renderToStaticMarkup(
+    <ClientProviders session={null}>page</ClientProviders>
+  );
 };
 
 describe("ClientProviders hands Base UI the route's direction (MDRS-242)", () => {

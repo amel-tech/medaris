@@ -22,6 +22,7 @@ import {
 import { useRouter } from "next/navigation";
 import { useFormatter, useLocale, useTranslations } from "next-intl";
 import { type FormEvent, useEffect, useState, useTransition } from "react";
+import { redirectIfUnauthenticated } from "~/lib/unauthenticated";
 import { cancelSession, patchLesson, setLiveStream } from "../actions";
 import { formatInstant } from "../format";
 import {
@@ -170,6 +171,7 @@ export function SessionsView({
     setBusy(true);
     const result = await setLiveStream(kosk.id, course.id, lessonId, url);
     setBusy(false);
+    if (redirectIfUnauthenticated(result)) return;
     if (!result.success) {
       const refusal = liveStreamRefusal(result.errorBody);
       if ("field" in refusal) {
@@ -237,6 +239,7 @@ export function SessionsView({
     setBusy(true);
     const result = await patchLesson(kosk.id, course.id, editing.id, body);
     setBusy(false);
+    if (redirectIfUnauthenticated(result)) return;
     if (!result.success) {
       fail(result.errorBody);
       return;
@@ -265,6 +268,7 @@ export function SessionsView({
       version
     );
     setBusy(false);
+    if (redirectIfUnauthenticated(result)) return;
     if (!result.success) {
       fail(result.errorBody);
       return;

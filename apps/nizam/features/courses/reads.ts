@@ -1,16 +1,14 @@
 import {
   type CourseDetailResponse,
-  createServerTedrisatAPIs,
   type KoskResponse,
   type MeResponse,
   type RecordingResponse,
   ResponseError,
 } from "@medaris/services/tedrisat";
-import { env } from "~/env";
 import { getCourse, getKoskById, getMe } from "~/features/kosks/actions";
 import { mayAssignMuderris } from "~/features/kosks/course-team";
 import { mayEditCourse } from "~/features/kosks/kosk-abilities";
-import { getAccessToken } from "~/lib/auth_options";
+import { passOnSignIn, tedrisatApi } from "~/lib/tedrisat-api";
 
 /**
  * What every course page (ayarlar, müfredat, celseler, celse planla) needs
@@ -74,10 +72,7 @@ export async function getLiveStreams(
   courseId: string
 ): Promise<Record<string, string> | null> {
   try {
-    const { lessons } = await createServerTedrisatAPIs(
-      await getAccessToken(),
-      env.TEDRISAT_API_BASE_URL
-    );
+    const { lessons } = await tedrisatApi();
     const links = await lessons.listCourseLiveStreams({ id: courseId });
     return Object.fromEntries(
       links.flatMap((l) =>
@@ -85,6 +80,7 @@ export async function getLiveStreams(
       )
     );
   } catch (error) {
+    await passOnSignIn(error);
     if (!(error instanceof ResponseError && error.response.status === 403)) {
       console.error("Error fetching the course's live stream links:", error);
     }
@@ -101,12 +97,10 @@ export async function getRecordings(
   courseId: string
 ): Promise<RecordingResponse[] | null> {
   try {
-    const { lessons } = await createServerTedrisatAPIs(
-      await getAccessToken(),
-      env.TEDRISAT_API_BASE_URL
-    );
+    const { lessons } = await tedrisatApi();
     return await lessons.listCourseRecordings({ id: courseId });
   } catch (error) {
+    await passOnSignIn(error);
     console.error("Error fetching the course recordings:", error);
     return null;
   }

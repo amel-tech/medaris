@@ -1,11 +1,9 @@
-import {
-  type AssignmentResponse,
-  createServerTedrisatAPIs,
-  type EffectivePermissionGroup,
-  type MeResponse,
+import type {
+  AssignmentResponse,
+  EffectivePermissionGroup,
+  MeResponse,
 } from "@medaris/services/tedrisat";
-import { env } from "~/env";
-import { getAccessToken } from "~/lib/auth_options";
+import { passOnSignIn, tedrisatApi } from "~/lib/tedrisat-api";
 
 /**
  * Server-side reads for "Hesap ve ayarlar" (nizam 36, 47, MDRS-179). Not a
@@ -21,10 +19,7 @@ export interface AccountData {
 /** Everything the page shows, or null when any read fails, so the page can say so and offer a retry. */
 export const getAccountData = async (): Promise<AccountData | null> => {
   try {
-    const { me } = await createServerTedrisatAPIs(
-      await getAccessToken(),
-      env.TEDRISAT_API_BASE_URL
-    );
+    const { me } = await tedrisatApi();
     const [profile, assignments, permissions] = await Promise.all([
       me.getMe(),
       me.getMyAssignments(),
@@ -37,6 +32,7 @@ export const getAccountData = async (): Promise<AccountData | null> => {
       groups: permissions.groups,
     };
   } catch (error) {
+    await passOnSignIn(error);
     console.error("Error fetching the account:", error);
     return null;
   }

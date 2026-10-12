@@ -13,6 +13,7 @@ import { Skeleton } from "@medaris/ui/mds/skeleton";
 import { isUnfinishedEnd, resolveEnd } from "@medaris/utils";
 import { useLocale, useTimeZone, useTranslations } from "next-intl";
 import { type FormEvent, useCallback, useEffect, useState } from "react";
+import { redirectIfUnauthenticated } from "~/lib/unauthenticated";
 import { type DismissAnswer, formatDay } from "../../permissions/present";
 import { getHeadDelegations, setHeadMuderris } from "../actions";
 import {
@@ -88,6 +89,7 @@ export function AssignHeadDialog({
     if (!targetId) return;
     setItems(null);
     const result = await getHeadDelegations(targetId);
+    if (redirectIfUnauthenticated(result)) return;
     setItems(result.success ? result.data : "failed");
   }, [targetId]);
 
@@ -136,6 +138,7 @@ export function AssignHeadDialog({
       ...(changing ? { delegations: personDecisions(people, answers) } : {}),
     });
     setSaving(false);
+    if (redirectIfUnauthenticated(result)) return;
     if (!result.success) {
       toast.error(t(changing ? "changeFailed" : "failed"), {
         description: tp(madrasahErrorKey(result.errorBody) as never),

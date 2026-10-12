@@ -1,10 +1,8 @@
 import {
-  createServerTedrisatAPIs,
   type InactiveScopeResponse,
   ResponseError,
 } from "@medaris/services/tedrisat";
-import { env } from "~/env";
-import { getAccessToken } from "~/lib/auth_options";
+import { passOnSignIn, tedrisatApi } from "~/lib/tedrisat-api";
 
 /**
  * Server-side first read of Pasif kapsamlar (nizam 14, MDRS-172). Not a
@@ -16,12 +14,10 @@ export type InactiveRead = InactiveScopeResponse[] | "forbidden" | null;
 
 export const getInactiveScopes = async (): Promise<InactiveRead> => {
   try {
-    const api = await createServerTedrisatAPIs(
-      await getAccessToken(),
-      env.TEDRISAT_API_BASE_URL
-    );
+    const api = await tedrisatApi();
     return await api.nizam.getInactiveScopes({});
   } catch (error) {
+    await passOnSignIn(error);
     if (error instanceof ResponseError && error.response.status === 403) {
       return "forbidden";
     }

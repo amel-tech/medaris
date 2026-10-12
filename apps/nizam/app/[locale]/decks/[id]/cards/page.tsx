@@ -1,7 +1,5 @@
-import { createServerTedrisatAPIs } from "@medaris/services/tedrisat";
-import { env } from "~/env";
 import DeckCards from "~/features/decks/components/cards";
-import { getAccessToken } from "~/lib/auth_options";
+import { passOnSignIn, tedrisatApi } from "~/lib/tedrisat-api";
 
 export default async function DeckCardsPage({
   params,
@@ -12,14 +10,17 @@ export default async function DeckCardsPage({
 }) {
   const { id } = await params;
 
-  const token = await getAccessToken();
+  const API = await tedrisatApi();
 
-  const API = await createServerTedrisatAPIs(token, env.TEDRISAT_API_BASE_URL);
-
+  // Any other failure still reaches Next's error page, as before; a refused
+  // token goes to sign-in.
   const [deck, cards] = await Promise.all([
     API.decks.getFlashcardDeckById({ id }),
     API.cards.getFlashcardByDeckId({ deckId: id }),
-  ]);
+  ]).catch(async (error) => {
+    await passOnSignIn(error);
+    throw error;
+  });
 
   return <DeckCards deck={deck} cards={cards || []} />;
 }

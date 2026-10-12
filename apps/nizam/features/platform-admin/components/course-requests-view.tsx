@@ -17,6 +17,7 @@ import { useLocale, useTimeZone, useTranslations } from "next-intl";
 import { useCallback, useState } from "react";
 import { RejectDialog } from "~/features/deck-review/components/reject-dialog";
 import { longDateTime, shortDateTime } from "~/features/deck-review/present";
+import { redirectIfUnauthenticated } from "~/lib/unauthenticated";
 import { loadCourseRequests, rejectCourseRequest } from "../actions";
 import {
   failureKey,
@@ -72,6 +73,7 @@ export function CourseRequestsView({ koskId, initial }: Props) {
         result = null;
       }
       setLoading(false);
+      if (redirectIfUnauthenticated(result)) return;
       if (!result?.success) {
         setFailed(true);
         toast.error(t("loadFailedTitle"), {
@@ -111,6 +113,7 @@ export function CourseRequestsView({ koskId, initial }: Props) {
   const reject = async (reason: string): Promise<boolean> => {
     if (!selected) return false;
     const result = await rejectCourseRequest(selected.id, reason);
+    if (redirectIfUnauthenticated(result)) return false;
     if (!result.success) {
       if (isSettled(result.errorBody)) settle(selected.id);
       toast.error(t("answerFailed"), {

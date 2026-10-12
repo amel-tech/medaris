@@ -1,13 +1,15 @@
 import {
-  createServerTedrisatAPIs,
   type DashboardSessionTab,
   type GrantResponse,
   type KoskDashboardResponse,
   type NizamDashboardResponse,
   ResponseError,
 } from "@medaris/services/tedrisat";
-import { env } from "~/env";
-import { getAccessToken } from "~/lib/auth_options";
+import {
+  passOnSignIn,
+  type TedrisatApi,
+  tedrisatApi,
+} from "~/lib/tedrisat-api";
 
 /**
  * Server-side reads of the home pages (MDRS-182, nizam 01, 02 and 05). Not a
@@ -16,9 +18,6 @@ import { getAccessToken } from "~/lib/auth_options";
  * a refusal is told apart so the page can show "Bu bölüm için izniniz yok"
  * (nizam/06).
  */
-const api = async () =>
-  createServerTedrisatAPIs(await getAccessToken(), env.TEDRISAT_API_BASE_URL);
-
 export type DashboardRead<T> = T | "forbidden" | "not-found" | null;
 
 const refusal = (error: unknown): "forbidden" | "not-found" | null => {
@@ -30,11 +29,12 @@ const refusal = (error: unknown): "forbidden" | "not-found" | null => {
 
 async function read<T>(
   what: string,
-  call: (client: Awaited<ReturnType<typeof api>>) => Promise<T>
+  call: (client: TedrisatApi) => Promise<T>
 ): Promise<DashboardRead<T>> {
   try {
-    return await call(await api());
+    return await call(await tedrisatApi());
   } catch (error) {
+    await passOnSignIn(error);
     const refused = refusal(error);
     if (refused) return refused;
     console.error(`Error fetching ${what}:`, error);

@@ -12,11 +12,12 @@ import { revalidatePath } from "next/cache";
 import {
   type AuthenticatedActionResult,
   authenticatedAction,
+  succeeded,
 } from "~/lib/authenticated-action";
 import { type AuditFilters, auditApiQuery, type RequestTab } from "./present";
 
 const refresh = <T>(result: AuthenticatedActionResult<T>) => {
-  if (result.success) revalidatePath("/", "layout");
+  if (succeeded(result)) revalidatePath("/", "layout");
   return result;
 };
 

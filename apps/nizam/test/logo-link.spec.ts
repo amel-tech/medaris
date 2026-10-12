@@ -4,7 +4,7 @@ import { NextRequest } from "next/server";
 import { describe, expect, it } from "vitest";
 import { isPublicPath } from "~/lib/public-paths";
 import { homeHref } from "~/lib/shell-nav";
-import middleware from "../middleware";
+import proxy from "../proxy";
 
 const appDir = join(__dirname, "..", "app");
 
@@ -28,8 +28,8 @@ describe("nizam's logo link (MDRS-101)", () => {
     expect(isPublicPath(homeHref)).toBe(true);
   });
 
-  it("resolves through the middleware to a locale-prefixed page", async () => {
-    const response = await middleware(
+  it("resolves through the proxy to a locale-prefixed page", async () => {
+    const response = await proxy(
       new NextRequest(`http://localhost:4001${homeHref}`, {
         headers: { "accept-language": "tr" },
       })

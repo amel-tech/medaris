@@ -24,6 +24,7 @@ import { useRouter } from "next/navigation";
 import { useFormatter, useLocale, useTranslations } from "next-intl";
 import { type FormEvent, useMemo, useState, useTransition } from "react";
 import { COVER_TONES, toneOfHue } from "~/features/kosks/admin-present";
+import { redirectIfUnauthenticated } from "~/lib/unauthenticated";
 import { saveCurriculum } from "../actions";
 import { formatDay } from "../format";
 import { curriculumPayload } from "../payload";
@@ -200,6 +201,7 @@ export function CurriculumEditor({ kosk, course }: Props) {
       curriculumPayload(saved, { title, description, tone, weeks, resources })
     );
     setSaving(false);
+    if (redirectIfUnauthenticated(result)) return;
     if (!result.success) {
       toast.error(t("failed"), {
         description: t(

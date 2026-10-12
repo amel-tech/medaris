@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import {
   type AuthenticatedActionResult,
   authenticatedAction,
+  succeeded,
 } from "~/lib/authenticated-action";
 
 /** "Başmüderris ata", "Köşk nazımı ata", "Müderris ata" (nizam 14): the scope is attended again. */
@@ -22,7 +23,7 @@ export const assignScope = async (
     })
   );
   // The list, the medrese and köşk tables and the menus' badges all show it.
-  if (result.success) revalidatePath("/", "layout");
+  if (succeeded(result)) revalidatePath("/", "layout");
   return result;
 };
 

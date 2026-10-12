@@ -14,6 +14,7 @@ import { revalidatePath } from "next/cache";
 import {
   type AuthenticatedActionResult,
   authenticatedAction,
+  succeeded,
 } from "~/lib/authenticated-action";
 
 /** Every page that shows a course's programme, refreshed after a write. */
@@ -36,7 +37,7 @@ export const setCourseMuderris = async (
   const result = await authenticatedAction((api) =>
     api.courses.setCourseMuderris({ id: courseId, setMuderrisDto: body })
   );
-  if (result.success) revalidateCourse(koskId, courseId);
+  if (succeeded(result)) revalidateCourse(koskId, courseId);
   return result;
 };
 
@@ -55,7 +56,7 @@ export const patchCourse = async (
   const result = await authenticatedAction((api) =>
     api.courses.updateCourse({ id: courseId, updateCourseDto: body })
   );
-  if (result.success) revalidateCourse(koskId, courseId);
+  if (succeeded(result)) revalidateCourse(koskId, courseId);
   return result;
 };
 
@@ -69,7 +70,7 @@ export const patchLesson = async (
   const result = await authenticatedAction((api) =>
     api.lessons.updateLesson({ id: lessonId, updateLessonDto: body })
   );
-  if (result.success) revalidateCourse(koskId, courseId);
+  if (succeeded(result)) revalidateCourse(koskId, courseId);
   return result;
 };
 
@@ -90,7 +91,7 @@ export const setLiveStream = async (
       setLiveStreamDto: { liveStreamUrl },
     })
   );
-  if (result.success) revalidateCourse(koskId, courseId);
+  if (succeeded(result)) revalidateCourse(koskId, courseId);
   return result;
 };
 
@@ -108,7 +109,7 @@ export const cancelSession = async (
       cancelLessonDto: { version, ...(reason ? { reason } : {}) },
     })
   );
-  if (result.success) revalidateCourse(koskId, courseId);
+  if (succeeded(result)) revalidateCourse(koskId, courseId);
   return result;
 };
 
@@ -121,6 +122,6 @@ export const saveCurriculum = async (
   const result = await authenticatedAction((api) =>
     api.courses.replaceCourse({ id: courseId, replaceCourseDto: body })
   );
-  if (result.success) revalidateCourse(koskId, courseId);
+  if (succeeded(result)) revalidateCourse(koskId, courseId);
   return result;
 };

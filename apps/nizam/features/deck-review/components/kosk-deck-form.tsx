@@ -16,6 +16,7 @@ import { Textarea } from "@medaris/ui/mds/textarea";
 import { useRouter } from "next/navigation";
 import { useLocale, useTimeZone, useTranslations } from "next-intl";
 import { type FormEvent, useRef, useState } from "react";
+import { redirectIfUnauthenticated } from "~/lib/unauthenticated";
 import { openKoskDeck } from "../actions";
 import {
   CARD_TYPES,
@@ -81,6 +82,7 @@ export function KoskDeckForm({
       deckPayload(values, proposal?.id)
     );
     setSaving(false);
+    if (redirectIfUnauthenticated(result)) return;
     if (!result.success) {
       toast.error(t("failed"), {
         description: t(deckFailureKey(result.errorBody) as never),

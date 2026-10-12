@@ -14,6 +14,7 @@ import { Icon } from "@medaris/ui/mds/icon";
 import { Table, type TableColumn } from "@medaris/ui/mds/table";
 import { useLocale, useTimeZone, useTranslations } from "next-intl";
 import { useState } from "react";
+import { redirectIfUnauthenticated } from "~/lib/unauthenticated";
 import {
   hideKoskDeck,
   loadManagedKoskDecks,
@@ -101,6 +102,7 @@ export function KoskDecksView({ koskId, koskName, initial }: Props) {
       result = null;
     }
     setLoadingMore(null);
+    if (redirectIfUnauthenticated(result)) return;
     if (!result?.success) {
       toast.error(t("loadFailedTitle"), {
         description: t("loadFailed"),
@@ -133,6 +135,7 @@ export function KoskDecksView({ koskId, koskName, initial }: Props) {
     if (!refusing) return false;
     const target = refusing;
     const result = await rejectDeckProposal(koskId, target.id, reason);
+    if (redirectIfUnauthenticated(result)) return false;
     if (!result.success) {
       failure(result.errorBody);
       if (isGone(result.errorBody)) {
@@ -154,6 +157,7 @@ export function KoskDecksView({ koskId, koskName, initial }: Props) {
     setBusy(true);
     const result = await hideKoskDeck(target.id);
     setBusy(false);
+    if (redirectIfUnauthenticated(result)) return;
     if (!result.success) {
       failure(result.errorBody);
       if (deckErrorKey(result.errorBody) === "errors.deckGone") {

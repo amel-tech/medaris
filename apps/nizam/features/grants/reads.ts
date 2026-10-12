@@ -1,10 +1,8 @@
 import {
-  createServerTedrisatAPIs,
   type KoskGrantsResponse,
   ResponseError,
 } from "@medaris/services/tedrisat";
-import { env } from "~/env";
-import { getAccessToken } from "~/lib/auth_options";
+import { passOnSignIn, tedrisatApi } from "~/lib/tedrisat-api";
 
 /**
  * Server-side first read of the köşk's İzinler page (nizam 38, MDRS-172). Not
@@ -16,12 +14,10 @@ export type GrantsRead = KoskGrantsResponse | "forbidden" | "not-found" | null;
 
 export const getKoskGrants = async (koskId: string): Promise<GrantsRead> => {
   try {
-    const api = await createServerTedrisatAPIs(
-      await getAccessToken(),
-      env.TEDRISAT_API_BASE_URL
-    );
+    const api = await tedrisatApi();
     return await api.kosks.getKoskGrants({ id: koskId });
   } catch (error) {
+    await passOnSignIn(error);
     if (error instanceof ResponseError) {
       if (error.response.status === 403) return "forbidden";
       if (error.response.status === 404) return "not-found";

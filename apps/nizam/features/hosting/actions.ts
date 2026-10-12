@@ -8,6 +8,7 @@ import { revalidatePath } from "next/cache";
 import {
   type AuthenticatedActionResult,
   authenticatedAction,
+  succeeded,
 } from "~/lib/authenticated-action";
 
 /** "Barındırma hakkı ver" (nizam 26): the medrese may open courses in this köşk. */
@@ -21,7 +22,7 @@ export const grantHostingRight = async (
       grantHostingRightDto: { madrasahId },
     })
   );
-  if (result.success) revalidatePath("/", "layout");
+  if (succeeded(result)) revalidatePath("/", "layout");
   return result;
 };
 
@@ -44,6 +45,6 @@ export const revokeHostingRight = async (
     return null;
   });
   // Hidden courses leave the course lists and join the archive.
-  if (result.success) revalidatePath("/", "layout");
+  if (succeeded(result)) revalidatePath("/", "layout");
   return result;
 };

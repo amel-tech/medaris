@@ -1,8 +1,8 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
-// The [locale] layout without Next: the providers and the shell around the
-// page are stubbed, so only the document it draws is left.
+// The [locale] layout without Next: the session, the providers and the shell
+// around the page are stubbed, so only the document it draws is left.
 vi.mock("next-intl/server", () => ({ setRequestLocale: () => undefined }));
 vi.mock("next-intl", async (orig) => ({
   ...(await orig<typeof import("next-intl")>()),
@@ -16,6 +16,7 @@ vi.mock("~/components/shell/nizam-shell", () => ({
   NizamShell: ({ children }: { children: React.ReactNode }) => children,
 }));
 vi.mock("~/components/legal-footer", () => ({ LegalFooter: () => null }));
+vi.mock("~/lib/auth", () => ({ auth: async () => null }));
 
 const htmlTag = (markup: string) => /^<html[^>]*>/.exec(markup)?.[0] ?? "";
 const headOf = (markup: string) =>

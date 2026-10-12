@@ -10,6 +10,7 @@ import { setRequestLocale } from "next-intl/server";
 import { LegalFooter } from "~/components/legal-footer";
 import { ClientProviders } from "~/components/providers/client-providers";
 import { NizamShell } from "~/components/shell/nizam-shell";
+import { auth } from "~/lib/auth";
 import { htmlLangDir } from "~/lib/i18n/direction";
 import { routing } from "~/lib/i18n/routing";
 
@@ -61,7 +62,7 @@ export default async function LocaleLayout({
         {/* a later visit follows this browser's language choice (MDRS-275) */}
         <LocalePreference locale={locale} locales={routing.locales} />
         <NextIntlClientProvider>
-          <ClientProviders>
+          <ClientProviders session={await auth()}>
             <NizamShell footer={<LegalFooter />}>{children}</NizamShell>
           </ClientProviders>
         </NextIntlClientProvider>

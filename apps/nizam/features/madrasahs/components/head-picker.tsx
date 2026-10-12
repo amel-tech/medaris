@@ -6,6 +6,7 @@ import { Icon } from "@medaris/ui/mds/icon";
 import { Input } from "@medaris/ui/mds/input";
 import { useTranslations } from "next-intl";
 import { type KeyboardEvent, useId, useRef, useState } from "react";
+import { redirectIfUnauthenticated } from "~/lib/unauthenticated";
 import { lookupUserByEmail } from "../actions";
 import { isEmailLike, type LookupState, type PickedUser } from "../present";
 
@@ -56,6 +57,7 @@ export function HeadPicker({
     setState({ kind: "searching" });
     const result = await lookupUserByEmail(wanted);
     if (searched.current !== wanted) return;
+    if (redirectIfUnauthenticated(result)) return;
     if (result.kind === "found") {
       setState({ kind: "found", user: result.user });
       onChange(result.user);

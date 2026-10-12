@@ -14,6 +14,7 @@ import { Select } from "@medaris/ui/mds/select";
 import { isoToZonedLocal, isUnfinishedEnd, resolveEnd } from "@medaris/utils";
 import { useLocale, useTimeZone, useTranslations } from "next-intl";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { redirectIfUnauthenticated } from "~/lib/unauthenticated";
 import { HeadPicker } from "../../madrasahs/components/head-picker";
 import type { PickedUser } from "../../madrasahs/present";
 import { PermissionBoxes } from "../../permissions/components/permission-boxes";
@@ -118,6 +119,7 @@ export function GrantDialog({
           ...(endsAt ? { endsAt } : {}),
         });
     setSaving(false);
+    if (redirectIfUnauthenticated(result)) return;
     if (!result.success) {
       toast.error(t(grant ? "failed" : "assignFailed"), {
         description: tp(grantErrorKey(result.errorBody) as never),

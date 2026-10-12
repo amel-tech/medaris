@@ -11,6 +11,7 @@ import { RadioGroup } from "@medaris/ui/mds/radio-group";
 import { Textarea } from "@medaris/ui/mds/textarea";
 import { useLocale, useTimeZone, useTranslations } from "next-intl";
 import { type FormEvent, useEffect, useRef, useState } from "react";
+import { redirectIfUnauthenticated } from "~/lib/unauthenticated";
 import { createBan } from "../actions";
 import { banErrorKey, isBlank, REASON_MAX } from "../present";
 
@@ -88,6 +89,7 @@ export function BanDialog({
       reason: reason.trim(),
     });
     setSaving(false);
+    if (redirectIfUnauthenticated(result)) return;
     if (!result.success) {
       toast.error(t("failed"), {
         description: tp(banErrorKey(result.errorBody) as never),

@@ -4,6 +4,7 @@ import { Field } from "@medaris/ui/mds/field";
 import { Select } from "@medaris/ui/mds/select";
 import { useToaster } from "@medaris/ui/mds/toast";
 import { useRef, useState } from "react";
+import { redirectIfUnauthenticated } from "~/lib/unauthenticated";
 import {
   allTimeZones,
   FEATURED_TIME_ZONES,
@@ -52,6 +53,7 @@ export function TimeZoneForm({
     setBusy(true);
     const res = await saveTimeZone(next);
     setBusy(false);
+    if (redirectIfUnauthenticated(res)) return;
     if (res.success) {
       confirmed.current = next;
       toaster.notify({

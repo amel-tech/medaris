@@ -11,6 +11,7 @@ import { revalidatePath } from "next/cache";
 import {
   type AuthenticatedActionResult,
   authenticatedAction,
+  succeeded,
 } from "~/lib/authenticated-action";
 
 /** "Köşk aç" (nizam 10): the köşk and its nazımları, written together. */
@@ -21,7 +22,7 @@ export const openKosk = async (
     api.kosks.createKosk({ createKoskDto: dto })
   );
   // The list, the archive's scopes and the nazımları's scope pickers show it.
-  if (result.success) revalidatePath("/", "layout");
+  if (succeeded(result)) revalidatePath("/", "layout");
   return result;
 };
 
@@ -30,7 +31,7 @@ export const hideKosk = async (
   id: string
 ): Promise<AuthenticatedActionResult<KoskDirectoryItemResponse>> => {
   const result = await authenticatedAction((api) => api.kosks.hideKosk({ id }));
-  if (result.success) revalidatePath("/", "layout");
+  if (succeeded(result)) revalidatePath("/", "layout");
   return result;
 };
 
@@ -52,7 +53,7 @@ export const deactivateKosk = async (
   const result = await authenticatedAction((api) =>
     api.kosks.deactivateKosk({ id, passivateScopeDto: { confirmation } })
   );
-  if (result.success) revalidatePath("/", "layout");
+  if (succeeded(result)) revalidatePath("/", "layout");
   return result;
 };
 
@@ -63,7 +64,7 @@ export const restoreKosk = async (
   const result = await authenticatedAction((api) =>
     api.kosks.restoreKosk({ id })
   );
-  if (result.success) revalidatePath("/", "layout");
+  if (succeeded(result)) revalidatePath("/", "layout");
   return result;
 };
 
@@ -82,6 +83,6 @@ export const addKoskNazims = async (
       },
     })
   );
-  if (result.success) revalidatePath("/", "layout");
+  if (succeeded(result)) revalidatePath("/", "layout");
   return result;
 };

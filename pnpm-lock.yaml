@@ -706,6 +706,9 @@ importers:
 
   apps/nizam:
     dependencies:
+      '@medaris/auth':
+        specifier: workspace:*
+        version: link:../../libs/auth
       '@medaris/env':
         specifier: workspace:*
         version: link:../../libs/env
@@ -742,9 +745,6 @@ importers:
       next:
         specifier: 'catalog:'
         version: 16.3.8(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.63.0)(@types/node@22.20.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
-      next-auth:
-        specifier: 'catalog:'
-        version: 4.24.15(next@16.3.8(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.63.0)(@types/node@22.20.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       react:
         specifier: 'catalog:'
         version: 19.2.8

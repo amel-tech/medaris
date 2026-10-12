@@ -11,6 +11,7 @@ import { type FormEvent, useEffect, useRef, useState } from "react";
 import { REASON_MAX } from "~/features/bans/present";
 import { removeEnrollment } from "~/features/kosks/actions/courses";
 import { courseTeamErrorKey } from "~/features/kosks/course-team";
+import { redirectIfUnauthenticated } from "~/lib/unauthenticated";
 
 export interface RemoveTarget {
   userId: string;
@@ -65,6 +66,7 @@ export function RemoveDialog({
       reason.trim()
     );
     setSaving(false);
+    if (redirectIfUnauthenticated(result)) return;
     if (!result.success) {
       const key = courseTeamErrorKey(result.errorBody);
       toast.error(t("failed"), {

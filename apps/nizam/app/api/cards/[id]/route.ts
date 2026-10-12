@@ -4,7 +4,7 @@ import {
 } from "@medaris/services/tedrisat";
 import { NextResponse } from "next/server";
 import { env } from "~/env";
-import { getAccessToken } from "~/lib/auth_options";
+import { getAccessToken } from "~/lib/auth";
 
 // Next calls a route handler as `GET(request, context)`; `params` lives on the
 // second argument. Destructuring it off the first one read `params` from the
@@ -43,11 +43,18 @@ export async function GET(
     // generated client turns both into a `ResponseError`. Flattening them into
     // the 500 below told the caller the server was broken — the same erasure
     // the 401 above was added to stop.
+    // A 401 is tedrisat refusing the token: the session is over, which the
+    // caller can act on (sign in again), not a server fault either.
     if (
       error instanceof ResponseError &&
-      (error.response.status === 403 || error.response.status === 404)
+      [401, 403, 404].includes(error.response.status)
     ) {
-      const message = error.response.status === 403 ? "Forbidden" : "Not found";
+      const message =
+        error.response.status === 401
+          ? "Unauthorized"
+          : error.response.status === 403
+            ? "Forbidden"
+            : "Not found";
       return NextResponse.json(
         { error: message },
         {

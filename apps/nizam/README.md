@@ -7,7 +7,7 @@ Nizam is a Next.js application that serves as the administrative interface for t
 - **Next.js 14** - React framework with App Router
 - **TypeScript** - Type-safe development
 - **Tailwind CSS** - Utility-first CSS framework
-- **NextAuth.js** - Authentication with Keycloak integration
+- **@medaris/auth** - The Keycloak (OIDC) session, shared with the other web apps (`libs/auth`)
 - **next-intl** - Internationalization with routing support
 - **Radix UI** - Accessible component primitives
 - **T3 Env** - Type-safe environment variable validation
@@ -107,7 +107,7 @@ See the readme of the `@medaris/i18n` package for detailed instructions on addin
 - [next-intl](https://next-intl.dev/) - Internationalization
 - [Tailwind CSS](https://tailwindcss.com/) - Styling
 - [Radix UI](https://www.radix-ui.com/) - UI Components
-- [NextAuth.js](https://next-auth.js.org/) - Authentication
+- [@medaris/auth](../../libs/auth/README.md) - Authentication
 
 ## 📚 Additional Resources
 

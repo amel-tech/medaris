@@ -15,11 +15,12 @@ import { revalidatePath } from "next/cache";
 import {
   type AuthenticatedActionResult,
   authenticatedAction,
+  succeeded,
 } from "~/lib/authenticated-action";
 
 /** What the Medaris nazımları and İzin grupları pages show changes with every write here. */
-const refresh = (result: { success: boolean }) => {
-  if (result.success) revalidatePath("/", "layout");
+const refresh = <T>(result: AuthenticatedActionResult<T>) => {
+  if (succeeded(result)) revalidatePath("/", "layout");
 };
 
 /** "Medaris nazımı ata" (nizam 11, 12): the appointment and its permissions, together. */

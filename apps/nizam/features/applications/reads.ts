@@ -1,10 +1,8 @@
 import {
-  createServerTedrisatAPIs,
   type PendingEnrollmentResponse,
   ResponseError,
 } from "@medaris/services/tedrisat";
-import { env } from "~/env";
-import { getAccessToken } from "~/lib/auth_options";
+import { passOnSignIn, tedrisatApi } from "~/lib/tedrisat-api";
 
 /**
  * Server-side reads behind the applications screens (nizam 31 and 57,
@@ -28,10 +26,7 @@ export const getKoskApplications = async (
   koskId: string
 ): Promise<PendingRead> => {
   try {
-    const api = await createServerTedrisatAPIs(
-      await getAccessToken(),
-      env.TEDRISAT_API_BASE_URL
-    );
+    const api = await tedrisatApi();
     const [pending, courses] = await Promise.all([
       api.courses.getPendingEnrollments({ koskId }),
       // the names beside the course titles are a nicety: a failure here must
@@ -46,6 +41,7 @@ export const getKoskApplications = async (
     }
     return { pending, muderris };
   } catch (error) {
+    await passOnSignIn(error);
     if (error instanceof ResponseError) {
       if (error.response.status === 403) return "forbidden";
       if (error.response.status === 404) return "not-found";
