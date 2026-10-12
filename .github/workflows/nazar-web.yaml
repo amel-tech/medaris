@@ -21,13 +21,26 @@ permissions:
   contents: read
   packages: write
 
-# Serialize deploys of this app. Deliberately NOT ref-scoped — the race this
-# prevents is two runs pushing `:latest` and hitting the same Coolify webhook,
-# which happens across refs, not within one. `cancel-in-progress: false`:
-# cancelling between the push and the webhook leaves a new image in GHCR that
-# nothing was ever told to deploy.
+# Serialize deploys of this app, one queue per channel. Not ref-scoped: the
+# race this prevents is two runs hitting the same Coolify webhook, which happens
+# across refs. `cancel-in-progress: false`: cancelling between the push and the
+# webhook leaves a new image in GHCR that nothing was ever told to deploy.
+#
+# The group is computed because GitHub keeps only ONE pending run per group and
+# cancels the older one when a newer one arrives. On 2026-10-12 the production
+# deploy of tedris-web-v2.4.0 (run 38204414180) was cancelled that way, while
+# it waited behind a development deploy:
+#   - every release starts all seven deploy workflows. The six whose tag is
+#     not theirs skip their job, but the run still queued in this group first,
+#     so another app's release replaced the pending production deploy;
+#   - the development deploy cd-development.yaml makes on every push to main
+#     (through workflow_call, where `github` is the caller's push) held the
+#     same group, so production queued behind development.
+# A release of another app now gets a group of its own, and development and
+# production queue separately. A pre-release deploys to development, as in the
+# Deploy step below.
 concurrency:
-  group: deploy-nazar-web
+  group: ${{ github.event_name == 'release' && !startsWith(github.event.release.tag_name, 'nazar-web-') && format('deploy-nazar-web-noop-{0}', github.run_id) || (github.event_name == 'release' && !github.event.release.prerelease) && 'deploy-nazar-web-production' || 'deploy-nazar-web-development' }}
   cancel-in-progress: false
 
 env:
@@ -96,17 +109,17 @@ jobs:
           # nothing useful to say. `type=sha` is enabled for every event, so
           # there is always at least one immutable, traceable tag.
           #
-          # `latest` is NOT left on `{{is_default_branch}}` (MDRS-16 review).
-          # That helper (metadata-action src/meta.ts:444-465 at the pinned SHA)
-          # does `context.ref.replace(/^refs\/heads\//)` and compares the result
-          # to the default branch. On a `release` the ref is `refs/tags/<tag>`,
-          # so the replace is a no-op, the compare can never match, and the
-          # eventName fallback covers only create/discussion/issues/schedule —
-          # never `release`. A release therefore pushed `<semver>` + `sha-…` and
-          # left `:latest` on the OLD image: a Coolify service pulling `:latest`
-          # re-pulls the previous build and the run goes green having deployed
-          # nothing. The explicit expression below fires `latest` for every
-          # release as well as for the default branch.
+          # `latest` is the development channel's tag: it moves on the default
+          # branch, and on a pre-release, which deploys to `development`. A full
+          # release no longer moves it (2026-10-12). Production pulls `stable`;
+          # the release commit's own push to main has already rebuilt `latest`
+          # through cd-development.yaml; and now that development and production
+          # deploys queue separately (see `concurrency` above), a release moving
+          # `latest` could race a newer development build and leave development
+          # on the older image. `{{is_default_branch}}` is still not used: on a
+          # `release` the ref is `refs/tags/<tag>`, so that helper can never
+          # match (metadata-action src/meta.ts:444-465 at the pinned SHA,
+          # MDRS-16 review).
           #
           # `stable` (MDRS-87) moves ONLY on a full release and is what the
           # Coolify `production` application pulls; `latest` is what
@@ -122,7 +135,7 @@ jobs:
           # `development` — which is where an rc belongs.
           tags: |
             type=match,pattern=nazar-web-v(.+),group=1
-            type=raw,value=latest,enable=${{ github.event_name == 'release' || github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}
+            type=raw,value=latest,enable=${{ (github.event_name == 'release' && github.event.release.prerelease) || github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}
             type=sha
             type=raw,value=stable,enable=${{ github.event_name == 'release' && github.event.release.prerelease == false }}
 
