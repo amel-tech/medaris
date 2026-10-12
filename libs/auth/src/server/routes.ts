@@ -1,0 +1,378 @@
+import { type NextRequest, NextResponse } from "next/server";
+import * as client from "openid-client";
+import type { AuthErrorCode } from "../shared/auth-error";
+import { AUTH_ROUTES } from "../shared/routes";
+import type { ResolvedAuthConfig } from "./config";
+import { cookieAttributes, writeCookies } from "./cookies";
+import { callbackErrorCode, failureSummary, type Oidc } from "./oidc";
+import { acceptedLocale, safeReturnTo } from "./return-to";
+import { deriveKey, seal, unseal } from "./seal";
+import {
+  hasUsableAccessToken,
+  publicSession,
+  type SessionCookie,
+  sessionFromTokens,
+  type TokenSet,
+} from "./session-cookie";
+
+/**
+ * The four route handlers: start a sign-in, take the IdP's answer, sign out,
+ * and serve the client-safe session.
+ *
+ * Every round trip keeps its own `state`, nonce and PKCE verifier in its own
+ * short-lived sealed cookie, named after the state. NextAuth kept one per
+ * origin, so two tabs signing in together overwrote each other's and the
+ * first came back to "Giriş yapılamadı" (#180, B3); here they cannot meet.
+ */
+
+/** A sign-in round trip in progress, sealed into its own cookie. */
+interface Flow {
+  state: string;
+  nonce: string;
+  verifier: string;
+  /** Validated destination after the callback. */
+  returnTo: string;
+  locale: string | null;
+  startedAt: number;
+}
+
+/** How long a round trip may take on the IdP's forms. */
+const FLOW_MAX_AGE = 10 * 60;
+/** Round trips one browser may hold open at once; older ones are dropped. */
+const MAX_OPEN_FLOWS = 3;
+
+/**
+ * The hard cap: at most this many round trips started in a window, per
+ * browser. Past it the start route refuses with `SignInLimit` and nothing
+ * starts another on its own. It is the backstop under the client's own
+ * budget (one automatic retry, a few automatic starts per tab): an IdP that is
+ * down, a client secret that no longer matches, or a session cookie the
+ * browser keeps refusing cannot turn into an endless redirect.
+ */
+export const MAX_STARTS_PER_WINDOW = 5;
+export const STARTS_WINDOW_MS = 5 * 60_000;
+
+/** `state` as openid-client makes it (base64url); anything else is not ours. */
+const STATE_PATTERN = /^[A-Za-z0-9_-]{16,128}$/;
+const flowId = (state: string) => state.slice(0, 16);
+
+export interface AuthRouteHandlers {
+  /** `GET /api/auth/signin?callbackUrl=&locale=&intent=register` */
+  signIn(request: NextRequest): Promise<Response>;
+  /** `GET /api/auth/callback/keycloak` */
+  callback(request: NextRequest): Promise<Response>;
+  /** `POST /api/auth/signout` (form field `locale`) */
+  signOut(request: NextRequest): Promise<Response>;
+  /** `GET /api/auth/session` */
+  session(request: NextRequest): Promise<Response>;
+  /** All four behind one catch-all route (`app/api/auth/[...auth]/route.ts`). */
+  GET(request: NextRequest): Promise<Response>;
+  POST(request: NextRequest): Promise<Response>;
+}
+
+const parseStarts = (value: string | undefined, now: number) => {
+  const [count, since] = (value ?? "").split(".").map(Number);
+  return typeof count === "number" &&
+    typeof since === "number" &&
+    Number.isInteger(count) &&
+    count >= 0 &&
+    since <= now &&
+    now - since < STARTS_WINDOW_MS
+    ? { count, since }
+    : { count: 0, since: now };
+};
+
+export function createRouteHandlers(
+  config: ResolvedAuthConfig,
+  oidc: Oidc,
+  sessionCookie: SessionCookie
+): AuthRouteHandlers {
+  let flowKey: Promise<Uint8Array> | undefined;
+  const flowKeyOf = () => {
+    flowKey ??= deriveKey(config.secret, config.cookiePrefix, "flow");
+    return flowKey;
+  };
+
+  const absolute = (path: string) => new URL(path, config.origin);
+
+  /** The app's sign-in page, saying what went wrong and where to go after. */
+  const errorPage = (code: AuthErrorCode, returnTo: string | null) => {
+    const target = absolute(config.signInPage(returnTo));
+    target.searchParams.set("error", code);
+    if (returnTo) target.searchParams.set("callbackUrl", returnTo);
+    return target;
+  };
+
+  const redirect = (target: URL | string) =>
+    NextResponse.redirect(target, { status: 303 });
+
+  const removeCookie = (response: NextResponse, name: string) =>
+    response.cookies.set(name, "", cookieAttributes(config.secure, 0));
+
+  const signIn: AuthRouteHandlers["signIn"] = async (request) => {
+    const now = config.now();
+    const params = request.nextUrl.searchParams;
+    const locale = acceptedLocale(params.get("locale"), config.locales);
+    const returnTo = safeReturnTo(params.get("callbackUrl"), config.origin);
+    const destination = returnTo ?? config.afterSignIn(locale);
+    const register = params.get("intent") === "register";
+
+    // Already signed in (another tab's round trip finished, or a stale link):
+    // go on rather than through the IdP again. Not for "Kayıt ol", which asks
+    // for the registration form on purpose.
+    if (!register) {
+      const session = await sessionCookie.read(request.cookies);
+      if (session && hasUsableAccessToken(session, now)) {
+        return redirect(absolute(destination));
+      }
+    }
+
+    const starts = parseStarts(
+      request.cookies.get(config.cookies.starts)?.value,
+      now
+    );
+    if (starts.count >= MAX_STARTS_PER_WINDOW) {
+      return redirect(errorPage("SignInLimit", returnTo));
+    }
+
+    let configuration: client.Configuration;
+    try {
+      configuration = await oidc.configuration();
+    } catch (error) {
+      console.error(
+        "@medaris/auth: OIDC discovery failed",
+        failureSummary(error)
+      );
+      return redirect(errorPage("OAuthSignin", returnTo));
+    }
+
+    const state = client.randomState();
+    const nonce = client.randomNonce();
+    const verifier = client.randomPKCECodeVerifier();
+    const parameters: Record<string, string> = {
+      redirect_uri: config.redirectUri,
+      scope: config.scope,
+      code_challenge: await client.calculatePKCECodeChallenge(verifier),
+      code_challenge_method: "S256",
+      state,
+      nonce,
+    };
+    if (locale) {
+      parameters.ui_locales = locale;
+      if (config.kcLocale) parameters.kc_locale = locale;
+    }
+    // OIDC "Initiating User Registration" (MDRS-101): the registration form
+    // directly, rather than the login form and a link to find.
+    if (register) parameters.prompt = "create";
+
+    const flow: Flow = {
+      state,
+      nonce,
+      verifier,
+      returnTo: destination,
+      locale,
+      startedAt: now,
+    };
+    const response = redirect(
+      client.buildAuthorizationUrl(configuration, parameters)
+    );
+    response.cookies.set(
+      `${config.cookies.flowPrefix}${flowId(state)}`,
+      await seal({ ...flow }, await flowKeyOf(), {
+        now,
+        expiresAt: now + FLOW_MAX_AGE * 1000,
+      }),
+      cookieAttributes(config.secure, FLOW_MAX_AGE)
+    );
+    response.cookies.set(
+      config.cookies.starts,
+      `${starts.count + 1}.${starts.since}`,
+      cookieAttributes(
+        config.secure,
+        Math.ceil((starts.since + STARTS_WINDOW_MS - now) / 1000)
+      )
+    );
+
+    // Round trips abandoned on the IdP's form leave their cookie until it
+    // expires; keep the newest few and drop the rest.
+    const open: Array<{ name: string; startedAt: number }> = [];
+    for (const { name, value } of request.cookies.getAll()) {
+      if (!name.startsWith(config.cookies.flowPrefix)) continue;
+      const other = await unseal<Flow>(value, await flowKeyOf(), now);
+      open.push({ name, startedAt: other?.startedAt ?? 0 });
+    }
+    open.sort((a, b) => b.startedAt - a.startedAt);
+    for (const stale of open.slice(MAX_OPEN_FLOWS - 1)) {
+      removeCookie(response, stale.name);
+    }
+    return response;
+  };
+
+  const callback: AuthRouteHandlers["callback"] = async (request) => {
+    const now = config.now();
+    const params = request.nextUrl.searchParams;
+    const state = params.get("state");
+    const cookieName =
+      state && STATE_PATTERN.test(state)
+        ? `${config.cookies.flowPrefix}${flowId(state)}`
+        : null;
+    const sealed = cookieName
+      ? request.cookies.get(cookieName)?.value
+      : undefined;
+    const flow = sealed
+      ? await unseal<Flow>(sealed, await flowKeyOf(), now)
+      : null;
+
+    if (!flow || flow.state !== state) {
+      // No round trip of this browser's has this state: the Back button
+      // replaying a callback that already signed in (MDRS-249 B), or a link
+      // from somewhere else. Signed in already: go on, quietly.
+      const session = await sessionCookie.read(request.cookies);
+      const response =
+        session && hasUsableAccessToken(session, now)
+          ? redirect(absolute(config.afterSignIn(null)))
+          : redirect(errorPage("OAuthCallback", null));
+      if (cookieName && sealed) removeCookie(response, cookieName);
+      return response;
+    }
+
+    try {
+      const configuration = await oidc.configuration();
+      // The registered redirect URI plus the IdP's parameters: behind the
+      // deployment's proxy `request.url` names an internal host, and
+      // openid-client sends this URL (without its query) as `redirect_uri`.
+      const currentUrl = new URL(config.redirectUri);
+      for (const [key, value] of params) {
+        currentUrl.searchParams.append(key, value);
+      }
+      const tokens = await client.authorizationCodeGrant(
+        configuration,
+        currentUrl,
+        {
+          expectedState: flow.state,
+          expectedNonce: flow.nonce,
+          pkceCodeVerifier: flow.verifier,
+          idTokenExpected: true,
+        }
+      );
+      const session = sessionFromTokens(tokens as unknown as TokenSet, now);
+      if (!session) throw new Error("the ID token names no subject");
+
+      const response = redirect(absolute(flow.returnTo));
+      writeCookies(
+        response.cookies,
+        await sessionCookie.writes(request.cookies, session),
+        config.secure
+      );
+      removeCookie(response, cookieName as string);
+      return response;
+    } catch (error) {
+      const code = callbackErrorCode(error);
+      console.error("@medaris/auth: sign-in callback failed", {
+        ...failureSummary(error),
+        reported: code,
+      });
+      const response = redirect(errorPage(code, flow.returnTo));
+      removeCookie(response, cookieName as string);
+      return response;
+    }
+  };
+
+  const signOut: AuthRouteHandlers["signOut"] = async (request) => {
+    if (request.method !== "POST") {
+      return new NextResponse(null, {
+        status: 405,
+        headers: { Allow: "POST" },
+      });
+    }
+    // A sign-out on another site's say-so is refused. The session cookie is
+    // SameSite=Lax and would not come along anyway; this keeps a cross-site
+    // form from even reaching the IdP's end-session endpoint in our name.
+    const origin = request.headers.get("origin");
+    if (
+      (origin && origin !== config.origin) ||
+      request.headers.get("sec-fetch-site") === "cross-site"
+    ) {
+      return new NextResponse(null, { status: 403 });
+    }
+
+    let locale: string | null = null;
+    try {
+      const form = await request.formData();
+      locale = acceptedLocale(form.get("locale"), config.locales);
+    } catch {
+      // no body: no locale
+    }
+
+    const session = await sessionCookie.read(request.cookies);
+    let target = absolute(config.afterSignOut);
+    // Without an ID token there is no hint to send, and Keycloak would answer
+    // with its own English "Do you want to log out?" page (A20, B7): sign out
+    // here only. Never an empty `id_token_hint=`.
+    if (session?.idToken) {
+      try {
+        const configuration = await oidc.configuration();
+        if (configuration.serverMetadata().end_session_endpoint) {
+          const parameters: Record<string, string> = {
+            id_token_hint: session.idToken,
+            post_logout_redirect_uri: config.postLogoutRedirectUri,
+          };
+          if (locale) parameters.ui_locales = locale;
+          target = client.buildEndSessionUrl(configuration, parameters);
+        }
+      } catch (error) {
+        console.error(
+          "@medaris/auth: end-session URL unavailable, signing out locally",
+          failureSummary(error)
+        );
+      }
+    }
+
+    const response = redirect(target);
+    writeCookies(
+      response.cookies,
+      await sessionCookie.writes(request.cookies, null),
+      config.secure
+    );
+    return response;
+  };
+
+  const session: AuthRouteHandlers["session"] = async (request) => {
+    const stored = await sessionCookie.read(request.cookies);
+    const body =
+      stored && hasUsableAccessToken(stored, config.now())
+        ? publicSession(stored)
+        : null;
+    return NextResponse.json(body, {
+      headers: { "Cache-Control": "no-store, max-age=0" },
+    });
+  };
+
+  const notFound = () => new NextResponse(null, { status: 404 });
+
+  return {
+    signIn,
+    callback,
+    signOut,
+    session,
+    GET(request) {
+      switch (request.nextUrl.pathname) {
+        case AUTH_ROUTES.signIn:
+          return signIn(request);
+        case AUTH_ROUTES.callback:
+          return callback(request);
+        case AUTH_ROUTES.session:
+          return session(request);
+        case AUTH_ROUTES.signOut:
+          return signOut(request);
+        default:
+          return Promise.resolve(notFound());
+      }
+    },
+    POST(request) {
+      return request.nextUrl.pathname === AUTH_ROUTES.signOut
+        ? signOut(request)
+        : Promise.resolve(notFound());
+    },
+  };
+}

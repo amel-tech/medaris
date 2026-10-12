@@ -1,0 +1,46 @@
+{
+  "name": "@medaris/auth",
+  "version": "0.0.0",
+  "description": "One OIDC session for the web apps: sign-in, callback, sign-out, refresh in proxy.ts, and the server and client reads",
+  "type": "module",
+  "license": "MIT",
+  "private": true,
+  "sideEffects": false,
+  "files": [
+    "src/**"
+  ],
+  "exports": {
+    "./server": {
+      "types": "./src/server/index.ts",
+      "import": "./src/server/index.ts",
+      "default": "./src/server/index.ts"
+    },
+    "./client": {
+      "types": "./src/client/index.ts",
+      "import": "./src/client/index.ts",
+      "default": "./src/client/index.ts"
+    }
+  },
+  "scripts": {
+    "clean": "rm -rf .turbo node_modules dist .tsbuild coverage",
+    "typecheck": "tsc -b tsconfig.json",
+    "test": "vitest run --coverage",
+    "test:watch": "vitest",
+    "depcheck": "depcheck --config=../../.depcheckrc.json"
+  },
+  "dependencies": {
+    "client-only": "catalog:",
+    "jose": "catalog:",
+    "next": "catalog:",
+    "openid-client": "catalog:",
+    "react": "catalog:",
+    "server-only": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@vitest/coverage-v8": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

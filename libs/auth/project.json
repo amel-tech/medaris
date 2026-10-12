@@ -1,0 +1,8 @@
+{
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "name": "auth",
+  "tags": ["scope:web", "platform:web", "type:data-access"],
+  "targets": {
+    "lint": {}
+  }
+}
