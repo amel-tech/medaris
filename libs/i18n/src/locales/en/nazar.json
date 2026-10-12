@@ -1791,6 +1791,7 @@
       "fileLabel": "Video file",
       "fileHelp": "At most {max}. If the connection drops, the upload continues where it stopped.",
       "chosen": "{name} · {size}",
+      "replacesLink": "The video you upload replaces this recording's link. Once the upload starts, the link is removed from the recording.",
       "submit": "Upload",
       "cancel": "Stop",
       "resume": "Continue",
