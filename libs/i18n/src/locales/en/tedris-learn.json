@@ -204,5 +204,12 @@
       "notFound": "This file is no longer there.",
       "failed": "The file could not be added. Try again in a moment."
     }
+  },
+  "FileDownload": {
+    "title": "The file could not be downloaded",
+    "forbidden": "You may not download this file.",
+    "notFound": "This file is no longer there.",
+    "unavailable": "Files cannot be reached right now. Try again in a moment.",
+    "failed": "Something went wrong. Try again in a moment."
   }
 }

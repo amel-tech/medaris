@@ -312,7 +312,9 @@ describe("Dosya yükle on the course's resources", () => {
     const row = section().querySelector(
       '[data-testid="resource-0"]'
     ) as HTMLElement;
-    const link = row.querySelector("a[download]") as HTMLAnchorElement;
+    const link = row.querySelector(
+      "a[href^='/api/files/']"
+    ) as HTMLAnchorElement;
     expect(link.getAttribute("href")).toBe(
       "/api/files/courses/c-1/resources/r-9"
     );
@@ -467,7 +469,9 @@ describe("Dosya yükle on a celse's own resources", () => {
     );
     expect(field("lesson-0-0-resource-1-name")?.value).toBe("bina.pdf");
     expect(field("lesson-0-0-resource-1-url")).toBeNull();
-    const link = group().querySelector("a[download]") as HTMLAnchorElement;
+    const link = group().querySelector(
+      "a[href^='/api/files/']"
+    ) as HTMLAnchorElement;
     expect(link.getAttribute("href")).toBe(
       "/api/files/lessons/l-1/resources/lr-9"
     );

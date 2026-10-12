@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
 import { resources } from "@medaris/i18n";
+import { Toaster, ToastProvider } from "@medaris/ui/mds/toast";
 import { NextIntlClientProvider } from "next-intl";
 import type { ReactElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -172,7 +173,11 @@ const element = async () => {
       timeZone="Europe/Istanbul"
       messages={{ nazar: resources.tr.nazar }}
     >
-      <HomeworkPage courseId="c-1" />
+      {/* The app's root holds the toasts (AppProviders). */}
+      <ToastProvider>
+        <HomeworkPage courseId="c-1" />
+        <Toaster />
+      </ToastProvider>
     </NextIntlClientProvider>
   );
 };
@@ -207,6 +212,7 @@ beforeEach(() => {
 });
 afterEach(async () => {
   await cleanup();
+  window.history.replaceState(null, "", "/");
 });
 
 describe("Ödevler", () => {
@@ -239,10 +245,14 @@ describe("Ödevler", () => {
     await mount();
     const [first, second] = rows("l-1");
     expect(first?.textContent).toContain("Ayşe Nur Demir");
-    const link = first?.querySelector("a[download]") as HTMLAnchorElement;
+    const link = first?.querySelector(
+      "a[href^='/api/files/']"
+    ) as HTMLAnchorElement;
     expect(link.getAttribute("href")).toBe(
       "/api/files/courses/c-1/submissions/f-1"
     );
+    // A plain link: a refusal comes back to the page with ?fileError=.
+    expect(link.hasAttribute("download")).toBe(false);
     expect(link.textContent).toBe("odev-1.pdf");
     expect(first?.textContent).toContain("PDF");
     expect(first?.textContent).toContain("1,2 MB");
@@ -252,6 +262,22 @@ describe("Ödevler", () => {
     expect(second?.textContent).toContain("Dosya yok");
     expect(second?.textContent).toContain("Kısa not.");
     expect(rows("l-3")[0]?.textContent).toContain("Word");
+  });
+
+  it("says why a file could not be downloaded, once, and takes ?fileError= off the address", async () => {
+    // A refused download comes back here (@medaris/services/file-proxy).
+    window.history.replaceState(
+      null,
+      "",
+      "/ders/c-1/odevler?fileError=forbidden"
+    );
+    await mount();
+    const toast = document.querySelector(".mds-toast--error")?.textContent;
+    expect(toast).toContain(resources.tr.nazar.Files.downloadErrors.title);
+    expect(toast).toContain(resources.tr.nazar.Files.downloadErrors.forbidden);
+    expect(`${window.location.pathname}${window.location.search}`).toBe(
+      "/ders/c-1/odevler"
+    );
   });
 
   it("writes the times on another course's clock when the course keeps one", async () => {

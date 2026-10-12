@@ -1,6 +1,6 @@
 import { isUuid, proxyDownload } from "@medaris/services/file-proxy";
 import { env } from "~/env";
-import { getAccessToken } from "~/lib/auth";
+import { getAccessToken, signInUrl } from "~/lib/auth";
 
 /**
  * One of the talebe's own homework files (MDRS-290), downloaded through
@@ -20,6 +20,7 @@ export async function GET(
     apiBaseUrl: env.TEDRISAT_API_BASE_URL,
     path: `/lessons/${lessonId}/submission/files/${fileId}`,
     accessToken: await getAccessToken(),
-    signal: request.signal,
+    request,
+    signInUrl,
   });
 }

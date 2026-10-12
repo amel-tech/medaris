@@ -204,5 +204,12 @@
       "notFound": "Bu dosya artık yok.",
       "failed": "Dosya eklenemedi. Biraz sonra yeniden dene."
     }
+  },
+  "FileDownload": {
+    "title": "Dosya indirilemedi",
+    "forbidden": "Bu dosyayı indirme iznin yok.",
+    "notFound": "Bu dosya artık yok.",
+    "unavailable": "Dosyalara şu an ulaşılamıyor. Biraz sonra yeniden dene.",
+    "failed": "Bir sorun çıktı. Biraz sonra yeniden dene."
   }
 }

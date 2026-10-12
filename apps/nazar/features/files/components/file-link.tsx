@@ -8,8 +8,10 @@ import { fileKind, type StoredFile } from "../files";
  * A stored file as a row shows it (MDRS-287, MDRS-290): its name as a plain
  * download link to this app's route, a chip of its type and its size. The
  * route answers `Content-Disposition: attachment` with the stored name, so the
- * link only asks the browser to save it. Without `href` (a row of a
- * content-locked read) the name is shown without a link.
+ * browser saves it and stays on the page. No `download` attribute: a refusal
+ * then comes back to the page with `?fileError=` (or goes to sign-in) rather
+ * than being saved as the file. Without `href` (a row of a content-locked
+ * read) the name is shown without a link.
  */
 export function FileLink({
   file,
@@ -32,7 +34,6 @@ export function FileLink({
         <a
           className="mds-link min-inline-0 break-words"
           href={href}
-          download
           aria-label={t("Files.downloadLabel", { name: file.name })}
         >
           <bdi>{file.name}</bdi>

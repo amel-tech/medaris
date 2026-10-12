@@ -1059,14 +1059,14 @@ describe("session page, Kaynaklar (MDRS-279, MDRS-286, MDRS-289)", () => {
     );
     const mine = list(html, "session-resources");
     expect(mine).toContain(
-      `<a class="mds-link" href="/api/files/lessons/${LESSON}/resources/${R1}" download="">`
+      `<a class="mds-link" href="/api/files/lessons/${LESSON}/resources/${R1}">`
     );
     expect(mine).toContain(`>${tr.download}</span>`);
     expect(mine).toContain(">PDF<");
     expect(mine).toContain("3 MB");
     const theirs = list(html, "course-resources");
     expect(theirs).toContain(
-      `<a class="mds-link" href="/api/files/courses/${COURSE}/resources/${R2}" download="">`
+      `<a class="mds-link" href="/api/files/courses/${COURSE}/resources/${R2}">`
     );
     expect(theirs).toContain(">DOCX<");
     expect(theirs).toContain("40 kB");

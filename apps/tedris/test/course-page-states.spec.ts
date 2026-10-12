@@ -478,7 +478,7 @@ describe("the course's resources (MDRS-279)", () => {
       ],
     });
     expect(reader).toContain(
-      `<a class="mds-link" href="/api/files/courses/${COURSE}/resources/${R1}" download="">`
+      `<a class="mds-link" href="/api/files/courses/${COURSE}/resources/${R1}">`
     );
     expect(reader).toContain(`>${tr.resourcesDownload}</span>`);
     expect(reader).toContain(">PDF<");

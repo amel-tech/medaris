@@ -189,7 +189,7 @@ describe("CourseResources, a file", () => {
   it("downloads through this app's route, not in a new tab, with its type and size under its name", () => {
     const html = draw([fileRow()]);
     expect(anchors(html)).toEqual([
-      `<a class="mds-link" href="/api/files/courses/${COURSE}/resources/${R1}" download="">`,
+      `<a class="mds-link" href="/api/files/courses/${COURSE}/resources/${R1}">`,
     ]);
     expect(html).toContain(
       '<span class="mds-visually-hidden"> (indirilir)</span>'
@@ -226,7 +226,7 @@ describe("CourseResources, a file", () => {
       })
     );
     expect(anchors(html)).toEqual([
-      `<a class="mds-link" href="/api/files/lessons/${LESSON}/resources/${R1}" download="">`,
+      `<a class="mds-link" href="/api/files/lessons/${LESSON}/resources/${R1}">`,
     ]);
     expect(html).toContain(">XLSX<");
     expect(html).toContain("18 kB");

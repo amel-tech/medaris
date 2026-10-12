@@ -6,7 +6,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
  * downloaded. Each is `@medaris/services/file-proxy` (its own spec covers
  * the proxy); here, that every route checks its ids, reaches the tedrisat
  * path it names with the caller's token and nothing else, and answers 401
- * without one.
+ * without one. A link the browser followed as a page is answered with a
+ * redirect instead: to sign-in, or back to the page with `?fileError=`.
  */
 
 const token = vi.hoisted(() => ({
@@ -14,6 +15,8 @@ const token = vi.hoisted(() => ({
 }));
 vi.mock("~/lib/auth", () => ({
   getAccessToken: async () => token.value,
+  signInUrl: (returnTo?: string | null) =>
+    `/tr/auth/signin?callbackUrl=${encodeURIComponent(returnTo ?? "")}`,
 }));
 
 const API = "http://127.0.0.1:1";
@@ -80,11 +83,22 @@ const download = {
 describe.each(
   Object.entries(download)
 )("the download of %s", (_name, route) => {
-  const get = async (ids: Record<string, string>) => {
+  const get = async (
+    ids: Record<string, string>,
+    headers: Record<string, string> = {}
+  ) => {
     const { GET } = (await route.load()) as {
       GET: (r: Request, c: unknown) => Promise<Response>;
     };
-    return GET(new Request("http://app/api/files/x"), params(ids));
+    return GET(new Request("http://app/api/files/x", { headers }), params(ids));
+  };
+  const PAGE = `/tr/courses/${COURSE}/lessons/${LESSON}`;
+  /** What a browser sends for a plain link on one of tedris's pages. */
+  const asPage = {
+    "sec-fetch-dest": "document",
+    "sec-fetch-mode": "navigate",
+    "sec-fetch-site": "same-origin",
+    referer: `http://app${PAGE}`,
   };
 
   it("streams the file from tedrisat's route with the caller's token, with tedrisat's headers and no other", async () => {
@@ -129,6 +143,28 @@ describe.each(
     expect(res.status).toBe(401);
     expect(await res.json()).toEqual({ kind: "unauthenticated" });
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("sends a link followed without a session to sign-in, back to its page", async () => {
+    token.value = undefined;
+    const res = await get(route.ids, asPage);
+    expect(res.status).toBe(303);
+    expect(res.headers.get("location")).toBe(
+      `/tr/auth/signin?callbackUrl=${encodeURIComponent(PAGE)}`
+    );
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("brings a refused link back to its page with ?fileError=", async () => {
+    fetchMock.mockResolvedValue(
+      Response.json(
+        { code: "STORAGE_UNAVAILABLE", status: 503 },
+        { status: 503 }
+      )
+    );
+    const res = await get(route.ids, asPage);
+    expect(res.status).toBe(303);
+    expect(res.headers.get("location")).toBe(`${PAGE}?fileError=unavailable`);
   });
 });
 

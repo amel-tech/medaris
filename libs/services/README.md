@@ -102,16 +102,25 @@ Every app wires them the same way:
   the request's own stream to tedrisat, unread, with the bearer token and the
   original `Content-Type`. tedrisat's status and JSON body come back as they
   are.
-- `proxyDownload({ apiBaseUrl, path, accessToken, signal })` streams the file
-  back with the headers tedrisat set for it (`Content-Type`, `Content-Length`,
-  `Content-Disposition`, `X-Content-Type-Options`, `Cache-Control`,
-  `Content-Security-Policy`) and no other. A refusal (403, 404, 503 …) comes
-  back as tedrisat's JSON.
+- `proxyDownload({ apiBaseUrl, path, accessToken, request, signInUrl })`
+  streams the file back with the headers tedrisat set for it (`Content-Type`,
+  `Content-Length`, `Content-Disposition`, `X-Content-Type-Options`,
+  `Cache-Control`, `Content-Security-Policy`) and no other. A refusal (403,
+  404, 503 …) comes back as tedrisat's JSON to a `fetch()`. To a link the
+  browser followed as a page (`Sec-Fetch-Dest: document`), it is a 303
+  instead: a 401 goes to `signInUrl(<the Referer's path, or "/">)` (with
+  `reauth` when tedrisat refused the token), anything else back to the
+  same-origin Referer with `?fileError=forbidden|notFound|unavailable|failed`
+  (`FILE_ERROR_PARAM`, `fileDownloadError` in `file-rules`), or a short
+  `text/plain` page when there is no such Referer. `request` and `signInUrl`
+  (the app's, from `~/lib/auth`) go together; `signal` defaults to
+  `request.signal`.
 - No token (`await getAccessToken()` gave nothing) answers 401
   `{ kind: "unauthenticated" }`; a token tedrisat refused answers 401
-  `{ kind: "unauthenticated", reauth: true }`. Never a redirect: an API route
-  answers the page's `fetch`, and the page hands that body to
-  `handleUnauthenticated` from `@medaris/auth/client`.
+  `{ kind: "unauthenticated", reauth: true }`. Never a redirect to a
+  `fetch()`: the page hands that body to `handleUnauthenticated` from
+  `@medaris/auth/client`. Only a download link followed as a page is
+  redirected (above).
 - Only a path under `/courses/` or `/lessons/` made of plain segments
   (letters, digits, `-`, `_`) is sent; anything else answers 400
   `INVALID_PATH`. Check the route params with `isUuid` first and answer 404
@@ -121,7 +130,7 @@ Every app wires them the same way:
 // app/api/files/courses/[courseId]/resources/[resourceId]/route.ts
 import { isUuid, proxyDownload } from '@medaris/services/file-proxy'
 import { env } from '~/env'
-import { getAccessToken } from '~/lib/auth'
+import { getAccessToken, signInUrl } from '~/lib/auth'
 
 export async function GET(
   request: Request,
@@ -135,7 +144,8 @@ export async function GET(
     apiBaseUrl: env.TEDRISAT_API_BASE_URL,
     path: `/courses/${courseId}/resources/${resourceId}/file`,
     accessToken: await getAccessToken(),
-    signal: request.signal,
+    request,
+    signInUrl,
   })
 }
 ```
@@ -163,9 +173,13 @@ export async function POST(
 }
 ```
 
-In the page, a download is a plain link (`<a href="/api/files/…">`), and an
-upload a `fetch` with a `FormData` body whose file field is `file`; on 401,
-pass the JSON to `handleUnauthenticated(body, { locale })`.
+In the page, a download is a plain link (`<a href="/api/files/…">`) without
+the `download` attribute: `Content-Disposition: attachment` already saves the
+file, and a `download` link would save a refusal's redirect target as the
+file too. A page that lists files reads `?fileError=` once, says why, and
+takes it off the address. An upload is a `fetch` with a `FormData` body whose
+file field is `file`; on 401, pass the JSON to
+`handleUnauthenticated(body, { locale })`.
 
 What a page shows and checks about a file comes from
 `@medaris/services/file-rules`, which is client-safe (no `server-only`):

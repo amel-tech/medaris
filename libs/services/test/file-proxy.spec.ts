@@ -472,3 +472,212 @@ describe("proxyDownload — tedrisat to browser (MDRS-287, MDRS-290)", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });
+
+describe("proxyDownload — a link followed as a page (MDRS-287, MDRS-290)", () => {
+  const APP = "http://app.test";
+  const ROUTE = `${APP}/api/files/courses/${COURSE}/resources/${RESOURCE}`;
+  const PAGE = `/tr/courses/${COURSE}?tab=resources`;
+
+  const signInUrl = vi.fn(
+    (returnTo?: string | null, options?: { reauth?: boolean }) =>
+      `/tr/auth/signin?callbackUrl=${encodeURIComponent(returnTo ?? "")}${
+        options?.reauth ? "&reauth=1" : ""
+      }`
+  );
+
+  beforeEach(() => signInUrl.mockClear());
+
+  /** What a browser sends for a plain link on one of the app's pages. */
+  const pageRequest = (headers: Record<string, string> = {}) =>
+    new Request(ROUTE, {
+      headers: {
+        "sec-fetch-dest": "document",
+        "sec-fetch-mode": "navigate",
+        "sec-fetch-site": "same-origin",
+        referer: `${APP}${PAGE}`,
+        ...headers,
+      },
+    });
+
+  const followed = (
+    request: Request,
+    overrides: { accessToken?: string | null } = {}
+  ) =>
+    proxyDownload({
+      apiBaseUrl: API,
+      path: DOWNLOAD_PATH,
+      accessToken:
+        overrides.accessToken === undefined ? "token-1" : overrides.accessToken,
+      request,
+      signInUrl,
+    });
+
+  const refuse = (status: number, code: string) =>
+    fetchMock.mockResolvedValueOnce(
+      Response.json(tedrisatError(status, code), { status })
+    );
+
+  it("streams the file as before, with the request's signal", async () => {
+    fetchMock.mockResolvedValue(
+      new Response("%PDF", {
+        status: 200,
+        headers: { "content-disposition": "attachment" },
+      })
+    );
+    const request = pageRequest();
+
+    const response = await followed(request);
+
+    expect(response.status).toBe(200);
+    expect(lastInit().init.signal).toBe(request.signal);
+    expect(await response.text()).toBe("%PDF");
+  });
+
+  it("sends a browser without a session to sign-in, back to the page the link was on", async () => {
+    const response = await followed(pageRequest(), { accessToken: null });
+
+    expect(response.status).toBe(303);
+    expect(signInUrl).toHaveBeenCalledWith(PAGE, { reauth: false });
+    expect(response.headers.get("location")).toBe(
+      `/tr/auth/signin?callbackUrl=${encodeURIComponent(PAGE)}`
+    );
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("asks for new tokens when tedrisat refused the session's own", async () => {
+    refuse(401, "HTTP_401");
+
+    const response = await followed(pageRequest());
+
+    expect(response.status).toBe(303);
+    expect(signInUrl).toHaveBeenCalledWith(PAGE, { reauth: true });
+    expect(response.headers.get("location")).toMatch(/&reauth=1$/);
+  });
+
+  it("comes back to the app's root after sign-in when the link was on no page of this app", async () => {
+    for (const headers of [
+      { referer: "" },
+      {
+        referer: "https://evil.test/tr/courses",
+        "sec-fetch-site": "cross-site",
+      },
+      { referer: `${APP}${PAGE}`, "sec-fetch-site": "same-site" },
+    ]) {
+      signInUrl.mockClear();
+      await followed(pageRequest(headers), { accessToken: null });
+      expect(signInUrl, JSON.stringify(headers)).toHaveBeenCalledWith("/", {
+        reauth: false,
+      });
+    }
+  });
+
+  it("goes back to the page with ?fileError= naming the reason, replacing an earlier one", async () => {
+    for (const [status, code, reason] of [
+      [403, "HTTP_403", "forbidden"],
+      [404, "RESOURCE_FILE_NOT_FOUND", "notFound"],
+      [503, "STORAGE_UNAVAILABLE", "unavailable"],
+      [503, "STORAGE_NOT_CONFIGURED", "unavailable"],
+      [500, "INTERNAL_ERROR", "failed"],
+    ] as const) {
+      refuse(status, code);
+      const response = await followed(
+        pageRequest({ referer: `${APP}${PAGE}&fileError=notFound` })
+      );
+      expect(response.status, code).toBe(303);
+      expect(response.headers.get("location"), code).toBe(
+        `${PAGE}&fileError=${reason}`
+      );
+      expect(response.headers.get("content-type")).toBeNull();
+    }
+    expect(signInUrl).not.toHaveBeenCalled();
+  });
+
+  it("goes back with the reason when tedrisat cannot be reached", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    fetchMock.mockRejectedValue(new TypeError("fetch failed"));
+
+    const response = await followed(pageRequest());
+
+    expect(response.headers.get("location")).toBe(
+      `${PAGE}&fileError=unavailable`
+    );
+  });
+
+  it("takes the referer's origin when the browser sends no Sec-Fetch-Site", async () => {
+    refuse(404, "RESOURCE_FILE_NOT_FOUND");
+    const request = new Request(ROUTE, {
+      headers: { "sec-fetch-mode": "navigate", referer: `${APP}/tr/home` },
+    });
+
+    const response = await followed(request);
+
+    expect(response.headers.get("location")).toBe(
+      "/tr/home?fileError=notFound"
+    );
+  });
+
+  it("never names another host, whatever the referer's path", async () => {
+    refuse(404, "RESOURCE_FILE_NOT_FOUND");
+
+    const response = await followed(
+      pageRequest({ referer: `${APP}//evil.test/x` })
+    );
+
+    expect(response.status).toBe(404);
+    expect(response.headers.get("location")).toBeNull();
+  });
+
+  it("answers plain text in three languages when the link was on no page of this app", async () => {
+    refuse(404, "RESOURCE_FILE_NOT_FOUND");
+
+    const response = await followed(
+      pageRequest({
+        referer: "https://evil.test/",
+        "sec-fetch-site": "cross-site",
+      })
+    );
+
+    expect(response.status).toBe(404);
+    expect(response.headers.get("content-type")).toBe(
+      "text/plain; charset=utf-8"
+    );
+    expect(response.headers.get("location")).toBeNull();
+    const text = await response.text();
+    expect(text).toContain("Dosya indirilemedi.");
+    expect(text).toContain("The file could not be downloaded.");
+    expect(text).toContain("تعذّر تنزيل الملف.");
+    expect(text).not.toContain("RESOURCE_FILE_NOT_FOUND");
+  });
+
+  it("keeps the JSON for fetch() and for a link with the download attribute", async () => {
+    for (const headers of [
+      { "sec-fetch-dest": "empty", "sec-fetch-mode": "cors" },
+      { "sec-fetch-dest": "empty", "sec-fetch-mode": "navigate" },
+      { "sec-fetch-dest": "iframe", "sec-fetch-mode": "navigate" },
+    ]) {
+      refuse(403, "HTTP_403");
+      const response = await followed(pageRequest(headers));
+      expect(response.status, JSON.stringify(headers)).toBe(403);
+      expect(await response.json()).toEqual(tedrisatError(403, "HTTP_403"));
+    }
+    const signedOut = await followed(
+      pageRequest({ "sec-fetch-dest": "empty", "sec-fetch-mode": "cors" }),
+      { accessToken: null }
+    );
+    expect(signedOut.status).toBe(401);
+    expect(await signedOut.json()).toEqual({ kind: "unauthenticated" });
+    expect(signInUrl).not.toHaveBeenCalled();
+  });
+
+  it("keeps the JSON when the route passes no request", async () => {
+    refuse(404, "RESOURCE_FILE_NOT_FOUND");
+
+    const response = await download();
+
+    expect(response.status).toBe(404);
+    expect(await response.json()).toMatchObject({
+      code: "RESOURCE_FILE_NOT_FOUND",
+    });
+  });
+});

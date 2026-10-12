@@ -221,7 +221,8 @@ describe("Dosya yükle on the course's resources", () => {
     expect(link.getAttribute("href")).toBe(
       "/api/files/courses/c1/resources/f1"
     );
-    expect(link.hasAttribute("download")).toBe(true);
+    // A plain link: a refusal comes back to the page with ?fileError=.
+    expect(link.hasAttribute("download")).toBe(false);
     expect(link.textContent).toBe("bina.pdf");
     expect(row.textContent).toContain("PDF");
     expect(row.textContent?.replace(/\s/g, " ")).toContain("1,4 MB");

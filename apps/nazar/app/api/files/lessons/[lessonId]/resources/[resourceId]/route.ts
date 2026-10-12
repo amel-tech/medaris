@@ -1,6 +1,6 @@
 import { isUuid, proxyDownload } from "@medaris/services/file-proxy";
 import { env } from "~/env";
-import { getAccessToken } from "~/lib/auth";
+import { getAccessToken, signInUrl } from "~/lib/auth";
 
 /**
  * Downloads a file of a celse's own resources (MDRS-287), streamed from
@@ -19,6 +19,7 @@ export async function GET(
     apiBaseUrl: env.TEDRISAT_API_BASE_URL,
     path: `/lessons/${lessonId}/resources/${resourceId}/file`,
     accessToken: await getAccessToken(),
-    signal: request.signal,
+    request,
+    signInUrl,
   });
 }

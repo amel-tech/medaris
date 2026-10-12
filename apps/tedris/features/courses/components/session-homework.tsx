@@ -355,9 +355,10 @@ export function SessionHomework({ lessonId }: { lessonId: string }) {
 }
 
 /**
- * One file handed in: its name as a download (through this app), its type
- * and size under it, and a way to remove it that asks first, as a note's
- * delete does.
+ * One file handed in: its name as a download (through this app; a plain
+ * link, so a refusal comes back to the page with `?fileError=` rather than
+ * being saved as the file), its type and size under it, and a way to remove
+ * it that asks first, as a note's delete does.
  */
 const FileRow = ({
   lessonId,
@@ -411,7 +412,7 @@ const FileRow = ({
       <Icon name={fileIcon(file.contentType)} size="sm" />
       <span className="flex min-inline-0 flex-1 flex-col">
         {href ? (
-          <a className="mds-link" href={href} download>
+          <a className="mds-link" href={href}>
             {name}
             <span className="mds-visually-hidden">{t("download")}</span>
           </a>

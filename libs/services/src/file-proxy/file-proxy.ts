@@ -1,5 +1,13 @@
-import { unauthenticated } from "@medaris/auth/server";
-import { MAX_FILE_BYTES } from "../file-rules/file-rules";
+import {
+  isUnauthenticated,
+  type ServerReads,
+  unauthenticated,
+} from "@medaris/auth/server";
+import {
+  FILE_ERROR_PARAM,
+  fileDownloadErrorOf,
+  MAX_FILE_BYTES,
+} from "../file-rules/file-rules";
 
 /**
  * One proxy for files between the browser and tedrisat (MDRS-287, MDRS-290).
@@ -53,7 +61,8 @@ export interface FileProxyTarget {
   path: string;
   /**
    * `await getAccessToken()` from the app's `lib/auth.ts`. None answers 401
-   * `{ kind: "unauthenticated" }`: an API route never redirects.
+   * `{ kind: "unauthenticated" }`, never a redirect to a `fetch()` (a
+   * download link followed as a page: see `proxyDownload`).
    */
   accessToken: string | null | undefined;
 }
@@ -63,10 +72,25 @@ export interface ProxyUploadOptions extends FileProxyTarget {
   maxBytes: number;
 }
 
-export interface ProxyDownloadOptions extends FileProxyTarget {
-  /** Usually `request.signal`: a browser that leaves stops the transfer. */
+interface DownloadTarget extends FileProxyTarget {
+  /**
+   * A browser that leaves stops the transfer. Defaults to `request.signal`
+   * when `request` is given.
+   */
   signal?: AbortSignal;
 }
+
+/**
+ * A download's target, and, given together, the browser's own request and
+ * the app's `signInUrl` (from its `lib/auth.ts`). With them a refusal of a
+ * link the browser followed as a page answers with a redirect rather than
+ * JSON (see `proxyDownload`).
+ */
+export type ProxyDownloadOptions = DownloadTarget &
+  (
+    | { request?: undefined; signInUrl?: undefined }
+    | { request: Request; signInUrl: ServerReads["signInUrl"] }
+  );
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -244,14 +268,101 @@ export async function proxyUpload(
 }
 
 /**
- * Streams a file from tedrisat to the browser with the headers tedrisat set
- * for it (`DOWNLOAD_HEADERS`: the attachment name, `nosniff`, `no-store`, the
- * sandboxing CSP) and none other. A refusal (403, 404, 503 …) comes back as
- * tedrisat's JSON; a refused token as the reauth answer.
+ * Whether the browser asked for this address as a page, by following a plain
+ * link (`Sec-Fetch-Dest: document`; `Sec-Fetch-Mode: navigate` where a browser
+ * sends no destination). A `fetch()` sends `empty`, and so does a link with
+ * the `download` attribute, which saves whatever answers it, a page it is
+ * redirected to included: both keep the JSON.
  */
-export async function proxyDownload(
-  options: ProxyDownloadOptions
-): Promise<Response> {
+const isPageRequest = (request: Request): boolean => {
+  const destination = request.headers.get("sec-fetch-dest");
+  if (destination !== null) return destination === "document";
+  return request.headers.get("sec-fetch-mode") === "navigate";
+};
+
+/**
+ * The page the link was on, as a path with its query and without an earlier
+ * `fileError`, when the browser says it is this app's own page
+ * (`Sec-Fetch-Site: same-origin`, else the `Referer`'s origin against the
+ * request's); null otherwise. Only the path is used, so a redirect built on
+ * it stays on this app's origin.
+ */
+const refererPath = (request: Request): string | null => {
+  const referer = request.headers.get("referer");
+  if (!referer) return null;
+  let from: URL;
+  try {
+    from = new URL(referer);
+  } catch {
+    return null;
+  }
+  const site = request.headers.get("sec-fetch-site");
+  const sameOrigin =
+    site !== null
+      ? site === "same-origin"
+      : from.origin === new URL(request.url).origin;
+  // A path that starts with `//` would name another host in `Location`.
+  if (!sameOrigin || from.pathname.startsWith("//")) return null;
+  from.searchParams.delete(FILE_ERROR_PARAM);
+  return `${from.pathname}${from.search}`;
+};
+
+const seeOther = (location: string) =>
+  new Response(null, {
+    status: 303,
+    headers: { location, "cache-control": "no-store" },
+  });
+
+/**
+ * The last resort for a page request that came from no page of this app (an
+ * address typed or pasted): plain text in the three languages, not JSON.
+ */
+const NOT_DOWNLOADED = [
+  "Dosya indirilemedi. Dosyanın bulunduğu sayfaya dönüp yeniden deneyin.",
+  "The file could not be downloaded. Go back to the page it is on and try again.",
+  "تعذّر تنزيل الملف. ارجع إلى الصفحة التي هو فيها وأعد المحاولة.",
+].join("\n");
+
+const notDownloaded = (status: number) =>
+  new Response(`${NOT_DOWNLOADED}\n`, {
+    status,
+    headers: {
+      "content-type": "text/plain; charset=utf-8",
+      "cache-control": "no-store",
+      "x-content-type-options": "nosniff",
+    },
+  });
+
+/**
+ * A refused download, answered to a browser that followed a link as a page:
+ * no session (or one tedrisat refused) goes to the app's sign-in, coming back
+ * to the page the link was on (or the app's root); any other refusal goes back
+ * to that page with `?fileError=` (`@medaris/services/file-rules`), which it
+ * words. JSON there would be shown as text, or saved as the "file".
+ */
+const answerPage = async (
+  refused: Response,
+  request: Request,
+  signInUrl: ServerReads["signInUrl"]
+): Promise<Response> => {
+  const back = refererPath(request);
+  if (refused.status === 401) {
+    const body: unknown = await refused.json().catch(() => null);
+    const reauth = isUnauthenticated(body) && body.reauth === true;
+    return seeOther(signInUrl(back ?? "/", { reauth }));
+  }
+  discard(refused);
+  if (!back) return notDownloaded(refused.status);
+  const target = new URL(back, "http://page.invalid");
+  target.searchParams.set(
+    FILE_ERROR_PARAM,
+    fileDownloadErrorOf(refused.status)
+  );
+  return seeOther(`${target.pathname}${target.search}`);
+};
+
+/** The file, or the refusal as JSON: what a `fetch()` caller always gets. */
+const download = async (options: ProxyDownloadOptions): Promise<Response> => {
   const refused = precheck(options);
   if (refused) return refused;
 
@@ -265,7 +376,7 @@ export async function proxyDownload(
     },
     cache: "no-store",
     redirect: "error",
-    signal: options.signal,
+    signal: options.signal ?? options.request?.signal,
   });
   if (!upstream) return unreachable();
   if (!upstream.ok) return relay(upstream);
@@ -278,4 +389,27 @@ export async function proxyDownload(
   const encoding = upstream.headers.get("content-encoding");
   if (encoding && encoding !== "identity") headers.delete("content-length");
   return new Response(upstream.body, { status: upstream.status, headers });
+};
+
+/**
+ * Streams a file from tedrisat to the browser with the headers tedrisat set
+ * for it (`DOWNLOAD_HEADERS`: the attachment name, `nosniff`, `no-store`, the
+ * sandboxing CSP) and none other. A refusal (403, 404, 503 …) comes back as
+ * tedrisat's JSON; a refused token as the reauth answer.
+ *
+ * Given the browser's `request` and the app's `signInUrl`, a refusal of a
+ * plain link the browser followed as a page (`Sec-Fetch-Dest: document`) is a
+ * 303 instead: to sign-in for 401, else back to the page the link was on with
+ * `?fileError=<reason>`, or plain text when it came from no page of this app.
+ * A `fetch()` keeps the JSON.
+ */
+export async function proxyDownload(
+  options: ProxyDownloadOptions
+): Promise<Response> {
+  const answer = await download(options);
+  const { request, signInUrl } = options;
+  if (answer.ok || !request || !signInUrl || !isPageRequest(request)) {
+    return answer;
+  }
+  return answerPage(answer, request, signInUrl);
 }

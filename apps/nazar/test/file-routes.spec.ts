@@ -15,6 +15,7 @@ const proxy = vi.hoisted(() => ({
   upload: vi.fn(),
   download: vi.fn(),
   token: vi.fn(),
+  signInUrl: vi.fn(),
 }));
 
 vi.mock("@medaris/services/file-proxy", async (importOriginal) => ({
@@ -22,7 +23,10 @@ vi.mock("@medaris/services/file-proxy", async (importOriginal) => ({
   proxyUpload: proxy.upload,
   proxyDownload: proxy.download,
 }));
-vi.mock("~/lib/auth", () => ({ getAccessToken: proxy.token }));
+vi.mock("~/lib/auth", () => ({
+  getAccessToken: proxy.token,
+  signInUrl: proxy.signInUrl,
+}));
 
 const COURSE = "0b6f3f7e-5a4e-4c1e-9f57-0a6f2b7a1c11";
 const LESSON = "5d1c2b3a-4e5f-4a6b-8c7d-9e0f1a2b3c4d";
@@ -136,11 +140,14 @@ describe("the downloads", () => {
         GET: (r: Request, p: unknown) => Promise<Response>;
       };
       expect((await GET(request, params(ids))).status).toBe(200);
+      // The request and the sign-in address let the proxy answer a link the
+      // browser followed as a page with a redirect rather than JSON.
       expect(proxy.download).toHaveBeenCalledWith({
         apiBaseUrl: API,
         path,
         accessToken: "access-token",
-        signal: request.signal,
+        request,
+        signInUrl: proxy.signInUrl,
       });
     });
 

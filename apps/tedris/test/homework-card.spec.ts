@@ -230,7 +230,8 @@ describe("the card", () => {
       `/api/files/lessons/${LESSON}/submission/files/${F1}`,
       `/api/files/lessons/${LESSON}/submission/files/${F2}`,
     ]);
-    expect(links.every((a) => a.hasAttribute("download"))).toBe(true);
+    // A plain link: a refusal comes back to the page with ?fileError=.
+    expect(links.some((a) => a.hasAttribute("download"))).toBe(false);
     expect(links.some((a) => a.hasAttribute("target"))).toBe(false);
     expect(links[0].textContent).toBe("cevaplar.pdf (indirilir)");
     const rows = host.querySelector(

@@ -1725,6 +1725,13 @@
       "empty": "This file is empty. Choose another file.",
       "tooLarge": "This file is larger than 25 MB. Choose a smaller file."
     },
+    "downloadErrors": {
+      "title": "The file could not be downloaded",
+      "forbidden": "You may not download this file.",
+      "notFound": "This file is no longer there.",
+      "unavailable": "Files cannot be reached right now. Try again in a moment.",
+      "failed": "Something went wrong. Try again in a moment."
+    },
     "kinds": {
       "pdf": "PDF",
       "png": "PNG",

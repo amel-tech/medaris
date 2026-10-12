@@ -24,6 +24,7 @@ import {
 import { celseTimeWords, zoneLabel } from "../session-model";
 import { watchPath, watchTargetOf } from "../watch-model";
 import { CalendarMenu } from "./calendar-menu";
+import { FileErrorNotice } from "./file-error-notice";
 import { LessonNotes } from "./lesson-notes";
 import { SessionActionCard, type WatchPoster } from "./session-action-card";
 import { SessionAgenda } from "./session-agenda";
@@ -63,6 +64,7 @@ export const SessionPage = async ({
   now: Date;
 }) => {
   const t = await getTranslations("tedris");
+  const fileErrors = await getTranslations("tedrisLearn.FileDownload");
   const locale = await getLocale();
   const timeZone = await getTimeZone();
   const cancelled = session.status === "CANCELLED";
@@ -283,6 +285,15 @@ export const SessionPage = async ({
 
   return (
     <main className="font-ui mx-auto flex inline-full max-inline-content flex-col gap-section pbs-8 pbe-16 px-gutter max-md:pbs-5 max-md:pbe-10">
+      <FileErrorNotice
+        labels={{
+          title: fileErrors("title"),
+          forbidden: fileErrors("forbidden"),
+          notFound: fileErrors("notFound"),
+          unavailable: fileErrors("unavailable"),
+          failed: fileErrors("failed"),
+        }}
+      />
       <SessionHeader
         {...sessionHeaderProps(t, {
           course,

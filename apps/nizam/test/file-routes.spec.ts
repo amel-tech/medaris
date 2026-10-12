@@ -6,12 +6,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
  * one tedrisat path it may reach. tedrisat is a stand-in on `fetch`; the
  * session is `getAccessToken` replaced. What the proxy itself does with a
  * body is its own package's spec; here: the path, the token, the ids checked
- * before anything is sent, and tedrisat's answer passed back.
+ * before anything is sent, and tedrisat's answer passed back; to a link the
+ * browser followed as a page, a redirect to sign-in or back to the page.
  */
 
 const token = vi.hoisted(() => ({ value: "access-token" as string | null }));
 vi.mock("~/lib/auth", () => ({
   getAccessToken: async () => token.value,
+  signInUrl: (returnTo?: string | null) =>
+    `/tr/auth/signin?callbackUrl=${encodeURIComponent(returnTo ?? "")}`,
 }));
 
 const courseUpload = await import(
@@ -58,7 +61,8 @@ const upload = (path: string) =>
       "",
     ].join("\r\n"),
   });
-const download = (path: string) => new Request(`http://localhost:4001${path}`);
+const download = (path: string, headers: Record<string, string> = {}) =>
+  new Request(`http://localhost:4001${path}`, { headers });
 const params = <T>(value: T) => ({ params: Promise.resolve(value) });
 const json = (body: unknown, status: number) =>
   new Response(JSON.stringify(body), {
@@ -239,5 +243,42 @@ describe("download routes", () => {
     );
     expect(signedOut.status).toBe(401);
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  describe("a link the browser followed as a page", () => {
+    const PAGE = `/tr/kosks/k1/courses/${COURSE}/curriculum`;
+    const asPage = {
+      "sec-fetch-dest": "document",
+      "sec-fetch-mode": "navigate",
+      "sec-fetch-site": "same-origin",
+      referer: `http://localhost:4001${PAGE}`,
+    };
+
+    it("goes to sign-in without a session, coming back to the curriculum", async () => {
+      token.value = null;
+      const response = await courseDownload.GET(
+        download(`/api/files/courses/${COURSE}/resources/${RESOURCE}`, asPage),
+        params({ courseId: COURSE, resourceId: RESOURCE })
+      );
+      expect(response.status).toBe(303);
+      expect(response.headers.get("location")).toBe(
+        `/tr/auth/signin?callbackUrl=${encodeURIComponent(PAGE)}`
+      );
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it("comes back to the curriculum with ?fileError= when tedrisat refuses", async () => {
+      fetchMock.mockResolvedValue(
+        json({ code: "RESOURCE_FILE_NOT_FOUND", status: 404 }, 404)
+      );
+      const response = await lessonDownload.GET(
+        download(`/api/files/lessons/${LESSON}/resources/${RESOURCE}`, asPage),
+        params({ lessonId: LESSON, resourceId: RESOURCE })
+      );
+      expect(response.status).toBe(303);
+      expect(response.headers.get("location")).toBe(
+        `${PAGE}?fileError=notFound`
+      );
+    });
   });
 });

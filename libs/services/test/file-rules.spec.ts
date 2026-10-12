@@ -2,7 +2,10 @@ import { MAX_FILE_BYTES as PROXY_MAX_FILE_BYTES } from "../src/file-proxy";
 import {
   ALLOWED_FILE_TYPES,
   FILE_ACCEPT,
+  FILE_DOWNLOAD_ERRORS,
   FILE_TYPE_CHIPS,
+  fileDownloadError,
+  fileDownloadErrorOf,
   fileTypeChip,
   formatFileSize,
   MAX_FILE_BYTES,
@@ -121,5 +124,38 @@ describe("formatFileSize", () => {
     expect(plain(formatFileSize(-1, "tr"))).toBe("0 bayt");
     expect(plain(formatFileSize(Number.NaN, "tr"))).toBe("0 bayt");
     expect(plain(formatFileSize(1.5 * MB, "not a locale"))).toBe("1,5 MB");
+  });
+});
+
+describe("?fileError=", () => {
+  it("takes one of the four reasons and nothing else", () => {
+    for (const reason of FILE_DOWNLOAD_ERRORS) {
+      expect(fileDownloadError(reason)).toBe(reason);
+    }
+    for (const value of [
+      "",
+      "HTTP_403",
+      "RESOURCE_FILE_NOT_FOUND",
+      "<script>",
+      "toString",
+      null,
+      undefined,
+      403,
+    ]) {
+      expect(fileDownloadError(value), String(value)).toBeNull();
+    }
+  });
+
+  it("names a refusal by its status", () => {
+    expect(fileDownloadErrorOf(403)).toBe("forbidden");
+    for (const status of [400, 404, 410]) {
+      expect(fileDownloadErrorOf(status), String(status)).toBe("notFound");
+    }
+    for (const status of [502, 503, 504]) {
+      expect(fileDownloadErrorOf(status), String(status)).toBe("unavailable");
+    }
+    for (const status of [409, 429, 500, 304]) {
+      expect(fileDownloadErrorOf(status), String(status)).toBe("failed");
+    }
   });
 });

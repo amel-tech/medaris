@@ -46,7 +46,10 @@ export interface ResourceListLabels {
  * listed alone. Only an http(s) address is linked, whatever the API sent, so
  * a stored `javascript:` can never become an href; a file is linked only to
  * this app's own download route, which adds the token on the server and
- * hands back an attachment, and carries its type and size under its name. A
+ * hands back an attachment, and carries its type and size under its name.
+ * The link has no `download` attribute: the attachment saves the file, and a
+ * refusal comes back to the page with `?fileError=` (or goes to sign-in),
+ * which a `download` link would save as the file instead. A
  * linked row on a host with a name of its own (Google Drive) says so with a
  * chip under its name, as a recording's provider does (MDRS-286). No hooks,
  * so the server celse detail page and the client course page draw the same
@@ -94,7 +97,7 @@ export const ResourceList = ({
             <Icon name={fileIcon(file.contentType)} size="sm" />
             <span className="flex min-inline-0 flex-1 flex-col">
               {download ? (
-                <a className="mds-link" href={download} download>
+                <a className="mds-link" href={download}>
                   {name}
                   <span className="mds-visually-hidden">{labels.download}</span>
                 </a>

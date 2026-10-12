@@ -26,7 +26,9 @@ import {
  * A resource's uploaded file on its row (MDRS-287): the name it was uploaded
  * under as a plain download link through the app's own route, a chip of its
  * type and its size. The route answers with `Content-Disposition: attachment`,
- * so the file is saved, never opened on the app's origin.
+ * so the file is saved, never opened on the app's origin. No `download`
+ * attribute: a refusal then comes back to the page with `?fileError=` (or
+ * goes to sign-in) rather than being saved as the file.
  */
 export function ResourceFileLine({
   file,
@@ -43,7 +45,7 @@ export function ResourceFileLine({
       <span className="mds-label">{t("fileLabel")}</span>
       <p className="m-0 flex flex-wrap items-center gap-2">
         <Icon name={kind === "PDF" ? "pdf" : "doc"} size="sm" />
-        <a className="mds-link" href={href} download>
+        <a className="mds-link" href={href}>
           <bdi>{file.name}</bdi>
         </a>
         <Badge variant="outline">{kind ?? t("fileKindOther")}</Badge>

@@ -122,3 +122,39 @@ export const formatFileSize = (bytes: number, locale: string): string => {
     return new Intl.NumberFormat("tr-TR", options).format(value);
   }
 };
+
+/**
+ * The query parameter a failed download comes back to its page with. A
+ * download is a plain link, so a refusal cannot be answered as JSON the page
+ * reads: the file proxy sends the browser back to the page instead, which
+ * says why (`@medaris/services/file-proxy`).
+ */
+export const FILE_ERROR_PARAM = "fileError";
+
+/**
+ * Why a download failed, as `?fileError=` names it: four reasons the pages
+ * word, never tedrisat's own codes, so an address carries nothing internal.
+ */
+export const FILE_DOWNLOAD_ERRORS = [
+  "forbidden",
+  "notFound",
+  "unavailable",
+  "failed",
+] as const;
+
+export type FileDownloadError = (typeof FILE_DOWNLOAD_ERRORS)[number];
+
+/** `?fileError=`'s value when it is one of the four, else null. */
+export const fileDownloadError = (value: unknown): FileDownloadError | null =>
+  typeof value === "string" &&
+  (FILE_DOWNLOAD_ERRORS as readonly string[]).includes(value)
+    ? (value as FileDownloadError)
+    : null;
+
+/** The reason for a refused download, by its HTTP status. */
+export const fileDownloadErrorOf = (status: number): FileDownloadError => {
+  if (status === 403) return "forbidden";
+  if (status === 400 || status === 404 || status === 410) return "notFound";
+  if (status === 502 || status === 503 || status === 504) return "unavailable";
+  return "failed";
+};

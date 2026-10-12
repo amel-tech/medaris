@@ -9,6 +9,7 @@ import {
   readCoursePermissions,
 } from "~/features/account/course-permissions";
 import { getViewer } from "~/features/account/reads";
+import { FileErrorNotice } from "~/features/files/components/file-error-notice";
 import { PageProblem } from "~/features/shell/components/page-problem";
 import { getMessages } from "~/lib/i18n/messages";
 import { readOnce } from "~/lib/tedrisat-read";
@@ -57,17 +58,20 @@ export async function CurriculumPage({ courseId }: { courseId: string }) {
     );
   }
   return (
-    <CurriculumEditor
-      key={course.data.version}
-      course={course.data}
-      can={{
-        edit: holds(permissions.data, CODES.courseEdit),
-        sessions: holds(permissions.data, CODES.sessionManage),
-        hide: holds(permissions.data, CODES.weekHide),
-      }}
-      locale={locale}
-      timeZone={timeZone}
-    />
+    <>
+      <FileErrorNotice />
+      <CurriculumEditor
+        key={course.data.version}
+        course={course.data}
+        can={{
+          edit: holds(permissions.data, CODES.courseEdit),
+          sessions: holds(permissions.data, CODES.sessionManage),
+          hide: holds(permissions.data, CODES.weekHide),
+        }}
+        locale={locale}
+        timeZone={timeZone}
+      />
+    </>
   );
 }
 

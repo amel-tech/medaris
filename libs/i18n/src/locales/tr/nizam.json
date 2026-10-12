@@ -2776,6 +2776,13 @@
       "unreachable": "Dosya gönderilemedi. Bağlantınızı denetleyip yeniden deneyin.",
       "generic": "Dosya yüklenemedi. Biraz sonra yeniden deneyin."
     },
+    "downloadErrors": {
+      "title": "Dosya indirilemedi",
+      "forbidden": "Bu dosyayı indirme izniniz yok.",
+      "notFound": "Bu dosya artık yok.",
+      "unavailable": "Dosyalara şu an ulaşılamıyor. Biraz sonra yeniden deneyin.",
+      "failed": "Bir sorun çıktı. Biraz sonra yeniden deneyin."
+    },
     "lessonResourcesTitle": "Celsenin kaynakları",
     "lessonResourcesIntro": "İsteğe bağlı; bu celseye bağlı kitap, PDF ve sayfalar: bir bağlantı ya da yüklenen bir dosya. Adlarını herkes görür; bağlantıları ve dosyaları derse kayıtlı talebeler açar.",
     "lessonResourcesEmpty": "Bu celseye henüz kaynak bağlanmadı.",

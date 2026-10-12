@@ -2776,6 +2776,13 @@
       "unreachable": "The file could not be sent. Check your connection and try again.",
       "generic": "The file could not be uploaded. Try again in a moment."
     },
+    "downloadErrors": {
+      "title": "The file could not be downloaded",
+      "forbidden": "You may not download this file.",
+      "notFound": "This file is no longer there.",
+      "unavailable": "Files cannot be reached right now. Try again in a moment.",
+      "failed": "Something went wrong. Try again in a moment."
+    },
     "lessonResourcesTitle": "This session's resources",
     "lessonResourcesIntro": "Optional; the books, PDFs and pages of this session: a link or an uploaded file. Everyone sees their names; talebe enrolled in the course open the links and files.",
     "lessonResourcesEmpty": "No resource is linked to this session yet.",

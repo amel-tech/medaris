@@ -6,6 +6,7 @@ import {
   pageGate,
   readCoursePermissions,
 } from "~/features/account/course-permissions";
+import { FileErrorNotice } from "~/features/files/components/file-error-notice";
 import { PageProblem } from "~/features/shell/components/page-problem";
 import { getMessages } from "~/lib/i18n/messages";
 import { readOnce } from "~/lib/tedrisat-read";
@@ -50,6 +51,7 @@ export async function HomeworkPage({ courseId }: { courseId: string }) {
 
   return (
     <>
+      <FileErrorNotice />
       <header className="flex max-inline-measure flex-col gap-1">
         <h1 className="mds-h1">{t("Homework.title")}</h1>
         {name ? (

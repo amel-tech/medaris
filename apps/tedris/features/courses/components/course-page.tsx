@@ -32,6 +32,7 @@ import { CourseAside } from "./course-aside";
 import { CourseProgramme, SAMPLE_ANCHOR } from "./course-programme";
 import { CourseQuestions } from "./course-questions";
 import { CourseResources } from "./course-resources";
+import { FileErrorNotice } from "./file-error-notice";
 import { RecordingsTab } from "./recordings-tab";
 
 const joinNames = (names: string[], locale: string) =>
@@ -83,6 +84,7 @@ export const CoursePage = ({
   now?: number;
 }) => {
   const t = useTranslations("tedris.CoursePage");
+  const fileErrors = useTranslations("tedrisLearn.FileDownload");
   const locale = useLocale();
   const invite = inviteHrefs(locale, `/courses/${course.id}`);
   const [now] = useState(() => nowProp ?? Date.now());
@@ -174,6 +176,15 @@ export const CoursePage = ({
 
   return (
     <main className="font-ui mx-auto flex inline-full max-inline-content flex-col gap-section pbs-8 pbe-16 px-gutter max-md:pbs-5 max-md:pbe-10">
+      <FileErrorNotice
+        labels={{
+          title: fileErrors("title"),
+          forbidden: fileErrors("forbidden"),
+          notFound: fileErrors("notFound"),
+          unavailable: fileErrors("unavailable"),
+          failed: fileErrors("failed"),
+        }}
+      />
       {preview && (
         <Alert tone="neutral" title={t("previewBannerTitle")}>
           {t("previewBannerText")}

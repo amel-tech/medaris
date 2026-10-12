@@ -1725,6 +1725,13 @@
       "empty": "Bu dosya boş. Başka bir dosya seçin.",
       "tooLarge": "Bu dosya 25 MB’tan büyük. Daha küçük bir dosya seçin."
     },
+    "downloadErrors": {
+      "title": "Dosya indirilemedi",
+      "forbidden": "Bu dosyayı indirme izniniz yok.",
+      "notFound": "Bu dosya artık yok.",
+      "unavailable": "Dosyalara şu an ulaşılamıyor. Biraz sonra yeniden deneyin.",
+      "failed": "Bir sorun çıktı. Biraz sonra yeniden deneyin."
+    },
     "kinds": {
       "pdf": "PDF",
       "png": "PNG",
