@@ -132,17 +132,15 @@ test.describe("an enrolled talebe", () => {
   }) => {
     const { upcoming, past, replacement } = fixture.sessions;
     await page.goto(sessionPath(upcoming.id));
-    const nav = page.getByRole("navigation", {
-      name: "Önceki ve sonraki celse",
-    });
+    const nav = page.getByRole("navigation", { name: "Celseler arasında" });
     const previous = nav.getByRole("link", {
-      name: `Önceki celse: ${past.title}`,
+      name: `Önceki celse: Hafta 4, ${past.title}`,
     });
     const next = nav.getByRole("link", {
-      name: `Sonraki celse: ${replacement.title}`,
+      name: `Sonraki celse: Hafta 5, ${replacement.title}`,
     });
     await expect(previous).toBeVisible();
-    await expect(nav.getByText("Hafta 4")).toBeVisible();
+    await expect(nav.getByText("Önceki · Hafta 4")).toBeVisible();
     await expect(next).toBeVisible();
     await previous.click();
     await expect(page).toHaveURL(new RegExp(`/lessons/${past.id}$`));
@@ -175,23 +173,34 @@ test.describe("an enrolled talebe", () => {
     ).toBeVisible();
   });
 
-  test("highlights this celse in the Müfredat, marks the cancelled one and leads to the whole programme", async ({
+  test("opens the Müfredat over the page: this celse selected, the cancelled one marked, a row leads to its celse", async ({
     page,
   }) => {
-    const { upcoming, past } = fixture.sessions;
+    const { upcoming, past, cancelled } = fixture.sessions;
     await page.goto(sessionPath(upcoming.id));
-    const programme = page.getByRole("region", { name: "Müfredat" });
-    await expect(programme.locator('[aria-current="page"]')).toHaveText(
+    const button = page.getByRole("button", {
+      name: `Müfredat: Hafta 5 / 6, ${upcoming.title}`,
+    });
+    await expect(button).toHaveAttribute("aria-expanded", "false");
+    await button.click();
+    const list = page.getByRole("listbox", { name: "Müfredat" });
+    await expect(list).toBeFocused();
+    await expect(list.getByRole("option", { selected: true })).toContainText(
       upcoming.title
     );
-    await expect(programme.getByText(/Bu celse/)).toBeVisible();
-    await expect(programme.getByText(/İptal edildi/)).toBeVisible();
     await expect(
-      programme.getByRole("link", { name: new RegExp(past.title) })
-    ).toBeVisible();
+      list.getByRole("option").filter({ hasText: cancelled.title })
+    ).toContainText("İptal edildi");
     await expect(
-      programme.getByRole("link", { name: "Bütün müfredat" })
-    ).toHaveAttribute("href", /\/courses\/[^/]+$/);
+      page.getByRole("link", { name: "Ders sayfasında aç" })
+    ).toHaveAttribute("href", /\/courses\/[^/]+\?tab=mufredat$/);
+    await page.keyboard.press("Escape");
+    await expect(list).toHaveCount(0);
+    await expect(button).toBeFocused();
+    await button.click();
+    await page.getByRole("searchbox", { name: "Celse ara" }).fill("hafta 4");
+    await page.keyboard.press("Enter");
+    await expect(page).toHaveURL(new RegExp(`/lessons/${past.id}$`));
   });
 
   test("is the not-found page for a missing session and for a lesson that is not a live one", async ({

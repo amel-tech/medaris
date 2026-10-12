@@ -1,13 +1,10 @@
 import type {
   CourseDetailResponse,
-  SessionRefResponse,
   SessionResponse,
 } from "@medaris/services/tedrisat";
-import { Icon } from "@medaris/ui/mds/icon";
 import { resolveMeetingPlatform } from "@medaris/utils";
 import { getLocale, getTimeZone, getTranslations } from "next-intl/server";
 import type { ReactNode } from "react";
-import type { LooseTranslator } from "~/lib/i18n/loose";
 import { canWriteNotes } from "../lesson-note-model";
 import {
   liveEmbedUrlOf,
@@ -31,91 +28,26 @@ import { LessonNotes } from "./lesson-notes";
 import { SessionActionCard, type WatchPoster } from "./session-action-card";
 import { SessionAgenda } from "./session-agenda";
 import { SessionHeader } from "./session-header";
-import { SessionResources } from "./session-resources";
+import { SessionPager } from "./session-pager";
+import { hasSessionResources, SessionResources } from "./session-resources";
 import { SessionStateBadge } from "./session-state-badge";
-import { SessionSyllabus } from "./session-syllabus";
-
-// Narrow on purpose: the full translator type hits TS2589 here (MDRS-176).
-type Translate = LooseTranslator;
-
-/** One end of the footer: the previous celse at the start, the next at the end. */
-const NeighbourCard = ({
-  session,
-  direction,
-  href,
-  t,
-  locale,
-  courseTimeZone,
-}: {
-  session: SessionRefResponse;
-  direction: "previous" | "next";
-  href: string;
-  t: Translate;
-  locale: string;
-  courseTimeZone: string;
-}) => {
-  const previous = direction === "previous";
-  const when = session.startsAt
-    ? new Intl.DateTimeFormat(locale, {
-        weekday: "short",
-        day: "numeric",
-        month: "short",
-        hour: "2-digit",
-        minute: "2-digit",
-        timeZone: courseTimeZone,
-      }).format(session.startsAt)
-    : null;
-  return (
-    <div
-      className={`mds-card mds-card--interactive flex flex-[0_1_26rem] items-center gap-4${previous ? "" : " ms-auto"}`}
-      data-density="compact"
-      data-neighbour={direction}
-    >
-      {previous ? <Icon name="arrowLeft" /> : null}
-      <div
-        className={`flex min-inline-0 flex-1 flex-col gap-1${previous ? "" : " text-end"}`}
-      >
-        <p className="mds-eyebrow" aria-hidden="true">
-          {t(previous ? "SessionPage.previous" : "SessionPage.next")}
-        </p>
-        <p className="mds-label" dir="auto">
-          <a className="mds-card__link" href={href}>
-            <span className="mds-visually-hidden">
-              {t(previous ? "SessionPage.previousSr" : "SessionPage.nextSr")}
-            </span>
-            {session.title}
-          </a>
-        </p>
-        <p className="mds-caption">
-          {t("SessionPage.week", { number: session.weekNumber })}
-          {when ? (
-            <>
-              <span className="mds-sep" aria-hidden="true">
-                ·
-              </span>{" "}
-              <time dateTime={session.startsAt?.toISOString()}>{when}</time>
-            </>
-          ) : null}
-        </p>
-      </div>
-      {previous ? null : <Icon name="arrowRight" />}
-    </div>
-  );
-};
 
 /**
  * The celse detail page (MDRS-158, MDRS-285; layout MDRS-289): a live celse
  * of a course the viewer may read. Server component; the client pieces keep
- * a clock: the state badge, the main card, the agenda, the notes. `session`
- * is `GET /courses/:id/sessions/:id`: its status, cancellation, replacement
- * and neighbours are the API's; the course is the programme the aside lists.
+ * a clock (the state badge, the main card, the agenda, the notes) or open
+ * (the Müfredat combobox). `session` is `GET /courses/:id/sessions/:id`: its
+ * status, cancellation, replacement and neighbours are the API's; the
+ * course is the programme the Müfredat lists.
  *
- * From the top: the header (Köşk › Ders › Hafta N, the title, where the
- * celse stands, its time and its müderris); one wide card, the page's main
- * action (the way to the watch page, or the date and how the celse is
- * attended, with the meeting link); then "Notlarım" when there is nothing to
- * watch, "Gündem" and "Kaynaklar", beside them "Müfredat"; at the foot the
- * previous and next celse. A phone reads it in that order, in one column.
+ * One column, from the top: the header (Köşk › Ders › Hafta N, the title,
+ * where the celse stands, its time and its müderris); one wide card, the
+ * page's main action (the way to the watch page, or the date and how the
+ * celse is attended, with the meeting link); "Notlarım" when there is
+ * nothing to watch; "Gündem" and "Kaynaklar" side by side, either alone
+ * across the width; last, the previous celse, the Müfredat and the next.
+ * The owner: "hep önce-müfredat-sonra şeklinde olabilir, kaynaklar ve gündem
+ * gibi diğer detaylar bunların üstünde olur". A phone stacks the two cards.
  */
 export const SessionPage = async ({
   course,
@@ -294,6 +226,45 @@ export const SessionPage = async ({
       />
     ) : null;
 
+  // "Gündem" and "Kaynaklar" share a row, each half; either alone takes it.
+  const details = [
+    agenda.length > 0 ? (
+      <SessionAgenda
+        key="agenda"
+        agenda={agenda}
+        renderedAt={renderedAt}
+        startsAt={startsAt}
+        durationMinutes={durationMinutes}
+        courseTimeZone={course.timeZone}
+        labels={{
+          title: t("SessionPage.agendaTitle"),
+          zone: t("SessionPage.agendaZone", {
+            zone: zoneLabel(course.timeZone, locale),
+          }),
+          now: t("SessionPage.agendaNow"),
+        }}
+      />
+    ) : null,
+    hasSessionResources(kaynak, session.resources, course.resources) ? (
+      <SessionResources
+        key="resources"
+        kaynak={kaynak}
+        own={session.resources}
+        ownLocked={session.contentLocked}
+        course={course.resources}
+        courseLocked={course.contentLocked}
+        labels={{
+          title: t("SessionPage.resourcesTitle"),
+          reading: t("SessionPage.readingPlace"),
+          own: t("SessionPage.resourcesOwn"),
+          course: t("SessionPage.resourcesCourse"),
+          newTab: t("SessionPage.newTab"),
+          locked: t("SessionPage.resourcesLocked"),
+        }}
+      />
+    ) : null,
+  ].filter(Boolean);
+
   return (
     <main className="font-ui mx-auto flex inline-full max-inline-content flex-col gap-section pbs-8 pbe-16 px-gutter max-md:pbs-5 max-md:pbe-10">
       <SessionHeader
@@ -321,84 +292,25 @@ export const SessionPage = async ({
 
       {card}
 
-      <div className="grid items-start gap-8 grid-cols-[minmax(0,1fr)_var(--layout-aside)] max-md:grid-cols-1">
-        <div className="flex min-inline-0 flex-col gap-6">
-          {notes}
-          {agenda.length > 0 ? (
-            <SessionAgenda
-              agenda={agenda}
-              renderedAt={renderedAt}
-              startsAt={startsAt}
-              durationMinutes={durationMinutes}
-              courseTimeZone={course.timeZone}
-              labels={{
-                title: t("SessionPage.agendaTitle"),
-                zone: t("SessionPage.agendaZone", {
-                  zone: zoneLabel(course.timeZone, locale),
-                }),
-                now: t("SessionPage.agendaNow"),
-              }}
-            />
-          ) : null}
-          <SessionResources
-            kaynak={kaynak}
-            own={session.resources}
-            ownLocked={session.contentLocked}
-            course={course.resources}
-            courseLocked={course.contentLocked}
-            labels={{
-              title: t("SessionPage.resourcesTitle"),
-              reading: t("SessionPage.readingPlace"),
-              own: t("SessionPage.resourcesOwn"),
-              course: t("SessionPage.resourcesCourse"),
-              newTab: t("SessionPage.newTab"),
-              locked: t("SessionPage.resourcesLocked"),
-            }}
-          />
+      {notes}
+
+      {details.length > 0 ? (
+        <div
+          className={`grid gap-grid${details.length > 1 ? " grid-cols-2 max-md:grid-cols-1" : ""}`}
+          data-testid="session-details"
+        >
+          {details}
         </div>
-
-        <aside
-          className="sticky inset-bs-[calc(var(--layout-topbar)+var(--space-6))] flex flex-col gap-4 max-md:static"
-          aria-label={t("SessionPage.side")}
-        >
-          <SessionSyllabus
-            course={course}
-            viewingId={session.id}
-            hasRecording={target?.kind === "recording"}
-            now={now}
-            t={t}
-            locale={locale}
-          />
-        </aside>
-      </div>
-
-      {session.previous || session.next ? (
-        <nav
-          className="flex flex-wrap gap-4"
-          aria-label={t("SessionPage.neighbours")}
-        >
-          {session.previous ? (
-            <NeighbourCard
-              session={session.previous}
-              direction="previous"
-              href={lessonHref(session.previous.id)}
-              t={t}
-              locale={locale}
-              courseTimeZone={course.timeZone}
-            />
-          ) : null}
-          {session.next ? (
-            <NeighbourCard
-              session={session.next}
-              direction="next"
-              href={lessonHref(session.next.id)}
-              t={t}
-              locale={locale}
-              courseTimeZone={course.timeZone}
-            />
-          ) : null}
-        </nav>
       ) : null}
+
+      <SessionPager
+        course={course}
+        session={session}
+        now={now}
+        hasRecording={target?.kind === "recording"}
+        t={t}
+        locale={locale}
+      />
     </main>
   );
 };

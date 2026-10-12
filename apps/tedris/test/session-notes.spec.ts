@@ -189,9 +189,9 @@ describe("the notes panel on a celse with nothing to watch, on the detail page (
 
   /**
    * One panel, with no frame to read, handed the celse's clock (its start,
-   * its length and the instant the page was rendered at), first in the
-   * page's main column under the main card, and no frame switched to the
-   * player API.
+   * its length and the instant the page was rendered at), the page's own
+   * row right under the main card (MDRS-289: one column, no aside), and no
+   * frame switched to the player API.
    */
   const expectFirstInColumn = (html: string, s: SessionResponse) => {
     expect(html.match(/data-notes="/g)).toHaveLength(1);
@@ -199,15 +199,9 @@ describe("the notes panel on a celse with nothing to watch, on the detail page (
     expect(html).toContain(
       `data-notes-clock="${s.startsAt?.toISOString()}|60|${NOW.toISOString()}"`
     );
-    const columns = html.indexOf(
-      "grid-cols-[minmax(0,1fr)_var(--layout-aside)]"
-    );
-    const join = html.indexOf("data-join-card");
-    const notes = html.indexOf('data-notes="s1"');
-    expect(join).toBeGreaterThan(-1);
-    expect(columns).toBeGreaterThan(join);
-    expect(notes).toBeGreaterThan(columns);
-    expect(notes).toBeLessThan(html.indexOf("<aside"));
+    expect(html).toContain('<div data-join-card=""></div><div data-notes="s1"');
+    expect(html).toMatch(/^<main class="[^"]*flex-col[^"]*">/);
+    expect(html).not.toContain("<aside");
     expect(html).not.toContain("enablejsapi");
   };
 

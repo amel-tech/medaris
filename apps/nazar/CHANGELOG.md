@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.2.4](https://github.com/amel-tech/medaris/compare/nazar-web-v0.2.3...nazar-web-v0.2.4) (2026-10-12)
+
+
+### Features
+
+* **tedrisat, nazar-web, nizam-web, tedris-web:** MDRS-283 cover a celse by link, stream, in person ([#271](https://github.com/amel-tech/medaris/issues/271)) ([d24612b](https://github.com/amel-tech/medaris/commit/d24612bbd3867d8698b77973b4e63525abd92840))
+* **tedrisat, nazar-web, nizam-web, tedris-web:** MDRS-286 give each celse its own resource links ([#274](https://github.com/amel-tech/medaris/issues/274)) ([ef2c400](https://github.com/amel-tech/medaris/commit/ef2c4002ca6c14a583723e0912f0c5a53b780839))
+* **tedrisat, nazar-web, tedris-web:** MDRS-288 open a celse's recording at a time the team sets ([#275](https://github.com/amel-tech/medaris/issues/275)) ([1fe3345](https://github.com/amel-tech/medaris/commit/1fe334503eac9287519e643c5cfc795fb2442cf9))
+
+
+### Bug Fixes
+
+* **nazar-web:** send a session that is over to sign-in, not to "Görevleriniz okunamadı" ([#270](https://github.com/amel-tech/medaris/issues/270)) ([82969ba](https://github.com/amel-tech/medaris/commit/82969bafea0e28aa5cba1a991e69c18315319c6b))
+
 ## [0.2.3](https://github.com/amel-tech/medaris/compare/nazar-web-v0.2.2...nazar-web-v0.2.3) (2026-10-09)
 
 

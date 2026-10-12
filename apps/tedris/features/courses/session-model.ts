@@ -74,7 +74,7 @@ export const celseNumberOf = (
   return null;
 };
 
-export interface SyllabusRow {
+export interface CurriculumRow {
   lesson: LessonResponse;
   weekNumber: number;
   state: SessionState;
@@ -83,40 +83,64 @@ export interface SyllabusRow {
 }
 
 /**
- * The Müfredat aside of the celse detail page (MDRS-289): the course's
- * celses in programme order, a window of `size` rows around the one on the
- * page, moved inward at either end so it stays full. `count` is every celse
- * that stands (not cancelled), for the line beside the title; the whole
- * programme is on the course page.
+ * The Müfredat combobox at the foot of the celse detail page (MDRS-289):
+ * every celse of the course in programme order, each with where it stands at
+ * `now`, the one on the page marked; the list scrolls through all of them.
+ * `weeks` is how many weeks the programme runs, for "Hafta 5 / 12": the
+ * highest week number, or the count of weeks when that is higher.
  */
-export const syllabusOf = (
+export const curriculumOf = (
   course: Pick<CourseDetailResponse, "weeks">,
   viewingId: string,
-  now: Date,
-  size = 5
-): { rows: SyllabusRow[]; count: number } => {
-  const all = course.weeks.flatMap((week) =>
+  now: Date
+): { rows: CurriculumRow[]; weeks: number } => ({
+  rows: course.weeks.flatMap((week) =>
     week.lessons.filter(isLive).map(
-      (lesson): SyllabusRow => ({
+      (lesson): CurriculumRow => ({
         lesson,
         weekNumber: week.weekNumber,
         state: stateOfLesson(lesson, now),
         viewing: lesson.id === viewingId,
       })
     )
-  );
-  const at = Math.max(
-    0,
-    all.findIndex((row) => row.viewing)
-  );
-  const start = Math.max(
-    0,
-    Math.min(at - Math.floor(size / 2), all.length - size)
-  );
-  return {
-    rows: all.slice(start, start + size),
-    count: all.filter((row) => !row.lesson.cancelledAt).length,
-  };
+  ),
+  weeks: Math.max(
+    course.weeks.length,
+    ...course.weeks.map((week) => week.weekNumber)
+  ),
+});
+
+/** Case and marks folded away, so "mehmuz" finds "Mehmûz" and "isaguci" "İsâgûcî". */
+const fold = (text: string, locale: string): string =>
+  text
+    .toLocaleLowerCase(locale)
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .replace(/ı/g, "i");
+
+/**
+ * Whether a Müfredat row answers the search field ("Hafta ya da başlık ara",
+ * MDRS-289). Every word of the query must be found: a number is the week
+ * ("5" finds Hafta 5, not Hafta 15) or a number standing alone in the title;
+ * any other word is looked for in the week's name and the title, without
+ * case or marks. An empty query keeps every row.
+ */
+export const curriculumMatches = (
+  row: { weekNumber: number; week: string; title: string },
+  query: string,
+  locale: string
+): boolean => {
+  const title = fold(row.title, locale);
+  const named = `${fold(row.week, locale)} ${title}`;
+  return fold(query, locale)
+    .split(/\s+/)
+    .filter(Boolean)
+    .every((word) =>
+      /^\d+$/.test(word)
+        ? Number(word) === row.weekNumber ||
+          new RegExp(`(^|\\D)${word}(\\D|$)`).test(title)
+        : named.includes(word)
+    );
 };
 
 /** Minutes past midnight of an instant on a zone's clock. */
