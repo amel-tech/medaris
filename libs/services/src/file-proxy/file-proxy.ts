@@ -149,8 +149,16 @@ const precheck = ({ path, accessToken }: FileProxyTarget): Response | null => {
   return null;
 };
 
+// A loop rather than `/\/+$/`: CodeQL flags that pattern as polynomial on a
+// string of many slashes (js/polynomial-redos).
+const withoutTrailingSlashes = (url: string) => {
+  let end = url.length;
+  while (end > 0 && url[end - 1] === "/") end--;
+  return url.slice(0, end);
+};
+
 const urlOf = ({ apiBaseUrl, path }: FileProxyTarget) =>
-  `${apiBaseUrl.replace(/\/+$/, "")}${path}`;
+  `${withoutTrailingSlashes(apiBaseUrl)}${path}`;
 
 /** tedrisat's answer, or `null` when it could not be reached at all. */
 const reach = async (

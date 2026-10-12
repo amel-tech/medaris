@@ -243,6 +243,9 @@ catalogs:
     exceljs:
       specifier: ^4.4.0
       version: 4.4.0
+    express:
+      specifier: ^5.2.1
+      version: 5.2.1
     happy-dom:
       specifier: ^20.14.5
       version: 20.14.5
@@ -1012,6 +1015,9 @@ importers:
       drizzle-kit:
         specifier: 'catalog:'
         version: 0.31.10
+      express:
+        specifier: 'catalog:'
+        version: 5.2.1
       supertest:
         specifier: 'catalog:'
         version: 7.2.2
