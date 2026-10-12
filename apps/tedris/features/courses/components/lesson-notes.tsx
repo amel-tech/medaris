@@ -10,6 +10,7 @@ import { Markdown } from "@medaris/ui/mds/markdown";
 import { Textarea } from "@medaris/ui/mds/textarea";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useId, useState } from "react";
+import { sendToSignIn } from "~/lib/send-to-sign-in";
 import {
   createLessonNote,
   deleteLessonNote,
@@ -128,6 +129,7 @@ export function LessonNotes({
     setLoad({ state: "loading" });
     try {
       const result = await listLessonNotes(lessonId);
+      if (sendToSignIn(result)) return;
       if (result.success) {
         setNotes(sortNotes(result.data));
         setLoad({ state: "ready" });
@@ -327,6 +329,7 @@ const NoteForm = ({
         body: draft.body,
         offsetSeconds: offset.seconds,
       });
+      if (sendToSignIn(result)) return;
       if (result.success) {
         onSaved(result.data);
         setDraft({ body: "", time: "" });
@@ -474,6 +477,7 @@ const NoteItem = ({
         body: draft.body,
         offsetSeconds: offset.seconds,
       });
+      if (sendToSignIn(result)) return;
       if (result.success) {
         onSaved(result.data);
         setMode("view");
@@ -492,6 +496,7 @@ const NoteItem = ({
     setError(null);
     try {
       const result = await deleteLessonNote(note.lessonId, note.id);
+      if (sendToSignIn(result)) return;
       if (result.success) return onDeleted(note.id);
       setError(t("deleteFailed"));
     } catch {

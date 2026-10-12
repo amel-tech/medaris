@@ -1,27 +1,23 @@
-import type { AuthOptions } from "next-auth";
-
 /**
- * Where NextAuth sends the browser instead of its own built-in pages
- * (MDRS-101). Without these, a signed-out visitor who opened a protected page
- * — and anyone whose sign-in or sign-out went wrong — landed on NextAuth's
- * English `/api/auth/*` screens. Each path below is an app page under
- * `[locale]`; next-intl's middleware adds the locale prefix on the way in.
+ * Where the app's own auth pages live (MDRS-101); each is a page under
+ * `[locale]`, and next-intl adds the locale prefix on the way in. The sign-in
+ * page is where every "you need to sign in" ends (the parallel-tab guard and
+ * the error box, `features/auth/auth-entry.tsx`); the sign-out page is the
+ * confirmation the account menu links to.
  *
- * A Keycloak-free module, like `auth_cookies.ts`, because the Edge middleware
- * needs the same paths: `withAuth` reads `pages` from its own options, not
- * from `authOptions`, and the two must not drift.
+ * A module with no auth code in it, so `proxy.ts`, `lib/auth.ts`, the public
+ * paths and the links all name the same paths.
  */
 export const authPages = {
   signIn: "/auth/signin",
   signOut: "/auth/signout",
-  error: "/auth/error",
-} as const satisfies AuthOptions["pages"];
+} as const;
 
 /** The page that starts Keycloak's registration form (`prompt=create`). */
 export const registerPage = "/auth/register";
 
 /**
- * Where a sign-in that names no destination ends up: it decides between the
- * first-login screen and `/learning`. See `lib/post-sign-in.ts`.
+ * Ana sayfa in `locale`: where a sign-in that names no page ends (`/<locale>`
+ * sends a signed-in caller on to `/home`). There is no first-login step.
  */
-export const postSignInPage = "/start";
+export const homePath = (locale: string) => `/${locale}`;

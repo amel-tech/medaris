@@ -32,7 +32,7 @@ vi.mock("next-intl/server", () => ({
         ) as string
       ),
 }));
-vi.mock("~/lib/auth_options", () => ({ auth: async () => state.session }));
+vi.mock("~/lib/auth", () => ({ auth: async () => state.session }));
 vi.mock("~/features/assignments/reads", () => ({
   getMyAssignments: async () => state.me,
   getMyPermissionCodes: async () =>

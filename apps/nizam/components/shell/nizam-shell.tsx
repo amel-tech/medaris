@@ -10,7 +10,7 @@ import {
 } from "~/features/kosks/actions";
 import { bellLabel } from "~/features/notifications/notification-view";
 import { getUnreadNotificationCount } from "~/features/notifications/reads";
-import { auth } from "~/lib/auth_options";
+import { auth } from "~/lib/auth";
 import {
   filterByPermissions,
   navGroups,
@@ -34,6 +34,12 @@ const MAX_KOSKS = 50;
  * on the server, and hands the client frame plain data with every sentence
  * already in the viewer's language. A visitor without a session gets the page
  * alone: the sign-in screens are not part of the app.
+ *
+ * `auth()` and the reads' token come from one read of the session cookie, so
+ * a frame is drawn only with a token to read it with (A16). A token tedrisat
+ * refuses (401) leaves the frame without that data rather than sending to
+ * sign-in: this layout also wraps the sign-in page, which would be sent to
+ * itself. The page's own reads send it to sign-in.
  */
 export async function NizamShell({
   children,
@@ -54,7 +60,7 @@ export async function NizamShell({
 
   const [t, me] = await Promise.all([
     getTranslations("nizam.Shell") as unknown as Promise<Messages>,
-    getMyAssignments(),
+    getMyAssignments("fail"),
   ]);
   const variant = shellVariant(me);
   // The bell's name and the menu badge say how many are unread; a person with
@@ -78,7 +84,8 @@ export async function NizamShell({
   );
 
   // A Medaris nazımı sees only the sections their permissions open (nizam 05).
-  const held = variant === "medaris" ? await getMyPermissionCodes() : null;
+  const held =
+    variant === "medaris" ? await getMyPermissionCodes("fail") : null;
   const groups = filterByPermissions(navGroups(variant), held).map((group) => ({
     id: group.id,
     label: t(`groups.${group.id}`),

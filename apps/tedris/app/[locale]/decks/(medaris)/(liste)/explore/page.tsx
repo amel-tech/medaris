@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { ExploreDecksPage } from "~/features/flashcards/components/explore-decks-page";
 import { getDeckExplore } from "~/features/flashcards/reads";
-import { requireAccessToken } from "~/lib/require-access-token";
+import { requireAccessToken } from "~/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -28,9 +28,9 @@ export default async function Page({
   const { type } = await searchParams;
   // A `?type=` that is not one of the two kinds is no filter at all.
   const cardType = TYPES[Array.isArray(type) ? (type[0] ?? "") : (type ?? "")];
-  await requireAccessToken(
-    `/${locale}/decks/explore${cardType ? `?type=${cardType}` : ""}`
-  );
+  await requireAccessToken({
+    callbackUrl: `/${locale}/decks/explore${cardType ? `?type=${cardType}` : ""}`,
+  });
   return (
     <ExploreDecksPage
       data={await getDeckExplore(cardType)}

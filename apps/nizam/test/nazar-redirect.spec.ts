@@ -14,7 +14,7 @@ let sessionEmail: string | null = null;
 vi.mock("~/features/assignments/reads", () => ({
   getChiefNazimName: async () => chiefName,
 }));
-vi.mock("~/lib/auth_options", () => ({
+vi.mock("~/lib/auth", () => ({
   auth: async () => (sessionEmail ? { user: { email: sessionEmail } } : null),
 }));
 vi.mock("next-intl/server", () => ({

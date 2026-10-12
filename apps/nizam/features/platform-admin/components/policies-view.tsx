@@ -16,6 +16,7 @@ import { useRouter } from "next/navigation";
 import { useLocale, useTimeZone, useTranslations } from "next-intl";
 import { useState } from "react";
 import { shortDateTime } from "~/features/deck-review/present";
+import { redirectIfUnauthenticated } from "~/lib/unauthenticated";
 import { setPlatformPolicy } from "../actions";
 import { failureKey, withPolicy } from "../present";
 
@@ -68,6 +69,7 @@ export function PoliciesView({ initial }: Props) {
     setBusy(key);
     const result = await setPlatformPolicy(key as PlatformPolicyKey, enabled);
     setBusy(null);
+    if (redirectIfUnauthenticated(result)) return;
     if (!result.success) {
       setItems(before);
       toast.error(t("saveFailed"), {

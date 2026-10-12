@@ -21,6 +21,7 @@ import {
 } from "react";
 import { dayFormat } from "~/lib/dates";
 import type { Messages } from "~/lib/i18n/messages";
+import { handleUnauthenticated } from "~/lib/unauthenticated";
 import { dismissNazir, getNazirGrants } from "../actions";
 import {
   type Answer,
@@ -90,6 +91,7 @@ export function DismissDialog({
     const ask = ++asked.current;
     setGiven(null);
     const result = await getNazirGrants(madrasahId, userId);
+    if (handleUnauthenticated(result)) return;
     if (ask === asked.current) {
       setGiven(result.success ? result.data : "failed");
     }
@@ -113,6 +115,7 @@ export function DismissDialog({
         nazir.id,
         dismissDecisions(list, answers)
       );
+      if (handleUnauthenticated(result)) return;
       if (result.success) {
         notify({
           tone: "success",

@@ -13,6 +13,7 @@ import { type FormEvent, useState, useTransition } from "react";
 import { LocaleAppProviders } from "~/components/locale-app-providers";
 import { CARD_GAP } from "~/features/account/card-gap";
 import { useAccountTranslations } from "~/lib/i18n/loose";
+import { sendToSignIn } from "~/lib/send-to-sign-in";
 import { submitKoskApplication } from "../actions";
 import {
   APPLICATION_FIELDS,
@@ -66,6 +67,7 @@ function Content({
     if (hasErrors(found)) return;
     startTransition(async () => {
       const res = await submitKoskApplication(draft);
+      if (sendToSignIn(res)) return;
       if (res.success === true) {
         setSent(true);
       } else {

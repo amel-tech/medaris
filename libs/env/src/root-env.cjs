@@ -9,7 +9,7 @@
 // There is exactly one `.env`, at the repository root. A prefix says which app a
 // key belongs to, and is stripped when that app is handed the key, so
 // `NIZAM__NEXTAUTH_URL` reaches apps/nizam as the plain `NEXTAUTH_URL` that
-// NextAuth actually reads:
+// its `env.ts` reads (and hands `@medaris/auth` as the app's base URL):
 //
 //   KEY=value          every app
 //   WEB__KEY=value     landing, nazar, nizam, tedris   (overrides shared)

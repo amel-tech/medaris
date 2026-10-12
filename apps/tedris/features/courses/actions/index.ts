@@ -13,20 +13,24 @@ import {
 } from "@medaris/services/tedrisat";
 import { revalidatePath } from "next/cache";
 import { env } from "~/env";
-import { getAccessToken } from "~/lib/auth_options";
+import { getAccessToken } from "~/lib/auth";
 import {
   type AuthenticatedActionResult,
   authenticatedAction,
 } from "~/lib/authenticated-action";
+import { memberApi, reauthIfRefused } from "~/lib/tedrisat-api";
 
 /**
  * The API said no, about this course or köşk: unknown id or a malformed one (400,
- * 404), a draft the caller may not open or a one they may not see (403), a
- * token it did not accept (401). Anything else is a failure to ask.
+ * 404), a draft the caller may not open or a one they may not see (403).
+ * Anything else is a failure to ask. A 401 is no longer one of them: a visitor
+ * asks with no token, which these endpoints answer, and a session is only
+ * handed a token the proxy has just renewed, so a refused one is not "no such
+ * course" (E2, A16).
  */
 const isAnswerAboutTheCourse = (error: unknown): boolean =>
   error instanceof ResponseError &&
-  [400, 401, 403, 404].includes(error.response.status);
+  [400, 403, 404].includes(error.response.status);
 
 export const getKosk = async (koskId: string): Promise<KoskResponse | null> => {
   try {
@@ -80,37 +84,25 @@ export const getCourse = async (
   }
 };
 
-export const getMyCourses = async (): Promise<EnrolledCourseResponse[]> => {
-  try {
-    const accessToken = await getAccessToken();
-    const { courses } = await createServerTedrisatAPIs(
-      accessToken,
-      env.TEDRISAT_API_BASE_URL
-    );
-    return await courses.getEnrolledCourses();
-  } catch (error) {
-    console.error("Error fetching enrolled courses:", error);
-    return [];
-  }
-};
-
 /**
  * The caller's courses for Derslerim (MDRS-159): enrolled, completed, the
  * requests still waiting for approval and the courses whose access was withdrawn. A failure throws: an empty list would
- * read as "you have no courses" (design tedris/20).
+ * read as "you have no courses" (design tedris/20). A token tedrisat refused
+ * is sign-in for new tokens instead (`reauthIfRefused`).
  */
 export const getMyCoursesWithApplications = async (): Promise<
   EnrolledCourseResponse[]
 > => {
-  const accessToken = await getAccessToken();
-  const { courses } = await createServerTedrisatAPIs(
-    accessToken,
-    env.TEDRISAT_API_BASE_URL
-  );
-  return courses.getEnrolledCourses({
-    includePending: true,
-    includeRevoked: true,
-  });
+  const { courses } = await memberApi();
+  try {
+    return await courses.getEnrolledCourses({
+      includePending: true,
+      includeRevoked: true,
+    });
+  } catch (error) {
+    await reauthIfRefused(error);
+    throw error;
+  }
 };
 
 /** Where a köşk's follow state shows: Keşfet and the köşk's own page (MDRS-159). */
@@ -204,14 +196,11 @@ export const updateCourseProgress = async (
  */
 export const getMyCalendarFeed =
   async (): Promise<CalendarFeedStatusResponse | null> => {
+    const { me } = await memberApi();
     try {
-      const accessToken = await getAccessToken();
-      const { me } = await createServerTedrisatAPIs(
-        accessToken,
-        env.TEDRISAT_API_BASE_URL
-      );
       return await me.getMyCalendarFeed();
     } catch (error) {
+      await reauthIfRefused(error);
       console.error("Error fetching the calendar feed status:", error);
       return null;
     }

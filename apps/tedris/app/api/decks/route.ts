@@ -1,7 +1,7 @@
 import { createServerTedrisatAPIs } from "@medaris/services/tedrisat";
 import { NextResponse } from "next/server";
 import { env } from "~/env";
-import { getAccessToken } from "~/lib/auth_options";
+import { getAccessToken } from "~/lib/auth";
 
 export async function GET() {
   try {

@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { isSignedIn } from "~/features/courses/public-reads";
 import { DeckDetailPage } from "~/features/flashcards/components/deck-detail-page";
@@ -7,6 +6,7 @@ import { DeckPublicView } from "~/features/flashcards/components/deck-public-vie
 import { DeckUnavailable } from "~/features/flashcards/components/deck-unavailable";
 import { loadDeckPage } from "~/features/flashcards/deck-page-data";
 import { readDeck } from "~/features/flashcards/reads";
+import { redirectToSignIn } from "~/lib/auth";
 import { inviteHrefs } from "~/lib/invite-hrefs";
 
 export const dynamic = "force-dynamic";
@@ -39,9 +39,7 @@ export default async function Page({
   if (!(await isSignedIn())) {
     const read = await readDeck(id);
     if (read.status !== "ok") {
-      redirect(
-        `/api/auth/signin?callbackUrl=${encodeURIComponent(`/${locale}/decks/${id}`)}`
-      );
+      return redirectToSignIn({ callbackUrl: `/${locale}/decks/${id}` });
     }
     return (
       <DeckPublicView

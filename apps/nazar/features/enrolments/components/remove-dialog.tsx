@@ -10,6 +10,7 @@ import { useTranslations } from "next-intl";
 import { type FormEvent, useRef, useState, useTransition } from "react";
 import { isBlank, REASON_MAX } from "~/features/bans/bans";
 import type { Messages } from "~/lib/i18n/messages";
+import { handleUnauthenticated } from "~/lib/unauthenticated";
 import { removeStudent } from "../actions";
 import { enrolmentErrorKey, seatMoved } from "../enrolments";
 
@@ -58,6 +59,7 @@ export function RemoveDialog({
         person.userId,
         reason.trim()
       );
+      if (handleUnauthenticated(result)) return;
       if (result.success) {
         notify({
           title: t("CourseStudents.remove.done"),

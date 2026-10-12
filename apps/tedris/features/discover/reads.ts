@@ -4,7 +4,7 @@ import {
   type MadrasahExploreResponse,
 } from "@medaris/services/tedrisat";
 import { env } from "~/env";
-import { getAccessToken } from "~/lib/auth_options";
+import { getAccessToken } from "~/lib/auth";
 import { type DiscoverQuery, PAGE_SIZE } from "./discover-query";
 
 /**

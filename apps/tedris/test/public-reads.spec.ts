@@ -14,7 +14,7 @@ vi.mock("@medaris/services/tedrisat", async (importOriginal) => ({
     lessons: { listCourseRecordings, getSession },
   }),
 }));
-vi.mock("~/lib/auth_options", () => ({ getAccessToken: async () => "token" }));
+vi.mock("~/lib/auth", () => ({ getAccessToken: async () => "token" }));
 
 beforeEach(() => {
   listCourseRecordings.mockReset().mockResolvedValue([]);

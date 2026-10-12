@@ -11,6 +11,7 @@ import { Tabs, TabsPanel } from "@medaris/ui/mds/tabs";
 import { useRouter } from "next/navigation";
 import { useLocale, useTimeZone, useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
+import { redirectIfUnauthenticated } from "~/lib/unauthenticated";
 import { hideLevelOf } from "../../archive/hide-level";
 import { MuderrisDialog } from "../../courses/components/muderris-dialog";
 import { dateWithCase } from "../../madrasahs/present";
@@ -78,6 +79,7 @@ export function KoskCourseTable({
     setBusyId(row.id);
     const result = await restoreCourse(row.id);
     setBusyId(null);
+    if (redirectIfUnauthenticated(result)) return;
     const outcome = result.success
       ? "done"
       : courseHideOutcome(errorCodeOf(result.errorBody));

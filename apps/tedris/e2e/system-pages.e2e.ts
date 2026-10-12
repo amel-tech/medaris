@@ -70,7 +70,7 @@ test.describe("medaris/16: the sign-out confirmation", () => {
     await page.goto("/tr/account");
     await expect(page).toHaveURL(/\/tr\/account$/);
 
-    // Criterion 2: confirming ends NextAuth's and Keycloak's sessions.
+    // Criterion 2: confirming ends the app's and Keycloak's sessions.
     await page.goto("/tr/auth/signout");
     await page.getByRole("button", { name: "Çıkış yap" }).click();
     await page.waitForURL((url) => !url.pathname.endsWith("/auth/signout"));

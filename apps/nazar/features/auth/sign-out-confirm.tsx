@@ -1,31 +1,27 @@
 "use client";
 
+import { signOut } from "@medaris/auth/client";
 import { Button } from "@medaris/ui/mds/button";
 import { SystemState } from "@medaris/ui/mds/system-state";
-import { useSession } from "next-auth/react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
-import { keycloakSignOut } from "~/lib/keycloak-logout";
+import { LOCALE } from "~/lib/i18n/locale";
 
 /**
- * Stands in for NextAuth's English "Are you sure you want to sign out?" page,
- * which `GET /api/auth/signout` renders (MDRS-101). It keeps the
- * confirmation step — signing out on a plain GET would let any page log the
- * visitor out — and signs out of Keycloak too, like the account page does.
+ * The sign-out page (`/auth/signout`, MDRS-101). It keeps the confirmation
+ * step (signing out on a plain GET would let any page log the visitor out)
+ * and signs out of Keycloak too, like the account page does: `signOut` posts
+ * to `/api/auth/signout`, which reads the ID token on the server, so the
+ * `id_token_hint` is never empty and Keycloak asks nothing of its own (B7,
+ * MDRS-222).
  */
 export function SignOutConfirm() {
   const t = useTranslations("nazar.Auth");
-  const { data: session } = useSession();
   const [busy, setBusy] = useState(false);
 
-  const signOut = async () => {
+  const confirm = () => {
     setBusy(true);
-    try {
-      await keycloakSignOut(session?.idToken);
-    } catch {
-      // The navigation to Keycloak never started; let the visitor try again.
-      setBusy(false);
-    }
+    signOut({ locale: LOCALE });
   };
 
   return (
@@ -34,7 +30,7 @@ export function SignOutConfirm() {
       action={
         <div className="flex flex-wrap justify-center gap-2">
           <Button
-            onClick={signOut}
+            onClick={confirm}
             loading={busy}
             loadingLabel={t("signOutBusy")}
           >

@@ -1,6 +1,7 @@
 import { resources } from "@medaris/i18n";
 import { DEFAULT_TIME_ZONE } from "@medaris/utils";
 import { getRequestConfig } from "next-intl/server";
+import { LOCALE } from "./locale";
 
 /**
  * Nazar is Turkish only at launch (canvas rule 3): no locale segment, no
@@ -13,7 +14,7 @@ import { getRequestConfig } from "next-intl/server";
  * the browser from disagreeing about a date that names no zone (MDRS-110).
  */
 export default getRequestConfig(async () => ({
-  locale: "tr",
+  locale: LOCALE,
   messages: { common: resources.tr.common, nazar: resources.tr.nazar },
   timeZone: DEFAULT_TIME_ZONE,
 }));

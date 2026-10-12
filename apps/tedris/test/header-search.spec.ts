@@ -16,7 +16,7 @@ vi.mock("next-intl/server", async () => {
       ),
   };
 });
-vi.mock("~/lib/auth_options", () => ({ auth: async () => null }));
+vi.mock("~/lib/auth", () => ({ auth: async () => null }));
 vi.mock("~/features/keycloak/login", () => ({ default: () => null }));
 
 const renderHeader = async (languageTag: string) => {

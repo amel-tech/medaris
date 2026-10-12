@@ -12,7 +12,7 @@ vi.mock("next-intl", async (orig) => ({
   NextIntlClientProvider: ({ children }: { children: React.ReactNode }) =>
     children,
 }));
-vi.mock("~/lib/auth_options", () => ({ auth: async () => null }));
+vi.mock("~/lib/auth", () => ({ auth: async () => null }));
 vi.mock("~/components/header/header", () => ({ Header: () => null }));
 vi.mock("~/components/legal-footer", () => ({ LegalFooter: () => null }));
 vi.mock("~/components/tab-view", () => ({

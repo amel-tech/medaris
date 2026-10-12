@@ -9,6 +9,7 @@ import { revalidatePath } from "next/cache";
 import {
   type AuthenticatedActionResult,
   authenticatedAction,
+  succeeded,
 } from "~/lib/authenticated-action";
 
 /** "Yasakla" (nizam 41): bars a talebe from a course, or from its whole köşk. */
@@ -29,7 +30,7 @@ export const createBan = async (input: {
     })
   );
   // The rosters and the ban list both show it.
-  if (result.success) revalidatePath("/", "layout");
+  if (succeeded(result)) revalidatePath("/", "layout");
   return result;
 };
 
@@ -41,7 +42,7 @@ export const liftBan = async (
   const result = await authenticatedAction((api) =>
     api.bans.liftBan({ banId, liftBanDto: { reason } })
   );
-  if (result.success) revalidatePath("/", "layout");
+  if (succeeded(result)) revalidatePath("/", "layout");
   return result;
 };
 
@@ -73,7 +74,7 @@ export const extendBan = async (
       extendBanDto: { scope: "KOSK", reason },
     })
   );
-  if (result.success) revalidatePath("/", "layout");
+  if (succeeded(result)) revalidatePath("/", "layout");
   return result;
 };
 

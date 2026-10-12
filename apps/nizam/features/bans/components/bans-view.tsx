@@ -11,6 +11,7 @@ import { Tabs, TabsPanel } from "@medaris/ui/mds/tabs";
 import { useLocale, useTimeZone, useTranslations } from "next-intl";
 import { useCallback, useState } from "react";
 import { hiddenAtLabel } from "~/features/archive/present";
+import { redirectIfUnauthenticated } from "~/lib/unauthenticated";
 import { createBan, loadKoskBans } from "../actions";
 import {
   banErrorKey,
@@ -82,6 +83,7 @@ export function BansView({
         result = null;
       }
       setLoading(false);
+      if (redirectIfUnauthenticated(result)) return;
       if (!result?.success) {
         setFailed(true);
         toast.error(t("loadFailedTitle"), {
@@ -142,6 +144,7 @@ export function BansView({
       reason: ban.reason,
     });
     setBusyId(null);
+    if (redirectIfUnauthenticated(result)) return;
     if (!result.success) {
       toast.error(t("extendFailed"), {
         description: t(banErrorKey(result.errorBody)),

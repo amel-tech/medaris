@@ -22,6 +22,7 @@ import {
 import { lookupPerson } from "~/features/nazirs/actions";
 import { isEmailLike, type PickedPerson } from "~/features/nazirs/nazirs";
 import type { Messages } from "~/lib/i18n/messages";
+import { handleUnauthenticated } from "~/lib/unauthenticated";
 import { banPerson } from "../actions";
 import {
   banErrorKey,
@@ -57,6 +58,7 @@ function PersonField({
     searched.current = wanted;
     setSearch("searching");
     const result = await lookupPerson(wanted);
+    if (handleUnauthenticated(result)) return;
     if (searched.current !== wanted) return;
     if (result.kind === "found") {
       onPick(result.person);
@@ -170,6 +172,7 @@ export function BanDialog({
         madrasahId,
         banRequest({ userId: picked.id, scope, reason })
       );
+      if (handleUnauthenticated(result)) return;
       if (result.success) {
         notify({
           title: t("BanDialog.saved"),

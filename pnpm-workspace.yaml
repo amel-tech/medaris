@@ -12,7 +12,7 @@
 # ─────────────────────────────────────────────────────────────────────────────
 
 packages:
-  # Explicit enumeration, no globs (ADR-001 §D11) — 17 real packages.
+  # Explicit enumeration, no globs (ADR-001 §D11) — 18 real packages.
   # An unregistered package fails loudly instead of being silently ignored.
   - 'apps/tedrisat'
   - 'apps/teskilat'
@@ -31,6 +31,7 @@ packages:
   - 'libs/i18n'
   - 'libs/types'
   - 'libs/utils'
+  - 'libs/auth'
   # Reserved names — docs-only, create nothing now (ADR-001 §D1):
   #   apps/muhasebe, apps/e2e, apps/web, apps/docs,
   #   libs/errors, libs/validation, libs/config
@@ -297,7 +298,7 @@ catalog:
   '@types/compression': ^1.8.1
   helmet: ^8.1.0
   exceljs: ^4.4.0
-  jose: ^6.2.12 # C5: libs/common verifies access tokens against the IdP's JWKS (RS256, ES256, EdDSA); ESM-only, required through require(esm)
+  jose: ^6.2.12 # libs/common verifies access tokens against the JWKS (C5); libs/auth seals the session cookie (JWE dir + A256GCM); ESM-only
   pino: ^10.3.1 # MDRS-21: +1 major
   pino-pretty: ^13.0.0
   winston: ^3.17.0
@@ -361,7 +362,12 @@ catalog:
   react-hook-form: ^7.64.0
   sonner: ^2.0.7
   next-themes: ^0.4.6
-  next-auth: ^4.24.11
+  # @medaris/auth (auth Phase 1): one OIDC session package for the web apps; it
+  # replaced next-auth 4 in all of them. openid-client and jose list only their
+  # v6 lines as supported; the 5.7.1 and 4.15.9 that next-auth 4 pinned are not.
+  openid-client: ^6.8.8 # discovery, PKCE, code and refresh grants, userinfo, end-session
+  server-only: ^0.0.1 # build-time guard: @medaris/auth/server never reaches a client bundle
+  client-only: ^0.0.1 # build-time guard: @medaris/auth/client never reaches a server component
   next-intl: ^4.4.0
   '@t3-oss/env-nextjs': ^0.13.8
   '@fontsource/scheherazade-new': ^5.2.8

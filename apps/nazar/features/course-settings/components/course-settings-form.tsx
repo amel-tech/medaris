@@ -13,6 +13,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { type FormEvent, useMemo, useState, useTransition } from "react";
 import type { Messages } from "~/lib/i18n/messages";
+import { handleUnauthenticated } from "~/lib/unauthenticated";
 import { saveCourseSettings, setSampleLesson } from "../actions";
 import {
   type CourseSettingsControls,
@@ -97,6 +98,7 @@ export function CourseSettingsForm({
           version,
           isPreview: false,
         });
+        if (handleUnauthenticated(result)) return;
         if (!result.success) {
           stop(result.code);
           return;
@@ -109,6 +111,7 @@ export function CourseSettingsForm({
           version,
           isPreview: true,
         });
+        if (handleUnauthenticated(result)) return;
         if (!result.success) {
           stop(
             result.code,
@@ -124,6 +127,7 @@ export function CourseSettingsForm({
     const patch = courseSettingsPatch(saved, draft);
     if (patch) {
       const result = await saveCourseSettings(course.id, patch);
+      if (handleUnauthenticated(result)) return;
       if (!result.success) {
         stop(result.code);
         return;

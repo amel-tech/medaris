@@ -1,13 +1,12 @@
-import {
-  createServerTedrisatAPIs,
-  type ScheduleSessionResponse,
-} from "@medaris/services/tedrisat";
-import { env } from "~/env";
-import { getAccessToken } from "~/lib/auth_options";
+import type { ScheduleSessionResponse } from "@medaris/services/tedrisat";
+import { memberApi, reauthIfRefused } from "~/lib/tedrisat-api";
 
 /**
  * Server-side reads of the caller's own schedule (MDRS-163). Not a
- * `"use server"` module: only server components call these.
+ * `"use server"` module: only server components call these. Without a session
+ * they send the visitor to sign in (A16); the client is built outside the
+ * `try` so that redirect is not taken for a failed read. A token tedrisat
+ * refused is sign-in for new tokens (`reauthIfRefused`).
  */
 
 /** Null when tedrisat cannot answer, so the page can say so instead of showing an empty week. */
@@ -15,31 +14,25 @@ export const getMySessions = async (
   from: string,
   to: string
 ): Promise<ScheduleSessionResponse[] | null> => {
+  const { sessions } = await memberApi();
   try {
-    const { sessions } = await createServerTedrisatAPIs(
-      await getAccessToken(),
-      env.TEDRISAT_API_BASE_URL
-    );
     return await sessions.listMySessions({ from, to });
   } catch (error) {
+    await reauthIfRefused(error);
     console.error("Error fetching the caller's sessions:", error);
     return null;
   }
 };
 
-/** The next sessions that stand, or null when tedrisat cannot answer or there is no token. */
+/** The next sessions that stand, or null when tedrisat cannot answer. */
 export const getMyUpcomingLessons = async (
   limit = 4
 ): Promise<ScheduleSessionResponse[] | null> => {
+  const { sessions } = await memberApi();
   try {
-    const token = await getAccessToken();
-    if (!token) return null;
-    const { sessions } = await createServerTedrisatAPIs(
-      token,
-      env.TEDRISAT_API_BASE_URL
-    );
     return await sessions.listMyUpcomingLessons({ limit });
   } catch (error) {
+    await reauthIfRefused(error);
     console.error("Error fetching the caller's upcoming sessions:", error);
     return null;
   }

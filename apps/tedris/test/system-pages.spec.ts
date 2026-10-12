@@ -35,7 +35,7 @@ vi.mock("next-intl", async () => {
 vi.mock("@medaris/tokens/medaris-fonts", () => ({
   textFontsHref: "data:text/css,",
 }));
-vi.mock("next-auth/react", () => ({
+vi.mock("@medaris/auth/client", () => ({
   useSession: () => ({ status: state.status }),
 }));
 

@@ -4,6 +4,7 @@ import { toast } from "@medaris/ui/components/sonner";
 import { AlertDialog } from "@medaris/ui/mds/alert-dialog";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
+import { redirectIfUnauthenticated } from "~/lib/unauthenticated";
 import { hideKosk } from "../admin-actions";
 import { koskErrorKey } from "../admin-present";
 
@@ -37,6 +38,7 @@ export function HideKoskDialog({
     setSaving(true);
     const result = await hideKosk(koskId);
     setSaving(false);
+    if (redirectIfUnauthenticated(result)) return;
     if (!result.success) {
       toast.error(t("failed"), {
         description: t(koskErrorKey(result.errorBody) as never),

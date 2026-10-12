@@ -16,6 +16,7 @@
   "dependencies": {
     "@fontsource/scheherazade-new": "catalog:",
     "@hookform/resolvers": "catalog:",
+    "@medaris/auth": "workspace:*",
     "@medaris/env": "workspace:*",
     "@medaris/i18n": "workspace:*",
     "@medaris/icons": "workspace:*",
@@ -32,7 +33,6 @@
     "class-variance-authority": "catalog:",
     "clsx": "catalog:",
     "next": "catalog:",
-    "next-auth": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
     "react-hook-form": "catalog:",
@@ -50,6 +50,7 @@
     "@types/react-dom": "catalog:",
     "autoprefixer": "catalog:",
     "happy-dom": "catalog:",
+    "jose": "catalog:",
     "lightningcss": "catalog:",
     "next-intl": "catalog:",
     "pg": "catalog:",

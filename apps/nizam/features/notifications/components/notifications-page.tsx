@@ -15,6 +15,7 @@ import { useToaster } from "@medaris/ui/mds/toast";
 import { useRouter } from "next/navigation";
 import { useLocale, useTimeZone, useTranslations } from "next-intl";
 import { useCallback, useRef, useState, useTransition } from "react";
+import { redirectIfUnauthenticated } from "~/lib/unauthenticated";
 import {
   loadNotificationCounts,
   loadNotifications,
@@ -98,6 +99,7 @@ export function NotificationsPage({
     void loadNotifications(nextTab, typesOf(nextFilter)).then((res) => {
       if (mine !== generation.current) return;
       setLoading(false);
+      if (redirectIfUnauthenticated(res)) return;
       if (!res.success) {
         setFailed("list");
         return;
@@ -114,6 +116,7 @@ export function NotificationsPage({
       const res = await loadNotifications(tab, typesOf(filter), cursor);
       // another tab or chip was chosen meanwhile: this page belongs to the old list
       if (mine !== generation.current) return;
+      if (redirectIfUnauthenticated(res)) return;
       if (!res.success) {
         setFailed("more");
         return;
@@ -130,6 +133,8 @@ export function NotificationsPage({
         loadNotifications("all", typesOf("all")),
         loadNotificationCounts(),
       ]);
+      if (redirectIfUnauthenticated(list) || redirectIfUnauthenticated(counts))
+        return;
       if (!list.success || !counts.success) return;
       setFailed(null);
       setTab("all");
@@ -146,6 +151,7 @@ export function NotificationsPage({
     const mine = generation.current;
     setState((s) => (s ? markRead(s, tab, n.id, new Date()) : s));
     void markNotificationRead(n.id).then((res) => {
+      if (redirectIfUnauthenticated(res)) return;
       if (res.success) {
         // the shell's badge and the bell read the count on the server
         router.refresh();
@@ -168,6 +174,7 @@ export function NotificationsPage({
     const mine = generation.current;
     setState((s) => (s ? markAllRead(s, tab, new Date()) : s));
     void markAllNotificationsRead().then((res) => {
+      if (redirectIfUnauthenticated(res)) return;
       if (res.success) {
         router.refresh();
         return;

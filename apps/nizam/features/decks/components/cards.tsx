@@ -21,6 +21,7 @@ import {
 } from "~/features/decks/actions";
 import { useFlashcardColumns } from "~/features/decks/hooks/useFlashcardColumns";
 import { downloadBase64File } from "~/features/decks/utils/download-base64-file";
+import { redirectIfUnauthenticated } from "~/lib/unauthenticated";
 import { CardsTableHeader } from "./cards-table-header";
 import { ImportErrorsDialog } from "./import-errors-dialog";
 
@@ -42,6 +43,7 @@ export default function DeckCards({
       contentFront: updatedRow.contentFront,
       contentBack: updatedRow.contentBack,
     });
+    if (redirectIfUnauthenticated(result)) return false;
     if (result.success) {
       toastHelper.success({
         title: t("DeckCards.cardUpdated"),
@@ -58,6 +60,7 @@ export default function DeckCards({
 
   const onDeckFileImport = async (file: File) => {
     const result = await uploadFile(deck.id, file);
+    if (redirectIfUnauthenticated(result)) return;
     if (result.success) {
       toastHelper.success({
         title: t("DeckCards.cardsImported"),
@@ -81,6 +84,7 @@ export default function DeckCards({
 
   const onRowDelete = async (id: string) => {
     const result = await deleteFlashcard(id, deck.id);
+    if (redirectIfUnauthenticated(result)) return false;
     if (result.success) {
       toastHelper.success(
         {
@@ -100,6 +104,7 @@ export default function DeckCards({
 
   const onClickExportCards = async (format: "csv" | "xlsx") => {
     const result = await exportCards(deck.id, format);
+    if (redirectIfUnauthenticated(result)) return;
     if (!result.success) {
       toastHelper.error({
         title: t("DeckCards.updateError"),
@@ -112,6 +117,7 @@ export default function DeckCards({
 
   const onClickDownloadSampleFile = async (format: "csv" | "xlsx") => {
     const result = await getSampleFile(format);
+    if (redirectIfUnauthenticated(result)) return;
     if (!result.success) {
       toastHelper.error({
         title: t("DeckCards.updateError"),

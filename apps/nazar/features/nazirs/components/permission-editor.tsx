@@ -22,6 +22,7 @@ import {
   useTransition,
 } from "react";
 import type { Messages } from "~/lib/i18n/messages";
+import { handleUnauthenticated } from "~/lib/unauthenticated";
 import { type EditorData, loadEditor, saveNazirPermissions } from "../actions";
 import { type NazirRow, nazirErrorKey, permissionLabel } from "../nazirs";
 import {
@@ -98,6 +99,7 @@ export function PermissionEditor({
     setData(null);
     setDraft(null);
     const result = await loadEditor(madrasahId, userId);
+    if (handleUnauthenticated(result)) return;
     if (ask !== asked.current) return;
     if (result.success) {
       setData(result.data);
@@ -160,6 +162,7 @@ export function PermissionEditor({
     const request = editorRequest(sent, group, catalog, editor.data.held, ctx);
     startTransition(async () => {
       const result = await saveNazirPermissions(madrasahId, nazir.id, request);
+      if (handleUnauthenticated(result)) return;
       if (result.success) {
         notify({
           tone: "success",

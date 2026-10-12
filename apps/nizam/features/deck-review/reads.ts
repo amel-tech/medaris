@@ -1,12 +1,10 @@
 import {
-  createServerTedrisatAPIs,
   type DeckPublishRequestListResponse,
   type KoskResponse,
   type ManagedKoskDecksResponse,
   ResponseError,
 } from "@medaris/services/tedrisat";
-import { env } from "~/env";
-import { getAccessToken } from "~/lib/auth_options";
+import { passOnSignIn, tedrisatApi } from "~/lib/tedrisat-api";
 import { DECK_PAGE_SIZE } from "./present";
 
 /**
@@ -15,9 +13,6 @@ import { DECK_PAGE_SIZE } from "./present";
  * page can show its error state instead of a crash; a refusal is told apart
  * so the page can show the "Bu bölüm için izniniz yok" screen.
  */
-const api = async () =>
-  createServerTedrisatAPIs(await getAccessToken(), env.TEDRISAT_API_BASE_URL);
-
 export type DeckRead<T> = T | "forbidden" | "not-found" | null;
 
 const refusal = (error: unknown): "forbidden" | "not-found" | null => {
@@ -31,12 +26,13 @@ export const getPendingDeckRequests = async (): Promise<
   DeckRead<DeckPublishRequestListResponse>
 > => {
   try {
-    return await (await api()).nizam.listDeckPublishRequests({
+    return await (await tedrisatApi()).nizam.listDeckPublishRequests({
       status: "PENDING",
       page: 1,
       limit: DECK_PAGE_SIZE,
     });
   } catch (error) {
+    await passOnSignIn(error);
     const refused = refusal(error);
     if (refused) return refused;
     console.error("Error fetching the deck publish requests:", error);
@@ -48,12 +44,13 @@ export const getManagedKoskDecks = async (
   koskId: string
 ): Promise<DeckRead<ManagedKoskDecksResponse>> => {
   try {
-    return await (await api()).kosks.getManagedKoskDecks({
+    return await (await tedrisatApi()).kosks.getManagedKoskDecks({
       id: koskId,
       page: 1,
       limit: DECK_PAGE_SIZE,
     });
   } catch (error) {
+    await passOnSignIn(error);
     const refused = refusal(error);
     if (refused) return refused;
     console.error("Error fetching the köşk decks:", error);
@@ -70,8 +67,9 @@ export const getKoskForDecks = async (
   koskId: string
 ): Promise<DeckRead<KoskResponse>> => {
   try {
-    return await (await api()).kosks.getKoskById({ id: koskId });
+    return await (await tedrisatApi()).kosks.getKoskById({ id: koskId });
   } catch (error) {
+    await passOnSignIn(error);
     const refused = refusal(error);
     if (refused) return refused;
     console.error("Error fetching the köşk:", error);

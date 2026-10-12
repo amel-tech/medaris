@@ -11,6 +11,7 @@ import { Textarea } from "@medaris/ui/mds/textarea";
 import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
 import type { Messages } from "~/lib/i18n/messages";
+import { handleUnauthenticated } from "~/lib/unauthenticated";
 import { answerQuestion, loadQuestions } from "../actions";
 import {
   ANSWER_BODY_MAX,
@@ -46,6 +47,7 @@ export function QuestionsList({
     setMore("loading");
     try {
       const result = await loadQuestions(courseId, cursor);
+      if (handleUnauthenticated(result)) return;
       if (result.success) {
         setQuestions((all) => appendQuestions(all, result.data.items));
         setCursor(result.data.nextCursor);
@@ -127,6 +129,7 @@ const QuestionCard = ({
     setError(null);
     try {
       const result = await answerQuestion(question.id, draft);
+      if (handleUnauthenticated(result)) return;
       if (result.success) {
         onAnswered(result.data);
         setEditing(false);

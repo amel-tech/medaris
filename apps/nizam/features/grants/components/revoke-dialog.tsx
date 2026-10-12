@@ -6,6 +6,7 @@ import { Button } from "@medaris/ui/mds/button";
 import { Dialog, DialogClose } from "@medaris/ui/mds/dialog";
 import { useTranslations } from "next-intl";
 import { type FormEvent, useEffect, useRef, useState } from "react";
+import { redirectIfUnauthenticated } from "~/lib/unauthenticated";
 import { revokeGrant } from "../actions";
 import { grantErrorKey, type Messages } from "../present";
 
@@ -48,6 +49,7 @@ export function RevokeDialog({
     setSaving(true);
     const result = await revokeGrant(koskId, grant.id);
     setSaving(false);
+    if (redirectIfUnauthenticated(result)) return;
     if (!result.success) {
       toast.error(t("failed"), {
         description: tp(grantErrorKey(result.errorBody) as never),

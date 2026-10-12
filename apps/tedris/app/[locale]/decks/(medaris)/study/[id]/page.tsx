@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { isSignedIn } from "~/features/courses/public-reads";
 import { DeckUnavailable } from "~/features/flashcards/components/deck-unavailable";
 import { StudySession } from "~/features/flashcards/components/study-session";
 import { readDeck, readStudyRound } from "~/features/flashcards/reads";
 import { anonymousRound } from "~/features/flashcards/study-model";
+import { redirectToSignIn } from "~/lib/auth";
 import { inviteHrefs } from "~/lib/invite-hrefs";
 
 // Different for every caller and read at request time: the queue is the
@@ -37,9 +38,7 @@ export default async function Page({
   if (!(await isSignedIn())) {
     const read = await readDeck(id);
     if (read.status !== "ok") {
-      redirect(
-        `/api/auth/signin?callbackUrl=${encodeURIComponent(`/${locale}${here}`)}`
-      );
+      return redirectToSignIn({ callbackUrl: `/${locale}${here}` });
     }
     const cards = anonymousRound(read.cards);
     return (

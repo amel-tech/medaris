@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { env } from "~/env";
-import { getAccessToken } from "~/lib/auth_options";
+import { getAccessToken } from "~/lib/auth";
 
 const FORMATS = new Set(["xlsx", "csv"]);
 

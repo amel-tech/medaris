@@ -27,6 +27,7 @@ const nextConfig = {
   // subtree of it; Next's file tracing produces a real, pruned tree instead.
   output: "standalone",
   transpilePackages: [
+    "@medaris/auth",
     "@medaris/ui",
     "@medaris/icons",
     "@medaris/i18n",

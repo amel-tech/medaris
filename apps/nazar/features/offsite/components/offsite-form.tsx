@@ -12,6 +12,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { type FormEvent, useState, useTransition } from "react";
 import { genitive, TITLE_MAX, TITLE_MIN } from "~/features/courses/courses";
 import type { Messages } from "~/lib/i18n/messages";
+import { handleUnauthenticated } from "~/lib/unauthenticated";
 import { sendOffsiteRequest } from "../actions";
 import {
   type OffsiteForm as Draft,
@@ -75,6 +76,7 @@ export function OffsiteForm({
         madrasahId,
         offsiteRequest(draft)
       );
+      if (handleUnauthenticated(result)) return;
       if (result.success) {
         notify({
           title: t("Offsite.sent"),

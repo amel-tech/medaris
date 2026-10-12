@@ -26,6 +26,7 @@ import {
 } from "~/features/bans/components/lift-dialog";
 import { setEnrollmentStatus } from "~/features/kosks/actions/courses";
 import { courseTeamErrorKey } from "~/features/kosks/course-team";
+import { redirectIfUnauthenticated } from "~/lib/unauthenticated";
 import {
   filterRoster,
   ROSTER_PAGE,
@@ -102,6 +103,7 @@ export function RosterTable({
       status
     );
     setBusyId(null);
+    if (redirectIfUnauthenticated(result)) return;
     if (!result.success) {
       const key = courseTeamErrorKey(result.errorBody);
       toast.error(t("actionFailed"), {

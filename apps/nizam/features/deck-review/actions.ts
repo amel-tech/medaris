@@ -12,6 +12,7 @@ import { revalidatePath } from "next/cache";
 import {
   type AuthenticatedActionResult,
   authenticatedAction,
+  succeeded,
 } from "~/lib/authenticated-action";
 import { DECK_PAGE_SIZE } from "./present";
 
@@ -57,7 +58,7 @@ export const approveDeckRequest = async (
     await api.nizam.approveDeckPublishRequest({ id });
     return null;
   });
-  if (result.success) revalidatePath("/", "layout");
+  if (succeeded(result)) revalidatePath("/", "layout");
   return result;
 };
 
@@ -73,7 +74,7 @@ export const rejectDeckRequest = async (
     });
     return null;
   });
-  if (result.success) revalidatePath("/", "layout");
+  if (succeeded(result)) revalidatePath("/", "layout");
   return result;
 };
 
@@ -86,7 +87,7 @@ export const unpublishDeck = async (
     await api.nizam.unpublishDeck({ id, rejectReasonDto: { reason } });
     return null;
   });
-  if (result.success) revalidatePath("/", "layout");
+  if (succeeded(result)) revalidatePath("/", "layout");
   return result;
 };
 
@@ -104,7 +105,7 @@ export const rejectDeckProposal = async (
     });
     return null;
   });
-  if (result.success) revalidatePath("/", "layout");
+  if (succeeded(result)) revalidatePath("/", "layout");
   return result;
 };
 
@@ -121,7 +122,7 @@ export const openKoskDeck = async (
   const result = await authenticatedAction((api) =>
     api.kosks.createKoskDeck({ id: koskId, createKoskDeckDto: body })
   );
-  if (result.success) revalidatePath("/", "layout");
+  if (succeeded(result)) revalidatePath("/", "layout");
   return result;
 };
 
@@ -133,6 +134,6 @@ export const hideKoskDeck = async (
     await api.kosks.hideKoskDeck({ id: deckId });
     return null;
   });
-  if (result.success) revalidatePath("/", "layout");
+  if (succeeded(result)) revalidatePath("/", "layout");
   return result;
 };

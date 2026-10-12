@@ -7,6 +7,7 @@ import { Icon } from "@medaris/ui/mds/icon";
 import { Textarea } from "@medaris/ui/mds/textarea";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
+import { sendToSignIn } from "~/lib/send-to-sign-in";
 import { askLessonQuestion, listMyLessonQuestions } from "../actions/questions";
 import { QUESTION_BODY_MAX } from "../question-model";
 import { QuestionCard } from "./course-questions";
@@ -41,6 +42,7 @@ export function LessonQuestions({
     setLoad({ state: "loading" });
     try {
       const result = await listMyLessonQuestions(courseId, lessonId);
+      if (sendToSignIn(result)) return;
       if (result.success) {
         setQuestions(result.data);
         setLoad({ state: "ready" });
@@ -141,6 +143,7 @@ const AskForm = ({
     setError(null);
     try {
       const result = await askLessonQuestion(lessonId, body);
+      if (sendToSignIn(result)) return;
       if (result.success) {
         onAsked(result.data);
         setBody("");

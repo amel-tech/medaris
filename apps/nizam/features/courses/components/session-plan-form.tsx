@@ -25,6 +25,7 @@ import {
   createCourseSessions,
   previewCourseSessions,
 } from "~/features/kosks/actions/courses";
+import { redirectIfUnauthenticated } from "~/lib/unauthenticated";
 import { formatInstant, weekdayName } from "../format";
 import {
   courseErrorKey,
@@ -97,6 +98,7 @@ export function SessionPlanForm({ kosk, course }: Props) {
     const timer = setTimeout(async () => {
       const res = await previewCourseSessions(course.id, pattern);
       if (!live) return;
+      if (redirectIfUnauthenticated(res)) return;
       if (res.success) {
         setPreview(res.data.sessions);
         setPreviewFailed(false);
@@ -139,6 +141,7 @@ export function SessionPlanForm({ kosk, course }: Props) {
         : {}),
     });
     setSaving(false);
+    if (redirectIfUnauthenticated(res)) return;
     if (!res.success) {
       toast.error(t("failed"), {
         description: t(`errors.api.${courseErrorKey(res.errorBody)}` as never),

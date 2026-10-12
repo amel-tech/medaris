@@ -4,6 +4,7 @@ import { toast } from "@medaris/ui/components/sonner";
 import { AlertDialog } from "@medaris/ui/mds/alert-dialog";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
+import { redirectIfUnauthenticated } from "~/lib/unauthenticated";
 import { hideCourse } from "../course-actions";
 import { courseHideOutcome, errorCodeOf } from "../overview-present";
 
@@ -36,6 +37,7 @@ export function HideCourseDialog({
     setSaving(true);
     const result = await hideCourse(courseId);
     setSaving(false);
+    if (redirectIfUnauthenticated(result)) return;
     // Hidden by another hand meanwhile (409 COURSE_ALREADY_HIDDEN): what the click wanted is done.
     if (
       !result.success &&

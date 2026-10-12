@@ -31,7 +31,13 @@ const api = {
 };
 let token: string | undefined;
 
-vi.mock("~/lib/auth_options", () => ({ getAccessToken: async () => token }));
+// The real `~/lib/auth`, reading a sealed session cookie whose access token is
+// `token`, or none.
+vi.mock("next/headers", async () =>
+  (await import("./sealed-session")).nextHeaders(() =>
+    token === undefined ? null : { accessToken: token }
+  )
+);
 vi.mock("@medaris/services/tedrisat", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@medaris/services/tedrisat")>()),
   createServerTedrisatAPIs: async () => api,
@@ -310,8 +316,8 @@ describe("Celse planla", () => {
         title: "x",
         durationMinutes: 60,
       })
-    ).toEqual({ success: false, code: "" });
-    expect(await cancelSession("l-1", 1)).toEqual({ success: false, code: "" });
+    ).toEqual({ kind: "unauthenticated" });
+    expect(await cancelSession("l-1", 1)).toEqual({ kind: "unauthenticated" });
     expect(api.lessons.createSessionBatch).not.toHaveBeenCalled();
     expect(api.lessons.cancelLesson).not.toHaveBeenCalled();
   });
@@ -398,12 +404,10 @@ describe("Dersten çıkar", () => {
     token = undefined;
     const { removeStudent, setCompleted } = await enrolments();
     expect(await removeStudent("c-1", "u-1", "x")).toEqual({
-      success: false,
-      code: "",
+      kind: "unauthenticated",
     });
     expect(await setCompleted("c-1", "u-1", true)).toEqual({
-      success: false,
-      code: "",
+      kind: "unauthenticated",
     });
     expect(api.courses.removeEnrollment).not.toHaveBeenCalled();
     expect(api.courses.setEnrollmentStatus).not.toHaveBeenCalled();
@@ -461,8 +465,7 @@ describe("Kaydet on Müfredat", () => {
     token = undefined;
     const { saveCurriculum } = await curriculum();
     expect(await saveCurriculum("c-1", body)).toEqual({
-      success: false,
-      code: "",
+      kind: "unauthenticated",
     });
     expect(api.courses.replaceCourse).not.toHaveBeenCalled();
   });
@@ -553,12 +556,10 @@ describe("Kayıt ekle and Düzenle on Ders kayıtları", () => {
     token = undefined;
     const { addRecording, changeRecording } = await recordings();
     expect(await addRecording("l-1", body)).toEqual({
-      success: false,
-      code: "",
+      kind: "unauthenticated",
     });
     expect(await changeRecording("r-1", { title: "x" })).toEqual({
-      success: false,
-      code: "",
+      kind: "unauthenticated",
     });
     expect(api.lessons.createLessonRecording).not.toHaveBeenCalled();
     expect(api.lessons.updateRecording).not.toHaveBeenCalled();
@@ -656,10 +657,9 @@ describe("Yükle and Devam et on Ders kayıtları", () => {
     const { startRecordingUpload, resignRecordingUpload } = await recordings();
     expect(
       await startRecordingUpload("l-1", { title: "x", visibility: "ENROLLED" })
-    ).toEqual({ success: false, code: "" });
+    ).toEqual({ kind: "unauthenticated" });
     expect(await resignRecordingUpload("l-1", "v-1")).toEqual({
-      success: false,
-      code: "",
+      kind: "unauthenticated",
     });
     expect(api.lessons.startRecordingUpload).not.toHaveBeenCalled();
     expect(api.lessons.resignRecordingUpload).not.toHaveBeenCalled();
@@ -774,8 +774,7 @@ describe("when talebe may watch a session's recording (MDRS-288)", () => {
     token = undefined;
     api.lessons.setLessonRecordingAvailability.mockReset();
     expect(await setRecordingAvailability("l-1", AHEAD)).toEqual({
-      success: false,
-      code: "",
+      kind: "unauthenticated",
     });
     expect(api.lessons.setLessonRecordingAvailability).not.toHaveBeenCalled();
   });

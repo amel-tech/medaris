@@ -4,7 +4,7 @@ import {
 } from "@medaris/services/tedrisat";
 import { NextResponse } from "next/server";
 import { env } from "~/env";
-import { getAccessToken } from "~/lib/auth_options";
+import { getAccessToken } from "~/lib/auth";
 
 // Next calls a route handler as `GET(request, context)`; `params` lives on the
 // second argument. Destructuring it off the first one read `params` from the

@@ -1,30 +1,15 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
-const jar = new Map<string, string>();
-const enrolled: unknown[] = [];
-let currentSub = "user-a";
-
-/** An unsigned JWT carrying only `sub` — all `subjectOf` reads. */
-const tokenFor = (sub: string) =>
-  `x.${Buffer.from(JSON.stringify({ sub })).toString("base64url")}.y`;
-
-vi.mock("next/headers", () => ({
-  cookies: async () => ({
-    get: (name: string) =>
-      jar.has(name) ? { name, value: jar.get(name) } : undefined,
-    set: (name: string, value: string) => jar.set(name, value),
-  }),
-}));
+/**
+ * `/start` and `/welcome` once made the first-login step (B1, MDRS-101); the
+ * owner dropped it. Both addresses stay for old links and sign-in round trips
+ * already under way, and send everyone to Ana sayfa (`/<locale>`), reading
+ * nothing and setting no cookie.
+ */
 vi.mock("next/navigation", () => ({
   redirect: (url: string) => {
     throw Object.assign(new Error("NEXT_REDIRECT"), { url });
   },
-}));
-vi.mock("~/features/courses/actions", () => ({
-  getMyCourses: async () => enrolled,
-}));
-vi.mock("~/lib/auth_options", () => ({
-  getAccessToken: async () => tokenFor(currentSub),
 }));
 
 const redirectOf = async (run: () => Promise<unknown>) => {
@@ -36,58 +21,26 @@ const redirectOf = async (run: () => Promise<unknown>) => {
   throw new Error("expected a redirect");
 };
 
-describe("/start and B1's button (MDRS-101)", () => {
-  beforeEach(() => {
-    jar.clear();
-    enrolled.length = 0;
-    currentSub = "user-a";
+describe("/start and /welcome after the welcome step (MDRS-101)", () => {
+  it("/start sends to Ana sayfa in its locale", async () => {
+    const { default: StartPage } = await import("../app/[locale]/start/page");
+    for (const locale of ["tr", "ar"]) {
+      expect(
+        await redirectOf(() =>
+          StartPage({ params: Promise.resolve({ locale }) })
+        )
+      ).toBe(`/${locale}`);
+    }
   });
 
-  it("a brand-new user's first sign-in lands on B1, the next on /learning", async () => {
-    const { default: StartPage } = await import("../app/[locale]/start/page");
-    const { completeWelcome } = await import("~/features/welcome/actions");
-    const start = () =>
-      StartPage({ params: Promise.resolve({ locale: "tr" }) });
-
-    expect(await redirectOf(start)).toBe("/tr/welcome");
-
-    // Leaving B1 remembers the visit and opens /learning...
-    expect(await redirectOf(() => completeWelcome("tr"))).toBe("/tr/learning");
-    // ...so the next sign-in goes there directly.
-    expect(await redirectOf(start)).toBe("/tr/learning");
-  });
-
-  it("a second new account on the same browser still gets B1", async () => {
-    const { default: StartPage } = await import("../app/[locale]/start/page");
-    const { completeWelcome } = await import("~/features/welcome/actions");
-    const start = () =>
-      StartPage({ params: Promise.resolve({ locale: "tr" }) });
-
-    await redirectOf(() => completeWelcome("tr"));
-    currentSub = "user-b";
-    expect(await redirectOf(start)).toBe("/tr/welcome");
-
-    await redirectOf(() => completeWelcome("tr"));
-    currentSub = "user-a";
-    expect(await redirectOf(start)).toBe("/tr/learning");
-  });
-
-  it("skips B1 for a user who is already enrolled", async () => {
-    const { default: StartPage } = await import("../app/[locale]/start/page");
-    enrolled.push({ id: "c1" });
-
+  it("/welcome sends to Ana sayfa too, instead of the old placeholder screen", async () => {
+    const { default: WelcomePage } = await import(
+      "../app/[locale]/welcome/page"
+    );
     expect(
       await redirectOf(() =>
-        StartPage({ params: Promise.resolve({ locale: "ar" }) })
+        WelcomePage({ params: Promise.resolve({ locale: "en" }) })
       )
-    ).toBe("/ar/learning");
-  });
-
-  it("B1's button refuses an unknown locale rather than echoing it", async () => {
-    const { completeWelcome } = await import("~/features/welcome/actions");
-
-    expect(await redirectOf(() => completeWelcome("//evil.example"))).toBe(
-      "/tr/learning"
-    );
+    ).toBe("/en");
   });
 });

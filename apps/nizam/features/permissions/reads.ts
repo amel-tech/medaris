@@ -1,13 +1,15 @@
 import {
-  createServerTedrisatAPIs,
   type GroupUserResponse,
   type MedarisNazimResponse,
   type PermissionCatalogResponse,
   type PermissionGroupResponse,
   ResponseError,
 } from "@medaris/services/tedrisat";
-import { env } from "~/env";
-import { getAccessToken } from "~/lib/auth_options";
+import {
+  passOnSignIn,
+  type TedrisatApi,
+  tedrisatApi,
+} from "~/lib/tedrisat-api";
 
 /**
  * Server-side first reads of Medaris nazımları and İzin grupları (MDRS-171).
@@ -18,20 +20,14 @@ import { getAccessToken } from "~/lib/auth_options";
  */
 export type Read<T> = T | "forbidden" | null;
 
-type Api = Awaited<ReturnType<typeof createServerTedrisatAPIs>>;
-
 async function read<T>(
   what: string,
-  call: (api: Api) => Promise<T>
+  call: (api: TedrisatApi) => Promise<T>
 ): Promise<Read<T>> {
   try {
-    return await call(
-      await createServerTedrisatAPIs(
-        await getAccessToken(),
-        env.TEDRISAT_API_BASE_URL
-      )
-    );
+    return await call(await tedrisatApi());
   } catch (error) {
+    await passOnSignIn(error);
     if (error instanceof ResponseError && error.response.status === 403) {
       return "forbidden";
     }

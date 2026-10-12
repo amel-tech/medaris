@@ -28,9 +28,9 @@ WORKDIR /app
 
 # ---------------------------------------------------------------------------
 # deps — the workspace manifest surface only, so the install layer survives
-# every source edit. pnpm-workspace.yaml enumerates its 17 members explicitly
+# every source edit. pnpm-workspace.yaml enumerates its 18 members explicitly
 # (no globs), and --frozen-lockfile needs every one of their package.json
-# files present, so all 17 are copied here even though this image builds one.
+# files present, so all 18 are copied here even though this image builds one.
 # ---------------------------------------------------------------------------
 FROM base AS deps
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
@@ -51,6 +51,7 @@ COPY libs/services/package.json       libs/services/
 COPY libs/i18n/package.json           libs/i18n/
 COPY libs/types/package.json          libs/types/
 COPY libs/utils/package.json          libs/utils/
+COPY libs/auth/package.json           libs/auth/
 RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
     pnpm install --frozen-lockfile
 
@@ -91,6 +92,7 @@ COPY libs/services/package.json       libs/services/
 COPY libs/i18n/package.json           libs/i18n/
 COPY libs/types/package.json          libs/types/
 COPY libs/utils/package.json          libs/utils/
+COPY libs/auth/package.json           libs/auth/
 RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
     pnpm install --frozen-lockfile --prod --ignore-scripts \
       --filter "@medaris/teskilat..."

@@ -20,6 +20,7 @@ import { RadioGroup } from "@medaris/ui/mds/radio-group";
 import { useRouter } from "next/navigation";
 import { useLocale, useTimeZone, useTranslations } from "next-intl";
 import { type FormEvent, useMemo, useState } from "react";
+import { redirectIfUnauthenticated } from "~/lib/unauthenticated";
 import { createGroup, deleteGroup, updateGroup } from "../actions";
 import {
   catalogFor,
@@ -105,6 +106,7 @@ export function GroupForm({
         usersPolicy: policy,
       });
       setSaving(false);
+      if (redirectIfUnauthenticated(result)) return;
       if (!result.success) return fail(t("saveFailed"), result.errorBody);
       toast.success(t("saved"), { description: t("savedBody", { name }) });
       setAsking(null);
@@ -117,6 +119,7 @@ export function GroupForm({
       permissions: codes,
     });
     setSaving(false);
+    if (redirectIfUnauthenticated(result)) return;
     if (!result.success) return fail(t("saveFailed"), result.errorBody);
     toast.success(t("created"), {
       description: t("createdBody", { name: result.data.name }),
@@ -130,6 +133,7 @@ export function GroupForm({
     setSaving(true);
     const result = await deleteGroup(group.id, policy);
     setSaving(false);
+    if (redirectIfUnauthenticated(result)) return;
     if (!result.success) return fail(t("deleteFailed"), result.errorBody);
     toast.success(t("deleted"), {
       description: t("deletedBody", { name: group.name }),

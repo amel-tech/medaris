@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const token = vi.hoisted(() => ({
   value: "access-token" as string | undefined,
 }));
-vi.mock("~/lib/auth_options", () => ({
+vi.mock("~/lib/auth", () => ({
   getAccessToken: async () => token.value,
 }));
 

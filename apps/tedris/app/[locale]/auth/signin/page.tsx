@@ -6,18 +6,23 @@ import { locales } from "~/lib/i18n/routing";
 import { signInCallbackUrl } from "~/lib/post-sign-in";
 
 /**
- * `pages.signIn` (MDRS-101): sends the visitor straight to Keycloak instead of
- * NextAuth's English provider chooser, or shows a failed round trip's error.
+ * `pages.signIn` (MDRS-101): sends the visitor straight to Keycloak, or shows
+ * a failed round trip's error. `?reauth=1` comes from a page whose token
+ * tedrisat refused: the round trip fetches new tokens.
  */
 export default async function SignInPage({
   params,
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ callbackUrl?: string; error?: string }>;
+  searchParams: Promise<{
+    callbackUrl?: string;
+    error?: string;
+    reauth?: string;
+  }>;
 }) {
   const { locale } = await params;
-  const { callbackUrl, error } = await searchParams;
+  const { callbackUrl, error, reauth } = await searchParams;
   setRequestLocale(locale);
   const t = await getTranslations("tedris.Auth");
 
@@ -32,6 +37,7 @@ export default async function SignInPage({
           locale,
         })}
         error={error}
+        reauth={reauth === "1"}
       />
     </>
   );

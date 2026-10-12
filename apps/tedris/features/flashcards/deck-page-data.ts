@@ -4,7 +4,7 @@ import type {
   FlashcardResponse,
 } from "@medaris/services/tedrisat";
 import { notFound } from "next/navigation";
-import { requireAccessToken } from "~/lib/require-access-token";
+import { requireAccessToken } from "~/lib/auth";
 import { subjectOf } from "~/lib/token-subject";
 import { getDeckSummaries, readDeck } from "./reads";
 
@@ -32,7 +32,7 @@ export async function loadDeckPage(
   id: string,
   path: string
 ): Promise<DeckPageData> {
-  const token = await requireAccessToken(`/${locale}${path}`);
+  const token = await requireAccessToken({ callbackUrl: `/${locale}${path}` });
   const read = await readDeck(id);
   if (read.status === "missing") notFound();
   if (read.status === "forbidden") return { kind: "unavailable" };

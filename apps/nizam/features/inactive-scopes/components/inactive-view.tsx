@@ -11,6 +11,7 @@ import { Table, type TableColumn } from "@medaris/ui/mds/table";
 import { useRouter } from "next/navigation";
 import { useLocale, useTimeZone, useTranslations } from "next-intl";
 import { useEffect, useMemo, useState, useTransition } from "react";
+import { redirectIfUnauthenticated } from "~/lib/unauthenticated";
 import { formatDay } from "../../permissions/present";
 import { recordScopeView } from "../actions";
 import {
@@ -65,6 +66,7 @@ export function InactiveView({ scopes }: Props) {
     setBusyId(row.id);
     const result = await recordScopeView(row.type, row.id);
     setBusyId(null);
+    if (redirectIfUnauthenticated(result)) return;
     if (!result.success) {
       toast.error(t("viewFailed"), {
         description: t(inactiveErrorKey(result.errorBody)),

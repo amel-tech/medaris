@@ -2,57 +2,91 @@
 
 import {
   authErrorMessageKey,
-  keycloakSignIn,
-} from "@medaris/services/auth-client";
+  browserSignInDeps,
+  enterSignIn,
+  isRetryableAuthError,
+  signIn,
+} from "@medaris/auth/client";
 import { Button } from "@medaris/ui/components/button";
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
-import { useCallback, useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 export interface AuthEntryProps {
   /** Already reduced to a same-origin path by the page. */
   callbackUrl: string;
-  /** NextAuth's `?error=` code; when present nothing starts on its own. */
+  /** The `?error=` code of a failed round trip. */
   error?: string | null;
+  /**
+   * `?reauth=1`: tedrisat refused the token this session holds, so the
+   * session the page came with does not count as signed in; the round trip
+   * fetches new tokens instead of going straight back to the refusal.
+   */
+  reauth?: boolean;
 }
 
 /**
- * The body of the sign-in and error pages (MDRS-101). They
- * replace NextAuth's built-in English pages, and all they do is send the
- * visitor straight on to Keycloak — or, after a failed round trip, say so in
- * the visitor's language and offer a retry. Retrying never starts by itself:
- * a failure that repeats would otherwise bounce between here and Keycloak.
+ * The body of the sign-in page (MDRS-101): it sends the visitor on to
+ * Keycloak, or, after a failed round trip, says so in the visitor's language
+ * and offers a retry.
  *
- * Placeholder layout until the launch screens are designed (MDRS-127). The
- * twin of apps/tedris/features/auth/auth-entry.tsx.
+ * Through `enterSignIn` (`@medaris/auth/client`), as tedris has had since
+ * #180, instead of starting a round trip outright (B3): one tab at a time
+ * goes to Keycloak and the others wait for its session; a session already
+ * there (another tab finished first, or the Back button replayed a callback,
+ * MDRS-249 B) goes straight on to `callbackUrl`; a failed round trip is
+ * retried once per tab, then shows the box; and a tab that keeps starting on
+ * its own ends on the box too, so a Keycloak that is down or a client secret
+ * that no longer matches cannot bounce it between here and Keycloak (B2).
+ * `AccessDenied`, `Configuration` and `SignInLimit` show the box at once,
+ * without a retry. With `?reauth=1` (a page whose token tedrisat refused) the
+ * session already there does not count: only a newer one goes on.
+ *
+ * Placeholder layout until the launch screens are designed (MDRS-127).
  */
-export function AuthEntry({ callbackUrl, error }: AuthEntryProps) {
+export function AuthEntry({ callbackUrl, error, reauth }: AuthEntryProps) {
   const t = useTranslations("nizam");
   const locale = useLocale();
+  // The code whose message the box shows; `null` while there is no box.
+  const [shown, setShown] = useState<string | null>(
+    error && !isRetryableAuthError(error) ? error : null
+  );
   const started = useRef(false);
-
-  const start = useCallback(() => {
-    started.current = true;
-    keycloakSignIn({ intent: "signin", callbackUrl, locale });
-  }, [callbackUrl, locale]);
+  const request = useMemo(
+    () => ({ intent: "signin" as const, callbackUrl, locale, reauth }),
+    [callbackUrl, locale, reauth]
+  );
 
   useEffect(() => {
-    // Once only: React runs effects twice in development.
-    if (error || started.current) return;
-    start();
-  }, [error, start]);
+    // Once only: React runs effects twice in development, and the page has
+    // no other job, so there is nothing to cancel.
+    if (started.current) return;
+    started.current = true;
+    void enterSignIn(request, error, browserSignInDeps()).then((outcome) => {
+      // `outcome.error`, not the page's `?error=`: a tab whose budget ran
+      // out had no error, and shows `SignInLimit`.
+      if (outcome.kind === "show-error") setShown(outcome.error);
+    });
+  }, [request, error]);
 
-  if (error) {
+  // A click is the visitor's own decision: it takes the round trip over any
+  // tab that is waiting.
+  const start = () => signIn(request);
+
+  if (shown !== null) {
     return (
       <section className="mx-auto flex max-w-md flex-col gap-4 py-16 text-center">
         <h1 className="text-2xl font-semibold text-brand-primary">
           {t("Auth.errorTitle")}
         </h1>
         <p className="text-neutral-secondary">
-          {t(`Auth.${authErrorMessageKey(error)}`)}
+          {t(`Auth.${authErrorMessageKey(shown)}`)}
         </p>
         <div className="flex justify-center gap-2">
-          <Button onClick={start}>{t("Auth.retry")}</Button>
+          {/* A final error fails the same way on a click too. */}
+          {isRetryableAuthError(shown) && (
+            <Button onClick={start}>{t("Auth.retry")}</Button>
+          )}
           <Button variant="outline" asChild>
             <Link href={`/${locale}`}>{t("Auth.backHome")}</Link>
           </Button>

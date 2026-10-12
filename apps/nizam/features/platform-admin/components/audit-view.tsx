@@ -16,6 +16,7 @@ import { Table, type TableColumn } from "@medaris/ui/mds/table";
 import { usePathname, useRouter } from "next/navigation";
 import { useLocale, useTimeZone, useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
+import { redirectIfUnauthenticated } from "~/lib/unauthenticated";
 import { loadAuditPage } from "../actions";
 import {
   AUDIT_RANGES,
@@ -94,6 +95,7 @@ export function AuditView({ filters, initial }: Props) {
     setMore(true);
     const result = await loadAuditPage(filters, cursor);
     setMore(false);
+    if (redirectIfUnauthenticated(result)) return;
     if (!result.success) {
       toast.error(t("moreFailedTitle"), {
         description: t("moreFailed"),

@@ -17,7 +17,7 @@
 #   API client    tedrisat-api — confidential, every login flow disabled. It
 #                 exists only to be named in `aud`; nothing logs in through it.
 #   web clients   tedris-dev, nizam-dev, nazar-dev (WEB_CLIENTS) — confidential
-#                 (NextAuth holds the secret server-side), standard flow only,
+#                 (@medaris/auth holds the secret server-side), standard flow only,
 #                 PKCE S256 required, each with an audience mapper that puts
 #                 `tedrisat-api` into the access token's `aud`.
 #   test users    owner-user / stranger-user — only with --with-test-users,
@@ -255,7 +255,7 @@ for entry in $WEB_CLIENTS; do
     echo "      $client_id exists"
     current=$(api GET "/realms/$REALM/clients/$uuid")
     [[ "$(jq -r .publicClient <<<"$current")" == "false" ]] ||
-      warn "$client_id is a public client; NextAuth authenticates with a secret, so it must be confidential"
+      warn "$client_id is a public client; the web apps authenticate with a secret, so it must be confidential"
     [[ "$(jq -r '.attributes["pkce.code.challenge.method"] // ""' <<<"$current")" == "S256" ]] ||
       warn "$client_id does not require PKCE S256"
     [[ "$(jq -r .directAccessGrantsEnabled <<<"$current")" == "false" ]] ||

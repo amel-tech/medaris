@@ -1,11 +1,9 @@
 import {
-  createServerTedrisatAPIs,
   type MadrasahDirectoryResponse,
   type MadrasahStatusFilter,
   ResponseError,
 } from "@medaris/services/tedrisat";
-import { env } from "~/env";
-import { getAccessToken } from "~/lib/auth_options";
+import { passOnSignIn, tedrisatApi } from "~/lib/tedrisat-api";
 
 /**
  * Server-side first read of Medreseler (MDRS-170). Not a `"use server"`
@@ -22,16 +20,14 @@ export const getMadrasahDirectory = async (query: {
   q?: string;
 }): Promise<DirectoryRead> => {
   try {
-    const { madrasahs } = await createServerTedrisatAPIs(
-      await getAccessToken(),
-      env.TEDRISAT_API_BASE_URL
-    );
+    const { madrasahs } = await tedrisatApi();
     return await madrasahs.getMadrasahDirectory({
       status: query.status,
       q: query.q || undefined,
       limit: DIRECTORY_PAGE_SIZE,
     });
   } catch (error) {
+    await passOnSignIn(error);
     if (error instanceof ResponseError && error.response.status === 403) {
       return "forbidden";
     }

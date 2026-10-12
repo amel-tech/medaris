@@ -33,6 +33,7 @@ import {
   type KoskFormState,
   toKoskDto,
 } from "~/features/kosks/kosk-form";
+import { redirectIfUnauthenticated } from "~/lib/unauthenticated";
 
 const initialState = (kosk?: KoskResponse): KoskFormState => ({
   name: kosk?.name ?? "",
@@ -117,6 +118,7 @@ export function KoskFormDialog({
       const res = kosk
         ? await updateKosk(kosk.id, toKoskDto(state, "edit"))
         : await createKosk(toKoskDto(state, "create"));
+      if (redirectIfUnauthenticated(res)) return;
       if (res.success === false) {
         toast.error(res.error);
         return;

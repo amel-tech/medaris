@@ -1,12 +1,14 @@
 import {
   type CourseStatsResponse,
-  createServerTedrisatAPIs,
   type KoskCourseRosterResponse,
   type KoskOverviewResponse,
   ResponseError,
 } from "@medaris/services/tedrisat";
-import { env } from "~/env";
-import { getAccessToken } from "~/lib/auth_options";
+import {
+  passOnSignIn,
+  type TedrisatApi,
+  tedrisatApi,
+} from "~/lib/tedrisat-api";
 
 /**
  * Server-side first reads of the köşk page, its Dersler table and a course's
@@ -17,16 +19,14 @@ import { getAccessToken } from "~/lib/auth_options";
  */
 export type OverviewRead<T> = T | "forbidden" | "not-found" | null;
 
-const api = async () =>
-  createServerTedrisatAPIs(await getAccessToken(), env.TEDRISAT_API_BASE_URL);
-
 async function read<T>(
   what: string,
-  call: (apis: Awaited<ReturnType<typeof api>>) => Promise<T>
+  call: (apis: TedrisatApi) => Promise<T>
 ): Promise<OverviewRead<T>> {
   try {
-    return await call(await api());
+    return await call(await tedrisatApi());
   } catch (error) {
+    await passOnSignIn(error);
     if (error instanceof ResponseError) {
       if (error.response.status === 403) return "forbidden";
       if (error.response.status === 404) return "not-found";

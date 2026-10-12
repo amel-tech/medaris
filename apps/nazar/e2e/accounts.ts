@@ -2,12 +2,15 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
+  sealSessionCookies,
+  sessionFromTokenResponse,
+} from "@medaris/auth/testing";
+import {
   type Browser,
   type BrowserContext,
   test as base,
   type Page,
 } from "@playwright/test";
-import { encode, type JWT } from "next-auth/jwt";
 
 /**
  * The Keycloak accounts the specs sign in with, from the environment only:
@@ -41,7 +44,7 @@ const NEXTAUTH_SECRET = process.env.E2E_NEXTAUTH_SECRET;
  * Whether tokens can be had without the browser form, through the direct
  * grant of the client tedris's specs use (E2E_KEYCLOAK_ISSUER,
  * E2E_KEYCLOAK_CLIENT_ID and E2E_KEYCLOAK_CLIENT_SECRET), and a session cookie
- * minted with the app's NextAuth secret (E2E_NEXTAUTH_SECRET).
+ * sealed with the app's NEXTAUTH_SECRET (E2E_NEXTAUTH_SECRET).
  */
 const canUseDirectGrant = Boolean(
   KEYCLOAK_ISSUER && CLIENT_SECRET && NEXTAUTH_SECRET
@@ -85,53 +88,32 @@ export async function directGrant(who: Account) {
 }
 
 /**
- * Writes the session cookie NextAuth would have written after a sign-in, from
- * tokens of the direct grant, as tedris's `sign-in.ts` does for an instance on
- * a port its client does not list. The reading of the session and every API
- * call are the real ones. The app cannot refresh these tokens with its own
- * client, so such a session lasts as long as the access token (five minutes on
- * the dev realm) and is never kept across tests.
+ * Writes the session cookie `@medaris/auth` would have written after a
+ * sign-in, from tokens of the direct grant, as tedris's `sign-in.ts` does for
+ * an instance on a port its client does not list. The package's own testing
+ * entry seals it, so the format is never copied here. The reading of the
+ * session and every API call are the real ones. The app cannot refresh these
+ * tokens with its own client, so such a session lasts as long as the access
+ * token (five minutes on the dev realm) and is never kept across tests.
  */
 async function mintSession(page: Page, who: Account): Promise<void> {
   const base = new URL(process.env.E2E_BASE_URL ?? "http://localhost:4002");
-  const t = await directGrant(who);
-  const claims = JSON.parse(
-    Buffer.from(t.access_token.split(".")[1], "base64url").toString()
-  ) as { sub: string; name?: string; email?: string };
-  const now = Date.now();
-  const jwt = await encode({
-    secret: NEXTAUTH_SECRET as string,
-    token: {
-      sub: claims.sub,
-      name: claims.name,
-      email: claims.email,
-      accessToken: t.access_token,
-      accessTokenExpired: now + (t.expires_in - 15) * 1000,
-      refreshToken: t.refresh_token,
-      idToken: t.id_token,
-      refreshTokenExpireIn: now + t.refresh_expires_in * 1000,
-      ssoCheckedAt: now,
-      user: { id: claims.sub, name: claims.name, email: claims.email },
-    } as unknown as JWT,
-  });
-  // NextAuth splits a session cookie that would pass the browser's 4 KB limit
-  // into `<name>.0`, `<name>.1`, … and reads them back in order.
-  const CHUNK = 3800;
-  const pieces =
-    jwt.length > CHUNK
-      ? (jwt.match(new RegExp(`.{1,${CHUNK}}`, "g")) ?? [])
-      : [jwt];
+  const { cookies, maxAge, secure } = await sealSessionCookies(
+    {
+      baseUrl: base.origin,
+      secret: NEXTAUTH_SECRET as string,
+      cookiePrefix: "nazar",
+    },
+    sessionFromTokenResponse(await directGrant(who))
+  );
   await page.context().addCookies(
-    pieces.map((value, index) => ({
-      name:
-        pieces.length === 1
-          ? "nazar.session-token"
-          : `nazar.session-token.${index}`,
-      value,
-      domain: base.hostname,
-      path: "/",
+    cookies.map((cookie) => ({
+      ...cookie,
+      url: base.origin,
       httpOnly: true,
+      secure,
       sameSite: "Lax" as const,
+      expires: Math.floor(Date.now() / 1000) + maxAge,
     }))
   );
 }

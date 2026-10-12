@@ -18,6 +18,7 @@ import { Tabs, TabsPanel } from "@medaris/ui/mds/tabs";
 import { useLocale, useTimeZone, useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { hiddenAtLabel } from "~/features/archive/present";
+import { redirectIfUnauthenticated } from "~/lib/unauthenticated";
 import { loadAllBans } from "../actions";
 import {
   asScopeFilter,
@@ -109,6 +110,7 @@ export function AllBansView({ initial, viewerId, viewerRoleLabel }: Props) {
       if (mine !== ticket.current) return;
       setLoading(false);
       setMore(false);
+      if (redirectIfUnauthenticated(result)) return;
       if (!result?.success) {
         setFailed(true);
         toast.error(t("loadFailedTitle"), {

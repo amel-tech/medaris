@@ -1,5 +1,6 @@
 "use server";
 
+import { isUnauthenticated, type Unauthenticated } from "@medaris/auth/server";
 import type {
   RecordingResponse,
   RecordingUploadResponse,
@@ -23,17 +24,23 @@ import { refusalReasonOf } from "./recordings";
  * the page words it; the server's message never reaches the browser.
  */
 
-/** A write's outcome: `outcomeOf`'s, with the refusal's reason when it gave one. */
+/**
+ * A write's outcome: `outcomeOf`'s, with the refusal's reason when it gave one,
+ * or the session being over, which the page sends to sign-in.
+ */
 export type RecordingOutcome =
   | Extract<ActionOutcome<{ id: string }>, { success: true }>
-  | { success: false; code: string; reason?: string };
+  | { success: false; code: string; reason?: string }
+  | Unauthenticated;
 
 const withReason = <T>(
   result: AuthenticatedActionResult<T>
 ):
   | Extract<ActionOutcome<T>, { success: true }>
-  | { success: false; code: string; reason?: string } => {
+  | { success: false; code: string; reason?: string }
+  | Unauthenticated => {
   const outcome = outcomeOf(result);
+  if (isUnauthenticated(outcome)) return outcome;
   const reason = result.success ? null : refusalReasonOf(result.errorBody);
   return outcome.success || reason === null ? outcome : { ...outcome, reason };
 };
@@ -132,6 +139,7 @@ export async function setRecordingAvailability(
 ): Promise<
   | Extract<ActionOutcome<{ availableAt: string | null }>, { success: true }>
   | { success: false; code: string; reason?: string }
+  | Unauthenticated
 > {
   const result = await authenticatedAction(async (api) => {
     const saved = await api.lessons.setLessonRecordingAvailability({
@@ -164,7 +172,7 @@ export async function startRecordingUpload(
     /** ISO time of the session, when it has one */
     recordedAt?: string;
   }
-): Promise<GrantOutcome> {
+): Promise<GrantOutcome | Unauthenticated> {
   const result = await authenticatedAction(async (api) =>
     grantOf(
       await api.lessons.startRecordingUpload({
@@ -189,7 +197,7 @@ export async function startRecordingUpload(
 export async function resignRecordingUpload(
   lessonId: string,
   videoId: string
-): Promise<GrantOutcome> {
+): Promise<GrantOutcome | Unauthenticated> {
   const result = await authenticatedAction(async (api) =>
     grantOf(await api.lessons.resignRecordingUpload({ id: lessonId, videoId }))
   );

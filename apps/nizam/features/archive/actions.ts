@@ -10,6 +10,7 @@ import { revalidatePath } from "next/cache";
 import {
   type AuthenticatedActionResult,
   authenticatedAction,
+  succeeded,
 } from "~/lib/authenticated-action";
 
 export interface ArchiveQuery {
@@ -55,7 +56,7 @@ export const restoreArchiveItem = async (
     api.archive.restoreArchiveItem({ type, id })
   );
   // What came back is listed in the places it came back to.
-  if (result.success) revalidatePath("/", "layout");
+  if (succeeded(result)) revalidatePath("/", "layout");
   return result;
 };
 
@@ -75,6 +76,6 @@ export const deleteArchiveItem = async (
     await api.archive.deleteArchiveItem({ type, id });
     return null;
   });
-  if (result.success) revalidatePath("/", "layout");
+  if (succeeded(result)) revalidatePath("/", "layout");
   return result;
 };

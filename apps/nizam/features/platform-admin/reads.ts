@@ -1,14 +1,16 @@
 import {
   type AuditPageResponse,
   type CourseRequestListResponse,
-  createServerTedrisatAPIs,
   type KoskApplicationListResponse,
   type PlatformPolicyListResponse,
   ResponseError,
   type ScopedPolicyListResponse,
 } from "@medaris/services/tedrisat";
-import { env } from "~/env";
-import { getAccessToken } from "~/lib/auth_options";
+import {
+  passOnSignIn,
+  type TedrisatApi,
+  tedrisatApi,
+} from "~/lib/tedrisat-api";
 import { type AuditFilters, auditApiQuery } from "./present";
 
 /**
@@ -17,9 +19,6 @@ import { type AuditFilters, auditApiQuery } from "./present";
  * `null` so the page can show its error state instead of a crash; a refusal is
  * told apart so the page can show "Bu bölüm için izniniz yok" (nizam/06).
  */
-const api = async () =>
-  createServerTedrisatAPIs(await getAccessToken(), env.TEDRISAT_API_BASE_URL);
-
 export type PlatformRead<T> = T | "forbidden" | "not-found" | null;
 
 const refusal = (error: unknown): "forbidden" | "not-found" | null => {
@@ -31,11 +30,12 @@ const refusal = (error: unknown): "forbidden" | "not-found" | null => {
 
 async function read<T>(
   what: string,
-  call: (client: Awaited<ReturnType<typeof api>>) => Promise<T>
+  call: (client: TedrisatApi) => Promise<T>
 ): Promise<PlatformRead<T>> {
   try {
-    return await call(await api());
+    return await call(await tedrisatApi());
   } catch (error) {
+    await passOnSignIn(error);
     const refused = refusal(error);
     if (refused) return refused;
     console.error(`Error fetching ${what}:`, error);

@@ -3,8 +3,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
  * `readOnce`: what a page makes of one read. The way to sign-in from
- * `tedrisatApi` passes through; a 403 is its own answer, a 404 the portal's,
- * anything else a logged failure.
+ * `tedrisatApi` passes through; a 401 to the token it sent is sign-in with
+ * `reauth`; a 403 is its own answer, a 404 the portal's, anything else a
+ * logged failure.
  */
 const REDIRECT = "NEXT_REDIRECT";
 const NOT_FOUND = "NEXT_NOT_FOUND";
@@ -20,6 +21,15 @@ vi.mock("next/navigation", () => ({
     }
   },
 }));
+const redirectToSignIn = vi.hoisted(() =>
+  vi.fn(async (options: { reauth?: boolean }) => {
+    // Called only inside a test, when `REDIRECT` is long defined.
+    throw new Error(
+      `${REDIRECT}:/auth/signin${options.reauth ? "?reauth=1" : ""}`
+    );
+  })
+);
+vi.mock("~/lib/auth", () => ({ redirectToSignIn }));
 vi.mock("~/lib/tedrisat-api", () => ({
   tedrisatApi: async () => {
     if (sessionOver) throw new Error(`${REDIRECT}:/auth/signin`);
@@ -33,6 +43,7 @@ const status = (code: number) =>
 let errors: ReturnType<typeof vi.spyOn>;
 beforeEach(() => {
   sessionOver = false;
+  redirectToSignIn.mockClear();
   errors = vi.spyOn(console, "error").mockImplementation(() => {});
 });
 afterEach(() => errors.mockRestore());
@@ -50,6 +61,14 @@ describe("readOnce", () => {
     await expect(read(async () => 7)).rejects.toThrow(
       `${REDIRECT}:/auth/signin`
     );
+    expect(errors).not.toHaveBeenCalled();
+  });
+
+  it("sends a token tedrisat refused (401) to sign in for new tokens, outside any catch, and logs nothing", async () => {
+    await expect(read(() => Promise.reject(status(401)))).rejects.toThrow(
+      `${REDIRECT}:/auth/signin?reauth=1`
+    );
+    expect(redirectToSignIn).toHaveBeenCalledExactlyOnceWith({ reauth: true });
     expect(errors).not.toHaveBeenCalled();
   });
 

@@ -9,6 +9,7 @@ import { revalidatePath } from "next/cache";
 import {
   type AuthenticatedActionResult,
   authenticatedAction,
+  succeeded,
 } from "~/lib/authenticated-action";
 
 /** "Ders nazırı ata" (nizam 38): the post and its permissions, together. */
@@ -19,7 +20,7 @@ export const createGrant = async (
   const result = await authenticatedAction((api) =>
     api.kosks.createKoskGrant({ id: koskId, createKoskGrantDto: dto })
   );
-  if (result.success) revalidatePath("/", "layout");
+  if (succeeded(result)) revalidatePath("/", "layout");
   return result;
 };
 
@@ -36,7 +37,7 @@ export const updateGrant = async (
       updateKoskGrantDto: dto,
     })
   );
-  if (result.success) revalidatePath("/", "layout");
+  if (succeeded(result)) revalidatePath("/", "layout");
   return result;
 };
 
@@ -48,6 +49,6 @@ export const revokeGrant = async (
   const result = await authenticatedAction((api) =>
     api.kosks.revokeKoskGrant({ id: koskId, grantId })
   );
-  if (result.success) revalidatePath("/", "layout");
+  if (succeeded(result)) revalidatePath("/", "layout");
   return result;
 };

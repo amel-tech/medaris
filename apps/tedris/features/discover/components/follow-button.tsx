@@ -6,6 +6,7 @@ import { Icon } from "@medaris/ui/mds/icon";
 import { useRouter } from "next/navigation";
 import { useOptimistic, useTransition } from "react";
 import { followKosk, unfollowKosk } from "~/features/courses/actions";
+import { sendToSignIn } from "~/lib/send-to-sign-in";
 
 export interface FollowLabels {
   follow: string;
@@ -43,6 +44,7 @@ export function FollowButton({
       const result = next
         ? await followKosk(koskId)
         : await unfollowKosk(koskId);
+      if (sendToSignIn(result)) return;
       if (result.success === false) {
         toast.error(labels.failed);
         return;

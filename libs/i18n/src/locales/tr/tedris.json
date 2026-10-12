@@ -337,6 +337,7 @@
     "errorDescription": "Giriş işlemin yarıda kaldı ya da geçersiz hâle geldi. Giriş sayfasına dönüp baştan dene.",
     "accessDenied": "Bu hesabın giriş izni yok.",
     "configurationError": "Giriş hizmeti şu anda kullanılamıyor. Lütfen daha sonra tekrar deneyin.",
+    "signInLimit": "Kısa sürede çok fazla giriş denemesi oldu. Birkaç dakika bekleyip yeniden dene.",
     "backToSignIn": "Giriş sayfasına dön",
     "backHome": "Ana sayfaya dön",
     "signOutTitle": "Çıkış yapılsın mı?",
@@ -344,17 +345,6 @@
     "signOutConfirm": "Çıkış yap",
     "signOutCancel": "Vazgeç",
     "signingOut": "Çıkış yapılıyor"
-  },
-  "WelcomePage": {
-    "title": "Hoş geldin!",
-    "titleWithName": "Hoş geldin, {name}!",
-    "description": "Hesabın hazır. İlk adımların:",
-    "steps": {
-      "kosk": "Bir köşk seç ve takip et",
-      "course": "Bir derse kaydol",
-      "decks": "Ezber kartlarıyla çalış"
-    },
-    "start": "Öğrenmeye başla"
   },
   "DeckUnavailable": {
     "title": "Bu desteye ulaşılamıyor",

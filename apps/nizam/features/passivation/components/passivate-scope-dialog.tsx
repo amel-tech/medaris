@@ -10,6 +10,7 @@ import { Button } from "@medaris/ui/mds/button";
 import { Dialog, DialogClose } from "@medaris/ui/mds/dialog";
 import { useLocale, useTimeZone, useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { redirectIfUnauthenticated } from "~/lib/unauthenticated";
 import {
   deactivateKosk,
   previewKoskDeactivation,
@@ -66,6 +67,7 @@ export function PassivateScopeDialog({
     const result = await (kind === "KOSK"
       ? previewKoskDeactivation(id)
       : previewMadrasahDeactivation(id));
+    if (redirectIfUnauthenticated(result)) return;
     setState(
       result.success
         ? { kind: "ready", impact: result.data, changed: false, saving: false }
@@ -84,6 +86,7 @@ export function PassivateScopeDialog({
     const result = await (kind === "KOSK"
       ? deactivateKosk(id, impact.confirmation)
       : deactivateMadrasah(id, impact.confirmation));
+    if (redirectIfUnauthenticated(result)) return;
     if (result.success) {
       toast.success(t(kind === "KOSK" ? "doneKosk" : "doneMadrasah"), {
         description: t(kind === "KOSK" ? "doneKoskBody" : "doneMadrasahBody", {

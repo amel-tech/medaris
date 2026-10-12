@@ -4,7 +4,6 @@ import {
   type CourseDetailResponse,
   type CourseSummaryResponse,
   type CreateKoskDto,
-  createServerTedrisatAPIs,
   KoskManagedBy,
   type KoskResponse,
   type MeResponse,
@@ -15,12 +14,12 @@ import {
   type UpdateKoskDto,
 } from "@medaris/services/tedrisat";
 import { revalidatePath } from "next/cache";
-import { env } from "~/env";
-import { getAccessToken } from "~/lib/auth_options";
 import {
   type AuthenticatedActionResult,
   authenticatedAction,
+  succeeded,
 } from "~/lib/authenticated-action";
+import { passOnSignIn, tedrisatApi } from "~/lib/tedrisat-api";
 
 /**
  * The köşks the caller manages, a page at a time (MDRS-108). nizam is where a
@@ -31,17 +30,15 @@ export const getManagedKosks = async (
   limit = 12
 ): Promise<PaginatedKoskResponse> => {
   try {
-    const accessToken = await getAccessToken();
-    const { kosks } = await createServerTedrisatAPIs(
-      accessToken,
-      env.TEDRISAT_API_BASE_URL
-    );
+    const { kosks } = await tedrisatApi();
     return await kosks.getAllKosks({
       page,
       limit,
       managedBy: KoskManagedBy.Me,
     });
   } catch (error) {
+    // The shell's read: see `OnRefused`.
+    await passOnSignIn(error, "fail");
     console.error("Error fetching köşks:", error);
     return { items: [], total: 0, page, limit };
   }
@@ -51,13 +48,10 @@ export const getKoskById = async (
   koskId: string
 ): Promise<KoskResponse | null> => {
   try {
-    const accessToken = await getAccessToken();
-    const { kosks } = await createServerTedrisatAPIs(
-      accessToken,
-      env.TEDRISAT_API_BASE_URL
-    );
+    const { kosks } = await tedrisatApi();
     return await kosks.getKoskById({ id: koskId });
   } catch (error) {
+    await passOnSignIn(error);
     console.error("Error fetching köşk:", error);
     return null;
   }
@@ -67,13 +61,10 @@ export const getCourse = async (
   courseId: string
 ): Promise<CourseDetailResponse | null> => {
   try {
-    const accessToken = await getAccessToken();
-    const { courses } = await createServerTedrisatAPIs(
-      accessToken,
-      env.TEDRISAT_API_BASE_URL
-    );
+    const { courses } = await tedrisatApi();
     return await courses.getCourseById({ id: courseId });
   } catch (error) {
+    await passOnSignIn(error);
     console.error("Error fetching course:", error);
     return null;
   }
@@ -85,7 +76,7 @@ export const createKosk = async (
   const result = await authenticatedAction((api) =>
     api.kosks.createKosk({ createKoskDto: kosk })
   );
-  if (result.success) revalidatePath("/kosks");
+  if (succeeded(result)) revalidatePath("/kosks");
   return result;
 };
 
@@ -96,7 +87,7 @@ export const updateKosk = async (
   const result = await authenticatedAction((api) =>
     api.kosks.updateKosk({ id: koskId, updateKoskDto: kosk })
   );
-  if (result.success) {
+  if (succeeded(result)) {
     revalidatePath("/kosks");
     revalidatePath(`/kosks/${koskId}`);
   }
@@ -107,13 +98,10 @@ export const getKoskCourses = async (
   koskId: string
 ): Promise<CourseSummaryResponse[]> => {
   try {
-    const accessToken = await getAccessToken();
-    const { courses } = await createServerTedrisatAPIs(
-      accessToken,
-      env.TEDRISAT_API_BASE_URL
-    );
+    const { courses } = await tedrisatApi();
     return await courses.getCoursesByKosk({ koskId });
   } catch (error) {
+    await passOnSignIn(error);
     console.error("Error fetching köşk courses:", error);
     return [];
   }
@@ -123,13 +111,11 @@ export const getPendingEnrollments = async (
   koskId: string
 ): Promise<PendingEnrollmentResponse[]> => {
   try {
-    const accessToken = await getAccessToken();
-    const { courses } = await createServerTedrisatAPIs(
-      accessToken,
-      env.TEDRISAT_API_BASE_URL
-    );
+    const { courses } = await tedrisatApi();
     return await courses.getPendingEnrollments({ koskId });
   } catch (error) {
+    // The shell's read: see `OnRefused`.
+    await passOnSignIn(error, "fail");
     console.error("Error fetching pending enrollments:", error);
     return [];
   }
@@ -143,13 +129,10 @@ export const getCourseEnrollments = async (
   courseId: string
 ): Promise<RosterEnrollmentResponse[] | null> => {
   try {
-    const accessToken = await getAccessToken();
-    const { courses } = await createServerTedrisatAPIs(
-      accessToken,
-      env.TEDRISAT_API_BASE_URL
-    );
+    const { courses } = await tedrisatApi();
     return await courses.getCourseEnrollments({ id: courseId });
   } catch (error) {
+    await passOnSignIn(error);
     console.error("Error fetching course enrollments:", error);
     return null;
   }
@@ -164,13 +147,10 @@ export const getRemovedEnrollments = async (
   courseId: string
 ): Promise<RemovedEnrollmentResponse[]> => {
   try {
-    const accessToken = await getAccessToken();
-    const { courses } = await createServerTedrisatAPIs(
-      accessToken,
-      env.TEDRISAT_API_BASE_URL
-    );
+    const { courses } = await tedrisatApi();
     return await courses.getRemovedEnrollments({ id: courseId });
   } catch (error) {
+    await passOnSignIn(error);
     console.error("Error fetching the removed enrollments:", error);
     return [];
   }
@@ -179,13 +159,10 @@ export const getRemovedEnrollments = async (
 /** The signed-in caller with their roles (MDRS-104); null on failure. */
 export const getMe = async (): Promise<MeResponse | null> => {
   try {
-    const accessToken = await getAccessToken();
-    const { me } = await createServerTedrisatAPIs(
-      accessToken,
-      env.TEDRISAT_API_BASE_URL
-    );
+    const { me } = await tedrisatApi();
     return await me.getMe();
   } catch (error) {
+    await passOnSignIn(error);
     console.error("Error fetching the current user:", error);
     return null;
   }

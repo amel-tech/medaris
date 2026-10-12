@@ -8,6 +8,7 @@ import { Field } from "@medaris/ui/mds/field";
 import { Textarea } from "@medaris/ui/mds/textarea";
 import { useTranslations } from "next-intl";
 import { type FormEvent, useEffect, useRef, useState } from "react";
+import { redirectIfUnauthenticated } from "~/lib/unauthenticated";
 import { liftBan } from "../actions";
 import { banErrorKey, isBlank, REASON_MAX } from "../present";
 
@@ -77,6 +78,7 @@ export function LiftDialog({
     setSaving(true);
     const result = await liftBan(target.banId, reason.trim());
     setSaving(false);
+    if (redirectIfUnauthenticated(result)) return;
     if (!result.success) {
       toast.error(t("failed"), {
         description: tp(banErrorKey(result.errorBody) as never),

@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import type { Messages } from "~/lib/i18n/messages";
+import { handleUnauthenticated } from "~/lib/unauthenticated";
 import { restoreMedrese } from "../actions";
 import { madrasahRestoreErrorKey } from "../archive";
 
@@ -40,6 +41,7 @@ export function RestoreMadrasah({
     setBusy(true);
     startTransition(async () => {
       const result = await restoreMedrese(madrasahId);
+      if (handleUnauthenticated(result)) return;
       if (result.success) {
         notify({
           tone: "success",

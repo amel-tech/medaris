@@ -11,6 +11,7 @@ import { useToaster } from "@medaris/ui/mds/toast";
 import { useFormatter, useTranslations } from "next-intl";
 import { type ReactNode, useState, useTransition } from "react";
 import { LocaleAppProviders } from "~/components/locale-app-providers";
+import { sendToSignIn } from "~/lib/send-to-sign-in";
 import { regenerateMyCalendarFeed } from "../actions";
 
 type FeedLink = { url: string; webcalUrl: string };
@@ -122,6 +123,7 @@ export const CalendarSubscription = ({
     setFailed(false);
     startTransition(async () => {
       const result = await regenerateMyCalendarFeed();
+      if (sendToSignIn(result)) return;
       setConfirming(false);
       if (!result.success) {
         setFailed(true);
