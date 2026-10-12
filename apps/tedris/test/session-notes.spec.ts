@@ -8,8 +8,9 @@ import { describe, expect, it, vi } from "vitest";
 
 /**
  * Where the notes panel is drawn on the session page, now the celse's detail
- * page (MDRS-150, MDRS-266, MDRS-285): for an enrolled talebe, under the join
- * card, on the celse's clock, whenever the celse has nothing to watch now;
+ * page (MDRS-150, MDRS-266, MDRS-285): for an enrolled talebe, first in the
+ * column under the main card (MDRS-289), on the celse's clock, whenever the
+ * celse has nothing to watch now;
  * when it has a stream or a READY recording, beside the video on the watch
  * page (`watch-view.spec.ts`) and not here. On a cancelled celse and for
  * everyone else, nowhere. What the panel does is `lesson-notes.spec.ts`.
@@ -29,15 +30,9 @@ vi.mock("@medaris/ui/mds/toast", () => ({
 vi.mock("~/lib/i18n/navigation", () => ({
   useRouter: () => ({ push: vi.fn() }),
 }));
-vi.mock("~/features/courses/components/live-chat", () => ({
-  LiveChat: () => null,
-}));
-vi.mock("~/features/courses/components/session-programme", () => ({
-  SessionProgramme: () => null,
-}));
-// The join card keeps its own clock (session-page.spec.ts); here only where it is.
-vi.mock("~/features/courses/components/session-join-live", () => ({
-  SessionJoinLive: () => createElement("div", { "data-join-card": "" }),
+// The main card keeps its own clock (session-page.spec.ts); here only where it is.
+vi.mock("~/features/courses/components/session-action-card", () => ({
+  SessionActionCard: () => createElement("div", { "data-join-card": "" }),
 }));
 // The panel is a client component with its own spec; here only where it is
 // mounted and what it is given.
@@ -194,10 +189,11 @@ describe("the notes panel on a celse with nothing to watch, on the detail page (
 
   /**
    * One panel, with no frame to read, handed the celse's clock (its start,
-   * its length and the instant the page was rendered at), under the join card
-   * in the page's main column, and no frame switched to the player API.
+   * its length and the instant the page was rendered at), first in the
+   * page's main column under the main card, and no frame switched to the
+   * player API.
    */
-  const expectUnderJoinCard = (html: string, s: SessionResponse) => {
+  const expectFirstInColumn = (html: string, s: SessionResponse) => {
     expect(html.match(/data-notes="/g)).toHaveLength(1);
     expect(html).toContain('data-notes-frame="manual"');
     expect(html).toContain(
@@ -208,9 +204,9 @@ describe("the notes panel on a celse with nothing to watch, on the detail page (
     );
     const join = html.indexOf("data-join-card");
     const notes = html.indexOf('data-notes="s1"');
-    expect(columns).toBeGreaterThan(-1);
-    expect(join).toBeGreaterThan(columns);
-    expect(notes).toBeGreaterThan(join);
+    expect(join).toBeGreaterThan(-1);
+    expect(columns).toBeGreaterThan(join);
+    expect(notes).toBeGreaterThan(columns);
     expect(notes).toBeLessThan(html.indexOf("<aside"));
     expect(html).not.toContain("enablejsapi");
   };
@@ -252,20 +248,21 @@ describe("the notes panel on a celse with nothing to watch, on the detail page (
       "a celse with nothing set yet",
       session({ status: "SCHEDULED", startsAt: AHEAD }),
     ],
-  ])("is under the join card on %s", async (_label, s) => {
-    expectUnderJoinCard(await render(enrolled, s), s);
+  ])("leads the column under the main card on %s", async (_label, s) => {
+    expectFirstInColumn(await render(enrolled, s), s);
   });
 
   it("is drawn for a completed talebe too", async () => {
     const s = session({ meetingUrl: ZOOM });
-    expectUnderJoinCard(await render(course({ status: "COMPLETED" }), s), s);
+    expectFirstInColumn(await render(course({ status: "COMPLETED" }), s), s);
   });
 
-  it("comes after the agenda beside the join card, before the neighbours", async () => {
+  it("leads the column, before the agenda and the resources, the neighbours after (MDRS-289)", async () => {
     const html = await render(
       enrolled,
       session({
         meetingUrl: ZOOM,
+        kaynak: "Bina · s. 4",
         agenda: [{ time: "21:00", title: "Mezîd fiiller" }],
         next: {
           id: "s2",
@@ -277,7 +274,11 @@ describe("the notes panel on a celse with nothing to watch, on the detail page (
       })
     );
     const notes = html.indexOf('data-notes="s1"');
-    expect(notes).toBeGreaterThan(html.indexOf('id="agenda-title"'));
+    expect(notes).toBeGreaterThan(-1);
+    expect(notes).toBeLessThan(html.indexOf('id="agenda-title"'));
+    expect(notes).toBeLessThan(
+      html.indexOf('data-testid="session-resources-card"')
+    );
     expect(notes).toBeLessThan(
       html.indexOf('aria-label="SessionPage.neighbours"')
     );

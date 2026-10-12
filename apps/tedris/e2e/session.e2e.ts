@@ -80,16 +80,14 @@ test.describe("an enrolled talebe", () => {
     await expect(main.getByText(/dakika sonra/)).toBeVisible();
     await expect(main.getByText("60 dk").first()).toBeVisible();
     await expect(main.locator(".mds-platform-chip")).toHaveText("Zoom");
-    const join = main.getByRole("link", { name: /Celseye katıl/ });
+    const join = main.getByRole("link", { name: /Toplantıya katıl/ });
     await expect(join).toBeVisible();
     await expect(join).toHaveAttribute("href", fixture.meetingUrl);
     await expect(join).toHaveAttribute("target", "_blank");
     await expect(join).toHaveAttribute("rel", /noopener/);
     await main.getByText("Bağlantıyı göster").click();
     await expect(main.getByText(fixture.meetingUrl)).toBeVisible();
-    await expect(
-      main.getByRole("heading", { name: "Celse akışı" })
-    ).toBeVisible();
+    await expect(main.getByRole("heading", { name: "Gündem" })).toBeVisible();
     await expect(main.getByText("Saatler İstanbul saatiyle.")).toBeVisible();
     await expect(
       main.getByText("Selâm ve geçen haftanın tekrarı")
@@ -108,9 +106,9 @@ test.describe("an enrolled talebe", () => {
     await page.goto(sessionPath(fixture.sessions.far.id));
     const main = page.getByRole("main");
     await expect(main.getByText(/dakika sonra/)).toBeVisible();
-    await expect(main.getByRole("link", { name: /Celseye katıl/ })).toHaveCount(
-      0
-    );
+    await expect(
+      main.getByRole("link", { name: /Toplantıya katıl/ })
+    ).toHaveCount(0);
     await expect(
       main.getByText("Katılım, celse başlamadan 10 dakika önce açılır.")
     ).toBeVisible();
@@ -124,9 +122,9 @@ test.describe("an enrolled talebe", () => {
     await expect(
       main.getByText("Toplantı bağlantısı henüz eklenmedi.")
     ).toBeVisible();
-    await expect(main.getByRole("link", { name: /Celseye katıl/ })).toHaveCount(
-      0
-    );
+    await expect(
+      main.getByRole("link", { name: /Toplantıya katıl/ })
+    ).toHaveCount(0);
   });
 
   test("lists the previous and the next session, the cancelled one skipped, and follows a card", async ({
@@ -165,9 +163,9 @@ test.describe("an enrolled talebe", () => {
     await expect(
       main.getByText("Bu celse için toplantı bağlantısı yok.")
     ).toBeVisible();
-    await expect(main.getByRole("link", { name: /Celseye katıl/ })).toHaveCount(
-      0
-    );
+    await expect(
+      main.getByRole("link", { name: /Toplantıya katıl/ })
+    ).toHaveCount(0);
     await expect(main.getByText("Takvime ekle")).toHaveCount(0);
     await expect(main.getByText("Müderris hasta")).toHaveCount(0);
     await main.getByRole("link", { name: "Telafi celsesine git" }).click();
@@ -177,15 +175,23 @@ test.describe("an enrolled talebe", () => {
     ).toBeVisible();
   });
 
-  test("marks the cancelled session in the Müfredat and the session up next", async ({
+  test("highlights this celse in the Müfredat, marks the cancelled one and leads to the whole programme", async ({
     page,
   }) => {
-    await page.goto(sessionPath(fixture.sessions.upcoming.id));
+    const { upcoming, past } = fixture.sessions;
+    await page.goto(sessionPath(upcoming.id));
     const programme = page.getByRole("region", { name: "Müfredat" });
-    await expect(programme.getByText("Devam ediyor").first()).toBeVisible();
-    await expect(programme.getByText("Sıradaki")).toBeVisible();
-    await expect(programme.getByText("İptal edildi")).toBeVisible();
-    await expect(programme.getByText("Sona erdi").first()).toBeVisible();
+    await expect(programme.locator('[aria-current="page"]')).toHaveText(
+      upcoming.title
+    );
+    await expect(programme.getByText(/Bu celse/)).toBeVisible();
+    await expect(programme.getByText(/İptal edildi/)).toBeVisible();
+    await expect(
+      programme.getByRole("link", { name: new RegExp(past.title) })
+    ).toBeVisible();
+    await expect(
+      programme.getByRole("link", { name: "Bütün müfredat" })
+    ).toHaveAttribute("href", /\/courses\/[^/]+$/);
   });
 
   test("is the not-found page for a missing session and for a lesson that is not a live one", async ({
@@ -238,9 +244,9 @@ test("a PENDING applicant gets the locked card, with no link and no agenda in th
     const html = (await response?.text()) ?? "";
     expect(html).not.toContain(fixture.meetingUrl);
     expect(html).not.toContain("Selâm ve geçen haftanın tekrarı");
-    await expect(page.getByRole("link", { name: /Celseye katıl/ })).toHaveCount(
-      0
-    );
+    await expect(
+      page.getByRole("link", { name: /Toplantıya katıl/ })
+    ).toHaveCount(0);
   } finally {
     await remove();
   }

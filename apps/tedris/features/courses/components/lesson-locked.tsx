@@ -6,16 +6,15 @@ import type {
 } from "@medaris/services/tedrisat";
 import { toast } from "@medaris/ui/components/sonner";
 import { Badge } from "@medaris/ui/mds/badge";
-import { Breadcrumb } from "@medaris/ui/mds/breadcrumb";
 import { Button } from "@medaris/ui/mds/button";
 import { Card } from "@medaris/ui/mds/card";
 import { CoverPattern } from "@medaris/ui/mds/cover-pattern";
 import { Icon } from "@medaris/ui/mds/icon";
-import { SessionJoin } from "@medaris/ui/mds/session-join";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import { courseCover } from "~/features/courses/course-cover";
+import type { LooseTranslator } from "~/lib/i18n/loose";
 import { courseActionErrorKey } from "../action-error";
 import { enrollInCourse } from "../actions";
 import { courseTotals, courseViewState } from "../course-view";
@@ -26,10 +25,18 @@ import {
   recordingReleaseOf,
   releaseWordsOf,
 } from "../recordings-model";
-import { sessionStateOf } from "../session-model";
+import {
+  sessionActionLabels,
+  sessionHeaderProps,
+  stateBadgeLabels,
+} from "../session-join-labels";
+import { celseTimeWords, zoneLabel } from "../session-model";
 import { CourseProgramme } from "./course-programme";
 import { EnrollmentReceivedDialog } from "./enrollment-received-dialog";
 import { MediaPlayer } from "./media-player";
+import { SessionActionCard } from "./session-action-card";
+import { SessionHeader } from "./session-header";
+import { SessionStateBadge } from "./session-state-badge";
 
 /**
  * Design tedris/19 — a session opened by someone who may not read it. It is
@@ -37,7 +44,8 @@ import { MediaPlayer } from "./media-player";
  * no content to leak: the meeting link, agenda, kaynak and recording never
  * reached this server. What is left is the programme the course page shows
  * anyway, with the one thing to do about it. The state is 200 with a locked
- * body, not a 403.
+ * body, not a 403. Since MDRS-289 it has the detail page's header and its
+ * main card's frame, which holds today's lock and the way in.
  */
 export function LessonLocked({
   course,
@@ -60,6 +68,8 @@ export function LessonLocked({
 }) {
   const t = useTranslations("tedris.LessonLocked");
   const sessionText = useTranslations("tedris.SessionPage");
+  // The header and the card take the whole namespace, as on the detail page.
+  const tedris = useTranslations("tedris") as unknown as LooseTranslator;
   const courseText = useTranslations("tedris.CoursePage");
   const releaseText = useTranslations("tedrisLearn.RecordingRelease");
   const locale = useLocale();
@@ -103,20 +113,17 @@ export function LessonLocked({
       </div>
     ) : undefined;
 
-  const crumbs: { label: string; href?: string }[] = [];
-  if (koskName)
-    crumbs.push({ label: koskName, href: `/kosks/${course.koskId}` });
-  crumbs.push({ label: course.title, href: `/courses/${course.id}` });
-  crumbs.push({ label: session.title });
-
-  const state = sessionStateOf(
-    {
-      cancelledAt: session.cancelledAt,
-      startsAt: session.startsAt,
-      durationMinutes: session.durationMinutes,
-    },
-    new Date(now)
-  );
+  const viewerTimeZone = timeZone ?? course.timeZone;
+  const renderedAt = new Date(now).toISOString();
+  const startsAt = session.startsAt?.toISOString() ?? null;
+  const cancelled = Boolean(session.cancelledAt);
+  const time = session.startsAt
+    ? celseTimeWords(session.startsAt, session.durationMinutes, {
+        locale,
+        courseTimeZone: course.timeZone,
+        viewerTimeZone,
+      })
+    : undefined;
   const teachers = new Intl.ListFormat(locale, { type: "conjunction" }).format(
     course.muderris.map((m) => m.name)
   );
@@ -153,85 +160,96 @@ export function LessonLocked({
 
   return (
     <main className="font-ui mx-auto flex inline-full max-inline-content flex-col gap-section pbs-8 pbe-16 px-gutter max-md:pbs-5 max-md:pbe-10">
-      <div className="flex min-inline-0 flex-col gap-4">
-        <Breadcrumb items={crumbs} label={sessionText("breadcrumb")} />
-        <div className="flex min-inline-0 flex-col gap-2">
-          <p className="mds-eyebrow">
-            {sessionText("week", { number: session.weekNumber })}
-          </p>
-          <h1 className="mds-h1" dir="auto">
-            {session.title}
-          </h1>
-        </div>
-      </div>
+      <SessionHeader
+        {...sessionHeaderProps(tedris, {
+          course,
+          session,
+          koskName,
+          locale,
+          viewerTimeZone,
+        })}
+        badge={
+          startsAt || cancelled ? (
+            <SessionStateBadge
+              renderedAt={renderedAt}
+              startsAt={startsAt}
+              durationMinutes={session.durationMinutes ?? undefined}
+              cancelled={cancelled}
+              locale={locale}
+              timeZone={viewerTimeZone}
+              labels={stateBadgeLabels(tedris)}
+            />
+          ) : undefined
+        }
+      />
+
+      {session.startsAt ? (
+        <SessionActionCard
+          renderedAt={renderedAt}
+          startsAt={startsAt}
+          durationMinutes={session.durationMinutes ?? undefined}
+          cancelled={cancelled}
+          time={time}
+          zone={
+            time?.local
+              ? tedris("SessionPage.courseZone", {
+                  zone: zoneLabel(course.timeZone, locale),
+                })
+              : null
+          }
+          lessonId={session.id}
+          inPerson={session.inPerson}
+          locale={locale}
+          locked={{ reason: t(`description.${reason}`), action }}
+          contentLocked
+          labels={sessionActionLabels(tedris)}
+        />
+      ) : null}
 
       <div className="grid items-start gap-8 grid-cols-[minmax(0,1fr)_var(--layout-aside)] max-md:grid-cols-1">
-        <div className="grid items-start gap-6 grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)] max-md:grid-cols-1">
+        <div className="flex min-inline-0 flex-col gap-6">
           {showRecording && recording ? (
-            <div className="col-span-full">
-              <MediaPlayer
-                id="recording-title"
-                title={recording.title}
-                embedUrl={recordingEmbed}
-                frameTitle={
-                  recording.provider === "BUNNY"
-                    ? sessionText("bunnyFrameTitle", { title: recording.title })
-                    : undefined
-                }
-                placeholder={
-                  releaseWords ? (
-                    <>
-                      {releaseWords.text}
-                      {releaseWords.zone ? (
-                        <>
-                          {" "}
-                          <span className="mds-caption block">
-                            {releaseWords.zone}
-                          </span>
-                        </>
-                      ) : null}
-                    </>
-                  ) : (
-                    sessionText("recordingPlaceholder")
-                  )
-                }
-                openHref={recordingEmbed ? null : recording.url}
-                openLabel={sessionText("recordingOpen")}
-              >
-                {[
-                  sessionText("recordingKind"),
-                  recordedOn,
-                  recording.durationMinutes != null
-                    ? sessionText("minutes", {
-                        count: recording.durationMinutes,
-                      })
-                    : null,
-                ]
-                  .filter(Boolean)
-                  .join(" · ")}
-              </MediaPlayer>
-            </div>
-          ) : null}
-          {session.startsAt ? (
-            <SessionJoin
-              startsAt={session.startsAt.toISOString()}
-              durationMinutes={session.durationMinutes ?? undefined}
-              timeZone={timeZone ?? course.timeZone}
-              courseTimeZone={course.timeZone}
-              state={state}
-              access="locked"
-              lockedReason={t(`description.${reason}`)}
-              action={action}
-              now={now}
-              locale={locale}
-              label={sessionText("joinLabel")}
-              liveLabel={sessionText("liveLabel")}
-              endedLabel={sessionText("endedLabel")}
-              cancelledLabel={sessionText("cancelledLabel")}
-              cancelledText={sessionText("cancelledJoinText")}
-              localTimeLabel={sessionText("localTime")}
-              minuteUnit={sessionText("minuteUnit")}
-            />
+            <MediaPlayer
+              id="recording-title"
+              title={recording.title}
+              embedUrl={recordingEmbed}
+              frameTitle={
+                recording.provider === "BUNNY"
+                  ? sessionText("bunnyFrameTitle", { title: recording.title })
+                  : undefined
+              }
+              placeholder={
+                releaseWords ? (
+                  <>
+                    {releaseWords.text}
+                    {releaseWords.zone ? (
+                      <>
+                        {" "}
+                        <span className="mds-caption block">
+                          {releaseWords.zone}
+                        </span>
+                      </>
+                    ) : null}
+                  </>
+                ) : (
+                  sessionText("recordingPlaceholder")
+                )
+              }
+              openHref={recordingEmbed ? null : recording.url}
+              openLabel={sessionText("recordingOpen")}
+            >
+              {[
+                sessionText("recordingKind"),
+                recordedOn,
+                recording.durationMinutes != null
+                  ? sessionText("minutes", {
+                      count: recording.durationMinutes,
+                    })
+                  : null,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+            </MediaPlayer>
           ) : null}
           <Card
             title={course.title}

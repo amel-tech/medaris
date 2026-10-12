@@ -8,6 +8,7 @@ import { useState } from "react";
 import {
   groupByWeek,
   isPlainWeekTitle,
+  RECORDING_PROVIDER_NAMES,
   type RecordingAction,
   type RecordingRelease,
   type ReleaseTranslate,
@@ -18,12 +19,6 @@ import {
 import { watchPath } from "../watch-model";
 import { RecordingReleaseNote } from "./recording-release";
 import { RecordingsFailed } from "./recordings-failed";
-
-const PROVIDER_NAMES: Record<string, string | undefined> = {
-  YOUTUBE: "YouTube",
-  DRIVE: "Google Drive",
-  BUNNY: "Bunny Stream",
-};
 
 /**
  * One row: the whole row is the link (MDRS-280). In a narrow list its chips
@@ -237,7 +232,7 @@ const RecordingRow = ({
   watchHref: string;
 }) => {
   const t = useTranslations("tedrisLearn.RecordingsTab");
-  const provider = PROVIDER_NAMES[rec.provider];
+  const provider = RECORDING_PROVIDER_NAMES[rec.provider];
   const factsId = `recording-facts-${rec.id}`;
   const releaseId = `recording-release-${rec.id}`;
   const describedBy = release ? `${factsId} ${releaseId}` : factsId;

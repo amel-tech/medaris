@@ -68,12 +68,12 @@ test.describe("an enrolled talebe", () => {
     const main = page.getByRole("main");
     await expect(main.getByText("Şu an canlı").first()).toBeVisible();
     await expect(main.getByText(/dakikadır sürüyor/)).toBeVisible();
-    const join = main.getByRole("link", { name: /Celseye katıl/ });
+    const join = main.getByRole("link", { name: /Toplantıya katıl/ });
     await expect(join).toHaveAttribute("href", fixture.meetingUrl);
     await expect(join).toHaveAttribute("target", "_blank");
     await expect(
       main.getByText(
-        "Konuşmak ve soru sormak için celseye katıl; yalnız izleyeceksen yayını aç."
+        "Konuşmak ve soru sormak için toplantıya katıl; yalnız izleyeceksen yayını aç."
       )
     ).toBeVisible();
     // the detail page frames nothing itself
@@ -88,20 +88,24 @@ test.describe("an enrolled talebe", () => {
     );
     await expect(page.getByTitle("Canlı sohbet")).toBeVisible();
     // the meeting link is on the detail page only (owner's decision 6)
-    await expect(page.getByRole("link", { name: /Celseye katıl/ })).toHaveCount(
-      0
-    );
+    await expect(
+      page.getByRole("link", { name: /Toplantıya katıl/ })
+    ).toHaveCount(0);
     expect(await page.content()).not.toContain(fixture.meetingUrl);
     await page.getByRole("link", { name: "Celse ayrıntıları" }).click();
     await expect(page).toHaveURL(new RegExp(`/lessons/${s.id}$`));
   });
 
-  test("tedris/16: the Müfredat row of the session on air reads Sıradaki · Şu an canlı", async ({
+  test("tedris/16: the Müfredat row of the session on air is this celse's, and live (MDRS-289)", async ({
     page,
   }) => {
     await page.goto(sessionPath(fixture.sessions.live.id));
     const programme = page.getByRole("region", { name: "Müfredat" });
-    await expect(programme.getByText("Sıradaki · Şu an canlı")).toBeVisible();
+    const row = programme.getByRole("listitem").filter({
+      has: page.locator('[aria-current="page"]'),
+    });
+    await expect(row.getByText(/Bu celse/)).toBeVisible();
+    await expect(row.getByText(/Şu an canlı/)).toBeVisible();
     await page.goto(coursePath());
     await expect(
       page.getByText("Sıradaki · Şu an canlı").first()

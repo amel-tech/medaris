@@ -3,11 +3,6 @@ import type {
   SessionRefResponse,
   SessionResponse,
 } from "@medaris/services/tedrisat";
-import { Alert } from "@medaris/ui/mds/alert";
-import { Avatar } from "@medaris/ui/mds/avatar";
-import { Breadcrumb } from "@medaris/ui/mds/breadcrumb";
-import { Card } from "@medaris/ui/mds/card";
-import { EmptyState } from "@medaris/ui/mds/empty-state";
 import { Icon } from "@medaris/ui/mds/icon";
 import { resolveMeetingPlatform } from "@medaris/utils";
 import { getLocale, getTimeZone, getTranslations } from "next-intl/server";
@@ -15,6 +10,8 @@ import type { ReactNode } from "react";
 import type { LooseTranslator } from "~/lib/i18n/loose";
 import { canWriteNotes } from "../lesson-note-model";
 import {
+  liveEmbedUrlOf,
+  RECORDING_PROVIDER_NAMES,
   type ReleaseTranslate,
   recordingReleaseOf,
   recordingsTabPath,
@@ -23,36 +20,25 @@ import {
 import {
   calendarLabels,
   hostOf,
-  sessionJoinLabels,
+  sessionActionLabels,
+  sessionHeaderProps,
+  stateBadgeLabels,
 } from "../session-join-labels";
-import { splitArabic, zoneLabel } from "../session-model";
+import { celseTimeWords, zoneLabel } from "../session-model";
 import { watchPath, watchTargetOf } from "../watch-model";
-import { CourseResources } from "./course-resources";
+import { CalendarMenu } from "./calendar-menu";
 import { LessonNotes } from "./lesson-notes";
-import { RecordingReleaseNote } from "./recording-release";
-import { SessionJoinLive } from "./session-join-live";
-import { SessionProgramme } from "./session-programme";
+import { SessionActionCard, type WatchPoster } from "./session-action-card";
+import { SessionAgenda } from "./session-agenda";
+import { SessionHeader } from "./session-header";
+import { SessionResources } from "./session-resources";
+import { SessionStateBadge } from "./session-state-badge";
+import { SessionSyllabus } from "./session-syllabus";
 
 // Narrow on purpose: the full translator type hits TS2589 here (MDRS-176).
 type Translate = LooseTranslator;
 
-/** A line with each Arabic run set in its own language and direction. */
-const ArabicText = ({ text }: { text: string }) => (
-  <>
-    {splitArabic(text).map((part, i) =>
-      part.arabic ? (
-        // biome-ignore lint/suspicious/noArrayIndexKey: runs of one static string, never reordered
-        <span key={i} lang="ar" dir="rtl" className="mds-arabic">
-          {part.text}
-        </span>
-      ) : (
-        // biome-ignore lint/suspicious/noArrayIndexKey: runs of one static string, never reordered
-        <span key={i}>{part.text}</span>
-      )
-    )}
-  </>
-);
-
+/** One end of the footer: the previous celse at the start, the next at the end. */
 const NeighbourCard = ({
   session,
   direction,
@@ -81,22 +67,18 @@ const NeighbourCard = ({
     : null;
   return (
     <div
-      className="mds-card mds-card--interactive flex flex-col gap-2"
+      className={`mds-card mds-card--interactive flex flex-[0_1_26rem] items-center gap-4${previous ? "" : " ms-auto"}`}
       data-density="compact"
+      data-neighbour={direction}
     >
-      <p
-        className={`mds-eyebrow flex items-center gap-1 ${previous ? "" : "justify-end"}`}
-        aria-hidden="true"
+      {previous ? <Icon name="arrowLeft" /> : null}
+      <div
+        className={`flex min-inline-0 flex-1 flex-col gap-1${previous ? "" : " text-end"}`}
       >
-        {previous ? <Icon name="arrowLeft" size="sm" /> : null}
-        {t(previous ? "SessionPage.previous" : "SessionPage.next")}
-        {previous ? null : <Icon name="arrowRight" size="sm" />}
-      </p>
-      <div className="mds-card__header">
-        <p
-          className={`mds-card__title ${previous ? "" : "text-end"}`}
-          dir="auto"
-        >
+        <p className="mds-eyebrow" aria-hidden="true">
+          {t(previous ? "SessionPage.previous" : "SessionPage.next")}
+        </p>
+        <p className="mds-label" dir="auto">
           <a className="mds-card__link" href={href}>
             <span className="mds-visually-hidden">
               {t(previous ? "SessionPage.previousSr" : "SessionPage.nextSr")}
@@ -104,38 +86,36 @@ const NeighbourCard = ({
             {session.title}
           </a>
         </p>
-      </div>
-      <div className={`mds-card__footer ${previous ? "" : "text-end"}`}>
-        <span>
-          <span>{t("SessionPage.week", { number: session.weekNumber })}</span>
+        <p className="mds-caption">
+          {t("SessionPage.week", { number: session.weekNumber })}
           {when ? (
-            <span className="mds-sep" aria-hidden="true">
-              ·
-            </span>
+            <>
+              <span className="mds-sep" aria-hidden="true">
+                ·
+              </span>{" "}
+              <time dateTime={session.startsAt?.toISOString()}>{when}</time>
+            </>
           ) : null}
-        </span>
-        {when ? (
-          <span>
-            <time dateTime={session.startsAt?.toISOString()}>{when}</time>
-          </span>
-        ) : null}
+        </p>
       </div>
+      {previous ? null : <Icon name="arrowRight" />}
     </div>
   );
 };
 
 /**
- * The session page (MDRS-158, designs tedris/15 and 18): a live celse of a
- * course the viewer may read. Server component; the client pieces are the
- * join card, which keeps a clock, and the notes panel. `session` is
- * `GET /courses/:id/sessions/:id` — its status, cancellation, replacement and
- * neighbours are the API's; the course is the programme the aside lists.
+ * The celse detail page (MDRS-158, MDRS-285; layout MDRS-289): a live celse
+ * of a course the viewer may read. Server component; the client pieces keep
+ * a clock: the state badge, the main card, the agenda, the notes. `session`
+ * is `GET /courses/:id/sessions/:id`: its status, cancellation, replacement
+ * and neighbours are the API's; the course is the programme the aside lists.
  *
- * Since MDRS-285 it is the celse's detail page: the join card with the
- * meeting link, the agenda, the kaynak, the müderris, the celse's own
- * resources (MDRS-286) over the course's, and the programme. The stream and
- * the recording play on the watch page, which the join card's "Yayını izle"
- * or "Kaydı izle" leads to.
+ * From the top: the header (Köşk › Ders › Hafta N, the title, where the
+ * celse stands, its time and its müderris); one wide card, the page's main
+ * action (the way to the watch page, or the date and how the celse is
+ * attended, with the meeting link); then "Notlarım" when there is nothing to
+ * watch, "Gündem" and "Kaynaklar", beside them "Müfredat"; at the foot the
+ * previous and next celse. A phone reads it in that order, in one column.
  */
 export const SessionPage = async ({
   course,
@@ -156,18 +136,11 @@ export const SessionPage = async ({
   const meetingUrl = session.meetingUrl || undefined;
   const platform = meetingUrl ? resolveMeetingPlatform(meetingUrl) : null;
   const replacement = cancelled ? session.replacement : null;
-  const replacementAt = replacement?.startsAt
-    ? new Intl.DateTimeFormat(locale, {
-        weekday: "long",
-        day: "numeric",
-        month: "long",
-        hour: "2-digit",
-        minute: "2-digit",
-        timeZone: course.timeZone,
-      }).format(replacement.startsAt)
-    : null;
   const agenda = session.agenda ?? [];
   const kaynak = session.kaynak?.trim() || null;
+  const renderedAt = now.toISOString();
+  const startsAt = session.startsAt?.toISOString() ?? null;
+  const durationMinutes = session.durationMinutes ?? undefined;
 
   // MDRS-285: the stream and the recording play on the celse's watch page,
   // with the chat or the questions and the notes beside them; this page
@@ -175,6 +148,27 @@ export const SessionPage = async ({
   // (MDRS-162), so a body without them offers no way there.
   const recording = session.recording ?? null;
   const target = watchTargetOf(session);
+  const watch: WatchPoster | null =
+    target?.kind === "recording"
+      ? {
+          kind: "recording",
+          provider: RECORDING_PROVIDER_NAMES[target.recording.provider],
+          durationMinutes: target.recording.durationMinutes ?? undefined,
+          recordedOn: target.recording.recordedAt
+            ? new Intl.DateTimeFormat(locale, {
+                day: "numeric",
+                month: "long",
+                year: "numeric",
+                timeZone: course.timeZone,
+              }).format(target.recording.recordedAt)
+            : undefined,
+        }
+      : target?.kind === "stream"
+        ? {
+            kind: "stream",
+            provider: liveEmbedUrlOf(target.url) ? "YouTube" : undefined,
+          }
+        : null;
   // MDRS-288: a recording the course team holds back until a time says when
   // it opens: to a talebe, who has no link to it yet, and to the course team,
   // who play it already. The time is the course's, the viewer's clock beside.
@@ -190,8 +184,8 @@ export const SessionPage = async ({
     : null;
   // MDRS-266: an enrolled talebe takes private notes on every celse that
   // stands, before it starts as well. Where a video can be watched now the
-  // panel is beside it on the watch page; with none it is here, under the
-  // join card, and the celse's clock gives a note's time while it is live.
+  // panel is beside it on the watch page; with none it leads the page's
+  // column, and the celse's clock gives a note's time while it is live.
   const mayTakeNotes =
     !session.contentLocked && canWriteNotes(course.enrollment?.status);
   const notes =
@@ -200,267 +194,211 @@ export const SessionPage = async ({
         lessonId={session.id}
         frameId={null}
         clock={{
-          startsAt: session.startsAt?.toISOString() ?? null,
-          durationMinutes: session.durationMinutes ?? undefined,
-          renderedAt: now.toISOString(),
+          startsAt,
+          durationMinutes,
+          renderedAt,
         }}
       />
     ) : null;
 
-  const crumbs: { label: string; href?: string }[] = [];
-  if (koskName)
-    crumbs.push({ label: koskName, href: `/kosks/${course.koskId}` });
-  crumbs.push({ label: course.title, href: `/courses/${course.id}` });
-  crumbs.push({ label: session.title });
-
-  const calendar =
-    !session.contentLocked && session.startsAt ? calendarLabels(t) : undefined;
-
-  const join: ReactNode = session.startsAt ? (
-    <SessionJoinLive
-      renderedAt={now.toISOString()}
-      startsAt={session.startsAt.toISOString()}
-      durationMinutes={session.durationMinutes ?? undefined}
-      cancelled={cancelled}
-      title={session.title}
-      courseId={course.id}
-      courseTitle={course.title}
-      lessonId={session.id}
-      meetingUrl={meetingUrl}
-      platform={platform?.id}
-      platformHost={meetingUrl ? hostOf(meetingUrl) : undefined}
-      // MDRS-283: without a link the card says the celse is streamed or held
-      // in person. `hasLiveStream` comes before the start, the link from the
-      // start; a caller who may not read the content gets neither.
-      inPerson={session.inPerson}
-      hasLiveStream={session.hasLiveStream ?? Boolean(session.liveStreamUrl)}
-      locale={locale}
-      timeZone={timeZone}
-      courseTimeZone={course.timeZone}
-      calendar={calendar}
-      recordingsHref={recording ? recordingsTabPath(course.id) : undefined}
-      // MDRS-285: "Yayını izle" or "Kaydı izle", to the watch page.
-      watchHref={watchPath(course.id, session.id)}
-      watch={target?.kind ?? null}
-      labels={sessionJoinLabels(t)}
-    />
-  ) : target ? (
-    // A celse with no time has no card; what it has to watch is still offered.
-    <a
-      className="mds-btn mds-btn--primary mds-btn--large self-start"
-      href={watchPath(course.id, session.id)}
-    >
-      {t(
-        target.kind === "recording"
-          ? "SessionPage.watchRecording"
-          : "SessionPage.watchStream"
-      )}
-    </a>
+  const cancellation: ReactNode = cancelled ? (
+    replacement?.startsAt ? (
+      <>
+        {t.rich("SessionPage.replacement", {
+          time: new Intl.DateTimeFormat(locale, {
+            weekday: "long",
+            day: "numeric",
+            month: "long",
+            hour: "2-digit",
+            minute: "2-digit",
+            timeZone: course.timeZone,
+          }).format(replacement.startsAt),
+          when: (chunks) => (
+            <time dateTime={replacement.startsAt?.toISOString()}>{chunks}</time>
+          ),
+        })}{" "}
+        <a className="mds-btn mds-btn--link" href={lessonHref(replacement.id)}>
+          {t("SessionPage.replacementGo")}
+        </a>
+      </>
+    ) : (
+      t("SessionPage.noReplacement")
+    )
   ) : null;
+
+  const time = session.startsAt
+    ? celseTimeWords(session.startsAt, session.durationMinutes, {
+        locale,
+        courseTimeZone: course.timeZone,
+        viewerTimeZone: timeZone,
+      })
+    : undefined;
+
+  // A celse with no time and nothing to watch has no card, as before.
+  const card =
+    session.startsAt || target || cancelled ? (
+      <SessionActionCard
+        renderedAt={renderedAt}
+        startsAt={startsAt}
+        durationMinutes={durationMinutes}
+        cancelled={cancelled}
+        time={time}
+        zone={
+          time?.local
+            ? t("SessionPage.courseZone", {
+                zone: zoneLabel(course.timeZone, locale),
+              })
+            : null
+        }
+        lessonId={session.id}
+        meetingUrl={meetingUrl}
+        platform={platform?.id}
+        platformHost={meetingUrl ? hostOf(meetingUrl) : undefined}
+        // MDRS-283: without a link the card says the celse is streamed or held
+        // in person. `hasLiveStream` comes before the start, the link from the
+        // start; a caller who may not read the content gets neither.
+        inPerson={session.inPerson}
+        hasLiveStream={session.hasLiveStream ?? Boolean(session.liveStreamUrl)}
+        locale={locale}
+        // MDRS-285: "Yayını izle" or "Kaydı izle", to the watch page.
+        watchHref={watchPath(course.id, session.id)}
+        watch={watch}
+        recording={
+          !recording ? "none" : release?.kind === "held" ? "held" : "preparing"
+        }
+        recordingsHref={recording ? recordingsTabPath(course.id) : undefined}
+        release={releaseWords}
+        notesHint={mayTakeNotes}
+        calendar={
+          !session.contentLocked && startsAt ? (
+            <CalendarMenu
+              text
+              size="large"
+              className="mds-btn--outline"
+              courseId={course.id}
+              courseTitle={course.title}
+              lesson={{
+                id: session.id,
+                title: session.title,
+                startsAt,
+                durationMinutes,
+              }}
+              locale={locale}
+              labels={calendarLabels(t)}
+            />
+          ) : undefined
+        }
+        cancellation={cancellation}
+        contentLocked={session.contentLocked}
+        labels={sessionActionLabels(t)}
+      />
+    ) : null;
 
   return (
     <main className="font-ui mx-auto flex inline-full max-inline-content flex-col gap-section pbs-8 pbe-16 px-gutter max-md:pbs-5 max-md:pbe-10">
-      <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
-        <div className="flex min-inline-0 flex-col gap-4">
-          <Breadcrumb items={crumbs} label={t("SessionPage.breadcrumb")} />
-          <div className="flex min-inline-0 flex-col gap-2">
-            <p className="mds-eyebrow">
-              {t("SessionPage.week", { number: session.weekNumber })}
-            </p>
-            <h1 className="mds-h1" dir="auto">
-              {session.title}
-            </h1>
-            {/* MDRS-279: the session's source line ("Bina · s. 4–9"). It is
-                content: the API sends it only to who may read it, and to
-                everyone for the sample session (MDRS-161). */}
-            {kaynak ? (
-              <p
-                className="mds-body-sm flex flex-wrap items-baseline gap-x-2"
-                data-testid="session-kaynak"
-              >
-                <span className="mds-eyebrow">{t("SessionPage.kaynak")}</span>
-                <span dir="auto">
-                  <ArabicText text={kaynak} />
-                </span>
-              </p>
-            ) : null}
-          </div>
-        </div>
-      </div>
+      <SessionHeader
+        {...sessionHeaderProps(t, {
+          course,
+          session,
+          koskName,
+          locale,
+          viewerTimeZone: timeZone,
+        })}
+        badge={
+          startsAt || cancelled ? (
+            <SessionStateBadge
+              renderedAt={renderedAt}
+              startsAt={startsAt}
+              durationMinutes={durationMinutes}
+              cancelled={cancelled}
+              locale={locale}
+              timeZone={timeZone}
+              labels={stateBadgeLabels(t)}
+            />
+          ) : undefined
+        }
+      />
+
+      {card}
 
       <div className="grid items-start gap-8 grid-cols-[minmax(0,1fr)_var(--layout-aside)] max-md:grid-cols-1">
-        <div className="flex min-inline-0 flex-col gap-section">
-          {cancelled ? (
-            <Alert tone="neutral" title={t("SessionPage.cancelledTitle")}>
-              {replacement && replacementAt ? (
-                <>
-                  {t.rich("SessionPage.replacement", {
-                    time: replacementAt,
-                    when: (chunks) => (
-                      <time dateTime={replacement.startsAt?.toISOString()}>
-                        {chunks}
-                      </time>
-                    ),
-                  })}{" "}
-                  <a
-                    className="mds-btn mds-btn--link"
-                    href={lessonHref(replacement.id)}
-                  >
-                    {t("SessionPage.replacementGo")}
-                  </a>
-                </>
-              ) : (
-                t("SessionPage.noReplacement")
-              )}
-            </Alert>
-          ) : null}
-
-          {session.status === "ENDED" &&
-          !recording &&
-          !session.contentLocked ? (
-            // Design tedris/17 "ders kaydı yok": the place the recording will take.
-            <Card title={t("SessionPage.recordingCardTitle")} headingLevel={2}>
-              <EmptyState icon={<Icon name="playCircle" />}>
-                {t("SessionPage.noRecording")}
-              </EmptyState>
-            </Card>
-          ) : null}
-
-          {releaseWords ? (
-            // MDRS-288: the place the recording takes says when it opens.
-            <Card title={t("SessionPage.recordingCardTitle")} headingLevel={2}>
-              <p className="mds-body-sm mbs-2">
-                <RecordingReleaseNote words={releaseWords} />
-              </p>
-            </Card>
-          ) : null}
-
-          <div className="grid items-start gap-6 grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)] max-md:grid-cols-1">
-            {join}
-            {agenda.length > 0 ? (
-              <section
-                className="mds-card flex flex-col gap-3"
-                aria-labelledby="agenda-title"
-              >
-                <div className="mds-card__header">
-                  <h2 className="mds-card__title" id="agenda-title">
-                    {t("SessionPage.agendaTitle")}
-                  </h2>
-                </div>
-                <p className="mds-caption">
-                  {t("SessionPage.agendaZone", {
-                    zone: zoneLabel(course.timeZone, locale),
-                  })}
-                </p>
-                <ol className="m-0 flex list-none flex-col p-0">
-                  {agenda.map((step, i) => (
-                    <li
-                      // biome-ignore lint/suspicious/noArrayIndexKey: the agenda is a fixed ordered list of one response
-                      key={i}
-                      className="flex items-baseline gap-3 py-3 border-be border-neutral-subtle last:border-be-0"
-                    >
-                      <span className="mds-caption mds-num min-inline-12">
-                        {step.time}
-                      </span>
-                      <span className="flex min-inline-0 flex-1 flex-col">
-                        <span className="mds-body-sm" dir="auto">
-                          <ArabicText text={step.title} />
-                        </span>
-                      </span>
-                    </li>
-                  ))}
-                </ol>
-              </section>
-            ) : null}
-          </div>
-
+        <div className="flex min-inline-0 flex-col gap-6">
           {notes}
-
-          {session.previous || session.next ? (
-            <nav
-              className="grid gap-grid grid-cols-[repeat(auto-fill,minmax(min(280px,100%),1fr))]"
-              aria-label={t("SessionPage.neighbours")}
-            >
-              {session.previous ? (
-                <NeighbourCard
-                  session={session.previous}
-                  direction="previous"
-                  href={lessonHref(session.previous.id)}
-                  t={t}
-                  locale={locale}
-                  courseTimeZone={course.timeZone}
-                />
-              ) : (
-                <span />
-              )}
-              {session.next ? (
-                <NeighbourCard
-                  session={session.next}
-                  direction="next"
-                  href={lessonHref(session.next.id)}
-                  t={t}
-                  locale={locale}
-                  courseTimeZone={course.timeZone}
-                />
-              ) : null}
-            </nav>
+          {agenda.length > 0 ? (
+            <SessionAgenda
+              agenda={agenda}
+              renderedAt={renderedAt}
+              startsAt={startsAt}
+              durationMinutes={durationMinutes}
+              courseTimeZone={course.timeZone}
+              labels={{
+                title: t("SessionPage.agendaTitle"),
+                zone: t("SessionPage.agendaZone", {
+                  zone: zoneLabel(course.timeZone, locale),
+                }),
+                now: t("SessionPage.agendaNow"),
+              }}
+            />
           ) : null}
+          <SessionResources
+            kaynak={kaynak}
+            own={session.resources}
+            ownLocked={session.contentLocked}
+            course={course.resources}
+            courseLocked={course.contentLocked}
+            labels={{
+              title: t("SessionPage.resourcesTitle"),
+              reading: t("SessionPage.readingPlace"),
+              own: t("SessionPage.resourcesOwn"),
+              course: t("SessionPage.resourcesCourse"),
+              newTab: t("SessionPage.newTab"),
+              locked: t("SessionPage.resourcesLocked"),
+            }}
+          />
         </div>
 
         <aside
           className="sticky inset-bs-[calc(var(--layout-topbar)+var(--space-6))] flex flex-col gap-4 max-md:static"
           aria-label={t("SessionPage.side")}
         >
-          {session.muderris.length > 0 ? (
-            <Card title={t("SessionPage.muderris")} headingLevel={2}>
-              <ul className="m-0 flex list-none flex-col p-0 mbs-6">
-                {session.muderris.map((m) => (
-                  <li
-                    key={m.name}
-                    className="flex items-center gap-3 py-3 border-be border-neutral-subtle last:border-be-0"
-                  >
-                    <Avatar name={m.name} decorative />
-                    <span className="flex min-inline-0 flex-1 flex-col">
-                      <span className="mds-label" dir="auto">
-                        {m.name}
-                      </span>
-                    </span>
-                    {m.isImam ? (
-                      <span className="mds-badge mds-badge--secondary">
-                        {t("SessionPage.imam")}
-                      </span>
-                    ) : null}
-                  </li>
-                ))}
-              </ul>
-            </Card>
-          ) : null}
-          {/* MDRS-286: the celse's own resources, then the course's. The
-              same rule as the course's: every name to whoever may see the
-              celse, each link only to who may read the content, so a locked
-              body lists the names and says who opens them. */}
-          <CourseResources
-            resources={session.resources}
-            locked={session.contentLocked}
-            testId="session-resources"
-            labels={{
-              title: t("SessionPage.lessonResourcesTitle"),
-              newTab: t("SessionPage.newTab"),
-              locked: t("SessionPage.resourcesLocked"),
-            }}
+          <SessionSyllabus
+            course={course}
+            viewingId={session.id}
+            hasRecording={target?.kind === "recording"}
+            now={now}
+            t={t}
+            locale={locale}
           />
-          <CourseResources
-            resources={course.resources}
-            locked={course.contentLocked}
-            labels={{
-              title: t("SessionPage.resourcesTitle"),
-              newTab: t("SessionPage.newTab"),
-              locked: t("SessionPage.resourcesLocked"),
-            }}
-          />
-          <SessionProgramme course={course} now={now} viewingId={session.id} />
         </aside>
       </div>
+
+      {session.previous || session.next ? (
+        <nav
+          className="flex flex-wrap gap-4"
+          aria-label={t("SessionPage.neighbours")}
+        >
+          {session.previous ? (
+            <NeighbourCard
+              session={session.previous}
+              direction="previous"
+              href={lessonHref(session.previous.id)}
+              t={t}
+              locale={locale}
+              courseTimeZone={course.timeZone}
+            />
+          ) : null}
+          {session.next ? (
+            <NeighbourCard
+              session={session.next}
+              direction="next"
+              href={lessonHref(session.next.id)}
+              t={t}
+              locale={locale}
+              courseTimeZone={course.timeZone}
+            />
+          ) : null}
+        </nav>
+      ) : null}
     </main>
   );
 };

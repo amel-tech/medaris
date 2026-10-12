@@ -120,6 +120,13 @@ export const playerApiUrlOf = (embedUrl: string | null): string | null =>
 export const liveEmbedUrlOf = (url: string | null | undefined) =>
   embedUrlOf("YOUTUBE", url);
 
+/** A recording's host by name, for its chip; none for a host without one. */
+export const RECORDING_PROVIDER_NAMES: Record<string, string | undefined> = {
+  YOUTUBE: "YouTube",
+  DRIVE: "Google Drive",
+  BUNNY: "Bunny Stream",
+};
+
 export type RecordingAction = "watch" | "open" | "none";
 
 /**

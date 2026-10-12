@@ -111,9 +111,13 @@ async function addNote(
 /** With no video on screen the panel is under the join card (MDRS-266). */
 async function expectUnderJoinCard(page: Page) {
   await expect(notesPanel(page)).toBeVisible();
-  const join = await page.getByRole("main").locator(".mds-join").boundingBox();
+  // The detail page's main card (MDRS-289); the panel leads the column under it.
+  const join = await page
+    .getByRole("main")
+    .getByTestId("session-action")
+    .boundingBox();
   const notes = await notesPanel(page).boundingBox();
-  if (!join || !notes) throw new Error("the join card or the panel has no box");
+  if (!join || !notes) throw new Error("the main card or the panel has no box");
   expect(notes.y).toBeGreaterThanOrEqual(join.y + join.height);
 }
 
@@ -321,9 +325,9 @@ test.describe("the enrolled talebe", () => {
         notes.width * notes.height
       );
       expect(player.width / player.height).toBeCloseTo(16 / 9, 1);
-      await expect(page.locator(".mds-join")).toHaveCount(0);
+      await expect(page.getByTestId("session-action")).toHaveCount(0);
       await expect(
-        page.getByRole("link", { name: /Celseye katıl/ })
+        page.getByRole("link", { name: /Toplantıya katıl/ })
       ).toHaveCount(0);
       expect(
         await page.evaluate(() => document.documentElement.scrollWidth)
@@ -355,7 +359,7 @@ test.describe("the enrolled talebe", () => {
     await expect(notesTab).toHaveAttribute("aria-pressed", "true");
     await expect(notesPanel(page)).toBeVisible();
     await expect(page.getByRole("region", { name: "Soru sor" })).toBeHidden();
-    await expect(page.locator(".mds-join")).toHaveCount(0);
+    await expect(page.getByTestId("session-action")).toHaveCount(0);
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth)
     ).toBeLessThanOrEqual(size.width);
@@ -446,7 +450,7 @@ test.describe("the enrolled talebe", () => {
     const main = page.getByRole("main");
     await expect(main.getByText("Şu an canlı").first()).toBeVisible();
     await expect(
-      main.getByRole("link", { name: /Celseye katıl/ })
+      main.getByRole("link", { name: /Toplantıya katıl/ })
     ).toHaveAttribute("href", "https://zoom.us/j/741852963");
     await openWatchPage(page, s.id, "Yayını izle");
     await expect(page.locator("#watch-frame")).toHaveAttribute(
@@ -455,9 +459,9 @@ test.describe("the enrolled talebe", () => {
     );
     // the live chat beside it, and no way into the meeting here
     await expect(page.getByTitle("Canlı sohbet")).toBeVisible();
-    await expect(page.getByRole("link", { name: /Celseye katıl/ })).toHaveCount(
-      0
-    );
+    await expect(
+      page.getByRole("link", { name: /Toplantıya katıl/ })
+    ).toHaveCount(0);
     expect(await page.content()).not.toContain("zoom.us");
     await addNote(notesPanel(page), "Canlı derste: nehy lâ ile", "14:05");
     await expect(notesPanel(page).getByRole("listitem")).toContainText("14:05");
@@ -474,7 +478,7 @@ test.describe("the enrolled talebe", () => {
     const main = page.getByRole("main");
     await expect(main.getByText("Şu an canlı").first()).toBeVisible();
     await expect(
-      main.getByRole("link", { name: /Celseye katıl/ })
+      main.getByRole("link", { name: /Toplantıya katıl/ })
     ).toHaveAttribute("href", "https://zoom.us/j/741852963");
     await expectUnderJoinCard(page);
     await expect(page.locator("iframe")).toHaveCount(0);
@@ -585,9 +589,9 @@ test.describe("the enrolled talebe", () => {
         "Bu celse yüz yüze yapılır. Kaydı eklenirse burada yayımlanır."
       )
     ).toBeVisible();
-    await expect(main.getByRole("link", { name: /Celseye katıl/ })).toHaveCount(
-      0
-    );
+    await expect(
+      main.getByRole("link", { name: /Toplantıya katıl/ })
+    ).toHaveCount(0);
     await expectUnderJoinCard(page);
 
     const form = notesPanel(page).locator("form");

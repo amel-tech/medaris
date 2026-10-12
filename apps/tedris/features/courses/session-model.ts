@@ -1,8 +1,8 @@
 import type {
   CourseDetailResponse,
   LessonResponse,
-  WeekResponse,
 } from "@medaris/services/tedrisat";
+import { isSameCalendarDay, showsDifferentTime } from "@medaris/utils";
 
 /**
  * What the session page (MDRS-158) derives from the course and the session.
@@ -47,28 +47,6 @@ const stateOfLesson = (lesson: LessonResponse, now: Date): SessionState =>
     now
   );
 
-export type RowState = "default" | "current" | "done";
-export type WeekState = "default" | "active" | "done";
-
-export interface ProgrammeRow {
-  lesson: LessonResponse;
-  state: RowState;
-  cancelled: boolean;
-  /** On air now: the row's marker reads "Sıradaki · Şu an canlı". */
-  live: boolean;
-}
-
-export interface ProgrammeWeek {
-  week: WeekResponse;
-  state: WeekState;
-  /** `YYYY-MM-DD` in the course's zone: the first session of a week still ahead. */
-  opensOn?: string;
-  /** Live sessions that stand (not cancelled). */
-  sessionCount: number;
-  minutes: number;
-  rows: ProgrammeRow[];
-}
-
 /** The calendar day of an instant in a zone, as `YYYY-MM-DD`. */
 export const dayInZone = (at: Date, timeZone: string): string =>
   new Intl.DateTimeFormat("en-CA", {
@@ -81,71 +59,264 @@ export const dayInZone = (at: Date, timeZone: string): string =>
 const isLive = (lesson: LessonResponse) => lesson.type === "LIVE";
 
 /**
- * The Müfredat accordion of the session page. A week is `done` when every
- * session that stands in it is over, `active` when it is the first week that
- * is not, and a later week carries the day its first session falls on
- * ("17 Ekim tarihinde açılır"). The row marked "Sıradaki" is the next session
- * that stands, whichever page the viewer is on — a cancelled session never
- * is.
+ * A celse's place among its week's celses, for the eyebrow of the detail
+ * page ("Hafta 5 · 2. celse", MDRS-289). A cancelled celse keeps its place,
+ * so a cancellation renumbers nothing. Null when the course does not list it.
  */
-export const buildProgramme = (
-  course: Pick<CourseDetailResponse, "weeks" | "timeZone">,
-  now: Date
-): { weeks: ProgrammeWeek[]; nextLessonId: string | null } => {
-  const standingLive = (week: WeekResponse) =>
-    week.lessons.filter((l) => isLive(l) && !l.cancelledAt);
+export const celseNumberOf = (
+  course: Pick<CourseDetailResponse, "weeks">,
+  sessionId: string
+): number | null => {
+  for (const week of course.weeks) {
+    const at = week.lessons.filter(isLive).findIndex((l) => l.id === sessionId);
+    if (at >= 0) return at + 1;
+  }
+  return null;
+};
 
-  // The celse on air now, or else the nearest one still ahead — by time, not
-  // by week order, so a live celse is never skipped for a later week's.
-  const standingAll = course.weeks.flatMap(standingLive);
-  const running = standingAll.find((l) => stateOfLesson(l, now) === "live");
-  const ahead = standingAll
-    .filter((l) => stateOfLesson(l, now) === "upcoming" && l.scheduledAt)
-    .sort(
-      (a, b) =>
-        (a.scheduledAt as Date).getTime() - (b.scheduledAt as Date).getTime()
-    )[0];
-  const next = running ?? ahead ?? null;
-  const activeWeekId = next
-    ? (course.weeks.find((w) => w.lessons.some((l) => l.id === next.id))?.id ??
-      null)
-    : null;
+export interface SyllabusRow {
+  lesson: LessonResponse;
+  weekNumber: number;
+  state: SessionState;
+  /** The celse the page shows. */
+  viewing: boolean;
+}
 
-  const weeks = course.weeks.map((week): ProgrammeWeek => {
-    const standing = standingLive(week);
-    const done =
-      standing.length > 0 &&
-      standing.every((l) => stateOfLesson(l, now) === "ended");
-    let state: WeekState = "default";
-    if (done) state = "done";
-    else if (week.id === activeWeekId) state = "active";
-    const firstAhead = standing
-      .map((l) => l.scheduledAt)
-      .filter((at): at is Date => at != null)
-      .sort((a, b) => a.getTime() - b.getTime())[0];
-    return {
-      week,
-      state,
-      opensOn:
-        state === "default" && firstAhead
-          ? dayInZone(firstAhead, course.timeZone)
-          : undefined,
-      sessionCount: standing.length,
-      minutes: standing.reduce((sum, l) => sum + (l.durationMinutes ?? 0), 0),
-      rows: week.lessons.map((lesson) => ({
+/**
+ * The Müfredat aside of the celse detail page (MDRS-289): the course's
+ * celses in programme order, a window of `size` rows around the one on the
+ * page, moved inward at either end so it stays full. `count` is every celse
+ * that stands (not cancelled), for the line beside the title; the whole
+ * programme is on the course page.
+ */
+export const syllabusOf = (
+  course: Pick<CourseDetailResponse, "weeks">,
+  viewingId: string,
+  now: Date,
+  size = 5
+): { rows: SyllabusRow[]; count: number } => {
+  const all = course.weeks.flatMap((week) =>
+    week.lessons.filter(isLive).map(
+      (lesson): SyllabusRow => ({
         lesson,
-        cancelled: Boolean(lesson.cancelledAt),
-        live: isLive(lesson) && stateOfLesson(lesson, now) === "live",
-        state:
-          lesson.id === next?.id
-            ? "current"
-            : isLive(lesson) && stateOfLesson(lesson, now) === "ended"
-              ? "done"
-              : "default",
-      })),
-    };
+        weekNumber: week.weekNumber,
+        state: stateOfLesson(lesson, now),
+        viewing: lesson.id === viewingId,
+      })
+    )
+  );
+  const at = Math.max(
+    0,
+    all.findIndex((row) => row.viewing)
+  );
+  const start = Math.max(
+    0,
+    Math.min(at - Math.floor(size / 2), all.length - size)
+  );
+  return {
+    rows: all.slice(start, start + size),
+    count: all.filter((row) => !row.lesson.cancelledAt).length,
+  };
+};
+
+/** Minutes past midnight of an instant on a zone's clock. */
+const clockMinutes = (at: Date, timeZone: string): number => {
+  const [h, m] = new Intl.DateTimeFormat("en-GB", {
+    timeZone,
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  })
+    .format(at)
+    .split(":")
+    .map(Number) as [number, number];
+  return h * 60 + m;
+};
+
+const AGENDA_CLOCK = /^(\d{1,2})[:.](\d{2})$/;
+
+/**
+ * The agenda step whose time has come while the celse is live, marked
+ * "şimdi" (MDRS-289); null before the start, after the end, and when no
+ * step's time can be read. A step's "21:25" is on the course's clock, read
+ * against the start's, so an agenda that passes midnight (23:40, 00:05)
+ * still counts on.
+ */
+export const currentAgendaStep = (
+  agenda: readonly { time: string }[],
+  celse: {
+    startsAt?: Date | null;
+    durationMinutes?: number | null;
+    timeZone: string;
+  },
+  now: Date
+): number | null => {
+  const { startsAt } = celse;
+  if (!startsAt || sessionStateOf(celse, now) !== "live") return null;
+  const start = clockMinutes(startsAt, celse.timeZone);
+  const elapsed = (now.getTime() - startsAt.getTime()) / 60_000;
+  let current: number | null = null;
+  let reached = Number.NEGATIVE_INFINITY;
+  agenda.forEach((step, i) => {
+    const clock = AGENDA_CLOCK.exec(step.time.trim());
+    if (!clock) return;
+    // The offset from the start, within half a day either way.
+    let offset = (Number(clock[1]) * 60 + Number(clock[2]) - start) % 1440;
+    if (offset > 720) offset -= 1440;
+    if (offset <= -720) offset += 1440;
+    if (offset <= elapsed && offset >= reached) {
+      reached = offset;
+      current = i;
+    }
   });
-  return { weeks, nextLessonId: next?.id ?? null };
+  return current;
+};
+
+/**
+ * How long until `at`, in the two largest units: "2 gün 4 saat", "1 saat 5
+ * dakika", "45 dakika" (MDRS-289, "Başlamasına …"). Never less than a minute.
+ */
+export const timeUntil = (at: Date, now: Date, locale: string): string => {
+  const total = Math.max(1, Math.ceil((at.getTime() - now.getTime()) / 60_000));
+  const days = Math.floor(total / 1440);
+  const hours = Math.floor((total % 1440) / 60);
+  const minutes = total % 60;
+  const unit = (n: number, name: "day" | "hour" | "minute") =>
+    new Intl.NumberFormat(locale, {
+      style: "unit",
+      unit: name,
+      unitDisplay: "long",
+    }).format(n);
+  const parts =
+    days > 0
+      ? [unit(days, "day"), hours > 0 ? unit(hours, "hour") : null]
+      : hours > 0
+        ? [unit(hours, "hour"), minutes > 0 ? unit(minutes, "minute") : null]
+        : [unit(minutes, "minute")];
+  return new Intl.ListFormat(locale, { type: "unit", style: "narrow" }).format(
+    parts.filter((part): part is string => part !== null)
+  );
+};
+
+export interface CelseTimeWords {
+  /** "3 Ekim Cumartesi" */
+  day: string;
+  /** "Cumartesi" */
+  weekday: string;
+  /** "3 Ekim" */
+  date: string;
+  /** "23:20–00:20", the start alone without a length */
+  clock: string;
+  /** the viewer's start when their clock shows another time ("Paz 05:20"); else null */
+  local: string | null;
+}
+
+/**
+ * A celse's time in words for the detail page's header and its date block
+ * (MDRS-289), on the course's clock, where the course team set it. The
+ * viewer's own start comes beside it when their clock shows another time,
+ * with the weekday when it falls on another day, as the join card does.
+ */
+export const celseTimeWords = (
+  startsAt: Date,
+  durationMinutes: number | null | undefined,
+  {
+    locale,
+    courseTimeZone,
+    viewerTimeZone,
+  }: { locale: string; courseTimeZone: string; viewerTimeZone: string }
+): CelseTimeWords => {
+  const format = (
+    at: Date,
+    timeZone: string,
+    options: Intl.DateTimeFormatOptions
+  ) => new Intl.DateTimeFormat(locale, { ...options, timeZone }).format(at);
+  const hm = { hour: "2-digit", minute: "2-digit" } as const;
+  const start = format(startsAt, courseTimeZone, hm);
+  const clock =
+    durationMinutes != null
+      ? `${start}–${format(
+          new Date(startsAt.getTime() + durationMinutes * 60_000),
+          courseTimeZone,
+          hm
+        )}`
+      : start;
+  return {
+    day: format(startsAt, courseTimeZone, {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+    }),
+    weekday: format(startsAt, courseTimeZone, { weekday: "long" }),
+    date: format(startsAt, courseTimeZone, { day: "numeric", month: "long" }),
+    clock,
+    local: showsDifferentTime(startsAt, courseTimeZone, viewerTimeZone)
+      ? format(
+          startsAt,
+          viewerTimeZone,
+          isSameCalendarDay(startsAt, courseTimeZone, viewerTimeZone)
+            ? hm
+            : { weekday: "short", ...hm }
+        )
+      : null,
+  };
+};
+
+/**
+ * What the main card of the detail page draws (MDRS-289). A cancelled celse
+ * says so whatever else it has; a locked one offers the way in; then what
+ * the watch page plays, as the API said at render time (`watch`) or, for a
+ * celse with a stream whose page was drawn before the start, from the start
+ * on (MDRS-285); else the date and how the celse is attended.
+ */
+export type ActionCase =
+  | "cancelled"
+  | "locked"
+  | "recording"
+  | "stream"
+  | "date";
+
+export const actionCaseOf = ({
+  state,
+  locked,
+  watch,
+  hasLiveStream,
+}: {
+  state: SessionState;
+  locked: boolean;
+  watch: "recording" | "stream" | null;
+  hasLiveStream: boolean;
+}): ActionCase => {
+  if (state === "cancelled") return "cancelled";
+  if (locked) return "locked";
+  return watch ?? (hasLiveStream && state === "live" ? "stream" : "date");
+};
+
+/**
+ * How a celse with nothing to watch now is attended, as MDRS-283 words it: a
+ * meeting link stays the way in whatever else the celse has; without one,
+ * the in-person mark and the stream say how.
+ */
+export type Attendance =
+  | "link"
+  | "inPersonStream"
+  | "stream"
+  | "inPerson"
+  | "none";
+
+export const attendanceOf = ({
+  hasLink,
+  inPerson,
+  hasLiveStream,
+}: {
+  hasLink: boolean;
+  inPerson: boolean;
+  hasLiveStream: boolean;
+}): Attendance => {
+  if (hasLink) return "link";
+  if (inPerson && hasLiveStream) return "inPersonStream";
+  if (hasLiveStream) return "stream";
+  return inPerson ? "inPerson" : "none";
 };
 
 /** The place a course's clock is kept in, for "Saatler İstanbul saatiyle". */

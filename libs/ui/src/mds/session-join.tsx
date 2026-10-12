@@ -39,9 +39,12 @@ function dayNumber(at: Date, timeZone?: string): number {
   return Date.UTC(y, m - 1, d) / (24 * HOUR);
 }
 
-// "14 dakika sonra", "2 saat sonra", "Yarın", "3 gün sonra": a badge label, so
-// its first letter is upper-cased in the page's locale (MDS-VOICE-02).
-function countdown(
+/**
+ * "14 dakika sonra", "2 saat sonra", "Yarın", "3 gün sonra": a badge label, so
+ * its first letter is upper-cased in the page's locale (MDS-VOICE-02). The
+ * celse detail page's header badge says it too (MDRS-289).
+ */
+export function countdown(
   locale: string,
   at: Date,
   now: Date,
@@ -76,16 +79,6 @@ export interface SessionJoinProps
   href?: string;
   linkUpdatedAt?: string;
   recordingsHref?: string;
-  /**
-   * The page the celse's stream or recording plays on (MDRS-285): the card's
-   * primary button while it is set, in every state but cancelled and locked.
-   * A meeting link beside it becomes the secondary button.
-   */
-  watchHref?: string;
-  /** the watch button's words: "Yayını izle", "Kaydı izle" */
-  watchLabel?: string;
-  /** a line under the buttons while the watch button stands, e.g. what the meeting is for beside the stream */
-  watchText?: string;
   /** a live celse: how long it has been running, already worded ("14 dakikadır sürüyor"); sits after the length */
   elapsedText?: string;
   actions?: ReactNode;
@@ -143,9 +136,6 @@ export function SessionJoin({
   href,
   linkUpdatedAt,
   recordingsHref,
-  watchHref,
-  watchLabel = "Yayını izle",
-  watchText,
   elapsedText,
   actions,
   access = "enrolled",
@@ -315,28 +305,6 @@ export function SessionJoin({
       </span>
     ) : null;
 
-  // MDRS-285: the stream or the recording plays on a page of its own, and
-  // its button is the card's primary one; a meeting link beside it stays the
-  // way into the meeting, as the secondary button.
-  const watch =
-    watchHref && !locked && state !== "cancelled" ? (
-      <a
-        className="mds-btn mds-btn--primary mds-btn--large mds-btn--full"
-        href={watchHref}
-      >
-        {watchLabel}
-      </a>
-    ) : null;
-  const withWatch = (rest: ReactNode) =>
-    watch ? (
-      <div className="mds-join__action">
-        {watch}
-        {rest}
-      </div>
-    ) : (
-      rest
-    );
-
   let body: ReactNode = null;
   if (state === "cancelled") body = status(cancelledText);
   else if (locked)
@@ -347,16 +315,14 @@ export function SessionJoin({
       </div>
     );
   else if (state === "ended")
-    body =
-      watch ??
-      (recordingsHref ? (
-        <a
-          className="mds-btn mds-btn--secondary mds-btn--large mds-btn--full"
-          href={recordingsHref}
-        >
-          {recordingsLabel}
-        </a>
-      ) : null);
+    body = recordingsHref ? (
+      <a
+        className="mds-btn mds-btn--secondary mds-btn--large mds-btn--full"
+        href={recordingsHref}
+      >
+        {recordingsLabel}
+      </a>
+    ) : null;
   else if (!href) {
     // MDRS-283: a celse without a link is still covered by a stream or by
     // being held in person, and the card says which. A link, when there is
@@ -367,22 +333,19 @@ export function SessionJoin({
       text = live ? inPersonStreamLiveText : inPersonStreamText;
     else if (hasLiveStream) text = live ? streamLiveText : streamText;
     else if (inPerson) text = inPersonText;
-    body = withWatch(status(text));
+    body = status(text);
   } else if (!windowOpen)
-    body = withWatch(
-      status(
-        joinOpensText.replace(
-          "{minutes}",
-          formatNumber(joinWindowMinutes, locale)
-        )
+    body = status(
+      joinOpensText.replace(
+        "{minutes}",
+        formatNumber(joinWindowMinutes, locale)
       )
     );
   else
     body = (
       <div className="mds-join__action">
-        {watch}
         <a
-          className={`mds-btn ${watch ? "mds-btn--secondary" : "mds-btn--primary"} mds-btn--large mds-btn--full mds-join__link`}
+          className="mds-btn mds-btn--primary mds-btn--large mds-btn--full mds-join__link"
           href={href}
           target="_blank"
           rel="noopener noreferrer"
@@ -452,9 +415,6 @@ export function SessionJoin({
       ) : null}
       {chip}
       {body}
-      {watch && watchText ? (
-        <p className="mds-join__notice">{watchText}</p>
-      ) : null}
       {notice}
     </section>
   );
