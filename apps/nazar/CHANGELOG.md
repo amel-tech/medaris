@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.7](https://github.com/amel-tech/medaris/compare/nazar-web-v0.2.6...nazar-web-v0.2.7) (2026-10-12)
+
+
+### Features
+
+* **tedrisat, nazar-web:** let the course team enrol a list of talebe by e-mail ([#305](https://github.com/amel-tech/medaris/issues/305)) ([fa44a54](https://github.com/amel-tech/medaris/commit/fa44a547813f5931cc3e3c6f6c9e65c20faf28a3))
+
 ## [0.2.6](https://github.com/amel-tech/medaris/compare/nazar-web-v0.2.5...nazar-web-v0.2.6) (2026-10-12)
 
 
