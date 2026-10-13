@@ -12503,7 +12503,7 @@
             "description": "The public profile is hidden for everyone for now (PUBLIC_PROFILE_UNAVAILABLE)."
           },
           "409": {
-            "description": "The künye is taken (KUNYE_TAKEN)."
+            "description": "The künye is taken (KUNYE_TAKEN), or the request would change a gender the caller's token carries (GENDER_MANAGED_BY_ACCOUNT, #317). Nothing of the request is saved."
           }
         },
         "security": [
@@ -25273,7 +25273,12 @@
             "enum": [
               "FEMALE",
               "MALE"
-            ]
+            ],
+            "description": "The account's gender when the token carries one (#317), otherwise the one saved here."
+          },
+          "genderManagedByAccount": {
+            "type": "boolean",
+            "description": "The caller's token carries a gender (#317): it is the account's, shown read-only, and a change through this API is refused (GENDER_MANAGED_BY_ACCOUNT); the account's own profile page changes it."
           },
           "city": {
             "type": "string",
@@ -25300,6 +25305,7 @@
           }
         },
         "required": [
+          "genderManagedByAccount",
           "fullName",
           "courses",
           "visibility"
@@ -25336,7 +25342,8 @@
               "FEMALE",
               "MALE"
             ],
-            "nullable": true
+            "nullable": true,
+            "description": "Refused with 409 GENDER_MANAGED_BY_ACCOUNT, and nothing of the request saved, when the token carries another gender (#317)."
           },
           "city": {
             "type": "string",

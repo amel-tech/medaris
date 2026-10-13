@@ -1,11 +1,18 @@
+import { randomUUID } from "node:crypto";
 import { INestApplication } from "@nestjs/common";
+import { eq } from "drizzle-orm";
 import request from "supertest";
 import { vi } from "vitest";
 import { DatabaseService } from "../../src/database/database.service";
+import { auditLog } from "../../src/database/schema/audit.schema";
 import { courses, enrollments } from "../../src/database/schema/course.schema";
 import { kosks } from "../../src/database/schema/kosk.schema";
 import { users } from "../../src/database/schema/user.schema";
-import { UserProfileRepository } from "../../src/user/user-profile.repository";
+import { userProfiles } from "../../src/database/schema/user-profile.schema";
+import {
+  GENDER_CHANGE_ACTION,
+  UserProfileRepository,
+} from "../../src/user/user-profile.repository";
 import { createTestApp } from "../helpers/test-app.helper";
 import {
   COURSE_TREE_TABLES,
@@ -334,6 +341,209 @@ describe("Profile and köşk application (e2e)", () => {
         .get("/users/not-a-uuid/public-profile")
         .set(as(OMER))
         .expect(400);
+    });
+  });
+
+  /**
+   * #317: Keycloak is the one source of a person's gender. The token's
+   * `gender` claim is the caller's own; `user_profiles.gender` mirrors it for
+   * everyone else's view, and the profile API no longer writes it. Each case
+   * signs in as a person of its own: `UserSyncService` remembers who it has
+   * synced for the life of the app, and would skip a person an earlier case
+   * already brought in with the same claims.
+   */
+  describe("gender from the account (#317)", () => {
+    const withGender = (sub: string, gender?: string) =>
+      bearerFor({
+        sub,
+        claims: {
+          email: `${sub.slice(0, 8)}@example.com`,
+          given_name: "Ayşe",
+          family_name: "Hesap",
+          ...(gender ? { gender } : {}),
+        },
+      });
+    const mirrorOf = async (sub: string) => {
+      const [row] = await databaseService.db
+        .select()
+        .from(userProfiles)
+        .where(eq(userProfiles.userId, sub));
+      return row ?? null;
+    };
+    const genderAudits = () =>
+      databaseService.db
+        .select()
+        .from(auditLog)
+        .where(eq(auditLog.action, GENDER_CHANGE_ACTION));
+    const PAST = new Date("2026-01-01T00:00:00Z");
+
+    beforeEach(async () => {
+      await dbUtils.cleanTables("audit_log");
+    });
+
+    it("fills the mirror of a person who had no profile row, without an audit row", async () => {
+      const sub = randomUUID();
+      await request(server())
+        .get("/me")
+        .set({ Authorization: withGender(sub, "FEMALE") })
+        .expect(200);
+
+      expect((await mirrorOf(sub))?.gender).toBe("FEMALE");
+      expect(await genderAudits()).toEqual([]);
+    });
+
+    it("overwrites another stored gender, records it, and others read the new one", async () => {
+      const sub = randomUUID();
+      await databaseService.db.insert(userProfiles).values({
+        userId: sub,
+        kunye: `Hesap ${sub.slice(0, 8)}`,
+        gender: "MALE",
+      });
+
+      await request(server())
+        .get("/me")
+        .set({ Authorization: withGender(sub, "FEMALE") })
+        .expect(200);
+
+      expect((await mirrorOf(sub))?.gender).toBe("FEMALE");
+      const audits = await genderAudits();
+      expect(audits).toHaveLength(1);
+      expect(audits[0]).toMatchObject({
+        actorId: sub,
+        entity: "user",
+        entityId: sub,
+        details: { from: "MALE", to: "FEMALE", source: "account" },
+      });
+
+      // Everyone else reads the mirror.
+      await request(server())
+        .get(`/users/${sub}/public-profile`)
+        .set(as(OMER))
+        .expect(200)
+        .expect(({ body }) => expect(body.gender).toBe("FEMALE"));
+    });
+
+    it("writes nothing when the mirror already says what the account says", async () => {
+      const sub = randomUUID();
+      await databaseService.db
+        .insert(userProfiles)
+        .values({ userId: sub, gender: "MALE", updatedAt: PAST });
+
+      await request(server())
+        .get("/me")
+        .set({ Authorization: withGender(sub, "MALE") })
+        .expect(200);
+
+      const row = await mirrorOf(sub);
+      expect(row?.gender).toBe("MALE");
+      expect(row?.updatedAt.toISOString()).toBe(PAST.toISOString());
+      expect(await genderAudits()).toEqual([]);
+    });
+
+    it("leaves the mirror alone when the token carries no gender, as before #317", async () => {
+      const sub = randomUUID();
+      await databaseService.db
+        .insert(userProfiles)
+        .values({ userId: sub, gender: "MALE", updatedAt: PAST });
+
+      await request(server())
+        .get("/me")
+        .set({ Authorization: withGender(sub) })
+        .expect(200);
+
+      const row = await mirrorOf(sub);
+      expect(row?.gender).toBe("MALE");
+      expect(row?.updatedAt.toISOString()).toBe(PAST.toISOString());
+      expect(await genderAudits()).toEqual([]);
+    });
+
+    it("gives the caller the account's gender and says the account holds it", async () => {
+      const sub = randomUUID();
+      await request(server())
+        .get("/me/public-profile")
+        .set({ Authorization: withGender(sub, "MALE") })
+        .expect(200)
+        .expect(({ body }) => {
+          expect(body.gender).toBe("MALE");
+          expect(body.genderManagedByAccount).toBe(true);
+        });
+
+      const other = randomUUID();
+      await databaseService.db
+        .insert(userProfiles)
+        .values({ userId: other, gender: "FEMALE" });
+      await request(server())
+        .get("/me/public-profile")
+        .set({ Authorization: withGender(other) })
+        .expect(200)
+        .expect(({ body }) => {
+          expect(body.gender).toBe("FEMALE");
+          expect(body.genderManagedByAccount).toBe(false);
+        });
+    });
+
+    it("refuses a gender change when the token carries a gender, and saves nothing of the request", async () => {
+      const sub = randomUUID();
+      const bearer = { Authorization: withGender(sub, "FEMALE") };
+
+      await request(server())
+        .patch("/me/public-profile")
+        .set(bearer)
+        .send({ kunye: "Ayşe Hesap", city: "Konya", gender: "MALE" })
+        .expect(409)
+        .expect(({ body }) =>
+          expect(body.code).toBe("GENDER_MANAGED_BY_ACCOUNT")
+        );
+      await request(server())
+        .patch("/me/public-profile")
+        .set(bearer)
+        .send({ gender: null })
+        .expect(409);
+
+      const row = await mirrorOf(sub);
+      expect(row?.gender).toBe("FEMALE");
+      expect(row?.kunye).toBeNull();
+      expect(row?.city).toBeNull();
+    });
+
+    it("takes the other fields with the account's own gender, or with none", async () => {
+      const sub = randomUUID();
+      const bearer = { Authorization: withGender(sub, "FEMALE") };
+
+      await request(server())
+        .patch("/me/public-profile")
+        .set(bearer)
+        .send({ kunye: "Ayşe Hesap", gender: "FEMALE" })
+        .expect(200)
+        .expect(({ body }) => {
+          expect(body.kunye).toBe("Ayşe Hesap");
+          expect(body.gender).toBe("FEMALE");
+        });
+      await request(server())
+        .patch("/me/public-profile")
+        .set(bearer)
+        .send({ city: "Konya" })
+        .expect(200);
+
+      expect(await mirrorOf(sub)).toMatchObject({
+        kunye: "Ayşe Hesap",
+        city: "Konya",
+        gender: "FEMALE",
+      });
+    });
+
+    it("still takes a gender from the profile API when the token carries none", async () => {
+      const sub = randomUUID();
+      await request(server())
+        .patch("/me/public-profile")
+        .set({ Authorization: withGender(sub) })
+        .send({ kunye: "Ayşe Hesap", gender: "MALE" })
+        .expect(200)
+        .expect(({ body }) => {
+          expect(body.gender).toBe("MALE");
+          expect(body.genderManagedByAccount).toBe(false);
+        });
+      expect((await mirrorOf(sub))?.gender).toBe("MALE");
     });
   });
 

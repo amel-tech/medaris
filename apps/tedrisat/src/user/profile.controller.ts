@@ -66,7 +66,10 @@ export class ProfileController {
     operationId: "updateMyPublicProfile",
   })
   @ApiOkResponse({ type: MyPublicProfileResponse })
-  @ApiConflictResponse({ description: "The künye is taken (KUNYE_TAKEN)." })
+  @ApiConflictResponse({
+    description:
+      "The künye is taken (KUNYE_TAKEN), or the request would change a gender the caller's token carries (GENDER_MANAGED_BY_ACCOUNT, #317). Nothing of the request is saved.",
+  })
   @ApiNotFoundResponse({ description: PROFILE_HIDDEN })
   @Patch("me/public-profile")
   async updateMine(

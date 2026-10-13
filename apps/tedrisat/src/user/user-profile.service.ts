@@ -1,9 +1,12 @@
+import { mapAccessTokenClaims } from "@medaris/common";
 import { Injectable } from "@nestjs/common";
+import { ProfileGender } from "../database/schema/user-profile.schema";
 import {
   MyPublicProfileResponse,
   PublicProfileResponse,
   UpdatePublicProfileDto,
 } from "./dto/public-profile.dto";
+import { GenderManagedByAccountError } from "./errors/gender-managed-by-account.error";
 import { KunyeTakenError } from "./errors/kunye-taken.error";
 import { PublicProfileNotFoundError } from "./errors/profile-not-found.error";
 import { UserNotFoundError } from "./errors/user-not-found.error";
@@ -28,6 +31,12 @@ const blankToNull = (value: string | null): string | null => {
  * The public profile (MDRS-166, screen tedris/35). The künye and gender are
  * always visible; every other field is visible only while its switch is on.
  * `readPublic` is the one place that decides what leaves the server.
+ *
+ * The gender belongs to the account once the token carries it (#317): the
+ * caller's own is read from the claim, a change through here is refused
+ * (`GENDER_MANAGED_BY_ACCOUNT`), and `user_profiles.gender` is only the
+ * mirror `UserSyncService` keeps, which `readPublic` reads for everyone else.
+ * A token without the claim works as before: the gender is the profile's.
  */
 @Injectable()
 export class UserProfileService {
@@ -39,17 +48,24 @@ export class UserProfileService {
 
   async getMine(claims: TokenClaims): Promise<MyPublicProfileResponse> {
     const id = await this.ensureUser(claims);
-    return this.toMine(id);
+    return this.toMine(id, accountGender(claims));
   }
 
   async updateMine(
     claims: TokenClaims,
     dto: UpdatePublicProfileDto
   ): Promise<MyPublicProfileResponse> {
+    const account = accountGender(claims);
+    // Refused before anything is written, so the request has one outcome:
+    // none of its other fields is saved either. Sending the account's own
+    // value is no change and passes (a page loaded before the claim arrived).
+    if (account && dto.gender !== undefined && dto.gender !== account) {
+      throw new GenderManagedByAccountError();
+    }
     const id = await this.ensureUser(claims);
     const patch: IUserProfilePatch = {};
     if (dto.kunye !== undefined) patch.kunye = dto.kunye.trim();
-    if (dto.gender !== undefined) patch.gender = dto.gender;
+    if (!account && dto.gender !== undefined) patch.gender = dto.gender;
     if (dto.city !== undefined) patch.city = blankToNull(dto.city);
     if (dto.about !== undefined) patch.about = blankToNull(dto.about);
     const v = dto.visibility;
@@ -66,7 +82,7 @@ export class UserProfileService {
         throw error;
       }
     }
-    return this.toMine(id);
+    return this.toMine(id, account);
   }
 
   /** What anyone signed in may see of `userId`; 404 until they have chosen a künye. */
@@ -92,7 +108,10 @@ export class UserProfileService {
     return result;
   }
 
-  private async toMine(userId: string): Promise<MyPublicProfileResponse> {
+  private async toMine(
+    userId: string,
+    account: ProfileGender | undefined
+  ): Promise<MyPublicProfileResponse> {
     const [profile, user, courseTitles] = await Promise.all([
       this.profiles.findById(userId),
       this.users.findById(userId),
@@ -100,7 +119,8 @@ export class UserProfileService {
     ]);
     return {
       kunye: profile?.kunye ?? null,
-      gender: profile?.gender ?? null,
+      gender: account ?? profile?.gender ?? null,
+      genderManagedByAccount: account !== undefined,
       city: profile?.city ?? null,
       about: profile?.about ?? null,
       fullName: fullName(profile, user),
@@ -122,6 +142,11 @@ export class UserProfileService {
     }
     return identity.id;
   }
+}
+
+/** The gender the caller's token carries (#317), the one source of it when present. */
+function accountGender(claims: TokenClaims): ProfileGender | undefined {
+  return mapAccessTokenClaims(claims).gender;
 }
 
 function fullName(

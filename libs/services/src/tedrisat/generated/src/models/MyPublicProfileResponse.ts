@@ -34,11 +34,17 @@ export interface MyPublicProfileResponse {
      */
     kunye?: string | null;
     /**
-     * 
+     * The account's gender when the token carries one (#317), otherwise the one saved here.
      * @type {string}
      * @memberof MyPublicProfileResponse
      */
     gender?: MyPublicProfileResponseGenderEnum | null;
+    /**
+     * The caller's token carries a gender (#317): it is the account's, shown read-only, and a change through this API is refused (GENDER_MANAGED_BY_ACCOUNT); the account's own profile page changes it.
+     * @type {boolean}
+     * @memberof MyPublicProfileResponse
+     */
+    genderManagedByAccount: boolean;
     /**
      * 
      * @type {string}
@@ -86,6 +92,7 @@ export type MyPublicProfileResponseGenderEnum = typeof MyPublicProfileResponseGe
  * Check if a given object implements the MyPublicProfileResponse interface.
  */
 export function instanceOfMyPublicProfileResponse(value: object): value is MyPublicProfileResponse {
+    if (!('genderManagedByAccount' in value) || value['genderManagedByAccount'] === undefined) return false;
     if (!('fullName' in value) || value['fullName'] === undefined) return false;
     if (!('courses' in value) || value['courses'] === undefined) return false;
     if (!('visibility' in value) || value['visibility'] === undefined) return false;
@@ -104,6 +111,7 @@ export function MyPublicProfileResponseFromJSONTyped(json: any, ignoreDiscrimina
         
         'kunye': json['kunye'] == null ? undefined : json['kunye'],
         'gender': json['gender'] == null ? undefined : json['gender'],
+        'genderManagedByAccount': json['genderManagedByAccount'],
         'city': json['city'] == null ? undefined : json['city'],
         'about': json['about'] == null ? undefined : json['about'],
         'fullName': json['fullName'],
@@ -125,6 +133,7 @@ export function MyPublicProfileResponseToJSONTyped(value?: MyPublicProfileRespon
         
         'kunye': value['kunye'],
         'gender': value['gender'],
+        'genderManagedByAccount': value['genderManagedByAccount'],
         'city': value['city'],
         'about': value['about'],
         'fullName': value['fullName'],
