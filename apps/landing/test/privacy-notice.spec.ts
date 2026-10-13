@@ -227,8 +227,13 @@ describe("partner applications, “Medaris ile giriş yap” (owner, 13 October)
     );
   });
 
-  it("are not named", () => {
-    expect(text).not.toMatch(/sidre/i);
+  // Rather than a list of names: the page may name no domain but Medaris's
+  // own, so no partner's address reaches it.
+  it("are not named: no domain on the page but medaris.app", () => {
+    const domains =
+      text.match(/\b(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}\b/gi) ?? [];
+    expect(domains).toContain("medaris.app");
+    expect(domains.filter((d) => !/(^|\.)medaris\.app$/i.test(d))).toEqual([]);
   });
 });
 

@@ -17,6 +17,10 @@ const textOf = (html: string) =>
     .replace(/&amp;/g, "&")
     .replace(/\s+/g, " ");
 
+/** Every domain in a text, those of e-mail addresses included. */
+const domainsIn = (text: string) =>
+  text.match(/\b(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}\b/gi) ?? [];
+
 describe("Kullanım şartları: gender (owner, 13 October)", () => {
   it("asks it at registration, required, and once from older accounts", async () => {
     const text = textOf(await render());
@@ -50,8 +54,12 @@ describe("Kullanım şartları: “Medaris ile giriş yap” (owner, 13 October)
     );
   });
 
-  it("names no partner application", async () => {
-    expect(textOf(await render())).not.toMatch(/sidre/i);
+  // Partners stay unnamed (owner, 13 October), here too: rather than a list
+  // of names, the page may name no domain but Medaris's own.
+  it("names no partner application: no domain on the page but medaris.app", async () => {
+    const domains = domainsIn(textOf(await render()));
+    expect(domains).toContain("medaris.app");
+    expect(domains.filter((d) => !/(^|\.)medaris\.app$/i.test(d))).toEqual([]);
   });
 });
 
