@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.2.3](https://github.com/amel-tech/medaris/compare/teskilat-v0.2.2...teskilat-v0.2.3) (2026-10-13)
+
+
+### Features
+
+* **ci:** promote dev images to prod, ship Keycloak as a pinned image, cache installs ([#304](https://github.com/amel-tech/medaris/issues/304)) ([3acd2c3](https://github.com/amel-tech/medaris/commit/3acd2c31cd9ee3dfbb14948bcb1ee896bec754d5))
+
+
+### Bug Fixes
+
+* **teskilat:** release the rate-limit store fix from [#308](https://github.com/amel-tech/medaris/issues/308) ([#315](https://github.com/amel-tech/medaris/issues/315)) ([908e8eb](https://github.com/amel-tech/medaris/commit/908e8eb9485e6e452d7d8b2fa2809a093e2611a0))
+
 ## [0.2.2](https://github.com/amel-tech/medaris/compare/teskilat-v0.2.1...teskilat-v0.2.2) (2026-10-12)
 
 
