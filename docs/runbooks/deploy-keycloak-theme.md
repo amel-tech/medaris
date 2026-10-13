@@ -56,8 +56,9 @@ Do it once, before the first `keycloak-theme` release after this change.
    * the JAR mounts from the host directory `/opt/keycloak/themes/` into
      `/opt/keycloak/providers/` removed: `madrasah-theme.jar` (Keycloak loads
      every `*.jar` in `providers/`, so it would load an old copy of the theme
-     next to the one baked into the image) and, by the owner's word that day,
-     `sidre-theme.jar`;
+     next to the one baked into the image);
+   * a second product's theme JAR (`/opt/keycloak/providers/<name>.jar`),
+     removed by the owner's word on 2026-10-13;
    * `mem_limit: 2g`;
    * command `start` and the environment unchanged.
 
@@ -248,7 +249,7 @@ On the server, after a deploy:
 ```bash
 docker ps --format '{{.Names}} {{.Image}}' | grep -i keycloak     # ghcr.io/amel-tech/medaris-keycloak:stable
 docker exec <container> /opt/keycloak/bin/kc.sh --version         # the pinned version
-docker exec <container> ls -l /opt/keycloak/providers              # medaris-keycloak-theme.jar only; no keycloak-theme.jar, madrasah-theme.jar or sidre-theme.jar
+docker exec <container> ls -l /opt/keycloak/providers              # only medaris-keycloak-theme.jar; no keycloak-theme.jar, no madrasah-theme.jar
 docker exec <container> /opt/keycloak/bin/kc.sh show-config | grep -E 'kc\.(db|cache) '   # postgres, local
 ```
 
