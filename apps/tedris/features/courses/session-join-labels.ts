@@ -2,6 +2,7 @@ import type {
   CourseDetailResponse,
   SessionResponse,
 } from "@medaris/services/tedrisat";
+import type { ImamStarLabels } from "@medaris/ui/lib/imam-star";
 import type { LooseTranslator } from "~/lib/i18n/loose";
 import type { SessionActionLabels } from "./components/session-action-card";
 import type { SessionHeader } from "./components/session-header";
@@ -95,12 +96,15 @@ export const sessionHeaderProps = (
     koskName,
     locale,
     viewerTimeZone,
+    imamStar,
   }: {
     course: CourseDetailResponse;
     session: SessionResponse;
     koskName: string | null;
     locale: string;
     viewerTimeZone: string;
+    /** the star's words (`common.imamStar`), which `t` cannot reach */
+    imamStar: ImamStarLabels;
   }
 ): Omit<Parameters<typeof SessionHeader>[0], "badge"> => {
   const week = t("SessionPage.week", { number: session.weekNumber });
@@ -143,7 +147,7 @@ export const sessionHeaderProps = (
         ? t("SessionPage.minutes", { count: session.durationMinutes })
         : null,
     muderris: session.muderris,
-    imamLabel: t("SessionPage.imam"),
+    imamStar,
   };
 };
 

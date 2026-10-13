@@ -3,12 +3,18 @@ import type {
   MadrasahOverviewResponse,
   MadrasahResponse,
 } from "@medaris/services/tedrisat";
+import {
+  type ImamStarLabels,
+  imamStarLabels,
+  showsImamStar,
+} from "@medaris/ui/lib/imam-star";
 import { Avatar } from "@medaris/ui/mds/avatar";
 import { Badge } from "@medaris/ui/mds/badge";
 import { Breadcrumb } from "@medaris/ui/mds/breadcrumb";
 import { Card } from "@medaris/ui/mds/card";
 import { CoverPattern } from "@medaris/ui/mds/cover-pattern";
 import { Icon } from "@medaris/ui/mds/icon";
+import { ImamStar } from "@medaris/ui/mds/imam-star";
 import Link from "next/link";
 import { getLocale, getTimeZone, getTranslations } from "next-intl/server";
 import { AnonymousInvite } from "~/components/anonymous-invite";
@@ -19,7 +25,12 @@ import { formatNextSession } from "../next-session";
 
 type Translate = Awaited<ReturnType<typeof getTranslations>>;
 
-const muderrisLine = (course: MadrasahCourseResponse, t: Translate) =>
+/** "Müderris A ★ · B": the imam's star only where there is more than one (2026-10-13). */
+const muderrisLine = (
+  course: MadrasahCourseResponse,
+  t: Translate,
+  star: ImamStarLabels
+) =>
   course.muderris.length === 0 ? null : (
     <>
       {t("MadrasahPage.muderris")}{" "}
@@ -27,7 +38,12 @@ const muderrisLine = (course: MadrasahCourseResponse, t: Translate) =>
         course.muderris.map((m) => (
           <span key={m.name} style={{ whiteSpace: "nowrap" }}>
             <bdi>{m.name}</bdi>
-            {m.isImam ? `, ${t("MadrasahPage.imam")}` : ""}
+            {showsImamStar(m.isImam, course.muderris.length) ? (
+              <>
+                {" "}
+                <ImamStar labels={star} />
+              </>
+            ) : null}
           </span>
         ))
       )}
@@ -37,11 +53,13 @@ const muderrisLine = (course: MadrasahCourseResponse, t: Translate) =>
 const CourseCard = ({
   course,
   t,
+  star,
   locale,
   timeZone,
 }: {
   course: MadrasahCourseResponse;
   t: Translate;
+  star: ImamStarLabels;
   locale: string;
   timeZone: string;
 }) => {
@@ -105,7 +123,7 @@ const CourseCard = ({
             {t("MadrasahPage.inPerson")}
           </Badge>
         ) : null}
-        <p dir="auto">{muderrisLine(course, t)}</p>
+        <p dir="auto">{muderrisLine(course, t, star)}</p>
       </div>
     </Card>
   );
@@ -128,6 +146,7 @@ export const MadrasahPage = async ({
   signedIn?: boolean;
 }) => {
   const t = await getTranslations("tedris");
+  const star = imamStarLabels(await getTranslations("common.imamStar"));
   const locale = await getLocale();
   const timeZone = await getTimeZone();
   const { courses, kosks, headMuderris } = overview;
@@ -207,6 +226,7 @@ export const MadrasahPage = async ({
                     key={course.id}
                     course={course}
                     t={t}
+                    star={star}
                     locale={locale}
                     timeZone={timeZone}
                   />

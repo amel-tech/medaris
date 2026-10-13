@@ -39,7 +39,10 @@ test("shows the medrese, its head müderris and its courses", async ({
   for (const course of fixture.courses) {
     await expect(page.getByRole("link", { name: course.title })).toBeVisible();
   }
-  await expect(page.getByText(", imam").first()).toBeVisible();
+  // each course's lone müderris is its imam and gets no mark (2026-10-13)
+  await expect(page.getByRole("button", { name: "Dersin imamı" })).toHaveCount(
+    0
+  );
   // the unlisted köşk's course is in no list
   await expect(page.getByText(fixture.unlistedCourseTitle)).toHaveCount(0);
 });

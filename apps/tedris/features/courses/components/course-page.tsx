@@ -4,6 +4,7 @@ import type {
   CourseDetailResponse,
   RecordingResponse,
 } from "@medaris/services/tedrisat";
+import { imamStarLabels, showsImamStar } from "@medaris/ui/lib/imam-star";
 import { Alert } from "@medaris/ui/mds/alert";
 import { Avatar } from "@medaris/ui/mds/avatar";
 import { Badge } from "@medaris/ui/mds/badge";
@@ -13,6 +14,7 @@ import { Card } from "@medaris/ui/mds/card";
 import { CoverPattern } from "@medaris/ui/mds/cover-pattern";
 import { EmptyState } from "@medaris/ui/mds/empty-state";
 import { Icon } from "@medaris/ui/mds/icon";
+import { ImamStar } from "@medaris/ui/mds/imam-star";
 import { zoneName } from "@medaris/ui/mds/locale";
 import { Tabs, TabsPanel } from "@medaris/ui/mds/tabs";
 import Link from "next/link";
@@ -97,6 +99,7 @@ export const CoursePage = ({
   now?: number;
 }) => {
   const t = useTranslations("tedris.CoursePage");
+  const star = imamStarLabels(useTranslations("common.imamStar"));
   const fileErrors = useTranslations("tedrisLearn.FileDownload");
   const locale = useLocale();
   const invite = inviteHrefs(locale, `/courses/${course.id}`);
@@ -291,6 +294,13 @@ export const CoursePage = ({
                   return (
                     <Fragment key={m?.id ?? part.value}>
                       <bdi>{part.value}</bdi>
+                      {/* the imam's star: this line is drawn only for several müderrisler (2026-10-13) */}
+                      {m && showsImamStar(m.isImam, course.muderris.length) ? (
+                        <>
+                          {" "}
+                          <ImamStar labels={star} />
+                        </>
+                      ) : null}
                       {m?.title ? (
                         <>
                           {" "}

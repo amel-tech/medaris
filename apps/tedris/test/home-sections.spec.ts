@@ -18,14 +18,16 @@ vi.mock("~/features/home/reads", () => ({
   getHomeFollowedCourses: reads.followed,
 }));
 
-const lookup = (root: "tedris" | "tedrisLearn") => {
-  const read = (key: string) =>
-    key
+const lookup = (root: string) => {
+  const dig = (node: unknown, path: string) =>
+    path
       .split(".")
       .reduce<unknown>(
-        (node, part) => (node as Record<string, unknown>)?.[part],
-        resources.tr[root]
-      ) as string;
+        (n, part) => (n as Record<string, unknown>)?.[part],
+        node
+      );
+  // "tedris", "tedrisLearn", and "common.imamStar" for the imam's star
+  const read = (key: string) => dig(dig(resources.tr, root), key) as string;
   return (key: string, values: Record<string, unknown> = {}) =>
     Object.entries(values).reduce(
       (acc, [k, v]) => acc.replaceAll(`{${k}}`, String(v)),
@@ -33,7 +35,7 @@ const lookup = (root: "tedris" | "tedrisLearn") => {
     );
 };
 vi.mock("next-intl/server", () => ({
-  getTranslations: async (ns: "tedris" | "tedrisLearn") => lookup(ns),
+  getTranslations: async (ns: string) => lookup(ns),
   getLocale: async () => "tr",
   getTimeZone: async () => "Europe/Istanbul",
 }));
@@ -76,10 +78,28 @@ describe("Kaldığın yerden devam et", () => {
     expect(out).toContain('href="/tr/my-courses"');
     expect(out).toMatch(/href="\/tr\/courses\/c1"[^>]*>Emsile ve Bina</);
     expect(out).toContain("Abdülhamit");
-    expect(out).toContain("imam");
+    // a lone müderris is the imam and gets no mark (2026-10-13)
+    expect(out).not.toContain("mds-imam-star");
+    expect(out).not.toContain("imam");
     expect(out).toContain("İlerlemen 40");
     expect(out).toContain("Beyazıt Köşkü");
     expect(out).toContain("Sonraki celse");
+  });
+
+  it("marks the imam with the star after the name among more than one müderris (2026-10-13)", async () => {
+    reads.courses.mockResolvedValue([
+      course("c1", "Emsile ve Bina", {
+        muderris: [
+          { id: "m1", name: "Abdülhamit", isImam: true },
+          { id: "m2", name: "Ayşe Nur", isImam: false },
+        ],
+      }),
+    ]);
+    const out = await html("ContinueSection");
+    expect(out).toMatch(
+      /Abdülhamit<\/bdi> <button[^>]*aria-label="Dersin imamı"/
+    );
+    expect(out.match(/aria-label="Dersin imamı"/g)).toHaveLength(1);
   });
 
   it("says there is no session when none is planned", async () => {
@@ -158,16 +178,36 @@ describe("Takip ettiğin köşklerden", () => {
         koskName: "Nûruosmaniye Köşkü",
         muderrisName: "Ayşe Nur Kılıçarslan",
         muderrisIsImam: true,
+        muderrisCount: 2,
       },
       { id: "f2", title: "Fıkıh", koskName: "Fatih Köşkü", muderrisName: null },
     ]);
     const out = await html("FollowedSection");
     expect(out).toMatch(/href="\/tr\/courses\/f1"[^>]*>Avâmil ve Tasrîf</);
     expect(out).toContain("Nûruosmaniye Köşkü");
-    expect(out).toContain("Ayşe Nur Kılıçarslan");
-    expect(out).toContain("imam");
+    // the imam among two müderrisler: the star after the name (2026-10-13)
+    expect(out).toMatch(
+      /Ayşe Nur Kılıçarslan<\/bdi> <button[^>]*aria-label="Dersin imamı"/
+    );
     expect(out).toContain('href="/tr/discover"');
     expect(out).not.toContain("Müderris <bdi>null");
+  });
+
+  it("marks no imam of a course with one müderris (2026-10-13)", async () => {
+    reads.followed.mockResolvedValue([
+      {
+        id: "f1",
+        title: "Avâmil ve Tasrîf",
+        koskName: "Nûruosmaniye Köşkü",
+        muderrisName: "Ayşe Nur Kılıçarslan",
+        muderrisIsImam: true,
+        muderrisCount: 1,
+      },
+    ]);
+    const out = await html("FollowedSection");
+    expect(out).toContain("Ayşe Nur Kılıçarslan");
+    expect(out).not.toContain("mds-imam-star");
+    expect(out).not.toContain("imam");
   });
 
   it("is an empty state, or an alert", async () => {

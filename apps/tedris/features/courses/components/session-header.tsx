@@ -1,7 +1,9 @@
 import type { SessionMuderrisResponse } from "@medaris/services/tedrisat";
+import { type ImamStarLabels, showsImamStar } from "@medaris/ui/lib/imam-star";
 import { Avatar } from "@medaris/ui/mds/avatar";
 import { Breadcrumb } from "@medaris/ui/mds/breadcrumb";
 import { Icon } from "@medaris/ui/mds/icon";
+import { ImamStar } from "@medaris/ui/mds/imam-star";
 import type { ReactNode } from "react";
 
 /**
@@ -9,7 +11,8 @@ import type { ReactNode } from "react";
  * eyebrow "Hafta N · K. celse", the title, where the celse stands on the
  * right, and one meta line under them: the day and the time on the course's
  * clock, the viewer's own time when it shows another, the length, and the
- * müderris. No hooks, so the server detail page and the client locked page
+ * müderris, the imam's star after the name where the course has more than one
+ * (2026-10-13). No hooks, so the server detail page and the client locked page
  * draw it alike; every word comes in already translated.
  */
 export const SessionHeader = ({
@@ -21,7 +24,7 @@ export const SessionHeader = ({
   when,
   length,
   muderris,
-  imamLabel,
+  imamStar,
 }: {
   crumbs: { label: string; href?: string }[];
   breadcrumbLabel: string;
@@ -43,7 +46,7 @@ export const SessionHeader = ({
   /** "60 dk" */
   length?: string | null;
   muderris: readonly SessionMuderrisResponse[];
-  imamLabel: string;
+  imamStar: ImamStarLabels;
 }) => (
   <div className="flex min-inline-0 flex-col gap-4">
     <Breadcrumb items={crumbs} label={breadcrumbLabel} />
@@ -90,10 +93,8 @@ export const SessionHeader = ({
             <span className="text-neutral-default" dir="auto">
               {m.name}
             </span>
-            {m.isImam ? (
-              <span className="mds-badge mds-badge--secondary">
-                {imamLabel}
-              </span>
+            {showsImamStar(m.isImam, muderris.length) ? (
+              <ImamStar labels={imamStar} />
             ) : null}
           </span>
         ))}

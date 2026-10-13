@@ -38,8 +38,12 @@ function plain(key: string, values?: Record<string, unknown>) {
     text
   );
 }
+// The imam's star reads its own words (`common.imamStar`).
+const star = (key: string) =>
+  (resources.tr.common.imamStar as Record<string, string>)[key] as string;
 vi.mock("next-intl/server", () => ({
-  getTranslations: async () => lookup,
+  getTranslations: async (ns?: string) =>
+    ns === "common.imamStar" ? star : lookup,
   getLocale: async () => "tr",
   getTimeZone: async () => "Europe/Istanbul",
 }));
@@ -311,7 +315,7 @@ describe("köşk page (design tedris/04)", () => {
     expect(html.match(/>Tamamlandı</g)).toHaveLength(1);
   });
 
-  it("names the medrese that opened a course, and marks the imam among the müderrisler", async () => {
+  it("names the medrese that opened a course, and marks the imam among the müderrisler with the star", async () => {
     const html = await renderKosk(
       [
         summary({
@@ -326,8 +330,27 @@ describe("köşk page (design tedris/04)", () => {
     );
     expect(html).toContain('href="/tr/madrasahs/m1"');
     expect(html).toContain("Süleymaniye Medresesi");
-    expect(html).toMatch(/Mehmet Emin Işıkoğlu<\/bdi>, imam/);
-    expect(html).not.toMatch(/Abdülhamit Karaosmanoğlu<\/bdi>, imam/);
+    // the star after the imam's name, a button that explains it (2026-10-13)
+    expect(html).toMatch(
+      /Mehmet Emin Işıkoğlu<\/bdi> <button[^>]*aria-label="Dersin imamı"/
+    );
+    expect(html).not.toMatch(/Abdülhamit Karaosmanoğlu<\/bdi> <button/);
+    expect(html.match(/aria-label="Dersin imamı"/g)).toHaveLength(1);
+    expect(html).not.toContain(", imam");
+  });
+
+  it("marks no imam of a course with one müderris (2026-10-13)", async () => {
+    const html = await renderKosk(
+      [
+        summary({
+          muderris: [{ id: "u1", name: "Mehmet Emin Işıkoğlu", isImam: true }],
+        }),
+      ],
+      null
+    );
+    expect(html).toContain("Mehmet Emin Işıkoğlu");
+    expect(html).not.toContain("mds-imam-star");
+    expect(html).not.toContain("imam");
   });
 
   it("labels an in-person course 'Yüz yüze', and no other (MDRS-283)", async () => {

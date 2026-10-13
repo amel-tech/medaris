@@ -3,6 +3,11 @@ import type {
   KoskDecksResponse,
   KoskResponse,
 } from "@medaris/services/tedrisat";
+import {
+  type ImamStarLabels,
+  imamStarLabels,
+  showsImamStar,
+} from "@medaris/ui/lib/imam-star";
 import { Alert } from "@medaris/ui/mds/alert";
 import { Avatar } from "@medaris/ui/mds/avatar";
 import { Badge } from "@medaris/ui/mds/badge";
@@ -12,6 +17,7 @@ import { Card } from "@medaris/ui/mds/card";
 import { CoverPattern } from "@medaris/ui/mds/cover-pattern";
 import { EmptyState } from "@medaris/ui/mds/empty-state";
 import { Icon } from "@medaris/ui/mds/icon";
+import { ImamStar } from "@medaris/ui/mds/imam-star";
 import Link from "next/link";
 import { getLocale, getTimeZone, getTranslations } from "next-intl/server";
 import { AnonymousInvite } from "~/components/anonymous-invite";
@@ -23,7 +29,12 @@ import { formatNextSession } from "../next-session";
 
 type Translate = Awaited<ReturnType<typeof getTranslations>>;
 
-const muderrisLine = (course: CourseSummaryResponse, t: Translate) =>
+/** "Müderris A ★ · B": the imam's star only where there is more than one (2026-10-13). */
+const muderrisLine = (
+  course: CourseSummaryResponse,
+  t: Translate,
+  star: ImamStarLabels
+) =>
   course.muderris.length === 0 ? null : (
     <>
       {t("KoskPage.muderris")}{" "}
@@ -31,7 +42,12 @@ const muderrisLine = (course: CourseSummaryResponse, t: Translate) =>
         course.muderris.map((m) => (
           <span key={m.id} style={{ whiteSpace: "nowrap" }}>
             <bdi>{m.name}</bdi>
-            {m.isImam ? `, ${t("KoskPage.imam")}` : ""}
+            {showsImamStar(m.isImam, course.muderris.length) ? (
+              <>
+                {" "}
+                <ImamStar labels={star} />
+              </>
+            ) : null}
           </span>
         ))
       )}
@@ -41,11 +57,13 @@ const muderrisLine = (course: CourseSummaryResponse, t: Translate) =>
 const CourseCard = ({
   course,
   t,
+  star,
   locale,
   timeZone,
 }: {
   course: CourseSummaryResponse;
   t: Translate;
+  star: ImamStarLabels;
   locale: string;
   timeZone: string;
 }) => {
@@ -104,7 +122,7 @@ const CourseCard = ({
             </span>
           </p>
         ) : null}
-        <p dir="auto">{muderrisLine(course, t)}</p>
+        <p dir="auto">{muderrisLine(course, t, star)}</p>
       </div>
     </Card>
   );
@@ -128,6 +146,7 @@ export const KoskPage = async ({
   signedIn: boolean;
 }) => {
   const t = await getTranslations("tedris");
+  const star = imamStarLabels(await getTranslations("common.imamStar"));
   const locale = await getLocale();
   const timeZone = await getTimeZone();
 
@@ -203,6 +222,7 @@ export const KoskPage = async ({
                 key={course.id}
                 course={course}
                 t={t}
+                star={star}
                 locale={locale}
                 timeZone={timeZone}
               />

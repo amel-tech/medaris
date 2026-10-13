@@ -1,4 +1,9 @@
 import type { EnrolledCourseResponse } from "@medaris/services/tedrisat";
+import {
+  type ImamStarLabels,
+  imamStarLabels,
+  showsImamStar,
+} from "@medaris/ui/lib/imam-star";
 import { Alert } from "@medaris/ui/mds/alert";
 import { Badge } from "@medaris/ui/mds/badge";
 import { Button } from "@medaris/ui/mds/button";
@@ -6,6 +11,7 @@ import { Card } from "@medaris/ui/mds/card";
 import { CoverPattern } from "@medaris/ui/mds/cover-pattern";
 import { EmptyState } from "@medaris/ui/mds/empty-state";
 import { Icon } from "@medaris/ui/mds/icon";
+import { ImamStar } from "@medaris/ui/mds/imam-star";
 import { Progress } from "@medaris/ui/mds/progress";
 import Link from "next/link";
 import { getLocale, getTimeZone, getTranslations } from "next-intl/server";
@@ -41,8 +47,15 @@ const SectionHead = ({
   </div>
 );
 
-/** "Nûruosmaniye Köşkü · Müderris A, imam · B": where the course is and who teaches it. */
-const placeAndTeachers = (course: EnrolledCourseResponse, t: Translate) => {
+/**
+ * "Nûruosmaniye Köşkü · Müderris A ★ · B": where the course is and who teaches
+ * it, the imam's star only where there is more than one müderris (2026-10-13).
+ */
+const placeAndTeachers = (
+  course: EnrolledCourseResponse,
+  t: Translate,
+  star: ImamStarLabels
+) => {
   const parts = [
     course.madrasahName ? (
       <bdi key="madrasah">{course.madrasahName}</bdi>
@@ -55,7 +68,12 @@ const placeAndTeachers = (course: EnrolledCourseResponse, t: Translate) => {
           course.muderris.map((m) => (
             <span key={m.id} style={{ whiteSpace: "nowrap" }}>
               <bdi>{m.name}</bdi>
-              {m.isImam ? `, ${t("KoskPage.imam")}` : ""}
+              {showsImamStar(m.isImam, course.muderris.length) ? (
+                <>
+                  {" "}
+                  <ImamStar labels={star} />
+                </>
+              ) : null}
             </span>
           ))
         )}
@@ -68,11 +86,13 @@ const placeAndTeachers = (course: EnrolledCourseResponse, t: Translate) => {
 const OngoingCard = ({
   course,
   t,
+  star,
   locale,
   timeZone,
 }: {
   course: EnrolledCourseResponse;
   t: Translate;
+  star: ImamStarLabels;
   locale: string;
   timeZone: string;
 }) => (
@@ -115,7 +135,7 @@ const OngoingCard = ({
     }
   >
     <p className="mds-card__body grow" dir="auto">
-      {placeAndTeachers(course, t)}
+      {placeAndTeachers(course, t, star)}
     </p>
     <div className="mbs-4">
       <Progress
@@ -132,11 +152,13 @@ const OngoingCard = ({
 const CourseLine = ({
   course,
   t,
+  star,
   locale,
   note,
 }: {
   course: EnrolledCourseResponse;
   t: Translate;
+  star: ImamStarLabels;
   locale: string;
   note: string;
 }) => (
@@ -149,7 +171,7 @@ const CourseLine = ({
       <bdi>{course.title}</bdi>
     </Link>
     <p className="mds-caption" dir="auto">
-      {placeAndTeachers(course, t)}
+      {placeAndTeachers(course, t, star)}
     </p>
     <p className="mds-caption">{note}</p>
   </>
@@ -169,6 +191,7 @@ export const MyCoursesPage = async ({
   failed?: boolean;
 }) => {
   const t = await getTranslations("tedris");
+  const star = imamStarLabels(await getTranslations("common.imamStar"));
   const locale = await getLocale();
   const timeZone = await getTimeZone();
   const sections = splitMyCourses(courses ?? []);
@@ -236,6 +259,7 @@ export const MyCoursesPage = async ({
                     key={course.id}
                     course={course}
                     t={t}
+                    star={star}
                     locale={locale}
                     timeZone={timeZone}
                   />
@@ -287,6 +311,7 @@ export const MyCoursesPage = async ({
                     <CourseLine
                       course={course}
                       t={t}
+                      star={star}
                       locale={locale}
                       note={t("MyCoursesPage.appliedOn", {
                         date: formatLongDate(
@@ -330,6 +355,7 @@ export const MyCoursesPage = async ({
                         <CourseLine
                           course={course}
                           t={t}
+                          star={star}
                           locale={locale}
                           note={t("CoursePage.revokedTitle")}
                         />
@@ -368,6 +394,7 @@ export const MyCoursesPage = async ({
                         <CourseLine
                           course={course}
                           t={t}
+                          star={star}
                           locale={locale}
                           note={t("MyCoursesPage.completedOn", {
                             date: formatLongDate(

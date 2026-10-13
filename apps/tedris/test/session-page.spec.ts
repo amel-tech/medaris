@@ -39,9 +39,16 @@ const release = (key: string, values?: Record<string, string>) =>
   ].replace(/\{(\w+)\}/g, (_, name: string) => values?.[name] ?? "");
 // The viewer's zone, İstanbul unless a case says otherwise.
 const viewer = vi.hoisted(() => ({ zone: "Europe/Istanbul" }));
+// The imam's star reads its own words (`common.imamStar`).
+const star = (key: string) =>
+  (resources.tr.common.imamStar as Record<string, string>)[key] as string;
 vi.mock("next-intl/server", () => ({
   getTranslations: async (namespace?: string) =>
-    namespace === "tedrisLearn.RecordingRelease" ? release : translate,
+    namespace === "tedrisLearn.RecordingRelease"
+      ? release
+      : namespace === "common.imamStar"
+        ? star
+        : translate,
   getLocale: async () => "tr",
   getTimeZone: async () => viewer.zone,
 }));
@@ -269,10 +276,33 @@ describe("session page, the header (MDRS-289)", () => {
     );
     expect(text(meta)).toContain("60 dk");
     expect(meta).toContain(">Abdülhamit Karaosmanoğlu<");
-    expect(meta).toContain(`>${tr.imam}<`);
+    // the lone müderris is the imam and gets no mark (2026-10-13)
+    expect(meta).not.toContain("mds-imam-star");
+    expect(meta).not.toContain("İmam");
     expect(meta).toContain('class="mds-avatar mds-avatar--sm"');
     expect(meta).not.toContain("senin saatinle");
     expect(await render(session())).not.toContain(">Müderris<");
+  });
+
+  it("marks the imam with the star after the name where the course has more than one müderris (2026-10-13)", async () => {
+    const meta =
+      region(
+        await render(
+          session({
+            muderris: [
+              { name: "Abdülhamit Karaosmanoğlu", title: null, isImam: true },
+              { name: "Ayşe Nur Kılıçarslan", title: null, isImam: false },
+            ],
+          })
+        ),
+        "session-meta",
+        "div"
+      ) ?? "";
+    expect(meta).toMatch(
+      /Abdülhamit Karaosmanoğlu<\/span><button[^>]*aria-label="Dersin imamı"/
+    );
+    expect(meta.match(/aria-label="Dersin imamı"/g)).toHaveLength(1);
+    expect(meta).toContain(">Ayşe Nur Kılıçarslan<");
   });
 
   it("adds the viewer's own time when their clock shows another", async () => {
