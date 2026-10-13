@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.6](https://github.com/amel-tech/medaris/compare/nizam-web-v0.2.5...nizam-web-v0.2.6) (2026-10-13)
+
+
+### Features
+
+* **ci:** promote dev images to prod, ship Keycloak as a pinned image, cache installs ([#304](https://github.com/amel-tech/medaris/issues/304)) ([3acd2c3](https://github.com/amel-tech/medaris/commit/3acd2c31cd9ee3dfbb14948bcb1ee896bec754d5))
+
 ## [0.2.5](https://github.com/amel-tech/medaris/compare/nizam-web-v0.2.4...nizam-web-v0.2.5) (2026-10-12)
 
 
