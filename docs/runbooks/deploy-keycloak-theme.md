@@ -53,12 +53,10 @@ Do it once, before the first `keycloak-theme` release after this change.
    2026-10-13 an anonymous pull of `latest` and `sha-3acd2c3` answered 200.
 3. **Coolify → the Keycloak service** (done on 2026-10-13):
    * image `quay.io/keycloak/keycloak:latest` → `ghcr.io/amel-tech/medaris-keycloak:stable`;
-   * the JAR mounts from the host directory `/opt/keycloak/themes/` into
-     `/opt/keycloak/providers/` removed: `madrasah-theme.jar` (Keycloak loads
-     every `*.jar` in `providers/`, so it would load an old copy of the theme
-     next to the one baked into the image);
-   * a second product's theme JAR (`/opt/keycloak/providers/<name>.jar`),
-     removed by the owner's word on 2026-10-13;
+   * the `madrasah-theme.jar` mounts from the host directory
+     `/opt/keycloak/themes/` into `/opt/keycloak/providers/` removed (Keycloak
+     loads every `*.jar` in `providers/`, so they would load an old copy of the
+     theme next to the one baked into the image);
    * `mem_limit: 2g`;
    * command `start` and the environment unchanged.
 
