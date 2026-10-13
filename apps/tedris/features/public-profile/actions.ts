@@ -7,10 +7,14 @@ import {
 } from "~/lib/authenticated-action";
 import type { Gender, Visibility } from "./model";
 
-/** "Kaydet": the künye, gender, city and about texts (MDRS-166). */
+/**
+ * "Kaydet": the künye, gender, city and about texts (MDRS-166). `gender` is
+ * left out when it is `undefined`: the account holds it (#317), and tedrisat
+ * refuses a change of it here.
+ */
 export const saveProfileTexts = async (texts: {
   kunye: string;
-  gender: Gender | null;
+  gender?: Gender | null;
   city: string;
   about: string;
 }): Promise<AuthenticatedActionResult<MyPublicProfileResponse>> =>
@@ -18,7 +22,7 @@ export const saveProfileTexts = async (texts: {
     api.me.updateMyPublicProfile({
       updatePublicProfileDto: {
         kunye: texts.kunye.trim(),
-        gender: texts.gender,
+        ...(texts.gender !== undefined && { gender: texts.gender }),
         city: texts.city.trim() || null,
         about: texts.about.trim() || null,
       },
