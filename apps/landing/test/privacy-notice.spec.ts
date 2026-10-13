@@ -115,7 +115,7 @@ describe("the privacy notice page (MDRS-102)", () => {
 
   it("names the data categories and the recipients the issue lists", () => {
     for (const phrase of [
-      "Kimlik: adınız ve soyadınız",
+      "Kimlik: adınız, soyadınız ve cinsiyetiniz",
       "İletişim: e-posta adresiniz",
       "Hesap ve kullanım verileri",
       "Eğitim kayıtları",
@@ -150,6 +150,85 @@ describe("the privacy notice page (MDRS-102)", () => {
     for (const words of Object.values(ACCOUNT_RECORD_FIELDS)) {
       expect(text).toContain(words);
     }
+  });
+});
+
+const sectionText = (id: string) => {
+  const section = SECTIONS.find((s) => s.id === id);
+  if (!section) throw new Error(`no section ${id}`);
+  return [
+    ...(section.paragraphs ?? []),
+    ...(section.items ?? []),
+    section.closing ?? "",
+  ].join(" ");
+};
+
+describe("gender (owner, 13 October)", () => {
+  it("gives the owner's two reasons among the purposes", () => {
+    const purposes = sectionText("amaclar");
+    expect(purposes).toContain(
+      "yüz yüze derslerde kadın ve erkek kontenjanlarının ayrı ayrı sayılması"
+    );
+    expect(purposes).toContain(
+      "ihtiyaç duyan medrese ve köşklerin, hangi talebeyle kadrolarından kimin iletişim kuracağını bilebilmesi"
+    );
+  });
+
+  it("says where it is kept, who sees it and how it is collected", () => {
+    expect(sectionText("islenen-veriler")).toContain(
+      "Cinsiyetiniz kimlik sunucusundaki hesabınızda tutulur"
+    );
+    const recipients = sectionText("aktarim");
+    expect(recipients).toContain(
+      "adınız, soyadınız, cinsiyetiniz, kullanıcı adınız, e-posta adresiniz"
+    );
+    expect(recipients).toContain(
+      "Ders, medrese ve köşk kadroları: cinsiyetinizi"
+    );
+    expect(sectionText("yontem-ve-hukuki-sebep")).toContain(
+      "Cinsiyetinizi hesap açarken kayıt formunda seçersiniz; daha önce açılmış hesaplardan bir sonraki girişte bir kez istenir."
+    );
+  });
+
+  it("names a legal basis for it and tells how to correct it", () => {
+    expect(sectionText("yontem-ve-hukuki-sebep")).toMatch(
+      /Cinsiyetiniz, yüz yüze derslerin kontenjanı için \(c\) bendine/
+    );
+    expect(sectionText("haklariniz")).toContain(
+      "Adınızı, soyadınızı ve cinsiyetinizi hesabınızdan kendiniz de düzeltebilirsiniz."
+    );
+  });
+});
+
+describe("partner applications, “Medaris ile giriş yap” (owner, 13 October)", () => {
+  it("receive the name, e-mail and gender only after the consent screen", () => {
+    const recipients = sectionText("aktarim");
+    expect(recipients).toContain("“Medaris ile giriş yap” seçeneği sunar");
+    expect(recipients).toContain(
+      "adınız, soyadınız, e-posta adresiniz ve cinsiyetiniz, sizi tanıması için hesap kimliğinizle birlikte o uygulamaya ancak bu ekranda izin verirseniz iletilir"
+    );
+    expect(recipients).toContain(
+      "İzin vermezseniz uygulamaya hiçbir bilgi iletilmez."
+    );
+    expect(sectionText("amaclar")).toContain(
+      "izin verdiğiniz bilgilerin bu uygulamalara iletilmesi"
+    );
+  });
+
+  it("rest on explicit consent, which the person can withdraw from the account", () => {
+    expect(sectionText("yontem-ve-hukuki-sebep")).toContain(
+      "Ortak uygulamalara aktarım ise yalnız onay ekranında verdiğiniz açık rızaya dayanır"
+    );
+    expect(sectionText("haklariniz")).toContain(
+      "Bir ortak uygulamaya verdiğiniz izni hesabınızdan ya da 7. bölümdeki yolla başvurarak dilediğiniz zaman geri alabilirsiniz"
+    );
+    expect(sectionText("islenen-veriler")).toContain(
+      "ortak uygulamalara verdiğiniz izinler"
+    );
+  });
+
+  it("are not named", () => {
+    expect(text).not.toMatch(/sidre/i);
   });
 });
 
