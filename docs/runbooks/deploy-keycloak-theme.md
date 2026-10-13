@@ -72,8 +72,9 @@ Do it once, before the first `keycloak-theme` release after this change.
    `kc.sh build` since the change after 2.0.0 (`KC_DB=postgres`,
    `KC_HEALTH_ENABLED=true`, `KC_CACHE=local`). Production gets the fast start
    only with the command `start --optimized`, and that command must never meet
-   an image built without them: `--optimized` uses the build options persisted
-   in the image, and a stock image's do not say Postgres.
+   an image that was not built: the 2.0.0 image under `start --optimized`
+   exited at once with code 2 ("The '--optimized' flag was used for first ever
+   server start", measured locally on 2026-10-13), which is a full outage.
    1. **Before the next `keycloak-theme` release:** add `pull_policy: always`
       to the `keycloak` service and save without redeploying. The webhook is a
       restart; without it the restart may keep the `stable` the server already
@@ -193,8 +194,9 @@ migrated: do not. Roll forward with a fix instead, or agree a database restore
 with the Amel-Tech Auth project.
 
 **Then check the command.** A target built before the optimized image (2.0.0
-or older) has no Postgres build persisted: set the service's command back to
-`start` before restarting it on that image (§0 step 6).
+or older) was never built and does not start under `--optimized`: set the
+service's command back to `start` before restarting it on that image (§0
+step 6).
 
 ```bash
 # The Keycloak version a release shipped.
