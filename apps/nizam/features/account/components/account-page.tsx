@@ -1,10 +1,11 @@
+import { imamStarLabels, showsImamStar } from "@medaris/ui/lib/imam-star";
 import { Avatar } from "@medaris/ui/mds/avatar";
 import { Button } from "@medaris/ui/mds/button";
 import { Field } from "@medaris/ui/mds/field";
 import { Icon } from "@medaris/ui/mds/icon";
 import { Input } from "@medaris/ui/mds/input";
 import { LocaleSelect } from "@medaris/ui/mds/locale-switcher";
-import { getLocale, getTimeZone } from "next-intl/server";
+import { getLocale, getTimeZone, getTranslations } from "next-intl/server";
 import { env } from "~/env";
 import { locales } from "~/lib/i18n/routing";
 import { getAccountMessages } from "../account-messages";
@@ -44,6 +45,7 @@ export async function AccountPage({
   sessionName: string;
 }) {
   const t = await getAccountMessages();
+  const star = imamStarLabels(await getTranslations("common.imamStar"));
   const locale = await getLocale();
   const zone = effectiveZone(data.me.timeZone);
   const viewerZone = (await getTimeZone()) ?? zone;
@@ -84,7 +86,8 @@ export async function AccountPage({
       return {
         id: a.id,
         role: t(`roles.${a.role}`),
-        isImam: a.isImam,
+        // the star, only among more than one müderris (2026-10-13)
+        isImam: showsImamStar(a.isImam, a.course?.muderrisCount),
         scopeTitle: a.scopeName ?? t("chiefScope"),
         scopeBadge: badge
           ? {
@@ -144,7 +147,7 @@ export async function AccountPage({
                 rows={rows}
                 labels={{
                   caption: t("tasksTitle"),
-                  imam: t("imam"),
+                  imamStar: star,
                   role: t("columns.role"),
                   scope: t("columns.scope"),
                   grantor: t("columns.grantor"),

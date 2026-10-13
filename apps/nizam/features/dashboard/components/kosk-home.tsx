@@ -6,6 +6,7 @@ import type {
   KoskDashboardResponse,
   KoskDashboardSessionResponse,
 } from "@medaris/services/tedrisat";
+import { imamStarLabels } from "@medaris/ui/lib/imam-star";
 import { Alert } from "@medaris/ui/mds/alert";
 import { Avatar } from "@medaris/ui/mds/avatar";
 import { Badge } from "@medaris/ui/mds/badge";
@@ -13,13 +14,14 @@ import { Button } from "@medaris/ui/mds/button";
 import { CoverPattern } from "@medaris/ui/mds/cover-pattern";
 import { EmptyState } from "@medaris/ui/mds/empty-state";
 import { Icon } from "@medaris/ui/mds/icon";
+import { ImamStar } from "@medaris/ui/mds/imam-star";
 import { Stat } from "@medaris/ui/mds/stat";
 import { Table, type TableColumn } from "@medaris/ui/mds/table";
 import { Tabs } from "@medaris/ui/mds/tabs";
 import { useToaster } from "@medaris/ui/mds/toast";
 import { useRouter } from "next/navigation";
 import { useLocale, useTimeZone, useTranslations } from "next-intl";
-import { useRef, useState } from "react";
+import { Fragment, useRef, useState } from "react";
 import {
   approveEnrollment,
   rejectEnrollment,
@@ -63,6 +65,7 @@ const TABS: DashboardSessionTab[] = ["UPCOMING", "PAST", "CANCELLED"];
  */
 export function KoskHome({ data, nowIso }: Props) {
   const t = useTranslations("nizam.Dashboard") as unknown as Messages;
+  const star = imamStarLabels(useTranslations("common.imamStar"));
   const locale = useLocale();
   const timeZone = useTimeZone() ?? "Europe/Istanbul";
   const zone = { locale, timeZone };
@@ -227,11 +230,27 @@ export function KoskHome({ data, nowIso }: Props) {
                   week: (n) => t("sessions.week", { number: n }),
                   makeup: t("sessions.makeup"),
                 }),
-                muderrisLine(s.muderris, t("sessions.imam")),
+                ...muderrisLine(s.muderris).map((m) =>
+                  m.imam ? (
+                    <>
+                      {m.name} <ImamStar labels={star} />
+                    </>
+                  ) : (
+                    m.name
+                  )
+                ),
                 s.madrasahName ?? "",
               ]
                 .filter(Boolean)
-                .join(" · ")}
+                .map((part, i) => (
+                  // a line of runs that may repeat is never reordered in place
+                  <Fragment
+                    key={`${i}:${typeof part === "string" ? part : ""}`}
+                  >
+                    {i > 0 ? " · " : null}
+                    {part}
+                  </Fragment>
+                ))}
             </span>
           </span>
         </span>

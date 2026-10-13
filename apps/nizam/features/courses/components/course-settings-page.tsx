@@ -5,6 +5,7 @@ import type {
   KoskResponse,
 } from "@medaris/services/tedrisat";
 import { toast } from "@medaris/ui/components/sonner";
+import { imamStarLabels, showsImamStar } from "@medaris/ui/lib/imam-star";
 import { AlertDialog } from "@medaris/ui/mds/alert-dialog";
 import { Avatar } from "@medaris/ui/mds/avatar";
 import { Badge } from "@medaris/ui/mds/badge";
@@ -13,6 +14,7 @@ import { Button } from "@medaris/ui/mds/button";
 import { Checkbox } from "@medaris/ui/mds/checkbox";
 import { Field } from "@medaris/ui/mds/field";
 import { Icon } from "@medaris/ui/mds/icon";
+import { ImamStar } from "@medaris/ui/mds/imam-star";
 import { Select } from "@medaris/ui/mds/select";
 import { DEFAULT_TIME_ZONE, listTimeZones, timeZoneCity } from "@medaris/utils";
 import { useRouter } from "next/navigation";
@@ -62,6 +64,7 @@ export function CourseSettingsPage({
   tedrisUrl,
 }: Props) {
   const t = useTranslations("nizam.CourseSettings");
+  const star = imamStarLabels(useTranslations("common.imamStar"));
   const locale = useLocale();
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -370,10 +373,14 @@ export function CourseSettingsPage({
                   <Avatar name={m.name} decorative />
                   <span className="min-w-0 flex-1">
                     <bdi>{m.name}</bdi>
+                    {/* the star, only among more than one müderris (2026-10-13) */}
+                    {showsImamStar(m.isImam, course.muderris.length) ? (
+                      <>
+                        {" "}
+                        <ImamStar labels={star} />
+                      </>
+                    ) : null}
                   </span>
-                  {m.isImam ? (
-                    <Badge variant="secondary">{t("imam")}</Badge>
-                  ) : null}
                 </li>
               ))}
             </ul>

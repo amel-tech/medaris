@@ -41,6 +41,7 @@ const rows: InactiveScopeResponse[] = [
     lastManager: person("h", "Abdurrahman Şeref Tunalıoğlu"),
     lastRole: "MEDRESE_BASMUDERRIS",
     wasImam: false,
+    muderrisCount: 0,
     removedBy: null,
     removedByRole: null,
   },
@@ -54,6 +55,7 @@ const rows: InactiveScopeResponse[] = [
     lastManager: person("m", "Halil İbrahim Sarıkaya"),
     lastRole: "MUDERRIS",
     wasImam: true,
+    muderrisCount: 2,
     removedBy: person("a", "Ayşe Nur Kılıçarslan"),
     removedByRole: "KOSK_NAZIM",
   },
@@ -149,7 +151,9 @@ const render = (ui: React.ReactElement) =>
     <NextIntlClientProvider
       locale="tr"
       timeZone={IST}
-      messages={{ nizam: resources.tr.nizam } as never}
+      messages={
+        { common: resources.tr.common, nizam: resources.tr.nizam } as never
+      }
     >
       {ui}
     </NextIntlClientProvider>
@@ -177,8 +181,19 @@ describe("InactiveView (nizam 14)", () => {
     expect(html).toContain("27 Eylül 2026");
     expect(html).toContain("Abdurrahman Şeref Tunalıoğlu");
     expect(html).toContain("Halil İbrahim Sarıkaya");
-    expect(html).toContain("İmam");
     expect(html).toContain("Ders · Beyazıt Köşkü");
+  });
+
+  it("marks the last müderris who was the imam with the star, only where the course lists more than one (2026-10-13)", () => {
+    const star = /<button[^>]*aria-label="Dersin imamı"/g;
+    // the course lists two müderrisler: the star after "Müderris"
+    expect(view().match(star)).toHaveLength(1);
+    expect(view()).toMatch(/Müderris <button[^>]*aria-label="Dersin imamı"/);
+    // the same course with one: no star and no word
+    const sole = view([medrese, { ...course, muderrisCount: 1 }]);
+    expect(sole).not.toMatch(star);
+    expect(sole).not.toContain("mds-imam-star");
+    expect(sole).not.toContain("İmam");
   });
 
   it("carries the type filter and the assign button of each kind", () => {

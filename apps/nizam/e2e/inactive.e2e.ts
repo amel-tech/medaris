@@ -104,7 +104,12 @@ test("nizam/14 — the list shows the scopes with no manager, why, since when an
   await expect(course).toContainText(`Ders · ${fixture.activeKosk.name}`);
   await expect(course).toContainText("Son müderris görevden alındı");
   await expect(course).toContainText(fixture.course.lastMuderris.name);
-  await expect(course).toContainText("İmam");
+  // the seed lists no müderris on the course: the imam gets no star and no
+  // word (2026-10-13)
+  await expect(
+    course.getByRole("button", { name: "Dersin imamı" })
+  ).toHaveCount(0);
+  await expect(course).not.toContainText("İmam");
 
   // attended or never managed: not here
   // (a course row names its köşk, so look at the scope's own name only)

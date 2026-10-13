@@ -67,7 +67,9 @@ const mount = async (inPerson: boolean) => {
     <NextIntlClientProvider
       locale="tr"
       timeZone="Europe/Istanbul"
-      messages={{ nizam: resources.tr.nizam } as never}
+      messages={
+        { common: resources.tr.common, nizam: resources.tr.nizam } as never
+      }
     >
       <CourseSettingsPage
         kosk={kosk}

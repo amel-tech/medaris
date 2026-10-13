@@ -7,12 +7,14 @@ import type {
   KoskResponse,
   RosterEnrollmentResponse,
 } from "@medaris/services/tedrisat";
+import { imamStarLabels, showsImamStar } from "@medaris/ui/lib/imam-star";
 import { Alert } from "@medaris/ui/mds/alert";
 import { Avatar } from "@medaris/ui/mds/avatar";
 import { Badge } from "@medaris/ui/mds/badge";
 import { Breadcrumb } from "@medaris/ui/mds/breadcrumb";
 import { Button } from "@medaris/ui/mds/button";
 import { Icon } from "@medaris/ui/mds/icon";
+import { ImamStar } from "@medaris/ui/mds/imam-star";
 import { Stat } from "@medaris/ui/mds/stat";
 import { Table, type TableColumn } from "@medaris/ui/mds/table";
 import { useRouter } from "next/navigation";
@@ -66,6 +68,7 @@ export function CourseOverview({
 }: Props) {
   const t = useTranslations("nizam.CourseOverview");
   const tm = t as unknown as Messages;
+  const star = imamStarLabels(useTranslations("common.imamStar"));
   const locale = useLocale();
   const timeZone = useTimeZone() ?? "Europe/Istanbul";
   const router = useRouter();
@@ -85,8 +88,10 @@ export function CourseOverview({
   const waiting = (pending ?? []).filter(
     (e) => !decided.has(`${e.courseId}:${e.userId}`)
   );
+  // The imam is marked only where the course has more than one müderris (2026-10-13).
+  const team = row?.muderris ?? [];
   const imamNames = new Set(
-    (row?.muderris ?? []).filter((m) => m.isImam).map((m) => m.name)
+    team.filter((m) => showsImamStar(m.isImam, team.length)).map((m) => m.name)
   );
 
   const sessionColumns: TableColumn<UpcomingSession>[] = [
@@ -427,12 +432,17 @@ export function CourseOverview({
                   <li key={m.id} className="flex items-center gap-3">
                     <Avatar name={m.name} decorative />
                     <span className="flex min-w-0 flex-1 flex-col">
-                      <bdi className="font-semibold">{m.name}</bdi>
+                      <span>
+                        <bdi className="font-semibold">{m.name}</bdi>
+                        {imamNames.has(m.name) ? (
+                          <>
+                            {" "}
+                            <ImamStar labels={star} />
+                          </>
+                        ) : null}
+                      </span>
                       <span className="mds-caption">{t("muderris")}</span>
                     </span>
-                    {imamNames.has(m.name) ? (
-                      <Badge variant="secondary">{t("imam")}</Badge>
-                    ) : null}
                   </li>
                 ))}
               </ul>

@@ -562,7 +562,6 @@
     "intro": "Nizam is the app for those who run Medaris and the köşks. You carry out your medrese and course roles in Nazar.",
     "tasks": "Your roles",
     "students": "{count, plural, one {# talebe} other {# talebe}}",
-    "imam": "Course imam",
     "draft": "Draft",
     "goToNazar": "Go to Nazar",
     "roles": {
@@ -1086,7 +1085,6 @@
     },
     "students": "{count} talebe",
     "noStudents": "No talebe yet",
-    "imam": "{name}, imam",
     "noOpenCourses": "Nothing to choose: once the right is withdrawn the medrese cannot open new courses in this köşk.",
     "auditNote": "Your choice is written to the audit log.",
     "cancel": "Cancel",
@@ -1853,7 +1851,6 @@
       "MEDRESE_BASMUDERRIS": "Head müderris",
       "MUDERRIS": "Müderris"
     },
-    "imam": "Imam",
     "assign": {
       "KOSK": "Appoint a köşk nazım",
       "MADRASAH": "Appoint a head müderris",
@@ -2076,7 +2073,6 @@
       "draft": "Draft",
       "hidden": "Hidden"
     },
-    "imam": "Imam",
     "self": "Yourself",
     "unknownPerson": "Unknown",
     "noExpiry": "No end date",
@@ -2306,7 +2302,6 @@
     "weeks": "{count, plural, one {# week} other {# weeks}}",
     "hiddenOn": "hidden on {dateLocative}",
     "noMuderris": "No müderris",
-    "imam": "imam",
     "noStudents": "No talebe",
     "chip": {
       "pending": "{count} awaiting approval",
@@ -2448,7 +2443,6 @@
     "yesterday": "Yesterday {time}",
     "teamHeading": "Course team",
     "muderris": "Müderris",
-    "imam": "The course's imam",
     "noMuderris": "This course has no müderris",
     "settingsHeading": "Course settings",
     "settings": "Course settings",
@@ -2646,7 +2640,6 @@
     "unpublishWay": "You can publish it again at any time.",
     "close": "Close",
     "teamTitle": "Müderrisler",
-    "imam": "Course imam",
     "editTeam": "Edit müderrisler",
     "hideTitle": "Hide the course",
     "hideBody": "A hidden course disappears for talebe and visitors and leaves the köşk page. Nothing is deleted; you can restore it from the Archive.",
@@ -3654,7 +3647,6 @@
       },
       "week": "Week {number}",
       "makeup": "make-up session",
-      "imam": "imam",
       "state": {
         "planned": "Planned",
         "cancelled": "Cancelled",

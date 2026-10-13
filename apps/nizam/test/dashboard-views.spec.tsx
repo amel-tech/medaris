@@ -33,7 +33,9 @@ const render = (ui: React.ReactElement) =>
     <NextIntlClientProvider
       locale="tr"
       timeZone={IST}
-      messages={{ nizam: resources.tr.nizam } as never}
+      messages={
+        { common: resources.tr.common, nizam: resources.tr.nizam } as never
+      }
     >
       {ui}
     </NextIntlClientProvider>
@@ -323,7 +325,10 @@ const kosk: KoskDashboardResponse = {
       studentCount: 35,
       cancelled: false,
       madrasahName: "Süleymaniye Medresesi",
-      muderris: [{ name: "Mehmet Emin Işıkoğlu", isImam: true }],
+      muderris: [
+        { name: "Mehmet Emin Işıkoğlu", isImam: true },
+        { name: "Ayşe Nur Kılıçarslan", isImam: false },
+      ],
     },
     {
       id: "s3",
@@ -421,10 +426,14 @@ describe("a köşk nazımı's home page (nizam 02)", () => {
   });
 
   it("draws each celse with its state, Katılım and button", () => {
-    expect(html).toContain("Hafta 5 · Abdülhamit Karaosmanoğlu, imam");
-    expect(html).toContain(
-      "Hafta 4 · Mehmet Emin Işıkoğlu, imam · Süleymaniye Medresesi"
+    // a lone müderris is the imam and gets no mark; among two, the imam's
+    // name is followed by the star, a button that explains it (2026-10-13)
+    expect(html).toContain("Hafta 5 · Abdülhamit Karaosmanoğlu</span>");
+    expect(html).toMatch(
+      /Hafta 4 · Mehmet Emin Işıkoğlu <button[^>]*aria-label="Dersin imamı"[^>]*>[\s\S]*?<\/button> · Ayşe Nur Kılıçarslan · Süleymaniye Medresesi/
     );
+    expect(html.match(/aria-label="Dersin imamı"/g)).toHaveLength(1);
+    expect(html).not.toContain(", imam");
     expect(html).toContain("Hafta 5, telafi celsesi");
     expect(html).toContain("3 Eki Cmt 21:00");
     expect(html).toContain(">Katılım<");

@@ -3,6 +3,7 @@ import type {
   GrantResponse,
   KoskDashboardSessionResponse,
 } from "@medaris/services/tedrisat";
+import { showsImamStar } from "@medaris/ui/lib/imam-star";
 import { type AttendanceView, attendanceView } from "../courses/attendance";
 
 /**
@@ -183,14 +184,17 @@ export function weekLine(
   return s.isMakeup ? `${week}, ${words.makeup}` : week;
 }
 
-/** The müderrisler of a celse as the row prints them: "Ad, imam", the others plain. */
+/**
+ * The müderrisler of a celse as the row prints them, in order: the imam's
+ * name followed by the star where the course has more than one (2026-10-13).
+ */
 export function muderrisLine(
-  muderris: { name: string; isImam: boolean }[],
-  imam: string
-): string {
-  return muderris
-    .map((m) => (m.isImam ? `${m.name}, ${imam}` : m.name))
-    .join(" · ");
+  muderris: { name: string; isImam: boolean }[]
+): { name: string; imam: boolean }[] {
+  return muderris.map((m) => ({
+    name: m.name,
+    imam: showsImamStar(m.isImam, muderris.length),
+  }));
 }
 
 /** Whose avatar initials a row wears: the first letters of the first two words. */

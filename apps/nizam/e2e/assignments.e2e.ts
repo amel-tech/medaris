@@ -68,7 +68,10 @@ test("a müderris who is not a nazım lands on 'Bu işler Nazar'da' with the sam
   await expect(published).toContainText(
     `Müderris · ${fixture.koskName} · ${fixture.enrolled} talebe`
   );
-  await expect(published).toContainText("Dersin imamı");
+  // the seed lists no müderris on the course: no star and no word (2026-10-13)
+  await expect(
+    published.getByRole("button", { name: "Dersin imamı" })
+  ).toHaveCount(0);
   const draft = rows.filter({ hasText: fixture.draft.title });
   await expect(draft).toContainText("Taslak");
   await expect(draft).not.toContainText("talebe");

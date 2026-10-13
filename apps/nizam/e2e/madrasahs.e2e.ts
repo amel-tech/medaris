@@ -460,7 +460,11 @@ test("nizam/27 — no answer is chosen for the nazım: the button is off until o
   await expect(dialog).toContainText(fixture.active.name);
   const courses = dialog.getByTestId("open-courses");
   await expect(courses).toContainText(fixture.courses.published.title);
-  await expect(courses).toContainText("3 talebe · Ayşe Nur Kılıçarslan, imam");
+  // a lone müderris is the imam and is named with no mark (2026-10-13)
+  await expect(courses).toContainText("3 talebe · Ayşe Nur Kılıçarslan");
+  await expect(
+    courses.getByRole("button", { name: "Dersin imamı" })
+  ).toHaveCount(0);
   await expect(courses).toContainText("Yayında");
   await expect(courses).toContainText(fixture.courses.draft.title);
   await expect(courses).toContainText("Henüz talebe yok");

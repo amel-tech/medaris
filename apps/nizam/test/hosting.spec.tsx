@@ -53,6 +53,7 @@ const course = (
   status: "PUBLISHED",
   studentCount: 35,
   imamName: "Mehmet Emin Işıkoğlu",
+  muderrisCount: 2,
   ...over,
 });
 
@@ -88,14 +89,24 @@ describe("the withdrawal dialog's numbers (nizam 27)", () => {
     expect(studentTotal([])).toBe(0);
   });
 
-  it("writes a course's second line with its talebe and imam", () => {
-    expect(courseLine(course(), dialog)).toBe(
-      "35 talebe · Mehmet Emin Işıkoğlu, imam"
-    );
-    expect(courseLine(course({ studentCount: 0 }), dialog)).toBe(
-      "Henüz talebe yok · Mehmet Emin Işıkoğlu, imam"
-    );
-    expect(courseLine(course({ imamName: null }), dialog)).toBe("35 talebe");
+  it("writes a course's second line with its talebe and imam, the star where there are several müderrisler", () => {
+    expect(courseLine(course(), dialog)).toEqual({
+      students: "35 talebe",
+      imam: { name: "Mehmet Emin Işıkoğlu", star: true },
+    });
+    expect(courseLine(course({ studentCount: 0 }), dialog)).toEqual({
+      students: "Henüz talebe yok",
+      imam: { name: "Mehmet Emin Işıkoğlu", star: true },
+    });
+    // a lone müderris is named with no mark (2026-10-13)
+    expect(courseLine(course({ muderrisCount: 1 }), dialog)).toEqual({
+      students: "35 talebe",
+      imam: { name: "Mehmet Emin Işıkoğlu", star: false },
+    });
+    expect(courseLine(course({ imamName: null }), dialog)).toEqual({
+      students: "35 talebe",
+      imam: null,
+    });
   });
 
   it("keeps the button off with no answer, when there is a question (criterion 2)", () => {
@@ -156,7 +167,9 @@ const render = (ui: React.ReactElement) =>
     <NextIntlClientProvider
       locale="tr"
       timeZone="Europe/Istanbul"
-      messages={{ nizam: resources.tr.nizam } as never}
+      messages={
+        { common: resources.tr.common, nizam: resources.tr.nizam } as never
+      }
     >
       {ui}
     </NextIntlClientProvider>

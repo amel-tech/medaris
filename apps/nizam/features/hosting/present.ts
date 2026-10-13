@@ -3,6 +3,7 @@ import type {
   HostingOpenCourseResponse,
   HostingRightResponse,
 } from "@medaris/services/tedrisat";
+import { showsImamStar } from "@medaris/ui/lib/imam-star";
 
 /**
  * Pure helpers behind Barındırma hakları and its withdrawal dialog (nizam 26
@@ -40,18 +41,32 @@ export function studentTotal(
   return courses.reduce((sum, c) => sum + c.studentCount, 0);
 }
 
-/** "35 talebe · Mehmet Emin Işıkoğlu, imam" — the second line of a course in the dialog. */
+/**
+ * "35 talebe · Mehmet Emin Işıkoğlu ★" — the second line of a course in the
+ * dialog: its talebe, then its imam by name, the star after it only where the
+ * course has more than one müderris (2026-10-13). A lone müderris is named
+ * with no mark.
+ */
 export function courseLine(
-  course: Pick<HostingOpenCourseResponse, "studentCount" | "imamName">,
+  course: Pick<
+    HostingOpenCourseResponse,
+    "studentCount" | "imamName" | "muderrisCount"
+  >,
   t: Messages
-): string {
+): { students: string; imam: { name: string; star: boolean } | null } {
   const students =
     course.studentCount > 0
       ? t("students", { count: course.studentCount })
       : t("noStudents");
-  return course.imamName
-    ? `${students} · ${t("imam", { name: course.imamName })}`
-    : students;
+  return {
+    students,
+    imam: course.imamName
+      ? {
+          name: course.imamName,
+          star: showsImamStar(true, course.muderrisCount),
+        }
+      : null,
+  };
 }
 
 /** "Medaris başnazımı" or "Köşk nazımı" under the granter's name; "" for a right older than the role was recorded. */

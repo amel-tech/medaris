@@ -2,11 +2,12 @@
 
 import type { InactiveScopeResponse } from "@medaris/services/tedrisat";
 import { toast } from "@medaris/ui/components/sonner";
+import { imamStarLabels, showsImamStar } from "@medaris/ui/lib/imam-star";
 import { Alert } from "@medaris/ui/mds/alert";
 import { Avatar } from "@medaris/ui/mds/avatar";
-import { Badge } from "@medaris/ui/mds/badge";
 import { Button } from "@medaris/ui/mds/button";
 import { ChoiceChips } from "@medaris/ui/mds/choice-chips";
+import { ImamStar } from "@medaris/ui/mds/imam-star";
 import { Table, type TableColumn } from "@medaris/ui/mds/table";
 import { useRouter } from "next/navigation";
 import { useLocale, useTimeZone, useTranslations } from "next-intl";
@@ -41,6 +42,7 @@ interface Props {
 export function InactiveView({ scopes }: Props) {
   const tm = useTranslations("nizam.InactivePage");
   const t = tm as unknown as Messages;
+  const star = imamStarLabels(useTranslations("common.imamStar"));
   const locale = useLocale();
   const timeZone = useTimeZone() ?? "Europe/Istanbul";
   const router = useRouter();
@@ -142,9 +144,15 @@ export function InactiveView({ scopes }: Props) {
       render: (r) => (
         <span className="flex flex-col">
           <bdi>{r.lastManager?.name ?? t("unknownPerson")}</bdi>
-          <span className="flex flex-wrap items-center gap-2">
-            <span className="mds-caption">{t(`lastRoles.${r.lastRole}`)}</span>
-            {r.wasImam ? <Badge variant="secondary">{t("imam")}</Badge> : null}
+          <span className="mds-caption">
+            {t(`lastRoles.${r.lastRole}`)}
+            {/* the star, only where the course lists more than one müderris (2026-10-13) */}
+            {showsImamStar(r.wasImam, r.muderrisCount) ? (
+              <>
+                {" "}
+                <ImamStar labels={star} />
+              </>
+            ) : null}
           </span>
         </span>
       ),

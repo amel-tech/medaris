@@ -95,7 +95,12 @@ test("nizam/20 — the başnazım's page fills every section and the numbers are
   await expect(courseRow(page, fixture.own.title)).toContainText(
     "Mehmet Emin Işıkoğlu"
   );
-  await expect(courseRow(page, fixture.own.title)).toContainText("imam");
+  // two müderrisler: the imam is the star after the name (2026-10-13)
+  await expect(
+    courseRow(page, fixture.own.title).getByRole("button", {
+      name: "Dersin imamı",
+    })
+  ).toHaveCount(1);
   await expect(courseRow(page, fixture.hosted.title)).toContainText(
     fixture.madrasah.name
   );
@@ -360,8 +365,9 @@ test("nizam/53 — the overview draws the course, warns about the session nobody
   await expect(
     page.getByText("Mehmet Emin Işıkoğlu").filter({ visible: true })
   ).toBeVisible();
+  // the course's two müderrisler: the imam's star, a button named for it
   await expect(
-    page.getByText("Dersin imamı").filter({ visible: true })
+    page.getByRole("button", { name: "Dersin imamı" }).filter({ visible: true })
   ).toBeVisible();
 });
 
