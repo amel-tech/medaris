@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.4.0](https://github.com/amel-tech/medaris/compare/landing-web-v2.3.0...landing-web-v2.4.0) (2026-10-13)
+
+
+### Features
+
+* **ci:** promote dev images to prod, ship Keycloak as a pinned image, cache installs ([#304](https://github.com/amel-tech/medaris/issues/304)) ([3acd2c3](https://github.com/amel-tech/medaris/commit/3acd2c31cd9ee3dfbb14948bcb1ee896bec754d5))
+* **tedris-web, nazar-web, nizam-web:** sessions in Valkey and back-channel logout ([#295](https://github.com/amel-tech/medaris/issues/295)) ([a817026](https://github.com/amel-tech/medaris/commit/a817026b84dd63b58cc1aaf4550433c1cdd50071))
+
 ## [2.3.0](https://github.com/amel-tech/medaris/compare/landing-web-v2.2.0...landing-web-v2.3.0) (2026-10-12)
 
 
