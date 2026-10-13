@@ -59,9 +59,6 @@ Do it once, before the first `keycloak-theme` release after this change.
      `/opt/keycloak/providers/madrasah-theme.jar`. Keycloak loads every
      `*.jar` in `providers/`, so they would load an old copy of the theme next
      to the one baked into the image;
-   * the mount of a second product's theme JAR
-     (`/opt/keycloak/providers/<name>.jar`): removed by the owner's word on
-     2026-10-13;
    * keep the command and the environment as they are. The command must be
      `start` (or `start-dev`), not `start --optimized`: Keycloak picks up the
      baked provider when it re-augments at `start`, and `--optimized` skips
