@@ -27,10 +27,12 @@ export const SWAGGER_RULE: SwaggerProductionRule = {
  * exactly `ConfigModule`, `LoggerModule` and `RateLimitModule` — none of which
  * opens a connection. The readers of this factory are `main.ts` (`port`) and
  * `swagger.ts` (`swagger.enabled`, `swagger.endpoint`); `RateLimitModule` reads
- * `THROTTLE_TTL` / `THROTTLE_LIMIT` straight from `process.env` through
- * `buildThrottlerOptions`, not through here — so those two compose keys are
- * live, boot-affecting configuration, not dead ones. Nothing ever read
- * `database.*`.
+ * `THROTTLE_TTL` / `THROTTLE_LIMIT` and `THROTTLE_USER_TTL` /
+ * `THROTTLE_USER_LIMIT` straight from `process.env` through
+ * `buildThrottlerOptions`, not through here — so those compose keys are live,
+ * boot-affecting configuration, not dead ones. teskilat has no `AuthGuard`
+ * yet, so no request carries a user and the per-user layer counts nothing
+ * here. Nothing ever read `database.*`.
  *
  * The `password: process.env.DB_PASSWORD || "password"` line it removed is the
  * half of MDRS-35 that was done for tedrisat and not here: a literal credential
