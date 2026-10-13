@@ -18,4 +18,9 @@ export class FollowedKoskCourseResponse {
   muderrisName!: string | null;
   @ApiProperty({ description: "That müderris is the course's imam." })
   muderrisIsImam!: boolean;
+  @ApiProperty({
+    description:
+      "How many müderrisler the course lists; the imam is marked only where there is more than one.",
+  })
+  muderrisCount!: number;
 }

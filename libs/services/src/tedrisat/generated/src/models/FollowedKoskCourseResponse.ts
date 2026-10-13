@@ -61,6 +61,12 @@ export interface FollowedKoskCourseResponse {
      * @memberof FollowedKoskCourseResponse
      */
     muderrisIsImam: boolean;
+    /**
+     * How many müderrisler the course lists; the imam is marked only where there is more than one.
+     * @type {number}
+     * @memberof FollowedKoskCourseResponse
+     */
+    muderrisCount: number;
 }
 
 /**
@@ -73,6 +79,7 @@ export function instanceOfFollowedKoskCourseResponse(value: object): value is Fo
     if (!('koskName' in value) || value['koskName'] === undefined) return false;
     if (!('coverHue' in value) || value['coverHue'] === undefined) return false;
     if (!('muderrisIsImam' in value) || value['muderrisIsImam'] === undefined) return false;
+    if (!('muderrisCount' in value) || value['muderrisCount'] === undefined) return false;
     return true;
 }
 
@@ -93,6 +100,7 @@ export function FollowedKoskCourseResponseFromJSONTyped(json: any, ignoreDiscrim
         'coverHue': json['coverHue'],
         'muderrisName': json['muderrisName'] == null ? undefined : json['muderrisName'],
         'muderrisIsImam': json['muderrisIsImam'],
+        'muderrisCount': json['muderrisCount'],
     };
 }
 
@@ -114,6 +122,7 @@ export function FollowedKoskCourseResponseToJSONTyped(value?: FollowedKoskCourse
         'coverHue': value['coverHue'],
         'muderrisName': value['muderrisName'],
         'muderrisIsImam': value['muderrisIsImam'],
+        'muderrisCount': value['muderrisCount'],
     };
 }
 

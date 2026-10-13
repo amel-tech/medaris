@@ -37,6 +37,12 @@ export class AssignedCourseInfo {
 
   @ApiProperty({ description: "Talebe currently enrolled" })
   studentCount!: number;
+
+  @ApiProperty({
+    description:
+      "How many müderrisler the course lists; the imam is marked only where there is more than one",
+  })
+  muderrisCount!: number;
 }
 
 export class AssignmentResponse {

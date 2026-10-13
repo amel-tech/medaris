@@ -412,11 +412,12 @@ describe("Study round, due decks, public cards and followed courses (e2e)", () =
         courseId: joined.id,
         status: EnrollmentStatus.PENDING,
       });
-      await db().insert(courseMuderris).values({
-        courseId: older.id,
-        name: "Ayşe Nur Kılıçarslan",
-        orderIndex: 0,
-      });
+      await db()
+        .insert(courseMuderris)
+        .values([
+          { courseId: older.id, name: "Ayşe Nur Kılıçarslan", orderIndex: 0 },
+          { courseId: older.id, name: "Ahmed Cevdet", orderIndex: 1 },
+        ]);
 
       const res = await http()
         .get("/kosks/followed/courses")
@@ -430,8 +431,11 @@ describe("Study round, due decks, public cards and followed courses (e2e)", () =
         koskName: "Nûruosmaniye Köşkü",
         muderrisName: "Ayşe Nur Kılıçarslan",
         muderrisIsImam: false,
+        // The imam's star needs more than one müderris (2026-10-13).
+        muderrisCount: 2,
       });
       expect(res.body[0].muderrisName).toBeNull();
+      expect(res.body[0].muderrisCount).toBe(0);
     });
 
     it("is empty for a caller who follows nobody, honours the limit, and needs a token", async () => {

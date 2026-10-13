@@ -228,11 +228,13 @@ describe("Hosting rights (e2e)", () => {
     liveCourse = live.id;
     draftCourse = draft.id;
     elsewhereCourse = elsewhere.id;
-    await db().insert(courseMuderris).values({
-      courseId: liveCourse,
-      userId: IMAM,
-      name: "Mehmet Emin Işıkoğlu",
-    });
+    await db()
+      .insert(courseMuderris)
+      .values([
+        { courseId: liveCourse, userId: IMAM, name: "Mehmet Emin Işıkoğlu" },
+        // A second müderris, without an account: the imam's star needs two.
+        { courseId: liveCourse, name: "Ahmed Cevdet", orderIndex: 1 },
+      ]);
     await assignRole(db(), {
       userId: IMAM,
       role: ASSIGNED_ROLES.MUDERRIS,
@@ -272,7 +274,7 @@ describe("Hosting rights (e2e)", () => {
   });
 
   describe("GET /kosks/:id/hosting-rights", () => {
-    it("lists the medreses with the granter, the başmüderris and the open courses with their talebe and imam", async () => {
+    it("lists the medreses with the granter, the başmüderris and the open courses with their talebe, imam and müderris count", async () => {
       const res = await http()
         .get(path())
         .set("Authorization", auth(NAZIM))
@@ -298,6 +300,7 @@ describe("Hosting rights (e2e)", () => {
           status: "PUBLISHED",
           studentCount: 2,
           imamName: "Mehmet Emin Işıkoğlu",
+          muderrisCount: 2,
         },
         {
           id: draftCourse,
@@ -305,6 +308,7 @@ describe("Hosting rights (e2e)", () => {
           status: "DRAFT",
           studentCount: 0,
           imamName: null,
+          muderrisCount: 0,
         },
       ]);
     });

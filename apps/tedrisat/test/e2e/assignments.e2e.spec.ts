@@ -4,7 +4,11 @@ import { and, eq } from "drizzle-orm";
 import request from "supertest";
 import { DatabaseService } from "../../src/database/database.service";
 import { auditLog } from "../../src/database/schema/audit.schema";
-import { courses, enrollments } from "../../src/database/schema/course.schema";
+import {
+  courseMuderris,
+  courses,
+  enrollments,
+} from "../../src/database/schema/course.schema";
 import { kosks } from "../../src/database/schema/kosk.schema";
 import { madrasahs } from "../../src/database/schema/madrasah.schema";
 import {
@@ -241,7 +245,14 @@ describe("Assignments (e2e)", () => {
   });
 
   describe("GET /me/assignments", () => {
-    it("lists the caller's held roles with scope, status, köşk, medrese and enrolled count", async () => {
+    it("lists the caller's held roles with scope, status, köşk, medrese, enrolled count and müderris count", async () => {
+      // The imam's star needs more than one müderris (2026-10-13): the
+      // published course lists two, one without an account; the draft one.
+      await databaseService.db.insert(courseMuderris).values([
+        { courseId: publishedId, userId: MUDERRIS_ID, name: "Musa Müderris" },
+        { courseId: publishedId, name: "Ahmed Cevdet", orderIndex: 1 },
+        { courseId: draftId, userId: MUDERRIS_ID, name: "Musa Müderris" },
+      ]);
       const res = await get("/me/assignments", MUDERRIS_ID).expect(200);
       const byScope = new Map(
         res.body.assignments.map((a: { scopeId: string }) => [a.scopeId, a])
@@ -263,12 +274,18 @@ describe("Assignments (e2e)", () => {
           madrasahId,
           madrasahName: "Süleymaniye Medresesi",
           studentCount: 1,
+          muderrisCount: 2,
         },
       });
       expect(byScope.get(draftId)).toMatchObject({
         grantedBySelf: true,
         isImam: false,
-        course: { status: "DRAFT", madrasahId: null, studentCount: 0 },
+        course: {
+          status: "DRAFT",
+          madrasahId: null,
+          studentCount: 0,
+          muderrisCount: 1,
+        },
       });
       expect(byScope.get(madrasahId)).toMatchObject({
         role: "MEDRESE_BASMUDERRIS",

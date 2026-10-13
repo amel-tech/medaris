@@ -331,6 +331,12 @@ export class KoskRepository implements IKoskRepository {
           ORDER BY ${courseMuderris.orderIndex}, ${courseMuderris.id}
           LIMIT 1
         )`,
+        // The imam's star needs more than one müderris.
+        muderrisCount: sql<number>`(
+          SELECT count(*)::int
+          FROM ${courseMuderris} cm
+          WHERE cm.course_id = "courses"."id"
+        )`.mapWith(Number),
       })
       .from(koskFollowers)
       .innerJoin(kosks, eq(kosks.id, koskFollowers.koskId))

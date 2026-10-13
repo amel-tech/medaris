@@ -57,6 +57,12 @@ export interface HostingOpenCourseResponse {
      * @memberof HostingOpenCourseResponse
      */
     imamName?: string | null;
+    /**
+     * How many müderrisler the course lists; the imam is marked only where there is more than one
+     * @type {number}
+     * @memberof HostingOpenCourseResponse
+     */
+    muderrisCount: number;
 }
 
 
@@ -69,6 +75,7 @@ export function instanceOfHostingOpenCourseResponse(value: object): value is Hos
     if (!('title' in value) || value['title'] === undefined) return false;
     if (!('status' in value) || value['status'] === undefined) return false;
     if (!('studentCount' in value) || value['studentCount'] === undefined) return false;
+    if (!('muderrisCount' in value) || value['muderrisCount'] === undefined) return false;
     return true;
 }
 
@@ -87,6 +94,7 @@ export function HostingOpenCourseResponseFromJSONTyped(json: any, ignoreDiscrimi
         'status': HostingCourseStatusFromJSON(json['status']),
         'studentCount': json['studentCount'],
         'imamName': json['imamName'] == null ? undefined : json['imamName'],
+        'muderrisCount': json['muderrisCount'],
     };
 }
 
@@ -106,6 +114,7 @@ export function HostingOpenCourseResponseToJSONTyped(value?: HostingOpenCourseRe
         'status': HostingCourseStatusToJSON(value['status']),
         'studentCount': value['studentCount'],
         'imamName': value['imamName'],
+        'muderrisCount': value['muderrisCount'],
     };
 }
 

@@ -203,6 +203,7 @@ export class InactiveScopeService {
           lastManager: this.person(post.userId, people),
           lastRole: post.role,
           wasImam: post.isImam,
+          muderrisCount: scope.muderrisCount,
           removedBy: remover ? this.person(remover, people) : null,
           removedByRole: !remover
             ? null
