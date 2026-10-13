@@ -1,5 +1,19 @@
-/* Medaris — medrese domain tokens. Theme-independent: they read the same by day and by night.
+/* Medaris — medrese domain tokens. They read the same by day and by night, except the set star
+   (--icon-rating): it carries meaning, so it is held to 3:1 on every ground and takes a darker step by day.
+   Its night value is written twice, like tokens/semantic.css, before the default :root (MDS-TOK-02).
    A suffix is the API value, lower-cased (MDS-TOK-04). */
+
+/* ------------------------------------------------------------------ night: "ink" */
+html[data-theme="dark"], [data-theme="dark"] {
+  --icon-rating: var(--safran-500);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --icon-rating: var(--safran-500);
+  }
+}
+
+/* ------------------------------------------------------------------ day: "paper", the default */
 :root {
   /* Meeting platforms: the 8px decorative dot beside the printed name (MDS-COL-06), never a fill behind text. */
   --icon-platform-zoom: var(--laciverd-500);
@@ -12,8 +26,10 @@
   --icon-logo-ground: var(--laciverd-700);
   --icon-logo-arch: var(--laciverd-50);
 
-  /* Rating star: decorative, always beside its number. */
-  --icon-rating: var(--safran-500);
+  /* The set star: beside a rating's number, and on its own after a name as the mark of a course's imam.
+     There it is a glyph that carries meaning (WCAG 1.4.11), so it is held to 3:1 on every ground it can sit
+     on, in both themes (contrast.md, "The star"): safran-600 by day, safran-500 by night. */
+  --icon-rating: var(--safran-600);
 
   /* Legibility over imagery (a recording's poster). The ramp reaches full strength at 70% and holds it; text
      starts there, in --text-on-cover (≥ 4.5:1 over a pure white poster pixel, contrast.md "Text over media"). */
