@@ -122,15 +122,29 @@ test.describe("register.ftl (medaris/03)", () => {
     await expect(
       page.getByText("Devam etmek için metni okuduğunu onayla.")
     ).toBeVisible();
+    await expect(page.getByText("Bir seçenek seç.")).toBeVisible();
     await expect(page.locator("#firstName")).toBeFocused();
   });
 
-  test("a valid form posts every field, privacy box included", async ({
+  test("an attribute added to the profile is on the page without a page change", async ({
+    page,
+  }) => {
+    await story(page, "login-register-ftl--with-every-input-type");
+    await expect(page.getByRole("combobox", { name: "Şehir" })).toBeVisible();
+    await expect(page.getByLabel("Doğum tarihi")).toHaveAttribute(
+      "type",
+      "date"
+    );
+    await expect(page.getByRole("checkbox", { name: "Nahiv" })).toBeVisible();
+  });
+
+  test("a valid form posts every field, gender and privacy box included", async ({
     page,
   }) => {
     await story(page, "login-register-ftl--default-turkish");
     await page.locator("#firstName").fill("Zeynep");
     await page.locator("#lastName").fill("Karahanlı");
+    await page.getByRole("radio", { name: "Kadın" }).check();
     await page.locator("#username").fill("zeynep.k");
     await page.locator("#email").fill("zeynep@example.com");
     await page.locator("#password").fill("uzun-bir-sifre-1");
@@ -144,6 +158,7 @@ test.describe("register.ftl (medaris/03)", () => {
     const body = (await request).postData() ?? "";
     for (const part of [
       "firstName=Zeynep",
+      "gender=FEMALE",
       "username=zeynep.k",
       "password-confirm=uzun-bir-sifre-1",
       "privacyNoticeRead=yes",
@@ -204,5 +219,48 @@ test.describe("the state pages (medaris/05, 12, 13, 14, 17)", () => {
       "Çıkış yapılsın mı?"
     );
     await expect(page.getByRole("button", { name: "Çıkış yap" })).toBeVisible();
+  });
+});
+
+test.describe("login-update-profile.ftl (medaris/10)", () => {
+  test("an account without gender chooses it and saves", async ({ page }) => {
+    await story(page, "login-login-update-profile-ftl--missing-gender");
+    const save = page.getByRole("button", { name: "Kaydet ve devam et" });
+    await expect(save).toBeDisabled();
+    await page.getByRole("radio", { name: "Erkek" }).check();
+    await expect(save).toBeEnabled();
+    const request = page.waitForRequest((r) => r.method() === "POST");
+    await save.click();
+    expect((await request).postData() ?? "").toContain("gender=MALE");
+  });
+});
+
+test.describe("login-oauth-grant.ftl (consent)", () => {
+  test("İzin ver posts the code and accept", async ({ page }) => {
+    await story(page, "login-login-oauth-grant-ftl--sidre-turkish");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+      "Bilgilerin sidre.tr ile paylaşılsın mı?"
+    );
+    await expect(page.getByRole("listitem")).toHaveCount(3);
+    const request = page.waitForRequest((r) => r.method() === "POST");
+    await page.getByRole("button", { name: "İzin ver" }).click();
+    const body = (await request).postData() ?? "";
+    expect(body).toContain("code=kod");
+    expect(body).toContain("accept=");
+    expect(body).not.toContain("cancel=");
+  });
+
+  test("the card has no horizontal scroll at 375 px in Arabic", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 375, height: 812 });
+    await story(page, "login-login-oauth-grant-ftl--sidre-arabic");
+    expect(
+      await page.evaluate(
+        () =>
+          document.documentElement.scrollWidth >
+          document.documentElement.clientWidth
+      )
+    ).toBe(false);
   });
 });

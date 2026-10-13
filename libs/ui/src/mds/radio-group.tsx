@@ -23,6 +23,12 @@ export interface RadioGroupProps {
   bordered?: boolean;
   required?: boolean;
   disabled?: boolean;
+  /** one line under the options, as `Field` writes one under its control */
+  help?: ReactNode;
+  /** replaces the help line and marks every option invalid */
+  error?: ReactNode;
+  /** marks every option invalid when the reason is shown elsewhere */
+  invalid?: boolean;
   className?: string;
 }
 
@@ -30,6 +36,11 @@ export interface RadioGroupProps {
  * Base UI `RadioGroup` of `Radio` rows, each in its own `<label class="mds-choice">`
  * (`.mds-radio`, no Indicator, canvas rule 8). Controlled with `value`,
  * uncontrolled with `defaultValue`; no option is selected unless the caller says.
+ *
+ * A group is never inside `Field` (its legend is the label), so it writes its
+ * own line under the options: the help, or the error that replaces it
+ * (`.mds-help` / `.mds-error`). Every radio is described by that line, so it is
+ * read when a radio takes focus, and an error marks every radio invalid.
  */
 export function RadioGroup({
   legend,
@@ -41,10 +52,15 @@ export function RadioGroup({
   bordered = false,
   required,
   disabled,
+  help,
+  error,
+  invalid = false,
   className,
 }: RadioGroupProps) {
   const uid = useId().replace(/[^\w-]/g, "");
   const legendId = `mds-choice-${uid}-legend`;
+  const lineId = error || help ? `mds-choice-${uid}-line` : undefined;
+  const isInvalid = Boolean(error) || invalid;
   return (
     <BaseRadioGroup
       name={name}
@@ -73,7 +89,10 @@ export function RadioGroup({
               disabled={o.disabled}
               className="mds-radio"
               aria-labelledby={labelId}
-              aria-describedby={descId}
+              aria-describedby={
+                [descId, lineId].filter(Boolean).join(" ") || undefined
+              }
+              aria-invalid={isInvalid || undefined}
             />
             {o.icon ? (
               <span className="mds-choice__icon" aria-hidden="true">
@@ -93,6 +112,15 @@ export function RadioGroup({
           </label>
         );
       })}
+      {error ? (
+        <span className="mds-error" id={lineId}>
+          {error}
+        </span>
+      ) : help ? (
+        <span className="mds-help" id={lineId}>
+          {help}
+        </span>
+      ) : null}
     </BaseRadioGroup>
   );
 }

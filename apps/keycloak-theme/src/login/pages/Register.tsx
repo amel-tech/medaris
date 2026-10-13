@@ -1,10 +1,11 @@
 import { RegisterForm } from "@medaris/ui/giris";
 import { Checkbox } from "@medaris/ui/mds/checkbox";
+import { Field } from "@medaris/ui/mds/field";
 import { Html } from "../components/Html";
-import { privacyNoticeLabel } from "../components/privacyNoticeLabel";
 import type { I18n } from "../i18n";
 import type { KcContext } from "../KcContext";
 import { withKcLocale } from "../locale-url";
+import { profileFieldSpecs } from "../profile-fields";
 import type { ExtendedPageProps } from "../types/PageProps";
 
 type RegisterProps = ExtendedPageProps<
@@ -12,25 +13,21 @@ type RegisterProps = ExtendedPageProps<
   I18n
 >;
 
-/** The user-profile attributes this page draws, in the order the canvas lays them out. */
-export const REGISTER_ATTRIBUTES = [
-  "firstName",
-  "lastName",
-  "username",
-  "email",
-  "privacyNoticeRead",
-] as const;
-
-const PRIVACY_NEW_TAB_NOTE_ID = "privacy-notice-new-tab";
-
 /**
- * `register.ftl` (canvas medaris/03). The realm's user profile declares exactly
- * the attributes in `REGISTER_ATTRIBUTES` (`test/register.spec.tsx` reads
- * `config/keycloak/user-profile.json` and fails if one is added without this
- * page drawing it), so the form is those fields and not a loop over whatever
- * the profile holds. Password and its repeat are Keycloak's `password` and
- * `password-confirm`; `registrationEmailAsUsername` is off, so the user name is
- * its own field (canvas rule 44).
+ * `register.ftl` (canvas medaris/03). The form is the realm's user profile
+ * (`config/keycloak/user-profile.json`): every attribute Keycloak serves for
+ * registration is drawn by its input type, in the profile's order, marked
+ * required when it is, with its help line and Keycloak's answer under it
+ * (`../profile-fields.tsx`). An attribute added to the profile needs no change
+ * here; `test/register-profile.spec.tsx` renders the realm's profile and fails
+ * if one is missing.
+ *
+ * What the profile does not hold is the page's own: the password pair with
+ * its live rules (Keycloak's `password` and `password-confirm`), placed after
+ * the later of the user name and the e-mail so the rules that compare with
+ * them read after both; the e-mail's help line; and the terms box when the
+ * realm asks for it. `registrationEmailAsUsername` is off, so the user name
+ * is its own field (canvas rule 44).
  */
 export default function Register(props: RegisterProps) {
   const { kcContext, i18n, Template, classes } = props;
@@ -46,27 +43,23 @@ export default function Register(props: RegisterProps) {
 
   const { msg, msgStr, advancedMsg } = i18n;
 
-  const attribute = (name: (typeof REGISTER_ATTRIBUTES)[number]) =>
-    profile.attributesByName[name];
+  const fields = profileFieldSpecs(Object.values(profile.attributesByName), {
+    i18n,
+    languageTag: kcContext.locale?.currentLanguageTag,
+    messagesPerField,
+    help: { email: msg("emailVerifyHelp") },
+  });
 
-  const text = (name: "firstName" | "lastName" | "username" | "email") => {
-    const field = attribute(name);
-    return {
-      name,
-      label: advancedMsg(field?.displayName ?? `\${${name}}`),
-      defaultValue: field?.value ?? "",
-      error: messagesPerField.existsError(name) ? (
-        <Html html={messagesPerField.get(name)} />
-      ) : undefined,
-    };
-  };
+  const passwordAfter = fields
+    .filter((field) => field.name === "username" || field.name === "email")
+    .at(-1)?.name;
 
   const minLength = passwordPolicies?.length ?? 10;
 
-  const privacy = attribute("privacyNoticeRead");
-  const privacyOption = privacy?.annotations.inputOptionLabels
-    ? (Object.keys(privacy.annotations.inputOptionLabels)[0] ?? "yes")
-    : "yes";
+  const providerError = (name: string) =>
+    messagesPerField.existsError(name) ? (
+      <Html html={messagesPerField.get(name)} />
+    ) : undefined;
 
   return (
     <Template
@@ -104,25 +97,19 @@ export default function Register(props: RegisterProps) {
       <RegisterForm
         action={url.registrationAction}
         requiredNote={msg("requiredFields")}
-        firstName={text("firstName")}
-        lastName={text("lastName")}
-        username={text("username")}
-        email={{ ...text("email"), help: msg("emailVerifyHelp") }}
+        fields={fields}
+        passwordAfter={passwordAfter}
         password={{
           name: "password",
           label: msg("password"),
           showLabel: msgStr("showPassword"),
-          error: messagesPerField.existsError("password") ? (
-            <Html html={messagesPerField.get("password")} />
-          ) : undefined,
+          error: providerError("password"),
         }}
         passwordConfirm={{
           name: "password-confirm",
           label: msg("passwordConfirm"),
           showLabel: msgStr("showPasswordConfirm"),
-          error: messagesPerField.existsError("password-confirm") ? (
-            <Html html={messagesPerField.get("password-confirm")} />
-          ) : undefined,
+          error: providerError("password-confirm"),
         }}
         passwordMinLength={minLength}
         ruleLabels={{
@@ -133,40 +120,23 @@ export default function Register(props: RegisterProps) {
         }}
         errors={{
           required: msg("error-user-attribute-required"),
+          requiredChoice: msg("requiredChoice"),
           passwordTooShort: msg("passwordTooShort", String(minLength)),
           passwordRules: msg("passwordRulesUnmet"),
           passwordMismatch: msg("passwordMismatch"),
-          privacy: msg("privacyNoticeRequired"),
-        }}
-        privacy={{
-          name: "privacyNoticeRead",
-          id: `privacyNoticeRead-${privacyOption}`,
-          value: privacyOption,
-          label: privacy
-            ? privacyNoticeLabel(
-                i18n,
-                privacy,
-                privacyOption,
-                PRIVACY_NEW_TAB_NOTE_ID
-              )
-            : msg("privacyNoticeTitle"),
-          newTabNote: msg("privacyNoticeNewTab"),
-          newTabNoteId: PRIVACY_NEW_TAB_NOTE_ID,
-          error: messagesPerField.existsError("privacyNoticeRead") ? (
-            <Html html={messagesPerField.get("privacyNoticeRead")} />
-          ) : undefined,
-          defaultChecked: privacy?.values?.includes(privacyOption) ?? false,
         }}
         submitLabel={msg("doRegister")}
         submittingLabel={msgStr("formSubmitting")}
       >
         {termsAcceptanceRequired ? (
-          <Checkbox
-            id="termsAccepted"
-            name="termsAccepted"
-            label={msg("acceptTerms")}
-            description={msg("termsText")}
-          />
+          <Field error={providerError("termsAccepted")}>
+            <Checkbox
+              id="termsAccepted"
+              name="termsAccepted"
+              label={msg("acceptTerms")}
+              description={msg("termsText")}
+            />
+          </Field>
         ) : null}
       </RegisterForm>
     </Template>

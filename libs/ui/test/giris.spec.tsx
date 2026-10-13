@@ -1,9 +1,11 @@
 // @vitest-environment happy-dom
 import { act } from "react";
 import { afterEach, describe, expect, it } from "vitest";
+import type { ProfileFieldSpec } from "../src/giris";
 import {
   AuthCard,
   AuthMessage,
+  ConsentForm,
   evaluatePasswordRules,
   LoginForm,
   LogoutConfirmForm,
@@ -163,10 +165,45 @@ describe("LoginForm", () => {
 const registerProps = {
   action: "/register",
   requiredNote: "* zorunlu alan",
-  firstName: { name: "firstName", label: "Ad" },
-  lastName: { name: "lastName", label: "Soyad" },
-  username: { name: "username", label: "Kullanıcı adı" },
-  email: { name: "email", label: "E-posta", help: "Doğrulama bağlantısı" },
+  fields: [
+    { name: "firstName", kind: "text", label: "Ad", required: true },
+    { name: "lastName", kind: "text", label: "Soyad", required: true },
+    {
+      name: "gender",
+      kind: "radio",
+      label: "Cinsiyet",
+      required: true,
+      options: [
+        { value: "FEMALE", label: "Kadın" },
+        { value: "MALE", label: "Erkek" },
+      ],
+    },
+    {
+      name: "username",
+      kind: "text",
+      label: "Kullanıcı adı",
+      required: true,
+      latin: true,
+    },
+    {
+      name: "email",
+      kind: "text",
+      type: "email",
+      label: "E-posta",
+      required: true,
+      latin: true,
+      help: "Doğrulama bağlantısı",
+    },
+    {
+      name: "privacyNoticeRead",
+      kind: "checkbox",
+      label: "Aydınlatma Metni’ni okudum.",
+      required: true,
+      options: [{ value: "yes", label: "yes" }],
+      requiredError: "Onayla.",
+    },
+  ] satisfies ProfileFieldSpec[],
+  passwordAfter: "email",
   password: { name: "password", label: "Şifre", showLabel: "göster" },
   passwordConfirm: {
     name: "password-confirm",
@@ -181,42 +218,150 @@ const registerProps = {
   },
   errors: {
     required: "Boş bırakma.",
+    requiredChoice: "Birini seç.",
     passwordTooShort: "Şifre çok kısa.",
     passwordRules: "Kurallar.",
     passwordMismatch: "Eşleşmiyor.",
-    privacy: "Onayla.",
-  },
-  privacy: {
-    name: "privacyNoticeRead",
-    id: "privacyNoticeRead-yes",
-    value: "yes",
-    label: "Aydınlatma Metni’ni okudum.",
-    newTabNote: "Yeni sekmede açılır.",
-    newTabNoteId: "nt",
   },
   submitLabel: "Kayıt ol",
   submittingLabel: "Gönderiliyor",
+};
+
+const submitForm = async (form: HTMLFormElement) => {
+  const submit = new Event("submit", { bubbles: true, cancelable: true });
+  await act(async () => {
+    form.dispatchEvent(submit);
+  });
+  return submit;
+};
+
+const typeInto = async (input: HTMLInputElement, value: string) => {
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(
+      HTMLInputElement.prototype,
+      "value"
+    )?.set?.call(input, value);
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
 };
 
 describe("RegisterForm", () => {
   it("stops an empty submission and writes the reasons under the fields", async () => {
     const host = await render(<RegisterForm {...registerProps} />);
     const form = host.querySelector("form") as HTMLFormElement;
-    const submit = new Event("submit", { bubbles: true, cancelable: true });
-    await act(async () => {
-      form.dispatchEvent(submit);
-    });
+    const submit = await submitForm(form);
     expect(submit.defaultPrevented).toBe(true);
     const errors = [...host.querySelectorAll(".mds-error")].map(
       (e) => e.textContent
     );
     expect(errors).toContain("Boş bırakma.");
+    expect(errors).toContain("Birini seç.");
     expect(errors).toContain("Onayla.");
     expect(
       host
         .querySelector('input[name="firstName"]')
         ?.getAttribute("aria-invalid")
     ).toBe("true");
+  });
+
+  it("draws the fields in the order given, the password pair after passwordAfter", async () => {
+    const host = await render(<RegisterForm {...registerProps} />);
+    const order = [
+      ...host.querySelectorAll<HTMLInputElement>("input[name]"),
+    ].map((input) => input.name);
+    const unique = order.filter((name, i) => order.indexOf(name) === i);
+    expect(unique).toEqual([
+      "firstName",
+      "lastName",
+      "gender",
+      "username",
+      "email",
+      "password",
+      "password-confirm",
+      "privacyNoticeRead",
+    ]);
+  });
+
+  it("draws a field it was never told about by its kind", async () => {
+    const host = await render(
+      <RegisterForm
+        {...registerProps}
+        fields={[
+          ...registerProps.fields,
+          { name: "about", kind: "textarea", label: "Hakkında" },
+          {
+            name: "city",
+            kind: "select",
+            label: "Şehir",
+            options: [{ value: "ist", label: "İstanbul" }],
+          },
+          {
+            name: "days",
+            kind: "checkboxes",
+            label: "Günler",
+            options: [
+              { value: "pzt", label: "Pzt" },
+              { value: "sal", label: "Sal" },
+            ],
+          },
+          { name: "locale", kind: "hidden", label: "", defaultValue: "tr" },
+        ]}
+      />
+    );
+    expect(host.querySelector('textarea[name="about"]')).not.toBeNull();
+    expect(host.querySelector("#city")?.getAttribute("role")).toBe("combobox");
+    const days = host.querySelector("fieldset");
+    expect(days?.querySelectorAll('[role="checkbox"]')).toHaveLength(2);
+    expect(
+      (host.querySelector('input[name="locale"]') as HTMLInputElement).value
+    ).toBe("tr");
+  });
+
+  it("runs a field's own check on a filled-in value", async () => {
+    const host = await render(
+      <RegisterForm
+        {...registerProps}
+        fields={registerProps.fields.map((field) =>
+          field.name === "username"
+            ? {
+                ...field,
+                check: (value: unknown) =>
+                  String(value).length < 3 ? "En az 3 harf." : undefined,
+              }
+            : field
+        )}
+      />
+    );
+    await typeInto(
+      host.querySelector('input[name="username"]') as HTMLInputElement,
+      "ab"
+    );
+    await submitForm(host.querySelector("form") as HTMLFormElement);
+    expect(
+      host
+        .querySelector('input[name="username"]')
+        ?.closest(".mds-field")
+        ?.querySelector(".mds-error")?.textContent
+    ).toBe("En az 3 harf.");
+  });
+
+  it("keeps the provider's answer until the field changes", async () => {
+    const host = await render(
+      <RegisterForm
+        {...registerProps}
+        fields={registerProps.fields.map((field) =>
+          field.name === "email"
+            ? { ...field, error: "Bu adres kayıtlı." }
+            : field
+        )}
+      />
+    );
+    const email = host.querySelector('input[name="email"]') as HTMLInputElement;
+    const line = () =>
+      email.closest(".mds-field")?.querySelector(".mds-error")?.textContent;
+    expect(line()).toBe("Bu adres kayıtlı.");
+    await typeInto(email, "yeni@example.com");
+    expect(line()).toBeUndefined();
   });
 
   it("lists the rules and marks each one as it is met", async () => {
@@ -226,21 +371,65 @@ describe("RegisterForm", () => {
     expect(items().every((i) => i.getAttribute("data-met") === "false")).toBe(
       true
     );
-    const password = host.querySelector(
-      'input[name="password"]'
-    ) as HTMLInputElement;
-    await act(async () => {
-      const set = Object.getOwnPropertyDescriptor(
-        HTMLInputElement.prototype,
-        "value"
-      )?.set;
-      set?.call(password, "uzun-bir-sifre-1");
-      password.dispatchEvent(new Event("input", { bubbles: true }));
-    });
+    // a rule not met yet is a bullet, never a ring that reads as a radio
+    expect(host.querySelector("li .rounded-full")).toBeNull();
+    await typeInto(
+      host.querySelector('input[name="password"]') as HTMLInputElement,
+      "uzun-bir-sifre-1"
+    );
     expect(items().every((i) => i.getAttribute("data-met") === "true")).toBe(
       true
     );
     expect(items()[0]?.textContent).toContain(", karşılandı");
+  });
+});
+
+describe("ConsentForm", () => {
+  it("posts the code with one of two named submits, under the list of what the app sees", async () => {
+    const host = await render(
+      <ConsentForm
+        action="/oauth"
+        code={{ name: "code", value: "abc" }}
+        lead="sidre.tr şunları görecek:"
+        scopes={[
+          { id: "email", text: "E-posta adresin" },
+          { id: "gender", text: "Cinsiyetin" },
+        ]}
+        links={{
+          intro: "Nasıl kullanıyor:",
+          items: [{ href: "https://sidre.tr/sartlar", label: "Şartlar" }],
+          newTabNote: "Yeni sekmede açılır.",
+        }}
+        accept={{ name: "accept", label: "İzin ver" }}
+        cancel={{ name: "cancel", label: "Vazgeç" }}
+      />
+    );
+    const form = host.querySelector("form") as HTMLFormElement;
+    expect(form.method).toBe("post");
+    expect(form.getAttribute("action")).toBe("/oauth");
+    const list = host.querySelector("ul") as HTMLElement;
+    expect(
+      host.querySelector(`#${list.getAttribute("aria-labelledby")}`)
+        ?.textContent
+    ).toBe("sidre.tr şunları görecek:");
+    expect(
+      [...list.querySelectorAll("li")].map((li) => li.textContent)
+    ).toEqual(["E-posta adresin", "Cinsiyetin"]);
+    expect(
+      (host.querySelector('input[name="code"]') as HTMLInputElement).value
+    ).toBe("abc");
+    const accept = host.querySelector('button[name="accept"]');
+    const cancel = host.querySelector('button[name="cancel"]');
+    expect(accept?.getAttribute("type")).toBe("submit");
+    expect(cancel?.getAttribute("type")).toBe("submit");
+    expect(accept?.className).toContain("mds-btn--primary");
+    expect(cancel?.className).toContain("mds-btn--ghost");
+    const link = host.querySelector("a") as HTMLAnchorElement;
+    expect(link.target).toBe("_blank");
+    expect(
+      host.querySelector(`#${link.getAttribute("aria-describedby")}`)
+        ?.textContent
+    ).toBe("Yeni sekmede açılır.");
   });
 });
 

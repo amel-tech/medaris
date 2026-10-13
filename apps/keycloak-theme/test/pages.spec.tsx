@@ -36,6 +36,8 @@ const REGISTRANT_PAGES: PageId[] = [
   "login-page-expired.ftl",
   "error.ftl",
   "logout-confirm.ftl",
+  // the consent page of an app that signs in with Medaris (sidre.tr)
+  "login-oauth-grant.ftl",
 ];
 
 /**
@@ -106,9 +108,12 @@ describe.each(REGISTRANT_PAGES)("%s", (pageId) => {
     page = await renderPage(pageId, languageTag);
     expect(rawKeys()).toEqual([]);
     const data = contextStrings(page.kcContext);
-    expect(keyLikeWords(visibleStrings().filter((s) => !data.has(s)))).toEqual(
-      []
-    );
+    // Data inside a sentence ("Bilgilerin myApp ile paylaşılsın mı?", the
+    // consent page's client) is cut out of it, as the Arabic check does.
+    const copy = visibleStrings()
+      .filter((s) => !data.has(s))
+      .map((s) => [...data].reduce((rest, d) => rest.split(d).join(""), s));
+    expect(keyLikeWords(copy)).toEqual([]);
   });
 
   it.each([
@@ -138,9 +143,16 @@ describe.each(REGISTRANT_PAGES)("%s", (pageId) => {
     expect(document.documentElement.dir).toBe("rtl");
     expect(document.documentElement.lang).toBe("ar");
 
+    // Base UI's boxes and radios post through a hidden, aria-hidden input
+    // beside the control a person uses; that input has no label of its own.
     const inputs = [
       ...document.querySelectorAll<HTMLInputElement>("input, textarea"),
-    ].filter((input) => input.type !== "hidden" && input.type !== "checkbox");
+    ].filter(
+      (input) =>
+        input.type !== "hidden" &&
+        input.type !== "checkbox" &&
+        input.getAttribute("aria-hidden") !== "true"
+    );
     for (const input of inputs) {
       expect(
         document.querySelector(`label[for="${input.id}"]`),

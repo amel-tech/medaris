@@ -5,8 +5,10 @@
 # the required fields are there, the web clients are the shape RUNBOOK.md
 # promises (confidential, PKCE S256, exact URIs, no wildcard, the tedrisat-api
 # audience mapper, front-channel logout off wherever a back-channel logout URL
-# is set), and no file carries a literal secret. With <env>, only that
-# environment's clients are checked; without, every environment's.
+# is set, the `gender` scope by default), the `gender` scope puts the user's
+# gender into the tokens and is optional for every new client, every scope a
+# file assigns exists, and no file carries a literal secret. With <env>, only
+# that environment's clients are checked; without, every environment's.
 #
 # Exit 0 when everything passes, 1 with one line per problem otherwise.
 # provision runs it first and stops on a failure.
@@ -105,10 +107,13 @@ if [[ $parsed -eq 1 ]]; then
   fi
 
   # 4. The user profile: first name, last name and e-mail required, and
-  #    nothing beyond the four built-in attributes except privacyNoticeRead
-  #    (MDRS-102) — the "Aydınlatma Metni'ni okudum" box on the registration
-  #    form, which Keycloak refuses to register without: required for users,
-  #    one accepted value, and an https link to the notice.
+  #    nothing beyond the four built-in attributes except
+  #    - privacyNoticeRead (MDRS-102), the "Aydınlatma Metni'ni okudum" box on
+  #      the registration form, which Keycloak refuses to register without:
+  #      required for users, one accepted value, and an https link to the
+  #      notice;
+  #    - gender, required for users and admins with exactly the two values
+  #      tedrisat keeps in user_profiles.gender (PROFILE_GENDERS).
   profile="$KC_CONFIG_DIR/user-profile.json"
   if [[ ! -f "$profile" ]]; then
     problem "user-profile.json is missing"
@@ -131,11 +136,82 @@ if [[ $parsed -eq 1 ]]; then
               (if ($p.annotations.linkUrl // "") | test("^https://[^/]+/.") | not
                then "user-profile.json: privacyNoticeRead needs an https linkUrl to the notice" else empty end)
             end),
+        (($a | map(select(.name == "gender")) | .[0]) as $g
+          | if $g == null then "user-profile.json: gender is missing"
+            else
+              (if ["admin", "user"] - ($g.required.roles // []) != []
+               then "user-profile.json: gender must be required for users and admins" else empty end),
+              (if ($g.validations.options.options // [] | sort) != ["FEMALE", "MALE"]
+               then "user-profile.json: gender must accept exactly [\"FEMALE\", \"MALE\"], the values tedrisat keeps" else empty end)
+            end),
         ($a[] | .name
-          | select(IN("username", "email", "firstName", "lastName", "privacyNoticeRead") | not)
-          | "user-profile.json: \(.) is not one of the four built-in attributes or privacyNoticeRead")
+          | select(IN("username", "email", "firstName", "lastName", "privacyNoticeRead", "gender") | not)
+          | "user-profile.json: \(.) is not one of the four built-in attributes, privacyNoticeRead or gender")
     ' "$profile")
   fi
+
+  # 4b. The client scopes: one per file, named like the file. `gender` puts
+  #     the user's gender attribute into the tokens as the `gender` claim and
+  #     says so on the consent page, the built-in `profile` scope no longer
+  #     carries its own `gender` mapper, and the realm offers `gender` to every
+  #     new client as optional.
+  scopes_dir="$KC_CONFIG_DIR/client-scopes"
+  scope_names=()
+  if [[ -d "$scopes_dir" ]]; then
+    while IFS= read -r file; do
+      base=$(basename "$file" .json)
+      scope_names+=("$base")
+      while IFS= read -r line; do problem "$line"; done < <(
+        jq -r --arg f "$(rel "$file")" --arg base "$base" '
+          (if .name != $base then "\($f): name is \(.name | tojson), not \($base | tojson) like the file" else empty end),
+          (if has("removedProtocolMappers") and ((.removedProtocolMappers | type) != "array"
+                or any(.removedProtocolMappers[]; type != "string"))
+           then "\($f): removedProtocolMappers is a list of mapper names" else empty end)
+        ' "$file"
+      )
+    done < <(find "$scopes_dir" -maxdepth 1 -type f -name '*.json' | sort)
+  fi
+  gender_scope="$scopes_dir/gender.json"
+  if [[ ! -f "$gender_scope" ]]; then
+    problem "client-scopes/gender.json is missing"
+  else
+    while IFS= read -r line; do problem "$line"; done < <(jq -r '
+      (if (.protocol // "") != "openid-connect" then "client-scopes/gender.json: protocol must be openid-connect" else empty end),
+      (if [.protocolMappers // [] | .[]
+            | select(.protocolMapper == "oidc-usermodel-attribute-mapper"
+                     and .config["user.attribute"] == "gender"
+                     and .config["claim.name"] == "gender"
+                     and .config["id.token.claim"] == "true"
+                     and .config["access.token.claim"] == "true"
+                     and .config["userinfo.token.claim"] == "true")] | length == 0
+       then "client-scopes/gender.json: no mapper puts the gender attribute into the ID token, the access token and userinfo as the gender claim" else empty end),
+      (if .attributes["display.on.consent.screen"] != "true" or (.attributes["consent.screen.text"] // "") == ""
+       then "client-scopes/gender.json: the consent page must name it (display.on.consent.screen and consent.screen.text)" else empty end)
+    ' "$gender_scope")
+  fi
+  if [[ ! -f "$scopes_dir/profile.json" ]] ||
+    ! jq -e '(.removedProtocolMappers // []) | index("gender")' "$scopes_dir/profile.json" >/dev/null; then
+    problem "client-scopes/profile.json must remove the built-in profile scope's gender mapper; otherwise every client that gets profile receives gender without the gender scope"
+  fi
+  if [[ -f "$KC_CONFIG_DIR/realms/_base.json" ]] &&
+    ! jq -e '(.defaultOptionalClientScopes // []) | index("gender")' "$KC_CONFIG_DIR/realms/_base.json" >/dev/null; then
+    problem "realms/_base.json: defaultOptionalClientScopes must include gender, so a new client (sidre-tr) can ask for it"
+  fi
+
+  # Every scope a realm or client file assigns is one of the files above or
+  # one Keycloak creates in every realm.
+  builtin_scopes='["acr", "address", "basic", "email", "microprofile-jwt", "offline_access", "organization", "phone", "profile", "role_list", "roles", "saml_organization", "web-origins"]'
+  known_scopes=$(printf '%s\n' "${scope_names[@]}" | jq -R . | jq -sc --argjson b "$builtin_scopes" '. + $b')
+  while IFS= read -r file; do
+    while IFS= read -r line; do problem "$line"; done < <(
+      jq -r --arg f "$(rel "$file")" --argjson known "$known_scopes" '
+        ["defaultClientScopes", "optionalClientScopes",
+         "defaultDefaultClientScopes", "defaultOptionalClientScopes"][] as $k
+        | (.[$k] // [])[] | select(. as $n | $known | index($n) | not)
+        | "\($f): \($k) names \(tojson), which is neither a file under client-scopes/ nor a scope Keycloak creates"
+      ' "$file"
+    )
+  done < <(find "$KC_CONFIG_DIR/realms" "$KC_CONFIG_DIR/clients" -type f -name '*.json' 2>/dev/null | sort)
 
   # 5. The clients of each environment.
   for env in "${envs[@]}"; do
@@ -174,7 +250,9 @@ if [[ $parsed -eq 1 ]]; then
                      | select(.protocolMapper == "oidc-audience-mapper"
                               and (.config["included.client.audience"] as $aud | $apis | index($aud)) != null
                               and .config["access.token.claim"] == "true")] | length) == 0
-                then "\($f): no audience mapper puts the API client into the access token" else empty end)
+                then "\($f): no audience mapper puts the API client into the access token" else empty end),
+               (if (($c.defaultClientScopes // []) | index("gender")) == null
+                then "\($f): a web client gets the gender scope by default" else empty end)
              else empty end)
         ' "$KC_CONFIG_DIR/clients/_base.json" "$file"
       )

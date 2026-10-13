@@ -3,14 +3,13 @@
  *
  * MDRS-155: what the adapters in `src/login/pages` read from Keycloak's
  * context and hand to `@medaris/ui/giris` (canvas medaris/01, 03, 05, 07, 12,
- * 13, 14, 17), and the realm's user profile against the registration form.
+ * 13, 14, 17). The realm's user profile against the registration form is
+ * `register-profile.spec.tsx`.
  */
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import { act } from "react";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
+import { messageRef } from "../src/login/KcPageStory";
 import { withKcLocale } from "../src/login/locale-url";
-import { REGISTER_ATTRIBUTES } from "../src/login/pages/Register";
 import { type RenderedPage, renderPage } from "./render-page";
 
 let page: RenderedPage | undefined;
@@ -26,20 +25,6 @@ afterEach(() => {
 
 const q = <T extends Element>(selector: string) =>
   document.querySelector<T>(selector);
-
-describe("the realm's user profile", () => {
-  it("holds only attributes the registration form draws", () => {
-    const profile = JSON.parse(
-      readFileSync(
-        join(__dirname, "../../../config/keycloak/user-profile.json"),
-        "utf8"
-      )
-    ) as { attributes: { name: string }[] };
-    for (const { name } of profile.attributes) {
-      expect(REGISTER_ATTRIBUTES, name).toContain(name);
-    }
-  });
-});
 
 describe("login.ftl", () => {
   it("posts to loginAction with the canvas texts and links", async () => {
@@ -230,6 +215,7 @@ describe("register.ftl and login-update-password.ftl", () => {
       "email",
       "password",
       "password-confirm",
+      "gender",
       "privacyNoticeRead",
     ]) {
       expect(q(`[name="${name}"]`), name).not.toBeNull();
@@ -316,5 +302,143 @@ describe("the login and register forms keep the page's language between them (MD
     expect(withKcLocale("https://auth.example/a", undefined)).toBe(
       "https://auth.example/a"
     );
+  });
+});
+
+describe("login-update-profile.ftl (canvas medaris/10)", () => {
+  const missingGender = {
+    messagesPerField: {
+      existsError: (...names: string[]) => names.includes("gender"),
+      get: (name: string) =>
+        name === "gender" ? "Lütfen bu alanı doldurun." : "",
+      exists: (name: string) => name === "gender",
+    },
+  };
+
+  it("asks an account without gender for it, with Keycloak's reason under the choice", async () => {
+    page = await renderPage(
+      "login-update-profile.ftl",
+      "tr",
+      missingGender as never
+    );
+    expect(q("h1")?.textContent).toBe("Profilini tamamla");
+    expect(document.body.textContent).toContain(
+      "Hesabında eksik bilgi var. Tamamladığında kaldığın yerden devam edersin."
+    );
+    const group = q('[role="radiogroup"]');
+    expect(group?.textContent).toContain("Cinsiyet");
+    expect(group?.querySelector(".mds-error")?.textContent).toBe(
+      "Lütfen bu alanı doldurun."
+    );
+    const submit = q<HTMLButtonElement>(
+      '#kc-update-profile-form button[type="submit"]'
+    );
+    expect(submit?.textContent).toBe("Kaydet ve devam et");
+    expect(submit?.disabled).toBe(true);
+
+    const kadin = [
+      ...document.querySelectorAll<HTMLElement>('[role="radio"]'),
+    ][0];
+    await act(async () => {
+      kadin?.click();
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    });
+    expect(group?.querySelector(".mds-error")).toBeNull();
+    expect(submit?.disabled).toBe(false);
+    const data = new FormData(
+      q<HTMLFormElement>("#kc-update-profile-form") as HTMLFormElement
+    );
+    expect(data.get("gender")).toBe("FEMALE");
+  });
+
+  it("shows the read-only user name without posting it", async () => {
+    page = await renderPage("login-update-profile.ftl", "tr");
+    const username = q<HTMLInputElement>("input#username");
+    expect(username?.readOnly).toBe(true);
+    expect(username?.hasAttribute("name")).toBe(false);
+    expect(username?.closest(".mds-field")?.textContent).toContain(
+      "Salt okunur; buradan değiştirilemez."
+    );
+  });
+
+  it("an app that sent the user here gets Vazgeç and no sentence about missing details", async () => {
+    page = await renderPage("login-update-profile.ftl", "tr", {
+      isAppInitiatedAction: true,
+    } as never);
+    expect(document.body.textContent).not.toContain(
+      "Hesabında eksik bilgi var"
+    );
+    expect(q('button[name="cancel-aia"]')?.textContent).toBe("Vazgeç");
+  });
+});
+
+describe("login-oauth-grant.ftl (consent)", () => {
+  const sidre = {
+    client: {
+      clientId: "sidre-tr",
+      name: "sidre.tr",
+      attributes: {
+        tosUri: "https://sidre.tr/kullanim-sartlari",
+        policyUri: "javascript:alert(1)",
+      },
+    },
+    oauth: {
+      code: "tek-kullanimlik",
+      client: "sidre-tr",
+      clientScopesRequested: [
+        { consentScreenText: messageRef("profileScopeConsentText") },
+        { consentScreenText: messageRef("emailScopeConsentText") },
+        { consentScreenText: messageRef("genderScopeConsentText") },
+      ],
+    },
+    url: { oauthAction: "https://auth.example/oauth" },
+  };
+
+  it("names the app and what it will see, in the scopes' consent texts", async () => {
+    page = await renderPage("login-oauth-grant.ftl", "tr", sidre as never);
+    expect(q("h1")?.textContent).toBe(
+      "Bilgilerin sidre.tr ile paylaşılsın mı?"
+    );
+    expect(
+      [...document.querySelectorAll("#kc-oauth li")].map((li) => li.textContent)
+    ).toEqual([
+      "Adın, soyadın, kullanıcı adın ve dil tercihin",
+      "E-posta adresin",
+      "Cinsiyetin",
+    ]);
+  });
+
+  it("posts the code with İzin ver or Vazgeç, under the names Keycloak reads", async () => {
+    page = await renderPage("login-oauth-grant.ftl", "tr", sidre as never);
+    const form = q<HTMLFormElement>("form#kc-oauth");
+    expect(form?.getAttribute("action")).toBe("https://auth.example/oauth");
+    expect(form?.method).toBe("post");
+    expect(q<HTMLInputElement>('input[name="code"]')?.value).toBe(
+      "tek-kullanimlik"
+    );
+    expect(q('button[name="accept"]')?.textContent).toBe("İzin ver");
+    expect(q('button[name="cancel"]')?.textContent).toBe("Vazgeç");
+  });
+
+  it("links the app's terms in a new tab and drops a link that is not http(s)", async () => {
+    page = await renderPage("login-oauth-grant.ftl", "tr", sidre as never);
+    const links = [
+      ...document.querySelectorAll<HTMLAnchorElement>("#kc-oauth a"),
+    ];
+    expect(links.map((a) => a.textContent)).toEqual(["Kullanım şartları"]);
+    expect(links[0]?.getAttribute("target")).toBe("_blank");
+    expect(
+      document.getElementById(links[0]?.getAttribute("aria-describedby") ?? "")
+        ?.textContent
+    ).toBe("Yeni sekmede açılır.");
+  });
+
+  it("reads right to left in Arabic", async () => {
+    page = await renderPage("login-oauth-grant.ftl", "ar", sidre as never);
+    expect(document.documentElement.dir).toBe("rtl");
+    expect(q("h1")?.textContent).toBe("هل تشارك بياناتك مع sidre.tr؟");
+    expect(q('button[name="accept"]')?.textContent).toBe("السماح");
   });
 });
