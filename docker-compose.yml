@@ -120,6 +120,9 @@ services:
       BUNNY_STREAM_API_KEY: ${TEDRISAT__BUNNY_STREAM_API_KEY:-}
       BUNNY_STREAM_TOKEN_KEY: ${TEDRISAT__BUNNY_STREAM_TOKEN_KEY:-}
       BUNNY_STREAM_EMBED_TTL_SECONDS: ${TEDRISAT__BUNNY_STREAM_EMBED_TTL_SECONDS:-}
+      # The collection new videos are created in; dev and prod share the
+      # library. Empty is allowed: videos are created at the library root.
+      BUNNY_STREAM_COLLECTION_ID: ${TEDRISAT__BUNNY_STREAM_COLLECTION_ID:-}
 
       # The Bunny Storage zone uploaded files are kept in (MDRS-287). All
       # empty is allowed: the upload and download routes answer 503.
