@@ -50,6 +50,17 @@ describe("bulk throttle env", () => {
       ).toBe(30000);
     });
 
+    // The bulk budget overrides the per-user layer, so it measures against
+    // that layer's window when one is set (2026-10-12).
+    it("follows THROTTLE_USER_TTL over THROTTLE_TTL when THROTTLE_BULK_TTL is unset", () => {
+      expect(
+        resolveBulkThrottlerTtl({
+          THROTTLE_TTL: "30000",
+          THROTTLE_USER_TTL: "20000",
+        } as NodeJS.ProcessEnv)
+      ).toBe(20000);
+    });
+
     it("prefers THROTTLE_BULK_TTL over THROTTLE_TTL when both are set", () => {
       expect(
         resolveBulkThrottlerTtl({
