@@ -3,9 +3,12 @@
    star glyph, the domain token for a set star (--icon-rating, "a set star" in
    rules.md), the .mds-tooltip surface for the bubble and the base layer's
    focus ring. Semantic and domain tokens only; this file declares no custom
-   property. --icon-rating is the same in both themes: 3.13:1 on the day page
-   and 5.41:1 on the night page, 3.32:1 and 5.00:1 on a surface (contrast.md
-   lists the surface pair), so the star reads as a graphic (WCAG 1.4.11). */
+   property. --icon-rating is safran-600 by day and safran-500 by night (the
+   owner's decision of 2026-10-14), so the star reads as a graphic (WCAG
+   1.4.11) on every ground it can sit on: 4.24:1 on the day page and 5.40:1 on
+   the night page, 4.49:1 and 5.00:1 on a surface (a dialog, a table), and
+   3.61:1 and 4.54:1 at the lowest, on a hovered row (contrast.md, "The star",
+   lists every ground). */
 
 /* The star sits on the text line after a name, sized by the text around it. */
 .mds-imam-star { display: inline-flex; align-items: center; justify-content: center; vertical-align: -0.2em; color: var(--icon-rating); line-height: 1; }
