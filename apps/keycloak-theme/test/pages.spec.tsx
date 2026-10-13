@@ -36,7 +36,7 @@ const REGISTRANT_PAGES: PageId[] = [
   "login-page-expired.ftl",
   "error.ftl",
   "logout-confirm.ftl",
-  // the consent page of an app that signs in with Medaris (sidre.tr)
+  // the consent page of an app that signs in with Medaris (a partner application)
   "login-oauth-grant.ftl",
 ];
 

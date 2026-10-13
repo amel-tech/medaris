@@ -5,7 +5,7 @@ export interface ConsentFormProps {
   action: string;
   /** the one-time code the provider needs back */
   code: { name: string; value: string };
-  /** the sentence over the list: "sidre.tr, Medaris hesabından şunları görecek:" */
+  /** the sentence over the list: "Örnek Uygulama, Medaris hesabından şunları görecek:" */
   lead: ReactNode;
   /** what the app asks for, one line each ("E-posta adresin"), by the scope's own id */
   scopes: { id: string; text: ReactNode }[];

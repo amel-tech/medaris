@@ -237,9 +237,9 @@ test.describe("login-update-profile.ftl (medaris/10)", () => {
 
 test.describe("login-oauth-grant.ftl (consent)", () => {
   test("İzin ver posts the code and accept", async ({ page }) => {
-    await story(page, "login-login-oauth-grant-ftl--sidre-turkish");
+    await story(page, "login-login-oauth-grant-ftl--partner-turkish");
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(
-      "Bilgilerin sidre.tr ile paylaşılsın mı?"
+      "Bilgilerin Örnek Uygulama ile paylaşılsın mı?"
     );
     await expect(page.getByRole("listitem")).toHaveCount(3);
     const request = page.waitForRequest((r) => r.method() === "POST");
@@ -254,7 +254,7 @@ test.describe("login-oauth-grant.ftl (consent)", () => {
     page,
   }) => {
     await page.setViewportSize({ width: 375, height: 812 });
-    await story(page, "login-login-oauth-grant-ftl--sidre-arabic");
+    await story(page, "login-login-oauth-grant-ftl--partner-arabic");
     expect(
       await page.evaluate(
         () =>

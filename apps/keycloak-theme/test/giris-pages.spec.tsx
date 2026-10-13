@@ -375,18 +375,18 @@ describe("login-update-profile.ftl (canvas medaris/10)", () => {
 });
 
 describe("login-oauth-grant.ftl (consent)", () => {
-  const sidre = {
+  const partner = {
     client: {
-      clientId: "sidre-tr",
-      name: "sidre.tr",
+      clientId: "ornek-uygulama",
+      name: "Örnek Uygulama",
       attributes: {
-        tosUri: "https://sidre.tr/kullanim-sartlari",
+        tosUri: "https://ornek.example/kullanim-sartlari",
         policyUri: "javascript:alert(1)",
       },
     },
     oauth: {
       code: "tek-kullanimlik",
-      client: "sidre-tr",
+      client: "ornek-uygulama",
       clientScopesRequested: [
         { consentScreenText: messageRef("profileScopeConsentText") },
         { consentScreenText: messageRef("emailScopeConsentText") },
@@ -397,9 +397,9 @@ describe("login-oauth-grant.ftl (consent)", () => {
   };
 
   it("names the app and what it will see, in the scopes' consent texts", async () => {
-    page = await renderPage("login-oauth-grant.ftl", "tr", sidre as never);
+    page = await renderPage("login-oauth-grant.ftl", "tr", partner as never);
     expect(q("h1")?.textContent).toBe(
-      "Bilgilerin sidre.tr ile paylaşılsın mı?"
+      "Bilgilerin Örnek Uygulama ile paylaşılsın mı?"
     );
     expect(
       [...document.querySelectorAll("#kc-oauth li")].map((li) => li.textContent)
@@ -411,7 +411,7 @@ describe("login-oauth-grant.ftl (consent)", () => {
   });
 
   it("posts the code with İzin ver or Vazgeç, under the names Keycloak reads", async () => {
-    page = await renderPage("login-oauth-grant.ftl", "tr", sidre as never);
+    page = await renderPage("login-oauth-grant.ftl", "tr", partner as never);
     const form = q<HTMLFormElement>("form#kc-oauth");
     expect(form?.getAttribute("action")).toBe("https://auth.example/oauth");
     expect(form?.method).toBe("post");
@@ -423,7 +423,7 @@ describe("login-oauth-grant.ftl (consent)", () => {
   });
 
   it("links the app's terms in a new tab and drops a link that is not http(s)", async () => {
-    page = await renderPage("login-oauth-grant.ftl", "tr", sidre as never);
+    page = await renderPage("login-oauth-grant.ftl", "tr", partner as never);
     const links = [
       ...document.querySelectorAll<HTMLAnchorElement>("#kc-oauth a"),
     ];
@@ -436,9 +436,9 @@ describe("login-oauth-grant.ftl (consent)", () => {
   });
 
   it("reads right to left in Arabic", async () => {
-    page = await renderPage("login-oauth-grant.ftl", "ar", sidre as never);
+    page = await renderPage("login-oauth-grant.ftl", "ar", partner as never);
     expect(document.documentElement.dir).toBe("rtl");
-    expect(q("h1")?.textContent).toBe("هل تشارك بياناتك مع sidre.tr؟");
+    expect(q("h1")?.textContent).toBe("هل تشارك بياناتك مع Örnek Uygulama؟");
     expect(q('button[name="accept"]')?.textContent).toBe("السماح");
   });
 });

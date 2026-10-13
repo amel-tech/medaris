@@ -390,14 +390,14 @@ describe("ConsentForm", () => {
       <ConsentForm
         action="/oauth"
         code={{ name: "code", value: "abc" }}
-        lead="sidre.tr şunları görecek:"
+        lead="Örnek Uygulama şunları görecek:"
         scopes={[
           { id: "email", text: "E-posta adresin" },
           { id: "gender", text: "Cinsiyetin" },
         ]}
         links={{
           intro: "Nasıl kullanıyor:",
-          items: [{ href: "https://sidre.tr/sartlar", label: "Şartlar" }],
+          items: [{ href: "https://ornek.example/sartlar", label: "Şartlar" }],
           newTabNote: "Yeni sekmede açılır.",
         }}
         accept={{ name: "accept", label: "İzin ver" }}
@@ -411,7 +411,7 @@ describe("ConsentForm", () => {
     expect(
       host.querySelector(`#${list.getAttribute("aria-labelledby")}`)
         ?.textContent
-    ).toBe("sidre.tr şunları görecek:");
+    ).toBe("Örnek Uygulama şunları görecek:");
     expect(
       [...list.querySelectorAll("li")].map((li) => li.textContent)
     ).toEqual(["E-posta adresin", "Cinsiyetin"]);

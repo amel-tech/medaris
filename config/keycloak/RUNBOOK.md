@@ -244,8 +244,9 @@ apps log `@medaris/auth: session store unavailable` at most every 30 s.
 and a user may change it, as in tedris. The `gender` client scope puts it into
 the ID token, the access token and userinfo as the `gender` claim; it is a
 default scope of `tedris`, `nizam` and `nazar` and an optional scope of every
-client created after it (`defaultOptionalClientScopes`), so `sidre-tr` asks
-for it with `scope=openid profile email gender` and its consent page lists it.
+client created after it (`defaultOptionalClientScopes`), so a partner
+application's client asks for it with `scope=openid profile email gender` and
+its consent page lists it.
 Keycloak's own `profile` scope also maps a `gender` attribute; the package
 removes that mapper, otherwise every client that gets `profile` would receive
 the gender without asking for it, and the consent page would not say so.
@@ -308,12 +309,12 @@ When the order is broken:
   sent to "Profilini tamamla" at the next sign-in and asked for the gender
   again, including everyone who already gave it in tedris.
 - **The scope before the copy and the profile**: harmless for the tokens (an
-  empty attribute is no claim), but `sidre-tr` asks for a gender most users
-  do not have in Keycloak yet.
+  empty attribute is no claim), but a partner application asks for a gender
+  most users do not have in Keycloak yet.
 
 `amel-tech-dev` is not provisioned from here: the attribute, the scope and
 the `profile` mapper change are made there by hand, in the same order, when
-the dev apps need them. The `sidre-tr` client is not in this package either;
-whoever creates it sets **Consent required** on, and it gets `gender` as an
-optional scope by itself.
+the dev apps need them. A partner application's client is not in this
+package either; whoever creates it sets **Consent required** on, and it gets
+`gender` as an optional scope by itself.
 

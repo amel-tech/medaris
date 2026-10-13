@@ -478,8 +478,9 @@ describe("Keycloak configuration package (e2e)", () => {
     });
 
     // The gender scope: by default for the web client, offered to every
-    // client created from now on (sidre-tr), and the only one that maps the
-    // attribute; Keycloak's own profile scope carried a gender mapper too.
+    // client created from now on (a partner application's), and the only one
+    // that maps the attribute; Keycloak's own profile scope carried a gender
+    // mapper too.
     expect(web.defaultClientScopes).toContain("gender");
     expect(web.defaultClientScopes).toEqual(
       expect.arrayContaining(["profile", "email", "roles"])

@@ -195,7 +195,7 @@ if [[ $parsed -eq 1 ]]; then
   fi
   if [[ -f "$KC_CONFIG_DIR/realms/_base.json" ]] &&
     ! jq -e '(.defaultOptionalClientScopes // []) | index("gender")' "$KC_CONFIG_DIR/realms/_base.json" >/dev/null; then
-    problem "realms/_base.json: defaultOptionalClientScopes must include gender, so a new client (sidre-tr) can ask for it"
+    problem "realms/_base.json: defaultOptionalClientScopes must include gender, so a new client (a partner application's) can ask for it"
   fi
 
   # Every scope a realm or client file assigns is one of the files above or

@@ -13,22 +13,22 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 /**
- * What sidre.tr asks for when it signs a user in through its client
- * `sidre-tr`: the profile, the e-mail address and the gender, with its own
- * terms and privacy policy linked.
+ * What a partner application asks for when it signs a user in through its
+ * client (here `ornek-uygulama`): the profile, the e-mail address and the
+ * gender, with its own terms and privacy policy linked.
  */
-const sidre = {
+const partner = {
   client: {
-    clientId: "sidre-tr",
-    name: "sidre.tr",
+    clientId: "ornek-uygulama",
+    name: "Örnek Uygulama",
     attributes: {
-      tosUri: "https://sidre.tr/kullanim-sartlari",
-      policyUri: "https://sidre.tr/gizlilik",
+      tosUri: "https://ornek.example/kullanim-sartlari",
+      policyUri: "https://ornek.example/gizlilik",
     },
   },
   oauth: {
     code: "kod",
-    client: "sidre-tr",
+    client: "ornek-uygulama",
     clientScopesRequested: [
       { consentScreenText: messageRef("profileScopeConsentText") },
       { consentScreenText: messageRef("emailScopeConsentText") },
@@ -59,26 +59,26 @@ export const DefaultEnglish: Story = {
   ),
 };
 
-export const SidreTurkish: Story = {
+export const PartnerTurkish: Story = {
   render: () => (
     <KcPageStory
-      kcContext={{ ...sidre, locale: { currentLanguageTag: "tr" } }}
+      kcContext={{ ...partner, locale: { currentLanguageTag: "tr" } }}
     />
   ),
 };
 
-export const SidreArabic: Story = {
+export const PartnerArabic: Story = {
   render: () => (
     <KcPageStory
-      kcContext={{ ...sidre, locale: { currentLanguageTag: "ar" } }}
+      kcContext={{ ...partner, locale: { currentLanguageTag: "ar" } }}
     />
   ),
 };
 
-export const SidreEnglish: Story = {
+export const PartnerEnglish: Story = {
   render: () => (
     <KcPageStory
-      kcContext={{ ...sidre, locale: { currentLanguageTag: "en" } }}
+      kcContext={{ ...partner, locale: { currentLanguageTag: "en" } }}
     />
   ),
 };

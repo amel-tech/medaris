@@ -32,7 +32,7 @@ const doMakeUserConfirmPassword = true;
  * verification, the info page the verification link ends on, the profile and
  * terms required actions, both halves of password reset, the expired-page and
  * error pages, and the sign-out confirmation; and the consent page an app
- * outside Medaris (sidre.tr) asks through. Login, Register, the profile page,
+ * outside Medaris (a partner application) asks through. Login, Register, the profile page,
  * Info, the update-password page, the error pages, the sign-out page and the
  * consent page are on the unified design (MDRS-155, `@medaris/ui/giris`); the
  * rest still draw their bodies with the shadcn kit inside the same card.

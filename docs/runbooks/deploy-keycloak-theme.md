@@ -59,7 +59,9 @@ Do it once, before the first `keycloak-theme` release after this change.
      `/opt/keycloak/providers/madrasah-theme.jar`. Keycloak loads every
      `*.jar` in `providers/`, so they would load an old copy of the theme next
      to the one baked into the image;
-   * **keep** the `sidre-theme.jar` mount: it belongs to another product;
+   * the mount of a second product's theme JAR
+     (`/opt/keycloak/providers/<name>.jar`): removed by the owner's word on
+     2026-10-13;
    * keep the command and the environment as they are. The command must be
      `start` (or `start-dev`), not `start --optimized`: Keycloak picks up the
      baked provider when it re-augments at `start`, and `--optimized` skips
@@ -214,7 +216,7 @@ On the server, after a deploy:
 ```bash
 docker ps --format '{{.Names}} {{.Image}}' | grep -i keycloak     # ghcr.io/amel-tech/medaris-keycloak:stable
 docker exec <container> /opt/keycloak/bin/kc.sh --version         # the pinned version
-docker exec <container> ls -l /opt/keycloak/providers              # medaris-keycloak-theme.jar, sidre-theme.jar; no keycloak-theme.jar, no madrasah-theme.jar
+docker exec <container> ls -l /opt/keycloak/providers              # only medaris-keycloak-theme.jar; no keycloak-theme.jar, no madrasah-theme.jar
 ```
 
 Then:

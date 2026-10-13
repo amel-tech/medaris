@@ -525,8 +525,9 @@ run_plan() {
   done < <(client_scope_files)
 
   # --- the realm's default client scopes ------------------------------------
-  # What every client created from now on gets (sidre-tr gets `gender` as
-  # optional this way). "Must include", see without_scope_lists.
+  # What every client created from now on gets (a partner application's
+  # client gets `gender` as optional this way). "Must include", see
+  # without_scope_lists.
   local realm_have
   realm_have=$(jq -n \
     --argjson d "$(api GET "/realms/$KC_REALM/default-default-client-scopes" | jq -c '[.[].name]')" \
