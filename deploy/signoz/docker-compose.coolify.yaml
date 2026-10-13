@@ -9,6 +9,8 @@
 # - Coolify-only keys, stripped by Coolify before `docker compose up`:
 #   `exclude_from_hc` (one-shot containers do not mark the app unhealthy).
 #   For a local run use local/compose.sh, which strips them the same way.
+# - Labels on otel-collector restrict the OTLP domain to OTLP_ALLOWED_SOURCES,
+#   a Coolify variable without which Compose refuses to start.
 # - No YAML anchors or merge keys: Coolify's parser does not expand them.
 # - Bind sources are relative to the base directory; Coolify copies it to the
 #   server only with "Preserve Repository During Deployment" enabled.
@@ -238,6 +240,28 @@ services:
     ports:
       - "127.0.0.1:4317:4317" # OTLP gRPC
       - "127.0.0.1:4318:4318" # OTLP HTTP
+    # Coolify's proxy serves otlp.medaris.net only to the addresses in
+    # OTLP_ALLOWED_SOURCES (README.md, "OTLP endpoint"). Coolify adds every
+    # middleware defined here to its own router for the domain; the
+    # signoz-otlp router outranks that one and sends HTTPS to OTLP/HTTP on
+    # 4318, and signoz-otlp-http only redirects port 80 to HTTPS. Compose
+    # refuses to start without the variable. Coolify passes it only with
+    # "Escape special characters in labels" off.
+    labels:
+      - traefik.http.middlewares.signoz-otlp-allowlist.ipallowlist.sourcerange=${OTLP_ALLOWED_SOURCES:?set OTLP_ALLOWED_SOURCES in Coolify, see README.md}
+      - traefik.http.routers.signoz-otlp.rule=Host(`otlp.medaris.net`)
+      - traefik.http.routers.signoz-otlp.priority=100
+      - traefik.http.routers.signoz-otlp.entrypoints=https
+      - traefik.http.routers.signoz-otlp.tls=true
+      - traefik.http.routers.signoz-otlp.tls.certresolver=letsencrypt
+      - traefik.http.routers.signoz-otlp.middlewares=signoz-otlp-allowlist
+      - traefik.http.routers.signoz-otlp.service=signoz-otlp
+      - traefik.http.services.signoz-otlp.loadbalancer.server.port=4318
+      - traefik.http.routers.signoz-otlp-http.rule=Host(`otlp.medaris.net`)
+      - traefik.http.routers.signoz-otlp-http.priority=100
+      - traefik.http.routers.signoz-otlp-http.entrypoints=http
+      - traefik.http.routers.signoz-otlp-http.middlewares=redirect-to-https
+      - traefik.http.routers.signoz-otlp-http.service=noop@internal
     volumes:
       - type: bind
         source: ./config/ingester/ingester.yaml

@@ -36,7 +36,7 @@ the rollback file and `legacy/` can be deleted.
 | `clickhouse` | `clickhouse/clickhouse-server:25.12.5` | Telemetry store, volume `clickhouse` | 2560m / 2 (owner-approved) | 1.25 GiB, 116 % CPU |
 | `zookeeper-1` | `signoz/zookeeper:3.7.1` | ClickHouse coordination (replicated tables, `ON CLUSTER` DDL), volume `zookeeper-1` | 512m / 0.5, heap 256 MB | 170 MiB |
 | `signoz` | `signoz/signoz:v0.143.0` | UI, API, alerting; users, dashboards and alerts in SQLite on volume `sqlite` | 1g / 1 | 94 MiB |
-| `otel-collector` | `signoz/signoz-otel-collector:v0.144.11` | OTLP receiver on 4317 (gRPC) and 4318 (HTTP), host ports on 127.0.0.1 only; writes to ClickHouse | 768m / 1 | 70 MiB |
+| `otel-collector` | `signoz/signoz-otel-collector:v0.144.11` | OTLP receiver on 4317 (gRPC) and 4318 (HTTP), host ports on 127.0.0.1 only; 4318 behind `otlp.medaris.net` for `OTLP_ALLOWED_SOURCES` only; writes to ClickHouse | 768m / 1 | 70 MiB |
 | `signoz-telemetrystore-migrator` | `signoz/signoz-otel-collector:v0.144.11` | One-shot ClickHouse schema migrations, every deploy | 256m / 0.5 | — |
 | `init-clickhouse` | `clickhouse/clickhouse-server:25.12.5` | One-shot: downloads the `histogramQuantile` UDF binary into volume `user-scripts` | 256m / 0.5 | — |
 
@@ -174,12 +174,121 @@ keep to letters and digits for the same reason.
 
 ### OTLP endpoint
 
-The apps send OTLP over HTTP through the collector's Coolify domain,
-`otlp.medaris.net` (service `otel-collector`, see
-[Moving the Coolify application](#moving-the-coolify-application)): Coolify's
-proxy terminates TLS on 443 and reaches the container over the stack's
-network. On 2026-10-12, `https://otlp.medaris.net/v1/traces` through the proxy
-answered 200.
+The apps send OTLP over HTTP (`http/protobuf`) to `https://otlp.medaris.net`,
+port 443: the collector's Coolify domain (service `otel-collector`, see
+[Moving the Coolify application](#moving-the-coolify-application)). Coolify's
+proxy, Traefik, terminates TLS and forwards to the collector's OTLP/HTTP
+receiver on container port 4318 over the stack's network. Each app's endpoint
+and protocol are its own Coolify settings; changing them is a separate step,
+not part of this directory.
+
+**Allow-list.** The domain serves only the addresses in the Coolify variable
+`OTLP_ALLOWED_SOURCES`: the servers the apps run on, mdrs1 and mdrs2. Any
+other client gets `403 Forbidden` from Traefik, and its request does not reach
+the collector.
+
+- Format: IPv4 or IPv6 addresses or CIDR ranges, comma-separated, no spaces,
+  for example `192.0.2.10/32,198.51.100.20/32` (documentation addresses; the
+  real ones live in Coolify only). A bare address is a single host. The
+  addresses are the ones mdrs3 sees the servers connect from, their public
+  outgoing addresses.
+- Every compose file here refuses to start without it (`required variable
+  OTLP_ALLOWED_SOURCES is missing a value`). Nothing falls back to allowing
+  everyone.
+- Coolify's *Escape special characters in labels?* (application, General) must
+  be off. It is on by default, and then Coolify writes every `$` in a label as
+  `$$`, so Compose hands `${OTLP_ALLOWED_SOURCES…}` to Traefik as literal text.
+  Traefik rejects that middleware and disables both routers that use it: the
+  domain answers 404 to everyone, closed but useless (measured, below).
+
+The labels on `otel-collector`, identical in every compose file:
+
+| Labels | What they do |
+| --- | --- |
+| middleware `signoz-otlp-allowlist` | Traefik's `ipAllowList`, `sourceRange` from the variable. Coolify adds every middleware defined in a service's labels to the HTTPS router it generates for that service's domain, so Coolify's own router carries it too. |
+| router `signoz-otlp` | `Host(otlp.medaris.net)` on Coolify's `https` entrypoint, TLS from the `letsencrypt` resolver like Coolify's routers, the allow-list, and the collector's port 4318. Priority 100: Coolify sets none, so Traefik ranks its routers by rule length (43 for this domain), and `signoz-otlp` takes every HTTPS request for the domain. |
+| router `signoz-otlp-http` | The same host on port 80, priority 100, only Coolify's `redirect-to-https` (307). Port 80 never forwards to the collector, whatever the application's *Force HTTPS* setting. |
+
+Why a router of our own and not only the middleware on Coolify's router:
+
+- Coolify takes the target port from the domain (`https://otlp.medaris.net:4317`
+  becomes `loadbalancer.server.port=4317`, the gRPC receiver) and Traefik
+  talks plain HTTP/1.1 to it, which a gRPC server does not accept. Locally,
+  a router built that way answered an OTLP/HTTP `POST /v1/traces` with 500
+  and the collector received nothing; the same router with `:4318` answered
+  200.
+  `signoz-otlp` fixes the port in this file, whatever the domain field says.
+- Coolify v4.1.1 puts label middlewares on its HTTPS router only. Its port-80
+  router redirects while *Force HTTPS* is on (the default) and forwards
+  without the allow-list when it is off. `signoz-otlp-http` takes that choice
+  away.
+
+That a `POST /v1/traces` through the domain answered 200 on 2026-10-12 is not
+explained by Coolify's source for a domain ending in `:4317`; the labels of the
+running container on mdrs3 were not looked at.
+
+Source read on 2026-10-13, at Coolify's tag v4.1.1 and on its `main`:
+`applicationParser` (`bootstrap/helpers/parsers.php`) keeps the labels of the
+compose file, appends `defaultLabels` (both escaped when the setting above is
+on), then the output of `fqdnLabelsForTraefik` (`bootstrap/helpers/docker.php`),
+which names the routers `https-0-<uuid>-otel-collector` and
+`http-0-<uuid>-otel-collector` (on `main` the service name gains a hash
+suffix), sets entrypoints `https` and `http`, `tls.certresolver=letsencrypt`,
+no priority, and on the HTTPS router the middlewares `gzip` plus every one it
+finds in the service's labels. mdrs3 ran Coolify 4.1.1 on 2026-10-12 (the
+version Coolify stamps on the environment variables it creates), and its
+proxy configuration names `traefik:v3.1`, detected as 3.1.7 (Coolify API,
+read on 2026-10-12); Coolify v4.1.1 itself starts a new proxy on
+`traefik:v3.6`. Every Traefik 3 has `ipAllowList`.
+
+**Client address.** Traefik checks the address of the TCP connection: with no
+`ipStrategy`, `X-Forwarded-For` is not consulted, so a client cannot claim
+another address. That is the client's own address because
+`otlp.medaris.net` resolves straight to mdrs3 and Coolify's Traefik is the
+first hop; Docker's NAT rules for the published port 443 keep the IPv4 source
+address. None of this was checked on mdrs3, nor these two limits:
+
+- Over IPv6, if the proxy's Docker network has no IPv6, Docker's userland
+  proxy accepts the connection and Traefik sees a Docker gateway address,
+  which the allow-list refuses. This only matters if the domain gets an AAAA
+  record.
+- If anything is ever put in front of Traefik (a CDN, a load balancer, a
+  tunnel), every request arrives from that hop. The middleware would then need
+  `ipstrategy.depth=1` (the address the hop appends to `X-Forwarded-For`),
+  and Coolify's proxy configuration would have to trust that header from the
+  hop's addresses only (`forwardedHeaders.trustedIPs` on the entrypoint):
+  Traefik deletes `X-Forwarded-For` from untrusted peers, and with an empty
+  header every request would be refused.
+
+**Measured locally** on 2026-10-13, with Traefik 3.1.7 and 3.6.11 run with
+mdrs3's proxy flags (its self-signed default certificate instead of Let's
+Encrypt), the real collector image with a minimal OTLP-to-debug config, and
+the collector's labels as Coolify v4.1.1's source assembles them for this
+domain, ours included. Clients on 203.0.113.0/24 connected to Traefik
+directly. Both versions behaved the same:
+
+- `OTLP_ALLOWED_SOURCES=203.0.113.21/32`: from .21, `POST /v1/traces` answered
+  200 and the span showed up in the collector's output; from .22 and .23, 403,
+  nothing in the collector, and Traefik logged `Rejecting IP`. Over port 80
+  both got a 307 to HTTPS and nothing reached the collector.
+- `203.0.113.21/32,203.0.113.23/32`: .23 got 200, .22 got 403; .21 got 504,
+  see the next paragraph.
+- Escaping on: Traefik disabled both routers (`cannot parse CIDRs`), every
+  client got 404 and nothing reached the collector; port 80 still redirected.
+- Without the variable, `docker compose up` exited 1 and created nothing, and
+  `docker compose config` failed the same way for each of the seven files.
+
+**Not addressed here.** Coolify attaches every service to the application's
+network (named after its uuid) besides the file's `signoz-net`, and its proxy
+joins only the former. With two networks and no `traefik.docker.network`
+label, Traefik picks one of a container's addresses at random, per service,
+each time it rebuilds its configuration (any container event on the host).
+Locally the services sometimes pointed at the `signoz-net` address, which the
+proxy cannot reach, and those requests got 504 after the allow-list had let
+them through. The same holds for `monitoring.medaris.net` and held for the
+fork's stack. A `traefik.docker.network` label naming the application's
+network on `otel-collector` and `signoz` would pin the address; that is left
+for a separate change.
 
 Every compose file here binds the collector's host ports 4317 (gRPC) and 4318
 (HTTP) to 127.0.0.1; they stay only for tooling on mdrs3, such as sending a
@@ -212,7 +321,8 @@ unedited.
   credentials in `config/clickhouse/config-0-0.yaml`, user and
   password in the five exporter DSNs of `config/ingester/ingester.yaml`, and
   in the DSNs of the compose file;
-- the OTLP host ports bound to 127.0.0.1 ([OTLP endpoint](#otlp-endpoint));
+- the OTLP host ports bound to 127.0.0.1 and the proxy labels on
+  `otel-collector` ([OTLP endpoint](#otlp-endpoint));
 - volume keys `clickhouse`, `sqlite`, `zookeeper-1` (see above);
 - Coolify adaptations, resource limits, ZooKeeper heap;
 - the two global profiler settings above (in the casting, so also in `pours/`);
@@ -344,9 +454,11 @@ differed only in not yet having the profiler override.
    started and accepted `default` without a password.
 
 Not proven locally: anything Coolify does (source switch, volume names,
-domains, Traefik and TLS in front of 8080 and 4317, generating
+domains, Traefik and TLS in front of 8080, generating
 `SERVICE_PASSWORD_CLICKHOUSE`), the duration of the migrations on production's
-data, and resource use on mdrs3.
+data, and resource use on mdrs3. The OTLP domain's routing and allow-list were
+tested against Traefik with the labels Coolify's source generates, not through
+Coolify ([OTLP endpoint](#otlp-endpoint)).
 
 ## Moving the Coolify application
 
@@ -362,8 +474,15 @@ except the backup.
      and *Base Directory* (`/deploy/docker`) for the rollback.
 2. **Back up** (next section). The ClickHouse upgrades rewrite its data in
    place and cannot be undone without the backup.
-3. **Variable**: add `SIGNOZ_JWT_SECRET` to the application's environment
-   variables, value from `openssl rand -hex 32` ([JWT secret](#jwt-secret)).
+3. **Variables and one setting**, all before the reload in the next step:
+   - add `SIGNOZ_JWT_SECRET` to the application's environment variables,
+     value from `openssl rand -hex 32` ([JWT secret](#jwt-secret));
+   - add `OTLP_ALLOWED_SOURCES`, the addresses of mdrs1 and mdrs2 in the
+     format of [OTLP endpoint](#otlp-endpoint). Coolify does not create it on
+     its own: its parser (v4.1.1 and `main`) picks variables up from
+     `environment:` only, and this one sits in a label;
+   - turn off *Escape special characters in labels?* (General), or Traefik
+     never gets the addresses and the domain answers 404.
 4. **Source**: repository `https://github.com/amel-tech/medaris`, branch
    `main`, base directory `/deploy/signoz`, Docker Compose location
    `/docker-compose.step1-v0.92.1.yaml`. The repository is public, so the
@@ -371,7 +490,9 @@ except the backup.
 5. **Domains**, unchanged: service `signoz` → `https://monitoring.medaris.net:8080`,
    service `otel-collector` → `https://otlp.medaris.net:4317`. The service
    names did not change, so Coolify should keep them; check that both are
-   still filled in after the reload.
+   still filled in after the reload. The `:4317` only feeds Coolify's own
+   router for the collector, which `signoz-otlp` outranks
+   ([OTLP endpoint](#otlp-endpoint)).
 6. **Persistent storage**: after the reload the list should show the existing
    `ogwc4g0kwko40wss884kow4c_clickhouse`, `…_sqlite` and `…_zookeeper-1` and a
    new `…_user-scripts`. If a volume shows up under any other name, stop: the
@@ -398,6 +519,16 @@ docker ps -a --filter "name=$U" --format '{{.Names}}\t{{.Image}}\t{{.Status}}'
 docker logs --tail 20 "$(c schema-migrator-async)"            # steps 1–2
 docker logs --tail 20 "$(c signoz-telemetrystore-migrator)"   # steps 3–6
 docker exec "$(c clickhouse)" clickhouse-client -q 'SELECT version()'  # step 6: password from the container's environment
+```
+
+And the OTLP domain, once from mdrs1 or mdrs2 and once from any other
+machine:
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' -X POST -H 'Content-Type: application/json' -d '{}' https://otlp.medaris.net/v1/traces
+# mdrs1, mdrs2: 200 (an empty export; collector v0.144.11 answered it with 200 locally)
+# anywhere else: 403
+# 404 from everywhere: label escaping is still on; 504: see "Not addressed here" under OTLP endpoint
 ```
 
 Locally each step settled (every service healthy, every one-shot container
@@ -481,10 +612,15 @@ users, dashboard, alert and telemetry.
    same stack (v0.91.0, collector v0.128.2, ClickHouse 24.1.2) with the
    identical `signoz/zookeeper:3.7.1`.
 
+   The rollback file keeps the collector's host ports on loopback and the
+   [OTLP endpoint](#otlp-endpoint) labels, so it needs `OTLP_ALLOWED_SOURCES`
+   like the other files. The fork's own file has neither.
+
 ## Running it locally
 
 ```bash
 export SERVICE_PASSWORD_CLICKHOUSE=$(openssl rand -hex 16)   # Coolify's job on the server
+export OTLP_ALLOWED_SOURCES=127.0.0.1/32   # every file requires it; no proxy runs locally
 deploy/signoz/local/compose.sh docker-compose.coolify.yaml up -d
 deploy/signoz/local/compose.sh docker-compose.coolify.yaml ps
 # UI on http://127.0.0.1:8081, OTLP on 127.0.0.1:4317 / 4318

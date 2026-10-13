@@ -234,6 +234,23 @@ services:
     ports:
       - "127.0.0.1:4317:4317"
       - "127.0.0.1:4318:4318"
+    # The proxy labels of docker-compose.coolify.yaml: otlp.medaris.net
+    # serves only OTLP_ALLOWED_SOURCES (README.md, "OTLP endpoint").
+    labels:
+      - traefik.http.middlewares.signoz-otlp-allowlist.ipallowlist.sourcerange=${OTLP_ALLOWED_SOURCES:?set OTLP_ALLOWED_SOURCES in Coolify, see README.md}
+      - traefik.http.routers.signoz-otlp.rule=Host(`otlp.medaris.net`)
+      - traefik.http.routers.signoz-otlp.priority=100
+      - traefik.http.routers.signoz-otlp.entrypoints=https
+      - traefik.http.routers.signoz-otlp.tls=true
+      - traefik.http.routers.signoz-otlp.tls.certresolver=letsencrypt
+      - traefik.http.routers.signoz-otlp.middlewares=signoz-otlp-allowlist
+      - traefik.http.routers.signoz-otlp.service=signoz-otlp
+      - traefik.http.services.signoz-otlp.loadbalancer.server.port=4318
+      - traefik.http.routers.signoz-otlp-http.rule=Host(`otlp.medaris.net`)
+      - traefik.http.routers.signoz-otlp-http.priority=100
+      - traefik.http.routers.signoz-otlp-http.entrypoints=http
+      - traefik.http.routers.signoz-otlp-http.middlewares=redirect-to-https
+      - traefik.http.routers.signoz-otlp-http.service=noop@internal
     volumes:
       - type: bind
         source: ./legacy/otel-collector-config.v0.91.yaml
