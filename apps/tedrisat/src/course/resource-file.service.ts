@@ -9,7 +9,6 @@ import { UploadStore } from "../storage/upload-store";
 import { CourseRepository } from "./course.repository";
 import type { ILessonResource, IResource } from "./course.repository.interface";
 import { CourseService } from "./course.service";
-import { CourseNotFoundError } from "./errors/course-not-found.error";
 import { LessonNotFoundError } from "./errors/lesson-not-found.error";
 import { ResourceFileNotFoundError } from "./errors/resource-file-not-found.error";
 
@@ -81,7 +80,10 @@ export class ResourceFileService {
     fields: IResourceFileFields
   ): Promise<{ resource: ILessonResource; courseVersion: number }> {
     this.storage.assertConfigured();
-    const courseId = await this.writableLessonCourse(lessonId, user);
+    const courseId = await this.courses.findWritableLessonCourse(
+      lessonId,
+      user
+    );
     const accepted = acceptUpload(file);
     return this.uploads.store(
       lessonResourceKey(this.storage.keyPrefix(), courseId, lessonId),
@@ -146,32 +148,5 @@ export class ResourceFileService {
       response,
       () => new ResourceFileNotFoundError(resourceId)
     );
-  }
-
-  /**
-   * The course of a live celse the caller may write to. A hidden celse, or one
-   * of a course they may not see, is not found, before anything is stored;
-   * the write checks the celse again under the course's lock.
-   */
-  private async writableLessonCourse(
-    lessonId: string,
-    user: AuthenticatedUser
-  ): Promise<string> {
-    const courseId = await this.courseRepo.findLessonCourseId(lessonId);
-    if (!courseId) throw new LessonNotFoundError(lessonId);
-    let live = false;
-    try {
-      const detail = await this.courses.getDetail(courseId, user);
-      live = detail.weeks.some((week) =>
-        week.lessons.some((lesson) => lesson.id === lessonId)
-      );
-    } catch (error) {
-      if (error instanceof CourseNotFoundError) {
-        throw new LessonNotFoundError(lessonId);
-      }
-      throw error;
-    }
-    if (!live) throw new LessonNotFoundError(lessonId);
-    return courseId;
   }
 }

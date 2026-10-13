@@ -1,11 +1,17 @@
 import { Injectable } from "@nestjs/common";
-import { and, asc, count, desc, eq, inArray, isNull } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { displayNameOf } from "../assignment/assignment.service";
 import type { Tx } from "../course/course-purge";
+import { EnrollmentStatus } from "../course/domain/enrollment-status.enum";
 import { LessonNotFoundError } from "../course/errors/lesson-not-found.error";
 import { DatabaseService } from "../database/database.service";
 import { auditLog } from "../database/schema/audit.schema";
-import { courseWeeks, lessons } from "../database/schema/course.schema";
+import {
+  courseWeeks,
+  enrollments,
+  lessons,
+} from "../database/schema/course.schema";
+import { lessonAssignments } from "../database/schema/lesson-assignment.schema";
 import {
   lessonSubmissions,
   submissionFiles,
@@ -46,6 +52,24 @@ export interface ILocatedSubmissionFile extends ISubmissionFile {
 }
 
 type Db = DatabaseService["db"] | Tx;
+
+/** Where a celse of the course stands on homework, for its staff. */
+export interface ISessionHandIns {
+  lessonId: string;
+  hasAssignment: boolean;
+  /** Enrolled talebe who handed in on it. */
+  handedInCount: number;
+}
+
+/**
+ * A submission counts as handed in once it holds a note or a file: a talebe
+ * who emptied theirs has handed nothing in. Read where `lesson_submissions`
+ * is in the query.
+ */
+const handedIn = sql<boolean>`(${lessonSubmissions.note} is not null or exists (select 1 from ${submissionFiles} where ${submissionFiles.submissionId} = ${lessonSubmissions.id}))`;
+
+/** Who may hand in, and so who "N / M teslim" counts: ENROLLED or COMPLETED. */
+const SEATED = [EnrollmentStatus.ENROLLED, EnrollmentStatus.COMPLETED];
 
 /**
  * Homework on a celse (MDRS-290). Whose a homework is, is decided here: every
@@ -378,6 +402,100 @@ export class LessonSubmissionRepository {
         }),
       },
     }));
+  }
+
+  /**
+   * The course's live celses the talebe handed homework in on, in programme
+   * order, with when they last changed it: what the course page marks.
+   */
+  async listOwnHandedIn(
+    courseId: string,
+    userId: string
+  ): Promise<{ lessonId: string; updatedAt: Date }[]> {
+    return this.db
+      .select({
+        lessonId: lessonSubmissions.lessonId,
+        updatedAt: lessonSubmissions.updatedAt,
+      })
+      .from(lessonSubmissions)
+      .innerJoin(lessons, eq(lessons.id, lessonSubmissions.lessonId))
+      .innerJoin(courseWeeks, eq(courseWeeks.id, lessons.weekId))
+      .where(
+        and(
+          eq(courseWeeks.courseId, courseId),
+          eq(lessonSubmissions.userId, userId),
+          isNull(lessons.archivedAt),
+          isNull(courseWeeks.archivedAt),
+          handedIn
+        )
+      )
+      .orderBy(asc(courseWeeks.weekNumber), asc(lessons.orderIndex));
+  }
+
+  /**
+   * Every live celse of the course in programme order (`lessonId` narrows it
+   * to one), with whether the course team set homework on it and how many of
+   * the course's enrolled talebe handed in there, and how many enrolled
+   * talebe the course has: Ödevler's "N / M teslim". A submission of
+   * somebody no longer enrolled is listed by `listForCourse` but not counted
+   * here, so N never passes M.
+   */
+  async handInsForCourse(
+    courseId: string,
+    lessonId?: string
+  ): Promise<{ sessions: ISessionHandIns[]; talebeCount: number }> {
+    const live = and(
+      eq(courseWeeks.courseId, courseId),
+      isNull(lessons.archivedAt),
+      isNull(courseWeeks.archivedAt),
+      lessonId ? eq(lessons.id, lessonId) : undefined
+    );
+    const [celses, counts, [seated]] = await Promise.all([
+      this.db
+        .select({ lessonId: lessons.id, assignmentId: lessonAssignments.id })
+        .from(lessons)
+        .innerJoin(courseWeeks, eq(courseWeeks.id, lessons.weekId))
+        .leftJoin(lessonAssignments, eq(lessonAssignments.lessonId, lessons.id))
+        .where(live)
+        .orderBy(
+          asc(courseWeeks.weekNumber),
+          asc(lessons.orderIndex),
+          asc(lessons.id)
+        ),
+      this.db
+        .select({ lessonId: lessonSubmissions.lessonId, n: count() })
+        .from(lessonSubmissions)
+        .innerJoin(lessons, eq(lessons.id, lessonSubmissions.lessonId))
+        .innerJoin(courseWeeks, eq(courseWeeks.id, lessons.weekId))
+        .innerJoin(
+          enrollments,
+          and(
+            eq(enrollments.userId, lessonSubmissions.userId),
+            eq(enrollments.courseId, courseWeeks.courseId),
+            inArray(enrollments.status, SEATED)
+          )
+        )
+        .where(and(live, handedIn))
+        .groupBy(lessonSubmissions.lessonId),
+      this.db
+        .select({ n: count() })
+        .from(enrollments)
+        .where(
+          and(
+            eq(enrollments.courseId, courseId),
+            inArray(enrollments.status, SEATED)
+          )
+        ),
+    ]);
+    const handedInBy = new Map(counts.map((c) => [c.lessonId, c.n]));
+    return {
+      sessions: celses.map((celse) => ({
+        lessonId: celse.lessonId,
+        hasAssignment: celse.assignmentId !== null,
+        handedInCount: handedInBy.get(celse.lessonId) ?? 0,
+      })),
+      talebeCount: seated?.n ?? 0,
+    };
   }
 
   /** A staff download of a homework file, written before the file is sent. */

@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { and, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import {
   courseIdsOfKosk,
+  deleteLessonAssignments,
   deleteLessonResources,
   deleteLessonSubmissions,
   purgeCourses,
@@ -768,8 +769,10 @@ export class ArchiveRepository {
         // A session's own resources (MDRS-286) go with it, a file's object
         // to be removed from storage once this commits (MDRS-287).
         await deleteLessonResources(tx, weekLessonIds, "lesson.purge");
-        // So does the talebe's homework, files and all (MDRS-290).
+        // So does the talebe's homework, files and all (MDRS-290), and the
+        // homework the müderris set on each session.
         await deleteLessonSubmissions(tx, weekLessonIds, "lesson.purge");
+        await deleteLessonAssignments(tx, weekLessonIds, "lesson.purge");
         const removedSessions = (
           await tx
             .delete(lessons)
@@ -798,6 +801,7 @@ export class ArchiveRepository {
           .where(eq(lessonQuestions.lessonId, id));
         await deleteLessonResources(tx, [id], "lesson.purge");
         await deleteLessonSubmissions(tx, [id], "lesson.purge");
+        await deleteLessonAssignments(tx, [id], "lesson.purge");
         await tx.delete(lessons).where(eq(lessons.id, id));
         const [week] = await tx
           .select({ courseId: courseWeeks.courseId })

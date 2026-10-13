@@ -6,9 +6,11 @@ import type {
   WeekResponse,
 } from "@medaris/services/tedrisat";
 import { Badge } from "@medaris/ui/mds/badge";
+import { Icon } from "@medaris/ui/mds/icon";
 import { LessonRow, type LessonType } from "@medaris/ui/mds/lesson-row";
 import { WeekAccordion, Weeks } from "@medaris/ui/mds/week-accordion";
 import { useLocale, useTranslations } from "next-intl";
+import { type AssignmentViewer, assignmentMark } from "../assignment-marks";
 import {
   type CourseViewState,
   hasEnded,
@@ -37,18 +39,24 @@ const KIT_TYPES: Record<string, LessonType> = {
  * sees the programme; whose lessons open is the API's call (`contentLocked`),
  * so a locked body draws locked rows and the sample session is the one row a
  * visitor can follow. A week that has not begun says when it opens.
+ *
+ * A celse with homework carries an "Ödev" mark, and for a talebe who has not
+ * handed it in the warning "Ödev teslim edilmedi" (`assignmentMark`).
  */
 export const CourseProgramme = ({
   course,
   state,
   now,
   openWeeks,
+  homework = { mayHandIn: false, handedIn: null },
 }: {
   course: CourseDetailResponse;
   state: CourseViewState;
   now: number;
   /** Weeks open at first, instead of the sample and next-session weeks. */
   openWeeks?: number[];
+  /** Who looks at the homework marks, and where they handed in. */
+  homework?: AssignmentViewer;
 }) => {
   const t = useTranslations("tedris.CoursePage");
   const locale = useLocale();
@@ -74,6 +82,7 @@ export const CourseProgramme = ({
     const sample = !seat && lesson.isPreview;
     const cancelled = isCancelled(lesson);
     const current = markedId === lesson.id;
+    const mark = assignmentMark(lesson, homework);
     return (
       <LessonRow
         key={lesson.id}
@@ -118,6 +127,22 @@ export const CourseProgramme = ({
         trailing={
           cancelled ? (
             <Badge variant="outline">{t("cancelledBadge")}</Badge>
+          ) : mark === "pending" ? (
+            <Badge
+              variant="warning"
+              icon={<Icon name="note" size="sm" />}
+              data-testid="assignment-mark"
+            >
+              {t("assignmentPending")}
+            </Badge>
+          ) : mark === "set" ? (
+            <Badge
+              variant="secondary"
+              icon={<Icon name="note" size="sm" />}
+              data-testid="assignment-mark"
+            >
+              {t("assignmentBadge")}
+            </Badge>
           ) : undefined
         }
       />

@@ -393,6 +393,13 @@
       "when": 1791779724830,
       "tag": "0059_lesson_submissions",
       "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1791825901080,
+      "tag": "0060_lesson_assignments",
+      "breakpoints": true
     }
   ]
 }

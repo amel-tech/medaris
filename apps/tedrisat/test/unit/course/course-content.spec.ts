@@ -214,3 +214,60 @@ describe("the recording release time under the content rule (MDRS-288)", () => {
     }
   });
 });
+
+/**
+ * The homework a müderris sets on a celse is course content as a whole: a
+ * content reader is sent it apart from the resources, and everyone else is
+ * not told whether the celse has any, a sample session included.
+ */
+describe("a session's homework under the content rule", () => {
+  const assignment = {
+    id: "a1",
+    lessonId: "plain",
+    description: "Birinci babı çekin.",
+    files: [
+      {
+        id: "f1",
+        name: "Yönerge.pdf",
+        contentType: "application/pdf",
+        sizeBytes: 1200,
+        createdAt: new Date("2026-10-12T09:00:00Z"),
+        downloadUrl: "/lessons/plain/assignment/files/f1",
+      },
+    ],
+    createdAt: new Date("2026-10-12T09:00:00Z"),
+    updatedAt: new Date("2026-10-12T09:00:00Z"),
+  };
+  const course = {
+    inPerson: false,
+    weeks: [
+      {
+        id: "w1",
+        courseId: "c1",
+        weekNumber: 1,
+        title: "Hafta 1",
+        summary: null,
+        orderIndex: 0,
+        lessons: [
+          { ...lesson("plain", null), assignment },
+          { ...lesson("none", null), assignment: null },
+          { ...lesson("sample", null), isPreview: true, assignment },
+        ],
+      },
+    ],
+    resources: [],
+  } as unknown as ICourseDetail;
+
+  it("keeps it for a content reader, null where the session has none, never among the resources", () => {
+    const [plain, none] = withContent(course).weeks[0].lessons;
+    expect(plain.assignment).toEqual(assignment);
+    expect(plain.resources).toEqual([]);
+    expect(none.assignment).toBeNull();
+  });
+
+  it("removes the key for everyone else, a sample session included", () => {
+    for (const l of withoutContent(course).weeks[0].lessons) {
+      expect(l).not.toHaveProperty("assignment");
+    }
+  });
+});

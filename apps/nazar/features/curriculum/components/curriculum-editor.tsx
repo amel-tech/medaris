@@ -33,6 +33,8 @@ import { fileRoutes } from "../../files/files";
 import { linkProblem, planHref } from "../../sessions/sessions";
 import { saveCurriculum } from "../actions";
 import {
+  type AssignmentState,
+  assignmentsOf,
   type CurriculumError,
   type CurriculumForm,
   type CurriculumProblem,
@@ -61,6 +63,7 @@ import {
   weekFacts,
   withLessonResource,
 } from "../curriculum";
+import { LessonAssignmentEditor } from "./lesson-assignment-editor";
 import { LessonResourcesEditor } from "./lesson-resources-editor";
 import { ResourcesEditor } from "./resources-editor";
 
@@ -99,6 +102,12 @@ const TONES = ["laciverd", "bordo", "zumrut", "murekkep"] as const;
  * the next "Kaydet" sends the version the upload answered with. One upload
  * runs at a time, and "Kaydet" waits for it, so no save goes out with a
  * version an upload is about to move.
+ *
+ * Each stored celse has an "Ödev" block of its own under its resources: the
+ * homework the course team sets on it, apart from the resource list
+ * (`LessonAssignmentEditor`). It is stored by its own writes, at once and
+ * under `session.manage`, never by "Kaydet", so it is no unsaved change of
+ * the form; the editor keeps what is stored (`assignments`).
  */
 export function CurriculumEditor({
   course,
@@ -128,6 +137,10 @@ export function CurriculumEditor({
   // upload's row and version (MDRS-287). The save is built against it.
   const [read, setRead] = useState(course);
   const [uploads, setUploads] = useState(0);
+  // Each stored celse's homework, as its own writes left it.
+  const [assignments, setAssignments] = useState<
+    Record<string, AssignmentState | null>
+  >(() => assignmentsOf(course));
 
   const [saved, setSaved] = useState<CurriculumForm>(() => ({
     title: course.title,
@@ -730,6 +743,29 @@ export function CurriculumEditor({
                                 ? onLessonUpload(lesson.id)
                                 : () => undefined,
                             }}
+                            locale={locale}
+                          />
+                          {/* The celse's homework, apart from its resources:
+                              stored by its own writes, never by "Kaydet". */}
+                          <LessonAssignmentEditor
+                            prefix={`lesson-${wi}-${li}`}
+                            lessonId={lesson.id}
+                            assignment={
+                              (lesson.id && assignments[lesson.id]) || null
+                            }
+                            onChange={(next) => {
+                              const id = lesson.id;
+                              if (id) {
+                                setAssignments((all) => ({
+                                  ...all,
+                                  [id]: next,
+                                }));
+                              }
+                            }}
+                            locked={course.contentLocked}
+                            editable={can.sessions}
+                            disabled={saving || refreshing}
+                            upload={{ blocked: uploads > 0, onBusyChange }}
                             locale={locale}
                           />
                           <div className="grid gap-4 sm:grid-cols-3">

@@ -46,12 +46,17 @@ type Step =
  *
  * The panel sits inside the curriculum's form: Enter in its fields uploads
  * rather than saving the curriculum.
+ *
+ * For a celse's homework (`kind="assignment"`) the panel takes the file
+ * alone: a homework file has no name or short line of its own, and it is
+ * added to the homework, never to a resource list.
  */
 export function FileUpload<T>({
   prefix,
   control,
   disabled,
   locale,
+  kind = "resource",
 }: {
   /** the field names, e.g. `resource` or `lesson-1-0-resource` */
   prefix: string;
@@ -59,7 +64,10 @@ export function FileUpload<T>({
   /** the form is locked: saving, or reading the course again */
   disabled: boolean;
   locale: string;
+  /** what the file becomes: a row of a resource list, or a file of a celse's homework */
+  kind?: "resource" | "assignment";
 }) {
+  const resource = kind === "resource";
   const t = useTranslations("nazar");
   const words = t as unknown as Messages;
   const { notify } = useToaster();
@@ -100,7 +108,10 @@ export function FileUpload<T>({
     }
     setStep({ kind: "uploading" });
     control.onBusyChange(true);
-    const outcome = await uploadFile<T>(control.route, { file, name, meta });
+    const outcome = await uploadFile<T>(
+      control.route,
+      resource ? { file, name, meta } : { file }
+    );
     control.onBusyChange(false);
     if (outcome.status === "signedOut") return;
     if (outcome.status === "failed") {
@@ -110,9 +121,9 @@ export function FileUpload<T>({
     control.onUploaded(outcome.data);
     notify({
       title: t("Files.uploaded"),
-      description: t("Files.uploadedBody", {
-        name: name.trim() || file.name,
-      }),
+      description: resource
+        ? t("Files.uploadedBody", { name: name.trim() || file.name })
+        : t("Files.assignmentUploadedBody", { name: file.name }),
     });
     close();
   };
@@ -162,7 +173,9 @@ export function FileUpload<T>({
         onKeyDown={onKeyDown}
       >
         <legend className="mds-label pbe-1">{t("Files.uploadTitle")}</legend>
-        <p className="mds-caption">{t("Files.uploadNote")}</p>
+        <p className="mds-caption">
+          {t(resource ? "Files.uploadNote" : "Files.assignmentUploadNote")}
+        </p>
         <Field
           label={t("Files.fileLabel")}
           required
@@ -187,31 +200,33 @@ export function FileUpload<T>({
             </bdi>
           </p>
         ) : null}
-        <div className="grid gap-4 md:grid-cols-2">
-          <Field label={t("Files.nameLabel")} help={t("Files.nameHelp")}>
-            <Input
-              name={`${prefix}-upload-name`}
-              value={name}
-              maxLength={200}
-              dir="auto"
-              disabled={uploading}
-              onChange={(event) => setName(event.target.value)}
-            />
-          </Field>
-          <Field
-            label={t("Curriculum.resourceMetaLabel")}
-            help={t("Curriculum.resourceMetaHelp")}
-          >
-            <Input
-              name={`${prefix}-upload-meta`}
-              value={meta}
-              maxLength={120}
-              dir="auto"
-              disabled={uploading}
-              onChange={(event) => setMeta(event.target.value)}
-            />
-          </Field>
-        </div>
+        {resource ? (
+          <div className="grid gap-4 md:grid-cols-2">
+            <Field label={t("Files.nameLabel")} help={t("Files.nameHelp")}>
+              <Input
+                name={`${prefix}-upload-name`}
+                value={name}
+                maxLength={200}
+                dir="auto"
+                disabled={uploading}
+                onChange={(event) => setName(event.target.value)}
+              />
+            </Field>
+            <Field
+              label={t("Curriculum.resourceMetaLabel")}
+              help={t("Curriculum.resourceMetaHelp")}
+            >
+              <Input
+                name={`${prefix}-upload-meta`}
+                value={meta}
+                maxLength={120}
+                dir="auto"
+                disabled={uploading}
+                onChange={(event) => setMeta(event.target.value)}
+              />
+            </Field>
+          </div>
+        ) : null}
         {uploading ? (
           <output className="mds-body-sm" data-testid={`${prefix}-uploading`}>
             {t("Files.uploading")}

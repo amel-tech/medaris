@@ -20,6 +20,13 @@ import {
     LessonResourceResponseToJSON,
     LessonResourceResponseToJSONTyped,
 } from './LessonResourceResponse';
+import type { LessonAssignmentResponse } from './LessonAssignmentResponse';
+import {
+    LessonAssignmentResponseFromJSON,
+    LessonAssignmentResponseFromJSONTyped,
+    LessonAssignmentResponseToJSON,
+    LessonAssignmentResponseToJSONTyped,
+} from './LessonAssignmentResponse';
 import type { AgendaStepResponse } from './AgendaStepResponse';
 import {
     AgendaStepResponseFromJSON,
@@ -148,6 +155,12 @@ export interface LessonResponse {
      * @memberof LessonResponse
      */
     recordingAvailableAt?: Date | null;
+    /**
+     * The homework the course team set on the session, apart from its `resources`: a description and its own files; null when the session has none. Course content, whether there is any included: absent unless the caller holds `view_details` on the course (MDRS-103), a sample session's included. Carried by the course read, never by a session write's answer.
+     * @type {LessonAssignmentResponse}
+     * @memberof LessonResponse
+     */
+    assignment?: LessonAssignmentResponse | null;
 }
 
 
@@ -206,6 +219,7 @@ export function LessonResponseFromJSONTyped(json: any, ignoreDiscriminator: bool
         'hasLiveStream': json['hasLiveStream'] == null ? undefined : json['hasLiveStream'],
         'resources': ((json['resources'] as Array<any>).map(LessonResourceResponseFromJSON)),
         'recordingAvailableAt': json['recordingAvailableAt'] == null ? undefined : (new Date(json['recordingAvailableAt'])),
+        'assignment': json['assignment'] == null ? undefined : LessonAssignmentResponseFromJSON(json['assignment']),
     };
 }
 
@@ -239,6 +253,7 @@ export function LessonResponseToJSONTyped(value?: LessonResponse | null, ignoreD
         'hasLiveStream': value['hasLiveStream'],
         'resources': ((value['resources'] as Array<any>).map(LessonResourceResponseToJSON)),
         'recordingAvailableAt': value['recordingAvailableAt'] === null ? null : ((value['recordingAvailableAt'] as any)?.toISOString()),
+        'assignment': LessonAssignmentResponseToJSON(value['assignment']),
     };
 }
 

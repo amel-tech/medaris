@@ -69,6 +69,13 @@ const download = {
     bad: { lessonId: "s1", resourceId: ID },
     path: `/lessons/${LESSON}/resources/${ID}/file`,
   },
+  "a file of the homework set on a celse": {
+    load: () =>
+      import("../app/api/files/lessons/[lessonId]/assignment/[fileId]/route"),
+    ids: { lessonId: LESSON, fileId: ID },
+    bad: { lessonId: LESSON, fileId: "../x" },
+    path: `/lessons/${LESSON}/assignment/files/${ID}`,
+  },
   "a homework file of the talebe's own": {
     load: () =>
       import(

@@ -46,8 +46,10 @@ import { SessionStateBadge } from "./session-state-badge";
  * where the celse stands, its time and its müderris); one wide card, the
  * page's main action (the way to the watch page, or the date and how the
  * celse is attended, with the meeting link); "Notlarım" when there is
- * nothing to watch; "Ödevim" for a talebe who may hand in (MDRS-290);
- * "Gündem" and "Kaynaklar" side by side, either alone across the width;
+ * nothing to watch; "Ödev" for a talebe who may hand in, its own section
+ * apart from "Kaynaklar": the homework the müderris set and, under it,
+ * "Ödevim" (MDRS-290); "Gündem" and "Kaynaklar" side by side, either alone
+ * across the width;
  * last, the previous celse, the Müfredat and the next.
  * The owner: "hep önce-müfredat-sonra şeklinde olabilir, kaynaklar ve gündem
  * gibi diğer detaylar bunların üstünde olur". A phone stacks the two cards.
@@ -138,13 +140,18 @@ export const SessionPage = async ({
       />
     ) : null;
 
-  // MDRS-290: the talebe's homework on the celse, on the same terms as the
-  // notes (enrolled or completed, the content open, the celse standing),
-  // whether or not there is a video to watch: the watch page is for watching.
-  // It comes after the notes and before Gündem and Kaynaklar.
+  // The celse's homework, apart from its resources: what the müderris set
+  // and the talebe's own (MDRS-290), on the same terms as the notes
+  // (enrolled or completed, the content open, the celse standing), whether
+  // or not there is a video to watch: the watch page is for watching. It
+  // comes after the notes and before Gündem and Kaynaklar. A celse with no
+  // homework draws it only for a talebe who handed something in before.
   const homework =
     mayTakeNotes && !cancelled ? (
-      <SessionHomework lessonId={session.id} />
+      <SessionHomework
+        lessonId={session.id}
+        assignment={session.assignment ?? null}
+      />
     ) : null;
 
   const cancellation: ReactNode = cancelled ? (

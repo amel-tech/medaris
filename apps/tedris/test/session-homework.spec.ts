@@ -36,8 +36,17 @@ vi.mock("~/features/courses/components/lesson-notes", () => ({
     createElement("div", { "data-notes": lessonId }),
 }));
 vi.mock("~/features/courses/components/session-homework", () => ({
-  SessionHomework: ({ lessonId }: { lessonId: string }) =>
-    createElement("div", { "data-homework": lessonId }),
+  SessionHomework: ({
+    lessonId,
+    assignment,
+  }: {
+    lessonId: string;
+    assignment: { id: string } | null;
+  }) =>
+    createElement("div", {
+      "data-homework": lessonId,
+      ...(assignment ? { "data-assignment": assignment.id } : {}),
+    }),
 }));
 
 const NOW = new Date("2026-10-03T17:52:00.000Z");
@@ -138,6 +147,40 @@ describe("Ödevim on the celse's detail page (MDRS-290)", () => {
     expect(html).toContain(
       '<div data-notes="s1"></div><div data-homework="s1"></div>'
     );
+  });
+
+  it("is handed the homework the müderris set, which never reaches Kaynaklar", async () => {
+    const html = await render(
+      course({ status: "ENROLLED" }),
+      session({
+        assignment: {
+          id: "a1",
+          lessonId: "s1",
+          description: "Çekin.",
+          files: [
+            {
+              id: "f1",
+              name: "yonerge.pdf",
+              contentType: "application/pdf",
+              sizeBytes: 1024,
+              createdAt: NOW,
+              downloadUrl: "/lessons/s1/assignment/files/f1",
+            },
+          ],
+          createdAt: NOW,
+          updatedAt: NOW,
+        },
+        resources: [],
+      })
+    );
+    expect(html).toContain('data-homework="s1" data-assignment="a1"');
+    expect(html).not.toContain("session-resources-card");
+    expect(html).not.toContain("yonerge.pdf");
+  });
+
+  it("is handed no homework on a celse without any, and decides itself whether to draw", async () => {
+    const html = await render(course({ status: "ENROLLED" }), session());
+    expect(html).toContain('<div data-homework="s1"></div>');
   });
 
   it("stays on the detail page of a celse with a recording, where the notes are on the watch page", async () => {

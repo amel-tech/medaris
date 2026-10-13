@@ -711,6 +711,61 @@ export const withLessonResource = (
     ),
   }));
 
+// ---- a celse's homework ----------------------------------------------------------------
+
+/**
+ * The homework the course team set on a celse, as the editor holds it: its
+ * description ('' for none) and its files, oldest first. Apart from the
+ * celse's resources, and stored by its own writes, never by "Kaydet".
+ */
+export interface AssignmentState {
+  description: string;
+  files: Array<StoredFile & { id: string }>;
+}
+
+/** What tedrisat answers for a celse's homework, read or written, as JSON or parsed. */
+export interface AssignmentAnswer {
+  description?: string | null;
+  files?: ReadonlyArray<StoredFile & { id: string }>;
+}
+
+/** A celse's homework as tedrisat answered it; null for none. */
+export const assignmentStateOf = (
+  answer: AssignmentAnswer | null | undefined
+): AssignmentState | null =>
+  answer
+    ? {
+        description: answer.description ?? "",
+        files: (answer.files ?? []).map((file) => ({
+          id: file.id,
+          ...storedFileOf(file),
+        })),
+      }
+    : null;
+
+/**
+ * Every stored celse's homework, by its id, as the course read gives it.
+ * A content-locked read carries none, so it says nothing of any celse.
+ */
+export const assignmentsOf = (
+  course: Pick<CourseDetailResponse, "weeks">
+): Record<string, AssignmentState | null> =>
+  Object.fromEntries(
+    course.weeks.flatMap((week) =>
+      week.lessons.map((lesson) => [
+        lesson.id,
+        assignmentStateOf(lesson.assignment),
+      ])
+    )
+  );
+
+/** The longest homework description tedrisat keeps, in characters. */
+export const ASSIGNMENT_DESCRIPTION_MAX = 4000;
+
+/** What a description save sends: trimmed, and null for a blank one. */
+export const assignmentDescriptionBody = (draft: string): string | null =>
+  draft.trim() || null;
+
 // ---- dates ---------------------------------------------------------------------------
 
 /** "12 Ekim" or "12 Ekim 2026" for a "YYYY-MM-DD" calendar day. */

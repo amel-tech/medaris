@@ -13,6 +13,8 @@ export type DeletionReason =
   | "course.purge"
   | "lesson.purge"
   | "submission.file_delete"
+  | "assignment.delete"
+  | "assignment.file_delete"
   | "upload.failed"
   | "upload.unclaimed";
 

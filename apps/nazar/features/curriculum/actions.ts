@@ -1,6 +1,9 @@
 "use server";
 
-import type { ReplaceCourseDto } from "@medaris/services/tedrisat";
+import type {
+  LessonAssignmentResponse,
+  ReplaceCourseDto,
+} from "@medaris/services/tedrisat";
 import {
   type ActionOutcome,
   authenticatedAction,
@@ -29,4 +32,53 @@ export async function saveCurriculum(
   if (!result.success)
     console.error("Error saving the curriculum:", result.error);
   return outcomeOf(result);
+}
+
+/**
+ * A celse's homework on Müfredat, apart from its resources: "Bu celsenin
+ * ödevi var" turned on (`PUT /lessons/:id/assignment` with no description),
+ * its description saved, the homework taken off, a file removed. Each is
+ * stored at once, under `session.manage`, outside the curriculum's
+ * "Kaydet": the homework is no part of the whole-course save. A file is
+ * added through this app's upload route (`fileRoutes.lessonAssignment`). A
+ * refusal is its code and the editor words it.
+ */
+export async function saveLessonAssignment(
+  lessonId: string,
+  description: string | null
+): Promise<ActionOutcome<LessonAssignmentResponse>> {
+  return outcomeOf(
+    await authenticatedAction((api) =>
+      api.lessonAssignments.saveLessonAssignment({
+        id: lessonId,
+        saveLessonAssignmentDto: { description },
+      })
+    )
+  );
+}
+
+/** The description and every file go; the talebe's submissions stay. */
+export async function deleteLessonAssignment(
+  lessonId: string
+): Promise<ActionOutcome<void>> {
+  return outcomeOf(
+    await authenticatedAction((api) =>
+      api.lessonAssignments.deleteLessonAssignment({ id: lessonId })
+    )
+  );
+}
+
+/** The file goes from storage too; tedrisat writes the removal to the audit log. */
+export async function deleteLessonAssignmentFile(
+  lessonId: string,
+  fileId: string
+): Promise<ActionOutcome<void>> {
+  return outcomeOf(
+    await authenticatedAction((api) =>
+      api.lessonAssignments.deleteLessonAssignmentFile({
+        id: lessonId,
+        fileId,
+      })
+    )
+  );
 }

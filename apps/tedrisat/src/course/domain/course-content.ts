@@ -18,7 +18,8 @@ import { EnrollmentStatus } from "./enrollment-status.enum";
  * length — the programme a visitor needs in order to decide to enroll.
  * Content: a lesson's `meetingUrl`, `agenda`, `kaynak` and `cancelReason`, how
  * it is attended (`inPerson`, `inPersonOverride`, `hasLiveStream`, MDRS-283),
- * when its recording opens (`recordingAvailableAt`, MDRS-288), and a
+ * when its recording opens (`recordingAvailableAt`, MDRS-288), the homework
+ * the müderris set on it (`assignment`, whether there is any included), and a
  * resource's `url` or `file`, the course's or a session's own (MDRS-286,
  * MDRS-287). A caller
  * without `course.view_details` gets the programme only, and the content keys
@@ -52,6 +53,9 @@ const lessonWithoutContent = ({
   // So does when its recording opens (MDRS-288): a PUBLIC recording carries
   // its own `availableAt` to whoever it is shown to.
   recordingAvailableAt: _recordingAvailableAt,
+  // So does the session's homework, its description and files and whether
+  // there is any: a locked caller is not told the session has homework.
+  assignment: _assignment,
   resources,
   ...rest
 }: ILesson): ILessonView => {

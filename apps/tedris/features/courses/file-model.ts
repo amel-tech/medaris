@@ -1,5 +1,6 @@
 import { type FileTypeChip, fileTypeChip } from "@medaris/services/file-rules";
 import type {
+  LessonAssignmentFileResponse,
   LessonSubmissionResponse,
   ResourceFileResponse,
   SubmissionFileResponse,
@@ -8,7 +9,8 @@ import type { IconName } from "@medaris/ui/mds/icon";
 
 /**
  * Files in tedris (MDRS-287, MDRS-290): a course's or a celse's resource file
- * to download, and the talebe's own homework on a celse. Pure, so a spec pins
+ * to download, a file of the homework set on a celse, and the talebe's own
+ * homework on a celse. Pure, so a spec pins
  * every rule; the browser never reaches tedrisat or the store itself, only
  * this app's routes under `/api/files/…`, which add the token on the server.
  */
@@ -63,6 +65,37 @@ export const resourceFileHref = (
     ? `/api/files/${match[1]}/${match[2]}/resources/${match[3]}`
     : null;
 };
+
+const ASSIGNMENT_FILE = new RegExp(
+  `^/lessons/(${UUID})/assignment/files/(${UUID})$`
+);
+
+/**
+ * This app's download route for a file of the homework set on a celse, from
+ * the tedrisat route the API names for it (`/lessons/:id/assignment/files/:fid`):
+ * `/api/files/lessons/:id/assignment/:fid`. Anything else is no link.
+ */
+export const assignmentFileHref = (
+  file: Pick<LessonAssignmentFileResponse, "downloadUrl"> | null | undefined
+): string | null => {
+  const match = ASSIGNMENT_FILE.exec(file?.downloadUrl ?? "");
+  return match ? `/api/files/lessons/${match[1]}/assignment/${match[2]}` : null;
+};
+
+/**
+ * Whether the talebe has handed their homework in: a note or at least one
+ * file, as tedrisat counts it for the course page and for Ödevler. A
+ * submission emptied since is not.
+ */
+export const isHandedIn = (
+  submission:
+    | Pick<LessonSubmissionResponse, "note" | "files">
+    | null
+    | undefined
+): boolean =>
+  Boolean(
+    submission && (submission.files.length > 0 || submission.note?.trim())
+  );
 
 /** Where the talebe's homework files are added: `POST`, multipart `file`. */
 export const submissionUploadPath = (lessonId: string): string =>

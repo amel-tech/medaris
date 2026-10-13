@@ -3,11 +3,16 @@ import { notFound } from "next/navigation";
 import { getLocale } from "next-intl/server";
 import { env } from "~/env";
 import { getKosk } from "~/features/courses/actions";
+import {
+  hasAssignments,
+  mayHandInOn,
+} from "~/features/courses/assignment-marks";
 import { CoursePage } from "~/features/courses/components/course-page";
 import { introMetadata } from "~/features/courses/intro-metadata";
 import { loadCourse } from "~/features/courses/load-course";
 import {
   getCourseForMetadata,
+  getMySubmissions,
   getRecordings,
   isSignedIn,
 } from "~/features/courses/public-reads";
@@ -52,11 +57,16 @@ export default async function Page({
   // Köşk name for the breadcrumb (CourseDetailResponse only carries koskId),
   // and whether it is unlisted: every enrollment there waits for approval
   // (MDRS-122), whatever the course's own `requiresApproval` says.
-  const [kosk, signedIn, locale, recordings] = await Promise.all([
+  // Where the talebe handed homework in, read only when a celse has homework
+  // they may hand in (the programme's "Ödev teslim edilmedi" marks).
+  const [kosk, signedIn, locale, recordings, handedIn] = await Promise.all([
     getKosk(course.koskId),
     isSignedIn(),
     getLocale(),
     getRecordings(course.id),
+    mayHandInOn(course) && hasAssignments(course)
+      ? getMySubmissions(course.id)
+      : null,
   ]);
   const hrefs = inviteHrefs(locale, `/courses/${course.id}`);
 
@@ -70,6 +80,7 @@ export default async function Page({
       registerHref={hrefs.register}
       nazarUrl={env.NAZAR_URL || null}
       recordings={recordings}
+      handedIn={handedIn}
       initialTab={typeof tab === "string" ? tab : undefined}
     />
   );

@@ -6,7 +6,8 @@ import {
 
 /**
  * Files in Medaris storage as nazar shows and sends them (MDRS-287, MDRS-290):
- * the course's and a celse's resource files, and the homework talebe hand in.
+ * the course's and a celse's resource files, the files of the homework set
+ * on a celse, and the homework talebe hand in.
  * The browser never talks to tedrisat: an upload goes to this app's own route
  * under `/api/files/…`, which adds the caller's token and streams the body on
  * (`@medaris/services/file-proxy`), and a download is a plain link to the same
@@ -80,6 +81,12 @@ export const fileRoutes = {
   /** GET: that file, for a reader of the course's content */
   lessonResource: (lessonId: string, resourceId: string) =>
     `/api/files/lessons/${seg(lessonId)}/resources/${seg(resourceId)}`,
+  /** POST: a file of a celse's homework (`session.manage`), never a resource */
+  lessonAssignment: (lessonId: string) =>
+    `/api/files/lessons/${seg(lessonId)}/assignment`,
+  /** GET: that file, for a reader of the course's content */
+  lessonAssignmentFile: (lessonId: string, fileId: string) =>
+    `/api/files/lessons/${seg(lessonId)}/assignment/${seg(fileId)}`,
   /** GET: a file a talebe handed in, for a holder of `submission.read` */
   submissionFile: (courseId: string, fileId: string) =>
     `/api/files/courses/${seg(courseId)}/submissions/${seg(fileId)}`,
@@ -115,7 +122,10 @@ export function fileErrorKey(code: string): string {
     case "TEDRISAT_UNREACHABLE":
       return "Files.errors.unavailable";
     case "RESOURCE_FILE_NOT_FOUND":
+    case "LESSON_ASSIGNMENT_FILE_NOT_FOUND":
       return "Files.errors.notFound";
+    case "LESSON_ASSIGNMENT_NOT_FOUND":
+      return "Files.errors.assignmentGone";
     case "LESSON_NOT_FOUND":
       return "Files.errors.lessonGone";
     case "COURSE_NOT_FOUND":

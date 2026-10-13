@@ -5,6 +5,7 @@ import type {
   ILessonView,
   IWeekView,
 } from "../course.repository.interface";
+import type { ILessonAssignment } from "./lesson-assignment";
 import { LessonType } from "./lesson-type.enum";
 import type { IRecordingView } from "./recording";
 import { SessionStatus } from "./session-status.enum";
@@ -75,6 +76,12 @@ export interface ISessionView extends ISessionRef {
    * Course content: absent for a caller who may not read it.
    */
   hasLiveStream?: boolean;
+  /**
+   * The homework the müderris set on the session, apart from its resources;
+   * null when it has none. Course content: absent for a caller who may not
+   * read it, so they are not told whether there is any.
+   */
+  assignment?: ILessonAssignment | null;
   /** Course content: absent for a caller who may not read it (MDRS-162). */
   recording?: Omit<
     IRecordingView,
@@ -199,6 +206,7 @@ export function buildSessionView(
   if ("kaynak" in lesson) view.kaynak = lesson.kaynak;
   if ("agenda" in lesson) view.agenda = lesson.agenda;
   if ("hasLiveStream" in lesson) view.hasLiveStream = lesson.hasLiveStream;
+  if ("assignment" in lesson) view.assignment = lesson.assignment ?? null;
   if ("meetingUrl" in lesson) {
     const joinable =
       status === SessionStatus.SCHEDULED || status === SessionStatus.LIVE;

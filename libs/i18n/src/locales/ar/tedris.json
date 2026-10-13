@@ -134,7 +134,10 @@
     "openSession": "افتح صفحة الجلسة",
     "leaveBody": "ستغادر درس <b>{title}</b>. يزول وصولك إلى جلساته وروابط اجتماعاته وتسجيلاته ورزمته، وتسقط جلساته من تقويمك.",
     "leaveBodyCards": "البطاقات التي نسختها إلى رزمك تبقى لك. ويمكنك التقدّم إلى الدرس من جديد.",
-    "resourcesDownload": " (يُنزَّل)"
+    "resourcesDownload": " (يُنزَّل)",
+    "assignmentBadge": "واجب",
+    "assignmentPending": "لم يُسلَّم الواجب",
+    "assignmentsPending": "واجبات لم تُسلَّم: {count}"
   },
   "DataTable": {
     "noResults": "لا توجد نتائج."

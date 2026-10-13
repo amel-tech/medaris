@@ -16,6 +16,8 @@ DELETE /kosks/:id/grants/:grantId -> course_nazir.assign_kosk on byExistingKosk
 DELETE /kosks/:id/hosting-rights/:madrasahId -> kosk.hosting | platform.hosting_grant on byExistingKosk
 DELETE /kosks/:id/managers/:userId -> platform.kosk_nazim_manage on byExistingKosk
 DELETE /lessons/:id -> week.hide | session.manage on byLessonCourse
+DELETE /lessons/:id/assignment -> session.manage on byLessonCourse
+DELETE /lessons/:id/assignment/files/:fileId -> session.manage on byLessonCourse
 DELETE /lessons/:id/notes/:noteId -> course.view on byLessonCourse
 DELETE /lessons/:id/submission/files/:fileId -> course.view on byLessonCourse
 DELETE /madrasahs/:id -> madrasah.delete on byExistingMadrasah
@@ -38,6 +40,7 @@ GET /courses/:id/enrollments -> course.staff_read on course
 GET /courses/:id/enrollments/removed -> course.staff_read on course
 GET /courses/:id/live-streams -> session.live_link on course
 GET /courses/:id/my-permissions -> course.view on byExistingCourse
+GET /courses/:id/my-submissions -> course.view on byExistingCourse
 GET /courses/:id/nazirs -> course_nazir.assign on byExistingCourse
 GET /courses/:id/questions -> question.answer on byExistingCourse
 GET /courses/:id/questions/mine -> course.view on course
@@ -82,6 +85,7 @@ GET /kosks/:koskId/enrollments/pending -> course.manage_all on kosk
 GET /kosks/directory -> exempt
 GET /kosks/fields -> public
 GET /kosks/followed/courses -> exempt
+GET /lessons/:id/assignment/files/:fileId -> course.view_details on byLessonCourse
 GET /lessons/:id/calendar.ics -> exempt
 GET /lessons/:id/notes -> course.view on byLessonCourse
 GET /lessons/:id/resources/:resourceId/file -> course.view_details on byLessonCourse
@@ -201,6 +205,7 @@ POST /kosks/:id/managers/:userId -> platform.kosk_nazim_manage on byExistingKosk
 POST /kosks/:id/nazims -> exempt
 POST /kosks/:id/restore -> exempt
 POST /kosks/:koskId/courses -> course.open_standalone on kosk
+POST /lessons/:id/assignment/files -> session.manage on byLessonCourse
 POST /lessons/:id/cancel -> session.manage on byLessonCourse
 POST /lessons/:id/notes -> course.view on byLessonCourse
 POST /lessons/:id/questions -> course.view on byLessonCourse
@@ -237,6 +242,7 @@ PUT /courses/:id/progress -> course.view_details on course
 PUT /flashcard/cards/:id -> deck.manage_cards on custom
 PUT /flashcard/cards/progress -> exempt
 PUT /flashcard/decks/:id -> deck.manage_private on flashcard-deck
+PUT /lessons/:id/assignment -> session.manage on byLessonCourse
 PUT /lessons/:id/live-stream -> session.live_link on byLessonCourse
 PUT /lessons/:id/recording-availability -> recording.manage on byLessonCourse
 PUT /lessons/:id/submission -> course.view on byLessonCourse

@@ -20,6 +20,13 @@ import {
     LessonResourceResponseToJSON,
     LessonResourceResponseToJSONTyped,
 } from './LessonResourceResponse';
+import type { LessonAssignmentResponse } from './LessonAssignmentResponse';
+import {
+    LessonAssignmentResponseFromJSON,
+    LessonAssignmentResponseFromJSONTyped,
+    LessonAssignmentResponseToJSON,
+    LessonAssignmentResponseToJSONTyped,
+} from './LessonAssignmentResponse';
 import type { AgendaStepResponse } from './AgendaStepResponse';
 import {
     AgendaStepResponseFromJSON,
@@ -149,6 +156,12 @@ export interface LessonMutationResponse {
      */
     recordingAvailableAt?: Date | null;
     /**
+     * The homework the course team set on the session, apart from its `resources`: a description and its own files; null when the session has none. Course content, whether there is any included: absent unless the caller holds `view_details` on the course (MDRS-103), a sample session's included. Carried by the course read, never by a session write's answer.
+     * @type {LessonAssignmentResponse}
+     * @memberof LessonMutationResponse
+     */
+    assignment?: LessonAssignmentResponse | null;
+    /**
      * The course version this write produced; send it with the next PUT /courses/:id or PATCH /lessons/:id.
      * @type {number}
      * @memberof LessonMutationResponse
@@ -213,6 +226,7 @@ export function LessonMutationResponseFromJSONTyped(json: any, ignoreDiscriminat
         'hasLiveStream': json['hasLiveStream'] == null ? undefined : json['hasLiveStream'],
         'resources': ((json['resources'] as Array<any>).map(LessonResourceResponseFromJSON)),
         'recordingAvailableAt': json['recordingAvailableAt'] == null ? undefined : (new Date(json['recordingAvailableAt'])),
+        'assignment': json['assignment'] == null ? undefined : LessonAssignmentResponseFromJSON(json['assignment']),
         'courseVersion': json['courseVersion'],
     };
 }
@@ -247,6 +261,7 @@ export function LessonMutationResponseToJSONTyped(value?: LessonMutationResponse
         'hasLiveStream': value['hasLiveStream'],
         'resources': ((value['resources'] as Array<any>).map(LessonResourceResponseToJSON)),
         'recordingAvailableAt': value['recordingAvailableAt'] === null ? null : ((value['recordingAvailableAt'] as any)?.toISOString()),
+        'assignment': LessonAssignmentResponseToJSON(value['assignment']),
         'courseVersion': value['courseVersion'],
     };
 }

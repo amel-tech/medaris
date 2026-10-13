@@ -5,6 +5,7 @@ import {
   AgendaStepResponse,
   LessonResourceResponse,
 } from "./course-response.dto";
+import { LessonAssignmentResponse } from "./lesson-assignment.dto";
 import { SessionRecordingResponse } from "./recording-response.dto";
 
 const CONTENT_FIELD =
@@ -93,6 +94,14 @@ export class SessionResponse extends SessionRefResponse {
       " A live stream is set for the session (MDRS-283), whatever its status, so the page can say so before it starts; the link itself is `liveStreamUrl`.",
   })
   hasLiveStream?: boolean;
+  @ApiPropertyOptional({
+    type: () => LessonAssignmentResponse,
+    nullable: true,
+    description:
+      CONTENT_FIELD +
+      " The homework the course team set on the session, apart from its `resources`: a description and its own files; null when it has none. A caller who may not read the content is not told whether there is any.",
+  })
+  assignment?: LessonAssignmentResponse | null;
   @ApiPropertyOptional({
     type: SessionRecordingResponse,
     nullable: true,

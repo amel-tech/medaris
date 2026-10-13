@@ -53,6 +53,7 @@ import { UploadGateInterceptor } from "../storage/upload";
 import {
   CourseSubmissionsResponse,
   LessonSubmissionResponse,
+  MySubmissionsResponse,
   OwnSubmissionResponse,
   SaveSubmissionNoteDto,
 } from "./dto/lesson-submission.dto";
@@ -98,6 +99,26 @@ export class LessonSubmissionController {
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<OwnSubmissionResponse> {
     return this.service.own(request.user, id);
+  }
+
+  @ApiOperation({
+    summary: "The sessions of a course the caller handed homework in on",
+    description:
+      "Only the caller's own: each live session of the course where their homework holds a note or a file, with when they last changed it, for the course page to mark a session's homework as handed in or not. Read on the terms of `GET /lessons/:id/submission`: a course in a passive scope is closed (403 SUBMISSION_FORBIDDEN), and a hidden course is not found. Empty for anyone who handed nothing in.",
+    operationId: "listMySubmissions",
+  })
+  @ApiOkResponse({ type: MySubmissionsResponse })
+  @ApiForbiddenResponse({ description: "SUBMISSION_FORBIDDEN" })
+  @ApiNotFoundResponse({ description: "COURSE_NOT_FOUND" })
+  @Authz(PERMISSIONS.COURSE_VIEW, byExistingCourse)
+  // Per-user answer; no shared cache may keep it.
+  @Header("Cache-Control", "private, no-store")
+  @Get("courses/:id/my-submissions")
+  ownForCourse(
+    @Req() request: AuthorizedRequest,
+    @Param("id", ParseUUIDPipe) id: string
+  ): Promise<MySubmissionsResponse> {
+    return this.service.listOwnForCourse(request.user, id);
   }
 
   @ApiOperation({
@@ -219,7 +240,7 @@ export class CourseSubmissionsController {
   @ApiOperation({
     summary: "The homework handed in on the course's sessions",
     description:
-      "`submission.read`: everyone's homework on the course's live sessions, with who handed it in, when they last changed it, the note and the files, by programme order and the latest change first within a session. `lessonId` narrows it to one session. A hidden course or a draft is not found, as on its page.",
+      "`submission.read`: everyone's homework on the course's live sessions, with who handed it in, when they last changed it, the note and the files, by programme order and the latest change first within a session. Beside it, for every live session, whether the course team set homework on it and how many enrolled talebe handed in (`sessions`), and how many talebe are enrolled (`talebeCount`): \"N / M teslim\". `lessonId` narrows both to one session. A hidden course or a draft is not found, as on its page.",
     operationId: "listCourseSubmissions",
   })
   @ApiQuery({

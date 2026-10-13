@@ -48,6 +48,13 @@ import {
     SessionRefResponseToJSON,
     SessionRefResponseToJSONTyped,
 } from './SessionRefResponse';
+import type { LessonAssignmentResponse } from './LessonAssignmentResponse';
+import {
+    LessonAssignmentResponseFromJSON,
+    LessonAssignmentResponseFromJSONTyped,
+    LessonAssignmentResponseToJSON,
+    LessonAssignmentResponseToJSONTyped,
+} from './LessonAssignmentResponse';
 import type { AgendaStepResponse } from './AgendaStepResponse';
 import {
     AgendaStepResponseFromJSON,
@@ -183,6 +190,12 @@ export interface SessionResponse {
      */
     hasLiveStream?: boolean;
     /**
+     * Course content: absent unless the caller holds `view_details` on the course (MDRS-103). The homework the course team set on the session, apart from its `resources`: a description and its own files; null when it has none. A caller who may not read the content is not told whether there is any.
+     * @type {LessonAssignmentResponse}
+     * @memberof SessionResponse
+     */
+    assignment?: LessonAssignmentResponse | null;
+    /**
      * Course content: absent unless the caller holds `view_details` on the course (MDRS-103). The session's recording, or null when it has none. Its `url` is null while it is PROCESSING, and before its `availableAt` for anyone but the course team (MDRS-288).
      * @type {SessionRecordingResponse}
      * @memberof SessionResponse
@@ -264,6 +277,7 @@ export function SessionResponseFromJSONTyped(json: any, ignoreDiscriminator: boo
         'liveStreamUrl': json['liveStreamUrl'] == null ? undefined : json['liveStreamUrl'],
         'inPerson': json['inPerson'],
         'hasLiveStream': json['hasLiveStream'] == null ? undefined : json['hasLiveStream'],
+        'assignment': json['assignment'] == null ? undefined : LessonAssignmentResponseFromJSON(json['assignment']),
         'recording': json['recording'] == null ? undefined : SessionRecordingResponseFromJSON(json['recording']),
         'previous': json['previous'] == null ? undefined : SessionRefResponseFromJSON(json['previous']),
         'next': json['next'] == null ? undefined : SessionRefResponseFromJSON(json['next']),
@@ -303,6 +317,7 @@ export function SessionResponseToJSONTyped(value?: SessionResponse | null, ignor
         'liveStreamUrl': value['liveStreamUrl'],
         'inPerson': value['inPerson'],
         'hasLiveStream': value['hasLiveStream'],
+        'assignment': LessonAssignmentResponseToJSON(value['assignment']),
         'recording': SessionRecordingResponseToJSON(value['recording']),
         'previous': SessionRefResponseToJSON(value['previous']),
         'next': SessionRefResponseToJSON(value['next']),

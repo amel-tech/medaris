@@ -158,6 +158,24 @@ const items = () => [
   }),
 ];
 
+/**
+ * tedrisat's count beside the homework: which live celse has homework set,
+ * and how many of the three enrolled talebe handed in on it.
+ */
+const counts = (over: Record<string, Record<string, unknown>> = {}) => ({
+  talebeCount: 3,
+  sessions: [
+    { lessonId: "l-1", hasAssignment: true, handedInCount: 2 },
+    { lessonId: "l-2", hasAssignment: false, handedInCount: 0 },
+    { lessonId: "l-3", hasAssignment: true, handedInCount: 1 },
+    { lessonId: "l-4", hasAssignment: false, handedInCount: 0 },
+  ].map((session) => ({ ...session, ...over[session.lessonId] })),
+});
+const answer = (
+  list: unknown[] = items(),
+  over: Record<string, Record<string, unknown>> = {}
+) => ({ items: list, ...counts(over) });
+
 const holding = (...codes: string[]): Answer<unknown> => ({
   status: "ok",
   data: { permissions: ["course.view", ...codes], staffRead: true },
@@ -207,7 +225,7 @@ const choose = async (label: string, option: string) => {
 beforeEach(() => {
   state.course = { status: "ok", data: course() };
   state.permissions = holding("submission.read");
-  state.submissions = { status: "ok", data: { items: items() } };
+  state.submissions = { status: "ok", data: answer() };
   asked.length = 0;
 });
 afterEach(async () => {
@@ -335,12 +353,52 @@ describe("Ödevler", () => {
     ]);
   });
 
-  it("says so when nobody has handed in yet, without a filter", async () => {
-    state.submissions = { status: "ok", data: { items: [] } };
+  it("says so when no celse has homework and nobody has handed in yet, without a filter", async () => {
+    state.submissions = {
+      status: "ok",
+      data: answer([], {
+        "l-1": { hasAssignment: false },
+        "l-3": { hasAssignment: false },
+      }),
+    };
     const out = textOf(await markup());
     expect(out).toContain("Henüz ödev yok");
-    expect(out).toContain("Bu derste henüz kimse ödev teslim etmedi.");
+    expect(out).toContain(
+      "Bu derste henüz ödev verilmedi, kimse de ödev teslim etmedi."
+    );
     expect(out).not.toContain("Bütün celseler");
+  });
+
+  it("says under each celse whether it has homework, and how many of the enrolled talebe handed in", async () => {
+    await mount();
+    const status = (lessonId: string) =>
+      document.querySelector(`[data-testid="homework-status-${lessonId}"]`)
+        ?.textContent ?? "";
+    expect(status("l-1")).toContain("Ödev verildi");
+    expect(status("l-1")).toContain("2 / 3 teslim");
+    expect(status("l-3")).toContain("1 / 3 teslim");
+    await choose("Celse", "Hafta 1 · Mastar (0)");
+    expect(status("l-2")).toContain("Ödev verilmedi");
+    expect(status("l-2")).toContain("0 / 3 teslim");
+  });
+
+  it("draws a celse with homework that nobody handed in yet, at 0 / M, instead of the empty state", async () => {
+    state.submissions = {
+      status: "ok",
+      data: answer([], {
+        "l-1": { hasAssignment: false, handedInCount: 0 },
+        "l-2": { hasAssignment: true },
+        "l-3": { hasAssignment: false, handedInCount: 0 },
+      }),
+    };
+    await mount();
+    expect(document.body.textContent).not.toContain("Henüz ödev yok");
+    expect(table("l-1")).toBeNull();
+    expect(table("l-2")?.textContent).toContain(
+      "Bu celseye henüz ödev teslim edilmedi."
+    );
+    expect(table("l-2")?.textContent).toContain("Ödev verildi");
+    expect(table("l-2")?.textContent).toContain("0 / 3 teslim");
   });
 
   it("is 'Bu sayfaya izniniz yok' for a caller without submission.read, whatever else they hold", async () => {
@@ -360,7 +418,7 @@ describe("Ödevler", () => {
     let out = textOf(await markup());
     expect(out).toContain("Ödevler okunamadı");
     expect(out).not.toContain("Bu sayfaya izniniz yok");
-    state.submissions = { status: "ok", data: { items: items() } };
+    state.submissions = { status: "ok", data: answer() };
     state.permissions = { status: "failed" };
     out = textOf(await markup());
     expect(out).toContain("Ödevler okunamadı");
@@ -387,7 +445,8 @@ describe("the rules of Ödevler", () => {
           lessonTitle: "Gizlenen celse",
           weekNumber: 1,
         }),
-      ] as never
+      ] as never,
+      counts() as never
     );
     expect(sessions.map((s) => [s.lessonId, s.rows.length])).toEqual([
       ["l-1", 2],
@@ -399,12 +458,43 @@ describe("the rules of Ödevler", () => {
       title: "Gizlenen celse",
       weekNumber: 1,
       startsAt: null,
+      // tedrisat counts live celses only
+      hasAssignment: false,
+      handIns: null,
+    });
+    expect(sessions[0]).toMatchObject({
+      hasAssignment: true,
+      handIns: { count: 2, total: 3 },
     });
     expect(homeworkCounts(sessions)).toEqual({ submissions: 4, sessions: 3 });
   });
 
+  it("list a cancelled celse that has homework, even with nothing handed in", () => {
+    const sessions = homeworkSessions(
+      course() as never,
+      [] as never,
+      counts({ "l-4": { hasAssignment: true } }) as never
+    );
+    expect(sessions.map((s) => s.lessonId)).toEqual([
+      "l-1",
+      "l-2",
+      "l-3",
+      "l-4",
+    ]);
+    expect(
+      shownSessions(sessions, ALL_SESSIONS).map((s) => s.lessonId)
+    ).toEqual(["l-1", "l-3", "l-4"]);
+  });
+
   it("draw the celses holding homework for 'all', and the chosen one even empty", () => {
-    const sessions = homeworkSessions(course() as never, items() as never);
+    const sessions = homeworkSessions(
+      course() as never,
+      items() as never,
+      counts({
+        "l-1": { hasAssignment: false },
+        "l-3": { hasAssignment: false },
+      }) as never
+    );
     expect(
       shownSessions(sessions, ALL_SESSIONS).map((s) => s.lessonId)
     ).toEqual(["l-1", "l-3"]);

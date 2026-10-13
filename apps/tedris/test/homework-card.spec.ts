@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import { resources } from "@medaris/i18n";
 import type {
+  LessonAssignmentResponse,
   LessonSubmissionResponse,
   SubmissionFileResponse,
 } from "@medaris/services/tedrisat";
@@ -9,10 +10,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, click, render, settle } from "./dom";
 
 /**
- * "Ödevim" on a celse's detail page (MDRS-290): the talebe's own homework,
- * read and changed through Server Actions, a file added through this app's
- * upload route and downloaded through its download route. Where the card is
- * drawn is `session-homework.spec.ts`; the routes are `file-routes.spec.ts`.
+ * "Ödev" on a celse's detail page: the homework the müderris set, and under
+ * it "Ödevim" (MDRS-290), the talebe's own homework, read and changed
+ * through Server Actions, a file added through this app's upload route and
+ * downloaded through its download route, with its state: "Teslim edildi",
+ * or "Teslim edilmedi" and a warning. Where the card is drawn is
+ * `session-homework.spec.ts`; the routes are `file-routes.spec.ts`.
  */
 
 const mocks = vi.hoisted(() => ({
@@ -91,6 +94,30 @@ const submission = (
   ...over,
 });
 
+const A1 = "77777777-7777-4777-8777-777777777777";
+
+/** The homework the müderris set on the celse. */
+const homework = (
+  over: Partial<LessonAssignmentResponse> = {}
+): LessonAssignmentResponse => ({
+  id: "a1",
+  lessonId: LESSON,
+  description: "Birinci babı çekin.\nFotoğrafını yükleyin.",
+  files: [
+    {
+      id: A1,
+      name: "yonerge.pdf",
+      contentType: "application/pdf",
+      sizeBytes: 2 * MB,
+      createdAt: new Date("2026-10-11T08:00:00Z"),
+      downloadUrl: `/lessons/${LESSON}/assignment/files/${A1}`,
+    },
+  ],
+  createdAt: new Date("2026-10-11T08:00:00Z"),
+  updatedAt: new Date("2026-10-11T08:00:00Z"),
+  ...over,
+});
+
 const ok = <T>(data: T) => ({ success: true as const, data });
 const own = (s: LessonSubmissionResponse | null) =>
   ok({ submission: s, maxFiles: 5, maxFileBytes: 25 * MB });
@@ -109,16 +136,21 @@ afterEach(async () => {
   vi.unstubAllGlobals();
 });
 
-const mount = async () => {
+/** The section on a celse with homework, unless `assignment` says otherwise. */
+const mount = async (
+  assignment: LessonAssignmentResponse | null = homework()
+) => {
   const { SessionHomework } = await import(
     "~/features/courses/components/session-homework"
   );
   const host = await render(
-    createElement(SessionHomework, { lessonId: LESSON })
+    createElement(SessionHomework, { lessonId: LESSON, assignment })
   );
   await settle();
   return host;
 };
+const state = (host: HTMLElement) =>
+  host.querySelector('[data-testid="homework-state"]');
 
 const fileInput = (host: HTMLElement) =>
   host.querySelector('input[type="file"]') as HTMLInputElement;
@@ -169,12 +201,113 @@ const set = async (el: HTMLTextAreaElement, value: string) =>
     el.dispatchEvent(new Event("input", { bubbles: true }));
   });
 
+describe("the homework the müderris set", () => {
+  it("heads a section of its own, with the description as written and its files to download", async () => {
+    const host = await mount();
+    expect(host.querySelector("h2")?.textContent).toBe("Ödev");
+    expect(
+      host.querySelector('[data-testid="assignment-description"]')?.textContent
+    ).toBe("Birinci babı çekin.\nFotoğrafını yükleyin.");
+    const link = host.querySelector(
+      '[data-testid="assignment-files"] a'
+    ) as HTMLAnchorElement;
+    expect(link.getAttribute("href")).toBe(
+      `/api/files/lessons/${LESSON}/assignment/${A1}`
+    );
+    expect(link.hasAttribute("download")).toBe(false);
+    expect(link.textContent).toBe("yonerge.pdf (indirilir)");
+    expect(
+      host.querySelector('[data-testid="assignment-files"]')?.textContent
+    ).toContain("2 MB");
+    // Ödevim sits under it, a heading lower
+    const ownHeading = [...host.querySelectorAll("h3")].find(
+      (h) => h.textContent === "Ödevim"
+    );
+    expect(ownHeading).toBeDefined();
+  });
+
+  it("draws no description and no file list when the müderris gave none", async () => {
+    const host = await mount(homework({ description: null, files: [] }));
+    expect(
+      host.querySelector('[data-testid="assignment-description"]')
+    ).toBeNull();
+    expect(host.querySelector('[data-testid="assignment-files"]')).toBeNull();
+    expect(host.querySelector("h2")?.textContent).toBe("Ödev");
+  });
+});
+
+describe("the state of the talebe's homework", () => {
+  it("is a highlighted 'Teslim edilmedi' with a warning while nothing is handed in", async () => {
+    const host = await mount();
+    expect(state(host)?.textContent).toBe("Teslim edilmedi");
+    expect(state(host)?.className).toContain("mds-badge--warning");
+    const warning = host.querySelector(".mds-alert--warning");
+    expect(warning?.textContent).toContain("Bu ödevi henüz teslim etmedin");
+  });
+
+  it("stays 'Teslim edilmedi' for a submission emptied since", async () => {
+    mocks.get.mockResolvedValue(own(submission({ note: null, files: [] })));
+    const host = await mount();
+    expect(state(host)?.textContent).toBe("Teslim edilmedi");
+  });
+
+  it.each([
+    ["a file", { files: [pdf()] }],
+    ["a note", { note: "Yaptım." }],
+  ])("is 'Teslim edildi', without a warning, once it holds %s", async (_label, over) => {
+    mocks.get.mockResolvedValue(own(submission(over)));
+    const host = await mount();
+    expect(state(host)?.textContent).toBe("Teslim edildi");
+    expect(state(host)?.className).toContain("mds-badge--success");
+    expect(host.querySelector(".mds-alert--warning")).toBeNull();
+  });
+
+  it("turns to 'Teslim edildi' as soon as a file is added", async () => {
+    fetchMock.mockResolvedValue(
+      json(201, wire(submission({ files: [pdf(F1, { name: "a.pdf" })] })))
+    );
+    const host = await mount();
+    await choose(host, [file("a.pdf", MB)]);
+    await settle();
+    expect(state(host)?.textContent).toBe("Teslim edildi");
+  });
+
+  it("says nothing while the homework is read", async () => {
+    mocks.get.mockReturnValue(new Promise(() => {}));
+    const host = await mount();
+    expect(state(host)).toBeNull();
+    expect(host.querySelector(".mds-alert--warning")).toBeNull();
+  });
+});
+
+describe("a celse without homework", () => {
+  it("draws nothing for a talebe who handed nothing in on it", async () => {
+    const host = await mount(null);
+    expect(mocks.get).toHaveBeenCalledWith(LESSON);
+    expect(host.querySelector('[data-testid="session-homework"]')).toBeNull();
+  });
+
+  it("still lets a talebe who handed in before see and manage it, with no state", async () => {
+    mocks.get.mockResolvedValue(own(submission({ files: [pdf()] })));
+    const host = await mount(null);
+    expect(
+      host.querySelector('[data-testid="session-homework"]')
+    ).not.toBeNull();
+    expect(host.textContent).toContain(tr.noAssignment);
+    expect(state(host)).toBeNull();
+    expect(host.querySelector('[data-testid="homework-files"]')).not.toBeNull();
+    expect(fileInput(host)).not.toBeNull();
+  });
+});
+
 describe("the card", () => {
   it("names itself and who reads it, and says there is nothing handed in yet", async () => {
     const host = await mount();
     expect(mocks.get).toHaveBeenCalledWith(LESSON);
     const text = host.textContent ?? "";
-    expect(host.querySelector("h2")?.textContent).toBe("Ödevim");
+    expect(
+      [...host.querySelectorAll("h3")].map((h) => h.textContent)
+    ).toContain("Ödevim");
     expect(text).toContain("Müderris ve ders ekibi görür.");
     expect(text).toContain("Henüz dosya eklemedin.");
     expect(host.querySelector('[data-testid="homework-files"]')).toBeNull();
