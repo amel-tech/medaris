@@ -155,12 +155,18 @@ keep to letters and digits for the same reason.
 - `clickhouse-client` inside the ClickHouse container reads the container's
   `CLICKHOUSE_PASSWORD`, so the `docker exec … clickhouse-client` commands in
   this file need no `--password`.
-- `networks` for `default` stays `::/0`. Docker assigns the stack's addresses
-  at deploy time (`signoz-net` pins no subnet, and Coolify adds a network named
-  after the application uuid, per its source), so a narrower range would be a
-  guess about mdrs3's address pools or a pinned subnet that might collide with
-  networks already there. ClickHouse publishes no port; the password is what
-  authenticates its clients.
+- `networks` for `default` admits loopback and the private ranges only
+  (`::1`, `127.0.0.1`, `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`,
+  `fc00::/7`). Docker assigns the stack's addresses at deploy time from its
+  private pools, so a single subnet cannot be named; the ranges cover them and
+  refuse anything else. ClickHouse publishes no port either. Measured with
+  25.12.5 on 2026-10-13: a client on a 172.31.250.0/24 network signed in; one
+  on 100.64.250.0/24 was refused with the right password (516).
+- The cluster's one replica (`remote_servers.cluster`) connects as `default`
+  with the same password. A query that goes through the network to it
+  (`clusterAllReplicas(...)` with `prefer_localhost_replica = 0`) answered on
+  25.12.5 with it; without it such a query fails with 516. Ordinary traffic
+  uses the local replica and never needed it.
 - ClickHouse writes its resolved config, password included, to
   `preprocessed_configs/` on the `clickhouse` volume. A [backup](#backup) taken
   after the final step therefore holds the password; keep backups as private
@@ -202,7 +208,8 @@ unedited.
   by service name; `config/` is `pours/` with exactly those three host names
   replaced and the password lines below (`sed` below);
 - [ClickHouse password](#clickhouse-password): the `default` user's password
-  read from the environment in `config/clickhouse/config-0-0.yaml`, user and
+  read from the environment, its network limit and the cluster replica's
+  credentials in `config/clickhouse/config-0-0.yaml`, user and
   password in the five exporter DSNs of `config/ingester/ingester.yaml`, and
   in the DSNs of the compose file;
 - the OTLP host ports bound to 127.0.0.1 ([OTLP endpoint](#otlp-endpoint));
@@ -522,9 +529,11 @@ start from nothing.
    ```bash
    sub='s/signoz-telemetrystore-clickhouse-0-0/clickhouse/g; s/signoz-telemetrykeeper-zookeeper-0/zookeeper-1/g; s/signoz-signoz-0/signoz/g'
    pw='s/^    password: ""$/    password:\n      "@from_env": CLICKHOUSE_PASSWORD/'
+   net='s#^      ip: ::/0$#      ip:\n      - ::1\n      - 127.0.0.1\n      - 10.0.0.0/8\n      - 172.16.0.0/12\n      - 192.168.0.0/16\n      - fc00::/7#'
+   rep='s/^        port: 9000$/        port: 9000\n        user: default\n        password:\n          "@from_env": CLICKHOUSE_PASSWORD/'
    dsn='s#tcp://clickhouse:9000/#tcp://default:${env:CLICKHOUSE_PASSWORD}@clickhouse:9000/#g'
    P=pours/deployment
-   sed "$sub; $pw" $P/telemetrystore/clickhouse/config-0-0.yaml > ../config/clickhouse/config-0-0.yaml
+   sed "$sub; $pw; $net; $rep" $P/telemetrystore/clickhouse/config-0-0.yaml > ../config/clickhouse/config-0-0.yaml
    cp $P/telemetrystore/clickhouse/functions.yaml ../config/clickhouse/functions.yaml
    sed "$sub; $dsn" $P/ingester/ingester.yaml > ../config/ingester/ingester.yaml
    sed "$sub" $P/ingester/opamp.yaml > ../config/ingester/opamp.yaml
@@ -532,7 +541,8 @@ start from nothing.
    ```
 
    If a `sed` leaves the upstream line unchanged (upstream renamed or moved
-   it), the password is missing: carry it over by hand.
+   it), the password, the network limit or the replica's credentials are
+   missing: carry them over by hand.
 
 5. Prove it locally on a copy of the old stack's data (`local/compose.sh`,
    old file up, telemetry in, new file up, data still there), then deploy
