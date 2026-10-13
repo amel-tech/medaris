@@ -6,6 +6,13 @@
 import "server-only";
 
 export {
+  ACCOUNT_ACTION_PARAM,
+  ACCOUNT_ACTIONS,
+  type AccountAction,
+  type AccountActionRequest,
+  accountActionHref,
+} from "../shared/account-action";
+export {
   AUTH_ERROR_CODES,
   AUTH_ERROR_MESSAGE_KEYS,
   type AuthErrorCode,
