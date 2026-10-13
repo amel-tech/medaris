@@ -419,9 +419,13 @@ reviews:
            `workspace:` for every dependency (pnpm-workspace.yaml header). A bare
            version string added by this PR: medium — the version belongs in the
            catalog. A new package directory also needs: a line in
-           pnpm-workspace.yaml `packages:`, `tags` in its project.json, a commitlint
-           scope, and a `COPY` line in all six `apps/*/Dockerfile` `deps` stages,
-           or every image build breaks while local gates stay green.
+           pnpm-workspace.yaml `packages:`, `tags` in its project.json and a
+           commitlint scope. The Dockerfiles need no edit for it (their
+           `manifests` stage finds every member through pnpm-workspace.yaml,
+           tools/docker/workspace-manifests.mjs), except when
+           apps/tedrisat or apps/teskilat loads the package at runtime: their
+           runner stages copy each runtime workspace lib by name, and a missing
+           one fails the container at boot while local gates stay green.
         7. GITHUB ACTIONS (.github/workflows/**). actionlint and zizmor run on
            these. Beyond them: a new `pull_request_target`, a workflow-wide
            `permissions: write-all`, a third-party action not pinned to a SHA, a
@@ -777,7 +781,8 @@ reviews:
       enabled: true
     zizmor:
       enabled: true
-    # Dockerfiles (six of them; config-secrets rule 6 names the COPY lines).
+    # Dockerfiles (six app images plus apps/keycloak-theme; config-secrets
+    # rule 6 names the Nest runner stages' lib COPY lines).
     hadolint:
       enabled: true
     # Breaking changes in libs/services/swagger-docs/tedrisat.json (schema-drift chain 2).

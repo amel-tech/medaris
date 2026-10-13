@@ -3,9 +3,11 @@
 #
 # Proves a built theme JAR is one Keycloak actually loads. A JAR Keycloak
 # cannot use does not fail anything: the realm quietly renders the built-in
-# theme. So "the build produced a file" is not enough; this boots the exact
-# Keycloak the repo runs with the JAR in /opt/keycloak/providers — where the
-# production container loads it from — and checks three things:
+# theme. So "the build produced a file" is not enough; this builds the
+# production image from apps/keycloak-theme/Dockerfile with the JAR as its
+# only input (so the Keycloak version is the one pinned there, and the JAR
+# sits in /opt/keycloak/providers exactly as it ships), boots it, and checks
+# three things:
 #
 #   1. /admin/serverinfo lists medaris-keycloak-theme as a LOGIN theme
 #      (what the admin console's theme drop-down is built from).
@@ -20,18 +22,21 @@
 #     default: apps/keycloak-theme/dist_keycloak/keycloak-theme-for-kc-all-other-versions.jar
 #
 # Needs docker, curl and jq. Binds Keycloak to 127.0.0.1 on SMOKE_PORT
-# (default 18080). The container is removed on exit, pass or fail.
+# (default 18080). The container and the image are removed on exit, pass or
+# fail.
 
 set -euo pipefail
 
 THEME_ID="medaris-keycloak-theme"
-KEYCLOAK_IMAGE="quay.io/keycloak/keycloak:26.3.2"
+# The file name the Dockerfile COPYs: keycloakify's JAR for Keycloak 26.
+JAR_NAME="keycloak-theme-for-kc-all-other-versions.jar"
 REALM="mdrs-99-smoke"
 PORT="${SMOKE_PORT:-18080}"
 BASE="http://127.0.0.1:${PORT}"
 
 repo_root=$(cd "$(dirname "$0")/../.." && pwd)
-jar="${1:-$repo_root/apps/keycloak-theme/dist_keycloak/keycloak-theme-for-kc-all-other-versions.jar}"
+dockerfile="$repo_root/apps/keycloak-theme/Dockerfile"
+jar="${1:-$repo_root/apps/keycloak-theme/dist_keycloak/$JAR_NAME}"
 
 for tool in docker curl jq; do
   command -v "$tool" >/dev/null 2>&1 || {
@@ -45,22 +50,35 @@ done
 }
 jar=$(cd "$(dirname "$jar")" && pwd)/$(basename "$jar")
 
+version=$(sed -n 's/^ARG KEYCLOAK_VERSION=//p' "$dockerfile")
+[ -n "$version" ] || {
+  echo "smoke: no ARG KEYCLOAK_VERSION=<version> line in $dockerfile" >&2
+  exit 1
+}
+
 name="mdrs-99-theme-smoke-$$"
+image="medaris-keycloak-smoke:$$"
 work_dir=$(mktemp -d)
 # shellcheck disable=SC2329 # invoked by the EXIT trap below
 cleanup() {
   docker rm -f "$name" >/dev/null 2>&1 || true
+  docker rmi -f "$image" >/dev/null 2>&1 || true
   rm -rf "$work_dir"
 }
 trap cleanup EXIT
 
-echo "smoke: starting $KEYCLOAK_IMAGE with $(basename "$jar") as providers/$THEME_ID.jar"
+# The build context holds the JAR and nothing else, as in the image workflow.
+mkdir "$work_dir/context"
+cp "$jar" "$work_dir/context/$JAR_NAME"
+echo "smoke: building apps/keycloak-theme/Dockerfile (Keycloak $version) with $(basename "$jar")"
+docker build --quiet -f "$dockerfile" -t "$image" "$work_dir/context" >/dev/null
+
+echo "smoke: starting $image"
 docker run -d --name "$name" \
   -p "127.0.0.1:${PORT}:8080" \
   -e KC_BOOTSTRAP_ADMIN_USERNAME=admin \
   -e KC_BOOTSTRAP_ADMIN_PASSWORD=admin \
-  -v "$jar:/opt/keycloak/providers/$THEME_ID.jar:ro" \
-  "$KEYCLOAK_IMAGE" start-dev >/dev/null
+  "$image" start-dev >/dev/null
 
 ready=""
 for _ in $(seq 1 90); do

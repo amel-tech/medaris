@@ -41,15 +41,15 @@ host would need a rebuild; a different realm does not.
 
 ```yaml
 type=match,pattern=tedris-web-v(.+),group=1
-type=raw,value=latest,enable=${{ github.event_name == 'release' || github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}
+type=raw,value=latest,enable=${{ (github.event_name == 'release' && github.event.release.prerelease) || github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}
 type=sha
 type=raw,value=stable,enable=${{ github.event_name == 'release' && github.event.release.prerelease == false }}
 ```
 
 | Trigger | Tags produced |
 |---|---|
-| Full release published, tag `tedris-web-v1.4.0` | `1.4.0`, `latest`, `sha-<short>`, `stable` |
-| Full release published, tag `tedris-web-something-without-v` | `latest`, `sha-<short>`, `stable` — **no version tag** |
+| Full release published, tag `tedris-web-v1.4.0` | `1.4.0` and `stable`, moved onto the digest development pushed as `sha-<short>` (§1.1, nothing built). Only when that image does not exist: built from the tag, pushed as `1.4.0`, `sha-<short>`, `stable` |
+| Full release published, tag `tedris-web-something-without-v` | `stable` only, by the same promotion — **no version tag** |
 | Pre-release created, tag `tedris-web-v<semver>-rc.1` | `<semver>-rc.1`, `latest`, `sha-<short>` — **no `stable`**, so production is untouched and the deploy goes to development |
 | `workflow_dispatch` / `workflow_call` on `main` | `latest`, `sha-<short>` |
 | `workflow_dispatch` / `workflow_call` on any other branch | `sha-<short>` only |
@@ -66,7 +66,10 @@ create/discussion/issues/schedule — never `release`. Left that way, a release
 pushed the version tag and `sha-…` but left `:latest` pointing at the **previous**
 image, so a Coolify service configured to pull `:latest` (Path B in §3.2) would
 re-pull the old build while the workflow run went green. The explicit expression
-above moves `latest` on every release as well as on the default branch.
+above moves `latest` on the default branch and on a pre-release. A full release
+has not moved it since 2026-10-12: production pulls `stable`, the release
+commit's own push to `main` has already moved `latest`, and a release moving
+it again could race a newer development build.
 
 `type=sha` was added by MDRS-16 and is what guarantees the list is never empty.
 Before it, a dispatch from a non-default branch matched neither rule,
@@ -81,7 +84,7 @@ if: ${{ github.event_name != 'release' || startsWith(github.event.release.tag_na
 
 Read it as: *on a release, the tag must be ours; on anything else, run.* So a
 release tagged `tedris-web-something-without-v` **runs the job but produces no
-version tag** — only `latest` and `sha-…`. Always tag releases as `tedris-web-v<semver>`.
+version tag** — only `stable`. Always tag releases as `tedris-web-v<semver>`.
 
 MDRS-16 rewrote this gate. The old form enumerated allowed events
 (`== 'workflow_dispatch' || == 'workflow_call' || startsWith(…)`), which is a
@@ -99,6 +102,39 @@ would have been skipped silently and reported success.
 > --jq 'length'` → `0`), so no deploy has yet produced a `<semver>` or `stable`
 > tag; every image in GHCR is from a `latest` / `sha-<short>` run.
 
+### 1.1 A full release promotes the development image
+
+A full release does not build (2026-10-12). Its commit reached `main` before
+the release existed, and **CD (development)** built `sha-<short>` from it and
+deployed that image to development. The release run's *Promote the
+development image* step (`tools/ci/promote-image.sh`):
+
+1. looks for `ghcr.io/amel-tech/medaris-tedris-web:sha-<short>`, where `<short>`
+   is the first 7 characters of the release commit (`type=sha`; 7 is
+   metadata-action's default length at the pinned SHA);
+2. if it is missing while a `cd-development.yaml` run for that commit is
+   queued or in progress, polls every 20 s for up to 20 minutes and looks
+   again;
+3. found: `docker buildx imagetools create` points `<semver>` and `stable` at
+   that exact digest (no pull, no rebuild) and checks that both tags now
+   resolve to it. Then the production webhook, unchanged;
+4. not found (no CD run for the commit, or one that was cancelled, failed, or
+   did not build this app): the job builds from the tag as before, pushes
+   `sha-<short>`, `<semver>` and `stable`, and raises the warning *Production
+   gets an image development never ran*.
+
+The job summary (*Record the image*) says which path ran, the digest and the
+tags. A promoted image keeps the labels its development build wrote
+(`org.opencontainers.image.created` is that build's time); only the tags are
+the release's.
+
+Why the fallback exists: release-please merges several release PRs within
+minutes, and CD (development) keeps one pending run per concurrency group, so
+a newer push to `main` replaces a pending one and a release commit can end up
+with no development build at all (2026-10-12 04:34 to 04:36: 7 CD runs, 5
+cancelled). Production then still gets that commit, built from its tag, but
+not bytes development ran; the warning says so.
+
 ---
 
 ## 2. Normal deploy
@@ -115,12 +151,12 @@ open until someone decides to ship, and merging one is the production trigger.
 
 * **Release path (production)** — merge the release-please PR for `tedris-web` (or
   create a GitHub release tagged `tedris-web-v<semver>` by hand). The workflow
-  builds, pushes `<semver>` + `latest` + `sha-…` + `stable`, and calls the
-  **production** webhook. A **pre-release** does none of that: `stable` is
-  guarded on `github.event.release.prerelease == false`, so an `-rc` build
-  goes to development like any other `main` build. `latest` moving on a full
-  release is harmless: the release commit
-  is the head of `main`, so development receives the build it would anyway.
+  promotes the image development built from the release commit to
+  `<semver>` and `stable` (§1.1; it builds from the tag only when that
+  image does not exist) and calls the **production** webhook. `latest` does
+  not move. A **pre-release** does none of that: `stable` is guarded on
+  `github.event.release.prerelease == false`, so an `-rc` is built, moves
+  `latest` and goes to development like any other `main` build.
 * **Automatic path (development)** — every push to `main` runs **CD
   (development)** (`.github/workflows/cd-development.yaml`), which calls this
   workflow when `nx affected` lists this app — including for a change to a lib
@@ -132,7 +168,7 @@ open until someone decides to ship, and merging one is the production trigger.
   no commit.
 
 Each run writes the digest and the exact tag list to its job summary
-("Record pushed image"). **That summary is the rollback record** — copy the
+("Record the image"). **That summary is the rollback record** — copy the
 digest before you need it.
 
 ---
@@ -150,7 +186,7 @@ gh api -H "Accept: application/vnd.github+json" \
 
 This needs a token with `read:packages`. Without one, read the digest off the
 job summary of the run you want to return to
-(Actions → **Tedris Web** → the run → "Record pushed image").
+(Actions → **Tedris Web** → the run → "Record the image").
 
 You can always address an old build by its immutable digest:
 `ghcr.io/amel-tech/medaris-tedris-web@sha256:<digest>`.
@@ -216,7 +252,34 @@ tag before starting the container. **TODO(verify against Coolify):** confirm on
 the first MDRS-86 deploy that the digest Coolify runs afterwards is the one the
 workflow pushed; until then treat "re-pull" as documented, not measured.
 
-### 3.3 What NOT to do
+### 3.3 Roll production back
+
+Production pulls `stable`, and every full release leaves an immutable
+`<semver>` tag on the digest it shipped. Rolling back is pointing `stable` at
+an earlier `<semver>`'s digest, then calling the production webhook. Nothing
+is rebuilt.
+
+```bash
+echo "$GHCR_PAT" | docker login ghcr.io -u <your-github-username> --password-stdin
+
+IMAGE=ghcr.io/amel-tech/medaris-tedris-web
+# The digest of the version to return to (§3.1 lists them).
+good=$(docker buildx imagetools inspect "$IMAGE:<previous semver>" --format '{{.Manifest.Digest}}')
+
+docker buildx imagetools create --tag "$IMAGE:stable" "$IMAGE@$good"
+# Must print the same digest.
+docker buildx imagetools inspect "$IMAGE:stable" --format '{{.Manifest.Digest}}'
+
+# $PROD_COOLIFY_WEBHOOK is the value of the TEDRIS_WEB_PROD_COOLIFY_WEBHOOK secret.
+curl --fail-with-body --silent --show-error \
+     --request GET "$PROD_COOLIFY_WEBHOOK" \
+     --header "Authorization: Bearer $COOLIFY_DEPLOY_TOKEN"
+```
+
+Leave the `<semver>` tags where they are: they are the rollback points. The
+next full release moves `stable` again.
+
+### 3.4 What NOT to do
 
 Do not re-run the old workflow run to roll back. A re-run checks out the same
 commit but rebuilds from scratch: base images, `pnpm install` and the app build
@@ -296,9 +359,8 @@ closed by MDRS-86 and kept here only as history:
    step, land the workflow and Dockerfile changes but hold the deploy trigger —
    otherwise the first run after merge takes this frontend down.
 
-**Still open (MDRS-87).** `TEDRIS_WEB_PROD_COOLIFY_WEBHOOK` is not set, and the Coolify
-`production` application it points at does not exist yet. Until both do, a
-release pushes `<semver>` + `latest` + `sha-…` + `stable` to GHCR and then the
-*Deploy to Coolify* step exits 1 naming that secret: GHCR is updated,
-production is untouched, the run is red. It never falls back to the
+**Closed (MDRS-87).** `TEDRIS_WEB_PROD_COOLIFY_WEBHOOK` exists and the Coolify
+`production` application pulls `stable` (recorded 2026-10-12). Without the
+secret a release would still move `<semver>` + `stable` in GHCR and then fail
+the *Deploy to Coolify* step naming that secret; it never falls back to the
 development webhook.

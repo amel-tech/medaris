@@ -403,8 +403,10 @@ catalog:
   '@tolgee/cli': ^2.10.2
 
   # ═══ Design-system tooling — tools/design-system/ ═══
-  # Root devDependencies: the scripts have no package.json, because a
-  # workspace package would need a COPY line in all six Dockerfiles.
+  # Root devDependencies: the scripts have no package.json. That was chosen
+  # when a workspace package needed a COPY line in all six Dockerfiles; since
+  # the images find the manifests through the `packages:` list above
+  # (tools/docker/workspace-manifests.mjs, 2026-10-12) it no longer would.
   # Exact: regen.mjs reproduces the claude.ai/design app's _ds_bundle.js
   # byte-for-byte with this Babel, and another version may emit other bytes.
   '@babel/standalone': 7.29.9

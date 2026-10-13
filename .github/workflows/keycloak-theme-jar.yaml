@@ -1,9 +1,16 @@
 name: Keycloak Theme JAR
 
 # Builds the login/e-mail theme JAR on every change that can alter it, proves
-# Keycloak loads it, and keeps it as an artifact (MDRS-99). Deploying is a
+# Keycloak loads it, and keeps it as an artifact (MDRS-99). Shipping is a
 # separate workflow, keycloak-theme-app.yaml, which calls this one for its
-# build so the JAR that is smoke-tested here is the JAR that ships.
+# build and bakes the artifact into the Keycloak image, so the JAR that is
+# smoke-tested here is the JAR that ships.
+#
+# No `push` trigger (2026-10-12). On main this workflow runs through
+# cd-development.yaml -> keycloak-theme-app.yaml whenever `nx affected` lists
+# keycloak-theme, which covers apps/keycloak-theme and the libs it builds
+# from; a push trigger of its own built the same JAR a second time on every
+# such push. Pull requests still run it directly, with the path filter below.
 #
 # Why a separate workflow rather than a job in ci.yaml: ci.yaml's Verify job
 # runs `nx affected -t build`, and apps/keycloak-theme has no `build` target —
@@ -13,17 +20,6 @@ name: Keycloak Theme JAR
 
 on:
   pull_request:
-    paths:
-      - apps/keycloak-theme/**
-      - libs/ui/**
-      - libs/icons/**
-      - libs/tokens/**
-      - pnpm-lock.yaml
-      - pnpm-workspace.yaml
-      - tools/keycloak/smoke-theme-jar.sh
-      - .github/workflows/keycloak-theme-jar.yaml
-  push:
-    branches: [main]
     paths:
       - apps/keycloak-theme/**
       - libs/ui/**
@@ -69,7 +65,9 @@ jobs:
           cache: pnpm
 
       # keycloakify shells out to `mvn clean install` to package the theme, and
-      # the JAR runs on Keycloak 26.3.2, whose bundled JVM is OpenJDK 21.
+      # the JAR runs on the Keycloak apps/keycloak-theme/Dockerfile pins, a
+      # Keycloak 26 whose bundled JVM is OpenJDK 21. A Keycloak release that
+      # moves to another JVM moves this too.
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
@@ -105,8 +103,10 @@ jobs:
           sha256sum "$jar" | tee -a "$GITHUB_STEP_SUMMARY"
 
       # A JAR Keycloak cannot load fails nothing — the realm silently renders
-      # the built-in theme. Boot Keycloak 26.3.2 with it in providers/ and
-      # check the theme is listed and actually renders login and registration.
+      # the built-in theme. The script builds apps/keycloak-theme/Dockerfile
+      # with this JAR (so it runs the pinned Keycloak, with the JAR where the
+      # image puts it), boots it, and checks the theme is listed and actually
+      # renders login and registration.
       - name: Smoke-test the JAR in Keycloak
         run: tools/keycloak/smoke-theme-jar.sh
 

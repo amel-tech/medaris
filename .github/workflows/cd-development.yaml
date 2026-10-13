@@ -46,10 +46,13 @@ name: CD (development)
 #     very first run has no anchor and nx-set-shas falls back to HEAD~1:
 #     seed it once after merging with a `workflow_dispatch`, `dry_run: true`,
 #     `base: 5d52210` (the commit every development app runs today).
-#   * keycloak-theme is EXCLUDED from the push fan-out. Its workflow ships a
-#     JAR over SSH and restarts the one Keycloak in the Amel-Tech Auth project,
-#     which serves applications outside Medaris. That stays a hand-dispatched
-#     deploy in a window agreed with that project's owner.
+#   * keycloak-theme runs on a push too, since it ships as an image
+#     (2026-10-12): it builds the theme JAR and pushes
+#     ghcr.io/amel-tech/medaris-keycloak `sha-<short>` and `latest`, and
+#     deploys nothing. There is no development Keycloak; the one Keycloak, in
+#     the Amel-Tech Auth project, serves applications outside Medaris and is
+#     redeployed only by a full keycloak-theme release, which promotes the
+#     image built here.
 #
 # The seven called workflows' job-level `if:` gates read
 # `github.event_name != 'release' || startsWith(…)`: inside a reusable
@@ -176,6 +179,17 @@ jobs:
   # `github.event.inputs.dry_run` is compared as a string on purpose: a
   # workflow_dispatch boolean input arrives in the event payload as "true" /
   # "false", and a non-empty string is truthy in an `if:`.
+  #
+  # `actions: read` is not used on this path. The called workflows' jobs ask
+  # for it because a full release lists this workflow's runs to wait for the
+  # image it builds (tools/ci/promote-image.sh), and a called workflow cannot
+  # ask for a permission its caller did not pass: the run would fail to start.
+  #
+  # The `sha-<short>` image each called workflow pushes here is what a full
+  # release later promotes to production. A run of this workflow that is
+  # replaced while pending (a newer push to main, same `cd-development`
+  # group) leaves its commit without that image; the release then builds
+  # from its tag and warns.
   landing-web:
     needs: detect
     if: ${{ github.event.inputs.dry_run != 'true' && contains(fromJSON(needs.detect.outputs.projects), 'landing-web') }}
@@ -183,6 +197,7 @@ jobs:
     permissions:
       contents: read
       packages: write
+      actions: read
     secrets: inherit
 
   nazar-web:
@@ -192,6 +207,7 @@ jobs:
     permissions:
       contents: read
       packages: write
+      actions: read
     secrets: inherit
 
   nizam-web:
@@ -201,6 +217,7 @@ jobs:
     permissions:
       contents: read
       packages: write
+      actions: read
     secrets: inherit
 
   tedris-web:
@@ -210,6 +227,7 @@ jobs:
     permissions:
       contents: read
       packages: write
+      actions: read
     secrets: inherit
 
   tedrisat-api:
@@ -219,6 +237,7 @@ jobs:
     permissions:
       contents: read
       packages: write
+      actions: read
     secrets: inherit
 
   teskilat-api:
@@ -228,14 +247,16 @@ jobs:
     permissions:
       contents: read
       packages: write
+      actions: read
     secrets: inherit
 
-  # No packages: write — this one ships a JAR over SSH, not an image. Never on
-  # a push: it restarts the shared Keycloak (see the header).
+  # Builds and pushes the Keycloak image; restarts nothing (see the header).
   keycloak-theme:
     needs: detect
-    if: ${{ github.event_name != 'push' && github.event.inputs.dry_run != 'true' && contains(fromJSON(needs.detect.outputs.projects), 'keycloak-theme') }}
+    if: ${{ github.event.inputs.dry_run != 'true' && contains(fromJSON(needs.detect.outputs.projects), 'keycloak-theme') }}
     uses: ./.github/workflows/keycloak-theme-app.yaml
     permissions:
       contents: read
+      packages: write
+      actions: read
     secrets: inherit

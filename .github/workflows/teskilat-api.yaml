@@ -3,9 +3,15 @@ name: Teskilat API
 # Builds apps/teskilat/Dockerfile and pushes to GHCR, then fires the Coolify
 # webhook that makes the running service pull the new image.
 #
+# A full release does not build (2026-10-12): it promotes the image
+# development built from the release commit, by retagging its digest, so
+# production runs the bytes development ran. It builds only when that image
+# does not exist; see the "Promote the development image" step.
+#
 # `context: .` + `file: ./apps/teskilat/Dockerfile` is correct and deliberately
 # unchanged (MDRS-16): the image needs the whole workspace — pnpm-workspace.yaml,
-# pnpm-lock.yaml and all 17 member manifests — not just the app directory.
+# pnpm-lock.yaml and every member's manifest and sources — not just the app
+# directory.
 #
 # Rollback: docs/runbooks/deploy-teskilat-api.md
 
@@ -65,9 +71,14 @@ jobs:
     # tag must be ours" — is behaviour-identical for the three current triggers
     # and safe for any future one.
     if: ${{ github.event_name != 'release' || startsWith(github.event.release.tag_name, 'teskilat-') }}
+    # `actions: read`: a full release lists the cd-development.yaml runs of
+    # its commit to wait for the image (tools/ci/promote-image.sh). The
+    # callers in cd-development.yaml grant it too: a called workflow cannot
+    # ask for more than its caller passes.
     permissions:
       contents: read
       packages: write
+      actions: read
 
     steps:
       - name: Checkout repository
@@ -139,8 +150,37 @@ jobs:
             type=sha
             type=raw,value=stable,enable=${{ github.event_name == 'release' && github.event.release.prerelease == false }}
 
+      # A full release promotes instead of building (2026-10-12). Its commit
+      # was pushed to main first, and cd-development.yaml built `sha-<short>`
+      # from it and deployed that to development. tools/ci/promote-image.sh
+      # finds that image and points `<semver>` and `stable` at its digest
+      # (`docker buildx imagetools create`: no pull, no rebuild), so production
+      # runs exactly what development ran. While a cd-development.yaml run for
+      # the commit is still queued or running it waits, polling every 20 s for
+      # up to 20 minutes. It prints an empty digest when the image never
+      # appears: no CD run for the commit, or one that was cancelled (a newer
+      # push replaces a pending run of the `cd-development` group), failed, or
+      # did not build this app. The build step below then builds from the tag
+      # as before, and "Record the image" warns about it.
+      - name: Promote the development image
+        id: promote
+        if: ${{ github.event_name == 'release' && github.event.release.prerelease == false }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAGS: ${{ steps.meta.outputs.tags }}
+        run: |
+          set -euo pipefail
+          source=$(grep ':sha-' <<<"$TAGS")
+          mapfile -t targets < <(grep -v -e ':sha-' -e '^$' <<<"$TAGS")
+          digest=$(tools/ci/promote-image.sh "$source" "${targets[@]}")
+          echo "digest=${digest}" >> "$GITHUB_OUTPUT"
+
+      # Everything except a promoted full release: development (push to main
+      # through cd-development.yaml, workflow_dispatch), a pre-release, and a
+      # full release whose development image does not exist.
       - name: Build and push Docker image
         id: build
+        if: ${{ steps.promote.outputs.digest == '' }}
         uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
         with:
           context: .
@@ -151,19 +191,37 @@ jobs:
           cache-from: type=gha,scope=teskilat-api
           cache-to: type=gha,mode=max,scope=teskilat-api
 
-      # What the rollback runbook needs, recorded on the run itself: the exact
-      # tags that were pushed and the immutable digest they all point at.
-      - name: Record pushed image
+      # What the rollback runbook needs, recorded on the run itself: which path
+      # ran, the exact tags, and the immutable digest they all point at.
+      - name: Record the image
+        env:
+          TAGS: ${{ steps.meta.outputs.tags }}
+          PROMOTED: ${{ steps.promote.outputs.digest }}
+          BUILT: ${{ steps.build.outputs.digest }}
+          FULL_RELEASE: ${{ github.event_name == 'release' && github.event.release.prerelease == false }}
         run: |
           set -euo pipefail
+          if [ -n "${PROMOTED}" ]; then
+            digest="${PROMOTED}"
+            path="promoted: the image development built from this commit, retagged by digest (no rebuild)"
+          else
+            digest="${BUILT}"
+            path="built from source"
+            if [ "${FULL_RELEASE}" = "true" ]; then
+              path="built from the release tag: development never built this commit (see the promote step's log)"
+              echo "::warning title=Production gets an image development never ran::No development image for ${GITHUB_SHA} (no cd-development.yaml run built it), so this release was built from its tag and goes to production untested in development."
+            fi
+          fi
           {
-            echo "### Teskilat API image pushed"
+            echo "### Teskilat API image"
             echo
-            echo "**Digest:** \`${{ steps.build.outputs.digest }}\`"
+            echo "**Path:** ${path}"
+            echo
+            echo "**Digest:** \`${digest}\`"
             echo
             echo "**Tags:**"
             echo '```'
-            echo "${{ steps.meta.outputs.tags }}"
+            echo "${TAGS}"
             echo '```'
             echo
             echo "Rollback: docs/runbooks/deploy-teskilat-api.md"

@@ -67,7 +67,7 @@ npm run format
 npm run run-keycloak
 ```
 
-This command starts a Docker container with Keycloak and your custom theme loaded.
+This command builds the production image from `Dockerfile` (the pinned Keycloak with `dist_keycloak/keycloak-theme-for-kc-all-other-versions.jar` baked in) and starts it in dev mode.
 Access at: http://localhost:8080
 
 - Username: `admin`
@@ -143,7 +143,7 @@ headerNode={advancedMsg("loginAccountTitle")}
 
 ## Tests
 
-`pnpm nx test keycloak-theme` renders every page a registrant can reach in all three languages (happy-dom), checks the copy and the e-mail theme statically, and sends real verification and password-reset e-mails through Keycloak 26.3.2 and Mailpit — so it needs Docker.
+`pnpm nx test keycloak-theme` renders every page a registrant can reach in all three languages (happy-dom), checks the copy and the e-mail theme statically, and sends real verification and password-reset e-mails through the Keycloak version pinned in `Dockerfile` (`ARG KEYCLOAK_VERSION`) and Mailpit — so it needs Docker.
 
 ## Troubleshooting
 
