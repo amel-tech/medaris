@@ -2,18 +2,11 @@
 
 import { Popover } from "@base-ui/react/popover";
 import { useId, useRef, useState } from "react";
+import type { ImamStarLabels } from "../lib/imam-star";
 import { cx } from "./cx";
 import { Icon } from "./icon";
 
-/** The star's words, from the caller's catalogue (`common.imamStar`). */
-export interface ImamStarLabels {
-  /** "Dersin imamı": the button's name and the bubble's title */
-  title: string;
-  /** what the imam is, the bubble's text */
-  body: string;
-  /** "dersin imamı": what a screen reader reads for a star that is not a button */
-  mark: string;
-}
+export type { ImamStarLabels } from "../lib/imam-star";
 
 export interface ImamStarProps {
   labels: ImamStarLabels;

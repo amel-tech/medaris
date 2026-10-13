@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { act } from "react";
 import { afterEach, describe, expect, it } from "vitest";
-import { showsImamStar } from "../src/lib/imam-star";
+import { imamStarLabels, showsImamStar } from "../src/lib/imam-star";
 import { ImamStar } from "../src/mds/imam-star";
 import { cleanup, click, key, render, settle } from "./render";
 
@@ -105,5 +105,11 @@ describe("showsImamStar", () => {
     expect(showsImamStar(false, 3)).toBe(false);
     expect(showsImamStar(true, null)).toBe(false);
     expect(showsImamStar(true, undefined)).toBe(false);
+  });
+});
+
+describe("imamStarLabels", () => {
+  it("reads the star's three words from a translator of common.imamStar", () => {
+    expect(imamStarLabels((key) => labels[key])).toEqual(labels);
   });
 });
