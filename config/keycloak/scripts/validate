@@ -156,7 +156,7 @@ if [[ $parsed -eq 1 ]]; then
         jq -s -r --arg f "$(rel "$file")" --argjson apis "$api_list" '
           (.[0] * .[1]) as $c
           | (if ($c.clientId // "") == "" then "\($f): clientId is missing" else empty end),
-            (if $c.standardFlowEnabled then
+            (if $c.standardFlowEnabled and ($c.serviceAccountsEnabled | not) then
                (if $c.publicClient != false then "\($f): a web client must be confidential" else empty end),
                (if ($c.attributes["pkce.code.challenge.method"] // "") != "S256" then "\($f): a web client must require PKCE S256" else empty end),
                (if $c.implicitFlowEnabled or $c.directAccessGrantsEnabled or $c.serviceAccountsEnabled
@@ -182,6 +182,55 @@ if [[ $parsed -eq 1 ]]; then
 
     dupes=$(find "$dir" -maxdepth 1 -type f -name '*.json' -exec jq -r .clientId {} + | sort | uniq -d)
     [[ -z "$dupes" ]] || problem "clients/$env/: clientId used twice: $dupes"
+
+    # 6. Partner clients (partner enrollments): the standard flow for the
+    #    person's "Medaris ile giriş yap" and a service account for the calls
+    #    to tedrisat. Confidential, PKCE S256, consent asked, exact redirect
+    #    URIs, the tedrisat-api audience mapper, a service account holding
+    #    partner-enrollment (a realm role of realms/_base.json), and that role
+    #    in its tokens through a mapper of its own with full scope off, so a
+    #    person's token through it names none of their roles. No client is
+    #    tied to SYSTEM_ADMIN this way. Every client's description fits
+    #    Keycloak's column (255 characters).
+    realm_roles=$(jq -c '[.roles.realm // [] | .[].name]' "$KC_CONFIG_DIR/realms/_base.json" 2>/dev/null || echo '[]')
+    while IFS= read -r file; do
+      while IFS= read -r line; do problem "$line"; done < <(
+        jq -s -r --arg f "$(rel "$file")" --argjson apis "$api_list" --argjson roles "$realm_roles" '
+          (.[0] * .[1]) as $c
+          | ($c.serviceAccountRealmRoles // []) as $sa
+          | ($c.scopeRealmRoles // []) as $scope
+          | (if (($sa + $scope) | index("SYSTEM_ADMIN")) != null then "\($f): no client is tied to SYSTEM_ADMIN" else empty end),
+            (($sa + $scope)[] | select(. as $r | $roles | index($r) | not)
+              | "\($f): \(tojson) is not a realm role in realms/_base.json"),
+            (if ($c.description // "" | length) > 255 then "\($f): description is longer than Keycloak'"'"'s 255 characters" else empty end),
+            (if $c.standardFlowEnabled and $c.serviceAccountsEnabled then
+               (if $c.publicClient != false then "\($f): a partner client must be confidential" else empty end),
+               (if ($c.attributes["pkce.code.challenge.method"] // "") != "S256" then "\($f): a partner client must require PKCE S256" else empty end),
+               (if $c.consentRequired != true then "\($f): a partner client asks the person'"'"'s consent (consentRequired)" else empty end),
+               (if $c.implicitFlowEnabled or $c.directAccessGrantsEnabled
+                then "\($f): a partner client uses the standard flow and its service account only" else empty end),
+               (if ($c.redirectUris // []) | length == 0 then "\($f): redirectUris is empty" else empty end),
+               ((($c.redirectUris // []) + ($c.webOrigins // []))[]
+                 | select(test("\\*") or . == "+" or . == "-")
+                 | "\($f): \(tojson) is not an exact URI"),
+               (if ($sa | index("partner-enrollment")) == null
+                then "\($f): a partner client'"'"'s service account holds partner-enrollment (serviceAccountRealmRoles)" else empty end),
+               (if $c.fullScopeAllowed != false or ($scope | index("partner-enrollment")) == null
+                then "\($f): a partner client has full scope off and partner-enrollment as its role scope (scopeRealmRoles)" else empty end),
+               (if ([$c.protocolMappers // [] | .[]
+                     | select(.protocolMapper == "oidc-usermodel-realm-role-mapper"
+                              and .config["claim.name"] == "realm_access.roles"
+                              and .config["access.token.claim"] == "true")] | length) == 0
+                then "\($f): no mapper of its own puts its realm roles into the access token; with consent on, Keycloak leaves the roles scope out of its service account'"'"'s token" else empty end),
+               (if ([$c.protocolMappers // [] | .[]
+                     | select(.protocolMapper == "oidc-audience-mapper"
+                              and (.config["included.client.audience"] as $aud | $apis | index($aud)) != null
+                              and .config["access.token.claim"] == "true")] | length) == 0
+                then "\($f): no audience mapper puts the API client into the access token" else empty end)
+             else empty end)
+        ' "$KC_CONFIG_DIR/clients/_base.json" "$file"
+      )
+    done < <(find "$dir" -maxdepth 1 -type f -name '*.json' | sort)
   done
 fi
 

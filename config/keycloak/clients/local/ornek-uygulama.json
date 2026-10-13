@@ -1,0 +1,48 @@
+{
+  "clientId": "ornek-uygulama",
+  "name": "Örnek Uygulama",
+  "description": "Example partner application. A real partner's client is made by hand: docs/runbooks/partner-application.md.",
+  "standardFlowEnabled": true,
+  "serviceAccountsEnabled": true,
+  "consentRequired": true,
+  "fullScopeAllowed": false,
+  "frontchannelLogout": false,
+  "baseUrl": "https://ornek.example",
+  "redirectUris": ["https://ornek.example/auth/medaris/callback"],
+  "webOrigins": [],
+  "attributes": {
+    "pkce.code.challenge.method": "S256",
+    "post.logout.redirect.uris": "https://ornek.example/"
+  },
+  "protocolMappers": [
+    {
+      "name": "audience-tedrisat-api",
+      "protocol": "openid-connect",
+      "protocolMapper": "oidc-audience-mapper",
+      "consentRequired": false,
+      "config": {
+        "included.client.audience": "tedrisat-api",
+        "access.token.claim": "true",
+        "id.token.claim": "false",
+        "introspection.token.claim": "true"
+      }
+    },
+    {
+      "name": "realm-roles",
+      "protocol": "openid-connect",
+      "protocolMapper": "oidc-usermodel-realm-role-mapper",
+      "consentRequired": false,
+      "config": {
+        "claim.name": "realm_access.roles",
+        "jsonType.label": "String",
+        "multivalued": "true",
+        "access.token.claim": "true",
+        "id.token.claim": "false",
+        "userinfo.token.claim": "false",
+        "introspection.token.claim": "true"
+      }
+    }
+  ],
+  "scopeRealmRoles": ["partner-enrollment"],
+  "serviceAccountRealmRoles": ["partner-enrollment"]
+}

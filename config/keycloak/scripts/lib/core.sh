@@ -82,7 +82,9 @@ secret_var() {
 
 # render_client FILE — clients/_base.json deep-merged with FILE, plus the
 # client secret when its KC_CLIENT_SECRET_* variable is set. jq reads the
-# secret through $ENV, so it never appears in an argv.
+# secret through $ENV, so it never appears in an argv. Without
+# `serviceAccountRealmRoles` and `scopeRealmRoles`, which are this package's
+# fields, not Keycloak's: see plan_client_realm_roles.
 render_client() {
   local file="$1" id var
   id=$(jq -r .clientId "$file")
@@ -91,9 +93,63 @@ render_client() {
     export "${var?}"
   fi
   jq -s --arg var "$var" '
-    (.[0] * .[1])
+    (.[0] * .[1] | del(.serviceAccountRealmRoles, .scopeRealmRoles))
     + (if ($ENV[$var] // "") != "" then {secret: $ENV[$var]} else {} end)' \
     "$KC_CONFIG_DIR/clients/_base.json" "$file"
+}
+
+# plan_client_realm_roles FILE — the realm roles a client is tied to beyond
+# its representation, from two fields of this package (partner enrollments: a
+# partner application's client):
+#
+#   serviceAccountRealmRoles  roles its service account holds (role mappings of
+#                             the service account's user): `partner-enrollment`
+#   scopeRealmRoles           its role scope (scope mappings), which with
+#                             `fullScopeAllowed: false` is all a token through
+#                             it may name
+#
+# Keycloak's client representation has a field for neither. A missing one is
+# granted; one the server has beyond the list is left alone, as a mapper only
+# the server has is.
+plan_client_realm_roles() {
+  local file="$1" id uuid account kind path wanted held role
+  if [[ -z "$(jq -r '(.serviceAccountRealmRoles // []) + (.scopeRealmRoles // []) | .[]' "$file")" ]]; then
+    return 0
+  fi
+  id=$(jq -r .clientId "$file")
+  uuid=$(client_uuid "$id")
+  account=""
+  if [[ -n "$uuid" ]] &&
+    [[ "$(api GET "/realms/$KC_REALM/clients/$uuid" | jq -r .serviceAccountsEnabled)" == "true" ]]; then
+    account=$(api GET "/realms/$KC_REALM/clients/$uuid/service-account-user" | jq -r '.id // empty')
+  fi
+  for kind in serviceAccountRealmRoles scopeRealmRoles; do
+    wanted=$(jq -r --arg k "$kind" '(.[$k] // [])[]' "$file")
+    [[ -n "$wanted" ]] || continue
+    path=""
+    if [[ "$kind" == serviceAccountRealmRoles && -n "$account" ]]; then
+      path="/realms/$KC_REALM/users/$account/role-mappings/realm"
+    elif [[ "$kind" == scopeRealmRoles && -n "$uuid" ]]; then
+      path="/realms/$KC_REALM/clients/$uuid/scope-mappings/realm"
+    fi
+    held=""
+    if [[ -n "$path" ]]; then
+      held=$(api GET "$path" | jq -r '.[].name')
+    fi
+    while IFS= read -r role; do
+      if grep -qxF -- "$role" <<<"$held"; then
+        report "client $id $kind $role" "in sync"
+        continue
+      fi
+      DIFFERENCES=$((DIFFERENCES + 1))
+      if [[ "$MODE" == "apply" ]]; then
+        [[ -n "$path" ]] || die "client $id has no ${kind%RealmRoles} to give $role to"
+        api POST "$path" \
+          "$(api GET "/realms/$KC_REALM/roles/$(uri "$role")" | jq -c '[{id, name}]')" >/dev/null
+      fi
+      report "client $id $kind $role" "$(verb CREATE)"
+    done <<<"$wanted"
+  done
 }
 
 # ---------------------------------------------------------------------------
@@ -418,5 +474,11 @@ run_plan() {
           "$(jq -c --arg id "$mid" '. + {id: $id}' <<<"$mapper")" >/dev/null
       fi
     done <<<"$mappers"
+  done < <(client_files)
+
+  # --- client realm roles ----------------------------------------------------
+  # After every client, so a client created above has its service account.
+  while IFS= read -r file; do
+    plan_client_realm_roles "$file"
   done < <(client_files)
 }
