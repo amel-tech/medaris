@@ -205,6 +205,38 @@ describe("BunnyStreamClient (MDRS-116)", () => {
     await expect(client.getVideo("v")).resolves.toBeNull();
   });
 
+  // 13 October: a video replaced on its recording is deleted from the library.
+  it("deletes a video with the API key as AccessKey, and takes a 404 for one already gone", async () => {
+    const fetchImpl = vi
+      .fn()
+      // Bunny's body is not read: an empty one is as good as its JSON
+      .mockResolvedValueOnce(new Response(null, { status: 200 }))
+      .mockResolvedValueOnce(json({ message: "not found" }, 404))
+      .mockResolvedValueOnce(json({}, 500));
+    const client = new BunnyStreamClient(
+      readBunnyStreamConfig(ENV),
+      fetchImpl as never
+    );
+    await expect(
+      client.deleteVideo("a1b2c3d4-0000-4000-8000-00000000abcd")
+    ).resolves.toBe(true);
+    const [url, init] = fetchImpl.mock.calls[0] as unknown as [
+      string,
+      RequestInit & { headers: Record<string, string> },
+    ];
+    expect(url).toBe(
+      "https://video.bunnycdn.com/library/12345/videos/a1b2c3d4-0000-4000-8000-00000000abcd"
+    );
+    expect(init.method).toBe("DELETE");
+    expect(init.headers.AccessKey).toBe("set-me-api-key");
+    expect(init.body).toBeUndefined();
+
+    await expect(client.deleteVideo("v")).resolves.toBe(false);
+    await expect(client.deleteVideo("v")).rejects.toBeInstanceOf(
+      BunnyStreamUnavailableError
+    );
+  });
+
   it("turns a failure or an unexpected answer into BUNNY_STREAM_UNAVAILABLE", async () => {
     const client = (impl: () => Promise<Response>) =>
       new BunnyStreamClient(readBunnyStreamConfig(ENV), vi.fn(impl) as never);

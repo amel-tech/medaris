@@ -55,8 +55,9 @@ export interface IBunnyVideo {
 
 /**
  * The one way tedrisat talks to Bunny Stream (MDRS-116): create a video,
- * read a video's status, sign a TUS upload, build a player link. The API key
- * stays inside: callers get a video id, a signature or a link, never the key.
+ * read a video's status, delete a video that left its recording, sign a TUS
+ * upload, build a player link. The API key stays inside: callers get a video
+ * id, a signature or a link, never the key.
  */
 @Injectable()
 export class BunnyStreamClient {
@@ -123,6 +124,21 @@ export class BunnyStreamClient {
     };
   }
 
+  /**
+   * Deletes a video from the library: true once Bunny deleted it, false when
+   * Bunny no longer had it (404), which leaves the library as wanted all the
+   * same. Any other answer is BUNNY_STREAM_UNAVAILABLE. Bunny's body is not
+   * read: its status code says it all.
+   */
+  async deleteVideo(videoId: string): Promise<boolean> {
+    const { libraryId } = this.settings;
+    const response = await this.send(
+      `${API_ROOT}/${libraryId}/videos/${encodeURIComponent(videoId)}`,
+      { method: "DELETE" }
+    );
+    return response !== null;
+  }
+
   /** Signs a TUS upload of `videoId` that Bunny accepts until `expiresAt` (Unix seconds). */
   uploadAuthorization(
     videoId: string,
@@ -169,6 +185,21 @@ export class BunnyStreamClient {
     url: string,
     init: { method: string; body?: string }
   ): Promise<T | null> {
+    const response = await this.send(url, init);
+    if (response === null) return null;
+    try {
+      return (await response.json()) as T;
+    } catch {
+      this.logger.warn(`Bunny ${init.method} answered a body that is not JSON`);
+      throw new BunnyStreamUnavailableError();
+    }
+  }
+
+  /** Bunny's answer when it is a success; null for a 404. Any other failure is a 503 to the caller. */
+  private async send(
+    url: string,
+    init: { method: string; body?: string }
+  ): Promise<Response | null> {
     const { apiKey } = this.settings;
     let response: Response;
     try {
@@ -193,11 +224,6 @@ export class BunnyStreamClient {
       this.logger.warn(`Bunny ${init.method} answered ${response.status}`);
       throw new BunnyStreamUnavailableError();
     }
-    try {
-      return (await response.json()) as T;
-    } catch {
-      this.logger.warn(`Bunny ${init.method} answered a body that is not JSON`);
-      throw new BunnyStreamUnavailableError();
-    }
+    return response;
   }
 }

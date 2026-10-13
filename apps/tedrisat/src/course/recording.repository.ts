@@ -3,16 +3,20 @@ import {
   and,
   asc,
   eq,
+  exists,
   inArray,
   isNotNull,
   isNull,
   lte,
   ne,
+  notExists,
   or,
+  sql,
 } from "drizzle-orm";
 import { DatabaseService } from "../database/database.service";
 import { auditLog } from "../database/schema/audit.schema";
 import {
+  bunnyVideoRemovals,
   courseWeeks,
   lessonRecordings,
   lessons,
@@ -21,6 +25,7 @@ import type { Tx } from "./course-purge";
 import { LessonType } from "./domain/lesson-type.enum";
 import {
   type IRecordingRow,
+  type IUploadIntent,
   RecordingProvider,
   RecordingStatus,
   type RecordingVisibility,
@@ -112,7 +117,7 @@ export interface IBunnyUploadRow {
 }
 
 /** What `startBunnyUpload` writes. */
-export interface INewBunnyUpload {
+export interface INewBunnyUpload extends IUploadIntent {
   lessonId: string;
   title: string;
   visibility: RecordingVisibility;
@@ -120,6 +125,18 @@ export interface INewBunnyUpload {
   bunnyVideoId: string;
   uploadExpiresAt: Date;
   actorId: string;
+}
+
+/** A Bunny video waiting to be deleted from the library, as the encoding poll reads it. */
+export interface IVideoRemoval {
+  videoId: string;
+  recordingId: string;
+  /** The upload that took its place; null when a pasted link did. */
+  replacedByVideoId: string | null;
+  queuedBy: string;
+  queuedAt: Date;
+  /** Tries Bunny refused so far. */
+  attempts: number;
 }
 
 /** What `create` writes: a pasted link, already read by `detectRecordingLink`. */
@@ -205,6 +222,43 @@ async function assertVideoFree(
     )
     .limit(1);
   if (holder) throw new RecordingLinkInvalidError("bunny-video-used");
+}
+
+/**
+ * Queues a Bunny video that leaves its recording for deletion from the
+ * library, in the transaction that takes it off: the encoding poll deletes it
+ * (`claimVideoRemovals`). `replacedByVideoId` is the upload that takes its
+ * place, which the poll waits for; null when a pasted link does. A video
+ * already queued stays as it was.
+ */
+async function queueVideoRemoval(
+  tx: Tx,
+  removal: {
+    videoId: string;
+    recordingId: string;
+    replacedByVideoId: string | null;
+    queuedBy: string;
+  }
+): Promise<void> {
+  await tx.insert(bunnyVideoRemovals).values(removal).onConflictDoNothing();
+}
+
+/**
+ * The Bunny video a recording held before a pasted link, if that link does
+ * not keep it: a link of another host, or of another Bunny video. Pasting the
+ * same video's link again leaves it where it is.
+ */
+function videoLeftBy(
+  before: { provider: RecordingProvider; bunnyVideoId: string | null },
+  link: DetectedRecordingLink
+): string | null {
+  if (before.provider !== RecordingProvider.BUNNY || !before.bunnyVideoId) {
+    return null;
+  }
+  return link.provider === RecordingProvider.BUNNY &&
+    link.bunnyVideoId === before.bunnyVideoId
+    ? null
+    : before.bunnyVideoId;
 }
 
 /**
@@ -366,12 +420,15 @@ export class RecordingRepository {
    * The lesson row is locked first, so two uploads started at once for one
    * session are serialised and the second sees the first. A session that
    * already has a recording is refused (`RecordingExistsError`) unless an
-   * upload may take its place (`uploadReplaces`): a link, or a Bunny upload
-   * that FAILED. That row is reused for the new video, with the title and
-   * visibility of this upload, so a failed upload can be retried, and a link
-   * that does not play swapped for the video, without anyone deleting it. A
-   * replaced link is kept in the audit entry (`replacedLink`). The session's
-   * release time, on its lesson, is left as it is.
+   * upload may take its place (`uploadReplaces`): a link, a Bunny upload
+   * that FAILED, or, with `replaceVideo`, a Bunny video in any status. That
+   * row is reused for the new video, with the title and visibility of this
+   * upload, so a failed upload can be retried, a link that does not play
+   * swapped for the video, and a wrong video for the right one, without
+   * anyone deleting it. A replaced link is kept in the audit entry
+   * (`replacedLink`); a replaced Bunny video is named there
+   * (`replacedVideoId`) and queued for deletion from Bunny once this upload
+   * is over. The session's release time, on its lesson, is left as it is.
    */
   async startBunnyUpload(
     upload: INewBunnyUpload
@@ -397,7 +454,10 @@ export class RecordingRepository {
         .from(lessonRecordings)
         .where(eq(lessonRecordings.lessonId, upload.lessonId))
         .limit(1);
-      if (existing && !uploadReplaces(existing)) {
+      if (
+        existing &&
+        !uploadReplaces(existing, { replaceVideo: upload.replaceVideo })
+      ) {
         throw new RecordingExistsError(upload.lessonId);
       }
 
@@ -425,6 +485,19 @@ export class RecordingRepository {
           .values({ lessonId: upload.lessonId, ...values })
           .returning({ id: lessonRecordings.id });
         recordingId = row.id;
+      }
+      // The video this upload replaces, a FAILED one included, leaves the
+      // library once this upload is over (13 October).
+      if (
+        existing?.provider === RecordingProvider.BUNNY &&
+        existing.bunnyVideoId
+      ) {
+        await queueVideoRemoval(tx, {
+          videoId: existing.bunnyVideoId,
+          recordingId,
+          replacedByVideoId: upload.bunnyVideoId,
+          queuedBy: upload.actorId,
+        });
       }
 
       await tx.insert(auditLog).values({
@@ -552,6 +625,133 @@ export class RecordingRepository {
     return changed.length > 0;
   }
 
+  /**
+   * The queued Bunny videos the encoding poll may delete now, at most
+   * `limit`, the least recently tried first (never tried, first of all). A
+   * video is due once nothing waits on it: a pasted link took its place, or
+   * the upload that did is no longer PROCESSING on its recording (READY,
+   * FAILED, itself replaced, or the recording is gone). That is the owner's
+   * "yükleme bitince".
+   *
+   * A video a recording holds again (its link pasted back) is never deleted:
+   * its row is dropped here, and the read of what is due leaves out any such
+   * video in the same statement, so a link pasted before this read keeps its
+   * video. `kept` is how many rows were dropped for it.
+   */
+  async claimVideoRemovals(
+    limit: number
+  ): Promise<{ due: IVideoRemoval[]; kept: number }> {
+    return this.db.transaction(async (tx) => {
+      const held = tx
+        .select({ id: lessonRecordings.id })
+        .from(lessonRecordings)
+        .where(eq(lessonRecordings.bunnyVideoId, bunnyVideoRemovals.videoId));
+      const kept = await tx
+        .delete(bunnyVideoRemovals)
+        .where(exists(held))
+        .returning({ videoId: bunnyVideoRemovals.videoId });
+      const replacementRunning = tx
+        .select({ id: lessonRecordings.id })
+        .from(lessonRecordings)
+        .where(
+          and(
+            eq(lessonRecordings.id, bunnyVideoRemovals.recordingId),
+            eq(
+              lessonRecordings.bunnyVideoId,
+              bunnyVideoRemovals.replacedByVideoId
+            ),
+            eq(lessonRecordings.status, RecordingStatus.PROCESSING)
+          )
+        );
+      const due = await tx
+        .select({
+          videoId: bunnyVideoRemovals.videoId,
+          recordingId: bunnyVideoRemovals.recordingId,
+          replacedByVideoId: bunnyVideoRemovals.replacedByVideoId,
+          queuedBy: bunnyVideoRemovals.queuedBy,
+          queuedAt: bunnyVideoRemovals.queuedAt,
+          attempts: bunnyVideoRemovals.attempts,
+        })
+        .from(bunnyVideoRemovals)
+        .where(
+          and(
+            notExists(held),
+            or(
+              isNull(bunnyVideoRemovals.replacedByVideoId),
+              notExists(replacementRunning)
+            )
+          )
+        )
+        .orderBy(
+          sql`${bunnyVideoRemovals.lastAttemptAt} asc nulls first`,
+          asc(bunnyVideoRemovals.queuedAt)
+        )
+        .limit(limit);
+      return { due, kept: kept.length };
+    });
+  }
+
+  /**
+   * Takes a video Bunny deleted, or no longer had (`alreadyGone`), off the
+   * queue and writes `recording.video_delete` to `audit_log` in the same
+   * transaction, in the name of whoever took it off its recording. True when
+   * this call took it off; false when another poll had already done so, which
+   * then wrote the entry.
+   */
+  async finishVideoRemoval(
+    removal: IVideoRemoval,
+    alreadyGone: boolean
+  ): Promise<boolean> {
+    return this.db.transaction(async (tx) => {
+      const [taken] = await tx
+        .delete(bunnyVideoRemovals)
+        .where(eq(bunnyVideoRemovals.videoId, removal.videoId))
+        .returning({ videoId: bunnyVideoRemovals.videoId });
+      if (!taken) return false;
+      // Where it was, while the recording is still there: the audit page
+      // finds a row's köşk through its `courseId`.
+      const [at] = await tx
+        .select({
+          lessonId: lessonRecordings.lessonId,
+          courseId: courseWeeks.courseId,
+        })
+        .from(lessonRecordings)
+        .innerJoin(lessons, eq(lessonRecordings.lessonId, lessons.id))
+        .innerJoin(courseWeeks, eq(lessons.weekId, courseWeeks.id))
+        .where(eq(lessonRecordings.id, removal.recordingId))
+        .limit(1);
+      await tx.insert(auditLog).values({
+        actorId: removal.queuedBy,
+        action: "recording.video_delete",
+        entity: "lesson_recording",
+        entityId: removal.recordingId,
+        details: {
+          courseId: at?.courseId ?? null,
+          lessonId: at?.lessonId ?? null,
+          bunnyVideoId: removal.videoId,
+          replacedByVideoId: removal.replacedByVideoId,
+          queuedAt: removal.queuedAt.toISOString(),
+          attempts: removal.attempts + 1,
+          alreadyGone,
+        },
+      });
+      return true;
+    });
+  }
+
+  /** Counts a try Bunny refused; the video goes to the back of the queue and is tried again later. */
+  async failVideoRemoval(videoId: string, now: Date): Promise<number> {
+    const [row] = await this.db
+      .update(bunnyVideoRemovals)
+      .set({
+        attempts: sql`${bunnyVideoRemovals.attempts} + 1`,
+        lastAttemptAt: now,
+      })
+      .where(eq(bunnyVideoRemovals.videoId, videoId))
+      .returning({ attempts: bunnyVideoRemovals.attempts });
+    return row?.attempts ?? 0;
+  }
+
   async findLiveStreamUrl(lessonId: string): Promise<string | null> {
     const [row] = await this.db
       .select({ url: lessons.liveStreamUrl })
@@ -654,7 +854,8 @@ export class RecordingRepository {
    * session that is archived is not there, a cancelled one has nothing to
    * record, and one that has a recording keeps it (`RecordingExistsError`)
    * unless that recording is a Bunny upload that FAILED: that row is reused
-   * for the link, as `startBunnyUpload` reuses it for a new upload. A Bunny
+   * for the link, as `startBunnyUpload` reuses it for a new upload, and its
+   * video is queued for deletion from Bunny unless the link names it. A Bunny
    * video another session holds is refused (`bunny-video-used`). Written to
    * `audit_log` in the same transaction. The course version is not bumped:
    * recordings are no part of the course document.
@@ -730,6 +931,17 @@ export class RecordingRepository {
             .insert(lessonRecordings)
             .values({ lessonId: input.lessonId, ...values })
             .returning();
+      // The FAILED upload's video leaves the library with it, unless the
+      // link names that same video.
+      const left = existing ? videoLeftBy(existing, input.link) : null;
+      if (left) {
+        await queueVideoRemoval(tx, {
+          videoId: left,
+          recordingId: row.id,
+          replacedByVideoId: null,
+          queuedBy: input.actorId,
+        });
+      }
       await tx.insert(auditLog).values({
         actorId: input.actorId,
         action: "recording.add",
@@ -756,7 +968,9 @@ export class RecordingRepository {
    * locked; a key that is absent is left as it is. A new link is written with
    * every column `linkColumns` sets, so a Bunny video swapped for a pasted
    * link loses its video id and upload lifetime and the other way round, and
-   * the recording is READY. A Bunny video another recording holds is refused
+   * the recording is READY. The Bunny video a new link takes the place of is
+   * queued for deletion from Bunny; the same video's link pasted again keeps
+   * it. A Bunny video another recording holds is refused
    * (`bunny-video-used`). A recording whose lesson is archived is not there.
    */
   async update(
@@ -802,6 +1016,17 @@ export class RecordingRepository {
         })
         .where(eq(lessonRecordings.id, recordingId))
         .returning();
+      // A Bunny video another link takes the place of leaves the library;
+      // its own link pasted again keeps it (13 October).
+      const left = patch.link ? videoLeftBy(before, patch.link) : null;
+      if (left) {
+        await queueVideoRemoval(tx, {
+          videoId: left,
+          recordingId,
+          replacedByVideoId: null,
+          queuedBy: actorId,
+        });
+      }
       const availableAt =
         patch.availableAt === undefined
           ? at.recordingAvailableAt

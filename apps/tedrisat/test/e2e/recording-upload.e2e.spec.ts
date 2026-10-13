@@ -21,6 +21,7 @@ import { RecordingEncodingPoller } from "../../src/course/recording-encoding.pol
 import { DatabaseService } from "../../src/database/database.service";
 import { auditLog } from "../../src/database/schema/audit.schema";
 import {
+  bunnyVideoRemovals,
   courses,
   courseWeeks,
   enrollments,
@@ -62,9 +63,11 @@ const LIBRARY: IBunnyStreamConfig = {
   collectionId: null,
 };
 
-/** A stand-in for Bunny's Stream API: Create Video and Get Video, in memory. */
+/** A stand-in for Bunny's Stream API: Create, Get and Delete Video, in memory. */
 class FakeBunny {
   readonly videos = new Map<string, { status: number; length: number }>();
+  /** videos whose Delete Bunny answers with 500 */
+  readonly refused = new Set<string>();
   readonly calls: Array<{ method: string; url: string; accessKey: string }> =
     [];
   private next = 0;
@@ -90,11 +93,27 @@ class FakeBunny {
         ? new Response(JSON.stringify(video), { status: 200 })
         : new Response("{}", { status: 404 });
     }
+    if (method === "DELETE" && url.startsWith(`${root}/`)) {
+      const id = url.slice(root.length + 1);
+      if (this.refused.has(id)) return new Response("{}", { status: 500 });
+      return this.videos.delete(id)
+        ? new Response(JSON.stringify({ success: true }), { status: 200 })
+        : new Response("{}", { status: 404 });
+    }
     return new Response("{}", { status: 400 });
   };
 
+  /** The videos Delete Video was called for, in order. */
+  deleted(): string[] {
+    const root = `https://video.bunnycdn.com/library/${LIBRARY.libraryId}/videos/`;
+    return this.calls
+      .filter((c) => c.method === "DELETE")
+      .map((c) => c.url.slice(root.length));
+  }
+
   reset() {
     this.videos.clear();
+    this.refused.clear();
     this.calls.length = 0;
   }
 }
@@ -136,6 +155,8 @@ describe("recording uploads to Bunny Stream (MDRS-116, e2e)", () => {
     )[0];
   const poll = (batch?: number) =>
     app.get(RecordingEncodingPoller).pollOnce(new Date(), batch);
+  /** The Bunny videos waiting to be deleted (13 October). */
+  const queued = () => db().select().from(bunnyVideoRemovals);
 
   beforeAll(async () => {
     app = await createTestApp({
@@ -153,6 +174,7 @@ describe("recording uploads to Bunny Stream (MDRS-116, e2e)", () => {
     bunny.reset();
     await dbUtils.cleanTables(
       ...COURSE_TREE_TABLES,
+      "bunny_video_removals",
       "notifications",
       "audit_log",
       "users"
@@ -225,6 +247,7 @@ describe("recording uploads to Bunny Stream (MDRS-116, e2e)", () => {
   afterAll(async () => {
     await dbUtils.cleanTables(
       ...COURSE_TREE_TABLES,
+      "bunny_video_removals",
       "notifications",
       "audit_log",
       "users"
@@ -328,8 +351,108 @@ describe("recording uploads to Bunny Stream (MDRS-116, e2e)", () => {
         .where(eq(lessonRecordings.lessonId, lessonId));
       const ready = await start(MUDERRIS_ID).expect(409);
       expect(ready.body.code).toBe("RECORDING_EXISTS");
+      // "Kayıt ekle" sends no `replaceVideo`; `false` is the same
+      const unflagged = await start(MUDERRIS_ID, lessonId, {
+        title: "Emsile: 1. celse",
+        replaceVideo: false,
+      }).expect(409);
+      expect(unflagged.body.code).toBe("RECORDING_EXISTS");
       expect(bunny.calls.filter((c) => c.method === "POST")).toHaveLength(1);
       expect((await recordingOf(lessonId)).bunnyVideoId).toBe(videoId);
+      expect(await queued()).toEqual([]);
+    });
+
+    // 13 October: "yanlış dosya yüklemiş olsak değiştiremeyecek miyiz?" The
+    // edit dialog of a Bunny recording sends `replaceVideo`.
+    it("replaces a READY Bunny video when replaceVideo is sent: the new video PROCESSING in the same row, the old one queued", async () => {
+      const releaseAt = new Date("2026-10-20T17:00:00.000Z");
+      await db()
+        .update(lessons)
+        .set({ recordingAvailableAt: releaseAt })
+        .where(eq(lessons.id, lessonId));
+      const first = (await start(MUDERRIS_ID).expect(201)).body;
+      await db()
+        .update(lessonRecordings)
+        .set({ status: RecordingStatus.READY, durationMinutes: 31 })
+        .where(eq(lessonRecordings.lessonId, lessonId));
+      await db().delete(auditLog);
+
+      const res = await start(MUDERRIS_ID, lessonId, {
+        title: "Emsile: doğru dosya",
+        visibility: RecordingVisibility.PUBLIC,
+        replaceVideo: true,
+      }).expect(201);
+      expect(res.body.recordingId).toBe(first.recordingId);
+      expect(res.body.videoId).not.toBe(first.videoId);
+      expect(await recordingOf(lessonId)).toMatchObject({
+        id: first.recordingId,
+        title: "Emsile: doğru dosya",
+        provider: RecordingProvider.BUNNY,
+        status: RecordingStatus.PROCESSING,
+        visibility: RecordingVisibility.PUBLIC,
+        url: null,
+        bunnyVideoId: res.body.videoId,
+      });
+      const [lesson] = await db()
+        .select({ recordingAvailableAt: lessons.recordingAvailableAt })
+        .from(lessons)
+        .where(eq(lessons.id, lessonId));
+      expect(lesson.recordingAvailableAt).toEqual(releaseAt);
+
+      expect(await queued()).toEqual([
+        {
+          videoId: first.videoId,
+          recordingId: first.recordingId,
+          replacedByVideoId: res.body.videoId,
+          queuedBy: MUDERRIS_ID,
+          queuedAt: expect.any(Date),
+          attempts: 0,
+          lastAttemptAt: null,
+        },
+      ]);
+      // nothing is deleted while the new upload runs
+      expect(bunny.deleted()).toEqual([]);
+      const [audit] = await db().select().from(auditLog);
+      expect(audit).toMatchObject({
+        action: "recording.upload_start",
+        details: {
+          recordingId: first.recordingId,
+          bunnyVideoId: res.body.videoId,
+          replacedVideoId: first.videoId,
+          replacedLink: null,
+        },
+      });
+    });
+
+    it("replaces one still PROCESSING with replaceVideo, and queues a FAILED one's video without it", async () => {
+      const first = (await start(MUDERRIS_ID).expect(201)).body;
+      const second = (
+        await start(MUDERRIS_ID, lessonId, {
+          title: "İptal edilen yüklemenin yerine",
+          replaceVideo: true,
+        }).expect(201)
+      ).body;
+      expect(await recordingOf(lessonId)).toMatchObject({
+        status: RecordingStatus.PROCESSING,
+        bunnyVideoId: second.videoId,
+      });
+
+      await db()
+        .update(lessonRecordings)
+        .set({ status: RecordingStatus.FAILED })
+        .where(eq(lessonRecordings.lessonId, lessonId));
+      const third = (await start(MUDERRIS_ID).expect(201)).body;
+      const pairs = (await queued()).map((q) => [
+        q.videoId,
+        q.replacedByVideoId,
+      ]);
+      expect(pairs).toHaveLength(2);
+      expect(pairs).toEqual(
+        expect.arrayContaining([
+          [first.videoId, second.videoId],
+          [second.videoId, third.videoId],
+        ])
+      );
     });
 
     // The owner's report of 12 October: a session's stream, added as its
@@ -603,7 +726,7 @@ describe("recording uploads to Bunny Stream (MDRS-116, e2e)", () => {
   // judges it again under the lesson's lock, as it is by then.
   describe("the check made again under the lesson's lock", () => {
     let n = 0;
-    const write = (id: string) =>
+    const write = (id: string, replaceVideo?: boolean) =>
       app.get(RecordingRepository).startBunnyUpload({
         lessonId: id,
         title: "Kilit altında",
@@ -612,6 +735,7 @@ describe("recording uploads to Bunny Stream (MDRS-116, e2e)", () => {
         bunnyVideoId: `c0000000-0000-4000-8000-${String(++n).padStart(12, "0")}`,
         uploadExpiresAt: new Date(Date.now() + 3_600_000),
         actorId: MUDERRIS_ID,
+        replaceVideo,
       });
 
     it("replaces a link", async () => {
@@ -642,6 +766,214 @@ describe("recording uploads to Bunny Stream (MDRS-116, e2e)", () => {
         status: RecordingStatus.READY,
         bunnyVideoId: held,
       });
+      expect(await queued()).toEqual([]);
+    });
+
+    it("replaces a Bunny video PROCESSING or READY with replaceVideo, and queues each video it replaces", async () => {
+      await write(lessonId);
+      const processing = (await recordingOf(lessonId)).bunnyVideoId;
+      await write(lessonId, true);
+      const ready = (await recordingOf(lessonId)).bunnyVideoId;
+      await db()
+        .update(lessonRecordings)
+        .set({ status: RecordingStatus.READY })
+        .where(eq(lessonRecordings.lessonId, lessonId));
+      await write(lessonId, true);
+      const latest = await recordingOf(lessonId);
+      expect(latest.status).toBe(RecordingStatus.PROCESSING);
+      const pairs = (await queued()).map((q) => [
+        q.videoId,
+        q.replacedByVideoId,
+      ]);
+      expect(pairs).toHaveLength(2);
+      expect(pairs).toEqual(
+        expect.arrayContaining([
+          [processing, ready],
+          [ready, latest.bunnyVideoId],
+        ])
+      );
+    });
+  });
+
+  /**
+   * 13 October: the video a new upload replaced is deleted from Bunny once
+   * that upload is over ("yükleme bitince"), so the wrong file does not stay
+   * in the library; never while a recording holds it again. The poll's own
+   * handling of Bunny's answers is unit-tested
+   * (test/unit/course/recording-encoding-poller.spec.ts); this covers which
+   * videos are due, against the database.
+   */
+  describe("deleting a replaced video", () => {
+    const deletions = () =>
+      db()
+        .select()
+        .from(auditLog)
+        .where(eq(auditLog.action, "recording.video_delete"));
+
+    /** A READY upload of the session, then a new upload in its place. */
+    const replaced = async () => {
+      const first = (await start(MUDERRIS_ID).expect(201)).body;
+      bunny.videos.set(first.videoId, { status: 4, length: 600 });
+      expect(await poll()).toMatchObject({ ready: 1 });
+      const next = (
+        await start(MUDERRIS_ID, lessonId, {
+          title: "Emsile: doğru dosya",
+          replaceVideo: true,
+        }).expect(201)
+      ).body;
+      return { first, next };
+    };
+
+    it("waits while the new upload is PROCESSING, deletes the old video once it is READY, and audits it", async () => {
+      const { first, next } = await replaced();
+      expect(await poll()).toMatchObject({
+        waiting: 1,
+        removed: 0,
+        removeErrors: 0,
+      });
+      expect(bunny.deleted()).toEqual([]);
+      expect(bunny.videos.has(first.videoId)).toBe(true);
+
+      bunny.videos.set(next.videoId, { status: 4, length: 1_830 });
+      expect(await poll()).toMatchObject({ ready: 1, removed: 1 });
+      expect(bunny.deleted()).toEqual([first.videoId]);
+      expect(bunny.videos.has(first.videoId)).toBe(false);
+      expect(bunny.calls.find((c) => c.method === "DELETE")?.accessKey).toBe(
+        LIBRARY.apiKey
+      );
+      expect(await queued()).toEqual([]);
+      const [entry] = await deletions();
+      expect(entry).toMatchObject({
+        actorId: MUDERRIS_ID,
+        entity: "lesson_recording",
+        entityId: first.recordingId,
+        details: {
+          courseId,
+          lessonId,
+          bunnyVideoId: first.videoId,
+          replacedByVideoId: next.videoId,
+          attempts: 1,
+          alreadyGone: false,
+        },
+      });
+
+      // done: a later poll asks nothing more of Bunny
+      await poll();
+      expect(bunny.deleted()).toEqual([first.videoId]);
+      expect(await deletions()).toHaveLength(1);
+    });
+
+    it("deletes it once the new upload FAILED too", async () => {
+      const { first, next } = await replaced();
+      bunny.videos.set(next.videoId, { status: 5, length: 0 });
+      expect(await poll()).toMatchObject({ failed: 1, removed: 1 });
+      expect(bunny.deleted()).toEqual([first.videoId]);
+    });
+
+    it("deletes it when the new upload was itself replaced, and waits for the newest", async () => {
+      const { first, next } = await replaced();
+      const newest = (
+        await start(MUDERRIS_ID, lessonId, {
+          title: "Emsile: en doğru dosya",
+          replaceVideo: true,
+        }).expect(201)
+      ).body;
+      expect(await poll()).toMatchObject({ waiting: 1, removed: 1 });
+      expect(bunny.deleted()).toEqual([first.videoId]);
+      expect((await queued()).map((q) => q.videoId)).toEqual([next.videoId]);
+
+      bunny.videos.set(newest.videoId, { status: 4, length: 600 });
+      expect(await poll()).toMatchObject({ ready: 1, removed: 1 });
+      expect(bunny.deleted()).toEqual([first.videoId, next.videoId]);
+    });
+
+    it("keeps a video a recording holds again: drops it from the queue and calls nothing", async () => {
+      const { first, next } = await replaced();
+      // its link pasted on another session's recording
+      const linked = await recordingOf(linkedLessonId);
+      await request(app.getHttpServer())
+        .patch(`/recordings/${linked.id}`)
+        .set("Authorization", as(MUDERRIS_ID))
+        .send({
+          url: `https://player.mediadelivery.net/embed/${LIBRARY.libraryId}/${first.videoId}`,
+        })
+        .expect(200);
+      expect((await recordingOf(linkedLessonId)).bunnyVideoId).toBe(
+        first.videoId
+      );
+
+      bunny.videos.set(next.videoId, { status: 4, length: 600 });
+      expect(await poll()).toMatchObject({ ready: 1, removed: 0 });
+      expect(bunny.deleted()).toEqual([]);
+      expect(bunny.videos.has(first.videoId)).toBe(true);
+      expect(await queued()).toEqual([]);
+      expect(await deletions()).toEqual([]);
+    });
+
+    it("counts a video Bunny no longer has as deleted", async () => {
+      const { first, next } = await replaced();
+      bunny.videos.delete(first.videoId);
+      bunny.videos.set(next.videoId, { status: 4, length: 600 });
+      expect(await poll()).toMatchObject({ removed: 1, removeErrors: 0 });
+      expect(await queued()).toEqual([]);
+      const [entry] = await deletions();
+      expect(entry.details).toMatchObject({
+        bunnyVideoId: first.videoId,
+        alreadyGone: true,
+      });
+    });
+
+    it("counts a video Bunny refuses to delete, keeps it queued and deletes it on a later pass", async () => {
+      const { first, next } = await replaced();
+      bunny.refused.add(first.videoId);
+      bunny.videos.set(next.videoId, { status: 4, length: 600 });
+      expect(await poll()).toMatchObject({
+        ready: 1,
+        removed: 0,
+        removeErrors: 1,
+      });
+      const [row] = await queued();
+      expect(row).toMatchObject({ videoId: first.videoId, attempts: 1 });
+      expect(row.lastAttemptAt).not.toBeNull();
+      expect(bunny.videos.has(first.videoId)).toBe(true);
+      expect(await deletions()).toEqual([]);
+
+      bunny.refused.clear();
+      expect(await poll()).toMatchObject({ removed: 1, removeErrors: 0 });
+      expect(bunny.videos.has(first.videoId)).toBe(false);
+      expect(await queued()).toEqual([]);
+      const [entry] = await deletions();
+      expect(entry.details).toMatchObject({ attempts: 2, alreadyGone: false });
+    });
+
+    it("tries the videos it never tried before one Bunny keeps refusing", async () => {
+      const { first, next } = await replaced();
+      bunny.refused.add(first.videoId);
+      bunny.videos.set(next.videoId, { status: 4, length: 600 });
+      await poll();
+      // a second session's video replaced by a pasted link: due at once
+      const linked = await recordingOf(linkedLessonId);
+      const pasted = "d0000000-0000-4000-8000-000000000001";
+      await db()
+        .update(lessonRecordings)
+        .set({
+          provider: RecordingProvider.BUNNY,
+          url: null,
+          bunnyVideoId: pasted,
+          uploadExpiresAt: new Date(),
+        })
+        .where(eq(lessonRecordings.id, linked.id));
+      bunny.videos.set(pasted, { status: 4, length: 600 });
+      await request(app.getHttpServer())
+        .patch(`/recordings/${linked.id}`)
+        .set("Authorization", as(MUDERRIS_ID))
+        .send({ url: "https://www.youtube.com/watch?v=rec456" })
+        .expect(200);
+      bunny.calls.length = 0;
+
+      // never tried comes first, then the one tried least recently
+      expect(await poll()).toMatchObject({ removed: 1, removeErrors: 1 });
+      expect(bunny.deleted()).toEqual([pasted, first.videoId]);
     });
   });
 

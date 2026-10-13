@@ -59,7 +59,7 @@ export class RecordingUploadController {
   @ApiOperation({
     summary: "Start uploading a session's recording to Bunny Stream",
     description:
-      "`recording.upload` (the müderris and the köşk nazımı by default, a ders nazırı when given it). Creates the video in the Medaris Bunny Stream library, records it as the session's recording with `provider` BUNNY and `status` PROCESSING, and returns what the browser needs for a TUS upload straight to Bunny; the file never passes through this API. The signature expires 24 hours later. A session whose recording is a link (YOUTUBE, DRIVE or OTHER: pasted, or its live stream) or a Bunny upload that FAILED has it replaced by this upload: the same recording takes this title and visibility, and its link is no longer stored on it. The session's release time is not changed. A session whose recording is a Bunny video PROCESSING or READY is refused with 409. Written to `audit_log` as `recording.upload_start`, with the replaced link's provider and URL in `replacedLink`. The recording becomes READY or FAILED when the encoding poll sees Bunny finish.",
+      "`recording.upload` (the müderris and the köşk nazımı by default, a ders nazırı when given it). Creates the video in the Medaris Bunny Stream library, records it as the session's recording with `provider` BUNNY and `status` PROCESSING, and returns what the browser needs for a TUS upload straight to Bunny; the file never passes through this API. The signature expires 24 hours later. A session whose recording is a link (YOUTUBE, DRIVE or OTHER: pasted, or its live stream) or a Bunny upload that FAILED has it replaced by this upload: the same recording takes this title and visibility, and its link is no longer stored on it. With `replaceVideo: true` (the edit dialog of a Bunny recording) a Bunny video READY or PROCESSING is replaced the same way; without it, it is refused with 409. A replaced Bunny video is deleted from Bunny by the encoding poll once this upload is READY or FAILED, unless a recording holds it again by then. The session's release time is not changed. Written to `audit_log` as `recording.upload_start`, with the replaced link's provider and URL in `replacedLink` and the replaced video in `replacedVideoId`; its deletion as `recording.video_delete`. The recording becomes READY or FAILED when the encoding poll sees Bunny finish.",
     operationId: "startRecordingUpload",
   })
   @ApiCreatedResponse({ type: RecordingUploadResponse })
@@ -68,7 +68,7 @@ export class RecordingUploadController {
   @ApiNotFoundResponse({ description: "LESSON_NOT_FOUND" })
   @ApiConflictResponse({
     description:
-      "RECORDING_EXISTS: the session's recording is a Bunny video PROCESSING or READY.",
+      "RECORDING_EXISTS: the session's recording is a Bunny video PROCESSING or READY, and `replaceVideo` was not sent.",
   })
   @ApiServiceUnavailableResponse({
     description:

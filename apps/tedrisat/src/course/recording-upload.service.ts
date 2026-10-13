@@ -7,6 +7,7 @@ import {
 } from "../bunny-stream/bunny-stream.client";
 import { CourseRepository } from "./course.repository";
 import {
+  type IUploadIntent,
   RecordingStatus,
   RecordingVisibility,
   uploadReplaces,
@@ -17,7 +18,7 @@ import { RecordingUploadClosedError } from "./errors/recording-upload-closed.err
 import { RecordingUploadNotFoundError } from "./errors/recording-upload-not-found.error";
 import { RecordingRepository } from "./recording.repository";
 
-export interface IStartRecordingUpload {
+export interface IStartRecordingUpload extends IUploadIntent {
   title: string;
   visibility?: RecordingVisibility;
   recordedAt?: Date;
@@ -61,7 +62,8 @@ export class RecordingUploadService {
    * Creates the video in Bunny, records it as a PROCESSING recording of the
    * session, and signs its upload for 24 hours. A recording that is a link,
    * or a Bunny upload that FAILED, is replaced by it (`uploadReplaces`); a
-   * Bunny video PROCESSING or READY is refused.
+   * Bunny video PROCESSING or READY is refused unless `replaceVideo` is set,
+   * and then replaced too, its video queued for deletion from Bunny.
    *
    * The session (missing or archived) and its existing recording are
    * checked before Bunny is called, so a refused start does not leave an
@@ -80,8 +82,9 @@ export class RecordingUploadService {
     if (!(await this.recordings.findOpenLessonCourseId(lessonId))) {
       throw new LessonNotFoundError(lessonId);
     }
+    const intent: IUploadIntent = { replaceVideo: input.replaceVideo === true };
     const [existing] = await this.recordings.findByLessonIds([lessonId]);
-    if (existing && !uploadReplaces(existing)) {
+    if (existing && !uploadReplaces(existing, intent)) {
       throw new RecordingExistsError(lessonId);
     }
 
@@ -95,6 +98,7 @@ export class RecordingUploadService {
       bunnyVideoId: videoId,
       uploadExpiresAt: new Date(expiresAt * 1000),
       actorId: user.sub,
+      ...intent,
     });
     return {
       recordingId,
