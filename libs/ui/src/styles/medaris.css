@@ -33,6 +33,9 @@
 /* The date and time fields, which the system has no part for yet (MDRS-278). */
 @import "./mds/datepicker.css" layer(components);
 
+/* The imam's star, which the system has no part for yet (2026-10-13). */
+@import "./mds/imam-star.css" layer(components);
+
 /* Utilities read the tokens; nothing is written to :root. */
 @import "@medaris/tokens/tailwind.css";
 

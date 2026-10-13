@@ -4,6 +4,11 @@
     "text": "Sunucuya ulaşılamadı. İnternet bağlantınızı denetleyip yeniden deneyin.",
     "retry": "Yeniden dene"
   },
+  "imamStar": {
+    "title": "Dersin imamı",
+    "body": "Birden çok müderrisi olan derste müderrislerden biri imamdır; yetkileri diğer müderrislerle aynıdır.",
+    "mark": "dersin imamı"
+  },
   "legal": {
     "privacyNotice": "Aydınlatma Metni"
   },
