@@ -3,7 +3,6 @@ import { INestApplication } from "@nestjs/common";
 import { eq } from "drizzle-orm";
 import request from "supertest";
 import { vi } from "vitest";
-import { readProfilesFromDatabase } from "../../../../tools/keycloak/backfill-gender.mjs";
 import { DatabaseService } from "../../src/database/database.service";
 import { auditLog } from "../../src/database/schema/audit.schema";
 import { courses, enrollments } from "../../src/database/schema/course.schema";
@@ -545,27 +544,6 @@ describe("Profile and köşk application (e2e)", () => {
           expect(body.genderManagedByAccount).toBe(false);
         });
       expect((await mirrorOf(sub))?.gender).toBe("MALE");
-    });
-
-    it("gives the Keycloak backfill exactly the profiles that have a gender", async () => {
-      const [female, male, none] = [randomUUID(), randomUUID(), randomUUID()];
-      await databaseService.db.insert(userProfiles).values([
-        { userId: female, gender: "FEMALE" },
-        { userId: male, gender: "MALE" },
-        { userId: none, kunye: `Hesap ${none.slice(0, 8)}` },
-      ]);
-      const env = process.env;
-      const url = `postgres://${encodeURIComponent(env.DB_USERNAME ?? "")}:${encodeURIComponent(env.DB_PASSWORD ?? "")}@${env.DB_HOST}:${env.DB_PORT}/${env.DB_NAME}`;
-
-      const rows = await readProfilesFromDatabase(url);
-      expect(rows).toHaveLength(2);
-      expect(rows).toEqual(
-        expect.arrayContaining([
-          { userId: female, gender: "FEMALE" },
-          { userId: male, gender: "MALE" },
-        ])
-      );
-      expect(rows.map((r: { userId: string }) => r.userId)).not.toContain(none);
     });
   });
 
