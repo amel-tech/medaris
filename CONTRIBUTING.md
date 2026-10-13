@@ -112,6 +112,13 @@ by `tools/ci/assert-release-config.mjs` (`env`, added by MDRS-66, is the
 precedent). The scope list is also an MDRS-17
 acceptance criterion.
 
+**A lib change releases no app by itself.** release-please assigns a commit to
+a component by the files it changes, not by its scope, and has no option to
+watch a path outside the component's directory (ADR-001 §D10). A commit that
+touches only `libs/` reaches production the next time each consuming app
+releases for its own reasons. To ship a lib fix now, add a `fix` or `feat`
+commit that touches each app that must release, in the same pull request.
+
 ### Breaking changes
 
 Append `!` after the scope, and explain the migration in the body:
