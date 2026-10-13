@@ -35,7 +35,10 @@ import {
  *   - a setting changed in the JSON is applied by the next run (and `dry-run`
  *     shows it without writing);
  *   - the registration form refuses anyone who has not ticked the privacy
- *     notice box — Keycloak itself, from the user profile (MDRS-102);
+ *     notice box — Keycloak itself, from the user profile (MDRS-102) — or
+ *     has not chosen a gender;
+ *   - the `gender` client scope puts the user's gender into the web client's
+ *     tokens, and the built-in `profile` scope no longer does;
  *   - a new user registers through the registration form, receives the
  *     verification e-mail in Mailpit, follows it, and the resulting token is
  *     accepted by tedrisat — the real AuthGuard and `KeycloakPublicKeyProvider`
@@ -435,16 +438,18 @@ describe("Keycloak configuration package (e2e)", () => {
     expect(
       profile.attributes.map((attribute: { name: string }) => attribute.name)
     ).toEqual([
-      "username",
-      "email",
       "firstName",
       "lastName",
+      "gender",
+      "username",
+      "email",
       "privacyNoticeRead",
     ]);
     for (const name of [
       "email",
       "firstName",
       "lastName",
+      "gender",
       "privacyNoticeRead",
     ]) {
       expect(
@@ -471,6 +476,28 @@ describe("Keycloak configuration package (e2e)", () => {
       directAccessGrantsEnabled: false,
       serviceAccountsEnabled: false,
     });
+
+    // The gender scope: by default for the web client, offered to every
+    // client created from now on (sidre-tr), and the only one that maps the
+    // attribute; Keycloak's own profile scope carried a gender mapper too.
+    expect(web.defaultClientScopes).toContain("gender");
+    expect(web.defaultClientScopes).toEqual(
+      expect.arrayContaining(["profile", "email", "roles"])
+    );
+    expect(web.optionalClientScopes).not.toContain("gender");
+    expect(api.optionalClientScopes).toContain("gender");
+    const optional = await adminApi("GET", "/default-optional-client-scopes");
+    expect(optional.map((s: { name: string }) => s.name)).toContain("gender");
+    const scopes = await adminApi("GET", "/client-scopes");
+    const byName = (name: string) =>
+      scopes.find((s: { name: string }) => s.name === name);
+    expect(byName("gender").attributes).toMatchObject({
+      "display.on.consent.screen": "true",
+      "consent.screen.text": `$\{genderScopeConsentText}`,
+    });
+    expect(
+      byName("profile").protocolMappers.map((m: { name: string }) => m.name)
+    ).not.toContain("gender");
   });
 
   it("changes nothing on a second run, and verify reports no difference", () => {
@@ -597,6 +624,7 @@ describe("Keycloak configuration package (e2e)", () => {
     const fields = {
       firstName: "Yeni",
       lastName: "Kullanıcı",
+      gender: "FEMALE",
       email,
       username: `no-notice-${box ?? "unticked"}-${run}`,
       password,
@@ -633,6 +661,32 @@ describe("Keycloak configuration package (e2e)", () => {
     expect(created.attributes?.privacyNoticeRead).toEqual(["yes"]);
   });
 
+  it("refuses a registration without a gender", async () => {
+    const page = browser();
+    const form = await registrationForm(page);
+    const email = `no-gender-${run}@medaris.test`;
+    const password = `Kayit-${run}-Parola`;
+
+    const refused = await page.open(formAction(form.html), {
+      firstName: "Yeni",
+      lastName: "Kullanıcı",
+      email,
+      username: `no-gender-${run}`,
+      password,
+      "password-confirm": password,
+      privacyNoticeRead: "yes",
+    });
+
+    expect(refused.callback).toBeUndefined();
+    expect(refused.html).toContain("kc-register-form");
+    expect(
+      await adminApi(
+        "GET",
+        `/users?exact=true&email=${encodeURIComponent(email)}`
+      )
+    ).toEqual([]);
+  });
+
   it("lets a new user register, verify the e-mail through Mailpit, and obtain a token tedrisat accepts", async () => {
     const email = `new-user-${run}@medaris.test`;
     const password = `Kayit-${run}-Parola`;
@@ -649,6 +703,7 @@ describe("Keycloak configuration package (e2e)", () => {
       "password-confirm": password,
       // MDRS-102: the "Aydınlatma Metni'ni okudum" box, ticked.
       privacyNoticeRead: "yes",
+      gender: "MALE",
     });
     // E-mail verification is on: no code yet, the "verify your e-mail" page.
     expect(registered.callback).toBeUndefined();
@@ -658,6 +713,7 @@ describe("Keycloak configuration package (e2e)", () => {
     );
     expect(pending.emailVerified).toBe(false);
     expect(pending.attributes?.privacyNoticeRead).toEqual(["yes"]);
+    expect(pending.attributes?.gender).toEqual(["MALE"]);
 
     const mail = await mailTo(email);
     expect(mail.From.Address).toBe(SENDER);
@@ -712,6 +768,8 @@ describe("Keycloak configuration package (e2e)", () => {
       azp: WEB_CLIENT_ID,
       email,
       email_verified: true,
+      // the gender scope, a default scope of the web client
+      gender: "MALE",
     });
 
     const response = await request(app.getHttpServer())
