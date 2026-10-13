@@ -162,7 +162,7 @@ const wrap = (node: React.ReactNode) => (
   <NextIntlClientProvider
     locale="tr"
     timeZone="Europe/Istanbul"
-    messages={{ nazar: resources.tr.nazar }}
+    messages={{ common: resources.tr.common, nazar: resources.tr.nazar }}
   >
     <ToastProvider>
       {node}
@@ -240,14 +240,23 @@ describe("Dersler", () => {
   it("lists the courses with their köşk, müderrisler, talebe and state (criteria 1, 3, 4)", async () => {
     const out = await markup();
     const table = out.slice(out.indexOf('data-testid="courses"'));
-    const rows = table.split("<tr").slice(2).map(textOf);
+    const marked = table.split("<tr").slice(2);
+    const rows = marked.map(textOf);
     expect(rows).toHaveLength(3);
 
     expect(rows[0]).toContain("Bina ve İzhar Şerhi");
     expect(rows[0]).toContain("Nûruosmaniye Köşkü");
     expect(rows[0]).not.toContain("bugün açıldı");
-    expect(rows[0]).toContain(
-      "Mehmet Emin Işıkoğlu Dersin imamı Abdülhamit Karaosmanoğlu"
+    expect(rows[0]).toContain("Mehmet Emin Işıkoğlu");
+    expect(rows[0]).toContain("Abdülhamit Karaosmanoğlu");
+    expect(rows[0]).not.toContain("Dersin imamı");
+    // the imam is the star after their name, a button that explains itself,
+    // and only where the course has more than one müderris (2026-10-13)
+    const stars = (row: string) =>
+      row.match(/<button[^>]*aria-label="Dersin imamı"/g)?.length ?? 0;
+    expect(marked.map(stars)).toEqual([1, 0, 1]);
+    expect(marked[0]).toMatch(
+      /Mehmet Emin Işıkoğlu<\/bdi> <button[^>]*aria-label="Dersin imamı"/
     );
     expect(rows[0]).toContain("35");
     expect(rows[0]).toContain("2 onay bekliyor");

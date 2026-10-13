@@ -140,7 +140,26 @@ describe("Hesap ve ayarlar (nazir 20)", () => {
     expect(markup).toMatch(badge("Yayında"));
     expect(markup).toMatch(badge("Taslak"));
     expect(markup).toMatch(badge("Gizli"));
-    expect(markup).toMatch(badge("Dersin imamı"));
+    expect(markup).not.toMatch(badge("Dersin imamı"));
+  });
+
+  it("marks the imam with the star after the role, and only in a course with more than one müderris", async () => {
+    const star = /<button[^>]*aria-label="Dersin imamı"/g;
+    // Bina's two müderrisler (the fixture's count): the star, once
+    expect((await render()).markup.match(star)).toHaveLength(1);
+    // the same imam alone in the course: no star and no word (2026-10-13)
+    const sole = [
+      assignment({
+        scopeId: "c-bina",
+        scopeName: "Bina ve İzhar Şerhi",
+        isImam: true,
+        course: course({ muderrisCount: 1 }),
+      }),
+    ];
+    const { markup, text } = await render(portal(sole));
+    expect(markup).not.toMatch(star);
+    expect(markup).not.toContain("mds-imam-star");
+    expect(text).not.toContain("imam");
   });
 
   it("dates in the zone saved on the profile", async () => {

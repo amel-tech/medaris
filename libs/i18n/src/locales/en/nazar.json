@@ -31,7 +31,6 @@
     "scopeMedrese": "Medrese",
     "scopeCourses": "Courses",
     "scopeNote": "Only the medrese and courses where you hold a role are listed.",
-    "imam": "course imam",
     "bell": "Notifications",
     "bellUnread": "Notifications, {count} unread",
     "accountHint": "settings",
@@ -105,7 +104,6 @@
     "tasksTitle": "Your roles",
     "tasksIntro": "Every role applies in one scope. The person who assigned a role changes it and its term.",
     "noNazirNote": "You hold no medrese nazır or course nazır role.",
-    "imam": "Course imam",
     "self": "Yourself",
     "unknownPerson": "Unknown",
     "noExpiry": "No end date",
@@ -288,7 +286,6 @@
     "coursesEmpty": "This medrese has no courses yet.",
     "coursesFailed": "The courses could not be read right now. Refresh the page to try again.",
     "coursesLink": "Medrese courses",
-    "imam": "imam",
     "status": {
       "PUBLISHED": "Published",
       "DRAFT": "Draft"
@@ -770,7 +767,6 @@
       "actions": "Actions"
     },
     "openedToday": "opened today",
-    "imam": "Course imam",
     "noStudents": "No talebe yet",
     "pending": "{count} awaiting approval",
     "status": {

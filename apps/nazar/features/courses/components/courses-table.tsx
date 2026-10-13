@@ -1,9 +1,11 @@
 "use client";
 
+import { imamStarLabels } from "@medaris/ui/lib/imam-star";
 import { Badge } from "@medaris/ui/mds/badge";
 import { Button } from "@medaris/ui/mds/button";
 import { CoverPattern } from "@medaris/ui/mds/cover-pattern";
 import { Icon } from "@medaris/ui/mds/icon";
+import { ImamStar } from "@medaris/ui/mds/imam-star";
 import { Menu } from "@medaris/ui/mds/menu";
 import { Select } from "@medaris/ui/mds/select";
 import { Table, type TableColumn } from "@medaris/ui/mds/table";
@@ -49,6 +51,7 @@ export function CoursesTable({
   statusOptions: FilterOption[];
 }) {
   const t = useTranslations("nazar");
+  const star = imamStarLabels(useTranslations("common.imamStar"));
   const router = useRouter();
   const [loading, startTransition] = useTransition();
   const [changing, setChanging] = useState<CourseRow | null>(null);
@@ -99,11 +102,13 @@ export function CoursesTable({
             <span
               // a list of names that may repeat is never reordered in place
               key={`${muderris.name}:${index}`}
-              className="flex flex-col items-start gap-1"
             >
               <bdi>{muderris.name}</bdi>
               {muderris.imam ? (
-                <Badge variant="secondary">{t("Courses.imam")}</Badge>
+                <>
+                  {" "}
+                  <ImamStar labels={star} />
+                </>
               ) : null}
             </span>
           ))}

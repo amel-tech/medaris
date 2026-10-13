@@ -2,12 +2,13 @@
 
 import { Badge } from "@medaris/ui/mds/badge";
 import { Icon } from "@medaris/ui/mds/icon";
+import { ImamStar, type ImamStarLabels } from "@medaris/ui/mds/imam-star";
 import { Table, type TableColumn } from "@medaris/ui/mds/table";
 import type { AssignmentRow } from "../assignments-view";
 
 export interface AssignmentsTableLabels {
   caption: string;
-  imam: string;
+  imamStar: ImamStarLabels;
   role: string;
   scope: string;
   grantor: string;
@@ -33,9 +34,14 @@ export function AssignmentsTable({
       key: "role",
       header: labels.role,
       render: (row) => (
-        <span className="flex flex-col items-start gap-1">
-          <span data-testid="assignment-role">{row.role}</span>
-          {row.isImam ? <Badge variant="secondary">{labels.imam}</Badge> : null}
+        <span data-testid="assignment-role">
+          {row.role}
+          {row.isImam ? (
+            <>
+              {" "}
+              <ImamStar labels={labels.imamStar} />
+            </>
+          ) : null}
         </span>
       ),
     },

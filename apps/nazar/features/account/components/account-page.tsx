@@ -1,3 +1,4 @@
+import { imamStarLabels } from "@medaris/ui/lib/imam-star";
 import { Alert } from "@medaris/ui/mds/alert";
 import { Avatar } from "@medaris/ui/mds/avatar";
 import { EmptyState } from "@medaris/ui/mds/empty-state";
@@ -95,8 +96,9 @@ function PermissionsSkeleton() {
  * a failed read of either leaves its own card to say so.
  */
 export async function AccountPage({ portal }: { portal: OkPortal }) {
-  const [t, locale, me] = await Promise.all([
+  const [t, star, locale, me] = await Promise.all([
     getMessages(),
+    getMessages("common.imamStar"),
     getLocale(),
     getViewer(),
   ]);
@@ -124,7 +126,7 @@ export async function AccountPage({ portal }: { portal: OkPortal }) {
               rows={rows}
               labels={{
                 caption: t("Account.tasksTitle"),
-                imam: t("Account.imam"),
+                imamStar: imamStarLabels(star),
                 role: t("Account.columns.role"),
                 scope: t("Account.columns.scope"),
                 grantor: t("Account.columns.grantor"),

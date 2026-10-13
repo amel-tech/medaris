@@ -3,6 +3,7 @@ import type {
   MadrasahSettingsResponse,
   UpdateMadrasahSettingsDto,
 } from "@medaris/services/tedrisat";
+import { showsImamStar } from "@medaris/ui/lib/imam-star";
 import type { IconName } from "@medaris/ui/mds/icon";
 
 /**
@@ -121,25 +122,45 @@ export const POLICY_TIERS = [
   { id: "ders", icon: "courses" },
 ] as const satisfies ReadonlyArray<{ id: string; icon: IconName }>;
 
+/** A run of the line below: text, and whether the imam's star follows it. */
+export interface MetaPart {
+  text: string;
+  imam: boolean;
+}
+
 /**
  * The second line of a course in "Politikaların uygulandığı dersler": its
- * köşk, then its müderrisler with the imam marked ("A, imam ve B").
+ * köşk, then its müderrisler ("A ve B"), the imam's name followed by the star
+ * where there is more than one (2026-10-13). In runs, so the page can set the
+ * star after the name the list put in its place.
  */
 export function courseMeta(
   course: Pick<MadrasahCourseListItemResponse, "koskName" | "muderris">,
-  words: { imam: string; locale: string }
-): string {
-  const names = course.muderris.map((m) =>
-    m.isImam ? `${m.name}, ${words.imam}` : m.name
-  );
-  const team =
-    names.length > 0
+  words: { locale: string }
+): MetaPart[] {
+  const team = course.muderris;
+  let next = 0;
+  const names: MetaPart[] =
+    team.length > 0
       ? new Intl.ListFormat(words.locale, {
           style: "long",
           type: "conjunction",
-        }).format(names)
-      : "";
-  return [course.koskName, team].filter(Boolean).join(" · ");
+        })
+          .formatToParts(team.map((m) => m.name))
+          .map((part) => {
+            if (part.type === "literal")
+              return { text: part.value, imam: false };
+            const m = team[next++];
+            return {
+              text: part.value,
+              imam: showsImamStar(m?.isImam ?? false, team.length),
+            };
+          })
+      : [];
+  const kosk = course.koskName ? [{ text: course.koskName, imam: false }] : [];
+  return kosk.length > 0 && names.length > 0
+    ? [...kosk, { text: " · ", imam: false }, ...names]
+    : [...kosk, ...names];
 }
 
 /**

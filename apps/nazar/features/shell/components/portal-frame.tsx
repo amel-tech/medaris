@@ -1,3 +1,4 @@
+import { imamStarLabels } from "@medaris/ui/lib/imam-star";
 import { AppShell, Sidebar } from "@medaris/ui/mds/app-shell";
 import { Logo } from "@medaris/ui/mds/logo";
 import { ThemeToggle } from "@medaris/ui/mds/theme-toggle";
@@ -44,6 +45,7 @@ export async function PortalFrame({
 }: PortalFrameProps) {
   const t = await getMessages();
   const shell = (key: string) => t(`Shell.${key}`);
+  const imamStar = imamStarLabels(await getMessages("common.imamStar"));
 
   const footer = (
     <UserRow
@@ -56,10 +58,7 @@ export async function PortalFrame({
     />
   );
 
-  const words = {
-    role: (role: string) => t(`Roles.${role}`),
-    imam: shell("imam"),
-  };
+  const words = { role: (role: string) => t(`Roles.${role}`) };
   const sections = current
     ? labelNav(
         navFor(current, {
@@ -80,6 +79,7 @@ export async function PortalFrame({
         medrese: shell("scopeMedrese"),
         courses: shell("scopeCourses"),
         note: shell("scopeNote"),
+        imamStar,
       }}
     />
   ) : undefined;

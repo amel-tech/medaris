@@ -1,14 +1,16 @@
+import { imamStarLabels } from "@medaris/ui/lib/imam-star";
 import { Alert } from "@medaris/ui/mds/alert";
 import { Badge } from "@medaris/ui/mds/badge";
 import { Button } from "@medaris/ui/mds/button";
 import { CoverPattern } from "@medaris/ui/mds/cover-pattern";
 import { EmptyState } from "@medaris/ui/mds/empty-state";
 import { Icon } from "@medaris/ui/mds/icon";
+import { ImamStar } from "@medaris/ui/mds/imam-star";
 import { Skeleton } from "@medaris/ui/mds/skeleton";
 import { DEFAULT_TIME_ZONE, resolveTimeZone } from "@medaris/utils";
 import Link from "next/link";
 import { getLocale } from "next-intl/server";
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 import { env } from "~/env";
 import { getViewer } from "~/features/account/reads";
 import { PageProblem } from "~/features/shell/components/page-problem";
@@ -53,8 +55,9 @@ function Card({
  * they cannot be read, their card says so and the form stays.
  */
 export async function SettingsPage({ madrasahId }: { madrasahId: string }) {
-  const [t, locale, me, settings, courses] = await Promise.all([
+  const [t, star, locale, me, settings, courses] = await Promise.all([
     getMessages("nazar"),
+    getMessages("common.imamStar"),
     getLocale(),
     getViewer(),
     readOnce("the medrese settings", (api) =>
@@ -158,10 +161,18 @@ export async function SettingsPage({ madrasahId }: { madrasahId: string }) {
                         </span>
                         <span className="mds-caption">
                           <bdi>
-                            {courseMeta(course, {
-                              imam: t("Settings.imam"),
-                              locale,
-                            })}
+                            {courseMeta(course, { locale }).map((part, i) => (
+                              // a line of runs that may repeat is never reordered in place
+                              <Fragment key={`${i}:${part.text}`}>
+                                {part.text}
+                                {part.imam ? (
+                                  <>
+                                    {" "}
+                                    <ImamStar labels={imamStarLabels(star)} />
+                                  </>
+                                ) : null}
+                              </Fragment>
+                            ))}
                           </bdi>
                         </span>
                       </span>

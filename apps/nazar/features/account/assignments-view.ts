@@ -1,4 +1,5 @@
 import type { AssignmentResponse } from "@medaris/services/tedrisat";
+import { showsImamStar } from "@medaris/ui/lib/imam-star";
 import type { BadgeVariant } from "@medaris/ui/mds/badge";
 import type { Messages } from "~/lib/i18n/messages";
 
@@ -6,6 +7,7 @@ import type { Messages } from "~/lib/i18n/messages";
 export interface AssignmentRow {
   id: string;
   role: string;
+  /** the course's imam, among more than one müderris: the star after the role */
   isImam: boolean;
   scopeTitle: string | null;
   scopeBadge: { label: string; variant: BadgeVariant; hidden: boolean } | null;
@@ -91,7 +93,7 @@ export function assignmentRows(
     return {
       id: a.id,
       role: t(`Roles.${a.role}`),
-      isImam: a.isImam,
+      isImam: showsImamStar(a.isImam, a.course?.muderrisCount),
       scopeTitle: a.scopeName ?? null,
       scopeBadge: badge
         ? {

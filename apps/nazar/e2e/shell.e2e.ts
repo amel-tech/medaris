@@ -109,8 +109,10 @@ test("nazir/03 — the closed picker names the scope, and opening it lists only 
     rows.filter({ hasText: fixture?.first.title ?? "" })
   ).toContainText(
     new RegExp(
-      // the "·" is a separate, aria-hidden span, spaced by CSS, not by text
-      `Müderris\\s*·\\s*dersin imamı\\s*·\\s*${fixture?.first.koskName}`
+      // the "·" is a separate, aria-hidden span, spaced by CSS, not by text;
+      // the seed lists no müderris on the course, so the imam gets no star
+      // (2026-10-13)
+      `Müderris\\s*·\\s*${fixture?.first.koskName}`
     )
   );
 

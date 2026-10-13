@@ -26,6 +26,8 @@ export const course = (over: Record<string, unknown> = {}) => ({
   madrasahId: null,
   madrasahName: null,
   studentCount: 35,
+  // two müderrisler, so the imam among them carries the star (2026-10-13)
+  muderrisCount: 2,
   ...over,
 });
 

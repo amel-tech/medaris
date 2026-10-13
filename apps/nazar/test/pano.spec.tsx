@@ -425,16 +425,32 @@ describe("the rules behind the Pano", () => {
         id: "c-1",
         href: "/ders/c-1",
         state: expect.objectContaining({ label: "Yayında" }),
-        role: "Müderris · dersin imamı",
+        // the imam is the star after the role, not a word (2026-10-13)
+        role: "Müderris",
+        imam: true,
         footer: "Nûruosmaniye Köşkü · 35 talebe",
       }),
       expect.objectContaining({
         id: "c-2",
         state: expect.objectContaining({ label: "Taslak" }),
         role: "Müderris",
+        imam: false,
         footer: "Fatih Köşkü · 24 talebe",
       }),
     ]);
+  });
+
+  it("marks no imam on the card of a course with one müderris", () => {
+    const sole = [
+      assignment({
+        scopeId: "c-9",
+        scopeName: "Tek müderrisli ders",
+        isImam: true,
+        course: course({ muderrisCount: 1 }),
+      }),
+    ];
+    const [card] = courseCards(buildScopes(sole), sole, t, "tr");
+    expect(card).toMatchObject({ role: "Müderris", imam: false });
   });
 
   it("says Gizli for a hidden course, and has no state or köşk where the API sent no course", () => {
@@ -496,7 +512,12 @@ describe("Pano", () => {
     expect(text).toContain("2 medrese dersi · 2 köşkte barındırma hakkı");
     expect(text).toContain("Bina ve İzhar Şerhi");
     expect(text).toContain("Yayında");
-    expect(text).toContain("Müderris · dersin imamı");
+    expect(text).not.toContain("dersin imamı");
+    // the imam's star is a button in the card (the card's link is its title),
+    // once: the other course's müderris is no imam
+    expect(cards.match(/<button[^>]*aria-label="Dersin imamı"/g)).toHaveLength(
+      1
+    );
     expect(text).toContain("Nûruosmaniye Köşkü · 35 talebe");
     expect(text).toContain("İsâgûcî ile mantığa giriş");
     expect(text).toContain("Taslak");

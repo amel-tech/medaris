@@ -80,7 +80,10 @@ test("nazir/07 — lists the medrese's courses with their köşk, müderrisler, 
   const first = rowOf(page, base?.first.title ?? "");
   await expect(first).toContainText(courses?.kosk.name ?? "");
   await expect(first).not.toContainText("bugün açıldı");
-  await expect(first).toContainText("Dersin imamı");
+  // two müderrisler: the imam is the star, a button named for it (2026-10-13)
+  await expect(first.getByRole("button", { name: "Dersin imamı" })).toHaveCount(
+    1
+  );
   await expect(first).toContainText(courses?.second.name ?? "");
   await expect(first).toContainText(String(courses?.enrolled));
   await expect(first).toContainText("2 onay bekliyor");
@@ -203,7 +206,10 @@ test("nazir/17 — the dialog shows the list and keeps Kaydet off until it chang
   await expect(dialog).toHaveCount(0);
   const first = rowOf(page, base?.first.title ?? "");
   await expect(first).not.toContainText(courses?.second.name ?? "");
-  await expect(first).toContainText("Dersin imamı");
+  // one müderris left: no star and no word (2026-10-13)
+  await expect(first.getByRole("button", { name: "Dersin imamı" })).toHaveCount(
+    0
+  );
 
   const held = await courses?.muderrisOf(base?.first.id ?? "");
   expect(held?.map((m) => m.userId)).toEqual([BASMUDERRIS.sub]);

@@ -132,11 +132,8 @@ describe("the scope's own pages", () => {
 });
 
 describe("a scope as the picker draws it", () => {
-  const words = {
-    role: (role: string) => `rol:${role}`,
-    imam: "dersin imamı",
-  };
-  const [m, c] = buildScopes([
+  const words = { role: (role: string) => `rol:${role}` };
+  const [m, c, sole] = buildScopes([
     medrese(),
     assignment({
       scopeId: "c-1",
@@ -144,21 +141,39 @@ describe("a scope as the picker draws it", () => {
       isImam: true,
       course: course(),
     }),
+    assignment({
+      id: "a-2",
+      scopeId: "c-2",
+      scopeName: "İsâgûcî ile mantığa giriş",
+      isImam: true,
+      course: course({ muderrisCount: 1 }),
+    }),
   ]);
 
-  it("has the role on its second line, and the imam after it for a course", () => {
+  it("has the role on its second line, and the imam's star after it for a course", () => {
     expect(scopeOption(m as never, words)).toMatchObject({
       key: "medrese:m-1",
       href: "/medrese/m-1",
+      imam: false,
       summary: ["rol:MEDRESE_BASMUDERRIS"],
       detail: ["rol:MEDRESE_BASMUDERRIS"],
     });
     expect(scopeOption(c as never, words)).toMatchObject({
       key: "ders:c-1",
       href: "/ders/c-1",
-      summary: ["rol:MUDERRIS", "dersin imamı"],
+      // the star, not a word (2026-10-13)
+      imam: true,
+      summary: ["rol:MUDERRIS"],
       // the open list adds the köşk
-      detail: ["rol:MUDERRIS", "dersin imamı", "Nûruosmaniye Köşkü"],
+      detail: ["rol:MUDERRIS", "Nûruosmaniye Köşkü"],
+    });
+  });
+
+  it("marks no imam of a course with one müderris", () => {
+    expect(sole?.name).toBe("İsâgûcî ile mantığa giriş");
+    expect(scopeOption(sole as never, words)).toMatchObject({
+      imam: false,
+      summary: ["rol:MUDERRIS"],
     });
   });
 });

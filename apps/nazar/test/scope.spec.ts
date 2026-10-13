@@ -75,11 +75,29 @@ describe("buildScopes", () => {
         role: "DERS_NAZIR",
         isImam: false,
         scopeId: "c",
+        course: course(),
       }),
-      assignment({ id: "a-m", role: "MUDERRIS", isImam: true, scopeId: "c" }),
+      assignment({
+        id: "a-m",
+        role: "MUDERRIS",
+        isImam: true,
+        scopeId: "c",
+        course: course(),
+      }),
     ]);
     expect(rest).toEqual([]);
     expect(scope).toMatchObject({ role: "MUDERRIS", isImam: true });
+  });
+
+  it("marks the imam only of a course with more than one müderris (2026-10-13)", () => {
+    const imamOf = (over: Record<string, unknown>) =>
+      buildScopes([
+        assignment({ role: "MUDERRIS", isImam: true, scopeId: "c", ...over }),
+      ])[0]?.isImam;
+    expect(imamOf({ course: course({ muderrisCount: 2 }) })).toBe(true);
+    expect(imamOf({ course: course({ muderrisCount: 1 }) })).toBe(false);
+    // no course info, no count: no mark rather than a guess
+    expect(imamOf({})).toBe(false);
   });
 
   it("does not make a ders nazırı an imam", () => {

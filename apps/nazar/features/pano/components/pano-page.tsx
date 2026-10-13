@@ -1,9 +1,11 @@
+import { imamStarLabels } from "@medaris/ui/lib/imam-star";
 import { Avatar } from "@medaris/ui/mds/avatar";
 import { Badge } from "@medaris/ui/mds/badge";
 import { Button } from "@medaris/ui/mds/button";
 import { Card } from "@medaris/ui/mds/card";
 import { CoverPattern } from "@medaris/ui/mds/cover-pattern";
 import { Icon } from "@medaris/ui/mds/icon";
+import { ImamStar } from "@medaris/ui/mds/imam-star";
 import { Skeleton } from "@medaris/ui/mds/skeleton";
 import { DEFAULT_TIME_ZONE, resolveTimeZone } from "@medaris/utils";
 import { getLocale } from "next-intl/server";
@@ -59,8 +61,9 @@ function Section({
  * notice under the cards and "Medrese dersi aç" is left out with the rest.
  */
 export async function PanoPage({ madrasahId }: { madrasahId: string }) {
-  const [t, locale, me, portal, medrese, dashboard] = await Promise.all([
+  const [t, star, locale, me, portal, medrese, dashboard] = await Promise.all([
     getMessages("nazar"),
+    getMessages("common.imamStar"),
     getLocale(),
     getViewer(),
     getPortal(),
@@ -158,7 +161,15 @@ export async function PanoPage({ madrasahId }: { madrasahId: string }) {
               media={<CoverPattern seed={course.id} size="sm" />}
               footer={course.footer ? <bdi>{course.footer}</bdi> : undefined}
             >
-              <p className="mds-card__body">{course.role}</p>
+              <p className="mds-card__body">
+                {course.role}
+                {course.imam ? (
+                  <>
+                    {" "}
+                    <ImamStar labels={imamStarLabels(star)} />
+                  </>
+                ) : null}
+              </p>
             </Card>
           ))}
         </div>
