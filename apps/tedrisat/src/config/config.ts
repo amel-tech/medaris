@@ -4,6 +4,7 @@ import { resolveMigrationsFolder } from "../database/migrations-folder";
 import { readBunnyStorageConfig } from "./bunny-storage-env";
 import { readBunnyStreamConfig } from "./bunny-stream-env";
 import { resolveDatabaseSsl } from "./database-ssl";
+import { readIntegrationPartners } from "./integration-partners-env";
 import { readKeycloakAdminConfig } from "./keycloak-admin-env";
 import { readSecurityEnv } from "./security-env";
 import { readSmtpConfig } from "./smtp-env";
@@ -14,6 +15,7 @@ const version = pkg.version || "0.0.1";
 
 export default () => {
   const security = readSecurityEnv(process.env);
+  const partners = readIntegrationPartners(process.env);
   // Read once, purely so a malformed THROTTLE_BULK_* stops the boot rather
   // than surfacing as a 500 on the first import (MDRS-31). The shared
   // THROTTLE_TTL/THROTTLE_LIMIT get the same eager-read treatment inside
@@ -86,11 +88,18 @@ export default () => {
       // PUBLIC_PROFILE_UNAVAILABLE for every caller.
       enabled: process.env.PUBLIC_PROFILE_ENABLED === "true",
     },
+    // The partner applications whose registrations become enrollments
+    // (`/integrations/*`); empty, those routes answer 404.
+    integrations: { partners },
     keycloak: {
       jwksUrl: security.jwksUrl,
       issuer: security.issuer,
       audience: security.audience,
       allowedClients: security.allowedClients,
+      // A partner's token carries this API's audience, so the verifier
+      // behind `AuthGuard` refuses its client outright: it is accepted on
+      // `/integrations/*` alone, by `PartnerGuard`'s own policy.
+      refusedClients: partners.map((partner) => partner.clientId),
       cacheTtl: process.env.KEYCLOAK_CACHE_TTL || "86400",
       notFoundCacheTtl: process.env.KEYCLOAK_NOT_FOUND_CACHE_TTL || "120",
       // Service account that reads the realm's users (MDRS-169); null when

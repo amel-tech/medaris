@@ -45,6 +45,8 @@ export async function assignRole(
  */
 export const COURSE_TREE_TABLES = [
   "role_assignments",
+  "partner_enrollment_links",
+  "partner_course_codes",
   "enrollments",
   "course_resources",
   "lesson_recordings",

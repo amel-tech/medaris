@@ -49,6 +49,7 @@ import {
 } from "../database/schema/role-assignment.schema";
 import { SCOPE_TYPES } from "../database/schema/scope-type.schema";
 import { users } from "../database/schema/user.schema";
+import { partnerActorName } from "../integration/domain/partner-actor";
 import {
   claimUpload,
   enqueueStorageDeletions,
@@ -2388,6 +2389,7 @@ export class CourseRepository implements ICourseRepository {
         entity: "course",
         entityId: entry.courseId,
         details: {
+          ...entry.auditDetails,
           userId: before.userId,
           studentName: before.studentName,
           studentEmail: before.studentEmail,
@@ -2495,7 +2497,9 @@ export class CourseRepository implements ICourseRepository {
         removedAt: r.createdAt,
         removedBy: {
           id: r.actorId,
-          name: full(r.actorGiven, r.actorFamily),
+          // A partner application is no row of `users`: its name is the one
+          // the removal recorded.
+          name: full(r.actorGiven, r.actorFamily) ?? partnerActorName(d),
         },
       };
     });

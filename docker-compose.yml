@@ -114,6 +114,11 @@ services:
       KEYCLOAK_ADMIN_CLIENT_ID: ${TEDRISAT__KEYCLOAK_ADMIN_CLIENT_ID:-}
       KEYCLOAK_ADMIN_CLIENT_SECRET: ${TEDRISAT__KEYCLOAK_ADMIN_CLIENT_SECRET:-}
 
+      # The partner applications whose registrations become enrollments
+      # (`clientId=Display name` pairs, docs/runbooks/partner-application.md).
+      # Empty is allowed: /integrations/* answers 404.
+      INTEGRATION_PARTNERS: ${TEDRISAT__INTEGRATION_PARTNERS:-}
+
       # The Bunny Stream library recordings are uploaded to (MDRS-116). Empty
       # is allowed: the upload routes answer 503 and nothing is polled.
       BUNNY_STREAM_LIBRARY_ID: ${TEDRISAT__BUNNY_STREAM_LIBRARY_ID:-}
@@ -171,6 +176,10 @@ services:
       THROTTLE_USER_LIMIT: ${TEDRISAT__THROTTLE_USER_LIMIT:-${API__THROTTLE_USER_LIMIT:-100}}
       THROTTLE_BULK_TTL: ${TEDRISAT__THROTTLE_BULK_TTL:-${API__THROTTLE_BULK_TTL:-}}
       THROTTLE_BULK_LIMIT: ${TEDRISAT__THROTTLE_BULK_LIMIT:-${API__THROTTLE_BULK_LIMIT:-10}}
+      # A partner application's budget on /integrations/*, per partner and
+      # route; empty falls back to 600 and the per-user window.
+      THROTTLE_PARTNER_TTL: ${TEDRISAT__THROTTLE_PARTNER_TTL:-}
+      THROTTLE_PARTNER_LIMIT: ${TEDRISAT__THROTTLE_PARTNER_LIMIT:-}
       # 0 here matches this compose network having no reverse proxy in front —
       # see .env.example and libs/common/src/config/trust-proxy.config.ts. Set
       # TEDRISAT__TRUST_PROXY_HOPS / API__TRUST_PROXY_HOPS to 1 only for a

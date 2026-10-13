@@ -15,11 +15,13 @@
 
 import * as runtime from '../runtime';
 import type {
+  AddPartnerCodeDto,
   BulkEnrollDto,
   BulkEnrollmentResponse,
   CourseBadgeCountsResponse,
   CourseDetailResponse,
   CourseNazirsResponse,
+  CoursePartnerCodesResponse,
   CourseStatsResponse,
   CourseSummaryResponse,
   CreateCourseDto,
@@ -28,6 +30,8 @@ import type {
   EnrollmentResponse,
   MuderrisListResponse,
   MyCoursePermissionsResponse,
+  PartnerApplicationResponse,
+  PartnerCodeResponse,
   PendingEnrollmentResponse,
   RejectEnrollmentDto,
   RemoveEnrollmentDto,
@@ -41,6 +45,8 @@ import type {
   UpdateProgressDto,
 } from '../models/index';
 import {
+    AddPartnerCodeDtoFromJSON,
+    AddPartnerCodeDtoToJSON,
     BulkEnrollDtoFromJSON,
     BulkEnrollDtoToJSON,
     BulkEnrollmentResponseFromJSON,
@@ -51,6 +57,8 @@ import {
     CourseDetailResponseToJSON,
     CourseNazirsResponseFromJSON,
     CourseNazirsResponseToJSON,
+    CoursePartnerCodesResponseFromJSON,
+    CoursePartnerCodesResponseToJSON,
     CourseStatsResponseFromJSON,
     CourseStatsResponseToJSON,
     CourseSummaryResponseFromJSON,
@@ -67,6 +75,10 @@ import {
     MuderrisListResponseToJSON,
     MyCoursePermissionsResponseFromJSON,
     MyCoursePermissionsResponseToJSON,
+    PartnerApplicationResponseFromJSON,
+    PartnerApplicationResponseToJSON,
+    PartnerCodeResponseFromJSON,
+    PartnerCodeResponseToJSON,
     PendingEnrollmentResponseFromJSON,
     PendingEnrollmentResponseToJSON,
     RejectEnrollmentDtoFromJSON,
@@ -90,6 +102,11 @@ import {
     UpdateProgressDtoFromJSON,
     UpdateProgressDtoToJSON,
 } from '../models/index';
+
+export interface AddCoursePartnerCodeRequest {
+    id: string;
+    addPartnerCodeDto: AddPartnerCodeDto;
+}
 
 export interface ApproveEnrollmentRequest {
     id: string;
@@ -139,6 +156,10 @@ export interface GetCourseNazirsRequest {
     id: string;
 }
 
+export interface GetCoursePartnerCodesRequest {
+    id: string;
+}
+
 export interface GetCourseStatsRequest {
     id: string;
 }
@@ -173,6 +194,12 @@ export interface RejectEnrollmentRequest {
     id: string;
     userId: string;
     rejectEnrollmentDto?: RejectEnrollmentDto;
+}
+
+export interface RemoveCoursePartnerCodeRequest {
+    id: string;
+    partner: string;
+    code: string;
 }
 
 export interface RemoveEnrollmentRequest {
@@ -230,6 +257,60 @@ export interface WithdrawEnrollmentRequest {
  * 
  */
 export class CoursesApi extends runtime.BaseAPI {
+
+    /**
+     * Adding a code the course has already changes nothing. Written to the audit log as `course.partner_code_add`.
+     * Map a partner application\'s code to the course
+     */
+    async addCoursePartnerCodeRaw(requestParameters: AddCoursePartnerCodeRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PartnerCodeResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling addCoursePartnerCode().'
+            );
+        }
+
+        if (requestParameters['addPartnerCodeDto'] == null) {
+            throw new runtime.RequiredError(
+                'addPartnerCodeDto',
+                'Required parameter "addPartnerCodeDto" was null or undefined when calling addCoursePartnerCode().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/courses/{id}/partner-codes`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: AddPartnerCodeDtoToJSON(requestParameters['addPartnerCodeDto']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => PartnerCodeResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Adding a code the course has already changes nothing. Written to the audit log as `course.partner_code_add`.
+     * Map a partner application\'s code to the course
+     */
+    async addCoursePartnerCode(requestParameters: AddCoursePartnerCodeRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PartnerCodeResponse> {
+        const response = await this.addCoursePartnerCodeRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
 
     /**
      * Approve a pending enrollment (course team)
@@ -754,6 +835,50 @@ export class CoursesApi extends runtime.BaseAPI {
     }
 
     /**
+     * Every configured partner application, each with its codes mapped to this course.
+     * A course\'s partner codes
+     */
+    async getCoursePartnerCodesRaw(requestParameters: GetCoursePartnerCodesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CoursePartnerCodesResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling getCoursePartnerCodes().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/courses/{id}/partner-codes`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => CoursePartnerCodesResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Every configured partner application, each with its codes mapped to this course.
+     * A course\'s partner codes
+     */
+    async getCoursePartnerCodes(requestParameters: GetCoursePartnerCodesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CoursePartnerCodesResponse> {
+        const response = await this.getCoursePartnerCodesRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * nizam/53: talebe enrolled, applications waiting, completions and how many weeks have begun. For the course team: the köşk manager and the course\'s müderrisler.
      * The numbers of a course\'s overview (course team)
      */
@@ -1068,6 +1193,42 @@ export class CoursesApi extends runtime.BaseAPI {
     }
 
     /**
+     * Their ids and display names, nothing more; empty when none is configured, and nazar then shows no partner section. Open to every signed-in caller.
+     * The partner applications this server works with
+     */
+    async listPartnerApplicationsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<PartnerApplicationResponse>>> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/partner-applications`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(PartnerApplicationResponseFromJSON));
+    }
+
+    /**
+     * Their ids and display names, nothing more; empty when none is configured, and nazar then shows no partner section. Open to every signed-in caller.
+     * The partner applications this server works with
+     */
+    async listPartnerApplications(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<PartnerApplicationResponse>> {
+        const response = await this.listPartnerApplicationsRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
      * The body is optional: a `reason` (nizam/02, Ret gerekçesi) is kept with the refusal in the audit log as `enrollment.reject`.
      * Reject a pending enrollment, deleting it (course team)
      */
@@ -1124,6 +1285,65 @@ export class CoursesApi extends runtime.BaseAPI {
     async rejectEnrollment(requestParameters: RejectEnrollmentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<boolean> {
         const response = await this.rejectEnrollmentRaw(requestParameters, initOverrides);
         return await response.value();
+    }
+
+    /**
+     * The people it enrolled stay; the partner\'s later cancellations still reach them. A code the course does not have is no error. Written to the audit log as `course.partner_code_remove`.
+     * Take a partner application\'s code off the course
+     */
+    async removeCoursePartnerCodeRaw(requestParameters: RemoveCoursePartnerCodeRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling removeCoursePartnerCode().'
+            );
+        }
+
+        if (requestParameters['partner'] == null) {
+            throw new runtime.RequiredError(
+                'partner',
+                'Required parameter "partner" was null or undefined when calling removeCoursePartnerCode().'
+            );
+        }
+
+        if (requestParameters['code'] == null) {
+            throw new runtime.RequiredError(
+                'code',
+                'Required parameter "code" was null or undefined when calling removeCoursePartnerCode().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/courses/{id}/partner-codes/{partner}/{code}`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace(`{${"partner"}}`, encodeURIComponent(String(requestParameters['partner'])));
+        urlPath = urlPath.replace(`{${"code"}}`, encodeURIComponent(String(requestParameters['code'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * The people it enrolled stay; the partner\'s later cancellations still reach them. A code the course does not have is no error. Written to the audit log as `course.partner_code_remove`.
+     * Take a partner application\'s code off the course
+     */
+    async removeCoursePartnerCode(requestParameters: RemoveCoursePartnerCodeRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.removeCoursePartnerCodeRaw(requestParameters, initOverrides);
     }
 
     /**

@@ -1695,7 +1695,9 @@ export class CourseService {
     courseId: string,
     actorId: string,
     studentId: string,
-    reason: string
+    reason: string,
+    /** More for the audit row: a partner application's removal names the partner. */
+    auditDetails?: Record<string, unknown>
   ): Promise<boolean> {
     const existing = await this.courseRepo.findEnrollment(studentId, courseId);
     if (!existing) throw new EnrollmentNotFoundError(courseId);
@@ -1708,6 +1710,7 @@ export class CourseService {
       actorId,
       reason: reason.trim(),
       expectedStatus: EnrollmentStatus.ENROLLED,
+      auditDetails,
     });
     if (!removed) throw new EnrollmentNotFoundError(courseId);
     await this.notifier.removedFromCourse(

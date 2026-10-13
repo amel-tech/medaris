@@ -12648,6 +12648,375 @@
           "users"
         ]
       }
+    },
+    "/integrations/enrollments/{registrationRef}/{courseCode}": {
+      "put": {
+        "description": "Idempotent. Seats the person as an approved, active talebe through the course team's own path (audit log, session invitations, notifications): a new seat, or their waiting request approved. The account must exist, be enabled and have a verified e-mail; it is read from the realm by its id. A registration is bound to its first person: another `userId` for the same `registrationRef` and `courseCode` is refused.",
+        "operationId": "putPartnerEnrollment",
+        "parameters": [
+          {
+            "name": "registrationRef",
+            "required": true,
+            "in": "path",
+            "description": "The partner's registration id.",
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,64}$",
+              "example": "R-2026-0042",
+              "type": "string"
+            }
+          },
+          {
+            "name": "courseCode",
+            "required": true,
+            "in": "path",
+            "description": "The partner's own code for a course or a weekly activity, mapped to a Medaris course in nazar.",
+            "schema": {
+              "pattern": "^[a-z0-9][a-z0-9-]{0,63}$",
+              "example": "tecvid-2026-guz",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PartnerEnrollDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PartnerEnrollmentResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A path segment or `userId` of the wrong shape (VALIDATION_ERROR)."
+          },
+          "401": {
+            "description": "No token, or one tedrisat does not accept here: wrong signature, issuer, audience or client, expired, or not an access token."
+          },
+          "403": {
+            "description": "The partner client's token lacks the `partner-enrollment` realm role (PARTNER_ROLE_MISSING)."
+          },
+          "404": {
+            "description": "No course is mapped to this code for this partner (PARTNER_COURSE_UNKNOWN), or the realm has no such enabled account (PARTNER_USER_UNKNOWN). With no partner configured, every route here answers 404."
+          },
+          "409": {
+            "description": "The account's e-mail is not verified (PARTNER_USER_UNVERIFIED); the registration is linked to another person (PARTNER_REGISTRATION_USER_MISMATCH); or tedrisat refused the seat (PARTNER_ENROLLMENT_REFUSED, `context.reason`: BANNED, REMOVED_BY_COURSE_TEAM, COURSE_NOT_PUBLISHED, COURSE_HIDDEN, KOSK_HIDDEN, COURSE_NOT_FOUND or CHANGED)."
+          },
+          "429": {
+            "description": "Past the partner's budget for this route (`THROTTLE_PARTNER_LIMIT`, 600 a minute by default); `Retry-After` says when to try again."
+          },
+          "503": {
+            "description": "The realm's directory is not configured (KEYCLOAK_ADMIN_NOT_CONFIGURED) or did not answer (KEYCLOAK_ADMIN_UNAVAILABLE). Retry later."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Enrol the person of a registration in the course its code maps to",
+        "tags": [
+          "integrations"
+        ]
+      },
+      "delete": {
+        "description": "Idempotent. A seat the registration added is taken away through the course team's own removal path (the talebe is told, with a reason naming the partner); a seat the person holds independently stays. Either way the registration is closed; asking again answers the same.",
+        "operationId": "deletePartnerEnrollment",
+        "parameters": [
+          {
+            "name": "registrationRef",
+            "required": true,
+            "in": "path",
+            "description": "The partner's registration id.",
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,64}$",
+              "example": "R-2026-0042",
+              "type": "string"
+            }
+          },
+          {
+            "name": "courseCode",
+            "required": true,
+            "in": "path",
+            "description": "The partner's own code for a course or a weekly activity, mapped to a Medaris course in nazar.",
+            "schema": {
+              "pattern": "^[a-z0-9][a-z0-9-]{0,63}$",
+              "example": "tecvid-2026-guz",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PartnerUnenrollmentResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A path segment of the wrong shape (VALIDATION_ERROR)."
+          },
+          "401": {
+            "description": "No token, or one tedrisat does not accept here: wrong signature, issuer, audience or client, expired, or not an access token."
+          },
+          "403": {
+            "description": "The partner client's token lacks the `partner-enrollment` realm role (PARTNER_ROLE_MISSING)."
+          },
+          "429": {
+            "description": "Past the partner's budget for this route (`THROTTLE_PARTNER_LIMIT`, 600 a minute by default); `Retry-After` says when to try again."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Undo what a registration did, and only that",
+        "tags": [
+          "integrations"
+        ]
+      }
+    },
+    "/integrations/courses": {
+      "get": {
+        "description": "For the partner's own admin panel: which of its courses are connected.",
+        "operationId": "listPartnerCourses",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PartnerCourseResponse"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No token, or one tedrisat does not accept here: wrong signature, issuer, audience or client, expired, or not an access token."
+          },
+          "403": {
+            "description": "The partner client's token lacks the `partner-enrollment` realm role (PARTNER_ROLE_MISSING)."
+          },
+          "429": {
+            "description": "Past the partner's budget for this route (`THROTTLE_PARTNER_LIMIT`, 600 a minute by default); `Retry-After` says when to try again."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The partner's codes that are mapped to Medaris courses",
+        "tags": [
+          "integrations"
+        ]
+      }
+    },
+    "/partner-applications": {
+      "get": {
+        "description": "Their ids and display names, nothing more; empty when none is configured, and nazar then shows no partner section. Open to every signed-in caller.",
+        "operationId": "listPartnerApplications",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PartnerApplicationResponse"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The partner applications this server works with",
+        "tags": [
+          "courses"
+        ]
+      }
+    },
+    "/courses/{id}/partner-codes": {
+      "get": {
+        "description": "Every configured partner application, each with its codes mapped to this course.",
+        "operationId": "getCoursePartnerCodes",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CoursePartnerCodesResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "A course's partner codes",
+        "tags": [
+          "courses"
+        ]
+      },
+      "post": {
+        "description": "Adding a code the course has already changes nothing. Written to the audit log as `course.partner_code_add`.",
+        "operationId": "addCoursePartnerCode",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddPartnerCodeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PartnerCodeResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The code is not lower-case letters, digits and hyphens, at most 64, starting with a letter or digit (VALIDATION_ERROR)."
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": "No such course, or no such partner application (PARTNER_UNKNOWN)."
+          },
+          "409": {
+            "description": "The code is mapped to another course already (PARTNER_CODE_TAKEN). Which one is not said."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Map a partner application's code to the course",
+        "tags": [
+          "courses"
+        ]
+      }
+    },
+    "/courses/{id}/partner-codes/{partner}/{code}": {
+      "delete": {
+        "description": "The people it enrolled stay; the partner's later cancellations still reach them. A code the course does not have is no error. Written to the audit log as `course.partner_code_remove`.",
+        "operationId": "removeCoursePartnerCode",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "partner",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": "ornek-uygulama",
+              "type": "string"
+            }
+          },
+          {
+            "name": "code",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": "tecvid-2026-guz",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": "No such course, or no such partner application (PARTNER_UNKNOWN)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Take a partner application's code off the course",
+        "tags": [
+          "courses"
+        ]
+      }
     }
   },
   "info": {
@@ -25415,6 +25784,172 @@
         },
         "required": [
           "id"
+        ]
+      },
+      "PartnerEnrollDto": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "example": "623fdf08-fd0e-481b-a927-4a1c15135e62",
+            "description": "The person's Keycloak subject (`sub`), from their sign-in with Medaris on the partner's site. Never an e-mail address."
+          }
+        },
+        "required": [
+          "userId"
+        ]
+      },
+      "PartnerEnrollmentResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ENROLLED",
+              "ALREADY_ENROLLED"
+            ],
+            "description": "`ENROLLED`: this call seated them. `ALREADY_ENROLLED`: they already were, through this registration, another one, or on their own."
+          },
+          "courseId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "status",
+          "courseId"
+        ]
+      },
+      "PartnerUnenrollmentResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "REMOVED",
+              "KEPT",
+              "NOT_FOUND"
+            ],
+            "description": "`REMOVED`: the registration had seated them and the seat is now taken away through the course team's own removal path (or was gone already). `KEPT`: they are enrolled independently of this registration; the seat stays and the registration is closed. `NOT_FOUND`: there is no such registration."
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "PartnerCourseResponse": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "example": "tecvid-2026-guz"
+          },
+          "courseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string",
+            "example": "Tecvid"
+          }
+        },
+        "required": [
+          "code",
+          "courseId",
+          "title"
+        ]
+      },
+      "PartnerApplicationResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "ornek-uygulama",
+            "description": "Its client id in the realm."
+          },
+          "name": {
+            "type": "string",
+            "example": "Örnek Uygulama"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
+      "PartnerCodeResponse": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "example": "tecvid-2026-guz"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "createdAt"
+        ]
+      },
+      "CoursePartnerCodesItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "ornek-uygulama"
+          },
+          "name": {
+            "type": "string",
+            "example": "Örnek Uygulama"
+          },
+          "codes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PartnerCodeResponse"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "codes"
+        ]
+      },
+      "CoursePartnerCodesResponse": {
+        "type": "object",
+        "properties": {
+          "partners": {
+            "description": "Every partner application this server works with, each with its codes mapped to this course (possibly none).",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CoursePartnerCodesItem"
+            }
+          }
+        },
+        "required": [
+          "partners"
+        ]
+      },
+      "AddPartnerCodeDto": {
+        "type": "object",
+        "properties": {
+          "partner": {
+            "type": "string",
+            "example": "ornek-uygulama",
+            "description": "The partner's id."
+          },
+          "code": {
+            "type": "string",
+            "example": "tecvid-2026-guz",
+            "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+          }
+        },
+        "required": [
+          "partner",
+          "code"
         ]
       }
     }

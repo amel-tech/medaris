@@ -24,6 +24,7 @@ const GOLDEN: ReadonlyArray<readonly [string, string, string]> = [
   ["course_nazir.assign_kosk", "kosk", "grantable"],
   ["user.lookup", "kosk+course", "grantable"],
   ["course.hide", "kosk", "unlisted"],
+  ["course.partner_codes", "kosk", "grantable"],
   ["course.edit", "course", "grantable|content"],
   ["session.manage", "course", "grantable|content"],
   ["session.live_link", "course", "grantable|content"],
@@ -189,6 +190,12 @@ describe("who holds the few codes the owner keeps to one role (review T6)", () =
         ASSIGNED_ROLES.MUDERRIS,
       ].sort()
     );
+  });
+
+  it("course.partner_codes is the köşk nazımı's by default and no müderris's: mapping decides who enters a course", () => {
+    expect(holders(PERMISSIONS.COURSE_PARTNER_CODES)).toEqual([
+      ASSIGNED_ROLES.KOSK_NAZIM,
+    ]);
   });
 
   it("the roles that give permissions are the three that run a scope, and no other", () => {
