@@ -94,14 +94,6 @@ const required = (
   </span>
 );
 
-// The system puts a group's legend 8px above its first option (a <legend>,
-// outside the group's 12px gap) and a field's line close under its control.
-// The kit's Base UI group draws the legend as a flex item with 8px of its own
-// padding, 20px in all; here it is pulled back to 8, and the line under the
-// options to 8.
-const GROUP_SPACING =
-  "[&>.mds-label]:pb-0 [&>.mds-label]:-mb-1 [&>.mds-error]:-mt-1 [&>.mds-help]:-mt-1";
-
 export interface ProfileFieldProps {
   spec: ProfileFieldSpec;
   value: ProfileFieldValue;
@@ -156,7 +148,6 @@ export function ProfileField({
           disabled={spec.readOnly}
           help={spec.help}
           error={error}
-          className={GROUP_SPACING}
         />
       );
 
@@ -194,10 +185,7 @@ export function ProfileField({
       const lineId =
         error || spec.help ? `${spec.name}-${uid}-line` : undefined;
       return (
-        <fieldset
-          aria-labelledby={legendId}
-          className={`mds-choice-group ${GROUP_SPACING}`}
-        >
+        <fieldset aria-labelledby={legendId} className="mds-choice-group">
           <div className="mds-label" id={legendId}>
             {spec.label}
             {spec.required ? required : null}
