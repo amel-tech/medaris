@@ -12,8 +12,10 @@
 # - No YAML anchors or merge keys: Coolify's parser does not expand them.
 # - Bind sources are relative to the base directory; Coolify copies it to the
 #   server only with "Preserve Repository During Deployment" enabled.
-# - No secrets. Nothing here needs one: login sessions use opaque tokens since
-#   v0.143.0, and ClickHouse is reachable only on the stack's network.
+# - One secret, and not in this file: ClickHouse's `default` password, which
+#   Coolify generates as SERVICE_PASSWORD_CLICKHOUSE. ClickHouse reads it from
+#   its environment (config/clickhouse/config-0-0.yaml) and every client sends
+#   it. Login sessions need no secret: they are opaque tokens since v0.143.0.
 services:
   init-clickhouse:
     image: clickhouse/clickhouse-server:25.12.5
@@ -99,6 +101,11 @@ services:
     environment:
       - CLICKHOUSE_SKIP_USER_SETUP=1
       - CLICKHOUSE_CONFIG=/etc/clickhouse-server/config-0-0.yaml
+      # The `default` user's password (from_env in config-0-0.yaml). Coolify
+      # generates the value; without one Compose refuses to start the stack,
+      # because ClickHouse would fall back to an empty password.
+      # clickhouse-client inside this container reads the same variable.
+      - CLICKHOUSE_PASSWORD=${SERVICE_PASSWORD_CLICKHOUSE:?Coolify generates SERVICE_PASSWORD_CLICKHOUSE, see README.md}
     volumes:
       - clickhouse:/var/lib/clickhouse/
       - user-scripts:/var/lib/clickhouse/user_scripts:ro
@@ -155,7 +162,7 @@ services:
         /signoz-otel-collector migrate sync up &&
         /signoz-otel-collector migrate async up
     environment:
-      - SIGNOZ_OTEL_COLLECTOR_CLICKHOUSE_DSN=tcp://clickhouse:9000
+      - SIGNOZ_OTEL_COLLECTOR_CLICKHOUSE_DSN=tcp://default:${SERVICE_PASSWORD_CLICKHOUSE}@clickhouse:9000
       - SIGNOZ_OTEL_COLLECTOR_TIMEOUT=10m
     mem_limit: 256m
     cpus: 0.5
@@ -178,7 +185,7 @@ services:
       - SIGNOZ_SQLSTORE_PROVIDER=sqlite
       - SIGNOZ_SQLSTORE_SQLITE_PATH=/var/lib/signoz/signoz.db
       - SIGNOZ_TELEMETRYSTORE_PROVIDER=clickhouse
-      - SIGNOZ_TELEMETRYSTORE_CLICKHOUSE_DSN=tcp://clickhouse:9000
+      - SIGNOZ_TELEMETRYSTORE_CLICKHOUSE_DSN=tcp://default:${SERVICE_PASSWORD_CLICKHOUSE}@clickhouse:9000
     # No published port: Coolify's proxy reaches the UI on container port
     # 8080 over the stack's network, behind the domain's TLS.
     volumes:
@@ -222,11 +229,15 @@ services:
     environment:
       - OTEL_RESOURCE_ATTRIBUTES=host.name=signoz-host,os.type=linux
       - LOW_CARDINAL_EXCEPTION_GROUPING=false
-      - SIGNOZ_OTEL_COLLECTOR_CLICKHOUSE_DSN=tcp://clickhouse:9000
+      - SIGNOZ_OTEL_COLLECTOR_CLICKHOUSE_DSN=tcp://default:${SERVICE_PASSWORD_CLICKHOUSE}@clickhouse:9000
       - SIGNOZ_OTEL_COLLECTOR_TIMEOUT=10m
+      # For the exporters' DSNs in config/ingester/ingester.yaml.
+      - CLICKHOUSE_PASSWORD=${SERVICE_PASSWORD_CLICKHOUSE}
+    # Loopback only, for tooling on the server. The apps send OTLP over HTTPS
+    # through the collector's Coolify domain (README.md, "OTLP endpoint").
     ports:
-      - "4317:4317" # OTLP gRPC
-      - "4318:4318" # OTLP HTTP
+      - "127.0.0.1:4317:4317" # OTLP gRPC
+      - "127.0.0.1:4318:4318" # OTLP HTTP
     volumes:
       - type: bind
         source: ./config/ingester/ingester.yaml

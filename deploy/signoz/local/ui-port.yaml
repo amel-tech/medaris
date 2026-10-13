@@ -1,6 +1,7 @@
 # Local only: the deployed files publish no UI port (Coolify's proxy serves
-# the domain), so local runs reach the UI on http://localhost:8081.
+# the domain), so local runs reach the UI on http://localhost:8081, bound to
+# loopback.
 services:
   signoz:
     ports:
-      - "8081:8080"
+      - "127.0.0.1:8081:8080"

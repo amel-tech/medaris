@@ -2,7 +2,9 @@
 # The dashboards in SQLite are converted to the v2 schema when signoz starts.
 # SigNoz v0.135.0 with collector v0.144.6, the newest collector released
 # before v0.135.0, on the collector config of steps 3 and 4. Otherwise
-# identical to docker-compose.coolify.yaml.
+# identical to docker-compose.coolify.yaml, except that it sets no
+# CLICKHOUSE_PASSWORD: ClickHouse logs `Env variable is not set` and keeps the
+# empty password of the earlier steps (README.md, "ClickHouse password").
 services:
   init-clickhouse:
     image: clickhouse/clickhouse-server:25.12.5
@@ -219,8 +221,8 @@ services:
       - SIGNOZ_OTEL_COLLECTOR_CLICKHOUSE_DSN=tcp://clickhouse:9000
       - SIGNOZ_OTEL_COLLECTOR_TIMEOUT=10m
     ports:
-      - "4317:4317" # OTLP gRPC
-      - "4318:4318" # OTLP HTTP
+      - "127.0.0.1:4317:4317" # OTLP gRPC
+      - "127.0.0.1:4318:4318" # OTLP HTTP
     volumes:
       - type: bind
         source: ./legacy/otel-collector-config.v0.129.yaml

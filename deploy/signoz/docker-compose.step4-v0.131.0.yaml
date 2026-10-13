@@ -4,7 +4,9 @@
 # layout is the final one in docker-compose.coolify.yaml. SigNoz v0.131.0 with
 # collector v0.144.5, the newest collector released before v0.131.0 (upstream
 # no longer pins a pair), on the collector config of step 3: the final one
-# needs processors that only v0.144.6+ has.
+# needs processors that only v0.144.6+ has. No CLICKHOUSE_PASSWORD here, so
+# `default` keeps its empty password until the final file (README.md,
+# "ClickHouse password").
 services:
   init-clickhouse:
     image: clickhouse/clickhouse-server:25.12.5
@@ -221,8 +223,8 @@ services:
       - SIGNOZ_OTEL_COLLECTOR_CLICKHOUSE_DSN=tcp://clickhouse:9000
       - SIGNOZ_OTEL_COLLECTOR_TIMEOUT=10m
     ports:
-      - "4317:4317" # OTLP gRPC
-      - "4318:4318" # OTLP HTTP
+      - "127.0.0.1:4317:4317" # OTLP gRPC
+      - "127.0.0.1:4318:4318" # OTLP HTTP
     volumes:
       - type: bind
         source: ./legacy/otel-collector-config.v0.129.yaml

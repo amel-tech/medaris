@@ -7,13 +7,13 @@ connectors:
     metrics_flush_interval: 1h
 exporters:
   clickhouselogsexporter:
-    dsn: tcp://clickhouse:9000/signoz_logs
+    dsn: tcp://default:${env:CLICKHOUSE_PASSWORD}@clickhouse:9000/signoz_logs
     sending_queue:
       enabled: false
     timeout: 45s
     use_new_schema: true
   clickhousetraces:
-    datasource: tcp://clickhouse:9000/signoz_traces
+    datasource: tcp://default:${env:CLICKHOUSE_PASSWORD}@clickhouse:9000/signoz_traces
     low_cardinal_exception_grouping: ${env:LOW_CARDINAL_EXCEPTION_GROUPING}
     sending_queue:
       enabled: false
@@ -22,16 +22,16 @@ exporters:
   metadataexporter:
     cache:
       provider: in_memory
-    dsn: tcp://clickhouse:9000/signoz_metadata
+    dsn: tcp://default:${env:CLICKHOUSE_PASSWORD}@clickhouse:9000/signoz_metadata
     enabled: true
     timeout: 45s
   signozclickhousemeter:
-    dsn: tcp://clickhouse:9000/signoz_meter
+    dsn: tcp://default:${env:CLICKHOUSE_PASSWORD}@clickhouse:9000/signoz_meter
     sending_queue:
       enabled: false
     timeout: 45s
   signozclickhousemetrics:
-    dsn: tcp://clickhouse:9000/signoz_metrics
+    dsn: tcp://default:${env:CLICKHOUSE_PASSWORD}@clickhouse:9000/signoz_metrics
     sending_queue:
       enabled: false
     timeout: 45s
