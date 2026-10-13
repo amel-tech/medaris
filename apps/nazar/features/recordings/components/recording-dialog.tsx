@@ -53,6 +53,7 @@ import {
   releaseErrorKey,
   releaseFormOf,
   releaseProblem,
+  replacesVideo,
   type SessionSlot,
   switchLocked,
   uploadBody,
@@ -111,13 +112,17 @@ type Step = "idle" | "signing" | "sending" | "stopped" | "failed";
  * tedrisat cannot store, its reason; when it means the page is out of date,
  * the dialog closes and the page is read again.
  *
- * "Düzenle" on a recording that is a link (not a Bunny video) also offers
- * "Bunny’ye yükle" to a holder of `recording.upload`. The link form stays
- * `recording.manage`'s and is the tab it opens on; a holder of only one of
- * the codes sees that form alone. Until the upload starts, the dialog says
- * the video takes the link's place; from then on it runs as when adding, with
- * the title and "Herkese açık" as the form holds them. A Bunny recording's
- * "Düzenle" is the link form alone.
+ * "Düzenle" on any recording also offers "Bunny’ye yükle" to a holder of
+ * `recording.upload`: on a link since 12 October, on a Bunny video, in any
+ * status, since 13 October, so a wrong file can be replaced. The link form
+ * stays `recording.manage`'s and is the tab it opens on; a holder of only one
+ * of the codes sees that form alone. Until the upload starts, the dialog says
+ * the video takes the link's place, or the current video's, which leaves the
+ * recording when the upload starts and Bunny when it is over (an upload of it
+ * still under way stops); from then on it runs as when adding, with the title
+ * and "Herkese açık" as the form holds them. The upload of a Bunny
+ * recording's "Düzenle" says it replaces that video (`replaceVideo`), and the
+ * link field of one says another link deletes the video from Bunny.
  *
  * Under them, for a holder of `recording.manage`, when talebe may watch it
  * (MDRS-288): "Hazır olunca hemen" or "Şu tarih ve saatte" on the course's
@@ -158,8 +163,10 @@ export function RecordingDialog({
   );
   const [sent, setSent] = useState(false);
 
-  // "Düzenle" on a link: its video may be uploaded in its place
+  // "Düzenle": a video may be uploaded in the recording's place
   const replacing = can.upload && uploadReplaces(editing);
+  // ...and on a Bunny recording that video is the one it replaces
+  const videoGoes = replacesVideo(editing);
   const uploadTab = resume || (!editing && can.upload) || replacing;
   const linkTab = !resume && can.manage;
   // "Düzenle" opens on the link the recording holds, adding on the upload
@@ -244,7 +251,7 @@ export function RecordingDialog({
       setFileError("empty");
       return;
     }
-    const body = uploadBody(form, slot);
+    const body = uploadBody(form, slot, editing);
     if (!body || releaseIssue !== null) {
       setSent(true);
       return;
@@ -401,10 +408,19 @@ export function RecordingDialog({
 
   const uploadPanel = (
     <>
-      {/* once the bytes go, the video is the recording and the link is gone */}
+      {/* once the bytes go, the video is the recording and the link, or the old video, is gone */}
       {replacing && videoId === null && step !== "sending" ? (
         <Alert tone="warning" data-testid="upload-replaces">
-          <p>{t("Recordings.upload.replacesLink")}</p>
+          {videoGoes ? (
+            <>
+              <p>{t("Recordings.upload.replacesVideo")}</p>
+              {editing?.status === "PROCESSING" ? (
+                <p>{t("Recordings.upload.stopsUpload")}</p>
+              ) : null}
+            </>
+          ) : (
+            <p>{t("Recordings.upload.replacesLink")}</p>
+          )}
         </Alert>
       ) : null}
       <Field
@@ -507,7 +523,11 @@ export function RecordingDialog({
         </span>
       }
       required
-      help={t("Recordings.form.linkHelp")}
+      help={
+        videoGoes
+          ? `${t("Recordings.form.linkHelp")} ${t("Recordings.form.linkReplacesVideo")}`
+          : t("Recordings.form.linkHelp")
+      }
       error={
         showError("linkEmpty")
           ? t("Recordings.form.errors.linkEmpty")

@@ -44,11 +44,11 @@ import { ReleaseDialog } from "./release-dialog";
  * the recording each holds: its title, where it lives (the provider chip, or
  * the host when it has no name), whether it plays yet and who may watch it. A
  * session that has begun and has none offers "Kayıt ekle"; a recording offers
- * "Düzenle" to a holder of `recording.manage`, and a link (not a Bunny
- * video) offers it to a holder of `recording.upload` too, whose dialog then
- * holds the upload that replaces the link. A Bunny upload still PROCESSING
- * offers "Devam et" to a holder of `recording.upload`, for an upload left
- * halfway. All open the one dialog. The clock is read here and
+ * "Düzenle" to a holder of `recording.manage` and to a holder of
+ * `recording.upload`, whose dialog then holds the upload that replaces the
+ * link or the Bunny video, in any status (13 October). A Bunny upload still
+ * PROCESSING also offers "Devam et" to a holder of `recording.upload`, for an
+ * upload left halfway. All open the one dialog. The clock is read here and
  * moves while the page is open, as on Celseler; while a Bunny upload is being
  * prepared the page is read again every few seconds, until none is.
  *
@@ -329,7 +329,7 @@ export function RecordingsTable({
                 {t("Recordings.upload.resume")}
               </Button>
             ) : null;
-          // a link's "Düzenle" also holds the upload that replaces it, which is recording.upload's
+          // "Düzenle" also holds the upload that replaces the recording, which is recording.upload's
           const edit =
             can.manage || (can.upload && uploadReplaces(slot.recording)) ? (
               <Button
