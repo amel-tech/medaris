@@ -26,6 +26,8 @@ export const CODES = {
   settingApprovalOff: "setting.approval_off",
   settingCourseOpen: "setting.course_open",
   submissionRead: "submission.read",
+  /** "Ortak uygulama kodları" (partner enrollments): the köşk nazımı's and the başnazım's. */
+  partnerCodes: "course.partner_codes",
 } as const;
 
 /** The codes that open each page: holding any one of them is enough. */
@@ -47,6 +49,7 @@ export const PAGE_CODES = {
     CODES.courseSettings,
     CODES.coursePublish,
     CODES.sessionManage,
+    CODES.partnerCodes,
   ],
 } as const satisfies Record<string, readonly string[]>;
 
