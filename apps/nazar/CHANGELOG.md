@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.8](https://github.com/amel-tech/medaris/compare/nazar-web-v0.2.7...nazar-web-v0.2.8) (2026-10-13)
+
+
+### Features
+
+* **ci:** promote dev images to prod, ship Keycloak as a pinned image, cache installs ([#304](https://github.com/amel-tech/medaris/issues/304)) ([3acd2c3](https://github.com/amel-tech/medaris/commit/3acd2c31cd9ee3dfbb14948bcb1ee896bec754d5))
+* **tedrisat, nazar-web, tedris-web:** celse homework apart from resources, flagged when due ([#309](https://github.com/amel-tech/medaris/issues/309)) ([ba5f1d6](https://github.com/amel-tech/medaris/commit/ba5f1d6de2cd08da8b9f05099df8cf9c65ff05e3))
+
 ## [0.2.7](https://github.com/amel-tech/medaris/compare/nazar-web-v0.2.6...nazar-web-v0.2.7) (2026-10-12)
 
 
