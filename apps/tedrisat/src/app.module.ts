@@ -24,6 +24,7 @@ import { FlashcardLabelModule } from "./flashcard/flashcard-label.module";
 import { HostingModule } from "./hosting/hosting.module";
 import { InactiveScopeModule } from "./inactive-scope/inactive-scope.module";
 import { IntegrationModule } from "./integration/integration.module";
+import { PartnerRegistryModule } from "./integration/partner-registry.module";
 import { KoskModule } from "./kosk/kosk.module";
 import { KoskApplicationModule } from "./kosk-application/kosk-application.module";
 import { LessonNoteModule } from "./lesson-note/lesson-note.module";
@@ -51,6 +52,9 @@ import { UserModule } from "./user/user.module";
     }),
     LoggerModule.forRoot(),
     RateLimitModule,
+    // Global: the partner registry, whose clients `AuthGuardModule`'s
+    // verifier refuses (REFUSED_CLIENT_SOURCE) on every ordinary route.
+    PartnerRegistryModule,
     AuthGuardModule,
     AuthzModule,
     AuthzBindingsModule,
@@ -83,7 +87,8 @@ import { UserModule } from "./user/user.module";
     BanModule,
     NizamDashboardModule,
     UserModule,
-    // Partner enrollments: `/integrations/*` and the course's partner codes.
+    // Partner enrollments: `/integrations/*`, the course's partner codes and
+    // nizam's "Ortak uygulamalar".
     IntegrationModule,
   ],
   controllers: [AppController],

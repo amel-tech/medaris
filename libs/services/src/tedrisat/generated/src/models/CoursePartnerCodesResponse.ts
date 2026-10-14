@@ -28,7 +28,7 @@ import {
  */
 export interface CoursePartnerCodesResponse {
     /**
-     * Every partner application this server works with, each with its codes mapped to this course (possibly none).
+     * The course's partner applications (the enabled ones bound to the köşk the course is held in), each with its codes mapped to this course (possibly none). Empty when the köşk has no partner.
      * @type {Array<CoursePartnerCodesItem>}
      * @memberof CoursePartnerCodesResponse
      */

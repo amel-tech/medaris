@@ -109,6 +109,13 @@ export const PERMISSIONS = {
   PLATFORM_INACTIVE_SCOPES_MANAGE: "platform.inactive_scopes_manage",
   PLATFORM_YOUTUBE_MANAGE: "platform.youtube_manage",
   PLATFORM_POLICY_EDIT: "platform.policy_edit",
+  /**
+   * Register the partner applications, rename, disable and enable them, and
+   * bind each to the köşks it works with (nizam's "Ortak uygulamalar"): a
+   * registered partner's token is admitted on `/integrations/*`. No role holds
+   * it by default, so only the başnazım (bypass) has it unless it is granted.
+   */
+  PLATFORM_PARTNER_MANAGE: "platform.partner_manage",
 
   // --- medrese ---------------------------------------------------------------
   MADRASAH_COURSE_OPEN: "madrasah.course_open",
@@ -268,6 +275,7 @@ export const PERMISSION_META: Record<PermissionCode, IPermissionMeta> = {
   [P.PLATFORM_INACTIVE_SCOPES_MANAGE]: listed([PLATFORM]),
   [P.PLATFORM_YOUTUBE_MANAGE]: listed([PLATFORM]),
   [P.PLATFORM_POLICY_EDIT]: listed([PLATFORM]),
+  [P.PLATFORM_PARTNER_MANAGE]: listed([PLATFORM]),
 
   [P.MADRASAH_COURSE_OPEN]: listed([MADRASAH]),
   [P.MADRASAH_MUDERRIS_MANAGE]: listed([MADRASAH]),

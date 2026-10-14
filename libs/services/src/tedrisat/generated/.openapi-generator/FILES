@@ -112,6 +112,7 @@ src/models/CreateMadrasahDto.ts
 src/models/CreateMadrasahPermissionGroupDto.ts
 src/models/CreateMuderrisDto.ts
 src/models/CreateOffsiteCourseRequestDto.ts
+src/models/CreatePartnerDto.ts
 src/models/CreatePermissionGroupDto.ts
 src/models/CreateRecordingDto.ts
 src/models/CreateResourceDto.ts
@@ -318,11 +319,13 @@ src/models/PaginatedLessonQuestionResponse.ts
 src/models/PaginatedMadrasahArchiveResponse.ts
 src/models/PaginatedMadrasahResponse.ts
 src/models/PaginatedNotificationResponse.ts
-src/models/PartnerApplicationResponse.ts
+src/models/PartnerAdminListResponse.ts
+src/models/PartnerAdminResponse.ts
 src/models/PartnerCodeResponse.ts
 src/models/PartnerCourseResponse.ts
 src/models/PartnerEnrollDto.ts
 src/models/PartnerEnrollmentResponse.ts
+src/models/PartnerKoskResponse.ts
 src/models/PartnerUnenrollmentResponse.ts
 src/models/PassivateScopeDto.ts
 src/models/PassivationCourseResponse.ts
@@ -391,6 +394,7 @@ src/models/SetMadrasahCourseMuderrisDto.ts
 src/models/SetMadrasahNazirPermissionsDto.ts
 src/models/SetMuderrisDto.ts
 src/models/SetNazimGrantsDto.ts
+src/models/SetPartnerKosksDto.ts
 src/models/SetPlatformPolicyDto.ts
 src/models/SetRecordingAvailabilityDto.ts
 src/models/StartRecordingUploadDto.ts
@@ -412,6 +416,7 @@ src/models/UpdateMadrasahDto.ts
 src/models/UpdateMadrasahPermissionGroupDto.ts
 src/models/UpdateMadrasahSettingsDto.ts
 src/models/UpdateMeDto.ts
+src/models/UpdatePartnerDto.ts
 src/models/UpdatePermissionGroupDto.ts
 src/models/UpdateProfileVisibilityDto.ts
 src/models/UpdateProgressDto.ts

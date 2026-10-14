@@ -1,6 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
-import type { IIntegrationPartner } from "../config/integration-partners-env";
+import type { IPartnerActor } from "./domain/partner-actor";
 import {
   PartnerCodeTakenError,
   PartnerUnknownError,
@@ -17,34 +16,22 @@ export interface ICoursePartnerCodes {
  * "Ortak uygulama kodları" in nazar's course settings: which of a partner
  * application's codes enrol people in this course. Authorization is the
  * routes', `course.partner_codes` on the course (`PartnerCodesController`);
- * this decides the rest. Only the partners in `INTEGRATION_PARTNERS` are
- * offered: a code for one the server does not know would enrol nobody.
+ * this decides the rest. Only the course's partners are offered: the enabled
+ * ones the başnazım bound to the köşk the course is held in. A course of a
+ * köşk with five partners lists five, however many the platform has.
  */
 @Injectable()
 export class PartnerCodesService {
-  private readonly partners: readonly IIntegrationPartner[];
-
   // Value imports: see the useImportType trap in AGENTS.md.
-  constructor(
-    private readonly repo: PartnerRepository,
-    config: ConfigService
-  ) {
-    this.partners =
-      config.get<IIntegrationPartner[]>("integrations.partners") ?? [];
-  }
+  constructor(private readonly repo: PartnerRepository) {}
 
-  /** The partner applications this server works with, display names only. */
-  listPartners(): { id: string; name: string }[] {
-    return this.partners.map((partner) => ({
-      id: partner.clientId,
-      name: partner.name,
-    }));
-  }
-
-  /** Every configured partner with its codes for this course, possibly none. */
+  /** The course's partners, each with its codes for this course, possibly none. */
   async courseCodes(courseId: string): Promise<ICoursePartnerCodes[]> {
-    const rows = await this.repo.listCourseCodes(courseId);
-    return this.partners.map((partner) => ({
+    const [partners, rows] = await Promise.all([
+      this.repo.coursePartners(courseId),
+      this.repo.listCourseCodes(courseId),
+    ]);
+    return partners.map((partner) => ({
       id: partner.clientId,
       name: partner.name,
       codes: rows
@@ -63,7 +50,7 @@ export class PartnerCodesService {
     code: string,
     actorId: string
   ): Promise<{ code: string; createdAt: Date }> {
-    const partner = this.partnerOf(partnerId);
+    const partner = await this.partnerOf(courseId, partnerId);
     const { result, createdAt } = await this.repo.addCode({
       partner,
       code,
@@ -86,12 +73,21 @@ export class PartnerCodesService {
     code: string,
     actorId: string
   ): Promise<void> {
-    const partner = this.partnerOf(partnerId);
+    const partner = await this.partnerOf(courseId, partnerId);
     await this.repo.removeCode({ partner, code, courseId, actorId });
   }
 
-  private partnerOf(partnerId: string): IIntegrationPartner {
-    const partner = this.partners.find((p) => p.clientId === partnerId);
+  /**
+   * One of the course's partners, or `PARTNER_UNKNOWN`: a partner of another
+   * köşk, a disabled one and an id nobody registered read the same.
+   */
+  private async partnerOf(
+    courseId: string,
+    partnerId: string
+  ): Promise<IPartnerActor> {
+    const partner = (await this.repo.coursePartners(courseId)).find(
+      (p) => p.clientId === partnerId
+    );
     if (!partner) throw new PartnerUnknownError();
     return partner;
   }

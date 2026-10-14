@@ -16,37 +16,37 @@ import { mapValues } from '../runtime';
 /**
  * 
  * @export
- * @interface PartnerApplicationResponse
+ * @interface PartnerKoskResponse
  */
-export interface PartnerApplicationResponse {
+export interface PartnerKoskResponse {
     /**
-     * Its client id in the realm.
+     * 
      * @type {string}
-     * @memberof PartnerApplicationResponse
+     * @memberof PartnerKoskResponse
      */
     id: string;
     /**
      * 
      * @type {string}
-     * @memberof PartnerApplicationResponse
+     * @memberof PartnerKoskResponse
      */
     name: string;
 }
 
 /**
- * Check if a given object implements the PartnerApplicationResponse interface.
+ * Check if a given object implements the PartnerKoskResponse interface.
  */
-export function instanceOfPartnerApplicationResponse(value: object): value is PartnerApplicationResponse {
+export function instanceOfPartnerKoskResponse(value: object): value is PartnerKoskResponse {
     if (!('id' in value) || value['id'] === undefined) return false;
     if (!('name' in value) || value['name'] === undefined) return false;
     return true;
 }
 
-export function PartnerApplicationResponseFromJSON(json: any): PartnerApplicationResponse {
-    return PartnerApplicationResponseFromJSONTyped(json, false);
+export function PartnerKoskResponseFromJSON(json: any): PartnerKoskResponse {
+    return PartnerKoskResponseFromJSONTyped(json, false);
 }
 
-export function PartnerApplicationResponseFromJSONTyped(json: any, ignoreDiscriminator: boolean): PartnerApplicationResponse {
+export function PartnerKoskResponseFromJSONTyped(json: any, ignoreDiscriminator: boolean): PartnerKoskResponse {
     if (json == null) {
         return json;
     }
@@ -57,11 +57,11 @@ export function PartnerApplicationResponseFromJSONTyped(json: any, ignoreDiscrim
     };
 }
 
-export function PartnerApplicationResponseToJSON(json: any): PartnerApplicationResponse {
-    return PartnerApplicationResponseToJSONTyped(json, false);
+export function PartnerKoskResponseToJSON(json: any): PartnerKoskResponse {
+    return PartnerKoskResponseToJSONTyped(json, false);
 }
 
-export function PartnerApplicationResponseToJSONTyped(value?: PartnerApplicationResponse | null, ignoreDiscriminator: boolean = false): any {
+export function PartnerKoskResponseToJSONTyped(value?: PartnerKoskResponse | null, ignoreDiscriminator: boolean = false): any {
     if (value == null) {
         return value;
     }

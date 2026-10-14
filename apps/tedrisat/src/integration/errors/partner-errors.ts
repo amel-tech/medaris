@@ -23,7 +23,28 @@ export class PartnerRoleMissingError extends ForbiddenError {
   }
 }
 
-/** No course is mapped to this code for this partner. */
+/**
+ * The token is a registered partner's, verified, but the başnazım has
+ * disabled the partner in nizam: nothing it sends is acted on until it is
+ * enabled again.
+ */
+export class PartnerDisabledError extends ForbiddenError {
+  static readonly code = "PARTNER_DISABLED";
+
+  constructor(context?: ErrorContext) {
+    super(
+      PartnerDisabledError.code,
+      "This partner application is disabled",
+      context
+    );
+  }
+}
+
+/**
+ * No course is mapped to this code for this partner, in a köşk the partner
+ * works with: a code mapped in a köşk it has been unbound from since reads the
+ * same as one never mapped.
+ */
 export class PartnerCourseUnknownError extends NotFoundError {
   static readonly code = "PARTNER_COURSE_UNKNOWN";
 
@@ -82,12 +103,47 @@ export class PartnerEnrollmentRefusedError extends ConflictError {
   }
 }
 
-/** Course staff named a partner application this server does not know. */
+/**
+ * A partner application this caller may not name here: none is registered
+ * under the id, or, for course staff, it does not work with the course's
+ * köşk or is disabled. Both read the same, so a köşk's staff learn nothing
+ * about the partners of other köşks.
+ */
 export class PartnerUnknownError extends NotFoundError {
   static readonly code = "PARTNER_UNKNOWN";
 
   constructor() {
     super(PartnerUnknownError.code, "No such partner application");
+  }
+}
+
+/** The başnazım registered a client id that is registered already. */
+export class PartnerExistsError extends ConflictError {
+  static readonly code = "PARTNER_EXISTS";
+
+  constructor(clientId: string) {
+    super(
+      PartnerExistsError.code,
+      `A partner application with the client id ${clientId} is registered already`,
+      { clientId }
+    );
+  }
+}
+
+/**
+ * The client id is one of the front-ends (`KEYCLOAK_ALLOWED_CLIENTS`). A
+ * partner's token is accepted on `/integrations/*` alone and refused on every
+ * other route, so registering a front-end would lock its people out.
+ */
+export class PartnerFrontEndClientError extends ConflictError {
+  static readonly code = "PARTNER_FRONT_END_CLIENT";
+
+  constructor(clientId: string) {
+    super(
+      PartnerFrontEndClientError.code,
+      `${clientId} is one of the front-ends in KEYCLOAK_ALLOWED_CLIENTS, never a partner application`,
+      { clientId }
+    );
   }
 }
 

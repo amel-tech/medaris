@@ -13,13 +13,23 @@ import {
   courses,
   enrollments,
 } from "../../src/database/schema/course.schema";
+import {
+  integrationPartnerKosks,
+  integrationPartners,
+} from "../../src/database/schema/integration-partner.schema";
 import { kosks } from "../../src/database/schema/kosk.schema";
 import { notifications } from "../../src/database/schema/notification.schema";
 import {
   partnerCourseCodes,
   partnerEnrollmentLinks,
 } from "../../src/database/schema/partner-enrollment.schema";
-import { ASSIGNED_ROLES } from "../../src/database/schema/role-assignment.schema";
+import { permissionGrants } from "../../src/database/schema/permission.schema";
+import {
+  ASSIGNED_ROLES,
+  roleAssignments,
+  SCOPE_TYPES,
+} from "../../src/database/schema/role-assignment.schema";
+import { PartnerRegistry } from "../../src/integration/partner-registry";
 import { KEYCLOAK_ADMIN_FETCH } from "../../src/keycloak-admin/keycloak-admin.service";
 import { asSystemAdmin } from "../helpers/system-admin.helper";
 import { createTestApp } from "../helpers/test-app.helper";
@@ -38,12 +48,18 @@ import { bearerFor } from "../helpers/test-keycloak.helper";
  * `REALM`. partner-enrollment-keycloak.e2e.spec.ts runs the same flow against
  * a real Keycloak; this one covers every rule.
  *
- * `KEYCLOAK_ALLOWED_CLIENTS` is empty here (test-app.helper.ts), the
- * configuration where a partner's token would pass `AuthGuard` but for
- * `keycloak.refusedClients`.
+ * The partner is a row of `integration_partners`, bound to the köşk of the
+ * courses below, as the başnazım registers it in nizam; a test that writes
+ * those rows by hand empties the registry's cache (`invalidate`), as the
+ * routes' writes do. `KEYCLOAK_ALLOWED_CLIENTS` is empty here
+ * (test-app.helper.ts), the configuration where a partner's token would pass
+ * `AuthGuard` but for the registry the verifier asks.
  */
 const PARTNER_ID = "ornek-uygulama";
 const PARTNER_NAME = "Örnek Uygulama";
+const OTHER_PARTNER_ID = "ikinci-uygulama";
+const OTHER_PARTNER_NAME = "İkinci Uygulama";
+const MEDARIS = "a0000000-0000-4000-8000-000000000004";
 const SERVICE_ACCOUNT = "a0000000-0000-4000-8000-0000000000aa";
 const NAZIM = "a0000000-0000-4000-8000-000000000001";
 const MUDERRIS = "a0000000-0000-4000-8000-000000000002";
@@ -115,8 +131,47 @@ describe("Partner enrollments (e2e)", () => {
   let courseId: string;
   let openCourseId: string;
   let draftCourseId: string;
+  // A köşk the partner is not bound to, with a published course.
+  let otherKoskId: string;
+  let otherCourseId: string;
 
   const http = () => request(app.getHttpServer());
+  /** What the routes' writes do; a test that writes the rows by hand calls it. */
+  const forget = () => app.get(PartnerRegistry, { strict: false }).invalidate();
+  const register = async (
+    clientId: string,
+    name: string,
+    boundTo: string[],
+    enabled = true
+  ) => {
+    await db.insert(integrationPartners).values({ clientId, name, enabled });
+    if (boundTo.length > 0) {
+      await db
+        .insert(integrationPartnerKosks)
+        .values(boundTo.map((id) => ({ clientId, koskId: id })));
+    }
+    forget();
+  };
+  /** nizam's "Ortak uygulamalar" routes, as the başnazım unless told otherwise. */
+  const admin = {
+    list: (auth = asSystemAdmin(ADMIN)) =>
+      http().get("/nizam/partner-applications").set("Authorization", auth),
+    create: (body: object, auth = asSystemAdmin(ADMIN)) =>
+      http()
+        .post("/nizam/partner-applications")
+        .set("Authorization", auth)
+        .send(body),
+    update: (clientId: string, body: object, auth = asSystemAdmin(ADMIN)) =>
+      http()
+        .patch(`/nizam/partner-applications/${clientId}`)
+        .set("Authorization", auth)
+        .send(body),
+    kosks: (clientId: string, koskIds: string[], auth = asSystemAdmin(ADMIN)) =>
+      http()
+        .put(`/nizam/partner-applications/${clientId}/kosks`)
+        .set("Authorization", auth)
+        .send({ koskIds }),
+  };
   const put = (ref: string, code: string, userId: string, auth = partner()) =>
     http()
       .put(`/integrations/enrollments/${ref}/${code}`)
@@ -154,8 +209,10 @@ describe("Partner enrollments (e2e)", () => {
       .orderBy(asc(notifications.createdAt));
 
   beforeAll(async () => {
-    // Read when AppModule is imported, inside createTestApp.
-    process.env.INTEGRATION_PARTNERS = `${PARTNER_ID}=${PARTNER_NAME}`;
+    // Read when the app's configuration loads, inside createTestApp. The
+    // partners are the database's; the value only seeds it (see the last
+    // describe).
+    delete process.env.INTEGRATION_PARTNERS;
     process.env.KEYCLOAK_ADMIN_CLIENT_ID = "tedrisat-admin";
     process.env.KEYCLOAK_ADMIN_CLIENT_SECRET = "s";
     app = await createTestApp({
@@ -170,17 +227,34 @@ describe("Partner enrollments (e2e)", () => {
     dbUtils.cleanTables(
       "bans",
       "notifications",
+      "permission_grants",
+      // Takes its köşk bindings with it (ON DELETE CASCADE).
+      "integration_partners",
       ...COURSE_TREE_TABLES,
       "audit_log"
     );
 
   beforeEach(async () => {
     await clean();
-    const [kosk] = await db
+    const [kosk, otherKosk] = await db
       .insert(kosks)
-      .values({ ownerId: NAZIM, name: "Örnek Köşkü" })
+      .values([
+        { ownerId: NAZIM, name: "Örnek Köşkü" },
+        { ownerId: ADMIN, name: "Başka Köşk" },
+      ])
       .returning();
     koskId = kosk.id;
+    otherKoskId = otherKosk.id;
+    const [other] = await db
+      .insert(courses)
+      .values({
+        koskId: otherKoskId,
+        authorId: ADMIN,
+        title: "Belâgat",
+        status: CourseStatus.PUBLISHED,
+      })
+      .returning();
+    otherCourseId = other.id;
     const rows = await db
       .insert(courses)
       .values([
@@ -246,6 +320,7 @@ describe("Partner enrollments (e2e)", () => {
         createdBy: NAZIM,
       },
     ]);
+    await register(PARTNER_ID, PARTNER_NAME, [koskId]);
   });
 
   afterAll(async () => {
@@ -277,13 +352,61 @@ describe("Partner enrollments (e2e)", () => {
 
     it("refuses the partner's token on every ordinary route", async () => {
       for (const path of [
-        "/partner-applications",
+        "/nizam/partner-applications",
         `/courses/${courseId}/partner-codes`,
         "/me",
         "/flashcard/decks/collections",
       ]) {
         await http().get(path).set("Authorization", partner()).expect(401);
       }
+    });
+
+    it("reads the partners from the registry: none registered is no route, one registered is admitted at once", async () => {
+      await db.delete(integrationPartners);
+      forget();
+      const none = await http()
+        .get("/integrations/courses")
+        .set("Authorization", partner())
+        .expect(404);
+      expect(none.body.message).toBe("Cannot GET /integrations/courses");
+
+      await admin
+        .create({ clientId: PARTNER_ID, name: PARTNER_NAME })
+        .expect(201);
+      // No restart, no waiting out the cache: the write emptied it.
+      const res = await http()
+        .get("/integrations/courses")
+        .set("Authorization", partner())
+        .expect(200);
+      // Bound to no köşk yet: none of its codes counts.
+      expect(res.body).toEqual([]);
+      // And refused on every ordinary route from then on, by the same read.
+      await http().get("/me").set("Authorization", partner()).expect(401);
+    });
+
+    it("refuses a disabled partner with 403 on /integrations/*, and still on every other route", async () => {
+      await put("R-1", "tecvid", TALEBE).expect(200);
+      await admin.update(PARTNER_ID, { enabled: false }).expect(200);
+
+      const listed = await http()
+        .get("/integrations/courses")
+        .set("Authorization", partner())
+        .expect(403);
+      expect(listed.body.code).toBe("PARTNER_DISABLED");
+      expect((await put("R-2", "tecvid", OTHER).expect(403)).body.code).toBe(
+        "PARTNER_DISABLED"
+      );
+      expect((await del("R-1", "tecvid").expect(403)).body.code).toBe(
+        "PARTNER_DISABLED"
+      );
+      for (const path of ["/me", `/courses/${courseId}/partner-codes`]) {
+        await http().get(path).set("Authorization", partner()).expect(401);
+      }
+      expect(await seatOf(OTHER)).toBeNull();
+      expect((await seatOf(TALEBE))?.status).toBe(EnrollmentStatus.ENROLLED);
+
+      await admin.update(PARTNER_ID, { enabled: true }).expect(200);
+      await del("R-1", "tecvid").expect(200, { status: "REMOVED" });
     });
 
     it("never records the partner's service account as a person", async () => {
@@ -541,14 +664,6 @@ describe("Partner enrollments (e2e)", () => {
   });
 
   describe("course staff: Ortak uygulama kodları", () => {
-    it("lists the configured partners, display names only, to anyone signed in", async () => {
-      const res = await http()
-        .get("/partner-applications")
-        .set("Authorization", bearerFor({ sub: TALEBE }))
-        .expect(200);
-      expect(res.body).toEqual([{ id: PARTNER_ID, name: PARTNER_NAME }]);
-    });
-
     it("is the köşk nazımı's and the başnazım's, not the müderris'", async () => {
       const mine = async (sub: string, auth = bearerFor({ sub })) =>
         (
@@ -646,6 +761,452 @@ describe("Partner enrollments (e2e)", () => {
         { code: "tecvid", courseId, title: "Tecvid" },
         { code: "tecvid-hafta-1", courseId, title: "Tecvid" },
       ]);
+    });
+  });
+
+  describe("the köşk scope: a partner works with the köşks it is bound to", () => {
+    const codesOf = async (course: string) =>
+      (
+        await http()
+          .get(`/courses/${course}/partner-codes`)
+          .set("Authorization", asSystemAdmin(ADMIN))
+          .expect(200)
+      ).body.partners as { id: string; codes: { code: string }[] }[];
+    /** A code mapped in the other köşk, as if while the partner was bound to it. */
+    const mappedElsewhere = () =>
+      db.insert(partnerCourseCodes).values({
+        partnerClientId: PARTNER_ID,
+        code: "belagat",
+        courseId: otherCourseId,
+        createdBy: ADMIN,
+      });
+
+    it("lists a course's partners: the enabled ones bound to its köşk, each with its codes", async () => {
+      await register(OTHER_PARTNER_ID, OTHER_PARTNER_NAME, [otherKoskId]);
+      await register("kapali-uygulama", "Kapalı Uygulama", [koskId], false);
+
+      expect(await codesOf(courseId)).toEqual([
+        {
+          id: PARTNER_ID,
+          name: PARTNER_NAME,
+          codes: [
+            { code: "tecvid", createdAt: expect.any(String) },
+            { code: "tecvid-hafta-1", createdAt: expect.any(String) },
+          ],
+        },
+      ]);
+      expect(await codesOf(otherCourseId)).toEqual([
+        { id: OTHER_PARTNER_ID, name: OTHER_PARTNER_NAME, codes: [] },
+      ]);
+
+      await admin.kosks(PARTNER_ID, []).expect(200);
+      expect(await codesOf(courseId)).toEqual([]);
+    });
+
+    it("maps a code only for a partner of the course's köşk", async () => {
+      const add = (course: string, partnerId: string) =>
+        http()
+          .post(`/courses/${course}/partner-codes`)
+          .set("Authorization", asSystemAdmin(ADMIN))
+          .send({ partner: partnerId, code: "belagat" });
+
+      const res = await add(otherCourseId, PARTNER_ID).expect(404);
+      expect(res.body.code).toBe("PARTNER_UNKNOWN");
+      await register(
+        "kapali-uygulama",
+        "Kapalı Uygulama",
+        [otherKoskId],
+        false
+      );
+      await add(otherCourseId, "kapali-uygulama").expect(404);
+      expect(await db.select().from(partnerCourseCodes)).toHaveLength(4);
+
+      await admin.kosks(PARTNER_ID, [koskId, otherKoskId]).expect(200);
+      await add(otherCourseId, PARTNER_ID).expect(201);
+    });
+
+    it("enrols nobody through a code in a köşk the partner is not bound to, and names nothing", async () => {
+      await mappedElsewhere();
+      const res = await put("R-1", "belagat", TALEBE).expect(404);
+      expect(res.body.code).toBe("PARTNER_COURSE_UNKNOWN");
+      expect(JSON.stringify(res.body)).not.toContain(otherCourseId);
+      expect(await seatOf(TALEBE, otherCourseId)).toBeNull();
+
+      // A köşk unbound since: its codes stop at once.
+      await admin.kosks(PARTNER_ID, [otherKoskId]).expect(200);
+      expect((await put("R-2", "tecvid", TALEBE).expect(404)).body.code).toBe(
+        "PARTNER_COURSE_UNKNOWN"
+      );
+      await put("R-1", "belagat", TALEBE).expect(200, {
+        status: "ENROLLED",
+        courseId: otherCourseId,
+      });
+      expect(await db.select().from(partnerEnrollmentLinks)).toHaveLength(1);
+    });
+
+    it("lists to the partner only its codes in the köşks it is bound to", async () => {
+      await mappedElsewhere();
+      const listed = async () =>
+        (
+          await http()
+            .get("/integrations/courses")
+            .set("Authorization", partner())
+            .expect(200)
+        ).body.map((row: { code: string }) => row.code);
+
+      expect(await listed()).toEqual([
+        "nahiv",
+        "taslak",
+        "tecvid",
+        "tecvid-hafta-1",
+      ]);
+      await admin.kosks(PARTNER_ID, [otherKoskId]).expect(200);
+      expect(await listed()).toEqual(["belagat"]);
+    });
+
+    it("still undoes, after an unbinding, a seat the partner made", async () => {
+      await put("R-1", "tecvid", TALEBE).expect(200);
+      await admin.kosks(PARTNER_ID, []).expect(200);
+
+      await del("R-1", "tecvid").expect(200, { status: "REMOVED" });
+      expect((await seatOf(TALEBE))?.status).toBe(EnrollmentStatus.REVOKED);
+      // And no new one there.
+      await put("R-1", "tecvid", TALEBE).expect(404);
+    });
+
+    it("loses a köşk's bindings with the köşk deleted for real", async () => {
+      await http()
+        .delete(`/kosks/${koskId}`)
+        .set("Authorization", asSystemAdmin(ADMIN))
+        .expect(200);
+      expect(await db.select().from(integrationPartnerKosks)).toEqual([]);
+      expect(
+        await db
+          .select()
+          .from(integrationPartners)
+          .where(eq(integrationPartners.clientId, PARTNER_ID))
+      ).toHaveLength(1);
+    });
+  });
+
+  describe("the registry: Ortak uygulamalar in nizam", () => {
+    it("is the başnazım's, and a Medaris nazımı's only when given platform.partner_manage", async () => {
+      await admin.list().expect(200);
+      for (const sub of [NAZIM, MUDERRIS, TALEBE, MEDARIS]) {
+        await admin.list(bearerFor({ sub })).expect(403);
+        await admin
+          .create(
+            { clientId: "yeni-uygulama", name: "Yeni" },
+            bearerFor({ sub })
+          )
+          .expect(403);
+        await admin
+          .update(PARTNER_ID, { enabled: false }, bearerFor({ sub }))
+          .expect(403);
+        await admin.kosks(PARTNER_ID, [], bearerFor({ sub })).expect(403);
+      }
+
+      await db.insert(roleAssignments).values({
+        userId: MEDARIS,
+        role: ASSIGNED_ROLES.MEDARIS_NAZIM,
+        scopeType: SCOPE_TYPES.PLATFORM,
+        scopeId: null,
+        grantedBy: ADMIN,
+      });
+      await admin.list(bearerFor({ sub: MEDARIS })).expect(403);
+      await db.insert(permissionGrants).values({
+        userId: MEDARIS,
+        scopeType: SCOPE_TYPES.PLATFORM,
+        scopeId: null,
+        permission: "platform.partner_manage",
+        grantedBy: ADMIN,
+      });
+      await admin.list(bearerFor({ sub: MEDARIS })).expect(200);
+      await admin
+        .create(
+          { clientId: "yeni-uygulama", name: "Yeni" },
+          bearerFor({ sub: MEDARIS })
+        )
+        .expect(201);
+      // The köşk nazımı still is not.
+      await admin.list(bearerFor({ sub: NAZIM })).expect(403);
+    });
+
+    it("lists every partner with its köşks, and every köşk to choose from", async () => {
+      await register(OTHER_PARTNER_ID, OTHER_PARTNER_NAME, [], false);
+      const res = await admin.list().expect(200);
+      // By name, as the database's collation orders "İ" and "Ö": not pinned.
+      expect(res.body.items).toHaveLength(2);
+      expect(res.body.items).toEqual(
+        expect.arrayContaining([
+          {
+            clientId: OTHER_PARTNER_ID,
+            name: OTHER_PARTNER_NAME,
+            enabled: false,
+            createdAt: expect.any(String),
+            kosks: [],
+          },
+          {
+            clientId: PARTNER_ID,
+            name: PARTNER_NAME,
+            enabled: true,
+            createdAt: expect.any(String),
+            kosks: [{ id: koskId, name: "Örnek Köşkü" }],
+          },
+        ])
+      );
+      expect(res.body.kosks).toEqual([
+        { id: otherKoskId, name: "Başka Köşk" },
+        { id: koskId, name: "Örnek Köşkü" },
+      ]);
+    });
+
+    it("registers a partner, enabled and bound to nothing, and writes it to the audit log", async () => {
+      const res = await admin
+        .create({
+          clientId: OTHER_PARTNER_ID,
+          name: `  ${OTHER_PARTNER_NAME} `,
+        })
+        .expect(201);
+      expect(res.body).toEqual({
+        clientId: OTHER_PARTNER_ID,
+        name: OTHER_PARTNER_NAME,
+        enabled: true,
+        createdAt: expect.any(String),
+        kosks: [],
+      });
+      const [row] = await db
+        .select()
+        .from(integrationPartners)
+        .where(eq(integrationPartners.clientId, OTHER_PARTNER_ID));
+      expect(row.createdBy).toBe(ADMIN);
+      expect(await auditRows("integration_partner.create")).toEqual([
+        expect.objectContaining({
+          actorId: ADMIN,
+          entity: "integration_partner",
+          details: { clientId: OTHER_PARTNER_ID, name: OTHER_PARTNER_NAME },
+        }),
+      ]);
+    });
+
+    it("refuses an id registered already, a malformed id and a blank or long name", async () => {
+      await admin.update(PARTNER_ID, { enabled: false }).expect(200);
+      const taken = await admin
+        .create({ clientId: PARTNER_ID, name: "Başka Ad" })
+        .expect(409);
+      expect(taken.body.code).toBe("PARTNER_EXISTS");
+      for (const body of [
+        { clientId: "ornek uygulama", name: "Örnek" },
+        { clientId: "-ornek", name: "Örnek" },
+        { clientId: OTHER_PARTNER_ID, name: "   " },
+        { clientId: OTHER_PARTNER_ID, name: "x".repeat(101) },
+        { clientId: OTHER_PARTNER_ID },
+      ]) {
+        await admin.create(body).expect(400);
+      }
+      await admin.update(PARTNER_ID, { name: " " }).expect(400);
+      expect(await auditRows("integration_partner.create")).toEqual([]);
+    });
+
+    it("renames, disables and enables, one audit row per change", async () => {
+      const res = await admin
+        .update(PARTNER_ID, { name: "Örnek Uygulama 2", enabled: false })
+        .expect(200);
+      expect(res.body).toMatchObject({
+        clientId: PARTNER_ID,
+        name: "Örnek Uygulama 2",
+        enabled: false,
+      });
+      await admin.update(PARTNER_ID, { enabled: false }).expect(200);
+      await admin.update(PARTNER_ID, { enabled: true }).expect(200);
+      await admin.update("bilinmeyen", { enabled: true }).expect(404);
+
+      expect(
+        (await auditRows("integration_partner.rename")).map((r) => r.details)
+      ).toEqual([
+        { clientId: PARTNER_ID, name: "Örnek Uygulama 2", was: PARTNER_NAME },
+      ]);
+      expect(await auditRows("integration_partner.disable")).toHaveLength(1);
+      expect(await auditRows("integration_partner.enable")).toHaveLength(1);
+      // The new name is the one the next audit row of the partner carries.
+      await put("R-1", "tecvid", TALEBE).expect(200);
+      expect(
+        (await auditRows("enrollment.partner_add"))[0].details
+      ).toMatchObject({
+        partner: { clientId: PARTNER_ID, name: "Örnek Uygulama 2" },
+      });
+    });
+
+    it("binds and unbinds köşks, each under its köşk in the audit log", async () => {
+      const both = await admin
+        .kosks(PARTNER_ID, [koskId, otherKoskId, koskId])
+        .expect(200);
+      expect(both.body.kosks).toEqual([
+        { id: otherKoskId, name: "Başka Köşk" },
+        { id: koskId, name: "Örnek Köşkü" },
+      ]);
+      await admin.kosks(PARTNER_ID, [otherKoskId]).expect(200);
+      const missing = await admin
+        .kosks(PARTNER_ID, ["c0000000-0000-4000-8000-0000000000ff"])
+        .expect(404);
+      expect(missing.body.code).toBe("KOSK_NOT_FOUND");
+      await admin.kosks("bilinmeyen", []).expect(404);
+      await admin.kosks(PARTNER_ID, ["not-a-uuid"]).expect(400);
+
+      expect(await auditRows("integration_partner.kosk_bind")).toEqual([
+        expect.objectContaining({
+          actorId: ADMIN,
+          entity: "kosk",
+          entityId: otherKoskId,
+          details: {
+            clientId: PARTNER_ID,
+            name: PARTNER_NAME,
+            kosk: "Başka Köşk",
+          },
+        }),
+      ]);
+      expect(await auditRows("integration_partner.kosk_unbind")).toEqual([
+        expect.objectContaining({ entity: "kosk", entityId: koskId }),
+      ]);
+      expect(
+        await db
+          .select({ koskId: integrationPartnerKosks.koskId })
+          .from(integrationPartnerKosks)
+      ).toEqual([{ koskId: otherKoskId }]);
+    });
+  });
+
+  describe("a second boot, with its own configuration", () => {
+    let booted: INestApplication | undefined;
+    afterEach(async () => {
+      delete process.env.INTEGRATION_PARTNERS;
+      delete process.env.KEYCLOAK_ALLOWED_CLIENTS;
+      await booted?.close();
+      booted = undefined;
+    });
+    const boot = async (allowedClients?: string) => {
+      booted = await createTestApp({
+        overrides: [{ provide: KEYCLOAK_ADMIN_FETCH, useValue: fakeFetch }],
+        allowedClients,
+      });
+      return booted;
+    };
+    const partnersNow = () =>
+      db
+        .select()
+        .from(integrationPartners)
+        .orderBy(asc(integrationPartners.clientId));
+    const bindingsNow = () =>
+      db
+        .select({
+          clientId: integrationPartnerKosks.clientId,
+          koskId: integrationPartnerKosks.koskId,
+          createdBy: integrationPartnerKosks.createdBy,
+        })
+        .from(integrationPartnerKosks)
+        .orderBy(asc(integrationPartnerKosks.clientId));
+
+    it("seeds INTEGRATION_PARTNERS at boot: a partner not registered is, bound to the köşks of its codes; one registered is left alone", async () => {
+      // What a deployment had before this release: a partner in the value,
+      // with a code mapped, and nothing in the table. The partner of the
+      // fixture stands for one the başnazım has already changed.
+      await db.insert(partnerCourseCodes).values({
+        partnerClientId: OTHER_PARTNER_ID,
+        code: "belagat",
+        courseId: otherCourseId,
+        createdBy: ADMIN,
+      });
+      await db
+        .update(integrationPartners)
+        .set({ enabled: false })
+        .where(eq(integrationPartners.clientId, PARTNER_ID));
+      await admin.kosks(PARTNER_ID, []).expect(200);
+      process.env.INTEGRATION_PARTNERS = `${PARTNER_ID}=Başka Ad,${OTHER_PARTNER_ID}=${OTHER_PARTNER_NAME}`;
+
+      const second = await boot();
+
+      expect(await partnersNow()).toEqual([
+        expect.objectContaining({
+          clientId: OTHER_PARTNER_ID,
+          name: OTHER_PARTNER_NAME,
+          enabled: true,
+          createdBy: null,
+        }),
+        expect.objectContaining({
+          clientId: PARTNER_ID,
+          name: PARTNER_NAME,
+          enabled: false,
+        }),
+      ]);
+      expect(await bindingsNow()).toEqual([
+        { clientId: OTHER_PARTNER_ID, koskId: otherKoskId, createdBy: null },
+      ]);
+      expect(
+        (await auditRows("integration_partner.create")).map((r) => r.details)
+      ).toEqual([
+        {
+          clientId: OTHER_PARTNER_ID,
+          name: OTHER_PARTNER_NAME,
+          seededFrom: "INTEGRATION_PARTNERS",
+        },
+      ]);
+      expect(await auditRows("integration_partner.kosk_bind")).toEqual([
+        expect.objectContaining({
+          entity: "kosk",
+          entityId: otherKoskId,
+          details: expect.objectContaining({
+            seededFrom: "INTEGRATION_PARTNERS",
+          }),
+        }),
+      ]);
+
+      // The seeded partner works at once, in its köşk.
+      const seeded = bearerFor({
+        sub: SERVICE_ACCOUNT,
+        claims: {
+          azp: OTHER_PARTNER_ID,
+          realm_access: { roles: ["partner-enrollment"] },
+        },
+      });
+      await request(second.getHttpServer())
+        .put(`/integrations/enrollments/R-1/belagat`)
+        .set("Authorization", seeded)
+        .send({ userId: TALEBE })
+        .expect(200, { status: "ENROLLED", courseId: otherCourseId });
+
+      // A boot after the başnazım unbound it does not bind it again.
+      await admin.kosks(OTHER_PARTNER_ID, []).expect(200);
+      await second.close();
+      booted = undefined;
+      await boot();
+      expect(await bindingsNow()).toEqual([]);
+      expect(await auditRows("integration_partner.create")).toHaveLength(1);
+    });
+
+    it("refuses to register one of the front-ends in KEYCLOAK_ALLOWED_CLIENTS (409)", async () => {
+      const second = await boot("nizam-dev,tedris-dev");
+      const nizam = bearerFor({
+        sub: ADMIN,
+        claims: { azp: "nizam-dev", realm_access: { roles: ["SYSTEM_ADMIN"] } },
+      });
+      const registerAs = (clientId: string) =>
+        request(second.getHttpServer())
+          .post("/nizam/partner-applications")
+          .set("Authorization", nizam)
+          .send({ clientId, name: "Ön yüz" });
+
+      const res = await registerAs("tedris-dev").expect(409);
+      expect(res.body).toMatchObject({
+        code: "PARTNER_FRONT_END_CLIENT",
+        context: { clientId: "tedris-dev" },
+      });
+      expect(
+        await db
+          .select()
+          .from(integrationPartners)
+          .where(eq(integrationPartners.clientId, "tedris-dev"))
+      ).toEqual([]);
+      await registerAs(OTHER_PARTNER_ID).expect(201);
     });
   });
 

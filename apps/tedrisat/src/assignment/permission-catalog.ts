@@ -72,6 +72,8 @@ export const PLATFORM_CATALOG: ReadonlyArray<{
       PERMISSIONS.PLATFORM_INACTIVE_SCOPES_MANAGE,
       PERMISSIONS.PLATFORM_YOUTUBE_MANAGE,
       PERMISSIONS.PLATFORM_POLICY_EDIT,
+      // "Ortak uygulamalar": a setting of the platform, as the two above are.
+      PERMISSIONS.PLATFORM_PARTNER_MANAGE,
     ],
   },
 ];

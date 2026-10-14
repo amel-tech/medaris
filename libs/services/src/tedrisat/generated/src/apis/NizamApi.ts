@@ -22,6 +22,7 @@ import type {
   AuditScopeKind,
   AuditType,
   ChiefNazimResponse,
+  CreatePartnerDto,
   CreatePermissionGroupDto,
   DeckPublishRequestListResponse,
   DeckRequestCardsResponse,
@@ -36,6 +37,8 @@ import type {
   KoskApplicationListResponse,
   MedarisNazimResponse,
   NizamDashboardResponse,
+  PartnerAdminListResponse,
+  PartnerAdminResponse,
   PermissionCatalogResponse,
   PermissionGroupResponse,
   PlatformPolicyKey,
@@ -43,7 +46,9 @@ import type {
   RejectReasonDto,
   ScopedPolicyListResponse,
   SetNazimGrantsDto,
+  SetPartnerKosksDto,
   SetPlatformPolicyDto,
+  UpdatePartnerDto,
   UpdatePermissionGroupDto,
 } from '../models/index';
 import {
@@ -61,6 +66,8 @@ import {
     AuditTypeToJSON,
     ChiefNazimResponseFromJSON,
     ChiefNazimResponseToJSON,
+    CreatePartnerDtoFromJSON,
+    CreatePartnerDtoToJSON,
     CreatePermissionGroupDtoFromJSON,
     CreatePermissionGroupDtoToJSON,
     DeckPublishRequestListResponseFromJSON,
@@ -89,6 +96,10 @@ import {
     MedarisNazimResponseToJSON,
     NizamDashboardResponseFromJSON,
     NizamDashboardResponseToJSON,
+    PartnerAdminListResponseFromJSON,
+    PartnerAdminListResponseToJSON,
+    PartnerAdminResponseFromJSON,
+    PartnerAdminResponseToJSON,
     PermissionCatalogResponseFromJSON,
     PermissionCatalogResponseToJSON,
     PermissionGroupResponseFromJSON,
@@ -103,8 +114,12 @@ import {
     ScopedPolicyListResponseToJSON,
     SetNazimGrantsDtoFromJSON,
     SetNazimGrantsDtoToJSON,
+    SetPartnerKosksDtoFromJSON,
+    SetPartnerKosksDtoToJSON,
     SetPlatformPolicyDtoFromJSON,
     SetPlatformPolicyDtoToJSON,
+    UpdatePartnerDtoFromJSON,
+    UpdatePartnerDtoToJSON,
     UpdatePermissionGroupDtoFromJSON,
     UpdatePermissionGroupDtoToJSON,
 } from '../models/index';
@@ -126,6 +141,10 @@ export interface AssignInactiveScopeRequest {
     type: string;
     id: string;
     assignInactiveScopeDto: AssignInactiveScopeDto;
+}
+
+export interface CreatePartnerApplicationRequest {
+    createPartnerDto: CreatePartnerDto;
 }
 
 export interface CreatePermissionGroupRequest {
@@ -205,6 +224,11 @@ export interface SetMedarisNazimGrantsRequest {
     setNazimGrantsDto: SetNazimGrantsDto;
 }
 
+export interface SetPartnerApplicationKosksRequest {
+    clientId: string;
+    setPartnerKosksDto: SetPartnerKosksDto;
+}
+
 export interface SetPlatformPolicyRequest {
     key: PlatformPolicyKey;
     setPlatformPolicyDto: SetPlatformPolicyDto;
@@ -213,6 +237,11 @@ export interface SetPlatformPolicyRequest {
 export interface UnpublishDeckRequest {
     id: string;
     rejectReasonDto: RejectReasonDto;
+}
+
+export interface UpdatePartnerApplicationRequest {
+    clientId: string;
+    updatePartnerDto: UpdatePartnerDto;
 }
 
 export interface UpdatePermissionGroupRequest {
@@ -431,6 +460,52 @@ export class NizamApi extends runtime.BaseAPI {
      */
     async assignInactiveScope(requestParameters: AssignInactiveScopeRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
         await this.assignInactiveScopeRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * Enabled, and bound to no köşk until köşks are chosen. Its token is accepted on `/integrations/_*` from then on, and refused on every other route. Written to the audit log as `integration_partner.create`.
+     * Register a partner application
+     */
+    async createPartnerApplicationRaw(requestParameters: CreatePartnerApplicationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PartnerAdminResponse>> {
+        if (requestParameters['createPartnerDto'] == null) {
+            throw new runtime.RequiredError(
+                'createPartnerDto',
+                'Required parameter "createPartnerDto" was null or undefined when calling createPartnerApplication().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/nizam/partner-applications`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: CreatePartnerDtoToJSON(requestParameters['createPartnerDto']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => PartnerAdminResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Enabled, and bound to no köşk until köşks are chosen. Its token is accepted on `/integrations/_*` from then on, and refused on every other route. Written to the audit log as `integration_partner.create`.
+     * Register a partner application
+     */
+    async createPartnerApplication(requestParameters: CreatePartnerApplicationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PartnerAdminResponse> {
+        const response = await this.createPartnerApplicationRaw(requestParameters, initOverrides);
+        return await response.value();
     }
 
     /**
@@ -1140,6 +1215,42 @@ export class NizamApi extends runtime.BaseAPI {
     }
 
     /**
+     * Every registered partner, enabled or not, with the köşks it works with, and every köşk to pick from.
+     * The partner applications, with their köşks
+     */
+    async listPartnerApplicationsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PartnerAdminListResponse>> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/nizam/partner-applications`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => PartnerAdminListResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Every registered partner, enabled or not, with the köşks it works with, and every köşk to pick from.
+     * The partner applications, with their köşks
+     */
+    async listPartnerApplications(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PartnerAdminListResponse> {
+        const response = await this.listPartnerApplicationsRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
      * The platform policies and who applies them on their own
      */
     async listPlatformPoliciesRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PlatformPolicyListResponse>> {
@@ -1418,6 +1529,60 @@ export class NizamApi extends runtime.BaseAPI {
     }
 
     /**
+     * The köşks named are bound, the others unbound. In an unbound köşk the partner\'s codes enrol nobody and are listed nowhere; what its registrations did stays, and their cancellations still reach the seats they made. Written to the audit log under each köşk as `integration_partner.kosk_bind` or `.kosk_unbind`.
+     * Choose the köşks a partner application works with
+     */
+    async setPartnerApplicationKosksRaw(requestParameters: SetPartnerApplicationKosksRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PartnerAdminResponse>> {
+        if (requestParameters['clientId'] == null) {
+            throw new runtime.RequiredError(
+                'clientId',
+                'Required parameter "clientId" was null or undefined when calling setPartnerApplicationKosks().'
+            );
+        }
+
+        if (requestParameters['setPartnerKosksDto'] == null) {
+            throw new runtime.RequiredError(
+                'setPartnerKosksDto',
+                'Required parameter "setPartnerKosksDto" was null or undefined when calling setPartnerApplicationKosks().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/nizam/partner-applications/{clientId}/kosks`;
+        urlPath = urlPath.replace(`{${"clientId"}}`, encodeURIComponent(String(requestParameters['clientId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: SetPartnerKosksDtoToJSON(requestParameters['setPartnerKosksDto']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => PartnerAdminResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * The köşks named are bound, the others unbound. In an unbound köşk the partner\'s codes enrol nobody and are listed nowhere; what its registrations did stays, and their cancellations still reach the seats they made. Written to the audit log under each köşk as `integration_partner.kosk_bind` or `.kosk_unbind`.
+     * Choose the köşks a partner application works with
+     */
+    async setPartnerApplicationKosks(requestParameters: SetPartnerApplicationKosksRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PartnerAdminResponse> {
+        const response = await this.setPartnerApplicationKosksRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * In force at once and written to the audit trail as `platform_policy.change`. While \'Kayıt her zaman onaylı\' is on every enrolment waits for approval; while \'Ders kayıtları herkese açılamaz\' is on no recording is shown to people outside the course; a köşk cannot switch either rule off (409 PLATFORM_POLICY_LOCKED).
      * Switch a platform policy on or off
      */
@@ -1522,6 +1687,60 @@ export class NizamApi extends runtime.BaseAPI {
      */
     async unpublishDeck(requestParameters: UnpublishDeckRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
         await this.unpublishDeckRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * A disabled partner\'s token is refused on `/integrations/_*` with 403 PARTNER_DISABLED, and stays refused everywhere else; its codes are offered in no course. Written to the audit log as `integration_partner.rename`, `.disable` or `.enable`.
+     * Rename, disable or enable a partner application
+     */
+    async updatePartnerApplicationRaw(requestParameters: UpdatePartnerApplicationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PartnerAdminResponse>> {
+        if (requestParameters['clientId'] == null) {
+            throw new runtime.RequiredError(
+                'clientId',
+                'Required parameter "clientId" was null or undefined when calling updatePartnerApplication().'
+            );
+        }
+
+        if (requestParameters['updatePartnerDto'] == null) {
+            throw new runtime.RequiredError(
+                'updatePartnerDto',
+                'Required parameter "updatePartnerDto" was null or undefined when calling updatePartnerApplication().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/nizam/partner-applications/{clientId}`;
+        urlPath = urlPath.replace(`{${"clientId"}}`, encodeURIComponent(String(requestParameters['clientId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'PATCH',
+            headers: headerParameters,
+            query: queryParameters,
+            body: UpdatePartnerDtoToJSON(requestParameters['updatePartnerDto']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => PartnerAdminResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * A disabled partner\'s token is refused on `/integrations/_*` with 403 PARTNER_DISABLED, and stays refused everywhere else; its codes are offered in no course. Written to the audit log as `integration_partner.rename`, `.disable` or `.enable`.
+     * Rename, disable or enable a partner application
+     */
+    async updatePartnerApplication(requestParameters: UpdatePartnerApplicationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PartnerAdminResponse> {
+        const response = await this.updatePartnerApplicationRaw(requestParameters, initOverrides);
+        return await response.value();
     }
 
     /**

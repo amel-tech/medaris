@@ -88,18 +88,17 @@ export default () => {
       // PUBLIC_PROFILE_UNAVAILABLE for every caller.
       enabled: process.env.PUBLIC_PROFILE_ENABLED === "true",
     },
-    // The partner applications whose registrations become enrollments
-    // (`/integrations/*`); empty, those routes answer 404.
-    integrations: { partners },
+    // `INTEGRATION_PARTNERS`, deprecated: the partner applications are the
+    // başnazım's rows in `integration_partners` now, and this is read only to
+    // seed that table at boot (`PartnerRegistrySeeder`). The verifier behind
+    // `AuthGuard` refuses the registry's clients through
+    // `REFUSED_CLIENT_SOURCE`, so `keycloak.refusedClients` is not set here.
+    integrations: { seedPartners: partners },
     keycloak: {
       jwksUrl: security.jwksUrl,
       issuer: security.issuer,
       audience: security.audience,
       allowedClients: security.allowedClients,
-      // A partner's token carries this API's audience, so the verifier
-      // behind `AuthGuard` refuses its client outright: it is accepted on
-      // `/integrations/*` alone, by `PartnerGuard`'s own policy.
-      refusedClients: partners.map((partner) => partner.clientId),
       cacheTtl: process.env.KEYCLOAK_CACHE_TTL || "86400",
       notFoundCacheTtl: process.env.KEYCLOAK_NOT_FOUND_CACHE_TTL || "120",
       // Service account that reads the realm's users (MDRS-169); null when

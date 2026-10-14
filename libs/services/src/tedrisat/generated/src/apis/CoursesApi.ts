@@ -30,7 +30,6 @@ import type {
   EnrollmentResponse,
   MuderrisListResponse,
   MyCoursePermissionsResponse,
-  PartnerApplicationResponse,
   PartnerCodeResponse,
   PendingEnrollmentResponse,
   RejectEnrollmentDto,
@@ -75,8 +74,6 @@ import {
     MuderrisListResponseToJSON,
     MyCoursePermissionsResponseFromJSON,
     MyCoursePermissionsResponseToJSON,
-    PartnerApplicationResponseFromJSON,
-    PartnerApplicationResponseToJSON,
     PartnerCodeResponseFromJSON,
     PartnerCodeResponseToJSON,
     PendingEnrollmentResponseFromJSON,
@@ -835,7 +832,7 @@ export class CoursesApi extends runtime.BaseAPI {
     }
 
     /**
-     * Every configured partner application, each with its codes mapped to this course.
+     * The course\'s partner applications, each with its codes mapped to this course: the enabled partners bound to the köşk the course is held in. Empty when the köşk has none, and nazar then shows no partner section.
      * A course\'s partner codes
      */
     async getCoursePartnerCodesRaw(requestParameters: GetCoursePartnerCodesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CoursePartnerCodesResponse>> {
@@ -870,7 +867,7 @@ export class CoursesApi extends runtime.BaseAPI {
     }
 
     /**
-     * Every configured partner application, each with its codes mapped to this course.
+     * The course\'s partner applications, each with its codes mapped to this course: the enabled partners bound to the köşk the course is held in. Empty when the köşk has none, and nazar then shows no partner section.
      * A course\'s partner codes
      */
     async getCoursePartnerCodes(requestParameters: GetCoursePartnerCodesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CoursePartnerCodesResponse> {
@@ -1189,42 +1186,6 @@ export class CoursesApi extends runtime.BaseAPI {
      */
     async leaveCourse(requestParameters: LeaveCourseRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<boolean> {
         const response = await this.leaveCourseRaw(requestParameters, initOverrides);
-        return await response.value();
-    }
-
-    /**
-     * Their ids and display names, nothing more; empty when none is configured, and nazar then shows no partner section. Open to every signed-in caller.
-     * The partner applications this server works with
-     */
-    async listPartnerApplicationsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<PartnerApplicationResponse>>> {
-        const queryParameters: any = {};
-
-        const headerParameters: runtime.HTTPHeaders = {};
-
-        if (this.configuration && this.configuration.accessToken) {
-            // oauth required
-            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
-        }
-
-
-        let urlPath = `/partner-applications`;
-
-        const response = await this.request({
-            path: urlPath,
-            method: 'GET',
-            headers: headerParameters,
-            query: queryParameters,
-        }, initOverrides);
-
-        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(PartnerApplicationResponseFromJSON));
-    }
-
-    /**
-     * Their ids and display names, nothing more; empty when none is configured, and nazar then shows no partner section. Open to every signed-in caller.
-     * The partner applications this server works with
-     */
-    async listPartnerApplications(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<PartnerApplicationResponse>> {
-        const response = await this.listPartnerApplicationsRaw(initOverrides);
         return await response.value();
     }
 

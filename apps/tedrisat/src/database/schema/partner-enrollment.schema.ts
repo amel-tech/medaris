@@ -15,7 +15,9 @@ import { courses } from "./course.schema";
  * kodları" in nazar's course settings). A code belongs to one partner and maps
  * to at most one course; a course may carry several codes of the same partner.
  * `partner_client_id` is the partner's Keycloak client id, as
- * `INTEGRATION_PARTNERS` names it. RESTRICT like every foreign key under a
+ * `integration_partners.client_id` names it (no foreign key: see there). A code
+ * counts only in a course of a köşk its partner is bound to
+ * (`integration_partner_kosks`). RESTRICT like every foreign key under a
  * course: `course/course-purge.ts` removes these before the course.
  */
 export const partnerCourseCodes = table(
