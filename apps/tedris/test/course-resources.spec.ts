@@ -39,6 +39,56 @@ const row = (over: Partial<Resource> = {}): Resource =>
 /** The anchors of the markup. */
 const anchors = (html: string) => html.match(/<a [^>]*>/g) ?? [];
 
+// MDRS-248: a linked row is one link, framed like a control and lit on hover.
+const LINKED_ROW =
+  "flex items-center gap-3 px-3 py-3 rounded-control border border-neutral-subtle text-neutral-default no-underline transition-colors hover:bg-neutral-hover";
+
+/** The markup inside the first anchor. */
+const firstLink = (html: string) =>
+  html.slice(html.indexOf("<a "), html.indexOf("</a>"));
+
+describe("ResourceList, the whole row is the link (MDRS-248)", () => {
+  it("puts a file's icon, name, type, size and download icon inside one link", () => {
+    const html = renderToStaticMarkup(
+      createElement(ResourceList, {
+        resources: [
+          {
+            id: "5d2e8f40-1c3b-4a6d-8e7f-90a1b2c3d4e5",
+            name: "Sarf notları",
+            file: {
+              name: "sarf.pdf",
+              contentType: "application/pdf",
+              sizeBytes: 1024,
+              downloadUrl:
+                "/courses/0b7f6c1e-2a4d-4c8e-9f10-3a5b6c7d8e9f/resources/5d2e8f40-1c3b-4a6d-8e7f-90a1b2c3d4e5/file",
+            },
+          },
+        ],
+        labels,
+        locale: "tr",
+      })
+    );
+    expect(anchors(html)).toHaveLength(1);
+    const link = firstLink(html);
+    expect(link).toContain(">Sarf notları<");
+    expect(link).toContain(">PDF<");
+    expect(link).toContain("1 kB");
+    // the trailing download icon is the last thing in the link
+    expect(link.split("<svg")).toHaveLength(3);
+  });
+
+  it("puts a link's trailing icon inside the link", () => {
+    const html = draw([row()]);
+    expect(firstLink(html).split("<svg")).toHaveLength(3);
+  });
+
+  it("frames no row it does not link", () => {
+    const html = draw([row({ url: undefined })], true);
+    expect(html).not.toContain("rounded-control");
+    expect(html).not.toContain("hover:bg-neutral-hover");
+  });
+});
+
 describe("CourseResources", () => {
   it("links an https and an http address in a new tab, with no opener and no referrer", () => {
     const html = draw([
@@ -46,8 +96,8 @@ describe("CourseResources", () => {
       row({ id: "r2", name: "Emsile", url: "http://emsile.test/" }),
     ]);
     expect(anchors(html)).toEqual([
-      '<a class="mds-link" href="https://files.medaris.org/bina.pdf" target="_blank" rel="noopener noreferrer">',
-      '<a class="mds-link" href="http://emsile.test/" target="_blank" rel="noopener noreferrer">',
+      `<a class="${LINKED_ROW}" href="https://files.medaris.org/bina.pdf" target="_blank" rel="noopener noreferrer">`,
+      `<a class="${LINKED_ROW}" href="http://emsile.test/" target="_blank" rel="noopener noreferrer">`,
     ]);
     expect(html).toContain(
       '<span class="mds-visually-hidden"> (yeni sekmede açılır)</span>'
@@ -145,7 +195,7 @@ describe("CourseResources, the provider of a link", () => {
     );
     expect(
       html.startsWith(
-        '<ul class="m-0 flex list-none flex-col p-0" data-testid="session-resources">'
+        '<ul class="m-0 flex list-none flex-col gap-2 p-0" data-testid="session-resources">'
       )
     ).toBe(true);
     expect(html).toContain(">Celse notu<");
@@ -189,7 +239,7 @@ describe("CourseResources, a file", () => {
   it("downloads through this app's route, not in a new tab, with its type and size under its name", () => {
     const html = draw([fileRow()]);
     expect(anchors(html)).toEqual([
-      `<a class="mds-link" href="/api/files/courses/${COURSE}/resources/${R1}">`,
+      `<a class="${LINKED_ROW}" href="/api/files/courses/${COURSE}/resources/${R1}">`,
     ]);
     expect(html).toContain(
       '<span class="mds-visually-hidden"> (indirilir)</span>'
@@ -226,7 +276,7 @@ describe("CourseResources, a file", () => {
       })
     );
     expect(anchors(html)).toEqual([
-      `<a class="mds-link" href="/api/files/lessons/${LESSON}/resources/${R1}">`,
+      `<a class="${LINKED_ROW}" href="/api/files/lessons/${LESSON}/resources/${R1}">`,
     ]);
     expect(html).toContain(">XLSX<");
     expect(html).toContain("18 kB");
