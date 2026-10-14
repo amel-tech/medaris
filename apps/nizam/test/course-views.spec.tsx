@@ -44,7 +44,12 @@ const render = (ui: React.ReactElement, locale: "tr" | "en" | "ar" = "tr") =>
     <NextIntlClientProvider
       locale={locale}
       timeZone="Europe/Istanbul"
-      messages={{ nizam: resources[locale].nizam } as never}
+      messages={
+        {
+          common: resources[locale].common,
+          nizam: resources[locale].nizam,
+        } as never
+      }
     >
       {ui}
     </NextIntlClientProvider>

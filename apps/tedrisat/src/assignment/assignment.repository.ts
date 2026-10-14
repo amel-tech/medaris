@@ -5,7 +5,11 @@ import { EnrollmentStatus } from "../course/domain/enrollment-status.enum";
 import { DatabaseService } from "../database/database.service";
 import { isHeld } from "../database/role-assignments";
 import { auditLog } from "../database/schema/audit.schema";
-import { courses, enrollments } from "../database/schema/course.schema";
+import {
+  courseMuderris,
+  courses,
+  enrollments,
+} from "../database/schema/course.schema";
 import { kosks } from "../database/schema/kosk.schema";
 import { madrasahs } from "../database/schema/madrasah.schema";
 import {
@@ -42,6 +46,8 @@ export interface INamedScope {
     madrasahId: string | null;
     madrasahName: string | null;
     studentCount: number;
+    /** how many müderrisler the course lists: the imam's star needs more than one */
+    muderrisCount: number;
   };
 }
 
@@ -197,6 +203,11 @@ export class AssignmentRepository {
           koskName: kosks.name,
           madrasahId: courses.madrasahId,
           madrasahName: madrasahs.name,
+          // In the same read, so a list of courses costs no query per row.
+          muderrisCount:
+            sql<number>`(select count(*)::int from ${courseMuderris} cm where cm.course_id = "courses"."id")`.mapWith(
+              Number
+            ),
         })
         .from(courses)
         .innerJoin(kosks, eq(kosks.id, courses.koskId))
@@ -224,6 +235,7 @@ export class AssignmentRepository {
             madrasahId: row.madrasahId,
             madrasahName: row.madrasahName,
             studentCount: studentCounts.get(row.id) ?? 0,
+            muderrisCount: row.muderrisCount,
           },
         });
       }

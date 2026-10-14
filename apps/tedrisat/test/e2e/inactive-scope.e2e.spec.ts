@@ -303,6 +303,27 @@ describe("Inactive scopes (e2e)", () => {
       });
     });
 
+    it("counts the müderrisler a passive course still lists, for the imam's star", async () => {
+      // The star needs more than one müderris (2026-10-13). The course page's
+      // list keeps its names when the posts end.
+      await db.insert(courseMuderris).values([
+        { courseId: courseRemoved, userId: OLD_MUDERRIS, name: "Halil" },
+        { courseId: courseRemoved, name: "Ahmed Cevdet", orderIndex: 1 },
+      ]);
+      const res = await get("/nizam/inactive-scopes").expect(200);
+      const count = Object.fromEntries(
+        res.body.map((r: { name: string; muderrisCount: number }) => [
+          r.name,
+          r.muderrisCount,
+        ])
+      );
+      expect(count).toEqual({
+        "Zeyrek Medresesi": 0,
+        "Beyazıt Köşkü": 0,
+        "Kasîde-i Bürde şerhi": 2,
+      });
+    });
+
     it("filters by type", async () => {
       for (const [type, name] of [
         ["KOSK", "Beyazıt Köşkü"],

@@ -2,10 +2,12 @@
 
 import type { KoskCourseRowResponse } from "@medaris/services/tedrisat";
 import { toast } from "@medaris/ui/components/sonner";
+import { imamStarLabels, showsImamStar } from "@medaris/ui/lib/imam-star";
 import { Badge } from "@medaris/ui/mds/badge";
 import { Button } from "@medaris/ui/mds/button";
 import { CoverPattern } from "@medaris/ui/mds/cover-pattern";
 import { Icon } from "@medaris/ui/mds/icon";
+import { ImamStar } from "@medaris/ui/mds/imam-star";
 import { Table, type TableColumn } from "@medaris/ui/mds/table";
 import { Tabs, TabsPanel } from "@medaris/ui/mds/tabs";
 import { useRouter } from "next/navigation";
@@ -63,6 +65,7 @@ export function KoskCourseTable({
   const tm = useTranslations("nizam.KoskCourses");
   const tl = useTranslations("nizam.HideLevel");
   const t = tm as unknown as Messages;
+  const star = imamStarLabels(useTranslations("common.imamStar"));
   const locale = useLocale();
   const timeZone = useTimeZone() ?? "Europe/Istanbul";
   const router = useRouter();
@@ -157,8 +160,12 @@ export function KoskCourseTable({
             {row.muderris.map((m) => (
               <span key={m.name}>
                 <bdi>{m.name}</bdi>
-                {m.isImam ? (
-                  <span className="mds-caption">, {t("imam")}</span>
+                {/* the star, only among more than one müderris (2026-10-13) */}
+                {showsImamStar(m.isImam, row.muderris.length) ? (
+                  <>
+                    {" "}
+                    <ImamStar labels={star} />
+                  </>
                 ) : null}
               </span>
             ))}

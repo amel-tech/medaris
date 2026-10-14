@@ -207,6 +207,15 @@ describe("a course as a row (nazir 07, criteria 3 and 4)", () => {
     ]);
   });
 
+  it("marks no imam where the course has one müderris (2026-10-13)", () => {
+    const [row] = rows(item({ muderris: [muderris()] }));
+    expect(row?.muderris).toEqual([
+      { name: "Mehmet Emin Işıkoğlu", imam: false },
+    ]);
+    // the dialog's list still knows who the imam is
+    expect(row?.team[0]?.isImam).toBe(true);
+  });
+
   it("hands the list to the dialog as the API has it, accounts and müderrisler with none", () => {
     const [row] = rows(
       item({

@@ -259,15 +259,38 @@ describe("the closed scope picker", () => {
     );
   });
 
-  it("shows a course by its role and imam, without the köşk", async () => {
+  it("shows a course by its role and the imam's star, without the köşk", async () => {
     pathname = "/ders/c-bina";
     const { markup } = await renderFrame({
       assignments: [medrese(), bina],
       current: 1,
     });
-    const text = textOf(sidebarOf(markup));
-    expect(text).toContain("Bina ve İzhar Şerhi Müderris · dersin imamı");
+    const aside = sidebarOf(markup);
+    const text = textOf(aside);
+    // the star after the role, inside the picker's button: words for a screen
+    // reader, no button of its own (2026-10-13)
+    expect(text).toContain("Bina ve İzhar Şerhi Müderris dersin imamı");
+    expect(aside).toContain('class="mds-imam-star"');
+    expect(aside).not.toContain("mds-imam-star--button");
     expect(text).not.toContain("Nûruosmaniye");
+  });
+
+  it("marks no imam of a course with one müderris", async () => {
+    pathname = "/ders/c-bina";
+    const sole = assignment({
+      scopeId: "c-bina",
+      scopeName: "Bina ve İzhar Şerhi",
+      isImam: true,
+      course: course({ muderrisCount: 1 }),
+    });
+    const { markup } = await renderFrame({
+      assignments: [medrese(), sole],
+      current: 1,
+    });
+    const aside = sidebarOf(markup);
+    expect(textOf(aside)).toContain("Bina ve İzhar Şerhi Müderris");
+    expect(aside).not.toContain("mds-imam-star");
+    expect(textOf(aside)).not.toContain("imam");
   });
 
   it("is not a control when there is one scope", async () => {

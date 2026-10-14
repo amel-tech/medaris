@@ -313,9 +313,11 @@ test.describe("the köşk page", () => {
       bina.getByRole("link", { name: fx.madrasahs.suleymaniye.name })
     ).toBeVisible();
     await expect(bina).toContainText("dersi");
-    await expect(bina).toContainText(
-      `${fx.madrasahs.suleymaniye.headName}, imam`
-    );
+    // the course's lone müderris is the imam and gets no mark (2026-10-13)
+    await expect(bina).toContainText(fx.madrasahs.suleymaniye.headName);
+    await expect(
+      bina.getByRole("button", { name: "Dersin imamı" })
+    ).toHaveCount(0);
     await expect(bina).toContainText(
       /Sonraki celse (Paz|Pzt|Sal|Çar|Per|Cum|Cmt) \d{2}:\d{2}/
     );

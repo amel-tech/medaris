@@ -43,11 +43,14 @@
   --lal-900: #581B1A;
   --lal-950: #361A18;
 
-  /* safran — saffron ochre. Warning only. */
+  /* safran — saffron ochre. Warning, the Jitsi dot (500) and the set star (tokens/domain.css).
+     600 is oklch(57% 0.108 66), about halfway from 500 to 700 in lightness, chroma and hue: the star by day,
+     ≥ 3.61:1 on every day ground (contrast.md, "The star"), where 500 falls to 2.66:1 on the hover ground. */
   --safran-50: #FBF2DE;
   --safran-300: #E9B860;
   --safran-400: #D89A3D;
   --safran-500: #BC7F2E;
+  --safran-600: #A26927;
   --safran-700: #86531F;
   --safran-800: #6C411A;
   --safran-950: #2F1F10;

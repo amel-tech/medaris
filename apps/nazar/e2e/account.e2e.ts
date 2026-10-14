@@ -41,7 +41,11 @@ test("the roles table is the person's real assignments, the medrese first, with 
   await expect(named.first()).toContainText("Etkin");
   const course = rows.filter({ hasText: fixture?.first.title ?? "" });
   await expect(course).toContainText("Müderris");
-  await expect(course).toContainText("Dersin imamı");
+  // the seed lists no müderris on the course: no star and no word (2026-10-13)
+  await expect(
+    course.getByRole("button", { name: "Dersin imamı" })
+  ).toHaveCount(0);
+  await expect(course).not.toContainText("Dersin imamı");
   await expect(course).toContainText(fixture?.first.koskName ?? "");
   await expect(course).toContainText("Yayında");
   await expect(course).toContainText("Kendiniz");

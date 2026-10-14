@@ -3,6 +3,7 @@ import type {
   MadrasahCourseListItemResponse,
   OpenMadrasahCourseDto,
 } from "@medaris/services/tedrisat";
+import { showsImamStar } from "@medaris/ui/lib/imam-star";
 import { dayKey } from "~/lib/dates";
 import type { Messages } from "~/lib/i18n/messages";
 import {
@@ -181,6 +182,7 @@ export interface CourseRow {
   koskName: string;
   /** "Nûruosmaniye Köşkü · bugün açıldı" */
   meta: string;
+  /** `imam`: the course's imam, among more than one müderris (the star) */
   muderris: Array<{ name: string; imam: boolean }>;
   /** the list the dialog of nazir 17 starts from */
   team: Member[];
@@ -224,7 +226,10 @@ export function courseRows(
       meta: [item.koskName, openedToday ? t("Courses.openedToday") : null]
         .filter(Boolean)
         .join(" · "),
-      muderris: item.muderris.map((m) => ({ name: m.name, imam: m.isImam })),
+      muderris: item.muderris.map((m) => ({
+        name: m.name,
+        imam: showsImamStar(m.isImam, item.muderris.length),
+      })),
       team: item.muderris.map((m) => ({
         userId: m.userId,
         name: m.name,

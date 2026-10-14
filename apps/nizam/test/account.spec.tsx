@@ -78,8 +78,12 @@ vi.mock("next-intl/server", () => {
   };
   t.has = (key: string) =>
     typeof dig(resources.tr.nizam.AccountPage, key) === "string";
+  // The imam's star reads its own words (`common.imamStar`).
+  const star = (key: string) =>
+    dig(resources.tr.common.imamStar, key) as string;
   return {
-    getTranslations: async () => t,
+    getTranslations: async (ns?: string) =>
+      ns === "common.imamStar" ? star : t,
     getLocale: async () => "tr",
     getTimeZone: async () => "Europe/Istanbul",
   };
@@ -397,6 +401,42 @@ describe("the page (nizam/47)", () => {
     expect(html).toMatch(
       /<a[^>]*href="http:\/\/nazar\.test"[^>]*>[\s\S]*Nazar’da aç/
     );
+  });
+
+  it("marks the imam with the star after the role, only in a course with more than one müderris (2026-10-13)", async () => {
+    const teaching = (muderrisCount: number) =>
+      render(
+        data({
+          assignments: [
+            assignment({
+              id: "a2",
+              role: "MUDERRIS",
+              scopeType: "course",
+              scopeName: "Emsile ve Bina",
+              isImam: true,
+              course: {
+                status: "PUBLISHED",
+                hidden: false,
+                koskId: "k-1",
+                koskName: "Üsküdar Köşkü",
+                madrasahId: null,
+                madrasahName: null,
+                studentCount: 12,
+                muderrisCount,
+              },
+            }),
+          ] as never,
+        })
+      );
+    const two = await teaching(2);
+    expect(two).toMatch(
+      /data-testid="assignment-role">Müderris <button[^>]*aria-label="Dersin imamı"/
+    );
+    expect(two.match(/aria-label="Dersin imamı"/g)).toHaveLength(1);
+    const one = await teaching(1);
+    expect(one).toContain('data-testid="assignment-role">Müderris</span>');
+    expect(one).not.toContain("mds-imam-star");
+    expect(one).not.toContain("Dersin imamı");
   });
 
   it("opens on the full zone list for a saved zone outside the short list", async () => {

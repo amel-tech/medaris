@@ -73,6 +73,12 @@ export class InactiveScopeResponse {
   @ApiProperty({ description: "The last müderris of a course was its imam" })
   wasImam!: boolean;
 
+  @ApiProperty({
+    description:
+      "How many müderrisler a course lists (0 for a köşk or a medrese); the imam is marked only where there is more than one",
+  })
+  muderrisCount!: number;
+
   @ApiPropertyOptional({
     type: InactivePersonResponse,
     nullable: true,

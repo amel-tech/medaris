@@ -151,6 +151,7 @@ export interface IFollowedKoskCourse {
   coverHue: number;
   muderrisName: string | null;
   muderrisIsImam: boolean;
+  muderrisCount: number;
 }
 
 /** What decides who may open a köşk and how enrollment goes in it. */

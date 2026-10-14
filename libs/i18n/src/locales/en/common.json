@@ -4,6 +4,11 @@
     "text": "The server could not be reached. Check your internet connection and try again.",
     "retry": "Try again"
   },
+  "imamStar": {
+    "title": "The course’s imam",
+    "body": "In a course with more than one müderris, one of them is the imam; the imam has the same permissions as the other müderrisler.",
+    "mark": "the course’s imam"
+  },
   "legal": {
     "privacyNotice": "Privacy Notice"
   },

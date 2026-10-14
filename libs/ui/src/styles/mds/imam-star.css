@@ -1,0 +1,26 @@
+/* The imam's star (the owner's decision of 2026-10-13, mds/imam-star.tsx).
+   The system has no such mark; it is composed from what it has: the filled
+   star glyph, the domain token for a set star (--icon-rating, "a set star" in
+   rules.md), the .mds-tooltip surface for the bubble and the base layer's
+   focus ring. Semantic and domain tokens only; this file declares no custom
+   property. --icon-rating is safran-600 by day and safran-500 by night (the
+   owner's decision of 2026-10-14), so the star reads as a graphic (WCAG
+   1.4.11) on every ground it can sit on: 4.24:1 on the day page and 5.40:1 on
+   the night page, 4.49:1 and 5.00:1 on a surface (a dialog, a table), and
+   3.61:1 and 4.54:1 at the lowest, on a hovered row (contrast.md, "The star",
+   lists every ground). */
+
+/* The star sits on the text line after a name, sized by the text around it. */
+.mds-imam-star { display: inline-flex; align-items: center; justify-content: center; vertical-align: -0.2em; color: var(--icon-rating); line-height: 1; }
+.mds-imam-star > .mds-icon { inline-size: 1.125em; block-size: 1.125em; }
+
+/* The button: no box of its own, and a 24 px target (WCAG 2.5.8) drawn by a
+   pseudo-element, so the line keeps its height. */
+.mds-imam-star--button { position: relative; appearance: none; margin: 0; padding: 0; border: 0; border-radius: var(--radius-tag); background: none; font: inherit; cursor: pointer; }
+.mds-imam-star--button::after { content: ""; position: absolute; inset-block-start: 50%; inset-inline-start: 50%; inline-size: 24px; block-size: 24px; translate: -50% -50%; }
+.mds-imam-star--button:dir(rtl)::after { translate: 50% -50%; }
+
+/* The bubble: the tooltip's surface, a title over the text. */
+.mds-imam-star__bubble { display: flex; flex-direction: column; gap: var(--space-1); outline: 0; }
+.mds-imam-star__title { margin: 0; font-weight: var(--weight-semibold); }
+.mds-imam-star__body { margin: 0; }

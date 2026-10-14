@@ -1,4 +1,5 @@
 import type { AssignmentResponse } from "@medaris/services/tedrisat";
+import { showsImamStar } from "@medaris/ui/lib/imam-star";
 
 /**
  * The scopes of the Nazar portal (MDRS-183): a medrese the person runs, and the
@@ -13,7 +14,10 @@ export interface Scope {
   name: string;
   /** the stronger of the roles held in this scope */
   role: string;
-  /** a müderris who is the course's imam */
+  /**
+   * a müderris who is the imam of a course with more than one müderris: the
+   * only imam the portal marks (2026-10-13)
+   */
   isImam: boolean;
   /** a course's köşk */
   koskName: string | null;
@@ -63,7 +67,12 @@ const ROLE_ORDER = [
 type AssignmentLike = Pick<
   AssignmentResponse,
   "role" | "scopeType" | "scopeId" | "scopeName" | "isImam"
-> & { course?: Pick<NonNullable<AssignmentResponse["course"]>, "koskName"> };
+> & {
+  course?: Pick<
+    NonNullable<AssignmentResponse["course"]>,
+    "koskName" | "muderrisCount"
+  >;
+};
 
 export const scopeKey = (scope: Pick<Scope, "kind" | "id">): string =>
   `${scope.kind}:${scope.id}`;
@@ -88,7 +97,8 @@ export function buildScopes(assignments: readonly AssignmentLike[]): Scope[] {
     if (strength === undefined) continue;
     const key = scopeKey({ kind, id: a.scopeId });
     const held = byKey.get(key);
-    const imam = a.role === "MUDERRIS" && a.isImam;
+    const imam =
+      a.role === "MUDERRIS" && showsImamStar(a.isImam, a.course?.muderrisCount);
     if (!held) {
       byKey.set(key, {
         kind,

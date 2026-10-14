@@ -5,6 +5,7 @@ import type {
   SessionResponse,
 } from "@medaris/services/tedrisat";
 import { toast } from "@medaris/ui/components/sonner";
+import { imamStarLabels } from "@medaris/ui/lib/imam-star";
 import { Badge } from "@medaris/ui/mds/badge";
 import { Button } from "@medaris/ui/mds/button";
 import { Card } from "@medaris/ui/mds/card";
@@ -71,6 +72,7 @@ export function LessonLocked({
   const sessionText = useTranslations("tedris.SessionPage");
   // The header and the card take the whole namespace, as on the detail page.
   const tedris = useTranslations("tedris") as unknown as LooseTranslator;
+  const imamStar = imamStarLabels(useTranslations("common.imamStar"));
   const courseText = useTranslations("tedris.CoursePage");
   const releaseText = useTranslations("tedrisLearn.RecordingRelease");
   const locale = useLocale();
@@ -169,6 +171,7 @@ export function LessonLocked({
           koskName,
           locale,
           viewerTimeZone,
+          imamStar,
         })}
         badge={
           startsAt || cancelled ? (

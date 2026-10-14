@@ -199,56 +199,64 @@ describe("the policy tiers panel (criterion 5)", () => {
 });
 
 describe("the courses a policy applies to", () => {
-  const words = { imam: "imam", locale: "tr" };
+  const words = { locale: "tr" };
+  const person = (name: string, isImam = false) => ({
+    name,
+    title: null,
+    isImam,
+    userId: null,
+    email: null,
+  });
+  /** The line as text, a star where the page sets one. */
+  const line = (parts: { text: string; imam: boolean }[]) =>
+    parts.map((p) => `${p.text}${p.imam ? " ★" : ""}`).join("");
 
-  it("names the köşk, then the müderrisler with the imam marked", () => {
+  it("names the köşk, then the müderrisler, the imam's name followed by the star", () => {
     expect(
-      courseMeta(
-        {
-          koskName: "Nûruosmaniye Köşkü",
-          muderris: [
-            {
-              name: "Mehmet Emin Işıkoğlu",
-              title: null,
-              isImam: true,
-              userId: null,
-              email: null,
-            },
-            {
-              name: "Abdülhamit Karaosmanoğlu",
-              title: null,
-              isImam: false,
-              userId: null,
-              email: null,
-            },
-          ],
-        },
-        words
+      line(
+        courseMeta(
+          {
+            koskName: "Nûruosmaniye Köşkü",
+            muderris: [
+              person("Mehmet Emin Işıkoğlu", true),
+              person("Abdülhamit Karaosmanoğlu"),
+            ],
+          },
+          words
+        )
       )
     ).toBe(
-      "Nûruosmaniye Köşkü · Mehmet Emin Işıkoğlu, imam ve Abdülhamit Karaosmanoğlu"
+      "Nûruosmaniye Köşkü · Mehmet Emin Işıkoğlu ★ ve Abdülhamit Karaosmanoğlu"
     );
+  });
+
+  it("marks no imam of a course with one müderris (2026-10-13)", () => {
+    const parts = courseMeta(
+      {
+        koskName: "Nûruosmaniye Köşkü",
+        muderris: [person("Mehmet Emin Işıkoğlu", true)],
+      },
+      words
+    );
+    expect(line(parts)).toBe("Nûruosmaniye Köşkü · Mehmet Emin Işıkoğlu");
+    expect(parts.some((p) => p.imam)).toBe(false);
   });
 
   it("lists three müderrisler as a series and leaves a missing team out", () => {
     expect(
-      courseMeta(
-        {
-          koskName: "Fatih Köşkü",
-          muderris: ["A B", "C D", "E F"].map((name) => ({
-            name,
-            title: null,
-            isImam: false,
-            userId: null,
-            email: null,
-          })),
-        },
-        words
+      line(
+        courseMeta(
+          {
+            koskName: "Fatih Köşkü",
+            muderris: ["A B", "C D", "E F"].map((name) => person(name)),
+          },
+          words
+        )
       )
     ).toBe("Fatih Köşkü · A B, C D ve E F");
-    expect(courseMeta({ koskName: "Fatih Köşkü", muderris: [] }, words)).toBe(
-      "Fatih Köşkü"
-    );
+    expect(
+      line(courseMeta({ koskName: "Fatih Köşkü", muderris: [] }, words))
+    ).toBe("Fatih Köşkü");
   });
 });
 

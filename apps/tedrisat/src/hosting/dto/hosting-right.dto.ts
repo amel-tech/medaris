@@ -37,6 +37,12 @@ export class HostingOpenCourseResponse {
     description: "The course's imam, as the course page names them",
   })
   imamName!: string | null;
+
+  @ApiProperty({
+    description:
+      "How many müderrisler the course lists; the imam is marked only where there is more than one",
+  })
+  muderrisCount!: number;
 }
 
 export class HostingPersonResponse {

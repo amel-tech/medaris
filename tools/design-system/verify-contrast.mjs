@@ -227,6 +227,12 @@ cat(
   )
 );
 cat(
+  "The star",
+  3,
+  "--icon-rating, the set star, on every ground text can sit on. It sits beside a rating's number, and on its own after a name as the mark of a course's imam, where it is a glyph that carries meaning (WCAG 1.4.11). A dialog, a table and a tooltip are the surface; a hovered table row is the hover ground; the current row and the active nav item are the brand tint",
+  TEXT_GROUNDS.map((g) => ["icon-rating", g])
+);
+cat(
   "Covers",
   4.5,
   "the label printed on each bookcloth (theme-independent)",
@@ -256,7 +262,6 @@ const INFO = [
   ["icon-platform-google-meet", "background-neutral-surface"],
   ["icon-platform-jitsi", "background-neutral-surface"],
   ["icon-platform-unknown", "background-neutral-surface"],
-  ["icon-rating", "background-neutral-surface"],
   ["stamp-on-cover", "cover-laciverd"],
   ["icon-logo-arch", "icon-logo-ground"],
   ["icon-logo-ground", "background-neutral-page"],
@@ -316,7 +321,7 @@ for (const c of cats) {
   summary.push({ name: c.name, need: c.need, n: c.pairs.length, min });
   md += `## ${c.name} (≥ ${c.need}:1)\n\n${c.note}.\n\n| pair | day fg / bg | day | night fg / bg | night |\n| -- | -- | --: | -- | --: |\n${rows.join("\n")}\n\n**Minimum:** day ${f2(min.day)}:1 · night ${f2(min.night)}:1\n\n`;
 }
-md += `## Not required — decorative or exempt\n\nShown so nobody mistakes them for a gap. A hairline never identifies a control on its own. The current-row tint is never the only signal (the "Sıradaki" marker and the medallion are). Platform dots and the rating star repeat printed words. The cover stamp is ornament. The logo is exempt: its arch sits on its own ground by day and by night, and the ground is the mark's edge.\n\n| pair | day | night |\n| -- | --: | --: |\n`;
+md += `## Not required — decorative or exempt\n\nShown so nobody mistakes them for a gap. A hairline never identifies a control on its own. The current-row tint is never the only signal (the "Sıradaki" marker and the medallion are). Platform dots repeat printed words. The cover stamp is ornament. The logo is exempt: its arch sits on its own ground by day and by night, and the ground is the mark's edge.\n\n| pair | day | night |\n| -- | --: | --: |\n`;
 for (const [fg, bg] of INFO) {
   try {
     md += `| \`${fg}\` on \`${bg}\` | ${f2(ratio("day", fg, bg))} | ${f2(ratio("night", fg, bg))} |\n`;
@@ -406,6 +411,7 @@ const TR = {
   "Focus indicator — ring against the ground": "Odak halkası, zemine karşı",
   "Focus indicator — against the component": "Odak halkası, bileşene karşı",
   "Status marks": "Durum işaretleri",
+  "The star": "Yıldız",
   Covers: "Kapak etiketleri",
   "Text over media": "Görsel üstünde metin",
   "Disabled text (policy)": "Devre dışı metin (politika)",

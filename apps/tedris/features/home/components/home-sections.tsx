@@ -3,12 +3,18 @@ import type {
   FlashcardDeckSummaryResponse,
   FollowedKoskCourseResponse,
 } from "@medaris/services/tedrisat";
+import {
+  type ImamStarLabels,
+  imamStarLabels,
+  showsImamStar,
+} from "@medaris/ui/lib/imam-star";
 import { Alert } from "@medaris/ui/mds/alert";
 import { Avatar } from "@medaris/ui/mds/avatar";
 import { Button } from "@medaris/ui/mds/button";
 import { Card } from "@medaris/ui/mds/card";
 import { CoverPattern } from "@medaris/ui/mds/cover-pattern";
 import { EmptyState } from "@medaris/ui/mds/empty-state";
+import { ImamStar } from "@medaris/ui/mds/imam-star";
 import { Progress } from "@medaris/ui/mds/progress";
 import { Skeleton } from "@medaris/ui/mds/skeleton";
 import Link from "next/link";
@@ -81,10 +87,14 @@ export const SectionSkeleton = ({
   </section>
 );
 
-/** "Müderris A, imam · B": who teaches a course, as Derslerim writes it. */
+/**
+ * "Müderris A ★ · B": who teaches a course, as Derslerim writes it, the imam's
+ * star only where there is more than one müderris (2026-10-13).
+ */
 const teachers = (
   muderris: { id: string; name: string; isImam: boolean }[],
-  t: Translate
+  t: Translate,
+  star: ImamStarLabels
 ) =>
   muderris.length > 0 ? (
     <span>
@@ -93,7 +103,12 @@ const teachers = (
         muderris.map((m) => (
           <span key={m.id} style={{ whiteSpace: "nowrap" }}>
             <bdi>{m.name}</bdi>
-            {m.isImam ? `, ${t("KoskPage.imam")}` : ""}
+            {showsImamStar(m.isImam, muderris.length) ? (
+              <>
+                {" "}
+                <ImamStar labels={star} />
+              </>
+            ) : null}
           </span>
         ))
       )}
@@ -114,12 +129,14 @@ const ContinueCard = ({
   course,
   t,
   learn,
+  star,
   locale,
   timeZone,
 }: {
   course: EnrolledCourseResponse;
   t: Translate;
   learn: Translate;
+  star: ImamStarLabels;
   locale: string;
   timeZone: string;
 }) => (
@@ -152,7 +169,7 @@ const ContinueCard = ({
     }
   >
     <p className="mds-card__body grow" dir="auto">
-      {teachers(course.muderris, t)}
+      {teachers(course.muderris, t, star)}
     </p>
     <div className="mbs-4">
       <Progress
@@ -168,9 +185,10 @@ const ContinueCard = ({
 
 /** "Kaldığın yerden devam et": up to three courses in progress. */
 export const ContinueSection = async () => {
-  const [t, learn, locale, timeZone, courses] = await Promise.all([
+  const [t, learn, star, locale, timeZone, courses] = await Promise.all([
     getTranslations("tedris"),
     getTranslations("tedrisLearn"),
+    getTranslations("common.imamStar"),
     getLocale(),
     getTimeZone(),
     getHomeCourses(),
@@ -210,6 +228,7 @@ export const ContinueSection = async () => {
               course={course}
               t={t}
               learn={learn}
+              star={imamStarLabels(star)}
               locale={locale}
               timeZone={timeZone}
             />
@@ -312,10 +331,12 @@ export const DecksSection = async () => {
 const FollowedLine = ({
   course,
   t,
+  star,
   locale,
 }: {
   course: FollowedKoskCourseResponse;
   t: Translate;
+  star: ImamStarLabels;
   locale: string;
 }) => (
   <li className="flex items-center gap-3 py-3 border-be border-neutral-subtle first:pbs-0 last:pbe-0 last:border-be-0">
@@ -335,7 +356,13 @@ const FollowedLine = ({
             course.muderrisName ? (
               <span key="m">
                 {t("KoskPage.muderris")} <bdi>{course.muderrisName}</bdi>
-                {course.muderrisIsImam ? `, ${t("KoskPage.imam")}` : ""}
+                {/* the star only where there is more than one müderris (2026-10-13) */}
+                {showsImamStar(course.muderrisIsImam, course.muderrisCount) ? (
+                  <>
+                    {" "}
+                    <ImamStar labels={star} />
+                  </>
+                ) : null}
               </span>
             ) : null,
           ].filter(Boolean)
@@ -347,9 +374,10 @@ const FollowedLine = ({
 
 /** "Takip ettiğin köşklerden": courses of the köşks the caller follows. */
 export const FollowedSection = async () => {
-  const [t, learn, locale, courses] = await Promise.all([
+  const [t, learn, star, locale, courses] = await Promise.all([
     getTranslations("tedris"),
     getTranslations("tedrisLearn"),
+    getTranslations("common.imamStar"),
     getLocale(),
     getHomeFollowedCourses(),
   ]);
@@ -379,6 +407,7 @@ export const FollowedSection = async () => {
                 key={course.id}
                 course={course}
                 t={t}
+                star={imamStarLabels(star)}
                 locale={locale}
               />
             ))}

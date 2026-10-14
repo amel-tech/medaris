@@ -14547,6 +14547,10 @@
           "muderrisIsImam": {
             "type": "boolean",
             "description": "That müderris is the course's imam."
+          },
+          "muderrisCount": {
+            "type": "number",
+            "description": "How many müderrisler the course lists; the imam is marked only where there is more than one."
           }
         },
         "required": [
@@ -14555,7 +14559,8 @@
           "koskId",
           "koskName",
           "coverHue",
-          "muderrisIsImam"
+          "muderrisIsImam",
+          "muderrisCount"
         ]
       },
       "KoskDeckResponse": {
@@ -20212,6 +20217,10 @@
           "studentCount": {
             "type": "number",
             "description": "Talebe currently enrolled"
+          },
+          "muderrisCount": {
+            "type": "number",
+            "description": "How many müderrisler the course lists; the imam is marked only where there is more than one"
           }
         },
         "required": [
@@ -20219,7 +20228,8 @@
           "hidden",
           "koskId",
           "koskName",
-          "studentCount"
+          "studentCount",
+          "muderrisCount"
         ]
       },
       "AssignmentResponse": {
@@ -21986,13 +21996,18 @@
             "type": "string",
             "nullable": true,
             "description": "The course's imam, as the course page names them"
+          },
+          "muderrisCount": {
+            "type": "number",
+            "description": "How many müderrisler the course lists; the imam is marked only where there is more than one"
           }
         },
         "required": [
           "id",
           "title",
           "status",
-          "studentCount"
+          "studentCount",
+          "muderrisCount"
         ]
       },
       "HostingRightResponse": {
@@ -23626,6 +23641,10 @@
             "type": "boolean",
             "description": "The last müderris of a course was its imam"
           },
+          "muderrisCount": {
+            "type": "number",
+            "description": "How many müderrisler a course lists (0 for a köşk or a medrese); the imam is marked only where there is more than one"
+          },
           "removedBy": {
             "nullable": true,
             "description": "Who took the post away; null when it ran out",
@@ -23653,7 +23672,8 @@
           "reason",
           "since",
           "lastRole",
-          "wasImam"
+          "wasImam",
+          "muderrisCount"
         ]
       },
       "AssignInactiveScopeDto": {

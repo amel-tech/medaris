@@ -440,7 +440,9 @@ const render = (ui: React.ReactElement) =>
     <NextIntlClientProvider
       locale="tr"
       timeZone="Europe/Istanbul"
-      messages={{ nizam: resources.tr.nizam } as never}
+      messages={
+        { common: resources.tr.common, nizam: resources.tr.nizam } as never
+      }
     >
       {ui}
     </NextIntlClientProvider>
@@ -834,7 +836,31 @@ describe("Genel bakış (nizam 53)", () => {
     expect(html).not.toContain("/kosks/k1/celseler");
   });
 
-  it("lists the müderris with the imam marked (criterion 6)", () => {
+  it("lists the müderrisler with the imam's star after the name, among more than one (criterion 6, 2026-10-13)", () => {
+    const html = view({
+      course: {
+        ...course,
+        muderris: [
+          { id: "m1", name: "Abdülhamit Karaosmanoğlu" },
+          { id: "m2", name: "Ayşe Nur Kılıçarslan" },
+        ],
+      } as unknown as CourseDetailResponse,
+      row: row({
+        muderris: [
+          { name: "Abdülhamit Karaosmanoğlu", isImam: true },
+          { name: "Ayşe Nur Kılıçarslan", isImam: false },
+        ],
+      }),
+    });
+    const team = html.slice(html.indexOf('id="team-heading"'));
+    expect(team).toMatch(
+      /Abdülhamit Karaosmanoğlu<\/bdi> <button[^>]*aria-label="Dersin imamı"/
+    );
+    expect(team.match(/aria-label="Dersin imamı"/g)).toHaveLength(1);
+    expect(team).toContain("Ayşe Nur Kılıçarslan");
+  });
+
+  it("marks no imam where the course has one müderris (2026-10-13)", () => {
     const html = view({
       course: {
         ...course,
@@ -844,8 +870,10 @@ describe("Genel bakış (nizam 53)", () => {
         muderris: [{ name: "Abdülhamit Karaosmanoğlu", isImam: true }],
       }),
     });
-    expect(html).toContain("Abdülhamit Karaosmanoğlu");
-    expect(html).toContain("Dersin imamı");
+    const team = html.slice(html.indexOf('id="team-heading"'));
+    expect(team).toContain("Abdülhamit Karaosmanoğlu");
+    expect(team).not.toContain("mds-imam-star");
+    expect(team).not.toContain("Dersin imamı");
   });
 
   it("offers the başnazım the course's Ders nazırları in nazar, in a new tab (MDRS-270)", () => {

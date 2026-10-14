@@ -49,8 +49,10 @@ export interface CourseCard {
   href: string;
   /** null when the API sent nothing about the course */
   state: { label: string; variant: BadgeVariant } | null;
-  /** "Müderris · dersin imamı" */
+  /** "Müderris" */
   role: string;
+  /** the course's imam, among more than one müderris: the star after the role */
+  imam: boolean;
   /** "Nûruosmaniye Köşkü · 35 talebe"; null with no course info */
   footer: string | null;
 }
@@ -67,10 +69,7 @@ export function courseCards(
   locale: string
 ): CourseCard[] {
   const numbers = new Intl.NumberFormat(locale);
-  const words = {
-    role: (role: string) => t(`Roles.${role}`),
-    imam: t("Shell.imam"),
-  };
+  const words = { role: (role: string) => t(`Roles.${role}`) };
   return scopes
     .filter((scope) => scope.kind === "ders")
     .map((scope) => {
@@ -93,6 +92,7 @@ export function courseCards(
             }
           : null,
         role: scopeOption(scope, words).summary.join(" · "),
+        imam: scope.isImam,
         footer: info
           ? t("Pano.students", {
               kosk: info.koskName,

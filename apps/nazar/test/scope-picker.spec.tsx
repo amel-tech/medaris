@@ -14,6 +14,7 @@ const medrese: ScopeOption = {
   id: "m-1",
   href: "/medrese/m-1",
   name: "Süleymaniye Medresesi",
+  imam: false,
   summary: ["Medrese başmüderrisi"],
   detail: ["Medrese başmüderrisi"],
 };
@@ -23,8 +24,9 @@ const bina: ScopeOption = {
   id: "c-1",
   href: "/ders/c-1",
   name: "Bina ve İzhar Şerhi",
-  summary: ["Müderris", "dersin imamı"],
-  detail: ["Müderris", "dersin imamı", "Nûruosmaniye Köşkü"],
+  imam: true,
+  summary: ["Müderris"],
+  detail: ["Müderris", "Nûruosmaniye Köşkü"],
 };
 const mantik: ScopeOption = {
   key: "ders:c-2",
@@ -32,6 +34,7 @@ const mantik: ScopeOption = {
   id: "c-2",
   href: "/ders/c-2",
   name: "İsâgûcî ile mantığa giriş",
+  imam: false,
   summary: ["Müderris"],
   detail: ["Müderris", "Fatih Köşkü"],
 };
@@ -41,6 +44,11 @@ const labels = {
   medrese: "Medrese",
   courses: "Dersler",
   note: "Yalnız görev aldığınız medrese ve dersler listelenir.",
+  imamStar: {
+    title: "Dersin imamı",
+    body: "Birden çok müderrisi olan derste müderrislerden biri imamdır; yetkileri diğer müderrislerle aynıdır.",
+    mark: "dersin imamı",
+  },
 };
 
 const open = async (options = [medrese, bina, mantik], current = medrese) => {
@@ -87,9 +95,19 @@ describe("the open scope picker (nazir 03)", () => {
     );
     expect(rows[0]).toBe("SMSüleymaniye MedresesiMedrese başmüderrisi");
     expect(rows[1]).toContain("Bina ve İzhar Şerhi");
-    // the dots between the parts are their own spans (`joinRun`)
-    expect(rows[1]).toContain("Müderris·dersin imamı·Nûruosmaniye Köşkü");
+    // the dots between the parts are their own spans (`joinRun`); the imam's
+    // star follows the role and reads as words (2026-10-13)
+    expect(rows[1]).toContain("Müderris dersin imamı·Nûruosmaniye Köşkü");
     expect(rows[2]).toContain("Müderris·Fatih Köşkü");
+  });
+
+  it("marks the imam with a star that is no button inside its link", async () => {
+    await open();
+    const rows = [...document.querySelectorAll("a[role=menuitem]")];
+    expect(rows.map((r) => r.querySelector(".mds-imam-star") !== null)).toEqual(
+      [false, true, false]
+    );
+    expect(rows[1]?.querySelector("button")).toBeNull();
   });
 
   it("marks the current scope, and only it", async () => {
@@ -100,7 +118,10 @@ describe("the open scope picker (nazir 03)", () => {
       null,
       null,
     ]);
-    const checks = document.querySelectorAll("a[role=menuitem] .mds-icon");
+    // the imam's star is an icon too, and not a check
+    const checks = [
+      ...document.querySelectorAll("a[role=menuitem] .mds-icon"),
+    ].filter((icon) => !icon.closest(".mds-imam-star"));
     expect(checks).toHaveLength(1);
   });
 
@@ -160,7 +181,10 @@ describe("the closed scope picker", () => {
       "Kapsam değiştir: Bina ve İzhar Şerhi"
     );
     expect(trigger?.getAttribute("aria-expanded")).toBe("false");
-    expect(trigger?.textContent).toContain("Müderris·dersin imamı");
+    // the star inside the picker's button is no button of its own
+    expect(trigger?.textContent).toMatch(/Müderris\s+dersin imamı/);
+    expect(trigger?.querySelector(".mds-imam-star")?.tagName).toBe("SPAN");
+    expect(trigger?.querySelector("button")).toBeNull();
     expect(trigger?.textContent).not.toContain("Nûruosmaniye");
     expect(document.querySelector("[role=menu]")).toBeNull();
   });
@@ -171,5 +195,14 @@ describe("the closed scope picker", () => {
     );
     expect(document.querySelector("button")).toBeNull();
     expect(document.body.textContent).toContain("Süleymaniye Medresesi");
+  });
+
+  it("with one scope, a plain card, the imam's star is the button that explains it", async () => {
+    await render(
+      <ScopePicker current={bina} options={[bina]} labels={labels} />
+    );
+    const star = document.querySelector("button.mds-imam-star");
+    expect(star?.getAttribute("aria-label")).toBe("Dersin imamı");
+    expect(document.querySelectorAll("button")).toHaveLength(1);
   });
 });

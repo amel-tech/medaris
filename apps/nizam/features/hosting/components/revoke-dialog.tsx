@@ -2,10 +2,12 @@
 
 import type { HostingRightResponse } from "@medaris/services/tedrisat";
 import { toast } from "@medaris/ui/components/sonner";
+import { type ImamStarLabels, imamStarLabels } from "@medaris/ui/lib/imam-star";
 import { Badge } from "@medaris/ui/mds/badge";
 import { Button } from "@medaris/ui/mds/button";
 import { CoverPattern } from "@medaris/ui/mds/cover-pattern";
 import { Dialog, DialogClose } from "@medaris/ui/mds/dialog";
+import { ImamStar } from "@medaris/ui/mds/imam-star";
 import { RadioGroup } from "@medaris/ui/mds/radio-group";
 import { useLocale, useTranslations } from "next-intl";
 import { type FormEvent, useEffect, useRef, useState } from "react";
@@ -53,6 +55,7 @@ export function RevokeDialog({
   const locale = useLocale();
   const t = tm as unknown as Messages;
   const tp = useTranslations("nizam.HostingPage");
+  const star = imamStarLabels(useTranslations("common.imamStar"));
   const [choice, setChoice] = useState<CoursesChoice>(null);
   const [saving, setSaving] = useState(false);
   const cancelRef = useRef<HTMLButtonElement | null>(null);
@@ -145,7 +148,7 @@ export function RevokeDialog({
                   <bdi className="font-semibold [font-family:var(--font-reading)]">
                     {course.title}
                   </bdi>
-                  <bdi className="mds-caption">{courseLine(course, t)}</bdi>
+                  <CourseLine line={courseLine(course, t)} star={star} />
                 </span>
                 <Badge
                   variant={
@@ -189,5 +192,32 @@ export function RevokeDialog({
         <p className="mds-caption">{t("noOpenCourses")}</p>
       )}
     </Dialog>
+  );
+}
+
+/** A course's second line: its talebe, and its imam with the star where it applies. */
+function CourseLine({
+  line,
+  star,
+}: {
+  line: ReturnType<typeof courseLine>;
+  star: ImamStarLabels;
+}) {
+  return (
+    <span className="mds-caption">
+      {line.students}
+      {line.imam ? (
+        <>
+          {" · "}
+          <bdi>{line.imam.name}</bdi>
+          {line.imam.star ? (
+            <>
+              {" "}
+              <ImamStar labels={star} />
+            </>
+          ) : null}
+        </>
+      ) : null}
+    </span>
   );
 }

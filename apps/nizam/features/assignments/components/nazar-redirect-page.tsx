@@ -1,3 +1,4 @@
+import { imamStarLabels } from "@medaris/ui/lib/imam-star";
 import { Alert } from "@medaris/ui/mds/alert";
 import { Avatar } from "@medaris/ui/mds/avatar";
 import { Badge } from "@medaris/ui/mds/badge";
@@ -5,6 +6,7 @@ import { Button } from "@medaris/ui/mds/button";
 import { CoverPattern } from "@medaris/ui/mds/cover-pattern";
 import { EmptyState } from "@medaris/ui/mds/empty-state";
 import { Icon } from "@medaris/ui/mds/icon";
+import { ImamStar } from "@medaris/ui/mds/imam-star";
 import { getTranslations } from "next-intl/server";
 import type { TaskRow } from "../landing";
 import { LoadFailedToast } from "./load-failed-toast";
@@ -34,6 +36,7 @@ export async function NazarRedirectPage({
   const t = (await getTranslations(
     "nizam.NazarRedirectPage"
   )) as unknown as Messages;
+  const star = imamStarLabels(await getTranslations("common.imamStar"));
 
   return (
     <div className="mx-auto flex max-w-[40rem] flex-col items-center gap-section px-gutter py-12 text-center">
@@ -84,26 +87,27 @@ export async function NazarRedirectPage({
                 <span className="flex min-w-0 grow flex-col">
                   <bdi>{row.title}</bdi>
                   <span className="mds-caption">
+                    {t(`roles.${row.roleKey}`)}
+                    {/* the star after the role (2026-10-13) */}
+                    {row.isImam ? (
+                      <>
+                        {" "}
+                        <ImamStar labels={star} />
+                      </>
+                    ) : null}
                     {[
-                      t(`roles.${row.roleKey}`),
                       row.koskName,
                       row.studentCount === null
                         ? null
                         : t("students", { count: row.studentCount }),
                     ]
                       .filter(Boolean)
-                      .join(" · ")}
+                      .map((part) => ` · ${part}`)
+                      .join("")}
                   </span>
                 </span>
-                {row.isImam || row.draft ? (
-                  <span className="flex flex-col items-end gap-1">
-                    {row.isImam ? (
-                      <Badge variant="secondary">{t("imam")}</Badge>
-                    ) : null}
-                    {row.draft ? (
-                      <Badge variant="outline">{t("draft")}</Badge>
-                    ) : null}
-                  </span>
+                {row.draft ? (
+                  <Badge variant="outline">{t("draft")}</Badge>
                 ) : null}
               </li>
             ))}

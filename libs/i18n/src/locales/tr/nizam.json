@@ -562,7 +562,6 @@
     "intro": "Nizam, Medaris’i ve köşkleri yönetenlerin uygulamasıdır. Medrese ve ders görevlerinizi Nazar’dan yürütürsünüz.",
     "tasks": "Görevleriniz",
     "students": "{count} talebe",
-    "imam": "Dersin imamı",
     "draft": "Taslak",
     "goToNazar": "Nazar’a git",
     "roles": {
@@ -1086,7 +1085,6 @@
     },
     "students": "{count} talebe",
     "noStudents": "Henüz talebe yok",
-    "imam": "{name}, imam",
     "noOpenCourses": "Seçilecek bir şey yok: hak geri alınınca medrese bu köşkte yeni ders açamaz.",
     "auditNote": "Seçiminiz denetim kaydına yazılır.",
     "cancel": "Vazgeç",
@@ -1853,7 +1851,6 @@
       "MEDRESE_BASMUDERRIS": "Başmüderris",
       "MUDERRIS": "Müderris"
     },
-    "imam": "İmam",
     "assign": {
       "KOSK": "Köşk nazımı ata",
       "MADRASAH": "Başmüderris ata",
@@ -2076,7 +2073,6 @@
       "draft": "Taslak",
       "hidden": "Gizli"
     },
-    "imam": "İmam",
     "self": "Kendiniz",
     "unknownPerson": "Bilinmiyor",
     "noExpiry": "Süresiz",
@@ -2307,7 +2303,6 @@
     "weeks": "{count} hafta",
     "hiddenOn": "{dateLocative} gizlendi",
     "noMuderris": "Müderris yok",
-    "imam": "imam",
     "noStudents": "Talebe yok",
     "chip": {
       "pending": "{count} onay bekliyor",
@@ -2449,7 +2444,6 @@
     "yesterday": "Dün {time}",
     "teamHeading": "Ders kadrosu",
     "muderris": "Müderris",
-    "imam": "Dersin imamı",
     "noMuderris": "Bu derste müderris yok",
     "settingsHeading": "Ders ayarları",
     "settings": "Ders ayarları",
@@ -2647,7 +2641,6 @@
     "unpublishWay": "İstediğiniz zaman yeniden yayımlayabilirsiniz.",
     "close": "Kapat",
     "teamTitle": "Müderrisler",
-    "imam": "Dersin imamı",
     "editTeam": "Müderrisleri düzenle",
     "hideTitle": "Dersi gizle",
     "hideBody": "Gizlenen ders talebelere ve ziyaretçilere görünmez, köşk sayfasından da kalkar. Hiçbir şey silinmez; Arşiv’den geri alabilirsiniz.",
@@ -3655,7 +3648,6 @@
       },
       "week": "Hafta {number}",
       "makeup": "telafi celsesi",
-      "imam": "imam",
       "state": {
         "planned": "Planlandı",
         "cancelled": "İptal edildi",

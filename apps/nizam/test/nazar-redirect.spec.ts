@@ -19,8 +19,7 @@ vi.mock("~/lib/auth", () => ({
 }));
 vi.mock("next-intl/server", () => ({
   getTranslations: async (ns: string) => {
-    const [, ...rest] = ns.split(".");
-    const base = dig(resources.tr.nizam, rest.join("."));
+    const base = dig(resources.tr, ns);
     return (key: string, values?: Record<string, unknown>) =>
       Object.entries(values ?? {}).reduce(
         (acc, [k, v]) => acc.replace(`{${k}}`, String(v)),
@@ -52,6 +51,8 @@ const course = (status: string, studentCount: number) => ({
   madrasahId: null,
   madrasahName: null,
   studentCount,
+  // two müderrisler, so the imam among them carries the star (2026-10-13)
+  muderrisCount: 2,
 });
 
 describe("landingFor (nizam 04)", () => {
@@ -146,13 +147,30 @@ describe("NazarRedirectPage", () => {
     });
     expect(html).toContain("Medrese ve ders işleriniz Nazar’da");
     expect(html).toContain("Medrese başmüderrisi");
-    expect(html).toContain("Müderris · Nûruosmaniye Köşkü · 35 talebe");
-    expect(html).toContain("Dersin imamı");
+    // the imam's star after the role, a button that explains it
+    expect(html).toMatch(
+      /Müderris <button[^>]*aria-label="Dersin imamı"[^>]*>[\s\S]*?<\/button> · Nûruosmaniye Köşkü · 35 talebe/
+    );
     expect(html).toContain("Taslak");
     expect(html).not.toContain("0 talebe");
     expect(html).toContain('href="http://nazar.test"');
     expect(html).toContain("Nazar’a git");
     expect((html.match(/data-testid="task-row"/g) ?? []).length).toBe(3);
+  });
+
+  it("marks no imam of a course with one müderris (2026-10-13)", async () => {
+    const html = await render({
+      rows: taskRows([
+        a({
+          id: "1",
+          isImam: true,
+          course: { ...course("PUBLISHED", 35), muderrisCount: 1 },
+        }),
+      ]),
+    });
+    expect(html).toContain("Müderris · Nûruosmaniye Köşkü · 35 talebe");
+    expect(html).not.toContain("mds-imam-star");
+    expect(html).not.toContain("Dersin imamı");
   });
 
   it("offers a retry when the roles could not be read, and no empty claim", async () => {

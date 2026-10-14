@@ -37,6 +37,8 @@ export interface IHostingRight {
     status: "DRAFT" | "PUBLISHED";
     studentCount: number;
     imamName: string | null;
+    /** how many müderrisler the course lists: the imam's star needs more than one */
+    muderrisCount: number;
   }[];
 }
 
@@ -94,6 +96,13 @@ export class HostingRepository {
         title: courses.title,
         status: courses.status,
         madrasahId: courses.madrasahId,
+        // The imam's star needs more than one müderris. The outer row is
+        // named in full: over one table drizzle leaves `courses.id`
+        // unqualified, and inside the subquery that is the müderris row's id.
+        muderrisCount:
+          sql<number>`(select count(*)::int from ${courseMuderris} cm where cm.course_id = "courses"."id")`.mapWith(
+            Number
+          ),
       })
       .from(courses)
       .where(
@@ -143,6 +152,7 @@ export class HostingRepository {
             status: c.status as "DRAFT" | "PUBLISHED",
             studentCount: students.get(c.id) ?? 0,
             imamName: imams.get(c.id) ?? null,
+            muderrisCount: c.muderrisCount,
           })),
       };
     });

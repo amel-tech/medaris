@@ -579,3 +579,49 @@ describe("the new keys", () => {
     }
   });
 });
+
+describe("the müderris line (2026-10-13)", () => {
+  const person = (id: string, name: string, isImam: boolean) => ({
+    id,
+    name,
+    title: null,
+    bio: null,
+    avatarHue: 200,
+    isImam,
+  });
+  const withTeam = async (muderris: ReturnType<typeof person>[]) => {
+    const { CoursePage } = await import(
+      "~/features/courses/components/course-page"
+    );
+    return renderToStaticMarkup(
+      createElement(CoursePage, {
+        course: {
+          ...course("ENROLLED", false),
+          muderris,
+        } as unknown as CourseDetailResponse,
+        koskName: "Nûruosmaniye Köşkü",
+        signedIn: true,
+        now: NOW,
+      })
+    );
+  };
+
+  it("marks the imam among several müderrisler with the star after the name", async () => {
+    const html = await withTeam([
+      person("m1", "Abdülhamit Karaosmanoğlu", true),
+      person("m2", "Ayşe Nur Kılıçarslan", false),
+    ]);
+    expect(html).toMatch(
+      /Abdülhamit Karaosmanoğlu<\/bdi> <button[^>]*aria-label="Dersin imamı"/
+    );
+    expect(html.match(/aria-label="Dersin imamı"/g)).toHaveLength(1);
+  });
+
+  it("names a lone müderris, the imam, with no mark", async () => {
+    const html = await withTeam([
+      person("m1", "Abdülhamit Karaosmanoğlu", true),
+    ]);
+    expect(html).toContain("Abdülhamit Karaosmanoğlu");
+    expect(html).not.toContain("mds-imam-star");
+  });
+});

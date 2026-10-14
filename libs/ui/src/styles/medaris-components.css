@@ -24,3 +24,5 @@
 @import "./mds/baseui.css" layer(components);
 /* The date and time fields (MDRS-278), as medaris.css brings them. */
 @import "./mds/datepicker.css" layer(components);
+/* The imam's star (2026-10-13), as medaris.css brings it. */
+@import "./mds/imam-star.css" layer(components);

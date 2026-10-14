@@ -61,6 +61,12 @@ export interface AssignedCourseInfo {
      * @memberof AssignedCourseInfo
      */
     studentCount: number;
+    /**
+     * How many müderrisler the course lists; the imam is marked only where there is more than one
+     * @type {number}
+     * @memberof AssignedCourseInfo
+     */
+    muderrisCount: number;
 }
 
 
@@ -83,6 +89,7 @@ export function instanceOfAssignedCourseInfo(value: object): value is AssignedCo
     if (!('koskId' in value) || value['koskId'] === undefined) return false;
     if (!('koskName' in value) || value['koskName'] === undefined) return false;
     if (!('studentCount' in value) || value['studentCount'] === undefined) return false;
+    if (!('muderrisCount' in value) || value['muderrisCount'] === undefined) return false;
     return true;
 }
 
@@ -103,6 +110,7 @@ export function AssignedCourseInfoFromJSONTyped(json: any, ignoreDiscriminator: 
         'madrasahId': json['madrasahId'] == null ? undefined : json['madrasahId'],
         'madrasahName': json['madrasahName'] == null ? undefined : json['madrasahName'],
         'studentCount': json['studentCount'],
+        'muderrisCount': json['muderrisCount'],
     };
 }
 
@@ -124,6 +132,7 @@ export function AssignedCourseInfoToJSONTyped(value?: AssignedCourseInfo | null,
         'madrasahId': value['madrasahId'],
         'madrasahName': value['madrasahName'],
         'studentCount': value['studentCount'],
+        'muderrisCount': value['muderrisCount'],
     };
 }
 

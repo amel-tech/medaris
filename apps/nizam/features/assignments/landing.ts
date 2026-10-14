@@ -1,4 +1,5 @@
 import type { AssignmentResponse } from "@medaris/services/tedrisat";
+import { showsImamStar } from "@medaris/ui/lib/imam-star";
 
 /** The roles Nizam is for: the platform's and the köşk's nazım, and the realm's SYSTEM_ADMIN. */
 const NIZAM_ROLES: ReadonlySet<string> = new Set([
@@ -28,6 +29,7 @@ export interface TaskRow {
   kind: "madrasah" | "course";
   title: string;
   roleKey: string;
+  /** the course's imam, among more than one müderris: the star after the role */
   isImam: boolean;
   draft: boolean;
   koskName: string | null;
@@ -64,7 +66,7 @@ export function taskRows(assignments: AssignmentResponse[]): TaskRow[] {
         kind: "course",
         title: a.scopeName ?? "",
         roleKey: a.role,
-        isImam: a.isImam,
+        isImam: showsImamStar(a.isImam, a.course?.muderrisCount),
         draft,
         koskName: a.course?.koskName ?? null,
         studentCount: draft ? null : (a.course?.studentCount ?? 0),

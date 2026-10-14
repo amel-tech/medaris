@@ -1,5 +1,6 @@
+import { imamStarLabels, showsImamStar } from "@medaris/ui/lib/imam-star";
 import { SystemState } from "@medaris/ui/mds/system-state";
-import { getLocale, getTimeZone } from "next-intl/server";
+import { getLocale, getTimeZone, getTranslations } from "next-intl/server";
 import { env } from "~/env";
 import { getAccountMessages } from "../account-messages";
 import { courseBadge, openUrl, roleApp, scopeMeta } from "../assignment-view";
@@ -36,6 +37,7 @@ export async function RolesSection() {
 
   const locale = await getLocale();
   const timeZone = (await getTimeZone()) ?? "Europe/Istanbul";
+  const star = imamStarLabels(await getTranslations("common.imamStar"));
   const day = new Intl.DateTimeFormat(locale, {
     dateStyle: "long",
     timeZone,
@@ -50,7 +52,8 @@ export async function RolesSection() {
     return {
       id: a.id,
       role: roleLabel,
-      isImam: a.isImam,
+      // the star, only among more than one müderris (2026-10-13)
+      isImam: showsImamStar(a.isImam, a.course?.muderrisCount),
       scopeTitle: a.scopeName,
       scopeBadge: badge
         ? {
@@ -100,7 +103,7 @@ export async function RolesSection() {
           rows={rows}
           labels={{
             caption: t("tasks"),
-            imam: t("imam"),
+            imamStar: star,
             role: t("columns.role"),
             scope: t("columns.scope"),
             grantor: t("columns.grantor"),

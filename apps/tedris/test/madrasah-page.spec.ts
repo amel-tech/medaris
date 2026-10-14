@@ -22,8 +22,12 @@ const lookup = (key: string, values?: Record<string, unknown>) => {
     text
   );
 };
+// The imam's star reads its own words (`common.imamStar`).
+const star = (key: string) =>
+  (resources.tr.common.imamStar as Record<string, string>)[key] as string;
 vi.mock("next-intl/server", () => ({
-  getTranslations: async () => lookup,
+  getTranslations: async (ns?: string) =>
+    ns === "common.imamStar" ? star : lookup,
   getLocale: async () => "tr",
   getTimeZone: async () => "Europe/Istanbul",
 }));
@@ -112,7 +116,28 @@ describe("medrese page", () => {
     expect(html).toContain("Paz 21:00");
     expect(html).toContain("Nûruosmaniye Köşkü");
     expect(html).toContain('href="/tr/courses/c1"');
-    expect(html).toContain(", imam");
+    // the courses' lone müderris is the imam and gets no mark (2026-10-13)
+    expect(html).not.toContain(", imam");
+    expect(html).not.toContain("mds-imam-star");
+  });
+
+  it("marks the imam with the star after the name where a course has more than one müderris (2026-10-13)", async () => {
+    const html = await render({
+      ...overview,
+      courses: [
+        {
+          ...overview.courses[0],
+          muderris: [
+            { name: "Mehmet Emin Işıkoğlu", title: null, isImam: true },
+            { name: "Ayşe Nur Kılıçarslan", title: null, isImam: false },
+          ],
+        },
+      ],
+    } as unknown as MadrasahOverviewResponse);
+    expect(html).toMatch(
+      /Mehmet Emin Işıkoğlu<\/bdi> <button[^>]*aria-label="Dersin imamı"/
+    );
+    expect(html.match(/aria-label="Dersin imamı"/g)).toHaveLength(1);
   });
 
   it("gives a course with no enrollment no badge", async () => {

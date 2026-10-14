@@ -33,6 +33,8 @@ export interface IScopeInfo {
   id: string;
   name: string;
   kosk: { id: string; name: string } | null;
+  /** how many müderrisler a course lists; 0 for a köşk or a medrese */
+  muderrisCount: number;
 }
 
 export interface IPersonRow {
@@ -107,13 +109,17 @@ export class InactiveScopeRepository {
         .select({ id: kosks.id, name: kosks.name })
         .from(kosks)
         .where(and(inArray(kosks.id, ids), isNull(kosks.archivedAt)));
-      for (const r of rows) result.set(r.id, { ...r, kosk: null });
+      for (const r of rows) {
+        result.set(r.id, { ...r, kosk: null, muderrisCount: 0 });
+      }
     } else if (type === "MADRASAH") {
       const rows = await this.db
         .select({ id: madrasahs.id, name: madrasahs.name })
         .from(madrasahs)
         .where(and(inArray(madrasahs.id, ids), isNull(madrasahs.archivedAt)));
-      for (const r of rows) result.set(r.id, { ...r, kosk: null });
+      for (const r of rows) {
+        result.set(r.id, { ...r, kosk: null, muderrisCount: 0 });
+      }
     } else {
       const rows = await this.db
         .select({
@@ -121,6 +127,13 @@ export class InactiveScopeRepository {
           name: courses.title,
           koskId: kosks.id,
           koskName: kosks.name,
+          // The imam's star needs more than one müderris (2026-10-13). The
+          // list keeps its names when the posts end, so it is the course's
+          // müderrisler as the course page names them.
+          muderrisCount:
+            sql<number>`(select count(*)::int from ${courseMuderris} cm where cm.course_id = "courses"."id")`.mapWith(
+              Number
+            ),
         })
         .from(courses)
         .innerJoin(kosks, eq(kosks.id, courses.koskId))
@@ -136,6 +149,7 @@ export class InactiveScopeRepository {
           id: r.id,
           name: r.name,
           kosk: { id: r.koskId, name: r.koskName },
+          muderrisCount: r.muderrisCount,
         });
       }
     }

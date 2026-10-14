@@ -4,7 +4,9 @@ import { Menu } from "@base-ui/react/menu";
 import { Avatar } from "@medaris/ui/mds/avatar";
 import { CoverPattern } from "@medaris/ui/mds/cover-pattern";
 import { Icon } from "@medaris/ui/mds/icon";
+import { ImamStar, type ImamStarLabels } from "@medaris/ui/mds/imam-star";
 import { joinRun } from "@medaris/ui/mds/locale";
+import type { ReactNode } from "react";
 import type { ScopeKind } from "../scope";
 
 export interface ScopeOption {
@@ -13,7 +15,9 @@ export interface ScopeOption {
   id: string;
   href: string;
   name: string;
-  /** the second line of the closed picker: the role, and "dersin imamı" */
+  /** the course's imam, among more than one müderris: the star after the role */
+  imam: boolean;
+  /** the second line of the closed picker: the role */
   summary: string[];
   /** the second line in the open list: the summary and a course's köşk */
   detail: string[];
@@ -30,6 +34,7 @@ export interface ScopePickerProps {
     medrese: string;
     courses: string;
     note: string;
+    imamStar: ImamStarLabels;
   };
 }
 
@@ -41,13 +46,38 @@ function Mark({ option }: { option: ScopeOption }) {
   );
 }
 
-function Lines({ name, parts }: { name: string; parts: string[] }) {
+/**
+ * The name, then the role and what follows it. A course's imam has the star
+ * after the role (2026-10-13); inside the picker's button and its links the
+ * star is no button of its own (`star`).
+ */
+function Lines({
+  name,
+  parts,
+  star,
+}: {
+  name: string;
+  parts: string[];
+  star: ReactNode;
+}) {
+  const [role, ...rest] = parts;
   return (
     <span className="flex min-inline-0 flex-col gap-[2px] text-start">
       <span className="text-body-sm font-semibold leading-ui" dir="auto">
         <bdi>{name}</bdi>
       </span>
-      <span className="mds-caption">{joinRun(parts)}</span>
+      <span className="mds-caption">
+        {joinRun(
+          star
+            ? [
+                <>
+                  {role} {star}
+                </>,
+                ...rest,
+              ]
+            : parts
+        )}
+      </span>
     </span>
   );
 }
@@ -62,12 +92,20 @@ function Lines({ name, parts }: { name: string; parts: string[] }) {
  */
 export function ScopePicker({ current, options, labels }: ScopePickerProps) {
   const currentMark = <Mark option={current} />;
+  const star = (option: ScopeOption, interactive: boolean) =>
+    option.imam ? (
+      <ImamStar labels={labels.imamStar} interactive={interactive} />
+    ) : null;
 
   if (options.length < 2) {
     return (
       <div className="mds-card flex items-center gap-3 p-3">
         {currentMark}
-        <Lines name={current.name} parts={current.summary} />
+        <Lines
+          name={current.name}
+          parts={current.summary}
+          star={star(current, true)}
+        />
       </div>
     );
   }
@@ -92,7 +130,11 @@ export function ScopePicker({ current, options, labels }: ScopePickerProps) {
         className="mds-btn mds-btn--outline inline-full block-auto min-block-control justify-start gap-3 py-2 whitespace-normal"
       >
         {currentMark}
-        <Lines name={current.name} parts={current.summary} />
+        <Lines
+          name={current.name}
+          parts={current.summary}
+          star={star(current, false)}
+        />
         <Icon
           name="chevronsUpDown"
           size="sm"
@@ -122,7 +164,11 @@ export function ScopePicker({ current, options, labels }: ScopePickerProps) {
                     }
                   >
                     <Mark option={option} />
-                    <Lines name={option.name} parts={option.detail} />
+                    <Lines
+                      name={option.name}
+                      parts={option.detail}
+                      star={star(option, false)}
+                    />
                     {option.key === current.key ? (
                       <Icon
                         name="check"

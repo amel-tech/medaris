@@ -31,7 +31,6 @@
     "scopeMedrese": "Medrese",
     "scopeCourses": "Dersler",
     "scopeNote": "Yalnız görev aldığınız medrese ve dersler listelenir.",
-    "imam": "dersin imamı",
     "bell": "Bildirimler",
     "bellUnread": "Bildirimler, {count} okunmamış",
     "accountHint": "ayarlar",
@@ -105,7 +104,6 @@
     "tasksTitle": "Görevleriniz",
     "tasksIntro": "Her görev bir kapsamda geçerlidir. Görevi ve süresini, onu atayan kişi değiştirir.",
     "noNazirNote": "Medrese nazırlığınız ya da ders nazırlığınız yok.",
-    "imam": "Dersin imamı",
     "self": "Kendiniz",
     "unknownPerson": "Bilinmiyor",
     "noExpiry": "Süresiz",
@@ -289,7 +287,6 @@
     "coursesEmpty": "Bu medresenin henüz dersi yok.",
     "coursesFailed": "Dersler şu an okunamadı. Sayfayı yenileyerek yeniden deneyin.",
     "coursesLink": "Medrese dersleri",
-    "imam": "imam",
     "status": {
       "PUBLISHED": "Yayında",
       "DRAFT": "Taslak"
@@ -771,7 +768,6 @@
       "actions": "İşlemler"
     },
     "openedToday": "bugün açıldı",
-    "imam": "Dersin imamı",
     "noStudents": "Henüz talebe yok",
     "pending": "{count} onay bekliyor",
     "status": {

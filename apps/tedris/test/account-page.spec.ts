@@ -81,8 +81,12 @@ vi.mock("next-intl/server", () => {
   };
   t.has = (key: string) =>
     typeof dig(resources.tr.tedris.AccountPage, key) === "string";
+  // The imam's star reads its own words (`common.imamStar`).
+  const star = (key: string) =>
+    dig(resources.tr.common.imamStar, key) as string;
   return {
-    getTranslations: async () => t,
+    getTranslations: async (ns?: string) =>
+      ns === "common.imamStar" ? star : t,
     getLocale: async () => "tr",
     getTimeZone: async () => "Europe/Istanbul",
   };
@@ -190,6 +194,36 @@ describe("RolesSection", () => {
     expect(await render()).toBe("");
   });
 
+  it("marks no imam of a course with one müderris (2026-10-13)", async () => {
+    currentRoles = {
+      assignments: [
+        assignment({
+          id: "a2",
+          role: "MUDERRIS",
+          scopeType: "course",
+          scopeId: "c-1",
+          scopeName: "Emsile ve Bina",
+          isImam: true,
+          course: {
+            status: "PUBLISHED",
+            hidden: false,
+            koskId: "k-1",
+            koskName: "Nûruosmaniye Köşkü",
+            madrasahId: null,
+            madrasahName: null,
+            studentCount: 3,
+            muderrisCount: 1,
+          },
+        }),
+      ],
+      groups: [],
+    };
+    const html = await render();
+    expect(html).toContain('data-testid="assignment-role">Müderris</span>');
+    expect(html).not.toContain("mds-imam-star");
+    expect(html).not.toContain("İmam");
+  });
+
   it("says so, in the section, when the roles cannot be read", async () => {
     currentRoles = null;
     const html = await render();
@@ -216,6 +250,7 @@ describe("RolesSection", () => {
             madrasahId: null,
             madrasahName: null,
             studentCount: 3,
+            muderrisCount: 2,
           },
         }),
         assignment({
@@ -262,7 +297,11 @@ describe("RolesSection", () => {
     expect(html).toContain("Süresiz");
     expect(html).toContain("Yayında");
     expect(html).toContain("Gizli");
-    expect(html).toContain("İmam");
+    // the imam of a two-müderris course: the star after the role (2026-10-13)
+    expect(html).toMatch(
+      /data-testid="assignment-role">Müderris <button[^>]*aria-label="Dersin imamı"/
+    );
+    expect(html.match(/aria-label="Dersin imamı"/g)).toHaveLength(1);
     expect(html).toContain('href="http://nizam.test/kosks/k-1"');
     expect(html).toContain('href="http://nazar.test"');
     expect(html).toContain('target="_blank"');

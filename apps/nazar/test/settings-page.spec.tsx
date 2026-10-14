@@ -184,14 +184,23 @@ describe("Medrese ayarları", () => {
   });
 
   it("lists the courses the policies apply to with their köşk, müderrisler and state", async () => {
-    const text = textOf(await render());
+    const markup = await render();
+    const text = textOf(markup);
     expect(text).toContain("Politikaların uygulandığı dersler");
     expect(text).toContain(
-      "Bina ve İzhar Şerhi Nûruosmaniye Köşkü · Mehmet Emin Işıkoğlu, imam ve Abdülhamit Karaosmanoğlu Yayında"
+      "Bina ve İzhar Şerhi Nûruosmaniye Köşkü · Mehmet Emin Işıkoğlu"
     );
+    // the imam of the two-müderris course: the star after the name, a button
+    // that explains itself; the lone müderris of the other gets no mark
+    // (2026-10-13)
+    expect(markup).toMatch(
+      /Mehmet Emin Işıkoğlu <button[^>]*aria-label="Dersin imamı"[^>]*>[\s\S]*?<\/button> ve Abdülhamit Karaosmanoğlu/
+    );
+    expect(markup.match(/aria-label="Dersin imamı"/g)).toHaveLength(1);
     expect(text).toContain(
-      "Maksûd şerhi Nûruosmaniye Köşkü · Mehmet Emin Işıkoğlu, imam Taslak"
+      "Maksûd şerhi Nûruosmaniye Köşkü · Mehmet Emin Işıkoğlu Taslak"
     );
+    expect(text).not.toContain(", imam");
     expect(text).toContain("Medrese dersleri");
   });
 

@@ -85,7 +85,9 @@ const mount = async (applications: KoskDashboardApplicationResponse[]) => {
       <NextIntlClientProvider
         locale="tr"
         timeZone="Europe/Istanbul"
-        messages={{ nizam: resources.tr.nizam } as never}
+        messages={
+          { common: resources.tr.common, nizam: resources.tr.nizam } as never
+        }
       >
         <KoskHome data={home(applications)} nowIso="2026-10-03T08:00:00Z" />
       </NextIntlClientProvider>

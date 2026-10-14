@@ -157,7 +157,10 @@ test("nazir/08 — köşk, name and a müderris's e-mail open a draft of the med
   await expect(row).toContainText("Taslak");
   await expect(row).toContainText(courses?.fatih.name ?? "");
   await expect(row).toContainText("bugün açıldı");
-  await expect(row).toContainText("Dersin imamı");
+  // a lone müderris is the imam and gets no mark (2026-10-13)
+  await expect(row.getByRole("button", { name: "Dersin imamı" })).toHaveCount(
+    0
+  );
 
   const [created] = (await courses?.created()) ?? [];
   expect(created?.title).toBe(title);

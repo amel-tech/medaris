@@ -2,6 +2,7 @@ import type {
   CourseDetailResponse,
   SessionResponse,
 } from "@medaris/services/tedrisat";
+import { imamStarLabels } from "@medaris/ui/lib/imam-star";
 import { resolveMeetingPlatform } from "@medaris/utils";
 import { getLocale, getTimeZone, getTranslations } from "next-intl/server";
 import type { ReactNode } from "react";
@@ -67,6 +68,7 @@ export const SessionPage = async ({
 }) => {
   const t = await getTranslations("tedris");
   const fileErrors = await getTranslations("tedrisLearn.FileDownload");
+  const imamStar = imamStarLabels(await getTranslations("common.imamStar"));
   const locale = await getLocale();
   const timeZone = await getTimeZone();
   const cancelled = session.status === "CANCELLED";
@@ -308,6 +310,7 @@ export const SessionPage = async ({
           koskName,
           locale,
           viewerTimeZone: timeZone,
+          imamStar,
         })}
         badge={
           startsAt || cancelled ? (

@@ -15,11 +15,12 @@ Generated from `tokens/*.css` by `tools/design-system/verify-contrast.mjs --writ
 | Focus indicator — ring against the ground | 3:1 | 7 × 2 | 5.38 | 7.07 |
 | Focus indicator — against the component | 3:1 | 8 × 2 | 5.38 | 7.07 |
 | Status marks | 3:1 | 36 × 2 | 4.70 | 5.51 |
+| The star | 3:1 | 6 × 2 | 3.61 | 4.54 |
 | Covers | 4.5:1 | 4 × 2 | 8.69 | 8.69 |
 | Text over media | 4.5:1 | 1 × 2 | 9.86 | 9.86 |
 | Disabled text (policy) | 3:1 | 5 × 2 | 3.12 | 3.87 |
 
-**Every required pair passes in both themes** (336 checks). 42 colour roles (ceiling 42); 46 primitives, every one read; no primitive is re-pointed by the night theme; every tone has its four tokens.
+**Every required pair passes in both themes** (348 checks). 42 colour roles (ceiling 42); 47 primitives, every one read; no primitive is re-pointed by the night theme; every tone has its four tokens.
 
 ## Neutral text on every ground (≥ 4.5:1)
 
@@ -260,6 +261,21 @@ the inner band (--ring-focus-gap) or, where the gap matches the component, the r
 
 **Minimum:** day 4.70:1 · night 5.51:1
 
+## The star (≥ 3:1)
+
+--icon-rating, the set star, on every ground text can sit on. It sits beside a rating's number, and on its own after a name as the mark of a course's imam, where it is a glyph that carries meaning (WCAG 1.4.11). A dialog, a table and a tooltip are the surface; a hovered table row is the hover ground; the current row and the active nav item are the brand tint.
+
+| pair | day fg / bg | day | night fg / bg | night |
+| -- | -- | --: | -- | --: |
+| `icon-rating` on `background-neutral-page` | #A26927 / #F9F6EF | 4.24 | #BC7F2E / #11151D | 5.40 |
+| `icon-rating` on `background-neutral-surface` | #A26927 / #FEFDF9 | 4.49 | #BC7F2E / #181D26 | 5.00 |
+| `icon-rating` on `background-neutral-sunken` | #A26927 / #F2EDE3 | 3.92 | #BC7F2E / #0B0E14 | 5.71 |
+| `icon-rating` on `background-neutral-field` | #A26927 / #FEFDF9 | 4.49 | #BC7F2E / #11151D | 5.40 |
+| `icon-rating` on `background-neutral-hover` | #A26927 / #EAE4D8 | 3.61 | #BC7F2E / #20252F | 4.54 |
+| `icon-rating` on `background-brand-subtle` | #A26927 / #EBEFFD | 3.98 | #BC7F2E / #1B2037 | 4.74 |
+
+**Minimum:** day 3.61:1 · night 4.54:1
+
 ## Covers (≥ 4.5:1)
 
 the label printed on each bookcloth (theme-independent).
@@ -299,7 +315,7 @@ the label printed on each bookcloth (theme-independent).
 
 ## Not required — decorative or exempt
 
-Shown so nobody mistakes them for a gap. A hairline never identifies a control on its own. The current-row tint is never the only signal (the "Sıradaki" marker and the medallion are). Platform dots and the rating star repeat printed words. The cover stamp is ornament. The logo is exempt: its arch sits on its own ground by day and by night, and the ground is the mark's edge.
+Shown so nobody mistakes them for a gap. A hairline never identifies a control on its own. The current-row tint is never the only signal (the "Sıradaki" marker and the medallion are). Platform dots repeat printed words. The cover stamp is ornament. The logo is exempt: its arch sits on its own ground by day and by night, and the ground is the mark's edge.
 
 | pair | day | night |
 | -- | --: | --: |
@@ -310,7 +326,6 @@ Shown so nobody mistakes them for a gap. A hairline never identifies a control o
 | `icon-platform-google-meet` on `background-neutral-surface` | 3.83 | 4.32 |
 | `icon-platform-jitsi` on `background-neutral-surface` | 3.32 | 5.00 |
 | `icon-platform-unknown` on `background-neutral-surface` | 3.89 | 4.26 |
-| `icon-rating` on `background-neutral-surface` | 3.32 | 5.00 |
 | `stamp-on-cover` on `cover-laciverd` | 1.93 | 1.93 |
 | `icon-logo-arch` on `icon-logo-ground` | 8.18 | 8.18 |
 | `icon-logo-ground` on `background-neutral-page` | 8.70 | 1.94 |

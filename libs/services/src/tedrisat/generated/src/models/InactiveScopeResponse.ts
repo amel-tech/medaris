@@ -110,6 +110,12 @@ export interface InactiveScopeResponse {
      */
     wasImam: boolean;
     /**
+     * How many müderrisler a course lists (0 for a köşk or a medrese); the imam is marked only where there is more than one
+     * @type {number}
+     * @memberof InactiveScopeResponse
+     */
+    muderrisCount: number;
+    /**
      * Who took the post away; null when it ran out
      * @type {InactivePersonResponse}
      * @memberof InactiveScopeResponse
@@ -136,6 +142,7 @@ export function instanceOfInactiveScopeResponse(value: object): value is Inactiv
     if (!('since' in value) || value['since'] === undefined) return false;
     if (!('lastRole' in value) || value['lastRole'] === undefined) return false;
     if (!('wasImam' in value) || value['wasImam'] === undefined) return false;
+    if (!('muderrisCount' in value) || value['muderrisCount'] === undefined) return false;
     return true;
 }
 
@@ -158,6 +165,7 @@ export function InactiveScopeResponseFromJSONTyped(json: any, ignoreDiscriminato
         'lastManager': json['lastManager'] == null ? undefined : InactivePersonResponseFromJSON(json['lastManager']),
         'lastRole': json['lastRole'],
         'wasImam': json['wasImam'],
+        'muderrisCount': json['muderrisCount'],
         'removedBy': json['removedBy'] == null ? undefined : InactivePersonResponseFromJSON(json['removedBy']),
         'removedByRole': json['removedByRole'] == null ? undefined : InactiveRemoverRoleFromJSON(json['removedByRole']),
     };
@@ -183,6 +191,7 @@ export function InactiveScopeResponseToJSONTyped(value?: InactiveScopeResponse |
         'lastManager': InactivePersonResponseToJSON(value['lastManager']),
         'lastRole': value['lastRole'],
         'wasImam': value['wasImam'],
+        'muderrisCount': value['muderrisCount'],
         'removedBy': InactivePersonResponseToJSON(value['removedBy']),
         'removedByRole': InactiveRemoverRoleToJSON(value['removedByRole']),
     };

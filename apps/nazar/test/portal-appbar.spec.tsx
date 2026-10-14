@@ -37,6 +37,7 @@ const medrese = {
   id: "m-1",
   href: "/medrese/m-1",
   name: "Süleymaniye Medresesi",
+  imam: false,
   summary: ["Medrese başmüderrisi"],
   detail: ["Medrese başmüderrisi"],
 };
@@ -46,8 +47,9 @@ const bina = {
   id: "c-1",
   href: "/ders/c-1",
   name: "Bina ve İzhar Şerhi",
-  summary: ["Müderris", "dersin imamı"],
-  detail: ["Müderris", "dersin imamı", "Nûruosmaniye Köşkü"],
+  imam: true,
+  summary: ["Müderris"],
+  detail: ["Müderris", "Nûruosmaniye Köşkü"],
 };
 
 const mount = (
@@ -67,6 +69,11 @@ const mount = (
             medrese: "Medrese",
             courses: "Dersler",
             note: "Yalnız görev aldığınız medrese ve dersler listelenir.",
+            imamStar: {
+              title: "Dersin imamı",
+              body: "Birden çok müderrisi olan derste müderrislerden biri imamdır.",
+              mark: "dersin imamı",
+            },
           }}
         />
       }
