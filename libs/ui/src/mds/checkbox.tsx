@@ -32,6 +32,12 @@ export function Checkbox({
   const uid = useId().replace(/[^\w-]/g, "");
   const labelId = `mds-choice-${uid}-l`;
   const descId = `mds-choice-${uid}-d`;
+  // A caller's own description (the line under a group of boxes) is kept
+  // beside the box's own, not replaced by it.
+  const describedBy =
+    [rest["aria-describedby"], description ? descId : undefined]
+      .filter(Boolean)
+      .join(" ") || undefined;
   return (
     // biome-ignore lint/a11y/noLabelWithoutControl: Base UI's Root renders the control, a hidden input, inside this label
     <label
@@ -45,7 +51,7 @@ export function Checkbox({
         {...rest}
         className="mds-check"
         aria-labelledby={labelId}
-        aria-describedby={description ? descId : undefined}
+        aria-describedby={describedBy}
       />
       {icon ? (
         <span className="mds-choice__icon" aria-hidden="true">

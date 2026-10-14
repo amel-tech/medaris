@@ -85,6 +85,37 @@ describe("GET /api/auth/callback/keycloak", () => {
     expect(setCookie(response, flow.name)?.attributes).toContain("max-age=0");
   });
 
+  it("after an account action, holds the new tokens and goes back to the page that asked", async () => {
+    const config = testConfig();
+    const auth = createAuth(config);
+    const flow = await startRoundTrip(
+      auth,
+      "?action=UPDATE_PROFILE&callbackUrl=%2Ftr%2Faccount%2Fpublic-profile"
+    );
+    // The tokens Keycloak issues once the profile form is saved: what the
+    // person changed (since #317, the gender claim) is in them.
+    openid.authorizationCodeGrant.mockResolvedValue(
+      tokens({ access_token: "access-after-update-profile" })
+    );
+
+    const response = await auth.handlers.callback(
+      request(
+        `/api/auth/callback/keycloak?code=abc&state=${flow.state}&kc_action=UPDATE_PROFILE&kc_action_status=success`,
+        {
+          cookie: `${flow.cookie}; ${await sessionCookieHeader(config, session())}`,
+        }
+      )
+    );
+
+    expect(response.headers.get("location")).toBe(
+      `${ORIGIN}/tr/account/public-profile`
+    );
+    await expect(storedSessionOf(config, response)).resolves.toMatchObject({
+      accessToken: "access-after-update-profile",
+      refreshToken: "refresh-new",
+    });
+  });
+
   it("does not let two tabs' round trips meet", async () => {
     const auth = createAuth(testConfig());
     const first = await startRoundTrip(auth, "?callbackUrl=%2Fbir");

@@ -6,6 +6,7 @@
   "baseUrl": "https://nazar.medaris.app",
   "redirectUris": ["https://nazar.medaris.app/api/auth/callback/keycloak"],
   "webOrigins": ["https://nazar.medaris.app"],
+  "defaultClientScopes": ["gender"],
   "attributes": {
     "pkce.code.challenge.method": "S256",
     "post.logout.redirect.uris": "https://nazar.medaris.app##https://nazar.medaris.app/",

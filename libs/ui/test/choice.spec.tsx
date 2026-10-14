@@ -128,6 +128,43 @@ describe("RadioGroup", () => {
   });
 });
 
+describe("RadioGroup's line under the options", () => {
+  const options = [
+    { value: "FEMALE", label: "Kadın" },
+    { value: "MALE", label: "Erkek" },
+  ];
+
+  it("writes the help under the options and describes every radio with it", async () => {
+    const host = await render(
+      <RadioGroup legend="Cinsiyet" options={options} help="Bir kez seçilir." />
+    );
+    const help = host.querySelector(".mds-help") as HTMLElement;
+    expect(help.textContent).toBe("Bir kez seçilir.");
+    for (const r of host.querySelectorAll("[role=radio]")) {
+      expect(r.getAttribute("aria-describedby")).toContain(help.id);
+      expect(r.hasAttribute("aria-invalid")).toBe(false);
+    }
+  });
+
+  it("an error replaces the help and marks every radio invalid", async () => {
+    const host = await render(
+      <RadioGroup
+        legend="Cinsiyet"
+        options={options}
+        help="Bir kez seçilir."
+        error="Bir seçenek seç."
+      />
+    );
+    expect(host.querySelector(".mds-help")).toBeNull();
+    const error = host.querySelector(".mds-error") as HTMLElement;
+    expect(error.textContent).toBe("Bir seçenek seç.");
+    for (const r of host.querySelectorAll("[role=radio]")) {
+      expect(r.getAttribute("aria-invalid")).toBe("true");
+      expect(r.getAttribute("aria-describedby")).toContain(error.id);
+    }
+  });
+});
+
 describe("ChoiceChips", () => {
   const options = [
     { value: "pzt", label: "Pzt" },

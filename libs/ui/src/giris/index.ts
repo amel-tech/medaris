@@ -1,4 +1,5 @@
 export { AuthCard, type AuthCardProps } from "./auth-card";
+export { ConsentForm, type ConsentFormProps } from "./consent-form";
 export { LoginForm, type LoginFormProps } from "./login-form";
 export {
   AuthMessage,
@@ -22,10 +23,22 @@ export {
   passwordProblems,
 } from "./password-rules";
 export {
+  isChoice,
+  isEmptyValue,
+  ProfileField,
+  type ProfileFieldKind,
+  type ProfileFieldOption,
+  type ProfileFieldProps,
+  type ProfileFieldSpec,
+  ProfileFields,
+  type ProfileFieldsProps,
+  type ProfileFieldValue,
+  valueList,
+} from "./profile-field";
+export {
   type PasswordFieldSpec,
   RegisterForm,
   type RegisterFormProps,
-  type TextFieldSpec,
 } from "./register-form";
 export {
   UpdatePasswordForm,

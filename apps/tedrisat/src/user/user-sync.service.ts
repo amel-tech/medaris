@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { UserIdentity } from "./interfaces/token-claims.interface";
 import { LAST_SEEN_REFRESH_HOURS, UserRepository } from "./user.repository";
 import { identityFingerprint } from "./user-identity";
+import { UserProfileRepository } from "./user-profile.repository";
 
 const REFRESH_AFTER_MS = LAST_SEEN_REFRESH_HOURS * 60 * 60 * 1000;
 
@@ -25,12 +26,24 @@ interface CacheEntry {
  * — first sight, a changed e-mail or name, an expired entry — goes to the
  * database, where `UserRepository.upsert` makes the same decision again for
  * the cases this cache cannot know about (another instance, a restart).
+ *
+ * The same goes for the account's gender (#317): when the token carries one,
+ * `user_profiles.gender` is made to mirror it, so other people's views of
+ * this person read what the account says. It is part of the fingerprint, so
+ * an unchanged gender costs nothing here and a changed one is written on the
+ * next request; `UserProfileRepository.mirrorGender` writes only when the
+ * stored value differs. A token without the claim leaves the column alone,
+ * as before.
  */
 @Injectable()
 export class UserSyncService {
   private readonly cache = new Map<string, CacheEntry>();
 
-  constructor(private readonly users: UserRepository) {}
+  // Value imports: `import type` would erase them from `design:paramtypes`.
+  constructor(
+    private readonly users: UserRepository,
+    private readonly profiles: UserProfileRepository
+  ) {}
 
   /** Writes the row if the cache cannot vouch for it. */
   async sync(identity: UserIdentity, now = Date.now()): Promise<void> {
@@ -44,17 +57,24 @@ export class UserSyncService {
       return;
     }
 
-    await this.users.upsert(identity);
+    await this.write(identity);
     this.remember(identity.id, { fingerprint, syncedAt: now });
   }
 
   /** Writes the row regardless of the cache — for a caller that must read it next. */
   async syncNow(identity: UserIdentity, now = Date.now()): Promise<void> {
-    await this.users.upsert(identity);
+    await this.write(identity);
     this.remember(identity.id, {
       fingerprint: identityFingerprint(identity),
       syncedAt: now,
     });
+  }
+
+  private async write(identity: UserIdentity): Promise<void> {
+    await this.users.upsert(identity);
+    if (identity.gender) {
+      await this.profiles.mirrorGender(identity.id, identity.gender);
+    }
   }
 
   private remember(id: string, entry: CacheEntry): void {

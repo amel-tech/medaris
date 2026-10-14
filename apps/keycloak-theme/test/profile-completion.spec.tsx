@@ -11,6 +11,8 @@
  * single-valued (`multivalued: false`) but Keycloak adds the `multivalued`
  * validator `{ max: "1" }`, it has no value, and `messagesPerField` already
  * names it. Keycloakify then holds the box as a list that starts at `[""]`.
+ * The realm had no `gender` attribute then, so the context drops it: with it
+ * empty and required, "Gönder" would wait for it as well.
  */
 import { act } from "react";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
@@ -25,6 +27,7 @@ const servedByKeycloak = {
       email: { value: "e2e.talebe@gmail.com" },
       firstName: { value: "E2E" },
       lastName: { value: "Talebe" },
+      gender: undefined,
       privacyNoticeRead: {
         value: "",
         values: [],
@@ -64,9 +67,18 @@ const posted = () =>
   form()?.querySelector<HTMLInputElement>('input[name="privacyNoticeRead"]');
 const errorShown = () => form()?.textContent?.includes(SERVER_ERROR) ?? false;
 
+/**
+ * Ticks the box the way a person does, on its label. A click on the box
+ * itself is what a browser handles too, but happy-dom then also runs the
+ * label's activation, which Base UI cancels, and the box flips twice.
+ */
 const click = async (element: HTMLElement | undefined) => {
   await act(async () => {
-    element?.click();
+    (
+      element
+        ?.closest("label")
+        ?.querySelector<HTMLElement>(".mds-choice__text") ?? element
+    )?.click();
   });
   await act(async () => {
     await new Promise((resolve) => setTimeout(resolve, 20));
