@@ -19,6 +19,7 @@ export * from "./lesson-submission.schema";
 export * from "./madrasah.schema";
 export * from "./notification.schema";
 export * from "./offsite-course-request.schema";
+export * from "./partner-enrollment.schema";
 export * from "./permission.schema";
 export * from "./platform-policy.schema";
 export * from "./role-assignment.schema";

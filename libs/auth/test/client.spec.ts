@@ -1,6 +1,7 @@
 import {
   AUTH_ERROR_CODES,
   AUTH_ERROR_MESSAGE_KEYS,
+  accountActionHref,
   authErrorMessageKey,
   enterSignIn,
   handleUnauthenticated,
@@ -76,6 +77,22 @@ describe("signInHref", () => {
     );
     expect(signInHref({ callbackUrl: "/ders/42", reauth: true })).toBe(
       "/api/auth/signin?callbackUrl=%2Fders%2F42&reauth=1"
+    );
+  });
+});
+
+describe("accountActionHref", () => {
+  it("names the start route with the action, the way back and the locale", () => {
+    expect(accountActionHref("UPDATE_PROFILE")).toBe(
+      "/api/auth/signin?action=UPDATE_PROFILE"
+    );
+    expect(
+      accountActionHref("UPDATE_PROFILE", {
+        callbackUrl: "/tr/account/public-profile",
+        locale: "tr",
+      })
+    ).toBe(
+      "/api/auth/signin?action=UPDATE_PROFILE&callbackUrl=%2Ftr%2Faccount%2Fpublic-profile&locale=tr"
     );
   });
 });

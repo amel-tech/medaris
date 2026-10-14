@@ -43,11 +43,16 @@
     "actionTokenGeneratedByUserLifespan.verify-email": "86400",
     "actionTokenGeneratedByUserLifespan.reset-credentials": "1800"
   },
+  "defaultOptionalClientScopes": ["gender", "full-name"],
   "roles": {
     "realm": [
       {
         "name": "SYSTEM_ADMIN",
         "description": "Full administrative access to tedrisat. Checked by name in libs/common/src/authz/scopes.ts (ROLES.SYSTEM_ADMIN)."
+      },
+      {
+        "name": "partner-enrollment",
+        "description": "A partner application whose registrations become course enrollments. Held by a partner client's service account only; tedrisat accepts its token on /integrations/* with it (docs/runbooks/partner-application.md)."
       }
     ]
   }

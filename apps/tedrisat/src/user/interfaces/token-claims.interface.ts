@@ -1,3 +1,5 @@
+import type { ProfileGender } from "../../database/schema/user-profile.schema";
+
 /**
  * The access-token claims tedrisat keeps a copy of (MDRS-104). `AuthGuard`
  * puts the whole verified payload on `request.user`; only these are read.
@@ -10,6 +12,8 @@ export interface TokenClaims {
   given_name?: unknown;
   family_name?: unknown;
   locale?: unknown;
+  /** The account's gender (#317); read through `mapAccessTokenClaims`. */
+  gender?: unknown;
   realm_access?: { roles?: string[] };
 }
 
@@ -25,4 +29,9 @@ export interface UserIdentity {
   givenName: string | null;
   familyName: string | null;
   locale: string | null;
+  /**
+   * The account's gender when the token carries one (#317), else null.
+   * Not a `users` column: `user_profiles.gender` mirrors it.
+   */
+  gender: ProfileGender | null;
 }

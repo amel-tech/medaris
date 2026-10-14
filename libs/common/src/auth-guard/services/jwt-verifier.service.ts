@@ -45,6 +45,15 @@ export interface JwtClaimPolicy {
    * and `loadJwtClaimPolicy` refuses that combination.
    */
   allowedClients: string[];
+  /**
+   * `azp` values refused whatever `allowedClients` says. Partner enrollments
+   * need it: a partner application's service account mints tokens with this
+   * API's own audience, so with an empty allow-list every route behind
+   * `AuthGuard` would take them. Those tokens belong on the partner routes
+   * alone, which verify them with a policy of their own. A client may not be
+   * both allowed and refused; `loadJwtClaimPolicy` refuses to start on that.
+   */
+  refusedClients: string[];
 }
 
 /**
@@ -143,11 +152,26 @@ export function loadJwtClaimPolicy(config: ConfigService): JwtClaimPolicy {
     );
   }
 
+  const refusedClients = toList(config.get("keycloak.refusedClients"));
+  const both = refusedClients.filter((client) =>
+    allowedClients.includes(client)
+  );
+  if (both.length > 0) {
+    throw new Error(
+      `JwtVerifierService was configured to both allow and refuse the client "${both.join(
+        '", "'
+      )}". keycloak.allowedClients (KEYCLOAK_ALLOWED_CLIENTS) names the ` +
+        "front-ends that call this API; a client on keycloak.refusedClients " +
+        "(a partner application) is never one of them."
+    );
+  }
+
   return {
     issuer,
     // Non-empty by the guard above.
     audience: audience as [string, ...string[]],
     allowedClients,
+    refusedClients,
   };
 }
 
@@ -175,17 +199,19 @@ function verificationFailure(error: unknown): Error {
   );
 }
 
-@Injectable()
-export class JwtVerifierService implements IJwtVerifier {
-  private readonly policy: JwtClaimPolicy;
-
+/**
+ * Verifies access tokens against one claim policy, with the keys of one
+ * provider. `JwtVerifierService` is this with the policy read from
+ * configuration; a guard with a policy of its own (the partner routes, whose
+ * clients are not the front-ends') builds one on the same key provider, so
+ * the signature, algorithm, `iss`, `aud`, `exp` and token-type checks are the
+ * same code everywhere.
+ */
+export class JwtTokenVerifier implements IJwtVerifier {
   constructor(
-    @Inject(PUBLIC_KEY_PROVIDER) private keyProvider: IPublicKeyProvider,
-    // No bare `@Inject()` here: see KeycloakPublicKeyProvider's constructor.
-    configService: ConfigService
-  ) {
-    this.policy = loadJwtClaimPolicy(configService);
-  }
+    private readonly keyProvider: IPublicKeyProvider,
+    protected readonly policy: JwtClaimPolicy
+  ) {}
 
   async verifyToken(token: string): Promise<JWTPayload> {
     let kid: unknown;
@@ -249,6 +275,17 @@ export class JwtVerifierService implements IJwtVerifier {
       );
     }
 
+    // Checked before the allow-list, so a refused client stays refused when
+    // the allow-list is empty and the audience is this API's own.
+    if (
+      claims.clientId !== undefined &&
+      this.policy.refusedClients.includes(claims.clientId)
+    ) {
+      throw new JwtClaimError(
+        `JWT was issued to a client whose tokens these routes refuse: azp is "${claims.clientId}"`
+      );
+    }
+
     if (this.policy.allowedClients.length > 0) {
       if (
         claims.clientId === undefined ||
@@ -263,5 +300,16 @@ export class JwtVerifierService implements IJwtVerifier {
     }
 
     return decoded;
+  }
+}
+
+@Injectable()
+export class JwtVerifierService extends JwtTokenVerifier {
+  constructor(
+    @Inject(PUBLIC_KEY_PROVIDER) keyProvider: IPublicKeyProvider,
+    // No bare `@Inject()` here: see KeycloakPublicKeyProvider's constructor.
+    configService: ConfigService
+  ) {
+    super(keyProvider, loadJwtClaimPolicy(configService));
   }
 }

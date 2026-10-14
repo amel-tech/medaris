@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Transform, Type } from "class-transformer";
 import {
+  IsBoolean,
   IsDate,
   IsEnum,
   IsNotEmpty,
@@ -43,6 +44,15 @@ export class StartRecordingUploadDto {
   @Type(() => Date)
   @IsDate()
   recordedAt?: Date;
+
+  @ApiPropertyOptional({
+    default: false,
+    description:
+      "True from the edit dialog of a session's Bunny recording: this upload replaces its video whatever its status, READY, PROCESSING or FAILED, and the replaced video is deleted from Bunny once this upload is over. Without it a Bunny video PROCESSING or READY is refused with RECORDING_EXISTS, so two people adding at once still collide.",
+  })
+  @IsOptional()
+  @IsBoolean()
+  replaceVideo?: boolean;
 }
 
 /**

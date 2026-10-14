@@ -43,6 +43,7 @@ const profile = (
 ): MyPublicProfileResponse => ({
   kunye: "Zeynep Betül Üsküdârî",
   gender: "FEMALE",
+  genderManagedByAccount: false,
   city: "İstanbul",
   about: "Sarf ve nahiv okuyorum.",
   fullName: "Zeynep Betül Karahanlı",
@@ -213,5 +214,86 @@ describe("Herkese açık profil (design tedris/35)", () => {
     expect(mocks.notify).toHaveBeenCalledWith(
       expect.objectContaining({ tone: "success" })
     );
+  });
+});
+
+describe("the gender, once the account holds it (#317)", () => {
+  const radios = (host: HTMLElement) =>
+    host.querySelectorAll('[role="radio"], input[type="radio"]');
+  const submit = (host: HTMLElement) =>
+    click(host.querySelector('button[type="submit"]') as HTMLElement);
+
+  it("shows the token's gender read-only, with 'Değiştir' to Keycloak's profile form and back", async () => {
+    const host = await mount(
+      profile({ gender: "MALE", genderManagedByAccount: true })
+    );
+    const box = host.querySelector(
+      '[data-testid="profile-gender-account"]'
+    ) as HTMLElement;
+    expect(box).not.toBeNull();
+    expect(radios(host)).toHaveLength(0);
+    const field = box.querySelector('input[name="gender"]') as HTMLInputElement;
+    expect(field.readOnly).toBe(true);
+    expect(field.value).toBe("Erkek");
+    expect(box.textContent).toContain("Salt okunur.");
+
+    const change = [...box.querySelectorAll("a")].find(
+      (a) => a.textContent === "Değiştir"
+    );
+    expect(change?.getAttribute("href")).toBe(
+      "/api/auth/signin?action=UPDATE_PROFILE&callbackUrl=%2Ftr%2Faccount%2Fpublic-profile&locale=tr"
+    );
+  });
+
+  it("never sends the gender the account holds with 'Kaydet'", async () => {
+    mocks.saveTexts.mockResolvedValue({
+      success: true,
+      data: profile({ gender: "MALE", genderManagedByAccount: true }),
+    });
+    const host = await mount(
+      profile({ gender: "MALE", genderManagedByAccount: true })
+    );
+    await submit(host);
+    await settle();
+    expect(mocks.saveTexts).toHaveBeenCalledTimes(1);
+    expect(mocks.saveTexts.mock.calls[0]?.[0]).toMatchObject({
+      kunye: "Zeynep Betül Üsküdârî",
+    });
+    expect(mocks.saveTexts.mock.calls[0]?.[0].gender).toBeUndefined();
+  });
+
+  it("keeps today's radio, and sends its choice, when the token carries no gender", async () => {
+    mocks.saveTexts.mockResolvedValue({ success: true, data: profile() });
+    const host = await mount(profile());
+    expect(
+      host.querySelector('[data-testid="profile-gender-account"]')
+    ).toBeNull();
+    expect(radios(host).length).toBeGreaterThanOrEqual(2);
+    expect(host.textContent).not.toContain("Değiştir");
+
+    await submit(host);
+    await settle();
+    expect(mocks.saveTexts).toHaveBeenCalledWith(
+      expect.objectContaining({ gender: "FEMALE" })
+    );
+  });
+
+  it("says the account holds the gender now when tedrisat refuses the save for it, not that the künye is taken", async () => {
+    mocks.saveTexts.mockResolvedValue({
+      success: false,
+      error: "The gender is kept in the account; change it there",
+      status: 409,
+      code: "GENDER_MANAGED_BY_ACCOUNT",
+    });
+    const host = await mount(profile());
+    await submit(host);
+    await settle();
+    expect(mocks.notify).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tone: "error",
+        title: "Cinsiyetin artık hesabından değiştiriliyor.",
+      })
+    );
+    expect(host.textContent).not.toContain("Bu künyeyi başka biri kullanıyor");
   });
 });

@@ -9,6 +9,7 @@ src/apis/FlashcardCardsApi.ts
 src/apis/FlashcardDeckLabelApi.ts
 src/apis/FlashcardDecksApi.ts
 src/apis/FlashcardlabelApi.ts
+src/apis/IntegrationsApi.ts
 src/apis/KoskApplicationsApi.ts
 src/apis/KosksApi.ts
 src/apis/LessonAssignmentsApi.ts
@@ -26,6 +27,7 @@ src/apis/index.ts
 src/index.ts
 src/models/AcceptCourseRequestDto.ts
 src/models/AddKoskNazimsDto.ts
+src/models/AddPartnerCodeDto.ts
 src/models/AgendaStepDto.ts
 src/models/AgendaStepResponse.ts
 src/models/AllBansListResponse.ts
@@ -73,6 +75,8 @@ src/models/CourseMadrasahResponse.ts
 src/models/CourseNazirCourseResponse.ts
 src/models/CourseNazirResponse.ts
 src/models/CourseNazirsResponse.ts
+src/models/CoursePartnerCodesItem.ts
+src/models/CoursePartnerCodesResponse.ts
 src/models/CourseQuestionResponse.ts
 src/models/CourseRequestListResponse.ts
 src/models/CourseRequestPersonResponse.ts
@@ -314,6 +318,12 @@ src/models/PaginatedLessonQuestionResponse.ts
 src/models/PaginatedMadrasahArchiveResponse.ts
 src/models/PaginatedMadrasahResponse.ts
 src/models/PaginatedNotificationResponse.ts
+src/models/PartnerApplicationResponse.ts
+src/models/PartnerCodeResponse.ts
+src/models/PartnerCourseResponse.ts
+src/models/PartnerEnrollDto.ts
+src/models/PartnerEnrollmentResponse.ts
+src/models/PartnerUnenrollmentResponse.ts
 src/models/PassivateScopeDto.ts
 src/models/PassivationCourseResponse.ts
 src/models/PassivationCoursesResponse.ts

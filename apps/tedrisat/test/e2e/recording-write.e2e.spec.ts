@@ -20,6 +20,7 @@ import { RecordingEncodingPoller } from "../../src/course/recording-encoding.pol
 import { DatabaseService } from "../../src/database/database.service";
 import { auditLog } from "../../src/database/schema/audit.schema";
 import {
+  bunnyVideoRemovals,
   courses,
   courseWeeks,
   enrollments,
@@ -50,8 +51,9 @@ import { bearerFor } from "../helpers/test-keycloak.helper";
  * (`test/unit/course/recording-link.spec.ts`). This covers the guard, the
  * permission `recording.manage` for every way it is held, the lesson's state,
  * the audit rows, the round trip to the talebe, and a pasted Bunny link: one
- * app runs with a Bunny library configured (its transport a stub that must
- * never be called: a pasted link asks nothing of Bunny), the other with none.
+ * app runs with a Bunny library configured (its transport a stub: a pasted
+ * link asks nothing of Bunny, and only the encoding poll deletes a video a
+ * link took the place of), the other with none.
  */
 
 const MANAGER_ID = "e2470000-0000-4000-8000-000000000001";
@@ -197,10 +199,14 @@ describe("a session's recording link (MDRS-247, e2e)", () => {
       "permission_grants",
       "permission_groups",
       ...COURSE_TREE_TABLES,
+      "bunny_video_removals",
       "notifications",
       "audit_log",
       "users"
     );
+
+  /** The Bunny videos waiting to be deleted (13 October). */
+  const queued = () => db().select().from(bunnyVideoRemovals);
 
   /** The "Kayıt eklendi" rows written so far (MDRS-283). */
   const recordingNews = () =>
@@ -216,8 +222,11 @@ describe("a session's recording link (MDRS-247, e2e)", () => {
         { provide: BUNNY_STREAM_CONFIG, useValue: LIBRARY },
         {
           provide: BUNNY_STREAM_FETCH,
-          useValue: async (input: string | URL | Request) => {
-            bunnyCalls.push(String(input));
+          useValue: async (
+            input: string | URL | Request,
+            init?: RequestInit
+          ) => {
+            bunnyCalls.push(`${init?.method ?? "GET"} ${String(input)}`);
             return new Response("{}", { status: 404 });
           },
         },
@@ -922,6 +931,15 @@ describe("a session's recording link (MDRS-247, e2e)", () => {
       });
       const [entry] = await auditRows(failed.id);
       expect(entry?.details).toMatchObject({ replacedVideoId: OTHER_VIDEO });
+      // 13 October: the failed upload's video leaves the library too
+      expect(await queued()).toMatchObject([
+        {
+          videoId: OTHER_VIDEO,
+          recordingId: failed.id,
+          replacedByVideoId: null,
+          queuedBy: MUDERRIS_ID,
+        },
+      ]);
     });
 
     it("replaces a FAILED upload with a Bunny link too, even of the same video", async () => {
@@ -938,6 +956,8 @@ describe("a session's recording link (MDRS-247, e2e)", () => {
         bunnyVideoId: OTHER_VIDEO,
         status: RecordingStatus.READY,
       });
+      // the recording keeps its video: nothing to delete
+      expect(await queued()).toEqual([]);
     });
 
     it.each([
@@ -1023,7 +1043,9 @@ describe("a session's recording link (MDRS-247, e2e)", () => {
       expect(bunnyCalls).toEqual([]);
     });
 
-    it("replaces an upload still PROCESSING with a pasted link, which the poll then leaves alone", async () => {
+    // 13 October: the poll used to ask Bunny nothing here; the video the link
+    // replaced is now deleted from the library, and the recording left alone.
+    it("replaces an upload still PROCESSING with a pasted link; the poll leaves the recording alone and deletes the replaced video", async () => {
       const upload = await bunnyUpload(lessonId, RecordingStatus.PROCESSING);
       await change(upload.id, MUDERRIS_ID, { url: ZOOM }, library).expect(200);
       expect(await recordingOf(lessonId)).toMatchObject({
@@ -1033,7 +1055,67 @@ describe("a session's recording link (MDRS-247, e2e)", () => {
         uploadExpiresAt: null,
         status: RecordingStatus.READY,
       });
-      await library.get(RecordingEncodingPoller).pollOnce(new Date());
+      expect(
+        await library.get(RecordingEncodingPoller).pollOnce(new Date())
+      ).toMatchObject({ ready: 0, failed: 0, waiting: 0, removed: 1 });
+      // no read of the recording's status, one Delete of the video it lost
+      expect(bunnyCalls).toEqual([
+        `DELETE https://video.bunnycdn.com/library/${LIBRARY.libraryId}/videos/${OTHER_VIDEO}`,
+      ]);
+      expect(await recordingOf(lessonId)).toMatchObject({
+        provider: RecordingProvider.OTHER,
+        url: ZOOM,
+        status: RecordingStatus.READY,
+      });
+      expect(await queued()).toEqual([]);
+    });
+
+    // 13 October: a Bunny video another link takes the place of leaves the
+    // library; the same video's link pasted again keeps it.
+    it("queues the Bunny video another link takes the place of, and nothing when the same video is pasted again", async () => {
+      const upload = await bunnyUpload(lessonId, RecordingStatus.READY);
+
+      await change(
+        upload.id,
+        MUDERRIS_ID,
+        { url: bunnyLink(OTHER_VIDEO.toUpperCase()) },
+        library
+      ).expect(200);
+      await change(
+        upload.id,
+        MUDERRIS_ID,
+        { title: "Yeni ad" },
+        library
+      ).expect(200);
+      expect(await queued()).toEqual([]);
+
+      // another Bunny video: the one it held goes
+      await change(
+        upload.id,
+        MUDERRIS_ID,
+        { url: bunnyLink(VIDEO) },
+        library
+      ).expect(200);
+      expect(await queued()).toMatchObject([
+        {
+          videoId: OTHER_VIDEO,
+          recordingId: upload.id,
+          replacedByVideoId: null,
+          queuedBy: MUDERRIS_ID,
+          attempts: 0,
+          lastAttemptAt: null,
+        },
+      ]);
+
+      // a link of another host: that one goes too
+      await change(upload.id, NAZIR_ID, { url: ZOOM }).expect(200);
+      const rows = await queued();
+      expect(rows).toHaveLength(2);
+      expect(rows.find((r) => r.videoId === VIDEO)).toMatchObject({
+        recordingId: upload.id,
+        replacedByVideoId: null,
+        queuedBy: NAZIR_ID,
+      });
       expect(bunnyCalls).toEqual([]);
     });
   });

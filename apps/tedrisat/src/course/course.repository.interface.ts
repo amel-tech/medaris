@@ -308,6 +308,12 @@ export interface IRemoveEnrollment {
   reason: string;
   /** Only an enrollment still in this state is removed. */
   expectedStatus: EnrollmentStatus;
+  /**
+   * More for the audit row, beside what the row always records: a partner
+   * application's removal names the partner here (`partner`), so the audit
+   * page and "Erişimi kaldırılanlar" can show who acted.
+   */
+  auditDetails?: Record<string, unknown>;
 }
 
 export interface IEnrollOptions {

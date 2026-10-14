@@ -9,7 +9,7 @@ What it does, and where:
 
 | Concern | Where | Notes |
 | -- | -- | -- |
-| Start a sign-in | `GET /api/auth/signin` | PKCE S256, `state`, `nonce`; `ui_locales` (+ `kc_locale`); `intent=register` → `prompt=create`; `reauth=1` → new tokens even when signed in |
+| Start a sign-in | `GET /api/auth/signin` | PKCE S256, `state`, `nonce`; `ui_locales` (+ `kc_locale`); `intent=register` → `prompt=create`; `reauth=1` → new tokens even when signed in; `action=UPDATE_PROFILE` → `kc_action` (an account action) |
 | Finish it | `GET /api/auth/callback/keycloak` | the redirect URI the Keycloak clients already have |
 | Sign out | `POST /api/auth/signout` | `id_token_hint` read on the server, never empty |
 | Client-safe session | `GET /api/auth/session` | `{ user, expiresAt }` or `null`; no token |
@@ -19,10 +19,12 @@ What it does, and where:
 | Server reads | `auth()`, `getAccessToken()`, `requireSession()`, `requireAccessToken()`, `withAccessToken()`, `redirectToSignIn()` | read only, once per request |
 | Specs and Playwright | `@medaris/auth/testing` | the session cookie through the package's own code |
 | Client | `SessionProvider`, `useSession()`, `signIn()`, `enterSignIn()`, `signOut()`, `handleUnauthenticated()` | no token reaches client JS |
+| Account actions | `accountActionHref()` (both entries) | a link to the IdP's form for an account action, and back with new tokens |
 
 The login page stays the IdP's (no ROPC, no iframe). Every IdP endpoint comes
-from OIDC discovery; the only Keycloak-specific parameter, `kc_locale`, is
-behind the `kcLocale` option.
+from OIDC discovery; the Keycloak-specific parameters are `kc_locale`, behind
+the `kcLocale` option, and `kc_action`, sent only for an account action an app
+starts (below).
 
 ## Entry points
 
@@ -40,8 +42,9 @@ behind the `kcLocale` option.
 
 Both app entries export `isUnauthenticated`, the `Session` / `SessionUser`
 types, the error codes and message keys (`AUTH_ERROR_CODES`,
-`AUTH_ERROR_MESSAGE_KEYS`, `authErrorMessageKey`, `isRetryableAuthError`) and
-`REAUTH_PARAM`.
+`AUTH_ERROR_MESSAGE_KEYS`, `authErrorMessageKey`, `isRetryableAuthError`),
+`REAUTH_PARAM` and the account actions (`accountActionHref`,
+`ACCOUNT_ACTIONS`, `ACCOUNT_ACTION_PARAM`, `AccountAction`).
 
 ## Wiring an app
 
@@ -226,6 +229,38 @@ them.
 
 A confirm page or a button calls `signOut({ locale })`. It posts a form to
 `/api/auth/signout`; there is no ID token on the client to pass.
+
+### Account actions
+
+Something the account holds, not the app (since #317, the gender in the
+profile), is changed on the IdP's own form. Keycloak calls these
+application-initiated actions: the authorization request carries
+`kc_action=<action>`, Keycloak shows that form to the signed-in user (the
+login form first when the SSO session has ended) and then sends the browser to
+the callback with a code, as for a sign-in. The callback stores a new session
+from that code, ending the old one, so the tokens the app holds afterwards say
+what the person changed. A "Değiştir" link is enough:
+
+```tsx
+import { accountActionHref } from "@medaris/auth/client"; // or /server
+<Button
+  href={accountActionHref("UPDATE_PROFILE", {
+    callbackUrl: `/${locale}/account/public-profile`,
+    locale,
+  })}
+>
+  Değiştir
+</Button>
+```
+
+- Only the actions in `ACCOUNT_ACTIONS` (`UPDATE_PROFILE`) are passed on; the
+  start route treats any other `action=` as none, so a link cannot open
+  Keycloak's `delete_account` in the app's name.
+- It goes through the IdP even when the browser is signed in, like `reauth`,
+  and counts against the start route's cap like any start.
+- A callback that fails (Keycloak answering `error=`) lands on the sign-in page
+  like any failed callback; the session the browser had is untouched, and the
+  sign-in page goes straight back to `callbackUrl`.
 
 ### Reads and the one "unauthenticated" path
 
@@ -558,5 +593,10 @@ next request asks again.
   `x-middleware-override-headers` in `resolve-routes.js` and
   `request-store.js`), not observed.
 - Keycloak's handling of `ui_locales` on its end-session endpoint.
+- An account action against a real Keycloak: that `kc_action=UPDATE_PROFILE`
+  shows the profile form and comes back with a code (also when the person
+  cancels, with `kc_action_status=cancelled`), and that the tokens issued then
+  carry the changed attribute. No Keycloak was run for it; the specs drive the
+  start route and the callback with openid-client mocked.
 - `@medaris/auth/testing` has been loaded by Vitest only, not yet by a
   Playwright run.

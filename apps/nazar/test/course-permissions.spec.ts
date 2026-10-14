@@ -114,12 +114,14 @@ describe("whether a page opens", () => {
       "enrollment.complete",
       "enrollment.remove",
     ]);
-    // Ders ayarları: its controls ask the first three, the sample session the last
+    // Ders ayarları: its controls ask the first three, the sample session the
+    // fourth, "Ortak uygulama kodları" the last (partner enrollments)
     expect(PAGE_CODES.settings).toEqual([
       "course.edit",
       "course.settings",
       "course.publish",
       "session.manage",
+      "course.partner_codes",
     ]);
   });
 

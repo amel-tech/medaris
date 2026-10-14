@@ -45,6 +45,12 @@ export interface StartRecordingUploadDto {
      * @memberof StartRecordingUploadDto
      */
     recordedAt?: Date;
+    /**
+     * True from the edit dialog of a session's Bunny recording: this upload replaces its video whatever its status, READY, PROCESSING or FAILED, and the replaced video is deleted from Bunny once this upload is over. Without it a Bunny video PROCESSING or READY is refused with RECORDING_EXISTS, so two people adding at once still collide.
+     * @type {boolean}
+     * @memberof StartRecordingUploadDto
+     */
+    replaceVideo?: boolean;
 }
 
 
@@ -70,6 +76,7 @@ export function StartRecordingUploadDtoFromJSONTyped(json: any, ignoreDiscrimina
         'title': json['title'],
         'visibility': json['visibility'] == null ? undefined : RecordingVisibilityFromJSON(json['visibility']),
         'recordedAt': json['recordedAt'] == null ? undefined : (new Date(json['recordedAt'])),
+        'replaceVideo': json['replaceVideo'] == null ? undefined : json['replaceVideo'],
     };
 }
 
@@ -87,6 +94,7 @@ export function StartRecordingUploadDtoToJSONTyped(value?: StartRecordingUploadD
         'title': value['title'],
         'visibility': RecordingVisibilityToJSON(value['visibility']),
         'recordedAt': value['recordedAt'] == null ? undefined : ((value['recordedAt']).toISOString()),
+        'replaceVideo': value['replaceVideo'],
     };
 }
 

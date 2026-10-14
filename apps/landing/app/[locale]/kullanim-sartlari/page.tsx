@@ -27,7 +27,7 @@ export default async function Page({
               Girişte gördüğünüz şartların özeti, bu metnin kısa hâlidir.
             </p>
             <p className="mds-caption">
-              Son güncelleme: <time dateTime="2026-10-04">4 Ekim 2026</time> ·
+              Son güncelleme: <time dateTime="2026-10-14">14 Ekim 2026</time> ·
               Yürürlük tarihi: {legal.termsEffectiveDate}
             </p>
           </div>
@@ -188,8 +188,10 @@ export default async function Page({
               </p>
               <ul className="mbe-0 ps-6">
                 <li>
-                  Hesap açarken ad, soyad, kullanıcı adı, e-posta adresi ve
-                  şifre verilir. Hesap, e-posta adresinin doğrulanmasıyla
+                  Hesap açarken ad, soyad, cinsiyet, kullanıcı adı, e-posta
+                  adresi ve şifre verilir. Cinsiyet, kadın ya da erkek olarak
+                  seçilir ve zorunludur; daha önce açılmış hesaplardan girişte
+                  bir kez istenir. Hesap, e-posta adresinin doğrulanmasıyla
                   etkinleşir.
                 </li>
                 <li>
@@ -197,6 +199,19 @@ export default async function Page({
                   kadrosu, talebenin adını ve e-posta adresini görür; medrese
                   dersinde medrese kadrosu da kendi kapsamındaki talebeler için
                   aynısını görür.
+                </li>
+                {/* The owner's two reasons for asking the gender (13 October).
+                    The public profile is off for now (MDRS-141); the owner
+                    (14 October): the gender is not shown there, and whether
+                    it will be is decided when the profile is turned back
+                    on. */}
+                <li>
+                  Cinsiyet, yüz yüze derslerde kadın ve erkek kontenjanlarının
+                  ayrı sayılması ve hangi talebeyle kimin iletişim kuracağının
+                  belirlenmesi için kullanılır; ders kadrosu ile buna ihtiyaç
+                  duyan medrese ve köşk kadroları onu görür. Cinsiyet herkese
+                  açık profilde gösterilmez ve Medaris’te bu kadrolardan başkası
+                  onu görmez.
                 </li>
                 <li>
                   Kullanıcı adı yalnızca giriş yapmak için kullanılır; başka
@@ -209,6 +224,22 @@ export default async function Page({
                 <li>
                   Giriş, bu şartların kabul edilmesiyle tamamlanır; kabul tarihi
                   hesapta saklanır.
+                </li>
+                {/* Partner applications stay unnamed (owner, 13 October). What
+                    they receive and where consent is withdrawn: the owner,
+                    14 October. */}
+                <li>
+                  Bazı ortak uygulamalar “Medaris ile giriş yap” seçeneği sunar.
+                  Bu seçenekle giriş yapılırken uygulamanın göreceği bilgiler
+                  bir onay ekranında listelenir. Bu ekranda izin verilirse
+                  uygulamaya yalnızca ad, soyad, e-posta adresi ve cinsiyet
+                  iletilir; izin verilmezse hiçbir bilgi iletilmez. Kullanıcı
+                  adı ve dil tercihi hiçbir ortak uygulamaya iletilmez. Verilen
+                  izin, Tedris’te Hesap sayfasındaki “Bağlı uygulamalar”
+                  bağlantısından dilendiği zaman geri alınabilir; bundan sonra
+                  uygulamaya yeni bilgi iletilmez. Ortak uygulamalar Medaris’in
+                  parçası değildir; kullanılırken uygulamanın kendi şartları da
+                  geçerlidir.
                 </li>
                 <li>
                   Kişisel veriler,{" "}

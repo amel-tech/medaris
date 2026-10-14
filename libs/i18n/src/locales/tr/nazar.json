@@ -142,6 +142,7 @@
       "ban_manage_kosk": "Ders ve köşk düzeyinde yasakla ya da yasağı gerekçeyle kaldır; ders yasağını köşke genişlet",
       "deck_manage_kosk": "Köşk destesini aç ve düzenle",
       "course_nazir_assign_kosk": "Köşkün medrese dışı derslerinde ders nazırı ata ve izin ver, kendi izinlerinizi aşmadan",
+      "course_partner_codes": "Ortak uygulama kodlarını köşkün derslerine bağla",
       "user_lookup": "E-postayla kullanıcı bul",
       "course_edit": "Dersi düzenle: başlık, tanıtım, müfredat, saat dilimi",
       "session_manage": "Celse ekle, tarihini değiştir, iptal et; toplantı bağlantısını gir",
@@ -1627,6 +1628,28 @@
       "policy": "Bir politika bu değişikliği kilitliyor; ayar değiştirilmedi.",
       "invalid": "Bu değer kaydedilemez. Sayfayı yenileyip yeniden deneyin.",
       "generic": "İşlem tamamlanamadı. Biraz sonra yeniden deneyin."
+    },
+    "partnerCodes": {
+      "title": "Ortak uygulama kodları",
+      "intro": "Bir ortak uygulamadaki kayıtlar bu kodlarla derse bağlanır. Orada onaylanan kişi bu derse talebe olarak kaydedilir; kaydı orada iptal edilirse yalnız bu yolla eklenen ders kaydı kaldırılır.",
+      "empty": "Bu derse bağlı kod yok.",
+      "listLabel": "{name} kodları",
+      "codeLabel": "Kod ekle",
+      "codeHelp": "Ortak uygulamadaki kod: küçük harf, rakam ve tire, en çok 64 karakter.",
+      "add": "Ekle",
+      "remove": "Kaldır",
+      "added": "Kod eklendi",
+      "addedBody": "{name} kodu {code} artık bu derse bağlı.",
+      "removed": "Kod kaldırıldı",
+      "removedBody": "{name} kodu {code} artık bu derse bağlı değil. Bu kodla kaydedilen talebeler derste kalır.",
+      "removeFailed": "Kod kaldırılamadı",
+      "loadFailed": "Ortak uygulama kodları şu an okunamıyor. Biraz sonra yeniden deneyin.",
+      "errors": {
+        "empty": "Bir kod yazın.",
+        "shape": "Kod yalnız küçük harf, rakam ve tire içerebilir; harf ya da rakamla başlar.",
+        "taken": "Bu kod başka bir derse bağlı. Önce o dersten kaldırılması gerekir.",
+        "unknownPartner": "Bu ortak uygulama artık tanımlı değil. Sayfayı yenileyin."
+      }
     }
   },
   "Curriculum": {
@@ -1905,6 +1928,7 @@
       "titleLabel": "Başlık",
       "linkLabel": "Bağlantı",
       "linkHelp": "Kaydın https bağlantısını yapıştırın; platform adresten anlaşılır.",
+      "linkReplacesVideo": "Başka bir bağlantı yapıştırırsanız şimdiki video Bunny’den silinir.",
       "detected": ", bağlantıdan algılandı",
       "publicLabel": "Herkese açık",
       "publicHelp": "Kapalıyken yalnızca derse kayıtlı talebe ve ders ekibi izler.",
@@ -1946,6 +1970,8 @@
       "fileHelp": "En çok {max}. Bağlantı koparsa yükleme kaldığı yerden sürer.",
       "chosen": "{name} · {size}",
       "replacesLink": "Yüklediğiniz video bu kaydın bağlantısının yerine geçer. Yükleme başlayınca bağlantı kayıttan kalkar.",
+      "replacesVideo": "Yüklediğiniz video bu kaydın şimdiki videosunun yerine geçer. Yükleme başlayınca şimdiki video kayıttan kalkar; yükleme bitince Bunny’den silinir.",
+      "stopsUpload": "Bu kaydın yüklemesi sürüyorsa durur.",
       "submit": "Yükle",
       "cancel": "İptal",
       "resume": "Devam et",

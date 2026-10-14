@@ -446,3 +446,25 @@ export const lessonRecordings = table(
     ),
   ]
 );
+
+// Bunny videos that left their recording and wait to be deleted from the
+// library (13 October: a wrong file uploaded to a session must not stay in
+// Bunny). A row is written in the same transaction that takes the video off
+// its recording: a new upload in its place (`replaced_by_video_id` is that
+// upload's video) or a pasted link (null). The encoding poll deletes the video
+// once the upload that replaced it is over, never while a recording holds it
+// again, and retries what Bunny refused (`attempts`, `last_attempt_at`). No
+// foreign key: the row outlives a recording that is deleted meanwhile, and
+// `queued_by` is a user column like every other one.
+export const bunnyVideoRemovals = table("bunny_video_removals", {
+  videoId: text("video_id").primaryKey(),
+  recordingId: uuid("recording_id").notNull(),
+  replacedByVideoId: text("replaced_by_video_id"),
+  // Who took the video off; its deletion is audited in their name.
+  queuedBy: uuid("queued_by").notNull(),
+  queuedAt: timestamp("queued_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  attempts: integer("attempts").default(0).notNull(),
+  lastAttemptAt: timestamp("last_attempt_at", { withTimezone: true }),
+});

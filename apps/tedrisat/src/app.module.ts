@@ -23,6 +23,7 @@ import { FlashcardModule } from "./flashcard/flashcard.module";
 import { FlashcardLabelModule } from "./flashcard/flashcard-label.module";
 import { HostingModule } from "./hosting/hosting.module";
 import { InactiveScopeModule } from "./inactive-scope/inactive-scope.module";
+import { IntegrationModule } from "./integration/integration.module";
 import { KoskModule } from "./kosk/kosk.module";
 import { KoskApplicationModule } from "./kosk-application/kosk-application.module";
 import { LessonNoteModule } from "./lesson-note/lesson-note.module";
@@ -82,6 +83,8 @@ import { UserModule } from "./user/user.module";
     BanModule,
     NizamDashboardModule,
     UserModule,
+    // Partner enrollments: `/integrations/*` and the course's partner codes.
+    IntegrationModule,
   ],
   controllers: [AppController],
   providers: [AppService],

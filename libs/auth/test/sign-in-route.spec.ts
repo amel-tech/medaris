@@ -200,6 +200,70 @@ describe("GET /api/auth/signin", () => {
     expect(openid.buildAuthorizationUrl).toHaveBeenCalledTimes(1);
   });
 
+  it("starts Keycloak's update-profile action with kc_action, through the IdP though signed in", async () => {
+    const config = testConfig({ kcLocale: true, locales: ["tr", "en", "ar"] });
+    const { handlers } = createAuth(config);
+    const response = await handlers.signIn(
+      request(
+        "/api/auth/signin?action=UPDATE_PROFILE&callbackUrl=%2Ftr%2Faccount%2Fpublic-profile&locale=tr",
+        {
+          cookie: `${await sessionCookieHeader(config, session())}; nazar.auth-starts=1.${clock.now - 60_000}`,
+        }
+      )
+    );
+    expect(new URL(response.headers.get("location") as string).origin).toBe(
+      "https://idp.example"
+    );
+    expect(authorizeParams()).toMatchObject({
+      kc_action: "UPDATE_PROFILE",
+      ui_locales: "tr",
+      kc_locale: "tr",
+    });
+    expect(authorizeParams()).not.toHaveProperty("prompt");
+    // Counted like any start, and back to the page that asked.
+    expect(setCookie(response, "nazar.auth-starts")?.value).toBe(
+      `2.${clock.now - 60_000}`
+    );
+    const key = await deriveKey("test-nextauth-secret", "nazar", "flow");
+    await expect(
+      unseal(flowCookieOf(response)?.value as string, key, clock.now)
+    ).resolves.toMatchObject({ returnTo: "/tr/account/public-profile" });
+  });
+
+  it.each([
+    ["Keycloak's account deletion", "delete_account"],
+    ["another case", "update_profile"],
+    ["an empty value", ""],
+  ])("starts no account action for %s", async (_, action) => {
+    const config = testConfig();
+    const { handlers } = createAuth(config);
+    const response = await handlers.signIn(
+      request(`/api/auth/signin?action=${action}&callbackUrl=%2Fhesap`, {
+        cookie: await sessionCookieHeader(config, session()),
+      })
+    );
+    // A plain start: signed in, so straight on, and nothing for the IdP.
+    expect(response.headers.get("location")).toBe(`${ORIGIN}/hesap`);
+    expect(openid.buildAuthorizationUrl).not.toHaveBeenCalled();
+
+    await handlers.signIn(request(`/api/auth/signin?action=${action}`));
+    expect(authorizeParams()).not.toHaveProperty("kc_action");
+  });
+
+  it("refuses an account action at the cap like any start", async () => {
+    const config = testConfig();
+    const { handlers } = createAuth(config);
+    const response = await handlers.signIn(
+      request("/api/auth/signin?action=UPDATE_PROFILE&callbackUrl=%2Fhesap", {
+        cookie: `${await sessionCookieHeader(config, session())}; nazar.auth-starts=${MAX_STARTS_PER_WINDOW}.${clock.now - 60_000}`,
+      })
+    );
+    expect(response.headers.get("location")).toBe(
+      `${ORIGIN}/auth/signin?error=SignInLimit&callbackUrl=%2Fhesap`
+    );
+    expect(openid.buildAuthorizationUrl).not.toHaveBeenCalled();
+  });
+
   it("sends an IdP it cannot reach to the sign-in page as OAuthSignin", async () => {
     openid.discovery.mockRejectedValue(new TypeError("fetch failed"));
     vi.spyOn(console, "error").mockImplementation(() => undefined);

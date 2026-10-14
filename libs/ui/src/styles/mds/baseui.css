@@ -11,7 +11,13 @@
 :is(.mds-check, .mds-radio, .mds-switch):is(span, button) { display: inline-block; padding: 0; }
 .mds-chip:is(button) { appearance: none; margin: 0; cursor: pointer; }
 .mds-chips-field { display: flex; flex-direction: column; gap: var(--space-2); min-inline-size: 0; }
-.mds-choice-group > .mds-label { padding-block-end: var(--space-2); }
+/* A group's legend sits 8px above its first option and its help or error line
+   8px under its last (the system's RadioGroup: options 12px apart). The system
+   draws a <legend>, which stays out of the group's 12px flex gap; the kit draws
+   a div that is a flex item, so it took the gap plus 8px of padding, 20px in
+   all. Pull the legend and the line back by the difference. */
+.mds-choice-group > .mds-label { padding-block-end: 0; margin-block-end: calc(var(--space-2) - var(--space-3)); }
+.mds-choice-group > :is(.mds-help, .mds-error) { flex-basis: 100%; margin-block-start: calc(var(--space-2) - var(--space-3)); }
 
 /* Checkbox and Radio */
 .mds-check[data-checked] { background: var(--background-action-bold); border-color: var(--background-action-bold); }
