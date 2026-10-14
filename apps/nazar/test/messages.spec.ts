@@ -347,6 +347,7 @@ describe("the nazar message catalogue", () => {
       size: "1,2 GB",
       sent: "512 MB",
       date: "5 Ekim 2026",
+      code: "tecvid-2026",
     };
     const sections = [
       "Students",

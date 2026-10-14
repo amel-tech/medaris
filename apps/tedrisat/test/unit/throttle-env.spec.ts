@@ -2,6 +2,8 @@ import {
   assertBulkThrottleEnv,
   resolveBulkThrottlerLimit,
   resolveBulkThrottlerTtl,
+  resolvePartnerThrottlerLimit,
+  resolvePartnerThrottlerTtl,
 } from "../../src/config/throttle-env";
 
 /**
@@ -85,5 +87,44 @@ describe("bulk throttle env", () => {
         } as NodeJS.ProcessEnv)
       ).toThrow(/THROTTLE_BULK_LIMIT/);
     });
+
+    it("checks the partner budget too", () => {
+      expect(() =>
+        assertBulkThrottleEnv({
+          THROTTLE_PARTNER_LIMIT: "0",
+        } as NodeJS.ProcessEnv)
+      ).toThrow(/THROTTLE_PARTNER_LIMIT/);
+    });
+  });
+});
+
+/**
+ * Partner enrollments: a partner application's calls share the one subject of
+ * its service account, so `/integrations/*` counts per partner against a
+ * budget of its own instead of one person's 100 a minute.
+ */
+describe("partner throttle env", () => {
+  it("defaults to 600 a minute per partner and route", () => {
+    expect(resolvePartnerThrottlerLimit({} as NodeJS.ProcessEnv)).toBe(600);
+    expect(resolvePartnerThrottlerTtl({} as NodeJS.ProcessEnv)).toBe(60_000);
+  });
+
+  it("reads THROTTLE_PARTNER_LIMIT and THROTTLE_PARTNER_TTL, falling back to the per-user window", () => {
+    expect(
+      resolvePartnerThrottlerLimit({
+        THROTTLE_PARTNER_LIMIT: "120",
+      } as NodeJS.ProcessEnv)
+    ).toBe(120);
+    expect(
+      resolvePartnerThrottlerTtl({
+        THROTTLE_USER_TTL: "30000",
+      } as NodeJS.ProcessEnv)
+    ).toBe(30_000);
+    expect(
+      resolvePartnerThrottlerTtl({
+        THROTTLE_USER_TTL: "30000",
+        THROTTLE_PARTNER_TTL: "10000",
+      } as NodeJS.ProcessEnv)
+    ).toBe(10_000);
   });
 });

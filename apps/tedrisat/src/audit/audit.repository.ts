@@ -20,6 +20,7 @@ import { kosks } from "../database/schema/kosk.schema";
 import { madrasahs } from "../database/schema/madrasah.schema";
 import { roleAssignments } from "../database/schema/role-assignment.schema";
 import { users } from "../database/schema/user.schema";
+import { partnerActorName } from "../integration/domain/partner-actor";
 import {
   AUDIT_OTHER,
   AUDIT_TYPE_RULES,
@@ -226,6 +227,9 @@ export class AuditRepository {
         actorName:
           [r.givenName, r.familyName].filter(Boolean).join(" ").trim() ||
           r.email ||
+          // A partner application acts under its service account, which no
+          // row of `users` describes; the row names it in its details.
+          partnerActorName(r.details) ||
           null,
         action: r.action,
         entity: r.entity,

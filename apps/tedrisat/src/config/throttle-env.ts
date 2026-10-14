@@ -104,6 +104,42 @@ export function resolveBulkThrottlerLimit(
 export function assertBulkThrottleEnv(env: NodeJS.ProcessEnv = process.env) {
   resolveBulkThrottlerTtl(env);
   resolveBulkThrottlerLimit(env);
+  resolvePartnerThrottlerTtl(env);
+  resolvePartnerThrottlerLimit(env);
+}
+
+/**
+ * The partner routes' own budget (`/integrations/*`), per partner and per
+ * route. Every call a partner application makes carries the one subject of
+ * its service account, so the per-user layer (100 a minute) would count a
+ * whole registration run as one person's clicks. Those routes set no
+ * `request.user`, so that layer does not count them at all, and this budget
+ * takes its place (`PartnerThrottlerGuard`).
+ *
+ * 600 a minute is ten enrolments a second on one route: far above a partner
+ * whose people register one at a time, enough for a catch-up run after an
+ * outage, and still a ceiling on a partner stuck in a retry loop. Each PUT
+ * costs a realm lookup and a few writes. Past it the answer is 429 with
+ * `Retry-After`, which the partner retries later by contract.
+ */
+const DEFAULT_PARTNER_LIMIT = 600;
+
+/** Window for the partner routes (`THROTTLE_PARTNER_TTL`), falling back to the per-user one. */
+export function resolvePartnerThrottlerTtl(
+  env: NodeJS.ProcessEnv = process.env
+): number {
+  return readPositiveInt(
+    env,
+    "THROTTLE_PARTNER_TTL",
+    resolveUserThrottlerTtl(env)
+  );
+}
+
+/** Calls one partner may make to one partner route inside that window (`THROTTLE_PARTNER_LIMIT`). */
+export function resolvePartnerThrottlerLimit(
+  env: NodeJS.ProcessEnv = process.env
+): number {
+  return readPositiveInt(env, "THROTTLE_PARTNER_LIMIT", DEFAULT_PARTNER_LIMIT);
 }
 
 /**

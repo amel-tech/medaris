@@ -25,9 +25,9 @@ import type { ThemeName } from "../kc.gen";
  * `privacyNoticeRead` is where `components/linkedOptionLabel.tsx` places the
  * link. `gender*` label the profile's gender choice, in the words tedris
  * uses for it (`tedris-account.json`). The `*ScopeConsentText` keys are what
- * the consent page lists for each scope an app asks for; `gender`'s is named
- * in `config/keycloak/client-scopes/gender.json`, the others are Keycloak's
- * own scopes, reworded.
+ * the consent page lists for each scope an app asks for; the `full-name` and
+ * `gender` scopes name theirs in `config/keycloak/client-scopes/`, the others
+ * are Keycloak's own scopes, reworded.
  *
  * A realm-level override of the four keys `vite.config.ts` lists still wins
  * over these (keycloakify resolves server messages first), so an operator can
@@ -178,6 +178,7 @@ const i18n = i18nBuilder
       profileScopeConsentText: "Your name, username and language",
       emailScopeConsentText: "Your e-mail address",
       rolesScopeConsentText: "Your roles in Medaris",
+      fullNameScopeConsentText: "Your first and last name",
       genderScopeConsentText: "Your gender",
       offlineAccessScopeConsentText:
         "Access to your account while you are away",
@@ -322,6 +323,7 @@ const i18n = i18nBuilder
       profileScopeConsentText: "Adın, soyadın, kullanıcı adın ve dil tercihin",
       emailScopeConsentText: "E-posta adresin",
       rolesScopeConsentText: "Medaris’teki rollerin",
+      fullNameScopeConsentText: "Adın ve soyadın",
       genderScopeConsentText: "Cinsiyetin",
       offlineAccessScopeConsentText: "Sen yokken de hesabına erişim",
       phoneScopeConsentText: "Telefon numaran",
@@ -459,6 +461,7 @@ const i18n = i18nBuilder
       profileScopeConsentText: "اسمك واسم المستخدم واللغة المفضلة لديك",
       emailScopeConsentText: "بريدك الإلكتروني",
       rolesScopeConsentText: "أدوارك في مدارس",
+      fullNameScopeConsentText: "اسمك واسم عائلتك",
       genderScopeConsentText: "جنسك",
       offlineAccessScopeConsentText: "الوصول إلى حسابك أثناء غيابك",
       phoneScopeConsentText: "رقم هاتفك",

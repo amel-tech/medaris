@@ -1,0 +1,54 @@
+{
+  "name": "full-name",
+  "description": "The first name, last name and full name (given_name, family_name, name) and nothing else: a partner application's client gets it in place of profile, which also carries the user name and the locale. Optional for every new client.",
+  "protocol": "openid-connect",
+  "attributes": {
+    "include.in.token.scope": "true",
+    "display.on.consent.screen": "true",
+    "consent.screen.text": "${fullNameScopeConsentText}"
+  },
+  "protocolMappers": [
+    {
+      "name": "given name",
+      "protocol": "openid-connect",
+      "protocolMapper": "oidc-usermodel-attribute-mapper",
+      "consentRequired": false,
+      "config": {
+        "user.attribute": "firstName",
+        "claim.name": "given_name",
+        "jsonType.label": "String",
+        "id.token.claim": "true",
+        "access.token.claim": "true",
+        "userinfo.token.claim": "true",
+        "introspection.token.claim": "true"
+      }
+    },
+    {
+      "name": "family name",
+      "protocol": "openid-connect",
+      "protocolMapper": "oidc-usermodel-attribute-mapper",
+      "consentRequired": false,
+      "config": {
+        "user.attribute": "lastName",
+        "claim.name": "family_name",
+        "jsonType.label": "String",
+        "id.token.claim": "true",
+        "access.token.claim": "true",
+        "userinfo.token.claim": "true",
+        "introspection.token.claim": "true"
+      }
+    },
+    {
+      "name": "full name",
+      "protocol": "openid-connect",
+      "protocolMapper": "oidc-full-name-mapper",
+      "consentRequired": false,
+      "config": {
+        "id.token.claim": "true",
+        "access.token.claim": "true",
+        "userinfo.token.claim": "true",
+        "introspection.token.claim": "true"
+      }
+    }
+  ]
+}

@@ -10,7 +10,7 @@ overwrites it, and `verify` reports it until then.
 | `realms/<realm>.json` | Only `realm` and `displayName`; deep-merged over `_base.json` (`jq -s '.[0] * .[1]'`) |
 | `clients/_base.json` | Settings shared by every client: confidential, every flow off |
 | `clients/<env>/<client>.json` | One client of one environment; deep-merged over `clients/_base.json` |
-| `client-scopes/<scope>.json` | One realm client scope: `gender` (the `gender` claim), and `profile`, Keycloak's own, from which the `gender` mapper is removed |
+| `client-scopes/<scope>.json` | One realm client scope: `gender` (the `gender` claim), `full-name` (the names and nothing else, for a partner application in place of `profile`), and `profile`, Keycloak's own, from which the `gender` mapper is removed |
 | `user-profile.json` | The declarative user profile, in the order the registration and profile pages draw it: first name, last name, gender, user name, e-mail and the privacy-notice box `privacyNoticeRead` (MDRS-102). All required but the user name, which Keycloak requires on its own |
 | `env/<env>.env.example` | The variables the scripts read for that environment — no values for secrets |
 | `scripts/` | `validate`, `dry-run`, `provision`, `verify` |
@@ -62,7 +62,10 @@ the exact list and only when it creates the client, so they never reach it
 inside a representation: a client created with `defaultClientScopes:
 ["gender"]` would lose `profile`, `email` and `roles`. `removedProtocolMappers`
 in a scope file is this package's own key: mappers that must not be on that
-scope.
+scope. So is `removedClientScopes` in a client file: scopes the client must
+hold in neither list, taken off when the server has them and reported as
+`repository removes it, server present` (the local partner example drops
+`profile`, `microprofile-jwt` and `roles` this way).
 
 ## Provision
 
@@ -310,8 +313,20 @@ and a user may change it, as in tedris. The `gender` client scope puts it into
 the ID token, the access token and userinfo as the `gender` claim; it is a
 default scope of `tedris`, `nizam` and `nazar` and an optional scope of every
 client created after it (`defaultOptionalClientScopes`), so a partner
-application's client asks for it with `scope=openid profile email gender` and
-its consent page lists it.
+application's client can have it, and its consent page lists it.
+
+`full-name` puts the first name, the last name and the full name
+(`given_name`, `family_name`, `name`) into the same three places, and nothing
+else. A partner application's client gets it, `email` and `gender` by default
+and loses `profile`, which also carries the user name and the locale, and
+`microprofile-jwt`, which carries the user name as `upn`; the partner asks
+with `scope=openid email full-name gender`
+(`docs/runbooks/partner-application.md`). Like `gender`, it is optional for
+every client created after it and a default of no web client.
+`validate` holds the scope to those three claims and a partner client to
+those scopes. The first `provision prod` after it reports
+`client scope full-name: created` and the realm's default client scopes
+updated; no production client changes.
 Keycloak's own `profile` scope also maps a `gender` attribute; the package
 removes that mapper, otherwise every client that gets `profile` would receive
 the gender without asking for it, and the consent page would not say so.
@@ -377,9 +392,11 @@ When the order is broken:
   empty attribute is no claim), but a partner application asks for a gender
   most users do not have in Keycloak yet.
 
-`amel-tech-dev` is not provisioned from here: the attribute, the scope and
+`amel-tech-dev` is not provisioned from here: the attribute, the scopes and
 the `profile` mapper change are made there by hand, in the same order, when
-the dev apps need them. A partner application's client is not in this
-package either; whoever creates it sets **Consent required** on, and it gets
-`gender` as an optional scope by itself.
+the dev apps need them. A real partner application's client is not in this
+package either; whoever creates it follows
+`docs/runbooks/partner-application.md`: **Consent required** on, `full-name`,
+`email` and `gender` by default, `profile`, `roles` and `microprofile-jwt`
+removed.
 

@@ -2088,6 +2088,7 @@
       "ban_manage_kosk": "Ban at course and köşk level, or lift a ban with a reason; widen a course ban to the köşk",
       "deck_manage_kosk": "Create and edit the köşk's deck",
       "course_nazir_assign_kosk": "Appoint a course nazır and grant permissions in the köşk's courses outside a medrese, within your own permissions",
+      "course_partner_codes": "Link partner application codes to the köşk's courses",
       "user_lookup": "Find a user by e-mail",
       "course_edit": "Edit the course: title, introduction, syllabus, time zone",
       "session_manage": "Add a session, change its date, cancel it; enter the meeting link",

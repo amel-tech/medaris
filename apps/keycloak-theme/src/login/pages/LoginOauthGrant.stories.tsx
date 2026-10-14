@@ -14,8 +14,9 @@ type Story = StoryObj<typeof meta>;
 
 /**
  * What a partner application asks for when it signs a user in through its
- * client (here `ornek-uygulama`): the profile, the e-mail address and the
- * gender, with its own terms and privacy policy linked.
+ * client (here `ornek-uygulama`): the first and last name (the `full-name`
+ * scope, never `profile`), the e-mail address and the gender, with its own
+ * terms and privacy policy linked.
  */
 const partner = {
   client: {
@@ -30,7 +31,7 @@ const partner = {
     code: "kod",
     client: "ornek-uygulama",
     clientScopesRequested: [
-      { consentScreenText: messageRef("profileScopeConsentText") },
+      { consentScreenText: messageRef("fullNameScopeConsentText") },
       { consentScreenText: messageRef("emailScopeConsentText") },
       { consentScreenText: messageRef("genderScopeConsentText") },
     ],

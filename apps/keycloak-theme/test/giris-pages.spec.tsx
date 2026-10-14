@@ -388,7 +388,7 @@ describe("login-oauth-grant.ftl (consent)", () => {
       code: "tek-kullanimlik",
       client: "ornek-uygulama",
       clientScopesRequested: [
-        { consentScreenText: messageRef("profileScopeConsentText") },
+        { consentScreenText: messageRef("fullNameScopeConsentText") },
         { consentScreenText: messageRef("emailScopeConsentText") },
         { consentScreenText: messageRef("genderScopeConsentText") },
       ],
@@ -403,11 +403,7 @@ describe("login-oauth-grant.ftl (consent)", () => {
     );
     expect(
       [...document.querySelectorAll("#kc-oauth li")].map((li) => li.textContent)
-    ).toEqual([
-      "Adın, soyadın, kullanıcı adın ve dil tercihin",
-      "E-posta adresin",
-      "Cinsiyetin",
-    ]);
+    ).toEqual(["Adın ve soyadın", "E-posta adresin", "Cinsiyetin"]);
   });
 
   it("posts the code with İzin ver or Vazgeç, under the names Keycloak reads", async () => {

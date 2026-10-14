@@ -47,6 +47,14 @@ export const PERMISSIONS = {
    * A role default no screen draws: the canvases have no sentence for it.
    */
   COURSE_HIDE: "course.hide",
+  /**
+   * Map a partner application's course codes to a course the köşk holds
+   * ("Ortak uygulama kodları"): a mapped code lets the partner enrol people,
+   * so it decides who enters the course. Köşk-scoped, so the köşk nazımı holds
+   * it in every course of the köşk and the müderris does not; the başnazım by
+   * bypass.
+   */
+  COURSE_PARTNER_CODES: "course.partner_codes",
 
   // --- course ---------------------------------------------------------------
   COURSE_EDIT: "course.edit",
@@ -213,6 +221,7 @@ export const PERMISSION_META: Record<PermissionCode, IPermissionMeta> = {
   [P.COURSE_NAZIR_ASSIGN_KOSK]: listed([KOSK]),
   [P.USER_LOOKUP]: listed([KOSK, COURSE]),
   [P.COURSE_HIDE]: listed([KOSK], { grantable: false, unlisted: true }),
+  [P.COURSE_PARTNER_CODES]: listed([KOSK]),
 
   [P.COURSE_EDIT]: listed([COURSE], { content: true }),
   [P.SESSION_MANAGE]: listed([COURSE], { content: true }),

@@ -18,9 +18,11 @@ import {
   JwtClaimError,
   JwtDecodeError,
   JwtMissingKidError,
+  JwtTokenVerifier,
   JwtVerificationError,
   JwtVerifierService,
   KeyNotFoundError,
+  loadJwtClaimPolicy,
 } from "../../src";
 import { KeycloakPublicKeyProvider } from "../../src/auth-guard/key-providers/keycloak-public-key-provider";
 
@@ -307,6 +309,55 @@ describe("JwtVerifierService with jose and a served JWKS (auth audit C5)", () =>
 
     await expect(open.verifyToken(token)).resolves.toMatchObject({
       sub: SUBJECT,
+    });
+  });
+
+  describe("refused clients (partner enrollments)", () => {
+    it("refuses a refused client even when the allow-list is empty", async () => {
+      // A partner application's service account carries this API's audience;
+      // with no allow-list only the refusal keeps its token off these routes.
+      const open = await createVerifier({
+        allowedClients: "",
+        refusedClients: "ornek-uygulama",
+      });
+      const partner = await sign(ed, validClaims({ azp: "ornek-uygulama" }));
+
+      const rejection = open.verifyToken(partner);
+      await expect(rejection).rejects.toBeInstanceOf(JwtClaimError);
+      await expect(rejection).rejects.toThrow(/tokens these routes refuse/);
+      await expect(
+        open.verifyToken(await sign(ed, validClaims({ azp: "anything" })))
+      ).resolves.toMatchObject({ sub: SUBJECT });
+    });
+
+    it("refuses to start when a client is both allowed and refused", async () => {
+      await expect(
+        createVerifier({
+          allowedClients: `${CLIENT},ornek-uygulama`,
+          refusedClients: "ornek-uygulama",
+        })
+      ).rejects.toThrow(/both allow and refuse the client "ornek-uygulama"/);
+    });
+
+    it("verifies with a policy of its own on the same key provider", async () => {
+      // What the partner guard builds: the same keys, its own clients.
+      const config = new ConfigService(keycloakConfig());
+      const provider = new KeycloakPublicKeyProvider(config);
+      await provider.onModuleInit();
+      const partnerOnly = new JwtTokenVerifier(provider, {
+        ...loadJwtClaimPolicy(config),
+        allowedClients: ["ornek-uygulama"],
+        refusedClients: [],
+      });
+
+      await expect(
+        partnerOnly.verifyToken(
+          await sign(rsa, validClaims({ azp: "ornek-uygulama" }))
+        )
+      ).resolves.toMatchObject({ azp: "ornek-uygulama" });
+      await expect(
+        partnerOnly.verifyToken(await sign(rsa, validClaims()))
+      ).rejects.toThrow(/may not call this API: azp is "tedris-web"/);
     });
   });
 });

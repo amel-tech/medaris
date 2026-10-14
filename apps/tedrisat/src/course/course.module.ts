@@ -88,6 +88,8 @@ import { ResourceFileService } from "./resource-file.service";
   // isMuderris and findEnrollment have no CourseService counterpart, so the
   // repository is what is exported here. The service is the lesson notes'
   // (MDRS-150): whether the caller may see the course at all is `getDetail`'s.
-  exports: [CourseRepository, CourseService],
+  // `BulkEnrollmentService` seats a partner application's registrations as it
+  // seats the team's list (partner enrollments).
+  exports: [CourseRepository, CourseService, BulkEnrollmentService],
 })
 export class CourseModule {}

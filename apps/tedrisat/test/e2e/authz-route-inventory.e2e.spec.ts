@@ -16,6 +16,7 @@ import {
   PATH_METADATA,
 } from "@nestjs/common/constants";
 import { DiscoveryService, MetadataScanner } from "@nestjs/core";
+import { PartnerGuard } from "../../src/integration/partner.guard";
 import { createTestApp } from "../helpers/test-app.helper";
 
 /**
@@ -79,6 +80,9 @@ describe("the route inventory (review T9)", () => {
       const prototype = controller.prototype as Record<string, unknown>;
       const base = String(Reflect.getMetadata(PATH_METADATA, controller) ?? "");
       const guardedAtClass = guardsOn(controller).some(isAuthz);
+      // The partner routes (`/integrations/*`) have no AuthzGuard: their one
+      // guard admits a partner application's token and nothing else.
+      const partnerOnly = guardsOn(controller).includes(PartnerGuard);
       for (const method of scanner.getAllMethodNames(prototype)) {
         const handler = prototype[method];
         if (typeof handler !== "function") continue;
@@ -105,6 +109,8 @@ describe("the route inventory (review T9)", () => {
           decision = "public";
         } else if (exempt) {
           decision = "exempt";
+        } else if (partnerOnly) {
+          decision = "partner application only (PartnerGuard)";
         } else {
           decision = guarded ? "UNDECIDED" : "no AuthzGuard";
         }

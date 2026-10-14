@@ -34,9 +34,19 @@ export interface IDirectoryUser {
   email: string | null;
 }
 
+/**
+ * An account as a partner application's registration needs it: whether it
+ * may sign in and whether its e-mail is verified (partner enrollments).
+ */
+export interface IDirectoryAccount extends IDirectoryUser {
+  enabled: boolean;
+  emailVerified: boolean;
+}
+
 interface IKeycloakUserRepresentation {
   id: string;
   email?: string;
+  emailVerified?: boolean;
   firstName?: string;
   lastName?: string;
   enabled?: boolean;
@@ -95,6 +105,25 @@ export class KeycloakAdminService {
       { missingIs: null }
     );
     return found ? toDirectoryUser(found) : null;
+  }
+
+  /**
+   * The account with this id with its standing, or null when the realm has
+   * none. Read with `view-users`, the right tedrisat's service account
+   * already has; partner enrollments ask nothing more of the realm.
+   */
+  async findAccount(id: string): Promise<IDirectoryAccount | null> {
+    const found = await this.get<IKeycloakUserRepresentation | null>(
+      `/users/${encodeURIComponent(id)}`,
+      { missingIs: null }
+    );
+    return found
+      ? {
+          ...toDirectoryUser(found),
+          enabled: found.enabled !== false,
+          emailVerified: found.emailVerified === true,
+        }
+      : null;
   }
 
   /** The accounts that hold a realm role, or [] when the role does not exist. */

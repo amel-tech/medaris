@@ -8,7 +8,8 @@ import {
 /**
  * Codes about a course that carry no course tag: the implicit and derived
  * ones, and the köşk- and medrese-level codes a `/courses/:id` route accepts
- * (hide and restore, the müderris list), which the realm bypass passes.
+ * (hide and restore, the müderris list, a partner application's codes), which
+ * the realm bypass passes.
  */
 const COURSE_RELATION_CODES: readonly PermissionCode[] = [
   PERMISSIONS.COURSE_VIEW,
@@ -20,6 +21,7 @@ const COURSE_RELATION_CODES: readonly PermissionCode[] = [
   PERMISSIONS.MADRASAH_COURSE_HIDE,
   PERMISSIONS.COURSE_OPEN_STANDALONE,
   PERMISSIONS.MADRASAH_MUDERRIS_MANAGE,
+  PERMISSIONS.COURSE_PARTNER_CODES,
   PERMISSIONS.SETTING_APPROVAL_OFF,
   PERMISSIONS.SETTING_RECORDINGS_PUBLIC,
   PERMISSIONS.SETTING_COURSE_OPEN,
