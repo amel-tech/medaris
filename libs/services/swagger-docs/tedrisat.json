@@ -25522,6 +25522,15 @@
           "familyName": {
             "type": "string"
           },
+          "gender": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "FEMALE",
+              "MALE"
+            ],
+            "description": "The caller's own gender as tedrisat mirrors it from the account's token (#317), shown on Hesap; null while none is known."
+          },
           "timeZone": {
             "type": "string",
             "example": "Europe/Istanbul"

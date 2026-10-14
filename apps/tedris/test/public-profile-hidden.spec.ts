@@ -70,8 +70,11 @@ const hesap = async () => {
       givenName: "Zeynep Betül",
       familyName: "Karahanlı",
       email: "zeynep.karahanli@example.com",
+      gender: "FEMALE",
       timeZone: "Europe/Istanbul",
       lessonInvitationEmails: true,
+      connectedAppsHref:
+        "https://auth.example.test/realms/medaris/account/applications",
     })
   );
 };

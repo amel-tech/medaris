@@ -4,6 +4,7 @@ import {
   ASSIGNED_ROLES,
   SCOPE_TYPES,
 } from "../../database/schema/role-assignment.schema";
+import { PROFILE_GENDERS } from "../../database/schema/user-profile.schema";
 
 export class ManagedKoskRef {
   @ApiProperty()
@@ -93,6 +94,15 @@ export class MeResponse {
 
   @ApiPropertyOptional({ type: String })
   familyName!: string | null;
+
+  @ApiPropertyOptional({
+    type: String,
+    nullable: true,
+    enum: PROFILE_GENDERS,
+    description:
+      "The caller's own gender as tedrisat mirrors it from the account's token (#317), shown on Hesap; null while none is known.",
+  })
+  gender!: string | null;
 
   @ApiPropertyOptional({ type: String, example: "Europe/Istanbul" })
   timeZone!: string | null;

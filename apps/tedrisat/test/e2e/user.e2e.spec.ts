@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { ROLES } from "@medaris/common";
 import { INestApplication } from "@nestjs/common";
 import { eq } from "drizzle-orm";
@@ -22,6 +23,7 @@ import {
   SCOPE_TYPES,
 } from "../../src/database/schema/role-assignment.schema";
 import { users } from "../../src/database/schema/user.schema";
+import { userProfiles } from "../../src/database/schema/user-profile.schema";
 import { createTestApp } from "../helpers/test-app.helper";
 import {
   assignRole,
@@ -270,6 +272,60 @@ describe("Users (e2e)", () => {
         nazirOf: [],
         manages: [],
         teaches: [],
+      });
+    });
+
+    /**
+     * Hesap shows the caller's gender (#317) from `user_profiles.gender`, the
+     * mirror of the token's claim, so the row also proves the token reached
+     * tedrisat. The public profile is off here (its default), which this
+     * route does not depend on. Each case is a person of its own:
+     * `UserSyncService` remembers who it has synced for the life of the app.
+     */
+    describe("the caller's gender", () => {
+      const meWithGender = (sub: string, gender?: string) =>
+        request(app.getHttpServer())
+          .get("/me")
+          .set(
+            "Authorization",
+            auth(sub, {
+              email: `${sub.slice(0, 8)}@example.com`,
+              ...(gender ? { gender } : {}),
+            })
+          );
+      const mirror = (userId: string, gender: string) =>
+        databaseService.db.insert(userProfiles).values({ userId, gender });
+
+      it("gives the gender the token carries, mirrored by the same request over an older one", async () => {
+        const sub = randomUUID();
+        await mirror(sub, "MALE");
+
+        const res = await meWithGender(sub, "FEMALE").expect(200);
+
+        expect(res.body.gender).toBe("FEMALE");
+        const [row] = await databaseService.db
+          .select()
+          .from(userProfiles)
+          .where(eq(userProfiles.userId, sub));
+        expect(row?.gender).toBe("FEMALE");
+      });
+
+      it("reads the mirror when the token carries no gender", async () => {
+        const sub = randomUUID();
+        await mirror(sub, "MALE");
+
+        const res = await meWithGender(sub).expect(200);
+
+        expect(res.body.gender).toBe("MALE");
+      });
+
+      it("answers null when none is known, never another person's", async () => {
+        await mirror(randomUUID(), "FEMALE");
+        const sub = randomUUID();
+
+        const res = await meWithGender(sub).expect(200);
+
+        expect(res.body).toHaveProperty("gender", null);
       });
     });
   });
