@@ -28,9 +28,10 @@ import {
  *
  * partner-enrollment.e2e.spec.ts covers every rule with signed test tokens;
  * this proves the realm mints what the guard accepts, and refuses what it
- * must, end to end. The last test provisions the same partner from the
+ * must, end to end. The last tests provision the same partner from the
  * configuration package (config/keycloak/, `provision local`) into a second
- * realm.
+ * realm, and check what a person's ID token through it carries: the names,
+ * the e-mail address and the gender, never the user name or the locale.
  */
 
 // Must track `run-keycloak` in apps/keycloak-theme/package.json, as in
@@ -47,10 +48,9 @@ const SETUP_SCRIPT = join(
   __dirname,
   "../../../../tools/keycloak/setup-realm.sh"
 );
-const PROVISION_SCRIPT = join(
-  __dirname,
-  "../../../../config/keycloak/scripts/provision"
-);
+const PACKAGE_SCRIPTS = join(__dirname, "../../../../config/keycloak/scripts");
+// The realm `provision local` builds, beside REALM.
+const PACKAGE_REALM = "medaris";
 const NAZIM = "e0000000-0000-4000-8000-000000000001";
 
 describe("Partner enrollments against Keycloak (e2e)", () => {
@@ -453,28 +453,43 @@ describe("Partner enrollments against Keycloak (e2e)", () => {
     }
   });
 
-  it("provisions the same partner from the configuration package", async () => {
+  /**
+   * One of the configuration package's scripts against PACKAGE_REALM, with
+   * whatever the developer's shell exports for them (KC_*, ALLOW_*) dropped.
+   */
+  const packageScript = (script: "provision" | "verify") => {
     const env: NodeJS.ProcessEnv = Object.fromEntries(
       Object.entries(process.env).filter(([key]) => !/^(KC_|ALLOW_)/.test(key))
     );
-    const provision = () =>
-      spawnSync("bash", [PROVISION_SCRIPT, "local"], {
-        env: { ...env, KC_URL: kcUrl, KC_REALM: "medaris", KC_SMTP_HOST: "" },
-        encoding: "utf8",
-      });
+    return spawnSync("bash", [join(PACKAGE_SCRIPTS, script), "local"], {
+      env: {
+        ...env,
+        KC_URL: kcUrl,
+        KC_REALM: PACKAGE_REALM,
+        KC_SMTP_HOST: "",
+      },
+      encoding: "utf8",
+    });
+  };
+
+  it("provisions the same partner from the configuration package", async () => {
+    const provision = () => packageScript("provision");
 
     const first = provision();
     expect(first.status, first.stderr).toBe(0);
     // The realm is created whole, its roles with it.
     expect(first.stdout).toContain("realm medaris: created");
     expect(first.stdout).toContain("role partner-enrollment: in sync");
+    expect(first.stdout).toContain("client scope full-name: created");
     expect(first.stdout).toContain(`client ${PARTNER_ID}: created`);
     for (const kind of ["serviceAccountRealmRoles", "scopeRealmRoles"]) {
       expect(first.stdout).toContain(
         `client ${PARTNER_ID} ${kind} partner-enrollment: created`
       );
     }
-    const token = claims(await partnerToken("medaris"));
+    // Without the `roles` scope (removed below), the client's own mapper
+    // still names the role.
+    const token = claims(await partnerToken(PACKAGE_REALM));
     expect([token.aud].flat()).toContain(API_CLIENT_ID);
     expect(token).toMatchObject({
       azp: PARTNER_ID,
@@ -489,5 +504,170 @@ describe("Partner enrollments against Keycloak (e2e)", () => {
     expect(second.stdout).toContain(
       "provision: done (0 difference(s) applied)"
     );
+  });
+
+  /**
+   * The provisioned partner's client scopes: `full-name`, `email` and
+   * `gender` by default, and in neither list the scopes that carry the user
+   * name (`profile`, `microprofile-jwt`) nor `roles`, whose place the
+   * client's own `realm-roles` mapper takes.
+   */
+  const partnerScopes = async () => {
+    const { id } = await clientOf(PARTNER_ID, PACKAGE_REALM);
+    const client = (await adminApi(
+      "GET",
+      `/clients/${id}`,
+      undefined,
+      PACKAGE_REALM
+    )) as { defaultClientScopes: string[]; optionalClientScopes: string[] };
+    return {
+      default: client.defaultClientScopes,
+      optional: client.optionalClientScopes,
+    };
+  };
+
+  it("gives the provisioned partner full-name, email and gender, and not profile", async () => {
+    const scopes = await partnerScopes();
+    expect(scopes.default).toEqual(
+      expect.arrayContaining(["full-name", "email", "gender"])
+    );
+    for (const scope of ["profile", "microprofile-jwt", "roles"]) {
+      expect(scopes.default).not.toContain(scope);
+      expect(scopes.optional).not.toContain(scope);
+    }
+    // Every client created from now on is offered full-name, as gender.
+    const offered = (await adminApi(
+      "GET",
+      "/default-optional-client-scopes",
+      undefined,
+      PACKAGE_REALM
+    )) as { name: string }[];
+    expect(offered.map((scope) => scope.name)).toEqual(
+      expect.arrayContaining(["gender", "full-name"])
+    );
+  });
+
+  it("puts a person's names, e-mail and gender into the partner's ID token, and no user name or locale", async () => {
+    await adminApi(
+      "POST",
+      "/users",
+      {
+        username: "ornek-kisi",
+        enabled: true,
+        emailVerified: true,
+        email: "ornek-kisi@example.test",
+        firstName: "Ayşe",
+        lastName: "Yılmaz",
+        attributes: { gender: ["FEMALE"], locale: ["ar"] },
+      },
+      PACKAGE_REALM
+    );
+    const [person] = await adminApi(
+      "GET",
+      "/users?exact=true&username=ornek-kisi",
+      undefined,
+      PACKAGE_REALM
+    );
+    // The ID token Keycloak would issue this client for this person and
+    // these scopes (the admin console's Client scopes → Evaluate): the same
+    // mappers as a sign-in, without a browser or the consent page.
+    const idToken = async (clientId: string, scope: string) => {
+      const { id } = await clientOf(clientId, PACKAGE_REALM);
+      const query = new URLSearchParams({ scope, userId: person.id });
+      return (await adminApi(
+        "GET",
+        `/clients/${id}/evaluate-scopes/generate-example-id-token?${query}`,
+        undefined,
+        PACKAGE_REALM
+      )) as Record<string, unknown>;
+    };
+
+    // A web client gets profile: this person does have a user name and a
+    // locale, so their absence below is the partner's scopes at work.
+    expect(await idToken("tedris-local", "openid")).toMatchObject({
+      preferred_username: "ornek-kisi",
+      locale: "ar",
+    });
+
+    const partner = await idToken(PARTNER_ID, "openid");
+    expect(partner).toMatchObject({
+      given_name: "Ayşe",
+      family_name: "Yılmaz",
+      name: "Ayşe Yılmaz",
+      email: "ornek-kisi@example.test",
+      email_verified: true,
+      gender: "FEMALE",
+    });
+    // The evaluation ignores a scope the client does not have, so naming the
+    // removed ones adds nothing; the sign-in refuses them (next test).
+    const asking = await idToken(
+      PARTNER_ID,
+      "openid profile microprofile-jwt roles"
+    );
+    for (const token of [partner, asking]) {
+      for (const claim of ["preferred_username", "upn", "locale"]) {
+        expect(token).not.toHaveProperty(claim);
+      }
+    }
+  });
+
+  it("refuses the partner's sign-in when it asks for profile, and starts it for its own scopes", async () => {
+    /** The authorization request the partner's "Medaris ile giriş yap" sends. */
+    const signIn = (scope: string) =>
+      fetch(
+        `${kcUrl}/realms/${PACKAGE_REALM}/protocol/openid-connect/auth?${new URLSearchParams(
+          {
+            client_id: PARTNER_ID,
+            response_type: "code",
+            scope,
+            redirect_uri: "https://ornek.example/auth/medaris/callback",
+            state: "partner",
+            code_challenge: createHash("sha256")
+              .update(randomBytes(32).toString("base64url"))
+              .digest("base64url"),
+            code_challenge_method: "S256",
+          }
+        )}`,
+        { redirect: "manual" }
+      );
+
+    for (const scope of ["openid profile", "openid microprofile-jwt"]) {
+      const refused = await signIn(scope);
+      const location = new URL(refused.headers.get("location") ?? "", kcUrl);
+      expect(location.searchParams.get("error"), scope).toBe("invalid_scope");
+    }
+    const started = await signIn("openid email full-name gender");
+    expect(started.status).toBe(200);
+    expect(await started.text()).toContain("kc-form-login");
+  });
+
+  it("takes profile off the partner again when it is put back by hand", async () => {
+    const { id } = await clientOf(PARTNER_ID, PACKAGE_REALM);
+    const scopes = (await adminApi(
+      "GET",
+      "/client-scopes",
+      undefined,
+      PACKAGE_REALM
+    )) as { id: string; name: string }[];
+    const profile = scopes.find((scope) => scope.name === "profile");
+    await adminApi(
+      "PUT",
+      `/clients/${id}/default-client-scopes/${profile?.id}`,
+      undefined,
+      PACKAGE_REALM
+    );
+    expect((await partnerScopes()).default).toContain("profile");
+
+    const drift = packageScript("verify");
+    expect(drift.status).toBe(1);
+    expect(drift.stdout).toContain(
+      "client.defaultClientScopes[profile]: repository removes it, server present"
+    );
+    const applied = packageScript("provision");
+    expect(applied.status, applied.stderr).toBe(0);
+    expect(applied.stdout).toContain(`client ${PARTNER_ID}: updated`);
+    expect((await partnerScopes()).default).not.toContain("profile");
+    const clean = packageScript("verify");
+    expect(clean.status, clean.stdout).toBe(0);
   });
 });

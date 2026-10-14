@@ -83,8 +83,9 @@ secret_var() {
 # render_client FILE — clients/_base.json deep-merged with FILE, plus the
 # client secret when its KC_CLIENT_SECRET_* variable is set. jq reads the
 # secret through $ENV, so it never appears in an argv. Without
-# `serviceAccountRealmRoles` and `scopeRealmRoles`, which are this package's
-# fields, not Keycloak's: see plan_client_realm_roles.
+# `serviceAccountRealmRoles`, `scopeRealmRoles` and `removedClientScopes`,
+# which are this package's fields, not Keycloak's: see
+# plan_client_realm_roles and without_scope_lists.
 render_client() {
   local file="$1" id var
   id=$(jq -r .clientId "$file")
@@ -93,7 +94,7 @@ render_client() {
     export "${var?}"
   fi
   jq -s --arg var "$var" '
-    (.[0] * .[1] | del(.serviceAccountRealmRoles, .scopeRealmRoles))
+    (.[0] * .[1] | del(.serviceAccountRealmRoles, .scopeRealmRoles, .removedClientScopes))
     + (if ($ENV[$var] // "") != "" then {secret: $ENV[$var]} else {} end)' \
     "$KC_CONFIG_DIR/clients/_base.json" "$file"
 }
@@ -169,6 +170,11 @@ client_scope_files() {
 # (measured on 26.6.3), and a client PUT ignores them. So they never reach
 # Keycloak inside a representation; the plan applies them one by one through
 # the scope-assignment endpoints.
+#
+# A scope a client must hold in neither list is named in its
+# `removedClientScopes`, this package's own key: a partner application's
+# client drops `profile`, `microprofile-jwt` (both carry the user name) and
+# `roles`, which a new client gets from the realm.
 without_scope_lists() {
   jq 'del(.defaultClientScopes, .optionalClientScopes,
           .defaultDefaultClientScopes, .defaultOptionalClientScopes)'
@@ -319,6 +325,31 @@ apply_scope_changes() {
       fi
       api PUT "$base/$prefix$list-client-scopes/$id" >/dev/null
     done < <(jq -r --arg l "$list" '(.[$l] // [])[]' <<<"$want")
+  done
+}
+
+# scope_removals REMOVED HAVE LABEL — one line per scope REMOVED names that
+# HAVE still holds, in either list. REMOVED is [names]; HAVE as for
+# scope_changes. Client fields only: the realm has no removal list.
+scope_removals() {
+  printf '%s\n%s\n' "$1" "$2" | jq -rs --arg l "$3" '
+    .[0] as $removed | .[1] as $have
+    | ["default", "optional"][] as $list
+    | ($have[$list] // [])[] as $n
+    | select($removed | index($n))
+    | "\($l).\(if $list == "default" then "defaultClientScopes" else "optionalClientScopes" end)[\($n)]: repository removes it, server present"'
+}
+
+# remove_scopes BASE REMOVED HAVE — takes off the client at BASE what
+# scope_removals reports.
+remove_scopes() {
+  local base="$1" removed="$2" have="$3" list name
+  for list in default optional; do
+    while IFS= read -r name; do
+      [[ -n "$name" ]] || continue
+      api DELETE "$base/$list-client-scopes/$(client_scope_id "$name")" >/dev/null
+    done < <(printf '%s\n%s\n' "$removed" "$have" | jq -rs --arg l "$list" '
+      .[0] as $removed | (.[1][$l] // [])[] | select(. as $n | $removed | index($n))')
   done
 }
 
@@ -582,8 +613,8 @@ run_plan() {
 
   # --- the realm's default client scopes ------------------------------------
   # What every client created from now on gets (a partner application's
-  # client gets `gender` as optional this way). "Must include", see
-  # without_scope_lists.
+  # client gets `gender` and `full-name` as optional this way). "Must
+  # include", see without_scope_lists.
   local realm_have
   realm_have=$(jq -n \
     --argjson d "$(api GET "/realms/$KC_REALM/default-default-client-scopes" | jq -c '[.[].name]')" \
@@ -602,11 +633,12 @@ run_plan() {
   fi
 
   # --- clients ---------------------------------------------------------------
-  local file client id uuid current settings want have scope_lines all
+  local file client id uuid current settings want have removed scope_lines removal_lines all
   while IFS= read -r file; do
     client=$(render_client "$file")
     want=$(jq -c '{default: (.defaultClientScopes // []),
                    optional: (.optionalClientScopes // [])}' <<<"$client")
+    removed=$(jq -c '.removedClientScopes // []' "$file")
     client=$(without_scope_lists <<<"$client")
     id=$(jq -r .clientId <<<"$client")
     uuid=$(client_uuid "$id")
@@ -614,12 +646,14 @@ run_plan() {
       DIFFERENCES=$((DIFFERENCES + 1))
       if [[ "$MODE" == "apply" ]]; then
         # Keycloak gives a new client the realm's default scopes; the ones
-        # the file lists are added to those.
+        # the file lists are added to those, and the ones it removes taken
+        # off. validate keeps the two apart, so the order does not matter.
         api POST "/realms/$KC_REALM/clients" "$client" >/dev/null
         uuid=$(client_uuid "$id")
         current=$(api GET "/realms/$KC_REALM/clients/$uuid")
-        apply_scope_changes "/realms/$KC_REALM/clients/$uuid" "" "$want" \
-          "$(jq -c '{default: .defaultClientScopes, optional: .optionalClientScopes}' <<<"$current")"
+        have=$(jq -c '{default: .defaultClientScopes, optional: .optionalClientScopes}' <<<"$current")
+        apply_scope_changes "/realms/$KC_REALM/clients/$uuid" "" "$want" "$have"
+        remove_scopes "/realms/$KC_REALM/clients/$uuid" "$removed" "$have"
       fi
       report "client $id" "$(verb CREATE)"
       continue
@@ -630,6 +664,8 @@ run_plan() {
     changes=$(diff_json "$client" "$current" "client")
     scope_lines=$(scope_changes "$want" "$have" \
       defaultClientScopes optionalClientScopes client)
+    removal_lines=$(scope_removals "$removed" "$have" client)
+    scope_lines=$(printf '%s\n%s' "$scope_lines" "$removal_lines" | sed '/^$/d')
     if [[ -z "$changes" && -z "$scope_lines" ]]; then
       report "client $id" "in sync"
       continue
@@ -649,6 +685,7 @@ run_plan() {
     fi
     if [[ -n "$scope_lines" ]]; then
       apply_scope_changes "/realms/$KC_REALM/clients/$uuid" "" "$want" "$have"
+      remove_scopes "/realms/$KC_REALM/clients/$uuid" "$removed" "$have"
     fi
   done < <(client_files)
 

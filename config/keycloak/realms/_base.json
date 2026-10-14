@@ -43,7 +43,7 @@
     "actionTokenGeneratedByUserLifespan.verify-email": "86400",
     "actionTokenGeneratedByUserLifespan.reset-credentials": "1800"
   },
-  "defaultOptionalClientScopes": ["gender"],
+  "defaultOptionalClientScopes": ["gender", "full-name"],
   "roles": {
     "realm": [
       {

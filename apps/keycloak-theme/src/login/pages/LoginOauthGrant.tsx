@@ -8,9 +8,9 @@ import type { ExtendedPageProps } from "../types/PageProps";
  * `login-oauth-grant.ftl`, the consent page: an app outside Medaris that
  * signs in with Medaris (a partner application, through its own confidential
  * client with consent required) asks once what it may see. The app's name, what it
- * asks for in the words of each scope's consent text (`${genderScopeConsentText}`
- * from `config/keycloak/client-scopes/gender.json`, Keycloak's own for
- * `profile`, `email`…, all in `../i18n.ts`), the app's terms when its client
+ * asks for in the words of each scope's consent text (`${fullNameScopeConsentText}`
+ * and `${genderScopeConsentText}` from `config/keycloak/client-scopes/`,
+ * Keycloak's own for `email`…, all in `../i18n.ts`), the app's terms when its client
  * has them, and two answers posted with the one-time code: `accept` and
  * `cancel`, the names Keycloak reads.
  */

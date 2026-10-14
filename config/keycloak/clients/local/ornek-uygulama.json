@@ -43,6 +43,8 @@
       }
     }
   ],
+  "defaultClientScopes": ["full-name", "email", "gender"],
+  "removedClientScopes": ["profile", "microprofile-jwt", "roles"],
   "scopeRealmRoles": ["partner-enrollment"],
   "serviceAccountRealmRoles": ["partner-enrollment"]
 }

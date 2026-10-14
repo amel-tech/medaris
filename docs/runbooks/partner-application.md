@@ -11,7 +11,8 @@ Each partner gets one confidential client in the realm, made by hand per
 environment. No real partner's client is in this repository; the local example
 is `ornek-uygulama` (`config/keycloak/clients/local/ornek-uygulama.json`, and
 `tools/keycloak/setup-realm.sh` for the shared development realm), with every
-setting below.
+setting below. The one `setup-realm.sh` makes lacks step 7: that realm has no
+`full-name` scope, so its example keeps Keycloak's default scopes.
 
 | | |
 |---|---|
@@ -74,18 +75,43 @@ default role: only a partner client's service account holds it.
      theirs.
 6. **Service accounts roles** tab → *Assign role* → realm role
    `partner-enrollment`.
+7. **Client scopes** tab (the client's own list, not
+   `<client id>-dedicated`):
+   - *Add client scope* → `full-name`, `email`, `gender` → *Add* →
+     **Default**. A new client already holds `full-name` and `gender` as
+     optional; remove them there first, since Keycloak keeps a scope in one
+     list only.
+   - *Remove* `profile`, `roles` and `microprofile-jwt`, from whichever list
+     holds them.
+
+   `full-name` (`config/keycloak/client-scopes/full-name.json`) and `gender`
+   exist in a realm `provision <env>` has run on; elsewhere create them from
+   those files first. The local example sets the same through
+   `defaultClientScopes` and `removedClientScopes` in its file.
+
+### What the partner receives
+
+Of the person: the first name, the last name and the full name
+(`given_name`, `family_name`, `name`, from `full-name`), the e-mail address and
+whether it is verified (`email`), and the gender (`gender`). Nothing else. No
+user name and no locale goes to a partner: `profile` carries both
+(`preferred_username`, `locale`) besides the names, and `microprofile-jwt`,
+which the consent screen does not even show, carries the user name as `upn`.
+`roles` is removed because the `realm-roles` mapper above stands in for it.
+
+The partner requests `scope=openid email full-name gender`. These are the
+client's default scopes, so `openid` alone brings the same; a scope the client
+does not have, such as `profile`, makes Keycloak refuse the sign-in with
+`invalid_scope`.
 
 ### What the consent screen asks
 
-The client's default client scopes that are displayed on the consent screen:
-`profile` (name), `email` (address and whether it is verified) and `roles`,
-which shares nothing through this client because of full scope and the role
-scope above; it may be removed from the client's default scopes, the role
-mapper standing in for it. `web-origins`, `acr`, `basic` and `service_account`
-are not shown. If the realm has a `gender` client scope, the partner may
-request it as an optional scope and the screen asks for that too. (From
-Keycloak's built-in scope settings; the screen itself was not looked at for
-this runbook.)
+The default scopes it shows, in the theme's words
+(`apps/keycloak-theme/src/login/i18n.ts`): `full-name` ("Adın ve soyadın"),
+`email` ("E-posta adresin") and `gender` ("Cinsiyetin"). `web-origins`, `acr`,
+`basic` and `service_account` share nothing of the person and are not shown.
+(From the scopes' settings and the theme's tests; the screen of a real
+sign-in was not looked at for this runbook.)
 
 ## 3. tedrisat
 
