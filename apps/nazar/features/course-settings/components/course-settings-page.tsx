@@ -1,8 +1,12 @@
+import { Alert } from "@medaris/ui/mds/alert";
 import { Button } from "@medaris/ui/mds/button";
 import { Icon } from "@medaris/ui/mds/icon";
 import { Skeleton } from "@medaris/ui/mds/skeleton";
 import { env } from "~/env";
 import {
+  CODES,
+  type CoursePermissions,
+  holds,
   PAGE_CODES,
   pageGate,
   readCoursePermissions,
@@ -12,8 +16,10 @@ import { getMessages } from "~/lib/i18n/messages";
 import { readOnce } from "~/lib/tedrisat-read";
 import { controlsOf } from "../controls";
 import { coursePageUrl, settingsOf } from "../course-settings";
+import { showsPartnerCodes } from "../partner-codes";
 import { CoursePublishCard } from "./course-publish-card";
 import { CourseSettingsForm } from "./course-settings-form";
+import { PartnerCodesCard } from "./partner-codes-card";
 
 /**
  * Ders ayarları of a course: whether it is closed, its sample session,
@@ -31,6 +37,10 @@ import { CourseSettingsForm } from "./course-settings-form";
  * as stored, not by the version: a read that brings other stored values (its
  * own save, someone else's) starts a fresh form, and one that only moved the
  * version ("Yayımla", "Taslağa çek") keeps what is being changed.
+ *
+ * "Ortak uygulama kodları" (partner enrollments, `PartnerCodesSection`) sits
+ * under the form, for a caller who holds `course.partner_codes` and only when
+ * the server works with a partner application.
  */
 export async function CourseSettingsPage({ courseId }: { courseId: string }) {
   const [t, course, permissions] = await Promise.all([
@@ -88,11 +98,17 @@ export async function CourseSettingsPage({ courseId }: { courseId: string }) {
         ) : null}
       </header>
       <div className="grid gap-grid md:grid-cols-[minmax(0,1fr)_var(--layout-aside)] md:items-start">
-        <CourseSettingsForm
-          key={JSON.stringify(stored)}
-          course={course.data}
-          controls={controls}
-        />
+        <div className="flex min-inline-0 flex-col gap-grid">
+          <CourseSettingsForm
+            key={JSON.stringify(stored)}
+            course={course.data}
+            controls={controls}
+          />
+          <PartnerCodesSection
+            courseId={course.data.id}
+            permissions={permissions.data}
+          />
+        </div>
         <CoursePublishCard
           courseId={course.data.id}
           title={course.data.title}
@@ -101,6 +117,54 @@ export async function CourseSettingsPage({ courseId }: { courseId: string }) {
         />
       </div>
     </>
+  );
+}
+
+/**
+ * "Ortak uygulama kodları", or nothing: only for a caller who holds
+ * `course.partner_codes` are the partner applications read
+ * (`GET /partner-applications`), and the course's codes only when there is
+ * one. A list that cannot be read draws nothing, as an empty one does; codes
+ * that cannot be read say so in place. The rest of the page stands either way.
+ */
+async function PartnerCodesSection({
+  courseId,
+  permissions,
+}: {
+  courseId: string;
+  permissions: CoursePermissions;
+}) {
+  const allowed = holds(permissions, CODES.partnerCodes);
+  if (!allowed) return null;
+  const partners = await readOnce("the partner applications", (api) =>
+    api.courses.listPartnerApplications()
+  );
+  if (
+    partners.status !== "ok" ||
+    !showsPartnerCodes(partners.data.length, allowed)
+  ) {
+    return null;
+  }
+  const codes = await readOnce("the course's partner codes", (api) =>
+    api.courses.getCoursePartnerCodes({ id: courseId })
+  );
+  if (codes.status !== "ok") {
+    const t = await getMessages("nazar");
+    return (
+      <Alert tone="error" title={t("CourseSettings.partnerCodes.title")}>
+        {t("CourseSettings.partnerCodes.loadFailed")}
+      </Alert>
+    );
+  }
+  return (
+    <PartnerCodesCard
+      courseId={courseId}
+      partners={codes.data.partners.map((partner) => ({
+        id: partner.id,
+        name: partner.name,
+        codes: partner.codes.map((row) => row.code),
+      }))}
+    />
   );
 }
 

@@ -5,5 +5,10 @@
  * actions and the locale keys stay, so turning the profile back on is this one
  * line plus `API__PUBLIC_PROFILE_ENABLED=true` on the API, which answers 404
  * for the same routes until then.
+ *
+ * Before it is turned back on, the owner decides whether the gender is shown
+ * there (owner, 2026-10-14). As built, the künye and the gender are always
+ * public on it, while the privacy notice says today that the gender is not
+ * shown publicly. The person's own gender is on Hesap meanwhile, read-only.
  */
 export const PUBLIC_PROFILE_ENABLED: boolean = false;

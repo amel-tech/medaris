@@ -36,6 +36,7 @@ const CATALOG = [
   "ban.manage_kosk",
   "deck.manage_kosk",
   "course_nazir.assign_kosk",
+  "course.partner_codes",
   "user.lookup",
   "course.edit",
   "session.manage",

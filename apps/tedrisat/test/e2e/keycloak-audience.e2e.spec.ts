@@ -258,7 +258,10 @@ describe("Keycloak realm ↔ audience check (e2e)", () => {
     const secondRun = runSetup();
 
     expect(secondRun).not.toContain("created");
-    expect(secondRun.match(/exists/g)?.length).toBe(6);
+    // realm, API client, tedris-dev and its mapper, the partner role, the
+    // example partner client with its two mappers, its role scope and its
+    // service account's role (partner enrollments), and the two test users.
+    expect(secondRun.match(/exists/g)?.length).toBe(12);
   });
 
   it("requires PKCE on the web client", async () => {

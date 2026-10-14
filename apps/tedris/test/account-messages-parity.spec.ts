@@ -65,6 +65,16 @@ describe("tedrisAccount messages (MDRS-166)", () => {
     // Hesap's page reads these two through the AccountProfile namespace.
     for (const k of ["profileFailedTitle", "profileFailed"])
       expect(keys.has(`AccountProfile.${k}`), k).toBe(true);
+    // Hesap's gender row (#317) reads the public profile's words through
+    // `tPublic`, which the literal-key check above does not see.
+    for (const k of [
+      "gender",
+      "female",
+      "male",
+      "genderChange",
+      "genderFromAccountHelp",
+    ])
+      expect(keys.has(`PublicProfile.${k}`), k).toBe(true);
     for (const f of ["name", "field", "summary", "reason", "email", "phone"])
       expect(keys.has(`KoskApplication.errors.${f}`), f).toBe(true);
   });

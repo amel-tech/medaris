@@ -625,6 +625,7 @@
       "ban_manage_kosk": "Ders ve köşk düzeyinde yasakla ya da yasağı gerekçeyle kaldır; ders yasağını köşke genişlet",
       "deck_manage_kosk": "Köşk destesini aç ve düzenle",
       "course_nazir_assign_kosk": "Köşkün medrese dışı derslerinde ders nazırı ata ve izin ver, kendi izinlerini aşmadan",
+      "course_partner_codes": "Ortak uygulama kodlarını köşkün derslerine bağla",
       "user_lookup": "E-postayla kullanıcı bul",
       "course_edit": "Dersi düzenle: başlık, tanıtım, müfredat, saat dilimi",
       "session_manage": "Celse ekle, tarihini değiştir, iptal et; toplantı bağlantısını gir",

@@ -1,0 +1,27 @@
+{
+  "name": "gender",
+  "description": "The gender claim, FEMALE or MALE, from the user profile's gender attribute. Default for the Medaris web clients, optional for every other client.",
+  "protocol": "openid-connect",
+  "attributes": {
+    "include.in.token.scope": "true",
+    "display.on.consent.screen": "true",
+    "consent.screen.text": "${genderScopeConsentText}"
+  },
+  "protocolMappers": [
+    {
+      "name": "gender",
+      "protocol": "openid-connect",
+      "protocolMapper": "oidc-usermodel-attribute-mapper",
+      "consentRequired": false,
+      "config": {
+        "user.attribute": "gender",
+        "claim.name": "gender",
+        "jsonType.label": "String",
+        "id.token.claim": "true",
+        "access.token.claim": "true",
+        "userinfo.token.claim": "true",
+        "introspection.token.claim": "true"
+      }
+    }
+  ]
+}

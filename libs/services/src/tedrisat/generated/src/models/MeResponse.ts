@@ -72,6 +72,12 @@ export interface MeResponse {
      */
     familyName?: string;
     /**
+     * The caller's own gender as tedrisat mirrors it from the account's token (#317), shown on Hesap; null while none is known.
+     * @type {string}
+     * @memberof MeResponse
+     */
+    gender?: MeResponseGenderEnum | null;
+    /**
      * 
      * @type {string}
      * @memberof MeResponse
@@ -121,6 +127,17 @@ export interface MeResponse {
     permissions: Array<MeScopePermissions>;
 }
 
+
+/**
+ * @export
+ */
+export const MeResponseGenderEnum = {
+    Female: 'FEMALE',
+    Male: 'MALE'
+} as const;
+export type MeResponseGenderEnum = typeof MeResponseGenderEnum[keyof typeof MeResponseGenderEnum];
+
+
 /**
  * Check if a given object implements the MeResponse interface.
  */
@@ -151,6 +168,7 @@ export function MeResponseFromJSONTyped(json: any, ignoreDiscriminator: boolean)
         'emailVerified': json['emailVerified'],
         'givenName': json['givenName'] == null ? undefined : json['givenName'],
         'familyName': json['familyName'] == null ? undefined : json['familyName'],
+        'gender': json['gender'] == null ? undefined : json['gender'],
         'timeZone': json['timeZone'] == null ? undefined : json['timeZone'],
         'locale': json['locale'] == null ? undefined : json['locale'],
         'lessonInvitationEmails': json['lessonInvitationEmails'],
@@ -178,6 +196,7 @@ export function MeResponseToJSONTyped(value?: MeResponse | null, ignoreDiscrimin
         'emailVerified': value['emailVerified'],
         'givenName': value['givenName'],
         'familyName': value['familyName'],
+        'gender': value['gender'],
         'timeZone': value['timeZone'],
         'locale': value['locale'],
         'lessonInvitationEmails': value['lessonInvitationEmails'],

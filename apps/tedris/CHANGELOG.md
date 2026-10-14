@@ -1,5 +1,21 @@
 # Changelog
 
+## [2.8.0](https://github.com/amel-tech/medaris/compare/tedris-web-v2.7.0...tedris-web-v2.8.0) (2026-10-14)
+
+
+### Features
+
+* **tedris-web, tedrisat:** the person's gender and connected apps on the Hesap page ([#327](https://github.com/amel-tech/medaris/issues/327)) ([5299831](https://github.com/amel-tech/medaris/commit/529983174a750e285d7cbf0d528ecde3c8ecc2e4))
+* **tedrisat, nazar-web:** partner enrollments behind a partner-only guard; course codes ([#323](https://github.com/amel-tech/medaris/issues/323)) ([3cab7e7](https://github.com/amel-tech/medaris/commit/3cab7e7426b1770697f8a0c2156a4bb9b0eaa0b8))
+
+## [2.7.0](https://github.com/amel-tech/medaris/compare/tedris-web-v2.6.0...tedris-web-v2.7.0) (2026-10-14)
+
+
+### Features
+
+* **keycloak-theme, ui:** required gender, a register page drawn from the profile, consent ([#317](https://github.com/amel-tech/medaris/issues/317)) ([048734c](https://github.com/amel-tech/medaris/commit/048734ccd4ebd5f6388c382ad1fe7d07bdff9b65))
+* **tedrisat, tedris-web:** Keycloak is the only source of a person's gender ([#319](https://github.com/amel-tech/medaris/issues/319)) ([2ddc737](https://github.com/amel-tech/medaris/commit/2ddc737f37f296d289d5b83bbce7f69b672acc20))
+
 ## [2.6.0](https://github.com/amel-tech/medaris/compare/tedris-web-v2.5.0...tedris-web-v2.6.0) (2026-10-13)
 
 

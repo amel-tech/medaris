@@ -67,3 +67,40 @@ export async function setSampleLesson(
     console.error("Error changing the sample session:", result.error);
   return outcomeOf(result);
 }
+
+/**
+ * "Ekle" of Ortak uygulama kodları (`POST /courses/:id/partner-codes`): maps a
+ * partner application's code to this course. A code another course has is
+ * refused (`PARTNER_CODE_TAKEN`), and the page says so naming nothing else.
+ */
+export async function addPartnerCode(
+  courseId: string,
+  partner: string,
+  code: string
+): Promise<ActionOutcome<{ code: string }>> {
+  const result = await authenticatedAction(async (api) => {
+    const added = await api.courses.addCoursePartnerCode({
+      id: courseId,
+      addPartnerCodeDto: { partner, code },
+    });
+    return { code: added.code };
+  });
+  if (!result.success)
+    console.error("Error adding a partner code:", result.error);
+  return outcomeOf(result);
+}
+
+/** "Kaldır" of Ortak uygulama kodları (`DELETE /courses/:id/partner-codes/:partner/:code`). */
+export async function removePartnerCode(
+  courseId: string,
+  partner: string,
+  code: string
+): Promise<ActionOutcome<null>> {
+  const result = await authenticatedAction(async (api) => {
+    await api.courses.removeCoursePartnerCode({ id: courseId, partner, code });
+    return null;
+  });
+  if (!result.success)
+    console.error("Error removing a partner code:", result.error);
+  return outcomeOf(result);
+}

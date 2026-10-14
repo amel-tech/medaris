@@ -144,6 +144,7 @@
       "ban_manage_kosk": "Ban at course and köşk level, or lift a ban with a reason; widen a course ban to the köşk",
       "deck_manage_kosk": "Create and edit the köşk's deck",
       "course_nazir_assign_kosk": "Appoint a course nazır and grant permissions in the köşk's courses outside a medrese, within your own permissions",
+      "course_partner_codes": "Link partner application codes to the köşk's courses",
       "user_lookup": "Find a user by e-mail",
       "course_edit": "Edit the course: title, introduction, syllabus, time zone",
       "session_manage": "Add a session, change its date, cancel it; enter the meeting link",
@@ -1631,6 +1632,28 @@
       "policy": "A policy locks this change; the setting was not changed.",
       "invalid": "This value cannot be saved. Reload the page and try again.",
       "generic": "That could not be completed. Try again in a moment."
+    },
+    "partnerCodes": {
+      "title": "Partner application codes",
+      "intro": "Registrations in a partner application reach this course through these codes. A person approved there is enrolled here as a student; if their registration is cancelled there, only the enrolment added this way is removed.",
+      "empty": "No code is linked to this course.",
+      "listLabel": "{name} codes",
+      "codeLabel": "Add a code",
+      "codeHelp": "The code in the partner application: lower-case letters, digits and hyphens, at most 64 characters.",
+      "add": "Add",
+      "remove": "Remove",
+      "added": "Code added",
+      "addedBody": "The {name} code {code} is now linked to this course.",
+      "removed": "Code removed",
+      "removedBody": "The {name} code {code} is no longer linked to this course. Students enrolled through it stay in the course.",
+      "removeFailed": "The code could not be removed",
+      "loadFailed": "The partner application codes cannot be read right now. Try again in a moment.",
+      "errors": {
+        "empty": "Type a code.",
+        "shape": "A code holds only lower-case letters, digits and hyphens, and starts with a letter or a digit.",
+        "taken": "This code is linked to another course. It has to be removed there first.",
+        "unknownPartner": "This partner application is no longer configured. Reload the page."
+      }
     }
   },
   "Curriculum": {

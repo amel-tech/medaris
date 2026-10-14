@@ -25,9 +25,20 @@ import { EnrollmentNotFoundError } from "./errors/enrollment-not-found.error";
 import { EnrollmentStateError } from "./errors/enrollment-state.error";
 
 /** Where one address ended up; `account` is set for the ones that name an account. */
-type Outcome =
+export type SeatOutcome =
   | { kind: "enrolled" | "approved" | "already"; account: string }
   | { kind: "skipped"; reason: string };
+type Outcome = SeatOutcome;
+
+/**
+ * Why no talebe could enrol in a course on their own right now: it is gone,
+ * a draft, hidden, or held in a hidden köşk.
+ */
+export type CourseClosedReason =
+  | "COURSE_NOT_FOUND"
+  | "COURSE_NOT_PUBLISHED"
+  | "COURSE_HIDDEN"
+  | "KOSK_HIDDEN";
 
 /**
  * "Toplu talebe ekle" (owner, 2026-10-12): the course team enrols a list of
@@ -132,19 +143,37 @@ export class BulkEnrollmentService {
    * and the köşk nazımı their hidden course: these seats are for talebe.
    */
   private async assertTakesEnrollments(courseId: string): Promise<void> {
-    const course = await this.courseRepo.findPublicVisibility(courseId);
-    if (
-      !course ||
-      course.status !== CourseStatus.PUBLISHED ||
-      course.archived ||
-      course.koskHidden
-    ) {
+    if (await this.closedReason(courseId)) {
       throw new CourseNotFoundError(courseId);
     }
   }
 
-  /** Seats one account, or says why not. */
-  private async place(
+  /**
+   * Why the course takes no enrolment now, or null when it does. The same
+   * question `assertTakesEnrollments` asks, with the answer spelled out: a
+   * partner application's registration (`PartnerEnrollmentService`) is
+   * refused with it rather than with a bare not-found.
+   */
+  async closedReason(courseId: string): Promise<CourseClosedReason | null> {
+    const course = await this.courseRepo.findPublicVisibility(courseId);
+    if (!course) return "COURSE_NOT_FOUND";
+    if (course.status !== CourseStatus.PUBLISHED) {
+      return "COURSE_NOT_PUBLISHED";
+    }
+    if (course.archived) return "COURSE_HIDDEN";
+    if (course.koskHidden) return "KOSK_HIDDEN";
+    return null;
+  }
+
+  /**
+   * Seats one account, or says why not. Also how a partner application's
+   * registration seats its person (`PartnerEnrollmentService`), so a seat
+   * the integration adds is the one the team's list adds: the same writes,
+   * the same approval of a waiting request and its notification, the same
+   * refusals. The caller runs the invitations (`LessonInvitationService.kick`)
+   * once it is done, as `bulkEnroll` does for its whole list.
+   */
+  async place(
     courseId: string,
     actorId: string,
     email: string,

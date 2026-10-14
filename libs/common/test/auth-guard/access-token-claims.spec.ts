@@ -33,6 +33,30 @@ describe("mapAccessTokenClaims (Keycloak)", () => {
     expect(mapAccessTokenClaims({}).isAccessToken).toBe(false);
   });
 
+  it("reads the account's gender from the `gender` claim (#317)", () => {
+    expect(mapAccessTokenClaims({ gender: "FEMALE" }).gender).toBe("FEMALE");
+    expect(mapAccessTokenClaims({ gender: "MALE" }).gender).toBe("MALE");
+  });
+
+  it("reads a missing or unknown gender as none, never as a third value", () => {
+    // A token from before the scope's rollout: the ordinary case today.
+    expect(mapAccessTokenClaims({ typ: "Bearer" }).gender).toBeUndefined();
+    for (const gender of [
+      "female",
+      "Male",
+      "OTHER",
+      "",
+      null,
+      42,
+      ["FEMALE"],
+      { value: "MALE" },
+    ]) {
+      expect(mapAccessTokenClaims({ gender }).gender, String(gender)).toBe(
+        undefined
+      );
+    }
+  });
+
   it("reads missing or malformed claims as nothing, never as a grant", () => {
     expect(
       mapAccessTokenClaims({

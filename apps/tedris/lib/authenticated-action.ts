@@ -25,10 +25,14 @@ export type SignedOut = Unauthenticated & {
   status: 401;
 };
 
-/** Result type for actions: success with data, or failure with server error message. */
+/**
+ * Result type for actions: success with data, or failure with server error
+ * message. `code` is the API's error code (`KUNYE_TAKEN`, …) when it sent one,
+ * for a caller that must tell two refusals with one status apart.
+ */
 export type AuthenticatedActionResult<T> =
   | { success: true; data: T }
-  | { success: false; error: string; status?: number }
+  | { success: false; error: string; status?: number; code?: string }
   | SignedOut;
 
 const signedOut: SignedOut = {
@@ -65,9 +69,11 @@ export async function authenticatedAction<T>(
           // A refused token is `withAccessToken`'s to answer.
           if (error.response.status === 401) throw error;
           let message: string;
+          let code: string | undefined;
           try {
             const errorBody = await error.response.json();
             message = getErrorMessage(errorBody);
+            if (typeof errorBody?.code === "string") code = errorBody.code;
           } catch {
             message = error.response.statusText || "Request failed";
           }
@@ -75,6 +81,7 @@ export async function authenticatedAction<T>(
             success: false,
             error: message,
             status: error.response.status,
+            ...(code !== undefined && { code }),
           };
         }
         return {

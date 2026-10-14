@@ -23,6 +23,22 @@
 #                 Phase 2) front-channel logout off and a back-channel logout
 #                 URL `<origin>/api/auth/backchannel-logout` that carries the
 #                 session's `sid`.
+#   partner role  partner-enrollment (PARTNER_ROLE) — the realm role a partner
+#                 application's service account carries; tedrisat accepts its
+#                 token on /integrations/* only with it.
+#   partner clients
+#                 ornek-uygulama (PARTNER_CLIENTS), an example partner
+#                 application — confidential, standard flow with PKCE S256,
+#                 consent required, a service account holding partner-enrollment,
+#                 and the same audience mapper as the web clients, so its tokens
+#                 carry `tedrisat-api`. Its tokens carry the role through a
+#                 mapper of its own (`realm_access.roles`): with consent on,
+#                 Keycloak leaves the `roles` scope out of a service account's
+#                 token. Full scope is off and partner-enrollment is its only
+#                 role scope, so a person's token through it names none of their
+#                 roles. Redirect URI <origin>/auth/medaris/callback.
+#                 A real partner's client is made by hand, never by this
+#                 script: docs/runbooks/partner-application.md.
 #   test users    owner-user / stranger-user — only with --with-test-users,
 #                 only against a localhost Keycloak, and only in a realm that
 #                 holds no other user.
@@ -40,7 +56,9 @@
 # Against a remote Keycloak a MISSING web client is only created when
 # WEB_CLIENTS was set explicitly. The defaults are localhost origins, and a
 # client created from them on a shared realm would send authorization codes to
-# whatever listens on a user's localhost.
+# whatever listens on a user's localhost. The same holds for PARTNER_CLIENTS:
+# the example partner is created only against a localhost Keycloak, or when the
+# variable is set.
 #
 # Talks to the admin REST API with curl + jq, so it needs no container exec and
 # works against any reachable Keycloak.
@@ -59,6 +77,9 @@
 #                                nazar-dev=http://localhost:4002"
 #                       (localhost only; a remote run needs it set to create
 #                       a missing client)
+#   PARTNER_ROLE        default partner-enrollment
+#   PARTNER_CLIENTS     default "ornek-uygulama=https://ornek.example"
+#                       (localhost only, like WEB_CLIENTS)
 #   ALLOW_REMOTE=1      required to run against a non-localhost KC_URL
 #   ALLOW_INSECURE_HTTP=1
 #                       required on top of ALLOW_REMOTE to reach a remote
@@ -101,6 +122,9 @@ REALM="${REALM:-amel-tech-dev}"
 API_CLIENT_ID="${API_CLIENT_ID:-tedrisat-api}"
 WEB_CLIENTS_EXPLICIT="${WEB_CLIENTS:+1}"
 WEB_CLIENTS="${WEB_CLIENTS:-tedris-dev=http://localhost:4000 nizam-dev=http://localhost:4001 nazar-dev=http://localhost:4002}"
+PARTNER_ROLE="${PARTNER_ROLE:-partner-enrollment}"
+PARTNER_CLIENTS_EXPLICIT="${PARTNER_CLIENTS:+1}"
+PARTNER_CLIENTS="${PARTNER_CLIENTS:-ornek-uygulama=https://ornek.example}"
 
 WITH_TEST_USERS=0
 PRINT_SECRETS=0
@@ -218,9 +242,33 @@ client_uuid() {
 
 warn() { echo "      warning: $*" >&2; }
 
+# ensure_audience_mapper CLIENT_UUID — puts `$API_CLIENT_ID` into the access
+# token's `aud` of every token the client mints, unless the mapper is there.
+ensure_audience_mapper() {
+  local uuid="$1" mapper="audience-$API_CLIENT_ID"
+  if api GET "/realms/$REALM/clients/$uuid/protocol-mappers/models" |
+    jq -e --arg n "$mapper" 'any(.[]; .name == $n)' >/dev/null; then
+    echo "        audience mapper exists"
+  else
+    api POST "/realms/$REALM/clients/$uuid/protocol-mappers/models" "$(jq -n \
+      --arg n "$mapper" --arg aud "$API_CLIENT_ID" '{
+      name: $n,
+      protocol: "openid-connect",
+      protocolMapper: "oidc-audience-mapper",
+      config: {
+        "included.client.audience": $aud,
+        "access.token.claim": "true",
+        "id.token.claim": "false",
+        "introspection.token.claim": "true"
+      }
+    }')" >/dev/null
+    echo "        audience mapper created (aud += $API_CLIENT_ID)"
+  fi
+}
+
 authenticate
 
-echo "[1/5] realm $REALM"
+echo "[1/7] realm $REALM"
 if [[ "$(status "/realms/$REALM")" == "200" ]]; then
   echo "      exists"
 else
@@ -228,7 +276,7 @@ else
   echo "      created"
 fi
 
-echo "[2/5] API client $API_CLIENT_ID"
+echo "[2/7] API client $API_CLIENT_ID"
 api_uuid=$(client_uuid "$API_CLIENT_ID")
 if [[ -n "$api_uuid" ]]; then
   echo "      exists"
@@ -247,7 +295,7 @@ else
   echo "      created"
 fi
 
-echo "[3/5] web clients"
+echo "[3/7] web clients"
 for entry in $WEB_CLIENTS; do
   client_id="${entry%%=*}"
   origin="${entry#*=}"
@@ -305,28 +353,121 @@ for entry in $WEB_CLIENTS; do
     echo "      $client_id created ($origin)"
   fi
 
-  mapper="audience-$API_CLIENT_ID"
+  ensure_audience_mapper "$uuid"
+done
+
+echo "[4/7] partner role $PARTNER_ROLE"
+if [[ "$(status "/realms/$REALM/roles/$(jq -rn --arg v "$PARTNER_ROLE" '$v|@uri')")" == "200" ]]; then
+  echo "      exists"
+else
+  api POST "/realms/$REALM/roles" "$(jq -n --arg r "$PARTNER_ROLE" '{
+    name: $r,
+    description: "A partner application whose registrations become course enrollments. Only a partner client'"'"'s service account holds it; tedrisat accepts its token on /integrations/* with it (docs/runbooks/partner-application.md)."
+  }')" >/dev/null
+  echo "      created"
+fi
+
+echo "[5/7] partner clients"
+for entry in $PARTNER_CLIENTS; do
+  client_id="${entry%%=*}"
+  origin="${entry#*=}"
+  origin="${origin%/}"
+  uuid=$(client_uuid "$client_id")
+
+  if [[ -n "$uuid" ]]; then
+    echo "      $client_id exists"
+    current=$(api GET "/realms/$REALM/clients/$uuid")
+    [[ "$(jq -r .publicClient <<<"$current")" == "false" ]] ||
+      warn "$client_id is a public client; a partner application authenticates with a secret"
+    [[ "$(jq -r '.attributes["pkce.code.challenge.method"] // ""' <<<"$current")" == "S256" ]] ||
+      warn "$client_id does not require PKCE S256"
+    [[ "$(jq -r .consentRequired <<<"$current")" == "true" ]] ||
+      warn "$client_id does not ask the person's consent"
+    [[ "$(jq -r .serviceAccountsEnabled <<<"$current")" == "true" ]] ||
+      warn "$client_id has no service account, so the partner cannot call tedrisat"
+    [[ "$(jq -r .directAccessGrantsEnabled <<<"$current")" == "false" ]] ||
+      warn "$client_id allows the password grant"
+    [[ "$(jq -r .implicitFlowEnabled <<<"$current")" == "false" ]] ||
+      warn "$client_id allows the implicit flow"
+    [[ "$(jq -r .fullScopeAllowed <<<"$current")" == "false" ]] ||
+      warn "$client_id has full scope on, so a person's token through it names all their realm roles"
+  elif [[ $is_local -eq 0 && -z "$PARTNER_CLIENTS_EXPLICIT" ]]; then
+    warn "$client_id does not exist on this realm and was not created; set PARTNER_CLIENTS with its real origin to create it"
+    continue
+  else
+    api POST "/realms/$REALM/clients" "$(jq -n --arg id "$client_id" --arg o "$origin" '{
+      clientId: $id,
+      enabled: true,
+      protocol: "openid-connect",
+      publicClient: false,
+      clientAuthenticatorType: "client-secret",
+      standardFlowEnabled: true,
+      implicitFlowEnabled: false,
+      directAccessGrantsEnabled: false,
+      serviceAccountsEnabled: true,
+      consentRequired: true,
+      fullScopeAllowed: false,
+      frontchannelLogout: false,
+      redirectUris: [($o + "/auth/medaris/callback")],
+      webOrigins: [],
+      attributes: {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": ($o + "/"),
+        "oauth2.device.authorization.grant.enabled": "false",
+        "oidc.ciba.grant.enabled": "false"
+      }
+    }')" >/dev/null
+    uuid=$(client_uuid "$client_id")
+    echo "      $client_id created ($origin)"
+  fi
+
+  ensure_audience_mapper "$uuid"
+
+  mapper="realm-roles"
   if api GET "/realms/$REALM/clients/$uuid/protocol-mappers/models" |
     jq -e --arg n "$mapper" 'any(.[]; .name == $n)' >/dev/null; then
-    echo "        audience mapper exists"
+    echo "        role mapper exists"
   else
-    api POST "/realms/$REALM/clients/$uuid/protocol-mappers/models" "$(jq -n \
-      --arg n "$mapper" --arg aud "$API_CLIENT_ID" '{
+    api POST "/realms/$REALM/clients/$uuid/protocol-mappers/models" "$(jq -n --arg n "$mapper" '{
       name: $n,
       protocol: "openid-connect",
-      protocolMapper: "oidc-audience-mapper",
+      protocolMapper: "oidc-usermodel-realm-role-mapper",
       config: {
-        "included.client.audience": $aud,
+        "claim.name": "realm_access.roles",
+        "jsonType.label": "String",
+        "multivalued": "true",
         "access.token.claim": "true",
         "id.token.claim": "false",
+        "userinfo.token.claim": "false",
         "introspection.token.claim": "true"
       }
     }')" >/dev/null
-    echo "        audience mapper created (aud += $API_CLIENT_ID)"
+    echo "        role mapper created (realm_access.roles)"
+  fi
+
+  role=$(api GET "/realms/$REALM/roles/$(jq -rn --arg v "$PARTNER_ROLE" '$v|@uri')")
+  if api GET "/realms/$REALM/clients/$uuid/scope-mappings/realm" |
+    jq -e --arg r "$PARTNER_ROLE" 'any(.[]; .name == $r)' >/dev/null; then
+    echo "        role scope exists"
+  else
+    api POST "/realms/$REALM/clients/$uuid/scope-mappings/realm" "$(jq -c '[{id, name}]' <<<"$role")" >/dev/null
+    echo "        role scope created ($PARTNER_ROLE)"
+  fi
+
+  # The service account's user exists once the client has service accounts on.
+  sa_id=$(api GET "/realms/$REALM/clients/$uuid/service-account-user" | jq -r '.id // empty')
+  if [[ -z "$sa_id" ]]; then
+    warn "$client_id has no service-account user to give $PARTNER_ROLE to"
+  elif api GET "/realms/$REALM/users/$sa_id/role-mappings/realm" |
+    jq -e --arg r "$PARTNER_ROLE" 'any(.[]; .name == $r)' >/dev/null; then
+    echo "        service account role exists"
+  else
+    api POST "/realms/$REALM/users/$sa_id/role-mappings/realm" "$(jq -c '[{id, name}]' <<<"$role")" >/dev/null
+    echo "        service account role created ($PARTNER_ROLE)"
   fi
 done
 
-echo "[4/5] test users"
+echo "[6/7] test users"
 if [[ $WITH_TEST_USERS -eq 0 ]]; then
   echo "      skipped (pass --with-test-users on a localhost Keycloak)"
 else
@@ -362,7 +503,7 @@ else
   done
 fi
 
-echo "[5/5] mail sender"
+echo "[7/7] mail sender"
 if [[ -z "${KC_SMTP_HOST:-}" ]]; then
   echo "      skipped (set KC_SMTP_HOST to configure it)"
 else
@@ -376,10 +517,11 @@ fi
 if [[ $PRINT_SECRETS -eq 1 ]]; then
   echo
   echo "client secrets (local realm only — never commit these):"
-  for entry in $WEB_CLIENTS; do
+  for entry in $WEB_CLIENTS $PARTNER_CLIENTS; do
     client_id="${entry%%=*}"
     uuid=$(client_uuid "$client_id")
-    printf '  %-12s %s\n' "$client_id" \
+    [[ -n "$uuid" ]] || continue
+    printf '  %-14s %s\n' "$client_id" \
       "$(api GET "/realms/$REALM/clients/$uuid/client-secret" | jq -r .value)"
   done
 fi
@@ -391,4 +533,5 @@ Done. The API side of this realm:
   KEYCLOAK_ISSUER=$KC_URL/realms/$REALM
   KEYCLOAK_AUDIENCE=$API_CLIENT_ID
   KEYCLOAK_ALLOWED_CLIENTS=$(for e in $WEB_CLIENTS; do printf '%s,' "${e%%=*}"; done | sed 's/,$//')
+  INTEGRATION_PARTNERS=$(for e in $PARTNER_CLIENTS; do printf '%s=<display name>,' "${e%%=*}"; done | sed 's/,$//')
 EOF

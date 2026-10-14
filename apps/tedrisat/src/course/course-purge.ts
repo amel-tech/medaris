@@ -22,6 +22,10 @@ import {
   lessonSubmissions,
   submissionFiles,
 } from "../database/schema/lesson-submission.schema";
+import {
+  partnerCourseCodes,
+  partnerEnrollmentLinks,
+} from "../database/schema/partner-enrollment.schema";
 import { SCOPE_TYPES } from "../database/schema/role-assignment.schema";
 import {
   type DeletionReason,
@@ -146,6 +150,15 @@ export async function purgeCourses(
       .where(inArray(courseResources.courseId, courseIds))
       .returning({ id: courseResources.id })
   ).length;
+  // A partner application's codes for the courses and the registrations
+  // linked to them; uncounted, like the lessons' children. A DELETE from the
+  // partner afterwards finds no link and removes nothing.
+  await tx
+    .delete(partnerEnrollmentLinks)
+    .where(inArray(partnerEnrollmentLinks.courseId, courseIds));
+  await tx
+    .delete(partnerCourseCodes)
+    .where(inArray(partnerCourseCodes.courseId, courseIds));
   counts.enrollments = (
     await tx
       .delete(enrollments)

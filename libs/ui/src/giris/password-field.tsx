@@ -24,6 +24,11 @@ export interface PasswordRulesProps {
  * The live rule list under a new password (canvas medaris/03): a tick in front
  * of each rule that is met, and the words ", karşılandı" after it for a screen
  * reader. A plain list, set up as one help line.
+ *
+ * A rule not met yet has a bullet in the tick's place, in the help line's own
+ * colour. It used to be a hollow 16px ring in the control-edge colour, which
+ * on a form with radios (the registration form's gender) read as one more
+ * radio.
  */
 export function PasswordRules({ id, rules, metLabel }: PasswordRulesProps) {
   return (
@@ -37,10 +42,9 @@ export function PasswordRules({ id, rules, metLabel }: PasswordRulesProps) {
           {rule.met ? (
             <Icon name="check" size="sm" />
           ) : (
-            <span
-              aria-hidden="true"
-              className="inline-4 block-4 shrink-0 rounded-full border border-neutral-control"
-            />
+            <span aria-hidden="true" className="inline-4 shrink-0 text-center">
+              •
+            </span>
           )}
           {rule.label}
           {rule.met ? (
@@ -118,6 +122,10 @@ export function PasswordField({
               : undefined
           }
           className="flex-1 min-inline-0"
+          // An address, a user name, a password: a Latin island (MDS-TYPE-04),
+          // so an Arabic page draws it in the UI face and size, as canvas
+          // medaris/02 does. Empty: the language of such a string is unknown.
+          lang=""
         />
         <IconButton
           variant="outline"

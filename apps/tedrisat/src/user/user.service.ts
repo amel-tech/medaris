@@ -169,6 +169,10 @@ function toProfile(
     emailVerified: user.emailVerified,
     givenName: profile?.givenName ?? user.givenName,
     familyName: profile?.familyName ?? user.familyName,
+    // The mirror, not the token (#317): the interceptor has written the
+    // token's gender into it before this handler runs, so Hesap reads the
+    // value everyone else's view of this person reads.
+    gender: profile?.gender ?? null,
     timeZone: user.timeZone,
     locale: user.locale,
     lessonInvitationEmails: user.lessonInvitationEmails,
