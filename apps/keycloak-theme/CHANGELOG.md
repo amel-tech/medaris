@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.1.0](https://github.com/amel-tech/medaris/compare/keycloak-theme-v2.0.0...keycloak-theme-v2.1.0) (2026-10-14)
+
+
+### Features
+
+* **keycloak-theme, ui:** required gender, a register page drawn from the profile, consent ([#317](https://github.com/amel-tech/medaris/issues/317)) ([048734c](https://github.com/amel-tech/medaris/commit/048734ccd4ebd5f6388c382ad1fe7d07bdff9b65))
+
+
+### Bug Fixes
+
+* **keycloak-theme:** optimized single-node image, and a restart that waits for Keycloak ([#316](https://github.com/amel-tech/medaris/issues/316)) ([a008b93](https://github.com/amel-tech/medaris/commit/a008b933302b14e75edd94db8589c9b683963b68))
+
 ## [2.0.0](https://github.com/amel-tech/medaris/compare/keycloak-theme-v1.4.0...keycloak-theme-v2.0.0) (2026-10-13)
 
 

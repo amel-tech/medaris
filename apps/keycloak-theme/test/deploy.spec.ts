@@ -83,12 +83,25 @@ describe("Keycloak image", () => {
     expect(atLeast(version, PRODUCTION_KEYCLOAK), version).toBe(true);
   });
 
-  it("adds the shipped JAR under the theme id and nothing else", () => {
+  it("builds an optimized single-node server with the shipped JAR under the theme id", () => {
     expect(instructions).toEqual([
       expect.stringMatching(/^ARG KEYCLOAK_VERSION=/),
-      `FROM quay.io/keycloak/keycloak:\${KEYCLOAK_VERSION}`,
+      `FROM quay.io/keycloak/keycloak:\${KEYCLOAK_VERSION} AS build`,
+      "ENV KC_DB=postgres",
+      "ENV KC_HEALTH_ENABLED=true",
+      "ENV KC_CACHE=local",
       `COPY --chown=keycloak:root ${SHIPPED_JAR} /opt/keycloak/providers/${THEME_ID}.jar`,
+      "RUN /opt/keycloak/bin/kc.sh build",
+      `FROM quay.io/keycloak/keycloak:\${KEYCLOAK_VERSION}`,
+      "ENV KC_HEALTH_ENABLED=true",
+      "ENV KC_CACHE=local",
+      "COPY --from=build /opt/keycloak/ /opt/keycloak/",
     ]);
+  });
+
+  it("leaves the database out of the final image, for the smoke test's start-dev", () => {
+    const final = dockerfile.slice(dockerfile.lastIndexOf("\nFROM "));
+    expect(final).not.toMatch(/^ENV KC_DB=/m);
   });
 
   it.each([
@@ -216,6 +229,27 @@ describe("Keycloak workflow", () => {
     expect(restart).toContain("--fail-with-body");
     // No other job calls Coolify.
     expect(workflow.match(/COOLIFY_WEBHOOK:/g)).toHaveLength(1);
+  });
+
+  it("waits for Keycloak to come back after the restart, and starts it once if it does not", () => {
+    const restart = job(workflow, "restart");
+    expect(restart).toContain(
+      "KEYCLOAK_READY_URL: https://auth.medaris.app/realms/medaris/.well-known/openid-configuration"
+    );
+    // The restart request is sent once: a retried restart can restart a
+    // Keycloak that is already starting.
+    expect(restart).not.toMatch(/--retry\b/);
+    const order = [
+      "wait_for down 180",
+      "wait_for up 240",
+      "start_service",
+      "wait_for up 300",
+    ].map((step) => restart.lastIndexOf(step));
+    expect(order.every((at) => at > -1)).toBe(true);
+    expect([...order].sort((a, b) => a - b)).toEqual(order);
+    // The start URL is the webhook's with /restart replaced: `${base%/restart}/start`.
+    expect(restart).toContain("base%/restart}/start");
+    expect(restart).toMatch(/timeout-minutes: 15\b/);
   });
 
   it("is built on every push to main that touches the theme", () => {

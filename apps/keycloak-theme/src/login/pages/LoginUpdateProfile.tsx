@@ -1,13 +1,9 @@
-import { Button } from "@medaris/ui/components/button";
+import { Button } from "@medaris/ui/mds/button";
 import { getKcClsx } from "keycloakify/login/lib/kcClsx";
 import type { UserProfileFormFieldsProps } from "keycloakify/login/UserProfileFormFieldsProps";
 import type { JSX } from "keycloakify/tools/JSX";
 import type { LazyOrNot } from "keycloakify/tools/LazyOrNot";
 import { useState } from "react";
-import {
-  primaryButtonClassName,
-  secondaryButtonClassName,
-} from "../components/styles";
 import type { I18n } from "../i18n";
 import type { KcContext } from "../KcContext";
 import type { ExtendedPageProps } from "../types/PageProps";
@@ -23,10 +19,14 @@ type LoginUpdateProfileProps = ExtendedPageProps<
 };
 
 /**
- * `login-update-profile.ftl` — the "Update Profile" required action, and what
- * a user whose profile misses a now-required attribute meets after sign-in.
- * Uses the same field renderer as Register. Placeholder layout until
- * MDRS-127's design.
+ * `login-update-profile.ftl` (canvas medaris/10, "Profilini tamamla"): what a
+ * signed-in user meets when the realm's profile has a required attribute they
+ * lack — every account made before `gender` became required lands here once —
+ * and the "Update Profile" required action. The fields are the realm's
+ * profile, drawn like the registration form's (`UserProfileFormFields`);
+ * "Kaydet ve devam et" waits until keycloakify's checks pass, as it always
+ * has here (MDRS-257). An app that sent the user here on purpose gets
+ * "Vazgeç" too, and no sentence about missing details.
  */
 export default function LoginUpdateProfile(props: LoginUpdateProfileProps) {
   const {
@@ -43,7 +43,7 @@ export default function LoginUpdateProfile(props: LoginUpdateProfileProps) {
 
   const { messagesPerField, url, isAppInitiatedAction } = kcContext;
 
-  const { msg, msgStr } = i18n;
+  const { msg } = i18n;
 
   const [isFormSubmittable, setIsFormSubmittable] = useState(false);
 
@@ -55,6 +55,9 @@ export default function LoginUpdateProfile(props: LoginUpdateProfileProps) {
       classes={classes}
       displayRequiredFields
       headerNode={msg("loginProfileTitle")}
+      headerSubNode={
+        isAppInitiatedAction ? undefined : msg("loginProfileSubtitle")
+      }
       displayMessage={messagesPerField.exists("global")}
     >
       <form
@@ -70,13 +73,14 @@ export default function LoginUpdateProfile(props: LoginUpdateProfileProps) {
           onIsFormSubmittableValueChange={setIsFormSubmittable}
           doMakeUserConfirmPassword={doMakeUserConfirmPassword}
         />
-        <div id="kc-form-buttons" className="flex flex-col gap-3">
+        <div id="kc-form-buttons" className="flex flex-col gap-2">
           <Button
             type="submit"
+            size="large"
+            fullWidth
             disabled={!isFormSubmittable}
-            className={primaryButtonClassName}
           >
-            {msgStr("doSubmit")}
+            {msg("updateProfileSubmit")}
           </Button>
           {isAppInitiatedAction && (
             <Button
@@ -84,8 +88,9 @@ export default function LoginUpdateProfile(props: LoginUpdateProfileProps) {
               name="cancel-aia"
               value="true"
               formNoValidate
-              variant="outline"
-              className={secondaryButtonClassName}
+              variant="ghost"
+              size="large"
+              fullWidth
             >
               {msg("doCancel")}
             </Button>

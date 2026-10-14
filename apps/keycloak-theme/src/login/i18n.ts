@@ -22,7 +22,12 @@ import type { ThemeName } from "../kc.gen";
  *
  * `privacyNotice*` (MDRS-102) label the "Aydınlatma Metni’ni okudum" box that
  * `config/keycloak/user-profile.json` puts on the registration form; `{0}` in
- * `privacyNoticeRead` is where `UserProfileFormFields` places the link.
+ * `privacyNoticeRead` is where `components/linkedOptionLabel.tsx` places the
+ * link. `gender*` label the profile's gender choice, in the words tedris
+ * uses for it (`tedris-account.json`). The `*ScopeConsentText` keys are what
+ * the consent page lists for each scope an app asks for; `gender`'s is named
+ * in `config/keycloak/client-scopes/gender.json`, the others are Keycloak's
+ * own scopes, reworded.
  *
  * A realm-level override of the four keys `vite.config.ts` lists still wins
  * over these (keycloakify resolves server messages first), so an operator can
@@ -152,6 +157,33 @@ const i18n = i18nBuilder
         "Your account is active. Explore the köşks and apply to lessons.",
       emailVerifiedTitle: "Your e-mail address is verified",
       username: "Username",
+      gender: "Gender",
+      genderFemale: "Female",
+      genderMale: "Male",
+      requiredChoice: "Choose an option.",
+      requiredCheckbox: "Tick this box to continue.",
+      readOnlyHelp: "Read only; it cannot be changed here.",
+      selectAnOption: "Choose",
+      loginProfileSubtitle:
+        "Your account is missing some details. Once you add them, you continue where you left off.",
+      updateProfileSubmit: "Save and continue",
+      doCancel: "Cancel",
+      consentTitle: "Share your details with {0}?",
+      consentLead: "{0} will see these details from your Medaris account:",
+      consentLinksIntro: "How {0} uses them:",
+      consentTerms: "Terms of use",
+      consentPolicy: "Privacy policy",
+      consentAccept: "Allow",
+      consentCancel: "Cancel",
+      profileScopeConsentText: "Your name, username and language",
+      emailScopeConsentText: "Your e-mail address",
+      rolesScopeConsentText: "Your roles in Medaris",
+      genderScopeConsentText: "Your gender",
+      offlineAccessScopeConsentText:
+        "Access to your account while you are away",
+      phoneScopeConsentText: "Your phone number",
+      addressScopeConsentText: "Your address",
+      organizationScopeConsentText: "Your organization",
     },
     tr: {
       loginAccountTitle: "Giriş yap",
@@ -192,7 +224,7 @@ const i18n = i18nBuilder
       proceedWithAction: "Devam et",
       updatePasswordTitle: "Yeni şifreni belirle",
       logoutOtherSessions: "Diğer cihazlarda çıkış yap",
-      loginProfileTitle: "Profilinizi tamamlayın",
+      loginProfileTitle: "Profilini tamamla",
       pageExpiredTitle: "Bu sayfanın süresi doldu",
       errorTitle: "Giriş tamamlanamadı",
       emailVerifyResend: "Yeniden gönder",
@@ -269,13 +301,38 @@ const i18n = i18nBuilder
         "Hesabın etkinleşti. Köşkleri keşfedip derslere başvurabilirsin.",
       emailVerifiedTitle: "E-posta adresin doğrulandı",
       username: "Kullanıcı adı",
+      gender: "Cinsiyet",
+      genderFemale: "Kadın",
+      genderMale: "Erkek",
+      requiredChoice: "Bir seçenek seç.",
+      requiredCheckbox: "Devam etmek için bu kutuyu işaretle.",
+      readOnlyHelp: "Salt okunur; buradan değiştirilemez.",
+      selectAnOption: "Seç",
+      loginProfileSubtitle:
+        "Hesabında eksik bilgi var. Tamamladığında kaldığın yerden devam edersin.",
+      updateProfileSubmit: "Kaydet ve devam et",
+      doCancel: "Vazgeç",
+      consentTitle: "Bilgilerin {0} ile paylaşılsın mı?",
+      consentLead: "{0}, Medaris hesabındaki şu bilgileri görecek:",
+      consentLinksIntro: "{0} bunları nasıl kullandığını anlatıyor:",
+      consentTerms: "Kullanım şartları",
+      consentPolicy: "Gizlilik politikası",
+      consentAccept: "İzin ver",
+      consentCancel: "Vazgeç",
+      profileScopeConsentText: "Adın, soyadın, kullanıcı adın ve dil tercihin",
+      emailScopeConsentText: "E-posta adresin",
+      rolesScopeConsentText: "Medaris’teki rollerin",
+      genderScopeConsentText: "Cinsiyetin",
+      offlineAccessScopeConsentText: "Sen yokken de hesabına erişim",
+      phoneScopeConsentText: "Telefon numaran",
+      addressScopeConsentText: "Adresin",
+      organizationScopeConsentText: "Kurumun",
     },
     ar: {
       loginAccountTitle: "تسجيل الدخول",
       loginAccountSubtitle: "تابع دروسك من حيث توقفت.",
       registerTitle: "إنشاء حساب",
-      registerSubtitle:
-        "أنشئ حسابك، واستكشف الأكشاك، وانضم إلى الدروس. التسجيل مجاني.",
+      registerSubtitle: "أنشئ حسابك، واستكشف الأكشاك، وقدّم على الدروس.",
       doLogIn: "تسجيل الدخول",
       doRegister: "إنشاء حساب",
       noAccount: "ليس لديك حساب؟",
@@ -381,6 +438,32 @@ const i18n = i18nBuilder
       emailVerifiedMessage: "تم تفعيل حسابك. استكشف الأكشاك وقدّم على الدروس.",
       emailVerifiedTitle: "تم التحقق من بريدك الإلكتروني",
       username: "اسم المستخدم",
+      gender: "الجنس",
+      genderFemale: "أنثى",
+      genderMale: "ذكر",
+      requiredChoice: "اختر أحد الخيارات.",
+      requiredCheckbox: "ضع علامة في هذا المربع للمتابعة.",
+      readOnlyHelp: "للقراءة فقط؛ لا يمكن تغييره من هنا.",
+      selectAnOption: "اختر",
+      loginProfileSubtitle:
+        "ينقص حسابك بعض البيانات. بعد إكمالها تتابع من حيث توقفت.",
+      updateProfileSubmit: "احفظ وتابع",
+      doCancel: "تراجع",
+      consentTitle: "هل تشارك بياناتك مع {0}؟",
+      consentLead: "سيطّلع {0} على هذه البيانات من حسابك في مدارس:",
+      consentLinksIntro: "كيف يستخدمها {0}:",
+      consentTerms: "شروط الاستخدام",
+      consentPolicy: "سياسة الخصوصية",
+      consentAccept: "السماح",
+      consentCancel: "تراجع",
+      profileScopeConsentText: "اسمك واسم المستخدم واللغة المفضلة لديك",
+      emailScopeConsentText: "بريدك الإلكتروني",
+      rolesScopeConsentText: "أدوارك في مدارس",
+      genderScopeConsentText: "جنسك",
+      offlineAccessScopeConsentText: "الوصول إلى حسابك أثناء غيابك",
+      phoneScopeConsentText: "رقم هاتفك",
+      addressScopeConsentText: "عنوانك",
+      organizationScopeConsentText: "مؤسستك",
     },
   })
   .build();

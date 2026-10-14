@@ -2,6 +2,18 @@
 
 import { type RefObject, useEffect } from "react";
 
+// Every control a field can be drawn with: a text input or area, a box, a
+// radio (Base UI's span) and a select's trigger.
+const INVALID_CONTROL = [
+  "input",
+  "textarea",
+  '[role="checkbox"]',
+  '[role="radio"]',
+  '[role="combobox"]',
+]
+  .map((control) => `${control}[aria-invalid="true"]`)
+  .join(", ");
+
 /**
  * After a failed client-side check, puts the focus on the first control the
  * form marked invalid, so a keyboard or screen-reader user lands on the first
@@ -13,11 +25,7 @@ export function useFocusFirstInvalid(
 ) {
   useEffect(() => {
     if (!trigger) return;
-    form.current
-      ?.querySelector<HTMLElement>(
-        'input[aria-invalid="true"], [role="checkbox"][aria-invalid="true"]'
-      )
-      ?.focus();
+    form.current?.querySelector<HTMLElement>(INVALID_CONTROL)?.focus();
   }, [trigger, form]);
 }
 

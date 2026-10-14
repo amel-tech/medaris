@@ -10,7 +10,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
-import { privacyNoticeReadAttribute } from "../src/login/KcPageStory";
+import { messageRef } from "../src/login/KcPageStory";
 import { type RenderedPage, renderPage } from "./render-page";
 
 const PROFILE = JSON.parse(
@@ -53,16 +53,18 @@ const box = () =>
   label()?.querySelector<HTMLElement>('[role="checkbox"]') ?? undefined;
 
 describe("the privacy notice box (MDRS-102)", () => {
-  it("is declared in the realm's user profile the way the theme renders it", () => {
+  // The page specs render the declared profile itself (KcPageStory reads the
+  // same file), so what is pinned here is the declaration the box needs.
+  it("is declared in the realm's user profile as one box with a link", () => {
     expect(declared).toBeDefined();
     expect(declared?.required?.roles).toContain("user");
-    expect(declared?.displayName).toBe(privacyNoticeReadAttribute.displayName);
-    expect(declared?.validations).toEqual(
-      privacyNoticeReadAttribute.validators
-    );
-    expect(declared?.annotations).toEqual(
-      privacyNoticeReadAttribute.annotations
-    );
+    expect(declared?.validations).toEqual({ options: { options: ["yes"] } });
+    expect(declared?.annotations).toMatchObject({
+      inputType: "multiselect-checkboxes",
+      inputOptionLabels: { yes: messageRef("privacyNoticeRead") },
+      linkLabel: messageRef("privacyNoticeLinkLabel"),
+    });
+    expect(declared?.annotations.linkUrl).toMatch(/^https:\/\//);
   });
 
   it.each([
