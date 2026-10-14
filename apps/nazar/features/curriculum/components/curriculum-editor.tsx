@@ -70,6 +70,15 @@ import { ResourcesEditor } from "./resources-editor";
 const TONES = ["laciverd", "bordo", "zumrut", "murekkep"] as const;
 
 /**
+ * An open week is long: its heading stays at the top of the viewport while
+ * its celses scroll under it, so the week being edited is always named. The
+ * heading is the item's first child; Tailwind reads `_` in an arbitrary
+ * variant as a space, so `.mds-week__heading` cannot be named here.
+ */
+const STICKY_WEEK_HEADING =
+  "[&>:first-child]:sticky [&>:first-child]:top-0 [&>:first-child]:z-1 [&>:first-child]:rounded-t-[inherit] [&>:first-child]:bg-neutral-surface";
+
+/**
  * Müfredat: the course's details, its weeks and its sessions in one form.
  * Nothing is written until "Kaydet", which sends the whole course (PUT) with
  * the course version this page was read at. A week or a session taken out of
@@ -157,6 +166,9 @@ export function CurriculumEditor({
   const [sent, setSent] = useState(false);
   const [saving, setSaving] = useState(false);
   const [conflict, setConflict] = useState(false);
+  // Which celses show their details, by id (or position, before the save
+  // gives one an id); a celse not in here follows its default.
+  const [openLessons, setOpenLessons] = useState<Record<string, boolean>>({});
   // The open weeks are held here, not derived from the dates on each render:
   // derived, a date edit changed the set and the accordion started over,
   // closing every week (MDRS-276). It opens on the first week still running.
@@ -317,31 +329,6 @@ export function CurriculumEditor({
             {t("Curriculum.intro", { name: course.title })}
           </p>
         </div>
-        {can.edit ? (
-          <div className="flex items-center gap-3">
-            {dirty ? (
-              <output className="mds-caption" data-testid="dirty">
-                {t("Curriculum.dirty")}
-              </output>
-            ) : null}
-            <Button
-              variant="ghost"
-              type="button"
-              disabled={!dirty || locked}
-              onClick={reset}
-            >
-              {t("Curriculum.cancel")}
-            </Button>
-            <Button
-              type="submit"
-              loading={saving}
-              loadingLabel={t("Curriculum.saving")}
-              disabled={!dirty || refreshing || conflict || uploads > 0}
-            >
-              {t("Curriculum.save")}
-            </Button>
-          </div>
-        ) : null}
       </header>
 
       {!can.edit ? (
@@ -520,6 +507,7 @@ export function CurriculumEditor({
             return (
               <WeekAccordion
                 key={week.id ?? `new-${week.weekNumber}-${wi}`}
+                className={STICKY_WEEK_HEADING}
                 week={week.weekNumber}
                 title={week.title || t("Curriculum.untitledWeek")}
                 state={active ? "active" : done ? "done" : "default"}
@@ -583,6 +571,17 @@ export function CurriculumEditor({
                   const url = normalizeMeetingUrl(lesson.meetingUrl);
                   const platform = resolveMeetingPlatform(url);
                   const problem = linkProblem(lesson.meetingUrl);
+                  const lessonKey = lesson.id ?? `new-${wi}-${li}`;
+                  // A stored celse opens folded, a new one open; one with a
+                  // problem the save is waiting on is always open.
+                  const open =
+                    (openLessons[lessonKey] ?? !lesson.id) ||
+                    (sent &&
+                      errors.some(
+                        (error) =>
+                          error.weekIndex === wi && error.lessonIndex === li
+                      ));
+                  const detailsId = `lesson-${wi}-${li}-details`;
                   return (
                     <li
                       key={lesson.id ?? `new-${li}`}
@@ -661,114 +660,12 @@ export function CurriculumEditor({
                         </div>
                       ) : (
                         <>
-                          <div className="grid gap-4 md:grid-cols-2">
-                            <Field
-                              label={t("Curriculum.lessonTitleLabel")}
-                              required
-                              help={
-                                lesson.makeup
-                                  ? t("Curriculum.makeupNote", {
-                                      n: week.weekNumber,
-                                    })
-                                  : undefined
-                              }
-                              error={
-                                shown("lessonTitle", wi, li)
-                                  ? t("Curriculum.errors.lessonTitle")
-                                  : undefined
-                              }
-                            >
-                              <Input
-                                name={`lesson-${wi}-${li}-title`}
-                                value={lesson.title}
-                                maxLength={200}
-                                disabled={locked}
-                                onChange={(event) =>
-                                  patchLesson(wi, li, {
-                                    title: event.target.value,
-                                  })
-                                }
-                              />
-                            </Field>
-                            {/* MDRS-279: the session's own source line, the
-                                tedrisat column's 120 characters at most. */}
-                            <Field
-                              label={t("Curriculum.kaynakLabel")}
-                              help={t(
-                                course.contentLocked
-                                  ? "Curriculum.kaynakLocked"
-                                  : "Curriculum.kaynakHelp"
-                              )}
-                            >
-                              <Input
-                                name={`lesson-${wi}-${li}-kaynak`}
-                                value={lesson.kaynak}
-                                maxLength={120}
-                                dir="auto"
-                                // A content-locked read carries no source
-                                // line: there is nothing here to edit, and the
-                                // save leaves the stored one alone.
-                                disabled={locked || course.contentLocked}
-                                onChange={(event) =>
-                                  patchLesson(wi, li, {
-                                    kaynak: event.target.value,
-                                  })
-                                }
-                              />
-                            </Field>
-                          </div>
-                          {/* MDRS-286: the session's own links, under its
-                              source line. Changing them is session work. */}
-                          <LessonResourcesEditor
-                            prefix={`lesson-${wi}-${li}`}
-                            lessonId={lesson.id}
-                            resources={lesson.resources}
-                            onChange={(resources) =>
-                              patchLesson(wi, li, { resources })
-                            }
-                            shown={(kind, ri) =>
-                              shownLessonResource(kind, wi, li, ri)
-                            }
-                            locked={course.contentLocked}
-                            disabled={sessionsLocked}
-                            editable={can.edit && can.sessions}
-                            sessionsNote={can.edit && !can.sessions}
-                            upload={{
-                              route: lesson.id
-                                ? fileRoutes.lessonResources(lesson.id)
-                                : null,
-                              blocked: uploads > 0,
-                              onBusyChange,
-                              onUploaded: lesson.id
-                                ? onLessonUpload(lesson.id)
-                                : () => undefined,
-                            }}
-                            locale={locale}
-                          />
-                          {/* The celse's homework, apart from its resources:
-                              stored by its own writes, never by "Kaydet". */}
-                          <LessonAssignmentEditor
-                            prefix={`lesson-${wi}-${li}`}
-                            lessonId={lesson.id}
-                            assignment={
-                              (lesson.id && assignments[lesson.id]) || null
-                            }
-                            onChange={(next) => {
-                              const id = lesson.id;
-                              if (id) {
-                                setAssignments((all) => ({
-                                  ...all,
-                                  [id]: next,
-                                }));
-                              }
-                            }}
-                            locked={course.contentLocked}
-                            editable={can.sessions}
-                            disabled={saving || refreshing}
-                            upload={{ blocked: uploads > 0, onBusyChange }}
-                            locale={locale}
-                          />
-                          <div className="grid gap-4 sm:grid-cols-3">
+                          {/* When first: the date, the time and the length
+                              of the celse, the fields a programme is kept by. */}
+                          <div
+                            className="grid gap-4 md:grid-cols-3"
+                            data-testid={`lesson-${wi}-${li}-when`}
+                          >
                             <Field
                               label={t("Curriculum.dateLabel")}
                               required
@@ -837,41 +734,192 @@ export function CurriculumEditor({
                               />
                             </Field>
                           </div>
-                          <Field
-                            label={
-                              <span className="flex w-full items-center justify-between gap-2">
-                                {t("Curriculum.linkLabel")}
-                                {url && platform.id !== "unknown" ? (
-                                  <PlatformChip
-                                    platform={platform.id}
-                                    detected
-                                    detectedLabel={t("Curriculum.detected")}
-                                  />
-                                ) : null}
-                              </span>
-                            }
-                            help={t(linkHelpKey(lesson, course.inPerson))}
-                            error={
-                              shown("link", wi, li) && problem
-                                ? t("Curriculum.errors.link")
-                                : undefined
-                            }
-                          >
-                            <Input
-                              mono
-                              name={`lesson-${wi}-${li}-url`}
-                              placeholder="https://zoom.us/j/…"
-                              autoComplete="off"
-                              spellCheck={false}
-                              value={lesson.meetingUrl}
-                              disabled={locked}
-                              onChange={(event) =>
-                                patchLesson(wi, li, {
-                                  meetingUrl: event.target.value,
-                                })
+                          <div className="flex flex-wrap items-center justify-between gap-2 border-bs border-neutral-subtle pbs-3">
+                            <p className="mds-body-sm min-w-0 truncate text-neutral-muted">
+                              <bdi>
+                                {lesson.title.trim() ||
+                                  t("Curriculum.untitledLesson")}
+                              </bdi>
+                            </p>
+                            <Button
+                              variant="ghost"
+                              size="small"
+                              type="button"
+                              aria-expanded={open}
+                              aria-controls={detailsId}
+                              iconRight={
+                                <Icon
+                                  name={open ? "chevronUp" : "chevronDown"}
+                                  size="sm"
+                                />
                               }
+                              onClick={() =>
+                                setOpenLessons((all) => ({
+                                  ...all,
+                                  [lessonKey]: !open,
+                                }))
+                              }
+                            >
+                              {t(
+                                open
+                                  ? "Curriculum.detailsHide"
+                                  : "Curriculum.detailsShow"
+                              )}
+                            </Button>
+                          </div>
+                          {/* The rest of the celse folds away: its title and
+                              source, its link, then its resources and its
+                              homework, each a block of its own at the end. */}
+                          <div
+                            id={detailsId}
+                            hidden={!open}
+                            // no display class while folded: a utility's
+                            // display would beat the base layer's [hidden]
+                            className={open ? "flex flex-col gap-3" : undefined}
+                          >
+                            <div className="grid gap-4 md:grid-cols-2">
+                              <Field
+                                label={t("Curriculum.lessonTitleLabel")}
+                                required
+                                help={
+                                  lesson.makeup
+                                    ? t("Curriculum.makeupNote", {
+                                        n: week.weekNumber,
+                                      })
+                                    : undefined
+                                }
+                                error={
+                                  shown("lessonTitle", wi, li)
+                                    ? t("Curriculum.errors.lessonTitle")
+                                    : undefined
+                                }
+                              >
+                                <Input
+                                  name={`lesson-${wi}-${li}-title`}
+                                  value={lesson.title}
+                                  maxLength={200}
+                                  disabled={locked}
+                                  onChange={(event) =>
+                                    patchLesson(wi, li, {
+                                      title: event.target.value,
+                                    })
+                                  }
+                                />
+                              </Field>
+                              {/* MDRS-279: the session's own source line, the
+                                  tedrisat column's 120 characters at most. */}
+                              <Field
+                                label={t("Curriculum.kaynakLabel")}
+                                help={t(
+                                  course.contentLocked
+                                    ? "Curriculum.kaynakLocked"
+                                    : "Curriculum.kaynakHelp"
+                                )}
+                              >
+                                <Input
+                                  name={`lesson-${wi}-${li}-kaynak`}
+                                  value={lesson.kaynak}
+                                  maxLength={120}
+                                  dir="auto"
+                                  // A content-locked read carries no source
+                                  // line: there is nothing here to edit, and the
+                                  // save leaves the stored one alone.
+                                  disabled={locked || course.contentLocked}
+                                  onChange={(event) =>
+                                    patchLesson(wi, li, {
+                                      kaynak: event.target.value,
+                                    })
+                                  }
+                                />
+                              </Field>
+                            </div>
+                            <Field
+                              label={
+                                <span className="flex w-full items-center justify-between gap-2">
+                                  {t("Curriculum.linkLabel")}
+                                  {url && platform.id !== "unknown" ? (
+                                    <PlatformChip
+                                      platform={platform.id}
+                                      detected
+                                      detectedLabel={t("Curriculum.detected")}
+                                    />
+                                  ) : null}
+                                </span>
+                              }
+                              help={t(linkHelpKey(lesson, course.inPerson))}
+                              error={
+                                shown("link", wi, li) && problem
+                                  ? t("Curriculum.errors.link")
+                                  : undefined
+                              }
+                            >
+                              <Input
+                                mono
+                                name={`lesson-${wi}-${li}-url`}
+                                placeholder="https://zoom.us/j/…"
+                                autoComplete="off"
+                                spellCheck={false}
+                                value={lesson.meetingUrl}
+                                disabled={locked}
+                                onChange={(event) =>
+                                  patchLesson(wi, li, {
+                                    meetingUrl: event.target.value,
+                                  })
+                                }
+                              />
+                            </Field>
+                            {/* MDRS-286: the session's own links, under its
+                                source line. Changing them is session work. */}
+                            <LessonResourcesEditor
+                              prefix={`lesson-${wi}-${li}`}
+                              lessonId={lesson.id}
+                              resources={lesson.resources}
+                              onChange={(resources) =>
+                                patchLesson(wi, li, { resources })
+                              }
+                              shown={(kind, ri) =>
+                                shownLessonResource(kind, wi, li, ri)
+                              }
+                              locked={course.contentLocked}
+                              disabled={sessionsLocked}
+                              editable={can.edit && can.sessions}
+                              sessionsNote={can.edit && !can.sessions}
+                              upload={{
+                                route: lesson.id
+                                  ? fileRoutes.lessonResources(lesson.id)
+                                  : null,
+                                blocked: uploads > 0,
+                                onBusyChange,
+                                onUploaded: lesson.id
+                                  ? onLessonUpload(lesson.id)
+                                  : () => undefined,
+                              }}
+                              locale={locale}
                             />
-                          </Field>
+                            {/* The celse's homework, apart from its resources:
+                                stored by its own writes, never by "Kaydet". */}
+                            <LessonAssignmentEditor
+                              prefix={`lesson-${wi}-${li}`}
+                              lessonId={lesson.id}
+                              assignment={
+                                (lesson.id && assignments[lesson.id]) || null
+                              }
+                              onChange={(next) => {
+                                const id = lesson.id;
+                                if (id) {
+                                  setAssignments((all) => ({
+                                    ...all,
+                                    [id]: next,
+                                  }));
+                                }
+                              }}
+                              locked={course.contentLocked}
+                              editable={can.sessions}
+                              disabled={saving || refreshing}
+                              upload={{ blocked: uploads > 0, onBusyChange }}
+                              locale={locale}
+                            />
+                          </div>
                         </>
                       )}
                     </li>
@@ -946,6 +994,36 @@ export function CurriculumEditor({
           <Alert tone="info">{t("Curriculum.noWeeks")}</Alert>
         ) : null}
       </section>
+      {/* Kaydet is always in reach: the bar sticks to the bottom of the
+          viewport however far down the weeks the form is. */}
+      {can.edit ? (
+        <div
+          className="sticky bottom-0 z-2 -mx-2 flex flex-wrap items-center justify-end gap-3 rounded-t-surface border-bs border-neutral-subtle bg-neutral-surface px-4 py-3"
+          data-testid="save-bar"
+        >
+          {dirty ? (
+            <output className="mds-caption me-auto" data-testid="dirty">
+              {t("Curriculum.dirty")}
+            </output>
+          ) : null}
+          <Button
+            variant="ghost"
+            type="button"
+            disabled={!dirty || locked}
+            onClick={reset}
+          >
+            {t("Curriculum.cancel")}
+          </Button>
+          <Button
+            type="submit"
+            loading={saving}
+            loadingLabel={t("Curriculum.saving")}
+            disabled={!dirty || refreshing || conflict || uploads > 0}
+          >
+            {t("Curriculum.save")}
+          </Button>
+        </div>
+      ) : null}
     </form>
   );
 }

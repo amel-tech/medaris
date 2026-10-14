@@ -495,6 +495,61 @@ describe("editing", () => {
   });
 });
 
+describe("a celse's layout (MDRS-248)", () => {
+  const details = (wi: number, li: number) =>
+    document.getElementById(`lesson-${wi}-${li}-details`) as HTMLElement;
+  const toggle = (wi: number, li: number) =>
+    document.querySelector(
+      `[aria-controls="lesson-${wi}-${li}-details"]`
+    ) as HTMLButtonElement;
+
+  it("puts the date, the time and the length first, outside the folded details", async () => {
+    await mount();
+    const card = document.querySelector('[data-testid="lesson-1-0"]');
+    const when = card?.querySelector('[data-testid="lesson-1-0-when"]');
+    expect(when?.querySelector('[name="lesson-1-0-duration"]')).not.toBeNull();
+    expect(details(1, 0).contains(field("lesson-1-0-duration"))).toBe(false);
+    // the homework and the resources come after the fields that are the celse's own
+    const order = [...(card?.querySelectorAll("[name], h4, h3") ?? [])].map(
+      (node) => node.getAttribute("name") ?? node.textContent
+    );
+    expect(order.indexOf("lesson-1-0-duration")).toBeLessThan(
+      order.indexOf("lesson-1-0-title")
+    );
+  });
+
+  it("folds a stored celse and opens it on demand, keeping what was typed", async () => {
+    await mount();
+    expect(details(1, 0).hidden).toBe(true);
+    expect(toggle(1, 0).getAttribute("aria-expanded")).toBe("false");
+    await click(toggle(1, 0));
+    expect(details(1, 0).hidden).toBe(false);
+    await typeInto(field("lesson-1-0-title"), "Yeni başlık");
+    await click(toggle(1, 0));
+    expect(details(1, 0).hidden).toBe(true);
+    expect(field("lesson-1-0-title").value).toBe("Yeni başlık");
+  });
+
+  it("opens a new celse, and any celse whose problem holds the save", async () => {
+    await mount();
+    const week = document.querySelector('[data-week="2"]') as HTMLElement;
+    await click(buttonIn(week, "Celse ekle"));
+    // week 2 held three celses; the fourth is new
+    expect(details(1, 3).hidden).toBe(false);
+    await typeInto(field("lesson-1-0-title"), "");
+    await submit();
+    expect(saveCurriculum).not.toHaveBeenCalled();
+    expect(details(1, 0).hidden).toBe(false);
+  });
+
+  it("keeps Kaydet in a bar that sticks to the bottom of the viewport", async () => {
+    await mount();
+    const bar = document.querySelector('[data-testid="save-bar"]');
+    expect(bar?.className).toContain("sticky");
+    expect(bar?.contains(save())).toBe(true);
+  });
+});
+
 describe("Kaydet", () => {
   it("sends the whole course with the version the page was read at and says it was saved", async () => {
     await mount();
