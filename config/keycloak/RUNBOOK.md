@@ -151,6 +151,71 @@ Edit `realms/_base.json` (or, for the name and display name only,
 its `PUT` replaces the whole profile, so an attribute that is not in the file
 is removed from the realm.
 
+## Copy the genders tedrisat already has (gender rollout, step 2)
+
+#317 makes `gender` (`FEMALE` / `MALE`) a required attribute of the user
+profile and puts it into the tokens as the `gender` claim; from then on
+Keycloak is the one source of a person's gender, and tedrisat's
+`user_profiles.gender` only mirrors the claim. #317's "Production order" (in
+its section on the gender, in this file once it is merged) has four steps.
+**Step 2** copies the genders people already chose in tedris into their
+Keycloak accounts, so the realm does not ask them again when step 3 makes the
+attribute required. `tools/keycloak/backfill-gender.mjs` is that step: it
+does what #317's steps 2.2 and 2.3 describe by hand.
+
+What it does: it reads the `user_profiles` rows whose `gender` is `FEMALE` or
+`MALE` (`user_id` is the Keycloak `sub`) and, for each, reads the account
+(`GET /admin/realms/<realm>/users/<id>`). An account that already has a
+gender keeps it; an account without one gets tedrisat's, written back with
+every other attribute as it was read (`PUT` of the same representation). A
+dry run is the default; `--apply` writes. It prints counts only, never an id,
+a URL with credentials, a password or a token. Nothing secret is ever an
+argument: the settings come from env files, which the tool reads itself and
+does not load into the environment.
+
+1. Do step 1 of #317's order first (the theme is live), then its step 2.1:
+   admin console → realm `medaris` → Realm settings → General → Unmanaged
+   attributes → **Only administrators can edit** → Save. Until the profile
+   declares `gender` (step 3), Keycloak drops an attribute nobody may edit.
+2. Two git-ignored env files: `config/keycloak/env/prod.env`, filled as for
+   `provision` (the tool reads its `KC_URL`, `KC_REALM`, `ALLOW_REMOTE`,
+   `KC_ADMIN_USER` and `KC_ADMIN_PASSWORD`), and
+   `config/keycloak/env/tedrisat-db.env` with one line,
+   `TEDRISAT_DATABASE_URL=postgres://<user>:<password>@<host>:<port>/tedrisat_db?sslmode=require`,
+   for a role that can `SELECT` from `user_profiles` (a read is all it does
+   there). The machine running it must reach both the database and Keycloak.
+3. Dry run, from the repository root after `pnpm install` (the tool uses
+   tedrisat's `pg`):
+
+   ```bash
+   node tools/keycloak/backfill-gender.mjs \
+     --env-file config/keycloak/env/prod.env \
+     --env-file config/keycloak/env/tedrisat-db.env
+   ```
+
+   It prints how many profiles have a gender, how many of them have no
+   Keycloak account (deleted there), how many accounts already have a gender
+   (and how many of those another one: Keycloak's stays), and how many it
+   would write.
+4. Apply: the same command with `--apply`. `written` should equal the dry
+   run's `would write`. `refused by Keycloak (400)` counts accounts whose
+   profile lacks something an admin must fill (a last name); they are left
+   alone, and Keycloak asks those people at their next sign-in. Any other
+   answer from Keycloak (401, 403, 5xx) stops the run with exit code 1 after
+   printing how far it got; running it again continues, since a written
+   account now has its gender.
+5. Check: a second dry run prints `would write: 0`, and
+   `GET /admin/realms/medaris/users/count?q=gender:FEMALE` plus the same for
+   `MALE` is at least the dry run's profile count less `not in Keycloak` and
+   `refused by Keycloak (400)`.
+6. `rm config/keycloak/env/tedrisat-db.env`, then go on with #317's step 3.
+
+tedrisat and tedris need nothing for this step: until the `gender` scope
+reaches the tokens (#317 step 4) they behave as before. Afterwards the claim
+is the caller's gender (`libs/common/src/auth-guard/access-token-claims.ts`),
+`user_profiles.gender` follows it (`apps/tedrisat/src/user/user-sync.service.ts`),
+and tedris shows it read-only with a link to Keycloak's profile form.
+
 ## Back-channel logout and the session store (auth Phase 2)
 
 tedris, nizam and nazar keep their sessions in Valkey when

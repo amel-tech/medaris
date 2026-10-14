@@ -64,8 +64,16 @@ export class MyPublicProfileResponse {
     type: String,
     nullable: true,
     enum: PROFILE_GENDERS,
+    description:
+      "The account's gender when the token carries one (#317), otherwise the one saved here.",
   })
   gender!: string | null;
+
+  @ApiProperty({
+    description:
+      "The caller's token carries a gender (#317): it is the account's, shown read-only, and a change through this API is refused (GENDER_MANAGED_BY_ACCOUNT); the account's own profile page changes it.",
+  })
+  genderManagedByAccount!: boolean;
 
   @ApiPropertyOptional({ type: String, nullable: true })
   city!: string | null;
@@ -140,6 +148,8 @@ export class UpdatePublicProfileDto {
     enum: PROFILE_GENDERS,
     nullable: true,
     type: String,
+    description:
+      "Refused with 409 GENDER_MANAGED_BY_ACCOUNT, and nothing of the request saved, when the token carries another gender (#317).",
   })
   @IsOptional()
   @IsIn(PROFILE_GENDERS)

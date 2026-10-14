@@ -15,12 +15,18 @@ import { DatabaseService } from "../database/database.service";
 import { enrolledCourseIds } from "../database/enrolled-courses";
 import { courses } from "../database/schema/course.schema";
 import { kosks } from "../database/schema/kosk.schema";
-import { userProfiles } from "../database/schema/user-profile.schema";
+import {
+  ProfileGender,
+  userProfiles,
+} from "../database/schema/user-profile.schema";
 
 export type IUserProfile = InferSelectModel<typeof userProfiles>;
 export type IUserProfilePatch = Partial<
   Omit<InferInsertModel<typeof userProfiles>, "userId" | "createdAt">
 >;
+
+/** The audit action of a mirrored gender that overwrote another (#317). */
+export const GENDER_CHANGE_ACTION = "user.gender_change";
 
 /** Postgres' unique_violation, the only way two people can pick one künye. */
 const UNIQUE_VIOLATION = "23505";
@@ -68,6 +74,48 @@ export class UserProfileRepository {
         target: userProfiles.userId,
         set: { ...patch, updatedAt: sql`now()` },
       });
+  }
+
+  /**
+   * Makes `user_profiles.gender` say what the account says (#317), in one
+   * statement: Keycloak is the one source of a person's gender, and this
+   * column is the copy that everyone else's view of them (the public profile,
+   * course rosters, quotas) reads.
+   *
+   * - Equal already: nothing is written (the `where` of the conflict clause).
+   * - No row, or a row without a gender: the row is created or filled. Not
+   *   audited: nothing was overwritten, and the rollout of #317 fills one row
+   *   per person, which would bury the audit page.
+   * - Another gender stored: overwritten, and `user.gender_change` goes to
+   *   the audit log in the same statement, from and to.
+   *
+   * Two requests racing on one person cannot both write or both audit: the
+   * second waits for the first's row lock and then finds the value equal.
+   * Returns whether the row changed.
+   */
+  async mirrorGender(userId: string, gender: ProfileGender): Promise<boolean> {
+    const result = await this.db.execute<{ written: boolean }>(sql`
+      with previous as (
+        select gender from user_profiles where user_id = ${userId}
+      ),
+      written as (
+        insert into user_profiles (user_id, gender)
+        values (${userId}, ${gender})
+        on conflict (user_id) do update
+          set gender = excluded.gender, updated_at = now()
+          where user_profiles.gender is distinct from excluded.gender
+        returning user_id
+      ),
+      audited as (
+        insert into audit_log (actor_id, action, entity, entity_id, details)
+        select ${userId}::uuid, ${GENDER_CHANGE_ACTION}, 'user', ${userId}::uuid,
+               jsonb_build_object('from', previous.gender, 'to', ${gender}::text, 'source', 'account')
+          from written, previous
+         where previous.gender is not null
+        returning id
+      )
+      select exists (select 1 from written) as written`);
+    return result.rows[0]?.written === true;
   }
 
   /**

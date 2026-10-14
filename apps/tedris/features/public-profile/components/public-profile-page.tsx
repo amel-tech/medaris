@@ -1,5 +1,6 @@
 "use client";
 
+import { accountActionHref } from "@medaris/auth/client";
 import type { MyPublicProfileResponse } from "@medaris/services/tedrisat";
 import { Alert } from "@medaris/ui/mds/alert";
 import { Avatar } from "@medaris/ui/mds/avatar";
@@ -35,6 +36,9 @@ export interface PublicProfilePageProps {
   profile: MyPublicProfileResponse;
 }
 
+/** tedrisat's answer when a save would change a gender the account holds (#317). */
+const GENDER_MANAGED_BY_ACCOUNT = "GENDER_MANAGED_BY_ACCOUNT";
+
 const draftOf = (p: MyPublicProfileResponse): ProfileDraft => ({
   kunye: p.kunye ?? "",
   gender: (p.gender as Gender | null) ?? null,
@@ -54,6 +58,10 @@ function Content({ profile }: PublicProfilePageProps) {
   const [pending, startTransition] = useTransition();
   // A visibility PATCH is in flight: every switch waits for it.
   const [switching, setSwitching] = useState(false);
+  // The session's token carries the gender (#317): the account holds it, so
+  // it is shown read-only, never sent, and changed on the account's own
+  // profile page ("Değiştir"), which comes back here with new tokens.
+  const genderFromAccount = profile.genderManagedByAccount;
 
   const set = <K extends keyof ProfileDraft>(
     key: K,
@@ -73,13 +81,24 @@ function Content({ profile }: PublicProfilePageProps) {
     // A blank künye never reaches the API (criterion 5).
     if (found.kunye) return;
     startTransition(async () => {
-      const res = await saveProfileTexts(draft);
+      const res = await saveProfileTexts({
+        ...draft,
+        gender: genderFromAccount ? undefined : draft.gender,
+      });
       if (sendToSignIn(res)) return;
       if (res.success === true) {
         const next = draftOf(res.data);
         setSaved(next);
         setDraft(next);
         toaster.notify({ tone: "success", title: t("saved") });
+      } else if (res.code === GENDER_MANAGED_BY_ACCOUNT) {
+        // The page was drawn before the token carried a gender; the account
+        // holds it now, and nothing of this save was kept.
+        toaster.notify({
+          tone: "error",
+          title: t("genderManagedTitle"),
+          description: t("genderManagedHint"),
+        });
       } else if (res.status === 409) {
         setKunyeTaken(true);
       } else {
@@ -169,17 +188,52 @@ function Content({ profile }: PublicProfilePageProps) {
                 onChange={(e) => set("kunye", e.target.value)}
               />
             </Field>
-            <RadioGroup
-              className="flex flex-row flex-wrap items-center gap-x-6 [&>.mds-label]:basis-full"
-              legend={t("gender")}
-              name="gender"
-              value={draft.gender}
-              onChange={(v) => set("gender", v as Gender)}
-              options={[
-                { value: "FEMALE", label: t("female") },
-                { value: "MALE", label: t("male") },
-              ]}
-            />
+            {genderFromAccount ? (
+              <div
+                className="flex flex-col items-start gap-2"
+                data-testid="profile-gender-account"
+              >
+                <Field
+                  label={t("gender")}
+                  help={t("genderFromAccountHelp")}
+                  className="self-stretch"
+                >
+                  <Input
+                    name="gender"
+                    readOnly
+                    value={
+                      draft.gender === "FEMALE"
+                        ? t("female")
+                        : draft.gender === "MALE"
+                          ? t("male")
+                          : ""
+                    }
+                  />
+                </Field>
+                <Button
+                  variant="outline"
+                  size="small"
+                  href={accountActionHref("UPDATE_PROFILE", {
+                    callbackUrl: `/${locale}/account/public-profile`,
+                    locale,
+                  })}
+                >
+                  {t("genderChange")}
+                </Button>
+              </div>
+            ) : (
+              <RadioGroup
+                className="flex flex-row flex-wrap items-center gap-x-6 [&>.mds-label]:basis-full"
+                legend={t("gender")}
+                name="gender"
+                value={draft.gender}
+                onChange={(v) => set("gender", v as Gender)}
+                options={[
+                  { value: "FEMALE", label: t("female") },
+                  { value: "MALE", label: t("male") },
+                ]}
+              />
+            )}
             <Alert tone="neutral">
               {t("consentBefore")}
               <span className="underline">{t("consentName")}</span>
@@ -348,7 +402,9 @@ function Content({ profile }: PublicProfilePageProps) {
  * Herkese açık profil (design tedris/35, MDRS-166): the always-public künye and
  * gender, the four switchable fields, and the "Başkaları böyle görür" preview
  * drawn live from the form. A switch saves on its own, optimistically; the
- * texts save with "Kaydet".
+ * texts save with "Kaydet". Once the session's token carries the gender
+ * (#317), the account holds it: read-only here, with "Değiştir" to Keycloak's
+ * profile form; without the claim, the radio works as before.
  */
 export function PublicProfilePage(props: PublicProfilePageProps) {
   return (
