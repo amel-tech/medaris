@@ -1,5 +1,6 @@
 "use client";
 
+import { accountActionHref } from "@medaris/auth/client";
 import { Button } from "@medaris/ui/mds/button";
 import { Card } from "@medaris/ui/mds/card";
 import { Field } from "@medaris/ui/mds/field";
@@ -35,16 +36,69 @@ export interface AccountSettingsProps {
   givenName: string;
   familyName: string;
   email: string;
+  /** The account's gender as tedrisat mirrors it (#317); null while none is known. */
+  gender: "FEMALE" | "MALE" | null;
   timeZone: string | null;
   /** Lesson invitations by e-mail (MDRS-121); on unless turned off. */
   lessonInvitationEmails: boolean;
+  /** Keycloak's page of the applications the person granted consent to. */
+  connectedAppsHref: string;
+}
+
+/**
+ * The account's gender, read-only (#317): Keycloak holds it, so "Değiştir"
+ * (or "Ekle", while none is known) opens the account's profile form, which
+ * comes back to Hesap with new tokens. The words are the public profile's,
+ * the one place that showed it before; that page is hidden (MDRS-141).
+ */
+function GenderRow({ gender }: Pick<AccountSettingsProps, "gender">) {
+  const t = useAccountTranslations("AccountProfile");
+  // Not `t`/`tp`: the parity spec reads those as AccountProfile keys.
+  const tPublic = useAccountTranslations("PublicProfile");
+  const locale = useLocale();
+  const value =
+    gender === "FEMALE"
+      ? tPublic("female")
+      : gender === "MALE"
+        ? tPublic("male")
+        : t("genderUnknown");
+  return (
+    <div
+      className="flex flex-col items-start gap-2"
+      data-testid="account-gender"
+    >
+      <Field
+        label={tPublic("gender")}
+        help={
+          gender ? tPublic("genderFromAccountHelp") : t("genderUnknownHelp")
+        }
+        className="self-stretch"
+      >
+        <Input name="gender" readOnly value={value} />
+      </Field>
+      <Button
+        variant="outline"
+        size="small"
+        href={accountActionHref("UPDATE_PROFILE", {
+          callbackUrl: `/${locale}/account`,
+          locale,
+        })}
+      >
+        {gender ? tPublic("genderChange") : t("genderAdd")}
+      </Button>
+    </div>
+  );
 }
 
 function PersonalCard({
   givenName: savedGiven,
   familyName: savedFamily,
   email,
-}: Pick<AccountSettingsProps, "givenName" | "familyName" | "email">) {
+  gender,
+}: Pick<
+  AccountSettingsProps,
+  "givenName" | "familyName" | "email" | "gender"
+>) {
   const t = useAccountTranslations("AccountProfile");
   const toaster = useToaster();
   const [givenName, setGivenName] = useState(savedGiven);
@@ -118,6 +172,7 @@ function PersonalCard({
             leading={<Icon name="lock" size="sm" />}
           />
         </Field>
+        <GenderRow gender={gender} />
         <div className="flex justify-end">
           <Button type="submit" loading={pending} loadingLabel={t("saving")}>
             {t("save")}
@@ -299,6 +354,28 @@ function PublicProfileCard() {
   );
 }
 
+/**
+ * "Bağlı uygulamalar" (owner, 2026-10-14): the applications a person signed
+ * in to with their Medaris account, and the consent they can take back, on
+ * Keycloak's account console, in the same tab. The card follows the public
+ * profile's.
+ */
+function ConnectedAppsCard({
+  connectedAppsHref,
+}: Pick<AccountSettingsProps, "connectedAppsHref">) {
+  const t = useAccountTranslations("AccountProfile");
+  return (
+    <Card title={t("connectedTitle")} headingLevel={2} className={CARD_GAP}>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <p className="mds-caption min-inline-0 flex-1">{t("connectedText")}</p>
+        <Button variant="outline" href={connectedAppsHref}>
+          {t("connectedManage")}
+        </Button>
+      </div>
+    </Card>
+  );
+}
+
 function SignOutCard() {
   const t = useAccountTranslations("AccountProfile");
   const locale = useLocale();
@@ -320,11 +397,12 @@ function SignOutCard() {
 }
 
 /**
- * The cards of Hesap (design tedris/34, MDRS-166): personal information, time
- * zone and language, calendar, and the sign-out aside, plus, while the public
- * profile is shown (MDRS-141 hid it), a way to it (design tedris/35). The roles
- * section (design 43) follows below it on the page. A client component so the
- * Toast root and the form state share one tree.
+ * The cards of Hesap (design tedris/34, MDRS-166): personal information (with
+ * the account's gender), the connected applications, time zone and language,
+ * calendar, and the sign-out aside, plus, while the public profile is shown
+ * (MDRS-141 hid it), a way to it (design tedris/35). The roles section (design
+ * 43) follows below it on the page. A client component so the Toast root and
+ * the form state share one tree.
  */
 export function AccountSettings(props: AccountSettingsProps) {
   return (
@@ -332,6 +410,7 @@ export function AccountSettings(props: AccountSettingsProps) {
       <div className="grid items-start gap-section lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <div className="flex min-inline-0 flex-col gap-section">
           <PersonalCard {...props} />
+          <ConnectedAppsCard connectedAppsHref={props.connectedAppsHref} />
           <TimeLanguageCard timeZone={props.timeZone} />
           <CalendarCard lessonInvitationEmails={props.lessonInvitationEmails} />
           {PUBLIC_PROFILE_ENABLED && <PublicProfileCard />}
