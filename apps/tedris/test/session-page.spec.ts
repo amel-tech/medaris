@@ -125,6 +125,10 @@ const NOW = new Date("2026-10-03T17:52:00.000Z");
 const at = (minutes: number) => new Date(NOW.getTime() + minutes * 60_000);
 const tr = resources.tr.tedris.SessionPage;
 
+// A resource row is one link, framed like a control (MDRS-248).
+const LINKED_ROW =
+  "flex items-center gap-3 px-3 py-3 rounded-control border border-neutral-subtle text-neutral-default no-underline transition-colors hover:bg-neutral-hover";
+
 // A Bunny player link as tedrisat signs it for one viewer (MDRS-119).
 const BUNNY =
   "https://player.mediadelivery.net/embed/424242/3f1c2b4a-5d6e-4f70-8a9b-0c1d2e3f4a5b?token=9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08&expires=1790000000";
@@ -1008,7 +1012,7 @@ describe("session page, Kaynaklar (MDRS-279, MDRS-286, MDRS-289)", () => {
       mine.indexOf(">Kara’e çekimi<")
     );
     expect(mine).toContain(
-      '<a class="mds-link" href="https://drive.google.com/file/d/1a2b3c/view" target="_blank" rel="noopener noreferrer">'
+      `<a class="${LINKED_ROW}" href="https://drive.google.com/file/d/1a2b3c/view" target="_blank" rel="noopener noreferrer">`
     );
     expect(mine).toContain("Tek sayfa");
     expect(mine.match(/<span class="mds-platform-chip[^"]*">[^<]*</g)).toEqual([
@@ -1018,7 +1022,7 @@ describe("session page, Kaynaklar (MDRS-279, MDRS-286, MDRS-289)", () => {
     expect(
       list(await draw(session({ resources: own })), "course-resources")
     ).toContain(
-      '<a class="mds-link" href="https://files.medaris.org/bina.pdf" target="_blank" rel="noopener noreferrer">'
+      `<a class="${LINKED_ROW}" href="https://files.medaris.org/bina.pdf" target="_blank" rel="noopener noreferrer">`
     );
   });
 
@@ -1089,14 +1093,14 @@ describe("session page, Kaynaklar (MDRS-279, MDRS-286, MDRS-289)", () => {
     );
     const mine = list(html, "session-resources");
     expect(mine).toContain(
-      `<a class="mds-link" href="/api/files/lessons/${LESSON}/resources/${R1}">`
+      `<a class="${LINKED_ROW}" href="/api/files/lessons/${LESSON}/resources/${R1}">`
     );
     expect(mine).toContain(`>${tr.download}</span>`);
     expect(mine).toContain(">PDF<");
     expect(mine).toContain("3 MB");
     const theirs = list(html, "course-resources");
     expect(theirs).toContain(
-      `<a class="mds-link" href="/api/files/courses/${COURSE}/resources/${R2}">`
+      `<a class="${LINKED_ROW}" href="/api/files/courses/${COURSE}/resources/${R2}">`
     );
     expect(theirs).toContain(">DOCX<");
     expect(theirs).toContain("40 kB");

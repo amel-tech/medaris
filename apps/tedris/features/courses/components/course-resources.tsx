@@ -39,6 +39,17 @@ export interface ResourceListLabels {
 }
 
 /**
+ * A row: the icon, the words and, when it is linked, the trailing icon. A
+ * linked row is one block (MDRS-248): the whole row is the link, framed like
+ * a control and lit on hover, because talebeler pressed the trailing icon,
+ * which was not part of the link, and nothing downloaded. A row that is not
+ * linked keeps the same layout without the frame, so it does not look
+ * pressable.
+ */
+const ROW = "flex items-center gap-3 px-3 py-3";
+const LINKED_ROW = `${ROW} rounded-control border border-neutral-subtle text-neutral-default no-underline transition-colors hover:bg-neutral-hover`;
+
+/**
  * The rows of a list of resources (MDRS-279, design tedris/05 "Bu kursun
  * kaynakları"): each a name, an optional short line and either the address
  * it opens in a new tab or, since MDRS-287, a file it downloads. Both are
@@ -71,7 +82,7 @@ export const ResourceList = ({
   className?: string;
 }) => (
   <ul
-    className={`m-0 flex list-none flex-col p-0${className ? ` ${className}` : ""}`}
+    className={`m-0 flex list-none flex-col gap-2 p-0${className ? ` ${className}` : ""}`}
     data-testid={testId}
   >
     {resources.map((resource) => {
@@ -89,21 +100,14 @@ export const ResourceList = ({
       if (file) {
         const download = resourceFileHref(file);
         const type = fileTypeChip(file.contentType);
-        return (
-          <li
-            key={resource.id}
-            className="flex items-center gap-3 py-3 border-be border-neutral-subtle last:border-be-0"
-          >
+        const body = (
+          <>
             <Icon name={fileIcon(file.contentType)} size="sm" />
             <span className="flex min-inline-0 flex-1 flex-col">
+              {name}
               {download ? (
-                <a className="mds-link" href={download}>
-                  {name}
-                  <span className="mds-visually-hidden">{labels.download}</span>
-                </a>
-              ) : (
-                name
-              )}
+                <span className="mds-visually-hidden">{labels.download}</span>
+              ) : null}
               {meta}
               <span className="flex flex-wrap items-center gap-2 mbs-1">
                 {type ? <Badge variant="secondary">{type}</Badge> : null}
@@ -112,32 +116,31 @@ export const ResourceList = ({
                 </span>
               </span>
             </span>
-            {download ? <Icon name="download" size="sm" /> : null}
+          </>
+        );
+        return (
+          <li key={resource.id}>
+            {download ? (
+              <a className={LINKED_ROW} href={download}>
+                {body}
+                <Icon name="download" size="sm" />
+              </a>
+            ) : (
+              <div className={ROW}>{body}</div>
+            )}
           </li>
         );
       }
       const href = resourceHref(resource.url);
       const provider = resourceProviderOf(href);
-      return (
-        <li
-          key={resource.id}
-          className="flex items-center gap-3 py-3 border-be border-neutral-subtle last:border-be-0"
-        >
+      const body = (
+        <>
           <Icon name={ICONS[resource.type ?? ""] ?? "link"} size="sm" />
           <span className="flex min-inline-0 flex-1 flex-col">
+            {name}
             {href ? (
-              <a
-                className="mds-link"
-                href={href}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                {name}
-                <span className="mds-visually-hidden">{labels.newTab}</span>
-              </a>
-            ) : (
-              name
-            )}
+              <span className="mds-visually-hidden">{labels.newTab}</span>
+            ) : null}
             {meta}
             {provider ? (
               // A provider, not a meeting: its name alone, no dot.
@@ -148,7 +151,23 @@ export const ResourceList = ({
               />
             ) : null}
           </span>
-          {href ? <Icon name="externalLink" size="sm" /> : null}
+        </>
+      );
+      return (
+        <li key={resource.id}>
+          {href ? (
+            <a
+              className={LINKED_ROW}
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {body}
+              <Icon name="externalLink" size="sm" />
+            </a>
+          ) : (
+            <div className={ROW}>{body}</div>
+          )}
         </li>
       );
     })}

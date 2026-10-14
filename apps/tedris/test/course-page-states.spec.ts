@@ -426,6 +426,9 @@ describe("tedris/24: the recordings tab (MDRS-162)", () => {
 
 describe("the course's resources (MDRS-279)", () => {
   const PDF = "https://files.medaris.org/bina.pdf";
+  // MDRS-248: the whole row is the link.
+  const LINKED_ROW =
+    "flex items-center gap-3 px-3 py-3 rounded-control border border-neutral-subtle text-neutral-default no-underline transition-colors hover:bg-neutral-hover";
 
   it("lists them beside the course for an enrolled talebe, each opening in a new tab", async () => {
     const html = await render("ENROLLED", {
@@ -441,7 +444,7 @@ describe("the course's resources (MDRS-279)", () => {
     });
     expect(html).toContain(tr.resourcesTitle);
     expect(html).toContain(
-      `<a class="mds-link" href="${PDF}" target="_blank" rel="noopener noreferrer">`
+      `<a class="${LINKED_ROW}" href="${PDF}" target="_blank" rel="noopener noreferrer">`
     );
     expect(html).toContain("PDF · 124 sayfa");
     expect(html).not.toContain(tr.resourcesLocked);
@@ -478,7 +481,7 @@ describe("the course's resources (MDRS-279)", () => {
       ],
     });
     expect(reader).toContain(
-      `<a class="mds-link" href="/api/files/courses/${COURSE}/resources/${R1}">`
+      `<a class="${LINKED_ROW}" href="/api/files/courses/${COURSE}/resources/${R1}">`
     );
     expect(reader).toContain(`>${tr.resourcesDownload}</span>`);
     expect(reader).toContain(">PDF<");
