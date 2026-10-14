@@ -237,15 +237,27 @@ export const bunnyPending = (slot: SessionSlot): boolean =>
   slot.recording.status === "PROCESSING";
 
 /**
- * Whether a video uploaded to Bunny may take the recording's place: a pasted
- * or stream link, of any provider but BUNNY (tedrisat's `uploadReplaces`).
- * The owner added a session's stream as its recording, found the stream
- * private and had no way left to upload its video (12 October). A Bunny
- * recording's "Düzenle" stays the link form alone.
+ * Whether a video uploaded to Bunny may take the recording's place from its
+ * "Düzenle": any recording. A pasted or stream link, since the owner added a
+ * session's stream as its recording, found the stream private and had no way
+ * left to upload its video (12 October); a Bunny video in any status too,
+ * since a wrong file uploaded to a session must be replaceable (13 October,
+ * "yanlış dosya yüklemiş olsak değiştiremeyecek miyiz?"). tedrisat's
+ * `uploadReplaces` lets a Bunny video go only when the upload says so
+ * (`replacesVideo`, `uploadBody`).
  */
 export const uploadReplaces = (
   recording: Pick<RecordingFact, "provider"> | null
-): boolean => recording !== null && recording.provider !== "BUNNY";
+): boolean => recording !== null;
+
+/**
+ * Whether an upload from this recording's "Düzenle" replaces a Bunny video,
+ * which tedrisat deletes from Bunny once the new upload is over: the upload
+ * then says so (`replaceVideo`), and the dialog warns of it.
+ */
+export const replacesVideo = (
+  recording: Pick<RecordingFact, "provider"> | null
+): boolean => recording?.provider === "BUNNY";
 
 /** Whether the page has a Bunny upload to wait for, so it is read again until none is left. */
 export const anyBunnyPending = (blocks: readonly WeekBlock[]): boolean =>
@@ -529,18 +541,28 @@ export function patchBody(
 
 /**
  * The body of "Yükle": the title, who may watch, and the session's time as
- * when it was recorded (what tedrisat sets for a pasted link). Null while the
- * title is empty; the link is not this tab's.
+ * when it was recorded (what tedrisat sets for a pasted link). From the
+ * "Düzenle" of a Bunny recording (`editing`) it also says the upload replaces
+ * that video (`replaceVideo`); "Kayıt ekle" never does, so two people adding
+ * at once still collide. Null while the title is empty; the link is not this
+ * tab's.
  */
 export function uploadBody(
   form: RecordingForm,
-  slot: Pick<SessionSlot, "startsAt">
-): { title: string; visibility: Visibility; recordedAt?: string } | null {
+  slot: Pick<SessionSlot, "startsAt">,
+  editing: Pick<RecordingFact, "provider"> | null = null
+): {
+  title: string;
+  visibility: Visibility;
+  recordedAt?: string;
+  replaceVideo?: true;
+} | null {
   if (!form.title.trim()) return null;
   return {
     title: form.title.trim(),
     visibility: form.isPublic ? "PUBLIC" : "ENROLLED",
     ...(slot.startsAt ? { recordedAt: slot.startsAt } : {}),
+    ...(replacesVideo(editing) ? { replaceVideo: true as const } : {}),
   };
 }
 

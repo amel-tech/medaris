@@ -128,6 +128,30 @@ describe("uploadReplaces", () => {
     expect(bunny(RecordingStatus.FAILED)).toBe(true);
     expect(bunny(RecordingStatus.PROCESSING)).toBe(false);
     expect(bunny(RecordingStatus.READY)).toBe(false);
+    // "Kayıt ekle" sends no intent, or `replaceVideo: false`: the same rule
+    for (const status of [RecordingStatus.PROCESSING, RecordingStatus.READY]) {
+      expect(
+        uploadReplaces(
+          { provider: RecordingProvider.BUNNY, status },
+          { replaceVideo: false }
+        ),
+        status
+      ).toBe(false);
+    }
+  });
+
+  // 13 October: "yanlış dosya yüklemiş olsak değiştiremeyecek miyiz?" The
+  // edit dialog of a Bunny recording sends `replaceVideo`; PROCESSING is in on
+  // purpose, so an upload stopped with "İptal" is not stuck for 24 hours.
+  it("lets an upload sent with replaceVideo replace any recording, a Bunny video in every status included", () => {
+    for (const provider of Object.values(RecordingProvider)) {
+      for (const status of Object.values(RecordingStatus)) {
+        expect(
+          uploadReplaces({ provider, status }, { replaceVideo: true }),
+          `${provider} ${status}`
+        ).toBe(true);
+      }
+    }
   });
 });
 

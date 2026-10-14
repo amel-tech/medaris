@@ -162,7 +162,9 @@ export async function setRecordingAvailability(
 /**
  * "Yükle" (`POST /lessons/:id/recordings/uploads`): tedrisat creates the video
  * in Bunny, records it as the session's PROCESSING recording and signs its
- * upload. A refusal logs the API's message; the answer is never logged.
+ * upload. From a Bunny recording's "Düzenle" it replaces that video
+ * (`replaceVideo`). A refusal logs the API's message; the answer is never
+ * logged.
  */
 export async function startRecordingUpload(
   lessonId: string,
@@ -171,6 +173,8 @@ export async function startRecordingUpload(
     visibility: RecordingResponse["visibility"];
     /** ISO time of the session, when it has one */
     recordedAt?: string;
+    /** the upload takes the place of the recording's Bunny video */
+    replaceVideo?: true;
   }
 ): Promise<GrantOutcome | Unauthenticated> {
   const result = await authenticatedAction(async (api) =>
@@ -181,6 +185,7 @@ export async function startRecordingUpload(
           title: body.title,
           visibility: body.visibility,
           ...(body.recordedAt ? { recordedAt: new Date(body.recordedAt) } : {}),
+          ...(body.replaceVideo ? { replaceVideo: true } : {}),
         },
       })
     )

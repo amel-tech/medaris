@@ -32,21 +32,36 @@ export enum RecordingStatus {
   FAILED = "FAILED",
 }
 
+/** How a new Bunny upload was asked for (`POST /lessons/:id/recordings/uploads`). */
+export interface IUploadIntent {
+  /**
+   * Sent by "Düzenle" of a Bunny recording: the new video takes the place of
+   * the recording's video, whatever its status. "Kayıt ekle" never sends it.
+   */
+  replaceVideo?: boolean;
+}
+
 /**
  * Whether a new Bunny upload may take the place of a session's recording
  * (`POST /lessons/:id/recordings/uploads`): a pasted or stream link, of any
  * provider but BUNNY, or a Bunny upload that FAILED. The owner added a
  * session's stream as its recording, found the stream private and had no way
  * left to upload its video instead (12 October): a link now gives way to an
- * upload. A Bunny video PROCESSING or READY is kept: it is an upload under
- * way or done. Asked before Bunny is called and again under the lesson's lock.
+ * upload. Without `replaceVideo` a Bunny video PROCESSING or READY is kept:
+ * two people adding at once still collide. With it (13 October, "yanlış dosya
+ * yüklemiş olsak değiştiremeyecek miyiz?") a Bunny video in any status gives
+ * way too, PROCESSING included, so an upload stopped with "İptal" is not
+ * stuck until its 24 hours pass; the video it replaces is queued for deletion
+ * from Bunny. Asked before Bunny is called and again under the lesson's lock.
  */
 export function uploadReplaces(
-  recording: Pick<IRecordingRow, "provider" | "status">
+  recording: Pick<IRecordingRow, "provider" | "status">,
+  intent: IUploadIntent = {}
 ): boolean {
   return (
     recording.provider !== RecordingProvider.BUNNY ||
-    recording.status === RecordingStatus.FAILED
+    recording.status === RecordingStatus.FAILED ||
+    intent.replaceVideo === true
   );
 }
 

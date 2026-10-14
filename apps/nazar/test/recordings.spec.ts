@@ -25,6 +25,7 @@ import {
   releaseFormOf,
   releaseProblem,
   releasesOf,
+  replacesVideo,
   type SessionSlot,
   slotCounts,
   slotState,
@@ -622,18 +623,23 @@ describe("the upload", () => {
     expect(anyBunnyPending([])).toBe(false);
   });
 
-  it("lets an upload replace a link of any provider, never a Bunny video", () => {
+  // 13 October: a wrong file uploaded to a session may be replaced too.
+  it("lets an upload replace any recording, a Bunny video in every status included, and says when it is a Bunny video", () => {
     const of = (over: Partial<RecordingFact> | null) => slot(over).recording;
     for (const provider of ["YOUTUBE", "DRIVE", "OTHER"] as const) {
       expect(uploadReplaces(of({ provider, status: "READY" })), provider).toBe(
         true
       );
+      expect(replacesVideo(of({ provider, status: "READY" })), provider).toBe(
+        false
+      );
     }
-    expect(uploadReplaces(of({}))).toBe(false);
-    expect(uploadReplaces(of({ status: "READY", url: "https://x" }))).toBe(
-      false
-    );
+    for (const status of ["PROCESSING", "READY", "FAILED"] as const) {
+      expect(uploadReplaces(of({ status })), status).toBe(true);
+      expect(replacesVideo(of({ status })), status).toBe(true);
+    }
     expect(uploadReplaces(of(null))).toBe(false);
+    expect(replacesVideo(of(null))).toBe(false);
   });
 
   it("sends the title, who may watch and the session's time, and nothing without a title", () => {
@@ -656,6 +662,24 @@ describe("the upload", () => {
     expect(
       uploadBody({ title: " ", url: "", isPublic: false }, slot(null))
     ).toBeNull();
+  });
+
+  it("says the upload replaces the video only from a Bunny recording's Düzenle", () => {
+    const form = { title: "Doğru dosya", url: "", isPublic: false };
+    const bunny = slot({ status: "READY" });
+    expect(uploadBody(form, bunny, bunny.recording)).toEqual({
+      title: "Doğru dosya",
+      visibility: "ENROLLED",
+      recordedAt: "2026-10-05T18:00:00.000Z",
+      replaceVideo: true,
+    });
+    // "Kayıt ekle", and the Düzenle of a link, never say so
+    for (const editing of [null, slot({ provider: "OTHER" }).recording]) {
+      expect(uploadBody(form, bunny, editing)).not.toHaveProperty(
+        "replaceVideo"
+      );
+    }
+    expect(uploadBody(form, bunny)).not.toHaveProperty("replaceVideo");
   });
 
   it("writes a size in the page's language, in the largest unit under it", () => {
