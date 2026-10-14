@@ -26,13 +26,13 @@ export interface PartnerCodesCardPartner {
 
 /**
  * "Ortak uygulama kodları" of Ders ayarları (partner enrollments): for each
- * partner application the server works with, the codes of its own that enrol
+ * partner application of the course's köşk, the codes of its own that enrol
  * people in this course, a "Kaldır" beside each and a field to add one. Each
  * write is one call; a refusal is worded from its code under the field
  * (adding) or in a toast that stays (removing), and a code another course has
  * is "taken" without naming that course. The page reads itself again after a
  * write. The server page draws this only for a caller who holds
- * `course.partner_codes`, and only when a partner is configured.
+ * `course.partner_codes`, and only when the köşk has a partner.
  */
 export function PartnerCodesCard({
   courseId,

@@ -24,9 +24,10 @@ export function partnerCodeProblem(code: string): "empty" | "shape" | null {
 }
 
 /**
- * The section is drawn only when the server works with at least one partner
- * application and the caller holds `course.partner_codes`: the köşk nazımı
- * and the başnazım, not the müderris.
+ * The section is drawn only when the course's köşk works with at least one
+ * partner application (the başnazım binds partners to köşks in nizam) and
+ * the caller holds `course.partner_codes`: the köşk nazımı and the başnazım,
+ * not the müderris.
  */
 export const showsPartnerCodes = (
   partnerCount: number,

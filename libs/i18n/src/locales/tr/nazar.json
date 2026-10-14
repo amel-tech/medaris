@@ -1648,7 +1648,7 @@
         "empty": "Bir kod yazın.",
         "shape": "Kod yalnız küçük harf, rakam ve tire içerebilir; harf ya da rakamla başlar.",
         "taken": "Bu kod başka bir derse bağlı. Önce o dersten kaldırılması gerekir.",
-        "unknownPartner": "Bu ortak uygulama artık tanımlı değil. Sayfayı yenileyin."
+        "unknownPartner": "Bu ortak uygulama artık bu köşkle çalışmıyor. Sayfayı yenileyin."
       }
     }
   },
