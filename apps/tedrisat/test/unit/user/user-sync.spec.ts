@@ -4,6 +4,7 @@ import {
   UserRepository,
 } from "../../../src/user/user.repository";
 import { identityFromClaims } from "../../../src/user/user-identity";
+import { UserProfileRepository } from "../../../src/user/user-profile.repository";
 import { UserSyncService } from "../../../src/user/user-sync.service";
 
 const SUB = "a0000000-0000-4000-8000-00000000000a";
@@ -17,14 +18,21 @@ function identity(overrides: Partial<UserIdentity> = {}): UserIdentity {
     givenName: "Talha",
     familyName: "Talebe",
     locale: null,
+    gender: null,
     ...overrides,
   };
 }
 
 function serviceWithSpy() {
   const upsert = vi.fn().mockResolvedValue(undefined);
+  const mirrorGender = vi.fn().mockResolvedValue(true);
   const repo = { upsert } as unknown as UserRepository;
-  return { service: new UserSyncService(repo), upsert };
+  const profiles = { mirrorGender } as unknown as UserProfileRepository;
+  return {
+    service: new UserSyncService(repo, profiles),
+    upsert,
+    mirrorGender,
+  };
 }
 
 describe("UserSyncService (MDRS-104)", () => {
@@ -64,6 +72,59 @@ describe("UserSyncService (MDRS-104)", () => {
   });
 });
 
+describe("UserSyncService: the account's gender (#317)", () => {
+  it("mirrors the token's gender with the first write", async () => {
+    const { service, upsert, mirrorGender } = serviceWithSpy();
+    await service.sync(identity({ gender: "FEMALE" }), 0);
+    expect(upsert).toHaveBeenCalledTimes(1);
+    expect(mirrorGender).toHaveBeenCalledWith(SUB, "FEMALE");
+  });
+
+  it("asks nothing more while the gender is unchanged", async () => {
+    const { service, mirrorGender } = serviceWithSpy();
+    await service.sync(identity({ gender: "FEMALE" }), 0);
+    await service.sync(identity({ gender: "FEMALE" }), 1);
+    await service.sync(identity({ gender: "FEMALE" }), 2);
+    expect(mirrorGender).toHaveBeenCalledTimes(1);
+  });
+
+  it("writes the mirror at once when the account's gender changes", async () => {
+    const { service, mirrorGender } = serviceWithSpy();
+    await service.sync(identity({ gender: "FEMALE" }), 0);
+    await service.sync(identity({ gender: "MALE" }), 1);
+    expect(mirrorGender.mock.calls).toEqual([
+      [SUB, "FEMALE"],
+      [SUB, "MALE"],
+    ]);
+  });
+
+  it("leaves the mirror alone when the token carries no gender, as before", async () => {
+    const { service, upsert, mirrorGender } = serviceWithSpy();
+    await service.sync(identity(), 0);
+    await service.syncNow(identity(), 1);
+    expect(upsert).toHaveBeenCalledTimes(2);
+    expect(mirrorGender).not.toHaveBeenCalled();
+  });
+
+  it("mirrors on syncNow too, whatever the cache says", async () => {
+    const { service, mirrorGender } = serviceWithSpy();
+    await service.sync(identity({ gender: "MALE" }), 0);
+    await service.syncNow(identity({ gender: "MALE" }), 1);
+    expect(mirrorGender).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not remember a failed mirror write, so the next request retries", async () => {
+    const { service, upsert, mirrorGender } = serviceWithSpy();
+    mirrorGender.mockRejectedValueOnce(new Error("connection reset"));
+    await expect(
+      service.sync(identity({ gender: "FEMALE" }), 0)
+    ).rejects.toThrow();
+    await service.sync(identity({ gender: "FEMALE" }), 1);
+    expect(upsert).toHaveBeenCalledTimes(2);
+    expect(mirrorGender).toHaveBeenCalledTimes(2);
+  });
+});
+
 describe("identityFromClaims (MDRS-104)", () => {
   it("normalises the claims it copies", () => {
     expect(
@@ -83,7 +144,16 @@ describe("identityFromClaims (MDRS-104)", () => {
       givenName: null,
       familyName: null,
       locale: "tr",
+      gender: null,
     });
+  });
+
+  it("carries the token's gender, and nothing for a value the realm cannot send (#317)", () => {
+    expect(identityFromClaims({ sub: SUB, gender: "MALE" })?.gender).toBe(
+      "MALE"
+    );
+    expect(identityFromClaims({ sub: SUB, gender: "male" })?.gender).toBeNull();
+    expect(identityFromClaims({ sub: SUB })?.gender).toBeNull();
   });
 
   it("skips a subject that is not a UUID", () => {

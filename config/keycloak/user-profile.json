@@ -1,25 +1,6 @@
 {
   "attributes": [
     {
-      "name": "username",
-      "displayName": "${username}",
-      "validations": {
-        "length": { "min": 3, "max": 255 },
-        "username-prohibited-characters": {},
-        "up-username-not-idn-homograph": {}
-      },
-      "permissions": { "view": ["admin", "user"], "edit": ["admin", "user"] },
-      "multivalued": false
-    },
-    {
-      "name": "email",
-      "displayName": "${email}",
-      "validations": { "email": {}, "length": { "max": 255 } },
-      "required": { "roles": ["admin", "user"] },
-      "permissions": { "view": ["admin", "user"], "edit": ["admin", "user"] },
-      "multivalued": false
-    },
-    {
       "name": "firstName",
       "displayName": "${firstName}",
       "validations": {
@@ -37,6 +18,40 @@
         "length": { "max": 255 },
         "person-name-prohibited-characters": {}
       },
+      "required": { "roles": ["admin", "user"] },
+      "permissions": { "view": ["admin", "user"], "edit": ["admin", "user"] },
+      "multivalued": false
+    },
+    {
+      "name": "gender",
+      "displayName": "${gender}",
+      "validations": { "options": { "options": ["FEMALE", "MALE"] } },
+      "annotations": {
+        "inputType": "select-radiobuttons",
+        "inputOptionLabels": {
+          "FEMALE": "${genderFemale}",
+          "MALE": "${genderMale}"
+        }
+      },
+      "required": { "roles": ["admin", "user"] },
+      "permissions": { "view": ["admin", "user"], "edit": ["admin", "user"] },
+      "multivalued": false
+    },
+    {
+      "name": "username",
+      "displayName": "${username}",
+      "validations": {
+        "length": { "min": 3, "max": 255 },
+        "username-prohibited-characters": {},
+        "up-username-not-idn-homograph": {}
+      },
+      "permissions": { "view": ["admin", "user"], "edit": ["admin", "user"] },
+      "multivalued": false
+    },
+    {
+      "name": "email",
+      "displayName": "${email}",
+      "validations": { "email": {}, "length": { "max": 255 } },
       "required": { "roles": ["admin", "user"] },
       "permissions": { "view": ["admin", "user"], "edit": ["admin", "user"] },
       "multivalued": false

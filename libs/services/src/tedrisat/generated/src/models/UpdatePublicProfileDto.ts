@@ -34,7 +34,7 @@ export interface UpdatePublicProfileDto {
      */
     kunye?: string;
     /**
-     * 
+     * Refused with 409 GENDER_MANAGED_BY_ACCOUNT, and nothing of the request saved, when the token carries another gender (#317).
      * @type {string}
      * @memberof UpdatePublicProfileDto
      */

@@ -168,10 +168,17 @@ test("Herkese açık profil: künye is required, switches persist, and others se
   ).toBeVisible();
 
   await page.locator('input[name="kunye"]:visible').fill(`Künye ${tag}`);
-  await page
-    .getByText("Kadın", { exact: true })
-    .filter({ visible: true })
-    .click();
+  // Once the realm's gender scope is live (#317) the token carries the
+  // gender and the page shows it read-only; before that, the radio.
+  const accountHoldsGender = await page
+    .getByTestId("profile-gender-account")
+    .isVisible();
+  if (!accountHoldsGender) {
+    await page
+      .getByText("Kadın", { exact: true })
+      .filter({ visible: true })
+      .click();
+  }
   await page.locator('input[name="city"]:visible').fill("İstanbul");
   await page
     .locator('textarea[name="about"]:visible')
@@ -218,7 +225,9 @@ test("Herkese açık profil: künye is required, switches persist, and others se
     ).json();
   expect(await read()).toMatchObject({
     kunye: `Künye ${tag}`,
-    gender: "FEMALE",
+    gender: accountHoldsGender
+      ? expect.stringMatching(/^(FEMALE|MALE)$/)
+      : "FEMALE",
     city: "İstanbul",
   });
   await page

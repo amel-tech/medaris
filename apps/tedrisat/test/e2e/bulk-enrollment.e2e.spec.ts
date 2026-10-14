@@ -175,7 +175,7 @@ describe("Toplu talebe ekle (e2e)", () => {
     Object.assign(realm, { searches: 0, inFlight: 0, mostInFlight: 0 });
     const [kosk] = await db
       .insert(kosks)
-      .values({ ownerId: NAZIM, name: "Sidre Köşkü" })
+      .values({ ownerId: NAZIM, name: "Örnek Köşk" })
       .returning();
     koskId = kosk.id;
     const rows = await db

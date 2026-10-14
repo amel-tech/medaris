@@ -1,5 +1,9 @@
 import { type NextRequest, NextResponse } from "next/server";
 import * as client from "openid-client";
+import {
+  ACCOUNT_ACTION_PARAM,
+  isAccountAction,
+} from "../shared/account-action";
 import type { AuthErrorCode } from "../shared/auth-error";
 import { AUTH_ROUTES, REAUTH_PARAM } from "../shared/routes";
 import {
@@ -65,7 +69,7 @@ const STATE_PATTERN = /^[A-Za-z0-9_-]{16,128}$/;
 const flowId = (state: string) => state.slice(0, 16);
 
 export interface AuthRouteHandlers {
-  /** `GET /api/auth/signin?callbackUrl=&locale=&intent=register&reauth=1` */
+  /** `GET /api/auth/signin?callbackUrl=&locale=&intent=register&reauth=1&action=UPDATE_PROFILE` */
   signIn(request: NextRequest): Promise<Response>;
   /** `GET /api/auth/callback/keycloak` */
   callback(request: NextRequest): Promise<Response>;
@@ -141,6 +145,11 @@ export function createRouteHandlers(
     const register = params.get("intent") === "register";
     // The API refused this session's token: new tokens, not straight back.
     const reauth = params.get(REAUTH_PARAM) === "1";
+    // An account action (Keycloak's AIA, `shared/account-action.ts`): the
+    // IdP's form for it, then back through the callback with new tokens.
+    // Anything but an allowed action is no action.
+    const requested = params.get(ACCOUNT_ACTION_PARAM);
+    const action = !register && isAccountAction(requested) ? requested : null;
 
     const starts = parseStarts(
       request.cookies.get(config.cookies.starts)?.value,
@@ -177,10 +186,12 @@ export function createRouteHandlers(
     // page that keeps sending a signed-in browser here would otherwise loop
     // through this step for free. Not for "Kayıt ol", which asks for the
     // registration form on purpose, nor for `reauth`, where the session is
-    // what the API refused.
+    // what the API refused, nor for an account action, whose form is the
+    // point of the visit.
     if (
       !register &&
       !reauth &&
+      !action &&
       existing &&
       hasUsableAccessToken(existing.session, now)
     ) {
@@ -216,6 +227,8 @@ export function createRouteHandlers(
     // OIDC "Initiating User Registration" (MDRS-101): the registration form
     // directly, rather than the login form and a link to find.
     if (register) parameters.prompt = "create";
+    // Keycloak's application-initiated action, e.g. UPDATE_PROFILE.
+    if (action) parameters.kc_action = action;
 
     const flow: Flow = {
       state,

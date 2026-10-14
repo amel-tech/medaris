@@ -225,28 +225,88 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
   # Full releases only, after `stable` moved (by promotion or by the fallback
-  # build). Coolify's Keycloak service pulls `stable`; this deploy webhook
-  # makes it pull and recreate the container. A 401, a 404 or a Coolify 5xx
-  # fails the job: a new `stable` that nothing deployed is not a deploy.
+  # build). The webhook is Coolify's restart of the Keycloak service, which
+  # pulls `stable` again only because the service sets `pull_policy: always`
+  # (runbook §0). A 401, a 404 or a Coolify 5xx fails the job: a new `stable`
+  # that nothing deployed is not a deploy. No retry: a restart request that
+  # timed out may still have been queued, and a second one would restart a
+  # Keycloak that is already starting.
+  #
+  # Accepting the request is not a running Keycloak. On 2026-10-13 Coolify
+  # answered "Service restarting request queued.", stopped both containers and
+  # never started them; sign-in was down for 8.5 minutes until the service was
+  # started by hand. So the job then waits for the realm to go down and come
+  # back, asks Coolify to start the service once if it does not, and fails
+  # when that does not bring it back either.
   restart:
     needs: [promote, image]
     if: ${{ !cancelled() && github.event_name == 'release' && startsWith(github.event.release.tag_name, 'keycloak-theme-') && github.event.release.prerelease == false && (needs.promote.outputs.digest != '' || needs.image.result == 'success') }}
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 15
+    env:
+      COOLIFY_WEBHOOK: ${{ secrets.KEYCLOAK_COOLIFY_RESTART_WEBHOOK }}
+      COOLIFY_TOKEN: ${{ secrets.COOLIFY_DEPLOY_TOKEN }}
+      KEYCLOAK_READY_URL: https://auth.medaris.app/realms/medaris/.well-known/openid-configuration
     steps:
-      - name: Deploy Keycloak at Coolify
-        env:
-          COOLIFY_WEBHOOK: ${{ secrets.KEYCLOAK_COOLIFY_RESTART_WEBHOOK }}
-          COOLIFY_TOKEN: ${{ secrets.COOLIFY_DEPLOY_TOKEN }}
+      - name: Restart Keycloak at Coolify
         run: |
           set -euo pipefail
           if [ -z "${COOLIFY_WEBHOOK}" ]; then
             echo "::error::KEYCLOAK_COOLIFY_RESTART_WEBHOOK is not set — stable moved in GHCR but Keycloak was never redeployed."
             exit 1
           fi
-          curl --fail-with-body --silent --show-error \
-               --retry 3 --retry-connrefused --max-time 60 \
+          curl --fail-with-body --silent --show-error --max-time 60 \
                --request GET "${COOLIFY_WEBHOOK}" \
                --header "Authorization: Bearer ${COOLIFY_TOKEN}"
           echo
-          echo "Coolify deploy webhook accepted."
+          echo "Coolify accepted the restart request ($(date -u +%T))."
+
+      - name: Wait for Keycloak to come back
+        run: |
+          set -euo pipefail
+          status() { curl --silent --output /dev/null --write-out '%{http_code}' --max-time 10 "${KEYCLOAK_READY_URL}" || true; }
+          # wait_for <down|up> <seconds>: down is anything but a 200.
+          wait_for() {
+            local until=$((SECONDS + $2)) code
+            while [ "${SECONDS}" -lt "${until}" ]; do
+              code=$(status)
+              if [ "$1" = up ] && [ "${code}" = 200 ]; then return 0; fi
+              if [ "$1" = down ] && [ "${code}" != 200 ]; then return 0; fi
+              sleep 5
+            done
+            return 1
+          }
+          # The webhook is <coolify>/api/v1/services/<uuid>/restart[?…];
+          # the same service's start is …/start.
+          start_service() {
+            local base="${COOLIFY_WEBHOOK%%\?*}"
+            case "${base}" in
+              */restart) ;;
+              *)
+                echo "::error::The webhook does not end in /restart, so its start URL is unknown; start the Keycloak service in Coolify by hand."
+                return 1
+                ;;
+            esac
+            curl --fail-with-body --silent --show-error --max-time 60 \
+                 --request GET "${base%/restart}/start" \
+                 --header "Authorization: Bearer ${COOLIFY_TOKEN}"
+            echo
+          }
+
+          if ! wait_for down 180; then
+            echo "::error::Keycloak never went down within 3 minutes of the restart request: Coolify did not run it, and the previous image is still serving."
+            exit 1
+          fi
+          echo "Keycloak is down for the restart ($(date -u +%T))."
+          if wait_for up 240; then
+            echo "Keycloak answers again ($(date -u +%T))."
+            exit 0
+          fi
+          echo "::warning::Keycloak did not come back within 4 minutes; asking Coolify to start the service."
+          start_service
+          if wait_for up 300; then
+            echo "Keycloak answers after the start request ($(date -u +%T))."
+            exit 0
+          fi
+          echo "::error::Keycloak still does not answer at ${KEYCLOAK_READY_URL}. Start the service in Coolify and read its log (docs/runbooks/deploy-keycloak-theme.md §2)."
+          exit 1

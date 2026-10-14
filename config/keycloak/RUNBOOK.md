@@ -6,11 +6,12 @@ overwrites it, and `verify` reports it until then.
 
 | Path | Holds |
 | -- | -- |
-| `realms/_base.json` | Every realm setting shared by all environments, including the `SYSTEM_ADMIN` realm role |
+| `realms/_base.json` | Every realm setting shared by all environments, including the `SYSTEM_ADMIN` realm role and the client scopes every new client is offered (`defaultOptionalClientScopes`) |
 | `realms/<realm>.json` | Only `realm` and `displayName`; deep-merged over `_base.json` (`jq -s '.[0] * .[1]'`) |
 | `clients/_base.json` | Settings shared by every client: confidential, every flow off |
 | `clients/<env>/<client>.json` | One client of one environment; deep-merged over `clients/_base.json` |
-| `user-profile.json` | The declarative user profile: first name, last name and e-mail required, plus the required privacy-notice box `privacyNoticeRead` (MDRS-102); nothing else |
+| `client-scopes/<scope>.json` | One realm client scope: `gender` (the `gender` claim), and `profile`, Keycloak's own, from which the `gender` mapper is removed |
+| `user-profile.json` | The declarative user profile, in the order the registration and profile pages draw it: first name, last name, gender, user name, e-mail and the privacy-notice box `privacyNoticeRead` (MDRS-102). All required but the user name, which Keycloak requires on its own |
 | `env/<env>.env.example` | The variables the scripts read for that environment — no values for secrets |
 | `scripts/` | `validate`, `dry-run`, `provision`, `verify` |
 
@@ -45,10 +46,23 @@ then prints `no difference`.
 What the comparison covers: every setting the repository sets. A setting the
 repository leaves out is not compared (Keycloak has hundreds). Protocol mappers
 and user-profile attributes are compared by name in both directions, so a
-mapper or attribute added by hand shows up. Clients that are not in
-`clients/<env>/` (Keycloak's own `account`, `admin-cli`, … and any added by
-hand) are not compared. A client secret is compared only when its
-`KC_CLIENT_SECRET_*` variable is set, and its value is never printed.
+mapper or attribute added by hand shows up; the order of the user-profile
+attributes is compared too, because the forms follow it. Clients and client
+scopes that are not in the repository (Keycloak's own `account`, `admin-cli`,
+`email`, … and any added by hand) are not compared. A client secret is
+compared only when its `KC_CLIENT_SECRET_*` variable is set, and its value is
+never printed.
+
+Scope assignments are "must include", not the exact list: a scope a file
+names in `defaultClientScopes` / `optionalClientScopes` (a client) or
+`defaultDefaultClientScopes` / `defaultOptionalClientScopes` (the realm) is
+assigned, moved out of the other list if it is there; a scope the server has
+beyond the list is left alone and not reported. Keycloak reads these fields as
+the exact list and only when it creates the client, so they never reach it
+inside a representation: a client created with `defaultClientScopes:
+["gender"]` would lose `profile`, `email` and `roles`. `removedProtocolMappers`
+in a scope file is this package's own key: mappers that must not be on that
+scope.
 
 ## Provision
 
@@ -137,6 +151,71 @@ Edit `realms/_base.json` (or, for the name and display name only,
 its `PUT` replaces the whole profile, so an attribute that is not in the file
 is removed from the realm.
 
+## Copy the genders tedrisat already has (gender rollout, step 2)
+
+#317 makes `gender` (`FEMALE` / `MALE`) a required attribute of the user
+profile and puts it into the tokens as the `gender` claim; from then on
+Keycloak is the one source of a person's gender, and tedrisat's
+`user_profiles.gender` only mirrors the claim. #317's "Production order" (in
+its section on the gender, in this file once it is merged) has four steps.
+**Step 2** copies the genders people already chose in tedris into their
+Keycloak accounts, so the realm does not ask them again when step 3 makes the
+attribute required. `tools/keycloak/backfill-gender.mjs` is that step: it
+does what #317's steps 2.2 and 2.3 describe by hand.
+
+What it does: it reads the `user_profiles` rows whose `gender` is `FEMALE` or
+`MALE` (`user_id` is the Keycloak `sub`) and, for each, reads the account
+(`GET /admin/realms/<realm>/users/<id>`). An account that already has a
+gender keeps it; an account without one gets tedrisat's, written back with
+every other attribute as it was read (`PUT` of the same representation). A
+dry run is the default; `--apply` writes. It prints counts only, never an id,
+a URL with credentials, a password or a token. Nothing secret is ever an
+argument: the settings come from env files, which the tool reads itself and
+does not load into the environment.
+
+1. Do step 1 of #317's order first (the theme is live), then its step 2.1:
+   admin console → realm `medaris` → Realm settings → General → Unmanaged
+   attributes → **Only administrators can edit** → Save. Until the profile
+   declares `gender` (step 3), Keycloak drops an attribute nobody may edit.
+2. Two git-ignored env files: `config/keycloak/env/prod.env`, filled as for
+   `provision` (the tool reads its `KC_URL`, `KC_REALM`, `ALLOW_REMOTE`,
+   `KC_ADMIN_USER` and `KC_ADMIN_PASSWORD`), and
+   `config/keycloak/env/tedrisat-db.env` with one line,
+   `TEDRISAT_DATABASE_URL=postgres://<user>:<password>@<host>:<port>/tedrisat_db?sslmode=require`,
+   for a role that can `SELECT` from `user_profiles` (a read is all it does
+   there). The machine running it must reach both the database and Keycloak.
+3. Dry run, from the repository root after `pnpm install` (the tool uses
+   tedrisat's `pg`):
+
+   ```bash
+   node tools/keycloak/backfill-gender.mjs \
+     --env-file config/keycloak/env/prod.env \
+     --env-file config/keycloak/env/tedrisat-db.env
+   ```
+
+   It prints how many profiles have a gender, how many of them have no
+   Keycloak account (deleted there), how many accounts already have a gender
+   (and how many of those another one: Keycloak's stays), and how many it
+   would write.
+4. Apply: the same command with `--apply`. `written` should equal the dry
+   run's `would write`. `refused by Keycloak (400)` counts accounts whose
+   profile lacks something an admin must fill (a last name); they are left
+   alone, and Keycloak asks those people at their next sign-in. Any other
+   answer from Keycloak (401, 403, 5xx) stops the run with exit code 1 after
+   printing how far it got; running it again continues, since a written
+   account now has its gender.
+5. Check: a second dry run prints `would write: 0`, and
+   `GET /admin/realms/medaris/users/count?q=gender:FEMALE` plus the same for
+   `MALE` is at least the dry run's profile count less `not in Keycloak` and
+   `refused by Keycloak (400)`.
+6. `rm config/keycloak/env/tedrisat-db.env`, then go on with #317's step 3.
+
+tedrisat and tedris need nothing for this step: until the `gender` scope
+reaches the tokens (#317 step 4) they behave as before. Afterwards the claim
+is the caller's gender (`libs/common/src/auth-guard/access-token-claims.ts`),
+`user_profiles.gender` follows it (`apps/tedrisat/src/user/user-sync.service.ts`),
+and tedris shows it read-only with a link to Keycloak's profile form.
+
 ## Back-channel logout and the session store (auth Phase 2)
 
 tedris, nizam and nazar keep their sessions in Valkey when
@@ -222,3 +301,85 @@ signed out at once. `prod:auth:*` keys appear in Valkey
 If Valkey cannot be reached, protected pages show the app's error page and
 public pages render as for a visitor; nobody is sent through Keycloak. The
 apps log `@medaris/auth: session store unavailable` at most every 30 s.
+
+## Gender: the profile attribute, the `gender` scope and the consent page
+
+`gender` (`FEMALE` or `MALE`, the values tedrisat keeps in
+`user_profiles.gender`) is required in the user profile for users and admins,
+and a user may change it, as in tedris. The `gender` client scope puts it into
+the ID token, the access token and userinfo as the `gender` claim; it is a
+default scope of `tedris`, `nizam` and `nazar` and an optional scope of every
+client created after it (`defaultOptionalClientScopes`), so a partner
+application's client asks for it with `scope=openid profile email gender` and
+its consent page lists it.
+Keycloak's own `profile` scope also maps a `gender` attribute; the package
+removes that mapper, otherwise every client that gets `profile` would receive
+the gender without asking for it, and the consent page would not say so.
+
+The theme draws the registration and profile pages from the profile itself,
+and the consent page (`login-oauth-grant.ftl`), from keycloak-theme with the
+gender copy in tr, en and ar. The realm must not require `gender` before that
+theme is live.
+
+### Production order
+
+To be done in this order, each step checked before the next. None of it is
+done by merging.
+
+1. **The theme is live.** It reaches production only through a keycloak-theme
+   release and the Keycloak image switch: the release builds the JAR,
+   `keycloak-theme-jar.yaml` builds and smoke-tests
+   `ghcr.io/amel-tech/medaris-keycloak` with it, and the Coolify Keycloak
+   service is moved to that image and restarted with `start` (not
+   `start --optimized`). Check: `https://auth.medaris.app/realms/medaris/protocol/openid-connect/registrations?client_id=tedris&response_type=code&scope=openid&redirect_uri=https%3A%2F%2Ftedris.medaris.app%2Fapi%2Fauth%2Fcallback%2Fkeycloak`
+   shows the registration form with the user name and e-mail after the
+   names; it has no gender field yet, because the realm does not declare one.
+2. **Existing genders are copied from tedrisat into Keycloak.** The profile
+   does not declare `gender` yet, and Keycloak drops an attribute its profile
+   does not declare, so for the copy only:
+   1. Admin console → realm `medaris` → Realm settings → General →
+      Unmanaged attributes → **Only administrators can edit** → Save.
+   2. From tedrisat's production database, the users who chose one:
+      `COPY (SELECT user_id, gender FROM user_profiles WHERE gender IN ('FEMALE', 'MALE')) TO STDOUT WITH CSV`
+      (`user_id` is the Keycloak `sub`).
+   3. For each row, as a realm admin: `GET /admin/realms/medaris/users/<user_id>`,
+      set `attributes.gender` to `["<gender>"]` in what came back, and `PUT`
+      it to the same path. A 404 is a user deleted in Keycloak: skip it. A
+      400 is a user whose profile already lacks something an admin must fill
+      (a last name): note the id, skip it; Keycloak asks that user at the next
+      sign-in. The admin token goes in a header file, never on a command line,
+      as the scripts here do.
+   4. Check: `GET /admin/realms/medaris/users/count?q=gender:FEMALE` plus the
+      same for `MALE` equals the row count less the skipped ones.
+3. **The profile with the required `gender` is applied.**
+   `config/keycloak/scripts/dry-run prod` lists, under `user profile`,
+   `userProfile.attributes[gender]` (and the new order, when it is the only
+   difference). `provision prod` replaces the whole profile, which also
+   switches unmanaged attributes off again (the file does not set them).
+4. **Then the `gender` client scope.** In the same `provision prod` run, after
+   the profile: `client scope gender: created`, `client scope profile: updated`
+   (its `gender` mapper removed), the realm's default client scopes (`gender`
+   optional for new clients) and `tedris`, `nizam`, `nazar` (`gender` by
+   default). `provision` applies the parts in this fixed order, so steps 3 and
+   4 are one run. `verify prod` then prints `no difference`, and a fresh
+   sign-in to tedris gives an ID token with `gender`.
+
+When the order is broken:
+
+- **The profile before the theme** (step 3 before 1): the registration page
+  of the theme in production draws a fixed list of fields, without gender.
+  Keycloak refuses every registration for the missing required attribute,
+  and the page has no field to show the reason under: nobody can register.
+- **The profile before the copy** (step 3 before 2): every existing user is
+  sent to "Profilini tamamla" at the next sign-in and asked for the gender
+  again, including everyone who already gave it in tedris.
+- **The scope before the copy and the profile**: harmless for the tokens (an
+  empty attribute is no claim), but a partner application asks for a gender
+  most users do not have in Keycloak yet.
+
+`amel-tech-dev` is not provisioned from here: the attribute, the scope and
+the `profile` mapper change are made there by hand, in the same order, when
+the dev apps need them. A partner application's client is not in this
+package either; whoever creates it sets **Consent required** on, and it gets
+`gender` as an optional scope by itself.
+

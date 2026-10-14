@@ -1,3 +1,4 @@
+import { mapAccessTokenClaims } from "@medaris/common";
 import { TokenClaims, UserIdentity } from "./interfaces/token-claims.interface";
 
 const UUID_REGEX =
@@ -34,13 +35,16 @@ export function identityFromClaims(
     givenName: text(claims.given_name, MAX_NAME_LENGTH),
     familyName: text(claims.family_name, MAX_NAME_LENGTH),
     locale: text(claims.locale, MAX_LOCALE_LENGTH),
+    gender: mapAccessTokenClaims(claims).gender ?? null,
   };
 }
 
 /**
- * The token-owned columns as one comparable string. A change in any of them
- * must reach the row on the next request, whatever the cache says.
+ * The token-owned values as one comparable string. A change in any of them
+ * must reach the database on the next request, whatever the cache says.
  * `locale` is not part of it: the token only seeds it (see `UserRepository`).
+ * `gender` is, so a gender changed in the account reaches the
+ * `user_profiles.gender` mirror at once (#317).
  */
 export function identityFingerprint(identity: UserIdentity): string {
   return JSON.stringify([
@@ -48,5 +52,6 @@ export function identityFingerprint(identity: UserIdentity): string {
     identity.emailVerified,
     identity.givenName,
     identity.familyName,
+    identity.gender,
   ]);
 }

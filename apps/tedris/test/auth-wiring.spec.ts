@@ -283,5 +283,25 @@ describe("a Server Action without a session (E2)", () => {
     const result = await followKosk("k1");
     expect(result).toMatchObject({ success: false, status: 403 });
     expect(result).not.toHaveProperty("kind");
+    expect(result).not.toHaveProperty("code");
+  });
+
+  it("passes the API's error code on, so two refusals with one status can be told apart (#317)", async () => {
+    state.cookie = await sessionCookie();
+    fetchSpy.mockResolvedValue(
+      Response.json(
+        {
+          code: "GENDER_MANAGED_BY_ACCOUNT",
+          message: "The gender is kept in the account; change it there",
+        },
+        { status: 409 }
+      )
+    );
+    const { followKosk } = await import("~/features/courses/actions");
+    expect(await followKosk("k1")).toMatchObject({
+      success: false,
+      status: 409,
+      code: "GENDER_MANAGED_BY_ACCOUNT",
+    });
   });
 });
