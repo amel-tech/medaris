@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import { createElement, isValidElement, type ReactElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { connectedAppsHref } from "~/features/account/connected-apps";
 import {
   allTimeZones,
   OTHER_ZONE,
@@ -25,6 +26,10 @@ vi.mock("next-intl", async (orig) =>
 vi.mock("next-intl/server", async (orig) => ({
   ...(await orig<Record<string, unknown>>()),
   getTranslations: async () => (key: string) => key,
+}));
+// happy-dom has a `window`, so the real env refuses a server variable here.
+vi.mock("~/env", () => ({
+  env: { KEYCLOAK_ISSUER: "https://auth.example.test/realms/medaris" },
 }));
 vi.mock("~/features/account/reads", () => ({
   getMyProfile: mocks.getMyProfile,
@@ -55,6 +60,9 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 
+const CONNECTED_APPS =
+  "https://auth.example.test/realms/medaris/account/applications";
+
 const mount = async (over: Record<string, unknown> = {}) => {
   const { AccountSettings } = await import(
     "~/features/account/components/account-settings"
@@ -67,6 +75,7 @@ const mount = async (over: Record<string, unknown> = {}) => {
       gender: "FEMALE",
       timeZone: "Europe/Istanbul",
       lessonInvitationEmails: true,
+      connectedAppsHref: CONNECTED_APPS,
       ...over,
     })
   );
@@ -284,6 +293,30 @@ describe("The account's gender on Hesap", () => {
   });
 });
 
+describe("Bağlı uygulamalar (owner, 2026-10-14)", () => {
+  it("links to the realm's account console page of applications, in the same tab", async () => {
+    const host = await mount();
+    expect(host.textContent).toContain("Bağlı uygulamalar");
+    expect(host.textContent).toContain(
+      "Medaris hesabınla giriş yaptığın uygulamaları gör, verdiğin izni geri al."
+    );
+    const open = [...host.querySelectorAll("a")].find(
+      (a) => a.textContent === "Bağlı uygulamaları gör"
+    );
+    expect(open?.getAttribute("href")).toBe(CONNECTED_APPS);
+    expect(open?.getAttribute("target")).toBeNull();
+  });
+
+  it("builds the address from the issuer", () => {
+    expect(connectedAppsHref("https://auth.medaris.app/realms/medaris")).toBe(
+      "https://auth.medaris.app/realms/medaris/account/applications"
+    );
+    expect(connectedAppsHref("https://auth.medaris.app/realms/medaris/")).toBe(
+      "https://auth.medaris.app/realms/medaris/account/applications"
+    );
+  });
+});
+
 describe("Hesap page wiring", () => {
   /** The first element of `type` in a server component's tree. */
   const find = (node: unknown, type: unknown): ReactElement | null => {
@@ -299,7 +332,7 @@ describe("Hesap page wiring", () => {
     return find((node.props as { children?: unknown }).children, type);
   };
 
-  it("hands the cards the gender GET /me carries", async () => {
+  it("hands the cards the mirrored gender and the console address from KEYCLOAK_ISSUER", async () => {
     mocks.getMyProfile.mockResolvedValue({
       id: "u1",
       emailVerified: true,
@@ -316,7 +349,10 @@ describe("Hesap page wiring", () => {
 
     const settings = find(await Page(), AccountSettings);
 
-    expect(settings?.props).toMatchObject({ gender: "MALE" });
+    expect(settings?.props).toMatchObject({
+      gender: "MALE",
+      connectedAppsHref: CONNECTED_APPS,
+    });
   });
 
   it("passes null when GET /me carries no gender", async () => {

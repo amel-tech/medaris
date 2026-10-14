@@ -1,8 +1,10 @@
 import { SystemState } from "@medaris/ui/mds/system-state";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
+import { env } from "~/env";
 import { AccountSettings } from "~/features/account/components/account-settings";
 import { RolesSection } from "~/features/account/components/roles-section";
+import { connectedAppsHref } from "~/features/account/connected-apps";
 import { getAccountRoles, getMyProfile } from "~/features/account/reads";
 import { getAccountTranslations } from "~/lib/i18n/loose";
 
@@ -18,7 +20,8 @@ export async function generateMetadata(): Promise<Metadata> {
  * Hesap (design tedris/34, 43): the personal-information, time-zone, calendar
  * and sign-out cards (MDRS-166) above the "Görevlerin ve izinlerin" section
  * (MDRS-169), which only a person with a role sees. The account's gender comes
- * from tedrisat's mirror in `GET /me`.
+ * from tedrisat's mirror in `GET /me`; "Bağlı uygulamalar" points at the
+ * realm's account console, from KEYCLOAK_ISSUER read at request time.
  */
 export default async function Page() {
   const t = await getTranslations("tedris.AccountPage");
@@ -46,6 +49,7 @@ export default async function Page() {
           gender={profile.gender ?? null}
           timeZone={profile.timeZone ?? null}
           lessonInvitationEmails={profile.lessonInvitationEmails ?? true}
+          connectedAppsHref={connectedAppsHref(env.KEYCLOAK_ISSUER)}
         />
       ) : (
         <SystemState shell headingLevel={2} title={tp("profileFailedTitle")}>

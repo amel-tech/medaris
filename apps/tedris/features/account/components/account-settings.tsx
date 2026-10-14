@@ -41,6 +41,8 @@ export interface AccountSettingsProps {
   timeZone: string | null;
   /** Lesson invitations by e-mail (MDRS-121); on unless turned off. */
   lessonInvitationEmails: boolean;
+  /** Keycloak's page of the applications the person granted consent to. */
+  connectedAppsHref: string;
 }
 
 /**
@@ -352,6 +354,28 @@ function PublicProfileCard() {
   );
 }
 
+/**
+ * "Bağlı uygulamalar" (owner, 2026-10-14): the applications a person signed
+ * in to with their Medaris account, and the consent they can take back, on
+ * Keycloak's account console, in the same tab. The card follows the public
+ * profile's.
+ */
+function ConnectedAppsCard({
+  connectedAppsHref,
+}: Pick<AccountSettingsProps, "connectedAppsHref">) {
+  const t = useAccountTranslations("AccountProfile");
+  return (
+    <Card title={t("connectedTitle")} headingLevel={2} className={CARD_GAP}>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <p className="mds-caption min-inline-0 flex-1">{t("connectedText")}</p>
+        <Button variant="outline" href={connectedAppsHref}>
+          {t("connectedManage")}
+        </Button>
+      </div>
+    </Card>
+  );
+}
+
 function SignOutCard() {
   const t = useAccountTranslations("AccountProfile");
   const locale = useLocale();
@@ -374,10 +398,11 @@ function SignOutCard() {
 
 /**
  * The cards of Hesap (design tedris/34, MDRS-166): personal information (with
- * the account's gender), time zone and language, calendar, and the sign-out
- * aside, plus, while the public profile is shown (MDRS-141 hid it), a way to it
- * (design tedris/35). The roles section (design 43) follows below it on the
- * page. A client component so the Toast root and the form state share one tree.
+ * the account's gender), the connected applications, time zone and language,
+ * calendar, and the sign-out aside, plus, while the public profile is shown
+ * (MDRS-141 hid it), a way to it (design tedris/35). The roles section (design
+ * 43) follows below it on the page. A client component so the Toast root and
+ * the form state share one tree.
  */
 export function AccountSettings(props: AccountSettingsProps) {
   return (
@@ -385,6 +410,7 @@ export function AccountSettings(props: AccountSettingsProps) {
       <div className="grid items-start gap-section lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <div className="flex min-inline-0 flex-col gap-section">
           <PersonalCard {...props} />
+          <ConnectedAppsCard connectedAppsHref={props.connectedAppsHref} />
           <TimeLanguageCard timeZone={props.timeZone} />
           <CalendarCard lessonInvitationEmails={props.lessonInvitationEmails} />
           {PUBLIC_PROFILE_ENABLED && <PublicProfileCard />}

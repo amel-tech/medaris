@@ -73,6 +73,8 @@ const hesap = async () => {
       gender: "FEMALE",
       timeZone: "Europe/Istanbul",
       lessonInvitationEmails: true,
+      connectedAppsHref:
+        "https://auth.example.test/realms/medaris/account/applications",
     })
   );
 };
