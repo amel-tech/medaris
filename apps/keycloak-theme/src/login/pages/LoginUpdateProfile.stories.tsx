@@ -46,3 +46,41 @@ export const AppInitiated: Story = {
     />
   ),
 };
+
+/**
+ * What an account made before `gender` became required meets at its next
+ * sign-in: Keycloak names the missing attribute, the rest is filled in.
+ */
+export const MissingGender: Story = {
+  render: () => (
+    <KcPageStory
+      kcContext={{
+        locale: { currentLanguageTag: "tr" },
+        messagesPerField: {
+          existsError: (fieldName: string, ...otherFieldNames: string[]) =>
+            [fieldName, ...otherFieldNames].includes("gender"),
+          get: (fieldName: string) =>
+            fieldName === "gender" ? "Lütfen bu alanı doldurun." : "",
+          exists: (fieldName: string) => fieldName === "gender",
+        },
+      }}
+    />
+  ),
+};
+
+export const MissingGenderArabic: Story = {
+  render: () => (
+    <KcPageStory
+      kcContext={{
+        locale: { currentLanguageTag: "ar" },
+        messagesPerField: {
+          existsError: (fieldName: string, ...otherFieldNames: string[]) =>
+            [fieldName, ...otherFieldNames].includes("gender"),
+          get: (fieldName: string) =>
+            fieldName === "gender" ? "يرجى تعبئة هذا الحقل." : "",
+          exists: (fieldName: string) => fieldName === "gender",
+        },
+      }}
+    />
+  ),
+};

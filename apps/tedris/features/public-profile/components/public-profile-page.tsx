@@ -170,7 +170,7 @@ function Content({ profile }: PublicProfilePageProps) {
               />
             </Field>
             <RadioGroup
-              className="flex flex-row flex-wrap items-center gap-x-6 gap-y-2 [&>.mds-label]:basis-full"
+              className="flex flex-row flex-wrap items-center gap-x-6 [&>.mds-label]:basis-full"
               legend={t("gender")}
               name="gender"
               value={draft.gender}

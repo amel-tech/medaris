@@ -88,6 +88,8 @@ export function LoginForm({
             required
             aria-required
             defaultValue={username ?? ""}
+            // a Latin island on an Arabic page (MDS-TYPE-04), see PasswordField
+            lang=""
           />
         </Field>
       )}
