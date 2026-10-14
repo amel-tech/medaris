@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.7.0](https://github.com/amel-tech/medaris/compare/tedris-web-v2.6.0...tedris-web-v2.7.0) (2026-10-14)
+
+
+### Features
+
+* **keycloak-theme, ui:** required gender, a register page drawn from the profile, consent ([#317](https://github.com/amel-tech/medaris/issues/317)) ([048734c](https://github.com/amel-tech/medaris/commit/048734ccd4ebd5f6388c382ad1fe7d07bdff9b65))
+* **tedrisat, tedris-web:** Keycloak is the only source of a person's gender ([#319](https://github.com/amel-tech/medaris/issues/319)) ([2ddc737](https://github.com/amel-tech/medaris/commit/2ddc737f37f296d289d5b83bbce7f69b672acc20))
+
 ## [2.6.0](https://github.com/amel-tech/medaris/compare/tedris-web-v2.5.0...tedris-web-v2.6.0) (2026-10-13)
 
 
