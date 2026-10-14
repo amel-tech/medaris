@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.8.0](https://github.com/amel-tech/medaris/compare/tedris-web-v2.7.0...tedris-web-v2.8.0) (2026-10-14)
+
+
+### Features
+
+* **tedris-web, tedrisat:** the person's gender and connected apps on the Hesap page ([#327](https://github.com/amel-tech/medaris/issues/327)) ([5299831](https://github.com/amel-tech/medaris/commit/529983174a750e285d7cbf0d528ecde3c8ecc2e4))
+* **tedrisat, nazar-web:** partner enrollments behind a partner-only guard; course codes ([#323](https://github.com/amel-tech/medaris/issues/323)) ([3cab7e7](https://github.com/amel-tech/medaris/commit/3cab7e7426b1770697f8a0c2156a4bb9b0eaa0b8))
+
 ## [2.7.0](https://github.com/amel-tech/medaris/compare/tedris-web-v2.6.0...tedris-web-v2.7.0) (2026-10-14)
 
 
