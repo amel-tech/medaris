@@ -192,20 +192,32 @@ describe("gender (owner, 13 October)", () => {
 
   it("names a legal basis for it and tells how to correct it", () => {
     expect(sectionText("yontem-ve-hukuki-sebep")).toMatch(
-      /Cinsiyetiniz, yüz yüze derslerin kontenjanı için \(c\) bendine/
+      /Cinsiyetiniz, yüz yüze derslerin kontenjanı için \(c\) bendine; iletişim kuracak kişinin belirlenmesi için \(f\) bendine/
     );
     expect(sectionText("haklariniz")).toContain(
       "Adınızı, soyadınızı ve cinsiyetinizi hesabınızdan kendiniz de düzeltebilirsiniz."
     );
   });
+
+  // The owner, 14 October: the public profile does not show it; whether it
+  // will is decided when the profile is turned back on.
+  it("is not shown on the public profile, nor to anyone but those staff", () => {
+    expect(sectionText("amaclar")).toContain(
+      "Cinsiyetiniz herkese açık profilinizde gösterilmez ve Medaris’te ders kadrosu ile buna ihtiyaç duyan medrese ve köşk kadrolarından başkası onu görmez."
+    );
+    expect(text).not.toContain("herkese açık profilinizde de gösterilir");
+    expect(sectionText("yontem-ve-hukuki-sebep")).not.toContain(
+      "herkese açık profilinizde gösterilmesi"
+    );
+  });
 });
 
-describe("partner applications, “Medaris ile giriş yap” (owner, 13 October)", () => {
-  it("receive the name, e-mail and gender only after the consent screen", () => {
+describe("partner applications, “Medaris ile giriş yap” (owner, 13 and 14 October)", () => {
+  it("receive only the name, e-mail and gender, and only after the consent screen", () => {
     const recipients = sectionText("aktarim");
     expect(recipients).toContain("“Medaris ile giriş yap” seçeneği sunar");
     expect(recipients).toContain(
-      "adınız, soyadınız, e-posta adresiniz ve cinsiyetiniz, sizi tanıması için hesap kimliğinizle birlikte o uygulamaya ancak bu ekranda izin verirseniz iletilir"
+      "Bu ekranda izin verirseniz o uygulamaya yalnızca adınız, soyadınız, e-posta adresiniz (doğrulanıp doğrulanmadığıyla birlikte) ve cinsiyetiniz, sizi tanıması için hesap kimliğinizle birlikte iletilir."
     );
     expect(recipients).toContain(
       "İzin vermezseniz uygulamaya hiçbir bilgi iletilmez."
@@ -215,12 +227,18 @@ describe("partner applications, “Medaris ile giriş yap” (owner, 13 October)
     );
   });
 
-  it("rest on explicit consent, which the person can withdraw from the account", () => {
+  it("never receive the user name or the language", () => {
+    expect(sectionText("aktarim")).toContain(
+      "Kullanıcı adınız ve dil tercihiniz hiçbir ortak uygulamaya iletilmez."
+    );
+  });
+
+  it("rest on explicit consent, which the person withdraws under Tedris → Hesap → Bağlı uygulamalar", () => {
     expect(sectionText("yontem-ve-hukuki-sebep")).toContain(
       "Ortak uygulamalara aktarım ise yalnız onay ekranında verdiğiniz açık rızaya dayanır"
     );
     expect(sectionText("haklariniz")).toContain(
-      "Bir ortak uygulamaya verdiğiniz izni hesabınızdan ya da 7. bölümdeki yolla başvurarak dilediğiniz zaman geri alabilirsiniz"
+      "Bir ortak uygulamaya verdiğiniz izni, Tedris’te Hesap sayfanızdaki “Bağlı uygulamalar” bağlantısından ya da 7. bölümdeki yolla başvurarak dilediğiniz zaman geri alabilirsiniz; bundan sonra o uygulamaya yeni bilgi iletilmez."
     );
     expect(sectionText("islenen-veriler")).toContain(
       "ortak uygulamalara verdiğiniz izinler"

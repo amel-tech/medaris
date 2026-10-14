@@ -41,16 +41,32 @@ describe("Kullanım şartları: gender (owner, 13 October)", () => {
       "ders kadrosu ile buna ihtiyaç duyan medrese ve köşk kadroları onu görür"
     );
   });
-});
 
-describe("Kullanım şartları: “Medaris ile giriş yap” (owner, 13 October)", () => {
-  it("shares the name, e-mail and gender only with permission, which can be withdrawn", async () => {
+  // The owner, 14 October: the public profile does not show it.
+  it("keeps it off the public profile and away from anyone but those staff", async () => {
     const text = textOf(await render());
     expect(text).toContain(
-      "ad, soyad, e-posta adresi ve cinsiyet uygulamaya ancak izin verilirse iletilir"
+      "Cinsiyet herkese açık profilde gösterilmez ve Medaris’te bu kadrolardan başkası onu görmez."
+    );
+    expect(text).not.toContain("herkese açık profilde de görünür");
+  });
+});
+
+describe("Kullanım şartları: “Medaris ile giriş yap” (owner, 13 and 14 October)", () => {
+  it("shares only the name, e-mail and gender, and only with permission", async () => {
+    const text = textOf(await render());
+    expect(text).toContain(
+      "Bu ekranda izin verilirse uygulamaya yalnızca ad, soyad, e-posta adresi ve cinsiyet iletilir; izin verilmezse hiçbir bilgi iletilmez."
     );
     expect(text).toContain(
-      "Verilen izin hesaptan dilendiği zaman geri alınabilir."
+      "Kullanıcı adı ve dil tercihi hiçbir ortak uygulamaya iletilmez."
+    );
+  });
+
+  it("says where the permission is withdrawn, and that nothing new follows", async () => {
+    const text = textOf(await render());
+    expect(text).toContain(
+      "Verilen izin, Tedris’te Hesap sayfasındaki “Bağlı uygulamalar” bağlantısından dilendiği zaman geri alınabilir; bundan sonra uygulamaya yeni bilgi iletilmez."
     );
   });
 
@@ -64,8 +80,8 @@ describe("Kullanım şartları: “Medaris ile giriş yap” (owner, 13 October)
 });
 
 describe("Kullanım şartları: date", () => {
-  it("is last updated on 13 October 2026", async () => {
+  it("is last updated on 14 October 2026", async () => {
     const html = await render();
-    expect(html).toMatch(/<time datetime="2026-10-13">13 Ekim 2026<\/time>/i);
+    expect(html).toMatch(/<time datetime="2026-10-14">14 Ekim 2026<\/time>/i);
   });
 });
