@@ -17,7 +17,8 @@ export async function generateMetadata(): Promise<Metadata> {
 /**
  * Hesap (design tedris/34, 43): the personal-information, time-zone, calendar
  * and sign-out cards (MDRS-166) above the "Görevlerin ve izinlerin" section
- * (MDRS-169), which only a person with a role sees.
+ * (MDRS-169), which only a person with a role sees. The account's gender comes
+ * from tedrisat's mirror in `GET /me`.
  */
 export default async function Page() {
   const t = await getTranslations("tedris.AccountPage");
@@ -42,6 +43,7 @@ export default async function Page() {
           givenName={profile.givenName ?? ""}
           familyName={profile.familyName ?? ""}
           email={profile.email ?? ""}
+          gender={profile.gender ?? null}
           timeZone={profile.timeZone ?? null}
           lessonInvitationEmails={profile.lessonInvitationEmails ?? true}
         />

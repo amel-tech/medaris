@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { createElement } from "react";
+import { createElement, isValidElement, type ReactElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   allTimeZones,
@@ -15,11 +15,25 @@ const mocks = vi.hoisted(() => ({
   updateZone: vi.fn(),
   updateInvitations: vi.fn(),
   notify: vi.fn(),
+  getMyProfile: vi.fn(),
 }));
 
 vi.mock("next-intl", async (orig) =>
   (await import("./intl-mock")).intlMock(await orig())
 );
+// The page's own reads and server translations, for the wiring case below.
+vi.mock("next-intl/server", async (orig) => ({
+  ...(await orig<Record<string, unknown>>()),
+  getTranslations: async () => (key: string) => key,
+}));
+vi.mock("~/features/account/reads", () => ({
+  getMyProfile: mocks.getMyProfile,
+  getAccountRoles: async () => null,
+}));
+vi.mock("../features/account/reads", () => ({
+  getMyProfile: mocks.getMyProfile,
+  getAccountRoles: async () => null,
+}));
 vi.mock("~/features/account/profile-actions", () => ({
   updateMyName: mocks.updateName,
   updateMyTimeZone: mocks.updateZone,
@@ -50,6 +64,7 @@ const mount = async (over: Record<string, unknown> = {}) => {
       givenName: "Zeynep Betül",
       familyName: "Karahanlı",
       email: "zeynep.karahanli@example.com",
+      gender: "FEMALE",
       timeZone: "Europe/Istanbul",
       lessonInvitationEmails: true,
       ...over,
@@ -219,5 +234,104 @@ describe("Lesson invitations by e-mail (MDRS-121, B13)", () => {
     expect(mocks.notify).toHaveBeenCalledWith(
       expect.objectContaining({ tone: "error" })
     );
+  });
+});
+
+/**
+ * #317: Keycloak holds the gender and tedrisat mirrors it into `GET /me`;
+ * Hesap shows it read-only, the only place in tedris that does while the
+ * public profile is hidden (MDRS-141).
+ */
+describe("The account's gender on Hesap", () => {
+  const PROFILE_FORM =
+    "/api/auth/signin?action=UPDATE_PROFILE&callbackUrl=%2Ftr%2Faccount&locale=tr";
+  const row = (host: HTMLElement) =>
+    host.querySelector('[data-testid="account-gender"]') as HTMLElement;
+  const link = (host: HTMLElement) =>
+    row(host).querySelector("a") as HTMLAnchorElement;
+
+  it("shows each gender read-only in the personal card, with 'Değiştir'", async () => {
+    const woman = await mount({ gender: "FEMALE" });
+    const personal = input(woman, "email").closest("form") as HTMLElement;
+    expect(personal.contains(row(woman))).toBe(true);
+    expect(row(woman).textContent).toContain("Cinsiyet");
+    expect(input(woman, "gender").value).toBe("Kadın");
+    expect(input(woman, "gender").readOnly).toBe(true);
+    expect(row(woman).textContent).toContain("Salt okunur.");
+    expect(link(woman).textContent).toBe("Değiştir");
+    await cleanup();
+
+    const man = await mount({ gender: "MALE" });
+    expect(input(man, "gender").value).toBe("Erkek");
+    expect(link(man).textContent).toBe("Değiştir");
+  });
+
+  it("says 'Belirtilmemiş' with 'Ekle' when no gender is known", async () => {
+    const host = await mount({ gender: null });
+    expect(input(host, "gender").value).toBe("Belirtilmemiş");
+    expect(input(host, "gender").readOnly).toBe(true);
+    expect(link(host).textContent).toBe("Ekle");
+    expect(row(host).textContent).not.toContain("Değiştir");
+  });
+
+  it("opens the account's profile form (UPDATE_PROFILE) and comes back to Hesap", async () => {
+    const known = await mount({ gender: "MALE" });
+    expect(link(known).getAttribute("href")).toBe(PROFILE_FORM);
+    await cleanup();
+
+    const unknown = await mount({ gender: null });
+    expect(link(unknown).getAttribute("href")).toBe(PROFILE_FORM);
+  });
+});
+
+describe("Hesap page wiring", () => {
+  /** The first element of `type` in a server component's tree. */
+  const find = (node: unknown, type: unknown): ReactElement | null => {
+    if (Array.isArray(node)) {
+      for (const child of node) {
+        const hit = find(child, type);
+        if (hit) return hit;
+      }
+      return null;
+    }
+    if (!isValidElement(node)) return null;
+    if (node.type === type) return node;
+    return find((node.props as { children?: unknown }).children, type);
+  };
+
+  it("hands the cards the gender GET /me carries", async () => {
+    mocks.getMyProfile.mockResolvedValue({
+      id: "u1",
+      emailVerified: true,
+      givenName: "Ömer",
+      familyName: "Faruk",
+      email: "omer@example.com",
+      gender: "MALE",
+      lessonInvitationEmails: true,
+    });
+    const { default: Page } = await import("../app/[locale]/account/page");
+    const { AccountSettings } = await import(
+      "~/features/account/components/account-settings"
+    );
+
+    const settings = find(await Page(), AccountSettings);
+
+    expect(settings?.props).toMatchObject({ gender: "MALE" });
+  });
+
+  it("passes null when GET /me carries no gender", async () => {
+    mocks.getMyProfile.mockResolvedValue({
+      id: "u2",
+      emailVerified: true,
+      lessonInvitationEmails: true,
+    });
+    const { default: Page } = await import("../app/[locale]/account/page");
+    const { AccountSettings } = await import(
+      "~/features/account/components/account-settings"
+    );
+
+    const settings = find(await Page(), AccountSettings);
+
+    expect(settings?.props).toMatchObject({ gender: null });
   });
 });

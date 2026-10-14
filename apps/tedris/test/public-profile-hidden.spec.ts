@@ -70,6 +70,7 @@ const hesap = async () => {
       givenName: "Zeynep Betül",
       familyName: "Karahanlı",
       email: "zeynep.karahanli@example.com",
+      gender: "FEMALE",
       timeZone: "Europe/Istanbul",
       lessonInvitationEmails: true,
     })
