@@ -10,9 +10,12 @@ image pins both the theme and the Keycloak version, so neither changes on the
 server without a release.
 
 **A Keycloak deploy restarts the only Keycloak.** It serves applications
-outside Medaris too (the Amel-Tech Auth project), and sign-in is unavailable
-everywhere for its start-up time. Deploy in a window agreed with that project's
-owner.
+outside Medaris too (the Amel-Tech Auth project) and both Medaris realms, and
+sign-in is unavailable everywhere for its start-up time. Deploy in a window
+agreed with that project's owner. On 2026-10-13 the start itself took 82 s
+(re-augmentation 29.6 s, an 18 s wait for a stopped cluster member); the image
+now built with `kc.sh build` and `KC_CACHE=local` started in 14–18 s locally
+with `start --optimized` (§0 step 6).
 
 | | |
 |---|---|
@@ -25,7 +28,7 @@ owner.
 | Theme id | `medaris-keycloak-theme` (`apps/keycloak-theme/src/kc.gen.tsx`; the realms ask for it in `config/keycloak/realms/_base.json`) |
 | In the image | `/opt/keycloak/providers/medaris-keycloak-theme.jar`, owned by `keycloak:root` like the rest of `/opt/keycloak` |
 | Coolify | the Keycloak service of the Amel-Tech Auth project; pulls `ghcr.io/amel-tech/medaris-keycloak:stable` once §0 is done |
-| Deploy webhook | `KEYCLOAK_COOLIFY_RESTART_WEBHOOK` (repo secret, exists): Coolify's deploy webhook for that service |
+| Deploy webhook | `KEYCLOAK_COOLIFY_RESTART_WEBHOOK` (repo secret, exists): Coolify's **restart** of that service, not a deploy (on 2026-10-13 it answered "Service restarting request queued.") |
 | Deploy token | `COOLIFY_DEPLOY_TOKEN` (org secret, exists) |
 
 ---
@@ -46,30 +49,43 @@ Do it once, before the first `keycloak-theme` release after this change.
    docker buildx imagetools inspect ghcr.io/amel-tech/medaris-keycloak:latest
    ```
 
-2. **The Keycloak server can pull it.** The package is new. Give it the
-   visibility the other `medaris-*` packages have (GitHub → *Packages* →
-   `medaris-keycloak` → *Package settings*), or make sure the registry login
-   of the Coolify server that runs Keycloak covers `ghcr.io/amel-tech`. Not
-   verified from here.
-3. **Coolify → the Keycloak service:**
+2. **The Keycloak server can pull it.** The package is public: on
+   2026-10-13 an anonymous pull of `latest` and `sha-3acd2c3` answered 200.
+3. **Coolify → the Keycloak service** (done on 2026-10-13):
    * image `quay.io/keycloak/keycloak:latest` → `ghcr.io/amel-tech/medaris-keycloak:stable`;
-   * remove the two file mounts of the host file
-     `/opt/keycloak/themes/madrasah-theme.jar`, into
-     `/opt/keycloak/providers/keycloak-theme.jar` and into
-     `/opt/keycloak/providers/madrasah-theme.jar`. Keycloak loads every
-     `*.jar` in `providers/`, so they would load an old copy of the theme next
-     to the one baked into the image;
-   * keep the command and the environment as they are. The command must be
-     `start` (or `start-dev`), not `start --optimized`: Keycloak picks up the
-     baked provider when it re-augments at `start`, and `--optimized` skips
-     that.
+   * the `madrasah-theme.jar` mounts from the host directory
+     `/opt/keycloak/themes/` into `/opt/keycloak/providers/` removed (Keycloak
+     loads every `*.jar` in `providers/`, so they would load an old copy of the
+     theme next to the one baked into the image);
+   * `mem_limit: 2g`;
+   * command `start` and the environment unchanged.
 
-   Save without redeploying: `stable` does not exist yet.
+   Saved without redeploying: `stable` did not exist yet.
 4. **The realms name the theme** (§5).
 5. **Release.** Merge the release-please PR for `keycloak-theme` (or create a
    release `keycloak-theme-v<semver>` by hand) in the agreed window. The
    release promotes the image `main` built to `<semver>` and `stable` and calls
-   the deploy webhook (§2), and Coolify starts the new image. Then §4.
+   the restart webhook (§2). Then §4. Done on 2026-10-13 with 2.0.0; see §6
+   for what went wrong.
+6. **The optimized start, in two releases.** The image is built with
+   `kc.sh build` since the change after 2.0.0 (`KC_DB=postgres`,
+   `KC_HEALTH_ENABLED=true`, `KC_CACHE=local`). Production gets the fast start
+   only with the command `start --optimized`, and that command must never meet
+   an image that was not built: the 2.0.0 image under `start --optimized`
+   exited at once with code 2 ("The '--optimized' flag was used for first ever
+   server start", measured locally on 2026-10-13), which is a full outage.
+   1. **Before the next `keycloak-theme` release:** add `pull_policy: always`
+      to the `keycloak` service and save without redeploying. The webhook is a
+      restart; without it the restart may keep the `stable` the server already
+      pulled. Leave the command at `start`: with the new image it re-augments
+      (45 s locally) but no longer waits for a cluster, because the image sets
+      `KC_CACHE=local`.
+   2. **After that release runs**, check that the server runs it (§4), then
+      change the command to `start --optimized`, save and restart the service
+      once in the window. Expect the realm back within about 20 s.
+
+   Rolling back to an image built before this change (2.0.0 or older) needs
+   the command back at `start` first (§3).
 
    If production must move before a release exists, create `stable` by hand
    from the image `main` built and redeploy the service from Coolify:
@@ -118,7 +134,10 @@ where the image puts it, boots it with `start-dev`, and fails unless
 `/admin/serverinfo` lists `medaris-keycloak-theme` as a login and an e-mail
 theme and a realm using it renders its login and registration pages through
 the theme (keycloakify's `kcContext` with `pageId` `login` / `register`). It
-cannot catch a production command of `start --optimized` (§0 step 3).
+boots `start-dev`, which re-augments, so it does not exercise the build
+options the image persists. `start --optimized` against Postgres was checked
+by hand on 2026-10-13 (ready in 14–18 s; `/admin/serverinfo` listed
+`medaris-keycloak-theme` as a login and an e-mail theme); CI does not run it.
 
 ---
 
@@ -140,9 +159,19 @@ that exact digest. When the image never appears (no CD run for the commit, or
 one that was cancelled, failed or did not build the theme) the *jar* and
 *image* jobs build it from the tag, push `sha-<short>`, `<semver>` and
 `stable`, and warn that production gets an image development never ran. The
-*restart* job then calls the deploy webhook with `COOLIFY_DEPLOY_TOKEN`; a
-non-2xx fails the run. The job summary records which path ran, the digest and
-the tags: **that is the rollback record**.
+*restart* job then calls the restart webhook once with `COOLIFY_DEPLOY_TOKEN`;
+a non-2xx fails the run. It then watches
+`https://auth.medaris.app/realms/medaris/.well-known/openid-configuration`:
+- the realm must stop answering 200 within 3 minutes, or the run fails
+  (Coolify never ran the restart; the previous image still serves);
+- it must answer 200 again within 4 minutes;
+- if it does not, the job calls the service's `…/start` (the webhook's URL
+  with `/restart` replaced) once and waits 5 more minutes;
+- still nothing fails the run. Then start the service in Coolify by hand and
+  read its log.
+
+The promote job's summary records which path ran, the digest and the tags:
+**that is the rollback record**.
 
 A release of another app starts this workflow too and skips every job; it
 queues in a group of its own, so it cannot replace a pending Keycloak release.
@@ -162,6 +191,11 @@ theme and the Keycloak version together. Rolling back to an image with an older
 `KEYCLOAK_VERSION` downgrades Keycloak against a database it has already
 migrated: do not. Roll forward with a fix instead, or agree a database restore
 with the Amel-Tech Auth project.
+
+**Then check the command.** A target built before the optimized image (2.0.0
+or older) was never built and does not start under `--optimized`: set the
+service's command back to `start` before restarting it on that image (§0
+step 6).
 
 ```bash
 # The Keycloak version a release shipped.
@@ -214,6 +248,7 @@ On the server, after a deploy:
 docker ps --format '{{.Names}} {{.Image}}' | grep -i keycloak     # ghcr.io/amel-tech/medaris-keycloak:stable
 docker exec <container> /opt/keycloak/bin/kc.sh --version         # the pinned version
 docker exec <container> ls -l /opt/keycloak/providers              # only medaris-keycloak-theme.jar; no keycloak-theme.jar, no madrasah-theme.jar
+docker exec <container> /opt/keycloak/bin/kc.sh show-config | grep -E 'kc\.(db|cache) '   # postgres, local
 ```
 
 Then:
@@ -246,15 +281,30 @@ may still name it.
 
 ---
 
-## 6. Not verified yet
+## 6. What the first release showed, and what is not verified
 
-Written on 2026-10-12 before any of it ran:
+The first release, `keycloak-theme-v2.0.0`, on 2026-10-13 (UTC):
 
-1. Nothing of the image flow has run on GitHub Actions: the first push to
-   `main` after the merge is the first image build, and the first
-   `keycloak-theme` release the first promotion and deploy.
-2. §0 is not done, and whether the Keycloak server can pull from GHCR (§0
-   step 2) is not known.
-3. That `KEYCLOAK_COOLIFY_RESTART_WEBHOOK` re-pulls `stable` (a deploy, not a
-   bare restart) is assumed from its being a Coolify deploy webhook, as for the
-   other apps; confirm it on the first release with §4.
+1. **Promotion worked.** The promote job waited for CD (development) to build
+   `sha-08490fb` and moved `2.0.0`, `stable` and `latest` to its digest at
+   06:06:30.
+2. **The restart left Keycloak down.** The webhook answered "Service
+   restarting request queued." at 06:06:40. Coolify last saw the Keycloak and
+   Postgres containers running at 06:06:53, then reported both as exited and
+   did not start them; no deployment was running. The service was started
+   through the Coolify API (`GET /services/<uuid>/start`) at about 06:13; the
+   Keycloak log begins at 06:14:04 and the realm answered again at 06:15:30,
+   after 82 s of Keycloak start-up. Sign-in was down for both realms
+   for about 8.5 minutes. The job reported success: it only checked that
+   Coolify accepted the request. Since then it waits for the realm (§2).
+3. **Why Coolify did not start the service is not known.** Its API does not
+   expose the service's restart log; read it in Coolify on the next
+   occurrence.
+
+Not verified yet:
+
+1. That the restart pulls a new `stable` once `pull_policy: always` is set
+   (§0 step 6). On 2026-10-13 the server had no `stable` before, so the start
+   pulled it in any case.
+2. The *restart* job's wait and start fallback has not run on GitHub Actions.
+3. `start --optimized` on the server (§0 step 6, second release).
