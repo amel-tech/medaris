@@ -18,6 +18,7 @@ import { CoverPattern } from "@medaris/ui/mds/cover-pattern";
 import { EmptyState } from "@medaris/ui/mds/empty-state";
 import { Icon } from "@medaris/ui/mds/icon";
 import { ImamStar } from "@medaris/ui/mds/imam-star";
+import { formatHocaName } from "@medaris/utils";
 import Link from "next/link";
 import { getLocale, getTimeZone, getTranslations } from "next-intl/server";
 import { AnonymousInvite } from "~/components/anonymous-invite";
@@ -29,19 +30,18 @@ import { formatNextSession } from "../next-session";
 
 type Translate = Awaited<ReturnType<typeof getTranslations>>;
 
-/** "Müderris A ★ · B": the imam's star only where there is more than one (2026-10-13). */
-const muderrisLine = (
-  course: CourseSummaryResponse,
-  t: Translate,
-  star: ImamStarLabels
-) =>
-  course.muderris.length === 0 ? null : (
-    <>
-      {t("KoskPage.muderris")}{" "}
-      {joinRun(
+/**
+ * "Prof. Dr. A ★ · B Hoca": each name with the unvan of this course, so no
+ * word goes before them; the imam's star only where there is more than one
+ * (2026-10-13).
+ */
+const muderrisLine = (course: CourseSummaryResponse, star: ImamStarLabels) =>
+  course.muderris.length === 0
+    ? null
+    : joinRun(
         course.muderris.map((m) => (
           <span key={m.id} style={{ whiteSpace: "nowrap" }}>
-            <bdi>{m.name}</bdi>
+            <bdi>{formatHocaName(m.name, m.unvan)}</bdi>
             {showsImamStar(m.isImam, course.muderris.length) ? (
               <>
                 {" "}
@@ -50,9 +50,7 @@ const muderrisLine = (
             ) : null}
           </span>
         ))
-      )}
-    </>
-  );
+      );
 
 const CourseCard = ({
   course,
@@ -122,7 +120,7 @@ const CourseCard = ({
             </span>
           </p>
         ) : null}
-        <p dir="auto">{muderrisLine(course, t, star)}</p>
+        <p dir="auto">{muderrisLine(course, star)}</p>
       </div>
     </Card>
   );

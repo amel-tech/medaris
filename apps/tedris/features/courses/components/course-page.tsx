@@ -17,6 +17,7 @@ import { Icon } from "@medaris/ui/mds/icon";
 import { ImamStar } from "@medaris/ui/mds/imam-star";
 import { zoneName } from "@medaris/ui/mds/locale";
 import { Tabs, TabsPanel } from "@medaris/ui/mds/tabs";
+import { formatHocaName } from "@medaris/utils";
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import { Fragment, useMemo, useState } from "react";
@@ -272,10 +273,17 @@ export const CoursePage = ({
             </p>
             {course.muderris.length === 1 ? (
               // Design tedris/12: one müderris is named with their initials and title.
+              // The name carries the unvan of this course ("Prof. Dr. …", "… Hoca"),
+              // so no word goes before it; the initials stay the bare name's.
               <div className="flex flex-wrap items-center gap-2">
                 <Avatar name={course.muderris[0].name} size="sm" decorative />
                 <span className="mds-body-sm">
-                  {t("teacher")} <bdi>{course.muderris[0].name}</bdi>
+                  <bdi>
+                    {formatHocaName(
+                      course.muderris[0].name,
+                      course.muderris[0].unvan
+                    )}
+                  </bdi>
                 </span>
                 {course.muderris[0].title ? (
                   <Badge variant="secondary">{course.muderris[0].title}</Badge>
@@ -285,12 +293,18 @@ export const CoursePage = ({
               <p className="mds-body-sm">
                 {t("teachers")}:{" "}
                 {joinNames(
-                  course.muderris.map((m) => m.name),
+                  course.muderris.map((m) => formatHocaName(m.name, m.unvan)),
                   locale
-                ).map((part, i) => {
+                ).map((part, i, parts) => {
                   if (part.type === "literal")
                     return <Fragment key={`l${i}`}>{part.value}</Fragment>;
-                  const m = course.muderris.find((x) => x.name === part.value);
+                  // The n-th name of the list is the n-th müderris: two of them
+                  // may read the same, so the name does not find them back.
+                  const m =
+                    course.muderris[
+                      parts.slice(0, i).filter((p) => p.type === "element")
+                        .length
+                    ];
                   return (
                     <Fragment key={m?.id ?? part.value}>
                       <bdi>{part.value}</bdi>
@@ -441,7 +455,7 @@ export const CoursePage = ({
                     <Avatar name={m.name} decorative />
                     <div className="flex min-inline-0 flex-col gap-1">
                       <p className="mds-body">
-                        <bdi>{m.name}</bdi>
+                        <bdi>{formatHocaName(m.name, m.unvan)}</bdi>
                       </p>
                       {m.title ? (
                         <p className="mds-caption" dir="auto">

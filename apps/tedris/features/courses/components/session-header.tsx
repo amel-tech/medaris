@@ -4,6 +4,7 @@ import { Avatar } from "@medaris/ui/mds/avatar";
 import { Breadcrumb } from "@medaris/ui/mds/breadcrumb";
 import { Icon } from "@medaris/ui/mds/icon";
 import { ImamStar } from "@medaris/ui/mds/imam-star";
+import { formatHocaName } from "@medaris/utils";
 import type { ReactNode } from "react";
 
 /**
@@ -87,11 +88,14 @@ export const SessionHeader = ({
         ) : null}
         {when?.local ? <span>{when.local}</span> : null}
         {length ? <span>{length}</span> : null}
-        {muderris.map((m) => (
-          <span key={m.name} className="inline-flex items-center gap-2">
+        {muderris.map((m, i) => (
+          <span
+            key={`${i}:${m.name}`}
+            className="inline-flex items-center gap-2"
+          >
             <Avatar name={m.name} size="sm" decorative />
             <span className="text-neutral-default" dir="auto">
-              {m.name}
+              {formatHocaName(m.name, m.unvan)}
             </span>
             {showsImamStar(m.isImam, muderris.length) ? (
               <ImamStar labels={imamStar} />

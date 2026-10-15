@@ -17,6 +17,7 @@ import { EmptyState } from "@medaris/ui/mds/empty-state";
 import { ImamStar } from "@medaris/ui/mds/imam-star";
 import { Progress } from "@medaris/ui/mds/progress";
 import { Skeleton } from "@medaris/ui/mds/skeleton";
+import { formatHocaName } from "@medaris/utils";
 import Link from "next/link";
 import { getLocale, getTimeZone, getTranslations } from "next-intl/server";
 import { courseCover } from "~/features/courses/course-cover";
@@ -88,21 +89,25 @@ export const SectionSkeleton = ({
 );
 
 /**
- * "Müderris A ★ · B": who teaches a course, as Derslerim writes it, the imam's
- * star only where there is more than one müderris (2026-10-13).
+ * "Prof. Dr. A ★ · B Hoca": who teaches a course, as Derslerim writes it, each
+ * name with the unvan of this course, the imam's star only where there is
+ * more than one müderris (2026-10-13).
  */
 const teachers = (
-  muderris: { id: string; name: string; isImam: boolean }[],
-  t: Translate,
+  muderris: {
+    id: string;
+    name: string;
+    unvan?: string | null;
+    isImam: boolean;
+  }[],
   star: ImamStarLabels
 ) =>
   muderris.length > 0 ? (
     <span>
-      {t("KoskPage.muderris")}{" "}
       {joinRun(
         muderris.map((m) => (
           <span key={m.id} style={{ whiteSpace: "nowrap" }}>
-            <bdi>{m.name}</bdi>
+            <bdi>{formatHocaName(m.name, m.unvan)}</bdi>
             {showsImamStar(m.isImam, muderris.length) ? (
               <>
                 {" "}
@@ -169,7 +174,7 @@ const ContinueCard = ({
     }
   >
     <p className="mds-card__body grow" dir="auto">
-      {teachers(course.muderris, t, star)}
+      {teachers(course.muderris, star)}
     </p>
     <div className="mbs-4">
       <Progress
@@ -330,12 +335,10 @@ export const DecksSection = async () => {
 /** One line of "Takip ettiğin köşklerden": a tile in the course's hue, its name, where and who. */
 const FollowedLine = ({
   course,
-  t,
   star,
   locale,
 }: {
   course: FollowedKoskCourseResponse;
-  t: Translate;
   star: ImamStarLabels;
   locale: string;
 }) => (
@@ -355,7 +358,9 @@ const FollowedLine = ({
             <bdi key="k">{course.koskName}</bdi>,
             course.muderrisName ? (
               <span key="m">
-                {t("KoskPage.muderris")} <bdi>{course.muderrisName}</bdi>
+                <bdi>
+                  {formatHocaName(course.muderrisName, course.muderrisUnvan)}
+                </bdi>
                 {/* the star only where there is more than one müderris (2026-10-13) */}
                 {showsImamStar(course.muderrisIsImam, course.muderrisCount) ? (
                   <>
@@ -406,7 +411,6 @@ export const FollowedSection = async () => {
               <FollowedLine
                 key={course.id}
                 course={course}
-                t={t}
                 star={imamStarLabels(star)}
                 locale={locale}
               />

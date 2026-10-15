@@ -5,6 +5,7 @@ import { Avatar } from "@medaris/ui/mds/avatar";
 import { Button } from "@medaris/ui/mds/button";
 import { Card } from "@medaris/ui/mds/card";
 import { Progress } from "@medaris/ui/mds/progress";
+import { formatHocaName } from "@medaris/utils";
 import { useLocale, useTimeZone } from "next-intl";
 import type { ReactNode } from "react";
 import { dayAndMonth, kindOf, percentOf } from "../deck-model";
@@ -19,7 +20,6 @@ export interface DeckCardLabels {
   /** Desteler's collection only */
   added?: (count: number) => string;
   requested?: (when: string) => string;
-  muderris: (name: string) => string;
 }
 
 export interface DeckSummaryCardProps {
@@ -54,11 +54,15 @@ export function DeckSummaryCard({
   const timeZone = useTimeZone() ?? "Europe/Istanbul";
   const pct = percentOf(deck.masteredCount, deck.cardCount);
 
-  // Where a deck of somebody else's belongs: the course and its müderris, or the köşk or medrese.
+  // Where a deck of somebody else's belongs: the course and its müderris, or
+  // the köşk or medrese. The müderris is named with the unvan they carry in
+  // that course ("Prof. Dr. …", "… Hoca"), so no word goes before the name.
   const context = deck.contextTitle
     ? [
         deck.contextTitle,
-        deck.muderrisName ? labels.muderris(deck.muderrisName) : null,
+        deck.muderrisName
+          ? formatHocaName(deck.muderrisName, deck.muderrisUnvan)
+          : null,
       ]
     : null;
 

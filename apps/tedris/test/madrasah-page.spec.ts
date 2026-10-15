@@ -129,14 +129,21 @@ describe("medrese page", () => {
           ...overview.courses[0],
           muderris: [
             { name: "Mehmet Emin Işıkoğlu", title: null, isImam: true },
-            { name: "Ayşe Nur Kılıçarslan", title: null, isImam: false },
+            {
+              name: "Ayşe Nur Kılıçarslan",
+              title: null,
+              isImam: false,
+              unvan: "DR",
+            },
           ],
         },
       ],
     } as unknown as MadrasahOverviewResponse);
+    // each name with the unvan of this course, no word before them (2026-10-15)
     expect(html).toMatch(
-      /Mehmet Emin Işıkoğlu<\/bdi> <button[^>]*aria-label="Dersin imamı"/
+      /<bdi>Mehmet Emin Işıkoğlu Hoca<\/bdi> <button[^>]*aria-label="Dersin imamı"/
     );
+    expect(html).toContain("<bdi>Dr. Ayşe Nur Kılıçarslan</bdi>");
     expect(html.match(/aria-label="Dersin imamı"/g)).toHaveLength(1);
   });
 

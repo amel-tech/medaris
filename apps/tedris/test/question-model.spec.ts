@@ -1,6 +1,7 @@
 import type { CourseDetailResponse } from "@medaris/services/tedrisat";
 import { describe, expect, it } from "vitest";
 import {
+  answererName,
   appendQuestions,
   canEditQuestion,
   QUESTION_BODY_MAX,
@@ -50,5 +51,31 @@ describe("the question limits and lists (MDRS-150)", () => {
     expect(questionWhen(at, "tr", "Europe/Istanbul")).toContain("00:30");
     expect(questionWhen(at, "tr", "Europe/Istanbul")).toContain("4 Eki");
     expect(questionWhen(at, "tr", "America/New_York")).toContain("17:30");
+  });
+});
+
+describe("answererName: who signs an answer (owner, 2026-10-15)", () => {
+  it("names a hoca of the course with the unvan they carry in it", () => {
+    expect(
+      answererName({ name: "Ahmet Mehmet", isMuderris: true, unvan: "DOC_DR" })
+    ).toBe("Doç. Dr. Ahmet Mehmet");
+    expect(
+      answererName({ name: "Ahmet Mehmet", isMuderris: true, unvan: null })
+    ).toBe("Ahmet Mehmet Hoca");
+  });
+
+  it("names anyone else who answers by their name alone", () => {
+    expect(
+      answererName({ name: "Nuri Nazım", isMuderris: false, unvan: null })
+    ).toBe("Nuri Nazım");
+  });
+
+  it("is null for an account with no name, so the answer is unsigned", () => {
+    expect(answererName({ name: null, isMuderris: true, unvan: "DR" })).toBe(
+      null
+    );
+    expect(answererName({ name: "  ", isMuderris: false, unvan: null })).toBe(
+      null
+    );
   });
 });

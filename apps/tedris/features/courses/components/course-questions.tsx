@@ -19,6 +19,7 @@ import {
   updateLessonQuestion,
 } from "../actions/questions";
 import {
+  answererName,
   appendQuestions,
   canEditQuestion,
   QUESTION_BODY_MAX,
@@ -190,6 +191,9 @@ export const QuestionCard = ({
   // Answered since the page was drawn: the API said so, so editing is over.
   const [answeredMeanwhile, setAnsweredMeanwhile] = useState(false);
   const mayEdit = canEditQuestion(question) && !answeredMeanwhile;
+  const signedBy = question.answer
+    ? answererName(question.answer.answeredBy)
+    : null;
 
   const edit = () => {
     setDraft(question.body);
@@ -321,9 +325,7 @@ export const QuestionCard = ({
           {question.answer ? (
             <div className="flex flex-col gap-1 border-bs border-neutral-subtle pbs-3">
               <p className="mds-label">
-                {question.answer.answeredBy.name
-                  ? t("answerBy", { name: question.answer.answeredBy.name })
-                  : t("answer")}
+                {signedBy ? t("answerBy", { name: signedBy }) : t("answer")}
               </p>
               <Markdown source={question.answer.body} />
               <p className="mds-caption mds-num">

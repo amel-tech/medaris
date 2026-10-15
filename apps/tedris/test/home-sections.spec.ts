@@ -90,15 +90,17 @@ describe("Kaldığın yerden devam et", () => {
     reads.courses.mockResolvedValue([
       course("c1", "Emsile ve Bina", {
         muderris: [
-          { id: "m1", name: "Abdülhamit", isImam: true },
+          { id: "m1", name: "Abdülhamit", isImam: true, unvan: "MUFTU" },
           { id: "m2", name: "Ayşe Nur", isImam: false },
         ],
       }),
     ]);
     const out = await html("ContinueSection");
+    // each name with the unvan of this course, no word before them (2026-10-15)
     expect(out).toMatch(
-      /Abdülhamit<\/bdi> <button[^>]*aria-label="Dersin imamı"/
+      /<bdi>Müftü Abdülhamit<\/bdi> <button[^>]*aria-label="Dersin imamı"/
     );
+    expect(out).toContain("<bdi>Ayşe Nur Hoca</bdi>");
     expect(out.match(/aria-label="Dersin imamı"/g)).toHaveLength(1);
   });
 
@@ -177,6 +179,7 @@ describe("Takip ettiğin köşklerden", () => {
         title: "Avâmil ve Tasrîf",
         koskName: "Nûruosmaniye Köşkü",
         muderrisName: "Ayşe Nur Kılıçarslan",
+        muderrisUnvan: "HAFIZ",
         muderrisIsImam: true,
         muderrisCount: 2,
       },
@@ -185,12 +188,14 @@ describe("Takip ettiğin köşklerden", () => {
     const out = await html("FollowedSection");
     expect(out).toMatch(/href="\/tr\/courses\/f1"[^>]*>Avâmil ve Tasrîf</);
     expect(out).toContain("Nûruosmaniye Köşkü");
-    // the imam among two müderrisler: the star after the name (2026-10-13)
+    // the imam among two müderrisler: the star after the name (2026-10-13),
+    // the name with the unvan of this course (2026-10-15)
     expect(out).toMatch(
-      /Ayşe Nur Kılıçarslan<\/bdi> <button[^>]*aria-label="Dersin imamı"/
+      /<bdi>Hafız Ayşe Nur Kılıçarslan<\/bdi> <button[^>]*aria-label="Dersin imamı"/
     );
     expect(out).toContain('href="/tr/discover"');
-    expect(out).not.toContain("Müderris <bdi>null");
+    expect(out).not.toContain("<bdi>null");
+    expect(out).not.toContain("Müderris <bdi>");
   });
 
   it("marks no imam of a course with one müderris (2026-10-13)", async () => {

@@ -125,7 +125,8 @@ test.describe("Ana sayfa (tedris/01)", () => {
       has: page.getByRole("link", { name: fx.titles.followedCourse }),
     });
     await expect(line).toContainText(fx.titles.followedKosk);
-    await expect(line).toContainText("Müderris Ayşe Nur Kılıçarslan");
+    // no unvan in that course: "… Hoca", no word before the name (2026-10-15)
+    await expect(line).toContainText("Ayşe Nur Kılıçarslan Hoca");
     await expect(
       section.getByRole("link", { name: fx.titles.enrolledCourse })
     ).toHaveCount(0);

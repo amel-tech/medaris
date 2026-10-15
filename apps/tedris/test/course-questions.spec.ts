@@ -146,7 +146,12 @@ describe("reading the questions", () => {
           answer: {
             body: "Müstesnâdır, **mef'ûl-ü bih** değil.",
             answeredAt: new Date("2026-10-04T08:00:00Z"),
-            answeredBy: { id: "m1", name: "Mehmed Efendi" },
+            answeredBy: {
+              id: "m1",
+              name: "Mehmed Efendi",
+              isMuderris: true,
+              unvan: "MOLLA",
+            },
           },
         }),
       ])
@@ -159,7 +164,8 @@ describe("reading the questions", () => {
     expect(cards[0].textContent).toContain("Hafta 1 · Birinci celse");
     expect(cards[1].textContent).toContain("Cevaplanan soru");
     expect(cards[1].textContent).toContain(tr.answered);
-    expect(cards[1].textContent).toContain("Cevap: Mehmed Efendi");
+    // a hoca of the course answers with the unvan they carry in it (2026-10-15)
+    expect(cards[1].textContent).toContain("Cevap: Molla Mehmed Efendi");
     expect(cards[1].textContent).toContain("Müstesnâdır");
     // The answer is Markdown, rendered: the bold run is an element.
     expect(cards[1].querySelector("strong")?.textContent).toBe("mef'ûl-ü bih");
@@ -263,7 +269,7 @@ describe("asking", () => {
 const ANSWER = {
   body: "Cevap",
   answeredAt: new Date("2026-10-04T08:00:00Z"),
-  answeredBy: { id: "m1", name: "Mehmed Efendi" },
+  answeredBy: { id: "m1", name: "Mehmed Efendi", isMuderris: true },
 };
 
 /** The edit form of the question card that is being edited, not the ask form above the list. */
