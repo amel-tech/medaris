@@ -615,6 +615,31 @@ describe("the müderris line (2026-10-13)", () => {
     );
   };
 
+  it("draws no free-text title beside a hoca, alone or among several (owner, 2026-10-15)", async () => {
+    const titled = (
+      id: string,
+      name: string,
+      isImam: boolean,
+      title: string
+    ) => ({ ...person(id, name, isImam, "MOLLA"), title });
+    const alone = await withTeam([
+      titled(
+        "m1",
+        "Abdülhamit Karaosmanoğlu",
+        false,
+        "Sarf ve Nahiv Müderrisi"
+      ),
+    ]);
+    expect(alone).toContain("Molla Abdülhamit Karaosmanoğlu");
+    expect(alone).not.toContain("Sarf ve Nahiv Müderrisi");
+    const several = await withTeam([
+      titled("m1", "Abdülhamit Karaosmanoğlu", true, "Sarf ve Nahiv Müderrisi"),
+      titled("m2", "Ayşe Nur Kılıçarslan", false, "Hadis Müderrisi"),
+    ]);
+    expect(several).not.toContain("Sarf ve Nahiv Müderrisi");
+    expect(several).not.toContain("Hadis Müderrisi");
+  });
+
   it("marks the imam among several müderrisler with the star after the name", async () => {
     const html = await withTeam([
       person("m1", "Abdülhamit Karaosmanoğlu", true),

@@ -272,9 +272,10 @@ export const CoursePage = ({
               ))}
             </p>
             {course.muderris.length === 1 ? (
-              // Design tedris/12: one müderris is named with their initials and title.
+              // Design tedris/12: one müderris is named with their initials.
               // The name carries the unvan of this course ("Prof. Dr. …", "… Hoca"),
               // so no word goes before it; the initials stay the bare name's.
+              // The older free-text title is no longer drawn (owner, 2026-10-15).
               <div className="flex flex-wrap items-center gap-2">
                 <Avatar name={course.muderris[0].name} size="sm" decorative />
                 <span className="mds-body-sm">
@@ -285,9 +286,6 @@ export const CoursePage = ({
                     )}
                   </bdi>
                 </span>
-                {course.muderris[0].title ? (
-                  <Badge variant="secondary">{course.muderris[0].title}</Badge>
-                ) : null}
               </div>
             ) : course.muderris.length > 1 ? (
               <p className="mds-body-sm">
@@ -313,12 +311,6 @@ export const CoursePage = ({
                         <>
                           {" "}
                           <ImamStar labels={star} />
-                        </>
-                      ) : null}
-                      {m?.title ? (
-                        <>
-                          {" "}
-                          <Badge variant="secondary">{m.title}</Badge>
                         </>
                       ) : null}
                     </Fragment>
@@ -457,11 +449,6 @@ export const CoursePage = ({
                       <p className="mds-body">
                         <bdi>{formatHocaName(m.name, m.unvan)}</bdi>
                       </p>
-                      {m.title ? (
-                        <p className="mds-caption" dir="auto">
-                          {m.title}
-                        </p>
-                      ) : null}
                       {m.bio ? (
                         <p className="mds-body-sm" dir="auto">
                           {m.bio}
