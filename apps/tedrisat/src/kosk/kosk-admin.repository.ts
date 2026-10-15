@@ -1,3 +1,4 @@
+import type { HocaUnvan } from "@medaris/utils/src/hoca-unvan.js";
 import { Injectable } from "@nestjs/common";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { ArchiveRestoreLevelError } from "../archive/errors/archive-errors";
@@ -85,7 +86,7 @@ export interface IKoskCourseRow {
   /** The level a hidden course was hidden at (MDRS-135); null when shown or never recorded. */
   hiddenLevel: HideLevel | null;
   createdAt: Date;
-  muderris: { name: string; isImam: boolean }[];
+  muderris: { name: string; unvan: HocaUnvan | null; isImam: boolean }[];
   studentCount: number;
   pendingCount: number;
   bannedCount: number;
@@ -655,9 +656,10 @@ export class KoskAdminRepository {
     const muderris = await this.db.execute<{
       course_id: string;
       name: string;
+      unvan: HocaUnvan | null;
       is_imam: boolean;
     }>(sql`
-      select cm.course_id, cm.name,
+      select cm.course_id, cm.name, cm.unvan,
              exists (select 1 from role_assignments ra
                       where ra.role = ${ASSIGNED_ROLES.MUDERRIS}
                         and ra.is_imam and ra.revoked_at is null
@@ -683,7 +685,7 @@ export class KoskAdminRepository {
       createdAt: new Date(r.created_at),
       muderris: muderris.rows
         .filter((m) => m.course_id === r.id)
-        .map((m) => ({ name: m.name, isImam: m.is_imam })),
+        .map((m) => ({ name: m.name, unvan: m.unvan, isImam: m.is_imam })),
       studentCount: Number(r.students),
       pendingCount: Number(r.pending),
       bannedCount: Number(r.banned),

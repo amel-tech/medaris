@@ -1,9 +1,11 @@
+import { HOCA_UNVANS, type HocaUnvan } from "@medaris/utils/src/hoca-unvan.js";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Type } from "class-transformer";
 import {
   ArrayMaxSize,
   ArrayMinSize,
   IsArray,
+  IsIn,
   IsInt,
   IsOptional,
   IsString,
@@ -11,9 +13,10 @@ import {
   MaxLength,
   Min,
   MinLength,
+  ValidateIf,
   ValidateNested,
 } from "class-validator";
-import { MuderrisResponse } from "./course-response.dto";
+import { HOCA_UNVAN_PROPERTY, MuderrisResponse } from "./course-response.dto";
 
 export class MuderrisListItemDto {
   @ApiProperty({ format: "uuid", description: "The müderris' account." })
@@ -60,6 +63,23 @@ export class SetMuderrisDto {
   })
   @IsUUID()
   imamUserId!: string;
+}
+
+/**
+ * The unvan of one hoca in one course (Ders ayarları). `required: false` only
+ * so the generated client accepts a null; the key must be sent.
+ */
+export class SetMuderrisUnvanDto {
+  @ApiProperty({
+    ...HOCA_UNVAN_PROPERTY,
+    required: false,
+    example: "PROF_DR",
+    description:
+      "The unvan to give, or null for none (the name reads `{name} Hoca`). The key must be sent: a body without it, or with a code not in the list, is 400.",
+  })
+  @ValidateIf((_: unknown, value: unknown) => value !== null)
+  @IsIn([...HOCA_UNVANS])
+  unvan!: HocaUnvan | null;
 }
 
 export class MuderrisListResponse {

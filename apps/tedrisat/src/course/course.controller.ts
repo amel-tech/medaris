@@ -61,6 +61,7 @@ import {
   CourseSummaryResponse,
   EnrolledCourseResponse,
   EnrollmentResponse,
+  MuderrisResponse,
   PendingEnrollmentResponse,
   RemovedEnrollmentResponse,
   RosterEnrollmentResponse,
@@ -72,7 +73,11 @@ import {
   RemoveEnrollmentDto,
   SetEnrollmentStatusDto,
 } from "./dto/enrollment-actions.dto";
-import { MuderrisListResponse, SetMuderrisDto } from "./dto/muderris-list.dto";
+import {
+  MuderrisListResponse,
+  SetMuderrisDto,
+  SetMuderrisUnvanDto,
+} from "./dto/muderris-list.dto";
 import { MyCoursePermissionsResponse } from "./dto/my-course-permissions.dto";
 import { ReplaceCourseDto } from "./dto/replace-course.dto";
 import { UpdateCourseDto } from "./dto/update-course.dto";
@@ -368,6 +373,39 @@ export class CourseController {
     @Body() dto: SetMuderrisDto
   ): Promise<MuderrisListResponse> {
     return this.courseService.setMuderris(id, request.user, dto);
+  }
+
+  @ApiOperation({
+    summary: "Set the unvan one hoca carries in a course",
+    description:
+      "From Ders ayarları: the course shows the hoca as `Prof. Dr. {name}`, `Molla {name}` …, or `{name} Hoca` with null. The unvan belongs to this hoca in this course only; the same person keeps their own in other courses, and is shown without one in any other role. Needs `course.settings`. A change is written to `audit_log` (`course.muderris_unvan_update`); the same unvan again writes nothing. The course's version does not move.",
+    operationId: "setCourseMuderrisUnvan",
+  })
+  @ApiOkResponse({ type: MuderrisResponse })
+  @ApiBadRequestResponse({
+    description:
+      "The body has no `unvan`, or a code that is not one of the list (VALIDATION_ERROR).",
+  })
+  @ApiForbiddenResponse({ description: "No `course.settings` on the course." })
+  @ApiNotFoundResponse({
+    description:
+      "No such course, or the account is not on its müderris list (COURSE_MUDERRIS_NOT_FOUND).",
+  })
+  @Authz(PERMISSIONS.COURSE_SETTINGS, byParam(ENTITIES.COURSE))
+  @Put("courses/:id/muderris/:userId/unvan")
+  @UsePipes(new MedarisValidationPipe({ transform: true }))
+  async setMuderrisUnvan(
+    @Req() request: AuthorizedRequest,
+    @Param("id", ParseUUIDPipe) id: string,
+    @Param("userId", ParseUUIDPipe) userId: string,
+    @Body() dto: SetMuderrisUnvanDto
+  ): Promise<MuderrisResponse> {
+    return this.courseService.setMuderrisUnvan(
+      id,
+      userId,
+      request.user,
+      dto.unvan
+    );
   }
 
   @ApiOperation({

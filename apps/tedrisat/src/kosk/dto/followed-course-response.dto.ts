@@ -1,4 +1,6 @@
+import type { HocaUnvan } from "@medaris/utils/src/hoca-unvan.js";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { HOCA_UNVAN_PROPERTY } from "../../course/dto/course-response.dto";
 
 /**
  * A course of a köşk the caller follows, for Ana sayfa's "Takip ettiğin
@@ -16,6 +18,12 @@ export class FollowedKoskCourseResponse {
     description: "The first müderris by the order the course lists them in.",
   })
   muderrisName!: string | null;
+  @ApiPropertyOptional({
+    ...HOCA_UNVAN_PROPERTY,
+    description:
+      "That müderris' unvan in this course; null is none, shown as `{name} Hoca`.",
+  })
+  muderrisUnvan!: HocaUnvan | null;
   @ApiProperty({ description: "That müderris is the course's imam." })
   muderrisIsImam!: boolean;
   @ApiProperty({

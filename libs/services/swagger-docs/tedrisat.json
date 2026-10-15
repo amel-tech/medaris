@@ -3077,6 +3077,70 @@
         ]
       }
     },
+    "/courses/{id}/muderris/{userId}/unvan": {
+      "put": {
+        "description": "From Ders ayarları: the course shows the hoca as `Prof. Dr. {name}`, `Molla {name}` …, or `{name} Hoca` with null. The unvan belongs to this hoca in this course only; the same person keeps their own in other courses, and is shown without one in any other role. Needs `course.settings`. A change is written to `audit_log` (`course.muderris_unvan_update`); the same unvan again writes nothing. The course's version does not move.",
+        "operationId": "setCourseMuderrisUnvan",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetMuderrisUnvanDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MuderrisResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body has no `unvan`, or a code that is not one of the list (VALIDATION_ERROR)."
+          },
+          "403": {
+            "description": "No `course.settings` on the course."
+          },
+          "404": {
+            "description": "No such course, or the account is not on its müderris list (COURSE_MUDERRIS_NOT_FOUND)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Set the unvan one hoca carries in a course",
+        "tags": [
+          "courses"
+        ]
+      }
+    },
     "/courses/{id}/archive": {
       "post": {
         "description": "Nothing is deleted, every list leaves the course out, and it answers 404 to everyone but those who may hide it until it is restored (MDRS-124). Who hides it (MDRS-143): the köşk's nazımı (`course.hide`), the başmüderris or a nazır given `madrasah.course_hide` for a medrese course, and platform management (`platform.course_hide`, the başnazım by bypass). The level the caller acts at is recorded with the hide (köşk, medrese or platform) and decides who may restore it (MDRS-135). A course hidden already answers 409 (COURSE_ALREADY_HIDDEN) and nothing is written.",
@@ -13638,11 +13702,34 @@
           "cancelled"
         ]
       },
+      "HocaUnvan": {
+        "type": "string",
+        "enum": [
+          "PROF_DR",
+          "DOC_DR",
+          "DR",
+          "MUDERRIS",
+          "MOLLA",
+          "MUFTU",
+          "SEYH",
+          "HAFIZ"
+        ],
+        "description": "The unvan this hoca carries in this course, set in the course's settings. The name is shown as `Prof. Dr. {name}`, `Molla {name}` …; null is no unvan, shown as `{name} Hoca` (`formatHocaName` in `@medaris/utils`)."
+      },
       "DashboardSessionMuderrisResponse": {
         "type": "object",
         "properties": {
           "name": {
             "type": "string"
+          },
+          "unvan": {
+            "nullable": true,
+            "description": "The unvan this hoca carries in this course, set in the course's settings. The name is shown as `Prof. Dr. {name}`, `Molla {name}` …; null is no unvan, shown as `{name} Hoca` (`formatHocaName` in `@medaris/utils`).",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HocaUnvan"
+              }
+            ]
           },
           "isImam": {
             "type": "boolean",
@@ -13908,6 +13995,15 @@
         "properties": {
           "name": {
             "type": "string"
+          },
+          "unvan": {
+            "nullable": true,
+            "description": "The unvan this hoca carries in this course, set in the course's settings. The name is shown as `Prof. Dr. {name}`, `Molla {name}` …; null is no unvan, shown as `{name} Hoca` (`formatHocaName` in `@medaris/utils`).",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HocaUnvan"
+              }
+            ]
           },
           "isImam": {
             "type": "boolean",
@@ -14699,6 +14795,15 @@
             "type": "string",
             "nullable": true,
             "description": "The first müderris by the order the course lists them in."
+          },
+          "muderrisUnvan": {
+            "nullable": true,
+            "description": "That müderris' unvan in this course; null is none, shown as `{name} Hoca`.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HocaUnvan"
+              }
+            ]
           },
           "muderrisIsImam": {
             "type": "boolean",
@@ -15642,6 +15747,15 @@
             "type": "string",
             "nullable": true
           },
+          "unvan": {
+            "nullable": true,
+            "description": "The unvan this hoca carries in this course, set in the course's settings. The name is shown as `Prof. Dr. {name}`, `Molla {name}` …; null is no unvan, shown as `{name} Hoca` (`formatHocaName` in `@medaris/utils`).",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HocaUnvan"
+              }
+            ]
+          },
           "isImam": {
             "type": "boolean"
           }
@@ -16116,6 +16230,15 @@
             "type": "string",
             "nullable": true
           },
+          "unvan": {
+            "nullable": true,
+            "description": "The unvan this hoca carries in this course, set in the course's settings. The name is shown as `Prof. Dr. {name}`, `Molla {name}` …; null is no unvan, shown as `{name} Hoca` (`formatHocaName` in `@medaris/utils`).",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HocaUnvan"
+              }
+            ]
+          },
           "isImam": {
             "type": "boolean"
           },
@@ -16231,6 +16354,15 @@
           },
           "orderIndex": {
             "type": "number"
+          },
+          "unvan": {
+            "nullable": true,
+            "description": "The unvan this hoca carries in this course, set in the course's settings. The name is shown as `Prof. Dr. {name}`, `Molla {name}` …; null is no unvan, shown as `{name} Hoca` (`formatHocaName` in `@medaris/utils`).",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HocaUnvan"
+              }
+            ]
           },
           "isImam": {
             "type": "boolean",
@@ -17153,6 +17285,15 @@
           "orderIndex": {
             "type": "number"
           },
+          "unvan": {
+            "nullable": true,
+            "description": "The unvan this hoca carries in this course, set in the course's settings. The name is shown as `Prof. Dr. {name}`, `Molla {name}` …; null is no unvan, shown as `{name} Hoca` (`formatHocaName` in `@medaris/utils`).",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HocaUnvan"
+              }
+            ]
+          },
           "isImam": {
             "type": "boolean",
             "description": "The course's imam among its müderrisler (MDRS-133)"
@@ -17869,6 +18010,21 @@
           "courseVersion"
         ]
       },
+      "SetMuderrisUnvanDto": {
+        "type": "object",
+        "properties": {
+          "unvan": {
+            "nullable": true,
+            "description": "The unvan to give, or null for none (the name reads `{name} Hoca`). The key must be sent: a body without it, or with a code not in the list, is 400.",
+            "example": "PROF_DR",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HocaUnvan"
+              }
+            ]
+          }
+        }
+      },
       "PendingEnrollmentResponse": {
         "type": "object",
         "properties": {
@@ -18417,6 +18573,15 @@
           "title": {
             "type": "string",
             "nullable": true
+          },
+          "unvan": {
+            "nullable": true,
+            "description": "The unvan this hoca carries in this course, set in the course's settings. The name is shown as `Prof. Dr. {name}`, `Molla {name}` …; null is no unvan, shown as `{name} Hoca` (`formatHocaName` in `@medaris/utils`).",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HocaUnvan"
+              }
+            ]
           },
           "isImam": {
             "type": "boolean",
@@ -21632,6 +21797,15 @@
             "nullable": true,
             "description": "The course's first müderris, for a course deck."
           },
+          "muderrisUnvan": {
+            "nullable": true,
+            "description": "That müderris' unvan in the course; null for none (shown as `{name} Hoca`) and for a deck that is not a course's.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HocaUnvan"
+              }
+            ]
+          },
           "cardCount": {
             "type": "number"
           },
@@ -22153,6 +22327,15 @@
             "nullable": true,
             "description": "The course's imam, as the course page names them"
           },
+          "imamUnvan": {
+            "nullable": true,
+            "description": "The imam's unvan in the course; null for none (shown as `{name} Hoca`) or no imam.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HocaUnvan"
+              }
+            ]
+          },
           "muderrisCount": {
             "type": "number",
             "description": "How many müderrisler the course lists; the imam is marked only where there is more than one"
@@ -22332,7 +22515,7 @@
           "body"
         ]
       },
-      "QuestionPersonResponse": {
+      "QuestionAnswererResponse": {
         "type": "object",
         "properties": {
           "id": {
@@ -22343,11 +22526,25 @@
             "type": "string",
             "nullable": true,
             "description": "Null when the account carries neither a name nor an e-mail."
+          },
+          "isMuderris": {
+            "type": "boolean",
+            "description": "They are on the course's müderris list, so the answer is shown as its hoca's, with `unvan`. False for a ders nazırı, a köşk nazımı or anyone else who answers."
+          },
+          "unvan": {
+            "nullable": true,
+            "description": "Their unvan in this course; null for none (shown as `{name} Hoca`) and always null when `isMuderris` is false.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HocaUnvan"
+              }
+            ]
           }
         },
         "required": [
           "id",
-          "name"
+          "name",
+          "isMuderris"
         ]
       },
       "QuestionAnswerResponse": {
@@ -22362,7 +22559,7 @@
             "type": "string"
           },
           "answeredBy": {
-            "$ref": "#/components/schemas/QuestionPersonResponse"
+            "$ref": "#/components/schemas/QuestionAnswererResponse"
           }
         },
         "required": [
@@ -22437,6 +22634,24 @@
         "required": [
           "items",
           "nextCursor"
+        ]
+      },
+      "QuestionPersonResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true,
+            "description": "Null when the account carries neither a name nor an e-mail."
+          }
+        },
+        "required": [
+          "id",
+          "name"
         ]
       },
       "CourseQuestionResponse": {

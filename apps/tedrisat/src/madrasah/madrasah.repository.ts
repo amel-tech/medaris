@@ -1,3 +1,4 @@
+import type { HocaUnvan } from "@medaris/utils/src/hoca-unvan.js";
 import { Injectable } from "@nestjs/common";
 import {
   and,
@@ -1198,6 +1199,7 @@ export class MadrasahRepository {
       muderris: (muderrisByCourse.get(c.id) ?? []).map((m) => ({
         name: m.name,
         title: m.title,
+        unvan: m.unvan,
         isImam: m.isImam,
       })),
       enrollmentStatus: statusByCourse.get(c.id) ?? null,
@@ -1237,6 +1239,7 @@ export class MadrasahRepository {
       userId: string | null;
       name: string;
       title: string | null;
+      unvan: HocaUnvan | null;
       isImam: boolean;
     }[]
   > {
@@ -1248,6 +1251,7 @@ export class MadrasahRepository {
           userId: courseMuderris.userId,
           name: courseMuderris.name,
           title: courseMuderris.title,
+          unvan: courseMuderris.unvan,
         })
         .from(courseMuderris)
         .where(inArray(courseMuderris.courseId, ids))
@@ -1507,6 +1511,7 @@ export class MadrasahRepository {
           userId: m.userId,
           name: m.name,
           title: m.title,
+          unvan: m.unvan,
           email: m.userId ? (emails.get(m.userId) ?? null) : null,
           isImam: m.isImam,
         })),

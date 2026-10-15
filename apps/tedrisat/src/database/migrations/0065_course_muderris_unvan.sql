@@ -1,0 +1,2 @@
+CREATE TYPE "public"."hoca_unvan" AS ENUM('PROF_DR', 'DOC_DR', 'DR', 'MUDERRIS', 'MOLLA', 'MUFTU', 'SEYH', 'HAFIZ');--> statement-breakpoint
+ALTER TABLE "course_muderris" ADD COLUMN "unvan" "hoca_unvan";

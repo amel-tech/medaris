@@ -20,6 +20,13 @@ import {
     HostingCourseStatusToJSON,
     HostingCourseStatusToJSONTyped,
 } from './HostingCourseStatus';
+import type { HocaUnvan } from './HocaUnvan';
+import {
+    HocaUnvanFromJSON,
+    HocaUnvanFromJSONTyped,
+    HocaUnvanToJSON,
+    HocaUnvanToJSONTyped,
+} from './HocaUnvan';
 
 /**
  * 
@@ -58,6 +65,12 @@ export interface HostingOpenCourseResponse {
      */
     imamName?: string | null;
     /**
+     * The imam's unvan in the course; null for none (shown as `{name} Hoca`) or no imam.
+     * @type {HocaUnvan}
+     * @memberof HostingOpenCourseResponse
+     */
+    imamUnvan?: HocaUnvan | null;
+    /**
      * How many müderrisler the course lists; the imam is marked only where there is more than one
      * @type {number}
      * @memberof HostingOpenCourseResponse
@@ -94,6 +107,7 @@ export function HostingOpenCourseResponseFromJSONTyped(json: any, ignoreDiscrimi
         'status': HostingCourseStatusFromJSON(json['status']),
         'studentCount': json['studentCount'],
         'imamName': json['imamName'] == null ? undefined : json['imamName'],
+        'imamUnvan': json['imamUnvan'] == null ? undefined : HocaUnvanFromJSON(json['imamUnvan']),
         'muderrisCount': json['muderrisCount'],
     };
 }
@@ -114,6 +128,7 @@ export function HostingOpenCourseResponseToJSONTyped(value?: HostingOpenCourseRe
         'status': HostingCourseStatusToJSON(value['status']),
         'studentCount': value['studentCount'],
         'imamName': value['imamName'],
+        'imamUnvan': HocaUnvanToJSON(value['imamUnvan']),
         'muderrisCount': value['muderrisCount'],
     };
 }

@@ -1,8 +1,10 @@
+import type { HocaUnvan } from "@medaris/utils/src/hoca-unvan.js";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { LIVE_STREAM_HOURS_AFTER_END } from "../domain/recording";
 import { SessionStatus } from "../domain/session-status.enum";
 import {
   AgendaStepResponse,
+  HOCA_UNVAN_PROPERTY,
   LessonResourceResponse,
 } from "./course-response.dto";
 import { LessonAssignmentResponse } from "./lesson-assignment.dto";
@@ -25,6 +27,7 @@ export class SessionRefResponse {
 export class SessionMuderrisResponse {
   @ApiProperty() name!: string;
   @ApiPropertyOptional({ type: String, nullable: true }) title!: string | null;
+  @ApiPropertyOptional(HOCA_UNVAN_PROPERTY) unvan!: HocaUnvan | null;
   @ApiProperty({
     description: "True for the course's imam, the müderris the page badges.",
   })

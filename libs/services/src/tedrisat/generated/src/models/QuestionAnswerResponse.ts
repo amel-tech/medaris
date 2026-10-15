@@ -13,13 +13,13 @@
  */
 
 import { mapValues } from '../runtime';
-import type { QuestionPersonResponse } from './QuestionPersonResponse';
+import type { QuestionAnswererResponse } from './QuestionAnswererResponse';
 import {
-    QuestionPersonResponseFromJSON,
-    QuestionPersonResponseFromJSONTyped,
-    QuestionPersonResponseToJSON,
-    QuestionPersonResponseToJSONTyped,
-} from './QuestionPersonResponse';
+    QuestionAnswererResponseFromJSON,
+    QuestionAnswererResponseFromJSONTyped,
+    QuestionAnswererResponseToJSON,
+    QuestionAnswererResponseToJSONTyped,
+} from './QuestionAnswererResponse';
 
 /**
  * 
@@ -41,10 +41,10 @@ export interface QuestionAnswerResponse {
     answeredAt: Date;
     /**
      * 
-     * @type {QuestionPersonResponse}
+     * @type {QuestionAnswererResponse}
      * @memberof QuestionAnswerResponse
      */
-    answeredBy: QuestionPersonResponse;
+    answeredBy: QuestionAnswererResponse;
 }
 
 /**
@@ -69,7 +69,7 @@ export function QuestionAnswerResponseFromJSONTyped(json: any, ignoreDiscriminat
         
         'body': json['body'],
         'answeredAt': (new Date(json['answeredAt'])),
-        'answeredBy': QuestionPersonResponseFromJSON(json['answeredBy']),
+        'answeredBy': QuestionAnswererResponseFromJSON(json['answeredBy']),
     };
 }
 
@@ -86,7 +86,7 @@ export function QuestionAnswerResponseToJSONTyped(value?: QuestionAnswerResponse
         
         'body': value['body'],
         'answeredAt': ((value['answeredAt']).toISOString()),
-        'answeredBy': QuestionPersonResponseToJSON(value['answeredBy']),
+        'answeredBy': QuestionAnswererResponseToJSON(value['answeredBy']),
     };
 }
 

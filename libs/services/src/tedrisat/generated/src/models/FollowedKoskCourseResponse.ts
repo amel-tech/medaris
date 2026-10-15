@@ -13,6 +13,14 @@
  */
 
 import { mapValues } from '../runtime';
+import type { HocaUnvan } from './HocaUnvan';
+import {
+    HocaUnvanFromJSON,
+    HocaUnvanFromJSONTyped,
+    HocaUnvanToJSON,
+    HocaUnvanToJSONTyped,
+} from './HocaUnvan';
+
 /**
  * 
  * @export
@@ -56,6 +64,12 @@ export interface FollowedKoskCourseResponse {
      */
     muderrisName?: string | null;
     /**
+     * That müderris' unvan in this course; null is none, shown as `{name} Hoca`.
+     * @type {HocaUnvan}
+     * @memberof FollowedKoskCourseResponse
+     */
+    muderrisUnvan?: HocaUnvan | null;
+    /**
      * That müderris is the course's imam.
      * @type {boolean}
      * @memberof FollowedKoskCourseResponse
@@ -68,6 +82,8 @@ export interface FollowedKoskCourseResponse {
      */
     muderrisCount: number;
 }
+
+
 
 /**
  * Check if a given object implements the FollowedKoskCourseResponse interface.
@@ -99,6 +115,7 @@ export function FollowedKoskCourseResponseFromJSONTyped(json: any, ignoreDiscrim
         'koskName': json['koskName'],
         'coverHue': json['coverHue'],
         'muderrisName': json['muderrisName'] == null ? undefined : json['muderrisName'],
+        'muderrisUnvan': json['muderrisUnvan'] == null ? undefined : HocaUnvanFromJSON(json['muderrisUnvan']),
         'muderrisIsImam': json['muderrisIsImam'],
         'muderrisCount': json['muderrisCount'],
     };
@@ -121,6 +138,7 @@ export function FollowedKoskCourseResponseToJSONTyped(value?: FollowedKoskCourse
         'koskName': value['koskName'],
         'coverHue': value['coverHue'],
         'muderrisName': value['muderrisName'],
+        'muderrisUnvan': HocaUnvanToJSON(value['muderrisUnvan']),
         'muderrisIsImam': value['muderrisIsImam'],
         'muderrisCount': value['muderrisCount'],
     };

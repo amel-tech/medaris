@@ -1,3 +1,4 @@
+import type { HocaUnvan } from "@medaris/utils/src/hoca-unvan.js";
 import { Injectable } from "@nestjs/common";
 import {
   and,
@@ -326,6 +327,14 @@ export class KoskRepository implements IKoskRepository {
         )`,
         muderrisUserId: sql<string | null>`(
           SELECT ${courseMuderris.userId}
+          FROM ${courseMuderris}
+          WHERE ${courseMuderris.courseId} = ${courses.id}
+          ORDER BY ${courseMuderris.orderIndex}, ${courseMuderris.id}
+          LIMIT 1
+        )`,
+        // That müderris' unvan in this course.
+        muderrisUnvan: sql<HocaUnvan | null>`(
+          SELECT ${courseMuderris.unvan}
           FROM ${courseMuderris}
           WHERE ${courseMuderris.courseId} = ${courses.id}
           ORDER BY ${courseMuderris.orderIndex}, ${courseMuderris.id}

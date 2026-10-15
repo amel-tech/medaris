@@ -8,6 +8,7 @@ import {
   type PermissionCode,
   SelfGrantGuard,
 } from "@medaris/common";
+import type { HocaUnvan } from "@medaris/utils/src/hoca-unvan.js";
 import { Injectable } from "@nestjs/common";
 import {
   ArchiveParentHiddenError,
@@ -104,6 +105,7 @@ import {
   CourseAlreadyHiddenError,
   CourseNotHiddenError,
 } from "./errors/course-hide-state.error";
+import { CourseMuderrisNotFoundError } from "./errors/course-muderris-not-found.error";
 import { CourseNotFoundError } from "./errors/course-not-found.error";
 import { CourseVersionConflictError } from "./errors/course-version-conflict.error";
 import { EnrollmentNotFoundError } from "./errors/enrollment-not-found.error";
@@ -1265,6 +1267,37 @@ export class CourseService {
     );
     this.invitations.kick();
     return saved;
+  }
+
+  /**
+   * Sets the unvan one hoca carries in this course, from Ders ayarları: the
+   * name the course shows becomes `Prof. Dr. {name}`, or `{name} Hoca` again
+   * with null. The person's other courses and roles keep theirs. Only an
+   * account on the course's müderris list has one here; anyone else is 404
+   * COURSE_MUDERRIS_NOT_FOUND. Authorization is `course.settings` on the
+   * route; a hidden course is not written, as on every course write.
+   */
+  async setMuderrisUnvan(
+    courseId: string,
+    userId: string,
+    user: AuthenticatedUser,
+    unvan: HocaUnvan | null
+  ): Promise<IMuderris> {
+    await this.getDetail(courseId, user);
+    const account = userId.toLowerCase();
+    const listed = await this.courseRepo.setMuderrisUnvan(
+      courseId,
+      account,
+      unvan,
+      user.sub
+    );
+    const row = listed
+      ? (await this.courseRepo.findMuderris(courseId)).find(
+          (m) => m.userId?.toLowerCase() === account
+        )
+      : undefined;
+    if (!row) throw new CourseMuderrisNotFoundError(courseId, account);
+    return row;
   }
 
   /** Hides the lesson; nothing attached to it is deleted (MDRS-124). */

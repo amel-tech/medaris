@@ -52,6 +52,7 @@ export const toDeckSummary = (
     inCollection: row.collectedAt !== null,
     contextTitle: row.courseTitle ?? row.koskName ?? row.madrasahName ?? null,
     muderrisName: row.courseId ? row.muderrisName : null,
+    muderrisUnvan: row.courseId ? row.muderrisUnvan : null,
     cardCount: progress.cardCount,
     masteredCount: progress.masteredCount,
     learningCount: progress.learningCount,

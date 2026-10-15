@@ -181,6 +181,7 @@ src/models/HeadDelegationResponse.ts
 src/models/HeadDelegationScopeType.ts
 src/models/HealthCheckDto.ts
 src/models/HideLevel.ts
+src/models/HocaUnvan.ts
 src/models/HostingCourseStatus.ts
 src/models/HostingCoursesAction.ts
 src/models/HostingGrantedByResponse.ts
@@ -351,6 +352,7 @@ src/models/PolicyPersonResponse.ts
 src/models/ProfileVisibility.ts
 src/models/PublicProfileResponse.ts
 src/models/QuestionAnswerResponse.ts
+src/models/QuestionAnswererResponse.ts
 src/models/QuestionPersonResponse.ts
 src/models/ReadAllNotificationsResponse.ts
 src/models/RecordingAvailabilityResponse.ts
@@ -393,6 +395,7 @@ src/models/SetLiveStreamDto.ts
 src/models/SetMadrasahCourseMuderrisDto.ts
 src/models/SetMadrasahNazirPermissionsDto.ts
 src/models/SetMuderrisDto.ts
+src/models/SetMuderrisUnvanDto.ts
 src/models/SetNazimGrantsDto.ts
 src/models/SetPartnerKosksDto.ts
 src/models/SetPlatformPolicyDto.ts

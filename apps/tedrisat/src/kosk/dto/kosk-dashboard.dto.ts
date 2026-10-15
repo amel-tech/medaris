@@ -1,4 +1,6 @@
+import type { HocaUnvan } from "@medaris/utils/src/hoca-unvan.js";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { HOCA_UNVAN_PROPERTY } from "../../course/dto/course-response.dto";
 
 export const DASHBOARD_SESSION_TABS = [
   "UPCOMING",
@@ -45,6 +47,9 @@ export class KoskDashboardSessionCountsResponse {
 export class DashboardSessionMuderrisResponse {
   @ApiProperty()
   name!: string;
+
+  @ApiPropertyOptional(HOCA_UNVAN_PROPERTY)
+  unvan!: HocaUnvan | null;
 
   @ApiProperty({ description: "The course's imam" })
   isImam!: boolean;
