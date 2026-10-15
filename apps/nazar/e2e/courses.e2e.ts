@@ -185,11 +185,11 @@ test("nazir/17 — the dialog shows the list and keeps Kaydet off until it chang
   test.skip(!ready(), "no medrese başmüderris");
   const page = await as("MEDRESE_BASMUDERRIS");
   await open(page);
-  await rowMenu(page, base?.first.title ?? "", "Müderrisleri değiştir");
+  await rowMenu(page, base?.first.title ?? "", "Hocaları değiştir");
 
-  const dialog = page.getByRole("dialog", { name: "Müderrisleri değiştir" });
+  const dialog = page.getByRole("dialog", { name: "Hocaları değiştir" });
   await expect(dialog).toContainText(base?.first.title ?? "");
-  await expect(dialog).toContainText("2 müderris");
+  await expect(dialog).toContainText("2 hoca");
   await expect(dialog).toContainText(courses?.second.name ?? "");
   await expect(dialog.getByRole("button", { name: "Kaydet" })).toBeDisabled();
   await expect(dialog.getByRole("radio")).toHaveCount(2);
@@ -197,10 +197,10 @@ test("nazir/17 — the dialog shows the list and keeps Kaydet off until it chang
   await dialog
     .getByRole("button", { name: `Çıkar: ${courses?.second.name}` })
     .click();
-  await expect(dialog).toContainText("1 müderris");
+  await expect(dialog).toContainText("1 hoca");
   await dialog.getByRole("button", { name: "Kaydet" }).click();
   await expect(
-    page.getByText("Müderrisler kaydedildi").filter({ visible: true })
+    page.getByText("Hocalar kaydedildi").filter({ visible: true })
   ).toBeVisible();
 
   await expect(dialog).toHaveCount(0);
@@ -224,9 +224,9 @@ test("nazir/17 — the last müderris cannot leave (criterion 1)", async ({
   test.skip(!ready(), "no medrese başmüderris");
   const page = await as("MEDRESE_BASMUDERRIS");
   await open(page);
-  await rowMenu(page, base?.second.title ?? "", "Müderrisleri değiştir");
-  const dialog = page.getByRole("dialog", { name: "Müderrisleri değiştir" });
-  await expect(dialog).toContainText("1 müderris");
+  await rowMenu(page, base?.second.title ?? "", "Hocaları değiştir");
+  const dialog = page.getByRole("dialog", { name: "Hocaları değiştir" });
+  await expect(dialog).toContainText("1 hoca");
   await expect(dialog.getByRole("radio")).toHaveCount(0);
   await expect(dialog.getByRole("button", { name: /^Çıkar:/ })).toBeDisabled();
   await expect(dialog.getByRole("button", { name: "Kaydet" })).toBeDisabled();
@@ -238,11 +238,11 @@ test("nazir/17 — a müderris with no account is shown and left alone", async (
   test.skip(!ready(), "no medrese başmüderris");
   const page = await as("MEDRESE_BASMUDERRIS");
   await open(page);
-  await rowMenu(page, courses?.draft.title ?? "", "Müderrisleri değiştir");
-  const dialog = page.getByRole("dialog", { name: "Müderrisleri değiştir" });
+  await rowMenu(page, courses?.draft.title ?? "", "Hocaları değiştir");
+  const dialog = page.getByRole("dialog", { name: "Hocaları değiştir" });
   await expect(dialog).toContainText("E2E Konuk Müderris");
   await expect(dialog).toContainText(
-    "Hesabı olmayan müderris; bu listeden değiştirilemez."
+    "Hesabı olmayan hoca; bu listeden değiştirilemez."
   );
   await expect(
     dialog.getByRole("button", { name: "Çıkar: E2E Konuk Müderris" })
@@ -257,9 +257,9 @@ test("nazir/17 — a müderris added by e-mail takes the course's müderris role
   test.skip(!(ready() && canSignIn(TALEBE) && TALEBE.sub), "no TALEBE account");
   const page = await as("MEDRESE_BASMUDERRIS");
   await open(page);
-  await rowMenu(page, base?.first.title ?? "", "Müderrisleri değiştir");
-  const dialog = page.getByRole("dialog", { name: "Müderrisleri değiştir" });
-  const search = dialog.getByLabel("Müderris", { exact: true });
+  await rowMenu(page, base?.first.title ?? "", "Hocaları değiştir");
+  const dialog = page.getByRole("dialog", { name: "Hocaları değiştir" });
+  const search = dialog.getByLabel("Hoca", { exact: true });
 
   await search.fill(`kimse.yok.${courses?.tail}@example.test`);
   await search.press("Enter");
@@ -269,11 +269,11 @@ test("nazir/17 — a müderris added by e-mail takes the course's müderris role
 
   await search.fill(TALEBE.email ?? "");
   await search.press("Enter");
-  await expect(dialog).toContainText("3 müderris");
+  await expect(dialog).toContainText("3 hoca");
   await expect(dialog).toContainText(TALEBE.email ?? "");
   await dialog.getByRole("button", { name: "Kaydet" }).click();
   await expect(
-    page.getByText("Müderrisler kaydedildi").filter({ visible: true })
+    page.getByText("Hocalar kaydedildi").filter({ visible: true })
   ).toBeVisible();
 
   const held = await courses?.muderrisOf(base?.first.id ?? "");
@@ -291,16 +291,16 @@ test("nazir/17 — when the imam leaves and one müderris remains, that one is t
   test.skip(!ready(), "no medrese başmüderris");
   const page = await as("MEDRESE_BASMUDERRIS");
   await open(page);
-  await rowMenu(page, base?.first.title ?? "", "Müderrisleri değiştir");
-  const dialog = page.getByRole("dialog", { name: "Müderrisleri değiştir" });
+  await rowMenu(page, base?.first.title ?? "", "Hocaları değiştir");
+  const dialog = page.getByRole("dialog", { name: "Hocaları değiştir" });
 
   // two accounts: the imam leaves, and the one who is left is a lone müderris, so the imam is theirs
   await dialog.getByRole("button", { name: /^Çıkar: .*Işıkoğlu/ }).click();
-  await expect(dialog).toContainText("1 müderris");
+  await expect(dialog).toContainText("1 hoca");
   await expect(dialog.getByRole("button", { name: "Kaydet" })).toBeEnabled();
   await dialog.getByRole("button", { name: "Kaydet" }).click();
   await expect(
-    page.getByText("Müderrisler kaydedildi").filter({ visible: true })
+    page.getByText("Hocalar kaydedildi").filter({ visible: true })
   ).toBeVisible();
 
   const held = await courses?.muderrisOf(base?.first.id ?? "");

@@ -326,7 +326,7 @@ describe("Medrese nazırları", () => {
     expect(cards).toHaveLength(3);
     expect(cards[0]).toContain("Ders açma ve kadro");
     expect(cards[0]).toContain(
-      "Medrese dersi aç · Müderris ekle ya da çıkar; imamı değiştir"
+      "Medrese dersi aç · Hoca ekle ya da çıkar; imamı değiştir"
     );
     expect(cards[0]).toContain("2 izin · 1 nazıra verildi");
     // more than four permissions are summed up, not all printed

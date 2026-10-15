@@ -81,9 +81,7 @@ test("nazir/09 — Dersler leads to the form, which has the canvas's fields and 
   ).toBeVisible();
   await expect(
     page
-      .getByText(
-        "Kabul edilirse dersi köşk nazımı açar ve müderrislerini seçer."
-      )
+      .getByText("Kabul edilirse dersi köşk nazımı açar ve hocalarını seçer.")
       .filter({ visible: true })
   ).toBeVisible();
   await expect(

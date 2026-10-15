@@ -40,7 +40,7 @@ test("the roles table is the person's real assignments, the medrese first, with 
   await expect(named.first()).toContainText("Medrese başmüderrisi");
   await expect(named.first()).toContainText("Etkin");
   const course = rows.filter({ hasText: fixture?.first.title ?? "" });
-  await expect(course).toContainText("Müderris");
+  await expect(course).toContainText("Hoca");
   // the seed lists no müderris on the course: no star and no word (2026-10-13)
   await expect(
     course.getByRole("button", { name: "Dersin imamı" })
@@ -68,16 +68,16 @@ test("the permission sentences come from the person's courses, grouped under one
   const page = await as("MEDRESE_BASMUDERRIS");
   await page.goto("/hesap");
 
-  // the group headed "Müderris": the medrese başmüderrisi's comes first or not, by
+  // the group headed "Hoca": the medrese başmüderrisi's comes first or not, by
   // how many medreses the shared test seed gives the account
   const group = page.getByTestId("permission-group").filter({
-    has: page.getByRole("heading", { level: 3, name: "Müderris", exact: true }),
+    has: page.getByRole("heading", { level: 3, name: "Hoca", exact: true }),
   });
   await expect(
-    group.getByRole("heading", { level: 3, name: "Müderris", exact: true })
+    group.getByRole("heading", { level: 3, name: "Hoca", exact: true })
   ).toBeVisible();
   await expect(group).toContainText(
-    "Müderris olduğunuz derslerin her birinde geçerli"
+    "Hoca olduğunuz derslerin her birinde geçerli"
   );
   await expect(group).toContainText(
     "Dersi düzenle: başlık, tanıtım, müfredat, saat dilimi"

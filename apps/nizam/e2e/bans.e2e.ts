@@ -215,7 +215,7 @@ test("nizam/42 — the list shows the bans with their columns and counts, and hi
 
   const muderris = rowOf(page, fixture.byMuderris.name);
   await expect(muderris).toContainText(fixture.byMuderris.reason);
-  await expect(muderris).toContainText("Müderris");
+  await expect(muderris).toContainText("Hoca");
   await expect(muderris).toContainText("Yeni");
   await expect(
     muderris.getByRole("button", {

@@ -211,7 +211,7 @@ describe("Medrese dışı ders talebi", () => {
     expect(text).toContain("Önerdiğiniz ad; dersi açan değiştirebilir.");
     expect(text).toContain("Gerekçe *");
     expect(text).toContain(
-      "Dersin neden medrese dışında açılması gerektiğini ve önerdiğiniz müderrisleri yazın."
+      "Dersin neden medrese dışında açılması gerektiğini ve önerdiğiniz hocaları yazın."
     );
     expect(text).toContain("Vazgeç");
     expect(text).toContain("Talebi gönder");
@@ -224,7 +224,7 @@ describe("Medrese dışı ders talebi", () => {
       "Talep Beyazıt Köşkü’nün nazımına gider; Medaris yönetimi talebi görür."
     );
     expect(text).toContain(
-      "Kabul edilirse dersi köşk nazımı açar ve müderrislerini seçer."
+      "Kabul edilirse dersi köşk nazımı açar ve hocalarını seçer."
     );
     expect(text).toContain(
       "Ders bu medreseye bağlı olmaz: medrese derslerinde görünmez, talebeleri medresenin talebesi sayılmaz."

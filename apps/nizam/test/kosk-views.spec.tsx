@@ -383,9 +383,7 @@ describe("NazimsView (nizam 25 and 21)", () => {
   it("lists what a köşk nazımı can do here, six things and the note", () => {
     const html = view([nazim()]);
     expect(html).toContain("Köşk nazımı bu köşkte");
-    expect(html).toContain(
-      "Köşk destesi açar; müderrislerin önerilerini alır."
-    );
+    expect(html).toContain("Köşk destesi açar; hocaların önerilerini alır.");
     expect(html).toContain("köşk nazımı bu listeyi değiştirmez");
   });
 

@@ -25,8 +25,8 @@ const bina: ScopeOption = {
   href: "/ders/c-1",
   name: "Bina ve İzhar Şerhi",
   imam: true,
-  summary: ["Müderris"],
-  detail: ["Müderris", "Nûruosmaniye Köşkü"],
+  summary: ["Hoca"],
+  detail: ["Hoca", "Nûruosmaniye Köşkü"],
 };
 const mantik: ScopeOption = {
   key: "ders:c-2",
@@ -35,8 +35,8 @@ const mantik: ScopeOption = {
   href: "/ders/c-2",
   name: "İsâgûcî ile mantığa giriş",
   imam: false,
-  summary: ["Müderris"],
-  detail: ["Müderris", "Fatih Köşkü"],
+  summary: ["Hoca"],
+  detail: ["Hoca", "Fatih Köşkü"],
 };
 const labels = {
   change: "Kapsam değiştir: Süleymaniye Medresesi",
@@ -46,7 +46,7 @@ const labels = {
   note: "Yalnız görev aldığınız medrese ve dersler listelenir.",
   imamStar: {
     title: "Dersin imamı",
-    body: "Birden çok müderrisi olan derste müderrislerden biri imamdır; yetkileri diğer müderrislerle aynıdır.",
+    body: "Birden çok hocası olan derste hocalardan biri imamdır; yetkileri diğer hocalarla aynıdır.",
     mark: "dersin imamı",
   },
 };
@@ -97,8 +97,8 @@ describe("the open scope picker (nazir 03)", () => {
     expect(rows[1]).toContain("Bina ve İzhar Şerhi");
     // the dots between the parts are their own spans (`joinRun`); the imam's
     // star follows the role and reads as words (2026-10-13)
-    expect(rows[1]).toContain("Müderris dersin imamı·Nûruosmaniye Köşkü");
-    expect(rows[2]).toContain("Müderris·Fatih Köşkü");
+    expect(rows[1]).toContain("Hoca dersin imamı·Nûruosmaniye Köşkü");
+    expect(rows[2]).toContain("Hoca·Fatih Köşkü");
   });
 
   it("marks the imam with a star that is no button inside its link", async () => {
@@ -182,7 +182,7 @@ describe("the closed scope picker", () => {
     );
     expect(trigger?.getAttribute("aria-expanded")).toBe("false");
     // the star inside the picker's button is no button of its own
-    expect(trigger?.textContent).toMatch(/Müderris\s+dersin imamı/);
+    expect(trigger?.textContent).toMatch(/Hoca\s+dersin imamı/);
     expect(trigger?.querySelector(".mds-imam-star")?.tagName).toBe("SPAN");
     expect(trigger?.querySelector("button")).toBeNull();
     expect(trigger?.textContent).not.toContain("Nûruosmaniye");

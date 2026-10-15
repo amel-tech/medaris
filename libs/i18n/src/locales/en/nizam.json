@@ -35,7 +35,7 @@
       "KOSK_NAZIM": "Köşk nazım",
       "MEDRESE_BASMUDERRIS": "Head müderris",
       "MEDRESE_NAZIR": "Medrese nazır",
-      "MUDERRIS": "Müderris",
+      "MUDERRIS": "Teacher",
       "DERS_NAZIR": "Course nazır"
     },
     "unknownPerson": "Unknown",
@@ -191,7 +191,7 @@
     "nazarTitle": "This work is in Nazar",
     "nazarDescription": "Medrese management happens in the Nazar app. Only the köşks you manage are listed here.",
     "taughtTitle": "Courses you teach",
-    "taughtDescription": "Courses you are a müderris of, in köşks you do not manage.",
+    "taughtDescription": "Courses you teach in köşks you do not manage.",
     "previous": "Previous",
     "next": "Next",
     "pageOf": "{page} / {total}"
@@ -227,11 +227,11 @@
     "fieldLevel": "Seviye",
     "fieldDuration": "Süre (hafta)",
     "categoryPlaceholder": "Örn. Sarf",
-    "sectionTeachers": "Müderris ve kaynaklar",
-    "sectionTeachersHint": "Bu kursta ders verecek müderrisleri ve referans kaynaklarını ekleyin.",
-    "muderris": "Müderrisler",
-    "addMuderris": "Müderris ekle",
-    "muderrisNamePlaceholder": "Müderris adı",
+    "sectionTeachers": "Teachers and resources",
+    "sectionTeachersHint": "Add the teachers who will teach this course and its reference resources.",
+    "muderris": "Teachers",
+    "addMuderris": "Add teacher",
+    "muderrisNamePlaceholder": "Teacher name",
     "resources": "Bağlı kaynaklar",
     "addResource": "Kaynak ekle",
     "resourceNamePlaceholder": "Kaynak adı",
@@ -276,7 +276,7 @@
     "untitledCourse": "Kurs adı",
     "created": "Kurs oluşturuldu.",
     "validationTitle": "Kurs adı zorunludur.",
-    "validationMuderris": "En az bir müderris eklemelisiniz.",
+    "validationMuderris": "Add at least one teacher.",
     "validationNoWeeks": "En az bir hafta eklemelisiniz.",
     "validationEmptyWeek": "Her haftada en az bir ders bulunmalıdır.",
     "editTitle": "Kursu Düzenle",
@@ -456,18 +456,18 @@
     "linkedAccount": "Linked account",
     "nameOnly": "Name only",
     "nameOnlyHint": "This row is not linked to an account and grants no access to the course.",
-    "searchLabel": "Add a müderris by e-mail",
+    "searchLabel": "Add a teacher by e-mail",
     "searchHelp": "The person must have signed in to Medaris at least once.",
-    "searchPlaceholder": "muderris@example.com",
+    "searchPlaceholder": "teacher@example.com",
     "search": "Search",
     "searching": "Searching…",
     "add": "Add",
     "notFound": "No account that has signed in uses this address.",
     "alreadyListed": "This person is already on the list.",
     "invalidEmail": "Enter a valid e-mail address.",
-    "managerOnly": "Only the köşk manager can change the müderris list.",
-    "errorAssignmentForbidden": "Only the köşk manager can change the müderris list; nothing was saved.",
-    "errorUnknownUser": "The account of one of the müderrisler you chose could not be found. Check the list and try again.",
+    "managerOnly": "Only the köşk manager can change the teacher list.",
+    "errorAssignmentForbidden": "Only the köşk manager can change the teacher list; nothing was saved.",
+    "errorUnknownUser": "The account of one of the teachers you chose could not be found. Check the list and try again.",
     "errorDuplicateUser": "The same person is listed twice.",
     "errorLookupForbidden": "Only köşk managers can look people up.",
     "errorEnrollmentState": "This enrollment is not in a state that allows this; reload the page.",
@@ -487,7 +487,7 @@
     "statusCompleted": "Completed",
     "unnamed": "Talebe {id}",
     "empty": "No talebe has enrolled in this course yet.",
-    "unavailable": "Only the course's müderrisler and the köşk manager can see its enrollments.",
+    "unavailable": "Only the course's teachers and the köşk manager can see its enrollments.",
     "approve": "Approve",
     "reject": "Reject",
     "complete": "Mark completed",
@@ -567,7 +567,7 @@
     "roles": {
       "MEDRESE_BASMUDERRIS": "Medrese head müderris",
       "MEDRESE_NAZIR": "Medrese nazır",
-      "MUDERRIS": "Müderris",
+      "MUDERRIS": "Teacher",
       "DERS_NAZIR": "Course nazır"
     },
     "empty": "No medrese or course role shows for you yet.",
@@ -624,7 +624,7 @@
     "extendedFrom": "Widened from {course}",
     "roles": {
       "KOSK_NAZIM": "Köşk nazım",
-      "MUDERRIS": "Müderris",
+      "MUDERRIS": "Teacher",
       "DERS_NAZIR": "Course nazır",
       "MEDRESE_NAZIR": "Medrese nazır",
       "MEDRESE_BASMUDERRIS": "Chief müderris",
@@ -633,7 +633,7 @@
     },
     "rolePhrases": {
       "KOSK_NAZIM": "köşk nazım",
-      "MUDERRIS": "müderris",
+      "MUDERRIS": "teacher",
       "DERS_NAZIR": "course nazır",
       "MEDRESE_NAZIR": "medrese nazır",
       "MEDRESE_BASMUDERRIS": "chief müderris",
@@ -1622,7 +1622,7 @@
     "savedBody": "The changes to {name} are saved.",
     "failed": "The settings could not be saved",
     "dangerHeading": "Hide the köşk",
-    "dangerBody": "The köşk and all its courses leave the lists; students, müderrisler, medreses and visitors cannot open the köşk's page or its courses. Nothing is deleted; if you hid the köşk, you can restore it, and the Medaris administration can in every case.",
+    "dangerBody": "The köşk and all its courses leave the lists; students, teachers, medreses and visitors cannot open the köşk's page or its courses. Nothing is deleted; if you hid the köşk, you can restore it, and the Medaris administration can in every case.",
     "hide": "Hide the köşk",
     "errors": {
       "nameRequired": "Write a name.",
@@ -1636,7 +1636,7 @@
   },
   "HideKoskDialog": {
     "title": "Hide the köşk",
-    "body": "{name} will be hidden from students, müderrisler, medreses and visitors; the köşk and all its courses leave every list.",
+    "body": "{name} will be hidden from students, teachers, medreses and visitors; the köşk and all its courses leave every list.",
     "way": "Nothing is deleted. If you hid the köşk, you can restore it; the Medaris administration can in every case.",
     "confirm": "Hide",
     "cancel": "Cancel",
@@ -1692,13 +1692,13 @@
     "abilitiesHeading": "A köşk nazımı in this köşk",
     "abilities": {
       "1": "Changes the köşk's details, visibility and policies; hides the köşk.",
-      "2": "Opens courses that are not a medrese's; chooses their müderrisler and imam.",
+      "2": "Opens courses that are not a medrese's; chooses their teachers and imam.",
       "3": "Appoints course nazırs and gives permissions in courses that are not a medrese's.",
-      "4": "Sees the content of every course in the köşk (every reading in a course where they are not a müderris is written to the audit log); bars a student from a course or from the köşk, hides a course.",
+      "4": "Sees the content of every course in the köşk (every reading in a course where they are not a teacher is written to the audit log); bars a student from a course or from the köşk, hides a course.",
       "5": "Gives medreses a hosting right in this köşk or takes it back.",
-      "6": "Opens köşk decks; receives the müderrisler's suggestions."
+      "6": "Opens köşk decks; receives the teachers' suggestions."
     },
-    "abilitiesNote": "A medrese opens its own courses and picks their müderrisler; a köşk nazımı does not change that.",
+    "abilitiesNote": "A medrese opens its own courses and picks their teachers; a köşk nazımı does not change that.",
     "loadFailedTitle": "The köşk nazımları could not be loaded",
     "loadFailed": "The köşk nazımları cannot be read right now. Try again in a moment.",
     "retry": "Try again"
@@ -1842,8 +1842,8 @@
       "KOSK_REMOVED": "The last köşk nazım was dismissed",
       "MADRASAH_EXPIRED": "The head müderris's term ran out",
       "MADRASAH_REMOVED": "The head müderris was dismissed",
-      "COURSE_EXPIRED": "The last müderris's term ran out",
-      "COURSE_REMOVED": "The last müderris was dismissed"
+      "COURSE_EXPIRED": "The last teacher's term ran out",
+      "COURSE_REMOVED": "The last teacher was dismissed"
     },
     "removers": {
       "SYSTEM_ADMIN": "Medaris chief nazım",
@@ -1855,12 +1855,12 @@
     "lastRoles": {
       "KOSK_NAZIM": "Köşk nazım",
       "MEDRESE_BASMUDERRIS": "Head müderris",
-      "MUDERRIS": "Müderris"
+      "MUDERRIS": "Teacher"
     },
     "assign": {
       "KOSK": "Appoint a köşk nazım",
       "MADRASAH": "Appoint a head müderris",
-      "COURSE": "Appoint a müderris"
+      "COURSE": "Appoint a teacher"
     },
     "assignLabel": "{action}: {name}",
     "view": "View content",
@@ -1883,32 +1883,32 @@
     "title": {
       "KOSK": "Appoint a köşk nazım",
       "MADRASAH": "Appoint a head müderris",
-      "COURSE": "Appoint a müderris"
+      "COURSE": "Appoint a teacher"
     },
     "intro": {
       "KOSK": "Choose a köşk nazım for {name}. When you appoint one the köşk is active again.",
       "MADRASAH": "Choose a head müderris for {name}. When you appoint one the medrese is active again.",
-      "COURSE": "Choose a müderris for {name}. When you appoint one the course is active again."
+      "COURSE": "Choose a teacher for {name}. When you appoint one the course is active again."
     },
     "personLabel": {
       "KOSK": "Köşk nazım",
       "MADRASAH": "Head müderris",
-      "COURSE": "Müderris"
+      "COURSE": "Teacher"
     },
     "chosenTitle": {
       "KOSK": "Chosen köşk nazım",
       "MADRASAH": "Chosen head müderris",
-      "COURSE": "Chosen müderris"
+      "COURSE": "Chosen teacher"
     },
     "chosenNote": {
       "KOSK": "They become the köşk nazım.",
       "MADRASAH": "They become the head müderris.",
-      "COURSE": "They become the müderris and the imam of the course."
+      "COURSE": "They become the teacher and the imam of the course."
     },
     "submit": {
       "KOSK": "Appoint a köşk nazım",
       "MADRASAH": "Appoint a head müderris",
-      "COURSE": "Appoint a müderris"
+      "COURSE": "Appoint a teacher"
     },
     "endLabel": "End of the post, date and time (optional)",
     "endHelp": "Left empty, the post lasts until you change it.",
@@ -1922,7 +1922,7 @@
     "savedBody": {
       "KOSK": "{person} was appointed köşk nazım for {name}.",
       "MADRASAH": "{person} was appointed head müderris for {name}.",
-      "COURSE": "{person} was appointed müderris for {name}."
+      "COURSE": "{person} was appointed teacher for {name}."
     }
   },
   "AllBansPage": {
@@ -2069,7 +2069,7 @@
       "KOSK_NAZIM": "Köşk nazım",
       "MEDRESE_BASMUDERRIS": "Medrese head müderris",
       "MEDRESE_NAZIR": "Medrese nazır",
-      "MUDERRIS": "Müderris",
+      "MUDERRIS": "Teacher",
       "DERS_NAZIR": "Course nazır",
       "chief": "Medaris chief nazım"
     },
@@ -2085,7 +2085,7 @@
     "permissions": {
       "kosk_manage": "Edit the köşk, hide it or bring it back",
       "kosk_hosting": "Give or take back a hosting right",
-      "course_open_standalone": "Open courses outside a medrese; choose the müderrisler and the imam",
+      "course_open_standalone": "Open courses outside a medrese; choose the teachers and the imam",
       "course_manage_all": "Manage the content, sessions, recordings and applications of the courses in the köşk",
       "ban_manage_kosk": "Ban at course and köşk level, or lift a ban with a reason; widen a course ban to the köşk",
       "deck_manage_kosk": "Create and edit the köşk's deck",
@@ -2122,8 +2122,8 @@
       "ban_lift_course": "You cannot lift a ban set by a higher level."
     },
     "defaultsNote": {
-      "KOSK_NAZIM": "A köşk nazım’s default permissions. In the köşk’s medrese courses, opening the course and the müderris list belong to the medrese.",
-      "MUDERRIS": "A müderris’s default permissions. The course staff see the name and e-mail of the talebe enrolled in the course by default; this is not a separate permission."
+      "KOSK_NAZIM": "A köşk nazım’s default permissions. In the köşk’s medrese courses, opening the course and the teacher list belong to the medrese.",
+      "MUDERRIS": "A teacher’s default permissions. The course staff see the name and e-mail of the talebe enrolled in the course by default; this is not a separate permission."
     },
     "columns": {
       "role": "Role",
@@ -2149,7 +2149,7 @@
       "KOSK_NAZIM": "No end date: your assignment lasts until whoever assigned it takes it back.",
       "MEDRESE_BASMUDERRIS": "No end date: your role lasts until whoever assigned it takes it back.",
       "MEDRESE_NAZIR": "No end date: your role lasts until whoever assigned it takes it back.",
-      "MUDERRIS": "No end date: the role lasts until you are removed from the course's müderris list.",
+      "MUDERRIS": "No end date: the role lasts until you are removed from the course's teacher list.",
       "DERS_NAZIR": "No end date: your role lasts until whoever assigned it takes it back."
     },
     "eachScope": {
@@ -2257,7 +2257,7 @@
     "hostingIntro": "A medrese with a hosting right can open courses in this köşk. The right gives the medrese no other power over the köşk.",
     "coursesHeading": "Courses",
     "archive": "Archive",
-    "coursesIntro": "The köşk's own courses and the courses medreses with a hosting right opened in it. Opening a course, choosing its müderris, editing and hiding it is the köşk nazım's work; a medrese manages its own courses.",
+    "coursesIntro": "The köşk's own courses and the courses medreses with a hosting right opened in it. Opening a course, choosing its teachers, editing and hiding it is the köşk nazım's work; a medrese manages its own courses.",
     "coursesCaption": "The köşk's courses",
     "hiddenInArchive": "Hidden courses are listed in the Archive too.",
     "loadFailedTitle": "This section could not be loaded",
@@ -2289,7 +2289,7 @@
     },
     "heading": "All courses",
     "archive": "Archive",
-    "intro": "The köşk's own courses and the courses medreses with a hosting right opened in it. A medrese opens its own course and picks its müderris; you can read the course's content, bar its talebe and hide the course.",
+    "intro": "The köşk's own courses and the courses medreses with a hosting right opened in it. A medrese opens its own course and picks its teachers; you can read the course's content, bar its talebe and hide the course.",
     "caption": "The köşk's courses",
     "tabsLabel": "Course status",
     "tabs": {
@@ -2300,7 +2300,7 @@
     },
     "columns": {
       "course": "Course",
-      "muderris": "Müderris",
+      "muderris": "Teachers",
       "students": "Talebe",
       "registration": "Enrollment",
       "status": "Status",
@@ -2308,7 +2308,7 @@
     },
     "weeks": "{count, plural, one {# week} other {# weeks}}",
     "hiddenOn": "hidden on {dateLocative}",
-    "noMuderris": "No müderris",
+    "noMuderris": "No teacher",
     "noStudents": "No talebe",
     "chip": {
       "pending": "{count} awaiting approval",
@@ -2321,8 +2321,8 @@
     },
     "edit": "Edit",
     "editLabel": "Edit: {name}",
-    "editMuderris": "Edit müderris",
-    "editMuderrisLabel": "Edit müderris: {name}",
+    "editMuderris": "Edit teachers",
+    "editMuderrisLabel": "Edit teachers: {name}",
     "view": "View course",
     "viewLabel": "View course: {name}",
     "hide": "Hide",
@@ -2366,11 +2366,11 @@
     "noStaffKosk": "No köşk nazım holds the post",
     "noStaffMadrasah": "No head müderris holds the post",
     "courses": "{count, plural, one {# course closes} other {# courses close}} ({published} published, {draft} draft)",
-    "coursesLive": "{count, plural, one {# course has} other {# courses have}} a müderris in the post",
+    "coursesLive": "{count, plural, one {# course has} other {# courses have}} a teacher in the post",
     "coursesNone": "No course below it closes",
     "students": "{count, plural, one {# enrolled talebe loses} other {# enrolled talebe lose}} access to the content",
     "studentsCompleted": "{count, plural, one {# talebe finished a course and loses} other {# talebe finished a course and lose}} access too",
-    "studentsNote": "The content of courses without a müderris is closed already; the number is at most this many talebe.",
+    "studentsNote": "The content of courses without a teacher is closed already; the number is at most this many talebe.",
     "sessions": "{count, plural, one {# live session} other {# live sessions}} in the next {days} days drop out of the calendars",
     "sessionsNone": "No live session in the next {days} days",
     "sessionItem": "{title} ({course}), {when}",
@@ -2449,8 +2449,8 @@
     "today": "Today {time}",
     "yesterday": "Yesterday {time}",
     "teamHeading": "Course team",
-    "muderris": "Müderris",
-    "noMuderris": "This course has no müderris",
+    "muderris": "Teacher",
+    "noMuderris": "This course has no teacher",
     "settingsHeading": "Course settings",
     "settings": "Course settings",
     "info": {
@@ -2472,7 +2472,7 @@
     "retry": "Try again"
   },
   "CourseTeamPicker": {
-    "searchLabel": "Müderris",
+    "searchLabel": "Teacher",
     "searchHelp": "Type the registered account’s full e-mail address; every search is written to the audit log.",
     "placeholder": "first.last@example.com",
     "chosen": "{name} chosen",
@@ -2480,34 +2480,34 @@
     "failed": "The search could not be made right now. Try again in a moment.",
     "already": "This person is already on the list.",
     "searching": "Searching…",
-    "listLabel": "Chosen müderrisler",
+    "listLabel": "Chosen teachers",
     "imamRadio": "Make {name} the course’s imam",
     "imamBadge": "Course imam",
     "removeLabel": "Remove {name} from the list",
     "remove": "Remove",
-    "soleNote": "A single müderris is the course’s imam.",
-    "manyNote": "The müderris you mark is the course’s imam. When you remove a müderris you decide separately about the permissions they gave.",
-    "imamRequired": "There are several müderrisler; mark the course’s imam."
+    "soleNote": "A single teacher is the course’s imam.",
+    "manyNote": "The teacher you mark is the course’s imam. When you remove a teacher you decide separately about the permissions they gave.",
+    "imamRequired": "There are several teachers; mark the course’s imam."
   },
   "MuderrisDialog": {
-    "title": "Edit müderrisler",
+    "title": "Edit teachers",
     "close": "Close",
     "cancel": "Cancel",
     "submit": "Save",
-    "intro": "— the course’s müderrisler. A course needs at least one müderris; you choose the imam among them.",
+    "intro": "— the course’s teachers. A course needs at least one teacher; you choose the imam among them.",
     "auditNote": "Changes are written to the audit log.",
-    "emptyError": "There must be at least one müderris.",
-    "loadFailedTitle": "The müderrisler could not be read",
+    "emptyError": "There must be at least one teacher.",
+    "loadFailedTitle": "The teachers could not be read",
     "loadFailed": "The course could not be loaded.",
     "retry": "Try again",
-    "failed": "The müderrisler could not be saved",
-    "saved": "Müderrisler updated",
-    "savedBody": "The müderris list of {name} was saved.",
+    "failed": "The teachers could not be saved",
+    "saved": "Teachers updated",
+    "savedBody": "The teacher list of {name} was saved.",
     "errors": {
       "versionConflict": "Someone saved the course since you opened this page. Reload the page and try again.",
-      "unknownUser": "The account of one of the müderrisler you chose could not be found. Check the list and try again.",
+      "unknownUser": "The account of one of the teachers you chose could not be found. Check the list and try again.",
       "duplicateUser": "The same person is listed twice.",
-      "listInvalid": "A course needs at least one müderris, and the imam must be one of those listed.",
+      "listInvalid": "A course needs at least one teacher, and the imam must be one of those listed.",
       "alreadyCancelled": "This session is already cancelled.",
       "forbidden": "You are not allowed to do this.",
       "invalidPattern": "This repeat does not produce any valid session; check the dates and days.",
@@ -2523,7 +2523,7 @@
     "requiredNote": "required field",
     "courseSection": "Course",
     "nameLabel": "Course name",
-    "nameHelp": "Talebe see this name; the müderrisler can change it later.",
+    "nameHelp": "Talebe see this name; the teachers can change it later.",
     "descLabel": "Short description",
     "descHelp": "Once the course is published everyone sees it on the course card and the introduction page.",
     "previewLabel": "Cover preview",
@@ -2537,13 +2537,13 @@
     "labelLabel": "Cover caption",
     "labelHelp": "The Arabic name of the science is printed under the cover.",
     "labelPlaceholder": "Choose",
-    "muderrisSection": "Müderrisler",
+    "muderrisSection": "Teachers",
     "timeSection": "Time",
     "startDateLabel": "Start date",
     "startDateHelp": "The first session falls on this date or the next chosen day; Week 1 is the week it falls in.",
     "weeksLabel": "Length (weeks)",
     "weeksUnit": "weeks",
-    "weeksHelp": "A syllabus week opens for every week; the müderrisler write the titles.",
+    "weeksHelp": "A syllabus week opens for every week; the teachers write the titles.",
     "daysLegend": "Weekly session days",
     "startTimeLabel": "Start time",
     "durationLabel": "Session length",
@@ -2554,7 +2554,7 @@
     "summaryTitle": "{count, plural, one {# session will be planned} other {# sessions will be planned}}",
     "summaryEmpty": "Enter the start date, the length and the days and the sessions are counted here.",
     "summaryBody": "{from} – {to}, every {days} {time}, {minutes} min.",
-    "summaryLink": "The müderrisler add the meeting link when they edit the sessions.",
+    "summaryLink": "The teachers add the meeting link when they edit the sessions.",
     "settingsTitle": "Course settings",
     "closedLabel": "Closed course",
     "closedDesc": "The course’s content and recordings can never be opened to everyone. The introduction page stays public; you may show a sample session.",
@@ -2565,7 +2565,7 @@
     "inPersonDesc": "Every session without a setting of its own counts as in person and is not shown as missing without a meeting link. Change a single session later on the Sessions page.",
     "visibilityLegend": "Visibility",
     "draftLabel": "Open as a draft",
-    "draftDesc": "The müderrisler prepare the syllabus and sessions; talebe do not see the course until you publish it.",
+    "draftDesc": "The teachers prepare the syllabus and sessions; talebe do not see the course until you publish it.",
     "publishLabel": "Publish now",
     "publishDesc": "The introduction page becomes public and talebe can apply.",
     "cancel": "Cancel",
@@ -2578,8 +2578,8 @@
     "sessionsFailedBody": "{name} was opened but its sessions could not be added. You can add them from Plan sessions.",
     "errors": {
       "title": "The course name needs at least two letters.",
-      "team": "Choose at least one müderris.",
-      "imam": "You chose several müderrisler; mark the course’s imam.",
+      "team": "Choose at least one teacher.",
+      "imam": "You chose several teachers; mark the course’s imam.",
       "startDate": "Enter the start date.",
       "weeks": "The length must be between 1 and 52 weeks.",
       "weekdays": "Choose at least one session day.",
@@ -2587,9 +2587,9 @@
       "duration": "The session length must be between 1 and 1440 minutes.",
       "api": {
         "versionConflict": "Someone saved the course since you opened this page. Reload the page and try again.",
-        "unknownUser": "The account of one of the müderrisler you chose could not be found. Check the list and try again.",
+        "unknownUser": "The account of one of the teachers you chose could not be found. Check the list and try again.",
         "duplicateUser": "The same person is listed twice.",
-        "listInvalid": "A course needs at least one müderris, and the imam must be one of those listed.",
+        "listInvalid": "A course needs at least one teacher, and the imam must be one of those listed.",
         "alreadyCancelled": "This session is already cancelled.",
         "forbidden": "You are not allowed to do this.",
         "invalidPattern": "This repeat does not produce any valid session; check the dates and days.",
@@ -2646,16 +2646,16 @@
     "unpublishBody": "{name} will be moved to draft; talebe will not see it.",
     "unpublishWay": "You can publish it again at any time.",
     "close": "Close",
-    "teamTitle": "Müderrisler",
-    "editTeam": "Edit müderrisler",
+    "teamTitle": "Teachers",
+    "editTeam": "Edit teachers",
     "hideTitle": "Hide the course",
     "hideBody": "A hidden course disappears for talebe and visitors and leaves the köşk page. Nothing is deleted; you can restore it from the Archive.",
     "hide": "Hide the course",
     "errors": {
       "versionConflict": "Someone saved the course since you opened this page. Reload the page and try again.",
-      "unknownUser": "The account of one of the müderrisler you chose could not be found. Check the list and try again.",
+      "unknownUser": "The account of one of the teachers you chose could not be found. Check the list and try again.",
       "duplicateUser": "The same person is listed twice.",
-      "listInvalid": "A course needs at least one müderris, and the imam must be one of those listed.",
+      "listInvalid": "A course needs at least one teacher, and the imam must be one of those listed.",
       "alreadyCancelled": "This session is already cancelled.",
       "forbidden": "You are not allowed to do this.",
       "invalidPattern": "This repeat does not produce any valid session; check the dates and days.",
@@ -2804,9 +2804,9 @@
       "resourceUrl": "The link must be a full address starting with http:// or https://.",
       "api": {
         "versionConflict": "Someone saved the course since you opened this page. Reload the page and try again.",
-        "unknownUser": "The account of one of the müderrisler you chose could not be found. Check the list and try again.",
+        "unknownUser": "The account of one of the teachers you chose could not be found. Check the list and try again.",
         "duplicateUser": "The same person is listed twice.",
-        "listInvalid": "A course needs at least one müderris, and the imam must be one of those listed.",
+        "listInvalid": "A course needs at least one teacher, and the imam must be one of those listed.",
         "alreadyCancelled": "This session is already cancelled.",
         "forbidden": "You are not allowed to do this.",
         "invalidPattern": "This repeat does not produce any valid session; check the dates and days.",
@@ -2880,9 +2880,9 @@
       "link": "The meeting link must start with https://. Copy the link again from the platform.",
       "api": {
         "versionConflict": "Someone saved the course since you opened this page. Reload the page and try again.",
-        "unknownUser": "The account of one of the müderrisler you chose could not be found. Check the list and try again.",
+        "unknownUser": "The account of one of the teachers you chose could not be found. Check the list and try again.",
         "duplicateUser": "The same person is listed twice.",
-        "listInvalid": "A course needs at least one müderris, and the imam must be one of those listed.",
+        "listInvalid": "A course needs at least one teacher, and the imam must be one of those listed.",
         "alreadyCancelled": "This session is already cancelled.",
         "forbidden": "You are not allowed to do this.",
         "invalidPattern": "This repeat does not produce any valid session; check the dates and days.",
@@ -2978,9 +2978,9 @@
     "cancelledBody": "{name} was cancelled.",
     "errors": {
       "versionConflict": "Someone saved the course since you opened this page. Reload the page and try again.",
-      "unknownUser": "The account of one of the müderrisler you chose could not be found. Check the list and try again.",
+      "unknownUser": "The account of one of the teachers you chose could not be found. Check the list and try again.",
       "duplicateUser": "The same person is listed twice.",
-      "listInvalid": "A course needs at least one müderris, and the imam must be one of those listed.",
+      "listInvalid": "A course needs at least one teacher, and the imam must be one of those listed.",
       "alreadyCancelled": "This session is already cancelled.",
       "forbidden": "You are not allowed to do this.",
       "invalidPattern": "This repeat does not produce any valid session; check the dates and days.",
@@ -3124,7 +3124,7 @@
     "loadFailedTitle": "Decks could not be read",
     "loadFailed": "The köşk's decks cannot be fetched right now. Try again in a moment.",
     "open": "Open a köşk deck",
-    "proposalsHeading": "Müderris proposals",
+    "proposalsHeading": "Teacher proposals",
     "proposalsWaiting": "{count, plural, one {# proposal waits for your answer} other {# proposals wait for your answer}}",
     "proposalsNote": "Accepting opens the “Open a köşk deck” form filled in with the proposal's name and description; you open the deck and add its cards. If you refuse, the proposer reads your reason in their notifications.",
     "proposedBy": "Proposed by {name}",
@@ -3132,7 +3132,7 @@
     "acceptLabel": "Accept the proposal {title}",
     "refuse": "Refuse",
     "refuseLabel": "Refuse the proposal {title}",
-    "unknownPerson": "müderris with no name",
+    "unknownPerson": "teacher with no name",
     "decksHeading": "Decks",
     "decksCount": "{count, plural, one {# deck} other {# decks}}",
     "caption": "Decks of {kosk}",
@@ -3159,7 +3159,7 @@
     "hidden": "Deck hidden",
     "hiddenBody": "{title} moved to the köşk's archive.",
     "proposalRefused": "Proposal refused",
-    "proposalRefusedBody": "The reason for {title} was passed on to the müderris.",
+    "proposalRefusedBody": "The reason for {title} was passed on to the teacher.",
     "actionFailed": "That could not be done",
     "errors": {
       "generic": "The action could not be completed. Try again in a moment.",
@@ -3181,9 +3181,9 @@
     "breadcrumbRoot": "Köşk decks",
     "breadcrumbCurrent": "Open a köşk deck",
     "requiredNote": "required field",
-    "proposalTitle": "Opening from a müderris proposal",
+    "proposalTitle": "Opening from a teacher’s proposal",
     "proposalBody": "Proposal <b>{title}</b> · {name} · {course} · {date}. The name and description came as proposed; you may change them. Opening the deck accepts the proposal.",
-    "unknownPerson": "müderris with no name",
+    "unknownPerson": "teacher with no name",
     "nameLabel": "Deck name",
     "nameHelp": "The köşk's talebe see this name.",
     "titleRequired": "Write a deck name.",
@@ -3289,7 +3289,7 @@
       "KOSK_NAZIM": "Köşk nazım",
       "MEDRESE_BASMUDERRIS": "Head müderris of a medrese",
       "MEDRESE_NAZIR": "Nazır of a medrese",
-      "MUDERRIS": "Müderris",
+      "MUDERRIS": "Teacher",
       "DERS_NAZIR": "Nazır of a course"
     },
     "email": "E-mail",
@@ -3384,7 +3384,7 @@
       "KOSK_NAZIM": "Köşk nazım",
       "MEDRESE_BASMUDERRIS": "Head müderris of a medrese",
       "MEDRESE_NAZIR": "Nazır of a medrese",
-      "MUDERRIS": "Müderris",
+      "MUDERRIS": "Teacher",
       "DERS_NAZIR": "Nazır of a course"
     },
     "unknownPerson": "Member with no known name",
@@ -3417,7 +3417,7 @@
     "steps": {
       "roleDefault": {
         "title": "The role's default and the permissions it was given",
-        "body": "A köşk nazım, head müderris and müderris keep their role's default permissions in their own scope; a Medaris nazım, medrese nazır and course nazır hold only the permissions given to them."
+        "body": "A köşk nazım, head müderris and teacher keep their role's default permissions in their own scope; a Medaris nazım, medrese nazır and course nazır hold only the permissions given to them."
       },
       "platform": {
         "title": "Platform policy",
@@ -3659,7 +3659,7 @@
       "assign": {
         "KOSK": "Assign a köşk nazım",
         "MADRASAH": "Assign a head müderris",
-        "COURSE": "Assign a müderris"
+        "COURSE": "Assign a teacher"
       },
       "assignLabel": "{action}: {name}"
     },
@@ -3731,8 +3731,8 @@
       "actionLabel": "{action}: {course}, {when}"
     },
     "muderris": {
-      "title": "Müderrises",
-      "empty": "This köşk has no müderris.",
+      "title": "Teachers",
+      "empty": "This köşk has no teachers.",
       "courses": "{count, plural, one {# course} other {# courses}}",
       "students": "{count, plural, one {# student} other {# students}}"
     },

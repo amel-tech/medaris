@@ -171,7 +171,7 @@ describe("Medrese dersi aç", () => {
     expect(out).toContain('href="/medrese/m-1/dersler"');
     expect(textOf(out)).toContain("Dersler / Medrese dersi aç");
     expect(textOf(out)).toContain(
-      "Ders Süleymaniye Medresesi adına, barındırma hakkı olan bir köşkte açılır. Müderrisleri şimdi seçersiniz."
+      "Ders Süleymaniye Medresesi adına, barındırma hakkı olan bir köşkte açılır. Hocaları şimdi seçersiniz."
     );
   });
 
@@ -196,13 +196,13 @@ describe("Medrese dersi aç", () => {
     const text = textOf(await markup());
     expect(text).toContain("Ders adı");
     expect(text).toContain(
-      "Talebeler bu adı görür; müderrisler sonradan değiştirebilir."
+      "Talebeler bu adı görür; hocalar sonradan değiştirebilir."
     );
-    expect(text).toContain("Müderris");
+    expect(text).toContain("Hoca");
     expect(text).toContain(
       "Kayıtlı hesabın e-posta adresini eksiksiz yazın; her arama denetim kaydına yazılır."
     );
-    expect(text).toContain("Seçilen müderrisler");
+    expect(text).toContain("Seçilen hocalar");
     expect(text).toContain("Ders ayarları");
     expect(text).toContain("Kapalı ders");
     expect(text).toContain("Kayıt onayı gereksin");
@@ -294,7 +294,7 @@ describe("'Dersi aç'", () => {
 
     expect(openCourse).not.toHaveBeenCalled();
     expect(form().textContent).toContain("Ders adı boş olamaz.");
-    expect(form().textContent).toContain("En az bir müderris seçin.");
+    expect(form().textContent).toContain("En az bir hoca seçin.");
     // the focus goes to the first thing wrong
     expect(document.activeElement).toBe(titleField());
   });
@@ -304,7 +304,7 @@ describe("'Dersi aç'", () => {
     await typeInto(titleField(), "Maksûd şerhi");
     await click(submit());
     expect(form().textContent).not.toContain("Ders adı boş olamaz.");
-    expect(form().textContent).toContain("En az bir müderris seçin.");
+    expect(form().textContent).toContain("En az bir hoca seçin.");
     expect(document.activeElement).toBe(emailField());
     expect(openCourse).not.toHaveBeenCalled();
   });

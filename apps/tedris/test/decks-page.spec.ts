@@ -151,7 +151,7 @@ describe("Desteler (design tedris/25)", () => {
     expect(cards[0].textContent).toContain("5 yeni kart");
     expect(cards[1].textContent).toContain("Ders destesi");
     expect(cards[1].textContent).toContain(
-      "Emsile ve Bina·Müderris Abdülhamit Karaosmanoğlu"
+      "Emsile ve Bina·Hoca Abdülhamit Karaosmanoğlu"
     );
     expect(section("Koleksiyonum").textContent).not.toContain("Düzenle");
     expect(section("Koleksiyonum").querySelectorAll("button").length).toBe(0);

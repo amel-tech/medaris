@@ -17,7 +17,7 @@ afterEach(cleanup);
 
 const labels = {
   title: "Dersin imamı",
-  body: "Birden çok müderrisi olan derste müderrislerden biri imamdır; yetkileri diğer müderrislerle aynıdır.",
+  body: "Birden çok hocası olan derste hocalardan biri imamdır; yetkileri diğer hocalarla aynıdır.",
   mark: "dersin imamı",
 };
 

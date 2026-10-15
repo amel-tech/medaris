@@ -66,7 +66,7 @@ test("a müderris who is not a nazım lands on 'Bu işler Nazar'da' with the sam
 
   const published = rows.filter({ hasText: fixture.published.title });
   await expect(published).toContainText(
-    `Müderris · ${fixture.koskName} · ${fixture.enrolled} talebe`
+    `Hoca · ${fixture.koskName} · ${fixture.enrolled} talebe`
   );
   // the seed lists no müderris on the course: no star and no word (2026-10-13)
   await expect(

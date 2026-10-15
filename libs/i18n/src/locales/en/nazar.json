@@ -51,7 +51,7 @@
     "KOSK_NAZIM": "Köşk nazım",
     "MEDRESE_BASMUDERRIS": "Medrese head müderris",
     "MEDRESE_NAZIR": "Medrese nazır",
-    "MUDERRIS": "Müderris",
+    "MUDERRIS": "Teacher",
     "DERS_NAZIR": "Course nazır",
     "SYSTEM_ADMIN": "Medaris chief nazım",
     "STUDENT": "Talebe"
@@ -131,13 +131,13 @@
     "expiryAt": "Ends: {date}.",
     "expiryEarliest": "Earliest end: {date}.",
     "defaultsNote": {
-      "KOSK_NAZIM": "A köşk nazım’s default permissions. In the köşk’s medrese courses, opening the course and the müderris list belong to the medrese.",
-      "MUDERRIS": "A müderris’s default permissions. The course staff see the name and e-mail of the talebe enrolled in the course by default; this is not a separate permission."
+      "KOSK_NAZIM": "A köşk nazım’s default permissions. In the köşk’s medrese courses, opening the course and the teacher list belong to the medrese.",
+      "MUDERRIS": "A teacher’s default permissions. The course staff see the name and e-mail of the talebe enrolled in the course by default; this is not a separate permission."
     },
     "permissions": {
       "kosk_manage": "Edit the köşk, hide it or bring it back",
       "kosk_hosting": "Give or take back a hosting right",
-      "course_open_standalone": "Open courses outside a medrese; choose the müderrisler and the imam",
+      "course_open_standalone": "Open courses outside a medrese; choose the teachers and the imam",
       "course_manage_all": "Manage the content, sessions, recordings and applications of the courses in the köşk",
       "ban_manage_kosk": "Ban at course and köşk level, or lift a ban with a reason; widen a course ban to the köşk",
       "deck_manage_kosk": "Create and edit the köşk's deck",
@@ -168,7 +168,7 @@
       "permission_group_define": "Define a permission group",
       "madrasah_course_open": "Open a medrese course",
       "madrasah_offsite_course_request": "Send a request for a course outside the medrese",
-      "madrasah_muderris_manage": "Add or remove a müderris; change the imam",
+      "madrasah_muderris_manage": "Add or remove a teacher; change the imam",
       "madrasah_students_view": "See the medrese's talebe",
       "madrasah_ban": "Ban at medrese level; widen a course ban to the medrese",
       "madrasah_course_hide": "Hide the medrese's courses, bring them back",
@@ -424,7 +424,7 @@
   "CourseNazirs": {
     "title": "Course nazırs",
     "intro": "The course nazırs of {course}. A course nazır works only with the permissions they are given; the post and the permissions end together.",
-    "introAppointOnly": "You may appoint course nazırs. The person you appoint starts with no permission; the course's müderris gives the permissions.",
+    "introAppointOnly": "You may appoint course nazırs. The person you appoint starts with no permission; the course's teacher gives the permissions.",
     "appoint": "Appoint a course nazır",
     "caption": "The course nazırs of {course}",
     "empty": "This course has no course nazır yet.",
@@ -467,7 +467,7 @@
       "already": "{name} is a course nazır of this course already.",
       "permissions": "Permissions",
       "permissionsHelp": "You can give only the permissions you hold.",
-      "appointOnly": "The person you appoint starts with no permission; the course's müderris gives the permissions.",
+      "appointOnly": "The person you appoint starts with no permission; the course's teacher gives the permissions.",
       "endLabel": "End date and time (optional)",
       "endHelp": "The post and the permissions end at the same moment. Left empty, there is no end.",
       "endProblems": {
@@ -505,7 +505,7 @@
       "exists": "This person is a course nazır of this course already.",
       "gone": "This course nazır no longer exists; the list was read again.",
       "unknownAccount": "This account was not found.",
-      "holdsSeat": "This person already holds a post over this course (müderris; medrese, köşk or Medaris); they cannot be made its course nazır.",
+      "holdsSeat": "This person already holds a post over this course (teacher; medrese, köşk or Medaris); they cannot be made its course nazır.",
       "barred": "This person is barred from this course and cannot be made its ders nazır.",
       "hidden": "A hidden course takes no new course nazır.",
       "hasAppointees": "This course nazır appointed course nazırs who still hold their posts; dismiss them first.",
@@ -762,7 +762,7 @@
     "caption": "Medrese courses",
     "columns": {
       "course": "Course",
-      "muderris": "Müderrisler",
+      "muderris": "Teachers",
       "students": "Talebe",
       "status": "State",
       "actions": "Actions"
@@ -776,7 +776,7 @@
     },
     "actions": {
       "label": "More actions: {title}",
-      "muderris": "Change the müderrisler",
+      "muderris": "Change the teachers",
       "hide": "Hide the course"
     },
     "empty": "This medrese has no courses yet. In a köşk that hosts it you can open the first one with “Open a medrese course”.",
@@ -796,24 +796,24 @@
     },
     "outside": {
       "title": "Off-medrese courses",
-      "text": "Here you can only open the medrese’s own courses. To ask for a course that will not belong to the medrese, use “Send an off-medrese course request”; the request goes to the köşk’s nazım and Medaris administration sees it. If it is accepted, the köşk’s nazım opens the course and chooses its müderrisler."
+      "text": "Here you can only open the medrese’s own courses. To ask for a course that will not belong to the medrese, use “Send an off-medrese course request”; the request goes to the köşk’s nazım and Medaris administration sees it. If it is accepted, the köşk’s nazım opens the course and chooses its teachers."
     },
     "loadFailedTitle": "The courses could not be read",
     "loadFailed": "The courses could not be read right now. Try again in a few seconds.",
     "errors": {
       "hostingRight": "This köşk no longer gives your medrese a hosting right. The page was refreshed; choose another köşk.",
-      "unknownUser": "The account of one of the müderrisler you chose could not be found. Check the list and try again.",
+      "unknownUser": "The account of one of the teachers you chose could not be found. Check the list and try again.",
       "imam": "Choose the course’s imam and try again.",
       "duplicate": "The same person is on the list twice. Check the list and try again.",
-      "invalid": "Check the course name and the müderris list and try again.",
+      "invalid": "Check the course name and the teacher list and try again.",
       "gone": "This course no longer exists. The list was refreshed."
     }
   },
   "OpenCourse": {
     "title": "Open a medrese course",
     "breadcrumb": "Page path",
-    "intro": "The course is opened in {name}’s name, in a köşk that hosts it. You choose the müderrisler now.",
-    "introUnnamed": "The course is opened in the medrese’s name, in a köşk that hosts it. You choose the müderrisler now.",
+    "intro": "The course is opened in {name}’s name, in a köşk that hosts it. You choose the teachers now.",
+    "introUnnamed": "The course is opened in the medrese’s name, in a köşk that hosts it. You choose the teachers now.",
     "required": "required field",
     "kosk": {
       "legend": "Köşk",
@@ -823,16 +823,16 @@
       "noCourses": "the medrese has no course here yet"
     },
     "name": "Course name",
-    "nameHelp": "Talebe see this name; the müderrisler can change it later.",
+    "nameHelp": "Talebe see this name; the teachers can change it later.",
     "nameProblems": {
       "required": "The course name cannot be empty.",
       "short": "The course name must be at least {min} characters.",
       "long": "The course name can be at most {max} characters."
     },
     "team": {
-      "legend": "Chosen müderrisler",
-      "help": "Choose at least one müderris. A lone müderris is the course’s imam; with several you choose the imam.",
-      "none": "Choose at least one müderris."
+      "legend": "Chosen teachers",
+      "help": "Choose at least one teacher. A lone teacher is the course’s imam; with several you choose the imam.",
+      "none": "Choose at least one teacher."
     },
     "settingsTitle": "Course settings",
     "closed": {
@@ -852,7 +852,7 @@
       }
     },
     "policiesUnknown": "The medrese’s policies could not be read right now; the server applies them when the course is opened.",
-    "note": "The course is opened as a draft. The müderrisler prepare the syllabus and the sessions and publish them; talebe do not see the course until it is published.",
+    "note": "The course is opened as a draft. The teachers prepare the syllabus and the sessions and publish them; talebe do not see the course until it is published.",
     "cancel": "Cancel",
     "submit": "Open the course",
     "opening": "Opening the course",
@@ -866,7 +866,7 @@
     "back": "Back to the courses"
   },
   "Team": {
-    "label": "Müderris",
+    "label": "Teacher",
     "help": "Type the registered account’s full e-mail address; every search is written to the audit log.",
     "placeholder": "first.last@example.com",
     "searching": "Searching",
@@ -874,8 +874,8 @@
     "notFound": "No account is registered with this e-mail address.",
     "failed": "The search is not available right now. Try again in a moment.",
     "listed": "This person is already on the list.",
-    "full": "At most {max} müderrisler can be added.",
-    "noAccount": "A müderris with no account; this list cannot change them.",
+    "full": "At most {max} teachers can be added.",
+    "noAccount": "A teacher with no account; this list cannot change them.",
     "imam": "Course imam",
     "imamPick": "Course imam: {name}",
     "imamMissing": "Choose the course’s imam.",
@@ -883,17 +883,17 @@
     "removeLabel": "Remove: {name}"
   },
   "ChangeTeam": {
-    "title": "Change the müderrisler",
-    "intro": "You change the müderris list in the medrese’s name; the köşk’s nazım cannot.",
-    "legend": "Müderrisler",
-    "help": "At least one müderris is needed. A lone müderris is the course’s imam; with several you choose the imam.",
-    "count": "{count, plural, one {# müderris} other {# müderrisler}}",
+    "title": "Change the teachers",
+    "intro": "You change the teacher list in the medrese’s name; the köşk’s nazım cannot.",
+    "legend": "Teachers",
+    "help": "At least one teacher is needed. A lone teacher is the course’s imam; with several you choose the imam.",
+    "count": "{count, plural, one {# teacher} other {# teachers}}",
     "cancel": "Cancel",
     "save": "Save",
     "saving": "Saving",
-    "saved": "Müderrisler saved",
-    "savedBody": "The müderris list of “{title}” was updated.",
-    "failedTitle": "The müderrisler could not be saved"
+    "saved": "Teachers saved",
+    "savedBody": "The teacher list of “{title}” was updated.",
+    "failedTitle": "The teachers could not be saved"
   },
   "HideCourse": {
     "title": "Hide the course",
@@ -1164,7 +1164,7 @@
     "name": "Course name",
     "nameHelp": "The name you suggest; whoever opens the course can change it.",
     "reason": "Reason",
-    "reasonHelp": "Write why the course should be opened outside the medrese and which müderrisler you suggest.",
+    "reasonHelp": "Write why the course should be opened outside the medrese and which teachers you suggest.",
     "reasonProblems": {
       "required": "Write a reason.",
       "long": "The reason can be at most {max} characters."
@@ -1176,7 +1176,7 @@
     "after": {
       "oneNamed": "The request goes to the nazım of {kosk}; Medaris administration sees it.",
       "one": "The request goes to the nazım of the köşk you chose; Medaris administration sees it.",
-      "two": "If it is accepted, the köşk’s nazım opens the course and chooses its müderrisler.",
+      "two": "If it is accepted, the köşk’s nazım opens the course and chooses its teachers.",
       "three": "The course does not belong to this medrese: it does not show among the medrese’s courses and its talebe are not the medrese’s talebe."
     },
     "sent": "Request sent",

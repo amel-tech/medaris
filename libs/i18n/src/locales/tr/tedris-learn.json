@@ -94,7 +94,7 @@
     "forbidden": "Not yazmak için derse kayıtlı olman gerekir."
   },
   "CourseQuestions": {
-    "private": "Sorularını ve cevaplarını yalnızca sen, dersin müderrisi ve ders nazırı görür; diğer talebeler görmez.",
+    "private": "Sorularını ve cevaplarını yalnızca sen, dersin hocası ve ders nazırı görür; diğer talebeler görmez.",
     "loading": "Soruların yükleniyor…",
     "loadFailed": "Soruların yüklenemedi.",
     "retry": "Yeniden dene",
@@ -165,7 +165,7 @@
   },
   "Homework": {
     "title": "Ödevim",
-    "audience": "Müderris ve ders ekibi görür.",
+    "audience": "Hoca ve ders ekibi görür.",
     "loading": "Ödevin getiriliyor…",
     "loadFailed": "Ödevin açılamadı.",
     "retry": "Yeniden dene",
@@ -186,7 +186,7 @@
     "removed": "{name} kaldırıldı.",
     "removeFailed": "Dosya kaldırılamadı. Biraz sonra yeniden dene.",
     "noteLabel": "Notun",
-    "noteHelp": "İsteğe bağlı: müderrisine kısa bir not bırak.",
+    "noteHelp": "İsteğe bağlı: hocana kısa bir not bırak.",
     "noteCount": "{count}/{max} karakter",
     "noteSave": "Notu kaydet",
     "noteSaving": "Kaydediliyor",
@@ -209,7 +209,7 @@
     "handedIn": "Teslim edildi",
     "notHandedIn": "Teslim edilmedi",
     "pendingTitle": "Bu ödevi henüz teslim etmedin",
-    "pendingBody": "Aşağıdan dosyanı ekle ya da notunu yaz; müderris ve ders ekibi görür.",
+    "pendingBody": "Aşağıdan dosyanı ekle ya da notunu yaz; hoca ve ders ekibi görür.",
     "noAssignment": "Bu celsede ödev verilmedi; daha önce teslim ettiğin ödev burada duruyor."
   },
   "FileDownload": {

@@ -124,7 +124,7 @@ test("nizam/20 — criterion 5: there is no permanent delete on the page, only t
     page.getByRole("button", { name: /Kalıcı olarak sil/ })
   ).toHaveCount(0);
   await expect(
-    page.getByRole("button", { name: /Müderrisleri düzenle/ })
+    page.getByRole("button", { name: /Hocaları düzenle/ })
   ).toHaveCount(0);
 });
 
@@ -267,7 +267,7 @@ test("nizam/23 — a medrese's course has Dersi gör and no Düzenle; an own one
   await expect(own.getByRole("link", { name: /^Düzenle/ })).toBeVisible();
   // a button that opens the müderris dialog, not a link to a page
   await expect(
-    own.getByRole("button", { name: /^Müderrisleri düzenle/ })
+    own.getByRole("button", { name: /^Hocaları düzenle/ })
   ).toBeVisible();
   await expect(own.getByRole("button", { name: /^Gizle/ })).toBeVisible();
   const hosted = courseRow(page, fixture.hosted.title);

@@ -299,7 +299,7 @@ describe("'Ders nazırı ata'", () => {
     expect(dialog().querySelectorAll("[role=checkbox]")).toHaveLength(0);
     expect(
       document.querySelector("[data-testid=appoint-only]")?.textContent
-    ).toBe("Atadığınız kişi izinsiz başlar; izinleri dersin müderrisi verir.");
+    ).toBe("Atadığınız kişi izinsiz başlar; izinleri dersin hocası verir.");
     await save();
     expect(appointCourseNazir).toHaveBeenCalledExactlyOnceWith("c-1", {
       userId: "u-9",

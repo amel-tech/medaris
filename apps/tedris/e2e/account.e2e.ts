@@ -87,12 +87,12 @@ test("a müderris sees every role with scope, badge, grantor, term and Nazar but
   // a course seat opens the Nazar itself, which finds the course (only a köşk has a deep link)
   await expect(open).toHaveAttribute("href", NAZAR_URL);
   await expect(open).toHaveAccessibleName(
-    `Nazar’da aç: müderris, ${fixture.published.title}`
+    `Nazar’da aç: hoca, ${fixture.published.title}`
   );
 
   // permissions come from the role only: a müderris holds no köşk permission
   const group = page.getByTestId("permission-group").first();
-  await expect(group).toContainText("Müderris");
+  await expect(group).toContainText("Hoca");
   await expect(group).toContainText(
     "Dersi düzenle: başlık, tanıtım, müfredat, saat dilimi"
   );

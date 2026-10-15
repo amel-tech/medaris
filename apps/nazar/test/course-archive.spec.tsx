@@ -231,7 +231,7 @@ describe("Arşiv of a course", () => {
       "Bunu köşk nazımı gizledi; yalnız o kademe ya da üstü geri alabilir."
     );
     expect(rows[1]).toContain("Hafta 9: Genel tekrar");
-    expect(rows[1]).toContain("Mehmet Emin Işıkoğlu Müderris (siz)");
+    expect(rows[1]).toContain("Mehmet Emin Işıkoğlu Hoca (siz)");
     expect(rows[1]).toContain("Geri al");
   });
 
