@@ -1,4 +1,5 @@
 import { Icon } from "@medaris/ui/mds/icon";
+import { formatHocaName } from "@medaris/utils";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -73,7 +74,7 @@ export default async function Page({
             .map((e) =>
               toRow(
                 { ...e, courseTitle: course.title },
-                course.muderris.map((m) => m.name),
+                course.muderris.map((m) => formatHocaName(m.name, m.unvan)),
                 unnamed
               )
             )}

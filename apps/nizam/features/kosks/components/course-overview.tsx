@@ -17,6 +17,7 @@ import { Icon } from "@medaris/ui/mds/icon";
 import { ImamStar } from "@medaris/ui/mds/imam-star";
 import { Stat } from "@medaris/ui/mds/stat";
 import { Table, type TableColumn } from "@medaris/ui/mds/table";
+import { formatHocaName } from "@medaris/utils";
 import { useRouter } from "next/navigation";
 import { useLocale, useTimeZone, useTranslations } from "next-intl";
 import { useMemo, useTransition } from "react";
@@ -210,7 +211,7 @@ export function CourseOverview({
       render: (e) => {
         const application = toRow(
           { ...e, courseTitle: course.title },
-          course.muderris.map((m) => m.name),
+          course.muderris.map((m) => formatHocaName(m.name, m.unvan)),
           unnamed
         );
         const name = application.name;
@@ -433,7 +434,9 @@ export function CourseOverview({
                     <Avatar name={m.name} decorative />
                     <span className="flex min-w-0 flex-1 flex-col">
                       <span>
-                        <bdi className="font-semibold">{m.name}</bdi>
+                        <bdi className="font-semibold">
+                          {formatHocaName(m.name, m.unvan)}
+                        </bdi>
                         {imamNames.has(m.name) ? (
                           <>
                             {" "}

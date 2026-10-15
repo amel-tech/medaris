@@ -2,6 +2,7 @@ import {
   type PendingEnrollmentResponse,
   ResponseError,
 } from "@medaris/services/tedrisat";
+import { formatHocaName } from "@medaris/utils";
 import { passOnSignIn, tedrisatApi } from "~/lib/tedrisat-api";
 
 /**
@@ -15,7 +16,7 @@ import { passOnSignIn, tedrisatApi } from "~/lib/tedrisat-api";
 export type PendingRead =
   | {
       pending: PendingEnrollmentResponse[];
-      /** course id to its müderris names, for the Ders column */
+      /** course id to its müderris names, each with its unvan in that course, for the Ders column */
       muderris: Record<string, string[]>;
     }
   | "forbidden"
@@ -37,7 +38,7 @@ export const getKoskApplications = async (
     for (const course of courses) {
       muderris[course.id] = [...course.muderris]
         .sort((a, b) => a.orderIndex - b.orderIndex)
-        .map((m) => m.name);
+        .map((m) => formatHocaName(m.name, m.unvan));
     }
     return { pending, muderris };
   } catch (error) {

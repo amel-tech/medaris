@@ -16,7 +16,12 @@ import { Field } from "@medaris/ui/mds/field";
 import { Icon } from "@medaris/ui/mds/icon";
 import { ImamStar } from "@medaris/ui/mds/imam-star";
 import { Select } from "@medaris/ui/mds/select";
-import { DEFAULT_TIME_ZONE, listTimeZones, timeZoneCity } from "@medaris/utils";
+import {
+  DEFAULT_TIME_ZONE,
+  formatHocaName,
+  listTimeZones,
+  timeZoneCity,
+} from "@medaris/utils";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { type FormEvent, useMemo, useState, useTransition } from "react";
@@ -372,7 +377,7 @@ export function CourseSettingsPage({
                 <li key={m.id} className="flex items-center gap-3">
                   <Avatar name={m.name} decorative />
                   <span className="min-w-0 flex-1">
-                    <bdi>{m.name}</bdi>
+                    <bdi>{formatHocaName(m.name, m.unvan)}</bdi>
                     {/* the star, only among more than one müderris (2026-10-13) */}
                     {showsImamStar(m.isImam, course.muderris.length) ? (
                       <>
