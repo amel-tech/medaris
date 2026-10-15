@@ -100,14 +100,14 @@ export class PartnerCodesController {
   @ApiOperation({
     summary: "Take a partner application's code off the course",
     description:
-      "The people it enrolled stay; the partner's later cancellations still reach them. A code the course does not have is no error. Written to the audit log as `course.partner_code_remove`.",
+      "The people it enrolled stay; the partner's later cancellations still reach them. A code the course does not have is no error. Any registered partner's code can be taken off, also one that is disabled or no longer bound to the course's köşk, so no code is ever stuck on a course. Written to the audit log as `course.partner_code_remove`.",
     operationId: "removeCoursePartnerCode",
   })
   @ApiNoContentResponse()
   @ApiForbiddenResponse()
   @ApiNotFoundResponse({
     description:
-      "No such course, or the partner is not one of the course's (PARTNER_UNKNOWN), as for adding.",
+      "No such course, or no partner is registered under this id (PARTNER_UNKNOWN).",
   })
   @Authz(PERMISSIONS.COURSE_PARTNER_CODES, byExistingCourse)
   @Delete("courses/:id/partner-codes/:partner/:code")

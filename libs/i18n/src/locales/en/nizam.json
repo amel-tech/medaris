@@ -3498,7 +3498,7 @@
     "renamedBody": "From now on the name {name} is shown.",
     "chooseKosks": "Choose köşks",
     "kosksTitle": "Köşks it works with",
-    "kosksIntro": "In a köşk that is not chosen, this application's codes enrol no one and do not appear in the course settings. The enrolments it made earlier stay, and their cancellations still reach them.",
+    "kosksIntro": "In a köşk that is unticked, this application's codes are removed from the courses and written to the audit log; ticking the köşk again does not bring them back. The enrolments it made earlier stay, and their cancellations still reach them.",
     "kosksCount": "{count} köşks chosen",
     "kosksSaved": "Köşks saved",
     "kosksSavedBody": "{name} now works with {count} köşks.",

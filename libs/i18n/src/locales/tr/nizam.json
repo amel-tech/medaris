@@ -3498,7 +3498,7 @@
     "renamedBody": "Bundan sonra {name} adı görünür.",
     "chooseKosks": "Köşkleri seç",
     "kosksTitle": "Çalıştığı köşkler",
-    "kosksIntro": "Seçilmeyen köşklerde bu uygulamanın kodları talebe kaydetmez ve Ders ayarlarında görünmez. Daha önce açtığı kayıtlar yerinde kalır, iptalleri yine ulaşır.",
+    "kosksIntro": "Seçimi kaldırılan köşkte bu uygulamanın derslere bağlı kodları silinir ve denetim kaydına yazılır; köşk yeniden seçilse de geri gelmez. Daha önce açtığı kayıtlar yerinde kalır, iptalleri yine ulaşır.",
     "kosksCount": "{count} köşk seçili",
     "kosksSaved": "Köşkler kaydedildi",
     "kosksSavedBody": "{name} artık {count} köşkle çalışıyor.",

@@ -10,6 +10,8 @@ import {
 import { kosks } from "../database/schema/kosk.schema";
 import { partnerCourseCodes } from "../database/schema/partner-enrollment.schema";
 import { PLATFORM_ENTITY_ID } from "../platform-policy/platform-policy.repository";
+import { partnerActorDetails } from "./domain/partner-actor";
+import { PARTNER_CODE_REMOVE_ACTION } from "./domain/partner-enrollment";
 import {
   BOOT_ACTOR_ID,
   type IRegisteredPartner,
@@ -34,9 +36,17 @@ export interface IPartnerAdminRow extends IRegisteredPartner {
   kosks: IKoskRef[];
 }
 
-/** What `setKosks` did: the köşks bound and unbound, or why it did nothing. */
+/**
+ * What `setKosks` did: the köşks bound and unbound, and how many of the
+ * partner's codes went with the unbound ones; or why it did nothing.
+ */
 export type KoskBindingResult =
-  | { kind: "done"; bound: IKoskRef[]; unbound: IKoskRef[] }
+  | {
+      kind: "done";
+      bound: IKoskRef[];
+      unbound: IKoskRef[];
+      removedCodes: number;
+    }
   | { kind: "no-partner" }
   | { kind: "no-kosk"; koskId: string };
 
@@ -190,8 +200,15 @@ export class PartnerRegistryRepository {
   /**
    * Makes the partner's köşks exactly these: binds the new ones and unbinds
    * the rest, one audit row per köşk, under the köşk, so the köşk's own
-   * audit filter shows it. Codes mapped in an unbound köşk stay, dormant: they
-   * enrol nobody until the köşk is bound again.
+   * audit filter shows it.
+   *
+   * Unbinding a köşk also takes the partner's codes off that köşk's courses,
+   * in the same transaction, one `course.partner_code_remove` row each: left
+   * in place they could be neither seen nor removed from Ders ayarları, and a
+   * code is unique per partner, so it could not be mapped in another köşk
+   * either. Binding the köşk again brings none of them back. The
+   * registrations' links stay: the partner's DELETE still undoes the seats
+   * they made.
    */
   async setKosks(
     clientId: string,
@@ -234,6 +251,7 @@ export class PartnerRegistryRepository {
           }))
         );
       }
+      let removedCodes = 0;
       if (unbound.length > 0) {
         await tx.delete(integrationPartnerKosks).where(
           and(
@@ -244,9 +262,10 @@ export class PartnerRegistryRepository {
             )
           )
         );
+        removedCodes = await removeKoskCodes(tx, actorId, partner, unbound);
       }
       await recordBindings(tx, actorId, partner, bound, unbound);
-      return { kind: "done" as const, bound, unbound };
+      return { kind: "done" as const, bound, unbound, removedCodes };
     });
   }
 
@@ -302,6 +321,59 @@ export class PartnerRegistryRepository {
       return { kosks: held };
     });
   }
+}
+
+/**
+ * Takes the partner's codes off the courses of the köşks it was just unbound
+ * from, with the audit row staff's own removal writes for each (under the
+ * course, naming the partner and the köşk). Returns how many went.
+ */
+async function removeKoskCodes(
+  tx: Tx,
+  actorId: string,
+  partner: { clientId: string; name: string },
+  unbound: readonly IKoskRef[]
+): Promise<number> {
+  const held = await tx
+    .select({
+      id: partnerCourseCodes.id,
+      code: partnerCourseCodes.code,
+      courseId: partnerCourseCodes.courseId,
+      koskId: courses.koskId,
+    })
+    .from(partnerCourseCodes)
+    .innerJoin(courses, eq(courses.id, partnerCourseCodes.courseId))
+    .where(
+      and(
+        eq(partnerCourseCodes.partnerClientId, partner.clientId),
+        inArray(
+          courses.koskId,
+          unbound.map((kosk) => kosk.id)
+        )
+      )
+    );
+  if (held.length === 0) return 0;
+  await tx.delete(partnerCourseCodes).where(
+    inArray(
+      partnerCourseCodes.id,
+      held.map((row) => row.id)
+    )
+  );
+  await tx.insert(auditLog).values(
+    held.map((row) => ({
+      actorId,
+      action: PARTNER_CODE_REMOVE_ACTION,
+      entity: "course",
+      entityId: row.courseId,
+      details: {
+        ...partnerActorDetails(partner),
+        code: row.code,
+        // Why it went: the köşk was unbound, not a removal on the course.
+        unboundKosk: unbound.find((kosk) => kosk.id === row.koskId)?.name,
+      },
+    }))
+  );
+  return held.length;
 }
 
 async function recordBindings(

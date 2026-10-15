@@ -136,10 +136,15 @@ Every change is written to the audit log (`integration_partner.create`,
 `.rename`, `.disable`, `.enable`, and `.kosk_bind` / `.kosk_unbind` under the
 köşk). It is in force at once on the instance that took it; tedrisat keeps the
 list of partners in memory for a minute, so another instance follows within
-that minute. Unbinding a köşk stops the partner's codes there from enrolling
-anyone and hides them from Ders ayarları; what its registrations did there
-stays, and the partner's DELETE for those registrations still takes away the
-seats they made.
+that minute. Unbinding a köşk **removes the partner's codes from that köşk's
+courses**, each written to the audit log as `course.partner_code_remove`, and
+binding the köşk again brings none back: course staff map them anew. So a code
+is never stuck on a course nobody can see it on, and the partner may map the
+same code in another köşk. What its registrations did there stays, and the
+partner's DELETE for those registrations still takes away the seats they made.
+Switching a partner off keeps its codes. Course staff holding
+`course.partner_codes` can take any registered partner's code off a course,
+also one that is switched off or not bound to the köşk.
 
 - The partner's client id is **never** one of the front-ends in
   `KEYCLOAK_ALLOWED_CLIENTS`: registering one is refused with 409

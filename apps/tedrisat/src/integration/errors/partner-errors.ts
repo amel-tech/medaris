@@ -105,9 +105,9 @@ export class PartnerEnrollmentRefusedError extends ConflictError {
 
 /**
  * A partner application this caller may not name here: none is registered
- * under the id, or, for course staff, it does not work with the course's
- * köşk or is disabled. Both read the same, so a köşk's staff learn nothing
- * about the partners of other köşks.
+ * under the id, or, for course staff adding a code, it does not work with the
+ * course's köşk or is disabled. Both read the same, so a köşk's staff learn
+ * nothing about the partners of other köşks.
  */
 export class PartnerUnknownError extends NotFoundError {
   static readonly code = "PARTNER_UNKNOWN";

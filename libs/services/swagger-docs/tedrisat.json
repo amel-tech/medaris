@@ -12934,7 +12934,7 @@
     },
     "/courses/{id}/partner-codes/{partner}/{code}": {
       "delete": {
-        "description": "The people it enrolled stay; the partner's later cancellations still reach them. A code the course does not have is no error. Written to the audit log as `course.partner_code_remove`.",
+        "description": "The people it enrolled stay; the partner's later cancellations still reach them. A code the course does not have is no error. Any registered partner's code can be taken off, also one that is disabled or no longer bound to the course's köşk, so no code is ever stuck on a course. Written to the audit log as `course.partner_code_remove`.",
         "operationId": "removeCoursePartnerCode",
         "parameters": [
           {
@@ -12973,7 +12973,7 @@
             "description": ""
           },
           "404": {
-            "description": "No such course, or the partner is not one of the course's (PARTNER_UNKNOWN), as for adding."
+            "description": "No such course, or no partner is registered under this id (PARTNER_UNKNOWN)."
           }
         },
         "security": [
@@ -13122,7 +13122,7 @@
     },
     "/nizam/partner-applications/{clientId}/kosks": {
       "put": {
-        "description": "The köşks named are bound, the others unbound. In an unbound köşk the partner's codes enrol nobody and are listed nowhere; what its registrations did stays, and their cancellations still reach the seats they made. Written to the audit log under each köşk as `integration_partner.kosk_bind` or `.kosk_unbind`.",
+        "description": "The köşks named are bound, the others unbound. Unbinding a köşk takes the partner's codes off that köşk's courses (each written to the audit log as `course.partner_code_remove`), and binding it again brings none back; what its registrations did stays, and their cancellations still reach the seats they made. Written to the audit log under each köşk as `integration_partner.kosk_bind` or `.kosk_unbind`.",
         "operationId": "setPartnerApplicationKosks",
         "parameters": [
           {

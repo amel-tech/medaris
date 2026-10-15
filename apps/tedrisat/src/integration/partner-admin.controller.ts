@@ -107,7 +107,7 @@ export class PartnerAdminController {
   @ApiOperation({
     summary: "Choose the köşks a partner application works with",
     description:
-      "The köşks named are bound, the others unbound. In an unbound köşk the partner's codes enrol nobody and are listed nowhere; what its registrations did stays, and their cancellations still reach the seats they made. Written to the audit log under each köşk as `integration_partner.kosk_bind` or `.kosk_unbind`.",
+      "The köşks named are bound, the others unbound. Unbinding a köşk takes the partner's codes off that köşk's courses (each written to the audit log as `course.partner_code_remove`), and binding it again brings none back; what its registrations did stays, and their cancellations still reach the seats they made. Written to the audit log under each köşk as `integration_partner.kosk_bind` or `.kosk_unbind`.",
     operationId: "setPartnerApplicationKosks",
   })
   @ApiOkResponse({ type: PartnerAdminResponse })

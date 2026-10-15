@@ -1249,7 +1249,7 @@ export class CoursesApi extends runtime.BaseAPI {
     }
 
     /**
-     * The people it enrolled stay; the partner\'s later cancellations still reach them. A code the course does not have is no error. Written to the audit log as `course.partner_code_remove`.
+     * The people it enrolled stay; the partner\'s later cancellations still reach them. A code the course does not have is no error. Any registered partner\'s code can be taken off, also one that is disabled or no longer bound to the course\'s köşk, so no code is ever stuck on a course. Written to the audit log as `course.partner_code_remove`.
      * Take a partner application\'s code off the course
      */
     async removeCoursePartnerCodeRaw(requestParameters: RemoveCoursePartnerCodeRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
@@ -1300,7 +1300,7 @@ export class CoursesApi extends runtime.BaseAPI {
     }
 
     /**
-     * The people it enrolled stay; the partner\'s later cancellations still reach them. A code the course does not have is no error. Written to the audit log as `course.partner_code_remove`.
+     * The people it enrolled stay; the partner\'s later cancellations still reach them. A code the course does not have is no error. Any registered partner\'s code can be taken off, also one that is disabled or no longer bound to the course\'s köşk, so no code is ever stuck on a course. Written to the audit log as `course.partner_code_remove`.
      * Take a partner application\'s code off the course
      */
     async removeCoursePartnerCode(requestParameters: RemoveCoursePartnerCodeRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {

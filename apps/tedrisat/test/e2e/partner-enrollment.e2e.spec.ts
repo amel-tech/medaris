@@ -874,6 +874,106 @@ describe("Partner enrollments (e2e)", () => {
       await put("R-1", "tecvid", TALEBE).expect(404);
     });
 
+    it("takes the partner's codes off an unbound köşk's courses, each in the audit log, and binding it again brings none back", async () => {
+      // Another partner's code in the same köşk, and this partner's code in
+      // another köşk: neither is the unbinding's.
+      await register(OTHER_PARTNER_ID, OTHER_PARTNER_NAME, [koskId]);
+      await db.insert(partnerCourseCodes).values({
+        partnerClientId: OTHER_PARTNER_ID,
+        code: "tecvid",
+        courseId,
+        createdBy: NAZIM,
+      });
+      await mappedElsewhere();
+
+      await admin.kosks(PARTNER_ID, [otherKoskId]).expect(200);
+
+      expect(
+        await db
+          .select({
+            partner: partnerCourseCodes.partnerClientId,
+            code: partnerCourseCodes.code,
+          })
+          .from(partnerCourseCodes)
+          .orderBy(asc(partnerCourseCodes.code))
+      ).toEqual([
+        { partner: PARTNER_ID, code: "belagat" },
+        { partner: OTHER_PARTNER_ID, code: "tecvid" },
+      ]);
+      const removed = await auditRows("course.partner_code_remove");
+      expect(
+        removed.map((row) => (row.details as { code: string }).code).sort()
+      ).toEqual(["nahiv", "taslak", "tecvid", "tecvid-hafta-1"]);
+      expect(removed.find((row) => row.entityId === courseId)).toMatchObject({
+        actorId: ADMIN,
+        entity: "course",
+        details: {
+          partner: { clientId: PARTNER_ID, name: PARTNER_NAME },
+          unboundKosk: "Örnek Köşkü",
+        },
+      });
+
+      await admin.kosks(PARTNER_ID, [koskId, otherKoskId]).expect(200);
+      const listed = await codesOf(courseId);
+      expect(listed.find((p) => p.id === PARTNER_ID)?.codes).toEqual([]);
+      expect(
+        listed.find((p) => p.id === OTHER_PARTNER_ID)?.codes.map((c) => c.code)
+      ).toEqual(["tecvid"]);
+      expect(await auditRows("course.partner_code_remove")).toHaveLength(4);
+    });
+
+    it("lets the partner map a code it lost with an unbinding in another köşk", async () => {
+      await admin.kosks(PARTNER_ID, [otherKoskId]).expect(200);
+
+      await http()
+        .post(`/courses/${otherCourseId}/partner-codes`)
+        .set("Authorization", asSystemAdmin(ADMIN))
+        .send({ partner: PARTNER_ID, code: "tecvid" })
+        .expect(201);
+      await put("R-1", "tecvid", TALEBE).expect(200, {
+        status: "ENROLLED",
+        courseId: otherCourseId,
+      });
+    });
+
+    it("lets course staff take off a code of a partner that is no longer the course's", async () => {
+      const remove = (course: string, partnerId: string, code: string) =>
+        http()
+          .delete(`/courses/${course}/partner-codes/${partnerId}/${code}`)
+          .set("Authorization", asSystemAdmin(ADMIN));
+      const codeRows = (code: string) =>
+        db
+          .select()
+          .from(partnerCourseCodes)
+          .where(eq(partnerCourseCodes.code, code));
+
+      // A code left in a köşk the partner is not bound to.
+      await mappedElsewhere();
+      await remove(otherCourseId, PARTNER_ID, "belagat").expect(204);
+      expect(await codeRows("belagat")).toEqual([]);
+      expect(await auditRows("course.partner_code_remove")).toEqual([
+        expect.objectContaining({ actorId: ADMIN, entityId: otherCourseId }),
+      ]);
+
+      // A disabled partner's code, by the köşk nazımı.
+      await admin.update(PARTNER_ID, { enabled: false }).expect(200);
+      await http()
+        .delete(`/courses/${courseId}/partner-codes/${PARTNER_ID}/tecvid`)
+        .set("Authorization", bearerFor({ sub: NAZIM }))
+        .expect(204);
+      expect(await codeRows("tecvid")).toEqual([]);
+
+      // An id nobody registered is still nobody's.
+      const res = await remove(courseId, "baska-uygulama", "nahiv").expect(404);
+      expect(res.body.code).toBe("PARTNER_UNKNOWN");
+      // And adding still asks for one of the course's partners.
+      await http()
+        .post(`/courses/${courseId}/partner-codes`)
+        .set("Authorization", asSystemAdmin(ADMIN))
+        .send({ partner: PARTNER_ID, code: "tecvid" })
+        .expect(404);
+    });
+
     it("loses a köşk's bindings with the köşk deleted for real", async () => {
       await http()
         .delete(`/kosks/${koskId}`)

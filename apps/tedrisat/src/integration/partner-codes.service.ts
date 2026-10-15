@@ -5,6 +5,7 @@ import {
   PartnerUnknownError,
 } from "./errors/partner-errors";
 import { PartnerRepository } from "./partner.repository";
+import { PartnerRegistry } from "./partner-registry";
 
 export interface ICoursePartnerCodes {
   id: string;
@@ -23,7 +24,10 @@ export interface ICoursePartnerCodes {
 @Injectable()
 export class PartnerCodesService {
   // Value imports: see the useImportType trap in AGENTS.md.
-  constructor(private readonly repo: PartnerRepository) {}
+  constructor(
+    private readonly repo: PartnerRepository,
+    private readonly registry: PartnerRegistry
+  ) {}
 
   /** The course's partners, each with its codes for this course, possibly none. */
   async courseCodes(courseId: string): Promise<ICoursePartnerCodes[]> {
@@ -66,6 +70,11 @@ export class PartnerCodesService {
    * partner's registrations under it already enrol nobody here. The people
    * it enrolled stay; a cancellation the partner sends later still reaches
    * them, through the registration's own link.
+   *
+   * Any registered partner's code may be taken off, enabled or not, bound to
+   * the course's köşk or not: a code left on a course after its partner was
+   * disabled, or from before the köşk scope, must never be stuck there. Only
+   * adding a code asks for one of the course's partners.
    */
   async removeCode(
     courseId: string,
@@ -73,13 +82,20 @@ export class PartnerCodesService {
     code: string,
     actorId: string
   ): Promise<void> {
-    const partner = await this.partnerOf(courseId, partnerId);
-    await this.repo.removeCode({ partner, code, courseId, actorId });
+    const partner = await this.registry.find(partnerId);
+    if (!partner) throw new PartnerUnknownError();
+    await this.repo.removeCode({
+      partner: { clientId: partner.clientId, name: partner.name },
+      code,
+      courseId,
+      actorId,
+    });
   }
 
   /**
-   * One of the course's partners, or `PARTNER_UNKNOWN`: a partner of another
-   * köşk, a disabled one and an id nobody registered read the same.
+   * One of the course's partners, for adding a code, or `PARTNER_UNKNOWN`: a
+   * partner of another köşk, a disabled one and an id nobody registered read
+   * the same.
    */
   private async partnerOf(
     courseId: string,

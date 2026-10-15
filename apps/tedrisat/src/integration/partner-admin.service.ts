@@ -101,9 +101,10 @@ export class PartnerAdminService {
 
   /**
    * Makes the partner's köşks exactly these (the köşk multi-select).
-   * Unbinding stops the partner's codes there from enrolling anyone and from
-   * being listed; what its registrations already did stays, and their
-   * cancellations still reach the seats they made.
+   * Unbinding a köşk takes the partner's codes off its courses, audited one
+   * by one, and binding it again brings none back; what its registrations
+   * already did stays, and their cancellations still reach the seats they
+   * made.
    */
   async setKosks(
     user: AuthenticatedUser,
