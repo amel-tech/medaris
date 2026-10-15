@@ -1,5 +1,6 @@
 import { resources } from "@medaris/i18n";
 import { describe, expect, it } from "vitest";
+import { NO_UNVAN } from "~/features/course-settings/hoca-unvan";
 import {
   blankForm,
   counterOf,
@@ -17,6 +18,7 @@ import {
   openCourseHref,
   openProblems,
   openRequest,
+  openUnvans,
   statusOptions,
   titleProblem,
 } from "~/features/courses/courses";
@@ -349,6 +351,7 @@ describe("the opening form (nazir 08, criteria 2 and 3)", () => {
       koskId: "k-1",
       title: "",
       team: { members: [], imam: null },
+      unvans: {},
       closed: false,
       approval: false,
     });
@@ -400,6 +403,29 @@ describe("the opening form (nazir 08, criteria 2 and 3)", () => {
       closedCourse: true,
       requiresApproval: false,
     });
+  });
+
+  it("sends the unvan of each listed hoca given one, in list order, and no other (2026-10-15)", () => {
+    const unvans = {
+      "u-2": "MOLLA",
+      "u-1": NO_UNVAN,
+      // chosen for someone no longer on the list
+      "u-9": "DR",
+    };
+    expect(openUnvans(team, unvans)).toEqual([
+      { userId: "u-2", unvan: "MOLLA" },
+    ]);
+    expect(openRequest({ ...filled, unvans }, locksOf(null))).toMatchObject({
+      muderrisUnvans: [{ userId: "u-2", unvan: "MOLLA" }],
+    });
+    // none given: the key is not sent at all
+    expect(openRequest(filled, locksOf(null))).not.toHaveProperty(
+      "muderrisUnvans"
+    );
+    // an account is matched however its id is cased
+    expect(openUnvans(team, { "u-1": "PROF_DR" })).toEqual([
+      { userId: "u-1", unvan: "PROF_DR" },
+    ]);
   });
 
   it("sends a setting the medrese's policy fixes as on, whatever the form holds (criterion 5)", () => {

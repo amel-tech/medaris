@@ -151,6 +151,21 @@ const choice = (label: string) =>
 const checkbox = (label: string) =>
   choice(label).querySelector("[role=checkbox]") as HTMLElement;
 const submit = () => buttonIn(form(), "Dersi aç");
+/** The unvan select of one chosen hoca, by its accessible name. */
+const unvanSelect = (name: string) =>
+  byLabel(`${name} için unvan`) as HTMLButtonElement;
+/** The options of the list that is open now; a closed list may stay in the page. */
+const openOptions = () => [
+  ...document.querySelectorAll(".mds-popup[data-open] .mds-option"),
+];
+const chooseUnvan = async (name: string, label: string) => {
+  await click(unvanSelect(name));
+  await settle(50);
+  const option = openOptions().find((o) => o.textContent?.trim() === label);
+  expect(option, label).toBeDefined();
+  await click(option as Element);
+  await settle(50);
+};
 const search = async (who: { person: { email: string } }) => {
   await typeInto(emailField(), who.person.email);
   await key(emailField(), "Enter");
@@ -386,6 +401,83 @@ describe("'Dersi aç'", () => {
       "“Maksûd şerhi” Dersler listesinde Taslak olarak görünür."
     );
     expect(push).toHaveBeenCalledExactlyOnceWith("/medrese/m-1/dersler");
+  });
+
+  it("gives each hoca chosen a labelled unvan select, 'Hoca (unvansız)' first (2026-10-15)", async () => {
+    lookupPerson
+      .mockResolvedValueOnce(ISIKOGLU)
+      .mockResolvedValueOnce(KILICARSLAN);
+    await mount();
+    await search(ISIKOGLU);
+    await search(KILICARSLAN);
+    const first = unvanSelect("Mehmet Emin Işıkoğlu");
+    const second = unvanSelect("Ayşe Nur Kılıçarslan");
+    expect(first).not.toBeNull();
+    expect(second).not.toBeNull();
+    expect(first.textContent).toBe("Hoca (unvansız)");
+    // beside the row, never inside the radio's label
+    expect(first.closest("label")).toBeNull();
+    await click(first);
+    await settle(50);
+    expect(openOptions().map((o) => o.textContent?.trim())).toEqual([
+      "Hoca (unvansız)",
+      "Prof. Dr.",
+      "Doç. Dr.",
+      "Dr.",
+      "Müderris",
+      "Molla",
+      "Müftü",
+      "Şeyh",
+      "Hafız",
+    ]);
+  });
+
+  it("sends the unvan of a hoca given one, leaves out one left untitled and one taken off the list", async () => {
+    lookupPerson
+      .mockResolvedValueOnce(ISIKOGLU)
+      .mockResolvedValueOnce(KILICARSLAN)
+      .mockResolvedValueOnce(KARAOSMANOGLU);
+    openCourse.mockResolvedValue({
+      success: true,
+      data: { id: "c-9", title: "Maksûd şerhi" },
+    });
+    await mount();
+    await typeInto(titleField(), "Maksûd şerhi");
+    await search(ISIKOGLU);
+    await search(KILICARSLAN);
+    await search(KARAOSMANOGLU);
+    await chooseUnvan("Ayşe Nur Kılıçarslan", "Molla");
+    await chooseUnvan("Abdülhamit Karaosmanoğlu", "Dr.");
+    expect(unvanSelect("Ayşe Nur Kılıçarslan").textContent).toBe("Molla");
+    // Karaosmanoğlu leaves the list, with the unvan chosen for him
+    await click(byLabel("Çıkar: Abdülhamit Karaosmanoğlu"));
+    await click(submit());
+    await settle(60);
+    expect(openCourse).toHaveBeenCalledExactlyOnceWith("m-1", {
+      koskId: "k-1",
+      title: "Maksûd şerhi",
+      muderrisUserIds: ["u-1", "u-2"],
+      imamUserId: "u-1",
+      muderrisUnvans: [{ userId: "u-2", unvan: "MOLLA" }],
+      closedCourse: false,
+      requiresApproval: false,
+    });
+  });
+
+  it("forgets the unvan of a hoca taken off and searched again", async () => {
+    lookupPerson
+      .mockResolvedValueOnce(ISIKOGLU)
+      .mockResolvedValueOnce(KILICARSLAN)
+      .mockResolvedValueOnce(KILICARSLAN);
+    await mount();
+    await search(ISIKOGLU);
+    await search(KILICARSLAN);
+    await chooseUnvan("Ayşe Nur Kılıçarslan", "Hafız");
+    await click(byLabel("Çıkar: Ayşe Nur Kılıçarslan"));
+    await search(KILICARSLAN);
+    expect(unvanSelect("Ayşe Nur Kılıçarslan").textContent).toBe(
+      "Hoca (unvansız)"
+    );
   });
 
   it("sends the köşk that was chosen", async () => {

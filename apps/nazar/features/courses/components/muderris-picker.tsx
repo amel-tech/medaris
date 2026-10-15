@@ -8,6 +8,7 @@ import { Button } from "@medaris/ui/mds/button";
 import { Field } from "@medaris/ui/mds/field";
 import { Icon } from "@medaris/ui/mds/icon";
 import { Input } from "@medaris/ui/mds/input";
+import { Select } from "@medaris/ui/mds/select";
 import { useTranslations } from "next-intl";
 import {
   type KeyboardEvent,
@@ -17,6 +18,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { unvanOptions } from "~/features/course-settings/hoca-unvan";
 import { lookupPerson } from "~/features/nazirs/actions";
 import { isEmailLike } from "~/features/nazirs/nazirs";
 import { handleUnauthenticated } from "~/lib/unauthenticated";
@@ -43,6 +45,12 @@ type Search = "idle" | "searching" | "none" | "failed" | "listed" | "full";
  * that names the imam; a lone müderris is the imam and has no choice to make.
  * A müderris shown by name alone has no account to change, so its row has no
  * radio and no "Çıkar".
+ *
+ * Given `unvan`, each account's row also has a select of the unvan the hoca
+ * will carry in the course ("Hoca (unvansız)" first), named for the hoca and
+ * beside the row, never inside its radio's label. Only a course being opened
+ * passes it (owner, 2026-10-15); on a course that exists the unvan is set in
+ * Ders ayarları, so "Müderrisleri değiştir" draws none.
  */
 export function MuderrisPicker({
   team,
@@ -54,6 +62,7 @@ export function MuderrisPicker({
   removal,
   keepOne,
   inputRef,
+  unvan,
 }: {
   team: Team;
   dispatch: (action: TeamAction) => void;
@@ -69,6 +78,11 @@ export function MuderrisPicker({
   keepOne: boolean;
   /** the search field, for a dialog's first focus */
   inputRef?: RefObject<HTMLElement | null>;
+  /** the unvan select of each account's row: what it holds, and a choice */
+  unvan?: {
+    valueOf: (userId: string) => string;
+    onChange: (userId: string, value: string) => void;
+  };
 }) {
   const t = useTranslations("nazar");
   const legendId = useId();
@@ -133,6 +147,9 @@ export function MuderrisPicker({
 
   const accounts = accountsOf(team).length;
   const choosing = accounts > 1;
+  const unvans = unvan
+    ? unvanOptions(t("CourseSettings.hocas.untitled"))
+    : null;
 
   const person = (member: Member) => (
     <>
@@ -158,7 +175,10 @@ export function MuderrisPicker({
     const id = member.userId;
     const frame = "mds-choice mds-choice--bordered min-inline-0 grow";
     return (
-      <div key={key} className="flex items-center gap-3">
+      <div
+        key={key}
+        className={`flex items-center gap-3${unvan ? " flex-wrap" : ""}`}
+      >
         {id && choosing ? (
           // biome-ignore lint/a11y/noLabelWithoutControl: Base UI's Radio.Root renders the control, a hidden input, inside this label
           <label className={frame}>
@@ -172,6 +192,19 @@ export function MuderrisPicker({
         ) : (
           <div className={`${frame} cursor-default`}>{person(member)}</div>
         )}
+        {id && unvan && unvans ? (
+          <Select
+            name={`unvan-${id}`}
+            size="small"
+            className="shrink-0"
+            aria-label={t("CourseSettings.hocas.unvanLabel", {
+              name: member.name,
+            })}
+            value={unvan.valueOf(id)}
+            onChange={(value) => value && unvan.onChange(id, value)}
+            options={unvans}
+          />
+        ) : null}
         {id ? (
           <Button
             variant="ghost"

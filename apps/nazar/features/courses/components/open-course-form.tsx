@@ -11,6 +11,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { type FormEvent, useState, useTransition } from "react";
+import { NO_UNVAN } from "~/features/course-settings/hoca-unvan";
 import type { Messages } from "~/lib/i18n/messages";
 import { handleUnauthenticated } from "~/lib/unauthenticated";
 import { openCourse } from "../actions";
@@ -43,8 +44,10 @@ export interface KoskChoice {
  * first, except that an imam left unchosen among several müderrisler is said
  * at once. A policy of the medrese that fixes a setting shows it on and off
  * limits, with the sentence that says whose it is; the API applies the policies
- * whatever is sent. A course that opens is a draft, and the page goes back to
- * the list with a toast.
+ * whatever is sent. Each hoca chosen gets a select of the unvan they will carry
+ * in the course, "Hoca (unvansız)" until another is chosen (owner,
+ * 2026-10-15); only the ones given an unvan are sent. A course that opens is a
+ * draft, and the page goes back to the list with a toast.
  */
 export function OpenCourseForm({
   madrasahId,
@@ -78,10 +81,20 @@ export function OpenCourseForm({
   const closed = locks.closed || draft.closed;
   const approval = locks.approval || draft.approval;
   const dispatch = (action: TeamAction) =>
-    setDraft((current) => ({
-      ...current,
-      team: teamReducer(current.team, action),
-    }));
+    setDraft((current) => {
+      // A hoca taken off the list takes their unvan with them.
+      const unvans = { ...current.unvans };
+      if (action.type === "remove") delete unvans[action.userId.toLowerCase()];
+      return { ...current, team: teamReducer(current.team, action), unvans };
+    });
+  const unvan = {
+    valueOf: (userId: string) => draft.unvans[userId.toLowerCase()] ?? NO_UNVAN,
+    onChange: (userId: string, value: string) =>
+      setDraft((current) => ({
+        ...current,
+        unvans: { ...current.unvans, [userId.toLowerCase()]: value },
+      })),
+  };
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -194,6 +207,7 @@ export function OpenCourseForm({
           }
           removal="icon"
           keepOne={false}
+          unvan={unvan}
         />
       </div>
 

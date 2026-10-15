@@ -462,6 +462,9 @@ describe("'Müderrisleri değiştir' (nazir 17)", () => {
         )
         ?.getAttribute("aria-checked")
     ).toBe("true");
+    // the unvan of a course that exists is set in Ders ayarları, not here
+    expect(dialog().querySelector('[aria-label$="için unvan"]')).toBeNull();
+    expect(dialog().querySelector("button.mds-input")).toBeNull();
     expect(save().disabled).toBe(true);
     // a form dialog starts in its first field
     expect(document.activeElement).toBe(emailField());
