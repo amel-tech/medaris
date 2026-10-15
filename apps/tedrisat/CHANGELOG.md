@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.2.10](https://github.com/amel-tech/medaris/compare/tedrisat-v0.2.9...tedrisat-v0.2.10) (2026-10-15)
+
+
+### Features
+
+* **tedrisat, nazar-web:** replace a Bunny recording's video by upload, delete the old one ([#321](https://github.com/amel-tech/medaris/issues/321)) ([a0c5945](https://github.com/amel-tech/medaris/commit/a0c5945b6278a448625b620dd77cf72b6e83d6e6))
+* **tedrisat, nizam-web, nazar-web:** partner applications in the registry, bound to köşks ([#335](https://github.com/amel-tech/medaris/issues/335)) ([6ff323d](https://github.com/amel-tech/medaris/commit/6ff323d9ca0ccdedc050561e4edbefc7aae7a50e))
+* **ui, nazar-web, nizam-web, tedris-web:** the imam's star, only among several müderrisler ([#322](https://github.com/amel-tech/medaris/issues/322)) ([7b0721b](https://github.com/amel-tech/medaris/commit/7b0721bea62a8075ec21a5812add93a1ee503fc5))
+
 ## [0.2.9](https://github.com/amel-tech/medaris/compare/tedrisat-v0.2.8...tedrisat-v0.2.9) (2026-10-14)
 
 
