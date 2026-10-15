@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.9.0](https://github.com/amel-tech/medaris/compare/tedris-web-v2.8.0...tedris-web-v2.9.0) (2026-10-15)
+
+
+### Features
+
+* **ui, nazar-web, nizam-web, tedris-web:** the imam's star, only among several müderrisler ([#322](https://github.com/amel-tech/medaris/issues/322)) ([7b0721b](https://github.com/amel-tech/medaris/commit/7b0721bea62a8075ec21a5812add93a1ee503fc5))
+
+
+### Bug Fixes
+
+* **tedris-web:** MDRS-248 make the whole resource row the link ([#336](https://github.com/amel-tech/medaris/issues/336)) ([3cd3665](https://github.com/amel-tech/medaris/commit/3cd36659ba06a6d913618becd6fc0bcb26163095))
+
 ## [2.8.0](https://github.com/amel-tech/medaris/compare/tedris-web-v2.7.0...tedris-web-v2.8.0) (2026-10-14)
 
 
