@@ -27,11 +27,17 @@ export interface HocaRow {
   unvan: string;
 }
 
-/** The course's hocas, in the order the course lists them, with the unvan each carries in it. */
+/**
+ * The course's hocas, in the order the course lists them, with the unvan each
+ * carries in it. A read that brings no list draws an empty card rather than
+ * taking the page down.
+ */
 export function hocaRowsOf(
-  muderris: readonly Pick<MuderrisResponse, "userId" | "name" | "unvan">[]
+  muderris:
+    | readonly Pick<MuderrisResponse, "userId" | "name" | "unvan">[]
+    | undefined
 ): HocaRow[] {
-  return muderris.map((m) => ({
+  return (muderris ?? []).map((m) => ({
     userId: m.userId ?? null,
     name: m.name,
     unvan: isHocaUnvan(m.unvan) ? m.unvan : NO_UNVAN,

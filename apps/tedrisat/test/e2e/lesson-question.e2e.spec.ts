@@ -10,6 +10,7 @@ import { DatabaseService } from "../../src/database/database.service";
 import { auditLog } from "../../src/database/schema/audit.schema";
 import { bans } from "../../src/database/schema/ban.schema";
 import {
+  courseMuderris,
   courses,
   courseWeeks,
   enrollments,
@@ -910,10 +911,31 @@ describe("a talebe's questions to the course staff (MDRS-150, e2e)", () => {
           answer: {
             body: ANSWER,
             answeredAt: expect.any(String),
-            answeredBy: { id: MUDERRIS_ID, name: "Mehmed Efendi" },
+            // holds the role but is not on the course's list of hocas here
+            answeredBy: {
+              id: MUDERRIS_ID,
+              name: "Mehmed Efendi",
+              isMuderris: false,
+              unvan: null,
+            },
           },
         },
       ]);
+
+      // Listed as the course's hoca, with an unvan in it: the answer says so.
+      await db().insert(courseMuderris).values({
+        courseId,
+        userId: MUDERRIS_ID,
+        name: "Mehmed Efendi",
+        unvan: "MUFTU",
+      });
+      const listed = await mine(courseId, TALEBE_ID).expect(200);
+      expect(listed.body.items[0].answer.answeredBy).toEqual({
+        id: MUDERRIS_ID,
+        name: "Mehmed Efendi",
+        isMuderris: true,
+        unvan: "MUFTU",
+      });
     });
 
     it("lists the newest question first, across the course's sessions", async () => {

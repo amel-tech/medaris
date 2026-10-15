@@ -175,7 +175,14 @@ describe("Köşk overview, course roster and stats (e2e)", () => {
       { userId: S5, courseId: hidden, status: EnrollmentStatus.ENROLLED },
     ]);
     await db.insert(courseMuderris).values([
-      { courseId: own, userId: SECOND, name: "Ayşe Nur", orderIndex: 1 },
+      // An unvan in this course, which the roster sends with the name.
+      {
+        courseId: own,
+        userId: SECOND,
+        name: "Ayşe Nur",
+        orderIndex: 1,
+        unvan: "MOLLA",
+      },
       { courseId: own, userId: IMAM, name: "Mehmet Emin", orderIndex: 0 },
     ]);
     await assignRole(db, {
@@ -314,8 +321,8 @@ describe("Köşk overview, course roster and stats (e2e)", () => {
       const row = (id: string) =>
         res.body.items.find((i: { id: string }) => i.id === id);
       expect(row(own).muderris).toEqual([
-        { name: "Mehmet Emin", isImam: true },
-        { name: "Ayşe Nur", isImam: false },
+        { name: "Mehmet Emin", unvan: null, isImam: true },
+        { name: "Ayşe Nur", unvan: "MOLLA", isImam: false },
       ]);
       expect(row(own).studentCount).toBe(2);
       expect(row(own).pendingCount).toBe(1);

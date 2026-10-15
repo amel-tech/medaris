@@ -103,7 +103,11 @@ const person = (userId: string, name: string, over = {}) => ({
   isImam: false,
   ...over,
 });
-const ISIKOGLU = person("u-1", "Mehmet Emin Işıkoğlu", { isImam: true });
+// The imam carries an unvan in the course; the list names them with it.
+const ISIKOGLU = person("u-1", "Mehmet Emin Işıkoğlu", {
+  isImam: true,
+  unvan: "PROF_DR",
+});
 const KARAOSMANOGLU = person("u-2", "Abdülhamit Karaosmanoğlu");
 
 /** The three courses of the canvas: two published with talebe waiting, one draft opened today. */
@@ -255,9 +259,11 @@ describe("Dersler", () => {
     const stars = (row: string) =>
       row.match(/<button[^>]*aria-label="Dersin imamı"/g)?.length ?? 0;
     expect(marked.map(stars)).toEqual([1, 0, 1]);
+    // each with the unvan they carry in the course (2026-10-15)
     expect(marked[0]).toMatch(
-      /Mehmet Emin Işıkoğlu<\/bdi> <button[^>]*aria-label="Dersin imamı"/
+      /Prof\. Dr\. Mehmet Emin Işıkoğlu<\/bdi> <button[^>]*aria-label="Dersin imamı"/
     );
+    expect(rows[0]).toContain("Abdülhamit Karaosmanoğlu Hoca");
     expect(rows[0]).toContain("35");
     expect(rows[0]).toContain("2 onay bekliyor");
     expect(rows[0]).toContain("Yayında");
