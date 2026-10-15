@@ -120,10 +120,10 @@ describe("what the home page says (MDRS-245)", () => {
     );
   });
 
-  it("does not promise a meeting link or a live stream on every celse, or name the müderris alone for the stream", async () => {
+  it("does not promise a meeting link or a live stream on every celse, or name the hoca alone for the stream", async () => {
     const text = textOf(renderToStaticMarkup(await renderHome()));
     expect(text).not.toMatch(/kendi toplantı bağlantısı/i);
-    expect(text).not.toMatch(/müderris canlı yayın/i);
+    expect(text).not.toMatch(/(müderris|hoca) canlı yayın/i);
     expect(text).toContain(
       "celse sürerken yayın ve altında canlı sohbet açılır"
     );
