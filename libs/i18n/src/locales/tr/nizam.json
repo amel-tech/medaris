@@ -2485,6 +2485,8 @@
     "imamBadge": "Dersin imamı",
     "removeLabel": "{name} müderrisini listeden çıkar",
     "remove": "Çıkar",
+    "unvanLabel": "{name} için unvan",
+    "untitled": "Hoca (unvansız)",
     "soleNote": "Tek müderris dersin imamıdır.",
     "manyNote": "İşaretlediğiniz müderris dersin imamıdır. Bir müderrisi çıkardığınızda onun verdiği izinler için ayrıca karar verirsiniz.",
     "imamRequired": "Birden çok müderris var; dersin imamını işaretleyin."
