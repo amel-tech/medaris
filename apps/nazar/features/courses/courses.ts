@@ -4,6 +4,7 @@ import type {
   OpenMadrasahCourseDto,
 } from "@medaris/services/tedrisat";
 import { showsImamStar } from "@medaris/ui/lib/imam-star";
+import { formatHocaName } from "@medaris/utils";
 import { dayKey } from "~/lib/dates";
 import type { Messages } from "~/lib/i18n/messages";
 import {
@@ -226,8 +227,9 @@ export function courseRows(
       meta: [item.koskName, openedToday ? t("Courses.openedToday") : null]
         .filter(Boolean)
         .join(" · "),
+      // as the course shows its hocas: with the unvan each carries in it
       muderris: item.muderris.map((m) => ({
-        name: m.name,
+        name: formatHocaName(m.name, m.unvan),
         imam: showsImamStar(m.isImam, item.muderris.length),
       })),
       team: item.muderris.map((m) => ({

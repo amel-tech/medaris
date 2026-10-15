@@ -1629,6 +1629,22 @@
       "invalid": "Bu değer kaydedilemez. Sayfayı yenileyip yeniden deneyin.",
       "generic": "İşlem tamamlanamadı. Biraz sonra yeniden deneyin."
     },
+    "hocas": {
+      "title": "Hocalar ve unvanları",
+      "intro": "Her hocanın bu dersteki unvanı. Ders, hocayı nerede gösterirse adı bu unvanla yazılır; aynı kişinin başka derslerdeki unvanı değişmez.",
+      "unvanLabel": "{name} için unvan",
+      "untitled": "Hoca (unvansız)",
+      "shownAs": "Derste “{name}” olarak görünür.",
+      "noAccount": "Derste “{name}” olarak görünür. Bu hocanın hesabı olmadığı için unvanı değiştirilemez.",
+      "empty": "Bu dersin hocası yok.",
+      "readOnly": "Unvanları değiştirme izniniz yok; yalnız görebilirsiniz.",
+      "saved": "Unvanlar kaydedildi",
+      "savedBody": "{name} dersinin hocaları yeni unvanlarıyla görünür.",
+      "failed": "Unvan kaydedilemedi",
+      "errors": {
+        "notHoca": "Bu kişi artık dersin hocası değil; liste yeniden okundu."
+      }
+    },
     "partnerCodes": {
       "title": "Ortak uygulama kodları",
       "intro": "Bir ortak uygulamadaki kayıtlar bu kodlarla derse bağlanır. Orada onaylanan kişi bu derse talebe olarak kaydedilir; kaydı orada iptal edilirse yalnız bu yolla eklenen ders kaydı kaldırılır.",

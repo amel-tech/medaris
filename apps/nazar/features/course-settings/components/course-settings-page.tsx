@@ -16,22 +16,27 @@ import { getMessages } from "~/lib/i18n/messages";
 import { readOnce } from "~/lib/tedrisat-read";
 import { controlsOf } from "../controls";
 import { coursePageUrl, settingsOf } from "../course-settings";
+import { hocaRowsOf } from "../hoca-unvan";
 import { showsPartnerCodes } from "../partner-codes";
 import { CoursePublishCard } from "./course-publish-card";
 import { CourseSettingsForm } from "./course-settings-form";
+import { HocaUnvanCard } from "./hoca-unvan-card";
 import { PartnerCodesCard } from "./partner-codes-card";
 
 /**
  * Ders ayarları of a course: whether it is closed, its sample session,
- * whether enrolment waits for approval, its time zone, and whether it is
- * published. The page opens for a caller who holds `course.edit`,
+ * whether enrolment waits for approval, its time zone, whether it is
+ * published, and the unvan each hoca carries in it ("Hocalar ve unvanları",
+ * changed with `course.settings`, shown to the others with its selects
+ * shut). The page opens for a caller who holds `course.edit`,
  * `course.settings`, `course.publish` or `session.manage` in this course,
  * read from `GET /courses/:id/my-permissions`; anyone else gets "Bu sayfaya
  * izniniz yok", and a read that failed is the retry state. Each control is
  * open only when the caller holds every code its route asks (`controlsOf`),
  * so no control is offered that the API would refuse; the API still decides
  * every write. Not on this page: icazet (MDRS-149), the müderris list and
- * the imam, hiding the course and the köşk's policies. The course's roster
+ * the imam (who teaches is not changed here, only how each is titled),
+ * hiding the course and the köşk's policies. The course's roster
  * is not read (`GET /courses/:id/stats` writes an audit row), so the note
  * under "Taslağa çek" names no number. The form is keyed by what it shows
  * as stored, not by the version: a read that brings other stored values (its
@@ -71,6 +76,7 @@ export async function CourseSettingsPage({ courseId }: { courseId: string }) {
   const stored = settingsOf(course.data);
   const controls = controlsOf(permissions.data, stored);
   const pageUrl = coursePageUrl(env.TEDRIS_URL, course.data.id);
+  const hocas = hocaRowsOf(course.data.muderris);
 
   return (
     <>
@@ -103,6 +109,13 @@ export async function CourseSettingsPage({ courseId }: { courseId: string }) {
             key={JSON.stringify(stored)}
             course={course.data}
             controls={controls}
+          />
+          <HocaUnvanCard
+            key={JSON.stringify(hocas)}
+            courseId={course.data.id}
+            courseTitle={course.data.title}
+            hocas={hocas}
+            editable={holds(permissions.data, CODES.courseSettings)}
           />
           <PartnerCodesSection
             courseId={course.data.id}

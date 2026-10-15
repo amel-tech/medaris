@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   ANSWER_BODY_MAX,
   answerErrorKey,
+  answererName,
   appendQuestions,
   questionWhen,
 } from "~/features/questions/questions";
@@ -98,7 +99,12 @@ const question = (
 const ANSWERED = {
   body: "Müstesnâdır, **mef'ûl-ü bih** değil.",
   answeredAt: new Date("2026-10-04T08:00:00Z"),
-  answeredBy: { id: "m-1", name: "Mehmed Efendi" },
+  answeredBy: {
+    id: "m-1",
+    name: "Mehmed Efendi",
+    isMuderris: true,
+    unvan: "MOLLA" as const,
+  },
 };
 
 const page = (
@@ -192,7 +198,7 @@ describe("reading the questions", () => {
     expect(answered.textContent).toContain(tr.unknownAuthor);
     expect(answered.textContent).toContain("Hafta 2 · İkinci celse");
     expect(answered.textContent).toContain(tr.answered);
-    expect(answered.textContent).toContain("Cevap: Mehmed Efendi");
+    expect(answered.textContent).toContain("Cevap: Molla Mehmed Efendi");
     // The answer is Markdown, rendered: the bold run is an element.
     expect(answered.querySelector("strong")?.textContent).toBe("mef'ûl-ü bih");
   });
@@ -256,7 +262,7 @@ describe("answering", () => {
     expect(answerQuestion).toHaveBeenCalledWith("q-Birinci", "  Cevabım  ");
     expect(cards()).toHaveLength(2);
     expect(cards()[0].textContent).toContain(tr.answered);
-    expect(cards()[0].textContent).toContain("Cevap: Mehmed Efendi");
+    expect(cards()[0].textContent).toContain("Cevap: Molla Mehmed Efendi");
     expect(cards()[0].querySelector("textarea")).toBeNull();
     // The other question is untouched.
     expect(cards()[1].textContent).toContain(tr.waiting);
@@ -397,6 +403,22 @@ describe("the rules", () => {
     const at = new Date("2026-10-03T21:30:00Z");
     expect(questionWhen(at, "tr", "Europe/Istanbul")).toContain("00:30");
     expect(questionWhen(at, "tr", "America/New_York")).toContain("17:30");
+  });
+
+  it("names a hoca of the course with their unvan, anyone else by name alone", () => {
+    expect(
+      answererName({ name: "Ahmet Mehmet", isMuderris: true, unvan: "PROF_DR" })
+    ).toBe("Prof. Dr. Ahmet Mehmet");
+    expect(
+      answererName({ name: "Ahmet Mehmet", isMuderris: true, unvan: null })
+    ).toBe("Ahmet Mehmet Hoca");
+    // a ders nazırı or the köşk nazımı who answers is no hoca of the course
+    expect(
+      answererName({ name: "Nuri Nazım", isMuderris: false, unvan: null })
+    ).toBe("Nuri Nazım");
+    expect(answererName({ name: null, isMuderris: true, unvan: "DR" })).toBe(
+      ""
+    );
   });
 
   it("words a refused answer from the code the API sent", () => {

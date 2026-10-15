@@ -1629,6 +1629,22 @@
       "invalid": "This value cannot be saved. Reload the page and try again.",
       "generic": "That could not be completed. Try again in a moment."
     },
+    "hocas": {
+      "title": "Hocas and their titles",
+      "intro": "The title each hoca carries in this course. Wherever the course shows a hoca, the name is written with this title; the same person's title in other courses does not change.",
+      "unvanLabel": "Title for {name}",
+      "untitled": "Hoca (no title)",
+      "shownAs": "Shown in the course as “{name}”.",
+      "noAccount": "Shown in the course as “{name}”. This hoca has no account, so the title cannot be changed.",
+      "empty": "This course has no hoca.",
+      "readOnly": "You may not change the titles; you can only see them.",
+      "saved": "Titles saved",
+      "savedBody": "The hocas of {name} are shown with their new titles.",
+      "failed": "The title could not be saved",
+      "errors": {
+        "notHoca": "This person is no longer a hoca of the course; the list was read again."
+      }
+    },
     "partnerCodes": {
       "title": "Partner application codes",
       "intro": "Registrations in a partner application reach this course through these codes. A person approved there is enrolled here as a student; if their registration is cancelled there, only the enrolment added this way is removed.",

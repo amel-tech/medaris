@@ -202,15 +202,40 @@ describe("a course as a row (nazir 07, criteria 3 and 4)", () => {
   it("names the müderrisler in list order and marks the imam (criterion 4)", () => {
     const [row] = rows(item());
     expect(row?.muderris).toEqual([
-      { name: "Mehmet Emin Işıkoğlu", imam: true },
-      { name: "Abdülhamit Karaosmanoğlu", imam: false },
+      { name: "Mehmet Emin Işıkoğlu Hoca", imam: true },
+      { name: "Abdülhamit Karaosmanoğlu Hoca", imam: false },
+    ]);
+  });
+
+  it("names each müderris with the unvan they carry in the course (2026-10-15)", () => {
+    const [row] = rows(
+      item({
+        muderris: [
+          muderris({ unvan: "PROF_DR" }),
+          muderris({
+            userId: "u-2",
+            name: "Abdülhamit Karaosmanoğlu",
+            isImam: false,
+            unvan: "MOLLA",
+          }),
+        ],
+      })
+    );
+    expect(row?.muderris.map((m) => m.name)).toEqual([
+      "Prof. Dr. Mehmet Emin Işıkoğlu",
+      "Molla Abdülhamit Karaosmanoğlu",
+    ]);
+    // the dialog that changes who teaches works with the names as they are
+    expect(row?.team.map((m) => m.name)).toEqual([
+      "Mehmet Emin Işıkoğlu",
+      "Abdülhamit Karaosmanoğlu",
     ]);
   });
 
   it("marks no imam where the course has one müderris (2026-10-13)", () => {
     const [row] = rows(item({ muderris: [muderris()] }));
     expect(row?.muderris).toEqual([
-      { name: "Mehmet Emin Işıkoğlu", imam: false },
+      { name: "Mehmet Emin Işıkoğlu Hoca", imam: false },
     ]);
     // the dialog's list still knows who the imam is
     expect(row?.team[0]?.isImam).toBe(true);
