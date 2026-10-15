@@ -27,7 +27,7 @@ export default async function Page({
               Girişte gördüğünüz şartların özeti, bu metnin kısa hâlidir.
             </p>
             <p className="mds-caption">
-              Son güncelleme: <time dateTime="2026-10-14">14 Ekim 2026</time> ·
+              Son güncelleme: <time dateTime="2026-10-15">15 Ekim 2026</time> ·
               Yürürlük tarihi: {legal.termsEffectiveDate}
             </p>
           </div>
