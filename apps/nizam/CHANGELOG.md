@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.2.7](https://github.com/amel-tech/medaris/compare/nizam-web-v0.2.6...nizam-web-v0.2.7) (2026-10-15)
+
+
+### Features
+
+* **tedrisat, nazar-web:** partner enrollments behind a partner-only guard; course codes ([#323](https://github.com/amel-tech/medaris/issues/323)) ([3cab7e7](https://github.com/amel-tech/medaris/commit/3cab7e7426b1770697f8a0c2156a4bb9b0eaa0b8))
+* **tedrisat, nizam-web, nazar-web:** partner applications in the registry, bound to köşks ([#335](https://github.com/amel-tech/medaris/issues/335)) ([6ff323d](https://github.com/amel-tech/medaris/commit/6ff323d9ca0ccdedc050561e4edbefc7aae7a50e))
+* **ui, nazar-web, nizam-web, tedris-web:** the imam's star, only among several müderrisler ([#322](https://github.com/amel-tech/medaris/issues/322)) ([7b0721b](https://github.com/amel-tech/medaris/commit/7b0721bea62a8075ec21a5812add93a1ee503fc5))
+
 ## [0.2.6](https://github.com/amel-tech/medaris/compare/nizam-web-v0.2.5...nizam-web-v0.2.6) (2026-10-13)
 
 
