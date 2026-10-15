@@ -9,6 +9,7 @@ import { CourseStatus } from "../../src/course/domain/course-status.enum";
 import { EnrollmentStatus } from "../../src/course/domain/enrollment-status.enum";
 import { DatabaseService } from "../../src/database/database.service";
 import { courses, enrollments } from "../../src/database/schema/course.schema";
+import { integrationPartnerKosks } from "../../src/database/schema/integration-partner.schema";
 import { kosks } from "../../src/database/schema/kosk.schema";
 import { partnerCourseCodes } from "../../src/database/schema/partner-enrollment.schema";
 import {
@@ -23,8 +24,10 @@ import {
  * `ornek-uygulama`, whose service account holds it and whose tokens carry
  * `tedrisat-api`. tedrisat runs with the real key provider and verifier, the
  * front-ends' allow-list (`KEYCLOAK_ALLOWED_CLIENTS=tedris-dev`), the partner
- * in `INTEGRATION_PARTNERS`, and a service account of its own with
- * `view-users` for checking the person's account.
+ * registered at boot from `INTEGRATION_PARTNERS` (the seeding that carries a
+ * deployment's partner into `integration_partners`) and bound to the köşk
+ * below, and a service account of its own with `view-users` for checking the
+ * person's account.
  *
  * partner-enrollment.e2e.spec.ts covers every rule with signed test tokens;
  * this proves the realm mints what the guard accepts, and refuses what it
@@ -310,6 +313,11 @@ describe("Partner enrollments against Keycloak (e2e)", () => {
       ])
       .returning();
     [courseId, openCourseId] = rows.map((row) => row.id);
+    // Seeded at boot with no code mapped yet, so bound to no köşk: bound here
+    // as the başnazım binds it in nizam.
+    await db
+      .insert(integrationPartnerKosks)
+      .values({ clientId: PARTNER_ID, koskId: kosk.id });
     await db.insert(partnerCourseCodes).values([
       {
         partnerClientId: PARTNER_ID,
@@ -443,7 +451,7 @@ describe("Partner enrollments against Keycloak (e2e)", () => {
     const partner = await partnerToken();
     for (const path of [
       "/flashcard/decks/collections",
-      "/partner-applications",
+      "/nizam/partner-applications",
       "/me",
     ]) {
       await http()

@@ -15,19 +15,22 @@ export const PARTNER_CLIENT_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
 const MAX_NAME_LENGTH = 100;
 
 /**
- * The partner applications allowed to call `/integrations/*`
- * (`INTEGRATION_PARTNERS`): comma-separated `clientId=Display name` pairs, as
- * in `ornek-uygulama=Örnek Uygulama`. A display name therefore holds no comma.
+ * `INTEGRATION_PARTNERS`, deprecated: comma-separated `clientId=Display name`
+ * pairs, as in `ornek-uygulama=Örnek Uygulama` (a display name therefore holds
+ * no comma). It was the whole partner registry; the başnazım keeps the
+ * partners in nizam now (`integration_partners`), and this is read only so the
+ * boot can register a listed partner the table does not have yet
+ * (`PartnerRegistrySeeder`). Once every listed partner is registered the value
+ * changes nothing and can be removed.
  *
- * Optional on purpose: empty or unset, the list is empty and every
- * `/integrations/*` route answers 404, so nothing changes for a deployment
- * that has no partner. A value that is set but malformed is a typo, so it
- * stops the boot rather than quietly dropping a partner.
+ * Optional: empty or unset, nothing is seeded. A value that is set but
+ * malformed is a typo, so it stops the boot rather than quietly dropping a
+ * partner.
  *
  * A partner client is never one of the front-ends: its tokens carry this
  * API's audience but belong on the partner routes alone. Listing one in
- * `KEYCLOAK_ALLOWED_CLIENTS` as well stops the boot (the verifier would refuse
- * the pair too; this names the two keys).
+ * `KEYCLOAK_ALLOWED_CLIENTS` as well stops the boot, as registering one in
+ * nizam is refused (`PARTNER_FRONT_END_CLIENT`).
  *
  * Set as `TEDRISAT__INTEGRATION_PARTNERS` in the repository-root `.env`; MDRS-25
  * strips the prefix on the way in.

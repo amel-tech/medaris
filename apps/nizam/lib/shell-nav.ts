@@ -155,6 +155,13 @@ const chiefGroups: NavGroup[] = [
         path: "/ayarlar/platform",
         icon: "settings",
       },
+      // The partner applications and their köşks (partner enrollments).
+      {
+        id: "partners",
+        label: "partners",
+        path: "/ayarlar/ortak-uygulamalar",
+        icon: "link",
+      },
     ],
   },
 ];
@@ -295,6 +302,7 @@ const ITEM_PERMISSIONS: Record<string, readonly string[]> = {
   inactive: ["platform.inactive_scopes_manage"],
   youtube: ["platform.youtube_manage"],
   "platform-settings": ["platform.policy_edit"],
+  partners: ["platform.partner_manage"],
 };
 
 /**

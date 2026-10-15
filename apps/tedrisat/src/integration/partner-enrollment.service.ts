@@ -105,6 +105,8 @@ export class PartnerEnrollmentService {
     userId: string
   ): Promise<{ status: PartnerEnrollStatus; courseId: string }> {
     const person = userId.toLowerCase();
+    // Only in a köşk the partner is bound to: a code mapped in one it has
+    // been unbound from since reads as a code never mapped, naming nothing.
     const mapped = await this.repo.findCodeCourse(
       partner.clientId,
       key.courseCode
@@ -120,9 +122,16 @@ export class PartnerEnrollmentService {
       throw new PartnerRegistrationUserMismatchError();
     }
     // An open registration stays with the course it seated the person in,
-    // even when its code has been mapped elsewhere since.
+    // even when its code has been mapped elsewhere since; that course's köşk
+    // must still be the partner's too.
     const courseId =
       existing && existing.closedAt === null ? existing.courseId : mapped;
+    if (
+      courseId !== mapped &&
+      !(await this.repo.isCourseBound(partner.clientId, courseId))
+    ) {
+      throw new PartnerCourseUnknownError(key.courseCode);
+    }
 
     const account = await this.account(person);
     const closed = await this.bulk.closedReason(courseId);
@@ -194,7 +203,11 @@ export class PartnerEnrollmentService {
     return { status: created ? "ENROLLED" : "ALREADY_ENROLLED", courseId };
   }
 
-  /** `DELETE /integrations/enrollments/{registrationRef}/{courseCode}`. */
+  /**
+   * `DELETE /integrations/enrollments/{registrationRef}/{courseCode}`. Asks
+   * nothing of the köşk binding: a link the partner made is undone as it was
+   * made, so unbinding a köşk never strands a seat the partner created.
+   */
   async unenroll(
     partner: IPartnerCaller,
     key: IRegistrationKey
@@ -278,7 +291,10 @@ export class PartnerEnrollmentService {
     return { status: "REMOVED" };
   }
 
-  /** `GET /integrations/courses`: this partner's codes and their courses. */
+  /**
+   * `GET /integrations/courses`: this partner's codes and their courses, in
+   * the köşks it is bound to.
+   */
   listCourses(
     partner: IPartnerCaller
   ): Promise<{ code: string; courseId: string; title: string }[]> {

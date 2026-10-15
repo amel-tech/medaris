@@ -228,12 +228,21 @@ export async function createTestApp(options?: {
   keyProvider?: "stub" | "real";
   /** Providers to replace, e.g. the Keycloak admin client (MDRS-169). */
   overrides?: Array<{ provide: unknown; useValue: unknown }>;
+  /**
+   * `KEYCLOAK_ALLOWED_CLIENTS` for this app in stub mode, which otherwise
+   * pins it empty. Asked for by name, never inherited: every token the suite
+   * sends to this app then needs one of these as its `azp`.
+   */
+  allowedClients?: string;
 }): Promise<INestApplication> {
   await useDatabaseForThisFile();
 
   const useStub = (options?.keyProvider ?? "stub") === "stub";
   if (useStub) {
     applyStubKeycloakEnv();
+    if (options?.allowedClients !== undefined) {
+      process.env.KEYCLOAK_ALLOWED_CLIENTS = options.allowedClients;
+    }
   }
 
   // Import AppModule lazily so configuration() runs after env vars are set.

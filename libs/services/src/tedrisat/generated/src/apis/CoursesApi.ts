@@ -30,7 +30,6 @@ import type {
   EnrollmentResponse,
   MuderrisListResponse,
   MyCoursePermissionsResponse,
-  PartnerApplicationResponse,
   PartnerCodeResponse,
   PendingEnrollmentResponse,
   RejectEnrollmentDto,
@@ -75,8 +74,6 @@ import {
     MuderrisListResponseToJSON,
     MyCoursePermissionsResponseFromJSON,
     MyCoursePermissionsResponseToJSON,
-    PartnerApplicationResponseFromJSON,
-    PartnerApplicationResponseToJSON,
     PartnerCodeResponseFromJSON,
     PartnerCodeResponseToJSON,
     PendingEnrollmentResponseFromJSON,
@@ -835,7 +832,7 @@ export class CoursesApi extends runtime.BaseAPI {
     }
 
     /**
-     * Every configured partner application, each with its codes mapped to this course.
+     * The course\'s partner applications, each with its codes mapped to this course: the enabled partners bound to the köşk the course is held in. Empty when the köşk has none, and nazar then shows no partner section.
      * A course\'s partner codes
      */
     async getCoursePartnerCodesRaw(requestParameters: GetCoursePartnerCodesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CoursePartnerCodesResponse>> {
@@ -870,7 +867,7 @@ export class CoursesApi extends runtime.BaseAPI {
     }
 
     /**
-     * Every configured partner application, each with its codes mapped to this course.
+     * The course\'s partner applications, each with its codes mapped to this course: the enabled partners bound to the köşk the course is held in. Empty when the köşk has none, and nazar then shows no partner section.
      * A course\'s partner codes
      */
     async getCoursePartnerCodes(requestParameters: GetCoursePartnerCodesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CoursePartnerCodesResponse> {
@@ -1193,42 +1190,6 @@ export class CoursesApi extends runtime.BaseAPI {
     }
 
     /**
-     * Their ids and display names, nothing more; empty when none is configured, and nazar then shows no partner section. Open to every signed-in caller.
-     * The partner applications this server works with
-     */
-    async listPartnerApplicationsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<PartnerApplicationResponse>>> {
-        const queryParameters: any = {};
-
-        const headerParameters: runtime.HTTPHeaders = {};
-
-        if (this.configuration && this.configuration.accessToken) {
-            // oauth required
-            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
-        }
-
-
-        let urlPath = `/partner-applications`;
-
-        const response = await this.request({
-            path: urlPath,
-            method: 'GET',
-            headers: headerParameters,
-            query: queryParameters,
-        }, initOverrides);
-
-        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(PartnerApplicationResponseFromJSON));
-    }
-
-    /**
-     * Their ids and display names, nothing more; empty when none is configured, and nazar then shows no partner section. Open to every signed-in caller.
-     * The partner applications this server works with
-     */
-    async listPartnerApplications(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<PartnerApplicationResponse>> {
-        const response = await this.listPartnerApplicationsRaw(initOverrides);
-        return await response.value();
-    }
-
-    /**
      * The body is optional: a `reason` (nizam/02, Ret gerekçesi) is kept with the refusal in the audit log as `enrollment.reject`.
      * Reject a pending enrollment, deleting it (course team)
      */
@@ -1288,7 +1249,7 @@ export class CoursesApi extends runtime.BaseAPI {
     }
 
     /**
-     * The people it enrolled stay; the partner\'s later cancellations still reach them. A code the course does not have is no error. Written to the audit log as `course.partner_code_remove`.
+     * The people it enrolled stay; the partner\'s later cancellations still reach them. A code the course does not have is no error. Any registered partner\'s code can be taken off, also one that is disabled or no longer bound to the course\'s köşk, so no code is ever stuck on a course. Written to the audit log as `course.partner_code_remove`.
      * Take a partner application\'s code off the course
      */
     async removeCoursePartnerCodeRaw(requestParameters: RemoveCoursePartnerCodeRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
@@ -1339,7 +1300,7 @@ export class CoursesApi extends runtime.BaseAPI {
     }
 
     /**
-     * The people it enrolled stay; the partner\'s later cancellations still reach them. A code the course does not have is no error. Written to the audit log as `course.partner_code_remove`.
+     * The people it enrolled stay; the partner\'s later cancellations still reach them. A code the course does not have is no error. Any registered partner\'s code can be taken off, also one that is disabled or no longer bound to the course\'s köşk, so no code is ever stuck on a course. Written to the audit log as `course.partner_code_remove`.
      * Take a partner application\'s code off the course
      */
     async removeCoursePartnerCode(requestParameters: RemoveCoursePartnerCodeRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {

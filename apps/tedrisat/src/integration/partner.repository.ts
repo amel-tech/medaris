@@ -1,8 +1,12 @@
 import { Injectable } from "@nestjs/common";
-import { and, asc, eq, isNotNull, isNull, ne } from "drizzle-orm";
+import { and, asc, eq, isNotNull, isNull, ne, sql } from "drizzle-orm";
 import { DatabaseService } from "../database/database.service";
 import { auditLog } from "../database/schema/audit.schema";
 import { courses } from "../database/schema/course.schema";
+import {
+  integrationPartnerKosks,
+  integrationPartners,
+} from "../database/schema/integration-partner.schema";
 import {
   partnerCourseCodes,
   partnerEnrollmentLinks,
@@ -28,10 +32,19 @@ export interface IPartnerCodeChange {
 }
 
 /**
+ * The partner's binding to the köşk a course is held in: the condition under
+ * which its codes for that course are listed and honoured (the köşks a partner
+ * works with, `integration_partner_kosks`, migration 0064).
+ */
+const boundToCourseKosk = (partnerClientId: unknown, courseKoskId: unknown) =>
+  sql`exists (select 1 from ${integrationPartnerKosks} where ${integrationPartnerKosks.clientId} = ${partnerClientId} and ${integrationPartnerKosks.koskId} = ${courseKoskId})`;
+
+/**
  * Partner enrollments' two tables (migration 0062): the codes mapped to
  * courses, and the links between a partner's registrations and the
  * enrollments they stand for. The enrollments themselves are written by the
- * course's own paths, never here.
+ * course's own paths, never here. A code counts only in a course of a köşk
+ * its partner is bound to; the reads below say so where it matters.
  */
 @Injectable()
 export class PartnerRepository {
@@ -45,7 +58,11 @@ export class PartnerRepository {
 
   // ---- codes -----------------------------------------------------------------
 
-  /** The course this partner's code is mapped to, or null. */
+  /**
+   * The course this partner's code is mapped to, or null, also when the
+   * course's köşk is not one the partner is bound to: a code mapped there
+   * before the köşk was unbound enrols nobody.
+   */
   async findCodeCourse(
     partnerClientId: string,
     code: string
@@ -53,17 +70,40 @@ export class PartnerRepository {
     const [row] = await this.db
       .select({ courseId: partnerCourseCodes.courseId })
       .from(partnerCourseCodes)
+      .innerJoin(courses, eq(courses.id, partnerCourseCodes.courseId))
       .where(
         and(
           eq(partnerCourseCodes.partnerClientId, partnerClientId),
-          eq(partnerCourseCodes.code, code)
+          eq(partnerCourseCodes.code, code),
+          boundToCourseKosk(partnerClientId, courses.koskId)
         )
       )
       .limit(1);
     return row?.courseId ?? null;
   }
 
-  /** Every code of one partner, with its course's title, by code. */
+  /** Whether the course is held in a köşk the partner is bound to. */
+  async isCourseBound(
+    partnerClientId: string,
+    courseId: string
+  ): Promise<boolean> {
+    const [row] = await this.db
+      .select({ id: courses.id })
+      .from(courses)
+      .where(
+        and(
+          eq(courses.id, courseId),
+          boundToCourseKosk(partnerClientId, courses.koskId)
+        )
+      )
+      .limit(1);
+    return row !== undefined;
+  }
+
+  /**
+   * Every code of one partner in the köşks it is bound to, with its course's
+   * title, by code.
+   */
   async listPartnerCodes(
     partnerClientId: string
   ): Promise<{ code: string; courseId: string; title: string }[]> {
@@ -75,8 +115,44 @@ export class PartnerRepository {
       })
       .from(partnerCourseCodes)
       .innerJoin(courses, eq(courses.id, partnerCourseCodes.courseId))
-      .where(eq(partnerCourseCodes.partnerClientId, partnerClientId))
+      .where(
+        and(
+          eq(partnerCourseCodes.partnerClientId, partnerClientId),
+          boundToCourseKosk(partnerClientId, courses.koskId)
+        )
+      )
       .orderBy(asc(partnerCourseCodes.code));
+  }
+
+  /**
+   * The partners of a course: the enabled ones bound to the köşk it is held
+   * in, by name. What Ders ayarları lists, and the only ones its staff may
+   * map a code for.
+   */
+  async coursePartners(
+    courseId: string
+  ): Promise<{ clientId: string; name: string }[]> {
+    return this.db
+      .select({
+        clientId: integrationPartners.clientId,
+        name: integrationPartners.name,
+      })
+      .from(courses)
+      .innerJoin(
+        integrationPartnerKosks,
+        eq(integrationPartnerKosks.koskId, courses.koskId)
+      )
+      .innerJoin(
+        integrationPartners,
+        eq(integrationPartners.clientId, integrationPartnerKosks.clientId)
+      )
+      .where(
+        and(eq(courses.id, courseId), eq(integrationPartners.enabled, true))
+      )
+      .orderBy(
+        asc(integrationPartners.name),
+        asc(integrationPartners.clientId)
+      );
   }
 
   /** Every partner's codes for one course, oldest first. */

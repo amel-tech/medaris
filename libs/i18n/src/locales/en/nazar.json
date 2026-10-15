@@ -1648,7 +1648,7 @@
         "empty": "Type a code.",
         "shape": "A code holds only lower-case letters, digits and hyphens, and starts with a letter or a digit.",
         "taken": "This code is linked to another course. It has to be removed there first.",
-        "unknownPartner": "This partner application is no longer configured. Reload the page."
+        "unknownPartner": "This partner application no longer works with this köşk. Reload the page."
       }
     }
   },

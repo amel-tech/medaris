@@ -40,7 +40,7 @@ import { PartnerCodesCard } from "./partner-codes-card";
  *
  * "Ortak uygulama kodları" (partner enrollments, `PartnerCodesSection`) sits
  * under the form, for a caller who holds `course.partner_codes` and only when
- * the server works with a partner application.
+ * the course's köşk works with a partner application.
  */
 export async function CourseSettingsPage({ courseId }: { courseId: string }) {
   const [t, course, permissions] = await Promise.all([
@@ -122,10 +122,11 @@ export async function CourseSettingsPage({ courseId }: { courseId: string }) {
 
 /**
  * "Ortak uygulama kodları", or nothing: only for a caller who holds
- * `course.partner_codes` are the partner applications read
- * (`GET /partner-applications`), and the course's codes only when there is
- * one. A list that cannot be read draws nothing, as an empty one does; codes
- * that cannot be read say so in place. The rest of the page stands either way.
+ * `course.partner_codes` are the course's partners read
+ * (`GET /courses/:id/partner-codes`): the ones the başnazım bound to the
+ * course's köşk, each with its codes for this course. A köşk with none draws
+ * nothing; a read that failed says so in place, since whether there is a
+ * partner is not known. The rest of the page stands either way.
  */
 async function PartnerCodesSection({
   courseId,
@@ -136,15 +137,6 @@ async function PartnerCodesSection({
 }) {
   const allowed = holds(permissions, CODES.partnerCodes);
   if (!allowed) return null;
-  const partners = await readOnce("the partner applications", (api) =>
-    api.courses.listPartnerApplications()
-  );
-  if (
-    partners.status !== "ok" ||
-    !showsPartnerCodes(partners.data.length, allowed)
-  ) {
-    return null;
-  }
   const codes = await readOnce("the course's partner codes", (api) =>
     api.courses.getCoursePartnerCodes({ id: courseId })
   );
@@ -156,6 +148,7 @@ async function PartnerCodesSection({
       </Alert>
     );
   }
+  if (!showsPartnerCodes(codes.data.partners.length, allowed)) return null;
   return (
     <PartnerCodesCard
       courseId={courseId}

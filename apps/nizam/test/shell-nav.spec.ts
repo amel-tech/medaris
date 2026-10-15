@@ -86,7 +86,12 @@ describe("the menus as the canvases draw them", () => {
         "Kalıcı yasak talepleri",
       ],
       ["Denetim", "Yasaklamalar", "Denetim kaydı", "Arşiv"],
-      ["Ayarlar", "YouTube bağlantısı", "Platform ayarları"],
+      [
+        "Ayarlar",
+        "YouTube bağlantısı",
+        "Platform ayarları",
+        "Ortak uygulamalar",
+      ],
     ]);
   });
 

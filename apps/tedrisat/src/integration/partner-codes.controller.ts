@@ -1,10 +1,4 @@
-import {
-  AuthGuard,
-  Authz,
-  AuthzExempt,
-  AuthzGuard,
-  PERMISSIONS,
-} from "@medaris/common";
+import { AuthGuard, Authz, AuthzGuard, PERMISSIONS } from "@medaris/common";
 import {
   Body,
   Controller,
@@ -35,7 +29,6 @@ import { AuthorizedRequest } from "../course/interfaces/authorized-request.inter
 import {
   AddPartnerCodeDto,
   CoursePartnerCodesResponse,
-  PartnerApplicationResponse,
   PartnerCodeParams,
   PartnerCodeResponse,
 } from "./dto/partner-codes.dto";
@@ -46,8 +39,9 @@ import { PartnerCodesService } from "./partner-codes.service";
  * application's codes to the course, in nazar's course settings. Mapping
  * decides who enters the course, so it is its own permission,
  * `course.partner_codes`: the köşk nazımı's and the başnazım's, not the
- * müderris'. These are ordinary routes behind `AuthGuard`; a partner's token
- * is refused on every one of them.
+ * müderris'. Only the course's partners are offered and accepted: the enabled
+ * ones the başnazım bound to the course's köşk. These are ordinary routes
+ * behind `AuthGuard`; a partner's token is refused on every one of them.
  */
 @ApiTags("courses")
 @ApiBearerAuth()
@@ -57,22 +51,9 @@ export class PartnerCodesController {
   constructor(private readonly codes: PartnerCodesService) {}
 
   @ApiOperation({
-    summary: "The partner applications this server works with",
-    description:
-      "Their ids and display names, nothing more; empty when none is configured, and nazar then shows no partner section. Open to every signed-in caller.",
-    operationId: "listPartnerApplications",
-  })
-  @ApiOkResponse({ type: PartnerApplicationResponse, isArray: true })
-  @AuthzExempt()
-  @Get("partner-applications")
-  listPartners(): PartnerApplicationResponse[] {
-    return this.codes.listPartners();
-  }
-
-  @ApiOperation({
     summary: "A course's partner codes",
     description:
-      "Every configured partner application, each with its codes mapped to this course.",
+      "The course's partner applications, each with its codes mapped to this course: the enabled partners bound to the köşk the course is held in. Empty when the köşk has none, and nazar then shows no partner section.",
     operationId: "getCoursePartnerCodes",
   })
   @ApiOkResponse({ type: CoursePartnerCodesResponse })
@@ -100,7 +81,7 @@ export class PartnerCodesController {
   @ApiForbiddenResponse()
   @ApiNotFoundResponse({
     description:
-      "No such course, or no such partner application (PARTNER_UNKNOWN).",
+      "No such course, or the partner is not one of the course's: not registered, disabled, or not bound to the course's köşk (PARTNER_UNKNOWN, the same for each).",
   })
   @ApiConflictResponse({
     description:
@@ -119,14 +100,14 @@ export class PartnerCodesController {
   @ApiOperation({
     summary: "Take a partner application's code off the course",
     description:
-      "The people it enrolled stay; the partner's later cancellations still reach them. A code the course does not have is no error. Written to the audit log as `course.partner_code_remove`.",
+      "The people it enrolled stay; the partner's later cancellations still reach them. A code the course does not have is no error. Any registered partner's code can be taken off, also one that is disabled or no longer bound to the course's köşk, so no code is ever stuck on a course. Written to the audit log as `course.partner_code_remove`.",
     operationId: "removeCoursePartnerCode",
   })
   @ApiNoContentResponse()
   @ApiForbiddenResponse()
   @ApiNotFoundResponse({
     description:
-      "No such course, or no such partner application (PARTNER_UNKNOWN).",
+      "No such course, or no partner is registered under this id (PARTNER_UNKNOWN).",
   })
   @Authz(PERMISSIONS.COURSE_PARTNER_CODES, byExistingCourse)
   @Delete("courses/:id/partner-codes/:partner/:code")

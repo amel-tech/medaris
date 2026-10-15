@@ -753,6 +753,7 @@
       "archive": "Archive",
       "youtube": "YouTube connection",
       "platformSettings": "Platform settings",
+      "partners": "Partner applications",
       "courses": "Courses",
       "sessions": "Sessions",
       "students": "Students",
@@ -1192,6 +1193,11 @@
         "title": "Change platform policies",
         "short": "Change platform policies",
         "help": "Narrows the registration and course enrolment policies platform-wide."
+      },
+      "platform_partner_manage": {
+        "title": "Manage the partner applications",
+        "short": "Manage the partner applications",
+        "help": "Adds a partner application, renames it, switches it off or on and chooses the köşks it works with."
       }
     },
     "courseShort": {
@@ -3456,6 +3462,70 @@
     "errors": {
       "generic": "The action could not be completed. Try again in a moment.",
       "forbidden": "You may not do this."
+    }
+  },
+  "PartnersPage": {
+    "title": "Partner applications",
+    "intro": "Partner applications whose registrations become course enrolments in Medaris. A partner application works only with the köşks chosen for it: its codes appear only in those köşks' course settings and enrol students only there.",
+    "addHeading": "Add a partner application",
+    "addIntro": "An added application is on and works with no köşk. Choose its köşks next.",
+    "clientIdLabel": "Client ID",
+    "clientIdHelp": "The ID of the application's Keycloak client: letters, digits, dots, underscores and hyphens.",
+    "nameLabel": "Name",
+    "nameHelp": "The course settings and the audit log show this name. At most 100 characters.",
+    "add": "Add",
+    "added": "Partner application added",
+    "addedBody": "{name} is on. Now choose the köşks it works with.",
+    "listHeading": "Registered partner applications",
+    "empty": "No partner application is registered.",
+    "columns": {
+      "name": "Name",
+      "clientId": "Client ID",
+      "kosks": "Köşks",
+      "enabled": "Status",
+      "actions": "Actions"
+    },
+    "noKosks": "No köşk chosen",
+    "on": "On",
+    "off": "Off",
+    "turnedOn": "Partner application switched on",
+    "turnedOnBody": "{name} can enrol students again in its chosen köşks.",
+    "turnedOff": "Partner application switched off",
+    "turnedOffBody": "{name} can no longer enrol students, and its codes appear in no course. The enrolments it made stay.",
+    "rename": "Rename",
+    "renameTitle": "Rename",
+    "renamed": "Name changed",
+    "renamedBody": "From now on the name {name} is shown.",
+    "chooseKosks": "Choose köşks",
+    "kosksTitle": "Köşks it works with",
+    "kosksIntro": "In a köşk that is unticked, this application's codes are removed from the courses and written to the audit log; ticking the köşk again does not bring them back. The enrolments it made earlier stay, and their cancellations still reach them.",
+    "kosksCount": "{count} köşks chosen",
+    "kosksSaved": "Köşks saved",
+    "kosksSavedBody": "{name} now works with {count} köşks.",
+    "noKoskOptions": "There is no köşk yet.",
+    "save": "Save",
+    "cancel": "Cancel",
+    "close": "Close",
+    "saveFailed": "Could not be saved",
+    "loadFailedTitle": "The partner applications could not be read",
+    "loadFailed": "Try again in a moment.",
+    "retry": "Try again",
+    "errors": {
+      "clientId": {
+        "empty": "Type the client ID.",
+        "shape": "A client ID holds only letters, digits, dots, underscores and hyphens, and starts with a letter or a digit."
+      },
+      "name": {
+        "empty": "Type a name.",
+        "long": "A name is at most 100 characters."
+      },
+      "exists": "A partner application with this client ID is registered already.",
+      "frontEnd": "This client is one of Medaris's own applications; it cannot be a partner application.",
+      "gone": "This partner application was not found. Reload the page.",
+      "koskGone": "One of the chosen köşks no longer exists. Reload the page.",
+      "invalid": "What was entered is not valid.",
+      "forbidden": "You do not have permission for this.",
+      "generic": "Something went wrong. Try again."
     }
   },
   "CourseRequestsPage": {

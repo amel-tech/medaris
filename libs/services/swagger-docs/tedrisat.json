@@ -12705,10 +12705,10 @@
             "description": "No token, or one tedrisat does not accept here: wrong signature, issuer, audience or client, expired, or not an access token."
           },
           "403": {
-            "description": "The partner client's token lacks the `partner-enrollment` realm role (PARTNER_ROLE_MISSING)."
+            "description": "The partner client's token lacks the `partner-enrollment` realm role (PARTNER_ROLE_MISSING), or the partner is disabled in nizam (PARTNER_DISABLED)."
           },
           "404": {
-            "description": "No course is mapped to this code for this partner (PARTNER_COURSE_UNKNOWN), or the realm has no such enabled account (PARTNER_USER_UNKNOWN). With no partner configured, every route here answers 404."
+            "description": "No course is mapped to this code for this partner in a köşk the partner works with (PARTNER_COURSE_UNKNOWN; a code mapped in a köşk it has been unbound from since reads the same), or the realm has no such enabled account (PARTNER_USER_UNKNOWN). With no partner registered, every route here answers 404."
           },
           "409": {
             "description": "The account's e-mail is not verified (PARTNER_USER_UNVERIFIED); the registration is linked to another person (PARTNER_REGISTRATION_USER_MISMATCH); or tedrisat refused the seat (PARTNER_ENROLLMENT_REFUSED, `context.reason`: BANNED, REMOVED_BY_COURSE_TEAM, COURSE_NOT_PUBLISHED, COURSE_HIDDEN, KOSK_HIDDEN, COURSE_NOT_FOUND or CHANGED)."
@@ -12731,7 +12731,7 @@
         ]
       },
       "delete": {
-        "description": "Idempotent. A seat the registration added is taken away through the course team's own removal path (the talebe is told, with a reason naming the partner); a seat the person holds independently stays. Either way the registration is closed; asking again answers the same.",
+        "description": "Idempotent. A seat the registration added is taken away through the course team's own removal path (the talebe is told, with a reason naming the partner); a seat the person holds independently stays. Either way the registration is closed; asking again answers the same. It works for every registration the partner made, also in a köşk it has been unbound from since.",
         "operationId": "deletePartnerEnrollment",
         "parameters": [
           {
@@ -12775,7 +12775,7 @@
             "description": "No token, or one tedrisat does not accept here: wrong signature, issuer, audience or client, expired, or not an access token."
           },
           "403": {
-            "description": "The partner client's token lacks the `partner-enrollment` realm role (PARTNER_ROLE_MISSING)."
+            "description": "The partner client's token lacks the `partner-enrollment` realm role (PARTNER_ROLE_MISSING), or the partner is disabled in nizam (PARTNER_DISABLED)."
           },
           "429": {
             "description": "Past the partner's budget for this route (`THROTTLE_PARTNER_LIMIT`, 600 a minute by default); `Retry-After` says when to try again."
@@ -12794,7 +12794,7 @@
     },
     "/integrations/courses": {
       "get": {
-        "description": "For the partner's own admin panel: which of its courses are connected.",
+        "description": "For the partner's own admin panel: which of its courses are connected. Only the codes in köşks the partner works with.",
         "operationId": "listPartnerCourses",
         "parameters": [],
         "responses": {
@@ -12815,7 +12815,7 @@
             "description": "No token, or one tedrisat does not accept here: wrong signature, issuer, audience or client, expired, or not an access token."
           },
           "403": {
-            "description": "The partner client's token lacks the `partner-enrollment` realm role (PARTNER_ROLE_MISSING)."
+            "description": "The partner client's token lacks the `partner-enrollment` realm role (PARTNER_ROLE_MISSING), or the partner is disabled in nizam (PARTNER_DISABLED)."
           },
           "429": {
             "description": "Past the partner's budget for this route (`THROTTLE_PARTNER_LIMIT`, 600 a minute by default); `Retry-After` says when to try again."
@@ -12832,40 +12832,9 @@
         ]
       }
     },
-    "/partner-applications": {
-      "get": {
-        "description": "Their ids and display names, nothing more; empty when none is configured, and nazar then shows no partner section. Open to every signed-in caller.",
-        "operationId": "listPartnerApplications",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/PartnerApplicationResponse"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "The partner applications this server works with",
-        "tags": [
-          "courses"
-        ]
-      }
-    },
     "/courses/{id}/partner-codes": {
       "get": {
-        "description": "Every configured partner application, each with its codes mapped to this course.",
+        "description": "The course's partner applications, each with its codes mapped to this course: the enabled partners bound to the köşk the course is held in. Empty when the köşk has none, and nazar then shows no partner section.",
         "operationId": "getCoursePartnerCodes",
         "parameters": [
           {
@@ -12946,7 +12915,7 @@
             "description": ""
           },
           "404": {
-            "description": "No such course, or no such partner application (PARTNER_UNKNOWN)."
+            "description": "No such course, or the partner is not one of the course's: not registered, disabled, or not bound to the course's köşk (PARTNER_UNKNOWN, the same for each)."
           },
           "409": {
             "description": "The code is mapped to another course already (PARTNER_CODE_TAKEN). Which one is not said."
@@ -12965,7 +12934,7 @@
     },
     "/courses/{id}/partner-codes/{partner}/{code}": {
       "delete": {
-        "description": "The people it enrolled stay; the partner's later cancellations still reach them. A code the course does not have is no error. Written to the audit log as `course.partner_code_remove`.",
+        "description": "The people it enrolled stay; the partner's later cancellations still reach them. A code the course does not have is no error. Any registered partner's code can be taken off, also one that is disabled or no longer bound to the course's köşk, so no code is ever stuck on a course. Written to the audit log as `course.partner_code_remove`.",
         "operationId": "removeCoursePartnerCode",
         "parameters": [
           {
@@ -13004,7 +12973,7 @@
             "description": ""
           },
           "404": {
-            "description": "No such course, or no such partner application (PARTNER_UNKNOWN)."
+            "description": "No such course, or no partner is registered under this id (PARTNER_UNKNOWN)."
           }
         },
         "security": [
@@ -13015,6 +12984,193 @@
         "summary": "Take a partner application's code off the course",
         "tags": [
           "courses"
+        ]
+      }
+    },
+    "/nizam/partner-applications": {
+      "get": {
+        "description": "Every registered partner, enabled or not, with the köşks it works with, and every köşk to pick from.",
+        "operationId": "listPartnerApplications",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PartnerAdminListResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Neither the başnazım nor a Medaris nazımı holding platform.partner_manage."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The partner applications, with their köşks",
+        "tags": [
+          "nizam"
+        ]
+      },
+      "post": {
+        "description": "Enabled, and bound to no köşk until köşks are chosen. Its token is accepted on `/integrations/*` from then on, and refused on every other route. Written to the audit log as `integration_partner.create`.",
+        "operationId": "createPartnerApplication",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePartnerDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PartnerAdminResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A client id that is not letters, digits, `.`, `_` and `-`, or a blank name or one longer than 100 (VALIDATION_ERROR)."
+          },
+          "403": {
+            "description": "Neither the başnazım nor a Medaris nazımı holding platform.partner_manage."
+          },
+          "409": {
+            "description": "The client id is registered already (PARTNER_EXISTS), or is one of the front-ends in KEYCLOAK_ALLOWED_CLIENTS (PARTNER_FRONT_END_CLIENT)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Register a partner application",
+        "tags": [
+          "nizam"
+        ]
+      }
+    },
+    "/nizam/partner-applications/{clientId}": {
+      "patch": {
+        "description": "A disabled partner's token is refused on `/integrations/*` with 403 PARTNER_DISABLED, and stays refused everywhere else; its codes are offered in no course. Written to the audit log as `integration_partner.rename`, `.disable` or `.enable`.",
+        "operationId": "updatePartnerApplication",
+        "parameters": [
+          {
+            "name": "clientId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": "ornek-uygulama",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePartnerDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PartnerAdminResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A blank or too long name."
+          },
+          "403": {
+            "description": "Neither the başnazım nor a Medaris nazımı holding platform.partner_manage."
+          },
+          "404": {
+            "description": "No such partner (PARTNER_UNKNOWN)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Rename, disable or enable a partner application",
+        "tags": [
+          "nizam"
+        ]
+      }
+    },
+    "/nizam/partner-applications/{clientId}/kosks": {
+      "put": {
+        "description": "The köşks named are bound, the others unbound. Unbinding a köşk takes the partner's codes off that köşk's courses (each written to the audit log as `course.partner_code_remove`), and binding it again brings none back; what its registrations did stays, and their cancellations still reach the seats they made. Written to the audit log under each köşk as `integration_partner.kosk_bind` or `.kosk_unbind`.",
+        "operationId": "setPartnerApplicationKosks",
+        "parameters": [
+          {
+            "name": "clientId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": "ornek-uygulama",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetPartnerKosksDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PartnerAdminResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Neither the başnazım nor a Medaris nazımı holding platform.partner_manage."
+          },
+          "404": {
+            "description": "No such partner (PARTNER_UNKNOWN), or köşk (KOSK_NOT_FOUND)."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Choose the köşks a partner application works with",
+        "tags": [
+          "nizam"
         ]
       }
     }
@@ -25900,24 +26056,6 @@
           "title"
         ]
       },
-      "PartnerApplicationResponse": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "example": "ornek-uygulama",
-            "description": "Its client id in the realm."
-          },
-          "name": {
-            "type": "string",
-            "example": "Örnek Uygulama"
-          }
-        },
-        "required": [
-          "id",
-          "name"
-        ]
-      },
       "PartnerCodeResponse": {
         "type": "object",
         "properties": {
@@ -25963,7 +26101,7 @@
         "type": "object",
         "properties": {
           "partners": {
-            "description": "Every partner application this server works with, each with its codes mapped to this course (possibly none).",
+            "description": "The course's partner applications (the enabled ones bound to the köşk the course is held in), each with its codes mapped to this course (possibly none). Empty when the köşk has no partner.",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/CoursePartnerCodesItem"
@@ -25991,6 +26129,130 @@
         "required": [
           "partner",
           "code"
+        ]
+      },
+      "PartnerKoskResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "example": "Örnek Köşkü"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
+      "PartnerAdminResponse": {
+        "type": "object",
+        "properties": {
+          "clientId": {
+            "type": "string",
+            "example": "ornek-uygulama",
+            "description": "Its client id in the realm: what its tokens carry in `azp`."
+          },
+          "name": {
+            "type": "string",
+            "example": "Örnek Uygulama"
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "A disabled partner's token is refused on `/integrations/*` (403 PARTNER_DISABLED), and its codes are offered in no course."
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "kosks": {
+            "description": "The köşks it works with, by name.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PartnerKoskResponse"
+            }
+          }
+        },
+        "required": [
+          "clientId",
+          "name",
+          "enabled",
+          "createdAt",
+          "kosks"
+        ]
+      },
+      "PartnerAdminListResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PartnerAdminResponse"
+            }
+          },
+          "kosks": {
+            "description": "Every köşk, by name: what a partner's köşks are picked from.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PartnerKoskResponse"
+            }
+          }
+        },
+        "required": [
+          "items",
+          "kosks"
+        ]
+      },
+      "CreatePartnerDto": {
+        "type": "object",
+        "properties": {
+          "clientId": {
+            "type": "string",
+            "example": "ornek-uygulama",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+            "description": "The partner's client id in the realm. Never one of the front-ends in KEYCLOAK_ALLOWED_CLIENTS."
+          },
+          "name": {
+            "type": "string",
+            "example": "Örnek Uygulama",
+            "maxLength": 100
+          }
+        },
+        "required": [
+          "clientId",
+          "name"
+        ]
+      },
+      "UpdatePartnerDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Örnek Uygulama",
+            "maxLength": 100
+          },
+          "enabled": {
+            "type": "boolean"
+          }
+        }
+      },
+      "SetPartnerKosksDto": {
+        "type": "object",
+        "properties": {
+          "koskIds": {
+            "description": "Every köşk the partner works with from now on; the ones left out are unbound.",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        },
+        "required": [
+          "koskIds"
         ]
       }
     }

@@ -8,18 +8,20 @@ partner's code maps to. Cancelling there takes away the seat the integration
 added, and only that one.
 
 Each partner gets one confidential client in the realm, made by hand per
-environment. No real partner's client is in this repository; the local example
-is `ornek-uygulama` (`config/keycloak/clients/local/ornek-uygulama.json`, and
-`tools/keycloak/setup-realm.sh` for the shared development realm), with every
-setting below. The one `setup-realm.sh` makes lacks step 7: that realm has no
-`full-name` scope, so its example keeps Keycloak's default scopes.
+environment, and is registered in nizam, where the başnazım chooses the köşks
+it works with. No real partner's client is in this repository; the local
+example is `ornek-uygulama` (`config/keycloak/clients/local/ornek-uygulama.json`,
+and `tools/keycloak/setup-realm.sh` for the shared development realm), with
+every setting below. The one `setup-realm.sh` makes lacks step 7: that realm
+has no `full-name` scope, so its example keeps Keycloak's default scopes.
 
 | | |
 |---|---|
 | tedrisat routes | `PUT` and `DELETE /integrations/enrollments/{registrationRef}/{courseCode}`, `GET /integrations/courses` (`apps/tedrisat/src/integration/`) |
-| Who passes | a token tedrisat verifies (signature, issuer, expiry, access token) whose `azp` is in `INTEGRATION_PARTNERS`, carrying the realm role `partner-enrollment` and tedrisat's audience. Nothing else, and that token on no other route |
-| tedrisat env | `INTEGRATION_PARTNERS` (empty: every `/integrations/*` route answers 404), the existing `KEYCLOAK_ADMIN_CLIENT_ID` / `_SECRET` |
-| Codes | course staff map the partner's codes to courses in nazar: Ders ayarları → Ortak uygulama kodları (`course.partner_codes`: the köşk nazımı and the başnazım) |
+| Who passes | a token tedrisat verifies (signature, issuer, expiry, access token) whose `azp` is a partner registered in nizam and enabled, carrying the realm role `partner-enrollment` and tedrisat's audience. Nothing else, and a registered partner's token, enabled or not, on no other route |
+| Registry | nizam → Ayarlar → **Ortak uygulamalar** (`platform.partner_manage`: the başnazım, and a Medaris nazımı only when given it). Table `integration_partners`, and `integration_partner_kosks` for the köşks. No partner registered: every `/integrations/*` route answers 404 |
+| tedrisat env | the existing `KEYCLOAK_ADMIN_CLIENT_ID` / `_SECRET`. `INTEGRATION_PARTNERS` is deprecated: it is read only at boot, to register a listed partner the table does not have yet (see §3) |
+| Codes | course staff map the partner's codes to courses in nazar: Ders ayarları → Ortak uygulama kodları (`course.partner_codes`: the köşk nazımı and the başnazım). Only the partners bound to the course's köşk are listed, and only there do their codes enrol anyone |
 
 ---
 
@@ -113,26 +115,62 @@ The default scopes it shows, in the theme's words
 (From the scopes' settings and the theme's tests; the screen of a real
 sign-in was not looked at for this runbook.)
 
-## 3. tedrisat
+## 3. Registering the partner in nizam
 
-Set, in Coolify, on tedrisat, **without** the `TEDRISAT__` prefix (the prefix
-exists only in the repository's root `.env`):
+nizam → Ayarlar → **Ortak uygulamalar**, as the başnazım (or a Medaris nazımı
+given "Ortak uygulamaları yönet", `platform.partner_manage`; no role holds it by
+default). No redeploy, no environment variable.
 
-```
-INTEGRATION_PARTNERS=<client id>=<Display name>
-```
+1. **Ortak uygulama ekle**: the client id (exactly the realm client's, what
+   its tokens carry in `azp`) and the display name nazar and the audit log
+   show (at most 100 characters). The partner is added **enabled** and bound to
+   **no köşk**: its token is accepted on `/integrations/*` at once, but none of
+   its codes counts anywhere yet.
+2. **Köşkleri seç** on its row: tick every köşk it works with and save. Only in
+   those köşks does Ders ayarları list it, may staff map its codes, and do its
+   codes enrol anyone; `GET /integrations/courses` lists only those codes.
+3. Course staff map its codes in nazar (Ders ayarları → Ortak uygulama
+   kodları).
 
-Several partners are comma-separated pairs; a display name holds no comma. The
-display name is what nazar and the audit log show. Then redeploy tedrisat.
+Every change is written to the audit log (`integration_partner.create`,
+`.rename`, `.disable`, `.enable`, and `.kosk_bind` / `.kosk_unbind` under the
+köşk). It is in force at once on the instance that took it; tedrisat keeps the
+list of partners in memory for a minute, so another instance follows within
+that minute. Unbinding a köşk **removes the partner's codes from that köşk's
+courses**, each written to the audit log as `course.partner_code_remove`, and
+binding the köşk again brings none back: course staff map them anew. So a code
+is never stuck on a course nobody can see it on, and the partner may map the
+same code in another köşk. What its registrations did there stays, and the
+partner's DELETE for those registrations still takes away the seats they made.
+Switching a partner off keeps its codes. Course staff holding
+`course.partner_codes` can take any registered partner's code off a course,
+also one that is switched off or not bound to the köşk.
 
-- The partner's client id is **never** in `KEYCLOAK_ALLOWED_CLIENTS`; tedrisat
-  refuses to boot if it is. Its tokens are refused on every other route.
+- The partner's client id is **never** one of the front-ends in
+  `KEYCLOAK_ALLOWED_CLIENTS`: registering one is refused with 409
+  `PARTNER_FRONT_END_CLIENT`. A registered partner's tokens are refused on
+  every other route, enabled or not.
 - tedrisat checks the person's account (exists, enabled, e-mail verified) with
   the service account it already has (`KEYCLOAK_ADMIN_CLIENT_ID`,
   `view-users`). Without it the partner's PUT answers 503.
 - The partner's budget is 600 calls a minute per route
   (`THROTTLE_PARTNER_LIMIT`, `THROTTLE_PARTNER_TTL`); past it, 429 with
   `Retry-After`.
+
+### Coming from `INTEGRATION_PARTNERS`
+
+Before the registry moved into the database, `INTEGRATION_PARTNERS`
+(`<client id>=<Display name>`, comma-separated) on tedrisat was the whole
+list. tedrisat still reads it, at boot and for nothing else: each listed
+partner that is not registered yet is registered, enabled, and bound to every
+köşk that already holds a course one of its codes is mapped to, so a partner
+that worked before the upgrade keeps working after it. A partner registered
+already is left as it is, so a restart never undoes a rename, a disabling or an
+unbinding made in nizam. While the value is set, the log says once per boot
+that it is deprecated. After the first boot of this release, check the partner
+in nizam, then remove the value from Coolify; nothing changes when it goes.
+The boot's rows are in the audit log with no actor and `seededFrom:
+INTEGRATION_PARTNERS`.
 
 ## 4. Handing the partner its secret
 
@@ -158,14 +196,15 @@ curl -s -X POST "$ISSUER/protocol/openid-connect/token" \
 `azp` is the client id, `aud` holds tedrisat's audience, and
 `realm_access.roles` is `["partner-enrollment"]`. With that token,
 `GET <tedrisat>/integrations/courses` answers 200 and the codes course staff
-have mapped (`[]` before any).
+have mapped in the partner's köşks (`[]` before any, or before a köşk is
+chosen).
 
 ## 6. Ending a partnership
 
-Disable the client in the realm first, then take the pair out of
-`INTEGRATION_PARTNERS` and redeploy tedrisat: its token is then refused on
-`/integrations/*`, and nazar no longer offers its codes. The order matters: a
-client that is no longer in `INTEGRATION_PARTNERS` is no longer refused by
-name on tedrisat's other routes, so where `KEYCLOAK_ALLOWED_CLIENTS` is empty
-only the disabled client keeps its tokens out. Seats it added stay; the
-course team removes them on the roster if they should go.
+Switch it off in nizam (Ortak uygulamalar → its row → *Açık* off), then
+disable the client in the realm. Switched off, its token is refused on
+`/integrations/*` with 403 `PARTNER_DISABLED`, and nazar offers its codes in no
+course; it stays registered, so its token stays refused on every other route
+too. Switching it on again brings it back with its köşks and codes. A partner
+is never deleted. Seats it added stay; the course team removes them on the
+roster if they should go.

@@ -82,6 +82,7 @@ describe("codes and messages", () => {
       "platform.inactive_scopes_manage",
       "platform.youtube_manage",
       "platform.policy_edit",
+      "platform.partner_manage",
     ];
     for (const lang of ["tr", "en", "ar"] as const) {
       const catalog = (

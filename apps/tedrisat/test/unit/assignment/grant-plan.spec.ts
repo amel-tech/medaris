@@ -295,13 +295,15 @@ describe("earliestEnd", () => {
 });
 
 describe("the catalog", () => {
-  it("has the 18 platform codes the screens draw, each once", () => {
+  it("has the 19 platform codes the screens draw, each once", () => {
     const codes = PLATFORM_CATALOG.flatMap((s) => s.permissions);
     expect(PLATFORM_CATALOG.map((s) => s.permissions.length)).toEqual([
-      5, 4, 3, 2, 4,
+      5, 4, 3, 2, 5,
     ]);
     expect(new Set(codes).size).toBe(codes.length);
-    expect(PLATFORM_CODES.size).toBe(18);
+    expect(PLATFORM_CODES.size).toBe(19);
+    // "Ortak uygulamalar" can be handed to a Medaris nazımı.
+    expect(PLATFORM_CODES.has(PERMISSIONS.PLATFORM_PARTNER_MANAGE)).toBe(true);
     // Platform management's course hide (MDRS-143) can be handed to a Medaris nazımı.
     expect(PLATFORM_CODES.has(PERMISSIONS.PLATFORM_COURSE_HIDE)).toBe(true);
   });

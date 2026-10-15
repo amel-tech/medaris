@@ -47,7 +47,8 @@ const caller = (request: PartnerRequest): IPartnerCaller => {
  * partner client's service-account token passes `PartnerGuard`; no person's
  * token does, and no other route accepts a partner's. No `AuthGuard` and no
  * `AuthzGuard` here: the partner holds no role in any scope; what it may do is
- * the code mapping course staff set in nazar.
+ * the code mapping course staff set in nazar, in the köşks the başnazım bound
+ * the partner to in nizam.
  */
 @ApiTags("integrations")
 @ApiBearerAuth()
@@ -57,7 +58,7 @@ const caller = (request: PartnerRequest): IPartnerCaller => {
 })
 @ApiForbiddenResponse({
   description:
-    "The partner client's token lacks the `partner-enrollment` realm role (PARTNER_ROLE_MISSING).",
+    "The partner client's token lacks the `partner-enrollment` realm role (PARTNER_ROLE_MISSING), or the partner is disabled in nizam (PARTNER_DISABLED).",
 })
 @ApiTooManyRequestsResponse({
   description:
@@ -82,7 +83,7 @@ export class PartnerEnrollmentController {
   })
   @ApiNotFoundResponse({
     description:
-      "No course is mapped to this code for this partner (PARTNER_COURSE_UNKNOWN), or the realm has no such enabled account (PARTNER_USER_UNKNOWN). With no partner configured, every route here answers 404.",
+      "No course is mapped to this code for this partner in a köşk the partner works with (PARTNER_COURSE_UNKNOWN; a code mapped in a köşk it has been unbound from since reads the same), or the realm has no such enabled account (PARTNER_USER_UNKNOWN). With no partner registered, every route here answers 404.",
   })
   @ApiConflictResponse({
     description:
@@ -105,7 +106,7 @@ export class PartnerEnrollmentController {
   @ApiOperation({
     summary: "Undo what a registration did, and only that",
     description:
-      "Idempotent. A seat the registration added is taken away through the course team's own removal path (the talebe is told, with a reason naming the partner); a seat the person holds independently stays. Either way the registration is closed; asking again answers the same.",
+      "Idempotent. A seat the registration added is taken away through the course team's own removal path (the talebe is told, with a reason naming the partner); a seat the person holds independently stays. Either way the registration is closed; asking again answers the same. It works for every registration the partner made, also in a köşk it has been unbound from since.",
     operationId: "deletePartnerEnrollment",
   })
   @ApiOkResponse({ type: PartnerUnenrollmentResponse })
@@ -124,7 +125,7 @@ export class PartnerEnrollmentController {
   @ApiOperation({
     summary: "The partner's codes that are mapped to Medaris courses",
     description:
-      "For the partner's own admin panel: which of its courses are connected.",
+      "For the partner's own admin panel: which of its courses are connected. Only the codes in köşks the partner works with.",
     operationId: "listPartnerCourses",
   })
   @ApiOkResponse({ type: PartnerCourseResponse, isArray: true })

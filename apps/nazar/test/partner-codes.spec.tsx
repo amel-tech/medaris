@@ -15,10 +15,12 @@ import { expand, html, textOf, translatorFor } from "./server-render";
 
 /**
  * "Ortak uygulama kodları" on Ders ayarları (partner enrollments): drawn only
- * for a caller who holds `course.partner_codes` and only when the server works
- * with a partner application; codes are added and removed one call at a time,
- * and a code another course has is refused naming nothing about that course.
- * The reads and the two actions are stubs.
+ * for a caller who holds `course.partner_codes` and only when the course's
+ * köşk works with a partner application, which the course's own read says
+ * (`GET /courses/:id/partner-codes` lists the partners bound to its köşk);
+ * codes are added and removed one call at a time, and a code another course
+ * has is refused naming nothing about that course. The reads and the two
+ * actions are stubs.
  */
 type Answer<T> =
   | { status: "ok"; data: T }
@@ -27,6 +29,8 @@ type Answer<T> =
 
 const state = {
   permissions: { status: "failed" } as Answer<unknown>,
+  // The platform's whole list, as the page read it before the köşk scope:
+  // never read now, whatever it holds.
   partners: { status: "failed" } as Answer<unknown>,
   codes: { status: "failed" } as Answer<unknown>,
   reads: [] as string[],
@@ -139,7 +143,10 @@ const add = async (code: string) => {
 
 beforeEach(() => {
   state.permissions = holding(...NAZIM);
-  state.partners = { status: "ok", data: [PARTNER] };
+  state.partners = {
+    status: "ok",
+    data: [PARTNER, { id: "ikinci-uygulama", name: "İkinci Uygulama" }],
+  };
   state.codes = {
     status: "ok",
     data: {
@@ -167,13 +174,23 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("Ortak uygulama kodları on Ders ayarları", () => {
-  it("lists each partner with its codes for the köşk nazımı", async () => {
+  it("lists each partner of the course's köşk with its codes for the köşk nazımı", async () => {
     const out = await markup();
     expect(out).toContain("Ortak uygulama kodları");
     expect(out).toContain("Örnek Uygulama");
     expect(out).toContain("tecvid-2026");
     expect(out).toContain("tecvid-hafta-1");
     expect(out).toContain("Kod ekle");
+  });
+
+  it("draws the köşk's partners the course's read names, and never reads the platform's list", async () => {
+    const out = await markup();
+    // A partner of another köşk is not the course's: the read leaves it out,
+    // and the page has no other list to find it in.
+    expect(out).not.toContain("İkinci Uygulama");
+    expect(state.reads.filter((what) => what.includes("partner"))).toEqual([
+      "the course's partner codes",
+    ]);
   });
 
   it("is not drawn, nor read, for a caller without course.partner_codes", async () => {
@@ -184,14 +201,11 @@ describe("Ortak uygulama kodları on Ders ayarları", () => {
     expect(state.reads.some((what) => what.includes("partner"))).toBe(false);
   });
 
-  it("is not drawn when the server works with no partner application, and the codes are not read", async () => {
-    state.partners = { status: "ok", data: [] };
-    expect(await markup()).not.toContain("Ortak uygulama kodları");
-    expect(state.reads.some((what) => what.includes("partner codes"))).toBe(
-      false
-    );
-    state.partners = { status: "failed" };
-    expect(await markup()).not.toContain("Ortak uygulama kodları");
+  it("is not drawn when the course's köşk has no partner, though the platform has some", async () => {
+    state.codes = { status: "ok", data: { partners: [] } };
+    const out = await markup();
+    expect(out).toContain("Kayıt onayı gereksin");
+    expect(out).not.toContain("Ortak uygulama kodları");
   });
 
   it("opens the page to a caller who holds course.partner_codes alone", async () => {

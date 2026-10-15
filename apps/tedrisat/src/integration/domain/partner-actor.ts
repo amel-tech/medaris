@@ -11,7 +11,7 @@
 export interface IPartnerActor {
   /** The partner's Keycloak client id (`azp`). */
   clientId: string;
-  /** Its display name from `INTEGRATION_PARTNERS`. */
+  /** Its display name in the registry (`integration_partners.name`). */
   name: string;
 }
 

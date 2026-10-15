@@ -753,6 +753,7 @@
       "archive": "Arşiv",
       "youtube": "YouTube bağlantısı",
       "platformSettings": "Platform ayarları",
+      "partners": "Ortak uygulamalar",
       "courses": "Dersler",
       "sessions": "Celseler",
       "students": "Talebeler",
@@ -1192,6 +1193,11 @@
         "title": "Platform politikalarını değiştir",
         "short": "Platform politikalarını değiştir",
         "help": "Kayıt ve ders kaydı politikalarını platform genelinde daraltır."
+      },
+      "platform_partner_manage": {
+        "title": "Ortak uygulamaları yönet",
+        "short": "Ortak uygulamaları yönet",
+        "help": "Ortak uygulama ekler, adını değiştirir, kapatır ya da açar ve çalışacağı köşkleri seçer."
       }
     },
     "courseShort": {
@@ -3456,6 +3462,70 @@
     "errors": {
       "generic": "İşlem tamamlanamadı. Biraz sonra yeniden deneyin.",
       "forbidden": "Bu işlem için izniniz yok."
+    }
+  },
+  "PartnersPage": {
+    "title": "Ortak uygulamalar",
+    "intro": "Kayıtları Medaris'te ders kaydına dönüşen ortak uygulamalar. Bir ortak uygulama yalnız seçilen köşklerle çalışır: kodları yalnız o köşklerin Ders ayarlarında görünür ve yalnız orada talebe kaydeder.",
+    "addHeading": "Ortak uygulama ekle",
+    "addIntro": "Eklenen uygulama açık gelir, hiçbir köşkle çalışmaz. Köşklerini ardından seçin.",
+    "clientIdLabel": "İstemci kimliği",
+    "clientIdHelp": "Uygulamanın Keycloak istemcisinin kimliği: harf, rakam, nokta, alt çizgi ve tire.",
+    "nameLabel": "Ad",
+    "nameHelp": "Ders ayarlarında ve denetim kaydında bu ad görünür. En çok 100 karakter.",
+    "add": "Ekle",
+    "added": "Ortak uygulama eklendi",
+    "addedBody": "{name} açık. Şimdi çalışacağı köşkleri seçin.",
+    "listHeading": "Kayıtlı ortak uygulamalar",
+    "empty": "Kayıtlı ortak uygulama yok.",
+    "columns": {
+      "name": "Ad",
+      "clientId": "İstemci kimliği",
+      "kosks": "Köşkler",
+      "enabled": "Durum",
+      "actions": "İşlemler"
+    },
+    "noKosks": "Köşk seçilmedi",
+    "on": "Açık",
+    "off": "Kapalı",
+    "turnedOn": "Ortak uygulama açıldı",
+    "turnedOnBody": "{name} seçili köşklerinde yeniden talebe kaydedebilir.",
+    "turnedOff": "Ortak uygulama kapatıldı",
+    "turnedOffBody": "{name} artık talebe kaydedemez; kodları hiçbir derste görünmez. Açtığı kayıtlar yerinde kalır.",
+    "rename": "Adını değiştir",
+    "renameTitle": "Adını değiştir",
+    "renamed": "Ad değiştirildi",
+    "renamedBody": "Bundan sonra {name} adı görünür.",
+    "chooseKosks": "Köşkleri seç",
+    "kosksTitle": "Çalıştığı köşkler",
+    "kosksIntro": "Seçimi kaldırılan köşkte bu uygulamanın derslere bağlı kodları silinir ve denetim kaydına yazılır; köşk yeniden seçilse de geri gelmez. Daha önce açtığı kayıtlar yerinde kalır, iptalleri yine ulaşır.",
+    "kosksCount": "{count} köşk seçili",
+    "kosksSaved": "Köşkler kaydedildi",
+    "kosksSavedBody": "{name} artık {count} köşkle çalışıyor.",
+    "noKoskOptions": "Henüz köşk yok.",
+    "save": "Kaydet",
+    "cancel": "Vazgeç",
+    "close": "Kapat",
+    "saveFailed": "Kaydedilemedi",
+    "loadFailedTitle": "Ortak uygulamalar okunamadı",
+    "loadFailed": "Biraz sonra yeniden deneyin.",
+    "retry": "Tekrar dene",
+    "errors": {
+      "clientId": {
+        "empty": "İstemci kimliğini yazın.",
+        "shape": "İstemci kimliği yalnız harf, rakam, nokta, alt çizgi ve tire içerebilir; harf ya da rakamla başlar."
+      },
+      "name": {
+        "empty": "Bir ad yazın.",
+        "long": "Ad en çok 100 karakter olabilir."
+      },
+      "exists": "Bu istemci kimliğiyle kayıtlı bir ortak uygulama var.",
+      "frontEnd": "Bu istemci Medaris'in kendi uygulamalarından biri; ortak uygulama olamaz.",
+      "gone": "Bu ortak uygulama bulunamadı. Sayfayı yenileyin.",
+      "koskGone": "Seçilen köşklerden biri artık yok. Sayfayı yenileyin.",
+      "invalid": "Girilen bilgiler geçerli değil.",
+      "forbidden": "Bunun için izniniz yok.",
+      "generic": "Bir sorun oldu. Yeniden deneyin."
     }
   },
   "CourseRequestsPage": {

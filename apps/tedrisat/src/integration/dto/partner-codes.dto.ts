@@ -3,18 +3,6 @@ import { IsUUID, Matches } from "class-validator";
 import { PARTNER_CLIENT_ID_PATTERN } from "../../config/integration-partners-env";
 import { COURSE_CODE_PATTERN } from "../domain/partner-enrollment";
 
-/** A partner application this server works with: its id and the name people read. */
-export class PartnerApplicationResponse {
-  @ApiProperty({
-    example: "ornek-uygulama",
-    description: "Its client id in the realm.",
-  })
-  id!: string;
-
-  @ApiProperty({ example: "Örnek Uygulama" })
-  name!: string;
-}
-
 export class PartnerCodeResponse {
   @ApiProperty({ example: "tecvid-2026-guz" }) code!: string;
   @ApiProperty() createdAt!: Date;
@@ -32,7 +20,7 @@ export class CoursePartnerCodesResponse {
     type: () => CoursePartnerCodesItem,
     isArray: true,
     description:
-      "Every partner application this server works with, each with its codes mapped to this course (possibly none).",
+      "The course's partner applications (the enabled ones bound to the köşk the course is held in), each with its codes mapped to this course (possibly none). Empty when the köşk has no partner.",
   })
   partners!: CoursePartnerCodesItem[];
 }

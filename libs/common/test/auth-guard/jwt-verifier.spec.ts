@@ -1,6 +1,6 @@
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
-import { Module } from "@nestjs/common";
+import { Global, Module } from "@nestjs/common";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 import { NestFactory } from "@nestjs/core";
 import {
@@ -23,6 +23,7 @@ import {
   JwtVerifierService,
   KeyNotFoundError,
   loadJwtClaimPolicy,
+  REFUSED_CLIENT_SOURCE,
 } from "../../src";
 import { KeycloakPublicKeyProvider } from "../../src/auth-guard/key-providers/keycloak-public-key-provider";
 
@@ -359,6 +360,49 @@ describe("JwtVerifierService with jose and a served JWKS (auth audit C5)", () =>
         partnerOnly.verifyToken(await sign(rsa, validClaims()))
       ).rejects.toThrow(/may not call this API: azp is "tedris-web"/);
     });
+
+    it("refuses a client its refused-client source names, asked per token", async () => {
+      // The partner registry: rows the başnazım adds while the API runs.
+      const config = new ConfigService(keycloakConfig({ allowedClients: "" }));
+      const provider = new KeycloakPublicKeyProvider(config);
+      await provider.onModuleInit();
+      const registered = new Set<string>();
+      const asked: string[] = [];
+      const verifier = new JwtVerifierService(provider, config, {
+        isRefused: async (clientId) => {
+          asked.push(clientId);
+          return registered.has(clientId);
+        },
+      });
+      const partner = await sign(ed, validClaims({ azp: "ornek-uygulama" }));
+
+      await expect(verifier.verifyToken(partner)).resolves.toMatchObject({
+        azp: "ornek-uygulama",
+      });
+      registered.add("ornek-uygulama");
+      await expect(verifier.verifyToken(partner)).rejects.toThrow(
+        /tokens these routes refuse: azp is "ornek-uygulama"/
+      );
+      await expect(
+        verifier.verifyToken(await sign(ed, validClaims()))
+      ).resolves.toMatchObject({ azp: CLIENT });
+      expect(asked).toEqual(["ornek-uygulama", "ornek-uygulama", CLIENT]);
+    });
+
+    it("refuses the token when the source cannot tell", async () => {
+      const config = new ConfigService(keycloakConfig({ allowedClients: "" }));
+      const provider = new KeycloakPublicKeyProvider(config);
+      await provider.onModuleInit();
+      const verifier = new JwtVerifierService(provider, config, {
+        isRefused: async () => {
+          throw new Error("database unavailable");
+        },
+      });
+
+      const rejection = verifier.verifyToken(await sign(ed, validClaims()));
+      await expect(rejection).rejects.toBeInstanceOf(JwtClaimError);
+      await expect(rejection).rejects.toThrow(/database unavailable/);
+    });
   });
 });
 
@@ -389,6 +433,53 @@ describe("AuthGuardModule wiring", () => {
       await expect(verifier.verifyToken(await sign(ed))).resolves.toMatchObject(
         { sub: SUBJECT }
       );
+    } finally {
+      await context.close();
+    }
+  });
+
+  it("hands the verifier a refused-client source a global module provides", async () => {
+    // How tedrisat refuses its partner applications on every route behind
+    // AuthGuard: AuthGuardModule is imported by many modules, and a global
+    // module's export is the one provider all of them see.
+    @Global()
+    @Module({
+      providers: [
+        {
+          provide: REFUSED_CLIENT_SOURCE,
+          useValue: { isRefused: async (id: string) => id === CLIENT },
+        },
+      ],
+      exports: [REFUSED_CLIENT_SOURCE],
+    })
+    class RegistryModule {}
+
+    @Module({
+      imports: [
+        ConfigModule.forRoot({
+          ignoreEnvFile: true,
+          isGlobal: true,
+          load: [() => keycloakConfig({ allowedClients: "" })],
+        }),
+        RegistryModule,
+        AuthGuardModule,
+      ],
+    })
+    class WiringModule {}
+
+    const context = await NestFactory.createApplicationContext(WiringModule, {
+      abortOnError: false,
+      logger: false,
+    });
+
+    try {
+      const verifier = context.get<IJwtVerifier>(JWT_VERIFIER);
+      await expect(verifier.verifyToken(await sign(ed))).rejects.toThrow(
+        /tokens these routes refuse/
+      );
+      await expect(
+        verifier.verifyToken(await sign(ed, validClaims({ azp: "nazar-web" })))
+      ).resolves.toMatchObject({ sub: SUBJECT });
     } finally {
       await context.close();
     }

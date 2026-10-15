@@ -533,5 +533,6 @@ Done. The API side of this realm:
   KEYCLOAK_ISSUER=$KC_URL/realms/$REALM
   KEYCLOAK_AUDIENCE=$API_CLIENT_ID
   KEYCLOAK_ALLOWED_CLIENTS=$(for e in $WEB_CLIENTS; do printf '%s,' "${e%%=*}"; done | sed 's/,$//')
-  INTEGRATION_PARTNERS=$(for e in $PARTNER_CLIENTS; do printf '%s=<display name>,' "${e%%=*}"; done | sed 's/,$//')
+Partner clients to register in nizam (Ayarlar → Ortak uygulamalar), with their köşks:
+  $(for e in $PARTNER_CLIENTS; do printf '%s ' "${e%%=*}"; done)
 EOF

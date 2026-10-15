@@ -240,10 +240,14 @@ describe("Permission admin (e2e)", () => {
         res.body.platform.map(
           (s: { permissions: string[] }) => s.permissions.length
         )
-      ).toEqual([5, 4, 3, 2, 4]);
+      ).toEqual([5, 4, 3, 2, 5]);
       // Platform management's course hide (MDRS-143) is one of the köşk section's.
       expect(res.body.platform[0].permissions).toContain(
         "platform.course_hide"
+      );
+      // "Ortak uygulamalar" can be handed to a Medaris nazımı, beside the settings.
+      expect(res.body.platform[4].permissions).toContain(
+        "platform.partner_manage"
       );
       expect(res.body.course).toContain("course.edit");
       expect(res.body.course).not.toContain("user.lookup");

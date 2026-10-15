@@ -8,7 +8,7 @@ const read = (value?: string, allowed?: string) =>
   } as NodeJS.ProcessEnv);
 
 describe("INTEGRATION_PARTNERS (partner enrollments)", () => {
-  it("is empty when unset or blank, so the partner routes answer 404", () => {
+  it("is empty when unset or blank, so nothing is seeded", () => {
     expect(read(undefined)).toEqual([]);
     expect(read("")).toEqual([]);
     expect(read("  ")).toEqual([]);
@@ -42,26 +42,28 @@ describe("INTEGRATION_PARTNERS (partner enrollments)", () => {
       process.env = originalEnv;
     });
 
-    it("lists the partners and refuses their clients on AuthGuard's routes", () => {
+    // The registry is the database's now: the value only seeds it, and the
+    // verifier refuses the registered clients through the registry, not
+    // through a list read once at boot.
+    it("lists the partners to seed, and refuses no client by configuration", () => {
       process.env = {
         ...originalEnv,
         INTEGRATION_PARTNERS: "ornek-uygulama=Örnek Uygulama",
       };
       const config = configuration();
 
-      expect(config.integrations.partners).toEqual([
+      expect(config.integrations.seedPartners).toEqual([
         { clientId: "ornek-uygulama", name: "Örnek Uygulama" },
       ]);
-      expect(config.keycloak.refusedClients).toEqual(["ornek-uygulama"]);
+      expect(config.keycloak).not.toHaveProperty("refusedClients");
     });
 
-    it("has neither when the value is unset", () => {
+    it("seeds nothing when the value is unset", () => {
       process.env = { ...originalEnv };
       delete process.env.INTEGRATION_PARTNERS;
       const config = configuration();
 
-      expect(config.integrations.partners).toEqual([]);
-      expect(config.keycloak.refusedClients).toEqual([]);
+      expect(config.integrations.seedPartners).toEqual([]);
     });
   });
 });

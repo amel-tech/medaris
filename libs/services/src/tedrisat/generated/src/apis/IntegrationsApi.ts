@@ -48,7 +48,7 @@ export interface PutPartnerEnrollmentRequest {
 export class IntegrationsApi extends runtime.BaseAPI {
 
     /**
-     * Idempotent. A seat the registration added is taken away through the course team\'s own removal path (the talebe is told, with a reason naming the partner); a seat the person holds independently stays. Either way the registration is closed; asking again answers the same.
+     * Idempotent. A seat the registration added is taken away through the course team\'s own removal path (the talebe is told, with a reason naming the partner); a seat the person holds independently stays. Either way the registration is closed; asking again answers the same. It works for every registration the partner made, also in a köşk it has been unbound from since.
      * Undo what a registration did, and only that
      */
     async deletePartnerEnrollmentRaw(requestParameters: DeletePartnerEnrollmentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PartnerUnenrollmentResponse>> {
@@ -91,7 +91,7 @@ export class IntegrationsApi extends runtime.BaseAPI {
     }
 
     /**
-     * Idempotent. A seat the registration added is taken away through the course team\'s own removal path (the talebe is told, with a reason naming the partner); a seat the person holds independently stays. Either way the registration is closed; asking again answers the same.
+     * Idempotent. A seat the registration added is taken away through the course team\'s own removal path (the talebe is told, with a reason naming the partner); a seat the person holds independently stays. Either way the registration is closed; asking again answers the same. It works for every registration the partner made, also in a köşk it has been unbound from since.
      * Undo what a registration did, and only that
      */
     async deletePartnerEnrollment(requestParameters: DeletePartnerEnrollmentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PartnerUnenrollmentResponse> {
@@ -100,7 +100,7 @@ export class IntegrationsApi extends runtime.BaseAPI {
     }
 
     /**
-     * For the partner\'s own admin panel: which of its courses are connected.
+     * For the partner\'s own admin panel: which of its courses are connected. Only the codes in köşks the partner works with.
      * The partner\'s codes that are mapped to Medaris courses
      */
     async listPartnerCoursesRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<PartnerCourseResponse>>> {
@@ -127,7 +127,7 @@ export class IntegrationsApi extends runtime.BaseAPI {
     }
 
     /**
-     * For the partner\'s own admin panel: which of its courses are connected.
+     * For the partner\'s own admin panel: which of its courses are connected. Only the codes in köşks the partner works with.
      * The partner\'s codes that are mapped to Medaris courses
      */
     async listPartnerCourses(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<PartnerCourseResponse>> {

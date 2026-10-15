@@ -136,6 +136,7 @@ GET /nizam/kosk-applications -> no AuthzGuard
 GET /nizam/kosk-applications/:id -> no AuthzGuard
 GET /nizam/medaris-nazims -> no AuthzGuard
 GET /nizam/medaris-nazims/:userId/given -> no AuthzGuard
+GET /nizam/partner-applications -> no AuthzGuard
 GET /nizam/permission-groups -> no AuthzGuard
 GET /nizam/permission-groups/:id/users -> no AuthzGuard
 GET /nizam/permissions -> no AuthzGuard
@@ -143,7 +144,6 @@ GET /nizam/platform-policies -> no AuthzGuard
 GET /nizam/scoped-policies -> no AuthzGuard
 GET /notifications -> no AuthzGuard
 GET /notifications/unread-count -> no AuthzGuard
-GET /partner-applications -> exempt
 GET /sessions -> no AuthzGuard
 GET /users -> no AuthzGuard
 GET /users/:id/public-profile -> no AuthzGuard
@@ -162,6 +162,7 @@ PATCH /madrasahs/:id/permission-groups/:groupId -> madrasah.nazir_appoint | plat
 PATCH /madrasahs/:id/settings -> madrasah.settings_edit on byExistingMadrasah
 PATCH /me -> no AuthzGuard
 PATCH /me/public-profile -> no AuthzGuard
+PATCH /nizam/partner-applications/:clientId -> no AuthzGuard
 PATCH /questions/:questionId -> course.view on byQuestionCourse
 PATCH /recordings/:id -> recording.manage on byRecordingCourse
 POST /archive/:type/:id/restore -> exempt
@@ -239,6 +240,7 @@ POST /nizam/inactive-scopes/:type/:id/view -> no AuthzGuard
 POST /nizam/kosk-applications/:id/approve -> no AuthzGuard
 POST /nizam/kosk-applications/:id/reject -> no AuthzGuard
 POST /nizam/medaris-nazims -> no AuthzGuard
+POST /nizam/partner-applications -> no AuthzGuard
 POST /nizam/permission-groups -> no AuthzGuard
 POST /notifications/:id/read -> no AuthzGuard
 POST /notifications/read-all -> no AuthzGuard
@@ -257,6 +259,7 @@ PUT /madrasahs/:id/courses/:courseId/muderrises -> madrasah.muderris_manage on b
 PUT /madrasahs/:id/head-muderris -> platform.head_muderris_manage on byExistingMadrasah
 PUT /madrasahs/:id/nazirs/:userId/permissions -> madrasah.nazir_appoint | platform.madrasah_nazir_grant on byExistingMadrasah
 PUT /nizam/medaris-nazims/:userId/grants -> no AuthzGuard
+PUT /nizam/partner-applications/:clientId/kosks -> no AuthzGuard
 PUT /nizam/permission-groups/:id -> no AuthzGuard
 PUT /nizam/platform-policies/:key -> no AuthzGuard
 PUT /questions/:questionId/answer -> course.view on byQuestionCourse

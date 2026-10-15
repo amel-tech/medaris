@@ -1,4 +1,4 @@
-import { Inject, Injectable } from "@nestjs/common";
+import { Inject, Injectable, Optional } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import {
   decodeProtectedHeader,
@@ -8,7 +8,10 @@ import {
   jwtVerify,
 } from "jose";
 import { mapAccessTokenClaims } from "../access-token-claims";
-import { PUBLIC_KEY_PROVIDER } from "../auth-guard.tokens";
+import {
+  PUBLIC_KEY_PROVIDER,
+  REFUSED_CLIENT_SOURCE,
+} from "../auth-guard.tokens";
 import {
   JwtClaimError,
   JwtDecodeError,
@@ -18,6 +21,7 @@ import {
 } from "../exceptions/exceptions";
 import { IJwtVerifier } from "../interfaces/jwt-verifier.interface";
 import { IPublicKeyProvider } from "../interfaces/public-key-provider.interface";
+import { IRefusedClientSource } from "../interfaces/refused-client-source.interface";
 
 /**
  * The claim checks applied on top of the signature.
@@ -52,6 +56,8 @@ export interface JwtClaimPolicy {
    * `AuthGuard` would take them. Those tokens belong on the partner routes
    * alone, which verify them with a policy of their own. A client may not be
    * both allowed and refused; `loadJwtClaimPolicy` refuses to start on that.
+   * Clients registered while the API runs are refused through an
+   * `IRefusedClientSource` instead, which tedrisat's partner registry is.
    */
   refusedClients: string[];
 }
@@ -206,11 +212,16 @@ function verificationFailure(error: unknown): Error {
  * clients are not the front-ends') builds one on the same key provider, so
  * the signature, algorithm, `iss`, `aud`, `exp` and token-type checks are the
  * same code everywhere.
+ *
+ * `refusedSource` adds clients refused at run time to the policy's own
+ * `refusedClients` (`IRefusedClientSource`): the partner applications, which
+ * the başnazım registers while the API runs.
  */
 export class JwtTokenVerifier implements IJwtVerifier {
   constructor(
     private readonly keyProvider: IPublicKeyProvider,
-    protected readonly policy: JwtClaimPolicy
+    protected readonly policy: JwtClaimPolicy,
+    private readonly refusedSource: IRefusedClientSource | null = null
   ) {}
 
   async verifyToken(token: string): Promise<JWTPayload> {
@@ -246,7 +257,7 @@ export class JwtTokenVerifier implements IJwtVerifier {
    * Checks the claims jose does not check on its own. `iss`, `aud`, `exp` and
    * `nbf` are already enforced by the options above.
    */
-  private assertClaims(decoded: JWTPayload): JWTPayload {
+  private async assertClaims(decoded: JWTPayload): Promise<JWTPayload> {
     // jose, like `jsonwebtoken` before it, enforces `exp` when it is present
     // but accepts a token that omits it, which would never expire. Keycloak
     // always sets it.
@@ -285,6 +296,25 @@ export class JwtTokenVerifier implements IJwtVerifier {
         `JWT was issued to a client whose tokens these routes refuse: azp is "${claims.clientId}"`
       );
     }
+    if (claims.clientId !== undefined && this.refusedSource) {
+      let refused: boolean;
+      try {
+        refused = await this.refusedSource.isRefused(claims.clientId);
+      } catch (error) {
+        // Not knowing is no "allowed": the token is refused, and the reason
+        // stays on the server as every claim error's does.
+        throw new JwtClaimError(
+          `Could not tell whether the client "${claims.clientId}" is refused: ${
+            error instanceof Error ? error.message : String(error)
+          }`
+        );
+      }
+      if (refused) {
+        throw new JwtClaimError(
+          `JWT was issued to a client whose tokens these routes refuse: azp is "${claims.clientId}"`
+        );
+      }
+    }
 
     if (this.policy.allowedClients.length > 0) {
       if (
@@ -308,8 +338,17 @@ export class JwtVerifierService extends JwtTokenVerifier {
   constructor(
     @Inject(PUBLIC_KEY_PROVIDER) keyProvider: IPublicKeyProvider,
     // No bare `@Inject()` here: see KeycloakPublicKeyProvider's constructor.
-    configService: ConfigService
+    configService: ConfigService,
+    // A service that registers clients to refuse at run time provides it
+    // from a global module; teskilat provides none.
+    @Optional()
+    @Inject(REFUSED_CLIENT_SOURCE)
+    refusedSource?: IRefusedClientSource
   ) {
-    super(keyProvider, loadJwtClaimPolicy(configService));
+    super(
+      keyProvider,
+      loadJwtClaimPolicy(configService),
+      refusedSource ?? null
+    );
   }
 }
