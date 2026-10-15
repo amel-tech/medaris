@@ -23,6 +23,7 @@ export default mergeConfig(
           "src/end-instant.ts",
           "src/callback-url.ts",
           "src/youtube-live.js",
+          "src/hoca-unvan.js",
         ],
       },
     },
