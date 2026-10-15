@@ -251,6 +251,55 @@ describe("Ortak uygulamalar: switching one off and on", () => {
       duration: Number.POSITIVE_INFINITY,
     });
   });
+
+  it("moves back only the row the server refused, while another row switched meanwhile keeps its change", async () => {
+    const answers = new Map<string, (answer: unknown) => void>();
+    actions.updatePartner.mockImplementation(
+      (clientId: string) =>
+        new Promise((resolve) => {
+          answers.set(clientId, resolve);
+        })
+    );
+    await mount(
+      list([
+        partner(),
+        partner({ clientId: "ikinci-uygulama", name: "İkinci Uygulama" }),
+      ])
+    );
+
+    await click(switchOf("Örnek Uygulama"));
+    await click(switchOf("İkinci Uygulama"));
+    await settle(20);
+    expect(isOn("Örnek Uygulama")).toBe(false);
+    expect(isOn("İkinci Uygulama")).toBe(false);
+
+    // The first one is refused while the second is still on its way.
+    await act(async () => {
+      answers.get("ornek-uygulama")?.({
+        success: false,
+        error: "",
+        errorBody: { code: "AUTHZ_FORBIDDEN" },
+      });
+    });
+    await settle(20);
+    expect(isOn("Örnek Uygulama")).toBe(true);
+    expect(isOn("İkinci Uygulama")).toBe(false);
+
+    await act(async () => {
+      answers.get("ikinci-uygulama")?.({
+        success: true,
+        data: partner({
+          clientId: "ikinci-uygulama",
+          name: "İkinci Uygulama",
+          enabled: false,
+        }),
+      });
+    });
+    await settle(20);
+    expect(isOn("Örnek Uygulama")).toBe(true);
+    expect(isOn("İkinci Uygulama")).toBe(false);
+    expect(toast.error).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("Ortak uygulamalar: renaming", () => {

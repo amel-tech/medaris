@@ -54,7 +54,8 @@ export function PartnersView({ initial }: Props) {
   const router = useRouter();
   const t = useTranslations("nizam.PartnersPage");
   const [items, setItems] = useState<Partner[]>(initial?.items ?? []);
-  const [busy, setBusy] = useState<string | null>(null);
+  // The rows whose switch is on its way to tedrisat; several may be at once.
+  const [busy, setBusy] = useState<ReadonlySet<string>>(new Set());
   const [renaming, setRenaming] = useState<Partner | null>(null);
   const [choosing, setChoosing] = useState<Partner | null>(null);
   // `initial` is a fresh server read after router.refresh() ("Tekrar dene"):
@@ -70,15 +71,30 @@ export function PartnersView({ initial }: Props) {
       [...rows.filter((p) => p.clientId !== row.clientId), row].sort(byName)
     );
 
+  const marking = (clientId: string, on: boolean) =>
+    setBusy((held) => {
+      const next = new Set(held);
+      if (on) next.add(clientId);
+      else next.delete(clientId);
+      return next;
+    });
+
   const toggle = async (partner: Partner, enabled: boolean) => {
-    const before = items;
     put({ ...partner, enabled });
-    setBusy(partner.clientId);
+    marking(partner.clientId, true);
     const result = await updatePartner(partner.clientId, { enabled });
-    setBusy(null);
+    marking(partner.clientId, false);
     if (redirectIfUnauthenticated(result)) return;
     if (!result.success) {
-      setItems(before);
+      // Only this row's switch goes back: another row switched meanwhile
+      // keeps its own change.
+      setItems((rows) =>
+        rows.map((p) =>
+          p.clientId === partner.clientId
+            ? { ...p, enabled: partner.enabled }
+            : p
+        )
+      );
       toast.error(t("saveFailed"), {
         description: t(failureKey(result.errorBody) as never),
         duration: Number.POSITIVE_INFINITY,
@@ -137,7 +153,7 @@ export function PartnersView({ initial }: Props) {
             </>
           }
           checked={p.enabled}
-          disabled={busy === p.clientId}
+          disabled={busy.has(p.clientId)}
           onCheckedChange={(next) => void toggle(p, next)}
         />
       ),
