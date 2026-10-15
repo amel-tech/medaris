@@ -1,7 +1,9 @@
+import type { HocaUnvan } from "@medaris/utils/src/hoca-unvan.js";
 import { Injectable } from "@nestjs/common";
 import type { HideLevel } from "../../archive/hide-level";
 import { displayNameOf } from "../../assignment/assignment.service";
 import { UserDirectoryService } from "../../assignment/user-directory.service";
+import { MuderrisListInvalidError } from "../../course/errors/muderris-list-invalid.error";
 import { MuderrisUnknownUserError } from "../../course/errors/muderris-unknown-user.error";
 import { KoskNotFoundError } from "../../kosk/errors/kosk-not-found.error";
 import { MadrasahNotFoundError } from "../errors/madrasah-not-found.error";
@@ -24,8 +26,35 @@ export interface OpenMadrasahCourseInput {
   title: string;
   muderrisUserIds: string[];
   imamUserId?: string;
+  /** The unvan each müderris carries in the new course, by account. */
+  muderrisUnvans?: { userId: string; unvan: HocaUnvan | null }[];
   closedCourse?: boolean;
   requiresApproval?: boolean;
+}
+
+/**
+ * The unvan of each account of a course being opened, lowercased. One given to
+ * an account that is not listed, or to one account twice, is refused like a
+ * list that cannot be saved.
+ */
+function unvansOf(
+  userIds: readonly string[],
+  given: readonly { userId: string; unvan: HocaUnvan | null }[] = []
+): Map<string, HocaUnvan | null> {
+  const unvans = new Map<string, HocaUnvan | null>();
+  for (const { userId, unvan } of given) {
+    const id = userId.toLowerCase();
+    if (!userIds.includes(id)) {
+      throw new MuderrisListInvalidError(
+        `An unvan is given to ${id}, who is not one of the müderrisler`
+      );
+    }
+    if (unvans.has(id)) {
+      throw new MuderrisListInvalidError(`Two unvans are given to ${id}`);
+    }
+    unvans.set(id, unvan);
+  }
+  return unvans;
 }
 
 /**
@@ -58,6 +87,7 @@ export class MadrasahCourseService {
     actorId: string
   ): Promise<IMadrasahCourseListItem> {
     const team = planCourseTeam(input.muderrisUserIds, input.imamUserId);
+    const unvans = unvansOf(team.userIds, input.muderrisUnvans);
     const names = await this.namesOf(team.userIds);
     const result = await this.repo.open({
       madrasahId,
@@ -68,6 +98,7 @@ export class MadrasahCourseService {
       muderris: team.userIds.map((userId) => ({
         userId,
         name: names.get(userId),
+        unvan: unvans.get(userId) ?? null,
       })),
       imamUserId: team.imamUserId,
       actorId,

@@ -370,6 +370,11 @@ export interface ICreateMuderris {
   title?: string;
   bio?: string;
   avatarHue?: number;
+  /**
+   * The unvan in a course being opened (`CourseRepository.create`). A
+   * whole-course save never carries it and never writes it.
+   */
+  unvan?: HocaUnvan | null;
 }
 
 export interface ICreateResource {

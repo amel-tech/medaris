@@ -470,7 +470,7 @@ export class CoursesApi extends runtime.BaseAPI {
     }
 
     /**
-     * The köşk\'s nazımı opens it, and so does the başnazım (MDRS-136). It is opened with at least one müderris who has an account, and one of them is the imam: `imamUserId`, or the account listed first.
+     * The köşk\'s nazımı opens it, and so does the başnazım (MDRS-136). It is opened with at least one müderris who has an account, and one of them is the imam: `imamUserId`, or the account listed first. Each müderris with an account may be given the unvan they carry in the course (`muderris[].unvan`); later it is changed in Ders ayarları.
      * Create a new course under a köşk, together with its müderrisler
      */
     async createCourseRaw(requestParameters: CreateCourseRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CourseDetailResponse>> {
@@ -515,7 +515,7 @@ export class CoursesApi extends runtime.BaseAPI {
     }
 
     /**
-     * The köşk\'s nazımı opens it, and so does the başnazım (MDRS-136). It is opened with at least one müderris who has an account, and one of them is the imam: `imamUserId`, or the account listed first.
+     * The köşk\'s nazımı opens it, and so does the başnazım (MDRS-136). It is opened with at least one müderris who has an account, and one of them is the imam: `imamUserId`, or the account listed first. Each müderris with an account may be given the unvan they carry in the course (`muderris[].unvan`); later it is changed in Ders ayarları.
      * Create a new course under a köşk, together with its müderrisler
      */
     async createCourse(requestParameters: CreateCourseRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CourseDetailResponse> {

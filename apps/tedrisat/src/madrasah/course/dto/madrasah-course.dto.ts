@@ -1,16 +1,21 @@
+import { HOCA_UNVANS, type HocaUnvan } from "@medaris/utils/src/hoca-unvan.js";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { Transform } from "class-transformer";
+import { Transform, Type } from "class-transformer";
 import {
   ArrayMaxSize,
   ArrayMinSize,
   IsArray,
   IsBoolean,
+  IsIn,
   IsOptional,
   IsString,
   IsUUID,
   MaxLength,
   MinLength,
+  ValidateIf,
+  ValidateNested,
 } from "class-validator";
+import { HOCA_UNVAN_PROPERTY } from "../../../course/dto/course-response.dto";
 import {
   OFFSITE_REQUEST_STATUSES,
   type OffsiteRequestStatus,
@@ -38,6 +43,26 @@ export class MadrasahCourseKoskResponse {
       'The medrese\'s courses in this köşk that are not hidden, drafts included ("medresenin burada 1 dersi var")',
   })
   courseCount!: number;
+}
+
+/** The unvan one müderris carries in the course being opened (owner, 2026-10-15). */
+export class OpenCourseMuderrisUnvanDto {
+  @ApiProperty({
+    format: "uuid",
+    description: "One of `muderrisUserIds`",
+  })
+  @IsUUID()
+  userId!: string;
+
+  @ApiProperty({
+    ...HOCA_UNVAN_PROPERTY,
+    required: false,
+    description:
+      "One of the codes, or null for none (`{name} Hoca`), checked like `PUT /courses/:id/muderris/:userId/unvan`. The key must be sent.",
+  })
+  @ValidateIf((_: unknown, value: unknown) => value !== null)
+  @IsIn([...HOCA_UNVANS])
+  unvan!: HocaUnvan | null;
 }
 
 export class OpenMadrasahCourseDto {
@@ -77,6 +102,19 @@ export class OpenMadrasahCourseDto {
   @IsOptional()
   @IsUUID()
   imamUserId?: string;
+
+  @ApiPropertyOptional({
+    type: [OpenCourseMuderrisUnvanDto],
+    maxItems: MAX_MUDERRIS,
+    description:
+      "The unvan each müderris carries in the new course, by account; one left out has none (`{name} Hoca`). An account that is not in `muderrisUserIds`, or one named twice, is refused (400 MUDERRIS_LIST_INVALID). Set later in Ders ayarları.",
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(MAX_MUDERRIS)
+  @ValidateNested({ each: true })
+  @Type(() => OpenCourseMuderrisUnvanDto)
+  muderrisUnvans?: OpenCourseMuderrisUnvanDto[];
 
   @ApiPropertyOptional({
     description:

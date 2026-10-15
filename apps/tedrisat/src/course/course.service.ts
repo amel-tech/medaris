@@ -886,6 +886,13 @@ export class CourseService {
       throw new KoskNotFoundError(koskId);
     }
     const muderris = course.muderris ?? [];
+    // An unvan is given by account, as `PUT …/unvan` sets it; a name with no
+    // account behind it carries none.
+    if (muderris.some((m) => m.unvan && !m.userId)) {
+      throw new MuderrisListInvalidError(
+        "An unvan is given only to a müderris with an account"
+      );
+    }
     const imamUserId = imamOfNewCourse(muderris, course.imamUserId);
     await this.assertMuderrisLinks([], muderris);
     const created = await this.courseRepo.create({

@@ -1,3 +1,4 @@
+import { HOCA_UNVANS, type HocaUnvan } from "@medaris/utils/src/hoca-unvan.js";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Transform, Type } from "class-transformer";
 import {
@@ -6,6 +7,7 @@ import {
   IsBoolean,
   IsDate,
   IsEnum,
+  IsIn,
   IsInt,
   IsOptional,
   IsString,
@@ -23,6 +25,7 @@ import { CourseLevel } from "../domain/course-level.enum";
 import { CourseStatus } from "../domain/course-status.enum";
 import { LessonType } from "../domain/lesson-type.enum";
 import { canonicalTimeZone } from "../domain/time-zone";
+import { HOCA_UNVAN_PROPERTY } from "./course-response.dto";
 
 /**
  * `@IsTimeZone()` accepts whatever `Intl` accepts — "europe/istanbul",
@@ -286,6 +289,24 @@ export class CreateMuderrisDto {
   avatarHue?: number;
 }
 
+/**
+ * A müderris of a course being opened: the row the whole-course save also
+ * writes, and the unvan they carry in the new course (owner, 2026-10-15). Only
+ * the opening takes it; on a course that exists the unvan is set in Ders
+ * ayarları (`PUT /courses/:id/muderris/:userId/unvan`), so `ReplaceCourseDto`
+ * keeps `CreateMuderrisDto` and refuses the key.
+ */
+export class CreateCourseMuderrisDto extends CreateMuderrisDto {
+  @ApiPropertyOptional({
+    ...HOCA_UNVAN_PROPERTY,
+    description:
+      "The unvan this müderris carries in the new course, checked like `PUT /courses/:id/muderris/:userId/unvan`: one of the codes, or null or left out for none (`{name} Hoca`). Only a row with an account (`userId`) takes one (400 MUDERRIS_LIST_INVALID otherwise).",
+  })
+  @IsOptional()
+  @IsIn([...HOCA_UNVANS])
+  unvan?: HocaUnvan | null;
+}
+
 export class CreateResourceDto {
   @ApiPropertyOptional({
     description: "Existing resource row id (preserved on replace)",
@@ -456,7 +477,7 @@ export class CreateCourseDto {
   weeks?: CreateWeekDto[];
 
   @ApiProperty({
-    type: [CreateMuderrisDto],
+    type: [CreateCourseMuderrisDto],
     minItems: 1,
     description:
       "A course is opened together with its müderrisler (MDRS-136): at least one, and at least one of them linked to an account (`userId`), because the account is what makes the person the course's müderris.",
@@ -464,8 +485,8 @@ export class CreateCourseDto {
   @IsArray()
   @ArrayMinSize(1)
   @ValidateNested({ each: true })
-  @Type(() => CreateMuderrisDto)
-  muderris!: CreateMuderrisDto[];
+  @Type(() => CreateCourseMuderrisDto)
+  muderris!: CreateCourseMuderrisDto[];
 
   @ApiPropertyOptional({
     format: "uuid",

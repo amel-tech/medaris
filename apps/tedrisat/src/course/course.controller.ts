@@ -169,13 +169,13 @@ export class CourseController {
   @ApiOperation({
     summary: "Create a new course under a köşk, together with its müderrisler",
     description:
-      "The köşk's nazımı opens it, and so does the başnazım (MDRS-136). It is opened with at least one müderris who has an account, and one of them is the imam: `imamUserId`, or the account listed first.",
+      "The köşk's nazımı opens it, and so does the başnazım (MDRS-136). It is opened with at least one müderris who has an account, and one of them is the imam: `imamUserId`, or the account listed first. Each müderris with an account may be given the unvan they carry in the course (`muderris[].unvan`); later it is changed in Ders ayarları.",
     operationId: "createCourse",
   })
   @ApiCreatedResponse({ type: CourseDetailResponse })
   @ApiBadRequestResponse({
     description:
-      "No müderris with an account (MUDERRIS_LIST_INVALID), an imam who is not listed (COURSE_IMAM_NOT_LISTED), or the same account twice (MUDERRIS_DUPLICATE_USER).",
+      "No müderris with an account, or an unvan on a müderris with no account (MUDERRIS_LIST_INVALID), an imam who is not listed (COURSE_IMAM_NOT_LISTED), the same account twice (MUDERRIS_DUPLICATE_USER), or an unvan that is not one of the codes (VALIDATION_ERROR).",
   })
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()

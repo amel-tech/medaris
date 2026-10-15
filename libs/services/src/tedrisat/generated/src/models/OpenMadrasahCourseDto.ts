@@ -13,6 +13,14 @@
  */
 
 import { mapValues } from '../runtime';
+import type { OpenCourseMuderrisUnvanDto } from './OpenCourseMuderrisUnvanDto';
+import {
+    OpenCourseMuderrisUnvanDtoFromJSON,
+    OpenCourseMuderrisUnvanDtoFromJSONTyped,
+    OpenCourseMuderrisUnvanDtoToJSON,
+    OpenCourseMuderrisUnvanDtoToJSONTyped,
+} from './OpenCourseMuderrisUnvanDto';
+
 /**
  * 
  * @export
@@ -43,6 +51,12 @@ export interface OpenMadrasahCourseDto {
      * @memberof OpenMadrasahCourseDto
      */
     imamUserId?: string;
+    /**
+     * The unvan each müderris carries in the new course, by account; one left out has none (`{name} Hoca`). An account that is not in `muderrisUserIds`, or one named twice, is refused (400 MUDERRIS_LIST_INVALID). Set later in Ders ayarları.
+     * @type {Array<OpenCourseMuderrisUnvanDto>}
+     * @memberof OpenMadrasahCourseDto
+     */
+    muderrisUnvans?: Array<OpenCourseMuderrisUnvanDto>;
     /**
      * Kapalı ders. On whatever is sent when the medrese's policy requires it
      * @type {boolean}
@@ -81,6 +95,7 @@ export function OpenMadrasahCourseDtoFromJSONTyped(json: any, ignoreDiscriminato
         'title': json['title'],
         'muderrisUserIds': json['muderrisUserIds'],
         'imamUserId': json['imamUserId'] == null ? undefined : json['imamUserId'],
+        'muderrisUnvans': json['muderrisUnvans'] == null ? undefined : ((json['muderrisUnvans'] as Array<any>).map(OpenCourseMuderrisUnvanDtoFromJSON)),
         'closedCourse': json['closedCourse'] == null ? undefined : json['closedCourse'],
         'requiresApproval': json['requiresApproval'] == null ? undefined : json['requiresApproval'],
     };
@@ -101,6 +116,7 @@ export function OpenMadrasahCourseDtoToJSONTyped(value?: OpenMadrasahCourseDto |
         'title': value['title'],
         'muderrisUserIds': value['muderrisUserIds'],
         'imamUserId': value['imamUserId'],
+        'muderrisUnvans': value['muderrisUnvans'] == null ? undefined : ((value['muderrisUnvans'] as Array<any>).map(OpenCourseMuderrisUnvanDtoToJSON)),
         'closedCourse': value['closedCourse'],
         'requiresApproval': value['requiresApproval'],
     };

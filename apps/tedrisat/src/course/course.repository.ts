@@ -449,6 +449,7 @@ export class CourseRepository implements ICourseRepository {
             title: m.title,
             bio: m.bio,
             avatarHue: m.avatarHue,
+            unvan: m.unvan ?? null,
             orderIndex: i,
           }))
         );

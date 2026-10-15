@@ -1,3 +1,4 @@
+import type { HocaUnvan } from "@medaris/utils/src/hoca-unvan.js";
 import type { OffsiteRequestStatus } from "../../database/schema/offsite-course-request.schema";
 
 /** A köşk the medrese holds a hosting right in (nazir/07's side block, nazir/08's choice). */
@@ -15,6 +16,8 @@ export interface ICourseMuderrisInput {
   userId: string;
   /** Left out for an account that stays on a course already listing it. */
   name?: string;
+  /** The unvan in a course being opened; a change of the list never writes it. */
+  unvan?: HocaUnvan | null;
 }
 
 /** What opening a course for a medrese writes (nazir/08). */

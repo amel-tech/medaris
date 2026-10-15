@@ -1616,7 +1616,7 @@ export class MadrasahsApi extends runtime.BaseAPI {
     }
 
     /**
-     * nazir/08\'s \"Dersi aç\". The course is a DRAFT in a köşk the medrese holds a hosting right in, with its müderrisler and imam; a lone müderris is the imam, with several `imamUserId` is required. The medrese\'s policies are applied on the server: \"Kayıt her zaman onaylı\" makes the course wait for approval and \"Kapalı ders zorunlu\" makes it closed, whatever is sent. The müderrisler are found with `GET /users/lookup`; one the app and the realm do not know is a 404 (MUDERRIS_UNKNOWN_USER). 403 (HOSTING_RIGHT_REQUIRED) when the köşk gave the medrese no right. Written to the audit log.
+     * nazir/08\'s \"Dersi aç\". The course is a DRAFT in a köşk the medrese holds a hosting right in, with its müderrisler and imam; a lone müderris is the imam, with several `imamUserId` is required. The medrese\'s policies are applied on the server: \"Kayıt her zaman onaylı\" makes the course wait for approval and \"Kapalı ders zorunlu\" makes it closed, whatever is sent. The müderrisler are found with `GET /users/lookup`; one the app and the realm do not know is a 404 (MUDERRIS_UNKNOWN_USER). Each may be given the unvan they carry in the course (`muderrisUnvans`), written to the audit row with the rest; later it is changed in Ders ayarları. 403 (HOSTING_RIGHT_REQUIRED) when the köşk gave the medrese no right. Written to the audit log.
      * Open a course of the medrese (its başmüderris)
      */
     async openMadrasahCourseRaw(requestParameters: OpenMadrasahCourseRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MadrasahCourseListItemResponse>> {
@@ -1661,7 +1661,7 @@ export class MadrasahsApi extends runtime.BaseAPI {
     }
 
     /**
-     * nazir/08\'s \"Dersi aç\". The course is a DRAFT in a köşk the medrese holds a hosting right in, with its müderrisler and imam; a lone müderris is the imam, with several `imamUserId` is required. The medrese\'s policies are applied on the server: \"Kayıt her zaman onaylı\" makes the course wait for approval and \"Kapalı ders zorunlu\" makes it closed, whatever is sent. The müderrisler are found with `GET /users/lookup`; one the app and the realm do not know is a 404 (MUDERRIS_UNKNOWN_USER). 403 (HOSTING_RIGHT_REQUIRED) when the köşk gave the medrese no right. Written to the audit log.
+     * nazir/08\'s \"Dersi aç\". The course is a DRAFT in a köşk the medrese holds a hosting right in, with its müderrisler and imam; a lone müderris is the imam, with several `imamUserId` is required. The medrese\'s policies are applied on the server: \"Kayıt her zaman onaylı\" makes the course wait for approval and \"Kapalı ders zorunlu\" makes it closed, whatever is sent. The müderrisler are found with `GET /users/lookup`; one the app and the realm do not know is a 404 (MUDERRIS_UNKNOWN_USER). Each may be given the unvan they carry in the course (`muderrisUnvans`), written to the audit row with the rest; later it is changed in Ders ayarları. 403 (HOSTING_RIGHT_REQUIRED) when the köşk gave the medrese no right. Written to the audit log.
      * Open a course of the medrese (its başmüderris)
      */
     async openMadrasahCourse(requestParameters: OpenMadrasahCourseRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MadrasahCourseListItemResponse> {

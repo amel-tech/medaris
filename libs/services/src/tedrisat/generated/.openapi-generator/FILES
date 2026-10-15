@@ -90,6 +90,7 @@ src/models/CourseSubmissionsResponse.ts
 src/models/CourseSummaryResponse.ts
 src/models/CreateBanDto.ts
 src/models/CreateCourseDto.ts
+src/models/CreateCourseMuderrisDto.ts
 src/models/CreateCourseNazirDto.ts
 src/models/CreateCourseRequestDto.ts
 src/models/CreateDeckProposalDto.ts
@@ -310,6 +311,7 @@ src/models/NizamDashboardResponse.ts
 src/models/NotificationCountsResponse.ts
 src/models/NotificationResponse.ts
 src/models/OffsiteCourseRequestResponse.ts
+src/models/OpenCourseMuderrisUnvanDto.ts
 src/models/OpenMadrasahCourseDto.ts
 src/models/OwnSubmissionResponse.ts
 src/models/PaginatedArchiveResponse.ts

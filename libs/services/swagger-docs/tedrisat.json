@@ -2586,7 +2586,7 @@
         ]
       },
       "post": {
-        "description": "nazir/08's \"Dersi aç\". The course is a DRAFT in a köşk the medrese holds a hosting right in, with its müderrisler and imam; a lone müderris is the imam, with several `imamUserId` is required. The medrese's policies are applied on the server: \"Kayıt her zaman onaylı\" makes the course wait for approval and \"Kapalı ders zorunlu\" makes it closed, whatever is sent. The müderrisler are found with `GET /users/lookup`; one the app and the realm do not know is a 404 (MUDERRIS_UNKNOWN_USER). 403 (HOSTING_RIGHT_REQUIRED) when the köşk gave the medrese no right. Written to the audit log.",
+        "description": "nazir/08's \"Dersi aç\". The course is a DRAFT in a köşk the medrese holds a hosting right in, with its müderrisler and imam; a lone müderris is the imam, with several `imamUserId` is required. The medrese's policies are applied on the server: \"Kayıt her zaman onaylı\" makes the course wait for approval and \"Kapalı ders zorunlu\" makes it closed, whatever is sent. The müderrisler are found with `GET /users/lookup`; one the app and the realm do not know is a 404 (MUDERRIS_UNKNOWN_USER). Each may be given the unvan they carry in the course (`muderrisUnvans`), written to the audit row with the rest; later it is changed in Ders ayarları. 403 (HOSTING_RIGHT_REQUIRED) when the köşk gave the medrese no right. Written to the audit log.",
         "operationId": "openMadrasahCourse",
         "parameters": [
           {
@@ -2620,7 +2620,7 @@
             }
           },
           "400": {
-            "description": "COURSE_IMAM_REQUIRED, COURSE_IMAM_NOT_LISTED or MUDERRIS_DUPLICATE_USER"
+            "description": "COURSE_IMAM_REQUIRED, COURSE_IMAM_NOT_LISTED or MUDERRIS_DUPLICATE_USER; MUDERRIS_LIST_INVALID for an unvan given to an account that is not listed, or to one twice; VALIDATION_ERROR for an unvan that is not one of the codes"
           },
           "403": {
             "description": "HOSTING_RIGHT_REQUIRED"
@@ -2695,7 +2695,7 @@
         ]
       },
       "post": {
-        "description": "The köşk's nazımı opens it, and so does the başnazım (MDRS-136). It is opened with at least one müderris who has an account, and one of them is the imam: `imamUserId`, or the account listed first.",
+        "description": "The köşk's nazımı opens it, and so does the başnazım (MDRS-136). It is opened with at least one müderris who has an account, and one of them is the imam: `imamUserId`, or the account listed first. Each müderris with an account may be given the unvan they carry in the course (`muderris[].unvan`); later it is changed in Ders ayarları.",
         "operationId": "createCourse",
         "parameters": [
           {
@@ -2729,7 +2729,7 @@
             }
           },
           "400": {
-            "description": "No müderris with an account (MUDERRIS_LIST_INVALID), an imam who is not listed (COURSE_IMAM_NOT_LISTED), or the same account twice (MUDERRIS_DUPLICATE_USER)."
+            "description": "No müderris with an account, or an unvan on a müderris with no account (MUDERRIS_LIST_INVALID), an imam who is not listed (COURSE_IMAM_NOT_LISTED), the same account twice (MUDERRIS_DUPLICATE_USER), or an unvan that is not one of the codes (VALIDATION_ERROR)."
           },
           "403": {
             "description": ""
@@ -16746,7 +16746,7 @@
           "lessons"
         ]
       },
-      "CreateMuderrisDto": {
+      "CreateCourseMuderrisDto": {
         "type": "object",
         "properties": {
           "id": {
@@ -16773,6 +16773,15 @@
             "example": 145,
             "minimum": 0,
             "maximum": 360
+          },
+          "unvan": {
+            "nullable": true,
+            "description": "The unvan this müderris carries in the new course, checked like `PUT /courses/:id/muderris/:userId/unvan`: one of the codes, or null or left out for none (`{name} Hoca`). Only a row with an account (`userId`) takes one (400 MUDERRIS_LIST_INVALID otherwise).",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HocaUnvan"
+              }
+            ]
           }
         },
         "required": [
@@ -16898,7 +16907,7 @@
             "description": "A course is opened together with its müderrisler (MDRS-136): at least one, and at least one of them linked to an account (`userId`), because the account is what makes the person the course's müderris.",
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/CreateMuderrisDto"
+              "$ref": "#/components/schemas/CreateCourseMuderrisDto"
             }
           },
           "imamUserId": {
@@ -17832,6 +17841,39 @@
             "description": "\"Celseler yüz yüze yapılır\" (MDRS-283): the course's sessions are held face to face, unless a session says otherwise (`inPersonOverride`). Under `course.edit`, like the rest of the course's fields."
           }
         }
+      },
+      "CreateMuderrisDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Existing müderris row id (preserved on replace)"
+          },
+          "userId": {
+            "type": "string",
+            "description": "Linked platform user id, if any"
+          },
+          "name": {
+            "type": "string",
+            "example": "Müderris Ahmed Hilmi"
+          },
+          "title": {
+            "type": "string",
+            "example": "Sarf ve Nahiv Müderrisi"
+          },
+          "bio": {
+            "type": "string"
+          },
+          "avatarHue": {
+            "type": "number",
+            "example": 145,
+            "minimum": 0,
+            "maximum": 360
+          }
+        },
+        "required": [
+          "name"
+        ]
       },
       "ReplaceCourseDto": {
         "type": "object",
@@ -24094,6 +24136,28 @@
           "courseCount"
         ]
       },
+      "OpenCourseMuderrisUnvanDto": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "One of `muderrisUserIds`"
+          },
+          "unvan": {
+            "nullable": true,
+            "description": "One of the codes, or null for none (`{name} Hoca`), checked like `PUT /courses/:id/muderris/:userId/unvan`. The key must be sent.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HocaUnvan"
+              }
+            ]
+          }
+        },
+        "required": [
+          "userId"
+        ]
+      },
       "OpenMadrasahCourseDto": {
         "type": "object",
         "properties": {
@@ -24122,6 +24186,14 @@
             "type": "string",
             "format": "uuid",
             "description": "The course's imam, one of `muderrisUserIds`. Left out, a lone müderris is the imam; with several it is required"
+          },
+          "muderrisUnvans": {
+            "maxItems": 20,
+            "description": "The unvan each müderris carries in the new course, by account; one left out has none (`{name} Hoca`). An account that is not in `muderrisUserIds`, or one named twice, is refused (400 MUDERRIS_LIST_INVALID). Set later in Ders ayarları.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OpenCourseMuderrisUnvanDto"
+            }
           },
           "closedCourse": {
             "type": "boolean",

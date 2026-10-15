@@ -90,6 +90,7 @@ describe("A hoca's unvan in a course (e2e)", () => {
   const as = (sub: string) => ({
     get: (url: string) => http().get(url).set("Authorization", auth(sub)),
     put: (url: string) => http().put(url).set("Authorization", auth(sub)),
+    post: (url: string) => http().post(url).set("Authorization", auth(sub)),
   });
   const setUnvan = (sub: string, userId: string, body: object) =>
     as(sub).put(`/courses/${courseId}/muderris/${userId}/unvan`).send(body);
@@ -594,6 +595,172 @@ describe("A hoca's unvan in a course (e2e)", () => {
         .expect(200);
       expect(await unvanOf(CEMAL)).toBeNull();
       expect(await unvanOf(BEKIR)).toBe("MOLLA");
+    });
+  });
+
+  describe("a course opened with its hocas' unvans (owner, 2026-10-15)", () => {
+    const unvansOfCourse = async (id: string) =>
+      Object.fromEntries(
+        (
+          await db()
+            .select({
+              userId: courseMuderris.userId,
+              unvan: courseMuderris.unvan,
+            })
+            .from(courseMuderris)
+            .where(eq(courseMuderris.courseId, id))
+        ).map((r) => [r.userId, r.unvan])
+      );
+
+    describe("POST /kosks/:koskId/courses (the köşk's own course)", () => {
+      const open = (muderris: object[]) =>
+        as(NAZIM)
+          .post(`/kosks/${koskId}/courses`)
+          .send({ title: "Avâmil", muderris, imamUserId: AHMET });
+
+      it("stores the unvan each hoca is given and answers the course with it", async () => {
+        const res = await open([
+          { userId: AHMET, name: "Ahmet Mehmet", unvan: "PROF_DR" },
+          { userId: BEKIR, name: "Bekir Sami", unvan: null },
+          { userId: CEMAL, name: "Cemal Nur" },
+        ]).expect(201);
+        expect(byName(res.body.muderris)).toEqual({
+          "Ahmet Mehmet": "PROF_DR",
+          "Bekir Sami": null,
+          "Cemal Nur": null,
+        });
+        expect(await unvansOfCourse(res.body.id)).toEqual({
+          [AHMET]: "PROF_DR",
+          [BEKIR]: null,
+          [CEMAL]: null,
+        });
+        // a new course is a draft: read by the köşk nazımı who opened it
+        const read = await as(NAZIM).get(`/courses/${res.body.id}`).expect(200);
+        expect(byName(read.body.muderris)["Ahmet Mehmet"]).toBe("PROF_DR");
+      });
+
+      it("refuses a code that is not in the list with 400, and opens nothing", async () => {
+        const res = await open([
+          { userId: AHMET, name: "Ahmet Mehmet", unvan: "SULTAN" },
+        ]).expect(400);
+        expect(res.body.code).toBe("VALIDATION_ERROR");
+        const titles = await db()
+          .select({ title: courses.title })
+          .from(courses)
+          .where(eq(courses.koskId, koskId));
+        expect(titles.map((c) => c.title)).not.toContain("Avâmil");
+      });
+
+      it("refuses an unvan on a hoca with no account (MUDERRIS_LIST_INVALID)", async () => {
+        const res = await open([
+          { userId: AHMET, name: "Ahmet Mehmet" },
+          { name: "Ahmed Hilmi", unvan: "MOLLA" },
+        ]).expect(400);
+        expect(res.body.code).toBe("MUDERRIS_LIST_INVALID");
+      });
+
+      it("leaves the whole-course save without an unvan: the key is refused there", async () => {
+        const course = (await as(HEAD).get(`/courses/${courseId}`).expect(200))
+          .body;
+        await as(HEAD)
+          .put(`/courses/${courseId}`)
+          .send({
+            title: course.title,
+            version: course.version,
+            muderris: course.muderris.map(
+              (m: { id: string; userId: string; name: string }) => ({
+                id: m.id,
+                userId: m.userId,
+                name: m.name,
+                unvan: "DR",
+              })
+            ),
+          })
+          .expect(400);
+        expect(await unvanOf(AHMET)).toBeNull();
+      });
+    });
+
+    describe("POST /madrasahs/:id/courses (a medrese's course)", () => {
+      const open = (body: object) =>
+        as(HEAD)
+          .post(`/madrasahs/${madrasahId}/courses`)
+          .send({
+            koskId,
+            title: "Merâh",
+            muderrisUserIds: [AHMET, BEKIR],
+            imamUserId: AHMET,
+            ...body,
+          });
+
+      it("stores the unvan each hoca is given, answers it and writes it to the audit row", async () => {
+        const res = await open({
+          muderrisUnvans: [
+            { userId: BEKIR, unvan: "MOLLA" },
+            { userId: AHMET, unvan: null },
+          ],
+        }).expect(201);
+        expect(byName(res.body.muderris)).toEqual({
+          "Ahmet Mehmet": null,
+          "Bekir Sami": "MOLLA",
+        });
+        expect(await unvansOfCourse(res.body.id)).toEqual({
+          [AHMET]: null,
+          [BEKIR]: "MOLLA",
+        });
+        const read = await as(HEAD).get(`/courses/${res.body.id}`).expect(200);
+        expect(byName(read.body.muderris)["Bekir Sami"]).toBe("MOLLA");
+        const [opened] = await db()
+          .select()
+          .from(auditLog)
+          .where(
+            and(
+              eq(auditLog.action, "course.open"),
+              eq(auditLog.entityId, res.body.id)
+            )
+          );
+        expect(opened.details).toMatchObject({
+          muderrisUnvans: { [BEKIR]: "MOLLA" },
+        });
+      });
+
+      it("opens with no unvan when none is given", async () => {
+        const res = await open({}).expect(201);
+        expect(await unvansOfCourse(res.body.id)).toEqual({
+          [AHMET]: null,
+          [BEKIR]: null,
+        });
+      });
+
+      it.each([
+        [
+          "a code that is not in the list",
+          [{ userId: AHMET, unvan: "SULTAN" }],
+          "VALIDATION_ERROR",
+        ],
+        ["a missing unvan key", [{ userId: AHMET }], "VALIDATION_ERROR"],
+        [
+          "an account that is not one of the hocas",
+          [{ userId: CEMAL, unvan: "DR" }],
+          "MUDERRIS_LIST_INVALID",
+        ],
+        [
+          "one account twice",
+          [
+            { userId: AHMET, unvan: "DR" },
+            { userId: AHMET, unvan: "MOLLA" },
+          ],
+          "MUDERRIS_LIST_INVALID",
+        ],
+      ])("refuses %s with 400 and opens nothing", async (_what, unvans, code) => {
+        const res = await open({ muderrisUnvans: unvans }).expect(400);
+        expect(res.body.code).toBe(code);
+        const titles = await db()
+          .select({ title: courses.title })
+          .from(courses)
+          .where(eq(courses.madrasahId, madrasahId));
+        expect(titles.map((c) => c.title)).not.toContain("Merâh");
+      });
     });
   });
 });
