@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.5.0](https://github.com/amel-tech/medaris/compare/landing-web-v2.4.0...landing-web-v2.5.0) (2026-10-16)
+
+
+### Features
+
+* **i18n, tedris-web, nazar-web, nizam-web, landing-web, ui:** say hoca, not müderris ([#343](https://github.com/amel-tech/medaris/issues/343)) ([41e9331](https://github.com/amel-tech/medaris/commit/41e93316e4ece43fc7c4dd45173a2cb2df75629d))
+
+
+### Bug Fixes
+
+* **tedris-web, nazar-web, nizam-web, landing-web:** no OTLP export without an endpoint ([#320](https://github.com/amel-tech/medaris/issues/320)) ([495d67b](https://github.com/amel-tech/medaris/commit/495d67bb277e81e90c0b3dd9155bc1fa0a45dc2f))
+
 ## [2.4.0](https://github.com/amel-tech/medaris/compare/landing-web-v2.3.0...landing-web-v2.4.0) (2026-10-13)
 
 
