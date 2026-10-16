@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.11](https://github.com/amel-tech/medaris/compare/tedrisat-v0.2.10...tedrisat-v0.2.11) (2026-10-16)
+
+
+### Features
+
+* **tedrisat, nazar-web, tedris-web, nizam-web, utils:** an unvan for each hoca of a course ([#344](https://github.com/amel-tech/medaris/issues/344)) ([babb013](https://github.com/amel-tech/medaris/commit/babb013e112196866d1af890b3f76cfdf2d8f5d2))
+
 ## [0.2.10](https://github.com/amel-tech/medaris/compare/tedrisat-v0.2.9...tedrisat-v0.2.10) (2026-10-15)
 
 
