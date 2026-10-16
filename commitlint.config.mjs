@@ -23,8 +23,8 @@
  * name (`apps/tedris`, ...). ADR-001 §D6 sets app package names to
  * `@medaris/<release-component>` while MDRS-10 kept the directories bare; the
  * scope follows the component so that the enum and the release-please
- * `component` fields stay one list. A useful consequence: release-please's own
- * release PR titles (`chore(<component>): release <version>`) pass these rules.
+ * `component` fields stay one list. release-please's own release PR is titled
+ * `chore(repo): release main` (ADR-004), so it passes these rules too.
  */
 
 /** Every app and lib, plus the cross-cutting infrastructure scopes. */

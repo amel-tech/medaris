@@ -46,6 +46,10 @@ const WORKFLOW_DIR = ".github/workflows";
 const SCHEMA_URL =
   "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json";
 
+/** ADR-004: the one release PR is titled `chore(repo): release main`. */
+const GROUP_TITLE_SCOPE = "repo";
+const GROUP_TITLE_PATTERN = `chore(${GROUP_TITLE_SCOPE}): release \${branch}`;
+
 /**
  * The seven locked components of ADR-001 §D3, as `path -> component`. Spelled
  * out rather than derived from the config so that this gate can catch a
@@ -85,7 +89,7 @@ const packages = config.packages ?? {};
 const paths = Object.keys(packages);
 const lockedPaths = Object.keys(LOCKED_COMPONENTS);
 
-// ── 1. Top-level config shape (ADR-001 §D10) ──────────────────────────────────
+// ── 1. Top-level config shape (ADR-001 §D10, ADR-004) ─────────────────────────
 
 check(
   config.$schema === SCHEMA_URL,
@@ -94,9 +98,24 @@ check(
 );
 
 check(
-  config["separate-pull-requests"] === true,
-  "config sets separate-pull-requests",
-  "ADR-001 §D10 locks one release PR per component; a shared PR would couple all 7 releases."
+  config["separate-pull-requests"] === false,
+  "config opens one release PR for every component",
+  "ADR-004: per-component release PRs all edit .release-please-manifest.json, so" +
+    " merging one leaves the next CONFLICTING, and release-please does not rebuild" +
+    " a release PR whose changelog is unchanged."
+);
+
+// The title of the one release PR. release-please's default,
+// `chore: release main`, has no scope and fails `scope-empty`. And the pattern
+// must keep a `${…}` variable: a merged title is parsed back with it, and a
+// match with no named group parses to nothing, so release-please logs
+// "Bad pull request title" and tags none of the components (verified against
+// release-please 17.1.2, the version release-please-action v4.3.0 bundles).
+check(
+  config["group-pull-request-title-pattern"] === GROUP_TITLE_PATTERN,
+  "the one release PR's title pattern keeps a valid scope and a variable",
+  `actual: ${JSON.stringify(config["group-pull-request-title-pattern"])}\n` +
+    `    expected: ${JSON.stringify(GROUP_TITLE_PATTERN)} (ADR-004)`
 );
 
 // ── 2. Exactly the seven locked components ────────────────────────────────────
@@ -245,6 +264,11 @@ if (!Array.isArray(scopes)) {
     "every component is a commitlint scope",
     `missing from scope-enum: ${JSON.stringify(missing)}\n` +
       "    Its release PR title would be rejected by the commit-hygiene job."
+  );
+  check(
+    scopes.includes(GROUP_TITLE_SCOPE),
+    `the release PR's scope \`${GROUP_TITLE_SCOPE}\` is a commitlint scope`,
+    "    The one release PR's title would be rejected by the commit-hygiene job."
   );
 }
 

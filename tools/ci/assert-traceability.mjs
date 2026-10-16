@@ -80,20 +80,16 @@ const EXEMPT_ACTORS = new Set([
 ]);
 
 /**
- * The head branch release-please creates with `separate-pull-requests: true`,
- * one per component: `release-please--branches--main--components--<component>`.
+ * The head branch release-please creates with `separate-pull-requests: false`
+ * (ADR-004): one release PR for every component, `release-please--branches--main`.
  * A release PR has no Linear issue behind it and release-please rewrites its
  * title on every push to `main`, so neither carrier the gate accepts can ever
  * hold a key there; the branch shape is the one thing release-please controls
  * and a token choice cannot change. Anchored on both ends — an unanchored
  * `release-please` substring would wave through `feature/release-please-tweak`.
- * Deliberately not closed over the component list: the same-repo check at the
- * use site is what keeps a fork out, and a list here would have to be kept in
- * step with release-please-config.json for no additional protection. Only
- * honoured for a head in the base repository.
+ * Only honoured for a head in the base repository.
  */
-const RELEASE_BRANCH =
-  /^release-please--branches--main--components--([a-z0-9-]+)$/;
+const RELEASE_BRANCH = /^release-please--branches--main$/;
 
 function summary(lines) {
   const text = `${lines.join("\n")}\n`;
@@ -171,28 +167,24 @@ if (exemptActor) {
 }
 
 // Same-repository heads only. `head.ref` is chosen by whoever pushes it, so a
-// fork could name its branch `release-please--branches--main--components--
-// tedrisat` and walk through this exemption with no key; release-please only
-// ever pushes to the base repository, so a matching branch from anywhere else
-// is not a release PR whatever it is called.
+// fork could name its branch `release-please--branches--main` and walk through
+// this exemption with no key; release-please only ever pushes to the base
+// repository, so a matching branch from anywhere else is not a release PR
+// whatever it is called.
 const headRepo =
   typeof pr.head?.repo?.full_name === "string" ? pr.head.repo.full_name : "";
 const baseRepo =
   typeof pr.base?.repo?.full_name === "string" ? pr.base.repo.full_name : "";
 const sameRepo = headRepo !== "" && headRepo === baseRepo;
 
-const releaseComponent = sameRepo
-  ? branch.match(RELEASE_BRANCH)?.[1]
-  : undefined;
-if (releaseComponent) {
+if (sameRepo && RELEASE_BRANCH.test(branch)) {
   summary([
     "## Traceability — exempt",
     "",
-    `PR #${pr.number ?? "?"} is release-please's release PR for`,
-    `\`${releaseComponent}\` (head branch \`${branch}\`). A release has no Linear`,
-    "issue behind it and release-please rewrites the title on every push to",
-    "`main`, so no key is required. Exempt by branch shape, not by a key match",
-    "(MDRS-91).",
+    `PR #${pr.number ?? "?"} is release-please's release PR (head branch`,
+    `\`${branch}\`). A release has no Linear issue behind it and release-please`,
+    "rewrites the title on every push to `main`, so no key is required. Exempt",
+    "by branch shape, not by a key match (MDRS-91).",
   ]);
   process.exit();
 }

@@ -9,6 +9,7 @@ Decisions that shape this repository. An ADR is written **before** the work that
 | [ADR-001](001-monorepo-merge-and-layout.md) | Monorepo Merge — Target Layout, Boundary Taxonomy, and Toolchain | Proposed | 2026-07-21 |
 | [ADR-002](002-api-response-shape.md) | One API Response Shape — Bare Payloads, No Envelope | Proposed | 2026-08-25 |
 | [ADR-003](003-medrese-layer.md) | The Medrese Layer — Built as PRD §4.1 Draws It, in tedrisat | Proposed | 2026-09-28 |
+| [ADR-004](004-one-release-pr.md) | One Release PR for Every Component | Proposed | 2026-10-16 |
 
 ## Process
 

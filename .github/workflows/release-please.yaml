@@ -4,10 +4,12 @@ name: Release Please
 # Replaces two inherited workflows that were byte-identical apart from their
 # token secret: .migration/{backend,frontend}/.github/workflows/release-please.yaml.
 #
-# It does not deploy. release-please cuts a per-component tag and GitHub release
-# (`<component>-v<version>`); the seven per-app workflows in this directory pick
-# that up via `release: created` and guard on the tag prefix. That handoff is the
-# reason this workflow needs a PAT rather than GITHUB_TOKEN — see below.
+# It keeps one release PR for every component with pending changes (ADR-004).
+# It does not deploy. Merging that PR makes release-please cut a per-component
+# tag and GitHub release (`<component>-v<version>`) for each component in it;
+# the seven per-app workflows in this directory pick that up via
+# `release: created` and guard on the tag prefix. That handoff is the reason
+# this workflow needs a PAT rather than GITHUB_TOKEN — see below.
 
 on:
   push:
@@ -24,8 +26,8 @@ permissions:
   contents: write
   pull-requests: write
 
-# One release run at a time. Two concurrent runs would race on the same seven
-# release branches, and the loser can leave a half-written release PR behind.
+# One release run at a time. Two concurrent runs would race on the same release
+# branch, and the loser can leave a half-written release PR behind.
 concurrency:
   group: release-please
   cancel-in-progress: false

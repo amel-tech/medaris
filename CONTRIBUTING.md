@@ -28,8 +28,9 @@ and identical to the component names is what stops those two views from
 drifting — and it rules out the free-for-all the pre-merge history had (90+
 ad-hoc scopes like `flashcard`, `deck-cards`, `pcgk-lock`).
 
-A useful side effect: release-please's own release PR titles are
-`chore(<component>): release <version>`, so they satisfy these rules too.
+release-please's own release PR is titled `chore(repo): release main`: one PR
+for every component with pending changes (ADR-004), so `repo` rather than one
+component. It satisfies these rules too.
 
 ### Rules
 
