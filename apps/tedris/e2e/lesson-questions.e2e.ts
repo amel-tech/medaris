@@ -192,7 +192,7 @@ test.describe("the enrolled talebe", () => {
     const panel = page.getByRole("region", { name: "Soru sor" });
     await expect(
       panel.getByText(
-        "Sorularını ve cevaplarını yalnızca sen, dersin müderrisi ve ders nazırı görür; diğer talebeler görmez."
+        "Sorularını ve cevaplarını yalnızca sen, dersin hocası ve ders nazırı görür; diğer talebeler görmez."
       )
     ).toBeVisible();
     await expect(

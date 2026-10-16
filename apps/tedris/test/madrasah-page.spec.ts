@@ -110,7 +110,7 @@ describe("medrese page", () => {
     expect(html).toContain("Süleymaniye Medresesi");
     expect(html).toContain("3 ders");
     expect(html).toContain("Başmüderris");
-    expect(html).toContain("Bu medresenin 2 dersinde müderris");
+    expect(html).toContain("Bu medresenin 2 dersinde hoca");
     expect(html).toContain(">Devam ediyor<");
     expect(html).toContain("Onay bekliyor");
     expect(html).toContain("Paz 21:00");

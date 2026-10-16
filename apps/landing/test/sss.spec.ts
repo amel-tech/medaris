@@ -43,7 +43,7 @@ describe("Sık sorulan sorular", () => {
 
   it("says the course staff add the live stream, and times follow the course's time zone", async () => {
     const text = textOf(await render());
-    expect(text).not.toMatch(/Müderris canlı yayın/);
+    expect(text).not.toMatch(/(Müderris|Hoca) canlı yayın/);
     expect(text).toContain(
       "Ders kadrosu bir YouTube canlı yayın bağlantısı eklediyse"
     );

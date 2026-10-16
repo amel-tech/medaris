@@ -125,7 +125,7 @@ test.describe("Ana sayfa (tedris/01)", () => {
       has: page.getByRole("link", { name: fx.titles.followedCourse }),
     });
     await expect(line).toContainText(fx.titles.followedKosk);
-    await expect(line).toContainText("Müderris Ayşe Nur Kılıçarslan");
+    await expect(line).toContainText("Hoca Ayşe Nur Kılıçarslan");
     await expect(
       section.getByRole("link", { name: fx.titles.enrolledCourse })
     ).toHaveCount(0);

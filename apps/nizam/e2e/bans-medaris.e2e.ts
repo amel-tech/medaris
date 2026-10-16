@@ -65,7 +65,7 @@ test("nizam/48 — the başnazım sees every köşk's bans with scope, reason, w
   await expect(row).toContainText(fixture.course.title);
   await expect(row).toContainText(fixture.koskName);
   await expect(row).toContainText(fixture.byMuderris.reason);
-  await expect(row).toContainText("Müderris");
+  await expect(row).toContainText("Hoca");
   await expect(row).toContainText("Bugün");
   await expect(
     row.getByRole("button", { name: /^Yasağı kaldır: / })

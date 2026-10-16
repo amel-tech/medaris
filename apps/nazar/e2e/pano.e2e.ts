@@ -83,7 +83,7 @@ test("nazir/01 — the medrese's Pano shows three scope cards, two sessions and 
   // the seed lists no müderris on the course: the imam gets no star (2026-10-13)
   await expect(
     cards.filter({ hasText: base?.first.title ?? "" })
-  ).toContainText("Müderris");
+  ).toContainText("Hoca");
   await expect(
     cards.filter({ hasText: base?.first.title ?? "" })
   ).not.toContainText("dersin imamı");

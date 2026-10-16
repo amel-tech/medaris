@@ -190,7 +190,7 @@ describe("Takip ettiğin köşklerden", () => {
       /Ayşe Nur Kılıçarslan<\/bdi> <button[^>]*aria-label="Dersin imamı"/
     );
     expect(out).toContain('href="/tr/discover"');
-    expect(out).not.toContain("Müderris <bdi>null");
+    expect(out).not.toContain("Hoca <bdi>null");
   });
 
   it("marks no imam of a course with one müderris (2026-10-13)", async () => {

@@ -198,7 +198,7 @@ test.describe("Desteleri keşfet (tedris/26)", () => {
     const course = deckCard(page, fx.titles.courseDeck);
     await expect(course.getByText("Ders destesi")).toBeVisible();
     await expect(
-      course.getByText(`${fx.courseTitle}·Müderris ${fx.muderrisName}`)
+      course.getByText(`${fx.courseTitle}·Hoca ${fx.muderrisName}`)
     ).toBeVisible();
     await expect(
       course.getByRole("button", {

@@ -139,7 +139,7 @@ describe("the shell of a medrese (nazir 21)", () => {
     const aside = sidebarOf(markup);
     expect(aside).toMatch(/<a class="mds-nav-user" href="\/hesap"/);
     expect(textOf(aside)).toContain(
-      "Mehmet Emin Işıkoğlu Medrese başmüderrisi · Müderris , ayarlar"
+      "Mehmet Emin Işıkoğlu Medrese başmüderrisi · Hoca , ayarlar"
     );
     expect(text).not.toContain("Çıkış yap");
   });
@@ -236,7 +236,7 @@ describe("the shell of a course (nazir 22)", () => {
 
   it("leaves the person's row with the course roles only", async () => {
     const { markup } = await frame();
-    expect(textOf(sidebarOf(markup))).toContain("Müderris , ayarlar");
+    expect(textOf(sidebarOf(markup))).toContain("Hoca , ayarlar");
   });
 });
 
@@ -269,7 +269,7 @@ describe("the closed scope picker", () => {
     const text = textOf(aside);
     // the star after the role, inside the picker's button: words for a screen
     // reader, no button of its own (2026-10-13)
-    expect(text).toContain("Bina ve İzhar Şerhi Müderris dersin imamı");
+    expect(text).toContain("Bina ve İzhar Şerhi Hoca dersin imamı");
     expect(aside).toContain('class="mds-imam-star"');
     expect(aside).not.toContain("mds-imam-star--button");
     expect(text).not.toContain("Nûruosmaniye");
@@ -288,7 +288,7 @@ describe("the closed scope picker", () => {
       current: 1,
     });
     const aside = sidebarOf(markup);
-    expect(textOf(aside)).toContain("Bina ve İzhar Şerhi Müderris");
+    expect(textOf(aside)).toContain("Bina ve İzhar Şerhi Hoca");
     expect(aside).not.toContain("mds-imam-star");
     expect(textOf(aside)).not.toContain("imam");
   });

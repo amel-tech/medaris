@@ -92,8 +92,8 @@ describe("the reason (nizam 41/42, criterion 3)", () => {
 
 describe("bannerRole and cannotLiftNote (nizam 42: Yasaklayan)", () => {
   it("names the role and marks the viewer's own bans", () => {
-    expect(bannerRole(ban(), null, t)).toBe("Müderris");
-    expect(bannerRole(ban(), "m1", t)).toBe("Müderris (siz)");
+    expect(bannerRole(ban(), null, t)).toBe("Hoca");
+    expect(bannerRole(ban(), "m1", t)).toBe("Hoca (siz)");
     expect(bannerRole(ban({ bannedRole: "KOSK_NAZIM" }), "x", t)).toBe(
       "Köşk nazımı"
     );
@@ -229,7 +229,7 @@ describe("BansView (nizam 42)", () => {
     expect(html).toContain("Ömer Faruk Demirkaya");
     expect(html).toContain("Kerem Ali Yazıcı");
     expect(html).toContain("Celselerde kırıcı mesajlar yazdı.");
-    expect(html).toContain("Müderris (siz)");
+    expect(html).toContain("Hoca (siz)");
     expect(html.match(/Yasağı kaldır: /g)).toHaveLength(2);
   });
 
@@ -314,7 +314,7 @@ describe("the ban windows' Turkish sentences (stack-47 round 1)", () => {
       roles
     );
     expect((tr.BansPage.rolePhrases as Record<string, string>).MUDERRIS).toBe(
-      "dersin müderrisi"
+      "dersin hocası"
     );
   });
 

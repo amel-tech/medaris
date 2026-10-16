@@ -318,7 +318,7 @@ describe("the nazar message catalogue", () => {
       title: "Bina ve İzhar Şerhi",
       kosk: "Fatih Köşkü",
       koskGenitive: "Fatih Köşkü’nün",
-      role: "Müderris",
+      role: "Hoca",
       count: 3,
       courses: 2,
       kosks: 1,

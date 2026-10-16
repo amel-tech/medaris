@@ -46,9 +46,8 @@ export default async function Page({
                 >
                   <p className="mds-body">
                     Çevrim içi bir medrese. Dersler köşklerde açılır ve
-                    haftalara bölünür; her hafta müderrisle bir ya da birkaç
-                    canlı celse yapılır, okunanlar ezber kartlarıyla tekrar
-                    edilir.
+                    haftalara bölünür; her hafta hocayla bir ya da birkaç canlı
+                    celse yapılır, okunanlar ezber kartlarıyla tekrar edilir.
                   </p>
                 </FaqItem>
                 <FaqItem id="s2" number={2} question="Köşk ve medrese nedir?">
@@ -181,7 +180,7 @@ export default async function Page({
                   <p className="mds-body">
                     Ezber kartlarından oluşan bir tekrar destesi: kartın önünde
                     Arapça bir kelime ya da metin, arkasında anlamı yazar.
-                    Müderrisin hazırladığı ders destesini çalışabilirsiniz; kart
+                    Hocanın hazırladığı ders destesini çalışabilirsiniz; kart
                     eklemek isterseniz desteyi kendi destenize kopyalarsınız.
                   </p>
                   <p className="mds-body">

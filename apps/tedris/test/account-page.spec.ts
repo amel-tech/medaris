@@ -219,7 +219,7 @@ describe("RolesSection", () => {
       groups: [],
     };
     const html = await render();
-    expect(html).toContain('data-testid="assignment-role">Müderris</span>');
+    expect(html).toContain('data-testid="assignment-role">Hoca</span>');
     expect(html).not.toContain("mds-imam-star");
     expect(html).not.toContain("İmam");
   });
@@ -299,14 +299,14 @@ describe("RolesSection", () => {
     expect(html).toContain("Gizli");
     // the imam of a two-müderris course: the star after the role (2026-10-13)
     expect(html).toMatch(
-      /data-testid="assignment-role">Müderris <button[^>]*aria-label="Dersin imamı"/
+      /data-testid="assignment-role">Hoca <button[^>]*aria-label="Dersin imamı"/
     );
     expect(html.match(/aria-label="Dersin imamı"/g)).toHaveLength(1);
     expect(html).toContain('href="http://nizam.test/kosks/k-1"');
     expect(html).toContain('href="http://nazar.test"');
     expect(html).toContain('target="_blank"');
     expect(html).toContain("Nizam’da aç: köşk nazımı, Nûruosmaniye Köşkü");
-    expect(html).toContain("Nazar’da aç: müderris, Emsile ve Bina");
+    expect(html).toContain("Nazar’da aç: hoca, Emsile ve Bina");
 
     expect(html).toContain("Nûruosmaniye Köşkü · köşk nazımı");
     expect(html).not.toContain("mds-badge--success");
@@ -314,7 +314,7 @@ describe("RolesSection", () => {
     expect(html).toContain("Köşkü düzenle, gizle ya da geri al");
     expect(html).toContain("Her arama denetim kaydına yazılır.");
     expect(html).toContain(
-      "Müderris olduğun derslerin her birinde geçerli: Emsile ve Bina ve Maksûd okumaları."
+      "Hoca olduğun derslerin her birinde geçerli: Emsile ve Bina ve Maksûd okumaları."
     );
     expect(html).toContain(
       "Dersi düzenle: başlık, tanıtım, müfredat, saat dilimi"

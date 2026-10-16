@@ -426,14 +426,14 @@ describe("the rules behind the Pano", () => {
         href: "/ders/c-1",
         state: expect.objectContaining({ label: "Yayında" }),
         // the imam is the star after the role, not a word (2026-10-13)
-        role: "Müderris",
+        role: "Hoca",
         imam: true,
         footer: "Nûruosmaniye Köşkü · 35 talebe",
       }),
       expect.objectContaining({
         id: "c-2",
         state: expect.objectContaining({ label: "Taslak" }),
-        role: "Müderris",
+        role: "Hoca",
         imam: false,
         footer: "Fatih Köşkü · 24 talebe",
       }),
@@ -450,7 +450,7 @@ describe("the rules behind the Pano", () => {
       }),
     ];
     const [card] = courseCards(buildScopes(sole), sole, t, "tr");
-    expect(card).toMatchObject({ role: "Müderris", imam: false });
+    expect(card).toMatchObject({ role: "Hoca", imam: false });
   });
 
   it("says Gizli for a hidden course, and has no state or köşk where the API sent no course", () => {

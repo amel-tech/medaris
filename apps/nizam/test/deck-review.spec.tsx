@@ -335,7 +335,7 @@ describe("KoskDecksView (nizam 30)", () => {
     );
     expect(html).toContain("Köşk desteleri");
     expect(html).toContain("Köşk destesi aç");
-    expect(html).toContain("Müderris önerileri");
+    expect(html).toContain("Hoca önerileri");
     expect(html).toContain("2 öneri kararınızı bekliyor");
     expect(html).toContain("Öneren Ayşe Nur Kılıçarslan");
     expect(html).toContain("Kabul et");
@@ -387,7 +387,7 @@ describe("KoskDecksView (nizam 30)", () => {
         initial={{ ...data, proposals: [], proposalsTotal: 0 }}
       />
     );
-    expect(html).not.toContain("Müderris önerileri");
+    expect(html).not.toContain("Hoca önerileri");
     expect(html).toContain("Desteler");
   });
 
@@ -439,7 +439,7 @@ describe("KoskDeckForm (nizam 35)", () => {
         proposal={proposal()}
       />
     );
-    expect(html).toContain("Müderris önerisinden açılıyor");
+    expect(html).toContain("Hoca önerisinden açılıyor");
     expect(html).toContain("İ’lâl kaideleri");
     expect(html).toContain("Tek bir köşk destesi iki derse yeter.");
     expect(html).toContain("Ayşe Nur Kılıçarslan");
@@ -457,7 +457,7 @@ describe("KoskDeckForm (nizam 35)", () => {
         proposal={null}
       />
     );
-    expect(html).not.toContain("Müderris önerisinden açılıyor");
+    expect(html).not.toContain("Hoca önerisinden açılıyor");
     expect(html).toContain("Kartlar sonra eklenir");
     expect(html).toContain("Kelime");
     expect(html).toContain("Hadis");

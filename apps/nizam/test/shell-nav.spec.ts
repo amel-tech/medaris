@@ -170,7 +170,7 @@ describe("the role line under the name", () => {
           assignments: [{ role: "DERS_NAZIR" }, { role: "MUDERRIS" }],
         })
       ]
-    ).toBe("Müderris");
+    ).toBe("Hoca");
     expect(
       shell.roles[roleLabelKey("none", { systemAdmin: false, assignments: [] })]
     ).toBe("Talebe");

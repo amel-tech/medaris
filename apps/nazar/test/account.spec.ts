@@ -254,7 +254,7 @@ describe("the list of roles", () => {
       expires: { label: "Süresiz", iso: null },
     });
     expect(second).toMatchObject({
-      role: "Müderris",
+      role: "Hoca",
       isImam: true,
       scopeBadge: { label: "Yayında", variant: "primary" },
       scopeMeta: ["Nûruosmaniye Köşkü"],
@@ -278,7 +278,7 @@ describe("the permission groups", () => {
 
   it("heads a group of one scope with the scope and the role", () => {
     expect(groupHeading(group(), t, "tr")).toEqual({
-      title: "Bina ve İzhar Şerhi · müderris",
+      title: "Bina ve İzhar Şerhi · hoca",
       scopeLine: null,
     });
   });
@@ -291,9 +291,9 @@ describe("the permission groups", () => {
       ],
     });
     expect(groupHeading(many, t, "tr")).toEqual({
-      title: "Müderris",
+      title: "Hoca",
       scopeLine:
-        "Müderris olduğunuz derslerin her birinde geçerli: Bina ve İzhar Şerhi ve İsâgûcî ile mantığa giriş.",
+        "Hoca olduğunuz derslerin her birinde geçerli: Bina ve İzhar Şerhi ve İsâgûcî ile mantığa giriş.",
     });
     expect(
       groupHeading({ ...many, role: "DERS_NAZIR" }, t, "tr").scopeLine

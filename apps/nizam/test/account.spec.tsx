@@ -147,10 +147,9 @@ describe("roles and their order", () => {
   });
 
   it("writes the first role as it is and the rest in lower case", () => {
-    const label = (r: string) =>
-      r === "KOSK_NAZIM" ? "Köşk nazımı" : "Müderris";
+    const label = (r: string) => (r === "KOSK_NAZIM" ? "Köşk nazımı" : "Hoca");
     expect(roleSummary(["KOSK_NAZIM", "MUDERRIS"], label, "tr")).toBe(
-      "Köşk nazımı · müderris"
+      "Köşk nazımı · hoca"
     );
   });
 
@@ -397,7 +396,7 @@ describe("the page (nizam/47)", () => {
         ] as never,
       })
     );
-    expect(html).toContain("Müderrislik");
+    expect(html).toContain("Hocalık");
     expect(html).toMatch(
       /<a[^>]*href="http:\/\/nazar\.test"[^>]*>[\s\S]*Nazar’da aç/
     );
@@ -430,11 +429,11 @@ describe("the page (nizam/47)", () => {
       );
     const two = await teaching(2);
     expect(two).toMatch(
-      /data-testid="assignment-role">Müderris <button[^>]*aria-label="Dersin imamı"/
+      /data-testid="assignment-role">Hoca <button[^>]*aria-label="Dersin imamı"/
     );
     expect(two.match(/aria-label="Dersin imamı"/g)).toHaveLength(1);
     const one = await teaching(1);
-    expect(one).toContain('data-testid="assignment-role">Müderris</span>');
+    expect(one).toContain('data-testid="assignment-role">Hoca</span>');
     expect(one).not.toContain("mds-imam-star");
     expect(one).not.toContain("Dersin imamı");
   });

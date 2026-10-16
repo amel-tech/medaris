@@ -110,7 +110,7 @@ describe("the permission sentences", () => {
   it("pins the ten medrese sentences, word for word (nazir 06 and 16)", () => {
     expect(MADRASAH.map((code) => tr[key(code)])).toEqual([
       "Medrese dersi aç",
-      "Müderris ekle ya da çıkar; imamı değiştir",
+      "Hoca ekle ya da çıkar; imamı değiştir",
       "Medresenin talebelerini gör",
       "Medrese düzeyinde yasakla; ders yasağını medreseye genişlet",
       "Medrese derslerini gizle, geri al",
@@ -546,7 +546,7 @@ describe("a group's card", () => {
   it("sums the permissions up: the first four as sentences, then how many more", () => {
     expect(
       groupSummary(["madrasah.course_open", "madrasah.muderris_manage"], t)
-    ).toBe("Medrese dersi aç · Müderris ekle ya da çıkar; imamı değiştir");
+    ).toBe("Medrese dersi aç · Hoca ekle ya da çıkar; imamı değiştir");
     const six = groupSummary(
       [
         "course.edit",

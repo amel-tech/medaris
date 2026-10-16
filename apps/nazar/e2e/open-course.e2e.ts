@@ -50,7 +50,7 @@ const open = async (page: Page) => {
 
 const search = async (page: Page, email: string) => {
   const field = page
-    .getByLabel("Müderris", { exact: true })
+    .getByLabel("Hoca", { exact: true })
     .filter({ visible: true });
   await field.fill(email);
   await field.press("Enter");
@@ -113,9 +113,7 @@ test("nazir/08 — 'Dersi aç' without a name and a müderris says what is missi
   await expect(
     page.getByText("Ders adı boş olamaz.").filter({ visible: true })
   ).toBeVisible();
-  await expect(
-    page.getByText("En az bir müderris seçin.").last()
-  ).toBeVisible();
+  await expect(page.getByText("En az bir hoca seçin.").last()).toBeVisible();
   await expect(name(page)).toBeFocused();
   expect(await courses?.created()).toHaveLength(0);
 
@@ -123,7 +121,7 @@ test("nazir/08 — 'Dersi aç' without a name and a müderris says what is missi
   await submit(page).click();
   await expect(page.getByText("Ders adı boş olamaz.")).toHaveCount(0);
   await expect(
-    page.getByLabel("Müderris", { exact: true }).filter({ visible: true })
+    page.getByLabel("Hoca", { exact: true }).filter({ visible: true })
   ).toBeFocused();
   expect(await courses?.created()).toHaveLength(0);
 });

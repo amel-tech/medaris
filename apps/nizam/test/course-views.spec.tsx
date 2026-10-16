@@ -155,7 +155,7 @@ describe("Ders aç (nizam 32)", () => {
     expect(html).toContain("Ders aç");
     expect(html).toContain("Ders adı");
     expect(html).toContain("Kapak ibaresi");
-    expect(html).toContain("Müderrisler");
+    expect(html).toContain("Hocalar");
     expect(html).toContain("Haftalık celse günü");
     expect(html).toContain("0 celse planlanacak");
     expect(html).toContain("Kapalı ders");
@@ -199,7 +199,7 @@ describe("TeamPicker (nizam 32, 33)", () => {
         onChange={() => {}}
       />
     );
-    expect(html).toContain("Seçilen müderrisler");
+    expect(html).toContain("Seçilen hocalar");
     expect(html).toContain("Dersin imamı");
     expect(html.match(/Çıkar/g)).toHaveLength(2);
     expect(html).toContain("a@example.com");
@@ -239,7 +239,7 @@ describe("Ders ayarları (nizam 34)", () => {
     expect(html).toContain("kayıtlı 28 talebe");
     expect(html).toContain("Taslağa çek");
     expect(html).toContain("Abdülhamit Karaosmanoğlu");
-    expect(html).toContain("Müderrisleri düzenle");
+    expect(html).toContain("Hocaları düzenle");
     expect(html).toContain("Dersi gizle");
     expect(html).toContain("https://tedris.example/tr/courses/c1");
   });
@@ -256,7 +256,7 @@ describe("Ders ayarları (nizam 34)", () => {
     );
     expect(html).toContain("Yayımla");
     expect(html).not.toContain("Taslağa çek<");
-    expect(html).not.toContain("Müderrisleri düzenle");
+    expect(html).not.toContain("Hocaları düzenle");
     expect(html).not.toContain("Dersi gizle");
   });
 

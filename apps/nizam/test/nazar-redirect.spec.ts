@@ -149,7 +149,7 @@ describe("NazarRedirectPage", () => {
     expect(html).toContain("Medrese başmüderrisi");
     // the imam's star after the role, a button that explains it
     expect(html).toMatch(
-      /Müderris <button[^>]*aria-label="Dersin imamı"[^>]*>[\s\S]*?<\/button> · Nûruosmaniye Köşkü · 35 talebe/
+      /Hoca <button[^>]*aria-label="Dersin imamı"[^>]*>[\s\S]*?<\/button> · Nûruosmaniye Köşkü · 35 talebe/
     );
     expect(html).toContain("Taslak");
     expect(html).not.toContain("0 talebe");
@@ -168,7 +168,7 @@ describe("NazarRedirectPage", () => {
         }),
       ]),
     });
-    expect(html).toContain("Müderris · Nûruosmaniye Köşkü · 35 talebe");
+    expect(html).toContain("Hoca · Nûruosmaniye Köşkü · 35 talebe");
     expect(html).not.toContain("mds-imam-star");
     expect(html).not.toContain("Dersin imamı");
   });

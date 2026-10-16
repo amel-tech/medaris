@@ -6,10 +6,10 @@
 
 export const hero = {
   eyebrow: "Çevrim içi medrese",
-  title: "Kitap, müderris, halka.",
+  title: "Kitap, hoca, halka.",
   titleSoft: "Nerede olursanız olun.",
   intro:
-    "Medrese usulü okumanın üç direği bunlardır. Medaris, medreselerin derslerini çevrim içi açtığı, talebelerin de müderrisle haftalık canlı celselerde okuduğu yerdir.",
+    "Medrese usulü okumanın üç direği bunlardır. Medaris, medreselerin derslerini çevrim içi açtığı, talebelerin de hocayla haftalık canlı celselerde okuduğu yerdir.",
   register: "Talebe olarak kaydolun",
   forMadrasahs: "Medreseniz için",
   explore: "Dersleri keşfedin",
@@ -29,7 +29,7 @@ export const folio = {
 export const promises = [
   {
     title: "Canlı okuyun",
-    body: "Müderrisle aynı halkada, haftalık celselerde.",
+    body: "Hocayla aynı halkada, haftalık celselerde.",
   },
   {
     title: "Düzenli ilerleyin",
@@ -43,7 +43,7 @@ export const promises = [
 
 export const talebe = {
   eyebrow: "Talebeler için",
-  title: "Bir kitabı baştan sona, müderrisinden okuyun.",
+  title: "Bir kitabı baştan sona, hocasından okuyun.",
   points: [
     {
       lead: "Önce bakın, sonra karar verin.",
@@ -80,7 +80,7 @@ export const medrese = {
   points: [
     {
       lead: "Talebe her yerden gelsin.",
-      text: "Derslerinizi çevrim içi açın, müderrislerini siz seçin; şehir dışındaki talebe de halkanıza katılsın.",
+      text: "Derslerinizi çevrim içi açın, hocalarını siz seçin; şehir dışındaki talebe de halkanıza katılsın.",
     },
     {
       lead: "Haftanız bir bakışta.",
@@ -147,7 +147,7 @@ export const sampleCourse = {
 
 export const halka = {
   quote: "Medrese, binasından önce bir halkadır.",
-  text: "Bir kitap, onu okutan bir müderris ve dinleyen talebeler. Medaris bu halkayı ekrana taşır; nerede olursanız olun, yeriniz hazırdır.",
+  text: "Bir kitap, onu okutan bir hoca ve dinleyen talebeler. Medaris bu halkayı ekrana taşır; nerede olursanız olun, yeriniz hazırdır.",
 };
 
 export const ezber = {
@@ -195,7 +195,7 @@ export const operator = {
   institutionLabel: "Kurum",
   testimonialLabel: "Görüş",
   institution: "[Medaris’i yürüten kurumun adı ve iki cümlelik tanıtımı]",
-  testimonial: "[Bir müderrisin ya da talebenin, izniyle alınmış görüşü]",
+  testimonial: "[Bir hocanın ya da talebenin, izniyle alınmış görüşü]",
   testimonialBy: "[Görüş sahibinin adı ve dersi]",
 };
 

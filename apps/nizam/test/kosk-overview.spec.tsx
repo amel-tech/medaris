@@ -157,7 +157,7 @@ describe("the tabs of the Dersler table (nizam 23)", () => {
 });
 
 describe("a row's buttons (nizam 23)", () => {
-  it("gives the köşk's own course Düzenle, Müderrisleri düzenle and Gizle", () => {
+  it("gives the köşk's own course Düzenle, Hocaları düzenle and Gizle", () => {
     expect(rowActions(row())).toEqual(["edit", "editMuderris", "hide"]);
   });
 
@@ -524,7 +524,7 @@ describe("Köşk — Medaris yönetimi görünümü (nizam 20)", () => {
 
   it("has no buttons on the courses table: the course work is the köşk nazımı's", () => {
     const html = page();
-    expect(html).not.toContain("Müderrisleri düzenle");
+    expect(html).not.toContain("Hocaları düzenle");
     expect(html).not.toContain("Dersi gör");
   });
 
@@ -634,7 +634,7 @@ describe("Dersler (nizam 23)", () => {
     expect(html).toContain("Dersi gör: Bina ve İzhar Şerhi");
     expect(html).not.toContain("Düzenle: Bina ve İzhar Şerhi");
     expect(html).toContain("Düzenle: Emsile ve Bina");
-    expect(html).toContain("Müderrisleri düzenle: Emsile ve Bina");
+    expect(html).toContain("Hocaları düzenle: Emsile ve Bina");
     expect(html).toContain("Gizle: Emsile ve Bina");
   });
 
