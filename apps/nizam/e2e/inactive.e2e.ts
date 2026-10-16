@@ -102,7 +102,7 @@ test("nizam/14 — the list shows the scopes with no manager, why, since when an
   const course = rowOf(page, fixture.course.title);
   await expect(course).toHaveCount(1);
   await expect(course).toContainText(`Ders · ${fixture.activeKosk.name}`);
-  await expect(course).toContainText("Son müderris görevden alındı");
+  await expect(course).toContainText("Son hoca görevden alındı");
   await expect(course).toContainText(fixture.course.lastMuderris.name);
   // the seed lists no müderris on the course: the imam gets no star and no
   // word (2026-10-13)
@@ -313,14 +313,14 @@ test("nizam/14 — 'Müderris ata' gives a course its müderris, the imam, and p
   await signIn(page, SYSTEM_ADMIN);
   await openInactive(page);
   await rowOf(page, fixture.course.title)
-    .getByRole("button", { name: /Müderris ata/ })
+    .getByRole("button", { name: /Hoca ata/ })
     .click();
-  const dialog = page.getByRole("dialog", { name: "Müderris ata" });
-  const email = dialog.getByRole("textbox", { name: /^Müderris/ });
+  const dialog = page.getByRole("dialog", { name: "Hoca ata" });
+  const email = dialog.getByRole("textbox", { name: /^Hoca/ });
   await email.fill(TALEBE.email as string);
   await email.press("Enter");
   await expect(dialog.getByTestId("chosen-head")).toBeVisible();
-  await dialog.getByRole("button", { name: "Müderris ata" }).click();
+  await dialog.getByRole("button", { name: "Hoca ata" }).click();
   await expect(dialog).toBeHidden();
 
   await expect(rowOf(page, fixture.course.title)).toHaveCount(0);

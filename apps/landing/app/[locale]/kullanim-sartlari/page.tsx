@@ -27,7 +27,7 @@ export default async function Page({
               Girişte gördüğünüz şartların özeti, bu metnin kısa hâlidir.
             </p>
             <p className="mds-caption">
-              Son güncelleme: <time dateTime="2026-10-14">14 Ekim 2026</time> ·
+              Son güncelleme: <time dateTime="2026-10-15">15 Ekim 2026</time> ·
               Yürürlük tarihi: {legal.termsEffectiveDate}
             </p>
           </div>
@@ -151,8 +151,7 @@ export default async function Page({
                 <div className="flex flex-col gap-1">
                   <dt className="mds-label">Ders kadrosu</dt>
                   <dd className="m-0">
-                    Dersi yürüten müderrisler ile derste yetki verilmiş
-                    görevliler.
+                    Dersi yürüten hocalar ile derste yetki verilmiş görevliler.
                   </dd>
                 </div>
                 <div className="flex flex-col gap-1">
@@ -259,8 +258,8 @@ export default async function Page({
               </h2>
               <p>
                 Bazı derslere kayıt, ders kadrosunun onayına bağlıdır; bu
-                derslerde kayıt başvuruyla başlar. Başvuru, dersin müderrisi ya
-                da bu yetkiyi taşıyan görevli tarafından onaylanır ya da
+                derslerde kayıt başvuruyla başlar. Başvuru, dersin hocası ya da
+                bu yetkiyi taşıyan görevli tarafından onaylanır ya da
                 reddedilir. Ret gerekçesi yazılmışsa başvuru sahibi onu
                 bildirimde görür.
               </p>
@@ -305,8 +304,8 @@ export default async function Page({
               <p>
                 Herkese açık olarak işaretlenen ders kayıtları ile ders
                 sayfasında örnek olarak gösterilen celse bunun dışındadır;
-                bunlara herkes erişebilir. Müderris ve talebe dışındaki
-                kişilerin ders içeriğini okuması denetim kaydına yazılır.
+                bunlara herkes erişebilir. Hoca ve talebe dışındaki kişilerin
+                ders içeriğini okuması denetim kaydına yazılır.
               </p>
             </section>
 
@@ -316,9 +315,9 @@ export default async function Page({
               </h2>
               <ul className="mbe-0 ps-6">
                 <li>
-                  Celseler, müderrisin seçtiği toplantı platformunda (örneğin
+                  Celseler, hocanın seçtiği toplantı platformunda (örneğin
                   Google Meet, Zoom ya da Jitsi Meet) yapılır. Toplantı
-                  bağlantısını müderris ya da yetkili görevli celseye ekler.
+                  bağlantısını hoca ya da yetkili görevli celseye ekler.
                   Platform kullanılırken platformun kendi şartları da
                   geçerlidir.
                 </li>
@@ -328,8 +327,8 @@ export default async function Page({
                   bildirilir.
                 </li>
                 <li>
-                  Celse canlı yayınla yapılıyorsa yayın müderrisin kendi
-                  hesabından açılır ve celse sayfasına gömülür.
+                  Celse canlı yayınla yapılıyorsa yayın hocanın kendi hesabından
+                  açılır ve celse sayfasına gömülür.
                 </li>
                 <li>
                   Celseler kayda alınabilir. Kaydı alınan celsede yer alan ses
@@ -355,8 +354,8 @@ export default async function Page({
               </p>
               <ul className="mbe-0 ps-6">
                 <li>
-                  Ders destesini müderris, köşk destesini köşk nazımı açar; köşk
-                  destesi için müderris öneride bulunabilir. Paylaşılan desteye
+                  Ders destesini hoca, köşk destesini köşk nazımı açar; köşk
+                  destesi için hoca öneride bulunabilir. Paylaşılan desteye
                   talebe kart eklemez, kartı kendi destesine kopyalar.
                 </li>
                 <li>

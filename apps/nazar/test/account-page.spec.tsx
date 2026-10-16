@@ -198,14 +198,14 @@ describe("Hesap ve ayarlar (nazir 20)", () => {
   it("groups the permissions by role and scope, with the sentences, notes and the end of the role", async () => {
     const { markup, text } = await render();
     expect(markup.match(/data-testid="permission-group"/g)).toHaveLength(1);
-    expect(text).toContain("Müderris olduğunuz derslerin her birinde geçerli");
+    expect(text).toContain("Hoca olduğunuz derslerin her birinde geçerli");
     expect(text).toContain(
       "Dersi düzenle: başlık, tanıtım, müfredat, saat dilimi"
     );
     expect(text).toContain(
       "E-postayla kullanıcı bul Her arama denetim kaydına yazılır."
     );
-    expect(text).toContain("Müderrisin varsayılan izinleri.");
+    expect(text).toContain("Hocanın varsayılan izinleri.");
     // three courses, none with an end date
     expect(text).toContain("Bitiş: süresiz.");
   });
@@ -267,9 +267,7 @@ describe("Hesap ve ayarlar (nazir 20)", () => {
 
   it("shows the account: the person, their roles and a read-only e-mail", async () => {
     const { markup, text } = await render();
-    expect(text).toContain(
-      "Mehmet Emin Işıkoğlu Medrese başmüderrisi · Müderris"
-    );
+    expect(text).toContain("Mehmet Emin Işıkoğlu Medrese başmüderrisi · Hoca");
     expect(text).toContain("E-posta");
     expect(markup).toMatch(
       /<input[^>]*value="mehmetemin\.isikoglu@example\.com"[^>]*>/

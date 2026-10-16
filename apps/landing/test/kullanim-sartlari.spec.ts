@@ -80,8 +80,8 @@ describe("Kullanım şartları: “Medaris ile giriş yap” (owner, 13 and 14 O
 });
 
 describe("Kullanım şartları: date", () => {
-  it("is last updated on 14 October 2026", async () => {
+  it("is last updated on 15 October 2026", async () => {
     const html = await render();
-    expect(html).toMatch(/<time datetime="2026-10-14">14 Ekim 2026<\/time>/i);
+    expect(html).toMatch(/<time datetime="2026-10-15">15 Ekim 2026<\/time>/i);
   });
 });

@@ -207,7 +207,7 @@ describe("'İzinleri düzenle' (nazir 06)", () => {
     expect(dialog().querySelectorAll("[role=checkbox]")).toHaveLength(31);
     for (const sentence of [
       "Medrese dersi aç",
-      "Müderris ekle ya da çıkar; imamı değiştir",
+      "Hoca ekle ya da çıkar; imamı değiştir",
       "Medrese nazırı ata",
       "Dersi düzenle: başlık, tanıtım, müfredat, saat dilimi",
       "Talebelerin sorularını gör ve yanıtla",

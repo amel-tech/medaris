@@ -266,7 +266,7 @@ describe("the rows (criterion 4)", () => {
     });
     expect(rows[1]?.hider).toEqual({
       name: "Mehmet Emin Işıkoğlu",
-      role: "Müderris (siz)",
+      role: "Hoca (siz)",
     });
     expect(rows[2]?.hider).toEqual({
       name: "Adı bilinmiyor",

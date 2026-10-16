@@ -286,7 +286,7 @@ describe("session page, the header (MDRS-289)", () => {
     expect(meta).not.toContain("İmam");
     expect(meta).toContain('class="mds-avatar mds-avatar--sm"');
     expect(meta).not.toContain("senin saatinle");
-    expect(await render(session())).not.toContain(">Müderris<");
+    expect(await render(session())).not.toContain(">Hoca<");
   });
 
   it("marks the imam with the star after the name where the course has more than one müderris (2026-10-13)", async () => {

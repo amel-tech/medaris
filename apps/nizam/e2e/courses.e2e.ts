@@ -97,7 +97,7 @@ test.describe("nizam/32 Ders aç", () => {
         .filter({ visible: true })
     ).toBeVisible();
     await expect(
-      page.getByText("En az bir müderris seçin.").filter({ visible: true })
+      page.getByText("En az bir hoca seçin.").filter({ visible: true })
     ).toBeVisible();
     await expect(
       page.getByText("Başlangıç tarihini girin.").filter({ visible: true })
@@ -129,7 +129,7 @@ test.describe("nizam/32 Ders aç", () => {
       page.getByTestId("team-list").filter({ visible: true })
     ).toBeVisible();
     await expect(
-      page.getByText("Tek müderris dersin imamıdır.").filter({ visible: true })
+      page.getByText("Tek hoca dersin imamıdır.").filter({ visible: true })
     ).toBeVisible();
 
     await page
@@ -206,10 +206,10 @@ test.describe("nizam/33 Müderrisleri düzenle", () => {
     const row = page
       .locator("tbody tr:visible")
       .filter({ hasText: fixture.course.title });
-    await row.getByRole("button", { name: /Müderrisleri düzenle/ }).click();
+    await row.getByRole("button", { name: /Hocaları düzenle/ }).click();
     const dialog = page.getByRole("dialog");
     await expect(
-      dialog.getByRole("heading", { name: "Müderrisleri düzenle" })
+      dialog.getByRole("heading", { name: "Hocaları düzenle" })
     ).toBeVisible();
     await expect(dialog.getByText("E2E Köşk Nazımı")).toBeVisible();
     await expect(
@@ -241,10 +241,10 @@ test.describe("nizam/33 Müderrisleri düzenle", () => {
     const row = page
       .locator("tbody tr:visible")
       .filter({ hasText: fixture.course.title });
-    await row.getByRole("button", { name: /Müderrisleri düzenle/ }).click();
+    await row.getByRole("button", { name: /Hocaları düzenle/ }).click();
     const dialog = page.getByRole("dialog");
     await dialog.getByRole("button", { name: /listeden çıkar/ }).click();
-    await expect(dialog.getByText("En az bir müderris olmalı.")).toBeVisible();
+    await expect(dialog.getByText("En az bir hoca olmalı.")).toBeVisible();
     await expect(dialog.getByRole("button", { name: "Kaydet" })).toBeDisabled();
   });
 });

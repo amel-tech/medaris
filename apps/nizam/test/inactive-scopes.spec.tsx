@@ -176,7 +176,7 @@ describe("InactiveView (nizam 14)", () => {
   it("says why, since when and who the last manager was", () => {
     const html = view();
     expect(html).toContain("Başmüderrisin görev süresi doldu");
-    expect(html).toContain("Son müderris görevden alındı");
+    expect(html).toContain("Son hoca görevden alındı");
     expect(html).toContain("Ayşe Nur Kılıçarslan, köşk nazımı");
     expect(html).toContain("27 Eylül 2026");
     expect(html).toContain("Abdurrahman Şeref Tunalıoğlu");
@@ -186,9 +186,9 @@ describe("InactiveView (nizam 14)", () => {
 
   it("marks the last müderris who was the imam with the star, only where the course lists more than one (2026-10-13)", () => {
     const star = /<button[^>]*aria-label="Dersin imamı"/g;
-    // the course lists two müderrisler: the star after "Müderris"
+    // the course lists two müderrisler: the star after "Hoca"
     expect(view().match(star)).toHaveLength(1);
-    expect(view()).toMatch(/Müderris <button[^>]*aria-label="Dersin imamı"/);
+    expect(view()).toMatch(/Hoca <button[^>]*aria-label="Dersin imamı"/);
     // the same course with one: no star and no word
     const sole = view([medrese, { ...course, muderrisCount: 1 }]);
     expect(sole).not.toMatch(star);
@@ -202,7 +202,7 @@ describe("InactiveView (nizam 14)", () => {
       expect(html).toContain(label);
     }
     expect(html).toContain('aria-label="Başmüderris ata: Zeyrek Medresesi"');
-    expect(html).toContain('aria-label="Müderris ata: Kasîde-i Bürde şerhi"');
+    expect(html).toContain('aria-label="Hoca ata: Kasîde-i Bürde şerhi"');
   });
 
   it("offers 'İçeriği gör' for a course but not for a medrese", () => {

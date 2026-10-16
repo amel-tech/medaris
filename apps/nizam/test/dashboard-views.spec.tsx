@@ -140,7 +140,7 @@ describe("the başnazım's home page (nizam 01)", () => {
     expect(html).toContain("/tr/talepler/kosk-basvurulari?secili=a1");
     expect(html).toContain("/tr/talepler/deste-yayin-istekleri?secili=d1");
     expect(html).toContain("Başmüderris ata");
-    expect(html).toContain("Müderris ata");
+    expect(html).toContain("Hoca ata");
     expect(html).toContain("Ders yasağı: Emsile ve Bina");
     expect(html).toContain("koyan Abdülhamit Karaosmanoğlu");
     expect(html).toContain("Gerekçe: Celselerde başka talebelere hakaret.");
@@ -572,6 +572,6 @@ describe("a köşk nazımı's home page (nizam 02)", () => {
     expect(quiet).toContain("Önümüzdeki yedi günde celse yok.");
     expect(quiet).toContain("Önümüzdeki yedi günde celse yok.");
     expect(quiet).toContain("Bekleyen başvuru yok.");
-    expect(quiet).toContain("Bu köşkte müderris yok.");
+    expect(quiet).toContain("Bu köşkte hoca yok.");
   });
 });

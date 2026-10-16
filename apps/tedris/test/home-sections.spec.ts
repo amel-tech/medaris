@@ -195,7 +195,7 @@ describe("Takip ettiğin köşklerden", () => {
     );
     expect(out).toContain('href="/tr/discover"');
     expect(out).not.toContain("<bdi>null");
-    expect(out).not.toContain("Müderris <bdi>");
+    expect(out).not.toContain("Hoca <bdi>");
   });
 
   it("marks no imam of a course with one müderris (2026-10-13)", async () => {

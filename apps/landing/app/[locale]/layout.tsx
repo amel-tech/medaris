@@ -11,7 +11,7 @@ import "@medaris/ui/medaris.css";
 export const metadata: Metadata = {
   title: "Medaris",
   description:
-    "Medrese ilimlerini müderrisle, haftalık canlı celselerde okuyun. Medaris’te dersler köşklerde açılır ve haftalara bölünür.",
+    "Medrese ilimlerini hocayla, haftalık canlı celselerde okuyun. Medaris’te dersler köşklerde açılır ve haftalara bölünür.",
 };
 
 export function generateStaticParams() {

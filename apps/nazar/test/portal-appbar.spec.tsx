@@ -48,8 +48,8 @@ const bina = {
   href: "/ders/c-1",
   name: "Bina ve İzhar Şerhi",
   imam: true,
-  summary: ["Müderris"],
-  detail: ["Müderris", "Nûruosmaniye Köşkü"],
+  summary: ["Hoca"],
+  detail: ["Hoca", "Nûruosmaniye Köşkü"],
 };
 
 const mount = (
@@ -71,7 +71,7 @@ const mount = (
             note: "Yalnız görev aldığınız medrese ve dersler listelenir.",
             imamStar: {
               title: "Dersin imamı",
-              body: "Birden çok müderrisi olan derste müderrislerden biri imamdır.",
+              body: "Birden çok hocası olan derste hocalardan biri imamdır.",
               mark: "dersin imamı",
             },
           }}
@@ -80,7 +80,7 @@ const mount = (
       footer={
         <UserRow
           person={{ name: "Mehmet Emin Işıkoğlu", email: "m@example.com" }}
-          roles={["Medrese başmüderrisi", "Müderris"]}
+          roles={["Medrese başmüderrisi", "Hoca"]}
           href="/hesap"
           hint="ayarlar"
         />

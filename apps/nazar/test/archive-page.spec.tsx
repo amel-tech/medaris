@@ -296,7 +296,7 @@ describe("Arşiv", () => {
     expect(rows[0]).toContain("Ömer Nasuhi Bilmenoğlu Köşk nazımı");
     expect(rows[0]).toContain("Dün 10:05");
 
-    expect(rows[1]).toContain("Mehmet Emin Işıkoğlu Müderris (siz)");
+    expect(rows[1]).toContain("Mehmet Emin Işıkoğlu Hoca (siz)");
     expect(rows[1]).toContain("28 Eyl 16:10");
 
     expect(rows[2]).toContain("Hafta 9: Genel tekrar");

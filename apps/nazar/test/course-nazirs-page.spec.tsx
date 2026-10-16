@@ -304,7 +304,7 @@ describe("Ders nazırları", () => {
     state.list = list({ grantable: [] });
     const out = textOf(await markup());
     expect(out).toContain(
-      "Ders nazırı atayabilirsiniz. Atadığınız kişi izinsiz başlar; izinleri dersin müderrisi verir."
+      "Ders nazırı atayabilirsiniz. Atadığınız kişi izinsiz başlar; izinleri dersin hocası verir."
     );
     expect(out).toContain("Ders nazırı ata");
   });

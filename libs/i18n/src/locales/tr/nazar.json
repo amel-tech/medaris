@@ -51,7 +51,7 @@
     "KOSK_NAZIM": "Köşk nazımı",
     "MEDRESE_BASMUDERRIS": "Medrese başmüderrisi",
     "MEDRESE_NAZIR": "Medrese nazırı",
-    "MUDERRIS": "Müderris",
+    "MUDERRIS": "Hoca",
     "DERS_NAZIR": "Ders nazırı",
     "SYSTEM_ADMIN": "Medaris başnazımı",
     "STUDENT": "Talebe"
@@ -124,20 +124,20 @@
     "permissionsEmpty": "Görevlerinizden gelen ya da size verilmiş bir izin henüz yok.",
     "grantedRole": "Verilen izinler",
     "eachScope": {
-      "MUDERRIS": "Müderris olduğunuz derslerin her birinde geçerli: {names}.",
+      "MUDERRIS": "Hoca olduğunuz derslerin her birinde geçerli: {names}.",
       "default": "{role} olduğunuz her kapsamda geçerli: {names}."
     },
     "expiryNone": "Bitiş: süresiz.",
     "expiryAt": "Bitiş: {date}.",
     "expiryEarliest": "En yakın bitiş: {date}.",
     "defaultsNote": {
-      "KOSK_NAZIM": "Köşk nazımının varsayılan izinleri. Köşkteki medrese derslerinde dersi açmak ve müderris listesi medresenindir.",
-      "MUDERRIS": "Müderrisin varsayılan izinleri. Ders kadrosu, derse kayıtlı talebenin adını ve e-postasını varsayılan görür; bu ayrı bir izin değildir."
+      "KOSK_NAZIM": "Köşk nazımının varsayılan izinleri. Köşkteki medrese derslerinde dersi açmak ve hoca listesi medresenindir.",
+      "MUDERRIS": "Hocanın varsayılan izinleri. Ders kadrosu, derse kayıtlı talebenin adını ve e-postasını varsayılan görür; bu ayrı bir izin değildir."
     },
     "permissions": {
       "kosk_manage": "Köşkü düzenle, gizle ya da geri al",
       "kosk_hosting": "Barındırma hakkı ver ya da geri al",
-      "course_open_standalone": "Medrese dışı ders aç; müderrisleri ve imamı seç",
+      "course_open_standalone": "Medrese dışı ders aç; hocaları ve imamı seç",
       "course_manage_all": "Köşkteki derslerin içeriğini, celselerini, ders kayıtlarını ve başvurularını yönet",
       "ban_manage_kosk": "Ders ve köşk düzeyinde yasakla ya da yasağı gerekçeyle kaldır; ders yasağını köşke genişlet",
       "deck_manage_kosk": "Köşk destesini aç ve düzenle",
@@ -168,7 +168,7 @@
       "permission_group_define": "İzin grubu tanımla",
       "madrasah_course_open": "Medrese dersi aç",
       "madrasah_offsite_course_request": "Medrese dışı ders talebi gönder",
-      "madrasah_muderris_manage": "Müderris ekle ya da çıkar; imamı değiştir",
+      "madrasah_muderris_manage": "Hoca ekle ya da çıkar; imamı değiştir",
       "madrasah_students_view": "Medresenin talebelerini gör",
       "madrasah_ban": "Medrese düzeyinde yasakla; ders yasağını medreseye genişlet",
       "madrasah_course_hide": "Medrese derslerini gizle, geri al",
@@ -424,7 +424,7 @@
   "CourseNazirs": {
     "title": "Ders nazırları",
     "intro": "{course} dersinin ders nazırları. Ders nazırı yalnız kendisine verilen izinlerle çalışır; görev ve izinler aynı anda biter.",
-    "introAppointOnly": "Ders nazırı atayabilirsiniz. Atadığınız kişi izinsiz başlar; izinleri dersin müderrisi verir.",
+    "introAppointOnly": "Ders nazırı atayabilirsiniz. Atadığınız kişi izinsiz başlar; izinleri dersin hocası verir.",
     "appoint": "Ders nazırı ata",
     "caption": "{course} dersinin ders nazırları",
     "empty": "Bu derste henüz ders nazırı yok.",
@@ -467,7 +467,7 @@
       "already": "{name} bu dersin ders nazırı zaten.",
       "permissions": "İzinler",
       "permissionsHelp": "Yalnız sizde olan izinleri verebilirsiniz.",
-      "appointOnly": "Atadığınız kişi izinsiz başlar; izinleri dersin müderrisi verir.",
+      "appointOnly": "Atadığınız kişi izinsiz başlar; izinleri dersin hocası verir.",
       "endLabel": "Bitiş tarihi ve saati (isteğe bağlı)",
       "endHelp": "Görev ve izinler aynı anda biter. Boş bırakırsanız süresiz olur.",
       "endProblems": {
@@ -505,7 +505,7 @@
       "exists": "Bu kişi bu dersin ders nazırı zaten.",
       "gone": "Bu ders nazırı artık yok; liste yenilendi.",
       "unknownAccount": "Bu hesap bulunamadı.",
-      "holdsSeat": "Bu kişinin bu derste zaten bir görevi var (müderris; medrese, köşk ya da Medaris görevi); ders nazırı yapılamaz.",
+      "holdsSeat": "Bu kişinin bu derste zaten bir görevi var (hocalık; medrese, köşk ya da Medaris görevi); ders nazırı yapılamaz.",
       "barred": "Bu kişi bu dersten yasaklı; ders nazırı yapılamaz.",
       "hidden": "Gizli bir derse ders nazırı atanamaz.",
       "hasAppointees": "Bu ders nazırının atadığı ders nazırları var; önce onları görevden alın.",
@@ -762,7 +762,7 @@
     "caption": "Medrese dersleri",
     "columns": {
       "course": "Ders",
-      "muderris": "Müderrisler",
+      "muderris": "Hocalar",
       "students": "Talebe",
       "status": "Durum",
       "actions": "İşlemler"
@@ -776,7 +776,7 @@
     },
     "actions": {
       "label": "Diğer işlemler: {title}",
-      "muderris": "Müderrisleri değiştir",
+      "muderris": "Hocaları değiştir",
       "hide": "Dersi gizle"
     },
     "empty": "Bu medresede henüz ders yok. Barındırma hakkı olan bir köşkte “Medrese dersi aç” ile ilk dersi açabilirsiniz.",
@@ -796,24 +796,24 @@
     },
     "outside": {
       "title": "Medrese dışı ders",
-      "text": "Burada yalnız medresenin derslerini açabilirsiniz. Medreseye bağlı olmayacak bir dersin açılmasını “Medrese dışı ders talebi gönder” ile isteyebilirsiniz; talep köşkün nazımına gider, Medaris yönetimi talebi görür. Kabul edilirse dersi köşk nazımı açar ve müderrislerini seçer."
+      "text": "Burada yalnız medresenin derslerini açabilirsiniz. Medreseye bağlı olmayacak bir dersin açılmasını “Medrese dışı ders talebi gönder” ile isteyebilirsiniz; talep köşkün nazımına gider, Medaris yönetimi talebi görür. Kabul edilirse dersi köşk nazımı açar ve hocalarını seçer."
     },
     "loadFailedTitle": "Dersler okunamadı",
     "loadFailed": "Dersler şu an okunamadı. Birkaç saniye sonra yeniden deneyin.",
     "errors": {
       "hostingRight": "Bu köşk artık medresenize barındırma hakkı vermiyor. Sayfa yenilendi; başka bir köşk seçin.",
-      "unknownUser": "Seçtiğiniz müderrislerden birinin hesabı bulunamadı. Listeyi denetleyip yeniden deneyin.",
+      "unknownUser": "Seçtiğiniz hocalardan birinin hesabı bulunamadı. Listeyi denetleyip yeniden deneyin.",
       "imam": "Dersin imamını seçip yeniden deneyin.",
       "duplicate": "Aynı kişi listede iki kez yer alıyor. Listeyi denetleyip yeniden deneyin.",
-      "invalid": "Ders adını ve müderris listesini denetleyip yeniden deneyin.",
+      "invalid": "Ders adını ve hoca listesini denetleyip yeniden deneyin.",
       "gone": "Bu ders artık yok. Liste yenilendi."
     }
   },
   "OpenCourse": {
     "title": "Medrese dersi aç",
     "breadcrumb": "Sayfa yolu",
-    "intro": "Ders {name} adına, barındırma hakkı olan bir köşkte açılır. Müderrisleri şimdi seçersiniz.",
-    "introUnnamed": "Ders medrese adına, barındırma hakkı olan bir köşkte açılır. Müderrisleri şimdi seçersiniz.",
+    "intro": "Ders {name} adına, barındırma hakkı olan bir köşkte açılır. Hocaları şimdi seçersiniz.",
+    "introUnnamed": "Ders medrese adına, barındırma hakkı olan bir köşkte açılır. Hocaları şimdi seçersiniz.",
     "required": "zorunlu alan",
     "kosk": {
       "legend": "Köşk",
@@ -823,16 +823,16 @@
       "noCourses": "medresenin burada henüz dersi yok"
     },
     "name": "Ders adı",
-    "nameHelp": "Talebeler bu adı görür; müderrisler sonradan değiştirebilir.",
+    "nameHelp": "Talebeler bu adı görür; hocalar sonradan değiştirebilir.",
     "nameProblems": {
       "required": "Ders adı boş olamaz.",
       "short": "Ders adı en az {min} karakter olmalı.",
       "long": "Ders adı en çok {max} karakter olabilir."
     },
     "team": {
-      "legend": "Seçilen müderrisler",
-      "help": "En az bir müderris seçin. Tek müderris dersin imamıdır; birden çok müderris seçerseniz imamı siz belirlersiniz.",
-      "none": "En az bir müderris seçin."
+      "legend": "Seçilen hocalar",
+      "help": "En az bir hoca seçin. Tek hoca dersin imamıdır; birden çok hoca seçerseniz imamı siz belirlersiniz.",
+      "none": "En az bir hoca seçin."
     },
     "settingsTitle": "Ders ayarları",
     "closed": {
@@ -852,7 +852,7 @@
       }
     },
     "policiesUnknown": "Medresenin politikaları şu an okunamadı; ders açılırken sunucu uygular.",
-    "note": "Ders taslak olarak açılır. Müderrisler müfredatı ve celseleri hazırlayıp yayımlar; yayımlanana kadar talebeler dersi görmez.",
+    "note": "Ders taslak olarak açılır. Hocalar müfredatı ve celseleri hazırlayıp yayımlar; yayımlanana kadar talebeler dersi görmez.",
     "cancel": "Vazgeç",
     "submit": "Dersi aç",
     "opening": "Ders açılıyor",
@@ -866,7 +866,7 @@
     "back": "Derslere dön"
   },
   "Team": {
-    "label": "Müderris",
+    "label": "Hoca",
     "help": "Kayıtlı hesabın e-posta adresini eksiksiz yazın; her arama denetim kaydına yazılır.",
     "placeholder": "ad.soyad@example.com",
     "searching": "Aranıyor",
@@ -874,8 +874,8 @@
     "notFound": "Bu e-posta adresiyle kayıtlı bir hesap bulunamadı.",
     "failed": "Arama şu an yapılamıyor. Biraz sonra yeniden deneyin.",
     "listed": "Bu kişi zaten listede.",
-    "full": "En fazla {max} müderris eklenebilir.",
-    "noAccount": "Hesabı olmayan müderris; bu listeden değiştirilemez.",
+    "full": "En fazla {max} hoca eklenebilir.",
+    "noAccount": "Hesabı olmayan hoca; bu listeden değiştirilemez.",
     "imam": "Dersin imamı",
     "imamPick": "Dersin imamı: {name}",
     "imamMissing": "Dersin imamını seçin.",
@@ -883,17 +883,17 @@
     "removeLabel": "Çıkar: {name}"
   },
   "ChangeTeam": {
-    "title": "Müderrisleri değiştir",
-    "intro": "Müderris listesini medrese adına siz değiştirirsiniz; köşk nazımı değiştiremez.",
-    "legend": "Müderrisler",
-    "help": "En az bir müderris gerekir. Tek müderris dersin imamıdır; birden çok müderris varsa imamı siz belirlersiniz.",
-    "count": "{count} müderris",
+    "title": "Hocaları değiştir",
+    "intro": "Hoca listesini medrese adına siz değiştirirsiniz; köşk nazımı değiştiremez.",
+    "legend": "Hocalar",
+    "help": "En az bir hoca gerekir. Tek hoca dersin imamıdır; birden çok hoca varsa imamı siz belirlersiniz.",
+    "count": "{count} hoca",
     "cancel": "Vazgeç",
     "save": "Kaydet",
     "saving": "Kaydediliyor",
-    "saved": "Müderrisler kaydedildi",
-    "savedBody": "“{title}” dersinin müderris listesi güncellendi.",
-    "failedTitle": "Müderrisler kaydedilemedi"
+    "saved": "Hocalar kaydedildi",
+    "savedBody": "“{title}” dersinin hoca listesi güncellendi.",
+    "failedTitle": "Hocalar kaydedilemedi"
   },
   "HideCourse": {
     "title": "Dersi gizle",
@@ -1164,7 +1164,7 @@
     "name": "Ders adı",
     "nameHelp": "Önerdiğiniz ad; dersi açan değiştirebilir.",
     "reason": "Gerekçe",
-    "reasonHelp": "Dersin neden medrese dışında açılması gerektiğini ve önerdiğiniz müderrisleri yazın.",
+    "reasonHelp": "Dersin neden medrese dışında açılması gerektiğini ve önerdiğiniz hocaları yazın.",
     "reasonProblems": {
       "required": "Bir gerekçe yazın.",
       "long": "Gerekçe en çok {max} karakter olabilir."
@@ -1176,7 +1176,7 @@
     "after": {
       "oneNamed": "Talep {koskGenitive} nazımına gider; Medaris yönetimi talebi görür.",
       "one": "Talep seçtiğiniz köşkün nazımına gider; Medaris yönetimi talebi görür.",
-      "two": "Kabul edilirse dersi köşk nazımı açar ve müderrislerini seçer.",
+      "two": "Kabul edilirse dersi köşk nazımı açar ve hocalarını seçer.",
       "three": "Ders bu medreseye bağlı olmaz: medrese derslerinde görünmez, talebeleri medresenin talebesi sayılmaz."
     },
     "sent": "Talep gönderildi",
@@ -1709,6 +1709,9 @@
     "weekSummaryLabel": "Hafta özeti",
     "weekSummaryHelp": "İsteğe bağlı; herkes görür.",
     "lessonHeading": "Celse {n} · {when}",
+    "detailsShow": "Başlık, bağlantı, kaynaklar, ödev",
+    "detailsHide": "Ayrıntıları gizle",
+    "untitledLesson": "Adsız celse",
     "cancelled": "İptal edildi",
     "accessMissing": "Katılım yolu eksik",
     "scheduled": "Planlandı",

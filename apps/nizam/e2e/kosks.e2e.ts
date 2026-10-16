@@ -452,7 +452,7 @@ test("nizam/24 — 'Köşkü gizle' asks first, hides the köşk with its course
   const confirm = page.getByRole("alertdialog");
   await expect(confirm).toBeVisible();
   await expect(confirm).toContainText(
-    `${fixture.beyazit.name} talebelerden, müderrislerden, medreselerden ve ziyaretçilerden gizlenecek`
+    `${fixture.beyazit.name} talebelerden, hocalardan, medreselerden ve ziyaretçilerden gizlenecek`
   );
   await shot(page, "24-gizle");
   // "Vazgeç" has the focus, and cancelling hides nothing

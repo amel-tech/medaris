@@ -242,11 +242,12 @@ export function CourseCreateForm({ kosk, request }: Props) {
             </Field>
             <div className="flex flex-wrap items-start gap-6">
               <div className="flex flex-col gap-2">
+                {/* no labelLang: with no ibare the label is the title, and a Latin title set
+                    right-to-left moves its closing "?" to the front. CoverPattern finds Arabic itself. */}
                 <CoverPattern
                   tone={tone}
                   size="lg"
                   label={arabicOfCoverLabel(label) ?? title}
-                  labelLang="ar"
                 />
                 <span className="mds-caption">{t("previewLabel")}</span>
               </div>

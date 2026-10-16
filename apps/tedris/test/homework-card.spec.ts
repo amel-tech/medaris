@@ -308,7 +308,7 @@ describe("the card", () => {
     expect(
       [...host.querySelectorAll("h3")].map((h) => h.textContent)
     ).toContain("Ödevim");
-    expect(text).toContain("Müderris ve ders ekibi görür.");
+    expect(text).toContain("Hoca ve ders ekibi görür.");
     expect(text).toContain("Henüz dosya eklemedin.");
     expect(host.querySelector('[data-testid="homework-files"]')).toBeNull();
     expect(text).not.toContain(tr.updatedAt);

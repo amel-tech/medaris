@@ -94,7 +94,7 @@
     "forbidden": "You need to be enrolled in the course to write notes."
   },
   "CourseQuestions": {
-    "private": "Only you, the course's müderris and its ders nazırı see your questions and their answers; other talebe do not.",
+    "private": "Only you, the course's teacher and its ders nazırı see your questions and their answers; other talebe do not.",
     "loading": "Loading your questions…",
     "loadFailed": "Your questions could not be loaded.",
     "retry": "Try again",
@@ -165,7 +165,7 @@
   },
   "Homework": {
     "title": "My homework",
-    "audience": "Your müderris and the course team see it.",
+    "audience": "Your teacher and the course team see it.",
     "loading": "Loading your homework…",
     "loadFailed": "Your homework could not be loaded.",
     "retry": "Try again",
@@ -186,7 +186,7 @@
     "removed": "{name} removed.",
     "removeFailed": "The file could not be removed. Try again in a moment.",
     "noteLabel": "Your note",
-    "noteHelp": "Optional: leave your müderris a short note.",
+    "noteHelp": "Optional: leave your teacher a short note.",
     "noteCount": "{count}/{max} characters",
     "noteSave": "Save note",
     "noteSaving": "Saving",
@@ -209,7 +209,7 @@
     "handedIn": "Handed in",
     "notHandedIn": "Not handed in",
     "pendingTitle": "You have not handed in this homework yet",
-    "pendingBody": "Add your file or write your note below; your müderris and the course team see it.",
+    "pendingBody": "Add your file or write your note below; your teacher and the course team see it.",
     "noAssignment": "No homework was set on this session; what you handed in before stays here."
   },
   "FileDownload": {

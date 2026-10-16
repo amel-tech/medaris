@@ -33,9 +33,7 @@ test("shows the medrese, its head müderris and its courses", async ({
   await expect(
     main.getByText(`Başmüderris ${fixture.headMuderrisName}`)
   ).toBeVisible();
-  await expect(
-    main.getByText("Bu medresenin 2 dersinde müderris")
-  ).toBeVisible();
+  await expect(main.getByText("Bu medresenin 2 dersinde hoca")).toBeVisible();
   for (const course of fixture.courses) {
     await expect(page.getByRole("link", { name: course.title })).toBeVisible();
   }

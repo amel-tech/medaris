@@ -177,7 +177,7 @@ describe("Ders aç: an unvan for each hoca (2026-10-15)", () => {
     );
     await choose(byLabel("Cemal Nur için unvan") as HTMLElement, "Molla");
     // Cemal is taken off again: his unvan goes with him.
-    await click(byLabel("Cemal Nur müderrisini listeden çıkar") as HTMLElement);
+    await click(byLabel("Hocayı listeden çıkar: Cemal Nur") as HTMLElement);
     await click(byLabel("Ahmet Mehmet dersin imamı olsun") as HTMLElement);
     await click(button("Dersi aç"));
     await settle(40);
@@ -196,7 +196,7 @@ describe("Ders aç: an unvan for each hoca (2026-10-15)", () => {
     expect(body.muderris.map((m) => m.userId)).not.toContain("u-cemal");
   });
 
-  it("draws no unvan select in 'Müderrisleri düzenle' on a course that exists", async () => {
+  it("draws no unvan select in 'Hocaları düzenle' on a course that exists", async () => {
     actions.readCourse.mockResolvedValue({
       success: true,
       data: {

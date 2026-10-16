@@ -373,7 +373,7 @@ describe("the live/ended switch", () => {
     const panel = askPanel(host) as HTMLElement;
     expect(panel.querySelector('[role="combobox"], select')).toBeNull();
     expect(panel.textContent).toContain(
-      "Sorularını ve cevaplarını yalnızca sen, dersin müderrisi ve ders nazırı görür; diğer talebeler görmez."
+      "Sorularını ve cevaplarını yalnızca sen, dersin hocası ve ders nazırı görür; diğer talebeler görmez."
     );
     const field = panel.querySelector("textarea") as HTMLTextAreaElement;
     await act(async () => {

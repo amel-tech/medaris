@@ -417,13 +417,13 @@ describe("the filters", () => {
   });
 });
 
-describe("'Müderrisleri değiştir' (nazir 17)", () => {
+describe("'Hocaları değiştir' (nazir 17)", () => {
   const open = async (title = "Bina ve İzhar Şerhi") => {
     await mount();
     await click(byLabel(`Diğer işlemler: ${title}`));
     await settle(40);
     const item = [...document.querySelectorAll("[role=menuitem]")].find(
-      (i) => i.textContent?.trim() === "Müderrisleri değiştir"
+      (i) => i.textContent?.trim() === "Hocaları değiştir"
     );
     await click(item as Element);
     await settle(80);
@@ -446,14 +446,14 @@ describe("'Müderrisleri değiştir' (nazir 17)", () => {
   it("opens for the course, with its müderrisler, the imam marked, and nothing to save yet", async () => {
     await open();
     expect(dialog().textContent).toContain("Bina ve İzhar Şerhi");
-    expect(dialog().textContent).toContain("Müderrisleri değiştir");
+    expect(dialog().textContent).toContain("Hocaları değiştir");
     expect(dialog().textContent).toContain(
-      "Müderris listesini medrese adına siz değiştirirsiniz; köşk nazımı değiştiremez."
+      "Hoca listesini medrese adına siz değiştirirsiniz; köşk nazımı değiştiremez."
     );
     expect(dialog().textContent).toContain("Mehmet Emin Işıkoğlu");
     expect(dialog().textContent).toContain("u-1@example.com");
     expect(dialog().textContent).toContain("Abdülhamit Karaosmanoğlu");
-    expect(dialog().textContent).toContain("2 müderris");
+    expect(dialog().textContent).toContain("2 hoca");
     expect(dialog().querySelectorAll("[role=radio]")).toHaveLength(2);
     expect(
       dialog()
@@ -474,7 +474,7 @@ describe("'Müderrisleri değiştir' (nazir 17)", () => {
     replaceMuderris.mockResolvedValue({ success: true, data: null });
     await open();
     await click(byLabel("Çıkar: Abdülhamit Karaosmanoğlu"));
-    expect(dialog().textContent).toContain("1 müderris");
+    expect(dialog().textContent).toContain("1 hoca");
     // a lone müderris is the imam: no radio to choose with
     expect(dialog().querySelectorAll("[role=radio]")).toHaveLength(0);
     expect(dialog().textContent).toContain("Dersin imamı");
@@ -486,7 +486,7 @@ describe("'Müderrisleri değiştir' (nazir 17)", () => {
       muderrisUserIds: ["u-1"],
       imamUserId: "u-1",
     });
-    expect(toast("success")).toContain("Müderrisler kaydedildi");
+    expect(toast("success")).toContain("Hocalar kaydedildi");
     expect(refresh).toHaveBeenCalledOnce();
     expect(dialog()).toBeNull();
   });
@@ -507,7 +507,7 @@ describe("'Müderrisleri değiştir' (nazir 17)", () => {
     expect(lookupPerson).toHaveBeenCalledExactlyOnceWith(
       "a.kilicarslan@example.com"
     );
-    expect(dialog().textContent).toContain("3 müderris");
+    expect(dialog().textContent).toContain("3 hoca");
     expect(dialog().textContent).toContain("a.kilicarslan@example.com");
     expect(emailField().value).toBe("");
     // the imam stays the one who was
@@ -534,7 +534,7 @@ describe("'Müderrisleri değiştir' (nazir 17)", () => {
     });
     await search("a.karaosmanoglu@example.com");
     expect(dialog().textContent).toContain("Bu kişi zaten listede.");
-    expect(dialog().textContent).toContain("2 müderris");
+    expect(dialog().textContent).toContain("2 hoca");
 
     lookupPerson.mockResolvedValue({ kind: "none" });
     await search("kimse@example.com");
@@ -595,11 +595,11 @@ describe("'Müderrisleri değiştir' (nazir 17)", () => {
     await open("Maksûd şerhi");
     expect(dialog().textContent).toContain("Konuk Müderris");
     expect(dialog().textContent).toContain(
-      "Hesabı olmayan müderris; bu listeden değiştirilemez."
+      "Hesabı olmayan hoca; bu listeden değiştirilemez."
     );
     expect(byLabel("Çıkar: Konuk Müderris")).toBeNull();
     expect(dialog().querySelectorAll("[role=radio]")).toHaveLength(0);
-    expect(dialog().textContent).toContain("2 müderris");
+    expect(dialog().textContent).toContain("2 hoca");
     // the one account is the last: it stays
     expect(
       (byLabel("Çıkar: Mehmet Emin Işıkoğlu") as HTMLButtonElement).disabled
@@ -616,7 +616,7 @@ describe("'Müderrisleri değiştir' (nazir 17)", () => {
     await click(save());
     await settle(60);
 
-    expect(toast("error")).toContain("Müderrisler kaydedilemedi");
+    expect(toast("error")).toContain("Hocalar kaydedilemedi");
     expect(toast("error")).toContain("Bunu yapma izniniz yok.");
     expect(dialog()).not.toBeNull();
     expect(refresh).not.toHaveBeenCalled();
