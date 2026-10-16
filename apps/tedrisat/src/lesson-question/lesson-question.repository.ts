@@ -1,9 +1,14 @@
+import type { HocaUnvan } from "@medaris/utils/src/hoca-unvan.js";
 import { Injectable } from "@nestjs/common";
 import { and, asc, desc, eq, isNull, type SQL, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { displayNameOf } from "../assignment/assignment.service";
 import { DatabaseService } from "../database/database.service";
-import { courseWeeks, lessons } from "../database/schema/course.schema";
+import {
+  courseMuderris,
+  courseWeeks,
+  lessons,
+} from "../database/schema/course.schema";
 import { lessonQuestions } from "../database/schema/lesson-question.schema";
 import { users } from "../database/schema/user.schema";
 import type { IQuestionCursor } from "./lesson-question-cursor";
@@ -11,6 +16,16 @@ import type { IQuestionCursor } from "./lesson-question-cursor";
 export interface IQuestionPerson {
   id: string;
   name: string | null;
+}
+
+/**
+ * Who answered: and whether they did it as a hoca of the course, listed on
+ * its müderris list, with the unvan they carry there. A ders nazırı or a
+ * köşk nazımı who answers is no hoca, and their name carries no unvan.
+ */
+export interface IQuestionAnswerer extends IQuestionPerson {
+  isMuderris: boolean;
+  unvan: HocaUnvan | null;
 }
 
 /** A question with the session it is on and the people it names. */
@@ -25,7 +40,7 @@ export interface ILessonQuestion {
   answer: {
     body: string;
     answeredAt: Date;
-    answeredBy: IQuestionPerson;
+    answeredBy: IQuestionAnswerer;
   } | null;
 }
 
@@ -56,6 +71,18 @@ const columns = {
   answererGiven: answerer.givenName,
   answererFamily: answerer.familyName,
   answererEmail: answerer.email,
+  answererIsMuderris: sql<boolean>`exists (
+    select 1 from ${courseMuderris}
+    where ${courseMuderris.courseId} = ${courseWeeks.courseId}
+      and ${courseMuderris.userId} = ${lessonQuestions.answeredBy}
+  )`,
+  answererUnvan: sql<HocaUnvan | null>`(
+    select ${courseMuderris.unvan} from ${courseMuderris}
+    where ${courseMuderris.courseId} = ${courseWeeks.courseId}
+      and ${courseMuderris.userId} = ${lessonQuestions.answeredBy}
+    order by ${courseMuderris.orderIndex}, ${courseMuderris.id}
+    limit 1
+  )`,
 };
 
 interface Row {
@@ -76,6 +103,8 @@ interface Row {
   answererGiven: string | null;
   answererFamily: string | null;
   answererEmail: string | null;
+  answererIsMuderris: boolean;
+  answererUnvan: HocaUnvan | null;
 }
 
 function present(row: Row): ILessonQuestion {
@@ -106,6 +135,8 @@ function present(row: Row): ILessonQuestion {
                 familyName: row.answererFamily,
                 email: row.answererEmail,
               }),
+              isMuderris: row.answererIsMuderris,
+              unvan: row.answererIsMuderris ? row.answererUnvan : null,
             },
           }
         : null,

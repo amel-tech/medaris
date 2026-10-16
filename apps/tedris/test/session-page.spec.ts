@@ -279,7 +279,8 @@ describe("session page, the header (MDRS-289)", () => {
       "3 Ekim Cumartesi · 21:00–22:00 İstanbul saatiyle"
     );
     expect(text(meta)).toContain("60 dk");
-    expect(meta).toContain(">Abdülhamit Karaosmanoğlu<");
+    // no unvan in this course: "… Hoca" (2026-10-15)
+    expect(meta).toContain(">Abdülhamit Karaosmanoğlu Hoca<");
     // the lone müderris is the imam and gets no mark (2026-10-13)
     expect(meta).not.toContain("mds-imam-star");
     expect(meta).not.toContain("İmam");
@@ -294,7 +295,12 @@ describe("session page, the header (MDRS-289)", () => {
         await render(
           session({
             muderris: [
-              { name: "Abdülhamit Karaosmanoğlu", title: null, isImam: true },
+              {
+                name: "Abdülhamit Karaosmanoğlu",
+                title: null,
+                isImam: true,
+                unvan: "SEYH",
+              },
               { name: "Ayşe Nur Kılıçarslan", title: null, isImam: false },
             ],
           })
@@ -302,11 +308,12 @@ describe("session page, the header (MDRS-289)", () => {
         "session-meta",
         "div"
       ) ?? "";
+    // each name with the unvan of this course (2026-10-15)
     expect(meta).toMatch(
-      /Abdülhamit Karaosmanoğlu<\/span><button[^>]*aria-label="Dersin imamı"/
+      />Şeyh Abdülhamit Karaosmanoğlu<\/span><button[^>]*aria-label="Dersin imamı"/
     );
     expect(meta.match(/aria-label="Dersin imamı"/g)).toHaveLength(1);
-    expect(meta).toContain(">Ayşe Nur Kılıçarslan<");
+    expect(meta).toContain(">Ayşe Nur Kılıçarslan Hoca<");
   });
 
   it("adds the viewer's own time when their clock shows another", async () => {

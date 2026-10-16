@@ -16,6 +16,7 @@ import { answerQuestion, loadQuestions } from "../actions";
 import {
   ANSWER_BODY_MAX,
   answerErrorKey,
+  answererName,
   appendQuestions,
   questionWhen,
 } from "../questions";
@@ -179,9 +180,9 @@ const QuestionCard = ({
       {question.answer && !editing ? (
         <div className="flex flex-col gap-1 border-bs border-neutral-subtle pbs-3">
           <p className="mds-label">
-            {question.answer.answeredBy.name
+            {answererName(question.answer.answeredBy)
               ? t("Questions.answerBy", {
-                  name: question.answer.answeredBy.name,
+                  name: answererName(question.answer.answeredBy),
                 })
               : t("Questions.answer")}
           </p>

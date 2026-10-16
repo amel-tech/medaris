@@ -1,9 +1,25 @@
+import type { QuestionAnswererResponse } from "@medaris/services/tedrisat";
+import { formatHocaName } from "@medaris/utils";
+
 /**
  * Sorular of a course (MDRS-150) as rules: the limit the API puts on an
  * answer, how a page of questions joins what is shown, how a time is written
  * and which message a refused call says. Pure on purpose, so that the page and
  * the list have nothing to decide.
  */
+
+/**
+ * Who answered, as "Cevap: …" names them: a hoca of the course with the unvan
+ * they carry in it ("Prof. Dr. Ahmet Mehmet", "Ahmet Mehmet Hoca"), anyone
+ * else (a ders nazırı, the köşk nazımı) by their name alone. Empty when the
+ * account carries no name, and the line then says "Cevap".
+ */
+export const answererName = (
+  answeredBy: Pick<QuestionAnswererResponse, "name" | "isMuderris" | "unvan">
+): string =>
+  answeredBy.isMuderris
+    ? formatHocaName(answeredBy.name, answeredBy.unvan)
+    : (answeredBy.name ?? "");
 
 /** The API's limit on a question or an answer (`LESSON_QUESTION_BODY_MAX`). */
 export const ANSWER_BODY_MAX = 4000;

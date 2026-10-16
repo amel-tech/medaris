@@ -51,7 +51,7 @@ const course = {
   contentLocked: true,
   enrollment: null,
   muderris: [
-    { id: "m1", name: "Mehmet Emin Işıkoğlu" },
+    { id: "m1", name: "Mehmet Emin Işıkoğlu", unvan: "PROF_DR" },
     { id: "m2", name: "Abdülhamit Karaosmanoğlu" },
   ],
   weeks: [
@@ -208,7 +208,11 @@ describe("tedris/19 renders (MDRS-162)", () => {
   it("shows the course card and the programme with locked rows", async () => {
     const html = await render("apply");
     expect(html).toContain("Bina ve İzhar Şerhi");
-    expect(html).toContain("Mehmet Emin Işıkoğlu ve Abdülhamit Karaosmanoğlu");
+    // each name with the unvan of this course, no "Müderris" before the list (2026-10-15)
+    expect(html).toContain(
+      "Prof. Dr. Mehmet Emin Işıkoğlu ve Abdülhamit Karaosmanoğlu Hoca"
+    );
+    expect(html).not.toContain("Müderris Prof. Dr.");
     expect(html).toContain("Müfredat");
     expect(html).toContain("is-locked");
   });

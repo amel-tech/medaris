@@ -40,6 +40,7 @@ import {
   type TeamState,
   teamPayload,
   WEEKDAYS,
+  withUnvans,
 } from "../present";
 import { TeamPicker } from "./team-picker";
 
@@ -137,7 +138,8 @@ export function CourseCreateForm({ kosk, request }: Props) {
       inPerson,
       status: publish === "publish" ? "PUBLISHED" : "DRAFT",
       timeZone,
-      muderris: payload.muderris,
+      // each with the unvan chosen for them in the new course (2026-10-15)
+      muderris: withUnvans(payload.muderris, team),
       weeks: [],
       resources: [],
     });
@@ -294,6 +296,7 @@ export function CourseCreateForm({ kosk, request }: Props) {
               value={team}
               onChange={setTeam}
               disabled={saving}
+              withUnvan
               error={show(teamProblem === "team", "team")}
             />
             {sent && teamProblem === "imam" ? (

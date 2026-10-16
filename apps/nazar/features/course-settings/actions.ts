@@ -1,6 +1,6 @@
 "use server";
 
-import type { UpdateCourseDto } from "@medaris/services/tedrisat";
+import type { HocaUnvan, UpdateCourseDto } from "@medaris/services/tedrisat";
 import {
   type ActionOutcome,
   authenticatedAction,
@@ -65,6 +65,29 @@ export async function setSampleLesson(
   });
   if (!result.success)
     console.error("Error changing the sample session:", result.error);
+  return outcomeOf(result);
+}
+
+/**
+ * "Kaydet" of Hocalar ve unvanları (`PUT /courses/:id/muderris/:userId/unvan`):
+ * the unvan one hoca carries in this course, or null for none. It moves no
+ * version, so it is not held to the one the page was read at.
+ */
+export async function setHocaUnvan(
+  courseId: string,
+  userId: string,
+  unvan: HocaUnvan | null
+): Promise<ActionOutcome<{ unvan: HocaUnvan | null }>> {
+  const result = await authenticatedAction(async (api) => {
+    const row = await api.courses.setCourseMuderrisUnvan({
+      id: courseId,
+      userId,
+      setMuderrisUnvanDto: { unvan },
+    });
+    return { unvan: row.unvan ?? null };
+  });
+  if (!result.success)
+    console.error("Error setting a hoca's unvan:", result.error);
   return outcomeOf(result);
 }
 

@@ -90,18 +90,24 @@ describe("the withdrawal dialog's numbers (nizam 27)", () => {
   });
 
   it("writes a course's second line with its talebe and imam, the star where there are several müderrisler", () => {
+    // with no unvan in the course the imam is "{name} Hoca"
     expect(courseLine(course(), dialog)).toEqual({
       students: "35 talebe",
-      imam: { name: "Mehmet Emin Işıkoğlu", star: true },
+      imam: { name: "Mehmet Emin Işıkoğlu Hoca", star: true },
     });
     expect(courseLine(course({ studentCount: 0 }), dialog)).toEqual({
       students: "Henüz talebe yok",
-      imam: { name: "Mehmet Emin Işıkoğlu", star: true },
+      imam: { name: "Mehmet Emin Işıkoğlu Hoca", star: true },
     });
     // a lone müderris is named with no mark (2026-10-13)
     expect(courseLine(course({ muderrisCount: 1 }), dialog)).toEqual({
       students: "35 talebe",
-      imam: { name: "Mehmet Emin Işıkoğlu", star: false },
+      imam: { name: "Mehmet Emin Işıkoğlu Hoca", star: false },
+    });
+    // the unvan the imam carries in that course goes before the name
+    expect(courseLine(course({ imamUnvan: "PROF_DR" }), dialog)).toEqual({
+      students: "35 talebe",
+      imam: { name: "Prof. Dr. Mehmet Emin Işıkoğlu", star: true },
     });
     expect(courseLine(course({ imamName: null }), dialog)).toEqual({
       students: "35 talebe",

@@ -321,7 +321,12 @@ describe("köşk page (design tedris/04)", () => {
         summary({
           madrasah: { id: "m1", name: "Süleymaniye Medresesi" },
           muderris: [
-            { id: "u1", name: "Mehmet Emin Işıkoğlu", isImam: true },
+            {
+              id: "u1",
+              name: "Mehmet Emin Işıkoğlu",
+              isImam: true,
+              unvan: "DOC_DR",
+            },
             { id: "u2", name: "Abdülhamit Karaosmanoğlu", isImam: false },
           ],
         }),
@@ -330,11 +335,14 @@ describe("köşk page (design tedris/04)", () => {
     );
     expect(html).toContain('href="/tr/madrasahs/m1"');
     expect(html).toContain("Süleymaniye Medresesi");
-    // the star after the imam's name, a button that explains it (2026-10-13)
+    // the star after the imam's name, a button that explains it (2026-10-13);
+    // each name with the unvan of this course, no word before them (2026-10-15)
     expect(html).toMatch(
-      /Mehmet Emin Işıkoğlu<\/bdi> <button[^>]*aria-label="Dersin imamı"/
+      /<bdi>Doç\. Dr\. Mehmet Emin Işıkoğlu<\/bdi> <button[^>]*aria-label="Dersin imamı"/
     );
-    expect(html).not.toMatch(/Abdülhamit Karaosmanoğlu<\/bdi> <button/);
+    expect(html).toContain("<bdi>Abdülhamit Karaosmanoğlu Hoca</bdi>");
+    expect(html).not.toContain("Müderris <bdi>");
+    expect(html).not.toMatch(/Abdülhamit Karaosmanoğlu Hoca<\/bdi> <button/);
     expect(html.match(/aria-label="Dersin imamı"/g)).toHaveLength(1);
     expect(html).not.toContain(", imam");
   });

@@ -1,5 +1,6 @@
 import { resources } from "@medaris/i18n";
 import { describe, expect, it } from "vitest";
+import { NO_UNVAN } from "~/features/course-settings/hoca-unvan";
 import {
   blankForm,
   counterOf,
@@ -17,6 +18,7 @@ import {
   openCourseHref,
   openProblems,
   openRequest,
+  openUnvans,
   statusOptions,
   titleProblem,
 } from "~/features/courses/courses";
@@ -202,15 +204,40 @@ describe("a course as a row (nazir 07, criteria 3 and 4)", () => {
   it("names the müderrisler in list order and marks the imam (criterion 4)", () => {
     const [row] = rows(item());
     expect(row?.muderris).toEqual([
-      { name: "Mehmet Emin Işıkoğlu", imam: true },
-      { name: "Abdülhamit Karaosmanoğlu", imam: false },
+      { name: "Mehmet Emin Işıkoğlu Hoca", imam: true },
+      { name: "Abdülhamit Karaosmanoğlu Hoca", imam: false },
+    ]);
+  });
+
+  it("names each müderris with the unvan they carry in the course (2026-10-15)", () => {
+    const [row] = rows(
+      item({
+        muderris: [
+          muderris({ unvan: "PROF_DR" }),
+          muderris({
+            userId: "u-2",
+            name: "Abdülhamit Karaosmanoğlu",
+            isImam: false,
+            unvan: "MOLLA",
+          }),
+        ],
+      })
+    );
+    expect(row?.muderris.map((m) => m.name)).toEqual([
+      "Prof. Dr. Mehmet Emin Işıkoğlu",
+      "Molla Abdülhamit Karaosmanoğlu",
+    ]);
+    // the dialog that changes who teaches works with the names as they are
+    expect(row?.team.map((m) => m.name)).toEqual([
+      "Mehmet Emin Işıkoğlu",
+      "Abdülhamit Karaosmanoğlu",
     ]);
   });
 
   it("marks no imam where the course has one müderris (2026-10-13)", () => {
     const [row] = rows(item({ muderris: [muderris()] }));
     expect(row?.muderris).toEqual([
-      { name: "Mehmet Emin Işıkoğlu", imam: false },
+      { name: "Mehmet Emin Işıkoğlu Hoca", imam: false },
     ]);
     // the dialog's list still knows who the imam is
     expect(row?.team[0]?.isImam).toBe(true);
@@ -324,6 +351,7 @@ describe("the opening form (nazir 08, criteria 2 and 3)", () => {
       koskId: "k-1",
       title: "",
       team: { members: [], imam: null },
+      unvans: {},
       closed: false,
       approval: false,
     });
@@ -375,6 +403,29 @@ describe("the opening form (nazir 08, criteria 2 and 3)", () => {
       closedCourse: true,
       requiresApproval: false,
     });
+  });
+
+  it("sends the unvan of each listed hoca given one, in list order, and no other (2026-10-15)", () => {
+    const unvans = {
+      "u-2": "MOLLA",
+      "u-1": NO_UNVAN,
+      // chosen for someone no longer on the list
+      "u-9": "DR",
+    };
+    expect(openUnvans(team, unvans)).toEqual([
+      { userId: "u-2", unvan: "MOLLA" },
+    ]);
+    expect(openRequest({ ...filled, unvans }, locksOf(null))).toMatchObject({
+      muderrisUnvans: [{ userId: "u-2", unvan: "MOLLA" }],
+    });
+    // none given: the key is not sent at all
+    expect(openRequest(filled, locksOf(null))).not.toHaveProperty(
+      "muderrisUnvans"
+    );
+    // an account is matched however its id is cased
+    expect(openUnvans(team, { "u-1": "PROF_DR" })).toEqual([
+      { userId: "u-1", unvan: "PROF_DR" },
+    ]);
   });
 
   it("sends a setting the medrese's policy fixes as on, whatever the form holds (criterion 5)", () => {

@@ -199,6 +199,7 @@ export class MadrasahCourseRepository {
           courseId: course.id,
           userId: m.userId,
           name: m.name ?? m.userId,
+          unvan: m.unvan ?? null,
           orderIndex: i,
         }))
       );
@@ -215,6 +216,12 @@ export class MadrasahCourseRepository {
           title: input.title,
           muderrisUserIds: input.muderris.map((m) => m.userId),
           imamUserId: input.imamUserId,
+          // the unvan each was given in the new course; none is not listed
+          muderrisUnvans: Object.fromEntries(
+            input.muderris.flatMap((m) =>
+              m.unvan ? [[m.userId, m.unvan] as const] : []
+            )
+          ),
           requiresApproval,
           closed,
         },

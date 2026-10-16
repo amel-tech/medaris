@@ -421,6 +421,13 @@
       "when": 1791984144830,
       "tag": "0064_integration_partners",
       "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1792055109726,
+      "tag": "0065_course_muderris_unvan",
+      "breakpoints": true
     }
   ]
 }

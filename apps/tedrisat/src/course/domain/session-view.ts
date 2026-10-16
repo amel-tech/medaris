@@ -1,3 +1,4 @@
+import type { HocaUnvan } from "@medaris/utils/src/hoca-unvan.js";
 import type {
   IAgendaStep,
   ICourseDetailView,
@@ -30,6 +31,8 @@ export interface ISessionRef {
 export interface ISessionMuderris {
   name: string;
   title: string | null;
+  /** The unvan this hoca carries in the course; null shows `{name} Hoca`. */
+  unvan: HocaUnvan | null;
   isImam: boolean;
 }
 
@@ -190,6 +193,7 @@ export function buildSessionView(
     muderris: course.muderris.map((m) => ({
       name: m.name,
       title: m.title,
+      unvan: m.unvan,
       isImam: imamUserId !== null && m.userId === imamUserId,
     })),
     // The filtered lesson carries the session's own mark only for a content

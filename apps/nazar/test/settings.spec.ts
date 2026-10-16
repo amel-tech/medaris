@@ -200,9 +200,14 @@ describe("the policy tiers panel (criterion 5)", () => {
 
 describe("the courses a policy applies to", () => {
   const words = { locale: "tr" };
-  const person = (name: string, isImam = false) => ({
+  const person = (
+    name: string,
+    isImam = false,
+    unvan: "PROF_DR" | "MOLLA" | null = null
+  ) => ({
     name,
     title: null,
+    unvan,
     isImam,
     userId: null,
     email: null,
@@ -226,7 +231,26 @@ describe("the courses a policy applies to", () => {
         )
       )
     ).toBe(
-      "Nûruosmaniye Köşkü · Mehmet Emin Işıkoğlu ★ ve Abdülhamit Karaosmanoğlu"
+      "Nûruosmaniye Köşkü · Mehmet Emin Işıkoğlu Hoca ★ ve Abdülhamit Karaosmanoğlu Hoca"
+    );
+  });
+
+  it("names each müderris with the unvan they carry in the course (2026-10-15)", () => {
+    expect(
+      line(
+        courseMeta(
+          {
+            koskName: "Nûruosmaniye Köşkü",
+            muderris: [
+              person("Mehmet Emin Işıkoğlu", true, "PROF_DR"),
+              person("Abdülhamit Karaosmanoğlu", false, "MOLLA"),
+            ],
+          },
+          words
+        )
+      )
+    ).toBe(
+      "Nûruosmaniye Köşkü · Prof. Dr. Mehmet Emin Işıkoğlu ★ ve Molla Abdülhamit Karaosmanoğlu"
     );
   });
 
@@ -238,7 +262,7 @@ describe("the courses a policy applies to", () => {
       },
       words
     );
-    expect(line(parts)).toBe("Nûruosmaniye Köşkü · Mehmet Emin Işıkoğlu");
+    expect(line(parts)).toBe("Nûruosmaniye Köşkü · Mehmet Emin Işıkoğlu Hoca");
     expect(parts.some((p) => p.imam)).toBe(false);
   });
 
@@ -253,7 +277,7 @@ describe("the courses a policy applies to", () => {
           words
         )
       )
-    ).toBe("Fatih Köşkü · A B, C D ve E F");
+    ).toBe("Fatih Köşkü · A B Hoca, C D Hoca ve E F Hoca");
     expect(
       line(courseMeta({ koskName: "Fatih Köşkü", muderris: [] }, words))
     ).toBe("Fatih Köşkü");

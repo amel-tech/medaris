@@ -1,3 +1,4 @@
+import type { HocaUnvan } from "@medaris/utils/src/hoca-unvan.js";
 import { Injectable } from "@nestjs/common";
 import { and, desc, eq, inArray, isNull, ne, or, SQL, sql } from "drizzle-orm";
 import { DatabaseService } from "../database/database.service";
@@ -31,6 +32,7 @@ export interface DeckListRow {
   koskName: string | null;
   madrasahName: string | null;
   muderrisName: string | null;
+  muderrisUnvan: HocaUnvan | null;
   /** When the caller collected it, or null when they have not. */
   collectedAt: Date | null;
 }
@@ -71,12 +73,20 @@ export class FlashcardDeckSummaryRepository {
         courseTitle: courses.title,
         koskName: kosks.name,
         madrasahName: madrasahs.name,
-        // The first müderris by the order the course lists them in.
+        // The first müderris by the order the course lists them in, and the
+        // unvan they carry in it: the same row, so the id breaks a tie.
         muderrisName: sql<string | null>`(
           SELECT ${courseMuderris.name}
           FROM ${courseMuderris}
           WHERE ${courseMuderris.courseId} = ${decks.courseId}
-          ORDER BY ${courseMuderris.orderIndex}
+          ORDER BY ${courseMuderris.orderIndex}, ${courseMuderris.id}
+          LIMIT 1
+        )`,
+        muderrisUnvan: sql<HocaUnvan | null>`(
+          SELECT ${courseMuderris.unvan}
+          FROM ${courseMuderris}
+          WHERE ${courseMuderris.courseId} = ${decks.courseId}
+          ORDER BY ${courseMuderris.orderIndex}, ${courseMuderris.id}
           LIMIT 1
         )`,
         collectedAt: decksUsers.createdAt,

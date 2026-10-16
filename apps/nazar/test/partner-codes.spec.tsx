@@ -76,6 +76,9 @@ vi.mock("~/lib/tedrisat-read", () => ({
         timeZone: "Europe/Istanbul",
         version: 1,
         weeks: [],
+        muderris: [
+          { id: "m-1", userId: "u-1", name: "Ahmet Mehmet", unvan: null },
+        ],
       },
     };
   },
@@ -84,6 +87,7 @@ vi.mock("~/features/course-settings/actions", () => ({
   saveCourseSettings: vi.fn(),
   setCourseStatus: vi.fn(),
   setSampleLesson: vi.fn(),
+  setHocaUnvan: vi.fn(),
   addPartnerCode: (...args: unknown[]) => addPartnerCode(...args),
   removePartnerCode: (...args: unknown[]) => removePartnerCode(...args),
 }));

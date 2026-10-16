@@ -1,4 +1,5 @@
 import type { ScopeRef } from "@medaris/common";
+import type { HocaUnvan } from "@medaris/utils/src/hoca-unvan.js";
 import type { HideLevel } from "../archive/hide-level";
 import type { CourseRestoreOutcome } from "../archive/restore-course";
 import type { IPurgeCounts } from "./course-purge";
@@ -114,6 +115,8 @@ export interface IMuderris {
   bio: string | null;
   avatarHue: number;
   orderIndex: number;
+  /** The unvan this hoca carries in this course; null shows `{name} Hoca`. */
+  unvan: HocaUnvan | null;
   /** Whether the account is the course's imam (MDRS-133). */
   isImam: boolean;
 }
@@ -367,6 +370,11 @@ export interface ICreateMuderris {
   title?: string;
   bio?: string;
   avatarHue?: number;
+  /**
+   * The unvan in a course being opened (`CourseRepository.create`). A
+   * whole-course save never carries it and never writes it.
+   */
+  unvan?: HocaUnvan | null;
 }
 
 export interface ICreateResource {
@@ -618,6 +626,18 @@ export interface ICourseRepository {
     imamUserId: string,
     actorId: string
   ): Promise<{ muderris: IMuderris[]; courseVersion: number }>;
+  /**
+   * Sets the unvan the hoca `userId` carries in the course, and writes the
+   * change to `audit_log`, in one transaction. The course's version does not
+   * move: no editor saves this column, so none can write over it. False when
+   * `userId` is not on the course's müderris list.
+   */
+  setMuderrisUnvan(
+    courseId: string,
+    userId: string,
+    unvan: HocaUnvan | null,
+    actorId: string
+  ): Promise<boolean>;
   /** The course's IANA zone; null if there is no such course. */
   findTimeZone(courseId: string): Promise<string | null>;
   /** Inserts every session of `batch` in one transaction (MDRS-109). */

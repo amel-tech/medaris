@@ -55,7 +55,6 @@ export function DecksPage({ decks }: DecksPageProps) {
     due: (count) => t("dueCount", { count }),
     added: (count) => t("added", { count }),
     requested: (when) => t("requested", { when }),
-    muderris: (name) => t("muderris", { name }),
   };
   const statusLabel = (
     status: "PRIVATE" | "PENDING" | "PUBLISHED" | "REJECTED"

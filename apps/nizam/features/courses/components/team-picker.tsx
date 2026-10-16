@@ -5,11 +5,13 @@ import { Badge } from "@medaris/ui/mds/badge";
 import { Field } from "@medaris/ui/mds/field";
 import { Icon } from "@medaris/ui/mds/icon";
 import { Input } from "@medaris/ui/mds/input";
+import { Select } from "@medaris/ui/mds/select";
 import { useTranslations } from "next-intl";
 import {
   type KeyboardEvent,
   type RefObject,
   useId,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -18,9 +20,12 @@ import { lookupUserByEmail } from "../../madrasahs/actions";
 import { isEmailLike, type LookupState } from "../../madrasahs/present";
 import {
   addMember,
+  NO_UNVAN,
   normalizedImam,
   removeMember,
+  setMemberUnvan,
   type TeamState,
+  unvanOptions,
 } from "../present";
 
 interface Props {
@@ -35,6 +40,12 @@ interface Props {
   listFirst?: boolean;
   /** the name of the radio group, so two pickers on a page do not share it */
   name?: string;
+  /**
+   * An unvan select beside each person (owner, 2026-10-15): only for a course
+   * being opened ("Ders aç"). On a course that exists the unvan is set in Ders
+   * ayarları, so "Müderrisleri değiştir" leaves it out.
+   */
+  withUnvan?: boolean;
 }
 
 /**
@@ -53,8 +64,10 @@ export function TeamPicker({
   inputRef,
   listFirst = false,
   name = "imam",
+  withUnvan = false,
 }: Props) {
   const t = useTranslations("nizam.CourseTeamPicker");
+  const unvans = useMemo(() => unvanOptions(t("untitled")), [t]);
   const [email, setEmail] = useState("");
   const [state, setState] = useState<LookupState | { kind: "already" }>({
     kind: "idle",
@@ -195,6 +208,20 @@ export function TeamPicker({
                     ) : null}
                   </span>
                 </label>
+                {withUnvan ? (
+                  <Select
+                    size="small"
+                    className="shrink-0"
+                    name={`${name}Unvan-${m.userId}`}
+                    aria-label={t("unvanLabel", { name: m.name })}
+                    value={m.unvan ?? NO_UNVAN}
+                    disabled={disabled}
+                    options={unvans}
+                    onChange={(choice) =>
+                      onChange(setMemberUnvan(value, m.userId, choice))
+                    }
+                  />
+                ) : null}
                 <button
                   type="button"
                   className="mds-btn mds-btn--small mds-btn--ghost"

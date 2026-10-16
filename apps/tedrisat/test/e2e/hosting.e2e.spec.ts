@@ -231,7 +231,13 @@ describe("Hosting rights (e2e)", () => {
     await db()
       .insert(courseMuderris)
       .values([
-        { courseId: liveCourse, userId: IMAM, name: "Mehmet Emin Işıkoğlu" },
+        // The imam carries an unvan in this course: the dialog names them with it.
+        {
+          courseId: liveCourse,
+          userId: IMAM,
+          name: "Mehmet Emin Işıkoğlu",
+          unvan: "PROF_DR",
+        },
         // A second müderris, without an account: the imam's star needs two.
         { courseId: liveCourse, name: "Ahmed Cevdet", orderIndex: 1 },
       ]);
@@ -300,6 +306,7 @@ describe("Hosting rights (e2e)", () => {
           status: "PUBLISHED",
           studentCount: 2,
           imamName: "Mehmet Emin Işıkoğlu",
+          imamUnvan: "PROF_DR",
           muderrisCount: 2,
         },
         {
@@ -308,6 +315,7 @@ describe("Hosting rights (e2e)", () => {
           status: "DRAFT",
           studentCount: 0,
           imamName: null,
+          imamUnvan: null,
           muderrisCount: 0,
         },
       ]);

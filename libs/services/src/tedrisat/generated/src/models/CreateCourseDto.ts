@@ -13,13 +13,6 @@
  */
 
 import { mapValues } from '../runtime';
-import type { CreateMuderrisDto } from './CreateMuderrisDto';
-import {
-    CreateMuderrisDtoFromJSON,
-    CreateMuderrisDtoFromJSONTyped,
-    CreateMuderrisDtoToJSON,
-    CreateMuderrisDtoToJSONTyped,
-} from './CreateMuderrisDto';
 import type { CreateWeekDto } from './CreateWeekDto';
 import {
     CreateWeekDtoFromJSON,
@@ -27,6 +20,13 @@ import {
     CreateWeekDtoToJSON,
     CreateWeekDtoToJSONTyped,
 } from './CreateWeekDto';
+import type { CreateCourseMuderrisDto } from './CreateCourseMuderrisDto';
+import {
+    CreateCourseMuderrisDtoFromJSON,
+    CreateCourseMuderrisDtoFromJSONTyped,
+    CreateCourseMuderrisDtoToJSON,
+    CreateCourseMuderrisDtoToJSONTyped,
+} from './CreateCourseMuderrisDto';
 import type { CreateResourceDto } from './CreateResourceDto';
 import {
     CreateResourceDtoFromJSON,
@@ -139,10 +139,10 @@ export interface CreateCourseDto {
     weeks?: Array<CreateWeekDto>;
     /**
      * A course is opened together with its müderrisler (MDRS-136): at least one, and at least one of them linked to an account (`userId`), because the account is what makes the person the course's müderris.
-     * @type {Array<CreateMuderrisDto>}
+     * @type {Array<CreateCourseMuderrisDto>}
      * @memberof CreateCourseDto
      */
-    muderris: Array<CreateMuderrisDto>;
+    muderris: Array<CreateCourseMuderrisDto>;
     /**
      * The imam, one of the accounts in `muderris` (400 COURSE_IMAM_NOT_LISTED otherwise). Absent: the account listed first.
      * @type {string}
@@ -213,7 +213,7 @@ export function CreateCourseDtoFromJSONTyped(json: any, ignoreDiscriminator: boo
         'coverLabel': json['coverLabel'] == null ? undefined : json['coverLabel'],
         'inPerson': json['inPerson'] == null ? undefined : json['inPerson'],
         'weeks': json['weeks'] == null ? undefined : ((json['weeks'] as Array<any>).map(CreateWeekDtoFromJSON)),
-        'muderris': ((json['muderris'] as Array<any>).map(CreateMuderrisDtoFromJSON)),
+        'muderris': ((json['muderris'] as Array<any>).map(CreateCourseMuderrisDtoFromJSON)),
         'imamUserId': json['imamUserId'] == null ? undefined : json['imamUserId'],
         'resources': json['resources'] == null ? undefined : ((json['resources'] as Array<any>).map(CreateResourceDtoFromJSON)),
     };
@@ -246,7 +246,7 @@ export function CreateCourseDtoToJSONTyped(value?: CreateCourseDto | null, ignor
         'coverLabel': value['coverLabel'],
         'inPerson': value['inPerson'],
         'weeks': value['weeks'] == null ? undefined : ((value['weeks'] as Array<any>).map(CreateWeekDtoToJSON)),
-        'muderris': ((value['muderris'] as Array<any>).map(CreateMuderrisDtoToJSON)),
+        'muderris': ((value['muderris'] as Array<any>).map(CreateCourseMuderrisDtoToJSON)),
         'imamUserId': value['imamUserId'],
         'resources': value['resources'] == null ? undefined : ((value['resources'] as Array<any>).map(CreateResourceDtoToJSON)),
     };

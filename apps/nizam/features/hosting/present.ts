@@ -4,6 +4,7 @@ import type {
   HostingRightResponse,
 } from "@medaris/services/tedrisat";
 import { showsImamStar } from "@medaris/ui/lib/imam-star";
+import { formatHocaName } from "@medaris/utils";
 
 /**
  * Pure helpers behind Barındırma hakları and its withdrawal dialog (nizam 26
@@ -42,15 +43,16 @@ export function studentTotal(
 }
 
 /**
- * "35 talebe · Mehmet Emin Işıkoğlu ★" — the second line of a course in the
- * dialog: its talebe, then its imam by name, the star after it only where the
- * course has more than one müderris (2026-10-13). A lone müderris is named
- * with no mark.
+ * "35 talebe · Mehmet Emin Işıkoğlu Hoca ★" — the second line of a course in
+ * the dialog: its talebe, then its imam by name with the unvan they carry in
+ * that course ("Prof. Dr. …", or "… Hoca" without one), the star after it
+ * only where the course has more than one müderris (2026-10-13). A lone
+ * müderris is named with no mark.
  */
 export function courseLine(
   course: Pick<
     HostingOpenCourseResponse,
-    "studentCount" | "imamName" | "muderrisCount"
+    "studentCount" | "imamName" | "imamUnvan" | "muderrisCount"
   >,
   t: Messages
 ): { students: string; imam: { name: string; star: boolean } | null } {
@@ -62,7 +64,7 @@ export function courseLine(
     students,
     imam: course.imamName
       ? {
-          name: course.imamName,
+          name: formatHocaName(course.imamName, course.imamUnvan),
           star: showsImamStar(true, course.muderrisCount),
         }
       : null,

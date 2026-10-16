@@ -82,6 +82,7 @@ const collected = [
     collectionKind: "COURSE",
     contextTitle: "Emsile ve Bina",
     muderrisName: "Abdülhamit Karaosmanoğlu",
+    muderrisUnvan: "PROF_DR",
     cardCount: 48,
     masteredCount: 20,
     learningCount: 0,
@@ -151,7 +152,7 @@ describe("Desteler (design tedris/25)", () => {
     expect(cards[0].textContent).toContain("5 yeni kart");
     expect(cards[1].textContent).toContain("Ders destesi");
     expect(cards[1].textContent).toContain(
-      "Emsile ve Bina·Hoca Abdülhamit Karaosmanoğlu"
+      "Emsile ve Bina·Prof. Dr. Abdülhamit Karaosmanoğlu"
     );
     expect(section("Koleksiyonum").textContent).not.toContain("Düzenle");
     expect(section("Koleksiyonum").querySelectorAll("button").length).toBe(0);

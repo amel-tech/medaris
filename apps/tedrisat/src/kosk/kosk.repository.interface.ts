@@ -1,3 +1,4 @@
+import type { HocaUnvan } from "@medaris/utils/src/hoca-unvan.js";
 import type { IPurgeCounts } from "../course/course-purge";
 
 export interface IKosk {
@@ -150,6 +151,8 @@ export interface IFollowedKoskCourse {
   koskName: string;
   coverHue: number;
   muderrisName: string | null;
+  /** That müderris' unvan in this course; null shows `{name} Hoca`. */
+  muderrisUnvan: HocaUnvan | null;
   muderrisIsImam: boolean;
   muderrisCount: number;
 }

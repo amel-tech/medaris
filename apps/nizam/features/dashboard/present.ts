@@ -4,6 +4,7 @@ import type {
   KoskDashboardSessionResponse,
 } from "@medaris/services/tedrisat";
 import { showsImamStar } from "@medaris/ui/lib/imam-star";
+import { formatHocaName } from "@medaris/utils";
 import { type AttendanceView, attendanceView } from "../courses/attendance";
 
 /**
@@ -185,14 +186,16 @@ export function weekLine(
 }
 
 /**
- * The müderrisler of a celse as the row prints them, in order: the imam's
- * name followed by the star where the course has more than one (2026-10-13).
+ * The müderrisler of a celse as the row prints them, in order: each name with
+ * the unvan they carry in that course ("Prof. Dr. …", or "… Hoca" without
+ * one), the imam's followed by the star where the course has more than one
+ * (2026-10-13).
  */
 export function muderrisLine(
-  muderris: { name: string; isImam: boolean }[]
+  muderris: { name: string; unvan?: string | null; isImam: boolean }[]
 ): { name: string; imam: boolean }[] {
   return muderris.map((m) => ({
-    name: m.name,
+    name: formatHocaName(m.name, m.unvan),
     imam: showsImamStar(m.isImam, muderris.length),
   }));
 }

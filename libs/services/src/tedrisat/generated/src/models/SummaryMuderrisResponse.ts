@@ -13,6 +13,14 @@
  */
 
 import { mapValues } from '../runtime';
+import type { HocaUnvan } from './HocaUnvan';
+import {
+    HocaUnvanFromJSON,
+    HocaUnvanFromJSONTyped,
+    HocaUnvanToJSON,
+    HocaUnvanToJSONTyped,
+} from './HocaUnvan';
+
 /**
  * 
  * @export
@@ -68,12 +76,20 @@ export interface SummaryMuderrisResponse {
      */
     orderIndex: number;
     /**
+     * The unvan this hoca carries in this course, set in the course's settings. The name is shown as `Prof. Dr. {name}`, `Molla {name}` …; null is no unvan, shown as `{name} Hoca` (`formatHocaName` in `@medaris/utils`).
+     * @type {HocaUnvan}
+     * @memberof SummaryMuderrisResponse
+     */
+    unvan?: HocaUnvan | null;
+    /**
      * The course's imam among its müderrisler (MDRS-133)
      * @type {boolean}
      * @memberof SummaryMuderrisResponse
      */
     isImam: boolean;
 }
+
+
 
 /**
  * Check if a given object implements the SummaryMuderrisResponse interface.
@@ -106,6 +122,7 @@ export function SummaryMuderrisResponseFromJSONTyped(json: any, ignoreDiscrimina
         'bio': json['bio'] == null ? undefined : json['bio'],
         'avatarHue': json['avatarHue'],
         'orderIndex': json['orderIndex'],
+        'unvan': json['unvan'] == null ? undefined : HocaUnvanFromJSON(json['unvan']),
         'isImam': json['isImam'],
     };
 }
@@ -129,6 +146,7 @@ export function SummaryMuderrisResponseToJSONTyped(value?: SummaryMuderrisRespon
         'bio': value['bio'],
         'avatarHue': value['avatarHue'],
         'orderIndex': value['orderIndex'],
+        'unvan': HocaUnvanToJSON(value['unvan']),
         'isImam': value['isImam'],
     };
 }

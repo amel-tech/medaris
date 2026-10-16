@@ -2485,6 +2485,8 @@
     "imamBadge": "Dersin imamı",
     "removeLabel": "Hocayı listeden çıkar: {name}",
     "remove": "Çıkar",
+    "unvanLabel": "{name} için unvan",
+    "untitled": "Hoca (unvansız)",
     "soleNote": "Tek hoca dersin imamıdır.",
     "manyNote": "İşaretlediğiniz hoca dersin imamıdır. Bir hocayı çıkardığınızda onun verdiği izinler için ayrıca karar verirsiniz.",
     "imamRequired": "Birden çok hoca var; dersin imamını işaretleyin."

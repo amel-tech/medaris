@@ -175,20 +175,26 @@ describe("a celse's state and button (nizam 02)", () => {
         { week, makeup: "telafi celsesi" }
       )
     ).toBe("Hafta 4");
-    // the imam is the star after the name, among more than one müderris
+    // the imam is the star after the name, among more than one müderris;
+    // each name carries the unvan of that course, "{name} Hoca" without one
     expect(
       muderrisLine([
-        { name: "Mehmet Emin Işıkoğlu", isImam: true },
-        { name: "Ayşe Nur Kılıçarslan", isImam: false },
+        { name: "Mehmet Emin Işıkoğlu", unvan: "PROF_DR", isImam: true },
+        { name: "Ayşe Nur Kılıçarslan", unvan: null, isImam: false },
       ])
     ).toEqual([
-      { name: "Mehmet Emin Işıkoğlu", imam: true },
-      { name: "Ayşe Nur Kılıçarslan", imam: false },
+      { name: "Prof. Dr. Mehmet Emin Işıkoğlu", imam: true },
+      { name: "Ayşe Nur Kılıçarslan Hoca", imam: false },
     ]);
     // a lone müderris is the imam and gets no mark (2026-10-13)
     expect(
       muderrisLine([{ name: "Mehmet Emin Işıkoğlu", isImam: true }])
-    ).toEqual([{ name: "Mehmet Emin Işıkoğlu", imam: false }]);
+    ).toEqual([{ name: "Mehmet Emin Işıkoğlu Hoca", imam: false }]);
+    expect(
+      muderrisLine([
+        { name: "Mehmet Emin Işıkoğlu", unvan: "MOLLA", isImam: true },
+      ])
+    ).toEqual([{ name: "Molla Mehmet Emin Işıkoğlu", imam: false }]);
   });
 });
 

@@ -116,7 +116,8 @@ describe("Desteleri keşfet (design tedris/26)", () => {
     const first = section("Derslerinin desteleri").querySelector(".mds-card");
     expect(first?.textContent).toContain("Ders destesi");
     expect(first?.textContent).toContain(
-      "Emsile ve Bina·Hoca Abdülhamit Karaosmanoğlu"
+      // No unvan in that course: "… Hoca", with no word before the name.
+      "Emsile ve Bina·Abdülhamit Karaosmanoğlu Hoca"
     );
     // Public decks have no kind badge.
     expect(
