@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.2.0](https://github.com/amel-tech/medaris/compare/keycloak-theme-v2.1.0...keycloak-theme-v2.2.0) (2026-10-16)
+
+
+### Features
+
+* **tedrisat, nazar-web:** partner enrollments behind a partner-only guard; course codes ([#323](https://github.com/amel-tech/medaris/issues/323)) ([3cab7e7](https://github.com/amel-tech/medaris/commit/3cab7e7426b1770697f8a0c2156a4bb9b0eaa0b8))
+
 ## [2.1.0](https://github.com/amel-tech/medaris/compare/keycloak-theme-v2.0.0...keycloak-theme-v2.1.0) (2026-10-14)
 
 
