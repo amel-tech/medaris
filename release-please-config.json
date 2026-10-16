@@ -3,14 +3,15 @@
   "release-type": "node",
   "bump-minor-pre-major": true,
   "bump-patch-for-minor-pre-major": true,
-  "separate-pull-requests": true,
+  "separate-pull-requests": false,
+  "group-pull-request-title-pattern": "chore(repo): release ${branch}",
+  "pull-request-header": "Release for Medaris",
   "packages": {
     "apps/tedrisat": {
       "release-type": "node",
       "package-name": "tedrisat",
       "include-component-in-tag": true,
       "pull-request-title-pattern": "chore(tedrisat): release ${version}",
-      "pull-request-header": "Release for Tedrisat Service",
       "component": "tedrisat",
       "path": "apps/tedrisat"
     },
@@ -19,7 +20,6 @@
       "package-name": "teskilat",
       "include-component-in-tag": true,
       "pull-request-title-pattern": "chore(teskilat): release ${version}",
-      "pull-request-header": "Release for Teskilat Service",
       "component": "teskilat",
       "path": "apps/teskilat"
     },
@@ -28,7 +28,6 @@
       "package-name": "tedris-web",
       "include-component-in-tag": true,
       "pull-request-title-pattern": "chore(tedris-web): release ${version}",
-      "pull-request-header": "Release for Tedris Web",
       "component": "tedris-web",
       "path": "apps/tedris"
     },
@@ -37,7 +36,6 @@
       "package-name": "nizam-web",
       "include-component-in-tag": true,
       "pull-request-title-pattern": "chore(nizam-web): release ${version}",
-      "pull-request-header": "Release for Nizam Web",
       "component": "nizam-web",
       "path": "apps/nizam"
     },
@@ -46,7 +44,6 @@
       "package-name": "nazar-web",
       "include-component-in-tag": true,
       "pull-request-title-pattern": "chore(nazar-web): release ${version}",
-      "pull-request-header": "Release for Nazar Web",
       "component": "nazar-web",
       "path": "apps/nazar"
     },
@@ -55,7 +52,6 @@
       "package-name": "landing-web",
       "include-component-in-tag": true,
       "pull-request-title-pattern": "chore(landing-web): release ${version}",
-      "pull-request-header": "Release for Landing Web",
       "component": "landing-web",
       "path": "apps/landing"
     },
@@ -64,7 +60,6 @@
       "package-name": "keycloak-theme",
       "include-component-in-tag": true,
       "pull-request-title-pattern": "chore(keycloak-theme): release ${version}",
-      "pull-request-header": "Release for Keycloak Theme",
       "component": "keycloak-theme",
       "path": "apps/keycloak-theme"
     }

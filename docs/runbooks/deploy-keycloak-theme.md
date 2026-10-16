@@ -62,8 +62,9 @@ Do it once, before the first `keycloak-theme` release after this change.
 
    Saved without redeploying: `stable` did not exist yet.
 4. **The realms name the theme** (§5).
-5. **Release.** Merge the release-please PR for `keycloak-theme` (or create a
-   release `keycloak-theme-v<semver>` by hand) in the agreed window. The
+5. **Release.** Merge release-please's release PR while it lists
+   `keycloak-theme`; it ships every component it lists (or create a release
+   `keycloak-theme-v<semver>` by hand) in the agreed window. The
    release promotes the image `main` built to `<semver>` and `stable` and calls
    the restart webhook (§2). Then §4. Done on 2026-10-13 with 2.0.0; see §6
    for what went wrong.

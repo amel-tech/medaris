@@ -268,6 +268,8 @@ Shape (R2-verbatim): root `vitest.config.ts` (unit; excludes `*.integration.test
 
 ### D10. Release & commit continuity (MDRS-17)
 
+> **Superseded in part by [ADR-004](004-one-release-pr.md) (2026-10-16):** `separate-pull-requests` is now `false`; release-please keeps one release PR, titled `chore(repo): release main`, for every component. The rest of D10 stands.
+
 - release-please (`googleapis/release-please-action@v4.3.0`, unchanged) with **exactly the 7 locked components** (D3), `include-component-in-tag: true`, `separate-pull-requests: true`, `$schema` added.
 - `.release-please-manifest.json` is **explicitly bootstrapped** as the union of both repos' manifests at current versions (D3 table) — the history rewrite changes every SHA and orphans old tag anchors, so versions must not be re-derived.
 - **Run a local release-please dry run against the merged history before the first real release** — a mis-parse would mint wrong versions across all 7 components.

@@ -178,11 +178,12 @@ Two channels (MDRS-87), told apart by the event that started the run:
 | development | the `development` one in the header | `latest` | any *development* path below | `TEDRISAT_SERVICE_COOLIFY_WEBHOOK` |
 | production | its twin in the `production` environment | `stable` | *Release path* below, full releases only | `TEDRISAT_SERVICE_PROD_COOLIFY_WEBHOOK` |
 
-Release-please is not part of the development channel: its release PRs stay
-open until someone decides to ship, and merging one is the production trigger.
+Release-please is not part of the development channel: its release PR stays
+open until someone decides to ship, and merging it is the production trigger.
 
-* **Release path (production)** — merge the release-please PR for `tedrisat` (or
-  create a GitHub release tagged `tedrisat-v<semver>` by hand). The workflow
+* **Release path (production)** — merge release-please's release PR while it
+  lists `tedrisat`; it ships every component it lists (or create a GitHub
+  release tagged `tedrisat-v<semver>` by hand). The workflow
   promotes the image development built from the release commit to
   `<semver>` and `stable` (§1.1; it builds from the tag only when that
   image does not exist) and calls the **production** webhook. `latest` does
