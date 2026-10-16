@@ -1,4 +1,6 @@
+import type { HocaUnvan } from "@medaris/utils/src/hoca-unvan.js";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { HOCA_UNVAN_PROPERTY } from "../../course/dto/course-response.dto";
 import { DeckPublishStatus } from "../domain/deck-publish-status.enum";
 import { FlashcardType } from "../domain/flashcard-type.enum";
 
@@ -78,6 +80,13 @@ export class FlashcardDeckSummaryResponse {
     description: "The course's first müderris, for a course deck.",
   })
   muderrisName!: string | null;
+
+  @ApiPropertyOptional({
+    ...HOCA_UNVAN_PROPERTY,
+    description:
+      "That müderris' unvan in the course; null for none (shown as `{name} Hoca`) and for a deck that is not a course's.",
+  })
+  muderrisUnvan!: HocaUnvan | null;
 
   @ApiProperty()
   cardCount!: number;

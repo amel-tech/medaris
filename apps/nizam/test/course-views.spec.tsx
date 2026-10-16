@@ -238,7 +238,8 @@ describe("Ders ayarları (nizam 34)", () => {
     expect(html).toContain("Yayında");
     expect(html).toContain("kayıtlı 28 talebe");
     expect(html).toContain("Taslağa çek");
-    expect(html).toContain("Abdülhamit Karaosmanoğlu");
+    // the team, each with the unvan of this course: none here, so "… Hoca"
+    expect(html).toContain("<bdi>Abdülhamit Karaosmanoğlu Hoca</bdi>");
     expect(html).toContain("Hocaları düzenle");
     expect(html).toContain("Dersi gizle");
     expect(html).toContain("https://tedris.example/tr/courses/c1");

@@ -1,5 +1,6 @@
 export * from "./callback-url";
 export * from "./end-instant";
+export * from "./hoca-unvan";
 export * from "./meeting-platform";
 export * from "./privacy-notice";
 export * from "./resource-url";

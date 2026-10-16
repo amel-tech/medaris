@@ -29,6 +29,7 @@ import type {
   EnrolledCourseResponse,
   EnrollmentResponse,
   MuderrisListResponse,
+  MuderrisResponse,
   MyCoursePermissionsResponse,
   PartnerCodeResponse,
   PendingEnrollmentResponse,
@@ -39,6 +40,7 @@ import type {
   RosterEnrollmentResponse,
   SetEnrollmentStatusDto,
   SetMuderrisDto,
+  SetMuderrisUnvanDto,
   UpdateCourseDto,
   UpdateCourseNazirDto,
   UpdateProgressDto,
@@ -72,6 +74,8 @@ import {
     EnrollmentResponseToJSON,
     MuderrisListResponseFromJSON,
     MuderrisListResponseToJSON,
+    MuderrisResponseFromJSON,
+    MuderrisResponseToJSON,
     MyCoursePermissionsResponseFromJSON,
     MyCoursePermissionsResponseToJSON,
     PartnerCodeResponseFromJSON,
@@ -92,6 +96,8 @@ import {
     SetEnrollmentStatusDtoToJSON,
     SetMuderrisDtoFromJSON,
     SetMuderrisDtoToJSON,
+    SetMuderrisUnvanDtoFromJSON,
+    SetMuderrisUnvanDtoToJSON,
     UpdateCourseDtoFromJSON,
     UpdateCourseDtoToJSON,
     UpdateCourseNazirDtoFromJSON,
@@ -222,6 +228,12 @@ export interface RevokeCourseNazirRequest {
 export interface SetCourseMuderrisRequest {
     id: string;
     setMuderrisDto: SetMuderrisDto;
+}
+
+export interface SetCourseMuderrisUnvanRequest {
+    id: string;
+    userId: string;
+    setMuderrisUnvanDto: SetMuderrisUnvanDto;
 }
 
 export interface SetEnrollmentStatusRequest {
@@ -458,7 +470,7 @@ export class CoursesApi extends runtime.BaseAPI {
     }
 
     /**
-     * The köşk\'s nazımı opens it, and so does the başnazım (MDRS-136). It is opened with at least one müderris who has an account, and one of them is the imam: `imamUserId`, or the account listed first.
+     * The köşk\'s nazımı opens it, and so does the başnazım (MDRS-136). It is opened with at least one müderris who has an account, and one of them is the imam: `imamUserId`, or the account listed first. Each müderris with an account may be given the unvan they carry in the course (`muderris[].unvan`); later it is changed in Ders ayarları.
      * Create a new course under a köşk, together with its müderrisler
      */
     async createCourseRaw(requestParameters: CreateCourseRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CourseDetailResponse>> {
@@ -503,7 +515,7 @@ export class CoursesApi extends runtime.BaseAPI {
     }
 
     /**
-     * The köşk\'s nazımı opens it, and so does the başnazım (MDRS-136). It is opened with at least one müderris who has an account, and one of them is the imam: `imamUserId`, or the account listed first.
+     * The köşk\'s nazımı opens it, and so does the başnazım (MDRS-136). It is opened with at least one müderris who has an account, and one of them is the imam: `imamUserId`, or the account listed first. Each müderris with an account may be given the unvan they carry in the course (`muderris[].unvan`); later it is changed in Ders ayarları.
      * Create a new course under a köşk, together with its müderrisler
      */
     async createCourse(requestParameters: CreateCourseRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CourseDetailResponse> {
@@ -1571,6 +1583,68 @@ export class CoursesApi extends runtime.BaseAPI {
      */
     async setCourseMuderris(requestParameters: SetCourseMuderrisRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MuderrisListResponse> {
         const response = await this.setCourseMuderrisRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * From Ders ayarları: the course shows the hoca as `Prof. Dr. {name}`, `Molla {name}` …, or `{name} Hoca` with null. The unvan belongs to this hoca in this course only; the same person keeps their own in other courses, and is shown without one in any other role. Needs `course.settings`. A change is written to `audit_log` (`course.muderris_unvan_update`); the same unvan again writes nothing. The course\'s version does not move.
+     * Set the unvan one hoca carries in a course
+     */
+    async setCourseMuderrisUnvanRaw(requestParameters: SetCourseMuderrisUnvanRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MuderrisResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling setCourseMuderrisUnvan().'
+            );
+        }
+
+        if (requestParameters['userId'] == null) {
+            throw new runtime.RequiredError(
+                'userId',
+                'Required parameter "userId" was null or undefined when calling setCourseMuderrisUnvan().'
+            );
+        }
+
+        if (requestParameters['setMuderrisUnvanDto'] == null) {
+            throw new runtime.RequiredError(
+                'setMuderrisUnvanDto',
+                'Required parameter "setMuderrisUnvanDto" was null or undefined when calling setCourseMuderrisUnvan().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/courses/{id}/muderris/{userId}/unvan`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace(`{${"userId"}}`, encodeURIComponent(String(requestParameters['userId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: SetMuderrisUnvanDtoToJSON(requestParameters['setMuderrisUnvanDto']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => MuderrisResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * From Ders ayarları: the course shows the hoca as `Prof. Dr. {name}`, `Molla {name}` …, or `{name} Hoca` with null. The unvan belongs to this hoca in this course only; the same person keeps their own in other courses, and is shown without one in any other role. Needs `course.settings`. A change is written to `audit_log` (`course.muderris_unvan_update`); the same unvan again writes nothing. The course\'s version does not move.
+     * Set the unvan one hoca carries in a course
+     */
+    async setCourseMuderrisUnvan(requestParameters: SetCourseMuderrisUnvanRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MuderrisResponse> {
+        const response = await this.setCourseMuderrisUnvanRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

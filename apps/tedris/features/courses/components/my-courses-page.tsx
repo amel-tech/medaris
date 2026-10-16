@@ -13,6 +13,7 @@ import { EmptyState } from "@medaris/ui/mds/empty-state";
 import { Icon } from "@medaris/ui/mds/icon";
 import { ImamStar } from "@medaris/ui/mds/imam-star";
 import { Progress } from "@medaris/ui/mds/progress";
+import { formatHocaName } from "@medaris/utils";
 import Link from "next/link";
 import { getLocale, getTimeZone, getTranslations } from "next-intl/server";
 import { courseCover } from "~/features/courses/course-cover";
@@ -48,12 +49,13 @@ const SectionHead = ({
 );
 
 /**
- * "Nûruosmaniye Köşkü · Müderris A ★ · B": where the course is and who teaches
- * it, the imam's star only where there is more than one müderris (2026-10-13).
+ * "Nûruosmaniye Köşkü · Prof. Dr. A ★ · B Hoca": where the course is and who
+ * teaches it, each name with the unvan of this course (so no word goes before
+ * them), the imam's star only where there is more than one müderris
+ * (2026-10-13).
  */
 const placeAndTeachers = (
   course: EnrolledCourseResponse,
-  t: Translate,
   star: ImamStarLabels
 ) => {
   const parts = [
@@ -63,11 +65,10 @@ const placeAndTeachers = (
     <bdi key="kosk">{course.koskName}</bdi>,
     course.muderris.length > 0 ? (
       <span key="muderris">
-        {t("KoskPage.muderris")}{" "}
         {joinRun(
           course.muderris.map((m) => (
             <span key={m.id} style={{ whiteSpace: "nowrap" }}>
-              <bdi>{m.name}</bdi>
+              <bdi>{formatHocaName(m.name, m.unvan)}</bdi>
               {showsImamStar(m.isImam, course.muderris.length) ? (
                 <>
                   {" "}
@@ -135,7 +136,7 @@ const OngoingCard = ({
     }
   >
     <p className="mds-card__body grow" dir="auto">
-      {placeAndTeachers(course, t, star)}
+      {placeAndTeachers(course, star)}
     </p>
     <div className="mbs-4">
       <Progress
@@ -151,13 +152,11 @@ const OngoingCard = ({
 
 const CourseLine = ({
   course,
-  t,
   star,
   locale,
   note,
 }: {
   course: EnrolledCourseResponse;
-  t: Translate;
   star: ImamStarLabels;
   locale: string;
   note: string;
@@ -171,7 +170,7 @@ const CourseLine = ({
       <bdi>{course.title}</bdi>
     </Link>
     <p className="mds-caption" dir="auto">
-      {placeAndTeachers(course, t, star)}
+      {placeAndTeachers(course, star)}
     </p>
     <p className="mds-caption">{note}</p>
   </>
@@ -310,7 +309,6 @@ export const MyCoursesPage = async ({
                   >
                     <CourseLine
                       course={course}
-                      t={t}
                       star={star}
                       locale={locale}
                       note={t("MyCoursesPage.appliedOn", {
@@ -354,7 +352,6 @@ export const MyCoursesPage = async ({
                       <div className="flex min-inline-0 grow basis-64 flex-col gap-1">
                         <CourseLine
                           course={course}
-                          t={t}
                           star={star}
                           locale={locale}
                           note={t("CoursePage.revokedTitle")}
@@ -393,7 +390,6 @@ export const MyCoursesPage = async ({
                       <div className="flex min-inline-0 grow basis-72 flex-col gap-1">
                         <CourseLine
                           course={course}
-                          t={t}
                           star={star}
                           locale={locale}
                           note={t("MyCoursesPage.completedOn", {

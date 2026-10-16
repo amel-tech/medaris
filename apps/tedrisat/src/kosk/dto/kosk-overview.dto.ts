@@ -1,5 +1,7 @@
+import type { HocaUnvan } from "@medaris/utils/src/hoca-unvan.js";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { HIDE_LEVELS } from "../../archive/hide-level";
+import { HOCA_UNVAN_PROPERTY } from "../../course/dto/course-response.dto";
 import {
   KOSK_STATUSES,
   KoskPersonResponse,
@@ -96,6 +98,9 @@ export type KoskCourseStatus = (typeof KOSK_COURSE_STATUSES)[number];
 export class KoskCourseMuderrisResponse {
   @ApiProperty()
   name!: string;
+
+  @ApiPropertyOptional(HOCA_UNVAN_PROPERTY)
+  unvan!: HocaUnvan | null;
 
   @ApiProperty({ description: "The course's imam" })
   isImam!: boolean;

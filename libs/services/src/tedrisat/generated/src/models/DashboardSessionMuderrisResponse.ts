@@ -13,6 +13,14 @@
  */
 
 import { mapValues } from '../runtime';
+import type { HocaUnvan } from './HocaUnvan';
+import {
+    HocaUnvanFromJSON,
+    HocaUnvanFromJSONTyped,
+    HocaUnvanToJSON,
+    HocaUnvanToJSONTyped,
+} from './HocaUnvan';
+
 /**
  * 
  * @export
@@ -26,12 +34,20 @@ export interface DashboardSessionMuderrisResponse {
      */
     name: string;
     /**
+     * The unvan this hoca carries in this course, set in the course's settings. The name is shown as `Prof. Dr. {name}`, `Molla {name}` …; null is no unvan, shown as `{name} Hoca` (`formatHocaName` in `@medaris/utils`).
+     * @type {HocaUnvan}
+     * @memberof DashboardSessionMuderrisResponse
+     */
+    unvan?: HocaUnvan | null;
+    /**
      * The course's imam
      * @type {boolean}
      * @memberof DashboardSessionMuderrisResponse
      */
     isImam: boolean;
 }
+
+
 
 /**
  * Check if a given object implements the DashboardSessionMuderrisResponse interface.
@@ -53,6 +69,7 @@ export function DashboardSessionMuderrisResponseFromJSONTyped(json: any, ignoreD
     return {
         
         'name': json['name'],
+        'unvan': json['unvan'] == null ? undefined : HocaUnvanFromJSON(json['unvan']),
         'isImam': json['isImam'],
     };
 }
@@ -69,6 +86,7 @@ export function DashboardSessionMuderrisResponseToJSONTyped(value?: DashboardSes
     return {
         
         'name': value['name'],
+        'unvan': HocaUnvanToJSON(value['unvan']),
         'isImam': value['isImam'],
     };
 }

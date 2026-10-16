@@ -680,6 +680,28 @@ describe("Dersler (nizam 23)", () => {
     expect(html).toMatch(/mds-badge--error[^>]*>(?:<[^>]*>)*5 yasaklı/);
   });
 
+  it("names each müderris with the unvan they carry in that course, Hoca after a name with none", () => {
+    const html = view({
+      rows: [
+        row({
+          muderris: [
+            {
+              name: "Abdülhamit Karaosmanoğlu",
+              unvan: "PROF_DR",
+              isImam: true,
+            },
+            { name: "Ayşe Nur Kılıçarslan", unvan: null, isImam: false },
+          ],
+        }),
+      ],
+    });
+    expect(html).toMatch(
+      /<bdi>Prof\. Dr\. Abdülhamit Karaosmanoğlu<\/bdi> <button[^>]*aria-label="Dersin imamı"/
+    );
+    expect(html).toContain("<bdi>Ayşe Nur Kılıçarslan Hoca</bdi>");
+    expect(html).not.toContain("<bdi>Abdülhamit Karaosmanoğlu</bdi>");
+  });
+
   it("keeps the row buttons on one line as text buttons", () => {
     const html = view();
     expect(html).toContain("flex-nowrap");
@@ -841,7 +863,7 @@ describe("Genel bakış (nizam 53)", () => {
       course: {
         ...course,
         muderris: [
-          { id: "m1", name: "Abdülhamit Karaosmanoğlu" },
+          { id: "m1", name: "Abdülhamit Karaosmanoğlu", unvan: "PROF_DR" },
           { id: "m2", name: "Ayşe Nur Kılıçarslan" },
         ],
       } as unknown as CourseDetailResponse,
@@ -853,11 +875,12 @@ describe("Genel bakış (nizam 53)", () => {
       }),
     });
     const team = html.slice(html.indexOf('id="team-heading"'));
+    // each with the unvan of this course; the star still follows the imam
     expect(team).toMatch(
-      /Abdülhamit Karaosmanoğlu<\/bdi> <button[^>]*aria-label="Dersin imamı"/
+      /Prof\. Dr\. Abdülhamit Karaosmanoğlu<\/bdi> <button[^>]*aria-label="Dersin imamı"/
     );
     expect(team.match(/aria-label="Dersin imamı"/g)).toHaveLength(1);
-    expect(team).toContain("Ayşe Nur Kılıçarslan");
+    expect(team).toContain("Ayşe Nur Kılıçarslan Hoca");
   });
 
   it("marks no imam where the course has one müderris (2026-10-13)", () => {

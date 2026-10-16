@@ -1,3 +1,4 @@
+import { HOCA_UNVANS } from "@medaris/utils/src/hoca-unvan.js";
 import { relations, sql } from "drizzle-orm";
 import {
   type AnyPgColumn,
@@ -41,6 +42,8 @@ export const recordingVisibility = pgEnum(
   RecordingVisibility
 );
 export const recordingStatus = pgEnum("recording_status", RecordingStatus);
+/** A hoca's unvan in one course; the codes live in `@medaris/utils`. */
+export const hocaUnvan = pgEnum("hoca_unvan", HOCA_UNVANS);
 
 // Tables
 //
@@ -230,6 +233,10 @@ export const courseMuderris = table(
     bio: text("bio"),
     avatarHue: integer("avatar_hue").default(220).notNull(),
     orderIndex: integer("order_index").default(0).notNull(),
+    // The unvan this hoca carries in this course, chosen in the course's
+    // settings: `Prof. Dr. {name}`, or `{name} Hoca` while null. The person's
+    // other courses and roles are not touched. Not `title`, the older free text.
+    unvan: hocaUnvan("unvan"),
   },
   // Covers `CourseRepository.isMuderris` — the (courseId, userId) lookup the
   // authorization resolver runs on every course request (MDRS-41) — and, by

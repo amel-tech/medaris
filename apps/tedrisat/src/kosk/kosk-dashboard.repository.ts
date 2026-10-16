@@ -1,4 +1,5 @@
 import type { ScopeRef } from "@medaris/common";
+import type { HocaUnvan } from "@medaris/utils/src/hoca-unvan.js";
 import { Injectable } from "@nestjs/common";
 import { and, eq, inArray, type SQL, sql } from "drizzle-orm";
 import type { IAuditEntry } from "../audit/audit.repository";
@@ -237,9 +238,10 @@ export class KoskDashboardRepository {
     const muderris = await this.db.execute<{
       course_id: string;
       name: string;
+      unvan: HocaUnvan | null;
       is_imam: boolean;
     }>(sql`
-      select cm.course_id, cm.name,
+      select cm.course_id, cm.name, cm.unvan,
              exists (select 1 from role_assignments ra
                       where ra.role = 'MUDERRIS'
                         and ra.is_imam and ra.revoked_at is null
@@ -269,7 +271,7 @@ export class KoskDashboardRepository {
       madrasahName: r.madrasah_name,
       muderris: muderris.rows
         .filter((m) => m.course_id === r.course_id)
-        .map((m) => ({ name: m.name, isImam: m.is_imam })),
+        .map((m) => ({ name: m.name, unvan: m.unvan, isImam: m.is_imam })),
     }));
   }
 

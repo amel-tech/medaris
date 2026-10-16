@@ -1,3 +1,4 @@
+import type { HocaUnvan } from "@medaris/utils/src/hoca-unvan.js";
 import type { HideLevel } from "../archive/hide-level";
 import type { CourseStatus } from "../course/domain/course-status.enum";
 import type { ScopeType } from "../database/schema/scope-type.schema";
@@ -47,6 +48,8 @@ export interface IUpdateMadrasah {
 export interface IMadrasahCourseMuderris {
   name: string;
   title: string | null;
+  /** The unvan this hoca carries in the course; null shows `{name} Hoca`. */
+  unvan: HocaUnvan | null;
   /** The course's imam among its müderrisler (MDRS-133). */
   isImam: boolean;
 }

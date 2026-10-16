@@ -246,6 +246,7 @@ POST /notifications/:id/read -> no AuthzGuard
 POST /notifications/read-all -> no AuthzGuard
 PUT /courses/:id -> course.edit on course
 PUT /courses/:id/muderris -> course.open_standalone | madrasah.muderris_manage on course
+PUT /courses/:id/muderris/:userId/unvan -> course.settings on course
 PUT /courses/:id/progress -> course.view_details on course
 PUT /flashcard/cards/:id -> deck.manage_cards on custom
 PUT /flashcard/cards/progress -> exempt

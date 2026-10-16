@@ -4,9 +4,11 @@ import type {
   OpenMadrasahCourseDto,
 } from "@medaris/services/tedrisat";
 import { showsImamStar } from "@medaris/ui/lib/imam-star";
+import { formatHocaName, type HocaUnvan, isHocaUnvan } from "@medaris/utils";
 import { dayKey } from "~/lib/dates";
 import type { Messages } from "~/lib/i18n/messages";
 import {
+  accountsOf,
   type Member,
   type Team,
   teamOf,
@@ -226,8 +228,9 @@ export function courseRows(
       meta: [item.koskName, openedToday ? t("Courses.openedToday") : null]
         .filter(Boolean)
         .join(" · "),
+      // as the course shows its hocas: with the unvan each carries in it
       muderris: item.muderris.map((m) => ({
-        name: m.name,
+        name: formatHocaName(m.name, m.unvan),
         imam: showsImamStar(m.isImam, item.muderris.length),
       })),
       team: item.muderris.map((m) => ({
@@ -299,6 +302,8 @@ export interface OpenForm {
   koskId: string | null;
   title: string;
   team: Team;
+  /** the unvan chosen for each account, lowercased; `NO_UNVAN` or absent for none */
+  unvans: Record<string, string>;
   closed: boolean;
   approval: boolean;
 }
@@ -319,15 +324,35 @@ export function openProblems(form: OpenForm): OpenProblems | null {
   return problems.kosk || problems.title || problems.team ? problems : null;
 }
 
-/** The body of the POST: the name trimmed, and a locked answer sent as the form shows it, on. */
+/**
+ * The unvan each listed account carries in the course being opened, in list
+ * order; an account left as "Hoca (unvansız)", or no longer listed, is not
+ * sent.
+ */
+export function openUnvans(
+  team: Team,
+  unvans: Readonly<Record<string, string>>
+): { userId: string; unvan: HocaUnvan }[] {
+  return accountsOf(team).flatMap((userId) => {
+    const unvan = unvans[userId.toLowerCase()];
+    return isHocaUnvan(unvan) ? [{ userId, unvan }] : [];
+  });
+}
+
+/**
+ * The body of the POST: the name trimmed, a locked answer sent as the form
+ * shows it, on, and the unvans chosen, only when one is.
+ */
 export function openRequest(
   form: OpenForm,
   locks: Locks
 ): OpenMadrasahCourseDto {
+  const muderrisUnvans = openUnvans(form.team, form.unvans);
   return {
     koskId: form.koskId as string,
     title: form.title.trim(),
     ...teamRequest(form.team),
+    ...(muderrisUnvans.length > 0 ? { muderrisUnvans } : {}),
     closedCourse: form.closed || locks.closed,
     requiresApproval: form.approval || locks.approval,
   };
@@ -340,6 +365,7 @@ export const blankForm = (
   koskId: kosks[0]?.id ?? null,
   title: "",
   team: teamOf([]),
+  unvans: {},
   closed: false,
   approval: false,
 });

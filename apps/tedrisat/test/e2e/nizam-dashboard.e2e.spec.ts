@@ -253,6 +253,7 @@ describe("Nizam dashboards (e2e)", () => {
       courseId: course,
       userId: MUDERRIS,
       name: "Mehmet Emin Işıkoğlu",
+      unvan: "HAFIZ",
     });
     await assignRole(db(), {
       userId: MUDERRIS,
@@ -497,8 +498,9 @@ describe("Nizam dashboards (e2e)", () => {
         cancelled: false,
         isMakeup: false,
       });
+      // with the unvan the müderris carries in that course
       expect(res.body.sessions[0].muderris).toEqual([
-        { name: "Mehmet Emin Işıkoğlu", isImam: true },
+        { name: "Mehmet Emin Işıkoğlu", unvan: "HAFIZ", isImam: true },
       ]);
       expect(res.body.sessions[1].meetingUrl).toBeNull();
       expect(res.body.latestApplications).toHaveLength(2);

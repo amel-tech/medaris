@@ -1,6 +1,8 @@
-import { ApiProperty } from "@nestjs/swagger";
+import type { HocaUnvan } from "@medaris/utils/src/hoca-unvan.js";
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Transform } from "class-transformer";
 import { IsString, MaxLength, MinLength } from "class-validator";
+import { HOCA_UNVAN_PROPERTY } from "../../course/dto/course-response.dto";
 
 /** Longest question or answer, in characters of Markdown source. */
 export const LESSON_QUESTION_BODY_MAX = 4000;
@@ -67,6 +69,22 @@ export class QuestionPersonResponse {
   name!: string | null;
 }
 
+/** Who answered a question, and whether as a hoca of the course. */
+export class QuestionAnswererResponse extends QuestionPersonResponse {
+  @ApiProperty({
+    description:
+      "They are on the course's müderris list, so the answer is shown as its hoca's, with `unvan`. False for a ders nazırı, a köşk nazımı or anyone else who answers.",
+  })
+  isMuderris!: boolean;
+
+  @ApiPropertyOptional({
+    ...HOCA_UNVAN_PROPERTY,
+    description:
+      "Their unvan in this course; null for none (shown as `{name} Hoca`) and always null when `isMuderris` is false.",
+  })
+  unvan!: HocaUnvan | null;
+}
+
 /** The answer kept on a question. */
 export class QuestionAnswerResponse {
   @ApiProperty({ description: BODY_DESCRIPTION })
@@ -75,8 +93,8 @@ export class QuestionAnswerResponse {
   @ApiProperty({ type: Date })
   answeredAt!: Date;
 
-  @ApiProperty({ type: QuestionPersonResponse })
-  answeredBy!: QuestionPersonResponse;
+  @ApiProperty({ type: QuestionAnswererResponse })
+  answeredBy!: QuestionAnswererResponse;
 }
 
 /** A question as its author reads it (MDRS-150). */

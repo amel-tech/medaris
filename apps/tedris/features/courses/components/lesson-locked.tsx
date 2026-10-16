@@ -11,6 +11,7 @@ import { Button } from "@medaris/ui/mds/button";
 import { Card } from "@medaris/ui/mds/card";
 import { CoverPattern } from "@medaris/ui/mds/cover-pattern";
 import { Icon } from "@medaris/ui/mds/icon";
+import { formatHocaName } from "@medaris/utils";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
@@ -128,8 +129,10 @@ export function LessonLocked({
         viewerTimeZone,
       })
     : undefined;
+  // Each name carries the unvan of this course ("Prof. Dr. …", "… Hoca"), so
+  // the line needs no word before it.
   const teachers = new Intl.ListFormat(locale, { type: "conjunction" }).format(
-    course.muderris.map((m) => m.name)
+    course.muderris.map((m) => formatHocaName(m.name, m.unvan))
   );
 
   // tedris/17 criterion 3: the one recording a locked reader may see is the
@@ -270,7 +273,7 @@ export function LessonLocked({
           >
             {teachers ? (
               <p className="mds-body-sm" dir="auto">
-                {t("teachers", { names: teachers })}
+                {teachers}
               </p>
             ) : null}
           </Card>

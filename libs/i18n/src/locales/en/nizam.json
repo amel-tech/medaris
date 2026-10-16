@@ -2485,6 +2485,8 @@
     "imamBadge": "Course imam",
     "removeLabel": "Remove {name} from the list",
     "remove": "Remove",
+    "unvanLabel": "Title for {name}",
+    "untitled": "Hoca (no title)",
     "soleNote": "A single teacher is the course’s imam.",
     "manyNote": "The teacher you mark is the course’s imam. When you remove a teacher you decide separately about the permissions they gave.",
     "imamRequired": "There are several teachers; mark the course’s imam."

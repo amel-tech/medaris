@@ -13,6 +13,14 @@
  */
 
 import { mapValues } from '../runtime';
+import type { HocaUnvan } from './HocaUnvan';
+import {
+    HocaUnvanFromJSON,
+    HocaUnvanFromJSONTyped,
+    HocaUnvanToJSON,
+    HocaUnvanToJSONTyped,
+} from './HocaUnvan';
+
 /**
  * 
  * @export
@@ -32,12 +40,20 @@ export interface MadrasahCourseMuderrisResponse {
      */
     title?: string | null;
     /**
+     * The unvan this hoca carries in this course, set in the course's settings. The name is shown as `Prof. Dr. {name}`, `Molla {name}` …; null is no unvan, shown as `{name} Hoca` (`formatHocaName` in `@medaris/utils`).
+     * @type {HocaUnvan}
+     * @memberof MadrasahCourseMuderrisResponse
+     */
+    unvan?: HocaUnvan | null;
+    /**
      * 
      * @type {boolean}
      * @memberof MadrasahCourseMuderrisResponse
      */
     isImam: boolean;
 }
+
+
 
 /**
  * Check if a given object implements the MadrasahCourseMuderrisResponse interface.
@@ -60,6 +76,7 @@ export function MadrasahCourseMuderrisResponseFromJSONTyped(json: any, ignoreDis
         
         'name': json['name'],
         'title': json['title'] == null ? undefined : json['title'],
+        'unvan': json['unvan'] == null ? undefined : HocaUnvanFromJSON(json['unvan']),
         'isImam': json['isImam'],
     };
 }
@@ -77,6 +94,7 @@ export function MadrasahCourseMuderrisResponseToJSONTyped(value?: MadrasahCourse
         
         'name': value['name'],
         'title': value['title'],
+        'unvan': HocaUnvanToJSON(value['unvan']),
         'isImam': value['isImam'],
     };
 }

@@ -58,6 +58,7 @@ vi.mock("~/features/course-settings/actions", () => ({
   saveCourseSettings: vi.fn(),
   setCourseStatus: vi.fn(),
   setSampleLesson: vi.fn(),
+  setHocaUnvan: vi.fn(),
 }));
 
 const course = (over: Record<string, unknown> = {}) => ({
@@ -69,6 +70,24 @@ const course = (over: Record<string, unknown> = {}) => ({
   inPerson: true,
   timeZone: "Europe/Istanbul",
   version: 7,
+  muderris: [
+    {
+      id: "m-1",
+      courseId: "c-1",
+      userId: "u-ahmet",
+      name: "Ahmet Mehmet",
+      unvan: "PROF_DR",
+      isImam: true,
+    },
+    {
+      id: "m-2",
+      courseId: "c-1",
+      userId: "u-bekir",
+      name: "Bekir Sami",
+      unvan: null,
+      isImam: false,
+    },
+  ],
   weeks: [
     {
       id: "w1",
@@ -124,6 +143,22 @@ const mount = async () => {
 const buttons = () => [...document.querySelectorAll("button")];
 const button = (label: string) =>
   buttons().find((b) => b.textContent?.trim() === label);
+/** "Hocalar ve unvanları", the card under the form, and a button of its own. */
+const hocaCard = () =>
+  document.querySelector("[data-testid=hoca-unvan-card]") as HTMLElement;
+const cardButton = (label: string) =>
+  [...hocaCard().querySelectorAll("button")].find(
+    (b) => b.textContent?.trim() === label
+  );
+const formButton = (label: string) =>
+  [
+    ...(document
+      .querySelector("[data-testid=course-settings-form]")
+      ?.querySelectorAll("button") ?? []),
+  ].find((b) => b.textContent?.trim() === label);
+/** The unvan selects of the card, one per hoca. */
+const unvanSelects = () =>
+  [...hocaCard().querySelectorAll("button.mds-input")] as HTMLButtonElement[];
 const row = (label: string) =>
   [...document.querySelectorAll("label.mds-choice")].find(
     (l) => l.querySelector(".mds-choice__label")?.textContent === label
@@ -311,8 +346,40 @@ describe("Ders ayarları", () => {
     expect(locked("Kayıt onayı gereksin")).toBe(true);
     expect(shut("sample")).toBe(true);
     expect(shut("zone")).toBe(true);
-    expect(button("Kaydet")).toBeUndefined();
-    expect(button("Vazgeç")).toBeUndefined();
+    expect(formButton("Kaydet")).toBeUndefined();
+    expect(formButton("Vazgeç")).toBeUndefined();
+    // the unvans ask course.settings alone, so the card under the form is open
+    expect(unvanSelects().some((b) => b.disabled)).toBe(false);
+    expect(cardButton("Kaydet")).toBeDefined();
+  });
+
+  it("lists the course's hocas with the unvan each carries in it, open to course.settings", async () => {
+    await mount();
+    const card = hocaCard();
+    expect(card.querySelector("h2")?.textContent).toBe("Hocalar ve unvanları");
+    expect(unvanSelects().map((b) => b.textContent)).toEqual([
+      "Prof. Dr.",
+      "Hoca (unvansız)",
+    ]);
+    expect(card.textContent).toContain(
+      "Derste “Prof. Dr. Ahmet Mehmet” olarak görünür."
+    );
+    expect(card.textContent).toContain(
+      "Derste “Bekir Sami Hoca” olarak görünür."
+    );
+    expect(unvanSelects().some((b) => b.disabled)).toBe(false);
+    expect(cardButton("Kaydet")?.disabled).toBe(true);
+  });
+
+  it("only shows the unvans to a caller without course.settings", async () => {
+    state.permissions = holding("course.edit", "course.publish");
+    await mount();
+    expect(unvanSelects().every((b) => b.disabled)).toBe(true);
+    expect(cardButton("Kaydet")).toBeUndefined();
+    expect(hocaCard().textContent).toContain(
+      "Unvanları değiştirme izniniz yok; yalnız görebilirsiniz."
+    );
+    expect(hocaCard().textContent).toContain("Prof. Dr. Ahmet Mehmet");
   });
 
   it("holds 'Kayıt onayı gereksin' ticked and says why when a policy closes switching it off", async () => {

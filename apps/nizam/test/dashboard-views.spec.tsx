@@ -326,8 +326,8 @@ const kosk: KoskDashboardResponse = {
       cancelled: false,
       madrasahName: "Süleymaniye Medresesi",
       muderris: [
-        { name: "Mehmet Emin Işıkoğlu", isImam: true },
-        { name: "Ayşe Nur Kılıçarslan", isImam: false },
+        { name: "Mehmet Emin Işıkoğlu", unvan: "PROF_DR", isImam: true },
+        { name: "Ayşe Nur Kılıçarslan", unvan: null, isImam: false },
       ],
     },
     {
@@ -427,10 +427,11 @@ describe("a köşk nazımı's home page (nizam 02)", () => {
 
   it("draws each celse with its state, Katılım and button", () => {
     // a lone müderris is the imam and gets no mark; among two, the imam's
-    // name is followed by the star, a button that explains it (2026-10-13)
-    expect(html).toContain("Hafta 5 · Abdülhamit Karaosmanoğlu</span>");
+    // name is followed by the star, a button that explains it (2026-10-13).
+    // Each name carries the unvan of that course, "{name} Hoca" without one.
+    expect(html).toContain("Hafta 5 · Abdülhamit Karaosmanoğlu Hoca</span>");
     expect(html).toMatch(
-      /Hafta 4 · Mehmet Emin Işıkoğlu <button[^>]*aria-label="Dersin imamı"[^>]*>[\s\S]*?<\/button> · Ayşe Nur Kılıçarslan · Süleymaniye Medresesi/
+      /Hafta 4 · Prof\. Dr\. Mehmet Emin Işıkoğlu <button[^>]*aria-label="Dersin imamı"[^>]*>[\s\S]*?<\/button> · Ayşe Nur Kılıçarslan Hoca · Süleymaniye Medresesi/
     );
     expect(html.match(/aria-label="Dersin imamı"/g)).toHaveLength(1);
     expect(html).not.toContain(", imam");

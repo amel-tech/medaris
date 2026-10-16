@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.2.10](https://github.com/amel-tech/medaris/compare/nazar-web-v0.2.9...nazar-web-v0.2.10) (2026-10-16)
+
+
+### Features
+
+* **i18n, tedris-web, nazar-web, nizam-web, landing-web, ui:** say hoca, not müderris ([#343](https://github.com/amel-tech/medaris/issues/343)) ([41e9331](https://github.com/amel-tech/medaris/commit/41e93316e4ece43fc7c4dd45173a2cb2df75629d))
+* **nazar-web, i18n:** MDRS-248 lay out a celse in Müfredat by what is edited most ([#337](https://github.com/amel-tech/medaris/issues/337)) ([cbbea28](https://github.com/amel-tech/medaris/commit/cbbea28b64f813e5b1b19eeee390a31868cb376b))
+* **tedrisat, nazar-web, tedris-web, nizam-web, utils:** an unvan for each hoca of a course ([#344](https://github.com/amel-tech/medaris/issues/344)) ([babb013](https://github.com/amel-tech/medaris/commit/babb013e112196866d1af890b3f76cfdf2d8f5d2))
+
+
+### Bug Fixes
+
+* **tedris-web, nazar-web, nizam-web, landing-web:** no OTLP export without an endpoint ([#320](https://github.com/amel-tech/medaris/issues/320)) ([495d67b](https://github.com/amel-tech/medaris/commit/495d67bb277e81e90c0b3dd9155bc1fa0a45dc2f))
+
 ## [0.2.9](https://github.com/amel-tech/medaris/compare/nazar-web-v0.2.8...nazar-web-v0.2.9) (2026-10-15)
 
 

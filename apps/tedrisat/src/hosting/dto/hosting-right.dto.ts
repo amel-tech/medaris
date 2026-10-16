@@ -1,5 +1,7 @@
+import type { HocaUnvan } from "@medaris/utils/src/hoca-unvan.js";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { IsUUID } from "class-validator";
+import { HOCA_UNVAN_PROPERTY } from "../../course/dto/course-response.dto";
 
 export const COURSES_ACTIONS = ["KEEP", "HIDE"] as const;
 export type CoursesAction = (typeof COURSES_ACTIONS)[number];
@@ -37,6 +39,13 @@ export class HostingOpenCourseResponse {
     description: "The course's imam, as the course page names them",
   })
   imamName!: string | null;
+
+  @ApiPropertyOptional({
+    ...HOCA_UNVAN_PROPERTY,
+    description:
+      "The imam's unvan in the course; null for none (shown as `{name} Hoca`) or no imam.",
+  })
+  imamUnvan!: HocaUnvan | null;
 
   @ApiProperty({
     description:

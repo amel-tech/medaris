@@ -90,13 +90,13 @@ export class MadrasahCourseController {
   @ApiOperation({
     summary: "Open a course of the medrese (its başmüderris)",
     description:
-      'nazir/08\'s "Dersi aç". The course is a DRAFT in a köşk the medrese holds a hosting right in, with its müderrisler and imam; a lone müderris is the imam, with several `imamUserId` is required. The medrese\'s policies are applied on the server: "Kayıt her zaman onaylı" makes the course wait for approval and "Kapalı ders zorunlu" makes it closed, whatever is sent. The müderrisler are found with `GET /users/lookup`; one the app and the realm do not know is a 404 (MUDERRIS_UNKNOWN_USER). 403 (HOSTING_RIGHT_REQUIRED) when the köşk gave the medrese no right. Written to the audit log.',
+      'nazir/08\'s "Dersi aç". The course is a DRAFT in a köşk the medrese holds a hosting right in, with its müderrisler and imam; a lone müderris is the imam, with several `imamUserId` is required. The medrese\'s policies are applied on the server: "Kayıt her zaman onaylı" makes the course wait for approval and "Kapalı ders zorunlu" makes it closed, whatever is sent. The müderrisler are found with `GET /users/lookup`; one the app and the realm do not know is a 404 (MUDERRIS_UNKNOWN_USER). Each may be given the unvan they carry in the course (`muderrisUnvans`), written to the audit row with the rest; later it is changed in Ders ayarları. 403 (HOSTING_RIGHT_REQUIRED) when the köşk gave the medrese no right. Written to the audit log.',
     operationId: "openMadrasahCourse",
   })
   @ApiCreatedResponse({ type: MadrasahCourseListItemResponse })
   @ApiBadRequestResponse({
     description:
-      "COURSE_IMAM_REQUIRED, COURSE_IMAM_NOT_LISTED or MUDERRIS_DUPLICATE_USER",
+      "COURSE_IMAM_REQUIRED, COURSE_IMAM_NOT_LISTED or MUDERRIS_DUPLICATE_USER; MUDERRIS_LIST_INVALID for an unvan given to an account that is not listed, or to one twice; VALIDATION_ERROR for an unvan that is not one of the codes",
   })
   @ApiForbiddenResponse({ description: "HOSTING_RIGHT_REQUIRED" })
   @ApiNotFoundResponse({ description: "Also MUDERRIS_UNKNOWN_USER" })

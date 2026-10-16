@@ -10,6 +10,7 @@ import { Icon } from "@medaris/ui/mds/icon";
 import { ImamStar } from "@medaris/ui/mds/imam-star";
 import { Table, type TableColumn } from "@medaris/ui/mds/table";
 import { Tabs, TabsPanel } from "@medaris/ui/mds/tabs";
+import { formatHocaName } from "@medaris/utils";
 import { useRouter } from "next/navigation";
 import { useLocale, useTimeZone, useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
@@ -159,7 +160,8 @@ export function KoskCourseTable({
           <span className="flex flex-col">
             {row.muderris.map((m) => (
               <span key={m.name}>
-                <bdi>{m.name}</bdi>
+                {/* the name with the unvan they carry in this course */}
+                <bdi>{formatHocaName(m.name, m.unvan)}</bdi>
                 {/* the star, only among more than one müderris (2026-10-13) */}
                 {showsImamStar(m.isImam, row.muderris.length) ? (
                   <>

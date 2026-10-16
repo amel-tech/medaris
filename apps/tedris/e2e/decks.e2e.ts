@@ -198,7 +198,8 @@ test.describe("Desteleri keşfet (tedris/26)", () => {
     const course = deckCard(page, fx.titles.courseDeck);
     await expect(course.getByText("Ders destesi")).toBeVisible();
     await expect(
-      course.getByText(`${fx.courseTitle}·Hoca ${fx.muderrisName}`)
+      // no unvan in that course: "… Hoca", no word before the name (2026-10-15)
+      course.getByText(`${fx.courseTitle}·${fx.muderrisName} Hoca`)
     ).toBeVisible();
     await expect(
       course.getByRole("button", {

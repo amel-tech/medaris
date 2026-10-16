@@ -6,6 +6,10 @@ import type {
 import type { CoverTone } from "@medaris/ui/mds/cover-pattern";
 import {
   fromZonedDatetimeLocal,
+  HOCA_UNVAN_PREFIX,
+  HOCA_UNVANS,
+  type HocaUnvan,
+  isHocaUnvan,
   meetingUrlProblem,
   normalizeMeetingUrl,
   parseYoutubeLiveUrl,
@@ -215,6 +219,12 @@ export interface TeamMember {
   name: string;
   title?: string;
   email?: string | null;
+  /**
+   * The unvan chosen for them in a course being opened (owner, 2026-10-15);
+   * left out for none. Only "Ders aç" sets it: on a course that exists it is
+   * set in Ders ayarları, and the list's own request never carries it.
+   */
+  unvan?: HocaUnvan;
 }
 
 export interface TeamState {
@@ -223,6 +233,57 @@ export interface TeamState {
 }
 
 const same = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
+
+/** The select has no "empty" value: this stands for no unvan, the plain "Hoca". */
+export const NO_UNVAN = "none";
+
+/**
+ * The options of a hoca's unvan select: the untitled "Hoca" first, worded by
+ * the page, then every unvan as it is written before the name (part of the
+ * name, the same in every language).
+ */
+export function unvanOptions(
+  untitled: string
+): { value: string; label: string }[] {
+  return [
+    { value: NO_UNVAN, label: untitled },
+    ...HOCA_UNVANS.map((code) => ({
+      value: code,
+      label: HOCA_UNVAN_PREFIX[code],
+    })),
+  ];
+}
+
+/** Sets the unvan the select holds on one member; "Hoca (unvansız)" takes it off. */
+export function setMemberUnvan(
+  team: TeamState,
+  userId: string,
+  value: string | null
+): TeamState {
+  return {
+    ...team,
+    members: team.members.map((m) => {
+      if (!same(m.userId, userId)) return m;
+      const { unvan: _old, ...rest } = m;
+      return isHocaUnvan(value) ? { ...rest, unvan: value } : rest;
+    }),
+  };
+}
+
+/**
+ * The müderris entries of "Ders aç" (`POST /kosks/:koskId/courses`): the
+ * list's own entries, each with the unvan chosen for it. A member taken off
+ * the list is not in `muderris`, so their unvan is not sent either.
+ */
+export function withUnvans<T extends { userId: string }>(
+  muderris: readonly T[],
+  team: TeamState
+): (T & { unvan?: HocaUnvan })[] {
+  return muderris.map((m) => {
+    const unvan = team.members.find((x) => same(x.userId, m.userId))?.unvan;
+    return unvan ? { ...m, unvan } : m;
+  });
+}
 
 /** A single müderris is the imam; with several the chosen one stays while they remain. */
 export function normalizedImam(team: TeamState): string | null {

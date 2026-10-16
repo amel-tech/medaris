@@ -1,3 +1,4 @@
+import type { HocaUnvan } from "@medaris/utils/src/hoca-unvan.js";
 import { Injectable } from "@nestjs/common";
 import { and, asc, eq, inArray, isNull, type SQL, sql } from "drizzle-orm";
 import type { HideLevel } from "../archive/hide-level";
@@ -37,6 +38,8 @@ export interface IHostingRight {
     status: "DRAFT" | "PUBLISHED";
     studentCount: number;
     imamName: string | null;
+    /** the imam's unvan in the course; null shows `{name} Hoca` */
+    imamUnvan: HocaUnvan | null;
     /** how many müderrisler the course lists: the imam's star needs more than one */
     muderrisCount: number;
   }[];
@@ -151,7 +154,8 @@ export class HostingRepository {
             title: c.title,
             status: c.status as "DRAFT" | "PUBLISHED",
             studentCount: students.get(c.id) ?? 0,
-            imamName: imams.get(c.id) ?? null,
+            imamName: imams.get(c.id)?.name ?? null,
+            imamUnvan: imams.get(c.id)?.unvan ?? null,
             muderrisCount: c.muderrisCount,
           })),
       };
@@ -178,8 +182,10 @@ export class HostingRepository {
     return new Map(rows.map((r) => [r.courseId, r.n]));
   }
 
-  /** Each course's imam by the name its müderris row carries. */
-  private async imamNames(courseIds: string[]): Promise<Map<string, string>> {
+  /** Each course's imam by the name and the unvan its müderris row carries. */
+  private async imamNames(
+    courseIds: string[]
+  ): Promise<Map<string, { name: string; unvan: HocaUnvan | null }>> {
     if (courseIds.length === 0) return new Map();
     const imams = await this.db
       .select({
@@ -201,16 +207,19 @@ export class HostingRepository {
         courseId: courseMuderris.courseId,
         userId: courseMuderris.userId,
         name: courseMuderris.name,
+        unvan: courseMuderris.unvan,
       })
       .from(courseMuderris)
       .where(inArray(courseMuderris.courseId, courseIds))
       .orderBy(asc(courseMuderris.orderIndex), asc(courseMuderris.id));
-    const result = new Map<string, string>();
+    const result = new Map<string, { name: string; unvan: HocaUnvan | null }>();
     for (const imam of imams) {
       const row = rows.find(
         (r) => r.courseId === imam.courseId && r.userId === imam.userId
       );
-      if (row && imam.courseId) result.set(imam.courseId, row.name);
+      if (row && imam.courseId) {
+        result.set(imam.courseId, { name: row.name, unvan: row.unvan });
+      }
     }
     return result;
   }

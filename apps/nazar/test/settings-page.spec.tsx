@@ -59,9 +59,14 @@ const settings = (over: Record<string, unknown> = {}) => ({
   ...over,
 });
 
-const muderris = (name: string, isImam = false) => ({
+const muderris = (
+  name: string,
+  isImam = false,
+  unvan: "MUDERRIS" | null = null
+) => ({
   name,
   title: null,
+  unvan,
   isImam,
 });
 
@@ -73,7 +78,7 @@ const courses = [
     koskName: "Nûruosmaniye Köşkü",
     status: "PUBLISHED",
     muderris: [
-      muderris("Mehmet Emin Işıkoğlu", true),
+      muderris("Mehmet Emin Işıkoğlu", true, "MUDERRIS"),
       muderris("Abdülhamit Karaosmanoğlu"),
     ],
   },
@@ -188,17 +193,17 @@ describe("Medrese ayarları", () => {
     const text = textOf(markup);
     expect(text).toContain("Politikaların uygulandığı dersler");
     expect(text).toContain(
-      "Bina ve İzhar Şerhi Nûruosmaniye Köşkü · Mehmet Emin Işıkoğlu"
+      "Bina ve İzhar Şerhi Nûruosmaniye Köşkü · Müderris Mehmet Emin Işıkoğlu"
     );
     // the imam of the two-müderris course: the star after the name, a button
     // that explains itself; the lone müderris of the other gets no mark
     // (2026-10-13)
     expect(markup).toMatch(
-      /Mehmet Emin Işıkoğlu <button[^>]*aria-label="Dersin imamı"[^>]*>[\s\S]*?<\/button> ve Abdülhamit Karaosmanoğlu/
+      /Müderris Mehmet Emin Işıkoğlu <button[^>]*aria-label="Dersin imamı"[^>]*>[\s\S]*?<\/button> ve Abdülhamit Karaosmanoğlu Hoca/
     );
     expect(markup.match(/aria-label="Dersin imamı"/g)).toHaveLength(1);
     expect(text).toContain(
-      "Maksûd şerhi Nûruosmaniye Köşkü · Mehmet Emin Işıkoğlu Taslak"
+      "Maksûd şerhi Nûruosmaniye Köşkü · Mehmet Emin Işıkoğlu Hoca Taslak"
     );
     expect(text).not.toContain(", imam");
     expect(text).toContain("Medrese dersleri");

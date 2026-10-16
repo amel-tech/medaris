@@ -584,13 +584,19 @@ describe("the new keys", () => {
 });
 
 describe("the müderris line (2026-10-13)", () => {
-  const person = (id: string, name: string, isImam: boolean) => ({
+  const person = (
+    id: string,
+    name: string,
+    isImam: boolean,
+    unvan: string | null = null
+  ) => ({
     id,
     name,
     title: null,
     bio: null,
     avatarHue: 200,
     isImam,
+    unvan,
   });
   const withTeam = async (muderris: ReturnType<typeof person>[]) => {
     const { CoursePage } = await import(
@@ -609,13 +615,38 @@ describe("the müderris line (2026-10-13)", () => {
     );
   };
 
+  it("draws no free-text title beside a hoca, alone or among several (owner, 2026-10-15)", async () => {
+    const titled = (
+      id: string,
+      name: string,
+      isImam: boolean,
+      title: string
+    ) => ({ ...person(id, name, isImam, "MOLLA"), title });
+    const alone = await withTeam([
+      titled(
+        "m1",
+        "Abdülhamit Karaosmanoğlu",
+        false,
+        "Sarf ve Nahiv Müderrisi"
+      ),
+    ]);
+    expect(alone).toContain("Molla Abdülhamit Karaosmanoğlu");
+    expect(alone).not.toContain("Sarf ve Nahiv Müderrisi");
+    const several = await withTeam([
+      titled("m1", "Abdülhamit Karaosmanoğlu", true, "Sarf ve Nahiv Müderrisi"),
+      titled("m2", "Ayşe Nur Kılıçarslan", false, "Hadis Müderrisi"),
+    ]);
+    expect(several).not.toContain("Sarf ve Nahiv Müderrisi");
+    expect(several).not.toContain("Hadis Müderrisi");
+  });
+
   it("marks the imam among several müderrisler with the star after the name", async () => {
     const html = await withTeam([
       person("m1", "Abdülhamit Karaosmanoğlu", true),
       person("m2", "Ayşe Nur Kılıçarslan", false),
     ]);
     expect(html).toMatch(
-      /Abdülhamit Karaosmanoğlu<\/bdi> <button[^>]*aria-label="Dersin imamı"/
+      /Abdülhamit Karaosmanoğlu Hoca<\/bdi> <button[^>]*aria-label="Dersin imamı"/
     );
     expect(html.match(/aria-label="Dersin imamı"/g)).toHaveLength(1);
   });
@@ -626,5 +657,70 @@ describe("the müderris line (2026-10-13)", () => {
     ]);
     expect(html).toContain("Abdülhamit Karaosmanoğlu");
     expect(html).not.toContain("mds-imam-star");
+  });
+});
+
+describe("the hoca's unvan in this course (owner, 2026-10-15)", () => {
+  const person = (
+    id: string,
+    name: string,
+    isImam: boolean,
+    unvan: string | null
+  ) => ({ id, name, title: null, bio: null, avatarHue: 200, isImam, unvan });
+  const withTeam = async (muderris: ReturnType<typeof person>[]) => {
+    const { CoursePage } = await import(
+      "~/features/courses/components/course-page"
+    );
+    return renderToStaticMarkup(
+      createElement(CoursePage, {
+        course: {
+          ...course("ENROLLED", false),
+          muderris,
+        } as unknown as CourseDetailResponse,
+        koskName: "Nûruosmaniye Köşkü",
+        signedIn: true,
+        now: NOW,
+      })
+    );
+  };
+
+  it("puts the unvan before a lone hoca's name, with no word before it", async () => {
+    const html = await withTeam([
+      person("m1", "Ahmet Mehmet", true, "PROF_DR"),
+    ]);
+    expect(html).toContain("<bdi>Prof. Dr. Ahmet Mehmet</bdi>");
+    expect(html).not.toContain("Müderris Prof. Dr.");
+    expect(html).not.toContain("mds-imam-star");
+  });
+
+  it("writes Hoca after a lone hoca's name with no unvan", async () => {
+    const html = await withTeam([person("m1", "Ahmet Mehmet", true, null)]);
+    expect(html).toContain("<bdi>Ahmet Mehmet Hoca</bdi>");
+    expect(html).not.toContain("Müderris Ahmet Mehmet");
+  });
+
+  it("names several hocas each with their own unvan, the star still after the imam", async () => {
+    const html = await withTeam([
+      person("m1", "Ahmet Mehmet", true, "PROF_DR"),
+      person("m2", "Bekir Sami", false, null),
+      person("m3", "Cemal Nur", false, "MOLLA"),
+    ]);
+    expect(html).toMatch(
+      /<bdi>Prof\. Dr\. Ahmet Mehmet<\/bdi> <button[^>]*aria-label="Dersin imamı"/
+    );
+    expect(html).toContain("<bdi>Bekir Sami Hoca</bdi>");
+    expect(html).toContain("<bdi>Molla Cemal Nur</bdi>");
+    expect(html.match(/aria-label="Dersin imamı"/g)).toHaveLength(1);
+  });
+
+  it("finds each hoca back by place, so two who read alike keep their own star", async () => {
+    const html = await withTeam([
+      person("m1", "Ahmet Mehmet", false, null),
+      person("m2", "Ahmet Mehmet", true, null),
+    ]);
+    expect(html).toMatch(
+      /<bdi>Ahmet Mehmet Hoca<\/bdi>[^<]*<bdi>Ahmet Mehmet Hoca<\/bdi> <button[^>]*aria-label="Dersin imamı"/
+    );
+    expect(html.match(/aria-label="Dersin imamı"/g)).toHaveLength(1);
   });
 });

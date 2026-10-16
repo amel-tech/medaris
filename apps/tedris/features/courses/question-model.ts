@@ -1,9 +1,27 @@
-import type { CourseDetailResponse } from "@medaris/services/tedrisat";
+import type {
+  CourseDetailResponse,
+  QuestionAnswererResponse,
+} from "@medaris/services/tedrisat";
+import { formatHocaName } from "@medaris/utils";
 
 /**
  * What the questions tab derives from the course and from a question
  * (MDRS-150). Pure: a spec pins every rule.
  */
+
+/**
+ * The name an answer is signed with: a hoca of the course with the unvan they
+ * carry in it ("Prof. Dr. …", "… Hoca"), anyone else who answers (a ders
+ * nazırı, the köşk's nazımı) by their name alone. Null when the account has
+ * no name to show.
+ */
+export const answererName = (
+  answeredBy: Pick<QuestionAnswererResponse, "name" | "isMuderris" | "unvan">
+): string | null => {
+  const name = answeredBy.name?.trim();
+  if (!name) return null;
+  return answeredBy.isMuderris ? formatHocaName(name, answeredBy.unvan) : name;
+};
 
 /** The API's limit on a question or an answer (`LESSON_QUESTION_BODY_MAX`). */
 export const QUESTION_BODY_MAX = 4000;

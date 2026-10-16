@@ -1,8 +1,11 @@
+import type { HocaUnvan } from "@medaris/utils/src/hoca-unvan.js";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { HOCA_UNVAN_PROPERTY } from "../../course/dto/course-response.dto";
 
 export class MadrasahCourseMuderrisResponse {
   @ApiProperty() name!: string;
   @ApiPropertyOptional({ type: String, nullable: true }) title!: string | null;
+  @ApiPropertyOptional(HOCA_UNVAN_PROPERTY) unvan!: HocaUnvan | null;
   @ApiProperty() isImam!: boolean;
 }
 

@@ -34,6 +34,13 @@ import {
     DeckCollectionKindToJSON,
     DeckCollectionKindToJSONTyped,
 } from './DeckCollectionKind';
+import type { HocaUnvan } from './HocaUnvan';
+import {
+    HocaUnvanFromJSON,
+    HocaUnvanFromJSONTyped,
+    HocaUnvanToJSON,
+    HocaUnvanToJSONTyped,
+} from './HocaUnvan';
 import type { DeckPublishStatus } from './DeckPublishStatus';
 import {
     DeckPublishStatusFromJSON,
@@ -127,6 +134,12 @@ export interface FlashcardDeckSummaryResponse {
      */
     muderrisName?: string | null;
     /**
+     * That müderris' unvan in the course; null for none (shown as `{name} Hoca`) and for a deck that is not a course's.
+     * @type {HocaUnvan}
+     * @memberof FlashcardDeckSummaryResponse
+     */
+    muderrisUnvan?: HocaUnvan | null;
+    /**
      * 
      * @type {number}
      * @memberof FlashcardDeckSummaryResponse
@@ -210,6 +223,7 @@ export function FlashcardDeckSummaryResponseFromJSONTyped(json: any, ignoreDiscr
         'inCollection': json['inCollection'],
         'contextTitle': json['contextTitle'] == null ? undefined : json['contextTitle'],
         'muderrisName': json['muderrisName'] == null ? undefined : json['muderrisName'],
+        'muderrisUnvan': json['muderrisUnvan'] == null ? undefined : HocaUnvanFromJSON(json['muderrisUnvan']),
         'cardCount': json['cardCount'],
         'masteredCount': json['masteredCount'],
         'learningCount': json['learningCount'],
@@ -243,6 +257,7 @@ export function FlashcardDeckSummaryResponseToJSONTyped(value?: FlashcardDeckSum
         'inCollection': value['inCollection'],
         'contextTitle': value['contextTitle'],
         'muderrisName': value['muderrisName'],
+        'muderrisUnvan': HocaUnvanToJSON(value['muderrisUnvan']),
         'cardCount': value['cardCount'],
         'masteredCount': value['masteredCount'],
         'learningCount': value['learningCount'],

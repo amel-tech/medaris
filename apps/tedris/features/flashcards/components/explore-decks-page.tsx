@@ -59,7 +59,6 @@ export function ExploreDecksPage({ data, cardType }: ExploreDecksPageProps) {
     cardType: (kind) =>
       kind === "HADEETH" ? t("cardTypeHADEETH") : t("cardTypeVOCABULARY"),
     completed: (done, total) => t("completed", { done, total }),
-    muderris: (name) => t("muderris", { name }),
   };
   const kindLabel = (kind: "COURSE" | "KOSK" | "MADRASAH" | "PUBLIC") =>
     kind === "COURSE"

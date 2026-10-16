@@ -15,6 +15,7 @@ import { Card } from "@medaris/ui/mds/card";
 import { CoverPattern } from "@medaris/ui/mds/cover-pattern";
 import { Icon } from "@medaris/ui/mds/icon";
 import { ImamStar } from "@medaris/ui/mds/imam-star";
+import { formatHocaName } from "@medaris/utils";
 import Link from "next/link";
 import { getLocale, getTimeZone, getTranslations } from "next-intl/server";
 import { AnonymousInvite } from "~/components/anonymous-invite";
@@ -25,19 +26,18 @@ import { formatNextSession } from "../next-session";
 
 type Translate = Awaited<ReturnType<typeof getTranslations>>;
 
-/** "Müderris A ★ · B": the imam's star only where there is more than one (2026-10-13). */
-const muderrisLine = (
-  course: MadrasahCourseResponse,
-  t: Translate,
-  star: ImamStarLabels
-) =>
-  course.muderris.length === 0 ? null : (
-    <>
-      {t("MadrasahPage.muderris")}{" "}
-      {joinRun(
-        course.muderris.map((m) => (
-          <span key={m.name} style={{ whiteSpace: "nowrap" }}>
-            <bdi>{m.name}</bdi>
+/**
+ * "Prof. Dr. A ★ · B Hoca": each name with the unvan of this course, so no
+ * word goes before them; the imam's star only where there is more than one
+ * (2026-10-13).
+ */
+const muderrisLine = (course: MadrasahCourseResponse, star: ImamStarLabels) =>
+  course.muderris.length === 0
+    ? null
+    : joinRun(
+        course.muderris.map((m, i) => (
+          <span key={`${i}:${m.name}`} style={{ whiteSpace: "nowrap" }}>
+            <bdi>{formatHocaName(m.name, m.unvan)}</bdi>
             {showsImamStar(m.isImam, course.muderris.length) ? (
               <>
                 {" "}
@@ -46,9 +46,7 @@ const muderrisLine = (
             ) : null}
           </span>
         ))
-      )}
-    </>
-  );
+      );
 
 const CourseCard = ({
   course,
@@ -123,7 +121,7 @@ const CourseCard = ({
             {t("MadrasahPage.inPerson")}
           </Badge>
         ) : null}
-        <p dir="auto">{muderrisLine(course, t, star)}</p>
+        <p dir="auto">{muderrisLine(course, star)}</p>
       </div>
     </Card>
   );

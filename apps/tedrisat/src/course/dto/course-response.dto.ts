@@ -1,3 +1,4 @@
+import { HOCA_UNVANS, type HocaUnvan } from "@medaris/utils/src/hoca-unvan.js";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { BAN_SCOPES, type BanScope } from "../../database/schema/ban.schema";
 import { CourseLevel } from "../domain/course-level.enum";
@@ -181,6 +182,18 @@ export class WeekResponse {
   @ApiProperty({ type: [LessonResponse] }) lessons!: LessonResponse[];
 }
 
+/**
+ * The `unvan` of a hoca in one course, as every response that lists the
+ * course's hocas documents it.
+ */
+export const HOCA_UNVAN_PROPERTY = {
+  enum: [...HOCA_UNVANS],
+  enumName: "HocaUnvan",
+  nullable: true,
+  description:
+    "The unvan this hoca carries in this course, set in the course's settings. The name is shown as `Prof. Dr. {name}`, `Molla {name}` …; null is no unvan, shown as `{name} Hoca` (`formatHocaName` in `@medaris/utils`).",
+} as const;
+
 export class MuderrisResponse {
   @ApiProperty() id!: string;
   @ApiProperty() courseId!: string;
@@ -190,6 +203,7 @@ export class MuderrisResponse {
   @ApiPropertyOptional({ type: String }) bio!: string | null;
   @ApiProperty() avatarHue!: number;
   @ApiProperty() orderIndex!: number;
+  @ApiPropertyOptional(HOCA_UNVAN_PROPERTY) unvan!: HocaUnvan | null;
   @ApiProperty({
     description: "The course's imam among its müderrisler (MDRS-133)",
   })

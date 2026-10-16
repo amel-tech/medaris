@@ -194,6 +194,7 @@ describe("Medrese settings (e2e)", () => {
       courseId: publishedCourse,
       userId: IMAM_ID,
       name: "Mehmet Emin Işıkoğlu",
+      unvan: "DOC_DR",
     });
     await assignRole(db(), {
       userId: IMAM_ID,
@@ -433,6 +434,7 @@ describe("Medrese settings (e2e)", () => {
               userId: IMAM_ID,
               name: "Mehmet Emin Işıkoğlu",
               title: null,
+              unvan: "DOC_DR",
               email: null,
               isImam: true,
             },

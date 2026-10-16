@@ -5,6 +5,7 @@ import type {
 } from "@medaris/services/tedrisat";
 import { showsImamStar } from "@medaris/ui/lib/imam-star";
 import type { IconName } from "@medaris/ui/mds/icon";
+import { formatHocaName } from "@medaris/utils";
 
 /**
  * Medrese ayarları (nazir 04) as rules, so that what the form allows, what
@@ -130,7 +131,8 @@ export interface MetaPart {
 
 /**
  * The second line of a course in "Politikaların uygulandığı dersler": its
- * köşk, then its müderrisler ("A ve B"), the imam's name followed by the star
+ * köşk, then its müderrisler ("A ve B", each with the unvan they carry in the
+ * course: "Prof. Dr. A ve B Hoca"), the imam's name followed by the star
  * where there is more than one (2026-10-13). In runs, so the page can set the
  * star after the name the list put in its place.
  */
@@ -146,7 +148,7 @@ export function courseMeta(
           style: "long",
           type: "conjunction",
         })
-          .formatToParts(team.map((m) => m.name))
+          .formatToParts(team.map((m) => formatHocaName(m.name, m.unvan)))
           .map((part) => {
             if (part.type === "literal")
               return { text: part.value, imam: false };

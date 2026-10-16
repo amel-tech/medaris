@@ -1,4 +1,5 @@
 import type { ScopeRef } from "@medaris/common";
+import type { HocaUnvan } from "@medaris/utils/src/hoca-unvan.js";
 import { Injectable } from "@nestjs/common";
 import {
   and,
@@ -448,6 +449,7 @@ export class CourseRepository implements ICourseRepository {
             title: m.title,
             bio: m.bio,
             avatarHue: m.avatarHue,
+            unvan: m.unvan ?? null,
             orderIndex: i,
           }))
         );
@@ -1185,9 +1187,20 @@ export class CourseRepository implements ICourseRepository {
     actorId: string
   ): Promise<void> {
     const existingMuderris = await tx
-      .select({ id: courseMuderris.id, userId: courseMuderris.userId })
+      .select({
+        id: courseMuderris.id,
+        userId: courseMuderris.userId,
+        unvan: courseMuderris.unvan,
+      })
       .from(courseMuderris)
       .where(eq(courseMuderris.courseId, courseId));
+    // A hoca who stays keeps the unvan of this course even when the payload
+    // re-sends their row without its id, which inserts it afresh.
+    const unvanOf = new Map(
+      existingMuderris.flatMap((e) =>
+        e.userId ? [[e.userId.toLowerCase(), e.unvan] as const] : []
+      )
+    );
     // Ids are compared lowercased, the way `muderrisListChanged` compares
     // them before the check on the müderris list. Postgres returns uuids in
     // lowercase and `@IsUUID()` accepts uppercase, so an exact match here
@@ -1206,7 +1219,7 @@ export class CourseRepository implements ICourseRepository {
         .delete(courseMuderris)
         .where(inArray(courseMuderris.id, muderrisToDelete));
     }
-    const existingMuderrisIds = new Set(existingMuderris.map((e) => e.id));
+    const existingById = new Map(existingMuderris.map((e) => [e.id, e]));
     for (const [i, m] of muderris.entries()) {
       const values = {
         courseId,
@@ -1217,14 +1230,21 @@ export class CourseRepository implements ICourseRepository {
         avatarHue: m.avatarHue,
         orderIndex: i,
       };
+      const carried = (m.userId && unvanOf.get(m.userId.toLowerCase())) || null;
       const muderrisId = m.id?.toLowerCase();
-      if (muderrisId && existingMuderrisIds.has(muderrisId)) {
+      const stored = muderrisId ? existingById.get(muderrisId) : undefined;
+      if (muderrisId && stored) {
+        // A row handed to another account does not hand on its unvan.
+        const rebound =
+          m.userId !== undefined &&
+          (m.userId?.toLowerCase() ?? null) !==
+            (stored.userId?.toLowerCase() ?? null);
         await tx
           .update(courseMuderris)
-          .set(values)
+          .set(rebound ? { ...values, unvan: carried } : values)
           .where(eq(courseMuderris.id, muderrisId));
       } else {
-        await tx.insert(courseMuderris).values(values);
+        await tx.insert(courseMuderris).values({ ...values, unvan: carried });
       }
     }
     // Whoever was listed already keeps the seat they have, none if it lapsed
@@ -1487,6 +1507,42 @@ export class CourseRepository implements ICourseRepository {
         })),
         courseVersion,
       };
+    });
+  }
+
+  async setMuderrisUnvan(
+    courseId: string,
+    userId: string,
+    unvan: HocaUnvan | null,
+    actorId: string
+  ): Promise<boolean> {
+    return this.db.transaction(async (tx) => {
+      const [row] = await tx
+        .select({ id: courseMuderris.id, unvan: courseMuderris.unvan })
+        .from(courseMuderris)
+        .where(
+          and(
+            eq(courseMuderris.courseId, courseId),
+            eq(courseMuderris.userId, userId.toLowerCase())
+          )
+        )
+        .limit(1)
+        .for("update");
+      if (!row) return false;
+      // The same unvan again writes nothing, and leaves no audit row.
+      if (row.unvan === unvan) return true;
+      await tx
+        .update(courseMuderris)
+        .set({ unvan })
+        .where(eq(courseMuderris.id, row.id));
+      await tx.insert(auditLog).values({
+        actorId,
+        action: "course.muderris_unvan_update",
+        entity: "course",
+        entityId: courseId,
+        details: { userId: userId.toLowerCase(), from: row.unvan, to: unvan },
+      });
+      return true;
     });
   }
 
