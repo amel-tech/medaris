@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.2.8](https://github.com/amel-tech/medaris/compare/nizam-web-v0.2.7...nizam-web-v0.2.8) (2026-10-16)
+
+
+### Features
+
+* **i18n, tedris-web, nazar-web, nizam-web, landing-web, ui:** say hoca, not müderris ([#343](https://github.com/amel-tech/medaris/issues/343)) ([41e9331](https://github.com/amel-tech/medaris/commit/41e93316e4ece43fc7c4dd45173a2cb2df75629d))
+* **tedrisat, nazar-web, tedris-web, nizam-web, utils:** an unvan for each hoca of a course ([#344](https://github.com/amel-tech/medaris/issues/344)) ([babb013](https://github.com/amel-tech/medaris/commit/babb013e112196866d1af890b3f76cfdf2d8f5d2))
+
+
+### Bug Fixes
+
+* **nizam-web:** MDRS-248 set a Latin cover preview left-to-right ([#338](https://github.com/amel-tech/medaris/issues/338)) ([2e1d75c](https://github.com/amel-tech/medaris/commit/2e1d75c89c52ac2fb3031cde31284f8fdba5e5d9))
+* **tedris-web, nazar-web, nizam-web, landing-web:** no OTLP export without an endpoint ([#320](https://github.com/amel-tech/medaris/issues/320)) ([495d67b](https://github.com/amel-tech/medaris/commit/495d67bb277e81e90c0b3dd9155bc1fa0a45dc2f))
+
 ## [0.2.7](https://github.com/amel-tech/medaris/compare/nizam-web-v0.2.6...nizam-web-v0.2.7) (2026-10-15)
 
 
