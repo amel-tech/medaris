@@ -134,15 +134,16 @@ export default async function Page({
               Medaris dışındaki hizmetler
             </h2>
             <p>
-              Celse sayfasındaki canlı yayın YouTube’un çerezsiz oynatıcısıyla
-              (youtube-nocookie.com) açılır; yayının altındaki canlı sohbet ise
-              youtube.com’dan yüklenir ve YouTube’un çerezlerini kullanır.
-              Google Drive’daki ders kayıtları Google’ın oynatıcısıyla,
-              Bunny’deki kayıtlar Bunny’nin oynatıcı sayfasında açılır. Celseye
-              katılmak için kullanılan toplantı platformları (örneğin Google
-              Meet, Zoom ya da Jitsi Meet) da Medaris’ten ayrı hizmetlerdir. Bu
-              hizmetler kendi çerezlerini yerleştirebilir; onlar için ilgili
-              hizmetin kendi metinleri geçerlidir.
+              Celse sayfasındaki canlı yayın, YouTube’daki ders kayıtları ve
+              yayının altındaki canlı sohbet youtube.com’dan yüklenir ve
+              YouTube’un çerezlerini kullanır; YouTube’da oturum açtıysanız
+              oynatıcı bu oturumu tanır. Google Drive’daki ders kayıtları
+              Google’ın oynatıcısıyla, Bunny’deki kayıtlar Bunny’nin oynatıcı
+              sayfasında açılır. Celseye katılmak için kullanılan toplantı
+              platformları (örneğin Google Meet, Zoom ya da Jitsi Meet) da
+              Medaris’ten ayrı hizmetlerdir. Bu hizmetler kendi çerezlerini
+              yerleştirebilir; onlar için ilgili hizmetin kendi metinleri
+              geçerlidir.
             </p>
           </section>
 

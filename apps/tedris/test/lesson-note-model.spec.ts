@@ -129,9 +129,12 @@ describe("who may write", () => {
 
 describe("the player API address", () => {
   it("switches the API on for a YouTube embed only", () => {
+    expect(playerApiUrlOf("https://www.youtube.com/embed/ybHyHDBiRoE")).toBe(
+      "https://www.youtube.com/embed/ybHyHDBiRoE?enablejsapi=1"
+    );
     expect(
       playerApiUrlOf("https://www.youtube-nocookie.com/embed/ybHyHDBiRoE")
-    ).toBe("https://www.youtube-nocookie.com/embed/ybHyHDBiRoE?enablejsapi=1");
+    ).toBe("https://www.youtube-nocookie.com/embed/ybHyHDBiRoE");
     expect(
       playerApiUrlOf("https://drive.google.com/file/d/abc123/preview")
     ).toBe("https://drive.google.com/file/d/abc123/preview");

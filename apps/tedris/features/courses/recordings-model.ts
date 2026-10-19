@@ -10,12 +10,15 @@ import { zoneLabel } from "./session-model";
  * tedris sends no Content Security Policy today. One added later must allow
  * the players these pages frame in `frame-src` (MDRS-114):
  * `https://player.mediadelivery.net` (Bunny) and
- * `https://www.youtube-nocookie.com` (YouTube), plus
- * `https://drive.google.com` (a Drive recording on the watch page) and
- * `https://www.youtube.com` (the live chat, MDRS-229).
+ * `https://www.youtube.com` (the YouTube player since MDRS-293, and the live
+ * chat, MDRS-229), plus `https://drive.google.com` (a Drive recording on the
+ * watch page).
  */
 
 const ID = /^[\w-]{6,32}$/;
+
+/** Where a YouTube recording or live stream is framed from (MDRS-293). */
+const YOUTUBE_EMBED = "https://www.youtube.com/embed/";
 
 /** Bunny's player, the only host a Bunny recording is framed from (MDRS-114). */
 const BUNNY_PLAYER_ORIGIN = "https://player.mediadelivery.net";
@@ -78,9 +81,17 @@ export const bunnyPlayerUrlOf = (
 /**
  * The address a recording or a live stream is embedded from, or null when the
  * link cannot be embedded safely. A YouTube or Drive address is built from the
- * video id alone (`youtube-nocookie.com`, `drive.google.com`): nothing of the
+ * video id alone (`www.youtube.com/embed`, `drive.google.com`): nothing of the
  * stored link, its query string included, reaches the `src` of the frame. A
  * Bunny address is the signed link itself, once `bunnyPlayerUrlOf` accepts it.
+ *
+ * YouTube is framed from `www.youtube.com`, not `youtube-nocookie.com`
+ * (MDRS-293). YouTube asks some viewers to "sign in to confirm you're not a
+ * bot" inside the player, and a signed-in YouTube session is what clears it;
+ * the privacy-enhanced host never uses that session, so a signed-in viewer was
+ * still anonymous to the player and stuck on the prompt. The cost is that the
+ * player now sets YouTube's cookies, which the cookie notice on landing says.
+ * Stored links on either host are still accepted (`youtubeIdOf`).
  */
 export const embedUrlOf = (
   provider: string,
@@ -93,7 +104,7 @@ export const embedUrlOf = (
 
   if (provider === "YOUTUBE") {
     const id = youtubeIdOf(parsed);
-    return id ? `https://www.youtube-nocookie.com/embed/${id}` : null;
+    return id ? `${YOUTUBE_EMBED}${id}` : null;
   }
 
   if (provider === "DRIVE" && host === "drive.google.com") {
@@ -112,9 +123,7 @@ export const embedUrlOf = (
  * it was.
  */
 export const playerApiUrlOf = (embedUrl: string | null): string | null =>
-  embedUrl?.startsWith("https://www.youtube-nocookie.com/embed/")
-    ? `${embedUrl}?enablejsapi=1`
-    : embedUrl;
+  embedUrl?.startsWith(YOUTUBE_EMBED) ? `${embedUrl}?enablejsapi=1` : embedUrl;
 
 /** Whether the live stream link can be framed: the same hosts as a YouTube recording. */
 export const liveEmbedUrlOf = (url: string | null | undefined) =>
