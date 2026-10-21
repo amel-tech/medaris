@@ -179,10 +179,10 @@ const chat = (host: HTMLElement) =>
   ) ?? null;
 const chatFrame = (host: HTMLElement) =>
   chat(host)?.querySelector<HTMLIFrameElement>("iframe") ?? null;
-/** "Sohbeti YouTube'da aç": the same chat as YouTube's own page. */
+/** "YouTube'da aç": the same chat as YouTube's own page (MDRS-297). */
 const popout = (host: HTMLElement) =>
   [...host.querySelectorAll<HTMLAnchorElement>("a")].find((a) =>
-    a.textContent?.includes("Sohbeti YouTube'da aç")
+    a.textContent?.includes("YouTube'da aç")
   );
 const top = (host: HTMLElement) =>
   host.querySelector('[data-watch-panel="top"]') as HTMLElement;
@@ -224,7 +224,7 @@ describe("a live stream", () => {
     expect(mocks.listQuestions).not.toHaveBeenCalled();
   });
 
-  it("carries 'Sohbeti YouTube'da aç' beside the chat's title: the same chat on YouTube's own page, in a new tab", async () => {
+  it("carries 'YouTube'da aç' beside the chat's title: the same chat on YouTube's own page, in a new tab", async () => {
     const host = await mount();
     const link = popout(host);
     expect(link?.closest("section")).toBe(chat(host));

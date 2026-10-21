@@ -14,8 +14,7 @@ vi.mock("next-intl", () => ({
   useTranslations: () => (key: string) =>
     ({
       liveChatTitle: "Canlı sohbet",
-      liveChatText: "Sohbet YouTube'dan gelir.",
-      liveChatPopout: "Sohbeti YouTube'da aç",
+      liveChatPopout: "YouTube'da aç",
       liveChatNewTab: "(yeni sekmede açılır)",
     })[key] ?? key,
 }));
@@ -74,7 +73,7 @@ describe("LiveChat", () => {
   it("offers the same chat as YouTube's own page in a new tab, where a sign-in the frame cannot see counts", async () => {
     const host = await mount();
     const link = [...host.querySelectorAll<HTMLAnchorElement>("a")].find((a) =>
-      a.textContent?.includes("Sohbeti YouTube'da aç")
+      a.textContent?.includes("YouTube'da aç")
     );
     expect(link).toBeDefined();
     const href = new URL(link?.href ?? "");
