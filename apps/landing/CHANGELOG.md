@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.5.1](https://github.com/amel-tech/medaris/compare/landing-web-v2.5.0...landing-web-v2.5.1) (2026-10-21)
+
+
+### Bug Fixes
+
+* **tedris-web, landing-web:** MDRS-293 embed YouTube from youtube.com ([#347](https://github.com/amel-tech/medaris/issues/347)) ([46a2d40](https://github.com/amel-tech/medaris/commit/46a2d409fa14a8fbaca05002275e841b4351cee7))
+
 ## [2.5.0](https://github.com/amel-tech/medaris/compare/landing-web-v2.4.0...landing-web-v2.5.0) (2026-10-16)
 
 

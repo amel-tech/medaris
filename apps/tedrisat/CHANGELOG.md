@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.12](https://github.com/amel-tech/medaris/compare/tedrisat-v0.2.11...tedrisat-v0.2.12) (2026-10-21)
+
+
+### Features
+
+* **tedrisat, services:** MDRS-296 let a homework hold up to 10 files ([#351](https://github.com/amel-tech/medaris/issues/351)) ([93b24c1](https://github.com/amel-tech/medaris/commit/93b24c12fd1d96bf995c597fdca611c37bd9898b))
+
 ## [0.2.11](https://github.com/amel-tech/medaris/compare/tedrisat-v0.2.10...tedrisat-v0.2.11) (2026-10-16)
 
 
