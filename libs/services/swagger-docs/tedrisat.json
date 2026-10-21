@@ -22891,7 +22891,7 @@
           },
           "maxFiles": {
             "type": "number",
-            "example": 5
+            "example": 10
           },
           "maxFileBytes": {
             "type": "number",

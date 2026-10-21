@@ -3,8 +3,8 @@ import { Transform } from "class-transformer";
 import { IsOptional, IsString, MaxLength } from "class-validator";
 import { MAX_UPLOAD_BYTES } from "../../storage/upload";
 
-/** How many files one homework holds (MDRS-290). */
-export const MAX_SUBMISSION_FILES = 5;
+/** How many files one homework holds (MDRS-290; 5 → 10 in MDRS-296). */
+export const MAX_SUBMISSION_FILES = 10;
 /** The longest note, in characters. */
 export const SUBMISSION_NOTE_MAX = 4000;
 
