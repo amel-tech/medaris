@@ -180,7 +180,7 @@ test.describe("the enrolled talebe", () => {
     // the frame carries YouTube's player API for the panel
     await expect(page.locator("#watch-frame")).toHaveAttribute(
       "src",
-      "https://www.youtube-nocookie.com/embed/9bZkp7q19f0?enablejsapi=1"
+      "https://www.youtube.com/embed/9bZkp7q19f0?enablejsapi=1"
     );
     const panel = notesPanel(page);
     await expect(panel.getByText("Yalnızca sen görürsün.")).toBeVisible();
@@ -455,7 +455,7 @@ test.describe("the enrolled talebe", () => {
     await openWatchPage(page, s.id, "Yayını izle");
     await expect(page.locator("#watch-frame")).toHaveAttribute(
       "src",
-      "https://www.youtube-nocookie.com/embed/jNQXAC9IVRw?enablejsapi=1"
+      "https://www.youtube.com/embed/jNQXAC9IVRw?enablejsapi=1"
     );
     // the live chat beside it, and no way into the meeting here
     await expect(page.getByTitle("Canlı sohbet")).toBeVisible();
