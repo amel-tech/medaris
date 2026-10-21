@@ -35,13 +35,14 @@ const subscribeTheme = (onChange: () => void) => {
  * of the watch page (MDRS-285). It is open from the start at every width, the
  * phone's tab included: on the watch page it is what the panel is for, so
  * nothing is left to unfold. The card takes the height its parent gives it and
- * its frame takes what the header and the sentence leave, at least 15rem.
+ * its frame takes what the header leaves, at least 15rem. Only the header is
+ * inset; the frame runs to the card's start, end and bottom edges (MDRS-297).
  *
  * The frame mounts in the browser only (its `embed_domain` is this page's
  * host) and follows the page's theme. Its look inside is YouTube's; writing
  * needs a YouTube sign-in the frame can see, which many browsers keep out of
- * a frame on another site, so the header carries "Sohbeti YouTube'da aç": the
- * same chat as YouTube's own page, in a new tab, as in the wireframe.
+ * a frame on another site, so the header carries "YouTube'da aç": the same
+ * chat as YouTube's own page, in a new tab, as in the wireframe.
  */
 export function LiveChat({
   streamUrl,
@@ -65,10 +66,10 @@ export function LiveChat({
 
   return (
     <section
-      className={`mds-card flex flex-col gap-3${className ? ` ${className}` : ""}`}
+      className={`mds-card flex flex-col overflow-hidden p-0${className ? ` ${className}` : ""}`}
       aria-labelledby={titleId}
     >
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-(--space-inset-card) pt-(--space-inset-card) pb-3">
         <h2 className="mds-h3 flex items-center gap-2" id={titleId}>
           <Icon name="chat" />
           {t("liveChatTitle")}
@@ -100,7 +101,6 @@ export function LiveChat({
           />
         ) : null}
       </div>
-      <p className="mds-caption">{t("liveChatText")}</p>
     </section>
   );
 }
