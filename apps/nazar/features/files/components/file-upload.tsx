@@ -49,7 +49,9 @@ type Step =
  *
  * For a celse's homework (`kind="assignment"`) the panel takes the file
  * alone: a homework file has no name or short line of its own, and it is
- * added to the homework, never to a resource list.
+ * added to the homework, never to a resource list. The review of a talebe's
+ * homework (`kind="review"`) takes the file alone too, and says that the
+ * talebe sees it once the review is sent.
  */
 export function FileUpload<T>({
   prefix,
@@ -64,8 +66,8 @@ export function FileUpload<T>({
   /** the form is locked: saving, or reading the course again */
   disabled: boolean;
   locale: string;
-  /** what the file becomes: a row of a resource list, or a file of a celse's homework */
-  kind?: "resource" | "assignment";
+  /** what the file becomes: a row of a resource list, a file of a celse's homework, or of a review */
+  kind?: "resource" | "assignment" | "review";
 }) {
   const resource = kind === "resource";
   const t = useTranslations("nazar");
@@ -123,7 +125,9 @@ export function FileUpload<T>({
       title: t("Files.uploaded"),
       description: resource
         ? t("Files.uploadedBody", { name: name.trim() || file.name })
-        : t("Files.assignmentUploadedBody", { name: file.name }),
+        : kind === "review"
+          ? t("Files.reviewUploadedBody", { name: file.name })
+          : t("Files.assignmentUploadedBody", { name: file.name }),
     });
     close();
   };
@@ -174,7 +178,13 @@ export function FileUpload<T>({
       >
         <legend className="mds-label pbe-1">{t("Files.uploadTitle")}</legend>
         <p className="mds-caption">
-          {t(resource ? "Files.uploadNote" : "Files.assignmentUploadNote")}
+          {t(
+            resource
+              ? "Files.uploadNote"
+              : kind === "review"
+                ? "Files.reviewUploadNote"
+                : "Files.assignmentUploadNote"
+          )}
         </p>
         <Field
           label={t("Files.fileLabel")}

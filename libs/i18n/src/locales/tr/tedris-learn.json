@@ -210,7 +210,14 @@
     "notHandedIn": "Teslim edilmedi",
     "pendingTitle": "Bu ödevi henüz teslim etmedin",
     "pendingBody": "Aşağıdan dosyanı ekle ya da notunu yaz; hoca ve ders ekibi görür.",
-    "noAssignment": "Bu celsede ödev verilmedi; daha önce teslim ettiğin ödev burada duruyor."
+    "noAssignment": "Bu celsede ödev verilmedi; daha önce teslim ettiğin ödev burada duruyor.",
+    "reviewTitle": "Hocanın değerlendirmesi",
+    "reviewed": "Değerlendirildi",
+    "reviewBy": "{name} · {when}",
+    "reviewerUnknown": "Hoca",
+    "reviewChangedTitle": "Ödevin değerlendirmeden sonra değişti",
+    "reviewChangedBody": "Bu değerlendirme ödevinin önceki hâline yazıldı.",
+    "reviewFiles": "Düzeltilmiş dosyalar"
   },
   "FileDownload": {
     "title": "Dosya indirilemedi",

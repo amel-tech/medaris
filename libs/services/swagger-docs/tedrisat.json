@@ -6240,7 +6240,7 @@
             "name": "types",
             "required": false,
             "in": "query",
-            "description": "Comma separated; only these types are listed. Any of ENROLLMENT_APPROVED, ENROLLMENT_REJECTED, REMOVED_FROM_COURSE, COURSE_ACCESS_REMOVED, SESSION_RESCHEDULED, SESSION_CANCELLED, SESSION_ADDED, RECORDING_ADDED, KOSK_APPLICATION_RESULT, DECK_PUBLISH_RESULT, COURSE_BAN_PLACED, KOSK_BAN_PLACED.",
+            "description": "Comma separated; only these types are listed. Any of ENROLLMENT_APPROVED, ENROLLMENT_REJECTED, REMOVED_FROM_COURSE, COURSE_ACCESS_REMOVED, SESSION_RESCHEDULED, SESSION_CANCELLED, SESSION_ADDED, RECORDING_ADDED, KOSK_APPLICATION_RESULT, DECK_PUBLISH_RESULT, SUBMISSION_REVIEWED, COURSE_BAN_PLACED, KOSK_BAN_PLACED.",
             "schema": {
               "type": "string"
             }
@@ -6281,7 +6281,7 @@
             "name": "types",
             "required": false,
             "in": "query",
-            "description": "Comma separated; only these types are counted. Any of ENROLLMENT_APPROVED, ENROLLMENT_REJECTED, REMOVED_FROM_COURSE, COURSE_ACCESS_REMOVED, SESSION_RESCHEDULED, SESSION_CANCELLED, SESSION_ADDED, RECORDING_ADDED, KOSK_APPLICATION_RESULT, DECK_PUBLISH_RESULT, COURSE_BAN_PLACED, KOSK_BAN_PLACED.",
+            "description": "Comma separated; only these types are counted. Any of ENROLLMENT_APPROVED, ENROLLMENT_REJECTED, REMOVED_FROM_COURSE, COURSE_ACCESS_REMOVED, SESSION_RESCHEDULED, SESSION_CANCELLED, SESSION_ADDED, RECORDING_ADDED, KOSK_APPLICATION_RESULT, DECK_PUBLISH_RESULT, SUBMISSION_REVIEWED, COURSE_BAN_PLACED, KOSK_BAN_PLACED.",
             "schema": {
               "type": "string"
             }
@@ -6321,7 +6321,7 @@
             "name": "types",
             "required": false,
             "in": "query",
-            "description": "Comma separated; only these types are marked read. Any of ENROLLMENT_APPROVED, ENROLLMENT_REJECTED, REMOVED_FROM_COURSE, COURSE_ACCESS_REMOVED, SESSION_RESCHEDULED, SESSION_CANCELLED, SESSION_ADDED, RECORDING_ADDED, KOSK_APPLICATION_RESULT, DECK_PUBLISH_RESULT, COURSE_BAN_PLACED, KOSK_BAN_PLACED.",
+            "description": "Comma separated; only these types are marked read. Any of ENROLLMENT_APPROVED, ENROLLMENT_REJECTED, REMOVED_FROM_COURSE, COURSE_ACCESS_REMOVED, SESSION_RESCHEDULED, SESSION_CANCELLED, SESSION_ADDED, RECORDING_ADDED, KOSK_APPLICATION_RESULT, DECK_PUBLISH_RESULT, SUBMISSION_REVIEWED, COURSE_BAN_PLACED, KOSK_BAN_PLACED.",
             "schema": {
               "type": "string"
             }
@@ -9695,6 +9695,61 @@
         ]
       }
     },
+    "/lessons/{id}/submission/review-files/{fileId}": {
+      "get": {
+        "description": "Only the talebe whose homework it answers, once the review is sent (before that it is 404 SUBMISSION_FILE_NOT_FOUND), while the course is open to them. Another talebe's is 403 SUBMISSION_FORBIDDEN. Streamed through tedrisat with `Content-Disposition: attachment` and the stored name, the type read at upload, `X-Content-Type-Options: nosniff` and `Cache-Control: private, no-store`; there is no storage address to pass on.",
+        "operationId": "downloadMySubmissionReviewFile",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "fileId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "SUBMISSION_FORBIDDEN"
+          },
+          "404": {
+            "description": "LESSON_NOT_FOUND, SUBMISSION_FILE_NOT_FOUND"
+          },
+          "503": {
+            "description": "STORAGE_NOT_CONFIGURED, STORAGE_UNAVAILABLE"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Download a file the course team returned with its review",
+        "tags": [
+          "submissions"
+        ]
+      }
+    },
     "/courses/{id}/submissions": {
       "get": {
         "description": "`submission.read`: everyone's homework on the course's live sessions, with who handed it in, when they last changed it, the note and the files, by programme order and the latest change first within a session. Beside it, for every live session, whether the course team set homework on it and how many enrolled talebe handed in (`sessions`), and how many talebe are enrolled (`talebeCount`): \"N / M teslim\". `lessonId` narrows both to one session. A hidden course or a draft is not found, as on its page.",
@@ -9798,6 +9853,262 @@
           }
         ],
         "summary": "Download a file of a talebe's homework, as the course's staff",
+        "tags": [
+          "submissions"
+        ]
+      }
+    },
+    "/courses/{id}/submissions/{submissionId}/review": {
+      "put": {
+        "description": "`submission.read` on the course: whoever reads the homework reviews it (\"Değerlendir\"). Saves the note, replacing an earlier one, and sends the review with its files to the talebe, who sees nothing of it before, and is told (`SUBMISSION_REVIEWED`). A review with neither a note nor a file is 400 SUBMISSION_REVIEW_EMPTY. Written to `audit_log` as `submission.review` with the note's length. A homework on a hidden session is not found.",
+        "operationId": "sendSubmissionReview",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "submissionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendSubmissionReviewDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CourseSubmissionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Field validation, SUBMISSION_REVIEW_EMPTY"
+          },
+          "403": {
+            "description": "No `submission.read` on the course."
+          },
+          "404": {
+            "description": "COURSE_NOT_FOUND, SUBMISSION_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Send the review of a talebe's homework",
+        "tags": [
+          "submissions"
+        ]
+      }
+    },
+    "/courses/{id}/submissions/{submissionId}/review/files": {
+      "post": {
+        "description": "`submission.read` on the course. At most 5 files per review (409 SUBMISSION_REVIEW_FILE_LIMIT), each held to a homework file's rules: the multipart field `file`, at most 25 MB (413 FILE_TOO_LARGE), a PDF, PNG, JPEG, WebP, Word (docx), Excel (xlsx), PowerPoint (pptx) or plain UTF-8 text file as read from its bytes (415 FILE_TYPE_NOT_ALLOWED). It does not send the review: a review already sent shows it to the talebe at once, one not sent yet when it is. Written to `audit_log` as `submission.review_file_upload`.",
+        "operationId": "addSubmissionReviewFile",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "submissionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                },
+                "required": [
+                  "file"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CourseSubmissionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "FILE_REQUIRED"
+          },
+          "403": {
+            "description": "No `submission.read` on the course."
+          },
+          "404": {
+            "description": "COURSE_NOT_FOUND, SUBMISSION_NOT_FOUND"
+          },
+          "409": {
+            "description": "SUBMISSION_REVIEW_FILE_LIMIT"
+          },
+          "413": {
+            "description": "FILE_TOO_LARGE"
+          },
+          "415": {
+            "description": "FILE_TYPE_NOT_ALLOWED"
+          },
+          "503": {
+            "description": "STORAGE_NOT_CONFIGURED, STORAGE_UNAVAILABLE"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Add a file to the review of a talebe's homework",
+        "tags": [
+          "submissions"
+        ]
+      }
+    },
+    "/courses/{id}/submissions/{submissionId}/review/files/{fileId}": {
+      "delete": {
+        "description": "`submission.read` on the course. The file is removed from storage too, and the removal written to `audit_log` as `submission.review_file_delete`.",
+        "operationId": "deleteSubmissionReviewFile",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "submissionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "fileId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "403": {
+            "description": "No `submission.read` on the course."
+          },
+          "404": {
+            "description": "COURSE_NOT_FOUND, SUBMISSION_NOT_FOUND, SUBMISSION_FILE_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Remove a file from the review of a talebe's homework",
+        "tags": [
+          "submissions"
+        ]
+      }
+    },
+    "/courses/{id}/submissions/review-files/{fileId}": {
+      "get": {
+        "description": "`submission.read` on the course. Written to `audit_log` as `submission.review_file_download` before the file is sent. Streamed through tedrisat with `Content-Disposition: attachment` and the stored name, the type read at upload, `X-Content-Type-Options: nosniff` and `Cache-Control: private, no-store`; there is no storage address to pass on.",
+        "operationId": "downloadCourseSubmissionReviewFile",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "fileId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No `submission.read` on the course."
+          },
+          "404": {
+            "description": "COURSE_NOT_FOUND, SUBMISSION_FILE_NOT_FOUND"
+          },
+          "503": {
+            "description": "STORAGE_NOT_CONFIGURED, STORAGE_UNAVAILABLE"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Download a review file, as the course's staff",
         "tags": [
           "submissions"
         ]
@@ -20433,6 +20744,7 @@
               "RECORDING_ADDED",
               "KOSK_APPLICATION_RESULT",
               "DECK_PUBLISH_RESULT",
+              "SUBMISSION_REVIEWED",
               "COURSE_BAN_PLACED",
               "KOSK_BAN_PLACED"
             ],
@@ -22835,6 +23147,62 @@
           "downloadUrl"
         ]
       },
+      "SubmissionReviewerResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true,
+            "description": "The account's name, else its e-mail; null for an account tedrisat has not seen sign in."
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
+      "SubmissionReviewResponse": {
+        "type": "object",
+        "properties": {
+          "note": {
+            "type": "string",
+            "nullable": true
+          },
+          "reviewedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true,
+            "description": "When it was last sent to the talebe; null while it is not sent yet (staff only: the talebe sees no review until then)."
+          },
+          "reviewer": {
+            "nullable": true,
+            "description": "Who last sent it; null while it is not sent.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SubmissionReviewerResponse"
+              }
+            ]
+          },
+          "files": {
+            "description": "Oldest first. `downloadUrl` is `/lessons/:id/submission/review-files/:fileId` for the talebe, `/courses/:id/submissions/review-files/:fileId` for the course team.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SubmissionFileResponse"
+            }
+          }
+        },
+        "required": [
+          "note",
+          "reviewedAt",
+          "reviewer",
+          "files"
+        ]
+      },
       "LessonSubmissionResponse": {
         "type": "object",
         "properties": {
@@ -22865,6 +23233,16 @@
             "items": {
               "$ref": "#/components/schemas/SubmissionFileResponse"
             }
+          },
+          "review": {
+            "nullable": true,
+            "description": "The course team's review. For the talebe: null until it is sent. For the course team: null while there is neither a sent review nor a review file.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SubmissionReviewResponse"
+              }
+            ]
           }
         },
         "required": [
@@ -22873,7 +23251,8 @@
           "note",
           "createdAt",
           "updatedAt",
-          "files"
+          "files",
+          "review"
         ]
       },
       "OwnSubmissionResponse": {
@@ -22997,6 +23376,16 @@
               "$ref": "#/components/schemas/SubmissionFileResponse"
             }
           },
+          "review": {
+            "nullable": true,
+            "description": "The course team's review. For the talebe: null until it is sent. For the course team: null while there is neither a sent review nor a review file.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SubmissionReviewResponse"
+              }
+            ]
+          },
           "lessonTitle": {
             "type": "string"
           },
@@ -23014,6 +23403,7 @@
           "createdAt",
           "updatedAt",
           "files",
+          "review",
           "lessonTitle",
           "weekNumber",
           "talebe"
@@ -23068,6 +23458,17 @@
           "sessions",
           "talebeCount"
         ]
+      },
+      "SendSubmissionReviewDto": {
+        "type": "object",
+        "properties": {
+          "note": {
+            "type": "string",
+            "nullable": true,
+            "example": "Çekimler doğru; üçüncü sîgada harekeyi düzelttim.",
+            "description": "The reviewer's note to the talebe, at most 4000 characters after trimming; null, absent or blank leaves none, which needs at least one review file. Stored as typed and never rendered as HTML."
+          }
+        }
       },
       "CalendarFeedStatusResponse": {
         "type": "object",

@@ -91,6 +91,7 @@ const submission = (
   createdAt: new Date("2026-10-12T08:00:00Z"),
   updatedAt: new Date("2026-10-12T09:05:00Z"),
   files: [],
+  review: null,
   ...over,
 });
 
@@ -727,5 +728,67 @@ describe("the Homework messages", () => {
   it("has the same keys in tr, en and ar", () => {
     expect(keys("en")).toEqual(keys("tr"));
     expect(keys("ar")).toEqual(keys("tr"));
+  });
+});
+
+describe("the teacher's review", () => {
+  const R1 = "88888888-8888-4888-8888-888888888888";
+  const reviewed = (at: string, over: Partial<LessonSubmissionResponse> = {}) =>
+    submission({
+      files: [pdf(F1)],
+      review: {
+        note: "Üçüncü sîgada harekeyi düzelttim.",
+        reviewedAt: new Date(at),
+        reviewer: { id: "u-1", name: "Yunus Emre Kandemir" },
+        files: [
+          pdf(R1, {
+            name: "duzeltilmis.pdf",
+            downloadUrl: `/lessons/${LESSON}/submission/review-files/${R1}`,
+          }),
+        ],
+      },
+      ...over,
+    });
+
+  it("shows nothing while there is no review", async () => {
+    mocks.get.mockResolvedValue(own(submission({ files: [pdf(F1)] })));
+    const host = await mount();
+    expect(host.querySelector('[data-testid="homework-review"]')).toBeNull();
+  });
+
+  it("shows who sent it and when, the note, and the corrected files to download through this app", async () => {
+    mocks.get.mockResolvedValue(own(reviewed("2026-10-13T07:30:00Z")));
+    const host = await mount();
+    const review = host.querySelector(
+      '[data-testid="homework-review"]'
+    ) as HTMLElement;
+    expect(review.textContent).toContain(tr.reviewTitle);
+    expect(review.textContent).toContain("Değerlendirildi");
+    expect(review.textContent).toContain("Yunus Emre Kandemir · 13 Ekim 10:30");
+    expect(
+      review.querySelector('[data-testid="review-note"]')?.textContent
+    ).toBe("Üçüncü sîgada harekeyi düzelttim.");
+    const link = review.querySelector(
+      '[data-testid="review-files"] a'
+    ) as HTMLAnchorElement;
+    expect(link.getAttribute("href")).toBe(
+      `/api/files/lessons/${LESSON}/submission/review-files/${R1}`
+    );
+    expect(link.textContent).toBe("duzeltilmis.pdf (indirilir)");
+    expect(review.textContent).not.toContain(tr.reviewChangedTitle);
+  });
+
+  it("says when the homework changed after the review", async () => {
+    mocks.get.mockResolvedValue(
+      own(
+        reviewed("2026-10-12T08:30:00Z", {
+          updatedAt: new Date("2026-10-12T09:05:00Z"),
+        })
+      )
+    );
+    const host = await mount();
+    expect(
+      host.querySelector('[data-testid="homework-review"]')?.textContent
+    ).toContain(tr.reviewChangedTitle);
   });
 });

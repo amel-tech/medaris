@@ -20,6 +20,13 @@ import {
     SubmissionFileResponseToJSON,
     SubmissionFileResponseToJSONTyped,
 } from './SubmissionFileResponse';
+import type { SubmissionReviewResponse } from './SubmissionReviewResponse';
+import {
+    SubmissionReviewResponseFromJSON,
+    SubmissionReviewResponseFromJSONTyped,
+    SubmissionReviewResponseToJSON,
+    SubmissionReviewResponseToJSONTyped,
+} from './SubmissionReviewResponse';
 
 /**
  * 
@@ -63,6 +70,12 @@ export interface LessonSubmissionResponse {
      * @memberof LessonSubmissionResponse
      */
     files: Array<SubmissionFileResponse>;
+    /**
+     * The course team's review. For the talebe: null until it is sent. For the course team: null while there is neither a sent review nor a review file.
+     * @type {SubmissionReviewResponse}
+     * @memberof LessonSubmissionResponse
+     */
+    review: SubmissionReviewResponse | null;
 }
 
 /**
@@ -75,6 +88,7 @@ export function instanceOfLessonSubmissionResponse(value: object): value is Less
     if (!('createdAt' in value) || value['createdAt'] === undefined) return false;
     if (!('updatedAt' in value) || value['updatedAt'] === undefined) return false;
     if (!('files' in value) || value['files'] === undefined) return false;
+    if (!('review' in value) || value['review'] === undefined) return false;
     return true;
 }
 
@@ -94,6 +108,7 @@ export function LessonSubmissionResponseFromJSONTyped(json: any, ignoreDiscrimin
         'createdAt': (new Date(json['createdAt'])),
         'updatedAt': (new Date(json['updatedAt'])),
         'files': ((json['files'] as Array<any>).map(SubmissionFileResponseFromJSON)),
+        'review': SubmissionReviewResponseFromJSON(json['review']),
     };
 }
 
@@ -114,6 +129,7 @@ export function LessonSubmissionResponseToJSONTyped(value?: LessonSubmissionResp
         'createdAt': ((value['createdAt']).toISOString()),
         'updatedAt': ((value['updatedAt']).toISOString()),
         'files': ((value['files'] as Array<any>).map(SubmissionFileResponseToJSON)),
+        'review': SubmissionReviewResponseToJSON(value['review']),
     };
 }
 

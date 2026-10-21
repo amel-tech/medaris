@@ -1,4 +1,6 @@
+import { sql } from "drizzle-orm";
 import {
+  check,
   index,
   integer,
   pgTable as table,
@@ -28,6 +30,12 @@ export const lessonSubmissions = table(
       .notNull(),
     userId: uuid("user_id").notNull(),
     note: text("note"),
+    // The course team's review of it: a note and, as `submission_review_files`,
+    // corrected files. Sent when `reviewed_at` is set; until then the talebe
+    // sees none of it. Sending again replaces the note and keeps the files.
+    reviewNote: text("review_note"),
+    reviewedBy: uuid("reviewed_by"),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -39,6 +47,10 @@ export const lessonSubmissions = table(
   // column, the staff's read of a celse.
   (t) => [
     uniqueIndex("lesson_submissions_lesson_user_uq").on(t.lessonId, t.userId),
+    check(
+      "lesson_submissions_review_sent",
+      sql`(${t.reviewedBy} is null) = (${t.reviewedAt} is null)`
+    ),
   ]
 );
 
@@ -65,5 +77,33 @@ export const submissionFiles = table(
   (t) => [
     uniqueIndex("submission_files_storage_key_uq").on(t.storageKey),
     index("submission_files_submission_id_idx").on(t.submissionId),
+  ]
+);
+
+/**
+ * A file the course team returns with its review of a homework: the talebe's
+ * work corrected, or anything else the reviewer attaches. Kept in Medaris
+ * storage like the talebe's own files, apart from them, so the talebe's limit
+ * and "handed in" never count it. The talebe reads it once the review is sent.
+ */
+export const submissionReviewFiles = table(
+  "submission_review_files",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    submissionId: uuid("submission_id")
+      .references(() => lessonSubmissions.id, { onDelete: "restrict" })
+      .notNull(),
+    storageKey: text("storage_key").notNull(),
+    fileName: text("file_name").notNull(),
+    contentType: text("content_type").notNull(),
+    sizeBytes: integer("size_bytes").notNull(),
+    uploadedBy: uuid("uploaded_by").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => [
+    uniqueIndex("submission_review_files_storage_key_uq").on(t.storageKey),
+    index("submission_review_files_submission_id_idx").on(t.submissionId),
   ]
 );

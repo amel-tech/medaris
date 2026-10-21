@@ -11,9 +11,10 @@ import {
   homeworkHref,
   homeworkSessions,
   noteExcerpt,
+  reviewStatus,
   shownSessions,
 } from "~/features/homework/homework";
-import { cleanup, click, render, settle } from "./dom";
+import { cleanup, click, render, settle, type as typeInto } from "./dom";
 import { expand, html, textOf, translatorFor } from "./server-render";
 
 /**
@@ -33,12 +34,23 @@ const state = {
   submissions: { status: "failed" } as Answer<unknown>,
 };
 const asked: string[] = [];
+const actions = vi.hoisted(() => ({
+  sendSubmissionReview: vi.fn(),
+  deleteSubmissionReviewFile: vi.fn(),
+}));
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh: vi.fn(), replace: vi.fn(), push: vi.fn() }),
   notFound: () => {
     throw new Error("NEXT_NOT_FOUND");
   },
+}));
+vi.mock("~/features/homework/actions", () => actions);
+vi.mock("~/lib/unauthenticated", () => ({
+  handleUnauthenticated: (result: unknown) =>
+    result !== null &&
+    typeof result === "object" &&
+    (result as { kind?: unknown }).kind === "unauthenticated",
 }));
 vi.mock("next-intl/server", () => ({
   getTranslations: async (namespace?: string) => translatorFor(namespace),
@@ -124,7 +136,25 @@ const submission = (over: Record<string, unknown> = {}) => ({
   lessonTitle: "Fiil çekimi",
   weekNumber: 1,
   talebe: { id: "u-5", name: "Ayşe Nur Demir" },
+  review: null,
   ...over,
+});
+
+/** A review sent at `at` by the müderris, with one corrected file. */
+const sentReview = (at: string, note: string | null = "Güzel olmuş.") => ({
+  note,
+  reviewedAt: new Date(at),
+  reviewer: { id: "u-1", name: "Yunus Emre Kandemir" },
+  files: [
+    {
+      id: "rf-1",
+      name: "duzeltilmis.pdf",
+      contentType: "application/pdf",
+      sizeBytes: 2048,
+      createdAt: new Date(at),
+      downloadUrl: "/courses/c-1/submissions/review-files/rf-1",
+    },
+  ],
 });
 
 /** As tedrisat lists them: programme order, the latest change first within a celse. */
@@ -223,6 +253,8 @@ const choose = async (label: string, option: string) => {
 };
 
 beforeEach(() => {
+  actions.sendSubmissionReview.mockReset();
+  actions.deleteSubmissionReviewFile.mockReset();
   state.course = { status: "ok", data: course() };
   state.permissions = holding("submission.read");
   state.submissions = { status: "ok", data: answer() };
@@ -520,5 +552,163 @@ describe("the rules of Ödevler", () => {
     const at = new Date("2026-09-29T18:30:00Z");
     expect(changedLabel(at, "tr", "Europe/Istanbul")).toBe("29 Eyl 2026 21:30");
     expect(changedLabel(at, "tr", "UTC")).toBe("29 Eyl 2026 18:30");
+  });
+});
+
+describe("Ödevler: the review", () => {
+  const reviewCell = (id: string) =>
+    document.querySelector(`[data-testid="review-${id}"]`) as HTMLElement;
+  const dialog = () =>
+    document.querySelector(
+      '[data-testid="review-dialog"]'
+    ) as HTMLElement | null;
+  const button = (root: ParentNode, label: string) =>
+    [...root.querySelectorAll("button")].find(
+      (b) => b.textContent?.trim() === label
+    ) as HTMLButtonElement | undefined;
+
+  it("says where each homework stands, and how many await a review", async () => {
+    state.submissions = {
+      status: "ok",
+      data: answer([
+        // reviewed after the talebe's last change
+        submission({ review: sentReview("2026-09-30T08:00:00Z") }),
+        // nothing yet
+        submission({
+          id: "s-2",
+          talebe: { id: "u-6", name: null },
+          updatedAt: new Date("2026-09-29T07:00:00Z"),
+        }),
+        // the talebe changed it after the review
+        submission({
+          id: "s-3",
+          lessonId: "l-3",
+          lessonTitle: "Emsile",
+          weekNumber: 2,
+          updatedAt: new Date("2026-10-06T10:00:00Z"),
+          review: sentReview("2026-10-05T10:00:00Z"),
+        }),
+      ]),
+    };
+    await mount();
+    expect(reviewCell("s-1").textContent).toContain("Değerlendirildi");
+    // 08:00 UTC is 11:00 in Istanbul
+    expect(reviewCell("s-1").textContent).toContain(
+      "Yunus Emre Kandemir · 30 Eyl 2026 11:00"
+    );
+    expect(reviewCell("s-2").textContent).toContain("Değerlendirilmedi");
+    expect(reviewCell("s-3").textContent).toContain("Sonradan değişti");
+    expect(
+      document.querySelector('[data-testid="homework-awaiting-l-1"]')
+        ?.textContent
+    ).toBe("1 ödev değerlendirme bekliyor");
+    expect(
+      document.querySelector('[data-testid="homework-awaiting-l-3"]')
+        ?.textContent
+    ).toBe("1 ödev değerlendirme bekliyor");
+  });
+
+  it("sends a note to the talebe, and the row says it is reviewed", async () => {
+    actions.sendSubmissionReview.mockResolvedValue({
+      success: true,
+      data: submission({
+        review: sentReview("2026-09-30T08:00:00Z", "Mastarları düzelttim."),
+      }),
+    });
+    await mount();
+    await click(button(reviewCell("s-1"), "Değerlendir") as HTMLElement);
+    await settle(40);
+    const open = dialog() as HTMLElement;
+    expect(open.textContent).toContain("odev-1.pdf");
+    expect(open.textContent).toContain("Henüz dosya eklenmedi.");
+    await typeInto(
+      open.querySelector("textarea") as HTMLTextAreaElement,
+      "  Mastarları düzelttim.  "
+    );
+    const form = open.closest("form") as HTMLFormElement;
+    await click(button(form, "Değerlendirmeyi gönder") as HTMLElement);
+    await settle(40);
+    expect(actions.sendSubmissionReview).toHaveBeenCalledWith(
+      "c-1",
+      "s-1",
+      "Mastarları düzelttim."
+    );
+    expect(dialog()).toBeNull();
+    expect(reviewCell("s-1").textContent).toContain("Değerlendirildi");
+    expect(document.body.textContent).toContain("Değerlendirme gönderildi");
+  });
+
+  it("sends nothing with neither a note nor a file, and says so", async () => {
+    await mount();
+    await click(button(reviewCell("s-1"), "Değerlendir") as HTMLElement);
+    await settle(40);
+    const form = (dialog() as HTMLElement).closest("form") as HTMLFormElement;
+    await click(button(form, "Değerlendirmeyi gönder") as HTMLElement);
+    await settle(40);
+    expect(actions.sendSubmissionReview).not.toHaveBeenCalled();
+    expect(dialog()?.textContent).toContain(
+      "Bir not yazın ya da en az bir dosya ekleyin."
+    );
+  });
+
+  it("lists the review's files with the course team's download route, and removes one", async () => {
+    actions.deleteSubmissionReviewFile.mockResolvedValue({
+      success: true,
+      data: undefined,
+    });
+    state.submissions = {
+      status: "ok",
+      data: answer([
+        submission({ review: sentReview("2026-09-30T08:00:00Z") }),
+      ]),
+    };
+    await mount();
+    await click(button(reviewCell("s-1"), "Değerlendirmeyi aç") as HTMLElement);
+    await settle(40);
+    const files = document.querySelector(
+      '[data-testid="review-files"]'
+    ) as HTMLElement;
+    expect(files.querySelector("a")?.getAttribute("href")).toBe(
+      "/api/files/courses/c-1/review-files/rf-1"
+    );
+    await click(
+      files.querySelector(
+        '[aria-label="duzeltilmis.pdf dosyasını kaldır"]'
+      ) as HTMLElement
+    );
+    await settle(40);
+    expect(actions.deleteSubmissionReviewFile).toHaveBeenCalledWith(
+      "c-1",
+      "s-1",
+      "rf-1"
+    );
+    expect(document.querySelector('[data-testid="review-files"]')).toBeNull();
+    expect(
+      button(
+        (dialog() as HTMLElement).closest("form") as HTMLFormElement,
+        "Yeniden gönder"
+      )
+    ).toBeDefined();
+  });
+
+  it("reads a review's status from its times", () => {
+    const at = "2026-09-29T18:30:00.000Z";
+    expect(reviewStatus({ review: null, updatedAt: at })).toBe("none");
+    const review = { note: null, reviewer: null, files: [] };
+    expect(
+      reviewStatus({ review: { ...review, reviewedAt: null }, updatedAt: at })
+    ).toBe("draft");
+    expect(
+      reviewStatus({
+        review: { ...review, reviewedAt: "2026-09-30T00:00:00.000Z" },
+        updatedAt: at,
+      })
+    ).toBe("sent");
+    expect(
+      reviewStatus({
+        review: { ...review, reviewedAt: "2026-09-29T00:00:00.000Z" },
+        updatedAt: at,
+      })
+    ).toBe("changedSince");
   });
 });

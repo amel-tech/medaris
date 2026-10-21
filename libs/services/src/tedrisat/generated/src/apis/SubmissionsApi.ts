@@ -15,13 +15,17 @@
 
 import * as runtime from '../runtime';
 import type {
+  CourseSubmissionResponse,
   CourseSubmissionsResponse,
   LessonSubmissionResponse,
   MySubmissionsResponse,
   OwnSubmissionResponse,
   SaveSubmissionNoteDto,
+  SendSubmissionReviewDto,
 } from '../models/index';
 import {
+    CourseSubmissionResponseFromJSON,
+    CourseSubmissionResponseToJSON,
     CourseSubmissionsResponseFromJSON,
     CourseSubmissionsResponseToJSON,
     LessonSubmissionResponseFromJSON,
@@ -32,10 +36,18 @@ import {
     OwnSubmissionResponseToJSON,
     SaveSubmissionNoteDtoFromJSON,
     SaveSubmissionNoteDtoToJSON,
+    SendSubmissionReviewDtoFromJSON,
+    SendSubmissionReviewDtoToJSON,
 } from '../models/index';
 
 export interface AddMySubmissionFileRequest {
     id: string;
+    file: Blob;
+}
+
+export interface AddSubmissionReviewFileRequest {
+    id: string;
+    submissionId: string;
     file: Blob;
 }
 
@@ -44,12 +56,28 @@ export interface DeleteMySubmissionFileRequest {
     fileId: string;
 }
 
+export interface DeleteSubmissionReviewFileRequest {
+    id: string;
+    submissionId: string;
+    fileId: string;
+}
+
 export interface DownloadCourseSubmissionFileRequest {
     id: string;
     fileId: string;
 }
 
+export interface DownloadCourseSubmissionReviewFileRequest {
+    id: string;
+    fileId: string;
+}
+
 export interface DownloadMySubmissionFileRequest {
+    id: string;
+    fileId: string;
+}
+
+export interface DownloadMySubmissionReviewFileRequest {
     id: string;
     fileId: string;
 }
@@ -70,6 +98,12 @@ export interface ListMySubmissionsRequest {
 export interface SaveMySubmissionNoteRequest {
     id: string;
     saveSubmissionNoteDto: SaveSubmissionNoteDto;
+}
+
+export interface SendSubmissionReviewRequest {
+    id: string;
+    submissionId: string;
+    sendSubmissionReviewDto: SendSubmissionReviewDto;
 }
 
 /**
@@ -150,6 +184,86 @@ export class SubmissionsApi extends runtime.BaseAPI {
     }
 
     /**
+     * `submission.read` on the course. At most 5 files per review (409 SUBMISSION_REVIEW_FILE_LIMIT), each held to a homework file\'s rules: the multipart field `file`, at most 25 MB (413 FILE_TOO_LARGE), a PDF, PNG, JPEG, WebP, Word (docx), Excel (xlsx), PowerPoint (pptx) or plain UTF-8 text file as read from its bytes (415 FILE_TYPE_NOT_ALLOWED). It does not send the review: a review already sent shows it to the talebe at once, one not sent yet when it is. Written to `audit_log` as `submission.review_file_upload`.
+     * Add a file to the review of a talebe\'s homework
+     */
+    async addSubmissionReviewFileRaw(requestParameters: AddSubmissionReviewFileRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CourseSubmissionResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling addSubmissionReviewFile().'
+            );
+        }
+
+        if (requestParameters['submissionId'] == null) {
+            throw new runtime.RequiredError(
+                'submissionId',
+                'Required parameter "submissionId" was null or undefined when calling addSubmissionReviewFile().'
+            );
+        }
+
+        if (requestParameters['file'] == null) {
+            throw new runtime.RequiredError(
+                'file',
+                'Required parameter "file" was null or undefined when calling addSubmissionReviewFile().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+        const consumes: runtime.Consume[] = [
+            { contentType: 'multipart/form-data' },
+        ];
+        // @ts-ignore: canConsumeForm may be unused
+        const canConsumeForm = runtime.canConsumeForm(consumes);
+
+        let formParams: { append(param: string, value: any): any };
+        let useForm = false;
+        // use FormData to transmit files using content-type "multipart/form-data"
+        useForm = canConsumeForm;
+        if (useForm) {
+            formParams = new FormData();
+        } else {
+            formParams = new URLSearchParams();
+        }
+
+        if (requestParameters['file'] != null) {
+            formParams.append('file', requestParameters['file'] as any);
+        }
+
+
+        let urlPath = `/courses/{id}/submissions/{submissionId}/review/files`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace(`{${"submissionId"}}`, encodeURIComponent(String(requestParameters['submissionId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: formParams,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => CourseSubmissionResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * `submission.read` on the course. At most 5 files per review (409 SUBMISSION_REVIEW_FILE_LIMIT), each held to a homework file\'s rules: the multipart field `file`, at most 25 MB (413 FILE_TOO_LARGE), a PDF, PNG, JPEG, WebP, Word (docx), Excel (xlsx), PowerPoint (pptx) or plain UTF-8 text file as read from its bytes (415 FILE_TYPE_NOT_ALLOWED). It does not send the review: a review already sent shows it to the talebe at once, one not sent yet when it is. Written to `audit_log` as `submission.review_file_upload`.
+     * Add a file to the review of a talebe\'s homework
+     */
+    async addSubmissionReviewFile(requestParameters: AddSubmissionReviewFileRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CourseSubmissionResponse> {
+        const response = await this.addSubmissionReviewFileRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * The file is removed from storage too, and the removal written to `audit_log` as `submission.file_delete`. Another talebe\'s file is 403 SUBMISSION_FORBIDDEN. A talebe enrolled in the course (ENROLLED or COMPLETED, not barred) while its content is open, on a live session: anyone else is 403 SUBMISSION_FORBIDDEN, a hidden session 404. There is no deadline.
      * Remove a file from the caller\'s homework on a session
      */
@@ -198,6 +312,65 @@ export class SubmissionsApi extends runtime.BaseAPI {
      */
     async deleteMySubmissionFile(requestParameters: DeleteMySubmissionFileRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
         await this.deleteMySubmissionFileRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * `submission.read` on the course. The file is removed from storage too, and the removal written to `audit_log` as `submission.review_file_delete`.
+     * Remove a file from the review of a talebe\'s homework
+     */
+    async deleteSubmissionReviewFileRaw(requestParameters: DeleteSubmissionReviewFileRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling deleteSubmissionReviewFile().'
+            );
+        }
+
+        if (requestParameters['submissionId'] == null) {
+            throw new runtime.RequiredError(
+                'submissionId',
+                'Required parameter "submissionId" was null or undefined when calling deleteSubmissionReviewFile().'
+            );
+        }
+
+        if (requestParameters['fileId'] == null) {
+            throw new runtime.RequiredError(
+                'fileId',
+                'Required parameter "fileId" was null or undefined when calling deleteSubmissionReviewFile().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/courses/{id}/submissions/{submissionId}/review/files/{fileId}`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace(`{${"submissionId"}}`, encodeURIComponent(String(requestParameters['submissionId'])));
+        urlPath = urlPath.replace(`{${"fileId"}}`, encodeURIComponent(String(requestParameters['fileId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * `submission.read` on the course. The file is removed from storage too, and the removal written to `audit_log` as `submission.review_file_delete`.
+     * Remove a file from the review of a talebe\'s homework
+     */
+    async deleteSubmissionReviewFile(requestParameters: DeleteSubmissionReviewFileRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.deleteSubmissionReviewFileRaw(requestParameters, initOverrides);
     }
 
     /**
@@ -253,6 +426,58 @@ export class SubmissionsApi extends runtime.BaseAPI {
     }
 
     /**
+     * `submission.read` on the course. Written to `audit_log` as `submission.review_file_download` before the file is sent. Streamed through tedrisat with `Content-Disposition: attachment` and the stored name, the type read at upload, `X-Content-Type-Options: nosniff` and `Cache-Control: private, no-store`; there is no storage address to pass on.
+     * Download a review file, as the course\'s staff
+     */
+    async downloadCourseSubmissionReviewFileRaw(requestParameters: DownloadCourseSubmissionReviewFileRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Blob>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling downloadCourseSubmissionReviewFile().'
+            );
+        }
+
+        if (requestParameters['fileId'] == null) {
+            throw new runtime.RequiredError(
+                'fileId',
+                'Required parameter "fileId" was null or undefined when calling downloadCourseSubmissionReviewFile().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/courses/{id}/submissions/review-files/{fileId}`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace(`{${"fileId"}}`, encodeURIComponent(String(requestParameters['fileId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.BlobApiResponse(response);
+    }
+
+    /**
+     * `submission.read` on the course. Written to `audit_log` as `submission.review_file_download` before the file is sent. Streamed through tedrisat with `Content-Disposition: attachment` and the stored name, the type read at upload, `X-Content-Type-Options: nosniff` and `Cache-Control: private, no-store`; there is no storage address to pass on.
+     * Download a review file, as the course\'s staff
+     */
+    async downloadCourseSubmissionReviewFile(requestParameters: DownloadCourseSubmissionReviewFileRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Blob> {
+        const response = await this.downloadCourseSubmissionReviewFileRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Only the talebe who handed it in, while the course is open to them: another talebe\'s file, or one asked for by staff here, is 403 SUBMISSION_FORBIDDEN (staff read homework through `GET /courses/:id/submissions/files/:fileId`). Streamed through tedrisat with `Content-Disposition: attachment` and the stored name, the type read at upload, `X-Content-Type-Options: nosniff` and `Cache-Control: private, no-store`; there is no storage address to pass on.
      * Download a file of the caller\'s own homework
      */
@@ -301,6 +526,58 @@ export class SubmissionsApi extends runtime.BaseAPI {
      */
     async downloadMySubmissionFile(requestParameters: DownloadMySubmissionFileRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Blob> {
         const response = await this.downloadMySubmissionFileRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Only the talebe whose homework it answers, once the review is sent (before that it is 404 SUBMISSION_FILE_NOT_FOUND), while the course is open to them. Another talebe\'s is 403 SUBMISSION_FORBIDDEN. Streamed through tedrisat with `Content-Disposition: attachment` and the stored name, the type read at upload, `X-Content-Type-Options: nosniff` and `Cache-Control: private, no-store`; there is no storage address to pass on.
+     * Download a file the course team returned with its review
+     */
+    async downloadMySubmissionReviewFileRaw(requestParameters: DownloadMySubmissionReviewFileRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Blob>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling downloadMySubmissionReviewFile().'
+            );
+        }
+
+        if (requestParameters['fileId'] == null) {
+            throw new runtime.RequiredError(
+                'fileId',
+                'Required parameter "fileId" was null or undefined when calling downloadMySubmissionReviewFile().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/lessons/{id}/submission/review-files/{fileId}`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace(`{${"fileId"}}`, encodeURIComponent(String(requestParameters['fileId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.BlobApiResponse(response);
+    }
+
+    /**
+     * Only the talebe whose homework it answers, once the review is sent (before that it is 404 SUBMISSION_FILE_NOT_FOUND), while the course is open to them. Another talebe\'s is 403 SUBMISSION_FORBIDDEN. Streamed through tedrisat with `Content-Disposition: attachment` and the stored name, the type read at upload, `X-Content-Type-Options: nosniff` and `Cache-Control: private, no-store`; there is no storage address to pass on.
+     * Download a file the course team returned with its review
+     */
+    async downloadMySubmissionReviewFile(requestParameters: DownloadMySubmissionReviewFileRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Blob> {
+        const response = await this.downloadMySubmissionReviewFileRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -491,6 +768,68 @@ export class SubmissionsApi extends runtime.BaseAPI {
      */
     async saveMySubmissionNote(requestParameters: SaveMySubmissionNoteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<LessonSubmissionResponse> {
         const response = await this.saveMySubmissionNoteRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * `submission.read` on the course: whoever reads the homework reviews it (\"Değerlendir\"). Saves the note, replacing an earlier one, and sends the review with its files to the talebe, who sees nothing of it before, and is told (`SUBMISSION_REVIEWED`). A review with neither a note nor a file is 400 SUBMISSION_REVIEW_EMPTY. Written to `audit_log` as `submission.review` with the note\'s length. A homework on a hidden session is not found.
+     * Send the review of a talebe\'s homework
+     */
+    async sendSubmissionReviewRaw(requestParameters: SendSubmissionReviewRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CourseSubmissionResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling sendSubmissionReview().'
+            );
+        }
+
+        if (requestParameters['submissionId'] == null) {
+            throw new runtime.RequiredError(
+                'submissionId',
+                'Required parameter "submissionId" was null or undefined when calling sendSubmissionReview().'
+            );
+        }
+
+        if (requestParameters['sendSubmissionReviewDto'] == null) {
+            throw new runtime.RequiredError(
+                'sendSubmissionReviewDto',
+                'Required parameter "sendSubmissionReviewDto" was null or undefined when calling sendSubmissionReview().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/courses/{id}/submissions/{submissionId}/review`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace(`{${"submissionId"}}`, encodeURIComponent(String(requestParameters['submissionId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: SendSubmissionReviewDtoToJSON(requestParameters['sendSubmissionReviewDto']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => CourseSubmissionResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * `submission.read` on the course: whoever reads the homework reviews it (\"Değerlendir\"). Saves the note, replacing an earlier one, and sends the review with its files to the talebe, who sees nothing of it before, and is told (`SUBMISSION_REVIEWED`). A review with neither a note nor a file is 400 SUBMISSION_REVIEW_EMPTY. Written to `audit_log` as `submission.review` with the note\'s length. A homework on a hidden session is not found.
+     * Send the review of a talebe\'s homework
+     */
+    async sendSubmissionReview(requestParameters: SendSubmissionReviewRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CourseSubmissionResponse> {
+        const response = await this.sendSubmissionReviewRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

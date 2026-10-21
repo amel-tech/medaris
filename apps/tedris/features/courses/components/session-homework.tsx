@@ -12,6 +12,7 @@ import type {
   LessonAssignmentResponse,
   LessonSubmissionResponse,
   SubmissionFileResponse,
+  SubmissionReviewResponse,
 } from "@medaris/services/tedrisat";
 import { Alert } from "@medaris/ui/mds/alert";
 import { Badge } from "@medaris/ui/mds/badge";
@@ -36,6 +37,7 @@ import {
   fileIcon,
   isHandedIn,
   parseSubmission,
+  reviewFileHref,
   SUBMISSION_NOTE_MAX,
   submissionFileHref,
   submissionUploadPath,
@@ -428,9 +430,134 @@ export function SessionHomework({
           </>
         )}
       </div>
+
+      {submission?.review?.reviewedAt ? (
+        <ReviewBody
+          lessonId={lessonId}
+          review={submission.review}
+          changedSince={
+            submission.updatedAt.getTime() >
+            submission.review.reviewedAt.getTime()
+          }
+          locale={locale}
+        />
+      ) : null}
     </section>
   );
 }
+
+/**
+ * "Hocanın değerlendirmesi": the course team's review of the talebe's
+ * homework, once sent: who sent it and when, the note as written, and the
+ * files returned with it (the work corrected), each a plain download link
+ * through this app. A homework changed after the review says so: the review
+ * answers the earlier version.
+ */
+const ReviewBody = ({
+  lessonId,
+  review,
+  changedSince,
+  locale,
+}: {
+  lessonId: string;
+  review: SubmissionReviewResponse;
+  changedSince: boolean;
+  locale: string;
+}) => {
+  const t = useTranslations("tedrisLearn.Homework");
+  const timeZone = useTimeZone();
+  const note = review.note?.trim();
+  const when = review.reviewedAt
+    ? new Intl.DateTimeFormat(locale, {
+        day: "numeric",
+        month: "long",
+        hour: "2-digit",
+        minute: "2-digit",
+        hourCycle: "h23",
+        timeZone,
+      }).format(review.reviewedAt)
+    : "";
+  return (
+    <div
+      className="flex flex-col gap-3 border-bs border-neutral-subtle pbs-4"
+      data-testid="homework-review"
+    >
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <h3 className="mds-h3 flex items-center gap-2">
+          <Icon name="check" />
+          {t("reviewTitle")}
+        </h3>
+        <Badge variant="success">{t("reviewed")}</Badge>
+      </div>
+      <p className="mds-caption">
+        {t("reviewBy", {
+          name: review.reviewer?.name ?? t("reviewerUnknown"),
+          when,
+        })}
+      </p>
+      {changedSince ? (
+        <Alert tone="info" title={t("reviewChangedTitle")}>
+          {t("reviewChangedBody")}
+        </Alert>
+      ) : null}
+      {note ? (
+        <p
+          className="mds-body whitespace-pre-line break-words"
+          dir="auto"
+          data-testid="review-note"
+        >
+          {note}
+        </p>
+      ) : null}
+      {review.files.length > 0 ? (
+        <div className="flex flex-col gap-1">
+          <h4 className="mds-eyebrow">{t("reviewFiles")}</h4>
+          <ul
+            className="m-0 flex list-none flex-col p-0"
+            aria-label={t("reviewFiles")}
+            data-testid="review-files"
+          >
+            {review.files.map((file) => {
+              const href = reviewFileHref(lessonId, file.id);
+              const type = fileTypeChip(file.contentType);
+              const name = (
+                <span className="mds-label" dir="auto">
+                  {file.name}
+                </span>
+              );
+              return (
+                <li
+                  key={file.id}
+                  className="flex items-center gap-3 py-2 border-be border-neutral-subtle last:border-be-0"
+                >
+                  <Icon name={fileIcon(file.contentType)} size="sm" />
+                  <span className="flex min-inline-0 flex-1 flex-col">
+                    {href ? (
+                      <a className="mds-link" href={href}>
+                        {name}
+                        <span className="mds-visually-hidden">
+                          {t("download")}
+                        </span>
+                      </a>
+                    ) : (
+                      name
+                    )}
+                    <span className="flex flex-wrap items-center gap-2 mbs-1">
+                      {type ? <Badge variant="secondary">{type}</Badge> : null}
+                      <span className="mds-caption mds-num">
+                        {formatFileSize(file.sizeBytes, locale)}
+                      </span>
+                    </span>
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ) : null}
+    </div>
+  );
+};
 
 /**
  * What the müderris set: the description as written, line breaks kept, and

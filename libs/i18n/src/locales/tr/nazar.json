@@ -159,7 +159,7 @@
       "recording_watch_restricted": "Yalnız kayıtlılara açık ders kayıtlarını izle",
       "session_view_content": "Celse içeriğini ve toplantı bağlantılarını gör",
       "question_answer": "Talebelerin sorularını gör ve yanıtla",
-      "submission_read": "Talebelerin teslim ettiği ödevleri gör ve indir",
+      "submission_read": "Talebelerin teslim ettiği ödevleri gör, indir ve değerlendir",
       "ban_course": "Talebeyi dersten yasakla (dersin yasak listesini görmeyi kapsar)",
       "ban_lift_course": "Ders yasağını gerekçeyle kaldır",
       "deck_manage_course": "Ders destesini aç ve düzenle",
@@ -998,7 +998,8 @@
       "talebe": "Talebe",
       "files": "Dosyalar",
       "changed": "Son değişiklik",
-      "note": "Not"
+      "note": "Not",
+      "review": "Değerlendirme"
     },
     "unknownTalebe": "Adı bilinmeyen talebe",
     "noFiles": "Dosya yok",
@@ -1012,7 +1013,36 @@
     "loadFailed": "Ödevler şu an okunamadı. Birkaç saniye sonra yeniden deneyin.",
     "hasAssignment": "Ödev verildi",
     "noAssignment": "Ödev verilmedi",
-    "handedIn": "{count} / {total} teslim"
+    "handedIn": "{count} / {total} teslim",
+    "review": {
+      "statusNone": "Değerlendirilmedi",
+      "statusDraft": "Gönderilmedi",
+      "statusSent": "Değerlendirildi",
+      "statusChanged": "Sonradan değişti",
+      "sentBy": "{name} · {when}",
+      "open": "Değerlendir",
+      "edit": "Değerlendirmeyi aç",
+      "openFor": "{name} adlı talebenin ödevini değerlendir",
+      "title": "{name} — ödev değerlendirmesi",
+      "handedIn": "Teslim edilen",
+      "noteLabel": "Talebeye not",
+      "noteHelp": "Neyi düzelttiğinizi, neye dikkat etmesi gerektiğini yazın. Göndermeden talebe görmez.",
+      "tooLong": "Not en çok {max} karakter olabilir.",
+      "empty": "Bir not yazın ya da en az bir dosya ekleyin.",
+      "filesTitle": "Düzeltilmiş dosyalar",
+      "filesEmpty": "Henüz dosya eklenmedi. Talebenin ödevini indirip üzerinde düzelttiğiniz hâlini buradan yükleyebilirsiniz.",
+      "fileRemove": "{name} dosyasını kaldır",
+      "fileLimit": "Bir değerlendirmeye en çok 5 dosya eklenir; yenisi için birini kaldırın.",
+      "send": "Değerlendirmeyi gönder",
+      "resend": "Yeniden gönder",
+      "close": "Kapat",
+      "sentNote": "Gönderildi: talebe notu ve dosyaları görüyor. Yeniden gönderirseniz not değişir ve talebeye yeniden haber verilir.",
+      "notSentNote": "Göndermeden talebe hiçbir şey görmez. Gönderince talebeye bildirim gider.",
+      "sent": "Değerlendirme gönderildi",
+      "sentBody": "{name} adlı talebe değerlendirmenizi görecek.",
+      "failed": "Değerlendirme kaydedilemedi",
+      "awaiting": "{count} ödev değerlendirme bekliyor"
+    }
   },
   "Bans": {
     "title": "Yasaklamalar",
@@ -1862,7 +1892,9 @@
       "assignmentGone": "Bu celsenin ödevi artık yok. Sayfayı yenileyin."
     },
     "assignmentUploadNote": "Dosya yüklenince hemen ödeve eklenir; bunun için müfredatı ayrıca kaydetmeniz gerekmez.",
-    "assignmentUploadedBody": "{name} ödeve eklendi."
+    "assignmentUploadedBody": "{name} ödeve eklendi.",
+    "reviewUploadNote": "Dosya hemen kaydedilir; talebe onu değerlendirmeyi gönderince görür.",
+    "reviewUploadedBody": "{name} değerlendirmeye eklendi."
   },
   "Recordings": {
     "title": "Ders kayıtları",
