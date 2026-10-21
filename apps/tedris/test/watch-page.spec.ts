@@ -144,8 +144,7 @@ describe("WatchPage: what plays for this viewer", () => {
       expect(props.video).toEqual({
         kind: "stream",
         url: STREAM,
-        embedUrl:
-          "https://www.youtube-nocookie.com/embed/ybHyHDBiRoE?enablejsapi=1",
+        embedUrl: "https://www.youtube.com/embed/ybHyHDBiRoE?enablejsapi=1",
       });
     }
   });
@@ -196,7 +195,7 @@ describe("WatchPage: what plays for this viewer", () => {
     expect(props.video).toEqual({
       kind: "recording",
       title: "Mehmûz fiiller (kayıt)",
-      embedUrl: "https://www.youtube-nocookie.com/embed/abcdefgh?enablejsapi=1",
+      embedUrl: "https://www.youtube.com/embed/abcdefgh?enablejsapi=1",
       openUrl: rec.url,
       bunny: false,
       facts: "Ders kaydı · 3 Ekim 2026 · 58 dk",
@@ -210,7 +209,7 @@ describe("WatchPage: what plays for this viewer", () => {
       recording: recording() as never,
     });
     expect(props.video).toMatchObject({
-      embedUrl: "https://www.youtube-nocookie.com/embed/abcdefgh",
+      embedUrl: "https://www.youtube.com/embed/abcdefgh",
       reportsPosition: false,
     });
   });
@@ -272,7 +271,7 @@ describe("WatchPage: a recording held back until its release time (MDRS-288)", (
     );
     expect(props.video).toMatchObject({
       kind: "recording",
-      embedUrl: "https://www.youtube-nocookie.com/embed/abcdefgh",
+      embedUrl: "https://www.youtube.com/embed/abcdefgh",
     });
   });
 
