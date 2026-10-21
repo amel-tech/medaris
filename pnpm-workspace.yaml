@@ -113,6 +113,11 @@ overrides:
   # reach the 5.x line. nx pins the exact string "5.0.9", so only an override
   # moves it; the `@5` selector keeps it on the major nx imports `expand` from.
   brace-expansion@5: ^5.0.11
+  # 2026-10-21: GHSA-8r9p-f939-6h3c and GHSA-q3jh-wrc6-jgq8 (array-form headers
+  # bypass cross-origin credential stripping), 1.16.0 only, fixed in 1.16.1.
+  # Reached through nx's axios and @openapitools/openapi-generator-cli, both dev
+  # tooling; the floor stays on the 1.x line every consumer declares.
+  follow-redirects: ^1.16.1
 
   # MDRS-76. multer 2.2.0 carries three high DoS advisories — GHSA-535w-7cp7-47q4
   # (oversized array), GHSA-qfvm-cv95-jqjf (fd leak), GHSA-wc9g-mqfw-jrwm
@@ -418,7 +423,7 @@ catalog:
   # below). Deliberately not vite 8 / storybook's newest peer range — staying
   # on the version this workspace already runs under Vitest keeps this the
   # smallest change that lifts the freeze, not a second bleeding-edge bump.
-  vite: ^7.3.6
+  vite: ^7.3.7 # GHSA-587h-7wmj-h5pm (launch-editor), fixed in 7.3.7
   '@vitejs/plugin-react': ^5.2.0 # 6.x requires vite ^8; 5.x's ^4||^5||^6||^7||^8 keeps vite 7
   keycloakify: ^11.16.0
   '@storybook/react': ^10.6.0
@@ -443,4 +448,4 @@ catalog:
 # dependency-version decision this ticket needs to also make.
 catalogs:
   vitest:
-    vite: ^7.3.6
+    vite: ^7.3.7
