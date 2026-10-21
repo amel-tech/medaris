@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.10.1](https://github.com/amel-tech/medaris/compare/tedris-web-v2.10.0...tedris-web-v2.10.1) (2026-10-21)
+
+
+### Bug Fixes
+
+* **tedris-web, i18n:** MDRS-297 tidy the live chat panel ([#352](https://github.com/amel-tech/medaris/issues/352)) ([af07ec6](https://github.com/amel-tech/medaris/commit/af07ec6700ec68f172251ad2b357fb46e5f7be8c))
+* **tedris-web, landing-web:** MDRS-293 embed YouTube from youtube.com ([#347](https://github.com/amel-tech/medaris/issues/347)) ([46a2d40](https://github.com/amel-tech/medaris/commit/46a2d409fa14a8fbaca05002275e841b4351cee7))
+
 ## [2.10.0](https://github.com/amel-tech/medaris/compare/tedris-web-v2.9.0...tedris-web-v2.10.0) (2026-10-16)
 
 
