@@ -120,8 +120,7 @@ afterEach(async () => {
 });
 
 const STREAM = "https://www.youtube.com/live/ybHyHDBiRoE";
-const STREAM_FRAME =
-  "https://www.youtube-nocookie.com/embed/ybHyHDBiRoE?enablejsapi=1";
+const STREAM_FRAME = "https://www.youtube.com/embed/ybHyHDBiRoE?enablejsapi=1";
 const BUNNY =
   "https://player.mediadelivery.net/embed/424242/3f1c2b4a-5d6e-4f70-8a9b-0c1d2e3f4a5b?token=9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08&expires=1790000000";
 
@@ -411,7 +410,7 @@ describe("a recording", () => {
   const youtube: WatchVideo = {
     kind: "recording",
     title: "Mehmûz fiiller",
-    embedUrl: "https://www.youtube-nocookie.com/embed/abcdefgh?enablejsapi=1",
+    embedUrl: "https://www.youtube.com/embed/abcdefgh?enablejsapi=1",
     openUrl: "https://www.youtube.com/watch?v=abcdefgh",
     bunny: false,
     facts: "Ders kaydı · 3 Ekim 2026 · 58 dk",
@@ -527,7 +526,7 @@ describe("a recording held back until its release time (MDRS-288)", () => {
       video: {
         kind: "recording",
         title: "Mehmûz fiiller",
-        embedUrl: "https://www.youtube-nocookie.com/embed/abcdefgh",
+        embedUrl: "https://www.youtube.com/embed/abcdefgh",
         openUrl: "https://www.youtube.com/watch?v=abcdefgh",
         bunny: false,
         facts: "Ders kaydı · 3 Ekim 2026 · 58 dk",
@@ -541,7 +540,7 @@ describe("a recording held back until its release time (MDRS-288)", () => {
       questions: false,
     });
     expect(frame(host)?.getAttribute("src")).toBe(
-      "https://www.youtube-nocookie.com/embed/abcdefgh"
+      "https://www.youtube.com/embed/abcdefgh"
     );
     expect(releaseLine(host)).toBe(
       "Talebelere 14 Ekim Çarşamba 20:00’de açılacak"

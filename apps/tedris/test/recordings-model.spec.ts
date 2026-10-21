@@ -55,7 +55,7 @@ describe("embedUrlOf (MDRS-162)", () => {
     "https://www.youtube.com/shorts/dQw4w9WgXcQ",
   ])("frames a YouTube link by its video id: %s", (url) => {
     expect(embedUrlOf("YOUTUBE", url)).toBe(
-      "https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ"
+      "https://www.youtube.com/embed/dQw4w9WgXcQ"
     );
   });
 
@@ -89,9 +89,18 @@ describe("embedUrlOf (MDRS-162)", () => {
     expect(liveEmbedUrlOf(null)).toBeNull();
   });
 
+  it("frames a stored youtube-nocookie link from www.youtube.com (MDRS-293)", () => {
+    expect(
+      embedUrlOf(
+        "YOUTUBE",
+        "https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ"
+      )
+    ).toBe("https://www.youtube.com/embed/dQw4w9WgXcQ");
+  });
+
   it("frames a live stream like a YouTube recording", () => {
     expect(liveEmbedUrlOf("https://www.youtube.com/watch?v=live123abc")).toBe(
-      "https://www.youtube-nocookie.com/embed/live123abc"
+      "https://www.youtube.com/embed/live123abc"
     );
   });
 });
