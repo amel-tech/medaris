@@ -18,10 +18,10 @@ import {
 const MB = 1024 * 1024;
 
 describe("the limits", () => {
-  it("are tedrisat's 25 MB a file and 5 files a homework, and the proxy's", () => {
+  it("are tedrisat's 25 MB a file and 10 files a homework, and the proxy's", () => {
     expect(MAX_FILE_BYTES).toBe(25 * MB);
     expect(PROXY_MAX_FILE_BYTES).toBe(MAX_FILE_BYTES);
-    expect(MAX_SUBMISSION_FILES).toBe(5);
+    expect(MAX_SUBMISSION_FILES).toBe(10);
   });
 });
 

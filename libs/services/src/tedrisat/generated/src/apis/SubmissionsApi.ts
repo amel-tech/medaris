@@ -78,7 +78,7 @@ export interface SaveMySubmissionNoteRequest {
 export class SubmissionsApi extends runtime.BaseAPI {
 
     /**
-     * Makes the homework if there is none yet; at most 5 files (409 SUBMISSION_FILE_LIMIT). The file is the multipart field `file`: at most 25 MB (413 FILE_TOO_LARGE) and a PDF, PNG, JPEG, WebP, Word (docx), Excel (xlsx), PowerPoint (pptx) or plain UTF-8 text file as read from its bytes (415 FILE_TYPE_NOT_ALLOWED). Its name is sanitised and kept as a label; it is stored under a key tedrisat makes. Written to `audit_log` as `submission.file_upload`. A talebe enrolled in the course (ENROLLED or COMPLETED, not barred) while its content is open, on a live session: anyone else is 403 SUBMISSION_FORBIDDEN, a hidden session 404. There is no deadline.
+     * Makes the homework if there is none yet; at most 10 files (409 SUBMISSION_FILE_LIMIT). The file is the multipart field `file`: at most 25 MB (413 FILE_TOO_LARGE) and a PDF, PNG, JPEG, WebP, Word (docx), Excel (xlsx), PowerPoint (pptx) or plain UTF-8 text file as read from its bytes (415 FILE_TYPE_NOT_ALLOWED). Its name is sanitised and kept as a label; it is stored under a key tedrisat makes. Written to `audit_log` as `submission.file_upload`. A talebe enrolled in the course (ENROLLED or COMPLETED, not barred) while its content is open, on a live session: anyone else is 403 SUBMISSION_FORBIDDEN, a hidden session 404. There is no deadline.
      * Add a file to the caller\'s homework on a session
      */
     async addMySubmissionFileRaw(requestParameters: AddMySubmissionFileRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<LessonSubmissionResponse>> {
@@ -141,7 +141,7 @@ export class SubmissionsApi extends runtime.BaseAPI {
     }
 
     /**
-     * Makes the homework if there is none yet; at most 5 files (409 SUBMISSION_FILE_LIMIT). The file is the multipart field `file`: at most 25 MB (413 FILE_TOO_LARGE) and a PDF, PNG, JPEG, WebP, Word (docx), Excel (xlsx), PowerPoint (pptx) or plain UTF-8 text file as read from its bytes (415 FILE_TYPE_NOT_ALLOWED). Its name is sanitised and kept as a label; it is stored under a key tedrisat makes. Written to `audit_log` as `submission.file_upload`. A talebe enrolled in the course (ENROLLED or COMPLETED, not barred) while its content is open, on a live session: anyone else is 403 SUBMISSION_FORBIDDEN, a hidden session 404. There is no deadline.
+     * Makes the homework if there is none yet; at most 10 files (409 SUBMISSION_FILE_LIMIT). The file is the multipart field `file`: at most 25 MB (413 FILE_TOO_LARGE) and a PDF, PNG, JPEG, WebP, Word (docx), Excel (xlsx), PowerPoint (pptx) or plain UTF-8 text file as read from its bytes (415 FILE_TYPE_NOT_ALLOWED). Its name is sanitised and kept as a label; it is stored under a key tedrisat makes. Written to `audit_log` as `submission.file_upload`. A talebe enrolled in the course (ENROLLED or COMPLETED, not barred) while its content is open, on a live session: anyone else is 403 SUBMISSION_FORBIDDEN, a hidden session 404. There is no deadline.
      * Add a file to the caller\'s homework on a session
      */
     async addMySubmissionFile(requestParameters: AddMySubmissionFileRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<LessonSubmissionResponse> {

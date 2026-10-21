@@ -11,8 +11,8 @@
 /** tedrisat's limit for one file, 25 MB: `MAX_UPLOAD_BYTES` in its `storage/upload.ts`. */
 export const MAX_FILE_BYTES = 25 * 1024 * 1024;
 
-/** tedrisat's limit of files on one homework (409 SUBMISSION_FILE_LIMIT). */
-export const MAX_SUBMISSION_FILES = 5;
+/** tedrisat's limit of files on one homework (409 SUBMISSION_FILE_LIMIT; MDRS-296). */
+export const MAX_SUBMISSION_FILES = 10;
 
 /**
  * The types tedrisat stores (`storage/file-type.ts`), as it reads them from a

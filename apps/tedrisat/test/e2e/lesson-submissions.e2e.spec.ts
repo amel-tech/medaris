@@ -178,7 +178,7 @@ describe("homework on a celse (MDRS-290, e2e)", () => {
       const empty = await own(CAST.TALEBE).expect(200);
       expect(empty.body).toEqual({
         submission: null,
-        maxFiles: 5,
+        maxFiles: 10,
         maxFileBytes: MAX_UPLOAD_BYTES,
       });
 
@@ -258,20 +258,25 @@ describe("homework on a celse (MDRS-290, e2e)", () => {
       await removeFile(CAST.TALEBE, file.id).expect(404);
     });
 
-    it("holds at most five files, refused before a sixth is stored", async () => {
+    it("holds at most ten files, refused before an eleventh is stored", async () => {
       for (const [make, name] of [
         [pdf, "1.pdf"],
         [png, "2.png"],
         [jpeg, "3.jpg"],
         [docx, "4.docx"],
         [() => text(), "5.txt"],
+        [pdf, "6.pdf"],
+        [png, "7.png"],
+        [jpeg, "8.jpg"],
+        [docx, "9.docx"],
+        [() => text(), "10.txt"],
       ] as const) {
         await addFile(CAST.TALEBE, make(), name).expect(201);
       }
-      const sixth = await addFile(CAST.TALEBE, pdf(), "6.pdf").expect(409);
-      expect(sixth.body.code).toBe("SUBMISSION_FILE_LIMIT");
-      expect(storage.keys()).toHaveLength(5);
-      expect(await db().select().from(submissionFiles)).toHaveLength(5);
+      const eleventh = await addFile(CAST.TALEBE, pdf(), "11.pdf").expect(409);
+      expect(eleventh.body.code).toBe("SUBMISSION_FILE_LIMIT");
+      expect(storage.keys()).toHaveLength(10);
+      expect(await db().select().from(submissionFiles)).toHaveLength(10);
     });
 
     it("refuses a disallowed type and an oversized file, and stores nothing", async () => {

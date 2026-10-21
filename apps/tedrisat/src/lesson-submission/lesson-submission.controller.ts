@@ -53,6 +53,7 @@ import { UploadGateInterceptor } from "../storage/upload";
 import {
   CourseSubmissionsResponse,
   LessonSubmissionResponse,
+  MAX_SUBMISSION_FILES,
   MySubmissionsResponse,
   OwnSubmissionResponse,
   SaveSubmissionNoteDto,
@@ -143,7 +144,7 @@ export class LessonSubmissionController {
 
   @ApiOperation({
     summary: "Add a file to the caller's homework on a session",
-    description: `Makes the homework if there is none yet; at most 5 files (409 SUBMISSION_FILE_LIMIT). The file is the multipart field \`file\`: at most 25 MB (413 FILE_TOO_LARGE) and a PDF, PNG, JPEG, WebP, Word (docx), Excel (xlsx), PowerPoint (pptx) or plain UTF-8 text file as read from its bytes (415 FILE_TYPE_NOT_ALLOWED). Its name is sanitised and kept as a label; it is stored under a key tedrisat makes. Written to \`audit_log\` as \`submission.file_upload\`. ${WHO_WRITES}`,
+    description: `Makes the homework if there is none yet; at most ${MAX_SUBMISSION_FILES} files (409 SUBMISSION_FILE_LIMIT). The file is the multipart field \`file\`: at most 25 MB (413 FILE_TOO_LARGE) and a PDF, PNG, JPEG, WebP, Word (docx), Excel (xlsx), PowerPoint (pptx) or plain UTF-8 text file as read from its bytes (415 FILE_TYPE_NOT_ALLOWED). Its name is sanitised and kept as a label; it is stored under a key tedrisat makes. Written to \`audit_log\` as \`submission.file_upload\`. ${WHO_WRITES}`,
     operationId: "addMySubmissionFile",
   })
   @ApiConsumes("multipart/form-data")

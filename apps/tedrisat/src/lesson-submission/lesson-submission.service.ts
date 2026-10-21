@@ -53,7 +53,8 @@ function present(
 
 /**
  * Homework on a celse (MDRS-290): one per talebe per celse, a note and up to
- * five files in Medaris storage (MDRS-287's store, limits and type checks).
+ * `MAX_SUBMISSION_FILES` files (10 since MDRS-296) in Medaris storage
+ * (MDRS-287's store, limits and type checks).
  *
  * The talebe hands it in, changes it and removes their files only while they
  * may write on the course as a talebe (`CourseService.mayWriteAsTalebe`: an
