@@ -1,4 +1,5 @@
 import { Button } from "@medaris/ui/mds/button";
+import { LocaleMenu } from "@medaris/ui/mds/locale-switcher";
 import { Logo } from "@medaris/ui/mds/logo";
 import { SystemState } from "@medaris/ui/mds/system-state";
 import { forbidden, redirect } from "next/navigation";
@@ -9,6 +10,7 @@ import { MedarisHome } from "~/features/dashboard/components/medaris-home";
 import { getMyGrants, getNizamDashboard } from "~/features/dashboard/reads";
 import { LoadFailed } from "~/features/kosks/components/load-failed";
 import { auth } from "~/lib/auth";
+import { locales } from "~/lib/i18n/routing";
 import { shellVariant } from "~/lib/shell-nav";
 
 // Per caller: who they are decides where they land.
@@ -23,16 +25,29 @@ export default async function Page({
   const t = await getTranslations("common");
 
   // `/` is open to every visitor; without a session the shell is not drawn
-  // and the way in is the sign-in button.
+  // and the way in is the sign-in button. The shell's language menu is drawn
+  // here too, so a visitor picks the language before Keycloak is reached.
   const session = await auth();
   if (!session?.user) {
     const a = await getTranslations("nizam.Auth");
+    const s = await getTranslations("nizam.Shell");
     return (
-      <SystemState
-        logo={<Logo app="nizam" size="lg" wordmark />}
-        title={t("welcome")}
-        action={<Button href={`/${locale}/auth/signin`}>{a("signIn")}</Button>}
-      />
+      <>
+        <div className="fixed end-4 top-4">
+          <LocaleMenu
+            locale={locale}
+            locales={locales}
+            label={s("languageMenu")}
+          />
+        </div>
+        <SystemState
+          logo={<Logo app="nizam" size="lg" wordmark />}
+          title={t("welcome")}
+          action={
+            <Button href={`/${locale}/auth/signin`}>{a("signIn")}</Button>
+          }
+        />
+      </>
     );
   }
 
