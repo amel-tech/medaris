@@ -11,7 +11,7 @@ import { lessons } from "./course.schema";
 
 /**
  * A talebe's homework on a celse (MDRS-290): one per talebe per celse, an
- * optional note and up to five files. There is no deadline and no grade: the
+ * optional note and up to `MAX_SUBMISSION_FILES` files (10 since MDRS-296). There is no deadline and no grade: the
  * talebe changes it whenever they like, and `updated_at` is when they last
  * did. Read by the talebe and by whoever holds `submission.read` on the
  * course. `user_id` is not a foreign key, like every other user column.
