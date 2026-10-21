@@ -179,10 +179,18 @@ const chat = (host: HTMLElement) =>
   ) ?? null;
 const chatFrame = (host: HTMLElement) =>
   chat(host)?.querySelector<HTMLIFrameElement>("iframe") ?? null;
-/** "YouTube'da aç": the same chat as YouTube's own page (MDRS-297). */
+/** A link's visible label: its text without the visually hidden part, trimmed. */
+const visibleLabel = (a: HTMLAnchorElement) => {
+  const hidden = a.querySelector(".mds-visually-hidden")?.textContent ?? "";
+  return (a.textContent ?? "").replace(hidden, "").trim();
+};
+/**
+ * "YouTube'da aç": the same chat as YouTube's own page (MDRS-297). Matched
+ * exactly, so the longer "Sohbeti YouTube'da aç" it replaced cannot match.
+ */
 const popout = (host: HTMLElement) =>
-  [...host.querySelectorAll<HTMLAnchorElement>("a")].find((a) =>
-    a.textContent?.includes("YouTube'da aç")
+  [...host.querySelectorAll<HTMLAnchorElement>("a")].find(
+    (a) => visibleLabel(a) === "YouTube'da aç"
   );
 const top = (host: HTMLElement) =>
   host.querySelector('[data-watch-panel="top"]') as HTMLElement;
