@@ -1,6 +1,7 @@
 "use client";
 
 import type {
+  CourseDeckStudentResponse,
   CourseDetailResponse,
   RecordingResponse,
 } from "@medaris/services/tedrisat";
@@ -38,6 +39,7 @@ import { canWriteNotes } from "../lesson-note-model";
 import { firstSessionAt, formatFirstSession, isPreview } from "../preview";
 import { sessionChoices } from "../question-model";
 import { CourseAside } from "./course-aside";
+import { CourseDecksTab } from "./course-decks-tab";
 import { CourseProgramme, SAMPLE_ANCHOR } from "./course-programme";
 import { CourseQuestions } from "./course-questions";
 import { CourseResources } from "./course-resources";
@@ -63,6 +65,7 @@ export const CoursePage = ({
   registerHref,
   recordings = [],
   handedIn = null,
+  decks = [],
   initialTab,
   now: nowProp,
 }: {
@@ -94,6 +97,11 @@ export const CoursePage = ({
    * failed, and then no celse is said to be not handed in.
    */
   handedIn?: readonly string[] | null;
+  /**
+   * The course's decks for an enrolled talebe (`GET /courses/:id/decks`); the
+   * API leaves drafts out. Empty for anyone else, and when the read failed.
+   */
+  decks?: CourseDeckStudentResponse[];
   /** The tab the page opens on: `?tab=kayitlar` from a session page. */
   initialTab?: string;
   /** The instant the page is drawn at, for tests. */
@@ -159,7 +167,15 @@ export const CoursePage = ({
         ? { count: recordings.length }
         : {}),
     },
-    ...(seat ? [{ value: "deste", label: t("tabDeck") }] : []),
+    ...(seat
+      ? [
+          {
+            value: "deste",
+            label: t("tabDeck"),
+            ...(decks.length > 0 ? { count: decks.length } : {}),
+          },
+        ]
+      : []),
     ...(asksQuestions
       ? [{ value: "sorularim", label: t("tabMyQuestions") }]
       : []),
@@ -424,7 +440,11 @@ export const CoursePage = ({
             </TabsPanel>
             {seat ? (
               <TabsPanel value="deste" className="pbs-4">
-                <EmptyState>{t("deckEmpty")}</EmptyState>
+                {decks.length > 0 ? (
+                  <CourseDecksTab decks={decks} course={course} now={now} />
+                ) : (
+                  <EmptyState>{t("deckEmpty")}</EmptyState>
+                )}
               </TabsPanel>
             ) : null}
             {asksQuestions ? (
