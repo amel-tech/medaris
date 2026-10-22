@@ -1,6 +1,9 @@
 import { AuthGuardModule, ExcelModule } from "@medaris/common";
 import { Module } from "@nestjs/common";
 import { DatabaseService } from "../database/database.service";
+import { CourseDeckRepository } from "./course-deck.repository";
+import { CourseDeckService } from "./course-deck.service";
+import { CourseDecksController } from "./course-decks.controller";
 import { FlashcardController } from "./flashcard.controller";
 import { FlashcardRepository } from "./flashcard.repository";
 import { FlashcardService } from "./flashcard.service";
@@ -13,7 +16,11 @@ import { FlashcardDeckSummaryService } from "./flashcard-deck-summary.service";
 
 @Module({
   imports: [AuthGuardModule, ExcelModule],
-  controllers: [FlashcardController, FlashcardDeckController],
+  controllers: [
+    CourseDecksController,
+    FlashcardController,
+    FlashcardDeckController,
+  ],
   providers: [
     FlashcardService,
     FlashcardRepository,
@@ -22,6 +29,8 @@ import { FlashcardDeckSummaryService } from "./flashcard-deck-summary.service";
     FlashcardDeckSummaryRepository,
     FlashcardDeckSummaryService,
     FlashcardBulkService,
+    CourseDeckRepository,
+    CourseDeckService,
     DatabaseService,
   ],
   // Services, never repositories, so importers cannot write past the ownership

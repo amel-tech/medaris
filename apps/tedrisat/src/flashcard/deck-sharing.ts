@@ -23,8 +23,9 @@ const deckColumn = (name: string) => sql.raw(`"decks"."${name}"`);
  * deck is not public, and is readable (and collectable) by exactly those
  * talebe; it is written by nobody but its author.
  *
- * A hidden deck is shared with nobody, and a hidden or unpublished course
- * brings none. The three keys are compared with `=`, so a deck that names no
+ * A hidden deck is shared with nobody, a course deck still in draft is seen by
+ * its course's staff only, and a hidden or unpublished course brings none. The
+ * three keys are compared with `=`, so a deck that names no
  * köşk matches no course on that key (`NULL = x` is not true).
  *
  * Written against the `decks` table by name: every caller selects from it
@@ -33,6 +34,7 @@ const deckColumn = (name: string) => sql.raw(`"decks"."${name}"`);
  */
 export const deckSharedWith = (userId: string) => sql<boolean>`(
   ${deckColumn("archived_at")} IS NULL
+  AND ${deckColumn("course_draft")} = false
   AND EXISTS (
     SELECT 1
     FROM enrollments e

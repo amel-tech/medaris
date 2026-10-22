@@ -188,6 +188,18 @@ export class TedrisatAuthzContext implements AuthzContextLoader {
           policies,
         };
       }
+      case ENTITIES.FLASHCARD_DECK: {
+        // A course's deck sits in the course's own chain, so the course's
+        // staff hold what they hold there (ders destesi). Any other deck has
+        // no chain of its own: only the platform's scope is on it.
+        const [row] = await this.db
+          .select({ courseId: decks.courseId })
+          .from(decks)
+          .where(eq(decks.id, resource.id))
+          .limit(1);
+        if (!row?.courseId) return null;
+        return this.facts({ entity: ENTITIES.COURSE, id: row.courseId });
+      }
       case ENTITIES.KOSK: {
         const [row] = await this.db
           .select({
