@@ -208,7 +208,6 @@ describe("the shell of a course (nazir 22)", () => {
       "Talebeler",
       "Sorular",
       "Ders kayıtları",
-      "Ders destesi",
       "Yasaklamalar",
       "Arşiv",
       "Yönetim",
