@@ -1875,7 +1875,7 @@
     "typeVocabulary": "Kelime",
     "typeHadeeth": "Hadis",
     "week": "{week}. hafta",
-    "mastered": "Talebelerin %{percent}'si ezberledi",
+    "mastered": "Ezber oranı %{percent}",
     "draft": "Taslak",
     "draftNote": "talebe henüz görmüyor",
     "loadFailedTitle": "Ders desteleri okunamadı",
