@@ -7,6 +7,8 @@ import { MAX_UPLOAD_BYTES } from "../../storage/upload";
 export const MAX_SUBMISSION_FILES = 10;
 /** The longest note, in characters. */
 export const SUBMISSION_NOTE_MAX = 4000;
+/** How many files the course team returns with one review. */
+export const MAX_REVIEW_FILES = 5;
 
 export class SaveSubmissionNoteDto {
   @ApiPropertyOptional({
@@ -14,6 +16,23 @@ export class SaveSubmissionNoteDto {
     nullable: true,
     example: "Birinci babın çekimlerini yazdım.",
     description: `The talebe's note on their homework, at most ${SUBMISSION_NOTE_MAX} characters after trimming; null, absent or blank clears it. Stored as typed and never rendered as HTML.`,
+  })
+  @Transform(({ value }) =>
+    typeof value === "string" ? value.trim() || null : value
+  )
+  @IsOptional()
+  @IsString()
+  @MaxLength(SUBMISSION_NOTE_MAX)
+  note?: string | null;
+}
+
+/** `PUT /courses/:id/submissions/:submissionId/review`. */
+export class SendSubmissionReviewDto {
+  @ApiPropertyOptional({
+    type: String,
+    nullable: true,
+    example: "Çekimler doğru; üçüncü sîgada harekeyi düzelttim.",
+    description: `The reviewer's note to the talebe, at most ${SUBMISSION_NOTE_MAX} characters after trimming; null, absent or blank leaves none, which needs at least one review file. Stored as typed and never rendered as HTML.`,
   })
   @Transform(({ value }) =>
     typeof value === "string" ? value.trim() || null : value
@@ -46,6 +65,45 @@ export class SubmissionFileResponse {
   downloadUrl!: string;
 }
 
+export class SubmissionReviewerResponse {
+  @ApiProperty({ format: "uuid" }) id!: string;
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    description:
+      "The account's name, else its e-mail; null for an account tedrisat has not seen sign in.",
+  })
+  name!: string | null;
+}
+
+/**
+ * The course team's review of a homework: a note and the files returned with
+ * it. The talebe reads it once it is sent; the course team also sees the
+ * files added before that.
+ */
+export class SubmissionReviewResponse {
+  @ApiProperty({ type: String, nullable: true }) note!: string | null;
+  @ApiProperty({
+    type: Date,
+    nullable: true,
+    description:
+      "When it was last sent to the talebe; null while it is not sent yet (staff only: the talebe sees no review until then).",
+  })
+  reviewedAt!: Date | null;
+  @ApiProperty({
+    type: () => SubmissionReviewerResponse,
+    nullable: true,
+    description: "Who last sent it; null while it is not sent.",
+  })
+  reviewer!: SubmissionReviewerResponse | null;
+  @ApiProperty({
+    type: [SubmissionFileResponse],
+    description:
+      "Oldest first. `downloadUrl` is `/lessons/:id/submission/review-files/:fileId` for the talebe, `/courses/:id/submissions/review-files/:fileId` for the course team.",
+  })
+  files!: SubmissionFileResponse[];
+}
+
 /** A talebe's homework on a celse (MDRS-290). */
 export class LessonSubmissionResponse {
   @ApiProperty({ format: "uuid" }) id!: string;
@@ -63,6 +121,13 @@ export class LessonSubmissionResponse {
     description: "Oldest first.",
   })
   files!: SubmissionFileResponse[];
+  @ApiProperty({
+    type: () => SubmissionReviewResponse,
+    nullable: true,
+    description:
+      "The course team's review. For the talebe: null until it is sent. For the course team: null while there is neither a sent review nor a review file.",
+  })
+  review!: SubmissionReviewResponse | null;
 }
 
 export class OwnSubmissionResponse {

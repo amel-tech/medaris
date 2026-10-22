@@ -13,6 +13,7 @@ import { fileRoutes } from "../../files/files";
 import { whenLabel } from "../../sessions/sessions";
 import {
   ALL_SESSIONS,
+  awaitingReview,
   changedLabel,
   type HomeworkRow,
   type HomeworkSession,
@@ -21,6 +22,7 @@ import {
   noteExcerpt,
   shownSessions,
 } from "../homework";
+import { ReviewCell } from "./review-dialog";
 
 /**
  * The body of Ödevler (MDRS-290): a filter of the course's celses ("Bütün
@@ -33,6 +35,11 @@ import {
  * talebe handed in. "Bütün celseler" draws the celses with homework set or
  * handed in; one celse is drawn even when nobody has handed in on it, and
  * its table says so.
+ *
+ * Each row ends with its review ("Değerlendirme"): where it stands, and
+ * "Değerlendir", which returns a note and corrected files to the talebe.
+ * A row the course team changes is kept here as tedrisat answered it; the
+ * rest of the page stays as it was read.
  */
 export function HomeworkList({
   courseId,
@@ -48,8 +55,17 @@ export function HomeworkList({
 }) {
   const t = useTranslations("nazar");
   const [value, setValue] = useState<string>(ALL_SESSIONS);
-  const counts = homeworkCounts(sessions);
-  const shown = shownSessions(sessions, value);
+  const [changed, setChanged] = useState<ReadonlyMap<string, HomeworkRow>>(
+    () => new Map()
+  );
+  const current = sessions.map((session) => ({
+    ...session,
+    rows: session.rows.map((row) => changed.get(row.id) ?? row),
+  }));
+  const counts = homeworkCounts(current);
+  const shown = shownSessions(current, value);
+  const keep = (row: HomeworkRow) =>
+    setChanged((now) => new Map(now).set(row.id, row));
   const zone =
     courseTimeZone === DEFAULT_TIME_ZONE
       ? t("Homework.zoneIstanbul")
@@ -81,7 +97,7 @@ export function HomeworkList({
       key: "talebe",
       header: t("Homework.columns.talebe"),
       rowHeader: true,
-      width: "20%",
+      width: "18%",
       render: (row) => (
         <span className="font-semibold">
           <bdi>{row.talebe ?? t("Homework.unknownTalebe")}</bdi>
@@ -91,7 +107,7 @@ export function HomeworkList({
     {
       key: "files",
       header: t("Homework.columns.files"),
-      width: "36%",
+      width: "28%",
       render: (row) =>
         row.files.length === 0 ? (
           <span className="text-neutral-muted">{t("Homework.noFiles")}</span>
@@ -118,7 +134,7 @@ export function HomeworkList({
     {
       key: "changed",
       header: t("Homework.columns.changed"),
-      width: "16%",
+      width: "14%",
       render: (row) => (
         <time dateTime={row.updatedAt}>
           {changedLabel(new Date(row.updatedAt), locale, courseTimeZone)}
@@ -128,8 +144,23 @@ export function HomeworkList({
     {
       key: "note",
       header: t("Homework.columns.note"),
-      width: "28%",
+      width: "22%",
       render: (row) => (row.note?.trim() ? <NoteCell note={row.note} /> : dash),
+    },
+    {
+      key: "review",
+      header: t("Homework.columns.review"),
+      width: "18%",
+      render: (row) => (
+        <ReviewCell
+          courseId={courseId}
+          sessionTitle={title}
+          row={row}
+          onChange={keep}
+          locale={locale}
+          courseTimeZone={courseTimeZone}
+        />
+      ),
     },
   ];
 
@@ -189,6 +220,16 @@ export function HomeworkList({
                   <span className="mds-caption mds-num">
                     {t("Homework.handedIn", session.handIns)}
                   </span>
+                ) : null}
+                {awaitingReview(session.rows) > 0 ? (
+                  <Badge
+                    variant="warning"
+                    data-testid={`homework-awaiting-${session.lessonId}`}
+                  >
+                    {t("Homework.review.awaiting", {
+                      count: awaitingReview(session.rows),
+                    })}
+                  </Badge>
                 ) : null}
               </p>
             </div>

@@ -159,7 +159,7 @@
       "recording_watch_restricted": "Watch recordings open to enrolled talebe only",
       "session_view_content": "See the content and meeting links of a session",
       "question_answer": "See the course's questions and answer them",
-      "submission_read": "See and download the homework talebe hand in",
+      "submission_read": "See, download and review the homework talebe hand in",
       "ban_course": "Ban a talebe from the course (includes seeing the course's ban list)",
       "ban_lift_course": "Lift a course ban, with a reason",
       "deck_manage_course": "Create and edit the course's deck",
@@ -998,7 +998,8 @@
       "talebe": "Talebe",
       "files": "Files",
       "changed": "Last change",
-      "note": "Note"
+      "note": "Note",
+      "review": "Review"
     },
     "unknownTalebe": "A talebe with no name on record",
     "noFiles": "No files",
@@ -1012,7 +1013,36 @@
     "loadFailed": "The homework cannot be read right now. Try again in a few seconds.",
     "hasAssignment": "Homework set",
     "noAssignment": "No homework set",
-    "handedIn": "{count} / {total} handed in"
+    "handedIn": "{count} / {total} handed in",
+    "review": {
+      "statusNone": "Not reviewed",
+      "statusDraft": "Not sent",
+      "statusSent": "Reviewed",
+      "statusChanged": "Changed since",
+      "sentBy": "{name} · {when}",
+      "open": "Review",
+      "edit": "Open the review",
+      "openFor": "Review the homework of {name}",
+      "title": "{name} — homework review",
+      "handedIn": "Handed in",
+      "noteLabel": "Note to the talebe",
+      "noteHelp": "Write what you corrected and what to watch for. The talebe sees nothing until you send it.",
+      "tooLong": "The note can be at most {max} characters.",
+      "empty": "Write a note or add at least one file.",
+      "filesTitle": "Corrected files",
+      "filesEmpty": "No file added yet. Download the talebe's homework and upload the version you corrected here.",
+      "fileRemove": "Remove {name}",
+      "fileLimit": "A review takes at most 5 files; remove one to add another.",
+      "send": "Send the review",
+      "resend": "Send again",
+      "close": "Close",
+      "sentNote": "Sent: the talebe sees the note and the files. Sending again changes the note and tells the talebe again.",
+      "notSentNote": "The talebe sees nothing until you send it. Sending notifies the talebe.",
+      "sent": "Review sent",
+      "sentBody": "{name} will see your review.",
+      "failed": "The review could not be saved",
+      "awaiting": "{count} awaiting review"
+    }
   },
   "Bans": {
     "title": "Bans",
@@ -1862,7 +1892,9 @@
       "assignmentGone": "This session no longer has homework. Reload the page."
     },
     "assignmentUploadNote": "An uploaded file is added to the homework at once; you need not save the syllabus for it.",
-    "assignmentUploadedBody": "{name} was added to the homework."
+    "assignmentUploadedBody": "{name} was added to the homework.",
+    "reviewUploadNote": "The file is saved at once; the talebe sees it when you send the review.",
+    "reviewUploadedBody": "{name} was added to the review."
   },
   "Recordings": {
     "title": "Course recordings",

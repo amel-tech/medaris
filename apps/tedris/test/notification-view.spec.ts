@@ -113,6 +113,25 @@ describe("describeNotification (tedris/36 sentences)", () => {
     expect(notificationHref(n)).toBe(`/courses/${COURSE}/lessons/${SESSION}`);
   });
 
+  it("words a homework review and leads to the session's page", () => {
+    const n = notification({
+      type: "SUBMISSION_REVIEWED",
+      targetType: "SESSION",
+      targetId: SESSION,
+      params: {
+        courseTitle: "Emsile ve Bina",
+        courseId: COURSE,
+        sessionLabel: "Birinci bab",
+      },
+    });
+    expect(describeAs(n)).toMatchObject({
+      title: "Ödevin değerlendirildi",
+      body: "Emsile ve Bina dersinin Birinci bab celsesine teslim ettiğin ödev değerlendirildi.",
+    });
+    expect(notificationIcon("SUBMISSION_REVIEWED")).toBe("note");
+    expect(notificationHref(n)).toBe(`/courses/${COURSE}/lessons/${SESSION}`);
+  });
+
   it("words a recording whose session has no start without one (MDRS-283)", () => {
     const text = describeAs(
       notification({
@@ -196,7 +215,7 @@ describe("describeNotification (tedris/36 sentences)", () => {
 
   it("has a sentence for every type in every language", () => {
     const types = Object.keys(resources.tr.tedris.NotificationsPage.types);
-    expect(types).toHaveLength(10);
+    expect(types).toHaveLength(11);
     for (const locale of ["tr", "en", "ar"] as const) {
       for (const type of types) {
         const text = describeAs(

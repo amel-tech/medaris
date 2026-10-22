@@ -90,6 +90,12 @@ export const fileRoutes = {
   /** GET: a file a talebe handed in, for a holder of `submission.read` */
   submissionFile: (courseId: string, fileId: string) =>
     `/api/files/courses/${seg(courseId)}/submissions/${seg(fileId)}`,
+  /** POST: a file of the review of a talebe's homework (`submission.read`) */
+  submissionReview: (courseId: string, submissionId: string) =>
+    `/api/files/courses/${seg(courseId)}/reviews/${seg(submissionId)}`,
+  /** GET: that file, for a holder of `submission.read` */
+  submissionReviewFile: (courseId: string, fileId: string) =>
+    `/api/files/courses/${seg(courseId)}/review-files/${seg(fileId)}`,
 } as const;
 
 // ---- before a file is sent ------------------------------------------------------------

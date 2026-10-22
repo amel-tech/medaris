@@ -16,6 +16,39 @@ import { type StoredFile, storedFileOf } from "../files/files";
 export const homeworkHref = (courseId: string): string =>
   `/ders/${encodeURIComponent(courseId)}/odevler`;
 
+/** The longest review note, in characters: tedrisat's limit. */
+export const REVIEW_NOTE_MAX = 4000;
+
+/** The course team's review of a homework, as the row shows it. */
+export interface HomeworkReview {
+  note: string | null;
+  /** ISO time it was last sent to the talebe; null while it is not sent */
+  reviewedAt: string | null;
+  /** who last sent it, else null for an account tedrisat has not seen sign in */
+  reviewer: string | null;
+  /** oldest first; those added before sending included */
+  files: Array<StoredFile & { id: string }>;
+}
+
+/** Where a homework stands with the course team. */
+export type ReviewStatus = "none" | "draft" | "sent" | "changedSince";
+
+/**
+ * "Değerlendirilmedi" with no review or only files not sent yet ("draft"),
+ * "Değerlendirildi" once sent, and "Değerlendirmeden sonra değişti" when the
+ * talebe changed it after the last sending.
+ */
+export function reviewStatus(
+  row: Pick<HomeworkRow, "review" | "updatedAt">
+): ReviewStatus {
+  const review = row.review;
+  if (!review) return "none";
+  if (!review.reviewedAt) return "draft";
+  return new Date(row.updatedAt) > new Date(review.reviewedAt)
+    ? "changedSince"
+    : "sent";
+}
+
 /** One talebe's homework on a celse, as a row of its table. */
 export interface HomeworkRow {
   id: string;
@@ -26,6 +59,8 @@ export interface HomeworkRow {
   updatedAt: string;
   /** oldest first */
   files: Array<StoredFile & { id: string }>;
+  /** the course team's review; null while there is none, sent or not */
+  review: HomeworkReview | null;
 }
 
 /** A celse of the filter, with the homework handed in on it. */
@@ -52,13 +87,33 @@ export interface HandIns {
   talebeCount: number;
 }
 
-const rowOf = (item: CourseSubmissionResponse): HomeworkRow => ({
+export const rowOf = (item: CourseSubmissionResponse): HomeworkRow => ({
   id: item.id,
   talebe: item.talebe.name,
   note: item.note,
   updatedAt: new Date(item.updatedAt).toISOString(),
   files: item.files.map((file) => ({ id: file.id, ...storedFileOf(file) })),
+  review: item.review
+    ? {
+        note: item.review.note,
+        reviewedAt: item.review.reviewedAt
+          ? new Date(item.review.reviewedAt).toISOString()
+          : null,
+        reviewer: item.review.reviewer?.name ?? null,
+        files: item.review.files.map((file) => ({
+          id: file.id,
+          ...storedFileOf(file),
+        })),
+      }
+    : null,
 });
+
+/** The number of homework not reviewed yet among the rows: sent nothing, or changed since. */
+export const awaitingReview = (rows: readonly HomeworkRow[]): number =>
+  rows.filter((row) => {
+    const status = reviewStatus(row);
+    return status !== "sent";
+  }).length;
 
 /**
  * The course's celses in programme order (week, then the order within it),

@@ -21,6 +21,7 @@ import { lessonQuestions } from "../database/schema/lesson-question.schema";
 import {
   lessonSubmissions,
   submissionFiles,
+  submissionReviewFiles,
 } from "../database/schema/lesson-submission.schema";
 import {
   partnerCourseCodes,
@@ -205,7 +206,8 @@ export async function deleteLessonResources(
 }
 
 /**
- * Deletes the talebe's homework on the given lessons (MDRS-290), files first,
+ * Deletes the talebe's homework on the given lessons (MDRS-290), files first
+ * (theirs and the course team's review files),
  * inside the caller's transaction, and marks every file's object for removal
  * from storage once it commits. Shared by every purge that deletes lessons.
  */
@@ -222,9 +224,14 @@ export async function deleteLessonSubmissions(
     .delete(submissionFiles)
     .where(inArray(submissionFiles.submissionId, submissionIds))
     .returning({ key: submissionFiles.storageKey });
+  // The course team's review files go with the homework they answer.
+  const reviewed = await tx
+    .delete(submissionReviewFiles)
+    .where(inArray(submissionReviewFiles.submissionId, submissionIds))
+    .returning({ key: submissionReviewFiles.storageKey });
   await enqueueStorageDeletions(
     tx,
-    removed.map((f) => f.key),
+    [...removed, ...reviewed].map((f) => f.key),
     reason
   );
   await tx

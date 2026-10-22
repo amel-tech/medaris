@@ -24,6 +24,7 @@ const ICONS: Record<string, IconName> = {
   RECORDING_ADDED: "video",
   KOSK_APPLICATION_RESULT: "kosk",
   DECK_PUBLISH_RESULT: "cards",
+  SUBMISSION_REVIEWED: "note",
 };
 
 const PLACEHOLDERS = [

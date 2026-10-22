@@ -27,6 +27,13 @@ import {
     SubmissionTalebeResponseToJSON,
     SubmissionTalebeResponseToJSONTyped,
 } from './SubmissionTalebeResponse';
+import type { SubmissionReviewResponse } from './SubmissionReviewResponse';
+import {
+    SubmissionReviewResponseFromJSON,
+    SubmissionReviewResponseFromJSONTyped,
+    SubmissionReviewResponseToJSON,
+    SubmissionReviewResponseToJSONTyped,
+} from './SubmissionReviewResponse';
 
 /**
  * 
@@ -71,6 +78,12 @@ export interface CourseSubmissionResponse {
      */
     files: Array<SubmissionFileResponse>;
     /**
+     * The course team's review. For the talebe: null until it is sent. For the course team: null while there is neither a sent review nor a review file.
+     * @type {SubmissionReviewResponse}
+     * @memberof CourseSubmissionResponse
+     */
+    review: SubmissionReviewResponse | null;
+    /**
      * 
      * @type {string}
      * @memberof CourseSubmissionResponse
@@ -100,6 +113,7 @@ export function instanceOfCourseSubmissionResponse(value: object): value is Cour
     if (!('createdAt' in value) || value['createdAt'] === undefined) return false;
     if (!('updatedAt' in value) || value['updatedAt'] === undefined) return false;
     if (!('files' in value) || value['files'] === undefined) return false;
+    if (!('review' in value) || value['review'] === undefined) return false;
     if (!('lessonTitle' in value) || value['lessonTitle'] === undefined) return false;
     if (!('weekNumber' in value) || value['weekNumber'] === undefined) return false;
     if (!('talebe' in value) || value['talebe'] === undefined) return false;
@@ -122,6 +136,7 @@ export function CourseSubmissionResponseFromJSONTyped(json: any, ignoreDiscrimin
         'createdAt': (new Date(json['createdAt'])),
         'updatedAt': (new Date(json['updatedAt'])),
         'files': ((json['files'] as Array<any>).map(SubmissionFileResponseFromJSON)),
+        'review': SubmissionReviewResponseFromJSON(json['review']),
         'lessonTitle': json['lessonTitle'],
         'weekNumber': json['weekNumber'],
         'talebe': SubmissionTalebeResponseFromJSON(json['talebe']),
@@ -145,6 +160,7 @@ export function CourseSubmissionResponseToJSONTyped(value?: CourseSubmissionResp
         'createdAt': ((value['createdAt']).toISOString()),
         'updatedAt': ((value['updatedAt']).toISOString()),
         'files': ((value['files'] as Array<any>).map(SubmissionFileResponseToJSON)),
+        'review': SubmissionReviewResponseToJSON(value['review']),
         'lessonTitle': value['lessonTitle'],
         'weekNumber': value['weekNumber'],
         'talebe': SubmissionTalebeResponseToJSON(value['talebe']),

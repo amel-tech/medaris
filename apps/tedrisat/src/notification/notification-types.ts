@@ -21,6 +21,8 @@ export const NOTIFICATION_TYPES = [
   "RECORDING_ADDED",
   "KOSK_APPLICATION_RESULT",
   "DECK_PUBLISH_RESULT",
+  // The course team sent its review of the talebe's homework on a celse.
+  "SUBMISSION_REVIEWED",
   // Nizam side (MDRS-179): what a köşk nazımı or Medaris nazımı is told.
   "COURSE_BAN_PLACED",
   "KOSK_BAN_PLACED",
