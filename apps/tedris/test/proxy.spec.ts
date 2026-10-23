@@ -9,8 +9,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import proxy, { config } from "../proxy";
 
 /**
- * tedris's `proxy.ts` (Next 16): MDRS-274's locale move for an auth page,
- * then `@medaris/auth`'s gate and renewal, then next-intl. Nothing here
+ * tedris's `proxy.ts` (Next 16): an address from before MDRS-248 loses its
+ * language, then `@medaris/auth`'s gate and renewal. Nothing here
  * reaches Keycloak: a live session was confirmed a moment ago (no `userinfo`
  * check due) and has minutes left (no refresh due), and a session that no
  * longer opens ends without asking anyone.
@@ -89,9 +89,9 @@ describe("the matcher", () => {
 
   it.each([
     "/",
-    "/tr/discover",
-    "/en/my-courses",
-    "/tr/decks/a.b",
+    "/discover",
+    "/my-courses",
+    "/decks/a.b",
     "/api/auth/session",
     "/api/lessons/l1/calendar",
     "/api/decks/d1/export",
@@ -122,16 +122,16 @@ describe("the matcher", () => {
 
 describe("a visitor (MDRS-122, MDRS-216)", () => {
   it.each([
-    "/tr/discover",
-    "/tr/home",
-    "/tr/kosks/k1",
-    "/en/madrasahs/m1",
-    "/ar/courses/c1",
-    "/tr/decks/d0000000-0000-4000-8000-000000000001",
-    "/tr/decks/study/d0000000-0000-4000-8000-000000000001",
-    "/tr/auth/signin",
-    "/tr/auth/register",
-    "/tr/auth/signout",
+    "/discover",
+    "/home",
+    "/kosks/k1",
+    "/madrasahs/m1",
+    "/courses/c1",
+    "/decks/d0000000-0000-4000-8000-000000000001",
+    "/decks/study/d0000000-0000-4000-8000-000000000001",
+    "/auth/signin",
+    "/auth/register",
+    "/auth/signout",
   ])("reads the public page %s", async (path) => {
     const response = await visit(path);
     expect(response.status).toBe(200);
@@ -139,42 +139,42 @@ describe("a visitor (MDRS-122, MDRS-216)", () => {
   });
 
   it("is sent to sign in from a protected page, in its language, and back to it", async () => {
-    const response = await visit("/en/my-courses?tab=done");
+    const response = await visit("/my-courses?tab=done");
     expect(response.status).toBe(307);
     expect(signInRedirect(response)).toBe(
-      `/en/auth/signin?callbackUrl=${encodeURIComponent("/en/my-courses?tab=done")}`
+      `/auth/signin?callbackUrl=${encodeURIComponent("/my-courses?tab=done")}`
     );
   });
 
   it("keeps a lesson behind the sign-in, whatever the course page shows", async () => {
-    const response = await visit("/tr/courses/c1/lessons/l1");
+    const response = await visit("/courses/c1/lessons/l1");
     expect(signInRedirect(response)).toBe(
-      `/tr/auth/signin?callbackUrl=${encodeURIComponent("/tr/courses/c1/lessons/l1")}`
+      `/auth/signin?callbackUrl=${encodeURIComponent("/courses/c1/lessons/l1")}`
     );
   });
 
   it("gates a page with a dot in its path, which the old matcher skipped (B11)", async () => {
-    const response = await visit("/tr/decks/create.v2");
+    const response = await visit("/decks/create.v2");
     expect(response.status).toBe(307);
   });
 
   it("is not redirected from an API route or a Server Action: they answer for themselves", async () => {
     expect((await visit("/api/lessons/l1/calendar")).status).toBe(200);
-    expect((await visit("/tr/my-courses", { action: true })).status).toBe(200);
+    expect((await visit("/my-courses", { action: true })).status).toBe(200);
   });
 });
 
 describe("a session that is over (MDRS-216)", () => {
   it("reads a public page as the visitor and drops the dead cookie", async () => {
-    const response = await visit("/tr/discover", { cookie: deadCookie });
+    const response = await visit("/discover", { cookie: deadCookie });
     expect(response.status).toBe(200);
     expect(dropsSession(response)).toBe(true);
   });
 
   it("goes to sign in from a protected page and drops the dead cookie", async () => {
-    const response = await visit("/tr/schedule", { cookie: deadCookie });
+    const response = await visit("/schedule", { cookie: deadCookie });
     expect(signInRedirect(response)).toBe(
-      `/tr/auth/signin?callbackUrl=${encodeURIComponent("/tr/schedule")}`
+      `/auth/signin?callbackUrl=${encodeURIComponent("/schedule")}`
     );
     expect(dropsSession(response)).toBe(true);
   });
@@ -182,29 +182,33 @@ describe("a session that is over (MDRS-216)", () => {
 
 describe("a signed-in talebe", () => {
   it("reaches a protected page, and the page learns where it is for a later sign-in", async () => {
-    const response = await visit("/tr/my-courses", {
+    const response = await visit("/my-courses", {
       cookie: await liveCookie(),
     });
     expect(response.status).toBe(200);
     expect(response.headers.get("location")).toBeNull();
     expect(
       response.headers.get(`x-middleware-request-${RETURN_TO_HEADER}`)
-    ).toBe("/tr/my-courses");
+    ).toBe("/my-courses");
   });
 
-  it("goes through next-intl, which still adds the locale", async () => {
+  it("is served the page as asked, with no language added to the address", async () => {
     const response = await visit("/my-courses", { cookie: await liveCookie() });
-    expect(signInRedirect(response)).toBe("/tr/my-courses");
+    expect(response.headers.get("location")).toBeNull();
   });
 });
 
-describe("an auth page asked for without a locale (MDRS-274)", () => {
-  it("moves under the locale of the page the visitor was stopped on", async () => {
-    const response = await visit(
-      `/auth/signin?callbackUrl=${encodeURIComponent("/en/courses/c1")}`
-    );
-    expect(signInRedirect(response)).toBe(
-      `/en/auth/signin?callbackUrl=${encodeURIComponent("/en/courses/c1")}`
-    );
+describe("an address from before MDRS-248", () => {
+  it("moves to the same page without the language, query kept", async () => {
+    for (const locale of ["tr", "en", "ar"]) {
+      const response = await visit(`/${locale}/courses/c1?tab=kayitlar`);
+      expect(response.status).toBe(308);
+      expect(signInRedirect(response)).toBe("/courses/c1?tab=kayitlar");
+    }
+    expect(signInRedirect(await visit("/en"))).toBe("/");
+  });
+
+  it("leaves a page whose first segment only looks like a language", async () => {
+    expect((await visit("/trivia")).status).not.toBe(308);
   });
 });

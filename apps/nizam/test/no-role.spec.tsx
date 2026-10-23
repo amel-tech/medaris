@@ -26,7 +26,7 @@ const render = async (
       email: "zeynep.karahanli@example.com",
       tedrisUrl: "http://localhost:4000",
       failed: false,
-      retryHref: "/tr/yetki-yok",
+      retryHref: "/yetki-yok",
       ...props,
     })
   );
@@ -60,7 +60,7 @@ describe("Yönetim yetkiniz yok (nizam 03)", () => {
     const html = await render({ failed: true });
     expect(html).not.toContain("Yönetim yetkiniz yok");
     expect(html).toContain("Görevleriniz okunamadı");
-    expect(html).toMatch(/<a[^>]*href="\/tr\/yetki-yok"[^>]*>Tekrar dene<\/a>/);
+    expect(html).toMatch(/<a[^>]*href="\/yetki-yok"[^>]*>Tekrar dene<\/a>/);
     expect(html).toContain('role="alert"');
   });
 });

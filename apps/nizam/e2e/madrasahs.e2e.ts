@@ -35,7 +35,7 @@ async function signIn(
   page: Page,
   who: { email?: string; password?: string }
 ): Promise<void> {
-  await page.goto("/tr/auth/signin");
+  await page.goto("/auth/signin");
   await page.locator("#username").fill(who.email as string);
   await page.locator("#password").fill(who.password as string);
   await page.locator("button[type=submit]").click();
@@ -54,7 +54,7 @@ const tabCount = (page: Page, name: string) =>
     .locator(".mds-tab__count");
 
 const openMedreseler = async (page: Page, query = "") => {
-  await page.goto(`/tr/medreseler${query}`);
+  await page.goto(`/medreseler${query}`);
   await expect(
     page.getByRole("heading", { level: 1, name: "Medreseler" })
   ).toBeVisible();
@@ -128,7 +128,7 @@ test("nizam/07 — the warning names the passive medrese, the status tab narrows
   await expect(rowOf(page, fixture.hidden.name)).toBeVisible();
   await expect(rowOf(page, fixture.active.name)).toHaveCount(0);
 
-  await page.goto(`/tr/medreseler?q=${encodeURIComponent(fixture.tail)}`);
+  await page.goto(`/medreseler?q=${encodeURIComponent(fixture.tail)}`);
   await expect(
     page.locator("[data-testid=madrasahs] tbody tr:visible")
   ).toHaveCount(4);
@@ -357,7 +357,7 @@ test("nizam/06 — a Medaris nazımı is not the başnazım: Medreseler shows 'B
   );
   await fixture.makeMedarisNazim(MEDARIS_NAZIM.sub as string);
   await signIn(page, MEDARIS_NAZIM);
-  await page.goto("/tr/medreseler");
+  await page.goto("/medreseler");
   await expect(
     page.getByRole("heading", { level: 1, name: "Bu bölüm için izniniz yok" })
   ).toBeVisible();
@@ -365,7 +365,7 @@ test("nizam/06 — a Medaris nazımı is not the başnazım: Medreseler shows 'B
 });
 
 const openHosting = async (page: Page, koskId = fixture.koskId) => {
-  await page.goto(`/tr/kosks/${koskId}/ayarlar/barindirma`);
+  await page.goto(`/kosks/${koskId}/ayarlar/barindirma`);
   await expect(
     page.getByRole("heading", { level: 1, name: "Barındırma hakları" })
   ).toBeVisible();
@@ -536,7 +536,7 @@ test("nizam/26 — someone who does not manage the köşk gets 'Bu bölüm için
 }) => {
   test.skip(!(seedable && KOSK_NAZIM.password), "no köşk nazım account");
   await signIn(page, KOSK_NAZIM);
-  await page.goto(`/tr/kosks/${fixture.otherKoskId}/ayarlar/barindirma`);
+  await page.goto(`/kosks/${fixture.otherKoskId}/ayarlar/barindirma`);
   await expect(
     page.getByRole("heading", { level: 1, name: "Bu bölüm için izniniz yok" })
   ).toBeVisible();

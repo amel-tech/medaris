@@ -18,7 +18,7 @@ import {
   DropdownMenuTrigger,
 } from "@medaris/ui/components/dropdown-menu";
 import NextLink from "next/link";
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 import { UserAvatar } from "~/features/user-avatar";
 import { authPages } from "~/lib/auth_pages";
 import { Link } from "~/lib/i18n/navigation";
@@ -31,7 +31,6 @@ type UserHeaderMenuProps = {
 
 export const UserHeaderMenu = ({ imageIssuer }: UserHeaderMenuProps) => {
   const t = useTranslations("tedris");
-  const locale = useLocale();
   const { user } = useSession();
 
   // The session ended under the page (a sign-out in another Medaris app,
@@ -80,7 +79,7 @@ export const UserHeaderMenu = ({ imageIssuer }: UserHeaderMenuProps) => {
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
-          <NextLink href={`/${locale}${authPages.signOut}`} prefetch={false}>
+          <NextLink href={`${authPages.signOut}`} prefetch={false}>
             <SignOutIcon className="text-neutral-primary" />
             <p className="text-neutral-primary text-sm">
               {t("UserHeaderMenu.signOut")}

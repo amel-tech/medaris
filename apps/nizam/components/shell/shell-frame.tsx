@@ -21,7 +21,6 @@ import {
   currentKoskId,
   isBarePath,
   type ShellVariant,
-  stripLocale,
 } from "~/lib/shell-nav";
 
 export interface ShellModel {
@@ -81,9 +80,8 @@ export function ShellFrame({
   footer?: ReactNode;
   children: ReactNode;
 }) {
-  const pathname = usePathname();
+  const here = usePathname() || "/";
   const locale = useLocale();
-  const here = stripLocale(pathname, locales);
   if (isBarePath(here)) {
     return (
       <>
@@ -102,8 +100,7 @@ export function ShellFrame({
   const kosk = model.kosks.find((k) => k.id === koskId) ?? null;
 
   const resolve = (path: string) =>
-    `/${locale}${path.replace(":kosk", koskId ?? "")}`.replace(/\/$/, "") ||
-    `/${locale}`;
+    `${path.replace(":kosk", koskId ?? "")}`.replace(/\/$/, "") || `/`;
 
   // A köşk's menu without a köşk has nowhere to point: leave those items out.
   const groups = model.groups
@@ -155,8 +152,8 @@ export function ShellFrame({
           label: k.name,
           // on a köşk's home page the switch keeps the page (nizam 02)
           href: HOME_OF_KOSK.test(here)
-            ? `/${locale}/kosks/${k.id}/ana-sayfa`
-            : `/${locale}/kosks/${k.id}`,
+            ? `/kosks/${k.id}/ana-sayfa`
+            : `/kosks/${k.id}`,
         }))}
         caption={model.labels.kosk}
         actionLabel={model.labels.switchKosk}
@@ -164,7 +161,7 @@ export function ShellFrame({
     ) : undefined;
 
   const account = (
-    <a className="mds-nav-user" href={`/${locale}${ACCOUNT_PATH}`}>
+    <a className="mds-nav-user" href={`${ACCOUNT_PATH}`}>
       <Avatar name={model.user.name} decorative />
       <span className="mds-nav-user__text">
         <span className="mds-nav-user__name">
@@ -194,7 +191,7 @@ export function ShellFrame({
   );
 
   const brand = (size: "sm" | "md") => (
-    <a href={`/${locale}`} className="no-underline">
+    <a href={`/`} className="no-underline">
       <Logo app="nizam" size={size} wordmark />
     </a>
   );
@@ -228,7 +225,7 @@ export function ShellFrame({
               {model.variant === "none" ? null : (
                 <a
                   className="mds-btn mds-icon-btn mds-btn--large mds-btn--ghost"
-                  href={`/${locale}/bildirimler`}
+                  href={`/bildirimler`}
                   aria-label={model.labels.bell}
                 >
                   <Icon name="bell" />

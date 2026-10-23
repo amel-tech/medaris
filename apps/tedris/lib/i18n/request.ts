@@ -1,9 +1,9 @@
 import { resources } from "@medaris/i18n";
+import { LOCALE_COOKIE } from "@medaris/ui/lib/locale-preference";
 import { resolveTimeZone, TIME_ZONE_COOKIE } from "@medaris/utils";
 import { cookies } from "next/headers";
-import { hasLocale } from "next-intl";
 import { getRequestConfig } from "next-intl/server";
-import { routing } from "./routing";
+import { localeOf } from "./routing";
 
 const resolveMessagesForLang = async (
   locale: keyof typeof resources,
@@ -20,11 +20,10 @@ const resolveMessagesForLang = async (
   return messages;
 };
 
-export default getRequestConfig(async ({ requestLocale }) => {
-  const requested = await requestLocale;
-  const locale = hasLocale(routing.locales, requested)
-    ? requested
-    : routing.defaultLocale;
+// The language is the viewer's choice, not the address (MDRS-248).
+export default getRequestConfig(async () => {
+  const jar = await cookies();
+  const locale = localeOf(jar.get(LOCALE_COOKIE)?.value);
 
   const messages = await resolveMessagesForLang(
     locale,
@@ -36,9 +35,7 @@ export default getRequestConfig(async ({ requestLocale }) => {
   // own zone, and the browser then disagrees while hydrating (MDRS-110). The
   // viewer's zone arrives in a cookie that `TimeZoneSync` keeps; until it
   // exists, server and browser both use the default.
-  const timeZone = resolveTimeZone(
-    (await cookies()).get(TIME_ZONE_COOKIE)?.value
-  );
+  const timeZone = resolveTimeZone(jar.get(TIME_ZONE_COOKIE)?.value);
 
   return {
     locale,

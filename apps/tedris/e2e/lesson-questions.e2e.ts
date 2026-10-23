@@ -39,7 +39,7 @@ test.afterAll(async () => {
 });
 
 const questionsTab = (courseId = fixture.courseId) =>
-  `/tr/courses/${courseId}?tab=sorularim`;
+  `/courses/${courseId}?tab=sorularim`;
 
 /** The card of the caller's question on this session. */
 const card = (page: Page, sessionTitle: string) =>
@@ -134,7 +134,7 @@ test.describe("the enrolled talebe", () => {
       bunny,
       endedBare,
     } = fixture.sessions;
-    await page.goto(`/tr/courses/${fixture.courseId}/lessons/${live.id}`);
+    await page.goto(`/courses/${fixture.courseId}/lessons/${live.id}`);
     await expect(
       page.getByRole("main").getByText("Şu an canlı").first()
     ).toBeVisible();
@@ -183,7 +183,7 @@ test.describe("the enrolled talebe", () => {
     page,
   }) => {
     const { youtube, live } = fixture.sessions;
-    await page.goto(`/tr/courses/${fixture.courseId}/lessons/${youtube.id}`);
+    await page.goto(`/courses/${fixture.courseId}/lessons/${youtube.id}`);
     await page
       .getByRole("main")
       .getByRole("link", { name: "Kaydı izle" })
@@ -216,7 +216,7 @@ test.describe("the enrolled talebe", () => {
     await expect(card(page, youtube.title)).toContainText("yef‘ulu");
 
     // owner's decision 4: while the stream is on air, questions go to its chat
-    await page.goto(`/tr/courses/${fixture.courseId}/lessons/${live.id}/izle`);
+    await page.goto(`/courses/${fixture.courseId}/lessons/${live.id}/izle`);
     await expect(page.getByTitle("Canlı sohbet")).toBeVisible();
     await expect(page.getByRole("region", { name: "Soru sor" })).toHaveCount(0);
   });
@@ -250,7 +250,7 @@ test.describe("the enrolled talebe", () => {
       (url) => url.hostname.endsWith("mediadelivery.net"),
       (route) => route.abort()
     );
-    await page.goto(`/tr/courses/${fixture.courseId}/lessons/${s.id}/izle`);
+    await page.goto(`/courses/${fixture.courseId}/lessons/${s.id}/izle`);
     await expect(card(page, s.title)).toContainText("Cevaplandı");
     await expect(card(page, s.title).locator("strong")).toHaveText("eyn");
     await page.goto(questionsTab());

@@ -1,5 +1,4 @@
 import { authPages, registerPage } from "./auth_pages";
-import { locales } from "./i18n/routing";
 
 const uuidPattern =
   "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
@@ -39,7 +38,7 @@ export const publicPagePatterns = [
 ];
 
 const publicPathnameRegex = new RegExp(
-  `^(/(${locales.join("|")}))?(${[...publicPages, ...publicPagePatterns].join("|")})?/?$`,
+  `^(${[...publicPages, ...publicPagePatterns].join("|")})/?$`,
   "i"
 );
 

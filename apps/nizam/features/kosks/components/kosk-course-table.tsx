@@ -121,7 +121,7 @@ export function KoskCourseTable({
             ) : (
               <a
                 className="mds-link font-semibold"
-                href={`/${locale}/kosks/${koskId}/courses/${row.id}`}
+                href={`/kosks/${koskId}/courses/${row.id}`}
               >
                 <bdi>{row.title}</bdi>
               </a>
@@ -272,7 +272,7 @@ export function KoskCourseTable({
                             key={action}
                             variant="ghost"
                             size="small"
-                            href={`/${locale}/kosks/${koskId}/courses/${row.id}/curriculum`}
+                            href={`/kosks/${koskId}/courses/${row.id}/curriculum`}
                             aria-label={t("editLabel", { name: row.title })}
                           >
                             {t("edit")}

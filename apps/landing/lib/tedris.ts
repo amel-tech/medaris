@@ -8,11 +8,8 @@ import { landingEntryHref } from "~/lib/tedris-entry";
 // "Giriş yap" and "Kayıt ol" use MDRS-101's /api/tedris/<intent> route, which
 // opens Keycloak's sign-in or registration form in one click.
 
-/** The default locale of tedris-web, which every landing page sends visitors to. */
-const TEDRIS_LOCALE = "tr";
-
-export const signInHref = landingEntryHref("signin", TEDRIS_LOCALE);
-export const registerHref = landingEntryHref("register", TEDRIS_LOCALE);
+export const signInHref = landingEntryHref("signin");
+export const registerHref = landingEntryHref("register");
 
 /** Keşfet, which tedris opens to a signed-out visitor. Redirected per request by app/tedris. */
 export const exploreHref = "/tedris/discover";
@@ -25,9 +22,6 @@ export function redirectToTedris(path: string): Response {
   }
   const base = new URL(env.TEDRIS_APP_URL);
   const prefix = base.pathname.replace(/\/+$/, "");
-  const target = new URL(
-    `${prefix}/${TEDRIS_LOCALE}/${path.replace(/^\/+/, "")}`,
-    base
-  );
+  const target = new URL(`${prefix}/${path.replace(/^\/+/, "")}`, base);
   return Response.redirect(target, 307);
 }

@@ -9,12 +9,8 @@ import proxy from "../proxy";
 const appDir = join(__dirname, "..", "app");
 
 describe("nizam's logo link (MDRS-101)", () => {
-  it("points at a page that exists under [locale]", () => {
-    const dir = join(
-      appDir,
-      "[locale]",
-      ...homeHref.split("/").filter(Boolean)
-    );
+  it("points at a page that exists", () => {
+    const dir = join(appDir, ...homeHref.split("/").filter(Boolean));
     const groups = existsSync(dir)
       ? readdirSync(dir, { withFileTypes: true })
           .filter((entry) => entry.isDirectory() && /^\(.+\)$/.test(entry.name))
@@ -28,23 +24,12 @@ describe("nizam's logo link (MDRS-101)", () => {
     expect(isPublicPath(homeHref)).toBe(true);
   });
 
-  it("resolves through the proxy to a locale-prefixed page", async () => {
+  it("is served as it is, with no language added to the address (MDRS-248)", async () => {
     const response = await proxy(
       new NextRequest(`http://localhost:4001${homeHref}`, {
-        headers: { "accept-language": "tr" },
+        headers: { "accept-language": "en" },
       })
     );
-    // next-intl adds the locale; it does not send the visitor to sign in.
-    const location = response.headers.get("location") ?? "";
-    expect(new URL(location).pathname).toBe("/tr");
-  });
-
-  it("leaves no page outside [locale], where it could never resolve", () => {
-    const strays = readdirSync(appDir, { withFileTypes: true })
-      .filter((entry) => entry.isDirectory())
-      .map((entry) => entry.name)
-      .filter((name) => name !== "[locale]" && name !== "api")
-      .filter((name) => existsSync(join(appDir, name, "page.tsx")));
-    expect(strays).toEqual([]);
+    expect(response.headers.get("location")).toBeNull();
   });
 });

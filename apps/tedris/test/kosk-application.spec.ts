@@ -113,7 +113,7 @@ describe("Köşk açma başvurusu (design tedris/37)", () => {
     const cancel = [...host.querySelectorAll("a")].find((a) =>
       a.textContent?.includes("Vazgeç")
     );
-    expect(cancel?.getAttribute("href")).toBe("/tr/discover");
+    expect(cancel?.getAttribute("href")).toBe("/discover");
     expect(mocks.submit).not.toHaveBeenCalled();
   });
 

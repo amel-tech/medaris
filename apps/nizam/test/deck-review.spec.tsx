@@ -374,9 +374,9 @@ describe("KoskDecksView (nizam 30)", () => {
     const html = render(
       <KoskDecksView koskId="k1" koskName="Nûruosmaniye Köşkü" initial={data} />
     );
-    expect(html).toContain('href="/tr/kosks/k1/desteler/yeni?oneri=p1"');
-    expect(html).toContain('href="/tr/kosks/k1/desteler/yeni"');
-    expect(html).toContain('href="/tr/decks/d1/cards"');
+    expect(html).toContain('href="/kosks/k1/desteler/yeni?oneri=p1"');
+    expect(html).toContain('href="/kosks/k1/desteler/yeni"');
+    expect(html).toContain('href="/decks/d1/cards"');
   });
 
   it("leaves the proposals block out when there are none", () => {

@@ -18,9 +18,9 @@ const MEDARIS_NAZIM = account("MEDARIS_NAZIM");
 
 const seedable = Boolean(MUDERRIS.sub && MEDARIS_NAZIM.sub);
 
-// `/tr` sends a köşk nazımı on to the home page of the first köşk they manage
+// `/` sends a köşk nazımı on to the home page of the first köşk they manage
 // (MDRS-182), so "home" for them is that page.
-const KOSK_HOME = /\/tr\/kosks\/[0-9a-f-]{36}\/ana-sayfa$/;
+const KOSK_HOME = /\/kosks\/[0-9a-f-]{36}\/ana-sayfa$/;
 const HOME = /\/tr(\/kosks\/[0-9a-f-]{36}\/ana-sayfa)?$/;
 let fixture: NizamFixture;
 
@@ -40,7 +40,7 @@ async function signIn(
   page: Page,
   who: { email?: string; password?: string }
 ): Promise<void> {
-  await page.goto("/tr/auth/signin");
+  await page.goto("/auth/signin");
   await page.locator("#username").fill(who.email as string);
   await page.locator("#password").fill(who.password as string);
   await page.locator("button[type=submit]").click();
@@ -52,8 +52,8 @@ test("a müderris who is not a nazım lands on 'Bu işler Nazar'da' with the sam
 }) => {
   test.skip(!(seedable && MUDERRIS.password), "no müderris account");
   await signIn(page, MUDERRIS);
-  await page.goto("/tr");
-  await page.waitForURL(/\/tr\/nazar-yonlendirme$/);
+  await page.goto("/");
+  await page.waitForURL(/\/nazar-yonlendirme$/);
 
   await expect(
     page.getByRole("heading", {
@@ -83,7 +83,7 @@ test("a müderris who is not a nazım lands on 'Bu işler Nazar'da' with the sam
 test("'Nazar'a git' goes to the Nazar address", async ({ page }) => {
   test.skip(!(seedable && MUDERRIS.password), "no müderris account");
   await signIn(page, MUDERRIS);
-  await page.goto("/tr/nazar-yonlendirme");
+  await page.goto("/nazar-yonlendirme");
   const go = page.getByRole("link", { name: "Nazar’a git" });
   await expect(go).toHaveAttribute("href", /localhost:4002/);
 });
@@ -98,9 +98,9 @@ test("a köşk nazım is not sent to Nazar", async ({ page }) => {
   const managed = await seedShell({ nazim: KOSK_NAZIM.sub as string });
   try {
     await signIn(page, KOSK_NAZIM);
-    await page.goto("/tr");
+    await page.goto("/");
     await expect(page).toHaveURL(KOSK_HOME);
-    await page.goto("/tr/nazar-yonlendirme");
+    await page.goto("/nazar-yonlendirme");
     await expect(page).toHaveURL(KOSK_HOME);
   } finally {
     await managed.remove();
@@ -119,7 +119,7 @@ test("a route the account has no page for shows 'Bu bölüm için izniniz yok' i
   const managed = await seedShell({ nazim: KOSK_NAZIM.sub as string });
   try {
     await signIn(page, KOSK_NAZIM);
-    await page.goto("/tr/izin-gruplari");
+    await page.goto("/izin-gruplari");
     await expect(
       page.getByRole("heading", { name: "Bu bölüm için izniniz yok" })
     ).toBeVisible();
@@ -143,11 +143,11 @@ test("a köşk id that does not exist shows the same screen", async ({
     "no köşk nazım account"
   );
   await signIn(page, KOSK_NAZIM);
-  await page.goto("/tr/kosks/a0000000-0000-4000-8000-0000000000ff");
+  await page.goto("/kosks/a0000000-0000-4000-8000-0000000000ff");
   await expect(
     page.getByRole("heading", { name: "Bu bölüm için izniniz yok" })
   ).toBeVisible();
-  await page.goto("/tr/kosks/not-a-uuid");
+  await page.goto("/kosks/not-a-uuid");
   await expect(
     page.getByRole("heading", { name: "Bu bölüm için izniniz yok" })
   ).toBeVisible();
@@ -164,7 +164,7 @@ test("a path no page answers, under the köşk the nazım manages, is 'Sayfa bul
   const managed = await seedShell({ nazim: KOSK_NAZIM.sub as string });
   try {
     await signIn(page, KOSK_NAZIM);
-    await page.goto(`/tr/kosks/${managed.koskId}/celseler`);
+    await page.goto(`/kosks/${managed.koskId}/celseler`);
     await expect(
       page.getByRole("heading", { name: "Sayfa bulunamadı" })
     ).toBeVisible();

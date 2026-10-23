@@ -271,7 +271,7 @@ export async function AccountPage({
             <p className="mds-body-sm">{t("signOutText")}</p>
             <div>
               <Button
-                href={`/${locale}/auth/signout`}
+                href={`/auth/signout`}
                 variant="secondary"
                 iconLeft={<Icon name="signOut" />}
               >

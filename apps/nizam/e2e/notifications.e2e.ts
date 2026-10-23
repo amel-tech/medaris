@@ -27,7 +27,7 @@ async function signIn(
   page: Page,
   who: { email?: string; password?: string }
 ): Promise<void> {
-  await page.goto("/tr/auth/signin");
+  await page.goto("/auth/signin");
   await page.locator("#username").fill(who.email as string);
   await page.locator("#password").fill(who.password as string);
   await page.locator("button[type=submit]").click();
@@ -110,7 +110,7 @@ test("nizam/37 — the list groups the köşk nazımı's notifications by day, n
 }) => {
   test.skip(!seedable, "no köşk nazım account");
   await signIn(page, KOSK_NAZIM);
-  await page.goto("/tr/bildirimler");
+  await page.goto("/bildirimler");
 
   await expect(
     page.getByRole("heading", { name: "Bildirimler", level: 1 })
@@ -135,7 +135,7 @@ test("nizam/37 — the list groups the köşk nazımı's notifications by day, n
   // the title leads to the köşk's Yasaklamalar
   await expect(
     first.getByRole("link", { name: "Yeni ders yasağı" })
-  ).toHaveAttribute("href", `/tr/kosks/${fixture?.koskId}/yasaklamalar`);
+  ).toHaveAttribute("href", `/kosks/${fixture?.koskId}/yasaklamalar`);
 });
 
 test("nizam/37 — 'Okunmamış' lists only the unread, and the tab counts agree with the rows (criterion 2)", async ({
@@ -143,7 +143,7 @@ test("nizam/37 — 'Okunmamış' lists only the unread, and the tab counts agree
 }) => {
   test.skip(!seedable, "no köşk nazım account");
   await signIn(page, KOSK_NAZIM);
-  await page.goto("/tr/bildirimler");
+  await page.goto("/bildirimler");
 
   await expect(page.getByRole("tab", { name: /^Tümü/ })).toContainText("5");
   await expect(page.getByRole("tab", { name: /^Okunmamış/ })).toContainText(
@@ -161,7 +161,7 @@ test("nizam/37 — 'Okundu say' makes one row read and lowers every counter: tab
 }) => {
   test.skip(!seedable, "no köşk nazım account");
   await signIn(page, KOSK_NAZIM);
-  await page.goto("/tr/bildirimler");
+  await page.goto("/bildirimler");
 
   await expect(bell(page)).toHaveAttribute(
     "aria-label",
@@ -197,7 +197,7 @@ test("nizam/37 — 'Tümünü okundu say' reads everything: no 'Yeni', zero unre
 }) => {
   test.skip(!seedable, "no köşk nazım account");
   await signIn(page, KOSK_NAZIM);
-  await page.goto("/tr/bildirimler");
+  await page.goto("/bildirimler");
 
   await page.getByRole("button", { name: "Tümünü okundu say" }).click();
   await expect(page.getByRole("tab", { name: /^Okunmamış/ })).toContainText(
@@ -220,7 +220,7 @@ test("nizam/37 — the 'Yasaklar' chip keeps the ban rows and leaves out other k
 }) => {
   test.skip(!seedable, "no köşk nazım account");
   await signIn(page, KOSK_NAZIM);
-  await page.goto("/tr/bildirimler");
+  await page.goto("/bildirimler");
 
   await expect(rows(page)).toHaveCount(5);
   await page.getByRole("button", { name: "Yasaklar", exact: true }).click();
@@ -240,7 +240,7 @@ test("nizam/37 — the 'Yasaklar' chip keeps the ban rows and leaves out other k
 
 test("nizam/37 — a signed-out visitor is sent to sign in", async ({ page }) => {
   test.skip(!seedable, "no köşk nazım account");
-  await page.goto("/tr/bildirimler");
+  await page.goto("/bildirimler");
   await expect(page).toHaveURL(/auth\/signin|realms\//);
 });
 
@@ -256,7 +256,7 @@ test("nizam/46 — a ban placed by the köşk nazımı reaches the Medaris nazı
   try {
     await signIn(page, KOSK_NAZIM);
     await page.goto(
-      `/tr/kosks/${fixture?.koskId}/courses/${fixture?.course.id}/students`
+      `/kosks/${fixture?.koskId}/courses/${fixture?.course.id}/students`
     );
     await page.getByRole("tab", { name: /^Kayıtlı/ }).click();
     await page
@@ -272,7 +272,7 @@ test("nizam/46 — a ban placed by the köşk nazımı reaches the Medaris nazı
     const other = await browser.newContext();
     const medarisPage = await other.newPage();
     await signIn(medarisPage, MEDARIS_NAZIM);
-    await medarisPage.goto("/tr/bildirimler");
+    await medarisPage.goto("/bildirimler");
     await expect(
       medarisPage.locator("#main").getByText("Köşklerde konan yasaklar.")
     ).toBeVisible();
@@ -287,7 +287,7 @@ test("nizam/46 — a ban placed by the köşk nazımı reaches the Medaris nazı
     await other.close();
 
     // the one who placed it is not told of their own act: still the seeded five
-    await page.goto("/tr/bildirimler");
+    await page.goto("/bildirimler");
     await expect(rows(page)).toHaveCount(5);
   } finally {
     await medaris.remove();

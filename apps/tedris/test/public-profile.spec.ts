@@ -241,7 +241,7 @@ describe("the gender, once the account holds it (#317)", () => {
       (a) => a.textContent === "Değiştir"
     );
     expect(change?.getAttribute("href")).toBe(
-      "/api/auth/signin?action=UPDATE_PROFILE&callbackUrl=%2Ftr%2Faccount%2Fpublic-profile&locale=tr"
+      "/api/auth/signin?action=UPDATE_PROFILE&callbackUrl=%2Faccount%2Fpublic-profile&locale=tr"
     );
   });
 

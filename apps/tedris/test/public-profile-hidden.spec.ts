@@ -59,7 +59,7 @@ afterEach(() => {
 });
 
 const page = async () =>
-  (await import("../app/[locale]/account/public-profile/page")).default;
+  (await import("../app/account/public-profile/page")).default;
 
 const hesap = async () => {
   const { AccountSettings } = await import(
@@ -102,7 +102,7 @@ describe("the public profile is hidden (MDRS-141)", () => {
       []
     );
     expect(host.textContent).not.toContain("Herkese açık profil");
-    expect(links(host)).toContain("/tr/account/calendar");
+    expect(links(host)).toContain("/account/calendar");
     expect(host.textContent).toContain("Kişisel bilgiler");
   });
 });
@@ -123,7 +123,7 @@ describe("turning the public profile back on is the one constant (MDRS-141)", ()
 
   it("gives the Hesap card and its link back", async () => {
     const host = await hesap();
-    expect(links(host)).toContain("/tr/account/public-profile");
+    expect(links(host)).toContain("/account/public-profile");
     expect(host.textContent).toContain("Herkese açık profil");
   });
 });

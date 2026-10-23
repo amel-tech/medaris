@@ -56,9 +56,9 @@ describe("the footer links to the privacy notice (MDRS-102)", () => {
     );
   });
 
-  it("is rendered by the [locale] layout, so on every page", () => {
+  it("is rendered by the root layout, so on every page", () => {
     const layout = readFileSync(
-      join(__dirname, "..", "app", "[locale]", "layout.tsx"),
+      join(__dirname, "..", "app", "layout.tsx"),
       "utf8"
     );
     expect(layout).toMatch(/<LegalFooter \/>/);

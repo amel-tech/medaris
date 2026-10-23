@@ -45,7 +45,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 const signIn = async (page: Page) => {
-  await page.goto("/tr/auth/signin");
+  await page.goto("/auth/signin");
   await page.locator("#username").fill(talebe.email as string);
   await page.locator("#password").fill(talebe.password as string);
   await page.locator("button[type=submit]").click();
@@ -71,7 +71,7 @@ test.describe("Programım (tedris/21)", () => {
     page,
   }) => {
     const t = fixture.titles;
-    const response = await page.goto("/tr/schedule");
+    const response = await page.goto("/schedule");
     expect(response?.status()).toBe(200);
     const main = page.getByRole("main");
     await expect(
@@ -120,7 +120,7 @@ test.describe("Programım (tedris/21)", () => {
     page,
   }) => {
     const t = fixture.titles;
-    await page.goto("/tr/schedule");
+    await page.goto("/schedule");
     const cancelled = row(page, t.a2);
     await expect(cancelled.getByText("İptal edildi")).toBeVisible();
     await expect(cancelled.getByText("Bu celse iptal edildi.")).toBeVisible();
@@ -136,10 +136,10 @@ test.describe("Programım (tedris/21)", () => {
     page,
   }) => {
     const t = fixture.titles;
-    await page.goto("/tr/schedule");
+    await page.goto("/schedule");
     await expect(shown(page, t.b2)).toHaveCount(0);
     await page.getByRole("link", { name: "Sonraki yedi günü göster" }).click();
-    await expect(page).toHaveURL(/\/tr\/schedule\?from=\d{4}-\d{2}-\d{2}/);
+    await expect(page).toHaveURL(/\/schedule\?from=\d{4}-\d{2}-\d{2}/);
     await expect(shown(page, t.b2)).toBeVisible();
     await expect(shown(page, t.a1)).toHaveCount(0);
     await page.getByRole("link", { name: "Bugüne dön" }).click();
@@ -155,14 +155,14 @@ test.describe("Programım (tedris/21)", () => {
   });
 
   test("a bad ?from= falls back to today", async ({ page }) => {
-    await page.goto("/tr/schedule?from=bugün");
+    await page.goto("/schedule?from=bugün");
     await expect(shown(page, fixture.titles.a1)).toBeVisible();
   });
 });
 
 test.describe("Takvime ekle (tedris/22)", () => {
   test("opens three rows and a note, and closes with Esc", async ({ page }) => {
-    await page.goto("/tr/schedule");
+    await page.goto("/schedule");
     await page
       .getByRole("button", { name: `Takvime ekle: ${fixture.titles.a1}` })
       .click();
@@ -184,7 +184,7 @@ test.describe("Takvime ekle (tedris/22)", () => {
   test("Google opens a pre-filled event in a new tab, with the session page and no meeting link", async ({
     page,
   }) => {
-    await page.goto("/tr/schedule");
+    await page.goto("/schedule");
     await page
       .getByRole("button", { name: `Takvime ekle: ${fixture.titles.b1}` })
       .click();
@@ -224,7 +224,7 @@ test.describe("Takvime ekle (tedris/22)", () => {
   test("the .ics file holds one event with a stable UID and no meeting link", async ({
     page,
   }) => {
-    await page.goto("/tr/schedule");
+    await page.goto("/schedule");
     await page
       .getByRole("button", { name: `Takvime ekle: ${fixture.titles.b1}` })
       .click();
@@ -243,14 +243,14 @@ test.describe("Takvime ekle (tedris/22)", () => {
   test("'Tüm derslerime abone ol' goes to the subscription", async ({
     page,
   }) => {
-    await page.goto("/tr/schedule");
+    await page.goto("/schedule");
     await page
       .getByRole("button", { name: `Takvime ekle: ${fixture.titles.a1}` })
       .click();
     await page
       .getByRole("menuitem", { name: "Tüm derslerime abone ol" })
       .click();
-    await expect(page).toHaveURL(/\/tr\/account\/calendar/);
+    await expect(page).toHaveURL(/\/account\/calendar/);
     await expect(
       page.getByRole("heading", { level: 1, name: "Takvim aboneliği" })
     ).toBeVisible();
@@ -260,7 +260,7 @@ test.describe("Takvime ekle (tedris/22)", () => {
     page,
   }) => {
     await page.goto(
-      `/tr/courses/${fixture.courseIds.a}/lessons/${fixture.ids.a1}`
+      `/courses/${fixture.courseIds.a}/lessons/${fixture.ids.a1}`
     );
     await page.getByRole("button", { name: "Takvime ekle" }).click();
     await expect(page.getByRole("menuitem")).toHaveText([
@@ -270,7 +270,7 @@ test.describe("Takvime ekle (tedris/22)", () => {
     ]);
     await page.keyboard.press("Escape");
     await page.goto(
-      `/tr/courses/${fixture.courseIds.a}/lessons/${fixture.ids.a2}`
+      `/courses/${fixture.courseIds.a}/lessons/${fixture.ids.a2}`
     );
     await expect(
       page.getByRole("heading", { level: 1, name: fixture.titles.a2 })
@@ -297,7 +297,7 @@ test.describe("Takvim aboneliği (tedris/23)", () => {
     request,
   }) => {
     const t = fixture.titles;
-    await page.goto("/tr/account/calendar");
+    await page.goto("/account/calendar");
     await expect(
       page.getByRole("heading", { level: 1, name: "Takvim aboneliği" })
     ).toBeVisible();
@@ -387,7 +387,7 @@ test.describe("Takvim aboneliği (tedris/23)", () => {
     context,
   }) => {
     await context.grantPermissions(["clipboard-read", "clipboard-write"]);
-    await page.goto("/tr/account/calendar");
+    await page.goto("/account/calendar");
     await page.getByRole("button", { name: "Bağlantı oluştur" }).click();
     const google = await page.locator("#calendar-google").inputValue();
     const apple = await page.locator("#calendar-apple").inputValue();
@@ -409,8 +409,8 @@ test.describe("Takvim aboneliği (tedris/23)", () => {
   });
 
   test("the old address redirects here", async ({ page }) => {
-    await page.goto("/tr/learning/calendar");
-    await expect(page).toHaveURL(/\/tr\/account\/calendar/);
+    await page.goto("/learning/calendar");
+    await expect(page).toHaveURL(/\/account\/calendar/);
   });
 });
 
@@ -418,7 +418,7 @@ test.describe("the signed-in phone menu (tedris/44)", () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
   const open = async (page: Page) => {
-    await page.goto("/tr/home");
+    await page.goto("/home");
     await page.getByRole("button", { name: "Menü" }).click();
     return page.getByRole("dialog", { name: "Ana menü" });
   };
@@ -443,7 +443,7 @@ test.describe("the signed-in phone menu (tedris/44)", () => {
     );
     await expect(sheet.getByText("Çıkış yap")).toHaveCount(0);
     const person = sheet.locator("a.mds-nav-user");
-    await expect(person).toHaveAttribute("href", /\/tr\/account$/);
+    await expect(person).toHaveAttribute("href", /\/account$/);
     await expect(person.locator(".mds-nav-user__role")).toHaveText("Talebe");
   });
 
@@ -452,7 +452,7 @@ test.describe("the signed-in phone menu (tedris/44)", () => {
   }) => {
     const sheet = await open(page);
     await sheet.getByRole("link", { name: "Programım" }).click();
-    await expect(page).toHaveURL(/\/tr\/schedule/);
+    await expect(page).toHaveURL(/\/schedule/);
     await expect(page.getByRole("dialog", { name: "Ana menü" })).toHaveCount(0);
     await expect(
       page.getByRole("heading", { level: 1, name: "Programım" })
@@ -471,7 +471,7 @@ test.describe("the signed-in phone menu (tedris/44)", () => {
   test("Ana sayfa shows the next session as a card with its page and the calendar", async ({
     page,
   }) => {
-    await page.goto("/tr/home");
+    await page.goto("/home");
     const main = page.getByRole("main");
     await expect(
       main.getByRole("heading", { name: /Selâmün aleyküm/ })

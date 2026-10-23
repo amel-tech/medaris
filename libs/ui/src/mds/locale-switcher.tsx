@@ -1,32 +1,19 @@
 "use client";
 
-import {
-  LOCALE_NAMES,
-  localeHref,
-  storeLocale,
-} from "../lib/locale-preference";
+import { LOCALE_NAMES, storeLocale } from "../lib/locale-preference";
 import { Icon } from "./icon";
 import { Menu } from "./menu";
 import { Select } from "./select";
 
 /**
- * Stores `next` and loads the same page in it. A full load rather than a
- * client navigation: `<html lang dir>`, the fonts and every server-rendered
- * string follow the locale segment, and a language change is rare. An app
- * with no locale segment (Nazar, `routed: false`) reloads the same address,
- * whose server render reads the cookie.
+ * Stores `next` and reloads the same address, whose server render reads the
+ * cookie (MDRS-248). A full load rather than a client refresh: `<html lang
+ * dir>`, the fonts and every server-rendered string follow the language, and
+ * a language change is rare.
  */
-export const switchLocale = (
-  next: string,
-  locales: readonly string[],
-  routed = true
-) => {
+export const switchLocale = (next: string) => {
   storeLocale(next);
-  if (routed) {
-    window.location.assign(localeHref(next, locales, window.location));
-  } else {
-    window.location.reload();
-  }
+  window.location.reload();
 };
 
 interface LocaleChoiceProps {
@@ -75,7 +62,7 @@ export function LocaleMenu({
             <span className="mds-icon mds-icon--sm" aria-hidden="true" />
           ),
         disabled: value === locale,
-        onSelect: () => switchLocale(value, locales),
+        onSelect: () => switchLocale(value),
       }))}
     />
   );
@@ -86,12 +73,8 @@ export function LocaleSelect({
   locale,
   locales,
   label,
-  routed = true,
   className,
-}: LocaleChoiceProps & {
-  /** false for an app whose addresses carry no locale segment */
-  routed?: boolean;
-}) {
+}: LocaleChoiceProps) {
   return (
     <Select
       aria-label={label}
@@ -102,7 +85,7 @@ export function LocaleSelect({
       }))}
       value={locale}
       onChange={(next) => {
-        if (next && next !== locale) switchLocale(next, locales, routed);
+        if (next && next !== locale) switchLocale(next);
       }}
     />
   );

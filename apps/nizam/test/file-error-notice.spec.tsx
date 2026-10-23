@@ -14,7 +14,7 @@ const toast = vi.hoisted(() => ({ error: vi.fn() }));
 vi.mock("@medaris/ui/components/sonner", () => ({ toast }));
 
 const words = resources.tr.nizam.Curriculum.downloadErrors;
-const PAGE = "/tr/kosks/k1/courses/c1/curriculum";
+const PAGE = "/kosks/k1/courses/c1/curriculum";
 
 beforeEach(() => toast.error.mockClear());
 afterEach(async () => {

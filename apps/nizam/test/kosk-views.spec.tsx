@@ -187,7 +187,7 @@ describe("KosksDirectory (nizam 09)", () => {
   it("gives a köşk nazımı neither 'Köşk aç' nor 'Arşiv'", () => {
     const html = view(directory([hiddenRow]), { chief: false });
     expect(html).not.toContain("Köşk aç");
-    expect(html).not.toContain('href="/tr/arsiv"');
+    expect(html).not.toContain('href="/arsiv"');
   });
 
   it("gives 'Geri al' by the row's canRestore, not by who the viewer is (MDRS-143)", () => {
@@ -279,8 +279,8 @@ describe("KoskSettings (nizam 24)", () => {
 
   it("draws the tabs with their counts and the sections of the design", () => {
     const html = view();
-    expect(html).toContain('href="/tr/kosks/k1/ayarlar/nazimlar"');
-    expect(html).toContain('href="/tr/kosks/k1/ayarlar/barindirma"');
+    expect(html).toContain('href="/kosks/k1/ayarlar/nazimlar"');
+    expect(html).toContain('href="/kosks/k1/ayarlar/barindirma"');
     for (const text of [
       "Köşk bilgileri",
       "Görünürlük",
@@ -376,7 +376,7 @@ describe("NazimsView (nizam 25 and 21)", () => {
   it("gives the başnazım 'Köşk nazımı ekle' and a way back to the köşk list", () => {
     const html = view([nazim()], { chief: true });
     expect(html).toContain("Köşk nazımı ekle");
-    expect(html).toContain('href="/tr/kosks"');
+    expect(html).toContain('href="/kosks"');
     expect(html).not.toContain("buradan değiştiremezsiniz");
   });
 

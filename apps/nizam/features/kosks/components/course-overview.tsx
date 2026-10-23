@@ -77,7 +77,7 @@ export function CourseOverview({
   const { busy, decided, decide } = useDecisions(kosk.id);
   const now = useMemo(() => new Date(), []);
   const refresh = () => startTransition(() => router.refresh());
-  const base = `/${locale}/kosks/${kosk.id}`;
+  const base = `/kosks/${kosk.id}`;
   const editHref = `${base}/courses/${course.id}/edit`;
 
   const sessions = upcomingSessions(course, now);

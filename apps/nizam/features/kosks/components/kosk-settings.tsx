@@ -62,7 +62,7 @@ export function KoskSettings({ kosk, nazimCount, hostingCount }: Props) {
   const dirty = isDirty(form, base);
   const show = (key: keyof typeof errors) =>
     sent && errors[key] ? t(`errors.${errors[key]}` as never) : undefined;
-  const settingsBase = `/${locale}/kosks/${base.id}/ayarlar`;
+  const settingsBase = `/kosks/${base.id}/ayarlar`;
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -286,7 +286,7 @@ export function KoskSettings({ kosk, nazimCount, hostingCount }: Props) {
         onOpenChange={setHiding}
         koskId={base.id}
         koskName={base.name}
-        onHidden={() => router.push(`/${locale}/kosks`)}
+        onHidden={() => router.push(`/kosks`)}
       />
     </div>
   );

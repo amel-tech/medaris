@@ -4,7 +4,7 @@ import { useSession } from "@medaris/auth/client";
 import { textFontsHref } from "@medaris/tokens/medaris-fonts";
 import { Button } from "@medaris/ui/mds/button";
 import { SystemState } from "@medaris/ui/mds/system-state";
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 
 /**
  * The system's faces for the pages below. A not-found or error boundary
@@ -30,14 +30,13 @@ export function SystemPageAssets() {
  * Where "back home" goes: the home page for a signed-in visitor, the landing
  * page `/` for one who is not (design tedris/38).
  */
-export function homeHref(locale: string, signedIn: boolean): string {
-  return signedIn ? `/${locale}/home` : `/${locale}`;
+export function homeHref(signedIn: boolean): string {
+  return signedIn ? `/home` : `/`;
 }
 
 const useHomeHref = () => {
-  const locale = useLocale();
   const { status } = useSession();
-  return homeHref(locale, status === "authenticated");
+  return homeHref(status === "authenticated");
 };
 
 /** Design tedris/38: a page that does not exist, or one the API answered 404 for. */
@@ -75,7 +74,6 @@ export interface ForbiddenStateProps {
  */
 export function ForbiddenState({ deck }: ForbiddenStateProps) {
   const t = useTranslations("tedris.SystemPages");
-  const locale = useLocale();
   const home = useHomeHref();
   return (
     <>
@@ -86,7 +84,7 @@ export function ForbiddenState({ deck }: ForbiddenStateProps) {
         title={t("forbiddenTitle")}
         action={
           deck ? (
-            <Button href={`/${locale}/decks/${deck.id}`} variant="secondary">
+            <Button href={`/decks/${deck.id}`} variant="secondary">
               {t("forbiddenDeckAction")}
             </Button>
           ) : (

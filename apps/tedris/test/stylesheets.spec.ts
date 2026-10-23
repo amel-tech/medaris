@@ -28,8 +28,8 @@ import { beforeAll, describe, expect, it } from "vitest";
 const APP = resolve(__dirname, "..");
 const require = createRequire(join(APP, "package.json"));
 
-/** Documents drawn without the locale layout: each loads one sheet of its own. */
-const STANDALONE = ["app/not-found.tsx", "app/global-error.tsx"];
+/** Documents drawn without the root layout: each loads one sheet of its own. */
+const STANDALONE = ["app/global-error.tsx"];
 
 const walk = (dir: string): string[] =>
   readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {

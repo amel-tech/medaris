@@ -12,7 +12,7 @@ const state = vi.hoisted(() => ({
   kosks: [] as { id: string; name: string }[],
   pending: {} as Record<string, number>,
   unread: 0,
-  pathname: "/tr",
+  pathname: "/",
   permissions: null as string[] | null,
 }));
 
@@ -74,7 +74,7 @@ beforeEach(() => {
   state.session = {
     user: { name: "Abdülhamit Karaosmanoğlu", email: "a@x.t" },
   };
-  state.pathname = "/tr";
+  state.pathname = "/";
   state.kosks = [];
   state.pending = {};
   state.unread = 0;
@@ -101,7 +101,7 @@ describe("the shell of a köşk nazımı (nizam/52, nizam/31)", () => {
   });
 
   it("names the köşk in scope, outside the nav, with the viewer's role", async () => {
-    state.pathname = "/tr/kosks/k1/basvurular";
+    state.pathname = "/kosks/k1/basvurular";
     const aside = sidebarNav(await render());
     expect(aside).toContain("Köşk değiştir:");
     expect(aside).toContain("Nûruosmaniye Köşkü");
@@ -113,7 +113,7 @@ describe("the shell of a köşk nazımı (nizam/52, nizam/31)", () => {
   });
 
   it("lists the groups and items of the canvas, and marks the page", async () => {
-    state.pathname = "/tr/kosks/k1/basvurular";
+    state.pathname = "/kosks/k1/basvurular";
     const nav =
       /<nav[\s\S]*?<\/nav>/.exec(sidebarNav(await render()))?.[0] ?? "";
     expect(text(nav).filter((s) => !/^\d+$/.test(s))).toEqual([
@@ -133,25 +133,25 @@ describe("the shell of a köşk nazımı (nizam/52, nizam/31)", () => {
       "Köşk ayarları",
     ]);
     expect(nav).toMatch(
-      /<a[^>]*aria-current="page"[^>]*href="\/tr\/kosks\/k1\/basvurular"/
+      /<a[^>]*aria-current="page"[^>]*href="\/kosks\/k1\/basvurular"/
     );
     expect((nav.match(/aria-current="page"/g) ?? []).length).toBe(1);
   });
 
   it("shows the count of waiting applications for the köşk in scope, read as 'bekleyen'", async () => {
-    state.pathname = "/tr/kosks/k1/basvurular";
+    state.pathname = "/kosks/k1/basvurular";
     const nav = sidebarNav(await render());
     expect(nav).toMatch(/mds-nav-item__count">5<span[^>]*> bekleyen</);
   });
 
   it("follows the köşk in the path: another köşk, another count (none for zero)", async () => {
-    state.pathname = "/tr/kosks/k2/courses/c1/students";
+    state.pathname = "/kosks/k2/courses/c1/students";
     const nav = sidebarNav(await render());
-    expect(nav).toContain("/tr/kosks/k2/basvurular");
+    expect(nav).toContain("/kosks/k2/basvurular");
     expect(nav).not.toContain("mds-nav-item__count");
     // a course's roster draws Dersler selected: the köşk-wide Talebeler is not built (MDRS-211)
     expect(nav).toMatch(
-      /<a[^>]*aria-current="page"[^>]*href="\/tr\/kosks\/k2\/dersler"/
+      /<a[^>]*aria-current="page"[^>]*href="\/kosks\/k2\/dersler"/
     );
     expect(nav).not.toMatch(/\/kosks\/k2\/(celseler|talebeler|ders-kayitlari)/);
   });
@@ -175,7 +175,7 @@ describe("the unread notifications (MDRS-179, canvas rule 10)", () => {
     state.unread = 3;
     const html = await render();
     expect(sidebarNav(html)).toMatch(
-      /href="\/tr\/bildirimler"[\s\S]*?mds-nav-item__count">3<span[^>]*> okunmamış</
+      /href="\/bildirimler"[\s\S]*?mds-nav-item__count">3<span[^>]*> okunmamış</
     );
     expect(html).toContain('aria-label="Bildirimler, 3 okunmamış"');
   });
@@ -190,7 +190,7 @@ describe("the unread notifications (MDRS-179, canvas rule 10)", () => {
 
   it("points the person row at Hesap, not at the sign-out card", async () => {
     const aside = sidebarNav(await render());
-    expect(aside).toMatch(/<a[^>]*mds-nav-user[^>]*href="\/tr\/hesap"/);
+    expect(aside).toMatch(/<a[^>]*mds-nav-user[^>]*href="\/hesap"/);
   });
 });
 
@@ -250,11 +250,11 @@ describe("the other menus", () => {
   it("gives a köşk nazımı an Ana sayfa inside their köşk's path (nizam/02)", async () => {
     state.me = { systemAdmin: false, assignments: [{ role: "KOSK_NAZIM" }] };
     state.kosks = [{ id: "k1", name: "Nûruosmaniye Köşkü" }];
-    state.pathname = "/tr/kosks/k1/ana-sayfa";
+    state.pathname = "/kosks/k1/ana-sayfa";
     const html = await render();
-    expect(html).toContain('href="/tr/kosks/k1/ana-sayfa"');
+    expect(html).toContain('href="/kosks/k1/ana-sayfa"');
     // it is the page the viewer is on
-    expect(html).toContain('aria-current="page" href="/tr/kosks/k1/ana-sayfa"');
+    expect(html).toContain('aria-current="page" href="/kosks/k1/ana-sayfa"');
   });
 
   it("gives an account with no role the brand and the person only (nizam/03)", async () => {

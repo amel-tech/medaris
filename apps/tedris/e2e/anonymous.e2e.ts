@@ -54,7 +54,7 @@ test.describe("Keşfet (tedris/09)", () => {
   test("opens with no account and lists the köşks without a follow button", async ({
     page,
   }) => {
-    const response = await page.goto(`/tr/discover?q=${fx.tag}`);
+    const response = await page.goto(`/discover?q=${fx.tag}`);
     expect(response?.status()).toBe(200);
     await expect(page).not.toHaveURL(/signin/);
     const main = page.getByRole("main");
@@ -69,7 +69,7 @@ test.describe("Keşfet (tedris/09)", () => {
   test("lists only the medreses that have opened a course, and counts them", async ({
     page,
   }) => {
-    await page.goto(`/tr/discover?q=${fx.tag}`);
+    await page.goto(`/discover?q=${fx.tag}`);
     const main = page.getByRole("main");
     await expect(main.getByText("3 köşk ve 1 medrese")).toBeVisible();
     await expect(main.getByText(fx.madrasahs.suleymaniye.name)).toBeVisible();
@@ -77,7 +77,7 @@ test.describe("Keşfet (tedris/09)", () => {
   });
 
   test("counts only published courses", async ({ page }) => {
-    await page.goto(`/tr/discover?q=${fx.tag}`);
+    await page.goto(`/discover?q=${fx.tag}`);
     const card = page
       .locator(".mds-card")
       .filter({ hasText: fx.kosks.nur.name })
@@ -89,7 +89,7 @@ test.describe("Keşfet (tedris/09)", () => {
   test("invites the visitor to sign in or register instead of offering a köşk application", async ({
     page,
   }) => {
-    await page.goto(`/tr/discover?q=${fx.tag}`);
+    await page.goto(`/discover?q=${fx.tag}`);
     const main = page.getByRole("main");
     await expect(
       main.getByText("hesap açmadan da göz atabilirsin")
@@ -99,12 +99,12 @@ test.describe("Keşfet (tedris/09)", () => {
     ).toHaveCount(0);
     await expect(main.getByRole("link", { name: "giriş yap" })).toHaveAttribute(
       "href",
-      /callbackUrl=%2Ftr%2Fdiscover/
+      /callbackUrl=%2Fdiscover/
     );
   });
 
   test("goes to the köşk page without signing in", async ({ page }) => {
-    await page.goto(`/tr/discover?q=${fx.tag}`);
+    await page.goto(`/discover?q=${fx.tag}`);
     await page
       .getByRole("main")
       .getByRole("link", { name: fx.kosks.nur.name })
@@ -116,7 +116,7 @@ test.describe("Keşfet (tedris/09)", () => {
   });
 
   test("sends 'giriş yap' to Keycloak", async ({ page }) => {
-    await page.goto(`/tr/discover?q=${fx.tag}`);
+    await page.goto(`/discover?q=${fx.tag}`);
     await page
       .getByRole("main")
       .getByRole("link", { name: "giriş yap" })
@@ -125,7 +125,7 @@ test.describe("Keşfet (tedris/09)", () => {
   });
 
   test("sends 'kayıt ol' to Keycloak's registration form", async ({ page }) => {
-    await page.goto(`/tr/discover?q=${fx.tag}`);
+    await page.goto(`/discover?q=${fx.tag}`);
     await page
       .getByRole("main")
       .getByRole("link", { name: "kayıt ol" })
@@ -141,7 +141,7 @@ test.describe("Keşfet (tedris/09)", () => {
       !(process.env.E2E_TALEBE_EMAIL && process.env.E2E_TALEBE_PASSWORD),
       "no Keycloak talebe in the environment"
     );
-    await page.goto(`/tr/discover?q=${fx.tag}`);
+    await page.goto(`/discover?q=${fx.tag}`);
     await page
       .getByRole("main")
       .getByRole("link", { name: "giriş yap" })
@@ -151,7 +151,7 @@ test.describe("Keşfet (tedris/09)", () => {
     await page.locator("#password").fill(process.env.E2E_TALEBE_PASSWORD ?? "");
     await page.locator("button[type=submit]").click();
     await page.waitForURL(/localhost:4000/, { timeout: 30_000 });
-    await expect(page).toHaveURL(/\/tr\/discover/);
+    await expect(page).toHaveURL(/\/discover/);
     // signed in now: the follow button is back, the invitation is gone
     await expect(
       page.getByRole("main").getByRole("button", { name: /Takip/ }).first()
@@ -162,7 +162,7 @@ test.describe("Keşfet (tedris/09)", () => {
   });
 
   test("keeps the other pages behind sign-in", async ({ page }) => {
-    for (const path of ["/tr/my-courses", "/tr/learning"]) {
+    for (const path of ["/my-courses", "/learning"]) {
       await page.goto(path);
       await expect(page).toHaveURL(/signin|\/realms\//);
     }
@@ -170,7 +170,7 @@ test.describe("Keşfet (tedris/09)", () => {
 });
 
 test.describe("köşk page (tedris/10)", () => {
-  const koskPage = (id: string) => `/tr/kosks/${id}`;
+  const koskPage = (id: string) => `/kosks/${id}`;
 
   test("shows the köşk, its manager and its published courses, with no follow button and no decks", async ({
     page,
@@ -204,7 +204,7 @@ test.describe("köşk page (tedris/10)", () => {
     await expect(main.getByRole("link", { name: "giriş yap" })).toHaveAttribute(
       "href",
       new RegExp(
-        `callbackUrl=${encodeURIComponent(`/tr/kosks/${fx.kosks.nur.id}`)}`
+        `callbackUrl=${encodeURIComponent(`/kosks/${fx.kosks.nur.id}`)}`
       )
     );
   });
@@ -231,7 +231,7 @@ test.describe("köşk page (tedris/10)", () => {
 });
 
 test.describe("medrese page (tedris/11)", () => {
-  const madrasahPage = (id: string) => `/tr/madrasahs/${id}`;
+  const madrasahPage = (id: string) => `/madrasahs/${id}`;
 
   test("shows the medrese with no enrollment badge, and invites the visitor", async ({
     page,
@@ -325,12 +325,12 @@ test.describe("what the API gives a caller with no token", () => {
 });
 
 test.describe("where a visitor starts (MDRS-256)", () => {
-  for (const path of ["/", "/tr", "/tr/home"]) {
+  for (const path of ["/", "/", "/home"]) {
     test(`${path} ends on Keşfet, and the bar has no Ana sayfa`, async ({
       page,
     }) => {
       await page.goto(path);
-      await expect(page).toHaveURL(/\/tr\/discover$/);
+      await expect(page).toHaveURL(/\/discover$/);
       // `exact`: the wordmark is named "Medaris Tedris, ana sayfa", and for a
       // visitor it opens Keşfet
       await expect(
@@ -342,7 +342,7 @@ test.describe("where a visitor starts (MDRS-256)", () => {
         page
           .getByRole("link", { name: "Medaris Tedris, ana sayfa" })
           .filter({ visible: true })
-      ).toHaveAttribute("href", "/tr/discover");
+      ).toHaveAttribute("href", "/discover");
     });
   }
 });
@@ -351,7 +351,7 @@ test.describe("phone menu (tedris/45)", () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
   const open = async (page: import("@playwright/test").Page) => {
-    await page.goto(`/tr/discover?q=${fx.tag}`);
+    await page.goto(`/discover?q=${fx.tag}`);
     await page.getByRole("button", { name: "Menü" }).click();
     return page.getByRole("dialog", { name: "Ana menü" });
   };
@@ -406,7 +406,7 @@ test.describe("phone menu (tedris/45)", () => {
   test("shows one bar on the phone: the old header steps aside", async ({
     page,
   }) => {
-    await page.goto(`/tr/discover?q=${fx.tag}`);
+    await page.goto(`/discover?q=${fx.tag}`);
     await expect(page.locator("[data-legacy-header]")).toBeHidden();
     await expect(page.locator("[data-legacy-tabs]")).toBeHidden();
     await expect(page.locator(".mds-appbar")).toBeVisible();

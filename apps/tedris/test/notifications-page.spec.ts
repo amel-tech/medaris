@@ -102,7 +102,7 @@ describe("notifications page (tedris/36)", () => {
       "Emsile ve Bina dersinin Paz 4 Ekim 20:00 celsesi iptal edildi."
     );
     expect((html.match(/>Yeni</g) ?? []).length).toBe(2);
-    expect(html).toContain(`href="/tr/courses/${COURSE}"`);
+    expect(html).toContain(`href="/courses/${COURSE}"`);
     // "Neler bildirilir" is there; the e-mail card part is not (SMTP).
     expect(html).toContain("Neler bildirilir");
     expect(html).not.toContain("E-posta tercihleri");

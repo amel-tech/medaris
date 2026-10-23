@@ -17,10 +17,10 @@ import { authenticatedAction } from "~/lib/authenticated-action";
 
 /** Every list and page that shows a deck. The routes are locale-prefixed, so the pattern, not a URL. */
 const revalidateDecks = () => {
-  revalidatePath("/[locale]/decks", "page");
-  revalidatePath("/[locale]/decks/explore", "page");
-  revalidatePath("/[locale]/decks/[id]", "page");
-  revalidatePath("/[locale]/decks/[id]/cards", "page");
+  revalidatePath("/decks", "page");
+  revalidatePath("/decks/explore", "page");
+  revalidatePath("/decks/[id]", "page");
+  revalidatePath("/decks/[id]/cards", "page");
 };
 
 export interface NewDeck {
@@ -184,6 +184,6 @@ export const rateFlashcard = async (
       createFlashcardProgressDto: [{ flashcardId, rating }],
     });
     revalidateDecks();
-    revalidatePath("/[locale]/home", "page");
+    revalidatePath("/home", "page");
     return rows;
   });

@@ -3,11 +3,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   LOCALE_COOKIE,
   localeCookieDomain,
-  localeHref,
-  pathInPreferredLocale,
+  readLocaleCookie,
   storeLocale,
+  withoutLocaleSegment,
 } from "../src/lib/locale-preference";
-import { LocaleMenu, switchLocale } from "../src/mds/locale-switcher";
+import { LocaleMenu } from "../src/mds/locale-switcher";
 import { cleanup, click, render, settle } from "./render";
 
 const LOCALES = ["tr", "en", "ar"] as const;
@@ -23,61 +23,30 @@ const clearCookie = () => {
   document.cookie = `${LOCALE_COOKIE}=; Path=/; Max-Age=0`;
 };
 
-describe("localeHref (MDRS-275)", () => {
-  const at = (pathname: string, search = "", hash = "") => ({
-    pathname,
-    search,
-    hash,
-  });
+describe("withoutLocaleSegment — an address from before MDRS-248", () => {
+  const at = (pathname: string, search = "") => ({ pathname, search });
 
-  it("swaps the locale segment and keeps the rest of the address", () => {
-    expect(localeHref("en", LOCALES, at("/tr/kosks/1", "?tab=a", "#x"))).toBe(
-      "/en/kosks/1?tab=a#x"
+  it("drops the language and keeps the page and its query", () => {
+    expect(withoutLocaleSegment(at("/en/courses/1", "?week=2"), LOCALES)).toBe(
+      "/courses/1?week=2"
     );
-    expect(localeHref("ar", LOCALES, at("/en"))).toBe("/ar");
-    expect(localeHref("tr", LOCALES, at("/en/"))).toBe("/tr");
+    expect(withoutLocaleSegment(at("/tr"), LOCALES)).toBe("/");
+    expect(withoutLocaleSegment(at("/ar/"), LOCALES)).toBe("/");
   });
 
-  it("puts the locale in front of an address that has none", () => {
-    expect(localeHref("en", LOCALES, at("/discover"))).toBe("/en/discover");
-    expect(localeHref("en", LOCALES, at("/"))).toBe("/en");
+  it("leaves an address with no language in it", () => {
+    expect(withoutLocaleSegment(at("/courses/1"), LOCALES)).toBeNull();
+    expect(withoutLocaleSegment(at("/"), LOCALES)).toBeNull();
+    expect(withoutLocaleSegment(at("/trivia"), LOCALES)).toBeNull();
+    expect(withoutLocaleSegment(at("/de/kosks"), LOCALES)).toBeNull();
   });
 });
 
-describe("pathInPreferredLocale — the proxy's move", () => {
-  const page = (pathname: string, more: Partial<{ method: string }> = {}) => ({
-    method: "GET",
-    pathname,
-    search: "?week=2",
-    isServerAction: false,
-    ...more,
-  });
-
-  it("moves a page in another language to the stored one, query kept", () => {
-    expect(pathInPreferredLocale(page("/tr/courses/1"), "en", LOCALES)).toBe(
-      "/en/courses/1?week=2"
-    );
-    expect(pathInPreferredLocale(page("/"), "ar", LOCALES)).toBe("/ar?week=2");
-  });
-
-  it("leaves a page already in it, and an unknown or missing choice", () => {
-    expect(pathInPreferredLocale(page("/en/kosks"), "en", LOCALES)).toBeNull();
-    expect(pathInPreferredLocale(page("/tr"), "de", LOCALES)).toBeNull();
-    expect(pathInPreferredLocale(page("/tr"), undefined, LOCALES)).toBeNull();
-  });
-
-  it("leaves what is not a page load", () => {
-    expect(pathInPreferredLocale(page("/api/me"), "en", LOCALES)).toBeNull();
-    expect(
-      pathInPreferredLocale(page("/tr", { method: "POST" }), "en", LOCALES)
-    ).toBeNull();
-    expect(
-      pathInPreferredLocale(
-        { ...page("/tr/kosks"), isServerAction: true },
-        "en",
-        LOCALES
-      )
-    ).toBeNull();
+describe("readLocaleCookie", () => {
+  it("reads one of the locales from a cookie header", () => {
+    expect(readLocaleCookie("a=1; medaris-locale=ar; b=2", LOCALES)).toBe("ar");
+    expect(readLocaleCookie("medaris-locale=de", LOCALES)).toBeUndefined();
+    expect(readLocaleCookie("", LOCALES)).toBeUndefined();
   });
 });
 
@@ -123,7 +92,7 @@ describe("LocaleMenu", () => {
       value: {
         protocol: "http:",
         hostname: "localhost",
-        pathname: "/tr/courses/1",
+        pathname: "/courses/1",
         search: "?week=2",
         hash: "",
         assign,
@@ -155,7 +124,7 @@ describe("LocaleMenu", () => {
     ]);
   });
 
-  it("choosing a language stores it and loads the same page in it", async () => {
+  it("choosing a language stores it and reloads the same address (MDRS-248)", async () => {
     const host = await render(
       <LocaleMenu locale="tr" locales={LOCALES} label="Dil" />
     );
@@ -166,12 +135,6 @@ describe("LocaleMenu", () => {
     ) as HTMLElement;
     await click(english);
     expect(cookieLocale()).toBe("en");
-    expect(assign).toHaveBeenCalledWith("/en/courses/1?week=2");
-  });
-
-  it("reloads the same address in an app without a locale segment (Nazar)", () => {
-    switchLocale("ar", LOCALES, false);
-    expect(cookieLocale()).toBe("ar");
     expect(reload).toHaveBeenCalledOnce();
     expect(assign).not.toHaveBeenCalled();
   });

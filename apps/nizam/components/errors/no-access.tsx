@@ -16,7 +16,7 @@ type Messages = (
  * Medaris başnazımı when the directory knows who that is, and says so in
  * general terms when it does not.
  */
-export async function NoAccess({ locale }: { locale: string }) {
+export async function NoAccess() {
   const [t, chiefNazim, session] = await Promise.all([
     getTranslations("nizam.NoAccess") as unknown as Promise<Messages>,
     getChiefNazimName(),
@@ -35,7 +35,7 @@ export async function NoAccess({ locale }: { locale: string }) {
               {t("account")} <code className="mds-mono">{email}</code>
             </p>
           ) : null}
-          <Button href={`/${locale}`} variant="secondary">
+          <Button href={`/`} variant="secondary">
             {t("back")}
           </Button>
         </div>

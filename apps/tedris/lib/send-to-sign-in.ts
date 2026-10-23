@@ -3,7 +3,7 @@ import {
   isUnauthenticated,
   type Unauthenticated,
 } from "@medaris/auth/client";
-import { locales } from "~/lib/i18n/routing";
+import { localeOf } from "~/lib/i18n/routing";
 
 /**
  * The client half of the one "unauthenticated" path (`@medaris/auth`): a
@@ -24,7 +24,7 @@ import { locales } from "~/lib/i18n/routing";
  */
 export function sendToSignIn(result: unknown): result is Unauthenticated {
   if (!isUnauthenticated(result)) return false;
-  const first = window.location.pathname.split("/")[1];
-  const locale = locales.find((candidate) => candidate === first);
-  return handleUnauthenticated(result, { locale });
+  return handleUnauthenticated(result, {
+    locale: localeOf(document.documentElement.lang),
+  });
 }

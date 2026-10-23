@@ -34,7 +34,7 @@ async function signIn(
   page: Page,
   who: { email?: string; password?: string }
 ): Promise<void> {
-  await page.goto("/tr/auth/signin");
+  await page.goto("/auth/signin");
   await page.locator("#username").fill(who.email as string);
   await page.locator("#password").fill(who.password as string);
   await page.locator("button[type=submit]").click();
@@ -42,7 +42,7 @@ async function signIn(
 }
 
 const studentsUrl = () =>
-  `/tr/kosks/${fixture.koskId}/courses/${fixture.course.id}/students`;
+  `/kosks/${fixture.koskId}/courses/${fixture.course.id}/students`;
 const openTab = async (page: Page, name: RegExp) => {
   await page.goto(studentsUrl());
   await page.getByRole("tab", { name }).click();

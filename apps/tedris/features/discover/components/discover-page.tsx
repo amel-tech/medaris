@@ -2,7 +2,7 @@ import { Alert } from "@medaris/ui/mds/alert";
 import { Button } from "@medaris/ui/mds/button";
 import { Card } from "@medaris/ui/mds/card";
 import { EmptyState } from "@medaris/ui/mds/empty-state";
-import { getLocale, getTranslations } from "next-intl/server";
+import { getTranslations } from "next-intl/server";
 import { AnonymousInvite } from "~/components/anonymous-invite";
 import type { LooseTranslator } from "~/lib/i18n/loose";
 import {
@@ -90,9 +90,8 @@ export const DiscoverPage = async ({
   signedIn?: boolean;
 }) => {
   const t = await getTranslations("tedris");
-  const locale = await getLocale();
   // Every link keeps the page's language: a path without one lands on Turkish.
-  const path = `/${locale}/discover`;
+  const path = `/discover`;
 
   return (
     <main className="font-ui mx-auto flex inline-full max-inline-content flex-col gap-section pbs-8 pbe-16 px-gutter max-md:pbs-5 max-md:pbe-10">
@@ -167,7 +166,6 @@ export const DiscoverPage = async ({
                         key={kosk.id}
                         kosk={kosk}
                         t={t}
-                        locale={locale}
                         signedIn={signedIn}
                       />
                     ))}
@@ -194,7 +192,6 @@ export const DiscoverPage = async ({
                         key={madrasah.id}
                         madrasah={madrasah}
                         t={t}
-                        locale={locale}
                       />
                     ))}
                   </div>
@@ -206,10 +203,7 @@ export const DiscoverPage = async ({
           {signedIn ? (
             <Card className="flex flex-row flex-wrap items-center justify-between gap-4">
               <p className="mds-body-sm">{t("DiscoverPage.applyNotice")}</p>
-              <Button
-                variant="outline"
-                href={`/${locale}${KOSK_APPLICATION_HREF}`}
-              >
+              <Button variant="outline" href={`${KOSK_APPLICATION_HREF}`}>
                 {t("DiscoverPage.applyLink")}
               </Button>
             </Card>
@@ -217,7 +211,6 @@ export const DiscoverPage = async ({
             <Card>
               <AnonymousInvite
                 t={t}
-                locale={locale}
                 variant="discover"
                 callbackPath={discoverHref(query)}
                 className="mds-body-sm"

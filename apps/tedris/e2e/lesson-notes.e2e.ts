@@ -56,7 +56,7 @@ test.afterAll(async () => {
 });
 
 const sessionPath = (id: string, courseId = fixture.courseId) =>
-  `/tr/courses/${courseId}/lessons/${id}`;
+  `/courses/${courseId}/lessons/${id}`;
 /** The session's watch page (MDRS-285). */
 const watchPath = (id: string, courseId = fixture.courseId) =>
   `${sessionPath(id, courseId)}/izle`;
@@ -272,7 +272,7 @@ test.describe("the enrolled talebe", () => {
   }) => {
     await blockBunny(page);
     const { youtube, bunny } = fixture.sessions;
-    await page.goto(`/tr/courses/${fixture.courseId}?tab=kayitlar`);
+    await page.goto(`/courses/${fixture.courseId}?tab=kayitlar`);
     await expect(
       page.getByRole("tab", { name: /Ders kayıtları/ })
     ).toHaveAttribute("aria-selected", "true");
@@ -369,7 +369,7 @@ test.describe("the enrolled talebe", () => {
     page,
   }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
-    await page.goto(`/tr/courses/${fixture.courseId}`);
+    await page.goto(`/courses/${fixture.courseId}`);
     await page.evaluate(() => document.fonts.ready);
     const row = page.getByRole("tablist");
     const top = async () => (await row.boundingBox())?.y ?? Number.NaN;
@@ -407,7 +407,7 @@ test.describe("the enrolled talebe", () => {
     ).toHaveCount(0);
 
     // the same note, reached from the recordings tab's row
-    await page.goto(`/tr/courses/${fixture.courseId}?tab=kayitlar`);
+    await page.goto(`/courses/${fixture.courseId}?tab=kayitlar`);
     await page
       .getByRole("link", { name: `Kaydı izle: ${s.recordingTitle}` })
       .click();
@@ -652,7 +652,7 @@ test.describe("the enrolled talebe", () => {
       );
       await expect(page.locator("iframe")).toHaveCount(0);
 
-      await page.goto(`/tr/courses/${courseId}?tab=kayitlar`);
+      await page.goto(`/courses/${courseId}?tab=kayitlar`);
       await expect(
         page.getByRole("tab", { name: /Ders kayıtları/ })
       ).toHaveAttribute("aria-selected", "true");

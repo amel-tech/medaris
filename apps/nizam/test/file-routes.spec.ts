@@ -14,7 +14,7 @@ const token = vi.hoisted(() => ({ value: "access-token" as string | null }));
 vi.mock("~/lib/auth", () => ({
   getAccessToken: async () => token.value,
   signInUrl: (returnTo?: string | null) =>
-    `/tr/auth/signin?callbackUrl=${encodeURIComponent(returnTo ?? "")}`,
+    `/auth/signin?callbackUrl=${encodeURIComponent(returnTo ?? "")}`,
 }));
 
 const courseUpload = await import(
@@ -246,7 +246,7 @@ describe("download routes", () => {
   });
 
   describe("a link the browser followed as a page", () => {
-    const PAGE = `/tr/kosks/k1/courses/${COURSE}/curriculum`;
+    const PAGE = `/kosks/k1/courses/${COURSE}/curriculum`;
     const asPage = {
       "sec-fetch-dest": "document",
       "sec-fetch-mode": "navigate",
@@ -262,7 +262,7 @@ describe("download routes", () => {
       );
       expect(response.status).toBe(303);
       expect(response.headers.get("location")).toBe(
-        `/tr/auth/signin?callbackUrl=${encodeURIComponent(PAGE)}`
+        `/auth/signin?callbackUrl=${encodeURIComponent(PAGE)}`
       );
       expect(fetchMock).not.toHaveBeenCalled();
     });

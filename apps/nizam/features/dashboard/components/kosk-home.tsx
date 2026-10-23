@@ -72,7 +72,7 @@ export function KoskHome({ data, nowIso }: Props) {
   const router = useRouter();
   const toaster = useToaster();
   const now = new Date(nowIso);
-  const base = `/${locale}/kosks/${data.koskId}`;
+  const base = `/kosks/${data.koskId}`;
 
   const [tab, setTab] = useState<DashboardSessionTab>(data.tab);
   const [sessions, setSessions] = useState(data.sessions);

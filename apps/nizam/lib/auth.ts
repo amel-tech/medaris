@@ -1,6 +1,6 @@
 import { createAuth } from "@medaris/auth/server";
 import { env } from "~/env";
-import { localeOfPath, locales, routing } from "~/lib/i18n/routing";
+import { locales } from "~/lib/i18n/routing";
 import { authPages } from "~/lib/public-paths";
 
 /**
@@ -14,9 +14,9 @@ import { authPages } from "~/lib/public-paths";
  *   URI stays `NEXTAUTH_URL`, the package's defaults. A sign-out with no ID
  *   token to hint with ends here only and lands on `/`, as Keycloak's
  *   redirect does.
- * - The sign-in page is the one under the locale of the page the visitor was
- *   on, and Keycloak opens in that language (`ui_locales` and `kc_locale`,
- *   MDRS-274); a sign-in that names no page ends on that locale's home.
+ * - Keycloak opens in the viewer's language (`ui_locales` and `kc_locale`,
+ *   MDRS-274), the `medaris-locale` cookie's (MDRS-248); a sign-in that names
+ *   no page ends on `/`.
  * - The cookies are `nizam.*` (`__Host-nizam.*` over https), apart from
  *   tedris's and nazar's on one localhost (MDRS-24).
  *
@@ -41,9 +41,7 @@ export const {
   secret: env.NEXTAUTH_SECRET,
   cookiePrefix: "nizam",
   pages: {
-    signIn: (returnTo) =>
-      `/${localeOfPath(returnTo) ?? routing.defaultLocale}${authPages.signIn}`,
-    afterSignIn: (locale) => `/${locale ?? routing.defaultLocale}`,
+    signIn: authPages.signIn,
   },
   locales,
   kcLocale: true,

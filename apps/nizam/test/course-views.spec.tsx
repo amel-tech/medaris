@@ -242,7 +242,7 @@ describe("Ders ayarları (nizam 34)", () => {
     expect(html).toContain("<bdi>Abdülhamit Karaosmanoğlu Hoca</bdi>");
     expect(html).toContain("Hocaları düzenle");
     expect(html).toContain("Dersi gizle");
-    expect(html).toContain("https://tedris.example/tr/courses/c1");
+    expect(html).toContain("https://tedris.example/courses/c1");
   });
 
   it("offers Yayımla for a draft and leaves the manager's boxes out for a müderris", () => {

@@ -45,12 +45,10 @@ export function KoskCoursesView({
   const router = useRouter();
   const [, startTransition] = useTransition();
   const refresh = () => startTransition(() => router.refresh());
-  const base = `/${locale}/kosks/${kosk.id}`;
-  const koskPublicHref = tedrisUrl
-    ? `${tedrisUrl}/${locale}/kosks/${kosk.id}`
-    : null;
+  const base = `/kosks/${kosk.id}`;
+  const koskPublicHref = tedrisUrl ? `${tedrisUrl}/kosks/${kosk.id}` : null;
   const courseHref = tedrisUrl
-    ? (courseId: string) => `${tedrisUrl}/${locale}/courses/${courseId}`
+    ? (courseId: string) => `${tedrisUrl}/courses/${courseId}`
     : undefined;
 
   const cards: {

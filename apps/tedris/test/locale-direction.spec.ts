@@ -3,10 +3,12 @@ import { describe, expect, it, vi } from "vitest";
 import { htmlLangDir } from "~/lib/i18n/direction";
 import { locales } from "~/lib/i18n/routing";
 
-// The [locale] layout without Next: the font loader, the session and the
-// shell around the page are stubbed, so only the document it draws is left.
+// The root layout without Next: the font loader, the session and the shell
+// around the page are stubbed, so only the document it draws is left. The
+// language is the request's (the cookie's, MDRS-248).
+const request = vi.hoisted(() => ({ locale: "tr" }));
 vi.mock("next/font/google", () => ({ Inter: () => ({ className: "inter" }) }));
-vi.mock("next-intl/server", () => ({ setRequestLocale: () => undefined }));
+vi.mock("next-intl/server", () => ({ getLocale: async () => request.locale }));
 vi.mock("next-intl", async (orig) => ({
   ...(await orig<typeof import("next-intl")>()),
   NextIntlClientProvider: ({ children }: { children: React.ReactNode }) =>
@@ -23,13 +25,9 @@ vi.mock("~/components/providers/client-providers", () => ({
 }));
 
 const renderLayout = async (locale: string) => {
-  const { default: LocaleLayout } = await import("../app/[locale]/layout");
-  return renderToStaticMarkup(
-    await LocaleLayout({
-      children: "page",
-      params: Promise.resolve({ locale }),
-    })
-  );
+  request.locale = locale;
+  const { default: RootLayout } = await import("../app/layout");
+  return renderToStaticMarkup(await RootLayout({ children: "page" }));
 };
 
 describe("<html> carries the locale's language and direction (MDRS-217)", () => {
@@ -51,21 +49,14 @@ describe("<html> carries the locale's language and direction (MDRS-217)", () => 
     ["ar", "rtl"],
     ["tr", "ltr"],
     ["en", "ltr"],
-  ] as const)("is what the [locale] layout draws on /%s", async (locale, dir) => {
+  ] as const)("is what the layout draws for a viewer in %s", async (locale, dir) => {
     expect(await renderLayout(locale)).toMatch(
       new RegExp(`^<html lang="${locale}" dir="${dir}"`)
     );
   });
 });
 
-describe("the root boundaries describe the Turkish they draw (MDRS-217)", () => {
-  it("not-found is tr, left to right", async () => {
-    const { default: RootNotFound } = await import("../app/not-found");
-    expect(renderToStaticMarkup(RootNotFound())).toMatch(
-      /^<html lang="tr" dir="ltr"/
-    );
-  });
-
+describe("the root boundary describes the Turkish it draws (MDRS-217)", () => {
   it("global-error is tr, left to right", async () => {
     const { default: GlobalError } = await import("../app/global-error");
     expect(

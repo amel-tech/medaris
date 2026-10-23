@@ -37,7 +37,7 @@ async function signIn(
   page: Page,
   who: { email?: string; password?: string }
 ): Promise<void> {
-  await page.goto("/tr/auth/signin");
+  await page.goto("/auth/signin");
   await page.locator("#username").fill(who.email as string);
   await page.locator("#password").fill(who.password as string);
   await page.locator("button[type=submit]").click();
@@ -52,7 +52,7 @@ test("nizam/28 — the köşk archive lists what is hidden, by type, who and whe
 }) => {
   test.skip(!(seedable && KOSK_NAZIM.password), "no köşk nazım account");
   await signIn(page, KOSK_NAZIM);
-  await page.goto(`/tr/kosks/${fixture.koskId}/arsiv`);
+  await page.goto(`/kosks/${fixture.koskId}/arsiv`);
 
   await expect(
     page.getByRole("heading", { level: 1, name: "Arşiv" })
@@ -79,7 +79,7 @@ test("nizam/28 — the type filter narrows the list and the count follows", asyn
 }) => {
   test.skip(!(seedable && KOSK_NAZIM.password), "no köşk nazım account");
   await signIn(page, KOSK_NAZIM);
-  await page.goto(`/tr/kosks/${fixture.koskId}/arsiv`);
+  await page.goto(`/kosks/${fixture.koskId}/arsiv`);
   await expect(rows(page)).toHaveCount(3);
 
   await page.getByRole("combobox", { name: "Tür süzgeci" }).click();
@@ -99,7 +99,7 @@ test("nizam/28 — 'Geri al' brings the course back and takes the row out of the
 }) => {
   test.skip(!(seedable && KOSK_NAZIM.password), "no köşk nazım account");
   await signIn(page, KOSK_NAZIM);
-  await page.goto(`/tr/kosks/${fixture.koskId}/arsiv`);
+  await page.goto(`/kosks/${fixture.koskId}/arsiv`);
 
   await page
     .getByRole("button", {
@@ -114,7 +114,7 @@ test("nizam/28 — 'Geri al' brings the course back and takes the row out of the
   expect(await fixture.isShown("courses", fixture.course.id)).toBe(true);
 
   // it is back where it was: on the köşk's page
-  await page.goto(`/tr/kosks/${fixture.koskId}`);
+  await page.goto(`/kosks/${fixture.koskId}`);
   await expect(
     page.getByText(fixture.course.title).filter({ visible: true })
   ).toBeVisible();
@@ -123,7 +123,7 @@ test("nizam/28 — 'Geri al' brings the course back and takes the row out of the
 test("nizam/28 — a session and a week come back too", async ({ page }) => {
   test.skip(!(seedable && KOSK_NAZIM.password), "no köşk nazım account");
   await signIn(page, KOSK_NAZIM);
-  await page.goto(`/tr/kosks/${fixture.koskId}/arsiv`);
+  await page.goto(`/kosks/${fixture.koskId}/arsiv`);
 
   await page
     .getByRole("button", {
@@ -146,7 +146,7 @@ test("nizam/28 — the köşk page links to the archive for its nazım", async (
 }) => {
   test.skip(!(seedable && KOSK_NAZIM.password), "no köşk nazım account");
   await signIn(page, KOSK_NAZIM);
-  await page.goto(`/tr/kosks/${fixture.koskId}`);
+  await page.goto(`/kosks/${fixture.koskId}`);
   await page.locator("main").getByRole("link", { name: "Arşiv" }).click();
   await expect(page).toHaveURL(new RegExp(`/kosks/${fixture.koskId}/arsiv$`));
 });
@@ -157,12 +157,12 @@ test("nizam/28 and 29 — a köşk nazım is refused the platform archive and an
   test.skip(!(seedable && KOSK_NAZIM.password), "no köşk nazım account");
   await signIn(page, KOSK_NAZIM);
 
-  await page.goto("/tr/arsiv");
+  await page.goto("/arsiv");
   await expect(
     page.getByRole("heading", { name: "Bu bölüm için izniniz yok" })
   ).toBeVisible();
 
-  await page.goto("/tr/kosks/a0000000-0000-4000-8000-0000000000ff/arsiv");
+  await page.goto("/kosks/a0000000-0000-4000-8000-0000000000ff/arsiv");
   await expect(
     page.getByRole("heading", { name: "Bu bölüm için izniniz yok" })
   ).toBeVisible();
@@ -178,7 +178,7 @@ test.describe("nizam/29 — the platform archive (needs the SYSTEM_ADMIN realm r
     page,
   }) => {
     await signIn(page, SYSTEM_ADMIN);
-    await page.goto("/tr/arsiv");
+    await page.goto("/arsiv");
     await expect(
       page.getByRole("heading", { level: 1, name: "Arşiv" })
     ).toBeVisible();
@@ -196,7 +196,7 @@ test.describe("nizam/29 — the platform archive (needs the SYSTEM_ADMIN realm r
     page,
   }) => {
     await signIn(page, SYSTEM_ADMIN);
-    await page.goto("/tr/arsiv");
+    await page.goto("/arsiv");
     await page
       .getByRole("button", {
         name: new RegExp(`^Kalıcı olarak sil: ${fixture.course.title}`),

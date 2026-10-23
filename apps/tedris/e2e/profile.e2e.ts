@@ -68,7 +68,7 @@ test("Hesap: names persist, blanks are refused, e-mail and language are read onl
 }) => {
   test.skip(!ready, "no Keycloak talebe in the environment");
   await signIn(page, talebe);
-  await page.goto("/tr/account");
+  await page.goto("/account");
 
   await expect(
     page.getByRole("heading", { name: "Kişisel bilgiler" })
@@ -113,7 +113,7 @@ test("Hesap: the time zone saves as it is chosen and survives a reload", async (
 }) => {
   test.skip(!ready, "no Keycloak talebe in the environment");
   await signIn(page, talebe);
-  await page.goto("/tr/account");
+  await page.goto("/account");
 
   const zone = page.locator("#account-time-zone");
   await expect(zone).toContainText("İstanbul");
@@ -134,19 +134,19 @@ test("Hesap: the calendar card leads to the subscription page and 'Çıkış yap
 }) => {
   test.skip(!ready, "no Keycloak talebe in the environment");
   await signIn(page, talebe);
-  await page.goto("/tr/account");
+  await page.goto("/account");
 
   await page.getByRole("link", { name: "Takvim bağlantını yönet" }).click();
   await expect(page).toHaveURL(/\/account\/calendar/);
 
-  await page.goto("/tr/account");
+  await page.goto("/account");
   await page.getByRole("link", { name: "Çıkış yap" }).click();
   await expect(page).toHaveURL(/\/auth\/signout/);
   await page.getByRole("button", { name: /Çıkış yap/ }).click();
   // Keycloak's end-session page may refuse a callback it does not list; the
   // session cookie is gone either way, so a protected page asks to sign in.
   await page.waitForTimeout(1500);
-  await page.goto("/tr/account");
+  await page.goto("/account");
   await expect(page).toHaveURL(/signin|auth\.medaris\.app/);
 });
 
@@ -159,7 +159,7 @@ test("Herkese açık profil: künye is required, switches persist, and others se
     "the public profile is hidden (MDRS-141); set E2E_PUBLIC_PROFILE_ENABLED=true once it is switched on"
   );
   await signIn(page, talebe);
-  await page.goto("/tr/account/public-profile");
+  await page.goto("/account/public-profile");
 
   // Criterion 5: an empty künye sends nothing.
   await page.getByRole("button", { name: "Kaydet" }).click();
@@ -251,7 +251,7 @@ test("Köşk açma başvurusu: validation, 'Vazgeç' writes nothing, a sent form
 }) => {
   test.skip(!ready, "no Keycloak talebe in the environment");
   await signIn(page, talebe);
-  await page.goto("/tr/discover");
+  await page.goto("/discover");
   await page.getByRole("link", { name: "Köşk açma başvurusu" }).click();
   await expect(page).toHaveURL(/\/kosk-applications\/new/);
 

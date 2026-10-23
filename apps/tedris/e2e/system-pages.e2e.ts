@@ -34,7 +34,7 @@ async function signIn(
   page: Page,
   who: { email?: string; password?: string }
 ): Promise<void> {
-  await page.goto("/tr/auth/signin");
+  await page.goto("/auth/signin");
   await page.locator("#username").fill(who.email as string);
   await page.locator("#password").fill(who.password as string);
   await page.locator("button[type=submit]").click();
@@ -48,13 +48,13 @@ test.describe("medaris/16: the sign-out confirmation", () => {
     page,
   }) => {
     await signIn(page, TALEBE);
-    await page.goto("/tr/home");
+    await page.goto("/home");
 
     // Criterion 4: "Çıkış yap" goes to the page, it does not sign out. It lives in
     // Hesap (the header has "Hesabım" and no menu of its own since #179).
-    await page.goto("/tr/account");
+    await page.goto("/account");
     await page.getByRole("link", { name: "Çıkış yap" }).click();
-    await page.waitForURL(/\/tr\/auth\/signout$/);
+    await page.waitForURL(/\/auth\/signout$/);
     await expect(
       page.getByRole("heading", { level: 1, name: "Çıkış yapılsın mı?" })
     ).toBeVisible();
@@ -66,15 +66,15 @@ test.describe("medaris/16: the sign-out confirmation", () => {
 
     // Criterion 3: 'Vazgeç' goes back, to Hesap here, and the session is still open.
     await page.getByRole("button", { name: "Vazgeç" }).click();
-    await page.waitForURL(/\/tr\/account$/);
-    await page.goto("/tr/account");
-    await expect(page).toHaveURL(/\/tr\/account$/);
+    await page.waitForURL(/\/account$/);
+    await page.goto("/account");
+    await expect(page).toHaveURL(/\/account$/);
 
     // Criterion 2: confirming ends the app's and Keycloak's sessions.
-    await page.goto("/tr/auth/signout");
+    await page.goto("/auth/signout");
     await page.getByRole("button", { name: "Çıkış yap" }).click();
     await page.waitForURL((url) => !url.pathname.endsWith("/auth/signout"));
-    await page.goto("/tr/account");
+    await page.goto("/account");
     await expect(page.locator("#username")).toBeVisible();
   });
 });
@@ -90,7 +90,7 @@ test.describe("tedris/07: the application window", () => {
     page,
   }) => {
     await signIn(page, TALEBE);
-    await page.goto(`/tr/courses/${fixture.approval.id}`);
+    await page.goto(`/courses/${fixture.approval.id}`);
     await page.getByRole("button", { name: "Kayıt başvurusu yap" }).click();
 
     const dialog = page.getByRole("dialog", { name: "Başvurun alındı" });
@@ -123,7 +123,7 @@ test.describe("tedris/07: the application window", () => {
     page,
   }) => {
     await signIn(page, TALEBE);
-    await page.goto(`/tr/courses/${fixture.approval.id}`);
+    await page.goto(`/courses/${fixture.approval.id}`);
     await page.getByRole("button", { name: "Kayıt başvurusu yap" }).click();
     const dialog = page.getByRole("dialog", { name: "Başvurun alındı" });
     await dialog.getByRole("button", { name: "Tamam" }).click();
@@ -135,9 +135,9 @@ test.describe("tedris/07: the application window", () => {
 
   test("a refused application opens no window", async ({ page }) => {
     await signIn(page, TALEBE);
-    await page.goto(`/tr/courses/${fixture.approval.id}`);
+    await page.goto(`/courses/${fixture.approval.id}`);
     // The server action is a POST to the page; refuse it at the network.
-    await page.route(`**/tr/courses/${fixture.approval.id}`, (route) =>
+    await page.route(`**/courses/${fixture.approval.id}`, (route) =>
       route.request().method() === "POST" ? route.abort() : route.continue()
     );
     await page.getByRole("button", { name: "Kayıt başvurusu yap" }).click();
@@ -152,7 +152,7 @@ test.describe("tedris/14: the draft preview", () => {
     page,
   }) => {
     await signIn(page, MUDERRIS);
-    await page.goto(`/tr/courses/${fixture.draft.id}`);
+    await page.goto(`/courses/${fixture.draft.id}`);
 
     await expect(page.getByText("Önizleme").first()).toBeVisible();
     await expect(
@@ -183,7 +183,7 @@ test.describe("tedris/14: the draft preview", () => {
     page,
   }) => {
     await signIn(page, TALEBE);
-    const response = await page.goto(`/tr/courses/${fixture.draft.id}`);
+    const response = await page.goto(`/courses/${fixture.draft.id}`);
     expect(response?.status()).toBe(404);
     await expect(
       page.getByText("Sayfa bulunamadı").filter({ visible: true })
@@ -198,7 +198,7 @@ test.describe("tedris/38: not found", () => {
     page,
   }) => {
     await signIn(page, TALEBE);
-    const response = await page.goto("/tr/olmayan-sayfa");
+    const response = await page.goto("/olmayan-sayfa");
     expect(response?.status()).toBe(404);
     await expect(
       page.getByRole("heading", { name: "Sayfa bulunamadı" })
@@ -211,13 +211,13 @@ test.describe("tedris/38: not found", () => {
         .filter({ visible: true })
     ).toBeVisible();
     await page.getByRole("link", { name: "Ana sayfaya dön" }).click();
-    await expect(page).toHaveURL(/\/tr\/home$/);
+    await expect(page).toHaveURL(/\/home$/);
   });
 
   test("a course the API answers 404 for falls onto it", async ({ page }) => {
     await signIn(page, TALEBE);
     const response = await page.goto(
-      "/tr/courses/00000000-0000-4000-8000-00000000dead"
+      "/courses/00000000-0000-4000-8000-00000000dead"
     );
     expect(response?.status()).toBe(404);
     await expect(
@@ -234,7 +234,7 @@ test.describe("tedris/39: forbidden", () => {
       page,
     }) => {
       await signIn(page, TALEBE);
-      await page.goto(`/tr/decks/${fixture.deck.id}/${route}`);
+      await page.goto(`/decks/${fixture.deck.id}/${route}`);
       await expect(
         page.getByRole("heading", { name: "Bu sayfayı göremezsin" })
       ).toBeVisible();
@@ -246,7 +246,7 @@ test.describe("tedris/39: forbidden", () => {
           .filter({ visible: true })
       ).toBeVisible();
       await page.getByRole("link", { name: "Desteye dön" }).click();
-      await expect(page).toHaveURL(new RegExp(`/tr/decks/${fixture.deck.id}$`));
+      await expect(page).toHaveURL(new RegExp(`/decks/${fixture.deck.id}$`));
     });
   }
 });
@@ -266,7 +266,7 @@ test.describe("tedris/40: something went wrong", () => {
         [fixture.draft.id]
       );
       await signIn(page, MUDERRIS);
-      await page.goto(`/tr/courses/${fixture.draft.id}`);
+      await page.goto(`/courses/${fixture.draft.id}`);
 
       await expect(
         page.getByRole("heading", { name: "Bir şeyler ters gitti" })

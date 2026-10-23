@@ -92,7 +92,7 @@ export function CourseCreateForm({ kosk, request }: Props) {
   const [saving, setSaving] = useState(false);
 
   const zones = useMemo(() => listTimeZones(timeZone), [timeZone]);
-  const base = `/${locale}/kosks/${kosk.id}`;
+  const base = `/kosks/${kosk.id}`;
 
   const schedule = {
     startDate,

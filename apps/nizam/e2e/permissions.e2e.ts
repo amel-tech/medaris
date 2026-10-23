@@ -39,7 +39,7 @@ async function signIn(
   page: Page,
   who: { email?: string; password?: string }
 ): Promise<void> {
-  await page.goto("/tr/auth/signin");
+  await page.goto("/auth/signin");
   await page.locator("#username").fill(who.email as string);
   await page.locator("#password").fill(who.password as string);
   await page.locator("button[type=submit]").click();
@@ -54,14 +54,14 @@ const rowOf = (page: Page, text: string) =>
     .filter({ hasText: text });
 
 const openNazims = async (page: Page) => {
-  await page.goto("/tr/medaris-nazimlari");
+  await page.goto("/medaris-nazimlari");
   await expect(
     page.getByRole("heading", { level: 1, name: "Medaris nazımları" })
   ).toBeVisible();
 };
 
 const openGroups = async (page: Page, query = "") => {
-  await page.goto(`/tr/izin-gruplari${query}`);
+  await page.goto(`/izin-gruplari${query}`);
   await expect(
     page.getByRole("heading", { level: 1, name: "İzin grupları" })
   ).toBeVisible();
@@ -149,7 +149,7 @@ test("nizam/11 — a Medaris nazımı gets the 'izniniz yok' screen on both page
   );
   await fixture.makeMedarisNazim(MEDARIS_NAZIM.sub as string);
   await signIn(page, MEDARIS_NAZIM);
-  for (const path of ["/tr/medaris-nazimlari", "/tr/izin-gruplari"]) {
+  for (const path of ["/medaris-nazimlari", "/izin-gruplari"]) {
     await page.goto(path);
     await expect(
       page.getByRole("heading", { name: "Bu bölüm için izniniz yok" })

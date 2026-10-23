@@ -1,16 +1,7 @@
 import { createAuth } from "@medaris/auth/server";
 import { env } from "~/env";
 import { authPages, homePath } from "~/lib/auth_pages";
-import { locales, routing } from "~/lib/i18n/routing";
-
-/**
- * The locale of a return path (`/en/courses/1` → `en`), or the default one
- * when it names none. The sign-in page opens in it, and Keycloak with it
- * (MDRS-274): a visitor stopped on an English page signs in in English.
- */
-const localeOf = (path: string | null): string =>
-  locales.find((locale) => path?.split("/")[1] === locale) ??
-  routing.defaultLocale;
+import { locales } from "~/lib/i18n/routing";
 
 /**
  * tedris's session: one `@medaris/auth` instance built from this app's own
@@ -49,11 +40,11 @@ export const {
   secret: env.NEXTAUTH_SECRET,
   cookiePrefix: "tedris",
   pages: {
-    signIn: (returnTo) => `/${localeOf(returnTo)}${authPages.signIn}`,
+    signIn: authPages.signIn,
     // A sign-in that names no page ("Giriş yap" in the header, "Kayıt ol")
-    // ends on Ana sayfa: `/<locale>` sends a signed-in caller on to /home.
-    // There is no first-login step any more.
-    afterSignIn: (locale) => homePath(locale ?? routing.defaultLocale),
+    // ends on Ana sayfa: `/` sends a signed-in caller on to /home. There is no
+    // first-login step any more.
+    afterSignIn: homePath,
   },
   locales,
   kcLocale: true,

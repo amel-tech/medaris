@@ -102,7 +102,7 @@ export function KosksDirectory({
   const go = (next: DirectoryFilters, replace = false) => {
     heading.current = next;
     startTransition(() => {
-      const href = `/${locale}${directoryPath(next)}`;
+      const href = `${directoryPath(next)}`;
       if (replace) router.replace(href);
       else router.push(href);
     });
@@ -165,10 +165,7 @@ export function KosksDirectory({
           <CoverPattern tone={toneOfHue(k.coverHue)} size="xs" />
           <span className="flex min-w-0 flex-col gap-1">
             <span className="flex flex-wrap items-center gap-2">
-              <a
-                className="mds-link font-semibold"
-                href={`/${locale}/kosks/${k.id}`}
-              >
+              <a className="mds-link font-semibold" href={`/kosks/${k.id}`}>
                 <bdi>{k.name}</bdi>
               </a>
               {k.isPrivate ? (
@@ -309,7 +306,7 @@ export function KosksDirectory({
             {t("heading")}
           </h2>
           {chief ? (
-            <a className="mds-link" href={`/${locale}/arsiv`}>
+            <a className="mds-link" href={`/arsiv`}>
               {t("archive")}
             </a>
           ) : null}

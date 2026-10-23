@@ -32,7 +32,7 @@ const { DesktopBar } = await import("~/components/phone-menu/desktop-bar");
 const accountLink = (html: string) => {
   const host = document.createElement("div");
   host.innerHTML = html;
-  return host.querySelector<HTMLAnchorElement>('a[href="/tr/account"]');
+  return host.querySelector<HTMLAnchorElement>('a[href="/account"]');
 };
 
 describe("DesktopBar", () => {
@@ -52,13 +52,13 @@ describe("DesktopBar", () => {
     const member = renderToStaticMarkup(
       createElement(DesktopBar, { signedIn: true, name: "E2E Nâzım" })
     );
-    expect(member).toContain('href="/tr/home"');
+    expect(member).toContain('href="/home"');
     const visitor = renderToStaticMarkup(
       createElement(DesktopBar, { signedIn: false })
     );
-    expect(visitor).not.toContain("/tr/home");
+    expect(visitor).not.toContain("/home");
     expect(visitor).not.toContain(`>${text("PhoneMenu.home")}<`);
-    expect(visitor).toContain('href="/tr/discover"');
+    expect(visitor).toContain('href="/discover"');
   });
 
   it("offers a visitor Giriş yap and Kayıt ol instead", () => {

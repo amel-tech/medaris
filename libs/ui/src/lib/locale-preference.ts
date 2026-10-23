@@ -1,11 +1,11 @@
 /**
  * The viewer's language choice (MDRS-275). It is kept in this browser only,
  * in the `medaris-locale` cookie, and never on the account: the owner's
- * decision of 2026-10-05. A cookie rather than local storage so the app's
- * proxy can read it and send a visit straight to the chosen language before
- * anything renders (`pathInPreferredLocale`). One choice for every Medaris
- * app (MDRS-248): the cookie is set on the parent domain, so a language picked
- * in Tedris is the one Nizam and Nazar open in.
+ * decision of 2026-10-05. The address carries no language (MDRS-248): each
+ * app's next-intl request config reads this cookie, so the server renders the
+ * chosen language from the first byte. One choice for every Medaris app: the
+ * cookie is set on the parent domain, so a language picked in Tedris is the
+ * one Nizam and Nazar open in.
  */
 export const LOCALE_COOKIE = "medaris-locale";
 const LOCALE_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
@@ -42,45 +42,33 @@ export const storeLocale = (locale: string) => {
 };
 
 /**
- * Where the proxy sends a page request to follow the cookie's language, or
- * `null` to serve it as asked: no valid choice, the address already in it, or
- * not a page load (`/api/…`, a Server Action, any method but GET and HEAD).
+ * The cookie's language in `cookieHeader` (`document.cookie` in the browser),
+ * when it is one of `locales`: for code that runs outside next-intl's
+ * provider, such as a root error boundary.
  */
-export const pathInPreferredLocale = (
-  {
-    method,
-    pathname,
-    search,
-    isServerAction,
-  }: {
-    method: string;
-    pathname: string;
-    search: string;
-    isServerAction: boolean;
-  },
-  preferred: string | undefined,
-  locales: readonly string[]
-): string | null => {
-  if (!preferred || !locales.includes(preferred)) return null;
-  if ((method !== "GET" && method !== "HEAD") || isServerAction) return null;
-  const first = pathname.split("/")[1] ?? "";
-  if (first === preferred || first === "api") return null;
-  return localeHref(preferred, locales, { pathname, search, hash: "" });
+export const readLocaleCookie = <L extends string>(
+  cookieHeader: string,
+  locales: readonly L[]
+): L | undefined => {
+  const value = cookieHeader
+    .split(/;\s*/)
+    .find((pair) => pair.startsWith(`${LOCALE_COOKIE}=`))
+    ?.slice(LOCALE_COOKIE.length + 1);
+  return locales.find((locale) => locale === value);
 };
 
 /**
- * The same page in `next`: the first path segment is the locale when it is
- * one of `locales`, otherwise `next` is put in front. Query and hash stay.
+ * The address without a language segment, for a link from before MDRS-248
+ * (`/en/courses/1?week=2` → `/courses/1?week=2`, `/tr` → `/`), or `null` for
+ * an address that has none. A bookmark, an old e-mail or a landing page
+ * released before the apps still lands on its page; the language stays the
+ * cookie's.
  */
-export const localeHref = (
-  next: string,
-  locales: readonly string[],
-  { pathname, search, hash }: { pathname: string; search: string; hash: string }
-): string => {
+export const withoutLocaleSegment = (
+  { pathname, search }: { pathname: string; search: string },
+  locales: readonly string[]
+): string | null => {
   const segments = pathname.split("/");
-  const first = segments[1] ?? "";
-  const rest = locales.includes(first)
-    ? segments.slice(2).join("/")
-    : segments.slice(1).join("/");
-  return `/${next}${rest ? `/${rest}` : ""}${search}${hash}`;
+  if (!locales.includes(segments[1] ?? "")) return null;
+  return `/${segments.slice(2).join("/")}${search}`;
 };

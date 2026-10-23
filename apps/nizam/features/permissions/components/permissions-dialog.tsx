@@ -243,7 +243,7 @@ export function PermissionsDialog({
             ]}
           />
         </Field>
-        <a className="mds-link self-start" href={`/${locale}/izin-gruplari`}>
+        <a className="mds-link self-start" href={`/izin-gruplari`}>
           {t("editGroups")}
         </a>
         {nazim && otherGroupsOf(nazim).length > 0 ? (

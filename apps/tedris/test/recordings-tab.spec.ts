@@ -201,10 +201,10 @@ describe("recordings tab rows open the watch page (MDRS-285)", () => {
     const host = await mount(FIVE);
     const links = [...host.querySelectorAll("li a")] as HTMLAnchorElement[];
     expect(links.map((a) => a.getAttribute("href"))).toEqual([
-      `/tr/courses/${COURSE}/lessons/l-Mezîd fiiller ve bâblar: celse kaydı/izle`,
-      `/tr/courses/${COURSE}/lessons/l-Sülâsî mücerred bâblar: celse kaydı/izle`,
-      `/tr/courses/${COURSE}/lessons/l-Emsile-i muttaride: mâzî ve muzâri çekimi/izle`,
-      `/tr/courses/${COURSE}/lessons/l-Emsile-i muhtelife: sülâsî fiilin on kalıbı/izle`,
+      `/courses/${COURSE}/lessons/l-Mezîd fiiller ve bâblar: celse kaydı/izle`,
+      `/courses/${COURSE}/lessons/l-Sülâsî mücerred bâblar: celse kaydı/izle`,
+      `/courses/${COURSE}/lessons/l-Emsile-i muttaride: mâzî ve muzâri çekimi/izle`,
+      `/courses/${COURSE}/lessons/l-Emsile-i muhtelife: sülâsî fiilin on kalıbı/izle`,
     ]);
     for (const link of links) {
       expect(link.hasAttribute("target")).toBe(false);
@@ -243,7 +243,7 @@ describe("recordings tab rows open the watch page (MDRS-285)", () => {
     expect(text(host)).toContain("Bütün ders kayıtları");
     expect(host.querySelectorAll("li")).toHaveLength(1);
     expect(host.querySelector("li a")?.getAttribute("href")).toBe(
-      `/tr/courses/${COURSE}/lessons/l-Emsile-i muhtelife: sülâsî fiilin on kalıbı/izle`
+      `/courses/${COURSE}/lessons/l-Emsile-i muhtelife: sülâsî fiilin on kalıbı/izle`
     );
   });
 
@@ -273,7 +273,7 @@ describe("recordings tab rows open the watch page (MDRS-285)", () => {
     expect(link.getAttribute("target")).toBe("_blank");
     expect(
       rowOf(host, "Emsile-i muttaride").querySelector("a")?.getAttribute("href")
-    ).toBe(`/tr/courses/${COURSE}/lessons/${celse.lessonId}/izle`);
+    ).toBe(`/courses/${COURSE}/lessons/${celse.lessonId}/izle`);
   });
 
   it("prints a week whose title only names the week once", async () => {
@@ -318,7 +318,7 @@ describe("recordings tab, Bunny recordings (MDRS-114)", () => {
     expect(text(row)).toContain("Bunny Stream");
     const link = row.querySelector("a") as HTMLAnchorElement;
     expect(link.getAttribute("href")).toBe(
-      `/tr/courses/${COURSE}/lessons/l-Hafta sonu müzakeresi: Bunny kaydı/izle`
+      `/courses/${COURSE}/lessons/l-Hafta sonu müzakeresi: Bunny kaydı/izle`
     );
     expect(host.innerHTML).not.toContain("mediadelivery");
   });
@@ -378,7 +378,7 @@ describe("recordings tab, a recording held back until its release time (MDRS-288
       "a"
     ) as HTMLAnchorElement;
     expect(link.getAttribute("href")).toBe(
-      `/tr/courses/${COURSE}/lessons/l-Mehmûz fiiller: celse kaydı/izle`
+      `/courses/${COURSE}/lessons/l-Mehmûz fiiller: celse kaydı/izle`
     );
     expect(text(link)).toContain(
       "Talebelere 14 Ekim Çarşamba 20:00’de açılacak"

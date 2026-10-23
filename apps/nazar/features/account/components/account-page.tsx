@@ -172,7 +172,6 @@ export async function AccountPage({ portal }: { portal: OkPortal }) {
                 locale={locale}
                 locales={LOCALES}
                 label={t("Account.language")}
-                routed={false}
               />
             </Field>
           </Card>

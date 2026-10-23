@@ -23,7 +23,7 @@ vi.mock("next-intl", async (importOriginal) => {
 });
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: mocks.push, refresh: mocks.refresh }),
-  usePathname: () => "/tr/decks/explore",
+  usePathname: () => "/decks/explore",
 }));
 vi.mock("~/features/flashcards/actions", () => ({
   addDeckToCollection: mocks.add,
@@ -220,12 +220,10 @@ describe("Desteleri keşfet (design tedris/26)", () => {
       "Hadis",
     ]);
     await click(chips[2]);
-    expect(mocks.push).toHaveBeenLastCalledWith(
-      "/tr/decks/explore?type=HADEETH"
-    );
+    expect(mocks.push).toHaveBeenLastCalledWith("/decks/explore?type=HADEETH");
     await click(chips[1]);
     expect(mocks.push).toHaveBeenLastCalledWith(
-      "/tr/decks/explore?type=VOCABULARY"
+      "/decks/explore?type=VOCABULARY"
     );
   });
 
@@ -236,7 +234,7 @@ describe("Desteleri keşfet (design tedris/26)", () => {
     ];
     expect(chips[2].getAttribute("aria-pressed")).toBe("true");
     await click(chips[0]);
-    expect(mocks.push).toHaveBeenLastCalledWith("/tr/decks/explore");
+    expect(mocks.push).toHaveBeenLastCalledWith("/decks/explore");
   });
 
   it("says what is empty and asks again when the server could not read the decks", async () => {

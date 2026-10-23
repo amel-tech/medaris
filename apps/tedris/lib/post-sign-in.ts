@@ -10,6 +10,5 @@ import { homePath } from "./auth_pages";
 /** The `callbackUrl` the sign-in page passes on to Keycloak. */
 export const signInCallbackUrl = (
   callbackUrl: string | null | undefined,
-  options: { baseUrl: string; locales: readonly string[]; locale: string }
-): string =>
-  destinationFromCallback(callbackUrl, options) ?? homePath(options.locale);
+  options: { baseUrl: string }
+): string => destinationFromCallback(callbackUrl, options) ?? homePath;

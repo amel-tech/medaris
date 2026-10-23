@@ -7,14 +7,14 @@ import { homePath } from "~/lib/auth_pages";
 
 /**
  * "Giriş yap" and "Kayıt ol" side by side (MDRS-101). Both end on Ana sayfa
- * (`/<locale>`), with no first-login step in between. "Kayıt ol" opens
- * Keycloak's registration form directly. A click takes the sign-in over any
- * tab waiting for its turn (#180).
+ * (`/`), with no first-login step in between. "Kayıt ol" opens Keycloak's
+ * registration form directly. A click takes the sign-in over any tab waiting
+ * for its turn (#180).
  */
 const KeycloakLogin = () => {
   const t = useTranslations("tedris");
   const locale = useLocale();
-  const callbackUrl = homePath(locale);
+  const callbackUrl = homePath;
 
   return (
     <div className="flex items-center gap-2">
