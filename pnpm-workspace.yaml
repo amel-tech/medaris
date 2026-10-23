@@ -339,8 +339,10 @@ catalog:
   depcheck: ^1.4.7
 
   # ═══ Frontend runtime & framework ═══
-  next: ~16.3.6 # MDRS-21: closes ~15 high/moderate Next.js advisories (<16.2.11);
-  #               16.3.6 closes GHSA-vcvr-r3jv-pc5j (critical, next/og RCE)
+  next: ~16.4.2 # MDRS-21: closes ~15 high/moderate Next.js advisories (<16.2.11);
+  #               16.3.6 closes GHSA-vcvr-r3jv-pc5j (critical, next/og RCE);
+  #               16.4.1 closes GHSA-2464-fhr4-w9xw, GHSA-673q-mjm6-r5xr
+  #               (critical RCEs) and GHSA-p3m5-59mp-jv5r (high, DoS)
   react: ~19.2.8 # MDRS-21: ADR-001 §D8 named this "a one-line MDRS-21 bump"
   react-dom: ~19.2.8
   '@types/react': ^19
@@ -426,9 +428,11 @@ catalog:
   vite: ^7.3.7 # GHSA-587h-7wmj-h5pm (launch-editor), fixed in 7.3.7
   '@vitejs/plugin-react': ^5.2.0 # 6.x requires vite ^8; 5.x's ^4||^5||^6||^7||^8 keeps vite 7
   keycloakify: ^11.16.0
-  '@storybook/react': ^10.6.0
-  '@storybook/react-vite': ^10.6.0
-  storybook: ^10.6.0
+  # GHSA-f2ph-cmg5-wxc8 (critical, storybook preview origin validation), fixed
+  # in 10.6.2; the three packages release in lockstep (MDRS-298).
+  '@storybook/react': ^10.6.2
+  '@storybook/react-vite': ^10.6.2
+  storybook: ^10.6.2
 
 # ── Named catalogs ───────────────────────────────────────────────────────────
 # MDRS-20 measured why this exists: vitest@4 peers on `vite: ^6 || ^7 || ^8`,

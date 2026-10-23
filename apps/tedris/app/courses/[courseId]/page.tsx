@@ -7,9 +7,11 @@ import {
   mayHandInOn,
 } from "~/features/courses/assignment-marks";
 import { CoursePage } from "~/features/courses/components/course-page";
+import { courseViewState, holdsSeat } from "~/features/courses/course-view";
 import { introMetadata } from "~/features/courses/intro-metadata";
 import { loadCourse } from "~/features/courses/load-course";
 import {
+  getCourseDecks,
   getCourseForMetadata,
   getMySubmissions,
   getRecordings,
@@ -58,13 +60,18 @@ export default async function Page({
   // (MDRS-122), whatever the course's own `requiresApproval` says.
   // Where the talebe handed homework in, read only when a celse has homework
   // they may hand in (the programme's "Ödev teslim edilmedi" marks).
-  const [kosk, signedIn, recordings, handedIn] = await Promise.all([
+  // The decks are read only for a caller who holds a seat (the tab exists only then).
+  const [kosk, signedIn, recordings, handedIn, decks] = await Promise.all([
     getKosk(course.koskId),
     isSignedIn(),
     getRecordings(course.id),
     mayHandInOn(course) && hasAssignments(course)
       ? getMySubmissions(course.id)
       : null,
+    (async () =>
+      holdsSeat(courseViewState(course, await isSignedIn()))
+        ? getCourseDecks(course.id)
+        : null)(),
   ]);
   const hrefs = inviteHrefs(`/courses/${course.id}`);
 
@@ -79,6 +86,7 @@ export default async function Page({
       nazarUrl={env.NAZAR_URL || null}
       recordings={recordings}
       handedIn={handedIn}
+      decks={decks ?? []}
       initialTab={typeof tab === "string" ? tab : undefined}
     />
   );

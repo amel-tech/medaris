@@ -19,13 +19,17 @@ import type {
   BulkEnrollDto,
   BulkEnrollmentResponse,
   CourseBadgeCountsResponse,
+  CourseDeckManageResponse,
+  CourseDeckStudentResponse,
   CourseDetailResponse,
   CourseNazirsResponse,
   CoursePartnerCodesResponse,
   CourseStatsResponse,
   CourseSummaryResponse,
+  CreateCourseDeckDto,
   CreateCourseDto,
   CreateCourseNazirDto,
+  CreatedCourseDeckResponse,
   EnrolledCourseResponse,
   EnrollmentResponse,
   MuderrisListResponse,
@@ -41,6 +45,7 @@ import type {
   SetEnrollmentStatusDto,
   SetMuderrisDto,
   SetMuderrisUnvanDto,
+  UpdateCourseDeckDto,
   UpdateCourseDto,
   UpdateCourseNazirDto,
   UpdateProgressDto,
@@ -54,6 +59,10 @@ import {
     BulkEnrollmentResponseToJSON,
     CourseBadgeCountsResponseFromJSON,
     CourseBadgeCountsResponseToJSON,
+    CourseDeckManageResponseFromJSON,
+    CourseDeckManageResponseToJSON,
+    CourseDeckStudentResponseFromJSON,
+    CourseDeckStudentResponseToJSON,
     CourseDetailResponseFromJSON,
     CourseDetailResponseToJSON,
     CourseNazirsResponseFromJSON,
@@ -64,10 +73,14 @@ import {
     CourseStatsResponseToJSON,
     CourseSummaryResponseFromJSON,
     CourseSummaryResponseToJSON,
+    CreateCourseDeckDtoFromJSON,
+    CreateCourseDeckDtoToJSON,
     CreateCourseDtoFromJSON,
     CreateCourseDtoToJSON,
     CreateCourseNazirDtoFromJSON,
     CreateCourseNazirDtoToJSON,
+    CreatedCourseDeckResponseFromJSON,
+    CreatedCourseDeckResponseToJSON,
     EnrolledCourseResponseFromJSON,
     EnrolledCourseResponseToJSON,
     EnrollmentResponseFromJSON,
@@ -98,6 +111,8 @@ import {
     SetMuderrisDtoToJSON,
     SetMuderrisUnvanDtoFromJSON,
     SetMuderrisUnvanDtoToJSON,
+    UpdateCourseDeckDtoFromJSON,
+    UpdateCourseDeckDtoToJSON,
     UpdateCourseDtoFromJSON,
     UpdateCourseDtoToJSON,
     UpdateCourseNazirDtoFromJSON,
@@ -130,6 +145,11 @@ export interface CreateCourseRequest {
     createCourseDto: CreateCourseDto;
 }
 
+export interface CreateCourseDeckRequest {
+    id: string;
+    createCourseDeckDto: CreateCourseDeckDto;
+}
+
 export interface CreateCourseNazirRequest {
     id: string;
     createCourseNazirDto: CreateCourseNazirDto;
@@ -137,6 +157,11 @@ export interface CreateCourseNazirRequest {
 
 export interface DeleteCourseRequest {
     id: string;
+}
+
+export interface DeleteCourseDeckRequest {
+    id: string;
+    deckId: string;
 }
 
 export interface EnrollInCourseRequest {
@@ -148,6 +173,14 @@ export interface GetCourseBadgeCountsRequest {
 }
 
 export interface GetCourseByIdRequest {
+    id: string;
+}
+
+export interface GetCourseDecksRequest {
+    id: string;
+}
+
+export interface GetCourseDecksManageRequest {
     id: string;
 }
 
@@ -245,6 +278,12 @@ export interface SetEnrollmentStatusRequest {
 export interface UpdateCourseRequest {
     id: string;
     updateCourseDto: UpdateCourseDto;
+}
+
+export interface UpdateCourseDeckRequest {
+    id: string;
+    deckId: string;
+    updateCourseDeckDto: UpdateCourseDeckDto;
 }
 
 export interface UpdateCourseNazirRequest {
@@ -524,6 +563,60 @@ export class CoursesApi extends runtime.BaseAPI {
     }
 
     /**
+     * The caller becomes its author. A week, when given, must be one of the course\'s weeks.
+     * Create a course deck
+     */
+    async createCourseDeckRaw(requestParameters: CreateCourseDeckRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CreatedCourseDeckResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling createCourseDeck().'
+            );
+        }
+
+        if (requestParameters['createCourseDeckDto'] == null) {
+            throw new runtime.RequiredError(
+                'createCourseDeckDto',
+                'Required parameter "createCourseDeckDto" was null or undefined when calling createCourseDeck().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/courses/{id}/decks`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: CreateCourseDeckDtoToJSON(requestParameters['createCourseDeckDto']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => CreatedCourseDeckResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * The caller becomes its author. A week, when given, must be one of the course\'s weeks.
+     * Create a course deck
+     */
+    async createCourseDeck(requestParameters: CreateCourseDeckRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CreatedCourseDeckResponse> {
+        const response = await this.createCourseDeckRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * nazar \'Ders nazırı ata\'. Needs `course_nazir.assign`; giving permissions also needs `permission.grant` through a role (müderris, başmüderris, köşk nazımı) or the başnazım, else 403 PERMISSION_NOT_GIVABLE for any code. The post and the permissions end together at `endsAt`. 403 GRANT_EXCEEDS_GIVER for a permission the caller does not hold here; 403 PERMISSION_NOT_GIVABLE for a köşk nazımı in a medrese course; 403 SELF_GRANT_REFUSED for oneself, SYSTEM_ADMIN excepted; 400 for a code outside the course catalog, a hidden course or an end in the past; 404 COURSE_NAZIR_UNKNOWN_ACCOUNT; 409 COURSE_NAZIR_BARRED for an account an open ban bars from the course. Written to the audit log. Answers the list as it is now.
      * Make someone the course\'s ders nazırı
      */
@@ -623,6 +716,57 @@ export class CoursesApi extends runtime.BaseAPI {
     async deleteCourse(requestParameters: DeleteCourseRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<boolean> {
         const response = await this.deleteCourseRaw(requestParameters, initOverrides);
         return await response.value();
+    }
+
+    /**
+     * Only a deck that is a draft can be deleted. A published deck answers 409 (COURSE_DECK_NOT_DRAFT): set `draft` to true first, which takes it from the talebe and keeps their progress.
+     * Delete a draft course deck with its cards
+     */
+    async deleteCourseDeckRaw(requestParameters: DeleteCourseDeckRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling deleteCourseDeck().'
+            );
+        }
+
+        if (requestParameters['deckId'] == null) {
+            throw new runtime.RequiredError(
+                'deckId',
+                'Required parameter "deckId" was null or undefined when calling deleteCourseDeck().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/courses/{id}/decks/{deckId}`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace(`{${"deckId"}}`, encodeURIComponent(String(requestParameters['deckId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * Only a deck that is a draft can be deleted. A published deck answers 409 (COURSE_DECK_NOT_DRAFT): set `draft` to true first, which takes it from the talebe and keeps their progress.
+     * Delete a draft course deck with its cards
+     */
+    async deleteCourseDeck(requestParameters: DeleteCourseDeckRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.deleteCourseDeckRaw(requestParameters, initOverrides);
     }
 
     /**
@@ -752,6 +896,94 @@ export class CoursesApi extends runtime.BaseAPI {
      */
     async getCourseById(requestParameters: GetCourseByIdRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CourseDetailResponse> {
         const response = await this.getCourseByIdRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * The published decks of the course with the caller\'s own progress. Drafts are left out. Needs an enrollment in the course.
+     * The course\'s decks for an enrolled talebe
+     */
+    async getCourseDecksRaw(requestParameters: GetCourseDecksRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<CourseDeckStudentResponse>>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling getCourseDecks().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/courses/{id}/decks`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(CourseDeckStudentResponseFromJSON));
+    }
+
+    /**
+     * The published decks of the course with the caller\'s own progress. Drafts are left out. Needs an enrollment in the course.
+     * The course\'s decks for an enrolled talebe
+     */
+    async getCourseDecks(requestParameters: GetCourseDecksRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<CourseDeckStudentResponse>> {
+        const response = await this.getCourseDecksRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Every deck of the course with its card count, its week and whether it is a draft, and the share of the enrolled talebe\'s MASTERED cards. Needs `deck.manage_course` in the course.
+     * The course\'s decks for its staff, drafts included
+     */
+    async getCourseDecksManageRaw(requestParameters: GetCourseDecksManageRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<CourseDeckManageResponse>>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling getCourseDecksManage().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/courses/{id}/decks/manage`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(CourseDeckManageResponseFromJSON));
+    }
+
+    /**
+     * Every deck of the course with its card count, its week and whether it is a draft, and the share of the enrolled talebe\'s MASTERED cards. Needs `deck.manage_course` in the course.
+     * The course\'s decks for its staff, drafts included
+     */
+    async getCourseDecksManage(requestParameters: GetCourseDecksManageRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<CourseDeckManageResponse>> {
+        const response = await this.getCourseDecksManageRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -1759,6 +1991,68 @@ export class CoursesApi extends runtime.BaseAPI {
      */
     async updateCourse(requestParameters: UpdateCourseRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CourseDetailResponse> {
         const response = await this.updateCourseRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Title, description, week and draft. The card type is fixed. `weekId: null` takes the deck out of its week.
+     * Edit a course deck
+     */
+    async updateCourseDeckRaw(requestParameters: UpdateCourseDeckRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CourseDeckManageResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling updateCourseDeck().'
+            );
+        }
+
+        if (requestParameters['deckId'] == null) {
+            throw new runtime.RequiredError(
+                'deckId',
+                'Required parameter "deckId" was null or undefined when calling updateCourseDeck().'
+            );
+        }
+
+        if (requestParameters['updateCourseDeckDto'] == null) {
+            throw new runtime.RequiredError(
+                'updateCourseDeckDto',
+                'Required parameter "updateCourseDeckDto" was null or undefined when calling updateCourseDeck().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/courses/{id}/decks/{deckId}`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+        urlPath = urlPath.replace(`{${"deckId"}}`, encodeURIComponent(String(requestParameters['deckId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'PATCH',
+            headers: headerParameters,
+            query: queryParameters,
+            body: UpdateCourseDeckDtoToJSON(requestParameters['updateCourseDeckDto']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => CourseDeckManageResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Title, description, week and draft. The card type is fixed. `weekId: null` takes the deck out of its week.
+     * Edit a course deck
+     */
+    async updateCourseDeck(requestParameters: UpdateCourseDeckRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CourseDeckManageResponse> {
+        const response = await this.updateCourseDeckRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

@@ -10,7 +10,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { DeckPublishStatus } from "../../flashcard/domain/deck-publish-status.enum";
 import { FlashcardType } from "../../flashcard/domain/flashcard-type.enum";
-import { courses } from "./course.schema";
+import { courses, courseWeeks } from "./course.schema";
 import { flashcards } from "./flashcard.schema";
 import { flashcardType } from "./flashcard-enums.schema";
 import { kosks } from "./kosk.schema";
@@ -59,6 +59,16 @@ export const decks = table(
     madrasahId: uuid("madrasah_id").references(() => madrasahs.id, {
       onDelete: "set null",
     }),
+    // The week of the course the deck is studied in (ders destesi). Null for
+    // every other deck and for a course deck that names no week. A week that
+    // goes leaves its decks unplaced.
+    weekId: uuid("week_id").references(() => courseWeeks.id, {
+      onDelete: "set null",
+    }),
+    // A course deck the course team is still writing (ders destesi): the
+    // talebe do not see it and nobody reads it but its staff. `deckSharedWith`
+    // leaves it out. Always false for the other kinds of deck.
+    courseDraft: boolean("course_draft").default(false).notNull(),
     // The köşk the deck belongs to (MDRS-159): a "köşk destesi", open to the
     // talebe of that köşk's courses. Null for a talebe's own deck. A köşk that
     // goes leaves its decks to their authors.

@@ -1,4 +1,5 @@
 import {
+  type CourseDeckStudentResponse,
   type CourseDetailResponse,
   createServerTedrisatAPIs,
   type KoskDecksResponse,
@@ -105,6 +106,18 @@ export const getRecordings = (
 ): Promise<RecordingResponse[] | null> =>
   orNull(async () =>
     (await viewerApi()).lessons.listCourseRecordings({ id: courseId }, NO_STORE)
+  );
+
+/**
+ * The course's decks for an enrolled talebe, with their own progress (drafts
+ * are left out by the API). Null when the read fails; the tab then says there
+ * is no deck rather than showing a stale list.
+ */
+export const getCourseDecks = (
+  courseId: string
+): Promise<CourseDeckStudentResponse[] | null> =>
+  orNull(async () =>
+    (await viewerApi()).courses.getCourseDecks({ id: courseId }, NO_STORE)
   );
 
 /**

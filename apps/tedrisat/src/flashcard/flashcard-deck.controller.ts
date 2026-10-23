@@ -193,11 +193,22 @@ export class FlashcardDeckController {
     // private one (MDRS-43 AC-4). `findReadable` still re-reads the rule
     // rather than `findById`, so the handler does not depend on the guard
     // having run.
+    const user = request.user;
     return this.deckService.findReadable(
       deckId,
       request.user?.sub ?? null,
       include,
       {
+        // A course's staff reads the course's drafts and private decks, as
+        // the engine's course-deck rule says (ders destesi).
+        courseStaff: user
+          ? () =>
+              this.authz.can(
+                user,
+                { entity: ENTITIES.FLASHCARD_DECK, id: deckId },
+                PERMISSIONS.DECK_MANAGE_COURSE
+              )
+          : undefined,
         // The başnazım's read of another person's private deck: the guard has
         // allowed it and written it to the audit log, so the header comes back
         // too (review L2); every write on it stays refused.

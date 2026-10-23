@@ -1,6 +1,9 @@
 import {
   AnonymousRelation,
+  AUTHZ_CONTEXT,
+  AuthzContextLoader,
   ENTITIES,
+  effectivePermissions,
   PERMISSIONS,
   RELATIONS,
   Relation,
@@ -8,7 +11,7 @@ import {
   ResourceRef,
   RoleResolver,
 } from "@medaris/common";
-import { Injectable } from "@nestjs/common";
+import { Inject, Injectable } from "@nestjs/common";
 import { BanRepository } from "../ban/ban.repository";
 import { CourseRepository } from "../course/course.repository";
 import { CourseStatus } from "../course/domain/course-status.enum";
@@ -62,7 +65,8 @@ export class TedrisatRoleResolver implements RoleResolver {
     private readonly courseRepo: CourseRepository,
     private readonly deckService: FlashcardDeckService,
     private readonly madrasahService: MadrasahService,
-    private readonly banRepo: BanRepository
+    private readonly banRepo: BanRepository,
+    @Inject(AUTHZ_CONTEXT) private readonly authzContext: AuthzContextLoader
   ) {}
 
   async resolve(
@@ -288,9 +292,46 @@ export class TedrisatRoleResolver implements RoleResolver {
     // A deck that belongs to a course the caller is enrolled in (MDRS-164) is
     // read like a public one: PUBLIC holds VIEW and nothing that writes.
     if (!deck.isPublic && !deck.sharedWithViewer) {
+      // A course's staff reach its deck, drafts included, as its managers
+      // (ders destesi); anybody else gets the same 404 as for a private deck.
+      if (
+        deck.courseId &&
+        (await this.managesCourseDeck(userId, resource.id))
+      ) {
+        return RELATIONS.PUBLIC;
+      }
       throw new DeckNotFoundError(resource.id);
     }
     return RELATIONS.PUBLIC;
+  }
+
+  /**
+   * Whether the caller holds `deck.manage_course` in the course the deck
+   * belongs to, through a role or a grant. Decided by the engine over the
+   * deck's chain, the same computation `AuthzService.can` runs, so the
+   * resolver and the decision cannot disagree.
+   */
+  private async managesCourseDeck(
+    userId: string,
+    deckId: string
+  ): Promise<boolean> {
+    const ctx = await this.authzContext.load(userId, {
+      entity: ENTITIES.FLASHCARD_DECK,
+      id: deckId,
+    });
+    const { codes } = effectivePermissions(
+      {
+        entity: ENTITIES.FLASHCARD_DECK,
+        relation: RELATIONS.PUBLIC,
+        chain: ctx.chain,
+        madrasahCourse: ctx.madrasahCourse,
+        passiveScope: ctx.passiveScope,
+        policies: ctx.policies,
+      },
+      ctx.roles,
+      ctx.grants
+    );
+    return codes.has(PERMISSIONS.DECK_MANAGE_COURSE);
   }
 
   /**

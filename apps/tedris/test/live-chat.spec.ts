@@ -14,8 +14,7 @@ vi.mock("next-intl", () => ({
   useTranslations: () => (key: string) =>
     ({
       liveChatTitle: "Canlı sohbet",
-      liveChatText: "Sohbet YouTube'dan gelir.",
-      liveChatPopout: "Sohbeti YouTube'da aç",
+      liveChatPopout: "YouTube'da aç",
       liveChatNewTab: "(yeni sekmede açılır)",
     })[key] ?? key,
 }));
@@ -59,6 +58,12 @@ const mount = async () => {
 const frame = (host: HTMLElement) =>
   host.querySelector<HTMLIFrameElement>("iframe");
 
+/** A link's visible label: its text without the visually hidden part, trimmed. */
+const visibleLabel = (a: HTMLAnchorElement) => {
+  const hidden = a.querySelector(".mds-visually-hidden")?.textContent ?? "";
+  return (a.textContent ?? "").replace(hidden, "").trim();
+};
+
 describe("LiveChat", () => {
   it("is open with YouTube's chat for this page's host, with nothing to unfold", async () => {
     const host = await mount();
@@ -73,8 +78,9 @@ describe("LiveChat", () => {
 
   it("offers the same chat as YouTube's own page in a new tab, where a sign-in the frame cannot see counts", async () => {
     const host = await mount();
-    const link = [...host.querySelectorAll<HTMLAnchorElement>("a")].find((a) =>
-      a.textContent?.includes("Sohbeti YouTube'da aç")
+    // Exact, so the longer "Sohbeti YouTube'da aç" it replaced cannot match (MDRS-297).
+    const link = [...host.querySelectorAll<HTMLAnchorElement>("a")].find(
+      (a) => visibleLabel(a) === "YouTube'da aç"
     );
     expect(link).toBeDefined();
     const href = new URL(link?.href ?? "");
