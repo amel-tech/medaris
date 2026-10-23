@@ -28,6 +28,8 @@ export const CODES = {
   submissionRead: "submission.read",
   /** "Ortak uygulama kodları" (partner enrollments): the köşk nazımı's and the başnazım's. */
   partnerCodes: "course.partner_codes",
+  /** "Ders destesi": writing and managing the course's decks and their cards */
+  deckManageCourse: "deck.manage_course",
 } as const;
 
 /** The codes that open each page: holding any one of them is enough. */
@@ -44,6 +46,7 @@ export const PAGE_CODES = {
   curriculum: [CODES.courseEdit, CODES.sessionManage, CODES.weekHide],
   recordings: [CODES.recordingManage, CODES.recordingUpload],
   homework: [CODES.submissionRead],
+  decks: [CODES.deckManageCourse],
   settings: [
     CODES.courseEdit,
     CODES.courseSettings,
