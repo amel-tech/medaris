@@ -7049,6 +7049,255 @@
         ]
       }
     },
+    "/courses/{id}/decks/manage": {
+      "get": {
+        "description": "Every deck of the course with its card count, its week and whether it is a draft, and the share of the enrolled talebe's MASTERED cards. Needs `deck.manage_course` in the course.",
+        "operationId": "getCourseDecksManage",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CourseDeckManageResponse"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The course's decks for its staff, drafts included",
+        "tags": [
+          "courses"
+        ]
+      }
+    },
+    "/courses/{id}/decks": {
+      "post": {
+        "description": "The caller becomes its author. A week, when given, must be one of the course's weeks.",
+        "operationId": "createCourseDeck",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCourseDeckDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreatedCourseDeckResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create a course deck",
+        "tags": [
+          "courses"
+        ]
+      },
+      "get": {
+        "description": "The published decks of the course with the caller's own progress. Drafts are left out. Needs an enrollment in the course.",
+        "operationId": "getCourseDecks",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CourseDeckStudentResponse"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The course's decks for an enrolled talebe",
+        "tags": [
+          "courses"
+        ]
+      }
+    },
+    "/courses/{id}/decks/{deckId}": {
+      "patch": {
+        "description": "Title, description, week and draft. The card type is fixed. `weekId: null` takes the deck out of its week.",
+        "operationId": "updateCourseDeck",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "deckId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCourseDeckDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CourseDeckManageResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Edit a course deck",
+        "tags": [
+          "courses"
+        ]
+      },
+      "delete": {
+        "description": "Only a deck that is a draft can be deleted. A published deck answers 409 (COURSE_DECK_NOT_DRAFT): set `draft` to true first, which takes it from the talebe and keeps their progress.",
+        "operationId": "deleteCourseDeck",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "deckId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": "COURSE_DECK_NOT_DRAFT"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Delete a draft course deck with its cards",
+        "tags": [
+          "courses"
+        ]
+      }
+    },
     "/flashcard/cards/{id}": {
       "get": {
         "description": "Retrieves a specific flashcard by its unique identifier",
@@ -21392,6 +21641,203 @@
           "expiresAt"
         ]
       },
+      "FlashcardType": {
+        "type": "string",
+        "enum": [
+          "VOCABULARY",
+          "HADEETH"
+        ]
+      },
+      "CourseDeckManageResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "cardType": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FlashcardType"
+              }
+            ]
+          },
+          "cardCount": {
+            "type": "number"
+          },
+          "weekId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "weekNumber": {
+            "type": "number",
+            "nullable": true
+          },
+          "draft": {
+            "type": "boolean"
+          },
+          "masteredRatio": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "MASTERED card rows of the enrolled talebe, over cardCount x enrolledCount. 0 when either is 0."
+          },
+          "enrolledCount": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "description",
+          "cardType",
+          "cardCount",
+          "weekId",
+          "weekNumber",
+          "draft",
+          "masteredRatio",
+          "enrolledCount"
+        ]
+      },
+      "CreateCourseDeckDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "example": "Emsile - Kelime"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "cardType": {
+            "description": "What the deck's cards are; fixed once the deck exists.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FlashcardType"
+              }
+            ]
+          },
+          "weekId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "A week of the course. Omit it for a deck of no week."
+          },
+          "draft": {
+            "type": "boolean",
+            "default": false,
+            "description": "A draft is seen by the course's staff only."
+          }
+        },
+        "required": [
+          "title",
+          "cardType"
+        ]
+      },
+      "CreatedCourseDeckResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "UpdateCourseDeckDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 5,
+            "maxLength": 100
+          },
+          "description": {
+            "type": "object",
+            "maxLength": 1000,
+            "nullable": true
+          },
+          "weekId": {
+            "type": "object",
+            "format": "uuid",
+            "nullable": true
+          },
+          "draft": {
+            "type": "boolean"
+          }
+        }
+      },
+      "CourseDeckStudentResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "cardType": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FlashcardType"
+              }
+            ]
+          },
+          "weekId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "weekNumber": {
+            "type": "number",
+            "nullable": true
+          },
+          "cardCount": {
+            "type": "number"
+          },
+          "masteredCount": {
+            "type": "number"
+          },
+          "learningCount": {
+            "type": "number"
+          },
+          "newCount": {
+            "type": "number"
+          },
+          "dueCount": {
+            "type": "number",
+            "description": "Cards waiting for a repeat today."
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "description",
+          "cardType",
+          "weekId",
+          "weekNumber",
+          "cardCount",
+          "masteredCount",
+          "learningCount",
+          "newCount",
+          "dueCount"
+        ]
+      },
       "FlashcardProgressResponse": {
         "type": "object",
         "properties": {
@@ -21678,13 +22124,6 @@
           "message",
           "timestamp",
           "context"
-        ]
-      },
-      "FlashcardType": {
-        "type": "string",
-        "enum": [
-          "VOCABULARY",
-          "HADEETH"
         ]
       },
       "DeckPublishStatus": {

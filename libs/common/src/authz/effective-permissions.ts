@@ -211,6 +211,14 @@ const CONTENT_WORK: ReadonlySet<PermissionCode> = new Set([
   PERMISSIONS.COURSE_VIEW_UNPUBLISHED,
 ]);
 
+/** What the course's staff hold on one of the course's decks (ders destesi). */
+const COURSE_DECK_STAFF_CODES: readonly PermissionCode[] = [
+  PERMISSIONS.DECK_VIEW,
+  PERMISSIONS.DECK_CREATE_CARD,
+  PERMISSIONS.DECK_MANAGE_CARDS,
+  PERMISSIONS.DECK_MANAGE_PRIVATE,
+];
+
 /**
  * What the caller may do on the resource (MDRS-135 §6 and §7), as one pure
  * computation so the API, the account screens and the tests cannot disagree:
@@ -288,6 +296,20 @@ export function effectivePermissions(
     if (rosterWork || held.some((code) => CONTENT_WORK.has(code))) {
       codes.add(PERMISSIONS.COURSE_VIEW_DETAILS);
     }
+  }
+
+  // A course's deck is written by the course's staff: whoever holds
+  // `deck.manage_course` in the course may read, fill and edit its deck as its
+  // author does (ders destesi). Only a deck whose chain runs through a course
+  // has one, so a personal, köşk or medrese deck never gets these.
+  if (
+    facts.entity === ENTITIES.FLASHCARD_DECK &&
+    codes.has(PERMISSIONS.DECK_MANAGE_COURSE) &&
+    facts.chain.some(
+      (scope) => scope.type === SCOPE_TYPES.COURSE && scope.id !== null
+    )
+  ) {
+    for (const code of COURSE_DECK_STAFF_CODES) codes.add(code);
   }
 
   // Derived abilities ride on the permission they are part of.

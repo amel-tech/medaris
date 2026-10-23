@@ -69,6 +69,8 @@ src/models/CatalogSectionResponse.ts
 src/models/ChiefNazimResponse.ts
 src/models/CourseArchiveCountsResponse.ts
 src/models/CourseBadgeCountsResponse.ts
+src/models/CourseDeckManageResponse.ts
+src/models/CourseDeckStudentResponse.ts
 src/models/CourseDetailMadrasahResponse.ts
 src/models/CourseDetailResponse.ts
 src/models/CourseMadrasahResponse.ts
@@ -89,6 +91,7 @@ src/models/CourseSubmissionSessionResponse.ts
 src/models/CourseSubmissionsResponse.ts
 src/models/CourseSummaryResponse.ts
 src/models/CreateBanDto.ts
+src/models/CreateCourseDeckDto.ts
 src/models/CreateCourseDto.ts
 src/models/CreateCourseMuderrisDto.ts
 src/models/CreateCourseNazirDto.ts
@@ -120,6 +123,7 @@ src/models/CreateResourceDto.ts
 src/models/CreateSessionBatchDto.ts
 src/models/CreateWeekDto.ts
 src/models/CreateWeekLessonDto.ts
+src/models/CreatedCourseDeckResponse.ts
 src/models/CreatedIdResponse.ts
 src/models/DashboardApplicationResponse.ts
 src/models/DashboardBanResponse.ts
@@ -408,6 +412,7 @@ src/models/SubmissionTalebeResponse.ts
 src/models/SummaryMuderrisResponse.ts
 src/models/TaughtCourseRef.ts
 src/models/TeamSettableEnrollmentStatus.ts
+src/models/UpdateCourseDeckDto.ts
 src/models/UpdateCourseDto.ts
 src/models/UpdateCourseNazirDto.ts
 src/models/UpdateFlashcardDeckDto.ts

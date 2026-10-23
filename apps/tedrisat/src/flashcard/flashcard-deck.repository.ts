@@ -87,6 +87,7 @@ export class FlashcardDeckRepository implements IFlashcardDeckRepository {
       .select({
         authorId: decks.authorId,
         isPublic: decks.isPublic,
+        courseId: decks.courseId,
         sharedWithViewer: viewerId
           ? deckSharedWith(viewerId)
           : sql<boolean>`false`,

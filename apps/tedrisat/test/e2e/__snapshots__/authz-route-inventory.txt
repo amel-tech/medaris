@@ -1,5 +1,6 @@
 DELETE /archive/:type/:id -> exempt
 DELETE /courses/:id -> course.delete on byExistingCourse
+DELETE /courses/:id/decks/:deckId -> deck.manage_course on course
 DELETE /courses/:id/enroll -> course.view on course
 DELETE /courses/:id/enrollment -> course.view on course
 DELETE /courses/:id/enrollments/:userId -> enrollment.decide on course
@@ -38,6 +39,8 @@ GET /courses/:courseId/sessions/:sessionId -> course.view on bySessionCourse (pu
 GET /courses/:id -> course.view on course (public)
 GET /courses/:id/archive -> week.hide on course
 GET /courses/:id/badge-counts -> course.staff_read on byExistingCourse
+GET /courses/:id/decks -> course.view_details on course
+GET /courses/:id/decks/manage -> deck.manage_course on course
 GET /courses/:id/enrollments -> course.staff_read on course
 GET /courses/:id/enrollments/removed -> course.staff_read on course
 GET /courses/:id/live-streams -> session.live_link on course
@@ -149,6 +152,7 @@ GET /users -> no AuthzGuard
 GET /users/:id/public-profile -> no AuthzGuard
 GET /users/lookup -> no AuthzGuard
 PATCH /courses/:id -> course.edit on course
+PATCH /courses/:id/decks/:deckId -> deck.manage_course on course
 PATCH /courses/:id/enrollments/:userId -> enrollment.complete on course
 PATCH /courses/:id/nazirs/:postId -> course_nazir.assign on byExistingCourse
 PATCH /flashcard/cards/:id -> deck.manage_cards on custom
@@ -178,6 +182,7 @@ POST /courses/:courseId/sessions/batch/preview -> session.manage on course
 POST /courses/:courseId/weeks/:weekId/hide -> week.hide on course
 POST /courses/:courseId/weeks/:weekId/lessons -> session.manage on course
 POST /courses/:id/archive -> course.hide | madrasah.course_hide | platform.course_hide on byExistingCourse
+POST /courses/:id/decks -> deck.manage_course on course
 POST /courses/:id/enroll -> course.enroll on course
 POST /courses/:id/enrollments/:userId/approve -> enrollment.decide on course
 POST /courses/:id/enrollments/:userId/remove -> enrollment.remove on course
