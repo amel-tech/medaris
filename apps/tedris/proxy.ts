@@ -1,3 +1,7 @@
+import {
+  LOCALE_COOKIE,
+  pathInPreferredLocale,
+} from "@medaris/ui/lib/locale-preference";
 import { authPageUnderCallbackLocale } from "@medaris/utils";
 import { type NextRequest, NextResponse } from "next/server";
 import createIntlMiddleware from "next-intl/middleware";
@@ -23,12 +27,15 @@ const authPaths: readonly string[] = [
  * 1. An auth page asked for without a locale (`/auth/signin?callbackUrl=/en/…`)
  *    moves under the locale of the page the visitor was on, so Keycloak opens
  *    in their language (MDRS-274).
- * 2. The auth step: the session is renewed for this request and the response;
+ * 2. A page load in another language than this browser's stored choice
+ *    (the `medaris-locale` cookie) moves to it before it renders, rather than
+ *    rendering and being moved by `LocalePreference`.
+ * 3. The auth step: the session is renewed for this request and the response;
  *    a page that is not in `public-paths.ts`, asked for without a session,
  *    goes to `/<locale>/auth/signin?callbackUrl=<where they were>`. A public
  *    page renders for the visitor (MDRS-216); `/api/…` and Server Actions are
  *    never redirected, they answer for themselves.
- * 3. next-intl for the pages it lets through (the locale prefix).
+ * 4. next-intl for the pages it lets through (the locale prefix).
  */
 export default function proxy(request: NextRequest) {
   const localised = authPageUnderCallbackLocale(request.nextUrl, {
@@ -36,6 +43,18 @@ export default function proxy(request: NextRequest) {
     locales,
   });
   if (localised) return NextResponse.redirect(new URL(localised, request.url));
+
+  const preferred = pathInPreferredLocale(
+    {
+      method: request.method,
+      pathname: request.nextUrl.pathname,
+      search: request.nextUrl.search,
+      isServerAction: request.headers.has("next-action"),
+    },
+    request.cookies.get(LOCALE_COOKIE)?.value,
+    locales
+  );
+  if (preferred) return NextResponse.redirect(new URL(preferred, request.url));
 
   return authProxy(request, { isPublicPath, next: intl });
 }

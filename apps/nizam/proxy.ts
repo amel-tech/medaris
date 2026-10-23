@@ -1,7 +1,11 @@
-import type { NextRequest } from "next/server";
+import {
+  LOCALE_COOKIE,
+  pathInPreferredLocale,
+} from "@medaris/ui/lib/locale-preference";
+import { type NextRequest, NextResponse } from "next/server";
 import createIntlMiddleware from "next-intl/middleware";
 import { proxy as authProxy } from "~/lib/auth";
-import { routing } from "~/lib/i18n/routing";
+import { locales, routing } from "~/lib/i18n/routing";
 import { isPublicPath } from "~/lib/public-paths";
 
 const intl = createIntlMiddleware(routing);
@@ -15,8 +19,24 @@ const intl = createIntlMiddleware(routing);
  * with `callbackUrl` (MDRS-274); every page `@medaris/auth` lets through goes
  * on to next-intl. `/api/…` is refreshed but never redirected, and never
  * reaches next-intl.
+ *
+ * Before all of that, a page load in another language than this browser's
+ * stored choice (the `medaris-locale` cookie) moves to it before it renders,
+ * rather than rendering and being moved by `LocalePreference`.
  */
 export default function proxy(request: NextRequest) {
+  const preferred = pathInPreferredLocale(
+    {
+      method: request.method,
+      pathname: request.nextUrl.pathname,
+      search: request.nextUrl.search,
+      isServerAction: request.headers.has("next-action"),
+    },
+    request.cookies.get(LOCALE_COOKIE)?.value,
+    locales
+  );
+  if (preferred) return NextResponse.redirect(new URL(preferred, request.url));
+
   return authProxy(request, { isPublicPath, next: intl });
 }
 

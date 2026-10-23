@@ -2,10 +2,12 @@
 
 import { useEffect } from "react";
 import {
+  hasLocaleCookie,
   LOCALE_NAMES,
   localeHref,
   readStoredLocale,
   storeLocale,
+  writeLocaleCookie,
 } from "../lib/locale-preference";
 import { Icon } from "./icon";
 import { Menu } from "./menu";
@@ -110,6 +112,8 @@ export function LocalePreference({
 }) {
   useEffect(() => {
     const stored = readStoredLocale(locales);
+    // a choice made before the cookie: from now on the proxy moves the visit
+    if (stored && !hasLocaleCookie(stored)) writeLocaleCookie(stored);
     if (stored && stored !== locale) {
       window.location.replace(localeHref(stored, locales, window.location));
     }
