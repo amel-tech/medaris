@@ -12,7 +12,6 @@ import {
   navGroups,
   roleLabelKey,
   shellVariant,
-  stripLocale,
 } from "~/lib/shell-nav";
 
 const shell = resources.tr.nizam.Shell as {
@@ -126,7 +125,7 @@ describe("the menus as the canvases draw them", () => {
   });
 
   it("Köşk nazımı: every entry is a page that exists, so none answers 404 (MDRS-211)", () => {
-    const appDir = fileURLToPath(new URL("../app/[locale]", import.meta.url));
+    const appDir = fileURLToPath(new URL("../app", import.meta.url));
     for (const g of navGroups("kosk")) {
       for (const i of g.items) {
         const dir = i.path.replace(":kosk", "[id]");
@@ -184,13 +183,6 @@ describe("where the viewer is", () => {
     expect(currentKoskId("/kosks/zzz/basvurular", ["a", "b"])).toBe("a");
     expect(currentKoskId("/", ["a", "b"])).toBe("a");
     expect(currentKoskId("/", [])).toBeNull();
-  });
-
-  it("strips the locale prefix only when it is one", () => {
-    const locales = ["en", "tr", "ar"];
-    expect(stripLocale("/tr/kosks/a", locales)).toBe("/kosks/a");
-    expect(stripLocale("/tr", locales)).toBe("/");
-    expect(stripLocale("/kosks/a", locales)).toBe("/kosks/a");
   });
 
   it("matches a section by whole segments, and `/` only itself", () => {

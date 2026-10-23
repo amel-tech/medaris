@@ -24,20 +24,18 @@ export type InviteTranslator = {
 
 export const AnonymousInvite = ({
   t,
-  locale,
   variant,
   callbackPath,
   className,
 }: {
   /** The page's own translator (`getTranslations("tedris")`): the page has it already. */
   t: InviteTranslator;
-  locale: string;
   variant: "apply" | "discover";
   /** The path (no locale) the visitor returns to after signing in. */
   callbackPath: string;
   className?: string;
 }) => {
-  const hrefs = inviteHrefs(locale, callbackPath);
+  const hrefs = inviteHrefs(callbackPath);
   const links = {
     signIn: (chunks: ReactNode) => (
       <Link href={hrefs.signIn} prefetch={false}>

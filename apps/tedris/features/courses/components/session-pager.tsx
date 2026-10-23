@@ -9,8 +9,8 @@ import { joinRun } from "../join-run";
 import { curriculumOf } from "../session-model";
 import { type CurriculumOption, SessionCurriculum } from "./session-curriculum";
 
-const lessonHref = (locale: string, courseId: string, id: string) =>
-  `/${locale}/courses/${courseId}/lessons/${id}`;
+const lessonHref = (courseId: string, id: string) =>
+  `/courses/${courseId}/lessons/${id}`;
 
 /**
  * One end of the bottom row: the previous celse at the start, the next at
@@ -129,7 +129,7 @@ export const curriculumOptions = ({
     weeks,
     options: rows.map(({ lesson, weekNumber, state, viewing }) => ({
       id: lesson.id,
-      href: lessonHref(locale, course.id, lesson.id),
+      href: lessonHref(course.id, lesson.id),
       weekNumber,
       week: t("SessionPage.week", { number: weekNumber }),
       title: lesson.title,
@@ -189,7 +189,7 @@ export const SessionPager = ({
     <NeighbourCard
       session={ref}
       direction={direction}
-      href={lessonHref(locale, course.id, ref.id)}
+      href={lessonHref(course.id, ref.id)}
       narrow={options.length > 0}
       t={t}
       locale={locale}
@@ -212,7 +212,7 @@ export const SessionPager = ({
               ? Math.min(100, Math.round((session.weekNumber / weeks) * 100))
               : 0
           }
-          courseHref={`/${locale}/courses/${course.id}?tab=mufredat`}
+          courseHref={`/courses/${course.id}?tab=mufredat`}
           locale={locale}
           labels={{
             curriculum: t("SessionPage.curriculum"),

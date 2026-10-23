@@ -39,7 +39,7 @@ const signIn = async (
   page: Page,
   who: { email?: string; password?: string }
 ) => {
-  await page.goto("/tr/auth/signin");
+  await page.goto("/auth/signin");
   await page.locator("#username").fill(who.email as string);
   await page.locator("#password").fill(who.password as string);
   await page.locator("button[type=submit]").click();
@@ -47,8 +47,8 @@ const signIn = async (
 };
 
 const sessionPath = (id: string) =>
-  `/tr/courses/${fixture.courseId}/lessons/${id}`;
-const coursePath = () => `/tr/courses/${fixture.courseId}`;
+  `/courses/${fixture.courseId}/lessons/${id}`;
+const coursePath = () => `/courses/${fixture.courseId}`;
 const watchPath = (id: string) => `${sessionPath(id)}/izle`;
 
 test.describe("an enrolled talebe", () => {

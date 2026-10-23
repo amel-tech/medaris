@@ -35,7 +35,7 @@ async function signIn(
   page: Page,
   who: { email?: string; password?: string }
 ): Promise<void> {
-  await page.goto("/tr/auth/signin");
+  await page.goto("/auth/signin");
   await page.locator("#username").fill(who.email as string);
   await page.locator("#password").fill(who.password as string);
   await page.locator("button[type=submit]").click();
@@ -56,8 +56,8 @@ test("nizam/03 — an account with no role lands on 'Yönetim yetkiniz yok': no 
 }) => {
   test.skip(!TALEBE.password, "no talebe account");
   await signIn(page, TALEBE);
-  await page.goto("/tr");
-  await page.waitForURL(/\/tr\/yetki-yok$/);
+  await page.goto("/");
+  await page.waitForURL(/\/yetki-yok$/);
 
   const heading = page.getByRole("heading", {
     level: 1,
@@ -90,10 +90,10 @@ test("nizam/03 — an account with no role lands on 'Yönetim yetkiniz yok': no 
   await page.waitForURL("http://localhost:4000/");
 });
 
-test("nizam/03 — signed out, /tr/yetki-yok sends to sign-in, not to the screen", async ({
+test("nizam/03 — signed out, /yetki-yok sends to sign-in, not to the screen", async ({
   page,
 }) => {
-  await page.goto("/tr/yetki-yok");
+  await page.goto("/yetki-yok");
   await expect(page).not.toHaveURL(/\/yetki-yok$/);
   await expect(page.locator("#username")).toBeVisible();
 });
@@ -103,11 +103,11 @@ test("nizam/36 + medaris/16 — the person row leads to Hesap, whose 'Çıkış 
 }) => {
   test.skip(!TALEBE.password, "no talebe account");
   await signIn(page, TALEBE);
-  await page.goto("/tr/yetki-yok");
+  await page.goto("/yetki-yok");
   await page.locator("aside .mds-nav-user").click();
-  await page.waitForURL(/\/tr\/hesap$/);
+  await page.waitForURL(/\/hesap$/);
   await page.getByRole("link", { name: "Çıkış yap" }).click();
-  await page.waitForURL(/\/tr\/auth\/signout$/);
+  await page.waitForURL(/\/auth\/signout$/);
   await expect(
     page.getByRole("heading", { level: 1, name: "Çıkış yapılsın mı?" })
   ).toBeVisible();
@@ -118,7 +118,7 @@ test("nizam/36 + medaris/16 — the person row leads to Hesap, whose 'Çıkış 
   ).toBeVisible();
 
   await page.getByRole("button", { name: "Vazgeç" }).click();
-  await page.waitForURL(/\/tr\/hesap$/);
+  await page.waitForURL(/\/hesap$/);
 
   await page.getByRole("link", { name: "Çıkış yap" }).click();
   await page.getByRole("button", { name: "Çıkış yap" }).click();
@@ -127,7 +127,7 @@ test("nizam/36 + medaris/16 — the person row leads to Hesap, whose 'Çıkış 
   await expect(page.getByRole("link", { name: "Giriş yap" })).toBeVisible({
     timeout: 20000,
   });
-  await page.goto("/tr/yetki-yok");
+  await page.goto("/yetki-yok");
   await expect(page.locator("#username")).toBeVisible();
 });
 
@@ -136,7 +136,7 @@ test("nizam/31 [seed] — Başvurular lists the köşk's waiting applications, f
 }) => {
   test.skip(!seedable, "no köşk nazım account");
   await signIn(page, KOSK_NAZIM);
-  await page.goto(`/tr/kosks/${fixture.koskId}/basvurular`);
+  await page.goto(`/kosks/${fixture.koskId}/basvurular`);
 
   await expect(
     page.getByRole("heading", { level: 1, name: "Başvurular" })
@@ -192,7 +192,7 @@ test("nizam/31 [seed] — Onayla enrolls the talebe, Reddet deletes the applicat
 }) => {
   test.skip(!seedable, "no köşk nazım account");
   await signIn(page, KOSK_NAZIM);
-  await page.goto(`/tr/kosks/${fixture.koskId}/basvurular`);
+  await page.goto(`/kosks/${fixture.koskId}/basvurular`);
   const rows = page.locator("tbody tr");
   await expect(rows).toHaveCount(5);
 
@@ -235,7 +235,7 @@ test("nizam/31 [seed] — another köşk's Başvurular is 'Bu bölüm için izni
 }) => {
   test.skip(!seedable, "no köşk nazım account");
   await signIn(page, KOSK_NAZIM);
-  await page.goto(`/tr/kosks/${fixture.otherKoskId}/basvurular`);
+  await page.goto(`/kosks/${fixture.otherKoskId}/basvurular`);
   await expect(
     page.getByRole("heading", { level: 1, name: "Bu bölüm için izniniz yok" })
   ).toBeVisible();
@@ -249,7 +249,7 @@ test("nizam/57 [seed] — a course's Talebeler opens on Başvurular; Onayla move
   await signIn(page, KOSK_NAZIM);
   const course = fixture.courses[0];
   const waiting = fixture.applicants.filter((a) => a.courseId === course?.id);
-  await page.goto(`/tr/kosks/${fixture.koskId}/courses/${course?.id}/students`);
+  await page.goto(`/kosks/${fixture.koskId}/courses/${course?.id}/students`);
 
   await expect(
     page.getByRole("heading", { level: 1, name: "Talebeler" })
@@ -300,7 +300,7 @@ test.describe("the phone menus (390 x 844)", () => {
   }) => {
     test.skip(!seedable, "no köşk nazım account");
     await signIn(page, KOSK_NAZIM);
-    await page.goto(`/tr/kosks/${fixture.koskId}/basvurular`);
+    await page.goto(`/kosks/${fixture.koskId}/basvurular`);
 
     await page.getByRole("button", { name: "Menü" }).click();
     await expect(sheet(page)).toBeVisible();
@@ -353,7 +353,7 @@ test.describe("the phone menus (390 x 844)", () => {
   }) => {
     test.skip(!SYSTEM_ADMIN.password, "no SYSTEM_ADMIN account");
     await signIn(page, SYSTEM_ADMIN);
-    await page.goto("/tr");
+    await page.goto("/");
     await page.getByRole("button", { name: "Menü" }).click();
     expect(await navTexts(sheet(page).locator("nav"))).toEqual([
       "GENEL",
@@ -401,7 +401,7 @@ test.describe("the phone menus (390 x 844)", () => {
     ]);
     try {
       await signIn(page, MEDARIS_NAZIM);
-      await page.goto("/tr");
+      await page.goto("/");
       await page.getByRole("button", { name: "Menü" }).click();
       expect(await navTexts(sheet(page).locator("nav"))).toEqual([
         "GENEL",

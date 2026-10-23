@@ -107,7 +107,7 @@ const render = async (
       session: { ...session, ...over } as SessionResponse,
       koskName: "Nûruosmaniye Köşkü",
       reason,
-      signInHref: `/tr/auth/signin?callbackUrl=${encodeURIComponent(`/courses/${COURSE_ID}/lessons/${LESSON_ID}`)}`,
+      signInHref: `/auth/signin?callbackUrl=${encodeURIComponent(`/courses/${COURSE_ID}/lessons/${LESSON_ID}`)}`,
       now: NOW,
     })
   );

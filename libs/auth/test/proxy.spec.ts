@@ -299,21 +299,6 @@ describe("proxy: the gate", () => {
     );
   });
 
-  it("builds the sign-in page from where the visitor was (the locale, MDRS-274)", async () => {
-    const auth = createAuth(
-      testConfig({
-        pages: {
-          signIn: (returnTo) =>
-            `/${returnTo?.split("/")[1] || "tr"}/auth/signin`,
-        },
-      })
-    );
-    const response = await auth.proxy(request("/en/courses/1/lessons/2"));
-    expect(response.headers.get("location")).toBe(
-      `${ORIGIN}/en/auth/signin?callbackUrl=%2Fen%2Fcourses%2F1%2Flessons%2F2`
-    );
-  });
-
   it("lets a visitor read a public page (MDRS-216)", async () => {
     const auth = createAuth(testConfig());
     const next = vi.fn(() => NextResponse.next());

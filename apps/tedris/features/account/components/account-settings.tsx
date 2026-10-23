@@ -52,10 +52,10 @@ export interface AccountSettingsProps {
  * the one place that showed it before; that page is hidden (MDRS-141).
  */
 function GenderRow({ gender }: Pick<AccountSettingsProps, "gender">) {
+  const locale = useLocale();
   const t = useAccountTranslations("AccountProfile");
   // Not `t`/`tp`: the parity spec reads those as AccountProfile keys.
   const tPublic = useAccountTranslations("PublicProfile");
-  const locale = useLocale();
   const value =
     gender === "FEMALE"
       ? tPublic("female")
@@ -80,7 +80,7 @@ function GenderRow({ gender }: Pick<AccountSettingsProps, "gender">) {
         variant="outline"
         size="small"
         href={accountActionHref("UPDATE_PROFILE", {
-          callbackUrl: `/${locale}/account`,
+          callbackUrl: `/account`,
           locale,
         })}
       >
@@ -283,7 +283,6 @@ function CalendarCard({
   lessonInvitationEmails,
 }: Pick<AccountSettingsProps, "lessonInvitationEmails">) {
   const t = useAccountTranslations("AccountProfile");
-  const locale = useLocale();
   const toaster = useToaster();
   const [invitations, setInvitations] = useState(lessonInvitationEmails);
   const [saving, setSaving] = useState(false);
@@ -323,7 +322,7 @@ function CalendarCard({
               <p className="mds-caption">{t("calendarText")}</p>
             </div>
           </div>
-          <Button variant="outline" href={`/${locale}/account/calendar`}>
+          <Button variant="outline" href={`/account/calendar`}>
             {t("calendarManage")}
           </Button>
         </div>
@@ -341,12 +340,11 @@ function CalendarCard({
 
 function PublicProfileCard() {
   const t = useAccountTranslations("AccountProfile");
-  const locale = useLocale();
   return (
     <Card title={t("publicTitle")} headingLevel={2} className={CARD_GAP}>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <p className="mds-caption min-inline-0 flex-1">{t("publicText")}</p>
-        <Button variant="outline" href={`/${locale}/account/public-profile`}>
+        <Button variant="outline" href={`/account/public-profile`}>
           {t("publicManage")}
         </Button>
       </div>
@@ -378,7 +376,6 @@ function ConnectedAppsCard({
 
 function SignOutCard() {
   const t = useAccountTranslations("AccountProfile");
-  const locale = useLocale();
   return (
     <Card>
       <div className="flex flex-col items-start gap-4">
@@ -386,7 +383,7 @@ function SignOutCard() {
         <p className="mds-body-sm">{t("signOutText")}</p>
         <Button
           variant="secondary"
-          href={`/${locale}/auth/signout`}
+          href={`/auth/signout`}
           iconLeft={<Icon name="signOut" />}
         >
           {t("signOut")}

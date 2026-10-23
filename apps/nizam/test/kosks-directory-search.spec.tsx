@@ -110,7 +110,7 @@ describe("KosksDirectory search (nizam 09)", () => {
     expect(router.replace).not.toHaveBeenCalled();
     await pause();
     expect(router.replace).toHaveBeenCalledTimes(1);
-    expect(router.replace).toHaveBeenCalledWith("/tr/kosks?q=abc");
+    expect(router.replace).toHaveBeenCalledWith("/kosks?q=abc");
     expect(router.push).not.toHaveBeenCalled();
   });
 
@@ -119,12 +119,12 @@ describe("KosksDirectory search (nizam 09)", () => {
     await type("abc");
     await clickChip("Listelenmeyen");
     expect(router.push).toHaveBeenLastCalledWith(
-      "/tr/kosks?gorunurluk=listelenmeyen"
+      "/kosks?gorunurluk=listelenmeyen"
     );
     // the server has not answered the click yet: `filters` is the old ones
     await pause();
     expect(router.replace).toHaveBeenLastCalledWith(
-      "/tr/kosks?gorunurluk=listelenmeyen&q=abc"
+      "/kosks?gorunurluk=listelenmeyen&q=abc"
     );
   });
 
@@ -132,11 +132,11 @@ describe("KosksDirectory search (nizam 09)", () => {
     await mount();
     await type("abc");
     await pause();
-    expect(router.replace).toHaveBeenLastCalledWith("/tr/kosks?q=abc");
+    expect(router.replace).toHaveBeenLastCalledWith("/kosks?q=abc");
     // the search has not come back from the server yet
     await clickChip("Listelenmeyen");
     expect(router.push).toHaveBeenLastCalledWith(
-      "/tr/kosks?gorunurluk=listelenmeyen&q=abc"
+      "/kosks?gorunurluk=listelenmeyen&q=abc"
     );
   });
 });

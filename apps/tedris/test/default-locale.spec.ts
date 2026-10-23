@@ -1,31 +1,53 @@
-import { NextRequest } from "next/server";
-import createIntlMiddleware from "next-intl/middleware";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import requestConfig from "~/lib/i18n/request";
 import { routing } from "~/lib/i18n/routing";
 
-const intl = createIntlMiddleware(routing);
+// Resolves to the react-client build of next-intl/server, whose
+// `getRequestConfig` throws; the real one is the identity function anyway.
+vi.mock("next-intl/server", () => ({
+  getRequestConfig: (config: unknown) => config,
+}));
 
-const redirectOf = (url: string, headers: Record<string, string> = {}) => {
-  const response = intl(new NextRequest(url, { headers }));
-  return response.headers.get("location");
-};
+const jar = vi.hoisted(() => ({ cookies: {} as Record<string, string> }));
+vi.mock("next/headers", () => ({
+  cookies: async () => ({
+    get: (name: string) =>
+      name in jar.cookies ? { name, value: jar.cookies[name] } : undefined,
+  }),
+}));
 
-describe("the default locale", () => {
-  it("is Turkish", () => {
+const localeOfRequest = async () =>
+  (await (requestConfig as unknown as () => Promise<{ locale: string }>)())
+    .locale;
+
+/**
+ * The language is the viewer's choice, never the address (MDRS-248): the
+ * `medaris-locale` cookie, Turkish without one. The browser's own language
+ * and next-intl's `NEXT_LOCALE` do not pick it.
+ */
+describe("the request's language", () => {
+  beforeEach(() => {
+    jar.cookies = {};
+  });
+
+  it("is Turkish by default", async () => {
     expect(routing.defaultLocale).toBe("tr");
+    expect(await localeOfRequest()).toBe("tr");
   });
 
-  it("sends a path without a locale to Turkish, whatever the browser asks for", () => {
-    const location = redirectOf("http://localhost/", {
-      "accept-language": "en-US,en;q=0.9",
-      cookie: "NEXT_LOCALE=en",
-    });
-    expect(location && new URL(location).pathname).toBe("/tr");
+  it("is the cookie's when it names one of the languages", async () => {
+    for (const locale of ["tr", "en", "ar"]) {
+      jar.cookies = { "medaris-locale": locale };
+      expect(await localeOfRequest()).toBe(locale);
+    }
   });
 
-  it("keeps an explicit locale in the path", () => {
-    expect(
-      redirectOf("http://localhost/en", { "accept-language": "tr" })
-    ).toBeNull();
+  it("ignores an unknown choice and next-intl's own cookie", async () => {
+    jar.cookies = { "medaris-locale": "de", NEXT_LOCALE: "en" };
+    expect(await localeOfRequest()).toBe("tr");
+  });
+
+  it("never routes by a locale prefix", () => {
+    expect(routing.localePrefix).toBe("never");
   });
 });

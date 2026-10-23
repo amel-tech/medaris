@@ -135,21 +135,21 @@ describe("Ana sayfa: which courses to continue and what a deck waits with", () =
 describe("the deck pages a visitor may open (MDRS-165)", () => {
   it("opens a deck and its study page by id, in every locale", () => {
     expect(isPublicPath(`/decks/${DECK}`)).toBe(true);
-    expect(isPublicPath(`/tr/decks/${DECK}`)).toBe(true);
-    expect(isPublicPath(`/en/decks/study/${DECK}`)).toBe(true);
+    expect(isPublicPath(`/decks/${DECK}`)).toBe(true);
+    expect(isPublicPath(`/decks/study/${DECK}`)).toBe(true);
   });
 
   it("keeps everything else under /decks behind the sign-in", () => {
     for (const path of [
       "/decks",
-      "/tr/decks",
-      "/tr/decks/create",
-      "/tr/decks/explore",
-      "/tr/decks/study",
-      `/tr/decks/${DECK}/edit`,
-      `/tr/decks/${DECK}/cards`,
-      `/tr/decks/study/${DECK}/x`,
-      "/tr/decks/not-an-id",
+      "/decks",
+      "/decks/create",
+      "/decks/explore",
+      "/decks/study",
+      `/decks/${DECK}/edit`,
+      `/decks/${DECK}/cards`,
+      `/decks/study/${DECK}/x`,
+      "/decks/not-an-id",
     ]) {
       expect(isPublicPath(path)).toBe(false);
     }

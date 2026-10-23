@@ -281,12 +281,9 @@ describe("a live stream", () => {
       a.getAttribute("href"),
       a.textContent,
     ]);
+    expect(links).toContainEqual(["/courses/c1", "Derse dön: Emsile ve Bina"]);
     expect(links).toContainEqual([
-      "/tr/courses/c1",
-      "Derse dön: Emsile ve Bina",
-    ]);
-    expect(links).toContainEqual([
-      "/tr/courses/c1/lessons/s1",
+      "/courses/c1/lessons/s1",
       "Celse ayrıntıları",
     ]);
     expect(host.textContent).not.toContain("Celseye katıl");

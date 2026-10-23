@@ -106,7 +106,7 @@ describe("GET /api/auth/signin", () => {
 
   it("passes on no locale nazar does not have", async () => {
     const response = await GET(
-      await request("/api/auth/signin?callbackUrl=%2Fhesap&locale=en")
+      await request("/api/auth/signin?callbackUrl=%2Fhesap&locale=de")
     );
     expect(location(response).searchParams.has("ui_locales")).toBe(false);
     expect(location(response).searchParams.has("kc_locale")).toBe(false);

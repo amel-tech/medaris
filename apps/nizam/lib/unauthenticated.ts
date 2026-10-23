@@ -3,7 +3,7 @@ import {
   isUnauthenticated,
   type Unauthenticated,
 } from "@medaris/auth/client";
-import { localeOfPath } from "~/lib/i18n/routing";
+import { localeOf } from "~/lib/i18n/routing";
 
 /**
  * The client half of the one "session over" answer (auth Phase 1). A Server
@@ -24,6 +24,6 @@ export function redirectIfUnauthenticated(
 ): result is Unauthenticated {
   if (!isUnauthenticated(result)) return false;
   return handleUnauthenticated(result, {
-    locale: localeOfPath(window.location.pathname),
+    locale: localeOf(document.documentElement.lang),
   });
 }

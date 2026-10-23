@@ -276,7 +276,7 @@ describe("tedris/13: access withdrawn", () => {
     expect(html).toContain(tr.revokedTitle);
     expect(html).toContain(tr.revokedBody);
     expect(html).toContain(tr.backToMyCourses);
-    expect(html).toContain('href="/tr/my-courses"');
+    expect(html).toContain('href="/my-courses"');
     expect(html).not.toContain(`>${tr.apply}</button>`);
     expect(html).not.toContain(tr.tabDeck);
     expect(html).not.toContain(tr.nextSession);
@@ -377,10 +377,10 @@ describe("tedris/24: the recordings tab (MDRS-162)", () => {
       initialTab: "kayitlar",
     });
     expect(html).toContain(
-      'href="/tr/courses/c1000000-0000-4000-8000-000000000001/lessons/next/izle"'
+      'href="/courses/c1000000-0000-4000-8000-000000000001/lessons/next/izle"'
     );
     expect(html).toContain(
-      'href="/tr/courses/c1000000-0000-4000-8000-000000000001/lessons/sample/izle"'
+      'href="/courses/c1000000-0000-4000-8000-000000000001/lessons/sample/izle"'
     );
     expect(html).not.toContain("<iframe");
   });
@@ -401,7 +401,7 @@ describe("tedris/24: the recordings tab (MDRS-162)", () => {
       initialTab: "kayitlar",
     });
     expect(html).toContain(
-      'href="/tr/courses/c1000000-0000-4000-8000-000000000001/lessons/iptal/izle"'
+      'href="/courses/c1000000-0000-4000-8000-000000000001/lessons/iptal/izle"'
     );
   });
 
@@ -414,7 +414,7 @@ describe("tedris/24: the recordings tab (MDRS-162)", () => {
     expect(html).toContain('href="https://youtu.be/aaaaaaaaaaa"');
     expect(html).not.toContain("/lessons/next/izle");
     expect(html).toContain(
-      'href="/tr/courses/c1000000-0000-4000-8000-000000000001/lessons/sample/izle"'
+      'href="/courses/c1000000-0000-4000-8000-000000000001/lessons/sample/izle"'
     );
   });
 

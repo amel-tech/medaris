@@ -356,9 +356,7 @@ describe("the page (nizam/47)", () => {
     );
     expect(html).toMatch(/aria-label="Dil"[\s\S]*Türkçe/);
     expect(html).not.toContain("yalnız Türkçe görünür");
-    expect(html).toMatch(
-      /<a[^>]*href="\/tr\/auth\/signout"[^>]*>[\s\S]*Çıkış yap/
-    );
+    expect(html).toMatch(/<a[^>]*href="\/auth\/signout"[^>]*>[\s\S]*Çıkış yap/);
   });
 
   it("says there are no roles for an account with none, and still draws the rest", async () => {

@@ -34,14 +34,14 @@ const signIn = async (
   page: Page,
   who: { email?: string; password?: string }
 ) => {
-  await page.goto("/tr/auth/signin");
+  await page.goto("/auth/signin");
   await page.locator("#username").fill(who.email as string);
   await page.locator("#password").fill(who.password as string);
   await page.locator("button[type=submit]").click();
   await page.waitForURL(/localhost:4000/);
 };
 
-const coursePath = () => `/tr/courses/${fixture.courseId}`;
+const coursePath = () => `/courses/${fixture.courseId}`;
 const needs = (who: { email?: string; password?: string; sub?: string }) =>
   test.skip(
     !(who.email && who.password && who.sub),
@@ -110,7 +110,7 @@ test.describe("tedris/05: a visitor with no account", () => {
   });
 
   test("answers a draft with the not-found page", async ({ page }) => {
-    const response = await page.goto(`/tr/courses/${fixture.draftId}`);
+    const response = await page.goto(`/courses/${fixture.draftId}`);
     expect(response?.status()).toBe(404);
   });
 

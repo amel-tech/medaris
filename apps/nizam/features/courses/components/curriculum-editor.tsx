@@ -159,7 +159,7 @@ export function CurriculumEditor({ kosk, course }: Props) {
         e.resourceIndex === ri
     );
 
-  const base = `/${locale}/kosks/${kosk.id}`;
+  const base = `/kosks/${kosk.id}`;
   const courseBase = `${base}/courses/${saved.id}`;
   const zone = saved.timeZone;
   const sessionCount = weeks.reduce(

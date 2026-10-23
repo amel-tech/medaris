@@ -57,9 +57,7 @@ describe("Keşfet's address (MDRS-159, design tedris/02)", () => {
     expect(
       discoverHref({ madrasahId: MADRASAH, q: "sarf nahiv", page: 2 })
     ).toBe(`/discover?q=sarf+nahiv&madrasah=${MADRASAH}&page=2`);
-    expect(discoverHref({ q: "bina" }, "/tr/discover")).toBe(
-      "/tr/discover?q=bina"
-    );
+    expect(discoverHref({ q: "bina" }, "/discover")).toBe("/discover?q=bina");
   });
 
   it("round-trips: what is written reads back", () => {

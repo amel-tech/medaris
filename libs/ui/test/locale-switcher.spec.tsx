@@ -1,65 +1,102 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  LOCALE_STORAGE_KEY,
-  localeHref,
-  readStoredLocale,
+  LOCALE_COOKIE,
+  localeCookieDomain,
+  readLocaleCookie,
+  storeLocale,
+  withoutLocaleSegment,
 } from "../src/lib/locale-preference";
-import { LocaleMenu, LocalePreference } from "../src/mds/locale-switcher";
+import { LocaleMenu } from "../src/mds/locale-switcher";
 import { cleanup, click, render, settle } from "./render";
 
 const LOCALES = ["tr", "en", "ar"] as const;
 
-describe("localeHref (MDRS-275)", () => {
-  const at = (pathname: string, search = "", hash = "") => ({
-    pathname,
-    search,
-    hash,
-  });
+const cookieLocale = () =>
+  document.cookie
+    .split("; ")
+    .find((c) => c.startsWith(`${LOCALE_COOKIE}=`))
+    ?.slice(LOCALE_COOKIE.length + 1) || undefined;
 
-  it("swaps the locale segment and keeps the rest of the address", () => {
-    expect(localeHref("en", LOCALES, at("/tr/kosks/1", "?tab=a", "#x"))).toBe(
-      "/en/kosks/1?tab=a#x"
+const clearCookie = () => {
+  // biome-ignore lint/suspicious/noDocumentCookie: clearing the test's cookie
+  document.cookie = `${LOCALE_COOKIE}=; Path=/; Max-Age=0`;
+};
+
+describe("withoutLocaleSegment — an address from before MDRS-248", () => {
+  const at = (pathname: string, search = "") => ({ pathname, search });
+
+  it("drops the language and keeps the page and its query", () => {
+    expect(withoutLocaleSegment(at("/en/courses/1", "?week=2"), LOCALES)).toBe(
+      "/courses/1?week=2"
     );
-    expect(localeHref("ar", LOCALES, at("/en"))).toBe("/ar");
-    expect(localeHref("tr", LOCALES, at("/en/"))).toBe("/tr");
+    expect(withoutLocaleSegment(at("/tr"), LOCALES)).toBe("/");
+    expect(withoutLocaleSegment(at("/ar/"), LOCALES)).toBe("/");
   });
 
-  it("puts the locale in front of an address that has none", () => {
-    expect(localeHref("en", LOCALES, at("/discover"))).toBe("/en/discover");
-    expect(localeHref("en", LOCALES, at("/"))).toBe("/en");
+  it("leaves an address with no language in it", () => {
+    expect(withoutLocaleSegment(at("/courses/1"), LOCALES)).toBeNull();
+    expect(withoutLocaleSegment(at("/"), LOCALES)).toBeNull();
+    expect(withoutLocaleSegment(at("/trivia"), LOCALES)).toBeNull();
+    expect(withoutLocaleSegment(at("/de/kosks"), LOCALES)).toBeNull();
+  });
+});
+
+describe("readLocaleCookie", () => {
+  it("reads one of the locales from a cookie header", () => {
+    expect(readLocaleCookie("a=1; medaris-locale=ar; b=2", LOCALES)).toBe("ar");
+    expect(readLocaleCookie("medaris-locale=de", LOCALES)).toBeUndefined();
+    expect(readLocaleCookie("", LOCALES)).toBeUndefined();
+  });
+});
+
+describe("localeCookieDomain — one choice for every app (MDRS-248)", () => {
+  it("shares the cookie on the parent of an app's host", () => {
+    expect(localeCookieDomain("nizam-dev.medaris.app")).toBe("medaris.app");
+    expect(localeCookieDomain("tedris.medaris.app")).toBe("medaris.app");
+  });
+
+  it("keeps it host-only where there is no parent to share", () => {
+    expect(localeCookieDomain("localhost")).toBeUndefined();
+    expect(localeCookieDomain("127.0.0.1")).toBeUndefined();
+    expect(localeCookieDomain("::1")).toBeUndefined();
+    expect(localeCookieDomain("medaris.app")).toBeUndefined();
   });
 });
 
 describe("the stored choice", () => {
-  beforeEach(() => window.localStorage.clear());
+  beforeEach(() => {
+    window.localStorage.clear();
+    clearCookie();
+  });
 
-  it("reads only a locale the app has", () => {
-    expect(readStoredLocale(LOCALES)).toBeNull();
-    window.localStorage.setItem(LOCALE_STORAGE_KEY, "de");
-    expect(readStoredLocale(LOCALES)).toBeNull();
-    window.localStorage.setItem(LOCALE_STORAGE_KEY, "ar");
-    expect(readStoredLocale(LOCALES)).toBe("ar");
+  it("is kept in the cookie, and not in local storage", () => {
+    expect(cookieLocale()).toBeUndefined();
+    storeLocale("en");
+    expect(cookieLocale()).toBe("en");
+    expect(window.localStorage.length).toBe(0);
   });
 });
 
-describe("LocaleMenu and LocalePreference", () => {
+describe("LocaleMenu", () => {
   const assign = vi.fn();
-  const replace = vi.fn();
+  const reload = vi.fn();
   const realLocation = window.location;
 
   beforeEach(() => {
-    window.localStorage.clear();
+    clearCookie();
     assign.mockReset();
-    replace.mockReset();
+    reload.mockReset();
     Object.defineProperty(window, "location", {
       configurable: true,
       value: {
-        pathname: "/tr/courses/1",
+        protocol: "http:",
+        hostname: "localhost",
+        pathname: "/courses/1",
         search: "?week=2",
         hash: "",
         assign,
-        replace,
+        reload,
       },
     });
   });
@@ -87,7 +124,7 @@ describe("LocaleMenu and LocalePreference", () => {
     ]);
   });
 
-  it("choosing a language stores it and loads the same page in it", async () => {
+  it("choosing a language stores it and reloads the same address (MDRS-248)", async () => {
     const host = await render(
       <LocaleMenu locale="tr" locales={LOCALES} label="Dil" />
     );
@@ -97,20 +134,8 @@ describe("LocaleMenu and LocalePreference", () => {
       (r) => r.textContent === "English"
     ) as HTMLElement;
     await click(english);
-    expect(window.localStorage.getItem(LOCALE_STORAGE_KEY)).toBe("en");
-    expect(assign).toHaveBeenCalledWith("/en/courses/1?week=2");
-  });
-
-  it("moves a later visit to the stored language, and leaves a page already in it", async () => {
-    await render(<LocalePreference locale="tr" locales={LOCALES} />);
-    expect(replace).not.toHaveBeenCalled();
-
-    window.localStorage.setItem(LOCALE_STORAGE_KEY, "ar");
-    await render(<LocalePreference locale="tr" locales={LOCALES} />);
-    expect(replace).toHaveBeenCalledWith("/ar/courses/1?week=2");
-
-    replace.mockReset();
-    await render(<LocalePreference locale="ar" locales={LOCALES} />);
-    expect(replace).not.toHaveBeenCalled();
+    expect(cookieLocale()).toBe("en");
+    expect(reload).toHaveBeenCalledOnce();
+    expect(assign).not.toHaveBeenCalled();
   });
 });

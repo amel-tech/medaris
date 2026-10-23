@@ -97,7 +97,7 @@ vi.mock("@medaris/ui/mds/app-bar", () => ({
 }));
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }),
-  usePathname: () => "/tr/discover",
+  usePathname: () => "/discover",
 }));
 vi.mock("~/features/courses/actions", () => ({
   followKosk: vi.fn(),
@@ -147,14 +147,10 @@ const tr = resources.tr.tedris;
 
 describe("which pages a visitor with no account may open", () => {
   it("opens Keşfet in every locale, and no page below it", () => {
-    for (const path of ["/discover", "/tr/discover", "/en/discover/"]) {
+    for (const path of ["/discover", "/discover", "/discover/"]) {
       expect(isPublicPath(path)).toBe(true);
     }
-    for (const path of [
-      "/tr/discover/anything",
-      "/tr/my-courses",
-      "/tr/learning",
-    ]) {
+    for (const path of ["/discover/anything", "/my-courses", "/learning"]) {
       expect(isPublicPath(path)).toBe(false);
     }
   });
@@ -188,10 +184,10 @@ describe("Keşfet for a visitor (design tedris/09)", () => {
 
   it("closes with the invitation, linking to sign-in (back to Keşfet) and to registration", async () => {
     const html = await render(discoverData());
-    const hrefs = inviteHrefs("tr", "/discover");
+    const hrefs = inviteHrefs("/discover");
     expect(html).toContain(`href="${hrefs.signIn}">giriş yap</a>`);
     expect(html).toContain(`href="${hrefs.register}">kayıt ol</a>`);
-    expect(hrefs.signIn).toBe("/tr/auth/signin?callbackUrl=%2Ftr%2Fdiscover");
+    expect(hrefs.signIn).toBe("/auth/signin?callbackUrl=%2Fdiscover");
     expect(html).toContain("hesap açmadan da göz atabilirsin");
     expect(html).not.toContain(tr.DiscoverPage.applyLink);
   });
@@ -208,7 +204,7 @@ describe("Keşfet for a visitor (design tedris/09)", () => {
       })
     );
     expect(html).toContain(
-      `callbackUrl=${encodeURIComponent("/tr/discover?q=sarf")}`
+      `callbackUrl=${encodeURIComponent("/discover?q=sarf")}`
     );
   });
 
@@ -284,7 +280,7 @@ describe("the köşk page for a visitor (design tedris/10)", () => {
     const html = await render(false);
     expect(html).toContain("Bir derse başvurmak için");
     expect(html).toContain(
-      `href="${inviteHrefs("tr", "/kosks/k1").signIn}">giriş yap</a>`
+      `href="${inviteHrefs("/kosks/k1").signIn}">giriş yap</a>`
     );
   });
 
@@ -350,7 +346,7 @@ describe("the medrese page for a visitor (design tedris/11)", () => {
     expect(html).not.toContain(tr.MadrasahPage.statusEnrolled);
     expect(html).toContain(tr.MadrasahPage.coursesHintAnonymous);
     expect(html).toContain(
-      `href="${inviteHrefs("tr", "/madrasahs/m1").signIn}">giriş yap</a>`
+      `href="${inviteHrefs("/madrasahs/m1").signIn}">giriş yap</a>`
     );
   });
 
@@ -364,13 +360,13 @@ describe("the medrese page for a visitor (design tedris/11)", () => {
     const html = await render(false);
     expect(html).toContain(">NK</span>");
     expect(html).toContain(
-      'href="/tr/kosks/k1"><bdi>Nûruosmaniye Köşkü</bdi></a>'
+      'href="/kosks/k1"><bdi>Nûruosmaniye Köşkü</bdi></a>'
     );
     expect(html).toContain(">Bina ve İzhar Şerhi</span>");
   });
 
   it("leads back to Keşfet, which a visitor may now open", async () => {
-    expect(await render(false)).toContain('href="/tr/discover"');
+    expect(await render(false)).toContain('href="/discover"');
   });
 
   it("leaves the invitation out for a signed-in caller", async () => {
@@ -380,9 +376,9 @@ describe("the medrese page for a visitor (design tedris/11)", () => {
 
 describe("the links of the invitation", () => {
   it("send sign-in back to the page, and registration to its own page", () => {
-    expect(inviteHrefs("tr", "/kosks/k1?x=1")).toEqual({
-      signIn: "/tr/auth/signin?callbackUrl=%2Ftr%2Fkosks%2Fk1%3Fx%3D1",
-      register: "/tr/auth/register",
+    expect(inviteHrefs("/kosks/k1?x=1")).toEqual({
+      signIn: "/auth/signin?callbackUrl=%2Fkosks%2Fk1%3Fx%3D1",
+      register: "/auth/register",
     });
   });
 });
@@ -413,16 +409,16 @@ describe("the phone menu of a visitor (design tedris/45)", () => {
     const discover = nav(await render("/kosks/k1"));
     // next/link writes `href` after the item's own attributes.
     const current = /<a [^>]*aria-current="page"[^>]*>/.exec(discover)?.[0];
-    expect(current).toContain('href="/tr/discover"');
-    expect(discover).not.toContain("/tr/home");
+    expect(current).toContain('href="/discover"');
+    expect(discover).not.toContain("/home");
   });
 
   it("ends in Giriş yap, back to this page, and Kayıt ol", async () => {
     const html = await render("/kosks/k1");
     const foot = /data-foot="true">(.*)$/.exec(html)?.[1] as string;
-    expect(foot).toContain(`href="${inviteHrefs("tr", "/kosks/k1").signIn}"`);
+    expect(foot).toContain(`href="${inviteHrefs("/kosks/k1").signIn}"`);
     expect(foot).toContain(">Giriş yap<");
-    expect(foot).toContain('href="/tr/auth/register"');
+    expect(foot).toContain('href="/auth/register"');
     expect(foot).toContain(">Kayıt ol<");
   });
 

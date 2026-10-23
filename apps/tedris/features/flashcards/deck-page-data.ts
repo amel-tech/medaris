@@ -28,11 +28,10 @@ export type DeckPageData =
  * refuses a stranger's write whatever the page drew.
  */
 export async function loadDeckPage(
-  locale: string,
   id: string,
   path: string
 ): Promise<DeckPageData> {
-  const token = await requireAccessToken({ callbackUrl: `/${locale}${path}` });
+  const token = await requireAccessToken({ callbackUrl: path });
   const read = await readDeck(id);
   if (read.status === "missing") notFound();
   if (read.status === "forbidden") return { kind: "unavailable" };

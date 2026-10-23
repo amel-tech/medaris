@@ -2,9 +2,11 @@ import { textFontsHref } from "@medaris/tokens/medaris-fonts";
 import { ThemeScript } from "@medaris/ui/mds/theme-script";
 import type { Metadata } from "next";
 import { NextIntlClientProvider } from "next-intl";
+import { getLocale } from "next-intl/server";
 import type { ReactNode } from "react";
 import { ClientProviders } from "~/components/providers/client-providers";
 import { auth } from "~/lib/auth";
+import { htmlLangDir, localeOf } from "~/lib/i18n/locale";
 import "@medaris/ui/medaris.css";
 
 export const metadata: Metadata = {
@@ -13,8 +15,8 @@ export const metadata: Metadata = {
 };
 
 // MDRS-183: the unified design system (design-system/medaris-unified). The
-// root attributes are MDS-LAY-03: Nazar is Turkish only at launch, so `lang`
-// and `dir` are fixed. Management pages put `data-density="compact"` on their
+// root attributes are MDS-LAY-03: `lang` and `dir` follow the language the
+// viewer chose in Tedris or Nizam (MDRS-248), Arabic mirrored. Management pages put `data-density="compact"` on their
 // own `<main>`; the shell does it, not this layout. The page is light until the
 // viewer picks dark with the shell's toggle (`data-theme="light"`, ThemeScript,
 // suppressHydrationWarning). The session comes from the server, so the first
@@ -25,11 +27,12 @@ export default async function RootLayout({
   children: ReactNode;
 }>) {
   const session = await auth();
+  const { lang, dir } = htmlLangDir(localeOf(await getLocale()));
 
   return (
     <html
-      lang="tr"
-      dir="ltr"
+      lang={lang}
+      dir={dir}
       data-app="nazar"
       data-theme="light"
       suppressHydrationWarning

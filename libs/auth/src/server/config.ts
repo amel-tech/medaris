@@ -48,19 +48,11 @@ export interface AuthPages {
    * The app's sign-in page: the one that renders the sign-in entry (the
    * parallel-tab guard and the error box). Everything that sends a visitor to
    * sign in goes here with `?callbackUrl=` (and `?error=` after a failure).
-   *
-   * A function when the path depends on where the visitor was: tedris and
-   * nizam keep the locale of that page (`/en/…` → `/en/auth/signin`,
-   * MDRS-274). It receives the validated return path, or `null` when there is
-   * none.
+   * The addresses carry no language (MDRS-248).
    */
-  signIn: string | ((returnTo: string | null) => string);
-  /**
-   * Where a sign-in that names no page ends: tedris and nizam `/<locale>`,
-   * nazar `/`. Receives the locale the sign-in was started in,
-   * when it named one. Default `/`.
-   */
-  afterSignIn?: string | ((locale: string | null) => string);
+  signIn: string;
+  /** Where a sign-in that names no page ends. Default `/`. */
+  afterSignIn?: string;
   /**
    * Where a sign-out that could not reach the IdP lands (no ID token for the
    * `id_token_hint`, or no `end_session_endpoint`). Default `/`.
@@ -151,8 +143,8 @@ export interface ResolvedAuthConfig {
   locales: readonly string[] | undefined;
   kcLocale: boolean;
   postLogoutRedirectUri: string;
-  signInPage: (returnTo: string | null) => string;
-  afterSignIn: (locale: string | null) => string;
+  signInPage: string;
+  afterSignIn: string;
   afterSignOut: string;
   sessionMaxAge: number;
   httpTimeout: number;
@@ -273,11 +265,8 @@ export function resolveConfig(config: AuthConfig): ResolvedAuthConfig {
     locales: config.locales,
     kcLocale: config.kcLocale ?? false,
     postLogoutRedirectUri: config.postLogoutRedirectUri ?? config.baseUrl,
-    signInPage: typeof signIn === "function" ? signIn : () => signIn,
-    afterSignIn:
-      typeof afterSignIn === "function"
-        ? afterSignIn
-        : () => afterSignIn ?? "/",
+    signInPage: signIn,
+    afterSignIn: afterSignIn ?? "/",
     afterSignOut: config.pages.afterSignOut ?? "/",
     httpTimeout: config.httpTimeout ?? 10,
     store: resolveStore(config.sessionStore, cookie.cookiePrefix),

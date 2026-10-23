@@ -38,7 +38,7 @@ export function SignOutConfirm() {
   // confirmation was opened directly in a fresh tab.
   const cancel = () => {
     if (window.history.length > 1) router.back();
-    else router.push(`/${locale}/home`);
+    else router.push(`/home`);
   };
 
   return (

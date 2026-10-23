@@ -103,7 +103,7 @@ export const CourseProgramme = ({
         access={open || sample ? "open" : "locked"}
         href={
           open
-            ? `/${locale}/courses/${course.id}/lessons/${lesson.id}`
+            ? `/courses/${course.id}/lessons/${lesson.id}`
             : sample
               ? `#${SAMPLE_ANCHOR}`
               : undefined

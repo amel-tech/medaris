@@ -5,7 +5,8 @@ import { locales } from "~/lib/i18n/routing";
 
 // The [locale] layout without Next: the session, the providers and the shell
 // around the page are stubbed, so only the document it draws is left.
-vi.mock("next-intl/server", () => ({ setRequestLocale: () => undefined }));
+const request = vi.hoisted(() => ({ locale: "tr" }));
+vi.mock("next-intl/server", () => ({ getLocale: async () => request.locale }));
 vi.mock("next-intl", async (orig) => ({
   ...(await orig<typeof import("next-intl")>()),
   NextIntlClientProvider: ({ children }: { children: React.ReactNode }) =>
@@ -24,13 +25,9 @@ vi.mock("~/components/legal-footer", () => ({ LegalFooter: () => null }));
 vi.mock("~/lib/auth", () => ({ auth: async () => null }));
 
 const renderLayout = async (locale: string) => {
-  const { default: LocaleLayout } = await import("../app/[locale]/layout");
-  return renderToStaticMarkup(
-    await LocaleLayout({
-      children: "page",
-      params: Promise.resolve({ locale }),
-    })
-  );
+  request.locale = locale;
+  const { default: RootLayout } = await import("../app/layout");
+  return renderToStaticMarkup(await RootLayout({ children: "page" }));
 };
 
 describe("htmlLangDir (MDRS-230)", () => {
@@ -49,18 +46,18 @@ describe("htmlLangDir (MDRS-230)", () => {
   });
 });
 
-describe("the [locale] layout's <html> follows the route (MDRS-230)", () => {
+describe("the layout's <html> follows the viewer's language (MDRS-230, MDRS-248)", () => {
   it.each([
     ["ar", "rtl"],
     ["tr", "ltr"],
     ["en", "ltr"],
-  ] as const)("on /%s draws dir=%s", async (locale, dir) => {
+  ] as const)("in %s draws dir=%s", async (locale, dir) => {
     expect(await renderLayout(locale)).toMatch(
       new RegExp(`^<html lang="${locale}" dir="${dir}"`)
     );
   });
 
-  it("still refuses a locale it does not route", async () => {
-    await expect(renderLayout("de")).rejects.toThrow();
+  it("draws Turkish for a language it does not have", async () => {
+    expect(await renderLayout("de")).toMatch(/^<html lang="tr" dir="ltr"/);
   });
 });

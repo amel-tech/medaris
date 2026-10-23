@@ -76,7 +76,7 @@ export function InactiveView({ scopes }: Props) {
       });
       return;
     }
-    router.push(`/${locale}${path}`);
+    router.push(`${path}`);
   };
 
   const columns: TableColumn<InactiveScopeResponse>[] = [

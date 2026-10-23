@@ -89,7 +89,7 @@ export function AuthEntry({
               {t("Auth.backToSignIn")}
             </Button>
           ) : (
-            <Button href={`/${locale}`} variant="secondary">
+            <Button href={`/`} variant="secondary">
               {t("Auth.backHome")}
             </Button>
           )

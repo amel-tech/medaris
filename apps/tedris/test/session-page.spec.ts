@@ -246,17 +246,17 @@ describe("session page, the header (MDRS-289)", () => {
   it("leads Köşk › Ders › Hafta N, the week the place the page is", async () => {
     const html = await render(session());
     const crumbs = html.match(/<nav class="mds-breadcrumb".*?<\/nav>/)?.[0];
-    expect(crumbs).toContain('href="/tr/kosks/k1"');
+    expect(crumbs).toContain('href="/kosks/k1"');
     expect(crumbs).toContain(">Nûruosmaniye Köşkü<");
-    expect(crumbs).toContain('href="/tr/courses/c1"');
+    expect(crumbs).toContain('href="/courses/c1"');
     expect(crumbs).toContain('aria-current="page"><bdi>Hafta 5</bdi>');
     expect(crumbs).not.toContain("Mehmûz fiiller: kara’e");
   });
 
   it("drops the köşk from the breadcrumb when it cannot be read", async () => {
     const html = await render(session(), null);
-    expect(html).not.toContain('href="/tr/kosks/k1"');
-    expect(html).toContain('href="/tr/courses/c1"');
+    expect(html).not.toContain('href="/kosks/k1"');
+    expect(html).toContain('href="/courses/c1"');
   });
 
   it("names the week and the celse's place in it over the title", async () => {
@@ -488,12 +488,12 @@ describe("session page, the main card: a stream (design tedris/16, MDRS-162, MDR
     expect(html).not.toContain("<iframe");
     expect(html).not.toContain("live123abc");
     expect(watchButtons(html)).toEqual([
-      ["Yayını izle", "/tr/courses/c1/lessons/s1/izle"],
+      ["Yayını izle", "/courses/c1/lessons/s1/izle"],
     ]);
     const poster = html.match(
       /<a [^>]*data-poster="stream"[^>]*>.*?<\/a>/
     )?.[0];
-    expect(poster).toContain('href="/tr/courses/c1/lessons/s1/izle"');
+    expect(poster).toContain('href="/courses/c1/lessons/s1/izle"');
     expect(poster).toContain('tabindex="-1"');
     expect(poster).toContain('aria-hidden="true"');
     expect(poster).toContain(`>${tr.liveLabel}<`);
@@ -520,7 +520,7 @@ describe("session page, the main card: a stream (design tedris/16, MDRS-162, MDR
     expect(html).not.toContain("example.org");
     expect(html).not.toContain(">YouTube<");
     expect(watchButtons(html)).toEqual([
-      ["Yayını izle", "/tr/courses/c1/lessons/s1/izle"],
+      ["Yayını izle", "/courses/c1/lessons/s1/izle"],
     ]);
   });
 
@@ -568,7 +568,7 @@ describe("session page, the main card: a stream (design tedris/16, MDRS-162, MDR
     );
     expect(text(region(html, "session-state", "div"))).toBe(tr.endedLabel);
     expect(watchButtons(card(html))).toEqual([
-      ["Yayını izle", "/tr/courses/c1/lessons/s1/izle"],
+      ["Yayını izle", "/courses/c1/lessons/s1/izle"],
     ]);
     expect(card(html)).toContain(`>${tr.streamOpenTitle}</h2>`);
     expect(card(html)).not.toContain(tr.liveLabel);
@@ -607,7 +607,7 @@ describe("session page, the main card: a recording (design tedris/17, MDRS-162, 
     const html = card(await render(ended()));
     expect(html).toContain('data-case="recording"');
     expect(watchButtons(html)).toEqual([
-      ["Kaydı izle", "/tr/courses/c1/lessons/s1/izle"],
+      ["Kaydı izle", "/courses/c1/lessons/s1/izle"],
     ]);
     const poster = html.match(
       /<a [^>]*data-poster="recording"[^>]*>.*?<\/a>/
@@ -652,7 +652,7 @@ describe("session page, the main card: a recording (design tedris/17, MDRS-162, 
     expect(html).not.toContain(r.url.replaceAll("&", "&amp;"));
     expect(html).not.toContain("Mezîd fiiller ve bâblar: celse kaydı");
     expect(watchButtons(html)).toEqual([
-      ["Kaydı izle", "/tr/courses/c1/lessons/s1/izle"],
+      ["Kaydı izle", "/courses/c1/lessons/s1/izle"],
     ]);
   });
 
@@ -684,7 +684,7 @@ describe("session page, the main card: a recording (design tedris/17, MDRS-162, 
       )
     );
     expect(watchButtons(html)).toEqual([
-      ["Kaydı izle", "/tr/courses/c1/lessons/s1/izle"],
+      ["Kaydı izle", "/courses/c1/lessons/s1/izle"],
     ]);
     expect(joinButton(html)).toContain("mds-btn--outline");
     expect(html).not.toContain("yalnız izleyeceksen yayını aç");
@@ -699,7 +699,7 @@ describe("session page, the main card: a recording (design tedris/17, MDRS-162, 
     expect(html).toContain('data-case="date"');
     expect(html).not.toContain("/izle");
     expect(html).toContain(`>${tr.recordingPreparing}</h2>`);
-    expect(html).toContain('href="/tr/courses/c1?tab=kayitlar"');
+    expect(html).toContain('href="/courses/c1?tab=kayitlar"');
     expect(html).toContain(tr.recordingsGo);
   });
 
@@ -752,7 +752,7 @@ describe("session page, a recording held back until its release time (MDRS-288)"
     expect(watchButtons(html)).toEqual([]);
     expect(html).not.toContain("/izle");
     // The tab lists it with the same line.
-    expect(html).toContain('href="/tr/courses/c1?tab=kayitlar"');
+    expect(html).toContain('href="/courses/c1?tab=kayitlar"');
     expect(html).not.toContain(tr.noRecording);
   });
 
@@ -774,7 +774,7 @@ describe("session page, a recording held back until its release time (MDRS-288)"
       )
     );
     expect(watchButtons(html)).toEqual([
-      ["Yayını izle", "/tr/courses/c1/lessons/s1/izle"],
+      ["Yayını izle", "/courses/c1/lessons/s1/izle"],
     ]);
     expect(html).toContain(LINE);
     expect(html).toContain("data-recording-release");
@@ -788,7 +788,7 @@ describe("session page, a recording held back until its release time (MDRS-288)"
       )
     );
     expect(watchButtons(html)).toEqual([
-      ["Kaydı izle", "/tr/courses/c1/lessons/s1/izle"],
+      ["Kaydı izle", "/courses/c1/lessons/s1/izle"],
     ]);
     expect(html).toContain("Talebelere 14 Ekim Çarşamba 20:00’de açılacak");
     expect(html).not.toContain(LINE);
@@ -807,7 +807,7 @@ describe("session page, a recording held back until its release time (MDRS-288)"
       expect(html).not.toContain("data-recording-release");
       expect(html).not.toContain("Talebelere");
       expect(watchButtons(html)).toEqual([
-        ["Kaydı izle", "/tr/courses/c1/lessons/s1/izle"],
+        ["Kaydı izle", "/courses/c1/lessons/s1/izle"],
       ]);
     }
   });
@@ -839,7 +839,7 @@ describe("session page, the main card: cancelled (design tedris/18, MDRS-289)", 
     expect(html).toContain(`>${tr.cancelledTitle}</h2>`);
     expect(html).toContain("Telafi celsesi:");
     expect(html).toContain("7 Ekim Çarşamba 21:00");
-    expect(html).toContain('href="/tr/courses/c1/lessons/s2"');
+    expect(html).toContain('href="/courses/c1/lessons/s2"');
     expect(html).toContain(tr.replacementGo);
     expect(html).toContain(">İptal edildi<");
   });
@@ -889,7 +889,7 @@ describe("session page, a celse with no time (MDRS-285)", () => {
     );
     expect(html).not.toContain("data-date-block");
     expect(watchButtons(html)).toEqual([
-      ["Kaydı izle", "/tr/courses/c1/lessons/s1/izle"],
+      ["Kaydı izle", "/courses/c1/lessons/s1/izle"],
     ]);
   });
 
@@ -1350,12 +1350,12 @@ describe("session page, the bottom row (MDRS-289)", () => {
     expect(previous).toContain(">Önceki · Hafta 4</p>");
     expect(previous.match(/<a /g)).toHaveLength(1);
     expect(previous).toContain(
-      '<a class="mds-card__link" href="/tr/courses/c1/lessons/s0"><span class="mds-visually-hidden">Önceki celse: Hafta 4, </span>Hafta sonu müzakeresi</a>'
+      '<a class="mds-card__link" href="/courses/c1/lessons/s0"><span class="mds-visually-hidden">Önceki celse: Hafta 4, </span>Hafta sonu müzakeresi</a>'
     );
     expect(text(previous)).toContain("27 Eyl Paz 20:00");
     const next = card(html, "next");
     expect(next).toContain(">Sonraki · Hafta 5</p>");
-    expect(next).toContain('href="/tr/courses/c1/lessons/s2"');
+    expect(next).toContain('href="/courses/c1/lessons/s2"');
     expect(text(next)).toContain("7 Eki Çar 21:00");
     expect(next).toContain("text-end");
   });
@@ -1441,7 +1441,7 @@ describe("session page, the bottom row (MDRS-289)", () => {
       expect(rows.filter((row) => row.current).map((row) => row.id)).toEqual([
         "s1",
       ]);
-      expect(rows[0].href).toBe("/tr/courses/c1/lessons/s9");
+      expect(rows[0].href).toBe("/courses/c1/lessons/s9");
       expect(rows.map((row) => row.words)).toEqual([
         "Hafta 3 | Celse s9 | 26 Eyl | ended",
         `Hafta 4 | Celse s0 | 3 Eki · ${tr.liveLabel} | live`,
@@ -1481,7 +1481,7 @@ describe("session page, the bottom row (MDRS-289)", () => {
 
     it("leads to the course page's programme and counts the celses", async () => {
       const html = pager(await render(session(), null, programme));
-      expect(html).toContain('data-course-href="/tr/courses/c1?tab=mufredat"');
+      expect(html).toContain('data-course-href="/courses/c1?tab=mufredat"');
       expect(html).toContain('data-count="5 celse"');
     });
   });

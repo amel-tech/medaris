@@ -42,7 +42,7 @@ async function signIn(
   page: Page,
   who: { email?: string; password?: string }
 ): Promise<void> {
-  await page.goto("/tr/auth/signin");
+  await page.goto("/auth/signin");
   await page.locator("#username").fill(who.email as string);
   await page.locator("#password").fill(who.password as string);
   await page.locator("button[type=submit]").click();
@@ -65,7 +65,7 @@ const rowOf = (page: Page, text: string) =>
     .filter({ hasText: text });
 
 const openTable = async (page: Page, query = "") => {
-  await page.goto(`/tr/kosks${query}`);
+  await page.goto(`/kosks${query}`);
   await expect(
     page.getByRole("heading", { level: 1, name: "Köşkler" })
   ).toBeVisible();
@@ -138,7 +138,7 @@ test("nizam/09 — every filter works alone and together, and a reload restores 
 
   // Görünürlük, together with a search it does not match
   await page.goto(
-    `/tr/kosks?q=${encodeURIComponent(fixture.beyazit.name)}&gorunurluk=listelenmeyen`
+    `/kosks?q=${encodeURIComponent(fixture.beyazit.name)}&gorunurluk=listelenmeyen`
   );
   await expect(page).toHaveURL(/gorunurluk=listelenmeyen/);
   await expect(rows).toHaveCount(0);
@@ -154,12 +154,12 @@ test("nizam/09 — every filter works alone and together, and a reload restores 
   ).toBeVisible();
 
   // Görünürlük alone
-  await page.goto(`/tr/kosks?q=${fixture.tail}&gorunurluk=listelenmeyen`);
+  await page.goto(`/kosks?q=${fixture.tail}&gorunurluk=listelenmeyen`);
   await expect(rows).toHaveCount(1);
   await expect(rowOf(page, fixture.uskudar.name)).toHaveCount(1);
 
   // no Seviye select and no Alan chips; an old link's ?seviye= and ?alan= filter nothing
-  await page.goto(`/tr/kosks?q=${fixture.tail}&seviye=baslangic&alan=Fıkıh`);
+  await page.goto(`/kosks?q=${fixture.tail}&seviye=baslangic&alan=Fıkıh`);
   await expect(page.getByRole("combobox", { name: "Seviye" })).toHaveCount(0);
   await expect(
     page.getByRole("button", { name: "Fıkıh", exact: true })
@@ -167,14 +167,14 @@ test("nizam/09 — every filter works alone and together, and a reload restores 
   await expect(rows).toHaveCount(4);
 
   // the status tab
-  await page.goto(`/tr/kosks?q=${fixture.tail}`);
+  await page.goto(`/kosks?q=${fixture.tail}`);
   await page.getByRole("tab", { name: /^Gizli/ }).click();
   await expect(page).toHaveURL(/durum=gizli/);
   await expect(rows).toHaveCount(1);
   await expect(rowOf(page, fixture.kalender.name)).toHaveCount(1);
 
   // the search
-  await page.goto("/tr/kosks");
+  await page.goto("/kosks");
   await page
     .getByRole("searchbox", { name: "Köşk ya da köşk nazımı ara" })
     .fill(`Abdullah Nuri Gezginoğlu`);
@@ -344,7 +344,7 @@ test("nizam/24 — Köşk ayarları opens with the köşk's values and a read-on
 }) => {
   test.skip(!(seedable && KOSK_NAZIM.password), "no KOSK_NAZIM account");
   await signIn(page, KOSK_NAZIM);
-  await page.goto(`/tr/kosks/${fixture.beyazit.id}/ayarlar`);
+  await page.goto(`/kosks/${fixture.beyazit.id}/ayarlar`);
   await expect(
     page.getByRole("heading", { level: 1, name: "Köşk ayarları" })
   ).toBeVisible();
@@ -430,7 +430,7 @@ test("nizam/24 — 'Listelerde gösterme' takes the köşk out of the open list 
   };
   expect(await listed()).toBe(true);
   await signIn(page, KOSK_NAZIM);
-  await page.goto(`/tr/kosks/${fixture.beyazit.id}/ayarlar`);
+  await page.goto(`/kosks/${fixture.beyazit.id}/ayarlar`);
   const settings = page.getByTestId("kosk-settings").filter({ visible: true });
   await settings.getByRole("checkbox", { name: "Listelerde gösterme" }).check();
   await settings.getByRole("button", { name: "Kaydet" }).click();
@@ -447,7 +447,7 @@ test("nizam/24 — 'Köşkü gizle' asks first, hides the köşk with its course
 }) => {
   test.skip(!(seedable && KOSK_NAZIM.password), "no KOSK_NAZIM account");
   await signIn(page, KOSK_NAZIM);
-  await page.goto(`/tr/kosks/${fixture.beyazit.id}/ayarlar`);
+  await page.goto(`/kosks/${fixture.beyazit.id}/ayarlar`);
   await page.getByRole("button", { name: "Köşkü gizle" }).click();
   const confirm = page.getByRole("alertdialog");
   await expect(confirm).toBeVisible();
@@ -465,7 +465,7 @@ test("nizam/24 — 'Köşkü gizle' asks first, hides the köşk with its course
     .getByRole("alertdialog")
     .getByRole("button", { name: "Gizle" })
     .click();
-  await expect(page).toHaveURL(/\/tr\/kosks(\?|$)/);
+  await expect(page).toHaveURL(/\/kosks(\?|$)/);
   expect((await fixture.kosk(fixture.beyazit.id))?.hidden).toBe(true);
   expect(await fixture.audits("kosk.hide")).toBe(1);
 
@@ -479,7 +479,7 @@ test("nizam/24 — 'Köşkü gizle' asks first, hides the köşk with its course
 
   // the nazım sees it among the hidden ones, and brings back what they hid themselves
   // (a köşk Medaris yönetimi hid would show who hid it instead of a button, MDRS-143)
-  await page.goto(`/tr/kosks?q=${fixture.tail}&durum=gizli`);
+  await page.goto(`/kosks?q=${fixture.tail}&durum=gizli`);
   await expect(rowOf(page, fixture.beyazit.name)).toContainText("Gizli");
   await expect(page.getByRole("button", { name: /^Geri al/ })).toHaveCount(1);
 });
@@ -489,7 +489,7 @@ test("nizam/25 — the nazım list is read-only: who, who gave the post, when, u
 }) => {
   test.skip(!(seedable && KOSK_NAZIM.password), "no KOSK_NAZIM account");
   await signIn(page, KOSK_NAZIM);
-  await page.goto(`/tr/kosks/${fixture.beyazit.id}/ayarlar/nazimlar`);
+  await page.goto(`/kosks/${fixture.beyazit.id}/ayarlar/nazimlar`);
   await expect(
     page.getByRole("heading", { level: 1, name: "Köşk nazımları" })
   ).toBeVisible();
@@ -522,7 +522,7 @@ test("nizam/25 — the nazım list is read-only: who, who gave the post, when, u
   ).toBeVisible();
   await expect(view.getByRole("link", { name: /Genel/ })).toHaveAttribute(
     "href",
-    `/tr/kosks/${fixture.beyazit.id}/ayarlar`
+    `/kosks/${fixture.beyazit.id}/ayarlar`
   );
 });
 
@@ -531,11 +531,11 @@ test("nizam/25 — a köşk nazımı who does not manage the köşk gets the 403
 }) => {
   test.skip(!(seedable && KOSK_NAZIM.password), "no KOSK_NAZIM account");
   await signIn(page, KOSK_NAZIM);
-  await page.goto(`/tr/kosks/${fixture.fatih.id}/ayarlar/nazimlar`);
+  await page.goto(`/kosks/${fixture.fatih.id}/ayarlar/nazimlar`);
   await expect(
     page.getByText("Bu bölüm için izniniz yok").filter({ visible: true })
   ).toBeVisible();
-  await page.goto(`/tr/kosks/${fixture.fatih.id}/ayarlar`);
+  await page.goto(`/kosks/${fixture.fatih.id}/ayarlar`);
   await expect(
     page.getByText("Bu bölüm için izniniz yok").filter({ visible: true })
   ).toBeVisible();
@@ -549,7 +549,7 @@ test("nizam/21 — the başnazım adds a köşk nazımı by e-mail: the dialog, 
     "no SYSTEM_ADMIN or TALEBE account"
   );
   await signIn(page, SYSTEM_ADMIN);
-  await page.goto(`/tr/kosks/${fixture.beyazit.id}/ayarlar/nazimlar`);
+  await page.goto(`/kosks/${fixture.beyazit.id}/ayarlar/nazimlar`);
   const view = page.getByTestId("kosk-nazims").filter({ visible: true });
   await expect(view.locator("tbody tr:visible")).toHaveCount(1);
 
@@ -630,7 +630,7 @@ test("nizam/21 — an end date is kept and shown, and one in the past cannot be 
     "no SYSTEM_ADMIN or TALEBE account"
   );
   await signIn(page, SYSTEM_ADMIN);
-  await page.goto(`/tr/kosks/${fixture.fatih.id}/ayarlar/nazimlar`);
+  await page.goto(`/kosks/${fixture.fatih.id}/ayarlar/nazimlar`);
   const view = page.getByTestId("kosk-nazims").filter({ visible: true });
   await view.getByRole("button", { name: "Köşk nazımı ekle" }).click();
   const dialog = dialogOf(page);
@@ -682,7 +682,7 @@ test("nizam/21 — a köşk nazımı gets no 'Köşk nazımı ekle' (criterion 6
 }) => {
   test.skip(!(seedable && KOSK_NAZIM.password), "no KOSK_NAZIM account");
   await signIn(page, KOSK_NAZIM);
-  await page.goto(`/tr/kosks/${fixture.beyazit.id}/ayarlar/nazimlar`);
+  await page.goto(`/kosks/${fixture.beyazit.id}/ayarlar/nazimlar`);
   await expect(
     page.getByRole("button", { name: "Köşk nazımı ekle" })
   ).toHaveCount(0);

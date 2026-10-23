@@ -111,7 +111,7 @@ export const CoursePage = ({
   const star = imamStarLabels(useTranslations("common.imamStar"));
   const fileErrors = useTranslations("tedrisLearn.FileDownload");
   const locale = useLocale();
-  const invite = inviteHrefs(locale, `/courses/${course.id}`);
+  const invite = inviteHrefs(`/courses/${course.id}`);
   const [now] = useState(() => nowProp ?? Date.now());
   // Design tedris/14: a draft is shown to those who may edit it, as a preview.
   const preview = isPreview(course);
@@ -198,12 +198,12 @@ export const CoursePage = ({
 
   const meta = [
     course.madrasah ? (
-      <Link key="madrasah" href={`/${locale}/madrasahs/${course.madrasah.id}`}>
+      <Link key="madrasah" href={`/madrasahs/${course.madrasah.id}`}>
         <bdi>{course.madrasah.name}</bdi>
       </Link>
     ) : null,
     koskName ? (
-      <Link key="kosk" href={`/${locale}/kosks/${course.koskId}`}>
+      <Link key="kosk" href={`/kosks/${course.koskId}`}>
         <bdi>{koskName}</bdi>
       </Link>
     ) : null,
@@ -236,7 +236,7 @@ export const CoursePage = ({
       <Breadcrumb
         items={[
           ...(koskName
-            ? [{ label: koskName, href: `/${locale}/kosks/${course.koskId}` }]
+            ? [{ label: koskName, href: `/kosks/${course.koskId}` }]
             : []),
           { label: course.title },
         ]}

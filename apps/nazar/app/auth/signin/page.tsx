@@ -27,7 +27,6 @@ export default async function SignInPage({
       callbackUrl={
         destinationFromCallback(callbackUrl, {
           baseUrl: env.NEXTAUTH_URL,
-          locales: [],
         }) ?? "/"
       }
       error={error}

@@ -19,7 +19,7 @@ import {
   timeZoneCity,
 } from "@medaris/utils";
 import { useRouter } from "next/navigation";
-import { useFormatter, useLocale, useTranslations } from "next-intl";
+import { useFormatter, useTranslations } from "next-intl";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import {
   createCourseSessions,
@@ -56,7 +56,6 @@ type Links = "empty" | "first";
 export function SessionPlanForm({ kosk, course }: Props) {
   const t = useTranslations("nizam.SessionPlan");
   const format = useFormatter();
-  const locale = useLocale();
   const router = useRouter();
 
   const [form, setForm] = useState<PlanForm>({
@@ -84,7 +83,7 @@ export function SessionPlanForm({ kosk, course }: Props) {
   const zones = useMemo(() => listTimeZones(form.timeZone), [form.timeZone]);
   const problems = planErrors(form);
   const pattern = planPattern(form);
-  const base = `/${locale}/kosks/${kosk.id}/courses/${course.id}`;
+  const base = `/kosks/${kosk.id}/courses/${course.id}`;
 
   // The preview follows the fields, a moment after the last key.
   const patternKey = pattern ? JSON.stringify(pattern) : null;

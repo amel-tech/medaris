@@ -49,7 +49,7 @@ vi.mock("~/features/platform-admin/actions", () => ({
 vi.mock("~/features/kosks/admin-actions", () => ({ openKosk: vi.fn() }));
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }),
-  usePathname: () => "/tr/denetim-kaydi",
+  usePathname: () => "/denetim-kaydi",
 }));
 
 const render = (ui: React.ReactElement, locale: "tr" | "en" | "ar" = "tr") =>

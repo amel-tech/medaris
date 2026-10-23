@@ -66,7 +66,7 @@ test.describe("Desteler (tedris/25)", () => {
   test("lists the caller's own decks and the ones they collected, with progress and status", async ({
     page,
   }) => {
-    const response = await page.goto("/tr/decks");
+    const response = await page.goto("/decks");
     expect(response?.status()).toBe(200);
     const main = page.getByRole("main");
     await expect(
@@ -119,7 +119,7 @@ test.describe("Desteler (tedris/25)", () => {
   test("the status chips narrow the caller's own decks and the counts say how many", async ({
     page,
   }) => {
-    await page.goto("/tr/decks");
+    await page.goto("/decks");
     const chip = (name: string) =>
       page.getByRole("button", { name, exact: true });
     await chip("Yayın isteği bekliyor").click();
@@ -146,7 +146,7 @@ test.describe("Desteler (tedris/25)", () => {
   });
 
   test("the search box narrows both lists", async ({ page }) => {
-    await page.goto("/tr/decks");
+    await page.goto("/decks");
     await page
       .getByRole("searchbox", { name: "Destelerinde ara" })
       .fill(fx.tag);
@@ -164,19 +164,17 @@ test.describe("Desteler (tedris/25)", () => {
   });
 
   test("'Çalış' opens the study page of that deck", async ({ page }) => {
-    await page.goto("/tr/decks");
+    await page.goto("/decks");
     await page
       .getByRole("link", { name: `Çalış: ${fx.titles.private}` })
       .click();
-    await expect(page).toHaveURL(
-      new RegExp(`/tr/decks/study/${fx.ids.private}$`)
-    );
+    await expect(page).toHaveURL(new RegExp(`/decks/study/${fx.ids.private}$`));
   });
 
   test("a signed-out visitor is sent to sign in", async ({ browser }) => {
     const context = await browser.newContext();
     const anonymous = await context.newPage();
-    await anonymous.goto("/tr/decks");
+    await anonymous.goto("/decks");
     await expect(anonymous).toHaveURL(/signin|api\/auth/);
     await context.close();
   });
@@ -186,7 +184,7 @@ test.describe("Desteleri keşfet (tedris/26)", () => {
   test("shows the decks of the caller's courses and the published ones, with counts", async ({
     page,
   }) => {
-    await page.goto("/tr/decks/explore");
+    await page.goto("/decks/explore");
     const main = page.getByRole("main");
     await expect(
       main.getByRole("heading", { level: 1, name: "Desteleri keşfet" })
@@ -241,21 +239,21 @@ test.describe("Desteleri keşfet (tedris/26)", () => {
   test("the card-type chips narrow both sections, and the address carries the choice", async ({
     page,
   }) => {
-    await page.goto("/tr/decks/explore");
+    await page.goto("/decks/explore");
     await page.getByRole("button", { name: "Hadis", exact: true }).click();
-    await expect(page).toHaveURL(/\/tr\/decks\/explore\?type=HADEETH$/);
+    await expect(page).toHaveURL(/\/decks\/explore\?type=HADEETH$/);
     await expect(deckCard(page, fx.titles.collected)).toBeVisible();
     await expect(deckCard(page, fx.titles.otherPublic)).toHaveCount(0);
     await expect(deckCard(page, fx.titles.courseDeck)).toHaveCount(0);
 
     await page.getByRole("button", { name: "Kelime", exact: true }).click();
-    await expect(page).toHaveURL(/\/tr\/decks\/explore\?type=VOCABULARY$/);
+    await expect(page).toHaveURL(/\/decks\/explore\?type=VOCABULARY$/);
     await expect(deckCard(page, fx.titles.otherPublic)).toBeVisible();
     await expect(deckCard(page, fx.titles.courseDeck)).toBeVisible();
     await expect(deckCard(page, fx.titles.collected)).toHaveCount(0);
 
     // A bad value is no filter.
-    await page.goto("/tr/decks/explore?type=QUIZ");
+    await page.goto("/decks/explore?type=QUIZ");
     await expect(deckCard(page, fx.titles.collected)).toBeVisible();
     await expect(deckCard(page, fx.titles.otherPublic)).toBeVisible();
   });
@@ -264,7 +262,7 @@ test.describe("Desteleri keşfet (tedris/26)", () => {
     page,
   }) => {
     const title = fx.titles.otherPublic;
-    await page.goto("/tr/decks/explore");
+    await page.goto("/decks/explore");
     await page
       .getByRole("button", { name: `Koleksiyona ekle: ${title}` })
       .click();
@@ -276,20 +274,20 @@ test.describe("Desteleri keşfet (tedris/26)", () => {
     await expect(
       deckCard(page, title).getByText("Koleksiyonunda")
     ).toBeVisible();
-    await page.goto("/tr/decks");
+    await page.goto("/decks");
     const collection = page.getByRole("region", { name: "Koleksiyonum" });
     await expect(
       collection.getByRole("link", { name: title, exact: true })
     ).toBeVisible();
 
-    await page.goto("/tr/decks/explore");
+    await page.goto("/decks/explore");
     await page
       .getByRole("button", { name: `Koleksiyondan çıkar: ${title}` })
       .click();
     await expect(
       page.getByRole("button", { name: `Koleksiyona ekle: ${title}` })
     ).toBeVisible();
-    await page.goto("/tr/decks");
+    await page.goto("/decks");
     await expect(
       page
         .getByRole("region", { name: "Koleksiyonum" })
@@ -302,7 +300,7 @@ test.describe("Deste oluştur (tedris/27)", () => {
   test("an empty form says what is missing and sends nothing", async ({
     page,
   }) => {
-    await page.goto("/tr/decks/create");
+    await page.goto("/decks/create");
     await expect(
       page.getByRole("heading", { level: 1, name: "Deste oluştur" })
     ).toBeVisible();
@@ -324,7 +322,7 @@ test.describe("Deste oluştur (tedris/27)", () => {
     await expect(
       page.getByText("Bir kart türü seç.").filter({ visible: true })
     ).toBeVisible();
-    await expect(page).toHaveURL(/\/tr\/decks\/create$/);
+    await expect(page).toHaveURL(/\/decks\/create$/);
 
     await page.getByRole("textbox", { name: /Deste adı/ }).fill("abc");
     await page.getByRole("button", { name: "Oluştur" }).click();
@@ -336,7 +334,7 @@ test.describe("Deste oluştur (tedris/27)", () => {
   });
 
   test("the card type changes the preview", async ({ page }) => {
-    await page.goto("/tr/decks/create");
+    await page.goto("/decks/create");
     await expect(
       page.getByText("Kelime kartı böyle görünür").filter({ visible: true })
     ).toBeVisible();
@@ -359,7 +357,7 @@ test.describe("Deste oluştur (tedris/27)", () => {
     page,
   }) => {
     const title = `Yeni deste ${fx.tag}`;
-    await page.goto("/tr/decks/create");
+    await page.goto("/decks/create");
     await page.getByRole("textbox", { name: /Deste adı/ }).fill(title);
     await page
       .getByRole("textbox", { name: "Açıklama" })
@@ -370,7 +368,7 @@ test.describe("Deste oluştur (tedris/27)", () => {
       .fill(" sarf , nahiv,, Sarf ");
     await page.getByRole("button", { name: "Oluştur" }).click();
 
-    await page.waitForURL(/\/tr\/decks\/[0-9a-f-]{36}$/);
+    await page.waitForURL(/\/decks\/[0-9a-f-]{36}$/);
     await expect(
       page.getByRole("heading", { level: 1, name: title })
     ).toBeVisible();
@@ -391,7 +389,7 @@ test.describe("Deste oluştur (tedris/27)", () => {
       publish_status: "PRIVATE",
     });
 
-    await page.goto("/tr/decks");
+    await page.goto("/decks");
     await expect(
       deckCard(page, title).getByText("Özel", { exact: true })
     ).toBeVisible();
@@ -401,10 +399,10 @@ test.describe("Deste oluştur (tedris/27)", () => {
     page,
   }) => {
     const title = `Vazgeçilen ${fx.tag}`;
-    await page.goto("/tr/decks/create");
+    await page.goto("/decks/create");
     await page.getByRole("textbox", { name: /Deste adı/ }).fill(title);
     await page.getByRole("link", { name: "Vazgeç" }).click();
-    await expect(page).toHaveURL(/\/tr\/decks$/);
+    await expect(page).toHaveURL(/\/decks$/);
     expect(
       await query("select 1 from decks where title = $1", [title])
     ).toHaveLength(0);
@@ -415,7 +413,7 @@ test.describe("Deste ayrıntısı, sahibi (tedris/28)", () => {
   test("shows the author's progress, sample cards and the publication state", async ({
     page,
   }) => {
-    await page.goto(`/tr/decks/${fx.ids.pending}`);
+    await page.goto(`/decks/${fx.ids.pending}`);
     const main = page.getByRole("main");
     await expect(
       main.getByRole("heading", { level: 1, name: fx.titles.pending })
@@ -449,7 +447,7 @@ test.describe("Deste ayrıntısı, sahibi (tedris/28)", () => {
   test("'Edit' opens the dialog filled in; an empty name is refused; a new name is saved and the request stays", async ({
     page,
   }) => {
-    await page.goto(`/tr/decks/${fx.ids.pending}`);
+    await page.goto(`/decks/${fx.ids.pending}`);
     await page.getByRole("link", { name: "Düzenle" }).click();
     await expect(page).toHaveURL(new RegExp(`/decks/${fx.ids.pending}/edit$`));
     const dialog = page.getByRole("dialog", {
@@ -501,7 +499,7 @@ test.describe("Deste ayrıntısı, sahibi (tedris/28)", () => {
       [fx.ids.pending]
     );
     expect(row).toMatchObject({ title: renamed, publish_status: "PENDING" });
-    await page.goto("/tr/decks");
+    await page.goto("/decks");
     await expect(deckCard(page, renamed)).toBeVisible();
     await query("update decks set title = $2 where id = $1", [
       fx.ids.pending,
@@ -517,7 +515,7 @@ test.describe("Deste ayrıntısı, sahibi (tedris/28)", () => {
       "insert into decks(id, author_id, title, publish_status, publish_requested_at) values ($1, $2, $3, 'PENDING', now())",
       [id, talebe.sub, `Geri çekilen ${fx.tag}`]
     );
-    await page.goto(`/tr/decks/${id}`);
+    await page.goto(`/decks/${id}`);
     await page.getByRole("button", { name: "İsteği geri çek" }).click();
     await expect(
       page
@@ -551,7 +549,7 @@ test.describe("Deste ayrıntısı, sahibi (tedris/28)", () => {
       "insert into flashcards(deck_id, author_id, type, content_front, content_back) values ($1, $2, 'VOCABULARY', 'ön yüz', 'arka yüz')",
       [id, talebe.sub]
     );
-    await page.goto(`/tr/decks/${id}`);
+    await page.goto(`/decks/${id}`);
     await page.getByRole("button", { name: "Desteyi sil" }).click();
     const confirm = page.getByRole("alertdialog");
     await expect(confirm).toBeVisible();
@@ -567,7 +565,7 @@ test.describe("Deste ayrıntısı, sahibi (tedris/28)", () => {
       .getByRole("alertdialog")
       .getByRole("button", { name: "Desteyi sil" })
       .click();
-    await expect(page).toHaveURL(/\/tr\/decks$/);
+    await expect(page).toHaveURL(/\/decks$/);
     expect(await query("select 1 from decks where id = $1", [id])).toHaveLength(
       0
     );
@@ -579,11 +577,11 @@ test.describe("Deste ayrıntısı, sahibi (tedris/28)", () => {
   test("an id that is not there is the not-found page", async ({ page }) => {
     // The status stays 200: the segment's loading.tsx streams its shell before
     // the page decides (MDRS-141, MDRS-160); a signed-in page is not indexed.
-    await page.goto(`/tr/decks/${randomUUID()}`);
+    await page.goto(`/decks/${randomUUID()}`);
     await expect(
       page.getByRole("heading", { name: "Sayfa bulunamadı" })
     ).toBeVisible();
-    await page.goto(`/tr/decks/${fx.ids.strangerPrivate}`);
+    await page.goto(`/decks/${fx.ids.strangerPrivate}`);
     await expect(
       page.getByRole("heading", { name: "Sayfa bulunamadı" })
     ).toBeVisible();
@@ -599,7 +597,7 @@ test.describe("Deste kartları (tedris/29)", () => {
       "insert into decks(id, author_id, title, card_type) values ($1, $2, $3, 'VOCABULARY')",
       [id, talebe.sub, `Kart deneyi ${fx.tag}`]
     );
-    await page.goto(`/tr/decks/${id}/cards`);
+    await page.goto(`/decks/${id}/cards`);
     await expect(
       page.getByText("Bu destede henüz kart yok.").filter({ visible: true })
     ).toBeVisible();
@@ -658,7 +656,7 @@ test.describe("Deste kartları (tedris/29)", () => {
   test("the table shows the caller's own status for each card, in the Arabic face", async ({
     page,
   }) => {
-    await page.goto(`/tr/decks/${fx.ids.pending}/cards`);
+    await page.goto(`/decks/${fx.ids.pending}/cards`);
     const rows = page.getByRole("table").getByRole("row");
     await expect(rows).toHaveCount(19);
     await expect(rows.nth(1).getByText("Tamamlandı")).toBeVisible();
@@ -686,7 +684,7 @@ test.describe("Deste kartları (tedris/29)", () => {
       talebe.sub,
       `Aktarma ${fx.tag}`,
     ]);
-    await page.goto(`/tr/decks/${id}/cards`);
+    await page.goto(`/decks/${id}/cards`);
 
     const downloading = page.waitForEvent("download");
     await page.getByRole("link", { name: "Dışa aktar" }).click();
@@ -730,7 +728,7 @@ test.describe("Deste kartları (tedris/29)", () => {
   test("somebody else's deck has no card list for them: the forbidden page", async ({
     page,
   }) => {
-    await page.goto(`/tr/decks/${fx.ids.collected}/cards`);
+    await page.goto(`/decks/${fx.ids.collected}/cards`);
     await expect(
       page.getByRole("heading", { name: "Bu sayfayı göremezsin" })
     ).toBeVisible();
@@ -744,7 +742,7 @@ test.describe("Deste, okuyan kişinin görünümü (tedris/31)", () => {
   test("shows a deck of somebody else's with no way to change it", async ({
     page,
   }) => {
-    await page.goto(`/tr/decks/${fx.ids.collected}`);
+    await page.goto(`/decks/${fx.ids.collected}`);
     const main = page.getByRole("main");
     await expect(
       main.getByRole("heading", { level: 1, name: fx.titles.collected })
@@ -771,7 +769,7 @@ test.describe("Deste, okuyan kişinin görünümü (tedris/31)", () => {
   });
 
   test("shows six cards at a time, with their source", async ({ page }) => {
-    await page.goto(`/tr/decks/${fx.ids.collected}`);
+    await page.goto(`/decks/${fx.ids.collected}`);
     const rows = page.getByRole("table").getByRole("row");
     await expect(rows).toHaveCount(7);
     await expect(rows.nth(1).getByText("Buhârî, Müslim")).toBeVisible();
@@ -791,7 +789,7 @@ test.describe("Deste, okuyan kişinin görünümü (tedris/31)", () => {
   test("'Kendi desteme kopyala' puts the card into the chosen own deck and leaves the source alone", async ({
     page,
   }) => {
-    await page.goto(`/tr/decks/${fx.ids.collected}`);
+    await page.goto(`/decks/${fx.ids.collected}`);
     await page
       .getByRole("button", { name: "Kendi desteme kopyala: kart 1" })
       .click();
@@ -835,7 +833,7 @@ test.describe("Deste, okuyan kişinin görünümü (tedris/31)", () => {
   test("'Koleksiyondan çıkar' takes the badge away and 'Koleksiyona ekle' brings it back", async ({
     page,
   }) => {
-    await page.goto(`/tr/decks/${fx.ids.collected}`);
+    await page.goto(`/decks/${fx.ids.collected}`);
     await page.getByRole("button", { name: "Koleksiyondan çıkar" }).click();
     await expect(
       page.getByRole("button", { name: "Koleksiyona ekle" })
@@ -859,7 +857,7 @@ test.describe("Deste, okuyan kişinin görünümü (tedris/31)", () => {
   test("a deck of a course the caller is enrolled in opens, and cannot be changed", async ({
     page,
   }) => {
-    const response = await page.goto(`/tr/decks/${fx.ids.courseDeck}`);
+    const response = await page.goto(`/decks/${fx.ids.courseDeck}`);
     expect(response?.status()).toBe(200);
     await expect(
       page.getByRole("heading", { level: 1, name: fx.titles.courseDeck })

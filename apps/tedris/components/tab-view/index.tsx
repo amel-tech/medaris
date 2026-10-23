@@ -2,7 +2,7 @@
 
 import { cn } from "@medaris/ui/lib/utils";
 import Link from "next/link";
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 import { usePathname } from "~/lib/i18n/navigation";
 
 /**
@@ -33,7 +33,6 @@ export const TabView = ({
   signedIn?: boolean;
 }) => {
   const t = useTranslations("tedris");
-  const locale = useLocale();
   const pathname = usePathname();
 
   return (
@@ -42,7 +41,7 @@ export const TabView = ({
         <div className="flex gap-4 mx-auto w-full max-w-[80rem]">
           {signedIn ? (
             <Link
-              href={`/${locale}/home`}
+              href={`/home`}
               className={cn(
                 "px-4 py-2 text-sm font-medium",
                 pathname.startsWith("/home") &&
@@ -54,7 +53,7 @@ export const TabView = ({
           ) : null}
           <Link
             prefetch
-            href={`/${locale}/discover`}
+            href={`/discover`}
             className={cn(
               "px-4 py-2 text-sm font-medium",
               (pathname.startsWith("/learning") ||
@@ -69,7 +68,7 @@ export const TabView = ({
           {signedIn ? (
             <Link
               prefetch
-              href={`/${locale}/decks`}
+              href={`/decks`}
               className={cn(
                 "px-4 py-2 text-sm font-medium",
                 pathname.startsWith("/decks") &&

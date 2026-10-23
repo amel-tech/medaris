@@ -55,8 +55,8 @@ describe("the home page's calls to action (MDRS-245)", () => {
 
   it("renders them with the exact hrefs of lib/tedris.ts", async () => {
     const html = renderToStaticMarkup(await renderHome());
-    expect(registerHref).toBe("/api/tedris/register?locale=tr");
-    expect(signInHref).toBe("/api/tedris/signin?locale=tr");
+    expect(registerHref).toBe("/api/tedris/register");
+    expect(signInHref).toBe("/api/tedris/signin");
     expect(html).toContain(`href="${registerHref}"`);
     expect(html).toContain(`href="${signInHref}"`);
   });
@@ -68,7 +68,7 @@ describe("the home page's calls to action (MDRS-245)", () => {
     });
     expect(response.status).toBe(307);
     expect(response.headers.get("location")).toBe(
-      "http://localhost:4000/tr/discover"
+      "http://localhost:4000/discover"
     );
   });
 });

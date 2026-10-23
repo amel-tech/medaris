@@ -31,7 +31,6 @@ export const CourseDecksTab = ({
   now: number;
 }) => {
   const t = useTranslations("tedris.CoursePage");
-  const locale = useLocale();
   const featured = pickFeaturedDeck(decks, course, now);
   const others = otherDecks(decks, featured);
 
@@ -41,7 +40,7 @@ export const CourseDecksTab = ({
         <FeaturedDeck
           deck={featured.deck}
           thisWeek={featured.reason === "thisWeek"}
-          studyHref={`/${locale}/decks/study/${featured.deck.id}`}
+          studyHref={`/decks/study/${featured.deck.id}`}
         />
       ) : null}
       {others.length > 0 ? (
@@ -50,7 +49,7 @@ export const CourseDecksTab = ({
           <ul className="m-0 flex list-none flex-col gap-2 p-0">
             {others.map((deck) => (
               <li key={deck.id}>
-                <DeckRow deck={deck} href={`/${locale}/decks/${deck.id}`} />
+                <DeckRow deck={deck} href={`/decks/${deck.id}`} />
               </li>
             ))}
           </ul>

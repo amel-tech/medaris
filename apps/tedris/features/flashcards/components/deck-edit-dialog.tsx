@@ -9,7 +9,7 @@ import { Input } from "@medaris/ui/mds/input";
 import { Textarea } from "@medaris/ui/mds/textarea";
 import { useToaster } from "@medaris/ui/mds/toast";
 import { useRouter } from "next/navigation";
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 import { type FormEvent, type RefObject, useState } from "react";
 import { updateDeck } from "../actions";
 import { attempt } from "../attempt";
@@ -45,7 +45,6 @@ export function DeckEditDialog({
   open: boolean;
 }) {
   const t = useTranslations("tedris.Decks");
-  const locale = useLocale();
   const router = useRouter();
   const toaster = useToaster();
   const [title, setTitle] = useState(deck.title);
@@ -53,7 +52,7 @@ export function DeckEditDialog({
   const [attempted, setAttempted] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  const deckPath = `/${locale}/decks/${deck.id}`;
+  const deckPath = `/decks/${deck.id}`;
   const close = () => router.replace(deckPath);
 
   const problem = titleProblem(title);

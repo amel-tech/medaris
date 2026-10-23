@@ -485,7 +485,7 @@ describe("Köşk — Medaris yönetimi görünümü (nizam 20)", () => {
         rights={[]}
         rows={rows}
         viewerId={null}
-        koskPublicHref="https://tedris.example/tr/kosks/k1"
+        koskPublicHref="https://tedris.example/kosks/k1"
         {...over}
       />
     );
@@ -845,7 +845,7 @@ describe("Genel bakış (nizam 53)", () => {
 
   it("sends Müfredatı düzenle and Celse planla to the course's editor (criterion 5)", () => {
     const html = view();
-    expect(html).toContain("/tr/kosks/k1/courses/c1/edit");
+    expect(html).toContain("/kosks/k1/courses/c1/edit");
     expect(html).toContain("Müfredatı düzenle");
     expect(html).toContain("Celse planla");
   });
@@ -853,7 +853,7 @@ describe("Genel bakış (nizam 53)", () => {
   it("sends Bütün celseler to the course's own Celseler, a page that exists (MDRS-211)", () => {
     const html = view();
     expect(html).toMatch(
-      /<a[^>]*href="\/tr\/kosks\/k1\/courses\/c1\/sessions"[^>]*>Bütün celseler<\/a>/
+      /<a[^>]*href="\/kosks\/k1\/courses\/c1\/sessions"[^>]*>Bütün celseler<\/a>/
     );
     expect(html).not.toContain("/kosks/k1/celseler");
   });

@@ -36,7 +36,7 @@ async function signIn(
   page: Page,
   who: { email?: string; password?: string }
 ): Promise<void> {
-  await page.goto("/tr/auth/signin");
+  await page.goto("/auth/signin");
   await page.locator("#username").fill(who.email as string);
   await page.locator("#password").fill(who.password as string);
   await page.locator("button[type=submit]").click();
@@ -53,7 +53,7 @@ test("nizam/48 — the başnazım sees every köşk's bans with scope, reason, w
 }) => {
   test.skip(!seedable || !SYSTEM_ADMIN.password, "no başnazım account");
   await signIn(page, SYSTEM_ADMIN);
-  await page.goto("/tr/yasaklamalar");
+  await page.goto("/yasaklamalar");
 
   await expect(
     page.getByRole("heading", { name: "Yasaklamalar", level: 1 })
@@ -80,7 +80,7 @@ test("nizam/48 — the tab's count equals the unfiltered list's length (criterio
 }) => {
   test.skip(!seedable || !SYSTEM_ADMIN.password, "no başnazım account");
   await signIn(page, SYSTEM_ADMIN);
-  await page.goto("/tr/yasaklamalar");
+  await page.goto("/yasaklamalar");
 
   const tab = page.getByRole("tab", { name: /^Etkin/ });
   const count = Number((await tab.innerText()).replace(/\D/g, ""));
@@ -95,7 +95,7 @@ test("nizam/48 — the Kapsam chips narrow the list: Köşk keeps none of the co
 }) => {
   test.skip(!seedable || !SYSTEM_ADMIN.password, "no başnazım account");
   await signIn(page, SYSTEM_ADMIN);
-  await page.goto("/tr/yasaklamalar");
+  await page.goto("/yasaklamalar");
   await search(page, fixture.byMuderris.name);
 
   const group = page.getByRole("group", { name: "Kapsam" });
@@ -118,7 +118,7 @@ test("nizam/48 — 'Daha fazla göster' brings the next page of a long list", as
   test.skip(!seedable || !SYSTEM_ADMIN.password, "no başnazım account");
   await fixture.addBans(23);
   await signIn(page, SYSTEM_ADMIN);
-  await page.goto("/tr/yasaklamalar");
+  await page.goto("/yasaklamalar");
   await search(page, "Sayfalı");
 
   await expect(page.locator("tbody tr")).toHaveCount(20);
@@ -137,7 +137,7 @@ test("nizam/48 — 'Yasağı genişlet' needs a reason, then opens a köşk ban 
 }) => {
   test.skip(!seedable || !SYSTEM_ADMIN.password, "no başnazım account");
   await signIn(page, SYSTEM_ADMIN);
-  await page.goto("/tr/yasaklamalar");
+  await page.goto("/yasaklamalar");
   await search(page, fixture.byMuderris.name);
   const row = rowOf(page, fixture.byMuderris.name);
 
@@ -186,7 +186,7 @@ test("nizam/48 — a köşk row has no 'Yasağı genişlet' (criterion 5: the wi
 }) => {
   test.skip(!seedable || !SYSTEM_ADMIN.password, "no başnazım account");
   await signIn(page, SYSTEM_ADMIN);
-  await page.goto("/tr/yasaklamalar");
+  await page.goto("/yasaklamalar");
   await search(page, fixture.byMuderris.name);
   await page
     .getByRole("button", { name: /^Yasağı genişlet: / })
@@ -229,7 +229,7 @@ test("nizam/48 — a Medaris nazımı lifts a ban with a reason (criterion 3, as
     { code: "ban.lift_course", scope: "course" },
   ]);
   await signIn(page, MEDARIS_NAZIM);
-  await page.goto("/tr/yasaklamalar");
+  await page.goto("/yasaklamalar");
   await search(page, fixture.byPlatform.name);
   const row = rowOf(page, fixture.byPlatform.name);
   await row.getByRole("button", { name: /^Yasağı kaldır: / }).click();
@@ -257,11 +257,11 @@ test("nizam/48 — a signed-out visitor is sent to sign in and the köşk nazım
   page,
 }) => {
   test.skip(!seedable, "no köşk nazım account");
-  await page.goto("/tr/yasaklamalar");
+  await page.goto("/yasaklamalar");
   await page.waitForURL(/auth\/signin|realms/);
 
   await signIn(page, KOSK_NAZIM);
-  await page.goto("/tr/yasaklamalar");
+  await page.goto("/yasaklamalar");
   await expect(
     page.getByRole("heading", { name: "Bu bölüm için izniniz yok" })
   ).toBeVisible();

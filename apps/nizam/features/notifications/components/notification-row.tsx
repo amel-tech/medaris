@@ -57,7 +57,7 @@ export function NotificationRow({
         <p className="mds-body-sm flex flex-wrap items-center gap-2">
           {href ? (
             <Link
-              href={`/${locale}${href}`}
+              href={`${href}`}
               onClick={() => unread && onRead(n)}
               className="text-[color:var(--text-brand-default)]"
             >

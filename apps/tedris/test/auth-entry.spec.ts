@@ -58,7 +58,7 @@ const mount = async (error?: string, extra: { reauth?: boolean } = {}) => {
   await render(
     createElement(AuthEntry, {
       intent: "signin",
-      callbackUrl: "/tr/courses/c1",
+      callbackUrl: "/courses/c1",
       error,
       ...extra,
     })
@@ -74,9 +74,8 @@ const mount = async (error?: string, extra: { reauth?: boolean } = {}) => {
 
 /** The start route, as the page starts it on its own and on a click. */
 const autoStart =
-  "/api/auth/signin?callbackUrl=%2Ftr%2Fcourses%2Fc1&locale=tr&auto=1";
-const clickStart =
-  "/api/auth/signin?callbackUrl=%2Ftr%2Fcourses%2Fc1&locale=tr";
+  "/api/auth/signin?callbackUrl=%2Fcourses%2Fc1&locale=tr&auto=1";
+const clickStart = "/api/auth/signin?callbackUrl=%2Fcourses%2Fc1&locale=tr";
 
 describe("the sign-in page after a failed round trip", () => {
   it("retries an OAuthCallback silently instead of showing 'Giriş tamamlanamadı'", async () => {
@@ -92,7 +91,7 @@ describe("the sign-in page after a failed round trip", () => {
     state.session = { user: { sub: "u1", name: "Enes" }, expiresAt: 1 };
     await mount("OAuthCallback");
     expect(state.assign).toHaveBeenCalledTimes(1);
-    expect(state.assign).toHaveBeenCalledWith("/tr/courses/c1");
+    expect(state.assign).toHaveBeenCalledWith("/courses/c1");
   });
 
   it("shows the design's box once the automatic retry is spent, with the way back to sign-in (MDRS-216)", async () => {
@@ -125,7 +124,7 @@ describe("the sign-in page after a failed round trip", () => {
       "Giriş tamamlanamadı"
     );
     expect(button("Giriş sayfasına dön")).toBeUndefined();
-    expect(button("Ana sayfaya dön")?.getAttribute("href")).toBe("/tr");
+    expect(button("Ana sayfaya dön")?.getAttribute("href")).toBe("/");
   });
 
   it("says AccessDenied in its own words", async () => {
@@ -166,7 +165,7 @@ describe("the sign-in page after a failed round trip", () => {
     await mount(undefined, { reauth: true });
     expect(state.assign).toHaveBeenCalledTimes(1);
     expect(state.assign).toHaveBeenCalledWith(
-      "/api/auth/signin?callbackUrl=%2Ftr%2Fcourses%2Fc1&locale=tr&reauth=1&auto=1"
+      "/api/auth/signin?callbackUrl=%2Fcourses%2Fc1&locale=tr&reauth=1&auto=1"
     );
   });
 

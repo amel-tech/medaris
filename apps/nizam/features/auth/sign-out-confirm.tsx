@@ -31,7 +31,7 @@ export function SignOutConfirm() {
   };
   const cancel = () => {
     if (window.history.length > 1) router.back();
-    else router.push(`/${locale}`);
+    else router.push(`/`);
   };
 
   return (

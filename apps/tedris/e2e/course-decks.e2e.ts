@@ -32,7 +32,7 @@ test.afterAll(async () => {
 });
 
 const signIn = async (page: Page) => {
-  await page.goto("/tr/auth/signin");
+  await page.goto("/auth/signin");
   await page.locator("#username").fill(talebe.email as string);
   await page.locator("#password").fill(talebe.password as string);
   await page.locator("button[type=submit]").click();
@@ -49,7 +49,7 @@ test.describe("MDRS-248: the course's deck tab for an enrolled talebe", () => {
     page,
   }) => {
     await signIn(page);
-    await page.goto(`/tr/courses/${course.courseId}?tab=deste`);
+    await page.goto(`/courses/${course.courseId}?tab=deste`);
 
     const tab = page.getByRole("tab", { name: /Ders destesi/ });
     await expect(tab).toContainText(String(decks.deckIds.length));

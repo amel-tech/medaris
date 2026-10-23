@@ -20,7 +20,7 @@ import {
   toZonedDatetimeLocal,
 } from "@medaris/utils";
 import { useRouter } from "next/navigation";
-import { useFormatter, useLocale, useTranslations } from "next-intl";
+import { useFormatter, useTranslations } from "next-intl";
 import { type FormEvent, useEffect, useState, useTransition } from "react";
 import { redirectIfUnauthenticated } from "~/lib/unauthenticated";
 import { cancelSession, patchLesson, setLiveStream } from "../actions";
@@ -97,7 +97,6 @@ export function SessionsView({
 }: Props) {
   const t = useTranslations("nizam.Sessions");
   const format = useFormatter();
-  const locale = useLocale();
   const router = useRouter();
   const [, startTransition] = useTransition();
 
@@ -130,7 +129,7 @@ export function SessionsView({
   const [cancelling, setCancelling] = useState<SessionRow | null>(null);
   const [allPast, setAllPast] = useState(false);
 
-  const base = `/${locale}/kosks/${kosk.id}`;
+  const base = `/kosks/${kosk.id}`;
   const courseBase = `${base}/courses/${course.id}`;
   const refresh = () => startTransition(() => router.refresh());
   const counts =
@@ -289,7 +288,7 @@ export function SessionsView({
       {tedrisUrl ? (
         <a
           className="mds-link font-semibold"
-          href={`${tedrisUrl}/${locale}/courses/${course.id}/sessions/${row.id}`}
+          href={`${tedrisUrl}/courses/${course.id}/sessions/${row.id}`}
           target="_blank"
           rel="noopener noreferrer"
         >

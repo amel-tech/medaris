@@ -37,7 +37,7 @@ const signIn = async (
   page: Page,
   who: { email?: string; password?: string }
 ) => {
-  await page.goto("/tr/auth/signin");
+  await page.goto("/auth/signin");
   await page.locator("#username").fill(who.email as string);
   await page.locator("#password").fill(who.password as string);
   await page.locator("button[type=submit]").click();
@@ -56,7 +56,7 @@ const card = (page: Page, title: string) =>
 // Keşfet is open to a visitor since MDRS-160 (anonymous.e2e.ts); Derslerim is
 // the talebe's own.
 test("sends a signed-out visitor of Derslerim to sign in", async ({ page }) => {
-  await page.goto("/tr/my-courses");
+  await page.goto("/my-courses");
   await expect(page).toHaveURL(/signin/);
 });
 
@@ -69,7 +69,7 @@ test.describe("Keşfet", () => {
   test("lists the köşks and the medreses under their own headings, with the count line", async ({
     page,
   }) => {
-    await page.goto(`/tr/discover?q=${fx.tag}`);
+    await page.goto(`/discover?q=${fx.tag}`);
     const main = page.getByRole("main");
     await expect(
       main.getByRole("heading", { level: 1, name: "Keşfet" })
@@ -96,7 +96,7 @@ test.describe("Keşfet", () => {
   test("shows a medrese's başmüderris and courses, and says so when it has none", async ({
     page,
   }) => {
-    await page.goto(`/tr/discover?q=${fx.tag}`);
+    await page.goto(`/discover?q=${fx.tag}`);
     const suleymaniye = card(page, fx.madrasahs.suleymaniye.name);
     await expect(suleymaniye).toContainText(
       `Başmüderris ${fx.madrasahs.suleymaniye.headName}`
@@ -116,7 +116,7 @@ test.describe("Keşfet", () => {
   test("leaves a draft out of the course count and an unlisted köşk out of the list", async ({
     page,
   }) => {
-    await page.goto(`/tr/discover?q=${fx.tag}`);
+    await page.goto(`/discover?q=${fx.tag}`);
     await expect(card(page, fx.kosks.nur.name)).toContainText("3 ders");
     await expect(page.getByText(fx.courses.draft.title)).toHaveCount(0);
   });
@@ -124,13 +124,13 @@ test.describe("Keşfet", () => {
   test("has no level select and no alan chips: a köşk is not filtered by them (MDRS-252)", async ({
     page,
   }) => {
-    await page.goto(`/tr/discover?q=${fx.tag}`);
+    await page.goto(`/discover?q=${fx.tag}`);
     await expect(page.getByRole("combobox", { name: "Medrese" })).toBeVisible();
     await expect(page.getByRole("combobox", { name: "Seviye" })).toHaveCount(0);
     await expect(
       page.getByRole("button", { name: fx.kosks.fatih.field, exact: true })
     ).toHaveCount(0);
-    await page.goto(`/tr/discover?q=${fx.tag}&level=INTERMEDIATE`);
+    await page.goto(`/discover?q=${fx.tag}&level=INTERMEDIATE`);
     await expect(
       page.getByRole("main").getByText("3 köşk ve 2 medrese")
     ).toBeVisible();
@@ -139,7 +139,7 @@ test.describe("Keşfet", () => {
   test("a medrese chosen in the select keeps the köşks it hosts courses in", async ({
     page,
   }) => {
-    await page.goto(`/tr/discover?q=${fx.tag}`);
+    await page.goto(`/discover?q=${fx.tag}`);
     await page.getByRole("combobox", { name: "Medrese" }).click();
     await page
       .getByRole("option", { name: fx.madrasahs.zeyrek.name, exact: true })
@@ -153,7 +153,7 @@ test.describe("Keşfet", () => {
   test("a search that matches nothing says '0 köşk ve 0 medrese' and can be cleared", async ({
     page,
   }) => {
-    await page.goto(`/tr/discover?q=yok-${fx.tag}`);
+    await page.goto(`/discover?q=yok-${fx.tag}`);
     const main = page.getByRole("main");
     await expect(main.getByText("0 köşk ve 0 medrese")).toBeVisible();
     await expect(
@@ -164,7 +164,7 @@ test.describe("Keşfet", () => {
   });
 
   test("typing in the search filters after a pause", async ({ page }) => {
-    await page.goto("/tr/discover");
+    await page.goto("/discover");
     await page
       .getByRole("searchbox", { name: "Köşk ya da medrese ara" })
       .fill(fx.kosks.beyazit.name);
@@ -180,7 +180,7 @@ test.describe("Keşfet", () => {
   test("'Takip et' turns into 'Takip ediliyor' and stays so after a reload", async ({
     page,
   }) => {
-    await page.goto(`/tr/discover?q=${fx.tag}`);
+    await page.goto(`/discover?q=${fx.tag}`);
     const beyazit = card(page, fx.kosks.beyazit.name);
     const nur = card(page, fx.kosks.nur.name);
     await expect(
@@ -210,7 +210,7 @@ test.describe("Keşfet", () => {
   test("the köşk card leads to the köşk, the medrese card to the medrese", async ({
     page,
   }) => {
-    await page.goto(`/tr/discover?q=${fx.tag}`);
+    await page.goto(`/discover?q=${fx.tag}`);
     await page
       .getByRole("main")
       .getByRole("link", { name: fx.kosks.fatih.name })
@@ -229,7 +229,7 @@ test.describe("Keşfet", () => {
   test("pages the köşks 12 at a time and keeps the filter in the pager", async ({
     page,
   }) => {
-    await page.goto(`/tr/discover?q=${fx.pageTag}`);
+    await page.goto(`/discover?q=${fx.pageTag}`);
     const main = page.getByRole("main");
     await expect(main.getByText("13 köşk ve 0 medrese")).toBeVisible();
     await expect(main.locator(".mds-card--interactive")).toHaveCount(12);
@@ -241,7 +241,7 @@ test.describe("Keşfet", () => {
   });
 
   test("ends with the way to ask for a köşk", async ({ page }) => {
-    await page.goto(`/tr/discover?q=${fx.tag}`);
+    await page.goto(`/discover?q=${fx.tag}`);
     await expect(
       page
         .getByRole("main")
@@ -255,15 +255,15 @@ test.describe("Keşfet", () => {
   });
 
   test("the old addresses land on the new ones", async ({ page }) => {
-    await page.goto("/tr/learning");
-    await expect(page).toHaveURL(/\/tr\/discover$/);
-    await page.goto("/tr/learning/my-courses");
-    await expect(page).toHaveURL(/\/tr\/my-courses$/);
+    await page.goto("/learning");
+    await expect(page).toHaveURL(/\/discover$/);
+    await page.goto("/learning/my-courses");
+    await expect(page).toHaveURL(/\/my-courses$/);
   });
 });
 
 test.describe("the köşk page", () => {
-  const koskPath = () => `/tr/kosks/${fx.kosks.nur.id}`;
+  const koskPath = () => `/kosks/${fx.kosks.nur.id}`;
 
   test.beforeEach(async ({ page }) => {
     needsTalebe();
@@ -341,7 +341,7 @@ test.describe("the köşk page", () => {
   });
 
   test("the follow state is kept after a reload", async ({ page }) => {
-    await page.goto(`/tr/kosks/${fx.kosks.fatih.id}`);
+    await page.goto(`/kosks/${fx.kosks.fatih.id}`);
     const follow = page.getByRole("button", { name: /^Takip et:/ });
     await follow.click();
     await expect(
@@ -360,7 +360,7 @@ test.describe("the köşk page", () => {
   test("an unknown köşk is the not-found state", async ({ page }) => {
     // The status stays 200: the segment's loading.tsx streams its shell before
     // the page decides (MDRS-141, MDRS-160); a signed-in page is not indexed.
-    await page.goto("/tr/kosks/a0000000-0000-4000-8000-0000000000ff");
+    await page.goto("/kosks/a0000000-0000-4000-8000-0000000000ff");
     await expect(
       page.getByText("Sayfa bulunamadı").filter({ visible: true })
     ).toBeVisible();
@@ -374,7 +374,7 @@ test.describe("the köşk page for someone the köşk does not know", () => {
       "no second Keycloak account in the environment"
     );
     await signIn(page, other);
-    await page.goto(`/tr/kosks/${fx.kosks.nur.id}`);
+    await page.goto(`/kosks/${fx.kosks.nur.id}`);
     await expect(
       page.getByRole("heading", { level: 1, name: fx.kosks.nur.name })
     ).toBeVisible();
@@ -395,7 +395,7 @@ test.describe("Derslerim", () => {
     });
 
   test("puts each course in the section its status names", async ({ page }) => {
-    await page.goto("/tr/my-courses");
+    await page.goto("/my-courses");
     const ongoing = section(page, "Devam eden dersler");
     const applications = section(page, "Başvurularım");
     const completed = section(page, "Tamamladığın dersler");
@@ -416,7 +416,7 @@ test.describe("Derslerim", () => {
   });
 
   test("the counters agree with the lists", async ({ page }) => {
-    await page.goto("/tr/my-courses");
+    await page.goto("/my-courses");
     const ongoing = section(page, "Devam eden dersler");
     const count = Number(
       (await ongoing.locator(".mds-caption").first().textContent())?.match(
@@ -437,7 +437,7 @@ test.describe("Derslerim", () => {
   test("draws the progress as a named progress bar and the next session with its week", async ({
     page,
   }) => {
-    await page.goto("/tr/my-courses");
+    await page.goto("/my-courses");
     const emsile = card(page, fx.courses.emsile.title);
     const bar = emsile.getByRole("progressbar", { name: "İlerlemen" });
     await expect(bar).toHaveAttribute("aria-valuenow", "40");
@@ -452,7 +452,7 @@ test.describe("Derslerim", () => {
   test("writes the application date and the completion date", async ({
     page,
   }) => {
-    await page.goto("/tr/my-courses");
+    await page.goto("/my-courses");
     await expect(
       page
         .getByText(
@@ -475,7 +475,7 @@ test.describe("Derslerim", () => {
   test("a card leads to the course, 'Takvim aboneliği' to the subscription page", async ({
     page,
   }) => {
-    await page.goto("/tr/my-courses");
+    await page.goto("/my-courses");
     await page
       .getByRole("link", { name: fx.courses.emsile.title })
       .first()
@@ -483,7 +483,7 @@ test.describe("Derslerim", () => {
     await expect(page).toHaveURL(
       new RegExp(`/courses/${fx.courses.emsile.id}$`)
     );
-    await page.goto("/tr/my-courses");
+    await page.goto("/my-courses");
     await page.getByRole("link", { name: "Takvim aboneliği" }).click();
     await expect(page).toHaveURL(/\/account\/calendar$/);
   });
@@ -491,7 +491,7 @@ test.describe("Derslerim", () => {
   test("withdrawing a request takes it off the list at once, and it stays off", async ({
     page,
   }) => {
-    await page.goto("/tr/my-courses");
+    await page.goto("/my-courses");
     const applications = section(page, "Başvurularım");
     const row = applications.locator("li").filter({
       hasText: fx.courses.isagoji.title,

@@ -5,7 +5,7 @@ import { Button } from "@medaris/ui/mds/button";
 import { SystemState } from "@medaris/ui/mds/system-state";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
-import { LOCALE } from "~/lib/i18n/locale";
+import { localeOf } from "~/lib/i18n/locale";
 
 /**
  * The sign-out page (`/auth/signout`, MDRS-101). It keeps the confirmation
@@ -21,7 +21,7 @@ export function SignOutConfirm() {
 
   const confirm = () => {
     setBusy(true);
-    signOut({ locale: LOCALE });
+    signOut({ locale: localeOf(document.documentElement.lang) });
   };
 
   return (

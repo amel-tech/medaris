@@ -46,7 +46,7 @@ export function MedarisHome({ data, grants, nowIso }: Props) {
   const now = new Date(nowIso);
   const words = { today: t("today"), yesterday: t("yesterday") };
   const when = (at: Date | string) => momentLabel(at, now, zone, words);
-  const base = `/${locale}`;
+  const base = `/`;
   const chief = data.viewer === "CHIEF";
 
   const total = pendingTotal(data.pendingTotals);

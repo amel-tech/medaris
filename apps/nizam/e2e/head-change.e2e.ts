@@ -37,7 +37,7 @@ async function signIn(
   page: Page,
   who: { email?: string; password?: string }
 ): Promise<void> {
-  await page.goto("/tr/auth/signin");
+  await page.goto("/auth/signin");
   await page.locator("#username").fill(who.email as string);
   await page.locator("#password").fill(who.password as string);
   await page.locator("button[type=submit]").click();
@@ -52,7 +52,7 @@ const rowOf = (page: Page, name: string) =>
     .filter({ hasText: name });
 
 const openMedreseler = async (page: Page) => {
-  await page.goto("/tr/medreseler?q=E2E");
+  await page.goto("/medreseler?q=E2E");
   await expect(
     page.getByRole("heading", { level: 1, name: "Medreseler" })
   ).toBeVisible();

@@ -137,8 +137,8 @@ describe("the başnazım's home page (nizam 01)", () => {
     expect(html).toContain("Bugün 08:45");
     expect(html).toContain("18 ezber kartı");
     expect(html).toContain("29 Eyl 21:10");
-    expect(html).toContain("/tr/talepler/kosk-basvurulari?secili=a1");
-    expect(html).toContain("/tr/talepler/deste-yayin-istekleri?secili=d1");
+    expect(html).toContain("/talepler/kosk-basvurulari?secili=a1");
+    expect(html).toContain("/talepler/deste-yayin-istekleri?secili=d1");
     expect(html).toContain("Başmüderris ata");
     expect(html).toContain("Hoca ata");
     expect(html).toContain("Ders yasağı: Emsile ve Bina");
@@ -148,7 +148,7 @@ describe("the başnazım's home page (nizam 01)", () => {
   });
 
   it("offers Köşk aç, which opens the form on the Köşkler page", () => {
-    expect(html).toContain("/tr/kosks?ac=1");
+    expect(html).toContain("/kosks?ac=1");
   });
 
   it("leaves out the alert and says so when nothing is passive (criterion 3)", () => {
@@ -248,7 +248,7 @@ describe("a Medaris nazımı's home page (nizam 05)", () => {
   });
 
   it("hides Köşk aç without the permission (criterion 6)", () => {
-    expect(html).not.toContain("/tr/kosks?ac=1");
+    expect(html).not.toContain("/kosks?ac=1");
     const allowed = render(
       <MedarisHome
         data={{ ...nazim, can: { openKosk: true } }}
@@ -256,7 +256,7 @@ describe("a Medaris nazımı's home page (nizam 05)", () => {
         nowIso={NOW}
       />
     );
-    expect(allowed).toContain("/tr/kosks?ac=1");
+    expect(allowed).toContain("/kosks?ac=1");
   });
 
   it("lists the grants with their count and end, 'süresiz' without one (criteria 3 and 4)", () => {
@@ -445,7 +445,7 @@ describe("a köşk nazımı's home page (nizam 02)", () => {
     expect(html).toContain("Zoom");
     expect(html).toContain("Google Meet");
     expect(html).toContain("Planlandı");
-    expect(html).toContain("/tr/kosks/k1/courses/c1/sessions");
+    expect(html).toContain("/kosks/k1/courses/c1/sessions");
   });
 
   it("links no page that is not built: the köşk-wide Celseler, Talebeler and Ders kayıtları (MDRS-211)", () => {
@@ -453,7 +453,7 @@ describe("a köşk nazımı's home page (nizam 02)", () => {
       /\/kosks\/k1\/(celseler|talebeler|ders-kayitlari)/
     );
     // the applications card keeps its "Tümünü gör", to a page that exists
-    expect(html).toContain('href="/tr/kosks/k1/basvurular"');
+    expect(html).toContain('href="/kosks/k1/basvurular"');
   });
 
   it("draws the newest application with Onayla and Reddet that name the talebe and the course", () => {
@@ -538,7 +538,7 @@ describe("a köşk nazımı's home page (nizam 02)", () => {
     );
     expect(fine).not.toContain("katılım yolu eksik");
     expect(fine).toContain("Önümüzdeki yedi günde 4 celse var.");
-    expect(fine).toContain("/tr/kosks/k1/courses/new");
+    expect(fine).toContain("/kosks/k1/courses/new");
   });
 
   it("leaves out the applications card when the page is read without the köşk's management (contentLocked)", () => {
@@ -549,7 +549,7 @@ describe("a köşk nazımı's home page (nizam 02)", () => {
       />
     );
     expect(locked).not.toContain('id="home-applications"');
-    expect(locked).not.toContain('href="/tr/kosks/k1/basvurular"');
+    expect(locked).not.toContain('href="/kosks/k1/basvurular"');
     expect(locked).not.toContain("Bekleyen başvuru yok.");
     expect(html).toContain('id="home-applications"');
   });

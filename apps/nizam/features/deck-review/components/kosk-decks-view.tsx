@@ -221,7 +221,7 @@ export function KoskDecksView({ koskId, koskName, initial }: Props) {
           <Button
             variant="outline"
             size="small"
-            href={`/${locale}/decks/${deck.id}/cards`}
+            href={`/decks/${deck.id}/cards`}
             aria-label={t("editCardsLabel", { title: deck.title })}
           >
             {t("editCards")}
@@ -263,7 +263,7 @@ export function KoskDecksView({ koskId, koskName, initial }: Props) {
           </Button>
         ) : (
           <Button
-            href={`/${locale}${newDeckHref(koskId)}`}
+            href={`${newDeckHref(koskId)}`}
             iconLeft={<Icon name="plus" size="sm" />}
           >
             {t("open")}
@@ -310,7 +310,7 @@ export function KoskDecksView({ koskId, koskName, initial }: Props) {
                   <Button
                     variant="outline"
                     size="small"
-                    href={`/${locale}${newDeckHref(koskId, proposal.id)}`}
+                    href={`${newDeckHref(koskId, proposal.id)}`}
                     aria-label={t("acceptLabel", { title: proposal.title })}
                   >
                     {t("accept")}

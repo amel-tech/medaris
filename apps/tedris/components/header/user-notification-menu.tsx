@@ -1,6 +1,6 @@
 import { BellIcon } from "@medaris/icons/ssr";
 import Link from "next/link";
-import { getLocale, getTranslations } from "next-intl/server";
+import { getTranslations } from "next-intl/server";
 import { bellLabel } from "~/features/notifications/notification-view";
 import { getUnreadNotificationCount } from "~/features/notifications/reads";
 
@@ -11,11 +11,10 @@ import { getUnreadNotificationCount } from "~/features/notifications/reads";
  */
 export const UserNotifications = async () => {
   const t = await getTranslations("tedris.UserNotifications");
-  const locale = await getLocale();
   const unread = await getUnreadNotificationCount();
   return (
     <Link
-      href={`/${locale}/notifications`}
+      href={`/notifications`}
       aria-label={bellLabel(unread, (key, values) =>
         t(key as never, values as never)
       )}

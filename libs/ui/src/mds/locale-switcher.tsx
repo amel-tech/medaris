@@ -1,24 +1,19 @@
 "use client";
 
-import { useEffect } from "react";
-import {
-  LOCALE_NAMES,
-  localeHref,
-  readStoredLocale,
-  storeLocale,
-} from "../lib/locale-preference";
+import { LOCALE_NAMES, storeLocale } from "../lib/locale-preference";
 import { Icon } from "./icon";
 import { Menu } from "./menu";
 import { Select } from "./select";
 
 /**
- * Stores `next` and loads the same page in it. A full load rather than a
- * client navigation: `<html lang dir>`, the fonts and every server-rendered
- * string follow the locale segment, and a language change is rare.
+ * Stores `next` and reloads the same address, whose server render reads the
+ * cookie (MDRS-248). A full load rather than a client refresh: `<html lang
+ * dir>`, the fonts and every server-rendered string follow the language, and
+ * a language change is rare.
  */
-export const switchLocale = (next: string, locales: readonly string[]) => {
+export const switchLocale = (next: string) => {
   storeLocale(next);
-  window.location.assign(localeHref(next, locales, window.location));
+  window.location.reload();
 };
 
 interface LocaleChoiceProps {
@@ -67,7 +62,7 @@ export function LocaleMenu({
             <span className="mds-icon mds-icon--sm" aria-hidden="true" />
           ),
         disabled: value === locale,
-        onSelect: () => switchLocale(value, locales),
+        onSelect: () => switchLocale(value),
       }))}
     />
   );
@@ -90,29 +85,8 @@ export function LocaleSelect({
       }))}
       value={locale}
       onChange={(next) => {
-        if (next && next !== locale) switchLocale(next, locales);
+        if (next && next !== locale) switchLocale(next);
       }}
     />
   );
-}
-
-/**
- * Moves a visit to the language this browser chose last, once, on load. It
- * renders nothing. A page already in that language, or a browser that never
- * chose, stays as it is; so does one whose storage is blocked.
- */
-export function LocalePreference({
-  locale,
-  locales,
-}: {
-  locale: string;
-  locales: readonly string[];
-}) {
-  useEffect(() => {
-    const stored = readStoredLocale(locales);
-    if (stored && stored !== locale) {
-      window.location.replace(localeHref(stored, locales, window.location));
-    }
-  }, [locale, locales]);
-  return null;
 }

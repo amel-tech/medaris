@@ -484,7 +484,7 @@ describe("MadrasahsView (nizam 07)", () => {
 
   it("links the Arşiv and ends with the footnote about hiding", () => {
     const html = view(directory(three));
-    expect(html).toContain('href="/tr/arsiv"');
+    expect(html).toContain('href="/arsiv"');
     expect(html).toContain("Gizlenen medrese, dersleriyle birlikte");
   });
 
@@ -536,7 +536,7 @@ describe("MadrasahsView (nizam 07)", () => {
     expect(html).not.toContain("Medrese aç");
     expect(html).not.toContain("Geri al: ");
     expect(html).not.toContain("Pasife al: ");
-    expect(html).not.toContain('href="/tr/arsiv"');
+    expect(html).not.toContain('href="/arsiv"');
   });
 
   it("offers the başnazım 'Nazar’da aç' on an active medrese, to its Pano in a new tab, and on no passive or hidden one", () => {

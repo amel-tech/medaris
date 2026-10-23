@@ -36,7 +36,6 @@ vi.mock("~/lib/auth", () => ({
   auth: async () => ({ user: { name: "Ayşe" } }),
 }));
 
-const params = Promise.resolve({ locale: "tr" });
 const redirectedTo = async (page: () => Promise<unknown>) => {
   try {
     await page();
@@ -51,27 +50,21 @@ describe("where a visitor and a signed-in caller start", () => {
     state.signedIn = false;
   });
 
-  it("sends a visitor from / to Keşfet, in their locale", async () => {
-    const { default: Root } = await import("../app/[locale]/page");
-    expect(await redirectedTo(() => Root({ params }))).toBe(
-      "REDIRECT /tr/discover"
-    );
+  it("sends a visitor from / to Keşfet", async () => {
+    const { default: Root } = await import("../app/page");
+    expect(await redirectedTo(() => Root())).toBe("REDIRECT /discover");
   });
 
   it("sends a visitor from /home to Keşfet instead of drawing an empty page", async () => {
-    const { default: Home } = await import("../app/[locale]/home/page");
-    expect(await redirectedTo(() => Home({ params }))).toBe(
-      "REDIRECT /tr/discover"
-    );
+    const { default: Home } = await import("../app/home/page");
+    expect(await redirectedTo(() => Home())).toBe("REDIRECT /discover");
   });
 
   it("keeps a signed-in caller on Ana sayfa", async () => {
     state.signedIn = true;
-    const { default: Root } = await import("../app/[locale]/page");
-    expect(await redirectedTo(() => Root({ params }))).toBe(
-      "REDIRECT /tr/home"
-    );
-    const { default: Home } = await import("../app/[locale]/home/page");
-    expect(await redirectedTo(() => Home({ params }))).toBeNull();
+    const { default: Root } = await import("../app/page");
+    expect(await redirectedTo(() => Root())).toBe("REDIRECT /home");
+    const { default: Home } = await import("../app/home/page");
+    expect(await redirectedTo(() => Home())).toBeNull();
   });
 });

@@ -37,7 +37,7 @@ async function signIn(
   page: Page,
   who: { email?: string; password?: string }
 ): Promise<void> {
-  await page.goto("/tr/auth/signin");
+  await page.goto("/auth/signin");
   await page.locator("#username").fill(who.email as string);
   await page.locator("#password").fill(who.password as string);
   await page.locator("button[type=submit]").click();
@@ -64,7 +64,7 @@ test("nizam/01 — the başnazım's home page: menu, greeting, numbers and cards
 }) => {
   test.skip(!(seedable && haveChief && KOSK_NAZIM.sub), "no accounts");
   await signIn(page, SYSTEM_ADMIN);
-  await page.goto("/tr");
+  await page.goto("/");
   // `#main`: while the page streams in, a hidden copy of it sits beside the one on screen
   await expect(page.locator("#main").getByTestId("home-chief")).toBeVisible();
   await expect(
@@ -111,7 +111,7 @@ test("nizam/01 — the başnazım's home page: menu, greeting, numbers and cards
   await expect(passive).toContainText("Başmüderris görevden alındı");
   await expect(
     passive.getByRole("link", { name: /Başmüderris ata/ })
-  ).toHaveAttribute("href", "/tr/pasif-kapsamlar");
+  ).toHaveAttribute("href", "/pasif-kapsamlar");
 
   // the newest rows of each queue
   for (const a of fixture.applications) {
@@ -135,12 +135,12 @@ test("nizam/01 — 'İncele' opens the application it points at, 'Tümünü gör
 }) => {
   test.skip(!(seedable && haveChief && KOSK_NAZIM.sub), "no accounts");
   await signIn(page, SYSTEM_ADMIN);
-  await page.goto("/tr");
+  await page.goto("/");
   const row = page
     .getByTestId("home-application")
     .filter({ hasText: fixture.applications[1]?.name ?? "" });
   await row.getByRole("link", { name: /İncele/ }).click();
-  await expect(page).toHaveURL(/\/tr\/talepler\/kosk-basvurulari\?secili=/);
+  await expect(page).toHaveURL(/\/talepler\/kosk-basvurulari\?secili=/);
   await expect(
     page
       .getByTestId("application-item")
@@ -148,16 +148,16 @@ test("nizam/01 — 'İncele' opens the application it points at, 'Tümünü gör
       .first()
   ).toHaveAttribute("aria-current", "true");
 
-  await page.goto("/tr");
+  await page.goto("/");
   await page
     .getByTestId("home-applications")
     .getByRole("link", { name: "Tümünü gör" })
     .click();
-  await expect(page).toHaveURL(/\/tr\/talepler\/kosk-basvurulari$/);
+  await expect(page).toHaveURL(/\/talepler\/kosk-basvurulari$/);
 
-  await page.goto("/tr");
+  await page.goto("/");
   await page.getByRole("link", { name: "Köşk aç" }).first().click();
-  await expect(page).toHaveURL(/\/tr\/kosks\?ac=1$/);
+  await expect(page).toHaveURL(/\/kosks\?ac=1$/);
   await expect(page.getByRole("dialog")).toBeVisible();
 });
 
@@ -166,7 +166,7 @@ test("nizam/01 — with nothing passive the warning is not drawn, and the card s
 }) => {
   test.skip(!(seedable && haveChief && KOSK_NAZIM.sub), "no accounts");
   await signIn(page, SYSTEM_ADMIN);
-  await page.goto("/tr");
+  await page.goto("/");
   await expect(page.getByTestId("home-passive-alert")).toHaveCount(1);
   // somebody is given the post again
   await fixture.healPassive();
@@ -185,11 +185,11 @@ test("nizam/02 — the köşk nazımı lands on their köşk's home page with th
     "no accounts"
   );
   await signIn(page, KOSK_NAZIM);
-  await page.goto("/tr");
+  await page.goto("/");
   // the first köşk they manage; the shared test seed gives the account one of
   // its own as well, which may come first, so the fixture's köşk is opened by id
-  await expect(page).toHaveURL(/\/tr\/kosks\/[0-9a-f-]{36}\/ana-sayfa$/);
-  await page.goto(`/tr/kosks/${fixture.kosk.id}/ana-sayfa`);
+  await expect(page).toHaveURL(/\/kosks\/[0-9a-f-]{36}\/ana-sayfa$/);
+  await page.goto(`/kosks/${fixture.kosk.id}/ana-sayfa`);
   await expect(page.locator("#main").getByTestId("home-kosk")).toBeVisible();
   // no PLATFORM section in a köşk nazımı's menu
   await expect(
@@ -230,7 +230,7 @@ test("nizam/02 — the köşk nazımı lands on their köşk's home page with th
     })
   ).toHaveAttribute(
     "href",
-    `/tr/kosks/${fixture.kosk.id}/courses/${fixture.course.id}/sessions`
+    `/kosks/${fixture.kosk.id}/courses/${fixture.course.id}/sessions`
   );
 
   // the other tabs read their own list
@@ -258,7 +258,7 @@ test("nizam/02 — Onayla answers at once: the row goes, the number falls by one
     "no accounts"
   );
   await signIn(page, KOSK_NAZIM);
-  await page.goto(`/tr/kosks/${fixture.kosk.id}/ana-sayfa`);
+  await page.goto(`/kosks/${fixture.kosk.id}/ana-sayfa`);
   const before = await statValue(page, "Bekleyen başvuru");
   const who = fixture.pending[0];
   if (!who) throw new Error("no pending talebe");
@@ -284,7 +284,7 @@ test("nizam/02 — Reddet asks for a reason that may stay empty; the reason is k
     "no accounts"
   );
   await signIn(page, KOSK_NAZIM);
-  await page.goto(`/tr/kosks/${fixture.kosk.id}/ana-sayfa`);
+  await page.goto(`/kosks/${fixture.kosk.id}/ana-sayfa`);
   const [first, second] = fixture.pending;
   if (!first || !second) throw new Error("no pending talebe");
 
@@ -328,14 +328,14 @@ test("nizam/02 — a köşk the nazım does not manage is the 'izniniz yok' scre
     "no accounts"
   );
   await signIn(page, KOSK_NAZIM);
-  await page.goto(`/tr/kosks/${fixture.otherKosk.id}/ana-sayfa`);
+  await page.goto(`/kosks/${fixture.otherKosk.id}/ana-sayfa`);
   await expect(
     page.getByText("Bu bölüm için izniniz yok").filter({ visible: true })
   ).toBeVisible();
   await expect(page.getByTestId("home-kosk")).toHaveCount(0);
 
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto(`/tr/kosks/${fixture.kosk.id}/ana-sayfa`);
+  await page.goto(`/kosks/${fixture.kosk.id}/ana-sayfa`);
   await expect(
     page.getByTestId("home-kosk").filter({ visible: true })
   ).toBeVisible();
@@ -370,7 +370,7 @@ test("nizam/05 — a Medaris nazımı sees only the sections their permissions o
     "platform.ban_account",
   ]);
   await signIn(page, MEDARIS_NAZIM);
-  await page.goto("/tr");
+  await page.goto("/");
   await expect(page.locator("#main").getByTestId("home-medaris")).toBeVisible();
 
   const counts = await fixture.counts();
@@ -420,7 +420,7 @@ test("nizam/05 — a Medaris nazımı sees only the sections their permissions o
   ).toContainText("İzinleri Medaris başnazımı");
 
   // a screen that is not theirs
-  await page.goto("/tr/izin-gruplari");
+  await page.goto("/izin-gruplari");
   await expect(
     page.getByText("Bu bölüm için izniniz yok").filter({ visible: true })
   ).toBeVisible();
@@ -430,7 +430,7 @@ test("nizam/05 — a Medaris nazımı sees only the sections their permissions o
     MEDARIS_NAZIM.sub as string,
     "platform.deck_publish"
   );
-  await page.goto("/tr");
+  await page.goto("/");
   await expect(
     sidebar(page).locator("a", { hasText: "Deste yayın istekleri" })
   ).toHaveCount(0);
@@ -459,6 +459,6 @@ test("nizam/05 — Köşk aç is never drawn to a nazım, only to the başnazım
     "platform.kosk_create",
   ]);
   await signIn(page, MEDARIS_NAZIM);
-  await page.goto("/tr");
+  await page.goto("/");
   await expect(page.locator('a[href$="/kosks?ac=1"]')).toHaveCount(0);
 });

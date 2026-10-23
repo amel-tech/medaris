@@ -88,7 +88,7 @@ export function AuthEntry({ callbackUrl, error, reauth }: AuthEntryProps) {
             <Button onClick={start}>{t("Auth.retry")}</Button>
           )}
           <Button variant="outline" asChild>
-            <Link href={`/${locale}`}>{t("Auth.backHome")}</Link>
+            <Link href={`/`}>{t("Auth.backHome")}</Link>
           </Button>
         </div>
       </section>

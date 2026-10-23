@@ -12,6 +12,8 @@ vi.mock("~/components/providers/client-providers", () => ({
   ClientProviders: ({ children }: { children: React.ReactNode }) => children,
 }));
 vi.mock("~/lib/auth", () => ({ auth: async () => null }));
+const intl = vi.hoisted(() => ({ locale: "tr" }));
+vi.mock("next-intl/server", () => ({ getLocale: async () => intl.locale }));
 
 const htmlTag = (markup: string) => /^<html[^>]*>/.exec(markup)?.[0] ?? "";
 const headOf = (markup: string) =>
@@ -35,5 +37,18 @@ describe("nazar's <html> (MDRS-245)", () => {
     expect(head).toContain("medaris-theme");
     expect(head).toContain('==="dark"');
     expect(head).not.toContain("prefers-color-scheme");
+  });
+
+  it("carries the viewer's language, Arabic mirrored (MDRS-248)", async () => {
+    const { default: RootLayout } = await import("../app/layout");
+    intl.locale = "tr";
+    let markup = renderToStaticMarkup(await RootLayout({ children: "page" }));
+    expect(htmlTag(markup)).toContain('lang="tr"');
+    expect(htmlTag(markup)).toContain('dir="ltr"');
+    intl.locale = "ar";
+    markup = renderToStaticMarkup(await RootLayout({ children: "page" }));
+    expect(htmlTag(markup)).toContain('lang="ar"');
+    expect(htmlTag(markup)).toContain('dir="rtl"');
+    intl.locale = "tr";
   });
 });

@@ -382,18 +382,6 @@ export function currentKoskId(
 export const isBarePath = (current: string): boolean =>
   /^\/auth(\/|$)/.test(current);
 
-/** `/tr/kosks/abc/basvurular` and `/kosks/abc/basvurular` are the same page. */
-export function stripLocale(
-  pathname: string,
-  locales: readonly string[]
-): string {
-  const first = pathname.split("/")[1];
-  if (first && locales.includes(first)) {
-    return pathname.slice(first.length + 1) || "/";
-  }
-  return pathname || "/";
-}
-
 /** Whether `href` is the page, or the section the page belongs to; "/" matches only itself. */
 export function isActive(path: string, current: string): boolean {
   if (path === "/") return current === "/";

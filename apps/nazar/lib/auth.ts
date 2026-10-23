@@ -1,6 +1,6 @@
 import { createAuth } from "@medaris/auth/server";
 import { env } from "~/env";
-import { LOCALE } from "~/lib/i18n/locale";
+import { LOCALES } from "~/lib/i18n/locale";
 
 /**
  * Nazar's sign-in, session and sign-out, on the one implementation the web
@@ -37,7 +37,7 @@ export const {
   secret: env.NEXTAUTH_SECRET,
   cookiePrefix: "nazar",
   pages: { signIn: "/auth/signin" },
-  locales: [LOCALE],
+  locales: LOCALES,
   kcLocale: true,
   sessionStore: {
     url: env.AUTH_STORE_URL,

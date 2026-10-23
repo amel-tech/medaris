@@ -16,7 +16,7 @@ const token = vi.hoisted(() => ({
 vi.mock("~/lib/auth", () => ({
   getAccessToken: async () => token.value,
   signInUrl: (returnTo?: string | null) =>
-    `/tr/auth/signin?callbackUrl=${encodeURIComponent(returnTo ?? "")}`,
+    `/auth/signin?callbackUrl=${encodeURIComponent(returnTo ?? "")}`,
 }));
 
 const API = "http://127.0.0.1:1";
@@ -99,7 +99,7 @@ describe.each(
     };
     return GET(new Request("http://app/api/files/x", { headers }), params(ids));
   };
-  const PAGE = `/tr/courses/${COURSE}/lessons/${LESSON}`;
+  const PAGE = `/courses/${COURSE}/lessons/${LESSON}`;
   /** What a browser sends for a plain link on one of tedris's pages. */
   const asPage = {
     "sec-fetch-dest": "document",
@@ -157,7 +157,7 @@ describe.each(
     const res = await get(route.ids, asPage);
     expect(res.status).toBe(303);
     expect(res.headers.get("location")).toBe(
-      `/tr/auth/signin?callbackUrl=${encodeURIComponent(PAGE)}`
+      `/auth/signin?callbackUrl=${encodeURIComponent(PAGE)}`
     );
     expect(fetchMock).not.toHaveBeenCalled();
   });

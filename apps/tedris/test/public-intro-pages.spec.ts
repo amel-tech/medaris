@@ -68,7 +68,7 @@ describe("course page sticky card (MDRS-122)", () => {
     const html = await renderCard({ signedIn: false });
     expect(html).toContain(tr.signInToApply);
     expect(html).toContain(
-      `callbackUrl=${encodeURIComponent(`/tr/courses/${COURSE_ID}`)}`
+      `callbackUrl=${encodeURIComponent(`/courses/${COURSE_ID}`)}`
     );
     expect(html).not.toContain(`>${tr.enroll}</button>`);
   });
@@ -98,7 +98,7 @@ describe("intro page metadata (MDRS-122)", () => {
         title: "Süleymaniye Köşkü",
         description: "Klasik  medrese.\n",
       },
-      path: "/tr/kosks/k-1",
+      path: "/kosks/k-1",
       siteName: "Tedris",
       metadataBase,
     });
@@ -106,13 +106,13 @@ describe("intro page metadata (MDRS-122)", () => {
       title: "Süleymaniye Köşkü · Tedris",
       description: "Klasik medrese.",
       metadataBase,
-      alternates: { canonical: "/tr/kosks/k-1" },
+      alternates: { canonical: "/kosks/k-1" },
       openGraph: {
         type: "website",
         siteName: "Tedris",
         title: "Süleymaniye Köşkü",
         description: "Klasik medrese.",
-        url: "/tr/kosks/k-1",
+        url: "/kosks/k-1",
       },
     });
   });
@@ -120,7 +120,7 @@ describe("intro page metadata (MDRS-122)", () => {
   it("falls back to the site title when a caller with no token got nothing — an unlisted köşk names nothing", () => {
     const metadata = introMetadata({
       subject: null,
-      path: "/tr/kosks/k-2",
+      path: "/kosks/k-2",
       siteName: "Tedris",
       metadataBase,
     });
@@ -130,7 +130,7 @@ describe("intro page metadata (MDRS-122)", () => {
   it("shortens a long description for link previews", () => {
     const metadata = introMetadata({
       subject: { title: "Kurs", description: "a".repeat(500) },
-      path: "/tr/courses/c-1",
+      path: "/courses/c-1",
       siteName: "Tedris",
       metadataBase,
     });

@@ -36,7 +36,7 @@ async function signIn(
   page: Page,
   who: { email?: string; password?: string }
 ): Promise<void> {
-  await page.goto("/tr/auth/signin");
+  await page.goto("/auth/signin");
   await page.locator("#username").fill(who.email as string);
   await page.locator("#password").fill(who.password as string);
   await page.locator("button[type=submit]").click();
@@ -51,9 +51,9 @@ test("nizam/36 — the person row leads to 'Hesap ve ayarlar', which lists the k
 }) => {
   test.skip(!seedable, "no köşk nazım account");
   await signIn(page, KOSK_NAZIM);
-  await page.goto("/tr");
+  await page.goto("/");
   await page.locator("aside a.mds-nav-user").click();
-  await expect(page).toHaveURL(/\/tr\/hesap$/);
+  await expect(page).toHaveURL(/\/hesap$/);
 
   await expect(
     page.getByRole("heading", { name: "Hesap ve ayarlar", level: 1 })
@@ -76,7 +76,7 @@ test("nizam/36 — the active permissions come from the roles, grouped, with the
 }) => {
   test.skip(!seedable, "no köşk nazım account");
   await signIn(page, KOSK_NAZIM);
-  await page.goto("/tr/hesap");
+  await page.goto("/hesap");
 
   const group = page
     .locator("#main")
@@ -98,7 +98,7 @@ test("nizam/36 — the time zone is saved the moment it is chosen and is still t
 }) => {
   test.skip(!seedable, "no köşk nazım account");
   await signIn(page, KOSK_NAZIM);
-  await page.goto("/tr/hesap");
+  await page.goto("/hesap");
 
   try {
     await zone(page).click();
@@ -110,7 +110,7 @@ test("nizam/36 — the time zone is saved the moment it is chosen and is still t
     await expect(zone(page)).toContainText("Berlin");
   } finally {
     // put the shared account's profile back
-    await page.goto("/tr/hesap");
+    await page.goto("/hesap");
     await zone(page).click();
     await page.getByRole("option", { name: "İstanbul" }).click();
     await expect(zone(page)).toContainText("İstanbul");
@@ -122,7 +122,7 @@ test("nizam/36 — 'Diğer…' opens the full list, and a zone from it is saved 
 }) => {
   test.skip(!seedable, "no köşk nazım account");
   await signIn(page, KOSK_NAZIM);
-  await page.goto("/tr/hesap");
+  await page.goto("/hesap");
 
   try {
     await zone(page).click();
@@ -140,7 +140,7 @@ test("nizam/36 — 'Diğer…' opens the full list, and a zone from it is saved 
       page.getByRole("combobox", { name: "Tüm saat dilimleri" })
     ).toContainText("Asia/Tokyo");
   } finally {
-    await page.goto("/tr/hesap");
+    await page.goto("/hesap");
     await zone(page).click();
     await page.getByRole("option", { name: "İstanbul" }).click();
     await expect(zone(page)).toContainText("İstanbul");
@@ -152,7 +152,7 @@ test("nizam/36 — the e-mail is read only and the language is fixed to Turkish 
 }) => {
   test.skip(!seedable, "no köşk nazım account");
   await signIn(page, KOSK_NAZIM);
-  await page.goto("/tr/hesap");
+  await page.goto("/hesap");
 
   const email = page.locator("#main").getByTestId("account-email");
   await expect(email).toHaveValue(KOSK_NAZIM.email as string);
@@ -174,13 +174,13 @@ test("nizam/36 — 'Çıkış yap' asks once, then ends the session and returns 
 }) => {
   test.skip(!seedable, "no köşk nazım account");
   await signIn(page, KOSK_NAZIM);
-  await page.goto("/tr/hesap");
+  await page.goto("/hesap");
 
   await page.getByRole("link", { name: "Çıkış yap" }).click();
-  await expect(page).toHaveURL(/\/tr\/auth\/signout/);
+  await expect(page).toHaveURL(/\/auth\/signout/);
   await page.getByRole("button", { name: "Çıkış yap" }).click();
-  await page.waitForURL(/^.*(?:auth\/signin|realms\/|\/tr\/?$)/);
-  await page.goto("/tr/hesap");
+  await page.waitForURL(/^.*(?:auth\/signin|realms\/|\/?$)/);
+  await page.goto("/hesap");
   await expect(page).toHaveURL(/auth\/signin|realms\//);
 });
 
@@ -188,7 +188,7 @@ test("nizam/47 — a signed-out visitor is sent to sign in (criterion 6)", async
   page,
 }) => {
   test.skip(!seedable, "no köşk nazım account");
-  await page.goto("/tr/hesap");
+  await page.goto("/hesap");
   await expect(page).toHaveURL(/auth\/signin|realms\//);
 });
 
@@ -197,7 +197,7 @@ test("nizam/47 — the başnazım's row says the role is defined in the sign-in 
 }) => {
   test.skip(!seedable || !SYSTEM_ADMIN.password, "no başnazım account");
   await signIn(page, SYSTEM_ADMIN);
-  await page.goto("/tr/hesap");
+  await page.goto("/hesap");
 
   const table = page.getByRole("table", { name: "Görevleriniz" });
   const row = table

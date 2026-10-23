@@ -37,7 +37,7 @@ async function signIn(
   page: Page,
   who: { email?: string; password?: string }
 ): Promise<void> {
-  await page.goto("/tr/auth/signin");
+  await page.goto("/auth/signin");
   await page.locator("#username").fill(who.email as string);
   await page.locator("#password").fill(who.password as string);
   await page.locator("button[type=submit]").click();
@@ -52,7 +52,7 @@ const rowOf = (page: Page, text: string) =>
     .filter({ hasText: text });
 
 const openGrants = async (page: Page, koskId = fixture.kosk.id) => {
-  await page.goto(`/tr/kosks/${koskId}/izinler`);
+  await page.goto(`/kosks/${koskId}/izinler`);
   await expect(
     page.getByRole("heading", { level: 1, name: "İzinler" })
   ).toBeVisible();
@@ -116,7 +116,7 @@ test("nizam/38 — a Medaris nazımı gets the 'izniniz yok' screen, not the lis
   );
   await fixture.makeMedarisNazim(MEDARIS_NAZIM.sub as string);
   await signIn(page, MEDARIS_NAZIM);
-  await page.goto(`/tr/kosks/${fixture.kosk.id}/izinler`);
+  await page.goto(`/kosks/${fixture.kosk.id}/izinler`);
   await expect(
     page.getByText("Bu bölüm için izniniz yok").filter({ visible: true })
   ).toBeVisible();
@@ -126,7 +126,7 @@ test("nizam/38 — a Medaris nazımı gets the 'izniniz yok' screen, not the lis
 test("nizam/38 — a köşk that is not there looks the same", async ({ page }) => {
   test.skip(!(seedable && KOSK_NAZIM.password), "no KOSK_NAZIM account");
   await signIn(page, KOSK_NAZIM);
-  await page.goto("/tr/kosks/00000000-0000-4000-8000-0000000000ff/izinler");
+  await page.goto("/kosks/00000000-0000-4000-8000-0000000000ff/izinler");
   await expect(
     page.getByText("Bu bölüm için izniniz yok").filter({ visible: true })
   ).toBeVisible();
