@@ -39,7 +39,7 @@ const CASES = [
   },
   {
     label: "frontend-only change (Next.js app)",
-    file: "apps/nizam/app/[locale]/decks/[id]/cards/page.tsx",
+    file: "apps/nizam/app/decks/[id]/cards/page.tsx",
     expected: ["nizam-web"],
   },
 ];
