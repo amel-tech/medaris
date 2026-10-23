@@ -339,8 +339,10 @@ catalog:
   depcheck: ^1.4.7
 
   # ═══ Frontend runtime & framework ═══
-  next: ~16.3.6 # MDRS-21: closes ~15 high/moderate Next.js advisories (<16.2.11);
-  #               16.3.6 closes GHSA-vcvr-r3jv-pc5j (critical, next/og RCE)
+  next: ~16.4.2 # MDRS-21: closes ~15 high/moderate Next.js advisories (<16.2.11);
+  #               16.3.6 closes GHSA-vcvr-r3jv-pc5j (critical, next/og RCE);
+  #               16.4.1 closes GHSA-2464-fhr4-w9xw, GHSA-673q-mjm6-r5xr
+  #               (critical RCEs) and GHSA-p3m5-59mp-jv5r (high, DoS)
   react: ~19.2.8 # MDRS-21: ADR-001 §D8 named this "a one-line MDRS-21 bump"
   react-dom: ~19.2.8
   '@types/react': ^19
