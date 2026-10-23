@@ -5,20 +5,26 @@ import { Avatar } from "@medaris/ui/mds/avatar";
 import { Badge } from "@medaris/ui/mds/badge";
 import { Button } from "@medaris/ui/mds/button";
 import { Card } from "@medaris/ui/mds/card";
+import { ChoiceChips } from "@medaris/ui/mds/choice-chips";
 import { Progress } from "@medaris/ui/mds/progress";
 import { useLocale, useTranslations } from "next-intl";
+import { useState } from "react";
 import { percentOf } from "../../flashcards/deck-model";
 import {
   type CourseDeck,
   deckRowStatus,
+  type FeaturedDeck as FeaturedChoice,
+  gridDeckId,
   otherDecks,
   pickFeaturedDeck,
 } from "../course-decks-model";
+import { CourseDeckGrid } from "./course-deck-grid";
 
 /**
  * The "Ders destesi" tab of the course page, for an enrolled talebe: the deck to
  * study first as a featured card, and the course's other decks under it, each
- * row one link to its deck page.
+ * row one link to its deck page. "Kartlar" turns the tab into every card of one
+ * deck on one screen (`CourseDeckGrid`), and "Desteler" turns it back.
  */
 export const CourseDecksTab = ({
   decks,
@@ -33,6 +39,40 @@ export const CourseDecksTab = ({
   const t = useTranslations("tedris.CoursePage");
   const featured = pickFeaturedDeck(decks, course, now);
   const others = otherDecks(decks, featured);
+  const [view, setView] = useState<"list" | "cards">("list");
+  const firstDeckId = gridDeckId(decks, featured);
+
+  return (
+    <div className="flex flex-col gap-section">
+      <ChoiceChips
+        legend={t("deckView")}
+        options={[
+          { value: "list", label: t("deckViewList") },
+          { value: "cards", label: t("deckViewCards") },
+        ]}
+        value={view}
+        // A single-choice group can be emptied; one view is always on.
+        onChange={(value) =>
+          value === "list" || value === "cards" ? setView(value) : undefined
+        }
+      />
+      {view === "cards" && firstDeckId ? (
+        <CourseDeckGrid decks={decks} initialDeckId={firstDeckId} />
+      ) : (
+        <DeckList featured={featured} others={others} />
+      )}
+    </div>
+  );
+};
+
+const DeckList = ({
+  featured,
+  others,
+}: {
+  featured: FeaturedChoice | null;
+  others: CourseDeck[];
+}) => {
+  const t = useTranslations("tedris.CoursePage");
 
   return (
     <div className="flex flex-col gap-section">

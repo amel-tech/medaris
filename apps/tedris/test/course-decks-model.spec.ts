@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import {
   type CourseDeck,
   deckRowStatus,
+  gridDeckId,
   isDeckComplete,
   otherDecks,
   pickFeaturedDeck,
@@ -166,5 +167,17 @@ describe("otherDecks and deckRowStatus", () => {
       "due"
     );
     expect(deckRowStatus(deck("c", 1))).toBe("start");
+  });
+});
+
+describe("gridDeckId", () => {
+  it("opens the card grid on the featured deck", () => {
+    const decks = [deck("a", 1), deck("b", 2)];
+    expect(gridDeckId(decks, { deck: decks[1], reason: "next" })).toBe("b");
+  });
+
+  it("falls back to the API's first deck, and to none without decks", () => {
+    expect(gridDeckId([deck("a", 1), deck("b", 2)], null)).toBe("a");
+    expect(gridDeckId([], null)).toBeNull();
   });
 });

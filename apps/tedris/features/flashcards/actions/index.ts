@@ -170,6 +170,14 @@ export const deleteCard = async (cardId: string) =>
   });
 
 /**
+ * A deck's cards, for the course page's card grid: a read the browser asks for
+ * when the talebe opens the grid or picks another deck, so the page does not
+ * read every deck's cards up front. tedrisat decides who may read them.
+ */
+export const getDeckCards = async (deckId: string) =>
+  authenticatedAction(({ cards }) => cards.getFlashcardByDeckId({ deckId }));
+
+/**
  * One card rated ("Zor", "Orta", "Kolay"; design tedris/30, MDRS-165): the API
  * decides the state and when the card is due again. The page the talebe is on is
  * not revalidated — the study round keeps its own queue — but the lists that
