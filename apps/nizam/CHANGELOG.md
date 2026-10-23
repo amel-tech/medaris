@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.9](https://github.com/amel-tech/medaris/compare/nizam-web-v0.2.8...nizam-web-v0.2.9) (2026-10-23)
+
+
+### Features
+
+* **tedris-web, nizam-web, nazar-web, landing-web:** MDRS-248 language from a shared cookie ([#348](https://github.com/amel-tech/medaris/issues/348)) ([ce47fce](https://github.com/amel-tech/medaris/commit/ce47fce8df0042bdc81b962a99ee82a1db1d6438))
+
 ## [0.2.8](https://github.com/amel-tech/medaris/compare/nizam-web-v0.2.7...nizam-web-v0.2.8) (2026-10-16)
 
 
