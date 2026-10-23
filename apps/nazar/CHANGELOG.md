@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.11](https://github.com/amel-tech/medaris/compare/nazar-web-v0.2.10...nazar-web-v0.2.11) (2026-10-23)
+
+
+### Features
+
+* **nazar-web, i18n:** the müderris's course decks page, cards and Excel import ([#356](https://github.com/amel-tech/medaris/issues/356)) ([c1c3e76](https://github.com/amel-tech/medaris/commit/c1c3e76026d75e0ebe086600a2c8833c6b66f519))
+* **tedris-web, nizam-web, nazar-web, landing-web:** MDRS-248 language from a shared cookie ([#348](https://github.com/amel-tech/medaris/issues/348)) ([ce47fce](https://github.com/amel-tech/medaris/commit/ce47fce8df0042bdc81b962a99ee82a1db1d6438))
+
 ## [0.2.10](https://github.com/amel-tech/medaris/compare/nazar-web-v0.2.9...nazar-web-v0.2.10) (2026-10-16)
 
 

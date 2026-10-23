@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.11.0](https://github.com/amel-tech/medaris/compare/tedris-web-v2.10.1...tedris-web-v2.11.0) (2026-10-23)
+
+
+### Features
+
+* **tedris-web, i18n:** the course's deck tab lists its decks, with one featured to study first ([#357](https://github.com/amel-tech/medaris/issues/357)) ([49b5b59](https://github.com/amel-tech/medaris/commit/49b5b5934df880fd65e3a9f1826f7289e0b9afbc))
+* **tedris-web, nizam-web, nazar-web, landing-web:** MDRS-248 language from a shared cookie ([#348](https://github.com/amel-tech/medaris/issues/348)) ([ce47fce](https://github.com/amel-tech/medaris/commit/ce47fce8df0042bdc81b962a99ee82a1db1d6438))
+
 ## [2.10.1](https://github.com/amel-tech/medaris/compare/tedris-web-v2.10.0...tedris-web-v2.10.1) (2026-10-21)
 
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.13](https://github.com/amel-tech/medaris/compare/tedrisat-v0.2.12...tedrisat-v0.2.13) (2026-10-23)
+
+
+### Features
+
+* **tedrisat, common, services:** course decks a müderris opens, edits and hides from talebe ([#355](https://github.com/amel-tech/medaris/issues/355)) ([431330a](https://github.com/amel-tech/medaris/commit/431330a20ec099d480308d14ccd7e47075a42e77))
+
 ## [0.2.12](https://github.com/amel-tech/medaris/compare/tedrisat-v0.2.11...tedrisat-v0.2.12) (2026-10-21)
 
 
