@@ -3,7 +3,9 @@
  * in the `medaris-locale` cookie, and never on the account: the owner's
  * decision of 2026-10-05. A cookie rather than local storage so the app's
  * proxy can read it and send a visit straight to the chosen language before
- * anything renders (`pathInPreferredLocale`).
+ * anything renders (`pathInPreferredLocale`). One choice for every Medaris
+ * app (MDRS-248): the cookie is set on the parent domain, so a language picked
+ * in Tedris is the one Nizam and Nazar open in.
  */
 export const LOCALE_COOKIE = "medaris-locale";
 const LOCALE_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
@@ -15,11 +17,28 @@ export const LOCALE_NAMES: Record<string, string> = {
   ar: "العربية",
 };
 
-/** A year long, for the whole site, `Secure` wherever the page is. */
+/**
+ * The domain the cookie is shared on: the app's host without its first label
+ * (`nizam-dev.medaris.app` → `medaris.app`), so every sibling app reads it.
+ * `undefined`, a host-only cookie, for `localhost`, an IP address or a host of
+ * two labels, where there is no parent to share (on localhost the apps share
+ * cookies across ports anyway).
+ */
+export const localeCookieDomain = (hostname: string): string | undefined => {
+  if (hostname === "localhost" || /^[\d.]+$/.test(hostname)) return undefined;
+  if (hostname.includes(":")) return undefined; // IPv6
+  const labels = hostname.split(".");
+  return labels.length > 2 ? labels.slice(1).join(".") : undefined;
+};
+
+/** A year long, every app of the domain, `Secure` wherever the page is. */
 export const storeLocale = (locale: string) => {
-  const secure = window.location.protocol === "https:" ? "; Secure" : "";
+  const { protocol, hostname } = window.location;
+  const secure = protocol === "https:" ? "; Secure" : "";
+  const domain = localeCookieDomain(hostname);
+  const scope = domain ? `; Domain=${domain}` : "";
   // biome-ignore lint/suspicious/noDocumentCookie: the Cookie Store API is not in every browser the apps support, and the value is one of the app's locales
-  document.cookie = `${LOCALE_COOKIE}=${encodeURIComponent(locale)}; Path=/; Max-Age=${LOCALE_COOKIE_MAX_AGE}; SameSite=Lax${secure}`;
+  document.cookie = `${LOCALE_COOKIE}=${encodeURIComponent(locale)}; Path=/${scope}; Max-Age=${LOCALE_COOKIE_MAX_AGE}; SameSite=Lax${secure}`;
 };
 
 /**

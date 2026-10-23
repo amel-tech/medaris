@@ -2,11 +2,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   LOCALE_COOKIE,
+  localeCookieDomain,
   localeHref,
   pathInPreferredLocale,
   storeLocale,
 } from "../src/lib/locale-preference";
-import { LocaleMenu } from "../src/mds/locale-switcher";
+import { LocaleMenu, switchLocale } from "../src/mds/locale-switcher";
 import { cleanup, click, render, settle } from "./render";
 
 const LOCALES = ["tr", "en", "ar"] as const;
@@ -15,7 +16,7 @@ const cookieLocale = () =>
   document.cookie
     .split("; ")
     .find((c) => c.startsWith(`${LOCALE_COOKIE}=`))
-    ?.slice(LOCALE_COOKIE.length + 1);
+    ?.slice(LOCALE_COOKIE.length + 1) || undefined;
 
 const clearCookie = () => {
   // biome-ignore lint/suspicious/noDocumentCookie: clearing the test's cookie
@@ -80,6 +81,20 @@ describe("pathInPreferredLocale — the proxy's move", () => {
   });
 });
 
+describe("localeCookieDomain — one choice for every app (MDRS-248)", () => {
+  it("shares the cookie on the parent of an app's host", () => {
+    expect(localeCookieDomain("nizam-dev.medaris.app")).toBe("medaris.app");
+    expect(localeCookieDomain("tedris.medaris.app")).toBe("medaris.app");
+  });
+
+  it("keeps it host-only where there is no parent to share", () => {
+    expect(localeCookieDomain("localhost")).toBeUndefined();
+    expect(localeCookieDomain("127.0.0.1")).toBeUndefined();
+    expect(localeCookieDomain("::1")).toBeUndefined();
+    expect(localeCookieDomain("medaris.app")).toBeUndefined();
+  });
+});
+
 describe("the stored choice", () => {
   beforeEach(() => {
     window.localStorage.clear();
@@ -96,18 +111,23 @@ describe("the stored choice", () => {
 
 describe("LocaleMenu", () => {
   const assign = vi.fn();
+  const reload = vi.fn();
   const realLocation = window.location;
 
   beforeEach(() => {
     clearCookie();
     assign.mockReset();
+    reload.mockReset();
     Object.defineProperty(window, "location", {
       configurable: true,
       value: {
+        protocol: "http:",
+        hostname: "localhost",
         pathname: "/tr/courses/1",
         search: "?week=2",
         hash: "",
         assign,
+        reload,
       },
     });
   });
@@ -147,5 +167,12 @@ describe("LocaleMenu", () => {
     await click(english);
     expect(cookieLocale()).toBe("en");
     expect(assign).toHaveBeenCalledWith("/en/courses/1?week=2");
+  });
+
+  it("reloads the same address in an app without a locale segment (Nazar)", () => {
+    switchLocale("ar", LOCALES, false);
+    expect(cookieLocale()).toBe("ar");
+    expect(reload).toHaveBeenCalledOnce();
+    expect(assign).not.toHaveBeenCalled();
   });
 });

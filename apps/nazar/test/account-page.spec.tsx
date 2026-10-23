@@ -257,12 +257,11 @@ describe("Hesap ve ayarlar (nazir 20)", () => {
     expect(text).toContain("Asia / Tokyo");
   });
 
-  it("shows the language as read-only 'Türkçe'", async () => {
+  it("offers the language shared with Tedris and Nizam, the current one chosen (MDRS-248)", async () => {
     const { markup, text } = await render();
-    expect(text).toContain("Medaris şimdilik yalnız Türkçe görünür.");
-    expect(markup).toMatch(
-      /<input[^>]*readOnly=""[^>]*value="Türkçe"|<input[^>]*value="Türkçe"[^>]*readOnly=""/
-    );
+    expect(text).toContain("Tedris, Nizam ve Nazar aynı dilde açılır.");
+    expect(text).toContain("Türkçe");
+    expect(markup).not.toMatch(/<input[^>]*value="Türkçe"/);
   });
 
   it("shows the account: the person, their roles and a read-only e-mail", async () => {

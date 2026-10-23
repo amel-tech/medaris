@@ -119,7 +119,7 @@ export const cookieGroups: CookieGroup[] = [
       {
         names: "medaris-locale",
         purpose:
-          "Dil menüsünde seçtiğiniz dili hatırlar; sonraki ziyaretinizde sayfalar doğrudan o dilde açılır.",
+          "Dil menüsünde seçtiğiniz dili hatırlar; Tedris, Nizam ve Nazar sonraki ziyaretinizde doğrudan o dilde açılır.",
         setBy: "Tedris ve Nizam",
         lifetime: "1 yıl",
       },

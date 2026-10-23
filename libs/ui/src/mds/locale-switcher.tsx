@@ -12,11 +12,21 @@ import { Select } from "./select";
 /**
  * Stores `next` and loads the same page in it. A full load rather than a
  * client navigation: `<html lang dir>`, the fonts and every server-rendered
- * string follow the locale segment, and a language change is rare.
+ * string follow the locale segment, and a language change is rare. An app
+ * with no locale segment (Nazar, `routed: false`) reloads the same address,
+ * whose server render reads the cookie.
  */
-export const switchLocale = (next: string, locales: readonly string[]) => {
+export const switchLocale = (
+  next: string,
+  locales: readonly string[],
+  routed = true
+) => {
   storeLocale(next);
-  window.location.assign(localeHref(next, locales, window.location));
+  if (routed) {
+    window.location.assign(localeHref(next, locales, window.location));
+  } else {
+    window.location.reload();
+  }
 };
 
 interface LocaleChoiceProps {
@@ -76,8 +86,12 @@ export function LocaleSelect({
   locale,
   locales,
   label,
+  routed = true,
   className,
-}: LocaleChoiceProps) {
+}: LocaleChoiceProps & {
+  /** false for an app whose addresses carry no locale segment */
+  routed?: boolean;
+}) {
   return (
     <Select
       aria-label={label}
@@ -88,7 +102,7 @@ export function LocaleSelect({
       }))}
       value={locale}
       onChange={(next) => {
-        if (next && next !== locale) switchLocale(next, locales);
+        if (next && next !== locale) switchLocale(next, locales, routed);
       }}
     />
   );

@@ -4,7 +4,7 @@ import { signOut } from "@medaris/auth/client";
 import { Button } from "@medaris/ui/mds/button";
 import { Icon } from "@medaris/ui/mds/icon";
 import { useState } from "react";
-import { LOCALE } from "~/lib/i18n/locale";
+import { localeOf } from "~/lib/i18n/locale";
 
 /**
  * "Çıkış yap" (nazir 20): ends nazar's session and Keycloak's. `signOut`
@@ -25,7 +25,7 @@ export function SignOutButton({
 
   const leave = () => {
     setSigningOut(true);
-    signOut({ locale: LOCALE });
+    signOut({ locale: localeOf(document.documentElement.lang) });
   };
 
   return (
