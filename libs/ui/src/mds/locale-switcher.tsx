@@ -1,13 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
 import {
-  hasLocaleCookie,
   LOCALE_NAMES,
   localeHref,
-  readStoredLocale,
   storeLocale,
-  writeLocaleCookie,
 } from "../lib/locale-preference";
 import { Icon } from "./icon";
 import { Menu } from "./menu";
@@ -96,27 +92,4 @@ export function LocaleSelect({
       }}
     />
   );
-}
-
-/**
- * Moves a visit to the language this browser chose last, once, on load. It
- * renders nothing. A page already in that language, or a browser that never
- * chose, stays as it is; so does one whose storage is blocked.
- */
-export function LocalePreference({
-  locale,
-  locales,
-}: {
-  locale: string;
-  locales: readonly string[];
-}) {
-  useEffect(() => {
-    const stored = readStoredLocale(locales);
-    // a choice made before the cookie: from now on the proxy moves the visit
-    if (stored && !hasLocaleCookie(stored)) writeLocaleCookie(stored);
-    if (stored && stored !== locale) {
-      window.location.replace(localeHref(stored, locales, window.location));
-    }
-  }, [locale, locales]);
-  return null;
 }

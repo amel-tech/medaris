@@ -21,8 +21,7 @@ const intl = createIntlMiddleware(routing);
  * reaches next-intl.
  *
  * Before all of that, a page load in another language than this browser's
- * stored choice (the `medaris-locale` cookie) moves to it before it renders,
- * rather than rendering and being moved by `LocalePreference`.
+ * choice (the `medaris-locale` cookie, MDRS-275) moves to it before it renders.
  */
 export default function proxy(request: NextRequest) {
   const preferred = pathInPreferredLocale(

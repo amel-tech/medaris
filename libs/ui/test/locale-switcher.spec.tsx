@@ -1,18 +1,26 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  hasLocaleCookie,
   LOCALE_COOKIE,
-  LOCALE_STORAGE_KEY,
   localeHref,
   pathInPreferredLocale,
-  readStoredLocale,
   storeLocale,
 } from "../src/lib/locale-preference";
-import { LocaleMenu, LocalePreference } from "../src/mds/locale-switcher";
+import { LocaleMenu } from "../src/mds/locale-switcher";
 import { cleanup, click, render, settle } from "./render";
 
 const LOCALES = ["tr", "en", "ar"] as const;
+
+const cookieLocale = () =>
+  document.cookie
+    .split("; ")
+    .find((c) => c.startsWith(`${LOCALE_COOKIE}=`))
+    ?.slice(LOCALE_COOKIE.length + 1);
+
+const clearCookie = () => {
+  // biome-ignore lint/suspicious/noDocumentCookie: clearing the test's cookie
+  document.cookie = `${LOCALE_COOKIE}=; Path=/; Max-Age=0`;
+};
 
 describe("localeHref (MDRS-275)", () => {
   const at = (pathname: string, search = "", hash = "") => ({
@@ -75,37 +83,24 @@ describe("pathInPreferredLocale — the proxy's move", () => {
 describe("the stored choice", () => {
   beforeEach(() => {
     window.localStorage.clear();
-    // biome-ignore lint/suspicious/noDocumentCookie: clearing the test's cookie
-    document.cookie = `${LOCALE_COOKIE}=; Path=/; Max-Age=0`;
+    clearCookie();
   });
 
-  it("is kept in the cookie too, for a year", () => {
-    expect(hasLocaleCookie("en")).toBe(false);
+  it("is kept in the cookie, and not in local storage", () => {
+    expect(cookieLocale()).toBeUndefined();
     storeLocale("en");
-    expect(window.localStorage.getItem(LOCALE_STORAGE_KEY)).toBe("en");
-    expect(hasLocaleCookie("en")).toBe(true);
-  });
-
-  it("reads only a locale the app has", () => {
-    expect(readStoredLocale(LOCALES)).toBeNull();
-    window.localStorage.setItem(LOCALE_STORAGE_KEY, "de");
-    expect(readStoredLocale(LOCALES)).toBeNull();
-    window.localStorage.setItem(LOCALE_STORAGE_KEY, "ar");
-    expect(readStoredLocale(LOCALES)).toBe("ar");
+    expect(cookieLocale()).toBe("en");
+    expect(window.localStorage.length).toBe(0);
   });
 });
 
-describe("LocaleMenu and LocalePreference", () => {
+describe("LocaleMenu", () => {
   const assign = vi.fn();
-  const replace = vi.fn();
   const realLocation = window.location;
 
   beforeEach(() => {
-    window.localStorage.clear();
-    // biome-ignore lint/suspicious/noDocumentCookie: clearing the test's cookie
-    document.cookie = `${LOCALE_COOKIE}=; Path=/; Max-Age=0`;
+    clearCookie();
     assign.mockReset();
-    replace.mockReset();
     Object.defineProperty(window, "location", {
       configurable: true,
       value: {
@@ -113,7 +108,6 @@ describe("LocaleMenu and LocalePreference", () => {
         search: "?week=2",
         hash: "",
         assign,
-        replace,
       },
     });
   });
@@ -151,22 +145,7 @@ describe("LocaleMenu and LocalePreference", () => {
       (r) => r.textContent === "English"
     ) as HTMLElement;
     await click(english);
-    expect(window.localStorage.getItem(LOCALE_STORAGE_KEY)).toBe("en");
+    expect(cookieLocale()).toBe("en");
     expect(assign).toHaveBeenCalledWith("/en/courses/1?week=2");
-  });
-
-  it("moves a later visit to the stored language, and leaves a page already in it", async () => {
-    await render(<LocalePreference locale="tr" locales={LOCALES} />);
-    expect(replace).not.toHaveBeenCalled();
-
-    window.localStorage.setItem(LOCALE_STORAGE_KEY, "ar");
-    await render(<LocalePreference locale="tr" locales={LOCALES} />);
-    expect(replace).toHaveBeenCalledWith("/ar/courses/1?week=2");
-    // a choice stored before the cookie existed gets one, for the proxy
-    expect(hasLocaleCookie("ar")).toBe(true);
-
-    replace.mockReset();
-    await render(<LocalePreference locale="ar" locales={LOCALES} />);
-    expect(replace).not.toHaveBeenCalled();
   });
 });

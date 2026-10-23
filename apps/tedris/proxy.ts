@@ -27,9 +27,8 @@ const authPaths: readonly string[] = [
  * 1. An auth page asked for without a locale (`/auth/signin?callbackUrl=/en/…`)
  *    moves under the locale of the page the visitor was on, so Keycloak opens
  *    in their language (MDRS-274).
- * 2. A page load in another language than this browser's stored choice
- *    (the `medaris-locale` cookie) moves to it before it renders, rather than
- *    rendering and being moved by `LocalePreference`.
+ * 2. A page load in another language than this browser's choice (the
+ *    `medaris-locale` cookie, MDRS-275) moves to it before it renders.
  * 3. The auth step: the session is renewed for this request and the response;
  *    a page that is not in `public-paths.ts`, asked for without a session,
  *    goes to `/<locale>/auth/signin?callbackUrl=<where they were>`. A public
