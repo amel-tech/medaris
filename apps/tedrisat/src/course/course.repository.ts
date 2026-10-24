@@ -2508,6 +2508,11 @@ export class CourseRepository implements ICourseRepository {
    * The talebe the team took out of a course, newest first (MDRS-178,
    * "Erişimi kaldırılanlar"): the `enrollment.remove` rows of the audit log.
    * Names come from the row itself when it kept them, else from `users`.
+   *
+   * Only those still out: a seat approved back since (by the team, or given
+   * back by a partner's registration) is on the roster again, and its
+   * removal stays in the audit log only. Someone taken out more than once
+   * is listed once, with the latest removal.
    */
   async findRemovedEnrollments(
     courseId: string
@@ -2527,6 +2532,14 @@ export class CourseRepository implements ICourseRepository {
         actorFamily: actor.familyName,
       })
       .from(auditLog)
+      .innerJoin(
+        enrollments,
+        and(
+          eq(enrollments.courseId, courseId),
+          sql`${enrollments.userId}::text = ${auditLog.details}->>'userId'`,
+          eq(enrollments.status, EnrollmentStatus.REVOKED)
+        )
+      )
       .leftJoin(
         target,
         sql`${target.id}::text = ${auditLog.details}->>'userId'`
@@ -2541,7 +2554,14 @@ export class CourseRepository implements ICourseRepository {
       .orderBy(desc(auditLog.createdAt), desc(auditLog.id));
     const full = (g: string | null, f: string | null) =>
       [g, f].filter(Boolean).join(" ").trim() || null;
-    return rows.map((r) => {
+    const listed = new Set<string>();
+    const latest = rows.filter((r) => {
+      const userId = String((r.details as { userId?: unknown }).userId ?? "");
+      if (listed.has(userId)) return false;
+      listed.add(userId);
+      return true;
+    });
+    return latest.map((r) => {
       const d = r.details as Record<string, unknown>;
       const text = (v: unknown) => (typeof v === "string" ? v : null);
       return {
