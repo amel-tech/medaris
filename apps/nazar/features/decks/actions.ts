@@ -42,6 +42,8 @@ export interface CardBody {
   type: CardType;
   contentFront: string;
   contentBack: string;
+  /** What the card is, for a screen that lays cards out by it (a sîga: `siga.ts`). */
+  contentMeta?: object;
 }
 
 /** "Deste aç" (`POST /courses/:id/decks`). */
@@ -111,6 +113,32 @@ export async function createCard(
   });
   if (!result.success) console.error("Error adding a card:", result.error);
   return outcomeOf(result);
+}
+
+/**
+ * "Kartları kaydet" of the sîga generator: every card in one call of the same
+ * endpoint "Kart ekle" uses, which takes a list. The API adds all or none.
+ */
+export async function createCards(
+  deckId: string,
+  bodies: CardBody[]
+): Promise<ImportOutcome> {
+  const result = await authenticatedAction(async (api) => {
+    const created = await api.cards.createFlashcards({
+      deckId,
+      createFlashcardDto: bodies,
+    });
+    return { count: created.length };
+  });
+  if (result.success) return { success: true, data: result.data };
+  const outcome = outcomeOf(result);
+  if (isUnauthenticated(outcome)) return outcome;
+  console.error("Error adding the sîga cards:", result.error);
+  return {
+    success: false,
+    code: outcome.success ? "" : outcome.code,
+    rows: [],
+  };
 }
 
 /** "Kaydet" on a card (`PATCH /flashcard/cards/:id`). */
