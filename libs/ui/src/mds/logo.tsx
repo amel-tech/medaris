@@ -14,6 +14,21 @@ export const appNames = {
   giris: "Giriş",
 } as const;
 
+// The same names in Arabic script, as the Arabic catalogues write them.
+const arabicAppNames = {
+  tedris: "تدريس",
+  nizam: "نظام",
+  nazar: "نظر",
+} as const;
+
+/** The app's name in the page's language: Arabic script in Arabic, the Latin name otherwise. */
+export function appName(
+  app: keyof typeof arabicAppNames,
+  locale: string | undefined
+): string {
+  return locale === "ar" ? arabicAppNames[app] : appNames[app];
+}
+
 export interface LogoProps extends HTMLAttributes<HTMLSpanElement> {
   /** the app whose name is the default subtitle; the mark is the same in every app */
   app?: "tedris" | "nizam" | "nazar" | "landing" | "giris";

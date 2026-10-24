@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { appNames, Logo } from "../mds/logo";
+import { appName, Logo } from "../mds/logo";
 
 export interface AuthCardProps {
   /** the page's one `<h1>` */
@@ -16,6 +16,8 @@ export interface AuthCardProps {
   titleId?: string;
   /** the app that sent the visitor here; its name goes under "Medaris" */
   app?: "tedris" | "nizam" | "nazar";
+  /** the page's language, so the app's name is written in it */
+  locale?: string;
 }
 
 /**
@@ -36,6 +38,7 @@ export function AuthCard({
   footer,
   titleId = "kc-page-title",
   app,
+  locale,
 }: AuthCardProps) {
   return (
     <main
@@ -48,7 +51,7 @@ export function AuthCard({
             size="lg"
             wordmark
             arabic={false}
-            subtitle={app ? appNames[app] : undefined}
+            subtitle={app ? appName(app, locale) : undefined}
           />
           <div className="flex flex-col gap-2">
             <h1 className="mds-h2" id={titleId}>

@@ -83,6 +83,13 @@ describe("login.ftl", () => {
     expect(q(".mds-logo__subtitle")?.textContent).toBe(name);
   });
 
+  it("writes the app's name in Arabic script on an Arabic page", async () => {
+    page = await renderPage("login.ftl", "ar", {
+      client: { clientId: "tedris-dev" },
+    } as never);
+    expect(q(".mds-logo__subtitle")?.textContent).toBe("تدريس");
+  });
+
   it("draws no app name for a client that is not a Medaris app", async () => {
     page = await renderPage("login.ftl", "tr", {
       client: { clientId: "ornek-uygulama" },

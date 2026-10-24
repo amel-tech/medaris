@@ -110,6 +110,13 @@ describe("AuthCard", () => {
       "Medaris — Nizam"
     );
   });
+
+  it("writes the app's name in Arabic script on an Arabic page", async () => {
+    const host = await render(
+      <AuthCard title="تسجيل الدخول" app="nazar" locale="ar" />
+    );
+    expect(host.querySelector(".mds-logo__subtitle")?.textContent).toBe("نظر");
+  });
 });
 
 describe("PasswordField", () => {
