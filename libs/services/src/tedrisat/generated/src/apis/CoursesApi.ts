@@ -1342,7 +1342,7 @@ export class CoursesApi extends runtime.BaseAPI {
     }
 
     /**
-     * For the course team (MDRS-178, Erişimi kaldırılanlar): who was taken out by `POST …/remove`, by whom, when and why, newest first. Read from the audit log; a talebe may have applied again since.
+     * For the course team (MDRS-178, Erişimi kaldırılanlar): who was taken out by `POST …/remove` and is still out, by whom, when and why, newest first. Read from the audit log; a talebe approved back since is on the roster instead, and one taken out more than once is listed with the latest removal.
      * Talebe the team took out of the course, with the reasons
      */
     async getRemovedEnrollmentsRaw(requestParameters: GetRemovedEnrollmentsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<RemovedEnrollmentResponse>>> {
@@ -1377,7 +1377,7 @@ export class CoursesApi extends runtime.BaseAPI {
     }
 
     /**
-     * For the course team (MDRS-178, Erişimi kaldırılanlar): who was taken out by `POST …/remove`, by whom, when and why, newest first. Read from the audit log; a talebe may have applied again since.
+     * For the course team (MDRS-178, Erişimi kaldırılanlar): who was taken out by `POST …/remove` and is still out, by whom, when and why, newest first. Read from the audit log; a talebe approved back since is on the roster instead, and one taken out more than once is listed with the latest removal.
      * Talebe the team took out of the course, with the reasons
      */
     async getRemovedEnrollments(requestParameters: GetRemovedEnrollmentsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<RemovedEnrollmentResponse>> {
