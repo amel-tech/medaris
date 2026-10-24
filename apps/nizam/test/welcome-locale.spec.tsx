@@ -34,6 +34,18 @@ describe("the signed-out welcome page (MDRS-248)", () => {
     );
   });
 
+  it.each([
+    "tr",
+    "en",
+    "ar",
+  ])("writes the app's Latin name under the wordmark in %s, not مدارس", async (locale) => {
+    const html = await renderWelcome(locale);
+    expect(html).toContain(
+      '<span class="mds-logo__subtitle" lang="tr" dir="ltr">Nizam</span>'
+    );
+    expect(html).not.toContain("mds-logo__arabic");
+  });
+
   it("keeps the sign-in button under the page's locale", async () => {
     const html = await renderWelcome("en");
     expect(html).toContain('href="/auth/signin"');

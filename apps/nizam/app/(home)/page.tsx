@@ -1,6 +1,6 @@
 import { Button } from "@medaris/ui/mds/button";
 import { LocaleMenu } from "@medaris/ui/mds/locale-switcher";
-import { Logo } from "@medaris/ui/mds/logo";
+import { appNames, Logo } from "@medaris/ui/mds/logo";
 import { SystemState } from "@medaris/ui/mds/system-state";
 import { forbidden, redirect } from "next/navigation";
 import { getLocale, getTranslations } from "next-intl/server";
@@ -37,7 +37,15 @@ export default async function Page() {
           />
         </div>
         <SystemState
-          logo={<Logo app="nizam" size="lg" wordmark />}
+          logo={
+            <Logo
+              app="nizam"
+              size="lg"
+              wordmark
+              arabic={false}
+              subtitle={appNames.nizam}
+            />
+          }
           title={t("welcome")}
           action={<Button href={`/auth/signin`}>{a("signIn")}</Button>}
         />
