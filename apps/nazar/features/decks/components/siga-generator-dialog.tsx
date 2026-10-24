@@ -10,7 +10,7 @@ import { Select } from "@medaris/ui/mds/select";
 import { useToaster } from "@medaris/ui/mds/toast";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { type FormEvent, useState, useTransition } from "react";
+import { type FormEvent, useId, useState, useTransition } from "react";
 import type { Messages } from "~/lib/i18n/messages";
 import { handleUnauthenticated } from "~/lib/unauthenticated";
 import { createCards } from "../actions";
@@ -77,9 +77,11 @@ export function SigaGeneratorDialog({
   const [drafts, setDrafts] = useState<SigaDraft[] | null>(null);
   const [sent, setSent] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
+  const kipsErrorId = useId();
 
   const rootRead = readRoot(root);
   const rootProblem = "problem" in rootRead ? rootRead.problem : null;
+  const kipsMissing = sent && kips.length === 0;
   const draftProblems = drafts ? sigaDraftProblems(drafts) : [];
   const lengthError = (index: number, face: string): string | undefined => {
     if (!sent || !draftProblems.includes(index)) return undefined;
@@ -147,11 +149,14 @@ export function SigaGeneratorDialog({
     <Dialog
       open
       onOpenChange={(next) => {
-        if (!next) onClose();
+        // A save in flight finishes here: closing now would let its answer
+        // close whatever the page opened next, or fail where nobody sees it.
+        if (!next && !pending) onClose();
       }}
+      dismissible={!pending}
       form
       onSubmit={submit}
-      size="lg"
+      size="md"
       title={words("Decks.siga.title")}
       footer={
         drafts ? (
@@ -159,6 +164,7 @@ export function SigaGeneratorDialog({
             <Button
               variant="outline"
               type="button"
+              disabled={pending}
               onClick={() => {
                 setDrafts(null);
                 setSent(false);
@@ -198,36 +204,42 @@ export function SigaGeneratorDialog({
                     draft.contentMeta.kip === kip ? (
                       <li
                         key={`${kip}-${draft.contentMeta.sahis}-${draft.contentMeta.cinsiyet}-${draft.contentMeta.sayi}`}
-                        className="grid grid-cols-[10rem_minmax(0,1fr)_minmax(0,2fr)] items-start gap-3 max-md:grid-cols-1"
                       >
-                        <span className="mds-body-sm font-semibold pbs-2">
-                          {sigaLabel(words, draft.contentMeta)}
-                        </span>
-                        <Field
-                          label={words("Decks.siga.front")}
-                          error={lengthError(index, draft.contentFront)}
-                        >
-                          <Input
-                            lang="ar"
-                            dir="rtl"
-                            className="font-arabic"
-                            value={draft.contentFront}
-                            onChange={(event) =>
-                              edit(index, { contentFront: event.target.value })
-                            }
-                          />
-                        </Field>
-                        <Field
-                          label={words("Decks.siga.meaning")}
-                          error={lengthError(index, draft.contentBack)}
-                        >
-                          <Input
-                            value={draft.contentBack}
-                            onChange={(event) =>
-                              edit(index, { contentBack: event.target.value })
-                            }
-                          />
-                        </Field>
+                        {/* One sîga per group: its name labels both faces. The
+                            legend floats, so it is a grid item like the rest
+                            rather than a legend drawn on the border. */}
+                        <fieldset className="m-0 grid min-inline-0 grid-cols-[9rem_minmax(0,1fr)_minmax(0,2fr)] items-start gap-3 border-0 p-0 max-md:grid-cols-1">
+                          <legend className="mds-label float-start pbs-2 max-md:pbs-0">
+                            {sigaLabel(words, draft.contentMeta)}
+                          </legend>
+                          <Field
+                            label={words("Decks.siga.front")}
+                            error={lengthError(index, draft.contentFront)}
+                          >
+                            <Input
+                              lang="ar"
+                              dir="rtl"
+                              className="font-arabic text-[length:var(--fs-arabic-min)]"
+                              value={draft.contentFront}
+                              onChange={(event) =>
+                                edit(index, {
+                                  contentFront: event.target.value,
+                                })
+                              }
+                            />
+                          </Field>
+                          <Field
+                            label={words("Decks.siga.meaning")}
+                            error={lengthError(index, draft.contentBack)}
+                          >
+                            <Input
+                              value={draft.contentBack}
+                              onChange={(event) =>
+                                edit(index, { contentBack: event.target.value })
+                              }
+                            />
+                          </Field>
+                        </fieldset>
                       </li>
                     ) : null
                   )}
@@ -261,11 +273,19 @@ export function SigaGeneratorDialog({
               onChange={(event) => setRoot(event.target.value)}
             />
           </Field>
-          <Field label={words("Decks.siga.bab")} required>
+          <Field
+            label={words("Decks.siga.bab")}
+            help={
+              <span className="mds-arabic" lang="ar" dir="rtl">
+                {BABS[bab].name}
+              </span>
+            }
+            required
+          >
             <Select
               options={BAB_KEYS.map((key) => ({
                 value: key,
-                label: BABS[key].name,
+                label: BABS[key].latin,
               }))}
               value={bab}
               onChange={(value) => value && setBab(value as BabKey)}
@@ -279,6 +299,8 @@ export function SigaGeneratorDialog({
               label={words("Decks.siga.kipCount", {
                 kip: words("Decks.siga.kipMazi"),
               })}
+              aria-invalid={kipsMissing || undefined}
+              aria-describedby={kipsMissing ? kipsErrorId : undefined}
               checked={kips.includes("mazi")}
               onCheckedChange={(on) => toggleKip("mazi", on)}
             />
@@ -286,11 +308,13 @@ export function SigaGeneratorDialog({
               label={words("Decks.siga.kipCount", {
                 kip: words("Decks.siga.kipMuzari"),
               })}
+              aria-invalid={kipsMissing || undefined}
+              aria-describedby={kipsMissing ? kipsErrorId : undefined}
               checked={kips.includes("muzari")}
               onCheckedChange={(on) => toggleKip("muzari", on)}
             />
-            {sent && kips.length === 0 ? (
-              <p className="mds-body-sm" role="alert">
+            {kipsMissing ? (
+              <p className="mds-error" id={kipsErrorId}>
                 {words("Decks.siga.kipsRequired")}
               </p>
             ) : null}

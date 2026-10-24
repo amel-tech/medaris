@@ -68,8 +68,12 @@ const NOT_SALIM = new Set([
   YA,
 ]);
 
-/** The Arabic letters (hamza to yā'), without the vowel marks. */
-const LETTER = /[ء-غف-ي]/;
+/**
+ * The Arabic letters (hamza to yā'), without the vowel marks. Tâ marbûta (ة)
+ * ends a noun and is never a root letter, so it is left out and a root that
+ * holds one is refused as `letters`.
+ */
+const LETTER = /[\u0621-\u0628\u062A-\u063A\u0641-\u064A]/;
 
 // ---- the bâbs -----------------------------------------------------------------
 
@@ -77,18 +81,49 @@ type Vowel = typeof FATHA | typeof DAMMA | typeof KASRA;
 
 /**
  * The six bâbs of the sülâsî mücerred, each by its model verb: the vowel of
- * the middle letter in the mâzî and in the muzâri.
+ * the middle letter in the mâzî and in the muzâri. `latin` names it in the
+ * bâb picker, whose options are plain text and cannot set Arabic right.
  */
 export const BABS = {
-  nasara: { mazi: FATHA, muzari: DAMMA, name: "نَصَرَ يَنْصُرُ" },
-  daraba: { mazi: FATHA, muzari: KASRA, name: "ضَرَبَ يَضْرِبُ" },
-  fataha: { mazi: FATHA, muzari: FATHA, name: "فَتَحَ يَفْتَحُ" },
-  semia: { mazi: KASRA, muzari: FATHA, name: "سَمِعَ يَسْمَعُ" },
-  hasune: { mazi: DAMMA, muzari: DAMMA, name: "حَسُنَ يَحْسُنُ" },
-  hasibe: { mazi: KASRA, muzari: KASRA, name: "حَسِبَ يَحْسِبُ" },
+  nasara: {
+    mazi: FATHA,
+    muzari: DAMMA,
+    name: "نَصَرَ يَنْصُرُ",
+    latin: "Nasara – yensuru",
+  },
+  daraba: {
+    mazi: FATHA,
+    muzari: KASRA,
+    name: "ضَرَبَ يَضْرِبُ",
+    latin: "Daraba – yadribu",
+  },
+  fataha: {
+    mazi: FATHA,
+    muzari: FATHA,
+    name: "فَتَحَ يَفْتَحُ",
+    latin: "Fetaha – yeftehu",
+  },
+  semia: {
+    mazi: KASRA,
+    muzari: FATHA,
+    name: "سَمِعَ يَسْمَعُ",
+    latin: "Semi'a – yesme'u",
+  },
+  hasune: {
+    mazi: DAMMA,
+    muzari: DAMMA,
+    name: "حَسُنَ يَحْسُنُ",
+    latin: "Hasune – yahsunu",
+  },
+  hasibe: {
+    mazi: KASRA,
+    muzari: KASRA,
+    name: "حَسِبَ يَحْسِبُ",
+    latin: "Hasibe – yahsibu",
+  },
 } as const satisfies Record<
   string,
-  { mazi: Vowel; muzari: Vowel; name: string }
+  { mazi: Vowel; muzari: Vowel; name: string; latin: string }
 >;
 
 export type BabKey = keyof typeof BABS;
@@ -112,6 +147,10 @@ export function readRoot(
   );
   if (letters.length === 0 && stray.length === 0)
     return { problem: "required" };
+  // A doubled root is often typed as it is written, two letters and a
+  // shadda (مدّ): that is the muzâaf, not a letter missing.
+  if (stray.length === 0 && letters.length === 2 && input.includes(SHADDA))
+    return { problem: "doubled" };
   if (stray.length > 0 || letters.length !== 3) return { problem: "letters" };
   if (letters.some((ch) => NOT_SALIM.has(ch))) return { problem: "weak" };
   if (letters[1] === letters[2]) return { problem: "doubled" };
@@ -260,9 +299,10 @@ const lastVowel = (word: string): string | undefined =>
     .find((ch) => "aeıioöuü".includes(ch));
 
 /**
- * The meaning, as typed for "O yaptı" / "O yapıyor", turned to a person. A
- * past in -dı/-tı and a present in -yor are conjugated; anything else is kept
- * as typed after the person, for the müderris to finish.
+ * The meaning, as typed for "O yaptı" / "O yapıyor" / "O yapar", turned to a
+ * person. A past in -dı/-tı, a present in -yor and an aorist in -r (the
+ * Emsile's "yardım eder") are conjugated; anything else is kept as typed after
+ * the person, for the müderris to finish.
  */
 export function conjugateMeaning(meaning: string, person: Person): string {
   const m = meaning.trim();
@@ -288,6 +328,23 @@ export function conjugateMeaning(meaning: string, person: Person): string {
       "2pl": `n${v}z`,
       "1sg": "m",
       "1pl": "k",
+    }[person];
+    return m + ending;
+  }
+  if (/[aeıioöuü]r$/.test(m)) {
+    const v = lastVowel(m) ?? "ı";
+    // The aorist's own vowel decides the personal endings' (yazar → yazarım,
+    // eder → ederim, okur → okurum, görür → görürüm).
+    const high =
+      { a: "ı", ı: "ı", o: "u", u: "u", e: "i", i: "i", ö: "ü", ü: "ü" }[v] ??
+      "ı";
+    const ending = {
+      "3sg": "",
+      "3pl": BACK_VOWELS.includes(v) ? "lar" : "ler",
+      "2sg": `s${high}n`,
+      "2pl": `s${high}n${high}z`,
+      "1sg": `${high}m`,
+      "1pl": `${high}z`,
     }[person];
     return m + ending;
   }

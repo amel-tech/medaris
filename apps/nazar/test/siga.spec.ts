@@ -400,3 +400,37 @@ describe("sigaDraftProblems", () => {
     expect(sigaDraftProblems(drafts)).toEqual([2, 5]);
   });
 });
+
+describe("review round", () => {
+  it("refuses tâ marbûta as a root letter", () => {
+    expect(readRoot("ر ح ة")).toEqual({ problem: "letters" });
+  });
+
+  it("names a doubled root typed with a shadda as doubled", () => {
+    expect(readRoot("مدّ")).toEqual({ problem: "doubled" });
+    expect(readRoot("ردّ")).toEqual({ problem: "doubled" });
+  });
+
+  it("turns an aorist in -r to every person, with vowel harmony", () => {
+    expect(conjugateMeaning("yardım eder", "3pl")).toBe("yardım ederler");
+    expect(conjugateMeaning("yardım eder", "2sg")).toBe("yardım edersin");
+    expect(conjugateMeaning("yardım eder", "2pl")).toBe("yardım edersiniz");
+    expect(conjugateMeaning("yardım eder", "1sg")).toBe("yardım ederim");
+    expect(conjugateMeaning("yardım eder", "1pl")).toBe("yardım ederiz");
+    expect(conjugateMeaning("yazar", "1sg")).toBe("yazarım");
+    expect(conjugateMeaning("yazar", "3pl")).toBe("yazarlar");
+    expect(conjugateMeaning("okur", "2pl")).toBe("okursunuz");
+    expect(conjugateMeaning("görür", "1pl")).toBe("görürüz");
+  });
+
+  it("names every bâb in Latin for the picker", () => {
+    expect(BAB_KEYS.map((key) => BABS[key].latin)).toEqual([
+      "Nasara – yensuru",
+      "Daraba – yadribu",
+      "Fetaha – yeftehu",
+      "Semi'a – yesme'u",
+      "Hasune – yahsunu",
+      "Hasibe – yahsibu",
+    ]);
+  });
+});

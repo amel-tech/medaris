@@ -4,7 +4,7 @@ import { Toaster, ToastProvider } from "@medaris/ui/mds/toast";
 import { NextIntlClientProvider } from "next-intl";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SigaGeneratorDialog } from "~/features/decks/components/siga-generator-dialog";
-import { cleanup, click, render, settle, type as typeInto } from "./dom";
+import { cleanup, click, key, render, settle, type as typeInto } from "./dom";
 
 const createCards = vi.fn();
 const onClose = vi.fn();
@@ -145,5 +145,46 @@ describe("Sîga üretici", () => {
     await click(button("Geri"));
     expect(field("root").value).toBe("ن ص ر");
     expect(field("maziMeaning").value).toBe("yardım etti");
+  });
+
+  it("labels each draft's faces with its sîga, and keeps the dialog open while saving", async () => {
+    let finish: (value: unknown) => void = () => undefined;
+    createCards.mockReturnValueOnce(
+      new Promise((resolve) => {
+        finish = resolve;
+      })
+    );
+    await mount();
+    await fill();
+    await click(button("Önizle"));
+    const legends = [...dialog().querySelectorAll("li fieldset > legend")];
+    expect(legends).toHaveLength(28);
+    expect(legends[0].textContent).toBe("Gâib · müfred");
+    await click(button("28 kartı kaydet"));
+    expect(button("Geri").disabled).toBe(true);
+    await key(document.activeElement ?? dialog(), "Escape");
+    expect(onClose).not.toHaveBeenCalled();
+    finish({ success: true, data: { count: 28 } });
+    await settle();
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("ties the tense error to the boxes", async () => {
+    await mount();
+    await typeInto(field("root"), "ن ص ر");
+    for (const label of ["Mâzî · 14", "Muzâri · 14"]) {
+      await click(
+        [...dialog().querySelectorAll("label")].find((l) =>
+          l.textContent?.startsWith(label)
+        ) as HTMLElement
+      );
+    }
+    await click(button("Önizle"));
+    const error = dialog().querySelector(".mds-error") as HTMLElement;
+    expect(error.textContent).toBe("En az bir kip seçin.");
+    const boxes = [...dialog().querySelectorAll("[role=checkbox]")];
+    expect(
+      boxes.every((b) => b.getAttribute("aria-describedby")?.includes(error.id))
+    ).toBe(true);
   });
 });
