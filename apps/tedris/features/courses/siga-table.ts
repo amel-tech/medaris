@@ -156,6 +156,31 @@ export const sigaLayout = <T extends { contentMeta?: unknown }>(
 };
 
 /**
+ * A table with only the cards `keep` holds, the others' cells emptied; null
+ * when it keeps none. "Kendini sına" draws a round of missed cards this way.
+ */
+export const narrowTable = <T>(
+  table: SigaTable<T>,
+  keep: (card: T) => boolean
+): SigaTable<T> | null => {
+  let kept = 0;
+  const cells = Object.fromEntries(
+    SIGA_ROWS.map((row) => [
+      row,
+      Object.fromEntries(
+        SIGA_COLUMNS.map((column) => {
+          const card = table.cells[row][column];
+          const stays = card !== null && keep(card);
+          if (stays) kept += 1;
+          return [column, stays ? card : null];
+        })
+      ),
+    ])
+  ) as SigaTable<T>["cells"];
+  return kept > 0 ? { ...table, cells } : null;
+};
+
+/**
  * The bâbs of the sülâsî mücerred, each as a sarf book names it: its model
  * verb in the mâzî and the muzâri. The generator writes these keys.
  */

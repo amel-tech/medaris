@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  narrowTable,
   readSiga,
   sigaCellApplies,
   sigaLayout,
@@ -115,9 +116,20 @@ describe("sigaLayout", () => {
   it("sends a second card for a filled cell, and a non-sîga card, to the grid", () => {
     const first = { id: "1", contentMeta: meta() };
     const twin = { id: "2", contentMeta: meta() };
-    const plain = { id: "3" };
+    const plain: { id: string; contentMeta?: unknown } = { id: "3" };
     const { tables, rest } = sigaLayout([first, twin, plain]);
     expect(tables[0].cells.gaib.mufred).toBe(first);
     expect(rest).toEqual([twin, plain]);
+  });
+});
+
+describe("narrowTable", () => {
+  it("keeps only the cards asked for, and gives no table when none stays", () => {
+    const [table] = sigaLayout(nasaraMazi()).tables;
+    const narrowed = narrowTable(table, (card) => card.id === "s3");
+    expect(narrowed?.cells.gaib.cem?.id).toBe("s3");
+    expect(narrowed?.cells.gaib.mufred).toBeNull();
+    expect(narrowed?.cells.mutekellim.cem).toBeNull();
+    expect(narrowTable(table, () => false)).toBeNull();
   });
 });

@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import type { ReactNode } from "react";
+import { type ReactNode, useId } from "react";
 import {
   BAB_NAMES,
   SIGA_COLUMNS,
@@ -57,33 +57,42 @@ const ROW_KEY = {
 export const CourseSigaTable = <T extends { id: string }>({
   table,
   renderCard,
+  onlyFilledRows = false,
+  emptyLabel,
 }: {
   table: SigaTable<T>;
-  /** The cell's content; null leaves the cell empty (not in this round). */
   renderCard: (card: T) => ReactNode;
+  /** Leave out the rows with no card ("Kendini sına", a round of missed cards). */
+  onlyFilledRows?: boolean;
+  /** What an empty cell reads out; "Bu sîganın kartı yok" by default. */
+  emptyLabel?: string;
 }) => {
   const t = useTranslations("tedris.CoursePage");
+  const captionId = useId();
   const bab = BAB_NAMES[table.bab];
+  const rows = SIGA_ROWS.filter(
+    (row) =>
+      !onlyFilledRows ||
+      SIGA_COLUMNS.some((column) => table.cells[row][column] !== null)
+  );
 
   return (
     <table
       role={role("table")}
+      // The caption's implied naming can go with the table's display.
+      aria-labelledby={captionId}
       className="flex inline-full max-inline-[48rem] flex-col gap-2"
     >
-      <caption className="pbe-2 text-start">
+      <caption id={captionId} className="pbe-2 text-start">
         <span className="flex flex-wrap items-baseline gap-2">
           <span className="mds-h4">{t(KIP_KEY[table.kip])}</span>
-          <span
-            className="font-arabic text-[1.25rem] leading-[1.9]"
-            dir="rtl"
-            lang="ar"
-          >
+          <span className="mds-arabic" dir="rtl" lang="ar">
             {table.kok}
           </span>
           {bab ? (
             <span className="mds-caption">
               {t("sigaBab")}{" "}
-              <span className="font-arabic" dir="rtl" lang="ar">
+              <span className="mds-arabic" dir="rtl" lang="ar">
                 {bab}
               </span>
             </span>
@@ -92,13 +101,16 @@ export const CourseSigaTable = <T extends { id: string }>({
       </caption>
       <thead role={role("rowgroup")} className="block">
         <tr role={role("row")} className={ROW}>
-          <td className="max-md:hidden" />
+          {/* The corner stays in the tree at every width, so a body row's
+              cells line up with the column headers; below 768 px it only
+              leaves the grid's flow. */}
+          <td role={role("cell")} className="max-md:sr-only" />
           {SIGA_COLUMNS.map((column) => (
             <th
               key={column}
               role={role("columnheader")}
               scope="col"
-              className="mds-eyebrow text-center"
+              className="mds-caption text-center font-medium"
             >
               {t(SAYI_KEY[column])}
             </th>
@@ -109,7 +121,7 @@ export const CourseSigaTable = <T extends { id: string }>({
         role={role("rowgroup")}
         className="flex flex-col gap-2 max-md:gap-3"
       >
-        {SIGA_ROWS.map((row) => (
+        {rows.map((row) => (
           <tr key={row} role={role("row")} className={ROW}>
             <th
               role={role("rowheader")}
@@ -137,7 +149,7 @@ export const CourseSigaTable = <T extends { id: string }>({
                     renderCard(card)
                   ) : (
                     <span className="mds-visually-hidden">
-                      {t("sigaCellEmpty")}
+                      {emptyLabel ?? t("sigaCellEmpty")}
                     </span>
                   )}
                 </td>

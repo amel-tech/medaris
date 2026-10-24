@@ -2,20 +2,26 @@ import type { FlashcardResponse } from "@medaris/services/tedrisat";
 import { cardRow } from "./decks-harness";
 
 /**
- * نَصَرَ's fourteen mâzî sîgas as the müderris's generator writes them
- * (`contentMeta`, MDRS-248), in a sarf book's order: gâib, gâibe, muhâtab,
+ * نَصَرَ's fourteen mâzî sîgas as nazar-web's sîga generator writes them for
+ * `yardım etti` (fronts, backs and `contentMeta`, MDRS-248), in a sarf book's order: gâib, gâibe, muhâtab,
  * muhâtaba, mütekellim; müfred, tesniye, cem across.
  */
 const NASARA_MAZI: Array<[string, string, string, string | null, string]> = [
-  ["نَصَرَ", "Yardım etti", "gaib", "muzekker", "mufred"],
-  ["نَصَرَا", "İkisi yardım etti", "gaib", "muzekker", "tesniye"],
-  ["نَصَرُوا", "Onlar yardım etti", "gaib", "muzekker", "cem"],
+  ["نَصَرَ", "O (erkek) yardım etti", "gaib", "muzekker", "mufred"],
+  ["نَصَرَا", "O ikisi (erkek) yardım etti", "gaib", "muzekker", "tesniye"],
+  ["نَصَرُوا", "Onlar (erkekler) yardım ettiler", "gaib", "muzekker", "cem"],
   ["نَصَرَتْ", "O (kadın) yardım etti", "gaib", "muennes", "mufred"],
-  ["نَصَرَتَا", "İkisi (kadın) yardım etti", "gaib", "muennes", "tesniye"],
-  ["نَصَرْنَ", "Onlar (kadınlar) yardım etti", "gaib", "muennes", "cem"],
-  ["نَصَرْتَ", "Sen yardım ettin", "muhatab", "muzekker", "mufred"],
-  ["نَصَرْتُمَا", "Siz ikiniz yardım ettiniz", "muhatab", "muzekker", "tesniye"],
-  ["نَصَرْتُمْ", "Siz yardım ettiniz", "muhatab", "muzekker", "cem"],
+  ["نَصَرَتَا", "O ikisi (kadın) yardım etti", "gaib", "muennes", "tesniye"],
+  ["نَصَرْنَ", "Onlar (kadınlar) yardım ettiler", "gaib", "muennes", "cem"],
+  ["نَصَرْتَ", "Sen (erkek) yardım ettin", "muhatab", "muzekker", "mufred"],
+  [
+    "نَصَرْتُمَا",
+    "Siz ikiniz (erkek) yardım ettiniz",
+    "muhatab",
+    "muzekker",
+    "tesniye",
+  ],
+  ["نَصَرْتُمْ", "Siz (erkekler) yardım ettiniz", "muhatab", "muzekker", "cem"],
   ["نَصَرْتِ", "Sen (kadın) yardım ettin", "muhatab", "muennes", "mufred"],
   [
     "نَصَرْتُمَا",

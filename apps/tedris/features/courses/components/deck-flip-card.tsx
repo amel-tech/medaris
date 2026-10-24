@@ -12,7 +12,8 @@ const LATIN = /[A-Za-zÀ-ɏ]/;
  * brand's bold fill, the back (the meaning) on a plain sheet, so the side in
  * view is told by colour, not by a label; "Ön yüz" / "Arka yüz" stays only for
  * assistive technology. The face turned away is hidden from it, so the
- * button's name is always the side in view; `aria-pressed` says which one.
+ * button's name is always the side in view, side included. It is a plain
+ * button, not a toggle: a toggle's name must not change when it is pressed.
  *
  * The turn is a Y rotation of two and a half `--duration-base`, the card lifted
  * and shadowed while it turns (`data-turning`). The global reduced-motion rule
@@ -50,8 +51,9 @@ export const DeckFlipCard = ({
   return (
     <button
       type="button"
-      aria-pressed={turned}
       aria-describedby={describedBy}
+      data-card-id={card.id}
+      data-turned={turned || undefined}
       data-turning={turning || undefined}
       onClick={() => {
         setTurning(true);
@@ -118,7 +120,7 @@ const Face = ({
       <span className="mds-visually-hidden">{side}</span>
       {arabic ? (
         <span
-          className="font-arabic text-center text-[1.25rem] leading-[1.9]"
+          className="font-arabic text-center text-[length:var(--fs-arabic)] leading-[var(--lh-arabic-text)]"
           dir="rtl"
           lang="ar"
         >

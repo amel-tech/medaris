@@ -77,7 +77,8 @@ const chip = (label: string) =>
     (b) => b.textContent === label
   ) as HTMLButtonElement;
 const gridCards = () =>
-  [...document.querySelectorAll("ul button[aria-pressed]")] as HTMLElement[];
+  [...document.querySelectorAll("ul button[data-card-id]")] as HTMLElement[];
+const isTurned = (card: Element) => card.hasAttribute("data-turned");
 
 describe("Ders destesi, kart ızgarası", () => {
   it("opens on the deck list, and reads no card until the grid is asked for", async () => {
@@ -96,9 +97,7 @@ describe("Ders destesi, kart ızgarası", () => {
     const cards = gridCards();
     expect(cards).toHaveLength(6);
     expect(document.body.textContent).toContain("6 kart");
-    expect(cards.every((c) => c.getAttribute("aria-pressed") === "false")).toBe(
-      true
-    );
+    expect(cards.some(isTurned)).toBe(false);
     const [front, back] = cards[0].querySelectorAll("[aria-hidden]");
     expect(front.getAttribute("aria-hidden")).toBe("false");
     // The side is read out, never shown: colour tells it on screen.
@@ -119,16 +118,18 @@ describe("Ders destesi, kart ızgarası", () => {
     await settle();
     const [first, second] = gridCards();
     await click(first);
-    expect(first.getAttribute("aria-pressed")).toBe("true");
+    expect(isTurned(first)).toBe(true);
+    // A plain button, not a toggle: its name changes with the side.
+    expect(first.hasAttribute("aria-pressed")).toBe(false);
     // Lifted and shadowed while it turns.
     expect(first.hasAttribute("data-turning")).toBe(true);
     const [front, back] = first.querySelectorAll("[aria-hidden]");
     expect(front.getAttribute("aria-hidden")).toBe("true");
     expect(back.getAttribute("aria-hidden")).toBe("false");
     expect(back.textContent).toBe("Arka yüzAldı 1");
-    expect(second.getAttribute("aria-pressed")).toBe("false");
+    expect(isTurned(second)).toBe(false);
     await click(first);
-    expect(first.getAttribute("aria-pressed")).toBe("false");
+    expect(isTurned(first)).toBe(false);
   });
 
   it("switches deck from the chips and reads each deck once", async () => {
@@ -174,16 +175,14 @@ const table = () => document.querySelector("table") as HTMLTableElement;
 const cell = (row: number, column: number) =>
   table().querySelectorAll("tbody tr")[row].querySelectorAll("td")[column];
 const allCards = () =>
-  [
-    ...document.querySelectorAll("button[aria-pressed][aria-describedby]"),
-  ] as HTMLElement[];
+  [...document.querySelectorAll("button[data-card-id]")] as HTMLElement[];
 
 describe("Ders destesi, sîga tablosu", () => {
   it("lays a deck of sîgas out as a sarf table, not a free grid", async () => {
     await mount(sigaDeck());
     await click(chip("Kartlar"));
     await settle();
-    expect(document.querySelector("ul button[aria-pressed]")).toBeNull();
+    expect(document.querySelector("ul button[data-card-id]")).toBeNull();
     expect(table().querySelector("caption")?.textContent).toContain("Mâzî");
     expect(
       [...table().querySelectorAll("thead th")].map((th) => th.textContent)
@@ -209,7 +208,14 @@ describe("Ders destesi, sîga tablosu", () => {
     expect(table().getAttribute("role")).toBe("table");
     expect(table().querySelectorAll("[role='rowheader']")).toHaveLength(5);
     expect(table().querySelectorAll("[role='columnheader']")).toHaveLength(3);
-    expect(table().querySelectorAll("[role='cell']")).toHaveLength(15);
+    // 15 card cells and the header row's corner, which keeps the columns
+    // lined up at every width.
+    expect(table().querySelectorAll("[role='cell']")).toHaveLength(16);
+    const width = (tr: Element) => tr.children.length;
+    const [head, ...body] = [...table().querySelectorAll("tr")];
+    expect(body.every((tr) => width(tr) === width(head))).toBe(true);
+    const caption = table().querySelector("caption") as HTMLElement;
+    expect(table().getAttribute("aria-labelledby")).toBe(caption.id);
   });
 });
 
@@ -237,9 +243,7 @@ describe("Ders destesi, kendini sına", () => {
     await settle();
     await click(allCards()[0]);
     await click(chip("Kendini sına"));
-    expect(
-      allCards().every((c) => c.getAttribute("aria-pressed") === "false")
-    ).toBe(true);
+    expect(allCards().some(isTurned)).toBe(false);
     expect(chip("Bildim")).toBeUndefined();
     expect(document.body.textContent).toContain("0 / 14 işaretlendi");
     await click(allCards()[0]);
@@ -257,6 +261,8 @@ describe("Ders destesi, kendini sına", () => {
     expect(document.body.textContent).toContain("Bilemedin");
     expect(document.body.textContent).toContain("Bildin");
     expect(document.body.textContent).toContain("2 / 14 işaretlendi");
+    // The buttons that had focus are gone; the card keeps it.
+    expect(document.activeElement).toBe(second);
   });
 
   it("sums the round up, and repeats the missed cards alone", async () => {
@@ -271,11 +277,27 @@ describe("Ders destesi, kendini sına", () => {
     await click(chip("Bilemediklerimi tekrar et"));
     const again = allCards();
     expect(again).toHaveLength(3);
-    expect(again.every((c) => c.getAttribute("aria-pressed") === "false")).toBe(
-      true
-    );
+    expect(again.some(isTurned)).toBe(false);
     expect(document.body.textContent).toContain("0 / 3 işaretlendi");
-    expect(table().querySelectorAll("tbody tr")).toHaveLength(5);
+    // The three missed cards are the gâib row: only that row is drawn.
+    expect(
+      [...table().querySelectorAll("tbody th")].map(
+        (th) => th.querySelector("span")?.textContent
+      )
+    ).toEqual(["Gâib"]);
+    expect(document.activeElement).toBe(again[0]);
+  });
+
+  it("writes the summary into a live region that was there before it", async () => {
+    await start();
+    const live = [...document.querySelectorAll("[aria-live]")].find((el) =>
+      el.classList.contains("mds-visually-hidden")
+    ) as HTMLElement;
+    expect(live.textContent).toBe("");
+    for (const card of allCards()) await markAs(card, "Bildim");
+    expect(live.textContent).toBe("14 kartın 14 tanesini bildin.");
+    await click(chip("Bitir"));
+    expect(document.activeElement).toBe(chip("Kendini sına"));
   });
 
   it("says when a mark could not be saved, and keeps the mark", async () => {
@@ -284,6 +306,29 @@ describe("Ders destesi, kendini sına", () => {
     await markAs(allCards()[0], "Bildim");
     expect(document.body.textContent).toContain("Bazı işaretler kaydedilemedi");
     expect(document.body.textContent).toContain("1 / 14 işaretlendi");
+    await click(chip("Yeniden gönder"));
+    await settle();
+    expect(rateFlashcard).toHaveBeenNthCalledWith(2, "s1", "EASY");
+    expect(document.body.textContent).not.toContain(
+      "Bazı işaretler kaydedilemedi"
+    );
+  });
+
+  it("drops a failed rating that answers after the test was stopped", async () => {
+    let fail: (value: unknown) => void = () => undefined;
+    rateFlashcard.mockReturnValueOnce(
+      new Promise((resolve) => {
+        fail = resolve;
+      })
+    );
+    await start();
+    await markAs(allCards()[0], "Bildim");
+    await click(chip("Sınamayı bitir"));
+    fail({ success: false, error: "late" });
+    await settle();
+    expect(document.body.textContent).not.toContain(
+      "Bazı işaretler kaydedilemedi"
+    );
   });
 
   it("goes back to browsing when the test is stopped", async () => {
@@ -293,5 +338,6 @@ describe("Ders destesi, kendini sına", () => {
     expect(chip("Bildim")).toBeUndefined();
     expect(allCards()).toHaveLength(14);
     expect(document.body.textContent).toContain("14 kart");
+    expect(document.activeElement).toBe(chip("Kendini sına"));
   });
 });
