@@ -111,11 +111,12 @@ describe("AuthCard", () => {
     );
   });
 
-  it("writes the app's name in Arabic script on an Arabic page", async () => {
-    const host = await render(
-      <AuthCard title="تسجيل الدخول" app="nazar" locale="ar" />
-    );
-    expect(host.querySelector(".mds-logo__subtitle")?.textContent).toBe("نظر");
+  it("sets the app's name as Latin text, upper-cased the Turkish way in every language", async () => {
+    const host = await render(<AuthCard title="تسجيل الدخول" app="nazar" />);
+    const subtitle = host.querySelector(".mds-logo__subtitle");
+    expect(subtitle?.textContent).toBe("Nazar");
+    expect(subtitle?.getAttribute("lang")).toBe("tr");
+    expect(subtitle?.getAttribute("dir")).toBe("ltr");
   });
 });
 

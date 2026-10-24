@@ -1,6 +1,6 @@
 import { Button } from "@medaris/ui/mds/button";
 import { LocaleMenu } from "@medaris/ui/mds/locale-switcher";
-import { appName, Logo } from "@medaris/ui/mds/logo";
+import { appNames, Logo } from "@medaris/ui/mds/logo";
 import { SystemState } from "@medaris/ui/mds/system-state";
 import { forbidden, redirect } from "next/navigation";
 import { getLocale, getTranslations } from "next-intl/server";
@@ -43,7 +43,7 @@ export default async function Page() {
               size="lg"
               wordmark
               arabic={false}
-              subtitle={appName("nizam", locale)}
+              subtitle={appNames.nizam}
             />
           }
           title={t("welcome")}

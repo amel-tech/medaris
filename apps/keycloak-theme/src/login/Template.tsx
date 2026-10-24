@@ -51,8 +51,7 @@ export default function Template(
 
   const { msg, msgStr } = i18n;
 
-  const { realm, auth, url, message, isAppInitiatedAction, client, locale } =
-    kcContext;
+  const { realm, auth, url, message, isAppInitiatedAction, client } = kcContext;
 
   useEffect(() => {
     document.title = documentTitle ?? msgStr("loginTitle", realm.displayName);
@@ -107,7 +106,6 @@ export default function Template(
       <link rel="stylesheet" href={textFontsHref} precedence="default" />
       <AuthCard
         app={appOfClient(client?.clientId)}
-        locale={locale?.currentLanguageTag}
         title={headerNode}
         subtitle={
           headerSubNode ??
