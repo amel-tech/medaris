@@ -14,9 +14,10 @@ import type { CardFact, DeckFact, WeekOption } from "../decks";
 import { CardDialog } from "./card-dialog";
 import { DeckSettings } from "./deck-settings";
 import { ImportCardsDialog } from "./import-cards-dialog";
+import { SigaGeneratorDialog } from "./siga-generator-dialog";
 
 /**
- * A deck's body: its cards with "Kart ekle", "Excel'den aktar", and each
+ * A deck's body: its cards with "Kart ekle", "Excel'den aktar", "Sîga üret", and each
  * card's "Düzenle" and "Sil", then the deck's settings. The front face is set
  * in Arabic and RTL.
  */
@@ -41,6 +42,7 @@ export function DeckDetailScreen({
     | { kind: "new" }
     | { kind: "edit"; card: CardFact }
     | { kind: "import" }
+    | { kind: "siga" }
   >(null);
   const [removing, setRemoving] = useState<CardFact | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
@@ -68,6 +70,12 @@ export function DeckDetailScreen({
             {words("Decks.cardsTitle")} · {cards.length}
           </h2>
           <div className="flex flex-wrap gap-3">
+            <Button
+              variant="secondary"
+              onClick={() => setDialog({ kind: "siga" })}
+            >
+              {words("Decks.siga.button")}
+            </Button>
             <Button
               variant="secondary"
               onClick={() => setDialog({ kind: "import" })}
@@ -135,6 +143,13 @@ export function DeckDetailScreen({
           deckId={deck.id}
           cardType={deck.cardType}
           card={dialog.card}
+          onClose={() => setDialog(null)}
+        />
+      ) : null}
+      {dialog?.kind === "siga" ? (
+        <SigaGeneratorDialog
+          deckId={deck.id}
+          cardType={deck.cardType}
           onClose={() => setDialog(null)}
         />
       ) : null}
