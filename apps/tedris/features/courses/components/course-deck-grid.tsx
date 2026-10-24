@@ -2,26 +2,41 @@
 
 import type { FlashcardResponse } from "@medaris/services/tedrisat";
 import { Alert } from "@medaris/ui/mds/alert";
+import { Badge } from "@medaris/ui/mds/badge";
 import { Button } from "@medaris/ui/mds/button";
 import { ChoiceChips } from "@medaris/ui/mds/choice-chips";
 import { EmptyState } from "@medaris/ui/mds/empty-state";
 import { Skeleton } from "@medaris/ui/mds/skeleton";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useId, useState } from "react";
-import { getDeckCards } from "../../flashcards/actions";
+import { useCallback, useEffect, useId, useMemo, useState } from "react";
+import { getDeckCards, rateFlashcard } from "../../flashcards/actions";
 import { attempt } from "../../flashcards/attempt";
-import { isArabic } from "../../flashcards/deck-model";
 import type { CourseDeck } from "../course-decks-model";
+import {
+  markCard,
+  ratingFor,
+  retryMissed,
+  type SelfTest,
+  type SelfTestMark,
+  startSelfTest,
+  summarize,
+} from "../self-test";
+import { sigaLayout } from "../siga-table";
+import { CourseSigaTable } from "./course-siga-table";
+import { DeckFlipCard } from "./deck-flip-card";
 
 type DeckCards = FlashcardResponse[] | "failed";
 
-const LATIN = /[A-Za-zÀ-ɏ]/;
-
 /**
- * The deck tab's card grid: every card of one deck on one screen, a small gap
- * between them, as many columns as the width holds (two on a phone). A card is
- * a button that turns over to its back and back again; the talebe picks the
- * deck above the grid when the course has more than one.
+ * The deck tab's cards: every card of one deck on one screen. A deck whose
+ * cards carry their sîga is laid out as sîga tables (`sigaLayout`); any other
+ * card sits in a free grid with a small gap, as many columns as the width
+ * holds (two on a phone). The talebe picks the deck above when the course has
+ * more than one.
+ *
+ * "Kendini sına" turns every card face down; a turned card asks "Bildim" or
+ * "Bilemedim", each mark is rated through `rateFlashcard`, and when the round
+ * is marked a summary offers the missed cards again.
  *
  * A deck's cards are read when it is first shown and kept for the rest of the
  * visit, so going back to a deck does not ask again.
@@ -37,9 +52,16 @@ export const CourseDeckGrid = ({
   const t = useTranslations("tedris.CoursePage");
   const [deckId, setDeckId] = useState(initialDeckId);
   const [read, setRead] = useState<Record<string, DeckCards>>({});
+  const [turned, setTurned] = useState<Record<string, boolean>>({});
+  const [test, setTest] = useState<SelfTest | null>(null);
+  const [saveFailed, setSaveFailed] = useState(false);
   const hintId = useId();
   const deck = decks.find((candidate) => candidate.id === deckId) ?? decks[0];
   const cards = read[deck.id];
+  const layout = useMemo(
+    () => (Array.isArray(cards) ? sigaLayout(cards) : null),
+    [cards]
+  );
 
   const load = useCallback(async (id: string) => {
     const result = await attempt(() => getDeckCards(id));
@@ -57,6 +79,83 @@ export const CourseDeckGrid = ({
     setRead(({ [deck.id]: _failed, ...rest }) => rest);
   };
 
+  const pickDeck = (id: string) => {
+    setDeckId(id);
+    setTurned({});
+    setTest(null);
+    setSaveFailed(false);
+  };
+
+  const begin = (next: SelfTest) => {
+    setTurned({});
+    setTest(next);
+    setSaveFailed(false);
+  };
+
+  const stop = () => {
+    setTest(null);
+    setTurned({});
+    setSaveFailed(false);
+  };
+
+  const mark = async (card: FlashcardResponse, value: SelfTestMark) => {
+    setTest((was) => (was ? markCard(was, card.id, value) : was));
+    const result = await attempt(() =>
+      rateFlashcard(card.id, ratingFor(value))
+    );
+    if (!result.success) setSaveFailed(true);
+  };
+
+  const summary = test ? summarize(test) : null;
+
+  const renderCard = (card: FlashcardResponse, compact: boolean) => {
+    if (test && !test.round.includes(card.id)) return null;
+    const given = test?.marks[card.id];
+    return (
+      <div className="flex grow flex-col gap-1">
+        <DeckFlipCard
+          card={card}
+          compact={compact}
+          turned={Boolean(turned[card.id])}
+          onTurn={() =>
+            setTurned((was) => ({ ...was, [card.id]: !was[card.id] }))
+          }
+          describedBy={hintId}
+        />
+        {test && given ? (
+          <Badge
+            className="self-start"
+            variant={given === "known" ? "success" : "warning"}
+          >
+            {given === "known" ? t("selfTestKnown") : t("selfTestMissed")}
+          </Badge>
+        ) : test && turned[card.id] ? (
+          <fieldset className="m-0 flex min-inline-0 flex-wrap gap-1 border-0 p-0">
+            <legend className="mds-visually-hidden">{t("selfTestAsk")}</legend>
+            <Button
+              size="mini"
+              variant="secondary"
+              onClick={() => mark(card, "known")}
+            >
+              {t("selfTestKnew")}
+            </Button>
+            <Button
+              size="mini"
+              variant="outline"
+              onClick={() => mark(card, "missed")}
+            >
+              {t("selfTestDidNotKnow")}
+            </Button>
+          </fieldset>
+        ) : null}
+      </div>
+    );
+  };
+
+  const restInPlay = layout
+    ? layout.rest.filter((card) => !test || test.round.includes(card.id))
+    : [];
+
   return (
     <section className="flex flex-col gap-4" aria-label={deck.title}>
       {decks.length > 1 ? (
@@ -68,19 +167,64 @@ export const CourseDeckGrid = ({
           }))}
           value={deck.id}
           // A single-choice group can be emptied; the grid always shows one deck.
-          onChange={(value) => value && setDeckId(value)}
+          onChange={(value) => value && pickDeck(value)}
         />
       ) : null}
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="mds-body-sm" id={hintId}>
-          {t("deckGridHint")}
+          {test ? t("selfTestHint") : t("deckGridHint")}
         </p>
-        {Array.isArray(cards) ? (
-          <span className="mds-caption mds-num">
-            {t("deckGridCount", { count: cards.length })}
-          </span>
+        {Array.isArray(cards) && cards.length > 0 ? (
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="mds-caption mds-num" aria-live="polite">
+              {summary
+                ? t("selfTestProgress", {
+                    marked: summary.marked,
+                    total: summary.total,
+                  })
+                : t("deckGridCount", { count: cards.length })}
+            </span>
+            {test ? (
+              <Button size="small" variant="ghost" onClick={stop}>
+                {t("selfTestStop")}
+              </Button>
+            ) : (
+              <Button
+                size="small"
+                variant="secondary"
+                onClick={() => begin(startSelfTest(cards.map((c) => c.id)))}
+              >
+                {t("selfTestStart")}
+              </Button>
+            )}
+          </div>
         ) : null}
       </div>
+      {saveFailed ? (
+        <Alert tone="warning">
+          <p>{t("selfTestSaveFailed")}</p>
+        </Alert>
+      ) : null}
+      {test && summary?.done ? (
+        <Alert tone={summary.missed.length === 0 ? "success" : "info"}>
+          <p className="mds-num">
+            {t("selfTestSummary", {
+              known: summary.known,
+              total: summary.total,
+            })}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {summary.missed.length > 0 ? (
+              <Button size="small" onClick={() => begin(retryMissed(test))}>
+                {t("selfTestRetry")}
+              </Button>
+            ) : null}
+            <Button size="small" variant="outline" onClick={stop}>
+              {t("selfTestFinish")}
+            </Button>
+          </div>
+        </Alert>
+      ) : null}
       {cards === undefined ? (
         <div
           className="grid grid-cols-[repeat(auto-fill,minmax(9.5rem,1fr))] gap-2"
@@ -97,115 +241,28 @@ export const CourseDeckGrid = ({
             {t("deckGridRetry")}
           </Button>
         </Alert>
-      ) : cards.length === 0 ? (
+      ) : cards.length === 0 || !layout ? (
         <EmptyState>{t("deckGridEmpty")}</EmptyState>
       ) : (
-        <ul className="m-0 grid list-none grid-cols-[repeat(auto-fill,minmax(9.5rem,1fr))] gap-2 p-0">
-          {cards.map((card) => (
-            <li key={card.id}>
-              <FlipCard card={card} describedBy={hintId} />
-            </li>
+        <>
+          {layout.tables.map((table) => (
+            <CourseSigaTable
+              key={`${table.kok}-${table.bab}-${table.kip}`}
+              table={table}
+              renderCard={(card) => renderCard(card, true)}
+            />
           ))}
-        </ul>
+          {restInPlay.length > 0 ? (
+            <ul className="m-0 grid list-none grid-cols-[repeat(auto-fill,minmax(9.5rem,1fr))] gap-2 p-0">
+              {restInPlay.map((card) => (
+                <li key={card.id} className="flex flex-col">
+                  {renderCard(card, false)}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </>
       )}
     </section>
-  );
-};
-
-/**
- * One card that turns over on a press: the front first, the back after. The
- * face turned away is hidden from assistive technology, so the button's name
- * is always the side in view; `aria-pressed` says which one that is.
- *
- * Both faces sit in the same grid cell rather than on top of each other by
- * absolute position, so the card is as tall as its longer face and a long
- * answer is never cut off or scrolled inside a button.
- */
-const FlipCard = ({
-  card,
-  describedBy,
-}: {
-  card: FlashcardResponse;
-  describedBy: string;
-}) => {
-  const t = useTranslations("tedris.CoursePage");
-  const [turned, setTurned] = useState(false);
-
-  return (
-    <button
-      type="button"
-      aria-pressed={turned}
-      aria-describedby={describedBy}
-      onClick={() => setTurned((was) => !was)}
-      className="group block size-full cursor-pointer rounded-[var(--radius-surface)] border-0 bg-transparent p-0 perspective-[60rem]"
-    >
-      <span
-        className={[
-          "grid size-full min-block-[7.5rem] transform-3d [transition:transform_calc(var(--duration-base)*2)_var(--ease-standard)]",
-          turned ? "rotate-y-180" : "",
-        ].join(" ")}
-      >
-        <Face
-          side={t("deckGridFront")}
-          text={card.contentFront}
-          hidden={turned}
-        />
-        <Face
-          side={t("deckGridBack")}
-          text={card.contentBack}
-          hidden={!turned}
-          back
-        />
-      </span>
-    </button>
-  );
-};
-
-const Face = ({
-  side,
-  text,
-  hidden,
-  back = false,
-}: {
-  /** "Ön yüz" / "Arka yüz": read before the text, and shown in the corner. */
-  side: string;
-  text: string;
-  hidden: boolean;
-  back?: boolean;
-}) => {
-  // A face all in Arabic script sets as an Arabic block; a Latin text that
-  // quotes an Arabic word keeps its own direction (`dir="auto"`), so the
-  // Latin words do not run right to left.
-  const arabic = isArabic(text) && !LATIN.test(text);
-  return (
-    <span
-      aria-hidden={hidden}
-      className={[
-        "flex flex-col gap-1 rounded-[var(--radius-surface)] border p-3 text-start backface-hidden [grid-area:1/1]",
-        back
-          ? "rotate-y-180 border-brand-default bg-brand-subtle"
-          : "border-neutral-subtle bg-neutral-surface group-hover:bg-neutral-hover",
-      ].join(" ")}
-    >
-      <span className="mds-caption">{side}</span>
-      <span className="flex grow items-center justify-center">
-        {arabic ? (
-          <span
-            className="font-arabic text-center text-[1.25rem] leading-[1.9]"
-            dir="rtl"
-            lang="ar"
-          >
-            {text}
-          </span>
-        ) : (
-          <span
-            className="mds-body-sm text-center text-neutral-default"
-            dir="auto"
-          >
-            {text}
-          </span>
-        )}
-      </span>
-    </span>
   );
 };
