@@ -32,5 +32,20 @@
   "i18n-ally.enabledFrameworks": ["next-intl"],
   "i18n-ally.pathMatcher": "{locale}/{namespaces}.json",
   "i18n-ally.keystyle": "nested",
-  "i18n-ally.sourceLanguage": "en"
+  "i18n-ally.sourceLanguage": "en",
+  "yaml.schemas": {
+    "https://unpkg.com/@delurio/cli@0.2.0/schemas/flow.schema.json": "graphs/**/flow.yaml",
+    "https://unpkg.com/@delurio/cli@0.2.0/schemas/ui.schema.json": "graphs/**/ui.yaml",
+    "https://unpkg.com/@delurio/cli@0.2.0/schemas/nav.schema.json": [
+      "graphs/**/nav.yaml",
+      "graphs/**/nav.extracted.yaml"
+    ],
+    "https://unpkg.com/@delurio/cli@0.2.0/schemas/domain.schema.json": "graphs/**/domain.yaml"
+  },
+  "json.schemas": [
+    {
+      "fileMatch": ["graphs/**/catalog/*.json"],
+      "url": "https://unpkg.com/@delurio/cli@0.2.0/schemas/catalog.schema.json"
+    }
+  ]
 }
