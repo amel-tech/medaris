@@ -13,26 +13,6 @@ summary: >-
   Course enrollment and its policies, bans and re-admission; a celse's page and its lock; homework, questions and
   private notes on a celse; the personal calendar feed; and seats given by a partner application.
 
-relations: # what the course relationship holds before roles and grants (libs/common/src/authz/relations.ts:41)
-  source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:390
-  ANONYMOUS: [course.view]
-  PUBLIC: [course.view, course.enroll] # any signed-in caller; also a barred talebe and a REVOKED one
-  PENDING: [course.view, course.enroll] # its own course.view plus the PUBLIC codes it inherits (relations.ts:113)
-  ENROLLED: [course.view, course.view_details, course.enroll] # ENROLLED or COMPLETED, and no open ban
-  notes:
-    - "an open ban on the course, its köşk or its medrese makes any enrollment PUBLIC (tedrisat-role-resolver.service.ts:407)"
-    - "REVOKED resolves to PUBLIC (tedrisat-role-resolver.service.ts:414)"
-    - "a passive scope in the course's chain takes every content code away, course.view_details included, from all but platform management and the köşk's nazımı (libs/common/src/authz/effective-permissions.ts:337)"
-
-helpers: # the service rules the actions below name
-  getDetail: { rule: "a course of a hidden köşk, a hidden course and a draft are COURSE_NOT_FOUND to everyone who may not restore or edit them", source: "apps/tedrisat/src/course/course.service.ts:290" }
-  contentOpen: { rule: "can(course.view_details) on the course; the body says contentLocked: true otherwise", source: "apps/tedrisat/src/course/course.service.ts:393" }
-  findVisibleLessonCourse: { rule: "the celse exists (a hidden one counts) and getDetail(read) shows its course; else LESSON_NOT_FOUND", source: "apps/tedrisat/src/course/course.service.ts:503" }
-  mayWriteAsTalebe: { rule: "an ENROLLED or COMPLETED enrollment, no open ban, and contentOpen", source: "apps/tedrisat/src/course/course.service.ts:559" }
-  mayReachOwnWriting: { rule: "contentOpen, or the course sits in no passive scope", source: "apps/tedrisat/src/course/course.service.ts:582" }
-  isBarred: { rule: "an open ban of scope COURSE on the course, KOSK on its köşk, or the medrese's own ban on its medrese", source: "apps/tedrisat/src/ban/ban.repository.ts:209" }
-  approvalForced: { rule: "course.requiresApproval, or the köşk is unlisted (is_private), or the köşk's alwaysRequireApproval, or the platform's ALWAYS_REQUIRE_APPROVAL, or the medrese's policyAlwaysApproval", source: "apps/tedrisat/src/course/course.service.ts:1535" }
-
 entities:
   Course: # only the fields the learning side reads
     source: apps/tedrisat/src/database/schema/course.schema.ts:80
@@ -175,322 +155,283 @@ policies:
   - { actor: partner, needs: "a partner client's service-account token with the partner-enrollment realm role", read: [Course], do: [listPartnerCourses] }
 
 actions:
-  # ---- the course page ----
   getCoursesByKosk:
     route: GET /kosks/{koskId}/courses
-    needs: none
-    permission: "kosk.view (köşk), @AuthzPublic"
+    needs: "none; kosk.view (köşk), @AuthzPublic"
     query: { type: object, properties: { archived: { type: boolean, default: false } } }
     result: { type: array, items: { $ref: "#/entities/Course" } }
     refusals: { KOSK_NOT_FOUND: { status: 404 }, AUTHZ_MISSING_USER: { status: 401, note: "archived=true with no token" } }
     source: "apps/tedrisat/src/course/course.controller.ts:152"
   getEnrolledCourses:
     route: GET /courses/enrolled
-    needs: bearer
-    permission: exempt
+    needs: "bearer; exempt"
     query: { type: object, properties: { includePending: { type: boolean }, includeRevoked: { type: boolean } } }
-    rule: "the caller's own ENROLLED and COMPLETED rows, plus PENDING and REVOKED when asked"
+    note: "the caller's own ENROLLED and COMPLETED rows, plus PENDING and REVOKED when asked"
     source: "apps/tedrisat/src/course/course.controller.ts:226"
   getCourse:
     route: GET /courses/{id}
-    needs: none
-    permission: "course.view, @AuthzPublic"
-    rule: "getDetail(read), then contentOpen: meetingUrl, agenda, kaynak, attendance and resource urls only with course.view_details, else contentLocked: true; a content read by anyone neither enrolled nor a müderris is audited"
-    result: { returns: Course, carries: [enrollment, contentLocked] }
+    needs: "none; course.view, @AuthzPublic"
+    result: { returns: Course }
     refusals: { COURSE_NOT_FOUND: { status: 404 } }
+    note: "getDetail(read), then contentOpen: meetingUrl, agenda, kaynak, attendance and resource urls only with course.view_details, else contentLocked: true; a content read by anyone neither enrolled nor a müderris is audited; the result carries enrollment, contentLocked"
     source: "apps/tedrisat/src/course/course.controller.ts:260"
   getMyCoursePermissions:
     route: GET /courses/{id}/my-permissions
-    needs: bearer
-    permission: "course.view (byExistingCourse)"
+    needs: "bearer; course.view (byExistingCourse)"
     source: "apps/tedrisat/src/course/course.controller.ts:283"
   # ---- the talebe's own enrollment ----
   enroll:
     route: POST /courses/{id}/enroll
-    needs: bearer
-    permission: "course.enroll: PUBLIC, PENDING and ENROLLED all hold it"
-    rule: "getDetail; not isBarred; not REVOKED; insert PENDING when approvalForced else ENROLLED; a row already there is returned unchanged (insert … on conflict do nothing)"
+    needs: "bearer; course.enroll: PUBLIC, PENDING and ENROLLED all hold it"
     result: { returns: Enrollment, status: 201 }
     sideEffects: ["lesson invitations kicked (calendar invitations reconciled)"]
     refusals:
       COURSE_NOT_FOUND: { status: 404 }
       BAN_ACTIVE: { status: 403, source: "apps/tedrisat/src/course/course.service.ts:1522" }
       ENROLLMENT_STATE_CONFLICT: { status: 409, note: "a REVOKED row", source: "apps/tedrisat/src/course/course.service.ts:1524" }
+    note: "getDetail; not isBarred; not REVOKED; insert PENDING when approvalForced else ENROLLED; a row already there is returned unchanged (insert … on conflict do nothing)"
     source: "apps/tedrisat/src/course/course.controller.ts:497"
   withdraw:
     route: DELETE /courses/{id}/enroll
-    needs: bearer
-    permission: course.view
-    rule: "not isBarred; only a PENDING row is deleted"
+    needs: "bearer; course.view"
     result: { type: boolean }
     refusals: { BAN_ACTIVE: { status: 403 }, ENROLLMENT_NOT_FOUND: { status: 404, note: "none, or no longer PENDING" } }
+    note: "not isBarred; only a PENDING row is deleted"
     source: "apps/tedrisat/src/course/course.controller.ts:794"
   leave:
     route: DELETE /courses/{id}/enrollment
-    needs: bearer
-    permission: course.view
-    rule: "not isBarred; a PENDING or ENROLLED row is deleted, conditional on the status read"
+    needs: "bearer; course.view"
     result: { type: boolean }
     sideEffects: ["lesson invitations kicked"]
     refusals: { BAN_ACTIVE: { status: 403 }, ENROLLMENT_NOT_FOUND: { status: 404 }, ENROLLMENT_STATE_CONFLICT: { status: 409, note: "COMPLETED or REVOKED" } }
+    note: "not isBarred; a PENDING or ENROLLED row is deleted, conditional on the status read"
     source: "apps/tedrisat/src/course/course.controller.ts:773"
   updateProgress:
     route: PUT /courses/{id}/progress
-    needs: bearer
-    permission: course.view_details
+    needs: "bearer; course.view_details"
     body: { type: object, required: [progress], properties: { progress: { type: integer, minimum: 0, maximum: 100 }, status: { enum: [PENDING, ENROLLED, COMPLETED, REVOKED] } } }
-    rule: "ENROLLED or COMPLETED; a status other than the current one is refused; 100 does not complete"
     refusals: { ENROLLMENT_NOT_FOUND: { status: 404 }, ENROLLMENT_STATUS_FORBIDDEN: { status: 403 } }
+    note: "ENROLLED or COMPLETED; a status other than the current one is refused; 100 does not complete"
     source: "apps/tedrisat/src/course/course.controller.ts:821"
   # ---- the course team's actions on a talebe's row (the talebe's side of them) ----
   approveEnrollment:
     route: POST /courses/{id}/enrollments/{userId}/approve
-    needs: bearer
-    permission: enrollment.decide
-    rule: "PENDING or REVOKED -> ENROLLED, conditional on the status read; ENROLLED is returned unchanged; no ban is asked"
+    needs: "bearer; enrollment.decide"
     result: { returns: Enrollment, status: 201 }
     sideEffects: ["notification ENROLLMENT_APPROVED to the talebe", "lesson invitations kicked"]
     refusals: { ENROLLMENT_NOT_FOUND: { status: 404 }, ENROLLMENT_STATE_CONFLICT: { status: 409, note: "COMPLETED" } }
+    note: "PENDING or REVOKED -> ENROLLED, conditional on the status read; ENROLLED is returned unchanged; no ban is asked"
     source: "apps/tedrisat/src/course/course.service.ts:1621"
   rejectEnrollment:
     route: DELETE /courses/{id}/enrollments/{userId}
-    needs: bearer
-    permission: enrollment.decide
+    needs: "bearer; enrollment.decide"
     body: { type: object, properties: { reason: { type: string } } }
-    rule: "PENDING only; the row is deleted"
     sideEffects: ["audit enrollment.reject with the reason", "notification ENROLLMENT_REJECTED with the reason"]
     refusals: { ENROLLMENT_NOT_FOUND: { status: 404 } }
+    note: "PENDING only; the row is deleted"
     source: "apps/tedrisat/src/course/course.service.ts:1654"
   bulkEnroll:
     route: POST /courses/{id}/enrollments/bulk
-    needs: bearer
-    permission: enrollment.decide
+    needs: "bearer; enrollment.decide"
     body: { type: object, required: [emails], properties: { emails: { type: array, maxItems: 500, items: { type: string } } } }
-    rule: "no approval rule; a barred person, a REVOKED seat and a completion are skipped; a PENDING request is approved through approveEnrollment"
     sideEffects: ["audit enrollment.bulk_add", "notification ENROLLMENT_APPROVED per approved request"]
     refusals: { COURSE_NOT_FOUND: { status: 404 }, KEYCLOAK_ADMIN_NOT_CONFIGURED: { status: 503 }, KEYCLOAK_ADMIN_UNAVAILABLE: { status: 503 } }
+    note: "no approval rule; a barred person, a REVOKED seat and a completion are skipped; a PENDING request is approved through approveEnrollment"
     source: "apps/tedrisat/src/course/course.controller.ts:665"
   setEnrollmentStatus:
     route: PATCH /courses/{id}/enrollments/{userId}
-    needs: bearer
-    permission: enrollment.complete
+    needs: "bearer; enrollment.complete"
     body: { type: object, required: [status], properties: { status: { enum: [ENROLLED, COMPLETED] } } }
-    rule: "ENROLLED <-> COMPLETED only"
     refusals: { ENROLLMENT_NOT_FOUND: { status: 404 }, ENROLLMENT_STATE_CONFLICT: { status: 409, note: "PENDING or REVOKED" } }
+    note: "ENROLLED <-> COMPLETED only"
     source: "apps/tedrisat/src/course/course.service.ts:1695"
   removeEnrollment:
     route: POST /courses/{id}/enrollments/{userId}/remove
-    needs: bearer
-    permission: enrollment.remove
+    needs: "bearer; enrollment.remove"
     body: { type: object, required: [reason], properties: { reason: { type: string, minLength: 1 } } }
-    rule: "ENROLLED only -> REVOKED; not a ban"
     sideEffects: ["audit with the reason", "notification REMOVED_FROM_COURSE with the reason", "lesson invitations kicked"]
     refusals: { ENROLLMENT_NOT_FOUND: { status: 404 }, ENROLLMENT_STATE_CONFLICT: { status: 409 } }
+    note: "ENROLLED only -> REVOKED; not a ban"
     source: "apps/tedrisat/src/course/course.service.ts:1734"
   # ---- a celse ----
   getSession:
     route: GET /courses/{courseId}/sessions/{sessionId}
-    needs: none
-    permission: "course.view (bySessionCourse), @AuthzPublic"
-    rule: "built from getDetail(read) and contentOpen like getCourse; a PUBLIC recording of a sample (isPreview) celse also goes to a locked caller"
+    needs: "none; course.view (bySessionCourse), @AuthzPublic"
     refusals: { COURSE_NOT_FOUND: { status: 404 }, LESSON_NOT_FOUND: { status: 404 } }
+    note: "built from getDetail(read) and contentOpen like getCourse; a PUBLIC recording of a sample (isPreview) celse also goes to a locked caller"
     source: "apps/tedrisat/src/course/lesson.controller.ts:227"
   listCourseRecordings:
     route: GET /courses/{id}/recordings
-    needs: none
-    permission: "course.view, @AuthzPublic"
+    needs: "none; course.view, @AuthzPublic"
     source: "apps/tedrisat/src/course/lesson.controller.ts:254"
   getLessonCalendar:
     route: GET /lessons/{id}/calendar.ics
-    needs: bearer
-    permission: exempt
-    rule: "getScheduledLesson: the celse page's rule; no meeting link in the file"
+    needs: "bearer; exempt"
     refusals: { LESSON_NOT_FOUND: { status: 404 }, LESSON_NOT_SCHEDULED: { status: 409 }, CALENDAR_NOT_CONFIGURED: { status: 503 } }
+    note: "getScheduledLesson: the celse page's rule; no meeting link in the file"
     source: "apps/tedrisat/src/course/lesson.controller.ts:165"
   downloadLessonResourceFile:
     route: GET /lessons/{id}/resources/{resourceId}/file
-    needs: bearer
-    permission: course.view_details
+    needs: "bearer; course.view_details"
     refusals: { STORAGE_NOT_CONFIGURED: { status: 503 }, STORAGE_UNAVAILABLE: { status: 503 } }
     source: "apps/tedrisat/src/course/resource-file.controller.ts:183"
   downloadCourseResourceFile:
     route: GET /courses/{id}/resources/{resourceId}/file
-    needs: bearer
-    permission: course.view_details
+    needs: "bearer; course.view_details"
     source: "apps/tedrisat/src/course/resource-file.controller.ts:120"
   downloadLessonAssignmentFile:
     route: GET /lessons/{id}/assignment/files/{fileId}
-    needs: bearer
-    permission: course.view_details
+    needs: "bearer; course.view_details"
     source: "apps/tedrisat/src/course/lesson-assignment.controller.ts:187"
   # ---- private notes ----
   listLessonNotes:
     route: GET /lessons/{id}/notes
-    needs: bearer
-    permission: course.view
-    rule: "findVisibleLessonCourse + mayReachOwnWriting; the author's own only"
+    needs: "bearer; course.view"
     refusals: { LESSON_NOT_FOUND: { status: 404 }, LESSON_NOTE_FORBIDDEN: { status: 403 } }
+    note: "findVisibleLessonCourse + mayReachOwnWriting; the author's own only"
     source: "apps/tedrisat/src/lesson-note/lesson-note.controller.ts:80"
   createLessonNote:
     route: POST /lessons/{id}/notes
-    needs: bearer
-    permission: course.view
+    needs: "bearer; course.view"
     body: { type: object, required: [body], properties: { body: { type: string, minLength: 1, maxLength: 4000 }, offsetSeconds: { type: [integer, "null"], minimum: 0, maximum: 359999 } } }
-    rule: "findVisibleLessonCourse + mayWriteAsTalebe"
     result: { returns: LessonNote }
     refusals: { LESSON_NOT_FOUND: { status: 404 }, LESSON_NOTE_FORBIDDEN: { status: 403 } }
+    note: "findVisibleLessonCourse + mayWriteAsTalebe"
     source: "apps/tedrisat/src/lesson-note/lesson-note.controller.ts:100"
   updateLessonNote:
     route: PATCH /lessons/{id}/notes/{noteId}
-    needs: bearer
-    permission: course.view
-    rule: "mayWriteAsTalebe; the author's own"
+    needs: "bearer; course.view"
     result: { returns: LessonNote }
     refusals: { LESSON_NOTE_NOT_FOUND: { status: 404 }, LESSON_NOTE_FORBIDDEN: { status: 403 } }
+    note: "mayWriteAsTalebe; the author's own"
     source: "apps/tedrisat/src/lesson-note/lesson-note.controller.ts:123"
   deleteLessonNote:
     route: DELETE /lessons/{id}/notes/{noteId}
-    needs: bearer
-    permission: course.view
-    rule: "mayReachOwnWriting; the author's own"
+    needs: "bearer; course.view"
     refusals: { LESSON_NOTE_NOT_FOUND: { status: 404 }, LESSON_NOTE_FORBIDDEN: { status: 403 } }
+    note: "mayReachOwnWriting; the author's own"
     source: "apps/tedrisat/src/lesson-note/lesson-note.controller.ts:146"
   # ---- questions ----
   askLessonQuestion:
     route: POST /lessons/{id}/questions
-    needs: bearer
-    permission: course.view
+    needs: "bearer; course.view"
     body: { type: object, required: [body], properties: { body: { type: string, minLength: 1, maxLength: 4000 } } }
-    rule: "findVisibleLessonCourse (a hidden celse counts) + mayWriteAsTalebe; no notification"
     result: { returns: LessonQuestion, status: 201 }
     refusals: { LESSON_NOT_FOUND: { status: 404 }, LESSON_QUESTION_FORBIDDEN: { status: 403 } }
+    note: "findVisibleLessonCourse (a hidden celse counts) + mayWriteAsTalebe; no notification"
     source: "apps/tedrisat/src/lesson-question/lesson-question.controller.ts:133"
   listMyCourseQuestions:
     route: GET /courses/{id}/questions/mine
-    needs: bearer
-    permission: course.view
+    needs: "bearer; course.view"
     query: { type: object, properties: { cursor: { type: string }, limit: { type: integer, minimum: 1, maximum: 50, default: 20 } } }
-    rule: "getDetail(read) + mayReachOwnWriting; the caller's own, newest first"
     refusals: { COURSE_NOT_FOUND: { status: 404 }, LESSON_QUESTION_FORBIDDEN: { status: 403 }, INVALID_QUESTION_CURSOR: { status: 400 } }
+    note: "getDetail(read) + mayReachOwnWriting; the caller's own, newest first"
     source: "apps/tedrisat/src/lesson-question/lesson-question.controller.ts:160"
   updateLessonQuestion:
     route: PATCH /questions/{questionId}
-    needs: bearer
-    permission: "course.view (byQuestionCourse)"
-    rule: "the author's own (else 404); mayWriteAsTalebe; only while answeredAt is null"
+    needs: "bearer; course.view (byQuestionCourse)"
     result: { returns: LessonQuestion }
     refusals: { LESSON_QUESTION_NOT_FOUND: { status: 404 }, LESSON_QUESTION_FORBIDDEN: { status: 403 }, LESSON_QUESTION_ANSWERED: { status: 409 } }
+    note: "the author's own (else 404); mayWriteAsTalebe; only while answeredAt is null"
     source: "apps/tedrisat/src/lesson-question/lesson-question.controller.ts:239"
   deleteLessonQuestion:
     route: DELETE /questions/{questionId}
-    needs: bearer
-    permission: "course.view (byQuestionCourse)"
-    rule: "the author's own (else 404); mayReachOwnWriting; the answer goes too"
+    needs: "bearer; course.view (byQuestionCourse)"
     result: { status: 204 }
     refusals: { LESSON_QUESTION_NOT_FOUND: { status: 404 }, LESSON_QUESTION_FORBIDDEN: { status: 403 } }
+    note: "the author's own (else 404); mayReachOwnWriting; the answer goes too"
     source: "apps/tedrisat/src/lesson-question/lesson-question.controller.ts:259"
   answerLessonQuestion:
     route: PUT /questions/{questionId}/answer
-    needs: bearer
-    permission: "course.view, then can(question.answer) in the service"
+    needs: "bearer; course.view, then can(question.answer) in the service"
     refusals: { LESSON_QUESTION_NOT_FOUND: { status: 404, note: "also without question.answer" } }
     source: "apps/tedrisat/src/lesson-question/lesson-question.controller.ts:217"
   # ---- homework ----
   getMySubmission:
     route: GET /lessons/{id}/submission
-    needs: bearer
-    permission: course.view
-    rule: "findVisibleLessonCourse + mayReachOwnWriting"
+    needs: "bearer; course.view"
     result: { type: object, properties: { submission: { oneOf: [{ $ref: "#/entities/Submission" }, { type: "null" }] }, maxFiles: { const: 10 }, maxFileBytes: { const: 26214400 } } }
     refusals: { LESSON_NOT_FOUND: { status: 404 }, SUBMISSION_FORBIDDEN: { status: 403 } }
+    note: "findVisibleLessonCourse + mayReachOwnWriting"
     source: "apps/tedrisat/src/lesson-submission/lesson-submission.controller.ts:97"
   listMySubmissions:
     route: GET /courses/{id}/my-submissions
-    needs: bearer
-    permission: "course.view (byExistingCourse)"
-    rule: "getDetail(read) + mayReachOwnWriting"
+    needs: "bearer; course.view (byExistingCourse)"
     refusals: { COURSE_NOT_FOUND: { status: 404 }, SUBMISSION_FORBIDDEN: { status: 403 } }
+    note: "getDetail(read) + mayReachOwnWriting"
     source: "apps/tedrisat/src/lesson-submission/lesson-submission.controller.ts:117"
   saveMySubmissionNote:
     route: PUT /lessons/{id}/submission
-    needs: bearer
-    permission: course.view
+    needs: "bearer; course.view"
     body: { type: object, properties: { note: { type: [string, "null"], maxLength: 4000 } } }
-    rule: "findVisibleLessonCourse + the celse not hidden (archivedAt only) + mayWriteAsTalebe; a cancelled celse and a celse with no homework set are accepted"
     result: { returns: Submission }
     refusals: { LESSON_NOT_FOUND: { status: 404 }, SUBMISSION_FORBIDDEN: { status: 403 }, VALIDATION_ERROR: { status: 400 } }
+    note: "findVisibleLessonCourse + the celse not hidden (archivedAt only) + mayWriteAsTalebe; a cancelled celse and a celse with no homework set are accepted"
     source: "apps/tedrisat/src/lesson-submission/lesson-submission.controller.ts:136"
   addMySubmissionFile:
     route: POST /lessons/{id}/submission/files
-    needs: bearer
-    permission: course.view
+    needs: "bearer; course.view"
     body: { type: object, required: [file], properties: { file: { type: string, format: binary } } }
-    rule: "as the note; at most 10 files, checked before storing and again under the lock; 25 MB; the type read from the bytes"
     result: { returns: Submission, status: 201 }
     sideEffects: ["audit submission.file_upload", "the file stored under a key tedrisat makes"]
     refusals: { SUBMISSION_FILE_LIMIT: { status: 409 }, FILE_TOO_LARGE: { status: 413 }, FILE_TYPE_NOT_ALLOWED: { status: 415 }, FILE_REQUIRED: { status: 400 }, SUBMISSION_FORBIDDEN: { status: 403 }, LESSON_NOT_FOUND: { status: 404 }, STORAGE_NOT_CONFIGURED: { status: 503 }, STORAGE_UNAVAILABLE: { status: 503 } }
+    note: "as the note; at most 10 files, checked before storing and again under the lock; 25 MB; the type read from the bytes"
     source: "apps/tedrisat/src/lesson-submission/lesson-submission.controller.ts:170"
   deleteMySubmissionFile:
     route: DELETE /lessons/{id}/submission/files/{fileId}
-    needs: bearer
-    permission: course.view
-    rule: "mayWriteAsTalebe; the caller's own file (another talebe's is 403)"
+    needs: "bearer; course.view"
     result: { status: 204 }
     sideEffects: ["audit submission.file_delete", "the stored object queued for deletion"]
     refusals: { SUBMISSION_FORBIDDEN: { status: 403 }, SUBMISSION_FILE_NOT_FOUND: { status: 404 }, LESSON_NOT_FOUND: { status: 404 } }
+    note: "mayWriteAsTalebe; the caller's own file (another talebe's is 403)"
     source: "apps/tedrisat/src/lesson-submission/lesson-submission.controller.ts:191"
   downloadMySubmissionFile:
     route: GET /lessons/{id}/submission/files/{fileId}
-    needs: bearer
-    permission: course.view
-    rule: "mayReachOwnWriting; the caller's own file"
+    needs: "bearer; course.view"
     refusals: { SUBMISSION_FORBIDDEN: { status: 403 }, SUBMISSION_FILE_NOT_FOUND: { status: 404 } }
+    note: "mayReachOwnWriting; the caller's own file"
     source: "apps/tedrisat/src/lesson-submission/lesson-submission.controller.ts:215"
   # ---- schedule and calendar ----
   listMySessions:
     route: GET /sessions
-    needs: bearer
-    permission: "AuthGuard only"
-    rule: "ENROLLED courses only (not COMPLETED), not barred, not passive"
+    needs: "bearer; AuthGuard only"
+    note: "ENROLLED courses only (not COMPLETED), not barred, not passive"
     source: "apps/tedrisat/src/schedule/schedule.controller.ts:65"
   getMyCalendarFeed:
     route: GET /me/calendar-feed
-    needs: bearer
-    permission: "AuthGuard only"
+    needs: "bearer; AuthGuard only"
     result: { type: object, properties: { active: { type: boolean }, createdAt: { type: [string, "null"], format: date-time } } }
     source: "apps/tedrisat/src/calendar-feed/me-calendar-feed.controller.ts:43"
   regenerateMyCalendarFeed:
     route: POST /me/calendar-feed
-    needs: bearer
-    permission: "AuthGuard only"
-    rule: "a new token replaces the stored hash; the old URL answers 404 from now on"
+    needs: "bearer; AuthGuard only"
     result: { type: object, properties: { url: { type: string, format: uri }, webcalUrl: { type: string }, createdAt: { type: string, format: date-time } } }
     refusals: { CALENDAR_NOT_CONFIGURED: { status: 503 } }
+    note: "a new token replaces the stored hash; the old URL answers 404 from now on"
     source: "apps/tedrisat/src/calendar-feed/me-calendar-feed.controller.ts:61"
   getCalendarFeed:
     route: GET /calendar/{file}
-    needs: "none: the token in `<token>.ics` is the credential"
-    permission: "no AuthGuard; 600 reads a minute per address, then 20 a minute per owner, counted in the process's memory"
-    rule: "the owner's ENROLLED or COMPLETED courses (not barred, not passive), the courses they teach (MUDERRIS) and those of the köşks they manage (KOSK_NAZIM); 30 days back, 180 ahead; no meeting link"
+    needs: "none: the token in `<token>.ics` is the credential; no AuthGuard; 600 reads a minute per address, then 20 a minute per owner, counted in the process's memory"
     result: { type: string, contentMediaType: text/calendar }
     refusals: { CALENDAR_FEED_NOT_FOUND: { status: 404 }, CALENDAR_NOT_CONFIGURED: { status: 503 }, THROTTLED: { status: 429 } }
+    note: "the owner's ENROLLED or COMPLETED courses (not barred, not passive), the courses they teach (MUDERRIS) and those of the köşks they manage (KOSK_NAZIM); 30 days back, 180 ahead; no meeting link"
     source: "apps/tedrisat/src/calendar-feed/calendar-feed.controller.ts:58"
   # ---- a partner application ----
   putPartnerEnrollment:
     route: PUT /integrations/enrollments/{registrationRef}/{courseCode}
     needs: "a partner client's service-account token (PartnerGuard + PartnerThrottlerGuard)"
     body: { type: object, required: [userId], properties: { userId: { type: string, format: uuid } } }
-    rule: "the course's approval rule is not asked; seats go through the bulk list's path (flow medaris.partner-enrollment)"
     result: { type: object, properties: { status: { enum: [ENROLLED, ALREADY_ENROLLED] }, courseId: { type: string, format: uuid } } }
     sideEffects: ["audit naming the partner", "notification ENROLLMENT_APPROVED when a request is approved", "lesson invitations kicked"]
     refusals: { PARTNER_COURSE_UNKNOWN: { status: 404 }, PARTNER_USER_UNKNOWN: { status: 404 }, PARTNER_USER_UNVERIFIED: { status: 409 }, PARTNER_REGISTRATION_USER_MISMATCH: { status: 409 }, PARTNER_ENROLLMENT_REFUSED: { status: 409 }, KEYCLOAK_ADMIN_NOT_CONFIGURED: { status: 503 }, KEYCLOAK_ADMIN_UNAVAILABLE: { status: 503 }, PARTNER_ROLE_MISSING: { status: 403 }, PARTNER_DISABLED: { status: 403 } }
+    note: "the course's approval rule is not asked; seats go through the bulk list's path (flow medaris.partner-enrollment)"
     source: "apps/tedrisat/src/integration/partner-enrollment.controller.ts:96"
   deletePartnerEnrollment:
     route: DELETE /integrations/enrollments/{registrationRef}/{courseCode}
     needs: "a partner client's service-account token (PartnerGuard + PartnerThrottlerGuard)"
-    rule: "takes away only a seat the link made and still owns (REVOKED through removeEnrollment, the reason naming the partner); hands it to another open link of the same seat; idempotent (flow medaris.partner-unenrollment)"
     result: { type: object, properties: { status: { enum: [NOT_FOUND, KEPT, REMOVED] } } }
     sideEffects: ["notification REMOVED_FROM_COURSE with the partner's reason", "audit naming the partner"]
+    note: "takes away only a seat the link made and still owns (REVOKED through removeEnrollment, the reason naming the partner); hands it to another open link of the same seat; idempotent (flow medaris.partner-unenrollment)"
     source: "apps/tedrisat/src/integration/partner-enrollment.controller.ts:116"
   listPartnerCourses:
     route: GET /integrations/courses
@@ -498,8 +439,23 @@ actions:
     source: "apps/tedrisat/src/integration/partner-enrollment.controller.ts:132"
 
 invariants:
+  # what the course relationship holds before roles and grants (libs/common/src/authz/relations.ts:41), then the service rules the actions name
+  - { id: relation-anonymous, rule: "an anonymous caller holds course.view on a course", source: "apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:390" }
+  - { id: relation-public, rule: "any signed-in caller holds course.view, course.enroll on a course (any signed-in caller; also a barred talebe and a REVOKED one)", source: "apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:390" }
+  - { id: relation-pending, rule: "a PENDING enrollment holds course.view, course.enroll (its own course.view plus the PUBLIC codes it inherits (relations.ts:113))", source: "apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:390" }
+  - { id: relation-enrolled, rule: "an enrollment holds course.view, course.view_details, course.enroll (ENROLLED or COMPLETED, and no open ban)", source: "apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:390" }
+  - { id: relation-note-1, rule: "an open ban on the course, its köşk or its medrese makes any enrollment PUBLIC (tedrisat-role-resolver.service.ts:407)", source: "apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:390" }
+  - { id: relation-note-2, rule: "REVOKED resolves to PUBLIC (tedrisat-role-resolver.service.ts:414)", source: "apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:390" }
+  - { id: relation-note-3, rule: "a passive scope in the course's chain takes every content code away, course.view_details included, from all but platform management and the köşk's nazımı (libs/common/src/authz/effective-permissions.ts:337)", source: "apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:390" }
+  - { id: getDetail, rule: "a course of a hidden köşk, a hidden course and a draft are COURSE_NOT_FOUND to everyone who may not restore or edit them", source: "apps/tedrisat/src/course/course.service.ts:290" }
+  - { id: contentOpen, rule: "can(course.view_details) on the course; the body says contentLocked: true otherwise", source: "apps/tedrisat/src/course/course.service.ts:393" }
+  - { id: findVisibleLessonCourse, rule: "the celse exists (a hidden one counts) and getDetail(read) shows its course; else LESSON_NOT_FOUND", source: "apps/tedrisat/src/course/course.service.ts:503" }
+  - { id: mayWriteAsTalebe, rule: "an ENROLLED or COMPLETED enrollment, no open ban, and contentOpen", source: "apps/tedrisat/src/course/course.service.ts:559" }
+  - { id: mayReachOwnWriting, rule: "contentOpen, or the course sits in no passive scope", source: "apps/tedrisat/src/course/course.service.ts:582" }
+  - { id: isBarred, rule: "an open ban of scope COURSE on the course, KOSK on its köşk, or the medrese's own ban on its medrese", source: "apps/tedrisat/src/ban/ban.repository.ts:209" }
+  - { id: approvalForced, rule: "course.requiresApproval, or the köşk is unlisted (is_private), or the köşk's alwaysRequireApproval, or the platform's ALWAYS_REQUIRE_APPROVAL, or the medrese's policyAlwaysApproval", source: "apps/tedrisat/src/course/course.service.ts:1535" }
   - { id: barred-takes-no-seat-by-request, rule: "a barred person's own enroll, withdraw and leave are refused (403 BAN_ACTIVE)", source: "apps/tedrisat/src/course/course.service.ts:1522" }
-  - { id: barred-takes-no-seat-by-any-road, rule: "no road seats a barred person: the bulk list and a partner application skip them; approveEnrollment does NOT ask (finding LEARNING-1)", held: false, source: "apps/tedrisat/src/course/course.service.ts:1621" }
+  - { id: barred-takes-no-seat-by-any-road, rule: "no road seats a barred person: the bulk list and a partner application skip them; approveEnrollment does NOT ask (finding LEARNING-1)", holds: false, finding: LEARNING-1, source: "apps/tedrisat/src/course/course.service.ts:1621" }
   - { id: forced-approval-waits, rule: "under any approval policy of the course, the köşk, the platform or the medrese, the talebe's own enroll lands PENDING", source: "apps/tedrisat/src/course/course.service.ts:1540" }
   - { id: revoked-not-self-readmitted, rule: "a REVOKED talebe does not enrol again on their own; only the course team's approval (or the partner that took the seat) gives it back", source: "apps/tedrisat/src/course/course.service.ts:1524" }
   - { id: content-to-active-seats, rule: "course content (links, agenda, kaynak, resources, recordings that are not public) reaches a talebe only through an ENROLLED or COMPLETED seat with no open ban, in no passive scope", source: "apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:390" }
@@ -507,5 +463,5 @@ invariants:
   - { id: homework-on-live-celse, rule: "homework is accepted on a celse that is not hidden; a cancelled celse is accepted too (finding LEARNING-4)", source: "apps/tedrisat/src/lesson-submission/lesson-submission.repository.ts:91" }
   - { id: feed-token-shown-once, rule: "the feed URL is returned only by the POST that made it; only its hash is kept", source: "apps/tedrisat/src/calendar-feed/calendar-feed.service.ts:53" }
   - { id: feed-without-meeting-links, rule: "neither the feed nor a celse's .ics carries a meeting or stream link", source: "apps/tedrisat/src/calendar-feed/calendar-feed.repository.ts:27" }
-  - { id: gender-required, rule: "every account has a gender (FEMALE or MALE); tedrisat stores null when the token carries none, and nothing in enrollment reads it (finding LEARNING-5)", held: false, source: "apps/tedrisat/src/user/user-identity.ts:38" }
-  - { id: in-person-kept-apart, rule: "men and women are kept apart wherever they meet in person: an in-person course (Course.inPerson) or celse seats talebe of one gender, or keeps them apart; no enrollment road reads gender or the in-person mark (finding LEARNING-5)", held: false, source: "apps/tedrisat/src/course/course.service.ts:1513" }
+  - { id: gender-required, rule: "every account has a gender (FEMALE or MALE); tedrisat stores null when the token carries none, and nothing in enrollment reads it (finding LEARNING-5)", holds: false, finding: LEARNING-5, source: "apps/tedrisat/src/user/user-identity.ts:38" }
+  - { id: in-person-kept-apart, rule: "men and women are kept apart wherever they meet in person: an in-person course (Course.inPerson) or celse seats talebe of one gender, or keeps them apart; no enrollment road reads gender or the in-person mark (finding LEARNING-5)", holds: false, finding: LEARNING-5, source: "apps/tedrisat/src/course/course.service.ts:1513" }
