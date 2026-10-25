@@ -1,0 +1,92 @@
+# The screens of medaris.kosk-decks: nizam /kosks/{id}/desteler (nizam/30), /kosks/{id}/desteler/yeni (nizam/35), the
+# refusal and hide dialogs, and /decks/{id}/cards. The deck form sets its focus on the name only when a submit finds
+# it empty; the page itself sets no first focus. Toasts are Sonner's polite live region, drawn as status nodes.
+schema: delurio-graph/0
+kind: ui
+id: medaris.kosk-decks
+flow: medaris.kosk-decks
+status: proposed
+catalog: catalog/tr.json
+locales: [tr, en]
+samples: { kosk: "Davutpaşa Köşkü", name: "Ahmet Yılmaz", title: "Sarfın temel kelimeleri" }
+changes: { key: Changes.note }
+
+nodes:
+  # Köşk desteleri (nizam/30)
+  decksPage: { type: page, component: Page, role: main, name: { labelledBy: decksTitle }, in: [decksPage, creatingDeck, refusing, hidingDeck], source: "apps/nizam/features/deck-review/components/kosk-decks-view.tsx:243" }
+  decksTitle: { type: text, component: Heading, role: heading, text: { key: Decks.title }, in: [decksPage, refusing, hidingDeck] }
+  decksIntro: { type: text, component: Text, text: { key: Decks.intro, params: { kosk: kosk.name } }, in: [decksPage, refusing, hidingDeck] } # "Kartlarını siz eklersiniz", said to every nazım
+  openDeck: { type: action, component: LinkButton, role: link, intent: confirm, text: { key: Decks.open }, in: [decksPage, refusing, hidingDeck], emits: OPEN, source: "apps/nizam/features/deck-review/components/kosk-decks-view.tsx:265" }
+  proposalsHeading: { type: text, component: Heading, role: heading, text: { key: Decks.proposalsHeading }, in: [decksPage, refusing, hidingDeck], when: waits, source: "apps/nizam/features/deck-review/components/kosk-decks-view.tsx:281" }
+  proposalTitle: { type: text, component: Heading, role: heading, text: { key: Data.title, params: { title: proposal.title } }, in: [decksPage, refusing, hidingDeck], when: waits, repeat: proposals }
+  proposedBy: { type: text, component: Text, text: { key: Decks.proposedBy, params: { name: proposal.proposer } }, in: [decksPage, refusing, hidingDeck], when: waits }
+  accept: { type: action, component: LinkButton, role: link, intent: confirm, name: { key: Decks.acceptLabel, params: { title: proposal.title } }, text: { key: Decks.accept }, in: [decksPage, refusing, hidingDeck], when: waits, emits: ACCEPT, source: "apps/nizam/features/deck-review/components/kosk-decks-view.tsx:310" }
+  refuse: { type: action, component: Button, role: button, intent: secondary, name: { key: Decks.refuseLabel, params: { title: proposal.title } }, text: { key: Decks.refuse }, in: [decksPage, refusing, hidingDeck], disabledIn: [refusing, hidingDeck], when: waits, emits: REFUSE, source: "apps/nizam/features/deck-review/components/kosk-decks-view.tsx:318" }
+  proposalsNote: { type: text, component: Text, text: { key: Decks.proposalsNote }, in: [decksPage, refusing, hidingDeck], when: waits }
+  decksHeading: { type: text, component: Heading, role: heading, text: { key: Decks.decksHeading }, in: [decksPage, refusing, hidingDeck] }
+  decksEmpty: { type: text, component: Text, text: { key: Decks.empty }, in: [decksPage], when: "not hasDeck" }
+  deckTable: { type: list, component: List, role: table, name: { key: Decks.caption, params: { kosk: kosk.name } }, in: [decksPage, refusing, hidingDeck], when: hasDeck, source: "apps/nizam/features/deck-review/components/kosk-decks-view.tsx:357" }
+  deckRow: { type: text, component: ListItem, role: row, text: { key: Data.title, params: { title: deck.title } }, in: [decksPage, refusing, hidingDeck], when: hasDeck, repeat: decks }
+  editCards: { type: action, component: LinkButton, role: link, name: { key: Decks.editCardsLabel, params: { title: deck.title } }, text: { key: Decks.editCards }, in: [decksPage, refusing, hidingDeck], when: hasDeck, emits: EDIT_CARDS, source: "apps/nizam/features/deck-review/components/kosk-decks-view.tsx:221" } # drawn for every nazım, though only the opener can use it
+  hide: { type: action, component: Button, role: button, intent: secondary, name: { key: Decks.hideLabel, params: { title: deck.title } }, text: { key: Decks.hide }, in: [decksPage, refusing, hidingDeck], disabledIn: [refusing, hidingDeck], when: hasDeck, emits: HIDE, source: "apps/nizam/features/deck-review/components/kosk-decks-view.tsx:229" }
+  openedToast: { type: status, component: Status, role: status, text: { key: Form.openedBody, params: { title: deck.title } }, in: [decksPage], when: "notice == 'opened'", source: "apps/nizam/features/deck-review/components/kosk-deck-form.tsx:93" }
+  refusedToast: { type: status, component: Status, role: status, text: { key: Decks.proposalRefusedBody, params: { title: proposal.title } }, in: [decksPage], when: "notice == 'refused'" }
+  hiddenToast: { type: status, component: Status, role: status, text: { key: Decks.hiddenBody, params: { title: deck.title } }, in: [decksPage], when: "notice == 'hidden'" }
+  answeredToast: { type: status, component: Status, role: status, text: { key: Decks.errorProposalAnswered }, in: [decksPage], when: "notice == 'answered'" }
+
+  # Köşk destesi aç (nizam/35)
+  formPage: { type: page, component: Page, role: main, name: { labelledBy: formTitle }, in: [deckForm], source: "apps/nizam/features/deck-review/components/kosk-deck-form.tsx:102" }
+  formTitle: { type: text, component: Heading, role: heading, text: { key: Form.title }, in: [deckForm] }
+  formIntro: { type: text, component: Text, text: { key: Form.intro, params: { kosk: kosk.name } }, in: [deckForm] }
+  proposalBanner: { type: status, component: Status, role: status, text: { key: Form.proposalTitle }, in: [deckForm], when: fromProposal, source: "apps/nizam/features/deck-review/components/kosk-deck-form.tsx:127" }
+  nameField: { type: field, component: TextField, role: textbox, text: { key: Form.nameLabel }, in: [deckForm], source: "apps/nizam/features/deck-review/components/kosk-deck-form.tsx:147" }
+  nameError: { type: text, component: Text, text: { key: Form.titleRequired }, in: [deckForm], when: "notice == 'titleMissing'" }
+  descriptionField: { type: field, component: TextField, role: textbox, text: { key: Form.descriptionLabel }, in: [deckForm] }
+  typeLabel: { type: text, component: Text, text: { key: Form.typeLabel }, in: [deckForm] }
+  typeGroup: { type: list, component: List, role: radiogroup, name: { labelledBy: typeLabel }, in: [deckForm], source: "apps/nizam/features/deck-review/components/kosk-deck-form.tsx:172" }
+  typeChoice: { type: field, component: ListItem, role: radio, text: { oneOf: [Form.typeVocabulary, Form.typeHadeeth] }, in: [deckForm] }
+  visibleTitle: { type: status, component: Status, role: status, text: { key: Form.visibleTitle }, in: [deckForm] }
+  laterTitle: { type: text, component: Heading, role: heading, text: { key: Form.laterTitle }, in: [deckForm] }
+  laterBody: { type: text, component: Text, text: { key: Form.laterBody }, in: [deckForm] }
+  answeredFormToast: { type: status, component: Status, role: status, text: { key: Form.errorProposalAnswered }, in: [deckForm], when: "notice == 'answered'" }
+  formCancel: { type: action, component: LinkButton, role: link, intent: dismiss, text: { key: Form.cancel }, in: [deckForm], emits: CANCEL }
+  formSubmit: { type: action, component: Button, role: button, intent: confirm, text: { key: Form.submit }, in: [deckForm], emits: SUBMIT, source: "apps/nizam/features/deck-review/components/kosk-deck-form.tsx:199" }
+
+  # Öneriyi reddet
+  refuseDialog: { type: page, component: Page, role: dialog, name: { labelledBy: refuseTitle }, in: [refuseDialog], initialFocus: refuseReason, source: "apps/nizam/features/deck-review/components/reject-dialog.tsx:76" }
+  refuseTitle: { type: text, component: Heading, role: heading, text: { key: Reject.title }, in: [refuseDialog] }
+  refuseBody: { type: text, component: Text, text: { key: Reject.body }, in: [refuseDialog] }
+  refuseReason: { type: field, component: TextField, role: textbox, text: { key: Reject.reasonLabel }, in: [refuseDialog] }
+  refuseHelp: { type: text, component: Text, text: { key: Reject.help }, in: [refuseDialog] }
+  refuseCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: Reject.cancel }, in: [refuseDialog], emits: CANCEL }
+  refuseSubmit: { type: action, component: Button, role: button, intent: confirm, text: { key: Reject.submit }, in: [refuseDialog], emits: SUBMIT } # off while the reason is blank
+
+  # Deste gizlensin mi?
+  hideDialog: { type: page, component: Page, role: alertdialog, name: { labelledBy: hideTitle }, in: [hideConfirm], initialFocus: hideCancel, source: "apps/nizam/features/deck-review/components/kosk-decks-view.tsx:388" }
+  hideTitle: { type: text, component: Heading, role: heading, text: { key: Decks.hideTitle }, in: [hideConfirm] }
+  hideBody: { type: text, component: Text, text: { key: Decks.hideBody, params: { title: deck.title, kosk: kosk.name } }, in: [hideConfirm] }
+  hideCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: Decks.cancel }, in: [hideConfirm], emits: CANCEL }
+  hideConfirmButton: { type: action, component: Button, role: button, intent: confirm, text: { key: Decks.hideConfirm }, in: [hideConfirm], emits: CONFIRM }
+
+  # the card table (/decks/{id}/cards)
+  cardsPage: { type: page, component: Page, role: main, name: { labelledBy: cardsTitle }, in: [cardsTable, savingCard], source: "apps/nizam/features/decks/components/cards.tsx:135" }
+  cardsTitle: { type: text, component: Heading, role: heading, text: { key: Data.title, params: { title: deck.title } }, in: [cardsTable, savingCard], source: "apps/nizam/features/decks/components/cards-table-header.tsx:34" }
+  bulkActions: { type: action, component: Button, role: button, intent: secondary, text: { key: Cards.bulkActions }, in: [cardsTable, savingCard], source: "apps/nizam/features/decks/components/cards-table-header.tsx:65" }
+  saveCard: { type: action, component: Button, role: button, intent: confirm, text: { key: Cards.updated }, in: [cardsTable, savingCard], disabledIn: [savingCard], emits: SAVE_CARD, source: "apps/nizam/features/decks/components/cards.tsx:147" } # an inline row edit of the data table, drawn as one action
+  savedToast: { type: status, component: Status, role: status, text: { key: Cards.updatedDescription }, in: [cardsTable], when: "notice == 'saved'", source: "apps/nizam/features/decks/components/cards.tsx:48" }
+  failedToast: { type: status, component: Status, role: status, text: { key: Cards.updateError }, in: [cardsTable], when: "notice == 'failed'", source: "apps/nizam/features/decks/components/cards.tsx:54" } # its description is the server's raw message
+
+edges:
+  - { labelledBy: [decksPage, decksTitle] }
+  - { labelledBy: [formPage, formTitle] }
+  - { labelledBy: [typeGroup, typeLabel] }
+  - { labelledBy: [refuseDialog, refuseTitle] }
+  - { labelledBy: [hideDialog, hideTitle] }
+  - { labelledBy: [cardsPage, cardsTitle] }
+  - { triggers: [formSubmit, creatingDeck] }
+  - { triggers: [refuseSubmit, refusing] }
+  - { triggers: [hideConfirmButton, hidingDeck] }
+
+rules:
+  - { id: offered-where-it-works, rule: "Kartları düzenle is drawn for every nazım, and the card table opens for the deck's opener alone" }
+  - { id: no-default-confirm, rule: "no dialog starts its focus on an action with intent confirm" }

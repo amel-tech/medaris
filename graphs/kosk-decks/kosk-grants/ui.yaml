@@ -1,0 +1,67 @@
+# The screens of medaris.kosk-grants: nizam /kosks/{id}/izinler (design nizam/38) and its dialogs. The grant dialog
+# sets no initialFocus, so Base UI focuses its first tabbable element, the header's close button. The dismissal is a
+# form Dialog whose focus starts on Vazgeç. Toasts are Sonner's polite live region, drawn as status nodes.
+schema: delurio-graph/0
+kind: ui
+id: medaris.kosk-grants
+flow: medaris.kosk-grants
+status: proposed
+catalog: catalog/tr.json
+locales: [tr, en]
+samples: { name: "Ahmet Yılmaz", course: "Emsile ve Bina", count: "8" }
+changes: { key: Changes.note }
+
+nodes:
+  page: { type: page, component: Page, role: main, name: { labelledBy: title }, in: [page, assigning, updating, revoking], source: "apps/nizam/features/grants/components/grants-view.tsx:206" }
+  title: { type: text, component: Heading, role: heading, text: { key: Grants.title }, in: [page, assigning, updating, revoking] }
+  intro: { type: text, component: Text, text: { key: Grants.intro }, in: [page, assigning, updating, revoking] }
+  assign: { type: action, component: Button, role: button, intent: confirm, text: { key: Grants.assign }, in: [page, assigning, updating, revoking], disabledIn: [assigning, updating, revoking], emits: ASSIGN, source: "apps/nizam/features/grants/components/grants-view.tsx:216" }
+  heading: { type: text, component: Heading, role: heading, text: { key: Grants.heading }, in: [page, assigning, updating, revoking] }
+  count: { type: text, component: Text, text: { key: Grants.count, params: { count: posts.length } }, in: [page, assigning, updating, revoking] }
+  empty: { type: text, component: Text, text: { key: Grants.empty }, in: [page], when: "not hasPost" }
+  posts: { type: list, component: List, role: table, name: { labelledBy: heading }, in: [page, assigning, updating, revoking], when: hasPost, source: "apps/nizam/features/grants/components/grants-view.tsx:256" }
+  postPerson: { type: text, component: ListItem, role: row, text: { key: Data.name, params: { name: post.person } }, in: [page, assigning, updating, revoking], when: hasPost, repeat: posts }
+  postCourse: { type: text, component: Text, text: { key: Data.course, params: { course: post.course } }, in: [page, assigning, updating, revoking], when: hasPost }
+  postPermissions: { type: text, component: Text, text: { key: Grants.permissionCount, params: { count: post.permissions } }, in: [page, assigning, updating, revoking], when: hasPost }
+  edit: { type: action, component: Button, role: button, intent: secondary, name: { key: Grants.editLabel, params: { name: post.person } }, text: { key: Grants.edit }, in: [page, assigning, updating, revoking], disabledIn: [assigning, updating, revoking], when: "hasPost and mayRewrite", emits: EDIT, source: "apps/nizam/features/grants/components/grants-view.tsx:184" }
+  revoke: { type: action, component: Button, role: button, intent: secondary, name: { key: Grants.revokeLabel, params: { name: post.person } }, text: { key: Grants.revoke }, in: [page, assigning, updating, revoking], disabledIn: [assigning, updating, revoking], when: hasPost, emits: REVOKE, source: "apps/nizam/features/grants/components/grants-view.tsx:193" }
+  assignedToast: { type: status, component: Status, role: status, text: { key: Dialog.assignedBody, params: { name: post.person } }, in: [page], when: "notice == 'assigned'" }
+  savedToast: { type: status, component: Status, role: status, text: { key: Dialog.savedBody, params: { name: post.person } }, in: [page], when: "notice == 'saved'" }
+  revokedToast: { type: status, component: Status, role: status, text: { key: Revoke.revokedBody, params: { name: post.person, course: post.course } }, in: [page], when: "notice == 'revoked'" }
+
+  grantDialog: { type: page, component: Page, role: dialog, name: { labelledBy: grantTitle }, in: [assignDialog, editDialog, assigning, updating], initialFocus: grantClose, source: "apps/nizam/features/grants/components/grant-dialog.tsx:139" }
+  grantTitle: { type: text, component: Heading, role: heading, text: { oneOf: [Dialog.titleAssign, Dialog.titleEdit] }, in: [assignDialog, editDialog, assigning, updating] }
+  grantClose: { type: action, component: Button, role: button, intent: dismiss, name: { key: Dialog.close }, in: [assignDialog, editDialog, assigning, updating], disabledIn: [assigning, updating], emits: CANCEL, source: "libs/ui/src/mds/dialog.tsx:97" } # icon only, the first tabbable element
+  personField: { type: field, component: TextField, role: combobox, text: { key: Dialog.personLabel }, in: [assignDialog, assigning], disabledIn: [assigning], source: "apps/nizam/features/grants/components/grant-dialog.tsx:187" }
+  courseField: { type: field, component: TextField, role: combobox, text: { key: Dialog.courseLabel }, in: [assignDialog, assigning], disabledIn: [assigning], source: "apps/nizam/features/grants/components/grant-dialog.tsx:197" }
+  courseHelp: { type: text, component: Text, text: { key: Dialog.courseHelp }, in: [assignDialog, assigning] }
+  permissionsHeading: { type: text, component: Heading, role: heading, text: { key: Dialog.permissionsHeading }, in: [assignDialog, editDialog, assigning, updating], source: "apps/nizam/features/grants/components/grant-dialog.tsx:209" }
+  endField: { type: field, component: TextField, role: textbox, text: { key: Dialog.endLabel }, in: [assignDialog, editDialog, assigning, updating], disabledIn: [assigning, updating] }
+  endHelp: { type: text, component: Text, text: { key: Dialog.endHelp }, in: [assignDialog, editDialog, assigning, updating] }
+  auditNote: { type: text, component: Text, text: { key: Dialog.auditNote }, in: [assignDialog, editDialog, assigning, updating], source: "apps/nizam/features/grants/components/grant-dialog.tsx:239" }
+  summary: { type: text, component: Text, text: { key: Dialog.summary, params: { count: chosen.length } }, in: [assignDialog, editDialog, assigning, updating] }
+  refusedToast: { type: status, component: Status, role: status, text: { oneOf: [Grants.errorForbidden, Grants.errorExists] }, in: [assignDialog, editDialog], when: "notice == 'refused'", source: "apps/nizam/features/grants/components/grant-dialog.tsx:124" }
+  grantCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: Dialog.cancel }, in: [assignDialog, editDialog, assigning, updating], disabledIn: [assigning, updating], emits: CANCEL }
+  grantSave: { type: action, component: Button, role: button, intent: confirm, text: { key: Dialog.save }, in: [assignDialog, editDialog, assigning, updating], disabledIn: [assigning, updating], emits: SAVE, source: "apps/nizam/features/grants/components/grant-dialog.tsx:154" } # off until ready
+
+  revokeDialog: { type: page, component: Page, role: dialog, name: { labelledBy: revokeTitle }, in: [revokeDialog, revoking], initialFocus: revokeCancel, source: "apps/nizam/features/grants/components/revoke-dialog.tsx:71" }
+  revokeTitle: { type: text, component: Heading, role: heading, text: { key: Revoke.title }, in: [revokeDialog, revoking] }
+  revokeIntro: { type: text, component: Text, text: { key: Revoke.intro, params: { name: post.person, course: post.course } }, in: [revokeDialog, revoking] }
+  revokeEffect: { type: text, component: Text, text: { key: Revoke.effect }, in: [revokeDialog, revoking] }
+  revokeAudit: { type: text, component: Text, text: { key: Revoke.auditNote }, in: [revokeDialog, revoking] }
+  handedOnToast: { type: status, component: Status, role: status, text: { key: Grants.errorHandedOn }, in: [revokeDialog], when: "notice == 'refused'" }
+  revokeCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: Revoke.cancel }, in: [revokeDialog, revoking], disabledIn: [revoking], emits: CANCEL, source: "apps/nizam/features/grants/components/revoke-dialog.tsx:86" }
+  revokeSubmit: { type: action, component: Button, role: button, intent: confirm, text: { key: Revoke.submit }, in: [revokeDialog, revoking], disabledIn: [revoking], emits: CONFIRM }
+
+edges:
+  - { labelledBy: [page, title] }
+  - { labelledBy: [posts, heading] }
+  - { labelledBy: [grantDialog, grantTitle] }
+  - { labelledBy: [revokeDialog, revokeTitle] }
+  - { triggers: [grantSave, assigning] }
+  - { triggers: [grantSave, updating] }
+  - { triggers: [revokeSubmit, revoking] }
+
+rules:
+  - { id: no-default-confirm, rule: "no dialog starts its focus on an action with intent confirm" }
+  - { id: own-post, rule: "İzinleri düzenle is not drawn on the viewer's own post (the başnazım excepted); Görevden al is" }

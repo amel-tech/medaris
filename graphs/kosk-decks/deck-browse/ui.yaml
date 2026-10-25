@@ -1,0 +1,64 @@
+# The screens of medaris.deck-browse: tedris /decks/{id} for a reader (design tedris/31) and for a visitor with no
+# session (tedris/32), and the copy dialog. The copy dialog sets no first focus and no closeLabel: Base UI focuses the
+# header's close button, whose name is the kit's default "Kapat" in every locale. Toasts are Base UI toasts.
+schema: delurio-graph/0
+kind: ui
+id: medaris.deck-browse
+flow: medaris.deck-browse
+status: proposed
+catalog: catalog/tr.json
+locales: [tr, en]
+samples: { title: "Sarfın temel kelimeleri", count: "36", n: "4", deck: "Kelimelerim" }
+changes: { key: Changes.note }
+
+nodes:
+  # the visitor's page
+  publicPage: { type: page, component: Page, role: main, name: { labelledBy: publicTitle }, in: [publicView], source: "apps/tedris/features/flashcards/components/deck-public-view.tsx:50" }
+  publicTitle: { type: text, component: Heading, role: heading, text: { key: Data.title, params: { title: deck.title } }, in: [publicView] }
+  publicStudy: { type: action, component: LinkButton, role: link, intent: confirm, text: { key: Deck.study }, in: [publicView], emits: STUDY, source: "apps/tedris/features/flashcards/components/deck-public-view.tsx:59" }
+  publicNote: { type: status, component: Status, role: status, text: { key: Public.note }, in: [publicView], source: "apps/tedris/features/flashcards/components/deck-public-view.tsx:70" }
+  publicSignIn: { type: action, component: LinkButton, role: link, text: { key: Public.signIn }, in: [publicView], emits: SIGN_IN, source: "apps/tedris/features/flashcards/components/deck-public-view.tsx:73" }
+  publicCards: { type: text, component: Heading, role: heading, text: { key: Deck.tabCards }, in: [publicView] }
+  publicMore: { type: action, component: Button, role: button, intent: secondary, text: { key: Deck.loadMore }, in: [publicView], emits: MORE, source: "apps/tedris/features/flashcards/components/deck-public-view.tsx:135" }
+  publicAbout: { type: text, component: Text, text: { key: Deck.aboutPublic }, in: [publicView] }
+
+  # the reader's page
+  readerPage: { type: page, component: Page, role: main, name: { labelledBy: readerTitle }, in: [readerView, collecting, removing, copying], source: "apps/tedris/features/flashcards/components/deck-reader-view.tsx:83" }
+  readerTitle: { type: text, component: Heading, role: heading, text: { key: Data.title, params: { title: deck.title } }, in: [readerView, collecting, removing, copying] }
+  add: { type: action, component: Button, role: button, intent: secondary, text: { key: Deck.add }, in: [readerView, collecting], disabledIn: [collecting], when: "not inCollection", emits: ADD, source: "apps/tedris/features/flashcards/components/deck-reader-view.tsx:92" }
+  remove: { type: action, component: Button, role: button, intent: secondary, text: { key: Deck.removeFromCollection }, in: [readerView, removing], disabledIn: [removing], when: inCollection, emits: REMOVE, source: "apps/tedris/features/flashcards/components/deck-reader-view.tsx:92" }
+  readerStudy: { type: action, component: LinkButton, role: link, intent: confirm, text: { key: Deck.study }, in: [readerView, collecting, removing, copying], emits: STUDY, source: "apps/tedris/features/flashcards/components/deck-reader-view.tsx:101" }
+  cardsHeading: { type: text, component: Heading, role: heading, text: { key: Deck.tabCards }, in: [readerView, collecting, removing, copying] }
+  readerNote: { type: text, component: Text, text: { key: Deck.readerNote }, in: [readerView, collecting, removing, copying] }
+  cardTable: { type: list, component: List, role: table, name: { key: Deck.tableCaption, params: { title: deck.title } }, in: [readerView, collecting, removing, copying], source: "apps/tedris/features/flashcards/components/deck-reader-view.tsx:131" }
+  cardRow: { type: text, component: ListItem, role: row, text: { key: Deck.frontLabel }, in: [readerView, collecting, removing, copying], repeat: cards }
+  copy: { type: action, component: Button, role: button, intent: secondary, name: { key: Deck.copyLabel, params: { n: card.number } }, text: { key: Deck.copy }, in: [readerView, collecting, removing, copying], disabledIn: [copying], emits: COPY, source: "apps/tedris/features/flashcards/components/deck-reader-view.tsx:168" } # "Kendi desteme kopyala: kart 4" contains the visible text
+  readerMore: { type: action, component: Button, role: button, intent: secondary, text: { key: Deck.loadMore }, in: [readerView] }
+  progressTitle: { type: text, component: Heading, role: heading, text: { key: Deck.progressTitle }, in: [readerView, collecting, removing, copying] }
+  aboutTitle: { type: text, component: Heading, role: heading, text: { key: Deck.aboutTitle }, in: [readerView, collecting, removing, copying] }
+  aboutText: { type: text, component: Text, text: { oneOf: [Deck.aboutPublic, Deck.aboutShared] }, in: [readerView, collecting, removing, copying], source: "apps/tedris/features/flashcards/components/deck-reader-view.tsx:218" }
+  copiedToast: { type: status, component: Status, role: dialog, text: { key: Deck.copiedText, params: { deck: target.title } }, in: [readerView], when: "notice == 'copied'" }
+  failedToast: { type: alert, component: Alert, role: alertdialog, name: { oneOf: [Deck.addFailedTitle, Deck.removeFailedTitle] }, text: { key: Deck.tryAgain }, in: [readerView], when: "notice == 'failed'", source: "apps/tedris/features/flashcards/components/deck-reader-view.tsx:75" }
+
+  # Kendi desteme kopyala
+  copyDialog: { type: page, component: Page, role: dialog, name: { labelledBy: copyTitle }, in: [copyDialog, copying], initialFocus: copyClose, source: "apps/tedris/features/flashcards/components/copy-card-dialog.tsx:81" }
+  copyTitle: { type: text, component: Heading, role: heading, text: { key: Deck.copy }, in: [copyDialog, copying] }
+  copyClose: { type: action, component: Button, role: button, intent: dismiss, name: { key: Dialog.close }, in: [copyDialog, copying], disabledIn: [copying], emits: CANCEL, source: "libs/ui/src/mds/dialog.tsx:62" }
+  copyHelp: { type: text, component: Text, text: { key: Deck.copyHelp }, in: [copyDialog, copying], when: sameKindDeck }
+  targetField: { type: field, component: TextField, role: radiogroup, text: { key: Deck.targetLabel }, in: [copyDialog, copying], disabledIn: [copying], when: sameKindDeck }
+  noOwnDecks: { type: text, component: Text, text: { key: Deck.noOwnDecks }, in: [copyDialog], when: "not sameKindDeck", source: "apps/tedris/features/flashcards/components/copy-card-dialog.tsx:104" }
+  copyFailed: { type: alert, component: Alert, role: alertdialog, name: { key: Deck.copyFailedTitle }, text: { key: Deck.tryAgain }, in: [copyDialog], when: "notice == 'failed'" }
+  copyCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: Deck.cancel }, in: [copyDialog, copying], disabledIn: [copying], emits: CANCEL }
+  createDeck: { type: action, component: LinkButton, role: link, text: { key: Deck.create }, in: [copyDialog], when: "not sameKindDeck", source: "apps/tedris/features/flashcards/components/copy-card-dialog.tsx:94" }
+  copySubmit: { type: action, component: Button, role: button, intent: confirm, text: { key: Deck.copySubmit }, in: [copyDialog, copying], disabledIn: [copying], when: sameKindDeck, emits: SUBMIT, source: "apps/tedris/features/flashcards/components/copy-card-dialog.tsx:96" }
+
+edges:
+  - { labelledBy: [publicPage, publicTitle] }
+  - { labelledBy: [readerPage, readerTitle] }
+  - { labelledBy: [copyDialog, copyTitle] }
+  - { triggers: [add, collecting] }
+  - { triggers: [remove, removing] }
+  - { triggers: [copySubmit, copying] }
+
+rules:
+  - { id: localized-close, rule: "every control's name comes from the page's locale (the copy dialog's close button is \"Kapat\" in every locale)" }

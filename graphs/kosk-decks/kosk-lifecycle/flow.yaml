@@ -1,0 +1,226 @@
+# A köşk's lifecycle in nizam as the code runs it at ce47fce8: hiding and bringing back (nizam/20, 24, 09), taking it
+# out of service (nizam/20, MDRS-227) and adding köşk nazımları (nizam/21). Opening a köşk is in
+# medaris.kosk-application-review (from an application) and on the köşk table, which offers it to the başnazım alone.
+schema: delurio-graph/0
+kind: flow
+id: medaris.kosk-lifecycle
+status: proposed
+domain: medaris.kosk-decks
+ui: medaris.kosk-lifecycle
+title: Hide, bring back, take out of service and staff a köşk
+summary: >-
+  The başnazım and a Medaris nazımı holding "platform.kosk_edit" get the köşk's management page: they hide the köşk or
+  bring it back, take it out of service after reading what that takes along, and add köşk nazımları. A köşk nazımı
+  hides their köşk from its settings and brings back from the köşk table what they hid themselves. A hide is recorded at
+  the level of who hid it, and only that level or a higher one brings it back. Nothing here deletes anything.
+
+scope:
+  shows: the management page, the settings page's hide, the köşk table's Geri al, and the three dialogs
+  world: open
+  outOfView:
+    - "opening a köşk: medaris.kosk-application-review; the köşk table's Köşk aç, the başnazım's only"
+    - "removing a köşk nazımı: DELETE /kosks/{id}/managers/{userId} exists, no screen calls it"
+    - "deleting a köşk for good, from the platform archive: the platform-admin area"
+    - "editing the köşk's details and policies on Köşk ayarları; hosting rights: the platform-admin area"
+
+context:
+  role:
+    values: [chief, editor, koskNazim, nazimOnly]
+    initial: any
+    say: { chief: "the person is the başnazım", editor: "the person is a Medaris nazımı holding platform.kosk_edit", koskNazim: "the person is a nazım of this köşk", nazimOnly: "the person is a Medaris nazımı holding platform.kosk_nazim_manage and no other köşk permission" }
+  nazimManage:
+    values: [true, false]
+    initial: any
+    say: { "true": "a Medaris nazımı among them also holds platform.kosk_nazim_manage", "false": "they do not hold platform.kosk_nazim_manage" }
+  hidden:
+    values: [false, true]
+    initial: any
+    say: { "false": "the köşk is shown", "true": "the köşk is hidden" }
+  hiddenAt:
+    values: [kosk, platform]
+    initial: any
+    say: { kosk: "if hidden, its own nazım hid it (or the level was not recorded)", platform: "if hidden, Medaris management hid it" }
+  passive:
+    values: [false, true]
+    initial: any
+    say: { "false": "the köşk has a nazım", "true": "the köşk is passive: no nazım holds the post" }
+  impactChanged:
+    values: [false, true]
+    initial: any
+    say: { "false": "the numbers stay as previewed", "true": "the numbers change between the preview and the confirmation" }
+  nazimExists:
+    values: [false, true]
+    initial: any
+    say: { "false": "nobody chosen is a nazım already", "true": "one of the people chosen is a nazım of the köşk already" }
+  added: { values: [false, true], initial: false } # köşk nazımları were added on this page
+  notice: { values: [none, hidden, restored, passivated, added, changed, refused], initial: none }
+
+guards:
+  management: "role in ['chief', 'editor']" # source: apps/nizam/features/kosks/kosk-entry.ts:47
+  mayAdd: "role == 'chief' or nazimManage" # source: apps/tedrisat/src/kosk/kosk-admin.service.ts:482
+  mayRestore: "role in ['chief', 'editor'] or (role == 'koskNazim' and hiddenAt == 'kosk')" # source: apps/tedrisat/src/archive/hide-level.ts:45
+
+effects:
+  clearNotice: { set: { notice: none } }
+  hiddenByPlatform: { set: { hidden: true, hiddenAt: platform, notice: hidden } }
+  hiddenByKosk: { set: { hidden: true, hiddenAt: kosk, notice: hidden } }
+  restored: { set: { hidden: false, notice: restored } }
+  passivated: { set: { passive: true, notice: passivated } }
+  freshNumbers: { set: { impactChanged: false, notice: changed } }
+  added: { set: { added: true, passive: false, notice: added } }
+  refused: { set: { notice: refused } }
+
+failures:
+  hiding: { from: hideKosk, conflict: [KOSK_ALREADY_HIDDEN] }
+  restoring: { from: restoreKosk, level: [ARCHIVE_RESTORE_LEVEL, AUTHZ_FORBIDDEN] }
+  deactivating: { from: deactivateKosk, changed: [PASSIVATION_IMPACT_CHANGED] }
+  addingNazims: { from: addKoskNazims, refused: [AUTHZ_FORBIDDEN, KOSK_NAZIM_EXISTS, KOSK_NAZIM_UNKNOWN_ACCOUNT] }
+
+main:
+  given: { role: chief, hidden: false, passive: false, impactChanged: false }
+  events: [DEACTIVATE, CONFIRM, DONE]
+
+initial: entry
+states:
+  entry:
+    title: Open the köşk
+    description: >-
+      /kosks/{id} sends the başnazım to the management view, a nazım of the köşk to its Dersler page (the hide is on
+      Köşk ayarları), a Medaris nazımı holding platform.kosk_edit to the management view, and anyone else to
+      Barındırma hakları when tedrisat lets them read it, else to "Bu bölüm için izniniz yok".
+    source: apps/nizam/features/kosks/kosk-entry.ts:39
+    always:
+      - { guard: "management", target: managePage, say: "the management view (nizam/20)", source: "apps/nizam/features/kosks/kosk-entry.ts:51" }
+      - { guard: "role == 'koskNazim'", target: settingsPage, say: "a nazım of the köşk opens Köşk ayarları", source: "apps/nizam/app/kosks/[id]/ayarlar/page.tsx:34" }
+      - { target: forbidden, say: "platform.kosk_nazim_manage alone opens no köşk page", source: "apps/nizam/features/kosks/kosk-entry.ts:52" }
+
+  managePage:
+    title: The köşk's management page
+    by: human
+    goal: true
+    description: >-
+      Numbers and details, "Yönetim eylemleri" (hide or bring back, take out of service, the archive for a permanent
+      delete), the nazımları with "Köşk nazımı ekle", the hosting medreses and the courses. "Köşkü pasife al" is enabled
+      for an active köşk only; "Geri al" is drawn only where the API says the viewer may (canRestore).
+    source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:73
+    on:
+      HIDE: { guard: "not hidden", target: hideConfirm, effect: [clearNotice], say: "Köşkü gizle", source: "apps/nizam/features/kosks/components/kosk-manage-page.tsx:516" }
+      RESTORE: { guard: "hidden and mayRestore", target: restoring, effect: [clearNotice], say: "Köşkü geri al", source: "apps/nizam/features/kosks/components/kosk-manage-page.tsx:495" }
+      DEACTIVATE: { guard: "not hidden and not passive", target: passivateDialog, effect: [clearNotice], say: "Köşkü pasife al", source: "apps/nizam/features/kosks/overview-present.ts:170" }
+      ADD_NAZIM: { target: addNazimDialog, effect: [clearNotice], say: "Köşk nazımı ekle, drawn for everyone on the page", source: "apps/nizam/features/kosks/components/kosk-manage-page.tsx:557" }
+      NAVIGATE: { target: left, say: "they go to another page", source: "apps/nizam/features/kosks/components/kosk-manage-page.tsx:73" }
+
+  settingsPage:
+    title: Köşk ayarları
+    by: human
+    description: the köşk's details and policies, and "Köşkü gizle", drawn whether the köşk is hidden or not
+    source: apps/nizam/features/kosks/components/kosk-settings.tsx:265
+    on:
+      HIDE: { target: hideConfirm, effect: [clearNotice], say: "Köşkü gizle", source: "apps/nizam/features/kosks/components/kosk-settings.tsx:277" }
+      NAVIGATE: { target: left, say: "they go to another page", source: "apps/nizam/features/kosks/components/kosk-settings.tsx:265" }
+
+  directory:
+    title: The köşk table
+    by: human
+    description: the köşk nazımı's own köşks; a hidden row has "Geri al" when canRestore says the viewer may bring it back
+    source: apps/nizam/features/kosks/components/kosks-directory.tsx:255
+    on:
+      RESTORE: { guard: "hidden and mayRestore", target: restoring, effect: [clearNotice], say: "Geri al on the köşk's row", source: "apps/nizam/features/kosks/components/kosks-directory.tsx:262" }
+      NAVIGATE: { target: left, say: "they go to another page", source: "apps/nizam/features/kosks/components/kosks-directory.tsx:255" }
+
+  hideConfirm:
+    title: Confirm hiding the köşk
+    by: human
+    description: an alertdialog naming who loses sight of the köşk and the way back; the focus starts on Vazgeç
+    source: apps/nizam/features/kosks/components/hide-kosk-dialog.tsx:57
+    on:
+      CONFIRM: { target: hiding, say: "Gizle", source: "apps/nizam/features/kosks/components/hide-kosk-dialog.tsx:68" }
+      CANCEL:
+        - { guard: "role == 'koskNazim'", target: settingsPage, say: "Vazgeç", source: "apps/nizam/features/kosks/components/hide-kosk-dialog.tsx:57" }
+        - { target: managePage, say: "Vazgeç", source: "apps/nizam/features/kosks/components/hide-kosk-dialog.tsx:57" }
+
+  hiding:
+    title: Hide the köşk
+    description: >-
+      POST /kosks/{id}/hide: archivedAt and the level the hider acts at (the başnazım and platform.kosk_edit as the
+      platform, the köşk's nazım as the köşk), with an audit row. The köşk and its courses leave every list.
+    invoke: { action: hideKosk }
+    source: apps/tedrisat/src/kosk/kosk-admin.service.ts:246
+    on:
+      DONE:
+        - { guard: "not hidden and role == 'koskNazim'", target: directory, effect: [hiddenByKosk], say: "hidden at the köşk's level; the nazım lands on the köşk table", source: "apps/nizam/features/kosks/components/kosk-settings.tsx:289" }
+        - { guard: "not hidden", target: managePage, effect: [hiddenByPlatform], say: "hidden at the platform's level", source: "apps/tedrisat/src/archive/hide-level.ts:187" }
+      FAIL.conflict:
+        - { guard: "hidden and role == 'koskNazim'", target: settingsPage, effect: [refused], say: "it is hidden already (409): a toast says so", source: "apps/tedrisat/src/kosk/kosk-admin.service.ts:259" }
+        - { guard: "hidden", target: managePage, effect: [refused], say: "it is hidden already (409)", source: "apps/tedrisat/src/kosk/kosk-admin.service.ts:246" }
+
+  restoring:
+    title: Bring the köşk back
+    description: >-
+      POST /kosks/{id}/restore: the level the caller acts at must be the level that hid it or above; a köşk hidden
+      before the level was recorded counts as hidden by the köşk.
+    invoke: { action: restoreKosk }
+    source: apps/tedrisat/src/kosk/kosk-admin.service.ts:263
+    on:
+      DONE:
+        - { guard: "mayRestore and role == 'koskNazim'", target: directory, effect: [restored], say: "it is back in the lists", source: "apps/tedrisat/src/kosk/kosk-admin.repository.ts:513" }
+        - { guard: "mayRestore", target: managePage, effect: [restored], say: "it is back in the lists", source: "apps/tedrisat/src/kosk/kosk-admin.service.ts:263" }
+      FAIL.level:
+        - { guard: "not mayRestore and role == 'koskNazim'", target: directory, effect: [refused], say: "a lower level than the one that hid it (403 ARCHIVE_RESTORE_LEVEL)", source: "apps/tedrisat/src/kosk/kosk-admin.service.ts:263" }
+        - { guard: "not mayRestore", target: managePage, effect: [refused], say: "refused", source: "apps/tedrisat/src/kosk/kosk-admin.service.ts:263" }
+
+  passivateDialog:
+    title: Read what taking it out of service takes along
+    by: human
+    description: >-
+      A dialog, not an alertdialog: on opening it reads GET /kosks/{id}/deactivation-preview (the nazımları who leave,
+      the courses that close, the talebe who lose the content, the live sessions of the next days) and shows it as a
+      warning; the focus starts on Vazgeç and the scrim does not close it.
+    source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:184
+    on:
+      CONFIRM: { target: deactivating, say: "Yine de pasife al", source: "apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:204" }
+      CANCEL: { target: managePage, say: "Vazgeç", source: "apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:184" }
+
+  deactivating:
+    title: Take the köşk out of service
+    description: >-
+      POST /kosks/{id}/deactivate with the preview's confirmation: the impact is measured again under the köşk's lock,
+      every held nazım seat is revoked, passiveSince is set and the audit row names the nazımları removed. Nothing is
+      hidden or deleted.
+    invoke: { action: deactivateKosk }
+    source: apps/tedrisat/src/kosk/kosk-admin.repository.ts:702
+    on:
+      DONE: { guard: "not impactChanged", target: managePage, effect: [passivated], say: "the köşk is passive", source: "apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:97" }
+      FAIL.changed: { guard: "impactChanged", target: passivateDialog, effect: [freshNumbers], say: "the numbers changed meanwhile: the fresh ones are shown to be confirmed again", source: "apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:100" }
+
+  addNazimDialog:
+    title: Choose the köşk nazımları
+    by: human
+    description: accounts found by e-mail (one or more) and an optional end of the post; the picker has the focus
+    source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:108
+    on:
+      SUBMIT: { target: addingNazims, say: "Ekle", source: "apps/nizam/features/kosks/components/add-nazim-dialog.tsx:84" }
+      CANCEL: { target: managePage, say: "Vazgeç", source: "apps/nizam/features/kosks/components/add-nazim-dialog.tsx:108" }
+
+  addingNazims:
+    title: Add the köşk nazımları
+    description: >-
+      POST /kosks/{id}/nazims: the service asks for platform.kosk_nazim_manage (the başnazım passes); all or nothing,
+      a seat per person with one audit row each, and a passive köşk is active again.
+    invoke: { action: addKoskNazims }
+    source: apps/tedrisat/src/kosk/kosk-admin.service.ts:477
+    on:
+      DONE: { guard: "mayAdd and not nazimExists", target: managePage, effect: [added], say: "they are the köşk's nazımları now", source: "apps/tedrisat/src/kosk/kosk-admin.repository.ts:365" }
+      FAIL.refused:
+        - { guard: "not mayAdd", target: addNazimDialog, effect: [refused], say: "403: the viewer does not hold platform.kosk_nazim_manage; a toast says so", source: "apps/tedrisat/src/kosk/kosk-admin.service.ts:482" }
+        - { guard: "nazimExists", target: addNazimDialog, effect: [refused], say: "409: someone chosen is a nazım already; nothing is added", source: "apps/tedrisat/src/kosk/kosk-admin.repository.ts:385" }
+
+  forbidden: { type: final, title: '"Bu bölüm için izniniz yok"', source: "apps/nizam/app/kosks/[id]/page.tsx:54" }
+  left: { type: final, title: The person goes elsewhere, leavesPage: true, source: "apps/nizam/features/kosks/components/kosk-manage-page.tsx" }
+
+assertions:
+  - { id: platform-takes-out-of-service, never: "state in ['passivateDialog', 'deactivating'] and role not in ['chief', 'editor']", say: "Only the başnazım and a Medaris nazımı holding platform.kosk_edit take a köşk out of service", source: "apps/tedrisat/src/kosk/kosk-admin.controller.ts:279" }
+  - { id: hidden-not-taken-out-here, never: "state == 'deactivating' and hidden", say: "The screens never take a hidden köşk out of service", source: "apps/nizam/features/kosks/overview-present.ts:170" }
+  - { id: restore-by-level, never: "state == 'restoring' and role == 'koskNazim' and hiddenAt == 'platform'", say: "A köşk nazımı never brings back what Medaris management hid", source: "apps/tedrisat/src/kosk/kosk-admin.repository.ts:513" }
+  - { id: adding-needs-permission, never: "added and not mayAdd", say: "No köşk nazımı is added by someone who does not hold platform.kosk_nazim_manage", source: "apps/tedrisat/src/kosk/kosk-admin.service.ts:482" }
+  - { id: confirmed-numbers, never: "notice == 'passivated' and impactChanged", say: "A köşk is taken out of service only on the numbers the person last read", source: "apps/tedrisat/src/kosk/kosk-admin.repository.ts:715" }

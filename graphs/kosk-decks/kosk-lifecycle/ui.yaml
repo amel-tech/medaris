@@ -1,0 +1,97 @@
+# The screens of medaris.kosk-lifecycle: nizam /kosks/{id} (management view, nizam/20), /kosks/{id}/ayarlar (nizam/24),
+# /kosks (the köşk table, nizam/09) and their dialogs. Base UI dialogs are labelled by their title; an AlertDialog
+# starts on Vazgeç. Toasts are Sonner's polite live region, drawn as status nodes.
+schema: delurio-graph/0
+kind: ui
+id: medaris.kosk-lifecycle
+flow: medaris.kosk-lifecycle
+status: proposed
+catalog: catalog/tr.json
+locales: [tr, en]
+samples: { name: "Davutpaşa Köşkü", kosk: "Davutpaşa Köşkü’nün", koskGenitive: "Davutpaşa Köşkü’nün", names: "Ahmet Yılmaz", level: "Medaris yönetimi", count: "2" }
+changes: { key: Changes.note }
+
+nodes:
+  # the management view (nizam/20)
+  managePage: { type: page, component: Page, role: main, name: { labelledBy: koskTitle }, in: [managePage, hiding, restoring, deactivating, addingNazims], source: "apps/nizam/features/kosks/components/kosk-manage-page.tsx:73" }
+  koskTitle: { type: text, component: Heading, role: heading, text: { key: Data.koskName, params: { name: kosk.name } }, in: [managePage, hiding, restoring, deactivating, addingNazims] }
+  actionsHeading: { type: text, component: Heading, role: heading, text: { key: Manage.actionsHeading }, in: [managePage, hiding, restoring, deactivating, addingNazims], source: "apps/nizam/features/kosks/components/kosk-manage-page.tsx:478" }
+  actionsIntro: { type: text, component: Text, text: { key: Manage.actionsIntro }, in: [managePage, hiding, restoring, deactivating, addingNazims] }
+  hideHeading: { type: text, component: Heading, role: heading, text: { key: Manage.hideHeading }, in: [managePage, hiding, restoring, deactivating, addingNazims], when: "not hidden" }
+  hideBody: { type: text, component: Text, text: { key: Manage.hideBody }, in: [managePage, hiding, restoring, deactivating, addingNazims], when: "not hidden" }
+  hide: { type: action, component: Button, role: button, intent: secondary, text: { key: Manage.hide }, in: [managePage, hiding, restoring, deactivating, addingNazims], disabledIn: [hiding, restoring, deactivating, addingNazims], when: "not hidden", emits: HIDE, source: "apps/nizam/features/kosks/components/kosk-manage-page.tsx:513" }
+  restoreHeading: { type: text, component: Heading, role: heading, text: { key: Manage.restoreHeading }, in: [managePage, hiding, restoring, deactivating, addingNazims], when: hidden }
+  restoreBody: { type: text, component: Text, text: { key: Manage.restoreBody }, in: [managePage, hiding, restoring, deactivating, addingNazims], when: hidden }
+  restore: { type: action, component: Button, role: button, intent: secondary, text: { key: Manage.restore }, in: [managePage, hiding, restoring, deactivating, addingNazims], disabledIn: [hiding, restoring, deactivating, addingNazims], when: "hidden and mayRestore", emits: RESTORE, source: "apps/nizam/features/kosks/components/kosk-manage-page.tsx:490" }
+  restoreLocked: { type: text, component: Text, text: { key: Level.locked, params: { level: kosk.hiddenLevel } }, in: [managePage], when: "hidden and not mayRestore", source: "apps/nizam/features/kosks/components/kosk-manage-page.tsx:500" }
+  deactivateHeading: { type: text, component: Heading, role: heading, text: { key: Manage.deactivateHeading }, in: [managePage, hiding, restoring, deactivating, addingNazims] }
+  deactivateBody: { type: text, component: Text, text: { key: Manage.deactivateBody }, in: [managePage, hiding, restoring, deactivating, addingNazims] }
+  deactivate: { type: action, component: Button, role: button, intent: secondary, text: { key: Manage.deactivate }, in: [managePage, hiding, restoring, deactivating, addingNazims], disabledIn: [hiding, restoring, deactivating, addingNazims], when: "not hidden and not passive", emits: DEACTIVATE, source: "apps/nizam/features/kosks/components/kosk-manage-page.tsx:528" }
+  deactivateOff: { type: action, component: Button, role: button, intent: secondary, text: { key: Manage.deactivate }, in: [managePage], disabledIn: [managePage], when: "hidden or passive", source: "apps/nizam/features/kosks/components/kosk-manage-page.tsx:531" } # the same button, disabled for a passive or hidden köşk
+  deleteHeading: { type: text, component: Heading, role: heading, text: { key: Manage.deleteHeading }, in: [managePage] }
+  toArchive: { type: action, component: LinkButton, role: link, text: { key: Manage.toArchive }, in: [managePage], source: "apps/nizam/features/kosks/components/kosk-manage-page.tsx:542" }
+  nazimsHeading: { type: text, component: Heading, role: heading, text: { key: Manage.nazimsHeading }, in: [managePage, hiding, restoring, deactivating, addingNazims] }
+  addNazim: { type: action, component: Button, role: button, intent: confirm, text: { key: Nazims.add }, in: [managePage, hiding, restoring, deactivating, addingNazims], disabledIn: [hiding, restoring, deactivating, addingNazims], emits: ADD_NAZIM, source: "apps/nizam/features/kosks/components/kosk-manage-page.tsx:555" } # drawn for every viewer of the page, whether or not they may add
+  hiddenToast: { type: status, component: Status, role: status, text: { key: Hide.hiddenBody, params: { name: kosk.name } }, in: [managePage, directory], when: "notice == 'hidden'" }
+  restoredToast: { type: status, component: Status, role: status, text: { key: Manage.restoredBody, params: { name: kosk.name } }, in: [managePage, directory], when: "notice == 'restored'" }
+  passivatedToast: { type: status, component: Status, role: status, text: { key: Passivate.doneBody, params: { name: kosk.name } }, in: [managePage], when: "notice == 'passivated'" }
+  addedToast: { type: status, component: Status, role: status, text: { key: AddNazim.savedBody, params: { names: people.names, kosk: kosk.genitive } }, in: [managePage], when: "notice == 'added'" }
+  refusedToast: { type: status, component: Status, role: status, text: { key: Hide.alreadyHidden }, in: [managePage, settingsPage, directory], when: "notice == 'refused'" }
+
+  # Köşk ayarları (nizam/24), the köşk nazımı's
+  settingsPage: { type: page, component: Page, role: main, name: { labelledBy: settingsTitle }, in: [settingsPage], source: "apps/nizam/features/kosks/components/kosk-settings.tsx:265" }
+  settingsTitle: { type: text, component: Heading, role: heading, text: { key: Settings.title }, in: [settingsPage] }
+  dangerHeading: { type: text, component: Heading, role: heading, text: { key: Settings.dangerHeading }, in: [settingsPage], source: "apps/nizam/features/kosks/components/kosk-settings.tsx:269" }
+  dangerBody: { type: text, component: Text, text: { key: Settings.dangerBody }, in: [settingsPage] }
+  settingsHide: { type: action, component: Button, role: button, intent: secondary, text: { key: Settings.hide }, in: [settingsPage], emits: HIDE, source: "apps/nizam/features/kosks/components/kosk-settings.tsx:274" } # drawn for a hidden köşk too
+
+  # the köşk table (nizam/09)
+  directoryPage: { type: page, component: Page, role: main, name: { labelledBy: directoryTitle }, in: [directory], source: "apps/nizam/features/kosks/components/kosks-directory.tsx:69" }
+  directoryTitle: { type: text, component: Heading, role: heading, text: { key: Directory.title }, in: [directory] }
+  directoryRestore: { type: action, component: Button, role: button, intent: secondary, name: { key: Directory.restoreLabel, params: { name: kosk.name } }, text: { key: Directory.restore }, in: [directory], when: "hidden and mayRestore", emits: RESTORE, source: "apps/nizam/features/kosks/components/kosks-directory.tsx:256" }
+
+  # Köşkü gizle (an alertdialog)
+  hideDialog: { type: page, component: Page, role: alertdialog, name: { labelledBy: hideTitle }, in: [hideConfirm, hiding], initialFocus: hideCancel, source: "apps/nizam/features/kosks/components/hide-kosk-dialog.tsx:57" }
+  hideTitle: { type: text, component: Heading, role: heading, text: { key: Hide.title }, in: [hideConfirm, hiding] }
+  hideDialogBody: { type: text, component: Text, text: { key: Hide.body, params: { name: kosk.name } }, in: [hideConfirm, hiding] }
+  hideWay: { type: text, component: Text, text: { key: Hide.way }, in: [hideConfirm, hiding] }
+  hideCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: Hide.cancel }, in: [hideConfirm, hiding], disabledIn: [hiding], emits: CANCEL, source: "libs/ui/src/mds/alert-dialog.tsx:95" }
+  hideConfirmButton: { type: action, component: Button, role: button, intent: confirm, text: { key: Hide.confirm }, in: [hideConfirm, hiding], disabledIn: [hiding], emits: CONFIRM, source: "libs/ui/src/mds/alert-dialog.tsx:101" }
+
+  # Köşkü pasife al (a dialog)
+  passivateDialog: { type: page, component: Page, role: dialog, name: { labelledBy: passivateTitle }, in: [passivateDialog, deactivating], initialFocus: passivateCancel, source: "apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:184" }
+  passivateTitle: { type: text, component: Heading, role: heading, text: { key: Passivate.title }, in: [passivateDialog, deactivating] }
+  passivateChanged: { type: status, component: Status, role: status, text: { key: Passivate.changed }, in: [passivateDialog], when: "notice == 'changed'", source: "apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:129" }
+  passivateWarning: { type: status, component: Status, role: status, text: { key: Passivate.warningTitle }, in: [passivateDialog, deactivating] } # an Alert of tone warning: role status
+  passivateStaff: { type: text, component: Text, text: { key: Passivate.staff, params: { count: impact.nazims } }, in: [passivateDialog, deactivating] }
+  passivateStudents: { type: text, component: Text, text: { key: Passivate.students, params: { count: impact.students } }, in: [passivateDialog, deactivating] }
+  passivateWay: { type: text, component: Text, text: { key: Passivate.way }, in: [passivateDialog, deactivating] }
+  passivateCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: Passivate.cancel }, in: [passivateDialog, deactivating], disabledIn: [deactivating], emits: CANCEL }
+  passivateConfirm: { type: action, component: Button, role: button, intent: confirm, text: { key: Passivate.confirm }, in: [passivateDialog, deactivating], disabledIn: [deactivating], emits: CONFIRM, source: "apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:198" }
+
+  # Köşk nazımı ekle (a dialog with a form)
+  addDialog: { type: page, component: Page, role: dialog, name: { labelledBy: addTitle }, in: [addNazimDialog, addingNazims], initialFocus: addPicker, source: "apps/nizam/features/kosks/components/add-nazim-dialog.tsx:108" }
+  addTitle: { type: text, component: Heading, role: heading, text: { key: AddNazim.title }, in: [addNazimDialog, addingNazims] }
+  addIntro: { type: text, component: Text, text: { key: AddNazim.intro, params: { koskGenitive: kosk.genitive } }, in: [addNazimDialog, addingNazims] }
+  addPicker: { type: field, component: TextField, role: combobox, text: { key: Picker.label }, in: [addNazimDialog, addingNazims], disabledIn: [addingNazims], source: "apps/nizam/features/kosks/components/add-nazim-dialog.tsx:134" }
+  addEnd: { type: field, component: TextField, role: textbox, text: { key: AddNazim.endLabel }, in: [addNazimDialog, addingNazims], disabledIn: [addingNazims] }
+  addEndHelp: { type: text, component: Text, text: { key: AddNazim.endHelp }, in: [addNazimDialog, addingNazims] }
+  addFootnote: { type: text, component: Text, text: { key: AddNazim.footnote }, in: [addNazimDialog, addingNazims] }
+  addRefused: { type: status, component: Status, role: status, text: { oneOf: [AddNazim.forbidden, AddNazim.exists] }, in: [addNazimDialog], when: "notice == 'refused'" }
+  addCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: AddNazim.cancel }, in: [addNazimDialog, addingNazims], disabledIn: [addingNazims], emits: CANCEL }
+  addSubmit: { type: action, component: Button, role: button, intent: confirm, text: { key: AddNazim.submit }, in: [addNazimDialog, addingNazims], disabledIn: [addingNazims], emits: SUBMIT, source: "apps/nizam/features/kosks/components/add-nazim-dialog.tsx:124" }
+
+edges:
+  - { labelledBy: [managePage, koskTitle] }
+  - { labelledBy: [settingsPage, settingsTitle] }
+  - { labelledBy: [directoryPage, directoryTitle] }
+  - { labelledBy: [hideDialog, hideTitle] }
+  - { labelledBy: [passivateDialog, passivateTitle] }
+  - { labelledBy: [addDialog, addTitle] }
+  - { triggers: [hideConfirmButton, hiding] }
+  - { triggers: [passivateConfirm, deactivating] }
+  - { triggers: [addSubmit, addingNazims] }
+
+rules:
+  - { id: offered-where-it-works, rule: "a control is drawn only for whom the API accepts it (Köşk nazımı ekle is drawn for every viewer of nizam/20)" }
+  - { id: no-default-confirm, rule: "no dialog starts its focus on an action with intent confirm" }

@@ -1,0 +1,155 @@
+# A deck's page for everyone but its author, in tedris (/decks/{id}: design tedris/31 for a reader, tedris/32 for a
+# visitor with no session), as the code runs it at ce47fce8: reading the cards, collecting the deck, copying a card into
+# one's own deck, and going to study. The author's page is medaris.deck-publish.
+schema: delurio-graph/0
+kind: flow
+id: medaris.deck-browse
+status: proposed
+domain: medaris.kosk-decks
+ui: medaris.deck-browse
+title: Read, collect and copy someone else's deck
+summary: >-
+  A visitor with no session reads a public deck six cards at a time and may study it without saving anything; any other
+  deck sends them to sign in. A signed-in reader of a public deck, or of a deck of a course, köşk or medrese they are
+  enrolled for, adds it to their collection or takes it out, copies a card into one of their own decks of the same kind,
+  and starts studying. Someone else's private deck is the not-found page; the author gets their own page.
+
+scope:
+  shows: who gets which deck page, the reader's collection and copy, and the visitor's page
+  world: open
+  outOfView:
+    - "the Desteler list and Desteleri keşfet, which add and remove the same way: the domain's getFlashcardDeckSummaries and exploreFlashcardDecks"
+    - "the köşk page's deck block (GET /kosks/{id}/decks): it lists only the köşk's published decks"
+    - "the author's page: medaris.deck-publish; studying: medaris.flashcard-study"
+
+context:
+  signedIn:
+    values: [true, false]
+    initial: any
+    say: { "true": "the reader is signed in", "false": "a visitor with no session" }
+  access:
+    values: [own, public, shared, none]
+    initial: any
+    say: { own: "the reader wrote the deck", public: "the deck is published", shared: "the deck belongs to a course, a köşk or a medrese the reader is enrolled for", none: "someone else's private deck, or a course deck in draft" }
+  inCollection:
+    values: [false, true]
+    initial: any
+    say: { "false": "the deck is not in the reader's collection", "true": "the deck is in the reader's collection" }
+  sameKindDeck:
+    values: [true, false]
+    initial: any
+    say: { "true": "the reader has a deck of their own with the same card type", "false": "the reader has no deck of that card type" }
+  saveOk:
+    values: [true, false]
+    initial: any
+    say: { "true": "the change is saved", "false": "it fails" }
+  copied: { values: [false, true], initial: false }
+  notice: { values: [none, copied, failed], initial: none }
+
+effects:
+  collected: { set: { inCollection: true, notice: none } }
+  released: { set: { inCollection: false, notice: none } }
+  copied: { set: { copied: true, notice: copied } }
+  failed: { set: { notice: failed } }
+  clearNotice: { set: { notice: none } }
+
+failures:
+  collecting: { from: createFlashcardDeckUser, server: [DECK_NOT_FOUND, DECK_FORBIDDEN] }
+  removing: { from: deleteFlashcardDeckUser, server: [AUTHZ_MISSING_USER] }
+  copying: { from: createFlashcards, server: [DECK_NOT_FOUND, AUTHZ_FORBIDDEN] }
+
+main:
+  given: { signedIn: true, access: public, inCollection: false, saveOk: true }
+  events: [ADD, DONE, STUDY]
+
+initial: opening
+states:
+  opening:
+    title: Open the deck's page
+    description: >-
+      A visitor's read goes with no token: a public deck opens; anything else sends them to sign in and back. A signed-in
+      reader's read goes with their token: someone else's private deck answers 404, the not-found page. Whether the
+      viewer wrote the deck is read off the token, for display only.
+    source: apps/tedris/app/decks/(medaris)/[id]/page.tsx:30
+    always:
+      - { guard: "not signedIn and access == 'public'", target: publicView, say: "the signed-out deck page", source: "apps/tedris/app/decks/(medaris)/[id]/page.tsx:44" }
+      - { guard: "not signedIn", target: signIn, say: "sent to sign in, which says nothing about whether the deck exists", source: "apps/tedris/app/decks/(medaris)/[id]/page.tsx:42" }
+      - { guard: "access == 'none'", target: notFound, say: "404: the not-found page", source: "apps/tedris/features/flashcards/deck-page-data.ts:36" }
+      - { guard: "access == 'own'", target: ownerView, say: "the author's own page", starts: { flow: medaris.deck-publish }, source: "apps/tedris/features/flashcards/components/deck-detail-page.tsx:44" }
+      - { target: readerView, say: "the reader's page", source: "apps/tedris/features/flashcards/components/deck-detail-page.tsx:46" }
+
+  publicView:
+    title: Read a public deck without a session
+    by: human
+    description: the deck, its cards six at a time, "Çalış" without saving anything, and a way to sign in and come back; no collection, copy or progress
+    source: apps/tedris/features/flashcards/components/deck-public-view.tsx:50
+    on:
+      STUDY: { target: studying, say: "Çalış: the first ten cards, nothing saved", starts: { flow: medaris.flashcard-study, given: { signedIn: "false", access: "'public'" } }, source: "apps/tedris/features/flashcards/components/deck-public-view.tsx:59" }
+      SIGN_IN: { target: signIn, say: "Kaydetmek için giriş yap", source: "apps/tedris/features/flashcards/components/deck-public-view.tsx:73" }
+      MORE: { target: publicView, say: "Daha fazla göster", source: "apps/tedris/features/flashcards/components/deck-public-view.tsx:137" }
+
+  readerView:
+    title: Read the deck's cards
+    by: human
+    goal: true
+    description: >-
+      Koleksiyona ekle or Koleksiyondan çıkar and Çalış at the top; the cards six at a time, each with "Kendi desteme
+      kopyala"; the reader's progress and "Deste hakkında" (public, or a course's, köşk's or medrese's deck).
+    source: apps/tedris/features/flashcards/components/deck-reader-view.tsx:82
+    on:
+      ADD: { guard: "not inCollection", target: collecting, effect: [collected], say: "Koleksiyona ekle: the button flips at once", source: "apps/tedris/features/flashcards/components/deck-reader-view.tsx:61" }
+      REMOVE: { guard: "inCollection", target: removing, effect: [released], say: "Koleksiyondan çıkar: the button flips at once", source: "apps/tedris/features/flashcards/components/deck-reader-view.tsx:61" }
+      COPY: { target: copyDialog, effect: [clearNotice], say: "Kendi desteme kopyala on a card", source: "apps/tedris/features/flashcards/components/deck-reader-view.tsx:173" }
+      STUDY: { target: studying, say: "Çalış", starts: { flow: medaris.flashcard-study, given: { signedIn: "true" } }, source: "apps/tedris/features/flashcards/components/deck-reader-view.tsx:101" }
+      NAVIGATE: { target: left, say: "they go to another page", source: "apps/tedris/features/flashcards/components/deck-reader-view.tsx:82" }
+
+  collecting:
+    title: Add the deck to the collection
+    description: POST /flashcard/decks/{id}/collections; collecting twice answers the row that is there
+    invoke: { action: createFlashcardDeckUser }
+    source: apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:303
+    on:
+      DONE: { guard: "saveOk", target: readerView, say: "it is in the collection", source: "apps/tedris/features/flashcards/components/deck-reader-view.tsx:70" }
+      FAIL.server: { guard: "not saveOk", target: readerView, effect: [released, failed], say: "it failed: the button flips back and a toast says so", source: "apps/tedris/features/flashcards/components/deck-reader-view.tsx:74" }
+
+  removing:
+    title: Take the deck out of the collection
+    description: DELETE /flashcard/decks/{id}/collections, which asks for nothing but a session
+    invoke: { action: deleteFlashcardDeckUser }
+    source: apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:457
+    on:
+      DONE: { guard: "saveOk", target: readerView, say: "it is out of the collection", source: "apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:457" }
+      FAIL.server: { guard: "not saveOk", target: readerView, effect: [collected, failed], say: "it failed: the button flips back and a toast says so", source: "apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:457" }
+
+  copyDialog:
+    title: Choose the deck to copy the card into
+    by: human
+    description: >-
+      The reader's own decks of the same card type; with none, the dialog says so and offers "Deste oluştur" instead of
+      Kopyala. The dialog sets no first focus, so Base UI focuses its close button.
+    source: apps/tedris/features/flashcards/components/copy-card-dialog.tsx:81
+    on:
+      SUBMIT: { guard: "sameKindDeck", target: copying, say: "Kopyala", source: "apps/tedris/features/flashcards/components/copy-card-dialog.tsx:53" }
+      CANCEL: { target: readerView, say: "Vazgeç", source: "apps/tedris/features/flashcards/components/copy-card-dialog.tsx:81" }
+
+  copying:
+    title: Copy the card
+    description: POST /flashcard/decks/{deckId}/cards into the reader's own deck, the card as it is; the source deck is not changed
+    invoke: { action: createFlashcards }
+    source: apps/tedris/features/flashcards/actions/index.ts:134
+    on:
+      DONE: { guard: "saveOk", target: readerView, effect: [copied], say: "the card is in their deck", source: "apps/tedris/features/flashcards/components/copy-card-dialog.tsx:70" }
+      FAIL.server: { guard: "not saveOk", target: copyDialog, effect: [failed], say: "a toast says it could not be copied", source: "apps/tedris/features/flashcards/components/copy-card-dialog.tsx:63" }
+
+  ownerView: { type: final, title: The author's own page, description: "the Genel tab of medaris.deck-publish", source: "apps/tedris/features/flashcards/components/deck-detail-page.tsx:54" }
+  studying: { type: final, title: Study the deck, leavesPage: true, source: "apps/tedris/app/decks/(medaris)/study/[id]/page.tsx:28" }
+  signIn: { type: final, title: Sign in first, leavesPage: true, source: "apps/tedris/app/decks/(medaris)/[id]/page.tsx:42" }
+  notFound: { type: final, title: The not-found page, source: "apps/tedris/features/flashcards/deck-page-data.ts:36" }
+  left: { type: final, title: The person goes elsewhere, leavesPage: true, source: "apps/tedris/features/flashcards/components/deck-reader-view.tsx" }
+
+assertions:
+  - { id: visitor-keeps-nothing, never: "not signedIn and state in ['readerView', 'collecting', 'removing', 'copyDialog', 'copying']", say: "A visitor with no session collects and copies nothing", source: "apps/tedris/features/flashcards/components/deck-public-view.tsx:28" }
+  - { id: private-stays-private, never: "state in ['publicView', 'readerView', 'collecting', 'copyDialog', 'copying'] and access == 'none'", say: "Nobody but its author reads someone else's private deck here", source: "apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:294" }
+  - { id: signed-out-sees-public-only, never: "state == 'publicView' and access != 'public'", say: "The signed-out deck page shows public decks only", source: "apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:237" }
+  - { id: copy-needs-own-deck, never: "copied and not sameKindDeck", say: "A card is copied only into one of the reader's own decks of its card type", source: "apps/tedris/features/flashcards/components/deck-reader-view.tsx:59" }
+  - { id: author-gets-own-page, never: "state == 'readerView' and access == 'own'", say: "The author never gets the reader's page of their own deck", source: "apps/tedris/features/flashcards/deck-page-data.ts:39" }

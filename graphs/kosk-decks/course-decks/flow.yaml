@@ -1,0 +1,247 @@
+# A course's own decks (ders destesi, #355-#357) as the code runs them at ce47fce8: the staff's pages in nazar
+# (/ders/{dersId}/deste and /ders/{dersId}/deste/{desteId}) and the "Ders destesi" tab of the course page in tedris.
+schema: delurio-graph/0
+kind: flow
+id: medaris.course-decks
+status: proposed
+domain: medaris.kosk-decks
+ui: medaris.course-decks
+title: Write a course's decks and study them in the course
+summary: >-
+  Whoever holds "deck.manage_course" in a course (its müderrisler, and anyone given it) opens a deck for the course,
+  optionally in a week and as a draft, fills it with cards, and publishes it to the course's talebe or takes it back to
+  draft; only a draft is deleted. The enrolled talebe find the published decks on the course's "Ders destesi" tab and
+  study them. The card routes behind the deck page write only for the staff member who created the deck.
+
+scope:
+  shows: the staff's deck list and deck page with its dialogs, and the talebe's tab
+  world: open
+  outOfView:
+    - "the Excel import of the staff's pages: the same route as medaris.deck-authoring"
+    - "studying: medaris.flashcard-study; the deck page in tedris: medaris.deck-browse"
+    - "the creator asking for the deck to be published from tedris: medaris.deck-publish"
+
+context:
+  role:
+    values: [author, otherStaff, talebe, outsider]
+    initial: any
+    say: { author: "the person is the staff member who created the deck acted on", otherStaff: "the person holds deck.manage_course in the course but did not create the deck (a second müderris, a ders nazırı given it)", talebe: "the person is a talebe enrolled in the course", outsider: "the person holds no deck permission in the course" }
+  draft:
+    values: [true, false]
+    initial: any
+    say: { "true": "the deck is a draft", "false": "the deck is published to the course" }
+  barred:
+    values: [false, true]
+    initial: any
+    say: { "false": "the talebe is not barred", "true": "the talebe is barred from the course or its köşk" }
+  formOk:
+    values: [true, false]
+    initial: any
+    say: { "true": "the title (5 to 100 characters) and the card type are given", "false": "the title is missing or too short" }
+  serverOk:
+    values: [true, false]
+    initial: any
+    say: { "true": "tedrisat accepts the write", "false": "it refuses or cannot be reached" }
+  cardAdded: { values: [false, true], initial: false }
+  cardEdited: { values: [false, true], initial: false }
+  cardWriteFailed: { values: [false, true], initial: false } # the page says "İşlem tamamlanamadı"
+  askedDelete: { values: [false, true], initial: false }
+  deckDeleted: { values: [false, true], initial: false }
+  notice: { values: [none, created, cardAdded, cardSaved, cardRemoved, stateChanged, deleted, failed], initial: none }
+
+guards:
+  staff: "role in ['author', 'otherStaff']" # source: apps/tedrisat/src/flashcard/course-decks.controller.ts:67
+
+effects:
+  clearNotice: { set: { notice: none, cardWriteFailed: false } }
+  openDeck: { set: { notice: none, cardWriteFailed: false, askedDelete: false, deckDeleted: false }, havoc: [draft] } # another deck
+  created: { set: { notice: created } }
+  cardAdded: { set: { cardAdded: true, notice: cardAdded } }
+  cardEdited: { set: { cardEdited: true, notice: cardSaved } }
+  cardRemoved: { set: { cardEdited: true, notice: cardRemoved } }
+  writeFailed: { set: { cardWriteFailed: true, notice: failed } }
+  failed: { set: { notice: failed } }
+  toPublished: { set: { draft: false, notice: stateChanged } }
+  toDraft: { set: { draft: true, notice: stateChanged } }
+  askDelete: { set: { askedDelete: true } }
+  deckDeleted: { set: { deckDeleted: true, notice: deleted } }
+
+failures:
+  creatingDeck: { from: createCourseDeck, refused: [COURSE_WEEK_NOT_IN_COURSE, AUTHZ_FORBIDDEN] }
+  addingCard: { from: createFlashcards, refused: [DECK_NOT_FOUND, AUTHZ_FORBIDDEN] }
+  editingCard: { from: updateFlashcard, notFound: [CARD_NOT_FOUND], refused: [AUTHZ_FORBIDDEN] }
+  removingCard: { from: deleteFlashcard, notFound: [CARD_NOT_FOUND], refused: [AUTHZ_FORBIDDEN] }
+  togglingDraft: { from: updateCourseDeck, refused: [DECK_NOT_FOUND] }
+  deletingDeck: { from: deleteCourseDeck, notDraft: [COURSE_DECK_NOT_DRAFT] }
+
+main:
+  given: { role: author, draft: true, formOk: true, serverOk: true }
+  events: [OPEN_DECK, ADD_CARD, SAVE, DONE]
+
+initial: entry
+states:
+  entry:
+    title: Open the course's decks
+    description: >-
+      In nazar the pages open for deck.manage_course, read from GET /courses/{id}/my-permissions, and read GET
+      /courses/{id}/decks/manage; anyone else gets "Bu sayfaya izniniz yok". In tedris the course page draws its
+      "Ders destesi" tab for a talebe holding a seat and reads GET /courses/{id}/decks, which needs the course's content.
+    source: apps/nazar/features/decks/components/decks-page.tsx:41
+    always:
+      - { guard: "staff", target: decksList, say: "the staff's deck list", source: "apps/nazar/features/decks/components/decks-page.tsx:75" }
+      - { guard: "role == 'talebe'", target: courseTab, say: "the talebe's tab on the course page", source: "apps/tedris/app/courses/[courseId]/page.tsx:71" }
+      - { target: noAccess, say: "no deck permission in the course", source: "apps/nazar/features/decks/components/decks-page.tsx:46" }
+
+  decksList:
+    title: The course's decks
+    by: human
+    description: each deck with its cards, card type, week, and the share of the enrolled talebe's mastered cards, or "Taslak"
+    source: apps/nazar/features/decks/components/decks-page.tsx:75
+    on:
+      NEW: { target: newDeckDialog, effect: [clearNotice], say: "Deste aç", source: "apps/nazar/features/decks/components/decks-actions.tsx:35" }
+      OPEN_DECK: { target: deckPage, effect: [openDeck], say: "they open a deck", source: "apps/nazar/features/decks/components/decks-page.tsx:103" }
+      NAVIGATE: { target: left, say: "they go to another page", source: "apps/nazar/features/decks/components/decks-page.tsx:75" }
+
+  newDeckDialog:
+    title: Describe the new deck
+    by: human
+    description: title, description, card type, week, and "Taslak olarak kaydet"
+    source: apps/nazar/features/decks/components/deck-form-dialog.tsx:95
+    on:
+      SUBMIT: { guard: "formOk", target: creatingDeck, say: "Deste aç", source: "apps/nazar/features/decks/components/deck-form-dialog.tsx:107" }
+      CANCEL: { target: decksList, say: "Vazgeç", source: "apps/nazar/features/decks/components/deck-form-dialog.tsx:95" }
+
+  creatingDeck:
+    title: Open the course deck
+    description: POST /courses/{id}/decks; the caller becomes its author; a week must be one of the course's shown weeks
+    invoke: { action: createCourseDeck }
+    source: apps/tedrisat/src/flashcard/course-deck.service.ts:90
+    on:
+      DONE: { guard: "serverOk", target: decksList, effect: [created], say: "the deck is open", source: "apps/nazar/features/decks/components/deck-form-dialog.tsx:88" }
+      FAIL.refused: { guard: "not serverOk", target: newDeckDialog, effect: [failed], say: "refused", source: "apps/tedrisat/src/flashcard/course-deck.service.ts:90" }
+
+  deckPage:
+    title: The deck's cards and settings
+    by: human
+    goal: true
+    description: >-
+      The cards with Düzenle and Sil on each, Kart ekle and Excel'den aktar; then the deck's settings: title, description,
+      week, "Yayımla" or "Taslağa çek", and "Desteyi sil" for a draft alone. Every staff member gets every control.
+    source: apps/nazar/features/decks/components/deck-detail-screen.tsx:63
+    on:
+      ADD_CARD: { target: addCardDialog, effect: [clearNotice], say: "Kart ekle", source: "apps/nazar/features/decks/components/deck-detail-screen.tsx:77" }
+      EDIT_CARD: { target: editCardDialog, effect: [clearNotice], say: "Düzenle on a card", source: "apps/nazar/features/decks/components/deck-detail-screen.tsx:105" }
+      REMOVE_CARD: { target: removeConfirm, effect: [clearNotice], say: "Sil on a card", source: "apps/nazar/features/decks/components/deck-detail-screen.tsx:113" }
+      TOGGLE_DRAFT: { target: togglingDraft, effect: [clearNotice], say: "Yayımla, or Taslağa çek", source: "apps/nazar/features/decks/components/deck-settings.tsx:169" }
+      DELETE_DECK: { guard: "draft", target: deleteConfirm, effect: [clearNotice], say: "Desteyi sil, drawn for a draft only", source: "apps/nazar/features/decks/components/deck-settings.tsx:184" }
+      BACK: { target: decksList, say: "Ders desteleri", source: "apps/nazar/features/decks/components/deck-detail-screen.tsx:63" }
+
+  addCardDialog:
+    title: Write a card
+    by: human
+    source: apps/nazar/features/decks/components/card-dialog.tsx:92
+    on:
+      SAVE: { target: addingCard, say: "Kaydet", source: "apps/nazar/features/decks/components/card-dialog.tsx:104" }
+      CANCEL: { target: deckPage, say: "Vazgeç", source: "apps/nazar/features/decks/components/card-dialog.tsx:92" }
+
+  addingCard:
+    title: Add the card
+    description: POST /flashcard/decks/{deckId}/cards; the engine's course-deck rule lets every staff member write cards into the deck
+    invoke: { action: createFlashcards }
+    source: apps/nazar/features/decks/actions.ts:101
+    on:
+      DONE: { guard: "serverOk", target: deckPage, effect: [cardAdded], say: "the card is added; the talebe see it if the deck is published", source: "libs/common/src/authz/effective-permissions.ts:305" }
+      FAIL.refused: { guard: "not serverOk", target: addCardDialog, effect: [failed], say: "refused", source: "apps/nazar/features/decks/actions.ts:101" }
+
+  editCardDialog:
+    title: Change a card
+    by: human
+    source: apps/nazar/features/decks/components/card-dialog.tsx:92
+    on:
+      SAVE: { target: editingCard, say: "Kaydet", source: "apps/nazar/features/decks/components/card-dialog.tsx:92" }
+      CANCEL: { target: deckPage, say: "Vazgeç", source: "apps/nazar/features/decks/components/card-dialog.tsx:92" }
+
+  editingCard:
+    title: Save the card
+    description: >-
+      PATCH /flashcard/cards/{id}: the card route finds the card's deck through a rule that knows the author, a public
+      deck and a deck shared with an enrolled talebe, not the course's staff; for anyone but the deck's author it
+      answers 404 CARD_NOT_FOUND.
+    invoke: { action: updateFlashcard }
+    source: apps/tedrisat/src/flashcard/flashcard.service.ts:86
+    on:
+      DONE: { guard: "serverOk and role == 'author'", target: deckPage, effect: [cardEdited], say: "the card is saved", source: "apps/nazar/features/decks/actions.ts:117" }
+      FAIL.notFound: { guard: "role == 'otherStaff'", target: deckPage, effect: [writeFailed], say: "404 for a staff member who did not create the deck: the page says the action could not be completed", source: "apps/tedrisat/src/flashcard/flashcard.service.ts:92" }
+      FAIL.refused: { guard: "role == 'author' and not serverOk", target: editCardDialog, effect: [failed], say: "refused", source: "apps/tedrisat/src/flashcard/flashcard.service.ts:86" }
+
+  removeConfirm:
+    title: Confirm removing the card
+    by: human
+    description: an alertdialog; its Vazgeç is the kit's default label and has the focus
+    source: apps/nazar/features/decks/components/deck-detail-screen.tsx:148
+    on:
+      CONFIRM: { target: removingCard, effect: [askDelete], say: "Evet, sil", source: "apps/nazar/features/decks/components/deck-detail-screen.tsx:156" }
+      CANCEL: { target: deckPage, say: "Vazgeç", source: "apps/nazar/features/decks/components/deck-detail-screen.tsx:148" }
+
+  removingCard:
+    title: Remove the card
+    description: DELETE /flashcard/cards/{id}, with the same card rule as editing
+    invoke: { action: deleteFlashcard }
+    source: apps/nazar/features/decks/actions.ts:133
+    on:
+      DONE: { guard: "serverOk and role == 'author'", target: deckPage, effect: [cardRemoved], say: "the card is gone", source: "apps/nazar/features/decks/components/deck-detail-screen.tsx:58" }
+      FAIL.notFound: { guard: "role == 'otherStaff'", target: deckPage, effect: [writeFailed], say: "404 for a staff member who did not create the deck", source: "apps/nazar/features/decks/components/deck-detail-screen.tsx:55" }
+      FAIL.refused: { guard: "role == 'author' and not serverOk", target: deckPage, effect: [writeFailed], say: "refused", source: "apps/nazar/features/decks/actions.ts:133" }
+
+  togglingDraft:
+    title: Publish the deck to the course, or take it back to draft
+    description: PATCH /courses/{id}/decks/{deckId} with draft flipped; a draft is taken from the talebe and their progress is kept
+    invoke: { action: updateCourseDeck }
+    source: apps/nazar/features/decks/components/deck-settings.tsx:81
+    on:
+      DONE:
+        - { guard: "serverOk and draft", target: deckPage, effect: [toPublished], say: "published: the enrolled talebe see it", source: "apps/tedrisat/src/flashcard/course-deck.service.ts:120" }
+        - { guard: "serverOk", target: deckPage, effect: [toDraft], say: "a draft again: the talebe no longer see it", source: "apps/nazar/features/decks/components/deck-settings.tsx:81" }
+      FAIL.refused: { guard: "not serverOk", target: deckPage, effect: [failed], say: "refused", source: "apps/nazar/features/decks/components/deck-settings.tsx:81" }
+
+  deleteConfirm:
+    title: Confirm deleting the draft
+    by: human
+    description: an alertdialog naming what goes; its Vazgeç has the focus
+    source: apps/nazar/features/decks/components/deck-settings.tsx:196
+    on:
+      CONFIRM: { target: deletingDeck, effect: [askDelete], say: "Desteyi sil", source: "apps/nazar/features/decks/components/deck-settings.tsx:93" }
+      CANCEL: { target: deckPage, say: "Vazgeç", source: "apps/nazar/features/decks/components/deck-settings.tsx:196" }
+
+  deletingDeck:
+    title: Delete the draft deck
+    description: DELETE /courses/{id}/decks/{deckId}, a draft only (409 COURSE_DECK_NOT_DRAFT otherwise); the deck and its cards go
+    invoke: { action: deleteCourseDeck }
+    source: apps/tedrisat/src/flashcard/course-deck.service.ts:134
+    on:
+      DONE: { guard: "serverOk and draft", target: decksList, effect: [deckDeleted], say: "the draft is gone", source: "apps/nazar/features/decks/components/deck-settings.tsx:99" }
+      FAIL.notDraft: { guard: "not draft", target: deckPage, effect: [failed], say: "409: published meanwhile", source: "apps/tedrisat/src/flashcard/course-deck.service.ts:136" }
+      FAIL.refused: { guard: "draft and not serverOk", target: deckPage, effect: [failed], say: "refused", source: "apps/tedrisat/src/flashcard/course-deck.service.ts:134" }
+
+  courseTab:
+    title: The course's Ders destesi tab
+    by: human
+    description: >-
+      The course's decks shared with the talebe (drafts and hidden ones left out): one featured to study first ("Bu
+      haftanın destesi" or "Sıradaki deste"), the others as rows. For a barred talebe the read is refused and the tab
+      says the course has no deck, while the decks themselves stay open to them by link (medaris.flashcard-study).
+    source: apps/tedris/features/courses/components/course-decks-tab.tsx:34
+    on:
+      STUDY: { guard: "not barred and not draft", target: studying, say: "Çalış on the featured deck", starts: { flow: medaris.flashcard-study, given: { signedIn: "true", access: "'shared'", barred: "false" } }, source: "apps/tedris/features/courses/components/course-decks-tab.tsx:43" }
+      NAVIGATE: { target: left, say: "they go to another tab or page", source: "apps/tedris/features/courses/components/course-decks-tab.tsx:34" }
+
+  studying: { type: final, title: Study the deck, leavesPage: true, source: "apps/tedris/app/decks/(medaris)/study/[id]/page.tsx:28" }
+  noAccess: { type: final, title: '"Bu sayfaya izniniz yok"', source: "apps/nazar/features/decks/components/decks-page.tsx:46" }
+  left: { type: final, title: The person goes elsewhere, leavesPage: true, source: "apps/nazar/features/decks/components/decks-page.tsx" }
+
+assertions:
+  - { id: only-staff-write, never: "state in ['decksList', 'newDeckDialog', 'creatingDeck', 'deckPage', 'addCardDialog', 'addingCard', 'editCardDialog', 'editingCard', 'removeConfirm', 'removingCard', 'togglingDraft', 'deleteConfirm', 'deletingDeck'] and not staff", say: "Only those holding deck.manage_course write a course's decks", source: "apps/tedrisat/src/flashcard/course-decks.controller.ts:85" }
+  - { id: draft-only-deleted-here, never: "deckDeleted and not draft", say: "These pages delete a course deck only while it is a draft", source: "apps/tedrisat/src/flashcard/course-deck.service.ts:136" }
+  - { id: delete-asks-first, never: "deckDeleted and not askedDelete", say: "A deck is deleted only after a confirmation", source: "apps/nazar/features/decks/components/deck-settings.tsx:196" }
+  - { id: talebe-never-sees-drafts, never: "state == 'studying' and draft", say: "A talebe never studies a draft from the course's tab", source: "apps/tedrisat/src/flashcard/deck-sharing.ts:37" }
+  - { id: tab-keeps-barred-out, never: "state == 'studying' and barred", say: "The course's tab never sends a barred talebe to study", source: "apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:407" }
