@@ -1,0 +1,156 @@
+# Nizam's Pasif kapsamlar (design nizam/14), captured from origin/main ce47fce8: a köşk, medrese or course whose
+# last manager is gone gets one again, with the self-grant guard of libs/common/src/authz/self-grant.guard.ts.
+# Server: apps/tedrisat/src/inactive-scope; web: apps/nizam/app/pasif-kapsamlar and features/inactive-scopes.
+schema: delurio-graph/0
+kind: flow
+id: medaris.inactive-scope-assign
+status: proposed
+domain: medaris.auth-account
+ui: medaris.inactive-scope-assign
+title: Give a passive scope its manager
+summary: >-
+  The başnazım, or a Medaris nazımı holding "Pasif kapsamları yönet", sees the köşks, medreses and courses whose last
+  manager's post ended, and gives one a köşk nazımı, a başmüderris or a hoca, found by e-mail, with an optional end.
+  The scope is attended again and the assignment is in the audit log. A Medaris nazımı cannot name themself; the
+  başnazım can.
+
+scope:
+  shows: the list, the assign dialog and the assignment
+  world: open
+  outOfView:
+    - "İçeriği gör (POST …/view): one audit row, then the scope's own page"
+    - "the e-mail search of the picker (GET /users/lookup): its rule is in the domain"
+    - "a medrese's başmüderris written through MadrasahService.setHeadMuderris (inactive-scope.service.ts:276): the madrasah-staff area"
+
+context:
+  caller:
+    values: [chief, holder, nazimNoGrant, other]
+    initial: any
+    say: { chief: "the başnazım (SYSTEM_ADMIN)", holder: "a Medaris nazımı holding Pasif kapsamları yönet", nazimNoGrant: "a Medaris nazımı without it", other: "anyone else" }
+  pick:
+    values: [someoneElse, self]
+    initial: any
+    say: { someoneElse: "they pick someone else", self: "they pick themself" }
+  pickKnown:
+    values: [true, false]
+    initial: any
+    say: { "true": "", "false": "the person picked is neither in the users table nor in the realm any more" }
+  stillInactive:
+    values: [true, false]
+    initial: any
+    say: { "true": "", "false": "the scope got a manager, or was hidden, meanwhile" }
+  endChoice:
+    values: [none, future, past]
+    initial: any
+    say: { none: "no end date", future: "an end date ahead", past: "an end date that has passed" }
+  readOk:
+    values: [true, false]
+    initial: any
+    say: { "true": "", "false": "the list cannot be read" }
+  picked: { values: [false, true], initial: false }
+  assigned: { values: [false, true], initial: false }
+  refusalAudited: { values: [false, true], initial: false }
+  notice: { values: [none, saved, notFound, expiryInvalid, unknownAccount, forbidden, generic], initial: none }
+
+guards:
+  mayManage: "caller in ['chief', 'holder']"
+  selfRefused: "pick == 'self' and caller != 'chief'"
+
+effects:
+  open: { set: { picked: false, notice: none } }
+  pickPerson: { set: { picked: true } }
+  saved: { set: { assigned: true, notice: saved } }
+  forbidden: { set: { notice: forbidden } }
+  expiryInvalid: { set: { notice: expiryInvalid } }
+  notFound: { set: { notice: notFound } }
+  selfRefused: { set: { notice: generic, refusalAudited: true } }
+  unknownAccount: { set: { notice: unknownAccount } }
+
+failures:
+  loading:
+    from: getInactiveScopes
+    forbidden: [AUTHZ_FORBIDDEN]
+    unavailable: [UNAVAILABLE]
+  assigning:
+    from: assignInactiveScope
+    forbidden: [AUTHZ_FORBIDDEN]
+    expiry: [GRANT_EXPIRY_INVALID]
+    gone: [INACTIVE_SCOPE_NOT_FOUND]
+    self: [SELF_GRANT_REFUSED]
+    unknown: [KOSK_NAZIM_UNKNOWN_ACCOUNT]
+
+main:
+  given: { caller: holder, pick: someoneElse, pickKnown: true, stillInactive: true, endChoice: none, readOk: true }
+  events: [DONE, OPEN_ASSIGN, PICK, SUBMIT, DONE]
+
+initial: loading
+states:
+  loading:
+    title: Nizam reads the passive scopes
+    source: apps/nizam/features/inactive-scopes/reads.ts:15
+    description: >-
+      GET /nizam/inactive-scopes. The service lets in the başnazım and a Medaris nazımı holding the permission, read
+      with a query of its own (inactive-scope.repository.ts:217), not the engine Platform ayarları asks
+      (platform-access.service.ts:55).
+    invoke: { action: getInactiveScopes }
+    on:
+      DONE: { guard: "mayManage and readOk", target: listPage, say: "read" }
+      FAIL.forbidden: { guard: "not mayManage", target: forbiddenPage, say: "403: Bu bölüm için izniniz yok", source: "apps/nizam/app/pasif-kapsamlar/page.tsx:23" }
+      FAIL.unavailable: { guard: "mayManage and not readOk", target: loadFailed, say: "the read fails", source: "apps/nizam/features/inactive-scopes/reads.ts:25" }
+
+  loadFailed:
+    title: Pasif kapsamlar yüklenemedi
+    by: human
+    source: apps/nizam/features/inactive-scopes/components/inactive-view.tsx:234
+    on:
+      RETRY: { target: loading, say: "they press Yeniden dene", source: "apps/nizam/features/inactive-scopes/components/inactive-view.tsx:236" }
+      NAVIGATE: { target: left, say: "they go elsewhere" }
+
+  listPage:
+    title: Pasif kapsamlar
+    by: human
+    goal: true
+    source: apps/nizam/features/inactive-scopes/components/inactive-view.tsx:202
+    on:
+      OPEN_ASSIGN: { target: dialog, effect: [open], say: "they press Köşk nazımı ata, Başmüderris ata or Hoca ata on a row", source: "apps/nizam/features/inactive-scopes/components/inactive-view.tsx:176" }
+      NAVIGATE: { target: left, say: "they go elsewhere" }
+
+  dialog:
+    title: Assign a manager
+    by: human
+    source: apps/nizam/features/inactive-scopes/components/assign-scope-dialog.tsx:104
+    description: >-
+      A form dialog: the e-mail picker (GET /users/lookup, the realm's directory) and an optional end. The submit is
+      disabled until a person is chosen and the end is not in the past by the dialog's clock (assign-scope-dialog.tsx:122).
+    on:
+      PICK: { target: dialog, effect: [pickPerson], say: "they type an address and the picker finds the person", source: "apps/nizam/features/madrasahs/components/head-picker.tsx:58" }
+      SUBMIT: { guard: "picked and endChoice != 'past'", target: assigning, say: "they press the dialog's assign button", source: "apps/nizam/features/inactive-scopes/components/assign-scope-dialog.tsx:76" }
+      CANCEL: { target: listPage, say: "they press Vazgeç or Kapat", source: "apps/nizam/features/inactive-scopes/components/assign-scope-dialog.tsx:118" }
+
+  assigning:
+    title: tedrisat assigns the manager
+    source: apps/tedrisat/src/inactive-scope/inactive-scope.service.ts:235
+    description: >-
+      POST /nizam/inactive-scopes/{type}/{id}/assign. In this order: the caller (service.ts:241), an end in the past
+      (service.ts:243), the scope still passive (service.ts:246), the self-grant guard, which never asks the başnazım
+      (self-grant.guard.ts:67) and refuses a Medaris nazımı naming themself whatever they hold, writing
+      permission.self_grant_refused (self-grant.guard.ts:80), then an account behind the id (service.ts:274).
+    invoke: { action: assignInactiveScope }
+    on:
+      DONE: { guard: "mayManage and endChoice != 'past' and stillInactive and not selfRefused and pickKnown", target: listPage, effect: [saved], say: "assigned: the scope is attended again", source: "apps/tedrisat/src/inactive-scope/inactive-scope.service.ts:281" }
+      FAIL.forbidden: { guard: "not mayManage", target: dialog, effect: [forbidden], say: "403", source: "apps/tedrisat/src/inactive-scope/inactive-scope.service.ts:68" }
+      FAIL.expiry: { guard: "mayManage and endChoice == 'past'", target: dialog, effect: [expiryInvalid], say: "400 GRANT_EXPIRY_INVALID", source: "apps/tedrisat/src/inactive-scope/inactive-scope.service.ts:244" }
+      FAIL.gone: { guard: "mayManage and endChoice != 'past' and not stillInactive", target: dialog, effect: [notFound], say: "404 INACTIVE_SCOPE_NOT_FOUND", source: "apps/tedrisat/src/inactive-scope/inactive-scope.service.ts:230" }
+      FAIL.self: { guard: "mayManage and endChoice != 'past' and stillInactive and selfRefused", target: dialog, effect: [selfRefused], say: "403 SELF_GRANT_REFUSED, recorded; the toast says only 'Bir şeyler ters gitti'", source: "apps/nizam/features/inactive-scopes/present.ts:89" }
+      FAIL.unknown: { guard: "mayManage and endChoice != 'past' and stillInactive and not selfRefused and not pickKnown", target: dialog, effect: [unknownAccount], say: "404 KOSK_NAZIM_UNKNOWN_ACCOUNT", source: "apps/tedrisat/src/inactive-scope/inactive-scope.service.ts:274" }
+
+  forbiddenPage: { type: final, title: Bu bölüm için izniniz yok, source: "apps/nizam/app/not-found.tsx:23" }
+  left: { type: final, title: The person leaves, leavesPage: true }
+
+assertions:
+  - { id: only-managers-assign, never: "assigned and not mayManage", say: "Only the başnazım and a Medaris nazımı holding the permission give a passive scope its manager", source: "apps/tedrisat/src/inactive-scope/inactive-scope.service.ts:58" }
+  - { id: nazim-never-seats-themself, never: "assigned and pick == 'self' and caller != 'chief'", say: "A Medaris nazımı never seats themself in a passive scope", source: "libs/common/src/authz/self-grant.guard.ts:75" }
+  - { id: passive-scopes-only, never: "assigned and not stillInactive", say: "A scope that has a manager is not given another through this page", source: "apps/tedrisat/src/inactive-scope/inactive-scope.service.ts:229" }
+  - { id: no-seat-without-an-account, never: "assigned and not pickKnown", say: "Nobody is seated who has no account", source: "apps/tedrisat/src/inactive-scope/inactive-scope.service.ts:274" }
+  - { id: no-past-end, never: "assigned and endChoice == 'past'", say: "No post is given with an end that has passed", source: "apps/tedrisat/src/inactive-scope/inactive-scope.service.ts:243" }
+  - { id: refusal-on-record, never: "notice == 'generic' and pick == 'self' and not refusalAudited", say: "A refused self-assignment is on the audit log although nothing changed", source: "libs/common/src/authz/self-grant.guard.ts:80" }

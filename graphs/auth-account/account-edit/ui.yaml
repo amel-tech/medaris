@@ -1,0 +1,72 @@
+# The screens of medaris.account-edit: Hesap's cards (apps/tedris/features/account/components/account-settings.tsx)
+# and Keycloak's profile form as an account action (apps/keycloak-theme/src/login/pages/LoginUpdateProfile.tsx).
+# Hesap sets no initial focus. Saves report through toasts (useToaster), drawn here as status nodes.
+schema: delurio-graph/0
+kind: ui
+id: medaris.account-edit
+flow: medaris.account-edit
+status: proposed
+catalog: catalog/tr.json
+locales: [tr, en]
+samples: {}
+changes: { key: Changes.note }
+
+nodes:
+  accountPage: { type: page, component: Page, role: main, name: { labelledBy: pageTitle }, in: [accountPage, savingName, savingZone, savingInvitations], source: "apps/tedris/app/account/page.tsx:37" }
+  pageTitle: { type: text, component: Heading, role: heading, text: { key: Account.title }, in: [accountPage, savingName, savingZone, savingInvitations], source: "apps/tedris/app/account/page.tsx:39" }
+  pageSubtitle: { type: text, component: Text, text: { oneOf: [Account.subtitle, Account.subtitleRoles] }, in: [accountPage, savingName, savingZone, savingInvitations], source: "apps/tedris/app/account/page.tsx:41" }
+  personalTitle: { type: text, component: Heading, role: heading, text: { key: Personal.title }, in: [accountPage, savingName, savingZone, savingInvitations], source: "apps/tedris/features/account/components/account-settings.tsx:133" }
+  requiredNote: { type: text, component: Text, text: { key: Personal.requiredNote }, in: [accountPage, savingName, savingZone, savingInvitations], source: "apps/tedris/features/account/components/account-settings.tsx:135" }
+  givenName: { type: field, component: TextField, role: textbox, text: { key: Personal.givenName }, in: [accountPage, savingName, savingZone, savingInvitations], source: "apps/tedris/features/account/components/account-settings.tsx:137" }
+  givenNameBlank: { type: text, component: Text, text: { key: Personal.givenNameRequired }, in: [accountPage], when: "notice == 'nameBlank'", source: "apps/tedris/features/account/components/account-settings.tsx:140" }
+  familyName: { type: field, component: TextField, role: textbox, text: { key: Personal.familyName }, in: [accountPage, savingName, savingZone, savingInvitations], source: "apps/tedris/features/account/components/account-settings.tsx:150" }
+  familyNameBlank: { type: text, component: Text, text: { key: Personal.familyNameRequired }, in: [accountPage], when: "notice == 'nameBlank'", source: "apps/tedris/features/account/components/account-settings.tsx:153" }
+  nameHelp: { type: text, component: Text, text: { key: Personal.nameHelp }, in: [accountPage, savingName, savingZone, savingInvitations], source: "apps/tedris/features/account/components/account-settings.tsx:164" }
+  emailField: { type: field, component: TextField, role: textbox, text: { key: Personal.email }, in: [accountPage, savingName, savingZone, savingInvitations], source: "apps/tedris/features/account/components/account-settings.tsx:165" } # read-only
+  emailHelp: { type: text, component: Text, text: { key: Personal.emailHelp }, in: [accountPage, savingName, savingZone, savingInvitations], source: "apps/tedris/features/account/components/account-settings.tsx:165" }
+  genderField: { type: field, component: TextField, role: textbox, text: { key: Gender.label }, in: [accountPage, savingName, savingZone, savingInvitations], source: "apps/tedris/features/account/components/account-settings.tsx:70" } # read-only
+  genderValue: { type: text, component: Text, text: { oneOf: [Gender.female, Gender.male, Gender.unknown] }, in: [accountPage, savingName, savingZone, savingInvitations], source: "apps/tedris/features/account/components/account-settings.tsx:59" }
+  genderHelpKnown: { type: text, component: Text, text: { key: Gender.fromAccountHelp }, in: [accountPage, savingName, savingZone, savingInvitations], when: "mirror != 'none'", source: "apps/tedris/features/account/components/account-settings.tsx:73" }
+  genderHelpUnknown: { type: text, component: Text, text: { key: Gender.unknownHelp }, in: [accountPage, savingName, savingZone, savingInvitations], when: "mirror == 'none'", source: "apps/tedris/features/account/components/account-settings.tsx:73" }
+  genderChange: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: Gender.change }, in: [accountPage], when: "mirror != 'none'", emits: CHANGE_GENDER, source: "apps/tedris/features/account/components/account-settings.tsx:87" }
+  genderAdd: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: Gender.add }, in: [accountPage], when: "mirror == 'none'", emits: CHANGE_GENDER, source: "apps/tedris/features/account/components/account-settings.tsx:87" }
+  saveName: { type: action, component: Button, role: button, intent: confirm, text: { key: Personal.save }, in: [accountPage, savingName, savingZone, savingInvitations], disabledIn: [savingName], emits: SAVE_NAME, source: "apps/tedris/features/account/components/account-settings.tsx:177" }
+  savingNameStatus: { type: status, component: Status, role: status, text: { key: Personal.saving }, in: [savingName], source: "apps/tedris/features/account/components/account-settings.tsx:177" }
+  nameSavedToast: { type: status, component: Status, role: status, text: { key: Personal.nameSaved }, in: [accountPage], when: "notice == 'nameSaved'", source: "apps/tedris/features/account/components/account-settings.tsx:121" }
+  nameFailedToast: { type: alert, component: Alert, role: alert, text: { key: Personal.nameFailed }, in: [accountPage], when: "notice == 'nameFailed'", source: "apps/tedris/features/account/components/account-settings.tsx:125" }
+  timeTitle: { type: text, component: Heading, role: heading, text: { key: Time.title }, in: [accountPage, savingName, savingZone, savingInvitations], source: "apps/tedris/features/account/components/account-settings.tsx:239" }
+  zoneSelect: { type: field, component: TextField, role: combobox, name: { key: Time.zone }, text: { key: Time.zone }, in: [accountPage, savingName, savingZone, savingInvitations], emits: PICK_ZONE, source: "apps/tedris/features/account/components/account-settings.tsx:242" }
+  zoneHelp: { type: text, component: Text, text: { key: Time.zoneHelp }, in: [accountPage, savingName, savingZone, savingInvitations], source: "apps/tedris/features/account/components/account-settings.tsx:241" }
+  zoneSavedToast: { type: status, component: Status, role: status, text: { key: Time.zoneSaved }, in: [accountPage], when: "notice == 'zoneSaved'", source: "apps/tedris/features/account/components/account-settings.tsx:216" }
+  zoneFailedToast: { type: alert, component: Alert, role: alert, text: { key: Time.zoneFailed }, in: [accountPage], when: "notice == 'zoneFailed'", source: "apps/tedris/features/account/components/account-settings.tsx:224" }
+  languageSelect: { type: field, component: TextField, role: combobox, name: { key: Time.language }, text: { key: Time.language }, in: [accountPage, savingName, savingZone, savingInvitations], emits: PICK_LANGUAGE, source: "apps/tedris/features/account/components/account-settings.tsx:265" }
+  languageHelp: { type: text, component: Text, text: { key: Time.languageHelp }, in: [accountPage, savingName, savingZone, savingInvitations], source: "apps/tedris/features/account/components/account-settings.tsx:264" }
+  invitationsSwitch: { type: field, component: Text, role: switch, text: { key: Calendar.invitations }, in: [accountPage, savingName, savingZone, savingInvitations], disabledIn: [savingInvitations], emits: TOGGLE_INVITATIONS, source: "apps/tedris/features/account/components/account-settings.tsx:329" }
+  invitationsHelp: { type: text, component: Text, text: { key: Calendar.invitationsHelp }, in: [accountPage, savingName, savingZone, savingInvitations], source: "apps/tedris/features/account/components/account-settings.tsx:331" }
+  invitationsSavedToast: { type: status, component: Status, role: status, text: { oneOf: [Calendar.invitationsOn, Calendar.invitationsOff] }, in: [accountPage], when: "notice == 'invitationsSaved'", source: "apps/tedris/features/account/components/account-settings.tsx:298" }
+  invitationsFailedToast: { type: alert, component: Alert, role: alert, text: { key: Calendar.invitationsFailed }, in: [accountPage], when: "notice == 'invitationsFailed'", source: "apps/tedris/features/account/components/account-settings.tsx:307" }
+  signOutText: { type: text, component: Text, text: { key: SignOut.text }, in: [accountPage], source: "apps/tedris/features/account/components/account-settings.tsx:383" }
+  signOutLink: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: SignOut.button }, in: [accountPage], emits: SIGN_OUT, source: "apps/tedris/features/account/components/account-settings.tsx:384" }
+
+  failedTitle: { type: text, component: Heading, role: heading, text: { key: Account.failedTitle }, in: [loadFailed], source: "apps/tedris/app/account/page.tsx:55" }
+  failedBody: { type: text, component: Text, text: { key: Account.failed }, in: [loadFailed], source: "apps/tedris/app/account/page.tsx:56" }
+
+  kcPage: { type: page, component: Page, role: main, name: { labelledBy: kcTitle }, in: [kcProfileForm, savingProfile], source: "apps/keycloak-theme/src/login/pages/LoginUpdateProfile.tsx:51" }
+  kcTitle: { type: text, component: Heading, role: heading, text: { key: Keycloak.title }, in: [kcProfileForm, savingProfile], source: "apps/keycloak-theme/src/login/pages/LoginUpdateProfile.tsx:57" }
+  kcGenderLabel: { type: text, component: Text, text: { key: Keycloak.gender }, in: [kcProfileForm, savingProfile], source: "config/keycloak/user-profile.json:27" }
+  kcGenderGroup: { type: list, component: List, role: radiogroup, name: { labelledBy: kcGenderLabel }, in: [kcProfileForm, savingProfile], source: "libs/ui/src/giris/profile-field.tsx:136" }
+  kcGenderChoice: { type: field, component: ListItem, role: radio, text: { oneOf: [Keycloak.female, Keycloak.male] }, in: [kcProfileForm, savingProfile], disabledIn: [savingProfile], source: "config/keycloak/user-profile.json:29" }
+  kcSave: { type: action, component: Button, role: button, intent: confirm, text: { key: Keycloak.save }, in: [kcProfileForm, savingProfile], disabledIn: [savingProfile], emits: SAVE, source: "apps/keycloak-theme/src/login/pages/LoginUpdateProfile.tsx:77" }
+  kcCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: Keycloak.cancel }, in: [kcProfileForm, savingProfile], disabledIn: [savingProfile], emits: CANCEL, source: "apps/keycloak-theme/src/login/pages/LoginUpdateProfile.tsx:86" }
+
+edges:
+  - { labelledBy: [accountPage, pageTitle] }
+  - { labelledBy: [kcPage, kcTitle] }
+  - { labelledBy: [kcGenderGroup, kcGenderLabel] }
+  - { triggers: [saveName, savingName] }
+  - { triggers: [genderChange, startingAction] }
+  - { triggers: [genderAdd, startingAction] }
+  - { triggers: [kcSave, savingProfile] }
+
+rules:
+  - { id: gender-read-only-here, rule: "Hesap never writes the gender; only Keycloak's profile form does" }

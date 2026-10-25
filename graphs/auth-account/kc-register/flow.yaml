@@ -1,0 +1,175 @@
+# Registering on Keycloak's register.ftl (apps/keycloak-theme), captured from origin/main ce47fce8.
+# The form is the realm's user profile (config/keycloak/user-profile.json) drawn field by field; the page checks
+# first in the browser (libs/ui/src/giris/register-form.tsx), Keycloak checks again. What Keycloak does after the
+# form is posted was run against a real Keycloak 26 with this realm in
+# apps/tedrisat/test/e2e/keycloak-provision.e2e.spec.ts:665 and :691.
+schema: delurio-graph/0
+kind: flow
+id: medaris.kc-register
+status: proposed
+domain: medaris.auth-account
+ui: medaris.kc-register
+title: Register a Medaris account
+summary: >-
+  The registration form asks for first and last name, gender, user name, e-mail, a password typed twice and the
+  privacy-notice box. The page stops a submission with an empty required field, an unanswered gender, an unticked box
+  or a password that breaks a rule. Keycloak refuses a user name or an e-mail that is taken, and any registration
+  without a gender. A new account must verify its e-mail before the browser goes back to the portal.
+
+scope:
+  shows: register.ftl, the e-mail verification that follows, and the redirect back to the portal
+  world: open
+  outOfView:
+    - "the terms box (Register.tsx:131): drawn only when the realm asks for terms, and config/keycloak does not"
+    - "the e-mail itself (apps/keycloak-theme/src/email/html/email-verification.ftl)"
+    - "an account whose profile lacks something after registration: medaris.kc-sign-in asks for it"
+
+context:
+  genderChosen:
+    values: [true, false]
+    initial: any
+    say: { "true": "a gender is chosen", "false": "no gender is chosen" }
+  privacyTicked:
+    values: [true, false]
+    initial: any
+    say: { "true": "the privacy-notice box is ticked", "false": "the privacy-notice box is not ticked" }
+  fieldsValid:
+    values: [true, false]
+    initial: any
+    say: { "true": "the other fields and the password pass the page's checks", "false": "a required field is empty, a value is too long or not an address, or the password breaks a rule or is not repeated" }
+  taken:
+    values: [none, username, email]
+    initial: any
+    say: { none: "", username: "the user name is taken", email: "another account has the e-mail address" }
+  serverValid:
+    values: [true, false]
+    initial: any
+    say: { "true": "", "false": "a value fails a check only Keycloak makes (prohibited characters, a look-alike user name, a password equal to the e-mail)" }
+  formExpired:
+    values: [false, true]
+    initial: any
+    say: { "false": "", "true": "the form stayed open longer than 30 minutes" }
+  linkFresh:
+    values: [true, false]
+    initial: any
+    say: { "true": "the verification link is under 24 hours old and unused", "false": "the verification link has expired or was used" }
+  sameBrowser:
+    values: [true, false]
+    initial: any
+    say: { "true": "the link is opened in the browser that registered", "false": "the link is opened in another browser" }
+  pageErrors: { values: [false, true], initial: false }
+  serverErrors: { values: [false, true], initial: false }
+  accountCreated: { values: [false, true], initial: false }
+  emailVerified: { values: [false, true], initial: false }
+
+guards:
+  pageAccepts: "genderChosen and privacyTicked and fieldsValid"
+  keycloakAccepts: "genderChosen and privacyTicked and taken == 'none' and serverValid"
+
+effects:
+  showPageErrors: { set: { pageErrors: true } }
+  fixFields: { set: { genderChosen: true, privacyTicked: true, fieldsValid: true, pageErrors: false } }
+  showServerErrors: { set: { serverErrors: true } }
+  fixTaken: { set: { taken: none, serverValid: true, serverErrors: false } }
+  created: { set: { accountCreated: true, serverErrors: false } }
+  restart: { set: { formExpired: false } }
+  markVerified: { set: { emailVerified: true } }
+
+failures:
+  registering:
+    from: kcRegister
+    expired: [PAGE_EXPIRED]
+    refused: [USERNAME_EXISTS, EMAIL_EXISTS, ATTRIBUTE_REQUIRED, ATTRIBUTE_INVALID, PASSWORD_POLICY]
+  checkingLink:
+    from: kcActionToken
+    expired: [ACTION_TOKEN_EXPIRED]
+
+main:
+  given: { genderChosen: true, privacyTicked: true, fieldsValid: true, taken: none, serverValid: true, formExpired: false, linkFresh: true, sameBrowser: true }
+  events: [SUBMIT, DONE, OPEN_LINK, DONE]
+
+initial: registerForm
+states:
+  registerForm:
+    title: Sign up
+    by: human
+    source: apps/keycloak-theme/src/login/KcPage.tsx:61
+    description: >-
+      register.ftl. The fields are the realm's profile in its order (Register.tsx:46): first name, last name, gender
+      (two radio buttons), user name, e-mail, then the password pair with its live rules, then the privacy-notice box.
+      The rule "at least N characters" reads N from the realm's passwordPolicies (Register.tsx:57).
+    on:
+      SUBMIT:
+        - { guard: pageAccepts, target: registering, say: "they press Kayıt ol", source: "libs/ui/src/giris/register-form.tsx:177" }
+        - { target: registerForm, effect: [showPageErrors], say: "the page stops the form and writes each reason under its field; the focus goes to the first", source: "libs/ui/src/giris/register-form.tsx:172" }
+      FIX: { guard: pageErrors, target: registerForm, effect: [fixFields], say: "they fix what the page pointed at" }
+      FIX_TAKEN: { guard: serverErrors, target: registerForm, effect: [fixTaken], say: "they pick another user name or address" }
+      LOG_IN: { target: toLogin, starts: { flow: medaris.kc-sign-in }, say: "they press Giriş yap under the form", source: "apps/keycloak-theme/src/login/pages/Register.tsx:87" }
+      NAVIGATE: { target: left, say: "they close the page" }
+
+  registering:
+    title: Keycloak creates the account
+    source: config/keycloak/realms/_base.json:3
+    description: >-
+      registrationAllowed (realms/_base.json:3); one account per e-mail address (duplicateEmailsAllowed false,
+      realms/_base.json:7); passwordPolicy length(10), notEmail, notUsername (realms/_base.json:20). A registration
+      without a gender is refused and no user is made (keycloak-provision.e2e.spec.ts:665).
+    invoke: { action: kcRegister }
+    on:
+      DONE: { guard: "keycloakAccepts and not formExpired", target: verifyEmail, effect: [created], say: "the account is made, with its e-mail not verified", source: "apps/tedrisat/test/e2e/keycloak-provision.e2e.spec.ts:710" }
+      FAIL.expired: { guard: formExpired, target: pageExpired, say: "the form expired", source: "apps/keycloak-theme/src/login/KcPage.tsx:119" }
+      FAIL.refused: { guard: "not keycloakAccepts and not formExpired", target: registerForm, effect: [showServerErrors], say: "Keycloak refuses; its reason is under the field", source: "apps/keycloak-theme/src/login/profile-fields.tsx:226" }
+
+  verifyEmail:
+    title: Verify your e-mail address
+    by: human
+    source: apps/keycloak-theme/src/login/KcPage.tsx:69
+    description: verifyEmail is on (realms/_base.json:5), so the new account gets no code yet (keycloak-provision.e2e.spec.ts:710)
+    on:
+      RESEND: { target: verifyEmail, say: "they press Yeniden gönder", source: "apps/keycloak-theme/src/login/pages/LoginVerifyEmail.tsx:35" }
+      OPEN_LINK: { target: checkingLink, say: "they open the link in the e-mail" }
+      NAVIGATE: { target: left, say: "they close the page" }
+
+  checkingLink:
+    title: Keycloak checks the verification link
+    source: config/keycloak/realms/_base.json:43
+    invoke: { action: kcActionToken }
+    on:
+      DONE:
+        - { guard: "linkFresh and sameBrowser", target: codeIssued, effect: [markVerified], say: "the address is verified and the browser goes back to the portal with a code", source: "apps/tedrisat/test/e2e/keycloak-provision.e2e.spec.ts:726" }
+        - { guard: "linkFresh and not sameBrowser", target: verifiedElsewhere, effect: [markVerified], say: "the address is verified in the other browser", source: "apps/tedrisat/test/e2e/keycloak-smtp.e2e.spec.ts:371" }
+      FAIL.expired: { guard: "not linkFresh", target: errorPage, say: "the link expired or was used", source: "apps/keycloak-theme/src/login/KcPage.tsx:143" }
+
+  pageExpired:
+    title: This page has expired
+    by: human
+    source: apps/keycloak-theme/src/login/KcPage.tsx:119
+    on:
+      RETRY: { target: registerForm, effect: [restart], say: "they press Yeniden dene", source: "apps/keycloak-theme/src/login/pages/LoginPageExpired.tsx:36" }
+      NAVIGATE: { target: left, say: "they close the page" }
+
+  errorPage:
+    title: Sign-in could not be completed
+    by: human
+    source: apps/keycloak-theme/src/login/KcPage.tsx:143
+    on:
+      BACK: { target: toClientBase, say: "they press Giriş sayfasına dön, which opens the portal's base address", source: "apps/keycloak-theme/src/login/pages/ErrorPage.tsx:27" }
+      NAVIGATE: { target: left, say: "they close the page" }
+
+  codeIssued:
+    type: final
+    title: Back to the portal with a code
+    redirect: success
+    carries: [code, state]
+    source: config/keycloak/clients/prod/tedris.json:7
+  verifiedElsewhere: { type: final, title: The address is verified; the other browser is not signed in, source: "apps/keycloak-theme/src/login/pages/Info.tsx:39" }
+  toLogin: { type: final, title: Hand over to the sign-in form, source: "apps/keycloak-theme/src/login/pages/Register.tsx:87" }
+  toClientBase: { type: final, title: The browser goes to the portal's base address, leavesPage: true, source: "apps/keycloak-theme/src/login/pages/ErrorPage.tsx:27" }
+  left: { type: final, title: The person leaves, leavesPage: true }
+
+assertions:
+  - { id: no-account-without-gender, never: "accountCreated and not genderChosen", say: "No account is made without a gender", source: "apps/tedrisat/test/e2e/keycloak-provision.e2e.spec.ts:665" }
+  - { id: no-account-without-privacy-notice, never: "accountCreated and not privacyTicked", say: "No account is made without the privacy-notice box ticked", source: "apps/tedrisat/test/e2e/keycloak-provision.e2e.spec.ts:617" }
+  - { id: one-account-per-name-and-address, never: "accountCreated and taken != 'none'", say: "A user name or an e-mail address that is taken never gets a second account", source: "config/keycloak/realms/_base.json:7" }
+  - { id: no-code-before-verification, never: "state == 'codeIssued' and not emailVerified", say: "A new account goes back to the portal only after its e-mail is verified", source: "config/keycloak/realms/_base.json:5" }
+  - { id: page-checks-first, never: "state == 'registering' and not pageAccepts", say: "The form reaches Keycloak only when the page's own checks pass", source: "libs/ui/src/giris/register-form.tsx:172" }

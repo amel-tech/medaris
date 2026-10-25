@@ -1,0 +1,38 @@
+# The screens of medaris.platform-policy: apps/nizam/features/platform-admin/components/policies-view.tsx. The page
+# sets no initial focus. The toasts are sonner's (policies-view.tsx:9); a failure toast stays until closed.
+schema: delurio-graph/0
+kind: ui
+id: medaris.platform-policy
+flow: medaris.platform-policy
+status: proposed
+catalog: catalog/tr.json
+locales: [tr, en]
+samples: { names: "Üsküdar Köşkü" }
+changes: { key: Changes.note }
+
+nodes:
+  title: { type: text, component: Heading, role: heading, text: { key: Policies.title }, in: [policiesPage, saving, loadFailed], source: "apps/nizam/features/platform-admin/components/policies-view.tsx:130" }
+  intro: { type: text, component: Text, text: { key: Policies.intro }, in: [policiesPage, saving, loadFailed], source: "apps/nizam/features/platform-admin/components/policies-view.tsx:131" }
+  loadFailedAlert: { type: alert, component: Alert, role: alert, text: { key: Policies.loadFailedTitle }, in: [loadFailed], source: "apps/nizam/features/platform-admin/components/policies-view.tsx:135" }
+  loadFailedBody: { type: text, component: Text, text: { key: Policies.loadFailed }, in: [loadFailed], source: "apps/nizam/features/platform-admin/components/policies-view.tsx:136" }
+  retry: { type: action, component: Button, role: button, intent: secondary, text: { key: Policies.retry }, in: [loadFailed], emits: RETRY, source: "apps/nizam/features/platform-admin/components/policies-view.tsx:137" }
+  policiesHeading: { type: text, component: Heading, role: heading, text: { key: Policies.heading }, in: [policiesPage, saving], source: "apps/nizam/features/platform-admin/components/policies-view.tsx:152" }
+  policiesList: { type: list, component: List, role: list, name: { labelledBy: policiesHeading }, in: [policiesPage, saving], source: "apps/nizam/features/platform-admin/components/policies-view.tsx:155" }
+  policySwitch: { type: field, component: ListItem, role: switch, text: { oneOf: [Policies.approvalTitle, Policies.recordingsTitle] }, in: [policiesPage, saving], disabledIn: [saving], emits: TOGGLE, source: "apps/nizam/features/platform-admin/components/policies-view.tsx:162" } # only the switch being saved is disabled
+  policyBody: { type: text, component: Text, text: { oneOf: [Policies.approvalBody, Policies.recordingsBody] }, in: [policiesPage, saving], source: "apps/nizam/features/platform-admin/components/policies-view.tsx:164" }
+  ownScopes: { type: text, component: Text, text: { key: Policies.ownScopes, params: { names: scoped.names } }, in: [policiesPage, saving], source: "apps/nizam/features/platform-admin/components/policies-view.tsx:171" }
+  instantNote: { type: text, component: Text, text: { key: Policies.instantNote }, in: [policiesPage, saving], source: "apps/nizam/features/platform-admin/components/policies-view.tsx:177" }
+  onToast: { type: status, component: Status, role: status, text: { key: Policies.turnedOn }, in: [policiesPage], when: "notice == 'on'", source: "apps/nizam/features/platform-admin/components/policies-view.tsx:82" }
+  offToast: { type: status, component: Status, role: status, text: { key: Policies.turnedOff }, in: [policiesPage], when: "notice == 'off'", source: "apps/nizam/features/platform-admin/components/policies-view.tsx:82" }
+  failedToast: { type: alert, component: Alert, role: alert, text: { key: Policies.saveFailed }, in: [policiesPage], when: "notice in ['refused', 'failed']", source: "apps/nizam/features/platform-admin/components/policies-view.tsx:75" }
+  failedReason: { type: text, component: Text, text: { oneOf: [Policies.errorForbidden, Policies.errorGeneric] }, in: [policiesPage], when: "notice in ['refused', 'failed']", source: "apps/nizam/features/platform-admin/components/policies-view.tsx:76" }
+
+  noAccessTitle: { type: text, component: Heading, role: heading, text: { key: NoAccess.title }, in: [forbiddenPage], source: "apps/nizam/components/errors/no-access.tsx:30" }
+  noAccessBody: { type: text, component: Text, text: { key: NoAccess.bodyGeneric }, in: [forbiddenPage], source: "apps/nizam/components/errors/no-access.tsx:44" }
+
+edges:
+  - { labelledBy: [policiesList, policiesHeading] }
+  - { triggers: [policySwitch, saving] }
+
+rules:
+  - { id: switch-moves-back, rule: "a switch whose save is refused moves back to what the server holds" }

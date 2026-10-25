@@ -1,0 +1,89 @@
+# The screens of medaris.kc-sign-in: Keycloak's pages as apps/keycloak-theme draws them. Every page sits on AuthCard
+# (libs/ui/src/giris/auth-card.tsx:172), a <main> labelled by its one <h1>. No page of this flow sets an initial focus:
+# the login form has no autoFocus (libs/ui/src/giris/login-form.tsx:80), so none is written here.
+# Gender, firstName, lastName and the privacy box are the realm's profile drawn by apps/keycloak-theme/src/login/profile-fields.tsx.
+schema: delurio-graph/0
+kind: ui
+id: medaris.kc-sign-in
+flow: medaris.kc-sign-in
+status: proposed
+catalog: catalog/tr.json
+locales: [tr, en]
+samples: { email: "zeynep@ornek.com", link: "Aydınlatma Metni" }
+changes: { key: Changes.note }
+
+nodes:
+  # login.ftl
+  loginPage: { type: page, component: Page, role: main, name: { labelledBy: loginTitle }, in: [loginForm, authenticating], source: "libs/ui/src/giris/auth-card.tsx:173" }
+  loginTitle: { type: text, component: Heading, role: heading, text: { key: Login.title }, in: [loginForm, authenticating], source: "apps/keycloak-theme/src/login/pages/Login.tsx:66" }
+  loginSubtitle: { type: text, component: Text, text: { key: Login.subtitle }, in: [loginForm, authenticating], source: "apps/keycloak-theme/src/login/pages/Login.tsx:67" }
+  credentialAlert: { type: alert, component: Alert, role: alert, text: { oneOf: [Login.invalidUser, Login.locked] }, in: [loginForm], when: credentialError, source: "apps/keycloak-theme/src/login/pages/Login.tsx:41" }
+  loginRequired: { type: text, component: Text, text: { key: Common.requiredFields }, in: [loginForm, authenticating], source: "libs/ui/src/giris/login-form.tsx:76" }
+  usernameField: { type: field, component: TextField, role: textbox, text: { key: Login.usernameOrEmail }, in: [loginForm, authenticating], source: "libs/ui/src/giris/login-form.tsx:79" }
+  passwordField: { type: field, component: TextField, role: textbox, text: { key: Login.password }, in: [loginForm, authenticating], source: "libs/ui/src/giris/login-form.tsx:97" }
+  showPassword: { type: action, component: Button, role: button, intent: secondary, name: { key: Login.showPassword }, in: [loginForm, authenticating], source: "libs/ui/src/giris/password-field.tsx:130" } # an icon button: a name, no visible text, aria-pressed
+  forgotLink: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: Login.forgot }, in: [loginForm, authenticating], emits: FORGOT, source: "libs/ui/src/giris/login-form.tsx:107" }
+  rememberMe: { type: field, component: Text, role: checkbox, text: { key: Login.rememberMe }, in: [loginForm, authenticating], source: "libs/ui/src/giris/login-form.tsx:114" }
+  signInButton: { type: action, component: Button, role: button, intent: confirm, text: { key: Login.submit }, in: [loginForm, authenticating], disabledIn: [authenticating], emits: SUBMIT, source: "libs/ui/src/giris/login-form.tsx:124" } # busy, not disabled: aria-disabled while the form is on its way
+  signingIn: { type: status, component: Status, role: status, text: { key: Login.submitting }, in: [authenticating], source: "libs/ui/src/giris/login-form.tsx:129" }
+  noAccount: { type: text, component: Text, text: { key: Login.noAccount }, in: [loginForm, authenticating], source: "apps/keycloak-theme/src/login/pages/Login.tsx:71" }
+  registerLink: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: Login.register }, in: [loginForm, authenticating], emits: REGISTER, source: "apps/keycloak-theme/src/login/pages/Login.tsx:72" }
+
+  # login-verify-email.ftl
+  verifyPage: { type: page, component: Page, role: main, name: { labelledBy: verifyTitle }, in: [verifyEmail, checkingLink], source: "apps/keycloak-theme/src/login/pages/LoginVerifyEmail.tsx:23" }
+  verifyTitle: { type: text, component: Heading, role: heading, text: { key: Verify.title }, in: [verifyEmail, checkingLink], source: "apps/keycloak-theme/src/login/pages/LoginVerifyEmail.tsx:28" }
+  verifyBody: { type: text, component: Text, text: { key: Verify.body, params: { email: user.email } }, in: [verifyEmail, checkingLink], source: "apps/keycloak-theme/src/login/pages/LoginVerifyEmail.tsx:41" }
+  resendNote: { type: text, component: Text, text: { key: Verify.notReceived }, in: [verifyEmail, checkingLink], source: "apps/keycloak-theme/src/login/pages/LoginVerifyEmail.tsx:33" }
+  resendLink: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: Verify.resend }, in: [verifyEmail, checkingLink], emits: RESEND, source: "apps/keycloak-theme/src/login/pages/LoginVerifyEmail.tsx:35" }
+
+  # login-update-profile.ftl (VERIFY_PROFILE)
+  profilePage: { type: page, component: Page, role: main, name: { labelledBy: profileTitle }, in: [updateProfile, savingProfile], source: "apps/keycloak-theme/src/login/pages/LoginUpdateProfile.tsx:51" }
+  profileTitle: { type: text, component: Heading, role: heading, text: { key: Profile.title }, in: [updateProfile, savingProfile], source: "apps/keycloak-theme/src/login/pages/LoginUpdateProfile.tsx:57" }
+  profileSubtitle: { type: text, component: Text, text: { key: Profile.subtitle }, in: [updateProfile, savingProfile], source: "apps/keycloak-theme/src/login/pages/LoginUpdateProfile.tsx:59" }
+  profileRequired: { type: text, component: Text, text: { key: Common.requiredFields }, in: [updateProfile, savingProfile], source: "apps/keycloak-theme/src/login/Template.tsx:124" }
+  firstNameField: { type: field, component: TextField, role: textbox, text: { key: Profile.firstName }, in: [updateProfile, savingProfile], disabledIn: [savingProfile], source: "config/keycloak/user-profile.json:4" }
+  lastNameField: { type: field, component: TextField, role: textbox, text: { key: Profile.lastName }, in: [updateProfile, savingProfile], disabledIn: [savingProfile], source: "config/keycloak/user-profile.json:15" }
+  genderLabel: { type: text, component: Text, text: { key: Profile.gender }, in: [updateProfile, savingProfile], source: "config/keycloak/user-profile.json:27" }
+  genderGroup: { type: list, component: List, role: radiogroup, name: { labelledBy: genderLabel }, in: [updateProfile, savingProfile], source: "libs/ui/src/giris/profile-field.tsx:136" }
+  genderChoice: { type: field, component: ListItem, role: radio, text: { oneOf: [Profile.female, Profile.male] }, in: [updateProfile, savingProfile], disabledIn: [savingProfile], source: "config/keycloak/user-profile.json:29" }
+  emailField: { type: field, component: TextField, role: textbox, text: { key: Profile.email }, in: [updateProfile, savingProfile], disabledIn: [savingProfile], source: "config/keycloak/user-profile.json:52" }
+  privacyBox: { type: field, component: Text, role: checkbox, text: { key: Profile.privacyRead, params: { link: privacy.linkLabel } }, in: [updateProfile, savingProfile], disabledIn: [savingProfile], source: "config/keycloak/user-profile.json:60" }
+  saveProfileOff: { type: action, component: Button, role: button, intent: confirm, text: { key: Profile.save }, in: [updateProfile], disabledIn: [updateProfile], when: "not profileFilled", source: "apps/keycloak-theme/src/login/pages/LoginUpdateProfile.tsx:81" }
+  saveProfile: { type: action, component: Button, role: button, intent: confirm, text: { key: Profile.save }, in: [updateProfile, savingProfile], disabledIn: [savingProfile], when: profileFilled, emits: SUBMIT, source: "apps/keycloak-theme/src/login/pages/LoginUpdateProfile.tsx:77" }
+
+  # login-page-expired.ftl
+  expiredPage: { type: page, component: Page, role: main, name: { labelledBy: expiredTitle }, in: [pageExpired], source: "apps/keycloak-theme/src/login/pages/LoginPageExpired.tsx:24" }
+  expiredTitle: { type: text, component: Heading, role: heading, text: { key: Expired.title }, in: [pageExpired], source: "apps/keycloak-theme/src/login/pages/LoginPageExpired.tsx:31" }
+  expiredBody: { type: text, component: Text, text: { key: Expired.body1 }, in: [pageExpired], source: "apps/keycloak-theme/src/login/pages/LoginPageExpired.tsx:34" }
+  expiredBody2: { type: text, component: Text, text: { key: Expired.body2 }, in: [pageExpired], source: "apps/keycloak-theme/src/login/pages/LoginPageExpired.tsx:34" }
+  retryLink: { type: action, component: LinkButton, role: link, intent: confirm, text: { key: Expired.retry }, in: [pageExpired], emits: RETRY, source: "apps/keycloak-theme/src/login/pages/LoginPageExpired.tsx:36" }
+
+  # error.ftl
+  errorPageMain: { type: page, component: Page, role: main, name: { labelledBy: errorTitle }, in: [errorPage], source: "apps/keycloak-theme/src/login/pages/ErrorPage.tsx:30" }
+  errorTitle: { type: text, component: Heading, role: heading, text: { key: Error.title }, in: [errorPage], source: "apps/keycloak-theme/src/login/pages/ErrorPage.tsx:36" }
+  errorBody: { type: text, component: Text, text: { oneOf: [Error.body1, Error.cookieBody1] }, in: [errorPage], source: "apps/keycloak-theme/src/login/pages/ErrorPage.tsx:41" }
+  errorBody2: { type: text, component: Text, text: { oneOf: [Error.body2, Error.cookieBody2] }, in: [errorPage], source: "apps/keycloak-theme/src/login/pages/ErrorPage.tsx:43" }
+  errorBack: { type: action, component: LinkButton, role: link, intent: confirm, text: { key: Error.back }, in: [errorPage], emits: BACK, source: "apps/keycloak-theme/src/login/pages/ErrorPage.tsx:47" } # the label says the sign-in page; the href is the client's baseUrl first (ErrorPage.tsx:27)
+
+  # info.ftl, the address verified in another browser
+  infoPage: { type: page, component: Page, role: main, name: { labelledBy: infoTitle }, in: [verifiedElsewhere], source: "apps/keycloak-theme/src/login/pages/Info.tsx:85" }
+  infoTitle: { type: text, component: Heading, role: heading, text: { key: Info.verifiedTitle }, in: [verifiedElsewhere], source: "apps/keycloak-theme/src/login/pages/Info.tsx:8" }
+  infoBody: { type: text, component: Text, text: { key: Info.verifiedBody }, in: [verifiedElsewhere], source: "apps/keycloak-theme/src/login/pages/Info.tsx:54" }
+  infoContinue: { type: action, component: LinkButton, role: link, intent: confirm, text: { key: Info.continue }, in: [verifiedElsewhere], source: "apps/keycloak-theme/src/login/pages/Info.tsx:79" }
+
+edges:
+  - { labelledBy: [loginPage, loginTitle] }
+  - { labelledBy: [verifyPage, verifyTitle] }
+  - { labelledBy: [profilePage, profileTitle] }
+  - { labelledBy: [genderGroup, genderLabel] }
+  - { labelledBy: [expiredPage, expiredTitle] }
+  - { labelledBy: [errorPageMain, errorTitle] }
+  - { labelledBy: [infoPage, infoTitle] }
+  - { triggers: [signInButton, authenticating] }
+  - { triggers: [saveProfile, savingProfile] }
+  - { triggers: [forgotLink, toReset] }
+  - { triggers: [registerLink, toRegister] }
+
+rules:
+  - { id: label-in-name, rule: "a node's visible text is contained in its accessible name (WCAG 2.5.3)" }
+  - { id: one-alert-for-a-refusal, rule: "a refused sign-in is one alert above the form; both fields are marked invalid and keep no second message" }

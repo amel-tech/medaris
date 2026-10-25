@@ -1,0 +1,79 @@
+name: Graphs
+
+# Checks Medaris's delurio graphs (graphs/, see graphs/README.md) with the published @delurio/cli, pinned to an exact
+# version: every guarantee a flow states holds, every catalog key and sample exists, and every flow that writes says
+# what it changes. Findings show inline through the problem matcher. On a pull request it also keeps one comment up to
+# date with what the graphs change, in words, and uploads the pages of the changed graphs as the `delurio` artifact.
+# The CLI reads graph files only: no network after the install, no account, no model. Nothing here edits a graph.
+
+on:
+  pull_request:
+    branches: [main, dev]
+    paths:
+      - graphs/**
+      - .github/workflows/graphs.yaml
+      - .github/delurio-matcher.json
+      - tools/ci/graphs-pr.sh
+  push:
+    branches: [main]
+    paths:
+      - graphs/**
+      - .github/workflows/graphs.yaml
+  workflow_dispatch:
+
+concurrency:
+  group: graphs-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+env:
+  # Bump on purpose: a new version may judge the same graphs differently.
+  DELURIO: "@delurio/cli@0.1.1"
+
+jobs:
+  graphs:
+    name: Graphs
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      - name: Install @delurio/cli
+        run: npm install --global --no-audit --no-fund "$DELURIO"
+
+      # The baseline holds the findings already known when it was written (graphs/README.md says how to renew it):
+      # they still show, as warnings, and only an error that is new since then fails the check.
+      - name: delurio check
+        run: |
+          echo "::add-matcher::.github/delurio-matcher.json"
+          delurio check graphs --strict --baseline graphs/delurio.baseline.sarif --format sarif --output delurio.sarif
+
+      - name: What the graphs change, in words
+        if: always() && github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: tools/ci/graphs-pr.sh >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the SARIF and the pages
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: delurio
+          path: |
+            delurio.sarif
+            _pages/
+          if-no-files-found: ignore

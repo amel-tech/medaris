@@ -1,0 +1,219 @@
+# Signing in on Keycloak's own pages (apps/keycloak-theme), captured from origin/main ce47fce8.
+# The theme draws the pages; Keycloak decides which page comes next. Where a step is Keycloak's own server logic, the
+# source is the realm setting in config/keycloak that switches it on, or the e2e spec that ran it against a real
+# Keycloak 26 with this repository's realm (apps/tedrisat/test/e2e/keycloak-provision.e2e.spec.ts,
+# keycloak-smtp.e2e.spec.ts). The order of Keycloak's required actions is Keycloak's and not in this repository.
+schema: delurio-graph/0
+kind: flow
+id: medaris.kc-sign-in
+status: proposed
+domain: medaris.auth-account
+ui: medaris.kc-sign-in
+title: Sign in on Keycloak and finish the required steps
+summary: >-
+  A portal sends the browser to Keycloak's sign-in page. The person signs in with a user name or e-mail and a
+  password. An account whose e-mail is not verified, or that lacks a required profile attribute (gender, the names,
+  the e-mail, the privacy-notice box), is stopped on that page first. When nothing is left, the browser goes back to
+  the portal with a code.
+
+scope:
+  shows: the pages between login.ftl and the redirect back to the portal with a code
+  world: open
+  outOfView:
+    - "the password reset (medaris.kc-reset-password) and the registration (medaris.kc-register): flows of their own"
+    - "Keycloak's brute-force counter: 10 failures, then a wait of 60 s growing to 900 s; here only 'locked or not'"
+    - "identity providers (Login.tsx:129): the realm in config/keycloak declares none"
+    - "the partner application's consent page (login-oauth-grant.ftl): the partner sign-in, not a portal's"
+    - "what the portal does with the code: medaris.portal-sign-in"
+
+context:
+  credentials:
+    values: [valid, invalid]
+    initial: any
+    say: { valid: "the user name and password are right", invalid: "the user name or the password is wrong" }
+  locked:
+    values: [false, true]
+    initial: any
+    say: { "false": "", "true": "the account is temporarily locked after too many failures" }
+  emailVerified:
+    values: [true, false]
+    initial: any
+    say: { "true": "the e-mail address is verified", "false": "the e-mail address is not verified" }
+  profileComplete:
+    values: [true, false]
+    initial: any
+    say: { "true": "every attribute the profile requires is set", "false": "a required attribute is missing (gender, for an account made before it was required)" }
+  formExpired:
+    values: [false, true]
+    initial: any
+    say: { "false": "", "true": "the sign-in form stayed open longer than 30 minutes" }
+  linkFresh:
+    values: [true, false]
+    initial: any
+    say: { "true": "the verification link is under 24 hours old and unused", "false": "the verification link has expired or was used" }
+  sameBrowser:
+    values: [true, false]
+    initial: any
+    say: { "true": "the link is opened in the browser that signed in", "false": "the link is opened in another browser" }
+  credentialError: { values: [false, true], initial: false }
+  profileFilled: { values: [false, true], initial: false }
+
+guards:
+  signInRefused: "locked or credentials == 'invalid'"
+
+effects:
+  showCredentialError: { set: { credentialError: true } }
+  retype: { set: { credentials: valid, credentialError: false } }
+  restart: { set: { formExpired: false, credentialError: false } }
+  markVerified: { set: { emailVerified: true } }
+  fillProfile: { set: { profileFilled: true } }
+  saveProfile: { set: { profileComplete: true } }
+
+failures:
+  authenticating:
+    from: kcAuthenticate
+    expired: [PAGE_EXPIRED]
+    refused: [INVALID_CREDENTIALS, ACCOUNT_TEMPORARILY_LOCKED]
+  checkingLink:
+    from: kcActionToken
+    expired: [ACTION_TOKEN_EXPIRED]
+  savingProfile:
+    from: kcUpdateProfile
+    invalid: [ATTRIBUTE_INVALID, ATTRIBUTE_REQUIRED]
+
+main:
+  given: { credentials: valid, locked: false, emailVerified: true, profileComplete: true, formExpired: false }
+  events: [SUBMIT, DONE]
+
+initial: loginForm
+states:
+  loginForm:
+    title: Sign in
+    by: human
+    source: apps/keycloak-theme/src/login/KcPage.tsx:53
+    description: >-
+      login.ftl. The form posts to Keycloak's url.loginAction (Login.tsx:86); an empty field is stopped by the browser
+      (login-form.tsx:88). A refused sign-in is one alert above the form, both fields marked invalid (Login.tsx:41).
+    includes:
+      - "Beni hatırla, a box the realm turns on (realms/_base.json:10)"
+      - "the user name typed is kept after a refusal (Login.tsx:97)"
+    on:
+      SUBMIT: { target: authenticating, say: "they press Giriş yap", source: "libs/ui/src/giris/login-form.tsx:63" }
+      RETYPE: { guard: credentialError, target: loginForm, effect: [retype], say: "they type the right password" }
+      FORGOT: { target: toReset, starts: { flow: medaris.kc-reset-password }, say: "they press Şifremi unuttum", source: "apps/keycloak-theme/src/login/pages/Login.tsx:100" }
+      REGISTER: { target: toRegister, starts: { flow: medaris.kc-register }, say: "they press Kayıt ol under the form", source: "apps/keycloak-theme/src/login/pages/Login.tsx:72" }
+      NAVIGATE: { target: left, say: "they close the page" }
+
+  authenticating:
+    title: Keycloak checks the credentials
+    source: config/keycloak/realms/_base.json:12
+    description: >-
+      Keycloak's browser flow. Brute-force protection is on, with a temporary lockout after 10 failures
+      (realms/_base.json:12-18); a form older than accessCodeLifespanLogin (1800 s, realms/_base.json:30) is expired.
+    invoke: { action: kcAuthenticate }
+    on:
+      DONE: { guard: "not signInRefused and not formExpired", target: requiredActions, say: "the credentials are right" }
+      FAIL.expired: { guard: formExpired, target: pageExpired, say: "the form expired", source: "apps/keycloak-theme/src/login/KcPage.tsx:119" }
+      FAIL.refused: { guard: "signInRefused and not formExpired", target: loginForm, effect: [showCredentialError], say: "the sign-in is refused, with Keycloak's own message", source: "apps/keycloak-theme/src/login/pages/Login.tsx:36" }
+
+  requiredActions:
+    title: Is a required step left?
+    source: config/keycloak/realms/_base.json:5
+    description: >-
+      verifyEmail is on (realms/_base.json:5). A required profile attribute the account lacks is Keycloak's
+      VERIFY_PROFILE: gender is required for users and admins (user-profile.json:26-38), and so are the names, the
+      e-mail and, for users, the privacy-notice box (user-profile.json:60-71).
+    always:
+      - { guard: "not emailVerified", target: verifyEmail, say: "the e-mail is not verified", source: "config/keycloak/realms/_base.json:5" }
+      - { guard: "not profileComplete", target: updateProfile, say: "a required attribute is missing", source: "config/keycloak/user-profile.json:36" }
+      - { target: codeIssued, say: "nothing is left" }
+
+  verifyEmail:
+    title: Verify your e-mail address
+    by: human
+    source: apps/keycloak-theme/src/login/KcPage.tsx:69
+    description: login-verify-email.ftl; "Yeniden gönder" is a link to url.loginAction, which sends the e-mail again (LoginVerifyEmail.tsx:35)
+    on:
+      RESEND: { target: verifyEmail, say: "they press Yeniden gönder", source: "apps/keycloak-theme/src/login/pages/LoginVerifyEmail.tsx:35" }
+      OPEN_LINK: { target: checkingLink, say: "they open the link in the e-mail" }
+      NAVIGATE: { target: left, say: "they close the page" }
+
+  checkingLink:
+    title: Keycloak checks the verification link
+    source: config/keycloak/realms/_base.json:43
+    description: >-
+      The verify-email action token lives 86400 s (realms/_base.json:43). In the same browser it verifies the address
+      and carries on with the sign-in (keycloak-provision.e2e.spec.ts:726); in a browser with no session Keycloak asks
+      to confirm first and then only verifies (keycloak-smtp.e2e.spec.ts:371).
+    invoke: { action: kcActionToken }
+    on:
+      DONE:
+        - { guard: "linkFresh and sameBrowser", target: requiredActions, effect: [markVerified], say: "the address is verified and the sign-in goes on", source: "apps/tedrisat/test/e2e/keycloak-provision.e2e.spec.ts:726" }
+        - { guard: "linkFresh and not sameBrowser", target: verifiedElsewhere, effect: [markVerified], say: "the address is verified in the other browser", source: "apps/tedrisat/test/e2e/keycloak-smtp.e2e.spec.ts:371" }
+      FAIL.expired: { guard: "not linkFresh", target: errorPage, say: "the link expired or was used", source: "apps/keycloak-theme/src/login/KcPage.tsx:143" }
+
+  updateProfile:
+    title: Complete your profile
+    by: human
+    source: apps/keycloak-theme/src/login/KcPage.tsx:85
+    description: >-
+      login-update-profile.ftl, Keycloak's VERIFY_PROFILE: the realm's profile drawn field by field (gender as two
+      radio buttons). "Kaydet ve devam et" stays disabled until keycloakify's checks pass (LoginUpdateProfile.tsx:81).
+      Not an action the app asked for, so there is no "Vazgeç" (LoginUpdateProfile.tsx:85).
+    on:
+      FILL: { target: updateProfile, effect: [fillProfile], say: "they fill in what is missing" }
+      SUBMIT: { guard: profileFilled, target: savingProfile, say: "they press Kaydet ve devam et", source: "apps/keycloak-theme/src/login/pages/LoginUpdateProfile.tsx:81" }
+      NAVIGATE: { target: left, say: "they close the page" }
+
+  savingProfile:
+    title: Keycloak saves the profile
+    source: config/keycloak/user-profile.json:1
+    description: Keycloak checks the attributes against the profile's validators (user-profile.json) and stores them on the account
+    invoke: { action: kcUpdateProfile }
+    on:
+      DONE: { target: requiredActions, effect: [saveProfile], say: "the profile is saved" }
+      FAIL.invalid: { target: updateProfile, say: "Keycloak refuses a value; its reason is under the field", source: "apps/keycloak-theme/src/login/UserProfileFormFields.tsx:80" }
+
+  pageExpired:
+    title: This page has expired
+    by: human
+    source: apps/keycloak-theme/src/login/KcPage.tsx:119
+    description: login-page-expired.ftl; one way on, Keycloak's loginRestartFlowUrl (LoginPageExpired.tsx:36); its second link, which resubmits the stale form, is not offered
+    on:
+      RETRY: { target: loginForm, effect: [restart], say: "they press Yeniden dene", source: "apps/keycloak-theme/src/login/pages/LoginPageExpired.tsx:36" }
+      NAVIGATE: { target: left, say: "they close the page" }
+
+  errorPage:
+    title: Sign-in could not be completed
+    by: human
+    source: apps/keycloak-theme/src/login/KcPage.tsx:143
+    description: >-
+      error.ftl. Keycloak's own message is not shown (ErrorPage.tsx:25). The one link reads "Giriş sayfasına dön" and
+      goes to the client's baseUrl first, loginRestartFlowUrl only when the client has none (ErrorPage.tsx:27).
+    on:
+      BACK: { target: toClientBase, say: "they press Giriş sayfasına dön", source: "apps/keycloak-theme/src/login/pages/ErrorPage.tsx:47" }
+      NAVIGATE: { target: left, say: "they close the page" }
+
+  verifiedElsewhere:
+    type: final
+    title: The address is verified; the other browser is not signed in
+    source: apps/keycloak-theme/src/login/pages/Info.tsx:39
+    description: info.ftl with "E-posta adresin doğrulandı"; its link is the client's baseUrl ("Medaris'e devam et", Info.tsx:78)
+  codeIssued:
+    type: final
+    title: Back to the portal with a code
+    redirect: success
+    carries: [code, state]
+    source: config/keycloak/clients/prod/tedris.json:7
+  toReset: { type: final, title: Hand over to the password reset, source: "apps/keycloak-theme/src/login/pages/Login.tsx:103" }
+  toRegister: { type: final, title: Hand over to the registration, source: "apps/keycloak-theme/src/login/pages/Login.tsx:74" }
+  toClientBase: { type: final, title: The browser goes to the portal's base address, leavesPage: true, source: "apps/keycloak-theme/src/login/pages/ErrorPage.tsx:27" }
+  left: { type: final, title: The person leaves, leavesPage: true }
+
+assertions:
+  - { id: no-code-unverified, never: "state == 'codeIssued' and not emailVerified", say: "An account whose e-mail is not verified never reaches a portal", source: "config/keycloak/realms/_base.json:5" }
+  - { id: no-code-without-gender, never: "state == 'codeIssued' and not profileComplete", say: "An account that lacks a required attribute, gender among them, never reaches a portal", source: "config/keycloak/user-profile.json:36" }
+  - { id: no-code-wrong-password, never: "state == 'codeIssued' and credentials == 'invalid'", say: "A wrong password never gives a code" }
+  - { id: locked-never-signs-in, never: "state in ['requiredActions', 'verifyEmail', 'updateProfile', 'codeIssued'] and locked", say: "A temporarily locked account does not get past the form, even with the right password", source: "config/keycloak/realms/_base.json:12" }
+  - { id: expired-form-not-checked, never: "state == 'requiredActions' and formExpired", say: "An expired form is never taken as a sign-in", source: "config/keycloak/realms/_base.json:30" }
+  - { id: profile-sent-only-when-filled, never: "state == 'savingProfile' and not profileFilled", say: "The profile page is not sent before its checks pass", source: "apps/keycloak-theme/src/login/pages/LoginUpdateProfile.tsx:81" }
