@@ -1,6 +1,6 @@
--- Reverses migrations/0066_submission_reviews.sql. The app never runs this:
+-- Reverses migrations/0068_submission_reviews.sql. The app never runs this:
 -- drizzle's migrator only moves forward. To roll back by hand, run these
--- statements in one transaction, then delete 0066's row from
+-- statements in one transaction, then delete 0068's row from
 -- "drizzle"."__drizzle_migrations" so that the next boot applies it again.
 --
 -- Lost: every review of a homework (the reviewer's note, who sent it and when)
