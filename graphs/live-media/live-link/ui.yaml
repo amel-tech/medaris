@@ -1,0 +1,56 @@
+# Medaris, captured from origin/main ce47fce8: nazar's Celseler page, the stream button of a row and its inline form.
+# A refusal is a toast (Base UI's toast, error tone, kept until closed); the field's problem is the Field's error line,
+# which replaces its help and is wired to the input by aria-describedby, not announced as an alert.
+schema: delurio-graph/0
+kind: ui
+id: medaris.live-link
+flow: medaris.live-link
+status: proposed
+catalog: catalog/tr.json
+locales: [tr, en]
+samples: { when: "14.10.2026 20:00" }
+changes: { key: Changes.note }
+
+nodes:
+  page: { type: page, component: Page, role: main, name: { labelledBy: title }, in: [sessionsPage, streamForm, writing], source: "apps/nazar/features/sessions/components/sessions-page.tsx:75" }
+  title: { type: text, component: Heading, role: heading, text: { key: Sessions.title }, in: [sessionsPage, streamForm, writing], source: "apps/nazar/features/sessions/components/sessions-page.tsx:75" }
+  upcomingTitle: { type: text, component: Heading, role: heading, text: { key: Sessions.upcomingTitle }, in: [sessionsPage, streamForm, writing], source: "apps/nazar/features/sessions/components/sessions-table.tsx:555" }
+  streamButton:
+    type: action
+    component: Button
+    role: button
+    intent: secondary
+    name: { oneOf: [Sessions.stream.addLabel, Sessions.stream.updateLabel] }
+    text: { oneOf: [Sessions.stream.add, Sessions.stream.update] }
+    in: [sessionsPage, streamForm, writing]
+    when: buttonDrawn
+    emits: OPEN_STREAM
+    source: apps/nazar/features/sessions/components/sessions-table.tsx:477
+  noActions: { type: text, component: Text, text: { key: Sessions.noActions }, in: [sessionsPage], when: "row == 'cancelled'", source: "apps/nazar/features/sessions/components/sessions-table.tsx:446" } # visually hidden
+
+  formTitle: { type: text, component: Heading, role: heading, text: { key: Sessions.stream.formTitle }, in: [streamForm, writing], source: "apps/nazar/features/sessions/components/sessions-table.tsx:589" }
+  linkField: { type: field, component: TextField, role: textbox, text: { key: Sessions.stream.formLabel }, in: [streamForm, writing], source: "apps/nazar/features/sessions/components/sessions-table.tsx:609" } # placeholder https://studio.youtube.com/video/…
+  fieldHelp: { type: text, component: Text, text: { key: Sessions.stream.formHelp }, in: [streamForm, writing], when: "problem == 'none'", source: "apps/nazar/features/sessions/components/sessions-table.tsx:604" }
+  problemEmpty: { type: text, component: Text, text: { key: Sessions.stream.problems.empty }, in: [streamForm], when: "problem == 'empty'", source: "apps/nazar/features/sessions/components/sessions-table.tsx:605" }
+  problemChannel: { type: text, component: Text, text: { key: Sessions.stream.problems.channel }, in: [streamForm], when: "problem == 'channel'", source: "apps/nazar/features/sessions/components/sessions-table.tsx:605" }
+  problemNotYoutube: { type: text, component: Text, text: { key: Sessions.stream.problems.notYoutube }, in: [streamForm], when: "problem == 'notYoutube'", source: "apps/nazar/features/sessions/components/sessions-table.tsx:605" }
+  cancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: Sessions.formCancel }, in: [streamForm, writing], disabledIn: [writing], emits: CANCEL, source: "apps/nazar/features/sessions/components/sessions-table.tsx:689" }
+  remove: { type: action, component: Button, role: button, intent: secondary, text: { key: Sessions.stream.remove }, in: [streamForm, writing], disabledIn: [writing], when: hasStream, emits: REMOVE, source: "apps/nazar/features/sessions/components/sessions-table.tsx:698" }
+  save: { type: action, component: Button, role: button, intent: confirm, text: { key: Sessions.formSave }, in: [streamForm, writing], disabledIn: [writing], emits: SAVE, source: "apps/nazar/features/sessions/components/sessions-table.tsx:707" }
+
+  savedToast: { type: status, component: Status, role: status, text: { key: Sessions.stream.saved }, in: [sessionsPage], when: "notice == 'saved'", source: "apps/nazar/features/sessions/components/sessions-table.tsx:209" }
+  removedToast: { type: status, component: Status, role: status, text: { key: Sessions.stream.removed }, in: [sessionsPage], when: "notice == 'removed'", source: "apps/nazar/features/sessions/components/sessions-table.tsx:209" }
+  failedTitle: { type: alert, component: Alert, role: alert, text: { key: Sessions.failed }, in: [streamForm], when: "notice in ['forbidden', 'generic', 'notLive', 'cancelled']", source: "apps/nazar/features/sessions/components/sessions-table.tsx:161" }
+  refusedForbidden: { type: text, component: Text, text: { key: Problems.actionForbidden }, in: [streamForm], when: "notice == 'forbidden'", source: "apps/nazar/features/sessions/sessions.ts:497" }
+  refusedGeneric: { type: text, component: Text, text: { key: Problems.actionGeneric }, in: [streamForm], when: "notice == 'generic'", source: "apps/nazar/features/sessions/sessions.ts:516" }
+  refusedNotLive: { type: text, component: Text, text: { key: Sessions.stream.errors.notLive }, in: [streamForm], when: "notice == 'notLive'", source: "apps/nazar/features/sessions/sessions.ts:510" }
+  refusedCancelled: { type: text, component: Text, text: { key: Sessions.stream.errors.cancelled }, in: [streamForm], when: "notice == 'cancelled'", source: "apps/nazar/features/sessions/sessions.ts:512" }
+
+edges:
+  - { labelledBy: [page, title] }
+  - { triggers: [save, writing] }
+  - { triggers: [remove, writing] }
+
+rules:
+  - { id: label-in-name, rule: "the stream button's visible text is in its accessible name, which adds the session's time (WCAG 2.5.3)" }
+  - { id: busy-controls-disabled, rule: "while the write runs, Kaydet shows its spinner and Vazgeç and Bağlantıyı kaldır are disabled" }

@@ -1,0 +1,130 @@
+# A calendar app reads a person's feed: GET /calendar/<token>.ics on tedris-web (apps/tedris/app/calendar/[file]/route.ts),
+# passed on to tedrisat's GET /calendar/:file, as the code does it on origin/main ce47fce8 (capture of 25 Oct 2026).
+# No person and no screen: the token in the address is the credential. The flow follows one course of the owner's,
+# and says whether its sessions are in what the app gets.
+schema: delurio-graph/0
+kind: flow
+id: medaris.calendar-feed-read
+status: proposed
+domain: medaris.learning
+title: A calendar app reads the feed
+summary: >-
+  tedris-web checks the file name and passes the request on. tedrisat counts the address, finds the owner by the
+  token's hash, counts the owner's reads, and answers an iCalendar file with the sessions of the courses the owner is
+  enrolled in or completed, teaches, or runs as köşk nazımı, from 30 days back to 180 ahead. No meeting link is in it.
+
+scope:
+  shows: one read of a feed, from tedris-web to the answer, and whether one given course is in it
+  world: open
+  outOfView:
+    - "how each session is written (UID, SEQUENCE, STATUS:CANCELLED for a cancelled or removed one): the domain's getCalendarFeed"
+    - "a person who is several of talebe, müderris and köşk nazımı of the same course at once"
+
+context:
+  fileShape: { values: [ok, bad], initial: any, say: { ok: "the name is a 43-character token and .ics", bad: "the name has another shape" } }
+  upstream: { values: [up, down], initial: any, say: { up: "tedrisat answers tedris-web", down: "tedrisat cannot be reached" } }
+  addressOver: { values: [false, true], initial: any, say: { "true": "the address has made more than 600 reads this minute", "false": "the address is within its budget" } }
+  configured: { values: [true, false], initial: any, say: { "true": "tedrisat knows tedris's address", "false": "tedrisat has no TEDRIS_WEB_URL" } }
+  token: { values: [current, unknown], initial: any, say: { current: "the token is the owner's current one", unknown: "the token was never issued, or was replaced" } }
+  ownerOver: { values: [false, true], initial: any, say: { "true": "this feed was read more than 20 times this minute in this process", "false": "the feed is within its budget" } }
+  role: # what the owner is to the course followed
+    values: [talebe, muderris, koskNazim]
+    initial: any
+    say: { talebe: "the owner is a talebe of the course", muderris: "the owner teaches the course", koskNazim: "the owner is nazımı of the course's köşk" }
+  enrollment:
+    values: [enrolled, completed, pending, revoked]
+    initial: any
+    say: { enrolled: "an ENROLLED seat", completed: "a COMPLETED seat", pending: "a request waits", revoked: "taken out by the course team" }
+  barred: { values: [false, true], initial: any, say: { "true": "a ban bars the owner from the course", "false": "no ban" } }
+  passive: { values: [false, true], initial: any, say: { "true": "the course sits in a passive scope", "false": "the course is in no passive scope" } }
+  course: { values: [open, draft, hidden], initial: any, say: { open: "the course is published and not hidden", draft: "the course is a draft", hidden: "the course is hidden" } }
+  koskHidden: { values: [false, true], initial: any, say: { "true": "the course's köşk is hidden", "false": "the köşk is not hidden" } }
+
+guards:
+  asTalebe: "role == 'talebe' and enrollment in ['enrolled', 'completed'] and not barred and not passive"
+  shownCourse: "course == 'open' and not koskHidden"
+  inFeed: "course != 'hidden' and (role == 'koskNazim' or (shownCourse and (role == 'muderris' or asTalebe)))"
+
+initial: arriving
+states:
+  arriving:
+    title: tedris-web takes the request
+    description: "no session and no sign-in: the proxy's matcher skips /calendar/"
+    source: apps/tedris/app/calendar/[file]/route.ts:17
+    always:
+      - { guard: "fileShape == 'bad'", target: badName, say: "not a feed's name", source: "apps/tedris/app/calendar/[file]/route.ts:22" }
+      - { guard: "upstream == 'down'", target: badGateway, say: "tedrisat does not answer", source: "apps/tedris/app/calendar/[file]/route.ts:32" }
+      - { target: counting, say: "passed on to tedrisat", source: "apps/tedris/app/calendar/[file]/route.ts:31" }
+
+  counting:
+    title: tedrisat counts the address
+    description: every read arrives from tedris-web, so one address carries every subscriber; the budget is 600 a minute
+    source: apps/tedrisat/src/calendar-feed/calendar-feed.controller.ts:59
+    always:
+      - { guard: addressOver, target: throttled, say: "past the address's budget", source: "apps/tedrisat/src/calendar-feed/calendar-feed.controller.ts:26" }
+      - { target: resolving, say: "within it" }
+
+  resolving:
+    title: Find the feed's owner
+    description: the token's SHA-256 is looked up; the owner's reads are counted in this process's memory
+    source: apps/tedrisat/src/calendar-feed/calendar-feed.service.ts:66
+    always:
+      - { guard: "not configured", target: notConfigured, say: "no TEDRIS_WEB_URL", source: "apps/tedrisat/src/calendar-feed/calendar-feed.service.ts:67" }
+      - { guard: "token == 'unknown'", target: noFeed, say: "no feed has this address", source: "apps/tedrisat/src/calendar-feed/calendar-feed.service.ts:73" }
+      - { guard: ownerOver, target: throttled, say: "past the feed's own budget of 20 a minute", source: "apps/tedrisat/src/calendar-feed/feed-poll-limiter.ts:43" }
+      - { target: building, say: "the owner is found", source: "apps/tedrisat/src/calendar-feed/calendar-feed.service.ts:74" }
+
+  building:
+    title: Gather the sessions
+    description: >-
+      Every scheduled session, 30 days back to 180 ahead, of the courses the owner holds an ENROLLED or COMPLETED seat in
+      with no ban and no passive scope, teaches, or runs as köşk nazımı; a hidden course is in no one's feed, a draft and
+      a hidden köşk's courses only in the köşk nazımı's
+    source: apps/tedrisat/src/calendar-feed/calendar-feed.repository.ts:116
+    always:
+      - { guard: inFeed, target: servedWithCourse, say: "the course's sessions are in it", source: "apps/tedrisat/src/calendar-feed/calendar-feed.repository.ts:176" }
+      - { target: servedWithoutCourse, say: "the course's sessions are not in it", source: "apps/tedrisat/src/calendar-feed/calendar-feed.repository.ts:173" }
+
+  servedWithCourse:
+    type: final
+    title: The feed, with the course's sessions
+    source: apps/tedris/app/calendar/[file]/route.ts:60
+    response: { status: 200, headers: { Content-Type: "text/calendar; charset=utf-8", Cache-Control: "private, no-store", X-Robots-Tag: noindex }, body: "VCALENDAR with one VEVENT per session, each linking to its celse page" }
+  servedWithoutCourse:
+    type: final
+    title: The feed, without the course
+    source: apps/tedris/app/calendar/[file]/route.ts:60
+    response: { status: 200, headers: { Content-Type: "text/calendar; charset=utf-8" }, body: "VCALENDAR without the course's sessions" }
+  badName:
+    type: final
+    title: Not a feed's name
+    source: apps/tedris/app/calendar/[file]/route.ts:23
+    response: { status: 404, body: { error: "Not found" } }
+  badGateway:
+    type: final
+    title: tedrisat cannot be reached
+    source: apps/tedris/app/calendar/[file]/route.ts:34
+    response: { status: 502, body: { error: "Failed to fetch the calendar feed" } }
+  throttled:
+    type: final
+    title: Too many reads
+    source: apps/tedris/app/calendar/[file]/route.ts:49
+    response: { status: 429, headers: { Retry-After: "as tedrisat says" } }
+  notConfigured:
+    type: final
+    title: The feed is not configured
+    source: apps/tedrisat/src/course/errors/calendar-not-configured.error.ts:9
+    response: { status: 503, code: CALENDAR_NOT_CONFIGURED, body: { error: CALENDAR_NOT_CONFIGURED } }
+  noFeed:
+    type: final
+    title: No feed has this address
+    source: apps/tedrisat/src/calendar-feed/errors/calendar-feed-not-found.error.ts:9
+    response: { status: 404, code: CALENDAR_FEED_NOT_FOUND, body: { error: CALENDAR_FEED_NOT_FOUND } }
+
+assertions:
+  - { id: replaced-token-never-served, never: "state in ['servedWithCourse', 'servedWithoutCourse'] and token != 'current'", say: "A replaced or made-up address never gets a feed", source: "apps/tedrisat/src/calendar-feed/calendar-feed.service.ts:73" }
+  - { id: no-request-in-feed, never: "state == 'servedWithCourse' and role == 'talebe' and enrollment in ['pending', 'revoked']", say: "A waiting request or a seat taken away puts no session in a talebe's feed", source: "apps/tedrisat/src/calendar-feed/calendar-feed.repository.ts:53" }
+  - { id: barred-not-in-feed, never: "state == 'servedWithCourse' and role == 'talebe' and barred", say: "A ban takes the course out of the talebe's feed", source: "apps/tedrisat/src/database/enrolled-courses.ts:58" }
+  - { id: passive-not-in-feed, never: "state == 'servedWithCourse' and role == 'talebe' and passive", say: "A passive course is in no talebe's feed", source: "apps/tedrisat/src/database/enrolled-courses.ts:43" }
+  - { id: hidden-course-in-no-feed, never: "state == 'servedWithCourse' and course == 'hidden'", say: "A hidden course is in no one's feed", source: "apps/tedrisat/src/calendar-feed/calendar-feed.repository.ts:173" }
+  - { id: owner-budget-holds, never: "state in ['servedWithCourse', 'servedWithoutCourse'] and (ownerOver or addressOver)", say: "A feed past either budget is never served", source: "apps/tedrisat/src/calendar-feed/feed-poll-limiter.ts:43" }

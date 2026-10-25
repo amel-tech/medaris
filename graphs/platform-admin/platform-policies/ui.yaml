@@ -1,0 +1,39 @@
+# The screen of medaris.platform-policies: nizam's Platform ayarları (PoliciesView). Words from libs/i18n nizam.json.
+# A switch is an MDS Switch (role switch) named by its policy's title; it moves the moment it is pressed.
+schema: delurio-graph/0
+kind: ui
+id: medaris.platform-policies
+flow: medaris.platform-policies
+status: proposed
+catalog: catalog/tr.json
+locales: [tr, en]
+samples: {}
+changes: { key: Changes.note }
+
+nodes:
+  settingsPage: { type: page, component: Page, role: main, name: { labelledBy: settingsTitle }, in: [policiesPage, saving], source: apps/nizam/features/platform-admin/components/policies-view.tsx:124 }
+  settingsTitle: { type: text, component: Heading, role: heading, text: { key: PlatformSettingsPage.title }, in: [policiesPage, saving] }
+  settingsIntro: { type: text, component: Text, text: { key: PlatformSettingsPage.intro }, in: [policiesPage, saving] }
+  policiesHeading: { type: text, component: Heading, role: heading, text: { key: PlatformSettingsPage.policiesHeading }, in: [policiesPage, saving] }
+  approvalSwitch: { type: action, component: Button, role: switch, name: { key: PlatformSettingsPage.policies.approval.title }, text: { key: PlatformSettingsPage.policies.approval.title }, in: [policiesPage, saving], disabledIn: [saving], emits: TOGGLE, source: apps/nizam/features/platform-admin/components/policies-view.tsx:162 }
+  approvalBody: { type: text, component: Text, text: { key: PlatformSettingsPage.policies.approval.body }, in: [policiesPage, saving] }
+  recordingsSwitch: { type: action, component: Button, role: switch, name: { key: PlatformSettingsPage.policies.recordings.title }, text: { key: PlatformSettingsPage.policies.recordings.title }, in: [policiesPage, saving] } # the same behaviour, not followed here
+  recordingsBody: { type: text, component: Text, text: { key: PlatformSettingsPage.policies.recordings.body }, in: [policiesPage, saving] }
+  instantNote: { type: text, component: Text, text: { key: PlatformSettingsPage.instantNote }, in: [policiesPage, saving], source: apps/nizam/features/platform-admin/components/policies-view.tsx:177 }
+  combineHeading: { type: text, component: Heading, role: heading, text: { key: PlatformSettingsPage.combineHeading }, in: [policiesPage, saving] }
+  combineWarning: { type: alert, component: Alert, text: { key: PlatformSettingsPage.combineWarningTitle }, in: [policiesPage, saving] }
+  scopedHeading: { type: text, component: Heading, role: heading, text: { key: PlatformSettingsPage.scopedHeading }, in: [policiesPage, saving] }
+  scopedTable: { type: list, component: List, role: table, name: { key: PlatformSettingsPage.scopedHeading }, in: [policiesPage, saving], source: apps/nizam/features/platform-admin/components/policies-view.tsx:226 }
+  savedToast: { type: status, component: Status, role: status, text: { oneOf: [PlatformSettingsPage.turnedOn, PlatformSettingsPage.turnedOff] }, in: [policiesPage], when: "notice in ['turnedOn', 'turnedOff']", source: apps/nizam/features/platform-admin/components/policies-view.tsx:82 }
+  failedAlert: { type: alert, component: Alert, role: alert, text: { key: PlatformSettingsPage.saveFailed }, in: [policiesPage], when: "notice == 'failed'", source: apps/nizam/features/platform-admin/components/policies-view.tsx:75 }
+  failedWhy: { type: text, component: Text, text: { oneOf: [PlatformSettingsPage.errors.forbidden, PlatformSettingsPage.errors.generic] }, in: [policiesPage], when: "notice == 'failed'" }
+
+  noAccessTitle: { type: text, component: Heading, role: heading, text: { key: NoAccess.title }, in: [forbidden], source: apps/nizam/components/errors/no-access.tsx:30 }
+  noAccessBody: { type: text, component: Text, text: { key: NoAccess.bodyGeneric }, in: [forbidden] }
+
+edges:
+  - { labelledBy: [settingsPage, settingsTitle] }
+  - { triggers: [approvalSwitch, saving] }
+
+rules:
+  - { id: label-in-name, rule: "a node's visible text is contained in its accessible name (WCAG 2.5.3)" }

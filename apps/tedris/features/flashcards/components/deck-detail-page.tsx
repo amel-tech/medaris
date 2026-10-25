@@ -7,7 +7,7 @@ import type {
 } from "@medaris/services/tedrisat";
 import { Button } from "@medaris/ui/mds/button";
 import { Icon } from "@medaris/ui/mds/icon";
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 import { countCards } from "../deck-model";
 import { DeckEditDialog } from "./deck-edit-dialog";
 import { DeckHeader } from "./deck-header";
@@ -41,7 +41,6 @@ export function DeckDetailPage({
   editing = false,
 }: DeckDetailPageProps) {
   const t = useTranslations("tedris.Decks");
-  const locale = useLocale();
   if (!isOwner) {
     return (
       <DeckReaderView
@@ -61,7 +60,7 @@ export function DeckDetailPage({
         tab="overview"
         actions={
           <Button
-            href={`/${locale}/decks/study/${deck.id}`}
+            href={`/decks/study/${deck.id}`}
             size="large"
             iconLeft={<Icon name="play" />}
           >

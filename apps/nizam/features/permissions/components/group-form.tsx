@@ -124,7 +124,7 @@ export function GroupForm({
     toast.success(t("created"), {
       description: t("createdBody", { name: result.data.name }),
     });
-    router.push(`/${locale}/izin-gruplari?grup=${result.data.id}`);
+    router.push(`/izin-gruplari?grup=${result.data.id}`);
     router.refresh();
   };
 
@@ -139,7 +139,7 @@ export function GroupForm({
       description: t("deletedBody", { name: group.name }),
     });
     setAsking(null);
-    router.push(`/${locale}/izin-gruplari`);
+    router.push(`/izin-gruplari`);
     router.refresh();
   };
 

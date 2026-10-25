@@ -1,0 +1,198 @@
+# The "Sorularım" tab of the course page (apps/tedris/features/courses/components/course-questions.tsx) and the
+# tedrisat routes behind it, as the code does it on origin/main ce47fce8 (capture of 25 Oct 2026). The tab exists only
+# for an ENROLLED or COMPLETED talebe whose content is open (course-page.tsx:158). The flow follows the talebe's latest
+# question; what the course team and the staff do while the tab stays open are events the tab sees only when it asks.
+schema: delurio-graph/0
+kind: flow
+id: medaris.questions
+status: proposed
+domain: medaris.learning
+ui: medaris.questions
+title: Ask the course team a question
+summary: >-
+  A talebe asks a question on one of the course's celses; only they and whoever may answer in the course read it. They
+  rewrite it while nobody has answered and delete it at any time, its answer with it. No one is notified either way.
+
+scope:
+  shows: the Sorularım tab, from its first read, for a talebe whose content is open
+  world: open
+  outOfView:
+    - "the watch page's question panel (lesson-questions.tsx), which lists one celse's questions with the same card"
+    - "the staff's list and answer in nazar (GET /courses/:id/questions, PUT /questions/:id/answer)"
+    - "paging: Daha fazla göster reads the next page of the talebe's own questions"
+    - "a question deleted or rewritten in another tab"
+
+context:
+  question: # the talebe's latest question, as the server holds it
+    values: [none, waiting, answered]
+    initial: any
+    say: { none: "no question yet", waiting: "a question waits for an answer", answered: "a question is answered" }
+  shown: # what the tab shows of it
+    values: [none, waiting, answered]
+    initial: none
+  seat:
+    values: [active, removed, passive]
+    initial: active
+  answeredMeanwhile: { values: [false, true], initial: false } # the API said 409: editing is over for this card
+  wrote: # what the last successful write was, cleared when someone else changes something
+    values: [none, asked, edited, deleted]
+    initial: none
+  notice:
+    values: [none, sessionRequired, bodyRequired, forbidden, askFailed, editAnswered, editFailed, deleteFailed]
+    initial: none
+
+guards:
+  mayEdit: "shown == 'waiting' and not answeredMeanwhile"
+  showSessionRequired: "notice == 'sessionRequired'"
+  showBodyRequired: "notice == 'bodyRequired'"
+  showForbidden: "notice == 'forbidden'"
+  showAskFailed: "notice == 'askFailed'"
+  showEditAnswered: "notice == 'editAnswered'"
+  showEditFailed: "notice == 'editFailed'"
+  showDeleteFailed: "notice == 'deleteFailed'"
+  answeredShown: "shown == 'answered'"
+
+effects:
+  shownNone: { set: { shown: none, notice: none } }
+  shownWaiting: { set: { shown: waiting, notice: none } }
+  shownAnswered: { set: { shown: answered, notice: none } }
+  sessionRequired: { set: { notice: sessionRequired } }
+  bodyRequired: { set: { notice: bodyRequired } }
+  asked: { set: { question: waiting, shown: waiting, answeredMeanwhile: false, wrote: asked, notice: none } }
+  forbidden: { set: { notice: forbidden } }
+  askFailed: { set: { notice: askFailed } }
+  edited: { set: { wrote: edited, notice: none } }
+  editAnswered: { set: { answeredMeanwhile: true, notice: editAnswered } }
+  editFailed: { set: { notice: editFailed } }
+  dropped: { set: { question: none, shown: none, wrote: deleted, notice: none } }
+  vanished: { set: { question: none, shown: none, notice: none } }
+  deleteFailed: { set: { notice: deleteFailed } }
+  staffAnswered: { set: { question: answered, wrote: none } }
+  seatLost: { set: { seat: removed, wrote: none } }
+  passivated: { set: { seat: passive, wrote: none } }
+  clear: { set: { notice: none } }
+
+failures:
+  loading:
+    from: listMyCourseQuestions
+    server: [network, 5xx]
+  asking:
+    from: askLessonQuestion
+    forbidden: [LESSON_QUESTION_FORBIDDEN]
+    server: [LESSON_NOT_FOUND, network, 5xx]
+  savingEdit:
+    from: updateLessonQuestion
+    forbidden: [LESSON_QUESTION_FORBIDDEN]
+    conflict: [LESSON_QUESTION_ANSWERED]
+    notFound: [LESSON_QUESTION_NOT_FOUND]
+    server: [network, 5xx]
+  deleting:
+    from: deleteLessonQuestion
+    forbidden: [LESSON_QUESTION_FORBIDDEN]
+    notFound: [LESSON_QUESTION_NOT_FOUND]
+    server: [network, 5xx]
+
+main:
+  given: { question: none }
+  events: [DONE, ASK, DONE, EDIT, SAVE, DONE]
+
+initial: loading
+states:
+  loading:
+    title: Read the talebe's questions
+    description: GET /courses/:id/questions/mine (getDetail + mayReachOwnWriting), the newest first
+    source: apps/tedris/features/courses/components/course-questions.tsx:59
+    invoke: { action: listMyCourseQuestions }
+    on:
+      DONE:
+        - { guard: "question == 'none'", target: list, effect: [shownNone], say: "none asked yet", source: "apps/tedris/features/courses/components/course-questions.tsx:127" }
+        - { guard: "question == 'waiting'", target: list, effect: [shownWaiting], say: "a question waits", source: "apps/tedris/features/courses/components/course-questions.tsx:131" }
+        - { target: list, effect: [shownAnswered], say: "a question is answered", source: "apps/tedris/features/courses/components/course-questions.tsx:131" }
+      FAIL.server: { target: loadFailed, say: "the read failed", source: "apps/tedris/features/courses/components/course-questions.tsx:69" }
+
+  loadFailed:
+    title: The questions could not be read
+    by: human
+    source: apps/tedris/features/courses/components/course-questions.tsx:118
+    on:
+      RETRY: { target: loading, say: "they try again", source: "apps/tedris/features/courses/components/course-questions.tsx:122" }
+      NAVIGATE: { target: left, say: "they leave the page" }
+
+  list:
+    title: Sorularım
+    by: human
+    goal: true
+    description: who reads the questions, the form to ask one on a celse of the course, and the talebe's questions with their answers
+    source: apps/tedris/features/courses/components/course-questions.tsx:106
+    on:
+      ASK: { target: asking, say: "they choose a celse, write the question and send it", source: "apps/tedris/features/courses/components/course-questions.tsx:415" }
+      ASK_NO_SESSION: { target: list, effect: [sessionRequired], say: "no celse chosen: nothing is sent", source: "apps/tedris/features/courses/components/course-questions.tsx:410" }
+      ASK_EMPTY: { target: list, effect: [bodyRequired], say: "an empty question: nothing is sent", source: "apps/tedris/features/courses/components/course-questions.tsx:411" }
+      EDIT: { guard: mayEdit, target: editing, effect: [clear], say: "they rewrite the waiting question", source: "apps/tedris/features/courses/components/course-questions.tsx:365" }
+      DELETE: { guard: "shown != 'none'", target: confirmDelete, effect: [clear], say: "they press Sil", source: "apps/tedris/features/courses/components/course-questions.tsx:375" }
+      STAFF_ANSWERS: { guard: "question == 'waiting'", target: list, effect: [staffAnswered], say: "meanwhile someone who may answer answers it in nazar", source: "apps/tedrisat/src/lesson-question/lesson-question.service.ts:190" }
+      TEAM_REMOVES: { guard: "seat == 'active'", target: list, effect: [seatLost], say: "meanwhile the course team takes them out, or a ban bars them", source: "apps/tedrisat/src/course/course.service.ts:1734" }
+      PASSIVATED: { guard: "seat != 'passive'", target: list, effect: [passivated], say: "meanwhile the course goes into a passive scope", source: "libs/common/src/authz/effective-permissions.ts:337" }
+      NAVIGATE: { target: left, say: "they leave the page" }
+
+  asking:
+    title: Send the question
+    description: POST /lessons/:id/questions (findVisibleLessonCourse + mayWriteAsTalebe); no one is notified
+    source: apps/tedrisat/src/lesson-question/lesson-question.service.ts:71
+    invoke: { action: askLessonQuestion }
+    on:
+      DONE: { guard: "seat == 'active'", target: list, effect: [asked], say: "the question is on top of the list", source: "apps/tedris/features/courses/components/course-questions.tsx:418" }
+      FAIL.forbidden: { guard: "seat != 'active'", target: list, effect: [forbidden], say: "no longer an active talebe: 403", source: "apps/tedrisat/src/lesson-question/lesson-question.service.ts:81" }
+      FAIL.server: { target: list, effect: [askFailed], say: "the question did not go through", source: "apps/tedris/features/courses/components/course-questions.tsx:422" }
+
+  editing:
+    title: Rewrite the question
+    by: human
+    description: the card becomes a form in place; focus is not moved into it
+    source: apps/tedris/features/courses/components/course-questions.tsx:271
+    on:
+      SAVE: { target: savingEdit, say: "they save", source: "apps/tedris/features/courses/components/course-questions.tsx:277" }
+      SAVE_EMPTY: { target: editing, effect: [bodyRequired], say: "an empty question: nothing is sent", source: "apps/tedris/features/courses/components/course-questions.tsx:205" }
+      CANCEL: { target: list, say: "they keep it as it was", source: "apps/tedris/features/courses/components/course-questions.tsx:309" }
+
+  savingEdit:
+    title: Save the rewritten question
+    description: >-
+      PATCH /questions/:id: the author's own (else 404), mayWriteAsTalebe (else 403), and only while nobody has answered
+      (else 409)
+    source: apps/tedrisat/src/lesson-question/lesson-question.service.ts:133
+    invoke: { action: updateLessonQuestion }
+    on:
+      DONE: { guard: "seat == 'active' and question == 'waiting'", target: list, effect: [edited], say: "the question is rewritten", source: "apps/tedrisat/src/lesson-question/lesson-question.repository.ts:321" }
+      FAIL.forbidden: { guard: "seat != 'active'", target: editing, effect: [forbidden], say: "no longer an active talebe: 403", source: "apps/tedrisat/src/lesson-question/lesson-question.service.ts:140" }
+      FAIL.conflict: { guard: "seat == 'active' and question == 'answered'", target: list, effect: [editAnswered], say: "answered meanwhile: 409; editing is over", source: "apps/tedris/features/courses/components/course-questions.tsx:217" }
+      FAIL.notFound: { target: list, effect: [vanished], say: "gone meanwhile: the card is dropped", source: "apps/tedris/features/courses/components/course-questions.tsx:216" }
+      FAIL.server: { target: editing, effect: [editFailed], say: "the change did not go through", source: "apps/tedris/features/courses/components/course-questions.tsx:222" }
+
+  confirmDelete:
+    title: Ask before deleting
+    by: human
+    description: the buttons are replaced in the card by "Silinsin mi?", or "Silinsin mi? Cevabı da silinir." for an answered one; focus is not moved
+    source: apps/tedris/features/courses/components/course-questions.tsx:336
+    on:
+      CONFIRM: { target: deleting, say: "they press Sil", source: "apps/tedris/features/courses/components/course-questions.tsx:346" }
+      CANCEL: { target: list, say: "they keep it", source: "apps/tedris/features/courses/components/course-questions.tsx:353" }
+
+  deleting:
+    title: Delete the question
+    description: DELETE /questions/:id; needs only mayReachOwnWriting, so a talebe taken out still deletes theirs; the answer goes too
+    source: apps/tedrisat/src/lesson-question/lesson-question.service.ts:157
+    invoke: { action: deleteLessonQuestion }
+    on:
+      DONE: { guard: "seat != 'passive'", target: list, effect: [dropped], say: "the question and its answer are gone", source: "apps/tedrisat/src/lesson-question/lesson-question.repository.ts:329" }
+      FAIL.notFound: { target: list, effect: [vanished], say: "gone already: taken as done", source: "apps/tedris/features/courses/components/course-questions.tsx:238" }
+      FAIL.forbidden: { guard: "seat == 'passive'", target: list, effect: [deleteFailed], say: "a passive scope closes it: 403, shown as a failure to retry", source: "apps/tedrisat/src/lesson-question/lesson-question.service.ts:160" }
+      FAIL.server: { target: list, effect: [deleteFailed], say: "the deletion did not go through", source: "apps/tedris/features/courses/components/course-questions.tsx:241" }
+
+  left: { type: final, title: They leave the page, leavesPage: true }
+
+assertions:
+  - { id: no-question-without-seat, never: "wrote in ['asked', 'edited'] and seat != 'active'", say: "A question is never asked or rewritten by someone who is no longer an active talebe", source: "apps/tedrisat/src/lesson-question/lesson-question.service.ts:80" }
+  - { id: answered-never-rewritten, never: "wrote == 'edited' and question == 'answered'", say: "An answered question is never rewritten", source: "apps/tedrisat/src/lesson-question/lesson-question.repository.ts:321" }
+  - { id: passive-closes-own-writing, never: "wrote == 'deleted' and seat == 'passive'", say: "In a passive scope the talebe cannot reach what they wrote, not even to delete it", source: "apps/tedrisat/src/course/course.service.ts:582" }
+  - { id: edit-offered-only-unanswered, never: "state == 'editing' and shown == 'answered'", say: "The tab never offers to rewrite a question it shows answered", source: "apps/tedris/features/courses/question-model.ts:55" }

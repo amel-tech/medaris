@@ -1,0 +1,202 @@
+# Medaris management answering köşk applications in nizam (/talepler/kosk-basvurulari, design nizam/15, MDRS-181),
+# as the code does it at ce47fce8. "Köşkü aç" opens the köşk form (nizam/10) filled from the application; the köşk is
+# created first (POST /kosks) and the application is accepted after it (POST .../approve), two separate requests.
+schema: delurio-graph/0
+kind: flow
+id: medaris.kosk-application-review
+status: proposed
+domain: medaris.kosk-decks
+ui: medaris.kosk-application-review
+title: Answer köşk applications
+summary: >-
+  The başnazım, or a Medaris nazımı holding "Köşk başvurularını karara bağla", opens the waiting applications. The first
+  one is selected at once, and reading its applicant's e-mail and phone is written to the audit log. "Köşkü aç" opens
+  the köşk form with the application's name and summary and the applicant as its nazım; once the köşk is opened the
+  application is accepted. "Reddet" asks for a reason the applicant reads in their notifications. Each answer leaves the
+  waiting list and the next application is selected.
+
+scope:
+  shows: the waiting list, the selected application with its contact details, opening the köşk from it, and refusing it
+  world: open
+  outOfView:
+    - "the Karara bağlanan tab: the same detail read, without the answer buttons"
+    - "Köşk aç from the köşk table (nizam/09), for the başnazım only: medaris.kosk-lifecycle"
+    - "the applicant's form: medaris.kosk-apply; the applicant's notification: the notifications page"
+    - "the e-mail search of the nazım picker (GET /users?email=, audited): the auth-account area"
+
+context:
+  canDecide:
+    values: [true, false]
+    initial: any
+    say: { "true": "the person is the başnazım or holds platform.kosk_application_decide", "false": "the person holds neither" }
+  canCreate:
+    values: [true, false]
+    initial: any
+    say: { "true": "the person is the başnazım or holds platform.kosk_create", "false": "the person may not open a köşk" }
+  waiting:
+    values: [true, false]
+    initial: any
+    say: { "true": "applications are waiting", "false": "no application is waiting" }
+  answeredMeanwhile:
+    values: [false, true]
+    initial: any
+    say: { "false": "nobody else answers the selected application", "true": "someone answers it while the page is open" }
+  formOk:
+    values: [true, false]
+    initial: any
+    say: { "true": "the köşk form has a name and at least one nazım", "false": "the name is missing or every nazım was taken off" }
+  handleFree:
+    values: [true, false]
+    initial: any
+    say: { "true": "the short name is free, or none is given", "false": "another köşk uses the short name" }
+  reasonGiven:
+    values: [true, false]
+    initial: any
+    say: { "true": "a reason is written", "false": "the reason is empty" }
+  chosen: { values: [false, true], initial: false } # the reviewer picked the selected application themselves
+  contactRead: { values: [false, true], initial: false } # the applicant's contact details were read and audited
+  koskOpened: { values: [false, true], initial: false } # a köşk was opened for the selected application
+  answer: { values: [none, approved, rejected], initial: none } # what this page saved for the selected application
+  notice: { values: [none, approved, rejected, answered, forbidden, handleTaken], initial: none }
+
+guards:
+  mayOpenPage: "canDecide" # source: apps/tedrisat/src/platform-access/platform-access.service.ts:43
+
+effects:
+  read: { set: { contactRead: true } }
+  choose: { set: { chosen: true, contactRead: false, koskOpened: false, answer: none, notice: none }, havoc: [answeredMeanwhile, formOk, handleFree, reasonGiven] }
+  clearNotice: { set: { notice: none } }
+  opened: { set: { koskOpened: true } }
+  forbidden: { set: { notice: forbidden } }
+  taken: { set: { notice: handleTaken } }
+  newHandle: { set: { notice: none }, havoc: [handleFree] }
+  approved: { set: { answer: approved, notice: approved } }
+  rejected: { set: { answer: rejected, notice: rejected } }
+  answered: { set: { notice: answered } }
+  next: { set: { chosen: false, contactRead: false, koskOpened: false, answer: none }, havoc: [waiting, answeredMeanwhile, formOk, handleFree, reasonGiven] }
+
+failures:
+  readingDetail: { from: getKoskApplication, forbidden: [AUTHZ_FORBIDDEN], gone: [KOSK_APPLICATION_NOT_FOUND] }
+  creatingKosk: { from: createKosk, forbidden: [AUTHZ_FORBIDDEN, SELF_GRANT_REFUSED], handle: [KOSK_HANDLE_TAKEN] }
+  approving: { from: approveKoskApplication, answered: [KOSK_APPLICATION_DECIDED, KOSK_APPLICATION_NOT_FOUND] }
+  rejecting: { from: rejectKoskApplication, answered: [KOSK_APPLICATION_DECIDED, KOSK_APPLICATION_NOT_FOUND] }
+
+main:
+  given: { canDecide: true, canCreate: true, waiting: true, answeredMeanwhile: false, formOk: true, handleFree: true }
+  events: [DONE, OPEN, SUBMIT, DONE, DONE]
+
+initial: opening
+states:
+  opening:
+    title: Open the waiting applications
+    description: >-
+      The page reads the waiting applications (GET /nizam/kosk-applications, at most 100, oldest first, no contact
+      detail). A 403 shows "Bu bölüm için izniniz yok"; the list selects its first application, or the one `?secili=`
+      names, with no click.
+    source: apps/nizam/app/talepler/kosk-basvurulari/page.tsx:28
+    always:
+      - { guard: "not mayOpenPage", target: forbidden, say: "tedrisat refuses the list", source: "apps/nizam/app/talepler/kosk-basvurulari/page.tsx:29" }
+      - { guard: "not waiting", target: emptyList, say: "no application waits", source: "apps/nizam/features/platform-admin/components/applications-view.tsx:405" }
+      - { target: readingDetail, say: "the first waiting application is selected by itself", source: "apps/nizam/features/platform-admin/components/applications-view.tsx:73" }
+
+  readingDetail:
+    title: Read the selected application
+    description: >-
+      GET /nizam/kosk-applications/{id}, once per selection: tedrisat writes kosk_application.contact_read to the audit
+      log before it returns the applicant's e-mail, phone and roles. It runs for whatever is selected, the automatic
+      first selection included.
+    invoke: { action: getKoskApplication }
+    source: apps/nizam/features/platform-admin/components/applications-view.tsx:123
+    on:
+      DONE: { target: detail, effect: [read], say: "the details and the contact lines appear, with the note that seeing them is recorded", source: "apps/tedrisat/src/kosk-application/kosk-application-review.service.ts:121" }
+
+  detail:
+    title: Look at the application
+    by: human
+    goal: true
+    description: the field, the date, the köşks already in the field, the summary, the reason and the applicant, then the two answers
+    source: apps/nizam/features/platform-admin/components/applications-view.tsx:268
+    on:
+      OPEN: { target: openDialog, effect: [clearNotice], say: "Köşkü aç opens the köşk form", source: "apps/nizam/features/platform-admin/components/applications-view.tsx:343" }
+      REJECT: { target: rejectDialog, effect: [clearNotice], say: "Reddet asks for a reason", source: "apps/nizam/features/platform-admin/components/applications-view.tsx:344" }
+      CHOOSE: { target: readingDetail, effect: [choose], say: "they pick another application in the list", source: "apps/nizam/features/platform-admin/components/applications-view.tsx:207" }
+      NAVIGATE: { target: left, say: "they go to another page", source: "apps/nizam/features/platform-admin/components/applications-view.tsx:268" }
+
+  openDialog:
+    title: Open the köşk from the application
+    by: human
+    description: >-
+      The "Köşk aç" dialog (nizam/10) with the application's name and summary (as the description) and the applicant as
+      its nazım; there is no field input, so the application's field is not carried over. The button stays off until the
+      name and at least one nazım are right; the scrim does not close it.
+    source: apps/nizam/features/kosks/components/open-kosk-dialog.tsx:122
+    on:
+      SUBMIT: { guard: "formOk and notice != 'handleTaken'", target: creatingKosk, say: "they press Köşk aç", source: "apps/nizam/features/kosks/components/open-kosk-dialog.tsx:93" }
+      CHANGE_HANDLE: { guard: "notice == 'handleTaken'", target: openDialog, effect: [newHandle], say: "they change the short name", source: "apps/nizam/features/kosks/components/open-kosk-dialog.tsx:184" }
+      CANCEL: { target: detail, say: "Vazgeç closes the dialog", source: "apps/nizam/features/kosks/components/open-kosk-dialog.tsx:136" }
+
+  creatingKosk:
+    title: Open the köşk
+    description: >-
+      POST /kosks with the form, its nazımları seated in the same transaction (audit kosk.create). It needs
+      platform.kosk_create, which deciding applications does not include.
+    invoke: { action: createKosk }
+    source: apps/nizam/features/kosks/components/open-kosk-dialog.tsx:100
+    on:
+      DONE: { guard: "canCreate and handleFree", target: approving, effect: [opened], say: "the köşk exists; the page asks for the acceptance next", source: "apps/nizam/features/kosks/components/open-kosk-dialog.tsx:118" }
+      FAIL.handle: { guard: "canCreate and not handleFree", target: openDialog, effect: [taken], say: "the short name is taken: said under its field", source: "apps/nizam/features/kosks/components/open-kosk-dialog.tsx:105" }
+      FAIL.forbidden: { guard: "not canCreate", target: openDialog, effect: [forbidden], say: "tedrisat refuses to open a köşk: a toast says so and the dialog stays", source: "apps/nizam/features/kosks/components/open-kosk-dialog.tsx:109" }
+
+  approving:
+    title: Accept the application with the köşk
+    description: >-
+      POST /nizam/kosk-applications/{id}/approve with the new köşk's id, a second request after the köşk exists. The
+      answer is given once (409 KOSK_APPLICATION_DECIDED); the applicant is notified.
+    invoke: { action: approveKoskApplication }
+    source: apps/nizam/features/platform-admin/components/applications-view.tsx:164
+    on:
+      DONE: { guard: "not answeredMeanwhile", target: settling, effect: [approved], say: "the application is accepted and the applicant told", source: "apps/nizam/features/platform-admin/components/applications-view.tsx:172" }
+      FAIL.answered: { guard: "answeredMeanwhile", target: settling, effect: [answered], say: "it was answered meanwhile: a toast says so, the row leaves the list, and the köşk just opened stays open", source: "apps/nizam/features/platform-admin/components/applications-view.tsx:155" }
+
+  rejectDialog:
+    title: Write the reason for refusing
+    by: human
+    description: "Başvuruyu reddet: a required reason; Reddet stays off while it is empty"
+    source: apps/nizam/features/deck-review/components/reject-dialog.tsx:75
+    on:
+      SUBMIT: { guard: "reasonGiven", target: rejecting, say: "they press Reddet", source: "apps/nizam/features/deck-review/components/reject-dialog.tsx:63" }
+      CANCEL: { target: detail, say: "Vazgeç", source: "apps/nizam/features/deck-review/components/reject-dialog.tsx:89" }
+
+  rejecting:
+    title: Refuse the application
+    description: POST /nizam/kosk-applications/{id}/reject; the reason goes to the applicant's notifications
+    invoke: { action: rejectKoskApplication }
+    source: apps/nizam/features/platform-admin/components/applications-view.tsx:178
+    on:
+      DONE: { guard: "not answeredMeanwhile", target: settling, effect: [rejected], say: "the application is refused and the reason sent", source: "apps/nizam/features/platform-admin/components/applications-view.tsx:186" }
+      FAIL.answered: { guard: "answeredMeanwhile", target: settling, effect: [answered], say: "it was answered meanwhile: the row leaves the list", source: "apps/nizam/features/platform-admin/components/applications-view.tsx:183" }
+
+  settling:
+    title: Take the answered application off the list
+    description: the row leaves the waiting list, the counts move, and the next waiting application is selected with no click
+    source: apps/nizam/features/platform-admin/components/applications-view.tsx:145
+    always:
+      - { guard: "waiting", target: readingDetail, effect: [next], say: "another application waits: it is selected and read", source: "apps/nizam/features/platform-admin/components/applications-view.tsx:152" }
+      - { target: emptyList, effect: [next], say: "nothing else waits", source: "apps/nizam/features/platform-admin/components/applications-view.tsx:152" }
+
+  emptyList:
+    title: Nothing waits
+    by: human
+    source: apps/nizam/features/platform-admin/components/applications-view.tsx:406
+    on:
+      NAVIGATE: { target: left, say: "they go to another page", source: "apps/nizam/features/platform-admin/components/applications-view.tsx:406" }
+
+  forbidden: { type: final, title: '"Bu bölüm için izniniz yok"', source: "apps/nizam/app/talepler/kosk-basvurulari/page.tsx:29" }
+  left: { type: final, title: The person goes elsewhere, leavesPage: true, source: "apps/nizam/features/platform-admin/components/applications-view.tsx" }
+
+assertions:
+  - { id: only-deciders-read, never: "state in ['readingDetail', 'detail', 'openDialog', 'creatingKosk', 'approving', 'rejectDialog', 'rejecting'] and not canDecide", say: "Only the başnazım and a Medaris nazımı holding the decision permission read or answer an application", source: "apps/tedrisat/src/kosk-application/kosk-application-review.service.ts:116" }
+  - { id: kosk-only-by-openers, never: "koskOpened and not canCreate", say: "No köşk is opened by someone who may not open köşks", source: "apps/tedrisat/src/kosk/kosk.controller.ts:309" }
+  - { id: answered-once, never: "answer != 'none' and answeredMeanwhile", say: "An application that was answered meanwhile is never answered a second time", source: "apps/tedrisat/src/kosk-application/kosk-application-review.repository.ts:202" }
+  - { id: refusal-has-reason, never: "answer == 'rejected' and not reasonGiven", say: "No application is refused without a reason", source: "apps/nizam/features/deck-review/components/reject-dialog.tsx:65" }
+  - { id: acceptance-follows-kosk, never: "answer == 'approved' and not koskOpened", say: "On this page an application is accepted only after its köşk was opened", source: "apps/nizam/features/platform-admin/components/applications-view.tsx:164" }

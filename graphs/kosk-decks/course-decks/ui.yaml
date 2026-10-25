@@ -1,0 +1,114 @@
+# The screens of medaris.course-decks: nazar /ders/{dersId}/deste and /ders/{dersId}/deste/{desteId} with their
+# dialogs, and the "Ders destesi" tab of tedris /courses/{courseId}. The nazar dialogs set no first focus and pass no
+# closeLabel: Base UI focuses the header's close button, named by the kit's default "Kapat". The alertdialogs pass no
+# cancelLabel: their Vazgeç is the kit's default. Toasts are Base UI toasts.
+schema: delurio-graph/0
+kind: ui
+id: medaris.course-decks
+flow: medaris.course-decks
+status: proposed
+catalog: catalog/tr.json
+locales: [tr, en]
+samples: { title: "Emsile kelimeleri", decks: "3", cards: "42", students: "18", count: "14", percent: "40" }
+changes: { key: Changes.note }
+
+nodes:
+  # the staff's deck list
+  listPage: { type: page, component: Page, role: main, name: { labelledBy: listTitle }, in: [decksList, creatingDeck], source: "apps/nazar/features/decks/components/decks-page.tsx:75" }
+  listTitle: { type: text, component: Heading, role: heading, text: { key: Decks.title }, in: [decksList, creatingDeck] }
+  listSummary: { type: text, component: Text, text: { key: Decks.summary, params: { decks: course.decks, cards: course.cards, students: course.students } }, in: [decksList, creatingDeck] }
+  importButton: { type: action, component: Button, role: button, intent: secondary, text: { key: Decks.importButton }, in: [decksList] }
+  newButton: { type: action, component: Button, role: button, intent: confirm, text: { key: Decks.newButton }, in: [decksList, creatingDeck], disabledIn: [creatingDeck], emits: NEW, source: "apps/nazar/features/decks/components/decks-actions.tsx:35" }
+  deckList: { type: list, component: List, role: list, name: { key: Decks.title }, in: [decksList, creatingDeck] }
+  deckItem: { type: action, component: ListItem, role: link, text: { key: Data.title, params: { title: deck.title } }, in: [decksList, creatingDeck], repeat: decks, emits: OPEN_DECK, source: "apps/nazar/features/decks/components/decks-page.tsx:103" }
+  deckDraft: { type: text, component: Text, text: { key: Decks.draftNote }, in: [decksList], when: draft }
+  deckMastered: { type: text, component: Text, text: { key: Decks.mastered, params: { percent: deck.mastered } }, in: [decksList], when: "not draft" }
+  createdToast: { type: status, component: Status, role: dialog, text: { key: Decks.created }, in: [decksList], when: "notice == 'created'" }
+  deletedToast: { type: status, component: Status, role: dialog, text: { key: Decks.deleted }, in: [decksList], when: "notice == 'deleted'" }
+
+  # Deste aç
+  newDialog: { type: page, component: Page, role: dialog, name: { labelledBy: newTitle }, in: [newDeckDialog, creatingDeck], initialFocus: newClose, source: "apps/nazar/features/decks/components/deck-form-dialog.tsx:95" }
+  newTitle: { type: text, component: Heading, role: heading, text: { key: Decks.newTitle }, in: [newDeckDialog, creatingDeck] }
+  newClose: { type: action, component: Button, role: button, intent: dismiss, name: { key: Alert.close }, in: [newDeckDialog, creatingDeck], disabledIn: [creatingDeck], emits: CANCEL, source: "libs/ui/src/mds/dialog.tsx:97" }
+  titleField: { type: field, component: TextField, role: textbox, text: { key: Decks.titleField }, in: [newDeckDialog, creatingDeck], disabledIn: [creatingDeck] }
+  titleHelp: { type: text, component: Text, text: { key: Decks.titleHelp }, in: [newDeckDialog, creatingDeck] }
+  descriptionField: { type: field, component: TextField, role: textbox, text: { key: Decks.descriptionField }, in: [newDeckDialog, creatingDeck], disabledIn: [creatingDeck] }
+  cardTypeField: { type: field, component: TextField, role: radiogroup, text: { key: Decks.cardTypeField }, in: [newDeckDialog, creatingDeck], disabledIn: [creatingDeck] }
+  weekField: { type: field, component: TextField, role: combobox, text: { key: Decks.weekField }, in: [newDeckDialog, creatingDeck], disabledIn: [creatingDeck] }
+  draftField: { type: field, component: TextField, role: checkbox, text: { key: Decks.draftField }, in: [newDeckDialog, creatingDeck], disabledIn: [creatingDeck] }
+  draftHelp: { type: text, component: Text, text: { key: Decks.draftHelp }, in: [newDeckDialog, creatingDeck] }
+  newCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: Decks.cancel }, in: [newDeckDialog, creatingDeck], disabledIn: [creatingDeck], emits: CANCEL }
+  newSubmit: { type: action, component: Button, role: button, intent: confirm, text: { key: Decks.create }, in: [newDeckDialog, creatingDeck], disabledIn: [creatingDeck], emits: SUBMIT, source: "apps/nazar/features/decks/components/deck-form-dialog.tsx:107" }
+
+  # the deck's page
+  deckPage: { type: page, component: Page, role: main, name: { labelledBy: deckTitle }, in: [deckPage, addingCard, editingCard, removingCard, togglingDraft, deletingDeck], source: "apps/nazar/features/decks/components/deck-detail-screen.tsx:63" }
+  backToDecks: { type: action, component: LinkButton, role: link, text: { key: Decks.backToDecks }, in: [deckPage], emits: BACK }
+  deckTitle: { type: text, component: Heading, role: heading, text: { key: Data.title, params: { title: deck.title } }, in: [deckPage, addingCard, editingCard, removingCard, togglingDraft, deletingDeck] }
+  deckState: { type: text, component: Text, text: { oneOf: [Decks.draftState, Decks.published] }, in: [deckPage, addingCard, editingCard, removingCard, togglingDraft, deletingDeck] }
+  cardsTitle: { type: text, component: Heading, role: heading, text: { key: Decks.cardsTitle }, in: [deckPage, addingCard, editingCard, removingCard, togglingDraft, deletingDeck] }
+  addCard: { type: action, component: Button, role: button, intent: confirm, text: { key: Decks.addCard }, in: [deckPage, addingCard, editingCard, removingCard, togglingDraft, deletingDeck], disabledIn: [addingCard, editingCard, removingCard, togglingDraft, deletingDeck], emits: ADD_CARD, source: "apps/nazar/features/decks/components/deck-detail-screen.tsx:77" }
+  failureLine: { type: text, component: Text, text: { key: Decks.failed }, in: [deckPage], when: cardWriteFailed, source: "apps/nazar/features/decks/components/deck-detail-screen.tsx:82" } # a plain paragraph, not announced
+  cardList: { type: list, component: List, role: list, name: { key: Decks.cardsTitle }, in: [deckPage, addingCard, editingCard, removingCard, togglingDraft, deletingDeck] }
+  cardItem: { type: text, component: ListItem, role: listitem, text: { key: Decks.front }, in: [deckPage, addingCard, editingCard, removingCard, togglingDraft, deletingDeck], repeat: cards }
+  editCard: { type: action, component: Button, role: button, intent: secondary, text: { key: Decks.edit }, in: [deckPage, addingCard, editingCard, removingCard, togglingDraft, deletingDeck], disabledIn: [addingCard, editingCard, removingCard, togglingDraft, deletingDeck], emits: EDIT_CARD, source: "apps/nazar/features/decks/components/deck-detail-screen.tsx:101" } # drawn for every staff member; only the deck's creator can use it
+  removeCard: { type: action, component: Button, role: button, intent: secondary, text: { key: Decks.remove }, in: [deckPage, addingCard, editingCard, removingCard, togglingDraft, deletingDeck], disabledIn: [addingCard, editingCard, removingCard, togglingDraft, deletingDeck], emits: REMOVE_CARD, source: "apps/nazar/features/decks/components/deck-detail-screen.tsx:109" }
+  settingsTitle: { type: text, component: Heading, role: heading, text: { key: Decks.settingsTitle }, in: [deckPage, addingCard, editingCard, removingCard, togglingDraft, deletingDeck] }
+  publish: { type: action, component: Button, role: button, intent: secondary, text: { key: Decks.publish }, in: [deckPage, togglingDraft], disabledIn: [togglingDraft], when: draft, emits: TOGGLE_DRAFT, source: "apps/nazar/features/decks/components/deck-settings.tsx:165" }
+  unpublish: { type: action, component: Button, role: button, intent: secondary, text: { key: Decks.unpublish }, in: [deckPage, togglingDraft], disabledIn: [togglingDraft], when: "not draft", emits: TOGGLE_DRAFT }
+  deleteDeck: { type: action, component: Button, role: button, intent: secondary, text: { key: Decks.deleteDeck }, in: [deckPage], when: draft, emits: DELETE_DECK, source: "apps/nazar/features/decks/components/deck-settings.tsx:181" }
+  deleteBlocked: { type: text, component: Text, text: { key: Decks.deleteDeckBlocked }, in: [deckPage], when: "not draft", source: "apps/nazar/features/decks/components/deck-settings.tsx:192" }
+  addedToast: { type: status, component: Status, role: dialog, text: { key: Decks.cardAdded }, in: [deckPage], when: "notice == 'cardAdded'" }
+  savedToast: { type: status, component: Status, role: dialog, text: { key: Decks.cardSaved }, in: [deckPage], when: "notice == 'cardSaved'" }
+  removedToast: { type: status, component: Status, role: dialog, text: { key: Decks.cardRemoved }, in: [deckPage], when: "notice == 'cardRemoved'" }
+  stateToast: { type: status, component: Status, role: dialog, text: { key: Decks.stateChanged }, in: [deckPage], when: "notice == 'stateChanged'" }
+
+  # Kart ekle / Kartı düzenle
+  cardDialog: { type: page, component: Page, role: dialog, name: { labelledBy: cardDialogTitle }, in: [addCardDialog, editCardDialog], initialFocus: cardClose, source: "apps/nazar/features/decks/components/card-dialog.tsx:92" }
+  cardDialogTitle: { type: text, component: Heading, role: heading, text: { oneOf: [Decks.addCardTitle, Decks.editCardTitle] }, in: [addCardDialog, editCardDialog] }
+  cardClose: { type: action, component: Button, role: button, intent: dismiss, name: { key: Alert.close }, in: [addCardDialog, editCardDialog], emits: CANCEL, source: "libs/ui/src/mds/dialog.tsx:97" }
+  frontField: { type: field, component: TextField, role: textbox, text: { key: Decks.front }, in: [addCardDialog, editCardDialog] }
+  backField: { type: field, component: TextField, role: textbox, text: { key: Decks.back }, in: [addCardDialog, editCardDialog] }
+  cardCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: Decks.cancel }, in: [addCardDialog, editCardDialog], emits: CANCEL }
+  cardSave: { type: action, component: Button, role: button, intent: confirm, text: { key: Decks.save }, in: [addCardDialog, editCardDialog], emits: SAVE, source: "apps/nazar/features/decks/components/card-dialog.tsx:104" }
+
+  # Sil (a card)
+  removeDialog: { type: page, component: Page, role: alertdialog, name: { labelledBy: removeTitle }, in: [removeConfirm], initialFocus: removeCancel, source: "apps/nazar/features/decks/components/deck-detail-screen.tsx:148" }
+  removeTitle: { type: text, component: Heading, role: heading, text: { key: Decks.remove }, in: [removeConfirm] }
+  removeText: { type: text, component: Text, text: { key: Decks.removeConfirm }, in: [removeConfirm] }
+  removeCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: Alert.cancel }, in: [removeConfirm], emits: CANCEL, source: "libs/ui/src/mds/alert-dialog.tsx:42" }
+  removeYes: { type: action, component: Button, role: button, intent: confirm, text: { key: Decks.removeYes }, in: [removeConfirm], emits: CONFIRM }
+
+  # Desteyi sil (a draft)
+  deleteDialog: { type: page, component: Page, role: alertdialog, name: { labelledBy: deleteTitle }, in: [deleteConfirm], initialFocus: deleteCancel, source: "apps/nazar/features/decks/components/deck-settings.tsx:196" }
+  deleteTitle: { type: text, component: Heading, role: heading, text: { key: Decks.deleteDeck }, in: [deleteConfirm] }
+  deleteText: { type: text, component: Text, text: { key: Decks.deleteDeckHelp }, in: [deleteConfirm] }
+  deleteCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: Alert.cancel }, in: [deleteConfirm], emits: CANCEL, source: "libs/ui/src/mds/alert-dialog.tsx:42" }
+  deleteYes: { type: action, component: Button, role: button, intent: confirm, text: { key: Decks.deleteDeck }, in: [deleteConfirm], emits: CONFIRM }
+
+  # the talebe's tab (tedris)
+  tabPage: { type: page, component: Page, role: tabpanel, name: { labelledBy: tabTitle }, in: [courseTab], source: "apps/tedris/features/courses/components/course-decks-tab.tsx:34" }
+  tabTitle: { type: text, component: Heading, role: heading, text: { key: Tab.title }, in: [courseTab] }
+  tabEmpty: { type: text, component: Text, text: { key: Tab.empty }, in: [courseTab], when: "barred or draft" } # a barred talebe's read is refused, and the tab says the course has no deck
+  featured: { type: text, component: Text, text: { oneOf: [Tab.featuredThisWeek, Tab.featuredNext] }, in: [courseTab], when: "not barred and not draft" }
+  study: { type: action, component: LinkButton, role: link, intent: confirm, name: { key: Tab.studyLabel, params: { title: deck.title } }, text: { key: Tab.study }, in: [courseTab], when: "not barred and not draft", emits: STUDY, source: "apps/tedris/features/courses/components/course-decks-tab.tsx:43" }
+  others: { type: text, component: Text, text: { key: Tab.others }, in: [courseTab], when: "not barred and not draft" }
+
+  noAccessTitle: { type: text, component: Heading, role: heading, text: { key: Decks.noAccessTitle }, in: [noAccess], source: "apps/nazar/features/decks/components/decks-page.tsx:46" }
+
+edges:
+  - { labelledBy: [listPage, listTitle] }
+  - { labelledBy: [newDialog, newTitle] }
+  - { labelledBy: [deckPage, deckTitle] }
+  - { labelledBy: [cardDialog, cardDialogTitle] }
+  - { labelledBy: [removeDialog, removeTitle] }
+  - { labelledBy: [deleteDialog, deleteTitle] }
+  - { labelledBy: [tabPage, tabTitle] }
+  - { triggers: [newSubmit, creatingDeck] }
+  - { triggers: [cardSave, addingCard] }
+  - { triggers: [cardSave, editingCard] }
+  - { triggers: [removeYes, removingCard] }
+  - { triggers: [deleteYes, deletingDeck] }
+
+rules:
+  - { id: offered-where-it-works, rule: "Düzenle and Sil on a card are drawn for every staff member, and only the deck's creator can use them" }
+  - { id: announced-failure, rule: "a failed write is announced (the deck page's failure line is a plain paragraph)" }

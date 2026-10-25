@@ -59,6 +59,8 @@ export interface IFlashcardDeckOwnership {
 export interface IFlashcardDeckVisibility {
   authorId: string;
   isPublic: boolean;
+  /** The course the deck belongs to (ders destesi), or null. */
+  courseId: string | null;
   /**
    * The deck belongs to a course, köşk or medrese the asked-about user is
    * enrolled in (`deckSharedWith`). Always false when no user was named.

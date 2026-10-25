@@ -1,0 +1,76 @@
+# The screens of medaris.direct-grant: apps/nizam/features/permissions/components/{nazims-view,permissions-dialog,
+# nazim-picker,permission-boxes,dismiss-dialog}.tsx on libs/ui/src/mds/dialog.tsx (Base UI, role dialog).
+# The appoint and edit dialog passes no initialFocus, so the header's close button gets it (dialog.tsx:97); the
+# dismiss dialog puts it on Vazgeç (dismiss-dialog.tsx:160) and is a dialog, not an alertdialog.
+schema: delurio-graph/0
+kind: ui
+id: medaris.direct-grant
+flow: medaris.direct-grant
+status: proposed
+catalog: catalog/tr.json
+locales: [tr, en]
+samples: { name: "Zeynep Kaya", count: "2", moment: "31.12.2026 23:59" }
+changes: { key: Changes.note }
+
+nodes:
+  title: { type: text, component: Heading, role: heading, text: { key: Nazims.title }, in: [listPage, listFailed, appointDialog, appointing, editDialog, savingGrants, readingGiven, givenFailed, dismissDialog, dismissing], source: "apps/nizam/features/permissions/components/nazims-view.tsx:205" }
+  intro: { type: text, component: Text, text: { key: Nazims.intro }, in: [listPage, listFailed], source: "apps/nizam/features/permissions/components/nazims-view.tsx:206" }
+  appointOff: { type: action, component: Button, role: button, intent: confirm, text: { key: Nazims.appoint }, in: [listFailed], disabledIn: [listFailed], source: "apps/nizam/features/permissions/components/nazims-view.tsx:210" }
+  appoint: { type: action, component: Button, role: button, intent: confirm, text: { key: Nazims.appoint }, in: [listPage], emits: APPOINT, source: "apps/nizam/features/permissions/components/nazims-view.tsx:208" }
+  failedAlert: { type: alert, component: Alert, role: alert, text: { key: Nazims.loadFailedTitle }, in: [listFailed], source: "apps/nizam/features/permissions/components/nazims-view.tsx:229" }
+  failedBody: { type: text, component: Text, text: { key: Nazims.loadFailed }, in: [listFailed], source: "apps/nizam/features/permissions/components/nazims-view.tsx:230" }
+  retry: { type: action, component: Button, role: button, intent: secondary, text: { key: Nazims.retry }, in: [listFailed], emits: RETRY, source: "apps/nizam/features/permissions/components/nazims-view.tsx:231" }
+  heading: { type: text, component: Heading, role: heading, text: { key: Nazims.heading }, in: [listPage], source: "apps/nizam/features/permissions/components/nazims-view.tsx:219" }
+  table: { type: list, component: List, role: table, name: { key: Nazims.caption }, in: [listPage], source: "apps/nizam/features/permissions/components/nazims-view.tsx:236" }
+  edit: { type: action, component: Button, role: button, intent: secondary, name: { key: Nazims.editLabel, params: { name: nazim.name } }, text: { key: Nazims.edit }, in: [listPage], repeat: nazims, emits: EDIT, source: "apps/nizam/features/permissions/components/nazims-view.tsx:176" }
+  dismiss: { type: action, component: Button, role: button, intent: secondary, name: { key: Nazims.dismissLabel, params: { name: nazim.name } }, text: { key: Nazims.dismiss }, in: [listPage], repeat: nazims, emits: DISMISS, source: "apps/nizam/features/permissions/components/nazims-view.tsx:185" }
+  doneToast: { type: status, component: Status, role: status, text: { oneOf: [Dialog.appointed, Dialog.saved, Dismiss.dismissed] }, in: [listPage], when: "notice in ['appointed', 'saved', 'dismissed']", source: "apps/nizam/features/permissions/components/permissions-dialog.tsx:163" }
+
+  grantDialog: { type: page, component: Page, role: dialog, name: { labelledBy: grantTitle }, in: [appointDialog, appointing, editDialog, savingGrants], initialFocus: grantClose, source: "apps/nizam/features/permissions/components/permissions-dialog.tsx:178" }
+  grantEyebrow: { type: text, component: Text, text: { key: Dialog.eyebrow }, in: [appointDialog, appointing, editDialog, savingGrants], source: "apps/nizam/features/permissions/components/permissions-dialog.tsx:185" }
+  grantTitle: { type: text, component: Heading, role: heading, text: { oneOf: [Dialog.titleAppoint, Dialog.titleEdit] }, in: [appointDialog, appointing, editDialog, savingGrants], source: "apps/nizam/features/permissions/components/permissions-dialog.tsx:187" }
+  grantClose: { type: action, component: Button, role: button, intent: dismiss, name: { key: Dialog.close }, in: [appointDialog, appointing, editDialog, savingGrants], emits: CANCEL, source: "libs/ui/src/mds/dialog.tsx:97" }
+  picker: { type: field, component: TextField, role: textbox, text: { key: Picker.label }, in: [appointDialog, appointing], disabledIn: [appointing], emits: PICK, source: "apps/nizam/features/permissions/components/nazim-picker.tsx:84" }
+  pickerHelp: { type: text, component: Text, text: { key: Picker.help }, in: [appointDialog, appointing], source: "apps/nizam/features/permissions/components/nazim-picker.tsx:84" }
+  chosen: { type: text, component: Text, text: { key: Picker.chosenTitle }, in: [appointDialog, appointing], when: picked, source: "apps/nizam/features/permissions/components/nazim-picker.tsx:111" }
+  groupSelect: { type: field, component: TextField, role: combobox, name: { key: Dialog.groupLabel }, text: { key: Dialog.groupLabel }, in: [appointDialog, appointing, editDialog, savingGrants], disabledIn: [appointing, savingGrants], source: "apps/nizam/features/permissions/components/permissions-dialog.tsx:227" }
+  groupHelp: { type: text, component: Text, text: { key: Dialog.groupHelp }, in: [appointDialog, appointing, editDialog, savingGrants], source: "apps/nizam/features/permissions/components/permissions-dialog.tsx:227" }
+  permissionsHeading: { type: text, component: Heading, role: heading, text: { key: Dialog.permissionsHeading }, in: [appointDialog, appointing, editDialog, savingGrants], source: "apps/nizam/features/permissions/components/permissions-dialog.tsx:267" }
+  permissionBox: { type: field, component: Text, role: checkbox, text: { key: Catalog.policyEdit }, in: [appointDialog, appointing, editDialog, savingGrants], disabledIn: [appointing, savingGrants], source: "apps/nizam/features/permissions/components/permission-boxes.tsx:67" } # one per catalog code; the group's own are ticked and disabled
+  endField: { type: field, component: TextField, role: textbox, text: { key: Dialog.endLabel }, in: [appointDialog, appointing, editDialog, savingGrants], disabledIn: [appointing, savingGrants], source: "apps/nizam/features/permissions/components/permissions-dialog.tsx:280" }
+  endHelp: { type: text, component: Text, text: { oneOf: [Dialog.endHelpNone, Dialog.endHelpAssignment] }, in: [appointDialog, appointing, editDialog, savingGrants], source: "apps/nizam/features/permissions/components/permissions-dialog.tsx:282" }
+  endPast: { type: text, component: Text, text: { key: Dialog.endPast }, in: [appointDialog, editDialog], when: "endChoice == 'past'", source: "apps/nizam/features/permissions/components/permissions-dialog.tsx:289" }
+  endAfter: { type: text, component: Text, text: { key: Dialog.endAfterAssignment }, in: [editDialog], when: "endChoice == 'afterAppointment'", source: "apps/nizam/features/permissions/components/permissions-dialog.tsx:294" }
+  grantAudit: { type: text, component: Text, text: { key: Dialog.auditNote }, in: [appointDialog, appointing, editDialog, savingGrants], source: "apps/nizam/features/permissions/components/permissions-dialog.tsx:313" }
+  grantCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: Dialog.cancel }, in: [appointDialog, appointing, editDialog, savingGrants], emits: CANCEL, source: "apps/nizam/features/permissions/components/permissions-dialog.tsx:192" }
+  grantSave: { type: action, component: Button, role: button, intent: confirm, text: { key: Dialog.save }, in: [appointDialog, appointing, editDialog, savingGrants], disabledIn: [appointing, savingGrants], emits: SAVE, source: "apps/nizam/features/permissions/components/permissions-dialog.tsx:193" }
+  grantFailed: { type: alert, component: Alert, role: alert, text: { oneOf: [Dialog.appointFailed, Dialog.failed] }, in: [appointDialog, editDialog], when: "notice == 'failed'", source: "apps/nizam/features/permissions/components/permissions-dialog.tsx:156" }
+  grantReason: { type: text, component: Text, text: { oneOf: [Errors.forbidden, Errors.expiryInvalid, Errors.groupNotFound, Errors.alreadyAppointed, Errors.nazimNotFound, Errors.generic] }, in: [appointDialog, editDialog], when: "notice == 'failed'", source: "apps/nizam/features/permissions/present.ts:348" }
+
+  dismissDialogPopup: { type: page, component: Page, role: dialog, name: { labelledBy: dismissTitle }, in: [readingGiven, givenFailed, dismissDialog, dismissing], initialFocus: dismissCancel, source: "apps/nizam/features/permissions/components/dismiss-dialog.tsx:149" }
+  dismissTitle: { type: text, component: Heading, role: heading, text: { key: Dismiss.title }, in: [readingGiven, givenFailed, dismissDialog, dismissing], source: "apps/nizam/features/permissions/components/dismiss-dialog.tsx:149" }
+  dismissIntro: { type: text, component: Text, text: { key: Dismiss.intro, params: { name: nazim.name } }, in: [readingGiven, givenFailed, dismissDialog, dismissing], source: "apps/nizam/features/permissions/components/dismiss-dialog.tsx:171" }
+  givenFailedAlert: { type: alert, component: Alert, role: alert, text: { key: Dismiss.loadFailedTitle }, in: [givenFailed], source: "apps/nizam/features/permissions/components/dismiss-dialog.tsx:177" }
+  givenRetry: { type: action, component: Button, role: button, intent: secondary, text: { key: Dismiss.retry }, in: [givenFailed], emits: RETRY, source: "apps/nizam/features/permissions/components/dismiss-dialog.tsx:181" }
+  nothingHandedOn: { type: text, component: Text, text: { key: Dismiss.nothingHandedOn }, in: [dismissDialog, dismissing], when: "givenToOthers == 'none'", source: "apps/nizam/features/permissions/components/dismiss-dialog.tsx:184" }
+  question: { type: text, component: Text, text: { key: Dismiss.question, params: { count: given.count } }, in: [dismissDialog, dismissing], when: "givenToOthers == 'some'", source: "apps/nizam/features/permissions/components/dismiss-dialog.tsx:188" }
+  takeOver: { type: action, component: Button, role: button, intent: secondary, text: { key: Dismiss.takeOver }, in: [dismissDialog], when: "givenToOthers == 'some'", repeat: given, emits: ANSWER, source: "apps/nizam/features/permissions/components/dismiss-dialog.tsx:193" } # a toggle with aria-pressed
+  drop: { type: action, component: Button, role: button, intent: secondary, text: { key: Dismiss.drop }, in: [dismissDialog], when: "givenToOthers == 'some'", repeat: given, emits: ANSWER, source: "apps/nizam/features/permissions/components/dismiss-dialog.tsx:193" }
+  answersNote: { type: text, component: Text, text: { key: Dismiss.answersNote }, in: [dismissDialog, dismissing], when: "givenToOthers == 'some'", source: "apps/nizam/features/permissions/components/dismiss-dialog.tsx:238" }
+  dismissAudit: { type: text, component: Text, text: { key: Dismiss.auditNote }, in: [dismissDialog, dismissing], source: "apps/nizam/features/permissions/components/dismiss-dialog.tsx:149" }
+  dismissCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: Dismiss.cancel }, in: [readingGiven, givenFailed, dismissDialog, dismissing], emits: CANCEL, source: "apps/nizam/features/permissions/components/dismiss-dialog.tsx:164" }
+  dismissSubmit: { type: action, component: Button, role: button, intent: confirm, text: { key: Dismiss.submit }, in: [dismissDialog, dismissing], disabledIn: [dismissing], emits: SUBMIT, source: "apps/nizam/features/permissions/components/dismiss-dialog.tsx:165" }
+  dismissFailed: { type: alert, component: Alert, role: alert, text: { key: Dismiss.failed }, in: [dismissDialog, readingGiven], when: "notice in ['dismissChanged', 'cascade']", source: "apps/nizam/features/permissions/components/dismiss-dialog.tsx:109" }
+  dismissReason: { type: text, component: Text, text: { oneOf: [Errors.dismissChanged, Errors.dismissCascade, Errors.dismissSeatless] }, in: [dismissDialog, readingGiven], when: "notice in ['dismissChanged', 'cascade']", source: "apps/nizam/features/permissions/components/dismiss-dialog.tsx:110" }
+
+  noAccessTitle: { type: text, component: Heading, role: heading, text: { key: NoAccess.title }, in: [forbiddenPage], source: "apps/nizam/components/errors/no-access.tsx:30" }
+
+edges:
+  - { labelledBy: [grantDialog, grantTitle] }
+  - { labelledBy: [dismissDialogPopup, dismissTitle] }
+  - { triggers: [grantSave, appointing] }
+  - { triggers: [dismissSubmit, dismissing] }
+
+rules:
+  - { id: confirm-before-dismissing, rule: "dismissing waits for an answer in an alertdialog whose focus starts on Vazgeç" }
+  - { id: focus-the-first-field, rule: "a form dialog puts the focus on its first field" }

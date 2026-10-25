@@ -309,7 +309,7 @@ describe("the page (nizam/37)", () => {
     expect((html.match(/>Yeni</g) ?? []).length).toBe(2);
     expect((html.match(/>Okundu say</g) ?? []).length).toBe(2);
     expect(html).toContain("Tümünü okundu say");
-    expect(html).toContain(`href="/tr/kosks/${KOSK}/yasaklamalar"`);
+    expect(html).toContain(`href="/kosks/${KOSK}/yasaklamalar"`);
   });
 
   it("words the description for Medaris administration differently", async () => {

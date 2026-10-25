@@ -62,7 +62,7 @@ const ScheduleRow = ({
   const platform = session.meetingUrl
     ? resolveMeetingPlatform(session.meetingUrl)
     : null;
-  const href = `/${locale}/courses/${session.courseId}/lessons/${session.id}`;
+  const href = `/courses/${session.courseId}/lessons/${session.id}`;
 
   return (
     <li className="grid grid-cols-[4.5rem_minmax(0,1fr)_auto] items-start gap-x-4 gap-y-1 py-4 border-be border-neutral-subtle last:border-be-0 max-md:grid-cols-[3.5rem_minmax(0,1fr)]">
@@ -207,14 +207,14 @@ export const SchedulePage = async ({
           <p className="mds-body">{t("SchedulePage.subtitle")}</p>
           <p className="mds-caption">
             {t("SchedulePage.zone", { zone: zoneLabel(timeZone, locale) })}{" "}
-            <Link className="mds-btn mds-btn--link" href={`/${locale}/account`}>
+            <Link className="mds-btn mds-btn--link" href={`/account`}>
               {t("SchedulePage.changeZone")}
             </Link>
           </p>
         </div>
         <Button
           variant="secondary"
-          href={`/${locale}/account/calendar`}
+          href={`/account/calendar`}
           iconLeft={<Icon name="calendar" size="sm" />}
         >
           {t("CalendarSubscription.link")}
@@ -270,13 +270,13 @@ export const SchedulePage = async ({
         aria-label={t("SchedulePage.listLabel")}
       >
         {window.fromDay !== window.today ? (
-          <Button variant="ghost" href={`/${locale}/schedule`}>
+          <Button variant="ghost" href={`/schedule`}>
             {t("SchedulePage.backToToday")}
           </Button>
         ) : null}
         <Button
           variant="secondary"
-          href={`/${locale}/schedule?from=${window.nextFromDay}`}
+          href={`/schedule?from=${window.nextFromDay}`}
         >
           {t("SchedulePage.next")}
         </Button>

@@ -47,7 +47,7 @@ async function signIn(
   page: Page,
   who: { email?: string; password?: string }
 ): Promise<void> {
-  await page.goto("/tr/auth/signin");
+  await page.goto("/auth/signin");
   await page.locator("#username").fill(who.email as string);
   await page.locator("#password").fill(who.password as string);
   await page.locator("button[type=submit]").click();
@@ -76,7 +76,7 @@ const addDaysTo = (date: string, days: number): string =>
     .toISOString()
     .slice(0, 10);
 
-const base = () => `/tr/kosks/${fixture.kosk.id}`;
+const base = () => `/kosks/${fixture.kosk.id}`;
 const courseBase = () => `${base()}/courses/${fixture.course.id}`;
 
 test.describe("nizam/32 Ders aç", () => {
@@ -654,7 +654,7 @@ test("a caller who is not on the course gets the no-access screen", async ({
   await signIn(page, talebe);
   // let the sign-in land first: a navigation that starts while the home page is
   // still sending a talebe on to 'Yönetim yetkiniz yok' comes back without a response
-  await page.waitForURL(/\/tr\/yetki-yok$/);
+  await page.waitForURL(/\/yetki-yok$/);
   const res = await page.goto(`${courseBase()}/ayarlar`);
   expect(res?.status()).toBe(403);
 });

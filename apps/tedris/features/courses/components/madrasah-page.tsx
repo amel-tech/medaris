@@ -68,7 +68,7 @@ const CourseCard = ({
   return (
     <Card
       className="flex flex-col"
-      href={`/${locale}/courses/${course.id}`}
+      href={`/courses/${course.id}`}
       title={course.title}
       media={<CoverPattern {...courseCover(course)} size="sm" />}
       action={
@@ -88,7 +88,7 @@ const CourseCard = ({
       footer={
         <>
           <span>
-            <Link href={`/${locale}/kosks/${course.koskId}`}>
+            <Link href={`/kosks/${course.koskId}`}>
               <bdi>{course.koskName}</bdi>
             </Link>
             <span className="mds-sep" aria-hidden="true">
@@ -157,7 +157,7 @@ export const MadrasahPage = async ({
       <div className="flex min-inline-0 flex-col gap-stack">
         <Breadcrumb
           items={[
-            { label: t("MadrasahPage.discover"), href: `/${locale}/discover` },
+            { label: t("MadrasahPage.discover"), href: `/discover` },
             { label: madrasah.name },
           ]}
         />
@@ -234,7 +234,6 @@ export const MadrasahPage = async ({
             {signedIn ? null : (
               <AnonymousInvite
                 t={t}
-                locale={locale}
                 variant="apply"
                 callbackPath={`/madrasahs/${madrasah.id}`}
                 className="mds-body-sm"
@@ -277,7 +276,7 @@ export const MadrasahPage = async ({
                   >
                     <Avatar entity size="sm" name={kosk.name} decorative />
                     <span className="flex min-inline-0 flex-1 flex-col gap-0.5">
-                      <Link href={`/${locale}/kosks/${kosk.id}`}>
+                      <Link href={`/kosks/${kosk.id}`}>
                         <bdi>{kosk.name}</bdi>
                       </Link>
                       {courses

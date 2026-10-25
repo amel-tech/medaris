@@ -1,0 +1,19 @@
+{
+  "Changes.note": "Ekle, ortak uygulamanın bir kodunu bu derse bağlar ve denetim kaydına yazar: o andan itibaren ortak uygulamada bu kodla onaylanan kişi, hesabı açık ve e-postası doğrulanmışsa, ders kayıt alıyorsa ve kişi yasaklı değilse, bu derse talebe olarak kaydedilir. Bu kodla gelen kayıtlar dersin kadrosunun eklediği talebeler gibi görünür. Kaldır kodu onay sormadan dersten çözer ve denetim kaydına yazar; o kodla kaydedilmiş talebeler derste kalır, ortak uygulamanın sonraki iptalleri onlara yine ulaşır. Kod yeniden eklenebilir, başka bir derse bağlı değilse.",
+  "CourseSettings.partnerCodes.add": "Ekle",
+  "CourseSettings.partnerCodes.added": "Kod eklendi",
+  "CourseSettings.partnerCodes.addedBody": "{name} kodu {code} artık bu derse bağlı.",
+  "CourseSettings.partnerCodes.codeHelp": "Ortak uygulamadaki kod: küçük harf, rakam ve tire, en çok 64 karakter.",
+  "CourseSettings.partnerCodes.codeLabel": "Kod ekle",
+  "CourseSettings.partnerCodes.empty": "Bu derse bağlı kod yok.",
+  "CourseSettings.partnerCodes.errors.shape": "Kod yalnız küçük harf, rakam ve tire içerebilir; harf ya da rakamla başlar.",
+  "CourseSettings.partnerCodes.errors.taken": "Bu kod başka bir derse bağlı. Önce o dersten kaldırılması gerekir.",
+  "CourseSettings.partnerCodes.errors.unknownPartner": "Bu ortak uygulama artık bu köşkle çalışmıyor. Sayfayı yenileyin.",
+  "CourseSettings.partnerCodes.intro": "Bir ortak uygulamadaki kayıtlar bu kodlarla derse bağlanır. Orada onaylanan kişi bu derse talebe olarak kaydedilir; kaydı orada iptal edilirse yalnız bu yolla eklenen ders kaydı kaldırılır.",
+  "CourseSettings.partnerCodes.listLabel": "{name} kodları",
+  "CourseSettings.partnerCodes.remove": "Kaldır",
+  "CourseSettings.partnerCodes.removed": "Kod kaldırıldı",
+  "CourseSettings.partnerCodes.removedBody": "{name} kodu {code} artık bu derse bağlı değil. Bu kodla kaydedilen talebeler derste kalır.",
+  "CourseSettings.partnerCodes.title": "Ortak uygulama kodları",
+  "CourseSettings.title": "Ders ayarları"
+}

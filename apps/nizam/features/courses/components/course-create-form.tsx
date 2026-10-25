@@ -50,6 +50,8 @@ import { TeamPicker } from "./team-picker";
  * of Dersler, where it reads as "the course was not opened".
  */
 const TOAST_ID = "courses:create";
+/** Its own toast, so that "Ders açıldı" or a failed session plan does not replace it. */
+const REQUEST_TOAST_ID = "courses:create:request";
 
 interface Props {
   kosk: KoskResponse;
@@ -92,7 +94,7 @@ export function CourseCreateForm({ kosk, request }: Props) {
   const [saving, setSaving] = useState(false);
 
   const zones = useMemo(() => listTimeZones(timeZone), [timeZone]);
-  const base = `/${locale}/kosks/${kosk.id}`;
+  const base = `/kosks/${kosk.id}`;
 
   const schedule = {
     startDate,
@@ -155,9 +157,20 @@ export function CourseCreateForm({ kosk, request }: Props) {
       });
       return;
     }
-    // The request is answered by the course opened from it; a request already
-    // answered elsewhere does not undo a course that now exists.
-    if (request) await acceptCourseRequest(request.id, created.data.id);
+    // The request is answered by the course opened from it. One answered
+    // elsewhere meanwhile does not undo a course that now exists, but the
+    // nazım is told, rather than read "Ders açıldı" as if it were answered.
+    if (request) {
+      const answered = await acceptCourseRequest(request.id, created.data.id);
+      if (redirectIfUnauthenticated(answered)) return;
+      if (!answered.success) {
+        toast.warning(t("requestLeft"), {
+          id: REQUEST_TOAST_ID,
+          description: t("requestLeftBody", { name: title.trim() }),
+          duration: Number.POSITIVE_INFINITY,
+        });
+      }
+    }
     const sessions = await createCourseSessions(kosk.id, created.data.id, {
       ...pattern,
       title: title.trim(),

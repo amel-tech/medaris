@@ -1,0 +1,152 @@
+# A deck's way to being public, from its owner's page in tedris (/decks/{id}, "Genel", design tedris/28) as the code
+# runs it at ce47fce8: asking for publication, taking the request back, making a public deck private again, editing the
+# deck's name and description, and deleting it. The reviewer's answer comes from medaris.deck-publish-review.
+schema: delurio-graph/0
+kind: flow
+id: medaris.deck-publish
+status: proposed
+domain: medaris.kosk-decks
+ui: medaris.deck-publish
+title: Ask for a deck to be published, and keep it
+summary: >-
+  The deck's author sees who can see the deck. A private deck has "Yayın iste": the request waits for Medaris management
+  and the deck stays private until it is published. A waiting request can be taken back; a public deck, and one whose
+  request was refused, has "Özele çek". The author edits the name and description and deletes the deck from the same
+  page. Editing a public deck changes what everyone reads without a new review.
+
+scope:
+  shows: the owner's "Genel" tab with "Kimler görebilir" and "Deste", the edit dialog and the delete confirmation
+  world: open
+  outOfView:
+    - "the review itself: medaris.deck-publish-review"
+    - "the cards of the deck: medaris.deck-authoring; studying it: medaris.flashcard-study"
+    - "a deck of a köşk or a course seen by its other staff: medaris.kosk-decks and medaris.course-decks"
+
+context:
+  status:
+    values: [private, pending, published, rejected]
+    initial: any
+    say: { private: "the deck is private", pending: "its publication request waits", published: "the deck is published", rejected: "its request was refused" }
+  kind:
+    values: [own, kosk, courseDraft, course]
+    initial: any
+    say: { own: "a member's own deck", kosk: "a köşk deck the viewer opened in nizam", courseDraft: "a course deck in draft the viewer created in nazar", course: "a published course deck the viewer created" }
+  serverOk:
+    values: [true, false]
+    initial: any
+    say: { "true": "tedrisat accepts the change", "false": "tedrisat refuses it or cannot be reached" }
+  reviewed: { values: [true, false], initial: true } # what the public reads is what a reviewer approved
+  askedToDelete: { values: [false, true], initial: false }
+  deleted: { values: [false, true], initial: false }
+  notice: { values: [none, requested, withdrawn, saved, failed], initial: none }
+
+effects:
+  clearNotice: { set: { notice: none } }
+  requested: { set: { status: pending, notice: requested } }
+  withdrawn: { set: { status: private, notice: withdrawn } }
+  approved: { set: { status: published, reviewed: true } }
+  rejected: { set: { status: rejected } }
+  unpublished: { set: { status: private } }
+  saved: { set: { notice: saved } }
+  savedUnreviewed: { set: { reviewed: false, notice: saved } }
+  askToDelete: { set: { askedToDelete: true } }
+  deleted: { set: { deleted: true } }
+  failed: { set: { notice: failed } }
+
+failures:
+  requesting: { from: requestFlashcardDeckPublication, refused: [DECK_PUBLISH_STATE_CONFLICT, DECK_NOT_FOUND] }
+  withdrawing: { from: withdrawFlashcardDeckPublication, refused: [DECK_PUBLISH_STATE_CONFLICT, DECK_NOT_FOUND] }
+  saving: { from: updateFlashcardDeck, refused: [DECK_NOT_FOUND, AUTHZ_FORBIDDEN] }
+  deleting: { from: deleteFlashcardDeck, refused: [DECK_NOT_FOUND, AUTHZ_FORBIDDEN] }
+
+main:
+  given: { status: private, kind: own, serverOk: true }
+  events: [REQUEST, DONE, APPROVED]
+
+initial: ownerPage
+states:
+  ownerPage:
+    title: The deck's Genel tab
+    by: human
+    goal: true
+    description: >-
+      The author's progress, three sample cards, "Kimler görebilir" with the publication control, and "Deste" with
+      Düzenle and Desteyi sil. The page draws it for whoever wrote the deck, read off the token; the API decides again.
+    source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:118
+    on:
+      REQUEST: { guard: "status == 'private'", target: requesting, effect: [clearNotice], say: "Yayın iste", source: "apps/tedris/features/flashcards/components/deck-owner-overview.tsx:213" }
+      WITHDRAW: { guard: "status == 'pending'", target: withdrawing, effect: [clearNotice], say: "İsteği geri çek", source: "apps/tedris/features/flashcards/components/deck-owner-overview.tsx:228" }
+      MAKE_PRIVATE: { guard: "status in ['published', 'rejected']", target: withdrawing, effect: [clearNotice], say: "Özele çek, on a public deck and on a refused one alike", source: "apps/tedris/features/flashcards/components/deck-owner-overview.tsx:230" }
+      EDIT: { target: editDialog, effect: [clearNotice], say: "Düzenle opens /decks/{id}/edit over the page", source: "apps/tedris/features/flashcards/components/deck-owner-overview.tsx:241" }
+      DELETE: { target: deleteConfirm, effect: [clearNotice], say: "Desteyi sil", source: "apps/tedris/features/flashcards/components/deck-owner-overview.tsx:250" }
+      APPROVED: { guard: "status == 'pending'", target: ownerPage, effect: [approved], say: "a reviewer publishes it (medaris.deck-publish-review)", source: "apps/tedrisat/src/deck-review/deck-review.repository.ts:243" }
+      REJECTED: { guard: "status == 'pending'", target: ownerPage, effect: [rejected], say: "a reviewer refuses it with a reason, which reaches the author's notifications", source: "apps/tedrisat/src/deck-review/deck-review.repository.ts:265" }
+      UNPUBLISHED: { guard: "status == 'published'", target: ownerPage, effect: [unpublished], say: "the başnazım takes it back with a reason", source: "apps/tedrisat/src/deck-review/deck-review.repository.ts:292" }
+      NAVIGATE: { target: left, say: "they go to another page", source: "apps/tedris/features/flashcards/components/deck-owner-overview.tsx:118" }
+
+  requesting:
+    title: Ask for publication
+    description: POST /flashcard/decks/{id}/publish-request; a private or refused deck becomes PENDING, guarded on the status read; nobody is notified
+    invoke: { action: requestFlashcardDeckPublication }
+    source: apps/tedrisat/src/flashcard/flashcard-deck.service.ts:269
+    on:
+      DONE: { guard: "serverOk", target: ownerPage, effect: [requested], say: "the request waits; the deck stays private", source: "apps/tedris/features/flashcards/components/deck-owner-overview.tsx:78" }
+      FAIL.refused: { guard: "not serverOk", target: ownerPage, effect: [failed], say: "a toast says it could not be sent", source: "apps/tedris/features/flashcards/components/deck-owner-overview.tsx:68" }
+
+  withdrawing:
+    title: Take the request back, or make the deck private
+    description: DELETE /flashcard/decks/{id}/publish-request; PENDING and REJECTED become PRIVATE, PUBLISHED becomes PRIVATE and isPublic false
+    invoke: { action: withdrawFlashcardDeckPublication }
+    source: apps/tedrisat/src/flashcard/flashcard-deck.service.ts:292
+    on:
+      DONE: { guard: "serverOk", target: ownerPage, effect: [withdrawn], say: "the deck is private", source: "apps/tedris/features/flashcards/components/deck-owner-overview.tsx:78" }
+      FAIL.refused: { guard: "not serverOk", target: ownerPage, effect: [failed], say: "a toast says the request could not be taken back", source: "apps/tedrisat/src/flashcard/flashcard-deck.service.ts:292" }
+
+  editDialog:
+    title: Change the name and the description
+    by: human
+    description: the edit dialog over the page; on a waiting request it says the change does not break the request, on a public deck it says nothing
+    source: apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:95
+    on:
+      SAVE: { target: saving, say: "Kaydet", source: "apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:77" }
+      CANCEL: { target: ownerPage, say: "Vazgeç", source: "apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:95" }
+
+  saving:
+    title: Save the deck
+    description: PATCH /flashcard/decks/{id}; the deck's publication status is left as it is, so a public deck changes without review
+    invoke: { action: updateFlashcardDeck }
+    source: apps/tedrisat/src/flashcard/flashcard-deck.repository.ts:203
+    on:
+      DONE:
+        - { guard: "serverOk and status == 'published'", target: ownerPage, effect: [savedUnreviewed], say: "saved; everyone reads the new name and description", source: "apps/tedrisat/src/flashcard/flashcard-deck.repository.ts:212" }
+        - { guard: "serverOk", target: ownerPage, effect: [saved], say: "saved", source: "apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:89" }
+      FAIL.refused: { guard: "not serverOk", target: editDialog, effect: [failed], say: "a toast; what was typed is kept", source: "apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:82" }
+
+  deleteConfirm:
+    title: Confirm deleting the deck
+    by: human
+    description: an alertdialog naming the deck and its card count, the action destructive; the focus starts on Vazgeç
+    source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:254
+    on:
+      CONFIRM: { target: deleting, effect: [askToDelete], say: "Desteyi sil", source: "apps/tedris/features/flashcards/components/deck-owner-overview.tsx:262" }
+      CANCEL: { target: ownerPage, say: "Vazgeç", source: "apps/tedris/features/flashcards/components/deck-owner-overview.tsx:254" }
+
+  deleting:
+    title: Delete the deck
+    description: >-
+      DELETE /flashcard/decks/{id}: the deck with its cards and the collection rows, whatever kind it is (a köşk deck, a
+      published course deck); the progress rows of its cards are left behind, unreachable. It cannot be undone.
+    invoke: { action: deleteFlashcardDeck }
+    source: apps/tedrisat/src/flashcard/flashcard-deck.repository.ts:259
+    on:
+      DONE: { guard: "serverOk", target: gone, effect: [deleted], say: "the deck is gone; the browser goes to Desteler", source: "apps/tedris/features/flashcards/components/deck-owner-overview.tsx:90" }
+      FAIL.refused: { guard: "not serverOk", target: ownerPage, effect: [failed], say: "a toast; the deck stays", source: "apps/tedris/features/flashcards/components/deck-owner-overview.tsx:95" }
+
+  gone: { type: final, title: Back to Desteler, leavesPage: true, source: "apps/tedris/features/flashcards/components/deck-owner-overview.tsx:90" }
+  left: { type: final, title: The person goes elsewhere, leavesPage: true, source: "apps/tedris/features/flashcards/components/deck-owner-overview.tsx" }
+
+assertions:
+  - { id: no-second-request, never: "state == 'requesting' and status in ['pending', 'published']", say: "A deck that waits or is public never asks for publication again", source: "apps/tedrisat/src/flashcard/flashcard-deck.service.ts:273" }
+  - { id: nothing-to-withdraw, never: "state == 'withdrawing' and status == 'private'", say: "A private deck has nothing to take back", source: "apps/tedrisat/src/flashcard/flashcard-deck.service.ts:295" }
+  - { id: delete-asks-first, never: "deleted and not askedToDelete", say: "A deck is deleted only after the author confirmed it", source: "apps/tedris/features/flashcards/components/deck-owner-overview.tsx:254" }
+  - { id: refused-goes-private-first, never: "state == 'requesting' and status == 'rejected'", say: "On this page a refused deck is made private before it can ask again", source: "apps/tedris/features/flashcards/components/deck-owner-overview.tsx:213" }

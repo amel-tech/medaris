@@ -1,0 +1,22 @@
+{
+  "Changes.note": "“Sign out” ends the portal's session in this browser and your Medaris session at Keycloak too. The other portals open with that session sign out as well: at once when the portals keep sessions in their session store on the server, within a few minutes if that store cannot be reached at the moment; when they keep them in the browser's cookie, the other portals may stay open for up to a minute and sign out at their next action. Your courses, assignments and preferences stay on your account. To undo it you sign in again. If the portal's session had already ended, or Keycloak cannot be reached, only this portal is signed out and the Keycloak session stays open.",
+  "Keycloak.body": "You will be signed out of Medaris in this browser.",
+  "Keycloak.cancel": "Cancel",
+  "Keycloak.confirm": "Sign out",
+  "Keycloak.title": "Sign out?",
+  "Nazar.body": "You will be signed out of Medaris in this browser. Your assignments and preferences stay on your account.",
+  "Nazar.busy": "Signing out",
+  "Nazar.cancel": "Cancel",
+  "Nazar.confirm": "Sign out",
+  "Nazar.title": "Do you want to sign out?",
+  "Nizam.body": "You will be signed out of Medaris in this browser.",
+  "Nizam.busy": "Signing out",
+  "Nizam.cancel": "Cancel",
+  "Nizam.confirm": "Sign out",
+  "Nizam.title": "Sign out?",
+  "Tedris.body": "You will be signed out of Medaris in this browser.",
+  "Tedris.busy": "Signing out",
+  "Tedris.cancel": "Cancel",
+  "Tedris.confirm": "Sign out",
+  "Tedris.title": "Sign out?"
+}

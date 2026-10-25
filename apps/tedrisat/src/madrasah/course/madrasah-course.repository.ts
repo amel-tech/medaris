@@ -18,12 +18,15 @@ import {
 } from "../../database/role-assignments";
 import { auditLog } from "../../database/schema/audit.schema";
 import { courseMuderris, courses } from "../../database/schema/course.schema";
+import {
+  type CourseRequestStatus,
+  courseRequests,
+} from "../../database/schema/course-request.schema";
 import { kosks } from "../../database/schema/kosk.schema";
 import {
   madrasahSettings,
   madrasahs,
 } from "../../database/schema/madrasah.schema";
-import { offsiteCourseRequests } from "../../database/schema/offsite-course-request.schema";
 import {
   ASSIGNED_ROLES,
   madrasahKoskHosting,
@@ -379,7 +382,10 @@ export class MadrasahCourseRepository {
   /**
    * Records the medrese's request that a köşk open a course outside it
    * (nazir/09), as PENDING, with its audit row. Nothing else is written: no
-   * course exists until the köşk's nazım opens one.
+   * course exists until the köşk's nazım opens one. It goes to
+   * `course_requests`, the table the köşk's "Ders talepleri" (nizam/39) lists
+   * and decides; `offsite_course_requests`, which no screen read, is no longer
+   * written (migration 0067 copied the requests it held).
    */
   async createOffsiteRequest(
     input: INewOffsiteCourseRequest
@@ -401,7 +407,7 @@ export class MadrasahCourseRepository {
       if (!kosk) return { status: "kosk-not-found" };
 
       const [created] = await tx
-        .insert(offsiteCourseRequests)
+        .insert(courseRequests)
         .values({
           madrasahId: input.madrasahId,
           koskId: input.koskId,
@@ -409,11 +415,11 @@ export class MadrasahCourseRepository {
           reason: input.reason,
           requestedBy: input.actorId,
         })
-        .returning({ id: offsiteCourseRequests.id });
+        .returning({ id: courseRequests.id });
       await tx.insert(auditLog).values({
         actorId: input.actorId,
-        action: "offsite_course_request.create",
-        entity: "offsite_course_request",
+        action: "course_request.create",
+        entity: "course_request",
         entityId: created.id,
         details: {
           madrasahId: input.madrasahId,
@@ -423,7 +429,7 @@ export class MadrasahCourseRepository {
         },
       });
       const [request] = await this.offsiteRequests(
-        eq(offsiteCourseRequests.id, created.id),
+        eq(courseRequests.id, created.id),
         tx
       );
       return { status: "created", request };
@@ -432,9 +438,7 @@ export class MadrasahCourseRepository {
 
   /** The medrese's requests for a course outside it, newest first. */
   findOffsiteRequests(madrasahId: string): Promise<IOffsiteCourseRequest[]> {
-    return this.offsiteRequests(
-      eq(offsiteCourseRequests.madrasahId, madrasahId)
-    );
+    return this.offsiteRequests(eq(courseRequests.madrasahId, madrasahId));
   }
 
   private async offsiteRequests(
@@ -443,26 +447,23 @@ export class MadrasahCourseRepository {
   ): Promise<IOffsiteCourseRequest[]> {
     const rows = await executor
       .select({
-        id: offsiteCourseRequests.id,
-        madrasahId: offsiteCourseRequests.madrasahId,
-        koskId: offsiteCourseRequests.koskId,
+        id: courseRequests.id,
+        madrasahId: courseRequests.madrasahId,
+        koskId: courseRequests.koskId,
         koskName: kosks.name,
-        title: offsiteCourseRequests.title,
-        reason: offsiteCourseRequests.reason,
-        status: offsiteCourseRequests.status,
-        requestedById: offsiteCourseRequests.requestedBy,
+        title: courseRequests.title,
+        reason: courseRequests.reason,
+        status: sql<CourseRequestStatus>`${courseRequests.status}`,
+        requestedById: courseRequests.requestedBy,
         givenName: users.givenName,
         familyName: users.familyName,
-        createdAt: offsiteCourseRequests.createdAt,
+        createdAt: courseRequests.createdAt,
       })
-      .from(offsiteCourseRequests)
-      .innerJoin(kosks, eq(kosks.id, offsiteCourseRequests.koskId))
-      .leftJoin(users, eq(users.id, offsiteCourseRequests.requestedBy))
+      .from(courseRequests)
+      .innerJoin(kosks, eq(kosks.id, courseRequests.koskId))
+      .leftJoin(users, eq(users.id, courseRequests.requestedBy))
       .where(where)
-      .orderBy(
-        desc(offsiteCourseRequests.createdAt),
-        desc(offsiteCourseRequests.id)
-      );
+      .orderBy(desc(courseRequests.createdAt), desc(courseRequests.id));
     return rows.map(({ givenName, familyName, ...row }) => ({
       ...row,
       requestedByName:

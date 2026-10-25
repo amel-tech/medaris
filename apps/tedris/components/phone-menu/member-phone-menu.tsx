@@ -68,11 +68,7 @@ export function MemberPhoneMenu({
             : t("home"));
 
   const item = (key: Exclude<Section, null>, href: string, label: string) => (
-    <NavItem
-      href={`/${locale}${href}`}
-      linkComponent={Link}
-      active={section === key}
-    >
+    <NavItem href={`${href}`} linkComponent={Link} active={section === key}>
       {label}
     </NavItem>
   );
@@ -97,7 +93,7 @@ export function MemberPhoneMenu({
           />
           <Link
             className="mds-btn mds-icon-btn mds-btn--large mds-btn--ghost"
-            href={`/${locale}/notifications`}
+            href={`/notifications`}
             aria-label={t("notifications")}
           >
             <Icon name="bell" />
@@ -107,7 +103,7 @@ export function MemberPhoneMenu({
       footer={
         <Link
           className="mds-nav-user"
-          href={`/${locale}/account`}
+          href={`/account`}
           aria-label={t("accountLabel", { name })}
         >
           <Avatar name={name} decorative />

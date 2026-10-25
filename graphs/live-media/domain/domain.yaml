@@ -1,0 +1,299 @@
+# Medaris, captured from origin/main ce47fce8 (25 Oct 2026): the data and the API behind a celse's live stream link,
+# its recording (a pasted link or a video uploaded to Bunny Stream), when talebe may watch it, the watch page's reads,
+# and a köşk's hosting rights. tedrisat implements all of it; nazar, nizam and tedris call it. Every element carries the
+# code that makes it true. Fields are JSON Schema 2020-12; an action with a route is an OpenAPI 3.1 operation.
+schema: delurio-graph/0
+kind: domain
+id: medaris.live-media
+status: proposed
+
+entities:
+  Lesson: # only the columns this area reads or writes; the course area owns the rest of the row
+    source: apps/tedrisat/src/database/schema/course.schema.ts:148
+    required: [id, type]
+    fields:
+      id: { type: string, format: uuid }
+      type: { enum: [LIVE, OTHER], note: "only a LIVE session takes a stream link; OTHER stands for every other lesson type" }
+      scheduledAt: { type: [string, "null"], format: date-time }
+      durationMinutes: { type: [integer, "null"], note: "60 when missing, for the stream window and the session's state" }
+      cancelledAt: { type: [string, "null"], format: date-time }
+      archivedAt: { type: [string, "null"], format: date-time, note: "an archived (hidden) session is not found by any write of this area" }
+      isPreview: { type: boolean, note: "a sample session: its PUBLIC recording is sent to a caller who may not read content" }
+      liveStreamUrl: { type: [string, "null"], format: uri, pattern: "^https://www\\.youtube\\.com/live/", sensitivity: internal, note: "course content; stored as https://www.youtube.com/live/<id>", source: "apps/tedrisat/src/database/schema/course.schema.ts:174" }
+      recordingAvailableAt: { type: [string, "null"], format: date-time, note: "the release time; kept on the session, so it is set before a recording exists and outlives a replaced one", source: "apps/tedrisat/src/database/schema/course.schema.ts:184" }
+    lifecycle:
+      - "liveStreamUrl: null -> set -> changed -> null, by setLiveStream, only while the session is LIVE, not archived and not cancelled"
+      - "recordingAvailableAt: null <-> a time, by setRecordingAvailability, addRecording or changeRecording"
+
+  LessonRecording: # lesson_recordings: one per session
+    source: apps/tedrisat/src/database/schema/course.schema.ts:421
+    required: [id, lessonId, title, provider, visibility, status]
+    fields:
+      id: { type: string, format: uuid }
+      lessonId: { type: string, format: uuid, references: Lesson, unique: true }
+      title: { type: string, minLength: 1, maxLength: 200 }
+      provider: { enum: [YOUTUBE, DRIVE, OTHER, BUNNY], source: "apps/tedrisat/src/course/domain/recording.ts:10" }
+      url: { type: [string, "null"], format: uri, note: "null for BUNNY; a BUNNY player link is built and signed on each read" }
+      bunnyVideoId: { type: [string, "null"], unique: true, sensitivity: internal, note: "never returned to a caller" }
+      uploadExpiresAt: { type: [string, "null"], format: date-time, note: "start + 24 h for an upload; the write's time for a pasted Bunny link; a re-sign never moves it" }
+      visibility: { enum: [PUBLIC, ENROLLED], default: ENROLLED }
+      status: { enum: [PROCESSING, READY, FAILED], source: "apps/tedrisat/src/course/domain/recording.ts:29" }
+      recordedAt: { type: [string, "null"], format: date-time }
+      durationMinutes: { type: [integer, "null"] }
+      notifiedAt: { type: [string, "null"], format: date-time, note: "when 'Kayıt eklendi' was claimed; set once, never cleared" }
+    lifecycle:
+      - "none -> READY: addRecording (a pasted link)"
+      - "none | a link | FAILED -> PROCESSING: startRecordingUpload; with replaceVideo, a Bunny video in any status too"
+      - "PROCESSING -> READY | FAILED: the encoding poll, by Bunny's status, while the row still holds that video"
+      - "any -> READY: changeRecording with a new link"
+      - "no write deletes a recording"
+
+  BunnyVideoRemoval: # bunny_video_removals: a Bunny video that left its recording, deleted from the library by the encoding poll
+    source: apps/tedrisat/src/database/schema/course.schema.ts:466
+    key: [videoId]
+    required: [videoId, recordingId, queuedBy, attempts]
+    fields:
+      videoId: { type: string, sensitivity: internal }
+      recordingId: { type: string, format: uuid, references: LessonRecording }
+      replacedByVideoId: { type: [string, "null"], note: "the upload that took its place, which the poll waits for; null when a pasted link did" }
+      queuedBy: { type: string, format: uuid }
+      attempts: { type: integer, minimum: 0 }
+    lifecycle:
+      - "none -> queued: startRecordingUpload, addRecording or changeRecording takes a Bunny video off its recording"
+      - "queued -> none: the poll deletes it from Bunny (audit recording.video_delete), or drops the row when a recording holds the video again"
+
+  HostingRight: # madrasah_kosk_hosting: a medrese may open courses in a köşk; a withdrawn row stays as history
+    source: apps/tedrisat/src/database/schema/role-assignment.schema.ts:133
+    required: [madrasahId, koskId, grantedBy]
+    fields:
+      madrasahId: { type: string, format: uuid }
+      koskId: { type: string, format: uuid }
+      grantedBy: { type: string, format: uuid }
+      grantedByRole: { enum: [SYSTEM_ADMIN, KOSK_NAZIM, MEDARIS_NAZIM, null], source: "apps/tedrisat/src/hosting/hosting.controller.ts:114" }
+      revokedAt: { type: [string, "null"], format: date-time }
+      revokedBy: { type: [string, "null"], format: uuid }
+    lifecycle:
+      - "none -> held: grantHostingRight (one held row per medrese and köşk, a partial unique index)"
+      - "held -> withdrawn: revokeHostingRight, with KEEP or HIDE for the medrese's courses there"
+
+policies:
+  - { actor: course staff, needs: "session.live_link on the course (müderris, köşk nazımı and başmüderris by role; a ders nazırı by grant)", read: [Lesson], write: [Lesson], do: [listLiveStreams, setLiveStream], source: "apps/tedrisat/src/course/live-stream.controller.ts:64" }
+  - { actor: course staff, needs: "recording.manage on the course (same holders)", write: [LessonRecording, Lesson, BunnyVideoRemoval], do: [addRecording, changeRecording, setRecordingAvailability], source: "apps/tedrisat/src/course/recording.controller.ts:100" }
+  - { actor: course staff, needs: "recording.upload on the course (same holders)", write: [LessonRecording, BunnyVideoRemoval], do: [startRecordingUpload, resignRecordingUpload], source: "apps/tedrisat/src/course/recording-upload.controller.ts:77" }
+  - { actor: anyone, needs: "course.view, public (@AuthzPublic); content only with course.view_details: the enrolled or completed talebe and the course staff; a banned, REVOKED or PENDING talebe and a visitor are not", read: [Lesson, LessonRecording], do: [getSession, listRecordings], source: "apps/tedrisat/src/course/lesson.controller.ts:223" }
+  - { actor: köşk nazımı or Medaris nazımı, needs: "kosk.hosting on the köşk, or platform.hosting_grant (any one of the two); SYSTEM_ADMIN by bypass", read: [HostingRight], write: [HostingRight], do: [listHostingRights, grantHostingRight, revokeHostingRight], source: "apps/tedrisat/src/hosting/hosting.controller.ts:73" }
+  - { actor: tedrisat, needs: "the Bunny library configured", write: [LessonRecording, BunnyVideoRemoval], do: [pollEncoding, removeReplacedVideos, announceRecording], source: "apps/tedrisat/src/course/recording-encoding.poller.ts:74" }
+
+actions:
+  # the stream link (medaris.live-link)
+  listLiveStreams:
+    route: GET /courses/{id}/live-streams
+    operationId: listCourseLiveStreams
+    needs: session.live_link on the course
+    source: apps/tedrisat/src/course/live-stream.controller.ts:67
+    headers: { Cache-Control: "private, no-store" }
+    result: { type: array, items: { type: object, required: [lessonId, liveStreamUrl], properties: { lessonId: { type: string, format: uuid }, liveStreamUrl: { type: [string, "null"] } } } }
+    refusals:
+      AUTHZ_FORBIDDEN: { status: 403, source: "apps/tedrisat/src/course/live-stream.controller.ts:64" }
+      COURSE_NOT_FOUND: { status: 404, source: "apps/tedrisat/src/course/live-stream.service.ts:38" }
+  setLiveStream:
+    route: PUT /lessons/{id}/live-stream
+    operationId: setLessonLiveStream
+    needs: session.live_link on the lesson's course
+    source: apps/tedrisat/src/course/live-stream.controller.ts:91
+    body: { type: object, required: [liveStreamUrl], properties: { liveStreamUrl: { type: [string, "null"], maxLength: 500 } } }
+    result: { type: object, properties: { lessonId: { type: string }, liveStreamUrl: { type: [string, "null"] } } }
+    sideEffects: ["audit:lesson.live_stream_set or lesson.live_stream_clear, with the previous link", "the course version is not bumped"]
+    refusals:
+      AUTHZ_FORBIDDEN: { status: 403, source: "apps/tedrisat/src/course/live-stream.controller.ts:89" }
+      LESSON_NOT_FOUND: { status: 404, note: "missing or archived", source: "apps/tedrisat/src/course/recording.repository.ts:812" }
+      LIVE_STREAM_URL_INVALID: { status: 400, problems: [not-https, not-youtube, channel, no-video, invalid, too-long, empty], source: "apps/tedrisat/src/course/live-stream.service.ts:59" }
+      LESSON_NOT_LIVE: { status: 409, source: "apps/tedrisat/src/course/recording.repository.ts:814" }
+      LESSON_CANCELLED: { status: 409, source: "apps/tedrisat/src/course/recording.repository.ts:817" }
+
+  # the reads (medaris.watch)
+  getSession:
+    route: GET /courses/{courseId}/sessions/{sessionId}
+    operationId: getSession
+    needs: course.view (public); the stream and the recording only with course.view_details, except a PUBLIC recording of a sample session
+    source: apps/tedrisat/src/course/lesson.controller.ts:227
+    headers: { Cache-Control: "private, no-store" }
+    result: { returns: Lesson, note: "with contentLocked, liveStreamUrl (liveStreamFor) and recording (visibleRecordings, signPlayback)" }
+    rules:
+      - { rule: "liveStreamUrl from the scheduled start until scheduled end + 24 h, unless the session is cancelled or its recording is released", source: "apps/tedrisat/src/course/domain/recording.ts:196" }
+      - { rule: "a recording's url only when READY and (released or the caller holds recording.manage)", source: "apps/tedrisat/src/course/domain/recording.ts:125" }
+      - { rule: "a FAILED recording is never listed, to anyone", source: "apps/tedrisat/src/course/domain/recording.ts:160" }
+      - { rule: "a BUNNY url is a player link built for this response, signed for 6 h when BUNNY_STREAM_TOKEN_KEY is set, unsigned otherwise", source: "apps/tedrisat/src/bunny-stream/bunny-signature.ts:99" }
+      - { rule: "a PUBLIC recording is hidden from a caller without content when the course is closed or a policy keeps recordings from the public", source: "apps/tedrisat/src/course/course.service.ts:852" }
+    sideEffects: ["audit: a content read by someone neither enrolled nor a müderris"]
+    refusals:
+      COURSE_NOT_FOUND: { status: 404, source: "apps/tedrisat/src/course/lesson.controller.ts:114" }
+      LESSON_NOT_FOUND: { status: 404, source: "apps/tedrisat/src/course/course.service.ts:683" }
+  listRecordings:
+    route: GET /courses/{id}/recordings
+    operationId: listCourseRecordings
+    needs: course.view (public); without course.view_details only PUBLIC recordings, none on a closed course
+    source: apps/tedrisat/src/course/lesson.controller.ts:254
+    headers: { Cache-Control: "private, no-store" }
+    result: { type: array, note: "the rows visibleRecordings keeps, newest week first; FAILED ones never" }
+    sideEffects: ["audit: a content read by someone neither enrolled nor a müderris (via recordings)"]
+    refusals:
+      COURSE_NOT_FOUND: { status: 404 }
+
+  # a pasted recording link (medaris.recording-link)
+  addRecording:
+    route: POST /lessons/{id}/recordings
+    operationId: createLessonRecording
+    needs: recording.manage on the lesson's course
+    source: apps/tedrisat/src/course/recording.controller.ts:102
+    body: { type: object, required: [title, url], properties: { title: { type: string, minLength: 1, maxLength: 200 }, url: { type: string, format: uri, pattern: "^https://", maxLength: 500 }, visibility: { enum: [PUBLIC, ENROLLED] }, availableAt: { type: [string, "null"], format: date-time } } }
+    result: { returns: LessonRecording, status: 201, note: "READY at once" }
+    sideEffects: ["audit:recording.add", "the release time written with the link", "a FAILED upload's video queued for deletion from Bunny unless the link names it", "'Kayıt eklendi' to the enrolled talebe when the recording is open now (claimAnnouncement)"]
+    refusals:
+      AUTHZ_FORBIDDEN: { status: 403, source: "apps/tedrisat/src/course/recording.controller.ts:100" }
+      VALIDATION_ERROR: { status: 400 }
+      LESSON_NOT_FOUND: { status: 404, note: "missing or archived", source: "apps/tedrisat/src/course/recording.repository.ts:881" }
+      RECORDING_LINK_INVALID: { status: 400, reasons: [invalid, not-https, youtube-no-video, bunny-no-video, bunny-foreign-library, bunny-video-used], source: "apps/tedrisat/src/course/domain/recording-link.ts:116" }
+      LESSON_CANCELLED: { status: 409, source: "apps/tedrisat/src/course/recording.repository.ts:883" }
+      RECORDING_EXISTS: { status: 409, note: "unless the stored recording is a FAILED Bunny upload", source: "apps/tedrisat/src/course/recording.repository.ts:911" }
+  changeRecording:
+    route: PATCH /recordings/{id}
+    operationId: updateRecording
+    needs: recording.manage on the recording's course
+    source: apps/tedrisat/src/course/recording.controller.ts:126
+    body: { type: object, properties: { title: { type: string, minLength: 1, maxLength: 200 }, url: { type: string, format: uri, pattern: "^https://", maxLength: 500 }, visibility: { enum: [PUBLIC, ENROLLED] }, availableAt: { type: [string, "null"], format: date-time } } }
+    result: { returns: LessonRecording, note: "READY when a link is sent" }
+    sideEffects: ["audit:recording.update with previous and next", "a Bunny video a new link replaces queued for deletion", "'Kayıt eklendi' when this opens a recording for the first time"]
+    refusals:
+      AUTHZ_FORBIDDEN: { status: 403, source: "apps/tedrisat/src/course/recording.controller.ts:124" }
+      RECORDING_NOT_FOUND: { status: 404, note: "malformed id, unknown, or its lesson archived; a cancelled session is not refused", source: "apps/tedrisat/src/course/recording.repository.ts:999" }
+      RECORDING_LINK_INVALID: { status: 400, source: "apps/tedrisat/src/course/recording.repository.ts:1001" }
+      VALIDATION_ERROR: { status: 400 }
+
+  # the release time (medaris.recording-release)
+  setRecordingAvailability:
+    route: PUT /lessons/{id}/recording-availability
+    operationId: setLessonRecordingAvailability
+    needs: recording.manage on the lesson's course
+    source: apps/tedrisat/src/course/recording.controller.ts:147
+    body: { type: object, required: [availableAt], properties: { availableAt: { type: [string, "null"], format: date-time } } }
+    result: { type: object, properties: { lessonId: { type: string }, recordingAvailableAt: { type: [string, "null"] } } }
+    sideEffects: ["audit:lesson.recording_availability_set with the previous time", "'Kayıt eklendi' now when this opens a READY recording not announced yet"]
+    refusals:
+      AUTHZ_FORBIDDEN: { status: 403, source: "apps/tedrisat/src/course/recording.controller.ts:145" }
+      LESSON_NOT_FOUND: { status: 404, note: "missing or archived", source: "apps/tedrisat/src/course/recording.repository.ts:324" }
+      VALIDATION_ERROR: { status: 400, note: "the key missing or not a date; a time in the past is accepted" }
+
+  # the Bunny upload (medaris.recording-upload)
+  startRecordingUpload:
+    route: POST /lessons/{id}/recordings/uploads
+    operationId: startRecordingUpload
+    needs: recording.upload on the lesson's course
+    source: apps/tedrisat/src/course/recording-upload.controller.ts:81
+    headers: { Cache-Control: "private, no-store" }
+    body: { type: object, required: [title], properties: { title: { type: string, minLength: 1, maxLength: 200 }, visibility: { enum: [PUBLIC, ENROLLED] }, recordedAt: { type: string, format: date-time }, replaceVideo: { type: boolean } } }
+    result: { status: 201, type: object, properties: { recordingId: { type: string }, endpoint: { const: "https://video.bunnycdn.com/tusupload" }, libraryId: { type: string }, videoId: { type: string }, authorizationExpire: { type: integer }, authorizationSignature: { type: string, sensitivity: credential } } }
+    sideEffects: ["Bunny: a video is created", "the recording becomes BUNNY PROCESSING with a 24 h upload lifetime; a link it held is kept only in the audit row", "audit:recording.upload_start (replacedLink, replacedVideoId)", "a replaced Bunny video queued for deletion"]
+    refusals:
+      AUTHZ_FORBIDDEN: { status: 403, note: "asked before anything else", source: "apps/tedrisat/src/course/recording-upload.controller.ts:77" }
+      LESSON_NOT_FOUND: { status: 404, note: "missing or archived; a cancelled session is not refused", source: "apps/tedrisat/src/course/recording-upload.service.ts:83" }
+      BUNNY_STREAM_NOT_CONFIGURED: { status: 503, source: "apps/tedrisat/src/bunny-stream/bunny-stream.client.ts:78" }
+      RECORDING_EXISTS: { status: 409, note: "the stored recording is a Bunny video PROCESSING or READY and replaceVideo was not sent", source: "apps/tedrisat/src/course/recording-upload.service.ts:88" }
+      BUNNY_STREAM_UNAVAILABLE: { status: 503, source: "apps/tedrisat/src/bunny-stream/bunny-stream.client.ts:104" }
+      VALIDATION_ERROR: { status: 400 }
+  resignRecordingUpload:
+    route: POST /lessons/{id}/recordings/uploads/{videoId}/signature
+    operationId: resignRecordingUpload
+    needs: recording.upload on the lesson's course
+    source: apps/tedrisat/src/course/recording-upload.controller.ts:106
+    headers: { Cache-Control: "private, no-store" }
+    result: { status: 200, note: "the same TUS values; the expiry is the upload's original one" }
+    refusals:
+      AUTHZ_FORBIDDEN: { status: 403, source: "apps/tedrisat/src/course/recording-upload.controller.ts:103" }
+      LESSON_NOT_FOUND: { status: 404, note: "missing only: an archived session is signed again", source: "apps/tedrisat/src/course/recording-upload.service.ts:56" }
+      BUNNY_STREAM_NOT_CONFIGURED: { status: 503, source: "apps/tedrisat/src/course/recording-upload.service.ts:58" }
+      RECORDING_UPLOAD_NOT_FOUND: { status: 404, source: "apps/tedrisat/src/course/recording-upload.service.ts:122" }
+      RECORDING_UPLOAD_CLOSED: { status: 409, reasons: [not-processing, expired], source: "apps/tedrisat/src/course/recording-upload.service.ts:124" }
+  sendToBunny: # the browser sends the file to Bunny over TUS; tedrisat never sees it
+    source: apps/nazar/features/recordings/bunny-upload.ts:268
+    note: "tus-js-client, 50 MiB chunks, the signature set on every request and never stored; a stopped upload continues from Bunny's offset"
+    refusals:
+      UPLOAD_REFUSED: { note: "Bunny answered 401 or 403", source: "apps/nazar/features/recordings/bunny-upload.ts:208" }
+      UPLOAD_NETWORK: { note: "no answer", source: "apps/nazar/features/recordings/bunny-upload.ts:209" }
+      UPLOAD_FAILED: { note: "anything else", source: "apps/nazar/features/recordings/bunny-upload.ts:210" }
+
+  # the service's own steps (medaris.recording-encoding)
+  pollEncoding:
+    note: "every 60 s while the library is configured: up to 50 PROCESSING Bunny uploads, least recently updated first"
+    source: apps/tedrisat/src/course/recording-encoding.poller.ts:123
+    rules:
+      - { rule: "Finished (4) or JitPlaylistsCreated (8) -> READY with its length in minutes", source: "apps/tedrisat/src/bunny-stream/bunny-signature.ts:141" }
+      - { rule: "Error (5) or UploadFailed (6) -> FAILED; a video Bunny no longer has -> FAILED", source: "apps/tedrisat/src/course/recording-encoding.poller.ts:133" }
+      - { rule: "Created (0) once the upload lifetime has passed -> FAILED; any other status waits, past the lifetime too", source: "apps/tedrisat/src/bunny-stream/bunny-signature.ts:153" }
+      - { rule: "a row is settled only while it is PROCESSING with the same video", source: "apps/tedrisat/src/course/recording.repository.ts:604" }
+    result: { returns: LessonRecording }
+  removeReplacedVideos:
+    note: "after settling, up to 20 queued videos are deleted from Bunny; no retry cap"
+    source: apps/tedrisat/src/course/recording-encoding.poller.ts:185
+    rules:
+      - { rule: "due once its replacement is no longer PROCESSING, or at once when a pasted link replaced it", source: "apps/tedrisat/src/course/recording.repository.ts:641" }
+      - { rule: "a video a recording holds again is never deleted: its row is dropped", source: "apps/tedrisat/src/course/recording.repository.ts:649" }
+    result: { returns: BunnyVideoRemoval }
+  readBunnyVideo: # Bunny Stream's Get Video, with the library's API key
+    source: apps/tedrisat/src/bunny-stream/bunny-stream.client.ts:110
+    note: "the video's status and length; null when Bunny no longer has it (404)"
+    refusals:
+      BUNNY_STREAM_UNAVAILABLE: { note: "no answer in 10 s, or any answer but 2xx and 404", source: "apps/tedrisat/src/bunny-stream/bunny-stream.client.ts:220" }
+  deleteBunnyVideo: # Bunny Stream's Delete Video
+    source: apps/tedrisat/src/bunny-stream/bunny-stream.client.ts:133
+    note: "true once deleted, false when Bunny no longer had it; both take the row off the queue"
+    refusals:
+      BUNNY_STREAM_UNAVAILABLE: { note: "the row stays, attempts + 1, tried again behind the others; no cap", source: "apps/tedrisat/src/course/recording-encoding.poller.ts:202" }
+  announceRecording:
+    note: "'Kayıt eklendi' to the session's seats once per recording, when READY and released; claimed by notifiedAt in one statement"
+    source: apps/tedrisat/src/course/recording-release.poller.ts:79
+    result: { returns: LessonRecording }
+
+  # hosting rights (medaris.hosting-rights)
+  listHostingRights:
+    route: GET /kosks/{id}/hosting-rights
+    operationId: getKoskHostingRights
+    needs: kosk.hosting on the köşk or platform.hosting_grant
+    source: apps/tedrisat/src/hosting/hosting.controller.ts:72
+    result: { type: array, note: "held rights of medreses that are not hidden, oldest first, each with its not-hidden courses in the köşk and their talebe counts" }
+    refusals:
+      AUTHZ_FORBIDDEN: { status: 403 }
+      KOSK_NOT_FOUND: { status: 404, source: "apps/tedrisat/src/kosk/kosk.controller.ts:88" }
+  grantHostingRight:
+    route: POST /kosks/{id}/hosting-rights
+    operationId: grantKoskHostingRight
+    needs: kosk.hosting on the köşk or platform.hosting_grant
+    source: apps/tedrisat/src/hosting/hosting.controller.ts:92
+    body: { type: object, required: [madrasahId], properties: { madrasahId: { type: string, format: uuid } } }
+    result: { returns: HostingRight, status: 201, note: "idempotent: a held right answers the same" }
+    sideEffects: ["audit:hosting_right.grant with grantedByRole, only when a row was inserted"]
+    refusals:
+      AUTHZ_FORBIDDEN: { status: 403, source: "apps/tedrisat/src/hosting/hosting.controller.ts:93" }
+      KOSK_NOT_FOUND: { status: 404, source: "apps/tedrisat/src/kosk/kosk.controller.ts:88" }
+      MADRASAH_NOT_FOUND: { status: 404, note: "missing or hidden", source: "apps/tedrisat/src/hosting/hosting.repository.ts:284" }
+  revokeHostingRight:
+    route: DELETE /kosks/{id}/hosting-rights/{madrasahId}
+    operationId: revokeKoskHostingRight
+    needs: kosk.hosting on the köşk or platform.hosting_grant
+    source: apps/tedrisat/src/hosting/hosting.controller.ts:143
+    query: { type: object, required: [coursesAction], properties: { coursesAction: { enum: [KEEP, HIDE] } } }
+    result: { status: 204 }
+    sideEffects: ["HIDE archives every not-hidden course of the medrese in the köşk, at the PLATFORM level for a holder of platform.hosting_grant or SYSTEM_ADMIN, else at the KOSK level", "audit:hosting_right.revoke with hiddenCourseIds"]
+    refusals:
+      AUTHZ_FORBIDDEN: { status: 403, source: "apps/tedrisat/src/hosting/hosting.controller.ts:145" }
+      KOSK_NOT_FOUND: { status: 404 }
+      VALIDATION_ERROR: { status: 400, note: "coursesAction missing or not KEEP or HIDE", source: "apps/tedrisat/src/hosting/hosting.controller.ts:153" }
+      HOSTING_RIGHT_NOT_FOUND: { status: 404, source: "apps/tedrisat/src/hosting/hosting.repository.ts:333" }
+
+invariants:
+  - { id: video-id-never-returned, rule: "bunnyVideoId never leaves tedrisat; a read carries only a player link built for that response", source: "apps/tedrisat/src/course/course.service.ts:171" }
+  - { id: api-key-never-leaves, rule: "the browser gets only the TUS signature SHA256(library + key + expiry + video)", source: "apps/tedrisat/src/bunny-stream/bunny-signature.ts:62" }
+  - { id: one-recording-per-session, rule: "a session holds one recording and a Bunny video belongs to one recording", source: "apps/tedrisat/src/database/schema/course.schema.ts:448" }
+  - { id: announced-once, rule: "'Kayıt eklendi' is sent at most once per recording, whoever claims it first", source: "apps/tedrisat/src/course/recording.repository.ts:355" }
+  - { id: one-held-right, rule: "a medrese holds at most one right in a köşk at a time", source: "apps/tedrisat/src/database/schema/role-assignment.schema.ts:156" }
+  - { id: gender-apart, rule: "men and women are kept apart wherever people meet in person; nothing of this area brings people together in person (the live chat is YouTube's own, online)", note: "a requirement of Medaris; this area's code holds no gender" }

@@ -1,0 +1,447 @@
+# Navigation graph of Nizam, the Medaris platform's admin app: the hand-written half.
+# The pages, the menus (one registry, cut by the role of whoever is signed in), the pages a visitor may open and the gates that name
+# the person's own roles are generated into nav.extracted.yaml from the application source
+# (`node src/cli.ts extract <this dir> --repo <medaris checkout>`); this file holds what no source file says: who the users are,
+# where "/" sends them, the links and buttons inside pages, goals, and overrides of single page fields.
+# Every `source:` is relative to the Medaris repository root, read at ce47fce8.
+extends: nav.extracted.yaml
+kind: nav
+schema: delurio-graph/0
+id: medaris-nizam
+title: Nizam
+status: proposed
+locale: tr
+catalog: catalog/tr.json
+
+extract:
+  adapter: nizam
+  names:
+    "/": start
+    "/arsiv": archive
+    "/auth/signin": signin
+    "/auth/signout": signout
+    "/ayarlar/ortak-uygulamalar": partners
+    "/ayarlar/platform": platformSettings
+    # a menu entry with no route (lib/shell-nav.ts): a `missing` page
+    "/ayarlar/youtube": youtube
+    "/bildirimler": notifications
+    "/decks": decks
+    "/decks/{id}/cards": deckCards
+    "/denetim-kaydi": auditLog
+    "/hesap": account
+    "/izin-gruplari": grants
+    "/kosks": kosks
+    "/kosks/{id}": kosk
+    "/kosks/{id}/ana-sayfa": koskHome
+    "/kosks/{id}/arsiv": koskArchive
+    "/kosks/{id}/ayarlar": koskSettings
+    "/kosks/{id}/ayarlar/barindirma": koskHosting
+    "/kosks/{id}/ayarlar/nazimlar": koskNazims
+    "/kosks/{id}/basvurular": koskApplications
+    "/kosks/{id}/courses/new": courseNew
+    "/kosks/{id}/courses/{courseId}": course
+    "/kosks/{id}/courses/{courseId}/ayarlar": courseSettings
+    "/kosks/{id}/courses/{courseId}/curriculum": courseCurriculum
+    "/kosks/{id}/courses/{courseId}/edit": courseEdit
+    "/kosks/{id}/courses/{courseId}/sessions": courseSessions
+    "/kosks/{id}/courses/{courseId}/sessions/new": courseSessionNew
+    "/kosks/{id}/courses/{courseId}/students": courseStudents
+    "/kosks/{id}/ders-talepleri": koskCourseRequests
+    "/kosks/{id}/dersler": koskCourses
+    "/kosks/{id}/desteler": koskDecks
+    "/kosks/{id}/desteler/yeni": koskDeckNew
+    "/kosks/{id}/izinler": koskPermissions
+    "/kosks/{id}/yasaklamalar": koskBans
+    "/medaris-nazimlari": nazims
+    "/medreseler": madrasahs
+    "/nazar-yonlendirme": nazarRedirect
+    "/pasif-kapsamlar": inactive
+    "/talepler/deste-yayin-istekleri": deckRequests
+    # menu entries with no route (lib/shell-nav.ts): `missing` pages
+    "/talepler/itirazlar": appeals
+    "/talepler/kalici-yasak": permanentBans
+    "/talepler/kosk-basvurulari": platformKoskApplications
+    "/yasaklamalar": bans
+    "/yetki-yok": noRole
+  locales: [tr, en]
+
+summary: >-
+  Where each kind of Nizam user lands, what the sidebar offers them, which entries lead to a page that does not exist,
+  and where the menu, the links inside pages and the API disagree about who may go where.
+
+source:
+  repo: amel-tech/medaris
+  app: apps/nizam
+  menu: apps/nizam/lib/shell-nav.ts
+  locales: libs/i18n/src/locales/{locale}/nizam.json
+
+frames:
+  shell:
+    title: Inside Nizam (the sidebar of a signed-in person)
+    menu: Sidebar
+  bare:
+    title: Sign-in and sign-out (no shell)
+  elsewhere:
+    title: Other applications, and addresses no application answers
+
+facts:
+  signedIn:
+    values: [true, false]
+    say: whether the person has a session
+  landing:
+    values: [nizam, nazar, none]
+    say: where landingFor puts a signed-in person (apps/nizam/features/assignments/landing.ts:21); only meaningful when signedIn
+  variant:
+    values: [chief, medaris, kosk, none]
+    say: which menu the shell draws (apps/nizam/lib/shell-nav.ts:28, shellVariant); the widest role wins
+  teaches:
+    values: [true, false]
+    say: holds MUDERRIS in some course, which is what makes Hesap offer Nazar (apps/nizam/features/account/components/account-page.tsx:121)
+  held:
+    of:
+      - platform.madrasah_create
+      - platform.head_muderris_manage
+      - platform.madrasah_edit
+      - platform.kosk_create
+      - platform.kosk_nazim_manage
+      - platform.kosk_edit
+      - platform.hosting_grant
+      - platform.kosk_application_decide
+      - platform.deck_publish
+      - platform.appeal_decide
+      - platform.ban_account
+      - platform.ban_scoped
+      - platform.audit_read
+      - platform.inactive_scopes_manage
+      - platform.youtube_manage
+      - platform.policy_edit
+      - platform.partner_manage
+    say: the platform permissions a Medaris nazımı holds; the menu is cut by them for that variant only
+
+# A Medaris nazımı holds nothing until it is granted (libs/common/src/authz/permissions.ts:352, ROLE_DEFAULT_PERMISSIONS).
+sets:
+  everything:
+    - platform.madrasah_create
+    - platform.head_muderris_manage
+    - platform.madrasah_edit
+    - platform.kosk_create
+    - platform.kosk_nazim_manage
+    - platform.kosk_edit
+    - platform.hosting_grant
+    - platform.kosk_application_decide
+    - platform.deck_publish
+    - platform.appeal_decide
+    - platform.ban_account
+    - platform.ban_scoped
+    - platform.audit_read
+    - platform.inactive_scopes_manage
+    - platform.youtube_manage
+    - platform.policy_edit
+    - platform.partner_manage
+
+guards:
+  managesPlatform: "variant == 'chief' or variant == 'medaris'"
+  # whom /kosks/{id} shows the management view (apps/nizam/features/kosks/kosk-entry.ts:56-60)
+  koskManagementView: "variant == 'chief' or (variant == 'medaris' and 'platform.kosk_edit' in held)"
+  # whom tedrisat lets read a köşk's nazımlar and course roster: KOSK_MANAGE (the köşk nazımı's), platform.kosk_edit, the başnazım
+  # (apps/tedrisat/src/kosk/kosk-admin.controller.ts:298, 235); the köşk settings, its Nazımlar tab and its Dersler page open on that read
+  readsKosk: "variant == 'chief' or variant == 'kosk' or (variant == 'medaris' and 'platform.kosk_edit' in held)"
+  # the başnazım or the köşk's own nazımı (apps/nizam/features/kosks/kosk-abilities.ts:55)
+  managesKosk: "variant == 'chief' or variant == 'kosk'"
+
+personas:
+  visitor:
+    title: Visitor
+    say: has no session; Nizam shows a welcome page with the language menu and a sign-in button, and no shell
+    facts: { signedIn: false, landing: none, variant: none, teaches: false, held: [] }
+  chief:
+    title: Medaris başnazımı
+    say: the realm's SYSTEM_ADMIN; gets the widest menu, unfiltered
+    facts: { signedIn: true, landing: nizam, variant: chief, teaches: false, held: [] }
+  medarisAll:
+    title: Medaris nazımı with every permission
+    say: a Medaris nazımı who has been granted every platform permission
+    facts: { signedIn: true, landing: nizam, variant: medaris, teaches: false, held: everything }
+  medarisReviewer:
+    title: Medaris nazımı who reviews requests
+    say: a Medaris nazımı granted only the permissions to decide köşk applications and publish decks
+    facts: { signedIn: true, landing: nizam, variant: medaris, teaches: false, held: [platform.kosk_application_decide, platform.deck_publish] }
+  medarisKoskEditor:
+    title: Medaris nazımı who hides and restores köşks
+    say: a Medaris nazımı granted only platform.kosk_edit, which opens a köşk's management view (MDRS-143)
+    facts: { signedIn: true, landing: nizam, variant: medaris, teaches: false, held: [platform.kosk_edit] }
+  medarisBare:
+    title: Medaris nazımı with no grants yet
+    say: a Medaris nazımı who has been given the role and no permission, which is how every one starts
+    facts: { signedIn: true, landing: nizam, variant: medaris, teaches: false, held: [] }
+  kosk:
+    title: Köşk nazımı
+    say: manages one köşk; "/" sends them to its Ana sayfa
+    facts: { signedIn: true, landing: nizam, variant: kosk, teaches: false, held: [] }
+  nazarOnly:
+    title: Müderris, no Nizam role
+    say: teaches a course and holds no role of Nizam's
+    facts: { signedIn: true, landing: nazar, variant: none, teaches: true, held: [] }
+  noRole:
+    title: Signed in, no role
+    say: has an account and no role at all
+    facts: { signedIn: true, landing: none, variant: none, teaches: false, held: [] }
+
+# Overrides and additions to the generated pages. `nazar` and `tedris` are other applications. The extractor reads only the gates that
+# name the person's own roles; where a link or a menu entry leads to a page whose API answer is decided by a platform permission or a
+# role, the page's opensFor is written here from that API rule.
+pages:
+  nazar:
+    route: Nazar
+    title: Nazar
+    kind: external
+    frame: elsewhere
+  tedris:
+    route: Tedris
+    title: Tedris
+    kind: external
+    frame: elsewhere
+  offHost:
+    route: "//talepler/…, //pasif-kapsamlar, //yasaklamalar, //kosks, //medreseler"
+    title: an address on another host
+    kind: missing
+    frame: elsewhere
+    evidence: >-
+      features/dashboard/components/medaris-home.tsx:49 sets base to "/", so every `${base}/…` link of the Medaris home page starts
+      with "//" and the browser reads it as another host (https://talepler/…)
+  tedrisSession:
+    route: "Tedris /courses/{id}/sessions/{id}"
+    title: a session address Tedris does not have
+    kind: missing
+    frame: elsewhere
+    evidence: features/courses/components/sessions-view.tsx:291 links it; Tedris has /courses/{courseId}/lessons/{lessonId} and no /sessions/ route (apps/tedris/app/courses/[courseId]/lessons/[lessonId]/page.tsx)
+  archive:
+    opensFor: "signedIn and variant == 'chief'"
+    refusal: answers 403 (Bu bölüm için izniniz yok) to anyone but the başnazım
+    evidence: apps/nizam/app/arsiv/page.tsx:26 calls forbidden() when tedrisat refuses; apps/tedrisat/src/archive/archive.service.ts:510 serves the platform archive to SYSTEM_ADMIN alone
+  kosk:
+    opensFor: "signedIn and landing == 'nizam' and (variant != 'medaris' or 'platform.kosk_edit' in held or 'platform.hosting_grant' in held)"
+    refusal: answers 403 to anyone else, and to a Medaris nazımı who holds neither platform.kosk_edit nor platform.hosting_grant
+    evidence: app/kosks/layout.tsx:20 (landingFor !== "nizam"); features/kosks/kosk-entry.ts:56-62 and app/kosks/[id]/page.tsx:54 (the entry rule)
+  koskCourses:
+    opensFor: "signedIn and landing == 'nizam' and readsKosk"
+    refusal: answers 403 to anyone else
+    evidence: app/kosks/[id]/dersler/page.tsx:43; GET /kosks/:id/course-roster needs KOSK_MANAGE or platform.kosk_edit (apps/tedrisat/src/kosk/kosk-admin.controller.ts:235)
+  koskSettings:
+    opensFor: "signedIn and landing == 'nizam' and readsKosk"
+    refusal: answers 403 to anyone else
+    evidence: app/kosks/[id]/ayarlar/page.tsx:41; GET /kosks/:id/nazims needs KOSK_MANAGE or platform.kosk_edit (apps/tedrisat/src/kosk/kosk-admin.controller.ts:298)
+  koskNazims:
+    opensFor: "signedIn and landing == 'nizam' and readsKosk"
+    refusal: answers 403 to anyone else
+    evidence: app/kosks/[id]/ayarlar/nazimlar/page.tsx:36; GET /kosks/:id/nazims (apps/tedrisat/src/kosk/kosk-admin.controller.ts:298)
+  koskHosting:
+    opensFor: "signedIn and landing == 'nizam' and (variant != 'medaris' or 'platform.hosting_grant' in held)"
+    refusal: answers 403 to anyone else, and to a Medaris nazımı without platform.hosting_grant
+    evidence: app/kosks/[id]/ayarlar/barindirma/page.tsx:41; GET /kosks/:id/hosting-rights needs kosk.hosting or platform.hosting_grant (apps/tedrisat/src/hosting/hosting.controller.ts:73)
+  koskApplications:
+    opensFor: "signedIn and landing == 'nizam' and variant != 'medaris'"
+    refusal: answers 403 to anyone else, and to every Medaris nazımı
+    evidence: app/kosks/[id]/basvurular/page.tsx:35; GET /kosks/:koskId/enrollments/pending needs course.manage_all in the köşk (apps/tedrisat/src/course/course.controller.ts:522), which no platform permission gives
+  courseNew:
+    opensFor: "signedIn and landing == 'nizam' and managesKosk"
+    refusal: answers 403 to anyone but the başnazım and the köşk's own nazımı
+    evidence: app/kosks/[id]/courses/new/page.tsx:35 (koskAbilities(me, kosk).openCourse)
+  course:
+    opensFor: "signedIn and landing == 'nizam' and variant != 'medaris'"
+    refusal: answers 403 unless the person holds course.staff_read in the course, which no platform permission gives
+    evidence: app/kosks/[id]/courses/[courseId]/page.tsx:49; GET /courses/:id/stats needs course.staff_read (apps/tedrisat/src/course/course.controller.ts:542)
+  # the course's own pages open on readCourseScope: the başnazım, the köşk's nazımı or the course's müderris (mayEditCourse)
+  courseCurriculum:
+    opensFor: "signedIn and landing == 'nizam' and (managesKosk or teaches)"
+    refusal: answers 403 to anyone but the başnazım, the köşk's nazımı and the course's müderris, so to every Medaris nazımı
+    evidence: app/kosks/[id]/courses/[courseId]/curriculum/page.tsx:31; features/courses/reads.ts:48 (mayEditCourse, features/kosks/kosk-abilities.ts:69)
+  courseSettings:
+    opensFor: "signedIn and landing == 'nizam' and (managesKosk or teaches)"
+    refusal: answers 403 to anyone but the başnazım, the köşk's nazımı and the course's müderris, so to every Medaris nazımı
+    evidence: app/kosks/[id]/courses/[courseId]/ayarlar/page.tsx:35; features/courses/reads.ts:48 (mayEditCourse)
+  courseSessions:
+    opensFor: "signedIn and landing == 'nizam' and (managesKosk or teaches)"
+    refusal: answers 403 to anyone but the başnazım, the köşk's nazımı and the course's müderris, so to every Medaris nazımı
+    evidence: app/kosks/[id]/courses/[courseId]/sessions/page.tsx:38; features/courses/reads.ts:48 (mayEditCourse)
+  courseSessionNew:
+    opensFor: "signedIn and landing == 'nizam' and (managesKosk or teaches)"
+    refusal: answers 403 to anyone but the başnazım, the köşk's nazımı and the course's müderris, so to every Medaris nazımı
+    evidence: app/kosks/[id]/courses/[courseId]/sessions/new/page.tsx:28; features/courses/reads.ts:48 (mayEditCourse)
+  auditLog:
+    opensFor: "signedIn and (variant == 'chief' or (variant == 'medaris' and 'platform.audit_read' in held))"
+    refusal: answers 403 to anyone else
+    evidence: app/denetim-kaydi/page.tsx:31; apps/tedrisat/src/audit/audit.service.ts:97 asks platform.audit_read
+  platformSettings:
+    opensFor: "signedIn and (variant == 'chief' or (variant == 'medaris' and 'platform.policy_edit' in held))"
+    refusal: answers 403 to anyone else
+    evidence: app/ayarlar/platform/page.tsx:24; apps/tedrisat/src/platform-policy/platform-policy.service.ts:72 asks platform.policy_edit
+  partners:
+    opensFor: "signedIn and (variant == 'chief' or (variant == 'medaris' and 'platform.partner_manage' in held))"
+    refusal: answers 403 to anyone else
+    evidence: app/ayarlar/ortak-uygulamalar/page.tsx:23; apps/tedrisat/src/integration/partner-admin.service.ts:48 asks platform.partner_manage
+  inactive:
+    opensFor: "signedIn and (variant == 'chief' or (variant == 'medaris' and 'platform.inactive_scopes_manage' in held))"
+    refusal: answers 403 to anyone else
+    evidence: app/pasif-kapsamlar/page.tsx:23; apps/tedrisat/src/inactive-scope/inactive-scope.service.ts:58 asks platform.inactive_scopes_manage
+
+# from: a page id, a list of them, or frame:shell for every page that draws the sidebar
+# how:  auto (a redirect), menu, user (the person's corner of the sidebar), link, button
+# when: a guard over the person's facts; omitted = always
+# data: true = the entry exists only when a list has an item to link from
+entries:
+  # where "/" sends a person (app/(home)/page.tsx); a başnazım or a Medaris nazımı stays on the dashboard
+  - { from: start, to: signin, how: button, label: Auth.signIn, when: not signedIn, source: "apps/nizam/app/(home)/page.tsx:42" }
+  - { from: start, to: nazarRedirect, how: auto, when: "signedIn and landing == 'nazar'", clicks: 0, source: "apps/nizam/app/(home)/page.tsx:54" }
+  - { from: start, to: noRole, how: auto, when: "signedIn and landing == 'none'", clicks: 0, source: "apps/nizam/app/(home)/page.tsx:55" }
+  - { from: start, to: koskHome, how: auto, when: "signedIn and variant == 'kosk'", clicks: 0, source: "apps/nizam/app/(home)/page.tsx:63" }
+
+  # the sidebar's corners (components/shell/shell-frame.tsx); the bell of the phone bar is not modelled
+  - { from: frame:shell, to: start, how: user, label: the Medaris Nizam logo, when: signedIn, source: apps/nizam/components/shell/shell-frame.tsx:194 }
+  - { from: frame:shell, to: account, how: user, label: Shell.userLink, when: signedIn, source: apps/nizam/components/shell/shell-frame.tsx:164 }
+
+  # the dashboard of a başnazım and a Medaris nazımı (features/dashboard/components/medaris-home.tsx). A section is drawn when the API
+  # sends it (apps/tedrisat/src/nizam-dashboard/dashboard-sections.ts:23). Every link is `${base}/…` with base "/", so each one is
+  # "//…" and leaves for another host: they all go to offHost. The page each was meant to open is in the comment.
+  - { from: start, to: offHost, how: link, label: Dashboard.seeAll, back: true, when: "variant == 'chief' or (variant == 'medaris' and 'platform.kosk_application_decide' in held)", source: apps/nizam/features/dashboard/components/medaris-home.tsx:65 } # meant: platformKoskApplications
+  - { from: start, to: offHost, how: link, label: Dashboard.review, when: "variant == 'chief' or (variant == 'medaris' and 'platform.kosk_application_decide' in held)", data: true, source: apps/nizam/features/dashboard/components/medaris-home.tsx:91 } # meant: platformKoskApplications?secili=
+  - { from: start, to: offHost, how: link, label: Dashboard.seeAll, back: true, when: "variant == 'chief' or (variant == 'medaris' and 'platform.deck_publish' in held)", source: apps/nizam/features/dashboard/components/medaris-home.tsx:109 } # meant: deckRequests
+  - { from: start, to: offHost, how: link, label: Dashboard.review, when: "variant == 'chief' or (variant == 'medaris' and 'platform.deck_publish' in held)", data: true, source: apps/nizam/features/dashboard/components/medaris-home.tsx:135 } # meant: deckRequests?secili=
+  - { from: start, to: offHost, how: link, label: Dashboard.seeAll, back: true, when: "variant == 'chief' or (variant == 'medaris' and 'platform.inactive_scopes_manage' in held)", source: apps/nizam/features/dashboard/components/medaris-home.tsx:159 } # meant: inactive
+  - { from: start, to: offHost, how: button, label: the assign button of a passive scope, when: "variant == 'chief' or (variant == 'medaris' and 'platform.inactive_scopes_manage' in held)", data: true, source: apps/nizam/features/dashboard/components/medaris-home.tsx:190 } # meant: inactive
+  - { from: start, to: offHost, how: link, label: Dashboard.review, when: "variant == 'chief' or (variant == 'medaris' and ('platform.ban_scoped' in held or 'platform.ban_account' in held))", data: true, source: apps/nizam/features/dashboard/components/medaris-home.tsx:232 } # meant: bans
+  - { from: start, to: offHost, how: link, label: Dashboard.bans.goTo, when: "variant == 'chief' or (variant == 'medaris' and ('platform.ban_scoped' in held or 'platform.ban_account' in held))", source: apps/nizam/features/dashboard/components/medaris-home.tsx:244 } # meant: bans
+  - { from: start, to: offHost, how: link, label: Dashboard.counts.goKosks, when: "variant == 'chief'", source: apps/nizam/features/dashboard/components/medaris-home.tsx:267 } # meant: kosks
+  - { from: start, to: offHost, how: link, label: Dashboard.counts.goMadrasahs, when: "variant == 'chief'", source: apps/nizam/features/dashboard/components/medaris-home.tsx:279 } # meant: madrasahs
+  - { from: start, to: offHost, how: button, label: Dashboard.openKosk, when: "variant == 'chief'", source: apps/nizam/features/dashboard/components/medaris-home.tsx:310 } # meant: kosks?ac=1
+
+  # where the köşk entry page sends a person (app/kosks/[id]/page.tsx, features/kosks/kosk-entry.ts): a köşk nazımı to Dersler, the
+  # başnazım or a holder of platform.kosk_edit stays on the management view, a holder of platform.hosting_grant (and not kosk_edit)
+  # to Barındırma hakları
+  - { from: kosks, to: kosk, how: link, label: a köşk in the directory, data: true, source: apps/nizam/features/kosks/components/kosks-directory.tsx:168 }
+  - { from: kosks, to: archive, how: link, label: KoskDirectory.archive, when: "variant == 'chief'", source: apps/nizam/features/kosks/components/kosks-directory.tsx:309 }
+  - { from: kosks, to: courseEdit, how: link, label: a course the person teaches in a köşk they do not manage, data: true, source: apps/nizam/features/kosks/components/taught-courses.tsx:29 }
+  - { from: kosk, to: koskCourses, how: auto, when: "variant == 'kosk'", clicks: 0, source: "apps/nizam/app/kosks/[id]/page.tsx:50" }
+  - { from: kosk, to: koskHosting, how: auto, when: "variant == 'medaris' and 'platform.hosting_grant' in held and 'platform.kosk_edit' not in held", clicks: 0, source: "apps/nizam/app/kosks/[id]/page.tsx:52" }
+  - { from: kosk, to: kosks, how: link, label: KoskManage.kosks, when: koskManagementView, source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:354 }
+  - { from: kosk, to: koskCourses, how: button, label: KoskManage.nazimView, when: koskManagementView, source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:364 }
+  - { from: kosk, to: tedris, how: button, label: KoskManage.publicPage, when: koskManagementView, source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:370 }
+  - { from: kosk, to: koskSettings, how: link, label: KoskManage.openSettings, when: koskManagementView, source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:466 }
+  - { from: kosk, to: archive, how: button, label: KoskManage.toArchive, when: koskManagementView, source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:542 }
+  - { from: kosk, to: koskHosting, how: link, label: KoskManage.hostingLink, when: koskManagementView, source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:584 }
+  - { from: kosk, to: koskArchive, how: link, label: KoskManage.archive, when: koskManagementView, source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:614 }
+
+  # the köşk nazımı's home (features/dashboard/components/kosk-home.tsx)
+  - { from: koskHome, to: courseSessions, how: button, label: the action of a session of the week, data: true, source: apps/nizam/features/dashboard/components/kosk-home.tsx:305 }
+  - { from: koskHome, to: courseNew, how: button, label: Dashboard.openCourse, source: apps/nizam/features/dashboard/components/kosk-home.tsx:412 }
+  - { from: koskHome, to: koskApplications, how: link, label: Dashboard.seeAll, back: true, source: apps/nizam/features/dashboard/components/kosk-home.tsx:503 }
+
+  # Dersler of a köşk (features/kosks/components/kosk-courses-view.tsx and kosk-course-table.tsx)
+  - { from: koskCourses, to: koskApplications, how: link, label: KoskCourses.cards.applicationsLink, source: apps/nizam/features/kosks/components/kosk-courses-view.tsx:67 }
+  - { from: koskCourses, to: koskHosting, how: link, label: KoskCourses.cards.hostingLink, source: apps/nizam/features/kosks/components/kosk-courses-view.tsx:74 }
+  - { from: koskCourses, to: koskNazims, how: link, label: KoskCourses.cards.nazimsLink, source: apps/nizam/features/kosks/components/kosk-courses-view.tsx:81 }
+  - { from: koskCourses, to: tedris, how: button, label: KoskCourses.publicPage, source: apps/nizam/features/kosks/components/kosk-courses-view.tsx:104 }
+  - { from: koskCourses, to: courseNew, how: button, label: KoskCourses.open, when: managesKosk, source: apps/nizam/features/kosks/components/kosk-courses-view.tsx:115 }
+  - { from: koskCourses, to: koskArchive, how: link, label: KoskCourses.archive, source: apps/nizam/features/kosks/components/kosk-courses-view.tsx:161 }
+  - { from: koskCourses, to: course, how: link, label: a course title in the list, data: true, source: apps/nizam/features/kosks/components/kosk-course-table.tsx:124 }
+  - { from: koskCourses, to: courseCurriculum, how: button, label: KoskCourses.edit, data: true, source: apps/nizam/features/kosks/components/kosk-course-table.tsx:275 }
+  - { from: koskCourses, to: tedris, how: button, label: KoskCourses.view, data: true, source: apps/nizam/features/kosks/components/kosk-course-table.tsx:301 }
+
+  # the köşk's other pages
+  - { from: koskCourseRequests, to: courseNew, how: button, label: CourseRequestsPage.accept, data: true, source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:234 }
+  - { from: koskDecks, to: deckCards, how: button, label: KoskDecksPage.editCards, data: true, source: apps/nizam/features/deck-review/components/kosk-decks-view.tsx:224 }
+  - { from: koskDecks, to: koskDeckNew, how: button, label: KoskDecksPage.open, source: apps/nizam/features/deck-review/components/kosk-decks-view.tsx:266 }
+  - { from: koskDecks, to: koskDeckNew, how: button, label: KoskDecksPage.accept, data: true, source: apps/nizam/features/deck-review/components/kosk-decks-view.tsx:313 }
+  - { from: koskDeckNew, to: koskDecks, how: link, label: KoskDeckForm.breadcrumbRoot, source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:111 }
+  - { from: koskDeckNew, to: koskDecks, how: button, label: KoskDeckForm.cancel, back: true, source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:196 }
+  - { from: koskDeckNew, to: koskDecks, how: button, label: KoskDeckForm.submit, source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:96 }
+
+  # a course (the old editor, /edit, only sends the person to the curriculum, which is where the course is edited)
+  - { from: course, to: koskCourses, how: link, label: CourseOverview.courses, source: apps/nizam/features/kosks/components/course-overview.tsx:260 }
+  - { from: course, to: nazar, how: button, label: CourseOverview.openInNazar, when: "variant == 'chief'", source: apps/nizam/features/kosks/components/course-overview.tsx:280 }
+  - { from: course, to: courseEdit, how: button, label: CourseOverview.editSyllabus, source: apps/nizam/features/kosks/components/course-overview.tsx:294 }
+  - { from: course, to: courseEdit, how: button, label: CourseOverview.planSession, source: apps/nizam/features/kosks/components/course-overview.tsx:299 }
+  - { from: course, to: courseEdit, how: button, label: the action of an upcoming session, data: true, source: apps/nizam/features/kosks/components/course-overview.tsx:168 }
+  - { from: course, to: courseSessions, how: link, label: CourseOverview.allSessions, source: apps/nizam/features/kosks/components/course-overview.tsx:373 }
+  - { from: course, to: courseStudents, how: link, label: CourseOverview.students, source: apps/nizam/features/kosks/components/course-overview.tsx:399 }
+  - { from: course, to: courseEdit, how: link, label: CourseOverview.settings, source: apps/nizam/features/kosks/components/course-overview.tsx:465 }
+  - { from: courseEdit, to: courseCurriculum, how: auto, clicks: 0, source: "apps/nizam/app/kosks/[id]/courses/[courseId]/edit/page.tsx:16" }
+  - { from: courseCurriculum, to: koskCourses, how: link, label: Curriculum.breadcrumbRoot, source: apps/nizam/features/courses/components/curriculum-editor.tsx:284 }
+  - { from: courseCurriculum, to: course, how: link, label: the course in the breadcrumb, source: apps/nizam/features/courses/components/curriculum-editor.tsx:285 }
+  - { from: courseCurriculum, to: courseSessions, how: link, label: Curriculum.sessionsLink, source: apps/nizam/features/courses/components/curriculum-editor.tsx:325 }
+  - { from: courseCurriculum, to: courseSettings, how: link, label: Curriculum.settingsLink, source: apps/nizam/features/courses/components/curriculum-editor.tsx:328 }
+  - { from: courseCurriculum, to: courseSettings, how: button, label: Curriculum.changeZone, source: apps/nizam/features/courses/components/curriculum-editor.tsx:413 }
+  - { from: courseCurriculum, to: courseSessionNew, how: button, label: Curriculum.generate, source: apps/nizam/features/courses/components/curriculum-editor.tsx:418 }
+  - { from: courseSettings, to: koskCourses, how: link, label: CourseSettings.breadcrumbRoot, source: apps/nizam/features/courses/components/course-settings-page.tsx:196 }
+  - { from: courseSettings, to: course, how: link, label: the course in the breadcrumb, source: apps/nizam/features/courses/components/course-settings-page.tsx:197 }
+  - { from: courseSettings, to: tedris, how: button, label: CourseSettings.viewPublic, source: apps/nizam/features/courses/components/course-settings-page.tsx:207 }
+  - { from: courseSettings, to: koskSettings, how: link, label: CourseSettings.policyLink, source: apps/nizam/features/courses/components/course-settings-page.tsx:288 }
+  - { from: courseSessions, to: koskCourses, how: link, label: Sessions.breadcrumbRoot, source: apps/nizam/features/courses/components/sessions-view.tsx:477 }
+  - { from: courseSessions, to: course, how: link, label: the course in the breadcrumb, source: apps/nizam/features/courses/components/sessions-view.tsx:478 }
+  - { from: courseSessions, to: courseSessionNew, how: button, label: Sessions.plan, source: apps/nizam/features/courses/components/sessions-view.tsx:494 }
+  - { from: courseSessions, to: tedrisSession, how: link, label: a session's title, data: true, source: apps/nizam/features/courses/components/sessions-view.tsx:291 }
+  - { from: courseSessionNew, to: courseSessions, how: link, label: SessionPlan.breadcrumbRoot, source: apps/nizam/features/courses/components/session-plan-form.tsx:168 }
+  - { from: courseSessionNew, to: courseSessions, how: button, label: SessionPlan.cancel, back: true, source: apps/nizam/features/courses/components/session-plan-form.tsx:392 }
+  - { from: courseSessionNew, to: courseSessions, how: button, label: the save button of the plan, source: apps/nizam/features/courses/components/session-plan-form.tsx:154 }
+  - { from: courseNew, to: koskCourses, how: link, label: CourseCreate.breadcrumbRoot, source: apps/nizam/features/courses/components/course-create-form.tsx:200 }
+  - { from: courseNew, to: koskCourses, how: button, label: CourseCreate.cancel, back: true, source: apps/nizam/features/courses/components/course-create-form.tsx:494 }
+  - { from: courseNew, to: koskCourses, how: button, label: CourseCreate.submit, source: apps/nizam/features/courses/components/course-create-form.tsx:181 }
+  - { from: courseNew, to: courseSessionNew, how: button, label: the save button when the sessions could not be made, data: true, source: apps/nizam/features/courses/components/course-create-form.tsx:174 }
+  - { from: courseStudents, to: courseEdit, how: link, label: StudentsPage.back, back: true, source: "apps/nizam/app/kosks/[id]/courses/[courseId]/students/page.tsx:52" }
+
+  # the settings of a köşk are three tabs; the Barındırma page draws them only for whoever may read the köşk's nazımlar
+  - { from: koskSettings, to: koskNazims, how: link, label: KoskSettings.tabs.nazims, source: apps/nizam/features/kosks/components/kosk-settings.tsx:117 }
+  - { from: koskSettings, to: koskHosting, how: link, label: KoskSettings.tabs.hosting, source: apps/nizam/features/kosks/components/kosk-settings.tsx:123 }
+  - { from: koskNazims, to: koskSettings, how: link, label: KoskNazims.tabs.general, source: apps/nizam/features/kosks/components/nazims-view.tsx:162 }
+  - { from: koskNazims, to: koskHosting, how: link, label: KoskNazims.tabs.hosting, source: apps/nizam/features/kosks/components/nazims-view.tsx:171 }
+  - { from: koskHosting, to: koskSettings, how: link, label: HostingPage.settings, when: readsKosk, source: apps/nizam/features/hosting/components/hosting-view.tsx:162 }
+  - { from: koskHosting, to: koskSettings, how: link, label: HostingPage.tabs.general, when: readsKosk, source: apps/nizam/features/hosting/components/hosting-view.tsx:186 }
+  - { from: koskHosting, to: koskNazims, how: link, label: HostingPage.tabs.nazims, when: readsKosk, source: apps/nizam/features/hosting/components/hosting-view.tsx:190 }
+
+  # the platform's lists
+  - { from: madrasahs, to: nazar, how: button, label: MadrasahsPage.openInNazar, data: true, source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:273 }
+  - { from: madrasahs, to: archive, how: link, label: MadrasahsPage.archive, when: "variant == 'chief'", source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:380 }
+  - { from: nazims, to: grants, how: link, label: PermissionsDialog.editGroups, source: apps/nizam/features/permissions/components/permissions-dialog.tsx:246 }
+  - { from: inactive, to: kosk, how: button, label: InactivePage.view, data: true, source: apps/nizam/features/inactive-scopes/present.ts:69 }
+  - { from: inactive, to: courseEdit, how: button, label: InactivePage.view, data: true, source: apps/nizam/features/inactive-scopes/present.ts:71 }
+  - { from: decks, to: deckCards, how: button, label: the eye button of a deck row, data: true, source: apps/nizam/features/decks/hooks/useDecksColumns.tsx:52 }
+  - { from: notifications, to: koskBans, how: link, label: a notification about a ban in a köşk, data: true, source: apps/nizam/features/notifications/notification-view.ts:74 }
+
+  # people with no work here, the account and the auth pages
+  - { from: nazarRedirect, to: nazar, how: button, label: NazarRedirectPage.goToNazar, source: apps/nizam/features/assignments/components/nazar-redirect-page.tsx:120 }
+  - { from: noRole, to: tedris, how: button, label: NoRole.back, source: apps/nizam/features/assignments/components/no-role-page.tsx:57 }
+  - { from: account, to: nazar, how: button, label: AccountPage.openNazar, when: teaches, source: apps/nizam/features/account/components/account-page.tsx:257 }
+  - { from: account, to: signout, how: button, label: AccountPage.signOut, when: signedIn, source: apps/nizam/features/account/components/account-page.tsx:274 }
+  - { from: signin, to: start, how: button, label: Auth.backHome, back: true, source: apps/nizam/features/auth/auth-entry.tsx:91 }
+  - { from: signout, to: start, how: button, label: SignOutPage.cancel, back: true, source: apps/nizam/features/auth/sign-out-confirm.tsx:34 }
+
+# What a person has come to do. Each goal is checked for every persona listed under `for`.
+goals:
+  - { id: signIn, say: Sign in, page: signin, for: [visitor], within: 1 }
+  - { id: koskApplications, say: Decide on the köşk applications, page: platformKoskApplications, for: [chief, medarisAll, medarisReviewer], within: 1 }
+  - { id: deckRequests, say: Decide on the deck publication requests, page: deckRequests, for: [chief, medarisAll, medarisReviewer], within: 1 }
+  - { id: appeals, say: Decide on the appeals, page: appeals, for: [chief], within: 1 }
+  - { id: youtube, say: Change the YouTube connection, page: youtube, for: [chief], within: 1 }
+  # ITEM_PERMISSIONS lists a permission for each of these four items, and tedrisat serves each page to its holder, but the menu of a
+  # Medaris nazımı never draws them (apps/nizam/lib/shell-nav.ts:178-187, ITEM_PERMISSIONS at 301-305); the dashboard's passive-scopes card was a way to inactive until its links broke
+  - { id: audit, say: Read the audit log, page: auditLog, for: [chief, medarisAll], within: 1 }
+  - { id: inactive, say: Manage the inactive scopes, page: inactive, for: [chief, medarisAll], within: 1 }
+  - { id: platformSettings, say: Edit the platform settings, page: platformSettings, for: [chief, medarisAll], within: 1 }
+  - { id: partners, say: Manage the partner applications, page: partners, for: [chief, medarisAll], within: 1 }
+  - { id: openKosk, say: Open a köşk's management page, page: kosk, for: [chief, medarisAll, medarisKoskEditor], within: 2 }
+  - { id: koskHosting, say: See which medreses may host courses in a köşk, page: koskHosting, for: [chief, medarisAll], within: 3 }
+  - { id: koskApplicationsOfKosk, say: Decide on the applications to my köşk, page: koskApplications, for: [kosk], within: 1 }
+  - { id: openCourse, say: Open a new course in my köşk, page: courseNew, for: [kosk], within: 2 }
+  - { id: planSessions, say: Plan the sessions of a course, page: courseSessionNew, for: [kosk], within: 3 }
+  - { id: koskNazims, say: Change who manages my köşk, page: koskNazims, for: [kosk], within: 2 }
+  - { id: toNazar, say: Get to Nazar, page: nazar, for: [nazarOnly], within: 1 }
+  - { id: toTedris, say: Go back to Tedris, page: tedris, for: [noRole], within: 1 }
+
+notModeled:
+  - "the phone layout: the same sidebar behind a Menü button, so one more click everywhere, and the bell of the phone bar"
+  - several köşks of one nazım (the scope picker) and the badge counts on menu items
+  - the language menu and the theme switch (they stay on the page; since MDRS-248 the language is a cookie and no address has a locale)
+  - "API refusals of pages no persona-level rule decides: only the köşk pages, the course pages, the archive and the four platform pages above carry the rule of the API or of the page"
+  - what the dashboards draw when a list is empty, and the retry states when a read fails (a failed read shows the page, not a refusal)
+  - filters, pagers, dialogs and tabs inside a page, which stay on the same page; what follows a hide or a delete inside a dialog
+  - the hop to Keycloak when a visitor signs in, links to files and the notification rows other than the köşk ban

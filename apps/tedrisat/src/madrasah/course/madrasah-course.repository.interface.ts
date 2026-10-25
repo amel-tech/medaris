@@ -1,5 +1,5 @@
 import type { HocaUnvan } from "@medaris/utils/src/hoca-unvan.js";
-import type { OffsiteRequestStatus } from "../../database/schema/offsite-course-request.schema";
+import type { CourseRequestStatus } from "../../database/schema/course-request.schema";
 
 /** A köşk the medrese holds a hosting right in (nazir/07's side block, nazir/08's choice). */
 export interface IMadrasahHostingKosk {
@@ -70,7 +70,7 @@ export interface IOffsiteCourseRequest {
   koskName: string;
   title: string;
   reason: string;
-  status: OffsiteRequestStatus;
+  status: CourseRequestStatus;
   requestedById: string;
   requestedByName: string | null;
   createdAt: Date;

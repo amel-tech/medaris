@@ -308,10 +308,10 @@ describe("the route", () => {
 
   const open = async () => {
     const { default: Page } = await import(
-      "../app/[locale]/courses/[courseId]/lessons/[lessonId]/izle/page"
+      "../app/courses/[courseId]/lessons/[lessonId]/izle/page"
     );
     return Page({
-      params: Promise.resolve({ locale: "tr", courseId: "c1", lessonId: "s1" }),
+      params: Promise.resolve({ courseId: "c1", lessonId: "s1" }),
     });
   };
   const redirectOf = async () => {
@@ -322,7 +322,7 @@ describe("the route", () => {
     }
     throw new Error("expected a redirect");
   };
-  const DETAIL = "/tr/courses/c1/lessons/s1";
+  const DETAIL = "/courses/c1/lessons/s1";
 
   it("opens on a stream the API sent, after the clock's end too", async () => {
     const el = (await open()) as ReactElement<{ target: WatchTarget }>;

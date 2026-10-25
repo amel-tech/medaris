@@ -214,7 +214,7 @@ function Content({ profile }: PublicProfilePageProps) {
                   variant="outline"
                   size="small"
                   href={accountActionHref("UPDATE_PROFILE", {
-                    callbackUrl: `/${locale}/account/public-profile`,
+                    callbackUrl: `/account/public-profile`,
                     locale,
                   })}
                 >
@@ -264,7 +264,7 @@ function Content({ profile }: PublicProfilePageProps) {
                 {profile.fullName ?? ""}
               </p>
               <p className="mds-help">
-                <a className="underline" href={`/${locale}/account`}>
+                <a className="underline" href={`/account`}>
                   {t("accountLink")}
                 </a>
                 {t("fullNameHelp")}
@@ -318,7 +318,7 @@ function Content({ profile }: PublicProfilePageProps) {
               </p>
               <p className="mds-help">
                 {t("coursesHelpBefore")}
-                <a className="underline" href={`/${locale}/my-courses`}>
+                <a className="underline" href={`/my-courses`}>
                   {t("myCoursesLink")}
                 </a>
                 {t("coursesHelpAfter")}

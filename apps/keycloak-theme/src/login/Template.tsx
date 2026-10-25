@@ -7,6 +7,7 @@ import { getKcClsx } from "keycloakify/login/lib/kcClsx";
 import { useInitialize } from "keycloakify/login/Template.useInitialize";
 import { useSetClassName } from "keycloakify/tools/useSetClassName";
 import { useEffect } from "react";
+import { appOfClient } from "./app-of-client";
 import type { I18n } from "./i18n";
 import type { KcContext } from "./KcContext";
 import type { ExtendedTemplateProps } from "./types/TemplateProps";
@@ -50,7 +51,7 @@ export default function Template(
 
   const { msg, msgStr } = i18n;
 
-  const { realm, auth, url, message, isAppInitiatedAction } = kcContext;
+  const { realm, auth, url, message, isAppInitiatedAction, client } = kcContext;
 
   useEffect(() => {
     document.title = documentTitle ?? msgStr("loginTitle", realm.displayName);
@@ -104,6 +105,7 @@ export default function Template(
       />
       <link rel="stylesheet" href={textFontsHref} precedence="default" />
       <AuthCard
+        app={appOfClient(client?.clientId)}
         title={headerNode}
         subtitle={
           headerSubNode ??

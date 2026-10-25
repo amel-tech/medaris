@@ -95,25 +95,25 @@ describe("the phone menu of a signed-in talebe (design tedris/44)", () => {
 
   it("marks the page the talebe is on, and names the bar after it", async () => {
     const schedule = await render("/schedule");
-    expect(current(nav(schedule))).toContain('href="/tr/schedule"');
-    expect(current(nav(schedule))).not.toContain('href="/tr/home"');
+    expect(current(nav(schedule))).toContain('href="/schedule"');
+    expect(current(nav(schedule))).not.toContain('href="/home"');
     expect(schedule).toMatch(/data-title="true">Programım</);
     // A köşk or a medrese page belongs to Keşfet.
     expect(current(nav(await render("/kosks/k1")))).toContain(
-      'href="/tr/discover"'
+      'href="/discover"'
     );
     expect(current(nav(await render("/madrasahs/m1")))).toContain(
-      'href="/tr/discover"'
+      'href="/discover"'
     );
     expect(current(nav(await render("/my-courses")))).toContain(
-      'href="/tr/my-courses"'
+      'href="/my-courses"'
     );
   });
 
   it("ends in the person, as the way to Hesap: avatar, name, Talebe", async () => {
     const html = await render("/home");
     const foot = /data-foot="true">(.*)$/.exec(html)?.[1] as string;
-    expect(foot).toContain('href="/tr/account"');
+    expect(foot).toContain('href="/account"');
     expect(foot).toContain("mds-nav-user");
     expect(foot).toContain("Zeynep Betül Karahanlı");
     expect(foot).toContain(">Talebe<");
@@ -124,7 +124,7 @@ describe("the phone menu of a signed-in talebe (design tedris/44)", () => {
     const bell = /<a [^>]*aria-label="Bildirimler"[^>]*>/.exec(
       await render("/home")
     )?.[0];
-    expect(bell).toContain('href="/tr/notifications"');
+    expect(bell).toContain('href="/notifications"');
   });
 });
 
@@ -175,12 +175,12 @@ describe("the signed-in Ana sayfa's sessions (design tedris/44)", () => {
     expect(html).toContain("Sıradaki celse");
     expect(html).toContain("Toplantı bağlantısı henüz eklenmedi.");
     expect(html).toMatch(
-      /href="\/tr\/courses\/c1\/lessons\/l1"[^>]*>Celse sayfası</
+      /href="\/courses\/c1\/lessons\/l1"[^>]*>Celse sayfası</
     );
     expect(html).toContain("data-menu");
     expect(html).toContain("Sonraki celseler");
     expect(html).toContain("Sonraki ders");
-    expect(html).toMatch(/href="\/tr\/schedule"/);
+    expect(html).toMatch(/href="\/schedule"/);
   });
 
   it("shows the platform when the link is there", async () => {

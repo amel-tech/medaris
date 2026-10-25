@@ -101,13 +101,13 @@ describe("Deste ayrıntısı, sahibi (design tedris/28)", () => {
     );
     const tabs = [...header.querySelectorAll(".mds-tab")];
     expect(tabs.map((t) => t.textContent)).toEqual(["Genel", "Kartlar18"]);
-    expect(tabs[0].getAttribute("href")).toBe("/tr/decks/d1");
+    expect(tabs[0].getAttribute("href")).toBe("/decks/d1");
     expect(tabs[0].getAttribute("aria-current")).toBe("page");
-    expect(tabs[1].getAttribute("href")).toBe("/tr/decks/d1/cards");
+    expect(tabs[1].getAttribute("href")).toBe("/decks/d1/cards");
     const study = [...header.querySelectorAll("a")].find(
       (a) => a.textContent === "Çalış"
     );
-    expect(study?.getAttribute("href")).toBe("/tr/decks/study/d1");
+    expect(study?.getAttribute("href")).toBe("/decks/study/d1");
   });
 
   it("counts the cards by their progress: new + learning + mastered is the deck", async () => {
@@ -136,14 +136,14 @@ describe("Deste ayrıntısı, sahibi (design tedris/28)", () => {
     );
     expect(samples[0].textContent).toContain("Aldı 1");
     const all = byText("a", "Bütün kartlar");
-    expect(all.getAttribute("href")).toBe("/tr/decks/d1/cards");
+    expect(all.getAttribute("href")).toBe("/decks/d1/cards");
   });
 
   it("an empty deck offers 'Kart ekle' instead of cards", async () => {
     await mount({ cards: [] });
     expect(document.body.textContent).toContain("Bu destede henüz kart yok.");
     expect(byText("a", "Kart ekle").getAttribute("href")).toBe(
-      "/tr/decks/d1/cards"
+      "/decks/d1/cards"
     );
     expect(document.body.textContent).not.toContain("tekrar bekliyor");
   });
@@ -234,7 +234,7 @@ describe("Deste ayrıntısı, sahibi (design tedris/28)", () => {
       ) as HTMLElement
     );
     expect(mocks.del).toHaveBeenCalledWith("d1");
-    expect(mocks.push).toHaveBeenCalledWith("/tr/decks");
+    expect(mocks.push).toHaveBeenCalledWith("/decks");
   });
 
   it("a refused delete leaves the deck and says so", async () => {
@@ -329,7 +329,7 @@ describe("Desteyi düzenle (design tedris/33)", () => {
     expect(mocks.notify).toHaveBeenCalledWith(
       expect.objectContaining({ tone: "success", title: "Deste güncellendi" })
     );
-    expect(mocks.replace).toHaveBeenCalledWith("/tr/decks/d1");
+    expect(mocks.replace).toHaveBeenCalledWith("/decks/d1");
     expect(mocks.refresh).toHaveBeenCalled();
   });
 
@@ -337,7 +337,7 @@ describe("Desteyi düzenle (design tedris/33)", () => {
     await open();
     await save();
     expect(mocks.update).not.toHaveBeenCalled();
-    expect(mocks.replace).toHaveBeenCalledWith("/tr/decks/d1");
+    expect(mocks.replace).toHaveBeenCalledWith("/decks/d1");
 
     mocks.update.mockResolvedValue({ success: false, error: "no" });
     await type(field("title"), "Başka ad olsun");
@@ -356,7 +356,7 @@ describe("Desteyi düzenle (design tedris/33)", () => {
       ) as HTMLElement
     );
     await settle();
-    expect(mocks.replace).toHaveBeenCalledWith("/tr/decks/d1");
+    expect(mocks.replace).toHaveBeenCalledWith("/decks/d1");
     expect(mocks.update).not.toHaveBeenCalled();
   });
 });
@@ -526,7 +526,7 @@ describe("Deste, okuyan kişinin görünümü (design tedris/31)", () => {
       const create = [...dialog.querySelectorAll("a")].find(
         (a) => a.textContent === "Deste oluştur"
       );
-      expect(create?.getAttribute("href")).toBe("/tr/decks/create");
+      expect(create?.getAttribute("href")).toBe("/decks/create");
       expect(dialog.querySelector('[role="radio"]')).toBeNull();
     });
 

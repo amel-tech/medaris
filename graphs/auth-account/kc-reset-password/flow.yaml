@@ -1,0 +1,165 @@
+# Resetting a forgotten password on Keycloak's pages (apps/keycloak-theme), captured from origin/main ce47fce8.
+# login-reset-password.ftl asks for the account, Keycloak e-mails a link, login-update-password.ftl takes the new
+# password. A reset link opened in another browser was run against a real Keycloak in
+# apps/tedrisat/test/e2e/keycloak-smtp.e2e.spec.ts:389. What Keycloak shows after the new password is saved is
+# Keycloak's own and not in this repository.
+schema: delurio-graph/0
+kind: flow
+id: medaris.kc-reset-password
+status: proposed
+domain: medaris.auth-account
+ui: medaris.kc-reset-password
+title: Reset a forgotten password
+summary: >-
+  The person types their user name or e-mail; Keycloak sends a link to the account's address, valid for 30 minutes.
+  The link opens the new-password page, which shows the rules as they are typed: ten characters, not the user name,
+  and not the e-mail address when the page knows it. Keycloak checks the rules again and saves the password.
+
+scope:
+  shows: login-reset-password.ftl, the e-mailed link and login-update-password.ftl
+  world: open
+  outOfView:
+    - "the reset e-mail (apps/keycloak-theme/src/email/html/password-reset.ftl)"
+    - "what Keycloak shows after the password is saved: its own continuation, not in this repository"
+    - "the same page as an application-initiated UPDATE_PASSWORD, with Vazgeç (LoginUpdatePassword.tsx:118): no app asks for it"
+
+context:
+  usernameEmpty:
+    values: [false, true]
+    initial: any
+    say: { "false": "", "true": "the field is left empty" }
+  accountExists:
+    values: [true, false]
+    initial: any
+    say: { "true": "an account has that user name or e-mail", "false": "no account has that user name or e-mail" }
+  linkFresh:
+    values: [true, false]
+    initial: any
+    say: { "true": "the link is under 30 minutes old and unused", "false": "the link has expired or was used" }
+  rulesMet:
+    values: [true, false]
+    initial: any
+    say: { "true": "the new password passes the page's checks", "false": "the new password is under 10 characters, equals the user name, or is not repeated the same" }
+  equalsEmail:
+    values: [false, true]
+    initial: any
+    say: { "false": "", "true": "the new password is the account's e-mail address, which the page does not know" }
+  usernameError: { values: [false, true], initial: false }
+  ruleErrors: { values: [false, true], initial: false }
+  serverRefused: { values: [false, true], initial: false }
+  signOutOthers: { values: [false, true], initial: false }
+  passwordChanged: { values: [false, true], initial: false }
+
+effects:
+  showUsernameError: { set: { usernameError: true } }
+  typeUsername: { set: { usernameEmpty: false, usernameError: false } }
+  showRuleErrors: { set: { ruleErrors: true } }
+  fixPassword: { set: { rulesMet: true, ruleErrors: false } }
+  refuse: { set: { serverRefused: true } }
+  pickOther: { set: { equalsEmail: false, serverRefused: false } }
+  tickSignOutOthers: { set: { signOutOthers: true } }
+  changed: { set: { passwordChanged: true } }
+
+failures:
+  requesting:
+    from: kcResetRequest
+    empty: [USERNAME_MISSING]
+  checkingLink:
+    from: kcActionToken
+    expired: [ACTION_TOKEN_EXPIRED]
+  savingPassword:
+    from: kcUpdatePassword
+    policy: [PASSWORD_POLICY]
+
+main:
+  given: { usernameEmpty: false, accountExists: true, linkFresh: true, rulesMet: true, equalsEmail: false }
+  events: [SUBMIT, DONE, OPEN_LINK, DONE, SAVE, DONE]
+
+initial: resetRequest
+states:
+  resetRequest:
+    title: Forgot your password?
+    by: human
+    source: apps/keycloak-theme/src/login/KcPage.tsx:103
+    description: >-
+      login-reset-password.ftl. The field has the focus (LoginResetPassword.tsx:69) and no `required`, so an empty
+      form reaches Keycloak, which answers under the field (LoginResetPassword.tsx:75).
+    on:
+      SUBMIT: { target: requesting, say: "they press Gönder", source: "apps/keycloak-theme/src/login/pages/LoginResetPassword.tsx:87" }
+      TYPE: { guard: usernameError, target: resetRequest, effect: [typeUsername], say: "they type their user name" }
+      BACK: { target: toLogin, starts: { flow: medaris.kc-sign-in }, say: "they press Giriş sayfasına dön", source: "apps/keycloak-theme/src/login/pages/LoginResetPassword.tsx:90" }
+      NAVIGATE: { target: left, say: "they close the page" }
+
+  requesting:
+    title: Keycloak sends the link
+    source: config/keycloak/realms/_base.json:8
+    description: resetPasswordAllowed (realms/_base.json:8); the link is a reset-credentials action token of 1800 s (realms/_base.json:44)
+    invoke: { action: kcResetRequest }
+    on:
+      DONE: { guard: "not usernameEmpty", target: linkSent, say: "Keycloak goes back to the sign-in page with its 'e-mail sent' message" }
+      FAIL.empty: { guard: usernameEmpty, target: resetRequest, effect: [showUsernameError], say: "the field was empty", source: "apps/keycloak-theme/src/login/pages/LoginResetPassword.tsx:75" }
+
+  linkSent:
+    title: Wait for the e-mail
+    by: human
+    source: apps/keycloak-theme/src/login/Template.tsx:80
+    description: login.ftl with Keycloak's message as a status above the form (Template.tsx:80, Login.tsx:65)
+    on:
+      OPEN_LINK: { guard: accountExists, target: checkingLink, say: "they open the link in the e-mail, in this browser or another", source: "apps/tedrisat/test/e2e/keycloak-smtp.e2e.spec.ts:402" }
+      SIGN_IN: { target: toLogin, starts: { flow: medaris.kc-sign-in }, say: "they sign in with the form instead" }
+      NAVIGATE: { target: left, say: "they close the page" }
+
+  checkingLink:
+    title: Keycloak checks the reset link
+    source: config/keycloak/realms/_base.json:44
+    invoke: { action: kcActionToken }
+    on:
+      DONE: { guard: linkFresh, target: updatePassword, say: "the link is valid" }
+      FAIL.expired: { guard: "not linkFresh", target: errorPage, say: "the link expired or was used", source: "apps/keycloak-theme/src/login/KcPage.tsx:143" }
+
+  updatePassword:
+    title: Choose a new password
+    by: human
+    source: apps/keycloak-theme/src/login/KcPage.tsx:111
+    description: >-
+      login-update-password.ftl. The rules read "En az 10 karakter" from a number written in the page
+      (LoginUpdatePassword.tsx:97), not from the realm's policy; the form checks length 10 by its own default
+      (update-password-form.tsx:62). The e-mail rule is checked only when the page has an address: Keycloak sends the
+      user name, so it is known only when the user name is itself an address (LoginUpdatePassword.tsx:48).
+    on:
+      SAVE:
+        - { guard: rulesMet, target: savingPassword, say: "they press Şifreyi kaydet", source: "libs/ui/src/giris/update-password-form.tsx:92" }
+        - { target: updatePassword, effect: [showRuleErrors], say: "the page stops the form and writes the reasons under the fields", source: "libs/ui/src/giris/update-password-form.tsx:113" }
+      FIX: { guard: ruleErrors, target: updatePassword, effect: [fixPassword], say: "they fix the password" }
+      PICK_OTHER: { guard: serverRefused, target: updatePassword, effect: [pickOther], say: "they type another password" }
+      TICK_SIGN_OUT_OTHERS: { target: updatePassword, effect: [tickSignOutOthers], say: "they tick Diğer cihazlarda çıkış yap", source: "apps/keycloak-theme/src/login/pages/LoginUpdatePassword.tsx:108" }
+      NAVIGATE: { target: left, say: "they close the page" }
+
+  savingPassword:
+    title: Keycloak saves the password
+    source: config/keycloak/realms/_base.json:20
+    description: passwordPolicy length(10) and notEmail and notUsername (realms/_base.json:20); with logout-sessions on, the account's other sessions end
+    invoke: { action: kcUpdatePassword }
+    on:
+      DONE: { guard: "not equalsEmail", target: passwordSaved, effect: [changed], say: "the password is changed" }
+      FAIL.policy: { guard: equalsEmail, target: updatePassword, effect: [refuse], say: "Keycloak refuses a password equal to the e-mail", source: "apps/keycloak-theme/src/login/pages/LoginUpdatePassword.tsx:53" }
+
+  errorPage:
+    title: Sign-in could not be completed
+    by: human
+    source: apps/keycloak-theme/src/login/KcPage.tsx:143
+    on:
+      BACK: { target: toClientBase, say: "they press Giriş sayfasına dön, which opens the client's base address", source: "apps/keycloak-theme/src/login/pages/ErrorPage.tsx:27" }
+      NAVIGATE: { target: left, say: "they close the page" }
+
+  passwordSaved: { type: final, title: The password is changed; Keycloak carries on, source: "config/keycloak/realms/_base.json:20" }
+  toLogin: { type: final, title: Hand over to the sign-in form, source: "apps/keycloak-theme/src/login/pages/LoginResetPassword.tsx:92" }
+  toClientBase: { type: final, title: The browser goes to the client's base address, leavesPage: true, source: "apps/keycloak-theme/src/login/pages/ErrorPage.tsx:27" }
+  left: { type: final, title: The person leaves, leavesPage: true }
+
+assertions:
+  - { id: no-link-for-an-empty-field, never: "state == 'linkSent' and usernameEmpty", say: "An empty field never sends a link", source: "apps/keycloak-theme/src/login/pages/LoginResetPassword.tsx:75" }
+  - { id: link-only-to-an-account, never: "state == 'checkingLink' and not accountExists", say: "A reset link exists only for an account that has the name or address typed" }
+  - { id: stale-link-never-opens-the-form, never: "state == 'updatePassword' and not linkFresh", say: "An expired or used link never opens the new-password page", source: "config/keycloak/realms/_base.json:44" }
+  - { id: page-rules-before-saving, never: "state == 'savingPassword' and not rulesMet", say: "A password that breaks the page's rules is not sent", source: "libs/ui/src/giris/update-password-form.tsx:113" }
+  - { id: never-equal-to-the-email, never: "passwordChanged and equalsEmail", say: "A password equal to the account's e-mail is never saved", source: "config/keycloak/realms/_base.json:20" }

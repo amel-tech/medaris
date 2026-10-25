@@ -18,7 +18,7 @@ test.afterAll(async () => {
   await fixture?.remove();
 });
 
-const page_ = (id: string) => `/tr/madrasahs/${id}`;
+const page_ = (id: string) => `/madrasahs/${id}`;
 
 test("shows the medrese, its head müderris and its courses", async ({
   page,
@@ -103,7 +103,7 @@ test("a signed-in talebe sees Devam ediyor and Onay bekliyor on their courses", 
   );
   const remove = await seedEnrollments(fixture, sub as string);
   try {
-    await page.goto("/tr/auth/signin");
+    await page.goto("/auth/signin");
     await page.locator("#username").fill(email as string);
     await page.locator("#password").fill(password as string);
     await page.locator("button[type=submit]").click();

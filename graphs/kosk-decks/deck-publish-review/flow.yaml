@@ -1,0 +1,209 @@
+# The review of deck publish requests in nizam (/talepler/deste-yayin-istekleri, design nizam/16, MDRS-180) as the code
+# runs it at ce47fce8. The author's side is medaris.deck-publish.
+schema: delurio-graph/0
+kind: flow
+id: medaris.deck-publish-review
+status: proposed
+domain: medaris.kosk-decks
+ui: medaris.deck-publish-review
+title: Review deck publish requests
+summary: >-
+  The başnazım, or a Medaris nazımı holding "platform.deck_publish", opens the waiting requests. The first one is
+  selected at once and its three sample cards are read, which tedrisat writes to the audit log as a read of a private
+  deck. "Yayımla" makes the deck public and tells its owner; "Reddet" keeps it private and sends a reason. A Medaris
+  nazımı may not answer the request of his own deck. On the answered tab the başnazım alone takes a published deck back.
+
+scope:
+  shows: the waiting requests, the sample and full card reads, publishing, refusing, and taking a published deck back
+  world: open
+  outOfView:
+    - "the author asking and taking the request back: medaris.deck-publish"
+    - "the home page's İncele link (?secili=): it selects that request instead of the first"
+
+context:
+  role:
+    values: [chief, publisher, none]
+    initial: any
+    say: { chief: "the person is the başnazım", publisher: "the person is a Medaris nazımı holding platform.deck_publish", none: "the person holds neither" }
+  waiting:
+    values: [true, false]
+    initial: any
+    say: { "true": "requests are waiting", "false": "no request waits" }
+  ownDeck:
+    values: [false, true]
+    initial: any
+    say: { "false": "the selected deck is someone else's", "true": "the selected deck is the viewer's own" }
+  answeredMeanwhile:
+    values: [false, true]
+    initial: any
+    say: { "false": "nothing changes the request meanwhile", "true": "it is answered, or taken back by its owner, while the page is open" }
+  reasonGiven:
+    values: [true, false]
+    initial: any
+    say: { "true": "a reason is written", "false": "the reason is empty" }
+  publishedPicked:
+    values: [true, false]
+    initial: any
+    say: { "true": "on the answered tab, a published deck is selected", "false": "the selected answered request was refused" }
+  chosen: { values: [false, true], initial: false } # the reviewer picked the selected request themselves
+  cardsRead: { values: [false, true], initial: false } # the deck's cards were read (and audited)
+  published: { values: [false, true], initial: false }
+  rejected: { values: [false, true], initial: false }
+  unpublished: { values: [false, true], initial: false }
+  notice: { values: [none, published, rejected, unpublished, answered, forbidden], initial: none }
+
+guards:
+  reviewer: "role in ['chief', 'publisher']" # source: apps/tedrisat/src/deck-review/deck-review.service.ts:321
+  ownRefused: "ownDeck and role != 'chief'" # source: apps/tedrisat/src/deck-review/deck-review.service.ts:343
+
+effects:
+  read: { set: { cardsRead: true } }
+  choose: { set: { chosen: true, cardsRead: false, published: false, rejected: false, notice: none }, havoc: [ownDeck, answeredMeanwhile, reasonGiven] }
+  clearNotice: { set: { notice: none } }
+  published: { set: { published: true, notice: published } }
+  rejected: { set: { rejected: true, notice: rejected } }
+  answered: { set: { notice: answered } }
+  forbidden: { set: { notice: forbidden } }
+  next: { set: { chosen: false, cardsRead: false, published: false, rejected: false }, havoc: [waiting, ownDeck, answeredMeanwhile, reasonGiven] }
+  unpublished: { set: { unpublished: true, notice: unpublished }, havoc: [publishedPicked] }
+  leftDecided: { set: { notice: answered }, havoc: [publishedPicked] }
+
+failures:
+  readingCards: { from: readDeckPublishRequestCards, gone: [DECK_REQUEST_NOT_FOUND] }
+  approving: { from: approveDeckPublishRequest, forbidden: [DECK_REVIEW_FORBIDDEN], answered: [DECK_REQUEST_NOT_PENDING, DECK_REQUEST_NOT_FOUND] }
+  rejecting: { from: rejectDeckPublishRequest, forbidden: [DECK_REVIEW_FORBIDDEN], answered: [DECK_REQUEST_NOT_PENDING, DECK_REQUEST_NOT_FOUND] }
+  unpublishing: { from: unpublishDeck, gone: [DECK_NOT_PUBLISHED, DECK_REQUEST_NOT_FOUND] }
+
+main:
+  given: { role: chief, waiting: true, ownDeck: false, answeredMeanwhile: false }
+  events: [DONE, PUBLISH, DONE]
+
+initial: opening
+states:
+  opening:
+    title: Open the waiting requests
+    description: >-
+      GET /nizam/deck-publish-requests (twelve at a time, oldest first, both counts). A 403 shows "Bu bölüm için izniniz
+      yok". The first request, or the one `?secili=` names, is selected with no click.
+    source: apps/nizam/app/talepler/deste-yayin-istekleri/page.tsx:31
+    always:
+      - { guard: "not reviewer", target: forbidden, say: "403 DECK_REVIEW_FORBIDDEN", source: "apps/tedrisat/src/deck-review/deck-review.service.ts:332" }
+      - { guard: "not waiting", target: emptyPending, say: "no request waits", source: "apps/nizam/features/deck-review/components/deck-requests-view.tsx:519" }
+      - { target: readingCards, say: "the first waiting request is selected by itself", source: "apps/nizam/features/deck-review/components/deck-requests-view.tsx:84" }
+
+  readingCards:
+    title: Read three sample cards
+    description: >-
+      GET /nizam/deck-publish-requests/{id}/cards: tedrisat writes deck.private-read to the audit log before it returns
+      the cards. The page reads them for whatever waiting request is selected, the automatic selection included.
+    invoke: { action: readDeckPublishRequestCards }
+    source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:166
+    on:
+      DONE: { target: request, effect: [read], say: "three sample cards, with the note that seeing them is recorded", source: "apps/tedrisat/src/deck-review/deck-review.service.ts:101" }
+
+  request:
+    title: Look at the request
+    by: human
+    goal: true
+    description: owner, card count, card type, the request's date and the description; the sample cards; Yayımla and Reddet
+    source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:352
+    on:
+      PUBLISH: { target: approving, effect: [clearNotice], say: "Yayımla, drawn on the viewer's own request too", source: "apps/nizam/features/deck-review/components/deck-requests-view.tsx:437" }
+      REJECT: { target: rejectDialog, effect: [clearNotice], say: "Reddet", source: "apps/nizam/features/deck-review/components/deck-requests-view.tsx:443" }
+      READ_ALL: { target: readingAll, say: "Bütün kartlar", source: "apps/nizam/features/deck-review/components/deck-requests-view.tsx:419" }
+      CHOOSE: { target: readingCards, effect: [choose], say: "they pick another request", source: "apps/nizam/features/deck-review/components/deck-requests-view.tsx:293" }
+      DECIDED_TAB: { target: decidedTab, effect: [clearNotice], say: "Karara bağlanan", source: "apps/nizam/features/deck-review/components/deck-requests-view.tsx:159" }
+      NAVIGATE: { target: left, say: "they go to another page", source: "apps/nizam/features/deck-review/components/deck-requests-view.tsx:352" }
+
+  readingAll:
+    title: Read every card
+    description: the same route with all=true, written to the audit log again with the number of cards read
+    invoke: { action: readDeckPublishRequestCards }
+    source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:188
+    on:
+      DONE: { target: request, say: "every card, and the total", source: "apps/nizam/features/deck-review/components/deck-requests-view.tsx:193" }
+
+  approving:
+    title: Publish the deck
+    description: >-
+      POST /nizam/deck-publish-requests/{id}/approve: a Medaris nazımı answering his own deck is refused before the
+      status is looked at; PENDING becomes PUBLISHED, isPublic true, and the owner is told.
+    invoke: { action: approveDeckPublishRequest }
+    source: apps/tedrisat/src/deck-review/deck-review.service.ts:120
+    on:
+      DONE: { guard: "not ownRefused and not answeredMeanwhile", target: settling, effect: [published], say: "the deck is public; its owner is told", source: "apps/nizam/features/deck-review/components/deck-requests-view.tsx:240" }
+      FAIL.forbidden: { guard: "ownRefused", target: request, effect: [forbidden], say: "403: his own deck; a toast says so", source: "apps/tedrisat/src/deck-review/deck-review.service.ts:343" }
+      FAIL.answered: { guard: "not ownRefused and answeredMeanwhile", target: settling, effect: [answered], say: "answered or taken back meanwhile: the row leaves the list", source: "apps/nizam/features/deck-review/components/deck-requests-view.tsx:220" }
+
+  rejectDialog:
+    title: Write the reason for refusing
+    by: human
+    description: "Yayın isteğini reddet: a required reason the owner will read; Reddet stays off while it is empty"
+    source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:549
+    on:
+      SUBMIT: { guard: "reasonGiven", target: rejecting, say: "Reddet", source: "apps/nizam/features/deck-review/components/reject-dialog.tsx:63" }
+      CANCEL: { target: request, say: "Vazgeç", source: "apps/nizam/features/deck-review/components/deck-requests-view.tsx:549" }
+
+  rejecting:
+    title: Refuse the request
+    description: POST /nizam/deck-publish-requests/{id}/reject; the deck stays private and the reason goes to its owner
+    invoke: { action: rejectDeckPublishRequest }
+    source: apps/tedrisat/src/deck-review/deck-review.service.ts:133
+    on:
+      DONE: { guard: "not ownRefused and not answeredMeanwhile", target: settling, effect: [rejected], say: "refused; the owner reads the reason", source: "apps/nizam/features/deck-review/components/deck-requests-view.tsx:254" }
+      FAIL.forbidden: { guard: "ownRefused", target: rejectDialog, effect: [forbidden], say: "403: his own deck", source: "apps/tedrisat/src/deck-review/deck-review.service.ts:140" }
+      FAIL.answered: { guard: "not ownRefused and answeredMeanwhile", target: settling, effect: [answered], say: "answered meanwhile: the row leaves the list", source: "apps/tedrisat/src/deck-review/deck-review.service.ts:133" }
+
+  settling:
+    title: Take the answered request off the list
+    description: the request leaves the waiting list and the next one is selected with no click
+    source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:204
+    always:
+      - { guard: "waiting", target: readingCards, effect: [next], say: "the next request is selected and its cards read", source: "apps/nizam/features/deck-review/components/deck-requests-view.tsx:208" }
+      - { target: emptyPending, effect: [next], say: "nothing else waits", source: "apps/nizam/features/deck-review/components/deck-requests-view.tsx:204" }
+
+  emptyPending:
+    title: Nothing waits
+    by: human
+    source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:519
+    on:
+      DECIDED_TAB: { target: decidedTab, say: "Karara bağlanan", source: "apps/nizam/features/deck-review/components/deck-requests-view.tsx:519" }
+      NAVIGATE: { target: left, say: "they go to another page", source: "apps/nizam/features/deck-review/components/deck-requests-view.tsx:519" }
+
+  decidedTab:
+    title: The answered requests
+    by: human
+    description: newest answer first; no card is read here. The başnazım alone has Yayından kaldır on a published deck; a refused one shows its reason.
+    source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:449
+    on:
+      UNPUBLISH: { guard: "role == 'chief' and publishedPicked", target: unpublishDialog, effect: [clearNotice], say: "Yayından kaldır", source: "apps/nizam/features/deck-review/present.ts:155" }
+      NAVIGATE: { target: left, say: "they go to another page", source: "apps/nizam/features/deck-review/components/deck-requests-view.tsx:449" }
+
+  unpublishDialog:
+    title: Write the reason for taking the deck back
+    by: human
+    source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:556
+    on:
+      SUBMIT: { guard: "reasonGiven", target: unpublishing, say: "Yayından kaldır", source: "apps/nizam/features/deck-review/components/reject-dialog.tsx:63" }
+      CANCEL: { target: decidedTab, say: "Vazgeç", source: "apps/nizam/features/deck-review/components/deck-requests-view.tsx:556" }
+
+  unpublishing:
+    title: Take the published deck back
+    description: >-
+      POST /nizam/deck-publish-requests/{id}/unpublish, the başnazım's alone: PUBLISHED becomes PRIVATE with the audit
+      row in the same transaction; the reason goes to the owner. A hidden deck is taken back like any.
+    invoke: { action: unpublishDeck }
+    source: apps/tedrisat/src/deck-review/deck-review.service.ts:156
+    on:
+      DONE: { guard: "not answeredMeanwhile", target: decidedTab, effect: [unpublished], say: "the deck is private; its owner is told", source: "apps/nizam/features/deck-review/components/deck-requests-view.tsx:272" }
+      FAIL.gone: { guard: "answeredMeanwhile", target: decidedTab, effect: [leftDecided], say: "the owner made it private meanwhile: the row leaves the tab", source: "apps/nizam/features/deck-review/components/deck-requests-view.tsx:222" }
+
+  forbidden: { type: final, title: '"Bu bölüm için izniniz yok"', source: "apps/nizam/app/talepler/deste-yayin-istekleri/page.tsx:32" }
+  left: { type: final, title: The person goes elsewhere, leavesPage: true, source: "apps/nizam/features/deck-review/components/deck-requests-view.tsx" }
+
+assertions:
+  - { id: only-reviewers-read, never: "state in ['readingCards', 'request', 'readingAll', 'approving', 'rejectDialog', 'rejecting'] and not reviewer", say: "Only the başnazım and a Medaris nazımı holding platform.deck_publish read and answer requests", source: "apps/tedrisat/src/deck-review/deck-review.service.ts:321" }
+  - { id: no-own-publication, never: "(published or rejected) and ownRefused", say: "A Medaris nazımı never answers the request of his own deck", source: "apps/tedrisat/src/deck-review/deck-review.service.ts:343" }
+  - { id: only-chief-unpublishes, never: "state in ['unpublishDialog', 'unpublishing'] and role != 'chief'", say: "Only the başnazım takes a published deck back", source: "apps/tedrisat/src/deck-review/deck-review.service.ts:161" }
+  - { id: answered-once, never: "(published or rejected) and answeredMeanwhile", say: "A request answered or taken back meanwhile is not answered again", source: "apps/tedrisat/src/deck-review/deck-review.repository.ts:257" }
+  - { id: refusal-has-reason, never: "rejected and not reasonGiven", say: "No request is refused without a reason", source: "apps/nizam/features/deck-review/components/reject-dialog.tsx:65" }

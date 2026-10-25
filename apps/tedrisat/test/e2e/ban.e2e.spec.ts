@@ -321,6 +321,62 @@ describe("Bans (e2e)", () => {
       }
     });
 
+    // The team's approval is a road to a seat too: a barred talebe's waiting
+    // request, revoked seat or completion is not turned into a seat while the
+    // ban is open, as the bulk list and a partner application already refuse.
+    const seatOf = async () => {
+      const [row] = await db()
+        .select({ status: enrollments.status })
+        .from(enrollments)
+        .where(eq(enrollments.userId, TALEBE_ID));
+      return row.status;
+    };
+    const setSeat = (status: EnrollmentStatus) =>
+      db()
+        .update(enrollments)
+        .set({ status })
+        .where(eq(enrollments.userId, TALEBE_ID));
+
+    for (const status of [EnrollmentStatus.PENDING, EnrollmentStatus.REVOKED]) {
+      it(`does not approve a barred talebe's ${status} enrollment: BAN_ACTIVE, and it stays ${status}`, async () => {
+        await ban(MUDERRIS_ID).expect(201);
+        await setSeat(status);
+        const res = await http()
+          .post(`/courses/${courseId}/enrollments/${TALEBE_ID}/approve`)
+          .set("Authorization", auth(MUDERRIS_ID))
+          .expect(403);
+        expect(res.body.code).toBe("BAN_ACTIVE");
+        expect(await seatOf()).toBe(status);
+      });
+    }
+
+    it("does not reopen a barred talebe's completion: BAN_ACTIVE, and it stays completed", async () => {
+      await ban(MUDERRIS_ID).expect(201);
+      await setSeat(EnrollmentStatus.COMPLETED);
+      const res = await http()
+        .patch(`/courses/${courseId}/enrollments/${TALEBE_ID}`)
+        .set("Authorization", auth(MUDERRIS_ID))
+        .send({ status: EnrollmentStatus.ENROLLED })
+        .expect(403);
+      expect(res.body.code).toBe("BAN_ACTIVE");
+      expect(await seatOf()).toBe(EnrollmentStatus.COMPLETED);
+    });
+
+    it("approves the waiting request once the ban is lifted", async () => {
+      const placed = await ban(MUDERRIS_ID).expect(201);
+      await setSeat(EnrollmentStatus.PENDING);
+      await http()
+        .post(`/bans/${placed.body.id}/lift`)
+        .set("Authorization", auth(NAZIM_ID))
+        .send({ reason: "Talebeyle görüşüldü." })
+        .expect(200);
+      await http()
+        .post(`/courses/${courseId}/enrollments/${TALEBE_ID}/approve`)
+        .set("Authorization", auth(MUDERRIS_ID))
+        .expect(201);
+      expect(await seatOf()).toBe(EnrollmentStatus.ENROLLED);
+    });
+
     it("keeps the seat of a barred talebe: leaving is refused", async () => {
       await ban(MUDERRIS_ID).expect(201);
       const res = await http()

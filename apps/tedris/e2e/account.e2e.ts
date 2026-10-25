@@ -45,7 +45,7 @@ async function signIn(
   page: Page,
   who: { email?: string; password?: string }
 ): Promise<void> {
-  await page.goto("/tr/auth/signin");
+  await page.goto("/auth/signin");
   await page.locator("#username").fill(who.email as string);
   await page.locator("#password").fill(who.password as string);
   await page.locator("button[type=submit]").click();
@@ -60,7 +60,7 @@ test("a müderris sees every role with scope, badge, grantor, term and Nazar but
 }) => {
   test.skip(!ready, "no Keycloak accounts in the environment");
   await signIn(page, MUDERRIS);
-  await page.goto("/tr/account");
+  await page.goto("/account");
 
   await expect(
     page.getByRole("heading", { level: 2, name: "Görevlerin ve izinlerin" })
@@ -107,7 +107,7 @@ test("a köşk nazım opens Nizam in a new tab with the köşk in the address", 
 }) => {
   test.skip(!ready, "no Keycloak accounts in the environment");
   await signIn(page, KOSK_NAZIM);
-  await page.goto("/tr/account");
+  await page.goto("/account");
 
   await expect(tasks(page)).toHaveCount(1 + fixture.standing.koskNazim);
   const own = tasks(page).filter({ hasText: fixture.koskName });
@@ -131,7 +131,7 @@ test("a köşk nazım opens Nizam in a new tab with the köşk in the address", 
 test("someone with no role sees no roles section", async ({ page }) => {
   test.skip(!(TALEBE.email && TALEBE.password), "no talebe account");
   await signIn(page, TALEBE);
-  await page.goto("/tr/account");
+  await page.goto("/account");
   await expect(
     page.getByRole("heading", { level: 1, name: "Hesap" })
   ).toBeVisible();

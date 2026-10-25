@@ -1,0 +1,220 @@
+# A signed-in caller opens one celse of a course in tedris (/courses/:courseId/lessons/:lessonId), as the code does it
+# on origin/main ce47fce8 (capture of 25 Oct 2026): the page, its lock, and the way in from the lock.
+schema: delurio-graph/0
+kind: flow
+id: medaris.session
+status: proposed
+domain: medaris.learning
+ui: medaris.session
+title: Open a celse
+summary: >-
+  The API sends a celse's content only to a caller who may read it and says so with contentLocked; the page then
+  draws either the locked card, with what to do about it, or the celse with its main card, the talebe's notes, the
+  homework, the agenda and the resources. The lock offers to apply to everyone who holds no waiting request and was
+  not taken out, a seat whose content is closed by a ban or a passive scope included.
+
+scope:
+  shows: the celse page for a signed-in caller who holds no role in the course
+  world: open
+  outOfView:
+    - "a signed-out visitor: proxy.ts sends them to sign in before this page (lib/public-paths.ts:29)"
+    - "the watch page (izle), the stream, the recording and the live join card's clock: the live-media area"
+    - "the notes panel and the homework section, each its own flow (medaris.notes, medaris.homework)"
+    - "course staff, who read the content without an enrollment"
+    - "a missing, hidden or draft course or celse: the layout answers 404 before the page streams"
+
+context:
+  enrollment:
+    values: [none, pending, enrolled, completed, revoked]
+    initial: any
+    say: { none: "no enrollment", pending: "a request waits for approval", enrolled: "a seat", completed: "a completed course", revoked: "taken out by the course team" }
+  barred:
+    values: [false, true]
+    initial: any
+    say: { "true": "a ban bars the caller from this course", "false": "no ban" }
+  passive: # a müderris, köşk nazımı or başmüderris of the course's chain is passive
+    values: [false, true]
+    initial: any
+    say: { "true": "the course sits in a passive scope", "false": "the course is in no passive scope" }
+  cancelled:
+    values: [false, true]
+    initial: any
+    say: { "true": "the celse is cancelled", "false": "the celse stands" }
+  watchable: # a stream or a recording can be watched now
+    values: [false, true]
+    initial: any
+    say: { "true": "there is a stream or a recording to watch", "false": "nothing to watch now" }
+  approvalForced:
+    values: [false, true]
+    initial: any
+    say: { "true": "the course's enrolment waits for approval", "false": "enrolment needs no approval" }
+  notice: { values: [none, failed, notFound, fileFailed, icsFailed], initial: none }
+
+guards:
+  contentOpen: "enrollment in ['enrolled', 'completed'] and not barred and not passive"
+  showFailed: "notice == 'failed'"
+  showNotFound: "notice == 'notFound'"
+  showFileFailed: "notice == 'fileFailed'"
+  showIcsFailed: "notice == 'icsFailed'"
+  notesHere: "not watchable"
+
+effects:
+  appliedPending: { set: { enrollment: pending, notice: none } }
+  appliedEnrolled: { set: { enrollment: enrolled, notice: none } }
+  sameRow: { set: { notice: none } } # the row already there comes back unchanged
+  applyFailed: { set: { notice: failed } }
+  courseGone: { set: { notice: notFound } }
+  fileFailed: { set: { notice: fileFailed } }
+  icsFailed: { set: { notice: icsFailed } }
+  clear: { set: { notice: none } }
+  approvedByTeam: { set: { enrollment: enrolled, notice: none } }
+
+failures:
+  applying:
+    from: enroll
+    forbidden: [BAN_ACTIVE]
+    notFound: [COURSE_NOT_FOUND]
+    server: [network, 5xx]
+  downloadingResource:
+    from: downloadLessonResourceFile
+    refused: [AUTHZ_FORBIDDEN, NOT_FOUND, STORAGE_NOT_CONFIGURED, STORAGE_UNAVAILABLE]
+  downloadingIcs:
+    from: getLessonCalendar
+    refused: [LESSON_NOT_FOUND, LESSON_NOT_SCHEDULED, CALENDAR_NOT_CONFIGURED, network]
+
+main:
+  given: { enrollment: enrolled, barred: false, passive: false, cancelled: false, watchable: false }
+  events: [WRITE_NOTE, HAND_IN, OPEN_RESOURCE, DONE, NAVIGATE]
+
+initial: opening
+states:
+  opening:
+    title: The celse page loads
+    description: >-
+      GET /courses/:id and GET /courses/:courseId/sessions/:sessionId with the caller's token; the lock is chosen from
+      the course's contentLocked and its enrollment.status.
+    source: apps/tedris/app/courses/[courseId]/lessons/[lessonId]/page.tsx:29
+    always:
+      - { guard: "not contentOpen and enrollment == 'pending'", target: lockedPending, say: "content locked: the request waits", source: "apps/tedris/features/courses/lesson-lock.ts:22" }
+      - { guard: "not contentOpen and enrollment == 'revoked'", target: lockedRevoked, say: "content locked: taken out", source: "apps/tedris/features/courses/lesson-lock.ts:24" }
+      - { guard: "not contentOpen", target: lockedApply, say: "content locked: apply is offered, to a seat holder too", source: "apps/tedris/features/courses/lesson-lock.ts:27" }
+      - { guard: cancelled, target: cancelledSession, say: "content open, the celse cancelled", source: "apps/tedris/features/courses/components/session-page.tsx:74" }
+      - { target: sessionOpen, say: "content open", source: "apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:420" }
+
+  lockedApply:
+    title: The locked celse, with apply
+    by: human
+    description: the programme the course page shows anyway, the course's card, and "Kayıt başvurusu yap" whatever the course's approval rule
+    source: apps/tedris/features/courses/components/lesson-locked.tsx:107
+    on:
+      APPLY: { target: applying, say: "they press Kayıt başvurusu yap", source: "apps/tedris/features/courses/components/lesson-locked.tsx:108" }
+      OPEN_COURSE: { target: toCourse, say: "they open the course page", source: "apps/tedris/features/courses/components/lesson-locked.tsx:265" }
+      NAVIGATE: { target: left, say: "they leave the page" }
+
+  applying:
+    title: Send the enrolment
+    description: POST /courses/:id/enroll; a row already there comes back unchanged (insert … on conflict do nothing).
+    source: apps/tedrisat/src/course/course.service.ts:1513
+    invoke: { action: enroll }
+    on:
+      DONE:
+        - { guard: "not barred and enrollment == 'none' and approvalForced", target: receivedDialog, effect: [appliedPending], say: "the request waits; the page refreshes under the dialog", source: "apps/tedris/features/courses/components/lesson-locked.tsx:98" }
+        - { guard: "not barred and enrollment == 'none'", target: opening, effect: [appliedEnrolled], say: "a seat at once; the page refreshes", source: "apps/tedris/features/courses/components/lesson-locked.tsx:99" }
+        - { guard: "not barred", target: opening, effect: [sameRow], say: "a seat already there comes back; the refresh draws the same lock", source: "apps/tedrisat/src/course/course.repository.ts:2092" }
+      FAIL.forbidden: { guard: barred, target: lockedApply, effect: [applyFailed], say: "barred: 403 BAN_ACTIVE, told to try again later", source: "apps/tedrisat/src/course/course.service.ts:1522" }
+      FAIL.notFound: { target: lockedApply, effect: [courseGone], say: "the course is gone or hidden since the page was drawn", source: "apps/tedris/features/courses/components/lesson-locked.tsx:92" }
+      FAIL.server: { target: lockedApply, effect: [applyFailed], say: "the request did not go through", source: "apps/tedris/features/courses/components/lesson-locked.tsx:92" }
+
+  receivedDialog:
+    title: The application is received
+    by: human
+    source: apps/tedris/features/courses/components/lesson-locked.tsx:302
+    on:
+      DISMISS: { target: lockedPending, say: "they close it", source: "apps/tedris/features/courses/components/lesson-locked.tsx:304" }
+
+  lockedPending:
+    title: The locked celse, the request waits
+    by: human
+    description: no button; the state and what it waits for
+    source: apps/tedris/features/courses/components/lesson-locked.tsx:111
+    on:
+      OPEN_COURSE: { target: toCourse, say: "they open the course page", source: "apps/tedris/features/courses/components/lesson-locked.tsx:265" }
+      TEAM_APPROVE: { target: opening, effect: [approvedByTeam], say: "the course team approves (seen on the next load)", source: "apps/tedrisat/src/course/course.service.ts:1635" }
+      NAVIGATE: { target: left, say: "they leave the page" }
+
+  lockedRevoked:
+    title: The locked celse of a talebe taken out
+    by: human
+    description: no action; the course page says what happened
+    source: apps/tedris/features/courses/components/lesson-locked.tsx:119
+    on:
+      OPEN_COURSE: { target: toCourse, say: "they open the course page", source: "apps/tedris/features/courses/components/lesson-locked.tsx:265" }
+      NAVIGATE: { target: left, say: "they leave the page" }
+
+  cancelledSession:
+    title: A cancelled celse
+    by: human
+    description: the cancellation and its make-up celse, the agenda and the resources; no notes and no homework
+    source: apps/tedris/features/courses/components/session-page.tsx:158
+    on:
+      OPEN_REPLACEMENT: { target: toOtherCelse, say: "they go to the make-up celse", source: "apps/tedris/features/courses/components/session-page.tsx:174" }
+      OPEN_RESOURCE: { target: downloadingResource, say: "they download a resource", source: "apps/tedris/features/courses/components/session-page.tsx:272" }
+      NAVIGATE: { target: left, say: "they leave the page" }
+
+  sessionOpen:
+    title: The celse
+    by: human
+    goal: true
+    description: >-
+      The main card leads to the watch page when there is something to watch, else says when and how the celse is
+      attended, with the meeting link; "Notlarım" leads the column when there is nothing to watch, then "Ödev", then
+      "Gündem" and "Kaynaklar", then the previous celse, the Müfredat and the next.
+    includes: [medaris.notes, medaris.homework]
+    source: apps/tedris/features/courses/components/session-page.tsx:294
+    on:
+      WATCH: { guard: watchable, target: toWatch, say: "they watch the stream or the recording", source: "apps/tedris/features/courses/components/session-page.tsx:218" }
+      WRITE_NOTE: { guard: notesHere, target: sessionOpen, starts: { flow: medaris.notes }, say: "they write in Notlarım", source: "apps/tedris/features/courses/components/session-page.tsx:132" }
+      HAND_IN: { target: sessionOpen, starts: { flow: medaris.homework, given: { celse: "'live'" } }, say: "they work on Ödevim", source: "apps/tedris/features/courses/components/session-page.tsx:151" }
+      OPEN_RESOURCE: { target: downloadingResource, say: "they download a resource", source: "apps/tedris/features/courses/components/session-page.tsx:272" }
+      ADD_TO_CALENDAR: { target: downloadingIcs, say: "they take the celse's .ics file", source: "apps/tedris/features/courses/components/calendar-menu.tsx:124" }
+      SUBSCRIBE: { target: toSubscription, say: "they choose the calendar subscription", source: "apps/tedris/features/courses/components/calendar-menu.tsx:133" }
+      OPEN_OTHER: { target: toOtherCelse, say: "they go to the previous or the next celse", source: "apps/tedris/features/courses/components/session-page.tsx:344" }
+      NAVIGATE: { target: left, say: "they leave the page" }
+
+  downloadingResource:
+    title: Download a resource's file
+    description: >-
+      GET /lessons/:id/resources/:resourceId/file through tedris's file route (course.view_details); a refusal comes back
+      to the page as ?fileError= and says so once.
+    source: apps/tedris/app/api/files/lessons/[lessonId]/resources/[resourceId]/route.ts:18
+    invoke: { action: downloadLessonResourceFile }
+    on:
+      DONE:
+        - { guard: cancelled, target: cancelledSession, effect: [clear], say: "the file is saved" }
+        - { target: sessionOpen, effect: [clear], say: "the file is saved" }
+      FAIL.refused:
+        - { guard: cancelled, target: cancelledSession, effect: [fileFailed], say: "refused, gone or storage down", source: "apps/tedris/features/courses/components/file-error-notice.tsx:17" }
+        - { target: sessionOpen, effect: [fileFailed], say: "refused, gone or storage down", source: "apps/tedris/features/courses/components/file-error-notice.tsx:17" }
+
+  downloadingIcs:
+    title: Fetch the celse's .ics file
+    description: GET /lessons/:id/calendar.ics through tedris's route; no meeting link is in the file
+    source: apps/tedris/features/courses/components/calendar-menu.tsx:71
+    invoke: { action: getLessonCalendar }
+    on:
+      DONE: { target: sessionOpen, effect: [clear], say: "the file is handed to the browser" }
+      FAIL.refused: { target: sessionOpen, effect: [icsFailed], say: "it could not be fetched", source: "apps/tedris/features/courses/components/calendar-menu.tsx:88" }
+
+  toCourse: { type: final, title: The course page, source: "apps/tedris/features/courses/components/lesson-locked.tsx:265" }
+  toWatch: { type: final, title: The watch page, source: "apps/tedris/features/courses/components/session-page.tsx:218" }
+  toOtherCelse: { type: final, title: Another celse's page }
+  toSubscription: { type: final, title: The calendar subscription page, source: "apps/tedris/features/courses/components/calendar-menu.tsx:133" }
+  left: { type: final, title: They leave the page, leavesPage: true }
+
+assertions:
+  - { id: content-only-to-seat, never: "state in ['sessionOpen', 'cancelledSession', 'downloadingResource', 'downloadingIcs'] and enrollment in ['none', 'pending', 'revoked']", say: "A celse's content opens only to a seat", source: "apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:414" }
+  - { id: barred-sees-no-content, never: "state in ['sessionOpen', 'cancelledSession', 'downloadingResource', 'downloadingIcs'] and barred", say: "A barred talebe never sees a celse's content", source: "apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:407" }
+  - { id: passive-closes-content, never: "state in ['sessionOpen', 'cancelledSession', 'downloadingResource', 'downloadingIcs'] and passive", say: "A passive scope closes the content to the enrolled talebe too", source: "libs/common/src/authz/effective-permissions.ts:337" }
+  - { id: no-writing-on-cancelled, never: "state == 'sessionOpen' and cancelled", say: "A cancelled celse offers neither notes nor homework", source: "apps/tedris/features/courses/components/session-page.tsx:151" }
+  - { id: pending-not-offered-apply, never: "state == 'applying' and enrollment == 'pending'", say: "A caller whose request waits is not offered to apply again", source: "apps/tedris/features/courses/components/lesson-locked.tsx:111" }
+  - { id: revoked-not-offered-apply, never: "state == 'applying' and enrollment == 'revoked'", say: "A talebe taken out is not offered to apply", source: "apps/tedris/features/courses/lesson-lock.ts:24" }

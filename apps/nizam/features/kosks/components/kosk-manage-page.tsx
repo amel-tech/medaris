@@ -114,7 +114,7 @@ export function KoskManagePage({
     });
     refresh();
   };
-  const base = `/${locale}/kosks/${kosk.id}`;
+  const base = `/kosks/${kosk.id}`;
   const status = overview.status;
   const look = STATUS_LOOK[status];
   const dateOpts = { locale, timeZone };
@@ -351,7 +351,7 @@ export function KoskManagePage({
     >
       <Breadcrumb
         label={t("breadcrumbLabel")}
-        items={[{ label: t("kosks"), href: `/${locale}/kosks` }, kosk.name]}
+        items={[{ label: t("kosks"), href: `/kosks` }, kosk.name]}
       />
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex min-w-0 flex-col gap-2">
@@ -539,7 +539,7 @@ export function KoskManagePage({
                 <h3 className="font-semibold">{t("deleteHeading")}</h3>
                 <p className="mds-caption">{t("deleteBody")}</p>
               </div>
-              <Button variant="link" size="small" href={`/${locale}/arsiv`}>
+              <Button variant="link" size="small" href={`/arsiv`}>
                 {t("toArchive")}
               </Button>
             </div>

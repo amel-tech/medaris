@@ -202,7 +202,7 @@ export function createAuthProxy(
       !isServerAction(request) &&
       !options.isPublicPath?.(pathname)
     ) {
-      const page = config.signInPage(returnTo);
+      const page = config.signInPage;
       if (page !== pathname) {
         const target = new URL(page, config.origin);
         target.searchParams.set("callbackUrl", returnTo);

@@ -1,0 +1,118 @@
+# A partner application cancels a registration: DELETE /integrations/enrollments/:registrationRef/:courseCode on
+# tedrisat, as the code does it on origin/main ce47fce8 (capture of 25 Oct 2026). No person's screen; the talebe is
+# told by a notification when their seat is taken away.
+schema: delurio-graph/0
+kind: flow
+id: medaris.partner-unenrollment
+status: proposed
+domain: medaris.learning
+title: A partner application cancels a registration
+summary: >-
+  Only what the registration did is undone. A seat it made and still owns is taken away through the course team's
+  own removal (REVOKED, with a reason naming the partner), unless another open registration stands for the same seat,
+  which then owns it. A seat the person holds on their own, a completion, and a seat already gone stay as they are.
+  Either way the registration is closed, and asking again answers the same.
+
+scope:
+  shows: one DELETE from a partner client, from the token check to the answer
+  world: open
+  outOfView:
+    - "the token and budget checks, the same as the PUT's (medaris.partner-enrollment), drawn here as one refusal"
+    - "a köşk the partner has been unbound from since: the DELETE works there too"
+
+context:
+  caller: { values: [partner, refused], initial: any, say: { partner: "an enabled partner with the role, within its budget", refused: "PartnerGuard or the throttle refuses" } }
+  link:
+    values: [none, open, closed]
+    initial: any
+    say: { none: "no such registration", open: "the registration stands", closed: "the registration was cancelled before" }
+  createdEnrollment: { values: [true, false], initial: any, say: { "true": "the registration made the seat", "false": "the person held a seat already" } }
+  seat:
+    values: [enrolled, completed, pending, revoked, none]
+    initial: any
+    say: { enrolled: "the person holds a seat", completed: "the course is completed", pending: "a request waits", revoked: "the course team took the seat", none: "no enrollment" }
+  sameSeat: { values: [true, false], initial: any, say: { "true": "the seat is the one the registration made", "false": "the person took a new seat on their own since" } }
+  otherOpenLink: { values: [false, true], initial: any, say: { "true": "another open registration stands for the same seat", "false": "no other registration" } }
+  race: { values: [false, true], initial: any, say: { "true": "the seat moves while the removal runs", "false": "nothing moves meanwhile" } }
+  raceGone: { values: [false, true], initial: any, say: { "true": "after the move the seat is gone", "false": "after the move the seat is theirs" } }
+  took: { values: [false, true], initial: false } # the course team's removal ran for this registration
+
+guards:
+  gone: "seat in ['none', 'revoked']"
+  owned: "not gone and sameSeat and seat == 'enrolled'"
+
+effects:
+  took: { set: { took: true } }
+
+failures:
+  removing:
+    from: removeEnrollment
+    stale: [ENROLLMENT_STATE_CONFLICT, ENROLLMENT_NOT_FOUND]
+
+initial: guarding
+states:
+  guarding:
+    title: Check the partner's token
+    source: apps/tedrisat/src/integration/partner-enrollment.controller.ts:67
+    always:
+      - { guard: "caller == 'refused'", target: guardRefused, say: "refused before the handler", source: "apps/tedrisat/src/integration/partner.guard.ts:93" }
+      - { target: finding, say: "the partner is let in" }
+
+  finding:
+    title: Find the registration
+    source: apps/tedrisat/src/integration/partner-enrollment.service.ts:211
+    always:
+      - { guard: "link == 'none'", target: notFound, say: "no such registration", source: "apps/tedrisat/src/integration/partner-enrollment.service.ts:220" }
+      - { guard: "link == 'closed' and createdEnrollment", target: removed, say: "cancelled before, its seat taken then: answered as then", source: "apps/tedrisat/src/integration/partner-enrollment.service.ts:223" }
+      - { guard: "link == 'closed'", target: kept, say: "cancelled before, nothing taken then: answered as then", source: "apps/tedrisat/src/integration/partner-enrollment.service.ts:223" }
+      - { guard: "not createdEnrollment", target: kept, say: "the registration made no seat: it is closed, the seat stays", source: "apps/tedrisat/src/integration/partner-enrollment.service.ts:226" }
+      - { target: deciding, say: "the registration made the seat", source: "apps/tedrisat/src/integration/partner-enrollment.service.ts:230" }
+
+  deciding:
+    title: Whose seat is it now
+    description: gone when there is none or it is REVOKED; theirs when it is a newer seat or a completion; owned when it is the ENROLLED seat the registration made
+    source: apps/tedrisat/src/integration/partner-enrollment.service.ts:379
+    always:
+      - { guard: gone, target: removed, say: "already gone: the registration is closed as having removed it", source: "apps/tedrisat/src/integration/partner-enrollment.service.ts:236" }
+      - { guard: "not owned", target: kept, say: "theirs now: the registration is closed, the seat stays", source: "apps/tedrisat/src/integration/partner-enrollment.service.ts:239" }
+      - { guard: otherOpenLink, target: kept, say: "another registration takes the seat over", source: "apps/tedrisat/src/integration/partner-enrollment.service.ts:248" }
+      - { target: removing, say: "the seat is the registration's to take", source: "apps/tedrisat/src/integration/partner-enrollment.service.ts:253" }
+
+  removing:
+    title: Take the seat away through the course team's removal
+    description: removeEnrollment with the partner's service account as the actor and a reason naming the partner; the talebe is told
+    source: apps/tedrisat/src/course/course.service.ts:1734
+    invoke: { action: removeEnrollment }
+    on:
+      DONE: { guard: "not race", target: removed, effect: [took], say: "the seat is REVOKED and the registration closed", source: "apps/tedrisat/src/integration/partner-enrollment.service.ts:286" }
+      FAIL.stale:
+        - { guard: "race and raceGone", target: removed, say: "it moved meanwhile and is gone: decided as it is now", source: "apps/tedrisat/src/integration/partner-enrollment.service.ts:277" }
+        - { guard: race, target: kept, say: "it moved meanwhile and is theirs: decided as it is now", source: "apps/tedrisat/src/integration/partner-enrollment.service.ts:279" }
+
+  removed:
+    type: final
+    title: The registration's seat is gone
+    source: apps/tedrisat/src/integration/partner-enrollment.service.ts:291
+    response: { status: 200, body: { status: REMOVED } }
+  kept:
+    type: final
+    title: The seat stays
+    source: apps/tedrisat/src/integration/partner-enrollment.service.ts:227
+    response: { status: 200, body: { status: KEPT } }
+  notFound:
+    type: final
+    title: No such registration
+    source: apps/tedrisat/src/integration/partner-enrollment.service.ts:220
+    response: { status: 200, body: { status: NOT_FOUND } }
+  guardRefused:
+    type: final
+    title: The partner is refused
+    source: apps/tedrisat/src/integration/partner.guard.ts:93
+    response: { status: "401 | 403 PARTNER_DISABLED | 403 PARTNER_ROLE_MISSING | 404 with no partner registered | 429" }
+
+assertions:
+  - { id: takes-only-what-it-made, never: "took and not createdEnrollment", say: "A registration that made no seat never takes one away", source: "apps/tedrisat/src/integration/partner-enrollment.service.ts:225" }
+  - { id: own-seat-stays, never: "took and not sameSeat", say: "A seat the person took again on their own is never taken away", source: "apps/tedrisat/src/integration/partner-enrollment.service.ts:384" }
+  - { id: completion-stays, never: "took and seat != 'enrolled'", say: "A completion, a request or a seat already gone is never removed", source: "apps/tedrisat/src/integration/partner-enrollment.service.ts:385" }
+  - { id: shared-seat-stays, never: "took and otherOpenLink", say: "A seat another open registration stands for is never taken away", source: "apps/tedrisat/src/integration/partner-enrollment.service.ts:247" }
+  - { id: answered-again-unchanged, never: "took and link != 'open'", say: "Cancelling again changes nothing", source: "apps/tedrisat/src/integration/partner-enrollment.service.ts:222" }

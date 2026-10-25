@@ -2,7 +2,7 @@
 
 import { Badge } from "@medaris/ui/mds/badge";
 import { Icon } from "@medaris/ui/mds/icon";
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 import { useEffect, useReducer, useState } from "react";
 import type { ReleaseWords } from "../recordings-model";
 import {
@@ -117,7 +117,6 @@ export function WatchView({
   questions: boolean;
 }) {
   const t = useTranslations("tedrisLearn.WatchPage");
-  const locale = useLocale();
   const stream = video.kind === "stream" ? video : null;
   const framedStream = Boolean(stream?.embedUrl);
   const [phase, report] = useReducer(streamPhaseAfter, LIVE);
@@ -207,7 +206,7 @@ export function WatchView({
       <div className="flex basis-full flex-wrap items-center gap-x-4 gap-y-2 max-md:order-2 max-md:px-gutter max-md:py-3">
         <a
           className="mds-btn mds-btn--link inline-flex items-center gap-1"
-          href={`/${locale}/courses/${courseId}`}
+          href={`/courses/${courseId}`}
         >
           <Icon name="arrowLeft" size="sm" />
           <span className="mds-visually-hidden">{t("backSr")}</span>
@@ -231,7 +230,7 @@ export function WatchView({
         ) : null}
         <a
           className="mds-btn mds-btn--link ms-auto"
-          href={`/${locale}/courses/${courseId}/lessons/${lessonId}`}
+          href={`/courses/${courseId}/lessons/${lessonId}`}
         >
           {t("details")}
         </a>

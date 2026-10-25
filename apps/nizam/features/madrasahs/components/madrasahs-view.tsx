@@ -101,9 +101,7 @@ export function MadrasahsView({
     if (search.trim() === searched.current.trim()) return;
     const timer = setTimeout(() => {
       searched.current = search;
-      startTransition(() =>
-        router.replace(`/${locale}${directoryPath(status, search)}`)
-      );
+      startTransition(() => router.replace(`${directoryPath(status, search)}`));
     }, SEARCH_DELAY_MS);
     return () => clearTimeout(timer);
   }, [search, status, router, locale]);
@@ -112,9 +110,7 @@ export function MadrasahsView({
 
   const goTo = (next: string) =>
     startTransition(() =>
-      router.push(
-        `/${locale}${directoryPath(next as MadrasahStatusFilter, search)}`
-      )
+      router.push(`${directoryPath(next as MadrasahStatusFilter, search)}`)
     );
 
   const restore = async (item: MadrasahDirectoryItemResponse) => {
@@ -381,7 +377,7 @@ export function MadrasahsView({
             {t("heading")}
           </h2>
           {can.archive ? (
-            <a className="mds-link" href={`/${locale}/arsiv`}>
+            <a className="mds-link" href={`/arsiv`}>
               {t("archive")}
             </a>
           ) : null}

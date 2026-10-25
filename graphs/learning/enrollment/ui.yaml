@@ -1,0 +1,379 @@
+# The course page's enrollment card (apps/tedris/features/courses/components/course-aside.tsx), its received dialog
+# (enrollment-received-dialog.tsx) and the leave dialog of the ··· menu (course-actions-menu.tsx), as built today.
+# The toasts are Sonner's, in a polite live region: drawn as status nodes.
+schema: delurio-graph/0
+kind: ui
+id: medaris.enrollment
+flow: medaris.enrollment
+status: proposed
+catalog: catalog/tr.json
+locales: [tr, en]
+samples: { when: "bugün 10:02", title: "Fıkıh Usulü", date: "28 Eylül 2026’da" }
+changes: { key: Changes.note }
+
+nodes:
+  card:
+    type: page
+    component: Page
+    role: complementary # an <aside> with no accessible name of its own
+    in: [visitor, apply, enrolling, pending, withdrawing, enrolled, confirmLeave, leaving, completed, revoked]
+    source: apps/tedris/features/courses/components/course-aside.tsx:324
+  registerTitle:
+    type: text
+    component: Heading
+    role: heading
+    text: { key: CoursePage.registerCard }
+    in: [visitor, apply, enrolling, pending, withdrawing]
+    source: apps/tedris/features/courses/components/course-aside.tsx:326
+  approvalFact:
+    type: text
+    component: Text
+    text: { key: CoursePage.approvalNotice }
+    when: approvalShown
+    in: [visitor, apply, enrolling]
+    source: apps/tedris/features/courses/components/course-aside.tsx:127
+  openFact:
+    type: text
+    component: Text
+    text: { key: CoursePage.openEnrollNotice }
+    when: labelEnroll
+    in: [visitor, apply, enrolling]
+    source: apps/tedris/features/courses/components/course-aside.tsx:127
+  signIn:
+    type: action
+    component: LinkButton
+    role: link
+    intent: confirm
+    text: { key: CoursePage.signInToApply }
+    in: [visitor]
+    emits: SIGN_IN
+    source: apps/tedris/features/courses/components/course-aside.tsx:352
+  register:
+    type: action
+    component: LinkButton
+    role: link
+    intent: secondary
+    text: { key: CoursePage.noAccount } # the sentence; its link is the words inside <register>
+    in: [visitor]
+    emits: REGISTER
+    source: apps/tedris/features/courses/components/course-aside.tsx:356
+  applyButton:
+    type: action
+    component: Button
+    role: button
+    intent: confirm
+    text: { key: CoursePage.apply }
+    when: approvalShown
+    in: [apply, enrolling]
+    disabledIn: [enrolling]
+    emits: ENROLL
+    source: apps/tedris/features/courses/components/course-aside.tsx:375
+  enrollButton:
+    type: action
+    component: Button
+    role: button
+    intent: confirm
+    text: { key: CoursePage.enroll }
+    when: labelEnroll
+    in: [apply, enrolling]
+    disabledIn: [enrolling]
+    emits: ENROLL
+    source: apps/tedris/features/courses/components/course-aside.tsx:375
+  applyNote:
+    type: text
+    component: Text
+    text: { key: CoursePage.applyNote }
+    when: approvalShown
+    in: [apply, enrolling]
+    source: apps/tedris/features/courses/components/course-aside.tsx:378
+  enrollingStatus:
+    type: status
+    component: Status
+    role: status
+    text: { key: CoursePage.enrolling }
+    in: [enrolling]
+    source: libs/ui/src/mds/button.tsx:113
+  pendingBadge:
+    type: status
+    component: Status
+    text: { key: CoursePage.pendingApproval }
+    in: [pending, withdrawing]
+    source: apps/tedris/features/courses/components/course-aside.tsx:331
+  pendingSubmitted:
+    type: text
+    component: Text
+    text: { key: CoursePage.pendingSubmitted, params: { when: enrollment.createdAt } }
+    in: [pending, withdrawing]
+    source: apps/tedris/features/courses/components/course-aside.tsx:339
+  withdrawButton:
+    type: action
+    component: Button
+    role: button
+    intent: secondary
+    text: { key: CoursePage.withdrawRequest }
+    in: [pending, withdrawing]
+    disabledIn: [withdrawing]
+    emits: WITHDRAW
+    source: apps/tedris/features/courses/components/leave-course.tsx:48
+  withdrawingStatus:
+    type: status
+    component: Status
+    role: status
+    text: { key: CoursePage.withdrawing }
+    in: [withdrawing]
+    source: apps/tedris/features/courses/components/leave-course.tsx:55
+
+  receivedDialog:
+    type: page
+    component: Page
+    role: dialog
+    name: { labelledBy: receivedTitle }
+    in: [receivedDialog]
+    initialFocus: receivedOk # the dialog's one button, as design tedris/07 asks
+    source: apps/tedris/features/courses/components/enrollment-received-dialog.tsx:30
+  receivedEyebrow:
+    type: text
+    component: Text
+    text: { key: Data.courseTitle, params: { title: course.title } } # in capitals of the page's language
+    in: [receivedDialog]
+    source: apps/tedris/features/courses/components/enrollment-received-dialog.tsx:35
+  receivedTitle:
+    type: text
+    component: Heading
+    role: heading
+    text: { key: CoursePage.receivedTitle }
+    in: [receivedDialog]
+    source: apps/tedris/features/courses/components/enrollment-received-dialog.tsx:36
+  receivedBody:
+    type: text
+    component: Text
+    text: { key: CoursePage.receivedBody }
+    in: [receivedDialog]
+  receivedNote:
+    type: text
+    component: Text
+    text: { key: CoursePage.receivedNote }
+    in: [receivedDialog]
+  receivedClose:
+    type: action
+    component: Button
+    role: button
+    intent: dismiss
+    name: { key: CoursePage.receivedClose }
+    in: [receivedDialog]
+    emits: DISMISS
+    source: libs/ui/src/mds/dialog.tsx:97
+  receivedOk:
+    type: action
+    component: Button
+    role: button
+    intent: confirm
+    text: { key: CoursePage.receivedOk }
+    in: [receivedDialog]
+    emits: DISMISS
+    source: apps/tedris/features/courses/components/enrollment-received-dialog.tsx:40
+
+  inProgress:
+    type: status
+    component: Status
+    text: { key: CoursePage.statusInProgress }
+    in: [enrolled, confirmLeave, leaving]
+    source: apps/tedris/features/courses/components/course-aside.tsx:277
+  moreMenu:
+    type: action
+    component: Button
+    role: button
+    intent: secondary
+    name: { key: CoursePage.moreActions }
+    in: [enrolled]
+    source: apps/tedris/features/courses/components/course-actions-menu.tsx:67
+  leaveItem:
+    type: action
+    component: LinkButton
+    role: menuitem
+    intent: secondary
+    text: { key: CoursePage.leaveCourse }
+    in: [enrolled]
+    emits: LEAVE
+    source: apps/tedris/features/courses/components/course-actions-menu.tsx:74
+  continue:
+    type: action
+    component: LinkButton
+    role: link
+    intent: confirm
+    text: { key: CoursePage.continue }
+    in: [enrolled]
+    emits: CONTINUE
+    source: apps/tedris/features/courses/components/course-aside.tsx:288
+  progressLabel:
+    type: text
+    component: Text
+    text: { key: CoursePage.progressLabel }
+    in: [enrolled]
+    source: apps/tedris/features/courses/components/course-aside.tsx:312
+
+  leaveDialog:
+    type: page
+    component: Page
+    role: alertdialog
+    name: { labelledBy: leaveTitle }
+    in: [confirmLeave, leaving]
+    initialFocus: leaveCancel # Vazgeç, canvas rule 13
+    source: libs/ui/src/mds/alert-dialog.tsx:62
+  leaveEyebrow:
+    type: text
+    component: Text
+    text: { key: Data.courseTitle, params: { title: course.title } }
+    in: [confirmLeave, leaving]
+    source: apps/tedris/features/courses/components/course-actions-menu.tsx:82
+  leaveTitle:
+    type: text
+    component: Heading
+    role: heading
+    text: { key: CoursePage.leaveTitle }
+    in: [confirmLeave, leaving]
+    source: apps/tedris/features/courses/components/course-actions-menu.tsx:83
+  leaveBody:
+    type: text
+    component: Text
+    text: { key: CoursePage.leaveBody, params: { title: course.title } }
+    in: [confirmLeave, leaving]
+  leaveBodyCards:
+    type: text
+    component: Text
+    text: { key: CoursePage.leaveBodyCards }
+    in: [confirmLeave, leaving]
+  leaveCancel:
+    type: action
+    component: Button
+    role: button
+    intent: dismiss
+    text: { key: CoursePage.leaveCancel }
+    in: [confirmLeave, leaving] # stays enabled while the leave runs; pressing it only closes the dialog
+    emits: CANCEL
+    source: libs/ui/src/mds/alert-dialog.tsx:95
+  leaveConfirm:
+    type: action
+    component: Button
+    role: button
+    intent: confirm
+    text: { key: CoursePage.leaveConfirm }
+    in: [confirmLeave, leaving]
+    disabledIn: [leaving]
+    emits: CONFIRM
+    source: libs/ui/src/mds/alert-dialog.tsx:101
+
+  completedBadge:
+    type: status
+    component: Status
+    text: { key: CoursePage.statusCompleted }
+    in: [completed]
+    source: apps/tedris/features/courses/components/course-aside.tsx:244
+  completedTitle:
+    type: text
+    component: Heading
+    role: heading
+    text: { key: CoursePage.completedTitle }
+    in: [completed]
+    source: apps/tedris/features/courses/components/course-aside.tsx:246
+  completedNote:
+    type: text
+    component: Text
+    text: { key: CoursePage.completedNote, params: { date: enrollment.updatedAt } }
+    in: [completed]
+    source: apps/tedris/features/courses/components/course-aside.tsx:249
+  openSession:
+    type: action
+    component: LinkButton
+    role: link
+    intent: secondary
+    text: { key: CoursePage.openSession }
+    in: [completed]
+    emits: OPEN_SESSION
+    source: apps/tedris/features/courses/components/course-aside.tsx:257
+
+  revokedTitle:
+    type: text
+    component: Heading
+    role: heading
+    text: { key: CoursePage.revokedTitle }
+    in: [revoked]
+    source: apps/tedris/features/courses/components/course-aside.tsx:207
+  revokedBody:
+    type: text
+    component: Text
+    text: { key: CoursePage.revokedBody }
+    in: [revoked]
+    source: apps/tedris/features/courses/components/course-aside.tsx:212
+  backToMyCourses:
+    type: action
+    component: LinkButton
+    role: link
+    intent: secondary
+    text: { key: CoursePage.backToMyCourses }
+    in: [revoked]
+    emits: BACK
+    source: apps/tedris/features/courses/components/course-aside.tsx:213
+
+  enrolledToast:
+    type: status
+    component: Status
+    role: status
+    text: { key: CoursePage.enrolled }
+    when: showEnrolled
+    in: [enrolled]
+    source: apps/tedris/features/courses/components/course-aside.tsx:91
+  withdrawnToast:
+    type: status
+    component: Status
+    role: status
+    text: { key: CoursePage.withdrawn }
+    when: showWithdrawn
+    in: [apply]
+    source: apps/tedris/features/courses/components/leave-course.tsx:43
+  leftToast:
+    type: status
+    component: Status
+    role: status
+    text: { key: CoursePage.left }
+    when: showLeft
+    in: [apply]
+    source: apps/tedris/features/courses/components/course-actions-menu.tsx:61
+  failedToast:
+    type: status
+    component: Status
+    role: status
+    text: { key: CoursePage.actionFailed }
+    when: showFailed
+    in: [apply, pending, enrolled]
+    source: apps/tedris/features/courses/action-error.ts:11
+  notFoundToast:
+    type: status
+    component: Status
+    role: status
+    text: { key: CoursePage.actionNotFound }
+    when: showNotFound
+    in: [apply]
+    source: apps/tedris/features/courses/action-error.ts:9
+  conflictToast:
+    type: status
+    component: Status
+    role: status
+    text: { key: CoursePage.actionConflict }
+    when: showConflict
+    in: [apply, pending, enrolled, completed, revoked]
+    source: apps/tedris/features/courses/action-error.ts:10
+
+edges:
+  - { labelledBy: [receivedDialog, receivedTitle] }
+  - { labelledBy: [leaveDialog, leaveTitle] }
+  - { triggers: [applyButton, enrolling] }
+  - { triggers: [enrollButton, enrolling] }
+  - { triggers: [withdrawButton, withdrawing] }
+  - { triggers: [leaveItem, confirmLeave] }
+  - { triggers: [leaveConfirm, leaving] }
+
+rules:
+  - { id: no-default-accept, rule: "no dialog that changes something opens with focus on its confirming action" }
+  - { id: label-in-name, rule: "a node's visible text is contained in its accessible name (WCAG 2.5.3)" }
+  - { id: confirm-before-leaving, rule: "leaving a seat asks first, in an alertdialog whose focus starts on Vazgeç; withdrawing a request does not ask" }

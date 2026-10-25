@@ -1,0 +1,81 @@
+# The screens of medaris.ban-roster: nizam's course Talebeler page (/kosks/:id/courses/:courseId/students) with its
+# Başvurular and Kayıtlı tabs, and the two dialogs it opens. The words are nizam's own (libs/i18n, nizam.json).
+# The MDS Dialog is Base UI's: role dialog, named by its title, focus trapped and returned to the opener; the scrim
+# does not close a form dialog (libs/ui/src/mds/dialog.tsx:46). Both dialogs start their focus in the reason field.
+schema: delurio-graph/0
+kind: ui
+id: medaris.ban-roster
+flow: medaris.ban-roster
+status: proposed
+catalog: catalog/tr.json
+locales: [tr, en]
+samples: { course: "Emsile ve Bina", name: "Rümeysa Nur Karaca", kosk: "Nûruosmaniye Köşkü", when: "21 Ekim Salı 19:00" }
+changes: { key: Changes.note }
+
+nodes:
+  # the Talebeler page
+  rosterPage: { type: page, component: Page, role: main, name: { labelledBy: rosterTitle }, in: [roster, approving], source: "apps/nizam/app/kosks/[id]/courses/[courseId]/students/page.tsx:31" }
+  rosterTitle: { type: text, component: Heading, role: heading, text: { key: StudentsPage.title }, in: [roster, approving, unavailable], source: "apps/nizam/app/kosks/[id]/courses/[courseId]/students/page.tsx:57" }
+  rosterSubtitle: { type: text, component: Text, text: { key: StudentsPage.subtitle, params: { course: course.title } }, in: [roster, approving, unavailable] }
+  unavailableText: { type: text, component: Text, text: { key: StudentsPage.unavailable }, in: [unavailable], source: "apps/nizam/app/kosks/[id]/courses/[courseId]/students/page.tsx:63" }
+  tabs: { type: list, component: List, role: tablist, name: { key: StudentsPage.tabsLabel }, in: [roster, approving], source: apps/nizam/features/applications/components/students-tabs.tsx:95 }
+  tab: { type: action, component: ListItem, role: tab, text: { oneOf: [StudentsPage.tabs.applications, StudentsPage.tabs.enrolled, StudentsPage.tabs.completed, StudentsPage.tabs.removed] }, in: [roster, approving] }
+  applicationsTable: { type: list, component: List, role: table, name: { key: StudentsPage.caption, params: { course: course.title } }, in: [roster, approving], when: "seat == 'pending'" }
+  approveButton: { type: action, component: Button, role: button, intent: confirm, name: { key: ApplicationsPage.approveLabel, params: { name: row.name, course: course.title } }, text: { key: ApplicationsPage.approve }, in: [roster, approving], disabledIn: [approving], when: "seat == 'pending'", repeat: course.applications, emits: APPROVE, source: apps/nizam/features/applications/components/applications-table.tsx:118 } # no ban mark on a waiting application: the row drops the ban the roster read carries (present.ts:27)
+  rosterTable: { type: list, component: List, role: table, name: { key: StudentsRoster.captionEnrolled, params: { course: course.title } }, in: [roster, approving], when: "seat == 'enrolled'", source: apps/nizam/features/applications/components/roster-table.tsx:276 }
+  barredBadge: { type: text, component: Text, text: { oneOf: [StudentsRoster.bannedCourse, StudentsRoster.bannedKosk] }, in: [roster, approving], when: open, source: apps/nizam/features/applications/components/roster-table.tsx:162 } # a medrese-wide ban also reads "Yasaklı · Bu ders": only KOSK picks the other text
+  banButton: { type: action, component: Button, role: button, intent: secondary, name: { key: StudentsRoster.banLabel, params: { name: row.name } }, text: { key: StudentsRoster.ban }, in: [roster, approving], when: "seat == 'enrolled' and not open", repeat: course.roster, emits: BAN, source: apps/nizam/features/applications/components/roster-table.tsx:224 }
+  liftButton: { type: action, component: Button, role: button, intent: secondary, name: { key: StudentsRoster.liftLabel, params: { name: row.name } }, text: { key: StudentsRoster.lift }, in: [roster, approving], when: "seat == 'enrolled' and open", repeat: course.roster, emits: LIFT, source: apps/nizam/features/applications/components/roster-table.tsx:224 } # shown whatever the viewer may lift (finding PLATFORM-ADMIN-1)
+  savedToast: { type: status, component: Status, role: status, text: { key: BanDialog.saved }, in: [roster], when: "notice == 'saved'", source: apps/nizam/features/bans/components/ban-dialog.tsx:100 }
+  savedBody: { type: text, component: Text, text: { oneOf: [BanDialog.savedBody, BanDialog.savedBodyKosk] }, in: [roster], when: "notice == 'saved'" }
+  liftedToast: { type: status, component: Status, role: status, text: { key: LiftDialog.lifted }, in: [roster], when: "notice == 'lifted'", source: apps/nizam/features/bans/components/lift-dialog.tsx:89 }
+  liftedBody: { type: text, component: Text, text: { key: LiftDialog.liftedBody, params: { name: row.name } }, in: [roster], when: "notice == 'lifted'" }
+  approvedToast: { type: status, component: Status, role: status, text: { key: ApplicationsPage.approved }, in: [roster], when: "notice == 'approved'", source: apps/nizam/features/applications/use-decisions.ts:77 }
+  approvedBody: { type: text, component: Text, text: { key: ApplicationsPage.approvedBody, params: { name: row.name, course: course.title } }, in: [roster], when: "notice == 'approved'" }
+
+  # Talebeyi yasakla
+  banDialog: { type: page, component: Page, role: dialog, name: { labelledBy: banTitle }, in: [banDialog, creating], initialFocus: reasonField, source: apps/nizam/features/bans/components/ban-dialog.tsx:123 }
+  banTitle: { type: text, component: Heading, role: heading, text: { key: BanDialog.title }, in: [banDialog, creating] }
+  banIntro: { type: text, component: Text, text: { key: BanDialog.intro }, in: [banDialog, creating] }
+  banVisibility: { type: text, component: Text, text: { key: BanDialog.visibility }, in: [banDialog, creating] }
+  banRequired: { type: text, component: Text, text: { key: BanDialog.requiredNote }, in: [banDialog, creating] }
+  scopeGroup: { type: list, component: List, role: radiogroup, name: { key: BanDialog.scopeLegend }, in: [banDialog, creating], disabledIn: [creating], source: apps/nizam/features/bans/components/ban-dialog.tsx:167 }
+  scopeCourse: { type: field, component: ListItem, role: radio, text: { key: BanDialog.scopeCourse }, in: [banDialog, creating], disabledIn: [creating], emits: CHOOSE_COURSE }
+  scopeKosk: { type: field, component: ListItem, role: radio, text: { key: BanDialog.scopeKosk }, in: [banDialog, creating], disabledIn: [creating], when: offersKosk, emits: CHOOSE_KOSK }
+  scopeKoskLocked: { type: field, component: ListItem, role: radio, text: { key: BanDialog.scopeKosk }, in: [banDialog, creating], disabledIn: [banDialog, creating], when: "not offersKosk", source: apps/nizam/features/bans/components/ban-dialog.tsx:185 }
+  scopeCourseDesc: { type: text, component: Text, text: { key: BanDialog.scopeCourseDesc, params: { course: course.title } }, in: [banDialog, creating] }
+  scopeKoskDesc: { type: text, component: Text, text: { oneOf: [BanDialog.scopeKoskDesc, BanDialog.scopeKoskOnlyNazim] }, in: [banDialog, creating] }
+  reasonField: { type: field, component: TextField, role: textbox, text: { key: BanDialog.reasonLabel }, in: [banDialog, creating], disabledIn: [creating], emits: TYPE_REASON, source: apps/nizam/features/bans/components/ban-dialog.tsx:195 } # a textarea, required, at most 500
+  reasonHelp: { type: text, component: Text, text: { key: BanDialog.reasonHelp }, in: [banDialog, creating] }
+  reasonRequired: { type: text, component: Text, text: { key: BanDialog.reasonRequired }, in: [banDialog], when: "reason == 'blank'" } # once the field has been left empty
+  rotateAlert: { type: alert, component: Alert, role: alert, text: { key: BanDialog.rotateTitle }, in: [banDialog, creating], source: apps/nizam/features/bans/components/ban-dialog.tsx:207 } # only while a live session is still to come (present.ts:159)
+  rotateBody: { type: text, component: Text, text: { key: BanDialog.rotateBody, params: { when: course.nextSessionAt } }, in: [banDialog, creating] }
+  banFailed: { type: alert, component: Alert, role: alert, text: { key: BanDialog.failed }, in: [banDialog], when: "notice in ['refused', 'targetInvalid']", source: apps/nizam/features/bans/components/ban-dialog.tsx:94 } # a toast that stays until closed
+  banFailedWhy: { type: text, component: Text, text: { oneOf: [BansPage.errors.banForbidden, BansPage.errors.banTargetInvalid] }, in: [banDialog], when: "notice in ['refused', 'targetInvalid']" }
+  cancelBan: { type: action, component: Button, role: button, intent: dismiss, text: { key: BanDialog.cancel }, in: [banDialog, creating], disabledIn: [creating], emits: CANCEL }
+  submitBan: { type: action, component: Button, role: button, intent: confirm, text: { key: BanDialog.submit }, in: [banDialog, creating], disabledIn: [creating], emits: SUBMIT, source: apps/nizam/features/bans/components/ban-dialog.tsx:138 } # destructive; off while the reason is blank
+
+  # Yasağı kaldır, as the roster opens it: no summary of the ban
+  liftDialog: { type: page, component: Page, role: dialog, name: { labelledBy: liftTitle }, in: [liftDialog, lifting], initialFocus: liftReasonField, source: apps/nizam/features/bans/components/lift-dialog.tsx:98 }
+  liftTitle: { type: text, component: Heading, role: heading, text: { key: LiftDialog.title }, in: [liftDialog, lifting] }
+  liftInfo: { type: text, component: Text, text: { key: LiftDialog.infoSimple, params: { name: row.name } }, in: [liftDialog, lifting], source: apps/nizam/features/bans/components/lift-dialog.tsx:161 }
+  liftRequired: { type: text, component: Text, text: { key: LiftDialog.requiredNote }, in: [liftDialog, lifting] }
+  liftReasonField: { type: field, component: TextField, role: textbox, text: { key: LiftDialog.reasonLabel }, in: [liftDialog, lifting], emits: TYPE_REASON, source: apps/nizam/features/bans/components/lift-dialog.tsx:173 } # not disabled while saving, unlike the ban dialog's
+  liftReasonHelp: { type: text, component: Text, text: { key: LiftDialog.reasonHelp }, in: [liftDialog, lifting] }
+  liftReasonRequired: { type: text, component: Text, text: { key: LiftDialog.reasonRequired }, in: [liftDialog], when: "liftReason == 'blank'" }
+  liftFailed: { type: alert, component: Alert, role: alert, text: { key: LiftDialog.failed }, in: [liftDialog], when: "notice == 'liftRefused'", source: apps/nizam/features/bans/components/lift-dialog.tsx:83 }
+  liftFailedWhy: { type: text, component: Text, text: { key: BansPage.errors.banLiftForbidden }, in: [liftDialog], when: "notice == 'liftRefused'" }
+  cancelLift: { type: action, component: Button, role: button, intent: dismiss, text: { key: LiftDialog.cancel }, in: [liftDialog, lifting], disabledIn: [lifting], emits: CANCEL }
+  submitLift: { type: action, component: Button, role: button, intent: confirm, text: { key: LiftDialog.submit }, in: [liftDialog, lifting], disabledIn: [lifting], emits: SUBMIT }
+
+edges:
+  - { labelledBy: [rosterPage, rosterTitle] }
+  - { labelledBy: [banDialog, banTitle] }
+  - { labelledBy: [liftDialog, liftTitle] }
+  - { triggers: [submitBan, creating] }
+  - { triggers: [submitLift, lifting] }
+  - { triggers: [approveButton, approving] }
+
+rules:
+  - { id: offered-only-where-allowed, rule: "a row's Yasağı kaldır is drawn only where the viewer's permission and kademe reach the ban (the Yasaklamalar pages read viewerMayLift; the roster has no such flag)" }
+  - { id: label-in-name, rule: "a node's visible text is contained in its accessible name (WCAG 2.5.3)" }

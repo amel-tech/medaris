@@ -1,0 +1,46 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": [
+    "npm only: the catalog in pnpm-workspace.yaml, the root package.json and the lockfile.",
+    "rangeStrategy replace leaves an update the declared range already admits to the weekly lock file maintenance, which is also what re-resolves a transitive advisory fix; only tilde and exact pins, and majors, get their own PR.",
+    "minimumReleaseAge matches pnpm-workspace.yaml's 7-day floor, which pnpm enforces on resolution and on the lockfile, so no PR here asks pnpm for a release it would refuse.",
+    "Majors wait for a tick on the Dependency Dashboard issue: several are held on purpose (TypeScript 7, vite 8, @types/node past the node:22 floor), and their reasons are next to the catalog entries.",
+    "The exact pins whose comments say a bump is a decision of its own (Biome, @babel/standalone, Playwright) wait for the same tick."
+  ],
+  "extends": ["config:recommended", ":semanticCommits"],
+  "enabledManagers": ["npm"],
+  "rangeStrategy": "replace",
+  "minimumReleaseAge": "7 days",
+  "internalChecksFilter": "strict",
+  "schedule": ["before 6am on monday"],
+  "prConcurrentLimit": 5,
+  "labels": ["dependencies"],
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["before 6am on monday"]
+  },
+  "osvVulnerabilityAlerts": true,
+  "vulnerabilityAlerts": {
+    "minimumReleaseAge": "7 days"
+  },
+  "packageRules": [
+    {
+      "description": "Every commit is chore(deps), whatever the dependency type; commitlint accepts only the scopes in commitlint.config.mjs.",
+      "matchPackageNames": ["*"],
+      "semanticCommitType": "chore",
+      "semanticCommitScope": "deps"
+    },
+    {
+      "matchUpdateTypes": ["major"],
+      "dependencyDashboardApproval": true
+    },
+    {
+      "matchPackageNames": [
+        "@biomejs/biome",
+        "@babel/standalone",
+        "@playwright/test"
+      ],
+      "dependencyDashboardApproval": true
+    }
+  ]
+}

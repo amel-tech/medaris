@@ -1,0 +1,726 @@
+# The data and the API of Medaris's köşk and deck area, as tedrisat answers it at ce47fce8 (capture mode).
+# Every action is one route of tedrisat with its operationId as the name; `needs` is who passes, read from the route's
+# `@Authz` and from the service that decides when the route has none; every element carries the code it rests on.
+# Paths are tedrisat's own (no prefix). A refusal's `status` is the HTTP status the error class carries.
+schema: delurio-graph/0
+kind: domain
+id: medaris.kosk-decks
+status: proposed
+title: Köşks, köşk applications and flashcard decks
+summary: >-
+  A member applies to open a köşk; Medaris management (the başnazım, or a Medaris nazımı given the permission) answers
+  it and opens the köşk with its nazımları. A köşk is shown, hidden or passive; its nazımları appoint ders nazırları in
+  its medrese-free courses. Decks are a member's own (private until a reviewer publishes them), a köşk's, a course's
+  or a medrese's; a talebe studies a deck in rounds and each rating schedules the card's next review.
+
+entities:
+  KoskApplication:
+    source: apps/tedrisat/src/database/schema/kosk-application.schema.ts:36
+    required: [id, applicantId, name, field, summary, reason, email, status]
+    fields:
+      id: { type: string, format: uuid }
+      applicantId: { type: string, format: uuid, note: "the Keycloak sub, not a foreign key" }
+      name: { type: string, maxLength: 120 }
+      field: { enum: [ARABIC_LANGUAGE_SCIENCES, RHETORIC, FIQH, USUL_AL_FIQH, HADITH, QURAN_SCIENCES, TAFSIR, AQEEDAH_KALAM, SEERAH, LOGIC, OTHER] }
+      summary: { type: string, maxLength: 500 }
+      reason: { type: string, maxLength: 3000 }
+      email: { type: string, format: email, maxLength: 254, sensitivity: personal, note: "what the applicant typed; the form starts from the account's address" }
+      phone: { type: [string, "null"], pattern: "^\\+?[0-9][0-9 ()-]{5,18}[0-9]$", sensitivity: personal }
+      status: { enum: [PENDING, APPROVED, REJECTED], default: PENDING }
+      decidedBy: { type: [string, "null"], format: uuid }
+      decidedAt: { type: [string, "null"], format: date-time }
+      rejectReason: { type: [string, "null"] }
+      koskId: { type: [string, "null"], format: uuid, note: "the köşk given with the approval; not a foreign key and never compared with the application" }
+    lifecycle:
+      - "none -> PENDING: createKoskApplication (kosk-apply); nothing limits how many a person files"
+      - "PENDING -> APPROVED: approveKoskApplication with any existing köşk's id (kosk-application-review)"
+      - "PENDING -> REJECTED: rejectKoskApplication with a reason (kosk-application-review)"
+
+  Kosk:
+    source: apps/tedrisat/src/database/schema/kosk.schema.ts:21
+    required: [id, ownerId, name, isPrivate]
+    fields:
+      id: { type: string, format: uuid }
+      ownerId: { type: string, format: uuid, note: "who opened it; grants nothing" }
+      name: { type: string }
+      handle: { type: [string, "null"], unique: case-insensitive }
+      description: { type: [string, "null"] }
+      field: { type: [string, "null"], note: "the Turkish label, e.g. Tefsir" }
+      isPrivate: { type: boolean, default: false, note: "unlisted: in no list, opened by its link by a signed-in caller only" }
+      alwaysRequireApproval: { type: boolean, default: false }
+      recordingsNeverPublic: { type: boolean, default: false }
+      passiveSince: { type: [string, "null"], format: date-time }
+      passiveReason: { type: [string, "null"], enum: [DEACTIVATED_BY_ADMIN, null], note: "other reasons are written by the passive-scope module" }
+      archivedAt: { type: [string, "null"], format: date-time, note: "hidden while set" }
+      archivedBy: { type: [string, "null"], format: uuid }
+      archivedLevel: { enum: [platform, kosk, madrasah, course, null] }
+    lifecycle:
+      - "none -> ACTIVE: createKosk, with its nazımları in the same transaction (kosk-application-review, kosk-lifecycle)"
+      - "ACTIVE | PASSIVE -> HIDDEN: hideKosk, at the level the hider acts at (kosk-lifecycle)"
+      - "HIDDEN -> ACTIVE | PASSIVE: restoreKosk by the level that hid it or above (kosk-lifecycle)"
+      - "ACTIVE | HIDDEN -> PASSIVE(+hidden): deactivateKosk, which takes every held nazım off the post; the API does not refuse a hidden köşk (kosk-lifecycle)"
+      - "PASSIVE -> ACTIVE: addKoskNazims (kosk-lifecycle)"
+      - "any -> none: deleteKosk, the başnazım's alone (no screen in this area)"
+
+  KoskNazimSeat: # a role_assignments row with role KOSK_NAZIM in the köşk
+    source: apps/tedrisat/src/database/role-assignments.ts:109
+    key: [userId, koskId]
+    fields:
+      userId: { type: string, format: uuid }
+      koskId: { type: string, references: Kosk }
+      grantedBy: { type: string, format: uuid }
+      expiresAt: { type: [string, "null"], format: date-time }
+      revokedAt: { type: [string, "null"], format: date-time }
+    lifecycle:
+      - "none -> held: createKosk, addKoskNazims, addKoskManager"
+      - "held -> revoked: deactivateKosk (every seat), removeKoskManager"
+      - "held -> lapsed: expiresAt passes"
+
+  CourseNazirPost: # a DERS_NAZIR role assignment in a medrese-free course of the köşk, with its permission grants
+    source: apps/tedrisat/src/kosk/kosk-grants.repository.ts:271
+    fields:
+      id: { type: string, format: uuid }
+      userId: { type: string, format: uuid }
+      courseId: { type: string, format: uuid }
+      permissions: { type: array, items: { type: string }, note: "codes of the course catalog, granted with authority KOSK (a köşk nazımı) or PLATFORM (the başnazım)" }
+      endsAt: { type: [string, "null"], format: date-time, note: "the post and its permissions end together" }
+      grantedBy: { type: string, format: uuid }
+    lifecycle:
+      - "none -> held: createKoskGrant (kosk-grants)"
+      - "held -> held: updateKoskGrant replaces the whole set and the end (kosk-grants)"
+      - "held -> revoked: revokeKoskGrant, refused while someone the holder appointed holds a post (kosk-grants)"
+
+  Deck:
+    source: apps/tedrisat/src/database/schema/flashcard-deck.schema.ts:21
+    required: [id, authorId, title, isPublic, cardType, publishStatus]
+    fields:
+      id: { type: string, format: uuid }
+      authorId: { type: string, format: uuid, note: "the only DECK_OWNER; for a köşk deck the nazım who opened it, for a course deck the staff member who created it" }
+      title: { type: string, minLength: 5, maxLength: 100 }
+      description: { type: [string, "null"], maxLength: 1000 }
+      isPublic: { type: boolean, default: false, note: "true exactly while publishStatus is PUBLISHED" }
+      cardType: { enum: [VOCABULARY, HADEETH], note: "fixed at creation" }
+      publishStatus: { enum: [PRIVATE, PENDING, PUBLISHED, REJECTED], default: PRIVATE }
+      publishRequestedAt: { type: [string, "null"], format: date-time }
+      publishDecidedAt: { type: [string, "null"], format: date-time }
+      publishDecidedBy: { type: [string, "null"], format: uuid }
+      publishRejectReason: { type: [string, "null"] }
+      tags: { type: array, items: { type: string, maxLength: 40 }, maxItems: 20, note: "only the author reads them back" }
+      courseId: { type: [string, "null"], references: Course, note: "ders destesi" }
+      weekId: { type: [string, "null"], note: "the course week a course deck is studied in" }
+      courseDraft: { type: boolean, default: false, note: "a course deck the talebe do not see yet" }
+      koskId: { type: [string, "null"], references: Kosk, note: "köşk destesi" }
+      madrasahId: { type: [string, "null"], note: "medrese destesi; no route of this area writes it" }
+      archivedAt: { type: [string, "null"], format: date-time, note: "hidden while set" }
+      archivedLevel: { enum: [platform, kosk, madrasah, course, null] }
+    lifecycle:
+      - "none -> PRIVATE: createFlashcardDeck (a member's own), createKoskDeck (a köşk's), createCourseDeck (a course's)"
+      - "PRIVATE | REJECTED -> PENDING: requestFlashcardDeckPublication, by whoever holds deck.manage_private on it"
+      - "PENDING -> PRIVATE: withdrawFlashcardDeckPublication"
+      - "PENDING -> PUBLISHED: approveDeckPublishRequest (isPublic true)"
+      - "PENDING -> REJECTED: rejectDeckPublishRequest"
+      - "PUBLISHED | REJECTED -> PRIVATE: withdrawFlashcardDeckPublication (the author's Özele çek)"
+      - "PUBLISHED -> PRIVATE: unpublishDeck, the başnazım's alone"
+      - "PUBLISHED -> PUBLISHED: updateFlashcardDeck, replaceFlashcardDeck and every card write leave publishStatus as it is"
+      - "shown -> hidden: hideKoskDeck for a köşk deck; a hidden public deck stays readable through the public reads"
+      - "any -> none: deleteFlashcardDeck (cards and collection rows cascade; progress rows are left behind); deleteCourseDeck for a course deck in draft"
+
+  Flashcard:
+    source: apps/tedrisat/src/database/schema/flashcard.schema.ts:20
+    fields:
+      id: { type: string, format: uuid }
+      deckId: { type: string, references: Deck }
+      authorId: { type: string, format: uuid, note: "provenance only" }
+      type: { enum: [VOCABULARY, HADEETH] }
+      contentFront: { type: string }
+      contentBack: { type: string }
+
+  FlashcardProgress:
+    source: apps/tedrisat/src/database/schema/flashcard.schema.ts:34
+    key: [userId, flashcardId]
+    fields:
+      userId: { type: string, format: uuid }
+      flashcardId: { type: string, references: Flashcard }
+      status: { enum: [NEW, LEARNING, MASTERED] }
+      dueAt: { type: [string, "null"], format: date-time }
+      reviewedAt: { type: [string, "null"], format: date-time }
+      intervalDays: { type: integer, minimum: 0, maximum: 180 }
+    lifecycle:
+      - "HARD: LEARNING, due in 1 day; MEDIUM: LEARNING, due in max(3, the last gap) days; EASY: MASTERED, due in max(7, twice the last gap) days, never more than 180 (review-schedule.ts)"
+      - "a bare status (no rating): no due time, gap 0"
+
+  DeckCollectionEntry: # decks_users
+    source: apps/tedrisat/src/database/schema/flashcard-deck.schema.ts:96
+    key: [userId, deckId]
+    fields:
+      userId: { type: string, format: uuid }
+      deckId: { type: string, references: Deck }
+      createdAt: { type: string, format: date-time }
+
+  DeckProposal:
+    source: apps/tedrisat/src/database/schema/deck-proposal.schema.ts:21
+    fields:
+      id: { type: string, format: uuid }
+      koskId: { type: string, references: Kosk }
+      courseId: { type: [string, "null"], note: "the course the müderris teaches in the köşk" }
+      proposedBy: { type: string, format: uuid }
+      title: { type: string }
+      description: { type: [string, "null"] }
+      cardType: { enum: [VOCABULARY, HADEETH] }
+      status: { enum: [PENDING, ACCEPTED, REJECTED], default: PENDING }
+      rejectReason: { type: [string, "null"] }
+      deckId: { type: [string, "null"], references: Deck }
+    lifecycle:
+      - "none -> PENDING: proposeKoskDeck, which no app calls"
+      - "PENDING -> ACCEPTED: createKoskDeck with proposalId, in the deck's own transaction; the proposer is not told"
+      - "PENDING -> REJECTED: rejectKoskDeckProposal; the proposer is told the reason"
+
+policies:
+  - { actor: member, needs: session, do: [createKoskApplication], write: [KoskApplication], source: "apps/tedrisat/src/kosk-application/kosk-application.controller.ts:17" }
+  - { actor: application-decider, needs: "the başnazım, or a Medaris nazımı holding platform.kosk_application_decide", do: [listKoskApplications, getKoskApplication, approveKoskApplication, rejectKoskApplication], write: [KoskApplication], source: "apps/tedrisat/src/kosk-application/kosk-application-review.service.ts:88" }
+  - { actor: kosk-opener, needs: "the başnazım, or a Medaris nazımı holding platform.kosk_create", do: [createKosk], write: [Kosk, KoskNazimSeat], source: "apps/tedrisat/src/kosk/kosk.controller.ts:309" }
+  - { actor: kosk-editor, needs: "a nazım of the köşk (kosk.manage), or platform.kosk_edit, or the başnazım", do: [updateKosk, hideKosk, getKoskOverview, getKoskNazims, getKoskCourseRoster, getKoskDashboard], write: [Kosk], source: "apps/tedrisat/src/kosk/kosk-admin.controller.ts:356" }
+  - { actor: platform-kosk-editor, needs: "platform.kosk_edit, or the başnazım", do: [getKoskDeactivationPreview, deactivateKosk], write: [Kosk, KoskNazimSeat], source: "apps/tedrisat/src/kosk/kosk-admin.controller.ts:279" }
+  - { actor: nazim-manager, needs: "platform.kosk_nazim_manage, or the başnazım", do: [addKoskNazims, addKoskManager, removeKoskManager], write: [KoskNazimSeat, Kosk], source: "apps/tedrisat/src/kosk/kosk-admin.service.ts:482" }
+  - { actor: kosk-nazim, needs: "a held KOSK_NAZIM seat in the köşk (the role, not a permission), or the başnazım", do: [getKoskGrants, createKoskGrant, updateKoskGrant, revokeKoskGrant, getManagedKoskDecks, createKoskDeck, rejectKoskDeckProposal, hideKoskDeck], write: [CourseNazirPost, Deck, DeckProposal], source: "apps/tedrisat/src/deck-review/deck-review.service.ts:350" }
+  - { actor: course-muderris, needs: "a MUDERRIS seat in a shown course of the köşk (the role, not deck.propose_kosk)", do: [proposeKoskDeck], write: [DeckProposal], source: "apps/tedrisat/src/deck-review/deck-review.repository.ts:547" }
+  - { actor: deck-reviewer, needs: "the başnazım, or a Medaris nazımı holding platform.deck_publish (not on a deck of their own)", do: [listDeckPublishRequests, readDeckPublishRequestCards, approveDeckPublishRequest, rejectDeckPublishRequest], write: [Deck], source: "apps/tedrisat/src/deck-review/deck-review.service.ts:321" }
+  - { actor: basnazim, needs: "SYSTEM_ADMIN", do: [unpublishDeck, deleteKosk], write: [Deck, Kosk], source: "apps/tedrisat/src/deck-review/deck-review.service.ts:161" }
+  - { actor: deck-owner, needs: "the deck's author (DECK_OWNER), or the staff of the deck's course (deck.manage_course)", do: [updateFlashcardDeck, replaceFlashcardDeck, deleteFlashcardDeck, requestFlashcardDeckPublication, withdrawFlashcardDeckPublication, createFlashcards, createFlashcardsBulk, importsCard], write: [Deck, Flashcard], source: "libs/common/src/authz/effective-permissions.ts:305" }
+  - { actor: card-editor, needs: "the deck's author, or a reader of a public or shared deck that the engine then refuses; the course's staff are refused by the card resolver", do: [updateFlashcard, replaceFlashcard, deleteFlashcard], write: [Flashcard], source: "apps/tedrisat/src/flashcard/flashcard.service.ts:86" }
+  - { actor: reader, needs: "the author, anyone for a public deck, a talebe ENROLLED or COMPLETED in a published shown course the deck belongs to (or of its köşk or medrese)", do: [getFlashcardDeckById, getFlashcardByDeckId, getFlashcardStudyRound, createFlashcardDeckUser, replaceManyFlashcardProgress], write: [DeckCollectionEntry, FlashcardProgress], source: "apps/tedrisat/src/flashcard/deck-sharing.ts:35" }
+  - { actor: visitor, needs: "no token", do: [getFlashcardDeckById, getFlashcardByDeckId, getAllFlashcardDecks, getAllKosks, getKoskFields, getKoskById], source: "apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:231" }
+  - { actor: course-staff, needs: "deck.manage_course in the course", do: [getCourseDecksManage, createCourseDeck, updateCourseDeck, deleteCourseDeck], write: [Deck], source: "apps/tedrisat/src/flashcard/course-decks.controller.ts:67" }
+  - { actor: course-talebe, needs: "course.view_details in the course (ENROLLED or COMPLETED, not barred)", do: [getCourseDecks], source: "apps/tedrisat/src/flashcard/course-decks.controller.ts:144" }
+
+actions:
+  # ---- köşk applications ----
+  createKoskApplication:
+    route: POST /kosk-applications
+    source: apps/tedrisat/src/kosk-application/kosk-application.controller.ts:28
+    needs: session
+    body: { type: object, required: [name, field, summary, reason, email], properties: { name: { type: string, maxLength: 120 }, field: { type: string }, summary: { type: string, maxLength: 500 }, reason: { type: string, maxLength: 3000 }, email: { type: string, format: email }, phone: { type: [string, "null"] } } }
+    result: { returns: KoskApplication, status: 201 }
+    sideEffects: ["a PENDING row; nothing is sent to anyone"]
+    refusals: { VALIDATION_ERROR: { status: 400 } }
+  listKoskApplications:
+    route: GET /nizam/kosk-applications
+    source: apps/tedrisat/src/kosk-application/nizam-kosk-applications.controller.ts:64
+    needs: "session; application-decider"
+    query: { type: object, properties: { status: { enum: [PENDING, DECIDED], default: PENDING } } }
+    result: { type: object, note: "at most 100 rows, waiting oldest first, answered newest first, both counts, no contact detail" }
+    refusals: { AUTHZ_FORBIDDEN: { status: 403, source: "apps/tedrisat/src/platform-access/platform-access.service.ts:46" } }
+  getKoskApplication:
+    route: GET /nizam/kosk-applications/{id}
+    source: apps/tedrisat/src/kosk-application/nizam-kosk-applications.controller.ts:86
+    needs: "session; application-decider"
+    result: { returns: KoskApplication, note: "with the applicant's e-mail, phone and held roles, and the shown köşks of the same field" }
+    sideEffects: ["audit:kosk_application.contact_read, written before the details are returned (kosk-application-review.service.ts:121)"]
+    refusals: { AUTHZ_FORBIDDEN: { status: 403 }, KOSK_APPLICATION_NOT_FOUND: { status: 404 } }
+  approveKoskApplication:
+    route: POST /nizam/kosk-applications/{id}/approve
+    source: apps/tedrisat/src/kosk-application/nizam-kosk-applications.controller.ts:104
+    needs: "session; application-decider (platform.kosk_application_decide alone; opening the köşk first needs platform.kosk_create)"
+    body: { type: object, required: [koskId], properties: { koskId: { type: string, format: uuid } } }
+    result: { status: 204 }
+    sideEffects: ["audit:kosk_application.approve in the same transaction", "notification KOSK_APPLICATION_RESULT to the applicant; a failed notification is only logged"]
+    refusals:
+      AUTHZ_FORBIDDEN: { status: 403 }
+      KOSK_APPLICATION_NOT_FOUND: { status: 404 }
+      KOSK_NOT_FOUND: { status: 404, note: "any existing köşk passes; it is never compared with the application", source: "apps/tedrisat/src/kosk-application/kosk-application-review.service.ts:166" }
+      KOSK_APPLICATION_DECIDED: { status: 409, source: "apps/tedrisat/src/kosk-application/kosk-application-review.service.ts:178" }
+  rejectKoskApplication:
+    route: POST /nizam/kosk-applications/{id}/reject
+    source: apps/tedrisat/src/kosk-application/nizam-kosk-applications.controller.ts:124
+    needs: "session; application-decider"
+    body: { type: object, required: [reason], properties: { reason: { type: string } } }
+    result: { status: 204 }
+    sideEffects: ["audit:kosk_application.reject", "notification KOSK_APPLICATION_RESULT with the reason"]
+    refusals: { AUTHZ_FORBIDDEN: { status: 403 }, KOSK_APPLICATION_NOT_FOUND: { status: 404 }, KOSK_APPLICATION_DECIDED: { status: 409 } }
+
+  # ---- köşks ----
+  getAllKosks:
+    route: GET /kosks
+    source: apps/tedrisat/src/kosk/kosk.controller.ts:154
+    needs: "nothing; managedBy=me needs a session"
+    result: { type: object, note: "unlisted köşks are in no list but the caller's own managed ones" }
+  getKoskFields:
+    route: GET /kosks/fields
+    source: apps/tedrisat/src/kosk/kosk.controller.ts:196
+    result: { type: array, items: { type: string } }
+  getFollowedKoskCourses:
+    route: GET /kosks/followed/courses
+    source: apps/tedrisat/src/kosk/kosk.controller.ts:218
+    needs: session
+    result: { type: array }
+  getKoskById:
+    route: GET /kosks/{id}
+    source: apps/tedrisat/src/kosk/kosk.controller.ts:261
+    needs: "kosk.view; a hidden köşk only for its nazımları, platform.kosk_edit and the başnazım"
+    result: { returns: Kosk }
+    refusals: { KOSK_NOT_FOUND: { status: 404, note: "also an unlisted köşk to a caller with no token, and a hidden one to anyone else" } }
+  getKoskDecks:
+    route: GET /kosks/{id}/decks
+    source: apps/tedrisat/src/kosk/kosk.controller.ts:281
+    needs: "session; the köşk's decks only for a talebe of its courses, a müderris or a nazım of it"
+    result: { type: object, properties: { accessible: { type: boolean }, decks: { type: array } }, note: "only the köşk's decks with isPublic true and not hidden (kosk.repository.ts:295)" }
+    refusals: { KOSK_NOT_FOUND: { status: 404 } }
+  createKosk:
+    route: POST /kosks
+    source: apps/tedrisat/src/kosk/kosk.controller.ts:310
+    needs: "session; kosk-opener"
+    body: { type: object, required: [name, managerUserIds], properties: { name: { type: string }, handle: { type: string }, description: { type: string }, isPrivate: { type: boolean }, managerUserIds: { type: array, minItems: 1, items: { type: string, format: uuid } } } }
+    result: { returns: Kosk, status: 201 }
+    sideEffects: ["a KOSK_NAZIM seat per person, granted by the opener", "audit:kosk.create in the same transaction"]
+    refusals:
+      AUTHZ_FORBIDDEN: { status: 403 }
+      SELF_GRANT_REFUSED: { status: 403, note: "a Medaris nazımı names themselves; the başnazım is not asked", source: "apps/tedrisat/src/kosk/kosk.controller.ts:319" }
+      KOSK_HANDLE_TAKEN: { status: 409 }
+      KOSK_NAZIM_UNKNOWN_ACCOUNT: { status: 404 }
+      VALIDATION_ERROR: { status: 400 }
+  updateKosk:
+    route: PATCH /kosks/{id}
+    source: apps/tedrisat/src/kosk/kosk.controller.ts:340
+    needs: "session; kosk-editor"
+    result: { returns: Kosk }
+    sideEffects: ["audit:kosk.policy_change when a policy changes"]
+    refusals: { AUTHZ_FORBIDDEN: { status: 403 }, KOSK_NOT_FOUND: { status: 404 }, KOSK_HANDLE_TAKEN: { status: 409 } }
+  deleteKosk:
+    route: DELETE /kosks/{id}
+    source: apps/tedrisat/src/kosk/kosk.controller.ts:367
+    needs: "session; the başnazım (kosk.delete is held by no role or grant)"
+    result: { type: boolean }
+    sideEffects: ["the köşk with its followers and every course under it, in one transaction, and an audit row"]
+    refusals: { AUTHZ_FORBIDDEN: { status: 403 }, KOSK_NOT_FOUND: { status: 404 } }
+  addKoskManager:
+    route: POST /kosks/{id}/managers/{userId}
+    source: apps/tedrisat/src/kosk/kosk.controller.ts:388
+    needs: "session; nazim-manager (platform.kosk_nazim_manage); no app calls it"
+    result: { returns: Kosk }
+    refusals: { AUTHZ_FORBIDDEN: { status: 403 }, SELF_GRANT_REFUSED: { status: 403 }, KOSK_NOT_FOUND: { status: 404 }, KOSK_MANAGER_UNKNOWN_USER: { status: 404 } }
+  removeKoskManager:
+    route: DELETE /kosks/{id}/managers/{userId}
+    source: apps/tedrisat/src/kosk/kosk.controller.ts:435
+    needs: "session; nazim-manager; no app calls it"
+    query: { type: object, properties: { successorUserId: { type: string, format: uuid } } }
+    result: { returns: Kosk }
+    refusals: { KOSK_MANAGER_NOT_FOUND: { status: 404 }, KOSK_LAST_MANAGER: { status: 409 }, KOSK_SUCCESSOR_INVALID: { status: 400 }, KOSK_MANAGER_UNKNOWN_USER: { status: 404 } }
+  followKosk:
+    route: POST /kosks/{id}/follow
+    source: apps/tedrisat/src/kosk/kosk.controller.ts:470
+    needs: "session; kosk.view"
+    result: { type: boolean }
+  unfollowKosk:
+    route: DELETE /kosks/{id}/follow
+    source: apps/tedrisat/src/kosk/kosk.controller.ts:487
+    needs: session
+    result: { type: boolean }
+  getKoskDirectory:
+    route: GET /kosks/directory
+    source: apps/tedrisat/src/kosk/kosk-admin.controller.ts:131
+    needs: "session; the başnazım and a Medaris nazımı holding any platform köşk permission see every köşk, a köşk nazımı their own (kosk-admin.service.ts:190)"
+    result: { type: object, note: "each row with canRestore, by the hide ladder" }
+    refusals: { AUTHZ_FORBIDDEN: { status: 403 } }
+  getKoskOverview:
+    route: GET /kosks/{id}/overview
+    source: apps/tedrisat/src/kosk/kosk-admin.controller.ts:177
+    needs: "session; kosk-editor"
+    result: { type: object, note: "status ACTIVE | PASSIVE | HIDDEN (hidden wins), counts, canRestore" }
+    refusals: { AUTHZ_FORBIDDEN: { status: 403 }, KOSK_NOT_FOUND: { status: 404 } }
+  getKoskDashboard:
+    route: GET /kosks/{id}/dashboard
+    source: apps/tedrisat/src/kosk/kosk-admin.controller.ts:204
+    needs: "session; kosk-editor"
+    result: { type: object }
+    sideEffects: ["audit rows for the applicants and the meeting links handed out"]
+  getKoskCourseRoster:
+    route: GET /kosks/{id}/course-roster
+    source: apps/tedrisat/src/kosk/kosk-admin.controller.ts:234
+    needs: "session; kosk-editor"
+    result: { type: object }
+  getKoskDeactivationPreview:
+    route: GET /kosks/{id}/deactivation-preview
+    source: apps/tedrisat/src/kosk/kosk-admin.controller.ts:255
+    needs: "session; platform-kosk-editor"
+    result: { type: object, note: "the courses, talebe, live sessions and nazımları it takes along, and the confirmation token" }
+  deactivateKosk:
+    route: POST /kosks/{id}/deactivate
+    source: apps/tedrisat/src/kosk/kosk-admin.controller.ts:277
+    needs: "session; platform-kosk-editor"
+    body: { type: object, required: [confirmation], properties: { confirmation: { type: string } } }
+    result: { type: object }
+    sideEffects: ["every held KOSK_NAZIM seat revoked", "passiveSince set, passiveReason DEACTIVATED_BY_ADMIN", "audit:kosk.deactivate with the removed nazımları and the impact"]
+    refusals:
+      AUTHZ_FORBIDDEN: { status: 403 }
+      KOSK_ALREADY_PASSIVE: { status: 409, note: "a hidden but not passive köşk is not refused", source: "apps/tedrisat/src/kosk/kosk-admin.repository.ts:714" }
+      PASSIVATION_IMPACT_CHANGED: { status: 409, note: "the token is not for these numbers and this caller; the fresh preview comes back" }
+  getKoskNazims:
+    route: GET /kosks/{id}/nazims
+    source: apps/tedrisat/src/kosk/kosk-admin.controller.ts:297
+    needs: "session; kosk-editor"
+    result: { type: array }
+  addKoskNazims:
+    route: POST /kosks/{id}/nazims
+    source: apps/tedrisat/src/kosk/kosk-admin.controller.ts:327
+    needs: "session; nazim-manager"
+    body: { type: object, required: [userIds], properties: { userIds: { type: array, items: { type: string, format: uuid } }, endsAt: { type: string, format: date-time } } }
+    result: { type: array, status: 201 }
+    sideEffects: ["a seat per person, all or nothing, under the köşk lock", "a passive köşk is active again", "audit:kosk.nazim.add per person"]
+    refusals:
+      AUTHZ_FORBIDDEN: { status: 403, source: "apps/tedrisat/src/kosk/kosk-admin.service.ts:482" }
+      SELF_GRANT_REFUSED: { status: 403 }
+      KOSK_NAZIM_EXISTS: { status: 409 }
+      KOSK_NAZIM_UNKNOWN_ACCOUNT: { status: 404 }
+      GRANT_EXPIRY_INVALID: { status: 400 }
+  hideKosk:
+    route: POST /kosks/{id}/hide
+    source: apps/tedrisat/src/kosk/kosk-admin.controller.ts:354
+    needs: "session; kosk-editor"
+    result: { type: object }
+    sideEffects: ["archivedAt, archivedBy, archivedLevel (platform for the başnazım and platform.kosk_edit, kosk for its nazım)", "audit of the hide"]
+    refusals: { AUTHZ_FORBIDDEN: { status: 403 }, KOSK_ALREADY_HIDDEN: { status: 409 } }
+  restoreKosk:
+    route: POST /kosks/{id}/restore
+    source: apps/tedrisat/src/kosk/kosk-admin.controller.ts:382
+    needs: "session; acting at the level that hid it or above (kosk-admin.service.ts:263)"
+    result: { type: object }
+    sideEffects: ["archived columns cleared", "audit of the restore"]
+    refusals: { AUTHZ_FORBIDDEN: { status: 403 }, ARCHIVE_RESTORE_LEVEL: { status: 403 }, KOSK_NOT_HIDDEN: { status: 409 } }
+
+  # ---- ders nazırları of a köşk ----
+  getKoskGrants:
+    route: GET /kosks/{id}/grants
+    source: apps/tedrisat/src/kosk/kosk-grants.controller.ts:69
+    needs: "session; @Authz(course_nazir.assign_kosk), then a held KOSK_NAZIM seat or the başnazım (kosk-grants.service.ts:76)"
+    result: { type: object, note: "posts of the medrese-free courses, the köşk's courses, and the grantable codes: the whole course catalog for any köşk nazımı" }
+    refusals: { AUTHZ_FORBIDDEN: { status: 403 } }
+  createKoskGrant:
+    route: POST /kosks/{id}/grants
+    source: apps/tedrisat/src/kosk/kosk-grants.controller.ts:89
+    needs: "session; kosk-nazim"
+    body: { type: object, required: [userId, courseId, permissions], properties: { userId: { type: string, format: uuid }, courseId: { type: string, format: uuid }, permissions: { type: array, items: { type: string } }, endsAt: { type: string, format: date-time } } }
+    result: { type: object, status: 201 }
+    sideEffects: ["a DERS_NAZIR seat and one grant per code, authority KOSK or PLATFORM", "audit:course_nazir.assign"]
+    refusals:
+      SELF_GRANT_REFUSED: { status: 403, source: "apps/tedrisat/src/kosk/kosk-grants.controller.ts:98" }
+      GRANT_EXCEEDS_GIVER: { status: 403, note: "unreachable for a köşk nazımı: the role's defaults hold course.manage_all" }
+      PERMISSION_UNKNOWN: { status: 400 }
+      GRANT_COURSE_INVALID: { status: 400, note: "not the köşk's, a medrese's, or hidden" }
+      GRANT_EXPIRY_INVALID: { status: 400 }
+      COURSE_NAZIR_EXISTS: { status: 409 }
+      KOSK_NAZIM_UNKNOWN_ACCOUNT: { status: 404 }
+  updateKoskGrant:
+    route: PATCH /kosks/{id}/grants/{grantId}
+    source: apps/tedrisat/src/kosk/kosk-grants.controller.ts:118
+    needs: "session; kosk-nazim; not one's own post unless the başnazım"
+    result: { type: object }
+    sideEffects: ["the set replaced, what stays keeps its giver", "audit:course_nazir.update"]
+    refusals: { SELF_GRANT_REFUSED: { status: 403 }, COURSE_NAZIR_NOT_FOUND: { status: 404 }, PERMISSION_UNKNOWN: { status: 400 }, GRANT_EXPIRY_INVALID: { status: 400 } }
+  revokeKoskGrant:
+    route: DELETE /kosks/{id}/grants/{grantId}
+    source: apps/tedrisat/src/kosk/kosk-grants.controller.ts:152
+    needs: "session; kosk-nazim"
+    result: { status: 204 }
+    sideEffects: ["the post and every permission in the course end at once", "audit:course_nazir.revoke"]
+    refusals: { COURSE_NAZIR_NOT_FOUND: { status: 404 }, DISMISS_SEAT_HANDED_ON: { status: 409 } }
+
+  # ---- köşk decks and proposals ----
+  getManagedKoskDecks:
+    route: GET /kosks/{id}/decks/manage
+    source: apps/tedrisat/src/deck-review/kosk-decks.controller.ts:68
+    needs: "session; kosk-nazim (the KOSK_NAZIM role; deck.manage_kosk is never asked)"
+    query: { type: object, properties: { page: { type: integer, minimum: 1 }, limit: { type: integer, minimum: 1, maximum: 50, default: 12 } } }
+    result: { type: object, note: "the shown köşk decks and the waiting proposals, one page of each, and both totals" }
+    refusals: { DECK_REVIEW_FORBIDDEN: { status: 403 }, KOSK_NOT_FOUND: { status: 404 } }
+  createKoskDeck:
+    route: POST /kosks/{id}/decks
+    source: apps/tedrisat/src/deck-review/kosk-decks.controller.ts:89
+    needs: "session; kosk-nazim"
+    body: { type: object, required: [title, cardType], properties: { title: { type: string }, description: { type: string }, cardType: { enum: [VOCABULARY, HADEETH] }, proposalId: { type: string, format: uuid } } }
+    result: { type: object, properties: { id: { type: string } }, status: 201 }
+    sideEffects: ["a private deck with koskId, authored by the caller", "with proposalId: the proposal ACCEPTED in the same transaction; nobody is notified"]
+    refusals: { DECK_REVIEW_FORBIDDEN: { status: 403 }, DECK_PROPOSAL_NOT_FOUND: { status: 404 }, DECK_PROPOSAL_NOT_PENDING: { status: 409 } }
+  proposeKoskDeck:
+    route: POST /kosks/{id}/deck-proposals
+    source: apps/tedrisat/src/deck-review/kosk-decks.controller.ts:107
+    needs: "session; course-muderris; no app calls it"
+    result: { type: object, status: 201 }
+    refusals: { DECK_REVIEW_FORBIDDEN: { status: 403 }, KOSK_NOT_FOUND: { status: 404 } }
+  rejectKoskDeckProposal:
+    route: POST /kosks/{id}/deck-proposals/{proposalId}/reject
+    source: apps/tedrisat/src/deck-review/kosk-decks.controller.ts:126
+    needs: "session; kosk-nazim"
+    body: { type: object, required: [reason], properties: { reason: { type: string } } }
+    result: { status: 204 }
+    sideEffects: ["notification DECK_PUBLISH_RESULT (proposal_rejected) with the reason to the proposer"]
+    refusals: { DECK_PROPOSAL_NOT_FOUND: { status: 404 }, DECK_PROPOSAL_NOT_PENDING: { status: 409 } }
+  hideKoskDeck:
+    route: POST /decks/{id}/hide
+    source: apps/tedrisat/src/deck-review/kosk-decks.controller.ts:146
+    needs: "session; kosk-nazim of the deck's köşk"
+    result: { status: 204 }
+    sideEffects: ["archivedAt and archivedLevel (platform for the başnazım, kosk for a nazım); the talebe lose it; a published one stays public"]
+    refusals: { KOSK_DECK_NOT_FOUND: { status: 404 }, DECK_REVIEW_FORBIDDEN: { status: 403 } }
+
+  # ---- publish requests ----
+  listDeckPublishRequests:
+    route: GET /nizam/deck-publish-requests
+    source: apps/tedrisat/src/deck-review/nizam-deck-requests.controller.ts:74
+    needs: "session; deck-reviewer"
+    query: { type: object, properties: { status: { enum: [PENDING, DECIDED] }, page: { type: integer }, limit: { type: integer, maximum: 50 } } }
+    result: { type: object }
+    refusals: { DECK_REVIEW_FORBIDDEN: { status: 403 } }
+  readDeckPublishRequestCards:
+    route: GET /nizam/deck-publish-requests/{id}/cards
+    source: apps/tedrisat/src/deck-review/nizam-deck-requests.controller.ts:109
+    needs: "session; deck-reviewer"
+    query: { type: object, properties: { all: { type: boolean, default: false } } }
+    result: { type: object, note: "three sample cards, or every card" }
+    sideEffects: ["audit:deck.private-read written before the cards are returned"]
+    refusals: { DECK_REVIEW_FORBIDDEN: { status: 403 }, DECK_REQUEST_NOT_FOUND: { status: 404 } }
+  approveDeckPublishRequest:
+    route: POST /nizam/deck-publish-requests/{id}/approve
+    source: apps/tedrisat/src/deck-review/nizam-deck-requests.controller.ts:128
+    needs: "session; deck-reviewer"
+    result: { status: 204 }
+    sideEffects: ["PENDING -> PUBLISHED, isPublic true", "notification DECK_PUBLISH_RESULT (approved) to the owner"]
+    refusals: { DECK_REVIEW_FORBIDDEN: { status: 403, note: "also a Medaris nazımı answering his own deck" }, DECK_REQUEST_NOT_FOUND: { status: 404 }, DECK_REQUEST_NOT_PENDING: { status: 409 } }
+  rejectDeckPublishRequest:
+    route: POST /nizam/deck-publish-requests/{id}/reject
+    source: apps/tedrisat/src/deck-review/nizam-deck-requests.controller.ts:147
+    needs: "session; deck-reviewer"
+    body: { type: object, required: [reason], properties: { reason: { type: string } } }
+    result: { status: 204 }
+    sideEffects: ["PENDING -> REJECTED with the reason", "notification DECK_PUBLISH_RESULT (rejected)"]
+    refusals: { DECK_REVIEW_FORBIDDEN: { status: 403 }, DECK_REQUEST_NOT_FOUND: { status: 404 }, DECK_REQUEST_NOT_PENDING: { status: 409 } }
+  unpublishDeck:
+    route: POST /nizam/deck-publish-requests/{id}/unpublish
+    source: apps/tedrisat/src/deck-review/nizam-deck-requests.controller.ts:167
+    needs: "session; the başnazım"
+    body: { type: object, required: [reason], properties: { reason: { type: string } } }
+    result: { status: 204 }
+    sideEffects: ["PUBLISHED -> PRIVATE, decision columns wiped", "audit:deck.unpublish in the same transaction", "notification DECK_PUBLISH_RESULT (unpublished)"]
+    refusals: { DECK_REVIEW_FORBIDDEN: { status: 403 }, DECK_REQUEST_NOT_FOUND: { status: 404 }, DECK_NOT_PUBLISHED: { status: 409 } }
+
+  # ---- decks ----
+  getAllFlashcardDecksByUser:
+    route: GET /flashcard/decks/collections
+    source: apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:90
+    needs: session
+    result: { type: array }
+  getFlashcardDeckSummaries:
+    route: GET /flashcard/decks/summary
+    source: apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:109
+    needs: session
+    result: { type: array, note: "the caller's own shown decks, then the collected ones still public or shared" }
+  getFlashcardDecksDueToday:
+    route: GET /flashcard/decks/due
+    source: apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:131
+    needs: session
+    result: { type: array }
+  exploreFlashcardDecks:
+    route: GET /flashcard/decks/explore
+    source: apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:157
+    needs: session
+    result: { type: object, note: "decks shared with the caller through a course (deckSharedWith) and the published ones" }
+  getFlashcardDeckById:
+    route: GET /flashcard/decks/{id}
+    source: apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:184
+    needs: "deck.view: the author, anyone (with no token too) for a public deck, a talebe the deck is shared with, the course's staff, the başnazım (audited)"
+    result: { returns: Deck }
+    refusals: { DECK_NOT_FOUND: { status: 404, note: "missing and someone else's private deck alike" }, DECK_FORBIDDEN: { status: 403 } }
+  getAllFlashcardDecks:
+    route: GET /flashcard/decks
+    source: apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:242
+    needs: nothing
+    result: { type: array, note: "public decks (hidden ones too) and the caller's own" }
+  createFlashcardDeck:
+    route: POST /flashcard/decks
+    source: apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:276
+    needs: "session; deck.create_private"
+    body: { type: object, required: [title], properties: { title: { type: string, minLength: 5, maxLength: 100 }, cardType: { enum: [VOCABULARY, HADEETH] }, tags: { type: array }, description: { type: string, maxLength: 1000 } } }
+    result: { returns: Deck, status: 201 }
+    sideEffects: ["always private, PRIVATE"]
+  createFlashcardDeckUser:
+    route: POST /flashcard/decks/{id}/collections
+    source: apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:303
+    needs: "session; deck.view, asked again without the başnazım's read exception"
+    result: { returns: DeckCollectionEntry, status: 201, note: "collecting twice answers the existing row" }
+    refusals: { DECK_NOT_FOUND: { status: 404 }, DECK_FORBIDDEN: { status: 403 } }
+  requestFlashcardDeckPublication:
+    route: POST /flashcard/decks/{id}/publish-request
+    source: apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:336
+    needs: "session; deck-owner"
+    result: { returns: Deck, status: 201 }
+    sideEffects: ["PRIVATE | REJECTED -> PENDING, the decision columns wiped; nobody is notified"]
+    refusals: { DECK_NOT_FOUND: { status: 404 }, AUTHZ_FORBIDDEN: { status: 403 }, DECK_PUBLISH_STATE_CONFLICT: { status: 409, source: "apps/tedrisat/src/flashcard/flashcard-deck.service.ts:277" } }
+  replaceFlashcardDeck:
+    route: PUT /flashcard/decks/{id}
+    source: apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:357
+    needs: "session; deck-owner"
+    result: { returns: Deck }
+    sideEffects: ["publishStatus untouched (flashcard-deck.repository.ts:203)"]
+    refusals: { DECK_NOT_FOUND: { status: 404 }, AUTHZ_FORBIDDEN: { status: 403 } }
+  updateFlashcardDeck:
+    route: PATCH /flashcard/decks/{id}
+    source: apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:390
+    needs: "session; deck-owner"
+    result: { returns: Deck }
+    sideEffects: ["publishStatus untouched: a published deck changes without review (flashcard-deck.repository.ts:203)"]
+    refusals: { DECK_NOT_FOUND: { status: 404 }, AUTHZ_FORBIDDEN: { status: 403 } }
+  deleteFlashcardDeck:
+    route: DELETE /flashcard/decks/{id}
+    source: apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:418
+    needs: "session; deck-owner"
+    result: { type: boolean }
+    sideEffects: ["the deck with its cards and collection rows; any kind, a köşk deck and a published course deck too", "the progress rows of its cards stay behind: flashcard_progress has no foreign key to the cards"]
+    refusals: { DECK_NOT_FOUND: { status: 404 }, AUTHZ_FORBIDDEN: { status: 403 } }
+  withdrawFlashcardDeckPublication:
+    route: DELETE /flashcard/decks/{id}/publish-request
+    source: apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:439
+    needs: "session; deck-owner"
+    result: { returns: Deck }
+    sideEffects: ["PENDING | REJECTED -> PRIVATE; PUBLISHED -> PRIVATE, isPublic false"]
+    refusals: { DECK_PUBLISH_STATE_CONFLICT: { status: 409, note: "a deck that is PRIVATE already" } }
+  deleteFlashcardDeckUser:
+    route: DELETE /flashcard/decks/{id}/collections
+    source: apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:457
+    needs: session
+    result: { returns: DeckCollectionEntry }
+
+  # ---- cards ----
+  getFlashcardById:
+    route: GET /flashcard/cards/{id}
+    source: apps/tedrisat/src/flashcard/flashcard.controller.ts:106
+    needs: "session; deck.view on the card's deck"
+    result: { returns: Flashcard }
+    refusals: { CARD_NOT_FOUND: { status: 404 } }
+  getFlashcardByDeckId:
+    route: GET /flashcard/cards
+    source: apps/tedrisat/src/flashcard/flashcard.controller.ts:148
+    needs: "deck.view; no token for a public deck"
+    query: { type: object, required: [deckId], properties: { deckId: { type: string, format: uuid }, include: { type: array, items: { enum: [progress] } } } }
+    result: { type: array }
+    refusals: { DECK_NOT_FOUND: { status: 404 } }
+  getFlashcardStudyRound:
+    route: GET /flashcard/decks/{id}/due
+    source: apps/tedrisat/src/flashcard/flashcard.controller.ts:175
+    needs: "session; deck.view"
+    result: { type: object, note: "up to 50 cards due (oldest debt first), then up to 10 never started, with counts" }
+    refusals: { DECK_NOT_FOUND: { status: 404 } }
+  createFlashcards:
+    route: POST /flashcard/decks/{deckId}/cards
+    source: apps/tedrisat/src/flashcard/flashcard.controller.ts:199
+    needs: "session; deck.create_card (the author, or the course's staff on a course deck)"
+    result: { type: array, status: 201 }
+    sideEffects: ["publishStatus untouched"]
+    refusals: { DECK_NOT_FOUND: { status: 404 }, AUTHZ_FORBIDDEN: { status: 403 } }
+  replaceManyFlashcardProgress:
+    route: PUT /flashcard/cards/progress
+    source: apps/tedrisat/src/flashcard/flashcard.controller.ts:234
+    needs: "session; every card in a deck the caller authored, that is public, or that is shared with them (flashcard.service.ts:228)"
+    body: { type: array, items: { type: object, required: [flashcardId], properties: { flashcardId: { type: string }, rating: { enum: [HARD, MEDIUM, EASY] }, status: { enum: [NEW, LEARNING, MASTERED] } } } }
+    result: { type: array }
+    sideEffects: ["a rating's state and next time are the server's (review-schedule.ts:28)"]
+    refusals: { CARD_NOT_FOUND: { status: 404 }, AUTHZ_FORBIDDEN: { status: 403 } }
+  replaceFlashcard:
+    route: PUT /flashcard/cards/{id}
+    source: apps/tedrisat/src/flashcard/flashcard.controller.ts:262
+    needs: "session; card-editor"
+    result: { returns: Flashcard }
+    refusals: { CARD_NOT_FOUND: { status: 404, note: "also to a course's staff member who did not write the deck" }, AUTHZ_FORBIDDEN: { status: 403 } }
+  updateFlashcard:
+    route: PATCH /flashcard/cards/{id}
+    source: apps/tedrisat/src/flashcard/flashcard.controller.ts:291
+    needs: "session; card-editor"
+    result: { returns: Flashcard }
+    sideEffects: ["publishStatus untouched"]
+    refusals: { CARD_NOT_FOUND: { status: 404, note: "also to a course's staff member who did not write the deck", source: "apps/tedrisat/src/flashcard/flashcard.service.ts:92" }, AUTHZ_FORBIDDEN: { status: 403 } }
+  deleteFlashcard:
+    route: DELETE /flashcard/cards/{id}
+    source: apps/tedrisat/src/flashcard/flashcard.controller.ts:318
+    needs: "session; card-editor"
+    result: { type: boolean }
+    refusals: { CARD_NOT_FOUND: { status: 404 }, AUTHZ_FORBIDDEN: { status: 403 } }
+  createFlashcardsBulk:
+    route: POST /flashcard/decks/{deckId}/cards/bulk
+    source: apps/tedrisat/src/flashcard/flashcard.controller.ts:350
+    needs: "session; deck.create_card"
+    result: { type: object, status: 201 }
+    refusals: { BULK_VALIDATION_ERROR: { status: 422 }, BULK_ROW_LIMIT_EXCEEDED: { status: 400 }, BULK_PAYLOAD_INVALID: { status: 400 } }
+  getSampleFile:
+    route: GET /flashcard/cards/bulk/sample
+    source: apps/tedrisat/src/flashcard/flashcard.controller.ts:386
+    needs: session
+    result: { type: string, format: binary }
+  exportCards:
+    route: GET /flashcard/decks/{deckId}/cards/bulk/export
+    source: apps/tedrisat/src/flashcard/flashcard.controller.ts:411
+    needs: "session; deck.manage_cards, then the author alone (findOwned)"
+    result: { type: string, format: binary }
+    refusals: { DECK_FORBIDDEN: { status: 403 } }
+  importsCard:
+    route: POST /flashcard/decks/{deckId}/cards/bulk/import
+    source: apps/tedrisat/src/flashcard/flashcard.controller.ts:461
+    needs: "session; deck.create_card"
+    body: { type: object, required: [file], properties: { file: { type: string, format: binary, maxLength: 5242880 } } }
+    result: { type: object, status: 201 }
+    sideEffects: ["all rows or none (at most 1000)"]
+    refusals: { BULK_VALIDATION_ERROR: { status: 422 }, BULK_ROW_LIMIT_EXCEEDED: { status: 400 } }
+
+  # ---- course decks ----
+  getCourseDecksManage:
+    route: GET /courses/{id}/decks/manage
+    source: apps/tedrisat/src/flashcard/course-decks.controller.ts:68
+    needs: "session; course-staff"
+    result: { type: array }
+  createCourseDeck:
+    route: POST /courses/{id}/decks
+    source: apps/tedrisat/src/flashcard/course-decks.controller.ts:86
+    needs: "session; course-staff"
+    body: { type: object, required: [title, cardType], properties: { title: { type: string, minLength: 5, maxLength: 100 }, description: { type: string }, cardType: { enum: [VOCABULARY, HADEETH] }, weekId: { type: string }, draft: { type: boolean } } }
+    result: { type: object, status: 201 }
+    refusals: { AUTHZ_FORBIDDEN: { status: 403 }, COURSE_WEEK_NOT_IN_COURSE: { status: 400 } }
+  updateCourseDeck:
+    route: PATCH /courses/{id}/decks/{deckId}
+    source: apps/tedrisat/src/flashcard/course-decks.controller.ts:106
+    needs: "session; course-staff"
+    result: { type: object }
+    refusals: { DECK_NOT_FOUND: { status: 404 }, COURSE_WEEK_NOT_IN_COURSE: { status: 400 } }
+  deleteCourseDeck:
+    route: DELETE /courses/{id}/decks/{deckId}
+    source: apps/tedrisat/src/flashcard/course-decks.controller.ts:126
+    needs: "session; course-staff"
+    result: { status: 204 }
+    refusals: { DECK_NOT_FOUND: { status: 404 }, COURSE_DECK_NOT_DRAFT: { status: 409, source: "apps/tedrisat/src/flashcard/course-deck.service.ts:136" } }
+  getCourseDecks:
+    route: GET /courses/{id}/decks
+    source: apps/tedrisat/src/flashcard/course-decks.controller.ts:145
+    needs: "session; course-talebe"
+    result: { type: array, note: "the course's decks shared with the caller (drafts and hidden ones left out), with the caller's progress" }
+    refusals: { AUTHZ_FORBIDDEN: { status: 403 } }
+
+  # ---- labels: no app calls them ----
+  createFlashcardDeckLabel: { route: "POST /flashcard-deck-label/create", source: "apps/tedrisat/src/flashcard/flashcard-deck-label.controller.ts:55", needs: session, result: { status: 201 } }
+  deleteFlashcardDeckLabel: { route: "DELETE /flashcard-deck-label/delete/{id}", source: "apps/tedrisat/src/flashcard/flashcard-deck-label.controller.ts:76", needs: session, result: { type: boolean } }
+  createFlashcardDeckLabeling: { route: "POST /flashcard-deck-label/labeling", source: "apps/tedrisat/src/flashcard/flashcard-deck-label.controller.ts:95", needs: session, result: { status: 201 } }
+  getFlashcardDeckLabelById: { route: "GET /flashcard-deck-label/{id}", source: "apps/tedrisat/src/flashcard/flashcard-deck-label.controller.ts:118", needs: session, result: { type: object } }
+  getFlashcardDeckLabelStats: { route: "GET /flashcard-deck-label/getStats/{id}", source: "apps/tedrisat/src/flashcard/flashcard-deck-label.controller.ts:136", needs: session, result: { type: object } }
+  createFlashcardLabel: { route: "POST /flashcard-label/create", source: "apps/tedrisat/src/flashcard/flashcard-label.controller.ts:103", needs: session, result: { status: 201 } }
+  deleteFlashcardLabel: { route: "DELETE /flashcard-label/delete/{id}", source: "apps/tedrisat/src/flashcard/flashcard-label.controller.ts:126", needs: session, result: { type: boolean } }
+  createFlashcardLabeling: { route: "POST /flashcard-label/labeling", source: "apps/tedrisat/src/flashcard/flashcard-label.controller.ts:145", needs: session, result: { status: 201 } }
+  getFlashcardLabelById: { route: "GET /flashcard-label/{id}", source: "apps/tedrisat/src/flashcard/flashcard-label.controller.ts:169", needs: session, result: { type: object } }
+  getFlashcardLabelStats: { route: "GET /flashcard-label/getStats/{id}", source: "apps/tedrisat/src/flashcard/flashcard-label.controller.ts:187", needs: session, result: { type: object } }
+
+invariants:
+  - { id: application-answered-once, rule: "an application moves from PENDING once; a second answer is 409 KOSK_APPLICATION_DECIDED", source: "apps/tedrisat/src/kosk-application/kosk-application-review.repository.ts:202" }
+  - { id: contact-read-audited, rule: "the applicant's e-mail and phone are returned only after an audit row is written", source: "apps/tedrisat/src/kosk-application/kosk-application-review.service.ts:121" }
+  - { id: kosk-opened-with-nazims, rule: "a köşk is opened with at least one nazım, in the same transaction, and the opener is not one of them unless the başnazım", source: "apps/tedrisat/src/kosk/kosk-admin.repository.ts:422" }
+  - { id: restore-by-level, rule: "a hidden köşk is brought back by the level that hid it or above", source: "apps/tedrisat/src/kosk/kosk-admin.repository.ts:513" }
+  - { id: deck-born-private, rule: "every route that creates a deck creates it private; approveDeckPublishRequest is the only writer of a public deck", source: "apps/tedrisat/src/flashcard/flashcard-deck.repository.ts:169" }
+  - { id: publish-status-in-step, rule: "isPublic is true exactly while publishStatus is PUBLISHED; status writes are guarded on the status read", source: "apps/tedrisat/src/flashcard/flashcard-deck.repository.ts:254" }
+  - { id: no-own-publication, rule: "a Medaris nazımı holding platform.deck_publish does not answer the request of his own deck; the başnazım may", source: "apps/tedrisat/src/deck-review/deck-review.service.ts:343" }
+  - { id: private-read-audited, rule: "a reviewer's read of a requested deck's cards is written to the audit log first", source: "apps/tedrisat/src/deck-review/deck-review.service.ts:101" }
+  - { id: shared-deck-readers, rule: "a deck that is not public is read by its author, by the talebe ENROLLED or COMPLETED in a published shown course it belongs to (directly, or through the course's köşk or medrese), and by the course's staff; nothing in the rule looks at bans or at a hidden köşk", source: "apps/tedrisat/src/flashcard/deck-sharing.ts:35" }
+  - { id: schedule, rule: "HARD: 1 day; MEDIUM: max(3, last gap); EASY: max(7, 2 × last gap), at most 180 days", source: "apps/tedrisat/src/flashcard/domain/review-schedule.ts:28" }
+  - { id: course-deck-delete-draft, rule: "DELETE /courses/{id}/decks/{deckId} deletes a draft only; DELETE /flashcard/decks/{id} deletes any deck its owner or its course's staff may manage", source: "apps/tedrisat/src/flashcard/course-deck.service.ts:134" }

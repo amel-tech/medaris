@@ -1,0 +1,85 @@
+# The screens of medaris.course-request: nazar's "Medrese dışı ders talebi" and nizam's "Ders talepleri" with its
+# "Talebi reddet" dialog. One flow cannot say which app a screen is in: the offsite* states are nazar's, the rest nizam's.
+schema: delurio-graph/0
+kind: ui
+id: medaris.course-request
+flow: medaris.course-request
+status: proposed
+catalog: catalog/tr.json
+locales: [tr, en]
+samples: { kosk: "Nûruosmaniye Köşkü", koskGenitive: "Nûruosmaniye Köşkü’nün", title: "Usûl-i Fıkıh Okumaları", max: "2000", name: "Ders" }
+changes: { key: Changes.note }
+
+nodes:
+  # nazar: Medrese dışı ders talebi
+  offsitePage: { type: page, component: Page, role: main, name: { labelledBy: offsiteTitle }, in: [offsiteLoading, offsiteForbidden, offsiteNoKosk, offsiteForm, sendingOffsite], source: "apps/nazar/features/offsite/components/offsite-page.tsx:50" }
+  offsiteTitle: { type: text, component: Heading, role: heading, text: { key: Offsite.title }, in: [offsiteLoading, offsiteForbidden, offsiteNoKosk, offsiteForm, sendingOffsite], source: "apps/nazar/features/offsite/components/offsite-page.tsx:58" }
+  offsiteIntro: { type: text, component: Text, text: { key: Offsite.intro }, in: [offsiteLoading, offsiteForbidden, offsiteNoKosk, offsiteForm, sendingOffsite] }
+  forbiddenTitle: { type: status, component: Status, role: status, text: { key: Problems.forbiddenTitle }, in: [offsiteForbidden], source: "apps/nazar/features/shell/components/page-problem.tsx:25" }
+  forbiddenText: { type: text, component: Text, text: { key: Problems.forbidden }, in: [offsiteForbidden] }
+  noKoskTitle: { type: status, component: Status, role: status, text: { key: Offsite.noKoskTitle }, in: [offsiteNoKosk], source: "apps/nazar/features/offsite/components/offsite-page.tsx:70" }
+  noKoskText: { type: text, component: Text, text: { key: Offsite.noKosk }, in: [offsiteNoKosk] }
+  back: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: Offsite.back }, in: [offsiteNoKosk], emits: BACK, source: "apps/nazar/features/offsite/components/offsite-page.tsx:72" }
+  koskGone: { type: alert, component: Alert, role: alert, text: { key: Offsite.errors.kosk }, in: [offsiteForm], when: "notice == 'kosk'", source: "apps/nazar/features/offsite/offsite.ts:70" } # a toast
+  required: { type: text, component: Text, text: { key: Offsite.required }, in: [offsiteForm, sendingOffsite] }
+  koskField: { type: field, component: TextField, role: combobox, text: { key: Offsite.kosk.label }, in: [offsiteForm, sendingOffsite], source: "apps/nazar/features/offsite/components/offsite-form.tsx:132" } # a select of every listed köşk
+  koskHelp: { type: text, component: Text, text: { key: Offsite.kosk.help }, in: [offsiteForm, sendingOffsite] }
+  nameField: { type: field, component: TextField, role: textbox, text: { key: Offsite.name }, in: [offsiteForm, sendingOffsite], source: "apps/nazar/features/offsite/components/offsite-form.tsx:156" }
+  nameHelp: { type: text, component: Text, text: { key: Offsite.nameHelp }, in: [offsiteForm, sendingOffsite] }
+  reasonField: { type: field, component: TextField, role: textbox, text: { key: Offsite.reason }, in: [offsiteForm, sendingOffsite], source: "apps/nazar/features/offsite/components/offsite-form.tsx:178" } # a textarea
+  reasonHelp: { type: text, component: Text, text: { key: Offsite.reasonHelp }, in: [offsiteForm, sendingOffsite] }
+  reasonRequired: { type: text, component: Text, text: { key: Offsite.reasonProblems.required }, in: [offsiteForm], when: "attempted and not formOk" }
+  cancel: { type: action, component: LinkButton, role: link, intent: dismiss, text: { key: Offsite.cancel }, in: [offsiteForm, sendingOffsite], emits: CANCEL, source: "apps/nazar/features/offsite/components/offsite-form.tsx:189" }
+  send: { type: action, component: Button, role: button, intent: confirm, text: { key: Offsite.submit }, in: [offsiteForm, sendingOffsite], disabledIn: [sendingOffsite], emits: SUBMIT, source: "apps/nazar/features/offsite/components/offsite-form.tsx:192" }
+  sending: { type: status, component: Status, role: status, text: { key: Offsite.sending }, in: [sendingOffsite] }
+  afterTitle: { type: text, component: Heading, role: heading, text: { key: Offsite.afterTitle }, in: [offsiteForm, sendingOffsite], source: "apps/nazar/features/offsite/components/offsite-form.tsx:206" }
+  afterList: { type: list, component: List, role: list, name: { labelledBy: afterTitle }, in: [offsiteForm, sendingOffsite], source: "apps/nazar/features/offsite/components/offsite-form.tsx:209" }
+  afterItem: { type: text, component: ListItem, role: listitem, text: { oneOf: [Offsite.after.oneNamed, Offsite.after.two, Offsite.after.three] }, in: [offsiteForm, sendingOffsite], source: "apps/nazar/features/offsite/components/offsite-form.tsx:101" }
+  sentToast: { type: status, component: Status, role: status, text: { key: Offsite.sent }, in: [parked], source: "apps/nazar/features/offsite/components/offsite-form.tsx:82" }
+  sentBody: { type: text, component: Text, text: { key: Offsite.sentBody }, in: [parked], source: "apps/nazar/features/offsite/components/offsite-form.tsx:83" }
+
+  # nizam: Ders talepleri
+  requestsPage: { type: page, component: Page, role: main, name: { labelledBy: requestsTitle }, in: [requestsList, rejecting, accepting], source: "apps/nizam/features/platform-admin/components/course-requests-view.tsx:253" }
+  requestsTitle: { type: text, component: Heading, role: heading, text: { key: CourseRequestsPage.title }, in: [requestsList, rejecting], source: "apps/nizam/features/platform-admin/components/course-requests-view.tsx:258" }
+  requestsIntro: { type: text, component: Text, text: { key: CourseRequestsPage.intro }, in: [requestsList, rejecting] }
+  tabs: { type: list, component: List, role: tablist, name: { key: CourseRequestsPage.tabsLabel }, in: [requestsList, rejecting], source: "apps/nizam/features/platform-admin/components/course-requests-view.tsx:271" }
+  tab: { type: field, component: ListItem, role: tab, text: { oneOf: [CourseRequestsPage.tabs.PENDING, CourseRequestsPage.tabs.DECIDED] }, in: [requestsList, rejecting] }
+  answeredNotice: { type: alert, component: Alert, role: alert, text: { key: CourseRequestsPage.errors.answered }, in: [requestsList], when: "notice == 'answered'", source: "apps/nizam/features/platform-admin/components/course-requests-view.tsx:119" } # a toast
+  detailEyebrow: { type: text, component: Text, text: { key: CourseRequestsPage.detailEyebrow }, in: [requestsList, rejecting], when: "requestStatus == 'pending'", source: "apps/nizam/features/platform-admin/components/course-requests-view.tsx:180" }
+  status: { type: text, component: Text, text: { key: CourseRequestsPage.status.PENDING }, in: [requestsList, rejecting], when: "requestStatus == 'pending'", source: "apps/nizam/features/platform-admin/components/course-requests-view.tsx:194" }
+  reasonLabel: { type: text, component: Text, text: { key: CourseRequestsPage.reason }, in: [requestsList, rejecting], when: "requestStatus == 'pending'", source: "apps/nizam/features/platform-admin/components/course-requests-view.tsx:223" }
+  answerNote: { type: text, component: Text, text: { key: CourseRequestsPage.answerNote }, in: [requestsList, rejecting], when: "requestStatus == 'pending'", source: "apps/nizam/features/platform-admin/components/course-requests-view.tsx:231" }
+  accept: { type: action, component: Button, role: button, intent: confirm, text: { key: CourseRequestsPage.accept }, in: [requestsList], when: "requestStatus == 'pending'", emits: ACCEPT, source: "apps/nizam/features/platform-admin/components/course-requests-view.tsx:233" }
+  reject: { type: action, component: Button, role: button, intent: secondary, text: { key: CourseRequestsPage.reject }, in: [requestsList], when: "requestStatus == 'pending'", emits: REJECT, source: "apps/nizam/features/platform-admin/components/course-requests-view.tsx:238" }
+  empty: { type: text, component: Text, text: { key: CourseRequestsPage.empty.PENDING }, in: [requestsList], when: "requestStatus != 'pending'", source: "apps/nizam/features/platform-admin/components/course-requests-view.tsx:296" }
+
+  # nizam: Talebi reddet
+  rejectDialog: { type: page, component: Page, role: dialog, name: { labelledBy: rejectTitle }, in: [rejectDialog, rejecting], initialFocus: rejectReason, source: "apps/nizam/features/deck-review/components/reject-dialog.tsx:76" }
+  rejectTitle: { type: text, component: Heading, role: heading, text: { key: DeckReject.courseRequest.title }, in: [rejectDialog, rejecting] }
+  rejectBody: { type: text, component: Text, text: { key: DeckReject.courseRequest.body }, in: [rejectDialog, rejecting] }
+  rejectReason: { type: field, component: TextField, role: textbox, text: { key: DeckReject.reasonLabel }, in: [rejectDialog, rejecting], disabledIn: [rejecting], source: "apps/nizam/features/deck-review/components/reject-dialog.tsx:104" }
+  rejectHelp: { type: text, component: Text, text: { key: DeckReject.courseRequest.help }, in: [rejectDialog, rejecting] }
+  rejectCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: DeckReject.cancel }, in: [rejectDialog, rejecting], emits: CANCEL }
+  rejectConfirm: { type: action, component: Button, role: button, intent: confirm, text: { key: DeckReject.submit }, in: [rejectDialog, rejecting], disabledIn: [rejecting], emits: CONFIRM, source: "apps/nizam/features/deck-review/components/reject-dialog.tsx:90" } # disabled until a reason is written
+  rejectedToast: { type: status, component: Status, role: status, text: { key: CourseRequestsPage.rejected }, in: [rejected], source: "apps/nizam/features/platform-admin/components/course-requests-view.tsx:125" }
+  rejectedBody: { type: text, component: Text, text: { key: CourseRequestsPage.rejectedBody }, in: [rejected] }
+
+  # nizam: Ders aç, filled in from the request (the köşk area draws the rest of the form)
+  courseTitle: { type: text, component: Heading, role: heading, text: { key: CourseCreate.title }, in: [courseForm, creatingCourse, accepting], source: "apps/nizam/features/courses/components/course-create-form.tsx:204" }
+  courseName: { type: field, component: TextField, role: textbox, text: { key: CourseCreate.nameLabel }, in: [courseForm, creatingCourse, accepting], source: "apps/nizam/features/courses/components/course-create-form.tsx:219" }
+  courseSubmit: { type: action, component: Button, role: button, intent: confirm, text: { key: CourseCreate.submit }, in: [courseForm, creatingCourse, accepting], disabledIn: [creatingCourse, accepting], emits: SUBMIT }
+  createdToast: { type: status, component: Status, role: status, text: { key: CourseCreate.created }, in: [openedFromRequest], source: "apps/nizam/features/courses/components/course-create-form.tsx:177" }
+  createdBody: { type: text, component: Text, text: { key: CourseCreate.createdBody }, in: [openedFromRequest] }
+
+edges:
+  - { labelledBy: [offsitePage, offsiteTitle] }
+  - { labelledBy: [afterList, afterTitle] }
+  - { labelledBy: [requestsPage, requestsTitle] }
+  - { labelledBy: [rejectDialog, rejectTitle] }
+  - { triggers: [send, sendingOffsite] }
+  - { triggers: [rejectConfirm, rejecting] }
+  - { triggers: [courseSubmit, creatingCourse] }
+
+rules:
+  - { id: label-in-name, rule: "a node's visible text is contained in its accessible name (WCAG 2.5.3)" }
+  - { id: reason-before-refusal, rule: "a refusal asks for its reason in a dialog whose focus starts on the reason" }

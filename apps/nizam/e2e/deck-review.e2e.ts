@@ -42,7 +42,7 @@ async function signIn(
   page: Page,
   who: { email?: string; password?: string }
 ): Promise<void> {
-  await page.goto("/tr/auth/signin");
+  await page.goto("/auth/signin");
   await page.locator("#username").fill(who.email as string);
   await page.locator("#password").fill(who.password as string);
   await page.locator("button[type=submit]").click();
@@ -58,7 +58,7 @@ test("nizam/16 — the tab counts are the table's, and a request shows its owner
 }) => {
   test.skip(!seedable || !SYSTEM_ADMIN.password, "no başnazım account");
   await signIn(page, SYSTEM_ADMIN);
-  await page.goto("/tr/talepler/deste-yayin-istekleri");
+  await page.goto("/talepler/deste-yayin-istekleri");
 
   await expect(
     page.getByRole("heading", { level: 1, name: "Deste yayın istekleri" })
@@ -94,7 +94,7 @@ test("nizam/16 — looking at the sample and at every card writes an audit row e
 }) => {
   test.skip(!seedable || !SYSTEM_ADMIN.password, "no başnazım account");
   await signIn(page, SYSTEM_ADMIN);
-  await page.goto("/tr/talepler/deste-yayin-istekleri");
+  await page.goto("/talepler/deste-yayin-istekleri");
   await requestItem(page, fixture.request.title).click();
   await expect(
     page.getByTestId("card-sample").filter({ visible: true })
@@ -123,7 +123,7 @@ test("nizam/16 — Yayımla makes the deck public: the open list carries it and 
   ).toBe(false);
 
   await signIn(page, SYSTEM_ADMIN);
-  await page.goto("/tr/talepler/deste-yayin-istekleri");
+  await page.goto("/talepler/deste-yayin-istekleri");
   await requestItem(page, fixture.request.title).click();
   await page.getByRole("button", { name: "Yayımla" }).click();
   await expect(
@@ -146,7 +146,7 @@ test("nizam/16 — Reddet cannot be sent without a reason, then keeps the deck p
 }) => {
   test.skip(!seedable || !SYSTEM_ADMIN.password, "no başnazım account");
   await signIn(page, SYSTEM_ADMIN);
-  await page.goto("/tr/talepler/deste-yayin-istekleri");
+  await page.goto("/talepler/deste-yayin-istekleri");
   await requestItem(page, fixture.request.title).click();
   await page.getByRole("button", { name: "Reddet" }).click();
 
@@ -185,7 +185,7 @@ test("nizam/16 — a köşk nazımı is shown the 'Bu bölüm için izniniz yok'
 }) => {
   test.skip(!seedable || !KOSK_NAZIM.password, "no köşk nazım account");
   await signIn(page, KOSK_NAZIM);
-  await page.goto("/tr/talepler/deste-yayin-istekleri");
+  await page.goto("/talepler/deste-yayin-istekleri");
   await expect(
     page.getByRole("heading", { name: "Bu bölüm için izniniz yok" })
   ).toBeVisible();
@@ -196,7 +196,7 @@ test("nizam/30 — the köşk's decks come with the count of proposals waiting (
 }) => {
   test.skip(!seedable || !KOSK_NAZIM.password, "no köşk nazım account");
   await signIn(page, KOSK_NAZIM);
-  await page.goto(`/tr/kosks/${fixture.koskId}/desteler`);
+  await page.goto(`/kosks/${fixture.koskId}/desteler`);
 
   await expect(
     page.getByRole("heading", { level: 1, name: "Köşk desteleri" })
@@ -220,7 +220,7 @@ test("nizam/30 and 35 — Kabul et opens the form filled in, Desteyi aç lists t
   test.skip(!seedable || !KOSK_NAZIM.password, "no köşk nazım account");
   const proposal = fixture.proposals[0];
   await signIn(page, KOSK_NAZIM);
-  await page.goto(`/tr/kosks/${fixture.koskId}/desteler`);
+  await page.goto(`/kosks/${fixture.koskId}/desteler`);
   await page
     .getByRole("link", { name: `${proposal.title} önerisini kabul et` })
     .click();
@@ -265,7 +265,7 @@ test("nizam/35 — an empty name is refused before anything is sent; a deck from
 }) => {
   test.skip(!seedable || !KOSK_NAZIM.password, "no köşk nazım account");
   await signIn(page, KOSK_NAZIM);
-  await page.goto(`/tr/kosks/${fixture.koskId}/desteler`);
+  await page.goto(`/kosks/${fixture.koskId}/desteler`);
   await page.getByRole("link", { name: "Köşk destesi aç" }).click();
 
   await expect(page.getByTestId("proposal-banner")).toHaveCount(0);
@@ -295,7 +295,7 @@ test("nizam/30 — Reddet needs a reason and closes the proposal; Gizle moves th
   test.skip(!seedable || !KOSK_NAZIM.password, "no köşk nazım account");
   const proposal = fixture.proposals[1];
   await signIn(page, KOSK_NAZIM);
-  await page.goto(`/tr/kosks/${fixture.koskId}/desteler`);
+  await page.goto(`/kosks/${fixture.koskId}/desteler`);
 
   await page
     .getByRole("button", { name: `${proposal.title} önerisini reddet` })
@@ -329,7 +329,7 @@ test("nizam/30 — Reddet needs a reason and closes the proposal; Gizle moves th
   ).toHaveCount(0);
   expect((await fixture.deckRow(fixture.deck.id))?.archived_at).not.toBeNull();
 
-  await page.goto(`/tr/kosks/${fixture.koskId}/arsiv`);
+  await page.goto(`/kosks/${fixture.koskId}/arsiv`);
   await expect(
     page.locator("[data-testid=archive] tbody tr").filter({
       hasText: fixture.deck.title,
@@ -344,12 +344,12 @@ test("nizam/30 and 35 — a person who is no nazım gets the 'Bu bölüm için i
   await signIn(page, TALEBE);
   // let the sign-in land first: a page opened while the home page is still sending
   // a talebe on to 'Yönetim yetkiniz yok' is replaced by that redirect
-  await page.waitForURL(/\/tr\/yetki-yok$/);
-  await page.goto(`/tr/kosks/${fixture.koskId}/desteler`);
+  await page.waitForURL(/\/yetki-yok$/);
+  await page.goto(`/kosks/${fixture.koskId}/desteler`);
   await expect(
     page.getByRole("heading", { name: "Bu bölüm için izniniz yok" })
   ).toBeVisible();
-  await page.goto(`/tr/kosks/${fixture.koskId}/desteler/yeni`);
+  await page.goto(`/kosks/${fixture.koskId}/desteler/yeni`);
   await expect(
     page.getByRole("heading", { name: "Bu bölüm için izniniz yok" })
   ).toBeVisible();

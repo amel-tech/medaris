@@ -1,0 +1,55 @@
+# The screens of medaris.inactive-scope-assign: apps/nizam/features/inactive-scopes/components/inactive-view.tsx and
+# assign-scope-dialog.tsx on libs/ui/src/mds/dialog.tsx (Base UI). The dialog passes no initialFocus
+# (assign-scope-dialog.tsx:104), so Base UI focuses the first tabbable element of the popup, the header's close
+# button (libs/ui/src/mds/dialog.tsx:97), not the e-mail field.
+schema: delurio-graph/0
+kind: ui
+id: medaris.inactive-scope-assign
+flow: medaris.inactive-scope-assign
+status: proposed
+catalog: catalog/tr.json
+locales: [tr, en]
+samples: { name: "Üsküdar Köşkü", person: "Zeynep Kaya", action: "Köşk nazımı ata" }
+changes: { key: Changes.note }
+
+nodes:
+  title: { type: text, component: Heading, role: heading, text: { key: Inactive.title }, in: [listPage, dialog, assigning, loadFailed], source: "apps/nizam/features/inactive-scopes/components/inactive-view.tsx:202" }
+  intro: { type: text, component: Text, text: { key: Inactive.intro }, in: [listPage, dialog, assigning, loadFailed], source: "apps/nizam/features/inactive-scopes/components/inactive-view.tsx:203" }
+  failedAlert: { type: alert, component: Alert, role: alert, text: { key: Inactive.loadFailedTitle }, in: [loadFailed], source: "apps/nizam/features/inactive-scopes/components/inactive-view.tsx:234" }
+  failedBody: { type: text, component: Text, text: { key: Inactive.loadFailed }, in: [loadFailed], source: "apps/nizam/features/inactive-scopes/components/inactive-view.tsx:235" }
+  retry: { type: action, component: Button, role: button, intent: secondary, text: { key: Inactive.retry }, in: [loadFailed], emits: RETRY, source: "apps/nizam/features/inactive-scopes/components/inactive-view.tsx:236" }
+  heading: { type: text, component: Heading, role: heading, text: { key: Inactive.heading }, in: [listPage, dialog, assigning], source: "apps/nizam/features/inactive-scopes/components/inactive-view.tsx:216" }
+  scopeTable: { type: list, component: List, role: table, name: { labelledBy: heading }, in: [listPage, dialog, assigning], source: "apps/nizam/features/inactive-scopes/components/inactive-view.tsx:241" }
+  assignButton: { type: action, component: Button, role: button, intent: secondary, name: { key: Inactive.assignLabel, params: { action: assign.action, name: scope.name } }, text: { oneOf: [Inactive.assignKosk, Inactive.assignMadrasah, Inactive.assignCourse] }, in: [listPage], emits: OPEN_ASSIGN, repeat: scopes, source: "apps/nizam/features/inactive-scopes/components/inactive-view.tsx:169" }
+  viewButton: { type: action, component: Button, role: button, intent: secondary, text: { key: Inactive.view }, in: [listPage], repeat: scopes, source: "apps/nizam/features/inactive-scopes/components/inactive-view.tsx:181" }
+  savedToast: { type: status, component: Status, role: status, text: { key: Assign.saved }, in: [listPage], when: "notice == 'saved'", source: "apps/nizam/features/inactive-scopes/components/assign-scope-dialog.tsx:93" }
+
+  dialogPopup: { type: page, component: Page, role: dialog, name: { labelledBy: dialogTitle }, in: [dialog, assigning], initialFocus: closeButton, source: "libs/ui/src/mds/dialog.tsx:132" }
+  dialogEyebrow: { type: text, component: Text, text: { key: Assign.eyebrow, params: { name: scope.name } }, in: [dialog, assigning], source: "apps/nizam/features/inactive-scopes/components/assign-scope-dialog.tsx:112" } # the scope's own name
+  dialogTitle: { type: text, component: Heading, role: heading, text: { oneOf: [Assign.titleKosk, Assign.titleMadrasah, Assign.titleCourse] }, in: [dialog, assigning], source: "apps/nizam/features/inactive-scopes/components/assign-scope-dialog.tsx:113" }
+  closeButton: { type: action, component: Button, role: button, intent: dismiss, name: { key: Assign.close }, in: [dialog, assigning], disabledIn: [assigning], emits: CANCEL, source: "libs/ui/src/mds/dialog.tsx:97" }
+  dialogIntro: { type: text, component: Text, text: { oneOf: [Assign.introKosk, Assign.introMadrasah, Assign.introCourse] }, in: [dialog, assigning], source: "apps/nizam/features/inactive-scopes/components/assign-scope-dialog.tsx:129" }
+  emailField: { type: field, component: TextField, role: textbox, text: { oneOf: [Assign.personKosk, Assign.personMadrasah, Assign.personCourse] }, in: [dialog, assigning], disabledIn: [assigning], emits: PICK, source: "apps/nizam/features/madrasahs/components/head-picker.tsx:98" }
+  emailHelp: { type: text, component: Text, text: { key: Picker.help }, in: [dialog, assigning], source: "apps/nizam/features/madrasahs/components/head-picker.tsx:100" }
+  chosenCard: { type: text, component: Text, text: { oneOf: [Assign.chosenKosk, Assign.chosenMadrasah, Assign.chosenCourse] }, in: [dialog, assigning], when: picked, source: "apps/nizam/features/madrasahs/components/head-picker.tsx:135" }
+  endField: { type: field, component: TextField, role: textbox, text: { key: Assign.endLabel }, in: [dialog, assigning], disabledIn: [assigning], source: "apps/nizam/features/inactive-scopes/components/assign-scope-dialog.tsx:139" }
+  endHelp: { type: text, component: Text, text: { key: Assign.endHelp }, in: [dialog, assigning], source: "apps/nizam/features/inactive-scopes/components/assign-scope-dialog.tsx:141" }
+  endPast: { type: text, component: Text, text: { key: Assign.endPast }, in: [dialog], when: "endChoice == 'past'", source: "apps/nizam/features/inactive-scopes/components/assign-scope-dialog.tsx:144" }
+  auditNote: { type: text, component: Text, text: { key: Assign.auditNote }, in: [dialog, assigning], source: "apps/nizam/features/inactive-scopes/components/assign-scope-dialog.tsx:115" }
+  cancelButton: { type: action, component: Button, role: button, intent: dismiss, text: { key: Assign.cancel }, in: [dialog, assigning], emits: CANCEL, source: "apps/nizam/features/inactive-scopes/components/assign-scope-dialog.tsx:118" } # looks enabled while saving; the dialog ignores the close then (assign-scope-dialog.tsx:107)
+  submitOff: { type: action, component: Button, role: button, intent: confirm, text: { oneOf: [Assign.submitKosk, Assign.submitMadrasah, Assign.submitCourse] }, in: [dialog], disabledIn: [dialog], when: "not picked or endChoice == 'past'", source: "apps/nizam/features/inactive-scopes/components/assign-scope-dialog.tsx:122" }
+  submit: { type: action, component: Button, role: button, intent: confirm, text: { oneOf: [Assign.submitKosk, Assign.submitMadrasah, Assign.submitCourse] }, in: [dialog, assigning], disabledIn: [assigning], when: "picked and endChoice != 'past'", emits: SUBMIT, source: "apps/nizam/features/inactive-scopes/components/assign-scope-dialog.tsx:119" }
+  failedToast: { type: alert, component: Alert, role: alert, text: { key: Assign.failed }, in: [dialog], when: "notice in ['notFound', 'expiryInvalid', 'unknownAccount', 'forbidden', 'generic']", source: "apps/nizam/features/inactive-scopes/components/assign-scope-dialog.tsx:87" }
+  failedReason: { type: text, component: Text, text: { oneOf: [Inactive.errorNotFound, Inactive.errorExpiry, Inactive.errorUnknown, Inactive.errorForbidden, Inactive.errorGeneric] }, in: [dialog], when: "notice in ['notFound', 'expiryInvalid', 'unknownAccount', 'forbidden', 'generic']", source: "apps/nizam/features/inactive-scopes/components/assign-scope-dialog.tsx:88" }
+
+  noAccessTitle: { type: text, component: Heading, role: heading, text: { key: NoAccess.title }, in: [forbiddenPage], source: "apps/nizam/components/errors/no-access.tsx:30" }
+
+edges:
+  - { labelledBy: [dialogPopup, dialogTitle] }
+  - { labelledBy: [scopeTable, heading] }
+  - { triggers: [assignButton, dialog] }
+  - { triggers: [submit, assigning] }
+
+rules:
+  - { id: focus-the-first-field, rule: "a form dialog puts the focus on its first field" }
+  - { id: every-refusal-named, rule: "every refusal code the route can answer has its own sentence" }

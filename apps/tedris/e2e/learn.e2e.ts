@@ -55,7 +55,7 @@ test.describe("Ana sayfa (tedris/01)", () => {
   test("shows the three sections under the sessions, with their links", async ({
     page,
   }) => {
-    await page.goto("/tr/home");
+    await page.goto("/home");
     const main = page.getByRole("main");
     for (const [heading, link, href] of [
       ["Kaldığın yerden devam et", "Derslerim", "/my-courses"],
@@ -78,7 +78,7 @@ test.describe("Ana sayfa (tedris/01)", () => {
   test("'Kaldığın yerden devam et' lists the course in progress with its progress and next session", async ({
     page,
   }) => {
-    await page.goto("/tr/home");
+    await page.goto("/home");
     const card = page
       .locator(".mds-card", {
         has: page.getByRole("link", { name: fx.titles.enrolledCourse }),
@@ -92,7 +92,7 @@ test.describe("Ana sayfa (tedris/01)", () => {
   test("'Bugün çalışılacak desteler' lists the decks with cards waiting, then the one that grew", async ({
     page,
   }) => {
-    await page.goto("/tr/home");
+    await page.goto("/home");
     const section = page.locator("section", {
       has: page.getByRole("heading", { name: "Bugün çalışılacak desteler" }),
     });
@@ -109,15 +109,15 @@ test.describe("Ana sayfa (tedris/01)", () => {
   });
 
   test("'Çalış' opens that deck's study page", async ({ page }) => {
-    await page.goto("/tr/home");
+    await page.goto("/home");
     await page.getByRole("link", { name: `Çalış: ${fx.titles.own}` }).click();
-    await expect(page).toHaveURL(new RegExp(`/tr/decks/study/${fx.ids.own}$`));
+    await expect(page).toHaveURL(new RegExp(`/decks/study/${fx.ids.own}$`));
   });
 
   test("'Takip ettiğin köşklerden' lists a course of a followed köşk, and leaves out the one the talebe is in", async ({
     page,
   }) => {
-    await page.goto("/tr/home");
+    await page.goto("/home");
     const section = page.locator("section", {
       has: page.getByRole("heading", { name: "Takip ettiğin köşklerden" }),
     });
@@ -136,7 +136,7 @@ test.describe("Ana sayfa (tedris/01)", () => {
     page,
   }) => {
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto("/tr/home");
+    await page.goto("/home");
     await expect(
       page.getByRole("heading", { name: "Bugün çalışılacak desteler" })
     ).toBeVisible();
@@ -158,7 +158,7 @@ test.describe("Çalışma (tedris/30)", () => {
   test("starts with the cards waiting for a repeat, then the unstarted one; the back is hidden", async ({
     page,
   }) => {
-    await page.goto(`/tr/decks/study/${fx.ids.own}`);
+    await page.goto(`/decks/study/${fx.ids.own}`);
     const main = page.getByRole("main");
     await expect(
       main.getByRole("heading", { level: 1, name: "Çalışma" })
@@ -179,7 +179,7 @@ test.describe("Çalışma (tedris/30)", () => {
   test("turning a card over shows its back and the three ratings", async ({
     page,
   }) => {
-    await page.goto(`/tr/decks/study/${fx.ids.own}`);
+    await page.goto(`/decks/study/${fx.ids.own}`);
     await page.getByRole("button", { name: "Arka yüzü göster" }).click();
     await expect(
       page.getByText("Arka yüz", { exact: true }).filter({ visible: true })
@@ -193,7 +193,7 @@ test.describe("Çalışma (tedris/30)", () => {
   });
 
   test("the space bar turns the card over", async ({ page }) => {
-    await page.goto(`/tr/decks/study/${fx.ids.own}`);
+    await page.goto(`/decks/study/${fx.ids.own}`);
     // The key is read once the page has hydrated; a press before that does nothing,
     // so press until the card is over (each press turns it once, so none is wasted).
     await expect(async () => {
@@ -209,7 +209,7 @@ test.describe("Çalışma (tedris/30)", () => {
   test("rating a card writes its progress once, schedules it, and moves on; the round ends with a summary", async ({
     page,
   }) => {
-    await page.goto(`/tr/decks/study/${fx.ids.own}`);
+    await page.goto(`/decks/study/${fx.ids.own}`);
     const main = page.getByRole("main");
 
     await page.getByRole("button", { name: "Arka yüzü göster" }).click();
@@ -243,7 +243,7 @@ test.describe("Çalışma (tedris/30)", () => {
 
     // A new round has nothing waiting: every card was rated, and the one the
     // talebe was not due for is still a few days off.
-    await page.goto(`/tr/decks/study/${fx.ids.own}`);
+    await page.goto(`/decks/study/${fx.ids.own}`);
     await expect(main).toContainText("Bugün için bitti");
   });
 
@@ -251,9 +251,9 @@ test.describe("Çalışma (tedris/30)", () => {
     page,
   }) => {
     const before = await progressOf(fx.ids.cards.later);
-    await page.goto(`/tr/decks/study/${fx.ids.courseDeck}`);
+    await page.goto(`/decks/study/${fx.ids.courseDeck}`);
     await page.getByRole("link", { name: "Çalışmayı bitir" }).click();
-    await expect(page).toHaveURL(new RegExp(`/tr/decks/${fx.ids.courseDeck}$`));
+    await expect(page).toHaveURL(new RegExp(`/decks/${fx.ids.courseDeck}$`));
     expect(await progressOf(fx.ids.cards.later)).toEqual(before);
   });
 
@@ -262,7 +262,7 @@ test.describe("Çalışma (tedris/30)", () => {
   }) => {
     // The status stays 200: the segment's loading.tsx streams its shell before
     // the page decides (MDRS-141, MDRS-160); a signed-in page is not indexed.
-    await page.goto(`/tr/decks/study/${fx.ids.strangerPrivate}`);
+    await page.goto(`/decks/study/${fx.ids.strangerPrivate}`);
     await expect(
       page.getByText("Sayfa bulunamadı").filter({ visible: true })
     ).toBeVisible();
@@ -276,7 +276,7 @@ test.describe("Deste, girişsiz ziyaretçi (tedris/32)", () => {
   }) => {
     const context = await browser.newContext();
     const page = await context.newPage();
-    await page.goto(`/tr/decks/${fx.ids.publicDeck}`);
+    await page.goto(`/decks/${fx.ids.publicDeck}`);
     const main = page.getByRole("main");
     await expect(
       main.getByRole("heading", { level: 1, name: fx.titles.publicDeck })
@@ -314,10 +314,10 @@ test.describe("Deste, girişsiz ziyaretçi (tedris/32)", () => {
       if (request.method() !== "GET" && request.url().includes("/decks/study/"))
         writes.push(request.url());
     });
-    await page.goto(`/tr/decks/${fx.ids.publicDeck}`);
+    await page.goto(`/decks/${fx.ids.publicDeck}`);
     await page.getByRole("link", { name: "Çalış" }).click();
     await expect(page).toHaveURL(
-      new RegExp(`/tr/decks/study/${fx.ids.publicDeck}$`)
+      new RegExp(`/decks/study/${fx.ids.publicDeck}$`)
     );
     const main = page.getByRole("main");
     await expect(main).toContainText("Kart 1 / 8");
@@ -344,8 +344,8 @@ test.describe("Deste, girişsiz ziyaretçi (tedris/32)", () => {
     const context = await browser.newContext();
     const page = await context.newPage();
     for (const path of [
-      `/tr/decks/${fx.ids.strangerPrivate}`,
-      `/tr/decks/study/${fx.ids.strangerPrivate}`,
+      `/decks/${fx.ids.strangerPrivate}`,
+      `/decks/study/${fx.ids.strangerPrivate}`,
     ]) {
       // The sign-in hand-off leaves the app mid-navigation: wait for the URL,
       // not for the load.
@@ -361,7 +361,7 @@ test.describe("Deste, girişsiz ziyaretçi (tedris/32)", () => {
   }) => {
     const context = await browser.newContext();
     const page = await context.newPage();
-    for (const path of ["/tr/decks", "/tr/decks/create", "/tr/decks/explore"]) {
+    for (const path of ["/decks", "/decks/create", "/decks/explore"]) {
       await page.goto(path, { waitUntil: "commit" }).catch(() => undefined);
       await expect(page).toHaveURL(/signin|api\/auth|auth\.medaris/);
     }

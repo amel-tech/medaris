@@ -1,5 +1,5 @@
 {
-  "id": "289d656b-aee2-402b-b421-98db9fb4d782",
+  "id": "9b1d8cfa-e866-457b-9fe7-a58aa2407451",
   "prevId": "73758de9-3d5a-4108-ab16-93303613e5d1",
   "version": "7",
   "dialect": "postgresql",
@@ -2190,6 +2190,19 @@
           "primaryKey": false,
           "notNull": false
         },
+        "week_id": {
+          "name": "week_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "course_draft": {
+          "name": "course_draft",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
         "kosk_id": {
           "name": "kosk_id",
           "type": "uuid",
@@ -2312,6 +2325,19 @@
           "tableTo": "madrasahs",
           "columnsFrom": [
             "madrasah_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "decks_week_id_course_weeks_id_fk": {
+          "name": "decks_week_id_course_weeks_id_fk",
+          "tableFrom": "decks",
+          "tableTo": "course_weeks",
+          "columnsFrom": [
+            "week_id"
           ],
           "columnsTo": [
             "id"
@@ -3789,24 +3815,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "review_note": {
-          "name": "review_note",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "reviewed_by": {
-          "name": "reviewed_by",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "reviewed_at": {
-          "name": "reviewed_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -3863,12 +3871,7 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {
-        "lesson_submissions_review_sent": {
-          "name": "lesson_submissions_review_sent",
-          "value": "(\"lesson_submissions\".\"reviewed_by\" is null) = (\"lesson_submissions\".\"reviewed_at\" is null)"
-        }
-      },
+      "checkConstraints": {},
       "isRLSEnabled": false
     },
     "public.submission_files": {
@@ -3956,114 +3959,6 @@
         "submission_files_submission_id_lesson_submissions_id_fk": {
           "name": "submission_files_submission_id_lesson_submissions_id_fk",
           "tableFrom": "submission_files",
-          "tableTo": "lesson_submissions",
-          "columnsFrom": [
-            "submission_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.submission_review_files": {
-      "name": "submission_review_files",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "submission_id": {
-          "name": "submission_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "storage_key": {
-          "name": "storage_key",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "file_name": {
-          "name": "file_name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "content_type": {
-          "name": "content_type",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "size_bytes": {
-          "name": "size_bytes",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "uploaded_by": {
-          "name": "uploaded_by",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "submission_review_files_storage_key_uq": {
-          "name": "submission_review_files_storage_key_uq",
-          "columns": [
-            {
-              "expression": "storage_key",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "submission_review_files_submission_id_idx": {
-          "name": "submission_review_files_submission_id_idx",
-          "columns": [
-            {
-              "expression": "submission_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "submission_review_files_submission_id_lesson_submissions_id_fk": {
-          "name": "submission_review_files_submission_id_lesson_submissions_id_fk",
-          "tableFrom": "submission_review_files",
           "tableTo": "lesson_submissions",
           "columnsFrom": [
             "submission_id"

@@ -1,0 +1,166 @@
+# Navigation graph of Landing, the public Medaris site, written by hand: there is no extractor for apps/landing.
+# Every page and every entry cites the code that makes it true (`source:`, relative to the repository root). Read at ce47fce8.
+# Landing has no session and no menu registry: one header (logo, Giriş yap, Kayıt ol) and one footer (footerLinks and GitHub)
+# on every page. The words are the app's own strings (landing has no catalog in libs/i18n); the titles of the three Tedris pages
+# are Tedris's words (libs/i18n/src/locales/tr/tedris.json: Auth.signIn, Auth.register, DiscoverPage.title).
+kind: nav
+schema: delurio-graph/0
+id: medaris-landing
+title: Landing
+status: proposed
+locale: tr
+catalog: catalog/tr.json
+
+summary: >-
+  The six public pages of medaris (Turkish only, no locale prefix), how a visitor moves between them through the header,
+  the footer and the links inside the pages, and the three ways out to Tedris: sign in, register and Keşfet.
+
+source:
+  repo: amel-tech/medaris
+  app: apps/landing
+  menu: apps/landing/components/site-footer.tsx
+  header: apps/landing/components/site-header.tsx
+  routing: apps/landing/lib/i18n/routing.ts # locales [tr], localePrefix never: /, /sss, /iletisim ...
+  middleware: apps/landing/middleware.ts # aydinlatma-metni and tedris are outside next-intl's matcher
+
+frames:
+  site:
+    title: Every landing page (SiteHeader on top, SiteFooter below)
+    menu: Footer
+  elsewhere:
+    title: Other applications (Tedris, reached through landing's own redirect routes, and GitHub)
+
+facts:
+  visitor:
+    values: [true]
+    say: landing reads no session; everyone is a visitor
+
+personas:
+  visitor:
+    title: Visitor
+    say: anyone; landing has no sign-in of its own
+    facts: { visitor: true }
+
+# A page's title is the name SiteHeader shows in the phone AppBar (the tab adds " · Medaris"); the home page has the layout's "Medaris".
+pages:
+  start:
+    route: /
+    title: Landing.home
+    kind: screen
+    frame: site
+    source: apps/landing/app/[locale]/page.tsx:189
+  faq:
+    route: /sss
+    title: Landing.faq
+    kind: screen
+    frame: site
+    source: apps/landing/app/[locale]/sss/page.tsx:10
+  contact:
+    route: /iletisim
+    title: Landing.contact
+    kind: screen
+    frame: site
+    source: apps/landing/app/[locale]/iletisim/page.tsx:11
+  terms:
+    route: /kullanim-sartlari
+    title: Landing.terms
+    kind: screen
+    frame: site
+    source: apps/landing/app/[locale]/kullanim-sartlari/page.tsx:10
+  cookies:
+    route: /cerezler
+    title: Landing.cookies
+    kind: screen
+    frame: site
+    source: apps/landing/app/[locale]/cerezler/page.tsx:11
+  privacy:
+    route: /aydinlatma-metni
+    title: Landing.privacy
+    kind: screen
+    frame: site
+    source: apps/landing/app/aydinlatma-metni/page.tsx:21 # outside [locale], its own layout (app/aydinlatma-metni/layout.tsx)
+  # landing's own routes answer 307 to Tedris (503 when TEDRIS_APP_URL is unset); since #348 the target carries no /tr and no ?locale
+  tedrisSignin:
+    route: /api/tedris/signin → Tedris /auth/signin
+    title: Tedris.signIn
+    kind: external
+    frame: elsewhere
+    source: apps/landing/app/api/tedris/[intent]/route.ts:28 # tedrisEntryUrl, lib/tedris-entry.ts:29
+  tedrisRegister:
+    route: /api/tedris/register → Tedris /auth/register
+    title: Tedris.register
+    kind: external
+    frame: elsewhere
+    source: apps/landing/app/api/tedris/[intent]/route.ts:28
+  tedrisDiscover:
+    route: /tedris/discover → Tedris /discover
+    title: Tedris.discover
+    kind: external
+    frame: elsewhere
+    source: apps/landing/app/tedris/[[...path]]/route.ts:10 # exploreHref lib/tedris.ts:15, redirectToTedris lib/tedris.ts:17
+  repository:
+    route: https://github.com/amel-tech/medaris
+    title: Landing.github
+    kind: external
+    frame: elsewhere
+    source: apps/landing/components/site-footer.tsx:12
+
+entries:
+  # SiteHeader: the logo (phone AppBar :32, desktop bar :55), Giriş yap (phone icon :45 with that aria-label, desktop :60)
+  # and Kayıt ol (desktop bar only)
+  - { from: frame:site, to: start, how: user, label: Landing.logo, source: "apps/landing/components/site-header.tsx:55" }
+  - { from: frame:site, to: tedrisSignin, how: user, label: Landing.signIn, source: "apps/landing/components/site-header.tsx:60" }
+  - { from: frame:site, to: tedrisRegister, how: user, label: Landing.register, source: "apps/landing/components/site-header.tsx:63" }
+
+  # SiteFooter: footerLinks (site-footer.tsx:3), drawn in order at :23, then the repository link outside footerLinks
+  - { from: frame:site, to: privacy, how: menu, label: Landing.privacy, source: "apps/landing/components/site-footer.tsx:4" }
+  - { from: frame:site, to: faq, how: menu, label: Landing.faq, source: "apps/landing/components/site-footer.tsx:5" }
+  - { from: frame:site, to: contact, how: menu, label: Landing.contact, source: "apps/landing/components/site-footer.tsx:6" }
+  - { from: frame:site, to: terms, how: menu, label: Landing.terms, source: "apps/landing/components/site-footer.tsx:7" }
+  - { from: frame:site, to: cookies, how: menu, label: Landing.cookies, source: "apps/landing/components/site-footer.tsx:8" }
+  - { from: frame:site, to: repository, how: link, label: Landing.github, source: "apps/landing/components/site-footer.tsx:32" }
+
+  # the home page (app/[locale]/page.tsx; words in content/karsilama.ts: hero :7, talebe :44, medrese :77, closing :176)
+  - { from: start, to: tedrisRegister, how: button, label: Landing.heroRegister, source: "apps/landing/app/[locale]/page.tsx:226" } # also the closing section, :409
+  - { from: start, to: tedrisDiscover, how: link, label: Landing.explore, source: "apps/landing/app/[locale]/page.tsx:236" } # also the talebe door, :284
+  - { from: start, to: tedrisRegister, how: button, label: Landing.doorRegister, source: "apps/landing/app/[locale]/page.tsx:280" }
+  - { from: start, to: contact, how: button, label: Landing.medreseContact, source: "apps/landing/app/[locale]/page.tsx:304" }
+  - { from: start, to: contact, how: button, label: Landing.closingContact, source: "apps/landing/app/[locale]/page.tsx:415" }
+  - { from: start, to: tedrisSignin, how: button, label: Landing.signIn, source: "apps/landing/app/[locale]/page.tsx:421" }
+  - { from: start, to: privacy, how: link, label: Landing.privacy, source: "apps/landing/app/[locale]/page.tsx:428" }
+  - { from: start, to: faq, how: link, label: Landing.faq, source: "apps/landing/app/[locale]/page.tsx:432" }
+
+  # Sık sorulan sorular
+  - { from: faq, to: privacy, how: link, label: Landing.privacy, source: "apps/landing/app/[locale]/sss/page.tsx:214" } # also the card, :245
+  - { from: faq, to: contact, how: button, label: Landing.faqContact, source: "apps/landing/app/[locale]/sss/page.tsx:230" }
+
+  # İletişim (the form posts to /api/iletisim and stays on the page; once sent it offers the home page and the FAQ)
+  - { from: contact, to: privacy, how: link, label: Landing.privacy, source: "apps/landing/app/[locale]/iletisim/page.tsx:51" } # also the form, components/contact-form.tsx:229
+  - { from: contact, to: faq, how: link, label: Landing.faq, source: "apps/landing/app/[locale]/iletisim/page.tsx:63" } # also after sending, contact-form.tsx:91
+  - { from: contact, to: start, how: button, label: Landing.backHome, back: true, data: true, source: "apps/landing/components/contact-form.tsx:87" } # only after a message was sent
+
+  # Kullanım şartları
+  - { from: terms, to: contact, how: link, label: Landing.contact, source: "apps/landing/app/[locale]/kullanim-sartlari/page.tsx:93" } # also :498
+  - { from: terms, to: privacy, how: link, label: Landing.privacy, source: "apps/landing/app/[locale]/kullanim-sartlari/page.tsx:95" } # also :245, :426, :466
+  - { from: terms, to: cookies, how: link, label: Landing.cookies, source: "apps/landing/app/[locale]/kullanim-sartlari/page.tsx:425" }
+
+  # Çerezler
+  - { from: cookies, to: privacy, how: link, label: Landing.privacy, source: "apps/landing/app/[locale]/cerezler/page.tsx:156" }
+  - { from: cookies, to: terms, how: link, label: Landing.terms, source: "apps/landing/app/[locale]/cerezler/page.tsx:157" }
+  - { from: cookies, to: contact, how: link, label: Landing.contact, source: "apps/landing/app/[locale]/cerezler/page.tsx:158" }
+
+goals:
+  - { id: register, say: Register in Tedris, page: tedrisRegister, for: [visitor], within: 1 }
+  - { id: signIn, say: Sign in to Tedris, page: tedrisSignin, for: [visitor], within: 1 }
+  - { id: discover, say: Browse the courses before registering, page: tedrisDiscover, for: [visitor], within: 1 }
+  - { id: contact, say: Write to Medaris, page: contact, for: [visitor], within: 1 }
+  - { id: privacy, say: Read the privacy notice, page: privacy, for: [visitor], within: 1 }
+
+notModeled:
+  - "the in-page anchors (Medreseniz için to #medreseler on the home page, the table of contents of Kullanım şartları), which stay on the page"
+  - the theme toggle of the header
+  - "the contact form's POST to /api/iletisim (app/api/iletisim/route.ts) and its answers"
+  - "the mailto links of İletişim (iletisim/page.tsx:44, contact-form.tsx:119)"
+  - "the phone AppBar, which draws only the logo and Giriş yap: Kayıt ol is one scroll away on a phone (site-header.tsx:43)"
+  - "the 503 the redirect routes answer when TEDRIS_APP_URL is not configured"
+  - "the section Medaris’i kim yürütüyor, which is not rendered while its text is a placeholder (content/karsilama.ts:193)"

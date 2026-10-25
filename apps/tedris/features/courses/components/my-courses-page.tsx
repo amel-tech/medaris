@@ -99,7 +99,7 @@ const OngoingCard = ({
 }) => (
   <Card
     className="flex flex-col"
-    href={`/${locale}/courses/${course.id}`}
+    href={`/courses/${course.id}`}
     title={course.title}
     media={<CoverPattern {...courseCover(course)} size="sm" />}
     action={
@@ -153,20 +153,14 @@ const OngoingCard = ({
 const CourseLine = ({
   course,
   star,
-  locale,
   note,
 }: {
   course: EnrolledCourseResponse;
   star: ImamStarLabels;
-  locale: string;
   note: string;
 }) => (
   <>
-    <Link
-      href={`/${locale}/courses/${course.id}`}
-      className="mds-h4"
-      dir="auto"
-    >
+    <Link href={`/courses/${course.id}`} className="mds-h4" dir="auto">
       <bdi>{course.title}</bdi>
     </Link>
     <p className="mds-caption" dir="auto">
@@ -210,7 +204,7 @@ export const MyCoursesPage = async ({
         </div>
         <Button
           variant="secondary"
-          href={`/${locale}/account/calendar`}
+          href={`/account/calendar`}
           iconLeft={<Icon name="calendar" size="sm" />}
         >
           {t("CalendarSubscription.link")}
@@ -229,7 +223,7 @@ export const MyCoursesPage = async ({
       ) : none ? (
         <EmptyState
           action={
-            <Button variant="outline" href={`/${locale}/discover`}>
+            <Button variant="outline" href={`/discover`}>
               {t("MyCoursesPage.goDiscover")}
             </Button>
           }
@@ -310,7 +304,6 @@ export const MyCoursesPage = async ({
                     <CourseLine
                       course={course}
                       star={star}
-                      locale={locale}
                       note={t("MyCoursesPage.appliedOn", {
                         date: formatLongDate(
                           course.enrollment.createdAt,
@@ -353,7 +346,6 @@ export const MyCoursesPage = async ({
                         <CourseLine
                           course={course}
                           star={star}
-                          locale={locale}
                           note={t("CoursePage.revokedTitle")}
                         />
                       </div>
@@ -391,7 +383,6 @@ export const MyCoursesPage = async ({
                         <CourseLine
                           course={course}
                           star={star}
-                          locale={locale}
                           note={t("MyCoursesPage.completedOn", {
                             date: formatLongDate(
                               course.enrollment.completedAt ??
@@ -412,7 +403,7 @@ export const MyCoursesPage = async ({
                         <Button
                           variant="ghost"
                           size="small"
-                          href={`/${locale}/courses/${course.id}`}
+                          href={`/courses/${course.id}`}
                         >
                           {t("MyCoursesPage.recordings")}
                         </Button>

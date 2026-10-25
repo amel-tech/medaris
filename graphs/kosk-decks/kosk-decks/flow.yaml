@@ -1,0 +1,214 @@
+# A köşk's own decks in nizam as the code runs them at ce47fce8: Köşk desteleri (/kosks/{id}/desteler, nizam/30), Köşk
+# destesi aç (/kosks/{id}/desteler/yeni, nizam/35), the müderris proposals, Gizle, and the deck's card table
+# (/decks/{id}/cards), which reads and writes through the flashcard routes with the viewer's own token.
+schema: delurio-graph/0
+kind: flow
+id: medaris.kosk-decks
+status: proposed
+domain: medaris.kosk-decks
+ui: medaris.kosk-decks
+title: Run a köşk's decks
+summary: >-
+  A nazım of the köşk, or the başnazım, lists the köşk's shown decks and the proposals müderrisler sent. "Köşk destesi
+  aç" opens a private deck in the opener's name that every talebe of the köşk's courses can study; "Kabul et" opens the
+  same form filled from a proposal and accepts it with the deck; "Reddet" sends a reason to the proposer; "Gizle" moves a
+  deck to the köşk's archive. "Kartları düzenle" opens the card table, which only the deck's opener can write.
+
+scope:
+  shows: the köşk's deck list, opening a deck (from scratch or from a proposal), refusing a proposal, hiding a deck, and the card table
+  world: open
+  outOfView:
+    - "making a proposal: POST /kosks/{id}/deck-proposals exists, no app calls it"
+    - "bringing a hidden deck back from the köşk's archive: the platform-admin area"
+    - "the talebe studying the deck: medaris.flashcard-study; the deck on the köşk's tedris page: medaris.deck-browse"
+    - "importing and exporting cards on the card table: the domain's importsCard and exportCards"
+
+context:
+  viewer:
+    values: [author, otherNazim, chief, outsider]
+    initial: any
+    say: { author: "the person is the köşk nazımı who opened the deck acted on", otherNazim: "the person is another nazım of the köşk", chief: "the person is the başnazım", outsider: "the person is no nazım of the köşk (a müderris of one of its courses, say)" }
+  proposal:
+    values: [none, firstPage, laterPage]
+    initial: any
+    say: { none: "no proposal waits", firstPage: "a proposal waits among the first twelve", laterPage: "a proposal waits beyond the first twelve, shown after Daha fazla göster" }
+  answeredMeanwhile:
+    values: [false, true]
+    initial: any
+    say: { "false": "nobody else answers the proposal", "true": "another nazım answers it while the page is open" }
+  titleOk:
+    values: [true, false]
+    initial: any
+    say: { "true": "the deck has a name", "false": "the name is empty" }
+  hasDeck:
+    values: [true, false]
+    initial: any
+    say: { "true": "the köşk has a shown deck", "false": "the köşk has no shown deck" }
+  accepting: { values: [false, true], initial: false } # the form was opened with Kabul et
+  fromProposal: { values: [false, true], initial: false } # the form carries the proposal (filled in, its id sent)
+  opened: { values: [false, true], initial: false } # a deck was opened
+  accepted: { values: [false, true], initial: false } # the proposal was accepted with it
+  refused: { values: [false, true], initial: false }
+  cardSaved: { values: [false, true], initial: false }
+  notice: { values: [none, opened, refused, hidden, answered, titleMissing, saved, failed], initial: none }
+
+guards:
+  waits: "proposal != 'none'" # source: apps/nizam/features/deck-review/components/kosk-decks-view.tsx:274
+
+effects:
+  fresh: { set: { accepting: false, fromProposal: false, notice: none } }
+  withProposal: { set: { accepting: true, fromProposal: true, notice: none } }
+  proposalNotFound: { set: { accepting: true, fromProposal: false, notice: none } }
+  titleMissing: { set: { notice: titleMissing } }
+  opened: { set: { opened: true, notice: opened } }
+  openedAndAccepted: { set: { opened: true, accepted: true, notice: opened } }
+  answered: { set: { notice: answered } }
+  refused: { set: { refused: true, notice: refused } }
+  deckHidden: { set: { notice: hidden }, havoc: [hasDeck] }
+  cardSaved: { set: { cardSaved: true, notice: saved } }
+  failed: { set: { notice: failed } }
+  clearNotice: { set: { notice: none } }
+
+failures:
+  creatingDeck: { from: createKoskDeck, answered: [DECK_PROPOSAL_NOT_PENDING, DECK_PROPOSAL_NOT_FOUND] }
+  refusing: { from: rejectKoskDeckProposal, answered: [DECK_PROPOSAL_NOT_PENDING, DECK_PROPOSAL_NOT_FOUND] }
+  hidingDeck: { from: hideKoskDeck, gone: [KOSK_DECK_NOT_FOUND] }
+  savingCard: { from: updateFlashcard, refused: [CARD_NOT_FOUND, AUTHZ_FORBIDDEN] }
+
+main:
+  given: { viewer: author, titleOk: true }
+  events: [OPEN, SUBMIT, DONE]
+
+initial: opening
+states:
+  opening:
+    title: Open Köşk desteleri
+    description: >-
+      GET /kosks/{id} and GET /kosks/{id}/decks/manage (one page of twelve decks and twelve proposals). The service
+      lets in a holder of the KOSK_NAZIM role in the köşk and the başnazım; deck.manage_kosk is never asked. Anyone else
+      gets "Bu bölüm için izniniz yok".
+    source: apps/nizam/app/kosks/[id]/desteler/page.tsx:30
+    always:
+      - { guard: "viewer == 'outsider'", target: forbidden, say: "403 DECK_REVIEW_FORBIDDEN", source: "apps/tedrisat/src/deck-review/deck-review.service.ts:359" }
+      - { target: decksPage, say: "the köşk's decks and the waiting proposals", source: "apps/tedrisat/src/deck-review/deck-review.service.ts:199" }
+
+  decksPage:
+    title: The köşk's decks and the proposals
+    by: human
+    goal: true
+    description: >-
+      "Hoca önerileri" (drawn only when one waits) with Kabul et and Reddet on each, then the decks with their card
+      count and last change, "Kartları düzenle" and "Gizle" on each row.
+    source: apps/nizam/features/deck-review/components/kosk-decks-view.tsx:242
+    on:
+      OPEN: { target: deckForm, effect: [fresh], say: "Köşk destesi aç", source: "apps/nizam/features/deck-review/components/kosk-decks-view.tsx:265" }
+      ACCEPT:
+        - { guard: "proposal == 'firstPage'", target: deckForm, effect: [withProposal], say: "Kabul et: the form opens filled from the proposal", source: "apps/nizam/app/kosks/[id]/desteler/yeni/page.tsx:54" }
+        - { guard: "proposal == 'laterPage'", target: deckForm, effect: [proposalNotFound], say: "Kabul et on a proposal past the first page: the form page reads only the first twelve, so it opens empty and the proposal is not sent", source: "apps/nizam/app/kosks/[id]/desteler/yeni/page.tsx:55" }
+      REFUSE: { guard: "waits", target: refuseDialog, effect: [clearNotice], say: "Reddet", source: "apps/nizam/features/deck-review/components/kosk-decks-view.tsx:322" }
+      HIDE: { guard: "hasDeck", target: hideConfirm, effect: [clearNotice], say: "Gizle on a deck's row", source: "apps/nizam/features/deck-review/components/kosk-decks-view.tsx:233" }
+      EDIT_CARDS: { guard: "hasDeck", target: cardsOpening, effect: [clearNotice], say: "Kartları düzenle", source: "apps/nizam/features/deck-review/components/kosk-decks-view.tsx:224" }
+      NAVIGATE: { target: left, say: "they go to another page", source: "apps/nizam/features/deck-review/components/kosk-decks-view.tsx:242" }
+
+  deckForm:
+    title: Name the deck and choose its card type
+    by: human
+    description: >-
+      Köşk destesi aç (nizam/35): name, description and card type, with who will see it and how many talebe that is now;
+      from a proposal, a banner names it and says opening the deck accepts it. Cards are added afterwards.
+    source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:102
+    on:
+      SUBMIT:
+        - { guard: "not titleOk", target: deckForm, effect: [titleMissing], say: "the name is empty: said under it, and the focus goes to it", source: "apps/nizam/features/deck-review/components/kosk-deck-form.tsx:74" }
+        - { target: creatingDeck, say: "Desteyi aç", source: "apps/nizam/features/deck-review/components/kosk-deck-form.tsx:80" }
+      CANCEL: { target: decksPage, say: "Vazgeç", source: "apps/nizam/features/deck-review/components/kosk-deck-form.tsx:196" }
+
+  creatingDeck:
+    title: Open the köşk deck
+    description: >-
+      POST /kosks/{id}/decks: a private deck with the köşk's id, authored by the caller; with a proposal id the proposal
+      is accepted in the same transaction, and nobody is told. Its talebe read it through the course rule (deckSharedWith).
+    invoke: { action: createKoskDeck }
+    source: apps/tedrisat/src/deck-review/deck-review.repository.ts:377
+    on:
+      DONE:
+        - { guard: "fromProposal and not answeredMeanwhile", target: decksPage, effect: [openedAndAccepted], say: "the deck is open and the proposal accepted", source: "apps/nizam/features/deck-review/components/kosk-deck-form.tsx:96" }
+        - { guard: "not fromProposal", target: decksPage, effect: [opened], say: "the deck is open", source: "apps/nizam/features/deck-review/components/kosk-deck-form.tsx:96" }
+      FAIL.answered: { guard: "fromProposal and answeredMeanwhile", target: deckForm, effect: [answered], say: "the proposal was answered meanwhile: the deck is rolled back and a toast says so", source: "apps/tedrisat/src/deck-review/deck-review.repository.ts:413" }
+
+  refuseDialog:
+    title: Write the reason for refusing the proposal
+    by: human
+    source: apps/nizam/features/deck-review/components/kosk-decks-view.tsx:378
+    on:
+      SUBMIT: { target: refusing, say: "Reddet, once a reason is written", source: "apps/nizam/features/deck-review/components/reject-dialog.tsx:63" }
+      CANCEL: { target: decksPage, say: "Vazgeç", source: "apps/nizam/features/deck-review/components/kosk-decks-view.tsx:378" }
+
+  refusing:
+    title: Refuse the proposal
+    description: POST /kosks/{id}/deck-proposals/{proposalId}/reject; the proposer reads the reason in their notifications
+    invoke: { action: rejectKoskDeckProposal }
+    source: apps/nizam/features/deck-review/components/kosk-decks-view.tsx:134
+    on:
+      DONE: { guard: "not answeredMeanwhile", target: decksPage, effect: [refused], say: "the proposal is refused", source: "apps/nizam/features/deck-review/components/kosk-decks-view.tsx:147" }
+      FAIL.answered: { guard: "answeredMeanwhile", target: decksPage, effect: [answered], say: "answered meanwhile: the card leaves the list and a toast says so", source: "apps/nizam/features/deck-review/components/kosk-decks-view.tsx:141" }
+
+  hideConfirm:
+    title: Confirm hiding the deck
+    by: human
+    description: an alertdialog; the focus starts on Vazgeç
+    source: apps/nizam/features/deck-review/components/kosk-decks-view.tsx:388
+    on:
+      CONFIRM: { target: hidingDeck, say: "Gizle", source: "apps/nizam/features/deck-review/components/kosk-decks-view.tsx:399" }
+      CANCEL: { target: decksPage, say: "Vazgeç", source: "apps/nizam/features/deck-review/components/kosk-decks-view.tsx:388" }
+
+  hidingDeck:
+    title: Hide the deck
+    description: >-
+      POST /decks/{id}/hide: archivedAt and the level (platform for the başnazım, köşk for a nazım). The köşk's talebe
+      lose it; a deck that was published stays readable by everyone through the public reads.
+    invoke: { action: hideKoskDeck }
+    source: apps/tedrisat/src/deck-review/deck-review.service.ts:247
+    on:
+      DONE: { target: decksPage, effect: [deckHidden], say: "the deck moves to the köşk's archive", source: "apps/nizam/features/deck-review/components/kosk-decks-view.tsx:169" }
+      FAIL.gone: { target: decksPage, effect: [deckHidden], say: "it was gone or hidden already: the row leaves the list", source: "apps/nizam/features/deck-review/components/kosk-decks-view.tsx:163" }
+
+  cardsOpening:
+    title: Open the deck's card table
+    description: >-
+      /decks/{id}/cards reads GET /flashcard/decks/{id} and its cards with the viewer's token. The deck is private and
+      its only owner is the nazım who opened it: the başnazım reads it (audited), another nazım of the köşk gets 404,
+      which falls to the error page.
+    source: apps/nizam/app/decks/[id]/cards/page.tsx:17
+    always:
+      - { guard: "viewer in ['author', 'chief']", target: cardsTable, say: "the cards open", source: "apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:291" }
+      - { target: cardsError, say: "another nazım of the köşk: 404 DECK_NOT_FOUND", source: "apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:303" }
+
+  cardsTable:
+    title: Edit the cards in the table
+    by: human
+    description: an editable table with import from a file, export and the sample file; a failure's toast shows the server's own message
+    source: apps/nizam/features/decks/components/cards.tsx:135
+    on:
+      SAVE_CARD: { target: savingCard, effect: [clearNotice], say: "they change a card in its row", source: "apps/nizam/features/decks/components/cards.tsx:41" }
+      NAVIGATE: { target: left, say: "they go to another page", source: "apps/nizam/features/decks/components/cards.tsx:135" }
+
+  savingCard:
+    title: Save the card
+    description: PATCH /flashcard/cards/{id}; only the deck's author writes, and the başnazım's read exception covers no write
+    invoke: { action: updateFlashcard }
+    source: apps/nizam/features/decks/actions/index.ts:47
+    on:
+      DONE: { guard: "viewer == 'author'", target: cardsTable, effect: [cardSaved], say: "the card is saved; the talebe see it at once", source: "apps/nizam/features/decks/components/cards.tsx:48" }
+      FAIL.refused: { guard: "viewer != 'author'", target: cardsTable, effect: [failed], say: "refused: a toast with the server's message", source: "apps/nizam/features/decks/components/cards.tsx:54" }
+
+  forbidden: { type: final, title: '"Bu bölüm için izniniz yok"', source: "apps/nizam/app/kosks/[id]/desteler/page.tsx:34" }
+  cardsError: { type: final, title: The error page, description: "the read's 404 is thrown to Next's error page", source: "apps/nizam/app/decks/[id]/cards/page.tsx:20" }
+  left: { type: final, title: The person goes elsewhere, leavesPage: true, source: "apps/nizam/features/deck-review/components/kosk-decks-view.tsx" }
+
+assertions:
+  - { id: only-nazims-run-decks, never: "state in ['decksPage', 'deckForm', 'creatingDeck', 'refuseDialog', 'refusing', 'hideConfirm', 'hidingDeck'] and viewer == 'outsider'", say: "Only a nazım of the köşk and the başnazım run the köşk's decks", source: "apps/tedrisat/src/deck-review/deck-review.service.ts:350" }
+  - { id: answered-proposal-stays-answered, never: "accepted and answeredMeanwhile", say: "A proposal answered meanwhile is not accepted again", source: "apps/tedrisat/src/deck-review/deck-review.repository.ts:409" }
+  - { id: refused-once, never: "refused and answeredMeanwhile", say: "A proposal answered meanwhile is not refused again", source: "apps/tedrisat/src/deck-review/deck-review.repository.ts:526" }
+  - { id: deck-has-a-name, never: "opened and not titleOk", say: "No deck is opened without a name", source: "apps/nizam/features/deck-review/components/kosk-deck-form.tsx:74" }
+  - { id: only-opener-writes-cards, never: "cardSaved and viewer != 'author'", say: "Only the nazım who opened a köşk deck writes its cards", source: "apps/tedrisat/src/flashcard/flashcard.service.ts:92" }

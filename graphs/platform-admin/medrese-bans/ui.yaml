@@ -1,0 +1,107 @@
+# The screens of medaris.medrese-bans in nazar: the medrese's Talebeler (/medrese/:id/talebeler, nazir/10) and
+# Yasaklamalar (/medrese/:id/yasaklamalar, nazir/11) with the Yasakla dialog and the three reason dialogs. Words from
+# libs/i18n nazar.json. MDS Dialogs are Base UI's (role dialog, named by the title); each starts its focus in its first
+# field: the e-mail address when no one is picked yet, else the reason.
+schema: delurio-graph/0
+kind: ui
+id: medaris.medrese-bans
+flow: medaris.medrese-bans
+status: proposed
+catalog: catalog/tr.json
+locales: [tr, en]
+samples: { name: "Rümeysa Nur Karaca", course: "Emsile ve Bina" }
+changes: { key: Changes.note }
+
+nodes:
+  # Talebeler
+  studentsPage: { type: page, component: Page, role: main, name: { labelledBy: studentsTitle }, in: [studentsPage], source: apps/nazar/features/students/components/students-page.tsx:46 }
+  studentsTitle: { type: text, component: Heading, role: heading, text: { key: Students.title }, in: [studentsPage] }
+  studentsTable: { type: list, component: List, role: table, name: { key: Students.caption }, in: [studentsPage] }
+  studentBan: { type: action, component: Button, role: button, intent: secondary, name: { key: Students.banLabel, params: { name: row.name } }, text: { key: Students.ban }, in: [studentsPage], repeat: students.rows, emits: BAN, source: apps/nazar/features/students/components/students-table.tsx:170 } # on every row, for whoever reads the list (PLATFORM-ADMIN-9)
+
+  # Yasaklamalar
+  bansPage: { type: page, component: Page, role: main, name: { labelledBy: bansTitle }, in: [bansPage, lifting, escalating, requesting], source: apps/nazar/features/bans/components/bans-page.tsx:51 }
+  bansTitle: { type: text, component: Heading, role: heading, text: { key: Bans.title }, in: [bansPage, lifting, escalating, requesting] }
+  bansIntro: { type: text, component: Text, text: { key: Bans.intro }, in: [bansPage, lifting, escalating, requesting] }
+  banHeaderButton: { type: action, component: Button, role: button, intent: confirm, text: { key: Bans.ban }, in: [bansPage, lifting, escalating, requesting], disabledIn: [lifting, escalating, requesting], emits: BAN, source: apps/nazar/features/bans/components/ban-dialog.tsx:315 }
+  kademeNotice: { type: alert, component: Alert, text: { key: Bans.kademe.title }, in: [bansPage, lifting, escalating, requesting], source: apps/nazar/features/bans/components/bans-page.tsx:77 } # an MDS Alert with no tone: not announced
+  kademeText: { type: text, component: Text, text: { key: Bans.kademe.text }, in: [bansPage, lifting, escalating, requesting] }
+  bansTable: { type: list, component: List, role: table, name: { key: Bans.caption.active }, in: [bansPage, lifting, escalating, requesting] }
+  permanentBadge: { type: text, component: Text, text: { key: Bans.permanentPending }, in: [bansPage, lifting, escalating, requesting], when: asked, repeat: bans.items }
+  rowScope: { type: text, component: Text, text: { oneOf: [Bans.scope.course, Bans.scope.madrasah] }, in: [bansPage, lifting, escalating, requesting], repeat: bans.items }
+  liftButton: { type: action, component: Button, role: button, intent: secondary, name: { key: Bans.liftLabel, params: { name: row.name } }, text: { key: Bans.lift }, in: [bansPage, lifting, escalating, requesting], disabledIn: [lifting, escalating, requesting], when: mayLift, repeat: bans.items, emits: LIFT, source: apps/nazar/features/bans/components/bans-table.tsx:98 }
+  escalateButton: { type: action, component: Button, role: button, intent: secondary, name: { key: Bans.escalateLabel, params: { name: row.name } }, text: { key: Bans.escalate }, in: [bansPage, lifting, escalating, requesting], disabledIn: [lifting, escalating, requesting], when: mayEscalate, repeat: bans.items, emits: ESCALATE }
+  permanentButton: { type: action, component: Button, role: button, intent: secondary, name: { key: Bans.permanentLabel, params: { name: row.name } }, text: { key: Bans.permanent }, in: [bansPage, lifting, escalating, requesting], disabledIn: [lifting, escalating, requesting], when: mayRequest, repeat: bans.items, emits: REQUEST_PERMANENT }
+  liftNote: { type: text, component: Text, text: { oneOf: [Bans.platformOnly, Bans.higherOnly] }, in: [bansPage, lifting, escalating, requesting], when: "open and not mayLift", repeat: bans.items, source: apps/nazar/features/bans/bans.ts:134 }
+
+  # the page's problem notice
+  noAccessTitle: { type: alert, component: Alert, text: { key: Problems.forbiddenTitle }, in: [noAccess], source: apps/nazar/features/shell/components/page-problem.tsx:25 }
+  noAccessText: { type: text, component: Text, text: { key: Problems.forbidden }, in: [noAccess] }
+
+  # notes the page shows after a decision (toasts)
+  savedToast: { type: status, component: Status, role: status, text: { key: BanDialog.saved }, in: [bansPage, studentsPage], when: "notice == 'saved'", source: apps/nazar/features/bans/components/ban-dialog.tsx:177 }
+  savedBody: { type: text, component: Text, text: { oneOf: [BanDialog.savedCourse, BanDialog.savedMadrasah] }, in: [bansPage, studentsPage], when: "notice == 'saved'" }
+  liftedToast: { type: status, component: Status, role: status, text: { key: Reasons.lift.done }, in: [bansPage], when: "notice == 'lifted'", source: apps/nazar/features/bans/components/reason-dialog.tsx:74 }
+  escalatedToast: { type: status, component: Status, role: status, text: { key: Reasons.escalate.done }, in: [bansPage], when: "notice == 'escalated'" }
+  requestedToast: { type: status, component: Status, role: status, text: { key: Reasons.permanent.done }, in: [bansPage], when: "notice == 'requested'" }
+  requestedBody: { type: text, component: Text, text: { key: Reasons.permanent.doneBody }, in: [bansPage], when: "notice == 'requested'" } # says the request reached Medaris administration (PLATFORM-ADMIN-8)
+  movedAlert: { type: alert, component: Alert, role: alert, text: { oneOf: [Bans.errors.banAlreadyLifted, Bans.errors.banPermanentRequestExists] }, in: [bansPage], when: "notice == 'moved'" }
+
+  # Yasakla
+  banDialog: { type: page, component: Page, role: dialog, name: { labelledBy: banTitle }, in: [banDialog, lookingUp, creating], initialFocus: personField, source: apps/nazar/features/bans/components/ban-dialog.tsx:199 } # personField while nobody is picked, banReason once someone is
+  banTitle: { type: text, component: Heading, role: heading, text: { key: BanDialog.title }, in: [banDialog, lookingUp, creating] }
+  banIntro: { type: text, component: Text, text: { key: BanDialog.intro }, in: [banDialog, lookingUp, creating] }
+  banRequired: { type: text, component: Text, text: { key: BanDialog.required }, in: [banDialog, lookingUp, creating] }
+  personField: { type: field, component: TextField, role: textbox, text: { key: BanDialog.personLabel }, in: [banDialog, lookingUp], disabledIn: [lookingUp], when: "not picked", emits: LOOKUP, source: apps/nazar/features/bans/components/ban-dialog.tsx:94 } # type="email"
+  personHelp: { type: text, component: Text, text: { key: Appoint.help }, in: [banDialog, lookingUp], when: "not picked" }
+  searching: { type: status, component: Status, role: status, text: { key: Appoint.searching }, in: [lookingUp], source: apps/nazar/features/bans/components/ban-dialog.tsx:114 }
+  notFound: { type: text, component: Text, text: { key: Appoint.notFound }, in: [banDialog], when: "notice == 'notFound'" }
+  scopeGroup: { type: list, component: List, role: radiogroup, name: { key: BanDialog.scopeLegend }, in: [banDialog, lookingUp, creating], disabledIn: [creating], source: apps/nazar/features/bans/components/ban-dialog.tsx:253 }
+  scopeCourse: { type: field, component: ListItem, role: radio, text: { key: BanDialog.courseDesc }, in: [banDialog, lookingUp, creating], disabledIn: [creating], repeat: courses, emits: CHOOSE_COURSE } # labelled by the course's title
+  scopeMadrasah: { type: field, component: ListItem, role: radio, text: { key: BanDialog.madrasah }, in: [banDialog, lookingUp, creating], disabledIn: [creating], emits: CHOOSE_MADRASAH }
+  scopeMadrasahDesc: { type: text, component: Text, text: { key: BanDialog.madrasahDesc }, in: [banDialog, lookingUp, creating] }
+  banReason: { type: field, component: TextField, role: textbox, text: { key: BanDialog.reasonLabel }, in: [banDialog, lookingUp, creating], disabledIn: [creating], emits: TYPE_REASON, source: apps/nazar/features/bans/components/ban-dialog.tsx:282 }
+  banReasonHelp: { type: text, component: Text, text: { key: BanDialog.reasonHelp }, in: [banDialog, lookingUp, creating] }
+  banReasonRequired: { type: text, component: Text, text: { key: BanDialog.reasonRequired }, in: [banDialog], when: "reason == 'blank'" }
+  banFailed: { type: alert, component: Alert, role: alert, text: { key: BanDialog.failedTitle }, in: [banDialog], when: "notice in ['forbidden', 'targetInvalid']", source: apps/nazar/features/bans/components/ban-dialog.tsx:190 }
+  banFailedWhy: { type: text, component: Text, text: { oneOf: [Problems.actionForbidden, Bans.errors.banTargetInvalid] }, in: [banDialog], when: "notice in ['forbidden', 'targetInvalid']" }
+  cancelBan: { type: action, component: Button, role: button, intent: dismiss, text: { key: BanDialog.cancel }, in: [banDialog, lookingUp, creating], disabledIn: [creating], emits: CANCEL }
+  submitBan: { type: action, component: Button, role: button, intent: confirm, text: { key: BanDialog.submit }, in: [banDialog, lookingUp, creating], disabledIn: [lookingUp, creating], emits: SUBMIT } # off while nobody is picked or the reason is blank
+
+  # the three reason dialogs (one component, ReasonDialog)
+  liftDialog: { type: page, component: Page, role: dialog, name: { labelledBy: liftTitle }, in: [liftDialog], initialFocus: liftReason, source: apps/nazar/features/bans/components/reason-dialog.tsx:105 }
+  liftTitle: { type: text, component: Heading, role: heading, text: { key: Reasons.lift.title }, in: [liftDialog] }
+  liftBody: { type: text, component: Text, text: { oneOf: [Reasons.lift.bodyCourse, Reasons.lift.bodyMadrasah] }, in: [liftDialog] }
+  liftReason: { type: field, component: TextField, role: textbox, text: { key: Reasons.lift.label }, in: [liftDialog], emits: TYPE_REASON }
+  liftSubmit: { type: action, component: Button, role: button, intent: confirm, text: { key: Reasons.lift.submit }, in: [liftDialog], emits: SUBMIT }
+  liftCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: Reasons.cancel }, in: [liftDialog], emits: CANCEL }
+  escalateDialog: { type: page, component: Page, role: dialog, name: { labelledBy: escalateTitle }, in: [escalateDialog], initialFocus: escalateReason }
+  escalateTitle: { type: text, component: Heading, role: heading, text: { key: Reasons.escalate.title }, in: [escalateDialog] }
+  escalateBody: { type: text, component: Text, text: { key: Reasons.escalate.body, params: { course: row.courseTitle } }, in: [escalateDialog] }
+  escalateReason: { type: field, component: TextField, role: textbox, text: { key: Reasons.escalate.label }, in: [escalateDialog], emits: TYPE_REASON }
+  escalateSubmit: { type: action, component: Button, role: button, intent: confirm, text: { key: Reasons.escalate.submit }, in: [escalateDialog], emits: SUBMIT }
+  escalateCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: Reasons.cancel }, in: [escalateDialog], emits: CANCEL }
+  permanentDialog: { type: page, component: Page, role: dialog, name: { labelledBy: permanentTitle }, in: [permanentDialog], initialFocus: permanentReason }
+  permanentTitle: { type: text, component: Heading, role: heading, text: { key: Reasons.permanent.title }, in: [permanentDialog] }
+  permanentBody: { type: text, component: Text, text: { key: Reasons.permanent.body }, in: [permanentDialog] }
+  permanentReason: { type: field, component: TextField, role: textbox, text: { key: Reasons.permanent.label }, in: [permanentDialog], emits: TYPE_REASON }
+  permanentHelp: { type: text, component: Text, text: { key: Reasons.permanent.help }, in: [permanentDialog] }
+  permanentSubmit: { type: action, component: Button, role: button, intent: confirm, text: { key: Reasons.permanent.submit }, in: [permanentDialog], emits: SUBMIT }
+  permanentCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: Reasons.cancel }, in: [permanentDialog], emits: CANCEL }
+  reasonRequired: { type: text, component: Text, text: { key: Reasons.reasonRequired }, in: [liftDialog, escalateDialog, permanentDialog], when: "reason == 'blank'" }
+
+edges:
+  - { labelledBy: [studentsPage, studentsTitle] }
+  - { labelledBy: [bansPage, bansTitle] }
+  - { labelledBy: [banDialog, banTitle] }
+  - { labelledBy: [liftDialog, liftTitle] }
+  - { labelledBy: [escalateDialog, escalateTitle] }
+  - { labelledBy: [permanentDialog, permanentTitle] }
+  - { triggers: [submitBan, creating] }
+  - { triggers: [liftSubmit, lifting] }
+  - { triggers: [escalateSubmit, escalating] }
+  - { triggers: [permanentSubmit, requesting] }
+
+rules:
+  - { id: offered-only-where-allowed, rule: "Yasakla is drawn only for who may ban in the medrese (Yasaklamalar does so by drawing it only when the list could be read; Talebeler does not)" }
+  - { id: label-in-name, rule: "a node's visible text is contained in its accessible name (WCAG 2.5.3)" }

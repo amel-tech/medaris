@@ -5,6 +5,7 @@ import request from "supertest";
 import { CourseStatus } from "../../src/course/domain/course-status.enum";
 import { DatabaseService } from "../../src/database/database.service";
 import { auditLog } from "../../src/database/schema/audit.schema";
+import { bans } from "../../src/database/schema/ban.schema";
 import { courses } from "../../src/database/schema/course.schema";
 import { kosks } from "../../src/database/schema/kosk.schema";
 import { madrasahs } from "../../src/database/schema/madrasah.schema";
@@ -237,6 +238,7 @@ describe("Medrese nazırs (e2e)", () => {
       "permission_group_items",
       "permission_groups",
       ...COURSE_TREE_TABLES,
+      "bans",
       "madrasahs",
       "users",
       "audit_log"
@@ -512,6 +514,55 @@ describe("Medrese nazırs (e2e)", () => {
         await roleRows(NEWCOMER_ID, ASSIGNED_ROLES.MEDRESE_NAZIR)
       ).toHaveLength(1);
       expect(await audits("madrasah_nazir.appoint")).toHaveLength(1);
+    });
+
+    it("refuses an account that exists nowhere, writing nothing (404 MADRASAH_NAZIR_UNKNOWN_ACCOUNT)", async () => {
+      const res = await post(HEAD_ID, `${base()}/${UNKNOWN_ID}`).expect(404);
+      expect(res.body.code).toBe("MADRASAH_NAZIR_UNKNOWN_ACCOUNT");
+      expect(
+        await roleRows(UNKNOWN_ID, ASSIGNED_ROLES.MEDRESE_NAZIR)
+      ).toHaveLength(0);
+      expect(await audits("madrasah_nazir.appoint")).toHaveLength(0);
+    });
+
+    // A nazır cannot be barred in the medrese or its courses
+    // (`RUNS_MADRASAH_ROLES`), so seating one already barred there would undo
+    // the ban; a ban in another medrese's course does not count.
+    const barNewcomer = async (where: "medrese" | "course" | "elsewhere") => {
+      const onCourse = where === "elsewhere" ? otherCourseId : courseId;
+      const [{ koskId }] = await db()
+        .select({ koskId: courses.koskId })
+        .from(courses)
+        .where(eq(courses.id, onCourse));
+      await db()
+        .insert(bans)
+        .values({
+          userId: NEWCOMER_ID,
+          ...(where === "medrese"
+            ? { scope: "MADRASAH" as const, madrasahId }
+            : { scope: "COURSE" as const, koskId, courseId: onCourse }),
+          reason: "Celselerde başka talebelere hakaret etti.",
+          bannedBy: HEAD_ID,
+          bannedRole: ASSIGNED_ROLES.MEDRESE_BASMUDERRIS,
+          bannedTier: 2,
+        });
+    };
+
+    for (const where of ["medrese", "course"] as const) {
+      it(`refuses a person barred from the ${where === "medrese" ? "medrese" : "medrese's course"}, writing nothing (409 MADRASAH_NAZIR_BARRED)`, async () => {
+        await barNewcomer(where);
+        const res = await post(HEAD_ID, `${base()}/${NEWCOMER_ID}`).expect(409);
+        expect(res.body.code).toBe("MADRASAH_NAZIR_BARRED");
+        expect(
+          await roleRows(NEWCOMER_ID, ASSIGNED_ROLES.MEDRESE_NAZIR)
+        ).toHaveLength(0);
+        expect(await audits("madrasah_nazir.appoint")).toHaveLength(0);
+      });
+    }
+
+    it("seats a person whose ban is in another medrese's course", async () => {
+      await barNewcomer("elsewhere");
+      await post(HEAD_ID, `${base()}/${NEWCOMER_ID}`).expect(201);
     });
 
     it("is refused to everyone but the başmüderris and SYSTEM_ADMIN, and writes nothing", async () => {

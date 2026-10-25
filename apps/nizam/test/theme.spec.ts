@@ -3,7 +3,8 @@ import { describe, expect, it, vi } from "vitest";
 
 // The [locale] layout without Next: the session, the providers and the shell
 // around the page are stubbed, so only the document it draws is left.
-vi.mock("next-intl/server", () => ({ setRequestLocale: () => undefined }));
+const request = vi.hoisted(() => ({ locale: "tr" }));
+vi.mock("next-intl/server", () => ({ getLocale: async () => request.locale }));
 vi.mock("next-intl", async (orig) => ({
   ...(await orig<typeof import("next-intl")>()),
   NextIntlClientProvider: ({ children }: { children: React.ReactNode }) =>
@@ -35,13 +36,9 @@ describe("nizam's <html> (MDRS-245)", () => {
     "en",
     "ar",
   ])("is light by default on /%s, with the no-flash script", async (locale) => {
-    const { default: LocaleLayout } = await import("../app/[locale]/layout");
-    const markup = renderToStaticMarkup(
-      await LocaleLayout({
-        children: "page",
-        params: Promise.resolve({ locale }),
-      })
-    );
+    request.locale = locale;
+    const { default: RootLayout } = await import("../app/layout");
+    const markup = renderToStaticMarkup(await RootLayout({ children: "page" }));
     expect(htmlTag(markup)).toContain('data-theme="light"');
     const head = headOf(markup);
     expect(head).toContain("<script>");

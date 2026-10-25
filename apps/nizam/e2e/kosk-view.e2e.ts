@@ -36,7 +36,7 @@ async function signIn(
   page: Page,
   who: { email?: string; password?: string }
 ): Promise<void> {
-  await page.goto("/tr/auth/signin");
+  await page.goto("/auth/signin");
   await page.locator("#username").fill(who.email as string);
   await page.locator("#password").fill(who.password as string);
   await page.locator("button[type=submit]").click();
@@ -68,7 +68,7 @@ test("nizam/20 — the başnazım's page fills every section and the numbers are
 }) => {
   test.skip(!canManage(), "no SYSTEM_ADMIN account");
   await signIn(page, SYSTEM_ADMIN);
-  await page.goto(`/tr/kosks/${fixture.kosk.id}`);
+  await page.goto(`/kosks/${fixture.kosk.id}`);
   await expect(
     page.getByRole("heading", { level: 1, name: fixture.kosk.name })
   ).toBeVisible();
@@ -118,7 +118,7 @@ test("nizam/20 — criterion 5: there is no permanent delete on the page, only t
 }) => {
   test.skip(!canManage(), "no SYSTEM_ADMIN account");
   await signIn(page, SYSTEM_ADMIN);
-  await page.goto(`/tr/kosks/${fixture.kosk.id}`);
+  await page.goto(`/kosks/${fixture.kosk.id}`);
   await expect(page.getByRole("link", { name: "Arşiv’e git" })).toBeVisible();
   await expect(
     page.getByRole("button", { name: /Kalıcı olarak sil/ })
@@ -133,7 +133,7 @@ test("nizam/20 — 'Köşkü gizle' asks first, hides the köşk and writes the 
 }) => {
   test.skip(!canManage(), "no SYSTEM_ADMIN account");
   await signIn(page, SYSTEM_ADMIN);
-  await page.goto(`/tr/kosks/${fixture.kosk.id}`);
+  await page.goto(`/kosks/${fixture.kosk.id}`);
   await page.getByRole("button", { name: "Köşkü gizle" }).click();
   await expect(page.getByRole("alertdialog")).toContainText(fixture.kosk.name);
   await page.getByRole("button", { name: "Vazgeç" }).click();
@@ -151,7 +151,7 @@ test("nizam/20 — 'Köşkü gizle' asks first, hides the köşk and writes the 
   expect(await fixture.audits("kosk.hide")).toBe(1);
 
   // It is in the table as Gizli.
-  await page.goto(`/tr/kosks?q=${fixture.tail}`);
+  await page.goto(`/kosks?q=${fixture.tail}`);
   await expect(
     page.locator("[data-testid=kosks] tbody tr:visible").filter({
       hasText: fixture.kosk.name,
@@ -164,7 +164,7 @@ test("nizam/20 — 'Köşkü pasife al' takes the nazımları off the post and w
 }) => {
   test.skip(!canManage(), "no SYSTEM_ADMIN account");
   await signIn(page, SYSTEM_ADMIN);
-  await page.goto(`/tr/kosks/${fixture.kosk.id}`);
+  await page.goto(`/kosks/${fixture.kosk.id}`);
   await shot(page, "20-pasife-al-oncesi");
   await page.getByRole("button", { name: "Köşkü pasife al" }).click();
   const dialog = page.getByRole("dialog");
@@ -192,7 +192,7 @@ test("nizam/20 — 'Barındırma hakkını geri al' updates the table (criterion
 }) => {
   test.skip(!canManage(), "no SYSTEM_ADMIN account");
   await signIn(page, SYSTEM_ADMIN);
-  await page.goto(`/tr/kosks/${fixture.kosk.id}`);
+  await page.goto(`/kosks/${fixture.kosk.id}`);
   const hosting = page.getByRole("region", {
     name: "Medreseler ve barındırma hakları",
   });
@@ -217,7 +217,7 @@ test("nizam/20 — a köşk nazımı who opens the köşk lands on Dersler", asy
 }) => {
   test.skip(!(seedable && KOSK_NAZIM.password), "no KOSK_NAZIM account");
   await signIn(page, KOSK_NAZIM);
-  await page.goto(`/tr/kosks/${fixture.kosk.id}`);
+  await page.goto(`/kosks/${fixture.kosk.id}`);
   await page.waitForURL(new RegExp(`/kosks/${fixture.kosk.id}/dersler`));
   await expect(
     page.getByRole("heading", { level: 1, name: "Dersler" })
@@ -229,7 +229,7 @@ test("nizam/23 — Dersler lists the courses, the tabs' numbers are the database
 }) => {
   test.skip(!(seedable && KOSK_NAZIM.password), "no KOSK_NAZIM account");
   await signIn(page, KOSK_NAZIM);
-  await page.goto(`/tr/kosks/${fixture.kosk.id}/dersler`);
+  await page.goto(`/kosks/${fixture.kosk.id}/dersler`);
   await expect(
     page.getByRole("heading", { level: 1, name: "Dersler" })
   ).toBeVisible();
@@ -262,7 +262,7 @@ test("nizam/23 — a medrese's course has Dersi gör and no Düzenle; an own one
 }) => {
   test.skip(!(seedable && KOSK_NAZIM.password), "no KOSK_NAZIM account");
   await signIn(page, KOSK_NAZIM);
-  await page.goto(`/tr/kosks/${fixture.kosk.id}/dersler`);
+  await page.goto(`/kosks/${fixture.kosk.id}/dersler`);
   const own = courseRow(page, fixture.own.title);
   await expect(own.getByRole("link", { name: /^Düzenle/ })).toBeVisible();
   // a button that opens the müderris dialog, not a link to a page
@@ -283,7 +283,7 @@ test("nizam/23 — 'Gizle' asks first, the course becomes Gizli, and 'Geri al' b
 }) => {
   test.skip(!(seedable && KOSK_NAZIM.password), "no KOSK_NAZIM account");
   await signIn(page, KOSK_NAZIM);
-  await page.goto(`/tr/kosks/${fixture.kosk.id}/dersler`);
+  await page.goto(`/kosks/${fixture.kosk.id}/dersler`);
   const before = await fixture.counts();
 
   await courseRow(page, fixture.own.title)
@@ -321,7 +321,7 @@ test("nizam/23 — 'Gizle' asks first, the course becomes Gizli, and 'Geri al' b
 test("nizam/23 — 'Ders aç' opens the new-course form", async ({ page }) => {
   test.skip(!(seedable && KOSK_NAZIM.password), "no KOSK_NAZIM account");
   await signIn(page, KOSK_NAZIM);
-  await page.goto(`/tr/kosks/${fixture.kosk.id}/dersler`);
+  await page.goto(`/kosks/${fixture.kosk.id}/dersler`);
   await page.getByRole("link", { name: "Ders aç" }).click();
   await page.waitForURL(new RegExp(`/kosks/${fixture.kosk.id}/courses/new`));
 });
@@ -331,7 +331,7 @@ test("nizam/53 — the overview draws the course, warns about the session nobody
 }) => {
   test.skip(!(seedable && KOSK_NAZIM.password), "no KOSK_NAZIM account");
   await signIn(page, KOSK_NAZIM);
-  await page.goto(`/tr/kosks/${fixture.kosk.id}/courses/${fixture.own.id}`);
+  await page.goto(`/kosks/${fixture.kosk.id}/courses/${fixture.own.id}`);
   await expect(
     page.getByRole("heading", { level: 1, name: /Genel bakış/ })
   ).toBeVisible();
@@ -376,7 +376,7 @@ test("nizam/53 — 'Müfredatı düzenle' and 'Celse planla' go to the course's 
 }) => {
   test.skip(!(seedable && KOSK_NAZIM.password), "no KOSK_NAZIM account");
   await signIn(page, KOSK_NAZIM);
-  await page.goto(`/tr/kosks/${fixture.kosk.id}/courses/${fixture.own.id}`);
+  await page.goto(`/kosks/${fixture.kosk.id}/courses/${fixture.own.id}`);
   await page.getByRole("link", { name: "Müfredatı düzenle" }).click();
   await page.waitForURL(
     new RegExp(`/kosks/${fixture.kosk.id}/courses/${fixture.own.id}/edit`)
@@ -399,7 +399,7 @@ test("nizam/53 — the başnazım is offered 'Nazar’da aç', a new tab on the 
   await signIn(page, SYSTEM_ADMIN);
   // the köşk's own course and the one a medrese holds in it
   for (const course of [fixture.own, fixture.hosted]) {
-    await page.goto(`/tr/kosks/${fixture.kosk.id}/courses/${course.id}`);
+    await page.goto(`/kosks/${fixture.kosk.id}/courses/${course.id}`);
     await expect(
       page.getByRole("heading", { level: 1, name: /Genel bakış/ })
     ).toBeVisible();
@@ -412,7 +412,7 @@ test("nizam/53 — the başnazım is offered 'Nazar’da aç', a new tab on the 
 
   await page.context().clearCookies();
   await signIn(page, KOSK_NAZIM);
-  await page.goto(`/tr/kosks/${fixture.kosk.id}/courses/${fixture.own.id}`);
+  await page.goto(`/kosks/${fixture.kosk.id}/courses/${fixture.own.id}`);
   await expect(
     page.getByRole("link", { name: "Müfredatı düzenle" })
   ).toBeVisible();
@@ -424,7 +424,7 @@ test("nizam/53 — 'Onayla' takes the application off the list and adds one to K
 }) => {
   test.skip(!(seedable && KOSK_NAZIM.password), "no KOSK_NAZIM account");
   await signIn(page, KOSK_NAZIM);
-  await page.goto(`/tr/kosks/${fixture.kosk.id}/courses/${fixture.own.id}`);
+  await page.goto(`/kosks/${fixture.kosk.id}/courses/${fixture.own.id}`);
   const students = page.getByLabel("Dersin sayıları").locator(".mds-stat");
   await expect(students.nth(0)).toContainText("2");
   await expect(students.nth(1)).toContainText("1");
@@ -448,7 +448,7 @@ test("nizam/53 — 'Onayla' takes the application off the list and adds one to K
 test("nizam/53 — a draft course shows the draft badge", async ({ page }) => {
   test.skip(!(seedable && KOSK_NAZIM.password), "no KOSK_NAZIM account");
   await signIn(page, KOSK_NAZIM);
-  await page.goto(`/tr/kosks/${fixture.kosk.id}/courses/${fixture.draft.id}`);
+  await page.goto(`/kosks/${fixture.kosk.id}/courses/${fixture.draft.id}`);
   await expect(
     page.getByRole("heading", { level: 1, name: /Genel bakış/ })
   ).toContainText("Taslak");

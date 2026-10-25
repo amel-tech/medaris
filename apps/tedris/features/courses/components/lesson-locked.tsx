@@ -262,7 +262,7 @@ export function LessonLocked({
           <Card
             title={course.title}
             headingLevel={2}
-            href={`/${locale}/courses/${course.id}`}
+            href={`/courses/${course.id}`}
             media={<CoverPattern {...courseCover(course)} size="md" />}
             footer={[
               koskName,

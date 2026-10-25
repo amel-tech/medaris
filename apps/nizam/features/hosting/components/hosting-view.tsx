@@ -66,7 +66,7 @@ export function HostingView({
   const [revoking, setRevoking] = useState<HostingRightResponse | null>(null);
 
   const refresh = () => startTransition(() => router.refresh());
-  const base = `/${locale}/kosks/${koskId}/ayarlar`;
+  const base = `/kosks/${koskId}/ayarlar`;
   const held = rights ?? [];
   // With the API down the köşk's name may not be known; the page still draws.
   const name = koskName || t("unknownKosk");

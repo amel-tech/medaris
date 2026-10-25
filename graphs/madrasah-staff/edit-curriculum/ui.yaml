@@ -1,0 +1,60 @@
+# The screen of medaris.edit-curriculum: nazar's "Müfredat" (/ders/:id/mufredat), one form keyed by the course version.
+# The portal shell owns <main>; the page sets no first focus. "Kaydet" sticks to the bottom of the viewport and is off
+# while nothing differs from the saved course, during a refresh, after a conflict and while a file uploads.
+schema: delurio-graph/0
+kind: ui
+id: medaris.edit-curriculum
+flow: medaris.edit-curriculum
+status: proposed
+catalog: catalog/tr.json
+locales: [tr, en]
+samples: { name: "Usûl-i Fıkıh Okumaları", weeks: "8", sessions: "8", zone: "İstanbul", week: "1" }
+changes: { key: Changes.note }
+
+nodes:
+  page: { type: page, component: Page, role: main, name: { labelledBy: title }, in: [forbidden, loadFailed, editor, saving], source: "apps/nazar/features/curriculum/components/curriculum-editor.tsx:319" }
+  title: { type: text, component: Heading, role: heading, text: { key: Curriculum.title }, in: [forbidden, loadFailed, editor, saving], source: "apps/nazar/features/curriculum/components/curriculum-editor.tsx:327" }
+  forbiddenTitle: { type: status, component: Status, role: status, text: { key: Problems.forbiddenTitle }, in: [forbidden], source: "apps/nazar/features/shell/components/page-problem.tsx:25" }
+  forbiddenText: { type: text, component: Text, text: { key: Problems.forbidden }, in: [forbidden] }
+  loadFailedTitle: { type: alert, component: Alert, role: alert, text: { key: Curriculum.loadFailedTitle }, in: [loadFailed], source: "apps/nazar/features/shell/components/load-failed.tsx:28" }
+  loadFailedText: { type: text, component: Text, text: { key: Curriculum.loadFailed }, in: [loadFailed] }
+  retry: { type: action, component: Button, role: button, intent: secondary, text: { key: Shell.retry }, in: [loadFailed], emits: RETRY, source: "apps/nazar/features/shell/components/load-failed.tsx:33" }
+
+  intro: { type: text, component: Text, text: { key: Curriculum.intro }, in: [editor, saving], source: "apps/nazar/features/curriculum/components/curriculum-editor.tsx:329" }
+  readOnly: { type: status, component: Status, role: status, text: { key: Curriculum.readOnly }, in: [editor], when: "not canEdit", source: "apps/nazar/features/curriculum/components/curriculum-editor.tsx:334" }
+  sessionsNote: { type: status, component: Status, role: status, text: { key: Curriculum.sessionsNote }, in: [editor, saving], when: "canEdit and not canSessions", source: "apps/nazar/features/curriculum/components/curriculum-editor.tsx:338" }
+  conflictTitle: { type: status, component: Status, role: status, text: { key: Curriculum.conflictTitle }, in: [editor], when: conflict, source: "apps/nazar/features/curriculum/components/curriculum-editor.tsx:344" } # Alert tone warning
+  conflictBody: { type: text, component: Text, text: { key: Curriculum.conflictBody }, in: [editor], when: conflict }
+  conflictReload: { type: action, component: Button, role: button, intent: confirm, text: { key: Curriculum.conflictReload }, in: [editor], when: conflict, emits: RELOAD, source: "apps/nazar/features/curriculum/components/curriculum-editor.tsx:348" }
+
+  infoTitle: { type: text, component: Heading, role: heading, text: { key: Curriculum.infoTitle }, in: [editor, saving] }
+  nameField: { type: field, component: TextField, role: textbox, text: { key: Curriculum.nameLabel }, in: [editor, saving], disabledIn: [saving], emits: EDIT_TEXT, source: "apps/nazar/features/curriculum/components/curriculum-editor.tsx:374" } # off without course.edit
+  descField: { type: field, component: TextField, role: textbox, text: { key: Curriculum.descLabel }, in: [editor, saving], disabledIn: [saving], emits: EDIT_TEXT }
+  weeksTitle: { type: text, component: Heading, role: heading, text: { key: Curriculum.weeksTitle }, in: [editor, saving] }
+  weeksSummary: { type: text, component: Text, text: { key: Curriculum.weeksSummary }, in: [editor, saving], source: "apps/nazar/features/curriculum/components/curriculum-editor.tsx:443" }
+  generate: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: Curriculum.generate }, in: [editor], when: canSessions, emits: GENERATE, source: "apps/nazar/features/curriculum/components/curriculum-editor.tsx:457" }
+  hidePage: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: Curriculum.hidePage }, in: [editor], when: canHide, emits: HIDE_PAGE, source: "apps/nazar/features/curriculum/components/curriculum-editor.tsx:466" }
+  addWeek: { type: action, component: Button, role: button, intent: secondary, text: { key: Curriculum.addWeek }, in: [editor, saving], when: canEdit, disabledIn: [saving], emits: EDIT_TEXT, source: "apps/nazar/features/curriculum/components/curriculum-editor.tsx:474" }
+  weekLabel: { type: text, component: Heading, role: heading, text: { key: Curriculum.weekLabel }, repeat: course.weeks, in: [editor, saving] }
+  weekTitle: { type: field, component: TextField, role: textbox, text: { key: Curriculum.weekTitleLabel }, repeat: course.weeks, in: [editor, saving], disabledIn: [saving], emits: EDIT_TEXT }
+  lessonTitle: { type: field, component: TextField, role: textbox, text: { key: Curriculum.lessonTitleLabel }, repeat: week.lessons, in: [editor, saving], disabledIn: [saving], emits: EDIT_TEXT }
+  lessonDate: { type: field, component: TextField, role: textbox, text: { key: Curriculum.dateLabel }, repeat: week.lessons, in: [editor, saving], disabledIn: [saving], emits: EDIT_SESSIONS, source: "apps/nazar/features/curriculum/components/curriculum-editor.tsx:682" } # off without session.manage
+  addLesson: { type: action, component: Button, role: button, intent: secondary, text: { key: Curriculum.addLesson }, repeat: course.weeks, in: [editor, saving], when: "canEdit and canSessions", disabledIn: [saving], emits: EDIT_SESSIONS, source: "apps/nazar/features/curriculum/components/curriculum-editor.tsx:930" }
+  hideWeek: { type: action, component: Button, role: button, intent: secondary, text: { key: Curriculum.hideWeek }, repeat: course.weeks, in: [editor, saving], when: canEdit, disabledIn: [saving], emits: DROP_EMPTY_WEEK, source: "apps/nazar/features/curriculum/components/curriculum-editor.tsx:974" } # a week with sessions only with session.manage as well
+  titleProblem: { type: text, component: Text, text: { key: Curriculum.errors.weekTitle }, in: [editor], when: "sent and not formOk" }
+
+  dirtyNote: { type: status, component: Status, role: status, text: { key: Curriculum.dirty }, in: [editor, saving], when: dirty, source: "apps/nazar/features/curriculum/components/curriculum-editor.tsx:1005" }
+  cancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: Curriculum.cancel }, in: [editor, saving], when: canEdit, disabledIn: [saving], emits: RESET, source: "apps/nazar/features/curriculum/components/curriculum-editor.tsx:1009" }
+  save: { type: action, component: Button, role: button, intent: confirm, text: { key: Curriculum.save }, in: [editor, saving], when: canEdit, disabledIn: [saving], emits: SAVE, source: "apps/nazar/features/curriculum/components/curriculum-editor.tsx:1017" } # off while nothing is dirty and after a conflict
+  saving: { type: status, component: Status, role: status, text: { key: Curriculum.saving }, in: [saving], source: "libs/ui/src/mds/button.tsx:113" }
+  savedToast: { type: status, component: Status, role: status, text: { key: Curriculum.saved }, in: [editor], when: "saved != 'none'", source: "apps/nazar/features/curriculum/components/curriculum-editor.tsx:306" }
+  savedBody: { type: text, component: Text, text: { key: Curriculum.savedBody }, in: [editor], when: "saved != 'none'" }
+
+edges:
+  - { labelledBy: [page, title] }
+  - { triggers: [save, saving] }
+  - { triggers: [conflictReload, gate] }
+
+rules:
+  - { id: label-in-name, rule: "a node's visible text is contained in its accessible name (WCAG 2.5.3)" }
+  - { id: no-silent-overwrite, rule: "a refused save on a stale version keeps the form and says how to get the current course" }

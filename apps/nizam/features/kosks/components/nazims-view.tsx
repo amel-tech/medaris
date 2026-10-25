@@ -53,7 +53,7 @@ export function NazimsView({
   const [adding, setAdding] = useState(false);
 
   const refresh = () => startTransition(() => router.refresh());
-  const base = `/${locale}/kosks/${koskId}/ayarlar`;
+  const base = `/kosks/${koskId}/ayarlar`;
   const held = nazims ?? [];
   // With the API down the köşk's name may not be known; the page still draws.
   const name = koskName || t("unknownKosk");
@@ -130,8 +130,8 @@ export function NazimsView({
         items={
           chief
             ? [
-                { label: t("kosks"), href: `/${locale}/kosks` },
-                { label: name, href: `/${locale}/kosks/${koskId}` },
+                { label: t("kosks"), href: `/kosks` },
+                { label: name, href: `/kosks/${koskId}` },
                 t("title"),
               ]
             : [{ label: t("settings"), href: base }, t("title")]

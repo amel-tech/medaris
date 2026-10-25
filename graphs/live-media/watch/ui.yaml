@@ -1,0 +1,46 @@
+# Medaris, captured from origin/main ce47fce8: tedris's watch page (WatchView). The players are iframes, which this
+# format has no component for: a frame is named here by the heading of its card (MediaPlayer, a section labelled by it).
+# On a phone the chat or "Soru sor" and "Notlarım" are two toggle buttons (aria-pressed) under the video; wider, both
+# panels show and the toggles are hidden. The toggles change no flow state and are left out.
+schema: delurio-graph/0
+kind: ui
+id: medaris.watch
+flow: medaris.watch
+status: proposed
+catalog: catalog/tr.json
+locales: [tr, en]
+samples: { week: "3", title: "Birinci celse", minutes: "24", day: "14 Ekim Çarşamba", time: "20:00’de" }
+
+nodes:
+  page: { type: page, component: Page, role: main, in: [playStream, streamEnded, playRecording, recordingAtHost], source: "apps/tedris/features/courses/components/watch-view.tsx:205" } # a <main> with no name of its own
+  back: { type: action, component: LinkButton, role: link, name: { key: WatchPage.backSr }, text: { literal: "Fıkıh I" }, in: [playStream, streamEnded, playRecording, recordingAtHost], source: "apps/tedris/features/courses/components/watch-view.tsx:207" } # "Derse dön: " is visually hidden before the course's title
+  heading: { type: text, component: Heading, role: heading, text: { key: WatchPage.heading }, in: [playStream, streamEnded, playRecording, recordingAtHost], source: "apps/tedris/features/courses/components/watch-view.tsx:215" }
+  liveBadge: { type: text, component: Text, text: { key: WatchPage.liveBadge }, in: [playStream], source: "apps/tedris/features/courses/components/watch-view.tsx:140" }
+  endedBadge: { type: text, component: Text, text: { key: WatchPage.endedBadge }, in: [streamEnded], source: "apps/tedris/features/courses/components/watch-view.tsx:146" }
+  recordingBadge: { type: text, component: Text, text: { key: WatchPage.recordingBadge }, in: [playRecording, recordingAtHost], source: "apps/tedris/features/courses/components/watch-view.tsx:149" } # "Ders kaydı · <date> · <n> dk"
+  liveSaid: { type: status, component: Status, role: status, text: { key: WatchPage.liveBadgeShort }, in: [playStream], source: "apps/tedris/features/courses/components/watch-view.tsx:227" } # visually hidden, aria-live polite
+  endedSaid: { type: status, component: Status, role: status, text: { key: WatchPage.endedBadge }, in: [streamEnded], source: "apps/tedris/features/courses/components/watch-view.tsx:227" }
+  releaseHeld: { type: text, component: Text, text: { key: RecordingRelease.opens }, in: [playStream, streamEnded], when: "recording == 'readyHeld'", source: "apps/tedris/features/courses/components/watch-view.tsx:219" }
+  releaseEarly: { type: text, component: Text, text: { key: RecordingRelease.early }, in: [playRecording, recordingAtHost], when: "recording == 'readyHeld'", source: "apps/tedris/features/courses/components/watch-view.tsx:219" }
+  details: { type: action, component: LinkButton, role: link, text: { key: WatchPage.details }, in: [playStream, streamEnded, playRecording, recordingAtHost], source: "apps/tedris/features/courses/components/watch-view.tsx:231" }
+
+  streamTitle: { type: text, component: Heading, role: heading, text: { key: WatchPage.streamTitle }, in: [playStream, streamEnded], source: "apps/tedris/features/courses/components/watch-view.tsx:156" } # names the card and the YouTube frame
+  streamLive: { type: text, component: Text, text: { key: WatchPage.streamLiveText }, in: [playStream], source: "apps/tedris/features/courses/components/watch-view.tsx:166" }
+  streamEndedText: { type: text, component: Text, text: { key: WatchPage.streamEndedText }, in: [streamEnded], when: "recording != 'readyHeld'", source: "apps/tedris/features/courses/components/watch-view.tsx:169" }
+  streamEndedHeld: { type: text, component: Text, text: { key: WatchPage.streamEndedHeldText }, in: [streamEnded], when: "recording == 'readyHeld'", source: "apps/tedris/features/courses/components/watch-view.tsx:168" }
+
+  recordingTitle: { type: text, component: Heading, role: heading, text: { literal: "Birinci celse kaydı" }, in: [playRecording, recordingAtHost], source: "apps/tedris/features/courses/components/watch-view.tsx:175" } # the recording's own title
+  bunnyFrameName: { type: text, component: Text, text: { key: WatchPage.bunnyFrameTitle }, in: [playRecording], when: "provider == 'bunnySigned'", source: "apps/tedris/features/courses/components/watch-view.tsx:179" } # the Bunny frame's title attribute
+  placeholder: { type: text, component: Text, text: { key: WatchPage.recordingPlaceholder }, in: [recordingAtHost], source: "apps/tedris/features/courses/components/media-player.tsx:73" }
+  openAtHost: { type: action, component: LinkButton, role: link, text: { key: WatchPage.recordingOpen }, in: [recordingAtHost], source: "apps/tedris/features/courses/components/media-player.tsx:75" } # target=_blank, rel=noopener noreferrer
+
+  chatTitle: { type: text, component: Heading, role: heading, text: { key: SessionPage.liveChatTitle }, in: [playStream], source: "apps/tedris/features/courses/components/live-chat.tsx:73" } # also the chat frame's title
+  chatPopout: { type: action, component: LinkButton, role: link, name: { key: SessionPage.liveChatPopout }, text: { key: SessionPage.liveChatPopout }, in: [playStream], source: "apps/tedris/features/courses/components/live-chat.tsx:78" } # with "(yeni sekmede açılır)" visually hidden
+  questionsTitle: { type: text, component: Heading, role: heading, text: { key: WatchPage.questionsTitle }, in: [streamEnded, playRecording, recordingAtHost], when: writes, source: "apps/tedris/features/courses/components/lesson-questions.tsx:74" }
+  notesTitle: { type: text, component: Heading, role: heading, text: { key: LessonNotes.title }, in: [playStream, streamEnded, playRecording, recordingAtHost], when: writes, source: "apps/tedris/features/courses/components/lesson-notes.tsx:160" }
+
+edges: []
+
+rules:
+  - { id: frames-named, rule: "every player frame has a title: the card's title, the chat's title, or 'Ders kaydı oynatıcısı: <title>' for Bunny" }
+  - { id: phase-announced, rule: "the stream's start and end are said once by a polite live region, not every minute the badge counts" }

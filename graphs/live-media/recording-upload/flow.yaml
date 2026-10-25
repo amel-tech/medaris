@@ -1,0 +1,277 @@
+# Medaris, captured from origin/main ce47fce8: a course's staff upload a session's video to Bunny Stream from nazar's
+# Ders kayıtları page. tedrisat creates the video and signs a TUS upload; the browser sends the file straight to Bunny;
+# a stopped upload continues with the same video signed again. Once tedrisat has made the video the session's
+# recording is PROCESSING, and its encoding poll (medaris.recording-encoding) takes it from there.
+# Only the Bunny'ye yükle tab is drawn; the Bağlantı yapıştır tab is medaris.recording-link.
+schema: delurio-graph/0
+kind: flow
+id: medaris.recording-upload
+status: proposed
+domain: medaris.live-media
+ui: medaris.recording-upload
+title: Upload a session's video to Bunny
+summary: >-
+  A holder of recording.upload presses Kayıt ekle on a session that has begun and holds no recording, Düzenle on one that
+  holds a recording, or Devam et on a Bunny upload still PROCESSING, and picks a video. A changed release time is written
+  first, on its own route. tedrisat then creates the video in Bunny, makes it the session's PROCESSING recording (the
+  link or the video it replaces leaves the recording, a replaced video is queued for deletion) and signs its upload for
+  24 hours; the file goes from the browser to Bunny. İptal stops it; Devam et signs the same video again and continues
+  where Bunny stopped, until the 24 hours are over.
+source: apps/nazar/features/recordings/components/recording-dialog.tsx:248
+
+scope:
+  shows: the Bunny'ye yükle tab, from its row button until Bunny has the whole file, or the upload stops
+  world: open
+  outOfView:
+    - "the encoding poll that makes the recording READY or FAILED, and deletes replaced videos: medaris.recording-encoding"
+    - "Kayıt ekle or Düzenle continuing an earlier upload of the same file found in this browser's tus storage (bunny-upload.ts:331)"
+    - "the page read again every 10 seconds while a Bunny upload is PROCESSING (use-refresh-while.ts)"
+    - "leaving the page inside the app: the dialog unmounts and the upload stops; the browser asks first while bytes go"
+
+context:
+  canUpload: # recording.upload in the course; the page also opens for a holder of recording.manage alone
+    values: [true, false]
+    initial: any
+    say: { "true": "the person holds recording.upload in the course", "false": "the person holds recording.manage only" }
+  canManage: # recording.manage: only its holder sees and writes the release time
+    values: [true, false]
+    initial: any
+    say: { "true": "the person holds recording.manage too", "false": "" }
+  existing: # the session's recording as stored; a FAILED upload is never listed, so the page shows the session with none
+    values: [none, failedUpload, link, bunnyProcessing, bunnyReady]
+    initial: any
+    say: { none: "the session has no recording", failedUpload: "the session's Bunny upload failed", link: "the session's recording is a pasted link", bunnyProcessing: "the session's Bunny video is being prepared", bunnyReady: "the session's Bunny video is ready" }
+  slot:
+    values: [started, notYet]
+    initial: any
+    say: { started: "the session has begun or is over (or has no time set)", notYet: "the session has not begun" }
+  cancelled: # a cancelled session is listed only while it holds a listed recording
+    values: [false, true]
+    initial: any
+    say: { "true": "the session is cancelled", "false": "" }
+  meanwhile:
+    values: [none, uploadStarted, hidden]
+    initial: any
+    say: { none: "", uploadStarted: "someone else started a Bunny upload for this session after the page was read", hidden: "someone hid the session meanwhile" }
+  library:
+    values: [configured, notConfigured, unavailable]
+    initial: any
+    say: { configured: "", notConfigured: "the server has no Bunny library configured", unavailable: "Bunny does not answer tedrisat" }
+  releaseChanged: # the dialog's release choice differs from the session's
+    values: [false, true]
+    initial: any
+    say: { "true": "the person chose a new release time", "false": "" }
+  fileOk:
+    values: [true, false]
+    initial: any
+    say: { "true": "the chosen file is a video of at most 10 GB", "false": "no file, or one that is not a video, empty or over 10 GB" }
+  storedHere: # this browser's tus storage holds this file's earlier upload to this session
+    values: [true, false]
+    initial: any
+    say: { "true": "", "false": "this browser holds no earlier upload of the file" }
+  intent: { values: [none, add, edit, resume], initial: none }
+  fileError: { values: [false, true], initial: false }
+  releaseWritten: { values: [false, true], initial: false }
+  videoMade: { values: [false, true], initial: false } # tedrisat made or named the video this dialog fills
+  expired: { values: [false, true], initial: false } # the upload's 24 hours are over
+  failure: { values: [none, notConfigured, unavailable, exists, gone, closed, expired, notFound, network, release], initial: none }
+  toast: { values: [none, uploaded], initial: none }
+
+guards:
+  slotMissing: "existing in ['none', 'failedUpload'] and slot == 'started' and not cancelled" # apps/nazar/features/recordings/recordings.ts:158; slotState 'missing'
+  slotRecorded: "existing in ['link', 'bunnyProcessing', 'bunnyReady']" # apps/nazar/features/recordings/components/recordings-table.tsx:318
+  replaceVideo: "intent == 'edit' and existing in ['bunnyProcessing', 'bunnyReady']" # apps/nazar/features/recordings/recordings.ts:565; uploadBody sends replaceVideo from a Bunny recording's Düzenle
+  activeVideo: "existing in ['bunnyProcessing', 'bunnyReady'] or meanwhile == 'uploadStarted'" # apps/tedrisat/src/course/domain/recording.ts:57; what uploadReplaces keeps without replaceVideo
+  mustWriteRelease: "releaseChanged and canManage and intent != 'resume' and not releaseWritten" # apps/nazar/features/recordings/components/recording-dialog.tsx:260
+
+effects:
+  intentAdd: { set: { intent: add, toast: none, fileError: false, failure: none, videoMade: false, releaseWritten: false, expired: false } } # a fresh dialog
+  intentEdit: { set: { intent: edit, toast: none, fileError: false, failure: none, videoMade: false, releaseWritten: false, expired: false } }
+  intentResume: { set: { intent: resume, toast: none, fileError: false, failure: none, videoMade: false, releaseWritten: false }, havoc: [expired] } # the upload may have been started days ago
+  showFileError: { set: { fileError: true } }
+  releaseWritten: { set: { releaseWritten: true } }
+  made: { set: { videoMade: true, failure: none, meanwhile: none, expired: false } } # a new video and 24 new hours; a race before the start is settled by it
+  signed: { set: { videoMade: true, failure: none } }
+  stopped: { set: { storedHere: true }, havoc: [expired, meanwhile] } # tus stored the upload; time passes, and others may act meanwhile
+  netFailure: { set: { failure: network, storedHere: true }, havoc: [expired, meanwhile] }
+  nowProcessing: { set: { existing: bunnyProcessing } } # the page is read again: the session's recording is the PROCESSING video
+  doneUploading: { set: { existing: bunnyProcessing, storedHere: false, toast: uploaded } } # tus forgets a finished upload
+  forgetStored: { set: { storedHere: false } } # a stored upload tedrisat will not sign again is removed from tus's storage
+  notConfigured: { set: { failure: notConfigured } }
+  unavailable: { set: { failure: unavailable } }
+  exists: { set: { failure: exists } }
+  gone: { set: { failure: gone } }
+  closed: { set: { failure: closed } }
+  expiredFailure: { set: { failure: expired } }
+  notFound: { set: { failure: notFound } }
+  releaseRefused: { set: { failure: release } }
+
+failures:
+  writingRelease: { from: setRecordingAvailability, gone: [LESSON_NOT_FOUND] }
+  starting:
+    from: startRecordingUpload
+    unconfigured: [BUNNY_STREAM_NOT_CONFIGURED]
+    gone: [LESSON_NOT_FOUND]
+    exists: [RECORDING_EXISTS]
+    unavailable: [BUNNY_STREAM_UNAVAILABLE]
+  resigning:
+    from: resignRecordingUpload
+    unconfigured: [BUNNY_STREAM_NOT_CONFIGURED]
+    closed: [RECORDING_UPLOAD_CLOSED, RECORDING_UPLOAD_NOT_FOUND]
+  sending: { from: sendToBunny, network: [UPLOAD_NETWORK, UPLOAD_REFUSED, UPLOAD_FAILED] }
+
+main:
+  given: { canUpload: true, canManage: true, existing: none, slot: started, cancelled: false, meanwhile: none, library: configured, releaseChanged: false, fileOk: true, storedHere: true }
+  events: [ADD, UPLOAD, DONE, DONE]
+
+initial: recordingsPage
+states:
+  recordingsPage:
+    title: Ders kayıtları
+    by: human
+    goal: true
+    description: >-
+      The page opens for a holder of recording.manage or recording.upload. A session that has begun and holds no
+      recording offers Kayıt ekle; a recording offers Düzenle to a holder of recording.upload, whose dialog then holds the
+      upload that replaces it; a Bunny upload still PROCESSING also offers Devam et.
+    source: apps/nazar/features/recordings/components/recordings-table.tsx:316
+    on:
+      ADD: { guard: "canUpload and slotMissing", target: uploadDialog, effect: [intentAdd], say: "they press Kayıt ekle; Bunny'ye yükle is the tab it opens on", source: "apps/nazar/features/recordings/components/recordings-table.tsx:356" }
+      EDIT: { guard: "canUpload and slotRecorded", target: uploadDialog, effect: [intentEdit], say: "they press Düzenle and take Bunny'ye yükle", source: "apps/nazar/features/recordings/components/recordings-table.tsx:334" }
+      RESUME: { guard: "canUpload and existing == 'bunnyProcessing'", target: uploadDialog, effect: [intentResume], say: "they press Devam et", source: "apps/nazar/features/recordings/components/recordings-table.tsx:320" }
+      NAVIGATE: { target: left, say: "they go to another page", source: "apps/nazar/app/ders/[dersId]/kayitlar/page.tsx:11" }
+
+  uploadDialog:
+    title: Pick the video
+    by: human
+    description: >-
+      The file (video/*, at most 10 GB), the title and Herkese açık (not on Devam et), and for a holder of
+      recording.manage when talebe may watch it. Düzenle warns that the video takes the place of the link, or of the
+      current video, which leaves Bunny once the new upload is over. A file with a problem marks its field and nothing
+      is asked of tedrisat.
+    source: apps/nazar/features/recordings/components/recording-dialog.tsx:409
+    on:
+      UPLOAD:
+        - { guard: "not fileOk", target: uploadDialog, effect: [showFileError], say: "no file, or not a video, empty or over 10 GB", source: "apps/nazar/features/recordings/components/recording-dialog.tsx:250" }
+        - { target: releaseStep, say: "they press Yükle", source: "apps/nazar/features/recordings/components/recording-dialog.tsx:248" }
+      CLOSE: { target: recordingsPage, say: "they press Vazgeç", source: "apps/nazar/features/recordings/components/recording-dialog.tsx:388" }
+
+  releaseStep:
+    title: Write the release time first, or sign
+    description: A changed release time is written on its own route before any byte goes, so the video never opens to talebe while Bunny prepares it.
+    source: apps/nazar/features/recordings/components/recording-dialog.tsx:260
+    always:
+      - { guard: mustWriteRelease, target: writingRelease, say: "the release time changed", source: "apps/nazar/features/recordings/components/recording-dialog.tsx:260" }
+      - { guard: "intent == 'resume' and not videoMade and not storedHere", target: uploadFailed, effect: [notFound], say: "this browser holds no earlier upload of that file: nothing is asked of tedrisat", source: "apps/nazar/features/recordings/bunny-upload.ts:343" }
+      - { guard: "intent == 'resume' or videoMade", target: resigning, say: "the video exists: the same video is signed again", source: "apps/nazar/features/recordings/bunny-upload.ts:330" }
+      - { target: starting, say: "a new upload", source: "apps/nazar/features/recordings/bunny-upload.ts:344" }
+
+  writingRelease:
+    title: Write the release time
+    description: PUT /lessons/:id/recording-availability (recording.manage). "Kayıt eklendi" is claimed only for a READY recording, so this alone tells no one.
+    invoke: { action: setRecordingAvailability }
+    source: apps/nazar/features/recordings/components/recording-dialog.tsx:263
+    on:
+      DONE: { guard: "meanwhile != 'hidden'", target: releaseStep, effect: [releaseWritten], say: "the time is written", source: "apps/nazar/features/recordings/components/recording-dialog.tsx:274" }
+      FAIL.gone: { guard: "meanwhile == 'hidden'", target: uploadFailed, effect: [releaseRefused], say: "404: the session was hidden; nothing was uploaded", source: "apps/nazar/features/recordings/components/recording-dialog.tsx:268" }
+
+  starting:
+    title: tedrisat starts the upload
+    description: >-
+      POST /lessons/:id/recordings/uploads. The guard asks recording.upload; then the library's configuration, the
+      session (missing or hidden: 404) and its recording are checked before Bunny is called. A link or a FAILED upload is
+      replaced; a Bunny video PROCESSING or READY only with replaceVideo, which a Bunny recording's Düzenle sends. Whether
+      the session is cancelled is not asked. tedrisat creates the video, writes the recording BUNNY PROCESSING under the
+      session's lock with recording.upload_start in audit_log, and signs the upload for 24 hours.
+    invoke: { action: startRecordingUpload }
+    source: apps/tedrisat/src/course/recording-upload.service.ts:73
+    on:
+      DONE:
+        guard: "library == 'configured' and meanwhile != 'hidden' and not (activeVideo and not replaceVideo)"
+        target: sending
+        effect: [made]
+        starts: { flow: medaris.recording-encoding }
+        say: "the video is made and the session's recording is now PROCESSING"
+        source: apps/tedrisat/src/course/recording-upload.service.ts:93
+      FAIL.unconfigured: { guard: "library == 'notConfigured'", target: uploadFailed, effect: [notConfigured], say: "503 BUNNY_STREAM_NOT_CONFIGURED", source: "apps/tedrisat/src/bunny-stream/bunny-stream.client.ts:78" }
+      FAIL.gone: { guard: "library != 'notConfigured' and meanwhile == 'hidden'", target: uploadFailed, effect: [gone], say: "404: the session was hidden; the page is read again behind the dialog", source: "apps/tedrisat/src/course/recording-upload.service.ts:83" }
+      FAIL.exists: { guard: "library != 'notConfigured' and meanwhile != 'hidden' and activeVideo and not replaceVideo", target: uploadFailed, effect: [exists], say: "409 RECORDING_EXISTS; the page is read again behind the dialog", source: "apps/tedrisat/src/course/recording-upload.service.ts:88" }
+      FAIL.unavailable: { guard: "library == 'unavailable' and meanwhile != 'hidden' and not (activeVideo and not replaceVideo)", target: uploadFailed, effect: [unavailable], say: "503 BUNNY_STREAM_UNAVAILABLE: Bunny did not create the video", source: "apps/tedrisat/src/bunny-stream/bunny-stream.client.ts:104" }
+
+  resigning:
+    title: Sign the same video again
+    description: >-
+      POST /lessons/:id/recordings/uploads/:videoId/signature (recording.upload). The session must exist (a hidden one
+      is not refused), the video must still be its recording's and PROCESSING, and the 24 hours must not be over; the
+      expiry is the original one.
+    invoke: { action: resignRecordingUpload }
+    source: apps/tedrisat/src/course/recording-upload.service.ts:114
+    on:
+      DONE: { guard: "library != 'notConfigured' and not expired and meanwhile != 'uploadStarted'", target: sending, effect: [signed], say: "signed again; the upload continues from Bunny's offset", source: "apps/tedrisat/src/course/recording-upload.service.ts:129" }
+      FAIL.unconfigured:
+        - { guard: "library == 'notConfigured' and videoMade", target: uploadDead, effect: [notConfigured], say: "503 BUNNY_STREAM_NOT_CONFIGURED after a stop: the dialog has nothing left to send", source: "apps/tedrisat/src/course/recording-upload.service.ts:58" }
+        - { guard: "library == 'notConfigured'", target: uploadFailed, effect: [notConfigured], say: "503 BUNNY_STREAM_NOT_CONFIGURED", source: "apps/tedrisat/src/course/recording-upload.service.ts:58" }
+      FAIL.closed:
+        - { guard: "library != 'notConfigured' and meanwhile == 'uploadStarted' and videoMade", target: uploadDead, effect: [closed], say: "404 RECORDING_UPLOAD_NOT_FOUND or 409 not-processing: another upload took the video's place", source: "apps/tedrisat/src/course/recording-upload.service.ts:122" }
+        - { guard: "library != 'notConfigured' and meanwhile == 'uploadStarted'", target: uploadFailed, effect: [closed, forgetStored], say: "Devam et: another upload took the stored video's place; the stored upload is forgotten", source: "apps/nazar/features/recordings/bunny-upload.ts:340" }
+        - { guard: "library != 'notConfigured' and meanwhile != 'uploadStarted' and expired and videoMade", target: uploadDead, effect: [expiredFailure], say: "409 RECORDING_UPLOAD_CLOSED expired: the 24 hours are over", source: "apps/tedrisat/src/course/recording-upload.service.ts:127" }
+        - { guard: "library != 'notConfigured' and meanwhile != 'uploadStarted' and expired", target: uploadFailed, effect: [expiredFailure, forgetStored], say: "Devam et after the 24 hours: refused, and the stored upload is forgotten", source: "apps/tedrisat/src/course/recording-upload.service.ts:127" }
+
+  sending:
+    title: The file goes to Bunny
+    by: human
+    description: >-
+      tus-js-client sends 50 MiB chunks to Bunny's TUS endpoint with the signature on every request, retrying a dropped
+      connection for about two minutes; a progress bar counts the bytes. While bytes go, the browser asks before the page
+      is left and İptal is the only button.
+    invoke: { action: sendToBunny }
+    source: apps/nazar/features/recordings/bunny-upload.ts:300
+    on:
+      DONE: { target: uploaded, say: "Bunny has the whole file", source: "apps/nazar/features/recordings/bunny-upload.ts:396" }
+      ABORT: { target: stopped, effect: [stopped], say: "they press İptal; Bunny keeps what it got", source: "apps/nazar/features/recordings/bunny-upload.ts:314" }
+      FAIL.network: { target: stopped, effect: [netFailure], say: "the connection dropped or Bunny refused a request", source: "apps/nazar/features/recordings/bunny-upload.ts:398" }
+
+  stopped:
+    title: The upload has stopped
+    by: human
+    description: >-
+      After İptal: "Yükleme durduruldu"; after a failure between the browser and Bunny, its sentence. Devam et continues
+      it with the same video. Closing leaves the session's recording PROCESSING (Hazırlanıyor), to continue later.
+    source: apps/nazar/features/recordings/components/recording-dialog.tsx:476
+    on:
+      UPLOAD: { target: releaseStep, say: "they press Devam et", source: "apps/nazar/features/recordings/components/recording-dialog.tsx:392" }
+      CLOSE: { target: recordingsPage, effect: [nowProcessing], say: "they close the dialog; the recording stays Hazırlanıyor", source: "apps/nazar/features/recordings/components/recording-dialog.tsx:232" }
+
+  uploadFailed:
+    title: The video could not be uploaded
+    by: human
+    description: The refusal is worded from its code. No video belongs to this dialog, so the next Yükle starts over with any file.
+    source: apps/nazar/features/recordings/components/recording-dialog.tsx:481
+    on:
+      UPLOAD: { target: releaseStep, say: "they press Yükle (or Devam et) again", source: "apps/nazar/features/recordings/components/recording-dialog.tsx:309" }
+      CLOSE: { target: recordingsPage, say: "they press Vazgeç", source: "apps/nazar/features/recordings/components/recording-dialog.tsx:388" }
+
+  uploadDead:
+    title: The upload cannot continue
+    by: human
+    description: tedrisat will not sign the video again; the submit button is gone. A video that never got its file is failed by the encoding poll once its 24 hours are over.
+    source: apps/nazar/features/recordings/components/recording-dialog.tsx:378
+    on:
+      CLOSE: { target: recordingsPage, effect: [nowProcessing], say: "they press Vazgeç", source: "apps/nazar/features/recordings/components/recording-dialog.tsx:388" }
+
+  uploaded:
+    title: The video is uploaded
+    description: '"Video yüklendi": the dialog closes and the page is read again; the row says Hazırlanıyor until Bunny has encoded it.'
+    source: apps/nazar/features/recordings/components/recording-dialog.tsx:293
+    always:
+      - { target: recordingsPage, effect: [doneUploading], source: "apps/nazar/features/recordings/components/recording-dialog.tsx:298" }
+
+  left: { type: final, title: They leave Ders kayıtları, leavesPage: true, source: "apps/nazar/app/ders/[dersId]/kayitlar/page.tsx:11" }
+
+assertions:
+  - { id: no-video-without-recording-upload, never: "state in ['starting', 'resigning', 'sending'] and not canUpload", say: "Only a holder of recording.upload makes a Bunny video or sends a file", source: "apps/tedrisat/src/course/recording-upload.controller.ts:77" }
+  - { id: no-file-without-a-library, never: "state == 'sending' and library == 'notConfigured'", say: "No file is sent while the server has no Bunny library", source: "apps/tedrisat/src/course/recording-upload.service.ts:58" }
+  - { id: adding-keeps-an-active-video, never: "state == 'sending' and intent == 'add' and activeVideo", say: "Kayıt ekle never takes the place of a Bunny video being prepared or ready", source: "apps/tedrisat/src/course/domain/recording.ts:61" }
+  - { id: no-add-before-the-session-begins, never: "state == 'starting' and intent == 'add' and slot == 'notYet'", say: "Kayıt ekle is not offered on a session that has not begun", source: "apps/nazar/features/recordings/recordings.ts:160" }
+  - { id: release-time-before-the-bytes, never: "state == 'sending' and mustWriteRelease", say: "No byte goes before a changed release time is written", source: "apps/nazar/features/recordings/components/recording-dialog.tsx:259" }
+  - { id: no-file-after-the-24-hours, never: "state == 'sending' and expired", say: "An upload whose 24 hours are over is never continued", source: "apps/tedrisat/src/course/recording-upload.service.ts:126" }

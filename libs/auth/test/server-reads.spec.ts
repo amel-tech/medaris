@@ -115,20 +115,6 @@ describe("requireSession() and requireAccessToken()", () => {
       redirectOf(auth.requireSession({ callbackUrl: "https://evil.example/" }))
     ).resolves.toBe("/auth/signin");
   });
-
-  it("use the app's localised sign-in page", async () => {
-    const auth = createAuth(
-      testConfig({
-        pages: {
-          signIn: (returnTo) =>
-            `/${returnTo?.split("/")[1] ?? "tr"}/auth/signin`,
-        },
-      })
-    );
-    await expect(
-      redirectOf(auth.requireSession({ callbackUrl: "/ar/learning" }))
-    ).resolves.toBe("/ar/auth/signin?callbackUrl=%2Far%2Flearning");
-  });
 });
 
 describe("redirectToSignIn() and signInUrl()", () => {
@@ -156,36 +142,16 @@ describe("redirectToSignIn() and signInUrl()", () => {
     await expect(auth.requireSession()).rejects.toThrow(/sign-in page/);
   });
 
-  it("refuse it for a localised sign-in page too", async () => {
-    request.headers.set(RETURN_TO_HEADER, "/en/auth/signin");
-    const auth = createAuth(
-      testConfig({
-        pages: {
-          signIn: (returnTo) =>
-            `/${returnTo?.split("/")[1] || "tr"}/auth/signin`,
-        },
-      })
-    );
-    await expect(auth.requireAccessToken()).rejects.toThrow(/sign-in page/);
-  });
-
   it("use the destination inside a return path that is the sign-in page, never nesting it", () => {
-    const auth = createAuth(
-      testConfig({
-        pages: {
-          signIn: (returnTo) =>
-            `/${returnTo?.split("/")[1] || "tr"}/auth/signin`,
-        },
-      })
+    const auth = createAuth(testConfig());
+    expect(auth.signInUrl("/auth/signin?callbackUrl=%2Fcourses")).toBe(
+      "/auth/signin?callbackUrl=%2Fcourses"
     );
-    expect(auth.signInUrl("/en/auth/signin?callbackUrl=%2Fen%2Fcourses")).toBe(
-      "/en/auth/signin?callbackUrl=%2Fen%2Fcourses"
-    );
-    const twice = `/tr/auth/signin?callbackUrl=${encodeURIComponent(
-      "/tr/auth/signin?callbackUrl=%2Ftr%2Fhesap"
+    const twice = `/auth/signin?callbackUrl=${encodeURIComponent(
+      "/auth/signin?callbackUrl=%2Fhesap"
     )}`;
-    expect(auth.signInUrl(twice)).toBe("/tr/auth/signin");
-    expect(auth.signInUrl("/tr/auth/signin")).toBe("/tr/auth/signin");
+    expect(auth.signInUrl(twice)).toBe("/auth/signin");
+    expect(auth.signInUrl("/auth/signin")).toBe("/auth/signin");
   });
 });
 

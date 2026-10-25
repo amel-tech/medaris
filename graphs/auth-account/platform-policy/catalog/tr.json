@@ -1,0 +1,22 @@
+{
+  "Changes.note": "Bir anahtarı açmak ya da kapatmak politikayı anında bütün köşklerde, medreselerde ve derslerde geçerli kılar: “Kayıt her zaman onaylı” açıkken her kayıt bir başvuru olur, “Ders kayıtları herkese açılamaz” açıkken hiçbir ders kaydı herkese açılamaz. Değişiklik kimin yaptığı ve önceki değeriyle denetim kaydına yazılır. Anahtarı yeniden çevirerek geri alınır; o arada verilmiş kararlar kendiliğinden değişmez.",
+  "NoAccess.bodyGeneric": "Bu bölümün izni hesabınıza verilmemiş. İzinleri Medaris başnazımı verir; gerekirse ondan isteyin.",
+  "NoAccess.title": "Bu bölüm için izniniz yok",
+  "Policies.approvalBody": "Açıkken hiçbir derse doğrudan kaydolunamaz; her kayıt bir başvuru olur ve ders kadrosu onaylar. Listelenmeyen köşklerde kayıt bu ayardan bağımsız olarak her zaman onaylıdır.",
+  "Policies.approvalTitle": "Kayıt her zaman onaylı",
+  "Policies.errorForbidden": "Bu işlem için izniniz yok.",
+  "Policies.errorGeneric": "İşlem tamamlanamadı. Biraz sonra yeniden deneyin.",
+  "Policies.heading": "Politikalar",
+  "Policies.instantNote": "Her değişiklik anında geçerli olur ve denetim kaydına yazılır.",
+  "Policies.intro": "Platform politikaları her köşkte, medresede ve derste geçerlidir. Bir politika bir izni kapatır; köşk, medrese ya da ders onu yeniden açamaz.",
+  "Policies.loadFailed": "Platform ayarları şu anda alınamıyor. Biraz sonra yeniden deneyin.",
+  "Policies.loadFailedTitle": "Ayarlar okunamadı",
+  "Policies.ownScopes": "Kendi kapsamında uygulayan: {names}",
+  "Policies.recordingsBody": "Açıkken hiçbir ders kaydı herkese açık yapılamaz ve YouTube’a yüklenemez; ders kayıtlarını yalnız kayıtlı talebeler ve ders kadrosu izler.",
+  "Policies.recordingsTitle": "Ders kayıtları herkese açılamaz",
+  "Policies.retry": "Tekrar dene",
+  "Policies.saveFailed": "Politika kaydedilemedi",
+  "Policies.title": "Platform ayarları",
+  "Policies.turnedOff": "Politika kapatıldı",
+  "Policies.turnedOn": "Politika açıldı"
+}

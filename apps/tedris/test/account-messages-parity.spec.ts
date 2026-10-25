@@ -27,8 +27,8 @@ const SOURCES: Record<string, string> = {
 };
 const PAGES: Record<string, string[]> = {
   AccountProfile: [],
-  PublicProfile: ["app/[locale]/account/public-profile/page.tsx"],
-  KoskApplication: ["app/[locale]/kosk-applications/new/page.tsx"],
+  PublicProfile: ["app/account/public-profile/page.tsx"],
+  KoskApplication: ["app/kosk-applications/new/page.tsx"],
 };
 
 describe("tedrisAccount messages (MDRS-166)", () => {

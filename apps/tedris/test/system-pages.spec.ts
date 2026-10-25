@@ -53,19 +53,17 @@ describe("tedris/38: not found", () => {
     );
     const link = document.querySelector("a.mds-btn") as HTMLAnchorElement;
     expect(link.textContent).toBe("Ana sayfaya dön");
-    expect(link.getAttribute("href")).toBe("/tr/home");
+    expect(link.getAttribute("href")).toBe("/home");
   });
 
   it("sends a signed-out visitor to the landing page, a signed-in one to /home", async () => {
     const { homeHref } = await load();
-    expect(homeHref("tr", true)).toBe("/tr/home");
-    expect(homeHref("tr", false)).toBe("/tr");
+    expect(homeHref(true)).toBe("/home");
+    expect(homeHref(false)).toBe("/");
     state.status = "unauthenticated";
     const { NotFoundState } = await load();
     await render(createElement(NotFoundState));
-    expect(document.querySelector("a.mds-btn")?.getAttribute("href")).toBe(
-      "/tr"
-    );
+    expect(document.querySelector("a.mds-btn")?.getAttribute("href")).toBe("/");
     state.status = "authenticated";
   });
 
@@ -91,7 +89,7 @@ describe("tedris/39: forbidden", () => {
     );
     const link = document.querySelector("a.mds-btn") as HTMLAnchorElement;
     expect(link.textContent).toBe("Desteye dön");
-    expect(link.getAttribute("href")).toBe("/tr/decks/d-1");
+    expect(link.getAttribute("href")).toBe("/decks/d-1");
   });
 
   it("without a deck says nothing about one and offers home", async () => {
@@ -101,7 +99,7 @@ describe("tedris/39: forbidden", () => {
       "Bu sayfayı görmek için yetkin yok."
     );
     expect(document.querySelector("a.mds-btn")?.getAttribute("href")).toBe(
-      "/tr/home"
+      "/home"
     );
   });
 });
@@ -131,7 +129,7 @@ describe("tedris/40: something went wrong", () => {
   // this page used to wrap it in.
   it("the segment boundary hands 'Yeniden dene' to Next's retry", async () => {
     const retry = vi.fn();
-    const { default: ErrorPage } = await import("../app/[locale]/error");
+    const { default: ErrorPage } = await import("../app/error");
     const error = vi.spyOn(console, "error").mockImplementation(() => {});
     await render(
       createElement(ErrorPage, {

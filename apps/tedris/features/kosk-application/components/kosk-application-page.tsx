@@ -8,7 +8,6 @@ import { Input } from "@medaris/ui/mds/input";
 import { Select } from "@medaris/ui/mds/select";
 import { Textarea } from "@medaris/ui/mds/textarea";
 import { useToaster } from "@medaris/ui/mds/toast";
-import { useLocale } from "next-intl";
 import { type FormEvent, useState, useTransition } from "react";
 import { LocaleAppProviders } from "~/components/locale-app-providers";
 import { CARD_GAP } from "~/features/account/card-gap";
@@ -31,7 +30,6 @@ function Content({
   privacyNoticeHref: string;
 }) {
   const t = useAccountTranslations("KoskApplication");
-  const locale = useLocale();
   const toaster = useToaster();
   const [draft, setDraft] = useState<ApplicationDraft>({
     name: "",
@@ -80,7 +78,7 @@ function Content({
     });
   };
 
-  const discover = `/${locale}/discover`;
+  const discover = `/discover`;
 
   if (sent) {
     return (

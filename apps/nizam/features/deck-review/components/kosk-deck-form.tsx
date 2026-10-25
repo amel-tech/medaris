@@ -57,7 +57,7 @@ export function KoskDeckForm({
   const locale = useLocale();
   const timeZone = useTimeZone() ?? "Europe/Istanbul";
   const router = useRouter();
-  const base = `/${locale}/kosks/${koskId}`;
+  const base = `/kosks/${koskId}`;
 
   const [values, setValues] = useState<DeckFormValues>(
     proposal ? formFromProposal(proposal) : emptyDeckForm()

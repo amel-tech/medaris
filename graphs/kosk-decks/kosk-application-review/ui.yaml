@@ -1,0 +1,77 @@
+# The screens of medaris.kosk-application-review: nizam /talepler/kosk-basvurulari (design nizam/15) with the köşk form
+# (nizam/10) and the reasoned refusal. Dialogs are Base UI dialogs (role dialog, labelled by their title). Toasts are
+# Sonner's, announced by a polite live region; the format has no toast component, so they are drawn as status nodes.
+# A row of the list and the selected application's title show data, not words: their message is the bare value.
+schema: delurio-graph/0
+kind: ui
+id: medaris.kosk-application-review
+flow: medaris.kosk-application-review
+status: proposed
+catalog: catalog/tr.json
+locales: [tr, en]
+samples: { name: "Davutpaşa Köşkü", handle: "davutpasa" }
+changes: { key: Changes.note }
+
+nodes:
+  page: { type: page, component: Page, role: main, name: { labelledBy: title }, in: [readingDetail, detail, approving, rejecting, settling, emptyList], source: "apps/nizam/features/platform-admin/components/applications-view.tsx:363" }
+  title: { type: text, component: Heading, role: heading, text: { key: Review.title }, in: [readingDetail, detail, approving, rejecting, settling, emptyList], source: "apps/nizam/features/platform-admin/components/applications-view.tsx:368" }
+  intro: { type: text, component: Text, text: { key: Review.intro }, in: [readingDetail, detail, approving, rejecting, settling, emptyList] }
+  tabs: { type: list, component: List, role: tablist, name: { key: Review.tabsLabel }, in: [readingDetail, detail, approving, rejecting, settling, emptyList], source: "apps/nizam/features/platform-admin/components/applications-view.tsx:381" }
+  tab: { type: field, component: ListItem, role: tab, text: { oneOf: [Review.tabPending, Review.tabDecided] }, in: [readingDetail, detail, approving, rejecting, settling, emptyList] }
+  empty: { type: text, component: Text, text: { key: Review.emptyPending }, in: [emptyList], source: "apps/nizam/features/platform-admin/components/applications-view.tsx:406" }
+  list: { type: list, component: List, role: list, name: { key: Review.title }, in: [readingDetail, detail, approving, rejecting], source: "apps/nizam/features/platform-admin/components/applications-view.tsx:409" }
+  listItem: { type: action, component: ListItem, role: listitem, text: { key: Data.applicationName, params: { name: application.name } }, in: [readingDetail, detail, approving, rejecting], repeat: applications, emits: CHOOSE, source: "apps/nizam/features/platform-admin/components/applications-view.tsx:197" } # a button in each row; the selected one has aria-current
+
+  eyebrow: { type: text, component: Text, text: { key: Review.detailEyebrow }, in: [readingDetail, detail, approving, rejecting], source: "apps/nizam/features/platform-admin/components/applications-view.tsx:279" }
+  detailTitle: { type: text, component: Heading, role: heading, text: { key: Data.applicationName, params: { name: application.name } }, in: [readingDetail, detail, approving, rejecting], source: "apps/nizam/features/platform-admin/components/applications-view.tsx:280" }
+  statusBadge: { type: text, component: Text, text: { key: Review.statusPending }, in: [readingDetail, detail, approving, rejecting] }
+  fieldLine: { type: text, component: Text, text: { key: Review.field }, in: [detail, approving, rejecting] }
+  sentLine: { type: text, component: Text, text: { key: Review.sentAt }, in: [detail, approving, rejecting] }
+  sameFieldLine: { type: text, component: Text, text: { key: Review.sameField }, in: [detail, approving, rejecting], source: "apps/nizam/features/platform-admin/components/applications-view.tsx:316" }
+  summaryLine: { type: text, component: Text, text: { key: Review.summary }, in: [detail, approving, rejecting] }
+  reasonLine: { type: text, component: Text, text: { key: Review.reason }, in: [detail, approving, rejecting] }
+  applicantHeading: { type: text, component: Heading, role: heading, text: { key: Review.applicant }, in: [detail, approving, rejecting], source: "apps/nizam/features/platform-admin/components/applications-view.tsx:230" }
+  emailLine: { type: text, component: Text, text: { key: Review.email }, in: [detail, approving, rejecting], source: "apps/nizam/features/platform-admin/components/applications-view.tsx:252" }
+  phoneLine: { type: text, component: Text, text: { key: Review.phone }, in: [detail, approving, rejecting] }
+  contactNote: { type: text, component: Text, text: { key: Review.contactNote }, in: [detail, approving, rejecting], source: "apps/nizam/features/platform-admin/components/applications-view.tsx:264" }
+  openNote: { type: text, component: Text, text: { key: Review.openNote }, in: [detail, approving, rejecting], source: "apps/nizam/features/platform-admin/components/applications-view.tsx:341" } # says the form opens with the field too; the form has no field
+  open: { type: action, component: Button, role: button, intent: confirm, text: { key: Review.open }, in: [detail, approving, rejecting], disabledIn: [approving, rejecting], emits: OPEN, source: "apps/nizam/features/platform-admin/components/applications-view.tsx:343" } # drawn for every decider, also one who may not open a köşk
+  reject: { type: action, component: Button, role: button, intent: secondary, text: { key: Review.reject }, in: [detail, approving, rejecting], disabledIn: [approving, rejecting], emits: REJECT, source: "apps/nizam/features/platform-admin/components/applications-view.tsx:344" }
+  approvedToast: { type: status, component: Status, role: status, text: { key: Review.approvedBody, params: { name: kosk.name } }, in: [readingDetail, detail, emptyList], when: "notice == 'approved'", source: "apps/nizam/features/platform-admin/components/applications-view.tsx:172" }
+  rejectedToast: { type: status, component: Status, role: status, text: { key: Review.rejectedBody, params: { name: application.name } }, in: [readingDetail, detail, emptyList], when: "notice == 'rejected'", source: "apps/nizam/features/platform-admin/components/applications-view.tsx:186" }
+  answeredToast: { type: status, component: Status, role: status, text: { key: Review.errorAnswered }, in: [readingDetail, detail, emptyList], when: "notice == 'answered'", source: "apps/nizam/features/platform-admin/components/applications-view.tsx:157" } # stays until closed
+
+  openDialog: { type: page, component: Page, role: dialog, name: { labelledBy: openTitle }, in: [openDialog, creatingKosk], initialFocus: openName, source: "apps/nizam/features/kosks/components/open-kosk-dialog.tsx:123" }
+  openTitle: { type: text, component: Heading, role: heading, text: { key: Open.title }, in: [openDialog, creatingKosk] }
+  openIntro: { type: text, component: Text, text: { key: Open.intro }, in: [openDialog, creatingKosk] }
+  openName: { type: field, component: TextField, role: textbox, text: { key: Open.nameLabel }, in: [openDialog, creatingKosk], disabledIn: [creatingKosk], source: "apps/nizam/features/kosks/components/open-kosk-dialog.tsx:156" } # filled with the application's name
+  openHandle: { type: field, component: TextField, role: textbox, text: { key: Open.handleLabel }, in: [openDialog, creatingKosk], disabledIn: [creatingKosk], emits: CHANGE_HANDLE }
+  handleTaken: { type: text, component: Text, text: { key: Open.handleTaken, params: { handle: kosk.handle } }, in: [openDialog], when: "notice == 'handleTaken'", source: "apps/nizam/features/kosks/components/open-kosk-dialog.tsx:172" }
+  openDescription: { type: field, component: TextField, role: textbox, text: { key: Open.descriptionLabel }, in: [openDialog, creatingKosk], disabledIn: [creatingKosk] } # filled with the application's summary
+  openUnlisted: { type: field, component: TextField, role: checkbox, text: { key: Open.unlistedLabel }, in: [openDialog, creatingKosk], disabledIn: [creatingKosk] }
+  pickerField: { type: field, component: TextField, role: combobox, text: { key: Picker.label }, in: [openDialog, creatingKosk], disabledIn: [creatingKosk], source: "apps/nizam/features/kosks/components/open-kosk-dialog.tsx:240" }
+  chosenHeading: { type: text, component: Text, text: { key: Picker.chosenTitle }, in: [openDialog, creatingKosk] }
+  chosenNazim: { type: text, component: Text, text: { key: Picker.chosen, params: { name: applicant.name } }, in: [openDialog, creatingKosk] } # the applicant, chosen in advance
+  openCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: Open.cancel }, in: [openDialog, creatingKosk], disabledIn: [creatingKosk], emits: CANCEL }
+  openSubmit: { type: action, component: Button, role: button, intent: confirm, text: { key: Open.submit }, in: [openDialog, creatingKosk], disabledIn: [creatingKosk], emits: SUBMIT, source: "apps/nizam/features/kosks/components/open-kosk-dialog.tsx:137" }
+  forbiddenToast: { type: status, component: Status, role: status, text: { key: Open.forbidden }, in: [openDialog], when: "notice == 'forbidden'", source: "apps/nizam/features/kosks/components/open-kosk-dialog.tsx:109" }
+
+  rejectDialog: { type: page, component: Page, role: dialog, name: { labelledBy: rejectTitle }, in: [rejectDialog], initialFocus: rejectReason, source: "apps/nizam/features/deck-review/components/reject-dialog.tsx:76" }
+  rejectTitle: { type: text, component: Heading, role: heading, text: { key: Reject.title }, in: [rejectDialog] }
+  rejectBody: { type: text, component: Text, text: { key: Reject.body }, in: [rejectDialog] }
+  rejectReason: { type: field, component: TextField, role: textbox, text: { key: Reject.reasonLabel }, in: [rejectDialog], source: "apps/nizam/features/deck-review/components/reject-dialog.tsx:104" }
+  rejectHelp: { type: text, component: Text, text: { key: Reject.help }, in: [rejectDialog] }
+  rejectCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: Reject.cancel }, in: [rejectDialog], emits: CANCEL }
+  rejectSubmit: { type: action, component: Button, role: button, intent: confirm, text: { key: Reject.submit }, in: [rejectDialog], emits: SUBMIT, source: "apps/nizam/features/deck-review/components/reject-dialog.tsx:90" } # disabled while the reason is blank
+
+edges:
+  - { labelledBy: [page, title] }
+  - { labelledBy: [openDialog, openTitle] }
+  - { labelledBy: [rejectDialog, rejectTitle] }
+  - { triggers: [openSubmit, creatingKosk] }
+  - { triggers: [rejectSubmit, rejecting] }
+  - { triggers: [listItem, readingDetail] }
+
+rules:
+  - { id: contact-after-choice, rule: "the applicant's contact details are fetched only for an application the reviewer picked (the code fetches them for the automatic selection too)" }
+  - { id: no-default-confirm, rule: "no dialog has initialFocus on an action with intent confirm" }

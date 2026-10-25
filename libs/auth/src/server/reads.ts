@@ -138,7 +138,7 @@ export function createServerReads(
   /** Whether `path`, a validated return path, is the app's sign-in page itself. */
   const isSignInPage = (path: string) =>
     new URL(path, config.origin).pathname ===
-    new URL(config.signInPage(path), config.origin).pathname;
+    new URL(config.signInPage, config.origin).pathname;
 
   /**
    * Where a sign-in should come back to. A return path that is the sign-in
@@ -157,7 +157,7 @@ export function createServerReads(
 
   const signInUrl: ServerReads["signInUrl"] = (returnTo, options = {}) => {
     const safe = destinationOf(returnTo);
-    const page = config.signInPage(safe);
+    const page = config.signInPage;
     const query = [
       safe ? `callbackUrl=${encodeURIComponent(safe)}` : null,
       options.reauth ? `${REAUTH_PARAM}=1` : null,

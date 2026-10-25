@@ -1,17 +1,8 @@
-import { authPageUnderCallbackLocale } from "@medaris/utils";
+import { withoutLocaleSegment } from "@medaris/ui/lib/locale-preference";
 import { type NextRequest, NextResponse } from "next/server";
-import createIntlMiddleware from "next-intl/middleware";
 import { proxy as authProxy } from "~/lib/auth";
-import { authPages, registerPage } from "~/lib/auth_pages";
-import { locales, routing } from "~/lib/i18n/routing";
+import { locales } from "~/lib/i18n/routing";
 import { isPublicPath } from "~/lib/public-paths";
-
-const intl = createIntlMiddleware(routing);
-
-const authPaths: readonly string[] = [
-  ...Object.values(authPages),
-  registerPage,
-];
 
 /**
  * Every request tedris serves, before it renders (Next 16, Node runtime). The
@@ -20,24 +11,19 @@ const authPaths: readonly string[] = [
  *
  * In order:
  *
- * 1. An auth page asked for without a locale (`/auth/signin?callbackUrl=/en/…`)
- *    moves under the locale of the page the visitor was on, so Keycloak opens
- *    in their language (MDRS-274).
+ * 1. An address from before MDRS-248 (`/en/courses/1`) moves to the same page
+ *    without the language: the language is the `medaris-locale` cookie's.
  * 2. The auth step: the session is renewed for this request and the response;
  *    a page that is not in `public-paths.ts`, asked for without a session,
- *    goes to `/<locale>/auth/signin?callbackUrl=<where they were>`. A public
- *    page renders for the visitor (MDRS-216); `/api/…` and Server Actions are
+ *    goes to `/auth/signin?callbackUrl=<where they were>`. A public page
+ *    renders for the visitor (MDRS-216); `/api/…` and Server Actions are
  *    never redirected, they answer for themselves.
- * 3. next-intl for the pages it lets through (the locale prefix).
  */
 export default function proxy(request: NextRequest) {
-  const localised = authPageUnderCallbackLocale(request.nextUrl, {
-    authPaths,
-    locales,
-  });
-  if (localised) return NextResponse.redirect(new URL(localised, request.url));
+  const bare = withoutLocaleSegment(request.nextUrl, locales);
+  if (bare) return NextResponse.redirect(new URL(bare, request.url), 308);
 
-  return authProxy(request, { isPublicPath, next: intl });
+  return authProxy(request, { isPublicPath });
 }
 
 export const config = {

@@ -1,0 +1,17 @@
+{
+  "AuditPage.export": "Dışa aktar",
+  "AuditPage.filters.actor": "Kişi",
+  "AuditPage.filters.range": "Tarih",
+  "AuditPage.filters.scope": "Kapsam",
+  "AuditPage.filters.type": "Ne yaptı",
+  "AuditPage.filtersLabel": "Denetim kaydı süzgeçleri",
+  "AuditPage.intro": "Kimin neyi okuduğunun ya da değiştirdiğinin salt okunur kaydı. Kayıtlar silinemez ve değiştirilemez.",
+  "AuditPage.notice": "Köşk nâzımları, medrese ve ders kadroları bu kaydı göremez; kişisel veriler talebi karşılayacak kadarıyla verilir (KVKK).",
+  "AuditPage.noticeTitle": "Bu kaydı yalnız siz görürsünüz",
+  "AuditPage.older": "Daha eskileri göster",
+  "AuditPage.retention": "Kayıtlar [KVKK saklama süresi] boyunca saklanır.",
+  "AuditPage.title": "Denetim kaydı",
+  "Changes.note": "Denetim kaydını okumak hiçbir şeyi değiştirmez; kayıtlar silinemez ve değiştirilemez. Dışa aktar, seçili süzgeçlere uyan en çok 10 000 kaydı CSV dosyası olarak indirir; dışa aktarma da adınızla, satır sayısı ve süzgeçleriyle denetim kaydına yazılır ve kaydı okuyabilen herkes bunu görür. İndirilen dosya bilgisayarınızda kalır; geri alınamaz.",
+  "NoAccess.bodyGeneric": "Bu bölümün izni hesabınıza verilmemiş. İzinleri Medaris başnazımı verir; gerekirse ondan isteyin.",
+  "NoAccess.title": "Bu bölüm için izniniz yok"
+}

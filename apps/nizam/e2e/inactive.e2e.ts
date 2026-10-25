@@ -42,7 +42,7 @@ async function signIn(
   page: Page,
   who: { email?: string; password?: string }
 ): Promise<void> {
-  await page.goto("/tr/auth/signin");
+  await page.goto("/auth/signin");
   await page.locator("#username").fill(who.email as string);
   await page.locator("#password").fill(who.password as string);
   await page.locator("button[type=submit]").click();
@@ -60,7 +60,7 @@ const countOf = (page: Page) =>
   page.locator("[data-testid=inactive-count]:visible");
 
 const openInactive = async (page: Page) => {
-  await page.goto("/tr/pasif-kapsamlar");
+  await page.goto("/pasif-kapsamlar");
   await expect(
     page.getByRole("heading", { level: 1, name: "Pasif kapsamlar" })
   ).toBeVisible();
@@ -163,12 +163,12 @@ test("nizam/14 — the menu's 'Pasif kapsamlar' opens the page", async ({
 }) => {
   test.skip(!(seedable && SYSTEM_ADMIN.password), "no SYSTEM_ADMIN account");
   await signIn(page, SYSTEM_ADMIN);
-  await page.goto("/tr");
+  await page.goto("/");
   await page.locator("nav a", { hasText: "Pasif kapsamlar" }).first().click();
   await expect(
     page.getByRole("heading", { level: 1, name: "Pasif kapsamlar" })
   ).toBeVisible();
-  await expect(page).toHaveURL(/\/tr\/pasif-kapsamlar$/);
+  await expect(page).toHaveURL(/\/pasif-kapsamlar$/);
 });
 
 test("nizam/14 — a köşk nazımı gets the 'izniniz yok' screen, not the list (criterion 5)", async ({
@@ -179,7 +179,7 @@ test("nizam/14 — a köşk nazımı gets the 'izniniz yok' screen, not the list
     "no KOSK_NAZIM account"
   );
   await signIn(page, KOSK_NAZIM);
-  await page.goto("/tr/pasif-kapsamlar");
+  await page.goto("/pasif-kapsamlar");
   await expect(
     page.getByText("Bu bölüm için izniniz yok").filter({ visible: true })
   ).toBeVisible();
@@ -195,7 +195,7 @@ test("nizam/14 — a Medaris nazımı without 'Pasif kapsamları yönet' gets th
   );
   await fixture.makeMedarisNazim(MEDARIS_NAZIM.sub as string, false);
   await signIn(page, MEDARIS_NAZIM);
-  await page.goto("/tr/pasif-kapsamlar");
+  await page.goto("/pasif-kapsamlar");
   await expect(
     page.getByText("Bu bölüm için izniniz yok").filter({ visible: true })
   ).toBeVisible();
@@ -364,14 +364,14 @@ test("nizam/14 — 'İçeriği gör' opens the scope and writes one audit row ev
   await rowOf(page, fixture.kosk.name)
     .getByRole("button", { name: /İçeriği gör/ })
     .click();
-  await expect(page).toHaveURL(new RegExp(`/tr/kosks/${fixture.kosk.id}$`));
+  await expect(page).toHaveURL(new RegExp(`/kosks/${fixture.kosk.id}$`));
   expect(await fixture.audits("inactive_scope.view", fixture.kosk.id)).toBe(1);
 
   await openInactive(page);
   await rowOf(page, fixture.kosk.name)
     .getByRole("button", { name: /İçeriği gör/ })
     .click();
-  await expect(page).toHaveURL(new RegExp(`/tr/kosks/${fixture.kosk.id}$`));
+  await expect(page).toHaveURL(new RegExp(`/kosks/${fixture.kosk.id}$`));
   expect(await fixture.audits("inactive_scope.view", fixture.kosk.id)).toBe(2);
 
   await openInactive(page);
@@ -381,7 +381,7 @@ test("nizam/14 — 'İçeriği gör' opens the scope and writes one audit row ev
   // the table links to the old /edit route, which sends on to the curriculum
   await expect(page).toHaveURL(
     new RegExp(
-      `/tr/kosks/${fixture.activeKosk.id}/courses/${fixture.course.id}/curriculum$`
+      `/kosks/${fixture.activeKosk.id}/courses/${fixture.course.id}/curriculum$`
     )
   );
   expect(await fixture.audits("inactive_scope.view", fixture.course.id)).toBe(

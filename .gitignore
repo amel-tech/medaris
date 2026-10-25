@@ -249,3 +249,11 @@ firestore-debug.log
 # Playwright output (MDRS-157)
 test-results/
 playwright-report/
+
+# --- delurio graphs (graphs/README.md) ---
+# Pages are generated: `npx @delurio/cli@0.1.1 page graphs --out viz` writes them locally, and the Graphs workflow
+# uploads those of a pull request's changed graphs as an artifact. They are never committed.
+graphs/**/viz/
+/viz/
+/_pages/
+/delurio.sarif

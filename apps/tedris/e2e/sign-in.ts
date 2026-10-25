@@ -84,7 +84,7 @@ export async function signIn(page: Page, who: E2eAccount): Promise<void> {
     );
     return;
   }
-  await page.goto("/tr/auth/signin");
+  await page.goto("/auth/signin");
   await page.locator("#username").fill(who.email as string);
   await page.locator("#password").fill(who.password as string);
   await page.locator("button[type=submit]").click();

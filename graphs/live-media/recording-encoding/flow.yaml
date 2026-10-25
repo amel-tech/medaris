@@ -1,0 +1,185 @@
+# Medaris, captured from origin/main ce47fce8: what tedrisat's encoding poll does with one Bunny upload once it is the
+# session's PROCESSING recording (medaris.recording-upload starts it): every minute it asks Bunny for the video's
+# status, settles the recording READY or FAILED, tells the talebe when a READY one is open to them, and then deletes from
+# Bunny the video this upload replaced, if any. A server process with no screen and no person.
+schema: delurio-graph/0
+kind: flow
+id: medaris.recording-encoding
+status: proposed
+domain: medaris.live-media
+title: Bunny encodes an uploaded recording
+summary: >-
+  While the library is configured, a poll runs every 60 seconds over up to 50 PROCESSING Bunny uploads, least recently
+  updated first. Bunny's Finished or JitPlaylistsCreated makes the recording READY with its length; Error, UploadFailed,
+  a video Bunny no longer has, or a video still Created once its 24 hours are over make it FAILED; anything else waits.
+  A row is settled only while it still holds this video. A READY recording open to talebe is announced once. Then the
+  video this upload took the place of is deleted from Bunny, unless a recording holds it again, whether the upload ended
+  READY or FAILED.
+source: apps/tedrisat/src/course/recording-encoding.poller.ts:100
+
+scope:
+  shows: one upload's pass through the poll, from PROCESSING to READY or FAILED, and the deletion of the video it replaced
+  world: open
+  outOfView:
+    - "a recording held back until its release time: the release poll announces it then (medaris.recording-release)"
+    - "several tedrisat instances polling at once: harmless, a row is settled once and a video found gone counts as deleted"
+    - "a server whose library is not configured runs no poll, and a PROCESSING row stays so"
+    - "a video a pasted link replaced: deleted on the next pass, with no upload to wait for"
+
+context:
+  status: # what Bunny answers for the video on a pass; it may change between passes
+    values: [created, encoding, finished, jitPlaylists, error, uploadFailed, gone, unanswered]
+    initial: any
+    say: { created: "Bunny has no complete file yet (Created)", encoding: "Bunny has the file and is encoding it", finished: "Bunny finished encoding (Finished)", jitPlaylists: "the library plays it just in time (JitPlaylistsCreated)", error: "Bunny could not encode it (Error)", uploadFailed: "Bunny says the upload failed (UploadFailed)", gone: "Bunny no longer has the video", unanswered: "Bunny does not answer" }
+  expired: # the upload's 24 hours are over
+    values: [false, true]
+    initial: any
+    say: { "true": "the upload's 24 hours are over", "false": "the upload is within its 24 hours" }
+  replaced: # the recording no longer holds this video PROCESSING: another upload or a link took its place
+    values: [false, true]
+    initial: any
+    say: { "true": "the recording got another video or a link meanwhile", "false": "" }
+  released: # the session's release time is unset or has come
+    values: [true, false]
+    initial: any
+    say: { "true": "the recording is open to talebe as soon as it is READY", "false": "the session's release time is still ahead" }
+  announcedBefore: # notifiedAt is set: an earlier recording of the session was announced
+    values: [false, true]
+    initial: any
+    say: { "true": "the session's talebe were told of a recording before", "false": "" }
+  replacedOld: # this upload took the place of a Bunny video, queued for deletion until this upload is over
+    values: [false, true]
+    initial: any
+    say: { "true": "this upload replaced an earlier Bunny video of the session", "false": "this upload replaced no Bunny video" }
+  heldAgain: # a recording holds the earlier video again (its link pasted back)
+    values: [false, true]
+    initial: any
+    say: { "true": "a recording holds the earlier video again", "false": "" }
+  deleteAnswer: # Bunny's answer to deleting the earlier video
+    values: [deleted, alreadyGone, refused]
+    initial: any
+    say: { deleted: "Bunny deletes it", alreadyGone: "Bunny no longer had it", refused: "Bunny refuses or does not answer" }
+  outcome: { values: [none, ready, failed], initial: none }
+  oldDeleted: { values: [false, true], initial: false }
+
+guards:
+  playable: "status in ['finished', 'jitPlaylists']" # apps/tedrisat/src/bunny-stream/bunny-signature.ts:141
+  broken: "status in ['error', 'uploadFailed', 'gone'] or (status == 'created' and expired)" # apps/tedrisat/src/bunny-stream/bunny-signature.ts:147
+
+effects:
+  pass: { havoc: [status, expired, replaced] } # a minute later Bunny may say something else, and others may have acted
+  ready: { set: { outcome: ready } }
+  failed: { set: { outcome: failed } }
+  announced: { set: { announcedBefore: true } }
+  oldGone: { set: { oldDeleted: true } }
+  retry: { havoc: [deleteAnswer] }
+
+failures:
+  askingBunny: { from: readBunnyVideo, unavailable: [BUNNY_STREAM_UNAVAILABLE] }
+  deletingOld: { from: deleteBunnyVideo, unavailable: [BUNNY_STREAM_UNAVAILABLE] }
+
+main:
+  given: { status: finished, expired: false, replaced: false, released: true, announcedBefore: false, replacedOld: false, heldAgain: false, deleteAnswer: deleted }
+  events: [POLL, DONE, DONE]
+
+initial: waiting
+states:
+  waiting:
+    title: The recording is PROCESSING
+    goal: true
+    description: >-
+      Hazırlanıyor in Ders kayıtları, which nazar reads again every 10 seconds; no link for anyone, and the stream, if
+      the session has one, is still sent.
+    source: apps/tedrisat/src/course/recording.repository.ts:548
+    response: { recording: PROCESSING, url: null }
+    on:
+      POLL: { target: askingBunny, effect: [pass], say: "the minute's pass reaches this upload", source: "apps/tedrisat/src/course/recording-encoding.poller.ts:76" }
+
+  askingBunny:
+    title: Ask Bunny for the video
+    description: >-
+      Get Video with the library's key. An outcome is settled only on a row still PROCESSING with this video
+      (settleBunnyUpload); one left waiting, or not answered for, is touched and goes to the back of the queue.
+    invoke: { action: readBunnyVideo }
+    source: apps/tedrisat/src/course/recording-encoding.poller.ts:131
+    on:
+      DONE:
+        - { guard: "replaced and status != 'unanswered'", target: leftItsRecording, say: "the recording holds another video or a link: nothing is settled", source: "apps/tedrisat/src/course/recording.repository.ts:621" }
+        - { guard: "playable and status != 'unanswered'", target: settledReady, effect: [ready], say: "Finished or JitPlaylistsCreated: READY, with its length in minutes", source: "apps/tedrisat/src/bunny-stream/bunny-signature.ts:141" }
+        - { guard: broken, target: settledFailed, effect: [failed], say: "Error, UploadFailed, gone, or still Created after its 24 hours: FAILED", source: "apps/tedrisat/src/bunny-stream/bunny-signature.ts:147" }
+        - { guard: "status in ['created', 'encoding']", target: waiting, say: "still uploading or encoding: it waits, even past its 24 hours once the file is there", source: "apps/tedrisat/src/course/recording-encoding.poller.ts:136" }
+      FAIL.unavailable: { guard: "status == 'unanswered'", target: waiting, say: "Bunny did not answer: tried again on a later pass", source: "apps/tedrisat/src/course/recording-encoding.poller.ts:164" }
+
+  settledReady:
+    title: The recording is READY
+    description: >-
+      Every read now lists it with a player link built for that read, signed when the token key is set; talebe get the
+      link once it is released, the course team at once. The stream is no longer sent once it is released.
+    source: apps/tedrisat/src/course/recording.repository.ts:604
+    always:
+      - { guard: "released and not announcedBefore", target: announcing, say: "open to talebe and nobody told yet", source: "apps/tedrisat/src/course/recording-encoding.poller.ts:161" }
+      - { target: removing, say: "held back until its time, or announced before: nobody is told now", source: "apps/tedrisat/src/course/recording-release.poller.ts:85" }
+
+  announcing:
+    title: Tell the talebe
+    description: '"Kayıt eklendi" to the session''s seats, claimed with notifiedAt in the same statement that checks it is READY and released, so it goes once whoever claims it first.'
+    invoke: { action: announceRecording }
+    source: apps/tedrisat/src/course/recording-encoding.poller.ts:161
+    on:
+      DONE: { target: removing, effect: [announced], say: "the talebe are told", source: "apps/tedrisat/src/course/recording-release.poller.ts:93" }
+
+  settledFailed:
+    title: The recording is FAILED
+    description: >-
+      visibleRecordings leaves it out of every list, the course team's included: Ders kayıtları shows the session as
+      Kayıt yok and offers Kayıt ekle again. Nobody is told.
+    source: apps/tedrisat/src/course/domain/recording.ts:160
+    always:
+      - { target: removing, source: "apps/tedrisat/src/course/recording-encoding.poller.ts:116" }
+
+  removing:
+    title: The video this upload replaced
+    description: >-
+      claimVideoRemovals: a queued video is due once its replacement is no longer PROCESSING on its recording, READY or
+      FAILED alike; a video a recording holds again is never deleted, and its row is dropped instead.
+    source: apps/tedrisat/src/course/recording.repository.ts:641
+    always:
+      - { guard: "not replacedOld", target: passOver, say: "this upload replaced no Bunny video", source: "apps/tedrisat/src/course/recording.repository.ts:680" }
+      - { guard: heldAgain, target: passOver, say: "a recording holds the earlier video again: it is kept and its row dropped", source: "apps/tedrisat/src/course/recording.repository.ts:649" }
+      - { target: deletingOld, say: "the earlier video is due", source: "apps/tedrisat/src/course/recording.repository.ts:666" }
+
+  deletingOld:
+    title: Delete the earlier video from Bunny
+    description: In the name of whoever took it off its recording; recording.video_delete goes to audit_log with the number of tries.
+    invoke: { action: deleteBunnyVideo }
+    source: apps/tedrisat/src/course/recording-encoding.poller.ts:198
+    on:
+      DONE: { guard: "deleteAnswer != 'refused'", target: passOver, effect: [oldGone], say: "deleted, or Bunny no longer had it", source: "apps/tedrisat/src/course/recording.repository.ts:701" }
+      FAIL.unavailable: { guard: "deleteAnswer == 'refused'", target: deleteLater, say: "refused: tries + 1, and it goes behind the others", source: "apps/tedrisat/src/course/recording.repository.ts:743" }
+
+  deleteLater:
+    title: The deletion waits for a later pass
+    description: There is no cap on the tries; the row, and the warning in the log, stay until someone looks.
+    source: apps/tedrisat/src/course/recording-encoding.poller.ts:182
+    on:
+      POLL: { target: deletingOld, effect: [retry], say: "a later pass tries again", source: "apps/tedrisat/src/course/recording-encoding.poller.ts:76" }
+
+  leftItsRecording:
+    type: final
+    title: The video left its recording before it was settled
+    description: Its own deletion, when another upload replaced it, is that upload's removal step.
+    source: apps/tedrisat/src/course/recording.repository.ts:604
+    response: { settled: false }
+  passOver:
+    type: final
+    title: The upload is over
+    source: apps/tedrisat/src/course/recording-encoding.poller.ts:115
+    response: { recording: "READY or FAILED", listed: "READY with a player link per read; FAILED never" }
+
+assertions:
+  - { id: ready-only-when-bunny-finished, never: "outcome == 'ready' and not playable", say: "A recording becomes READY only when Bunny says it finished or plays just in time", source: "apps/tedrisat/src/bunny-stream/bunny-signature.ts:141" }
+  - { id: an-arrived-file-is-not-failed-by-the-clock, never: "outcome == 'failed' and status == 'encoding'", say: "A file that reached Bunny is never failed for its 24 hours while Bunny encodes it", source: "apps/tedrisat/src/bunny-stream/bunny-signature.ts:153" }
+  - { id: settle-only-the-video-it-holds, never: "outcome != 'none' and replaced", say: "A recording is settled only while it still holds this video PROCESSING", source: "apps/tedrisat/src/course/recording.repository.ts:617" }
+  - { id: no-news-before-the-release-time, never: "state == 'announcing' and not released", say: "Talebe are never told of a recording before its release time", source: "apps/tedrisat/src/course/recording.repository.ts:369" }
+  - { id: told-once, never: "state == 'announcing' and announcedBefore", say: "The talebe are told of a session's recording once", source: "apps/tedrisat/src/course/recording.repository.ts:363" }
+  - { id: a-held-video-is-never-deleted, never: "state == 'deletingOld' and heldAgain", say: "A Bunny video a recording holds again is never deleted", source: "apps/tedrisat/src/course/recording.repository.ts:678" }

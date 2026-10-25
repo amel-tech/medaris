@@ -121,7 +121,7 @@ describe("NazarRedirectPage", () => {
         rows: [],
         nazarUrl: "http://nazar.test",
         failed: false,
-        retryHref: "/en/nazar-yonlendirme",
+        retryHref: "/nazar-yonlendirme",
         ...props,
       } as never)
     );
@@ -176,7 +176,7 @@ describe("NazarRedirectPage", () => {
   it("offers a retry when the roles could not be read, and no empty claim", async () => {
     const html = await render({ rows: null, failed: true });
     expect(html).toContain("Görevleriniz yüklenemedi");
-    expect(html).toContain('href="/en/nazar-yonlendirme"');
+    expect(html).toContain('href="/nazar-yonlendirme"');
     expect(html).not.toContain("henüz");
   });
 
@@ -189,7 +189,7 @@ describe("NazarRedirectPage", () => {
 describe("NoAccess (nizam 06)", () => {
   const render = async () => {
     const { NoAccess } = await import("~/components/errors/no-access");
-    return renderToStaticMarkup(await NoAccess({ locale: "tr" }));
+    return renderToStaticMarkup(await NoAccess());
   };
 
   it("names the başnazım, shows the session e-mail and links home", async () => {
@@ -201,16 +201,16 @@ describe("NoAccess (nizam 06)", () => {
       "gerekirse şu kişiden isteyin: Yusuf Ziya Ertuğrul."
     );
     expect(html).toContain("h.gundogdu@example.com");
-    expect(html).toContain('href="/tr"');
+    expect(html).toContain('href="/"');
     expect(html).toContain("Ana sayfaya dön");
   });
 
   it("is not the screen for a path no page answers (MDRS-211)", async () => {
     const { PageNotFound } = await import("~/components/errors/page-not-found");
-    const html = renderToStaticMarkup(await PageNotFound({ locale: "tr" }));
+    const html = renderToStaticMarkup(await PageNotFound());
     expect(html).toContain("Sayfa bulunamadı");
     expect(html).toContain("Bu adreste bir sayfa yok.");
-    expect(html).toContain('href="/tr"');
+    expect(html).toContain('href="/"');
     expect(html).toContain("Ana sayfaya dön");
     expect(html).not.toContain("izniniz yok");
     expect(html).not.toContain("başnazım");

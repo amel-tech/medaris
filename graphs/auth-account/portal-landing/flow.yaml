@@ -1,0 +1,126 @@
+# Where a signed-in person lands on a portal's `/`, captured from origin/main ce47fce8: what medaris.portal-sign-in
+# hands over to when no page was named. The pages it ends on are the navigation graphs' (graphs/nav/*); this flow is
+# the decision, so it has no screens of its own and each exit says what the browser is answered.
+schema: delurio-graph/0
+kind: flow
+id: medaris.portal-landing
+status: proposed
+domain: medaris.auth-account
+title: Land on a portal's home after signing in
+summary: >-
+  Tedris sends a signed-in person to Ana sayfa. Nazar sends them to the medrese or course they were last in, or their
+  first, and to "no access" when they have none; when their roles cannot be read it shows a retry. Nizam keeps a
+  nazım or the başnazım, sends someone with only medrese and course roles to "Bu işler Nazar'da" and someone with no
+  role to "Yönetim yetkiniz yok"; when their roles cannot be read it shows a plain welcome.
+
+scope:
+  shows: the `/` of each portal for a signed-in person
+  world: open
+  outOfView:
+    - "the pages themselves (Ana sayfa, a scope's page, the no-access pages, the dashboards): graphs/nav"
+    - "a 401 from tedrisat while reading the roles: medaris.portal-sign-in (reauth)"
+
+context:
+  portal:
+    values: [tedris, nazar, nizam]
+    initial: any
+    say: { tedris: "in Tedris", nazar: "in Nazar", nizam: "in Nizam" }
+  scopes:
+    values: [true, false]
+    initial: any
+    say: { "true": "they hold a medrese or course role", "false": "they hold no medrese or course role" }
+  nizamRole:
+    values: [none, kosk, platform]
+    initial: any
+    say: { none: "they hold no Nizam role", kosk: "they are a köşk nazımı", platform: "they are the başnazım (SYSTEM_ADMIN) or a Medaris nazımı" }
+  rolesRead:
+    values: [true, false]
+    initial: any
+    say: { "true": "", "false": "their roles cannot be read from tedrisat" }
+  dashboard:
+    values: [ok, failed, forbidden]
+    initial: any
+    say: { ok: "", failed: "the dashboard cannot be read", forbidden: "tedrisat refuses them the dashboard" }
+
+guards:
+  nizamBelongs: "nizamRole != 'none'"
+
+failures:
+  nazarReading:
+    from: getMyAssignments
+    unavailable: [UNAVAILABLE]
+  nizamReading:
+    from: getMyAssignments
+    unavailable: [UNAVAILABLE]
+  readingDashboard:
+    from: getNizamDashboard
+    failed: [UNAVAILABLE]
+    forbidden: [AUTHZ_FORBIDDEN]
+
+main:
+  given: { portal: nazar, scopes: true, rolesRead: true }
+  events: [DONE]
+
+initial: home
+states:
+  home:
+    title: The portal's `/`
+    source: libs/auth/src/server/config.ts:269
+    always:
+      - { guard: "portal == 'tedris'", target: tedrisHome, say: "Tedris", source: "apps/tedris/app/page.tsx:13" }
+      - { guard: "portal == 'nazar'", target: nazarReading, say: "Nazar", source: "apps/nazar/app/page.tsx:14" }
+      - { target: nizamReading, say: "Nizam", source: "apps/nizam/app/(home)/page.tsx:48" }
+
+  nazarReading:
+    title: Nazar reads the person's roles
+    source: apps/nazar/features/shell/reads.ts:44
+    description: GET /me/assignments; the scopes are the medrese and course roles (features/shell/reads.ts:57)
+    invoke: { action: getMyAssignments }
+    on:
+      DONE:
+        - { guard: "rolesRead and scopes", target: nazarScope, say: "they have a scope", source: "apps/nazar/features/shell/scope.ts:205" }
+        - { guard: "rolesRead and not scopes", target: nazarNoAccess, say: "they have none", source: "apps/nazar/features/shell/scope.ts:206" }
+      FAIL.unavailable: { guard: "not rolesRead", target: nazarUnavailable, say: "the roles cannot be read", source: "apps/nazar/app/page.tsx:15" }
+
+  nizamReading:
+    title: Nizam reads the person's roles
+    source: apps/nizam/app/(home)/page.tsx:48
+    description: >-
+      landingFor (features/assignments/landing.ts:18): SYSTEM_ADMIN, MEDARIS_NAZIM or KOSK_NAZIM stays; any other
+      assignment goes to Nazar's page; none to "no role". A failed read (`me` null) skips both redirects
+      ((home)/page.tsx:49) and the shell variant of null is "none" (lib/shell-nav.ts:26).
+    invoke: { action: getMyAssignments }
+    on:
+      DONE:
+        - { guard: "rolesRead and nizamRole == 'platform'", target: readingDashboard, say: "the başnazım or a Medaris nazımı", source: "apps/nizam/app/(home)/page.tsx:67" }
+        - { guard: "rolesRead and nizamRole == 'kosk'", target: nizamKoskHome, say: "a köşk nazımı", source: "apps/nizam/app/(home)/page.tsx:62" }
+        - { guard: "rolesRead and not nizamBelongs and scopes", target: nizamNazarRedirect, say: "only medrese and course roles", source: "apps/nizam/app/(home)/page.tsx:54" }
+        - { guard: "rolesRead and not nizamBelongs and not scopes", target: nizamNoRole, say: "no role at all", source: "apps/nizam/app/(home)/page.tsx:55" }
+      FAIL.unavailable: { guard: "not rolesRead", target: nizamWelcome, say: "the roles cannot be read: the redirects are skipped", source: "apps/nizam/app/(home)/page.tsx:96" }
+
+  readingDashboard:
+    title: Nizam reads the dashboard
+    source: apps/nizam/app/(home)/page.tsx:68
+    invoke: { action: getNizamDashboard }
+    on:
+      DONE: { guard: "dashboard == 'ok'", target: nizamDashboard, say: "the dashboard is read" }
+      FAIL.failed: { guard: "dashboard == 'failed'", target: nizamDashboardFailed, say: "it cannot be read", source: "apps/nizam/app/(home)/page.tsx:73" }
+      FAIL.forbidden: { guard: "dashboard == 'forbidden'", target: nizamForbidden, say: "tedrisat refuses it", source: "apps/nizam/app/(home)/page.tsx:72" }
+
+  tedrisHome: { type: final, title: Tedris's Ana sayfa, response: { redirect: /home }, source: "apps/tedris/app/page.tsx:13" }
+  nazarScope: { type: final, title: The remembered or first medrese or course, response: { redirect: "/medrese/{id} or /ders/{id}" }, source: "apps/nazar/features/shell/scope.ts:206" }
+  nazarNoAccess: { type: final, title: Nazar's no-access page, response: { redirect: /erisim-yok }, source: "apps/nazar/app/erisim-yok/page.tsx:28" }
+  nazarUnavailable: { type: final, title: Nazar says the roles could not be read, with a retry, response: { page: PortalUnavailable }, source: "apps/nazar/app/page.tsx:15" }
+  nizamDashboard: { type: final, title: Nizam's dashboard, response: { page: MedarisHome }, source: "apps/nizam/app/(home)/page.tsx:87" }
+  nizamDashboardFailed: { type: final, title: The dashboard says it could not be read, response: { page: LoadFailed }, source: "apps/nizam/app/(home)/page.tsx:77" }
+  nizamForbidden: { type: final, title: Bu bölüm için izniniz yok, response: { page: NoAccess }, source: "apps/nizam/app/not-found.tsx:23" }
+  nizamKoskHome: { type: final, title: The köşk nazımı's first köşk, response: { redirect: "/kosks/{id}/ana-sayfa" }, source: "apps/nizam/app/(home)/page.tsx:64" }
+  nizamNazarRedirect: { type: final, title: Bu işler Nazar'da, response: { redirect: /nazar-yonlendirme }, source: "apps/nizam/app/nazar-yonlendirme/page.tsx:27" }
+  nizamNoRole: { type: final, title: Yönetim yetkiniz yok, response: { redirect: /yetki-yok }, source: "apps/nizam/app/yetki-yok/page.tsx:28" }
+  nizamWelcome: { type: final, title: A plain welcome text, response: { page: "<div>Hoş geldiniz</div>" }, source: "apps/nizam/app/(home)/page.tsx:96" }
+
+assertions:
+  - { id: nazar-no-verdict-without-roles, never: "state == 'nazarNoAccess' and not rolesRead", say: "Nazar never says 'no access' when it could not read the roles", source: "apps/nazar/app/page.tsx:15" }
+  - { id: nizam-keeps-its-nazims, never: "state in ['nizamNazarRedirect', 'nizamNoRole'] and nizamBelongs", say: "Nizam never sends a nazım or the başnazım away", source: "apps/nizam/features/assignments/landing.ts:22" }
+  - { id: no-role-means-no-role, never: "state == 'nizamNoRole' and scopes", say: "Someone with a medrese or course role is not told they have no role", source: "apps/nizam/features/assignments/landing.ts:24" }
+  - { id: dashboard-for-platform-only, never: "state == 'nizamDashboard' and nizamRole != 'platform'", say: "Only the başnazım and a Medaris nazımı land on the dashboard", source: "apps/nizam/app/(home)/page.tsx:67" }

@@ -581,6 +581,12 @@ describe("Partner enrollments (e2e)", () => {
       const res = await put("R-1", "tecvid", TALEBE).expect(200);
       expect(res.body.status).toBe("ENROLLED");
       expect((await seatOf(TALEBE))?.status).toBe(EnrollmentStatus.ENROLLED);
+      // Back on the roster, so off the team's removed list.
+      expect(
+        await app
+          .get(CourseService, { strict: false })
+          .findRemovedEnrollments(courseId)
+      ).toEqual([]);
       // And it is the registration's again to take away.
       await del("R-1", "tecvid").expect(200, { status: "REMOVED" });
     });

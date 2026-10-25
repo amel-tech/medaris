@@ -137,7 +137,7 @@ const get = (path: string, cookie = "") =>
 /** Signs in through the real routes; returns the session cookie. */
 async function signIn(): Promise<string> {
   const start = await handlers.GET(
-    get("/api/auth/signin?callbackUrl=%2Fen%2Fkosks&locale=en")
+    get("/api/auth/signin?callbackUrl=%2Fkosks&locale=en")
   );
   const authorize = new URL(start.headers.get("location") as string);
   state.nonce = authorize.searchParams.get("nonce") as string;
@@ -147,7 +147,7 @@ async function signIn(): Promise<string> {
       cookiesOf(start)
     )
   );
-  expect(back.headers.get("location")).toBe(`${ORIGIN}/en/kosks`);
+  expect(back.headers.get("location")).toBe(`${ORIGIN}/kosks`);
   return cookiesOf(back);
 }
 
@@ -194,9 +194,9 @@ afterEach(() => {
 describe("proxy.ts (replaces middleware.ts)", () => {
   it("sends a visitor on a protected page to the sign-in page under that page's locale (MDRS-274)", async () => {
     for (const [path, page] of [
-      ["/en/kosks", "/en/auth/signin"],
-      ["/ar/kosks/k1/ana-sayfa?sekme=x", "/ar/auth/signin"],
-      ["/kosks", "/tr/auth/signin"],
+      ["/kosks", "/auth/signin"],
+      ["/kosks/k1/ana-sayfa?sekme=x", "/auth/signin"],
+      ["/kosks", "/auth/signin"],
     ] as const) {
       const response = await proxy(get(path));
       expect(response.status).toBe(307);
@@ -206,19 +206,22 @@ describe("proxy.ts (replaces middleware.ts)", () => {
     }
   });
 
-  it("hands public pages to next-intl for a visitor, and the sign-in page never to itself", async () => {
-    const home = await proxy(get("/"));
-    expect(new URL(home.headers.get("location") as string).pathname).toBe(
-      "/tr"
-    );
-    for (const path of ["/tr", "/ar/auth/signin", "/en/auth/signout"]) {
+  it("serves public pages to a visitor, and the sign-in page never to itself", async () => {
+    for (const path of ["/", "/auth/signin", "/auth/signout"]) {
       const response = await proxy(get(path));
       expect(response.headers.get("location")).toBeNull();
       expect(response.status).toBe(200);
     }
   });
 
-  it("never redirects an API route, and never hands it to next-intl", async () => {
+  it("moves an address from before MDRS-248 to the same page without the language", async () => {
+    const response = await proxy(get("/en/kosks?durum=aktif"));
+    expect(response.status).toBe(308);
+    const location = new URL(response.headers.get("location") as string);
+    expect(`${location.pathname}${location.search}`).toBe("/kosks?durum=aktif");
+  });
+
+  it("never redirects an API route", async () => {
     const response = await proxy(get("/api/audit-log/export"));
     expect(response.headers.get("location")).toBeNull();
     expect(response.headers.get("x-middleware-next")).toBe("1");
@@ -228,7 +231,7 @@ describe("proxy.ts (replaces middleware.ts)", () => {
   it("lets a signed-in member through to the page, with no call to Keycloak while the token is fresh", async () => {
     const session = await signIn();
     keycloak.mockClear();
-    const response = await proxy(get("/en/kosks", session));
+    const response = await proxy(get("/kosks", session));
     expect(response.headers.get("location")).toBeNull();
     expect(response.status).toBe(200);
     expect(keycloak).not.toHaveBeenCalled();
@@ -237,8 +240,8 @@ describe("proxy.ts (replaces middleware.ts)", () => {
   it("is the package's proxy with nizam's public pages and next-intl", async () => {
     // `proxy.ts` adds nothing of its own: a visitor gets the same answer
     // from the bare auth step, without next-intl's locale redirect.
-    const bare = await authProxy(get("/tr/kosks"));
-    const composed = await proxy(get("/tr/kosks"));
+    const bare = await authProxy(get("/kosks"));
+    const composed = await proxy(get("/kosks"));
     expect(composed.headers.get("location")).toBe(bare.headers.get("location"));
   });
 });
@@ -250,8 +253,8 @@ describe("the proxy's matcher", () => {
   it("runs on pages, on the session route and on the app's own API routes", () => {
     for (const url of [
       "/",
-      "/tr/kosks",
-      "/tr/kosks/k1/desteler/a.b",
+      "/kosks",
+      "/kosks/k1/desteler/a.b",
       "/api/auth/session",
       "/api/audit-log/export",
       "/apiary",
@@ -294,7 +297,7 @@ describe("app/api/auth/[...auth]/route.ts", () => {
 
   it("starts a sign-in with PKCE, the registered redirect URI and the visitor's locale", async () => {
     const start = await route.GET(
-      get("/api/auth/signin?callbackUrl=%2Far%2Fkosks&locale=ar")
+      get("/api/auth/signin?callbackUrl=%2Fkosks&locale=ar")
     );
     const authorize = new URL(start.headers.get("location") as string);
     expect(authorize.origin + authorize.pathname).toBe(
@@ -325,17 +328,17 @@ describe("app/api/auth/[...auth]/route.ts", () => {
   it("sends a failed callback to the sign-in page, and a sixth start to its error, under the locale", async () => {
     const callback = await route.GET(get("/api/auth/callback/keycloak"));
     expect(callback.headers.get("location")).toBe(
-      `${ORIGIN}/tr/auth/signin?error=OAuthCallback`
+      `${ORIGIN}/auth/signin?error=OAuthCallback`
     );
 
     const limited = await route.GET(
       get(
-        "/api/auth/signin?callbackUrl=%2Fen%2Fkosks",
+        "/api/auth/signin?callbackUrl=%2Fkosks",
         `nizam.auth-starts=5.${Date.now()}`
       )
     );
     const target = new URL(limited.headers.get("location") as string);
-    expect(target.pathname).toBe("/en/auth/signin");
+    expect(target.pathname).toBe("/auth/signin");
     expect(target.searchParams.get("error")).toBe("SignInLimit");
     expect(keycloak).not.toHaveBeenCalled();
   });
@@ -387,19 +390,19 @@ describe("sign-out (POST /api/auth/signout)", () => {
 
 describe("a server read with the session over (A16, B4)", () => {
   it("goes to sign-in with the page as callbackUrl, and never calls tedrisat without a token", async () => {
-    state.returnTo = "/en/hesap";
+    state.returnTo = "/hesap";
     expect(await redirectOf(getAccountData())).toBe(
-      "/en/auth/signin?callbackUrl=%2Fen%2Fhesap"
+      "/auth/signin?callbackUrl=%2Fhesap"
     );
     expect(createServerTedrisatAPIs).not.toHaveBeenCalled();
   });
 
   it("a token tedrisat refuses (401) is sign-in for new tokens (reauth), not 'izniniz yok'", async () => {
     state.cookie = await signIn();
-    state.returnTo = "/tr/kosks/k1";
+    state.returnTo = "/kosks/k1";
     state.api = () => Promise.reject(refused(401));
     expect(await redirectOf(getMe())).toBe(
-      "/tr/auth/signin?callbackUrl=%2Ftr%2Fkosks%2Fk1&reauth=1"
+      "/auth/signin?callbackUrl=%2Fkosks%2Fk1&reauth=1"
     );
     expect(createServerTedrisatAPIs).toHaveBeenCalledWith(
       "access-1",
@@ -409,7 +412,7 @@ describe("a server read with the session over (A16, B4)", () => {
 
   it("the shell's read draws the frame without the data instead, since the shell wraps the sign-in page too", async () => {
     state.cookie = await signIn();
-    state.returnTo = "/tr/auth/signin";
+    state.returnTo = "/auth/signin";
     state.api = () => Promise.reject(refused(401));
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     expect(await getMyAssignments("fail")).toBeNull();

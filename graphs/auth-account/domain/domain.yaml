@@ -1,0 +1,485 @@
+# The data and the API behind the auth-account area of Medaris, captured from origin/main ce47fce8.
+# Three servers: Keycloak (its routes are Keycloak's own; the source is the theme form or the realm setting in this
+# repository that makes them true), the web apps' libs/auth routes (/api/auth/* in Tedris, Nazar and Nizam), and
+# tedrisat. Fields are JSON Schema 2020-12 with the delurio keywords of SPEC.md §5; an action with a route is an
+# OpenAPI operation, and tedrisat's operationIds are the ones apps/tedrisat publishes.
+schema: delurio-graph/0
+kind: domain
+id: medaris.auth-account
+status: proposed
+
+entities:
+  KeycloakAccount: # a user of the `medaris` realm; the attributes are config/keycloak/user-profile.json
+    source: config/keycloak/user-profile.json:1
+    required: [id, username, email, firstName, lastName, gender]
+    fields:
+      id: { type: string, format: uuid } # the tokens' `sub`, and tedrisat's users.id
+      username: { type: string, minLength: 3, maxLength: 255, unique: case-insensitive } # editUsernameAllowed false (realms/_base.json:9)
+      email: { type: string, format: email, maxLength: 255, unique: case-insensitive, sensitivity: personal } # duplicateEmailsAllowed false (realms/_base.json:7)
+      emailVerified: { type: boolean } # verifyEmail on (realms/_base.json:5)
+      firstName: { type: string, maxLength: 255, sensitivity: personal }
+      lastName: { type: string, maxLength: 255, sensitivity: personal }
+      gender: { enum: [FEMALE, MALE], sensitivity: personal } # required for users and admins (user-profile.json:36); the user may change it
+      privacyNoticeRead: { type: array, items: { enum: ["yes"] } } # required for users, edited by users only (user-profile.json:69)
+      locale: { type: [string, "null"] } # posted by the registration form from the page's language (apps/keycloak-theme/src/login/profile-fields.tsx:205)
+      password: { type: string, sensitivity: credential } # length(10), notEmail, notUsername (realms/_base.json:20)
+      temporarilyLocked: { type: boolean } # brute force: 10 failures, 60 s growing to 900 s (realms/_base.json:12-18)
+    lifecycle:
+      - "none -> unverified: kcRegister (medaris.kc-register)"
+      - "unverified -> active: the verification link (kcActionToken)"
+      - "active -> active: kcUpdateProfile (a missing attribute, or an app's UPDATE_PROFILE), kcUpdatePassword"
+
+  KeycloakSession: # the SSO session the three portals share
+    source: config/keycloak/realms/_base.json:33
+    fields:
+      sid: { type: string, sensitivity: internal }
+      accountId: { type: string, references: KeycloakAccount }
+      rememberMe: { type: boolean } # idle 18000 s, at most 36000 s; with Beni hatırla 14 and 30 days (realms/_base.json:33-36)
+    lifecycle:
+      - "none -> alive: kcAuthenticate with every required step done"
+      - "alive -> ended: kcEndSession, idle or maximum lifespan, an administrator; every client is then told through back-channel logout"
+
+  PortalSession: # libs/auth's StoredSession, one per portal and browser
+    source: libs/auth/src/server/session-cookie.ts:1
+    key: [cookieId]
+    fields:
+      cookieId: { type: string, sensitivity: credential } # 32 random bytes in `<prefix>.session`; only sha256 of it is a store key (session-store.ts:119)
+      accessToken: { type: string, sensitivity: credential }
+      accessTokenExpiresAt: { type: integer } # from expires_in, on the app's clock
+      refreshToken: { type: [string, "null"], sensitivity: credential }
+      refreshTokenExpiresAt: { type: [integer, "null"] }
+      idToken: { type: string, sensitivity: credential } # for id_token_hint; never sent to the browser
+      sid: { type: string, references: KeycloakSession }
+      user: { type: object, properties: { sub: { type: string }, name: { type: string }, email: { type: string }, preferred_username: { type: string }, locale: { type: string } } }
+      checkedAt: { type: integer } # the last userinfo check (cookie mode)
+    lifecycle:
+      - "none -> active: completeSignIn"
+      - "active -> active: renewSession (a refresh, a stamped check)"
+      - "active -> none: signOut, backchannelLogout (store mode), a refused refresh, a 401 from userinfo (cookie mode), an expired token with no refresh"
+
+  SignInRoundTrip: # `<prefix>.auth-flow.<16 chars of state>`, one per round trip, at most 3 kept (routes.ts:52)
+    source: libs/auth/src/server/routes.ts:39
+    fields:
+      state: { type: string, pattern: "^[A-Za-z0-9_-]{16,128}$" }
+      nonce: { type: string, sensitivity: credential }
+      verifier: { type: string, sensitivity: credential } # PKCE, S256
+      returnTo: { type: string } # a same-origin path (return-to.ts:158)
+      locale: { type: [string, "null"] }
+      startedAt: { type: integer } # 10 minutes (routes.ts:50)
+
+  SignInStarts: # `<prefix>.auth-starts`: visits to the start route, 5 per 5 minutes (routes.ts:64)
+    source: libs/auth/src/server/routes.ts:87
+    fields:
+      count: { type: integer, minimum: 0, maximum: 5 }
+      windowStart: { type: integer }
+
+  User: # tedrisat's users table: a directory of people, written from the tokens (MDRS-104)
+    source: apps/tedrisat/src/database/schema/user.schema.ts:21
+    fields:
+      id: { type: string, format: uuid, references: KeycloakAccount }
+      email: { type: [string, "null"], sensitivity: personal }
+      emailVerified: { type: boolean }
+      givenName: { type: [string, "null"], sensitivity: personal } # the token's, refreshed while unchanged on the account
+      familyName: { type: [string, "null"], sensitivity: personal }
+      timeZone: { type: [string, "null"] }
+      locale: { type: [string, "null"] } # seeded from the token; Hesap never writes it
+      lessonInvitationEmails: { type: boolean, default: true }
+      lastSeenAt: { type: string, format: date-time }
+
+  UserProfile: # tedrisat's user_profiles
+    source: apps/tedrisat/src/database/schema/user-profile.schema.ts:26
+    fields:
+      userId: { type: string, format: uuid, references: User }
+      givenName: { type: [string, "null"], maxLength: 100, sensitivity: personal } # Hesap's own; wins over the token's (user.service.ts:170)
+      familyName: { type: [string, "null"], maxLength: 100, sensitivity: personal }
+      gender: { type: [string, "null"], sensitivity: personal } # the copy of the token's gender (user-sync.service.ts:75); text with no constraint, null while no token brought one
+      kunye: { type: [string, "null"], unique: case-insensitive }
+    lifecycle:
+      - "gender: none -> FEMALE | MALE: the first request whose token carries the claim, not audited"
+      - "gender: FEMALE <-> MALE: a token with another value; audited as user.gender_change (user-profile.repository.ts:110)"
+
+  PlatformPolicy:
+    source: apps/tedrisat/src/database/schema/platform-policy.schema.ts:19
+    key: [key]
+    fields:
+      key: { enum: [ALWAYS_REQUIRE_APPROVAL, RECORDINGS_NEVER_PUBLIC] }
+      enabled: { type: boolean, default: false } # off for a key nobody has touched (platform-policy.repository.ts:85)
+      changedBy: { type: [string, "null"], references: User }
+      changedAt: { type: [string, "null"], format: date-time }
+
+  RoleAssignment: # role_assignments; revoked, never deleted
+    source: apps/tedrisat/src/database/schema/role-assignment.schema.ts:68
+    fields:
+      id: { type: string, format: uuid }
+      userId: { type: string, format: uuid } # no foreign key
+      role: { enum: [MEDARIS_NAZIM, KOSK_NAZIM, MEDRESE_BASMUDERRIS, MEDRESE_NAZIR, MUDERRIS, DERS_NAZIR] }
+      scopeType: { enum: [platform, kosk, madrasah, course] }
+      scopeId: { type: [string, "null"] }
+      grantedBy: { type: string, references: User }
+      expiresAt: { type: [string, "null"], format: date-time }
+      revokedAt: { type: [string, "null"], format: date-time }
+      revokedBy: { type: [string, "null"], references: User }
+
+  PermissionGrant: # permission_grants: one code or one group, never both (permission.schema.ts:105)
+    source: apps/tedrisat/src/database/schema/permission.schema.ts:75
+    fields:
+      id: { type: string, format: uuid }
+      userId: { type: string, format: uuid }
+      scopeType: { enum: [platform, kosk, madrasah, course] }
+      permission: { type: [string, "null"] }
+      groupId: { type: [string, "null"], references: PermissionGroup }
+      grantedBy: { type: string, references: User }
+      authorityScopeType: { type: [string, "null"] }
+      expiresAt: { type: [string, "null"], format: date-time }
+      revokedAt: { type: [string, "null"], format: date-time }
+
+  PermissionGroup:
+    source: apps/tedrisat/src/database/schema/permission.schema.ts:24
+    fields:
+      id: { type: string, format: uuid }
+      name: { type: string, unique: case-insensitive } # among live groups
+      scopeType: { enum: [platform, kosk, madrasah, course] }
+      deletedAt: { type: [string, "null"], format: date-time }
+
+policies:
+  - { actor: anyone, do: [kcAuthenticate, kcRegister, kcResetRequest, kcActionToken, startSignIn, completeSignIn, readSession] }
+  - { actor: the IdP, needs: logout token, do: [backchannelLogout] }
+  - { actor: signed-in person, needs: session, where: "KeycloakAccount.id = session.sub", write: [KeycloakAccount], do: [kcUpdateProfile, kcUpdatePassword] }
+  - { actor: signed-in person, needs: bearer token, where: "User.id = token.sub", read: [User, UserProfile], write: [User, UserProfile], do: [getMe, updateMe, getMyAssignments] }
+  - { actor: SYSTEM_ADMIN or anyone holding a role, needs: bearer token, read: [KeycloakAccount], do: [lookupUser] }
+  - { actor: SYSTEM_ADMIN or a köşk manager, needs: bearer token, read: [User], do: [findUserByEmail] }
+  - { actor: SYSTEM_ADMIN or a Medaris nazımı holding platform.policy_edit, needs: bearer token, write: [PlatformPolicy], do: [listPlatformPolicies, setPlatformPolicy, listScopedPolicies] }
+  - { actor: SYSTEM_ADMIN or a Medaris nazımı holding platform.inactive_scopes_manage, needs: bearer token, write: [RoleAssignment], do: [getInactiveScopes, assignInactiveScope, viewInactiveScope] }
+  - { actor: SYSTEM_ADMIN, needs: bearer token, write: [RoleAssignment, PermissionGrant, PermissionGroup], do: [getPermissionCatalog, getMedarisNazims, appointMedarisNazim, setMedarisNazimGrants, getMedarisNazimGiven, dismissMedarisNazim, getPermissionGroups, createPermissionGroup, updatePermissionGroup, deletePermissionGroup, getPermissionGroupUsers] }
+
+actions:
+  # ---- Keycloak (its own routes; the theme posts to them) -----------------
+  kcAuthenticate:
+    route: POST /realms/{realm}/login-actions/authenticate
+    source: apps/keycloak-theme/src/login/pages/Login.tsx:86
+    body: { type: object, required: [username, password], properties: { username: { type: string }, password: { type: string, sensitivity: credential }, rememberMe: { enum: ["on"] }, credentialId: { type: string } } }
+    result: { redirect: "the next required step's page, or the client's redirect URI with code and state" }
+    refusals:
+      INVALID_CREDENTIALS: { status: 200, note: "login.ftl again with invalidUserMessage", source: "apps/keycloak-theme/src/login/pages/Login.tsx:36" }
+      ACCOUNT_TEMPORARILY_LOCKED: { status: 200, source: "config/keycloak/realms/_base.json:12" }
+      PAGE_EXPIRED: { status: 200, note: "login-page-expired.ftl", source: "config/keycloak/realms/_base.json:30" }
+  kcRegister:
+    route: POST /realms/{realm}/login-actions/registration
+    source: apps/keycloak-theme/src/login/pages/Register.tsx:98
+    body:
+      type: object
+      required: [firstName, lastName, gender, username, email, password, password-confirm, privacyNoticeRead]
+      properties:
+        firstName: { type: string }
+        lastName: { type: string }
+        gender: { enum: [FEMALE, MALE] }
+        username: { type: string }
+        email: { type: string, format: email }
+        password: { type: string, sensitivity: credential }
+        password-confirm: { type: string, sensitivity: credential }
+        privacyNoticeRead: { enum: ["yes"] }
+        locale: { type: string }
+    result: { returns: KeycloakAccount, redirect: "login-verify-email.ftl (no code before the e-mail is verified)" }
+    sideEffects: ["the verification e-mail (apps/keycloak-theme/src/email/html/email-verification.ftl)"]
+    refusals:
+      USERNAME_EXISTS: { status: 200, source: "config/keycloak/user-profile.json:41" }
+      EMAIL_EXISTS: { status: 200, source: "config/keycloak/realms/_base.json:7" }
+      ATTRIBUTE_REQUIRED: { status: 200, note: "no gender, no privacy box: no user is made", source: "apps/tedrisat/test/e2e/keycloak-provision.e2e.spec.ts:665" }
+      ATTRIBUTE_INVALID: { status: 200, source: "config/keycloak/user-profile.json:1" }
+      PASSWORD_POLICY: { status: 200, source: "config/keycloak/realms/_base.json:20" }
+  kcResetRequest:
+    route: POST /realms/{realm}/login-actions/reset-credentials
+    source: apps/keycloak-theme/src/login/pages/LoginResetPassword.tsx:52
+    body: { type: object, properties: { username: { type: string } } }
+    result: { redirect: "login.ftl with emailSentMessage" }
+    sideEffects: ["the reset e-mail with a link valid 1800 s (realms/_base.json:44), when an account has that name or address"]
+    refusals: { USERNAME_MISSING: { status: 200, source: "apps/keycloak-theme/src/login/pages/LoginResetPassword.tsx:75" } }
+  kcActionToken:
+    route: GET /realms/{realm}/login-actions/action-token
+    source: config/keycloak/realms/_base.json:43
+    query: { type: object, required: [key], properties: { key: { type: string, sensitivity: credential } } }
+    result: { redirect: "the sign-in carried on (same browser), a confirmation then info.ftl (another browser), or login-update-password.ftl (reset)" }
+    refusals: { ACTION_TOKEN_EXPIRED: { status: 200, note: "error.ftl", source: "apps/keycloak-theme/src/login/KcPage.tsx:143" } }
+  kcUpdateProfile:
+    route: POST /realms/{realm}/login-actions/required-action
+    source: apps/keycloak-theme/src/login/pages/LoginUpdateProfile.tsx:65
+    body: { type: object, properties: { gender: { enum: [FEMALE, MALE] }, firstName: { type: string }, lastName: { type: string }, email: { type: string }, privacyNoticeRead: { enum: ["yes"] }, cancel-aia: { enum: ["true"] } } }
+    result: { returns: KeycloakAccount }
+    refusals: { ATTRIBUTE_INVALID: { status: 200 }, ATTRIBUTE_REQUIRED: { status: 200 } }
+  kcUpdatePassword:
+    route: POST /realms/{realm}/login-actions/required-action
+    source: libs/ui/src/giris/update-password-form.tsx:121
+    body: { type: object, required: [password-new, password-confirm], properties: { password-new: { type: string, sensitivity: credential }, password-confirm: { type: string, sensitivity: credential }, logout-sessions: { enum: ["on"] } } }
+    result: { returns: KeycloakAccount }
+    sideEffects: ["with logout-sessions on, the account's other sessions end"]
+    refusals: { PASSWORD_POLICY: { status: 200, source: "config/keycloak/realms/_base.json:20" } }
+  kcEndSession:
+    route: GET /realms/{realm}/protocol/openid-connect/logout
+    source: libs/auth/src/server/routes.ts:393
+    query: { type: object, properties: { id_token_hint: { type: string, sensitivity: credential }, post_logout_redirect_uri: { type: string }, ui_locales: { type: string } } }
+    result: { redirect: "post_logout_redirect_uri, which clients/prod/*.json:12 allow; without a hint, logout-confirm.ftl first" }
+    sideEffects: ["the Keycloak session ends; every client with a back-channel URL is told (clients/prod/*.json:13)"]
+  kcPasswordGrant: # test helpers only; config/keycloak turns it off for every client (clients/_base.json:8)
+    route: POST /realms/{realm}/protocol/openid-connect/token
+    source: apps/tedris/e2e/sign-in.ts:35
+    body: { type: object, required: [grant_type, client_id, client_secret, username, password], properties: { grant_type: { const: password } } }
+    result: { status: 200 }
+    refusals: { unauthorized_client: { status: 400 }, invalid_grant: { status: 400, note: "a wrong password, or a pending required step" } }
+
+  # ---- libs/auth, in each portal under /api/auth ---------------------------
+  startSignIn:
+    route: GET /api/auth/signin
+    source: libs/auth/src/server/routes.ts:139
+    query: { type: object, properties: { callbackUrl: { type: string }, locale: { type: string }, intent: { enum: [register] }, reauth: { enum: ["1"] }, action: { enum: [UPDATE_PROFILE] }, auto: { enum: ["1"] } } }
+    result: { redirect: "Keycloak's authorization endpoint (response_type code, PKCE S256, state, nonce, scope openid profile email, ui_locales and kc_locale, prompt=create for register, kc_action for an account action), or straight to callbackUrl when already signed in" }
+    sideEffects: ["SignInRoundTrip cookie, 10 minutes", "SignInStarts counted for a round trip or a go-on"]
+    refusals:
+      SignInLimit: { redirect: "/auth/signin?error=SignInLimit", source: "libs/auth/src/server/routes.ts:158" }
+      OAuthSignin: { redirect: "/auth/signin?error=OAuthSignin", note: "the store or the discovery out of reach", source: "libs/auth/src/server/routes.ts:181" }
+  completeSignIn:
+    route: GET /api/auth/callback/keycloak
+    source: libs/auth/src/server/routes.ts:268
+    query: { type: object, required: [state], properties: { code: { type: string, sensitivity: credential }, state: { type: string }, error: { type: string } } }
+    result: { returns: PortalSession, redirect: "the round trip's returnTo, else afterSignIn `/`" }
+    sideEffects: ["the browser's old session ends with it (routes.ts:321)", "the round-trip cookie is removed"]
+    refusals:
+      AccessDenied: { redirect: "/auth/signin?error=AccessDenied", source: "libs/auth/src/server/oidc.ts:102" }
+      Configuration: { redirect: "/auth/signin?error=Configuration", source: "libs/auth/src/server/oidc.ts:103" }
+      OAuthCallback: { redirect: "/auth/signin?error=OAuthCallback", source: "libs/auth/src/server/oidc.ts:106" }
+  signOut:
+    route: POST /api/auth/signout
+    source: libs/auth/src/server/routes.ts:342
+    body: { type: object, properties: { locale: { type: string } } }
+    result: { redirect: "Keycloak's end-session endpoint with id_token_hint, or `/` when there is no ID token or Keycloak cannot be reached" }
+    sideEffects: ["the PortalSession and its sid and sub index entries are deleted; the cookie is removed whatever the store answers (routes.ts:403)"]
+    refusals: { CROSS_SITE: { status: 403, source: "libs/auth/src/server/routes.ts:353" }, METHOD: { status: 405 } }
+  readSession:
+    route: GET /api/auth/session
+    source: libs/auth/src/server/routes.ts:419
+    result: { status: 200, note: "{ user, expiresAt } or null; no token" }
+    refusals: { temporarily_unavailable: { status: 503, source: "libs/auth/src/server/routes.ts:427" } }
+  backchannelLogout:
+    route: POST /api/auth/backchannel-logout
+    source: libs/auth/src/server/routes.ts:454
+    body: { type: object, required: [logout_token], properties: { logout_token: { type: string, sensitivity: credential } } }
+    result: { status: 200 }
+    sideEffects: ["every PortalSession of that sid (or sub) is deleted (routes.ts:497)"]
+    refusals:
+      invalid_request: { status: 400, source: "libs/auth/src/server/routes.ts:483" }
+      unsupported: { status: 501, note: "cookie mode", source: "libs/auth/src/server/routes.ts:498" }
+      temporarily_unavailable: { status: 503, source: "libs/auth/src/server/routes.ts:514" }
+  renewSession: # the proxy's step on every request; no route of its own
+    source: libs/auth/src/server/renewal.ts:167
+    result: { returns: PortalSession }
+    refusals:
+      invalid_grant: { note: "the session ends", source: "libs/auth/src/server/renewal.ts:190" }
+      ACCESS_TOKEN_EXPIRED: { note: "Keycloak out of reach and the token run out", source: "libs/auth/src/server/renewal.ts:193" }
+      USERINFO_401: { note: "cookie mode only", source: "libs/auth/src/server/renewal.ts:204" }
+      SESSION_STORE_UNAVAILABLE: { note: "nothing decided", source: "libs/auth/src/server/proxy.ts:191" }
+
+  # ---- tedrisat ------------------------------------------------------------
+  getMe:
+    route: GET /me
+    needs: bearer token
+    source: apps/tedrisat/src/user/me.controller.ts:30
+    result: { returns: User, note: "with UserProfile's names and gender, roles, assignments and permissions" }
+    sideEffects: ["the user-sync interceptor writes users and the gender copy first (user/user-sync.interceptor.ts:48)"]
+  updateMe:
+    route: PATCH /me
+    needs: bearer token
+    source: apps/tedrisat/src/user/me.controller.ts:40
+    body: { type: object, properties: { givenName: { type: string, minLength: 1, maxLength: 100 }, familyName: { type: string, minLength: 1, maxLength: 100 }, timeZone: { type: [string, "null"], maxLength: 64 }, locale: { type: [string, "null"], maxLength: 35 }, lessonInvitationEmails: { type: boolean } } }
+    result: { returns: User }
+    refusals: { VALIDATION_ERROR: { status: 400, source: "apps/tedrisat/src/user/dto/update-me.dto.ts:22" } }
+  getMyAssignments:
+    route: GET /me/assignments
+    needs: bearer token
+    source: apps/tedrisat/src/assignment/me-assignments.controller.ts:40
+    result: { status: 200, note: "systemAdmin and the held role assignments" }
+  getNizamDashboard:
+    route: GET /nizam/dashboard
+    needs: bearer token
+    source: apps/tedrisat/src/nizam-dashboard/nizam-dashboard.controller.ts:23
+    result: { status: 200 }
+    refusals: { AUTHZ_FORBIDDEN: { status: 403 } }
+  getMyPublicProfile: # hidden while PUBLIC_PROFILE_ENABLED is off: 404 for everyone (user/public-profile-enabled.guard.ts:20)
+    route: GET /me/public-profile
+    needs: bearer token
+    source: apps/tedrisat/src/user/profile.controller.ts:55
+    result: { returns: UserProfile }
+  updateMyPublicProfile:
+    route: PATCH /me/public-profile
+    needs: bearer token
+    source: apps/tedrisat/src/user/profile.controller.ts:74
+    result: { returns: UserProfile }
+    refusals: { GENDER_MANAGED_BY_ACCOUNT: { status: 409, note: "a gender other than the token's", source: "apps/tedrisat/src/user/user-profile.service.ts:63" } }
+  findUserByEmail:
+    route: GET /users
+    needs: bearer token
+    source: apps/tedrisat/src/user/users.controller.ts:40
+    query: { type: object, required: [email], properties: { email: { type: string, format: email } } }
+    result: { status: 200, note: "zero or one user, from tedrisat's users table" }
+    refusals: { USER_LOOKUP_FORBIDDEN: { status: 403, note: "anyone but SYSTEM_ADMIN and a köşk manager", source: "apps/tedrisat/src/user/user.service.ts:108" } }
+  lookupUser:
+    route: GET /users/lookup
+    needs: bearer token
+    source: apps/tedrisat/src/user/users.controller.ts:57
+    query: { type: object, required: [email], properties: { email: { type: string, format: email, maxLength: 320 } } }
+    result: { status: 200, note: "zero or one account, from Keycloak's whole realm" }
+    sideEffects: ["audit user.lookup on every search (assignment/user-directory.service.ts:45)"]
+    refusals:
+      USER_LOOKUP_FORBIDDEN: { status: 403, note: "anyone but SYSTEM_ADMIN and anyone holding a role", source: "apps/tedrisat/src/assignment/user-directory.service.ts:42" }
+      KEYCLOAK_ADMIN_UNAVAILABLE: { status: 503 }
+  listPlatformPolicies:
+    route: GET /nizam/platform-policies
+    needs: bearer token
+    source: apps/tedrisat/src/platform-policy/platform-policy.controller.ts:50
+    result: { status: 200 }
+    refusals: { AUTHZ_FORBIDDEN: { status: 403, source: "apps/tedrisat/src/platform-access/platform-access.service.ts:46" } }
+  setPlatformPolicy:
+    route: PUT /nizam/platform-policies/{key}
+    needs: bearer token
+    source: apps/tedrisat/src/platform-policy/platform-policy.controller.ts:70
+    body: { type: object, required: [enabled], properties: { enabled: { type: boolean } } }
+    result: { returns: PlatformPolicy }
+    sideEffects: ["audit platform_policy.change with the value before, in the same transaction (platform-policy.repository.ts:121)"]
+    refusals: { AUTHZ_FORBIDDEN: { status: 403, source: "apps/tedrisat/src/platform-policy/platform-policy.service.ts:98" } }
+  listScopedPolicies:
+    route: GET /nizam/scoped-policies
+    needs: bearer token
+    source: apps/tedrisat/src/platform-policy/platform-policy.controller.ts:88
+    result: { status: 200 }
+    refusals: { AUTHZ_FORBIDDEN: { status: 403 } }
+  getInactiveScopes:
+    route: GET /nizam/inactive-scopes
+    needs: bearer token
+    source: apps/tedrisat/src/inactive-scope/inactive-scope.controller.ts:65
+    query: { type: object, properties: { type: { enum: [KOSK, MADRASAH, COURSE] } } }
+    result: { status: 200 }
+    refusals: { AUTHZ_FORBIDDEN: { status: 403, source: "apps/tedrisat/src/inactive-scope/inactive-scope.service.ts:68" } }
+  assignInactiveScope:
+    route: POST /nizam/inactive-scopes/{type}/{id}/assign
+    needs: bearer token
+    source: apps/tedrisat/src/inactive-scope/inactive-scope.controller.ts:84
+    body: { type: object, required: [userId], properties: { userId: { type: string, format: uuid }, endsAt: { type: string, format: date-time } } }
+    result: { status: 204 }
+    sideEffects: ["audit of the assignment", "permission.self_grant_refused when refused for naming oneself (libs/common/src/authz/self-grant.guard.ts:80)"]
+    refusals:
+      AUTHZ_FORBIDDEN: { status: 403, source: "apps/tedrisat/src/inactive-scope/inactive-scope.service.ts:68" }
+      GRANT_EXPIRY_INVALID: { status: 400, source: "apps/tedrisat/src/inactive-scope/inactive-scope.service.ts:244" }
+      INACTIVE_SCOPE_NOT_FOUND: { status: 404, source: "apps/tedrisat/src/inactive-scope/inactive-scope.service.ts:230" }
+      SELF_GRANT_REFUSED: { status: 403, note: "never for SYSTEM_ADMIN", source: "libs/common/src/authz/self-grant.guard.ts:91" }
+      KOSK_NAZIM_UNKNOWN_ACCOUNT: { status: 404, source: "apps/tedrisat/src/inactive-scope/inactive-scope.service.ts:274" }
+  viewInactiveScope:
+    route: POST /nizam/inactive-scopes/{type}/{id}/view
+    needs: bearer token
+    source: apps/tedrisat/src/inactive-scope/inactive-scope.controller.ts:105
+    result: { status: 204 }
+    sideEffects: ["audit inactive_scope.view on every call"]
+    refusals: { AUTHZ_FORBIDDEN: { status: 403 }, INACTIVE_SCOPE_NOT_FOUND: { status: 404 } }
+  getPermissionCatalog:
+    route: GET /nizam/permissions
+    needs: bearer token
+    source: apps/tedrisat/src/assignment/admin/permission-admin.controller.ts:66
+    result: { status: 200 }
+    refusals: { AUTHZ_FORBIDDEN: { status: 403, source: "apps/tedrisat/src/assignment/admin/permission-admin.service.ts:91" } }
+  getMedarisNazims:
+    route: GET /nizam/medaris-nazims
+    needs: bearer token
+    source: apps/tedrisat/src/assignment/admin/permission-admin.controller.ts:81
+    result: { status: 200 }
+    refusals: { AUTHZ_FORBIDDEN: { status: 403 } }
+  appointMedarisNazim:
+    route: POST /nizam/medaris-nazims
+    needs: bearer token
+    source: apps/tedrisat/src/assignment/admin/permission-admin.controller.ts:96
+    body: { type: object, required: [userId, permissions], properties: { userId: { type: string, format: uuid }, groupId: { type: string, format: uuid }, permissions: { type: array, maxItems: 64, items: { type: string } }, expiresAt: { type: string, format: date-time } } }
+    result: { status: 201, returns: RoleAssignment }
+    sideEffects: ["grants left over from a lost seat revoked (permission-admin.repository.ts:371)", "audit medaris_nazim.appoint and permission.grant"]
+    refusals:
+      AUTHZ_FORBIDDEN: { status: 403, source: "apps/tedrisat/src/assignment/admin/permission-admin.service.ts:122" }
+      GRANT_EXPIRY_INVALID: { status: 400, source: "apps/tedrisat/src/assignment/admin/permission-admin.service.ts:125" }
+      PERMISSION_UNKNOWN: { status: 400 }
+      PERMISSION_GROUP_NOT_FOUND: { status: 404, source: "apps/tedrisat/src/assignment/admin/permission-admin.service.ts:169" }
+      PERMISSION_GROUP_SCOPE_INVALID: { status: 400, source: "apps/tedrisat/src/assignment/admin/permission-admin.service.ts:171" }
+      MEDARIS_NAZIM_ALREADY_APPOINTED: { status: 409, source: "apps/tedrisat/src/assignment/admin/permission-admin.repository.ts:366" }
+  setMedarisNazimGrants:
+    route: PUT /nizam/medaris-nazims/{userId}/grants
+    needs: bearer token
+    source: apps/tedrisat/src/assignment/admin/permission-admin.controller.ts:114
+    body: { type: object, required: [permissions], properties: { groupId: { type: string, format: uuid }, permissions: { type: array, items: { type: string } }, expiresAt: { type: string, format: date-time } } }
+    result: { returns: PermissionGrant }
+    sideEffects: ["audit permission.grant, permission.revoke, permission.retime (permission-admin.repository.ts:483)"]
+    refusals:
+      AUTHZ_FORBIDDEN: { status: 403 }
+      PERMISSION_GROUP_NOT_FOUND: { status: 404 }
+      MEDARIS_NAZIM_NOT_FOUND: { status: 404, source: "apps/tedrisat/src/assignment/admin/permission-admin.repository.ts:556" }
+      GRANT_EXPIRY_INVALID: { status: 400, source: "apps/tedrisat/src/assignment/admin/permission-admin.repository.ts:419" }
+  getMedarisNazimGiven:
+    route: GET /nizam/medaris-nazims/{userId}/given
+    needs: bearer token
+    source: apps/tedrisat/src/assignment/admin/permission-admin.controller.ts:132
+    result: { status: 200 }
+    refusals: { AUTHZ_FORBIDDEN: { status: 403 }, MEDARIS_NAZIM_NOT_FOUND: { status: 404, source: "apps/tedrisat/src/assignment/admin/permission-admin.service.ts:188" } }
+  dismissMedarisNazim:
+    route: DELETE /nizam/medaris-nazims/{userId}
+    needs: bearer token
+    source: apps/tedrisat/src/assignment/admin/permission-admin.controller.ts:150
+    body: { type: object, required: [decisions], properties: { decisions: { type: array, maxItems: 500, items: { type: object, required: [kind, id, action], properties: { kind: { enum: [ROLE, GRANT] }, id: { type: string, format: uuid }, action: { enum: [TAKE_OVER, DROP] } } } } } }
+    result: { status: 204 }
+    sideEffects: ["audit medaris_nazim.dismiss with counts only (permission-admin.repository.ts:674)"]
+    refusals:
+      AUTHZ_FORBIDDEN: { status: 403 }
+      MEDARIS_NAZIM_NOT_FOUND: { status: 404 }
+      DISMISS_DECISIONS_INCOMPLETE: { status: 400, source: "apps/tedrisat/src/assignment/admin/permission-admin.repository.ts:590" }
+      DISMISS_TAKE_OVER_WITHOUT_SEAT: { status: 400, source: "apps/tedrisat/src/assignment/admin/permission-admin.repository.ts:649" }
+      DISMISS_SEAT_HANDED_ON: { status: 409, source: "apps/tedrisat/src/assignment/admin/orphaned-grants.ts:304" }
+  getPermissionGroups:
+    route: GET /nizam/permission-groups
+    needs: bearer token
+    source: apps/tedrisat/src/assignment/admin/permission-admin.controller.ts:170
+    result: { status: 200 }
+  createPermissionGroup:
+    route: POST /nizam/permission-groups
+    needs: bearer token
+    source: apps/tedrisat/src/assignment/admin/permission-admin.controller.ts:185
+    result: { returns: PermissionGroup }
+    refusals: { PERMISSION_GROUP_NAME_TAKEN: { status: 409 }, PERMISSION_GROUP_EMPTY: { status: 400 } }
+  updatePermissionGroup:
+    route: PUT /nizam/permission-groups/{id}
+    needs: bearer token
+    source: apps/tedrisat/src/assignment/admin/permission-admin.controller.ts:204
+    result: { returns: PermissionGroup }
+    refusals: { USERS_POLICY_REQUIRED: { status: 400 }, PERMISSION_GROUP_NAME_TAKEN: { status: 409 } }
+  deletePermissionGroup:
+    route: DELETE /nizam/permission-groups/{id}
+    needs: bearer token
+    source: apps/tedrisat/src/assignment/admin/permission-admin.controller.ts:223
+    result: { status: 204 }
+    refusals: { USERS_POLICY_REQUIRED: { status: 400 } }
+  getPermissionGroupUsers:
+    route: GET /nizam/permission-groups/{id}/users
+    needs: bearer token
+    source: apps/tedrisat/src/assignment/admin/permission-admin.controller.ts:240
+    result: { status: 200 }
+  getChiefNazim:
+    route: GET /nizam/chief-nazim
+    needs: bearer token
+    source: apps/tedrisat/src/assignment/nizam.controller.ts:26
+    result: { status: 200, note: "the başnazım's name, for the no-access page" }
+  getTeskilatHello: # teskilat has no AuthGuard and no AuthzPublic marker; its only routes are this and health
+    route: GET /
+    source: apps/teskilat/src/app.controller.ts:11
+    result: { status: 200 }
+
+invariants:
+  - { id: gender-required, rule: "every account of the realm has a gender, FEMALE or MALE; registration without one is refused and an account without one is stopped at Keycloak's VERIFY_PROFILE before any portal", source: "config/keycloak/user-profile.json:36" }
+  - { id: gender-from-the-account, rule: "tedrisat's user_profiles.gender is the copy of the token's gender claim; Hesap and the hidden public profile never change it while the token carries one", source: "apps/tedrisat/src/user/user-profile.service.ts:63" }
+  - { id: gender-claim-only-from-its-scope, rule: "only the gender client scope puts the claim into a token; the gender mapper is removed from Keycloak's profile scope", source: "config/keycloak/client-scopes/gender.json:10" }
+  - { id: pkce-s256, rule: "every portal client requires PKCE S256 and is confidential; the password grant is off", source: "config/keycloak/clients/prod/tedris.json:11" }
+  - { id: redirect-uri-exact, rule: "a portal's redirect URI is exactly <origin>/api/auth/callback/keycloak", spec: RFC 6749 §3.1.2.3, source: "config/keycloak/clients/prod/tedris.json:7" }
+  - { id: return-to-same-origin, rule: "every return path is a same-origin path that is not an auth route", source: "libs/auth/src/server/return-to.ts:158" }
+  - { id: back-channel-with-sid, rule: "each portal client has front-channel logout off and a back-channel URL that carries the sid", spec: OIDC Back-Channel Logout 1.0, source: "config/keycloak/clients/prod/tedris.json:14" }
+  - { id: no-token-in-the-browser, rule: "no access, refresh or ID token reaches client JavaScript; GET /api/auth/session gives the user and the expiry only", source: "libs/auth/src/server/routes.ts:434" }
+  - { id: platform-access-by-the-engine, rule: "Platform ayarları lets in SYSTEM_ADMIN and a Medaris nazımı holding the code through the authz engine; Pasif kapsamlar asks its own query", source: "apps/tedrisat/src/inactive-scope/inactive-scope.repository.ts:217" }
+  - { id: no-self-grant-but-the-chief, rule: "nobody but SYSTEM_ADMIN names themself into more than they hold; on the paths marked always, never", source: "libs/common/src/authz/self-grant.guard.ts:67" }

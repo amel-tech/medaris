@@ -20,7 +20,7 @@ vi.mock("next/navigation", () => ({
     replace: mocks.replace,
     refresh: mocks.refresh,
   }),
-  usePathname: () => "/tr/discover",
+  usePathname: () => "/discover",
 }));
 vi.mock("~/features/courses/actions", () => ({
   followKosk: mocks.follow,
@@ -208,7 +208,7 @@ describe("Keşfet's filters write the address (design tedris/02, criterion 6)", 
         vi.advanceTimersByTime(500);
       });
       expect(mocks.replace).toHaveBeenCalledWith(
-        "/tr/discover?q=sarf&madrasah=0f6b8f74-3b61-4a63-9d3c-6bd7f8d8e1a2"
+        "/discover?q=sarf&madrasah=0f6b8f74-3b61-4a63-9d3c-6bd7f8d8e1a2"
       );
       expect(mocks.push).not.toHaveBeenCalled();
     } finally {
@@ -234,7 +234,7 @@ describe("Keşfet's filters write the address (design tedris/02, criterion 6)", 
         new Event("submit", { bubbles: true, cancelable: true })
       );
     });
-    expect(mocks.replace).toHaveBeenCalledWith("/tr/discover?q=bina");
+    expect(mocks.replace).toHaveBeenCalledWith("/discover?q=bina");
   });
 
   it("keeps the box in step with the address when the back button changes it", async () => {

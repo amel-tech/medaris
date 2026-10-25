@@ -32,7 +32,7 @@ const mount = async (cardCount = 8) => {
         description: "İmam Nevevî’nin Erbaîn’inden kırk hadis.",
       }),
       cards: Array.from({ length: cardCount }, (_, i) => cardRow(i + 1)),
-      signInHref: "/tr/auth/signin?callbackUrl=%2Fdecks%2Fd1",
+      signInHref: "/auth/signin?callbackUrl=%2Fdecks%2Fd1",
     })
   );
 };
@@ -54,7 +54,7 @@ describe("Deste, girişsiz ziyaretçi (design tedris/32)", () => {
     const study = [...header.querySelectorAll("a")].find(
       (a) => a.textContent === "Çalış"
     );
-    expect(study?.getAttribute("href")).toBe("/tr/decks/study/d1");
+    expect(study?.getAttribute("href")).toBe("/decks/study/d1");
   });
 
   it("tells the visitor nothing is saved and links the sign-in", async () => {
@@ -66,7 +66,7 @@ describe("Deste, girişsiz ziyaretçi (design tedris/32)", () => {
       (a) => a.textContent === "Kaydetmek için giriş yap"
     );
     expect(link?.getAttribute("href")).toBe(
-      "/tr/auth/signin?callbackUrl=%2Fdecks%2Fd1"
+      "/auth/signin?callbackUrl=%2Fdecks%2Fd1"
     );
   });
 

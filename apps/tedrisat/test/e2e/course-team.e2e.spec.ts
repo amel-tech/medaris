@@ -708,6 +708,33 @@ describe("Course team (MDRS-105, e2e)", () => {
         .post(`/courses/${courseId}/enrollments/${TALEBE_ID}/approve`)
         .expect(201)
         .expect((res) => expect(res.body.status).toBe("ENROLLED"));
+      // Back on the roster, so off the removed list.
+      await as(MUDERRIS_ID)
+        .get(`/courses/${courseId}/enrollments/removed`)
+        .expect(200)
+        .expect((res) => expect(res.body).toEqual([]));
+    });
+
+    it("lists someone taken out again once, with the latest removal", async () => {
+      const remove = (reason: string) =>
+        as(MUDERRIS_ID)
+          .post(`/courses/${courseId}/enrollments/${TALEBE_ID}/remove`)
+          .send({ reason })
+          .expect(200);
+      await remove("İlk gerekçe");
+      await as(MUDERRIS_ID)
+        .post(`/courses/${courseId}/enrollments/${TALEBE_ID}/approve`)
+        .expect(201);
+      await remove("İkinci gerekçe");
+
+      const res = await as(MUDERRIS_ID)
+        .get(`/courses/${courseId}/enrollments/removed`)
+        .expect(200);
+      expect(res.body).toHaveLength(1);
+      expect(res.body[0]).toMatchObject({
+        userId: TALEBE_ID,
+        reason: "İkinci gerekçe",
+      });
     });
 
     it("names the medrese that opened the course on the page, to a caller with no token", async () => {

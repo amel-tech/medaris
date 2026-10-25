@@ -11,7 +11,7 @@ import { getTranslations } from "next-intl/server";
  * there is both true and safe, and does not send the nazım to the başnazım
  * for a permission no one can give.
  */
-export async function PageNotFound({ locale }: { locale: string }) {
+export async function PageNotFound() {
   const t = await getTranslations("nizam.PageNotFound");
 
   return (
@@ -19,7 +19,7 @@ export async function PageNotFound({ locale }: { locale: string }) {
       shell
       title={t("title")}
       action={
-        <Button href={`/${locale}`} variant="secondary">
+        <Button href={`/`} variant="secondary">
           {t("back")}
         </Button>
       }

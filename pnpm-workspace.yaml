@@ -43,6 +43,29 @@ packages:
   # non-TTY contexts (husky hooks, CI) with ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY.
 verifyDepsBeforeRun: warn
 
+# ── Release-age floor (2026-10-25) ───────────────────────────────────────────
+# pnpm resolves nothing published less than 7 days ago, and it checks the
+# lockfile against the same rule on every install, `--frozen-lockfile`
+# included: a too-young entry fails with ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION.
+# A poisoned release is usually found and pulled within that window; an old
+# CVE is the other risk, and the Security workflow covers that one. Renovate
+# waits the same 7 days, so its PRs never trip this.
+#
+# A fix that cannot wait goes below as `name@version` (that one release only)
+# with the date it turns 7 days old; delete the line after that date.
+minimumReleaseAge: 10080
+minimumReleaseAgeExclude:
+  # 10.6.3, 2026-10-20 (MDRS-298's storybook floor resolved to it); 2026-10-27.
+  - storybook@10.6.3
+  - '@storybook/builder-vite@10.6.3'
+  - '@storybook/react-dom-shim@10.6.3'
+  - '@storybook/react-vite@10.6.3'
+  - '@storybook/react@10.6.3'
+  # 2026-10-25 security pass, so the dependency-audit issue starts empty.
+  - body-parser@2.4.0 # 2026-10-22, GHSA-27r3-jxmh-p828; delete after 2026-10-29
+  - multer@2.5.0 # 2026-10-22, GHSA-q7qp-rjg7-q26m; delete after 2026-10-29
+  - happy-dom@21.0.4 # 2026-10-20, GHSA-834v-8h66-3h79; delete after 2026-10-27
+
 # ── Build-script decisions (MDRS-8 §3, ADR-001 §D11) ─────────────────────────
 # pnpm 11 replaces pnpm 10's `onlyBuiltDependencies` list with this map, and
 # every dependency carrying an install script must be decided explicitly — an
@@ -84,34 +107,27 @@ allowBuilds:
 # behind this branch's review. Same kind of entry, longer comments: each had to
 # establish that no bump exists at all rather than merely that none had landed
 # yet, which is a claim about the registry and not about this lockfile.
+#
+# Since 2026-10-25 a new advisory no longer turns PRs red: the Security
+# workflow fails a PR only on an advisory it brings in, and lists the rest in
+# the `dependency-audit` issue. A new floor here needs one line: the advisory,
+# why only an override reaches it, and its removal condition.
+#
+# The same day, every floor whose parents' declared ranges already admitted
+# the fixed release was removed (nanoid, fast-uri, qs, brace-expansion 1.x and
+# 2.x, js-yaml 3.x and 4.x, @grpc/grpc-js, piscina, @xhmikosr/decompress,
+# proxy-addr, sharp, source-map-js). The lockfile keeps the fixed versions, and
+# a change that brings one of those advisories back fails Security gates.
 overrides:
   uuid: ^11.1.1 # GHSA missing-buffer-bounds-check; exceljs pins 8.3.2. uuid's
   #               named v1/v3/v4/v5 API has been stable since v3, so forcing
   #               the one exceljs pulls in doesn't change what it calls.
-  nanoid: ^3.3.18 # infinite-loop-on-size-0 fix; postcss's transitive pin
-  #                 (3.3.16) is the only vulnerable instance in the tree.
-  fast-uri: ^3.1.6 # 4 host-confusion/SSRF advisories past the ^3.1.5 that
-  #                   MDRS-74 already floored; ajv (via @nestjs/schematics'
-  #                   angular-devkit chain) is the only remaining consumer.
-  qs: ^6.16.0 # array-limit bypass + isBuffer DoS. express and body-parser
-  #             both already declare qs with a caret wide enough for 6.16.0
-  #             (^6.14.0 / ^6.15.2) — pnpm just hadn't re-resolved to it.
-  # brace-expansion: DoS via unbounded expansion, on two major lines that both
-  # need their own floor — minimatch 3.x declares ^1.x, minimatch 5/7/9/10
-  # declare ^2.x. The keys are range-scoped on purpose. A plain
-  # `brace-expansion: ^1.1.18 || ^2.1.4` REPLACES every consumer's specifier
-  # with the union, which pnpm resolves to its single highest match: measured,
-  # that collapsed the whole tree onto 2.1.4 — including nx, which pins the
-  # exact string "5.0.9" and imports the named `expand` that 2.x does not
-  # export. `nx affected` then died with "brace_expansion_1.expand is not a
-  # function" and took the Verify job's affected-isolation gate with it. The
-  # `@1` / `@2` selectors apply each floor only to consumers whose declared
-  # range falls on that line, so nx's 5.x is never touched.
-  brace-expansion@1: ^1.1.20
-  brace-expansion@2: ^2.1.6
-  # 2026-10-01 security pass: GHSA-6j4f-fj2g-mc7p and GHSA-qhr7-859c-m2p7 also
-  # reach the 5.x line. nx pins the exact string "5.0.9", so only an override
-  # moves it; the `@5` selector keeps it on the major nx imports `expand` from.
+  # 2026-10-01 security pass: GHSA-6j4f-fj2g-mc7p and GHSA-qhr7-859c-m2p7
+  # reach brace-expansion's 5.x line. nx pins the exact string "5.0.9", so only
+  # an override moves it. The `@5` selector matters: an unscoped key replaces
+  # every consumer's specifier, and a union of lines once collapsed the whole
+  # tree, nx included, onto 2.1.4, which lacks the named `expand` nx imports
+  # (`nx affected` died with "brace_expansion_1.expand is not a function").
   brace-expansion@5: ^5.0.11
   # 2026-10-21: GHSA-8r9p-f939-6h3c and GHSA-q3jh-wrc6-jgq8 (array-form headers
   # bypass cross-origin credential stripping), 1.16.0 only, fixed in 1.16.1.
@@ -136,20 +152,16 @@ overrides:
   # behind another hand edit of this file — the floor is what matters, not the
   # exact version. `^` stays inside 2.x, which is the major the parent expects.
   #
+  # 2026-10-25: raised to 2.5.0 for GHSA-q7qp-rjg7-q26m (high) and
+  # GHSA-3pph-fpjx-jg34 (moderate). @nestjs/platform-express 12.2.0 still pins
+  # the exact "2.4.0", so the override stays.
+  #
   # Removal condition: drop this the moment @nestjs/platform-express ships a
-  # version whose multer dependency admits >= 2.3.0, and let the ordinary
+  # version whose multer dependency admits >= 2.5.0, and let the ordinary
   # re-resolve carry it.
-  multer: ^2.3.0
+  multer: ^2.5.0
 
   # ── dev-only exposure (no advisory here reaches a shipped runtime) ────────
-  # js-yaml: quadratic-CPU !!omap DoS on the 3.x and 4.x lines (depcheck and
-  # cosmiconfig 8/9 declare ^4.x). Range-scoped for the same reason as
-  # brace-expansion above: the earlier `^3.15.1 || ^4.3.1 || ^5.2.2` union
-  # silently moved every ^4.x consumer onto 5.3.0, a major they never asked
-  # for. The 5.x line needs no entry — the @nestjs/swagger bump in the catalog
-  # already carries a fixed js-yaml 5.x on its own.
-  js-yaml@3: ^3.15.1
-  js-yaml@4: ^4.3.1
   file-type: ^21.3.2 # infinite-loop + zip-bomb DoS; pulled by @swc/cli's
   #                     bin-wrapper (platform-binary downloader), dev-only.
   esbuild: ">=0.24.3 <1" # dev-server request/response disclosure; the one
@@ -199,16 +211,6 @@ overrides:
   # "1.18.1", so nothing re-resolves. The caret stays inside 1.x.
   # Removal condition: nx ships a release whose axios admits >= 1.20.0.
   axios: ^1.20.0
-  # @grpc/grpc-js < 1.14.5, GHSA-m9gg-hp2v-232j (high); @opentelemetry's
-  # otlp-grpc-exporter-base declares ^1.14.3, so this only forces the
-  # re-resolve the caret already allows. Runtime dependency of both Nest apps.
-  '@grpc/grpc-js': ^1.14.5
-  # Dev-only, all three via @swc/cli (Nest's builder):
-  # piscina < 4.9.4, GHSA-67c8-pqhq-4rmx (critical); @swc/cli declares ^4.3.1.
-  piscina@4: ^4.9.4
-  # @xhmikosr/decompress <= 10.2.1, GHSA-hrh2-vp3x-79xf (critical); pulled by
-  # @swc/cli's bin-wrapper downloader, which declares the 10.x line.
-  '@xhmikosr/decompress@10': ^10.2.2
   # basic-ftp <= 6.2.0, GHSA-c475-qrg2-pj4r (high). The only fix is 6.2.1, one
   # major above what get-uri (proxy-agent, under openapi-generator-cli)
   # declares. 6.0.0's one breaking change refuses a separate FTP transfer host
@@ -219,34 +221,16 @@ overrides:
 
   # 2026-10-12 security pass. Four advisories published 2026-09-18..10-06
   # turned Security gates red on main; each has a published fix.
-  # proxy-addr < 2.0.8, GHSA-jqcg-44mw-7w3h (critical, IP spoofing through an
-  # IPv4-mapped IPv6 trust subnet). express 5 declares ^2.0.7, so this only
-  # forces the re-resolve the caret allows. Runtime of both Nest apps.
-  proxy-addr: ^2.0.8
-  # sharp < 0.35.5, GHSA-wq5f-xc86-pv6w (high, bundled librsvg). next 16.3
-  # declares ^0.35.4; same re-resolve. Runtime of the Next image optimizer.
-  sharp: ^0.35.5
-  # Dev-only from here. shell-quote 1.8.4..1.10.x, GHSA-pqg4-j6r4-53mv
+  # Dev-only. shell-quote 1.8.4..1.10.x, GHSA-pqg4-j6r4-53mv
   # (critical): concurrently 10.0.4 (under openapi-generator-cli) pins the
   # exact "1.9.0". Removal condition: concurrently admits >= 1.11.0.
   shell-quote: ^1.11.0
-  # source-map-js < 1.2.2, GHSA-68fv-2mgg-jv7q (high): postcss declares
-  # ^1.2.1, magicast (under @vitest/coverage-v8) pins the exact "1.2.1".
-  # Removal condition: magicast admits >= 1.2.2.
-  source-map-js: ^1.2.2
-# xlsx@0.18.5 stays un-overridden and unfloored: no patched npm version
-# exists (FU-5, tracked as a replace-SheetJS follow-up, not an override).
 
 catalog:
   # ═══ Toolchain — ADR-001 §D8 normative (do not re-decide here) ═══
   nx: 23.2.0 # MDRS-21: exact; every @nx/* pinned to the same version
-  '@nx/js': 23.2.0
   '@nx/eslint': 23.2.0
   '@nx/eslint-plugin': 23.2.0
-  '@nx/nest': 23.2.0
-  '@nx/next': 23.2.0
-  '@nx/vite': 23.2.0
-  '@nx/vitest': 23.2.0
   typescript: ~5.9.3 # last JS-based line; tilde ≈ frozen. TS7 held back —
   #                    typescript-eslint has no release supporting it yet
   #                    (peers cap at <6.1.0); see docs/migration/mdrs-21-*.
@@ -256,8 +240,8 @@ catalog:
   typescript-eslint: ^8.70.0 # MDRS-21
   vitest: ^4.1.9
   '@vitest/coverage-v8': ^4.1.9
-  '@vitest/ui': ^4.1.9
-  happy-dom: ^20.14.5 # MDRS-100: DOM for keycloak-theme's page tests (Template renders nothing without one)
+  happy-dom: ^21.0.4 # MDRS-100: DOM for keycloak-theme's page tests (Template renders nothing without one)
+  #                    21.0.4 closes GHSA-834v-8h66-3h79 (high); 21.0 stopped loading CSS and iframes by default
   '@swc/core': ~1.15.43 # floors backend 1.15.33; emitDecoratorMetadata under Vitest
   unplugin-swc: ^1.5.11 # MDRS-20: routes Vitest's transform through @swc/core so
   #                       `design:paramtypes` survives — esbuild drops it and
@@ -335,12 +319,13 @@ catalog:
   '@types/supertest': ^7.2.1 # MDRS-21: +1 major
   testcontainers: ^12.1.0 # MDRS-21: +1 major
   '@testcontainers/postgresql': ^12.1.0 # MDRS-21: +1 major
-  audit-ci: ^7.1.0
   depcheck: ^1.4.7
 
   # ═══ Frontend runtime & framework ═══
-  next: ~16.3.6 # MDRS-21: closes ~15 high/moderate Next.js advisories (<16.2.11);
-  #               16.3.6 closes GHSA-vcvr-r3jv-pc5j (critical, next/og RCE)
+  next: ~16.4.2 # MDRS-21: closes ~15 high/moderate Next.js advisories (<16.2.11);
+  #               16.3.6 closes GHSA-vcvr-r3jv-pc5j (critical, next/og RCE);
+  #               16.4.1 closes GHSA-2464-fhr4-w9xw, GHSA-673q-mjm6-r5xr
+  #               (critical RCEs) and GHSA-p3m5-59mp-jv5r (high, DoS)
   react: ~19.2.8 # MDRS-21: ADR-001 §D8 named this "a one-line MDRS-21 bump"
   react-dom: ~19.2.8
   '@types/react': ^19
@@ -350,12 +335,10 @@ catalog:
   '@radix-ui/react-avatar': ^1.1.10
   '@radix-ui/react-checkbox': ^1.3.2
   '@radix-ui/react-collapsible': ^1.1.12
-  '@radix-ui/react-context-menu': ^2.2.16
   '@radix-ui/react-dialog': ^1.1.15
   '@radix-ui/react-dropdown-menu': ^2.1.15
   '@radix-ui/react-hover-card': ^1.1.14
   '@radix-ui/react-label': ^2.1.7
-  '@radix-ui/react-popover': ^1.1.15
   '@radix-ui/react-select': ^2.2.5
   '@radix-ui/react-separator': ^1.1.7
   '@radix-ui/react-slot': ^1.2.3
@@ -364,7 +347,6 @@ catalog:
   '@radix-ui/react-tooltip': ^1.2.8
   '@phosphor-icons/react': ^2.1.10
   '@tanstack/react-table': ^9.2.4 # MDRS-21: +1 major
-  '@hookform/resolvers': ^5.2.2
   react-hook-form: ^7.64.0
   sonner: ^2.0.7
   next-themes: ^0.4.6
@@ -384,26 +366,21 @@ catalog:
   dotenv: ^17.4.2 # libs/i18n runtime — MDRS-21: +1 major
   class-variance-authority: ^0.7.1
   clsx: ^2.1.1
-  tailwind-merge: ^3.3.1 # unified to ui's major; tedris v1→v3 port = FU-2
-  tailwindcss-animate: ^1.0.7
+  tailwind-merge: ^3.3.1 # unified to ui's major
   tw-animate-css: ^1.3.7
-  zod: ^4.5.4 # MDRS-21: v3->v4. FU-3 (libs/ui never imported zod) meant no
+  zod: ^4.6.6 # MDRS-21: v3->v4. FU-3 (libs/ui never imported zod) meant no
   #             per-package exception was needed for this migration either.
+  #             4.6.6 closes GHSA-mrhx-c7xc-m3w5 (high, memory exhaustion).
   '@opentelemetry/api': ^1.9.0
   '@vercel/otel': ^2.1.3 # MDRS-21: +1 major
   tus-js-client: ^4.3.1 # MDRS-114: nazar-web's resumable browser upload to Bunny Stream
-  xlsx: ^0.18.5 # ⚠ security FU-5 (unfloorable; replace SheetJS)
 
   # ═══ Frontend build / styling / codegen ═══
   tailwindcss: ~4.3.3 # MDRS-21
   '@tailwindcss/postcss': ^4.1.12
   '@tailwindcss/vite': ^4.1.11
-  lightningcss: ^1.30.1
   postcss: ^8
-  autoprefixer: ^10.4.21
-  jiti: ^2.5.1
   onchange: ^7.1.0 # libs/services watch; MDRS-11 may replace with an Nx target
-  '@next/bundle-analyzer': ^16.3.4 # MDRS-21: caught up to Next 16, +1 major
   '@openapitools/openapi-generator-cli': ^2.24.0
   '@tolgee/cli': ^2.10.2
 
@@ -426,9 +403,11 @@ catalog:
   vite: ^7.3.7 # GHSA-587h-7wmj-h5pm (launch-editor), fixed in 7.3.7
   '@vitejs/plugin-react': ^5.2.0 # 6.x requires vite ^8; 5.x's ^4||^5||^6||^7||^8 keeps vite 7
   keycloakify: ^11.16.0
-  '@storybook/react': ^10.6.0
-  '@storybook/react-vite': ^10.6.0
-  storybook: ^10.6.0
+  # GHSA-f2ph-cmg5-wxc8 (critical, storybook preview origin validation), fixed
+  # in 10.6.2; the three packages release in lockstep (MDRS-298).
+  '@storybook/react': ^10.6.2
+  '@storybook/react-vite': ^10.6.2
+  storybook: ^10.6.2
 
 # ── Named catalogs ───────────────────────────────────────────────────────────
 # MDRS-20 measured why this exists: vitest@4 peers on `vite: ^6 || ^7 || ^8`,

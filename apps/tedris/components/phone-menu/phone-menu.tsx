@@ -29,7 +29,7 @@ export function PhoneMenu({ title }: { title?: string } = {}) {
   const t = useTranslations("tedris");
   const locale = useLocale();
   const pathname = usePathname();
-  const hrefs = inviteHrefs(locale, pathname === "/" ? "/home" : pathname);
+  const hrefs = inviteHrefs(pathname === "/" ? "/home" : pathname);
 
   return (
     <AppBar
@@ -69,7 +69,7 @@ export function PhoneMenu({ title }: { title?: string } = {}) {
         </div>
       }
     >
-      <NavItem href={`/${locale}/discover`} linkComponent={Link} active>
+      <NavItem href={`/discover`} linkComponent={Link} active>
         {t("PhoneMenu.discover")}
       </NavItem>
     </AppBar>

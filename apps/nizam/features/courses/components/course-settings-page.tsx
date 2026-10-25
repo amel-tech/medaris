@@ -23,7 +23,7 @@ import {
   timeZoneCity,
 } from "@medaris/utils";
 import { useRouter } from "next/navigation";
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 import { type FormEvent, useMemo, useState, useTransition } from "react";
 import { updateKosk } from "~/features/kosks/actions";
 import { HideCourseDialog } from "~/features/kosks/components/hide-course-dialog";
@@ -70,7 +70,6 @@ export function CourseSettingsPage({
 }: Props) {
   const t = useTranslations("nizam.CourseSettings");
   const star = imamStarLabels(useTranslations("common.imamStar"));
-  const locale = useLocale();
   const router = useRouter();
   const [, startTransition] = useTransition();
   const refresh = () => startTransition(() => router.refresh());
@@ -85,7 +84,7 @@ export function CourseSettingsPage({
   const [publishBusy, setPublishBusy] = useState(false);
   const zones = useMemo(() => listTimeZones(form.timeZone), [form.timeZone]);
 
-  const base = `/${locale}/kosks/${kosk.id}`;
+  const base = `/kosks/${kosk.id}`;
   const courseBase = `${base}/courses/${course.id}`;
   const policyChanged = neverPublic !== kosk.recordingsNeverPublic;
   const dirty = settingsChanged(form, stored) || policyChanged;
@@ -205,7 +204,7 @@ export function CourseSettingsPage({
         {tedrisUrl ? (
           <Button
             variant="outline"
-            href={`${tedrisUrl}/${locale}/courses/${course.id}`}
+            href={`${tedrisUrl}/courses/${course.id}`}
             target="_blank"
             rel="noopener noreferrer"
             iconRight={<Icon name="share" size="sm" />}

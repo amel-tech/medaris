@@ -96,21 +96,21 @@ afterEach(() => {
 describe("lib/auth: where tedris sends a visitor to sign in (MDRS-274)", () => {
   it("opens the sign-in page in the language of the page they were on", async () => {
     const { signInUrl } = await import("~/lib/auth");
-    expect(signInUrl("/en/courses/c1?tab=x")).toBe(
-      `/en/auth/signin?callbackUrl=${encodeURIComponent("/en/courses/c1?tab=x")}`
+    expect(signInUrl("/courses/c1?tab=x")).toBe(
+      `/auth/signin?callbackUrl=${encodeURIComponent("/courses/c1?tab=x")}`
     );
-    expect(signInUrl("/ar/schedule")).toBe(
-      `/ar/auth/signin?callbackUrl=${encodeURIComponent("/ar/schedule")}`
+    expect(signInUrl("/schedule")).toBe(
+      `/auth/signin?callbackUrl=${encodeURIComponent("/schedule")}`
     );
   });
 
   it("uses Turkish for a path with no locale, and drops a return path off the app", async () => {
     const { signInUrl } = await import("~/lib/auth");
     expect(signInUrl("/api/lessons/l1/calendar")).toBe(
-      `/tr/auth/signin?callbackUrl=${encodeURIComponent("/api/lessons/l1/calendar")}`
+      `/auth/signin?callbackUrl=${encodeURIComponent("/api/lessons/l1/calendar")}`
     );
-    expect(signInUrl("https://evil.example/tr")).toBe("/tr/auth/signin");
-    expect(signInUrl("//evil.example/tr")).toBe("/tr/auth/signin");
+    expect(signInUrl("https://evil.example/")).toBe("/auth/signin");
+    expect(signInUrl("//evil.example/tr")).toBe("/auth/signin");
   });
 });
 
@@ -142,11 +142,11 @@ describe("app/api/auth/[...auth]/route.ts", () => {
     expect(JSON.stringify(body)).not.toMatch(/access-token|refresh|e30\./);
   });
 
-  it("sends a browser already signed in on to Ana sayfa in its language, past Keycloak and with no welcome step", async () => {
+  it("sends a browser already signed in on to Ana sayfa, past Keycloak and with no welcome step", async () => {
     const response = await call("GET", "/api/auth/signin?locale=en", {
       cookie: await sessionCookie(),
     });
-    expect(response.headers.get("location")).toBe(`${ORIGIN}/en`);
+    expect(response.headers.get("location")).toBe(`${ORIGIN}/`);
   });
 
   it("signs out a browser with no session here, and lands on /", async () => {
@@ -193,21 +193,21 @@ describe("the server reads (D1, MDRS-216)", () => {
 
 describe("a member read without a session (A16)", () => {
   it("sends the visitor to sign in and back to the page, without asking tedrisat", async () => {
-    state.returnTo = "/en/schedule?from=2026-10-12";
+    state.returnTo = "/schedule?from=2026-10-12";
     const { getMySessions } = await import("~/features/schedule/reads");
     expect(await redirectOf(() => getMySessions("a", "b"))).toBe(
-      `/en/auth/signin?callbackUrl=${encodeURIComponent("/en/schedule?from=2026-10-12")}`
+      `/auth/signin?callbackUrl=${encodeURIComponent("/schedule?from=2026-10-12")}`
     );
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
   it("does the same for the home sections and the account page", async () => {
-    state.returnTo = "/tr/account";
+    state.returnTo = "/account";
     const home = await import("~/features/home/reads");
     const account = await import("~/features/account/reads");
     for (const read of [home.getHomeCourses, account.getMyProfile]) {
       expect(await redirectOf(read)).toBe(
-        `/tr/auth/signin?callbackUrl=${encodeURIComponent("/tr/account")}`
+        `/auth/signin?callbackUrl=${encodeURIComponent("/account")}`
       );
     }
     expect(fetchSpy).not.toHaveBeenCalled();
@@ -215,12 +215,12 @@ describe("a member read without a session (A16)", () => {
 
   it("sends a token tedrisat refuses (401) to sign in for new tokens (reauth), not to 'could not be read'", async () => {
     state.cookie = await sessionCookie();
-    state.returnTo = "/en/schedule?from=2026-10-12";
+    state.returnTo = "/schedule?from=2026-10-12";
     fetchSpy.mockResolvedValue(new Response(null, { status: 401 }));
     const errors = vi.spyOn(console, "error").mockImplementation(() => {});
     const { getMySessions } = await import("~/features/schedule/reads");
     expect(await redirectOf(() => getMySessions("a", "b"))).toBe(
-      `/en/auth/signin?callbackUrl=${encodeURIComponent("/en/schedule?from=2026-10-12")}&reauth=1`
+      `/auth/signin?callbackUrl=${encodeURIComponent("/schedule?from=2026-10-12")}&reauth=1`
     );
     expect(errors).not.toHaveBeenCalled();
   });

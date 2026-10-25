@@ -1,0 +1,22 @@
+{
+  "LessonNotes.title": "Notlarım",
+  "RecordingRelease.early": "Talebelere {day} {time} açılacak",
+  "RecordingRelease.opens": "Ders kaydı {day} {time} açılır.",
+  "SessionPage.liveChatPopout": "YouTube'da aç",
+  "SessionPage.liveChatTitle": "Canlı sohbet",
+  "WatchPage.backSr": "Derse dön: ",
+  "WatchPage.bunnyFrameTitle": "Ders kaydı oynatıcısı: {title}",
+  "WatchPage.details": "Celse ayrıntıları",
+  "WatchPage.endedBadge": "Yayın bitti",
+  "WatchPage.heading": "Hafta {week} · {title}",
+  "WatchPage.liveBadge": "Canlı · {minutes} dk",
+  "WatchPage.liveBadgeShort": "Canlı",
+  "WatchPage.questionsTitle": "Soru sor",
+  "WatchPage.recordingBadge": "Ders kaydı",
+  "WatchPage.recordingOpen": "Ders kaydını aç",
+  "WatchPage.recordingPlaceholder": "Ders kaydı burada oynar",
+  "WatchPage.streamEndedHeldText": "Canlı yayın bitti. Ders kaydı açılınca burada oynar.",
+  "WatchPage.streamEndedText": "Canlı yayın bitti. Ders kaydı eklenince burada oynar.",
+  "WatchPage.streamLiveText": "Soru sormak için canlı sohbete yaz.",
+  "WatchPage.streamTitle": "Canlı yayın"
+}

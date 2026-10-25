@@ -1,0 +1,64 @@
+# The screens of medaris.deck-publish: tedris /decks/{id} for the deck's author ("Genel", design tedris/28), the edit
+# dialog at /decks/{id}/edit and the delete confirmation. The edit dialog starts on the name field; the alertdialog on
+# Vazgeç. Toasts are Base UI toasts (role dialog, alertdialog for an error) in a live region.
+schema: delurio-graph/0
+kind: ui
+id: medaris.deck-publish
+flow: medaris.deck-publish
+status: proposed
+catalog: catalog/tr.json
+locales: [tr, en]
+samples: { title: "Sarfın temel kelimeleri", count: "36", at: "21 Ekim 14:05" }
+changes: { key: Changes.note }
+
+nodes:
+  page: { type: page, component: Page, role: main, name: { labelledBy: deckName }, in: [ownerPage, requesting, withdrawing, saving, deleting], source: "apps/tedris/features/flashcards/components/deck-detail-page.tsx:55" }
+  deckName: { type: text, component: Heading, role: heading, text: { key: Data.title, params: { title: deck.title } }, in: [ownerPage, requesting, withdrawing, saving, deleting], source: "apps/tedris/features/flashcards/components/deck-header.tsx:54" }
+  study: { type: action, component: LinkButton, role: link, text: { key: Deck.study }, in: [ownerPage, requesting, withdrawing, saving, deleting], source: "apps/tedris/features/flashcards/components/deck-detail-page.tsx:63" }
+  progressTitle: { type: text, component: Heading, role: heading, text: { key: Deck.progressTitle }, in: [ownerPage, requesting, withdrawing, saving, deleting] }
+  samplesTitle: { type: text, component: Heading, role: heading, text: { key: Deck.samplesTitle }, in: [ownerPage, requesting, withdrawing, saving, deleting] }
+  whoTitle: { type: text, component: Heading, role: heading, text: { key: Deck.whoTitle }, in: [ownerPage, requesting, withdrawing, saving, deleting], source: "apps/tedris/features/flashcards/components/deck-owner-overview.tsx:210" }
+  whoPrivate: { type: text, component: Text, text: { key: Deck.whoPRIVATE }, in: [ownerPage, requesting, withdrawing, saving, deleting], when: "status in ['private', 'rejected']", source: "apps/tedris/features/flashcards/components/deck-owner-overview.tsx:110" } # a refused deck reads as private
+  whoPending: { type: text, component: Text, text: { key: Deck.whoPENDING, params: { at: deck.requestedAt } }, in: [ownerPage, requesting, withdrawing, saving, deleting], when: "status == 'pending'" }
+  whoPublished: { type: text, component: Text, text: { key: Deck.whoPUBLISHED }, in: [ownerPage, requesting, withdrawing, saving, deleting], when: "status == 'published'" }
+  requestPublish: { type: action, component: Button, role: button, intent: confirm, text: { key: Deck.requestPublish }, in: [ownerPage, requesting], disabledIn: [requesting], when: "status == 'private'", emits: REQUEST, source: "apps/tedris/features/flashcards/components/deck-owner-overview.tsx:214" }
+  withdrawRequest: { type: action, component: Button, role: button, intent: secondary, text: { key: Deck.withdrawRequest }, in: [ownerPage, withdrawing], disabledIn: [withdrawing], when: "status == 'pending'", emits: WITHDRAW, source: "apps/tedris/features/flashcards/components/deck-owner-overview.tsx:222" }
+  makePrivate: { type: action, component: Button, role: button, intent: secondary, text: { key: Deck.makePrivate }, in: [ownerPage, withdrawing], disabledIn: [withdrawing], when: "status in ['published', 'rejected']", emits: MAKE_PRIVATE, source: "apps/tedris/features/flashcards/components/deck-owner-overview.tsx:222" }
+  deckTitle: { type: text, component: Heading, role: heading, text: { key: Deck.deckTitle }, in: [ownerPage, requesting, withdrawing, saving, deleting] }
+  deckText: { type: text, component: Text, text: { key: Deck.deckText }, in: [ownerPage, requesting, withdrawing, saving, deleting] }
+  edit: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: Deck.edit }, in: [ownerPage], emits: EDIT, source: "apps/tedris/features/flashcards/components/deck-owner-overview.tsx:240" }
+  delete: { type: action, component: Button, role: button, intent: secondary, text: { key: Deck.delete }, in: [ownerPage], emits: DELETE, source: "apps/tedris/features/flashcards/components/deck-owner-overview.tsx:247" }
+  requestedToast: { type: status, component: Status, role: dialog, text: { key: Deck.requestedTitle }, in: [ownerPage], when: "notice == 'requested'", source: "apps/tedris/features/flashcards/components/deck-owner-overview.tsx:78" }
+  withdrawnToast: { type: status, component: Status, role: dialog, text: { key: Deck.withdrawnTitle }, in: [ownerPage], when: "notice == 'withdrawn'" }
+  savedToast: { type: status, component: Status, role: dialog, text: { key: Deck.savedTitle }, in: [ownerPage], when: "notice == 'saved'" }
+  failedToast: { type: alert, component: Alert, role: alertdialog, name: { key: Deck.publishFailedTitle }, text: { key: Deck.tryAgain }, in: [ownerPage], when: "notice == 'failed'", source: "apps/tedris/features/flashcards/components/deck-owner-overview.tsx:69" }
+
+  editDialog: { type: page, component: Page, role: dialog, name: { labelledBy: editTitle }, in: [editDialog, saving], initialFocus: nameField, source: "apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:95" }
+  editTitle: { type: text, component: Heading, role: heading, text: { key: Deck.editTitle }, in: [editDialog, saving] }
+  nameField: { type: field, component: TextField, role: textbox, text: { key: Deck.nameLabel }, in: [editDialog, saving], disabledIn: [saving], source: "apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:117" }
+  descriptionField: { type: field, component: TextField, role: textbox, text: { key: Deck.descriptionLabel }, in: [editDialog, saving], disabledIn: [saving] }
+  descriptionHelp: { type: text, component: Text, text: { key: Deck.descriptionHelp }, in: [editDialog, saving] }
+  pendingNote: { type: status, component: Status, role: status, text: { key: Deck.pendingText }, in: [editDialog, saving], when: "status == 'pending'", source: "apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:141" } # a public deck gets no note
+  editFailed: { type: alert, component: Alert, role: alertdialog, name: { key: Deck.tryAgain }, text: { key: Deck.tryAgain }, in: [editDialog], when: "notice == 'failed'" }
+  editCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: Deck.cancel }, in: [editDialog, saving], disabledIn: [saving], emits: CANCEL }
+  editSave: { type: action, component: Button, role: button, intent: confirm, text: { key: Deck.save }, in: [editDialog, saving], disabledIn: [saving], emits: SAVE, source: "apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:109" }
+
+  deleteDialog: { type: page, component: Page, role: alertdialog, name: { labelledBy: deleteTitle }, in: [deleteConfirm, deleting], initialFocus: deleteCancel, source: "apps/tedris/features/flashcards/components/deck-owner-overview.tsx:254" }
+  deleteTitle: { type: text, component: Heading, role: heading, text: { key: Deck.deleteTitle }, in: [deleteConfirm, deleting] }
+  deleteText: { type: text, component: Text, text: { key: Deck.deleteText, params: { title: deck.title, count: deck.cards } }, in: [deleteConfirm, deleting] }
+  deleteCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: Dialog.alertCancel }, in: [deleteConfirm, deleting], disabledIn: [deleting], emits: CANCEL, source: "libs/ui/src/mds/alert-dialog.tsx:42" } # the AlertDialog's default label, Turkish in every locale
+  deleteYes: { type: action, component: Button, role: button, intent: confirm, text: { key: Deck.delete }, in: [deleteConfirm, deleting], disabledIn: [deleting], emits: CONFIRM, source: "apps/tedris/features/flashcards/components/deck-owner-overview.tsx:260" } # variant destructive
+
+edges:
+  - { labelledBy: [page, deckName] }
+  - { labelledBy: [editDialog, editTitle] }
+  - { labelledBy: [deleteDialog, deleteTitle] }
+  - { triggers: [requestPublish, requesting] }
+  - { triggers: [withdrawRequest, withdrawing] }
+  - { triggers: [makePrivate, withdrawing] }
+  - { triggers: [editSave, saving] }
+  - { triggers: [deleteYes, deleting] }
+
+rules:
+  - { id: review-covers-changes, rule: "a change to a published deck goes through review (the code publishes it as it is)" }
+  - { id: label-in-name, rule: "a node's visible text is contained in its accessible name (WCAG 2.5.3)" }

@@ -14,29 +14,25 @@ describe("Kayıt ol opens Keycloak's registration form (MDRS-101)", () => {
   // sign-in-route spec.
   it("asks the start route for registration, in the page's language", () => {
     expect(
-      signInHref({ intent: "register", callbackUrl: "/tr", locale: "tr" })
-    ).toBe("/api/auth/signin?callbackUrl=%2Ftr&locale=tr&intent=register");
+      signInHref({ intent: "register", callbackUrl: "/", locale: "tr" })
+    ).toBe("/api/auth/signin?callbackUrl=%2F&locale=tr&intent=register");
   });
 
   it("leaves a plain sign-in on the login form", () => {
     expect(
-      signInHref({ intent: "signin", callbackUrl: "/en", locale: "en" })
-    ).toBe("/api/auth/signin?callbackUrl=%2Fen&locale=en");
+      signInHref({ intent: "signin", callbackUrl: "/", locale: "en" })
+    ).toBe("/api/auth/signin?callbackUrl=%2F&locale=en");
   });
 
   it("the register page starts that flow and ends on Ana sayfa, with no welcome step", async () => {
-    const { default: RegisterPage } = await import(
-      "../app/[locale]/auth/register/page"
-    );
-    const element = await RegisterPage({
-      params: Promise.resolve({ locale: "tr" }),
-    });
+    const { default: RegisterPage } = await import("../app/auth/register/page");
+    const element = await RegisterPage();
 
     // The page is the system's chrome, then the entry.
     const entry = element.props.children[1];
     expect(entry.props).toEqual({
       intent: "register",
-      callbackUrl: "/tr",
+      callbackUrl: "/",
     });
   });
 });

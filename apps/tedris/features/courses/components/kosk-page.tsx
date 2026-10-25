@@ -72,7 +72,7 @@ const CourseCard = ({
   return (
     <Card
       className="flex flex-col"
-      href={`/${locale}/courses/${course.id}`}
+      href={`/courses/${course.id}`}
       title={course.title}
       media={<CoverPattern {...courseCover(course)} size="sm" />}
       action={
@@ -113,7 +113,7 @@ const CourseCard = ({
           <p className="flex items-start gap-2">
             <Icon name="medrese" size="sm" className="mbs-1 flex-none" />
             <span>
-              <Link href={`/${locale}/madrasahs/${course.madrasah.id}`}>
+              <Link href={`/madrasahs/${course.madrasah.id}`}>
                 <bdi>{course.madrasah.name}</bdi>
               </Link>{" "}
               {t("KoskPage.madrasahCourse")}
@@ -144,8 +144,8 @@ export const KoskPage = async ({
   signedIn: boolean;
 }) => {
   const t = await getTranslations("tedris");
-  const star = imamStarLabels(await getTranslations("common.imamStar"));
   const locale = await getLocale();
+  const star = imamStarLabels(await getTranslations("common.imamStar"));
   const timeZone = await getTimeZone();
 
   return (
@@ -153,7 +153,7 @@ export const KoskPage = async ({
       <div className="flex min-inline-0 flex-col gap-stack">
         <Breadcrumb
           items={[
-            { label: t("KoskPage.discover"), href: `/${locale}/discover` },
+            { label: t("KoskPage.discover"), href: `/discover` },
             { label: kosk.name },
           ]}
         />
@@ -230,7 +230,6 @@ export const KoskPage = async ({
         {signedIn ? null : (
           <AnonymousInvite
             t={t}
-            locale={locale}
             variant="apply"
             callbackPath={`/kosks/${kosk.id}`}
             className="mds-body-sm"
@@ -257,7 +256,7 @@ export const KoskPage = async ({
                 <Card
                   key={deck.id}
                   className="flex flex-col"
-                  href={`/${locale}/decks/${deck.id}`}
+                  href={`/decks/${deck.id}`}
                   title={
                     <span className="flex items-center gap-3">
                       <Avatar entity decorative name={deck.title} />
@@ -293,20 +292,15 @@ export const KoskPage = async ({
  */
 export const KoskLoadError = async ({ koskId }: { koskId: string }) => {
   const t = await getTranslations("tedris");
-  const locale = await getLocale();
   return (
     <main className="font-ui mx-auto flex inline-full max-inline-content flex-col gap-section pbs-8 pbe-16 px-gutter max-md:pbs-5 max-md:pbe-10">
       <Breadcrumb
-        items={[{ label: t("KoskPage.discover"), href: `/${locale}/discover` }]}
+        items={[{ label: t("KoskPage.discover"), href: `/discover` }]}
       />
       <Alert tone="error" title={t("KoskPage.loadErrorTitle")}>
         <p>{t("KoskPage.loadError")}</p>
         <p className="mbs-3">
-          <Button
-            variant="outline"
-            size="small"
-            href={`/${locale}/kosks/${koskId}`}
-          >
+          <Button variant="outline" size="small" href={`/kosks/${koskId}`}>
             {t("KoskPage.retry")}
           </Button>
         </p>

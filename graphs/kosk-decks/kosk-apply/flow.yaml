@@ -1,0 +1,111 @@
+# Applying to open a köşk in tedris (/kosk-applications/new, design tedris/37, MDRS-166), as the code does it at ce47fce8.
+# The answer to the application is medaris.kosk-application-review.
+schema: delurio-graph/0
+kind: flow
+id: medaris.kosk-apply
+status: proposed
+domain: medaris.kosk-decks
+ui: medaris.kosk-apply
+title: Apply to open a köşk
+summary: >-
+  A signed-in member opens "Köşk açma başvurusu" from Keşfet, writes the köşk's name, field, summary and reason with
+  their e-mail (filled from the account) and an optional phone, and sends it. The browser checks the form first; the
+  application is saved as PENDING for Medaris management and the page says it was received. Nothing is saved before
+  "Başvuruyu gönder", and nothing on any screen withdraws or changes an application once it is sent.
+
+scope:
+  shows: the form, the checks the browser makes, sending the application, and the confirmation
+  world: open
+  outOfView:
+    - "Medaris management reading and answering the application: medaris.kosk-application-review"
+    - "signing in and coming back to the page: the auth-account area"
+    - "the answer in the applicant's notifications (KOSK_APPLICATION_RESULT): the notifications page"
+
+context:
+  signedIn:
+    values: [true, false]
+    initial: any
+    say: { "true": "the person is signed in", "false": "the person has no session" }
+  formValid:
+    values: [true, false]
+    initial: any
+    say: { "true": "name, field, summary, reason and a valid e-mail are given, and the phone, if any, looks like one", "false": "a required field is empty or the e-mail or the phone is malformed" }
+  serverAccepts:
+    values: [true, false]
+    initial: any
+    say: { "true": "tedrisat saves the application", "false": "tedrisat refuses it or cannot be reached" }
+  sessionEnds:
+    values: [false, true]
+    initial: any
+    say: { "false": "the session lasts", "true": "the session has ended by the time it is sent" }
+  errorsShown: { values: [false, true], initial: false } # the field errors are drawn under the fields
+  failedNote: { values: [false, true], initial: false } # the "could not be sent" toast is up
+  filed: { values: [false, true], initial: false } # an application was saved
+
+effects:
+  showErrors: { set: { errorsShown: true } }
+  fixed: { set: { formValid: true, errorsShown: false } }
+  filed: { set: { filed: true, failedNote: false } }
+  failed: { set: { failedNote: true } }
+
+failures:
+  sending: { from: createKoskApplication, refused: [VALIDATION_ERROR], session: [AUTHZ_MISSING_USER] }
+
+main:
+  given: { signedIn: true, formValid: true, serverAccepts: true, sessionEnds: false }
+  events: [SUBMIT, DONE, BACK]
+
+initial: opening
+states:
+  opening:
+    title: Open the application page
+    description: >-
+      /kosk-applications/new is not among the pages a visitor may open, so the sign-in middleware sends a visitor with
+      no session to sign in. The account's address is read to fill the e-mail; a failed read leaves it empty.
+    source: apps/tedris/lib/public-paths.ts:12
+    always:
+      - { guard: "not signedIn", target: signIn, say: "a visitor with no session is sent to sign in", source: "apps/tedris/lib/public-paths.ts:12" }
+      - { target: form, say: "the form opens, the e-mail filled from the account", source: "apps/tedris/app/kosk-applications/new/page.tsx:21" }
+
+  form:
+    title: Write the application
+    by: human
+    description: >-
+      Köşk: name (120), field (one of eleven), summary (500), reason (3000); İletişim: e-mail and an optional phone.
+      Beside it, "Başvurundan sonra" says what happens next. "Vazgeç" only goes back to Keşfet.
+    source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:99
+    on:
+      SUBMIT:
+        - { guard: "not formValid", target: form, effect: [showErrors], say: "the browser finds an empty or malformed field and says so under it; nothing is sent", source: "apps/tedris/features/kosk-application/components/kosk-application-page.tsx:65" }
+        - { target: sending, say: "they press Başvuruyu gönder", source: "apps/tedris/features/kosk-application/components/kosk-application-page.tsx:66" }
+      FIX: { guard: "errorsShown", target: form, effect: [fixed], say: "they correct the fields; each error goes as its field changes", source: "apps/tedris/features/kosk-application/components/kosk-application-page.tsx:46" }
+      CANCEL: { target: left, say: "Vazgeç goes back to Keşfet", source: "apps/tedris/features/kosk-application/components/kosk-application-page.tsx:229" }
+
+  sending:
+    title: Send the application
+    description: >-
+      POST /kosk-applications through a server action, with the texts trimmed and an empty phone sent as null. The
+      button is busy and says "Gönderiliyor".
+    invoke: { action: createKoskApplication }
+    source: apps/tedris/features/kosk-application/actions.ts:14
+    on:
+      DONE: { guard: "serverAccepts and not sessionEnds", target: sent, effect: [filed], say: "the application is saved as PENDING", source: "apps/tedris/features/kosk-application/components/kosk-application-page.tsx:69" }
+      FAIL.refused: { guard: "not serverAccepts and not sessionEnds", target: form, effect: [failed], say: "it was not saved: a toast says so and the form keeps what was typed", source: "apps/tedris/features/kosk-application/components/kosk-application-page.tsx:72" }
+      FAIL.session: { guard: "sessionEnds", target: signIn, say: "the session is over: they are sent to sign in", source: "apps/tedris/features/kosk-application/components/kosk-application-page.tsx:68" }
+
+  sent:
+    title: Say the application was received
+    by: human
+    description: the form is replaced by "Başvurun alındı"; the page has no way to see, change or withdraw it
+    source: apps/tedris/features/kosk-application/components/kosk-application-page.tsx:83
+    on:
+      BACK: { target: left, say: "Keşfet'e dön", source: "apps/tedris/features/kosk-application/components/kosk-application-page.tsx:91" }
+
+  signIn: { type: final, title: Sign in first, leavesPage: true, description: "the browser leaves for the sign-in page", source: "apps/tedris/lib/send-to-sign-in.ts:25" }
+  left: { type: final, title: Back to Keşfet, leavesPage: true, source: "apps/tedris/features/kosk-application/components/kosk-application-page.tsx:81" }
+
+assertions:
+  - { id: complete-before-sent, never: "state == 'sending' and not formValid", say: "An incomplete or malformed form never reaches the API", source: "apps/tedris/features/kosk-application/components/kosk-application-page.tsx:65" }
+  - { id: no-application-without-session, never: "filed and not signedIn", say: "No application is saved for a person with no session", source: "apps/tedrisat/src/kosk-application/kosk-application.controller.ts:17" }
+  - { id: confirmation-means-saved, never: "state == 'sent' and not filed", say: "The page says the application was received only when tedrisat saved it", source: "apps/tedris/features/kosk-application/components/kosk-application-page.tsx:69" }
+  - { id: refusal-saves-nothing, never: "filed and not serverAccepts", say: "A refused or failed send saves nothing", source: "apps/tedrisat/src/kosk-application/kosk-application.service.ts:22" }

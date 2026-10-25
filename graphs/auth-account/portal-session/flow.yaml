@@ -1,0 +1,138 @@
+# A portal session over time, captured from origin/main ce47fce8: what libs/auth's proxy does to it on every
+# request (libs/auth/src/server/proxy.ts, renewal.ts), what Keycloak's back-channel logout does to it
+# (routes.ts:454), and how it ends. Server steps only: the pages are the portals'.
+# Two modes, as the code has them: with WEB__AUTH_STORE_URL set the session lives in Valkey ("store"), without it in
+# the sealed cookie ("cookie"). Whether production sets it is not in the repository (config/keycloak/RUNBOOK.md:291).
+schema: delurio-graph/0
+kind: flow
+id: medaris.portal-session
+status: proposed
+domain: medaris.auth-account
+title: Keep a portal session, and end it
+summary: >-
+  On every request the proxy refreshes an access token that has less than a minute left. Keycloak refusing the
+  refresh ends the session; Keycloak out of reach keeps it while the token still works. With the session in the
+  cookie, the proxy asks Keycloak's userinfo once a minute whether the sign-in still stands; with the session store,
+  Keycloak's back-channel logout ends it at once instead. An unreachable store decides nothing. An ended session
+  sends the next protected page to sign in.
+
+scope:
+  shows: refresh, the once-a-minute check, back-channel logout, a store outage, and the end of a session
+  world: open
+  outOfView:
+    - "several replicas sharing one refresh (the Valkey lock, session-store.ts:112): one replica drawn"
+    - "a Phase 1 cookie moved into the store on its first request (proxy.ts:140)"
+    - "signing out on purpose: medaris.portal-sign-out"
+
+context:
+  mode:
+    values: [store, cookie]
+    initial: any
+    say: { store: "the sessions live in the session store", cookie: "the session lives in the sealed cookie" }
+  storeUp: { values: [true, false], initial: true }
+  nearEnd: { values: [false, true], initial: false }
+  idp: { values: [alive, ended], initial: alive }
+  reachable: { values: [true, false], initial: true }
+  usable: { values: [true, false], initial: true }
+  checkDue: { values: [false, true], initial: false }
+  tokenValid: { values: [true, false], initial: true }
+  page: { values: [protectedPage, publicPage], initial: protectedPage }
+  remoteLogout: { values: [false, true], initial: false }
+  endCause: { values: [none, refused, expired, userinfo, backchannel], initial: none }
+
+effects:
+  time: { havoc: [storeUp, nearEnd, idp, reachable, usable, checkDue, page] }
+  logoutToken: { set: { idp: ended }, havoc: [tokenValid] }
+  noted: { set: { remoteLogout: true } }
+  byRefusal: { set: { endCause: refused } }
+  byExpiry: { set: { endCause: expired } }
+  byUserinfo: { set: { endCause: userinfo } }
+  byBackchannel: { set: { endCause: backchannel } }
+
+failures:
+  renewing:
+    from: renewSession
+    unavailable: [SESSION_STORE_UNAVAILABLE]
+    refused: [invalid_grant]
+    expired: [ACCESS_TOKEN_EXPIRED]
+    ended: [USERINFO_401]
+  backchannel:
+    from: backchannelLogout
+    invalid: [invalid_request]
+    unsupported: [unsupported]
+    unavailable: [temporarily_unavailable]
+
+main:
+  given: { mode: store }
+  events: [REQUEST, DONE]
+
+initial: active
+states:
+  active:
+    title: Using the portal
+    by: human
+    goal: true
+    source: libs/auth/src/server/proxy.ts:173
+    description: >-
+      Every page, Server Action and /api request passes the proxy. A tab shown again reads GET /api/auth/session,
+      which passes it too, and reloads the page when the session ended or switched (client/session-context.ts:102).
+    on:
+      REQUEST: { target: renewing, effect: [time], say: "a request reaches the proxy, some time later" }
+      TAB_SHOWN: { target: renewing, effect: [time], say: "the tab is shown again and reads the session", source: "libs/auth/src/client/session-context.ts:118" }
+      BACKCHANNEL: { target: backchannel, effect: [logoutToken], say: "Keycloak posts a logout token: a sign-out in another portal, an administrator, the SSO session's end", source: "config/keycloak/clients/prod/nazar.json:13" }
+      SIGN_OUT: { target: toSignOut, starts: { flow: medaris.portal-sign-out }, say: "they choose Çıkış yap" }
+
+  renewing:
+    title: The proxy renews or checks the session
+    source: libs/auth/src/server/renewal.ts:167
+    description: >-
+      Under 60 s left on the access token: refresh, once per refresh token at a time (renewal.ts:171). Refused
+      (invalid_grant, invalid_client, any 4xx): the session ends; no answer, a 5xx: kept while the token works
+      (renewal.ts:190). Otherwise, in cookie mode only, userinfo at most once a minute: a 401 ends it, anything
+      else keeps it, stamped (renewal.ts:196). A store that cannot be asked: nothing is decided, no cookie written or
+      removed (proxy.ts:188).
+    invoke: { action: renewSession }
+    on:
+      FAIL.unavailable: { guard: "not storeUp", target: active, say: "the store cannot be asked: no gate, no cookie change; a protected page's read fails closed", source: "libs/auth/src/server/proxy.ts:191" }
+      FAIL.refused: { guard: "storeUp and nearEnd and reachable and idp == 'ended'", target: ended, effect: [byRefusal], say: "Keycloak refuses the refresh: the SSO session is gone", source: "libs/auth/src/server/renewal.ts:190" }
+      FAIL.expired: { guard: "storeUp and nearEnd and not reachable and not usable", target: ended, effect: [byExpiry], say: "Keycloak cannot be reached and the token has run out", source: "libs/auth/src/server/renewal.ts:193" }
+      FAIL.ended: { guard: "storeUp and not nearEnd and mode == 'cookie' and checkDue and reachable and idp == 'ended'", target: ended, effect: [byUserinfo], say: "userinfo answers 401: the session ended at Keycloak", source: "libs/auth/src/server/renewal.ts:204" }
+      DONE:
+        - { guard: "storeUp and nearEnd and reachable and idp == 'alive'", target: active, say: "refreshed; the new tokens go onto the request and the store", source: "libs/auth/src/server/proxy.ts:146" }
+        - { guard: "storeUp and nearEnd and not reachable and usable", target: active, say: "Keycloak cannot be reached; kept while the token works", source: "libs/auth/src/server/renewal.ts:191" }
+        - { guard: "storeUp and not nearEnd and (mode == 'store' or not checkDue)", target: active, say: "nothing to do", source: "libs/auth/src/server/renewal.ts:196" }
+        - { guard: "storeUp and not nearEnd and mode == 'cookie' and checkDue and not (reachable and idp == 'ended')", target: active, say: "userinfo says the session stands, or cannot be asked: stamped", source: "libs/auth/src/server/renewal.ts:205" }
+
+  backchannel:
+    title: Keycloak's back-channel logout
+    source: libs/auth/src/server/routes.ts:454
+    description: >-
+      POST /api/auth/backchannel-logout, server to server, no cookie. The logout token is checked as OIDC Back-Channel
+      Logout 1.0 asks (backchannel.ts:79); a jti seen before is refused (routes.ts:494). With the store, every session
+      of that Keycloak session (sid) is deleted (routes.ts:497); with the cookie there is nothing to look up and the
+      answer is 501 (routes.ts:498).
+    invoke: { action: backchannelLogout }
+    response: { status: "200 when done; 400 invalid_request for a token that fails a check; 501 unsupported in cookie mode; 503 when Keycloak's keys or the store cannot be reached" }
+    on:
+      DONE: { guard: "tokenValid and mode == 'store' and storeUp", target: ended, effect: [byBackchannel], say: "every session of that sign-in is deleted at once", source: "libs/auth/src/server/routes.ts:497" }
+      FAIL.unsupported: { guard: "tokenValid and mode == 'cookie'", target: active, effect: [noted], say: "501: the cookie session stays until the next userinfo check", source: "libs/auth/src/server/routes.ts:498" }
+      FAIL.unavailable: { guard: "tokenValid and mode == 'store' and not storeUp", target: active, say: "503: the store cannot be reached and nothing ends", source: "libs/auth/src/server/routes.ts:514" }
+      FAIL.invalid: { guard: "not tokenValid", target: active, say: "400: the token fails a check and nothing ends", source: "libs/auth/src/server/routes.ts:508" }
+
+  ended:
+    title: The session is over
+    source: libs/auth/src/server/proxy.ts:168
+    description: the session and its cookie are removed; the next page decides as for a visitor (proxy.ts:198)
+    always:
+      - { guard: "page == 'protectedPage'", target: toSignIn, starts: { flow: medaris.portal-sign-in }, say: "a protected page: to the sign-in page, with the page as callbackUrl", source: "libs/auth/src/server/proxy.ts:205" }
+      - { target: visitor, say: "a public page renders for a visitor", source: "libs/auth/src/server/proxy.ts:203" }
+
+  toSignIn: { type: final, title: To the sign-in page, response: { redirect: "/auth/signin?callbackUrl=<the page>" }, source: "libs/auth/src/server/proxy.ts:207" }
+  visitor: { type: final, title: The public page, for a visitor, source: "libs/auth/src/server/proxy.ts:219" }
+  toSignOut: { type: final, title: Hand over to signing out, source: "libs/auth/src/client/sign-out.ts:138" }
+
+assertions:
+  - { id: store-mode-ends-at-once, never: "state == 'active' and remoteLogout and mode == 'store'", say: "With the session store, a sign-out elsewhere ends this portal's session at once", source: "libs/auth/src/server/routes.ts:497" }
+  - { id: store-outage-signs-nobody-out, never: "state == 'ended' and not storeUp", say: "An unreachable session store never signs anyone out", source: "libs/auth/src/server/proxy.ts:188" }
+  - { id: outage-keeps-a-working-token, never: "endCause == 'expired' and usable", say: "Keycloak out of reach never ends a session whose access token still works", source: "libs/auth/src/server/renewal.ts:191" }
+  - { id: refusal-only-when-gone, never: "endCause in ['refused', 'userinfo'] and idp == 'alive'", say: "A session ends on Keycloak's word only when Keycloak's own session is gone", source: "libs/auth/src/server/renewal.ts:204" }

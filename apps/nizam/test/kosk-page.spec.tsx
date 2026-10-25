@@ -62,8 +62,8 @@ const meOf = (over: { systemAdmin?: boolean; manages?: string[] } = {}) => ({
 });
 
 const open = async () => {
-  const { default: Page } = await import("../app/[locale]/kosks/[id]/page");
-  return Page({ params: Promise.resolve({ locale: "tr", id: KOSK }) });
+  const { default: Page } = await import("../app/kosks/[id]/page");
+  return Page({ params: Promise.resolve({ id: KOSK }) });
 };
 
 beforeEach(() => {
@@ -77,7 +77,7 @@ describe("the köşk page's entry", () => {
     calls.me.mockResolvedValue(meOf());
     calls.rights.mockResolvedValue([]);
     await expect(open()).rejects.toThrow(
-      `redirect:/tr/kosks/${KOSK}/ayarlar/barindirma`
+      `redirect:/kosks/${KOSK}/ayarlar/barindirma`
     );
     expect(calls.rights).toHaveBeenCalledWith(KOSK);
   });
@@ -94,7 +94,7 @@ describe("the köşk page's entry", () => {
 
   it("sends this köşk's nazımı to Dersler without asking for the rights", async () => {
     calls.me.mockResolvedValue(meOf({ manages: [KOSK] }));
-    await expect(open()).rejects.toThrow(`redirect:/tr/kosks/${KOSK}/dersler`);
+    await expect(open()).rejects.toThrow(`redirect:/kosks/${KOSK}/dersler`);
     expect(calls.rights).not.toHaveBeenCalled();
   });
 

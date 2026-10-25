@@ -2578,6 +2578,8 @@
     "createdBody": "{name} was opened.",
     "sessionsFailed": "Course opened, sessions not added",
     "sessionsFailedBody": "{name} was opened but its sessions could not be added. You can add them from Plan sessions.",
+    "requestLeft": "The request was not answered",
+    "requestLeftBody": "{name} was opened, but the request no longer waits; another nazım may have answered it. You can check it on Course requests.",
     "errors": {
       "title": "The course name needs at least two letters.",
       "team": "Choose at least one teacher.",

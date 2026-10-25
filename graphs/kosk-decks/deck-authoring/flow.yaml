@@ -1,0 +1,221 @@
+# Writing a deck in tedris as the code does it at ce47fce8: Deste oluştur (/decks/create, design tedris/27) and the
+# author's card list (/decks/{id}/cards, design tedris/29) with adding, editing, deleting, importing and exporting cards.
+# The deck's publication and its name and description are medaris.deck-publish.
+schema: delurio-graph/0
+kind: flow
+id: medaris.deck-authoring
+status: proposed
+domain: medaris.kosk-decks
+ui: medaris.deck-authoring
+title: Create a deck and write its cards
+summary: >-
+  A member creates a deck with a name, a card type, an optional description and tags; it is born private and they land
+  on its page. On "Kartlar" the author adds a card, edits or deletes one (after a confirmation), imports a CSV or Excel
+  file whose rows are all taken or none, and exports the cards. Anyone else who can read the deck is told the list is
+  the author's. A card change on a published deck reaches everyone without a new review.
+
+scope:
+  shows: the create form and the author's card list with its dialogs
+  world: open
+  outOfView:
+    - "the deck's name, description, publication and deletion: medaris.deck-publish"
+    - "the same card routes used by a köşk deck in nizam: medaris.kosk-decks; by a course deck in nazar: medaris.course-decks"
+
+context:
+  from:
+    values: [create, cards]
+    initial: any
+    say: { create: "the person opens Deste oluştur", cards: "the person opens a deck's Kartlar tab" }
+  isOwner:
+    values: [true, false]
+    initial: any
+    say: { "true": "the viewer wrote the deck", "false": "the viewer only reads it" }
+  formOk:
+    values: [true, false]
+    initial: any
+    say: { "true": "the name has five characters or more, a card type is chosen and the tags fit", "false": "something on the form is missing or too long" }
+  cardOk:
+    values: [true, false]
+    initial: any
+    say: { "true": "both faces are written", "false": "a face is empty or too short" }
+  fileOk:
+    values: [true, false]
+    initial: any
+    say: { "true": "every row of the file is a valid card", "false": "a row of the file is invalid" }
+  published:
+    values: [false, true]
+    initial: any
+    say: { "false": "the deck is not public", "true": "the deck is published" }
+  serverOk:
+    values: [true, false]
+    initial: any
+    say: { "true": "tedrisat accepts the write", "false": "it refuses or cannot be reached" }
+  created: { values: [false, true], initial: false }
+  reviewed: { values: [true, false], initial: true } # what the public reads of the deck is what a reviewer approved
+  askedDelete: { values: [false, true], initial: false }
+  cardDeleted: { values: [false, true], initial: false }
+  imported: { values: [false, true], initial: false }
+  notice: { values: [none, saved, deleted, imported, rowErrors, failed, formErrors], initial: none }
+
+effects:
+  formErrors: { set: { notice: formErrors } }
+  created: { set: { created: true } }
+  clearNotice: { set: { notice: none } }
+  cardSaved: { set: { notice: saved } }
+  cardSavedPublic: { set: { notice: saved, reviewed: false } }
+  askDelete: { set: { askedDelete: true } }
+  cardDeleted: { set: { cardDeleted: true, notice: deleted } }
+  cardDeletedPublic: { set: { cardDeleted: true, notice: deleted, reviewed: false } }
+  imported: { set: { imported: true, notice: imported } }
+  importedPublic: { set: { imported: true, notice: imported, reviewed: false } }
+  rowErrors: { set: { notice: rowErrors } }
+  failed: { set: { notice: failed } }
+
+failures:
+  creating: { from: createFlashcardDeck, refused: [VALIDATION_ERROR] }
+  addingCard: { from: createFlashcards, refused: [DECK_NOT_FOUND, AUTHZ_FORBIDDEN] }
+  updatingCard: { from: updateFlashcard, refused: [CARD_NOT_FOUND, AUTHZ_FORBIDDEN] }
+  deletingCard: { from: deleteFlashcard, refused: [CARD_NOT_FOUND, AUTHZ_FORBIDDEN] }
+  importing: { from: importsCard, rows: [BULK_VALIDATION_ERROR], refused: [BULK_ROW_LIMIT_EXCEEDED] }
+
+main:
+  given: { from: create, formOk: true, serverOk: true }
+  events: [SUBMIT, DONE]
+
+initial: entry
+states:
+  entry:
+    title: Open the page
+    description: both pages are behind the sign-in middleware; the card list draws its controls for the author only and tells anyone else the list is not theirs
+    source: apps/tedris/app/decks/(medaris)/[id]/cards/page.tsx:39
+    always:
+      - { guard: "from == 'create'", target: createPage, say: "Deste oluştur", source: "apps/tedris/app/decks/(medaris)/create/page.tsx:13" }
+      - { guard: "not isOwner", target: notTheirs, say: "a reader of the deck is told the card list is the author's", source: "apps/tedris/app/decks/(medaris)/[id]/cards/page.tsx:41" }
+      - { target: cardsPage, say: "the author's card list", source: "apps/tedris/app/decks/(medaris)/[id]/cards/page.tsx:44" }
+
+  createPage:
+    title: Describe the new deck
+    by: human
+    description: >-
+      Name, an optional description, the card type (no default), optional tags and a preview of the card the type makes;
+      the deck is born private and the form says so. Nothing is sent while a field is invalid.
+    source: apps/tedris/features/flashcards/components/create-deck-page.tsx:43
+    on:
+      SUBMIT:
+        - { guard: "not formOk", target: createPage, effect: [formErrors], say: "the errors are shown under the fields; nothing is sent", source: "apps/tedris/features/flashcards/components/create-deck-page.tsx:75" }
+        - { target: creating, say: "Oluştur", source: "apps/tedris/features/flashcards/components/create-deck-page.tsx:77" }
+      CANCEL: { target: left, say: "Vazgeç goes to Desteler", source: "apps/tedris/features/flashcards/components/create-deck-page.tsx:197" }
+
+  creating:
+    title: Create the deck
+    description: POST /flashcard/decks; always private, PRIVATE; the author's tags are kept for the author alone
+    invoke: { action: createFlashcardDeck }
+    source: apps/tedrisat/src/flashcard/flashcard-deck.repository.ts:169
+    on:
+      DONE: { guard: "serverOk", target: deckPage, effect: [created], say: "the browser goes to the new deck's page", starts: { flow: medaris.deck-publish, given: { status: "'private'", kind: "'own'" } }, source: "apps/tedris/features/flashcards/components/create-deck-page.tsx:86" }
+      FAIL.refused: { guard: "not serverOk", target: createPage, effect: [failed], say: "a toast; what was typed is kept", source: "apps/tedris/features/flashcards/components/create-deck-page.tsx:91" }
+
+  cardsPage:
+    title: The author's card list
+    by: human
+    goal: true
+    description: >-
+      Dışa aktar (a download through the app's /api/decks/{id}/export), İçe aktar and Kart ekle; the cards with the
+      author's own study status, and Düzenle and Sil on each row.
+    source: apps/tedris/features/flashcards/components/deck-cards-page.tsx:75
+    on:
+      ADD: { target: addDialog, effect: [clearNotice], say: "Kart ekle", source: "apps/tedris/features/flashcards/components/deck-cards-page.tsx:100" }
+      EDIT: { target: editDialog, effect: [clearNotice], say: "Düzenle on a card", source: "apps/tedris/features/flashcards/components/deck-cards-page.tsx:175" }
+      DELETE: { target: deleteConfirm, effect: [clearNotice], say: "Sil on a card", source: "apps/tedris/features/flashcards/components/deck-cards-page.tsx:185" }
+      IMPORT: { target: importDialog, effect: [clearNotice], say: "İçe aktar", source: "apps/tedris/features/flashcards/components/deck-cards-page.tsx:94" }
+      NAVIGATE: { target: left, say: "they go to another page", source: "apps/tedris/features/flashcards/components/deck-cards-page.tsx:75" }
+
+  addDialog:
+    title: Write a new card
+    by: human
+    description: the front (Arabic) and the back; the dialog's focus starts on the front field
+    source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:89
+    on:
+      SAVE: { guard: "cardOk", target: addingCard, say: "Kaydet", source: "apps/tedris/features/flashcards/components/card-form-dialog.tsx:70" }
+      CANCEL: { target: cardsPage, say: "Vazgeç", source: "apps/tedris/features/flashcards/components/card-form-dialog.tsx:89" }
+
+  addingCard:
+    title: Add the card
+    description: POST /flashcard/decks/{deckId}/cards; the deck's publication status is left as it is
+    invoke: { action: createFlashcards }
+    source: apps/tedris/features/flashcards/actions/index.ts:110
+    on:
+      DONE:
+        - { guard: "serverOk and published", target: cardsPage, effect: [cardSavedPublic], say: "the card is added and everyone reading the public deck sees it", source: "apps/tedrisat/src/flashcard/flashcard.controller.ts:212" }
+        - { guard: "serverOk", target: cardsPage, effect: [cardSaved], say: "the card is added", source: "apps/tedris/features/flashcards/components/card-form-dialog.tsx:84" }
+      FAIL.refused: { guard: "not serverOk", target: addDialog, effect: [failed], say: "a toast; what was typed is kept", source: "apps/tedris/features/flashcards/components/card-form-dialog.tsx:74" }
+
+  editDialog:
+    title: Change a card
+    by: human
+    source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:89
+    on:
+      SAVE: { guard: "cardOk", target: updatingCard, say: "Kaydet", source: "apps/tedris/features/flashcards/components/card-form-dialog.tsx:69" }
+      CANCEL: { target: cardsPage, say: "Vazgeç", source: "apps/tedris/features/flashcards/components/card-form-dialog.tsx:89" }
+
+  updatingCard:
+    title: Save the card
+    description: PATCH /flashcard/cards/{id}; the deck's publication status is left as it is
+    invoke: { action: updateFlashcard }
+    source: apps/tedris/features/flashcards/actions/index.ts:152
+    on:
+      DONE:
+        - { guard: "serverOk and published", target: cardsPage, effect: [cardSavedPublic], say: "saved; everyone reading the public deck sees the change", source: "apps/tedrisat/src/flashcard/flashcard.service.ts:247" }
+        - { guard: "serverOk", target: cardsPage, effect: [cardSaved], say: "saved", source: "apps/tedris/features/flashcards/actions/index.ts:152" }
+      FAIL.refused: { guard: "not serverOk", target: editDialog, effect: [failed], say: "a toast; what was typed is kept", source: "apps/tedris/features/flashcards/actions/index.ts:152" }
+
+  deleteConfirm:
+    title: Confirm deleting the card
+    by: human
+    description: an alertdialog naming the card's number; the focus starts on its Vazgeç
+    source: apps/tedris/features/flashcards/components/deck-cards-page.tsx:212
+    on:
+      CONFIRM: { target: deletingCard, effect: [askDelete], say: "Kartı sil", source: "apps/tedris/features/flashcards/components/deck-cards-page.tsx:222" }
+      CANCEL: { target: cardsPage, say: "Vazgeç", source: "apps/tedris/features/flashcards/components/deck-cards-page.tsx:212" }
+
+  deletingCard:
+    title: Delete the card
+    description: DELETE /flashcard/cards/{id}; the card goes for good, and the progress rows that named it are left behind, unreachable
+    invoke: { action: deleteFlashcard }
+    source: apps/tedris/features/flashcards/actions/index.ts:165
+    on:
+      DONE:
+        - { guard: "serverOk and published", target: cardsPage, effect: [cardDeletedPublic], say: "the card is gone from the public deck too", source: "apps/tedris/features/flashcards/components/deck-cards-page.tsx:69" }
+        - { guard: "serverOk", target: cardsPage, effect: [cardDeleted], say: "the card is gone", source: "apps/tedris/features/flashcards/components/deck-cards-page.tsx:69" }
+      FAIL.refused: { guard: "not serverOk", target: cardsPage, effect: [failed], say: "a toast; the card stays", source: "apps/tedris/features/flashcards/components/deck-cards-page.tsx:62" }
+
+  importDialog:
+    title: Choose a file to import
+    by: human
+    description: a CSV or Excel file (5 MB, at most 1000 rows) and the sample file's link; a file with bad rows lists them by row
+    source: apps/tedris/features/flashcards/components/import-cards-dialog.tsx:102
+    on:
+      SUBMIT: { target: importing, say: "İçe aktar", source: "apps/tedris/features/flashcards/components/import-cards-dialog.tsx:73" }
+      CANCEL: { target: cardsPage, say: "Vazgeç", source: "apps/tedris/features/flashcards/components/import-cards-dialog.tsx:102" }
+
+  importing:
+    title: Import the cards
+    description: the app's /api/decks/{id}/import hands the file to POST /flashcard/decks/{deckId}/cards/bulk/import; every row or none
+    invoke: { action: importsCard }
+    source: apps/tedris/features/flashcards/components/import-cards-dialog.tsx:73
+    on:
+      DONE:
+        - { guard: "fileOk and published", target: cardsPage, effect: [importedPublic], say: "the cards are added to the public deck", source: "apps/tedris/features/flashcards/components/import-cards-dialog.tsx:79" }
+        - { guard: "fileOk", target: cardsPage, effect: [imported], say: "the cards are added", source: "apps/tedris/features/flashcards/components/import-cards-dialog.tsx:79" }
+      FAIL.rows: { guard: "not fileOk", target: importDialog, effect: [rowErrors], say: "nothing is added; the bad rows are listed", source: "apps/tedris/features/flashcards/components/import-cards-dialog.tsx:90" }
+
+  deckPage: { type: final, title: The new deck's page, leavesPage: true, source: "apps/tedris/features/flashcards/components/create-deck-page.tsx:86" }
+  notTheirs: { type: final, title: '"This list is the author''s"', description: "the ForbiddenState screen of design tedris/39, with a link to the deck's page", source: "apps/tedris/app/decks/(medaris)/[id]/cards/page.tsx:42" }
+  left: { type: final, title: The person goes elsewhere, leavesPage: true, source: "apps/tedris/features/flashcards/components/deck-cards-page.tsx" }
+
+assertions:
+  - { id: valid-before-created, never: "state == 'creating' and not formOk", say: "An invalid form never reaches the API", source: "apps/tedris/features/flashcards/components/create-deck-page.tsx:75" }
+  - { id: only-author-writes-here, never: "state in ['cardsPage', 'addDialog', 'addingCard', 'editDialog', 'updatingCard', 'deleteConfirm', 'deletingCard', 'importDialog', 'importing'] and not isOwner", say: "Only the deck's author gets the card list's controls", source: "apps/tedris/app/decks/(medaris)/[id]/cards/page.tsx:41" }
+  - { id: delete-asks-first, never: "cardDeleted and not askedDelete", say: "A card is deleted only after the author confirmed it", source: "apps/tedris/features/flashcards/components/deck-cards-page.tsx:212" }
+  - { id: import-all-or-nothing, never: "imported and not fileOk", say: "A file with a bad row adds no card", source: "apps/tedrisat/src/flashcard/flashcard-bulk.service.ts:59" }
+  - { id: no-empty-card, never: "state in ['addingCard', 'updatingCard'] and not cardOk", say: "A card with an empty or too short face is never sent", source: "apps/tedris/features/flashcards/components/card-form-dialog.tsx:55" }

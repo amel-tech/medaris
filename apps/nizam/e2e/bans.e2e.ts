@@ -34,7 +34,7 @@ async function signIn(
   page: Page,
   who: { email?: string; password?: string }
 ): Promise<void> {
-  await page.goto("/tr/auth/signin");
+  await page.goto("/auth/signin");
   await page.locator("#username").fill(who.email as string);
   await page.locator("#password").fill(who.password as string);
   await page.locator("button[type=submit]").click();
@@ -47,7 +47,7 @@ const openRoster = async (page: Page) => {
   await page.getByRole("tab", { name: /^Kayıtlı/ }).click();
 };
 const studentsUrl = () =>
-  `/tr/kosks/${fixture.koskId}/courses/${fixture.course.id}/students`;
+  `/kosks/${fixture.koskId}/courses/${fixture.course.id}/students`;
 const rowOf = (page: Page, name: string) =>
   page.locator("tbody tr").filter({ hasText: name });
 
@@ -178,7 +178,7 @@ test("nizam/41 — the köşk nazımı can bar the whole köşk, and the ban rem
   await expect(dialog).toBeHidden();
   await expect(rowOf(page, fixture.talebe.name)).toContainText("Köşk");
 
-  await page.goto(`/tr/kosks/${fixture.koskId}/yasaklamalar`);
+  await page.goto(`/kosks/${fixture.koskId}/yasaklamalar`);
   const row = rowOf(page, fixture.talebe.name);
   await expect(row).toContainText("Köşk");
   await expect(row).toContainText(
@@ -191,7 +191,7 @@ test("nizam/42 — the list shows the bans with their columns and counts, and hi
 }) => {
   test.skip(!seedable, "no köşk nazım account");
   await signIn(page, KOSK_NAZIM);
-  await page.goto(`/tr/kosks/${fixture.koskId}/yasaklamalar`);
+  await page.goto(`/kosks/${fixture.koskId}/yasaklamalar`);
 
   await expect(
     page.getByRole("heading", { level: 1, name: "Yasaklamalar" })
@@ -238,7 +238,7 @@ test("nizam/42 — lifting needs a reason, then moves the ban to 'Kaldırılan' 
 }) => {
   test.skip(!seedable, "no köşk nazım account");
   await signIn(page, KOSK_NAZIM);
-  await page.goto(`/tr/kosks/${fixture.koskId}/yasaklamalar`);
+  await page.goto(`/kosks/${fixture.koskId}/yasaklamalar`);
 
   await page
     .getByRole("button", { name: `Yasağı kaldır: ${fixture.byMuderris.name}` })
@@ -277,7 +277,7 @@ test("nizam/42 — 'Köşkten de yasakla' widens a course ban to the köşk", as
 }) => {
   test.skip(!seedable, "no köşk nazım account");
   await signIn(page, KOSK_NAZIM);
-  await page.goto(`/tr/kosks/${fixture.koskId}/yasaklamalar`);
+  await page.goto(`/kosks/${fixture.koskId}/yasaklamalar`);
 
   await page
     .getByRole("button", {
@@ -298,10 +298,10 @@ test("nizam/42 — a signed-out visitor is sent to sign in, and the müderris of
   page,
 }) => {
   test.skip(!seedable || !MUDERRIS.password, "no müderris account");
-  await page.goto(`/tr/kosks/${fixture.koskId}/yasaklamalar`);
+  await page.goto(`/kosks/${fixture.koskId}/yasaklamalar`);
   await expect(page).toHaveURL(/signin|auth/);
   await signIn(page, MUDERRIS);
-  await page.goto(`/tr/kosks/${fixture.koskId}/yasaklamalar`);
+  await page.goto(`/kosks/${fixture.koskId}/yasaklamalar`);
   await expect(
     page.getByRole("heading", { name: "Bu bölüm için izniniz yok" })
   ).toBeVisible();

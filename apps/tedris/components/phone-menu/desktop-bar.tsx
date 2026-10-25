@@ -48,14 +48,10 @@ export function DesktopBar({
       : signedIn
         ? sectionOf(pathname)
         : "discover";
-  const hrefs = inviteHrefs(locale, pathname === "/" ? "/home" : pathname);
+  const hrefs = inviteHrefs(pathname === "/" ? "/home" : pathname);
 
   const item = (key: Exclude<Section, null>, href: string, label: string) => (
-    <NavItem
-      href={`/${locale}${href}`}
-      linkComponent={Link}
-      active={section === key}
-    >
+    <NavItem href={`${href}`} linkComponent={Link} active={section === key}>
       {label}
     </NavItem>
   );
@@ -66,7 +62,7 @@ export function DesktopBar({
       className="sticky inset-bs-0 z-[2] flex block-topbar items-center gap-6 px-gutter bg-neutral-surface border-be border-neutral-subtle font-ui max-md:hidden"
     >
       <Link
-        href={`/${locale}/${signedIn ? "home" : "discover"}`}
+        href={`/${signedIn ? "home" : "discover"}`}
         aria-label={t("homeLabel")}
         aria-current={section === "home" ? "page" : undefined}
       >
@@ -94,7 +90,7 @@ export function DesktopBar({
           <>
             <Link
               className="mds-btn mds-icon-btn mds-btn--large mds-btn--ghost"
-              href={`/${locale}/notifications`}
+              href={`/notifications`}
               aria-label={t("notifications")}
             >
               <Icon name="bell" />
@@ -104,7 +100,7 @@ export function DesktopBar({
                 fill as tall as the bar. */}
             <Link
               className="mds-btn mds-icon-btn mds-btn--large mds-btn--ghost"
-              href={`/${locale}/account`}
+              href={`/account`}
             >
               <Avatar name={name} size="sm" decorative />
               <span className="mds-visually-hidden">{t("account")}</span>

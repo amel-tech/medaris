@@ -1,0 +1,184 @@
+# "Notlarım", the talebe's private notes on a celse (apps/tedris/features/courses/components/lesson-notes.tsx) and the
+# tedrisat routes behind them, as the code does it on origin/main ce47fce8 (capture of 25 Oct 2026). The celse page
+# draws the panel for an ENROLLED or COMPLETED talebe whose content is open, on a celse that is not cancelled and has
+# nothing to watch (medaris.session); the watch page draws the same panel beside its player.
+schema: delurio-graph/0
+kind: flow
+id: medaris.notes
+status: proposed
+domain: medaris.learning
+ui: medaris.notes
+title: Take private notes on a celse
+summary: >-
+  A talebe writes notes on a celse, each with an optional time in it; only they read them. They rewrite and delete
+  them in place, the deletion after asking. Writing takes an active talebe; reading and deleting take only a course
+  that is open to them.
+
+scope:
+  shows: the notes panel on the celse page, from its first read
+  world: open
+  outOfView:
+    - "the watch page's panel, which reads the player's position for a note's time and seeks the player from it"
+    - "the celse's clock that prefills a note's time while the celse is live"
+
+context:
+  notes:
+    values: [none, some]
+    initial: any
+    say: { none: "no note on this celse yet", some: "the talebe has notes on this celse" }
+  timeOk: # the time the talebe typed is empty or reads as a time up to 99:59:59
+    values: [true, false]
+    initial: any
+    say: { "true": "the time is empty or a time", "false": "the time does not read as a time" }
+  lastNote: { values: [false, true], initial: any } # the note deleted next is the last one
+  seat:
+    values: [active, removed, passive]
+    initial: active
+  celse:
+    values: [live, hidden]
+    initial: live
+  wrote: { values: [none, added, edited, deleted], initial: none }
+  notice: { values: [none, invalidTime, bodyRequired, forbidden, saveFailed, deleteFailed], initial: none }
+
+guards:
+  showInvalidTime: "notice == 'invalidTime'"
+  showBodyRequired: "notice == 'bodyRequired'"
+  showForbidden: "notice == 'forbidden'"
+  showSaveFailed: "notice == 'saveFailed'"
+  showDeleteFailed: "notice == 'deleteFailed'"
+  hasNotes: "notes == 'some'"
+
+effects:
+  clear: { set: { notice: none } }
+  invalidTime: { set: { notice: invalidTime } }
+  bodyRequired: { set: { notice: bodyRequired } }
+  added: { set: { notes: some, wrote: added, notice: none }, havoc: [timeOk, lastNote] }
+  edited: { set: { wrote: edited, notice: none }, havoc: [timeOk] }
+  forbidden: { set: { notice: forbidden } }
+  saveFailed: { set: { notice: saveFailed } }
+  deletedLast: { set: { notes: none, wrote: deleted, notice: none }, havoc: [lastNote] }
+  deletedOne: { set: { wrote: deleted, notice: none }, havoc: [lastNote] }
+  deleteFailed: { set: { notice: deleteFailed } }
+  seatLost: { set: { seat: removed, wrote: none, notice: none } }
+  passivated: { set: { seat: passive, wrote: none, notice: none } }
+  celseHidden: { set: { celse: hidden, wrote: none, notice: none } }
+
+failures:
+  loading:
+    from: listLessonNotes
+    server: [network, 5xx]
+  adding:
+    from: createLessonNote
+    forbidden: [LESSON_NOTE_FORBIDDEN]
+    server: [LESSON_NOT_FOUND, VALIDATION_ERROR, network, 5xx]
+  savingEdit:
+    from: updateLessonNote
+    forbidden: [LESSON_NOTE_FORBIDDEN]
+    server: [LESSON_NOTE_NOT_FOUND, VALIDATION_ERROR, network, 5xx]
+  deleting:
+    from: deleteLessonNote
+    forbidden: [LESSON_NOTE_FORBIDDEN]
+    server: [LESSON_NOTE_NOT_FOUND, network, 5xx]
+
+main:
+  given: { notes: none, timeOk: true }
+  events: [DONE, ADD, DONE, DELETE, CONFIRM, DONE]
+
+initial: loading
+states:
+  loading:
+    title: Read the talebe's notes
+    description: GET /lessons/:id/notes (findVisibleLessonCourse + mayReachOwnWriting), the author's own only
+    source: apps/tedris/features/courses/components/lesson-notes.tsx:128
+    invoke: { action: listLessonNotes }
+    on:
+      DONE: { target: panel, effect: [clear], say: "the notes are shown, by their time", source: "apps/tedris/features/courses/components/lesson-notes.tsx:131" }
+      FAIL.server: { target: loadFailed, say: "the read failed", source: "apps/tedris/features/courses/components/lesson-notes.tsx:137" }
+
+  loadFailed:
+    title: The notes could not be read
+    by: human
+    description: the form to write a note stays above the failure
+    source: apps/tedris/features/courses/components/lesson-notes.tsx:178
+    on:
+      RETRY: { target: loading, say: "they try again", source: "apps/tedris/features/courses/components/lesson-notes.tsx:181" }
+      NAVIGATE: { target: left, say: "they leave the page" }
+
+  panel:
+    title: Notlarım
+    by: human
+    goal: true
+    description: who reads the notes, the form for a new one with its time, and the notes, each with edit and delete
+    source: apps/tedris/features/courses/components/lesson-notes.tsx:154
+    on:
+      ADD:
+        - { guard: "not timeOk", target: panel, effect: [invalidTime], say: "the time does not read: nothing is sent", source: "apps/tedris/features/courses/components/lesson-notes.tsx:323" }
+        - { target: adding, say: "they write a note and add it", source: "apps/tedris/features/courses/components/lesson-notes.tsx:328" }
+      ADD_EMPTY: { guard: timeOk, target: panel, effect: [bodyRequired], say: "an empty note: nothing is sent", source: "apps/tedris/features/courses/components/lesson-notes.tsx:324" }
+      EDIT: { guard: hasNotes, target: editing, effect: [clear], say: "they rewrite a note in place", source: "apps/tedris/features/courses/components/lesson-notes.tsx:580" }
+      DELETE: { guard: hasNotes, target: confirmDelete, effect: [clear], say: "they press the bin beside a note", source: "apps/tedris/features/courses/components/lesson-notes.tsx:586" }
+      TEAM_REMOVES: { guard: "seat == 'active'", target: panel, effect: [seatLost], say: "meanwhile the course team takes them out, or a ban bars them", source: "apps/tedrisat/src/course/course.service.ts:1734" }
+      PASSIVATED: { guard: "seat != 'passive'", target: panel, effect: [passivated], say: "meanwhile the course goes into a passive scope", source: "libs/common/src/authz/effective-permissions.ts:337" }
+      CELSE_HIDDEN: { guard: "celse == 'live'", target: panel, effect: [celseHidden], say: "meanwhile the celse or its week is hidden", source: "apps/tedrisat/src/course/course.service.ts:1311" }
+      NAVIGATE: { target: left, say: "they leave the page" }
+
+  adding:
+    title: Add the note
+    description: POST /lessons/:id/notes (findVisibleLessonCourse + mayWriteAsTalebe); a hidden celse counts as there
+    source: apps/tedrisat/src/lesson-note/lesson-note.service.ts:47
+    invoke: { action: createLessonNote }
+    on:
+      DONE: { guard: "seat == 'active'", target: panel, effect: [added], say: "the note takes its place by its time; the form empties", source: "apps/tedris/features/courses/components/lesson-notes.tsx:334" }
+      FAIL.forbidden: { guard: "seat != 'active'", target: panel, effect: [forbidden], say: "no longer an active talebe: 403", source: "apps/tedris/features/courses/components/lesson-notes.tsx:212" }
+      FAIL.server: { target: panel, effect: [saveFailed], say: "the note did not go through", source: "apps/tedris/features/courses/components/lesson-notes.tsx:341" }
+
+  editing:
+    title: Rewrite the note
+    by: human
+    description: the note becomes a form in its row; focus is not moved into it
+    source: apps/tedris/features/courses/components/lesson-notes.tsx:514
+    on:
+      SAVE:
+        - { guard: "not timeOk", target: editing, effect: [invalidTime], say: "the time does not read: nothing is sent", source: "apps/tedris/features/courses/components/lesson-notes.tsx:471" }
+        - { target: savingEdit, say: "they save", source: "apps/tedris/features/courses/components/lesson-notes.tsx:476" }
+      SAVE_EMPTY: { guard: timeOk, target: editing, effect: [bodyRequired], say: "an empty note: nothing is sent", source: "apps/tedris/features/courses/components/lesson-notes.tsx:472" }
+      CANCEL: { target: panel, say: "they keep it as it was", source: "apps/tedris/features/courses/components/lesson-notes.tsx:539" }
+
+  savingEdit:
+    title: Save the rewritten note
+    description: PATCH /lessons/:id/notes/:noteId (mayWriteAsTalebe, their own note)
+    source: apps/tedrisat/src/lesson-note/lesson-note.service.ts:59
+    invoke: { action: updateLessonNote }
+    on:
+      DONE: { guard: "seat == 'active'", target: panel, effect: [edited], say: "the note is rewritten", source: "apps/tedris/features/courses/components/lesson-notes.tsx:482" }
+      FAIL.forbidden: { guard: "seat != 'active'", target: editing, effect: [forbidden], say: "no longer an active talebe: 403", source: "apps/tedris/features/courses/components/lesson-notes.tsx:485" }
+      FAIL.server: { target: editing, effect: [saveFailed], say: "the change did not go through", source: "apps/tedris/features/courses/components/lesson-notes.tsx:488" }
+
+  confirmDelete:
+    title: Ask before deleting
+    by: human
+    description: the row's buttons give way to "Silinsin mi?" with Sil and Vazgeç; focus is not moved
+    source: apps/tedris/features/courses/components/lesson-notes.tsx:597
+    on:
+      CONFIRM: { target: deleting, say: "they press Sil", source: "apps/tedris/features/courses/components/lesson-notes.tsx:603" }
+      CANCEL: { target: panel, say: "they keep it", source: "apps/tedris/features/courses/components/lesson-notes.tsx:607" }
+
+  deleting:
+    title: Delete the note
+    description: DELETE /lessons/:id/notes/:noteId; needs only mayReachOwnWriting
+    source: apps/tedrisat/src/lesson-note/lesson-note.service.ts:71
+    invoke: { action: deleteLessonNote }
+    on:
+      DONE:
+        - { guard: "seat != 'passive' and lastNote", target: panel, effect: [deletedLast], say: "the last note is gone", source: "apps/tedris/features/courses/components/lesson-notes.tsx:500" }
+        - { guard: "seat != 'passive'", target: panel, effect: [deletedOne], say: "the note is gone", source: "apps/tedris/features/courses/components/lesson-notes.tsx:500" }
+      FAIL.forbidden: { guard: "seat == 'passive'", target: panel, effect: [deleteFailed], say: "a passive scope closes it: 403, shown as a failure to retry", source: "apps/tedrisat/src/lesson-note/lesson-note.service.ts:103" }
+      FAIL.server: { target: panel, effect: [deleteFailed], say: "the deletion did not go through, a note already gone included", source: "apps/tedris/features/courses/components/lesson-notes.tsx:501" }
+
+  left: { type: final, title: They leave the page, leavesPage: true }
+
+assertions:
+  - { id: no-note-without-seat, never: "wrote in ['added', 'edited'] and seat != 'active'", say: "A note is never written by someone who is no longer an active talebe", source: "apps/tedrisat/src/lesson-note/lesson-note.service.ts:90" }
+  - { id: passive-closes-own-notes, never: "wrote == 'deleted' and seat == 'passive'", say: "In a passive scope the talebe cannot reach their notes, not even to delete them", source: "apps/tedrisat/src/course/course.service.ts:582" }
+  - { id: unreadable-time-never-sent, never: "state in ['adding', 'savingEdit'] and not timeOk", say: "A note whose time does not read is never sent", source: "apps/tedris/features/courses/components/lesson-notes.tsx:323" }
+  - { id: delete-asks-first, never: "state == 'deleting' and notes == 'none'", say: "A note is deleted only after asking, and only one that is there", source: "apps/tedris/features/courses/components/lesson-notes.tsx:597" }

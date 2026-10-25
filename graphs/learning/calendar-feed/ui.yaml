@@ -1,0 +1,273 @@
+# Takvim aboneliği (apps/tedris/app/account/calendar/page.tsx, calendar-subscription.tsx), as built today.
+schema: delurio-graph/0
+kind: ui
+id: medaris.calendar-feed
+flow: medaris.calendar-feed
+status: proposed
+catalog: catalog/tr.json
+locales: [tr, en]
+samples: { date: "25 Ekim 2026 Pazar 10:02", code: "calendar.google.com" }
+changes: { key: Changes.note }
+
+nodes:
+  page:
+    type: page
+    component: Page
+    role: main
+    name: { labelledBy: title }
+    in: [page, issuing]
+    source: apps/tedris/app/account/calendar/page.tsx:21
+  title:
+    type: text
+    component: Heading
+    role: heading
+    text: { key: CalendarSubscription.title }
+    in: [page, issuing]
+    source: apps/tedris/app/account/calendar/page.tsx:31
+  subtitle:
+    type: text
+    component: Text
+    text: { key: CalendarSubscription.subtitle }
+    in: [page, issuing]
+    source: apps/tedris/app/account/calendar/page.tsx:32
+  cardTitle:
+    type: text
+    component: Heading
+    role: heading
+    text: { key: CalendarSubscription.cardTitle }
+    in: [page, issuing]
+    source: apps/tedris/features/courses/components/calendar-subscription.tsx:152
+  copyNow:
+    type: alert
+    component: Alert
+    role: status
+    text: { key: CalendarSubscription.copyNowTitle }
+    when: link
+    in: [page, issuing]
+    source: apps/tedris/features/courses/components/calendar-subscription.tsx:155
+  copyNowText:
+    type: text
+    component: Text
+    text: { key: CalendarSubscription.copyNowText }
+    when: link
+    in: [page, issuing]
+  googleField:
+    type: field
+    component: TextField
+    role: textbox # read-only; masked with dots until a link is made on this visit
+    text: { key: CalendarSubscription.googleFor }
+    when: hasLink
+    in: [page, issuing]
+    source: apps/tedris/features/courses/components/calendar-subscription.tsx:162
+  googleHelp:
+    type: text
+    component: Text
+    text: { key: CalendarSubscription.googleHelp }
+    when: hasLink
+    in: [page, issuing]
+  copyGoogle:
+    type: action
+    component: Button
+    role: button
+    intent: secondary
+    name: { key: CalendarSubscription.copyGoogle }
+    text: { key: CalendarSubscription.copy }
+    when: hasLink
+    in: [page, issuing]
+    disabledIn: [issuing]
+    emits: COPY
+    source: apps/tedris/features/courses/components/calendar-subscription.tsx:65
+  appleField:
+    type: field
+    component: TextField
+    role: textbox
+    text: { key: CalendarSubscription.appleFor }
+    when: hasLink
+    in: [page, issuing]
+    source: apps/tedris/features/courses/components/calendar-subscription.tsx:170
+  copyApple:
+    type: action
+    component: Button
+    role: button
+    intent: secondary
+    name: { key: CalendarSubscription.copyApple }
+    text: { key: CalendarSubscription.copy }
+    when: hasLink
+    in: [page, issuing]
+    disabledIn: [issuing]
+    emits: COPY
+    source: apps/tedris/features/courses/components/calendar-subscription.tsx:65
+  hiddenText:
+    type: text
+    component: Text
+    text: { key: CalendarSubscription.hidden }
+    when: "hasLink and masked"
+    in: [page, issuing]
+    source: apps/tedris/features/courses/components/calendar-subscription.tsx:179
+  appleOpen:
+    type: action
+    component: LinkButton
+    role: link
+    intent: secondary
+    text: { key: CalendarSubscription.appleOpen }
+    when: link
+    in: [page]
+    emits: OPEN_APPLE
+    source: apps/tedris/features/courses/components/calendar-subscription.tsx:183
+  createdAt:
+    type: text
+    component: Text
+    text: { key: CalendarSubscription.createdAt, params: { date: feed.createdAt } }
+    when: hasLink
+    in: [page, issuing]
+    source: apps/tedris/features/courses/components/calendar-subscription.tsx:193
+  createHelp:
+    type: text
+    component: Text
+    text: { key: CalendarSubscription.createHelp }
+    when: showCreateHelp
+    in: [page, issuing]
+    source: apps/tedris/features/courses/components/calendar-subscription.tsx:205
+  unknown:
+    type: text
+    component: Text
+    text: { key: CalendarSubscription.unknown }
+    when: showUnknown
+    in: [page, issuing]
+    source: apps/tedris/features/courses/components/calendar-subscription.tsx:205
+  create:
+    type: action
+    component: Button
+    role: button
+    intent: confirm
+    text: { key: CalendarSubscription.create }
+    when: showCreateHelp
+    in: [page, issuing]
+    disabledIn: [issuing]
+    emits: CREATE
+    source: apps/tedris/features/courses/components/calendar-subscription.tsx:220
+  regenerate:
+    type: action
+    component: Button
+    role: button
+    intent: secondary
+    text: { key: CalendarSubscription.regenerate }
+    when: "not showCreateHelp"
+    in: [page, issuing]
+    disabledIn: [issuing]
+    emits: REGENERATE
+    source: apps/tedris/features/courses/components/calendar-subscription.tsx:211
+  regenerateHelp:
+    type: text
+    component: Text
+    text: { key: CalendarSubscription.regenerateHelp }
+    when: hasLink
+    in: [page, issuing]
+    source: apps/tedris/features/courses/components/calendar-subscription.tsx:230
+  failed:
+    type: alert
+    component: Alert
+    role: alert
+    text: { key: CalendarSubscription.failed }
+    when: showFailed
+    in: [page]
+    source: apps/tedris/features/courses/components/calendar-subscription.tsx:234
+  copiedToast:
+    type: status
+    component: Status
+    role: status
+    text: { key: CalendarSubscription.copied }
+    when: showCopied
+    in: [page]
+    source: apps/tedris/features/courses/components/calendar-subscription.tsx:45
+  copyFailedToast:
+    type: status
+    component: Status
+    role: status
+    text: { key: CalendarSubscription.copyFailed }
+    when: showCopyFailed
+    in: [page]
+    source: apps/tedris/features/courses/components/calendar-subscription.tsx:50
+  whatTitle:
+    type: text
+    component: Heading
+    role: heading
+    text: { key: CalendarSubscription.whatTitle }
+    in: [page, issuing]
+    source: apps/tedris/features/courses/components/calendar-subscription.tsx:269
+  what1:
+    type: text
+    component: Text
+    text: { key: CalendarSubscription.what1 }
+    in: [page, issuing]
+  what3:
+    type: text
+    component: Text
+    text: { key: CalendarSubscription.what3 }
+    in: [page, issuing]
+  what4:
+    type: text
+    component: Text
+    text: { key: CalendarSubscription.what4 }
+    in: [page, issuing]
+  privateText:
+    type: text
+    component: Text
+    text: { key: CalendarSubscription.privateText }
+    in: [page, issuing]
+    source: apps/tedris/features/courses/components/calendar-subscription.tsx:278
+
+  confirmDialog:
+    type: page
+    component: Page
+    role: alertdialog
+    name: { labelledBy: confirmTitle }
+    in: [confirmRenew, issuing]
+    when: dialogOpen
+    initialFocus: confirmCancel # Vazgeç
+    source: libs/ui/src/mds/alert-dialog.tsx:62
+  confirmTitle:
+    type: text
+    component: Heading
+    role: heading
+    text: { key: CalendarSubscription.confirmTitle }
+    in: [confirmRenew, issuing]
+    when: dialogOpen
+    source: apps/tedris/features/courses/components/calendar-subscription.tsx:286
+  confirmText:
+    type: text
+    component: Text
+    text: { key: CalendarSubscription.confirmText }
+    in: [confirmRenew, issuing]
+    when: dialogOpen
+  confirmCancel:
+    type: action
+    component: Button
+    role: button
+    intent: dismiss
+    text: { key: CalendarSubscription.confirmCancel }
+    in: [confirmRenew, issuing]
+    when: dialogOpen
+    emits: CANCEL
+    source: libs/ui/src/mds/alert-dialog.tsx:95
+  confirmAction:
+    type: action
+    component: Button
+    role: button
+    intent: confirm
+    text: { key: CalendarSubscription.confirmAction }
+    in: [confirmRenew, issuing]
+    when: dialogOpen
+    disabledIn: [issuing]
+    emits: CONFIRM
+    source: libs/ui/src/mds/alert-dialog.tsx:101
+
+edges:
+  - { labelledBy: [page, title] }
+  - { labelledBy: [confirmDialog, confirmTitle] }
+  - { triggers: [create, issuing] }
+  - { triggers: [regenerate, confirmRenew] }
+  - { triggers: [confirmAction, issuing] }
+
+rules:
+  - { id: renew-asks-first, rule: "renewing a link that may exist asks first, in an alertdialog whose focus starts on Vazgeç" }

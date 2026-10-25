@@ -1,0 +1,308 @@
+# Navigation graph of Nazar, the Medaris portal for medrese and course staff: the hand-written half.
+# The pages, the menus and which permission opens which course page (PAGE_CODES) are generated into nav.extracted.yaml from the
+# application source (`node src/cli.ts extract <this dir> --repo <medaris checkout>`); this file holds what no source file says in a
+# form the extractor reads: who the users are, where "/" sends them, the links and buttons inside pages, the pages whose only gate is
+# the API's answer, goals, and overrides of single page fields. Every hand-written entry names the code that draws it (`source:`).
+# Status stays "proposed" until a person has approved the diff of both files.
+extends: nav.extracted.yaml
+kind: nav
+schema: delurio-graph/0
+id: medaris-nazar
+title: Nazar
+status: proposed
+locale: tr
+catalog: catalog/tr.json
+
+# How the extractor names the pages that no menu entry names, which titles it takes, and which locales it copies into catalog/.
+extract:
+  adapter: nazar
+  names:
+    "/": start
+    "/erisim-yok": noAccess
+    "/hesap": account
+    "/bildirimler": notifications
+    "/medrese/{id}/dersler/yeni": medreseOpenCourse
+    "/medrese/{id}/dersler/talep": medreseOffsite
+    "/ders/{id}/celseler/planla": dersPlan
+    "/ders/{id}/mufredat/gizle": dersCurriculumHide
+    "/ders/{id}/deste/{id}": dersDeckDetail
+  # /erisim-yok names the retry state (Shell.loadFailedTitle) when the roles cannot be read, else its verdict: the verdict is the page's own
+  titles:
+    noAccess: NoAccess.title
+  locales: [tr, en]
+
+summary: >-
+  Where each kind of Nazar user lands, what the menu offers them, which entries open a page that is not built yet,
+  and which entries open a page that then refuses them.
+
+source:
+  repo: amel-tech/medaris
+  app: apps/nazar
+  menu: apps/nazar/features/shell/nav.ts
+  locales: libs/i18n/src/locales/{locale}/nazar.json
+
+# The chrome drawn around a page. `menu` names the menu the frame carries; `shows` makes its pages draw the menu of the frame
+# that the person's fact names (a page outside any scope shows the menu of the scope the person lands in).
+frames:
+  none:
+    title: Before the portal
+  remembered:
+    title: Pages outside any scope (they show the menu of the scope the person lands in)
+    shows: { fact: landsIn }
+  medrese:
+    title: Inside a medrese
+    menu: Medrese menu
+  ders:
+    title: Inside a course
+    menu: Course menu
+  elsewhere:
+    title: Other applications
+
+# What is true of the person, not of the page. Every persona gives a value for each fact.
+facts:
+  landsIn:
+    values: [medrese, ders, none]
+    say: the scope "/" opens, the remembered one while still held, else the first medrese, else the first course (apps/nazar/features/shell/scope.ts:201, landingPath)
+  medreseRole:
+    values: [none, basmuderris, nazir]
+  courseRole:
+    values: [none, muderris, dersNazir]
+  medreseHeld:
+    of:
+      - madrasah.students_view
+      - madrasah.course_open
+      - madrasah.course_hide
+      - madrasah.muderris_manage
+      - madrasah.offsite_course_request
+      - madrasah.nazir_appoint
+      - madrasah.ban
+      - madrasah.settings_edit
+      - madrasah.hide
+    say: what the person holds in the medrese they are looking at; the medrese pages read routes gated by these (apps/tedrisat/src/madrasah)
+  held:
+    of:
+      - course.edit
+      - session.manage
+      - session.live_link
+      - week.hide
+      - course.settings
+      - course.publish
+      - enrollment.decide
+      - enrollment.complete
+      - enrollment.remove
+      - recording.manage
+      - recording.upload
+      - course_nazir.assign
+      - submission.read
+      - question.answer
+      - deck.manage_course
+      - course.staff_read
+      - course.partner_codes
+    say: what the person holds in the course they are looking at (GET /courses/:id/my-permissions, apps/nazar/features/shell/reads.ts:148)
+
+# Lists the personas can share (libs/common/src/authz/permissions.ts:352, ROLE_DEFAULT_PERMISSIONS): a müderris holds every
+# course-scoped code, and course.staff_read comes with the roster work (libs/common/src/authz/effective-permissions.ts:295);
+# course.partner_codes is köşk-scoped, so no müderris holds it by default. A başmüderris holds every medrese- and course-scoped code
+# in the medrese and its courses. A nazır of either kind holds nothing until someone grants it.
+sets:
+  courseDefaults:
+    - course.edit
+    - session.manage
+    - session.live_link
+    - week.hide
+    - course.settings
+    - course.publish
+    - enrollment.decide
+    - enrollment.complete
+    - enrollment.remove
+    - recording.manage
+    - recording.upload
+    - course_nazir.assign
+    - submission.read
+    - question.answer
+    - deck.manage_course
+    - course.staff_read
+  medreseDefaults:
+    - madrasah.students_view
+    - madrasah.course_open
+    - madrasah.course_hide
+    - madrasah.muderris_manage
+    - madrasah.offsite_course_request
+    - madrasah.nazir_appoint
+    - madrasah.ban
+    - madrasah.settings_edit
+    - madrasah.hide
+
+guards:
+  hasMedrese: "medreseRole != 'none'"
+  hasCourse: "courseRole != 'none'"
+  # The medrese pages have no gate in Nazar: each reads a route of the API and shows "Bu sayfaya izniniz yok" when it answers 403.
+  # These are the codes those routes accept. The guards that open a course page (sessionsOpen, planOpen, ...) are generated from PAGE_CODES.
+  readsDashboard: "'madrasah.students_view' in medreseHeld"
+  listsCourses: "'madrasah.course_open' in medreseHeld or 'madrasah.course_hide' in medreseHeld or 'madrasah.muderris_manage' in medreseHeld"
+  opensCourses: "'madrasah.course_open' in medreseHeld"
+  requestsOffsite: "'madrasah.offsite_course_request' in medreseHeld"
+  seesStudents: "'madrasah.students_view' in medreseHeld"
+  appointsNazirs: "'madrasah.nazir_appoint' in medreseHeld"
+  bansInMedrese: "'madrasah.ban' in medreseHeld"
+  readsMedreseArchive: "'madrasah.course_hide' in medreseHeld or 'madrasah.hide' in medreseHeld or 'madrasah.settings_edit' in medreseHeld"
+  editsMedreseSettings: "'madrasah.settings_edit' in medreseHeld"
+  # Two course pages Nazar opens to everyone in the course, whose only read is gated by the API.
+  answersQuestions: "'question.answer' in held"
+  readsCourseArchive: "'week.hide' in held"
+
+personas:
+  basmuderris:
+    title: Medrese başmüderrisi
+    say: runs one medrese and holds no seat in any course; opens the medrese's courses by address
+    facts: { landsIn: medrese, medreseRole: basmuderris, courseRole: none, medreseHeld: medreseDefaults, held: courseDefaults }
+  medreseNazir:
+    title: Medrese nazırı
+    say: a nazır of one medrese with no grants yet, which is how every nazır starts
+    facts: { landsIn: medrese, medreseRole: nazir, courseRole: none, medreseHeld: [], held: [] }
+  medreseNazirGranted:
+    title: Medrese nazırı who sees the talebe
+    say: a nazır of one medrese who has been given madrasah.students_view, the code behind the talebe list and the Pano's dashboard
+    facts: { landsIn: medrese, medreseRole: nazir, courseRole: none, medreseHeld: [madrasah.students_view], held: [] }
+  muderris:
+    title: Müderris
+    say: teaches one course and belongs to no medrese
+    facts: { landsIn: ders, medreseRole: none, courseRole: muderris, medreseHeld: [], held: courseDefaults }
+  dersNazir:
+    title: Ders nazırı
+    say: a nazır of one course with no grants yet
+    facts: { landsIn: ders, medreseRole: none, courseRole: dersNazir, medreseHeld: [], held: [] }
+  dersNazirGranted:
+    title: Ders nazırı with two grants
+    say: a nazır of one course whom the müderris has allowed to manage sessions and read submitted homework
+    facts: { landsIn: ders, medreseRole: none, courseRole: dersNazir, medreseHeld: [], held: [session.manage, submission.read] }
+  both:
+    title: Başmüderris and müderris
+    say: runs a medrese and also teaches a course, so the scope picker has two scopes
+    facts: { landsIn: medrese, medreseRole: basmuderris, courseRole: muderris, medreseHeld: medreseDefaults, held: courseDefaults }
+  nobody:
+    title: Signed in, no seat
+    say: has an account but no medrese and no course
+    facts: { landsIn: none, medreseRole: none, courseRole: none, medreseHeld: [], held: [] }
+
+# Overrides and additions to the generated pages. kind: screen = built; placeholder = the route answers "Bu sayfa henüz hazır değil";
+# redirect = no screen; external = another app. frame: which menu is drawn around the page; "remembered" pages take the menu of the
+# scope the person lands in. opensFor: a guard; when it is false the page answers with a refusal inside the same frame.
+pages:
+  medreseCourses:
+    opensFor: listsCourses
+    refusal: shows “Bu sayfaya izniniz yok” (the API answers 403)
+    evidence: features/courses/components/courses-page.tsx:75 reads GET /madrasahs/:id/courses (apps/tedrisat/src/madrasah/madrasah.controller.ts:665)
+  medreseOpenCourse:
+    opensFor: opensCourses
+    refusal: shows “Bu sayfaya izniniz yok” in place of the form (the API answers 403)
+    evidence: features/courses/components/open-course-page.tsx:25 reads GET /madrasahs/:id/hosting-kosks (apps/tedrisat/src/madrasah/course/madrasah-course.controller.ts:83)
+  medreseOffsite:
+    opensFor: requestsOffsite
+    refusal: shows “Bu sayfaya izniniz yok” in place of the form (the API answers 403)
+    evidence: features/offsite/components/offsite-page.tsx:41 reads GET /madrasahs/:id/offsite-course-requests (apps/tedrisat/src/madrasah/course/madrasah-course.controller.ts:240)
+  medreseStudents:
+    opensFor: seesStudents
+    refusal: shows “Bu sayfaya izniniz yok” (the API answers 403)
+    evidence: features/students/components/students-page.tsx:45 reads GET /madrasahs/:id/students (apps/tedrisat/src/madrasah/portal/madrasah-portal.controller.ts:68)
+  medreseNazirs:
+    opensFor: appointsNazirs
+    refusal: shows “Bu sayfaya izniniz yok” (the API answers 403)
+    evidence: features/nazirs/components/nazirs-page.tsx:38 reads GET /madrasahs/:id/nazirs (apps/tedrisat/src/madrasah/nazir/madrasah-nazir.controller.ts:73)
+  medreseBans:
+    opensFor: bansInMedrese
+    refusal: shows “Bu sayfaya izniniz yok” (the API answers 403)
+    evidence: features/bans/components/bans-page.tsx:38 reads GET /madrasahs/:id/bans (apps/tedrisat/src/ban/madrasah-ban.controller.ts:71)
+  medreseArchive:
+    opensFor: readsMedreseArchive
+    refusal: shows “Bu sayfaya izniniz yok” (the API answers 403)
+    evidence: features/archive/components/archive-page.tsx:53 reads GET /madrasahs/:id/archive (apps/tedrisat/src/archive/madrasah-archive.controller.ts:75, hide-codes.ts:21)
+  medreseSettings:
+    opensFor: editsMedreseSettings
+    refusal: shows “Bu sayfaya izniniz yok” in place of the form (the API answers 403)
+    evidence: features/settings/components/settings-page.tsx:63 reads GET /madrasahs/:id/settings (apps/tedrisat/src/madrasah/madrasah.controller.ts:627)
+  dersQuestions:
+    opensFor: answersQuestions
+    refusal: shows “Bu sayfaya izniniz yok” (the API answers 403)
+    evidence: features/questions/components/questions-page.tsx:27 reads GET /courses/:id/questions (apps/tedrisat/src/lesson-question/lesson-question.controller.ts:189)
+  dersArchive:
+    opensFor: readsCourseArchive
+    refusal: shows “Bu sayfaya izniniz yok” (the API answers 403)
+    evidence: features/course-archive/components/course-archive-page.tsx:43 reads GET /courses/:id/archive (apps/tedrisat/src/archive/archive.controller.ts:151)
+  tedris:
+    route: Tedris
+    title: NoAccess.back
+    kind: external
+    frame: none
+  tedrisPublic:
+    route: Tedris (a public page)
+    title: the public page of a medrese or a course in Tedris
+    kind: external
+    frame: elsewhere
+
+entries:
+  # where "/" sends a signed-in person (app/page.tsx:16, landingPath)
+  - { from: start, to: medresePano, how: auto, when: "landsIn == 'medrese'", clicks: 0, source: apps/nazar/features/shell/scope.ts:206 }
+  - { from: start, to: dersOverview, how: auto, when: "landsIn == 'ders'", clicks: 0, source: apps/nazar/features/shell/scope.ts:206 }
+  - { from: start, to: noAccess, how: auto, when: "landsIn == 'none'", clicks: 0, source: apps/nazar/features/shell/scope.ts:206 }
+  - { from: noAccess, to: tedris, how: link, label: NoAccess.back, source: apps/nazar/features/access/no-access-page.tsx:46 }
+
+  # the menus themselves are in nav.extracted.yaml
+
+  # the scope picker and the person row are in every frame
+  - { from: frame:medrese, to: dersOverview, how: picker, label: Shell.scopeMenu, when: hasCourse, clicks: 2, source: apps/nazar/features/shell/components/scope-picker.tsx:160 }
+  - { from: frame:ders, to: medresePano, how: picker, label: Shell.scopeMenu, when: hasMedrese, clicks: 2, source: apps/nazar/features/shell/components/scope-picker.tsx:160 }
+  - { from: [frame:medrese, frame:ders], to: account, how: user, label: Shell.accountHint, source: apps/nazar/features/shell/components/portal-frame.tsx:56 }
+
+  # Pano: the scope cards come from the person's own assignments; the rest is drawn only when the dashboard answers (madrasah.students_view)
+  - { from: medresePano, to: dersOverview, how: link, label: a course card, when: hasCourse, source: apps/nazar/features/pano/components/pano-page.tsx:152 }
+  - { from: medresePano, to: medreseOpenCourse, how: button, label: Pano.open, when: readsDashboard, source: apps/nazar/features/pano/components/pano-page.tsx:104 }
+  - { from: medresePano, to: medreseOffsite, how: link, label: Pano.hosts.offsite, when: readsDashboard, source: apps/nazar/features/pano/components/pano-page.tsx:219 }
+  - { from: medresePano, to: dersSessions, how: button, label: Pano.sessions.edit, when: readsDashboard, data: true, source: apps/nazar/features/pano/components/pano-tables.tsx:100 }
+
+  # Dersler, drawn when the list answers
+  - { from: medreseCourses, to: medreseOpenCourse, how: button, label: Courses.open, source: apps/nazar/features/courses/components/courses-page.tsx:114 }
+  - { from: medreseCourses, to: medreseOffsite, how: button, label: Courses.offsite, source: apps/nazar/features/courses/components/courses-page.tsx:110 }
+  - { from: medreseCourses, to: medreseArchive, how: link, label: Courses.hiddenNote.link, source: apps/nazar/features/courses/components/courses-page.tsx:151 }
+  - { from: medreseCourses, to: dersOverview, how: link, label: a course title in the list, data: true, source: apps/nazar/features/courses/components/courses-table.tsx:80 }
+  - { from: medreseOpenCourse, to: medreseCourses, how: link, label: Courses.title, source: apps/nazar/features/courses/components/open-course-page.tsx:41 }
+  - { from: medreseOpenCourse, to: medreseCourses, how: button, label: OpenCourse.cancel, back: true, source: apps/nazar/features/courses/components/open-course-form.tsx:264 }
+  - { from: medreseOpenCourse, to: medreseSettings, how: link, label: Nav.medrese.settings, data: true, source: apps/nazar/features/courses/components/open-course-form.tsx:250 }
+  - { from: medreseOffsite, to: medreseCourses, how: link, label: Courses.title, source: apps/nazar/features/offsite/components/offsite-page.tsx:54 }
+  - { from: medreseOffsite, to: medreseCourses, how: button, label: Offsite.cancel, back: true, source: apps/nazar/features/offsite/components/offsite-form.tsx:189 }
+  - { from: medreseSettings, to: medreseCourses, how: link, label: Settings.coursesLink, source: apps/nazar/features/settings/components/settings-page.tsx:191 }
+  - { from: medreseSettings, to: tedrisPublic, how: link, label: Settings.viewPage, source: apps/nazar/features/settings/components/settings-page.tsx:84 }
+
+  # a course
+  - { from: dersSessions, to: dersPlan, how: button, label: Sessions.plan, when: "'session.manage' in held", source: apps/nazar/features/sessions/components/sessions-page.tsx:90 }
+  - { from: dersPlan, to: dersSessions, how: link, label: SessionPlan.breadcrumbRoot, source: apps/nazar/features/sessions/components/plan-form.tsx:188 }
+  - { from: dersPlan, to: dersSessions, how: button, label: SessionPlan.cancel, back: true, source: apps/nazar/features/sessions/components/plan-form.tsx:429 }
+  - { from: dersCurriculum, to: dersPlan, how: button, label: Curriculum.generate, when: "'session.manage' in held", source: apps/nazar/features/curriculum/components/curriculum-editor.tsx:459 }
+  - { from: dersCurriculum, to: dersCurriculumHide, how: button, label: Curriculum.hidePage, when: "'week.hide' in held", source: apps/nazar/features/curriculum/components/curriculum-editor.tsx:468 }
+  - { from: dersDeck, to: dersDeckDetail, how: link, label: a deck in the list, data: true, source: apps/nazar/features/decks/components/decks-page.tsx:104 }
+  - { from: dersDeckDetail, to: dersDeck, how: link, label: Decks.backToDecks, source: apps/nazar/features/decks/components/deck-detail-page.tsx:76 }
+  - { from: dersSettings, to: tedrisPublic, how: link, label: CourseSettings.viewPublic, source: apps/nazar/features/course-settings/components/course-settings-page.tsx:92 }
+
+# What a person has come to do. Each goal is checked for every persona listed under `for`.
+goals:
+  - { id: openCourse, say: Open a new course in the medrese, page: medreseOpenCourse, for: [basmuderris, both], within: 2 }
+  - { id: seeStudents, say: See the talebe of the medrese, page: medreseStudents, for: [basmuderris, medreseNazirGranted], within: 1 }
+  - { id: planSessions, say: Plan the weekly sessions of a course, page: dersPlan, for: [muderris, dersNazirGranted, both], within: 2 }
+  - { id: hideWeeks, say: Hide weeks of the syllabus, page: dersCurriculumHide, for: [muderris], within: 2 }
+  - { id: readHomework, say: Read the homework students handed in, page: dersHomework, for: [muderris, dersNazirGranted], within: 1 }
+  - { id: answerQuestions, say: Answer the questions talebe asked, page: dersQuestions, for: [muderris], within: 1 }
+  - { id: watchRecordings, say: Look at the recordings of a course, page: dersRecordings, for: [muderris], within: 1 }
+  - { id: courseDecks, say: Write the cards of a course deck, page: dersDeckDetail, for: [muderris], within: 2 }
+  - { id: notifications, say: Read the notifications the bell counts, page: notifications, for: [basmuderris, muderris], within: 1 }
+  - { id: account, say: Change account settings, page: account, for: [basmuderris, muderris, dersNazir], within: 1 }
+
+notModeled:
+  - the phone layout, where the menu sits behind a Menü button (one more click everywhere)
+  - the bell in the phone bar (a second way to Bildirimler)
+  - counts and badges on menu items, disabled buttons that depend on data (for example Medrese dersi aç without a köşk)
+  - filters, pagers, in-page dialogs and what a form opens after it is sent (a new deck, a new course), which the person does not choose as a way
+  - a person with several medrese or several courses, and nazırs with other grants than the personas
+  - the başnazım, who opens any medrese or course by its address with no seat in it (features/shell/admin-scope.ts, MDRS-270) and otherwise lands on Erişim yok
+  - the Pano of a person the dashboard refuses, which still draws the scope cards and says “Bu sayfaya izniniz yok” under them
+  - the file download routes under /api/files, and the sign-in and sign-out pages (Erişim yok has a Çıkış yap button)
+  - the remembered scope, which is taken to be the scope the person lands in

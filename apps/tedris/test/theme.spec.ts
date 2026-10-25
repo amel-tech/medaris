@@ -3,8 +3,9 @@ import { describe, expect, it, vi } from "vitest";
 
 // The layout without Next: as locale-direction.spec.ts stubs it, so only the
 // document it draws is left.
+const request = vi.hoisted(() => ({ locale: "tr" }));
 vi.mock("next/font/google", () => ({ Inter: () => ({ className: "inter" }) }));
-vi.mock("next-intl/server", () => ({ setRequestLocale: () => undefined }));
+vi.mock("next-intl/server", () => ({ getLocale: async () => request.locale }));
 vi.mock("next-intl", async (orig) => ({
   ...(await orig<typeof import("next-intl")>()),
   NextIntlClientProvider: ({ children }: { children: React.ReactNode }) =>
@@ -45,35 +46,20 @@ describe("tedris's <html> (MDRS-245)", () => {
     "tr",
     "en",
     "ar",
-  ])("is light by default on /%s, with the no-flash script", async (locale) => {
-    const { default: LocaleLayout } = await import("../app/[locale]/layout");
+  ])("is light by default in %s, with the no-flash script", async (locale) => {
+    request.locale = locale;
+    const { default: RootLayout } = await import("../app/layout");
     expectsLightByDefault(
-      renderToStaticMarkup(
-        await LocaleLayout({
-          children: "page",
-          params: Promise.resolve({ locale }),
-        })
-      )
+      renderToStaticMarkup(await RootLayout({ children: "page" }))
     );
   });
 
-  it("keeps the direction first on <html>, so /ar stays right to left", async () => {
-    const { default: LocaleLayout } = await import("../app/[locale]/layout");
+  it("keeps the direction first on <html>, so Arabic stays right to left", async () => {
+    request.locale = "ar";
+    const { default: RootLayout } = await import("../app/layout");
     expect(
-      htmlTag(
-        renderToStaticMarkup(
-          await LocaleLayout({
-            children: "page",
-            params: Promise.resolve({ locale: "ar" }),
-          })
-        )
-      )
+      htmlTag(renderToStaticMarkup(await RootLayout({ children: "page" })))
     ).toMatch(/^<html lang="ar" dir="rtl" data-theme="light"/);
-  });
-
-  it("is light by default on the root not-found page", async () => {
-    const { default: RootNotFound } = await import("../app/not-found");
-    expectsLightByDefault(renderToStaticMarkup(RootNotFound()));
   });
 
   it("is light by default on global-error", async () => {

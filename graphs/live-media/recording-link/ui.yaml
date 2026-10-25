@@ -1,0 +1,69 @@
+# Medaris, captured from origin/main ce47fce8: nazar's Ders kayıtları table and the recording dialog's Bağlantı yapıştır
+# tab. The dialog is the kit's Dialog on Base UI: role dialog, named by its title, focus trapped; no initialFocus is
+# passed, so the first focusable element takes it, which is the header's close button (Kapat) before the fields.
+# Herkese açık is the kit's Switch and the release choice its RadioGroup; this format has neither, so the switch is a
+# Button with role switch and the choice a list of radios.
+schema: delurio-graph/0
+kind: ui
+id: medaris.recording-link
+flow: medaris.recording-link
+status: proposed
+catalog: catalog/tr.json
+locales: [tr, en]
+samples: { session: "Birinci celse", title: "Birinci celse kaydı" }
+changes: { key: Changes.note }
+
+nodes:
+  page: { type: page, component: Page, role: main, name: { labelledBy: pageTitle }, in: [recordingsPage, linkDialog, adding, addingStream, changing], source: "apps/nazar/features/recordings/components/recordings-page.tsx:82" }
+  pageTitle: { type: text, component: Heading, role: heading, text: { key: Recordings.title }, in: [recordingsPage, linkDialog, adding, addingStream, changing], source: "apps/nazar/features/recordings/components/recordings-page.tsx:82" }
+  pageNote: { type: text, component: Text, text: { oneOf: [Recordings.note, Recordings.upload.note] }, in: [recordingsPage, linkDialog, adding, addingStream, changing], source: "apps/nazar/features/recordings/components/recordings-page.tsx:90" } # the second for a holder of recording.upload
+  noneText: { type: text, component: Text, text: { key: Recordings.none }, in: [recordingsPage, addingStream], when: "existing in ['none', 'failedUpload'] and slot != 'notYet'", source: "apps/nazar/features/recordings/components/recordings-table.tsx:215" }
+  notYetText: { type: text, component: Text, text: { key: Recordings.notYet }, in: [recordingsPage], when: "existing in ['none', 'failedUpload'] and slot == 'notYet'", source: "apps/nazar/features/recordings/components/recordings-table.tsx:214" }
+  fromStreamNote: { type: text, component: Text, text: { key: Recordings.fromStreamNote }, in: [recordingsPage, addingStream], when: "canManage and streamOffered and slotMissing and slot == 'over'", source: "apps/nazar/features/recordings/components/recordings-table.tsx:219" }
+  stateBadge: { type: text, component: Text, text: { oneOf: [Recordings.state.ready, Recordings.state.processing] }, in: [recordingsPage], when: slotRecorded, source: "apps/nazar/features/recordings/components/recordings-table.tsx:265" }
+  addButton: { type: action, component: Button, role: button, intent: secondary, name: { key: Recordings.addLabel }, text: { key: Recordings.add }, in: [recordingsPage, addingStream], when: "canManage and slotMissing", emits: ADD, source: "apps/nazar/features/recordings/components/recordings-table.tsx:356" }
+  fromStreamButton: { type: action, component: Button, role: button, intent: secondary, name: { key: Recordings.fromStreamLabel }, text: { key: Recordings.fromStream }, in: [recordingsPage, addingStream], disabledIn: [addingStream], when: "canManage and streamOffered and slotMissing and slot == 'over'", emits: FROM_STREAM, source: "apps/nazar/features/recordings/components/recordings-table.tsx:369" }
+  editButton: { type: action, component: Button, role: button, intent: secondary, name: { key: Recordings.editLabel }, text: { key: Recordings.edit }, in: [recordingsPage], when: "canManage and slotRecorded", emits: EDIT, source: "apps/nazar/features/recordings/components/recordings-table.tsx:335" }
+
+  addedToast: { type: status, component: Status, role: status, text: { key: Recordings.added }, in: [recordingsPage], when: "notice == 'added'", source: "apps/nazar/features/recordings/components/recording-dialog.tsx:362" }
+  addedBody: { type: text, component: Text, text: { key: Recordings.addedBody }, in: [recordingsPage], when: "notice == 'added'", source: "apps/nazar/features/recordings/components/recording-dialog.tsx:363" }
+  savedToast: { type: status, component: Status, role: status, text: { key: Recordings.saved }, in: [recordingsPage], when: "notice == 'saved'", source: "apps/nazar/features/recordings/components/recording-dialog.tsx:356" }
+  savedBody: { type: text, component: Text, text: { key: Recordings.savedBody }, in: [recordingsPage], when: "notice == 'saved'", source: "apps/nazar/features/recordings/components/recording-dialog.tsx:357" }
+  fromStreamToast: { type: status, component: Status, role: status, text: { key: Recordings.fromStreamDone }, in: [recordingsPage], when: "notice == 'fromStream'", source: "apps/nazar/features/recordings/components/recordings-table.tsx:121" }
+  fromStreamBody: { type: text, component: Text, text: { key: Recordings.fromStreamDoneBody }, in: [recordingsPage], when: "notice == 'fromStream'", source: "apps/nazar/features/recordings/components/recordings-table.tsx:122" }
+  failedToast: { type: alert, component: Alert, role: alert, text: { key: Recordings.failed }, in: [recordingsPage, linkDialog], when: "notice in ['exists', 'cancelled', 'gone', 'linkRefused']", source: "apps/nazar/features/recordings/components/recording-dialog.tsx:342" }
+  existsText: { type: text, component: Text, text: { key: Recordings.errors.exists }, in: [recordingsPage], when: "notice == 'exists'", source: "apps/nazar/features/recordings/recordings.ts:630" }
+  cancelledText: { type: text, component: Text, text: { key: Recordings.errors.cancelled }, in: [recordingsPage], when: "notice == 'cancelled'", source: "apps/nazar/features/recordings/recordings.ts:632" }
+  goneText: { type: text, component: Text, text: { key: Recordings.errors.gone }, in: [recordingsPage], when: "notice == 'gone'", source: "apps/nazar/features/recordings/recordings.ts:635" }
+  linkRefusedText: { type: text, component: Text, text: { oneOf: [Recordings.errors.linkInvalid.youtubeNoVideo, Recordings.errors.linkInvalid.bunnyForeignLibrary, Recordings.errors.linkInvalid.bunnyVideoUsed] }, in: [linkDialog], when: "notice == 'linkRefused'", source: "apps/nazar/features/recordings/recordings.ts:637" }
+
+  dialog: { type: page, component: Page, role: dialog, name: { labelledBy: dialogTitle }, in: [linkDialog, adding, changing], initialFocus: closeX, source: "apps/nazar/features/recordings/components/recording-dialog.tsx:553" }
+  eyebrow: { type: text, component: Text, text: { literal: "Birinci celse" }, in: [linkDialog, adding, changing], source: "apps/nazar/features/recordings/components/recording-dialog.tsx:560" } # the session's title
+  dialogTitle: { type: text, component: Heading, role: heading, text: { oneOf: [Recordings.form.addTitle, Recordings.form.editTitle] }, in: [linkDialog, adding, changing], source: "apps/nazar/features/recordings/components/recording-dialog.tsx:561" }
+  closeX: { type: action, component: Button, role: button, intent: dismiss, name: { key: Shell.close }, in: [linkDialog, adding, changing], disabledIn: [adding, changing], emits: CLOSE, source: "libs/ui/src/mds/dialog.tsx:97" } # does nothing while the write runs
+  titleField: { type: field, component: TextField, role: textbox, text: { key: Recordings.form.titleLabel }, in: [linkDialog, adding, changing], disabledIn: [adding, changing], source: "apps/nazar/features/recordings/components/recording-dialog.tsx:574" }
+  linkField: { type: field, component: TextField, role: textbox, text: { key: Recordings.form.linkLabel }, in: [linkDialog, adding, changing], disabledIn: [adding, changing], source: "apps/nazar/features/recordings/components/recording-dialog.tsx:503" } # the provider chip appears in its label as the link is typed
+  linkHelp: { type: text, component: Text, text: { key: Recordings.form.linkHelp }, in: [linkDialog, adding, changing], when: "problem != 'link'", source: "apps/nazar/features/recordings/components/recording-dialog.tsx:527" }
+  linkReplacesVideo: { type: text, component: Text, text: { key: Recordings.form.linkReplacesVideo }, in: [linkDialog, adding, changing], when: "intent == 'edit' and existing in ['bunnyProcessing', 'bunnyReady'] and problem != 'link'", source: "apps/nazar/features/recordings/components/recording-dialog.tsx:528" }
+  linkError: { type: text, component: Text, text: { key: Recordings.form.errors.link }, in: [linkDialog], when: "problem == 'link'", source: "apps/nazar/features/recordings/components/recording-dialog.tsx:535" }
+  publicSwitch: { type: field, component: Button, role: switch, name: { key: Recordings.form.publicLabel }, text: { key: Recordings.form.publicLabel }, in: [linkDialog, adding, changing], disabledIn: [adding, changing], source: "apps/nazar/features/recordings/components/recording-dialog.tsx:617" }
+  publicHelp: { type: text, component: Text, text: { key: Recordings.form.publicHelp }, in: [linkDialog, adding, changing], source: "apps/nazar/features/recordings/components/recording-dialog.tsx:622" }
+  releaseLegend: { type: text, component: Text, text: { key: Recordings.release.legend }, in: [linkDialog, adding, changing], source: "apps/nazar/features/recordings/components/release-fields.tsx:44" }
+  releaseGroup: { type: list, component: List, role: radiogroup, name: { labelledBy: releaseLegend }, in: [linkDialog, adding, changing], source: "apps/nazar/features/recordings/components/release-fields.tsx:43" }
+  releaseChoice: { type: field, component: ListItem, role: radio, text: { oneOf: [Recordings.release.ready, Recordings.release.at] }, in: [linkDialog, adding, changing], disabledIn: [adding, changing], source: "apps/nazar/features/recordings/components/release-fields.tsx:50" }
+  whenField: { type: field, component: TextField, role: textbox, text: { key: Recordings.release.whenLabel }, in: [linkDialog, adding, changing], when: "releaseChoice != 'unchanged'", disabledIn: [adding, changing], source: "apps/nazar/features/recordings/components/release-fields.tsx:64" } # the kit's date-time field; shown while Şu tarih ve saatte is chosen
+  releasePast: { type: text, component: Text, text: { key: Recordings.release.errors.past }, in: [linkDialog], when: "problem == 'release'", source: "apps/nazar/features/recordings/components/release-fields.tsx:70" }
+  cancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: Recordings.form.cancel }, in: [linkDialog, adding, changing], disabledIn: [adding, changing], emits: CLOSE, source: "apps/nazar/features/recordings/components/recording-dialog.tsx:400" }
+  submit: { type: action, component: Button, role: button, intent: confirm, text: { oneOf: [Recordings.form.submitAdd, Recordings.form.submitEdit] }, in: [linkDialog, adding, changing], disabledIn: [adding, changing], emits: SUBMIT, source: "apps/nazar/features/recordings/components/recording-dialog.tsx:401" }
+
+edges:
+  - { labelledBy: [page, pageTitle] }
+  - { labelledBy: [dialog, dialogTitle] }
+  - { labelledBy: [releaseGroup, releaseLegend] }
+  - { triggers: [submit, adding] }
+  - { triggers: [submit, changing] }
+  - { triggers: [fromStreamButton, addingStream] }
+
+rules:
+  - { id: label-in-name, rule: "each row button's visible text starts its accessible name, which adds the session's title (WCAG 2.5.3)" }
+  - { id: form-dialog-keeps-input, rule: "the dialog never closes on the scrim, and not while the write runs" }

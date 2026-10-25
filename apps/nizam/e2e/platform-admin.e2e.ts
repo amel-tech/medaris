@@ -291,7 +291,7 @@ async function signIn(
   page: Page,
   who: { email?: string; password?: string }
 ): Promise<void> {
-  await page.goto("/tr/auth/signin");
+  await page.goto("/auth/signin");
   await page.locator("#username").fill(who.email as string);
   await page.locator("#password").fill(who.password as string);
   await page.locator("button[type=submit]").click();
@@ -309,7 +309,7 @@ test("nizam/15 — the tab counts are the table's, and the detail shows the appl
 }) => {
   test.skip(!seedable || !SYSTEM_ADMIN.password, "no başnazım account");
   await signIn(page, SYSTEM_ADMIN);
-  await page.goto("/tr/talepler/kosk-basvurulari");
+  await page.goto("/talepler/kosk-basvurulari");
 
   await expect(
     page.getByRole("heading", { level: 1, name: "Köşk başvuruları" })
@@ -347,7 +347,7 @@ test("nizam/15 — seeing the contact details writes an audit row (criterion 5)"
     first.id
   );
   await signIn(page, SYSTEM_ADMIN);
-  await page.goto("/tr/talepler/kosk-basvurulari");
+  await page.goto("/talepler/kosk-basvurulari");
   await item(page, first.name).click();
   await expect(
     page.getByTestId("applicant-phone").filter({ visible: true })
@@ -363,7 +363,7 @@ test("nizam/15 — Reddet cannot be sent without a reason, then moves the applic
   test.skip(!seedable || !SYSTEM_ADMIN.password, "no başnazım account");
   const target = fixture.applications[1];
   await signIn(page, SYSTEM_ADMIN);
-  await page.goto("/tr/talepler/kosk-basvurulari");
+  await page.goto("/talepler/kosk-basvurulari");
   await item(page, target.name).click();
   await page.getByRole("button", { name: "Reddet" }).click();
 
@@ -393,7 +393,7 @@ test("nizam/15 — Köşkü aç opens the köşk form with the application's val
   test.skip(!seedable || !SYSTEM_ADMIN.password, "no başnazım account");
   const target = fixture.applications[0];
   await signIn(page, SYSTEM_ADMIN);
-  await page.goto("/tr/talepler/kosk-basvurulari");
+  await page.goto("/talepler/kosk-basvurulari");
   await item(page, target.name).click();
   await page.getByRole("button", { name: "Köşkü aç" }).click();
 
@@ -423,7 +423,7 @@ test("nizam/17 — newest first, the kind filter lives in the URL, and the expor
 }) => {
   test.skip(!seedable || !SYSTEM_ADMIN.password, "no başnazım account");
   await signIn(page, SYSTEM_ADMIN);
-  await page.goto("/tr/denetim-kaydi");
+  await page.goto("/denetim-kaydi");
   await expect(
     page.getByRole("heading", { level: 1, name: "Denetim kaydı" })
   ).toBeVisible();
@@ -446,13 +446,13 @@ test("nizam/17 — newest first, the kind filter lives in the URL, and the expor
   }
 
   // The same address, opened afresh, carries the filter.
-  await page.goto("/tr/denetim-kaydi?type=USER_LOOKUP");
+  await page.goto("/denetim-kaydi?type=USER_LOOKUP");
   await expect(page.getByRole("combobox", { name: "Ne yaptı" })).toContainText(
     "Kullanıcı arama"
   );
 
   // The unfiltered export has as many rows as the log had when it was asked for.
-  await page.goto("/tr/denetim-kaydi");
+  await page.goto("/denetim-kaydi");
   const total = await fixture.auditTotal();
   const [download] = await Promise.all([
     page.waitForEvent("download"),
@@ -473,11 +473,11 @@ test("nizam/17 — a köşk nazımı has no audit log: 'Bu bölüm için izniniz
 }) => {
   test.skip(!seedable || !KOSK_NAZIM.password, "no köşk nazımı account");
   await signIn(page, KOSK_NAZIM);
-  await page.goto("/tr/denetim-kaydi");
+  await page.goto("/denetim-kaydi");
   await expect(
     page.getByRole("heading", { level: 1, name: "Bu bölüm için izniniz yok" })
   ).toBeVisible();
-  await page.goto("/tr/ayarlar/platform");
+  await page.goto("/ayarlar/platform");
   await expect(
     page.getByRole("heading", { level: 1, name: "Bu bölüm için izniniz yok" })
   ).toBeVisible();
@@ -489,7 +489,7 @@ test("nizam/19 — a switch is saved at once and written to the log, and the tab
   test.skip(!seedable || !SYSTEM_ADMIN.password, "no başnazım account");
   const before = await fixture.auditCount("platform_policy.change");
   await signIn(page, SYSTEM_ADMIN);
-  await page.goto("/tr/ayarlar/platform");
+  await page.goto("/ayarlar/platform");
   await expect(
     page.getByRole("heading", { level: 1, name: "Platform ayarları" })
   ).toBeVisible();
@@ -515,7 +515,7 @@ test("nizam/19 — a switch is saved at once and written to the log, and the tab
   await expect(toggle).toHaveAttribute("aria-checked", String(!wasOn));
 
   // The change shows in the audit log as "Politika değişikliği".
-  await page.goto("/tr/denetim-kaydi?type=POLICY_CHANGE");
+  await page.goto("/denetim-kaydi?type=POLICY_CHANGE");
   await expect(page.getByText("Politika değişikliği").first()).toBeVisible();
 });
 
@@ -524,7 +524,7 @@ test("nizam/39 — the köşk nazımı sees the medrese's request with its sende
 }) => {
   test.skip(!seedable || !KOSK_NAZIM.password, "no köşk nazımı account");
   await signIn(page, KOSK_NAZIM);
-  await page.goto(`/tr/kosks/${fixture.koskId}/ders-talepleri`);
+  await page.goto(`/kosks/${fixture.koskId}/ders-talepleri`);
   await expect(
     page.getByRole("heading", { level: 1, name: "Ders talepleri" })
   ).toBeVisible();
@@ -544,7 +544,7 @@ test("nizam/39 — Kabul et opens the course form with the request's name (crite
 }) => {
   test.skip(!seedable || !KOSK_NAZIM.password, "no köşk nazımı account");
   await signIn(page, KOSK_NAZIM);
-  await page.goto(`/tr/kosks/${fixture.koskId}/ders-talepleri`);
+  await page.goto(`/kosks/${fixture.koskId}/ders-talepleri`);
   await item(page, fixture.request.title).click();
   await page.getByRole("button", { name: "Kabul et" }).click();
   await expect(page).toHaveURL(
@@ -562,7 +562,7 @@ test("nizam/39 — Reddet needs a reason and moves the request to Karara bağlan
 }) => {
   test.skip(!seedable || !KOSK_NAZIM.password, "no köşk nazımı account");
   await signIn(page, KOSK_NAZIM);
-  await page.goto(`/tr/kosks/${fixture.koskId}/ders-talepleri`);
+  await page.goto(`/kosks/${fixture.koskId}/ders-talepleri`);
   await item(page, fixture.request.title).click();
   await page.getByRole("button", { name: "Reddet" }).click();
   const dialog = page.getByRole("dialog");
@@ -586,7 +586,7 @@ test("nizam/39 — a köşk nazımı of another köşk gets 'Bu bölüm için iz
 }) => {
   test.skip(!seedable || !KOSK_NAZIM.password, "no köşk nazımı account");
   await signIn(page, KOSK_NAZIM);
-  await page.goto(`/tr/kosks/${fixture.otherKoskId}/ders-talepleri`);
+  await page.goto(`/kosks/${fixture.otherKoskId}/ders-talepleri`);
   await expect(
     page.getByRole("heading", { level: 1, name: "Bu bölüm için izniniz yok" })
   ).toBeVisible();

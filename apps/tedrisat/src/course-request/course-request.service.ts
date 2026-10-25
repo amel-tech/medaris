@@ -66,6 +66,22 @@ export class CourseRequestCourseNotFoundError extends NotFoundError {
   }
 }
 
+/**
+ * The course already answers another request: a course is opened from one
+ * request, so accepting a second with it would say two medreses got it.
+ */
+export class CourseRequestCourseTakenError extends ConflictError {
+  static readonly code = "COURSE_REQUEST_COURSE_TAKEN";
+
+  constructor(courseId: string, context?: ErrorContext) {
+    super(
+      CourseRequestCourseTakenError.code,
+      `Course ${courseId} already answers another course request`,
+      context
+    );
+  }
+}
+
 const LIST_LIMIT = 100;
 
 /**
@@ -140,6 +156,9 @@ export class CourseRequestService {
     }
     if (!(await this.repo.courseInKosk(courseId, request.kosk.id))) {
       throw new CourseRequestCourseNotFoundError(courseId);
+    }
+    if (await this.repo.courseAnswersARequest(courseId)) {
+      throw new CourseRequestCourseTakenError(courseId);
     }
     await this.answer(user, request, { outcome: "ACCEPTED", courseId });
   }

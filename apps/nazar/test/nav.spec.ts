@@ -98,7 +98,6 @@ describe("the menu of a course (nazir 22)", () => {
           ["students", "/ders/c-1/talebeler"],
           ["questions", "/ders/c-1/sorular"],
           ["recordings", "/ders/c-1/kayitlar"],
-          ["deck", "/ders/c-1/deste"],
           ["bans", "/ders/c-1/yasaklamalar"],
           ["archive", "/ders/c-1/arsiv"],
         ],
@@ -155,6 +154,21 @@ describe("the menu of a course (nazir 22)", () => {
       icon: "inbox",
     });
     expect(resources.tr.nazar.Nav.ders.homework).toBe("Ödevler");
+  });
+
+  it("offers Ders destesi only to a holder of deck.manage_course", () => {
+    const deckItem = (held?: ReadonlySet<string>) =>
+      navFor(ders, { panoHref: "/medrese/m-1", counts: {}, held })
+        .flatMap((s) => s.items)
+        .find((i) => i.id === "deck");
+    expect(deckItem()).toBeUndefined();
+    expect(deckItem(new Set(["course.view"]))).toBeUndefined();
+    expect(deckItem(new Set(["deck.manage_course"]))).toMatchObject({
+      href: "/ders/c-1/deste",
+      labelKey: "ders.deck",
+      icon: "cards",
+    });
+    expect(resources.tr.nazar.Nav.ders.deck).toBe("Ders destesi");
   });
 
   it("is a different menu from the medrese's whichever way the scope changes", () => {

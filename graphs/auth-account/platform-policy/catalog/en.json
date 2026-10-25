@@ -1,0 +1,22 @@
+{
+  "Changes.note": "Turning a switch on or off puts the policy in force at once in every köşk, medrese and course: with “Enrolment is always approved” on, every enrolment becomes an application; with “Recordings cannot be made public” on, no recording can be made public. The change goes to the audit log with who made it and the value before. Flipping the switch back undoes it; what was decided in between does not change by itself.",
+  "NoAccess.bodyGeneric": "This section’s permission has not been given to your account. The Medaris başnazım gives permissions; if you need one, ask them.",
+  "NoAccess.title": "You do not have access to this section",
+  "Policies.approvalBody": "While on, no course can be joined directly; every enrolment becomes a request and the course team approves it. In unlisted köşks enrolment is always approved, whatever this setting says.",
+  "Policies.approvalTitle": "Enrolment is always approved",
+  "Policies.errorForbidden": "You may not do this.",
+  "Policies.errorGeneric": "The action could not be completed. Try again in a moment.",
+  "Policies.heading": "Policies",
+  "Policies.instantNote": "Every change takes effect at once and is written to the audit log.",
+  "Policies.intro": "Platform policies apply in every köşk, medrese and course. A policy closes a permission; a köşk, medrese or course cannot open it again.",
+  "Policies.loadFailed": "The platform settings cannot be fetched right now. Try again in a moment.",
+  "Policies.loadFailedTitle": "The settings could not be read",
+  "Policies.ownScopes": "Already applied in their own scope: {names}",
+  "Policies.recordingsBody": "While on, no recording can be made public or uploaded to YouTube; only enrolled students and the course team watch recordings.",
+  "Policies.recordingsTitle": "Recordings cannot be made public",
+  "Policies.retry": "Try again",
+  "Policies.saveFailed": "The policy could not be saved",
+  "Policies.title": "Platform settings",
+  "Policies.turnedOff": "Policy switched off",
+  "Policies.turnedOn": "Policy switched on"
+}

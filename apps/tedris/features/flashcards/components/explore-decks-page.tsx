@@ -218,10 +218,7 @@ export function ExploreDecksPage({ data, cardType }: ExploreDecksPageProps) {
       <div className="flex flex-col gap-3">
         <Breadcrumb
           label={t("breadcrumbLabel")}
-          items={[
-            { label: t("title"), href: `/${locale}/decks` },
-            t("explore"),
-          ]}
+          items={[{ label: t("title"), href: `/decks` }, t("explore")]}
         />
         <h1 className="mds-h1">{t("explore")}</h1>
         <p className="mds-body-sm max-inline-measure">{t("exploreSubtitle")}</p>

@@ -132,7 +132,11 @@ export class FlashcardDeckService {
     deckId: string,
     userId: string | null,
     include?: string[],
-    options: { adminRead?: boolean } = {}
+    options: {
+      adminRead?: boolean;
+      /** Whether the caller manages the deck's course (ders destesi); asked only when nothing else allows the read. */
+      courseStaff?: () => Promise<boolean>;
+    } = {}
   ): Promise<IFlashcardDeck> {
     const deck = await this.findById(deckId, include);
     // A private deck of somebody else's may still be this caller's to read
@@ -145,9 +149,18 @@ export class FlashcardDeckService {
       !deck.isPublic &&
       (await this.deckRepo.findVisibility(deckId, userId))?.sharedWithViewer ===
         true;
+    // The staff of a course read its private and draft decks (ders destesi).
+    const staff =
+      deck !== null &&
+      userId !== null &&
+      deck.authorId !== userId &&
+      !deck.isPublic &&
+      !shared &&
+      options.courseStaff !== undefined &&
+      (await options.courseStaff());
     this.assertVisibleTo(
       deckId,
-      deck && { ...deck, sharedWithViewer: shared },
+      deck && { ...deck, sharedWithViewer: shared || staff },
       userId,
       options.adminRead === true
     );

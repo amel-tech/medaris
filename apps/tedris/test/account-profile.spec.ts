@@ -139,8 +139,8 @@ describe("Hesap cards (design tedris/34)", () => {
     const hrefs = [...host.querySelectorAll("a")].map((a) =>
       a.getAttribute("href")
     );
-    expect(hrefs).toContain("/tr/account/calendar");
-    expect(hrefs).toContain("/tr/auth/signout");
+    expect(hrefs).toContain("/account/calendar");
+    expect(hrefs).toContain("/auth/signout");
     // Hidden for now (MDRS-141): the card and its link are gone.
     expect(hrefs.filter((h) => h?.includes("public-profile"))).toEqual([]);
     expect(host.textContent).not.toContain("Herkese açık profil");
@@ -253,7 +253,7 @@ describe("Lesson invitations by e-mail (MDRS-121, B13)", () => {
  */
 describe("The account's gender on Hesap", () => {
   const PROFILE_FORM =
-    "/api/auth/signin?action=UPDATE_PROFILE&callbackUrl=%2Ftr%2Faccount&locale=tr";
+    "/api/auth/signin?action=UPDATE_PROFILE&callbackUrl=%2Faccount&locale=tr";
   const row = (host: HTMLElement) =>
     host.querySelector('[data-testid="account-gender"]') as HTMLElement;
   const link = (host: HTMLElement) =>
@@ -342,7 +342,7 @@ describe("Hesap page wiring", () => {
       gender: "MALE",
       lessonInvitationEmails: true,
     });
-    const { default: Page } = await import("../app/[locale]/account/page");
+    const { default: Page } = await import("../app/account/page");
     const { AccountSettings } = await import(
       "~/features/account/components/account-settings"
     );
@@ -361,7 +361,7 @@ describe("Hesap page wiring", () => {
       emailVerified: true,
       lessonInvitationEmails: true,
     });
-    const { default: Page } = await import("../app/[locale]/account/page");
+    const { default: Page } = await import("../app/account/page");
     const { AccountSettings } = await import(
       "~/features/account/components/account-settings"
     );

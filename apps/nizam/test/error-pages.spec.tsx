@@ -15,11 +15,11 @@ import { cleanup, click, render } from "./dom";
  * nizam had no error boundary at all: a page or the shell that threw drew
  * Next's bare English screen, with no shell and no way to try again. A page
  * now fails inside the shell (`[locale]/error.tsx`), and the shell itself in
- * a document of its own (`global-error.tsx`), each in the address's language
+ * a document of its own (`global-error.tsx`), each in the viewer's language
  * and each retrying through Next's `retry`.
  */
 
-const state = vi.hoisted(() => ({ pathname: "/tr" }));
+const state = vi.hoisted(() => ({ pathname: "/" }));
 vi.mock("next/navigation", () => ({ usePathname: () => state.pathname }));
 vi.mock("next-intl", async (orig) => ({
   ...(await orig<typeof import("next-intl")>()),
@@ -57,7 +57,7 @@ const buttonIn = (
 describe("a page that threw, inside the shell", () => {
   const words = resources.tr.nizam.PageError;
   const mount = async (retry = vi.fn()) => {
-    const { default: ErrorPage } = await import("../app/[locale]/error");
+    const { default: ErrorPage } = await import("../app/error");
     await render(createElement(ErrorPage, { error: failure(), retry }));
     return retry;
   };
@@ -92,8 +92,12 @@ describe("a page that threw, inside the shell", () => {
 });
 
 describe("global-error: the shell itself threw", () => {
-  const draw = async (pathname: string, retry = vi.fn()) => {
-    state.pathname = pathname;
+  const draw = async (choice: string | null, retry = vi.fn()) => {
+    // biome-ignore lint/suspicious/noDocumentCookie: the viewer's choice, as the language menu writes it
+    document.cookie =
+      choice === null
+        ? "medaris-locale=; Path=/; Max-Age=0"
+        : `medaris-locale=${choice}; Path=/`;
     const { default: GlobalError } = await import("../app/global-error");
     return {
       html: renderToStaticMarkup(
@@ -104,11 +108,11 @@ describe("global-error: the shell itself threw", () => {
   };
 
   it.each([
-    ["/ar/kosks/k1", "ar", "rtl"],
-    ["/en/arsiv", "en", "ltr"],
-    ["/tr", "tr", "ltr"],
-  ] as const)("on %s speaks %s, %s", async (pathname, lang, dir) => {
-    const { html } = await draw(pathname);
+    ["ar", "rtl"],
+    ["en", "ltr"],
+    ["tr", "ltr"],
+  ] as const)("for a viewer who chose %s speaks it, %s (MDRS-248)", async (lang, dir) => {
+    const { html } = await draw(lang);
     const words = resources[lang].common.globalError;
     expect(html).toMatch(new RegExp(`^<html lang="${lang}" dir="${dir}"`));
     expect(html).toContain(`>${words.title}</h1>`);
@@ -116,14 +120,15 @@ describe("global-error: the shell itself threw", () => {
     expect(html).toContain(`>${words.retry}</button>`);
   });
 
-  it("falls back to Turkish on an address with no locale it knows", async () => {
-    const { html } = await draw("/xx/kosks");
+  it("falls back to Turkish without a choice it knows", async () => {
+    expect((await draw(null)).html).toMatch(/^<html lang="tr" dir="ltr"/);
+    const { html } = await draw("xx");
     expect(html).toMatch(/^<html lang="tr" dir="ltr"/);
     expect(html).toContain(resources.tr.common.globalError.title);
   });
 
   it("draws its own light document with the faces, and never the error", async () => {
-    const { html } = await draw("/tr/kosks");
+    const { html } = await draw("tr");
     expect(html).toMatch(/^<html[^>]* data-theme="light"/);
     expect(html).toContain('href="data:text/css,"');
     expect(html).toContain("<main");
@@ -134,7 +139,7 @@ describe("global-error: the shell itself threw", () => {
     const retry = vi.fn();
     // It draws its own <html>, which a test cannot mount inside a <div>: the
     // button is found in what it returns and pressed there.
-    const action = buttonIn((await draw("/tr", retry)).tree);
+    const action = buttonIn((await draw("tr", retry)).tree);
     expect(action?.props.children).toBe(resources.tr.common.globalError.retry);
     action?.props.onClick();
     expect(retry).toHaveBeenCalledTimes(1);

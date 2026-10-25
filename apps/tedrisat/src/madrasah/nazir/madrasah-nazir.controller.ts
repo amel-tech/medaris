@@ -23,6 +23,7 @@ import {
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
+  ApiConflictResponse,
   ApiCreatedResponse,
   ApiForbiddenResponse,
   ApiNoContentResponse,
@@ -91,7 +92,14 @@ export class MadrasahNazirController {
   })
   @ApiCreatedResponse({ type: MadrasahNazirResponse })
   @ApiForbiddenResponse()
-  @ApiNotFoundResponse()
+  @ApiNotFoundResponse({
+    description:
+      "No such medrese, or no such account in the app or the realm (MADRASAH_NAZIR_UNKNOWN_ACCOUNT).",
+  })
+  @ApiConflictResponse({
+    description:
+      "The person is barred from the medrese or one of its courses; a nazır cannot be barred there, so they are not seated (MADRASAH_NAZIR_BARRED).",
+  })
   @Post(":id/nazirs/:userId")
   @Authz(
     [

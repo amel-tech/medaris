@@ -219,7 +219,7 @@ describe("HostingView (nizam 26)", () => {
     expect(html).toContain("Barındırma hakları");
     expect(html).toContain("Köşk ayarları");
     expect(html).toContain("Barındırma hakkı ver");
-    expect(html).toContain('href="/tr/kosks/k1/ayarlar"');
+    expect(html).toContain('href="/kosks/k1/ayarlar"');
     expect(html).toContain('aria-current="page"');
     expect(html).toContain("Süleymaniye Medresesi");
     expect(html).toContain("Başmüderris Mehmet Emin Işıkoğlu");
@@ -232,7 +232,7 @@ describe("HostingView (nizam 26)", () => {
 
   it("draws the settings tabs and the way back to them by default, for whom both pages open for", () => {
     const html = view([right()]);
-    expect(html).toContain('href="/tr/kosks/k1/ayarlar/nazimlar"');
+    expect(html).toContain('href="/kosks/k1/ayarlar/nazimlar"');
     expect(html).toContain("Köşk nazımları");
     expect(html).toContain("Genel");
   });
@@ -247,7 +247,7 @@ describe("HostingView (nizam 26)", () => {
         settingsTabs={false}
       />
     );
-    expect(html).not.toContain('href="/tr/kosks/k1/ayarlar"');
+    expect(html).not.toContain('href="/kosks/k1/ayarlar"');
     expect(html).not.toContain("/ayarlar/nazimlar");
     expect(html).not.toContain("Köşk nazımları");
     // The page, its words and both actions are still there.

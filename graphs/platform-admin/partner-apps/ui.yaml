@@ -1,0 +1,72 @@
+# The screens of medaris.partner-apps: nizam's Ortak uygulamalar (PartnersView) and its two dialogs. Words from
+# libs/i18n nizam.json. Neither dialog passes initialFocus, so Base UI focuses the first focusable element of the
+# popup, which is the header's Kapat button (libs/ui/src/mds/dialog.tsx:97).
+schema: delurio-graph/0
+kind: ui
+id: medaris.partner-apps
+flow: medaris.partner-apps
+status: proposed
+catalog: catalog/tr.json
+locales: [tr, en]
+samples: { name: "Örnek Uygulama", count: "2" }
+changes: { key: Changes.note }
+
+nodes:
+  partnersPage: { type: page, component: Page, role: main, name: { labelledBy: partnersTitle }, in: [partnersPage, creating, turningOff, turningOn, renaming, settingKosks], source: apps/nizam/features/partners/components/partners-view.tsx:192 }
+  partnersTitle: { type: text, component: Heading, role: heading, text: { key: PartnersPage.title }, in: [partnersPage, creating, turningOff, turningOn, renaming, settingKosks] }
+  partnersIntro: { type: text, component: Text, text: { key: PartnersPage.intro }, in: [partnersPage, creating, turningOff, turningOn, renaming, settingKosks] }
+  addHeading: { type: text, component: Heading, role: heading, text: { key: PartnersPage.addHeading }, in: [partnersPage, creating, turningOff, turningOn, renaming, settingKosks] }
+  addIntro: { type: text, component: Text, text: { key: PartnersPage.addIntro }, in: [partnersPage, creating, turningOff, turningOn, renaming, settingKosks] }
+  clientIdField: { type: field, component: TextField, role: textbox, text: { key: PartnersPage.clientIdLabel }, in: [partnersPage, creating, turningOff, turningOn, renaming, settingKosks], disabledIn: [creating] }
+  clientIdHelp: { type: text, component: Text, text: { key: PartnersPage.clientIdHelp }, in: [partnersPage, creating, turningOff, turningOn, renaming, settingKosks] }
+  clientIdError: { type: text, component: Text, text: { oneOf: [PartnersPage.errors.clientId.shape, PartnersPage.errors.exists, PartnersPage.errors.frontEnd] }, in: [partnersPage], when: "notice in ['shape', 'exists', 'frontEnd']" }
+  nameField: { type: field, component: TextField, role: textbox, text: { key: PartnersPage.nameLabel }, in: [partnersPage, creating, turningOff, turningOn, renaming, settingKosks], disabledIn: [creating] }
+  nameHelp: { type: text, component: Text, text: { key: PartnersPage.nameHelp }, in: [partnersPage, creating, turningOff, turningOn, renaming, settingKosks] }
+  addButton: { type: action, component: Button, role: button, intent: confirm, text: { key: PartnersPage.add }, in: [partnersPage, creating, turningOff, turningOn, renaming, settingKosks], disabledIn: [creating], when: "not registered", emits: ADD, source: apps/nizam/features/partners/components/partners-view.tsx:354 }
+  listHeading: { type: text, component: Heading, role: heading, text: { key: PartnersPage.listHeading }, in: [partnersPage, creating, turningOff, turningOn, renaming, settingKosks] }
+  partnersTable: { type: list, component: List, role: table, name: { key: PartnersPage.listHeading }, in: [partnersPage, creating, turningOff, turningOn, renaming, settingKosks] }
+  noKosks: { type: text, component: Text, text: { key: PartnersPage.noKosks }, in: [partnersPage, creating, turningOff, turningOn, renaming, settingKosks], when: "not bound" }
+  enabledSwitch: { type: action, component: Button, role: switch, text: { oneOf: [PartnersPage.on, PartnersPage.off] }, in: [partnersPage, creating, turningOff, turningOn, renaming, settingKosks], disabledIn: [turningOff, turningOn], repeat: partners.items, emits: TOGGLE, source: apps/nizam/features/partners/components/partners-view.tsx:148 } # named "Açık Örnek Uygulama": the partner's name is visually hidden in the label
+  chooseKosks: { type: action, component: Button, role: button, intent: secondary, text: { key: PartnersPage.chooseKosks }, in: [partnersPage, creating, turningOff, turningOn, renaming, settingKosks], repeat: partners.items, emits: CHOOSE_KOSKS, source: apps/nizam/features/partners/components/partners-view.tsx:167 } # one name per row, whatever the partner
+  rename: { type: action, component: Button, role: button, intent: secondary, text: { key: PartnersPage.rename }, in: [partnersPage, creating, turningOff, turningOn, renaming, settingKosks], repeat: partners.items, emits: RENAME }
+  addedToast: { type: status, component: Status, role: status, text: { key: PartnersPage.added }, in: [partnersPage], when: "notice == 'added'" }
+  addedBody: { type: text, component: Text, text: { key: PartnersPage.addedBody, params: { name: partner.name } }, in: [partnersPage], when: "notice == 'added'" }
+  toggledToast: { type: status, component: Status, role: status, text: { oneOf: [PartnersPage.turnedOn, PartnersPage.turnedOff] }, in: [partnersPage], when: "notice in ['turnedOn', 'turnedOff']" }
+  toggledBody: { type: text, component: Text, text: { oneOf: [PartnersPage.turnedOnBody, PartnersPage.turnedOffBody] }, in: [partnersPage], when: "notice in ['turnedOn', 'turnedOff']" }
+  renamedToast: { type: status, component: Status, role: status, text: { key: PartnersPage.renamed }, in: [partnersPage], when: "notice == 'renamed'" }
+  kosksSavedToast: { type: status, component: Status, role: status, text: { key: PartnersPage.kosksSaved }, in: [partnersPage], when: "notice == 'kosksSaved'" }
+  kosksSavedBody: { type: text, component: Text, text: { key: PartnersPage.kosksSavedBody, params: { name: partner.name, count: partner.kosks.length } }, in: [partnersPage], when: "notice == 'kosksSaved'" }
+
+  noAccessTitle: { type: text, component: Heading, role: heading, text: { key: NoAccess.title }, in: [forbidden], source: apps/nizam/components/errors/no-access.tsx:30 }
+  noAccessBody: { type: text, component: Text, text: { key: NoAccess.bodyGeneric }, in: [forbidden] }
+
+  # Adını değiştir
+  renameDialog: { type: page, component: Page, role: dialog, name: { labelledBy: renameTitle }, in: [renameDialog], initialFocus: renameClose, source: apps/nizam/features/partners/components/partners-view.tsx:402 }
+  renameTitle: { type: text, component: Heading, role: heading, text: { key: PartnersPage.renameTitle }, in: [renameDialog] }
+  renameClose: { type: action, component: Button, role: button, intent: dismiss, name: { key: PartnersPage.close }, in: [renameDialog], emits: CANCEL }
+  renameField: { type: field, component: TextField, role: textbox, text: { key: PartnersPage.nameLabel }, in: [renameDialog] }
+  renameCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: PartnersPage.cancel }, in: [renameDialog], emits: CANCEL }
+  renameSave: { type: action, component: Button, role: button, intent: confirm, text: { key: PartnersPage.save }, in: [renameDialog], emits: SAVE }
+
+  # Köşkleri seç
+  kosksDialog: { type: page, component: Page, role: dialog, name: { labelledBy: kosksTitle }, in: [kosksDialog], initialFocus: kosksClose, source: apps/nizam/features/partners/components/partners-view.tsx:491 }
+  kosksTitle: { type: text, component: Heading, role: heading, text: { key: PartnersPage.kosksTitle }, in: [kosksDialog] }
+  kosksClose: { type: action, component: Button, role: button, intent: dismiss, name: { key: PartnersPage.close }, in: [kosksDialog], emits: CANCEL }
+  kosksIntro: { type: text, component: Text, text: { key: PartnersPage.kosksIntro }, in: [kosksDialog], source: apps/nizam/features/partners/components/partners-view.tsx:512 } # the only warning that unbinding deletes the köşk's codes
+  kosksGroup: { type: list, component: List, role: group, name: { key: PartnersPage.kosksTitle }, in: [kosksDialog] }
+  koskBox: { type: field, component: ListItem, role: checkbox, in: [kosksDialog], repeat: kosks, source: apps/nizam/features/partners/components/partners-view.tsx:527 } # labelled by the köşk's name
+  kosksCount: { type: text, component: Text, text: { key: PartnersPage.kosksCount, params: { count: chosen.length } }, in: [kosksDialog] }
+  kosksCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: PartnersPage.cancel }, in: [kosksDialog], emits: CANCEL }
+  kosksSave: { type: action, component: Button, role: button, intent: confirm, text: { key: PartnersPage.save }, in: [kosksDialog], emits: SAVE }
+
+edges:
+  - { labelledBy: [partnersPage, partnersTitle] }
+  - { labelledBy: [renameDialog, renameTitle] }
+  - { labelledBy: [kosksDialog, kosksTitle] }
+  - { triggers: [addButton, creating] }
+  - { triggers: [renameSave, renaming] }
+  - { triggers: [kosksSave, settingKosks] }
+
+rules:
+  - { id: focus-on-the-field, rule: "a form dialog starts its focus in its first field (canvas rule; MDS Dialog's initialFocus), not on the close button" }
+  - { id: label-in-name, rule: "a node's visible text is contained in its accessible name (WCAG 2.5.3)" }

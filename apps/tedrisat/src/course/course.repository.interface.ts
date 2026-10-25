@@ -265,7 +265,7 @@ export interface IRosterEnrollment extends IEnrollment {
   ban: { id: string; scope: "COURSE" | "KOSK" } | null;
 }
 
-/** A talebe the team took out of a course, from the audit log (MDRS-178). */
+/** A talebe the team took out of a course and who is still out, from the audit log (MDRS-178). */
 export interface IRemovedEnrollment {
   userId: string;
   name: string | null;

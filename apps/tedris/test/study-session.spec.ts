@@ -72,7 +72,7 @@ describe("Çalışma (design tedris/30)", () => {
       "Çalışma",
     ]);
     const finish = byText("a", "Çalışmayı bitir");
-    expect(finish.getAttribute("href")).toBe("/tr/decks/d1");
+    expect(finish.getAttribute("href")).toBe("/decks/d1");
   });
 
   it("names the subtitle by the round: only new cards when none is due", async () => {
@@ -148,9 +148,7 @@ describe("Çalışma (design tedris/30)", () => {
     await settle();
     expect(main()).toContain("Tur bitti");
     expect(main()).toContain("1 kartı çalıştın.");
-    expect(byText("a", "Desteye dön").getAttribute("href")).toBe(
-      "/tr/decks/d1"
-    );
+    expect(byText("a", "Desteye dön").getAttribute("href")).toBe("/decks/d1");
   });
 
   it("says the day is done when nothing waits", async () => {
@@ -164,14 +162,14 @@ describe("Çalışma, girişsiz ziyaretçi (design tedris/32)", () => {
   it("studies the same way and writes nothing", async () => {
     await mount({
       signedIn: false,
-      signInHref: "/tr/auth/signin?callbackUrl=%2Fdecks%2Fstudy%2Fd1",
+      signInHref: "/auth/signin?callbackUrl=%2Fdecks%2Fstudy%2Fd1",
       root: { label: "Keşfet", href: "/discover" },
     });
     expect(main()).toContain(
       "Giriş yapmadan çalışırsan ilerlemen kaydedilmez."
     );
     expect(byText("a", "Kaydetmek için giriş yap").getAttribute("href")).toBe(
-      "/tr/auth/signin?callbackUrl=%2Fdecks%2Fstudy%2Fd1"
+      "/auth/signin?callbackUrl=%2Fdecks%2Fstudy%2Fd1"
     );
     expect(main()).toContain("Mehmûz fiiller · 3 kart");
     expect(main()).not.toContain("Öğreniliyor");

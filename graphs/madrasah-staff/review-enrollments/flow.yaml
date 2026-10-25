@@ -1,0 +1,159 @@
+# Medaris, captured at origin/main ce47fce8: the "Başvurular" tab of a course's "Talebeler" in nazar
+# (/ders/:id/talebeler) and the approve and reject routes behind it. "Toplu talebe ekle" on the same page is
+# medaris.bulk-add-talebe, which this flow waits for.
+schema: delurio-graph/0
+kind: flow
+id: medaris.review-enrollments
+status: proposed
+domain: medaris.madrasah-staff
+ui: medaris.review-enrollments
+title: Decide on applications to a course
+summary: >-
+  A holder of enrollment.decide approves or rejects each waiting application; rejecting asks once first and takes no
+  reason. An approved talebe holds a seat at once and is told; a rejected application is deleted, the talebe is told,
+  and may apply again. Whoever reads the roster without enrollment.decide sees the applications with no buttons.
+
+scope:
+  shows: the Başvurular tab, the rejection question and the two routes
+  world: open
+  outOfView:
+    - "the Kayıtlı, Tamamlayanlar and Erişimi kaldırılanlar tabs: completing, reopening and removing a seat"
+    - "the Pano's own application table, which calls the same two routes"
+
+context:
+  holds:
+    values: [decide, readOnly, none]
+    initial: any
+    say: { decide: "the reader holds enrollment.decide in the course", readOnly: "the reader reads the roster (another enrollment code) but may not decide", none: "the reader holds no roster code" }
+  listRead:
+    values: [ok, failed]
+    initial: any
+    say: { ok: "the enrolments are read", failed: "they cannot be read" }
+  applicants:
+    values: [some, none]
+    initial: any
+    say: { some: "applications are waiting", none: "none is" }
+  applicantBarred:
+    values: [false, true]
+    initial: any
+    say: { "true": "an open ban bars the applicant from the course, its köşk or its medrese", "false": "" }
+  meanwhile:
+    values: [none, approved, withdrawn]
+    initial: any
+    say: { none: "the application still waits when the decision arrives", approved: "another member of the staff approved it meanwhile", withdrawn: "the talebe withdrew it, or it was rejected, meanwhile" }
+  asked: { values: [false, true], initial: false }
+  notice: { values: [none, approved, rejected, gone], initial: none }
+  decided: { values: [none, approved, approvedBarred, rejected], initial: none }
+
+guards:
+  mayDecide: "holds == 'decide' and applicants == 'some'"
+
+effects:
+  pick: { set: { asked: false, notice: none, decided: none } }
+  confirmed: { set: { asked: true } }
+  unask: { set: { asked: false } }
+  approvedNow: { set: { decided: approved, notice: approved } }
+  approvedBarredNow: { set: { decided: approvedBarred, notice: approved } }
+  rejectedNow: { set: { decided: rejected, notice: rejected } }
+  noticeGone: { set: { notice: gone } }
+  reread: { havoc: [listRead] }
+
+failures:
+  approving: { from: approveEnrollment, gone: [ENROLLMENT_NOT_FOUND, ENROLLMENT_STATE_CONFLICT] }
+  rejecting: { from: rejectEnrollment, gone: [ENROLLMENT_NOT_FOUND] }
+
+main:
+  given: { holds: decide, listRead: ok, applicants: some, applicantBarred: false, meanwhile: none }
+  events: [APPROVE, DONE]
+
+initial: gate
+states:
+  gate:
+    title: Read what the reader holds and the enrolments
+    description: GET /courses/:id/my-permissions; for a roster code, GET /courses/:id/enrollments and the removed list.
+    source: apps/nazar/features/enrolments/components/enrolments-page.tsx:44
+    always:
+      - { guard: "holds == 'none'", target: forbidden, say: "no roster code: \"Bu sayfaya izniniz yok\", and nothing is read", source: "apps/nazar/features/account/course-permissions.ts:40" }
+      - { guard: "listRead == 'failed'", target: loadFailed, say: "the enrolments cannot be read", source: "apps/nazar/features/enrolments/components/enrolments-page.tsx:85" }
+      - { target: applications, say: "the Başvurular tab opens first", source: "apps/nazar/features/enrolments/components/enrolments-page.tsx:94" }
+
+  forbidden:
+    type: final
+    title: The page says the reader has no permission
+    source: apps/nazar/features/enrolments/components/enrolments-page.tsx:86
+
+  loadFailed:
+    title: The talebe could not be read
+    by: human
+    source: apps/nazar/features/enrolments/components/enrolments-page.tsx:86
+    on:
+      RETRY: { target: gate, effect: [reread], say: "they press \"Yeniden dene\"", source: "apps/nazar/features/shell/components/load-failed.tsx:36" }
+      NAVIGATE: { target: left, say: "they go to another page" }
+
+  applications:
+    title: The waiting applications
+    by: human
+    goal: true
+    description: >-
+      Each applicant's name, address and date, newest first, with "Onayla" and "Reddet" for a holder of
+      enrollment.decide; a line says whether the course needs approval. Nothing marks an applicant a ban bars.
+    source: apps/nazar/features/enrolments/components/enrolments-tabs.tsx:234
+    on:
+      APPROVE: { guard: mayDecide, target: approving, effect: [pick], say: "they press \"Onayla\" on a row", source: "apps/nazar/features/enrolments/components/enrolments-tabs.tsx:170" }
+      REJECT: { guard: mayDecide, target: rejectQuestion, effect: [pick], say: "they press \"Reddet\" on a row", source: "apps/nazar/features/enrolments/components/enrolments-tabs.tsx:182" }
+      BULK: { guard: "holds == 'decide'", target: bulkAdding, say: "they press \"Toplu talebe ekle\"", source: "apps/nazar/features/enrolments/components/enrolments-tabs.tsx:201" }
+      NAVIGATE: { target: left, say: "they go to another page" }
+
+  rejectQuestion:
+    title: Ask before rejecting
+    by: human
+    description: An alertdialog; the focus starts on "Vazgeç". It says no reason is taken.
+    source: apps/nazar/features/enrolments/components/enrolments-tabs.tsx:277
+    on:
+      CONFIRM: { target: rejecting, effect: [confirmed], say: "they press \"Reddet\"", source: "apps/nazar/features/enrolments/components/enrolments-tabs.tsx:286" }
+      CANCEL: { target: applications, effect: [unask], say: "they press \"Vazgeç\"" }
+
+  approving:
+    title: Approve the application
+    description: >-
+      POST /courses/:id/enrollments/:userId/approve, behind @Authz(enrollment.decide). A seat already held is answered
+      as it is; a completed one is refused; a PENDING or REVOKED row becomes ENROLLED, conditional on the status read.
+      No ban of the applicant is read. The talebe gets an ENROLLMENT_APPROVED notification and the calendar sweep runs.
+    invoke: { action: approveEnrollment }
+    source: apps/tedrisat/src/course/course.service.ts:1621
+    on:
+      FAIL.gone: { guard: "meanwhile == 'withdrawn'", target: applications, effect: [noticeGone], say: "404 ENROLLMENT_NOT_FOUND: an info toast; the row leaves the list", source: "apps/nazar/features/enrolments/components/enrolments-tabs.tsx:98" }
+      DONE:
+        - { guard: "meanwhile == 'approved'", target: applications, effect: [approvedNow], say: "already a seat: the row as it is, no second notification", source: "apps/tedrisat/src/course/course.service.ts:1629" }
+        - { guard: "meanwhile == 'none' and applicantBarred", target: applications, effect: [approvedBarredNow], say: "the barred applicant takes a seat all the same", source: "apps/tedrisat/src/course/course.service.ts:1635" }
+        - { guard: "meanwhile == 'none'", target: applications, effect: [approvedNow], say: "a toast says the talebe is in; the row leaves the list", source: "apps/nazar/features/enrolments/components/enrolments-tabs.tsx:83" }
+
+  rejecting:
+    title: Reject the application
+    description: >-
+      DELETE /courses/:id/enrollments/:userId with no body. Only a PENDING row, deleted in one transaction with the
+      audit row enrollment.reject (no reason); the talebe gets an ENROLLMENT_REJECTED notification.
+    invoke: { action: rejectEnrollment }
+    source: apps/tedrisat/src/course/course.service.ts:1654
+    on:
+      FAIL.gone: { guard: "meanwhile != 'none'", target: applications, effect: [noticeGone], say: "404 ENROLLMENT_NOT_FOUND: no longer PENDING; an info toast, the row leaves the list", source: "apps/tedrisat/src/course/course.service.ts:1664" }
+      DONE: { guard: "meanwhile == 'none'", target: applications, effect: [rejectedNow], say: "a toast says it is rejected; the row leaves the list", source: "apps/nazar/features/enrolments/components/enrolments-tabs.tsx:83" }
+
+  bulkAdding:
+    title: Add talebe by e-mail
+    invoke: { flow: medaris.bulk-add-talebe }
+    source: apps/nazar/features/enrolments/components/enrolments-tabs.tsx:301
+    on:
+      DONE: { target: applications, say: "the dialog closes after an answer and the roster is read again", source: "apps/nazar/features/enrolments/components/enrolments-tabs.tsx:305" }
+      CANCEL: { target: applications, say: "the dialog closes with nothing sent" }
+
+  left:
+    type: final
+    title: They leave the page
+    leavesPage: true
+
+assertions:
+  - { id: only-deciders-decide, never: "decided != 'none' and holds != 'decide'", say: "Nobody without enrollment.decide approves or rejects", source: "apps/tedrisat/src/course/course.controller.ts:632" }
+  - { id: reader-sends-nothing, never: "state in ['approving', 'rejecting'] and holds == 'readOnly'", say: "A reader of the roster who may not decide never sends a decision", source: "apps/nazar/features/enrolments/components/enrolments-tabs.tsx:190" }
+  - { id: reject-asks-first, never: "state == 'rejecting' and not asked", say: "An application is rejected only after the question was answered", source: "apps/nazar/features/enrolments/components/enrolments-tabs.tsx:277" }
+  - { id: no-reject-of-a-seat, never: "decided == 'rejected' and meanwhile == 'approved'", say: "A seat someone granted meanwhile is never rejected away", source: "apps/tedrisat/src/course/course.service.ts:1663" }

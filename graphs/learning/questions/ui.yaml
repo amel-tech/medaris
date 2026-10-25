@@ -1,0 +1,319 @@
+# The Sorularım tab panel of the course page (apps/tedris/features/courses/components/course-questions.tsx), as built
+# today: the form to ask, and the talebe's latest question as a card.
+schema: delurio-graph/0
+kind: ui
+id: medaris.questions
+flow: medaris.questions
+status: proposed
+catalog: catalog/tr.json
+locales: [tr, en]
+samples: { session: "Usûl-i Fıkıh, 3. celse", week: "3", title: "Usûl-i Fıkıh, 3. celse", max: "4000", when: "4 Eki 2026 21:00", name: "Ahmet Hoca", body: "İcmâ ile kıyas arasındaki fark nedir?" }
+changes: { key: Changes.note }
+
+nodes:
+  panel:
+    type: page
+    component: Page
+    role: tabpanel
+    name: { key: CoursePage.tabMyQuestions }
+    in: [loading, loadFailed, list, asking, editing, savingEdit, confirmDelete, deleting]
+    source: apps/tedris/features/courses/components/course-page.tsx:451
+  private:
+    type: text
+    component: Text
+    text: { key: CourseQuestions.private }
+    in: [loading, loadFailed, list, asking, editing, savingEdit, confirmDelete, deleting]
+    source: apps/tedris/features/courses/components/course-questions.tsx:107
+  askForm:
+    type: page
+    component: Page
+    role: form
+    name: { key: CourseQuestions.askTitle }
+    in: [loading, loadFailed, list, asking, editing, savingEdit, confirmDelete, deleting]
+    source: apps/tedris/features/courses/components/course-questions.tsx:432
+  askTitle:
+    type: text
+    component: Heading
+    role: heading
+    text: { key: CourseQuestions.askTitle }
+    in: [loading, loadFailed, list, asking, editing, savingEdit, confirmDelete, deleting]
+    source: apps/tedris/features/courses/components/course-questions.tsx:441
+  sessionField:
+    type: field
+    component: TextField
+    role: combobox
+    text: { key: CourseQuestions.sessionLabel }
+    in: [loading, loadFailed, list, asking, editing, savingEdit, confirmDelete, deleting]
+    source: apps/tedris/features/courses/components/course-questions.tsx:445
+  bodyField:
+    type: field
+    component: TextField
+    role: textbox
+    text: { key: CourseQuestions.bodyLabel }
+    in: [loading, loadFailed, list, asking, editing, savingEdit, confirmDelete, deleting]
+    source: apps/tedris/features/courses/components/course-questions.tsx:456
+  bodyHelp:
+    type: text
+    component: Text
+    text: { key: CourseQuestions.bodyHelp, params: { max: QUESTION_BODY_MAX } }
+    in: [loading, loadFailed, list, asking, editing, savingEdit, confirmDelete, deleting]
+  askButton:
+    type: action
+    component: Button
+    role: button
+    intent: confirm
+    text: { key: CourseQuestions.ask }
+    in: [loading, loadFailed, list, asking, editing, savingEdit, confirmDelete, deleting]
+    disabledIn: [asking]
+    emits: ASK
+    source: apps/tedris/features/courses/components/course-questions.tsx:474
+  askingStatus:
+    type: status
+    component: Status
+    role: status
+    text: { key: CourseQuestions.asking }
+    in: [asking]
+    source: apps/tedris/features/courses/components/course-questions.tsx:479
+  sessionRequired:
+    type: alert
+    component: Alert
+    role: alert
+    text: { key: CourseQuestions.sessionRequired }
+    when: showSessionRequired
+    in: [list]
+    source: apps/tedris/features/courses/components/course-questions.tsx:469
+  bodyRequired:
+    type: alert
+    component: Alert
+    role: alert
+    text: { key: CourseQuestions.bodyRequired }
+    when: showBodyRequired
+    in: [list, editing]
+    source: apps/tedris/features/courses/components/course-questions.tsx:469
+  forbidden:
+    type: alert
+    component: Alert
+    role: alert
+    text: { key: CourseQuestions.forbidden }
+    when: showForbidden
+    in: [list, editing]
+    source: apps/tedris/features/courses/components/course-questions.tsx:422
+  askFailed:
+    type: alert
+    component: Alert
+    role: alert
+    text: { key: CourseQuestions.askFailed }
+    when: showAskFailed
+    in: [list]
+    source: apps/tedris/features/courses/components/course-questions.tsx:422
+
+  loadingStatus:
+    type: status
+    component: Status
+    role: status
+    text: { key: CourseQuestions.loading }
+    in: [loading]
+    source: apps/tedris/features/courses/components/course-questions.tsx:117
+  loadFailed:
+    type: alert
+    component: Alert
+    role: alert
+    text: { key: CourseQuestions.loadFailed }
+    in: [loadFailed]
+    source: apps/tedris/features/courses/components/course-questions.tsx:119
+  retry:
+    type: action
+    component: Button
+    role: button
+    intent: secondary
+    text: { key: CourseQuestions.retry }
+    in: [loadFailed]
+    emits: RETRY
+    source: apps/tedris/features/courses/components/course-questions.tsx:122
+  empty:
+    type: text
+    component: Text
+    text: { key: CourseQuestions.empty }
+    when: "shown == 'none'"
+    in: [list, asking]
+    source: apps/tedris/features/courses/components/course-questions.tsx:128
+
+  card:
+    type: page
+    component: Page
+    role: article
+    name: { key: CourseQuestions.questionLabel, params: { session: question.lessonTitle } }
+    when: "shown != 'none'"
+    in: [list, asking, editing, savingEdit, confirmDelete, deleting]
+    source: apps/tedris/features/courses/components/course-questions.tsx:249
+  sessionLine:
+    type: text
+    component: Text
+    text: { key: CourseQuestions.sessionLine, params: { week: question.weekNumber, title: question.lessonTitle } }
+    when: "shown != 'none'"
+    in: [list, asking, editing, savingEdit, confirmDelete, deleting]
+    source: apps/tedris/features/courses/components/course-questions.tsx:256
+  answeredBadge:
+    type: status
+    component: Status
+    text: { key: CourseQuestions.answered }
+    when: answeredShown
+    in: [list, asking, confirmDelete, deleting]
+    source: apps/tedris/features/courses/components/course-questions.tsx:263
+  waitingBadge:
+    type: status
+    component: Status
+    text: { key: CourseQuestions.waiting }
+    when: "shown == 'waiting'"
+    in: [list, asking, editing, savingEdit, confirmDelete, deleting]
+    source: apps/tedris/features/courses/components/course-questions.tsx:267
+  body:
+    type: text
+    component: Text
+    text: { key: Data.questionBody, params: { body: question.body } }
+    when: "shown != 'none'"
+    in: [list, asking, confirmDelete, deleting]
+    source: apps/tedris/features/courses/components/course-questions.tsx:318
+  askedAt:
+    type: text
+    component: Text
+    text: { key: CourseQuestions.askedAt, params: { when: question.createdAt } }
+    when: "shown != 'none'"
+    in: [list, asking, confirmDelete, deleting]
+    source: apps/tedris/features/courses/components/course-questions.tsx:320
+  answerBy:
+    type: text
+    component: Text
+    text: { key: CourseQuestions.answerBy, params: { name: answer.answeredBy } }
+    when: answeredShown
+    in: [list, asking, confirmDelete, deleting]
+    source: apps/tedris/features/courses/components/course-questions.tsx:328
+  editButton:
+    type: action
+    component: Button
+    role: button
+    intent: secondary
+    name: { key: CourseQuestions.editLabel, params: { session: question.lessonTitle } }
+    text: { key: CourseQuestions.edit }
+    when: mayEdit
+    in: [list, asking]
+    emits: EDIT
+    source: apps/tedris/features/courses/components/course-questions.tsx:361
+  deleteButton:
+    type: action
+    component: Button
+    role: button
+    intent: secondary
+    name: { key: CourseQuestions.deleteLabel, params: { session: question.lessonTitle } }
+    text: { key: CourseQuestions.delete }
+    when: "shown != 'none'"
+    in: [list, asking]
+    emits: DELETE
+    source: apps/tedris/features/courses/components/course-questions.tsx:371
+  deleteAsk:
+    type: text
+    component: Text
+    text: { key: CourseQuestions.deleteAsk }
+    when: "shown == 'waiting'"
+    in: [confirmDelete, deleting]
+    source: apps/tedris/features/courses/components/course-questions.tsx:339
+  deleteAskAnswered:
+    type: text
+    component: Text
+    text: { key: CourseQuestions.deleteAskAnswered }
+    when: answeredShown
+    in: [confirmDelete, deleting]
+    source: apps/tedris/features/courses/components/course-questions.tsx:339
+  deleteConfirm:
+    type: action
+    component: Button
+    role: button
+    intent: confirm
+    text: { key: CourseQuestions.delete }
+    in: [confirmDelete, deleting]
+    disabledIn: [deleting]
+    emits: CONFIRM
+    source: apps/tedris/features/courses/components/course-questions.tsx:341
+  deleteCancel:
+    type: action
+    component: Button
+    role: button
+    intent: dismiss
+    text: { key: CourseQuestions.cancel }
+    in: [confirmDelete, deleting]
+    emits: CANCEL
+    source: apps/tedris/features/courses/components/course-questions.tsx:350
+  deletingStatus:
+    type: status
+    component: Status
+    role: status
+    text: { key: CourseQuestions.deleting }
+    in: [deleting]
+    source: apps/tedris/features/courses/components/course-questions.tsx:345
+  editField:
+    type: field
+    component: TextField
+    role: textbox
+    text: { key: CourseQuestions.bodyLabel }
+    in: [editing, savingEdit]
+    source: apps/tedris/features/courses/components/course-questions.tsx:284
+  editSave:
+    type: action
+    component: Button
+    role: button
+    intent: confirm
+    text: { key: CourseQuestions.save }
+    in: [editing, savingEdit]
+    disabledIn: [savingEdit]
+    emits: SAVE
+    source: apps/tedris/features/courses/components/course-questions.tsx:298
+  editCancel:
+    type: action
+    component: Button
+    role: button
+    intent: dismiss
+    text: { key: CourseQuestions.cancel }
+    in: [editing, savingEdit]
+    emits: CANCEL
+    source: apps/tedris/features/courses/components/course-questions.tsx:306
+  savingStatus:
+    type: status
+    component: Status
+    role: status
+    text: { key: CourseQuestions.saving }
+    in: [savingEdit]
+    source: apps/tedris/features/courses/components/course-questions.tsx:302
+  editAnswered:
+    type: alert
+    component: Alert
+    role: alert
+    text: { key: CourseQuestions.editAnswered }
+    when: showEditAnswered
+    in: [list]
+    source: apps/tedris/features/courses/components/course-questions.tsx:220
+  editFailed:
+    type: alert
+    component: Alert
+    role: alert
+    text: { key: CourseQuestions.editFailed }
+    when: showEditFailed
+    in: [editing]
+    source: apps/tedris/features/courses/components/course-questions.tsx:222
+  deleteFailed:
+    type: alert
+    component: Alert
+    role: alert
+    text: { key: CourseQuestions.deleteFailed }
+    when: showDeleteFailed
+    in: [list]
+    source: apps/tedris/features/courses/components/course-questions.tsx:241
+
+edges:
+  - { triggers: [askButton, asking] }
+  - { triggers: [editButton, editing] }
+  - { triggers: [editSave, savingEdit] }
+  - { triggers: [deleteButton, confirmDelete] }
+  - { triggers: [deleteConfirm, deleting] }
+
+rules:
+  - { id: delete-asks-first, rule: "deleting a question asks first, inline in its card, and says when its answer goes with it" }

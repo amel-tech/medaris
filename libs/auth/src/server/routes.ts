@@ -124,7 +124,7 @@ export function createRouteHandlers(
 
   /** The app's sign-in page, saying what went wrong and where to go after. */
   const errorPage = (code: AuthErrorCode, returnTo: string | null) => {
-    const target = absolute(config.signInPage(returnTo));
+    const target = absolute(config.signInPage);
     target.searchParams.set("error", code);
     if (returnTo) target.searchParams.set("callbackUrl", returnTo);
     return target;
@@ -141,7 +141,7 @@ export function createRouteHandlers(
     const params = request.nextUrl.searchParams;
     const locale = acceptedLocale(params.get("locale"), config.locales);
     const returnTo = safeReturnTo(params.get("callbackUrl"), config.origin);
-    const destination = returnTo ?? config.afterSignIn(locale);
+    const destination = returnTo ?? config.afterSignIn;
     const register = params.get("intent") === "register";
     // The API refused this session's token: new tokens, not straight back.
     const reauth = params.get(REAUTH_PARAM) === "1";
@@ -287,7 +287,7 @@ export function createRouteHandlers(
       const loaded = await loadOrNull(store, request);
       const response =
         loaded && hasUsableAccessToken(loaded.session, now)
-          ? redirect(absolute(config.afterSignIn(null)))
+          ? redirect(absolute(config.afterSignIn))
           : redirect(errorPage("OAuthCallback", null));
       if (cookieName && sealed) removeCookie(response, cookieName);
       return response;

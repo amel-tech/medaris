@@ -11,7 +11,7 @@ import { Button } from "@medaris/ui/mds/button";
 import { Icon } from "@medaris/ui/mds/icon";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import type { Messages } from "../present";
 import { GroupForm } from "./group-form";
@@ -43,13 +43,12 @@ export function GroupsView({
 }: Props) {
   const tm = useTranslations("nizam.GroupsPage");
   const t = tm as unknown as Messages;
-  const locale = useLocale();
   const router = useRouter();
   const [, startTransition] = useTransition();
   const [editing, setEditing] = useState<MedarisNazimResponse | null>(null);
 
   const retry = () => startTransition(() => router.refresh());
-  const base = `/${locale}/izin-gruplari`;
+  const base = `/izin-gruplari`;
   const group =
     groups && selected !== "new"
       ? (groups.find((g) => g.id === selected) ?? null)

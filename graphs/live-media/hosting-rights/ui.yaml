@@ -1,0 +1,78 @@
+# Medaris, captured from origin/main ce47fce8: nizam's Barındırma hakları page and its two dialogs (the kit's Dialog,
+# role dialog, named by its title). The grant dialog passes no initialFocus, so its header's close button takes the
+# focus; the withdrawal dialog starts on Vazgeç. Toasts are sonner's: success closes itself, an error stays until closed.
+# The settings tabs (links) and the breadcrumb are left out.
+schema: delurio-graph/0
+kind: ui
+id: medaris.hosting-rights
+flow: medaris.hosting-rights
+status: proposed
+catalog: catalog/tr.json
+locales: [tr, en]
+samples: { kosk: "Nûruosmaniye Köşkü", koskLocative: "Nûruosmaniye Köşkü’nde", name: "Fatih Medresesi", count: "2", countWord: "iki", countWordCap: "İki", students: "35" }
+changes: { key: Changes.note }
+
+nodes:
+  page: { type: page, component: Page, role: main, name: { labelledBy: title }, in: [hostingPage, grantDialog, granting, revokeDialog, revoking], source: "apps/nizam/features/hosting/components/hosting-view.tsx:155" }
+  title: { type: text, component: Heading, role: heading, text: { key: HostingPage.title }, in: [hostingPage, grantDialog, granting, revokeDialog, revoking], source: "apps/nizam/features/hosting/components/hosting-view.tsx:168" }
+  intro: { type: text, component: Text, text: { key: HostingPage.intro }, in: [hostingPage, grantDialog, granting, revokeDialog, revoking], source: "apps/nizam/features/hosting/components/hosting-view.tsx:169" }
+  grant: { type: action, component: Button, role: button, intent: confirm, text: { key: HostingPage.grant }, in: [hostingPage], emits: GRANT, source: "apps/nizam/features/hosting/components/hosting-view.tsx:171" }
+  caption: { type: text, component: Text, text: { key: HostingPage.caption }, in: [hostingPage], when: "rightsRead == 'ok'", source: "apps/nizam/features/hosting/components/hosting-view.tsx:212" }
+  rights: { type: list, component: List, role: table, name: { labelledBy: caption }, in: [hostingPage], when: "rightsRead == 'ok' and hasRights", source: "apps/nizam/features/hosting/components/hosting-view.tsx:211" }
+  right: { type: text, component: ListItem, role: row, text: { literal: "Fatih Medresesi · Başmüderris … · Köşk nazımı · 1 Eylül 2026 · 2" }, in: [hostingPage], when: "rightsRead == 'ok' and hasRights", repeat: kosk.hostingRights, source: "apps/nizam/features/hosting/components/hosting-view.tsx:77" }
+  revoke: { type: action, component: Button, role: button, intent: secondary, name: { key: HostingPage.revokeLabel }, text: { key: HostingPage.revoke }, in: [hostingPage], when: "rightsRead == 'ok' and hasRights", repeat: kosk.hostingRights, emits: REVOKE, source: "apps/nizam/features/hosting/components/hosting-view.tsx:142" }
+  empty: { type: text, component: Text, text: { key: HostingPage.empty }, in: [hostingPage], when: "rightsRead == 'ok' and not hasRights", source: "apps/nizam/features/hosting/components/hosting-view.tsx:216" }
+  footnote: { type: text, component: Text, text: { key: HostingPage.footnote }, in: [hostingPage], when: "rightsRead == 'ok'", source: "apps/nizam/features/hosting/components/hosting-view.tsx:219" }
+  loadFailed: { type: alert, component: Alert, role: alert, text: { key: HostingPage.loadFailedTitle }, in: [hostingPage], when: "rightsRead == 'failed'", source: "apps/nizam/features/hosting/components/hosting-view.tsx:203" }
+  loadFailedText: { type: text, component: Text, text: { key: HostingPage.loadFailed }, in: [hostingPage], when: "rightsRead == 'failed'", source: "apps/nizam/features/hosting/components/hosting-view.tsx:204" }
+  retry: { type: action, component: Button, role: button, intent: secondary, text: { key: HostingPage.retry }, in: [hostingPage], when: "rightsRead == 'failed'", emits: RETRY, source: "apps/nizam/features/hosting/components/hosting-view.tsx:205" }
+  grantedToast: { type: status, component: Status, role: status, text: { key: GrantDialog.granted }, in: [hostingPage], when: "notice == 'granted'", source: "apps/nizam/features/hosting/components/grant-dialog.tsx:65" }
+  grantedBody: { type: text, component: Text, text: { key: GrantDialog.grantedBody }, in: [hostingPage], when: "notice == 'granted'", source: "apps/nizam/features/hosting/components/grant-dialog.tsx:66" }
+  revokedToast: { type: status, component: Status, role: status, text: { key: RevokeDialog.revoked }, in: [hostingPage], when: "notice == 'revoked'", source: "apps/nizam/features/hosting/components/revoke-dialog.tsx:87" }
+  revokedBody: { type: text, component: Text, text: { key: RevokeDialog.revokedBody }, in: [hostingPage], when: "notice == 'revoked'", source: "apps/nizam/features/hosting/components/revoke-dialog.tsx:88" }
+
+  grantDialog: { type: page, component: Page, role: dialog, name: { labelledBy: grantTitle }, in: [grantDialog, granting], initialFocus: grantClose, source: "apps/nizam/features/hosting/components/grant-dialog.tsx:76" }
+  grantTitle: { type: text, component: Heading, role: heading, text: { key: GrantDialog.title }, in: [grantDialog, granting], source: "apps/nizam/features/hosting/components/grant-dialog.tsx:85" }
+  grantClose: { type: action, component: Button, role: button, intent: dismiss, name: { key: GrantDialog.close }, in: [grantDialog, granting], disabledIn: [granting], emits: CLOSE, source: "apps/nizam/features/hosting/components/grant-dialog.tsx:86" }
+  grantIntro: { type: text, component: Text, text: { key: GrantDialog.intro }, in: [grantDialog, granting], source: "apps/nizam/features/hosting/components/grant-dialog.tsx:96" }
+  optionsFailed: { type: alert, component: Alert, role: alert, text: { key: GrantDialog.loadFailedTitle }, in: [grantDialog], when: "optionsRead == 'failed'", source: "apps/nizam/features/hosting/components/grant-dialog.tsx:98" }
+  optionsFailedText: { type: text, component: Text, text: { key: GrantDialog.loadFailed }, in: [grantDialog], when: "optionsRead == 'failed'", source: "apps/nizam/features/hosting/components/grant-dialog.tsx:99" }
+  noneLeft: { type: text, component: Text, text: { key: GrantDialog.none }, in: [grantDialog], when: "optionsRead == 'noneLeft'", source: "apps/nizam/features/hosting/components/grant-dialog.tsx:102" }
+  madrasahSelect: { type: field, component: TextField, role: combobox, text: { key: GrantDialog.madrasahLabel }, in: [grantDialog, granting], when: "optionsRead == 'ok'", disabledIn: [granting], source: "apps/nizam/features/hosting/components/grant-dialog.tsx:105" } # placeholder "Bir medrese seçin"; options "<name> (@<handle>)"
+  grantCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: GrantDialog.cancel }, in: [grantDialog, granting], disabledIn: [granting], emits: CLOSE, source: "apps/nizam/features/hosting/components/grant-dialog.tsx:89" }
+  grantSubmit: { type: action, component: Button, role: button, intent: confirm, text: { key: GrantDialog.submit }, in: [grantDialog, granting], disabledIn: [granting], when: "optionsRead == 'ok'", emits: SUBMIT, source: "apps/nizam/features/hosting/components/grant-dialog.tsx:90" } # off until a medrese is chosen
+  grantFailed: { type: alert, component: Alert, role: alert, text: { key: GrantDialog.failed }, in: [grantDialog], when: "notice in ['forbidden', 'madrasahGone']", source: "apps/nizam/features/hosting/components/grant-dialog.tsx:59" }
+
+  revokeDialog: { type: page, component: Page, role: dialog, name: { labelledBy: revokeTitle }, in: [revokeDialog, revoking], initialFocus: revokeCancel, source: "apps/nizam/features/hosting/components/revoke-dialog.tsx:95" }
+  revokeTitle: { type: text, component: Heading, role: heading, text: { key: RevokeDialog.title }, in: [revokeDialog, revoking], source: "apps/nizam/features/hosting/components/revoke-dialog.tsx:104" }
+  revokeClose: { type: action, component: Button, role: button, intent: dismiss, name: { key: RevokeDialog.close }, in: [revokeDialog, revoking], disabledIn: [revoking], emits: CLOSE, source: "apps/nizam/features/hosting/components/revoke-dialog.tsx:105" }
+  revokeIntro: { type: text, component: Text, text: { key: RevokeDialog.intro }, in: [revokeDialog, revoking], source: "apps/nizam/features/hosting/components/revoke-dialog.tsx:122" }
+  courses: { type: list, component: List, role: list, in: [revokeDialog, revoking], when: "openCourses == 'some'", source: "apps/nizam/features/hosting/components/revoke-dialog.tsx:132" }
+  course: { type: text, component: ListItem, role: listitem, text: { literal: "Fıkıh I · 35 talebe · Yayında" }, in: [revokeDialog, revoking], when: "openCourses == 'some'", repeat: right.openCourses, source: "apps/nizam/features/hosting/components/revoke-dialog.tsx:137" }
+  coursesLegend: { type: text, component: Text, text: { key: RevokeDialog.coursesLegend }, in: [revokeDialog, revoking], when: "openCourses == 'some'", source: "apps/nizam/features/hosting/components/revoke-dialog.tsx:164" }
+  choices: { type: list, component: List, role: radiogroup, name: { labelledBy: coursesLegend }, in: [revokeDialog, revoking], when: "openCourses == 'some'", source: "apps/nizam/features/hosting/components/revoke-dialog.tsx:163" }
+  keep: { type: field, component: ListItem, role: radio, text: { key: RevokeDialog.keep }, in: [revokeDialog, revoking], when: "openCourses == 'some'", disabledIn: [revoking], source: "apps/nizam/features/hosting/components/revoke-dialog.tsx:173" }
+  hide: { type: field, component: ListItem, role: radio, text: { key: RevokeDialog.hide }, in: [revokeDialog, revoking], when: "openCourses == 'some'", disabledIn: [revoking], source: "apps/nizam/features/hosting/components/revoke-dialog.tsx:181" }
+  keepDesc: { type: text, component: Text, text: { key: RevokeDialog.keepDesc }, in: [revokeDialog, revoking], when: "openCourses == 'some'", source: "apps/nizam/features/hosting/components/revoke-dialog.tsx:174" }
+  hideDesc: { type: text, component: Text, text: { key: RevokeDialog.hideDesc }, in: [revokeDialog, revoking], when: "openCourses == 'some'", source: "apps/nizam/features/hosting/components/revoke-dialog.tsx:182" }
+  noOpenCourses: { type: text, component: Text, text: { key: RevokeDialog.noOpenCourses }, in: [revokeDialog, revoking], when: "openCourses == 'none'", source: "apps/nizam/features/hosting/components/revoke-dialog.tsx:192" }
+  auditNote: { type: text, component: Text, text: { key: RevokeDialog.auditNote }, in: [revokeDialog, revoking], source: "apps/nizam/features/hosting/components/revoke-dialog.tsx:107" }
+  revokeCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: RevokeDialog.cancel }, in: [revokeDialog, revoking], disabledIn: [revoking], emits: CLOSE, source: "apps/nizam/features/hosting/components/revoke-dialog.tsx:110" }
+  revokeSubmit: { type: action, component: Button, role: button, intent: confirm, text: { key: RevokeDialog.submit }, in: [revokeDialog, revoking], disabledIn: [revoking], emits: SUBMIT, source: "apps/nizam/features/hosting/components/revoke-dialog.tsx:111" } # off while a question is unanswered
+  revokeFailed: { type: alert, component: Alert, role: alert, text: { key: RevokeDialog.failed }, in: [revokeDialog], when: "notice in ['forbidden', 'notHeld']", source: "apps/nizam/features/hosting/components/revoke-dialog.tsx:81" }
+  errForbidden: { type: text, component: Text, text: { key: HostingPage.errors.forbidden }, in: [grantDialog, revokeDialog], when: "notice == 'forbidden'", source: "apps/nizam/features/hosting/present.ts:115" }
+  errMadrasahGone: { type: text, component: Text, text: { key: HostingPage.errors.madrasahGone }, in: [grantDialog], when: "notice == 'madrasahGone'", source: "apps/nizam/features/hosting/present.ts:113" }
+  errNotHeld: { type: text, component: Text, text: { key: HostingPage.errors.notHeld }, in: [revokeDialog], when: "notice == 'notHeld'", source: "apps/nizam/features/hosting/present.ts:112" }
+
+edges:
+  - { labelledBy: [page, title] }
+  - { labelledBy: [rights, caption] }
+  - { labelledBy: [grantDialog, grantTitle] }
+  - { labelledBy: [revokeDialog, revokeTitle] }
+  - { labelledBy: [choices, coursesLegend] }
+  - { triggers: [grantSubmit, granting] }
+  - { triggers: [revokeSubmit, revoking] }
+
+rules:
+  - { id: no-default-answer, rule: "the withdrawal dialog chooses no answer for the person, and its focus starts on Vazgeç" }
+  - { id: label-in-name, rule: "a row's Barındırma hakkını geri al names the medrese in its accessible name (WCAG 2.5.3)" }

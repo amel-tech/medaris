@@ -267,18 +267,12 @@ describe("GET /api/auth/signin", () => {
   it("sends an IdP it cannot reach to the sign-in page as OAuthSignin", async () => {
     openid.discovery.mockRejectedValue(new TypeError("fetch failed"));
     vi.spyOn(console, "error").mockImplementation(() => undefined);
-    const { handlers } = createAuth(
-      testConfig({
-        pages: {
-          signIn: (returnTo) => `/${returnTo?.split("/")[1]}/auth/signin`,
-        },
-      })
-    );
+    const { handlers } = createAuth(testConfig());
     const response = await handlers.signIn(
-      request("/api/auth/signin?callbackUrl=%2Fen%2Fcourses%2F7")
+      request("/api/auth/signin?callbackUrl=%2Fcourses%2F7")
     );
     expect(response.headers.get("location")).toBe(
-      `${ORIGIN}/en/auth/signin?error=OAuthSignin&callbackUrl=%2Fen%2Fcourses%2F7`
+      `${ORIGIN}/auth/signin?error=OAuthSignin&callbackUrl=%2Fcourses%2F7`
     );
   });
 
