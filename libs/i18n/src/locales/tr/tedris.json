@@ -504,6 +504,10 @@
         "body": "{courseTitle} dersinin {sessionAt} celsesine ders kaydı eklendi.",
         "bodyNoSession": "{courseTitle} dersine ders kaydı eklendi."
       },
+      "SUBMISSION_REVIEWED": {
+        "title": "Ödevin değerlendirildi",
+        "body": "{courseTitle} dersinin {sessionLabel} celsesine teslim ettiğin ödev değerlendirildi."
+      },
       "ENROLLMENT_APPROVED": {
         "title": "Başvurun onaylandı",
         "body": "{courseTitle} dersine kaydın onaylandı."

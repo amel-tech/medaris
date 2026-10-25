@@ -210,7 +210,14 @@
     "notHandedIn": "لم يُسلَّم",
     "pendingTitle": "لم تسلّم هذا الواجب بعد",
     "pendingBody": "أضف ملفك أو اكتب ملاحظتك أدناه؛ يراه المدرّس وفريق الدرس.",
-    "noAssignment": "لم يوضع واجب على هذه الحلقة؛ وما سلّمته من قبل باقٍ هنا."
+    "noAssignment": "لم يوضع واجب على هذه الحلقة؛ وما سلّمته من قبل باقٍ هنا.",
+    "reviewTitle": "تقييم الأستاذ",
+    "reviewed": "قُيِّم",
+    "reviewBy": "{name} · {when}",
+    "reviewerUnknown": "الأستاذ",
+    "reviewChangedTitle": "تغيّر واجبك بعد التقييم",
+    "reviewChangedBody": "كُتب هذا التقييم على النسخة السابقة من واجبك.",
+    "reviewFiles": "الملفات المصحَّحة"
   },
   "FileDownload": {
     "title": "تعذّر تنزيل الملف",

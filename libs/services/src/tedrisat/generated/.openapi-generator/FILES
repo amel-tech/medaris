@@ -386,6 +386,7 @@ src/models/ScopeRefResponse.ts
 src/models/ScopedPolicyListResponse.ts
 src/models/ScopedPolicyResponse.ts
 src/models/ScopedPolicyScopeResponse.ts
+src/models/SendSubmissionReviewDto.ts
 src/models/SessionBatchLessonResponse.ts
 src/models/SessionBatchPreviewResponse.ts
 src/models/SessionBatchResponse.ts
@@ -408,6 +409,8 @@ src/models/SetPlatformPolicyDto.ts
 src/models/SetRecordingAvailabilityDto.ts
 src/models/StartRecordingUploadDto.ts
 src/models/SubmissionFileResponse.ts
+src/models/SubmissionReviewResponse.ts
+src/models/SubmissionReviewerResponse.ts
 src/models/SubmissionTalebeResponse.ts
 src/models/SummaryMuderrisResponse.ts
 src/models/TaughtCourseRef.ts

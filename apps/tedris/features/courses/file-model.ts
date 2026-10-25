@@ -111,6 +111,18 @@ export const submissionFileHref = (
     : null;
 
 /**
+ * A file the course team returned with its review of the talebe's own
+ * homework, to download; null for ids that are not.
+ */
+export const reviewFileHref = (
+  lessonId: string,
+  fileId: string
+): string | null =>
+  UUID_ONLY.test(lessonId) && UUID_ONLY.test(fileId)
+    ? `/api/files/lessons/${lessonId}/submission/review-files/${fileId}`
+    : null;
+
+/**
  * The homework as `POST …/submission/files` answers it, through `fetch` and
  * not the generated client: its times arrive as strings and become dates.
  */
@@ -127,6 +139,20 @@ export const parseSubmission = (json: unknown): LessonSubmissionResponse => {
       ...file,
       createdAt: new Date(file.createdAt),
     })),
+    review: body.review
+      ? {
+          ...body.review,
+          note: body.review.note ?? null,
+          reviewedAt: body.review.reviewedAt
+            ? new Date(body.review.reviewedAt)
+            : null,
+          reviewer: body.review.reviewer ?? null,
+          files: (body.review.files ?? []).map((file) => ({
+            ...file,
+            createdAt: new Date(file.createdAt),
+          })),
+        }
+      : null,
   };
 };
 

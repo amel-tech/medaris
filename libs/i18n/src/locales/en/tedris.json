@@ -504,6 +504,10 @@
         "body": "A recording was added to the {sessionAt} session of {courseTitle}.",
         "bodyNoSession": "A recording was added to {courseTitle}."
       },
+      "SUBMISSION_REVIEWED": {
+        "title": "Your homework was reviewed",
+        "body": "The homework you handed in on {sessionLabel} in {courseTitle} was reviewed."
+      },
       "ENROLLMENT_APPROVED": {
         "title": "Your application was approved",
         "body": "Your enrollment in {courseTitle} was approved."

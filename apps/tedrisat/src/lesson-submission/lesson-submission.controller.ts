@@ -51,12 +51,14 @@ import type { AuthorizedRequest } from "../course/interfaces/authorized-request.
 import { byLessonCourse } from "../course/lesson.controller";
 import { UploadGateInterceptor } from "../storage/upload";
 import {
+  CourseSubmissionResponse,
   CourseSubmissionsResponse,
   LessonSubmissionResponse,
   MAX_SUBMISSION_FILES,
   MySubmissionsResponse,
   OwnSubmissionResponse,
   SaveSubmissionNoteDto,
+  SendSubmissionReviewDto,
 } from "./dto/lesson-submission.dto";
 import { LessonSubmissionService } from "./lesson-submission.service";
 
@@ -221,6 +223,36 @@ export class LessonSubmissionController {
   ): Promise<StreamableFile> {
     return this.service.downloadOwn(request.user, id, fileId, response);
   }
+
+  @ApiOperation({
+    summary: "Download a file the course team returned with its review",
+    description: `Only the talebe whose homework it answers, once the review is sent (before that it is 404 SUBMISSION_FILE_NOT_FOUND), while the course is open to them. Another talebe's is 403 SUBMISSION_FORBIDDEN. ${DOWNLOAD_HEADERS}`,
+    operationId: "downloadMySubmissionReviewFile",
+  })
+  @ApiProduces("application/octet-stream")
+  @ApiOkResponse({ schema: { type: "string", format: "binary" } })
+  @ApiForbiddenResponse({ description: "SUBMISSION_FORBIDDEN" })
+  @ApiNotFoundResponse({
+    description: "LESSON_NOT_FOUND, SUBMISSION_FILE_NOT_FOUND",
+  })
+  @ApiServiceUnavailableResponse({
+    description: "STORAGE_NOT_CONFIGURED, STORAGE_UNAVAILABLE",
+  })
+  @Authz(PERMISSIONS.COURSE_VIEW, byLessonCourse)
+  @Get("lessons/:id/submission/review-files/:fileId")
+  downloadOwnReviewFile(
+    @Req() request: AuthorizedRequest,
+    @Param("id", ParseUUIDPipe) id: string,
+    @Param("fileId", ParseUUIDPipe) fileId: string,
+    @Res({ passthrough: true }) response: Response
+  ): Promise<StreamableFile> {
+    return this.service.downloadOwnReviewFile(
+      request.user,
+      id,
+      fileId,
+      response
+    );
+  }
 }
 
 /**
@@ -289,5 +321,133 @@ export class CourseSubmissionsController {
     @Res({ passthrough: true }) response: Response
   ): Promise<StreamableFile> {
     return this.service.downloadForStaff(request.user, id, fileId, response);
+  }
+
+  @ApiOperation({
+    summary: "Send the review of a talebe's homework",
+    description:
+      '`submission.read` on the course: whoever reads the homework reviews it ("Değerlendir"). Saves the note, replacing an earlier one, and sends the review with its files to the talebe, who sees nothing of it before, and is told (`SUBMISSION_REVIEWED`). A review with neither a note nor a file is 400 SUBMISSION_REVIEW_EMPTY. Written to `audit_log` as `submission.review` with the note\'s length. A homework on a hidden session is not found.',
+    operationId: "sendSubmissionReview",
+  })
+  @ApiOkResponse({ type: CourseSubmissionResponse })
+  @ApiBadRequestResponse({
+    description: "Field validation, SUBMISSION_REVIEW_EMPTY",
+  })
+  @ApiForbiddenResponse({ description: "No `submission.read` on the course." })
+  @ApiNotFoundResponse({
+    description: "COURSE_NOT_FOUND, SUBMISSION_NOT_FOUND",
+  })
+  @Authz(PERMISSIONS.SUBMISSION_READ, byExistingCourse)
+  @UsePipes(new MedarisValidationPipe({ transform: true }))
+  @Put("courses/:id/submissions/:submissionId/review")
+  sendReview(
+    @Req() request: AuthorizedRequest,
+    @Param("id", ParseUUIDPipe) id: string,
+    @Param("submissionId", ParseUUIDPipe) submissionId: string,
+    @Body() dto: SendSubmissionReviewDto
+  ): Promise<CourseSubmissionResponse> {
+    return this.service.sendReview(
+      request.user,
+      id,
+      submissionId,
+      dto.note ?? null
+    );
+  }
+
+  @ApiOperation({
+    summary: "Add a file to the review of a talebe's homework",
+    description:
+      "`submission.read` on the course. At most 5 files per review (409 SUBMISSION_REVIEW_FILE_LIMIT), each held to a homework file's rules: the multipart field `file`, at most 25 MB (413 FILE_TOO_LARGE), a PDF, PNG, JPEG, WebP, Word (docx), Excel (xlsx), PowerPoint (pptx) or plain UTF-8 text file as read from its bytes (415 FILE_TYPE_NOT_ALLOWED). It does not send the review: a review already sent shows it to the talebe at once, one not sent yet when it is. Written to `audit_log` as `submission.review_file_upload`.",
+    operationId: "addSubmissionReviewFile",
+  })
+  @ApiConsumes("multipart/form-data")
+  @ApiBody({
+    schema: {
+      type: "object",
+      properties: { file: { type: "string", format: "binary" } },
+      required: ["file"],
+    },
+  })
+  @ApiCreatedResponse({ type: CourseSubmissionResponse })
+  @ApiBadRequestResponse({ description: "FILE_REQUIRED" })
+  @ApiForbiddenResponse({ description: "No `submission.read` on the course." })
+  @ApiNotFoundResponse({
+    description: "COURSE_NOT_FOUND, SUBMISSION_NOT_FOUND",
+  })
+  @ApiConflictResponse({ description: "SUBMISSION_REVIEW_FILE_LIMIT" })
+  @ApiPayloadTooLargeResponse({ description: "FILE_TOO_LARGE" })
+  @ApiUnsupportedMediaTypeResponse({ description: "FILE_TYPE_NOT_ALLOWED" })
+  @ApiServiceUnavailableResponse({
+    description: "STORAGE_NOT_CONFIGURED, STORAGE_UNAVAILABLE",
+  })
+  @Authz(PERMISSIONS.SUBMISSION_READ, byExistingCourse)
+  @UseInterceptors(UploadGateInterceptor)
+  @Post("courses/:id/submissions/:submissionId/review/files")
+  addReviewFile(
+    @Req() request: AuthorizedRequest,
+    @Param("id", ParseUUIDPipe) id: string,
+    @Param("submissionId", ParseUUIDPipe) submissionId: string,
+    @UploadedFile() file: Express.Multer.File | undefined
+  ): Promise<CourseSubmissionResponse> {
+    return this.service.addReviewFile(request.user, id, submissionId, file);
+  }
+
+  @ApiOperation({
+    summary: "Remove a file from the review of a talebe's homework",
+    description:
+      "`submission.read` on the course. The file is removed from storage too, and the removal written to `audit_log` as `submission.review_file_delete`.",
+    operationId: "deleteSubmissionReviewFile",
+  })
+  @ApiNoContentResponse()
+  @ApiForbiddenResponse({ description: "No `submission.read` on the course." })
+  @ApiNotFoundResponse({
+    description:
+      "COURSE_NOT_FOUND, SUBMISSION_NOT_FOUND, SUBMISSION_FILE_NOT_FOUND",
+  })
+  @Authz(PERMISSIONS.SUBMISSION_READ, byExistingCourse)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Delete("courses/:id/submissions/:submissionId/review/files/:fileId")
+  removeReviewFile(
+    @Req() request: AuthorizedRequest,
+    @Param("id", ParseUUIDPipe) id: string,
+    @Param("submissionId", ParseUUIDPipe) submissionId: string,
+    @Param("fileId", ParseUUIDPipe) fileId: string
+  ): Promise<void> {
+    return this.service.removeReviewFile(
+      request.user,
+      id,
+      submissionId,
+      fileId
+    );
+  }
+
+  @ApiOperation({
+    summary: "Download a review file, as the course's staff",
+    description: `\`submission.read\` on the course. Written to \`audit_log\` as \`submission.review_file_download\` before the file is sent. ${DOWNLOAD_HEADERS}`,
+    operationId: "downloadCourseSubmissionReviewFile",
+  })
+  @ApiProduces("application/octet-stream")
+  @ApiOkResponse({ schema: { type: "string", format: "binary" } })
+  @ApiForbiddenResponse({ description: "No `submission.read` on the course." })
+  @ApiNotFoundResponse({
+    description: "COURSE_NOT_FOUND, SUBMISSION_FILE_NOT_FOUND",
+  })
+  @ApiServiceUnavailableResponse({
+    description: "STORAGE_NOT_CONFIGURED, STORAGE_UNAVAILABLE",
+  })
+  @Authz(PERMISSIONS.SUBMISSION_READ, byExistingCourse)
+  @Get("courses/:id/submissions/review-files/:fileId")
+  downloadReviewFile(
+    @Req() request: AuthorizedRequest,
+    @Param("id", ParseUUIDPipe) id: string,
+    @Param("fileId", ParseUUIDPipe) fileId: string,
+    @Res({ passthrough: true }) response: Response
+  ): Promise<StreamableFile> {
+    return this.service.downloadReviewFileForStaff(
+      request.user,
+      id,
+      fileId,
+      response
+    );
   }
 }

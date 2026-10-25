@@ -6,6 +6,7 @@ DELETE /courses/:id/enrollment -> course.view on course
 DELETE /courses/:id/enrollments/:userId -> enrollment.decide on course
 DELETE /courses/:id/nazirs/:postId -> course_nazir.assign on byExistingCourse
 DELETE /courses/:id/partner-codes/:partner/:code -> course.partner_codes on byExistingCourse
+DELETE /courses/:id/submissions/:submissionId/review/files/:fileId -> submission.read on byExistingCourse
 DELETE /flashcard-deck-label/delete/:id -> no AuthzGuard
 DELETE /flashcard-label/delete/:id -> no AuthzGuard
 DELETE /flashcard/cards/:id -> deck.manage_cards on custom
@@ -55,6 +56,7 @@ GET /courses/:id/resources/:resourceId/file -> course.view_details on byExisting
 GET /courses/:id/stats -> course.staff_read on byExistingCourse
 GET /courses/:id/submissions -> submission.read on byExistingCourse
 GET /courses/:id/submissions/files/:fileId -> submission.read on byExistingCourse
+GET /courses/:id/submissions/review-files/:fileId -> submission.read on byExistingCourse
 GET /courses/enrolled -> exempt
 GET /flashcard-deck-label/:id -> no AuthzGuard
 GET /flashcard-deck-label/getStats/:id -> no AuthzGuard
@@ -98,6 +100,7 @@ GET /lessons/:id/notes -> course.view on byLessonCourse
 GET /lessons/:id/resources/:resourceId/file -> course.view_details on byLessonCourse
 GET /lessons/:id/submission -> course.view on byLessonCourse
 GET /lessons/:id/submission/files/:fileId -> course.view on byLessonCourse
+GET /lessons/:id/submission/review-files/:fileId -> course.view on byLessonCourse
 GET /madrasahs -> madrasah.view on madrasah (public)
 GET /madrasahs/:id -> madrasah.view on byExistingMadrasah (public)
 GET /madrasahs/:id/archive -> madrasah.course_hide | madrasah.hide | platform.madrasah_edit | madrasah.settings_edit on byExistingMadrasah
@@ -191,6 +194,7 @@ POST /courses/:id/nazirs -> course_nazir.assign on byExistingCourse
 POST /courses/:id/partner-codes -> course.partner_codes on byExistingCourse
 POST /courses/:id/resources/files -> course.edit on byExistingCourse
 POST /courses/:id/restore -> course.hide | madrasah.course_hide | platform.course_hide on byExistingCourse
+POST /courses/:id/submissions/:submissionId/review/files -> submission.read on byExistingCourse
 POST /decks/:id/hide -> no AuthzGuard
 POST /flashcard-deck-label/create -> no AuthzGuard
 POST /flashcard-deck-label/labeling -> no AuthzGuard
@@ -253,6 +257,7 @@ PUT /courses/:id -> course.edit on course
 PUT /courses/:id/muderris -> course.open_standalone | madrasah.muderris_manage on course
 PUT /courses/:id/muderris/:userId/unvan -> course.settings on course
 PUT /courses/:id/progress -> course.view_details on course
+PUT /courses/:id/submissions/:submissionId/review -> submission.read on byExistingCourse
 PUT /flashcard/cards/:id -> deck.manage_cards on custom
 PUT /flashcard/cards/progress -> exempt
 PUT /flashcard/decks/:id -> deck.manage_private on flashcard-deck

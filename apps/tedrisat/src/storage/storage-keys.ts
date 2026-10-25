@@ -77,6 +77,26 @@ export function submissionFileKey(
   ].join("/");
 }
 
+/** A file the course team returns with its review of a talebe's homework. */
+export function submissionReviewFileKey(
+  prefix: string,
+  courseId: string,
+  lessonId: string,
+  userId: string
+): string {
+  return [
+    part("prefix", prefix, PREFIX),
+    "courses",
+    id("courseId", courseId),
+    "lessons",
+    id("lessonId", lessonId),
+    "submissions",
+    id("userId", userId),
+    "review",
+    randomUUID(),
+  ].join("/");
+}
+
 /** A file of the homework a müderris set on a celse. */
 export function lessonAssignmentFileKey(
   prefix: string,

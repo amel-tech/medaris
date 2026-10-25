@@ -504,6 +504,10 @@
         "body": "أُضيف تسجيل درس إلى جلسة {courseTitle} المقررة في {sessionAt}.",
         "bodyNoSession": "أُضيف تسجيل درس إلى {courseTitle}."
       },
+      "SUBMISSION_REVIEWED": {
+        "title": "قُيِّم واجبك",
+        "body": "قُيِّم الواجب الذي سلّمته في جلسة {sessionLabel} من درس {courseTitle}."
+      },
       "ENROLLMENT_APPROVED": {
         "title": "تمت الموافقة على طلبك",
         "body": "تمت الموافقة على تسجيلك في {courseTitle}."
