@@ -41,7 +41,6 @@
     "@nestjs/testing": "catalog:",
     "@swc/cli": "catalog:",
     "@swc/core": "catalog:",
-    "@types/express": "catalog:",
     "@types/node": "catalog:",
     "@types/supertest": "catalog:",
     "@vitest/coverage-v8": "catalog:",

@@ -159,7 +159,7 @@ function findings(result, policy) {
         severity: advisory.severity,
         name: advisory.module_name,
         version: finding.version,
-        patched: advisory.patched_versions,
+        patched: advisory.patched_versions ?? "none",
         dev: finding.dev,
         paths: shortestFirst(finding.paths),
       });
