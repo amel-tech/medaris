@@ -41,8 +41,10 @@ nodes:
   chosenTitle: { type: text, component: Heading, role: heading, text: { key: Appoint.chosenTitle }, in: [picked, appointing], source: "apps/nazar/features/nazirs/components/appoint-nazir.tsx:167" }
   unpick: { type: action, component: Button, role: button, intent: secondary, name: { key: Appoint.remove }, in: [picked, appointing], disabledIn: [appointing], emits: UNPICK, source: "apps/nazar/features/nazirs/components/appoint-nazir.tsx:182" } # an icon button, named only by aria-label
   already: { type: status, component: Status, role: status, text: { key: Appoint.already }, in: [picked], when: "target == 'nazir'", source: "apps/nazar/features/nazirs/components/appoint-nazir.tsx:192" }
-  appointFailed: { type: alert, component: Alert, role: alert, text: { key: Appoint.failedTitle }, in: [picked], when: "notice == 'selfGrant'", source: "apps/nazar/features/nazirs/components/appoint-nazir.tsx:110" } # a toast
+  appointFailed: { type: alert, component: Alert, role: alert, text: { key: Appoint.failedTitle }, in: [picked], when: "notice in ['selfGrant', 'unknownAccount', 'barred']", source: "apps/nazar/features/nazirs/components/appoint-nazir.tsx:110" } # a toast
   appointFailedSelf: { type: text, component: Text, text: { key: Problems.selfGrant }, in: [picked], when: "notice == 'selfGrant'" }
+  appointFailedUnknown: { type: text, component: Text, text: { key: Problems.unknownAccount }, in: [picked], when: "notice == 'unknownAccount'", source: "apps/nazar/features/nazirs/nazirs.ts:368" }
+  appointFailedBarred: { type: text, component: Text, text: { key: Problems.barredFromMadrasah }, in: [picked], when: "notice == 'barred'", source: "apps/nazar/features/nazirs/nazirs.ts:370" }
   appointCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: Appoint.cancel }, in: [appointDialog, searching, picked, appointing], emits: CANCEL, source: "apps/nazar/features/nazirs/components/appoint-nazir.tsx:149" }
   appointSubmit: { type: action, component: Button, role: button, intent: confirm, text: { key: Appoint.submit }, in: [appointDialog, searching, picked, appointing], disabledIn: [appointDialog, searching, appointing], emits: SUBMIT, source: "apps/nazar/features/nazirs/components/appoint-nazir.tsx:150" } # off until someone not yet a nazır is chosen
 

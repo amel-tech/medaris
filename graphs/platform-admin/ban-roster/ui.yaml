@@ -32,6 +32,8 @@ nodes:
   liftedBody: { type: text, component: Text, text: { key: LiftDialog.liftedBody, params: { name: row.name } }, in: [roster], when: "notice == 'lifted'" }
   approvedToast: { type: status, component: Status, role: status, text: { key: ApplicationsPage.approved }, in: [roster], when: "notice == 'approved'", source: apps/nizam/features/applications/use-decisions.ts:77 }
   approvedBody: { type: text, component: Text, text: { key: ApplicationsPage.approvedBody, params: { name: row.name, course: course.title } }, in: [roster], when: "notice == 'approved'" }
+  approveFailed: { type: alert, component: Alert, role: alert, text: { key: ApplicationsPage.actionFailed }, in: [roster], when: "notice == 'approveRefused'", source: apps/nizam/features/applications/use-decisions.ts:60 } # a toast that stays until closed
+  approveFailedWhy: { type: text, component: Text, text: { key: ApplicationsPage.errorForbidden }, in: [roster], when: "notice == 'approveRefused'", source: apps/nizam/features/applications/present.ts:183 } # BAN_ACTIVE is a 403, read as no permission (PLATFORM-ADMIN-19)
 
   # Talebeyi yasakla
   banDialog: { type: page, component: Page, role: dialog, name: { labelledBy: banTitle }, in: [banDialog, creating], initialFocus: reasonField, source: apps/nizam/features/bans/components/ban-dialog.tsx:123 }

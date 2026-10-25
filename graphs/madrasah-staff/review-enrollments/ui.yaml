@@ -34,6 +34,8 @@ nodes:
   approvedBody: { type: text, component: Text, text: { key: Pano.applications.approvedBody }, in: [applications], when: "notice == 'approved'" }
   rejectedToast: { type: status, component: Status, role: status, text: { key: Pano.applications.rejected }, in: [applications], when: "notice == 'rejected'" }
   goneToast: { type: status, component: Status, role: status, text: { key: Pano.applications.errors.gone }, in: [applications], when: "notice == 'gone'", source: "apps/nazar/features/pano/pano.ts:249" } # tone info
+  failedToast: { type: alert, component: Alert, role: alert, text: { key: Pano.applications.failedTitle }, in: [applications], when: "notice == 'failed'", source: "apps/nazar/features/enrolments/components/enrolments-tabs.tsx:97" } # tone error
+  failedBody: { type: text, component: Text, text: { key: Problems.actionGeneric }, in: [applications], when: "notice == 'failed'", source: "apps/nazar/features/pano/pano.ts:253" } # BAN_ACTIVE has no words of its own
 
   rejectDialog: { type: page, component: Page, role: alertdialog, name: { labelledBy: rejectTitle }, in: [rejectQuestion], initialFocus: rejectCancel, source: "apps/nazar/features/enrolments/components/enrolments-tabs.tsx:277" }
   rejectTitle: { type: text, component: Heading, role: heading, text: { key: Pano.applications.rejectTitle }, in: [rejectQuestion], source: "apps/nazar/features/enrolments/components/enrolments-tabs.tsx:282" }

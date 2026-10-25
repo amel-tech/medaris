@@ -2,6 +2,8 @@
 # routes behind them, as the code does it on origin/main ce47fce8 (capture of 25 Oct 2026). The page draws the section
 # for an ENROLLED or COMPLETED talebe whose content is open, on a celse that is not cancelled (medaris.session); what
 # the course team does while the page stays open is drawn as events, which the page does not see until it asks.
+# Since #349 (4b1f9f78) the course team's review is drawn under Ödevim; the elements that came with it point at the
+# lines on main 4b1f9f78, the rest at ce47fce8.
 schema: delurio-graph/0
 kind: flow
 id: medaris.homework
@@ -13,14 +15,16 @@ summary: >-
   The section shows what the müderris set on the celse and, under it, the talebe's own homework: up to ten files of
   25 MB each and an optional note, handed in when it holds either. There is no deadline and no grade. The talebe adds
   and removes files and saves the note while they may write as a talebe; the API takes them on any celse that is not
-  hidden, a cancelled one included.
+  hidden, a cancelled one included. Once the course team sends its review, it shows under Ödevim with its note and
+  corrected files; the talebe may still change the homework, and the review then says it answers the earlier one.
 
 scope:
   shows: the homework section from the moment the celse page draws it, for an active talebe
   world: open
   outOfView:
-    - "the staff's Ödevler in nazar (GET /courses/:id/submissions) and the staff download"
-    - "downloading a file of the homework or of the assignment (plain links through tedris's file routes)"
+    - "the staff's Ödevler in nazar (GET /courses/:id/submissions), the staff download, and writing and sending the review"
+    - "the SUBMISSION_REVIEWED notification that links to the celse page"
+    - "downloading a file of the homework, of the assignment or of the review (plain links through tedris's file routes)"
     - "several files chosen at once: each is checked and sent one after the other, as one add is drawn here"
     - "a homework emptied earlier on a celse with no homework set: its section still shows; the flow starts from no row"
 
@@ -51,6 +55,14 @@ context:
   celse:
     values: [live, cancelled, hidden]
     initial: live
+  review: # files the team adds before sending are not part of the talebe's answer
+    values: [none, sent]
+    initial: any
+    say: { none: "the course team has sent no review", sent: "the course team sent its review" }
+  changedSince: # updatedAt after reviewedAt
+    values: [false, true]
+    initial: any
+    say: { "true": "the homework changed after the review was sent", "false": "the homework has not changed since the review" }
   notice:
     values: [none, added, removed, noteSaved, refusedHere, refusedThere, forbidden, unavailable, notFound, failed, noteFailed]
     initial: none
@@ -71,16 +83,18 @@ guards:
   showNoteFailed: "notice == 'noteFailed'"
   pendingWarning: "assignment and not handedIn"
   addOpen: "files != 'full'"
+  reviewShown: "review == 'sent'"
+  reviewAnswersEarlier: "review == 'sent' and changedSince"
 
 effects:
-  firstFile: { set: { files: some, notice: added }, havoc: [lastSlot] }
-  tenthFile: { set: { files: full, notice: added }, havoc: [lastSlot] }
-  anotherFile: { set: { files: some, notice: added }, havoc: [lastSlot] }
-  lastRemoved: { set: { files: none, notice: removed }, havoc: [lastSlot] }
-  oneRemoved: { set: { files: some, notice: removed }, havoc: [lastSlot] }
+  firstFile: { set: { files: some, notice: added, changedSince: true }, havoc: [lastSlot] }
+  tenthFile: { set: { files: full, notice: added, changedSince: true }, havoc: [lastSlot] }
+  anotherFile: { set: { files: some, notice: added, changedSince: true }, havoc: [lastSlot] }
+  lastRemoved: { set: { files: none, notice: removed, changedSince: true }, havoc: [lastSlot] }
+  oneRemoved: { set: { files: some, notice: removed, changedSince: true }, havoc: [lastSlot] }
   removedButBack: { set: { notice: removed } } # 404 is taken as removed; the quiet re-read shows the file again
-  noteSaved: { set: { note: true, notice: noteSaved } }
-  noteCleared: { set: { note: false, notice: noteSaved } }
+  noteSaved: { set: { note: true, notice: noteSaved, changedSince: true } }
+  noteCleared: { set: { note: false, notice: noteSaved, changedSince: true } }
   refusedHere: { set: { notice: refusedHere } }
   refusedThere: { set: { notice: refusedThere } }
   forbidden: { set: { notice: forbidden } }
@@ -93,6 +107,7 @@ effects:
   passivated: { set: { seat: passive, notice: none } }
   celseCancelled: { set: { celse: cancelled, notice: none } }
   celseHidden: { set: { celse: hidden, notice: none } }
+  reviewSent: { set: { review: sent, changedSince: false } }
 
 failures:
   loading:
@@ -157,6 +172,8 @@ states:
     description: >-
       The homework set, "Teslim edildi" or "Teslim edilmedi" beside the heading once it is known, the files handed in,
       the file field (disabled at ten), the note and when it last changed. Who reads it: the hoca and the course team.
+      Under it, once sent, "Hocanın değerlendirmesi": who sent it and when, a notice when the homework changed since,
+      the note and the corrected files.
     source: apps/tedris/features/courses/components/session-homework.tsx:240
     on:
       ADD_FILE: { guard: addOpen, target: uploading, say: "they choose a file within the size", source: "apps/tedris/features/courses/components/session-homework.tsx:401" }
@@ -168,6 +185,7 @@ states:
       PASSIVATED: { guard: "seat != 'passive'", target: ready, effect: [passivated], say: "meanwhile the course goes into a passive scope", source: "libs/common/src/authz/effective-permissions.ts:337" }
       CELSE_CANCELLED: { guard: "celse == 'live'", target: ready, effect: [celseCancelled], say: "meanwhile the müderris cancels the celse", source: "apps/tedrisat/src/course/course.service.ts:1198" }
       CELSE_HIDDEN: { guard: "celse != 'hidden'", target: ready, effect: [celseHidden], say: "meanwhile the celse or its week is hidden", source: "apps/tedrisat/src/course/course.service.ts:1311" }
+      TEAM_REVIEWS: { target: ready, effect: [reviewSent], say: "meanwhile the course team sends its review, or sends it again; the page shows it when it next reads the homework", source: "apps/tedrisat/src/lesson-submission/lesson-submission.repository.ts:696" }
       NAVIGATE: { target: left, say: "they leave the page" }
 
   uploading:

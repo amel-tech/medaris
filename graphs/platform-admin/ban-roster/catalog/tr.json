@@ -1,8 +1,10 @@
 {
+  "ApplicationsPage.actionFailed": "İşlem yapılamadı",
   "ApplicationsPage.approve": "Onayla",
   "ApplicationsPage.approveLabel": "Onayla: {name}, {course}",
   "ApplicationsPage.approved": "Başvuru onaylandı",
   "ApplicationsPage.approvedBody": "{name}, {course} dersine kaydoldu.",
+  "ApplicationsPage.errorForbidden": "Bu başvuruya karar verme yetkiniz yok.",
   "BanDialog.cancel": "Vazgeç",
   "BanDialog.failed": "Yasak konamadı",
   "BanDialog.intro": "Yasak hemen geçerli olur. Talebe seçtiğiniz kapsamdaki celselere, ders kayıtlarına ve içeriğe erişemez; bu celseler takviminden düşer. Yeniden başvuramaz, dersten de ayrılamaz.",

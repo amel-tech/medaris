@@ -43,9 +43,11 @@
   "Nazirs.intro": "Medrese nazırs work only with the permissions that you or a Medaris nazım with permission give them, and they cannot pass on a permission they received.",
   "Nazirs.title": "Medrese nazırs",
   "Problems.actionGeneric": "Something went wrong. Try again in a moment.",
+  "Problems.barredFromMadrasah": "This person is barred from this medrese or one of its courses and cannot be made its nazır.",
   "Problems.forbidden": "You are not allowed to open this page. If you need access, ask the medrese's head müderris.",
   "Problems.forbiddenTitle": "You do not have access to this page",
   "Problems.selfGrant": "You cannot give yourself a role or a permission; taking over one that was given to you counts as that.",
+  "Problems.unknownAccount": "This account was not found.",
   "Shell.loadingLabel": "Loading",
   "Shell.retry": "Try again"
 }

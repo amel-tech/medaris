@@ -1,6 +1,7 @@
 # Medaris, captured at origin/main ce47fce8: the "Başvurular" tab of a course's "Talebeler" in nazar
 # (/ders/:id/talebeler) and the approve and reject routes behind it. "Toplu talebe ekle" on the same page is
-# medaris.bulk-add-talebe, which this flow waits for.
+# medaris.bulk-add-talebe, which this flow waits for. Since #369 (89a2d8f5) an approval refuses a barred applicant; the
+# elements that changed with it point at the lines on main 4b1f9f78, the rest at ce47fce8.
 schema: delurio-graph/0
 kind: flow
 id: medaris.review-enrollments
@@ -10,8 +11,8 @@ ui: medaris.review-enrollments
 title: Decide on applications to a course
 summary: >-
   A holder of enrollment.decide approves or rejects each waiting application; rejecting asks once first and takes no
-  reason. An approved talebe holds a seat at once and is told; a rejected application is deleted, the talebe is told,
-  and may apply again. Whoever reads the roster without enrollment.decide sees the applications with no buttons.
+  reason. An approved talebe holds a seat at once and is told; a barred applicant is refused and stays waiting; a
+  rejected application is deleted, the talebe is told, and may apply again. Whoever reads the roster without enrollment.decide sees the applications with no buttons.
 
 scope:
   shows: the Başvurular tab, the rejection question and the two routes
@@ -42,8 +43,8 @@ context:
     initial: any
     say: { none: "the application still waits when the decision arrives", approved: "another member of the staff approved it meanwhile", withdrawn: "the talebe withdrew it, or it was rejected, meanwhile" }
   asked: { values: [false, true], initial: false }
-  notice: { values: [none, approved, rejected, gone], initial: none }
-  decided: { values: [none, approved, approvedBarred, rejected], initial: none }
+  notice: { values: [none, approved, rejected, gone, failed], initial: none }
+  decided: { values: [none, approved, rejected], initial: none }
 
 guards:
   mayDecide: "holds == 'decide' and applicants == 'some'"
@@ -53,13 +54,13 @@ effects:
   confirmed: { set: { asked: true } }
   unask: { set: { asked: false } }
   approvedNow: { set: { decided: approved, notice: approved } }
-  approvedBarredNow: { set: { decided: approvedBarred, notice: approved } }
   rejectedNow: { set: { decided: rejected, notice: rejected } }
   noticeGone: { set: { notice: gone } }
+  noticeFailed: { set: { notice: failed } }
   reread: { havoc: [listRead] }
 
 failures:
-  approving: { from: approveEnrollment, gone: [ENROLLMENT_NOT_FOUND, ENROLLMENT_STATE_CONFLICT] }
+  approving: { from: approveEnrollment, gone: [ENROLLMENT_NOT_FOUND, ENROLLMENT_STATE_CONFLICT], barred: [BAN_ACTIVE] }
   rejecting: { from: rejectEnrollment, gone: [ENROLLMENT_NOT_FOUND] }
 
 main:
@@ -117,16 +118,17 @@ states:
     title: Approve the application
     description: >-
       POST /courses/:id/enrollments/:userId/approve, behind @Authz(enrollment.decide). A seat already held is answered
-      as it is; a completed one is refused; a PENDING or REVOKED row becomes ENROLLED, conditional on the status read.
-      No ban of the applicant is read. The talebe gets an ENROLLMENT_APPROVED notification and the calendar sweep runs.
+      as it is; a completed one is refused; an open ban on the applicant is refused with 403 BAN_ACTIVE; a PENDING or
+      REVOKED row becomes ENROLLED, conditional on the status read. The talebe gets an ENROLLMENT_APPROVED notification
+      and the calendar sweep runs.
     invoke: { action: approveEnrollment }
-    source: apps/tedrisat/src/course/course.service.ts:1621
+    source: apps/tedrisat/src/course/course.service.ts:1626
     on:
       FAIL.gone: { guard: "meanwhile == 'withdrawn'", target: applications, effect: [noticeGone], say: "404 ENROLLMENT_NOT_FOUND: an info toast; the row leaves the list", source: "apps/nazar/features/enrolments/components/enrolments-tabs.tsx:98" }
+      FAIL.barred: { guard: "meanwhile == 'none' and applicantBarred", target: applications, effect: [noticeFailed], say: "403 BAN_ACTIVE: an error toast in the generic words; the row stays in the list", source: "apps/tedrisat/src/course/course.service.ts:1638" }
       DONE:
-        - { guard: "meanwhile == 'approved'", target: applications, effect: [approvedNow], say: "already a seat: the row as it is, no second notification", source: "apps/tedrisat/src/course/course.service.ts:1629" }
-        - { guard: "meanwhile == 'none' and applicantBarred", target: applications, effect: [approvedBarredNow], say: "the barred applicant takes a seat all the same", source: "apps/tedrisat/src/course/course.service.ts:1635" }
-        - { guard: "meanwhile == 'none'", target: applications, effect: [approvedNow], say: "a toast says the talebe is in; the row leaves the list", source: "apps/nazar/features/enrolments/components/enrolments-tabs.tsx:83" }
+        - { guard: "meanwhile == 'approved'", target: applications, effect: [approvedNow], say: "already a seat: the row as it is, no second notification", source: "apps/tedrisat/src/course/course.service.ts:1634" }
+        - { guard: "meanwhile == 'none' and not applicantBarred", target: applications, effect: [approvedNow], say: "a toast says the talebe is in; the row leaves the list", source: "apps/nazar/features/enrolments/components/enrolments-tabs.tsx:83" }
 
   rejecting:
     title: Reject the application
@@ -156,4 +158,5 @@ assertions:
   - { id: only-deciders-decide, never: "decided != 'none' and holds != 'decide'", say: "Nobody without enrollment.decide approves or rejects", source: "apps/tedrisat/src/course/course.controller.ts:632" }
   - { id: reader-sends-nothing, never: "state in ['approving', 'rejecting'] and holds == 'readOnly'", say: "A reader of the roster who may not decide never sends a decision", source: "apps/nazar/features/enrolments/components/enrolments-tabs.tsx:190" }
   - { id: reject-asks-first, never: "state == 'rejecting' and not asked", say: "An application is rejected only after the question was answered", source: "apps/nazar/features/enrolments/components/enrolments-tabs.tsx:277" }
+  - { id: barred-never-approved, never: "decided == 'approved' and applicantBarred and meanwhile == 'none'", say: "An applicant a ban bars is never approved into a seat", source: "apps/tedrisat/src/course/course.service.ts:1638" }
   - { id: no-reject-of-a-seat, never: "decided == 'rejected' and meanwhile == 'approved'", say: "A seat someone granted meanwhile is never rejected away", source: "apps/tedrisat/src/course/course.service.ts:1663" }

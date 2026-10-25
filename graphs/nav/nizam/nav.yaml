@@ -201,14 +201,6 @@ pages:
     title: Tedris
     kind: external
     frame: elsewhere
-  offHost:
-    route: "//talepler/…, //pasif-kapsamlar, //yasaklamalar, //kosks, //medreseler"
-    title: an address on another host
-    kind: missing
-    frame: elsewhere
-    evidence: >-
-      features/dashboard/components/medaris-home.tsx:49 sets base to "/", so every `${base}/…` link of the Medaris home page starts
-      with "//" and the browser reads it as another host (https://talepler/…)
   tedrisSession:
     route: "Tedris /courses/{id}/sessions/{id}"
     title: a session address Tedris does not have
@@ -301,19 +293,19 @@ entries:
   - { from: frame:shell, to: account, how: user, label: Shell.userLink, when: signedIn, source: apps/nizam/components/shell/shell-frame.tsx:164 }
 
   # the dashboard of a başnazım and a Medaris nazımı (features/dashboard/components/medaris-home.tsx). A section is drawn when the API
-  # sends it (apps/tedrisat/src/nizam-dashboard/dashboard-sections.ts:23). Every link is `${base}/…` with base "/", so each one is
-  # "//…" and leaves for another host: they all go to offHost. The page each was meant to open is in the comment.
-  - { from: start, to: offHost, how: link, label: Dashboard.seeAll, back: true, when: "variant == 'chief' or (variant == 'medaris' and 'platform.kosk_application_decide' in held)", source: apps/nizam/features/dashboard/components/medaris-home.tsx:65 } # meant: platformKoskApplications
-  - { from: start, to: offHost, how: link, label: Dashboard.review, when: "variant == 'chief' or (variant == 'medaris' and 'platform.kosk_application_decide' in held)", data: true, source: apps/nizam/features/dashboard/components/medaris-home.tsx:91 } # meant: platformKoskApplications?secili=
-  - { from: start, to: offHost, how: link, label: Dashboard.seeAll, back: true, when: "variant == 'chief' or (variant == 'medaris' and 'platform.deck_publish' in held)", source: apps/nizam/features/dashboard/components/medaris-home.tsx:109 } # meant: deckRequests
-  - { from: start, to: offHost, how: link, label: Dashboard.review, when: "variant == 'chief' or (variant == 'medaris' and 'platform.deck_publish' in held)", data: true, source: apps/nizam/features/dashboard/components/medaris-home.tsx:135 } # meant: deckRequests?secili=
-  - { from: start, to: offHost, how: link, label: Dashboard.seeAll, back: true, when: "variant == 'chief' or (variant == 'medaris' and 'platform.inactive_scopes_manage' in held)", source: apps/nizam/features/dashboard/components/medaris-home.tsx:159 } # meant: inactive
-  - { from: start, to: offHost, how: button, label: the assign button of a passive scope, when: "variant == 'chief' or (variant == 'medaris' and 'platform.inactive_scopes_manage' in held)", data: true, source: apps/nizam/features/dashboard/components/medaris-home.tsx:190 } # meant: inactive
-  - { from: start, to: offHost, how: link, label: Dashboard.review, when: "variant == 'chief' or (variant == 'medaris' and ('platform.ban_scoped' in held or 'platform.ban_account' in held))", data: true, source: apps/nizam/features/dashboard/components/medaris-home.tsx:232 } # meant: bans
-  - { from: start, to: offHost, how: link, label: Dashboard.bans.goTo, when: "variant == 'chief' or (variant == 'medaris' and ('platform.ban_scoped' in held or 'platform.ban_account' in held))", source: apps/nizam/features/dashboard/components/medaris-home.tsx:244 } # meant: bans
-  - { from: start, to: offHost, how: link, label: Dashboard.counts.goKosks, when: "variant == 'chief'", source: apps/nizam/features/dashboard/components/medaris-home.tsx:267 } # meant: kosks
-  - { from: start, to: offHost, how: link, label: Dashboard.counts.goMadrasahs, when: "variant == 'chief'", source: apps/nizam/features/dashboard/components/medaris-home.tsx:279 } # meant: madrasahs
-  - { from: start, to: offHost, how: button, label: Dashboard.openKosk, when: "variant == 'chief'", source: apps/nizam/features/dashboard/components/medaris-home.tsx:310 } # meant: kosks?ac=1
+  # sends it (apps/tedrisat/src/nizam-dashboard/dashboard-sections.ts:23). Since #370 (b83c520a) every link is a plain path; the
+  # lines below point at main 4b1f9f78.
+  - { from: start, to: platformKoskApplications, how: link, label: Dashboard.seeAll, back: true, when: "variant == 'chief' or (variant == 'medaris' and 'platform.kosk_application_decide' in held)", source: apps/nizam/features/dashboard/components/medaris-home.tsx:64 }
+  - { from: start, to: platformKoskApplications, how: link, label: Dashboard.review, when: "variant == 'chief' or (variant == 'medaris' and 'platform.kosk_application_decide' in held)", data: true, source: apps/nizam/features/dashboard/components/medaris-home.tsx:90 } # ?secili=
+  - { from: start, to: deckRequests, how: link, label: Dashboard.seeAll, back: true, when: "variant == 'chief' or (variant == 'medaris' and 'platform.deck_publish' in held)", source: apps/nizam/features/dashboard/components/medaris-home.tsx:108 }
+  - { from: start, to: deckRequests, how: link, label: Dashboard.review, when: "variant == 'chief' or (variant == 'medaris' and 'platform.deck_publish' in held)", data: true, source: apps/nizam/features/dashboard/components/medaris-home.tsx:134 } # ?secili=
+  - { from: start, to: inactive, how: link, label: Dashboard.seeAll, back: true, when: "variant == 'chief' or (variant == 'medaris' and 'platform.inactive_scopes_manage' in held)", source: apps/nizam/features/dashboard/components/medaris-home.tsx:158 }
+  - { from: start, to: inactive, how: button, label: the assign button of a passive scope, when: "variant == 'chief' or (variant == 'medaris' and 'platform.inactive_scopes_manage' in held)", data: true, source: apps/nizam/features/dashboard/components/medaris-home.tsx:189 }
+  - { from: start, to: bans, how: link, label: Dashboard.review, when: "variant == 'chief' or (variant == 'medaris' and ('platform.ban_scoped' in held or 'platform.ban_account' in held))", data: true, source: apps/nizam/features/dashboard/components/medaris-home.tsx:231 }
+  - { from: start, to: bans, how: link, label: Dashboard.bans.goTo, when: "variant == 'chief' or (variant == 'medaris' and ('platform.ban_scoped' in held or 'platform.ban_account' in held))", source: apps/nizam/features/dashboard/components/medaris-home.tsx:243 }
+  - { from: start, to: kosks, how: link, label: Dashboard.counts.goKosks, when: "variant == 'chief'", source: apps/nizam/features/dashboard/components/medaris-home.tsx:266 }
+  - { from: start, to: madrasahs, how: link, label: Dashboard.counts.goMadrasahs, when: "variant == 'chief'", source: apps/nizam/features/dashboard/components/medaris-home.tsx:278 }
+  - { from: start, to: kosks, how: button, label: Dashboard.openKosk, when: "variant == 'chief'", source: apps/nizam/features/dashboard/components/medaris-home.tsx:308 } # ?ac=1
 
   # where the köşk entry page sends a person (app/kosks/[id]/page.tsx, features/kosks/kosk-entry.ts): a köşk nazımı to Dersler, the
   # başnazım or a holder of platform.kosk_edit stays on the management view, a holder of platform.hosting_grant (and not kosk_edit)
@@ -423,7 +415,7 @@ goals:
   - { id: appeals, say: Decide on the appeals, page: appeals, for: [chief], within: 1 }
   - { id: youtube, say: Change the YouTube connection, page: youtube, for: [chief], within: 1 }
   # ITEM_PERMISSIONS lists a permission for each of these four items, and tedrisat serves each page to its holder, but the menu of a
-  # Medaris nazımı never draws them (apps/nizam/lib/shell-nav.ts:178-187, ITEM_PERMISSIONS at 301-305); the dashboard's passive-scopes card was a way to inactive until its links broke
+  # Medaris nazımı never draws them (apps/nizam/lib/shell-nav.ts:178-187, ITEM_PERMISSIONS at 301-305); the dashboard's passive-scopes card is a way to inactive again since #370
   - { id: audit, say: Read the audit log, page: auditLog, for: [chief, medarisAll], within: 1 }
   - { id: inactive, say: Manage the inactive scopes, page: inactive, for: [chief, medarisAll], within: 1 }
   - { id: platformSettings, say: Edit the platform settings, page: platformSettings, for: [chief, medarisAll], within: 1 }

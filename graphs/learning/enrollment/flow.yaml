@@ -1,6 +1,8 @@
 # A talebe's enrollment in a course, on the course page of tedris (/courses/:courseId) and in the tedrisat routes behind
 # it, as the code does it on origin/main ce47fce8 (capture of 25 Oct 2026). The course team's decisions are drawn as
 # events: the talebe sees each one on the next load of the page, which is why every one of them goes back to `opening`.
+# Since #369 (89a2d8f5) the course team's approval, reinstatement and reopening refuse a barred talebe; the elements
+# that changed with it point at the lines on main 4b1f9f78, the rest at ce47fce8.
 schema: delurio-graph/0
 kind: flow
 id: medaris.enrollment
@@ -13,7 +15,7 @@ summary: >-
   signed-in caller with no enrollment enrols or applies, and the server alone decides whether the request waits for
   approval. A waiting request can be withdrawn and a seat can be left; a completed course cannot. The course team
   approves or rejects a request, adds people by list, completes, reopens or takes a talebe out, and is the only way back
-  in for one it took out.
+  in for one it took out. None of the team's ways seats a talebe a ban bars.
 
 scope:
   shows: the course page's enrollment card for a visitor or a signed-in caller who holds no role in the course
@@ -47,7 +49,7 @@ context:
     initial: any
     say: { "true": "a köşk, platform or medrese policy forces approval", "false": "no policy forces approval" }
   seatFrom: # who made the enrollment the card shows now
-    values: [held, self, approval, bulk, stale]
+    values: [held, self, approval, bulk, reopen, stale]
     initial: held
   notice: # the toast left on the card
     values: [none, enrolled, withdrawn, left, failed, notFound, conflict]
@@ -76,7 +78,7 @@ effects:
   rejectedByTeam: { set: { enrollment: none, seatFrom: approval, notice: none } }
   addedByList: { set: { enrollment: enrolled, seatFrom: bulk, notice: none } }
   completedByTeam: { set: { enrollment: completed, notice: none } }
-  reopenedByTeam: { set: { enrollment: enrolled, notice: none } }
+  reopenedByTeam: { set: { enrollment: enrolled, seatFrom: reopen, notice: none } }
   removedByTeam: { set: { enrollment: revoked, notice: none } }
 
 failures:
@@ -169,7 +171,7 @@ states:
     source: apps/tedris/features/courses/components/course-aside.tsx:329
     on:
       WITHDRAW: { target: withdrawing, say: "they withdraw the request, with no question asked", source: "apps/tedris/features/courses/components/leave-course.tsx:53" }
-      TEAM_APPROVE: { target: opening, effect: [approvedByTeam], say: "the course team approves; no ban is asked", source: "apps/tedrisat/src/course/course.service.ts:1635" }
+      TEAM_APPROVE: { guard: "not barred", target: opening, effect: [approvedByTeam], say: "the course team approves; a barred talebe's request is refused with 403 BAN_ACTIVE and waits", source: "apps/tedrisat/src/course/course.service.ts:1638" }
       TEAM_ADDS: { guard: "not barred", target: opening, effect: [approvedByTeam], say: "the course team's list approves the request", source: "apps/tedrisat/src/course/bulk-enrollment.service.ts:217" }
       TEAM_REJECT: { target: opening, effect: [rejectedByTeam], say: "the course team rejects; the row is deleted", source: "apps/tedrisat/src/course/course.service.ts:1668" }
       NAVIGATE: { target: left, say: "they leave the page" }
@@ -225,7 +227,7 @@ states:
     source: apps/tedris/features/courses/components/course-aside.tsx:226
     on:
       OPEN_SESSION: { target: toSession, say: "they open the next celse", source: "apps/tedris/features/courses/components/course-aside.tsx:257" }
-      TEAM_REOPEN: { target: opening, effect: [reopenedByTeam], say: "the course team reopens it", source: "apps/tedrisat/src/course/course.service.ts:1712" }
+      TEAM_REOPEN: { guard: "not barred", target: opening, effect: [reopenedByTeam], say: "the course team reopens it; for a barred talebe it is refused with 403 BAN_ACTIVE and stays completed", source: "apps/tedrisat/src/course/course.service.ts:1718" }
       NAVIGATE: { target: left, say: "they leave the page" }
 
   revoked:
@@ -235,7 +237,7 @@ states:
     source: apps/tedris/features/courses/components/course-aside.tsx:200
     on:
       BACK: { target: toMyCourses, say: "they go back to Derslerim", source: "apps/tedris/features/courses/components/course-aside.tsx:213" }
-      TEAM_APPROVE: { target: opening, effect: [approvedByTeam], say: "the course team approves the seat back; no ban is asked", source: "apps/tedrisat/src/course/course.service.ts:1635" }
+      TEAM_APPROVE: { guard: "not barred", target: opening, effect: [approvedByTeam], say: "the course team approves the seat back; for a barred talebe it is refused with 403 BAN_ACTIVE", source: "apps/tedrisat/src/course/course.service.ts:1638" }
       NAVIGATE: { target: left, say: "they leave the page" }
 
   toSignIn: { type: final, title: Sign in and come back, source: "apps/tedris/features/courses/components/course-aside.tsx:352" }
@@ -247,6 +249,7 @@ states:
 assertions:
   - { id: barred-never-self-seated, never: "barred and seatFrom == 'self' and enrollment in ['pending', 'enrolled']", say: "A barred talebe never gets a request or a seat on their own", source: "apps/tedrisat/src/course/course.service.ts:1522" }
   - { id: list-skips-barred, never: "barred and seatFrom == 'bulk'", say: "The course team's list never seats a barred talebe", source: "apps/tedrisat/src/course/bulk-enrollment.service.ts:184" }
+  - { id: team-never-seats-barred, never: "barred and seatFrom in ['approval', 'reopen'] and enrollment == 'enrolled'", say: "The course team never seats a barred talebe: not by approving a request, reinstating a seat or reopening a completion", source: "apps/tedrisat/src/course/course.service.ts:1638" }
   - { id: forced-approval-waits, never: "seatFrom == 'self' and enrollment == 'enrolled' and approvalForced", say: "When approval is forced by the course, the köşk, the platform or the medrese, the talebe's own request waits", source: "apps/tedrisat/src/course/course.service.ts:1540" }
   - { id: revoked-never-reapplies, never: "state == 'enrolling' and enrollment == 'revoked'", say: "A talebe the course team took out never applies again on their own", source: "apps/tedrisat/src/course/course.service.ts:1524" }
   - { id: completion-never-left, never: "state in ['confirmLeave', 'leaving'] and enrollment == 'completed'", say: "A completed course is never left", source: "apps/tedrisat/src/course/course.service.ts:1780" }

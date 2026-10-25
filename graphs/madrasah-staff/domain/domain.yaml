@@ -63,10 +63,10 @@ entities:
       title: { type: string, minLength: 2, maxLength: 200 }
       reason: { type: string, minLength: 1, maxLength: 2000 }
       requestedBy: { type: string, format: uuid, sensitivity: personal }
-      status: { enum: [PENDING, ACCEPTED, REJECTED], default: PENDING, note: "nothing in the code ever moves it off PENDING" }
+      status: { enum: [PENDING, ACCEPTED, REJECTED], default: PENDING, note: "the shape nazar's two routes answer; since #372 the row behind it is a CourseRequest" }
       createdAt: { type: string, format: date-time }
     lifecycle:
-      - "none -> PENDING: requestOffsiteCourse (nazar's \"Talebi gönder\")"
+      - "offsite_course_requests is no longer written or read since #372; migration 0067 copied its rows into course_requests as PENDING, and a later migration drops the table"
 
   CourseRequest:
     source: apps/tedrisat/src/database/schema/course-request.schema.ts:25
@@ -84,8 +84,8 @@ entities:
       decidedAt: { type: [string, "null"], format: date-time }
       courseId: { type: [string, "null"], format: uuid, references: Course }
     lifecycle:
-      - "none -> PENDING: createCourseRequest, which no app calls"
-      - "PENDING -> ACCEPTED: acceptCourseRequest, with a course of the request's köşk"
+      - "none -> PENDING: requestOffsiteCourse (nazar's \"Talebi gönder\", since #372), or createCourseRequest, which no app calls"
+      - "PENDING -> ACCEPTED: acceptCourseRequest, with a course of the request's köşk that answers no other request"
       - "PENDING -> REJECTED: rejectCourseRequest, with a reason"
 
   RoleAssignment:
@@ -174,8 +174,8 @@ entities:
       details: { type: object }
 
 policies:
-  - { actor: "başmüderris", needs: session, where: "MEDRESE_BASMUDERRIS in the medrese", write: [Course, CourseMuderris, OffsiteCourseRequest, RoleAssignment, PermissionGrant, PermissionGroup], do: [openMadrasahCourse, requestOffsiteCourse, addMadrasahNazir, setMadrasahNazirPermissions, removeMadrasahNazir, createMadrasahPermissionGroup], source: "libs/common/src/authz/permissions.ts:358" }
-  - { actor: "medrese nazırı", needs: session, where: "MEDRESE_NAZIR in the medrese; holds only what was granted (role default: nothing)", write: [Course, OffsiteCourseRequest, RoleAssignment], do: [openMadrasahCourse, requestOffsiteCourse, addMadrasahNazir, removeMadrasahNazir], source: "libs/common/src/authz/permissions.ts:359" }
+  - { actor: "başmüderris", needs: session, where: "MEDRESE_BASMUDERRIS in the medrese", write: [Course, CourseMuderris, CourseRequest, RoleAssignment, PermissionGrant, PermissionGroup], do: [openMadrasahCourse, requestOffsiteCourse, addMadrasahNazir, setMadrasahNazirPermissions, removeMadrasahNazir, createMadrasahPermissionGroup], source: "libs/common/src/authz/permissions.ts:358" }
+  - { actor: "medrese nazırı", needs: session, where: "MEDRESE_NAZIR in the medrese; holds only what was granted (role default: nothing)", write: [Course, CourseRequest, RoleAssignment], do: [openMadrasahCourse, requestOffsiteCourse, addMadrasahNazir, removeMadrasahNazir], source: "libs/common/src/authz/permissions.ts:359" }
   - { actor: "müderris", needs: session, where: "MUDERRIS in the course: every course-scoped code", write: [Lesson, CourseWeek, Course, Enrollment, RoleAssignment, PermissionGrant], do: [createSessionBatch, replaceCourse, hideCourseWeek, archiveLesson, approveEnrollment, rejectEnrollment, bulkEnroll, createCourseNazir, updateCourseNazir, revokeCourseNazir], source: "libs/common/src/authz/permissions.ts:360" }
   - { actor: "ders nazırı", needs: session, where: "DERS_NAZIR in the course; holds only what the post carries", write: [Lesson, Enrollment, RoleAssignment], do: [createSessionBatch, approveEnrollment, bulkEnroll, createCourseNazir, revokeCourseNazir], source: "libs/common/src/authz/permissions.ts:361" }
   - { actor: "köşk nazımı", needs: session, where: "KOSK_NAZIM of the köşk; in a medrese course it is \"outside\" for ders nazırları", write: [CourseRequest, Course], do: [acceptCourseRequest, rejectCourseRequest, createCourse], source: "apps/tedrisat/src/course-request/course-request.service.ts:186" }
@@ -256,13 +256,13 @@ actions:
     needs: "madrasah.offsite_course_request on the medrese"
     body: { type: object, required: [koskId, title, reason], properties: { koskId: { type: string, format: uuid }, title: { type: string, minLength: 2, maxLength: 200 }, reason: { type: string, minLength: 1, maxLength: 2000 } } }
     result: { returns: OffsiteCourseRequest, status: 201 }
-    sideEffects: ["audit:offsite_course_request.create", "a row in offsite_course_requests, PENDING; no course"]
+    sideEffects: ["audit:course_request.create", "a row in course_requests, PENDING, which the köşk's Ders talepleri lists; no course (#372)"]
     refusals: { AUTHZ_FORBIDDEN: { status: 403 }, MADRASAH_NOT_FOUND: { status: 404 }, KOSK_NOT_FOUND: { status: 404 }, VALIDATION_ERROR: { status: 400 } }
     source: apps/tedrisat/src/madrasah/course/madrasah-course.controller.ts:220
   getOffsiteCourseRequests:
     route: GET /madrasahs/{id}/offsite-course-requests
     needs: "madrasah.offsite_course_request on the medrese"
-    result: { returns: OffsiteCourseRequest, note: "an array, newest first" }
+    result: { returns: OffsiteCourseRequest, note: "an array, newest first, read from course_requests (#372); nazar does not list it" }
     source: apps/tedrisat/src/madrasah/course/madrasah-course.controller.ts:239
   createCourseRequest:
     route: POST /kosks/{id}/course-requests
@@ -291,7 +291,7 @@ actions:
     body: { type: object, required: [courseId], properties: { courseId: { type: string, format: uuid } } }
     result: { status: 204 }
     sideEffects: ["audit:course_request.accept, in one transaction with the status"]
-    refusals: { COURSE_REQUEST_NOT_FOUND: { status: 404 }, COURSE_REQUEST_FORBIDDEN: { status: 403 }, COURSE_REQUEST_NOT_PENDING: { status: 409 }, COURSE_REQUEST_COURSE_NOT_FOUND: { status: 404 } }
+    refusals: { COURSE_REQUEST_NOT_FOUND: { status: 404 }, COURSE_REQUEST_FORBIDDEN: { status: 403 }, COURSE_REQUEST_NOT_PENDING: { status: 409 }, COURSE_REQUEST_COURSE_NOT_FOUND: { status: 404 }, COURSE_REQUEST_COURSE_TAKEN: { status: 409, note: "the course already answers another request (#373)" } }
     source: apps/tedrisat/src/course-request/course-request.controller.ts:110
   rejectCourseRequest:
     route: POST /course-requests/{id}/reject
@@ -315,9 +315,9 @@ actions:
     sideEffects:
       - "audit:madrasah_nazir.appoint, with the level the caller acts at"
       - "a MEDRESE_NAZIR seat with no permission; what an earlier seat left under it is revoked first"
-      - "idempotent: appointing a nazır again writes nothing"
-      - "the user id is not checked against the users table, the realm or a ban"
-    refusals: { AUTHZ_FORBIDDEN: { status: 403 }, SELF_GRANT_REFUSED: { status: 403 }, MADRASAH_NOT_FOUND: { status: 404 } }
+      - "idempotent: appointing a nazır again writes nothing, unless they have been barred since (409)"
+    refusals: { AUTHZ_FORBIDDEN: { status: 403 }, SELF_GRANT_REFUSED: { status: 403 }, MADRASAH_NOT_FOUND: { status: 404 }, MADRASAH_NAZIR_UNKNOWN_ACCOUNT: { status: 404 }, MADRASAH_NAZIR_BARRED: { status: 409 } }
+    note: "since #371 the id must name an account of the app or the realm, and an open ban on the medrese or one of its courses refuses; a ban on a köşk that hosts one of its courses is not asked (MS-17)"
     source: apps/tedrisat/src/madrasah/nazir/madrasah-nazir.controller.ts:95
   getMadrasahNazirGrants:
     route: GET /madrasahs/{id}/nazirs/{userId}/grants
@@ -507,8 +507,8 @@ actions:
     needs: "enrollment.decide on the course"
     result: { returns: Enrollment, status: 201 }
     sideEffects: ["an ENROLLMENT_APPROVED notification to the talebe", "the calendar sweep e-mails the talebe their sessions"]
-    refusals: { ENROLLMENT_NOT_FOUND: { status: 404 }, ENROLLMENT_STATE_CONFLICT: { status: 409 } }
-    note: "no ban is read: a barred talebe's PENDING or REVOKED row becomes ENROLLED"
+    refusals: { ENROLLMENT_NOT_FOUND: { status: 404 }, ENROLLMENT_STATE_CONFLICT: { status: 409 }, BAN_ACTIVE: { status: 403 } }
+    note: "since #369 a barred talebe's PENDING or REVOKED row is refused, and stays as it was"
     source: apps/tedrisat/src/course/course.controller.ts:633
   rejectEnrollment:
     route: DELETE /courses/{id}/enrollments/{userId}
@@ -540,4 +540,8 @@ invariants:
   - { id: revoke-not-delete, rule: "seats, grants, weeks, sessions and courses are revoked or hidden, never deleted; a rejected PENDING enrolment is the one row that is deleted", source: "apps/tedrisat/src/course/course.repository.ts:1651" }
   - { id: policy-applied-on-open, rule: "a medrese course opens closed and needing approval whenever the medrese's policies say so, whatever the form sent", source: "apps/tedrisat/src/madrasah/course/madrasah-course.repository.ts:182" }
   - { id: barred-never-a-ders-nazir, rule: "an account an open ban bars from the course is never made its ders nazırı", source: "apps/tedrisat/src/course/nazir/course-nazir.service.ts:223" }
+  - { id: medrese-nazir-is-an-account, rule: "a medrese nazırı is an account of the app or the realm (#371)", source: "apps/tedrisat/src/madrasah/nazir/madrasah-nazir.service.ts:113" }
+  - { id: barred-never-a-medrese-nazir, rule: "an account an open ban bars on the medrese or one of its courses is never made its nazır (#371); a ban on a köşk that hosts one of its courses is not asked (MS-17)", source: "apps/tedrisat/src/madrasah/nazir/madrasah-nazir.service.ts:115" }
+  - { id: barred-never-approved, rule: "an approval never seats a talebe an open ban bars (#369)", source: "apps/tedrisat/src/course/course.service.ts:1638" }
+  - { id: course-answers-one-request, rule: "a course answers at most one course request (#373)", source: "apps/tedrisat/src/course-request/course-request.service.ts:160" }
   - { id: gender-kept-apart, holds: false, finding: MS-7, rule: "Gender is a required attribute of every account, and men and women are kept apart wherever they meet in person (a course held in person and its sessions)", note: "The code reads no gender when it seats a talebe (approveEnrollment, bulkEnroll) or a hoca (openMadrasahCourse), a course has no gender of its own, and an account's gender may be empty", source: "apps/tedrisat/src/database/schema/user-profile.schema.ts:33" }

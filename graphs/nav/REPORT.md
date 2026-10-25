@@ -3,7 +3,7 @@
 | Uygulama | `delurio page --strict` |
 |---|---|
 | nazar | 32 sayfa, 55 yol, 8 kişi türü; 5 sorun, 3 not (çıkış 2) |
-| nizam | 49 sayfa, 125 yol, 9 kişi türü; 4 sorun, 2 not (çıkış 2) |
+| nizam | 48 sayfa, 125 yol, 9 kişi türü; 4 sorun, 2 not (çıkış 2) |
 | tedris | 33 sayfa, 107 yol, 2 kişi türü; 1 sorun, 2 not (çıkış 2) |
 | landing | 10 sayfa, 28 yol, 1 kişi türü; 0 sorun, 1 not (çıkış 0) |
 
@@ -24,12 +24,14 @@
 
 **Yüksek**
 
-- **NAV-1** `apps/nizam/features/dashboard/components/medaris-home.tsx:49`: #348 ile `base` değeri `"/"` oldu. Başnazımın ve Medaris nazımının ana sayfasındaki her bağlantı artık `//talepler/…`, `//kosks` biçiminde başlıyor ve tarayıcı bunu başka bir sunucu sanıyor. Test (`test/dashboard-views.spec.tsx:140`) yalnız `toContain` ile baktığı için geçiyor.
+- **NAV-1 (düzeldi: #370)** `apps/nizam/features/dashboard/components/medaris-home.tsx:49`: #348 ile `base` değeri `"/"` oldu. Başnazımın ve Medaris nazımının ana sayfasındaki her bağlantı `//talepler/…`, `//kosks` biçiminde başlıyordu ve tarayıcı bunu başka bir sunucu sanıyordu. Test (`test/dashboard-views.spec.tsx:140`) yalnız `toContain` ile baktığı için geçiyordu.
+  - #370'ten beri bağlantılar düz yol. `nav/nizam/nav.yaml`'daki on bir giriş artık `offHost`'a değil kendi sayfasına gidiyor ve `offHost` sayfası kalktı (49 → 48 sayfa).
+  - Sonuç: "Medaris nazımı with every permission, manage the inactive scopes" hedefi tutuyor (başarısız hedefler 6 → 5). `words-differ` notuna dört bağlantı eklendi ("Köşk aç" → Köşkler, üç "İncele"). Baseline yeniden üretildi; değişen yalnız hedef sayısının metni ve aracın sürümü (0.1.1 → 0.2.0).
 
 **Orta**
 
 - **NAV-2** `apps/nizam/features/courses/components/sessions-view.tsx:291` Tedris'te `/courses/{id}/sessions/{id}` adresine bağlanıyor. Tedris'te yalnız `/lessons/` var, bu yüzden bağlantı 404 veriyor.
-- **NAV-3** `apps/nizam/lib/shell-nav.ts:178` Medaris nazımının menüsüne denetim kaydı, pasif kapsamlar, platform ayarları ve ortak uygulamalar hiç girmiyor. Oysa `ITEM_PERMISSIONS` (`:288`) bunlar için izin yazıyor ve API izni olana bu sayfaları açıyor (`audit.service.ts:97`). 4 hedef "yol yok" diye başarısız. 16 Ekim'den beri sürüyor.
+- **NAV-3** `apps/nizam/lib/shell-nav.ts:178` Medaris nazımının menüsüne denetim kaydı, pasif kapsamlar, platform ayarları ve ortak uygulamalar hiç girmiyor. Oysa `ITEM_PERMISSIONS` (`:288`) bunlar için izin yazıyor ve API izni olana bu sayfaları açıyor (`audit.service.ts:97`). 16 Ekim'den beri sürüyor. Pasif kapsamlara #370'ten beri panodaki kart götürüyor; kalan 3 hedef "yol yok" diye başarısız.
 - **NAV-4** `apps/nizam/lib/shell-nav.ts:119`, `:125`, `:149`: İtirazlar, Kalıcı yasak talepleri ve YouTube bağlantısı girişlerinin sayfası yok, sunucu 404 veriyor. Sürüyor.
 - **NAV-5** Medaris nazımına gösterilen bağlantılar 403 ile bitiyor. Bu, MDRS-108'e aykırı (`kosk-abilities.ts:10`). Bağlantılar: `kosk-manage-page.tsx:542` ve `:584`, `kosk-courses-view.tsx:67` ve `:74`, `kosk-course-table.tsx:124` ve `:275`. Karşı tarafta API: `course.controller.ts:522`, `hosting.controller.ts:73`.
 - **NAV-6** `apps/nazar/features/shell/nav.ts:84` medrese menüsünde ve ders menüsündeki Sorular ile Arşiv'de `requires` yok. İzni olmayan bir medrese nazırında menünün 10 girişinden 6'sı reddediyor. İzni olmayan bir ders nazırında 12 girişten 8'i reddediyor, açılan yok.

@@ -1,8 +1,10 @@
 {
-  "Changes.note": "“Talebi gönder” medreseniz adına, seçtiğiniz köşke bir ders talebi kaydeder; ders açılmaz. Talep, gönderen ve gerekçe denetim kaydına yazılır. Talep bekliyor olarak kalır: bugün hiçbir ekran onu köşkün nazımına göstermez, medresede de listelenmez ve geri alınamaz. nizam’daki “Kabul et” köşkün kendi dersini açar ve talebi o dersle kabul eder; “Reddet” talebi gerekçesiyle kapatır. İkisi de denetim kaydına yazılır ve geri alınmaz; gerekçeyi medresede gösteren bir ekran yoktur.",
+  "Changes.note": "“Talebi gönder” medreseniz adına, seçtiğiniz köşke bir ders talebi kaydeder; ders açılmaz. Talep, gönderen ve gerekçe denetim kaydına yazılır. Talep köşkün Ders talepleri sayfasında, köşkün nazımı karar verene kadar bekler; medresede listelenmez ve geri alınamaz. nizam’daki “Kabul et” köşkün kendi dersini açar ve talebi o dersle kabul eder; “Reddet” talebi gerekçesiyle kapatır. İkisi de denetim kaydına yazılır ve geri alınmaz; gerekçeyi medresede gösteren bir ekran yoktur.",
   "CourseCreate.created": "Ders açıldı",
   "CourseCreate.createdBody": "{name} açıldı.",
   "CourseCreate.nameLabel": "Ders adı",
+  "CourseCreate.requestLeft": "Talep yanıtlanamadı",
+  "CourseCreate.requestLeftBody": "{name} açıldı, ama talep artık beklemiyor; başka bir nazım yanıtlamış olabilir. Ders talepleri sayfasından bakabilirsiniz.",
   "CourseCreate.submit": "Dersi aç",
   "CourseCreate.title": "Ders aç",
   "CourseRequestsPage.accept": "Kabul et",

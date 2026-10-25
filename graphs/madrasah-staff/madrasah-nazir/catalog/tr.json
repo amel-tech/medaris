@@ -43,9 +43,11 @@
   "Nazirs.intro": "Medrese nazırları yalnız sizin ya da izinli bir Medaris nazımının verdiği izinlerle çalışır ve aldıkları izni başkasına veremez.",
   "Nazirs.title": "Medrese nazırları",
   "Problems.actionGeneric": "Bir şeyler ters gitti. Biraz sonra yeniden deneyin.",
+  "Problems.barredFromMadrasah": "Bu kişi bu medreseden ya da derslerinden birinden yasaklı; medrese nazırı yapılamaz.",
   "Problems.forbidden": "Bu sayfayı açma izniniz yok. İzne ihtiyacınız varsa medresenin başmüderrisine başvurun.",
   "Problems.forbiddenTitle": "Bu sayfaya izniniz yok",
   "Problems.selfGrant": "Kendinize rol ya da izin veremezsiniz; size verilmiş bir rolü ya da izni devralmak da buna girer.",
+  "Problems.unknownAccount": "Bu hesap bulunamadı.",
   "Shell.loadingLabel": "Yükleniyor",
   "Shell.retry": "Yeniden dene"
 }

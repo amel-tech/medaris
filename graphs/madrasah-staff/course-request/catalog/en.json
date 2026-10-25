@@ -1,8 +1,10 @@
 {
-  "Changes.note": "“Send the request” records a course request in your medrese’s name for the köşk you choose; no course is opened. The request, its sender and the reason are written to the audit log. The request stays waiting: today no screen shows it to the köşk’s nazım, it is not listed in the medrese either, and it cannot be withdrawn. In nizam, “Accept” opens the köşk’s own course and accepts the request with it; “Reject” closes the request with a reason. Both are written to the audit log and cannot be undone; no screen of the medrese shows the reason.",
+  "Changes.note": "“Send the request” records a course request in your medrese’s name for the köşk you choose; no course is opened. The request, its sender and the reason are written to the audit log. The request waits on the köşk’s Course requests page until the köşk’s nazım decides; it is not listed in the medrese, and it cannot be withdrawn. In nizam, “Accept” opens the köşk’s own course and accepts the request with it; “Reject” closes the request with a reason. Both are written to the audit log and cannot be undone; no screen of the medrese shows the reason.",
   "CourseCreate.created": "Course opened",
   "CourseCreate.createdBody": "{name} was opened.",
   "CourseCreate.nameLabel": "Course name",
+  "CourseCreate.requestLeft": "The request was not answered",
+  "CourseCreate.requestLeftBody": "{name} was opened, but the request no longer waits; another nazım may have answered it. You can check it on Course requests.",
   "CourseCreate.submit": "Open the course",
   "CourseCreate.title": "Open a course",
   "CourseRequestsPage.accept": "Accept",
