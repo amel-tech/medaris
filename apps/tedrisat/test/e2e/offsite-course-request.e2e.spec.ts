@@ -5,9 +5,9 @@ import request from "supertest";
 import { DatabaseService } from "../../src/database/database.service";
 import { auditLog } from "../../src/database/schema/audit.schema";
 import { courses } from "../../src/database/schema/course.schema";
+import { courseRequests } from "../../src/database/schema/course-request.schema";
 import { kosks } from "../../src/database/schema/kosk.schema";
 import { madrasahs } from "../../src/database/schema/madrasah.schema";
-import { offsiteCourseRequests } from "../../src/database/schema/offsite-course-request.schema";
 import {
   ASSIGNED_ROLES,
   madrasahKoskHosting,
@@ -157,7 +157,7 @@ describe("Offsite course requests (e2e)", () => {
         requestedByName: "Mehmet Emin Işıkoğlu",
         createdAt: expect.any(String),
       });
-      const [row] = await db().select().from(offsiteCourseRequests);
+      const [row] = await db().select().from(courseRequests);
       expect(row).toMatchObject({
         id: res.body.id,
         madrasahId,
@@ -168,7 +168,7 @@ describe("Offsite course requests (e2e)", () => {
       const [audit] = await db()
         .select()
         .from(auditLog)
-        .where(eq(auditLog.action, "offsite_course_request.create"));
+        .where(eq(auditLog.action, "course_request.create"));
       expect(audit).toMatchObject({ actorId: HEAD_ID, entityId: row.id });
       // The request is no course: not in the köşk, not in the medrese's list.
       expect(await db().select().from(courses)).toHaveLength(0);
@@ -177,6 +177,29 @@ describe("Offsite course requests (e2e)", () => {
         .set("Authorization", auth(HEAD_ID))
         .expect(200);
       expect(listed.body).toEqual([]);
+    });
+
+    // nizam/39 lists and decides `course_requests`; the request used to go to a
+    // table no screen read, and so never reached the köşk (F01).
+    it("reaches the köşk: its nazım finds it among the waiting course requests", async () => {
+      await assignRole(db(), {
+        userId: MANAGER_ID,
+        role: ASSIGNED_ROLES.KOSK_NAZIM,
+        scopeId: plainKoskId,
+      });
+      const sent = await send(HEAD_ID, body()).expect(201);
+      const res = await http()
+        .get(`/kosks/${plainKoskId}/course-requests`)
+        .set("Authorization", auth(MANAGER_ID))
+        .expect(200);
+      expect(res.body.pendingCount).toBe(1);
+      expect(res.body.items).toHaveLength(1);
+      expect(res.body.items[0]).toMatchObject({
+        id: sent.body.id,
+        title: "Erbaîn-i Nevevî okumaları",
+        reason: "Medresemizde bu metni okutan bir ders yok.",
+        status: "PENDING",
+      });
     });
 
     it("trims the name and the reason, and does not look at the medrese's hosting rights", async () => {
@@ -199,7 +222,7 @@ describe("Offsite course requests (e2e)", () => {
       await send(HEAD_ID, body({ koskId: MISSING_ID })).expect(404);
       await send(HEAD_ID, body({ koskId: hiddenKoskId })).expect(404);
       await send(HEAD_ID, body(), MISSING_ID).expect(404);
-      expect(await db().select().from(offsiteCourseRequests)).toHaveLength(0);
+      expect(await db().select().from(courseRequests)).toHaveLength(0);
     });
 
     it("validates the body", async () => {
@@ -211,7 +234,7 @@ describe("Offsite course requests (e2e)", () => {
       await send(HEAD_ID, body({ koskId: "not-a-uuid" })).expect(400);
       await send(HEAD_ID, { title: "Ders", reason: "Neden" }).expect(400);
       await send(HEAD_ID, body({ status: "ACCEPTED" })).expect(400);
-      expect(await db().select().from(offsiteCourseRequests)).toHaveLength(0);
+      expect(await db().select().from(courseRequests)).toHaveLength(0);
     });
 
     it("is the başmüderris's: strangers, another medrese's head and a nazır get 403, the başnazım may", async () => {
@@ -222,7 +245,7 @@ describe("Offsite course requests (e2e)", () => {
         .post(`/madrasahs/${madrasahId}/offsite-course-requests`)
         .send(body())
         .expect(401);
-      expect(await db().select().from(offsiteCourseRequests)).toHaveLength(0);
+      expect(await db().select().from(courseRequests)).toHaveLength(0);
       await send(ADMIN_ID, body()).expect(201);
     });
   });

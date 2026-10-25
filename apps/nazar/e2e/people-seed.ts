@@ -420,7 +420,7 @@ export async function seedOffsite(base: NazarFixture): Promise<OffsiteFixture> {
     requests: async () => {
       const { rows } = await client.query(
         `select madrasah_id, kosk_id, title, reason, status, requested_by
-          from offsite_course_requests where madrasah_id = $1 order by created_at`,
+          from course_requests where madrasah_id = $1 order by created_at`,
         [base.madrasah.id]
       );
       return rows.map((row) => ({
@@ -442,7 +442,7 @@ export async function seedOffsite(base: NazarFixture): Promise<OffsiteFixture> {
     remove: async () => {
       try {
         await client.query(
-          "delete from offsite_course_requests where madrasah_id = $1",
+          "delete from course_requests where madrasah_id = $1",
           [base.madrasah.id]
         );
       } finally {
