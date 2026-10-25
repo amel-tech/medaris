@@ -43,6 +43,25 @@ packages:
   # non-TTY contexts (husky hooks, CI) with ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY.
 verifyDepsBeforeRun: warn
 
+# ── Release-age floor (2026-10-25) ───────────────────────────────────────────
+# pnpm resolves nothing published less than 7 days ago, and it checks the
+# lockfile against the same rule on every install, `--frozen-lockfile`
+# included: a too-young entry fails with ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION.
+# A poisoned release is usually found and pulled within that window; an old
+# CVE is the other risk, and the Security workflow covers that one. Renovate
+# waits the same 7 days, so its PRs never trip this.
+#
+# A fix that cannot wait goes below as `name@version` (that one release only)
+# with the date it turns 7 days old; delete the line after that date.
+minimumReleaseAge: 10080
+minimumReleaseAgeExclude:
+  # 10.6.3, 2026-10-20 (MDRS-298's storybook floor resolved to it); 2026-10-27.
+  - storybook@10.6.3
+  - '@storybook/builder-vite@10.6.3'
+  - '@storybook/react-dom-shim@10.6.3'
+  - '@storybook/react-vite@10.6.3'
+  - '@storybook/react@10.6.3'
+
 # ── Build-script decisions (MDRS-8 §3, ADR-001 §D11) ─────────────────────────
 # pnpm 11 replaces pnpm 10's `onlyBuiltDependencies` list with this map, and
 # every dependency carrying an install script must be decided explicitly — an
@@ -84,6 +103,11 @@ allowBuilds:
 # behind this branch's review. Same kind of entry, longer comments: each had to
 # establish that no bump exists at all rather than merely that none had landed
 # yet, which is a claim about the registry and not about this lockfile.
+#
+# Since 2026-10-25 a new advisory no longer turns PRs red: the Security
+# workflow fails a PR only on an advisory it brings in, and lists the rest in
+# the `dependency-audit` issue. A new floor here needs one line: the advisory,
+# why only an override reaches it, and its removal condition.
 overrides:
   uuid: ^11.1.1 # GHSA missing-buffer-bounds-check; exceljs pins 8.3.2. uuid's
   #               named v1/v3/v4/v5 API has been stable since v3, so forcing
@@ -335,7 +359,6 @@ catalog:
   '@types/supertest': ^7.2.1 # MDRS-21: +1 major
   testcontainers: ^12.1.0 # MDRS-21: +1 major
   '@testcontainers/postgresql': ^12.1.0 # MDRS-21: +1 major
-  audit-ci: ^7.1.0
   depcheck: ^1.4.7
 
   # ═══ Frontend runtime & framework ═══

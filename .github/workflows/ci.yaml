@@ -281,34 +281,5 @@ jobs:
           echo '--- projects affected by this change ---'
           pnpm exec nx show projects --affected || true
 
-  # ── Security gates ─────────────────────────────────────────────────────────
-  # Ported from the backend, where `security-check` existed but was commented
-  # out of its pull-request.yaml ("# disabled for now."). Running for real here.
-  security:
-    name: Security gates
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up pnpm
-        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version-file: .nvmrc
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      # One lockfile, so one audit at the root. Fails on any high/critical
-      # advisory that is not in audit-ci.json's dated allowlist.
-      - name: Audit dependencies
-        run: pnpm run audit:ci
-
-      # Unused/missing deps for the three projects that declare the target.
-      - name: Check for unused dependencies
-        run: pnpm run depcheck
+  # The `Security gates` job moved to security.yaml on 2026-10-25, where it
+  # fails only on an advisory the change brings in. See that file's header.

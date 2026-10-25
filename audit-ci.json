@@ -1,5 +1,14 @@
 {
   "$comment": [
+    "Read by tools/ci/dependency-audit.mjs since 2026-10-25; audit-ci itself",
+    "was removed then. The file kept its name and format so the history below",
+    "still reads. Keys that only audit-ci understood (report-type,",
+    "package-manager, directory, show-found, show-not-found) were dropped, and",
+    "the script rejects any key it does not implement. What changed in how",
+    "the policy is applied: the Security workflow's PR gate fails only on an",
+    "advisory a change brings in, and the full list below the thresholds goes",
+    "to the `dependency-audit` issue from a daily run, never to a red check.",
+    "",
     "Inherited from the backend, where `security-check` was commented out of",
     "pull-request.yaml, so this config had never actually gated anything.",
     "MDRS-15 wires it into CI (.github/workflows/ci.yaml, `security` job).",
@@ -52,12 +61,7 @@
   "moderate": false,
   "high": true,
   "critical": true,
-  "report-type": "summary",
-  "package-manager": "pnpm",
-  "directory": "./",
   "skip-dev": false,
-  "show-found": true,
-  "show-not-found": false,
   "allowlist": [
     "GHSA-4r6h-8v6p-xvw6",
     "GHSA-5pgg-2g8v-p4x9",
