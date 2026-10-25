@@ -87,3 +87,12 @@ export const deckRowStatus = (deck: CourseDeck): DeckRowStatus => {
   if (deck.dueCount > 0) return "due";
   return "start";
 };
+
+/**
+ * The deck the card grid opens on: the featured one, else the first the API
+ * gave. Null only when the course has no deck.
+ */
+export const gridDeckId = (
+  decks: readonly CourseDeck[],
+  featured: FeaturedDeck | null
+): string | null => featured?.deck.id ?? decks[0]?.id ?? null;
