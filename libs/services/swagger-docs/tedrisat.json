@@ -12602,7 +12602,7 @@
             "description": ""
           },
           "409": {
-            "description": "COURSE_REQUEST_NOT_PENDING"
+            "description": "COURSE_REQUEST_NOT_PENDING, or COURSE_REQUEST_COURSE_TAKEN when the course already answers another request."
           }
         },
         "security": [

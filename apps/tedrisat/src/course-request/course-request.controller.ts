@@ -106,7 +106,10 @@ export class CourseRequestController {
   @ApiNoContentResponse()
   @ApiForbiddenResponse()
   @ApiNotFoundResponse()
-  @ApiConflictResponse({ description: "COURSE_REQUEST_NOT_PENDING" })
+  @ApiConflictResponse({
+    description:
+      "COURSE_REQUEST_NOT_PENDING, or COURSE_REQUEST_COURSE_TAKEN when the course already answers another request.",
+  })
   @Post("course-requests/:id/accept")
   @HttpCode(HttpStatus.NO_CONTENT)
   accept(

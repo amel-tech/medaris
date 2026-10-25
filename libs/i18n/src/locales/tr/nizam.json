@@ -2578,6 +2578,8 @@
     "createdBody": "{name} açıldı.",
     "sessionsFailed": "Ders açıldı, celseler eklenemedi",
     "sessionsFailedBody": "{name} açıldı ama celseler eklenemedi. Celse planla sayfasından ekleyebilirsiniz.",
+    "requestLeft": "Talep yanıtlanamadı",
+    "requestLeftBody": "{name} açıldı, ama talep artık beklemiyor; başka bir nazım yanıtlamış olabilir. Ders talepleri sayfasından bakabilirsiniz.",
     "errors": {
       "title": "Ders adı en az iki harften oluşmalı.",
       "team": "En az bir hoca seçin.",

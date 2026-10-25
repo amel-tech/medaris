@@ -32,6 +32,7 @@ const actions = vi.hoisted(() => ({
   lookupUserByEmail: vi.fn(),
   readCourse: vi.fn(),
   setCourseMuderris: vi.fn(),
+  acceptCourseRequest: vi.fn(),
 }));
 vi.mock("~/features/kosks/actions/courses", () => ({
   createKoskCourse: actions.createKoskCourse,
@@ -46,10 +47,14 @@ vi.mock("~/features/courses/actions", () => ({
   setCourseMuderris: actions.setCourseMuderris,
 }));
 vi.mock("~/features/platform-admin/actions", () => ({
-  acceptCourseRequest: vi.fn(),
+  acceptCourseRequest: actions.acceptCourseRequest,
 }));
 vi.mock("~/features/kosks/actions", () => ({ updateKosk: vi.fn() }));
-const toast = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn() }));
+const toast = vi.hoisted(() => ({
+  success: vi.fn(),
+  error: vi.fn(),
+  warning: vi.fn(),
+}));
 vi.mock("@medaris/ui/components/sonner", () => ({ toast }));
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }),
@@ -235,6 +240,58 @@ describe("Ders aç: an unvan for each hoca (2026-10-15)", () => {
     expect(document.body.textContent).toContain("Ahmet Mehmet");
     expect(byLabel("Ahmet Mehmet için unvan")).toBeNull();
     expect(document.querySelectorAll("button.mds-input")).toHaveLength(0);
+  });
+});
+
+describe("Ders aç from a medrese's course request (nizam/39 Kabul et)", () => {
+  beforeEach(() => {
+    for (const fn of Object.values(toast)) fn.mockReset();
+  });
+  const openFromRequest = async () => {
+    await render(
+      wrap(
+        <CourseCreateForm
+          kosk={kosk}
+          request={{ id: "r1", title: "Usûl-i Fıkıh Okumaları" }}
+        />
+      )
+    );
+    await type(field("startDate"), "2026-11-02");
+    await click(button("Pzt"));
+    await pick("ahmet@example.com");
+    await click(button("Dersi aç"));
+    await settle(40);
+  };
+
+  it("answers the request with the course it opened, and says only that the course is open", async () => {
+    actions.acceptCourseRequest.mockResolvedValue({
+      success: true,
+      data: null,
+    });
+    await openFromRequest();
+    expect(actions.acceptCourseRequest).toHaveBeenCalledWith("r1", "c-new");
+    expect(toast.warning).not.toHaveBeenCalled();
+    expect(toast.success).toHaveBeenCalledWith(
+      "Ders açıldı",
+      expect.anything()
+    );
+  });
+
+  it("says the request was not answered when a nazım answered it meanwhile, and keeps the course", async () => {
+    actions.acceptCourseRequest.mockResolvedValue({
+      success: false,
+      error: "Request was answered already",
+      errorBody: { code: "COURSE_REQUEST_NOT_PENDING" },
+    });
+    await openFromRequest();
+    expect(toast.warning).toHaveBeenCalledWith(
+      "Talep yanıtlanamadı",
+      expect.objectContaining({
+        description:
+          "Usûl-i Fıkıh Okumaları açıldı, ama talep artık beklemiyor; başka bir nazım yanıtlamış olabilir. Ders talepleri sayfasından bakabilirsiniz.",
+      })
+    );
+    expect(actions.createCourseSessions).toHaveBeenCalledOnce();
   });
 });
 
