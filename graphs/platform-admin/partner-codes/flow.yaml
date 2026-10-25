@@ -176,10 +176,10 @@ states:
       DONE: { guard: "partner != 'disabled' and codeReaches and account == 'ok' and courseOpen and not barred", target: seated, say: "the person is an ENROLLED talebe of the course; the account's gender is not asked", source: "apps/tedrisat/src/integration/partner-enrollment.service.ts:203" }
 
   seated: { type: final, title: The person is seated, response: { status: "200", body: "{ status: ENROLLED, courseId }" } }
-  partnerDisabled: { type: final, title: Refused, the partner is off, response: { status: "403", code: PARTNER_DISABLED } }
-  courseUnknown: { type: final, title: Refused, the code is unknown, response: { status: "404", code: PARTNER_COURSE_UNKNOWN } }
-  userRefused: { type: final, title: Refused, the account is not accepted, response: { status: "404 or 409", code: "PARTNER_USER_UNKNOWN | PARTNER_USER_UNVERIFIED" } }
-  seatRefused: { type: final, title: Refused, no seat is given, response: { status: "409", code: PARTNER_ENROLLMENT_REFUSED, body: "{ reason: COURSE_NOT_PUBLISHED | COURSE_HIDDEN | KOSK_HIDDEN | BANNED }" } }
+  partnerDisabled: { type: final, title: "Refused, the partner is off", response: { status: "403", code: PARTNER_DISABLED } }
+  courseUnknown: { type: final, title: "Refused, the code is unknown", response: { status: "404", code: PARTNER_COURSE_UNKNOWN } }
+  userRefused: { type: final, title: "Refused, the account is not accepted", response: { status: "404 or 409", code: "PARTNER_USER_UNKNOWN | PARTNER_USER_UNVERIFIED" } }
+  seatRefused: { type: final, title: "Refused, no seat is given", response: { status: "409", code: PARTNER_ENROLLMENT_REFUSED, body: "{ reason: COURSE_NOT_PUBLISHED | COURSE_HIDDEN | KOSK_HIDDEN | BANNED }" } }
   left: { type: final, title: They leave the page, leavesPage: true }
 
 assertions:
