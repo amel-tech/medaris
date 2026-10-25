@@ -1,0 +1,146 @@
+# Medaris, captured at origin/main ce47fce8: "Celse planla" in nazar (/ders/:id/celseler/planla) and the session batch
+# routes behind it (MDRS-109). The preview is tedrisat's own expansion of the pattern, asked a moment after the last key.
+schema: delurio-graph/0
+kind: flow
+id: medaris.plan-sessions
+status: proposed
+domain: medaris.madrasah-staff
+ui: medaris.plan-sessions
+title: Plan sessions
+summary: >-
+  A holder of session.manage in the course plans one session or a weekly repeat. Beside the form, the server's own
+  expansion of the pattern shows each session and the week it lands in; nothing is written until "N celse oluştur",
+  which inserts every session in one transaction, creates the weeks that are missing, and gives a link to the first
+  session at most.
+
+scope:
+  shows: the page, the preview and the batch write
+  world: open
+  outOfView:
+    - "the Celseler table the page goes back to, and changing, cancelling or streaming one session"
+    - "the calendar sweep that e-mails invitations (lesson-invitation): named in the changes note only"
+
+context:
+  holds:
+    values: [manage, other]
+    initial: any
+    say: { manage: "the reader holds session.manage in the course", other: "the reader holds no session.manage there" }
+  courseRead:
+    values: [ok, failed, gone]
+    initial: any
+    say: { ok: "the course is read", failed: "the course cannot be read", gone: "the course is not found (or hidden from the reader)" }
+  patternOk:
+    values: [true, false]
+    initial: any
+    say: { "true": "the days, the time, the dates and the count make a pattern", "false": "the pattern is incomplete or wrong" }
+  restOk:
+    values: [true, false]
+    initial: any
+    say: { "true": "the title and the link are fine", "false": "the title is empty or the link is not https" }
+  previewOk:
+    values: [true, false]
+    initial: any
+    say: { "true": "the server expands the pattern", "false": "the preview call fails" }
+  preview: { values: [none, ok, failed], initial: none }
+  sent: { values: [false, true], initial: false }
+  created: { values: [false, true], initial: false }
+
+effects:
+  edited: { set: { preview: none, sent: false }, havoc: [patternOk, restOk, previewOk] }
+  previewShown: { set: { preview: ok } }
+  previewFailed: { set: { preview: failed } }
+  markSent: { set: { sent: true } }
+  createdNow: { set: { created: true } }
+  reread: { havoc: [courseRead] }
+
+failures:
+  previewing: { from: previewSessionBatch, preview: [INVALID_SESSION_PATTERN] }
+  creating: { from: createSessionBatch }
+
+main:
+  given: { holds: manage, courseRead: ok, patternOk: true, restOk: true, previewOk: true }
+  events: [PREVIEW_DUE, DONE, SUBMIT, DONE]
+
+initial: gate
+states:
+  gate:
+    title: Read the course and what the reader holds
+    description: GET /courses/:id for its name and GET /courses/:id/my-permissions; the page opens for session.manage.
+    source: apps/nazar/features/sessions/components/plan-page.tsx:31
+    always:
+      - { guard: "courseRead == 'gone'", target: notFound, say: "404: the portal's not-found page", source: "apps/nazar/lib/tedrisat-read.ts:46" }
+      - { guard: "courseRead == 'failed'", target: loadFailed, say: "the course cannot be read", source: "apps/nazar/features/sessions/components/plan-page.tsx:33" }
+      - { guard: "holds == 'other'", target: forbidden, say: "session.manage is not held: \"Bu sayfaya izniniz yok\"", source: "apps/nazar/features/account/course-permissions.ts:92" }
+      - { target: form, say: "the form opens: a weekly repeat, 21:00, 60 minutes, on the reader's clock", source: "apps/nazar/features/sessions/components/plan-page.tsx:50" }
+
+  notFound:
+    type: final
+    title: The portal's not-found page
+    source: apps/nazar/lib/tedrisat-read.ts:46
+
+  forbidden:
+    type: final
+    title: The page says the reader has no permission
+    source: apps/nazar/features/sessions/components/plan-page.tsx:39
+
+  loadFailed:
+    title: The course could not be read
+    by: human
+    source: apps/nazar/features/sessions/components/plan-page.tsx:39
+    on:
+      RETRY: { target: gate, effect: [reread], say: "they press \"Yeniden dene\"", source: "apps/nazar/features/shell/components/load-failed.tsx:36" }
+      NAVIGATE: { target: left, say: "they go to another page" }
+
+  form:
+    title: Describe the sessions
+    by: human
+    goal: true
+    description: >-
+      One session or a weekly repeat; the days, the start time, the duration, the zone, the start and the end (a date
+      or a count); the title every session opens with; no link, or a link for the first session only. "N celse oluştur"
+      counts the preview and is off while the preview holds none.
+    includes: [single or weekly, the days, the time and duration, the zone, the start and the end, the title, the links]
+    source: apps/nazar/features/sessions/components/plan-form.tsx:59
+    on:
+      EDIT: { target: form, effect: [edited], say: "they change a field; the preview is asked again a moment after the last key", source: "apps/nazar/features/sessions/components/plan-form.tsx:97" }
+      PREVIEW_DUE: { guard: "patternOk and preview == 'none'", target: previewing, say: "250 ms after the last key, with a pattern to expand", source: "apps/nazar/features/sessions/components/plan-form.tsx:117" }
+      SUBMIT:
+        - { guard: "preview == 'ok' and not (patternOk and restOk)", target: form, effect: [markSent], say: "a field is wrong: it is said under it and nothing is sent", source: "apps/nazar/features/sessions/components/plan-form.tsx:149" }
+        - { guard: "preview == 'ok'", target: creating, say: "they press \"N celse oluştur\"", source: "apps/nazar/features/sessions/components/plan-form.tsx:154" }
+      CANCEL: { target: left, say: "they press \"Vazgeç\" and go back to Celseler" }
+
+  previewing:
+    title: Expand the pattern
+    description: POST /courses/:courseId/sessions/batch/preview, the same expansion the batch uses; nothing is written.
+    invoke: { action: previewSessionBatch }
+    source: apps/nazar/features/sessions/components/plan-form.tsx:118
+    on:
+      DONE: { guard: previewOk, target: form, effect: [previewShown], say: "each session with its date, week and link", source: "apps/nazar/features/sessions/components/plan-form.tsx:122" }
+      FAIL.preview: { guard: "not previewOk", target: form, effect: [previewFailed], say: "\"Önizleme alınamadı\"; the button stays off", source: "apps/nazar/features/sessions/components/plan-form.tsx:126" }
+
+  creating:
+    title: Create the sessions
+    description: >-
+      POST /courses/:courseId/sessions/batch. In one transaction the course version moves, each session goes into the
+      week its date falls in, a missing week is created as "Hafta N", and only the first session gets the link; then
+      the calendar sweep runs.
+    invoke: { action: createSessionBatch }
+    source: apps/tedrisat/src/course/course.repository.ts:1754
+    on:
+      DONE: { target: created, effect: [createdNow], say: "a toast says how many were added, and the page goes back to Celseler", source: "apps/nazar/features/sessions/components/plan-form.tsx:167" }
+
+  created:
+    type: final
+    title: The sessions are in the course
+    source: apps/nazar/features/sessions/components/plan-form.tsx:171
+
+  left:
+    type: final
+    title: They leave the page
+    leavesPage: true
+
+assertions:
+  - { id: only-session-managers, never: "created and holds == 'other'", say: "Nobody without session.manage adds sessions", source: "apps/tedrisat/src/course/lesson.controller.ts:327" }
+  - { id: nothing-sent-with-problems, never: "state == 'creating' and not (patternOk and restOk)", say: "A wrong field sends nothing", source: "apps/nazar/features/sessions/components/plan-form.tsx:149" }
+  - { id: write-follows-preview, never: "state == 'creating' and preview != 'ok'", say: "Sessions are created only after the server's preview of them is on the page", source: "apps/nazar/features/sessions/components/plan-form.tsx:438" }
+  - { id: preview-is-of-a-pattern, never: "state == 'form' and preview == 'ok' and not patternOk", say: "The preview shown is always of a pattern the fields make", source: "apps/nazar/features/sessions/components/plan-form.tsx:111" }

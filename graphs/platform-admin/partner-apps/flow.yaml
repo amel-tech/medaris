@@ -1,0 +1,201 @@
+# CAPTURE of Medaris at origin/main ce47fce8: nizam's Ortak uygulamalar (/ayarlar/ortak-uygulamalar), the registry of
+# partner applications whose registrations become Medaris enrolments. One viewer, one partner to add and one partner
+# already listed with one köşk. Mapping a partner's codes to a course and the partner's own calls:
+# medaris.partner-codes. Never named here: the partner organisation; the example partner is "Örnek Uygulama", client
+# id ornek-uygulama. Paths are repo-relative.
+schema: delurio-graph/0
+kind: flow
+id: medaris.partner-apps
+status: proposed
+domain: medaris.platform-admin
+ui: medaris.partner-apps
+title: Register partner applications and choose their köşks
+summary: >-
+  The Medaris başnazımı, or a Medaris nazımı given platform.partner_manage, registers a partner application by its
+  client id and a name; it starts enabled and bound to no köşk. They turn a partner off and on, rename it, and choose the
+  köşks it works with. Unbinding a köşk takes the partner's codes off that köşk's courses for good.
+
+scope:
+  shows: one viewer, the add form, and one listed partner with one köşk
+  world: open
+  outOfView:
+    - "codes and enrolments: medaris.partner-codes"
+    - "the registry's cache: another instance sees a change within a minute (partner-admin.service.ts:27)"
+    - "the partner's client in Keycloak: registering does not ask whether such a client exists"
+
+context:
+  admin:
+    values: [basnazim, medarisGranted, medarisNot, koskNazim]
+    initial: any
+    say: { basnazim: "the Medaris başnazımı", medarisGranted: "a Medaris nazımı granted platform.partner_manage", medarisNot: "a Medaris nazımı without it", koskNazim: "a köşk's nazımı" }
+  clientId:
+    values: [fresh, existing, frontEnd, malformed]
+    initial: any
+    say: { fresh: "a client id nobody registered", existing: "a client id registered already", frontEnd: "the client of one of Medaris' own web apps", malformed: "an id with characters other than letters, digits, '.', '_' and '-'" }
+  row:
+    values: [enabled, disabled]
+    initial: any
+    say: { enabled: "the listed partner is on", disabled: "the listed partner is off" }
+  bound:
+    values: [true, false]
+    initial: any
+    say: { "true": "the listed partner works with the köşk", "false": "it does not work with the köşk" }
+  codes:
+    values: [true, false]
+    initial: any
+    say: { "true": "its codes are mapped to courses of that köşk", "false": "no code of it is mapped there" }
+  choice: { values: [keep, bind, unbind], initial: keep } # the köşk's checkbox in Köşkleri seç
+  registered: { values: [false, true], initial: false }
+  notice: { values: [none, added, exists, frontEnd, shape, turnedOn, turnedOff, renamed, kosksSaved], initial: none }
+
+guards:
+  # PlatformAccessService.assert (apps/tedrisat/src/platform-access/platform-access.service.ts:43)
+  mayManage: "admin in ['basnazim', 'medarisGranted']"
+
+effects:
+  noCodesOffKosk: { set: { codes: false } }
+  shape: { set: { notice: shape } }
+  frontEnd: { set: { notice: frontEnd } }
+  exists: { set: { notice: exists } }
+  register: { set: { registered: true, notice: added } }
+  turnOff: { set: { row: disabled, notice: turnedOff } }
+  turnOn: { set: { row: enabled, notice: turnedOn } }
+  renamed: { set: { notice: renamed } }
+  openKosks: { set: { choice: keep, notice: none } }
+  tickKosk: { set: { choice: bind } }
+  untickKosk: { set: { choice: unbind } }
+  bindKosk: { set: { bound: true, choice: keep, notice: kosksSaved } }
+  unbindKosk: { set: { bound: false, codes: false, choice: keep, notice: kosksSaved } } # the codes go, audited one by one, and binding again brings none back
+
+failures:
+  reading: { from: listPartnerApplications, forbidden: [AUTHZ_FORBIDDEN] }
+  creating: { from: createPartnerApplication, frontEnd: [PARTNER_FRONT_END_CLIENT], exists: [PARTNER_EXISTS] }
+
+main:
+  given: { admin: basnazim, clientId: fresh, row: enabled, bound: false, codes: false }
+  events: [DONE, ADD, DONE, CHOOSE_KOSKS, TICK, SAVE, DONE]
+
+initial: opening
+states:
+  opening:
+    title: Open Ortak uygulamalar
+    description: normalises a start the code cannot produce (a code is mapped only in a köşk the partner works with)
+    always:
+      - { guard: "codes and not bound", target: reading, effect: [noCodesOffKosk], say: "a partner's codes sit only in its köşks (partner-codes.service.ts:100)" }
+      - { target: reading }
+
+  reading:
+    title: Read the partners
+    description: GET /nizam/partner-applications, every partner with its köşks and every köşk to choose from
+    source: apps/nizam/app/ayarlar/ortak-uygulamalar/page.tsx:22
+    invoke: { action: listPartnerApplications }
+    on:
+      DONE: { guard: mayManage, target: partnersPage, say: "the list comes", source: "apps/tedrisat/src/integration/partner-admin.service.ts:47" }
+      FAIL.forbidden: { guard: "not mayManage", target: forbidden, say: "not the başnazım and no platform.partner_manage: 403", source: "apps/tedrisat/src/integration/partner-admin.service.ts:48" }
+
+  forbidden: { type: final, title: No access, source: apps/nizam/app/ayarlar/ortak-uygulamalar/page.tsx:23 }
+
+  partnersPage:
+    title: The Ortak uygulamalar page
+    by: human
+    goal: true
+    description: >-
+      The add form (client id and name) and the registered partners, each with its köşks, an Açık/Kapalı switch,
+      Köşkleri seç and Adını değiştir.
+    source: apps/nizam/features/partners/components/partners-view.tsx:192
+    on:
+      ADD: { guard: "not registered", target: validating, say: "they type a client id and a name and press Ekle", source: "apps/nizam/features/partners/components/partners-view.tsx:258" }
+      TOGGLE:
+        - { guard: "row == 'enabled'", target: turningOff, say: "they switch the partner off", source: "apps/nizam/features/partners/components/partners-view.tsx:157" }
+        - { target: turningOn, say: "they switch the partner on", source: "apps/nizam/features/partners/components/partners-view.tsx:157" }
+      RENAME: { target: renameDialog, say: "they press Adını değiştir", source: "apps/nizam/features/partners/components/partners-view.tsx:179" }
+      CHOOSE_KOSKS: { target: kosksDialog, effect: [openKosks], say: "they press Köşkleri seç", source: "apps/nizam/features/partners/components/partners-view.tsx:170" }
+      NAVIGATE: { target: left, say: "they go to another page" }
+
+  validating:
+    title: Check the typed client id
+    description: the form checks the id's shape and the name before anything is sent
+    source: apps/nizam/features/partners/components/partners-view.tsx:261
+    always:
+      - { guard: "clientId == 'malformed'", target: partnersPage, effect: [shape], say: "the field says what an id may hold; nothing is sent", source: "apps/nizam/features/partners/present.ts:12" }
+      - { target: creating }
+
+  creating:
+    title: Register the partner
+    description: >-
+      POST /nizam/partner-applications: enabled, bound to no köşk; the partner and its audit row
+      (integration_partner.create) are one transaction, and its token is accepted on /integrations/* from then on.
+    source: apps/tedrisat/src/integration/partner-admin.service.ts:62
+    invoke: { action: createPartnerApplication }
+    on:
+      FAIL.frontEnd: { guard: "clientId == 'frontEnd'", target: partnersPage, effect: [frontEnd], say: "one of Medaris' own clients: PARTNER_FRONT_END_CLIENT, under the field", source: "apps/tedrisat/src/integration/partner-admin.service.ts:70" }
+      FAIL.exists: { guard: "clientId == 'existing'", target: partnersPage, effect: [exists], say: "registered already: PARTNER_EXISTS, under the field", source: "apps/tedrisat/src/integration/partner-admin.service.ts:77" }
+      DONE: { guard: "clientId == 'fresh'", target: partnersPage, effect: [register], say: "it is registered; the form empties", source: "apps/nizam/features/partners/components/partners-view.tsx:287" }
+
+  turningOff:
+    title: Switch the partner off
+    description: PATCH /nizam/partner-applications/:clientId {enabled:false}; the switch moves first and moves back on a refusal
+    source: apps/nizam/features/partners/components/partners-view.tsx:82
+    invoke: { action: updatePartnerApplication }
+    on:
+      DONE: { target: partnersPage, effect: [turnOff], say: "its token is refused with PARTNER_DISABLED and its codes are offered in no course; its seats stay", source: "apps/tedrisat/src/integration/partner-admin.service.ts:92" }
+
+  turningOn:
+    title: Switch the partner on
+    source: apps/nizam/features/partners/components/partners-view.tsx:82
+    invoke: { action: updatePartnerApplication }
+    on:
+      DONE: { target: partnersPage, effect: [turnOn], say: "it enrols in its köşks again", source: "apps/tedrisat/src/integration/partner-admin.service.ts:92" }
+
+  renameDialog:
+    title: The rename dialog
+    by: human
+    source: apps/nizam/features/partners/components/partners-view.tsx:364
+    on:
+      SAVE: { target: renaming, say: "they type a name and press Kaydet" }
+      CANCEL: { target: partnersPage, say: "they press Vazgeç" }
+
+  renaming:
+    title: Rename the partner
+    description: PATCH /nizam/partner-applications/:clientId {name}; audited as integration_partner.rename
+    source: apps/tedrisat/src/integration/partner-admin.service.ts:83
+    invoke: { action: updatePartnerApplication }
+    on:
+      DONE: { target: partnersPage, effect: [renamed], say: "the new name shows in Ders ayarları and the audit log" }
+
+  kosksDialog:
+    title: The köşk choice dialog
+    by: human
+    description: >-
+      A checkbox per köşk and the warning that a köşk taken off loses this partner's codes for good. Saving the same
+      köşks sends nothing.
+    source: apps/nizam/features/partners/components/partners-view.tsx:443
+    on:
+      TICK: { guard: "not bound", target: kosksDialog, effect: [tickKosk], say: "they tick the köşk" }
+      UNTICK: { guard: bound, target: kosksDialog, effect: [untickKosk], say: "they untick the köşk" }
+      SAVE:
+        - { guard: "choice == 'keep'", target: partnersPage, say: "nothing changed: the dialog closes", source: "apps/nizam/features/partners/components/partners-view.tsx:468" }
+        - { target: settingKosks, say: "they press Kaydet" }
+      CANCEL: { target: partnersPage, say: "they press Vazgeç" }
+
+  settingKosks:
+    title: Choose the partner's köşks
+    description: >-
+      PUT /nizam/partner-applications/:clientId/kosks: the köşks named are bound, the rest unbound, each audited under
+      its köşk (integration_partner.kosk_bind or .kosk_unbind); an unbound köşk's courses lose this partner's codes in the
+      same transaction (course.partner_code_remove each). What its registrations did stays.
+    source: apps/tedrisat/src/integration/partner-registry.repository.ts:213
+    invoke: { action: setPartnerApplicationKosks }
+    on:
+      DONE:
+        - { guard: "choice == 'bind'", target: partnersPage, effect: [bindKosk], say: "it works with the köşk; no earlier code comes back", source: "apps/tedrisat/src/integration/partner-registry.repository.ts:246" }
+        - { target: partnersPage, effect: [unbindKosk], say: "it no longer works with the köşk, and its codes there are gone", source: "apps/tedrisat/src/integration/partner-registry.repository.ts:256" }
+
+  left: { type: final, title: They leave the page, leavesPage: true }
+
+assertions:
+  - { id: registry-is-platform-management, never: "state in ['partnersPage', 'validating', 'creating', 'turningOff', 'turningOn', 'renameDialog', 'renaming', 'kosksDialog', 'settingKosks'] and not mayManage", say: "Only the başnazım and a Medaris nazımı granted platform.partner_manage keep the partner registry", source: "apps/tedrisat/src/integration/partner-admin.service.ts:66" }
+  - { id: no-front-end-partner, never: "registered and clientId == 'frontEnd'", say: "None of Medaris' own clients becomes a partner application", source: "apps/tedrisat/src/integration/partner-admin.service.ts:70" }
+  - { id: one-registration-per-client, never: "registered and clientId == 'existing'", say: "A client id is registered once", source: "apps/tedrisat/src/integration/partner-admin.service.ts:77" }
+  - { id: malformed-id-never-sent, never: "state == 'creating' and clientId == 'malformed'", say: "A client id of the wrong shape is never sent", source: "apps/nizam/features/partners/components/partners-view.tsx:263" }
+  - { id: codes-only-in-its-kosks, never: "state != 'opening' and codes and not bound", say: "A partner's codes stay on no course of a köşk it no longer works with", source: "apps/tedrisat/src/integration/partner-registry.repository.ts:206" }

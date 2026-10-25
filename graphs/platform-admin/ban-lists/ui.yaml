@@ -1,0 +1,76 @@
+# The screens of medaris.ban-lists: the köşk's Yasaklamalar (nizam/42, BansView) and Medaris' Yasaklamalar
+# (nizam/48, AllBansView), with the lift and widen dialogs. Words from libs/i18n nizam.json. The MDS Dialog is Base
+# UI's: role dialog named by its title; each dialog here starts its focus in the reason field.
+schema: delurio-graph/0
+kind: ui
+id: medaris.ban-lists
+flow: medaris.ban-lists
+status: proposed
+catalog: catalog/tr.json
+locales: [tr, en]
+samples: { kosk: "Nûruosmaniye Köşkü", name: "Rümeysa Nur Karaca", role: "dersin hocası", viewer: "köşk nazımı", course: "Emsile ve Bina" }
+changes: { key: Changes.note }
+
+nodes:
+  listPage: { type: page, component: Page, role: main, name: { labelledBy: listTitle }, in: [list, lifting, wideningFromKosk, extending], source: apps/nizam/features/bans/components/bans-view.tsx:307 }
+  listTitle: { type: text, component: Heading, role: heading, text: { key: BansPage.title }, in: [list, lifting, wideningFromKosk, extending] }
+  koskIntro: { type: text, component: Text, text: { key: BansPage.intro, params: { kosk: kosk.name } }, in: [list, lifting, wideningFromKosk, extending], when: "page == 'kosk'" }
+  allIntro: { type: text, component: Text, text: { key: AllBansPage.intro }, in: [list, lifting, wideningFromKosk, extending], when: "page == 'platform'", source: apps/nizam/features/bans/components/all-bans-view.tsx:364 }
+  listHeading: { type: text, component: Heading, role: heading, text: { key: BansPage.heading }, in: [list, lifting, wideningFromKosk, extending] }
+  tabs: { type: list, component: List, role: tablist, name: { key: BansPage.tabsLabel }, in: [list, lifting, wideningFromKosk, extending] }
+  tab: { type: action, component: ListItem, role: tab, text: { oneOf: [BansPage.tabs.active, BansPage.tabs.lifted] }, in: [list, lifting, wideningFromKosk, extending] }
+  koskTable: { type: list, component: List, role: table, name: { key: BansPage.caption.active, params: { kosk: kosk.name } }, in: [list, lifting, wideningFromKosk, extending], when: "page == 'kosk'", source: apps/nizam/features/bans/components/bans-view.tsx:296 }
+  allTable: { type: list, component: List, role: table, name: { key: AllBansPage.caption.active }, in: [list, lifting, wideningFromKosk, extending], when: "page == 'platform'", source: apps/nizam/features/bans/components/all-bans-view.tsx:335 }
+  scopeCell: { type: text, component: Text, text: { oneOf: [BansPage.scope.course, BansPage.scope.kosk] }, in: [list, lifting, wideningFromKosk, extending], repeat: bans.items, source: apps/nizam/features/bans/present.ts:71 } # anything but COURSE reads "Köşk": a medrese-wide ban too (PLATFORM-ADMIN-7)
+  liftButton: { type: action, component: Button, role: button, intent: secondary, name: { key: BansPage.liftLabel, params: { name: ban.user.name } }, text: { key: BansPage.lift }, in: [list, lifting, wideningFromKosk, extending], disabledIn: [lifting, wideningFromKosk, extending], when: mayLift, repeat: bans.items, emits: LIFT, source: apps/nizam/features/bans/components/bans-view.tsx:249 }
+  cannotLiftNote: { type: text, component: Text, text: { oneOf: [BansPage.platformOnly, BansPage.higherOnly] }, in: [list, lifting, wideningFromKosk, extending], when: "open and not mayLift", repeat: bans.items, source: apps/nizam/features/bans/present.ts:51 } # picked by who placed the ban alone, never by why the viewer may not lift
+  koskWiden: { type: action, component: Button, role: button, intent: secondary, name: { key: BansPage.extendLabel, params: { name: ban.user.name } }, text: { key: BansPage.extend }, in: [list, lifting, wideningFromKosk, extending], disabledIn: [lifting, wideningFromKosk, extending], when: "mayExtend and page == 'kosk'", repeat: bans.items, emits: WIDEN, source: apps/nizam/features/bans/components/bans-view.tsx:259 }
+  allWiden: { type: action, component: Button, role: button, intent: secondary, name: { key: AllBansPage.extendLabel, params: { name: ban.user.name } }, text: { key: AllBansPage.extend }, in: [list, lifting, wideningFromKosk, extending], disabledIn: [lifting, wideningFromKosk, extending], when: "mayExtend and page == 'platform'", repeat: bans.items, emits: WIDEN, source: apps/nizam/features/bans/components/all-bans-view.tsx:299 }
+  liftedToast: { type: status, component: Status, role: status, text: { key: LiftDialog.lifted }, in: [list], when: "notice == 'lifted'" }
+  liftedBody: { type: text, component: Text, text: { key: LiftDialog.liftedBody, params: { name: ban.user.name } }, in: [list], when: "notice == 'lifted'" }
+  goneAlert: { type: alert, component: Alert, role: alert, text: { key: BansPage.errors.banAlreadyLifted }, in: [list], when: "notice == 'gone'" }
+  koskExtendedToast: { type: status, component: Status, role: status, text: { key: BansPage.extended }, in: [list], when: "notice == 'extended' and page == 'kosk'", source: apps/nizam/features/bans/components/bans-view.tsx:155 }
+  koskExtendedBody: { type: text, component: Text, text: { key: BansPage.extendedBody, params: { name: ban.user.name, kosk: kosk.name } }, in: [list], when: "notice == 'extended' and page == 'kosk'" }
+  allExtendedToast: { type: status, component: Status, role: status, text: { key: ExtendDialog.extended }, in: [list], when: "notice == 'extended' and page == 'platform'", source: apps/nizam/features/bans/components/extend-dialog.tsx:78 }
+  allExtendedBody: { type: text, component: Text, text: { key: ExtendDialog.extendedBody, params: { name: ban.user.name, kosk: kosk.name } }, in: [list], when: "notice == 'extended' and page == 'platform'" }
+
+  # the "Bu bölüm için izniniz yok" screen
+  noAccessTitle: { type: text, component: Heading, role: heading, text: { key: NoAccess.title }, in: [forbidden], source: apps/nizam/components/errors/no-access.tsx:30 }
+  noAccessBody: { type: text, component: Text, text: { key: NoAccess.bodyGeneric }, in: [forbidden] }
+
+  # Yasağı kaldır, with the ban's summary
+  liftDialog: { type: page, component: Page, role: dialog, name: { labelledBy: liftTitle }, in: [liftDialog, lifting], initialFocus: liftReasonField, source: apps/nizam/features/bans/components/lift-dialog.tsx:98 }
+  liftTitle: { type: text, component: Heading, role: heading, text: { key: LiftDialog.title }, in: [liftDialog, lifting] }
+  summaryScope: { type: text, component: Text, text: { key: LiftDialog.scope }, in: [liftDialog, lifting] }
+  summaryBannedBy: { type: text, component: Text, text: { key: LiftDialog.bannedBy }, in: [liftDialog, lifting] }
+  summaryReason: { type: text, component: Text, text: { key: LiftDialog.reason }, in: [liftDialog, lifting] }
+  liftInfo: { type: text, component: Text, text: { key: LiftDialog.info, params: { role: ban.rolePhrase, viewer: viewer.role, name: ban.user.name } }, in: [liftDialog, lifting], source: apps/nizam/features/bans/components/lift-dialog.tsx:155 } # the köşk page calls every viewer but the başnazım "köşk nazımı" (yasaklamalar/page.tsx:49)
+  liftRequired: { type: text, component: Text, text: { key: LiftDialog.requiredNote }, in: [liftDialog, lifting] }
+  liftReasonField: { type: field, component: TextField, role: textbox, text: { key: LiftDialog.reasonLabel }, in: [liftDialog, lifting], emits: TYPE_REASON }
+  liftReasonHelp: { type: text, component: Text, text: { key: LiftDialog.reasonHelp }, in: [liftDialog, lifting] }
+  liftReasonRequired: { type: text, component: Text, text: { key: LiftDialog.reasonRequired }, in: [liftDialog], when: "liftReason == 'blank'" }
+  cancelLift: { type: action, component: Button, role: button, intent: dismiss, text: { key: LiftDialog.cancel }, in: [liftDialog, lifting], disabledIn: [lifting], emits: CANCEL }
+  submitLift: { type: action, component: Button, role: button, intent: confirm, text: { key: LiftDialog.submit }, in: [liftDialog, lifting], disabledIn: [lifting], emits: SUBMIT }
+
+  # Yasağı genişlet (Medaris page only)
+  extendDialog: { type: page, component: Page, role: dialog, name: { labelledBy: extendTitle }, in: [extendDialog, extending], initialFocus: extendReasonField, source: apps/nizam/features/bans/components/extend-dialog.tsx:89 }
+  extendTitle: { type: text, component: Heading, role: heading, text: { key: ExtendDialog.title }, in: [extendDialog, extending] }
+  extendInfo: { type: text, component: Text, text: { key: ExtendDialog.info, params: { name: ban.user.name, kosk: ban.koskName } }, in: [extendDialog, extending] }
+  extendRequired: { type: text, component: Text, text: { key: ExtendDialog.requiredNote }, in: [extendDialog, extending] }
+  extendReasonField: { type: field, component: TextField, role: textbox, text: { key: ExtendDialog.reasonLabel }, in: [extendDialog, extending], emits: TYPE_REASON }
+  extendReasonHelp: { type: text, component: Text, text: { key: ExtendDialog.reasonHelp }, in: [extendDialog, extending] }
+  extendReasonRequired: { type: text, component: Text, text: { key: ExtendDialog.reasonRequired }, in: [extendDialog], when: "reason == 'blank'" }
+  cancelExtend: { type: action, component: Button, role: button, intent: dismiss, text: { key: ExtendDialog.cancel }, in: [extendDialog, extending], disabledIn: [extending], emits: CANCEL }
+  submitExtend: { type: action, component: Button, role: button, intent: confirm, text: { key: ExtendDialog.submit }, in: [extendDialog, extending], disabledIn: [extending], emits: SUBMIT }
+
+edges:
+  - { labelledBy: [listPage, listTitle] }
+  - { labelledBy: [liftDialog, liftTitle] }
+  - { labelledBy: [extendDialog, extendTitle] }
+  - { triggers: [submitLift, lifting] }
+  - { triggers: [koskWiden, wideningFromKosk] }
+  - { triggers: [submitExtend, extending] }
+
+rules:
+  - { id: confirm-before-widening, rule: "widening a ban to the whole köşk asks first, with a reason of its own (the Medaris page does; the köşk page does not)" }
+  - { id: label-in-name, rule: "a node's visible text is contained in its accessible name (WCAG 2.5.3)" }

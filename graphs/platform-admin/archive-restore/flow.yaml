@@ -1,0 +1,191 @@
+# CAPTURE of Medaris at origin/main ce47fce8: nizam's Arşiv, a köşk's (/kosks/:id/arsiv, design nizam/28) and the
+# platform's (/arsiv, nizam/29). A hidden item comes back by kademe (Geri al); on the platform page the başnazım may
+# also delete it for good. The hide itself happens on other routes (course, week, session, deck and köşk hides); this
+# flow starts with one item already hidden at a recorded level. Viewers are modelled by the rung of the hide ladder
+# they reach (apps/tedrisat/src/archive/hide-level.ts:94-160). Paths are repo-relative.
+schema: delurio-graph/0
+kind: flow
+id: medaris.archive-restore
+status: proposed
+domain: medaris.platform-admin
+ui: medaris.archive-restore
+title: Bring a hidden item back from the archive, or delete it for good
+summary: >-
+  A hidden course, week, session, deck or köşk is listed in an Arşiv with who hid it and when. Whoever acts at the level
+  that hid it, or a higher one, presses Geri al and it returns to its place, unless what it belongs to is still hidden.
+  On the platform's Arşiv the Medaris başnazımı alone may also delete it and everything under it for good, after a
+  confirmation that lists what goes with it.
+
+scope:
+  shows: one hidden item of a köşk's own course, deck or köşk, from being listed in an archive to coming back or being deleted
+  world: open
+  outOfView:
+    - "medrese courses (listed in the köşk's archive too) and the medrese's own archive in nazar; the medrese rung of the ladder"
+    - "the course team's archive (GET /courses/:id/archive) and POST /kosks/:id/restore, POST /courses/:id/restore"
+    - "a recording or a medrese: in the vocabulary, stored nowhere, so they list nothing and answer 404 (archive-types.ts:47)"
+    - "a week whose restore brings sessions back with it, asked on the session ladder (archive.service.ts:320): the same level for every viewer here"
+
+context:
+  viewer:
+    values: [koskNazim, medarisKoskEdit, medarisCourseHide, muderris, basnazim]
+    initial: any
+    say: { koskNazim: "the köşk's nazımı (kosk.manage, course.hide)", medarisKoskEdit: "a Medaris nazımı granted platform.kosk_edit only", medarisCourseHide: "a Medaris nazımı granted platform.kosk_edit and platform.course_hide", muderris: "a müderris of the köşk's course", basnazim: "the Medaris başnazımı" }
+  itemType:
+    values: [course, week, session, deck, kosk]
+    initial: any
+    say: { course: "a hidden course", week: "a hidden week", session: "a hidden session", deck: "a hidden köşk deck", kosk: "a hidden köşk" }
+  hiddenLevel: # archived_level; a NULL one counts as the lowest level that could have hidden it (hide-level.ts:73)
+    values: [course, kosk, platform]
+    initial: any
+    say: { course: "hidden at the course's own level", kosk: "hidden at the köşk's level", platform: "hidden by Medaris administration" }
+  parentHidden:
+    values: [false, true]
+    initial: any
+    say: { "true": "what it belongs to is hidden too (the köşk of a course or deck, the course of a week, the week or course of a session)", "false": "" }
+  impactFails:
+    values: [false, true]
+    initial: any
+    say: { "true": "what a delete would take cannot be counted", "false": "" }
+  page: { values: [none, kosk, platform], initial: none }
+  notice: { values: [none, parent, level], initial: none }
+  impactShown: { values: [false, true], initial: false }
+
+guards:
+  # KOSK_ARCHIVE_READ_CODES on GET /kosks/:id/archive (hide-codes.ts:12, archive.controller.ts:104)
+  readsKoskArchive: "viewer in ['koskNazim', 'medarisKoskEdit', 'medarisCourseHide', 'basnazim']"
+  isChief: "viewer == 'basnazim'"
+  # restoreRoute (archive.service.ts:460): the level the caller acts at for the item, or none
+  routePlatform: "viewer == 'basnazim' or (viewer == 'medarisCourseHide' and itemType in ['course', 'week', 'session'])"
+  routeKosk: "not routePlatform and viewer == 'koskNazim' and itemType in ['course', 'week', 'session', 'deck']"
+  routeCourse: "not routePlatform and not routeKosk and viewer == 'muderris' and itemType in ['week', 'session']"
+  # mayRestoreAt (hide-level.ts:45): the restorer's rank reaches the hider's
+  levelOk: "routePlatform or (routeKosk and hiddenLevel in ['course', 'kosk']) or (routeCourse and hiddenLevel == 'course')"
+  canRestore: levelOk
+  # the course's, week's and session's restores refuse a hidden parent; a deck's and a köşk's do not ask (archive.repository.ts:472)
+  parentBlocks: "parentHidden and itemType in ['course', 'week', 'session']"
+
+effects:
+  noCourseRung: { set: { hiddenLevel: kosk } } # COURSE_HIDE_LADDER, KOSK_HIDE_LADDER and the deck have no course rung (hide-level.ts:95, :115)
+  noParent: { set: { parentHidden: false } }
+  onKoskPage: { set: { page: kosk, notice: none } }
+  onPlatformPage: { set: { page: platform, notice: none } }
+  parentRefused: { set: { notice: parent } }
+  rehiddenAbove: { set: { hiddenLevel: platform, notice: level } }
+  impactCounted: { set: { impactShown: true } }
+
+failures:
+  readingKoskArchive: { from: listKoskArchive, forbidden: [AUTHZ_FORBIDDEN] }
+  readingPlatformArchive: { from: listArchive, forbidden: [ARCHIVE_FORBIDDEN] }
+  restoring: { from: restoreArchiveItem, parent: [ARCHIVE_PARENT_HIDDEN], level: [ARCHIVE_RESTORE_LEVEL] }
+  loadingImpact: { from: getArchiveImpact, failed: [SERVER_ERROR] }
+
+main:
+  given: { viewer: koskNazim, itemType: course, hiddenLevel: kosk, parentHidden: false }
+  events: [OPEN_KOSK_ARCHIVE, DONE, RESTORE, DONE]
+
+initial: hidden
+states:
+  hidden:
+    title: The item is hidden
+    description: normalises a start the hide routes cannot produce
+    always:
+      - { guard: "itemType in ['course', 'deck', 'kosk'] and hiddenLevel == 'course'", target: hidden, effect: [noCourseRung], say: "nothing hides this at a course's level" }
+      - { guard: "itemType == 'kosk' and parentHidden", target: hidden, effect: [noParent], say: "a köşk belongs to nothing" }
+      - { target: shell }
+
+  shell:
+    title: Nizam's menu
+    by: human
+    on:
+      OPEN_KOSK_ARCHIVE: { target: readingKoskArchive, say: "they open the köşk's Arşiv" }
+      OPEN_PLATFORM_ARCHIVE: { target: readingPlatformArchive, say: "they open the platform's Arşiv" }
+
+  readingKoskArchive:
+    title: Read the köşk's archive
+    description: GET /kosks/:id/archive?limit=50, each item with canRestore; never the köşk itself
+    source: "apps/nizam/app/kosks/[id]/arsiv/page.tsx:31"
+    invoke: { action: listKoskArchive }
+    on:
+      FAIL.forbidden: { guard: "not readsKoskArchive", target: forbidden, say: "neither kosk.manage nor platform.kosk_edit: 403", source: "apps/tedrisat/src/archive/archive.controller.ts:104" }
+      DONE:
+        - { guard: "itemType == 'kosk'", target: notListed, say: "a köşk's archive lists its contents, never the köşk", source: "apps/tedrisat/src/archive/archive-types.ts:25" }
+        - { target: archiveList, effect: [onKoskPage], say: "the list comes", source: "apps/tedrisat/src/archive/archive.service.ts:121" }
+
+  readingPlatformArchive:
+    title: Read the platform's archive
+    description: GET /archive?limit=10 and GET /archive/scopes, for the başnazım alone
+    source: apps/nizam/app/arsiv/page.tsx:25
+    invoke: { action: listArchive }
+    on:
+      FAIL.forbidden: { guard: "not isChief", target: forbidden, say: "only the başnazım: ARCHIVE_FORBIDDEN", source: "apps/tedrisat/src/archive/archive.service.ts:510" }
+      DONE: { guard: isChief, target: archiveList, effect: [onPlatformPage], say: "the list comes", source: "apps/tedrisat/src/archive/archive.service.ts:276" }
+
+  archiveList:
+    title: The Arşiv page
+    by: human
+    goal: true
+    description: >-
+      Newest hidden first, with the type, where it was, who hid it and when. Geri al where canRestore; elsewhere a line
+      naming the level that hid it. On the platform page each row also offers Kalıcı olarak sil.
+    source: apps/nizam/features/archive/components/archive-view.tsx:340
+    on:
+      RESTORE: { guard: canRestore, target: restoring, say: "they press Geri al", source: "apps/nizam/features/archive/components/archive-view.tsx:348" }
+      DELETE: { guard: "page == 'platform'", target: loadingImpact, say: "they press Kalıcı olarak sil", source: "apps/nizam/features/archive/components/archive-view.tsx:367" }
+      NAVIGATE: { target: left, say: "they go to another page" }
+
+  restoring:
+    title: Bring it back
+    description: >-
+      POST /archive/:type/:id/restore. The level is compared under the row lock; the restore and its audit row
+      (<type>.restore, with the level) are one transaction. No confirmation is asked.
+    source: apps/tedrisat/src/archive/archive.service.ts:307
+    invoke: { action: restoreArchiveItem }
+    on:
+      DONE: { guard: "not parentBlocks", target: restored, say: "it returns to its place", source: "apps/tedrisat/src/archive/archive.repository.ts:383" }
+      FAIL.parent: { guard: parentBlocks, target: archiveList, effect: [parentRefused], say: "what it belongs to is still hidden: ARCHIVE_PARENT_HIDDEN", source: "apps/tedrisat/src/archive/archive.repository.ts:546" }
+      FAIL.level: { guard: "not routePlatform", target: archiveList, effect: [rehiddenAbove], say: "hidden again at a higher level meanwhile: ARCHIVE_RESTORE_LEVEL, and the row turns locked", source: "apps/nizam/features/archive/components/archive-view.tsx:187" }
+
+  loadingImpact:
+    title: Count what goes with it
+    description: GET /archive/:type/:id/impact, for the başnazım alone
+    source: apps/nizam/features/archive/components/archive-view.tsx:200
+    invoke: { action: getArchiveImpact }
+    on:
+      DONE: { guard: "not impactFails", target: deleteConfirm, effect: [impactCounted], say: "the counts come", source: "apps/tedrisat/src/archive/archive.service.ts:351" }
+      FAIL.failed: { guard: impactFails, target: deleteConfirm, say: "the counts cannot be read; the dialog says so and still offers the delete", source: "apps/nizam/features/archive/components/archive-view.tsx:533" }
+
+  deleteConfirm:
+    title: The delete confirmation
+    by: human
+    description: an alert dialog; its focus starts on Vazgeç, and Kalıcı olarak sil is off only while the counts load
+    source: apps/nizam/features/archive/components/archive-view.tsx:507
+    on:
+      CONFIRM: { target: purging, say: "they confirm" }
+      CANCEL: { target: archiveList, say: "they press Vazgeç" }
+
+  purging:
+    title: Delete it for good
+    description: >-
+      DELETE /archive/:type/:id: the item and everything under it in one transaction, with a deletion record that names
+      the caller; then the session invitations still owed are sent and the files go from storage. Irreversible.
+    source: apps/tedrisat/src/archive/archive.service.ts:363
+    invoke: { action: deleteArchiveItem }
+    on:
+      DONE: { target: purged, say: "it is gone", source: "apps/tedrisat/src/archive/archive.repository.ts:691" }
+
+  restored: { type: final, title: Brought back, source: "apps/nizam/features/archive/components/archive-view.tsx:177" }
+  purged: { type: final, title: Deleted for good, source: "apps/nizam/features/archive/components/archive-view.tsx:232" }
+  forbidden: { type: final, title: No access, source: apps/nizam/app/arsiv/page.tsx:26 }
+  notListed: { type: final, title: Not in the köşk's archive }
+  left: { type: final, title: They leave the page, leavesPage: true }
+
+assertions:
+  - { id: restore-by-kademe, never: "state == 'restored' and not levelOk", say: "An item comes back only by the level that hid it or a higher one", source: "apps/tedrisat/src/archive/hide-level.ts:45" }
+  - { id: kosk-nazim-never-undoes-platform, never: "state == 'restored' and viewer == 'koskNazim' and hiddenLevel == 'platform'", say: "The köşk's nazımı never brings back what Medaris administration hid", source: "apps/tedrisat/src/archive/archive.repository.ts:469" }
+  - { id: course-items-wait-for-their-parent, never: "state == 'restored' and parentBlocks", say: "A course, week or session does not come back while what it belongs to is hidden", source: "apps/tedrisat/src/archive/restore-course.ts:52" }
+  - { id: kosk-restored-here-only-by-chief, never: "state == 'restored' and itemType == 'kosk' and not isChief", say: "From the archive only the başnazım brings back a köşk", source: "apps/tedrisat/src/archive/archive.service.ts:507" }
+  - { id: purge-chief-only, never: "state in ['loadingImpact', 'deleteConfirm', 'purging', 'purged'] and not isChief", say: "Only the Medaris başnazımı deletes for good", source: "apps/tedrisat/src/archive/archive.service.ts:368" }
+  - { id: button-matches-server, never: "state == 'restoring' and not canRestore", say: "Geri al is drawn only where the server's kademe rule lets it through", source: "apps/nizam/features/archive/present.ts:212" }
+# NOT HELD, kept out on purpose (REPORT.md, PLATFORM-ADMIN-10): comes-back-only-with-its-parent:
+#   "state == 'restored' and parentHidden" is reached for a deck of a hidden köşk: restoreSimple asks nothing of the
+#   köşk (archive.repository.ts:472).

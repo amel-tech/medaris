@@ -1,0 +1,234 @@
+# Medaris, captured at origin/main ce47fce8: "Medrese nazırları" in nazar (/medrese/:id/nazirlar, nazir/05 and nazir/15)
+# and /madrasahs/:id/nazirs behind it: appointing a nazır, and dismissing one with a decision for everyone they gave
+# something to. Giving a nazır permissions (nazir/06) is its own flow, medaris.nazir-permissions, which this one waits for.
+# What the server finds when a step asks (who the e-mail names, what the nazır handed on) is a `havoc` on the step that
+# asks, so the starting situations are only who reads the page and whose appointee the row is.
+schema: delurio-graph/0
+kind: flow
+id: medaris.madrasah-nazir
+status: proposed
+domain: medaris.madrasah-staff
+ui: medaris.madrasah-nazir
+title: Appoint and dismiss the medrese's nazırs
+summary: >-
+  The başmüderris, the başnazım, a nazır given madrasah.nazir_appoint or a Medaris nazımı given
+  platform.madrasah_nazir_grant sees the medrese's nazırs. A person found by their exact e-mail address is appointed
+  with no permission. Dismissing a nazır first lists, per person, what they handed on in the medrese; each person is
+  answered Devral or Düşür, and then the nazır's own seat and permissions are revoked.
+
+scope:
+  shows: the roster, the appointment dialog, the dismissal dialog and the server's checks
+  world: open
+  outOfView:
+    - "giving permissions (nazir/06): medaris.nazir-permissions"
+    - "the medrese's permission groups under the table (nazir/16): domain actions only"
+    - "the band that names a nazır with no permission yet"
+
+context:
+  actor:
+    values: [basmuderris, appointer, nazirNot, admin, medarisNazim]
+    initial: any
+    say: { basmuderris: "the reader is the medrese's başmüderris", appointer: "the reader is a nazır given madrasah.nazir_appoint", nazirNot: "the reader is a nazır without it", admin: "the reader is the başnazım", medarisNazim: "the reader is a Medaris nazımı given platform.madrasah_nazir_grant" }
+  rowMine:
+    values: [true, false]
+    initial: any
+    say: { "true": "the nazır on the row was appointed by the reader", "false": "someone else appointed the nazır on the row" }
+  # found by the search (havoc on SEARCH)
+  lookup: { values: [found, none, failed], initial: found }
+  target: { values: [other, self, nazir], initial: other } # the person found: someone else, the reader, or a nazır of the medrese already
+  targetBarred: { values: [false, true], initial: false } # an open ban bars the person found in the medrese or one of its köşks
+  # found by the dismissal's read (havoc on DISMISS)
+  grantsRead: { values: [true, false], initial: true }
+  given: { values: [none, some], initial: none } # the nazır handed on a role or a permission in the medrese
+  selfAmongGiven: { values: [false, true], initial: false } # the reader is one of the people the nazır gave something to
+  handedOnBelow: { values: [false, true], initial: false } # a person whose seat is dropped handed something on under it
+  listMoved: { values: [false, true], initial: false } # what the nazır handed on changed after the dialog read it
+  answer: { values: [none, takeOver, drop], initial: none }
+  notice: { values: [none, notFound, lookupFailed, selfGrant, appointed, dismissed, changed, cascade, notYours], initial: none }
+  seated: { values: [none, other, otherBarred, self], initial: none }
+  dismissed: { values: [false, true], initial: false }
+
+guards:
+  manages: "actor in ['basmuderris', 'admin']" # nazar's runsMedrese
+  mayDismissHere: "manages or rowMine"
+  selfRefused: "actor != 'admin'"
+
+effects:
+  clearNotice: { set: { notice: none } }
+  openAppoint: { set: { notice: none, seated: none, lookup: found, target: other, targetBarred: false, grantsRead: true, given: none, selfAmongGiven: false, handedOnBelow: false, listMoved: false, answer: none, dismissed: false } }
+  searched: { set: { notice: none }, havoc: [lookup, target, targetBarred] }
+  notFound: { set: { notice: notFound } }
+  lookupFailed: { set: { notice: lookupFailed } }
+  unpick: { set: { lookup: found, target: other, targetBarred: false } }
+  noticeSelfGrant: { set: { notice: selfGrant } }
+  seatedOther: { set: { seated: other, notice: appointed } }
+  seatedOtherBarred: { set: { seated: otherBarred, notice: appointed } }
+  seatedSelf: { set: { seated: self, notice: appointed } }
+  askGrants: { set: { notice: none, answer: none, dismissed: false, seated: none, lookup: found, target: other, targetBarred: false }, havoc: [grantsRead, given, selfAmongGiven, handedOnBelow, listMoved] }
+  reread: { set: { answer: none, listMoved: false }, havoc: [grantsRead, given, selfAmongGiven, handedOnBelow] }
+  answerTakeOver: { set: { answer: takeOver } }
+  answerDrop: { set: { answer: drop } }
+  noticeChanged: { set: { notice: changed } }
+  noticeCascade: { set: { notice: cascade } }
+  noticeNotYours: { set: { notice: notYours } }
+  dismissedNow: { set: { dismissed: true, notice: dismissed } }
+
+failures:
+  searching: { from: lookupUser, unavailable: [KEYCLOAK_ADMIN_UNAVAILABLE] }
+  appointing: { from: addMadrasahNazir, selfGrant: [SELF_GRANT_REFUSED] }
+  readingGrants: { from: getMadrasahNazirGrants, read: [MADRASAH_NAZIR_NOT_FOUND] }
+  dismissing:
+    from: removeMadrasahNazir
+    selfGrant: [SELF_GRANT_REFUSED]
+    notYours: [NAZIR_NOT_APPOINTED_BY_YOU]
+    changed: [DISMISS_DECISIONS_INCOMPLETE]
+    cascade: [DISMISS_SEAT_HANDED_ON]
+
+main:
+  given: { actor: basmuderris, rowMine: true }
+  events: [APPOINT, SEARCH, DONE, SUBMIT, DONE]
+
+initial: loading
+states:
+  loading:
+    title: Read the nazırs
+    source: apps/nazar/features/nazirs/components/nazirs-page.tsx:37
+    always:
+      - { guard: "actor == 'nazirNot'", target: forbidden, say: "the API refuses the roster (403); the page draws no appoint button", source: "apps/tedrisat/src/madrasah/nazir/madrasah-nazir.controller.ts:73" }
+      - { target: roster, say: "the roster opens", source: "apps/nazar/features/nazirs/components/nazirs-page.tsx:83" }
+
+  forbidden:
+    type: final
+    title: The page says the reader has no permission
+    source: apps/nazar/features/nazirs/components/nazirs-page.tsx:69
+
+  roster:
+    title: The medrese's nazırs
+    by: human
+    goal: true
+    description: >-
+      Each nazır with their groups, single permissions, end and giver. "İzin ver" / "İzinleri düzenle" is drawn only for
+      the başmüderris and the başnazım; "Görevden al" for them on every row and for anyone else on the rows of the
+      nazırs they appointed. A Medaris nazımı, whom the API lets give and dismiss any nazır, gets neither beyond that.
+    source: apps/nazar/features/nazirs/components/nazirs-table.tsx:23
+    on:
+      APPOINT: { target: appointDialog, effect: [openAppoint], say: "they press \"Medrese nazırı ata\"", source: "apps/nazar/features/nazirs/components/appoint-nazir.tsx:128" }
+      EDIT: { guard: manages, target: editing, effect: [clearNotice], say: "they press \"İzin ver\" or \"İzinleri düzenle\" on a row", source: "apps/nazar/features/nazirs/components/nazirs-table.tsx:147" }
+      DISMISS: { guard: mayDismissHere, target: readingGrants, effect: [askGrants], say: "they press \"Görevden al\" on a row", source: "apps/nazar/features/nazirs/components/nazirs-table.tsx:166" }
+      NAVIGATE: { target: left, say: "they go to another page" }
+
+  editing:
+    title: Give the nazır permissions
+    description: The permission editor, a dialog over the roster; the roster is read again once it saves.
+    invoke: { flow: medaris.nazir-permissions }
+    source: apps/nazar/features/nazirs/components/nazirs-table.tsx:191
+    on:
+      DONE: { target: roster, say: "the editor saved; the roster is read again", source: "apps/nazar/features/nazirs/components/nazirs-table.tsx:197" }
+      CANCEL: { target: roster, say: "the editor closed without saving" }
+
+  appointDialog:
+    title: Find the person by e-mail
+    by: human
+    description: The exact address; searched on Enter or when the field is left, never per key, since every search is audited.
+    source: apps/nazar/features/nazirs/components/appoint-nazir.tsx:134
+    on:
+      SEARCH: { target: searching, effect: [searched], say: "they type the address and press Enter", source: "apps/nazar/features/nazirs/components/appoint-nazir.tsx:85" }
+      CANCEL: { target: roster, say: "they press \"Vazgeç\"", source: "apps/nazar/features/nazirs/components/appoint-nazir.tsx:149" }
+
+  searching:
+    title: Look the address up in the realm
+    description: GET /users/lookup, an exact e-mail search over the realm, written to the audit log.
+    invoke: { action: lookupUser }
+    source: apps/nazar/features/nazirs/actions.ts:43
+    on:
+      DONE:
+        - { guard: "lookup == 'found'", target: picked, say: "one account is found and chosen", source: "apps/nazar/features/nazirs/components/appoint-nazir.tsx:72" }
+        - { guard: "lookup == 'none'", target: appointDialog, effect: [notFound], say: "no account has that address", source: "apps/nazar/features/nazirs/components/appoint-nazir.tsx:77" }
+      FAIL.unavailable: { guard: "lookup == 'failed'", target: appointDialog, effect: [lookupFailed], say: "the directory cannot be asked now", source: "apps/nazar/features/nazirs/components/appoint-nazir.tsx:80" }
+
+  picked:
+    title: The person is chosen
+    by: human
+    description: Their name and address; "Ata" stays off for someone who is a nazır of the medrese already.
+    source: apps/nazar/features/nazirs/components/appoint-nazir.tsx:161
+    on:
+      SUBMIT: { guard: "target != 'nazir'", target: appointing, effect: [clearNotice], say: "they press \"Ata\"", source: "apps/nazar/features/nazirs/components/appoint-nazir.tsx:94" }
+      UNPICK: { target: appointDialog, effect: [unpick], say: "they take the choice away", source: "apps/nazar/features/nazirs/components/appoint-nazir.tsx:186" }
+      CANCEL: { target: roster, effect: [unpick], say: "they press \"Vazgeç\"" }
+
+  appointing:
+    title: Appoint the nazır
+    description: >-
+      POST /madrasahs/:id/nazirs/:userId. Nobody but the başnazım appoints themselves, whatever they hold. In one
+      transaction under the medrese's lock: a seat already held changes nothing; otherwise what an earlier seat left is
+      revoked, a MEDRESE_NAZIR seat with no permission is written, and the audit row madrasah_nazir.appoint with the
+      level the caller acts at. The user id is not checked against the users table, the realm or a ban.
+    invoke: { action: addMadrasahNazir }
+    source: apps/tedrisat/src/madrasah/nazir/madrasah-nazir.controller.ts:103
+    on:
+      FAIL.selfGrant: { guard: "target == 'self' and selfRefused", target: picked, effect: [noticeSelfGrant], say: "403 SELF_GRANT_REFUSED, audited; a toast says so", source: "libs/common/src/authz/self-grant.guard.ts:91" }
+      DONE:
+        - { guard: "target == 'self' and not selfRefused", target: roster, effect: [seatedSelf], say: "the başnazım appoints himself: the guard does not ask him", source: "libs/common/src/authz/self-grant.guard.ts:67" }
+        - { guard: "target == 'other' and targetBarred", target: roster, effect: [seatedOtherBarred], say: "the person is seated, ban or no ban", source: "apps/tedrisat/src/madrasah/nazir/madrasah-nazir.repository.ts:228" }
+        - { guard: "target == 'other'", target: roster, effect: [seatedOther], say: "the person is a nazır with no permission; a toast says so and the roster is read again", source: "apps/nazar/features/nazirs/components/appoint-nazir.tsx:100" }
+
+  readingGrants:
+    title: Read what the nazır handed on
+    description: GET /madrasahs/:id/nazirs/:userId/grants, asked again on every opening; skeleton bars meanwhile.
+    invoke: { action: getMadrasahNazirGrants }
+    source: apps/nazar/features/nazirs/components/dismiss-dialog.tsx:93
+    on:
+      DONE: { guard: grantsRead, target: dismissDialog, say: "the list is there" }
+      FAIL.read: { guard: "not grantsRead", target: grantsFailed, say: "the list cannot be read", source: "apps/nazar/features/nazirs/components/dismiss-dialog.tsx:96" }
+
+  grantsFailed:
+    title: The list could not be read
+    by: human
+    source: apps/nazar/features/nazirs/components/dismiss-dialog.tsx:174
+    on:
+      RETRY: { target: readingGrants, effect: [reread], say: "they press \"Yeniden dene\"", source: "apps/nazar/features/nazirs/components/dismiss-dialog.tsx:176" }
+      CANCEL: { target: roster, say: "they press \"Vazgeç\"" }
+
+  dismissDialog:
+    title: Decide for everyone the nazır gave something to
+    by: human
+    description: >-
+      One row per person, with "Devral" and "Düşür" and nothing chosen; "Görevden al" stays off until every row has an
+      answer, and is ready at once when the nazır gave nobody anything. The focus starts on "Vazgeç".
+    source: apps/nazar/features/nazirs/components/dismiss-dialog.tsx:145
+    on:
+      TAKE_OVER: { guard: "given == 'some'", target: dismissDialog, effect: [answerTakeOver], say: "they answer \"Devral\" on every row", source: "apps/nazar/features/nazirs/components/dismiss-dialog.tsx:244" }
+      DROP: { guard: "given == 'some'", target: dismissDialog, effect: [answerDrop], say: "they answer \"Düşür\" on every row", source: "apps/nazar/features/nazirs/components/dismiss-dialog.tsx:244" }
+      SUBMIT: { guard: "given == 'none' or answer != 'none'", target: dismissing, effect: [clearNotice], say: "they press \"Görevden al\"", source: "apps/nazar/features/nazirs/components/dismiss-dialog.tsx:109" }
+      CANCEL: { target: roster, say: "they press \"Vazgeç\"" }
+
+  dismissing:
+    title: Dismiss the nazır
+    description: >-
+      DELETE /madrasahs/:id/nazirs/:userId with the answers. The self-naming guard refuses an answer of Devral for a
+      row the reader received (the başnazım excepted). Then, in one transaction: a nazır who holds madrasah.nazir_appoint
+      by a grant dismisses only the nazırs they appointed; the answers must name exactly the people listed now; Devral
+      makes the reader the giver, Düşür revokes, and a seat dropped takes what its holder was given in its scope; the
+      nazır's own seat and permissions in the medrese and its courses are revoked; a dropped seat whose holder handed
+      something on under it refuses the whole act; the audit row madrasah_nazir.dismiss.
+    invoke: { action: removeMadrasahNazir }
+    source: apps/tedrisat/src/madrasah/nazir/madrasah-nazir.repository.ts:788
+    on:
+      FAIL.selfGrant: { guard: "answer == 'takeOver' and selfAmongGiven and selfRefused", target: dismissDialog, effect: [noticeSelfGrant], say: "403 SELF_GRANT_REFUSED: taking over what one was given oneself", source: "apps/tedrisat/src/madrasah/nazir/madrasah-nazir.controller.ts:183" }
+      FAIL.notYours: { guard: "not (answer == 'takeOver' and selfAmongGiven and selfRefused) and actor == 'appointer' and not rowMine", target: dismissDialog, effect: [noticeNotYours], say: "403 NAZIR_NOT_APPOINTED_BY_YOU", source: "apps/tedrisat/src/madrasah/nazir/madrasah-nazir.repository.ts:821" }
+      FAIL.changed: { guard: "not (answer == 'takeOver' and selfAmongGiven and selfRefused) and not (actor == 'appointer' and not rowMine) and listMoved", target: readingGrants, effect: [noticeChanged, reread], say: "400 DISMISS_DECISIONS_INCOMPLETE: the answers are cleared and the list read again", source: "apps/nazar/features/nazirs/components/dismiss-dialog.tsx:134" }
+      FAIL.cascade: { guard: "not (answer == 'takeOver' and selfAmongGiven and selfRefused) and not (actor == 'appointer' and not rowMine) and not listMoved and answer == 'drop' and handedOnBelow", target: dismissDialog, effect: [noticeCascade], say: "409 DISMISS_SEAT_HANDED_ON: nothing is written", source: "apps/tedrisat/src/madrasah/nazir/madrasah-nazir.repository.ts:884" }
+      DONE: { guard: "not (answer == 'takeOver' and selfAmongGiven and selfRefused) and not (actor == 'appointer' and not rowMine) and not listMoved and not (answer == 'drop' and handedOnBelow)", target: roster, effect: [dismissedNow], say: "the nazır is out; a toast says so and the roster is read again", source: "apps/nazar/features/nazirs/components/dismiss-dialog.tsx:119" }
+
+  left:
+    type: final
+    title: They leave the page
+    leavesPage: true
+
+assertions:
+  - { id: only-appointers-appoint, never: "seated != 'none' and actor == 'nazirNot'", say: "A nazır not given madrasah.nazir_appoint never appoints anyone", source: "apps/tedrisat/src/madrasah/nazir/madrasah-nazir.controller.ts:96" }
+  - { id: nobody-appoints-self, never: "seated == 'self' and actor != 'admin'", say: "Nobody but the başnazım appoints themselves a nazır", source: "apps/tedrisat/src/madrasah/nazir/madrasah-nazir.controller.ts:109" }
+  - { id: appointer-dismisses-own, never: "dismissed and actor == 'appointer' and not rowMine", say: "A nazır given madrasah.nazir_appoint dismisses only the nazırs they appointed", source: "apps/tedrisat/src/madrasah/nazir/madrasah-nazir.repository.ts:817" }
+  - { id: no-take-over-of-own, never: "dismissed and answer == 'takeOver' and selfAmongGiven and actor != 'admin'", say: "Nobody becomes the giver of what they were given themselves", source: "apps/tedrisat/src/madrasah/nazir/madrasah-nazir.controller.ts:183" }
+  - { id: answers-match-the-list, never: "dismissed and listMoved", say: "A dismissal never goes through on answers to a list that has changed", source: "apps/tedrisat/src/madrasah/nazir/dismissal-plan.ts:30" }
+  - { id: nothing-left-unasked, never: "dismissed and answer == 'drop' and handedOnBelow", say: "No dropped seat leaves behind what its holder handed on, unasked", source: "apps/tedrisat/src/madrasah/nazir/madrasah-nazir.repository.ts:884" }

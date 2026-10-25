@@ -1,0 +1,37 @@
+# The screen of medaris.partner-codes: the card Ortak uygulama kodları in nazar's Ders ayarları
+# (/ders/:id/ayarlar), drawn for a holder of course.partner_codes in a köşk that works with a partner. Words from
+# libs/i18n nazar.json. The partner's own call has no screen; its answers are on the final states.
+schema: delurio-graph/0
+kind: ui
+id: medaris.partner-codes
+flow: medaris.partner-codes
+status: proposed
+catalog: catalog/tr.json
+locales: [tr, en]
+samples: { name: "Örnek Uygulama", code: "tecvid-2026-guz" }
+changes: { key: Changes.note }
+
+nodes:
+  settingsPage: { type: page, component: Page, role: main, name: { labelledBy: settingsTitle }, in: [settingsPage, adding, removing], source: apps/nazar/features/course-settings/components/course-settings-page.tsx:50 }
+  settingsTitle: { type: text, component: Heading, role: heading, text: { key: CourseSettings.title }, in: [settingsPage, adding, removing] }
+  codesTitle: { type: text, component: Heading, role: heading, text: { key: CourseSettings.partnerCodes.title }, in: [settingsPage, adding, removing], when: "holdsCodes and offered", source: apps/nazar/features/course-settings/components/partner-codes-card.tsx:53 }
+  codesIntro: { type: text, component: Text, text: { key: CourseSettings.partnerCodes.intro }, in: [settingsPage, adding, removing], when: "holdsCodes and offered" }
+  noCodes: { type: text, component: Text, text: { key: CourseSettings.partnerCodes.empty }, in: [settingsPage, adding, removing], when: "holdsCodes and offered and not mapped" }
+  codeList: { type: list, component: List, role: list, name: { key: CourseSettings.partnerCodes.listLabel, params: { name: partner.name } }, in: [settingsPage, adding, removing], when: "holdsCodes and offered and mapped", source: apps/nazar/features/course-settings/components/partner-codes-card.tsx:147 }
+  removeCode: { type: action, component: Button, role: button, intent: secondary, text: { key: CourseSettings.partnerCodes.remove }, in: [settingsPage, adding, removing], disabledIn: [adding, removing], when: "holdsCodes and offered and mapped", repeat: partner.codes, emits: REMOVE_CODE, source: apps/nazar/features/course-settings/components/partner-codes-card.tsx:161 } # named "Kaldır <code>": the code is visually hidden in the button
+  codeField: { type: field, component: TextField, role: textbox, text: { key: CourseSettings.partnerCodes.codeLabel }, in: [settingsPage, adding, removing], disabledIn: [adding, removing], when: "holdsCodes and offered", source: apps/nazar/features/course-settings/components/partner-codes-card.tsx:188 }
+  codeHelp: { type: text, component: Text, text: { key: CourseSettings.partnerCodes.codeHelp }, in: [settingsPage, adding, removing], when: "holdsCodes and offered" }
+  codeError: { type: text, component: Text, text: { oneOf: [CourseSettings.partnerCodes.errors.shape, CourseSettings.partnerCodes.errors.taken, CourseSettings.partnerCodes.errors.unknownPartner] }, in: [settingsPage], when: "notice in ['shape', 'taken', 'unknown']" }
+  addCode: { type: action, component: Button, role: button, intent: confirm, text: { key: CourseSettings.partnerCodes.add }, in: [settingsPage, adding, removing], disabledIn: [removing], when: "holdsCodes and offered", emits: ADD_CODE, source: apps/nazar/features/course-settings/components/partner-codes-card.tsx:204 }
+  addedToast: { type: status, component: Status, role: status, text: { key: CourseSettings.partnerCodes.added }, in: [settingsPage], when: "notice == 'added'" }
+  addedBody: { type: text, component: Text, text: { key: CourseSettings.partnerCodes.addedBody, params: { name: partner.name, code: code } }, in: [settingsPage], when: "notice == 'added'" }
+  removedToast: { type: status, component: Status, role: status, text: { key: CourseSettings.partnerCodes.removed }, in: [settingsPage], when: "notice == 'removed'" }
+  removedBody: { type: text, component: Text, text: { key: CourseSettings.partnerCodes.removedBody, params: { name: partner.name, code: code } }, in: [settingsPage], when: "notice == 'removed'" }
+
+edges:
+  - { labelledBy: [settingsPage, settingsTitle] }
+  - { triggers: [addCode, adding] }
+  - { triggers: [removeCode, removing] }
+
+rules:
+  - { id: label-in-name, rule: "a node's visible text is contained in its accessible name (WCAG 2.5.3)" }

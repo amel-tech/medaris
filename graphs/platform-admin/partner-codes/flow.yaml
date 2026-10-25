@@ -1,0 +1,194 @@
+# CAPTURE of Medaris at origin/main ce47fce8: "Ortak uygulama kodları" in nazar's Ders ayarları, where a partner
+# application's codes are mapped to a course, and what the partner's server meets when it registers a person under a
+# code (PUT /integrations/enrollments/:registrationRef/:courseCode, a machine with no person: that step has no `by`).
+# Medaris does not issue codes: the partner owns them, course staff map them. The partner registry: medaris.partner-apps.
+# Never named here: the partner organisation; the example partner is "Örnek Uygulama". Paths are repo-relative.
+schema: delurio-graph/0
+kind: flow
+id: medaris.partner-codes
+status: proposed
+domain: medaris.platform-admin
+ui: medaris.partner-codes
+title: Map a partner application's code to a course, and enrol through it
+summary: >-
+  In a course's settings the köşk's nazımı, or the başnazım, sees the partner applications bound to the course's köşk
+  and maps one of a partner's codes to the course, or takes one off. When a person approved in the partner application
+  arrives under a mapped code, Medaris seats them in the course as a talebe; it refuses a disabled partner, a code not
+  mapped in a köşk the partner works with, an unknown or unverified account, a closed course and a barred person.
+
+scope:
+  shows: one course, one partner, one code and one registration
+  world: open
+  outOfView:
+    - "the partner's token checks before the registry (no token, a bad signature, no partner-enrollment role) and its rate limit"
+    - "the partner's DELETE, which takes away only the seat the registration made, and GET /integrations/courses"
+    - "a REVOKED seat: given back when the integration took it away, refused when the course team did"
+    - "the seat's own consequences (session invitations, the ENROLLMENT_APPROVED notification): the learning area"
+
+context:
+  staff:
+    values: [koskNazim, muderris, basnazim]
+    initial: any
+    say: { koskNazim: "the nazım of the course's köşk", muderris: "the course's müderris", basnazim: "the Medaris başnazımı" }
+  partner:
+    values: [enabledBound, disabled, unbound]
+    initial: any
+    say: { enabledBound: "the partner is on and works with the course's köşk", disabled: "the partner is switched off", unbound: "the partner does not work with the course's köşk" }
+  mapped:
+    values: [false, true]
+    initial: any
+    say: { "true": "the code is mapped to this course", "false": "the code is not mapped here" }
+  taken:
+    values: [false, true]
+    initial: any
+    say: { "true": "the code is mapped to another course", "false": "" }
+  shape:
+    values: [ok, bad]
+    initial: any
+    say: { ok: "the typed code is lower-case letters, digits and hyphens", bad: "the typed code has other characters" }
+  account:
+    values: [ok, unknown, unverified]
+    initial: any
+    say: { ok: "the partner's subject is an enabled account with a verified e-mail", unknown: "no enabled account has that subject", unverified: "the account's e-mail is not verified" }
+  courseOpen:
+    values: [true, false]
+    initial: any
+    say: { "true": "the course takes enrolments", "false": "the course is unpublished, hidden, or in a hidden köşk" }
+  barred:
+    values: [false, true]
+    initial: any
+    say: { "true": "an open ban bars the person from the course", "false": "" }
+  gender:
+    values: [known, missing]
+    initial: any
+    say: { known: "the account carries a gender", missing: "the account carries no gender" }
+  addedHere: { values: [false, true], initial: false }
+  notice: { values: [none, added, shape, taken, unknown, removed], initial: none }
+
+guards:
+  # course.partner_codes is köşk-scoped (libs/common/src/authz/permissions.ts:231): the köşk nazımı's by default, not the müderris'
+  holdsCodes: "staff in ['koskNazim', 'basnazim']"
+  # coursePartners (apps/tedrisat/src/integration/partner.repository.ts:132): enabled partners bound to the course's köşk
+  offered: "partner == 'enabledBound'"
+  # findCodeCourse (partner.repository.ts:66): a code mapped in a köşk the partner is bound to
+  codeReaches: "mapped and partner != 'unbound'"
+
+effects:
+  notBoth: { set: { taken: false } } # one partner's code sits on one course at a time
+  shapeProblem: { set: { notice: shape } }
+  takenElsewhere: { set: { notice: taken } }
+  unknownPartner: { set: { notice: unknown } }
+  map: { set: { mapped: true, addedHere: true, notice: added } }
+  unmap: { set: { mapped: false, notice: removed } }
+  turnedOff: { set: { partner: disabled } }
+
+failures:
+  readingCodes: { from: getCoursePartnerCodes, forbidden: [AUTHZ_FORBIDDEN] }
+  adding: { from: addCoursePartnerCode, unknown: [PARTNER_UNKNOWN], taken: [PARTNER_CODE_TAKEN] }
+  enrolling: { from: putPartnerEnrollment, disabled: [PARTNER_DISABLED], courseUnknown: [PARTNER_COURSE_UNKNOWN], user: [PARTNER_USER_UNKNOWN, PARTNER_USER_UNVERIFIED], refused: [PARTNER_ENROLLMENT_REFUSED] }
+
+main:
+  given: { staff: koskNazim, partner: enabledBound, mapped: false, taken: false, shape: ok, account: ok, courseOpen: true, barred: false, gender: known }
+  events: [DONE, ADD_CODE, DONE, PARTNER_ENROLLS, DONE]
+
+initial: opening
+states:
+  opening:
+    title: Open Ders ayarları
+    description: >-
+      Only a caller holding course.partner_codes has the course's partners read; for anyone else the section is not
+      drawn and nothing is asked. Normalises a start the code cannot produce.
+    source: apps/nazar/features/course-settings/components/course-settings-page.tsx:144
+    always:
+      - { guard: "mapped and taken", target: opening, effect: [notBoth], say: "a code is mapped to one course" }
+      - { guard: "not holdsCodes", target: settingsPage, say: "no course.partner_codes: no section", source: "apps/nazar/features/course-settings/components/course-settings-page.tsx:152" }
+      - { target: readingCodes }
+
+  readingCodes:
+    title: Read the course's partners and codes
+    description: GET /courses/:id/partner-codes, the course's partners (the enabled ones bound to its köşk), each with its codes here
+    source: apps/nazar/features/course-settings/components/course-settings-page.tsx:153
+    invoke: { action: getCoursePartnerCodes }
+    on:
+      DONE: { target: settingsPage, say: "the partners come; a köşk with none draws no section", source: "apps/tedrisat/src/integration/partner-codes.service.ts:33" }
+
+  settingsPage:
+    title: The Ders ayarları page
+    by: human
+    goal: true
+    description: >-
+      The course's settings and, for a holder of course.partner_codes in a köşk that works with a partner, the card
+      Ortak uygulama kodları: per partner its codes here with Kaldır, and a field to add one.
+    source: apps/nazar/features/course-settings/components/partner-codes-card.tsx:46
+    on:
+      ADD_CODE: { guard: "holdsCodes and offered and not mapped", target: validating, say: "they type a code and press Ekle", source: "apps/nazar/features/course-settings/components/partner-codes-card.tsx:85" }
+      REMOVE_CODE: { guard: "holdsCodes and offered and mapped", target: removing, say: "they press Kaldır beside the code", source: "apps/nazar/features/course-settings/components/partner-codes-card.tsx:168" }
+      PARTNER_TURNED_OFF: { guard: "partner != 'disabled'", target: settingsPage, effect: [turnedOff], say: "meanwhile Medaris administration switches the partner off (medaris.partner-apps)" }
+      PARTNER_ENROLLS: { target: enrolling, say: "the partner's server registers a person under the code" }
+      NAVIGATE: { target: left, say: "they go to another page" }
+
+  validating:
+    title: Check the typed code
+    description: the code is trimmed and lower-cased, then its shape is checked before anything is sent
+    source: apps/nazar/features/course-settings/partner-codes.ts:21
+    always:
+      - { guard: "shape == 'bad'", target: settingsPage, effect: [shapeProblem], say: "the field says what a code may hold; nothing is sent" }
+      - { target: adding }
+
+  adding:
+    title: Map the code to the course
+    description: POST /courses/:id/partner-codes; the mapping and its audit row (course.partner_code_add) are one transaction
+    source: apps/tedrisat/src/integration/partner-codes.service.ts:51
+    invoke: { action: addCoursePartnerCode }
+    on:
+      FAIL.unknown: { guard: "not offered", target: settingsPage, effect: [unknownPartner], say: "the partner no longer works here: PARTNER_UNKNOWN", source: "apps/tedrisat/src/integration/partner-codes.service.ts:107" }
+      FAIL.taken: { guard: "offered and taken", target: settingsPage, effect: [takenElsewhere], say: "mapped to another course, which is not named: PARTNER_CODE_TAKEN", source: "apps/tedrisat/src/integration/partner-codes.service.ts:64" }
+      DONE: { guard: "offered and not taken", target: settingsPage, effect: [map], say: "the code now enrols in this course", source: "apps/tedrisat/src/integration/partner.repository.ts:189" }
+
+  removing:
+    title: Take the code off the course
+    description: >-
+      DELETE /courses/:id/partner-codes/:partner/:code, for any registered partner, enabled or bound or not; audited as
+      course.partner_code_remove. The people it enrolled stay. No confirmation is asked.
+    source: apps/tedrisat/src/integration/partner-codes.service.ts:79
+    invoke: { action: removeCoursePartnerCode }
+    on:
+      DONE: { target: settingsPage, effect: [unmap], say: "the code enrols nobody here any more" }
+
+  enrolling:
+    title: The partner registers a person
+    description: >-
+      PUT /integrations/enrollments/:registrationRef/:courseCode with the partner's service-account token, through
+      PartnerGuard. The seat is written as the course team's "Toplu talebe ekle" writes one, audited with the partner's
+      name.
+    source: apps/tedrisat/src/integration/partner-enrollment.service.ts:102
+    invoke: { action: putPartnerEnrollment }
+    response: { status: "200", body: "{ status: ENROLLED | ALREADY_ENROLLED, courseId }" }
+    on:
+      FAIL.disabled: { guard: "partner == 'disabled'", target: partnerDisabled, say: "the partner is off: 403 PARTNER_DISABLED", source: "apps/tedrisat/src/integration/partner.guard.ts:124" }
+      FAIL.courseUnknown: { guard: "partner != 'disabled' and not codeReaches", target: courseUnknown, say: "no course of a bound köşk has the code: 404 PARTNER_COURSE_UNKNOWN", source: "apps/tedrisat/src/integration/partner-enrollment.service.ts:114" }
+      FAIL.user:
+        - { guard: "partner != 'disabled' and codeReaches and account == 'unknown'", target: userRefused, say: "no such account: 404 PARTNER_USER_UNKNOWN", source: "apps/tedrisat/src/integration/partner-enrollment.service.ts:314" }
+        - { guard: "partner != 'disabled' and codeReaches and account == 'unverified'", target: userRefused, say: "the e-mail is not verified: 409 PARTNER_USER_UNVERIFIED", source: "apps/tedrisat/src/integration/partner-enrollment.service.ts:315" }
+      FAIL.refused:
+        - { guard: "partner != 'disabled' and codeReaches and account == 'ok' and not courseOpen", target: seatRefused, say: "the course takes no enrolment: 409 PARTNER_ENROLLMENT_REFUSED with a COURSE_* reason", source: "apps/tedrisat/src/integration/partner-enrollment.service.ts:139" }
+        - { guard: "partner != 'disabled' and codeReaches and account == 'ok' and courseOpen and barred", target: seatRefused, say: "the person is barred: 409 PARTNER_ENROLLMENT_REFUSED, reason BANNED", source: "apps/tedrisat/src/course/bulk-enrollment.service.ts:184" }
+      DONE: { guard: "partner != 'disabled' and codeReaches and account == 'ok' and courseOpen and not barred", target: seated, say: "the person is an ENROLLED talebe of the course; the account's gender is not asked", source: "apps/tedrisat/src/integration/partner-enrollment.service.ts:203" }
+
+  seated: { type: final, title: The person is seated, response: { status: "200", body: "{ status: ENROLLED, courseId }" } }
+  partnerDisabled: { type: final, title: Refused, the partner is off, response: { status: "403", code: PARTNER_DISABLED } }
+  courseUnknown: { type: final, title: Refused, the code is unknown, response: { status: "404", code: PARTNER_COURSE_UNKNOWN } }
+  userRefused: { type: final, title: Refused, the account is not accepted, response: { status: "404 or 409", code: "PARTNER_USER_UNKNOWN | PARTNER_USER_UNVERIFIED" } }
+  seatRefused: { type: final, title: Refused, no seat is given, response: { status: "409", code: PARTNER_ENROLLMENT_REFUSED, body: "{ reason: COURSE_NOT_PUBLISHED | COURSE_HIDDEN | KOSK_HIDDEN | BANNED }" } }
+  left: { type: final, title: They leave the page, leavesPage: true }
+
+assertions:
+  - { id: muderris-maps-no-code, never: "addedHere and staff == 'muderris'", say: "The course's müderris does not map partner codes", source: "apps/tedrisat/src/integration/partner-codes.controller.ts:90" }
+  - { id: taken-code-stays-elsewhere, never: "state != 'opening' and mapped and taken", say: "A code mapped to another course is not mapped here as well", source: "apps/tedrisat/src/integration/partner-codes.service.ts:64" }
+  - { id: barred-never-seated, never: "state == 'seated' and barred", say: "A barred person is not seated through a partner application either", source: "apps/tedrisat/src/course/bulk-enrollment.service.ts:184" }
+  - { id: disabled-partner-seats-nobody, never: "state == 'seated' and partner == 'disabled'", say: "A switched-off partner seats nobody", source: "apps/tedrisat/src/integration/partner.guard.ts:124" }
+  - { id: only-bound-kosks, never: "state == 'seated' and partner == 'unbound'", say: "A partner seats people only in the köşks it works with", source: "apps/tedrisat/src/integration/partner.repository.ts:78" }
+  - { id: verified-accounts-only, never: "state == 'seated' and account != 'ok'", say: "Only an enabled account with a verified e-mail is seated", source: "apps/tedrisat/src/integration/partner-enrollment.service.ts:309" }
+# NOT HELD, kept out on purpose (REPORT.md, PLATFORM-ADMIN-11): gender-known-before-a-seat:
+#   "state == 'seated' and gender == 'missing'" is reached: the account check reads enabled and emailVerified only
+#   (partner-enrollment.service.ts:309), and no seat path asks for a gender.

@@ -1,0 +1,84 @@
+# The screens of medaris.madrasah-nazir: nazar's "Medrese nazırları" (/medrese/:id/nazirlar), its "Medrese nazırı ata"
+# dialog and its "Görevden al" dialog. Both dialogs are form dialogs the scrim does not close (libs/ui/src/mds/dialog.tsx:71).
+# The Devral/Düşür answer of each person is a toggle group of two chips (aria-pressed), drawn here as two buttons.
+schema: delurio-graph/0
+kind: ui
+id: medaris.madrasah-nazir
+flow: medaris.madrasah-nazir
+status: proposed
+catalog: catalog/tr.json
+locales: [tr, en]
+samples: { name: "Ahmet Yılmaz", person: "Zeynep Kaya", what: "Talebe işleri grubu", date: "12 Ekim 2026" }
+changes: { key: Changes.note }
+
+nodes:
+  # the roster
+  page: { type: page, component: Page, role: main, name: { labelledBy: title }, in: [loading, forbidden, roster, editing, readingGrants], source: "apps/nazar/features/nazirs/components/nazirs-page.tsx:53" }
+  title: { type: text, component: Heading, role: heading, text: { key: Nazirs.title }, in: [loading, forbidden, roster, editing, readingGrants], source: "apps/nazar/features/nazirs/components/nazirs-page.tsx:57" }
+  intro: { type: text, component: Text, text: { key: Nazirs.intro }, in: [loading, forbidden, roster, editing, readingGrants] }
+  forbiddenTitle: { type: status, component: Status, role: status, text: { key: Problems.forbiddenTitle }, in: [forbidden], source: "apps/nazar/features/shell/components/page-problem.tsx:25" }
+  forbiddenText: { type: text, component: Text, text: { key: Problems.forbidden }, in: [forbidden] }
+  appoint: { type: action, component: Button, role: button, intent: secondary, text: { key: Nazirs.appoint }, in: [roster, editing, readingGrants], disabledIn: [editing, readingGrants], emits: APPOINT, source: "apps/nazar/features/nazirs/components/appoint-nazir.tsx:128" }
+  appointedToast: { type: status, component: Status, role: status, text: { key: Appoint.appointed }, in: [roster], when: "notice == 'appointed'", source: "apps/nazar/features/nazirs/components/appoint-nazir.tsx:101" }
+  appointedBody: { type: text, component: Text, text: { key: Appoint.appointedBody }, in: [roster], when: "notice == 'appointed'" }
+  dismissedToast: { type: status, component: Status, role: status, text: { key: Dismiss.dismissed }, in: [roster], when: "notice == 'dismissed'", source: "apps/nazar/features/nazirs/components/dismiss-dialog.tsx:120" }
+  dismissedBody: { type: text, component: Text, text: { key: Dismiss.dismissedBody }, in: [roster], when: "notice == 'dismissed'" }
+  caption: { type: text, component: Text, text: { key: Nazirs.caption }, in: [roster, editing, readingGrants], source: "apps/nazar/features/nazirs/components/nazirs-table.tsx:184" }
+  rows: { type: list, component: List, role: table, name: { labelledBy: caption }, in: [roster, editing, readingGrants], source: "apps/nazar/features/nazirs/components/nazirs-table.tsx:183" }
+  row: { type: text, component: ListItem, role: row, text: { key: Nazirs.appointedBy }, repeat: madrasah.nazirs, in: [roster, editing, readingGrants] } # the nazır's name, address, groups, end and giver
+  givePermission: { type: action, component: Button, role: button, intent: secondary, name: { key: Nazirs.givePermissionLabel }, text: { key: Nazirs.givePermission }, repeat: madrasah.nazirs, in: [roster], when: manages, emits: EDIT, source: "apps/nazar/features/nazirs/components/nazirs-table.tsx:148" } # "İzinleri düzenle" once the nazır holds something
+  dismiss: { type: action, component: Button, role: button, intent: secondary, name: { key: Nazirs.dismissLabel }, text: { key: Nazirs.dismiss }, repeat: madrasah.nazirs, in: [roster], when: mayDismissHere, emits: DISMISS, source: "apps/nazar/features/nazirs/components/nazirs-table.tsx:167" }
+
+  # Medrese nazırı ata
+  appointDialog: { type: page, component: Page, role: dialog, name: { labelledBy: appointTitle }, in: [appointDialog, searching, picked, appointing], initialFocus: emailField, source: "apps/nazar/features/nazirs/components/appoint-nazir.tsx:146" }
+  appointTitle: { type: text, component: Heading, role: heading, text: { key: Appoint.title }, in: [appointDialog, searching, picked, appointing], source: "apps/nazar/features/nazirs/components/appoint-nazir.tsx:144" }
+  appointIntro: { type: text, component: Text, text: { key: Appoint.intro }, in: [appointDialog, searching, picked, appointing], source: "apps/nazar/features/nazirs/components/appoint-nazir.tsx:160" }
+  emailField: { type: field, component: TextField, role: textbox, text: { key: Appoint.label }, in: [appointDialog, searching], disabledIn: [searching], emits: SEARCH, source: "apps/nazar/features/nazirs/components/appoint-nazir.tsx:204" } # type="email"; Enter searches
+  emailHelp: { type: text, component: Text, text: { key: Appoint.help }, in: [appointDialog, searching] }
+  notFound: { type: text, component: Text, text: { key: Appoint.notFound }, in: [appointDialog], when: "notice == 'notFound'", source: "apps/nazar/features/nazirs/components/appoint-nazir.tsx:121" }
+  lookupFailed: { type: text, component: Text, text: { key: Appoint.failed }, in: [appointDialog], when: "notice == 'lookupFailed'", source: "apps/nazar/features/nazirs/components/appoint-nazir.tsx:123" }
+  searchingNote: { type: status, component: Status, role: status, text: { key: Appoint.searching }, in: [searching], source: "apps/nazar/features/nazirs/components/appoint-nazir.tsx:227" }
+  chosenTitle: { type: text, component: Heading, role: heading, text: { key: Appoint.chosenTitle }, in: [picked, appointing], source: "apps/nazar/features/nazirs/components/appoint-nazir.tsx:167" }
+  unpick: { type: action, component: Button, role: button, intent: secondary, name: { key: Appoint.remove }, in: [picked, appointing], disabledIn: [appointing], emits: UNPICK, source: "apps/nazar/features/nazirs/components/appoint-nazir.tsx:182" } # an icon button, named only by aria-label
+  already: { type: status, component: Status, role: status, text: { key: Appoint.already }, in: [picked], when: "target == 'nazir'", source: "apps/nazar/features/nazirs/components/appoint-nazir.tsx:192" }
+  appointFailed: { type: alert, component: Alert, role: alert, text: { key: Appoint.failedTitle }, in: [picked], when: "notice == 'selfGrant'", source: "apps/nazar/features/nazirs/components/appoint-nazir.tsx:110" } # a toast
+  appointFailedSelf: { type: text, component: Text, text: { key: Problems.selfGrant }, in: [picked], when: "notice == 'selfGrant'" }
+  appointCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: Appoint.cancel }, in: [appointDialog, searching, picked, appointing], emits: CANCEL, source: "apps/nazar/features/nazirs/components/appoint-nazir.tsx:149" }
+  appointSubmit: { type: action, component: Button, role: button, intent: confirm, text: { key: Appoint.submit }, in: [appointDialog, searching, picked, appointing], disabledIn: [appointDialog, searching, appointing], emits: SUBMIT, source: "apps/nazar/features/nazirs/components/appoint-nazir.tsx:150" } # off until someone not yet a nazır is chosen
+
+  # Görevden al
+  dismissDialog: { type: page, component: Page, role: dialog, name: { labelledBy: dismissTitle }, in: [grantsFailed, dismissDialog, dismissing], initialFocus: dismissCancel, source: "apps/nazar/features/nazirs/components/dismiss-dialog.tsx:156" }
+  dismissTitle: { type: text, component: Heading, role: heading, text: { key: Dismiss.title }, in: [grantsFailed, dismissDialog, dismissing], source: "apps/nazar/features/nazirs/components/dismiss-dialog.tsx:154" }
+  readingNote: { type: status, component: Status, role: status, text: { key: Shell.loadingLabel }, in: [readingGrants], source: "apps/nazar/features/nazirs/components/dismiss-dialog.tsx:168" }
+  grantsFailedTitle: { type: alert, component: Alert, role: alert, text: { key: Dismiss.loadFailedTitle }, in: [grantsFailed], source: "apps/nazar/features/nazirs/components/dismiss-dialog.tsx:174" }
+  grantsFailedText: { type: text, component: Text, text: { key: Dismiss.loadFailed }, in: [grantsFailed] }
+  retry: { type: action, component: Button, role: button, intent: secondary, text: { key: Shell.retry }, in: [grantsFailed], emits: RETRY, source: "apps/nazar/features/nazirs/components/dismiss-dialog.tsx:176" }
+  dismissIntro: { type: text, component: Text, text: { key: Dismiss.intro }, in: [dismissDialog, dismissing], when: "given == 'some'", source: "apps/nazar/features/nazirs/components/dismiss-dialog.tsx:183" }
+  dismissIntroNone: { type: text, component: Text, text: { key: Dismiss.introNone }, in: [dismissDialog, dismissing], when: "given == 'none'", source: "apps/nazar/features/nazirs/components/dismiss-dialog.tsx:183" }
+  answerLegend: { type: text, component: Text, text: { key: Dismiss.answerLegend }, repeat: nazir.given, in: [dismissDialog, dismissing], when: "given == 'some'", source: "apps/nazar/features/nazirs/components/dismiss-dialog.tsx:245" } # the label of each person's toggle group
+  takeOver: { type: action, component: Button, role: button, intent: secondary, text: { key: Dismiss.takeOver }, repeat: nazir.given, in: [dismissDialog, dismissing], when: "given == 'some'", disabledIn: [dismissing], emits: TAKE_OVER, source: "apps/nazar/features/nazirs/components/dismiss-dialog.tsx:256" }
+  drop: { type: action, component: Button, role: button, intent: secondary, text: { key: Dismiss.drop }, repeat: nazir.given, in: [dismissDialog, dismissing], when: "given == 'some'", disabledIn: [dismissing], emits: DROP, source: "apps/nazar/features/nazirs/components/dismiss-dialog.tsx:257" }
+  answersNote: { type: text, component: Text, text: { key: Dismiss.answersNote }, in: [dismissDialog, dismissing], when: "given == 'some'", source: "apps/nazar/features/nazirs/components/dismiss-dialog.tsx:264" }
+  dropSummary: { type: text, component: Text, text: { key: Dismiss.drops.summary }, in: [dismissDialog, dismissing], source: "apps/nazar/features/nazirs/components/dismiss-dialog.tsx:269" }
+  gateNote: { type: text, component: Text, text: { key: Dismiss.gateNote }, in: [dismissDialog, dismissing], when: "given == 'some'", source: "apps/nazar/features/nazirs/components/dismiss-dialog.tsx:157" }
+  dismissFailed: { type: alert, component: Alert, role: alert, text: { key: Dismiss.failedTitle }, in: [dismissDialog, readingGrants], when: "notice in ['selfGrant', 'cascade', 'notYours', 'changed']", source: "apps/nazar/features/nazirs/components/dismiss-dialog.tsx:129" } # a toast
+  dismissFailedSelf: { type: text, component: Text, text: { key: Problems.selfGrant }, in: [dismissDialog], when: "notice == 'selfGrant'" }
+  dismissFailedCascade: { type: text, component: Text, text: { key: Dismiss.cascade }, in: [dismissDialog], when: "notice == 'cascade'" }
+  dismissFailedChanged: { type: text, component: Text, text: { key: Dismiss.changed }, in: [readingGrants, dismissDialog], when: "notice == 'changed'" }
+  dismissFailedOther: { type: text, component: Text, text: { key: Problems.actionGeneric }, in: [dismissDialog], when: "notice == 'notYours'", source: "apps/nazar/features/nazirs/nazirs.ts:382" }
+  dismissCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: Dismiss.cancel }, in: [grantsFailed, dismissDialog, dismissing], emits: CANCEL, source: "apps/nazar/features/nazirs/components/dismiss-dialog.tsx:160" }
+  dismissSubmit: { type: action, component: Button, role: button, intent: confirm, text: { key: Dismiss.submit }, in: [grantsFailed, dismissDialog, dismissing], disabledIn: [grantsFailed, dismissing], emits: SUBMIT, source: "apps/nazar/features/nazirs/components/dismiss-dialog.tsx:161" } # off until every row has an answer
+
+edges:
+  - { labelledBy: [page, title] }
+  - { labelledBy: [rows, caption] }
+  - { labelledBy: [appointDialog, appointTitle] }
+  - { labelledBy: [dismissDialog, dismissTitle] }
+  - { triggers: [appointSubmit, appointing] }
+  - { triggers: [dismissSubmit, dismissing] }
+  - { triggers: [givePermission, editing] }
+
+rules:
+  - { id: label-in-name, rule: "a node's visible text is contained in its accessible name (WCAG 2.5.3)" }
+  - { id: no-default-dismiss, rule: "the dismissal dialog opens with the focus on \"Vazgeç\", never on \"Görevden al\"" }
+  - { id: search-not-per-key, rule: "the e-mail search runs on Enter or when the field is left, never per key: each search is written to the audit log" }

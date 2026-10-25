@@ -1,0 +1,73 @@
+# The screen of medaris.plan-sessions: nazar's "Celse planla" (/ders/:id/celseler/planla). The portal shell owns <main>;
+# the page sets no first focus. The choice of single or weekly and the days are toggle chips (aria-pressed); the preview
+# is an aside labelled by its heading. A field's problem is a plain line under it, the days' one is role="alert".
+schema: delurio-graph/0
+kind: ui
+id: medaris.plan-sessions
+flow: medaris.plan-sessions
+status: proposed
+catalog: catalog/tr.json
+locales: [tr, en]
+samples: { name: "Usûl-i Fıkıh Okumaları", count: "8", week: "1", minutes: "60", link: "boş", zone: "İstanbul" }
+changes: { key: Changes.note }
+
+nodes:
+  page: { type: page, component: Page, role: main, name: { labelledBy: title }, in: [forbidden, loadFailed, form, previewing, creating], source: "apps/nazar/features/sessions/components/plan-form.tsx:176" }
+  title: { type: text, component: Heading, role: heading, text: { key: SessionPlan.title }, in: [forbidden, loadFailed, form, previewing, creating], source: "apps/nazar/features/sessions/components/plan-form.tsx:193" }
+  forbiddenTitle: { type: status, component: Status, role: status, text: { key: Problems.forbiddenTitle }, in: [forbidden], source: "apps/nazar/features/shell/components/page-problem.tsx:25" }
+  forbiddenText: { type: text, component: Text, text: { key: Problems.forbidden }, in: [forbidden] }
+  loadFailedTitle: { type: alert, component: Alert, role: alert, text: { key: SessionPlan.loadFailedTitle }, in: [loadFailed], source: "apps/nazar/features/shell/components/load-failed.tsx:28" }
+  loadFailedText: { type: text, component: Text, text: { key: SessionPlan.loadFailed }, in: [loadFailed] }
+  retry: { type: action, component: Button, role: button, intent: secondary, text: { key: Shell.retry }, in: [loadFailed], emits: RETRY, source: "apps/nazar/features/shell/components/load-failed.tsx:33" }
+
+  intro: { type: text, component: Text, text: { key: SessionPlan.intro }, in: [form, previewing, creating], source: "apps/nazar/features/sessions/components/plan-form.tsx:195" }
+  required: { type: text, component: Text, text: { key: SessionPlan.requiredNote }, in: [form, previewing, creating] }
+  modeLegend: { type: text, component: Text, text: { key: SessionPlan.modeLegend }, in: [form, previewing, creating], source: "apps/nazar/features/sessions/components/plan-form.tsx:201" }
+  mode: { type: list, component: List, role: group, name: { labelledBy: modeLegend }, in: [form, previewing, creating], source: "apps/nazar/features/sessions/components/plan-form.tsx:200" }
+  modeChip: { type: field, component: ListItem, role: button, text: { oneOf: [SessionPlan.modeSingle, SessionPlan.modeWeekly] }, in: [form, previewing, creating], emits: EDIT }
+  repeatTitle: { type: text, component: Heading, role: heading, text: { key: SessionPlan.repeatTitle }, in: [form, previewing, creating], source: "apps/nazar/features/sessions/components/plan-form.tsx:218" }
+  daysLegend: { type: text, component: Text, text: { key: SessionPlan.daysLegend }, in: [form, previewing, creating], source: "apps/nazar/features/sessions/components/plan-form.tsx:229" }
+  daysProblem: { type: alert, component: Alert, role: alert, text: { key: SessionPlan.errors.weekdays }, in: [form], when: "sent and not patternOk", source: "apps/nazar/features/sessions/components/plan-form.tsx:240" }
+  startTime: { type: field, component: TextField, role: textbox, text: { key: SessionPlan.startTimeLabel }, in: [form, previewing, creating], emits: EDIT, source: "apps/nazar/features/sessions/components/plan-form.tsx:247" } # type="time"
+  duration: { type: field, component: TextField, role: spinbutton, text: { key: SessionPlan.durationLabel }, in: [form, previewing, creating], emits: EDIT, source: "apps/nazar/features/sessions/components/plan-form.tsx:259" }
+  zone: { type: field, component: TextField, role: combobox, text: { key: SessionPlan.zoneLabel }, in: [form, previewing, creating], emits: EDIT, source: "apps/nazar/features/sessions/components/plan-form.tsx:276" }
+  startDate: { type: field, component: TextField, role: textbox, text: { key: SessionPlan.startDateLabel }, in: [form, previewing, creating], emits: EDIT, source: "apps/nazar/features/sessions/components/plan-form.tsx:290" } # type="date"
+  endLegend: { type: text, component: Text, text: { key: SessionPlan.endLegend }, in: [form, previewing, creating], source: "apps/nazar/features/sessions/components/plan-form.tsx:309" }
+  endMode: { type: list, component: List, role: radiogroup, name: { labelledBy: endLegend }, in: [form, previewing, creating], source: "apps/nazar/features/sessions/components/plan-form.tsx:308" }
+  endChoice: { type: field, component: ListItem, role: radio, text: { oneOf: [SessionPlan.endDate, SessionPlan.endCount] }, in: [form, previewing, creating], emits: EDIT }
+  endDate: { type: field, component: TextField, role: textbox, text: { key: SessionPlan.endDateLabel }, in: [form, previewing, creating], emits: EDIT, source: "apps/nazar/features/sessions/components/plan-form.tsx:321" }
+
+  sessionsTitle: { type: text, component: Heading, role: heading, text: { key: SessionPlan.sessionsTitle }, in: [form, previewing, creating], source: "apps/nazar/features/sessions/components/plan-form.tsx:363" }
+  sessionTitle: { type: field, component: TextField, role: textbox, text: { key: SessionPlan.titleLabel }, in: [form, previewing, creating], emits: EDIT, source: "apps/nazar/features/sessions/components/plan-form.tsx:366" }
+  titleProblem: { type: text, component: Text, text: { key: SessionPlan.errors.title }, in: [form], when: "sent and not restOk" }
+  linksLegend: { type: text, component: Text, text: { key: SessionPlan.linksLegend }, in: [form, previewing, creating], source: "apps/nazar/features/sessions/components/plan-form.tsx:380" }
+  links: { type: list, component: List, role: radiogroup, name: { labelledBy: linksLegend }, in: [form, previewing, creating], source: "apps/nazar/features/sessions/components/plan-form.tsx:379" }
+  linkChoice: { type: field, component: ListItem, role: radio, text: { oneOf: [SessionPlan.linksEmpty, SessionPlan.linksFirst] }, in: [form, previewing, creating], emits: EDIT }
+  linksNote: { type: text, component: Text, text: { key: SessionPlan.linksNote }, in: [form, previewing, creating], source: "apps/nazar/features/sessions/components/plan-form.tsx:417" }
+
+  cancel: { type: action, component: LinkButton, role: link, intent: dismiss, text: { key: SessionPlan.cancel }, in: [form, previewing, creating], emits: CANCEL, source: "apps/nazar/features/sessions/components/plan-form.tsx:427" }
+  submit: { type: action, component: Button, role: button, intent: confirm, text: { key: SessionPlan.submit }, in: [form, previewing, creating], disabledIn: [previewing, creating], when: "preview == 'ok'", emits: SUBMIT, source: "apps/nazar/features/sessions/components/plan-form.tsx:434" } # disabled while the preview holds no session
+  saving: { type: status, component: Status, role: status, text: { key: SessionPlan.saving }, in: [creating], source: "libs/ui/src/mds/button.tsx:113" }
+
+  previewTitle: { type: text, component: Heading, role: heading, text: { key: SessionPlan.previewTitle }, in: [form, previewing, creating], source: "apps/nazar/features/sessions/components/plan-form.tsx:451" }
+  previewCount: { type: text, component: Text, text: { key: SessionPlan.count }, in: [form, previewing, creating], source: "apps/nazar/features/sessions/components/plan-form.tsx:455" }
+  previewNote: { type: text, component: Text, text: { key: SessionPlan.previewNote }, in: [form, previewing, creating] }
+  previewFailed: { type: alert, component: Alert, role: alert, text: { key: SessionPlan.previewFailed }, in: [form], when: "preview == 'failed'", source: "apps/nazar/features/sessions/components/plan-form.tsx:460" }
+  previewList: { type: list, component: List, role: list, name: { labelledBy: previewTitle }, in: [form, creating], when: "preview == 'ok'", source: "apps/nazar/features/sessions/components/plan-form.tsx:464" }
+  previewRow: { type: text, component: ListItem, role: listitem, text: { key: SessionPlan.previewRow }, repeat: preview.sessions, in: [form, creating], when: "preview == 'ok'", source: "apps/nazar/features/sessions/components/plan-form.tsx:478" }
+  previewFoot: { type: text, component: Text, text: { key: SessionPlan.previewFoot }, in: [form, previewing, creating], source: "apps/nazar/features/sessions/components/plan-form.tsx:492" }
+
+  createdToast: { type: status, component: Status, role: status, text: { key: SessionPlan.created }, in: [created], source: "apps/nazar/features/sessions/components/plan-form.tsx:168" }
+  createdBody: { type: text, component: Text, text: { key: SessionPlan.createdBody }, in: [created] }
+
+edges:
+  - { labelledBy: [page, title] }
+  - { labelledBy: [mode, modeLegend] }
+  - { labelledBy: [endMode, endLegend] }
+  - { labelledBy: [links, linksLegend] }
+  - { labelledBy: [previewList, previewTitle] }
+  - { triggers: [submit, creating] }
+
+rules:
+  - { id: label-in-name, rule: "a node's visible text is contained in its accessible name (WCAG 2.5.3)" }
+  - { id: nothing-before-create, rule: "nothing is written until \"N celse oluştur\"; the preview writes nothing" }

@@ -1,0 +1,239 @@
+# Medaris, captured at origin/main ce47fce8: a course's "Ders nazırları" in nazar (/ders/:id/nazirlar, MDRS-270) and
+# /courses/:id/nazirs behind it. What the server finds when a step asks (who the e-mail names) is a `havoc` on SEARCH.
+schema: delurio-graph/0
+kind: flow
+id: medaris.course-nazir
+status: proposed
+domain: medaris.madrasah-staff
+ui: medaris.course-nazir
+title: Appoint, change and end a course's ders nazırları
+summary: >-
+  Whoever holds course_nazir.assign on the course opens the page. A giver (the müderris, the medrese's başmüderris in a
+  medrese course, the köşk nazımı in a köşk's own course, the başnazım) appoints a ders nazırı with permissions up to
+  their own, changes a post's permissions and end, and ends any post. One who holds course_nazir.assign by a grant
+  appoints with no permission and ends only the posts they appointed. A köşk nazımı in a medrese course sees the list
+  and does nothing. The post and its permissions end together.
+
+scope:
+  shows: the list, the appointment and edit dialog, the dismissal dialog and the server's checks
+  world: open
+  outOfView:
+    - "the ceiling (GRANT_EXCEEDS_GIVER): the boxes are cut to the codes the giver holds, so the page never sends one beyond"
+    - "the end's own checks (past, half typed): one flag here"
+    - "COURSE_NAZIR_UNKNOWN_ACCOUNT: the person comes from the realm search, so the account exists"
+
+context:
+  standing:
+    values: [muderris, basmuderris, koskNazimOwn, koskNazimMedrese, appointer, admin, none]
+    initial: any
+    say: { muderris: "the reader teaches the course", basmuderris: "the reader is the başmüderris and it is a medrese course", koskNazimOwn: "the reader is the köşk's nazım and it is the köşk's own course", koskNazimMedrese: "the reader is the köşk's nazım and it is a medrese course", appointer: "the reader holds course_nazir.assign by a grant only", admin: "the reader is the başnazım", none: "the reader does not hold course_nazir.assign here" }
+  hidden:
+    values: [false, true]
+    initial: any
+    say: { "true": "the course is hidden", "false": "" }
+  rowMine:
+    values: [true, false]
+    initial: any
+    say: { "true": "the post on the row was appointed by the reader", "false": "someone else appointed it" }
+  rowHasAppointees:
+    values: [false, true]
+    initial: any
+    say: { "true": "the ders nazırı on the row appointed others who still hold their posts", "false": "" }
+  endOk:
+    values: [true, false]
+    initial: any
+    say: { "true": "the end is empty or a time to come", "false": "the end is past or half typed" }
+  # the person the search finds (havoc on SEARCH)
+  target: { values: [other, self, holder, seated, barred, none], initial: other } # holder: holds a post here already; seated: teaches it or holds a seat over it
+  ticks: { values: [none, some], initial: none }
+  notice: { values: [none, notFound, barred, holdsSeat, appointed, saved, ended], initial: none }
+  attempted: { values: [false, true], initial: false }
+  posted: { values: [none, plain, withCodes], initial: none }
+  changed: { values: [false, true], initial: false }
+  ended: { values: [false, true], initial: false }
+
+guards:
+  giver: "standing in ['muderris', 'basmuderris', 'koskNazimOwn', 'admin']"
+  seesHidden: "standing in ['basmuderris', 'koskNazimOwn', 'koskNazimMedrese', 'admin']" # course.hide, madrasah.course_hide, platform.course_hide
+  mayAppoint: "standing != 'koskNazimMedrese' and not hidden"
+  mayEnd: "(giver or (standing == 'appointer' and rowMine)) and not rowHasAppointees"
+  editsRow: giver # mayEdit is a giver on any post not their own; a giver other than the başnazım holds a seat over the course and so never holds a post here
+
+effects:
+  openAppoint: { set: { notice: none, target: other, ticks: none, attempted: false, posted: none, changed: false, ended: false } }
+  searched: { set: { notice: none }, havoc: [target] }
+  notFound: { set: { notice: notFound } }
+  unpick: { set: { target: other, ticks: none } }
+  tick: { set: { ticks: some } }
+  markAttempted: { set: { attempted: true } }
+  fixEnd: { set: { endOk: true } }
+  noticeBarred: { set: { notice: barred } }
+  noticeHoldsSeat: { set: { notice: holdsSeat } }
+  postedPlain: { set: { posted: plain, notice: appointed } }
+  postedWithCodes: { set: { posted: withCodes, notice: appointed } }
+  openRow: { set: { notice: none, ticks: none, attempted: false, posted: none, changed: false, ended: false } }
+  savedNow: { set: { changed: true, notice: saved } }
+  endedNow: { set: { ended: true, notice: ended } }
+
+failures:
+  loadingList: { from: getCourseNazirs, notFound: [COURSE_NOT_FOUND] }
+  searching: { from: lookupUser }
+  appointing: { from: createCourseNazir, barred: [COURSE_NAZIR_BARRED], holdsSeat: [COURSE_NAZIR_HOLDS_SEAT] }
+
+main:
+  given: { standing: muderris, hidden: false, rowMine: true, rowHasAppointees: false, endOk: true }
+  events: [DONE, APPOINT, SEARCH, DONE, TICK, SUBMIT, DONE]
+
+initial: gate
+states:
+  gate:
+    title: Ask what the reader holds in the course
+    description: GET /courses/:id/my-permissions; the page opens for course_nazir.assign.
+    source: apps/nazar/features/course-nazirs/components/course-nazirs-page.tsx:42
+    always:
+      - { guard: "standing == 'none'", target: forbidden, say: "course_nazir.assign is not held: \"Bu sayfaya izniniz yok\", and the list is not read", source: "apps/nazar/features/account/course-permissions.ts:92" }
+      - { target: loadingList, say: "the list is read" }
+
+  forbidden:
+    type: final
+    title: The page says the reader has no permission
+    source: apps/nazar/features/course-nazirs/components/course-nazirs-page.tsx:78
+
+  loadingList:
+    title: Read the ders nazırları
+    description: GET /courses/:id/nazirs, behind @Authz(course_nazir.assign); a hidden course is not-found to whoever may not restore it.
+    invoke: { action: getCourseNazirs }
+    source: apps/tedrisat/src/course/nazir/course-nazir.service.ts:137
+    on:
+      FAIL.notFound: { guard: "hidden and not seesHidden", target: notFound, say: "404 COURSE_NOT_FOUND: the portal's not-found page", source: "apps/tedrisat/src/course/course.service.ts:344" }
+      DONE: { guard: "not hidden or seesHidden", target: list, say: "the posts, the catalog, the codes the reader may give, and what they may do on each row", source: "apps/tedrisat/src/course/nazir/course-nazir.service.ts:154" }
+
+  notFound:
+    type: final
+    title: The portal's not-found page
+    source: apps/nazar/lib/tedrisat-read.ts:46
+
+  list:
+    title: The course's ders nazırları
+    by: human
+    goal: true
+    description: >-
+      Each post with its permissions, end and appointer. "Ders nazırı ata" when the list says the reader may appoint
+      (never on a hidden course, never for a köşk nazımı in a medrese course); "İzinleri düzenle" and "Görevden al" on a
+      row when the list says so; "Görevden al" is off while the row's holder has appointees of their own.
+    source: apps/nazar/features/course-nazirs/components/course-nazirs-page.tsx:86
+    on:
+      APPOINT: { guard: mayAppoint, target: appointDialog, effect: [openAppoint], say: "they press \"Ders nazırı ata\"", source: "apps/nazar/features/course-nazirs/components/course-nazirs-page.tsx:73" }
+      EDIT: { guard: editsRow, target: editDialog, effect: [openRow], say: "they press \"İzinleri düzenle\" on a row", source: "apps/nazar/features/course-nazirs/components/course-nazirs-table.tsx:113" }
+      END: { guard: mayEnd, target: endDialog, effect: [openRow], say: "they press \"Görevden al\" on a row", source: "apps/nazar/features/course-nazirs/components/course-nazirs-table.tsx:131" }
+      NAVIGATE: { target: left, say: "they go to another page" }
+
+  appointDialog:
+    title: Find the person by e-mail
+    by: human
+    description: The exact address, searched on Enter or when the field is left; every search is audited.
+    source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:325
+    on:
+      SEARCH: { target: searching, effect: [searched], say: "they type the address and press Enter", source: "apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:132" }
+      CANCEL: { target: list, say: "they press \"Vazgeç\"" }
+
+  searching:
+    title: Look the address up in the realm
+    invoke: { action: lookupUser }
+    source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:116
+    on:
+      DONE:
+        - { guard: "target == 'none'", target: appointDialog, effect: [notFound], say: "no account has that address", source: "apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:124" }
+        - { target: picked, say: "one account is found and chosen", source: "apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:119" }
+
+  picked:
+    title: Choose the permissions and the end
+    by: human
+    description: >-
+      The person, their boxes and the end. The reader and a person who holds a post here already are refused before
+      anything is sent. One who appoints only gets no boxes.
+    source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:281
+    on:
+      TICK: { guard: giver, target: picked, effect: [tick], say: "they tick a permission they may give", source: "apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:371" }
+      FIX_END: { guard: "not endOk", target: picked, effect: [fixEnd], say: "they correct the end" }
+      SUBMIT:
+        - { guard: "not endOk and target not in ['self', 'holder']", target: picked, effect: [markAttempted], say: "the end is wrong: it is said under it and nothing is sent", source: "apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:167" }
+        - { guard: "target not in ['self', 'holder']", target: appointing, say: "they press \"Kaydet\"", source: "apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:178" }
+      UNPICK: { target: appointDialog, effect: [unpick], say: "they press \"Başka birini seç\"", source: "apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:302" }
+      CANCEL: { target: list, say: "they press \"Vazgeç\"" }
+
+  appointing:
+    title: Make the person a ders nazırı
+    description: >-
+      POST /courses/:id/nazirs. Nobody but the başnazım appoints themselves. Then a hidden course takes no post; a köşk
+      nazımı in a medrese course is refused; one who appoints only gives nothing; every code is held to what the giver
+      holds here; the account must exist; an open ban that bars the person from the course, its köşk or its medrese
+      refuses them; in one transaction, a person who holds a post here already, or a seat over the course, is refused;
+      what an earlier post left open is revoked; the DERS_NAZIR seat and one grant per code are written, all ending
+      together, with the audit row course_nazir.assign.
+    invoke: { action: createCourseNazir }
+    source: apps/tedrisat/src/course/nazir/course-nazir.service.ts:191
+    on:
+      FAIL.barred: { guard: "target == 'barred'", target: picked, effect: [noticeBarred], say: "409 COURSE_NAZIR_BARRED", source: "apps/tedrisat/src/course/nazir/course-nazir.service.ts:224" }
+      FAIL.holdsSeat: { guard: "target == 'seated'", target: picked, effect: [noticeHoldsSeat], say: "409 COURSE_NAZIR_HOLDS_SEAT", source: "apps/tedrisat/src/course/nazir/course-nazir.repository.ts:232" }
+      DONE:
+        - { guard: "target == 'other' and ticks == 'some'", target: list, effect: [postedWithCodes], say: "the post and its permissions are written; a toast says so and the list is read again", source: "apps/tedrisat/src/course/nazir/course-nazir.repository.ts:272" }
+        - { guard: "target == 'other'", target: list, effect: [postedPlain], say: "the post is written with no permission", source: "apps/tedrisat/src/course/nazir/course-nazir.repository.ts:261" }
+
+  editDialog:
+    title: Change the post's permissions and end
+    by: human
+    description: >-
+      Starts from what the post holds now. A box is on for a code the reader may give, and for one the post holds
+      already, since taking a code away is no gift. "Kaydet" with nothing changed closes the dialog and writes nothing.
+    source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:264
+    on:
+      TICK: { target: editDialog, effect: [tick], say: "they tick or untick a box", source: "apps/nazar/features/course-nazirs/course-nazirs.ts:166" }
+      SAVE:
+        - { guard: "ticks == 'none'", target: list, say: "nothing changed: the dialog closes without a write", source: "apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:168" }
+        - { target: updating, say: "they press \"Kaydet\"", source: "apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:174" }
+      CANCEL: { target: list, say: "they press \"Vazgeç\"" }
+
+  updating:
+    title: Replace the post's permissions
+    description: >-
+      PATCH /courses/:id/nazirs/:postId with the whole set and the end (null: no end). Only a giver; not on one's own
+      post (the başnazım excepted). What stays keeps its giver and date; a code given or moved later is held to the
+      giver's own; a row given from above is never lengthened, the extra time is a row of the giver's own beside it.
+    invoke: { action: updateCourseNazir }
+    source: apps/tedrisat/src/course/nazir/course-nazir.service.ts:236
+    on:
+      DONE: { target: list, effect: [savedNow], say: "saved: a toast says so and the list is read again", source: "apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:184" }
+
+  endDialog:
+    title: Confirm ending the post
+    by: human
+    description: The post and every permission its holder has in the course end together. The focus starts on "Vazgeç".
+    source: apps/nazar/features/course-nazirs/components/end-course-nazir.tsx:79
+    on:
+      CONFIRM: { target: ending, say: "they press \"Görevden al\"", source: "apps/nazar/features/course-nazirs/components/end-course-nazir.tsx:51" }
+      CANCEL: { target: list, say: "they press \"Vazgeç\"" }
+
+  ending:
+    title: End the post
+    description: >-
+      DELETE /courses/:id/nazirs/:postId. An appointer ends only the posts they appointed; the post and every grant its
+      holder has in the course are revoked at once; refused while someone the holder appointed still holds a post; the
+      audit row course_nazir.revoke.
+    invoke: { action: revokeCourseNazir }
+    source: apps/tedrisat/src/course/nazir/course-nazir.repository.ts:450
+    on:
+      DONE: { target: list, effect: [endedNow], say: "the post is ended; a toast says so and the list is read again", source: "apps/nazar/features/course-nazirs/components/end-course-nazir.tsx:53" }
+
+  left:
+    type: final
+    title: They leave the page
+    leavesPage: true
+
+assertions:
+  - { id: kosk-keeps-out-of-medrese-course, never: "(posted != 'none' or changed or ended) and standing == 'koskNazimMedrese'", say: "A köşk nazımı never staffs a medrese course", source: "apps/tedrisat/src/course/nazir/course-nazir.service.ts:205" }
+  - { id: appointer-gives-nothing, never: "(posted == 'withCodes' or changed) and standing == 'appointer'", say: "One who holds course_nazir.assign by a grant never gives a permission", source: "apps/tedrisat/src/course/nazir/course-nazir.service.ts:213" }
+  - { id: barred-never-a-ders-nazir, never: "posted != 'none' and target == 'barred'", say: "A person a ban bars from the course is never made its ders nazırı", source: "apps/tedrisat/src/course/nazir/course-nazir.service.ts:223" }
+  - { id: no-post-on-a-hidden-course, never: "posted != 'none' and hidden", say: "A hidden course takes no new post", source: "apps/tedrisat/src/course/nazir/course-nazir.service.ts:197" }
+  - { id: no-self-post, never: "posted != 'none' and target == 'self'", say: "Nobody is made the ders nazırı of a course by their own hand", source: "apps/tedrisat/src/course/nazir/course-nazir.controller.ts:106" }
+  - { id: appointer-ends-own, never: "ended and standing == 'appointer' and not rowMine", say: "One who appoints only ends only the posts they appointed", source: "apps/tedrisat/src/course/nazir/course-nazir.repository.ts:458" }

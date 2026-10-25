@@ -1,0 +1,130 @@
+# Medaris, captured at origin/main ce47fce8: "Toplu talebe ekle" on a course's "Talebeler" in nazar (owner,
+# 2026-10-12) and POST /courses/:id/enrollments/bulk behind it. medaris.review-enrollments waits for this flow. One
+# address of the list stands for all: `person` is what that address names, and the answer is told per outcome.
+schema: delurio-graph/0
+kind: flow
+id: medaris.bulk-add-talebe
+status: proposed
+domain: medaris.madrasah-staff
+ui: medaris.bulk-add-talebe
+title: Add talebe to a course by e-mail
+summary: >-
+  A holder of enrollment.decide pastes up to 500 e-mail addresses. Every address is looked up in the realm before
+  anything is written; someone with no enrolment gets a seat at once, whatever the course's approval rules, a waiting
+  application is approved as "Onayla" approves it, and a ban, a seat the team took away and a completion are skipped
+  with the reason. The answer is shown in the same dialog, with the addresses no account was found for to copy.
+
+scope:
+  shows: the dialog, the call and its answer
+  world: open
+  outOfView:
+    - "the roster the page reads again once the dialog closes"
+    - "the realm's directory search, five addresses at a time"
+    - "men and women kept apart in a course held in person: required, and the code reads no gender here (see the domain and REPORT)"
+
+context:
+  listCount:
+    values: [some, none, tooMany]
+    initial: any
+    say: { some: "the text holds 1 to 500 addresses", none: "it holds none", tooMany: "it holds more than 500" }
+  courseOpen:
+    values: [true, false]
+    initial: any
+    say: { "true": "the course takes enrolments", "false": "the course is a draft, hidden, or in a hidden köşk" }
+  directory:
+    values: [ok, notConfigured, unavailable]
+    initial: any
+    say: { ok: "the realm's directory answers", notConfigured: "it is not configured", unavailable: "it does not answer" }
+  person:
+    values: [newAccount, pending, enrolled, revoked, completed, barred, noAccount, invalid]
+    initial: any
+    say: { newAccount: "the address names an account with no enrolment here", pending: "an account whose application waits", enrolled: "an account already enrolled", revoked: "an account the team took out of the course", completed: "an account that completed the course", barred: "an account an open ban bars from the course", noAccount: "no enabled account has the address", invalid: "the entry is not an e-mail address" }
+  notice: { values: [none, directory, closed], initial: none }
+  outcome: { values: [none, enrolled, approved, already, skipped, notFound, invalid], initial: none }
+
+guards:
+  seated: "outcome in ['enrolled', 'approved']"
+  writes: "directory == 'ok' and courseOpen"
+
+effects:
+  typed: { set: { notice: none }, havoc: [listCount] }
+  noticeDirectory: { set: { notice: directory } }
+  noticeClosed: { set: { notice: closed } }
+  enrolled: { set: { outcome: enrolled } }
+  approved: { set: { outcome: approved } }
+  already: { set: { outcome: already } }
+  skipped: { set: { outcome: skipped } }
+  notFound: { set: { outcome: notFound } }
+  invalid: { set: { outcome: invalid } }
+
+failures:
+  enrolling:
+    from: bulkEnroll
+    directory: [KEYCLOAK_ADMIN_NOT_CONFIGURED, KEYCLOAK_ADMIN_UNAVAILABLE]
+    closed: [COURSE_NOT_FOUND]
+
+main:
+  given: { listCount: some, courseOpen: true, directory: ok, person: newAccount }
+  events: [SUBMIT, DONE, CLOSE]
+
+initial: dialog
+states:
+  dialog:
+    title: Paste the addresses
+    by: human
+    description: One a line, or separated by commas or semicolons; each trimmed and lower-cased and kept once. "N adres" is read as they type; more than 500 is said and "Ekle" is off, as it is with none.
+    source: apps/nazar/features/enrolments/components/bulk-add-dialog.tsx:32
+    on:
+      TYPE: { target: dialog, effect: [typed], say: "they paste or type addresses", source: "apps/nazar/features/enrolments/bulk.ts:19" }
+      SUBMIT: { guard: "listCount == 'some'", target: enrolling, say: "they press \"Ekle\"", source: "apps/nazar/features/enrolments/components/bulk-add-dialog.tsx:62" }
+      CANCEL: { target: closed, say: "they press \"Vazgeç\": nothing is sent" }
+
+  enrolling:
+    title: Look up and seat the list
+    description: >-
+      POST /courses/:id/enrollments/bulk, behind @Authz(enrollment.decide). A directory that is not configured refuses
+      at once; a course no talebe could enrol in on their own refuses the whole list; every address is looked up before
+      anything is written, so a directory that stops answering refuses with nothing enrolled. Then each account is
+      seated or skipped one by one, the calendar sweep runs once, and one enrollment.bulk_add row goes to the audit log
+      with the counts and the accounts enrolled or approved.
+    invoke: { action: bulkEnroll }
+    source: apps/tedrisat/src/course/bulk-enrollment.service.ts:71
+    on:
+      FAIL.directory:
+        - { guard: "directory == 'notConfigured'", target: dialog, effect: [noticeDirectory], say: "503 KEYCLOAK_ADMIN_NOT_CONFIGURED: nothing is enrolled", source: "apps/tedrisat/src/course/bulk-enrollment.service.ts:77" }
+        - { guard: "directory == 'unavailable' and courseOpen", target: dialog, effect: [noticeDirectory], say: "503 KEYCLOAK_ADMIN_UNAVAILABLE during the lookups: nothing is enrolled", source: "apps/tedrisat/src/course/bulk-enrollment.service.ts:82" }
+      FAIL.closed: { guard: "directory != 'notConfigured' and not courseOpen", target: dialog, effect: [noticeClosed], say: "404 COURSE_NOT_FOUND: a draft, hidden, or in a hidden köşk; nothing is enrolled", source: "apps/tedrisat/src/course/bulk-enrollment.service.ts:147" }
+      DONE:
+        - { guard: "writes and person == 'barred'", target: result, effect: [skipped], say: "skipped: barred", source: "apps/tedrisat/src/course/bulk-enrollment.service.ts:184" }
+        - { guard: "writes and person == 'newAccount'", target: result, effect: [enrolled], say: "a new ENROLLED seat, approval or not", source: "apps/tedrisat/src/course/bulk-enrollment.service.ts:189" }
+        - { guard: "writes and person == 'pending'", target: result, effect: [approved], say: "the waiting application is approved, with its notification", source: "apps/tedrisat/src/course/bulk-enrollment.service.ts:217" }
+        - { guard: "writes and person == 'enrolled'", target: result, effect: [already], say: "left as it is", source: "apps/tedrisat/src/course/bulk-enrollment.service.ts:213" }
+        - { guard: "writes and person in ['revoked', 'completed']", target: result, effect: [skipped], say: "skipped: a seat the team took away, or a completion", source: "apps/tedrisat/src/course/bulk-enrollment.service.ts:215" }
+        - { guard: "writes and person == 'noAccount'", target: result, effect: [notFound], say: "no account: listed to copy", source: "apps/tedrisat/src/course/bulk-enrollment.service.ts:101" }
+        - { guard: "writes and person == 'invalid'", target: result, effect: [invalid], say: "not an address: listed to copy", source: "apps/tedrisat/src/course/bulk-enrollment.service.ts:81" }
+
+  result:
+    title: Read the answer
+    by: human
+    description: A line per outcome with its count; the addresses no account was found for, and the ones that are not addresses, in a box with "Kopyala"; the skipped ones with their reason. Only "Kapat" is left.
+    source: apps/nazar/features/enrolments/components/bulk-add-dialog.tsx:165
+    on:
+      COPY: { guard: "outcome in ['notFound', 'invalid']", target: result, say: "they press \"Kopyala\"", source: "apps/nazar/features/enrolments/components/bulk-add-dialog.tsx:80" }
+      CLOSE: { target: done, say: "they press \"Kapat\"; the roster is read again", source: "apps/nazar/features/enrolments/components/bulk-add-dialog.tsx:56" }
+
+  done:
+    type: final
+    title: The dialog closes after an answer
+    source: apps/nazar/features/enrolments/components/bulk-add-dialog.tsx:59
+
+  closed:
+    type: final
+    title: The dialog closes with nothing sent
+    source: apps/nazar/features/enrolments/components/bulk-add-dialog.tsx:58
+
+assertions:
+  - { id: barred-never-seated, never: "seated and person == 'barred'", say: "A talebe a ban bars from the course never takes a seat from the list", source: "apps/tedrisat/src/course/bulk-enrollment.service.ts:184" }
+  - { id: removed-stay-out, never: "seated and person == 'revoked'", say: "Someone the team took out of the course is not put back by the list", source: "apps/tedrisat/src/course/bulk-enrollment.service.ts:215" }
+  - { id: no-account-no-seat, never: "seated and person in ['noAccount', 'invalid']", say: "An address that names no account seats nobody", source: "apps/tedrisat/src/course/bulk-enrollment.service.ts:100" }
+  - { id: nothing-on-a-refusal, never: "outcome != 'none' and not writes", say: "When the directory or the course refuses, nothing is enrolled", source: "apps/tedrisat/src/course/bulk-enrollment.service.ts:79" }
+  - { id: at-most-500, never: "state == 'enrolling' and listCount != 'some'", say: "An empty list, or one of more than 500, is never sent", source: "apps/nazar/features/enrolments/components/bulk-add-dialog.tsx:64" }

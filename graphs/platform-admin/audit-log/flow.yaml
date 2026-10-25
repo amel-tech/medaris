@@ -1,0 +1,109 @@
+# CAPTURE of Medaris at origin/main ce47fce8: nizam's Denetim kaydı (/denetim-kaydi, design nizam/17), the read-only
+# audit trail, its filters in the address, older pages by cursor, and "Dışa aktar" as CSV through nizam's own route
+# (the browser holds no bearer token). Who writes the trail is every other flow. Paths are repo-relative.
+schema: delurio-graph/0
+kind: flow
+id: medaris.audit-log
+status: proposed
+domain: medaris.platform-admin
+ui: medaris.audit-log
+title: Read and export the audit trail
+summary: >-
+  The Medaris başnazımı, or a Medaris nazımı given platform.audit_read, reads who read or changed what, newest first,
+  narrowed by person, kind, scope and date, fifty records at a time. Dışa aktar downloads the same records as a CSV of at
+  most ten thousand rows, and the export is itself written to the trail. Everyone else is refused.
+
+scope:
+  shows: one reader and the trail, from opening the page to reading older records or exporting them
+  world: open
+  outOfView:
+    - "what each record says: the detail line is the name, title or reason its writer kept (present.ts:240)"
+    - "keeping and erasing records: nothing in the code updates or deletes a row, and no retention job exists"
+
+context:
+  viewer:
+    values: [basnazim, medarisAudit, medarisNone, koskNazim]
+    initial: any
+    say: { basnazim: "the Medaris başnazımı", medarisAudit: "a Medaris nazımı granted platform.audit_read", medarisNone: "a Medaris nazımı without it", koskNazim: "a köşk's nazımı" }
+  older:
+    values: [true, false]
+    initial: any
+    say: { "true": "older records than the first fifty match", "false": "fifty or fewer match" }
+  exportFails:
+    values: [false, true]
+    initial: any
+    say: { "true": "the export cannot be built", "false": "" }
+  recorded: { values: [false, true], initial: false } # an audit.export row was written in this visit
+  notice: { values: [none, exported, exportFailed], initial: none }
+
+guards:
+  # PlatformAccessService.assert(platform.audit_read) (apps/tedrisat/src/audit/audit.service.ts:97)
+  reads: "viewer in ['basnazim', 'medarisAudit']"
+
+effects:
+  exported: { set: { recorded: true, notice: exported } }
+  exportFailed: { set: { notice: exportFailed } }
+  allLoaded: { set: { older: false } }
+  clearNotice: { set: { notice: none } }
+
+failures:
+  reading: { from: listAuditLog, forbidden: [AUTHZ_FORBIDDEN] }
+  exporting: { from: exportAuditLog, failed: [SERVER_ERROR] }
+
+main:
+  given: { viewer: basnazim, older: true, exportFails: false }
+  events: [DONE, OLDER, DONE, EXPORT, DONE]
+
+initial: reading
+states:
+  reading:
+    title: Read the trail
+    description: GET /nizam/audit-log with the address's filters (actor, type, scope, from, to); fifty records and a cursor
+    source: apps/nizam/app/denetim-kaydi/page.tsx:30
+    invoke: { action: listAuditLog }
+    on:
+      DONE: { guard: reads, target: auditPage, say: "the records come", source: "apps/tedrisat/src/audit/audit.service.ts:98" }
+      FAIL.forbidden: { guard: "not reads", target: forbidden, say: "köşk nazımları, başmüderrisler and everyone else: 403", source: "apps/tedrisat/src/audit/audit.service.ts:97" }
+
+  forbidden: { type: final, title: No access, source: apps/nizam/app/denetim-kaydi/page.tsx:31 }
+
+  auditPage:
+    title: The Denetim kaydı page
+    by: human
+    goal: true
+    description: >-
+      A notice that only Medaris administration sees the trail, the filters, the records with number, time, who (with
+      their widest role), what and where, "Daha eskileri göster" while older ones match, and a retention line.
+    source: apps/nizam/features/platform-admin/components/audit-view.tsx:50
+    on:
+      FILTER: { target: reading, effect: [clearNotice], say: "they change a filter: the address changes and the page reads again", source: "apps/nizam/features/platform-admin/components/audit-view.tsx:78" }
+      OLDER: { guard: older, target: loadingOlder, say: "they press Daha eskileri göster", source: "apps/nizam/features/platform-admin/components/audit-view.tsx:330" }
+      EXPORT: { target: exporting, effect: [clearNotice], say: "they press Dışa aktar, a download link", source: "apps/nizam/features/platform-admin/components/audit-view.tsx:194" }
+      NAVIGATE: { target: left, say: "they go to another page" }
+
+  loadingOlder:
+    title: Read older records
+    description: GET /nizam/audit-log with the same filters and the cursor
+    source: apps/nizam/features/platform-admin/actions.ts:71
+    invoke: { action: listAuditLog }
+    on:
+      DONE: { target: auditPage, effect: [allLoaded], say: "the older records are added below" }
+
+  exporting:
+    title: Export the records as CSV
+    description: >-
+      nizam's GET /api/audit-log/export passes the filters to GET /nizam/audit-log/export with the session's token.
+      tedrisat reads at most 10 000 records, writes one audit.export row with the count and the filters, and sends
+      denetim-kaydi.csv (number, time, who, role, kind, what, scope; no details).
+    source: apps/nizam/app/api/audit-log/export/route.ts:16
+    invoke: { action: exportAuditLog }
+    on:
+      DONE: { guard: "not exportFails", target: auditPage, effect: [exported], say: "the CSV downloads; the export is on the trail", source: "apps/tedrisat/src/audit/audit.service.ts:122" }
+      FAIL.failed: { guard: exportFails, target: auditPage, effect: [exportFailed], say: "the link answers {\"error\":\"Export failed\"} instead of a file; the page says nothing", source: "apps/nizam/app/api/audit-log/export/route.ts:35" }
+
+  left: { type: final, title: They leave the page, leavesPage: true }
+
+assertions:
+  - { id: trail-for-platform-management-only, never: "state in ['auditPage', 'loadingOlder', 'exporting'] and not reads", say: "Only the başnazım and a Medaris nazımı granted platform.audit_read read or export the trail", source: "apps/tedrisat/src/audit/audit.service.ts:97" }
+  - { id: every-export-recorded, never: "notice == 'exported' and not recorded", say: "No CSV leaves without an audit.export record", source: "apps/tedrisat/src/audit/audit.service.ts:122" }
+  - { id: no-record-for-the-refused, never: "recorded and not reads", say: "A refused caller exports nothing and leaves no export record", source: "apps/tedrisat/src/audit/audit.service.ts:116" }

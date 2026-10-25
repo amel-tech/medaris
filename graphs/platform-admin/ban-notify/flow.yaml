@@ -1,0 +1,128 @@
+# CAPTURE of Medaris at origin/main ce47fce8: what is written to whom when a ban is opened. A server step with no screen:
+# the ban routes start it once the ban and its audit row are committed (BanService.create, extend, createInMadrasah,
+# escalate). We follow ONE person and ask what they are told. Reading the notifications: medaris.nizam-notifications
+# (nizam) and the learning area (tedris). Paths are repo-relative.
+schema: delurio-graph/0
+kind: flow
+id: medaris.ban-notify
+status: proposed
+domain: medaris.platform-admin
+title: Tell people of a new ban
+summary: >-
+  A new course or köşk ban placed from a course, or widened to the köşk, writes a notification with the reason to the
+  köşk's nazımları and to every Medaris nazımı, all but the one who placed it. A ban placed from the medrese's page, or
+  widened to the medrese, tells no nazım. Every talebe with a seat the ban newly covers is told only that their access
+  was removed. A notification that cannot be written is logged; the ban stands.
+
+scope:
+  shows: one new ban and one person who may or may not be told of it
+  world: open
+  outOfView:
+    - "lifting a ban, and a permanent-ban request: neither writes a notification"
+    - "the talebe's own Bildirimler in tedris, where COURSE_ACCESS_REMOVED is read"
+    - "every other notification type (notification-types.ts:13)"
+
+context:
+  route:
+    values: [course, extend, madrasah, escalate]
+    initial: any
+    say: { course: "placed from a course (POST /courses/:id/bans)", extend: "a course ban widened to the köşk (POST /bans/:id/extend)", madrasah: "placed from the medrese's page (POST /madrasahs/:id/bans)", escalate: "a course ban widened to the medrese (POST /bans/:id/escalate)" }
+  scope:
+    values: [COURSE, KOSK, MADRASAH]
+    initial: any
+    say: { COURSE: "the ban bars one course", KOSK: "the ban bars every course of the köşk", MADRASAH: "the ban bars every course of the medrese" }
+  created:
+    values: [true, false]
+    initial: any
+    say: { "true": "a new ban row was written", "false": "the person was barred in that scope already, and the standing ban came back" }
+  recipient:
+    values: [koskNazim, medarisBanReader, medarisOther, banner, talebe, basnazim]
+    initial: any
+    say: { koskNazim: "a nazım of the köşk the ban sits in", medarisBanReader: "a Medaris nazımı holding platform.ban_scoped or platform.ban_account", medarisOther: "a Medaris nazımı holding neither", banner: "the person who placed the ban", talebe: "the barred talebe", basnazim: "the Medaris başnazımı (a realm role, no role row)" }
+  seated:
+    values: [true, false]
+    initial: any
+    say: { "true": "the talebe holds a seat (ENROLLED or COMPLETED) in a course the ban covers", "false": "the talebe holds no such seat" }
+  olderBan:
+    values: [false, true]
+    initial: any
+    say: { "true": "an older open ban already barred them from that course", "false": "" }
+  writeFails:
+    values: [false, true]
+    initial: any
+    say: { "true": "the notifications table cannot be written", "false": "" }
+  told: { values: [none, banPlaced, accessRemoved], initial: none }
+
+guards:
+  # nazimRecipients (apps/tedrisat/src/ban/ban.repository.ts:435): KOSK_NAZIM of the köşk and every held MEDARIS_NAZIM row
+  nazimRecipient: "recipient in ['koskNazim', 'medarisBanReader', 'medarisOther']"
+
+effects:
+  courseScope: { set: { scope: COURSE } }
+  koskScope: { set: { scope: KOSK } }
+  madrasahScope: { set: { scope: MADRASAH } }
+  tellBanPlaced: { set: { told: banPlaced } }
+  tellAccessRemoved: { set: { told: accessRemoved } }
+
+main:
+  given: { route: course, scope: COURSE, created: true, recipient: koskNazim, writeFails: false }
+  events: []
+
+initial: opened
+states:
+  opened:
+    title: The ban is committed
+    description: normalises a start the routes cannot produce (each route takes only its own scopes), then asks whether a ban was written
+    source: apps/tedrisat/src/ban/ban.service.ts:178
+    always:
+      - { guard: "route == 'course' and scope == 'MADRASAH'", target: opened, effect: [courseScope], say: "a course takes COURSE or KOSK only (ban.dto.ts:20)" }
+      - { guard: "route == 'extend' and scope != 'KOSK'", target: opened, effect: [koskScope], say: "a widening is to the köşk" }
+      - { guard: "route == 'madrasah' and scope == 'KOSK'", target: opened, effect: [courseScope], say: "the medrese takes COURSE or MADRASAH only (madrasah-ban.dto.ts:38)" }
+      - { guard: "route == 'escalate' and scope != 'MADRASAH'", target: opened, effect: [madrasahScope], say: "an escalation is to the medrese" }
+      - { guard: "not created", target: standingReturned, say: "nothing new was written, so nobody is told", source: "apps/tedrisat/src/ban/ban.service.ts:178" }
+      - { guard: "route in ['madrasah', 'escalate']", target: tellingTalebe, say: "the medrese's routes call only tellBarred", source: "apps/tedrisat/src/ban/ban.service.ts:505" }
+      - { target: announcing, say: "the course's and the widening's routes announce it", source: "apps/tedrisat/src/ban/ban.service.ts:179" }
+
+  standingReturned:
+    type: final
+    title: The standing ban is returned
+    response: { status: "201 or 200", body: "the ban that already bars the person, with viewerMayLift and viewerMayExtend", writes: nothing }
+
+  announcing:
+    title: Tell the nazımlar
+    description: >-
+      BanService.announce: one COURSE_BAN_PLACED or KOSK_BAN_PLACED row for each recipient but the one who placed the
+      ban, aimed at the köşk (targetType KOSK). The başnazım is a realm role with no row here and is not reached.
+    source: apps/tedrisat/src/ban/ban.service.ts:350
+    response: { notification: "COURSE_BAN_PLACED | KOSK_BAN_PLACED", targetType: KOSK, params: "source, koskName, courseTitle, talebeName, actorName, reason" }
+    always:
+      - { guard: "nazimRecipient and not writeFails", target: tellingTalebe, effect: [tellBanPlaced], say: "a notification with the reason is written for them", source: "apps/tedrisat/src/ban/ban.service.ts:369" }
+      - { target: tellingTalebe, say: "nothing for them: not a recipient, the one who placed it, or the write failed and was logged", source: "apps/tedrisat/src/ban/ban.service.ts:356" }
+
+  tellingTalebe:
+    title: Tell the talebe their access was removed
+    description: >-
+      BanService.tellBarred: COURSE_ACCESS_REMOVED for each seat (ENROLLED or COMPLETED) the ban newly covers, less any
+      an older open ban already covered; it names the course and never the reason or the word "yasak".
+    source: apps/tedrisat/src/ban/ban.service.ts:392
+    response: { notification: COURSE_ACCESS_REMOVED, targetType: COURSE, params: "courseTitle, source (the köşk's name)" }
+    always:
+      - { guard: "recipient == 'talebe' and seated and not olderBan and not writeFails", target: done, effect: [tellAccessRemoved], say: "the talebe is told, without the reason", source: "apps/tedrisat/src/ban/ban.repository.ts:465" }
+      - { target: done, say: "nothing more for this person", source: "apps/tedrisat/src/ban/ban.service.ts:408" }
+
+  done:
+    type: final
+    title: The ban stands, its notifications written or logged
+    response: { status: "201 (create, escalate) or 200 (extend)", body: "the ban", note: "a failed notification write never undoes the ban" }
+
+assertions:
+  - { id: banner-not-told-own-ban, never: "told != 'none' and recipient == 'banner'", say: "The one who placed a ban is not notified of it", source: "apps/tedrisat/src/ban/ban.service.ts:355" }
+  - { id: talebe-never-reads-the-reason, never: "told == 'banPlaced' and recipient == 'talebe'", say: "The barred talebe never gets the notification that carries the reason", source: "apps/tedrisat/src/ban/ban.service.ts:386" }
+  - { id: a-repeat-tells-nobody, never: "told != 'none' and not created", say: "Barring someone already barred in that scope tells nobody again", source: "apps/tedrisat/src/ban/ban.service.ts:178" }
+  - { id: access-removed-once-per-course, never: "told == 'accessRemoved' and olderBan", say: "A talebe is not told twice that one course was taken from them", source: "apps/tedrisat/src/ban/ban.repository.ts:500" }
+  - { id: only-seat-holders-told, never: "told == 'accessRemoved' and not seated", say: "Only a talebe holding a seat the ban covers is told of it", source: "apps/tedrisat/src/ban/ban.repository.ts:495" }
+# NOT HELD, kept out on purpose (REPORT.md):
+#   only-ban-readers-get-the-reason (PLATFORM-ADMIN-3, F09): "told == 'banPlaced' and recipient == 'medarisOther'" is reached:
+#     every held MEDARIS_NAZIM row is a recipient, whatever it holds (ban.repository.ts:448).
+#   kosk-nazim-told-of-every-course-ban (PLATFORM-ADMIN-4, F18): "state == 'done' and created and not writeFails and
+#     recipient == 'koskNazim' and scope == 'COURSE' and told == 'none'" is reached from route = madrasah.

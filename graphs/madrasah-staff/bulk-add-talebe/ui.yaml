@@ -1,0 +1,43 @@
+# The dialog of medaris.bulk-add-talebe: "Toplu talebe ekle" on nazar's "Talebeler", a form dialog the scrim does not
+# close. Its first focus is the textarea; when the answer replaces the form in the same dialog the code moves no focus,
+# and the "Ekle" button that held it is gone.
+schema: delurio-graph/0
+kind: ui
+id: medaris.bulk-add-talebe
+flow: medaris.bulk-add-talebe
+status: proposed
+catalog: catalog/tr.json
+locales: [tr, en]
+samples: { count: "12", max: "500" }
+changes: { key: Changes.note }
+
+nodes:
+  dialog: { type: page, component: Page, role: dialog, name: { labelledBy: title }, in: [dialog, enrolling, result], initialFocus: emails, source: "apps/nazar/features/enrolments/components/bulk-add-dialog.tsx:106" }
+  title: { type: text, component: Heading, role: heading, text: { key: CourseStudents.bulk.title }, in: [dialog, enrolling, result], source: "apps/nazar/features/enrolments/components/bulk-add-dialog.tsx:104" }
+  intro: { type: text, component: Text, text: { key: CourseStudents.bulk.intro }, in: [dialog, enrolling], source: "apps/nazar/features/enrolments/components/bulk-add-dialog.tsx:128" }
+  emails: { type: field, component: TextField, role: textbox, text: { key: CourseStudents.bulk.label }, in: [dialog, enrolling], disabledIn: [enrolling], emits: TYPE, source: "apps/nazar/features/enrolments/components/bulk-add-dialog.tsx:141" } # a textarea, dir="ltr"
+  help: { type: text, component: Text, text: { key: CourseStudents.bulk.help }, in: [dialog, enrolling] }
+  tooMany: { type: text, component: Text, text: { key: CourseStudents.bulk.tooMany }, in: [dialog], when: "listCount == 'tooMany'", source: "apps/nazar/features/enrolments/components/bulk-add-dialog.tsx:134" }
+  count: { type: status, component: Status, role: status, text: { key: CourseStudents.bulk.count }, in: [dialog, enrolling], source: "apps/nazar/features/enrolments/components/bulk-add-dialog.tsx:151" } # aria-live="polite"
+  failedTitle: { type: alert, component: Alert, role: alert, text: { key: CourseStudents.bulk.failedTitle }, in: [dialog], when: "notice != 'none'", source: "apps/nazar/features/enrolments/components/bulk-add-dialog.tsx:72" } # a toast
+  failedDirectory: { type: text, component: Text, text: { key: CourseStudents.bulk.errors.directory }, in: [dialog], when: "notice == 'directory'", source: "apps/nazar/features/enrolments/bulk.ts:77" }
+  failedClosed: { type: text, component: Text, text: { key: CourseStudents.bulk.errors.closed }, in: [dialog], when: "notice == 'closed'", source: "apps/nazar/features/enrolments/bulk.ts:74" }
+  cancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: CourseStudents.bulk.cancel }, in: [dialog, enrolling], emits: CANCEL, source: "apps/nazar/features/enrolments/components/bulk-add-dialog.tsx:112" }
+  submit: { type: action, component: Button, role: button, intent: confirm, text: { key: CourseStudents.bulk.submit }, in: [dialog, enrolling], disabledIn: [enrolling], emits: SUBMIT, source: "apps/nazar/features/enrolments/components/bulk-add-dialog.tsx:113" } # off with no address or more than 500
+
+  outcomes: { type: list, component: List, role: list, name: { labelledBy: title }, in: [result], source: "apps/nazar/features/enrolments/components/bulk-add-dialog.tsx:180" }
+  outcome: { type: text, component: ListItem, role: listitem, text: { oneOf: [CourseStudents.bulk.outcomes.enrolled, CourseStudents.bulk.outcomes.approved, CourseStudents.bulk.outcomes.already, CourseStudents.bulk.outcomes.notFound, CourseStudents.bulk.outcomes.invalid, CourseStudents.bulk.outcomes.skipped] }, in: [result], source: "apps/nazar/features/enrolments/components/bulk-add-dialog.tsx:182" } # only the outcomes with a count
+  unmatched: { type: field, component: TextField, role: textbox, text: { key: CourseStudents.bulk.unmatchedLabel }, in: [result], when: "outcome in ['notFound', 'invalid']", source: "apps/nazar/features/enrolments/components/bulk-add-dialog.tsx:187" } # read-only
+  unmatchedNote: { type: text, component: Text, text: { key: CourseStudents.bulk.unmatchedNote }, in: [result], when: "outcome in ['notFound', 'invalid']" }
+  copy: { type: action, component: Button, role: button, intent: secondary, text: { key: CourseStudents.bulk.copy }, in: [result], when: "outcome in ['notFound', 'invalid']", emits: COPY, source: "apps/nazar/features/enrolments/components/bulk-add-dialog.tsx:198" }
+  skippedTitle: { type: text, component: Text, text: { key: CourseStudents.bulk.skippedTitle }, in: [result], when: "outcome == 'skipped'", source: "apps/nazar/features/enrolments/components/bulk-add-dialog.tsx:211" }
+  skippedReason: { type: text, component: Text, text: { oneOf: [CourseStudents.bulk.reasons.barred, CourseStudents.bulk.reasons.revoked, CourseStudents.bulk.reasons.completed] }, in: [result], when: "outcome == 'skipped'", source: "apps/nazar/features/enrolments/components/bulk-add-dialog.tsx:219" }
+  close: { type: action, component: Button, role: button, intent: dismiss, text: { key: CourseStudents.bulk.close }, in: [result], emits: CLOSE, source: "apps/nazar/features/enrolments/components/bulk-add-dialog.tsx:109" }
+
+edges:
+  - { labelledBy: [dialog, title] }
+  - { triggers: [submit, enrolling] }
+
+rules:
+  - { id: label-in-name, rule: "a node's visible text is contained in its accessible name (WCAG 2.5.3)" }
+  - { id: focus-after-answer, rule: "when the answer replaces the form, the focus moves into the answer" }

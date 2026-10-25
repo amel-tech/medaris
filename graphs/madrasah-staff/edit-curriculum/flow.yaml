@@ -1,0 +1,145 @@
+# Medaris, captured at origin/main ce47fce8: "Müfredat" in nazar (/ders/:id/mufredat) and PUT /courses/:id behind it:
+# the course's details, weeks and sessions as one form, saved whole with the version the page was read at.
+schema: delurio-graph/0
+kind: flow
+id: medaris.edit-curriculum
+status: proposed
+domain: medaris.madrasah-staff
+ui: medaris.edit-curriculum
+title: Edit the syllabus
+summary: >-
+  The page opens for course.edit, session.manage or week.hide. Saving is course.edit: without it the page is read-only
+  and says so. A save that adds, moves or drops a session needs session.manage as well; without it those controls are
+  off. A week or session left out of the save is hidden at the saver's level, never deleted. When someone saved the
+  course since the page was read, the server answers 409 and writes nothing.
+
+scope:
+  shows: the editor, the save and its refusal on a stale version
+  world: open
+  outOfView:
+    - "the files and the homework of a session, which are stored by their own calls at once, outside \"Kaydet\""
+    - "the müderris list inside the payload: the editor sends it as read, so it never changes it"
+    - "\"Haftalık celse üret\" (medaris.plan-sessions) and \"Hafta ve celse gizle\" (medaris.hide-week), which open other pages"
+
+context:
+  holds:
+    values: [editAndSessions, editOnly, sessionsOnly, hideOnly, none]
+    initial: any
+    say: { editAndSessions: "the reader holds course.edit and session.manage", editOnly: "course.edit without session.manage", sessionsOnly: "session.manage without course.edit", hideOnly: "week.hide alone", none: "none of the three" }
+  courseRead:
+    values: [ok, failed, gone]
+    initial: any
+    say: { ok: "the course is read", failed: "the course cannot be read", gone: "the course is not found (or hidden from the reader)" }
+  formOk:
+    values: [true, false]
+    initial: any
+    say: { "true": "every title and time is filled in", "false": "a title or a time is missing" }
+  stale:
+    values: [false, true]
+    initial: any
+    say: { "true": "someone saves the course while the page is open", "false": "" }
+  change: { values: [none, texts, sessions, emptyWeek], initial: none } # what the form differs in from the saved course
+  sent: { values: [false, true], initial: false }
+  conflict: { values: [false, true], initial: false }
+  saved: { values: [none, texts, sessions, emptyWeek], initial: none }
+
+guards:
+  canEdit: "holds in ['editAndSessions', 'editOnly']"
+  canSessions: "holds in ['editAndSessions', 'sessionsOnly']"
+  canHide: "holds in ['editAndSessions', 'hideOnly']" # week.hide: a müderris holds it with the rest; editOnly and sessionsOnly stand for holders without it
+  dirty: "change != 'none'"
+
+effects:
+  editTexts: { set: { change: texts } }
+  editSessions: { set: { change: sessions } }
+  dropEmptyWeek: { set: { change: emptyWeek } }
+  reset: { set: { change: none, sent: false } }
+  markSent: { set: { sent: true } }
+  noticeConflict: { set: { conflict: true } }
+  savedTexts: { set: { saved: texts, change: none } }
+  savedSessions: { set: { saved: sessions, change: none } }
+  savedEmptyWeek: { set: { saved: emptyWeek, change: none } }
+  reload: { set: { conflict: false, stale: false, change: none, sent: false }, havoc: [courseRead] }
+
+failures:
+  saving: { from: replaceCourse, conflict: [COURSE_VERSION_CONFLICT] }
+
+main:
+  given: { holds: editAndSessions, courseRead: ok, formOk: true, stale: false }
+  events: [EDIT_TEXT, SAVE, DONE]
+
+initial: gate
+states:
+  gate:
+    title: Read the course and what the reader holds
+    source: apps/nazar/features/curriculum/components/curriculum-page.tsx:42
+    always:
+      - { guard: "courseRead == 'gone'", target: notFound, say: "404: the portal's not-found page", source: "apps/nazar/lib/tedrisat-read.ts:46" }
+      - { guard: "courseRead == 'failed'", target: loadFailed, say: "the course cannot be read", source: "apps/nazar/features/curriculum/components/curriculum-page.tsx:44" }
+      - { guard: "holds == 'none'", target: forbidden, say: "none of course.edit, session.manage, week.hide: \"Bu sayfaya izniniz yok\"", source: "apps/nazar/features/account/course-permissions.ts:46" }
+      - { target: editor, say: "the editor opens, keyed by the course version", source: "apps/nazar/features/curriculum/components/curriculum-page.tsx:63" }
+
+  notFound: { type: final, title: The portal's not-found page, source: "apps/nazar/lib/tedrisat-read.ts:46" }
+
+  forbidden:
+    type: final
+    title: The page says the reader has no permission
+    source: apps/nazar/features/curriculum/components/curriculum-page.tsx:50
+
+  loadFailed:
+    title: The syllabus could not be read
+    by: human
+    source: apps/nazar/features/curriculum/components/curriculum-page.tsx:50
+    on:
+      RETRY: { target: gate, effect: [reload], say: "they press \"Yeniden dene\"", source: "apps/nazar/features/shell/components/load-failed.tsx:36" }
+      NAVIGATE: { target: left, say: "they go to another page" }
+
+  editor:
+    title: The syllabus
+    by: human
+    goal: true
+    description: >-
+      The course's name, cover and introduction, and its weeks with their sessions. Without course.edit every field is
+      off and a note says the page is read-only; with course.edit but not session.manage a note says the session
+      controls are off. "Haftayı gizle" in the form takes a week out of it; with no session.manage only an empty week.
+    includes: [the details, the weeks, the sessions, "Hafta ekle", "Celse ekle", "Haftayı gizle", the dirty strip]
+    source: apps/nazar/features/curriculum/components/curriculum-editor.tsx:121
+    on:
+      EDIT_TEXT: { guard: "canEdit and not conflict", target: editor, effect: [editTexts], say: "they change a title, a text or a link", source: "apps/nazar/features/curriculum/components/curriculum-editor.tsx:223" }
+      EDIT_SESSIONS: { guard: "canEdit and canSessions and not conflict", target: editor, effect: [editSessions], say: "they add, copy, move or take out a session, or change its time", source: "apps/nazar/features/curriculum/components/curriculum-editor.tsx:224" }
+      DROP_EMPTY_WEEK: { guard: "canEdit and not conflict", target: editor, effect: [dropEmptyWeek], say: "they take an empty week out of the form", source: "apps/nazar/features/curriculum/components/curriculum-editor.tsx:974" }
+      RESET: { guard: "dirty and canEdit", target: editor, effect: [reset], say: "they press \"Vazgeç\": the saved values come back", source: "apps/nazar/features/curriculum/components/curriculum-editor.tsx:1013" }
+      SAVE:
+        - { guard: "dirty and canEdit and not conflict and not formOk", target: editor, effect: [markSent], say: "a title or a time is missing: it is said under it and nothing is sent", source: "apps/nazar/features/curriculum/components/curriculum-editor.tsx:281" }
+        - { guard: "dirty and canEdit and not conflict", target: saving, say: "they press \"Kaydet\"", source: "apps/nazar/features/curriculum/components/curriculum-editor.tsx:286" }
+      RELOAD: { guard: conflict, target: gate, effect: [reload], say: "they press \"Güncel dersi yükle\": the form starts again from the course as it is", source: "apps/nazar/features/curriculum/components/curriculum-editor.tsx:354" }
+      GENERATE: { guard: canSessions, target: left, starts: { flow: medaris.plan-sessions }, say: "they press \"Haftalık celse üret\"", source: "apps/nazar/features/curriculum/components/curriculum-editor.tsx:456" }
+      HIDE_PAGE: { guard: canHide, target: left, starts: { flow: medaris.hide-week }, say: "they press \"Hafta ve celse gizle\"", source: "apps/nazar/features/curriculum/components/curriculum-editor.tsx:465" }
+      NAVIGATE: { target: left, say: "they go to another page" }
+
+  saving:
+    title: Save the whole course
+    description: >-
+      PUT /courses/:id with the version the page was read at. A version that moved is 409 before anything is compared;
+      a change to a session without session.manage is refused whole (403); the weeks and sessions the save drops are
+      hidden at the saver's level; the course version moves; the calendar sweep runs and dropped files leave storage.
+    invoke: { action: replaceCourse }
+    source: apps/tedrisat/src/course/course.service.ts:1014
+    on:
+      FAIL.conflict: { guard: stale, target: editor, effect: [noticeConflict], say: "409 COURSE_VERSION_CONFLICT: nothing is written; a prompt offers the current course", source: "apps/nazar/features/curriculum/components/curriculum-editor.tsx:293" }
+      DONE:
+        - { guard: "not stale and change == 'sessions'", target: editor, effect: [savedSessions], say: "saved with its sessions; a toast says so and the page reads the course again", source: "apps/nazar/features/curriculum/components/curriculum-editor.tsx:306" }
+        - { guard: "not stale and change == 'emptyWeek'", target: editor, effect: [savedEmptyWeek], say: "saved; the week taken out is hidden at the saver's level", source: "apps/tedrisat/src/course/course.repository.ts:722" }
+        - { guard: "not stale", target: editor, effect: [savedTexts], say: "saved; a toast says so and the page reads the course again", source: "apps/nazar/features/curriculum/components/curriculum-editor.tsx:310" }
+
+  left:
+    type: final
+    title: They leave the page
+    leavesPage: true
+
+assertions:
+  - { id: only-editors-save, never: "saved != 'none' and not canEdit", say: "Nobody without course.edit saves the course", source: "apps/tedrisat/src/course/course.controller.ts:333" }
+  - { id: sessions-need-session-manage, never: "saved == 'sessions' and not canSessions", say: "No session is added, moved or dropped without session.manage", source: "apps/tedrisat/src/course/course.service.ts:1098" }
+  - { id: no-lost-update, never: "saved != 'none' and stale", say: "A save never writes over a course someone saved after the page was read", source: "apps/tedrisat/src/course/course.service.ts:1025" }
+  - { id: nothing-sent-with-gaps, never: "state == 'saving' and not formOk", say: "A form with a missing title or time sends nothing", source: "apps/nazar/features/curriculum/components/curriculum-editor.tsx:281" }
+  - { id: read-only-sends-nothing, never: "state == 'saving' and holds in ['sessionsOnly', 'hideOnly']", say: "A reader for whom the page is read-only never sends a save", source: "apps/nazar/features/curriculum/components/curriculum-editor.tsx:280" }

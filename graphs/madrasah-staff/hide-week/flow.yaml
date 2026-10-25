@@ -1,0 +1,152 @@
+# Medaris, captured at origin/main ce47fce8: "Hafta ve celse gizle" in nazar (/ders/:id/mufredat/gizle, MDRS-143) and
+# the routes that hide a week (POST /courses/:courseId/weeks/:weekId/hide) or a session (DELETE /lessons/:id).
+schema: delurio-graph/0
+kind: flow
+id: medaris.hide-week
+status: proposed
+domain: medaris.madrasah-staff
+ui: medaris.hide-week
+title: Hide a week or a session
+summary: >-
+  The course's live weeks and the sessions in them, each with "Gizle". The page asks no permission of its own: anyone
+  whom the portal lets into the course sees the buttons, and the API decides (week.hide for a week; week.hide or
+  session.manage for a session). Each hide asks first; nothing is deleted, and the course's archive brings it back by
+  the level that hid it or one above.
+
+scope:
+  shows: the list, the confirmation and the two hiding routes
+  world: open
+  outOfView:
+    - "bringing a week or a session back: the course's Arşiv"
+    - "who reaches the page at all: the portal's scope rules (the nav graph)"
+
+context:
+  holds:
+    values: [weekHide, sessionManage, neither]
+    initial: any
+    say: { weekHide: "the reader holds week.hide in the course", sessionManage: "the reader holds session.manage but not week.hide", neither: "the reader holds neither (a ders nazırı or a nazır given other work)" }
+  courseRead:
+    values: [ok, failed, gone]
+    initial: any
+    say: { ok: "the course is read", failed: "the course cannot be read", gone: "the course is not found (or hidden from the reader)" }
+  weeks:
+    values: [some, none]
+    initial: any
+    say: { some: "the course has live weeks", none: "it has none" }
+  alreadyGone:
+    values: [false, true]
+    initial: any
+    say: { "true": "someone hides the week or the session first", "false": "" }
+  target: { values: [none, week, session], initial: none }
+  notice: { values: [none, forbidden, gone, hidden], initial: none }
+  asked: { values: [false, true], initial: false }
+  hid: { values: [none, week, session], initial: none }
+
+effects:
+  pickWeek: { set: { target: week, notice: none, asked: false, hid: none } }
+  pickSession: { set: { target: session, notice: none, asked: false, hid: none } }
+  unpick: { set: { target: none } }
+  confirmed: { set: { asked: true } }
+  noticeForbidden: { set: { notice: forbidden, target: none } }
+  noticeGone: { set: { notice: gone, target: none } }
+  hidWeek: { set: { hid: week, notice: hidden, target: none } }
+  hidSession: { set: { hid: session, notice: hidden, target: none } }
+  reread: { havoc: [courseRead] }
+
+failures:
+  hidingWeek: { from: hideCourseWeek, forbidden: [AUTHZ_FORBIDDEN], gone: [WEEK_NOT_FOUND] }
+  hidingSession: { from: archiveLesson, forbidden: [AUTHZ_FORBIDDEN], gone: [LESSON_NOT_FOUND] }
+
+main:
+  given: { holds: weekHide, courseRead: ok, weeks: some, alreadyGone: false }
+  events: [HIDE_WEEK, CONFIRM, DONE]
+
+initial: loading
+states:
+  loading:
+    title: Read the course
+    description: GET /courses/:id only; no permission is asked for the page.
+    source: apps/nazar/features/curriculum-hide/components/curriculum-page.tsx:25
+    always:
+      - { guard: "courseRead == 'gone'", target: notFound, say: "404: the portal's not-found page", source: "apps/nazar/lib/tedrisat-read.ts:46" }
+      - { guard: "courseRead == 'failed'", target: loadFailed, say: "the course cannot be read", source: "apps/nazar/features/curriculum-hide/components/curriculum-page.tsx:39" }
+      - { guard: "weeks == 'none'", target: empty, say: "the course has no week yet", source: "apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:71" }
+      - { target: list, say: "the weeks and their sessions, each with \"Gizle\", whoever the reader is", source: "apps/nazar/features/curriculum-hide/components/curriculum-page.tsx:47" }
+
+  notFound: { type: final, title: The portal's not-found page, source: "apps/nazar/lib/tedrisat-read.ts:46" }
+
+  loadFailed:
+    title: The syllabus could not be read
+    by: human
+    source: apps/nazar/features/curriculum-hide/components/curriculum-page.tsx:39
+    on:
+      RETRY: { target: loading, effect: [reread], say: "they press \"Yeniden dene\"", source: "apps/nazar/features/shell/components/load-failed.tsx:36" }
+      NAVIGATE: { target: left, say: "they go to another page" }
+
+  empty:
+    type: final
+    title: The course has no week yet
+    source: apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:72
+
+  list:
+    title: The weeks and sessions
+    by: human
+    goal: true
+    source: apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:77
+    on:
+      HIDE_WEEK: { target: confirmWeek, effect: [pickWeek], say: "they press \"Haftayı gizle\" on a week", source: "apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:102" }
+      HIDE_SESSION: { target: confirmSession, effect: [pickSession], say: "they press \"Celseyi gizle\" on a session", source: "apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:136" }
+      NAVIGATE: { target: left, say: "they go to another page" }
+
+  confirmWeek:
+    title: Confirm hiding the week
+    by: human
+    description: The week and its sessions leave the course; talebe do not see them; nothing is deleted. The focus starts on "Vazgeç".
+    source: apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:153
+    on:
+      CONFIRM: { target: hidingWeek, effect: [confirmed], say: "they press \"Gizle\"", source: "apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:164" }
+      CANCEL: { target: list, effect: [unpick], say: "they press \"Vazgeç\"" }
+
+  confirmSession:
+    title: Confirm hiding the session
+    by: human
+    source: apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:153
+    on:
+      CONFIRM: { target: hidingSession, effect: [confirmed], say: "they press \"Gizle\"", source: "apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:164" }
+      CANCEL: { target: list, effect: [unpick], say: "they press \"Vazgeç\"" }
+
+  hidingWeek:
+    title: Hide the week
+    description: >-
+      POST /courses/:courseId/weeks/:weekId/hide, behind @Authz(week.hide). In one transaction the course version moves,
+      the week and every session in it are stamped hidden at the level the caller acts at, and week.hide goes to the
+      audit log; then the calendar sweep sends the cancellations.
+    invoke: { action: hideCourseWeek }
+    source: apps/tedrisat/src/course/course.repository.ts:1651
+    on:
+      FAIL.forbidden: { guard: "holds != 'weekHide'", target: list, effect: [noticeForbidden], say: "403: a toast says the reader may not", source: "apps/tedrisat/src/course/lesson.controller.ts:430" }
+      FAIL.gone: { guard: "holds == 'weekHide' and alreadyGone", target: list, effect: [noticeGone], say: "404 WEEK_NOT_FOUND: an info toast, and the page is read again", source: "apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:65" }
+      DONE: { guard: "holds == 'weekHide' and not alreadyGone", target: list, effect: [hidWeek], say: "a toast says it is hidden and the page is read again", source: "apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:51" }
+
+  hidingSession:
+    title: Hide the session
+    description: >-
+      DELETE /lessons/:id, behind @Authz(week.hide or session.manage): the session is archived at the level the caller
+      acts at, never deleted, and lesson.hide goes to the audit log; then the calendar sweep sends a cancellation.
+    invoke: { action: archiveLesson }
+    source: apps/tedrisat/src/course/course.service.ts:1311
+    on:
+      FAIL.forbidden: { guard: "holds == 'neither'", target: list, effect: [noticeForbidden], say: "403: a toast says the reader may not", source: "apps/tedrisat/src/course/lesson.controller.ts:409" }
+      FAIL.gone: { guard: "holds != 'neither' and alreadyGone", target: list, effect: [noticeGone], say: "404 LESSON_NOT_FOUND: an info toast, and the page is read again", source: "apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:65" }
+      DONE: { guard: "holds != 'neither' and not alreadyGone", target: list, effect: [hidSession], say: "a toast says it is hidden and the page is read again", source: "apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:51" }
+
+  left:
+    type: final
+    title: They leave the page
+    leavesPage: true
+
+assertions:
+  - { id: week-needs-week-hide, never: "hid == 'week' and holds != 'weekHide'", say: "This page hides a week only for someone who holds week.hide", source: "apps/tedrisat/src/course/lesson.controller.ts:430" }
+  - { id: session-needs-a-code, never: "hid == 'session' and holds == 'neither'", say: "A session is hidden only by someone who holds week.hide or session.manage", source: "apps/tedrisat/src/course/lesson.controller.ts:409" }
+  - { id: asks-first, never: "state in ['hidingWeek', 'hidingSession'] and not asked", say: "Nothing is hidden without being asked first", source: "apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:153" }
+  - { id: hidden-once, never: "hid != 'none' and alreadyGone", say: "A week or session someone hid first is not hidden again", source: "apps/tedrisat/src/course/course.repository.ts:1674" }

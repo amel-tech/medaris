@@ -1,0 +1,147 @@
+# Medaris, captured at origin/main ce47fce8: "İzin ver" / "İzinleri düzenle" on a row of nazar's "Medrese nazırları"
+# (nazir/06) and PUT /madrasahs/:id/nazirs/:userId/permissions behind it. medaris.madrasah-nazir waits for this flow.
+# nazar draws the button only for the başmüderris and the başnazım (runsMedrese), so they are the readers here.
+schema: delurio-graph/0
+kind: flow
+id: medaris.nazir-permissions
+status: proposed
+domain: medaris.madrasah-staff
+ui: medaris.nazir-permissions
+title: Give a medrese nazırı their permissions
+summary: >-
+  The editor reads, together, the permission dictionary cut to what the reader may give, the medrese's groups, what
+  the nazır holds now and the medrese's courses; any one failing is the whole editor failing. A group, single
+  permissions on top of it, the courses they are limited to and an end are saved as one replacement of what the nazır
+  held in the medrese and its courses; what stays keeps its giver and date.
+
+scope:
+  shows: the editor dialog and the server's checks of the save
+  world: open
+  outOfView:
+    - "the medrese's permission groups and their own dialog (nazir/16): domain actions only"
+    - "a Medaris nazımı given platform.madrasah_nazir_grant: the API lets them give, nazar draws no button for them"
+    - "the ceiling (GRANT_EXCEEDS_GIVER): the başmüderris holds every medrese and course code by role and the başnazım has no ceiling, and the boxes are cut to the givable codes"
+
+context:
+  actor:
+    values: [basmuderris, admin]
+    initial: any
+    say: { basmuderris: "the reader is the medrese's başmüderris", admin: "the reader is the başnazım" }
+  ownRow:
+    values: [false, true]
+    initial: any
+    say: { "true": "the row is the reader's own: they are also a nazır of the medrese", "false": "" }
+  loadOk:
+    values: [true, false]
+    initial: any
+    say: { "true": "the four reads answer", "false": "one of the four reads fails" }
+  draftOk:
+    values: [true, false]
+    initial: any
+    say: { "true": "the choices are consistent", "false": "no course is chosen for \"Seçtiğim dersler\", or the end is past, after the post's end or half typed" }
+  groupGone:
+    values: [false, true]
+    initial: any
+    say: { "true": "the chosen group is deleted while the editor is open", "false": "" }
+  nazirGone:
+    values: [false, true]
+    initial: any
+    say: { "true": "the nazır is dismissed while the editor is open", "false": "" }
+  attempted: { values: [false, true], initial: false }
+  notice: { values: [none, selfGrant, groupGone], initial: none }
+  saved: { values: [false, true], initial: false }
+
+guards:
+  selfRefused: "ownRow and actor != 'admin'"
+
+effects:
+  markAttempted: { set: { attempted: true } }
+  fixDraft: { set: { draftOk: true } }
+  reread: { havoc: [loadOk] }
+  clearNotice: { set: { notice: none } }
+  noticeSelfGrant: { set: { notice: selfGrant } }
+  groupReload: { set: { notice: groupGone, groupGone: false, draftOk: true }, havoc: [loadOk] }
+  savedNow: { set: { saved: true } }
+
+failures:
+  loading: { from: getMadrasahNazirPermissions, read: [MADRASAH_NAZIR_NOT_FOUND] }
+  saving:
+    from: setMadrasahNazirPermissions
+    gone: [MADRASAH_NAZIR_NOT_FOUND]
+    selfGrant: [SELF_GRANT_REFUSED]
+    groupGone: [PERMISSION_GROUP_NOT_FOUND]
+
+main:
+  given: { actor: basmuderris, ownRow: false, loadOk: true, draftOk: true, groupGone: false, nazirGone: false }
+  events: [DONE, SAVE, DONE]
+
+initial: loading
+states:
+  loading:
+    title: Read what the editor needs
+    description: >-
+      GET …/permissions (cut to what the reader may give), …/permission-groups, …/nazirs/:userId/permissions and
+      …/courses, together, on every opening. Bars meanwhile.
+    invoke: { action: getMadrasahNazirPermissions }
+    source: apps/nazar/features/nazirs/actions.ts:144
+    on:
+      DONE: { guard: loadOk, target: editor, say: "everything is read; the focus goes to the group", source: "apps/nazar/features/nazirs/components/permission-editor.tsx:125" }
+      FAIL.read: { guard: "not loadOk", target: loadFailed, say: "one read failed: nothing is drawn, nothing can be saved", source: "apps/nazar/features/nazirs/components/permission-editor.tsx:108" }
+
+  loadFailed:
+    title: The permissions could not be read
+    by: human
+    source: apps/nazar/features/nazirs/components/permission-editor.tsx:245
+    on:
+      RETRY: { target: loading, effect: [reread], say: "they press \"Yeniden dene\"", source: "apps/nazar/features/nazirs/components/permission-editor.tsx:247" }
+      CANCEL: { target: closed, say: "they press \"Vazgeç\"" }
+
+  editor:
+    title: Choose the group, the permissions, the courses and the end
+    by: human
+    goal: true
+    description: >-
+      The group's permissions come ticked and locked; the rest are single permissions on top. A permission the reader
+      may not give is off. "Hangi derslerde" names courses only where that means something. The end is read on the
+      reader's clock.
+    includes: [the group, the medrese permissions, the course permissions, "Hangi derslerde", the end]
+    source: apps/nazar/features/nazirs/components/permission-editor.tsx:255
+    on:
+      SAVE:
+        - { guard: "not draftOk", target: editor, effect: [markAttempted], say: "a choice is wrong: it is said under it, nothing is sent", source: "apps/nazar/features/nazirs/components/permission-editor.tsx:156" }
+        - { target: saving, effect: [clearNotice], say: "they press \"Kaydet\"", source: "apps/nazar/features/nazirs/components/permission-editor.tsx:164" }
+      FIX: { guard: "not draftOk", target: editor, effect: [fixDraft], say: "they correct their choices" }
+      CANCEL: { target: closed, say: "they press \"Vazgeç\"" }
+
+  saving:
+    title: Save the nazır's permissions
+    description: >-
+      PUT /madrasahs/:id/nazirs/:userId/permissions. Only a role's own permission.grant, the başnazım, or
+      platform.madrasah_nazir_grant gives (PERMISSION_NOT_GIVABLE otherwise); the user must be a nazır of the medrese;
+      nobody gives themselves permissions (the başnazım excepted); every code must be in the dictionary and the group the
+      medrese's own; then, in one transaction, what the nazır held is replaced, each code held to what the giver holds,
+      and every grant is written to the audit log with the level the giver acts at.
+    invoke: { action: setMadrasahNazirPermissions }
+    source: apps/tedrisat/src/madrasah/nazir/madrasah-permission.service.ts:478
+    on:
+      FAIL.gone: { guard: nazirGone, target: closed, say: "404 MADRASAH_NAZIR_NOT_FOUND: the dialog closes and the roster is read again", source: "apps/nazar/features/nazirs/components/permission-editor.tsx:183" }
+      FAIL.selfGrant: { guard: "not nazirGone and selfRefused", target: editor, effect: [noticeSelfGrant], say: "403 SELF_GRANT_REFUSED, audited", source: "apps/tedrisat/src/madrasah/nazir/madrasah-permission.service.ts:489" }
+      FAIL.groupGone: { guard: "not nazirGone and not selfRefused and groupGone", target: loading, effect: [groupReload], say: "404 PERMISSION_GROUP_NOT_FOUND: the editor is read again", source: "apps/nazar/features/nazirs/components/permission-editor.tsx:181" }
+      DONE: { guard: "not nazirGone and not selfRefused and not groupGone", target: done, effect: [savedNow], say: "saved: a toast says so, the dialog closes and the roster is read again", source: "apps/nazar/features/nazirs/components/permission-editor.tsx:166" }
+
+  done:
+    type: final
+    title: The permissions are saved
+    source: apps/nazar/features/nazirs/components/permission-editor.tsx:172
+
+  closed:
+    type: final
+    title: The editor closes
+    source: apps/nazar/features/nazirs/components/permission-editor.tsx:199
+
+assertions:
+  - { id: no-self-permissions, never: "saved and ownRow and actor != 'admin'", say: "Nobody but the başnazım gives themselves permissions", source: "apps/tedrisat/src/madrasah/nazir/madrasah-permission.service.ts:489" }
+  - { id: half-read-never-shown, never: "state in ['editor', 'saving'] and not loadOk", say: "An editor whose reads did not all answer is never shown or saved", source: "apps/nazar/features/nazirs/components/permission-editor.tsx:118" }
+  - { id: wrong-choices-send-nothing, never: "state == 'saving' and not draftOk", say: "A wrong choice sends nothing", source: "apps/nazar/features/nazirs/components/permission-editor.tsx:156" }
+  - { id: no-gift-to-a-dismissed-nazir, never: "saved and nazirGone", say: "Nothing is given to someone who is no longer a nazır of the medrese", source: "apps/tedrisat/src/madrasah/nazir/madrasah-permission.service.ts:486" }
+  - { id: no-gift-of-a-deleted-group, never: "saved and groupGone", say: "A deleted group is never given", source: "apps/tedrisat/src/madrasah/nazir/madrasah-permission.service.ts:499" }

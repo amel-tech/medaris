@@ -1,0 +1,54 @@
+# The screens of medaris.archive-restore: nizam's Arşiv (ArchiveView, one component for the köşk's and the platform's
+# page) and the permanent-delete AlertDialog. Words from libs/i18n nizam.json. The MDS AlertDialog is Base UI's:
+# role alertdialog, never closed by the scrim, focus starting on Vazgeç (libs/ui/src/mds/alert-dialog.tsx:29).
+schema: delurio-graph/0
+kind: ui
+id: medaris.archive-restore
+flow: medaris.archive-restore
+status: proposed
+catalog: catalog/tr.json
+locales: [tr, en]
+samples: { kosk: "Nûruosmaniye Köşkü", name: "Emsile ve Bina, Hafta 3", title: "Emsile ve Bina", level: "Medaris yönetimi", count: "12" }
+changes: { key: Changes.note }
+
+nodes:
+  archivePage: { type: page, component: Page, role: main, name: { labelledBy: archiveTitle }, in: [archiveList, restoring, loadingImpact], source: apps/nizam/features/archive/components/archive-view.tsx:404 }
+  archiveTitle: { type: text, component: Heading, role: heading, text: { key: ArchivePage.title }, in: [archiveList, restoring, loadingImpact] }
+  archiveIntro: { type: text, component: Text, text: { oneOf: [ArchivePage.koskIntro, ArchivePage.platformIntro] }, in: [archiveList, restoring, loadingImpact] }
+  koskTable: { type: list, component: List, role: table, name: { key: ArchivePage.koskCaption, params: { kosk: kosk.name } }, in: [archiveList, restoring, loadingImpact], when: "page == 'kosk'" }
+  platformTable: { type: list, component: List, role: table, name: { key: ArchivePage.platformCaption }, in: [archiveList, restoring, loadingImpact], when: "page == 'platform'" }
+  restoreButton: { type: action, component: Button, role: button, intent: secondary, name: { key: ArchivePage.restoreLabel, params: { name: item.label } }, text: { key: ArchivePage.restore }, in: [archiveList, restoring, loadingImpact], disabledIn: [restoring], when: canRestore, repeat: archive.items, emits: RESTORE, source: apps/nizam/features/archive/components/archive-view.tsx:349 }
+  lockedNote: { type: text, component: Text, text: { key: HideLevel.locked, params: { level: item.hiddenLevel } }, in: [archiveList, restoring, loadingImpact], when: "not canRestore", repeat: archive.items, source: apps/nizam/features/archive/components/archive-view.tsx:362 }
+  deleteLink: { type: action, component: LinkButton, role: button, intent: secondary, name: { key: ArchivePage.permanentDeleteLabel, params: { name: item.label } }, text: { key: ArchivePage.permanentDelete }, in: [archiveList, restoring, loadingImpact], when: "page == 'platform'", repeat: archive.items, emits: DELETE, source: apps/nizam/features/archive/components/archive-view.tsx:368 }
+  koskFooter: { type: text, component: Text, text: { key: ArchivePage.footer }, in: [archiveList, restoring, loadingImpact], when: "page == 'kosk'" }
+  parentAlert: { type: alert, component: Alert, role: alert, text: { key: ArchivePage.restoreFailed }, in: [archiveList], when: "notice != 'none'", source: apps/nizam/features/archive/components/archive-view.tsx:194 } # a toast that stays until closed
+  parentWhy: { type: text, component: Text, text: { oneOf: [ArchivePage.restoreParentHidden, ArchivePage.restoreLevel] }, in: [archiveList], when: "notice != 'none'" }
+  restoredToast: { type: status, component: Status, role: status, text: { key: ArchivePage.restored }, in: [restored] }
+  restoredBody: { type: text, component: Text, text: { key: ArchivePage.restoredBody, params: { title: item.title } }, in: [restored] }
+  deletedToast: { type: status, component: Status, role: status, text: { key: ArchivePage.deleted }, in: [purged] }
+  deletedBody: { type: text, component: Text, text: { key: ArchivePage.deletedBody, params: { title: item.title } }, in: [purged] }
+
+  noAccessTitle: { type: text, component: Heading, role: heading, text: { key: NoAccess.title }, in: [forbidden], source: apps/nizam/components/errors/no-access.tsx:30 }
+  noAccessBody: { type: text, component: Text, text: { key: NoAccess.bodyGeneric }, in: [forbidden] }
+
+  # Kalıcı olarak sil
+  deleteDialog: { type: page, component: Page, role: alertdialog, name: { labelledBy: deleteTitle }, in: [deleteConfirm, purging], initialFocus: cancelDelete, source: apps/nizam/features/archive/components/archive-view.tsx:507 }
+  deleteTitle: { type: text, component: Heading, role: heading, text: { oneOf: [ArchivePage.dialog.titles.course, ArchivePage.dialog.titles.week, ArchivePage.dialog.titles.session, ArchivePage.dialog.titles.deck, ArchivePage.dialog.titles.kosk] }, in: [deleteConfirm, purging] }
+  deleteBody: { type: text, component: Text, text: { key: ArchivePage.dialog.body, params: { title: item.title } }, in: [deleteConfirm, purging] }
+  impactList: { type: list, component: List, role: list, name: { labelledBy: deleteTitle }, in: [deleteConfirm, purging], when: impactShown }
+  impactLine: { type: text, component: ListItem, role: listitem, text: { oneOf: [ArchivePage.dialog.weeks, ArchivePage.dialog.students, ArchivePage.dialog.sessions, ArchivePage.dialog.recordings] }, in: [deleteConfirm, purging], when: impactShown, source: apps/nizam/features/archive/present.ts:169 } # a count of zero is not a line
+  impactFailed: { type: alert, component: Alert, text: { key: ArchivePage.dialog.impactFailed }, in: [deleteConfirm, purging], when: "not impactShown", source: apps/nizam/features/archive/components/archive-view.tsx:533 }
+  deleteAudit: { type: text, component: Text, text: { key: ArchivePage.dialog.audit }, in: [deleteConfirm, purging] }
+  cancelDelete: { type: action, component: Button, role: button, intent: dismiss, text: { key: ArchivePage.dialog.cancel }, in: [deleteConfirm, purging], disabledIn: [purging], emits: CANCEL }
+  confirmDelete: { type: action, component: Button, role: button, intent: confirm, text: { key: ArchivePage.dialog.confirm }, in: [deleteConfirm, purging], disabledIn: [purging], emits: CONFIRM, source: apps/nizam/features/archive/components/archive-view.tsx:514 } # destructive; off only while the counts load
+
+edges:
+  - { labelledBy: [archivePage, archiveTitle] }
+  - { labelledBy: [deleteDialog, deleteTitle] }
+  - { triggers: [restoreButton, restoring] }
+  - { triggers: [confirmDelete, purging] }
+
+rules:
+  - { id: no-button-to-a-403, rule: "Geri al is drawn only where the API says canRestore (MDRS-108)" }
+  - { id: confirm-before-deleting, rule: "a permanent delete asks first, in an alertdialog whose focus starts on Vazgeç" }
+  - { id: label-in-name, rule: "a node's visible text is contained in its accessible name (WCAG 2.5.3)" }

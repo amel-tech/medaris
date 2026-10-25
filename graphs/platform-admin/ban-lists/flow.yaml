@@ -1,0 +1,212 @@
+# CAPTURE of Medaris at origin/main ce47fce8: nizam's two Yasaklamalar pages, a köşk's (/kosks/:id/yasaklamalar,
+# design nizam/42) and Medaris administration's (/yasaklamalar, nizam/48). Each row says from the server whether the
+# viewer may lift it (viewerMayLift) and widen it to the köşk (viewerMayExtend); the two pages widen in two different
+# ways. One open ban row and one viewer. Paths are repo-relative.
+schema: delurio-graph/0
+kind: flow
+id: medaris.ban-lists
+status: proposed
+domain: medaris.platform-admin
+ui: medaris.ban-lists
+title: Lift or widen a ban from the Yasaklamalar pages
+summary: >-
+  A köşk's nazımı reads the köşk's bans, and Medaris administration every köşk's, with the reason, who placed each and
+  when. Yasağı kaldır is offered only where the viewer's permission and kademe reach the ban, and asks a reason. A
+  course ban can be widened to the whole köşk: on the köşk's page with one press that copies the course ban's reason,
+  on the Medaris page through a dialog that asks a new one.
+
+scope:
+  shows: one viewer and one open ban row on one of the two pages, from reading the list to lifting or widening the ban
+  world: open
+  outOfView:
+    - "the Kaldırılan tab, the search, the scope chips and Daha fazla göster of the Medaris page"
+    - "placing a first ban: medaris.ban-roster; who is told of a widening: medaris.ban-notify, started here"
+    - "the medrese's bans in nazar: medaris.medrese-bans"
+    - "the newest bans card of the Medaris home page (GET /nizam/dashboard reads the same list)"
+
+context:
+  viewer:
+    values: [koskNazim, medarisScoped, medarisAccount, medarisNone, basnazim, muderris]
+    initial: any
+    say: { koskNazim: "a nazım of this köşk", medarisScoped: "a Medaris nazımı granted platform.ban_scoped", medarisAccount: "a Medaris nazımı granted platform.ban_account only", medarisNone: "a Medaris nazımı granted neither", basnazim: "the Medaris başnazımı", muderris: "a müderris of one of the köşk's courses" }
+  page:
+    values: [kosk, platform]
+    initial: any
+    say: { kosk: "the köşk's Yasaklamalar", platform: "Medaris' Yasaklamalar" }
+  banScope:
+    values: [COURSE, KOSK, MADRASAH]
+    initial: any
+    say: { COURSE: "the row bars one course", KOSK: "the row bars the whole köşk", MADRASAH: "the row bars every course of a medrese" }
+  bannedTier:
+    values: [course, madrasah, kosk, platform]
+    initial: any
+    say: { course: "placed at a course's kademe (a müderris)", madrasah: "placed at a medrese's kademe", kosk: "placed by a köşk nazımı", platform: "placed by Medaris administration" }
+  widened:
+    values: [false, true]
+    initial: any
+    say: { "true": "an open köşk ban already bars the same person in this köşk", "false": "" }
+  open: { values: [true, false], initial: true }
+  liftReason: { values: [blank, written], initial: blank }
+  reason: { values: [blank, written], initial: blank }
+  notice: { values: [none, lifted, gone, extended], initial: none }
+  liftedHere: { values: [false, true], initial: false }
+  extendedHere: { values: [false, true], initial: false }
+  extendReason: { values: [none, asked, copied], initial: none }
+
+guards:
+  # READ_KOSK_BANS_CODES and READ_ALL_BANS_CODES (apps/tedrisat/src/ban/ban-codes.ts:61, :68)
+  readsKosk: "viewer in ['koskNazim', 'medarisScoped', 'medarisAccount', 'basnazim']"
+  readsAll: "viewer in ['medarisScoped', 'medarisAccount', 'basnazim']"
+  reads: "(page == 'kosk' and readsKosk) or (page == 'platform' and readsAll)"
+  # LIFT_CODES (ban-codes.ts:45) where the ban sits (ban-authority.ts:67)
+  holdsLift: >-
+    (banScope == 'COURSE' and viewer in ['koskNazim', 'basnazim', 'muderris'])
+    or (banScope == 'KOSK' and viewer in ['koskNazim', 'medarisScoped', 'basnazim'])
+    or (banScope == 'MADRASAH' and viewer in ['medarisScoped', 'basnazim'])
+  # TIER_OF_ROLE (ban-tier.ts:35) and mayLift (ban-tier.ts:87)
+  reachesTier: >-
+    bannedTier == 'course'
+    or (bannedTier in ['madrasah', 'kosk'] and viewer in ['koskNazim', 'medarisScoped', 'medarisAccount', 'medarisNone', 'basnazim'])
+    or (bannedTier == 'platform' and viewer in ['medarisScoped', 'medarisAccount', 'medarisNone', 'basnazim'])
+  mayLift: "open and holdsLift and reachesTier"
+  # viewerMayExtend (apps/tedrisat/src/ban/ban.service.ts:652): an open course ban nobody widened, and IMPOSE_CODES.KOSK at the köşk
+  mayExtend: "open and banScope == 'COURSE' and not widened and viewer in ['koskNazim', 'medarisScoped', 'basnazim']"
+
+effects:
+  noKoskBanBelowKosk: { set: { bannedTier: kosk } }
+  noMedreseBanBelowMedrese: { set: { bannedTier: madrasah } }
+  notInKoskList: { set: { banScope: COURSE } }
+  openLift: { set: { liftReason: blank, notice: none } }
+  writeLiftReason: { set: { liftReason: written } }
+  lift: { set: { open: false, liftedHere: true, notice: lifted } }
+  gone: { set: { open: false, notice: gone } }
+  openExtend: { set: { reason: blank, notice: none } }
+  writeReason: { set: { reason: written } }
+  widenCopied: { set: { widened: true, extendedHere: true, extendReason: copied, notice: extended } }
+  widenAsked: { set: { widened: true, extendedHere: true, extendReason: asked, notice: extended } }
+
+failures:
+  readingKosk: { from: listKoskBans, forbidden: [BAN_FORBIDDEN] }
+  readingAll: { from: listAllBans, forbidden: [BAN_FORBIDDEN] }
+  lifting: { from: liftBan, gone: [BAN_ALREADY_LIFTED] }
+  extending: { from: extendBan, gone: [BAN_ALREADY_LIFTED] }
+
+main:
+  given: { viewer: basnazim, page: platform, banScope: COURSE, bannedTier: kosk, widened: false }
+  events: [DONE, WIDEN, TYPE_REASON, SUBMIT, DONE]
+
+initial: opening
+states:
+  opening:
+    title: Open a Yasaklamalar page
+    description: normalises a start the code cannot produce, then reads the page's list
+    always:
+      - { guard: "banScope == 'KOSK' and bannedTier in ['course', 'madrasah']", target: opening, effect: [noKoskBanBelowKosk], say: "a köşk ban takes ban.manage_kosk or platform.ban_scoped" }
+      - { guard: "banScope == 'MADRASAH' and bannedTier in ['course', 'kosk']", target: opening, effect: [noMedreseBanBelowMedrese], say: "a medrese ban takes madrasah.ban or platform.ban_scoped" }
+      - { guard: "page == 'kosk' and banScope == 'MADRASAH'", target: opening, effect: [notInKoskList], say: "a medrese-wide ban has no köşk, so it is in no köşk's list (ban.repository.ts:374)" }
+      - { guard: "page == 'kosk'", target: readingKosk }
+      - { target: readingAll }
+
+  readingKosk:
+    title: Read the köşk's bans
+    description: GET /kosks/:koskId/bans?status=ACTIVE, with the tabs' counts; each row with viewerMayLift and viewerMayExtend
+    source: "apps/nizam/app/kosks/[id]/yasaklamalar/page.tsx:28"
+    invoke: { action: listKoskBans }
+    on:
+      DONE: { guard: readsKosk, target: list, say: "the list comes", source: "apps/tedrisat/src/ban/ban.service.ts:205" }
+      FAIL.forbidden: { guard: "not readsKosk", target: forbidden, say: "no reading code for the köşk: BAN_FORBIDDEN", source: "apps/tedrisat/src/ban/ban.service.ts:198" }
+
+  readingAll:
+    title: Read every köşk's bans
+    description: GET /bans?status=ACTIVE&limit=20, the newest first with platform-wide counts
+    source: apps/nizam/app/yasaklamalar/page.tsx:24
+    invoke: { action: listAllBans }
+    on:
+      DONE: { guard: readsAll, target: list, say: "the list comes", source: "apps/tedrisat/src/ban/ban.service.ts:238" }
+      FAIL.forbidden: { guard: "not readsAll", target: forbidden, say: "only Medaris administration: BAN_FORBIDDEN", source: "apps/tedrisat/src/ban/ban.service.ts:233" }
+
+  forbidden:
+    type: final
+    title: No access
+    description: the 403 and the 404 show the same screen (nizam/06)
+    source: apps/nizam/app/not-found.tsx:13
+
+  list:
+    title: The Yasaklamalar page
+    by: human
+    goal: true
+    description: >-
+      Etkin and Kaldırılan tabs with their counts. An open row shows the person, the scope, the reason, who placed it
+      and when; Yasağı kaldır where viewerMayLift, and where not a line that says only Medaris administration, or only
+      the kademe that placed it or a higher one, may lift it; the widening where viewerMayExtend.
+    source: apps/nizam/features/bans/components/bans-view.tsx:243
+    on:
+      LIFT: { guard: mayLift, target: liftDialog, effect: [openLift], say: "they press Yasağı kaldır", source: "apps/nizam/features/bans/components/bans-view.tsx:248" }
+      WIDEN:
+        - { guard: "mayExtend and page == 'kosk'", target: wideningFromKosk, say: "they press Köşkten de yasakla: no dialog, no confirmation", source: "apps/nizam/features/bans/components/bans-view.tsx:264" }
+        - { guard: "mayExtend and page == 'platform'", target: extendDialog, effect: [openExtend], say: "they press Yasağı genişlet", source: "apps/nizam/features/bans/components/all-bans-view.tsx:303" }
+      NAVIGATE: { target: left, say: "they go to another page" }
+
+  liftDialog:
+    title: The lift dialog
+    by: human
+    description: the ban's scope, who placed it and when, its reason, the kademe line that names who placed it and the viewer's role (LiftDialog.info) and a required reason
+    source: apps/nizam/features/bans/components/bans-view.tsx:115
+    on:
+      TYPE_REASON: { target: liftDialog, effect: [writeLiftReason], say: "they write why it is lifted" }
+      SUBMIT: { guard: "liftReason == 'written'", target: lifting, say: "they press Yasağı kaldır" }
+      CANCEL: { target: list, say: "they press Vazgeç" }
+
+  lifting:
+    title: Lift the ban
+    description: POST /bans/:banId/lift, decided again by the server; the lift and its audit row are one transaction
+    source: apps/tedrisat/src/ban/ban.service.ts:319
+    invoke: { action: liftBan }
+    on:
+      DONE: { guard: mayLift, target: list, effect: [lift], say: "the ban closes; the list is read again", source: "apps/nizam/features/bans/components/bans-view.tsx:377" }
+      FAIL.gone: { target: list, effect: [gone], say: "someone lifted it meanwhile: BAN_ALREADY_LIFTED, as a toast", source: "apps/tedrisat/src/ban/ban.service.ts:341" }
+
+  wideningFromKosk:
+    title: Bar them from the whole köşk
+    description: >-
+      The köşk page's "Köşkten de yasakla" sends POST /courses/:courseId/bans with scope KOSK and the course ban's own
+      reason. The new ban is audited as ban.create, not ban.extend, and names no ban it widens.
+    source: apps/nizam/features/bans/components/bans-view.tsx:137
+    invoke: { action: createBan }
+    on:
+      DONE: { target: list, effect: [widenCopied], starts: { flow: medaris.ban-notify, given: { route: "'course'", scope: "'KOSK'" } }, say: "a köşk ban opens beside the course ban, with the course ban's reason", source: "apps/tedrisat/src/ban/ban.service.ts:165" }
+
+  extendDialog:
+    title: The widening dialog
+    by: human
+    description: a form dialog that asks a reason of its own for the köşk ban; the course ban stands
+    source: apps/nizam/features/bans/components/extend-dialog.tsx:39
+    on:
+      TYPE_REASON: { target: extendDialog, effect: [writeReason], say: "they write the widening's reason" }
+      SUBMIT: { guard: "reason == 'written'", target: extending, say: "they press Yasağı genişlet", source: "apps/nizam/features/bans/components/extend-dialog.tsx:103" }
+      CANCEL: { target: list, say: "they press Vazgeç" }
+
+  extending:
+    title: Widen the ban to the köşk
+    description: POST /bans/:banId/extend with scope KOSK; the new ban and its ban.extend audit row are one transaction
+    source: apps/tedrisat/src/ban/ban.service.ts:270
+    invoke: { action: extendBan }
+    on:
+      DONE: { target: list, effect: [widenAsked], starts: { flow: medaris.ban-notify, given: { route: "'extend'", scope: "'KOSK'" } }, say: "a köşk ban opens with its own reason", source: "apps/tedrisat/src/ban/ban.service.ts:294" }
+      FAIL.gone: { target: list, effect: [gone], say: "the course ban was lifted meanwhile: BAN_ALREADY_LIFTED", source: "apps/tedrisat/src/ban/ban.service.ts:277" }
+
+  left: { type: final, title: They leave the page, leavesPage: true }
+
+assertions:
+  - { id: lists-for-their-readers-only, never: "state in ['list', 'liftDialog', 'lifting', 'wideningFromKosk', 'extendDialog', 'extending'] and not reads", say: "A köşk's bans are read only by its nazımı and Medaris administration holding a ban code; every köşk's only by Medaris administration", source: "apps/tedrisat/src/ban/ban-codes.ts:61" }
+  - { id: lift-offered-only-where-it-works, never: "state == 'liftDialog' and not mayLift", say: "The Yasaklamalar pages offer Yasağı kaldır only where the server lifts it", source: "apps/nizam/features/bans/components/bans-view.tsx:248" }
+  - { id: lift-respects-kademe, never: "liftedHere and not (holdsLift and reachesTier)", say: "A ban is lifted only with its level's permission, by the kademe that placed it or a higher one", source: "apps/tedrisat/src/ban/ban.service.ts:333" }
+  - { id: widen-takes-kosk-power, never: "extendedHere and viewer not in ['koskNazim', 'medarisScoped', 'basnazim']", say: "Only the köşk's nazımı and a Medaris nazımı holding platform.ban_scoped, or the başnazım, widen a ban to the köşk", source: "apps/tedrisat/src/ban/ban.service.ts:282" }
+  - { id: widened-once, never: "state in ['wideningFromKosk', 'extending'] and widened", say: "A person already barred from the köşk is not barred from it a second time", source: "apps/tedrisat/src/ban/ban.service.ts:656" }
+  - { id: only-course-bans-widen, never: "state in ['wideningFromKosk', 'extendDialog', 'extending'] and banScope != 'COURSE'", say: "Only a course ban is widened to the köşk", source: "apps/tedrisat/src/ban/ban.service.ts:278" }
+# NOT HELD, kept out on purpose (REPORT.md):
+#   every-widening-asks-a-reason (PLATFORM-ADMIN-5): "extendReason == 'copied'" is reached on the köşk page, which widens
+#     with one press and the course ban's reason (bans-view.tsx:140).
+#   no-kademe-note-when-kademe-allows (PLATFORM-ADMIN-6): "state == 'list' and open and not mayLift and reachesTier" is
+#     reached: the note under a row says only a higher kademe may lift it when the viewer's kademe is high enough and it
+#     is the permission that is missing (present.ts:51).

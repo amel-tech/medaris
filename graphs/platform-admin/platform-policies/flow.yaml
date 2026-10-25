@@ -1,0 +1,138 @@
+# CAPTURE of Medaris at origin/main ce47fce8: nizam's Platform ayarları (/ayarlar/platform, design nizam/19). Two
+# platform-wide switches, "Kayıt her zaman onaylı" (ALWAYS_REQUIRE_APPROVAL) and "Ders kayıtları herkese açılamaz"
+# (RECORDINGS_NEVER_PUBLIC), the same component and the same route; this flow follows the first, and an enrolment that
+# arrives afterwards, to see the switch take effect. Paths are repo-relative.
+schema: delurio-graph/0
+kind: flow
+id: medaris.platform-policies
+status: proposed
+domain: medaris.platform-admin
+ui: medaris.platform-policies
+title: Switch a platform policy on or off
+summary: >-
+  The Medaris başnazımı, or a Medaris nazımı given platform.policy_edit, switches a platform policy on or off. The
+  switch moves at once and moves back with a note if the server refuses; a change is in force at once and written to the
+  audit trail. While "Kayıt her zaman onaylı" is on, a talebe's own enrolment waits for approval; a partner
+  application's registration is still seated at once.
+
+scope:
+  shows: one editor, the approval switch, and one enrolment that arrives after it
+  world: open
+  outOfView:
+    - "the recordings switch, which takes the same path (PUT /nizam/platform-policies/RECORDINGS_NEVER_PUBLIC) and closes public recordings (course.service.ts:857)"
+    - "the read-only table of köşks that apply a rule on their own (GET /nizam/scoped-policies)"
+    - "a köşk's or a medrese's own approval rule, and a course that asks approval itself: both also make an enrolment wait"
+    - "Toplu talebe ekle, where the course team chooses the people and no approval rule applies (course.controller.ts:645)"
+
+context:
+  viewer:
+    values: [basnazim, medarisPolicy, medarisNone, koskNazim]
+    initial: any
+    say: { basnazim: "the Medaris başnazımı", medarisPolicy: "a Medaris nazımı granted platform.policy_edit", medarisNone: "a Medaris nazımı without it", koskNazim: "a köşk's nazımı" }
+  approval:
+    values: [off, on]
+    initial: any
+    say: { off: "Kayıt her zaman onaylı is off", on: "Kayıt her zaman onaylı is on" }
+  saveFails:
+    values: [false, true]
+    initial: any
+    say: { "true": "the server refuses or fails the change", "false": "" }
+  via:
+    values: [self, partner]
+    initial: any
+    say: { self: "a talebe enrols in a course that asks no approval itself", partner: "a partner application registers a person under a mapped code" }
+  shown: { values: [off, on], initial: off } # what the switch draws, which moves before the server answers
+  changed: { values: [false, true], initial: false }
+  seated: { values: [none, pending, enrolled], initial: none }
+  notice: { values: [none, turnedOn, turnedOff, failed], initial: none }
+
+guards:
+  # PlatformAccessService.assert(platform.policy_edit) (apps/tedrisat/src/platform-policy/platform-policy.service.ts:72)
+  edits: "viewer in ['basnazim', 'medarisPolicy']"
+
+effects:
+  showOn: { set: { shown: on } }
+  showOff: { set: { shown: off } }
+  savedOn: { set: { approval: on, shown: on, changed: true, notice: turnedOn } }
+  savedOff: { set: { approval: off, shown: off, changed: true, notice: turnedOff } }
+  backOn: { set: { shown: on, notice: failed } }
+  backOff: { set: { shown: off, notice: failed } }
+  waits: { set: { seated: pending } }
+  seats: { set: { seated: enrolled } }
+
+failures:
+  reading: { from: listPlatformPolicies, forbidden: [AUTHZ_FORBIDDEN] }
+  saving: { from: setPlatformPolicy, failed: [AUTHZ_FORBIDDEN, SERVER_ERROR] }
+
+main:
+  given: { viewer: basnazim, approval: off, saveFails: false, via: self }
+  events: [DONE, TOGGLE, DONE, ENROLMENT_ARRIVES]
+
+initial: reading
+states:
+  reading:
+    title: Read the platform settings
+    description: GET /nizam/platform-policies (both switches, off for a key nobody touched) and GET /nizam/scoped-policies
+    source: apps/nizam/features/platform-admin/reads.ts:58
+    invoke: { action: listPlatformPolicies }
+    on:
+      DONE:
+        - { guard: "edits and approval == 'on'", target: policiesPage, effect: [showOn], say: "the switch reads on", source: "apps/tedrisat/src/platform-policy/platform-policy.repository.ts:66" }
+        - { guard: edits, target: policiesPage, effect: [showOff], say: "the switch reads off" }
+      FAIL.forbidden: { guard: "not edits", target: forbidden, say: "not the başnazım and no platform.policy_edit: 403", source: "apps/tedrisat/src/platform-policy/platform-policy.service.ts:72" }
+
+  forbidden: { type: final, title: No access, source: apps/nizam/app/ayarlar/platform/page.tsx:24 }
+
+  policiesPage:
+    title: The Platform ayarları page
+    by: human
+    goal: true
+    description: >-
+      The two policies as switches with what each closes, the köşks that apply each on their own, how the rules narrow
+      from the platform to a course, and the note that every change holds at once and is audited. No confirmation.
+    source: apps/nizam/features/platform-admin/components/policies-view.tsx:124
+    on:
+      TOGGLE:
+        - { guard: "shown == 'off'", target: saving, effect: [showOn], say: "they switch Kayıt her zaman onaylı on", source: "apps/nizam/features/platform-admin/components/policies-view.tsx:167" }
+        - { target: saving, effect: [showOff], say: "they switch it off", source: "apps/nizam/features/platform-admin/components/policies-view.tsx:167" }
+      ENROLMENT_ARRIVES: { target: enrolling, say: "then an enrolment arrives elsewhere" }
+      NAVIGATE: { target: left, say: "they go to another page" }
+
+  saving:
+    title: Save the switch
+    description: >-
+      PUT /nizam/platform-policies/:key {enabled}; the row and its audit row (platform_policy.change, with the old and the
+      new value) are one transaction, also when the value does not change. The switch is disabled meanwhile.
+    source: apps/tedrisat/src/platform-policy/platform-policy.service.ts:93
+    invoke: { action: setPlatformPolicy }
+    on:
+      DONE:
+        - { guard: "not saveFails and shown == 'on'", target: policiesPage, effect: [savedOn], say: "the policy is on, in force at once", source: "apps/tedrisat/src/platform-policy/platform-policy.repository.ts:109" }
+        - { guard: "not saveFails", target: policiesPage, effect: [savedOff], say: "the policy is off, at once", source: "apps/tedrisat/src/platform-policy/platform-policy.repository.ts:109" }
+      FAIL.failed:
+        - { guard: "saveFails and approval == 'on'", target: policiesPage, effect: [backOn], say: "the switch moves back, with a note", source: "apps/nizam/features/platform-admin/components/policies-view.tsx:74" }
+        - { guard: saveFails, target: policiesPage, effect: [backOff], say: "the switch moves back, with a note", source: "apps/nizam/features/platform-admin/components/policies-view.tsx:74" }
+
+  enrolling:
+    title: An enrolment arrives
+    description: >-
+      A talebe's own enrolment (POST /courses/:id/enroll) asks the platform's policy and waits when it is on. A partner
+      application's registration seats the person through the team's bulk path, which asks no approval rule.
+    always:
+      - { guard: "via == 'self' and approval == 'on'", target: waiting, effect: [waits], say: "the enrolment waits for the course team", source: "apps/tedrisat/src/course/course.service.ts:1539" }
+      - { guard: "via == 'self'", target: seatedNow, effect: [seats], say: "the talebe is enrolled at once", source: "apps/tedrisat/src/course/course.service.ts:1541" }
+      - { target: seatedNow, effect: [seats], say: "the partner's person is enrolled at once, whatever the policy says", source: "apps/tedrisat/src/course/bulk-enrollment.service.ts:189" }
+
+  waiting: { type: final, title: The enrolment waits for approval }
+  seatedNow: { type: final, title: The person is enrolled at once }
+
+  left: { type: final, title: They leave the page, leavesPage: true }
+
+assertions:
+  - { id: policies-for-their-editors, never: "state in ['policiesPage', 'saving'] and not edits", say: "Only the başnazım and a Medaris nazımı granted platform.policy_edit see and switch the platform policies", source: "apps/tedrisat/src/platform-policy/platform-policy.service.ts:98" }
+  - { id: switch-shows-what-is-saved, never: "state == 'policiesPage' and shown != approval", say: "The switch never shows a value the server did not save", source: "apps/nizam/features/platform-admin/components/policies-view.tsx:74" }
+  - { id: changes-only-by-editors, never: "changed and not edits", say: "Nobody else changes a platform policy", source: "apps/tedrisat/src/platform-policy/platform-policy.service.ts:98" }
+  - { id: own-enrolment-waits-under-the-policy, never: "state == 'seatedNow' and via == 'self' and approval == 'on'", say: "While Kayıt her zaman onaylı is on, a talebe's own enrolment waits for approval", source: "apps/tedrisat/src/course/course.service.ts:1539" }
+# NOT HELD, kept out on purpose (REPORT.md, PLATFORM-ADMIN-13): no-direct-seat-under-the-policy:
+#   "state == 'seatedNow' and approval == 'on'" is reached with via = partner: the policy's own words ("hiçbir derse
+#   doğrudan kaydolunamaz; her kayıt bir başvuru olur") do not hold for a partner application's registration.

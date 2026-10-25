@@ -1,0 +1,21 @@
+{
+  "Changes.note": "Bir politikayı açmak ya da kapatmak hemen, her köşkte, medresede ve derste geçerli olur ve onay sormaz; eski ve yeni değeriyle adınız denetim kaydına yazılır. Kayıt her zaman onaylı açıkken talebenin kendi kaydı başvuru olur ve ders kadrosunun onayını bekler; ortak uygulamadan gelen kayıtlar ise yine doğrudan kaydolur. Ders kayıtları herkese açılamaz açıkken hiçbir ders kaydı derse kayıtlı olmayanlara gösterilmez ve köşkler kendi ayarlarında bu kuralı kapatamaz. Politika yeniden kapatılarak geri alınabilir; açıkken bekleyen başvurular kendiliğinden kayda dönmez.",
+  "NoAccess.bodyGeneric": "Bu bölümün izni hesabınıza verilmemiş. İzinleri Medaris başnazımı verir; gerekirse ondan isteyin.",
+  "NoAccess.title": "Bu bölüm için izniniz yok",
+  "PlatformSettingsPage.combineHeading": "Politikalar nasıl birleşir",
+  "PlatformSettingsPage.combineWarningTitle": "Üst kademenin verdiği izin, alttaki politikayı aşar",
+  "PlatformSettingsPage.errors.forbidden": "Bu işlem için izniniz yok.",
+  "PlatformSettingsPage.errors.generic": "İşlem tamamlanamadı. Biraz sonra yeniden deneyin.",
+  "PlatformSettingsPage.instantNote": "Her değişiklik anında geçerli olur ve denetim kaydına yazılır.",
+  "PlatformSettingsPage.intro": "Platform politikaları her köşkte, medresede ve derste geçerlidir. Bir politika bir izni kapatır; köşk, medrese ya da ders onu yeniden açamaz.",
+  "PlatformSettingsPage.policies.approval.body": "Açıkken hiçbir derse doğrudan kaydolunamaz; her kayıt bir başvuru olur ve ders kadrosu onaylar. Listelenmeyen köşklerde kayıt bu ayardan bağımsız olarak her zaman onaylıdır.",
+  "PlatformSettingsPage.policies.approval.title": "Kayıt her zaman onaylı",
+  "PlatformSettingsPage.policies.recordings.body": "Açıkken hiçbir ders kaydı herkese açık yapılamaz ve YouTube’a yüklenemez; ders kayıtlarını yalnız kayıtlı talebeler ve ders kadrosu izler.",
+  "PlatformSettingsPage.policies.recordings.title": "Ders kayıtları herkese açılamaz",
+  "PlatformSettingsPage.policiesHeading": "Politikalar",
+  "PlatformSettingsPage.saveFailed": "Politika kaydedilemedi",
+  "PlatformSettingsPage.scopedHeading": "Köşk ve medrese politikaları",
+  "PlatformSettingsPage.title": "Platform ayarları",
+  "PlatformSettingsPage.turnedOff": "Politika kapatıldı",
+  "PlatformSettingsPage.turnedOn": "Politika açıldı"
+}

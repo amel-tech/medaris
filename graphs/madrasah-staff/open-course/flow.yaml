@@ -1,0 +1,189 @@
+# Medaris, captured at origin/main ce47fce8: "Medrese dersi aç" in nazar (/medrese/:id/dersler/yeni, nazir/08) and
+# POST /madrasahs/:id/courses behind it. Capture mode: every state, transition and guard names the code that makes it true.
+schema: delurio-graph/0
+kind: flow
+id: medaris.open-course
+status: proposed
+domain: medaris.madrasah-staff
+ui: medaris.open-course
+title: Open a medrese course
+summary: >-
+  The başmüderris, or a nazır of the medrese given madrasah.course_open, opens a draft course of the medrese in a köşk
+  that holds a hosting right for it, and names its hocas. The server checks, in this order, the caller's permission,
+  that the caller does not name themselves beyond what they hold, that every account exists, and that the hosting
+  right still stands; it applies the medrese's policies whatever the form sent.
+
+scope:
+  shows: the page, its form, the server's checks and the course written as a draft
+  world: open
+  outOfView:
+    - "finding a hoca by e-mail (GET /users/lookup) and the unvan each carries: one field here"
+    - "\"Kayıt her zaman onaylı\" is applied exactly as \"Kapalı ders zorunlu\" is; only the second is drawn"
+    - "the course list the page goes back to, and publishing the draft"
+
+context:
+  actor:
+    values: [basmuderris, nazirGiven, nazirNot, admin]
+    initial: any
+    say: { basmuderris: "the reader is the medrese's başmüderris", nazirGiven: "the reader is a nazır of the medrese given madrasah.course_open", nazirNot: "the reader is a nazır of the medrese without it", admin: "the reader is the başnazım" }
+  hosting: # GET /madrasahs/:id/hosting-kosks
+    values: [some, none, failed]
+    initial: any
+    say: { some: "some köşks hold a hosting right for the medrese", none: "no köşk holds one", failed: "the köşks cannot be read" }
+  settingsRead: # GET /madrasahs/:id/settings needs madrasah.settings_edit
+    values: [true, false]
+    initial: any
+    say: { "true": "the medrese's policies can be read", "false": "the policies cannot be read (or the reader may not read them)" }
+  policyClosed:
+    values: [false, true]
+    initial: any
+    say: { "true": "the medrese's policy \"Kapalı ders zorunlu\" is on", "false": "" }
+  askedClosed:
+    values: [false, true]
+    initial: any
+    say: { "true": "the reader ticks \"Kapalı ders\"", "false": "" }
+  formOk:
+    values: [true, false]
+    initial: any
+    say: { "true": "the köşk, the name and the hocas are filled in", "false": "a field is missing or wrong" }
+  selfListed:
+    values: [false, true]
+    initial: any
+    say: { "true": "the reader lists themselves among the hocas", "false": "" }
+  barredListed:
+    values: [false, true]
+    initial: any
+    say: { "true": "an open ban bars one of the listed accounts from the köşk or the medrese", "false": "" }
+  accountsKnown:
+    values: [true, false]
+    initial: any
+    say: { "true": "every listed account exists", "false": "one listed account is known neither to the app nor to the realm" }
+  rightHeld:
+    values: [true, false]
+    initial: any
+    say: { "true": "the köşk still holds the right when the course is written", "false": "the köşk withdrew the right after the page was read" }
+  attempted: { values: [false, true], initial: false }
+  notice: { values: [none, generic, unknownUser, hostingRight], initial: none }
+  closedOut: { values: [none, closed, open], initial: none }
+
+guards:
+  selfRefused: "selfListed and actor == 'nazirGiven'"
+  willClose: "askedClosed or policyClosed"
+  passes: "not selfRefused and accountsKnown and rightHeld"
+
+effects:
+  markAttempted: { set: { attempted: true } }
+  fixForm: { set: { formOk: true } }
+  dropSelf: { set: { selfListed: false } }
+  clearNotice: { set: { notice: none } }
+  noticeGeneric: { set: { notice: generic } }
+  noticeUnknown: { set: { notice: unknownUser } }
+  refreshKosks: { set: { notice: hostingRight, rightHeld: true, formOk: false }, havoc: [hosting] } # the köşk that left the list is no choice any more
+  reread: { havoc: [hosting] }
+  openedClosed: { set: { closedOut: closed } }
+  openedOpen: { set: { closedOut: open } }
+
+failures:
+  opening:
+    from: openMadrasahCourse
+    selfGrant: [SELF_GRANT_REFUSED]
+    unknownAccount: [MUDERRIS_UNKNOWN_USER]
+    hostingRight: [HOSTING_RIGHT_REQUIRED]
+
+main:
+  given: { actor: basmuderris, hosting: some, settingsRead: true, policyClosed: false, askedClosed: false, formOk: true, selfListed: false, barredListed: false, accountsKnown: true, rightHeld: true }
+  events: [SUBMIT, DONE]
+
+initial: loading
+states:
+  loading:
+    title: Read the köşks and the policies
+    description: The page reads the köşks that host the medrese and the medrese's settings together.
+    source: apps/nazar/features/courses/components/open-course-page.tsx:22
+    always:
+      - { guard: "actor == 'nazirNot'", target: forbidden, say: "the API refuses the köşks (403): madrasah.course_open is not held", source: "apps/tedrisat/src/madrasah/course/madrasah-course.controller.ts:83" }
+      - { guard: "hosting == 'failed'", target: loadFailed, say: "the köşks cannot be read", source: "apps/nazar/features/courses/components/open-course-page.tsx:52" }
+      - { guard: "hosting == 'none'", target: noKosk, say: "no köşk holds a hosting right for the medrese", source: "apps/nazar/features/courses/components/open-course-page.tsx:60" }
+      - { target: form, say: "the form opens with the first köşk chosen", source: "apps/nazar/features/courses/components/open-course-page.tsx:68" }
+
+  forbidden:
+    type: final
+    title: The page says the reader has no permission
+    source: apps/nazar/features/shell/components/page-problem.tsx:23
+
+  loadFailed:
+    title: The köşks could not be read
+    by: human
+    source: apps/nazar/features/shell/components/page-problem.tsx:31
+    on:
+      RETRY: { target: loading, effect: [reread], say: "they press \"Yeniden dene\" and the page is read again", source: "apps/nazar/features/shell/components/load-failed.tsx:36" }
+      NAVIGATE: { target: left, say: "they go to another page" }
+
+  noKosk:
+    title: There is no köşk to open a course in
+    by: human
+    source: apps/nazar/features/courses/components/open-course-page.tsx:61
+    on:
+      BACK: { target: left, say: "they go back to Dersler", source: "apps/nazar/features/courses/components/open-course-page.tsx:63" }
+
+  form:
+    title: Fill in the course
+    by: human
+    goal: true
+    description: >-
+      The köşk, the name and the hocas, and beside them the two settings. A policy the page could read shows its
+      setting ticked and locked; a policy it could not read locks nothing, and the page says the server applies it.
+    includes: [the köşk choice, the course name, the hocas and the imam, "Kapalı ders", "Kayıt onayı gereksin"]
+    source: apps/nazar/features/courses/components/open-course-form.tsx:52
+    on:
+      SUBMIT:
+        - { guard: "not formOk", target: form, effect: [markAttempted], say: "a field is wrong: its problem is written under it, the focus goes to the first, and nothing is sent", source: "apps/nazar/features/courses/components/open-course-form.tsx:102" }
+        - { target: opening, effect: [clearNotice], say: "they press \"Dersi aç\"", source: "apps/nazar/features/courses/components/open-course-form.tsx:116" }
+      FIX: { guard: "not formOk", target: form, effect: [fixForm], say: "they correct the fields" }
+      REMOVE_SELF: { guard: selfListed, target: form, effect: [dropSelf], say: "they take themselves off the hocas", source: "apps/nazar/features/courses/components/open-course-form.tsx:83" }
+      CANCEL: { target: left, say: "they press \"Vazgeç\" and go back to Dersler", source: "apps/nazar/features/courses/components/open-course-form.tsx:264" }
+
+  opening:
+    title: Open the course
+    description: >-
+      POST /madrasahs/:id/courses. @Authz(madrasah.course_open); then the self-naming guard; then every account must
+      exist in the users table or the realm; then, in one transaction under the medrese's lock, the hosting right is read
+      FOR SHARE, the policies are applied, the course is written as a DRAFT with its MUDERRIS seats, and the audit row
+      course.open. No ban of a listed account is read.
+    invoke: { action: openMadrasahCourse }
+    source: apps/tedrisat/src/madrasah/course/madrasah-course.controller.ts:103
+    on:
+      FAIL.selfGrant: { guard: selfRefused, target: form, effect: [noticeGeneric], say: "403 SELF_GRANT_REFUSED, audited; the page has no sentence for it and says something went wrong", source: "apps/nazar/features/courses/courses.ts:393" }
+      FAIL.unknownAccount: { guard: "not selfRefused and not accountsKnown", target: form, effect: [noticeUnknown], say: "404 MUDERRIS_UNKNOWN_USER: an account is not found", source: "apps/tedrisat/src/madrasah/course/madrasah-course.service.ts:222" }
+      FAIL.hostingRight: { guard: "not selfRefused and accountsKnown and not rightHeld", target: refreshing, effect: [refreshKosks], say: "403 HOSTING_RIGHT_REQUIRED: the right was withdrawn meanwhile", source: "apps/tedrisat/src/madrasah/course/madrasah-course.repository.ts:173" }
+      DONE:
+        - { guard: "passes and willClose", target: opened, effect: [openedClosed], say: "the course is written closed: the box or the policy says so", source: "apps/tedrisat/src/madrasah/course/madrasah-course.repository.ts:184" }
+        - { guard: passes, target: opened, effect: [openedOpen], say: "the course is written open to the public", source: "apps/tedrisat/src/madrasah/course/madrasah-course.repository.ts:186" }
+
+  refreshing:
+    title: Read the köşks again
+    description: router.refresh() after HOSTING_RIGHT_REQUIRED; the köşk that left the list is no longer chosen.
+    source: apps/nazar/features/courses/components/open-course-form.tsx:133
+    always:
+      - { guard: "hosting == 'failed'", target: loadFailed, say: "the köşks cannot be read now" }
+      - { guard: "hosting == 'none'", target: noKosk, say: "no köşk is left" }
+      - { target: form, say: "the form stays, with no köşk chosen" }
+
+  opened:
+    type: final
+    title: The course is a draft of the medrese
+    description: A toast says it opened as a draft, and the page goes back to Dersler.
+    source: apps/nazar/features/courses/components/open-course-form.tsx:118
+
+  left:
+    type: final
+    title: They leave the page
+    leavesPage: true
+
+assertions:
+  - { id: only-holders-open, never: "state == 'opened' and actor == 'nazirNot'", say: "A nazır who was not given madrasah.course_open never opens a course", source: "apps/tedrisat/src/madrasah/course/madrasah-course.controller.ts:104" }
+  - { id: nazir-never-seats-self, never: "state == 'opened' and selfListed and actor == 'nazirGiven'", say: "A nazır never makes themselves a hoca of the course they open", source: "libs/common/src/authz/self-grant.guard.ts:78" }
+  - { id: no-unknown-account-seated, never: "state == 'opened' and not accountsKnown", say: "No account the app and the realm do not know is made a hoca", source: "apps/tedrisat/src/madrasah/course/madrasah-course.service.ts:221" }
+  - { id: no-course-without-right, never: "state == 'opened' and not rightHeld", say: "No course is opened in a köşk that withdrew the medrese's hosting right", source: "apps/tedrisat/src/madrasah/course/madrasah-course.repository.ts:173" }
+  - { id: closed-policy-applied, never: "state == 'opened' and policyClosed and closedOut != 'closed'", say: "Under \"Kapalı ders zorunlu\" the course is always closed, even when the page could not read the policy", source: "apps/tedrisat/src/madrasah/course/madrasah-course.repository.ts:184" }
+  - { id: invalid-form-sends-nothing, never: "state == 'opening' and not formOk", say: "A form with a missing or wrong field sends nothing", source: "apps/nazar/features/courses/components/open-course-form.tsx:102" }

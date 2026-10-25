@@ -1,0 +1,88 @@
+# The screens of medaris.course-nazir: nazar's "Ders nazırları" (/ders/:id/nazirlar), the one dialog that appoints and
+# edits (a form dialog the scrim does not close), and "Görevden al". The appointment dialog's first focus is the e-mail
+# field; the edit dialog sets none, so Base UI focuses the first focusable element, the close button.
+schema: delurio-graph/0
+kind: ui
+id: medaris.course-nazir
+flow: medaris.course-nazir
+status: proposed
+catalog: catalog/tr.json
+locales: [tr, en]
+samples: { course: "Usûl-i Fıkıh Okumaları", name: "Ahmet Yılmaz", date: "12 Ekim 2026", count: "2" }
+changes: { key: Changes.note }
+
+nodes:
+  page: { type: page, component: Page, role: main, name: { labelledBy: title }, in: [forbidden, list, updating, ending], source: "apps/nazar/features/course-nazirs/components/course-nazirs-page.tsx:57" }
+  title: { type: text, component: Heading, role: heading, text: { key: CourseNazirs.title }, in: [forbidden, list, updating, ending], source: "apps/nazar/features/course-nazirs/components/course-nazirs-page.tsx:61" }
+  forbiddenTitle: { type: status, component: Status, role: status, text: { key: Problems.forbiddenTitle }, in: [forbidden], source: "apps/nazar/features/shell/components/page-problem.tsx:25" }
+  forbiddenText: { type: text, component: Text, text: { key: Problems.forbidden }, in: [forbidden] }
+  intro: { type: text, component: Text, text: { key: CourseNazirs.intro }, in: [list, updating, ending], source: "apps/nazar/features/course-nazirs/components/course-nazirs-page.tsx:64" }
+  introAppointOnly: { type: text, component: Text, text: { key: CourseNazirs.introAppointOnly }, in: [list], when: "standing == 'appointer'", source: "apps/nazar/features/course-nazirs/components/course-nazirs-page.tsx:67" }
+  appoint: { type: action, component: Button, role: button, intent: secondary, text: { key: CourseNazirs.appoint }, in: [list], when: mayAppoint, emits: APPOINT, source: "apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:433" }
+  toastAppointed: { type: status, component: Status, role: status, text: { key: CourseNazirs.dialog.appointed }, in: [list], when: "notice == 'appointed'", source: "apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:185" }
+  toastSaved: { type: status, component: Status, role: status, text: { key: CourseNazirs.dialog.saved }, in: [list], when: "notice == 'saved'" }
+  toastEnded: { type: status, component: Status, role: status, text: { key: CourseNazirs.dismiss.done }, in: [list], when: "notice == 'ended'", source: "apps/nazar/features/course-nazirs/components/end-course-nazir.tsx:54" }
+  caption: { type: text, component: Text, text: { key: CourseNazirs.caption }, in: [list, updating, ending] }
+  rows: { type: list, component: List, role: table, name: { labelledBy: caption }, in: [list, updating, ending], source: "apps/nazar/features/course-nazirs/components/course-nazirs-table.tsx:149" }
+  row: { type: text, component: ListItem, role: row, text: { key: CourseNazirs.appointedBy }, repeat: course.nazirs, in: [list, updating, ending] } # name, address, permissions, end and appointer
+  edit: { type: action, component: Button, role: button, intent: secondary, name: { key: CourseNazirs.editLabel }, text: { key: CourseNazirs.edit }, repeat: course.nazirs, in: [list], when: editsRow, emits: EDIT, source: "apps/nazar/features/course-nazirs/components/course-nazirs-table.tsx:113" }
+  end: { type: action, component: Button, role: button, intent: secondary, name: { key: CourseNazirs.endLabel }, text: { key: CourseNazirs.end }, repeat: course.nazirs, in: [list], when: "giver or (standing == 'appointer' and rowMine)", emits: END, source: "apps/nazar/features/course-nazirs/components/course-nazirs-table.tsx:123" } # disabled, with the line below, while the holder has appointees
+  endBlocked: { type: text, component: Text, text: { key: CourseNazirs.endBlocked }, in: [list], when: rowHasAppointees, source: "apps/nazar/features/course-nazirs/components/course-nazirs-table.tsx:137" }
+
+  # Ders nazırı ata / İzinleri düzenle
+  dialog: { type: page, component: Page, role: dialog, name: { labelledBy: dialogTitle }, in: [appointDialog, searching, picked, appointing], initialFocus: searchField, source: "apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:242" }
+  dialogTitle: { type: text, component: Heading, role: heading, text: { key: CourseNazirs.dialog.titleAppoint }, in: [appointDialog, searching, picked, appointing], source: "apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:236" }
+  searchField: { type: field, component: TextField, role: textbox, text: { key: CourseNazirs.dialog.searchLabel }, in: [appointDialog, searching], disabledIn: [searching], emits: SEARCH, source: "apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:331" } # type="email"; Enter searches
+  searchHelp: { type: text, component: Text, text: { key: CourseNazirs.dialog.searchHelp }, in: [appointDialog, searching] }
+  searchNotFound: { type: text, component: Text, text: { key: CourseNazirs.dialog.notFound }, in: [appointDialog], when: "notice == 'notFound'", source: "apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:221" }
+  searchingNote: { type: status, component: Status, role: status, text: { key: CourseNazirs.dialog.searching }, in: [searching], source: "apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:354" }
+  chosenTitle: { type: text, component: Heading, role: heading, text: { key: CourseNazirs.dialog.chosenTitle }, in: [picked, appointing], source: "apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:287" }
+  unpick: { type: action, component: Button, role: button, intent: secondary, text: { key: CourseNazirs.dialog.remove }, in: [picked, appointing], disabledIn: [appointing], emits: UNPICK, source: "apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:302" }
+  selfWarning: { type: status, component: Status, role: status, text: { key: CourseNazirs.dialog.self }, in: [picked], when: "target == 'self'", source: "apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:309" }
+  alreadyWarning: { type: status, component: Status, role: status, text: { key: CourseNazirs.dialog.already }, in: [picked], when: "target == 'holder'", source: "apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:311" }
+  chosenNote: { type: text, component: Text, text: { key: CourseNazirs.dialog.chosenNote }, in: [picked, appointing], when: giver }
+  appointOnly: { type: text, component: Text, text: { key: CourseNazirs.dialog.appointOnly }, in: [picked, appointing], when: "not giver", source: "apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:384" }
+  permissionsTitle: { type: text, component: Text, text: { key: CourseNazirs.dialog.permissions }, in: [picked, appointing, editDialog, updating], when: giver, source: "apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:359" }
+  boxes: { type: list, component: List, role: group, name: { labelledBy: permissionsTitle }, in: [picked, appointing, editDialog, updating], when: giver }
+  box: { type: field, component: ListItem, role: checkbox, text: { oneOf: [Account.permissions.course_edit, Account.permissions.session_manage, Account.permissions.enrollment_decide, CourseNazirs.assignOnly] }, in: [picked, appointing, editDialog, updating], disabledIn: [appointing, updating], when: giver, emits: TICK } # one per catalog code; off for a code the reader may not give unless the post holds it
+  permissionsHelp: { type: text, component: Text, text: { key: CourseNazirs.dialog.permissionsHelp }, in: [picked, appointing, editDialog, updating], when: giver }
+  endField: { type: field, component: TextField, role: textbox, text: { key: CourseNazirs.dialog.endLabel }, in: [picked, appointing, editDialog, updating], disabledIn: [appointing, updating], source: "apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:400" } # datetime-local, on the reader's clock
+  endHelp: { type: text, component: Text, text: { key: CourseNazirs.dialog.endHelp }, in: [picked, appointing, editDialog, updating] }
+  endPast: { type: text, component: Text, text: { key: CourseNazirs.dialog.endProblems.past }, in: [picked], when: "attempted and not endOk", source: "apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:396" }
+  dialogNote: { type: text, component: Text, text: { key: CourseNazirs.dialog.note }, in: [picked, appointing, editDialog, updating] }
+  appointFailed: { type: alert, component: Alert, role: alert, text: { key: CourseNazirs.dialog.appointFailed }, in: [picked], when: "notice in ['barred', 'holdsSeat']", source: "apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:201" } # a toast
+  failedBarred: { type: text, component: Text, text: { key: CourseNazirs.errors.barred }, in: [picked], when: "notice == 'barred'", source: "apps/nazar/features/course-nazirs/course-nazirs.ts:243" }
+  failedHoldsSeat: { type: text, component: Text, text: { key: CourseNazirs.errors.holdsSeat }, in: [picked], when: "notice == 'holdsSeat'", source: "apps/nazar/features/course-nazirs/course-nazirs.ts:241" }
+  dialogCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: CourseNazirs.dialog.cancel }, in: [appointDialog, searching, picked, appointing, editDialog, updating], emits: CANCEL, source: "apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:252" }
+  dialogSave: { type: action, component: Button, role: button, intent: confirm, text: { key: CourseNazirs.dialog.save }, in: [appointDialog, searching, picked, appointing, editDialog, updating], disabledIn: [appointDialog, searching, appointing, updating], emits: SUBMIT, source: "apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:253" } # off until someone appointable is chosen
+  savingNote: { type: status, component: Status, role: status, text: { key: CourseNazirs.dialog.saving }, in: [appointing, updating] }
+
+  editDialog: { type: page, component: Page, role: dialog, name: { labelledBy: editTitle }, in: [editDialog, updating], initialFocus: editClose, source: "apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:242" }
+  editTitle: { type: text, component: Heading, role: heading, text: { key: CourseNazirs.dialog.titleEdit }, in: [editDialog, updating] }
+  editClose: { type: action, component: Button, role: button, intent: dismiss, name: { key: Shell.close }, in: [editDialog, updating], emits: CANCEL, source: "libs/ui/src/mds/dialog.tsx:97" }
+  editRole: { type: text, component: Text, text: { key: CourseNazirs.dialog.role }, in: [editDialog, updating], source: "apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:276" }
+  editSave: { type: action, component: Button, role: button, intent: confirm, text: { key: CourseNazirs.dialog.save }, in: [editDialog, updating], disabledIn: [updating], emits: SAVE }
+
+  # Görevden al
+  endDialog: { type: page, component: Page, role: dialog, name: { labelledBy: endTitle }, in: [endDialog, ending], initialFocus: endCancel, source: "apps/nazar/features/course-nazirs/components/end-course-nazir.tsx:90" }
+  endTitle: { type: text, component: Heading, role: heading, text: { key: CourseNazirs.dismiss.title }, in: [endDialog, ending], source: "apps/nazar/features/course-nazirs/components/end-course-nazir.tsx:88" }
+  endIntro: { type: text, component: Text, text: { key: CourseNazirs.dismiss.intro }, in: [endDialog, ending], source: "apps/nazar/features/course-nazirs/components/end-course-nazir.tsx:104" }
+  endEffect: { type: text, component: Text, text: { key: CourseNazirs.dismiss.effect }, in: [endDialog, ending] }
+  endAudit: { type: text, component: Text, text: { key: CourseNazirs.dismiss.auditNote }, in: [endDialog, ending] }
+  endCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: CourseNazirs.dismiss.cancel }, in: [endDialog, ending], emits: CANCEL, source: "apps/nazar/features/course-nazirs/components/end-course-nazir.tsx:94" }
+  endConfirm: { type: action, component: Button, role: button, intent: confirm, text: { key: CourseNazirs.dismiss.submit }, in: [endDialog, ending], disabledIn: [ending], emits: CONFIRM, source: "apps/nazar/features/course-nazirs/components/end-course-nazir.tsx:97" }
+
+edges:
+  - { labelledBy: [page, title] }
+  - { labelledBy: [rows, caption] }
+  - { labelledBy: [dialog, dialogTitle] }
+  - { labelledBy: [editDialog, editTitle] }
+  - { labelledBy: [endDialog, endTitle] }
+  - { labelledBy: [boxes, permissionsTitle] }
+  - { triggers: [dialogSave, appointing] }
+  - { triggers: [editSave, updating] }
+  - { triggers: [endConfirm, ending] }
+
+rules:
+  - { id: label-in-name, rule: "a node's visible text is contained in its accessible name (WCAG 2.5.3)" }
+  - { id: no-default-end, rule: "\"Görevden al\" opens with the focus on \"Vazgeç\"" }

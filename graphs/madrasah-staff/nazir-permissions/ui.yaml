@@ -1,0 +1,59 @@
+# The dialog of medaris.nazir-permissions: nazar's "İzinleri düzenle" over the roster of "Medrese nazırları". It opens
+# with Base UI's default first focus (the close button, while the bars show); once the reads are in, the code moves the
+# focus to the group select (permission-editor.tsx:125). The checkboxes are drawn here as list items of role checkbox.
+schema: delurio-graph/0
+kind: ui
+id: medaris.nazir-permissions
+flow: medaris.nazir-permissions
+status: proposed
+catalog: catalog/tr.json
+locales: [tr, en]
+samples: { name: "Ahmet Yılmaz", group: "4", extra: "2" }
+changes: { key: Changes.note }
+
+nodes:
+  dialog: { type: page, component: Page, role: dialog, name: { labelledBy: title }, in: [loading, loadFailed, editor, saving], initialFocus: groupField, source: "apps/nazar/features/nazirs/components/permission-editor.tsx:196" }
+  title: { type: text, component: Heading, role: heading, text: { key: Editor.title }, in: [loading, loadFailed, editor, saving], source: "apps/nazar/features/nazirs/components/permission-editor.tsx:205" }
+  roleLine: { type: text, component: Text, text: { key: Editor.role }, in: [loading, loadFailed, editor, saving], source: "apps/nazar/features/nazirs/components/permission-editor.tsx:231" }
+  loadingNote: { type: status, component: Status, role: status, text: { key: Shell.loadingLabel }, in: [loading], source: "apps/nazar/features/nazirs/components/permission-editor.tsx:239" }
+  failedTitle: { type: alert, component: Alert, role: alert, text: { key: Editor.loadFailedTitle }, in: [loadFailed], source: "apps/nazar/features/nazirs/components/permission-editor.tsx:245" }
+  failedText: { type: text, component: Text, text: { key: Editor.loadFailed }, in: [loadFailed] }
+  retry: { type: action, component: Button, role: button, intent: secondary, text: { key: Shell.retry }, in: [loadFailed], emits: RETRY, source: "apps/nazar/features/nazirs/components/permission-editor.tsx:247" }
+  groupField: { type: field, component: TextField, role: combobox, text: { key: Editor.group }, in: [editor, saving], disabledIn: [saving], source: "apps/nazar/features/nazirs/components/permission-editor.tsx:254" } # "Grup yok" or one of the medrese's groups
+  groupHelp: { type: text, component: Text, text: { key: Editor.groupHelp }, in: [editor, saving] }
+  permissionsLabel: { type: text, component: Text, text: { key: Editor.permissions }, in: [editor, saving] }
+  madrasahSection: { type: text, component: Text, text: { key: Editor.madrasahSection }, in: [editor, saving] }
+  madrasahBoxes: { type: list, component: List, role: group, name: { labelledBy: madrasahSection }, in: [editor, saving] }
+  madrasahBox: { type: field, component: ListItem, role: checkbox, text: { oneOf: [Account.permissions.madrasah_course_open, Account.permissions.madrasah_offsite_course_request, Account.permissions.madrasah_nazir_appoint] }, in: [editor, saving], disabledIn: [saving] } # one per medrese code; off for a code the reader may not give
+  courseSection: { type: text, component: Text, text: { key: Editor.courseSection }, in: [editor, saving] }
+  courseBoxes: { type: list, component: List, role: group, name: { labelledBy: courseSection }, in: [editor, saving] }
+  courseBox: { type: field, component: ListItem, role: checkbox, text: { oneOf: [Account.permissions.course_edit, Account.permissions.session_manage, Account.permissions.enrollment_decide] }, in: [editor, saving], disabledIn: [saving] }
+  fromGroup: { type: text, component: Text, text: { key: Editor.fromGroup }, in: [editor, saving] } # beside a box the group fixes
+  whereLabel: { type: text, component: Text, text: { key: Editor.where }, in: [editor, saving] }
+  where: { type: list, component: List, role: radiogroup, name: { labelledBy: whereLabel }, in: [editor, saving] }
+  whereChoice: { type: field, component: ListItem, role: radio, text: { oneOf: [Editor.whereAll, Editor.whereChosen] }, in: [editor, saving], disabledIn: [saving] }
+  coursesProblem: { type: alert, component: Alert, role: alert, text: { key: Editor.coursesProblem }, in: [editor], when: "attempted and not draftOk" }
+  expires: { type: field, component: TextField, role: textbox, text: { key: Editor.expires }, in: [editor, saving], disabledIn: [saving] } # datetime-local, on the reader's clock
+  expiresHelp: { type: text, component: Text, text: { key: Editor.expiresHelp }, in: [editor, saving] }
+  expiresPast: { type: text, component: Text, text: { key: Editor.expiresProblems.past }, in: [editor], when: "attempted and not draftOk" }
+  note: { type: text, component: Text, text: { key: Editor.note }, in: [editor, saving] }
+  summary: { type: text, component: Text, text: { key: Editor.summary.groupAndExtra }, in: [editor, saving] }
+  saveFailed: { type: alert, component: Alert, role: alert, text: { key: Editor.failedTitle }, in: [editor, loading], when: "notice != 'none'", source: "apps/nazar/features/nazirs/components/permission-editor.tsx:176" } # a toast
+  saveFailedSelf: { type: text, component: Text, text: { key: Problems.selfGrant }, in: [editor], when: "notice == 'selfGrant'" }
+  saveFailedGroup: { type: text, component: Text, text: { key: Problems.groupGone }, in: [loading, editor], when: "notice == 'groupGone'" }
+  cancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: Editor.cancel }, in: [loading, loadFailed, editor, saving], emits: CANCEL }
+  save: { type: action, component: Button, role: button, intent: confirm, text: { key: Editor.save }, in: [loading, loadFailed, editor, saving], disabledIn: [loading, loadFailed, saving], emits: SAVE, source: "apps/nazar/features/nazirs/components/permission-editor.tsx:211" }
+  savedToast: { type: status, component: Status, role: status, text: { key: Editor.saved }, in: [done], source: "apps/nazar/features/nazirs/components/permission-editor.tsx:167" }
+  savedBody: { type: text, component: Text, text: { key: Editor.savedBody }, in: [done] }
+
+edges:
+  - { labelledBy: [dialog, title] }
+  - { labelledBy: [madrasahBoxes, madrasahSection] }
+  - { labelledBy: [courseBoxes, courseSection] }
+  - { labelledBy: [where, whereLabel] }
+  - { triggers: [save, saving] }
+  - { triggers: [retry, loading] }
+
+rules:
+  - { id: label-in-name, rule: "a node's visible text is contained in its accessible name (WCAG 2.5.3)" }
+  - { id: whole-or-nothing, rule: "the editor is drawn only when all four reads answered, so a save never overwrites what was not shown" }

@@ -1,0 +1,70 @@
+# The screen of medaris.open-course: nazar's "Medrese dersi aç" (/medrese/:id/dersler/yeni). The portal shell owns <main>;
+# the page sets no first focus. The submit button is never disabled: a wrong field is said under it when "Dersi aç" is
+# pressed, and while the call runs the button is aria-disabled and aria-busy with a status line beside it.
+schema: delurio-graph/0
+kind: ui
+id: medaris.open-course
+flow: medaris.open-course
+status: proposed
+catalog: catalog/tr.json
+locales: [tr, en]
+samples: { name: "Fatih Medresesi", count: "2", title: "Usûl-i Fıkıh Okumaları" }
+changes: { key: Changes.note }
+
+nodes:
+  page: { type: page, component: Page, role: main, name: { labelledBy: title }, in: [loading, forbidden, loadFailed, noKosk, form, opening, refreshing], source: "apps/nazar/features/courses/components/open-course-page.tsx:35" }
+  title: { type: text, component: Heading, role: heading, text: { key: OpenCourse.title }, in: [loading, forbidden, loadFailed, noKosk, form, opening, refreshing], source: "apps/nazar/features/courses/components/open-course-page.tsx:45" }
+  intro: { type: text, component: Text, text: { key: OpenCourse.intro }, in: [loading, forbidden, loadFailed, noKosk, form, opening, refreshing], source: "apps/nazar/features/courses/components/open-course-page.tsx:48" }
+
+  forbiddenTitle: { type: status, component: Status, role: status, text: { key: Problems.forbiddenTitle }, in: [forbidden], source: "apps/nazar/features/shell/components/page-problem.tsx:25" }
+  forbiddenText: { type: text, component: Text, text: { key: Problems.forbidden }, in: [forbidden], source: "apps/nazar/features/shell/components/page-problem.tsx:26" }
+
+  loadFailedTitle: { type: alert, component: Alert, role: alert, text: { key: OpenCourse.loadFailedTitle }, in: [loadFailed], source: "apps/nazar/features/shell/components/load-failed.tsx:28" }
+  loadFailedText: { type: text, component: Text, text: { key: OpenCourse.loadFailed }, in: [loadFailed] }
+  retry: { type: action, component: Button, role: button, intent: secondary, text: { key: Shell.retry }, in: [loadFailed], emits: RETRY, source: "apps/nazar/features/shell/components/load-failed.tsx:33" }
+
+  noKoskTitle: { type: status, component: Status, role: status, text: { key: OpenCourse.noKoskTitle }, in: [noKosk], source: "apps/nazar/features/courses/components/open-course-page.tsx:61" }
+  noKoskText: { type: text, component: Text, text: { key: OpenCourse.noKosk }, in: [noKosk] }
+  back: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: OpenCourse.back }, in: [noKosk], emits: BACK, source: "apps/nazar/features/courses/components/open-course-page.tsx:63" }
+
+  hostingNotice: { type: text, component: Text, text: { key: Courses.errors.hostingRight }, in: [form, noKosk, loadFailed], when: "notice == 'hostingRight'", source: "apps/nazar/features/courses/components/open-course-form.tsx:128" }
+  required: { type: text, component: Text, text: { key: OpenCourse.required }, in: [form, opening], source: "apps/nazar/features/courses/components/open-course-form.tsx:145" }
+  koskLegend: { type: text, component: Text, text: { key: OpenCourse.kosk.legend }, in: [form, opening], source: "apps/nazar/features/courses/components/open-course-form.tsx:148" }
+  koskGroup: { type: list, component: List, role: radiogroup, name: { labelledBy: koskLegend }, in: [form, opening], source: "apps/nazar/features/courses/components/open-course-form.tsx:147" }
+  koskChoice: { type: field, component: ListItem, role: radio, text: { key: OpenCourse.kosk.courses }, repeat: hosting.kosks, in: [form, opening], disabledIn: [opening], source: "apps/nazar/features/courses/components/open-course-form.tsx:160" } # each köşk's name, with this line under it
+  koskHelp: { type: text, component: Text, text: { key: OpenCourse.kosk.help }, in: [form, opening] }
+  koskRequired: { type: text, component: Text, text: { key: OpenCourse.kosk.required }, in: [form], when: "attempted and not formOk", source: "apps/nazar/features/courses/components/open-course-form.tsx:166" }
+  nameField: { type: field, component: TextField, role: textbox, text: { key: OpenCourse.name }, in: [form, opening], source: "apps/nazar/features/courses/components/open-course-form.tsx:172" }
+  nameHelp: { type: text, component: Text, text: { key: OpenCourse.nameHelp }, in: [form, opening] }
+  nameRequired: { type: text, component: Text, text: { key: OpenCourse.nameProblems.required }, in: [form], when: "attempted and not formOk", source: "apps/nazar/features/courses/components/open-course-form.tsx:176" }
+  teamLegend: { type: text, component: Text, text: { key: OpenCourse.team.legend }, in: [form, opening], source: "apps/nazar/features/courses/components/open-course-form.tsx:198" }
+  teamSearch: { type: field, component: TextField, role: textbox, text: { key: Team.label }, in: [form, opening], source: "apps/nazar/features/courses/components/muderris-picker.tsx" } # type="email"; searched on Enter, every search audited
+  teamHelp: { type: text, component: Text, text: { key: OpenCourse.team.help }, in: [form, opening] }
+  teamNone: { type: text, component: Text, text: { key: OpenCourse.team.none }, in: [form], when: "attempted and not formOk", source: "apps/nazar/features/courses/components/open-course-form.tsx:204" }
+
+  settingsTitle: { type: text, component: Heading, role: heading, text: { key: OpenCourse.settingsTitle }, in: [form, opening], source: "apps/nazar/features/courses/components/open-course-form.tsx:218" }
+  closedBox: { type: field, component: TextField, role: checkbox, text: { key: OpenCourse.closed.label }, in: [form, opening], source: "apps/nazar/features/courses/components/open-course-form.tsx:222" } # checked and disabled while the policy is known to be on
+  approvalBox: { type: field, component: TextField, role: checkbox, text: { key: OpenCourse.approval.label }, in: [form, opening], source: "apps/nazar/features/courses/components/open-course-form.tsx:233" }
+  lockNote: { type: text, component: Text, text: { key: OpenCourse.lock.closed }, in: [form, opening], when: "settingsRead and policyClosed", source: "apps/nazar/features/courses/components/open-course-form.tsx:244" }
+  policiesUnknown: { type: text, component: Text, text: { key: OpenCourse.policiesUnknown }, in: [form, opening], when: "not settingsRead", source: "apps/nazar/features/courses/components/open-course-form.tsx:258" }
+  note: { type: text, component: Text, text: { key: OpenCourse.note }, in: [form, opening], source: "apps/nazar/features/courses/components/open-course-form.tsx:262" }
+  cancel: { type: action, component: LinkButton, role: link, intent: dismiss, text: { key: OpenCourse.cancel }, in: [form, opening], emits: CANCEL, source: "apps/nazar/features/courses/components/open-course-form.tsx:264" }
+  submit: { type: action, component: Button, role: button, intent: confirm, text: { key: OpenCourse.submit }, in: [form, opening], disabledIn: [opening], emits: SUBMIT, source: "apps/nazar/features/courses/components/open-course-form.tsx:267" }
+  opening: { type: status, component: Status, role: status, text: { key: OpenCourse.opening }, in: [opening], source: "libs/ui/src/mds/button.tsx:113" }
+
+  failedTitle: { type: alert, component: Alert, role: alert, text: { key: OpenCourse.failedTitle }, in: [form], when: "notice != 'none'", source: "apps/nazar/features/courses/components/open-course-form.tsx:128" } # a toast
+  failedGeneric: { type: text, component: Text, text: { key: Problems.actionGeneric }, in: [form], when: "notice == 'generic'", source: "apps/nazar/features/courses/courses.ts:393" }
+  failedUnknown: { type: text, component: Text, text: { key: Courses.errors.unknownUser }, in: [form], when: "notice == 'unknownUser'", source: "apps/nazar/features/courses/courses.ts:379" }
+
+  openedToast: { type: status, component: Status, role: status, text: { key: OpenCourse.opened }, in: [opened], source: "apps/nazar/features/courses/components/open-course-form.tsx:119" }
+  openedBody: { type: text, component: Text, text: { key: OpenCourse.openedBody }, in: [opened] }
+
+edges:
+  - { labelledBy: [page, title] }
+  - { labelledBy: [koskGroup, koskLegend] }
+  - { triggers: [submit, opening] }
+  - { triggers: [retry, loading] }
+
+rules:
+  - { id: label-in-name, rule: "a node's visible text is contained in its accessible name (WCAG 2.5.3)" }
+  - { id: busy-not-disabled, rule: "the busy submit stays focusable (aria-disabled), so the focus is not lost while the call runs" }

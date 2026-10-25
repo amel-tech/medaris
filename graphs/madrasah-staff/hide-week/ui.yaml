@@ -1,0 +1,52 @@
+# The screen of medaris.hide-week: nazar's "Müfredat" hiding page (/ders/:id/mufredat/gizle). The confirmation is an
+# AlertDialog (role alertdialog), never closed by the scrim, whose focus starts on "Vazgeç" (libs/ui/src/mds/alert-dialog.tsx).
+schema: delurio-graph/0
+kind: ui
+id: medaris.hide-week
+flow: medaris.hide-week
+status: proposed
+catalog: catalog/tr.json
+locales: [tr, en]
+samples: { number: "3", title: "Hafta 3", count: "2" }
+changes: { key: Changes.note }
+
+nodes:
+  page: { type: page, component: Page, role: main, name: { labelledBy: title }, in: [loadFailed, empty, list, confirmWeek, confirmSession, hidingWeek, hidingSession], source: "apps/nazar/features/curriculum-hide/components/curriculum-page.tsx:32" }
+  title: { type: text, component: Heading, role: heading, text: { key: CurriculumHide.title }, in: [loadFailed, empty, list, confirmWeek, confirmSession, hidingWeek, hidingSession], source: "apps/nazar/features/curriculum-hide/components/curriculum-page.tsx:33" }
+  intro: { type: text, component: Text, text: { key: CurriculumHide.intro }, in: [loadFailed, empty, list, confirmWeek, confirmSession, hidingWeek, hidingSession], source: "apps/nazar/features/curriculum-hide/components/curriculum-page.tsx:35" }
+  loadFailedTitle: { type: alert, component: Alert, role: alert, text: { key: CurriculumHide.loadFailedTitle }, in: [loadFailed], source: "apps/nazar/features/shell/components/load-failed.tsx:28" }
+  loadFailedText: { type: text, component: Text, text: { key: CurriculumHide.loadFailed }, in: [loadFailed] }
+  retry: { type: action, component: Button, role: button, intent: secondary, text: { key: Shell.retry }, in: [loadFailed], emits: RETRY, source: "apps/nazar/features/shell/components/load-failed.tsx:33" }
+  empty: { type: text, component: Text, text: { key: CurriculumHide.empty }, in: [empty], source: "apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:72" }
+
+  weeks: { type: list, component: List, role: list, name: { labelledBy: title }, in: [list, confirmWeek, confirmSession, hidingWeek, hidingSession], source: "apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:77" }
+  week: { type: text, component: ListItem, role: listitem, text: { key: CurriculumHide.weekLabel }, repeat: course.weeks, in: [list, confirmWeek, confirmSession, hidingWeek, hidingSession], source: "apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:84" } # "Hafta N: title", with its session count
+  hideWeek: { type: action, component: Button, role: button, intent: secondary, name: { key: CurriculumHide.hideWeekLabel }, text: { key: CurriculumHide.hideWeek }, repeat: course.weeks, in: [list], emits: HIDE_WEEK, source: "apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:95" } # drawn for every reader
+  hideSession: { type: action, component: Button, role: button, intent: secondary, name: { key: CurriculumHide.hideSessionLabel }, text: { key: CurriculumHide.hideSession }, repeat: week.sessions, in: [list], emits: HIDE_SESSION, source: "apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:129" }
+  doneToast: { type: status, component: Status, role: status, text: { key: CurriculumHide.week.done }, in: [list], when: "notice == 'hidden'", source: "apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:52" }
+  failedToast: { type: alert, component: Alert, role: alert, text: { key: CurriculumHide.week.failedTitle }, in: [list], when: "notice == 'forbidden'", source: "apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:60" }
+  failedForbidden: { type: text, component: Text, text: { key: Problems.actionForbidden }, in: [list], when: "notice == 'forbidden'", source: "apps/nazar/features/curriculum-hide/curriculum.ts:57" }
+  goneToast: { type: status, component: Status, role: status, text: { key: CurriculumHide.gone }, in: [list], when: "notice == 'gone'", source: "apps/nazar/features/curriculum-hide/curriculum.ts:55" }
+
+  confirmWeekDialog: { type: page, component: Page, role: alertdialog, name: { labelledBy: confirmWeekTitle }, in: [confirmWeek, hidingWeek], initialFocus: cancelWeek, source: "apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:153" }
+  confirmWeekTitle: { type: text, component: Heading, role: heading, text: { key: CurriculumHide.week.title }, in: [confirmWeek, hidingWeek] }
+  confirmWeekBody: { type: text, component: Text, text: { key: CurriculumHide.week.body }, in: [confirmWeek, hidingWeek], source: "apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:169" }
+  cancelWeek: { type: action, component: Button, role: button, intent: dismiss, text: { key: CurriculumHide.cancel }, in: [confirmWeek, hidingWeek], emits: CANCEL }
+  confirmWeekButton: { type: action, component: Button, role: button, intent: confirm, text: { key: CurriculumHide.confirm }, in: [confirmWeek, hidingWeek], disabledIn: [hidingWeek], emits: CONFIRM }
+
+  confirmSessionDialog: { type: page, component: Page, role: alertdialog, name: { labelledBy: confirmSessionTitle }, in: [confirmSession, hidingSession], initialFocus: cancelSession, source: "apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:153" }
+  confirmSessionTitle: { type: text, component: Heading, role: heading, text: { key: CurriculumHide.session.title }, in: [confirmSession, hidingSession] }
+  confirmSessionBody: { type: text, component: Text, text: { key: CurriculumHide.session.body }, in: [confirmSession, hidingSession], source: "apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:173" }
+  cancelSession: { type: action, component: Button, role: button, intent: dismiss, text: { key: CurriculumHide.cancel }, in: [confirmSession, hidingSession], emits: CANCEL }
+  confirmSessionButton: { type: action, component: Button, role: button, intent: confirm, text: { key: CurriculumHide.confirm }, in: [confirmSession, hidingSession], disabledIn: [hidingSession], emits: CONFIRM }
+
+edges:
+  - { labelledBy: [page, title] }
+  - { labelledBy: [confirmWeekDialog, confirmWeekTitle] }
+  - { labelledBy: [confirmSessionDialog, confirmSessionTitle] }
+  - { triggers: [confirmWeekButton, hidingWeek] }
+  - { triggers: [confirmSessionButton, hidingSession] }
+
+rules:
+  - { id: label-in-name, rule: "a node's visible text is contained in its accessible name (WCAG 2.5.3)" }
+  - { id: ask-before-hiding, rule: "every hide asks first in an alertdialog whose focus starts on \"Vazgeç\"" }
