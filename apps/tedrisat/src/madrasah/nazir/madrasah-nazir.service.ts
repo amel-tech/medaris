@@ -9,12 +9,16 @@ import {
   type IPersonName,
 } from "../../assignment/assignment.repository";
 import { UserDirectoryService } from "../../assignment/user-directory.service";
+import { BanService } from "../../ban/ban.service";
 import {
   SCOPE_TYPES,
   type ScopeType,
 } from "../../database/schema/role-assignment.schema";
 import { MadrasahNotFoundError } from "../errors/madrasah-not-found.error";
+import { NazirBarredError } from "../errors/nazir-barred.error";
 import { NazirNotFoundError } from "../errors/nazir-not-found.error";
+import { NazirUnknownAccountError } from "../errors/nazir-unknown-account.error";
+import { MadrasahService } from "../madrasah.service";
 import type {
   MadrasahNazirGivenResponse,
   MadrasahNazirGroupResponse,
@@ -67,7 +71,9 @@ export class MadrasahNazirService {
   constructor(
     private readonly repo: MadrasahNazirRepository,
     private readonly assignments: AssignmentRepository,
-    private readonly directory: UserDirectoryService
+    private readonly directory: UserDirectoryService,
+    private readonly bans: BanService,
+    private readonly madrasahs: MadrasahService
   ) {}
 
   async list(madrasahId: string): Promise<MadrasahNazirResponse[]> {
@@ -86,7 +92,12 @@ export class MadrasahNazirService {
     return nazir ?? null;
   }
 
-  /** Idempotent: appointing a nazır again answers the same row. */
+  /**
+   * Idempotent: appointing a nazır again answers the same row. As for a ders
+   * nazırı, only an account that exists is seated, and not one barred from
+   * the medrese or one of its courses: the post keeps its holder from a ban
+   * there (`RUNS_MADRASAH_ROLES`), so seating a barred person would undo it.
+   */
   async appoint(
     madrasahId: string,
     userId: string,
@@ -94,6 +105,16 @@ export class MadrasahNazirService {
     authority: ScopeType
   ): Promise<MadrasahNazirResponse> {
     const id = userId.toLowerCase();
+    // A medrese that is gone answers first, as it did before these checks;
+    // the repository's lock still answers a delete that races this one.
+    if (!(await this.madrasahs.exists(madrasahId))) {
+      throw new MadrasahNotFoundError(madrasahId);
+    }
+    const [unknownAccount] = await this.directory.findUnknownAccounts([id]);
+    if (unknownAccount) throw new NazirUnknownAccountError(id);
+    if (await this.bans.isBarredInMadrasah(id, madrasahId)) {
+      throw new NazirBarredError(id, madrasahId);
+    }
     if (!(await this.repo.appoint(madrasahId, id, actorId, authority))) {
       throw new MadrasahNotFoundError(madrasahId);
     }

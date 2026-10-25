@@ -215,7 +215,9 @@
     "groupGone": "Bu grup artık yok. Gruplar yenilendi; yeniden seçin.",
     "groupNameTaken": "Bu adla başka bir grup var. Başka bir ad seçin.",
     "exceedsGiver": "Bu izinlerin bir kısmı sizde yok; yalnız kendi izinlerinizi verebilirsiniz. Verebileceğiniz izinleri başnazıma sorun.",
-    "selfGrant": "Kendinize rol ya da izin veremezsiniz; size verilmiş bir rolü ya da izni devralmak da buna girer."
+    "selfGrant": "Kendinize rol ya da izin veremezsiniz; size verilmiş bir rolü ya da izni devralmak da buna girer.",
+    "unknownAccount": "Bu hesap bulunamadı.",
+    "barredFromMadrasah": "Bu kişi bu medreseden ya da derslerinden birinden yasaklı; medrese nazırı yapılamaz."
   },
   "Settings": {
     "title": "Medrese ayarları",

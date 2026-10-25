@@ -483,6 +483,18 @@ describe("a refused appointment or dismissal", () => {
     expect(nazirErrorKey("")).toBe("Problems.actionGeneric");
   });
 
+  it("says why an appointment is refused: no such account, or barred in the medrese", () => {
+    expect(nazirErrorKey("MADRASAH_NAZIR_UNKNOWN_ACCOUNT")).toBe(
+      "Problems.unknownAccount"
+    );
+    expect(nazirErrorKey("MADRASAH_NAZIR_BARRED")).toBe(
+      "Problems.barredFromMadrasah"
+    );
+    expect(t("Problems.barredFromMadrasah")).toBe(
+      "Bu kişi bu medreseden ya da derslerinden birinden yasaklı; medrese nazırı yapılamaz."
+    );
+  });
+
   it("is worded from the codes of a permission change or a group write", () => {
     expect(nazirErrorKey("PERMISSION_NOT_GIVABLE")).toBe(
       "Problems.actionForbidden"

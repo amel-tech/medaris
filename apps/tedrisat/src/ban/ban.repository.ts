@@ -721,6 +721,37 @@ export class BanRepository {
     };
   }
 
+  /**
+   * Whether an open ban bars the person anywhere in the medrese: a MADRASAH
+   * ban on it, or a COURSE ban on one of its courses.
+   */
+  async isBarredInMadrasah(
+    userId: string,
+    madrasahId: string
+  ): Promise<boolean> {
+    const [row] = await this.db
+      .select({ id: bans.id })
+      .from(bans)
+      .where(
+        and(
+          eq(bans.userId, userId),
+          open(),
+          or(
+            eq(bans.madrasahId, madrasahId),
+            inArray(
+              bans.courseId,
+              this.db
+                .select({ id: courses.id })
+                .from(courses)
+                .where(eq(courses.madrasahId, madrasahId))
+            )
+          )
+        )
+      )
+      .limit(1);
+    return row !== undefined;
+  }
+
   /** The people an open MADRASAH ban already bars from the medrese. */
   async openMadrasahBanUsers(madrasahId: string): Promise<Set<string>> {
     const rows = await this.db

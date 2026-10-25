@@ -605,6 +605,11 @@ export class BanService {
     return this.repo.isBarredFromCourse(userId, courseId);
   }
 
+  /** Whether an open ban bars the person from the medrese or from one of its courses. */
+  isBarredInMadrasah(userId: string, madrasahId: string): Promise<boolean> {
+    return this.repo.isBarredInMadrasah(userId, madrasahId);
+  }
+
   /** Refuses with `BanActiveError` when an open ban bars the person from the course. */
   async assertNotBarred(userId: string, courseId: string): Promise<void> {
     if (await this.repo.isBarredFromCourse(userId, courseId)) {
