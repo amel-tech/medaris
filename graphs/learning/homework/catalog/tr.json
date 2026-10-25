@@ -1,7 +1,8 @@
 {
-  "Changes.note": "Eklediğin dosyalar ve yazdığın not bu celsedeki ödevin olarak saklanır; hocan ve ders ekibi görür, dosyalarını indirebilir. Her dosya ekleme ve kaldırma kayda geçer. Derse kayıtlı olduğun ve ders açık olduğu sürece notunu değiştirebilir, dosyalarını kaldırabilirsin; kaldırılan dosya depodan da silinir. Son tarih ve not verme yok.",
+  "Changes.note": "Eklediğin dosyalar ve yazdığın not bu celsedeki ödevin olarak saklanır; hocan ve ders ekibi görür, dosyalarını indirebilir. Her dosya ekleme ve kaldırma kayda geçer. Derse kayıtlı olduğun ve ders açık olduğu sürece notunu değiştirebilir, dosyalarını kaldırabilirsin; kaldırılan dosya depodan da silinir. Ders ekibi değerlendirmesini gönderince notu ve düzeltilmiş dosyaları bu bölümde görünür; sonra da ödevini değiştirebilirsin. Son tarih ve not verme yok.",
   "Data.assignmentDescription": "{description}",
   "Data.fileName": "{name}",
+  "Data.reviewNote": "{note}",
   "Homework.addLabel": "Dosya ekle",
   "Homework.added": "{name} eklendi.",
   "Homework.audience": "Hoca ve ders ekibi görür.",
@@ -34,6 +35,12 @@
   "Homework.removed": "{name} kaldırıldı.",
   "Homework.removing": "Kaldırılıyor",
   "Homework.retry": "Yeniden dene",
+  "Homework.reviewBy": "{name} · {when}",
+  "Homework.reviewChangedBody": "Bu değerlendirme ödevinin önceki hâline yazıldı.",
+  "Homework.reviewChangedTitle": "Ödevin değerlendirmeden sonra değişti",
+  "Homework.reviewFiles": "Düzeltilmiş dosyalar",
+  "Homework.reviewTitle": "Hocanın değerlendirmesi",
+  "Homework.reviewed": "Değerlendirildi",
   "Homework.sectionTitle": "Ödev",
   "Homework.title": "Ödevim",
   "Homework.uploading": "Yükleniyor…"

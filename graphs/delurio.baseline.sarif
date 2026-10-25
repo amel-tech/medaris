@@ -6,7 +6,7 @@
       "tool": {
         "driver": {
           "name": "delurio",
-          "version": "0.1.1",
+          "version": "0.2.0",
           "informationUri": "https://delur.io",
           "rules": [
             {
@@ -393,7 +393,7 @@
           "ruleIndex": 0,
           "level": "error",
           "message": {
-            "text": "6 of 28 things people come to do fail. (goals)"
+            "text": "5 of 28 things people come to do fail. (goals)"
           },
           "locations": [
             {

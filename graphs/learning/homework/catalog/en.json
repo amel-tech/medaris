@@ -1,7 +1,8 @@
 {
-  "Changes.note": "The files you add and the note you write are kept as your homework on this celse; your hoca and the course team see them and may download your files. Every file added or removed is recorded. While you are enrolled and the course is open you can change the note and remove files; a removed file is deleted from storage as well. There is no deadline and no grade.",
+  "Changes.note": "The files you add and the note you write are kept as your homework on this celse; your hoca and the course team see them and may download your files. Every file added or removed is recorded. While you are enrolled and the course is open you can change the note and remove files; a removed file is deleted from storage as well. Once the course team sends its review, its note and corrected files show in this section; you can still change your homework after it. There is no deadline and no grade.",
   "Data.assignmentDescription": "{description}",
   "Data.fileName": "{name}",
+  "Data.reviewNote": "{note}",
   "Homework.addLabel": "Add files",
   "Homework.added": "{name} added.",
   "Homework.audience": "Your teacher and the course team see it.",
@@ -34,6 +35,12 @@
   "Homework.removed": "{name} removed.",
   "Homework.removing": "Removing",
   "Homework.retry": "Try again",
+  "Homework.reviewBy": "{name} · {when}",
+  "Homework.reviewChangedBody": "This review was written on the earlier version of your homework.",
+  "Homework.reviewChangedTitle": "Your homework changed after the review",
+  "Homework.reviewFiles": "Corrected files",
+  "Homework.reviewTitle": "Your teacher's review",
+  "Homework.reviewed": "Reviewed",
   "Homework.sectionTitle": "Homework",
   "Homework.title": "My homework",
   "Homework.uploading": "Uploading…"

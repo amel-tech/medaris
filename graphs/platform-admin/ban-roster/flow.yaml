@@ -5,6 +5,8 @@
 # libs/common/src/authz/permissions.ts:352); a Medaris nazımı holds only what is granted, here platform.ban_scoped.
 # `standing` is the open ban the row shows (the widest, ban.repository.ts:258), named by its scope and the kademe of the
 # role it was placed in (bans.banned_tier, ban-tier.ts:35).
+# Since #369 (89a2d8f5) an approval refuses a barred applicant; the elements that changed with it point at the lines on
+# main 4b1f9f78, the rest at ce47fce8.
 schema: delurio-graph/0
 kind: flow
 id: medaris.ban-roster
@@ -17,7 +19,7 @@ summary: >-
   from this course, or, as the köşk's nazımı or the başnazım, from every course of the köşk. The ban is in force at
   once and its notifications are written beside it. A barred row offers Yasağı kaldır to every viewer; the server lifts
   it only for the permission of the ban's level and a kademe that reaches the one that placed it. The Başvurular tab
-  approves a waiting application, barred or not.
+  approves a waiting application; a barred applicant's is refused and waits.
 
 scope:
   shows: one viewer, one course and one talebe row, from reading the roster to placing, lifting or approving
@@ -64,7 +66,7 @@ context:
   scope: { values: [COURSE, KOSK], initial: COURSE } # the dialog's radio, which starts on the course (ban-dialog.tsx:59)
   reason: { values: [blank, written], initial: blank }
   liftReason: { values: [blank, written], initial: blank }
-  notice: { values: [none, saved, refused, targetInvalid, lifted, liftRefused, approved], initial: none }
+  notice: { values: [none, saved, refused, targetInvalid, lifted, liftRefused, approved, approveRefused], initial: none }
   placed: { values: [false, true], initial: false } # a ban was placed in this visit
   liftedHere: { values: [false, true], initial: false }
   approvedHere: { values: [false, true], initial: false }
@@ -109,11 +111,13 @@ effects:
   liftRefused: { set: { notice: liftRefused } }
   lift: { set: { open: false, liftedHere: true, notice: lifted } }
   approve: { set: { seat: enrolled, approvedHere: true, notice: approved } }
+  approveRefused: { set: { notice: approveRefused } }
 
 failures:
   readingRoster: { from: getCourseEnrollments, refused: [AUTHZ_FORBIDDEN] }
   creating: { from: createBan, forbidden: [BAN_FORBIDDEN], target: [BAN_TARGET_INVALID] }
   lifting: { from: liftBan, refused: [BAN_LIFT_FORBIDDEN] }
+  approving: { from: approveEnrollment, barred: [BAN_ACTIVE] }
 
 main:
   given: { viewer: koskNazim, course: kosk, target: talebe, seat: enrolled, standing: none }
@@ -221,12 +225,14 @@ states:
   approving:
     title: Approve the application
     description: >-
-      POST /courses/:id/enrollments/:userId/approve, for enrollment.decide. It asks nothing of bans: a barred person's
-      waiting application becomes an ENROLLED seat, and ENROLLMENT_APPROVED is written for them.
-    source: apps/tedrisat/src/course/course.service.ts:1621
+      POST /courses/:id/enrollments/:userId/approve, for enrollment.decide. An open ban on the applicant is refused with
+      403 BAN_ACTIVE and the application waits; otherwise it becomes an ENROLLED seat, and ENROLLMENT_APPROVED is
+      written for them.
+    source: apps/tedrisat/src/course/course.service.ts:1626
     invoke: { action: approveEnrollment }
     on:
-      DONE: { target: roster, effect: [approve], say: "the applicant is seated", source: "apps/tedrisat/src/course/course.service.ts:1635" }
+      DONE: { guard: "not open", target: roster, effect: [approve], say: "the applicant is seated", source: "apps/tedrisat/src/course/course.service.ts:1641" }
+      FAIL.barred: { guard: open, target: roster, effect: [approveRefused], say: "barred: 403 BAN_ACTIVE, which the toast reads as no permission to decide; the row stays", source: "apps/nizam/features/applications/present.ts:183" }
 
   left: { type: final, title: They leave the page, leavesPage: true }
 
@@ -236,7 +242,7 @@ assertions:
   - { id: kosk-ban-by-kosk-or-platform, never: "placed and scope == 'KOSK' and viewer not in ['koskNazim', 'basnazim']", say: "From the roster only the köşk's nazımı and the başnazım bar someone from the whole köşk", source: "apps/tedrisat/src/ban/ban-codes.ts:40" }
   - { id: every-ban-has-a-reason, never: "state == 'creating' and reason == 'blank'", say: "No ban is sent without a reason", source: "apps/tedrisat/src/ban/dto/ban.dto.ts:31" }
   - { id: lift-respects-kademe, never: "liftedHere and not (holdsLift and reachesTier)", say: "A ban is lifted only with its level's permission, by the kademe that placed it or a higher one", source: "apps/tedrisat/src/ban/ban.service.ts:333" }
-# NOT HELD, kept out on purpose (REPORT.md, PLATFORM-ADMIN-1 and -2):
+  - { id: barred-never-seated, never: "approvedHere and open and not placed", say: "Onayla never seats an applicant a ban bars (a ban placed here after the approval is not one)", source: "apps/tedrisat/src/course/course.service.ts:1638" }
+# NOT HELD, kept out on purpose (REPORT.md, PLATFORM-ADMIN-1):
 #   roster-offers-only-liftable: "state == 'liftDialog' and not mayLift" is reached: the roster offers Yasağı kaldır on
 #     every barred row (present.ts:138); the server then refuses BAN_LIFT_FORBIDDEN.
-#   barred-never-seated: "approvedHere and open" is reached: Onayla seats a barred applicant (course.service.ts:1621).

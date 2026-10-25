@@ -1,6 +1,6 @@
 # Medaris, as a delurio graph
 
-The flows, screens, API and navigation of Medaris written as one graph in [delurio-graph/0](https://github.com/delurio-labs/delurio/blob/main/SPEC.md), as the code stood at `ce47fce8` (25 Oct 2026). It is a capture: it says what the code does today, not what the PRD wants. Every state, transition, guard and endpoint carries `source: <path>:<line>`. Where an invariant one would expect does not hold, the flow models the code, and the violating path is a finding in the area's `REPORT.md`. [`FINDINGS.md`](FINDINGS.md) collects them.
+The flows, screens, API and navigation of Medaris written as one graph in [delurio-graph/0](https://github.com/delurio-labs/delurio/blob/main/SPEC.md), as the code stood at `ce47fce8` (25 Oct 2026). It is a capture: it says what the code does today, not what the PRD wants. A flow brought up to a later pull request says so in its header comment, and the elements that changed with it point at that later commit: so far the five fixes #369–#373 and the homework review of #349, at `4b1f9f78`. Every state, transition, guard and endpoint carries `source: <path>:<line>`. Where an invariant one would expect does not hold, the flow models the code, and the violating path is a finding in the area's `REPORT.md`. [`FINDINGS.md`](FINDINGS.md) collects them.
 
 Every file is `status: proposed` until a person has read it.
 

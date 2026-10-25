@@ -35,8 +35,8 @@ nodes:
   afterTitle: { type: text, component: Heading, role: heading, text: { key: Offsite.afterTitle }, in: [offsiteForm, sendingOffsite], source: "apps/nazar/features/offsite/components/offsite-form.tsx:206" }
   afterList: { type: list, component: List, role: list, name: { labelledBy: afterTitle }, in: [offsiteForm, sendingOffsite], source: "apps/nazar/features/offsite/components/offsite-form.tsx:209" }
   afterItem: { type: text, component: ListItem, role: listitem, text: { oneOf: [Offsite.after.oneNamed, Offsite.after.two, Offsite.after.three] }, in: [offsiteForm, sendingOffsite], source: "apps/nazar/features/offsite/components/offsite-form.tsx:101" }
-  sentToast: { type: status, component: Status, role: status, text: { key: Offsite.sent }, in: [parked], source: "apps/nazar/features/offsite/components/offsite-form.tsx:82" }
-  sentBody: { type: text, component: Text, text: { key: Offsite.sentBody }, in: [parked], source: "apps/nazar/features/offsite/components/offsite-form.tsx:83" }
+  sentToast: { type: status, component: Status, role: status, text: { key: Offsite.sent }, in: [sent], source: "apps/nazar/features/offsite/components/offsite-form.tsx:82" }
+  sentBody: { type: text, component: Text, text: { key: Offsite.sentBody }, in: [sent], source: "apps/nazar/features/offsite/components/offsite-form.tsx:83" }
 
   # nizam: Ders talepleri
   requestsPage: { type: page, component: Page, role: main, name: { labelledBy: requestsTitle }, in: [requestsList, rejecting, accepting], source: "apps/nizam/features/platform-admin/components/course-requests-view.tsx:253" }
@@ -68,8 +68,10 @@ nodes:
   courseTitle: { type: text, component: Heading, role: heading, text: { key: CourseCreate.title }, in: [courseForm, creatingCourse, accepting], source: "apps/nizam/features/courses/components/course-create-form.tsx:204" }
   courseName: { type: field, component: TextField, role: textbox, text: { key: CourseCreate.nameLabel }, in: [courseForm, creatingCourse, accepting], source: "apps/nizam/features/courses/components/course-create-form.tsx:219" }
   courseSubmit: { type: action, component: Button, role: button, intent: confirm, text: { key: CourseCreate.submit }, in: [courseForm, creatingCourse, accepting], disabledIn: [creatingCourse, accepting], emits: SUBMIT }
-  createdToast: { type: status, component: Status, role: status, text: { key: CourseCreate.created }, in: [openedFromRequest], source: "apps/nizam/features/courses/components/course-create-form.tsx:177" }
+  createdToast: { type: status, component: Status, role: status, text: { key: CourseCreate.created }, in: [openedFromRequest], source: "apps/nizam/features/courses/components/course-create-form.tsx:190" }
   createdBody: { type: text, component: Text, text: { key: CourseCreate.createdBody }, in: [openedFromRequest] }
+  requestLeftToast: { type: alert, component: Alert, role: alert, text: { key: CourseCreate.requestLeft }, in: [openedFromRequest], when: "notice == 'requestLeft'", source: "apps/nizam/features/courses/components/course-create-form.tsx:167" } # a warning toast of its own, which stays until closed
+  requestLeftBody: { type: text, component: Text, text: { key: CourseCreate.requestLeftBody }, in: [openedFromRequest], when: "notice == 'requestLeft'" }
 
 edges:
   - { labelledBy: [offsitePage, offsiteTitle] }

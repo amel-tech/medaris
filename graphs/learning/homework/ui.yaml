@@ -6,7 +6,7 @@ flow: medaris.homework
 status: proposed
 catalog: catalog/tr.json
 locales: [tr, en]
-samples: { maxFiles: "10", maxSize: "25 MB", name: "ödev-1.pdf", max: "4000", description: "Birinci bâbı oku, üç soruyu cevapla." }
+samples: { maxFiles: "10", maxSize: "25 MB", name: "ödev-1.pdf", max: "4000", description: "Birinci bâbı oku, üç soruyu cevapla.", when: "26 Ekim 14:30", note: "İkinci cevabı yeniden düşün; düzeltmeleri dosyada işaretledim." }
 changes: { key: Changes.note }
 
 nodes:
@@ -302,6 +302,67 @@ nodes:
     when: showNoteFailed
     in: [ready]
     source: apps/tedris/features/courses/components/session-homework.tsx:735
+
+  reviewTitle:
+    type: text
+    component: Heading
+    role: heading
+    text: { key: Homework.reviewTitle }
+    when: reviewShown
+    in: [ready, uploading, confirmRemove, removing, savingNote, clearingNote]
+    source: apps/tedris/features/courses/components/session-homework.tsx:486
+  reviewedBadge:
+    type: status
+    component: Status
+    role: status
+    text: { key: Homework.reviewed }
+    when: reviewShown
+    in: [ready, uploading, confirmRemove, removing, savingNote, clearingNote]
+    source: apps/tedris/features/courses/components/session-homework.tsx:490
+  reviewBy:
+    type: text
+    component: Text
+    text: { key: Homework.reviewBy, params: { name: review.reviewer.name, when: review.reviewedAt } } # the name, or Homework.reviewerUnknown; the time as day, month and hour
+    when: reviewShown
+    in: [ready, uploading, confirmRemove, removing, savingNote, clearingNote]
+    source: apps/tedris/features/courses/components/session-homework.tsx:492
+  reviewChanged:
+    type: alert
+    component: Alert
+    text: { key: Homework.reviewChangedTitle }
+    when: reviewAnswersEarlier
+    in: [ready, uploading, confirmRemove, removing, savingNote, clearingNote]
+    source: apps/tedris/features/courses/components/session-homework.tsx:499
+  reviewChangedBody:
+    type: text
+    component: Text
+    text: { key: Homework.reviewChangedBody }
+    when: reviewAnswersEarlier
+    in: [ready, uploading, confirmRemove, removing, savingNote, clearingNote]
+  reviewNote:
+    type: text
+    component: Text
+    text: { key: Data.reviewNote, params: { note: review.note } }
+    when: reviewNoteShown
+    in: [ready, uploading, confirmRemove, removing, savingNote, clearingNote]
+    source: apps/tedris/features/courses/components/session-homework.tsx:504
+  reviewFiles:
+    type: list
+    component: List
+    role: list
+    name: { key: Homework.reviewFiles }
+    when: reviewFilesShown
+    in: [ready, uploading, confirmRemove, removing, savingNote, clearingNote]
+    source: apps/tedris/features/courses/components/session-homework.tsx:515
+  reviewFile:
+    type: text
+    component: ListItem
+    role: listitem
+    text: { key: Data.fileName, params: { name: file.name } }
+    when: reviewFilesShown
+    repeat: submission.review.files
+    in: [ready, uploading, confirmRemove, removing, savingNote, clearingNote]
+    source: apps/tedris/features/courses/components/session-homework.tsx:529
 
 edges:
   - { labelledBy: [section, sectionTitle] }

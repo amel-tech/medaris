@@ -49,9 +49,9 @@ entities:
     lifecycle:
       - "none -> PENDING | ENROLLED: the talebe (enroll); PENDING whenever approvalForced (course.service.ts:1540)"
       - "PENDING -> none: the talebe (withdraw, leave) or the course team (rejectEnrollment)"
-      - "PENDING -> ENROLLED: the course team (approveEnrollment), the bulk list (bulkEnroll) or a partner application (putPartnerEnrollment)"
-      - "REVOKED -> ENROLLED: the course team (approveEnrollment, the one way back in) or a partner application, only for a seat its own DELETE took (partner-enrollment.service.ts:331)"
-      - "ENROLLED -> COMPLETED -> ENROLLED: the course team only (setEnrollmentStatus)"
+      - "PENDING -> ENROLLED: the course team (approveEnrollment), the bulk list (bulkEnroll) or a partner application (putPartnerEnrollment); none of them while a ban bars the person"
+      - "REVOKED -> ENROLLED: the course team (approveEnrollment, the one way back in) or a partner application, only for a seat its own DELETE took (partner-enrollment.service.ts:331); neither while a ban bars the person"
+      - "ENROLLED -> COMPLETED -> ENROLLED: the course team only (setEnrollmentStatus); not back to ENROLLED while a ban bars the person"
       - "ENROLLED -> REVOKED: the course team (removeEnrollment, with a reason) or a partner application's DELETE"
       - "ENROLLED -> none: the talebe leaves (leave)"
   Ban:
@@ -110,6 +110,7 @@ entities:
       note: { type: [string, "null"], maxLength: 4000 }
       files: { type: array, maxItems: 10, items: { $ref: "#/entities/StoredFile" }, source: "apps/tedrisat/src/lesson-submission/dto/lesson-submission.dto.ts:7" }
       updatedAt: { type: string, format: date-time }
+      review: { type: [object, "null"], note: "the course team's review once sent (#349): reviewer, reviewedAt, a note and corrected files of their own, at most 5; null to the talebe until it is sent", source: "apps/tedrisat/src/database/schema/lesson-submission.schema.ts:36" }
   StoredFile:
     source: apps/tedrisat/src/database/schema/lesson-submission.schema.ts:50
     fields:
@@ -144,7 +145,7 @@ policies:
   - { actor: anyone, needs: none, read: [Course], do: [getCourse, getSession, listCourseRecordings, getCoursesByKosk], where: "a published, unhidden course of a listed, unhidden köşk; content filtered" }
   - { actor: talebe, needs: bearer, where: "their own enrollment, selected by the token's sub", write: [Enrollment], do: [enroll, withdraw, leave, updateProgress] }
   - { actor: talebe, needs: bearer, where: "mayWriteAsTalebe on the celse's course", write: [LessonNote, LessonQuestion, Submission], do: [createLessonNote, updateLessonNote, askLessonQuestion, updateLessonQuestion, saveMySubmissionNote, addMySubmissionFile, deleteMySubmissionFile] }
-  - { actor: talebe, needs: bearer, where: "their own writing, while mayReachOwnWriting", read: [LessonNote, LessonQuestion, Submission], do: [listLessonNotes, listMyCourseQuestions, getMySubmission, listMySubmissions, downloadMySubmissionFile] }
+  - { actor: talebe, needs: bearer, where: "their own writing, while mayReachOwnWriting", read: [LessonNote, LessonQuestion, Submission], do: [listLessonNotes, listMyCourseQuestions, getMySubmission, listMySubmissions, downloadMySubmissionFile, downloadMySubmissionReviewFile] }
   - { actor: talebe, needs: bearer, where: "their own writing, while mayReachOwnWriting: also after a removal or a ban", write: [LessonNote, LessonQuestion], do: [deleteLessonNote, deleteLessonQuestion] }
   - { actor: person, needs: bearer, where: "their own feed token", read: [CalendarFeedToken], do: [getMyCalendarFeed] }
   - { actor: person, needs: bearer, where: "their own feed token", write: [CalendarFeedToken], do: [regenerateMyCalendarFeed] }
@@ -219,9 +220,9 @@ actions:
     needs: "bearer; enrollment.decide"
     result: { returns: Enrollment, status: 201 }
     sideEffects: ["notification ENROLLMENT_APPROVED to the talebe", "lesson invitations kicked"]
-    refusals: { ENROLLMENT_NOT_FOUND: { status: 404 }, ENROLLMENT_STATE_CONFLICT: { status: 409, note: "COMPLETED" } }
-    note: "PENDING or REVOKED -> ENROLLED, conditional on the status read; ENROLLED is returned unchanged; no ban is asked"
-    source: "apps/tedrisat/src/course/course.service.ts:1621"
+    refusals: { ENROLLMENT_NOT_FOUND: { status: 404 }, ENROLLMENT_STATE_CONFLICT: { status: 409, note: "COMPLETED" }, BAN_ACTIVE: { status: 403, note: "an open ban bars the talebe (#369)" } }
+    note: "PENDING or REVOKED -> ENROLLED, conditional on the status read; ENROLLED is returned unchanged; a barred talebe is refused"
+    source: "apps/tedrisat/src/course/course.service.ts:1626"
   rejectEnrollment:
     route: DELETE /courses/{id}/enrollments/{userId}
     needs: "bearer; enrollment.decide"
@@ -242,9 +243,9 @@ actions:
     route: PATCH /courses/{id}/enrollments/{userId}
     needs: "bearer; enrollment.complete"
     body: { type: object, required: [status], properties: { status: { enum: [ENROLLED, COMPLETED] } } }
-    refusals: { ENROLLMENT_NOT_FOUND: { status: 404 }, ENROLLMENT_STATE_CONFLICT: { status: 409, note: "PENDING or REVOKED" } }
+    refusals: { ENROLLMENT_NOT_FOUND: { status: 404 }, ENROLLMENT_STATE_CONFLICT: { status: 409, note: "PENDING or REVOKED" }, BAN_ACTIVE: { status: 403, note: "reopening a completion while an open ban bars the talebe (#369)" } }
     note: "ENROLLED <-> COMPLETED only"
-    source: "apps/tedrisat/src/course/course.service.ts:1695"
+    source: "apps/tedrisat/src/course/course.service.ts:1701"
   removeEnrollment:
     route: POST /courses/{id}/enrollments/{userId}/remove
     needs: "bearer; enrollment.remove"
@@ -352,7 +353,7 @@ actions:
     needs: "bearer; course.view"
     result: { type: object, properties: { submission: { oneOf: [{ $ref: "#/entities/Submission" }, { type: "null" }] }, maxFiles: { const: 10 }, maxFileBytes: { const: 26214400 } } }
     refusals: { LESSON_NOT_FOUND: { status: 404 }, SUBMISSION_FORBIDDEN: { status: 403 } }
-    note: "findVisibleLessonCourse + mayReachOwnWriting"
+    note: "findVisibleLessonCourse + mayReachOwnWriting; the submission carries the course team's review only once it is sent"
     source: "apps/tedrisat/src/lesson-submission/lesson-submission.controller.ts:97"
   listMySubmissions:
     route: GET /courses/{id}/my-submissions
@@ -391,6 +392,12 @@ actions:
     refusals: { SUBMISSION_FORBIDDEN: { status: 403 }, SUBMISSION_FILE_NOT_FOUND: { status: 404 } }
     note: "mayReachOwnWriting; the caller's own file"
     source: "apps/tedrisat/src/lesson-submission/lesson-submission.controller.ts:215"
+  downloadMySubmissionReviewFile:
+    route: GET /lessons/{id}/submission/review-files/{fileId}
+    needs: "bearer; course.view"
+    refusals: { SUBMISSION_FORBIDDEN: { status: 403, note: "another talebe's review" }, SUBMISSION_FILE_NOT_FOUND: { status: 404, note: "also before the review is sent" }, LESSON_NOT_FOUND: { status: 404 }, STORAGE_NOT_CONFIGURED: { status: 503 }, STORAGE_UNAVAILABLE: { status: 503 } }
+    note: "a file the course team returned with its review of the caller's own homework, once the review is sent, while the course is open to them (#349)"
+    source: "apps/tedrisat/src/lesson-submission/lesson-submission.controller.ts:242"
   # ---- schedule and calendar ----
   listMySessions:
     route: GET /sessions
@@ -455,7 +462,7 @@ invariants:
   - { id: isBarred, rule: "an open ban of scope COURSE on the course, KOSK on its köşk, or the medrese's own ban on its medrese", source: "apps/tedrisat/src/ban/ban.repository.ts:209" }
   - { id: approvalForced, rule: "course.requiresApproval, or the köşk is unlisted (is_private), or the köşk's alwaysRequireApproval, or the platform's ALWAYS_REQUIRE_APPROVAL, or the medrese's policyAlwaysApproval", source: "apps/tedrisat/src/course/course.service.ts:1535" }
   - { id: barred-takes-no-seat-by-request, rule: "a barred person's own enroll, withdraw and leave are refused (403 BAN_ACTIVE)", source: "apps/tedrisat/src/course/course.service.ts:1522" }
-  - { id: barred-takes-no-seat-by-any-road, rule: "no road seats a barred person: the bulk list and a partner application skip them; approveEnrollment does NOT ask (finding LEARNING-1)", holds: false, finding: LEARNING-1, source: "apps/tedrisat/src/course/course.service.ts:1621" }
+  - { id: barred-takes-no-seat-by-any-road, rule: "no road seats a barred person: the bulk list and a partner application skip them; approveEnrollment and a reopening refuse them with 403 BAN_ACTIVE (#369, LEARNING-1 fixed)", source: "apps/tedrisat/src/course/course.service.ts:1638" }
   - { id: forced-approval-waits, rule: "under any approval policy of the course, the köşk, the platform or the medrese, the talebe's own enroll lands PENDING", source: "apps/tedrisat/src/course/course.service.ts:1540" }
   - { id: revoked-not-self-readmitted, rule: "a REVOKED talebe does not enrol again on their own; only the course team's approval (or the partner that took the seat) gives it back", source: "apps/tedrisat/src/course/course.service.ts:1524" }
   - { id: content-to-active-seats, rule: "course content (links, agenda, kaynak, resources, recordings that are not public) reaches a talebe only through an ENROLLED or COMPLETED seat with no open ban, in no passive scope", source: "apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:390" }

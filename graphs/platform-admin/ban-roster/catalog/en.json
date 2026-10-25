@@ -1,8 +1,10 @@
 {
+  "ApplicationsPage.actionFailed": "The action failed",
   "ApplicationsPage.approve": "Approve",
   "ApplicationsPage.approveLabel": "Approve: {name}, {course}",
   "ApplicationsPage.approved": "Application approved",
   "ApplicationsPage.approvedBody": "{name} is enrolled in {course}.",
+  "ApplicationsPage.errorForbidden": "You may not decide this application.",
   "BanDialog.cancel": "Cancel",
   "BanDialog.failed": "The ban could not be placed",
   "BanDialog.intro": "The ban takes effect at once. The student can no longer reach the sessions, recordings and content in the scope you choose; those sessions drop out of their calendar. They cannot apply again or leave the course.",

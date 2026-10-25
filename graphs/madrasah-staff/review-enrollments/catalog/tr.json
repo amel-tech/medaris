@@ -1,5 +1,5 @@
 {
-  "Changes.note": "“Onayla”, talebeyi hemen derse kaydeder: celselere ve ders kayıtlarına erişir, onaylandığı bildirimle söylenir ve ders yayımdaysa celselerinin takvim davetleri e-postayla gelir. “Reddet” başvuruyu siler; talebeye bildirim gider, gerekçe alınmaz ve talebe yeniden başvurabilir. Ret denetim kaydına yazılır. Onay buradan geri alınmaz: kayıtlı talebe ancak Kayıtlı sekmesinden, gerekçeyle dersten çıkarılır.",
+  "Changes.note": "“Onayla”, talebeyi hemen derse kaydeder: celselere ve ders kayıtlarına erişir, onaylandığı bildirimle söylenir ve ders yayımdaysa celselerinin takvim davetleri e-postayla gelir. Bir yasağın engellediği başvuran onaylanmaz, başvurusu bekler. “Reddet” başvuruyu siler; talebeye bildirim gider, gerekçe alınmaz ve talebe yeniden başvurabilir. Ret denetim kaydına yazılır. Onay buradan geri alınmaz: kayıtlı talebe ancak Kayıtlı sekmesinden, gerekçeyle dersten çıkarılır.",
   "CourseStudents.applicationsNote": "Bu derse kayıt için onayınız gerekiyor. Onayladığınız talebe celselere ve ders kayıtlarına hemen erişir; reddettiğiniz talebe yeniden başvurabilir.",
   "CourseStudents.applicationsNoteOpen": "Bu ders onay istemiyor; talebeler başvurur başvurmaz kaydolur.",
   "CourseStudents.bulk.open": "Toplu talebe ekle",
@@ -20,12 +20,14 @@
   "Pano.applications.approved": "Başvuru onaylandı",
   "Pano.applications.approvedBody": "{name}, “{course}” dersine kabul edildi.",
   "Pano.applications.errors.gone": "Bu başvuru artık yok; liste yenilendi.",
+  "Pano.applications.failedTitle": "Başvuru işlenemedi",
   "Pano.applications.reject": "Reddet",
   "Pano.applications.rejectBody": "{name} adlı talebenin “{course}” dersine başvurusu reddedilecek. Ret için gerekçe alınmaz.",
   "Pano.applications.rejectCancel": "Vazgeç",
   "Pano.applications.rejectLabel": "Reddet: {name}",
   "Pano.applications.rejectTitle": "Başvuru reddedilsin mi?",
   "Pano.applications.rejected": "Başvuru reddedildi",
+  "Problems.actionGeneric": "Bir şeyler ters gitti. Biraz sonra yeniden deneyin.",
   "Problems.forbidden": "Bu sayfayı açma izniniz yok. İzne ihtiyacınız varsa medresenin başmüderrisine başvurun.",
   "Problems.forbiddenTitle": "Bu sayfaya izniniz yok",
   "Shell.retry": "Yeniden dene"

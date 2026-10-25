@@ -3,6 +3,8 @@
 # something to. Giving a nazır permissions (nazir/06) is its own flow, medaris.nazir-permissions, which this one waits for.
 # What the server finds when a step asks (who the e-mail names, what the nazır handed on) is a `havoc` on the step that
 # asks, so the starting situations are only who reads the page and whose appointee the row is.
+# Since #371 (b24ff265) an appointment refuses an id no account holds and a person barred in the medrese; the elements
+# that changed with it point at the lines on main 4b1f9f78, the rest at ce47fce8.
 schema: delurio-graph/0
 kind: flow
 id: medaris.madrasah-nazir
@@ -13,7 +15,7 @@ title: Appoint and dismiss the medrese's nazırs
 summary: >-
   The başmüderris, the başnazım, a nazır given madrasah.nazir_appoint or a Medaris nazımı given
   platform.madrasah_nazir_grant sees the medrese's nazırs. A person found by their exact e-mail address is appointed
-  with no permission. Dismissing a nazır first lists, per person, what they handed on in the medrese; each person is
+  with no permission, unless no account holds the id any more or a ban bars them in the medrese or one of its courses. Dismissing a nazır first lists, per person, what they handed on in the medrese; each person is
   answered Devral or Düşür, and then the nazır's own seat and permissions are revoked.
 
 scope:
@@ -35,8 +37,8 @@ context:
     say: { "true": "the nazır on the row was appointed by the reader", "false": "someone else appointed the nazır on the row" }
   # found by the search (havoc on SEARCH)
   lookup: { values: [found, none, failed], initial: found }
-  target: { values: [other, self, nazir], initial: other } # the person found: someone else, the reader, or a nazır of the medrese already
-  targetBarred: { values: [false, true], initial: false } # an open ban bars the person found in the medrese or one of its köşks
+  target: { values: [other, self, nazir, gone], initial: other } # the person found: someone else, the reader, a nazır of the medrese already, or an id no account holds when Ata is pressed (deleted since the search, or named by a direct request)
+  targetBarred: { values: [none, madrasah, kosk], initial: none } # an open ban on the person found: on the medrese or one of its courses; only on a köşk that hosts one of its courses; or none
   # found by the dismissal's read (havoc on DISMISS)
   grantsRead: { values: [true, false], initial: true }
   given: { values: [none, some], initial: none } # the nazır handed on a role or a permission in the medrese
@@ -44,8 +46,8 @@ context:
   handedOnBelow: { values: [false, true], initial: false } # a person whose seat is dropped handed something on under it
   listMoved: { values: [false, true], initial: false } # what the nazır handed on changed after the dialog read it
   answer: { values: [none, takeOver, drop], initial: none }
-  notice: { values: [none, notFound, lookupFailed, selfGrant, appointed, dismissed, changed, cascade, notYours], initial: none }
-  seated: { values: [none, other, otherBarred, self], initial: none }
+  notice: { values: [none, notFound, lookupFailed, selfGrant, unknownAccount, barred, appointed, dismissed, changed, cascade, notYours], initial: none }
+  seated: { values: [none, other, self], initial: none }
   dismissed: { values: [false, true], initial: false }
 
 guards:
@@ -55,16 +57,17 @@ guards:
 
 effects:
   clearNotice: { set: { notice: none } }
-  openAppoint: { set: { notice: none, seated: none, lookup: found, target: other, targetBarred: false, grantsRead: true, given: none, selfAmongGiven: false, handedOnBelow: false, listMoved: false, answer: none, dismissed: false } }
+  openAppoint: { set: { notice: none, seated: none, lookup: found, target: other, targetBarred: none, grantsRead: true, given: none, selfAmongGiven: false, handedOnBelow: false, listMoved: false, answer: none, dismissed: false } }
   searched: { set: { notice: none }, havoc: [lookup, target, targetBarred] }
   notFound: { set: { notice: notFound } }
   lookupFailed: { set: { notice: lookupFailed } }
-  unpick: { set: { lookup: found, target: other, targetBarred: false } }
+  unpick: { set: { lookup: found, target: other, targetBarred: none } }
   noticeSelfGrant: { set: { notice: selfGrant } }
+  noticeUnknownAccount: { set: { notice: unknownAccount } }
+  noticeBarred: { set: { notice: barred } }
   seatedOther: { set: { seated: other, notice: appointed } }
-  seatedOtherBarred: { set: { seated: otherBarred, notice: appointed } }
   seatedSelf: { set: { seated: self, notice: appointed } }
-  askGrants: { set: { notice: none, answer: none, dismissed: false, seated: none, lookup: found, target: other, targetBarred: false }, havoc: [grantsRead, given, selfAmongGiven, handedOnBelow, listMoved] }
+  askGrants: { set: { notice: none, answer: none, dismissed: false, seated: none, lookup: found, target: other, targetBarred: none }, havoc: [grantsRead, given, selfAmongGiven, handedOnBelow, listMoved] }
   reread: { set: { answer: none, listMoved: false }, havoc: [grantsRead, given, selfAmongGiven, handedOnBelow] }
   answerTakeOver: { set: { answer: takeOver } }
   answerDrop: { set: { answer: drop } }
@@ -75,7 +78,7 @@ effects:
 
 failures:
   searching: { from: lookupUser, unavailable: [KEYCLOAK_ADMIN_UNAVAILABLE] }
-  appointing: { from: addMadrasahNazir, selfGrant: [SELF_GRANT_REFUSED] }
+  appointing: { from: addMadrasahNazir, selfGrant: [SELF_GRANT_REFUSED], unknown: [MADRASAH_NAZIR_UNKNOWN_ACCOUNT], barred: [MADRASAH_NAZIR_BARRED] }
   readingGrants: { from: getMadrasahNazirGrants, read: [MADRASAH_NAZIR_NOT_FOUND] }
   dismissing:
     from: removeMadrasahNazir
@@ -159,18 +162,21 @@ states:
   appointing:
     title: Appoint the nazır
     description: >-
-      POST /madrasahs/:id/nazirs/:userId. Nobody but the başnazım appoints themselves, whatever they hold. In one
-      transaction under the medrese's lock: a seat already held changes nothing; otherwise what an earlier seat left is
-      revoked, a MEDRESE_NAZIR seat with no permission is written, and the audit row madrasah_nazir.appoint with the
-      level the caller acts at. The user id is not checked against the users table, the realm or a ban.
+      POST /madrasahs/:id/nazirs/:userId. Nobody but the başnazım appoints themselves, whatever they hold. The id must
+      name an account of the app or the realm, and no open ban may bar the person on the medrese or one of its courses;
+      a ban on a köşk that hosts one of its courses is not asked. Then, in one transaction under the medrese's lock: a
+      seat already held changes nothing; otherwise what an earlier seat left is revoked, a MEDRESE_NAZIR seat with no
+      permission is written, and the audit row madrasah_nazir.appoint with the level the caller acts at.
     invoke: { action: addMadrasahNazir }
-    source: apps/tedrisat/src/madrasah/nazir/madrasah-nazir.controller.ts:103
+    source: apps/tedrisat/src/madrasah/nazir/madrasah-nazir.service.ts:101
     on:
       FAIL.selfGrant: { guard: "target == 'self' and selfRefused", target: picked, effect: [noticeSelfGrant], say: "403 SELF_GRANT_REFUSED, audited; a toast says so", source: "libs/common/src/authz/self-grant.guard.ts:91" }
+      FAIL.unknown: { guard: "target == 'gone'", target: picked, effect: [noticeUnknownAccount], say: "404 MADRASAH_NAZIR_UNKNOWN_ACCOUNT: a toast says the account was not found", source: "apps/tedrisat/src/madrasah/nazir/madrasah-nazir.service.ts:114" }
+      FAIL.barred: { guard: "target != 'gone' and targetBarred == 'madrasah' and not (target == 'self' and selfRefused)", target: picked, effect: [noticeBarred], say: "409 MADRASAH_NAZIR_BARRED: a toast says the person is barred here and cannot be made its nazır", source: "apps/tedrisat/src/madrasah/nazir/madrasah-nazir.service.ts:116" }
       DONE:
-        - { guard: "target == 'self' and not selfRefused", target: roster, effect: [seatedSelf], say: "the başnazım appoints himself: the guard does not ask him", source: "libs/common/src/authz/self-grant.guard.ts:67" }
-        - { guard: "target == 'other' and targetBarred", target: roster, effect: [seatedOtherBarred], say: "the person is seated, ban or no ban", source: "apps/tedrisat/src/madrasah/nazir/madrasah-nazir.repository.ts:228" }
-        - { guard: "target == 'other'", target: roster, effect: [seatedOther], say: "the person is a nazır with no permission; a toast says so and the roster is read again", source: "apps/nazar/features/nazirs/components/appoint-nazir.tsx:100" }
+        - { guard: "target == 'self' and not selfRefused and targetBarred != 'madrasah'", target: roster, effect: [seatedSelf], say: "the başnazım appoints himself: the guard does not ask him", source: "libs/common/src/authz/self-grant.guard.ts:67" }
+        - { guard: "target == 'other' and targetBarred == 'kosk'", target: roster, effect: [seatedOther], say: "seated: a ban on a köşk that hosts one of the medrese's courses is not asked", source: "apps/tedrisat/src/ban/ban.repository.ts:728" }
+        - { guard: "target == 'other' and targetBarred == 'none'", target: roster, effect: [seatedOther], say: "the person is a nazır with no permission; a toast says so and the roster is read again", source: "apps/nazar/features/nazirs/components/appoint-nazir.tsx:100" }
 
   readingGrants:
     title: Read what the nazır handed on
@@ -228,7 +234,12 @@ states:
 assertions:
   - { id: only-appointers-appoint, never: "seated != 'none' and actor == 'nazirNot'", say: "A nazır not given madrasah.nazir_appoint never appoints anyone", source: "apps/tedrisat/src/madrasah/nazir/madrasah-nazir.controller.ts:96" }
   - { id: nobody-appoints-self, never: "seated == 'self' and actor != 'admin'", say: "Nobody but the başnazım appoints themselves a nazır", source: "apps/tedrisat/src/madrasah/nazir/madrasah-nazir.controller.ts:109" }
+  - { id: only-accounts-appointed, never: "seated != 'none' and target == 'gone'", say: "Only an existing account is appointed a nazır", source: "apps/tedrisat/src/madrasah/nazir/madrasah-nazir.service.ts:114" }
+  - { id: barred-never-appointed, never: "seated != 'none' and targetBarred == 'madrasah'", say: "Nobody a ban bars in the medrese or one of its courses is appointed its nazır", source: "apps/tedrisat/src/madrasah/nazir/madrasah-nazir.service.ts:116" }
   - { id: appointer-dismisses-own, never: "dismissed and actor == 'appointer' and not rowMine", say: "A nazır given madrasah.nazir_appoint dismisses only the nazırs they appointed", source: "apps/tedrisat/src/madrasah/nazir/madrasah-nazir.repository.ts:817" }
   - { id: no-take-over-of-own, never: "dismissed and answer == 'takeOver' and selfAmongGiven and actor != 'admin'", say: "Nobody becomes the giver of what they were given themselves", source: "apps/tedrisat/src/madrasah/nazir/madrasah-nazir.controller.ts:183" }
   - { id: answers-match-the-list, never: "dismissed and listMoved", say: "A dismissal never goes through on answers to a list that has changed", source: "apps/tedrisat/src/madrasah/nazir/dismissal-plan.ts:30" }
   - { id: nothing-left-unasked, never: "dismissed and answer == 'drop' and handedOnBelow", say: "No dropped seat leaves behind what its holder handed on, unasked", source: "apps/tedrisat/src/madrasah/nazir/madrasah-nazir.repository.ts:884" }
+# NOT HELD, kept out on purpose (REPORT.md, MS-17):
+#   kosk-barred-never-appointed: "seated != 'none' and targetBarred == 'kosk'" is reached: a ban on a köşk that hosts
+#     one of the medrese's courses bars the person from that course (ban.repository.ts:219) but is not asked here.

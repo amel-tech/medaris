@@ -259,9 +259,10 @@ actions:
     needs: session
     source: apps/tedrisat/src/course/course.controller.ts:633
     result: { status: 201, returns: Enrollment }
-    sideEffects: ["notify:ENROLLMENT_APPROVED"] # asks nothing of bans (course.service.ts:1621)
+    sideEffects: ["notify:ENROLLMENT_APPROVED"]
     refusals:
       AUTHZ_FORBIDDEN: { status: 403, source: "apps/tedrisat/src/course/course.controller.ts:632" }
+      BAN_ACTIVE: { status: 403, source: "apps/tedrisat/src/course/course.service.ts:1638" } # since #369; the source points at main 4b1f9f78
       ENROLLMENT_NOT_FOUND: { status: 404, source: "apps/tedrisat/src/course/course.service.ts:1628" }
       ENROLLMENT_STATE_CONFLICT: { status: 409, source: "apps/tedrisat/src/course/course.service.ts:1631" }
   getMadrasahStudents:
