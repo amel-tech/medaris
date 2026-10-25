@@ -1617,6 +1617,11 @@ export class CourseService {
    *
    * `kick: false` is for "Toplu talebe ekle" (`BulkEnrollmentService`), which
    * approves many requests this way and runs the invitations once at the end.
+   *
+   * A barred talebe is not seated this way either (MDRS-177): neither a
+   * waiting request nor a revoked seat is approved while an open ban bars
+   * them, as the bulk list and a partner application's registration already
+   * refuse.
    */
   async approveEnrollment(
     courseId: string,
@@ -1630,6 +1635,7 @@ export class CourseService {
     if (existing.status === EnrollmentStatus.COMPLETED) {
       throw new EnrollmentStateError(courseId, existing.status);
     }
+    await this.banService.assertNotBarred(studentId, courseId);
     // Conditional on the status read: a revoked seat is the one that may be
     // approved back, and only while it is still revoked.
     const updated = await this.courseRepo.setEnrollmentStatus(
@@ -1707,6 +1713,10 @@ export class CourseService {
       throw new EnrollmentStateError(courseId, existing.status);
     }
     if (existing.status === status) return existing;
+    // Reopening a completion seats the talebe again, which a ban forbids.
+    if (status === EnrollmentStatus.ENROLLED) {
+      await this.banService.assertNotBarred(studentId, courseId);
+    }
     // Only while it is still in the status read: a removal that landed since
     // turned it REVOKED, and completing or reopening must not undo that.
     const updated = await this.courseRepo.setEnrollmentStatus(
