@@ -110,7 +110,7 @@ states:
   tedrisHome: { type: final, title: Tedris's Ana sayfa, response: { redirect: /home }, source: "apps/tedris/app/page.tsx:13" }
   nazarScope: { type: final, title: The remembered or first medrese or course, response: { redirect: "/medrese/{id} or /ders/{id}" }, source: "apps/nazar/features/shell/scope.ts:206" }
   nazarNoAccess: { type: final, title: Nazar's no-access page, response: { redirect: /erisim-yok }, source: "apps/nazar/app/erisim-yok/page.tsx:28" }
-  nazarUnavailable: { type: final, title: Nazar says the roles could not be read, with a retry, response: { page: PortalUnavailable }, source: "apps/nazar/app/page.tsx:15" }
+  nazarUnavailable: { type: final, title: "Nazar says the roles could not be read, with a retry", response: { page: PortalUnavailable }, source: "apps/nazar/app/page.tsx:15" }
   nizamDashboard: { type: final, title: Nizam's dashboard, response: { page: MedarisHome }, source: "apps/nizam/app/(home)/page.tsx:87" }
   nizamDashboardFailed: { type: final, title: The dashboard says it could not be read, response: { page: LoadFailed }, source: "apps/nizam/app/(home)/page.tsx:77" }
   nizamForbidden: { type: final, title: Bu bölüm için izniniz yok, response: { page: NoAccess }, source: "apps/nizam/app/not-found.tsx:23" }

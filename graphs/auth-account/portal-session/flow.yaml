@@ -128,7 +128,7 @@ states:
       - { target: visitor, say: "a public page renders for a visitor", source: "libs/auth/src/server/proxy.ts:203" }
 
   toSignIn: { type: final, title: To the sign-in page, response: { redirect: "/auth/signin?callbackUrl=<the page>" }, source: "libs/auth/src/server/proxy.ts:207" }
-  visitor: { type: final, title: The public page, for a visitor, source: "libs/auth/src/server/proxy.ts:219" }
+  visitor: { type: final, title: "The public page, for a visitor", source: "libs/auth/src/server/proxy.ts:219" }
   toSignOut: { type: final, title: Hand over to signing out, source: "libs/auth/src/client/sign-out.ts:138" }
 
 assertions:
