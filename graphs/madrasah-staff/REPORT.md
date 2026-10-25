@@ -15,7 +15,7 @@
 | review-enrollments | 9 | 258 | 4/4 |
 | bulk-add-talebe | 5 | 472 | 5/5 |
 
-`domain/domain.yaml` (`medaris.madrasah-staff`): 12 varlık, 39 eylem, 9 değişmez (biri cinsiyet şartı, `enforced: false`).
+`domain/domain.yaml` (`medaris.madrasah-staff`): 12 varlık, 39 eylem, 9 değişmez (biri cinsiyet şartı: `holds: false`, `finding: MS-7`).
 
 ## Okumamın en zayıf olduğu yerler
 
@@ -50,7 +50,7 @@ F01, F03, F05, F15, F35, F42 sürüyor; F36 yarı yarıya (yukarıda); F02 (lear
 
 ## delurio-graph/0'ın anlatamadıkları
 
-Onay kutusu, seçim kutusu, sekme ve basma düğmesi bileşeni yok (TextField/ListItem ile rol verildi); `when` değerlendirilmiyor ve satır başına koşul (rowMine) satıra bağlanamıyor; çağrılan akışın sonucu ve bağlamı denetlenmiyor; `havoc` değerleri ihlal yolunda görünmüyor; bir ekranın hangi uygulamada olduğu yazılamıyor; canlılık ("talep sonunda ulaşır") yok; sayfa değiştikten sonra görünen toast'ın yeri yok; zamanlayıcı sahte olay; şart ile kodun yaptığını ayıran alan yok (`requirement`, `enforced` benim).
+Onay kutusu, seçim kutusu, sekme ve basma düğmesi bileşeni yok (TextField/ListItem ile rol verildi); `when` değerlendirilmiyor ve satır başına koşul (rowMine) satıra bağlanamıyor; çağrılan akışın sonucu ve bağlamı denetlenmiyor; `havoc` değerleri ihlal yolunda görünmüyor; bir ekranın hangi uygulamada olduğu yazılamıyor; canlılık ("talep sonunda ulaşır") yok; sayfa değiştikten sonra görünen toast'ın yeri yok; zamanlayıcı sahte olay. Şart ile kodun yaptığını ayıran alan yoktu; SPEC'e `holds: false` ve `finding` eklendi (25 Ekim 2026).
 
 ## Kapsam
 
