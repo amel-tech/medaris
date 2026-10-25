@@ -7,8 +7,9 @@ import { useDatabaseForThisFile } from "../helpers/test-app.helper";
  * Migration 0067 copies the medrese's requests for a course outside it from
  * `offsite_course_requests`, which no screen reads, to `course_requests`, which
  * the köşk's "Ders talepleri" (nizam/39) lists and decides: each with its id,
- * as PENDING, once. Its rollback removes the copies still waiting and keeps one
- * a köşk's nazım has answered since. Like the other migration specs, the schema
+ * as PENDING, once, and never over a row already there. Its rollback removes
+ * only the copies still waiting untouched, and keeps one a köşk's nazım has
+ * answered since and a row that was there before. Like the other migration specs, the schema
  * is built file by file so that rows exist BEFORE 0067 runs.
  */
 const MIGRATIONS = join(__dirname, "../../src/database/migrations");
@@ -34,6 +35,8 @@ describe("0067_offsite_requests_reach_kosk migration (e2e)", () => {
     head: "c0670000-0000-4000-8000-000000000001",
     first: "c0670000-0000-4000-8000-000000000002",
     second: "c0670000-0000-4000-8000-000000000003",
+    // in both tables before 0067, with other words: not 0067's to add or take back
+    shared: "c0670000-0000-4000-8000-000000000004",
   };
   let madrasahId: string;
   let koskId: string;
@@ -81,6 +84,7 @@ describe("0067_offsite_requests_reach_kosk migration (e2e)", () => {
     for (const [id, title, at] of [
       [ids.first, "Erbaîn-i Nevevî okumaları", "2026-10-01T09:00:00Z"],
       [ids.second, "Emsile ve Bina", "2026-10-02T09:00:00Z"],
+      [ids.shared, "Avâmil", "2026-10-03T09:00:00Z"],
     ]) {
       await client.query(
         "insert into offsite_course_requests (id, madrasah_id, kosk_id, title, reason, requested_by, created_at) values ($1, $2, $3, $4, 'Medresemizde bu metni okutan bir ders yok.', $5, $6)",
@@ -93,12 +97,20 @@ describe("0067_offsite_requests_reach_kosk migration (e2e)", () => {
     await client?.end();
   });
 
+  const insertShared = () =>
+    client.query(
+      "insert into course_requests (id, madrasah_id, kosk_id, title, reason, requested_by, created_at) values ($1, $2, $3, 'Önceden vardı', 'Başka bir yoldan', $4, '2026-09-30T09:00:00Z')",
+      [ids.shared, madrasahId, koskId, ids.head]
+    );
+
   it("copies every request to the köşk's table with its id, as PENDING, once; the rollback keeps one answered since", async () => {
     expect(await requests()).toEqual([]);
+    await insertShared();
 
     await run(join(MIGRATIONS, `${TARGET}.sql`));
     const copied = await requests();
     expect(copied).toEqual([
+      expect.objectContaining({ id: ids.shared, title: "Önceden vardı" }),
       {
         id: ids.first,
         kosk_id: koskId,
@@ -113,7 +125,7 @@ describe("0067_offsite_requests_reach_kosk migration (e2e)", () => {
 
     // Running it again copies nothing twice.
     await run(join(MIGRATIONS, `${TARGET}.sql`));
-    expect(await requests()).toHaveLength(2);
+    expect(await requests()).toHaveLength(3);
 
     // A köşk's nazım answers the first; the rollback takes back only the
     // second, which still waits, and leaves the old table as it was.
@@ -123,11 +135,12 @@ describe("0067_offsite_requests_reach_kosk migration (e2e)", () => {
     );
     await run(join(ROLLBACKS, `${TARGET}.down.sql`));
     expect(await requests()).toEqual([
+      expect.objectContaining({ id: ids.shared, title: "Önceden vardı" }),
       expect.objectContaining({ id: ids.first, status: "REJECTED" }),
     ]);
     const { rows: old } = await client.query(
       "select count(*)::int as n from offsite_course_requests"
     );
-    expect(old[0].n).toBe(2);
+    expect(old[0].n).toBe(3);
   });
 });
