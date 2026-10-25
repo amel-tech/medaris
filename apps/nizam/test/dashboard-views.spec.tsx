@@ -113,6 +113,14 @@ const chief: NizamDashboardResponse = {
 describe("the başnazım's home page (nizam 01)", () => {
   const html = render(<MedarisHome data={chief} grants={null} nowIso={NOW} />);
 
+  // Since the locale left the path (#348) the links are plain paths; one that
+  // starts with "//" is read by the browser as another host.
+  it("links only to its own pages, never to a //host", () => {
+    expect(html).toContain('href="/kosks"');
+    expect(html).toContain('href="/yasaklamalar"');
+    expect(html).not.toMatch(/href="\/\//);
+  });
+
   it("greets by name and adds the queues: 3 + 2 + 0 + 0 = 5", () => {
     expect(html).toContain("Selâmün aleyküm, Yusuf Ziya Bey.");
     expect(html).toContain("Karar bekleyen 5 talep var.");
@@ -137,8 +145,8 @@ describe("the başnazım's home page (nizam 01)", () => {
     expect(html).toContain("Bugün 08:45");
     expect(html).toContain("18 ezber kartı");
     expect(html).toContain("29 Eyl 21:10");
-    expect(html).toContain("/talepler/kosk-basvurulari?secili=a1");
-    expect(html).toContain("/talepler/deste-yayin-istekleri?secili=d1");
+    expect(html).toContain('href="/talepler/kosk-basvurulari?secili=a1"');
+    expect(html).toContain('href="/talepler/deste-yayin-istekleri?secili=d1"');
     expect(html).toContain("Başmüderris ata");
     expect(html).toContain("Hoca ata");
     expect(html).toContain("Ders yasağı: Emsile ve Bina");
@@ -230,6 +238,10 @@ describe("a Medaris nazımı's home page (nizam 05)", () => {
   const html = render(
     <MedarisHome data={nazim} grants={grants} nowIso={NOW} />
   );
+
+  it("links only to its own pages, never to a //host", () => {
+    expect(html).not.toMatch(/href="\/\//);
+  });
 
   it("sums the three queues it shows: 7 (criterion 2)", () => {
     expect(html).toContain("Selâmün aleyküm, Hasan Basri Bey.");
