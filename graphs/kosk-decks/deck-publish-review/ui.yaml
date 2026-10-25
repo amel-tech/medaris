@@ -1,0 +1,71 @@
+# The screens of medaris.deck-publish-review: nizam /talepler/deste-yayin-istekleri (design nizam/16) and its two
+# reasoned dialogs (Base UI dialogs labelled by their title, the focus on the reason). Toasts are Sonner's polite live
+# region, drawn as status nodes. A row's title and the selected deck's title are data, so their message is the value.
+schema: delurio-graph/0
+kind: ui
+id: medaris.deck-publish-review
+flow: medaris.deck-publish-review
+status: proposed
+catalog: catalog/tr.json
+locales: [tr, en]
+samples: { title: "Sarfın temel kelimeleri", count: "36" }
+changes: { key: Changes.note }
+
+nodes:
+  page: { type: page, component: Page, role: main, name: { labelledBy: title }, in: [readingCards, request, readingAll, approving, rejecting, settling, emptyPending, decidedTab, unpublishing], source: "apps/nizam/features/deck-review/components/deck-requests-view.tsx:472" }
+  title: { type: text, component: Heading, role: heading, text: { key: Requests.title }, in: [readingCards, request, readingAll, approving, rejecting, settling, emptyPending, decidedTab, unpublishing] }
+  intro: { type: text, component: Text, text: { key: Requests.intro }, in: [readingCards, request, readingAll, approving, rejecting, settling, emptyPending, decidedTab, unpublishing] }
+  notice: { type: status, component: Status, role: status, text: { key: Requests.notice }, in: [readingCards, request, readingAll, approving, rejecting, settling, emptyPending, decidedTab, unpublishing], source: "apps/nizam/features/deck-review/components/deck-requests-view.tsx:481" }
+  tabs: { type: list, component: List, role: tablist, name: { key: Requests.tabsLabel }, in: [readingCards, request, readingAll, approving, rejecting, settling, emptyPending, decidedTab, unpublishing] }
+  tab: { type: field, component: ListItem, role: tab, text: { oneOf: [Requests.tabPending, Requests.tabDecided] }, in: [readingCards, request, readingAll, approving, rejecting, settling, emptyPending, decidedTab, unpublishing], emits: DECIDED_TAB }
+  empty: { type: text, component: Text, text: { key: Requests.emptyPending }, in: [emptyPending], source: "apps/nizam/features/deck-review/components/deck-requests-view.tsx:519" }
+  list: { type: list, component: List, role: list, name: { key: Requests.title }, in: [readingCards, request, readingAll, approving, rejecting, decidedTab, unpublishing] }
+  listItem: { type: action, component: ListItem, role: listitem, text: { key: Data.title, params: { title: request.title } }, in: [readingCards, request, readingAll, approving, rejecting, decidedTab, unpublishing], repeat: requests, emits: CHOOSE, source: "apps/nizam/features/deck-review/components/deck-requests-view.tsx:283" }
+
+  eyebrow: { type: text, component: Text, text: { key: Requests.detailEyebrow }, in: [readingCards, request, readingAll, approving, rejecting, decidedTab, unpublishing] }
+  deckTitle: { type: text, component: Heading, role: heading, text: { key: Data.title, params: { title: request.title } }, in: [readingCards, request, readingAll, approving, rejecting, decidedTab, unpublishing], source: "apps/nizam/features/deck-review/components/deck-requests-view.tsx:364" }
+  ownerLine: { type: text, component: Text, text: { key: Requests.owner }, in: [request, readingAll, approving, rejecting, decidedTab, unpublishing] }
+  cardCount: { type: text, component: Text, text: { key: Requests.cardCount, params: { count: request.cards } }, in: [request, readingAll, approving, rejecting, decidedTab, unpublishing] }
+  sampleHeading: { type: text, component: Heading, role: heading, text: { key: Requests.sampleHeading }, in: [readingCards, request, readingAll, approving, rejecting] }
+  allCards: { type: action, component: LinkButton, role: button, text: { key: Requests.allCards }, in: [request, approving, rejecting], disabledIn: [approving, rejecting], emits: READ_ALL, source: "apps/nizam/features/deck-review/components/deck-requests-view.tsx:419" }
+  auditNote: { type: text, component: Text, text: { key: Requests.auditNote }, in: [readingCards, request, readingAll, approving, rejecting], source: "apps/nizam/features/deck-review/components/deck-requests-view.tsx:426" }
+  front: { type: text, component: Text, text: { key: Requests.front }, in: [request, approving, rejecting] }
+  back: { type: text, component: Text, text: { key: Requests.back }, in: [request, approving, rejecting] }
+  publishNote: { type: text, component: Text, text: { key: Requests.publishNote }, in: [request, approving, rejecting] }
+  publish: { type: action, component: Button, role: button, intent: confirm, text: { key: Requests.publish }, in: [request, approving, rejecting], disabledIn: [approving, rejecting], emits: PUBLISH, source: "apps/nizam/features/deck-review/components/deck-requests-view.tsx:437" } # drawn on the viewer's own request too
+  reject: { type: action, component: Button, role: button, intent: secondary, text: { key: Requests.reject }, in: [request, approving, rejecting], disabledIn: [approving, rejecting], emits: REJECT, source: "apps/nizam/features/deck-review/components/deck-requests-view.tsx:443" }
+  unpublishNote: { type: text, component: Text, text: { key: Requests.unpublishNote }, in: [decidedTab, unpublishing], when: "role == 'chief' and publishedPicked" }
+  unpublish: { type: action, component: Button, role: button, intent: secondary, text: { key: Requests.unpublish }, in: [decidedTab, unpublishing], disabledIn: [unpublishing], when: "role == 'chief' and publishedPicked", emits: UNPUBLISH, source: "apps/nizam/features/deck-review/components/deck-requests-view.tsx:456" }
+  publishedToast: { type: status, component: Status, role: status, text: { key: Requests.publishedBody, params: { title: request.title } }, in: [readingCards, request, emptyPending], when: "notice == 'published'" }
+  rejectedToast: { type: status, component: Status, role: status, text: { key: Requests.rejectedBody, params: { title: request.title } }, in: [readingCards, request, emptyPending], when: "notice == 'rejected'" }
+  unpublishedToast: { type: status, component: Status, role: status, text: { key: Requests.unpublishedBody, params: { title: request.title } }, in: [decidedTab], when: "notice == 'unpublished'" }
+  answeredToast: { type: status, component: Status, role: status, text: { key: Requests.errorAnswered }, in: [readingCards, request, emptyPending, decidedTab], when: "notice == 'answered'" }
+  forbiddenToast: { type: status, component: Status, role: status, text: { key: Requests.errorForbidden }, in: [request, rejectDialog], when: "notice == 'forbidden'" }
+
+  rejectDialog: { type: page, component: Page, role: dialog, name: { labelledBy: rejectTitle }, in: [rejectDialog], initialFocus: rejectReason, source: "apps/nizam/features/deck-review/components/reject-dialog.tsx:76" }
+  rejectTitle: { type: text, component: Heading, role: heading, text: { key: Reject.title }, in: [rejectDialog] }
+  rejectBody: { type: text, component: Text, text: { key: Reject.body }, in: [rejectDialog] }
+  rejectReason: { type: field, component: TextField, role: textbox, text: { key: Reject.reasonLabel }, in: [rejectDialog] }
+  rejectHelp: { type: text, component: Text, text: { key: Reject.help }, in: [rejectDialog] }
+  rejectCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: Reject.cancel }, in: [rejectDialog], emits: CANCEL }
+  rejectSubmit: { type: action, component: Button, role: button, intent: confirm, text: { key: Reject.submit }, in: [rejectDialog], emits: SUBMIT }
+
+  unpublishDialog: { type: page, component: Page, role: dialog, name: { labelledBy: unpublishTitle }, in: [unpublishDialog], initialFocus: unpublishReason, source: "apps/nizam/features/deck-review/components/reject-dialog.tsx:76" }
+  unpublishTitle: { type: text, component: Heading, role: heading, text: { key: Unpublish.title }, in: [unpublishDialog] }
+  unpublishBody: { type: text, component: Text, text: { key: Unpublish.body }, in: [unpublishDialog] }
+  unpublishReason: { type: field, component: TextField, role: textbox, text: { key: Unpublish.reasonLabel }, in: [unpublishDialog] }
+  unpublishCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: Reject.cancel }, in: [unpublishDialog], emits: CANCEL }
+  unpublishSubmit: { type: action, component: Button, role: button, intent: confirm, text: { key: Unpublish.submit }, in: [unpublishDialog], emits: SUBMIT }
+
+edges:
+  - { labelledBy: [page, title] }
+  - { labelledBy: [rejectDialog, rejectTitle] }
+  - { labelledBy: [unpublishDialog, unpublishTitle] }
+  - { triggers: [publish, approving] }
+  - { triggers: [rejectSubmit, rejecting] }
+  - { triggers: [unpublishSubmit, unpublishing] }
+  - { triggers: [listItem, readingCards] }
+
+rules:
+  - { id: read-after-choice, rule: "a private deck's cards are read only for a request the reviewer picked (the code reads them for the automatic selection too)" }
+  - { id: offered-where-it-works, rule: "Yayımla and Reddet are drawn only where the API accepts them (they are drawn on the reviewer's own deck)" }

@@ -1,0 +1,45 @@
+# The screen of medaris.flashcard-study: tedris /decks/study/{id} (design tedris/30, and tedris/32 for a visitor). The
+# page sets no first focus. The card's front and back are data. The error toast is a Base UI toast (alertdialog).
+schema: delurio-graph/0
+kind: ui
+id: medaris.flashcard-study
+flow: medaris.flashcard-study
+status: proposed
+catalog: catalog/tr.json
+locales: [tr, en]
+samples: { deck: "Sarfın temel kelimeleri", count: "12", done: "3", total: "12", n: "4", front: "دَعَا يَدْعُو دُعَاءً", back: "Çağırdı, çağırır, çağırmak." }
+changes: { key: Changes.note }
+
+nodes:
+  page: { type: page, component: Page, role: main, name: { labelledBy: title }, in: [front, back, saving, done, nothing], source: "apps/tedris/features/flashcards/components/study-session.tsx:118" }
+  title: { type: text, component: Heading, role: heading, text: { key: Study.title }, in: [front, back, saving, done, nothing], source: "apps/tedris/features/flashcards/components/study-session.tsx:130" }
+  subtitle: { type: text, component: Text, text: { oneOf: [Study.subtitleDue, Study.subtitleNew, Study.subtitleAll] }, in: [front, back, saving, done, nothing], source: "apps/tedris/features/flashcards/components/study-session.tsx:110" } # "all" for a visitor
+  finish: { type: action, component: LinkButton, role: link, intent: dismiss, text: { key: Study.finish }, in: [front, back, saving, done, nothing], emits: FINISH, source: "apps/tedris/features/flashcards/components/study-session.tsx:135" }
+  visitorNote: { type: status, component: Status, role: status, text: { key: Public.note }, in: [front, back, done, nothing], when: "not signedIn", source: "apps/tedris/features/flashcards/components/study-session.tsx:143" }
+  visitorSignIn: { type: action, component: LinkButton, role: link, text: { key: Public.signIn }, in: [front, back, done, nothing], when: "not signedIn", source: "apps/tedris/features/flashcards/components/study-session.tsx:147" }
+  roundBar: { type: status, component: Status, role: progressbar, name: { key: Study.round, params: { done: round.done, total: round.total } }, text: { key: Study.round, params: { done: round.done, total: round.total } }, in: [front, back, saving], source: "apps/tedris/features/flashcards/components/study-session.tsx:179" }
+  cardOf: { type: text, component: Text, text: { key: Study.cardOf, params: { n: card.number, total: round.total } }, in: [front, back, saving], source: "apps/tedris/features/flashcards/components/study-session.tsx:192" } # also the section's aria-label
+  frontFace: { type: text, component: Text, text: { key: Data.front, params: { front: card.front } }, in: [front, back, saving], source: "apps/tedris/features/flashcards/components/study-session.tsx:208" } # a click on it turns the card; Space too
+  backLabel: { type: text, component: Text, text: { key: Deck.backLabel }, in: [back, saving] }
+  backFace: { type: text, component: Text, text: { key: Data.back, params: { back: card.back } }, in: [back, saving], source: "apps/tedris/features/flashcards/components/study-session.tsx:214" }
+  showBack: { type: action, component: Button, role: button, intent: secondary, text: { key: Study.showBack }, in: [front], emits: REVEAL, source: "apps/tedris/features/flashcards/components/study-session.tsx:238" }
+  difficulty: { type: text, component: Text, text: { key: Study.difficulty }, in: [back, saving] }
+  hard: { type: action, component: Button, role: button, intent: secondary, text: { key: Study.hard }, in: [back, saving], disabledIn: [saving], emits: RATE_HARD, source: "apps/tedris/features/flashcards/components/study-session.tsx:226" }
+  medium: { type: action, component: Button, role: button, intent: secondary, text: { key: Study.medium }, in: [back, saving], disabledIn: [saving], emits: RATE_MEDIUM }
+  easy: { type: action, component: Button, role: button, intent: secondary, text: { key: Study.easy }, in: [back, saving], disabledIn: [saving], emits: RATE_EASY }
+  saveFailed: { type: alert, component: Alert, role: alertdialog, name: { key: Study.saveFailedTitle }, text: { key: Study.saveFailedText }, in: [back], when: failedNote, source: "apps/tedris/features/flashcards/components/study-session.tsx:98" }
+  nothingTitle: { type: text, component: Text, text: { key: Study.nothingTitle }, in: [nothing], source: "apps/tedris/features/flashcards/components/study-session.tsx:163" }
+  nothingText: { type: text, component: Text, text: { key: Study.nothingText }, in: [nothing] }
+  doneTitle: { type: text, component: Text, text: { key: Study.doneTitle }, in: [done], source: "apps/tedris/features/flashcards/components/study-session.tsx:174" }
+  doneText: { type: text, component: Text, text: { key: Study.doneText, params: { count: round.total } }, in: [done] }
+  backToDeck: { type: action, component: LinkButton, role: link, text: { key: Study.backToDeck }, in: [done, nothing], emits: BACK, source: "apps/tedris/features/flashcards/components/study-session.tsx:169" }
+
+edges:
+  - { labelledBy: [page, title] }
+  - { triggers: [hard, saving] }
+  - { triggers: [medium, saving] }
+  - { triggers: [easy, saving] }
+
+rules:
+  - { id: keyboard-turn, rule: "Space turns the card over and back when the focus is not on a control; the buttons stay the way to do everything" }
+  - { id: label-in-name, rule: "a node's visible text is contained in its accessible name (WCAG 2.5.3)" }

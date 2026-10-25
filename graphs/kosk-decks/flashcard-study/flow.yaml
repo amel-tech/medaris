@@ -1,0 +1,195 @@
+# Studying a deck in tedris (/decks/study/{id}, design tedris/30, and the signed-out round of design tedris/32, MDRS-165)
+# as the code runs it at ce47fce8. One card of the round is followed through; the schedule is review-schedule.ts,
+# with the gaps that can occur from a first rating: 0, 1, 3, 7, 14, 28, 56, 112 and 180 days.
+schema: delurio-graph/0
+kind: flow
+id: medaris.flashcard-study
+status: proposed
+domain: medaris.kosk-decks
+ui: medaris.flashcard-study
+title: Study a deck
+summary: >-
+  A signed-in reader gets today's round of a deck: up to 50 cards waiting for a repeat, most overdue first, then up to
+  10 never started. They turn a card over and say how hard it was; the server records the rating and schedules the
+  card: Zor brings it back in a day, Orta after at least three days, Kolay marks it learned and brings it back after at
+  least a week, never more than 180 days. A failed save keeps the card where it is. A visitor with no session studies
+  the first ten cards of a public deck and nothing is saved.
+
+scope:
+  shows: who reaches the round, turning a card, rating it, the schedule the rating gives, and the end of the round
+  world: open
+  outOfView:
+    - "which decks are due on Ana sayfa and Desteler: the domain's getFlashcardDecksDueToday and getFlashcardDeckSummaries"
+    - "the deck page the round starts from: medaris.deck-browse"
+    - "the queue's order within the round: the domain's getFlashcardStudyRound"
+
+context:
+  signedIn:
+    values: [true, false]
+    initial: any
+    say: { "true": "the reader is signed in", "false": "a visitor with no session" }
+  access:
+    values: [own, public, shared, none]
+    initial: any
+    say: { own: "the reader wrote the deck", public: "the deck is published", shared: "the deck belongs to a course, a köşk or a medrese the reader is enrolled for", none: "the deck is someone else's private deck, or a course deck still in draft" }
+  barred:
+    values: [false, true]
+    initial: any
+    say: { "false": "the reader is not barred", "true": "the reader is barred from the course or the köşk the deck is shared through" }
+  koskHidden:
+    values: [false, true]
+    initial: any
+    say: { "false": "the deck's köşk is shown", "true": "the köşk the deck belongs to (or its course's köşk) is hidden" }
+  roundEmpty:
+    values: [false, true]
+    initial: any
+    say: { "false": "cards wait in today's round", "true": "nothing waits today" }
+  saveOk:
+    values: [true, false]
+    initial: any
+    say: { "true": "the rating is saved", "false": "the save fails" }
+  prev:
+    values: [0, 1, 3, 7, 14, 28, 56, 112, 180]
+    initial: any
+    say: { "0": "the card has no gap yet", "1": "its last gap was a day", "3": "3 days", "7": "a week", "14": "two weeks", "28": "four weeks", "56": "eight weeks", "112": "sixteen weeks", "180": "180 days" }
+  moreCards: { values: [true, false], initial: true } # the round has another card after this one
+  asked: { values: [none, hard, medium, easy], initial: none } # the rating being saved
+  rated: { values: [none, hard, medium, easy], initial: none } # the last rating the server recorded
+  next: { values: [none, 1, 3, 7, 14, 28, 56, 112, 180], initial: none } # the gap it gave, in days
+  result: { values: [none, learning, mastered], initial: none }
+  saved: { values: [false, true], initial: false }
+  failedNote: { values: [false, true], initial: false }
+
+guards:
+  reachable: "access != 'none'" # source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:294
+
+effects:
+  askHard: { set: { asked: hard, failedNote: false } }
+  askMedium: { set: { asked: medium, failedNote: false } }
+  askEasy: { set: { asked: easy, failedNote: false } }
+  hard1: { set: { rated: hard, next: 1, result: learning, saved: true } }
+  medium3: { set: { rated: medium, next: 3, result: learning, saved: true } }
+  medium7: { set: { rated: medium, next: 7, result: learning, saved: true } }
+  medium14: { set: { rated: medium, next: 14, result: learning, saved: true } }
+  medium28: { set: { rated: medium, next: 28, result: learning, saved: true } }
+  medium56: { set: { rated: medium, next: 56, result: learning, saved: true } }
+  medium112: { set: { rated: medium, next: 112, result: learning, saved: true } }
+  medium180: { set: { rated: medium, next: 180, result: learning, saved: true } }
+  easy7: { set: { rated: easy, next: 7, result: mastered, saved: true } }
+  easy14: { set: { rated: easy, next: 14, result: mastered, saved: true } }
+  easy28: { set: { rated: easy, next: 28, result: mastered, saved: true } }
+  easy56: { set: { rated: easy, next: 56, result: mastered, saved: true } }
+  easy112: { set: { rated: easy, next: 112, result: mastered, saved: true } }
+  easy180: { set: { rated: easy, next: 180, result: mastered, saved: true } }
+  failed: { set: { failedNote: true, asked: none } }
+  nextCard: { set: { asked: none, failedNote: false }, havoc: [prev, moreCards] }
+
+failures:
+  saving: { from: replaceManyFlashcardProgress, server: [CARD_NOT_FOUND, AUTHZ_FORBIDDEN] }
+
+main:
+  given: { signedIn: true, access: shared, barred: false, koskHidden: false, roundEmpty: false, saveOk: true, prev: 7 }
+  events: [REVEAL, RATE_EASY, DONE]
+
+initial: opening
+states:
+  opening:
+    title: Open the study page
+    description: >-
+      A visitor with no session reads the deck with no token: a public deck gives its first ten cards; any other deck
+      sends them to sign in, which says nothing about whether it exists. A signed-in reader gets GET
+      /flashcard/decks/{id}/due; a deck they may not read is the not-found page. Bans and a hidden köşk are not looked at.
+    source: apps/tedris/app/decks/(medaris)/study/[id]/page.tsx:28
+    always:
+      - { guard: "not signedIn and access != 'public'", target: signIn, say: "a visitor and a deck that is not public: sent to sign in", source: "apps/tedris/app/decks/(medaris)/study/[id]/page.tsx:41" }
+      - { guard: "signedIn and not reachable", target: notFound, say: "the API answers 404", source: "apps/tedris/app/decks/(medaris)/study/[id]/page.tsx:58" }
+      - { guard: "roundEmpty", target: nothing, say: "nothing waits today", source: "apps/tedris/features/flashcards/components/study-session.tsx:155" }
+      - { target: front, say: "the first card of the round", source: "apps/tedris/features/flashcards/components/study-session.tsx:177" }
+
+  front:
+    title: Look at the card's front
+    by: human
+    goal: true
+    description: the round's bar, "Kart n / total" and the front face; Space or a click on the face turns it over
+    source: apps/tedris/features/flashcards/components/study-session.tsx:185
+    on:
+      REVEAL: { target: back, say: "Arka yüzü göster", source: "apps/tedris/features/flashcards/components/study-session.tsx:238" }
+      FINISH: { target: left, say: "Çalışmayı bitir goes back to the deck", source: "apps/tedris/features/flashcards/components/study-session.tsx:135" }
+
+  back:
+    title: Say how hard it was
+    by: human
+    description: the back face and "Ne kadar zordu?" with Zor, Orta and Kolay
+    source: apps/tedris/features/flashcards/components/study-session.tsx:211
+    on:
+      RATE_HARD:
+        - { guard: "not signedIn", target: advancing, effect: [nextCard], say: "a visitor: the next card, nothing written", source: "apps/tedris/features/flashcards/components/study-session.tsx:88" }
+        - { target: saving, effect: [askHard], say: "Zor", source: "apps/tedris/features/flashcards/components/study-session.tsx:94" }
+      RATE_MEDIUM:
+        - { guard: "not signedIn", target: advancing, effect: [nextCard], say: "a visitor: the next card, nothing written", source: "apps/tedris/features/flashcards/components/study-session.tsx:211" }
+        - { target: saving, effect: [askMedium], say: "Orta", source: "apps/tedris/features/flashcards/components/study-session.tsx:230" }
+      RATE_EASY:
+        - { guard: "not signedIn", target: advancing, effect: [nextCard], say: "a visitor: the next card, nothing written", source: "apps/tedris/features/flashcards/components/study-session.tsx:211" }
+        - { target: saving, effect: [askEasy], say: "Kolay", source: "apps/tedris/features/flashcards/components/study-session.tsx:230" }
+      HIDE_BACK: { target: front, say: "Space turns it back", source: "apps/tedris/features/flashcards/components/study-session.tsx:80" }
+      FINISH: { target: left, say: "Çalışmayı bitir", source: "apps/tedris/features/flashcards/components/study-session.tsx:211" }
+
+  saving:
+    title: Record the rating
+    description: >-
+      PUT /flashcard/cards/progress with the card and the rating: every card must sit in a deck the reader wrote, a
+      public one or one shared with them; the server sets the state and the next time from the rating and the last gap.
+      The three buttons are disabled meanwhile.
+    invoke: { action: replaceManyFlashcardProgress }
+    source: apps/tedrisat/src/flashcard/flashcard.service.ts:139
+    on:
+      DONE:
+        - { guard: "saveOk and asked == 'hard'", target: advancing, effect: [hard1, nextCard], say: "learning, back in a day", source: "apps/tedrisat/src/flashcard/domain/review-schedule.ts:37" }
+        - { guard: "saveOk and asked == 'medium' and prev in [0, 1, 3]", target: advancing, effect: [medium3, nextCard], say: "learning, back in three days", source: "apps/tedrisat/src/flashcard/domain/review-schedule.ts:41" }
+        - { guard: "saveOk and asked == 'medium' and prev == 7", target: advancing, effect: [medium7, nextCard], say: "learning, the same gap: a week", source: "apps/tedrisat/src/flashcard/domain/review-schedule.ts:43" }
+        - { guard: "saveOk and asked == 'medium' and prev == 14", target: advancing, effect: [medium14, nextCard], say: "learning, two weeks", source: "apps/tedrisat/src/flashcard/domain/review-schedule.ts:43" }
+        - { guard: "saveOk and asked == 'medium' and prev == 28", target: advancing, effect: [medium28, nextCard], say: "learning, four weeks", source: "apps/tedrisat/src/flashcard/domain/review-schedule.ts:43" }
+        - { guard: "saveOk and asked == 'medium' and prev == 56", target: advancing, effect: [medium56, nextCard], say: "learning, eight weeks", source: "apps/tedrisat/src/flashcard/domain/review-schedule.ts:43" }
+        - { guard: "saveOk and asked == 'medium' and prev == 112", target: advancing, effect: [medium112, nextCard], say: "learning, sixteen weeks", source: "apps/tedrisat/src/flashcard/domain/review-schedule.ts:43" }
+        - { guard: "saveOk and asked == 'medium' and prev == 180", target: advancing, effect: [medium180, nextCard], say: "learning, 180 days", source: "apps/tedrisat/src/flashcard/domain/review-schedule.ts:43" }
+        - { guard: "saveOk and asked == 'easy' and prev in [0, 1, 3]", target: advancing, effect: [easy7, nextCard], say: "learned, back in a week", source: "apps/tedrisat/src/flashcard/domain/review-schedule.ts:45" }
+        - { guard: "saveOk and asked == 'easy' and prev == 7", target: advancing, effect: [easy14, nextCard], say: "learned, twice the gap: two weeks", source: "apps/tedrisat/src/flashcard/domain/review-schedule.ts:47" }
+        - { guard: "saveOk and asked == 'easy' and prev == 14", target: advancing, effect: [easy28, nextCard], say: "learned, four weeks", source: "apps/tedrisat/src/flashcard/domain/review-schedule.ts:47" }
+        - { guard: "saveOk and asked == 'easy' and prev == 28", target: advancing, effect: [easy56, nextCard], say: "learned, eight weeks", source: "apps/tedrisat/src/flashcard/domain/review-schedule.ts:47" }
+        - { guard: "saveOk and asked == 'easy' and prev == 56", target: advancing, effect: [easy112, nextCard], say: "learned, sixteen weeks", source: "apps/tedrisat/src/flashcard/domain/review-schedule.ts:47" }
+        - { guard: "saveOk and asked == 'easy' and prev in [112, 180]", target: advancing, effect: [easy180, nextCard], say: "learned, at most 180 days", source: "apps/tedrisat/src/flashcard/domain/review-schedule.ts:50" }
+      FAIL.server: { guard: "not saveOk", target: back, effect: [failed], say: "not saved: a toast says so and the card stays", source: "apps/tedris/features/flashcards/components/study-session.tsx:97" }
+
+  advancing:
+    title: Move to the next card
+    description: the round is the queue the page was given; it is not read again in between, so the cards do not shift
+    source: apps/tedris/features/flashcards/components/study-session.tsx:105
+    always:
+      - { guard: "moreCards", target: front, say: "the next card", source: "apps/tedris/features/flashcards/components/study-session.tsx:106" }
+      - { target: done, say: "the round is over", source: "apps/tedris/features/flashcards/components/study-session.tsx:166" }
+
+  done:
+    title: The round is over
+    by: human
+    source: apps/tedris/features/flashcards/components/study-session.tsx:167
+    on:
+      BACK: { target: left, say: "Desteye dön", source: "apps/tedris/features/flashcards/components/study-session.tsx:167" }
+
+  nothing:
+    title: Nothing waits today
+    by: human
+    source: apps/tedris/features/flashcards/components/study-session.tsx:156
+    on:
+      BACK: { target: left, say: "Desteye dön", source: "apps/tedris/features/flashcards/components/study-session.tsx:156" }
+
+  signIn: { type: final, title: Sign in first, leavesPage: true, source: "apps/tedris/app/decks/(medaris)/study/[id]/page.tsx:41" }
+  notFound: { type: final, title: The not-found page, source: "apps/tedris/app/decks/(medaris)/study/[id]/page.tsx:58" }
+  left: { type: final, title: Back to the deck, leavesPage: true, source: "apps/tedris/features/flashcards/components/study-session.tsx:135" }
+
+assertions:
+  - { id: visitor-writes-nothing, never: "not signedIn and (saved or state == 'saving')", say: "A visitor's study writes nothing", source: "apps/tedris/features/flashcards/components/study-session.tsx:88" }
+  - { id: private-deck-not-studied, never: "state in ['front', 'back', 'saving'] and access == 'none'", say: "Nobody studies someone else's private deck or a course deck in draft", source: "apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:294" }
+  - { id: hard-is-tomorrow, never: "rated == 'hard' and next != 1", say: "Zor always brings the card back the next day", source: "apps/tedrisat/src/flashcard/domain/review-schedule.ts:37" }
+  - { id: easy-waits-a-week, never: "rated == 'easy' and next in [1, 3]", say: "Kolay never brings the card back within a week", source: "apps/tedrisat/src/flashcard/domain/review-schedule.ts:47" }
+  - { id: medium-at-least-three, never: "rated == 'medium' and next == 1", say: "Orta never brings the card back the next day", source: "apps/tedrisat/src/flashcard/domain/review-schedule.ts:43" }
+  - { id: mastered-only-by-easy, never: "result == 'mastered' and rated != 'easy'", say: "Only Kolay marks a card learned", source: "apps/tedrisat/src/flashcard/domain/review-schedule.ts:46" }

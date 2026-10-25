@@ -1,0 +1,174 @@
+# A köşk's İzinler page in nizam (/kosks/{id}/izinler, design nizam/38, MDRS-172) as the code runs it at ce47fce8: the
+# köşk's nazım appoints ders nazırları in the köşk's medrese-free courses and gives them course permissions.
+schema: delurio-graph/0
+kind: flow
+id: medaris.kosk-grants
+status: proposed
+domain: medaris.kosk-decks
+ui: medaris.kosk-grants
+title: Appoint ders nazırları in a köşk
+summary: >-
+  A nazım of the köşk, or the başnazım, lists the ders nazırları of the köşk's medrese-free courses with their
+  permissions, end and giver. "Ders nazırı ata" makes a person a course's ders nazırı with chosen permissions until an
+  optional end; "İzinleri düzenle" replaces the set and the end; "Görevden al" ends the post and every permission in
+  the course at once. Nobody but the başnazım seats themselves or rewrites their own post, and a dismissal waits while
+  someone the holder appointed still holds a post.
+
+scope:
+  shows: the İzinler page and its three dialogs
+  world: open
+  outOfView:
+    - "a medrese course's posts: the medrese's own staff, in nazar (the madrasah-staff area)"
+    - "the e-mail search of the person picker (audited): the auth-account area"
+    - "what a ders nazırı then does in the course: the learning and madrasah-staff areas"
+
+context:
+  role:
+    values: [koskNazim, chief, grantee]
+    initial: any
+    say: { koskNazim: "the person is a nazım of the köşk", chief: "the person is the başnazım", grantee: "the person holds 'Ders nazırı atama' (course_nazir.assign_kosk) in the köşk by a grant and is no nazım of it" }
+  hasPost:
+    values: [true, false]
+    initial: any
+    say: { "true": "the page lists a post", "false": "no ders nazırı is appointed" }
+  ownPost:
+    values: [false, true]
+    initial: any
+    say: { "false": "the post acted on is someone else's", "true": "the post acted on is the viewer's own" }
+  pickSelf:
+    values: [false, true]
+    initial: any
+    say: { "false": "the person chosen is someone else", "true": "the person chosen is the viewer" }
+  exists:
+    values: [false, true]
+    initial: any
+    say: { "false": "the person holds no post in that course", "true": "the person is that course's ders nazırı already" }
+  ready:
+    values: [true, false]
+    initial: any
+    say: { "true": "a person, a course, at least one permission and a valid end are given", "false": "something the dialog needs is missing" }
+  handedOn:
+    values: [false, true]
+    initial: any
+    say: { "false": "nobody the holder appointed holds a post", "true": "someone the holder appointed from the course still holds their post" }
+  posted: { values: [false, true], initial: false } # a post was made on this page
+  edited: { values: [false, true], initial: false }
+  dismissed: { values: [false, true], initial: false }
+  notice: { values: [none, assigned, saved, revoked, refused], initial: none }
+
+guards:
+  mayRewrite: "role == 'chief' or not ownPost" # source: apps/nizam/features/grants/components/grants-view.tsx:181
+  seatsSelf: "pickSelf and role != 'chief'" # source: apps/tedrisat/src/kosk/kosk-grants.controller.ts:98
+
+effects:
+  clearNotice: { set: { notice: none } }
+  posted: { set: { posted: true, notice: assigned } }
+  edited: { set: { edited: true, notice: saved } }
+  dismissed: { set: { dismissed: true, notice: revoked } }
+  refused: { set: { notice: refused } }
+
+failures:
+  assigning: { from: createKoskGrant, self: [SELF_GRANT_REFUSED], exists: [COURSE_NAZIR_EXISTS] }
+  updating: { from: updateKoskGrant, self: [SELF_GRANT_REFUSED], gone: [COURSE_NAZIR_NOT_FOUND] }
+  revoking: { from: revokeKoskGrant, handedOn: [DISMISS_SEAT_HANDED_ON] }
+
+main:
+  given: { role: koskNazim, pickSelf: false, exists: false, ready: true }
+  events: [ASSIGN, SAVE, DONE]
+
+initial: opening
+states:
+  opening:
+    title: Open İzinler
+    description: >-
+      GET /kosks/{id}/grants: the route asks for course_nazir.assign_kosk, then the service for a held köşk nazımı seat
+      (or the başnazım), and answers the posts, the köşk's courses and the codes the caller may hand out. A 403 or a
+      404 shows "Bu bölüm için izniniz yok".
+    source: apps/nizam/app/kosks/[id]/izinler/page.tsx:28
+    always:
+      - { guard: "role == 'grantee'", target: forbidden, say: "the grant passes the route, and the service refuses whoever holds no nazım seat", source: "apps/tedrisat/src/kosk/kosk-grants.service.ts:76" }
+      - { target: page, say: "the page opens", source: "apps/tedrisat/src/kosk/kosk-grants.service.ts:116" }
+
+  page:
+    title: The ders nazırları and their permissions
+    by: human
+    goal: true
+    description: >-
+      Person, course, permissions ("8 izin" and their short names), end, giver and date per post; a note names the
+      medrese courses this page does not manage. "İzinleri düzenle" is not drawn on the viewer's own post, except for
+      the başnazım; "Görevden al" is drawn on every row.
+    source: apps/nizam/features/grants/components/grants-view.tsx:206
+    on:
+      ASSIGN: { target: assignDialog, effect: [clearNotice], say: "Ders nazırı ata", source: "apps/nizam/features/grants/components/grants-view.tsx:219" }
+      EDIT: { guard: "hasPost and mayRewrite", target: editDialog, effect: [clearNotice], say: "İzinleri düzenle", source: "apps/nizam/features/grants/components/grants-view.tsx:181" }
+      REVOKE: { guard: "hasPost", target: revokeDialog, effect: [clearNotice], say: "Görevden al", source: "apps/nizam/features/grants/components/grants-view.tsx:197" }
+      NAVIGATE: { target: left, say: "they go to another page", source: "apps/nizam/features/grants/components/grants-view.tsx:206" }
+
+  assignDialog:
+    title: Choose the person, the course and the permissions
+    by: human
+    description: >-
+      The person found by e-mail, one of the köşk's medrese-free courses, the permissions the caller may give (for a
+      köşk nazımı and the başnazım: the whole course catalog) and an optional end. Kaydet is off until all are given.
+    source: apps/nizam/features/grants/components/grant-dialog.tsx:139
+    on:
+      SAVE: { guard: "ready", target: assigning, say: "Kaydet", source: "apps/nizam/features/grants/components/grant-dialog.tsx:154" }
+      CANCEL: { target: page, say: "Vazgeç", source: "apps/nizam/features/grants/components/grant-dialog.tsx:139" }
+
+  assigning:
+    title: Appoint the ders nazırı
+    description: >-
+      POST /kosks/{id}/grants: no one but the başnazım names themselves; the course must be the köşk's, medrese-free
+      and shown; a DERS_NAZIR seat and one grant per code are written with the audit row, ending together.
+    invoke: { action: createKoskGrant }
+    source: apps/tedrisat/src/kosk/kosk-grants.repository.ts:271
+    on:
+      DONE: { guard: "not exists and not seatsSelf", target: page, effect: [posted], say: "they are the course's ders nazırı", source: "apps/nizam/features/grants/components/grant-dialog.tsx:131" }
+      FAIL.self: { guard: "seatsSelf", target: assignDialog, effect: [refused], say: "403 SELF_GRANT_REFUSED: a toast says so", source: "apps/tedrisat/src/kosk/kosk-grants.controller.ts:98" }
+      FAIL.exists: { guard: "exists and not seatsSelf", target: assignDialog, effect: [refused], say: "409: they are that course's ders nazırı already", source: "apps/tedrisat/src/kosk/kosk-grants.repository.ts:311" }
+
+  editDialog:
+    title: Change the permissions and the end
+    by: human
+    description: the same dialog with the post's course and permissions ticked
+    source: apps/nizam/features/grants/components/grant-dialog.tsx:148
+    on:
+      SAVE: { guard: "ready", target: updating, say: "Kaydet", source: "apps/nizam/features/grants/components/grant-dialog.tsx:114" }
+      CANCEL: { target: page, say: "Vazgeç", source: "apps/nizam/features/grants/components/grant-dialog.tsx:148" }
+
+  updating:
+    title: Replace the post's permissions
+    description: PATCH /kosks/{id}/grants/{grantId}; what stays keeps its giver and date; the post ends when the permissions do
+    invoke: { action: updateKoskGrant }
+    source: apps/tedrisat/src/kosk/kosk-grants.repository.ts:368
+    on:
+      DONE: { guard: "mayRewrite", target: page, effect: [edited], say: "the permissions are saved", source: "apps/tedrisat/src/kosk/kosk-grants.repository.ts:368" }
+      FAIL.self: { guard: "not mayRewrite", target: editDialog, effect: [refused], say: "403: one's own post", source: "apps/tedrisat/src/kosk/kosk-grants.controller.ts:131" }
+
+  revokeDialog:
+    title: Confirm the dismissal
+    by: human
+    description: a dialog with a form (not an alertdialog) naming the person and the course; the focus starts on Vazgeç
+    source: apps/nizam/features/grants/components/revoke-dialog.tsx:72
+    on:
+      CONFIRM: { target: revoking, say: "Görevden al", source: "apps/nizam/features/grants/components/revoke-dialog.tsx:46" }
+      CANCEL: { target: page, say: "Vazgeç", source: "apps/nizam/features/grants/components/revoke-dialog.tsx:72" }
+
+  revoking:
+    title: End the post and its permissions
+    description: DELETE /kosks/{id}/grants/{grantId}; refused with nothing written while someone the holder appointed holds a post
+    invoke: { action: revokeKoskGrant }
+    source: apps/tedrisat/src/kosk/kosk-grants.repository.ts:443
+    on:
+      DONE: { guard: "not handedOn", target: page, effect: [dismissed], say: "the post and its permissions end at once", source: "apps/nizam/features/grants/components/revoke-dialog.tsx:60" }
+      FAIL.handedOn: { guard: "handedOn", target: revokeDialog, effect: [refused], say: "409: those they appointed are still in post; the dialog stays", source: "apps/nizam/features/grants/components/revoke-dialog.tsx:53" }
+
+  forbidden: { type: final, title: '"Bu bölüm için izniniz yok"', source: "apps/nizam/app/kosks/[id]/izinler/page.tsx:33" }
+  left: { type: final, title: The person goes elsewhere, leavesPage: true, source: "apps/nizam/features/grants/components/grants-view.tsx" }
+
+assertions:
+  - { id: only-nazims-appoint, never: "state in ['assignDialog', 'assigning', 'editDialog', 'updating', 'revokeDialog', 'revoking'] and role == 'grantee'", say: "Only a nazım of the köşk and the başnazım appoint, change or dismiss ders nazırları here", source: "apps/tedrisat/src/kosk/kosk-grants.service.ts:76" }
+  - { id: nobody-seats-themselves, never: "posted and pickSelf and role != 'chief'", say: "Nobody but the başnazım makes themselves a ders nazırı", source: "apps/tedrisat/src/kosk/kosk-grants.controller.ts:98" }
+  - { id: own-post-not-rewritten, never: "state == 'updating' and ownPost and role != 'chief'", say: "Nobody but the başnazım rewrites their own post", source: "apps/nizam/features/grants/components/grants-view.tsx:181" }
+  - { id: one-post-per-course, never: "posted and exists", say: "A person holds at most one ders nazırı post in a course", source: "apps/tedrisat/src/kosk/kosk-grants.repository.ts:311" }
+  - { id: dismissal-waits-for-appointees, never: "dismissed and handedOn", say: "A ders nazırı is not dismissed while someone they appointed holds a post", source: "apps/tedrisat/src/kosk/kosk-grants.repository.ts:461" }

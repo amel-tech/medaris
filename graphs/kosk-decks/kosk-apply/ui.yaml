@@ -1,0 +1,59 @@
+# The screen of medaris.kosk-apply: tedris /kosk-applications/new (design tedris/37). The page sets no first focus.
+# Field errors are the Field's description (aria-describedby), not live regions; a toast is a Base UI toast, which
+# the format has no component for: it is drawn as an alert, its role as the code gives it (alertdialog for an error).
+schema: delurio-graph/0
+kind: ui
+id: medaris.kosk-apply
+flow: medaris.kosk-apply
+status: proposed
+catalog: catalog/tr.json
+locales: [tr, en]
+changes: { key: Changes.note }
+
+nodes:
+  page: { type: page, component: Page, role: main, name: { labelledBy: title }, in: [form, sending, sent], source: "apps/tedris/app/kosk-applications/new/page.tsx:24" }
+  title: { type: text, component: Heading, role: heading, text: { key: Apply.title }, in: [form, sending, sent], source: "apps/tedris/app/kosk-applications/new/page.tsx:34" }
+  subtitle: { type: text, component: Text, text: { key: Apply.subtitle }, in: [form, sending, sent] }
+
+  koskHeading: { type: text, component: Heading, role: heading, text: { key: Apply.koskTitle }, in: [form, sending], source: "apps/tedris/features/kosk-application/components/kosk-application-page.tsx:106" }
+  requiredNote: { type: text, component: Text, text: { key: Apply.requiredNote }, in: [form, sending] }
+  nameField: { type: field, component: TextField, role: textbox, text: { key: Apply.name }, in: [form, sending], source: "apps/tedris/features/kosk-application/components/kosk-application-page.tsx:110" }
+  nameError: { type: text, component: Text, text: { key: Apply.errorName }, in: [form], when: errorsShown }
+  fieldSelect: { type: field, component: TextField, role: combobox, text: { key: Apply.field }, in: [form, sending], source: "apps/tedris/features/kosk-application/components/kosk-application-page.tsx:130" }
+  fieldError: { type: text, component: Text, text: { key: Apply.errorField }, in: [form], when: errorsShown }
+  summaryField: { type: field, component: TextField, role: textbox, text: { key: Apply.summary }, in: [form, sending], source: "apps/tedris/features/kosk-application/components/kosk-application-page.tsx:150" }
+  summaryError: { type: text, component: Text, text: { key: Apply.errorSummary }, in: [form], when: errorsShown }
+  reasonField: { type: field, component: TextField, role: textbox, text: { key: Apply.reason }, in: [form, sending], source: "apps/tedris/features/kosk-application/components/kosk-application-page.tsx:165" }
+  reasonError: { type: text, component: Text, text: { key: Apply.errorReason }, in: [form], when: errorsShown }
+
+  contactHeading: { type: text, component: Heading, role: heading, text: { key: Apply.contactTitle }, in: [form, sending], source: "apps/tedris/features/kosk-application/components/kosk-application-page.tsx:177" }
+  emailField: { type: field, component: TextField, role: textbox, text: { key: Apply.email }, in: [form, sending], source: "apps/tedris/features/kosk-application/components/kosk-application-page.tsx:186" }
+  emailHelp: { type: text, component: Text, text: { key: Apply.emailHelp }, in: [form, sending] }
+  emailError: { type: text, component: Text, text: { key: Apply.errorEmail }, in: [form], when: errorsShown }
+  phoneField: { type: field, component: TextField, role: textbox, text: { key: Apply.phone }, in: [form, sending], source: "apps/tedris/features/kosk-application/components/kosk-application-page.tsx:202" }
+  phoneError: { type: text, component: Text, text: { key: Apply.errorPhone }, in: [form], when: errorsShown }
+  notice: { type: text, component: Text, text: { key: Apply.noticeBefore }, in: [form, sending], source: "apps/tedris/features/kosk-application/components/kosk-application-page.tsx:213" }
+  noticeLink: { type: action, component: LinkButton, role: link, text: { key: Apply.noticeLink }, in: [form, sending], source: "apps/tedris/features/kosk-application/components/kosk-application-page.tsx:215" } # opens the privacy notice in a new tab
+
+  cancel: { type: action, component: LinkButton, role: link, intent: dismiss, text: { key: Apply.cancel }, in: [form, sending], emits: CANCEL, source: "apps/tedris/features/kosk-application/components/kosk-application-page.tsx:229" }
+  submit: { type: action, component: Button, role: button, intent: confirm, text: { key: Apply.submit }, in: [form, sending], disabledIn: [sending], emits: SUBMIT, source: "apps/tedris/features/kosk-application/components/kosk-application-page.tsx:232" } # busy, not disabled: aria-disabled and aria-busy
+  sendingStatus: { type: status, component: Status, role: status, text: { key: Apply.sending }, in: [sending], source: "libs/ui/src/mds/button.tsx:113" }
+  failedToast: { type: alert, component: Alert, role: alertdialog, name: { key: Apply.submitFailed }, text: { key: Apply.submitFailed }, in: [form], when: failedNote, source: "apps/tedris/features/kosk-application/components/kosk-application-page.tsx:72" }
+  failedHint: { type: text, component: Text, text: { key: Apply.errorHint }, in: [form], when: failedNote }
+
+  afterHeading: { type: text, component: Heading, role: heading, text: { key: Apply.afterTitle }, in: [form, sending], source: "apps/tedris/features/kosk-application/components/kosk-application-page.tsx:239" }
+  afterSteps: { type: list, component: List, role: list, name: { labelledBy: afterHeading }, in: [form, sending] }
+  afterStep: { type: text, component: ListItem, role: listitem, text: { oneOf: [Apply.step1, Apply.step2, Apply.step3] }, in: [form, sending] }
+
+  sentHeading: { type: text, component: Heading, role: heading, text: { key: Apply.sentTitle }, in: [sent], source: "apps/tedris/features/kosk-application/components/kosk-application-page.tsx:85" }
+  sentText: { type: status, component: Status, role: status, text: { key: Apply.sentText }, in: [sent], source: "apps/tedris/features/kosk-application/components/kosk-application-page.tsx:90" }
+  backToDiscover: { type: action, component: LinkButton, role: link, text: { key: Apply.backToDiscover }, in: [sent], emits: BACK, source: "apps/tedris/features/kosk-application/components/kosk-application-page.tsx:91" }
+
+edges:
+  - { labelledBy: [page, title] }
+  - { labelledBy: [afterSteps, afterHeading] }
+  - { triggers: [submit, sending] }
+
+rules:
+  - { id: nothing-saved-before-submit, rule: "no node but submit leads to a step that writes" }
+  - { id: label-in-name, rule: "a node's visible text is contained in its accessible name (WCAG 2.5.3)" }

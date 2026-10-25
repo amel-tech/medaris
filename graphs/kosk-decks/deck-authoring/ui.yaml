@@ -1,0 +1,96 @@
+# The screens of medaris.deck-authoring: tedris /decks/create (design tedris/27) and /decks/{id}/cards (design
+# tedris/29) with the card dialog (its focus on the front field), the import dialog and the card's delete alertdialog,
+# whose Vazgeç is the kit's default label, Turkish in every locale. Toasts are Base UI toasts.
+schema: delurio-graph/0
+kind: ui
+id: medaris.deck-authoring
+flow: medaris.deck-authoring
+status: proposed
+catalog: catalog/tr.json
+locales: [tr, en]
+samples: { title: "Sarfın temel kelimeleri", count: "2", n: "4", deck: "Sarfın temel kelimeleri" }
+changes: { key: Changes.note }
+
+nodes:
+  # Deste oluştur
+  createPage: { type: page, component: Page, role: main, name: { labelledBy: createTitle }, in: [createPage, creating], source: "apps/tedris/features/flashcards/components/create-deck-page.tsx:99" }
+  createTitle: { type: text, component: Heading, role: heading, text: { key: Create.title }, in: [createPage, creating] }
+  createSubtitle: { type: text, component: Text, text: { key: Create.subtitle }, in: [createPage, creating] }
+  createRequired: { type: text, component: Text, text: { key: Create.required }, in: [createPage, creating] }
+  nameField: { type: field, component: TextField, role: textbox, text: { key: Create.nameLabel }, in: [createPage, creating], source: "apps/tedris/features/flashcards/components/create-deck-page.tsx:124" }
+  nameError: { type: text, component: Text, text: { key: Create.nameRequired }, in: [createPage], when: "notice == 'formErrors'" }
+  descriptionField: { type: field, component: TextField, role: textbox, text: { key: Create.descriptionLabel }, in: [createPage, creating] }
+  kindLegend: { type: text, component: Text, text: { key: Create.kindLegend }, in: [createPage, creating] }
+  kindGroup: { type: list, component: List, role: radiogroup, name: { labelledBy: kindLegend }, in: [createPage, creating], source: "apps/tedris/features/flashcards/components/create-deck-page.tsx:142" }
+  kindChoice: { type: field, component: ListItem, role: radio, text: { oneOf: [Create.kindVocabulary, Create.kindHadeeth] }, in: [createPage, creating] }
+  kindError: { type: text, component: Text, text: { key: Create.kindRequired }, in: [createPage], when: "notice == 'formErrors'" }
+  tagsField: { type: field, component: TextField, role: textbox, text: { key: Create.tagsLabel }, in: [createPage, creating] }
+  tagsHelp: { type: text, component: Text, text: { key: Create.tagsHelp }, in: [createPage, creating] }
+  notice: { type: status, component: Status, role: status, text: { key: Create.noticeText }, in: [createPage, creating], source: "apps/tedris/features/flashcards/components/create-deck-page.tsx:193" }
+  createCancel: { type: action, component: LinkButton, role: link, intent: dismiss, text: { key: Create.cancel }, in: [createPage, creating], emits: CANCEL, source: "apps/tedris/features/flashcards/components/create-deck-page.tsx:197" }
+  createSubmit: { type: action, component: Button, role: button, intent: confirm, text: { key: Create.submit }, in: [createPage, creating], disabledIn: [creating], emits: SUBMIT, source: "apps/tedris/features/flashcards/components/create-deck-page.tsx:200" }
+  createFailed: { type: alert, component: Alert, role: alertdialog, name: { key: Create.failedTitle }, text: { key: Create.tryAgainKept }, in: [createPage], when: "notice == 'failed'" }
+
+  # Kartlar (the author's)
+  cardsPage: { type: page, component: Page, role: main, name: { labelledBy: deckTitle }, in: [cardsPage, addingCard, updatingCard, deletingCard, importing], source: "apps/tedris/features/flashcards/components/deck-cards-page.tsx:75" }
+  deckTitle: { type: text, component: Heading, role: heading, text: { key: Data.title, params: { title: deck.title } }, in: [cardsPage, addingCard, updatingCard, deletingCard, importing] }
+  export: { type: action, component: LinkButton, role: link, text: { key: Cards.export }, in: [cardsPage], source: "apps/tedris/features/flashcards/components/deck-cards-page.tsx:84" } # a download, a GET: it changes nothing
+  import: { type: action, component: Button, role: button, intent: secondary, text: { key: Cards.import }, in: [cardsPage, addingCard, updatingCard, deletingCard, importing], disabledIn: [addingCard, updatingCard, deletingCard, importing], emits: IMPORT, source: "apps/tedris/features/flashcards/components/deck-cards-page.tsx:94" }
+  addCard: { type: action, component: Button, role: button, intent: confirm, text: { key: Cards.addCard }, in: [cardsPage, addingCard, updatingCard, deletingCard, importing], disabledIn: [addingCard, updatingCard, deletingCard, importing], emits: ADD, source: "apps/tedris/features/flashcards/components/deck-cards-page.tsx:100" }
+  cardsNote: { type: text, component: Text, text: { key: Cards.note }, in: [cardsPage, addingCard, updatingCard, deletingCard, importing] }
+  cardTable: { type: list, component: List, role: table, name: { key: Cards.tableCaption, params: { title: deck.title } }, in: [cardsPage, addingCard, updatingCard, deletingCard, importing], source: "apps/tedris/features/flashcards/components/deck-cards-page.tsx:126" }
+  cardRow: { type: text, component: ListItem, role: row, text: { key: Cards.frontLabel }, in: [cardsPage, addingCard, updatingCard, deletingCard, importing], repeat: cards }
+  editCard: { type: action, component: Button, role: button, intent: secondary, name: { key: Cards.editLabel, params: { n: card.number } }, text: { key: Cards.edit }, in: [cardsPage], emits: EDIT, source: "apps/tedris/features/flashcards/components/deck-cards-page.tsx:175" }
+  deleteCard: { type: action, component: Button, role: button, intent: secondary, name: { key: Cards.deleteLabel, params: { n: card.number } }, text: { key: Cards.deleteShort }, in: [cardsPage], emits: DELETE, source: "apps/tedris/features/flashcards/components/deck-cards-page.tsx:185" }
+  deletedToast: { type: status, component: Status, role: dialog, text: { key: Cards.deletedTitle }, in: [cardsPage], when: "notice == 'deleted'" }
+  importedToast: { type: status, component: Status, role: dialog, text: { key: Import.importedText, params: { count: rows.count } }, in: [cardsPage], when: "notice == 'imported'" }
+  cardsFailed: { type: alert, component: Alert, role: alertdialog, name: { key: Cards.deleteFailedTitle }, text: { key: Cards.tryAgain }, in: [cardsPage], when: "notice == 'failed'", source: "apps/tedris/features/flashcards/components/deck-cards-page.tsx:62" }
+
+  # the card dialog
+  cardDialog: { type: page, component: Page, role: dialog, name: { labelledBy: cardDialogTitle }, in: [addDialog, editDialog, addingCard, updatingCard], initialFocus: frontField, source: "apps/tedris/features/flashcards/components/card-form-dialog.tsx:89" }
+  cardDialogTitle: { type: text, component: Heading, role: heading, text: { oneOf: [Cards.addCard, Card.editTitle] }, in: [addDialog, editDialog, addingCard, updatingCard] }
+  frontField: { type: field, component: TextField, role: textbox, text: { key: Cards.frontLabel }, in: [addDialog, editDialog, addingCard, updatingCard], disabledIn: [addingCard, updatingCard], source: "apps/tedris/features/flashcards/components/card-form-dialog.tsx:110" }
+  backField: { type: field, component: TextField, role: textbox, text: { key: Cards.backLabel }, in: [addDialog, editDialog, addingCard, updatingCard], disabledIn: [addingCard, updatingCard] }
+  cardError: { type: text, component: Text, text: { key: Card.fieldRequired }, in: [addDialog, editDialog], when: "not cardOk" }
+  cardFailed: { type: alert, component: Alert, role: alertdialog, name: { key: Card.saveFailedTitle }, text: { key: Create.tryAgainKept }, in: [addDialog, editDialog], when: "notice == 'failed'" }
+  cardCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: Card.cancel }, in: [addDialog, editDialog, addingCard, updatingCard], disabledIn: [addingCard, updatingCard], emits: CANCEL }
+  cardSave: { type: action, component: Button, role: button, intent: confirm, text: { key: Card.save }, in: [addDialog, editDialog, addingCard, updatingCard], disabledIn: [addingCard, updatingCard], emits: SAVE, source: "apps/tedris/features/flashcards/components/card-form-dialog.tsx:102" }
+
+  # Kartı sil?
+  deleteDialog: { type: page, component: Page, role: alertdialog, name: { labelledBy: deleteTitle }, in: [deleteConfirm, deletingCard], initialFocus: deleteCancel, source: "apps/tedris/features/flashcards/components/deck-cards-page.tsx:212" }
+  deleteTitle: { type: text, component: Heading, role: heading, text: { key: Delete.title }, in: [deleteConfirm, deletingCard] }
+  deleteText: { type: text, component: Text, text: { key: Delete.text }, in: [deleteConfirm, deletingCard] } # says the progress is deleted; the rows stay
+  deleteCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: Delete.cancel }, in: [deleteConfirm, deletingCard], disabledIn: [deletingCard], emits: CANCEL, source: "libs/ui/src/mds/alert-dialog.tsx:42" }
+  deleteYes: { type: action, component: Button, role: button, intent: confirm, text: { key: Delete.confirm }, in: [deleteConfirm, deletingCard], disabledIn: [deletingCard], emits: CONFIRM, source: "apps/tedris/features/flashcards/components/deck-cards-page.tsx:219" } # variant destructive
+
+  # Kartları içe aktar
+  importDialog: { type: page, component: Page, role: dialog, name: { labelledBy: importTitle }, in: [importDialog, importing], initialFocus: importClose, source: "apps/tedris/features/flashcards/components/import-cards-dialog.tsx:102" }
+  importTitle: { type: text, component: Heading, role: heading, text: { key: Import.title }, in: [importDialog, importing] }
+  importClose: { type: action, component: Button, role: button, intent: dismiss, name: { key: Dialog.close }, in: [importDialog, importing], disabledIn: [importing], emits: CANCEL, source: "libs/ui/src/mds/dialog.tsx:97" } # no initialFocus: Base UI's first tabbable element; named by the kit's default "Kapat"
+  importFile: { type: field, component: TextField, role: textbox, text: { key: Import.file }, in: [importDialog, importing], disabledIn: [importing] }
+  importHelp: { type: text, component: Text, text: { key: Import.help }, in: [importDialog, importing] }
+  importSample: { type: action, component: LinkButton, role: link, text: { key: Import.sample }, in: [importDialog] }
+  rowErrors: { type: alert, component: Alert, role: alert, text: { key: Import.rowErrors, params: { count: rows.bad } }, in: [importDialog], when: "notice == 'rowErrors'", source: "apps/tedris/features/flashcards/components/import-cards-dialog.tsx:149" }
+  importSubmit: { type: action, component: Button, role: button, intent: confirm, text: { key: Cards.import }, in: [importDialog, importing], disabledIn: [importing], emits: SUBMIT, source: "apps/tedris/features/flashcards/components/import-cards-dialog.tsx:114" }
+
+  # a reader of the deck on Kartlar
+  forbiddenTitle: { type: text, component: Heading, role: heading, text: { key: Forbidden.title }, in: [notTheirs], source: "apps/tedris/app/decks/(medaris)/[id]/cards/page.tsx:42" }
+  forbiddenText: { type: text, component: Text, text: { key: Forbidden.deckText, params: { deck: deck.title } }, in: [notTheirs] } # "a public deck", said for a shared deck too
+  forbiddenAction: { type: action, component: LinkButton, role: link, text: { key: Forbidden.deckAction }, in: [notTheirs] }
+
+edges:
+  - { labelledBy: [createPage, createTitle] }
+  - { labelledBy: [kindGroup, kindLegend] }
+  - { labelledBy: [cardsPage, deckTitle] }
+  - { labelledBy: [cardDialog, cardDialogTitle] }
+  - { labelledBy: [deleteDialog, deleteTitle] }
+  - { labelledBy: [importDialog, importTitle] }
+  - { triggers: [createSubmit, creating] }
+  - { triggers: [cardSave, addingCard] }
+  - { triggers: [cardSave, updatingCard] }
+  - { triggers: [deleteYes, deletingCard] }
+  - { triggers: [importSubmit, importing] }
+
+rules:
+  - { id: localized-labels, rule: "every control's name comes from the page's locale (the delete alertdialog's Vazgeç and the dialogs' Kapat do not)" }
+  - { id: no-default-confirm, rule: "no dialog starts its focus on an action with intent confirm" }
