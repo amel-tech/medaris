@@ -46,7 +46,6 @@ export function MedarisHome({ data, grants, nowIso }: Props) {
   const now = new Date(nowIso);
   const words = { today: t("today"), yesterday: t("yesterday") };
   const when = (at: Date | string) => momentLabel(at, now, zone, words);
-  const base = `/`;
   const chief = data.viewer === "CHIEF";
 
   const total = pendingTotal(data.pendingTotals);
@@ -62,7 +61,7 @@ export function MedarisHome({ data, grants, nowIso }: Props) {
       id="home-applications"
       title={t("applications.title")}
       link={{
-        href: `${base}/talepler/kosk-basvurulari`,
+        href: "/talepler/kosk-basvurulari",
         label: t("seeAll"),
       }}
     >
@@ -88,7 +87,7 @@ export function MedarisHome({ data, grants, nowIso }: Props) {
                 <Button
                   variant="outline"
                   size="small"
-                  href={`${base}/talepler/kosk-basvurulari?secili=${a.id}`}
+                  href={`/talepler/kosk-basvurulari?secili=${a.id}`}
                   aria-label={t("reviewLabel", { name: a.name })}
                 >
                   {t("review")}
@@ -106,7 +105,7 @@ export function MedarisHome({ data, grants, nowIso }: Props) {
       id="home-decks"
       title={t("decks.title")}
       link={{
-        href: `${base}/talepler/deste-yayin-istekleri`,
+        href: "/talepler/deste-yayin-istekleri",
         label: t("seeAll"),
       }}
     >
@@ -132,7 +131,7 @@ export function MedarisHome({ data, grants, nowIso }: Props) {
                 <Button
                   variant="outline"
                   size="small"
-                  href={`${base}/talepler/deste-yayin-istekleri?secili=${d.id}`}
+                  href={`/talepler/deste-yayin-istekleri?secili=${d.id}`}
                   aria-label={t("reviewLabel", { name: d.title })}
                 >
                   {t("review")}
@@ -156,7 +155,7 @@ export function MedarisHome({ data, grants, nowIso }: Props) {
     <HomeSection
       id="home-passive"
       title={t("passive.title")}
-      link={{ href: `${base}/pasif-kapsamlar`, label: t("seeAll") }}
+      link={{ href: "/pasif-kapsamlar", label: t("seeAll") }}
     >
       {data.inactiveScopes.length === 0 ? (
         <EmptyState>{t("passive.empty")}</EmptyState>
@@ -187,7 +186,7 @@ export function MedarisHome({ data, grants, nowIso }: Props) {
                 <Button
                   variant="outline"
                   size="small"
-                  href={`${base}/pasif-kapsamlar`}
+                  href="/pasif-kapsamlar"
                   aria-label={t("passive.assignLabel", {
                     action: t(`passive.assign.${s.type}`),
                     name: s.name,
@@ -229,7 +228,7 @@ export function MedarisHome({ data, grants, nowIso }: Props) {
                 <Button
                   variant="outline"
                   size="small"
-                  href={`${base}/yasaklamalar`}
+                  href="/yasaklamalar"
                   aria-label={t("reviewLabel", {
                     name: b.userName ?? t("unknownPerson"),
                   })}
@@ -241,7 +240,7 @@ export function MedarisHome({ data, grants, nowIso }: Props) {
           ))}
         </RowList>
       )}
-      <a className="mds-link self-start" href={`${base}/yasaklamalar`}>
+      <a className="mds-link self-start" href="/yasaklamalar">
         {t("bans.goTo")}
       </a>
     </HomeSection>
@@ -264,7 +263,7 @@ export function MedarisHome({ data, grants, nowIso }: Props) {
           </span>
         ) : null}
         {chief ? (
-          <a className="mds-link" href={`${base}/kosks`}>
+          <a className="mds-link" href="/kosks">
             {t("counts.goKosks")}
           </a>
         ) : null}
@@ -276,7 +275,7 @@ export function MedarisHome({ data, grants, nowIso }: Props) {
           </span>
         ) : null}
         {chief ? (
-          <a className="mds-link" href={`${base}/medreseler`}>
+          <a className="mds-link" href="/medreseler">
             {t("counts.goMadrasahs")}
           </a>
         ) : null}
@@ -306,10 +305,7 @@ export function MedarisHome({ data, grants, nowIso }: Props) {
         </p>
       </div>
       {data.can.openKosk ? (
-        <Button
-          href={`${base}/kosks?ac=1`}
-          iconLeft={<Icon name="plus" size="sm" />}
-        >
+        <Button href="/kosks?ac=1" iconLeft={<Icon name="plus" size="sm" />}>
           {t("openKosk")}
         </Button>
       ) : null}
