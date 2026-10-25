@@ -7,7 +7,7 @@ Hepsi `delurio page --strict` ve `delurio check graphs/learning --strict` ile te
 
 - `enrollment`: ders sayfasındaki kayıt kartı, geri çekme, ayrılma, ekibin kararları. 17 durum, 1304 konfigürasyon, 8/8.
 - `session`: celse sayfası ve kilidi, kilitten başvuru. 15 durum, 1540, 6/6.
-- `homework`: Ödev/Ödevim ve hocanın değerlendirmesi (#349). 10 durum, 49536, 4/4.
+- `homework`: Ödev/Ödevim ve hocanın değerlendirmesi (#349). 10 durum, 143232, 4/4.
 - `questions`: Sorularım sekmesi. 9 durum, 521, 4/4.
 - `notes`: Notlarım (yeni akış). 9 durum, 1212, 4/4.
 - `calendar-feed`: Takvim aboneliği sayfası. 4 durum, 84, 3/3.

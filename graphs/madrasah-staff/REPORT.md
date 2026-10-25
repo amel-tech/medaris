@@ -7,7 +7,7 @@
 | Akış | Durum | Yapılandırma | Güvence |
 |---|---|---|---|
 | open-course | 9 | 14304 | 6/6 |
-| course-request (nazar formu + nizam Ders talepleri) | 24 | 2632 | 8/8 |
+| course-request (nazar formu + nizam Ders talepleri) | 24 | 2696 | 8/8 |
 | madrasah-nazir (ata, görevden al) | 13 | 3838 | 8/8 |
 | nazir-permissions (nazir/06 düzenleyici) | 6 | 338 | 5/5 |
 | course-nazir (MDRS-270) | 14 | 6196 | 6/6 |
@@ -38,6 +38,7 @@
 - **MS-4 [yüksek, düzeldi: #373]** F05: kabul yalnız dersin köşkte olduğuna bakıyordu (`course-request.service.ts:141`); nizam cevabı okumuyor, yalnız "Ders açıldı" diyordu (`course-create-form.tsx:160`). Yol: api, stillPending=false; … SUBMIT, DONE, FAIL.settled → openedFromRequest.
   - #373'ten beri başka bir talebi karşılayan ders 409 `COURSE_REQUEST_COURSE_TAKEN` alıyor (güvence `course-answers-one-request`). Kabul edilmeyen talep için nizam kalıcı bir "Talep yanıtlanamadı" uyarısı gösteriyor (güvence `not-accepted-is-said`).
   - "Ders açıldı" yine söyleniyor, çünkü ders gerçekten açıldı; uyarı onun yanında duruyor. Ders kendiliğinden geri alınmıyor.
+  - Ders denetimi kilitsiz ve `course_requests.course_id` üzerinde eşsiz indeks yok (`course-request.schema.ts:49`). Aynı anda gelen iki kabul aynı dersle ikisi de geçebilir. Güvence yalnız art arda gelen çağrıları kapsıyor (okumayla; denenmedi).
 - **MS-5 [orta, düzeldi: #369]** F02 (learning): tek onay yasağı okumuyordu (`course.service.ts:1621`), toplu ekleme okur (`bulk-enrollment.service.ts:184`). Yol: applicantBarred; APPROVE, DONE. #369'dan beri yasaklı başvuran 403 `BAN_ACTIVE` alıyor ve başvuru bekliyor; güvence `barred-never-approved`. Başvurular sekmesi yasağı hâlâ göstermiyor; ret metni MS-18.
 - **MS-6 [orta]** F15 sürüyor: `createCourseRequest` izin değil rol denetler (`course-request.service.ts:99`), denetim kaydı yok. Yol: api, nazirGiven → directRefused.
 - **MS-7 [orta]** Cinsiyet şartı karşılanmıyor: yüz yüze ders (`course.schema.ts:93`) her talebeyi alır; onay, toplu ekleme ve hoca atama cinsiyet okumaz; cinsiyet boş olabilir (`user-profile.schema.ts:33`).
@@ -52,6 +53,7 @@
 - **MS-16 [düşük, emin değilim]** Toplu eklemede cevap gelince odaklı "Ekle" kaybolur, yeni odak verilmez (`bulk-add-dialog.tsx:106`).
 - **MS-17 [orta, yeni, okumayla; test yazılmadı]** Medrese nazırı atanırken köşk yasağı sorulmuyor. `isBarredInMadrasah` yalnız medresenin yasağına ve derslerinin ders yasaklarına bakıyor (4b1f9f78'de `ban.repository.ts:728`). Medrese dersini barındıran köşkün yasağı ise o derse girişi engelliyor (`ban.repository.ts:219`). Ders nazırı atamasındaki denetim köşk yasağını da sayıyor (`course-nazir.service.ts:223`). Yol: targetBarred=kosk; APPOINT, SEARCH, DONE, SUBMIT, DONE.
 - **MS-18 [düşük, yeni]** nazar Başvurular'da yasaklı başvurana basılan "Onayla" yalnız "Bir şeyler ters gitti. Biraz sonra yeniden deneyin." diyor (`pano.ts:253`, `BAN_ACTIVE` için ayrı metin yok). Başvuru bekliyor ama sebebi söylenmiyor. #369 bunu ayrı iş olarak bıraktı.
+- **MS-19 [düşük, yeni]** Talepten açılan derste kabul hangi nedenle başarısız olursa olsun (ağ, 5xx, 403, 404) nizam aynı uyarıyı gösteriyor: "talep artık beklemiyor; başka bir nazım yanıtlamış olabilir" (`course-create-form.tsx:166`). Talep aslında hâlâ bekliyor olabilir. Yol: FAIL.other → openedFromRequest.
 
 ## Eski bulgular
 

@@ -24,6 +24,7 @@ scope:
   outOfView:
     - "the staff's Ödevler in nazar (GET /courses/:id/submissions), the staff download, and writing and sending the review"
     - "the SUBMISSION_REVIEWED notification that links to the celse page"
+    - "a review sent while the page is open: the page draws it from the answer to the talebe's next upload or note, or on a reload"
     - "downloading a file of the homework, of the assignment or of the review (plain links through tedris's file routes)"
     - "several files chosen at once: each is checked and sent one after the other, as one add is drawn here"
     - "a homework emptied earlier on a celse with no homework set: its section still shows; the flow starts from no row"
@@ -55,10 +56,14 @@ context:
   celse:
     values: [live, cancelled, hidden]
     initial: live
-  review: # files the team adds before sending are not part of the talebe's answer
+  review: # as the page read it; files the team adds before sending are not part of the talebe's answer
     values: [none, sent]
     initial: any
     say: { none: "the course team has sent no review", sent: "the course team sent its review" }
+  reviewHas: # what the sent review holds
+    values: [note, files, both]
+    initial: any
+    say: { note: "the review is a note", files: "the review is corrected files", both: "the review is a note and corrected files" }
   changedSince: # updatedAt after reviewedAt
     values: [false, true]
     initial: any
@@ -84,6 +89,8 @@ guards:
   pendingWarning: "assignment and not handedIn"
   addOpen: "files != 'full'"
   reviewShown: "review == 'sent'"
+  reviewNoteShown: "review == 'sent' and reviewHas in ['note', 'both']"
+  reviewFilesShown: "review == 'sent' and reviewHas in ['files', 'both']"
   reviewAnswersEarlier: "review == 'sent' and changedSince"
 
 effects:
@@ -107,7 +114,6 @@ effects:
   passivated: { set: { seat: passive, notice: none } }
   celseCancelled: { set: { celse: cancelled, notice: none } }
   celseHidden: { set: { celse: hidden, notice: none } }
-  reviewSent: { set: { review: sent, changedSince: false } }
 
 failures:
   loading:
@@ -185,7 +191,6 @@ states:
       PASSIVATED: { guard: "seat != 'passive'", target: ready, effect: [passivated], say: "meanwhile the course goes into a passive scope", source: "libs/common/src/authz/effective-permissions.ts:337" }
       CELSE_CANCELLED: { guard: "celse == 'live'", target: ready, effect: [celseCancelled], say: "meanwhile the müderris cancels the celse", source: "apps/tedrisat/src/course/course.service.ts:1198" }
       CELSE_HIDDEN: { guard: "celse != 'hidden'", target: ready, effect: [celseHidden], say: "meanwhile the celse or its week is hidden", source: "apps/tedrisat/src/course/course.service.ts:1311" }
-      TEAM_REVIEWS: { target: ready, effect: [reviewSent], say: "meanwhile the course team sends its review, or sends it again; the page shows it when it next reads the homework", source: "apps/tedrisat/src/lesson-submission/lesson-submission.repository.ts:696" }
       NAVIGATE: { target: left, say: "they leave the page" }
 
   uploading:
