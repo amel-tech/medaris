@@ -1,0 +1,146 @@
+# Medaris, captured from origin/main ce47fce8: a course's staff set, change or clear a live session's YouTube stream
+# link on nazar's Celseler page (/ders/:dersId/celseler). What talebe are then sent, and when, is medaris.watch.
+# nizam's Celseler (apps/nizam/features/courses/components/sessions-view.tsx:169) calls the same route with the same
+# parser and the same table rules; only its refusal wording differs, so it is not drawn twice.
+schema: delurio-graph/0
+kind: flow
+id: medaris.live-link
+status: proposed
+domain: medaris.live-media
+ui: medaris.live-link
+title: Set a session's live stream link
+summary: >-
+  On Celseler a holder of session.live_link (the müderris, the köşk nazımı and the başmüderris by role, a ders nazırı by
+  grant) opens the stream form of a live session that has not ended, pastes a YouTube video link and saves it, or
+  removes the link. The page checks the link with the parser tedrisat runs; tedrisat asks the permission, locks the
+  session, refuses one that is cancelled, hidden or no longer live, stores the link as youtube.com/live/<id> and writes
+  the change to the audit log.
+source: apps/nazar/features/sessions/components/sessions-table.tsx:173
+
+scope:
+  shows: the stream form of one Celseler row, from its button to tedrisat's answer
+  world: open
+  outOfView:
+    - "the meeting link, the time, the in-person mark and cancelling: session.manage, the same table, another flow"
+    - "nizam's Celseler, which writes through the same route"
+    - "when the page's read of the links fails: the stream buttons are left out (sessions-page.tsx:111)"
+
+context:
+  holdsLiveLink: # the caller holds session.live_link in this course when the page was read
+    values: [true, false]
+    initial: any
+    say: { "true": "the person holds session.live_link in the course", "false": "the person does not hold session.live_link" }
+  linksRead: # GET /courses/:id/live-streams answered; only then are the stream buttons drawn
+    values: [true, false]
+    initial: any
+    say: { "true": "", "false": "the page could not read the stream links" }
+  row: # the row by the page's clock
+    values: [ahead, over, cancelled]
+    initial: any
+    say: { ahead: "the session has not reached its scheduled end", over: "the session's scheduled end has passed", cancelled: "the session is cancelled" }
+  hasStream:
+    values: [false, true]
+    initial: any
+    say: { "true": "the session already has a stream link", "false": "the session has no stream link" }
+  input: # what parseYoutubeLiveUrl makes of the field
+    values: [youtube, channel, notYoutube, empty]
+    initial: any
+    say: { youtube: "the field holds a YouTube video or Studio link", channel: "the field holds a YouTube channel link", notYoutube: "the field holds a link that is not YouTube's", empty: "the field is empty" }
+  meanwhile: # what changed after the page was read
+    values: [none, cancelled, hidden, notLive, rightTaken]
+    initial: any
+    say: { none: "", cancelled: "someone cancelled the session meanwhile", hidden: "someone hid the session meanwhile", notLive: "the session is no longer a live one", rightTaken: "the person's session.live_link was taken away meanwhile" }
+  action: { values: [none, set, clear], initial: none }
+  problem: { values: [none, channel, notYoutube, empty], initial: none } # the field's error line
+  notice: { values: [none, saved, removed, forbidden, generic, notLive, cancelled], initial: none } # the toast
+  written: { values: [false, true], initial: false } # tedrisat stored the change
+
+guards:
+  buttonDrawn: "holdsLiveLink and linksRead and row == 'ahead'" # apps/nazar/features/sessions/components/sessions-table.tsx:476
+  untouched: "meanwhile == 'none'" # apps/tedrisat/src/course/recording.repository.ts:809
+
+effects:
+  openForm: { set: { problem: none, notice: none, action: none } }
+  problemChannel: { set: { problem: channel } }
+  problemNotYoutube: { set: { problem: notYoutube } }
+  problemEmpty: { set: { problem: empty } }
+  chooseSet: { set: { action: set, problem: none, notice: none } }
+  chooseClear: { set: { action: clear, problem: none, notice: none } }
+  saved: { set: { written: true, hasStream: true, notice: saved } }
+  removed: { set: { written: true, hasStream: false, notice: removed } }
+  forbidden: { set: { notice: forbidden } }
+  generic: { set: { notice: generic } }
+  notLive: { set: { notice: notLive } }
+  cancelled: { set: { notice: cancelled } }
+
+failures:
+  writing:
+    from: setLiveStream
+    forbidden: [AUTHZ_FORBIDDEN]
+    gone: [LESSON_NOT_FOUND]
+    conflict: [LESSON_NOT_LIVE, LESSON_CANCELLED]
+
+main:
+  given: { holdsLiveLink: true, linksRead: true, row: ahead, hasStream: false, input: youtube, meanwhile: none }
+  events: [OPEN_STREAM, SAVE, DONE]
+
+initial: sessionsPage
+states:
+  sessionsPage:
+    title: Celseler
+    by: human
+    goal: true
+    description: >-
+      The course's live sessions by date, "Yaklaşan" and "Geçmiş". Only a row of the first table that is not
+      cancelled has actions; the stream button is drawn there for a holder of session.live_link once the links were
+      read.
+    includes: ["a toast after a write: saved, removed, or the refusal"]
+    source: apps/nazar/features/sessions/components/sessions-table.tsx:444
+    on:
+      OPEN_STREAM: { guard: buttonDrawn, target: streamForm, effect: [openForm], say: "they press Canlı yayın ekle or Canlı yayını güncelle", source: "apps/nazar/features/sessions/components/sessions-table.tsx:476" }
+      NAVIGATE: { target: left, say: "they go to another page", source: "apps/nazar/app/ders/[dersId]/celseler/page.tsx:11" }
+
+  streamForm:
+    title: The stream link form
+    by: human
+    description: >-
+      An inline form under the table: the field starts with the stored link. Saving runs liveStreamProblem, the
+      parser tedrisat runs too, so a link it refuses never leaves the page; clearing is its own button.
+    source: apps/nazar/features/sessions/components/sessions-table.tsx:583
+    on:
+      SAVE:
+        - { guard: "input == 'empty'", target: streamForm, effect: [problemEmpty], say: "the field is empty", source: "apps/nazar/features/sessions/components/sessions-table.tsx:222" }
+        - { guard: "input == 'channel'", target: streamForm, effect: [problemChannel], say: "it is a channel link, not a video's", source: "apps/nazar/features/sessions/components/sessions-table.tsx:222" }
+        - { guard: "input == 'notYoutube'", target: streamForm, effect: [problemNotYoutube], say: "it is not a YouTube link", source: "apps/nazar/features/sessions/components/sessions-table.tsx:222" }
+        - { target: writing, effect: [chooseSet], say: "the link is a YouTube video's", source: "apps/nazar/features/sessions/components/sessions-table.tsx:225" }
+      REMOVE: { guard: hasStream, target: writing, effect: [chooseClear], say: "they press Bağlantıyı kaldır", source: "apps/nazar/features/sessions/components/sessions-table.tsx:702" }
+      CANCEL: { target: sessionsPage, say: "they press Vazgeç", source: "apps/nazar/features/sessions/components/sessions-table.tsx:693" }
+      NAVIGATE: { target: left, say: "they go to another page", source: "apps/nazar/app/ders/[dersId]/celseler/page.tsx:11" }
+
+  writing:
+    title: tedrisat writes the link
+    description: >-
+      PUT /lessons/:id/live-stream. The guard asks session.live_link first (403); the service reads the link with
+      parseYoutubeLiveUrl, then locks the session row: hidden is 404, not LIVE or cancelled is 409. The link is stored
+      as https://www.youtube.com/live/<id>, or cleared, with lesson.live_stream_set or lesson.live_stream_clear in
+      audit_log in the same transaction; the course version does not move.
+    invoke: { action: setLiveStream }
+    source: apps/tedrisat/src/course/recording.repository.ts:794
+    on:
+      DONE:
+        - { guard: "untouched and action == 'set'", target: sessionsPage, effect: [saved], say: "the link is stored and the page is read again", source: "apps/tedrisat/src/course/recording.repository.ts:819" }
+        - { guard: "untouched and action == 'clear'", target: sessionsPage, effect: [removed], say: "the link is cleared and the page is read again", source: "apps/tedrisat/src/course/recording.repository.ts:826" }
+      FAIL.forbidden: { guard: "meanwhile == 'rightTaken'", target: streamForm, effect: [forbidden], say: "403: the right was taken away; the form stays open", source: "apps/tedrisat/src/course/live-stream.controller.ts:89" }
+      FAIL.gone: { guard: "meanwhile == 'hidden'", target: streamForm, effect: [generic], say: "404: the session was hidden; the toast is the generic sentence", source: "apps/tedrisat/src/course/recording.repository.ts:812" }
+      FAIL.conflict:
+        - { guard: "meanwhile == 'notLive'", target: streamForm, effect: [notLive], say: "409 LESSON_NOT_LIVE", source: "apps/tedrisat/src/course/recording.repository.ts:814" }
+        - { guard: "meanwhile == 'cancelled'", target: streamForm, effect: [cancelled], say: "409 LESSON_CANCELLED", source: "apps/tedrisat/src/course/recording.repository.ts:817" }
+
+  left: { type: final, title: They leave Celseler, leavesPage: true, source: "apps/nazar/app/ders/[dersId]/celseler/page.tsx:11" }
+
+assertions:
+  - { id: only-holders-open-the-form, never: "state in ['streamForm', 'writing'] and not (holdsLiveLink and linksRead)", say: "Only a holder of session.live_link, on a page that read the links, opens the stream form", source: "apps/nazar/features/sessions/components/sessions-table.tsx:476" }
+  - { id: no-form-on-a-cancelled-or-ended-session, never: "state in ['streamForm', 'writing'] and row != 'ahead'", say: "The stream form opens only on a session that is not cancelled and whose scheduled end is ahead", source: "apps/nazar/features/sessions/components/sessions-table.tsx:444" }
+  - { id: only-a-youtube-video-is-sent, never: "state == 'writing' and action == 'set' and input != 'youtube'", say: "A link that is not a YouTube video's is never sent to tedrisat", source: "apps/nazar/features/sessions/components/sessions-table.tsx:219" }
+  - { id: clear-only-an-existing-link, never: "state == 'writing' and action == 'clear' and not hasStream", say: "Bağlantıyı kaldır is offered only when the session has a link", source: "apps/nazar/features/sessions/components/sessions-table.tsx:697" }
+  - { id: nothing-written-after-a-change, never: "written and meanwhile != 'none'", say: "A session cancelled, hidden or made not live meanwhile, or a right taken away meanwhile, never gets its link changed", source: "apps/tedrisat/src/course/recording.repository.ts:811" }

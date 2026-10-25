@@ -1,0 +1,173 @@
+# A partner application seats the person of one of its registrations: PUT
+# /integrations/enrollments/:registrationRef/:courseCode on tedrisat, as the code does it on origin/main ce47fce8
+# (capture of 25 Oct 2026). No person's screen: the partner application ("Örnek Uygulama", client ornek-uygulama)
+# calls it with its service account's token, and the talebe sees the seat on their next load of the course page.
+schema: delurio-graph/0
+kind: flow
+id: medaris.partner-enrollment
+status: proposed
+domain: medaris.learning
+title: A partner application enrols a person
+summary: >-
+  The partner's course code must map to a course in a köşk the partner is bound to, and the registration stays with
+  the first person it named. The account must exist, be enabled and have a verified e-mail. The person is then seated
+  through the course team's own path: a new ENROLLED seat or their waiting request approved, whatever the course's
+  approval rule says; a ban and a seat the course team took away refuse the registration.
+
+scope:
+  shows: one PUT from a partner client, from the token check to the answer
+  world: open
+  outOfView:
+    - "two calls racing for one registration with two people: claimLink decides and the loser gets 409 (partner-enrollment.service.ts:153)"
+    - "a body or a path segment of the wrong shape: 400 VALIDATION_ERROR"
+    - "the DELETE that undoes a registration: medaris.partner-unenrollment"
+
+context:
+  caller:
+    values: [partner, noPartners, unauthenticated, disabled, roleMissing]
+    initial: any
+    say: { partner: "an enabled partner client with the partner-enrollment role", noPartners: "no partner is registered at all", unauthenticated: "no token, or one tedrisat does not accept", disabled: "the partner is disabled in nizam", roleMissing: "the token lacks the partner-enrollment role" }
+  throttled: { values: [false, true], initial: any, say: { "true": "past the partner's budget for the route", "false": "within it" } }
+  mapped: { values: [true, false], initial: any, say: { "true": "the code maps to a course in a köşk the partner is bound to", "false": "the code maps to nothing the partner may use" } }
+  linkUser:
+    values: [none, same, other]
+    initial: any
+    say: { none: "a new registration", same: "the registration already names this person", other: "the registration names another person" }
+  linkCourseUnbound: { values: [false, true], initial: any, say: { "true": "the open registration's course sits in a köşk the partner is no longer bound to", "false": "the registration's course is the partner's" } }
+  directory:
+    values: [ok, unknown, unverified, down]
+    initial: any
+    say: { ok: "the account exists, is enabled and verified", unknown: "no such enabled account", unverified: "the account's e-mail is not verified", down: "the realm's directory is not configured or does not answer" }
+  closed: { values: [false, true], initial: any, say: { "true": "the course is gone, a draft, hidden, or in a hidden köşk", "false": "the course takes enrolments" } }
+  held:
+    values: [none, pending, enrolled, completed, revoked]
+    initial: any
+    say: { none: "no enrollment", pending: "a request waits", enrolled: "a seat", completed: "a completion", revoked: "a seat taken away" }
+  byIntegration: { values: [false, true], initial: any, say: { "true": "a partner's own DELETE took that seat away, and nobody touched it since", "false": "nobody but the course team took it" } }
+  barred: { values: [false, true], initial: any, say: { "true": "a ban bars the person", "false": "no ban" } }
+  outcome: { values: [none, newSeat, approved, givenBack, already], initial: none }
+
+guards:
+  revokedByPartner: "held == 'revoked' and byIntegration"
+
+effects:
+  newSeat: { set: { outcome: newSeat } }
+  approved: { set: { outcome: approved } }
+  givenBack: { set: { outcome: givenBack } }
+  already: { set: { outcome: already } }
+
+initial: guarding
+states:
+  guarding:
+    title: Check the partner's token
+    description: PartnerGuard, then PartnerThrottlerGuard (600 a minute per partner and route by default); no AuthGuard and no AuthzGuard
+    source: apps/tedrisat/src/integration/partner.guard.ts:93
+    always:
+      - { guard: "caller == 'noPartners'", target: noRoute, say: "no partner registered: the route does not exist", source: "apps/tedrisat/src/integration/partner.guard.ts:96" }
+      - { guard: "caller == 'unauthenticated'", target: unauthenticated, say: "no token, or a bad one", source: "apps/tedrisat/src/integration/partner.guard.ts:114" }
+      - { guard: "caller == 'disabled'", target: disabled, say: "the partner is disabled", source: "apps/tedrisat/src/integration/partner.guard.ts:125" }
+      - { guard: "caller == 'roleMissing'", target: roleMissing, say: "the role is missing", source: "apps/tedrisat/src/integration/partner.guard.ts:128" }
+      - { guard: throttled, target: throttled, say: "past the partner's budget", source: "apps/tedrisat/src/integration/partner-throttler.guard.ts:43" }
+      - { target: receiving, say: "the partner is let in", source: "apps/tedrisat/src/integration/partner.guard.ts:141" }
+
+  receiving:
+    title: Resolve the registration
+    description: the code in a bound köşk, the registration's person, the account in the realm, and whether the course takes enrolments
+    source: apps/tedrisat/src/integration/partner-enrollment.service.ts:102
+    always:
+      - { guard: "not mapped", target: courseUnknown, say: "no course for this code here", source: "apps/tedrisat/src/integration/partner-enrollment.service.ts:114" }
+      - { guard: "linkUser == 'other'", target: userMismatch, say: "the registration is another person's", source: "apps/tedrisat/src/integration/partner-enrollment.service.ts:122" }
+      - { guard: "linkUser == 'same' and linkCourseUnbound", target: courseUnknown, say: "the registration's course is no longer the partner's", source: "apps/tedrisat/src/integration/partner-enrollment.service.ts:133" }
+      - { guard: "directory == 'down'", target: directoryDown, say: "the realm's directory does not answer", source: "apps/tedrisat/src/integration/partner-enrollment.service.ts:311" }
+      - { guard: "directory == 'unknown'", target: userUnknown, say: "no such enabled account", source: "apps/tedrisat/src/integration/partner-enrollment.service.ts:314" }
+      - { guard: "directory == 'unverified'", target: userUnverified, say: "the e-mail is not verified", source: "apps/tedrisat/src/integration/partner-enrollment.service.ts:315" }
+      - { guard: closed, target: refused, say: "the course takes no enrolment", source: "apps/tedrisat/src/integration/partner-enrollment.service.ts:138" }
+      - { target: seating, say: "the registration is claimed before anything is seated", source: "apps/tedrisat/src/integration/partner-enrollment.service.ts:144" }
+
+  seating:
+    title: Seat the person through the course team's path
+    description: >-
+      A seat a partner's own DELETE took away is given back through the approval; anything else goes through the
+      bulk list's path, which asks the ban first and never the course's approval rule. No road here reads the
+      person's gender or the course's in-person mark.
+    source: apps/tedrisat/src/integration/partner-enrollment.service.ts:325
+    always:
+      - { guard: "revokedByPartner and barred", target: refused, say: "barred: BANNED", source: "apps/tedrisat/src/integration/partner-enrollment.service.ts:335" }
+      - { guard: revokedByPartner, target: seated, effect: [givenBack], say: "the seat the partner took is approved back", source: "apps/tedrisat/src/integration/partner-enrollment.service.ts:339" }
+      - { guard: barred, target: refused, say: "barred: BANNED", source: "apps/tedrisat/src/course/bulk-enrollment.service.ts:184" }
+      - { guard: "held == 'enrolled'", target: seated, effect: [already], say: "already a seat: ALREADY_ENROLLED", source: "apps/tedrisat/src/course/bulk-enrollment.service.ts:213" }
+      - { guard: "held == 'revoked'", target: refused, say: "the course team took the seat: REMOVED_BY_COURSE_TEAM", source: "apps/tedrisat/src/course/bulk-enrollment.service.ts:215" }
+      - { guard: "held == 'pending'", target: seated, effect: [approved], say: "the waiting request is approved, with its notification", source: "apps/tedrisat/src/course/bulk-enrollment.service.ts:217" }
+      - { guard: "held == 'completed'", target: seated, effect: [already], say: "a completion is a seat they hold: ALREADY_ENROLLED", source: "apps/tedrisat/src/integration/partner-enrollment.service.ts:172" }
+      - { target: seated, effect: [newSeat], say: "a new ENROLLED seat; the approval rule is not asked", source: "apps/tedrisat/src/course/bulk-enrollment.service.ts:189" }
+
+  seated:
+    type: final
+    title: The registration is a seat
+    description: a new seat or an approval is audited naming the partner, and the session invitations are run
+    source: apps/tedrisat/src/integration/partner-enrollment.service.ts:203
+    response: { status: 200, body: { status: "ENROLLED, or ALREADY_ENROLLED when they held a seat or a completion", courseId: "the course's id" } }
+  refused:
+    type: final
+    title: The seat is refused
+    description: a registration made by this call is deleted again; one that stood before stays as it was
+    source: apps/tedrisat/src/integration/partner-enrollment.service.ts:170
+    response: { status: 409, code: PARTNER_ENROLLMENT_REFUSED, body: { context: { reason: "BANNED | REMOVED_BY_COURSE_TEAM | COURSE_NOT_PUBLISHED | COURSE_HIDDEN | KOSK_HIDDEN | COURSE_NOT_FOUND | CHANGED" } } }
+  courseUnknown:
+    type: final
+    title: No course for this code
+    source: apps/tedrisat/src/integration/errors/partner-errors.ts:49
+    response: { status: 404, code: PARTNER_COURSE_UNKNOWN }
+  userMismatch:
+    type: final
+    title: The registration is another person's
+    source: apps/tedrisat/src/integration/errors/partner-errors.ts:83
+    response: { status: 409, code: PARTNER_REGISTRATION_USER_MISMATCH }
+  userUnknown:
+    type: final
+    title: No such account
+    source: apps/tedrisat/src/integration/errors/partner-errors.ts:62
+    response: { status: 404, code: PARTNER_USER_UNKNOWN }
+  userUnverified:
+    type: final
+    title: The account is not verified
+    source: apps/tedrisat/src/integration/errors/partner-errors.ts:71
+    response: { status: 409, code: PARTNER_USER_UNVERIFIED }
+  directoryDown:
+    type: final
+    title: The realm's directory does not answer
+    source: apps/tedrisat/src/integration/partner-enrollment.service.ts:311
+    response: { status: 503, code: "KEYCLOAK_ADMIN_NOT_CONFIGURED | KEYCLOAK_ADMIN_UNAVAILABLE" }
+  noRoute:
+    type: final
+    title: The route does not exist
+    source: apps/tedrisat/src/integration/partner.guard.ts:98
+    response: { status: 404 }
+  unauthenticated:
+    type: final
+    title: The token is refused
+    source: apps/tedrisat/src/integration/partner.guard.ts:106
+    response: { status: 401 }
+  disabled:
+    type: final
+    title: The partner is disabled
+    source: apps/tedrisat/src/integration/errors/partner-errors.ts:32
+    response: { status: 403, code: PARTNER_DISABLED }
+  roleMissing:
+    type: final
+    title: The role is missing
+    source: apps/tedrisat/src/integration/errors/partner-errors.ts:15
+    response: { status: 403, code: PARTNER_ROLE_MISSING }
+  throttled:
+    type: final
+    title: Too many calls
+    source: apps/tedrisat/src/integration/partner-throttler.guard.ts:56
+    response: { status: 429, headers: { Retry-After: "seconds to wait" } }
+
+assertions:
+  - { id: barred-never-seated, never: "state == 'seated' and barred", say: "A barred person never takes a seat through a partner application", source: "apps/tedrisat/src/course/bulk-enrollment.service.ts:184" }
+  - { id: team-removal-stands, never: "outcome == 'givenBack' and not byIntegration", say: "A partner application never gives back a seat the course team took away", source: "apps/tedrisat/src/integration/partner-enrollment.service.ts:332" }
+  - { id: only-verified-accounts, never: "state == 'seated' and directory != 'ok'", say: "Only an existing, enabled, verified account is seated", source: "apps/tedrisat/src/integration/partner-enrollment.service.ts:314" }
+  - { id: closed-course-takes-none, never: "state == 'seated' and closed", say: "A draft, a hidden course or a course of a hidden köşk takes no one", source: "apps/tedrisat/src/course/bulk-enrollment.service.ts:157" }
+  - { id: registration-keeps-its-person, never: "state == 'seated' and linkUser == 'other'", say: "A registration never seats a second person", source: "apps/tedrisat/src/integration/partner-enrollment.service.ts:121" }
+  - { id: only-partners-reach-seats, never: "state in ['receiving', 'seating', 'seated'] and (caller != 'partner' or throttled)", say: "Only an enabled partner with the role, within its budget, reaches a seat", source: "apps/tedrisat/src/integration/partner.guard.ts:93" }

@@ -1,0 +1,151 @@
+# Medaris, captured from origin/main ce47fce8: someone opens a celse's watch page in tedris
+# (/courses/:courseId/lessons/:lessonId/izle, entered from the celse's detail page). tedrisat decides what this caller
+# is sent (the stream link, the recording and its link, a Bunny player link built for this response); the page plays
+# the recording, else the stream with YouTube's live chat beside it, else sends the caller to the detail page.
+schema: delurio-graph/0
+kind: flow
+id: medaris.watch
+status: proposed
+domain: medaris.live-media
+ui: medaris.watch
+title: Watch a celse
+summary: >-
+  The watch page reads the course and the session. A caller who may not read the course's content (a visitor, a
+  PENDING, REVOKED or barred talebe) goes to the detail page. A READY recording the caller is sent a link to plays:
+  released ones for everyone who reads the content, held ones for the course team (recording.manage) only. Otherwise the
+  stream plays while tedrisat sends its link: from the scheduled start until the session has a released recording or
+  24 hours after its scheduled end, never for a cancelled one. While the player says the stream is live, YouTube's live
+  chat is beside it; once it ends, an enrolled talebe gets "Soru sor" instead.
+source: apps/tedris/app/courses/[courseId]/lessons/[lessonId]/izle/page.tsx:18
+
+scope:
+  shows: what the watch page plays for one caller, and the stream's live and ended phases as its player reports them
+  world: open
+  outOfView:
+    - "the detail page and its join card (session-action-card.tsx), which lead here with Yayını izle or Kaydı izle"
+    - "the recordings tab (recordings-tab.tsx): a caller without content is sent to a PUBLIC recording at its host there"
+    - "writing a question or a note: the learning area"
+    - "a missing course or session: the segment layout answers 404 first (lessons/[lessonId]/layout.tsx:28)"
+    - "what Bunny's player does with the link: a signed link protects the player page only (domain, getSession rules)"
+
+context:
+  viewer:
+    values: [talebe, team, staff, barred, pending, visitor]
+    initial: any
+    say: { talebe: "an enrolled (or completed) talebe", team: "a member of the course team holding recording.manage", staff: "course staff who read the content through another code, without recording.manage", barred: "a talebe the course barred or took out", pending: "a talebe whose application is pending", visitor: "someone who is not enrolled, or not signed in" }
+  cancelled:
+    values: [false, true]
+    initial: any
+    say: { "true": "the session is cancelled", "false": "" }
+  clock: # where now is against the scheduled start, the scheduled end (60 minutes when the length is unset) and end + 24 h
+    values: [beforeStart, onAir, within24h, past24h]
+    initial: any
+    say: { beforeStart: "the session has not started", onAir: "the session is within its scheduled time", within24h: "the scheduled end passed less than 24 hours ago", past24h: "the scheduled end passed more than 24 hours ago" }
+  streamSet:
+    values: [true, false]
+    initial: any
+    say: { "true": "the session has a stream link", "false": "the session has no stream link" }
+  recording: # as stored; a FAILED upload is never listed, so it reads as none
+    values: [none, processing, readyHeld, readyOpen]
+    initial: any
+    say: { none: "the session has no recording, or only a failed upload", processing: "its recording is still being prepared", readyHeld: "its recording is ready but its release time is ahead", readyOpen: "its recording is ready and open to talebe" }
+  provider: # where the recording plays from, and how the page frames it
+    values: [youtube, driveFile, otherLink, bunnySigned, bunnyUnsigned]
+    initial: any
+    say: { youtube: "the recording is a YouTube video", driveFile: "the recording is a Google Drive file link", otherLink: "the recording is another host's link (or a Drive link of another form)", bunnySigned: "the recording is a Bunny video and the server signs player links", bunnyUnsigned: "the recording is a Bunny video and BUNNY_STREAM_TOKEN_KEY is not set on the server" }
+  phase: { values: [live, ended], initial: live } # what the stream's player last reported
+
+guards:
+  locked: "viewer in ['barred', 'pending', 'visitor']" # apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:407
+  playable: "recording == 'readyOpen' or (recording == 'readyHeld' and viewer == 'team')" # apps/tedrisat/src/course/domain/recording.ts:125; mayPlay: the API sends the url only then
+  framed: "provider in ['youtube', 'driveFile', 'bunnySigned']" # apps/tedris/features/courses/recordings-model.ts:96; embedUrlOf; an unsigned Bunny link is refused by bunnyPlayerUrlOf
+  streamSent: "streamSet and not cancelled and recording != 'readyOpen' and clock in ['onAir', 'within24h']" # apps/tedrisat/src/course/domain/recording.ts:196; liveStreamFor
+  writes: "viewer == 'talebe'" # apps/tedris/features/courses/lesson-note-model.ts:21; canWriteNotes: notes and questions
+
+effects:
+  ended: { set: { phase: ended } }
+  live: { set: { phase: live } }
+
+main:
+  given: { viewer: talebe, cancelled: false, clock: onAir, streamSet: true, recording: none, provider: youtube }
+  events: [DONE, PLAYER_ENDED]
+
+initial: reading
+states:
+  reading:
+    title: Read the course and the session
+    description: >-
+      getCourse and getSession, with the caller's token or none. tedrisat filters the session as it filters the course:
+      contentLocked without course.view_details; liveStreamUrl by liveStreamFor; the recording by visibleRecordings,
+      its link only when mayPlay, a Bunny one built for this response by signPlayback. The page then applies
+      lessonLockReason and watchTargetOf.
+    invoke: { action: getSession }
+    source: apps/tedrisat/src/course/course.service.ts:667
+    response: { status: 200, headers: { Cache-Control: "private, no-store" }, body: "the session with contentLocked, and liveStreamUrl and recording as this caller may have them" }
+    on:
+      DONE:
+        - { guard: locked, target: toDetail, say: "the content is locked: the detail page draws the locked card and its call to action", source: "apps/tedris/app/courses/[courseId]/lessons/[lessonId]/izle/page.tsx:31" }
+        - { guard: "playable and framed", target: playRecording, say: "a recording with a link this page can frame", source: "apps/tedris/features/courses/watch-model.ts:43" }
+        - { guard: playable, target: recordingAtHost, say: "a recording with a link the page does not frame", source: "apps/tedris/features/courses/components/watch-view.tsx:182" }
+        - { guard: cancelled, target: toDetail, say: "the session is cancelled and has nothing to play", source: "apps/tedris/features/courses/watch-model.ts:46" }
+        - { guard: streamSent, target: playStream, say: "tedrisat sent the stream link", source: "apps/tedrisat/src/course/domain/recording.ts:210" }
+        - { target: toDetail, say: "there is nothing to watch now", source: "apps/tedris/app/courses/[courseId]/lessons/[lessonId]/izle/page.tsx:33" }
+
+  playStream:
+    title: The stream plays, with the live chat
+    by: human
+    description: >-
+      YouTube's player, its IFrame API on, built from the link's video id; beside it YouTube's own live chat, open from
+      the start, with "YouTube'da aç" for writing where the browser keeps YouTube's sign-in out of the frame. A
+      talebe's notes are under it. The badge counts the minutes since the scheduled start.
+    source: apps/tedris/features/courses/components/watch-view.tsx:126
+    on:
+      PLAYER_ENDED: { target: streamEnded, effect: [ended], say: "the player reports the broadcast ended (state 0)", source: "apps/tedris/features/courses/watch-model.ts:77" }
+      NAVIGATE: { target: left, say: "they leave the page", source: "apps/tedris/features/courses/components/watch-view.tsx:231" }
+
+  streamEnded:
+    title: The stream has ended
+    by: human
+    description: >-
+      "Yayın bitti"; the chat goes and an enrolled talebe gets "Soru sor" in its place. The player stays, as YouTube's
+      archive may play in it; nothing is told to the server. A player that plays again brings the chat back.
+    source: apps/tedris/features/courses/components/watch-view.tsx:146
+    on:
+      PLAYER_PLAYING: { target: playStream, effect: [live], say: "the player plays or buffers again (state 1 or 3)", source: "apps/tedris/features/courses/watch-model.ts:78" }
+      NAVIGATE: { target: left, say: "they leave the page", source: "apps/tedris/features/courses/components/watch-view.tsx:231" }
+
+  playRecording:
+    title: The recording plays
+    by: human
+    description: >-
+      The provider's player in a frame: YouTube's embed (its API on for a talebe, whose notes read the position), Drive's
+      preview, or the Bunny player link signed for this viewer in this response, framed without a sandbox. The team
+      playing a held recording is told when it opens to talebe. A talebe gets "Soru sor" and the notes beside it.
+    source: apps/tedris/features/courses/components/watch-page.tsx:56
+    on:
+      NAVIGATE: { target: left, say: "they leave the page", source: "apps/tedris/features/courses/components/watch-view.tsx:231" }
+
+  recordingAtHost:
+    title: The recording opens at its host
+    by: human
+    description: >-
+      The frame's place says "Ders kaydı burada oynar" with "Ders kaydını aç", a link to the recording's own url in a
+      new tab: another host's link, a Drive link that is not a file link, or a Bunny player link without a token.
+    source: apps/tedris/features/courses/components/media-player.tsx:70
+    on:
+      NAVIGATE: { target: left, say: "they leave the page, or open the recording in a new tab and go on there", source: "apps/tedris/features/courses/components/media-player.tsx:75" }
+
+  toDetail:
+    type: final
+    title: Back to the celse's detail page
+    response: { status: 307, redirect: "/courses/:courseId/lessons/:lessonId" }
+    source: apps/tedris/app/courses/[courseId]/lessons/[lessonId]/izle/page.tsx:33
+  left: { type: final, title: They leave the watch page, leavesPage: true, source: "apps/tedris/features/courses/components/watch-view.tsx:207" }
+
+assertions:
+  - { id: locked-content-never-plays, never: "state in ['playStream', 'streamEnded', 'playRecording', 'recordingAtHost'] and locked", say: "A visitor, a pending talebe and a barred or removed talebe never get a stream or a recording here", source: "apps/tedrisat/src/course/course.service.ts:700" }
+  - { id: held-recording-only-for-the-team, never: "state in ['playRecording', 'recordingAtHost'] and recording == 'readyHeld' and viewer != 'team'", say: "A recording whose release time is ahead plays for the course team alone", source: "apps/tedrisat/src/course/domain/recording.ts:125" }
+  - { id: only-a-ready-recording-plays, never: "state in ['playRecording', 'recordingAtHost'] and recording in ['none', 'processing']", say: "A recording that is not READY never plays", source: "apps/tedrisat/src/course/domain/recording.ts:130" }
+  - { id: no-stream-for-a-cancelled-session, never: "state in ['playStream', 'streamEnded'] and cancelled", say: "A cancelled session's stream is never sent", source: "apps/tedrisat/src/course/domain/recording.ts:204" }
+  - { id: no-stream-outside-its-window, never: "state in ['playStream', 'streamEnded'] and clock in ['beforeStart', 'past24h']", say: "The stream is not sent before the scheduled start, nor 24 hours after the scheduled end", source: "apps/tedrisat/src/course/domain/recording.ts:210" }
+  - { id: an-open-recording-replaces-the-stream, never: "state in ['playStream', 'streamEnded'] and recording == 'readyOpen'", say: "Once a recording is open to talebe the stream is no longer sent", source: "apps/tedrisat/src/course/domain/recording.ts:205" }

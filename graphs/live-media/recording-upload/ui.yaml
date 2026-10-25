@@ -1,0 +1,72 @@
+# Medaris, captured from origin/main ce47fce8: nazar's Ders kayıtları table and the recording dialog's Bunny'ye yükle
+# tab. The dialog is the kit's Dialog on Base UI: role dialog, named by its title; no initialFocus is passed, so the
+# header's close button (Kapat), the first focusable element, takes the focus. It does not close while bytes go; the
+# browser asks before the page is left. The file input, the progress bar (Progress, role progressbar), the tabs and the
+# switch have no component of their own in this format and are drawn as the nearest one.
+schema: delurio-graph/0
+kind: ui
+id: medaris.recording-upload
+flow: medaris.recording-upload
+status: proposed
+catalog: catalog/tr.json
+locales: [tr, en]
+samples: { session: "Birinci celse", max: "10 GB", name: "celse-3.mp4", size: "1,2 GB", sent: "600 MB", total: "1,2 GB" }
+changes: { key: Changes.note }
+
+nodes:
+  page: { type: page, component: Page, role: main, name: { labelledBy: pageTitle }, in: [recordingsPage, uploadDialog, writingRelease, starting, resigning, sending, stopped, uploadFailed, uploadDead], source: "apps/nazar/features/recordings/components/recordings-page.tsx:82" }
+  pageTitle: { type: text, component: Heading, role: heading, text: { key: Recordings.title }, in: [recordingsPage, uploadDialog, writingRelease, starting, resigning, sending, stopped, uploadFailed, uploadDead], source: "apps/nazar/features/recordings/components/recordings-page.tsx:82" }
+  pageNote: { type: text, component: Text, text: { key: Recordings.upload.note }, in: [recordingsPage], when: canUpload, source: "apps/nazar/features/recordings/components/recordings-page.tsx:90" }
+  noneText: { type: text, component: Text, text: { key: Recordings.none }, in: [recordingsPage], when: "existing in ['none', 'failedUpload'] and slot == 'started'", source: "apps/nazar/features/recordings/components/recordings-table.tsx:215" }
+  stateBadge: { type: text, component: Text, text: { oneOf: [Recordings.state.processing, Recordings.state.ready] }, in: [recordingsPage], when: slotRecorded, source: "apps/nazar/features/recordings/components/recordings-table.tsx:265" }
+  addButton: { type: action, component: Button, role: button, intent: secondary, name: { key: Recordings.addLabel }, text: { key: Recordings.add }, in: [recordingsPage], when: "canUpload and slotMissing", emits: ADD, source: "apps/nazar/features/recordings/components/recordings-table.tsx:356" }
+  resumeButton: { type: action, component: Button, role: button, intent: secondary, name: { key: Recordings.upload.resumeLabel }, text: { key: Recordings.upload.resume }, in: [recordingsPage], when: "canUpload and existing == 'bunnyProcessing'", emits: RESUME, source: "apps/nazar/features/recordings/components/recordings-table.tsx:321" }
+  editButton: { type: action, component: Button, role: button, intent: secondary, name: { key: Recordings.editLabel }, text: { key: Recordings.edit }, in: [recordingsPage], when: "canUpload and slotRecorded", emits: EDIT, source: "apps/nazar/features/recordings/components/recordings-table.tsx:335" }
+  doneToast: { type: status, component: Status, role: status, text: { key: Recordings.upload.done }, in: [recordingsPage], when: "toast == 'uploaded'", source: "apps/nazar/features/recordings/components/recording-dialog.tsx:295" }
+  doneBody: { type: text, component: Text, text: { key: Recordings.upload.doneBody }, in: [recordingsPage], when: "toast == 'uploaded'", source: "apps/nazar/features/recordings/components/recording-dialog.tsx:296" }
+
+  dialog: { type: page, component: Page, role: dialog, name: { labelledBy: dialogTitle }, in: [uploadDialog, writingRelease, starting, resigning, sending, stopped, uploadFailed, uploadDead], initialFocus: closeX, source: "apps/nazar/features/recordings/components/recording-dialog.tsx:553" }
+  dialogTitle: { type: text, component: Heading, role: heading, text: { oneOf: [Recordings.form.addTitle, Recordings.form.editTitle, Recordings.upload.resumeTitle] }, in: [uploadDialog, writingRelease, starting, resigning, sending, stopped, uploadFailed, uploadDead], source: "apps/nazar/features/recordings/components/recording-dialog.tsx:561" }
+  closeX: { type: action, component: Button, role: button, intent: dismiss, name: { key: Shell.close }, in: [uploadDialog, writingRelease, starting, resigning, sending, stopped, uploadFailed, uploadDead], disabledIn: [writingRelease, starting, resigning, sending], emits: CLOSE, source: "libs/ui/src/mds/dialog.tsx:97" } # ignored while busy
+  resumeHelp: { type: text, component: Text, text: { key: Recordings.upload.resumeHelp }, in: [uploadDialog, writingRelease, starting, resigning, sending, stopped, uploadFailed, uploadDead], when: "intent == 'resume'", source: "apps/nazar/features/recordings/components/recording-dialog.tsx:572" }
+  titleField: { type: field, component: TextField, role: textbox, text: { key: Recordings.form.titleLabel }, in: [uploadDialog, writingRelease, starting, resigning, sending, stopped, uploadFailed, uploadDead], when: "intent != 'resume'", disabledIn: [writingRelease, starting, resigning, sending, stopped, uploadDead], source: "apps/nazar/features/recordings/components/recording-dialog.tsx:574" }
+  tabs: { type: list, component: List, role: tablist, name: { key: Recordings.upload.tabsLabel }, in: [uploadDialog, writingRelease, starting, resigning, sending, stopped, uploadFailed, uploadDead], when: "canManage and intent != 'resume'", source: "apps/nazar/features/recordings/components/recording-dialog.tsx:593" }
+  tab: { type: action, component: ListItem, role: tab, text: { oneOf: [Recordings.upload.tabUpload, Recordings.upload.tabLink] }, in: [uploadDialog, writingRelease, starting, resigning, sending, stopped, uploadFailed, uploadDead], when: "canManage and intent != 'resume'", disabledIn: [writingRelease, starting, resigning, sending, stopped, uploadDead], source: "apps/nazar/features/recordings/components/recording-dialog.tsx:599" } # locked once a video exists
+  replacesLink: { type: alert, component: Alert, role: status, text: { key: Recordings.upload.replacesLink }, in: [uploadDialog, uploadFailed], when: "intent == 'edit' and existing == 'link' and not videoMade", source: "apps/nazar/features/recordings/components/recording-dialog.tsx:422" } # a warning-tone Alert: role status
+  replacesVideo: { type: alert, component: Alert, role: status, text: { key: Recordings.upload.replacesVideo }, in: [uploadDialog, uploadFailed], when: "replaceVideo and not videoMade", source: "apps/nazar/features/recordings/components/recording-dialog.tsx:416" }
+  stopsUpload: { type: text, component: Text, text: { key: Recordings.upload.stopsUpload }, in: [uploadDialog, uploadFailed], when: "intent == 'edit' and existing == 'bunnyProcessing' and not videoMade", source: "apps/nazar/features/recordings/components/recording-dialog.tsx:418" }
+  fileField: { type: field, component: TextField, role: button, text: { key: Recordings.upload.fileLabel }, in: [uploadDialog, writingRelease, starting, resigning, sending, stopped, uploadFailed, uploadDead], disabledIn: [writingRelease, starting, resigning, sending, stopped, uploadDead], source: "apps/nazar/features/recordings/components/recording-dialog.tsx:436" } # <input type="file" accept="video/*">
+  fileHelp: { type: text, component: Text, text: { key: Recordings.upload.fileHelp }, in: [uploadDialog, writingRelease, starting, resigning, sending, stopped, uploadFailed, uploadDead], when: "not fileError", source: "apps/nazar/features/recordings/components/recording-dialog.tsx:429" }
+  fileErrorText: { type: text, component: Text, text: { oneOf: [Recordings.upload.errors.type, Recordings.upload.errors.size, Recordings.upload.errors.empty] }, in: [uploadDialog], when: fileError, source: "apps/nazar/features/recordings/components/recording-dialog.tsx:432" }
+  chosen: { type: text, component: Text, text: { key: Recordings.upload.chosen }, in: [uploadDialog, writingRelease, starting, resigning, sending, stopped, uploadFailed, uploadDead], when: fileOk, source: "apps/nazar/features/recordings/components/recording-dialog.tsx:447" }
+  signing: { type: status, component: Status, role: status, text: { key: Recordings.upload.signing }, in: [writingRelease, starting, resigning], source: "apps/nazar/features/recordings/components/recording-dialog.tsx:455" } # an <output>
+  progress: { type: status, component: Status, role: progressbar, text: { key: Recordings.upload.progressLabel }, in: [sending, stopped], source: "apps/nazar/features/recordings/components/recording-dialog.tsx:461" }
+  progressBytes: { type: text, component: Text, text: { key: Recordings.upload.progressBytes }, in: [sending, stopped], source: "apps/nazar/features/recordings/components/recording-dialog.tsx:469" }
+  aborted: { type: alert, component: Alert, role: status, text: { key: Recordings.upload.aborted }, in: [stopped], when: "failure == 'none'", source: "apps/nazar/features/recordings/components/recording-dialog.tsx:478" }
+  failedTitle: { type: alert, component: Alert, role: alert, text: { oneOf: [Recordings.upload.failedTitle, Recordings.release.failed] }, in: [stopped, uploadFailed, uploadDead], when: "failure != 'none'", source: "apps/nazar/features/recordings/components/recording-dialog.tsx:484" }
+  errNotConfigured: { type: text, component: Text, text: { key: Recordings.upload.errors.notConfigured }, in: [uploadFailed, uploadDead], when: "failure == 'notConfigured'", source: "apps/nazar/features/recordings/recordings.ts:673" }
+  errUnavailable: { type: text, component: Text, text: { key: Recordings.upload.errors.unavailable }, in: [uploadFailed], when: "failure == 'unavailable'", source: "apps/nazar/features/recordings/recordings.ts:675" }
+  errExists: { type: text, component: Text, text: { key: Recordings.errors.exists }, in: [uploadFailed], when: "failure == 'exists'", source: "apps/nazar/features/recordings/recordings.ts:669" }
+  errGone: { type: text, component: Text, text: { key: Recordings.errors.gone }, in: [uploadFailed], when: "failure in ['gone', 'release']", source: "apps/nazar/features/recordings/recordings.ts:671" }
+  errClosed: { type: text, component: Text, text: { key: Recordings.upload.errors.closed }, in: [uploadFailed, uploadDead], when: "failure == 'closed'", source: "apps/nazar/features/recordings/recordings.ts:679" }
+  errExpired: { type: text, component: Text, text: { key: Recordings.upload.errors.expired }, in: [uploadFailed, uploadDead], when: "failure == 'expired'", source: "apps/nazar/features/recordings/recordings.ts:678" }
+  errNotFound: { type: text, component: Text, text: { key: Recordings.upload.errors.notFound }, in: [uploadFailed], when: "failure == 'notFound'", source: "apps/nazar/features/recordings/recordings.ts:685" }
+  errNetwork: { type: text, component: Text, text: { oneOf: [Recordings.upload.errors.network, Recordings.upload.errors.refused, Recordings.upload.errors.failed] }, in: [stopped], when: "failure == 'network'", source: "apps/nazar/features/recordings/recordings.ts:687" }
+  publicSwitch: { type: field, component: Button, role: switch, name: { key: Recordings.form.publicLabel }, text: { key: Recordings.form.publicLabel }, in: [uploadDialog, writingRelease, starting, resigning, sending, stopped, uploadFailed, uploadDead], when: "intent != 'resume'", disabledIn: [writingRelease, starting, resigning, sending, stopped, uploadDead], source: "apps/nazar/features/recordings/components/recording-dialog.tsx:617" }
+  releaseLegend: { type: text, component: Text, text: { key: Recordings.release.legend }, in: [uploadDialog, writingRelease, starting, resigning, sending, stopped, uploadFailed, uploadDead], when: "canManage and intent != 'resume'", source: "apps/nazar/features/recordings/components/release-fields.tsx:44" }
+  releaseGroup: { type: list, component: List, role: radiogroup, name: { labelledBy: releaseLegend }, in: [uploadDialog, writingRelease, starting, resigning, sending, stopped, uploadFailed, uploadDead], when: "canManage and intent != 'resume'", source: "apps/nazar/features/recordings/components/release-fields.tsx:43" }
+  releaseChoice: { type: field, component: ListItem, role: radio, text: { oneOf: [Recordings.release.ready, Recordings.release.at] }, in: [uploadDialog, writingRelease, starting, resigning, sending, stopped, uploadFailed, uploadDead], when: "canManage and intent != 'resume'", disabledIn: [writingRelease, starting, resigning, sending, stopped, uploadDead], source: "apps/nazar/features/recordings/components/release-fields.tsx:50" }
+  abort: { type: action, component: Button, role: button, intent: secondary, text: { key: Recordings.upload.cancel }, in: [sending], emits: ABORT, source: "apps/nazar/features/recordings/components/recording-dialog.tsx:383" } # İptal, the footer's only button while busy
+  cancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: Recordings.form.cancel }, in: [uploadDialog, stopped, uploadFailed, uploadDead], emits: CLOSE, source: "apps/nazar/features/recordings/components/recording-dialog.tsx:388" }
+  submit: { type: action, component: Button, role: button, intent: confirm, text: { oneOf: [Recordings.upload.submit, Recordings.upload.resume] }, in: [uploadDialog, stopped, uploadFailed], emits: UPLOAD, source: "apps/nazar/features/recordings/components/recording-dialog.tsx:390" } # gone once tedrisat will not sign the video again
+
+edges:
+  - { labelledBy: [page, pageTitle] }
+  - { labelledBy: [dialog, dialogTitle] }
+  - { labelledBy: [releaseGroup, releaseLegend] }
+  - { triggers: [submit, releaseStep] }
+  - { triggers: [abort, stopped] }
+
+rules:
+  - { id: one-button-while-busy, rule: "while the dialog signs or sends, İptal is the footer's only button and the dialog does not close" }
+  - { id: label-in-name, rule: "each row button's visible text starts its accessible name, which adds the session's title (WCAG 2.5.3)" }

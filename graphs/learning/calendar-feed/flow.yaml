@@ -1,0 +1,114 @@
+# "Takvim aboneliği" under Hesap (apps/tedris/app/account/calendar/page.tsx and
+# apps/tedris/features/courses/components/calendar-subscription.tsx) and the two tedrisat routes behind it, as the
+# code does it on origin/main ce47fce8 (capture of 25 Oct 2026). What a calendar app then reads is medaris.calendar-feed-read.
+schema: delurio-graph/0
+kind: flow
+id: medaris.calendar-feed
+status: proposed
+domain: medaris.learning
+ui: medaris.calendar-feed
+title: Create or renew the calendar subscription link
+summary: >-
+  A signed-in person makes a private link that Google Calendar and Apple Calendar subscribe to. Only a hash of its
+  secret is kept, so the link is shown once, when it is made; afterwards the page says one exists, masks its fields and
+  offers a new one. Renewing always asks first, because the old link stops working at once.
+
+scope:
+  shows: the subscription page for a signed-in person, from the status read to leaving
+  world: open
+  outOfView:
+    - "the old address /learning/calendar, which redirects here"
+    - "the steps to add the link to Google and Apple calendars, which are text"
+
+context:
+  status: # GET /me/calendar-feed as the page read it
+    values: [none, exists, unknown]
+    initial: any
+    say: { none: "the person has no link", exists: "a link exists, made earlier", unknown: "the status could not be read" }
+  configured: # TEDRIS_WEB_URL is set on tedrisat
+    values: [true, false]
+    initial: any
+    say: { "true": "tedrisat knows tedris's address", "false": "tedrisat has no TEDRIS_WEB_URL" }
+  clipboard:
+    values: [ok, blocked]
+    initial: any
+    say: { ok: "the browser lets the page copy", blocked: "the clipboard is refused" }
+  link: { values: [false, true], initial: false } # a link made during this visit is on the page
+  confirmed: { values: [false, true], initial: false } # the renewal was confirmed in the dialog
+  notice: { values: [none, failed, copied, copyFailed], initial: none }
+
+guards:
+  hasLink: "link or status == 'exists'"
+  masked: "not link"
+  needsConfirmation: "not link and status != 'none'"
+  showFailed: "notice == 'failed'"
+  showCopied: "notice == 'copied'"
+  showCopyFailed: "notice == 'copyFailed'"
+  showCreateHelp: "not hasLink and status == 'none'"
+  showUnknown: "not hasLink and status == 'unknown'"
+  dialogOpen: "state == 'confirmRenew' or confirmed" # the dialog stays open, its button busy, until the answer
+
+effects:
+  confirm: { set: { confirmed: true } }
+  issued: { set: { link: true, status: exists, confirmed: false, notice: none } }
+  failed: { set: { confirmed: false, notice: failed } }
+  copied: { set: { notice: copied } }
+  copyFailed: { set: { notice: copyFailed } }
+  clear: { set: { notice: none } }
+
+failures:
+  issuing:
+    from: regenerateMyCalendarFeed
+    unavailable: [CALENDAR_NOT_CONFIGURED]
+    server: [network, 5xx]
+
+main:
+  given: { status: none, configured: true, clipboard: ok }
+  events: [CREATE, DONE, COPY, NAVIGATE]
+
+initial: page
+states:
+  page:
+    title: Takvim aboneliği
+    by: human
+    goal: true
+    description: >-
+      The card with the link: shown once after it is made, masked otherwise; what the calendar holds and that the link
+      is private, beside it. With no link the button makes one at once; with a link, or when the status could not be
+      read, it asks first.
+    source: apps/tedris/features/courses/components/calendar-subscription.tsx:109
+    on:
+      CREATE: { guard: "not hasLink and status == 'none'", target: issuing, effect: [clear], say: "they make a link; nothing to replace, so no question", source: "apps/tedris/features/courses/components/calendar-subscription.tsx:223" }
+      REGENERATE: { guard: "link or status != 'none'", target: confirmRenew, effect: [clear], say: "they renew the link", source: "apps/tedris/features/courses/components/calendar-subscription.tsx:214" }
+      COPY:
+        - { guard: "link and clipboard == 'ok'", target: page, effect: [copied], say: "the address is copied", source: "apps/tedris/features/courses/components/calendar-subscription.tsx:44" }
+        - { guard: link, target: page, effect: [copyFailed], say: "the clipboard refuses; the field is left selected", source: "apps/tedris/features/courses/components/calendar-subscription.tsx:49" }
+      OPEN_APPLE: { guard: link, target: page, say: "they open the webcal link, and Apple Calendar asks to subscribe", source: "apps/tedris/features/courses/components/calendar-subscription.tsx:185" }
+      NAVIGATE: { target: left, say: "they leave; the link is not shown again" }
+
+  confirmRenew:
+    title: Ask before renewing
+    by: human
+    source: apps/tedris/features/courses/components/calendar-subscription.tsx:283
+    on:
+      CONFIRM: { target: issuing, effect: [confirm], say: "they renew", source: "apps/tedris/features/courses/components/calendar-subscription.tsx:291" }
+      CANCEL: { target: page, say: "they keep the link they have" }
+
+  issuing:
+    title: Make a new link
+    description: >-
+      POST /me/calendar-feed: 32 random bytes, of which only the SHA-256 is stored over the old one; the old address
+      answers 404 from now on. The address comes back this once.
+    source: apps/tedrisat/src/calendar-feed/calendar-feed.service.ts:53
+    invoke: { action: regenerateMyCalendarFeed }
+    on:
+      DONE: { guard: configured, target: page, effect: [issued], say: "the link is shown, with the warning to copy it now", source: "apps/tedris/features/courses/components/calendar-subscription.tsx:132" }
+      FAIL.unavailable: { guard: "not configured", target: page, effect: [failed], say: "tedrisat has no TEDRIS_WEB_URL: 503", source: "apps/tedrisat/src/calendar-feed/calendar-feed.service.ts:38" }
+      FAIL.server: { target: page, effect: [failed], say: "the request did not go through", source: "apps/tedris/features/courses/components/calendar-subscription.tsx:129" }
+
+  left: { type: final, title: They leave the page, leavesPage: true }
+
+assertions:
+  - { id: renewal-asks-first, never: "state == 'issuing' and (link or status != 'none') and not confirmed", say: "A link that may exist is never replaced without asking", source: "apps/tedris/features/courses/components/calendar-subscription.tsx:139" }
+  - { id: link-shown-only-when-made, never: "link and not configured", say: "No link is shown unless tedrisat made one", source: "apps/tedrisat/src/calendar-feed/calendar-feed.service.ts:56" }
+  - { id: nothing-copied-masked, never: "notice in ['copied', 'copyFailed'] and not link", say: "A masked link is never copied", source: "apps/tedris/features/courses/components/calendar-subscription.tsx:69" }

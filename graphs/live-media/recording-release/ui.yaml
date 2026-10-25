@@ -1,0 +1,52 @@
+# Medaris, captured from origin/main ce47fce8: the Erişim cell of Ders kayıtları, the Kayıt erişimi button of Celseler,
+# and the ReleaseDialog both open. The dialog is the kit's Dialog (role dialog, named by its title); no initialFocus is
+# passed, so the header's close button takes the focus first. The date-time field is the kit's DateTimeField, drawn
+# here as a text field.
+schema: delurio-graph/0
+kind: ui
+id: medaris.recording-release
+flow: medaris.recording-release
+status: proposed
+catalog: catalog/tr.json
+locales: [tr, en]
+samples: { session: "Birinci celse", when: "14 Ekim 20:00", zone: "İstanbul" }
+changes: { key: Changes.note }
+
+nodes:
+  page: { type: page, component: Page, role: main, in: [page, dialog, writing, announcing, announcingLater], source: "apps/nazar/features/recordings/components/recordings-page.tsx:43" }
+  accessAt: { type: text, component: Text, text: { key: Recordings.access.at }, in: [page, dialog, writing], when: "entry == 'recordings' and held == 'at'", source: "apps/nazar/features/recordings/components/recordings-table.tsx:146" }
+  accessOpen: { type: text, component: Text, text: { key: Recordings.access.open }, in: [page, dialog, writing], when: "entry == 'recordings' and held == 'none' and recording == 'ready'", source: "apps/nazar/features/recordings/components/recordings-table.tsx:157" }
+  accessWhenReady: { type: text, component: Text, text: { key: Recordings.access.whenReady }, in: [page, dialog, writing], when: "entry == 'recordings' and held == 'none' and recording != 'ready'", source: "apps/nazar/features/recordings/components/recordings-table.tsx:160" }
+  changeButton: { type: action, component: LinkButton, role: button, intent: secondary, name: { key: Recordings.access.changeLabel }, text: { key: Recordings.access.change }, in: [page], when: "canManage and entry == 'recordings'", emits: OPEN, source: "apps/nazar/features/recordings/components/recordings-table.tsx:164" }
+  sessionsOpens: { type: text, component: Text, text: { key: Sessions.release.opens }, in: [page], when: "entry == 'sessions' and held == 'at'", source: "apps/nazar/features/sessions/components/sessions-table.tsx:332" }
+  sessionsButton: { type: action, component: Button, role: button, intent: secondary, name: { key: Sessions.release.buttonLabel }, text: { key: Sessions.release.button }, in: [page], when: "canManage and entry == 'sessions' and row == 'ahead'", emits: OPEN, source: "apps/nazar/features/sessions/components/sessions-table.tsx:496" }
+  savedToast: { type: status, component: Status, role: status, text: { key: Recordings.release.saved }, in: [page], when: "notice in ['savedAt', 'savedReady']", source: "apps/nazar/features/recordings/components/release-dialog.tsx:88" }
+  savedAtBody: { type: text, component: Text, text: { key: Recordings.release.savedAt }, in: [page], when: "notice == 'savedAt'", source: "apps/nazar/features/recordings/components/release-dialog.tsx:90" }
+  savedReadyBody: { type: text, component: Text, text: { key: Recordings.release.savedReady }, in: [page], when: "notice == 'savedReady'", source: "apps/nazar/features/recordings/components/release-dialog.tsx:98" }
+  failedToast: { type: alert, component: Alert, role: alert, text: { key: Recordings.release.failed }, in: [page], when: "notice == 'gone'", source: "apps/nazar/features/recordings/components/release-dialog.tsx:78" }
+  goneText: { type: text, component: Text, text: { key: Recordings.errors.gone }, in: [page], when: "notice == 'gone'", source: "apps/nazar/features/recordings/recordings.ts:394" }
+
+  dialog: { type: page, component: Page, role: dialog, name: { labelledBy: dialogTitle }, in: [dialog, writing], initialFocus: closeX, source: "apps/nazar/features/recordings/components/release-dialog.tsx:106" }
+  eyebrow: { type: text, component: Text, text: { literal: "Birinci celse" }, in: [dialog, writing], source: "apps/nazar/features/recordings/components/release-dialog.tsx:113" } # the session's title; on Celseler its date and time
+  dialogTitle: { type: text, component: Heading, role: heading, text: { key: Recordings.release.title }, in: [dialog, writing], source: "apps/nazar/features/recordings/components/release-dialog.tsx:114" }
+  closeX: { type: action, component: Button, role: button, intent: dismiss, name: { key: Shell.close }, in: [dialog, writing], disabledIn: [writing], emits: CLOSE, source: "libs/ui/src/mds/dialog.tsx:97" }
+  legend: { type: text, component: Text, text: { key: Recordings.release.legend }, in: [dialog, writing], source: "apps/nazar/features/recordings/components/release-fields.tsx:44" }
+  group: { type: list, component: List, role: radiogroup, name: { labelledBy: legend }, in: [dialog, writing], source: "apps/nazar/features/recordings/components/release-fields.tsx:43" }
+  readyChoice: { type: field, component: ListItem, role: radio, text: { key: Recordings.release.ready }, in: [dialog, writing], disabledIn: [writing], source: "apps/nazar/features/recordings/components/release-fields.tsx:52" }
+  atChoice: { type: field, component: ListItem, role: radio, text: { key: Recordings.release.at }, in: [dialog, writing], disabledIn: [writing], source: "apps/nazar/features/recordings/components/release-fields.tsx:57" }
+  readyHelp: { type: text, component: Text, text: { key: Recordings.release.readyHelp }, in: [dialog, writing], source: "apps/nazar/features/recordings/components/release-fields.tsx:54" }
+  atHelp: { type: text, component: Text, text: { key: Recordings.release.atHelp }, in: [dialog, writing], source: "apps/nazar/features/recordings/components/release-fields.tsx:59" }
+  whenField: { type: field, component: TextField, role: textbox, text: { key: Recordings.release.whenLabel }, in: [dialog, writing], when: "choice in ['future', 'past', 'empty'] or (choice == 'same' and held == 'at')", disabledIn: [writing], source: "apps/nazar/features/recordings/components/release-fields.tsx:76" }
+  whenHelp: { type: text, component: Text, text: { key: Recordings.release.whenHelp }, in: [dialog, writing], when: "problem == 'none' and (choice in ['future', 'past', 'empty'] or (choice == 'same' and held == 'at'))", source: "apps/nazar/features/recordings/components/release-fields.tsx:67" }
+  pastError: { type: text, component: Text, text: { key: Recordings.release.errors.past }, in: [dialog], when: "problem == 'past'", source: "apps/nazar/features/recordings/components/release-fields.tsx:70" }
+  emptyError: { type: text, component: Text, text: { key: Recordings.release.errors.empty }, in: [dialog], when: "problem == 'empty'", source: "apps/nazar/features/recordings/components/release-fields.tsx:72" }
+  cancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: Recordings.form.cancel }, in: [dialog, writing], disabledIn: [writing], emits: CLOSE, source: "apps/nazar/features/recordings/components/release-dialog.tsx:118" }
+  save: { type: action, component: Button, role: button, intent: confirm, text: { key: Recordings.form.submitEdit }, in: [dialog, writing], disabledIn: [writing], emits: SAVE, source: "apps/nazar/features/recordings/components/release-dialog.tsx:119" }
+
+edges:
+  - { labelledBy: [dialog, dialogTitle] }
+  - { labelledBy: [group, legend] }
+  - { triggers: [save, writing] }
+
+rules:
+  - { id: course-clock, rule: "the time is typed and shown on the course's clock, and the help names that clock" }

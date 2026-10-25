@@ -1,0 +1,314 @@
+# "Ödev" with "Ödevim" under it (apps/tedris/features/courses/components/session-homework.tsx), as built today.
+schema: delurio-graph/0
+kind: ui
+id: medaris.homework
+flow: medaris.homework
+status: proposed
+catalog: catalog/tr.json
+locales: [tr, en]
+samples: { maxFiles: "10", maxSize: "25 MB", name: "ödev-1.pdf", max: "4000", description: "Birinci bâbı oku, üç soruyu cevapla." }
+changes: { key: Changes.note }
+
+nodes:
+  section:
+    type: page
+    component: Page
+    role: region
+    name: { labelledBy: sectionTitle }
+    in: [loadFailed, ready, uploading, confirmRemove, removing, savingNote, clearingNote]
+    source: apps/tedris/features/courses/components/session-homework.tsx:240
+  sectionTitle:
+    type: text
+    component: Heading
+    role: heading
+    text: { key: Homework.sectionTitle }
+    in: [loadFailed, ready, uploading, confirmRemove, removing, savingNote, clearingNote]
+    source: apps/tedris/features/courses/components/session-homework.tsx:246
+  handedInBadge:
+    type: status
+    component: Status
+    text: { key: Homework.handedIn }
+    when: "assignment and handedIn"
+    in: [ready, uploading, confirmRemove, removing, savingNote, clearingNote]
+    source: apps/tedris/features/courses/components/session-homework.tsx:255
+  notHandedInBadge:
+    type: status
+    component: Status
+    text: { key: Homework.notHandedIn }
+    when: pendingWarning
+    in: [ready, uploading, confirmRemove, removing, savingNote, clearingNote]
+    source: apps/tedris/features/courses/components/session-homework.tsx:263
+  assignmentText:
+    type: text
+    component: Text
+    text: { key: Data.assignmentDescription, params: { description: assignment.description } }
+    when: assignment
+    in: [loadFailed, ready, uploading, confirmRemove, removing, savingNote, clearingNote]
+    source: apps/tedris/features/courses/components/session-homework.tsx:452
+  noAssignment:
+    type: text
+    component: Text
+    text: { key: Homework.noAssignment }
+    when: "not assignment"
+    in: [ready, uploading, confirmRemove, removing, savingNote, clearingNote]
+    source: apps/tedris/features/courses/components/session-homework.tsx:277
+  pendingAlert:
+    type: alert
+    component: Alert
+    role: status # an Alert of tone warning, not announced as an alert
+    text: { key: Homework.pendingTitle }
+    when: pendingWarning
+    in: [ready, uploading, confirmRemove, removing, savingNote, clearingNote]
+    source: apps/tedris/features/courses/components/session-homework.tsx:281
+  pendingBody:
+    type: text
+    component: Text
+    text: { key: Homework.pendingBody }
+    when: pendingWarning
+    in: [ready, uploading, confirmRemove, removing, savingNote, clearingNote]
+  ownTitle:
+    type: text
+    component: Heading
+    role: heading
+    text: { key: Homework.title }
+    in: [loadFailed, ready, uploading, confirmRemove, removing, savingNote, clearingNote]
+    source: apps/tedris/features/courses/components/session-homework.tsx:289
+  audience:
+    type: text
+    component: Text
+    text: { key: Homework.audience }
+    in: [loadFailed, ready, uploading, confirmRemove, removing, savingNote, clearingNote]
+    source: apps/tedris/features/courses/components/session-homework.tsx:296
+  loadFailedAlert:
+    type: alert
+    component: Alert
+    role: alert
+    text: { key: Homework.loadFailed }
+    in: [loadFailed]
+    source: apps/tedris/features/courses/components/session-homework.tsx:302
+  retry:
+    type: action
+    component: Button
+    role: button
+    intent: secondary
+    text: { key: Homework.retry }
+    in: [loadFailed]
+    emits: RETRY
+    source: apps/tedris/features/courses/components/session-homework.tsx:305
+  empty:
+    type: text
+    component: Text
+    text: { key: Homework.empty }
+    when: "files == 'none'"
+    in: [ready, savingNote, clearingNote]
+    source: apps/tedris/features/courses/components/session-homework.tsx:348
+  fileList:
+    type: list
+    component: List
+    role: list
+    name: { key: Homework.filesLabel }
+    when: "files != 'none'"
+    in: [ready, uploading, confirmRemove, removing, savingNote, clearingNote]
+    source: apps/tedris/features/courses/components/session-homework.tsx:317
+  fileRow:
+    type: text
+    component: ListItem
+    role: listitem
+    text: { key: Data.fileName, params: { name: file.name } }
+    when: "files != 'none'"
+    repeat: submission.files
+    in: [ready, uploading, confirmRemove, removing, savingNote, clearingNote]
+    source: apps/tedris/features/courses/components/session-homework.tsx:570
+  removeFile:
+    type: action
+    component: Button
+    role: button
+    intent: secondary
+    name: { key: Homework.removeLabel, params: { name: file.name } }
+    when: "files != 'none'"
+    repeat: submission.files
+    in: [ready, uploading, savingNote, clearingNote]
+    disabledIn: [uploading, savingNote, clearingNote]
+    emits: REMOVE
+    source: apps/tedris/features/courses/components/session-homework.tsx:612
+  removeAsk:
+    type: text
+    component: Text
+    text: { key: Homework.removeAsk }
+    in: [confirmRemove, removing]
+    source: apps/tedris/features/courses/components/session-homework.tsx:590
+  removeConfirm:
+    type: action
+    component: Button
+    role: button
+    intent: confirm
+    text: { key: Homework.remove }
+    in: [confirmRemove, removing]
+    disabledIn: [removing]
+    emits: CONFIRM
+    source: apps/tedris/features/courses/components/session-homework.tsx:591
+  removeCancel:
+    type: action
+    component: Button
+    role: button
+    intent: dismiss
+    text: { key: Homework.cancel }
+    in: [confirmRemove, removing]
+    emits: CANCEL
+    source: apps/tedris/features/courses/components/session-homework.tsx:600
+  removingStatus:
+    type: status
+    component: Status
+    role: status
+    text: { key: Homework.removing }
+    in: [removing]
+    source: apps/tedris/features/courses/components/session-homework.tsx:595
+  addField:
+    type: field
+    component: TextField
+    role: button # <input type="file">
+    text: { key: Homework.addLabel }
+    in: [ready, uploading, confirmRemove, removing, savingNote, clearingNote]
+    disabledIn: [uploading]
+    emits: ADD_FILE
+    source: apps/tedris/features/courses/components/session-homework.tsx:395
+  addLimits:
+    type: text
+    component: Text
+    text: { key: Homework.limits, params: { maxFiles: limits.maxFiles, maxSize: limits.maxFileBytes } }
+    when: addOpen
+    in: [ready, uploading, confirmRemove, removing, savingNote, clearingNote]
+    source: apps/tedris/features/courses/components/session-homework.tsx:392
+  addFull:
+    type: text
+    component: Text
+    text: { key: Homework.full, params: { maxFiles: limits.maxFiles } }
+    when: "not addOpen"
+    in: [ready, uploading, confirmRemove, removing, savingNote, clearingNote]
+    source: apps/tedris/features/courses/components/session-homework.tsx:391
+  uploadingStatus:
+    type: status
+    component: Status
+    role: status
+    text: { key: Homework.uploading }
+    in: [uploading]
+    source: apps/tedris/features/courses/components/session-homework.tsx:366
+  noteField:
+    type: field
+    component: TextField
+    role: textbox
+    text: { key: Homework.noteLabel }
+    in: [ready, uploading, confirmRemove, removing, savingNote, clearingNote]
+    source: apps/tedris/features/courses/components/session-homework.tsx:708
+  noteHelp:
+    type: text
+    component: Text
+    text: { key: Homework.noteHelp }
+    in: [ready, uploading, confirmRemove, removing, savingNote, clearingNote]
+  noteSave:
+    type: action
+    component: Button
+    role: button
+    intent: confirm
+    text: { key: Homework.noteSave }
+    in: [ready, savingNote, clearingNote]
+    disabledIn: [savingNote, clearingNote]
+    emits: SAVE_NOTE
+    source: apps/tedris/features/courses/components/session-homework.tsx:720
+  noteSaving:
+    type: status
+    component: Status
+    role: status
+    text: { key: Homework.noteSaving }
+    in: [savingNote, clearingNote]
+    source: apps/tedris/features/courses/components/session-homework.tsx:726
+  addedStatus:
+    type: status
+    component: Status
+    role: status
+    text: { key: Homework.added, params: { name: file.name } }
+    when: showAdded
+    in: [ready]
+    source: apps/tedris/features/courses/components/session-homework.tsx:425
+  removedStatus:
+    type: status
+    component: Status
+    role: status
+    text: { key: Homework.removed, params: { name: file.name } }
+    when: showRemoved
+    in: [ready]
+    source: apps/tedris/features/courses/components/session-homework.tsx:340
+  noteSavedStatus:
+    type: status
+    component: Status
+    role: status
+    text: { key: Homework.noteSaved }
+    when: showNoteSaved
+    in: [ready]
+    source: apps/tedris/features/courses/components/session-homework.tsx:731
+  refusedHereError:
+    type: alert
+    component: Alert
+    role: alert
+    text: { key: Homework.errors.tooLarge, params: { maxSize: limits.maxFileBytes } }
+    when: showRefusedHere
+    in: [ready]
+    source: apps/tedris/features/courses/components/session-homework.tsx:195
+  refusedThereError:
+    type: alert
+    component: Alert
+    role: alert
+    text: { key: Homework.errors.type }
+    when: showRefusedThere
+    in: [ready]
+    source: apps/tedris/features/courses/components/session-homework.tsx:369
+  forbiddenError:
+    type: alert
+    component: Alert
+    role: alert
+    text: { key: Homework.errors.forbidden }
+    when: showForbidden
+    in: [ready]
+    source: apps/tedris/features/courses/components/session-homework.tsx:369
+  storageError:
+    type: alert
+    component: Alert
+    role: alert
+    text: { key: Homework.errors.storage }
+    when: showUnavailable
+    in: [ready]
+    source: apps/tedris/features/courses/components/session-homework.tsx:369
+  notFoundError:
+    type: alert
+    component: Alert
+    role: alert
+    text: { key: Homework.errors.notFound }
+    when: showNotFound
+    in: [ready]
+    source: apps/tedris/features/courses/components/session-homework.tsx:369
+  failedError:
+    type: alert
+    component: Alert
+    role: alert
+    text: { key: Homework.errors.failed }
+    when: showFailed
+    in: [ready]
+    source: apps/tedris/features/courses/components/session-homework.tsx:369
+  noteFailedError:
+    type: alert
+    component: Alert
+    role: alert
+    text: { key: Homework.noteFailed }
+    when: showNoteFailed
+    in: [ready]
+    source: apps/tedris/features/courses/components/session-homework.tsx:735
+
+edges:
+  - { labelledBy: [section, sectionTitle] }
+  - { triggers: [addField, uploading] }
+  - { triggers: [removeFile, confirmRemove] }
+  - { triggers: [removeConfirm, removing] }
+  - { triggers: [noteSave, savingNote] }
+
+rules:
+  - { id: remove-asks-first, rule: "removing a file asks first, inline in the file's row" }

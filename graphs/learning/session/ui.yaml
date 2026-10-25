@@ -1,0 +1,274 @@
+# The celse page (apps/tedris/features/courses/components/session-page.tsx) and its locked form (lesson-locked.tsx),
+# as built today; the main card is session-action-card.tsx. Only the parts the flow acts on are drawn.
+schema: delurio-graph/0
+kind: ui
+id: medaris.session
+flow: medaris.session
+status: proposed
+catalog: catalog/tr.json
+locales: [tr, en]
+samples: { title: "Usûl-i Fıkıh, 3. celse", course: "Fıkıh Usulü", name: "Ders notları.pdf" }
+changes: { key: Changes.note }
+
+nodes:
+  lockedPage:
+    type: page
+    component: Page
+    role: main
+    name: { labelledBy: lockedTitle }
+    in: [lockedApply, applying, lockedPending, lockedRevoked]
+    source: apps/tedris/features/courses/components/lesson-locked.tsx:169
+  lockedTitle:
+    type: text
+    component: Heading
+    role: heading
+    text: { key: Data.sessionTitle, params: { title: session.title } }
+    in: [lockedApply, applying, lockedPending, lockedRevoked]
+    source: apps/tedris/features/courses/components/session-header.tsx:58
+  lockedApplyText:
+    type: text
+    component: Text
+    text: { key: LessonLocked.description.apply }
+    in: [lockedApply, applying]
+    source: apps/tedris/features/courses/components/lesson-locked.tsx:211
+  applyButton:
+    type: action
+    component: Button
+    role: button
+    intent: confirm
+    text: { key: LessonLocked.apply }
+    in: [lockedApply, applying]
+    disabledIn: [applying]
+    emits: APPLY
+    source: apps/tedris/features/courses/components/lesson-locked.tsx:108
+  lockedPendingText:
+    type: text
+    component: Text
+    text: { key: LessonLocked.description.pending }
+    in: [lockedPending]
+    source: apps/tedris/features/courses/components/lesson-locked.tsx:211
+  pendingBadge:
+    type: status
+    component: Status
+    text: { key: CoursePage.pendingApproval }
+    in: [lockedPending]
+    source: apps/tedris/features/courses/components/lesson-locked.tsx:114
+  pendingNote:
+    type: text
+    component: Text
+    text: { key: LessonLocked.pendingNote }
+    in: [lockedPending]
+    source: apps/tedris/features/courses/components/lesson-locked.tsx:117
+  lockedRevokedText:
+    type: text
+    component: Text
+    text: { key: LessonLocked.description.revoked }
+    in: [lockedRevoked]
+    source: apps/tedris/features/courses/components/lesson-locked.tsx:211
+  courseCard:
+    type: action
+    component: LinkButton
+    role: link
+    intent: secondary
+    text: { key: Data.courseTitle, params: { course: course.title } }
+    in: [lockedApply, applying, lockedPending, lockedRevoked]
+    emits: OPEN_COURSE
+    source: apps/tedris/features/courses/components/lesson-locked.tsx:263
+  failedToast:
+    type: status
+    component: Status
+    role: status
+    text: { key: CoursePage.actionFailed }
+    when: showFailed
+    in: [lockedApply]
+    source: apps/tedris/features/courses/components/lesson-locked.tsx:92
+  notFoundToast:
+    type: status
+    component: Status
+    role: status
+    text: { key: CoursePage.actionNotFound }
+    when: showNotFound
+    in: [lockedApply]
+    source: apps/tedris/features/courses/components/lesson-locked.tsx:92
+
+  receivedDialog:
+    type: page
+    component: Page
+    role: dialog
+    name: { labelledBy: receivedTitle }
+    in: [receivedDialog]
+    initialFocus: receivedOk
+    source: apps/tedris/features/courses/components/enrollment-received-dialog.tsx:30
+  receivedTitle:
+    type: text
+    component: Heading
+    role: heading
+    text: { key: CoursePage.receivedTitle }
+    in: [receivedDialog]
+  receivedBody:
+    type: text
+    component: Text
+    text: { key: CoursePage.receivedBody }
+    in: [receivedDialog]
+  receivedOk:
+    type: action
+    component: Button
+    role: button
+    intent: confirm
+    text: { key: CoursePage.receivedOk }
+    in: [receivedDialog]
+    emits: DISMISS
+    source: apps/tedris/features/courses/components/enrollment-received-dialog.tsx:40
+
+  sessionPage:
+    type: page
+    component: Page
+    role: main
+    name: { labelledBy: sessionTitle }
+    in: [sessionOpen, cancelledSession, downloadingResource, downloadingIcs]
+    source: apps/tedris/features/courses/components/session-page.tsx:295
+  sessionTitle:
+    type: text
+    component: Heading
+    role: heading
+    text: { key: Data.sessionTitle, params: { title: session.title } }
+    in: [sessionOpen, cancelledSession, downloadingResource, downloadingIcs]
+    source: apps/tedris/features/courses/components/session-header.tsx:58
+  watchStream:
+    type: action
+    component: LinkButton
+    role: link
+    intent: confirm
+    text: { oneOf: [SessionPage.watchStream, SessionPage.watchRecording] }
+    when: watchable
+    in: [sessionOpen]
+    emits: WATCH
+    source: apps/tedris/features/courses/components/session-action-card.tsx:239
+  notesTitle:
+    type: text
+    component: Heading
+    role: heading
+    text: { key: LessonNotes.title }
+    when: notesHere
+    in: [sessionOpen]
+    source: apps/tedris/features/courses/components/session-page.tsx:133
+  writeNote:
+    type: action
+    component: Button
+    role: button
+    intent: secondary
+    text: { key: LessonNotes.add }
+    when: notesHere
+    in: [sessionOpen]
+    emits: WRITE_NOTE
+    source: apps/tedris/features/courses/components/lesson-notes.tsx:404
+  homeworkTitle:
+    type: text
+    component: Heading
+    role: heading
+    text: { key: Homework.sectionTitle }
+    in: [sessionOpen]
+    source: apps/tedris/features/courses/components/session-homework.tsx:251
+  handIn:
+    type: action
+    component: Button
+    role: button
+    intent: secondary
+    text: { key: Homework.addLabel }
+    in: [sessionOpen]
+    emits: HAND_IN
+    source: apps/tedris/features/courses/components/session-homework.tsx:387
+  cancelledTitle:
+    type: text
+    component: Heading
+    role: heading
+    text: { key: SessionPage.cancelledTitle }
+    in: [cancelledSession]
+    source: apps/tedris/features/courses/components/session-action-card.tsx:414
+  noReplacement:
+    type: text
+    component: Text
+    text: { key: SessionPage.noReplacement }
+    in: [cancelledSession]
+    source: apps/tedris/features/courses/components/session-page.tsx:179
+  replacementGo:
+    type: action
+    component: LinkButton
+    role: link
+    intent: secondary
+    text: { key: SessionPage.replacementGo }
+    in: [cancelledSession]
+    emits: OPEN_REPLACEMENT
+    source: apps/tedris/features/courses/components/session-page.tsx:174
+  resourcesTitle:
+    type: text
+    component: Heading
+    role: heading
+    text: { key: SessionPage.resourcesTitle }
+    in: [sessionOpen, cancelledSession, downloadingResource]
+    source: apps/tedris/features/courses/components/session-resources.tsx:80
+  resourceLink:
+    type: action
+    component: LinkButton
+    role: link
+    intent: secondary
+    text: { key: Data.resourceName, params: { name: resource.name } }
+    in: [sessionOpen, cancelledSession, downloadingResource]
+    disabledIn: [downloadingResource]
+    emits: OPEN_RESOURCE
+    source: apps/tedris/features/courses/components/course-resources.tsx:124
+  calendarButton:
+    type: action
+    component: Button
+    role: button
+    intent: secondary
+    text: { key: AddToCalendar.button }
+    in: [sessionOpen, downloadingIcs]
+    disabledIn: [downloadingIcs]
+    emits: ADD_TO_CALENDAR
+    source: apps/tedris/features/courses/components/session-page.tsx:230
+  subscribeItem:
+    type: action
+    component: LinkButton
+    role: menuitem
+    intent: secondary
+    text: { key: AddToCalendar.subscribe }
+    in: [sessionOpen]
+    emits: SUBSCRIBE
+    source: apps/tedris/features/courses/components/calendar-menu.tsx:130
+  pager:
+    type: action
+    component: LinkButton
+    role: link
+    intent: secondary
+    text: { key: SessionPage.curriculum }
+    in: [sessionOpen]
+    emits: OPEN_OTHER
+    source: apps/tedris/features/courses/components/session-page.tsx:344
+  fileErrorTitle:
+    type: alert
+    component: Alert
+    role: status
+    text: { key: FileDownload.title }
+    when: showFileFailed
+    in: [sessionOpen, cancelledSession]
+    source: apps/tedris/features/courses/components/file-error-notice.tsx:17
+  icsFailed:
+    type: alert
+    component: Alert
+    role: status
+    text: { key: AddToCalendar.downloadFailed }
+    when: showIcsFailed
+    in: [sessionOpen]
+    source: apps/tedris/features/courses/components/calendar-menu.tsx:88
+
+edges:
+  - { labelledBy: [lockedPage, lockedTitle] }
+  - { labelledBy: [sessionPage, sessionTitle] }
+  - { labelledBy: [receivedDialog, receivedTitle] }
+  - { triggers: [applyButton, applying] }
+  - { triggers: [resourceLink, downloadingResource] }
+  - { triggers: [calendarButton, downloadingIcs] }
+
+rules:
+  - { id: lock-offers-what-it-can, rule: "the locked card offers only an action the API would take: apply to no enrollment, nothing to a waiting request or a talebe taken out" }
