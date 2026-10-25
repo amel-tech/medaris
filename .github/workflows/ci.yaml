@@ -267,11 +267,14 @@ jobs:
         run: node tools/ci/assert-openapi-spec-fresh.mjs
 
       # The five targets are kept identical to the root `affected` script so the
-      # local and CI gates cannot drift.
+      # local and CI gates cannot drift. tedrisat is excluded here and verified
+      # by `verify-tedrisat` below with the same five targets, so the two jobs
+      # together run exactly what the root script runs.
       - name: Verify affected projects
         run: >-
           pnpm exec nx affected
           -t lint typecheck test build module-boundaries
+          --exclude=tedrisat
 
       - name: Report affected projects
         if: always()
@@ -280,6 +283,61 @@ jobs:
           echo "NX_HEAD=$NX_HEAD"
           echo '--- projects affected by this change ---'
           pnpm exec nx show projects --affected || true
+
+  # tedrisat on a runner of its own (2026-10-25). Its `test` target was the
+  # whole critical path of Verify (9m 55s and 14m 17s of the runs that measured
+  # it), and running four spec files at a time inside it gained nothing while
+  # it shared four vCPUs with five `next build`s. The same twelve e2e files took
+  # 336 s on one worker and 113 s on four on an idle machine, so the CPUs were
+  # the limit, not the suite. A second job is a second runner, free on a public
+  # repo, and it starts at the same time as Verify.
+  #
+  # Its e2e suites start their own Testcontainers postgres:17-alpine (and, in
+  # four suites, Keycloak or Mailpit) through the runner's Docker socket, which
+  # is why there is no `services:` postgres here.
+  verify-tedrisat:
+    name: Verify (tedrisat)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Derive nx affected SHAs
+        uses: nrwl/nx-set-shas@3e9ad7370203c1e93d109be57f3b72eb0eb511b1 # v4.4.0
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Seed the root env file from the example
+        run: cp .env.example .env
+
+      # Only when tedrisat is affected, as it would be in the single command
+      # Verify used to run. `--json` and jq, not grep: without a TTY,
+      # `nx show projects` prints one JSON array on one line, so a line match
+      # never finds the name and this job would pass without verifying anything.
+      - name: Verify tedrisat
+        run: |
+          set -euo pipefail
+          affected=$(pnpm exec nx show projects --affected --json)
+          if jq -e 'index("tedrisat") != null' <<<"$affected" >/dev/null; then
+            pnpm exec nx run-many -p tedrisat \
+              -t lint typecheck test build module-boundaries
+          else
+            echo "tedrisat is not affected by this change." \
+              | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
 
   # The `Security gates` job moved to security.yaml on 2026-10-25, where it
   # fails only on an advisory the change brings in. See that file's header.
