@@ -90,8 +90,8 @@ actions:
     route: GET /courses/{id}/live-streams
     operationId: listCourseLiveStreams
     needs: session.live_link on the course
+    note: "answered with Cache-Control: private, no-store"
     source: apps/tedrisat/src/course/live-stream.controller.ts:67
-    headers: { Cache-Control: "private, no-store" }
     result: { type: array, items: { type: object, required: [lessonId, liveStreamUrl], properties: { lessonId: { type: string, format: uuid }, liveStreamUrl: { type: [string, "null"] } } } }
     refusals:
       AUTHZ_FORBIDDEN: { status: 403, source: "apps/tedrisat/src/course/live-stream.controller.ts:64" }
@@ -107,7 +107,7 @@ actions:
     refusals:
       AUTHZ_FORBIDDEN: { status: 403, source: "apps/tedrisat/src/course/live-stream.controller.ts:89" }
       LESSON_NOT_FOUND: { status: 404, note: "missing or archived", source: "apps/tedrisat/src/course/recording.repository.ts:812" }
-      LIVE_STREAM_URL_INVALID: { status: 400, problems: [not-https, not-youtube, channel, no-video, invalid, too-long, empty], source: "apps/tedrisat/src/course/live-stream.service.ts:59" }
+      LIVE_STREAM_URL_INVALID: { status: 400, note: "problems: not-https, not-youtube, channel, no-video, invalid, too-long, empty", source: "apps/tedrisat/src/course/live-stream.service.ts:59" }
       LESSON_NOT_LIVE: { status: 409, source: "apps/tedrisat/src/course/recording.repository.ts:814" }
       LESSON_CANCELLED: { status: 409, source: "apps/tedrisat/src/course/recording.repository.ts:817" }
 
@@ -116,15 +116,9 @@ actions:
     route: GET /courses/{courseId}/sessions/{sessionId}
     operationId: getSession
     needs: course.view (public); the stream and the recording only with course.view_details, except a PUBLIC recording of a sample session
+    note: "answered with Cache-Control: private, no-store; its rules are the invariants getSession-1 to getSession-5"
     source: apps/tedrisat/src/course/lesson.controller.ts:227
-    headers: { Cache-Control: "private, no-store" }
     result: { returns: Lesson, note: "with contentLocked, liveStreamUrl (liveStreamFor) and recording (visibleRecordings, signPlayback)" }
-    rules:
-      - { rule: "liveStreamUrl from the scheduled start until scheduled end + 24 h, unless the session is cancelled or its recording is released", source: "apps/tedrisat/src/course/domain/recording.ts:196" }
-      - { rule: "a recording's url only when READY and (released or the caller holds recording.manage)", source: "apps/tedrisat/src/course/domain/recording.ts:125" }
-      - { rule: "a FAILED recording is never listed, to anyone", source: "apps/tedrisat/src/course/domain/recording.ts:160" }
-      - { rule: "a BUNNY url is a player link built for this response, signed for 6 h when BUNNY_STREAM_TOKEN_KEY is set, unsigned otherwise", source: "apps/tedrisat/src/bunny-stream/bunny-signature.ts:99" }
-      - { rule: "a PUBLIC recording is hidden from a caller without content when the course is closed or a policy keeps recordings from the public", source: "apps/tedrisat/src/course/course.service.ts:852" }
     sideEffects: ["audit: a content read by someone neither enrolled nor a müderris"]
     refusals:
       COURSE_NOT_FOUND: { status: 404, source: "apps/tedrisat/src/course/lesson.controller.ts:114" }
@@ -133,8 +127,8 @@ actions:
     route: GET /courses/{id}/recordings
     operationId: listCourseRecordings
     needs: course.view (public); without course.view_details only PUBLIC recordings, none on a closed course
+    note: "answered with Cache-Control: private, no-store"
     source: apps/tedrisat/src/course/lesson.controller.ts:254
-    headers: { Cache-Control: "private, no-store" }
     result: { type: array, note: "the rows visibleRecordings keeps, newest week first; FAILED ones never" }
     sideEffects: ["audit: a content read by someone neither enrolled nor a müderris (via recordings)"]
     refusals:
@@ -153,7 +147,7 @@ actions:
       AUTHZ_FORBIDDEN: { status: 403, source: "apps/tedrisat/src/course/recording.controller.ts:100" }
       VALIDATION_ERROR: { status: 400 }
       LESSON_NOT_FOUND: { status: 404, note: "missing or archived", source: "apps/tedrisat/src/course/recording.repository.ts:881" }
-      RECORDING_LINK_INVALID: { status: 400, reasons: [invalid, not-https, youtube-no-video, bunny-no-video, bunny-foreign-library, bunny-video-used], source: "apps/tedrisat/src/course/domain/recording-link.ts:116" }
+      RECORDING_LINK_INVALID: { status: 400, note: "reasons: invalid, not-https, youtube-no-video, bunny-no-video, bunny-foreign-library, bunny-video-used", source: "apps/tedrisat/src/course/domain/recording-link.ts:116" }
       LESSON_CANCELLED: { status: 409, source: "apps/tedrisat/src/course/recording.repository.ts:883" }
       RECORDING_EXISTS: { status: 409, note: "unless the stored recording is a FAILED Bunny upload", source: "apps/tedrisat/src/course/recording.repository.ts:911" }
   changeRecording:
@@ -189,8 +183,8 @@ actions:
     route: POST /lessons/{id}/recordings/uploads
     operationId: startRecordingUpload
     needs: recording.upload on the lesson's course
+    note: "answered with Cache-Control: private, no-store"
     source: apps/tedrisat/src/course/recording-upload.controller.ts:81
-    headers: { Cache-Control: "private, no-store" }
     body: { type: object, required: [title], properties: { title: { type: string, minLength: 1, maxLength: 200 }, visibility: { enum: [PUBLIC, ENROLLED] }, recordedAt: { type: string, format: date-time }, replaceVideo: { type: boolean } } }
     result: { status: 201, type: object, properties: { recordingId: { type: string }, endpoint: { const: "https://video.bunnycdn.com/tusupload" }, libraryId: { type: string }, videoId: { type: string }, authorizationExpire: { type: integer }, authorizationSignature: { type: string, sensitivity: credential } } }
     sideEffects: ["Bunny: a video is created", "the recording becomes BUNNY PROCESSING with a 24 h upload lifetime; a link it held is kept only in the audit row", "audit:recording.upload_start (replacedLink, replacedVideoId)", "a replaced Bunny video queued for deletion"]
@@ -205,15 +199,15 @@ actions:
     route: POST /lessons/{id}/recordings/uploads/{videoId}/signature
     operationId: resignRecordingUpload
     needs: recording.upload on the lesson's course
+    note: "answered with Cache-Control: private, no-store"
     source: apps/tedrisat/src/course/recording-upload.controller.ts:106
-    headers: { Cache-Control: "private, no-store" }
     result: { status: 200, note: "the same TUS values; the expiry is the upload's original one" }
     refusals:
       AUTHZ_FORBIDDEN: { status: 403, source: "apps/tedrisat/src/course/recording-upload.controller.ts:103" }
       LESSON_NOT_FOUND: { status: 404, note: "missing only: an archived session is signed again", source: "apps/tedrisat/src/course/recording-upload.service.ts:56" }
       BUNNY_STREAM_NOT_CONFIGURED: { status: 503, source: "apps/tedrisat/src/course/recording-upload.service.ts:58" }
       RECORDING_UPLOAD_NOT_FOUND: { status: 404, source: "apps/tedrisat/src/course/recording-upload.service.ts:122" }
-      RECORDING_UPLOAD_CLOSED: { status: 409, reasons: [not-processing, expired], source: "apps/tedrisat/src/course/recording-upload.service.ts:124" }
+      RECORDING_UPLOAD_CLOSED: { status: 409, note: "reasons: not-processing, expired", source: "apps/tedrisat/src/course/recording-upload.service.ts:124" }
   sendToBunny: # the browser sends the file to Bunny over TUS; tedrisat never sees it
     source: apps/nazar/features/recordings/bunny-upload.ts:268
     note: "tus-js-client, 50 MiB chunks, the signature set on every request and never stored; a stopped upload continues from Bunny's offset"
@@ -224,20 +218,12 @@ actions:
 
   # the service's own steps (medaris.recording-encoding)
   pollEncoding:
-    note: "every 60 s while the library is configured: up to 50 PROCESSING Bunny uploads, least recently updated first"
+    note: "every 60 s while the library is configured: up to 50 PROCESSING Bunny uploads, least recently updated first; its rules are the invariants pollEncoding-1 to pollEncoding-4"
     source: apps/tedrisat/src/course/recording-encoding.poller.ts:123
-    rules:
-      - { rule: "Finished (4) or JitPlaylistsCreated (8) -> READY with its length in minutes", source: "apps/tedrisat/src/bunny-stream/bunny-signature.ts:141" }
-      - { rule: "Error (5) or UploadFailed (6) -> FAILED; a video Bunny no longer has -> FAILED", source: "apps/tedrisat/src/course/recording-encoding.poller.ts:133" }
-      - { rule: "Created (0) once the upload lifetime has passed -> FAILED; any other status waits, past the lifetime too", source: "apps/tedrisat/src/bunny-stream/bunny-signature.ts:153" }
-      - { rule: "a row is settled only while it is PROCESSING with the same video", source: "apps/tedrisat/src/course/recording.repository.ts:604" }
     result: { returns: LessonRecording }
   removeReplacedVideos:
-    note: "after settling, up to 20 queued videos are deleted from Bunny; no retry cap"
+    note: "after settling, up to 20 queued videos are deleted from Bunny; no retry cap; its rules are the invariants removeReplacedVideos-1 to removeReplacedVideos-2"
     source: apps/tedrisat/src/course/recording-encoding.poller.ts:185
-    rules:
-      - { rule: "due once its replacement is no longer PROCESSING, or at once when a pasted link replaced it", source: "apps/tedrisat/src/course/recording.repository.ts:641" }
-      - { rule: "a video a recording holds again is never deleted: its row is dropped", source: "apps/tedrisat/src/course/recording.repository.ts:649" }
     result: { returns: BunnyVideoRemoval }
   readBunnyVideo: # Bunny Stream's Get Video, with the library's API key
     source: apps/tedrisat/src/bunny-stream/bunny-stream.client.ts:110
@@ -291,6 +277,18 @@ actions:
       HOSTING_RIGHT_NOT_FOUND: { status: 404, source: "apps/tedrisat/src/hosting/hosting.repository.ts:333" }
 
 invariants:
+  # the rules of the actions above, each with its source
+  - { id: getSession-1, rule: "liveStreamUrl from the scheduled start until scheduled end + 24 h, unless the session is cancelled or its recording is released", source: "apps/tedrisat/src/course/domain/recording.ts:196" }
+  - { id: getSession-2, rule: "a recording's url only when READY and (released or the caller holds recording.manage)", source: "apps/tedrisat/src/course/domain/recording.ts:125" }
+  - { id: getSession-3, rule: "a FAILED recording is never listed, to anyone", source: "apps/tedrisat/src/course/domain/recording.ts:160" }
+  - { id: getSession-4, rule: "a BUNNY url is a player link built for this response, signed for 6 h when BUNNY_STREAM_TOKEN_KEY is set, unsigned otherwise", source: "apps/tedrisat/src/bunny-stream/bunny-signature.ts:99" }
+  - { id: getSession-5, rule: "a PUBLIC recording is hidden from a caller without content when the course is closed or a policy keeps recordings from the public", source: "apps/tedrisat/src/course/course.service.ts:852" }
+  - { id: pollEncoding-1, rule: "Finished (4) or JitPlaylistsCreated (8) -> READY with its length in minutes", source: "apps/tedrisat/src/bunny-stream/bunny-signature.ts:141" }
+  - { id: pollEncoding-2, rule: "Error (5) or UploadFailed (6) -> FAILED; a video Bunny no longer has -> FAILED", source: "apps/tedrisat/src/course/recording-encoding.poller.ts:133" }
+  - { id: pollEncoding-3, rule: "Created (0) once the upload lifetime has passed -> FAILED; any other status waits, past the lifetime too", source: "apps/tedrisat/src/bunny-stream/bunny-signature.ts:153" }
+  - { id: pollEncoding-4, rule: "a row is settled only while it is PROCESSING with the same video", source: "apps/tedrisat/src/course/recording.repository.ts:604" }
+  - { id: removeReplacedVideos-1, rule: "due once its replacement is no longer PROCESSING, or at once when a pasted link replaced it", source: "apps/tedrisat/src/course/recording.repository.ts:641" }
+  - { id: removeReplacedVideos-2, rule: "a video a recording holds again is never deleted: its row is dropped", source: "apps/tedrisat/src/course/recording.repository.ts:649" }
   - { id: video-id-never-returned, rule: "bunnyVideoId never leaves tedrisat; a read carries only a player link built for that response", source: "apps/tedrisat/src/course/course.service.ts:171" }
   - { id: api-key-never-leaves, rule: "the browser gets only the TUS signature SHA256(library + key + expiry + video)", source: "apps/tedrisat/src/bunny-stream/bunny-signature.ts:62" }
   - { id: one-recording-per-session, rule: "a session holds one recording and a Bunny video belongs to one recording", source: "apps/tedrisat/src/database/schema/course.schema.ts:448" }
