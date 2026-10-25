@@ -1,0 +1,242 @@
+# The notes panel on the celse page (apps/tedris/features/courses/components/lesson-notes.tsx), as built today, with
+# no video on screen.
+schema: delurio-graph/0
+kind: ui
+id: medaris.notes
+flow: medaris.notes
+status: proposed
+catalog: catalog/tr.json
+locales: [tr, en]
+samples: { time: "12:34", body: "İcmânın şartları: ehliyet ve ittifak." }
+changes: { key: Changes.note }
+
+nodes:
+  panel:
+    type: page
+    component: Page
+    role: region
+    name: { labelledBy: title }
+    in: [loading, loadFailed, panel, adding, editing, savingEdit, confirmDelete, deleting]
+    source: apps/tedris/features/courses/components/lesson-notes.tsx:154
+  title:
+    type: text
+    component: Heading
+    role: heading
+    text: { key: LessonNotes.title }
+    in: [loading, loadFailed, panel, adding, editing, savingEdit, confirmDelete, deleting]
+    source: apps/tedris/features/courses/components/lesson-notes.tsx:162
+  private:
+    type: text
+    component: Text
+    text: { key: LessonNotes.private }
+    in: [loading, loadFailed, panel, adding, editing, savingEdit, confirmDelete, deleting]
+    source: apps/tedris/features/courses/components/lesson-notes.tsx:164
+  bodyField:
+    type: field
+    component: TextField
+    role: textbox
+    text: { key: LessonNotes.bodyLabel }
+    in: [loading, loadFailed, panel, adding, editing, savingEdit, confirmDelete, deleting]
+    source: apps/tedris/features/courses/components/lesson-notes.tsx:240
+  timeField:
+    type: field
+    component: TextField
+    role: textbox
+    text: { key: LessonNotes.timeLabelSession }
+    in: [loading, loadFailed, panel, adding, editing, savingEdit, confirmDelete, deleting]
+    source: apps/tedris/features/courses/components/lesson-notes.tsx:278
+  timeHelp:
+    type: text
+    component: Text
+    text: { key: LessonNotes.timeHelpSession }
+    in: [loading, loadFailed, panel, adding, editing, savingEdit, confirmDelete, deleting]
+    source: apps/tedris/features/courses/components/lesson-notes.tsx:413
+  addButton:
+    type: action
+    component: Button
+    role: button
+    intent: confirm
+    text: { key: LessonNotes.add }
+    in: [loading, loadFailed, panel, adding, editing, savingEdit, confirmDelete, deleting]
+    disabledIn: [adding]
+    emits: ADD
+    source: apps/tedris/features/courses/components/lesson-notes.tsx:397
+  addingStatus:
+    type: status
+    component: Status
+    role: status
+    text: { key: LessonNotes.saving }
+    in: [adding]
+    source: apps/tedris/features/courses/components/lesson-notes.tsx:402
+  invalidTime:
+    type: alert
+    component: Alert
+    role: alert
+    text: { key: LessonNotes.invalidTime }
+    when: showInvalidTime
+    in: [panel, editing]
+    source: apps/tedris/features/courses/components/lesson-notes.tsx:425
+  bodyRequired:
+    type: alert
+    component: Alert
+    role: alert
+    text: { key: LessonNotes.bodyRequired }
+    when: showBodyRequired
+    in: [panel, editing]
+    source: apps/tedris/features/courses/components/lesson-notes.tsx:425
+  forbidden:
+    type: alert
+    component: Alert
+    role: alert
+    text: { key: LessonNotes.forbidden }
+    when: showForbidden
+    in: [panel, editing]
+    source: apps/tedris/features/courses/components/lesson-notes.tsx:212
+  saveFailed:
+    type: alert
+    component: Alert
+    role: alert
+    text: { key: LessonNotes.saveFailed }
+    when: showSaveFailed
+    in: [panel, editing]
+    source: apps/tedris/features/courses/components/lesson-notes.tsx:212
+  loadingStatus:
+    type: status
+    component: Status
+    role: status
+    text: { key: LessonNotes.loading }
+    in: [loading]
+    source: apps/tedris/features/courses/components/lesson-notes.tsx:176
+  loadFailed:
+    type: alert
+    component: Alert
+    role: alert
+    text: { key: LessonNotes.loadFailed }
+    in: [loadFailed]
+    source: apps/tedris/features/courses/components/lesson-notes.tsx:178
+  retry:
+    type: action
+    component: Button
+    role: button
+    intent: secondary
+    text: { key: LessonNotes.retry }
+    in: [loadFailed]
+    emits: RETRY
+    source: apps/tedris/features/courses/components/lesson-notes.tsx:181
+  empty:
+    type: text
+    component: Text
+    text: { key: LessonNotes.empty }
+    when: "not hasNotes"
+    in: [panel, adding]
+    source: apps/tedris/features/courses/components/lesson-notes.tsx:187
+  noteList:
+    type: list
+    component: List
+    role: list
+    when: hasNotes
+    in: [panel, adding, editing, savingEdit, confirmDelete, deleting]
+    source: apps/tedris/features/courses/components/lesson-notes.tsx:189
+  noteItem:
+    type: text
+    component: ListItem
+    role: listitem
+    text: { key: Data.noteBody, params: { body: note.body } }
+    when: hasNotes
+    repeat: notes
+    in: [panel, adding, editing, savingEdit, confirmDelete, deleting]
+    source: apps/tedris/features/courses/components/lesson-notes.tsx:551
+  editNote:
+    type: action
+    component: Button
+    role: button
+    intent: secondary
+    name: { key: LessonNotes.editLabel, params: { time: note.offsetSeconds } }
+    when: hasNotes
+    repeat: notes
+    in: [panel, adding]
+    disabledIn: [adding]
+    emits: EDIT
+    source: apps/tedris/features/courses/components/lesson-notes.tsx:577
+  deleteNote:
+    type: action
+    component: Button
+    role: button
+    intent: secondary
+    name: { key: LessonNotes.deleteLabel, params: { time: note.offsetSeconds } }
+    when: hasNotes
+    repeat: notes
+    in: [panel, adding]
+    disabledIn: [adding]
+    emits: DELETE
+    source: apps/tedris/features/courses/components/lesson-notes.tsx:583
+  editField:
+    type: field
+    component: TextField
+    role: textbox
+    text: { key: LessonNotes.bodyLabel }
+    in: [editing, savingEdit]
+    source: apps/tedris/features/courses/components/lesson-notes.tsx:517
+  editSave:
+    type: action
+    component: Button
+    role: button
+    intent: confirm
+    text: { key: LessonNotes.save }
+    in: [editing, savingEdit]
+    disabledIn: [savingEdit]
+    emits: SAVE
+    source: apps/tedris/features/courses/components/lesson-notes.tsx:531
+  editCancel:
+    type: action
+    component: Button
+    role: button
+    intent: dismiss
+    text: { key: LessonNotes.cancel }
+    in: [editing, savingEdit]
+    emits: CANCEL
+    source: apps/tedris/features/courses/components/lesson-notes.tsx:539
+  deleteAsk:
+    type: text
+    component: Text
+    text: { key: LessonNotes.deleteAsk }
+    in: [confirmDelete, deleting]
+    source: apps/tedris/features/courses/components/lesson-notes.tsx:597
+  deleteConfirm:
+    type: action
+    component: Button
+    role: button
+    intent: confirm
+    text: { key: LessonNotes.delete }
+    in: [confirmDelete, deleting]
+    disabledIn: [deleting]
+    emits: CONFIRM
+    source: apps/tedris/features/courses/components/lesson-notes.tsx:598
+  deleteCancel:
+    type: action
+    component: Button
+    role: button
+    intent: dismiss
+    text: { key: LessonNotes.cancel }
+    in: [confirmDelete, deleting]
+    emits: CANCEL
+    source: apps/tedris/features/courses/components/lesson-notes.tsx:607
+  deleteFailed:
+    type: alert
+    component: Alert
+    role: alert
+    text: { key: LessonNotes.deleteFailed }
+    when: showDeleteFailed
+    in: [panel]
+    source: apps/tedris/features/courses/components/lesson-notes.tsx:501
+
+edges:
+  - { labelledBy: [panel, title] }
+  - { triggers: [addButton, adding] }
+  - { triggers: [editNote, editing] }
+  - { triggers: [editSave, savingEdit] }
+  - { triggers: [deleteNote, confirmDelete] }
+  - { triggers: [deleteConfirm, deleting] }
+
+rules:
+  - { id: delete-asks-first, rule: "deleting a note asks first, inline in its row" }

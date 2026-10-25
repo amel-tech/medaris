@@ -1,0 +1,246 @@
+# "Ödev" and "Ödevim" on a celse's page (apps/tedris/features/courses/components/session-homework.tsx) and the tedrisat
+# routes behind them, as the code does it on origin/main ce47fce8 (capture of 25 Oct 2026). The page draws the section
+# for an ENROLLED or COMPLETED talebe whose content is open, on a celse that is not cancelled (medaris.session); what
+# the course team does while the page stays open is drawn as events, which the page does not see until it asks.
+schema: delurio-graph/0
+kind: flow
+id: medaris.homework
+status: proposed
+domain: medaris.learning
+ui: medaris.homework
+title: Hand in homework on a celse
+summary: >-
+  The section shows what the müderris set on the celse and, under it, the talebe's own homework: up to ten files of
+  25 MB each and an optional note, handed in when it holds either. There is no deadline and no grade. The talebe adds
+  and removes files and saves the note while they may write as a talebe; the API takes them on any celse that is not
+  hidden, a cancelled one included.
+
+scope:
+  shows: the homework section from the moment the celse page draws it, for an active talebe
+  world: open
+  outOfView:
+    - "the staff's Ödevler in nazar (GET /courses/:id/submissions) and the staff download"
+    - "downloading a file of the homework or of the assignment (plain links through tedris's file routes)"
+    - "several files chosen at once: each is checked and sent one after the other, as one add is drawn here"
+    - "a homework emptied earlier on a celse with no homework set: its section still shows; the flow starts from no row"
+
+context:
+  assignment:
+    values: [true, false]
+    initial: any
+    say: { "true": "the müderris set homework on the celse", "false": "no homework is set on the celse" }
+  files:
+    values: [none, some, full]
+    initial: any
+    say: { none: "no file handed in", some: "one to nine files", full: "ten files, the limit" }
+  note:
+    values: [false, true]
+    initial: any
+    say: { "true": "a note is saved", "false": "no note" }
+  lastSlot: # the next add fills the tenth slot, or the next removal takes the last file
+    values: [false, true]
+    initial: any
+    say: { "true": "the next change crosses a limit", "false": "the next change stays within the limits" }
+  storage:
+    values: [up, down]
+    initial: any
+    say: { up: "Medaris storage answers", down: "Medaris storage does not answer" }
+  seat: # what mayWriteAsTalebe and mayReachOwnWriting answer now
+    values: [active, removed, passive]
+    initial: active
+  celse:
+    values: [live, cancelled, hidden]
+    initial: live
+  notice:
+    values: [none, added, removed, noteSaved, refusedHere, refusedThere, forbidden, unavailable, notFound, failed, noteFailed]
+    initial: none
+
+guards:
+  handedIn: "files != 'none' or note"
+  nothingToShow: "not assignment and not handedIn"
+  writable: "seat == 'active' and celse != 'hidden'"
+  showAdded: "notice == 'added'"
+  showRemoved: "notice == 'removed'"
+  showNoteSaved: "notice == 'noteSaved'"
+  showRefusedHere: "notice == 'refusedHere'"
+  showRefusedThere: "notice == 'refusedThere'"
+  showForbidden: "notice == 'forbidden'"
+  showUnavailable: "notice == 'unavailable'"
+  showNotFound: "notice == 'notFound'"
+  showFailed: "notice == 'failed'"
+  showNoteFailed: "notice == 'noteFailed'"
+  pendingWarning: "assignment and not handedIn"
+  addOpen: "files != 'full'"
+
+effects:
+  firstFile: { set: { files: some, notice: added }, havoc: [lastSlot] }
+  tenthFile: { set: { files: full, notice: added }, havoc: [lastSlot] }
+  anotherFile: { set: { files: some, notice: added }, havoc: [lastSlot] }
+  lastRemoved: { set: { files: none, notice: removed }, havoc: [lastSlot] }
+  oneRemoved: { set: { files: some, notice: removed }, havoc: [lastSlot] }
+  removedButBack: { set: { notice: removed } } # 404 is taken as removed; the quiet re-read shows the file again
+  noteSaved: { set: { note: true, notice: noteSaved } }
+  noteCleared: { set: { note: false, notice: noteSaved } }
+  refusedHere: { set: { notice: refusedHere } }
+  refusedThere: { set: { notice: refusedThere } }
+  forbidden: { set: { notice: forbidden } }
+  unavailable: { set: { notice: unavailable } }
+  notFound: { set: { notice: notFound } }
+  failed: { set: { notice: failed } }
+  noteFailed: { set: { notice: noteFailed } }
+  clear: { set: { notice: none } }
+  seatLost: { set: { seat: removed, notice: none } }
+  passivated: { set: { seat: passive, notice: none } }
+  celseCancelled: { set: { celse: cancelled, notice: none } }
+  celseHidden: { set: { celse: hidden, notice: none } }
+
+failures:
+  loading:
+    from: getMySubmission
+    server: [network, 5xx]
+  uploading:
+    from: addMySubmissionFile
+    notFound: [LESSON_NOT_FOUND]
+    forbidden: [SUBMISSION_FORBIDDEN]
+    refused: [FILE_TOO_LARGE, FILE_TYPE_NOT_ALLOWED, FILE_REQUIRED, SUBMISSION_FILE_LIMIT]
+    unavailable: [STORAGE_NOT_CONFIGURED, STORAGE_UNAVAILABLE]
+    server: [network, 5xx]
+  removing:
+    from: deleteMySubmissionFile
+    notFound: [LESSON_NOT_FOUND, SUBMISSION_FILE_NOT_FOUND]
+    forbidden: [SUBMISSION_FORBIDDEN]
+    unavailable: [STORAGE_UNAVAILABLE]
+    server: [network, 5xx]
+  savingNote:
+    from: saveMySubmissionNote
+    notFound: [LESSON_NOT_FOUND]
+    forbidden: [SUBMISSION_FORBIDDEN]
+    invalid: [VALIDATION_ERROR]
+    server: [network, 5xx]
+  clearingNote:
+    from: saveMySubmissionNote
+    notFound: [LESSON_NOT_FOUND]
+    forbidden: [SUBMISSION_FORBIDDEN]
+    server: [network, 5xx]
+
+main:
+  given: { assignment: true, files: none, note: false, storage: up }
+  events: [DONE, ADD_FILE, DONE, SAVE_NOTE, DONE]
+
+initial: loading
+states:
+  loading:
+    title: Read the talebe's homework
+    description: GET /lessons/:id/submission (findVisibleLessonCourse + mayReachOwnWriting), with the limits a new file must keep
+    source: apps/tedris/features/courses/components/session-homework.tsx:144
+    invoke: { action: getMySubmission }
+    on:
+      DONE:
+        - { guard: nothingToShow, target: notShown, say: "no homework set and nothing handed in: nothing is drawn", source: "apps/tedris/features/courses/components/session-homework.tsx:233" }
+        - { target: ready, effect: [clear], say: "the homework is shown", source: "apps/tedris/features/courses/components/session-homework.tsx:156" }
+      FAIL.server:
+        - { guard: "not assignment", target: notShown, say: "no homework set: a failed read draws nothing", source: "apps/tedris/features/courses/components/session-homework.tsx:233" }
+        - { target: loadFailed, say: "the read failed", source: "apps/tedris/features/courses/components/session-homework.tsx:158" }
+
+  loadFailed:
+    title: The homework could not be read
+    by: human
+    source: apps/tedris/features/courses/components/session-homework.tsx:301
+    on:
+      RETRY: { target: loading, say: "they try again", source: "apps/tedris/features/courses/components/session-homework.tsx:308" }
+      NAVIGATE: { target: left, say: "they leave the page" }
+
+  ready:
+    title: Ödev and Ödevim
+    by: human
+    goal: true
+    description: >-
+      The homework set, "Teslim edildi" or "Teslim edilmedi" beside the heading once it is known, the files handed in,
+      the file field (disabled at ten), the note and when it last changed. Who reads it: the hoca and the course team.
+    source: apps/tedris/features/courses/components/session-homework.tsx:240
+    on:
+      ADD_FILE: { guard: addOpen, target: uploading, say: "they choose a file within the size", source: "apps/tedris/features/courses/components/session-homework.tsx:401" }
+      ADD_TOO_LARGE: { guard: addOpen, target: ready, effect: [refusedHere], say: "a file over 25 MB or empty is refused here, and nothing is sent", source: "apps/tedris/features/courses/components/session-homework.tsx:193" }
+      REMOVE: { guard: "files != 'none'", target: confirmRemove, say: "they press the bin beside a file", source: "apps/tedris/features/courses/components/session-homework.tsx:616" }
+      SAVE_NOTE: { target: savingNote, say: "they save a note", source: "apps/tedris/features/courses/components/session-homework.tsx:690" }
+      CLEAR_NOTE: { guard: note, target: clearingNote, say: "they empty the note and save it", source: "apps/tedris/features/courses/components/session-homework.tsx:662" }
+      TEAM_REMOVES: { guard: "seat == 'active'", target: ready, effect: [seatLost], say: "meanwhile the course team takes them out, or a ban bars them", source: "apps/tedrisat/src/course/course.service.ts:1734" }
+      PASSIVATED: { guard: "seat != 'passive'", target: ready, effect: [passivated], say: "meanwhile the course goes into a passive scope", source: "libs/common/src/authz/effective-permissions.ts:337" }
+      CELSE_CANCELLED: { guard: "celse == 'live'", target: ready, effect: [celseCancelled], say: "meanwhile the müderris cancels the celse", source: "apps/tedrisat/src/course/course.service.ts:1198" }
+      CELSE_HIDDEN: { guard: "celse != 'hidden'", target: ready, effect: [celseHidden], say: "meanwhile the celse or its week is hidden", source: "apps/tedrisat/src/course/course.service.ts:1311" }
+      NAVIGATE: { target: left, say: "they leave the page" }
+
+  uploading:
+    title: Add the file
+    description: >-
+      POST /lessons/:id/submission/files through tedris's upload route. The API asks a celse that is not hidden and an
+      active talebe, then the ten-file limit, the size and the type read from the bytes; it does not ask whether the
+      celse is cancelled or has homework set.
+    source: apps/tedrisat/src/lesson-submission/lesson-submission.service.ts:109
+    invoke: { action: addMySubmissionFile }
+    on:
+      DONE:
+        - { guard: "writable and storage == 'up' and files == 'none'", target: ready, effect: [firstFile], say: "the first file is in", source: "apps/tedrisat/src/lesson-submission/lesson-submission.repository.ts:171" }
+        - { guard: "writable and storage == 'up' and lastSlot", target: ready, effect: [tenthFile], say: "the tenth file is in; the field closes", source: "apps/tedris/features/courses/components/session-homework.tsx:400" }
+        - { guard: "writable and storage == 'up'", target: ready, effect: [anotherFile], say: "another file is in", source: "apps/tedrisat/src/lesson-submission/lesson-submission.repository.ts:171" }
+      FAIL.notFound: { guard: "celse == 'hidden'", target: ready, effect: [notFound], say: "the celse is hidden: 404", source: "apps/tedrisat/src/lesson-submission/lesson-submission.service.ts:248" }
+      FAIL.forbidden: { guard: "celse != 'hidden' and seat != 'active'", target: ready, effect: [forbidden], say: "no longer an active talebe: 403", source: "apps/tedrisat/src/lesson-submission/lesson-submission.service.ts:251" }
+      FAIL.refused: { guard: writable, target: ready, effect: [refusedThere], say: "too large, a type not taken, or the limit raced: refused there", source: "apps/tedrisat/src/lesson-submission/lesson-submission.service.ts:122" }
+      FAIL.unavailable: { guard: "writable and storage == 'down'", target: ready, effect: [unavailable], say: "storage does not answer", source: "apps/tedrisat/src/lesson-submission/lesson-submission.service.ts:123" }
+      FAIL.server: { target: ready, effect: [failed], say: "the upload did not get there", source: "apps/tedris/features/courses/components/session-homework.tsx:80" }
+
+  confirmRemove:
+    title: Ask before removing the file
+    by: human
+    description: the bin is replaced in its row by "Bu dosya kaldırılsın mı?" with Kaldır and Vazgeç; focus is not moved
+    source: apps/tedris/features/courses/components/session-homework.tsx:588
+    on:
+      CONFIRM: { target: removing, say: "they press Kaldır", source: "apps/tedris/features/courses/components/session-homework.tsx:596" }
+      CANCEL: { target: ready, say: "they keep it", source: "apps/tedris/features/courses/components/session-homework.tsx:603" }
+
+  removing:
+    title: Remove the file
+    description: DELETE /lessons/:id/submission/files/:fileId (mayWriteAsTalebe, their own file); the object goes from storage too
+    source: apps/tedrisat/src/lesson-submission/lesson-submission.service.ts:138
+    invoke: { action: deleteMySubmissionFile }
+    on:
+      DONE:
+        - { guard: "writable and lastSlot", target: ready, effect: [lastRemoved], say: "the last file is gone", source: "apps/tedris/features/courses/components/session-homework.tsx:550" }
+        - { guard: "writable and files == 'full'", target: ready, effect: [oneRemoved], say: "a file is gone; the field opens again", source: "apps/tedris/features/courses/components/session-homework.tsx:550" }
+        - { guard: writable, target: ready, effect: [oneRemoved], say: "a file is gone", source: "apps/tedris/features/courses/components/session-homework.tsx:550" }
+      FAIL.notFound: { guard: "celse == 'hidden'", target: ready, effect: [removedButBack], say: "the celse is hidden: 404 is taken as removed, and the quiet re-read shows the file again", source: "apps/tedris/features/courses/components/session-homework.tsx:549" }
+      FAIL.forbidden: { guard: "celse != 'hidden' and seat != 'active'", target: ready, effect: [forbidden], say: "no longer an active talebe: 403", source: "apps/tedris/features/courses/components/session-homework.tsx:554" }
+      FAIL.unavailable: { guard: writable, target: ready, effect: [unavailable], say: "storage does not answer", source: "apps/tedris/features/courses/components/session-homework.tsx:554" }
+      FAIL.server: { target: ready, effect: [failed], say: "the removal did not go through", source: "apps/tedris/features/courses/components/session-homework.tsx:556" }
+
+  savingNote:
+    title: Save the note
+    description: PUT /lessons/:id/submission; it makes the homework when there is none yet
+    source: apps/tedrisat/src/lesson-submission/lesson-submission.service.ts:99
+    invoke: { action: saveMySubmissionNote }
+    on:
+      DONE: { guard: writable, target: ready, effect: [noteSaved], say: "the note is saved", source: "apps/tedrisat/src/lesson-submission/lesson-submission.repository.ts:144" }
+      FAIL.notFound: { guard: "celse == 'hidden'", target: ready, effect: [noteFailed], say: "the celse is hidden: 404", source: "apps/tedrisat/src/lesson-submission/lesson-submission.repository.ts:150" }
+      FAIL.forbidden: { guard: "celse != 'hidden' and seat != 'active'", target: ready, effect: [forbidden], say: "no longer an active talebe: 403", source: "apps/tedris/features/courses/components/session-homework.tsx:672" }
+      FAIL.invalid: { target: ready, effect: [noteFailed], say: "over 4000 characters: 400", source: "apps/tedris/features/courses/components/session-homework.tsx:674" }
+      FAIL.server: { target: ready, effect: [noteFailed], say: "the note did not go through", source: "apps/tedris/features/courses/components/session-homework.tsx:676" }
+
+  clearingNote:
+    title: Clear the note
+    description: PUT /lessons/:id/submission with a blank note, which clears it
+    source: apps/tedris/features/courses/components/session-homework.tsx:662
+    invoke: { action: saveMySubmissionNote }
+    on:
+      DONE: { guard: writable, target: ready, effect: [noteCleared], say: "the note is cleared", source: "apps/tedrisat/src/lesson-submission/lesson-submission.repository.ts:144" }
+      FAIL.notFound: { guard: "celse == 'hidden'", target: ready, effect: [noteFailed], say: "the celse is hidden: 404" }
+      FAIL.forbidden: { guard: "celse != 'hidden' and seat != 'active'", target: ready, effect: [forbidden], say: "no longer an active talebe: 403" }
+      FAIL.server: { target: ready, effect: [noteFailed], say: "the change did not go through" }
+
+  notShown: { type: final, title: The section draws nothing, source: "apps/tedris/features/courses/components/session-homework.tsx:233" }
+  left: { type: final, title: They leave the page, leavesPage: true }
+
+assertions:
+  - { id: no-homework-without-seat, never: "notice in ['added', 'noteSaved'] and seat != 'active'", say: "Homework is never taken from someone who is no longer an active talebe", source: "apps/tedrisat/src/lesson-submission/lesson-submission.service.ts:251" }
+  - { id: no-homework-on-hidden-celse, never: "notice in ['added', 'noteSaved'] and celse == 'hidden'", say: "A hidden celse never takes homework", source: "apps/tedrisat/src/lesson-submission/lesson-submission.repository.ts:179" }
+  - { id: ten-files-at-most, never: "state == 'uploading' and files == 'full'", say: "An eleventh file is never sent", source: "apps/tedris/features/courses/components/session-homework.tsx:400" }
+  - { id: remove-asks-first, never: "state == 'removing' and files == 'none'", say: "A file is removed only after asking, and only one that is there", source: "apps/tedris/features/courses/components/session-homework.tsx:588" }

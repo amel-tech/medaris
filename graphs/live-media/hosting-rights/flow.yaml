@@ -1,0 +1,182 @@
+# Medaris, captured from origin/main ce47fce8: nizam's Barındırma hakları page (/kosks/:id/ayarlar/barindirma), where
+# the köşk's nazımları, a Medaris nazımı holding platform.hosting_grant and the başnazım give a medrese the right to open
+# courses in the köşk, or withdraw it and decide what becomes of the medrese's courses there.
+schema: delurio-graph/0
+kind: flow
+id: medaris.hosting-rights
+status: proposed
+domain: medaris.live-media
+ui: medaris.hosting-rights
+title: Give or withdraw a medrese's hosting right
+summary: >-
+  The page lists the medreses that hold the right, who gave it and when, and their open courses in the köşk. Barındırma
+  hakkı ver picks a medrese that does not hold it and gives it, idempotently. Barındırma hakkını geri al asks, when the
+  medrese has open courses here, whether they carry on or are hidden; hidden ones come back from the Arşiv, at the
+  köşk's level for the köşk's nazımı and at the platform's for a Medaris nazımı or the başnazım, so the medrese's own
+  head cannot bring them back. Either way the medrese can open no new course here.
+source: apps/nizam/app/kosks/[id]/ayarlar/barindirma/page.tsx:27
+
+scope:
+  shows: the page's read, giving a right and withdrawing one
+  world: open
+  outOfView:
+    - "opening a course in the köşk, which asks for a held right: madrasah-course.repository.ts:159, the madrasah-staff area"
+    - "bringing hidden courses back from the Arşiv: the platform-admin area"
+    - "the settings tabs and the breadcrumb link, left out for a Medaris nazımı holding only platform.hosting_grant"
+
+context:
+  role:
+    values: [koskNazim, medarisNazim, systemAdmin, other]
+    initial: any
+    say: { koskNazim: "a nazımı of the köşk (kosk.hosting by role)", medarisNazim: "a Medaris nazımı holding platform.hosting_grant", systemAdmin: "the başnazım (SYSTEM_ADMIN)", other: "someone holding neither code" }
+  rightsRead:
+    values: [ok, failed]
+    initial: any
+    say: { ok: "", failed: "the page could not read the rights" }
+  hasRights:
+    values: [true, false]
+    initial: any
+    say: { "true": "some medreses hold the right", "false": "no medrese holds the right" }
+  optionsRead: # the medreses Barındırma hakkı ver can pick from: not hidden, not holding the right
+    values: [ok, noneLeft, failed]
+    initial: any
+    say: { ok: "there are medreses to pick from", noneLeft: "every medrese already holds the right", failed: "the medrese list could not be read" }
+  openCourses: # the medrese's courses in the köşk that are not hidden, as the page read them
+    values: [none, some]
+    initial: any
+    say: { none: "the medrese has no open course in the köşk", some: "the medrese has open courses in the köşk" }
+  choice: # the withdrawal dialog's answer
+    values: [unanswered, keep, hide]
+    initial: any
+    say: { unanswered: "no answer is chosen", keep: "Dersler sürsün is chosen", hide: "Dersleri gizle is chosen" }
+  meanwhile:
+    values: [none, rightGone, madrasahHidden, codeTaken]
+    initial: any
+    say: { none: "", rightGone: "someone withdrew that right meanwhile", madrasahHidden: "someone hid the medrese meanwhile", codeTaken: "the person's code was taken away meanwhile" }
+  notice: { values: [none, granted, revoked, forbidden, notHeld, madrasahGone], initial: none }
+  written: { values: [false, true], initial: false }
+  grantedAs: { values: [none, koskNazim, medarisNazim, systemAdmin], initial: none } # the role the new row records
+  hiddenAt: { values: [none, kosk, platform], initial: none } # the level the withdrawal hid the courses at
+
+guards:
+  entitled: "role != 'other'" # apps/tedrisat/src/hosting/hosting.controller.ts:73
+  hides: "openCourses == 'some' and choice == 'hide'" # apps/nizam/features/hosting/present.ts:103; coursesActionFor: no open course is KEEP
+
+effects:
+  clear: { set: { notice: none } }
+  grantedKosk: { set: { written: true, grantedAs: koskNazim, notice: granted } }
+  grantedMedaris: { set: { written: true, grantedAs: medarisNazim, notice: granted } }
+  grantedAdmin: { set: { written: true, grantedAs: systemAdmin, notice: granted } }
+  revokedKept: { set: { written: true, notice: revoked } }
+  revokedHiddenKosk: { set: { written: true, hiddenAt: kosk, notice: revoked } }
+  revokedHiddenPlatform: { set: { written: true, hiddenAt: platform, notice: revoked } }
+  forbidden: { set: { notice: forbidden } }
+  notHeld: { set: { notice: notHeld } }
+  madrasahGone: { set: { notice: madrasahGone } }
+
+failures:
+  reading: { from: listHostingRights, forbidden: [AUTHZ_FORBIDDEN] }
+  granting: { from: grantHostingRight, forbidden: [AUTHZ_FORBIDDEN], gone: [MADRASAH_NOT_FOUND] }
+  revoking: { from: revokeHostingRight, forbidden: [AUTHZ_FORBIDDEN], gone: [HOSTING_RIGHT_NOT_FOUND] }
+
+main:
+  given: { role: koskNazim, rightsRead: ok, hasRights: true, optionsRead: ok, openCourses: some, choice: keep, meanwhile: none }
+  events: [DONE, REVOKE, SUBMIT, DONE]
+
+initial: reading
+states:
+  reading:
+    title: Read the rights
+    description: >-
+      GET /kosks/:id/hosting-rights (kosk.hosting on the köşk or platform.hosting_grant), with the köşk, every page of
+      the medrese list, and the köşk's nazımları, whose 403 leaves the settings tabs out. A read that fails for another
+      reason is the page's error state.
+    invoke: { action: listHostingRights }
+    source: apps/nizam/app/kosks/[id]/ayarlar/barindirma/page.tsx:33
+    response: { status: 200, body: "the held rights of medreses that are not hidden, each with its not-hidden courses in the köşk" }
+    on:
+      DONE: { guard: entitled, target: hostingPage, say: "the page draws", source: "apps/tedrisat/src/hosting/hosting.controller.ts:72" }
+      FAIL.forbidden: { guard: "not entitled", target: noAccess, say: "403: forbidden() draws the no-access screen (a köşk that is not there is notFound())", source: "apps/nizam/app/kosks/[id]/ayarlar/barindirma/page.tsx:41" }
+
+  hostingPage:
+    title: Barındırma hakları
+    by: human
+    goal: true
+    description: >-
+      The table of rights (medrese with its başmüderris, who gave it in what role, when, how many open courses),
+      Barındırma hakkı ver, and a footnote that withdrawing closes no course by itself. A failed read shows an error with
+      Yeniden dene in place of the table; the grant button stays.
+    source: apps/nizam/features/hosting/components/hosting-view.tsx:52
+    on:
+      GRANT: { target: grantDialog, effect: [clear], say: "they press Barındırma hakkı ver", source: "apps/nizam/features/hosting/components/hosting-view.tsx:173" }
+      REVOKE: { guard: "rightsRead == 'ok' and hasRights", target: revokeDialog, effect: [clear], say: "they press Barındırma hakkını geri al on a row", source: "apps/nizam/features/hosting/components/hosting-view.tsx:146" }
+      RETRY: { guard: "rightsRead == 'failed'", target: reading, say: "they press Yeniden dene", source: "apps/nizam/features/hosting/components/hosting-view.tsx:205" }
+      NAVIGATE: { target: left, say: "they go to another page", source: "apps/nizam/app/kosks/[id]/ayarlar/barindirma/page.tsx:27" }
+
+  grantDialog:
+    title: Barındırma hakkı ver
+    by: human
+    description: One Select of the medreses that are not hidden and do not hold the right; the button stays off until one is chosen.
+    source: apps/nizam/features/hosting/components/grant-dialog.tsx:76
+    on:
+      SUBMIT: { guard: "optionsRead == 'ok'", target: granting, say: "they pick a medrese and press Barındırma hakkı ver", source: "apps/nizam/features/hosting/components/grant-dialog.tsx:50" }
+      CLOSE: { target: hostingPage, say: "they press Vazgeç", source: "apps/nizam/features/hosting/components/grant-dialog.tsx:78" }
+
+  granting:
+    title: tedrisat gives the right
+    description: >-
+      POST /kosks/:id/hosting-rights. The medrese row is locked first; a missing or hidden medrese is 404. The right is
+      inserted unless one is held (then nothing changes and the answer is the same), with hosting_right.grant in
+      audit_log and the granter's role: SYSTEM_ADMIN, KOSK_NAZIM when they hold kosk.hosting here, else MEDARIS_NAZIM.
+    invoke: { action: grantHostingRight }
+    source: apps/tedrisat/src/hosting/hosting.repository.ts:273
+    on:
+      DONE:
+        - { guard: "role == 'systemAdmin' and meanwhile in ['none', 'rightGone']", target: hostingPage, effect: [grantedAdmin], say: "given, recorded as the başnazım's", source: "apps/tedrisat/src/hosting/hosting.controller.ts:118" }
+        - { guard: "role == 'koskNazim' and meanwhile in ['none', 'rightGone']", target: hostingPage, effect: [grantedKosk], say: "given, recorded as the köşk nazımı's", source: "apps/tedrisat/src/hosting/hosting.controller.ts:124" }
+        - { guard: "role == 'medarisNazim' and meanwhile in ['none', 'rightGone']", target: hostingPage, effect: [grantedMedaris], say: "given, recorded as a Medaris nazımı's", source: "apps/tedrisat/src/hosting/hosting.controller.ts:125" }
+      FAIL.forbidden: { guard: "meanwhile == 'codeTaken'", target: grantDialog, effect: [forbidden], say: "403: the toast stays until closed, and so does the dialog", source: "apps/nizam/features/hosting/components/grant-dialog.tsx:59" }
+      FAIL.gone: { guard: "meanwhile == 'madrasahHidden'", target: grantDialog, effect: [madrasahGone], say: "404: the medrese was hidden", source: "apps/tedrisat/src/hosting/hosting.repository.ts:284" }
+
+  revokeDialog:
+    title: Barındırma hakkını geri al
+    by: human
+    description: >-
+      Names the medrese and the köşk and lists its open courses with their talebe and imam; with any, it asks Dersler
+      sürsün or Dersleri gizle and keeps the button off until there is an answer. With none it asks nothing. Vazgeç has
+      the focus; the scrim does not close it.
+    source: apps/nizam/features/hosting/components/revoke-dialog.tsx:95
+    on:
+      SUBMIT: { guard: "openCourses == 'none' or choice != 'unanswered'", target: revoking, say: "they press Barındırma hakkını geri al", source: "apps/nizam/features/hosting/components/revoke-dialog.tsx:72" }
+      CLOSE: { target: hostingPage, say: "they press Vazgeç", source: "apps/nizam/features/hosting/components/revoke-dialog.tsx:97" }
+
+  revoking:
+    title: tedrisat withdraws the right
+    description: >-
+      DELETE /kosks/:id/hosting-rights/:madrasahId?coursesAction=KEEP|HIDE. The held row is marked withdrawn in the
+      caller's name and stays as history; HIDE archives every not-hidden course of the medrese in the köşk, with a
+      version bump, at the level the caller acts at. hosting_right.revoke goes to audit_log with the hidden courses.
+    invoke: { action: revokeHostingRight }
+    source: apps/tedrisat/src/hosting/hosting.repository.ts:313
+    on:
+      DONE:
+        - { guard: "meanwhile in ['none', 'madrasahHidden'] and not hides", target: hostingPage, effect: [revokedKept], say: "withdrawn; the courses carry on", source: "apps/tedrisat/src/hosting/hosting.repository.ts:321" }
+        - { guard: "meanwhile in ['none', 'madrasahHidden'] and role == 'koskNazim'", target: hostingPage, effect: [revokedHiddenKosk], say: "withdrawn; the courses are hidden at the köşk's level", source: "apps/tedrisat/src/hosting/hosting.controller.ts:158" }
+        - { guard: "meanwhile in ['none', 'madrasahHidden']", target: hostingPage, effect: [revokedHiddenPlatform], say: "withdrawn; the courses are hidden at the platform's level", source: "apps/tedrisat/src/archive/hide-level.ts:187" }
+      FAIL.forbidden: { guard: "meanwhile == 'codeTaken'", target: revokeDialog, effect: [forbidden], say: "403: the dialog stays open", source: "apps/nizam/features/hosting/components/revoke-dialog.tsx:81" }
+      FAIL.gone: { guard: "meanwhile == 'rightGone'", target: revokeDialog, effect: [notHeld], say: "404: someone withdrew it already", source: "apps/tedrisat/src/hosting/hosting.repository.ts:333" }
+
+  noAccess:
+    type: final
+    title: Bu bölüm için izniniz yok
+    response: { status: 403, body: "nizam's no-access screen (nizam/06)" }
+    source: apps/nizam/app/kosks/[id]/ayarlar/barindirma/page.tsx:41
+  left: { type: final, title: They leave the page, leavesPage: true, source: "apps/nizam/app/kosks/[id]/ayarlar/barindirma/page.tsx:27" }
+
+assertions:
+  - { id: only-the-entitled-change-rights, never: "state in ['hostingPage', 'grantDialog', 'granting', 'revokeDialog', 'revoking'] and not entitled", say: "Only the köşk's nazımları, a holder of platform.hosting_grant and the başnazım see or change the köşk's hosting rights", source: "apps/tedrisat/src/hosting/hosting.controller.ts:73" }
+  - { id: no-withdrawal-without-an-answer, never: "state == 'revoking' and openCourses == 'some' and choice == 'unanswered'", say: "A right whose medrese has open courses here is withdrawn only once someone said what becomes of them", source: "apps/nizam/features/hosting/present.ts:99" }
+  - { id: kept-courses-are-not-hidden, never: "hiddenAt != 'none' and not hides", say: "Courses are hidden only when Dersleri gizle was chosen", source: "apps/tedrisat/src/hosting/hosting.repository.ts:336" }
+  - { id: hidden-at-the-callers-level, never: "(hiddenAt == 'kosk' and role != 'koskNazim') or (hiddenAt == 'platform' and role == 'koskNazim')", say: "The köşk nazımı hides at the köşk's level; a Medaris nazımı and the başnazım at the platform's", source: "apps/tedrisat/src/hosting/hosting.controller.ts:158" }
+  - { id: the-granters-role-is-recorded, never: "grantedAs != 'none' and grantedAs != role", say: "A right records the role its giver acted in", source: "apps/tedrisat/src/hosting/hosting.controller.ts:114" }
+  - { id: nothing-written-without-the-code, never: "written and meanwhile == 'codeTaken'", say: "A person whose code was taken away meanwhile changes nothing", source: "apps/tedrisat/src/hosting/hosting.controller.ts:93" }

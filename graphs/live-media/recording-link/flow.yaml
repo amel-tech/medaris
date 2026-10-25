@@ -1,0 +1,207 @@
+# Medaris, captured from origin/main ce47fce8: a course's staff add a session's recording by pasting its link, change
+# a recording (title, link, who may watch, release time), or add a session's live stream as its recording, on nazar's
+# Ders kayıtları page (/ders/:dersId/kayitlar). Uploading a video to Bunny is medaris.recording-upload; changing only
+# the release time is medaris.recording-release.
+schema: delurio-graph/0
+kind: flow
+id: medaris.recording-link
+status: proposed
+domain: medaris.live-media
+ui: medaris.recording-link
+title: Add or change a recording by its link
+summary: >-
+  A holder of recording.manage presses Kayıt ekle on a session that has begun and holds no recording, Düzenle on one that
+  holds a recording, or, on a session that is over and had a stream, Yayını kayıt olarak ekle. The dialog checks that
+  the link starts with https:// and that a new release time is ahead; tedrisat reads the link by its host, locks the
+  session and writes the recording READY at once, with the release time in the same transaction, and tells the
+  enrolled talebe once when it is open to them.
+source: apps/nazar/features/recordings/components/recording-dialog.tsx:313
+
+scope:
+  shows: the Bağlantı yapıştır tab of the recording dialog, Düzenle on a recording, and Yayını kayıt olarak ekle
+  world: open
+  outOfView:
+    - "the Bunny'ye yükle tab and Devam et: medaris.recording-upload"
+    - "Değiştir in the Erişim column, the release time alone: medaris.recording-release"
+    - "Herkese açık on a closed course: the switch is locked on the page (switchLocked); tedrisat accepts PUBLIC and then shows it to no one outside"
+    - "a dialog closed with nothing changed: patchBody is null and nothing is sent (recording-dialog.tsx:326)"
+
+context:
+  canManage: # recording.manage in the course; the page also opens for a holder of recording.upload alone, who gets no link tab
+    values: [true, false]
+    initial: any
+    say: { "true": "the person holds recording.manage in the course", "false": "the person holds recording.upload only" }
+  slot: # the session's time by the page's clock
+    values: [started, over, notYet]
+    initial: any
+    say: { started: "the session has begun (or has no time set)", over: "the session's scheduled end has passed", notYet: "the session has not begun" }
+  existing: # the session's recording as stored; a FAILED upload is never listed, so the page shows the session with none
+    values: [none, failedUpload, link, bunnyProcessing, bunnyReady]
+    initial: any
+    say: { none: "the session has no recording", failedUpload: "the session's Bunny upload failed", link: "the session's recording is a pasted link", bunnyProcessing: "the session's Bunny video is being prepared", bunnyReady: "the session's Bunny video is ready" }
+  cancelled:
+    values: [false, true]
+    initial: any
+    say: { "true": "the session is cancelled", "false": "" }
+  streamOffered: # the session had a stream link and the page read it (only for a holder of session.live_link too)
+    values: [false, true]
+    initial: any
+    say: { "true": "the session had a live stream the page could read", "false": "" }
+  link: # what the pasted link is, as the page and then tedrisat read it
+    values: [youtube, other, bunnyOwn, bunnyForeign, bunnyUsed, youtubeNoVideo, notHttps]
+    initial: any
+    say: { youtube: "the link is a YouTube video's", other: "the link is another https link (Drive or any host)", bunnyOwn: "the link is a player link of a free video in Medaris's Bunny library", bunnyForeign: "the link is a Bunny link of another library", bunnyUsed: "the link is a Bunny video another session holds", youtubeNoVideo: "the link is a YouTube page that names no video", notHttps: "the link does not start with https://" }
+  releaseChoice: # the dialog's "Talebe kaydı ne zaman izlesin"
+    values: [unchanged, changed, past]
+    initial: any
+    say: { unchanged: "the release time is left as it is", changed: "a new release time ahead is chosen", past: "a new release time that is not ahead is typed" }
+  meanwhile: # what changed after the page was read
+    values: [none, added, cancelled, hidden]
+    initial: any
+    say: { none: "", added: "someone added a recording to the session meanwhile", cancelled: "someone cancelled the session meanwhile", hidden: "someone hid the session meanwhile" }
+  intent: { values: [none, add, edit, stream], initial: none }
+  problem: { values: [none, link, release], initial: none } # the dialog's field errors
+  notice: { values: [none, added, saved, fromStream, exists, cancelled, gone, linkRefused], initial: none } # the toast
+  written: { values: [false, true], initial: false }
+
+guards:
+  slotMissing: "existing in ['none', 'failedUpload'] and slot != 'notYet' and not cancelled" # apps/nazar/features/recordings/recordings.ts:158; slotState 'missing'
+  slotRecorded: "existing in ['link', 'bunnyProcessing', 'bunnyReady']" # apps/nazar/features/recordings/components/recordings-table.tsx:318
+  linkRefused: "link in ['youtubeNoVideo', 'bunnyForeign']" # apps/tedrisat/src/course/recording.service.ts:67; detectRecordingLink, before any row is read
+  holdsOne: "existing in ['link', 'bunnyProcessing', 'bunnyReady'] or meanwhile == 'added'" # apps/tedrisat/src/course/recording.repository.ts:907
+
+effects:
+  openAdd: { set: { intent: add, problem: none, notice: none } }
+  openEdit: { set: { intent: edit, problem: none, notice: none } }
+  fromStream: { set: { intent: stream, link: youtube, releaseChoice: unchanged, notice: none } } # the stream's /live/ link is a YouTube video's
+  linkProblem: { set: { problem: link } }
+  releaseProblem: { set: { problem: release } }
+  clearProblem: { set: { problem: none } }
+  added: { set: { written: true, notice: added } }
+  saved: { set: { written: true, notice: saved } }
+  streamAdded: { set: { written: true, notice: fromStream } }
+  nowHeld: { set: { existing: link, meanwhile: none } } # the page is read again and shows the new recording
+  exists: { set: { notice: exists } }
+  cancelledNow: { set: { notice: cancelled } }
+  gone: { set: { notice: gone } }
+  refusedLink: { set: { notice: linkRefused } }
+
+failures:
+  adding:
+    from: addRecording
+    link: [RECORDING_LINK_INVALID]
+    gone: [LESSON_NOT_FOUND]
+    conflict: [LESSON_CANCELLED, RECORDING_EXISTS]
+  addingStream:
+    from: addRecording
+    gone: [LESSON_NOT_FOUND]
+    conflict: [LESSON_CANCELLED, RECORDING_EXISTS]
+  changing:
+    from: changeRecording
+    link: [RECORDING_LINK_INVALID]
+    gone: [RECORDING_NOT_FOUND]
+
+main:
+  given: { canManage: true, slot: started, existing: none, cancelled: false, streamOffered: false, link: youtube, releaseChoice: unchanged, meanwhile: none }
+  events: [ADD, SUBMIT, DONE]
+
+initial: recordingsPage
+states:
+  recordingsPage:
+    title: Ders kayıtları
+    by: human
+    goal: true
+    description: >-
+      The course's live sessions by week, newest first, each with the recording it holds, where it lives, whether it is
+      ready, who may watch it and when talebe may. A session that has begun and holds none says Kayıt yok and offers
+      Kayıt ekle; a recording offers Düzenle.
+    includes: ["the toast of the last write", "the page read again every 10 seconds while a Bunny upload is being prepared"]
+    source: apps/nazar/features/recordings/components/recordings-table.tsx:67
+    on:
+      ADD: { guard: "canManage and slotMissing", target: linkDialog, effect: [openAdd], say: "they press Kayıt ekle (a holder of recording.upload too picks Bağlantı yapıştır)", source: "apps/nazar/features/recordings/components/recordings-table.tsx:356" }
+      EDIT: { guard: "canManage and slotRecorded", target: linkDialog, effect: [openEdit], say: "they press Düzenle", source: "apps/nazar/features/recordings/components/recordings-table.tsx:335" }
+      FROM_STREAM: { guard: "canManage and streamOffered and slotMissing and slot == 'over'", target: addingStream, effect: [fromStream], say: "they press Yayını kayıt olarak ekle", source: "apps/nazar/features/recordings/components/recordings-table.tsx:369" }
+      NAVIGATE: { target: left, say: "they go to another page", source: "apps/nazar/app/ders/[dersId]/kayitlar/page.tsx:11" }
+
+  linkDialog:
+    title: The recording's link
+    by: human
+    description: >-
+      Başlık, the link with the provider chip it is read as, Herkese açık (off when adding), and when talebe may watch
+      it. Adding starts from the session's title; Düzenle from the recording's own values and sends only what changed. A
+      Bunny recording's link field warns that another link deletes its video from Bunny.
+    source: apps/nazar/features/recordings/components/recording-dialog.tsx:502
+    on:
+      SUBMIT:
+        - { guard: "link == 'notHttps'", target: linkDialog, effect: [linkProblem], say: "the link does not start with https://; nothing is sent", source: "apps/nazar/features/recordings/recordings.ts:451" }
+        - { guard: "releaseChoice == 'past'", target: linkDialog, effect: [releaseProblem], say: "a new release time is not ahead; nothing is sent", source: "apps/nazar/features/recordings/recordings.ts:369" }
+        - { guard: "intent == 'add'", target: adding, effect: [clearProblem], say: "they press Kaydı ekle", source: "apps/nazar/features/recordings/components/recording-dialog.tsx:336" }
+        - { target: changing, effect: [clearProblem], say: "they press Kaydet", source: "apps/nazar/features/recordings/components/recording-dialog.tsx:334" }
+      CLOSE: { target: recordingsPage, say: "they press Vazgeç or close the dialog", source: "apps/nazar/features/recordings/components/recording-dialog.tsx:555" }
+
+  adding:
+    title: tedrisat adds the recording
+    description: >-
+      POST /lessons/:id/recordings. The guard asks recording.manage; the service reads the link (detectRecordingLink:
+      YouTube stored as its watch link, a player link of Medaris's own library as its video id, any other https link as
+      pasted), then locks the session: hidden is 404, cancelled is 409, a recording other than a FAILED upload is 409, a
+      Bunny video another recording holds is 400. The release time is written with it, the recording is READY, a FAILED
+      upload's video is queued for deletion from Bunny, and recording.add goes to audit_log.
+    invoke: { action: addRecording }
+    source: apps/tedrisat/src/course/recording.repository.ts:863
+    on:
+      DONE: { guard: "not linkRefused and meanwhile == 'none' and not holdsOne and link != 'bunnyUsed'", target: recorded, effect: [added], say: "the recording is added; the dialog closes and the page is read again", source: "apps/tedrisat/src/course/recording.repository.ts:924" }
+      FAIL.link:
+        - { guard: linkRefused, target: linkDialog, effect: [refusedLink], say: "400: tedrisat cannot store that link; the dialog stays", source: "apps/tedrisat/src/course/domain/recording-link.ts:146" }
+        - { guard: "meanwhile == 'none' and not holdsOne and link == 'bunnyUsed'", target: linkDialog, effect: [refusedLink], say: "400 bunny-video-used: another session holds that video", source: "apps/tedrisat/src/course/recording.repository.ts:224" }
+      FAIL.gone: { guard: "not linkRefused and meanwhile == 'hidden'", target: recordingsPage, effect: [gone], say: "404: the session was hidden; the page is read again", source: "apps/tedrisat/src/course/recording.repository.ts:881" }
+      FAIL.conflict:
+        - { guard: "not linkRefused and meanwhile == 'cancelled'", target: recordingsPage, effect: [cancelledNow], say: "409 LESSON_CANCELLED; the page is read again", source: "apps/tedrisat/src/course/recording.repository.ts:883" }
+        - { guard: "not linkRefused and holdsOne and meanwhile in ['none', 'added']", target: recordingsPage, effect: [exists], say: "409 RECORDING_EXISTS; the page is read again", source: "apps/tedrisat/src/course/recording.repository.ts:911" }
+
+  addingStream:
+    title: tedrisat adds the stream as the recording
+    description: >-
+      The same route, with the stream's youtube.com/live/<id> link, the title the form would start from and visibility
+      ENROLLED; no dialog. It plays once YouTube has archived the stream, which the row says.
+    invoke: { action: addRecording }
+    source: apps/nazar/features/recordings/components/recordings-table.tsx:111
+    on:
+      DONE: { guard: "meanwhile == 'none'", target: recorded, effect: [streamAdded], say: "the stream is the session's recording now", source: "apps/nazar/features/recordings/components/recordings-table.tsx:119" }
+      FAIL.gone: { guard: "meanwhile == 'hidden'", target: recordingsPage, effect: [gone], say: "404: the session was hidden", source: "apps/nazar/features/recordings/components/recordings-table.tsx:134" }
+      FAIL.conflict:
+        - { guard: "meanwhile == 'cancelled'", target: recordingsPage, effect: [cancelledNow], say: "409 LESSON_CANCELLED", source: "apps/tedrisat/src/course/recording.repository.ts:883" }
+        - { guard: "meanwhile == 'added'", target: recordingsPage, effect: [exists], say: "409 RECORDING_EXISTS", source: "apps/tedrisat/src/course/recording.repository.ts:911" }
+
+  changing:
+    title: tedrisat changes the recording
+    description: >-
+      PATCH /recordings/:id with what changed. The row is locked where its session is not hidden (404 otherwise); a new
+      link is read as when adding and makes the recording READY, a Bunny video it replaces is queued for deletion, and a
+      changed release time is written to the session; recording.update goes to audit_log with what it was and is. Whether
+      the session is cancelled is not asked.
+    invoke: { action: changeRecording }
+    source: apps/tedrisat/src/course/recording.repository.ts:976
+    on:
+      DONE: { guard: "not linkRefused and meanwhile != 'hidden' and link != 'bunnyUsed'", target: recordingsPage, effect: [saved], say: "the recording is saved; the dialog closes and the page is read again", source: "apps/tedrisat/src/course/recording.repository.ts:1004" }
+      FAIL.link:
+        - { guard: linkRefused, target: linkDialog, effect: [refusedLink], say: "400: tedrisat cannot store that link", source: "apps/tedrisat/src/course/recording.service.ts:92" }
+        - { guard: "meanwhile != 'hidden' and link == 'bunnyUsed'", target: linkDialog, effect: [refusedLink], say: "400 bunny-video-used", source: "apps/tedrisat/src/course/recording.repository.ts:1001" }
+      FAIL.gone: { guard: "not linkRefused and meanwhile == 'hidden'", target: recordingsPage, effect: [gone], say: "404 RECORDING_NOT_FOUND: the session was hidden", source: "apps/tedrisat/src/course/recording.repository.ts:999" }
+
+  recorded:
+    title: The session holds the new recording
+    description: The dialog closes, the toast says so, and the page is read again with the recording in its row.
+    source: apps/nazar/features/recordings/components/recording-dialog.tsx:366
+    always:
+      - { target: recordingsPage, effect: [nowHeld], source: "apps/nazar/features/recordings/components/recording-dialog.tsx:367" }
+
+  left: { type: final, title: They leave Ders kayıtları, leavesPage: true, source: "apps/nazar/app/ders/[dersId]/kayitlar/page.tsx:11" }
+
+assertions:
+  - { id: only-recording-manage-writes-a-link, never: "state in ['linkDialog', 'adding', 'addingStream', 'changing'] and not canManage", say: "Only a holder of recording.manage pastes or changes a recording's link", source: "apps/tedrisat/src/course/recording.controller.ts:100" }
+  - { id: no-add-before-the-session-begins, never: "state in ['adding', 'addingStream'] and slot == 'notYet'", say: "Kayıt ekle is not offered on a session that has not begun", source: "apps/nazar/features/recordings/recordings.ts:160" }
+  - { id: adding-never-lands-on-a-cancelled-or-hidden-session, never: "state == 'recorded' and (cancelled or meanwhile in ['cancelled', 'hidden'])", say: "A recording is never added to a cancelled or hidden session", source: "apps/tedrisat/src/course/recording.repository.ts:882" }
+  - { id: adding-never-replaces-a-recording, never: "state == 'recorded' and holdsOne", say: "Adding never takes the place of a link or a Bunny video a session holds", source: "apps/tedrisat/src/course/recording.repository.ts:910" }
+  - { id: only-storable-links-are-stored, never: "written and link in ['youtubeNoVideo', 'bunnyForeign', 'bunnyUsed', 'notHttps']", say: "A link tedrisat cannot read, another library's Bunny link or a video another session holds is never stored", source: "apps/tedrisat/src/course/domain/recording-link.ts:116" }
+  - { id: a-past-release-time-is-never-sent, never: "state in ['adding', 'changing'] and releaseChoice == 'past'", say: "A new release time that is not ahead never leaves the dialog", source: "apps/nazar/features/recordings/components/recording-dialog.tsx:320" }

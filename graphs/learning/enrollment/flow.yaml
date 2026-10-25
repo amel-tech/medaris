@@ -1,0 +1,254 @@
+# A talebe's enrollment in a course, on the course page of tedris (/courses/:courseId) and in the tedrisat routes behind
+# it, as the code does it on origin/main ce47fce8 (capture of 25 Oct 2026). The course team's decisions are drawn as
+# events: the talebe sees each one on the next load of the page, which is why every one of them goes back to `opening`.
+schema: delurio-graph/0
+kind: flow
+id: medaris.enrollment
+status: proposed
+domain: medaris.learning
+ui: medaris.enrollment
+title: Enrol in a course, withdraw, leave
+summary: >-
+  The course page's right-hand card follows the caller's enrollment and nothing else. A visitor is asked to sign in; a
+  signed-in caller with no enrollment enrols or applies, and the server alone decides whether the request waits for
+  approval. A waiting request can be withdrawn and a seat can be left; a completed course cannot. The course team
+  approves or rejects a request, adds people by list, completes, reopens or takes a talebe out, and is the only way back
+  in for one it took out.
+
+scope:
+  shows: the course page's enrollment card for a visitor or a signed-in caller who holds no role in the course
+  world: open
+  outOfView:
+    - "the course team's own screens in nazar; only their effect on this talebe's row is drawn, seen on the next load"
+    - "the progress dialog (PUT /courses/:id/progress) and the per-celse calendar menu on the card"
+    - "Derslerim's own ··· menu, which opens the same leave dialog (course-actions-menu.tsx)"
+    - "a draft shown to its editors as a preview, and a caller who is also course staff"
+    - "a course or köşk hidden while the page is open (the next load answers 404)"
+
+context:
+  signedIn:
+    values: [true, false]
+    initial: any
+    say: { "true": "the caller is signed in", "false": "a visitor with no session" }
+  enrollment: # enrollments.status for (caller, course); none = no row
+    values: [none, pending, enrolled, completed, revoked]
+    initial: any
+    say: { none: "no enrollment", pending: "a request waits for approval", enrolled: "the talebe holds a seat", completed: "the course team marked the course completed", revoked: "the course team took the talebe out" }
+  barred: # an open ban on the course, its köşk or its medrese
+    values: [false, true]
+    initial: any
+    say: { "true": "a ban bars the talebe from this course", "false": "no ban bars the talebe" }
+  approvalShown: # what the page reads: the course's requiresApproval, or an unlisted köşk
+    values: [false, true]
+    initial: any
+    say: { "true": "the course or its unlisted köşk says enrolment needs approval", "false": "the course does not say it needs approval" }
+  approvalByPolicy: # what only the server reads: the köşk's, the platform's or the medrese's approval policy
+    values: [false, true]
+    initial: any
+    say: { "true": "a köşk, platform or medrese policy forces approval", "false": "no policy forces approval" }
+  seatFrom: # who made the enrollment the card shows now
+    values: [held, self, approval, bulk, stale]
+    initial: held
+  notice: # the toast left on the card
+    values: [none, enrolled, withdrawn, left, failed, notFound, conflict]
+    initial: none
+
+guards:
+  approvalForced: "approvalShown or approvalByPolicy"
+  labelEnroll: "not approvalShown"
+  showEnrolled: "notice == 'enrolled'"
+  showWithdrawn: "notice == 'withdrawn'"
+  showLeft: "notice == 'left'"
+  showFailed: "notice == 'failed'"
+  showNotFound: "notice == 'notFound'"
+  showConflict: "notice == 'conflict'"
+
+effects:
+  becomePending: { set: { enrollment: pending, seatFrom: self, notice: none } }
+  becomeEnrolled: { set: { enrollment: enrolled, seatFrom: self, notice: enrolled } }
+  withdrawn: { set: { enrollment: none, seatFrom: self, notice: withdrawn } }
+  leftCourse: { set: { enrollment: none, seatFrom: self, notice: left } }
+  noteFailed: { set: { notice: failed } }
+  noteNotFound: { set: { notice: notFound } }
+  noteConflict: { set: { notice: conflict } }
+  staleRefresh: { set: { notice: conflict, seatFrom: stale }, havoc: [enrollment] } # changed elsewhere: the refresh draws what it is now
+  approvedByTeam: { set: { enrollment: enrolled, seatFrom: approval, notice: none } }
+  rejectedByTeam: { set: { enrollment: none, seatFrom: approval, notice: none } }
+  addedByList: { set: { enrollment: enrolled, seatFrom: bulk, notice: none } }
+  completedByTeam: { set: { enrollment: completed, notice: none } }
+  reopenedByTeam: { set: { enrollment: enrolled, notice: none } }
+  removedByTeam: { set: { enrollment: revoked, notice: none } }
+
+failures:
+  enrolling:
+    from: enroll
+    forbidden: [BAN_ACTIVE]
+    notFound: [COURSE_NOT_FOUND]
+    conflict: [ENROLLMENT_STATE_CONFLICT]
+    server: [network, 5xx]
+  withdrawing:
+    from: withdraw
+    forbidden: [BAN_ACTIVE]
+    notFound: [ENROLLMENT_NOT_FOUND]
+    server: [network, 5xx]
+  leaving:
+    from: leave
+    forbidden: [BAN_ACTIVE]
+    stale: [ENROLLMENT_NOT_FOUND, ENROLLMENT_STATE_CONFLICT]
+    server: [network, 5xx]
+
+main:
+  given: { signedIn: true, enrollment: none, barred: false, approvalShown: true, approvalByPolicy: false }
+  events: [ENROLL, DONE, DISMISS, TEAM_APPROVE, CONTINUE]
+
+initial: opening
+states:
+  opening:
+    title: The course page loads
+    description: >-
+      GET /courses/:id with the caller's token, or none (course.view, public). The card is chosen from
+      enrollment.status alone; a ban or a passive scope does not change it.
+    source: apps/tedris/features/courses/course-view.ts:21
+    always:
+      - { guard: "not signedIn", target: visitor, say: "a visitor", source: "apps/tedris/features/courses/course-view.ts:25" }
+      - { guard: "enrollment == 'none'", target: apply, say: "no enrollment", source: "apps/tedris/features/courses/course-view.ts:35" }
+      - { guard: "enrollment == 'pending'", target: pending, say: "a request waits", source: "apps/tedris/features/courses/course-view.ts:27" }
+      - { guard: "enrollment == 'enrolled'", target: enrolled, say: "a seat, barred or not", source: "apps/tedris/features/courses/course-view.ts:29" }
+      - { guard: "enrollment == 'completed'", target: completed, say: "a completion", source: "apps/tedris/features/courses/course-view.ts:31" }
+      - { target: revoked, say: "taken out by the course team", source: "apps/tedris/features/courses/course-view.ts:33" }
+
+  visitor:
+    title: The visitor's card
+    by: human
+    source: apps/tedris/features/courses/components/course-aside.tsx:350
+    on:
+      SIGN_IN: { target: toSignIn, say: "they go to sign in", source: "apps/tedris/features/courses/components/course-aside.tsx:352" }
+      REGISTER: { target: toRegister, say: "they go to create an account", source: "apps/tedris/features/courses/components/course-aside.tsx:358" }
+      NAVIGATE: { target: left, say: "they leave the page" }
+
+  apply:
+    title: The card to enrol or apply
+    by: human
+    description: >-
+      The button says "apply" when the course requires approval or its köşk is unlisted, and "enrol" otherwise; the
+      köşk's, the platform's and the medrese's approval policies are not read here.
+    source: apps/tedris/features/courses/components/course-aside.tsx:366
+    on:
+      ENROLL: { target: enrolling, say: "they press the button", source: "apps/tedris/features/courses/components/course-aside.tsx:369" }
+      TEAM_ADDS: { guard: "not barred", target: opening, effect: [addedByList], say: "the course team adds them by e-mail address (Toplu talebe ekle)", source: "apps/tedrisat/src/course/bulk-enrollment.service.ts:189" }
+      NAVIGATE: { target: left, say: "they leave the page" }
+
+  enrolling:
+    title: Send the enrolment
+    description: >-
+      POST /courses/:id/enroll (course.enroll). The server refuses a barred caller and a REVOKED row, then writes PENDING
+      when approval is forced by the course, an unlisted köşk, the köşk's, the platform's or the medrese's policy, and
+      ENROLLED otherwise.
+    source: apps/tedrisat/src/course/course.service.ts:1513
+    invoke: { action: enroll }
+    on:
+      DONE:
+        - { guard: "not barred and approvalForced", target: receivedDialog, effect: [becomePending], say: "the request waits for approval", source: "apps/tedrisat/src/course/course.service.ts:1544" }
+        - { guard: "not barred", target: opening, effect: [becomeEnrolled], say: "they hold a seat at once", source: "apps/tedrisat/src/course/course.service.ts:1545" }
+      FAIL.forbidden: { guard: barred, target: apply, effect: [noteFailed], say: "barred: 403 BAN_ACTIVE, told to try again later", source: "apps/tedrisat/src/course/course.service.ts:1522" }
+      FAIL.notFound: { target: apply, effect: [noteNotFound], say: "the course is gone or hidden since the page was drawn", source: "apps/tedris/features/courses/action-error.ts:9" }
+      FAIL.conflict: { target: apply, effect: [noteConflict], say: "taken out meanwhile: 409; the toast says the page was refreshed, and it is not", source: "apps/tedris/features/courses/components/course-aside.tsx:84" }
+      FAIL.server: { target: apply, effect: [noteFailed], say: "the request did not go through", source: "apps/tedris/features/courses/components/course-aside.tsx:85" }
+
+  receivedDialog:
+    title: The application is received
+    by: human
+    description: the dialog of design tedris/07 over the refreshed page; focus opens on its one button
+    source: apps/tedris/features/courses/components/enrollment-received-dialog.tsx:30
+    on:
+      DISMISS: { target: pending, say: "they close it; focus goes to the withdraw button", source: "apps/tedris/features/courses/components/course-aside.tsx:387" }
+
+  pending:
+    title: The request waits
+    by: human
+    source: apps/tedris/features/courses/components/course-aside.tsx:329
+    on:
+      WITHDRAW: { target: withdrawing, say: "they withdraw the request, with no question asked", source: "apps/tedris/features/courses/components/leave-course.tsx:53" }
+      TEAM_APPROVE: { target: opening, effect: [approvedByTeam], say: "the course team approves; no ban is asked", source: "apps/tedrisat/src/course/course.service.ts:1635" }
+      TEAM_ADDS: { guard: "not barred", target: opening, effect: [approvedByTeam], say: "the course team's list approves the request", source: "apps/tedrisat/src/course/bulk-enrollment.service.ts:217" }
+      TEAM_REJECT: { target: opening, effect: [rejectedByTeam], say: "the course team rejects; the row is deleted", source: "apps/tedrisat/src/course/course.service.ts:1668" }
+      NAVIGATE: { target: left, say: "they leave the page" }
+
+  withdrawing:
+    title: Withdraw the request
+    description: DELETE /courses/:id/enroll; only a PENDING row goes.
+    source: apps/tedrisat/src/course/course.service.ts:1803
+    invoke: { action: withdraw }
+    on:
+      DONE: { guard: "not barred", target: opening, effect: [withdrawn], say: "the request is deleted", source: "apps/tedrisat/src/course/course.service.ts:1809" }
+      FAIL.forbidden: { guard: barred, target: pending, effect: [noteFailed], say: "barred: 403 BAN_ACTIVE", source: "apps/tedrisat/src/course/course.service.ts:1804" }
+      FAIL.notFound: { target: opening, effect: [staleRefresh], say: "decided meanwhile: 404, and the page refreshes", source: "apps/tedris/features/courses/components/leave-course.tsx:40" }
+      FAIL.server: { target: pending, effect: [noteFailed], say: "the request did not go through", source: "apps/tedris/features/courses/components/leave-course.tsx:34" }
+
+  enrolled:
+    title: The seat's card
+    by: human
+    description: >-
+      "Devam ediyor", the next celse, progress and the ··· menu with "Dersten ayrıl". Drawn for every ENROLLED row: a
+      barred talebe and one in a passive scope get it too, though their celses are locked.
+    source: apps/tedris/features/courses/components/course-aside.tsx:271
+    on:
+      CONTINUE: { target: toSession, say: "they go to the next celse", source: "apps/tedris/features/courses/components/course-aside.tsx:288" }
+      LEAVE: { target: confirmLeave, say: "they choose Dersten ayrıl in the ··· menu", source: "apps/tedris/features/courses/components/course-actions-menu.tsx:75" }
+      TEAM_COMPLETE: { target: opening, effect: [completedByTeam], say: "the course team marks it completed", source: "apps/tedrisat/src/course/course.service.ts:1712" }
+      TEAM_REMOVE: { target: opening, effect: [removedByTeam], say: "the course team takes them out, with a reason", source: "apps/tedrisat/src/course/course.service.ts:1747" }
+      NAVIGATE: { target: left, say: "they leave the page" }
+
+  confirmLeave:
+    title: Ask before leaving
+    by: human
+    source: apps/tedris/features/courses/components/course-actions-menu.tsx:79
+    on:
+      CONFIRM: { target: leaving, say: "they confirm", source: "apps/tedris/features/courses/components/course-actions-menu.tsx:87" }
+      CANCEL: { target: enrolled, say: "they keep the seat" }
+
+  leaving:
+    title: Leave the course
+    description: DELETE /courses/:id/enrollment; deletes the caller's own row, so they may apply again.
+    source: apps/tedrisat/src/course/course.service.ts:1773
+    invoke: { action: leave }
+    on:
+      DONE: { guard: "not barred", target: opening, effect: [leftCourse], say: "the seat and the progress are deleted", source: "apps/tedrisat/src/course/course.service.ts:1787" }
+      FAIL.forbidden: { guard: barred, target: enrolled, effect: [noteFailed], say: "barred: 403 BAN_ACTIVE; the seat stays with the ban", source: "apps/tedrisat/src/course/course.service.ts:1776" }
+      FAIL.stale: { target: opening, effect: [staleRefresh], say: "changed meanwhile: 404 or 409, and the page refreshes", source: "apps/tedris/features/courses/components/course-actions-menu.tsx:58" }
+      FAIL.server: { target: enrolled, effect: [noteFailed], say: "the request did not go through", source: "apps/tedris/features/courses/components/course-actions-menu.tsx:56" }
+
+  completed:
+    title: The completed card
+    by: human
+    description: no leave action; the API refuses it too (409)
+    source: apps/tedris/features/courses/components/course-aside.tsx:226
+    on:
+      OPEN_SESSION: { target: toSession, say: "they open the next celse", source: "apps/tedris/features/courses/components/course-aside.tsx:257" }
+      TEAM_REOPEN: { target: opening, effect: [reopenedByTeam], say: "the course team reopens it", source: "apps/tedrisat/src/course/course.service.ts:1712" }
+      NAVIGATE: { target: left, say: "they leave the page" }
+
+  revoked:
+    title: The card of a talebe taken out
+    by: human
+    description: no apply button; the API refuses their own enrolment with 409
+    source: apps/tedris/features/courses/components/course-aside.tsx:200
+    on:
+      BACK: { target: toMyCourses, say: "they go back to Derslerim", source: "apps/tedris/features/courses/components/course-aside.tsx:213" }
+      TEAM_APPROVE: { target: opening, effect: [approvedByTeam], say: "the course team approves the seat back; no ban is asked", source: "apps/tedrisat/src/course/course.service.ts:1635" }
+      NAVIGATE: { target: left, say: "they leave the page" }
+
+  toSignIn: { type: final, title: Sign in and come back, source: "apps/tedris/features/courses/components/course-aside.tsx:352" }
+  toRegister: { type: final, title: Create an account and come back, source: "apps/tedris/features/courses/components/course-aside.tsx:358" }
+  toSession: { type: final, title: The celse page, source: "apps/tedris/features/courses/components/course-aside.tsx:289" }
+  toMyCourses: { type: final, title: Derslerim, source: "apps/tedris/features/courses/components/course-aside.tsx:214" }
+  left: { type: final, title: They leave the page, leavesPage: true }
+
+assertions:
+  - { id: barred-never-self-seated, never: "barred and seatFrom == 'self' and enrollment in ['pending', 'enrolled']", say: "A barred talebe never gets a request or a seat on their own", source: "apps/tedrisat/src/course/course.service.ts:1522" }
+  - { id: list-skips-barred, never: "barred and seatFrom == 'bulk'", say: "The course team's list never seats a barred talebe", source: "apps/tedrisat/src/course/bulk-enrollment.service.ts:184" }
+  - { id: forced-approval-waits, never: "seatFrom == 'self' and enrollment == 'enrolled' and approvalForced", say: "When approval is forced by the course, the köşk, the platform or the medrese, the talebe's own request waits", source: "apps/tedrisat/src/course/course.service.ts:1540" }
+  - { id: revoked-never-reapplies, never: "state == 'enrolling' and enrollment == 'revoked'", say: "A talebe the course team took out never applies again on their own", source: "apps/tedrisat/src/course/course.service.ts:1524" }
+  - { id: completion-never-left, never: "state in ['confirmLeave', 'leaving'] and enrollment == 'completed'", say: "A completed course is never left", source: "apps/tedrisat/src/course/course.service.ts:1780" }
+  - { id: withdraw-only-pending, never: "state == 'withdrawing' and enrollment != 'pending'", say: "Only a waiting request is withdrawn", source: "apps/tedris/features/courses/components/course-aside.tsx:382" }
+  - { id: visitor-never-writes, never: "not signedIn and state in ['enrolling', 'withdrawing', 'leaving']", say: "A visitor sends no enrolment request", source: "apps/tedris/features/courses/components/course-aside.tsx:350" }

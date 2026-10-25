@@ -1,0 +1,22 @@
+{
+  "LessonNotes.title": "My notes",
+  "RecordingRelease.early": "Opens to talebe on {day} at {time}",
+  "RecordingRelease.opens": "The recording opens on {day} at {time}.",
+  "SessionPage.liveChatPopout": "Open on YouTube",
+  "SessionPage.liveChatTitle": "Live chat",
+  "WatchPage.backSr": "Back to the course: ",
+  "WatchPage.bunnyFrameTitle": "Recording player: {title}",
+  "WatchPage.details": "Session details",
+  "WatchPage.endedBadge": "Stream ended",
+  "WatchPage.heading": "Week {week} · {title}",
+  "WatchPage.liveBadge": "Live · {minutes} min",
+  "WatchPage.liveBadgeShort": "Live",
+  "WatchPage.questionsTitle": "Ask a question",
+  "WatchPage.recordingBadge": "Recording",
+  "WatchPage.recordingOpen": "Open the recording",
+  "WatchPage.recordingPlaceholder": "The recording plays here",
+  "WatchPage.streamEndedHeldText": "The live stream has ended. The recording will play here once it opens.",
+  "WatchPage.streamEndedText": "The live stream has ended. The recording will play here once it is added.",
+  "WatchPage.streamLiveText": "To ask a question, write in the live chat.",
+  "WatchPage.streamTitle": "Live stream"
+}
